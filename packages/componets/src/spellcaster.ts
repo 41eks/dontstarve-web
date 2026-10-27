@@ -15,11 +15,9 @@ export interface SpellCastMap {
 }
 export interface SpellCasterComponent {
   canCast(doer: SpellCastDoer, target: object | undefined, position: THREE.Vector3): boolean;
-  prepareCast(target?: object): Promise<PreparedSpellCast | void>;
-  castSpell(target: object | undefined, position: THREE.Vector3, doer: SpellCastDoer, prepared?: PreparedSpellCast): boolean;
+  castSpell(target: object | undefined, position: THREE.Vector3, doer: SpellCastDoer): boolean;
   dispose(): void;
 }
-export interface PreparedSpellCast { dispose(): void; }
 interface SpellCasterInst {
   readonly isRemoved: boolean;
   addTag(tag: string): void;
@@ -34,14 +32,13 @@ export interface SpellTarget {
   hasStateTag?(tag: string): boolean;
 }
 
-type SpellFn = (item: SpellCasterInst, target: object | undefined, position: THREE.Vector3, doer: SpellCastDoer, prepared?: PreparedSpellCast) => boolean;
+type SpellFn = (item: SpellCasterInst, target: object | undefined, position: THREE.Vector3, doer: SpellCastDoer) => boolean;
 
 /** Supported point and target branches of components/spellcaster.lua. */
 export class SpellCaster implements SpellCasterComponent {
   private readonly item: SpellCasterInst;
   private readonly map: SpellCastMap | undefined;
   private spell?: SpellFn;
-  private prepare: (target?: object) => Promise<PreparedSpellCast | void> = async () => {};
   private onPoint = false;
   private onWater = false;
   private onTargets = false;
@@ -64,8 +61,8 @@ export class SpellCaster implements SpellCasterComponent {
   set canUseOnPoint(value: boolean) { this.onPoint = value; this.refreshTags(); }
   get canUseOnPointWater(): boolean { return this.onWater; }
   set canUseOnPointWater(value: boolean) { this.onWater = value; this.refreshTags(); }
-  setSpellFn(spell: SpellFn, prepare: (target?: object) => Promise<PreparedSpellCast | void>): void {
-    this.spell = spell; this.prepare = prepare; this.refreshTags();
+  setSpellFn(spell: SpellFn): void {
+    this.spell = spell; this.refreshTags();
   }
   canCast(doer: SpellCastDoer, target: object | undefined, position: THREE.Vector3): boolean {
     if (this.disposed || this.item.isRemoved || !this.spell
@@ -82,9 +79,8 @@ export class SpellCaster implements SpellCasterComponent {
       && (this.onPoint ? this.map.isAboveGroundAtPoint(position, this.onWater)
         : this.onWater && this.map.isOceanAtPoint(position)) && !this.map.isGroundTargetBlocked(position);
   }
-  prepareCast(target?: object): Promise<PreparedSpellCast | void> { return this.prepare(target); }
-  castSpell(target: object | undefined, position: THREE.Vector3, doer: SpellCastDoer, prepared?: PreparedSpellCast): boolean {
-    return this.canCast(doer, target, position) && (this.spell?.(this.item, target, position, doer, prepared) ?? false);
+  castSpell(target: object | undefined, position: THREE.Vector3, doer: SpellCastDoer): boolean {
+    return this.canCast(doer, target, position) && (this.spell?.(this.item, target, position, doer) ?? false);
   }
   dispose(): void { this.disposed = true; this.refreshTags(); }
   private refreshTags(): void {

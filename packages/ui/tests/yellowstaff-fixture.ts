@@ -7,6 +7,7 @@ import { getLightStaffController, type LightStaffId } from '../../prefab/src/yel
 import { SpellCastActionController } from '../../stategraphs/src/spellcaster';
 import { DwarfStarManager, DWARF_STAR_DURATION, POLAR_LIGHT_DURATION } from '../../prefab/src/stafflight';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { PrewarmSounds } from '../../prefab/src/sound';
 
 /** The inst.Light a model's entity declares. */
 const getDeclaredLight = (model: THREE.Object3D) => prefabInstance(model)?.light.peek();
@@ -79,10 +80,12 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   const stars = new DwarfStarManager(scene, '/dst/data/anim', itemId === 'opalstaff' ? 'staffcoldlight' : 'stafflight');
   const equipped = inventory.handEquipmentExistenceState;
   const entity = inventory.getEntity(equipmentSlotAddress('hand'))!;
+  // The cast's SpawnPrefab creates the star at once; its display loads the art after the commit.
+  const summoned: THREE.Group[] = [];
   const staff = getLightStaffController(entity, {
     map: { isAboveGroundAtPoint: point => Math.abs(point.x) <= 130 && Math.abs(point.z) <= 130,
       isOceanAtPoint: () => false, isGroundTargetBlocked: () => false },
-    preparePrefab: () => stars.prepare(), spawnPrefab: (_prefab, point) => stars.spawnPrepared(point),
+    spawnPrefab: (_prefab, point) => { const model = stars.spawn(point); summoned.push(model); return model; },
   });
   staff.onequip();
   let stops = 0, sanity = 100;
@@ -90,7 +93,7 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
     { destination: undefined, stop: () => { stops += 1; }, goToPoint: () => true }, inventory.handEquipment,
     { position: player.position, hasTag: () => false,
       components: { sanity: { doDelta: delta => { sanity = Math.max(0, sanity + delta); } } } },
-    () => false, error => failures.push(String(error)));
+    () => false);
   const click = (button = 2) => {
     const point = new THREE.Vector3(30, 0, 0).project(camera);
     const bounds = renderer.domElement.getBoundingClientRect();
@@ -105,7 +108,8 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
     }
   };
   const settle = () => new Promise<void>((resolve) => setTimeout(resolve, 20));
-  await stars.prepare();
+  // As the scene does before it starts: the cast and the star play their sounds without loading them.
+  await PrewarmSounds();
   click(0);
   await settle();
   const ignoredLeft = !animation.isCasting;
@@ -117,6 +121,7 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   tick(52);
   const beforeCommit = stars.exportRecords().length;
   tick(3);
+  await Promise.all(summoned.map(model => (model.userData.display as PrefabDisplay).artLoaded()));
   await settle();
   const record = stars.exportRecords()[0];
   const afterCommit = stars.exportRecords().length;
@@ -148,10 +153,10 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   const restoredStar = restoredStars.exportRecords()[0];
   restoredStars.dispose(); restoredInventory.dispose();
   tick(60);
-  const sprite = stars.renderEntities[0]?.object as THREE.Group | undefined;
-  if (!sprite) throw new Error(`${itemId} summon failed: ${failures.join('; ')}`);
-  const star = sprite.parent!;
-  const mesh = sprite.children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
+  // The render entry is the star's own model; its display holds the drawn sprite's merged mesh.
+  const star = stars.renderEntities[0]?.object as THREE.Group | undefined;
+  if (!star) throw new Error(`${itemId} summon failed: ${failures.join('; ')}`);
+  const mesh = star.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
   const appeared = mesh.geometry.drawRange.count > 0 && mesh.material.every((material) => material.forceSinglePass);
   const bright = sample(30);
   const far = sample(-120, 120);

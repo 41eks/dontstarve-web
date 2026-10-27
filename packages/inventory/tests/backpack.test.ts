@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { Container } from '../../componets/src/container';
 import { ItemEntity, InventoryStore, InventorySlot, BodySlot, StorageSlot, backpackSlotAddress, equipmentSlotAddress, inventorySlotAddress } from '../src';
+import { addFueled } from './fueled';
 
 const specs = {
   backpack: { name: '背包', icon: 'backpack.tex', maxStack: 1, equippable: 'body' as const, canGoInContainer: false },
   log: { name: '木头', icon: 'log.tex', maxStack: 20 },
-  torch: { name: '火把', icon: 'torch.tex', maxStack: 1, maxFuel: 75 },
+  torch: { name: '火把', icon: 'torch.tex', maxStack: 1, maxFuel: 75, configureEntity: addFueled(75) },
 };
 const body = equipmentSlotAddress('body'), a = inventorySlotAddress(0), b = inventorySlotAddress(1), item = inventorySlotAddress(2);
 function store() {

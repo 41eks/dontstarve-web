@@ -1,4 +1,5 @@
 import { readSaveDownload } from './save-download';
+import { minimalSave, savePageUrl } from './inline-save';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 
@@ -10,15 +11,6 @@ test('eats lightbulbs and refuels inventory, equipped and ground lanterns, then 
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
-  await page.route('**/saves/initial-world.json', async route => {
-    const response = await route.fetch(), save = await response.json();
-    save.world.entities = {}; save.world.elapsedSeconds = 0;
-    save.players.local.transform.position = [0, 0, 0];
-    save.players.local.stats = { health: 100, hunger: 105, sanity: 100 };
-    for (const container of Object.values(save.players.local.inventory.containers) as any[]) container.slots = [];
-    save.players.local.inventory.bufferedBuilds = [];
-    await route.fulfill({ response, json: save });
-  });
   const prepare = () => page.evaluate(async urls => {
     const main = await import(urls.main), { scene, renderer } = await import(urls.universal);
     const { camera } = await import(urls.camera), { player, playerBody } = await import(urls.player);
@@ -29,7 +21,7 @@ test('eats lightbulbs and refuels inventory, equipped and ground lanterns, then 
     new CustomEvent('game:debug-command', { detail: { command } })), command);
   const saveGame = async () => {
     const download = page.waitForEvent('download'); await submit('c_save()');
-    return JSON.parse(await readSaveDownload((await (await download).path())!));
+    return JSON.parse(await readSaveDownload((await (await download).path())!, 'Master'));
   };
   const held = () => page.evaluate(() => (window as any).bulbGame.main.inventory.exportState().slots.filter((slot: any) => slot.item));
   const state = (slots: any[], id: string) => slots.find(slot => slot.item.itemId === id)?.item;
@@ -37,7 +29,7 @@ test('eats lightbulbs and refuels inventory, equipped and ground lanterns, then 
   const bar = page.locator('dst-inventory-bar'), bag = bar.locator('.inventory-bar__items');
   const bulb = bag.locator('[data-item-id="lightbulb"]');
   const lantern = bag.locator('[data-item-id="lantern"]');
-  await page.goto('/tests/dst-lighting.html'); await prepare();
+  await page.goto(savePageUrl(minimalSave({ stats: { health: 100, hunger: 105, sanity: 100 } }))); await prepare();
   await submit('c_give("lightbulb", 4); c_give("lantern"); c_spawn("lightbulb"); c_spawn("lantern")');
   await expect(bulb.locator('.inventory-slot__freshness')).toBeVisible();
   await bulb.click({ button: 'right' });
@@ -76,15 +68,13 @@ test('eats lightbulbs and refuels inventory, equipped and ground lanterns, then 
   });
   // The light signal changes immediately; wait for the off pose and camera to render before raycasting it.
   await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
-  const point = await page.evaluate(id => {
+  // The lantern's frame centre can be transparent; aim at artwork the pointer actually picks.
+  const point = await page.evaluate(async ({ id, url }) => {
     const { scene, camera, renderer } = (window as any).bulbGame;
+    const { spriteScreenPoint } = await import(url);
     const model = scene.children.find((model: any) => model.userData.instance?.entityId === id);
-    scene.updateMatrixWorld(true); camera.updateMatrixWorld(true);
-    const mesh = model.children[0].children[0]; mesh.geometry.computeBoundingBox();
-    const center = mesh.geometry.boundingBox.getCenter(model.position.clone()); mesh.localToWorld(center).project(camera);
-    const rect = renderer.domElement.getBoundingClientRect();
-    return { id: model.userData.instance?.entityId, x: rect.left + (center.x + 1) * rect.width / 2, y: rect.top + (1 - center.y) * rect.height / 2 };
-  }, groundId);
+    return { id: model.userData.instance?.entityId as string, ...spriteScreenPoint(model, camera, renderer) };
+  }, { id: groundId, url: `/@fs${fileURLToPath(new URL('./sprite-screen-point.ts', import.meta.url))}` });
   await page.mouse.click(point.x, point.y);
   await expect.poll(cursorCount).toBe(1);
   await bag.locator('[data-slot-key="2"]').click();
@@ -104,8 +94,7 @@ test('eats lightbulbs and refuels inventory, equipped and ground lanterns, then 
   expect(groundBulb.components.stack.freshnessPercent).toBeGreaterThan(.95);
   expect(saved.players.local.inventory.containers['player:equipment'].slots.find((slot: any) => slot.item.entityId === lanternId)
     .item.remainingFuel).toBeGreaterThan(85);
-  await page.route('**/saves/initial-world.json', route => route.fulfill({ json: saved }));
-  await page.reload(); await prepare();
+  await page.goto(savePageUrl(saved)); await prepare();
   const restored = await saveGame();
   expect(restored.world.entities.ground_item.find((record: any) => record.id === point.id)).toEqual(groundLantern);
   const restoredBulb = restored.world.entities.ground_item.find((record: any) => record.id === groundBulb.id);

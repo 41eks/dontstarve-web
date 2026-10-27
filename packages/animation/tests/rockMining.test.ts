@@ -14,7 +14,7 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 function setup() {
   const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), drops: string[] = [];
   const manager = new RockManager(scene, '/dst/data/anim', { scheduler,
-    prepareSpawn: async definition => ({ spawn: () => { drops.push(definition.itemId); return true; }, dispose() {} }),
+    spawnGroundItem: definition => { drops.push(definition.itemId); return undefined; },
   });
   return { scene, scheduler, manager, drops, dispose: () => { manager.dispose(); scheduler.dispose(); } };
 }

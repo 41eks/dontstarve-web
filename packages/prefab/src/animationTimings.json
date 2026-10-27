@@ -1,0 +1,712 @@
+{
+  "mole_basic.zip": [
+    {
+      "name": "mole",
+      "bank": 108770619,
+      "frameRate": 30.0,
+      "frames": 2
+    },
+    {
+      "name": "enter",
+      "bank": 108770619,
+      "frameRate": 30.0,
+      "frames": 28
+    },
+    {
+      "name": "idle_under",
+      "bank": 108770619,
+      "frameRate": 30.0,
+      "frames": 4
+    },
+    {
+      "name": "idle",
+      "bank": 108770619,
+      "frameRate": 30.0,
+      "frames": 58
+    },
+    {
+      "name": "mound",
+      "bank": 108770619,
+      "frameRate": 30.0,
+      "frames": 42
+    },
+    {
+      "name": "sleep_pre",
+      "bank": 108770619,
+      "frameRate": 30.0,
+      "frames": 24
+    },
+    {
+      "name": "sleep_loop",
+      "bank": 108770619,
+      "frameRate": 30.0,
+      "frames": 48
+    },
+    {
+      "name": "sleep_pst",
+      "bank": 108770619,
+      "frameRate": 30.0,
+      "frames": 23
+    },
+    {
+      "name": "exit",
+      "bank": 108770619,
+      "frameRate": 30.0,
+      "frames": 60
+    },
+    {
+      "name": "hit",
+      "bank": 108770619,
+      "frameRate": 30.0,
+      "frames": 19
+    },
+    {
+      "name": "frozen",
+      "bank": 108770619,
+      "frameRate": 30.0,
+      "frames": 4
+    },
+    {
+      "name": "frozen_loop_pst",
+      "bank": 108770619,
+      "frameRate": 30.0,
+      "frames": 6
+    },
+    {
+      "name": "walk_pre",
+      "bank": 108770619,
+      "frameRate": 30.0,
+      "frames": 7
+    },
+    {
+      "name": "walk_loop",
+      "bank": 108770619,
+      "frameRate": 30.0,
+      "frames": 27
+    },
+    {
+      "name": "walk_pst",
+      "bank": 108770619,
+      "frameRate": 30.0,
+      "frames": 7
+    },
+    {
+      "name": "death",
+      "bank": 108770619,
+      "frameRate": 30.0,
+      "frames": 23
+    },
+    {
+      "name": "stunned_pre",
+      "bank": 108770619,
+      "frameRate": 30.0,
+      "frames": 19
+    },
+    {
+      "name": "stunned_loop",
+      "bank": 108770619,
+      "frameRate": 30.0,
+      "frames": 24
+    },
+    {
+      "name": "stunned_pst",
+      "bank": 108770619,
+      "frameRate": 30.0,
+      "frames": 33
+    },
+    {
+      "name": "action",
+      "bank": 108770619,
+      "frameRate": 30.0,
+      "frames": 27
+    },
+    {
+      "name": "mound_idle",
+      "bank": 108770619,
+      "frameRate": 30.0,
+      "frames": 4
+    },
+    {
+      "name": "shock_loop",
+      "bank": 108770619,
+      "frameRate": 30.0,
+      "frames": 6
+    },
+    {
+      "name": "shock_pst",
+      "bank": 108770619,
+      "frameRate": 30.0,
+      "frames": 9
+    },
+    {
+      "name": "corpse",
+      "bank": 108770619,
+      "frameRate": 30.0,
+      "frames": 2
+    },
+    {
+      "name": "corpse_hit",
+      "bank": 108770619,
+      "frameRate": 30.0,
+      "frames": 11
+    }
+  ],
+  "lightflier.zip": [
+    {
+      "name": "idle",
+      "bank": 4110137850,
+      "frameRate": 30.0,
+      "frames": 3
+    },
+    {
+      "name": "walk_pre",
+      "bank": 4110137850,
+      "frameRate": 30.0,
+      "frames": 6
+    },
+    {
+      "name": "walk_loop",
+      "bank": 4110137850,
+      "frameRate": 30.0,
+      "frames": 40
+    },
+    {
+      "name": "walk_pst",
+      "bank": 4110137850,
+      "frameRate": 30.0,
+      "frames": 6
+    },
+    {
+      "name": "sleep_pre",
+      "bank": 4110137850,
+      "frameRate": 30.0,
+      "frames": 31
+    },
+    {
+      "name": "sleep_loop",
+      "bank": 4110137850,
+      "frameRate": 30.0,
+      "frames": 60
+    },
+    {
+      "name": "sleep_pst",
+      "bank": 4110137850,
+      "frameRate": 30.0,
+      "frames": 40
+    },
+    {
+      "name": "hit",
+      "bank": 4110137850,
+      "frameRate": 30.0,
+      "frames": 16
+    },
+    {
+      "name": "death",
+      "bank": 4110137850,
+      "frameRate": 30.0,
+      "frames": 18
+    },
+    {
+      "name": "death_idle",
+      "bank": 4110137850,
+      "frameRate": 30.0,
+      "frames": 1
+    },
+    {
+      "name": "frozen",
+      "bank": 4110137850,
+      "frameRate": 30.0,
+      "frames": 4
+    },
+    {
+      "name": "frozen_loop_pst",
+      "bank": 4110137850,
+      "frameRate": 30.0,
+      "frames": 6
+    },
+    {
+      "name": "hit_2",
+      "bank": 4110137850,
+      "frameRate": 30.0,
+      "frames": 33
+    },
+    {
+      "name": "attack_pre",
+      "bank": 4110137850,
+      "frameRate": 30.0,
+      "frames": 3
+    },
+    {
+      "name": "attack",
+      "bank": 4110137850,
+      "frameRate": 30.0,
+      "frames": 8
+    },
+    {
+      "name": "attack_pst",
+      "bank": 4110137850,
+      "frameRate": 30.0,
+      "frames": 17
+    },
+    {
+      "name": "shock_loop",
+      "bank": 4110137850,
+      "frameRate": 30.0,
+      "frames": 6
+    },
+    {
+      "name": "shock_pst",
+      "bank": 4110137850,
+      "frameRate": 30.0,
+      "frames": 9
+    }
+  ],
+  "bulb_plant_single.zip": [
+    {
+      "name": "bulb_plant_single",
+      "bank": 730941426,
+      "frameRate": 30.0,
+      "frames": 2
+    },
+    {
+      "name": "idle",
+      "bank": 730941426,
+      "frameRate": 30.0,
+      "frames": 84
+    },
+    {
+      "name": "picking",
+      "bank": 730941426,
+      "frameRate": 30.0,
+      "frames": 14
+    },
+    {
+      "name": "picked",
+      "bank": 730941426,
+      "frameRate": 30.0,
+      "frames": 2
+    },
+    {
+      "name": "idle_dead",
+      "bank": 730941426,
+      "frameRate": 30.0,
+      "frames": 1
+    },
+    {
+      "name": "empty",
+      "bank": 730941426,
+      "frameRate": 30.0,
+      "frames": 1
+    },
+    {
+      "name": "rustle",
+      "bank": 730941426,
+      "frameRate": 30.0,
+      "frames": 14
+    },
+    {
+      "name": "grow",
+      "bank": 730941426,
+      "frameRate": 30.0,
+      "frames": 23
+    },
+    {
+      "name": "dropped",
+      "bank": 730941426,
+      "frameRate": 30.0,
+      "frames": 2
+    },
+    {
+      "name": "dug",
+      "bank": 730941426,
+      "frameRate": 30.0,
+      "frames": 26
+    },
+    {
+      "name": "drain",
+      "bank": 730941426,
+      "frameRate": 30.0,
+      "frames": 20
+    },
+    {
+      "name": "off",
+      "bank": 730941426,
+      "frameRate": 30.0,
+      "frames": 1
+    },
+    {
+      "name": "withered",
+      "bank": 730941426,
+      "frameRate": 30.0,
+      "frames": 12
+    },
+    {
+      "name": "revive",
+      "bank": 730941426,
+      "frameRate": 30.0,
+      "frames": 12
+    },
+    {
+      "name": "recharge",
+      "bank": 730941426,
+      "frameRate": 30.0,
+      "frames": 19
+    },
+    {
+      "name": "bloom",
+      "bank": 730941426,
+      "frameRate": 30.0,
+      "frames": 40
+    },
+    {
+      "name": "wilt",
+      "bank": 730941426,
+      "frameRate": 30.0,
+      "frames": 45
+    },
+    {
+      "name": "picked_wilt",
+      "bank": 730941426,
+      "frameRate": 30.0,
+      "frames": 23
+    }
+  ],
+  "bulb_plant_springy.zip": [
+    {
+      "name": "idle",
+      "bank": 161913538,
+      "frameRate": 30.0,
+      "frames": 50
+    },
+    {
+      "name": "picking",
+      "bank": 161913538,
+      "frameRate": 30.0,
+      "frames": 18
+    },
+    {
+      "name": "picked",
+      "bank": 161913538,
+      "frameRate": 30.0,
+      "frames": 2
+    },
+    {
+      "name": "idle_dead",
+      "bank": 161913538,
+      "frameRate": 30.0,
+      "frames": 2
+    },
+    {
+      "name": "empty",
+      "bank": 161913538,
+      "frameRate": 30.0,
+      "frames": 2
+    },
+    {
+      "name": "grow",
+      "bank": 161913538,
+      "frameRate": 30.0,
+      "frames": 35
+    },
+    {
+      "name": "drain",
+      "bank": 161913538,
+      "frameRate": 30.0,
+      "frames": 20
+    },
+    {
+      "name": "off",
+      "bank": 161913538,
+      "frameRate": 30.0,
+      "frames": 1
+    },
+    {
+      "name": "withered",
+      "bank": 161913538,
+      "frameRate": 30.0,
+      "frames": 12
+    },
+    {
+      "name": "revive",
+      "bank": 161913538,
+      "frameRate": 30.0,
+      "frames": 12
+    },
+    {
+      "name": "recharge",
+      "bank": 161913538,
+      "frameRate": 30.0,
+      "frames": 20
+    },
+    {
+      "name": "picked_wilt",
+      "bank": 161913538,
+      "frameRate": 30.0,
+      "frames": 23
+    }
+  ],
+  "bernie.zip": [
+    {
+      "name": "idle_loop_nodir",
+      "bank": 937127483,
+      "frameRate": 30.0,
+      "frames": 50
+    },
+    {
+      "name": "idle_loop",
+      "bank": 937127483,
+      "frameRate": 30.0,
+      "frames": 50
+    },
+    {
+      "name": "walk_pre",
+      "bank": 937127483,
+      "frameRate": 30.0,
+      "frames": 3
+    },
+    {
+      "name": "walk_loop",
+      "bank": 937127483,
+      "frameRate": 30.0,
+      "frames": 32
+    },
+    {
+      "name": "walk_pst",
+      "bank": 937127483,
+      "frameRate": 30.0,
+      "frames": 3
+    },
+    {
+      "name": "hit",
+      "bank": 937127483,
+      "frameRate": 30.0,
+      "frames": 13
+    },
+    {
+      "name": "knockback",
+      "bank": 937127483,
+      "frameRate": 30.0,
+      "frames": 15
+    },
+    {
+      "name": "death",
+      "bank": 937127483,
+      "frameRate": 30.0,
+      "frames": 28
+    },
+    {
+      "name": "dead_loop",
+      "bank": 937127483,
+      "frameRate": 30.0,
+      "frames": 1
+    },
+    {
+      "name": "taunt",
+      "bank": 937127483,
+      "frameRate": 30.0,
+      "frames": 42
+    },
+    {
+      "name": "deactivate",
+      "bank": 937127483,
+      "frameRate": 30.0,
+      "frames": 13
+    },
+    {
+      "name": "inactive",
+      "bank": 937127483,
+      "frameRate": 30.0,
+      "frames": 1
+    },
+    {
+      "name": "activate",
+      "bank": 937127483,
+      "frameRate": 30.0,
+      "frames": 21
+    },
+    {
+      "name": "MISC",
+      "bank": 937127483,
+      "frameRate": 30.0,
+      "frames": 96
+    }
+  ],
+  "bernie_big.zip": [
+    {
+      "name": "idle_loop_nodir",
+      "bank": 702141372,
+      "frameRate": 30.0,
+      "frames": 65
+    },
+    {
+      "name": "idle_loop",
+      "bank": 702141372,
+      "frameRate": 30.0,
+      "frames": 64
+    },
+    {
+      "name": "walk_pre",
+      "bank": 702141372,
+      "frameRate": 30.0,
+      "frames": 12
+    },
+    {
+      "name": "walk_loop",
+      "bank": 702141372,
+      "frameRate": 30.0,
+      "frames": 42
+    },
+    {
+      "name": "walk_pst",
+      "bank": 702141372,
+      "frameRate": 30.0,
+      "frames": 6
+    },
+    {
+      "name": "run_walk_pre",
+      "bank": 702141372,
+      "frameRate": 30.0,
+      "frames": 12
+    },
+    {
+      "name": "run_pre",
+      "bank": 702141372,
+      "frameRate": 30.0,
+      "frames": 5
+    },
+    {
+      "name": "run_loop",
+      "bank": 702141372,
+      "frameRate": 30.0,
+      "frames": 32
+    },
+    {
+      "name": "run_pst",
+      "bank": 702141372,
+      "frameRate": 30.0,
+      "frames": 6
+    },
+    {
+      "name": "hit",
+      "bank": 702141372,
+      "frameRate": 30.0,
+      "frames": 8
+    },
+    {
+      "name": "atk",
+      "bank": 702141372,
+      "frameRate": 30.0,
+      "frames": 42
+    },
+    {
+      "name": "death",
+      "bank": 702141372,
+      "frameRate": 30.0,
+      "frames": 38
+    },
+    {
+      "name": "death_pst",
+      "bank": 702141372,
+      "frameRate": 30.0,
+      "frames": 21
+    },
+    {
+      "name": "dead_loop",
+      "bank": 702141372,
+      "frameRate": 30.0,
+      "frames": 1
+    },
+    {
+      "name": "taunt",
+      "bank": 702141372,
+      "frameRate": 30.0,
+      "frames": 69
+    },
+    {
+      "name": "activate",
+      "bank": 702141372,
+      "frameRate": 30.0,
+      "frames": 42
+    },
+    {
+      "name": "deactivate",
+      "bank": 702141372,
+      "frameRate": 30.0,
+      "frames": 22
+    },
+    {
+      "name": "deactivate_pst",
+      "bank": 702141372,
+      "frameRate": 30.0,
+      "frames": 11
+    }
+  ],
+  "butterfly_basic.zip": [
+    {
+      "name": "idle",
+      "bank": 628216979,
+      "frameRate": 30.0,
+      "frames": 66
+    },
+    {
+      "name": "take_off",
+      "bank": 628216979,
+      "frameRate": 30.0,
+      "frames": 16
+    },
+    {
+      "name": "flight_cycle",
+      "bank": 628216979,
+      "frameRate": 30.0,
+      "frames": 30
+    },
+    {
+      "name": "land",
+      "bank": 628216979,
+      "frameRate": 30.0,
+      "frames": 16
+    },
+    {
+      "name": "idle_flight_loop",
+      "bank": 628216979,
+      "frameRate": 30.0,
+      "frames": 44
+    },
+    {
+      "name": "evade",
+      "bank": 628216979,
+      "frameRate": 30.0,
+      "frames": 24
+    },
+    {
+      "name": "death",
+      "bank": 628216979,
+      "frameRate": 30.0,
+      "frames": 21
+    },
+    {
+      "name": "frozen",
+      "bank": 628216979,
+      "frameRate": 30.0,
+      "frames": 4
+    },
+    {
+      "name": "frozen_loop_pst",
+      "bank": 628216979,
+      "frameRate": 30.0,
+      "frames": 6
+    },
+    {
+      "name": "shock_loop",
+      "bank": 628216979,
+      "frameRate": 30.0,
+      "frames": 6
+    },
+    {
+      "name": "shock_pst",
+      "bank": 628216979,
+      "frameRate": 30.0,
+      "frames": 15
+    }
+  ]
+}

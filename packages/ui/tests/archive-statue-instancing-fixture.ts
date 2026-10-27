@@ -14,7 +14,7 @@ export async function checkArchiveStatueInstancing() {
   const scheduler = new GameTimeScheduler(), world = bindTestWorld(scheduler), awake = createSignal(true);
   const manager = new ArchivePropsManager(scene, {
     tickingarea: () => createMemo(() => awake.get()),
-    prepareSpawn: async () => ({ spawn: () => true, dispose() {} }),
+    spawnGroundItem: () => undefined,
   });
   const tick = () => new Promise(resolve => setTimeout(resolve, 0));
   const sample = async () => {

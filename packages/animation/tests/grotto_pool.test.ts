@@ -31,7 +31,7 @@ function setup(playerAt = new THREE.Vector3(), tickingarea?: TileStateQuery) {
   const ground = new GroundItemManager(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
   const pools = new GrottoPoolManager(scene, { physics, scheduler, fx, playerPosition: () => player.position, tickingarea,
-    prepareSpawn: (definition, fling) => ground.prepareSpawn(definition, fling) });
+    spawnGroundItem: (definition, position, options) => ground.spawnGroundItem(definition, position, options) });
   const registry = new EntityRegistry();
   registry.register(PREFAB_DEFINITIONS.grottoPools, {
     restore: (id, record) => pools.spawn(id, new THREE.Vector3(...record.transform.position),

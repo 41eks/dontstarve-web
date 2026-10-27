@@ -14,7 +14,7 @@ import { modelEntries } from './modelRecords';
 import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
 import { MakeSmallObstaclePhysics } from './standardcomponents';
-import type { GroundItemDefinition, PreparedGroundSpawn } from './groundPrefab';
+import type { SpawnGroundItem } from './groundPrefab';
 import { PlaySound, PreloadSounds } from './sound';
 import catalog from './groundItems.json' with { type: 'json' };
 
@@ -33,11 +33,6 @@ export const SKELETON_ANIMS: Record<SkeletonId, { min: number; max: number }> = 
 // skeleton.lua SetSharedLootTable('skeleton', ...) and ('skeleton_player', ...)
 SetSharedLootTable('skeleton', [['boneshard', 1], ['boneshard', 1], ['scrapbook_page', .1]]);
 SetSharedLootTable('skeleton_player', [['boneshard', 1], ['boneshard', 1]]);
-const LOOT_TABLES: Record<SkeletonId, readonly (keyof typeof catalog.items)[]> = {
-  skeleton: ['boneshard', 'boneshard', 'scrapbook_page'], skeleton_notplayer: ['boneshard', 'boneshard', 'scrapbook_page'],
-  skeleton_notplayer_1: ['boneshard', 'boneshard', 'scrapbook_page'], skeleton_notplayer_2: ['boneshard', 'boneshard', 'scrapbook_page'],
-  skeleton_player: ['boneshard', 'boneshard'],
-};
 
 /** Player_SetSkeletonDescription: the fields GetPlayerDeathDescription reads. `cause` is stored lowercased and dropped for a pk. */
 export interface SkeletonDescription { char: string; playername?: string; cause?: string; pkname?: string; userid?: string }
@@ -52,7 +47,8 @@ export interface SkeletonRecord {
 export interface SkeletonWorld extends ToolMouseTargetWorld {
   tickingarea?: TileStateQuery;
   physics?: CANNON.World;
-  prepareSpawn(definition: GroundItemDefinition, fling?: boolean): Promise<PreparedGroundSpawn>;
+  /** lootdropper:SpawnLootPrefab when the skeleton is hammered; the loot's display loads its art. */
+  spawnGroundItem: SpawnGroundItem;
 }
 
 interface Skeleton {
@@ -62,7 +58,6 @@ interface Skeleton {
   sprite: ArchiveSpriteCommands;
   stopActivity?: () => void;
   workable: Workable;
-  loot: { itemId: string; output: PreparedGroundSpawn }[];
   prefab: SkeletonId;
   anim: number;
   description?: SkeletonDescription;
@@ -113,12 +108,10 @@ export class SkeletonManager {
     const anim = state?.anim ?? min + Math.floor(Math.random() * (max - min + 1));
     const resources = await Promise.allSettled([
       this.getSource(),
-      this.prepareHammered(prefab),
+      this.prepareHammered(),
     ] as const);
     const create = resources[0].status === 'fulfilled' ? resources[0].value : undefined;
-    const loot = resources[1].status === 'fulfilled' ? resources[1].value : [];
     if (resources.some(result => result.status === 'rejected') || this.disposed || !create) {
-      loot.forEach(({ output }) => output.dispose());
       const failed = resources.find(result => result.status === 'rejected');
       throw failed?.status === 'rejected' ? failed.reason : new Error('Skeletons have been disposed');
     }
@@ -126,27 +119,18 @@ export class SkeletonManager {
     const clip = { name: `idle${anim}`, loop: false };
     const entity = createArchiveEntity(prefab, { create: build, initial: build(clip) }, { name: clip.name, billboard: true }, prefab);
     entity.instance.sprite.playOnce(clip.name);
-    return this.create(prefab, entity, loot, position, anim, state, saved);
+    return this.create(prefab, entity, position, anim, state, saved);
   }
 
-  /** The collapse effect, rock_break sound and every item of the prefab's loot table, ready before the hit. */
-  private async prepareHammered(prefab: SkeletonId): Promise<Skeleton['loot']> {
-    const settled = await Promise.allSettled([
+  /** The collapse effect and its sounds, ready before the hit. */
+  private async prepareHammered(): Promise<void> {
+    await Promise.all([
       this.assets.loadAnimation('structure_collapse_fx.zip'), this.assets.loadBuild('structure_collapse_fx.zip'),
       PreloadSounds('dontstarve/common/destroy_smoke', 'dontstarve/wilson/rock_break'),
-      ...LOOT_TABLES[prefab].map(itemId => this.world.prepareSpawn({ ...catalog.items[itemId], itemId, count: 1 }, true)),
-    ] as const);
-    const loot = settled.slice(3).flatMap((result, index) => result.status === 'fulfilled'
-      ? [{ itemId: LOOT_TABLES[prefab][index], output: result.value as PreparedGroundSpawn }] : []);
-    const failed = settled.find(result => result.status === 'rejected');
-    if (failed) {
-      loot.forEach(({ output }) => output.dispose());
-      throw failed.status === 'rejected' ? failed.reason : undefined;
-    }
-    return loot;
+    ]);
   }
 
-  private create(prefab: SkeletonId, { instance, display }: ReturnType<typeof createArchiveEntity>, loot: Skeleton['loot'], position: THREE.Vector3, anim: number,
+  private create(prefab: SkeletonId, { instance, display }: ReturnType<typeof createArchiveEntity>, position: THREE.Vector3, anim: number,
     state: SkeletonSaveState | undefined, saved: SkeletonRecord | undefined): THREE.Group {
     const model = display.model;
     const sprite = instance.sprite;
@@ -159,17 +143,10 @@ export class SkeletonManager {
     const workable = new Workable(inst);
     workable.SetWorkAction('HAMMER');
     workable.SetWorkLeft(SKELETON_WORK);
-    const skeleton: Skeleton = { model, instance, display, sprite, workable, loot, prefab, anim,
+    const skeleton: Skeleton = { model, instance, display, sprite, workable, prefab, anim,
       description: prefab === SKELETON_PLAYER_ID && state?.char ? { char: state.char, playername: state.playername, cause: state.cause, pkname: state.pkname, userid: state.userid } : undefined };
-    const lootdropper = new LootDropper(inst, (itemId, point) => {
-      // Only the rolled items are consumed; the rest are disposed with the skeleton.
-      const index = skeleton.loot.findIndex(entry => entry.itemId === itemId);
-      const [prepared] = index < 0 ? [] : skeleton.loot.splice(index, 1).map(entry => entry.output);
-      if (!prepared) return undefined;
-      const spawned = prepared.spawn(new THREE.Vector3(point.x, point.y, point.z));
-      if (!spawned) prepared.dispose();
-      return spawned ? prepared.spawnedEntity : undefined;
-    });
+    const lootdropper = new LootDropper(inst, (itemId, point) => this.world.spawnGroundItem(
+      { ...catalog.items[itemId as keyof typeof catalog.items], itemId, count: 1 }, new THREE.Vector3(point.x, point.y, point.z), { fling: true }));
     lootdropper.SetChanceLootTable(prefab === SKELETON_PLAYER_ID ? 'skeleton_player' : 'skeleton');
     workable.SetOnFinishCallback(() => {
       lootdropper.DropLoot();
@@ -251,7 +228,6 @@ export class SkeletonManager {
     this.skeletons.delete(model); model.userData.removed = true;
     skeleton.stopActivity?.();
     skeleton.workable.dispose();
-    skeleton.loot.forEach(({ output }) => output.dispose()); skeleton.loot.length = 0;
     skeleton.instance.remove();
   }
 

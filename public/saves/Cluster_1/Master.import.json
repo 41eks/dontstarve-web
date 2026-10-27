@@ -378,6 +378,7 @@
     "flower_cave_triple",
     "lightflier_flower",
     "houndbone",
+    "beequeenhivegrown",
     "cave_fern",
     "cave_fern_withered",
     "rock1",
@@ -642,6 +643,10 @@
     "houndbone": {
       "source": 62,
       "imported": 62
+    },
+    "beequeenhivegrown": {
+      "source": 1,
+      "imported": 1
     },
     "cave_fern": {
       "source": 0,
@@ -61181,6 +61186,18 @@
         -56.21
       ],
       "sourceNode": "Lightning Bluff:0:LightningBluffOasis"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beequeenhivegrown_id_107380",
+      "prefab": "beequeenhivegrown",
+      "sourceIndex": 1,
+      "sourceId": 107380,
+      "sourcePosition": [
+        -92.8,
+        0,
+        128.37
+      ],
+      "sourceNode": "Beeeees!:2:FlowerPatch"
     },
     {
       "id": "dst_03741E1B78B29575_rock1_index_000001",

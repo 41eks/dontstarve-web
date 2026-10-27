@@ -46,7 +46,7 @@ it('accepts cave fuel, settles pending consumption, applies wet penalties and re
   const dry = new ItemEntity({ itemId: 'lightbulb', count: 1 }), wet = new ItemEntity({ itemId: 'lightbulb', count: 1, wet: true });
   try {
     inventory.add('lantern', 1);
-    const lantern = inventory.getEntity(inventorySlotAddress(0))!, fueled = lantern.components.fueled;
+    const lantern = inventory.getEntity(inventorySlotAddress(0))!, fueled = lantern.components.fueled!;
     const controller = getLanternController(lantern);
     inventory.configureItem(dry); inventory.configureItem(wet);
     const taken = vi.fn(), added = vi.fn();
@@ -57,12 +57,12 @@ it('accepts cave fuel, settles pending consumption, applies wet penalties and re
     expect(dry.isRemoved).toBe(true);
     expect(taken).toHaveBeenCalledExactlyOnceWith({ taker: lantern });
     expect(added).toHaveBeenCalledExactlyOnceWith({ fuelvalue: 90 });
-    expect(fueled.remaining).toBe(100);
+    expect(fueled.currentfuel).toBe(100);
     expect(controller.isOn).toBe(false);
     controller.onequip();
     world.advance(30);
     expect(fueled.TakeFuelItem(wet)).toBe(true);
-    expect(fueled.remaining).toBeCloseTo(100 - 30 - .5 + 67.5);
+    expect(fueled.currentfuel).toBeCloseTo(100 - 30 - .5 + 67.5);
     lantern.setRemainingFuel(0); controller.TurnOff();
     const relight = new ItemEntity({ itemId: 'lightbulb', count: 1 }); inventory.configureItem(relight);
     fueled.TakeFuelItem(relight);
@@ -72,7 +72,7 @@ it('accepts cave fuel, settles pending consumption, applies wet penalties and re
     lantern.setRemainingFuel(LANTERN_FUEL - 1);
     const clamp = new ItemEntity({ itemId: 'lightbulb', count: 1 }); inventory.configureItem(clamp);
     fueled.TakeFuelItem(clamp);
-    expect(fueled.remaining).toBe(LANTERN_FUEL);
+    expect(fueled.currentfuel).toBe(LANTERN_FUEL);
     expect(controller.isOn).toBe(false);
   } finally { dry.destroy(); wet.destroy(); inventory.dispose(); }
 });
@@ -107,16 +107,16 @@ it('buffers one fuel item until frame six, preserves it on cancellation and retu
   const target: ItemUseTarget = Object.assign(lantern, { model: new THREE.Group() });
   try {
     controller.request('ADDFUEL', target); controller.update(); graph.update(5 / 30);
-    expect(inventory.get(cursor)?.count).toBe(2); expect(lantern.components.fueled.remaining).toBe(0);
+    expect(inventory.get(cursor)?.count).toBe(2); expect(lantern.components.fueled!.currentfuel).toBe(0);
     controller.cancel(); graph.update(1);
     expect(inventory.getEntity(cursor)).toBe(original);
     controller.request('ADDFUEL', target); controller.update(); graph.update(6 / 30);
-    expect(inventory.get(cursor)?.count).toBe(1); expect(lantern.components.fueled.remaining).toBe(90);
+    expect(inventory.get(cursor)?.count).toBe(1); expect(lantern.components.fueled!.currentfuel).toBe(90);
     graph.update(1); controller.update();
     reject = true;
     controller.request('ADDFUEL', target); controller.update(); graph.update(6 / 30);
     expect(inventory.getEntity(cursor)).toBe(original);
     expect(inventory.get(cursor)?.count).toBe(1);
-    expect(lantern.components.fueled.remaining).toBe(90);
+    expect(lantern.components.fueled!.currentfuel).toBe(90);
   } finally { controller.dispose(); inventory.dispose(); }
 });

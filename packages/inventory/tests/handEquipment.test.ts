@@ -1,8 +1,9 @@
 import { expect, it, vi } from 'vitest';
 import { InventoryStore, InventorySlot, HandSlot, inventorySlotAddress, equipmentSlotAddress } from '../src';
+import { addFueled } from './fueled';
 
 const hand = equipmentSlotAddress('hand'), bag = inventorySlotAddress(0);
-const specs = { torch: { name: 'torch', icon: 'torch.tex', maxStack: 1, maxFuel: 75, equippable: 'hand' as const } };
+const specs = { torch: { name: 'torch', icon: 'torch.tex', maxStack: 1, maxFuel: 75, equippable: 'hand' as const, configureEntity: addFueled(75) } };
 function createStore() {
   return new InventoryStore([{ address: bag, slot: new InventorySlot() }, { address: hand, slot: new HandSlot() }], specs, {});
 }
@@ -19,7 +20,7 @@ it('publishes equipment identity after commits; a transfer keeps the entity and 
     const destroy = vi.spyOn(entity, 'destroy');
     expect(store.transfer(hand, bag, 1)).toBe(true);
     expect(store.getEntity(bag)).toBe(entity);
-    expect(entity.components.fueled.remaining).toBe(18.5);
+    expect(entity.components.fueled!.currentfuel).toBe(18.5);
     expect(destroy).not.toHaveBeenCalled();
     expect(observed).toEqual([null]);
 

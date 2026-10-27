@@ -3,7 +3,7 @@ import type { WilsonAnimationController } from '../../prefab/src/player';
 import { afterEach, expect, it, vi } from 'vitest';
 import { createEquipmentExistenceState, type HandEquipment } from '@dontstarve-web/signals';
 import { ItemEntity, InventoryStore, InventorySlot, HandSlot, inventorySlotAddress, equipmentSlotAddress } from '@dontstarve-web/inventory';
-import { getTorchController } from '../../prefab/src/torch';
+import { configureTorchEntity, getTorchController } from '../../prefab/src/torch';
 import { PreloadSounds } from '../../prefab/src/sound';
 import { bindPlayerHandEquipment } from '../../../src/playerHandEquipment';
 import { createPerishWorld } from './perishWorldFixture';
@@ -23,7 +23,7 @@ it('equips from the restore signal write, unequips before replacement and releas
   const store = new InventoryStore([
     { address: a, slot: new InventorySlot() }, { address: b, slot: new InventorySlot() },
     { address: hand, slot: new HandSlot() },
-  ], { torch: { name: 'torch', icon: 'torch.tex', maxStack: 1, maxFuel: 75, equippable: 'hand' } },
+  ], { torch: { name: 'torch', icon: 'torch.tex', maxStack: 1, maxFuel: 75, equippable: 'hand', configureEntity: configureTorchEntity } },
   { torch_barber: { itemId: 'torch', name: 'torch', icon: 'torch_barber.tex', atlas: 'images/inventoryimages.xml' } });
   const world = createPerishWorld();
   store.entities.bindPerishWorld(world);
@@ -58,10 +58,11 @@ it('equips from the restore signal write, unequips before replacement and releas
     ]);
     expect(events).toEqual(['unequip', 'equip']);
     expect(store.handEquipment.peek()?.entity).toBe(nextEntity);
-    expect(oldEntity.components.fueled.remaining).toBe(9.75);
+    // fueled:SetFirstPeriod charges a partly used torch TURNON_FUELED_CONSUMPTION when it lights.
+    expect(oldEntity.components.fueled!.currentfuel).toBe(10 - .5 - .25);
     expect(oldTorch.isBurning).toBe(false);
     world.advance(0.5); binding.flush();
-    expect(nextEntity.components.fueled.remaining).toBe(19.5);
+    expect(nextEntity.components.fueled!.currentfuel).toBe(20 - .5 - .5);
     store.setRemainingFuel(hand, 18);
     expect(equip).toHaveBeenCalledOnce();
     await Promise.resolve();

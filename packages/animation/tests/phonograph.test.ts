@@ -22,13 +22,22 @@ vi.mock('../../prefab/src/sound', () => ({
 }));
 afterEach(() => { vi.clearAllMocks(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
-it('runs a ground-only record for 64 seconds and releases each machine sound independently', () => {
+it('runs a ground-only record for 64 seconds through its machine and releases each machine sound independently', () => {
   const sprite = { start: vi.fn(), playOnce: vi.fn() };
   const scheduler = new GameTimeScheduler();
   const first = new PhonographController(sprite, new THREE.Vector3(), undefined, scheduler);
   const second = new PhonographController(sprite, new THREE.Vector3(12, 0, 0), 'record_efs');
+  const firstInst = new ItemEntity({ itemId: 'phonograph', count: 1 }), secondInst = new ItemEntity({ itemId: 'phonograph', count: 1, phonographRecord: 'record_efs' });
+  first.bindEntity(firstInst); second.bindEntity(secondInst);
+  const machine = firstInst.components.machine!;
+  // phonograph.lua: an empty phonograph's machine is disabled, so componentactions offers no TURNON.
+  expect(machine.enabled).toBe(false);
+  expect(firstInst.hasTag('groundonlymachine')).toBe(true);
   expect(first.play()).toBe(false);
-  first.insert('record'); second.play();
+  first.insert('record'); secondInst.components.machine!.TurnOn();
+  expect(machine.IsOn()).toBe(true);
+  expect(firstInst.hasTag('turnedon')).toBe(true);
+  expect(firstInst.hasTag('enabled')).toBe(true);
   const handles = vi.mocked(PlaySound).mock.results.map(({ value }) => value);
   expect(sprite.playOnce).toHaveBeenCalledWith('open', expect.any(Function));
   sprite.playOnce.mock.calls.find(([name]) => name === 'open')![1]!();
@@ -38,6 +47,10 @@ it('runs a ground-only record for 64 seconds and releases each machine sound ind
   scheduler.advance(63.9); expect(first.isPlaying).toBe(true);
   expect(first.timer.peek()).toBe(scheduled);
   scheduler.advance(0.1); expect(first.isPlaying).toBe(false);
+  // play_song's task turns the machine off; it stays enabled with its record.
+  expect(machine.IsOn()).toBe(false);
+  expect(firstInst.hasTag('turnedon')).toBe(false);
+  expect(machine.enabled).toBe(true);
   expect(first.timer.peek()).toEqual({ status: 'expired' });
   expect(first.record).toBe('record');
   expect(PlaySound).toHaveBeenLastCalledWith('dontstarve/music/gramaphone_end', expect.any(THREE.Vector3));
@@ -47,7 +60,14 @@ it('runs a ground-only record for 64 seconds and releases each machine sound ind
   second.dispose(); expect(handles[1].stop).toHaveBeenCalledOnce();
   expect(second.timer.peek()).toEqual({ status: 'stopped' });
   expect(second.play()).toBe(false);
-  first.dispose(); scheduler.dispose();
+  // TURNOFF stops the song; machine.lua's 3 second cooldown then blocks switching again.
+  machine.TurnOn(); expect(first.isPlaying).toBe(true);
+  scheduler.advance(3);
+  machine.TurnOff();
+  expect(first.isPlaying).toBe(false);
+  expect(firstInst.hasTag('cooldown')).toBe(true);
+  scheduler.advance(3); expect(firstInst.hasTag('cooldown')).toBe(false);
+  first.dispose(); scheduler.dispose(); firstInst.destroy(); secondInst.destroy();
 });
 
 it('preserves a loaded skinned record across reskin, pickup, inventory transfer, drop and save/load; rejects failed trades', async () => {

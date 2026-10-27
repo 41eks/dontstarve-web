@@ -97,7 +97,8 @@ test('reskins and digs berrybush, replants the skinned root and restores its fer
   expect(plant.transform.position).toEqual(root.position);
   expect(plant.components.pickable).toMatchObject({ picked: true, transplanted: true, paused: true });
   expect(plant.components.plant.skinId).toBe('berrybush_cawnival');
-  expect(plant.components.pickable.cyclesLeft).toBeGreaterThanOrEqual(4);
+  // Fertilize restores the full cycles, and Pickable:OnSave writes them only once some have been used.
+  expect(plant.components.pickable.cyclesLeft).toBeUndefined();
   await page.route('**/saves/initial-world.json', route => route.fulfill({ json: saved }));
   await page.reload(); await prepare();
   await expect.poll(() => page.evaluate(id => {

@@ -13,7 +13,7 @@ vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}),
 beforeEach(() => vi.stubGlobal('window', new EventTarget()));
 afterEach(() => { vi.clearAllMocks(); vi.unstubAllGlobals(); });
 
-function fixture(itemId: LightStaffId, remainingUses?: number, prepare = async () => {}) {
+function fixture(itemId: LightStaffId, remainingUses?: number) {
   const hand = equipmentSlotAddress('hand');
   const store = new InventoryStore([
     { address: hand, slot: new HandSlot() },
@@ -26,7 +26,7 @@ function fixture(itemId: LightStaffId, remainingUses?: number, prepare = async (
   const entity = store.getEntity(hand)!;
   let blocked = false;
   const map = { isAboveGroundAtPoint: vi.fn(() => true), isOceanAtPoint: () => false, isGroundTargetBlocked: () => blocked };
-  const spawn = vi.fn(), worldServices = { map, preparePrefab: vi.fn(prepare), spawnPrefab: spawn };
+  const spawn = vi.fn(), worldServices = { map, spawnPrefab: spawn };
   const staff = getLightStaffController(entity, worldServices);
   staff.onequip();
   const sound = vi.fn(), casting = vi.fn();
@@ -56,7 +56,6 @@ it('uses source capabilities and the real invobject, approaches distant points, 
     expect(s.entity.hasTag('castonpointwater')).toBe(true);
     s.setBlocked(true);
     expect(s.input.request(point)).toBe(false);
-    expect(s.worldServices.preparePrefab).not.toHaveBeenCalled();
     s.setBlocked(false);
     expect(s.input.request(point)).toBe(true);
     await vi.waitFor(() => expect(s.locomotor.goToPoint).toHaveBeenCalled());
@@ -94,34 +93,4 @@ it('consumes the last yellow use through the store, clears only its equipment an
     expect(s.doDelta).toHaveBeenCalledExactlyOnceWith(-20);
     expect(s.casting).toHaveBeenCalledTimes(1); // Source releases FX ownership before the final-use unequip.
   } finally { s.dispose(); }
-});
-
-it('invalidates preparation on a new action or same-prefab replacement and preserves the replacement action', async () => {
-  let release!: () => void;
-  const ready = new Promise<void>(resolve => { release = resolve; });
-  const s = fixture('yellowstaff', 7, () => ready);
-  try {
-    expect(s.input.request(new THREE.Vector3(3, 0, 0))).toBe(true);
-    s.world.actionEvents!.emit('action:begin', { owner: {}, action: 'PICK' });
-    expect(s.input.request(new THREE.Vector3(3, 0, 0))).toBe(true);
-    s.store.add('yellowstaff', 1);
-    const replacement = s.store.getEntity(inventorySlotAddress(0))!;
-    const replacementStaff = getLightStaffController(replacement, s.worldServices);
-    s.store.swap(s.hand, inventorySlotAddress(0));
-    s.staff.onunequip();
-    replacementStaff.onequip();
-    release();
-    await ready; await Promise.resolve(); await Promise.resolve();
-    expect(s.graph.stateName).toBe('idle');
-    expect(s.spawn).not.toHaveBeenCalled();
-    expect(s.doDelta).not.toHaveBeenCalled();
-    expect(s.entity.components.finiteuses.remaining).toBe(7);
-    expect(s.input.request(new THREE.Vector3(6, 0, 0))).toBe(true);
-    await vi.waitFor(() => expect(s.graph.stateName).toBe('castspell'));
-    s.staff.dispose();
-    expect(s.store.handEquipment.peek()?.entity).toBe(replacement);
-    s.graph.update(53 / 30);
-    expect(s.spawn).toHaveBeenCalledOnce();
-    expect(replacement.components.finiteuses.remaining).toBe(19);
-  } finally { release(); s.dispose(); }
 });

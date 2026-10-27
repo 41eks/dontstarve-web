@@ -22,10 +22,7 @@ it('hammers a hound bone once into boneshards, adds a houndstooth chance for pie
   const dropped: string[] = [];
   const scene = new THREE.Scene();
   const bones = new HoundboneManager(scene, {
-    prepareSpawn: async (definition: GroundItemDefinition) => ({
-      spawnedEntity: undefined, dispose() {},
-      spawn: () => { dropped.push(definition.itemId); return true; },
-    }) as never,
+    spawnGroundItem: (definition: GroundItemDefinition) => { dropped.push(definition.itemId); return undefined; },
   });
 
   const record = (bonetype: number, id: string) => ({ id, transform: { position: [1, 0, 2] as [number, number, number], rotationY: 0 },

@@ -7,7 +7,7 @@ import { GroundItemManager } from '../../../src/groundItems';
 import { createInventoryStore } from '../../../src/inventory';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { performToolWork } from '../../stategraphs/src/componentactions';
-import { bindTestWorld } from './worldContentFixture';
+import { bindTestWorld, drawn } from './worldContentFixture';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -20,7 +20,7 @@ function setup() {
   const ground = new GroundItemManager(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', new THREE.Group());
   const world = bindTestWorld(scheduler), rain = createSignal<'none' | 'rain' | 'snow'>('none');
-  const mushrooms = new MushroomPlantManager(scene, '/dst/data/anim', { rain, prepareSpawn: (definition, fling) => ground.prepareSpawn(definition, fling) });
+  const mushrooms = new MushroomPlantManager(scene, '/dst/data/anim', { rain, spawnGroundItem: (definition, position, options) => ground.spawnGroundItem(definition, position, options) });
   const advance = (seconds: number) => { scheduler.advance(seconds); mushrooms.update(seconds, new THREE.Quaternion()); };
   return { inventory, scheduler, world, rain, ground, mushrooms, advance,
     dispose: () => { mushrooms.dispose(); ground.dispose(); inventory.dispose(); world.unbind(); scheduler.dispose(); } };
@@ -30,7 +30,7 @@ const picker = (inventory: ReturnType<typeof createInventoryStore>) => ({ giveIt
 it('opens at night, is picked for a blue_cap, regrows after rainy periods and keeps its rain count in saves', async () => {
   const s = setup();
   try {
-    const model = await s.mushrooms.spawn(new THREE.Vector3(3, 0, 4));
+    const model = await drawn(s.mushrooms.spawn(new THREE.Vector3(3, 0, 4)));
     const pickable = model.userData.components.pickable;
     // Daytime: still in the ground, so it cannot be picked.
     expect(pickable.pick(picker(s.inventory))).toBe(false);
@@ -50,9 +50,9 @@ it('opens at night, is picked for a blue_cap, regrows after rainy periods and ke
     expect(pickable.canBePicked).toBe(true);
     expect(s.mushrooms.exportRecords()[0].record.components.pickable).toEqual({});
 
-    const restored = new MushroomPlantManager(new THREE.Scene(), '/dst/data/anim', { rain: s.rain, prepareSpawn: (d, f) => s.ground.prepareSpawn(d, f) });
+    const restored = new MushroomPlantManager(new THREE.Scene(), '/dst/data/anim', { rain: s.rain, spawnGroundItem: (definition, position, options) => s.ground.spawnGroundItem(definition, position, options) });
     try {
-      await restored.spawn(new THREE.Vector3(...record.transform.position), record);
+      await drawn(restored.spawn(new THREE.Vector3(...record.transform.position), record));
       expect(restored.exportRecords()[0].record.components).toEqual(record.components);
     } finally { restored.dispose(); }
   } finally { s.dispose(); }
@@ -61,8 +61,8 @@ it('opens at night, is picked for a blue_cap, regrows after rainy periods and ke
 it('digs an unpicked mushroom into two blue_caps without releasing a neighbouring mushroom’s shared art', async () => {
   const s = setup();
   try {
-    const model = await s.mushrooms.spawn(new THREE.Vector3(1, 0, 1));
-    const neighbour = await s.mushrooms.spawn(new THREE.Vector3(2, 0, 1));
+    // Both are spawned before their shared art arrives, so they rest on the same frame.
+    const [model, neighbour] = await Promise.all([s.mushrooms.spawn(new THREE.Vector3(1, 0, 1)), s.mushrooms.spawn(new THREE.Vector3(2, 0, 1))].map(drawn));
     const geometry = (model.children[0].children[0].children[0] as THREE.Mesh).geometry;
     expect((neighbour.children[0].children[0].children[0] as THREE.Mesh).geometry).toBe(geometry);
     const disposed = vi.fn(); geometry.addEventListener('dispose', disposed);
@@ -80,8 +80,8 @@ it('digs an unpicked mushroom into two blue_caps without releasing a neighbourin
 it('opens red mushrooms by day and green mushrooms at dusk, each yielding its own cap and keeping its prefab id in saves', async () => {
   const s = setup();
   try {
-    const red = await s.mushrooms.spawn(new THREE.Vector3(1, 0, 1), undefined, 'red_mushroom');
-    const green = await s.mushrooms.spawn(new THREE.Vector3(2, 0, 1), undefined, 'green_mushroom');
+    const red = await drawn(s.mushrooms.spawn(new THREE.Vector3(1, 0, 1), undefined, 'red_mushroom'));
+    const green = await drawn(s.mushrooms.spawn(new THREE.Vector3(2, 0, 1), undefined, 'green_mushroom'));
     // Day: red is already open at construction; green waits in the ground.
     expect(green.userData.components.pickable.pick(picker(s.inventory))).toBe(false);
     expect(red.userData.components.pickable.pick(picker(s.inventory))).toBe(true);
@@ -99,7 +99,7 @@ it('turns static billboards only when the camera rotation signal changes and lea
   const s = setup();
   try {
     const scene = s.mushrooms['scene'] as THREE.Scene;
-    const model = await s.mushrooms.spawn(new THREE.Vector3(3, 0, 4));
+    const model = await drawn(s.mushrooms.spawn(new THREE.Vector3(3, 0, 4)));
     // The resident root holds the origin; the drawn sprite is its first child and its visual the first grandchild.
     const sprite = model.children[0], visual = sprite.children[0];
     scene.updateMatrixWorld();
@@ -132,10 +132,10 @@ it('releases the mushroom sprite outside the tickingarea and keeps its pose and 
   const ground = new GroundItemManager(new THREE.Scene(), new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', new THREE.Group());
   const mushrooms = new MushroomPlantManager(new THREE.Scene(), '/dst/data/anim', { rain: createSignal<'none' | 'rain' | 'snow'>('none'),
-    tickingarea: () => createMemo(() => awake.get()), prepareSpawn: (d, f) => ground.prepareSpawn(d, f) });
+    tickingarea: () => createMemo(() => awake.get()), spawnGroundItem: (definition, position, options) => ground.spawnGroundItem(definition, position, options) });
   const meshes = (model: THREE.Object3D) => { let count = 0; model.traverse(object => { if ((object as THREE.Mesh).isMesh) count++; }); return count; };
   try {
-    const model = await mushrooms.spawn(new THREE.Vector3(3, 0, 4));
+    const model = await drawn(mushrooms.spawn(new THREE.Vector3(3, 0, 4)));
     await settle();
     expect(meshes(model)).toBe(1);
     const record = mushrooms.exportRecords()[0].record;

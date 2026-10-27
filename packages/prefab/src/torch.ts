@@ -16,11 +16,20 @@ import { modelHasTag, prefabInstance } from './prefabInstance';
 
 export function configureTorchEntity(entity: ItemEntity): void {
   entity.components.lighter = entity.component('lighter', () => new Lighter(entity));
+  if (entity.components.fueled) return;
+  const fueled = entity.AddFueled();
+  fueled.SetSectionCallback(newsection => getTorchController(entity).onfuelchange(newsection));
+  fueled.InitializeFuelLevel(TORCH_FUEL);
+  fueled.SetDepletedFn(inst => { inst.remove(); });
+  fueled.SetFirstPeriod(TURNON_FUELED_CONSUMPTION, TURNON_FULL_FUELED_CONSUMPTION);
 }
 
 export const TORCH_ID = 'torch';
 /** tuning.lua: TORCH_FUEL = night_time * 1.25, with a default 30 * 2 second night. */
 export const TORCH_FUEL = 30 * 2 * 1.25;
+/** tuning.lua TURNON_FUELED_CONSUMPTION / TURNON_FULL_FUELED_CONSUMPTION. */
+export const TURNON_FUELED_CONSUMPTION = .5;
+export const TURNON_FULL_FUELED_CONSUMPTION = 1 / 60;
 /** torchfire_common.lua CreateLight with TUNING.TORCH_RADIUS[1] and TORCH_FALLOFF[1]. */
 export const TORCH_LIGHT: PrefabLocalLight = {
   radius: 2 * (TILE_SIZE / 4), falloff: 0.5, intensity: 0.75,
@@ -60,10 +69,7 @@ export class TorchController implements HandEquipment {
     if (this.options === options) this.options = {};
   }
   OnDropped(): void { this.held = false; }
-  flush(): void { this.flushFuel(); }
-  private remainingFuel(): number | null {
-    return this.entity.isRemoved ? null : this.entity.components.fueled.remaining ?? TORCH_FUEL;
-  }
+  private get fueled() { return this.entity.isRemoved ? undefined : this.entity.components.fueled; }
 
   onequip(owner?: EquipmentOwner): void {
     if (this.disposed) return;
@@ -72,7 +78,6 @@ export class TorchController implements HandEquipment {
     this.ignite();
   }
   onunequip(): void {
-    this.flushFuel();
     this.stopFire(true);
     this.held = false;
     this.owner = null;
@@ -80,8 +85,8 @@ export class TorchController implements HandEquipment {
 
   ignite(playSound = true): void {
     if (this.disposed || this.isBurning) return;
-    const remaining = this.remainingFuel();
-    if (remaining !== null && remaining > 0) {
+    const fueled = this.fueled;
+    if (fueled && !fueled.IsEmpty()) {
       this.hasFire = true;
       this.setBurning(true);
       if (playSound) this.playSound('dontstarve/wilson/torch_swing');
@@ -89,14 +94,12 @@ export class TorchController implements HandEquipment {
   }
 
   extinguish(): void {
-    this.flushFuel();
     this.OnExtinguish();
     this.stopFire(true);
   }
 
   /** torch.lua: pickup clears fire, restores idle and stops fuel without emptying it. */
   OnPutInInventory(ownerPosition?: THREE.Vector3): void {
-    this.flushFuel();
     if (this.disposed) return;
     this.held = true;
     this.options.returnToIdle?.();
@@ -107,42 +110,25 @@ export class TorchController implements HandEquipment {
 
   /** External ground extinguishing; held or depleted torches use their own cleanup path. */
   OnExtinguish(): void {
-    this.flushFuel();
-    if (this.disposed || this.held || !this.hasFire || (this.remainingFuel() ?? 0) <= 0) return;
+    this.fueled?.Settle();
+    if (this.disposed || this.held || !this.hasFire || (this.fueled?.IsEmpty() ?? true)) return;
     this.stopFire(true);
     this.options.returnToIdle?.();
     this.options.onGroundExtinguish?.();
   }
 
-  /** Settle the elapsed part of the fuel period before saving, transferring or stopping this torch. */
-  flushFuel(): void {
-    if (!this.entity.isRemoved) this.entity.components.fueled.Settle();
-  }
-
-  update(dt: number): void {
-    if (!this.isBurning || this.disposed || !Number.isFinite(dt) || dt <= 0) return;
-    const remaining = this.remainingFuel();
-    if (remaining === null) {
-      this.extinguish();
-      this.dispose();
-      return;
-    }
-    const next = Math.max(0, remaining - dt);
-    if (next > 0) this.entity.setRemainingFuel(next);
-    else {
-      // Emit the final one-shot before Remove invokes component disposal.
-      this.stopFire(true, this.options.soundPosition);
-      // Removal unequips this controller and releases the owner, so take it first.
-      const owner = this.owner;
-      if (!this.entity.isRemoved) this.entity.remove();
-      // torch.lua onfuelchange: Remove before itemranout so the owner can re-equip another torch.
-      if (this.entity.isRemoved) owner?.PushEvent('itemranout', { prefab: TORCH_ID, equipslot: 'hand', announce: 'ANNOUNCE_TORCH_OUT' });
-      if (this.entity.isRemoved) this.dispose();
-    }
+  /** torch.lua onfuelchange: burning out extinguishes, then removes the inst before the owner's itemranout. */
+  onfuelchange(newsection: number): void {
+    if (newsection > 0 || this.disposed) return;
+    const owner = this.owner;
+    this.stopFire(true, this.options.soundPosition);
+    this.entity.remove();
+    // Remove before itemranout so the owner can re-equip another torch.
+    if (this.entity.isRemoved) owner?.PushEvent('itemranout', { prefab: TORCH_ID, equipslot: 'hand', announce: 'ANNOUNCE_TORCH_OUT' });
+    if (this.entity.isRemoved) this.dispose();
   }
 
   dispose(): void {
-    this.flushFuel();
     this.disposed = true;
     this.stopFire(false);
     this.held = false;
@@ -152,9 +138,8 @@ export class TorchController implements HandEquipment {
 
   /** burnable:Ignite / Extinguish start and stop fueled consumption on the item's game time. */
   private setBurning(burning: boolean): void {
-    const fueled = this.entity.isRemoved ? undefined : this.entity.components.fueled;
-    if (burning) fueled?.StartConsuming(dt => this.update(dt));
-    else fueled?.StopConsuming();
+    if (burning) this.fueled?.StartConsuming();
+    else this.fueled?.StopConsuming();
     this.burningState.set(burning);
   }
 
@@ -225,7 +210,7 @@ export function createTorchHandLifecycle(
       syncLight(false);
       controller.releasePresentation(presentation);
     },
-    flush: () => controller.flushFuel(),
+    flush: () => entity.components.fueled?.Settle(),
   };
 }
 
@@ -234,9 +219,9 @@ export function createTorchGroundFactory(context: GroundPrefabContext): GroundIt
   return {
     itemIds: [TORCH_ID],
     configureEntity: configureTorchEntity,
-    async create(item) {
-      await PreloadSounds(...TORCH_SOUNDS);
-      const { visual, instance } = await createResidentGroundItem(context, item);
+    create(item) {
+      void PreloadSounds(...TORCH_SOUNDS);
+      const { visual, instance } = createResidentGroundItem(context, item);
       const sprite = instance.sprite;
       const model = visual.model;
       let fling: LootFling | undefined;
@@ -288,8 +273,9 @@ export function createTorchGroundFactory(context: GroundPrefabContext): GroundIt
           if (standalone && entity) entity.apply(definition);
         },
         getDefinition: () => {
-          controller?.flushFuel();
-          return { remainingFuel: entity?.components.fueled.remaining ?? state.remainingFuel, torchLit: controller?.isBurning ?? false };
+          const fueled = entity?.components.fueled;
+          fueled?.Settle();
+          return { remainingFuel: fueled ? fueled.OnSave()?.fuel : state.remainingFuel, torchLit: controller?.isBurning ?? false };
         },
         update(dt: number) {
           sprite.update(dt);

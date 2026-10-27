@@ -1,6 +1,7 @@
 import { Quaternion } from 'three';
 import { bindWorldContent, createIdleWeatherSources, createSignal, getWatchWorldContent, type GetWatchWorldContent, type WorldContentEnvironment, type SeasonState, type WorldPhase, type WorldMoonState } from '../../signals/src';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import type { Object3D } from 'three';
 
 /** Complete world inputs shared by standalone component fixtures. */
 export function createTestWorldSources(scheduler: GameTimeScheduler) {
@@ -30,4 +31,11 @@ export function bindTestWorld(scheduler: GameTimeScheduler, tickingarea?: WorldC
 export function tickWorld(scheduler: GameTimeScheduler, manager: { update(dt: number, quaternion: import('three').Quaternion): void },
   dt: number, quaternion: import('three').Quaternion): void {
   scheduler.advance(dt); manager.update(dt, quaternion);
+}
+
+/** A spawned entity exists at once; a test that inspects its drawn clips first lets its display load the art. */
+export async function drawn<T extends Object3D>(model: T | Promise<T>): Promise<T> {
+  const entity = await model;
+  await entity.userData.display?.artLoaded();
+  return entity;
 }

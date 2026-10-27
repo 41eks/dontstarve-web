@@ -67,10 +67,8 @@ it('walks into range and commits mining at frame seven, preserving durability wh
   inventory.transfer(inventorySlotAddress(0), equipmentSlotAddress('hand'), 1);
   const entity = inventory.getEntity(equipmentSlotAddress('hand'))!;
   const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera();
-  const loot = vi.fn(() => true), dispose = vi.fn();
-  const rocks = new RockManager(scene, '/dst/data/anim', {
-    prepareSpawn: async () => ({ spawn: loot, dispose }),
-  });
+  const loot = vi.fn(() => undefined);
+  const rocks = new RockManager(scene, '/dst/data/anim', { spawnGroundItem: loot });
   const world = { player, scene, camera, ground: new THREE.Group(), renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
   const locomotor = { goToPoint: vi.fn(() => true), stop: vi.fn(), destination: undefined };
   const controller = new PickaxeActionController(world, animation, locomotor, inventory.handEquipment, () => rocks.mineTargets);
@@ -105,8 +103,7 @@ it('walks into range and commits mining at frame seven, preserving durability wh
     expect(rocks.mineTargets).toEqual([]);
     expect(rocks.renderEntities).toEqual([]);
     expect(rocks.exportRecords()).toEqual([]);
-    expect(loot).toHaveBeenCalledTimes(2);
-    expect(dispose).toHaveBeenCalledOnce(); // unused chance loot
+    expect(loot).toHaveBeenCalledTimes(2); // the guaranteed loot; .9 rolls no chance entry
     expect(PlaySound).toHaveBeenCalledWith('dontstarve/wilson/rock_break', expect.any(THREE.Vector3));
     await rocks.spawn('rock1', new THREE.Vector3(1, 0, 0));
     begin(); advance(6); inventory.transfer(equipmentSlotAddress('hand'), inventorySlotAddress(0), 1); advance(60);
@@ -116,8 +113,8 @@ it('walks into range and commits mining at frame seven, preserving durability wh
 });
 
 it('changes full/med/low source poses and resets surviving rock work on reload', async () => {
-  const scene = new THREE.Scene(), spawn = vi.fn(() => true), dispose = vi.fn();
-  const world = { prepareSpawn: async () => ({ spawn, dispose }) };
+  const scene = new THREE.Scene(), spawn = vi.fn(() => undefined);
+  const world = { spawnGroundItem: spawn };
   const rocks = new RockManager(scene, '/dst/data/anim', world);
   const restored = new RockManager(new THREE.Scene(), '/dst/data/anim', world);
   try {

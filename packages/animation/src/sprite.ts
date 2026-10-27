@@ -756,6 +756,8 @@ export interface AnimatedSpriteSourceOptions {
   /** Skin build archive shared by every sprite of this source. */
   skinArchive?: string;
   symbolOverrides?: Readonly<Record<string, { archive: string; symbol: string }>>;
+  /** AnimState:AddOverrideBuild made by every entity of this source at construction: build name → archive. */
+  overrideBuilds?: Readonly<Record<string, string>>;
 }
 
 /**
@@ -784,16 +786,21 @@ export async function createAnimatedSpriteSource(
     }
     overrides.set(smallHash(symbol), { build: archive.buildPackage.build, materials, symbolHash: smallHash(from.symbol) });
   }
+  const buildOverrides = await Promise.all(Object.entries(source.overrideBuilds ?? {})
+    .map(async ([name, archive]) => [name, await loadBuildOverride(assetBaseUrl, archive)] as const));
   const factory = createSpriteFactory(buildPackage, animations, SpriteController, skinArchive);
   return {
     create(options) {
       const sprite = factory.create(options);
-      (sprite.userData.animationController as SpriteController).setSymbolOverrides(new Map(overrides), options.hiddenLayers);
+      const controller = sprite.userData.animationController as SpriteController;
+      controller.setSymbolOverrides(new Map(overrides), options.hiddenLayers);
+      for (const [name, override] of buildOverrides) controller.addOverrideBuild(name, override);
       return sprite;
     },
     disposeSprite: factory.disposeSprite,
     dispose() {
       factory.dispose();
+      for (const [, override] of buildOverrides) override.dispose();
       for (const materials of overrideMaterials.values()) for (const material of materials) { material.map?.dispose(); material.dispose(); }
     },
   };

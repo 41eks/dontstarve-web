@@ -33,9 +33,9 @@ function setup() {
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
   const { season, snowLevel } = bindTestWorld(scheduler);
   const bushes = new RockAvocadoBushManager(scene, '/dst/data/anim', { physics,
-    prepareSpawn: (definition, fling) => ground.prepareSpawn(definition, fling) });
+    spawnGroundItem: (definition, position, options) => ground.spawnGroundItem(definition, position, options) });
   const sprouts = new RockAvocadoSaplingManager(scene, { scheduler, bushes,
-    prepareSpawn: definition => ground.prepareSpawn(definition) });
+    spawnGroundItem: (definition, position, options) => ground.spawnGroundItem(definition, position, options) });
   const registry = new EntityRegistry();
   registry.register(PREFAB_DEFINITIONS.rockAvocadoBushes, {
     restore: (_, record) => bushes.spawn(new THREE.Vector3(...record.transform.position), record),
@@ -108,15 +108,14 @@ it('plants one sprout, preserves its named deadline through save/load, and becom
     expect((await executeDebugCommand('c_give("rock_avocado_fruit_sprout",2);c_give("rock_avocado_fruit_ripe",2);c_give("rock_avocado_fruit_ripe_cooked");c_spawn("rock_avocado_fruit_sprout");c_spawn("rock_avocado_fruit_ripe_cooked")',
       s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
     const point = new THREE.Vector3(12, 0, 24), item = s.inventory.getEntity(inventorySlotAddress(0))!;
-    const prepared = await s.sprouts.prepareTransplant();
     expect(item.components.deployable!.Deploy(point, { position: point, PushEvent: vi.fn() }, {
-      canDeployPlant: () => false, deployPlant: () => prepared.spawn(point),
+      canDeployPlant: () => false, deployPlant: () => s.sprouts.transplant(point),
     })).toBe(false);
     expect(s.inventory.count('rock_avocado_fruit_sprout')).toBe(2);
     const root = s.inventory.extract(inventorySlotAddress(0), 1, item)!;
     expect(root.components.deployable!.Deploy(point, { position: point, PushEvent: vi.fn() }, {
-      canDeployPlant: () => true, deployPlant: () => prepared.spawn(point),
-    })).toBe(true); prepared.dispose();
+      canDeployPlant: () => true, deployPlant: () => s.sprouts.transplant(point),
+    })).toBe(true);
     expect(root.isRemoved).toBe(true); expect(s.inventory.count('rock_avocado_fruit_sprout')).toBe(1);
     const model = s.sprouts.digTargets[0].model, { timer } = model.userData.components;
     const snapshot = timer.snapshot('grow').peek();

@@ -6,6 +6,8 @@ import { Heater } from '../../componets/src/heater';
 
 export const HEATROCK_ID = 'heatrock';
 export const HEATROCK_FUEL = 100;
+/** tuning.lua HEATROCK_NUMUSES. */
+const HEATROCK_NUMUSES = 8;
 export const HEATROCK_IMAGES = catalog.items.heatrock.inventoryImageVariants;
 
 const THRESHOLDS = [-30, -10, 10, 30];
@@ -77,10 +79,9 @@ export class HeatRock {
     this.previousRange = range;
     if (hasrate && ((entity.lowTemp !== undefined && range >= 3) || (entity.highTemp !== undefined && range <= 3))) {
       entity.lowTemp = undefined; entity.highTemp = undefined;
-      const fuel = Math.max(0, (entity.components.fueled.remaining ?? HEATROCK_FUEL) - HEATROCK_FUEL / 8);
-      entity.components.fueled.remaining = fuel;
-      if (fuel === 0) { entity.remove(); return; }
-      entity.components.inventoryitem.owner?.changed();
+      // Each use costs 1 / HEATROCK_NUMUSES; SetDepletedFn(inst.Remove) removes a spent rock.
+      const fueled = entity.components.fueled!;
+      fueled.SetPercent(fueled.GetPercent() - 1 / HEATROCK_NUMUSES);
     }
   }
   dispose(): void {
@@ -98,7 +99,11 @@ export function declareHeatRockSprite(entity: ItemEntity, sprite: ArchiveSpriteC
 
 export function configureHeatRockEntity(entity: ItemEntity): void {
   for (const tag of ['heatrock', 'icebox_valid', 'bait', 'molebait', 'HASHEATER', 'tradable']) entity.addTag(tag);
-  entity.components.fueled.setMaxFuel(HEATROCK_FUEL);
-  if (entity.components.fueled.remaining === undefined) entity.components.fueled.remaining = HEATROCK_FUEL;
+  if (!entity.components.fueled) {
+    const fueled = entity.AddFueled();
+    fueled.fueltype = 'USAGE';
+    fueled.InitializeFuelLevel(HEATROCK_FUEL);
+    fueled.SetDepletedFn(inst => { inst.remove(); });
+  }
   entity.component('heatrock', () => new HeatRock(entity)).RefreshSkin();
 }

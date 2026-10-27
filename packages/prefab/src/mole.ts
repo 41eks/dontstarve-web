@@ -1,7 +1,6 @@
 import { Vector3 } from 'three';
 import { createEffect, WorldContentKey, watchSignal, type ReadonlySignal, type WorldContentContext } from '@dontstarve-web/signals';
 import type { ItemEntity, InventoryStack } from '@dontstarve-web/inventory';
-import { ArchiveSpriteAssets, createSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { fourFacingFromRotation } from '@dontstarve-web/animation/facing';
 import { Eater } from '../../componets/src/eater';
 import { Sleeper } from '../../componets/src/sleeper';
@@ -20,14 +19,16 @@ import { MoleStateGraph, type MoleStateInst } from '../../stategraphs/src/SGmole
 import type { BufferedAction } from '../../stategraphs/src/bufferedaction';
 import type { Molehill } from './molehill';
 import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
-import { PlaySound, PreloadSounds, type SoundEventPath, type SoundHandle } from './sound';
+import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
 import { WORLD_SCALE, MakeCharacterPhysics, CHARACTER_COLLISION_MASK } from './standardcomponents';
 import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
-import type { ArchiveSpriteCommands } from '@dontstarve-web/display';
+import { SpriteResources, type ArchiveSpriteCommands } from '@dontstarve-web/display';
+import { animationLengths } from './animationTimings';
 import { COLLISION } from '../../componets/src/physicsState';
 
 export const MOLE_ID = 'mole' as const;
 export const MOLE_PERISH_TIME = 960;
+const MOLE_ANIMATION_LENGTHS = animationLengths('mole_basic.zip');
 export type MoleSave = NonNullable<InventoryStack['mole']>;
 const SOUND_PREFIX = 'dontstarve_DLC001/creatures/mole/';
 export const MOLE_SOUNDS = ['death', 'emerge', 'emerge_voice', 'hurt', 'move', 'retract', 'jump', 'pickup', 'sniff', 'sleep']
@@ -43,7 +44,6 @@ export interface MoleWorld extends Pick<WorldContentContext, 'getWatchWorldConte
   dropItem(item: ItemEntity, position: Vector3): void;
   dropLoot(prefab: string, position: Vector3): void;
   makeHome(mole: Mole): Molehill;
-  prepare(): Promise<void>;
   registerMole(mole: Mole): () => void;
   spawnMoveFx(position: Vector3): void;
 }
@@ -155,7 +155,7 @@ export class Mole implements MoleBrainInst, MoleStateInst, LocoMotorInst {
   setPickup(enabled: boolean): void { this.entity.components.inventoryitem.canbepickedup = enabled; }
   isDead(): boolean { return this.components.health.IsDead(); }
   inventoryFull(): boolean { return this.components.inventory?.IsFull() ?? false; }
-  bindWorld(services: MoleWorld, lengths: ReadonlyMap<string, number>): void {
+  bindWorld(services: MoleWorld, lengths: ReadonlyMap<string, number> = MOLE_ANIMATION_LENGTHS): void {
     if (this.worldServices) return;
     this.worldServices = services;
     this.cleanups.push(services.registerMole(this));
@@ -332,16 +332,13 @@ export function configureMoleEntity(entity: ItemEntity): void {
   if (!entity.components.inventoryitem.owner) perishable.StopPerishing();
 }
 export function createMoleGroundFactory(context: GroundPrefabContext): GroundItemFactory {
-  const assets = new ArchiveSpriteAssets('mole');
-  const definition = { animationArchive: 'mole_basic.zip', buildArchives: ['mole_build.zip'], bank: 'mole', animation: 'idle_under', loop: true };
-  const create = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(assets, { ...definition, animation: clip.name, loop: clip.loop }, { name: MOLE_ID });
+  const resources = new SpriteResources(context.animationBaseUrl, 'mole');
+  const source = resources.archive({ animationArchive: 'mole_basic.zip', buildArchives: ['mole_build.zip'], bank: 'mole' });
   return {
     itemIds: [MOLE_ID], configureEntity: configureMoleEntity,
-    create: async () => {
+    create: () => {
       if (!context.moleWorld) throw new Error('Mole world is unavailable');
-      await PreloadSounds(...MOLE_SOUNDS);
-      const [initial, bank] = await Promise.all([create({ name: definition.animation, loop: true }), assets.loadAnimation('mole_basic.zip'), context.moleWorld.prepare()]);
-      const { instance, display } = createArchiveEntity(MOLE_ID, { create, initial }, { name: definition.animation }, MOLE_ID);
+      const { instance, display } = createArchiveEntity(MOLE_ID, source, { name: 'idle_under' }, MOLE_ID);
       const sprite = instance.sprite, model = display.model;
       let mole: Mole | undefined;
       // Visibility and facing change the sprite json only when their value does.
@@ -352,7 +349,7 @@ export function createMoleGroundFactory(context: GroundPrefabContext): GroundIte
         model, instance,
         bindEntity: entity => {
           configureMoleEntity(entity); mole = entity.getComponent<Mole>('mole')!;
-          mole.bindWorld(context.moleWorld!, new Map(bank.animations.map(clip => [clip.name, clip.frames.length / clip.frameRate])));
+          mole.bindWorld(context.moleWorld!);
           const animation = watchSignal(mole.animstate.animation, stop => cleanups.push(stop));
           createEffect(() => { const { name, loop } = animation.get(); if (loop) sprite.start(name); else sprite.playOnce(name); });
           cleanups.push(mole.bindPhysics(instance, context.physics));
@@ -369,6 +366,6 @@ export function createMoleGroundFactory(context: GroundPrefabContext): GroundIte
         isClickable: () => mole?.isValid() ?? true,
         dispose: () => { cleanups.splice(0).forEach(stop => stop()); instance.remove(); display.dispose(); },
       };
-    }, dispose: () => assets.dispose(),
+    }, dispose: () => resources.dispose(),
   };
 }

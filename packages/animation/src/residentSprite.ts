@@ -39,6 +39,7 @@ export class ResidentSprite implements ArchiveSprite {
   private get sprite(): ArchiveSprite | undefined { return this.visual.peek(); }
   private set sprite(sprite: ArchiveSprite | undefined) { this.visual.set(sprite); this.artVersion.set(this.artVersion.peek() + 1); }
   private clip: Clip;
+  private queue: { name: string; loop: boolean }[] = [];
   private generation = 0;
   private disposed = false;
   private paused = false;
@@ -81,16 +82,19 @@ export class ResidentSprite implements ArchiveSprite {
     const created = this.create({ name: this.clip.name, loop: this.clip.loop });
     if (!(created instanceof Promise)) { this.attach(created); return; }
     this.loading = true;
-    void created.then(sprite => {
+    const request = this.request = created.then(sprite => {
       this.loading = false;
       if (this.disposed || generation !== this.generation) { sprite.dispose(); return; }
       this.attach(sprite);
     }, error => {
       this.loading = false;
       if (!this.disposed && generation === this.generation) console.error('Unable to load sprite', error);
-    });
+    }).finally(() => { if (this.request === request) this.request = undefined; });
   }
   private loading = false;
+  private request?: Promise<void>;
+  /** Settles when the sprite being built for the logical clip is drawn, or immediately when none is. */
+  get pending(): Promise<void> | undefined { return this.request; }
 
   /** Release frames, private materials and instances; the logical clip stays. */
   unload(): void {
@@ -170,6 +174,7 @@ export class ResidentSprite implements ArchiveSprite {
       if (this.clip !== clip) return;
       clip.finished = true;
       clip.complete?.();
+      this.advanceQueue();
     });
     if (clip.frame !== undefined) sprite.setFrame(clip.frame);
   }
@@ -177,12 +182,14 @@ export class ResidentSprite implements ArchiveSprite {
   update(dt: number): void { this.sprite?.update(dt); }
   start(name: string): void {
     const resume = this.leavesNoAnimation();
+    this.queue = [];
     this.clip = { name, loop: true, finished: false };
     if (resume) this.load();
     this.play();
   }
   playOnce(name: string, complete?: () => void): void {
     const resume = this.leavesNoAnimation();
+    this.queue = [];
     this.clip = { name, loop: false, complete, finished: false };
     if (resume) this.load();
     // Nothing is drawn while unloaded, so the transition settles at once into its completion state.
@@ -190,6 +197,7 @@ export class ResidentSprite implements ArchiveSprite {
   }
   /** Stops playing any animation: the drawn sprite is released until a clip is played again. */
   clearAnimation(): void {
+    this.queue = [];
     this.clip = { name: this.clip.name, loop: false, finished: true, none: true };
     this.unload();
   }
@@ -198,15 +206,30 @@ export class ResidentSprite implements ArchiveSprite {
   /** Rests on the clip's last frame, now or once the sprite is drawn again; no frame index is recorded while unloaded. */
   holdLastFrame(name: string): void {
     const resume = this.leavesNoAnimation();
+    this.queue = [];
     this.clip = { name, loop: false, finished: true };
     if (resume) this.load();
     this.play();
   }
   private settle(): void {
     const clip = this.clip;
-    if (clip.loop || clip.finished) return;
-    clip.finished = true;
-    clip.complete?.();
+    if (!clip.loop && !clip.finished) { clip.finished = true; clip.complete?.(); }
+    if (this.queue.length) {
+      const last = this.queue[this.queue.length - 1];
+      this.queue = [];
+      this.clip = { name: last.name, loop: last.loop, finished: !last.loop };
+    }
+  }
+  /** AnimState:PushAnimation waits for the current one-shot, then plays the next clip. */
+  pushAnimation(name: string, loop = false): void {
+    this.queue.push({ name, loop });
+    if (!this.sprite && !this.loading) this.settle();
+  }
+  private advanceQueue(): void {
+    const next = this.queue.shift();
+    if (!next) return;
+    this.clip = { name: next.name, loop: next.loop, finished: false };
+    this.play();
   }
   setAnimation(name: string): void {
     if (this.clip.name === name) return;

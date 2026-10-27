@@ -14,6 +14,7 @@ import {
   type InventoryItemSpec,
   type InventoryStack,
 } from '../src';
+import { addFueled } from './fueled';
 
 const signalSubscriptions: (() => void)[] = [];
 afterEach(() => {
@@ -62,7 +63,7 @@ function equipmentSlot(kind: 'hand' | 'body' | 'head') {
 
 describe('inventory state restoration', () => {
   it('publishes hand equipment only after commits, preserves its identity during fuel updates and distinguishes replacement torches', () => {
-    const itemSpecs = { torch: { name: '火把', icon: 'torch.tex', maxStack: 1, equippable: 'hand' as const, maxFuel: 75 } };
+    const itemSpecs = { torch: { name: '火把', icon: 'torch.tex', maxStack: 1, equippable: 'hand' as const, maxFuel: 75, configureEntity: addFueled(75) } };
     const store = new InventoryStore([inventorySlot(0), equipmentSlot('hand')], itemSpecs);
     const from = inventorySlotAddress(0), hand = equipmentSlotAddress('hand');
     const transitions: unknown[] = [];
@@ -109,7 +110,7 @@ describe('inventory state restoration', () => {
   });
 
   it('persists fractional prefab fuel through transfers and reload', () => {
-    const itemSpecs = { torch: { name: '火把', icon: 'torch.tex', maxStack: 1, equippable: 'hand' as const, maxFuel: 75 } };
+    const itemSpecs = { torch: { name: '火把', icon: 'torch.tex', maxStack: 1, equippable: 'hand' as const, maxFuel: 75, configureEntity: addFueled(75) } };
     const store = new InventoryStore([inventorySlot(0), inventorySlot(1), equipmentSlot('hand')], itemSpecs);
     const from = inventorySlotAddress(0), spare = inventorySlotAddress(1), hand = equipmentSlotAddress('hand');
     expect(store.add('torch', 2)).toBe(true);
@@ -135,7 +136,7 @@ describe('inventory state restoration', () => {
 
   it('rejects invalid fuel without changing inventory or notifying listeners, but keeps an empty fuel value', () => {
     const store = new InventoryStore([inventorySlot(0)], {
-      ...specs, torch: { name: '火把', icon: 'torch.tex', maxStack: 1, maxFuel: 75 },
+      ...specs, torch: { name: '火把', icon: 'torch.tex', maxStack: 1, maxFuel: 75, configureEntity: addFueled(75) },
     });
     const listener = vi.fn();
     store.subscribe(listener);

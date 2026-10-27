@@ -14,7 +14,7 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { ErodeAway } from '../../componets/src/erodeaway';
 import { LootDropper, SetSharedLootTable, type ChanceLootTable } from '../../componets/src/lootdropper';
 import { actionEntity } from './actionEntity';
-import type { GroundItemDefinition, PreparedGroundSpawn } from './groundPrefab';
+import type { SpawnGroundItem } from './groundPrefab';
 import catalog from './groundItems.json' with { type: 'json' };
 import { PlaySound, PreloadSounds } from './sound';
 
@@ -80,7 +80,8 @@ export interface RockWorld extends ToolMouseTargetWorld {
   physics?: import('cannon-es').World;
   scheduler?: GameTimeScheduler;
   tickingarea?: TileStateQuery;
-  prepareSpawn(definition: GroundItemDefinition, fling?: boolean): Promise<PreparedGroundSpawn>;
+  /** lootdropper:SpawnLootPrefab when the rock is mined out; the loot's display loads its art. */
+  spawnGroundItem: SpawnGroundItem;
 }
 
 /** rocks.lua OnWork: update the full/med/low pose, then drop source loot and remove. */
@@ -166,7 +167,6 @@ interface Rock {
   sprite: ArchiveSpriteCommands;
   caveinBoulder?: CaveinBoulderSave;
   stopActivity?: () => void;
-  outputs: Map<string, PreparedGroundSpawn[]>;
   preparedSeed?: RockSource;
 }
 
@@ -203,28 +203,19 @@ export class RockManager {
     const resourcesRequest = Promise.allSettled([request,
       definition.loot ? PreloadSounds('dontstarve/wilson/rock_break') : Promise.resolve(),
       prefabId === 'rock_moon_shell' ? this.getSource('moonrockseed') : Promise.resolve(undefined),
-      ...(definition.loot ?? []).map(([itemId]) => this.world.prepareSpawn({
-        ...catalog.items[itemId as keyof typeof catalog.items], itemId, count: 1,
-      }, true)),
     ]);
     this.pendingSpawns.add(resourcesRequest);
     const resources = await resourcesRequest;
     this.pendingSpawns.delete(resourcesRequest);
-    const outputs = new Map<string, PreparedGroundSpawn[]>();
-    definition.loot?.forEach(([prefab], index) => {
-      const result = resources[index + 3] as PromiseSettledResult<PreparedGroundSpawn>;
-      if (result.status === 'fulfilled') outputs.set(prefab, [...outputs.get(prefab) ?? [], result.value]);
-    });
     const failure = resources.find(result => result.status === 'rejected');
     if (failure || this.disposed) {
-      for (const pieces of outputs.values()) pieces.forEach(piece => piece.dispose());
       throw failure?.status === 'rejected' ? failure.reason : new Error('Rock manager has been disposed');
     }
     const source = (resources[0] as PromiseFulfilledResult<RockSource>).value;
     const seedSource = (resources[2] as PromiseFulfilledResult<RockSource | undefined>).value;
     const sprite = this.createSprite(source, prefabId, caveinBoulder?.raised ? 'idle_raised' : definition.initialAnimation);
     const seed = seedSource;
-    return this.create(prefabId, sprite, outputs, position, saved, caveinBoulder, seed, colour);
+    return this.create(prefabId, sprite, position, saved, caveinBoulder, seed, colour);
   }
 
   /** One shared source per rock archive/bank; every rock builds its own sprite in the logical clip. */
@@ -249,7 +240,7 @@ export class RockManager {
     return entity;
   }
 
-  private create(prefabId: RockEntityId, { instance, display }: ReturnType<typeof createArchiveEntity>, outputs: Map<string, PreparedGroundSpawn[]>,
+  private create(prefabId: RockEntityId, { instance, display }: ReturnType<typeof createArchiveEntity>,
     position: THREE.Vector3, saved?: RockRecord, caveinBoulder?: CaveinBoulderSave, preparedSeed?: RockSource, colour = 1): THREE.Group {
     const sprite = instance.sprite;
     if (prefabId === 'moonrockseed') sprite.setPaused(true);
@@ -265,15 +256,11 @@ export class RockManager {
       : prefabId === 'moonrockseed' ? ['irreplaceable', 'nonpotatable', 'celestial_station']
       : ['boulder', 'SnowCovered', ...(prefabId === 'rock_moon_shell' ? ['meteor_protection'] : [])]) instance.addTag(tag);
     const inst = actionEntity(model, prefabId);
-    const rock: Rock = { prefabId, model, instance, display, sprite, caveinBoulder, outputs, preparedSeed };
+    const rock: Rock = { prefabId, model, instance, display, sprite, caveinBoulder, preparedSeed };
     if ((MINEABLE_ROCK_PREFABS as readonly string[]).includes(prefabId)) {
-      const lootdropper = new LootDropper(inst, (prefab, position) => {
-        const output = outputs.get(prefab)?.shift();
-        if (!output) return undefined;
-        const spawned = output.spawn(new THREE.Vector3(position.x, position.y, position.z));
-        if (!spawned) output.dispose();
-        return spawned ? output.spawnedEntity : undefined;
-      });
+      const lootdropper = new LootDropper(inst, (prefab, position) => this.world.spawnGroundItem(
+        { ...catalog.items[prefab as keyof typeof catalog.items], itemId: prefab, count: 1 },
+        new THREE.Vector3(position.x, position.y, position.z), { fling: true }));
       lootdropper.SetChanceLootTable(prefabId);
       rock.controller = new RockController(model, prefabId as RockPrefabId, lootdropper, () => this.remove(rock), {
         scheduler: this.scheduler, caveinBoulder,
@@ -282,7 +269,7 @@ export class RockManager {
           const seed = rock.preparedSeed;
           if (!seed) throw new Error('Moon shell seed has not been prepared');
           rock.preparedSeed = undefined;
-          this.create('moonrockseed', this.createSprite(seed, 'moonrockseed', 'idle'), new Map(), model.position);
+          this.create('moonrockseed', this.createSprite(seed, 'moonrockseed', 'idle'), model.position);
         },
       });
       new ToolMouseTarget(inst, instance, rock.controller.workable, this.world.handEquipment);
@@ -352,7 +339,5 @@ export class RockManager {
     rock.stopActivity?.();
     rock.controller?.dispose();
     rock.instance.remove();
-    for (const pieces of rock.outputs.values()) pieces.forEach(piece => piece.dispose());
-    rock.outputs.clear();
   }
 }

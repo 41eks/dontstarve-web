@@ -30,6 +30,7 @@ export * from './migrate.ts';
 export * from './haunt.ts';
 export * from './blink.ts';
 export * from './occupiable.ts';
+export * from './machine.ts';
 export * from './lighter.ts';
 export * from './pickup.ts';
 export * from './reskin_tool.ts';

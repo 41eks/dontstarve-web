@@ -24,7 +24,7 @@ function setup() {
   const inventory = createInventoryStore([]), scene = new THREE.Scene(), player = new THREE.Group(), physics = new CANNON.World();
   const ground = new GroundItemManager(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
-  const skeletons = new SkeletonManager(scene, { physics, prepareSpawn: (definition, fling) => ground.prepareSpawn(definition, fling) });
+  const skeletons = new SkeletonManager(scene, { physics, spawnGroundItem: (definition, position, options) => ground.spawnGroundItem(definition, position, options) });
   const registry = new EntityRegistry();
   registry.register(PREFAB_DEFINITIONS.skeletons, {
     restore: (id, record) => skeletons.spawn(id, new THREE.Vector3(...record.transform.position),

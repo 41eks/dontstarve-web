@@ -24,4 +24,18 @@ export function shardSaveSearch(search: string, shard: string): string {
   return `?${params}`;
 }
 
-export const initialSave = await loadSaveJson(saveUrl(window.location.search, import.meta.env.BASE_URL));
+/** A save passed inline as `?saveData=`: base64url-encoded UTF-8 JSON, validated like a bundled file. */
+export function decodeSaveData(data: string): SaveDocument {
+  if (!/^[A-Za-z0-9_-]*$/.test(data)) throw new Error('Invalid save data');
+  const base64 = data.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(data.length / 4) * 4, '=');
+  const bytes = Uint8Array.from(atob(base64), char => char.charCodeAt(0));
+  return deserializeSave(new TextDecoder('utf-8', { fatal: true }).decode(bytes), SAVE_CATALOG);
+}
+
+/** `?saveData=` takes precedence over `?save=`, so a page can start from a save that is not a bundled file. */
+export function loadInitialSave(search: string, base: string): Promise<SaveDocument> {
+  const data = new URLSearchParams(search).get('saveData');
+  return data === null ? loadSaveJson(saveUrl(search, base)) : Promise.resolve(decodeSaveData(data));
+}
+
+export const initialSave = await loadInitialSave(window.location.search, import.meta.env.BASE_URL);

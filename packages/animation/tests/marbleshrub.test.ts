@@ -29,10 +29,10 @@ function setup() {
   const scheduler = new GameTimeScheduler();
   const ground = new GroundItemManager(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
-  const prepareSpawn = (definition: Parameters<GroundItemManager['prepareSpawn']>[0], fling?: boolean) => ground.prepareSpawn(definition, fling);
+  const spawnGroundItem: GroundItemManager['spawnGroundItem'] = (definition, position, options) => ground.spawnGroundItem(definition, position, options);
   const { snowLevel, getWatchWorldContent } = bindTestWorld(scheduler);
-  const shrubs = new MarbleShrubManager(scene, { scheduler, physics, getWatchWorldContent, prepareSpawn });
-  const saplings = new MarbleBeanSaplingManager(scene, { scheduler, shrubs, prepareSpawn });
+  const shrubs = new MarbleShrubManager(scene, { scheduler, physics, getWatchWorldContent, spawnGroundItem });
+  const saplings = new MarbleBeanSaplingManager(scene, { scheduler, shrubs, spawnGroundItem });
   const registry = new EntityRegistry();
   registry.register(PREFAB_DEFINITIONS.marbleShrubs, {
     restore: (_, record) => shrubs.spawn('marbleshrub', new THREE.Vector3(...record.transform.position),
@@ -70,9 +70,8 @@ it('plants a marblebean, digs it back up, and grows it into a mineable shrub tha
     const point = new THREE.Vector3(12, 0, 24);
     const item = s.inventory.extract(inventorySlotAddress(0), 1, s.inventory.getEntity(inventorySlotAddress(0))!)!;
     expect(item.components.deployable!.mode).toBe('PLANT');
-    const prepared = await s.saplings.prepareTransplant();
     expect(item.components.deployable!.Deploy(point, { position: point, PushEvent: vi.fn() }, {
-      canDeployPlant: () => true, deployPlant: () => prepared.spawn(point),
+      canDeployPlant: () => true, deployPlant: () => s.saplings.transplant(point),
     })).toBe(true);
     expect(s.inventory.count('marblebean')).toBe(2);
     // The shovel's DIG finishes the one-work sapling and drops its only loot, then cancels growth.
@@ -96,6 +95,8 @@ it('plants a marblebean, digs it back up, and grows it into a mineable shrub tha
     expect([minimap.icon, minimap.priority, minimap.position.x]).toEqual(['marbleshrub2.png', -1, 12]);
     const model = s.shrubs.mineTargets[0].model;
     const sprite = prefabInstance(model)!.sprite;
+    // growfromseed spawns the shrub at once; its display draws it once the art has loaded.
+    await model.userData.display.artLoaded();
     const vertices = () => { let count = 0; model.traverse(o => { if (o instanceof THREE.Mesh) count += o.geometry.drawRange.count === Infinity ? o.geometry.index?.count ?? 0 : o.geometry.drawRange.count; }); return count; };
     const bare = vertices();
     s.snowLevel.set(.02);

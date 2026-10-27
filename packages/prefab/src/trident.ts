@@ -5,7 +5,6 @@ import type * as THREE from 'three';
 import { SpellCaster } from '../../componets/src/spellcaster';
 import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory } from './equipmentVisual';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
-import { PreloadSounds } from './sound';
 import { TILE_SIZE } from './tile';
 
 export const TRIDENT_ID = 'trident';
@@ -21,8 +20,6 @@ export const TRIDENT_STRUM_SOUND = 'hookline_2/characters/trident_attack';
 
 export interface TridentWorld {
   readonly map: SpellCastMap;
-  /** Load crab_king_waterspout art and sound before the cast is buffered. */
-  prepareWaterspout(): Promise<void>;
   /** SpawnPrefab("crab_king_waterspout") at a point on the water. */
   spawnWaterspout(position: THREE.Vector3): void;
 }
@@ -44,8 +41,7 @@ export class TridentController implements EquipmentLifecycle {
     });
     this.spellcaster = entity.component('spellcaster', () => new SpellCaster(entity, world.map));
     entity.components.spellcaster = this.spellcaster;
-    this.spellcaster.setSpellFn((_trident, _target, position) => this.createWaterExplosion(position),
-      () => Promise.all([world.prepareWaterspout(), PreloadSounds(TRIDENT_STRUM_SOUND)]).then(() => undefined));
+    this.spellcaster.setSpellFn((_trident, _target, position) => this.createWaterExplosion(position));
     this.spellcaster.canUseOnPointWater = true;
   }
   onequip(): void {}

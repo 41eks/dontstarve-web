@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { SpellCaster } from '../../componets/src/spellcaster';
 import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory, type EquipmentVisualItem } from './equipmentVisual';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
-import { PlaySound, PreloadSounds } from './sound';
+import { PlaySound } from './sound';
 import { TILE_SIZE } from './tile';
 import { spawnLightEntity } from './localLight';
 
@@ -22,7 +22,7 @@ export const LIGHT_STAFF_SANITY_COST = 20;
 export const LIGHT_STAFF_CAST_SOUND = 'dontstarve/common/staffteleport';
 export interface LightStaffWorld {
   readonly map: SpellCastMap;
-  preparePrefab(prefab: 'stafflight' | 'staffcoldlight'): Promise<void>;
+  /** SpawnPrefab at the cast's commit; the product's display loads its art. */
   spawnPrefab(prefab: 'stafflight' | 'staffcoldlight', position: THREE.Vector3): THREE.Object3D;
 }
 
@@ -41,9 +41,7 @@ export class LightStaffController implements EquipmentLifecycle {
     entity.components.finiteuses.setMaxUses(LIGHT_STAFF_USES[entity.prefab]);
     this.spellcaster = entity.component('spellcaster', () => new SpellCaster(entity, world.map));
     entity.components.spellcaster = this.spellcaster;
-    this.spellcaster.setSpellFn((_staff, _target, position, doer) => this.createLight(position, doer),
-      () => Promise.all([world.preparePrefab(this.product), PreloadSounds(LIGHT_STAFF_CAST_SOUND, 'dontstarve/common/gem_shatter')])
-        .then(() => undefined));
+    this.spellcaster.setSpellFn((_staff, _target, position, doer) => this.createLight(position, doer));
     this.spellcaster.canUseOnPoint = true;
     this.spellcaster.canUseOnPointWater = true;
   }

@@ -29,7 +29,7 @@ test('spawned moonbutterfly glows, flies away on its own and survives save and l
   const moth = () => page.evaluate(() => {
     const model = (window as any).mothGame.scene.children.find((child: any) => child.name === 'GroundItem:moonbutterfly');
     return model ? { x: model.position.x, z: model.position.z, state: model.userData.butterflyController.state,
-      light: model.userData.dstPrefabLocalLight?.intensity ?? null, tags: model.userData.instance.listTags() } : null;
+      light: model.userData.instance.light.peek()?.intensity ?? null, tags: model.userData.instance.listTags() } : null;
   });
   const saveGame = async () => {
     const download = page.waitForEvent('download', { timeout: 15_000 }); await submit('c_save()');

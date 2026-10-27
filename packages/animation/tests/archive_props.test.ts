@@ -27,7 +27,7 @@ function setup() {
   const ground = new GroundItemManager(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
   const cameraFacing = createSignal<number>(FACING.DOWN);
-  const props = new ArchivePropsManager(scene, { physics, cameraFacing, prepareSpawn: (definition, fling) => ground.prepareSpawn(definition, fling) });
+  const props = new ArchivePropsManager(scene, { physics, cameraFacing, spawnGroundItem: (definition, position, options) => ground.spawnGroundItem(definition, position, options) });
   const registry = new EntityRegistry();
   registry.register(PREFAB_DEFINITIONS.archiveProps, {
     restore: (id, record) => props.spawn(id, new THREE.Vector3(...record.transform.position),

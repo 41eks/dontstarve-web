@@ -6,7 +6,8 @@ import { renderSceneWithPasses } from '../../animation/src/sceneRenderPass';
 export async function checkNightmareFuelTransparency() {
   const assets = new GroundItemAssets();
   const source = GROUND_ITEM_DEFINITIONS.nightmarefuel;
-  const { visual: fuel } = await createResidentGroundItem({ assets }, { itemId: 'nightmarefuel' });
+  const { visual: fuel, display } = createResidentGroundItem({ assets }, { itemId: 'nightmarefuel' });
+  await display.artLoaded();
   const opaque = await createArchiveSprite(assets, { ...source, multColour: [1, 1, 1, 1] });
   const renderer = new THREE.WebGLRenderer({ preserveDrawingBuffer: true });
   renderer.setSize(128, 128);

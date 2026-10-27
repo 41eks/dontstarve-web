@@ -1,6 +1,6 @@
 import type { AnimState } from '@dontstarve-web/animation/animState';
 import type { ItemEntity, ItemRuntimeComponent } from '@dontstarve-web/inventory';
-import { createEffect, createMemo, createSignal, readonlySignal, watchSignal, type EquipmentLifecycle, type EquipmentOwner, type ReadonlySignal } from '@dontstarve-web/signals';
+import { createEffect, watchSignal, type EquipmentLifecycle, type EquipmentOwner, type ReadonlySignal } from '@dontstarve-web/signals';
 import * as THREE from 'three';
 import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory } from './equipmentVisual';
 import { GROUND_ITEM_DEFINITIONS, createResidentGroundItem } from './groundItems';
@@ -8,78 +8,66 @@ import type { GroundItemFactory, GroundItemVisual, GroundPrefabContext } from '.
 import { listenInventoryEvents } from './inventoryEvents';
 import { TILE_SIZE } from './tile';
 import { spawnLightEntity } from './localLight';
+import { Machine } from '../../componets/src/machine';
+import { TURNON_FULL_FUELED_CONSUMPTION, TURNON_FUELED_CONSUMPTION } from './torch';
 
 export const LANTERN_ID = 'lantern';
 export const LANTERN_COLOUR = [180 / 255, 195 / 255, 150 / 255] as const;
 /** tuning.lua: LANTERN_LIGHTTIME = (night_time + dusk_time) * 2.6 with 2 night and 4 dusk segments. */
 export const LANTERN_FUEL = (30 * 2 + 30 * 4) * 2.6;
-// tuning.lua: fueled:SetFirstPeriod(TURNON_FUELED_CONSUMPTION, TURNON_FULL_FUELED_CONSUMPTION).
-const TURNON_FUELED_CONSUMPTION = .5;
-const TURNON_FULL_FUELED_CONSUMPTION = 1 / 60;
 
 /**
  * mininglantern.lua's machine and fueled lifecycle on the inst. Unlike the torch,
  * running out of fuel only turns the lantern off; the empty item remains.
  */
 export class LanternController implements ItemRuntimeComponent {
-  private readonly isOnState = createSignal(false);
+  /** mininglantern.lua's machine: TURNON / TURNOFF run turnon / turnoff, with no cooldown. */
+  private readonly machine: Machine;
   /** machine.ison */
-  readonly ison = readonlySignal(this.isOnState);
-  /** fueled:GetPercent(); a missing saved fuel value is a full lantern. */
-  readonly fuelPercent: ReadonlySignal<number>;
-  private readonly fuelPercentMemo;
+  readonly ison: ReadonlySignal<boolean>;
   private readonly entity: ItemEntity;
-  private consuming = false;
-  private firstPeriod = 0;
   readonly light = new LanternLightController();
   private ground?: THREE.Object3D;
   private hand?: LanternHandContext;
   private owner?: EquipmentOwner;
   private stopTrackingOwner?: () => void;
-  private readonly cleanups: (() => void)[] = [];
   private equipped = false;
   private disposed = false;
 
   constructor(entity: ItemEntity) {
     if (entity.prefab !== LANTERN_ID) throw new Error('LanternController requires a lantern entity');
     this.entity = entity;
-    const fuel = watchSignal(entity.components.fueled.fuel, stop => this.cleanups.push(stop));
-    this.fuelPercentMemo = createMemo(() =>
-      Math.max(0, Math.min(1, (fuel.get() ?? LANTERN_FUEL) / LANTERN_FUEL)));
-    createEffect(() => this.light.setFuelPercent(
-      Math.max(0, Math.min(1, (fuel.get() ?? LANTERN_FUEL) / LANTERN_FUEL))));
+    this.machine = entity.components.machine = new Machine(entity, () => entity.components.perishable.scheduler);
+    this.machine.turnonfn = () => this.TurnOn();
+    this.machine.turnofffn = () => this.TurnOff();
+    this.machine.cooldowntime = 0;
+    this.ison = this.machine.ison;
     entity.components.inventoryitem.SetOnPutInInventoryFn(() => this.OnPutInInventory());
-    this.fuelPercent = readonlySignal(this.fuelPercentMemo);
   }
 
-  get isOn(): boolean { return this.isOnState.peek(); }
-  IsEmpty(): boolean { return this.currentFuel() <= 0; }
+  private get fueled() { return this.entity.isRemoved ? undefined : this.entity.components.fueled; }
+  get isOn(): boolean { return this.machine.IsOn(); }
+  IsEmpty(): boolean { return this.fueled?.IsEmpty() ?? true; }
 
   /** turnon: only a fuelled lantern starts consuming. */
   TurnOn(): void {
-    if (this.disposed || this.entity.isRemoved || this.IsEmpty()) return;
-    if (!this.consuming) {
-      this.consuming = true;
-      // fueled:StartConsuming charges the first period once, on top of elapsed time.
-      this.firstPeriod = this.currentFuel() >= LANTERN_FUEL ? TURNON_FULL_FUELED_CONSUMPTION : TURNON_FUELED_CONSUMPTION;
-      this.entity.components.fueled.StartConsuming(dt => this.consume(dt));
-    }
-    this.light.setFuelPercent(this.fuelPercent.peek());
+    if (this.disposed || this.IsEmpty()) return;
+    this.fueled!.StartConsuming();
+    this.fuelupdate();
     this.light.setLit(true);
     if (this.equipped) this.hand?.AnimState?.Show('LANTERN_OVERLAY');
-    this.isOnState.set(true);
+    this.machine.isOn = true;
   }
 
-  /** turnoff: settles elapsed time; StopConsuming cancels an uncharged first period. */
+  /** turnoff: StopConsuming settles elapsed time and cancels an uncharged first period. */
   TurnOff(): void {
     if (this.disposed) return;
     this.stopTrackingOwner?.();
     this.stopTrackingOwner = undefined;
-    this.flushFuel();
-    this.stopConsuming();
+    this.fueled?.StopConsuming();
     this.light.setLit(false);
     if (this.equipped) this.hand?.AnimState?.Hide('LANTERN_OVERLAY');
-    this.isOnState.set(false);
+    this.machine.isOn = false;
   }
 
   /** inventoryitem:SetOnDroppedFn(ondropped): turnoff, then turnon. */
@@ -98,7 +86,7 @@ export class LanternController implements ItemRuntimeComponent {
   /** inventoryitem:SetOnPutInInventoryFn(turnoff). */
   OnPutInInventory(): void { this.TurnOff(); }
   /** machine:OnLoad restores the saved switch. */
-  OnLoad(ison: boolean): void { if (ison) this.TurnOn(); else this.TurnOff(); }
+  OnLoad(ison: boolean): void { this.machine.OnLoad({ ison }); }
 
   onequip(owner?: EquipmentOwner, context?: LanternHandContext): void {
     if (this.disposed) return;
@@ -111,7 +99,6 @@ export class LanternController implements ItemRuntimeComponent {
   }
   /** mininglantern.lua only clears worn art here; pocket/drop/equip events decide when to turn off. */
   onunequip(): void {
-    this.flushFuel();
     this.hand?.AnimState?.Hide('LANTERN_OVERLAY');
     this.stopTrackingOwner?.();
     this.stopTrackingOwner = this.isOn ? this.owner?.ListenForEvent?.('equip', data => {
@@ -125,55 +112,33 @@ export class LanternController implements ItemRuntimeComponent {
   }
   get isEquipped(): boolean { return this.equipped; }
 
-  /** Settle the elapsed part of the fuel period before saving, transferring, dropping or switching off. */
-  flushFuel(): void {
-    if (this.entity.isRemoved) return;
-    this.entity.components.fueled.Settle();
-    if (this.firstPeriod > 0) this.consume(0);
+  /** fueled:SetUpdateFn(fuelupdate): the light follows the fuel percent. */
+  fuelupdate(): void {
+    const fueled = this.fueled;
+    if (fueled) this.light.setFuelPercent(fueled.GetPercent());
   }
-
-  /** fueled:DoUpdate with the game seconds of a period, plus an uncharged first period. */
-  private consume(dt: number): void {
-    const elapsed = dt + this.firstPeriod;
-    this.firstPeriod = 0;
-    if (!this.consuming || elapsed <= 0 || this.entity.isRemoved) return;
-    const next = Math.max(0, this.currentFuel() - elapsed);
-    this.entity.setRemainingFuel(next);
-    // fueled:DoUpdate stops consuming when empty; SetDepletedFn(nofuel) turns the lantern off.
-    if (next <= 0) this.nofuel();
-  }
-
-  flush(): void { this.flushFuel(); }
 
   dispose(): void {
     if (this.disposed) return;
-    this.flushFuel();
-    this.stopConsuming();
-    this.isOnState.set(false);
+    this.fueled?.StopConsuming();
+    this.machine.isOn = false;
+    this.machine.dispose();
+    if (this.entity.components.machine === this.machine) delete this.entity.components.machine;
     this.disposed = true;
     this.stopTrackingOwner?.();
     this.stopTrackingOwner = undefined;
     this.light.dispose();
-    for (const stop of this.cleanups) stop();
     this.owner = undefined;
     this.hand = undefined;
     this.ground = undefined;
   }
 
-  private stopConsuming(): void {
-    this.consuming = false;
-    this.firstPeriod = 0;
-    if (!this.entity.isRemoved) this.entity.components.fueled.StopConsuming();
-  }
-
-  private nofuel(): void {
-    this.stopConsuming();
+  /** fueled:SetDepletedFn(nofuel): an equipped lantern tells its owner it ran out. */
+  nofuel(): void {
     const owner = this.equipped ? this.owner : undefined;
     this.TurnOff();
     owner?.PushEvent('torchranout', { prefab: this.entity.prefab, equipslot: 'HANDS' });
   }
-
-  private currentFuel(): number { return this.entity.components.fueled.remaining ?? LANTERN_FUEL; }
 }
 
 /** One machine/fueled lifecycle per inst, independent of its holder and art. */
@@ -183,12 +148,17 @@ export function getLanternController(entity: ItemEntity): LanternController {
 
 /** mininglantern.lua: CAVE fuel; ontakefuel turns on only an equipped lantern. */
 export function configureLanternEntity(entity: ItemEntity): void {
-  const controller = getLanternController(entity);
-  const fueled = entity.components.fueled;
-  fueled.setMaxFuel(LANTERN_FUEL);
-  fueled.fueltype = 'CAVE';
-  fueled.accepting = true;
-  fueled.SetTakeFuelFn(() => { if (controller.isEquipped) controller.TurnOn(); });
+  if (!entity.components.fueled) {
+    const fueled = entity.AddFueled();
+    fueled.fueltype = 'CAVE';
+    fueled.InitializeFuelLevel(LANTERN_FUEL);
+    fueled.SetDepletedFn(() => getLanternController(entity).nofuel());
+    fueled.SetUpdateFn(() => getLanternController(entity).fuelupdate());
+    fueled.SetTakeFuelFn(() => { if (getLanternController(entity).isEquipped) getLanternController(entity).TurnOn(); });
+    fueled.SetFirstPeriod(TURNON_FUELED_CONSUMPTION, TURNON_FULL_FUELED_CONSUMPTION);
+    fueled.accepting = true;
+  }
+  getLanternController(entity);
 }
 
 /** fuelupdate's light: radius 3 → 5 and intensity 0.4 → 0.6 with fuel percent. */
@@ -253,18 +223,19 @@ export function createLanternHandLifecycle(entity: ItemEntity, context: LanternH
   return {
     onequip: owner => controller.onequip(owner, context),
     onunequip: () => controller.onunequip(),
-    flush: () => controller.flushFuel(),
+    flush: () => entity.components.fueled?.Settle(),
   };
 }
 
 /** Ground art binds to the inst's lantern lifecycle; it starts unlit until a drop or load event. */
-export async function createLanternGroundSprite(context: Pick<GroundPrefabContext, 'assets' | 'tickingarea'>, skinId?: string): Promise<GroundItemVisual & {
+export function createLanternGroundSprite(context: Pick<GroundPrefabContext, 'assets' | 'tickingarea'>, skinId?: string): GroundItemVisual & {
   readonly light: LanternLightController;
-}> {
-  const { visual, instance, display } = await createResidentGroundItem(context, { itemId: LANTERN_ID, skinId });
+} {
+  const { visual, instance, display } = createResidentGroundItem(context, { itemId: LANTERN_ID, skinId });
   const model = display.model, sprite = instance.sprite;
   instance.addTag('light');
   let controller: LanternController | undefined;
+  let bound: ItemEntity | undefined;
   let stopState: (() => void) | undefined;
   let savedOn: boolean | undefined;
   const removeInventoryEvents = listenInventoryEvents(model, {
@@ -280,6 +251,7 @@ export async function createLanternGroundSprite(context: Pick<GroundPrefabContex
     get light() { return controller!.light; },
     bindEntity(entity) {
       stopState?.();
+      bound = entity;
       controller = getLanternController(entity);
       controller.bindGround(model);
       const ison = watchSignal(controller.ison, stop => { stopState = stop; });
@@ -287,7 +259,7 @@ export async function createLanternGroundSprite(context: Pick<GroundPrefabContex
     },
     setDefinition(definition) { savedOn = definition.lanternOn; },
     getDefinition() {
-      controller?.flushFuel();
+      bound?.components.fueled?.Settle();
       return controller ? { lanternOn: controller.isOn } : {};
     },
     update(dt: number) { visual.update?.(dt); },

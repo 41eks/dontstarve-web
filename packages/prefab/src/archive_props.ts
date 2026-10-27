@@ -14,7 +14,7 @@ import { MiniMapEntity } from './minimapEntity';
 import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
 import { MakeObstaclePhysics } from './standardcomponents';
-import type { GroundItemDefinition, PreparedGroundSpawn } from './groundPrefab';
+import type { SpawnGroundItem } from './groundPrefab';
 import { PlaySound, PreloadSounds } from './sound';
 import catalog from './groundItems.json' with { type: 'json' };
 
@@ -39,7 +39,6 @@ export const MARBLEPILLAR_MINE = 10;
 const PHYSICS_RADIUS = .66;
 // archive_props.lua SetSharedLootTable('archive_statues', ...)
 SetSharedLootTable('archive_statues', [['thulecite', 1], ['moonrocknugget', 1], ['moonrocknugget', .05]]);
-const STATUE_LOOT = ['thulecite', 'moonrocknugget', 'moonrocknugget'] as const;
 const BACKGROUND_RENDER_ORDER = -.5;
 
 /** archive_props.lua OnSave: statues and rune statues write `anim`; rune statues add `storyprogress` once it is assigned. */
@@ -55,7 +54,8 @@ export interface ArchivePropsWorld extends ToolMouseTargetWorld {
   physics?: CANNON.World;
   /** FACING_* bit that the camera heading gives an eight-faced inst with rotation 0. */
   cameraFacing?: ReadonlySignal<number>;
-  prepareSpawn(definition: GroundItemDefinition, fling?: boolean): Promise<PreparedGroundSpawn>;
+  /** lootdropper:SpawnLootPrefab when a statue is mined out; the loot's display loads its art. */
+  spawnGroundItem: SpawnGroundItem;
 }
 
 interface PropDefinition {
@@ -106,7 +106,6 @@ interface ArchiveProp {
   stopActivity?: () => void;
   minimap?: MiniMapEntity;
   workable?: Workable;
-  loot?: Map<string, PreparedGroundSpawn[]>;
   anim?: number;
   storyprogress?: number;
   /** Mined: the statue has dropped its loot and is gone this frame. */
@@ -152,9 +151,7 @@ export class ArchivePropsManager {
     const failed = resources.find(result => result.status === 'rejected');
     const sprite = resources[0].status === 'fulfilled' ? resources[0].value : undefined;
     const shadow = resources[1].status === 'fulfilled' ? resources[1].value : undefined;
-    const loot = resources[2].status === 'fulfilled' ? resources[2].value : undefined;
     if (failed || this.disposed || !sprite) {
-      loot?.forEach(outputs => outputs.forEach(output => output.dispose()));
       throw failed?.status === 'rejected' ? failed.reason : new Error('Archive props have been disposed');
     }
     const create = (clip: { name: string; loop: boolean }) => sprite(clip.name, clip.loop, prefab);
@@ -163,7 +160,7 @@ export class ArchivePropsManager {
     const childCreate = shadow && ((clip: { name: string; loop: boolean }) => shadow(clip.name, clip.loop, `${prefab}_shadow`));
     const child = childCreate && createArchiveEntity(`${prefab}_shadow`, { create: childCreate, initial: childCreate({ name: 'idle', loop: false }) }, { name: 'idle' });
     child?.instance.sprite.playOnce('idle');
-    return this.create(prefab, definition, entity, child, loot, position, anim, state?.storyprogress, saved);
+    return this.create(prefab, definition, entity, child, position, anim, state?.storyprogress, saved);
   }
 
   private getSource(definition: Pick<PropDefinition, 'animationArchive' | 'buildArchive' | 'bank' | 'hiddenSymbols' | 'instancedAnimations'>) {
@@ -178,28 +175,16 @@ export class ArchivePropsManager {
     return request;
   }
 
-  /** The statue's collapse effect, rock_break sound and the three prepared pieces of the `archive_statues` table. */
-  private async prepareStatue(): Promise<Map<string, PreparedGroundSpawn[]>> {
-    const settled = await Promise.allSettled([
+  /** The statue's collapse effect and rock_break sound. */
+  private async prepareStatue(): Promise<void> {
+    await Promise.all([
       this.assets.loadAnimation('structure_collapse_fx.zip'), this.assets.loadBuild('structure_collapse_fx.zip'),
       PreloadSounds('dontstarve/common/destroy_smoke', 'dontstarve/wilson/rock_break'),
-      ...STATUE_LOOT.map(itemId => this.world.prepareSpawn({ ...catalog.items[itemId], itemId, count: 1 }, true)),
-    ] as const);
-    const loot = new Map<string, PreparedGroundSpawn[]>();
-    STATUE_LOOT.forEach((itemId, index) => {
-      const result = settled[index + 3] as PromiseSettledResult<PreparedGroundSpawn>;
-      if (result.status === 'fulfilled') loot.set(itemId, [...loot.get(itemId) ?? [], result.value]);
-    });
-    const failed = settled.find(result => result.status === 'rejected');
-    if (failed) {
-      loot.forEach(outputs => outputs.forEach(output => output.dispose()));
-      throw failed.status === 'rejected' ? failed.reason : undefined;
-    }
-    return loot;
+    ]);
   }
 
   private create(prefab: ArchivePropId | typeof ARCHIVE_SWITCH_PAD_ID, definition: PropDefinition, { instance, display }: ReturnType<typeof createArchiveEntity>, shadow: ReturnType<typeof createArchiveEntity> | undefined,
-    loot: Map<string, PreparedGroundSpawn[]> | undefined, position: THREE.Vector3, anim: number | undefined, storyprogress: number | undefined,
+    position: THREE.Vector3, anim: number | undefined, storyprogress: number | undefined,
     saved: ArchivePropRecord | undefined): THREE.Group {
     const model = display.model;
     const sprite = instance.sprite;
@@ -207,7 +192,7 @@ export class ArchivePropsManager {
     instance.entityId = saved?.id ?? newEntityId();
     for (const tag of definition.tags) instance.addTag(tag);
     const inst = actionEntity(model, prefab);
-    const prop: ArchiveProp = { prefab, model, instance, display, sprite, shadow, loot, anim, storyprogress, removed: false };
+    const prop: ArchiveProp = { prefab, model, instance, display, sprite, shadow, anim, storyprogress, removed: false };
     if (definition.ground) this.layOnGround(prop, definition.ground);
     if (shadow) {
       // The shadow is a DECOR | NOCLICK child that sorts just under the portal art (SortOrder 1, no FinalOffset).
@@ -265,13 +250,8 @@ export class ArchivePropsManager {
       : workleft < MARBLEPILLAR_MINE * 2 / 3 ? 'idle_med_' : 'idle_full_'}${anim}`);
     // OnLoadPostPass shows the work state of a loaded statue; a new one plays idle_full_<anim> once.
     if (loaded) showWorkState(workable.GetWorkLeft());
-    const lootdropper = new LootDropper(inst, (itemId, point) => {
-      const prepared = prop.loot?.get(itemId)?.shift();
-      if (!prepared) return undefined;
-      const spawned = prepared.spawn(new THREE.Vector3(point.x, point.y, point.z));
-      if (!spawned) prepared.dispose();
-      return spawned ? prepared.spawnedEntity : undefined;
-    });
+    const lootdropper = new LootDropper(inst, (itemId, point) => this.world.spawnGroundItem(
+      { ...catalog.items[itemId as keyof typeof catalog.items], itemId, count: 1 }, new THREE.Vector3(point.x, point.y, point.z), { fling: true }));
     lootdropper.SetChanceLootTable('archive_statues');
     workable.SetOnWorkCallback((_worker, workleft) => showWorkState(workleft));
     workable.SetOnFinishCallback(() => {
@@ -384,8 +364,7 @@ export class ArchivePropsManager {
     const prop = this.props.get(model); if (!prop) return;
     this.props.delete(model); model.userData.removed = true; prop.removed = true;
     prop.stopActivity?.(); prop.stopFacing?.(); prop.minimap?.dispose(); prop.workable?.dispose();
-    for (const outputs of prop.loot?.values() ?? []) outputs.forEach(output => output.dispose());
-    prop.loot?.clear(); prop.shadow?.instance.remove(); prop.instance.remove();
+    prop.shadow?.instance.remove(); prop.instance.remove();
   }
 
   dispose(): void {

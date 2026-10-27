@@ -13,8 +13,10 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 it.each([undefined, 'bernie_cat'])('plays Lua growth/shrink queues with source art (%s)', async (skinId) => {
   let sanity = 1;
   const assets = new BernieAssets('/dst/data/anim');
-  const sprite = await createBernieGroundSprite(assets, { getSanityPercent: () => sanity }, skinId);
+  const sprite = createBernieGroundSprite(assets, { getSanityPercent: () => sanity }, skinId);
   const { model } = sprite;
+  // Bernie exists at once; its display loads every form's art before the test inspects the drawn frames.
+  await model.userData.display.artLoaded();
   // The display's root holds the drawn sprite, whose scaled visual holds the merged frame mesh.
   const visual = () => model.children[0].children[0];
   const mesh = visual().children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
@@ -71,14 +73,16 @@ it.each([undefined, 'bernie_cat'])('plays Lua growth/shrink queues with source a
 
     // idle_nodir -> idle_loop preserves time (frame 15), rather than restarting.
     // Independently render an idle sprite at the same source time for comparison.
-    const idle = await createBernieGroundSprite(assets, { getSanityPercent: () => 1 }, skinId);
+    const idle = createBernieGroundSprite(assets, { getSanityPercent: () => 1 }, skinId);
+    await idle.model.userData.display.artLoaded();
     for (let i = 0; i < 15; i++) idle.update(1 / 30);
     const idleMesh = idle.model.children[0].children[0].children[0] as typeof mesh;
     expect(positions()).toEqual(positions(idleMesh));
     idle.dispose();
     // The skin's build replaces the base art at the same source time.
     if (skinId) {
-      const plain = await createBernieGroundSprite(assets, { getSanityPercent: () => 1 });
+      const plain = createBernieGroundSprite(assets, { getSanityPercent: () => 1 });
+      await plain.model.userData.display.artLoaded();
       for (let i = 0; i < 15; i++) plain.update(1 / 30);
       expect(positions()).not.toEqual(positions(plain.model.children[0].children[0].children[0] as typeof mesh));
       plain.dispose();

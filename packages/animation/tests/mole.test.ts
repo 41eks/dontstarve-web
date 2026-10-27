@@ -36,7 +36,6 @@ async function fixture(daytime = false) {
     showMole: () => undefined, dropLoot: (prefab, position) => drops.push({ prefab, position }),
     getEntities: () => [...baits, ...manager.habitat.getMoles()],
   });
-  await manager.prepare();
   const bank = await loadAnim('mole_basic.zip', '/dst/data/anim');
   const lengths = new Map(bank.animations.map(clip => [clip.name, clip.frames.length / clip.frameRate]));
   const mole = (position = new THREE.Vector3()) => {
@@ -149,6 +148,8 @@ it('saves an occupied molehill with its stored items and releases the same child
   expect(loaded.components.inventory.GetItems()[0].id).toBe(baitId);
   expect(loaded.components.inventory.GetItems()[0].snapshot().count).toBe(5);
   restored.awake.set(true); await settle();
+  // Restored asleep, the hill's display loads its art once the tile wakes.
+  await loaded.display.artLoaded();
   expect(loaded.instance.sprite.loaded).toBe(true);
   expect(loaded.instance.sprite.currentAnimation).toBe('mound_idle');
   expect(loaded.instance.position).toBe(hillModel.position);

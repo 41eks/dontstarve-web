@@ -40,7 +40,7 @@ export const CAVE_FERN_DEFINITIONS: Readonly<Record<CaveFernId, PickablePlantDef
 
 /** cave_fern.lua / cave_fern_withered.lua: PICK foliage / cutgrass, burning, and a saved pose. */
 export class CaveFernManager extends PickablePlantManager {
-  spawn(prefabId: CaveFernId, position: THREE.Vector3, saved?: CaveFernRecord): Promise<THREE.Group> {
+  spawn(prefabId: CaveFernId, position: THREE.Vector3, saved?: CaveFernRecord): THREE.Group {
     return this.spawnPlant(CAVE_FERN_DEFINITIONS[prefabId], position, saved);
   }
 

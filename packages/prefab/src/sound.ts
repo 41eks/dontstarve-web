@@ -434,6 +434,11 @@ export async function PreloadSounds(...paths: SoundEventPath[]): Promise<void> {
   })));
 }
 
+/** Decode every registered event, including layers and variants, before the scene starts. */
+export function PrewarmSounds(): Promise<void> {
+  return PreloadSounds(...Object.keys(sounds) as SoundEventPath[]);
+}
+
 /** Optional ground position enables distance attenuation; all sounds use the overall volume multiplier. */
 export function PlaySound(path: SoundEventPath, position?: Vector3, offsetSeconds = 0): SoundHandle {
   const audio = getContext();

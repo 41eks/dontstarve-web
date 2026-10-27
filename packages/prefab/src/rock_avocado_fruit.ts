@@ -5,7 +5,7 @@ import { createResidentGroundItem } from './groundItems';
 import { configureTradableEntity } from './tradable';
 import { createBurnableItemVisual } from './burnableItems';
 import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
-import type { GroundItemFactory, GroundPrefabContext, PreparedGroundSpawn } from './groundPrefab';
+import type { GroundItemFactory, GroundPrefabContext, SpawnGroundItem } from './groundPrefab';
 import type { LootLaunch } from './lootFling';
 import type { Vector3 } from 'three';
 import catalog from './groundItems.json' with { type: 'json' };
@@ -24,7 +24,7 @@ function scatterLaunch(origin: Vector3, target?: Vector3): LootLaunch {
 }
 interface FruitPresentation {
   sprite: ArchiveSpriteCommands;
-  outputs: Map<Product, PreparedGroundSpawn[]>;
+  spawnGroundItem: SpawnGroundItem;
 }
 
 /** rock_avocado_fruit.lua on_mine and stack_size_changed; the inst owns work and consumption. */
@@ -49,7 +49,7 @@ export class RockAvocadoFruit {
   release(presentation: FruitPresentation): void { if (this.presentation === presentation) this.presentation = undefined; }
   private mine(worker: Worker, workdone: number): void {
     const presentation = this.presentation;
-    if (!presentation) throw new Error('Stone fruit mining requires prepared ground products');
+    if (!presentation) throw new Error('Stone fruit mining requires a world to spawn its products');
     const count = this.entity.components.stackable.count;
     const worked = Math.max(1, Math.min(count, Math.ceil(workdone)));
     if (count > worked) presentation.sprite.playOnce('mined', () => presentation.sprite.playOnce('idle'));
@@ -58,10 +58,9 @@ export class RockAvocadoFruit {
     const origin = this.entity.getPosition(), target = worker.getPosition?.();
     for (const [prefab, amount] of counts) {
       if (!amount) continue;
-      const launch = scatterLaunch(origin, target);
-      const output = presentation.outputs.get(prefab)!.shift();
-      if (!output?.spawn(origin, amount, launch)) throw new Error(`Stone fruit product not prepared: ${prefab}`);
-      if (prefab === 'rock_avocado_fruit_ripe') output.spawnedEntity?.PushEvent('split_open', undefined);
+      const product = presentation.spawnGroundItem({ ...catalog.items[prefab], itemId: prefab, count: amount }, origin,
+        { launch: scatterLaunch(origin, target) });
+      if (prefab === 'rock_avocado_fruit_ripe') product?.PushEvent('split_open', undefined);
     }
     if (worked === count) this.entity.remove();
     else { this.entity.components.stackable.count = count - worked; this.workable.SetWorkLeft(count - worked); }
@@ -83,41 +82,30 @@ export function configureRockAvocadoFruitEntity(entity: ItemEntity): void {
   else if (entity.prefab === 'rock_avocado_fruit_ripe') { entity.addTag('molebait'); entity.addTag('cookable'); }
 }
 
-/** All possible outputs are prepared before a stack becomes an actionable ground target. */
+/** A stack spawns its products when it is mined; their displays load the art. */
 export function createRockAvocadoGroundFactory(context: GroundPrefabContext): GroundItemFactory {
   const displays = new Set<PrefabDisplay>();
   return {
     itemIds: ['rock_avocado_fruit', 'rock_avocado_fruit_ripe'], configureEntity: configureRockAvocadoFruitEntity,
-    async create(item) {
+    create(item) {
       if (item.itemId === 'rock_avocado_fruit_ripe') {
-        const base = await createResidentGroundItem(context, item), sprite = base.instance.sprite;
+        const base = createResidentGroundItem(context, item), sprite = base.instance.sprite;
         let stop: (() => void) | undefined;
-        let visual;
-        try { visual = await createBurnableItemVisual(context, item.itemId, base, displays); }
-        catch (error) { base.visual.dispose(); throw error; }
+        const visual = createBurnableItemVisual(context, item.itemId, base, displays);
         return { ...visual, bindEntity(entity: ItemEntity) {
           visual.bindEntity?.(entity);
           stop = entity.ListenForEvent('split_open', () => sprite.playOnce('split_open', () => sprite.playOnce('idle_split_open')));
         }, dispose() { stop?.(); visual.dispose(); } };
       }
-      const { visual, instance: { sprite } } = await createResidentGroundItem(context, item);
-      if (!context.prepareSpawn) { visual.dispose(); throw new Error('Stone fruit needs prepared loot'); }
-      const requests = PRODUCTS.flatMap(prefab => Array.from({ length: item.count }, () => ({ prefab,
-        request: context.prepareSpawn!({ ...catalog.items[prefab], itemId: prefab, count: 40 }),
-      })));
-      const results = await Promise.allSettled(requests.map(output => output.request));
-      if (results.some(result => result.status === 'rejected')) {
-        visual.dispose(); results.forEach(result => { if (result.status === 'fulfilled') result.value.dispose(); });
-        throw (results.find(result => result.status === 'rejected') as PromiseRejectedResult).reason;
-      }
-      const outputs = new Map<Product, PreparedGroundSpawn[]>(PRODUCTS.map(id => [id, []]));
-      results.forEach((result, index) => { if (result.status === 'fulfilled') outputs.get(requests[index].prefab)!.push(result.value); });
-      const presentation = { sprite, outputs };
+      const { visual, instance: { sprite } } = createResidentGroundItem(context, item);
+      const { spawnGroundItem } = context;
+      if (!spawnGroundItem) throw new Error('Stone fruit needs a world to spawn its products');
+      const presentation = { sprite, spawnGroundItem };
       let controller: RockAvocadoFruit | undefined;
       return { ...visual, bindEntity(entity: ItemEntity) {
         controller = entity.getComponent<RockAvocadoFruit>('rock_avocado_fruit')!; controller.bind(presentation);
       }, dispose() {
-        controller?.release(presentation); for (const pieces of outputs.values()) pieces.forEach(output => output.dispose()); visual.dispose();
+        controller?.release(presentation); visual.dispose();
       } };
     },
     renderEntities: () => [...displays].flatMap(display => display.fxRenderEntries),

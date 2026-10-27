@@ -12,7 +12,7 @@ import { MiniMapEntity } from './minimapEntity';
 import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
 import { MakeObstaclePhysics } from './standardcomponents';
-import type { GroundItemDefinition, PreparedGroundSpawn } from './groundPrefab';
+import type { SpawnGroundItem } from './groundPrefab';
 import { PlaySound, PreloadSounds } from './sound';
 import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
 import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
@@ -49,7 +49,8 @@ export interface CaveEntranceWorld extends ToolMouseTargetWorld {
   tickingarea?: TileStateQuery;
   /** The shard link behind `cave_entrance_open`; without it the destination is never available. */
   shard?: WorldMigratorShard;
-  prepareSpawn(definition: GroundItemDefinition, fling?: boolean): Promise<PreparedGroundSpawn>;
+  /** lootdropper:DropLoot when the closed entrance is mined open; the loot's display loads its art. */
+  spawnGroundItem: SpawnGroundItem;
 }
 
 export function isCaveEntranceId(value: string): value is CaveEntranceId {
@@ -67,7 +68,6 @@ interface Entrance {
   sprite: ArchiveSpriteCommands;
   minimap: MiniMapEntity;
   workable?: Workable;
-  loot: Map<string, PreparedGroundSpawn[]>;
   stopActivity: () => void;
   stopMigration?: () => void;
   removed: boolean;
@@ -91,24 +91,12 @@ export class CaveEntranceManager {
   async spawn(prefab: CaveEntranceId, position: THREE.Vector3, saved?: CaveEntranceRecord): Promise<THREE.Group> {
     if (this.disposed) throw new Error('Cave entrances have been disposed');
     if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError('Invalid cave entrance position');
-    const closed = prefab === CAVE_ENTRANCE_ID;
-    const loot = new Map<string, PreparedGroundSpawn[]>();
-    const resources = await Promise.allSettled([
-      this.loadSource(),
-      PreloadSounds('dontstarve/wilson/rock_break'),
-      ...closed ? CLOSED_LOOT.map(itemId => this.world.prepareSpawn({ ...catalog.items[itemId], itemId, count: 1 }, true)) : [],
-    ]);
-    resources.slice(2).forEach((result, index) => {
-      if (result.status !== 'fulfilled') return;
-      const itemId = CLOSED_LOOT[index];
-      loot.set(itemId, [...loot.get(itemId) ?? [], result.value as PreparedGroundSpawn]);
-    });
+    const resources = await Promise.allSettled([this.loadSource(), PreloadSounds('dontstarve/wilson/rock_break')]);
     const failed = resources.find(result => result.status === 'rejected');
     if (failed || this.disposed || !this.factory) {
-      for (const outputs of loot.values()) outputs.forEach(output => output.dispose());
       throw failed?.status === 'rejected' ? failed.reason : new Error('Cave entrances have been disposed');
     }
-    return this.create(prefab, loot, position, saved);
+    return this.create(prefab, position, saved);
   }
 
   private loadSource() {
@@ -127,7 +115,7 @@ export class CaveEntranceManager {
     return entity;
   }
 
-  private create(prefab: CaveEntranceId, loot: Map<string, PreparedGroundSpawn[]>, position: THREE.Vector3,
+  private create(prefab: CaveEntranceId, position: THREE.Vector3,
     saved: CaveEntranceRecord | undefined): THREE.Group {
     const { instance, display } = this.createSprite(this.factory!, prefab);
     const model = display.model, sprite = instance.sprite;
@@ -135,7 +123,7 @@ export class CaveEntranceManager {
     instance.entityId = saved?.id ?? newEntityId();
     instance.addTag('antlion_sinkhole_blocker');
     const inst = actionEntity(model, prefab);
-    const entrance: Entrance = { prefab, instance, display, sprite, loot, removed: false, stopActivity: () => {},
+    const entrance: Entrance = { prefab, instance, display, sprite, removed: false, stopActivity: () => {},
       minimap: new MiniMapEntity(model.position) };
     entrance.minimap.SetIcon(prefab === CAVE_ENTRANCE_ID ? 'cave_closed.png' : 'cave_open.png');
     MakeObstaclePhysics(instance, PHYSICS_RADIUS);
@@ -170,13 +158,8 @@ export class CaveEntranceManager {
     entrance.workable = workable;
     workable.SetWorkAction('MINE');
     workable.SetWorkLeft(ROCKS_MINE);
-    const lootdropper = new LootDropper(inst, (itemId, point) => {
-      const prepared = entrance.loot.get(itemId)?.shift();
-      if (!prepared) return undefined;
-      const spawned = prepared.spawn(new THREE.Vector3(point.x, point.y, point.z));
-      if (!spawned) prepared.dispose();
-      return spawned ? prepared.spawnedEntity : undefined;
-    });
+    const lootdropper = new LootDropper(inst, (itemId, point) => this.world.spawnGroundItem(
+      { ...catalog.items[itemId as keyof typeof catalog.items], itemId, count: 1 }, new THREE.Vector3(point.x, point.y, point.z), { fling: true }));
     lootdropper.SetLoot(CLOSED_LOOT);
     workable.SetOnWorkCallback((_worker, workleft) => {
       if (workleft > 0) {
@@ -188,7 +171,7 @@ export class CaveEntranceManager {
       lootdropper.DropLoot();
       const record: CaveEntranceRecord = { id: newEntityId(), transform: { position: [model.position.x, 0, model.position.z], rotationY: 0 }, components: {} };
       this.remove(model);
-      this.create(CAVE_ENTRANCE_OPEN_ID, new Map(), model.position, record);
+      this.create(CAVE_ENTRANCE_OPEN_ID, model.position, record);
     });
     Object.assign(model.userData.components, { workable, lootdropper });
     new ToolMouseTarget(inst, entrance.instance, workable, this.world.handEquipment);
@@ -229,8 +212,7 @@ export class CaveEntranceManager {
     const entrance = this.entrances.get(model); if (!entrance) return;
     this.entrances.delete(model); model.userData.removed = true; entrance.removed = true;
     entrance.minimap.dispose(); entrance.workable?.dispose();
-    for (const outputs of entrance.loot.values()) outputs.forEach(output => output.dispose());
-    entrance.loot.clear(); entrance.stopActivity(); entrance.stopMigration?.(); entrance.instance.remove(); entrance.display.dispose();
+    entrance.stopActivity(); entrance.stopMigration?.(); entrance.instance.remove(); entrance.display.dispose();
   }
 
   dispose(): void {

@@ -15,7 +15,7 @@ import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { inventoryStateFromSave } from '../../../src/save/inventoryState';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
-import { bindTestWorld } from './worldContentFixture';
+import { bindTestWorld, drawn } from './worldContentFixture';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
@@ -31,11 +31,11 @@ function setup() {
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
   const { season, snowLevel } = bindTestWorld(scheduler);
   const bushes = new BerrybushManager(scene, '/dst/data/anim', { physics,
-    prepareSpawn: (definition, fling) => ground.prepareSpawn(definition, fling) });
+    spawnGroundItem: (definition, position, options) => ground.spawnGroundItem(definition, position, options) });
   const registry = new EntityRegistry();
   registry.register(PREFAB_DEFINITIONS.berrybushes, {
-    restore: (_, record) => bushes.spawn(new THREE.Vector3(...record.transform.position), record),
-    debugSpawn: () => bushes.spawn(player.position),
+    restore: (_, record) => drawn(bushes.spawn(new THREE.Vector3(...record.transform.position), record)),
+    debugSpawn: () => drawn(bushes.spawn(player.position)),
     exportRecords: () => bushes.exportRecords().map(record => ({ prefabId: 'berrybush', record })), dispose: () => bushes.dispose(),
   });
   registry.register(PREFAB_DEFINITIONS.groundItems, {
@@ -79,7 +79,7 @@ it('picks native berries without consuming cycles, pauses in winter and reloads 
     expect((await executeDebugCommand('c_save()', s.inventory, undefined, () => { json = s.save(); })).ok).toBe(true);
     const saved = deserializeSave(json, SAVE_CATALOG), record = saved.world.entities.berrybush[0];
     restored.season.set({ season: 'winter', progress: 0 }); await settleEffects();
-    await restored.bushes.spawn(new THREE.Vector3(...record.transform.position), record);
+    await drawn(restored.bushes.spawn(new THREE.Vector3(...record.transform.position), record));
     restored.inventory.replaceState(inventoryStateFromSave(saved), SAVE_CATALOG.recipes);
     for (const ground of saved.world.entities.ground_item) await restored.ground.spawnFromSave(ground.id,
       { ...SAVE_CATALOG.items[ground.components.stack!.itemId], ...ground.components.stack! }, new THREE.Vector3(...ground.transform.position));
@@ -106,7 +106,7 @@ it('preserves a reskinned bush through digging, item pickup/drop, transplant, fe
   const s = setup(), restored = setup();
   try {
     const position = new THREE.Vector3(24, 0, 36);
-    const model = await s.bushes.spawn(position), originalId = model.userData.instance?.entityId;
+    const model = await drawn(s.bushes.spawn(position)), originalId = model.userData.instance?.entityId;
     const reskin = await s.bushes.reskinTargets[0].prepareNextSkin();
     expect(reskin.apply()).toBe(true); reskin.dispose();
     expect(model.userData.instance?.skinId).toBe('berrybush_cawnival');
@@ -123,15 +123,13 @@ it('preserves a reskinned bush through digging, item pickup/drop, transplant, fe
     s.inventory.GiveItem(item);
     expect(s.inventory.getEntity(inventorySlotAddress(0))?.id).toBe(item.id);
     const detached = s.inventory.extract(inventorySlotAddress(0), 1, item)!;
-    const drop = await s.ground.prepareSpawn({ ...SAVE_CATALOG.items[root.itemId], ...detached.snapshot(), entity: detached });
-    expect(drop.spawn(new THREE.Vector3(60, 0, 36))).toBe(true);
+    expect(s.ground.spawnGroundItem({ ...SAVE_CATALOG.items[root.itemId], ...detached.snapshot(), entity: detached },
+      new THREE.Vector3(60, 0, 36))).toBe(detached);
     expect(s.ground.exportRecords().at(-1)?.components.stack?.skinId).toBe(root.skinId);
-    const prepared = await s.bushes.prepareTransplant(root.skinId);
     expect(item.components.deployable!.Deploy(position, { position, PushEvent: vi.fn() }, {
-      canDeployPlant: () => true, deployPlant: (point: THREE.Vector3) => prepared.spawn(point),
+      canDeployPlant: () => true, deployPlant: (point: THREE.Vector3) => s.bushes.transplant(point, root.skinId),
     })).toBe(true);
-    prepared.dispose();
-    const replanted = s.bushes.digTargets[0].model, pickable = replanted.userData.components.pickable;
+    const replanted = await drawn(s.bushes.digTargets[0].model), pickable = replanted.userData.components.pickable;
     expect(replanted.userData.instance?.skinId).toBe('berrybush_cawnival');
     expect(pickable.exportState()).toMatchObject({ picked: true, transplanted: true, cyclesLeft: 0 });
     expect(replanted.userData.animationController.currentAnimation).toBe('dead');
@@ -154,7 +152,7 @@ it('preserves a reskinned bush through digging, item pickup/drop, transplant, fe
     const saved = deserializeSave(json, SAVE_CATALOG), record = saved.world.entities.berrybush[0];
     expect(record.id).not.toBe(original.id);
     expect(record.components.plant?.skinId).toBe('berrybush_mystical');
-    await restored.bushes.spawn(new THREE.Vector3(...record.transform.position), record);
+    await drawn(restored.bushes.spawn(new THREE.Vector3(...record.transform.position), record));
     expect(restored.bushes.exportRecords()).toEqual([record]);
     for (let remaining = 4; remaining > 0; remaining--) {
       s.advance(pickable.remainingSeconds); expect(pickable.pick(s.picker)).toBe(true);
@@ -178,7 +176,7 @@ it('updates snow art after spawning and reskinning and cleans up each removed pl
   };
   try {
     s.snowLevel.set(.5);
-    const first = await s.bushes.spawn(new THREE.Vector3()), second = await s.bushes.spawn(new THREE.Vector3(20, 0, 0));
+    const first = await drawn(s.bushes.spawn(new THREE.Vector3())), second = await drawn(s.bushes.spawn(new THREE.Vector3(20, 0, 0)));
     const initialSnow = drawnIndices(first), secondSnow = drawnIndices(second);
     s.snowLevel.set(.014); await settleEffects();
     expect(drawnIndices(first)).toBeLessThan(initialSnow);

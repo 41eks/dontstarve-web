@@ -1,20 +1,16 @@
 import { test, expect } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
+import { readSaveDownload } from './save-download';
+import { minimalSave, savePageUrl } from './inline-save';
 
 test('cursor swaps, rejected placement and save reload preserve inventory and backpack entities', async ({ page }) => {
   test.setTimeout(120_000);
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
-  await page.route('**/saves/initial-world.json', async route => {
-    const response = await route.fetch(), save = await response.json();
-    for (const container of Object.values(save.players.local.inventory.containers) as any[]) container.slots = [];
-    save.players.local.inventory.containers['player:inventory'].slots = [
-      { slotKey: '2', item: { itemId: 'torch', count: 1 } },
-      { slotKey: '4', item: { itemId: 'log', count: 8 } },
-    ];
-    await route.fulfill({ response, json: save });
-  });
-  await page.goto('/tests/dst-lighting.html');
+  await page.goto(savePageUrl(minimalSave({ inventory: [
+    { slotKey: '2', item: { itemId: 'torch', count: 1 } },
+    { slotKey: '4', item: { itemId: 'log', count: 8 } },
+  ] })));
   const urls = Object.fromEntries(['main', 'save/deserialize', 'save/catalog'].map(name =>
     [name, `/@fs${fileURLToPath(new URL(`../../../src/${name}.ts`, import.meta.url))}`]));
   const original = await page.evaluate(async url => {
@@ -84,10 +80,7 @@ test('cursor swaps, rejected placement and save reload preserve inventory and ba
   const download = page.waitForEvent('download');
   await page.evaluate(() => document.querySelector('dst-debug-console')!.dispatchEvent(
     new CustomEvent('game:debug-command', { detail: { command: 'c_save()' } })));
-  const stream = await (await download).createReadStream();
-  const chunks = [];
-  for await (const chunk of stream!) chunks.push(chunk);
-  const json = Buffer.concat(chunks).toString();
+  const json = await readSaveDownload(await (await download).path(), 'Master');
   const saved = await page.evaluate(async ({ json, urls }) => {
     const { deserializeSave } = await import(urls['save/deserialize']);
     const { SAVE_CATALOG } = await import(urls['save/catalog']);
@@ -98,8 +91,7 @@ test('cursor swaps, rejected placement and save reload preserve inventory and ba
   const bag = containers['player:equipment'].slots.find(slot => slot.slotKey === 'body')!.item;
   expect(bag.container!.slots).toEqual([]);
   expect(containers['player:cursor'].slots[0].item).toEqual(original.torch);
-  await page.route('**/saves/initial-world.json', route => route.fulfill({ json: saved }));
-  await page.reload();
+  await page.goto(savePageUrl(saved));
   expect(await page.evaluate(async url => {
     const { inventory } = await import(url);
     return inventory.getEntity({ containerId: 'player:cursor', slotKey: '0' })?.snapshot();

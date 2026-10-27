@@ -7,7 +7,7 @@ import { PlayerActionPicker } from './playeractionpicker.ts';
 import { PointerRaycaster } from './pointerRaycaster.ts';
 import type { ActionAnimationController, ActionLocomotor, ActionWorldContext } from './actionContext.ts';
 import type { EquipmentEntity } from '../../signals/src/equipment.ts';
-import type { SpellCastDoer, SpellCasterComponent, SpellTarget, PreparedSpellCast } from '../../componets/src/spellcaster.ts';
+import type { SpellCastDoer, SpellCasterComponent, SpellTarget } from '../../componets/src/spellcaster.ts';
 import { collectEquippedActions, equippedActionEntity } from './componentactions.ts';
 export type { SpellCastDoer, SpellCastMap, SpellCasterComponent } from '../../componets/src/spellcaster.ts';
 type SpellCastAnimation = Pick<ActionAnimationController, 'stategraph' | 'cancelEmote' | 'setFacing'>;
@@ -29,12 +29,12 @@ function isSpellCasterItem(item: EquipmentEntity | undefined): item is SpellCast
 
 /** actions.lua CASTSPELL.fn: the real invobject owns CanCast and CastSpell. */
 export function createCastSpellAction(item: SpellCasterItem, doer: SpellCastDoer, position: THREE.Vector3,
-  isHeld: () => boolean, target?: SpellCastTarget, prepared?: () => PreparedSpellCast | undefined): BufferedAction<'CASTSPELL'> {
+  isHeld: () => boolean, target?: SpellCastTarget): BufferedAction<'CASTSPELL'> {
   const point = position.clone();
   const valid = () => !item.isRemoved && isHeld() && (!target || (target.isValid() && !target.hasTag('nomagic')))
     && (item.getComponent<SpellCasterComponent>('spellcaster')?.canCast(doer, target, target?.position ?? point) ?? false);
   return new BufferedAction('CASTSPELL', () =>
-    item.getComponent<SpellCasterComponent>('spellcaster')?.castSpell(target, target?.position ?? point, doer, prepared?.()) ?? false,
+    item.getComponent<SpellCasterComponent>('spellcaster')?.castSpell(target, target?.position ?? point, doer) ?? false,
   valid, { invobject: item, target });
 }
 
@@ -44,10 +44,8 @@ export class SpellCastActionController {
   private readonly stopHover: () => void;
   private readonly stopEquipment: () => void;
   private readonly stopEvents: () => void;
-  private pending?: { item: SpellCasterItem; point: THREE.Vector3; target?: SpellCastTarget; action: BufferedAction<'CASTSPELL'>; ready: boolean };
-  private prepared?: PreparedSpellCast;
+  private pending?: { item: SpellCasterItem; point: THREE.Vector3; target?: SpellCastTarget; action: BufferedAction<'CASTSPELL'> };
   private active?: BufferedAction<'CASTSPELL'>;
-  private version = 0;
   private disposed = false;
   private readonly world: ActionWorldContext;
   private readonly animation: SpellCastAnimation;
@@ -55,16 +53,14 @@ export class SpellCastActionController {
   private readonly handEquipment: HandEquipmentSignal;
   private readonly doer: SpellCastDoer;
   private readonly isManualMovement: () => boolean;
-  private readonly onError: (error: unknown) => void;
   private readonly getTargets: (model?: THREE.Object3D) => readonly SpellCastTarget[];
 
   constructor(world: ActionWorldContext, animation: SpellCastAnimation, locomotor: ActionLocomotor,
     handEquipment: HandEquipmentSignal, doer: SpellCastDoer, isManualMovement = () => false,
-    onError: (error: unknown) => void = console.error,
     getTargets: (model?: THREE.Object3D) => readonly SpellCastTarget[] = () => []) {
     this.getTargets = getTargets;
     this.world = world; this.animation = animation; this.locomotor = locomotor;
-    this.handEquipment = handEquipment; this.doer = doer; this.isManualMovement = isManualMovement; this.onError = onError;
+    this.handEquipment = handEquipment; this.doer = doer; this.isManualMovement = isManualMovement;
     this.picker = world.mouseActions ?? new PlayerActionPicker(new PointerRaycaster(world),
       () => world.player.userData.controllerEnabled !== false);
     this.stopHover = this.picker.register(model => {
@@ -104,38 +100,30 @@ export class SpellCastActionController {
         || !item.getComponent<SpellCasterComponent>('spellcaster')?.canCast(this.doer, target, target.position) : !this.canUsePoint(item, point))) return false;
     this.cancel();
     this.world.actionEvents?.emit('action:begin', { owner: this, action: 'CASTSPELL' });
-    const version = this.version;
-    const action = createCastSpellAction(item, this.doer, point, () => this.equipped() === item, target, () => this.prepared);
-    const pending = { item, point: point.clone(), target, action, ready: false };
-    this.pending = pending;
-    void item.getComponent<SpellCasterComponent>('spellcaster')!.prepareCast(target).then(prepared => {
-      if (this.disposed || version !== this.version || this.pending !== pending) { prepared?.dispose(); return; }
-      this.prepared = prepared || undefined;
-      if (!action.isValid()) { this.cancel(); return; }
-      pending.ready = true;
-      this.update();
-    }).catch(error => { if (version === this.version) { this.cancel(); this.onError(error); } });
+    const action = createCastSpellAction(item, this.doer, point, () => this.equipped() === item, target);
+    this.pending = { item, point: point.clone(), target, action };
+    this.update();
     return true;
   }
 
   update(): void {
     if (this.active && !this.animation.stategraph.isActionActive(this.active)) {
-      this.active = undefined; this.prepared?.dispose(); this.prepared = undefined;
+      this.active = undefined;
     }
     const pending = this.pending;
     if (!pending) return;
     if (this.isManualMovement() || !pending.action.isValid()) { this.cancel(); return; }
     if (pending.target) pending.point.copy(pending.target.position);
-    const distance = this.doer.position.clone().sub(pending.point).setY(0);
     const reach = ACTIONS.CASTSPELL.distance * 3; // Scene units are 3 per source unit.
-    if (distance.lengthSq() > reach ** 2) {
+    if (this.doer.position.distanceToSquared(pending.point) > reach ** 2) {
+      const distance = this.doer.position.clone().sub(pending.point);
       const destination = pending.point.clone().addScaledVector(distance.normalize(), reach * 0.8);
       if (!this.locomotor.destination || this.locomotor.destination.distanceToSquared(destination) > 0.01)
         if (!this.locomotor.goToPoint(destination)) this.cancel();
       return;
     }
     this.locomotor.stop();
-    if (!pending.ready || this.animation.stategraph.hasStateTag('busy')) return;
+    if (this.animation.stategraph.hasStateTag('busy')) return;
     const direction = pending.point.clone().sub(this.doer.position).setY(0);
     if (direction.lengthSq() > 0) {
       const forward = this.world.camera.getWorldDirection(new THREE.Vector3()).setY(0).normalize();
@@ -151,14 +139,12 @@ export class SpellCastActionController {
   }
 
   cancel(): void {
-    this.version++;
     if (this.pending) this.locomotor.stop();
     this.pending = undefined;
     // A stale controller cannot cancel another item's CASTSPELL.
     if (this.active && this.animation.stategraph.isActionActive(this.active))
       this.animation.stategraph.cancelAction('CASTSPELL');
     this.active = undefined;
-    this.prepared?.dispose(); this.prepared = undefined;
   }
   dispose(): void {
     if (this.disposed) return;

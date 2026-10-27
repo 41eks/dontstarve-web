@@ -39,17 +39,14 @@ export const SAPLING_DEFINITIONS: Readonly<Record<SaplingPrefabId, PickablePlant
 
 /** sapling.lua: PICK twigs, DIG, burning and winter-paused regrowth. */
 export class SaplingManager extends PickablePlantManager {
-  spawn(prefabId: SaplingPrefabId, position: THREE.Vector3, saved?: SaplingRecord): Promise<THREE.Group> {
+  spawn(prefabId: SaplingPrefabId, position: THREE.Vector3, saved?: SaplingRecord): THREE.Group {
     return this.spawnPlant(SAPLING_DEFINITIONS[prefabId], position, saved);
   }
 
-  async prepareTransplant(prefabId: SaplingPrefabId): Promise<{ spawn(position: THREE.Vector3): boolean; dispose(): void }> {
-    const prepared = await this.preparePlant(SAPLING_DEFINITIONS[prefabId]);
-    return { dispose: () => prepared.dispose(), spawn: position => {
-      const model = prepared.spawn(position);
-      model.userData.components.pickable.OnTransplant();
-      return true;
-    } };
+  /** dug_sapling ondeploy: SpawnPrefab, then OnTransplant; the display loads the art. */
+  transplant(prefabId: SaplingPrefabId, position: THREE.Vector3): boolean {
+    this.spawnPlant(SAPLING_DEFINITIONS[prefabId], position).userData.components.pickable.OnTransplant();
+    return true;
   }
 
   exportRecords(): { prefabId: SaplingPrefabId; record: SaplingRecord }[] {

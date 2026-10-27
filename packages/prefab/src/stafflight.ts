@@ -1,13 +1,12 @@
 import * as THREE from 'three';
 import { createEffect, createMemo, createSignal, readonlySignal, getBoundWatchWorldContent, type Memo, type ReadonlySignal, type Signal } from '@dontstarve-web/signals';
-import { createAnimatedSpriteFactory, type AnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
-import type { PrefabDisplay } from '@dontstarve-web/display';
+import { SpriteResources, type PrefabDisplay } from '@dontstarve-web/display';
 import { createPrefabEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
 import { type PrefabLocalLight } from './localLight';
 import { TILE_SIZE } from './tile';
 import { OPALSTAFF_COLOUR, YELLOWSTAFF_COLOUR } from './yellowstaff';
 import { newEntityId } from './saveRecord';
-import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
+import { PlaySound, type SoundHandle } from './sound';
 import { actionEntity, FindEntities } from './actionEntity';
 import { Propagator } from '../../componets/src/propagator';
 import { Heater } from '../../componets/src/heater';
@@ -80,12 +79,10 @@ interface Star {
 
 /** Independent summon lifetimes; shared DST textures, separate merged frame meshes. */
 export class DwarfStarManager {
-  private factoryRequest?: Promise<AnimatedSpriteFactory>;
-  private spriteFactory?: AnimatedSpriteFactory;
+  private readonly resources: SpriteResources;
   private readonly stars = new Set<Star>();
   private disposed = false;
   private readonly scene: THREE.Scene;
-  private readonly animationBaseUrl: string;
   private readonly duration: number;
   private readonly getPlayerPosition?: () => Pick<THREE.Vector3, 'x' | 'z'>;
   private elapsedSeconds = 0;
@@ -94,38 +91,25 @@ export class DwarfStarManager {
   constructor(scene: THREE.Scene, animationBaseUrl: string, prefabId: StaffLightId = DWARF_STAR_ID,
     getPlayerPosition?: () => Pick<THREE.Vector3, 'x' | 'z'>) {
     this.scene = scene;
-    this.animationBaseUrl = animationBaseUrl;
+    this.resources = new SpriteResources(animationBaseUrl);
     this.prefabId = prefabId;
     this.getPlayerPosition = getPlayerPosition;
     this.duration = prefabId === POLAR_LIGHT_ID ? POLAR_LIGHT_DURATION : DWARF_STAR_DURATION;
   }
 
-  async prepare(): Promise<void> {
-    const [factory] = await Promise.all([this.factory(), PreloadSounds('dontstarve/common/staff_star_create', this.loopEvent)]);
-    if (this.disposed) throw new Error('Dwarf star manager has been disposed');
-    this.spriteFactory = factory;
-  }
-
-  async spawn(position: THREE.Vector3, saved?: { id: string; remainingSeconds: number }): Promise<THREE.Group> {
-    await this.prepare();
-    return this.spawnPrepared(position, saved);
-  }
-
-  /** Preloaded CASTSPELL commits synchronously at its source stategraph frame. */
-  spawnPrepared(position: THREE.Vector3, saved?: { id: string; remainingSeconds: number }): THREE.Group {
+  /** SpawnPrefab at CASTSPELL's source stategraph frame: the star exists now and its display loads the art. */
+  spawn(position: THREE.Vector3, saved?: { id: string; remainingSeconds: number }): THREE.Group {
     const remainingSeconds = saved?.remainingSeconds ?? this.duration;
     if (![position.x, position.y, position.z].every(Number.isFinite)
       || !Number.isFinite(remainingSeconds) || remainingSeconds <= 0 || remainingSeconds > this.duration)
       throw new RangeError(`Invalid ${this.prefabId} position or lifetime`);
     if (this.disposed) throw new Error('Dwarf star manager has been disposed');
-    if (!this.spriteFactory) throw new Error('Dwarf star assets must be prepared before spawning');
-    const factory = this.spriteFactory, name = this.prefabId, entityId = saved?.id ?? newEntityId();
-    // A star spawned near the player is drawn at once, so its appear clip plays; a far one starts asleep.
+    const name = this.prefabId, entityId = saved?.id ?? newEntityId();
+    // A star spawned near the player is drawn once its art is here, so its appear clip plays; a far one starts asleep.
     const nearby = this.isNearby(position, this.getPlayerPosition?.());
-    const { instance, display } = createPrefabEntity(this.prefabId, { create: (animation, frame) => {
-      const sprite = factory.create({ initialAnimation: animation, initialFrame: frame, name });
-      return sprite;
-    }, release: sprite => factory.disposeSprite(sprite) }, { name: 'idle_loop' }, this.prefabId, instance => { if (!nearby) instance.setActive(false); });
+    const archive = this.prefabId === POLAR_LIGHT_ID ? 'star_cold.zip' : 'star_hot.zip';
+    const { instance, display } = createPrefabEntity(this.prefabId, this.resources.factory({ animationArchive: archive, buildArchive: archive }),
+      { name: 'idle_loop' }, name, instance => { if (!nearby) instance.setActive(false); });
     const model = display.model;
     instance.position.set(position.x, 0, position.z);
     instance.entityId = entityId;
@@ -214,8 +198,7 @@ export class DwarfStarManager {
       this.settle(star, false);
       this.removeStar(star);
     }
-    this.spriteFactory = undefined;
-    void this.factoryRequest?.then((factory) => factory.dispose(), () => undefined);
+    this.resources.dispose();
   }
 
   /** Explicit entity removal, independent of the queued presentation effect. */
@@ -234,16 +217,6 @@ export class DwarfStarManager {
     if (!this.settle(star, star.awake)) return true;
     if (star.phase.peek() === 'active') this.beginDisappearance(star, this.elapsedSeconds, star.awake);
     return true;
-  }
-
-  private factory(): Promise<AnimatedSpriteFactory> {
-    if (this.disposed) return Promise.reject(new Error('Dwarf star manager has been disposed'));
-    if (!this.factoryRequest) {
-      this.factoryRequest = createAnimatedSpriteFactory(this.animationBaseUrl,
-        this.prefabId === POLAR_LIGHT_ID ? 'star_cold.zip' : 'star_hot.zip');
-      void this.factoryRequest.catch(() => { this.factoryRequest = undefined; });
-    }
-    return this.factoryRequest;
   }
 
   private get loopEvent() {

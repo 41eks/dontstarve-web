@@ -1,7 +1,6 @@
 import { Vector3 } from 'three';
 import { ItemEntity, type InventoryStack } from '@dontstarve-web/inventory';
 import { createEffect, createSignal, readonlySignal, watchSignal, WorldContentKey, type GetWatchWorldContent, type TileStateQuery, type ReadonlySignal } from '@dontstarve-web/signals';
-import { ArchiveSpriteAssets, preloadSharedArchiveSprite, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { fourFacingFromRotation } from '@dontstarve-web/animation/facing';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { ComponentTimer } from '../../componets/src/timer';
@@ -22,7 +21,8 @@ import { Propagator } from '../../componets/src/propagator';
 import { Hauntable } from '../../componets/src/hauntable';
 import { ErodeAway } from '../../componets/src/erodeaway';
 import { createArchiveEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
-import type { ArchiveSpriteCommands } from '@dontstarve-web/display';
+import { SpriteResources, type ArchiveSpriteCommands, type ArchiveSpriteSource } from '@dontstarve-web/display';
+import { animationLengths } from './animationTimings';
 import { Workable } from '../../componets/src/workable';
 import { LocoMotor, type LocoMotorInst } from '../../componets/src/locomotor';
 import { LightFlierBrain, type LightFlierBrainInst } from '../../brains/src/lightflierbrain';
@@ -32,10 +32,11 @@ import type { BrainEntity, BrainWorld } from '../../brains/src/types';
 import type { GroundItemFactory, GroundItemVisual, GroundPrefabContext } from './groundPrefab';
 import type { LightFlierFlower } from './lightflier_flower';
 import { WORLD_SCALE, MakeGhostPhysics } from './standardcomponents';
-import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
+import { PlaySound, type SoundHandle } from './sound';
 
 export const LIGHTFLIER_ID = 'lightflier';
 export const LIGHTFLIER_PERISH_TIME = 2 * 480;
+const LIGHTFLIER_ANIMATION_LENGTHS = animationLengths('lightflier.zip');
 export const LIGHTFLIER_TAGS = ['lightflier', 'cavedweller', 'flying', 'ignorewalkableplatformdrowning', 'insect',
   'smallcreature', 'lightbattery', 'lunar_aligned', 'show_spoilage', 'small_livestock', 'formation_lightflier'] as const;
 export const LIGHTFLIER_SOUNDS = ['grotto/creatures/light_bug/fly_LP', 'grotto/creatures/light_bug/hit', 'grotto/creatures/light_bug/death'] as const;
@@ -66,29 +67,19 @@ export class LightFlierHabitat {
   readonly flies = new Set<LightFlier>();
   readonly homes = new Map<string, LightFlierFlower>();
   readonly formations = new Set<Leader>();
-  private readonly assets: ArchiveSpriteAssets;
-  private spriteFactory?: Awaited<ReturnType<typeof preloadSharedArchiveSprite>>;
-  private prepared?: Promise<void>;
-  private lengths = new Map<string, number>();
+  private readonly resources: SpriteResources;
+  readonly source: ArchiveSpriteSource;
   private readonly leaderTimers = new Map<Leader, ComponentTimer>();
   private readonly distributenext = new Set<Leader>();
   private disposed = false;
   readonly services: LightFlierServices;
-  constructor(base: string, services: LightFlierServices) { this.assets = new ArchiveSpriteAssets('lightflier', base); this.services = services; }
-  prepare(): Promise<void> {
-    return this.prepared ??= Promise.all([
-      preloadSharedArchiveSprite(this.assets, { animationArchive: 'lightflier.zip', buildArchives: ['lightflier.zip'], bank: 'lightflier' }),
-      this.assets.loadAnimation('lightflier.zip'), PreloadSounds(...LIGHTFLIER_SOUNDS),
-    ]).then(([factory, bank]) => {
-      if (this.disposed) throw new Error('Lightflier habitat disposed');
-      this.spriteFactory = factory;
-      this.lengths = new Map(bank.animations.map(clip => [clip.name, clip.frames.length / clip.frameRate]));
-    });
+  constructor(base: string, services: LightFlierServices) {
+    this.resources = new SpriteResources(base, 'lightflier'); this.services = services;
+    this.source = this.resources.archive({ animationArchive: 'lightflier.zip', buildArchives: ['lightflier.zip'], bank: 'lightflier' });
   }
-  createSprite(animation = 'walk_loop', loop = true): ArchiveSprite { if (!this.spriteFactory) throw new Error('Lightflier art was not prepared'); return this.spriteFactory(animation, loop, LIGHTFLIER_ID); }
-  bind(fly: LightFlier): void { fly.bindWorld(this, this.lengths); }
+  bind(fly: LightFlier): void { fly.bindWorld(this, LIGHTFLIER_ANIMATION_LENGTHS); }
   spawn(position: Vector3): LightFlier {
-    if (!this.spriteFactory || this.disposed) throw new Error('Lightflier habitat unavailable');
+    if (this.disposed) throw new Error('Lightflier habitat unavailable');
     const entity = this.services.spawnItem({ itemId: LIGHTFLIER_ID, count: 1 }); configureLightFlierEntity(entity);
     const fly = entity.getComponent<LightFlier>(LIGHTFLIER_ID)!; entity.getPosition().copy(position); this.bind(fly);
     this.services.showItem(entity, position.clone()); return fly;
@@ -142,7 +133,7 @@ export class LightFlierHabitat {
     if (this.disposed) return; this.disposed = true;
     for (const leader of this.formations) leader.dispose();
     for (const timer of this.leaderTimers.values()) timer.stop(); this.leaderTimers.clear();
-    this.homes.clear(); this.flies.clear(); this.assets.dispose();
+    this.homes.clear(); this.flies.clear(); this.resources.dispose();
   }
 }
 
@@ -440,12 +431,11 @@ export function createLightFlierGroundFactory(context: GroundPrefabContext): Gro
   const habitat = context.lightflierWorld ?? new LightFlierHabitat(context.animationBaseUrl, {
     scheduler: context.scheduler!, getPlayers: () => [], spawnItem: state => new ItemEntity(state),
     showItem: () => {}, dropLoot: (itemId, count, position) => {
-      void context.dropLoot?.([{ itemId, count, name: itemId, icon: `${itemId}.tex` }], position);
+      context.dropLoot?.([{ itemId, count, name: itemId, icon: `${itemId}.tex` }], position);
     },
   });
-  const createPrepared = (): GroundItemVisual => {
-      const { instance, display } = createArchiveEntity(LIGHTFLIER_ID, { create: clip => habitat.createSprite(clip.name, clip.loop),
-        initial: habitat.createSprite() }, { name: 'walk_loop' }, LIGHTFLIER_ID);
+  const create = (): GroundItemVisual => {
+      const { instance, display } = createArchiveEntity(LIGHTFLIER_ID, habitat.source, { name: 'walk_loop' }, LIGHTFLIER_ID);
       const sprite = instance.sprite, model = display.model;
       const active = createSignal(true);
       const cleanups: (() => void)[] = []; let fly: LightFlier | undefined;
@@ -479,7 +469,7 @@ export function createLightFlierGroundFactory(context: GroundPrefabContext): Gro
       };
     };
   return { itemIds: [LIGHTFLIER_ID], capture: 'net', configureEntity: configureLightFlierEntity,
-    createPrepared, create: async () => { await habitat.prepare(); return createPrepared(); },
+    create,
     update: dt => { if (own) habitat.update(dt); }, dispose: () => { if (own) habitat.dispose(); },
   };
 }

@@ -20,7 +20,8 @@
     "./farmActions": "./src/farmActions.ts",
     "./actionContext": "./src/actionContext.ts",
     "./actionEvents": "./src/actionEvents.ts",
-    "./occupiable": "./src/occupiable.ts"
+    "./occupiable": "./src/occupiable.ts",
+    "./machine": "./src/machine.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

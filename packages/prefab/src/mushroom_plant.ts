@@ -156,7 +156,7 @@ export function isMushroomPlantPrefab(value: string): value is MushroomPlantId {
 
 /** mushrooms.lua: red (day), green (dusk) and blue (night) mushrooms share one prefab function. */
 export class MushroomPlantManager extends PickablePlantManager {
-  spawn(position: THREE.Vector3, saved?: PickablePlantRecord, prefab: MushroomPlantId = BLUE_MUSHROOM_ID): Promise<THREE.Group> {
+  spawn(position: THREE.Vector3, saved?: PickablePlantRecord, prefab: MushroomPlantId = BLUE_MUSHROOM_ID): THREE.Group {
     return this.spawnPlant(MUSHROOM_DEFINITIONS[prefab], position, saved);
   }
 

@@ -68,7 +68,7 @@ test('torch fuel updates the UI, pauses when unequipped, survives reskin/save/re
     const { scene, player, view } = (window as any).torchGame;
     const model = scene.children.filter((model: any) => model.name === 'GroundItem:torch')
       .sort((a: any, b: any) => a.position.distanceToSquared(player.position) - b.position.distanceToSquared(player.position))[0];
-    const mesh = model.children[0].children[0]; mesh.updateWorldMatrix(true, false);
+    const mesh = model.getObjectByProperty('isMesh', true); mesh.updateWorldMatrix(true, false);
     const positions = mesh.geometry.getAttribute('position'), indices = mesh.geometry.index;
     const point = model.position.clone().set(0, 0, 0), vertex = point.clone();
     for (let i = 0; i < 3; i++) { vertex.fromBufferAttribute(positions, indices.getX(i)); mesh.localToWorld(vertex); point.add(vertex); }
@@ -93,17 +93,16 @@ test('torch fuel updates the UI, pauses when unequipped, survives reskin/save/re
   await expect.poll(audio).toMatchObject([{ filename: expect.stringMatching(/^wilson\.fsb-9[56]\.wav$/), loop: false, state: 'running' }]);
   // The software WebGL renderer can take more than five seconds to render 60 frames.
   await expect.poll(equippedFuel, { timeout: 30_000 }).toBeLessThan(74);
-  await page.evaluate(() => {
-    const { main } = (window as any).torchGame;
-    const address = { containerId: 'player:equipment', slotKey: 'hand' };
-    main.inventory.setRemainingFuel(address, 37.5);
-  });
-  await expect(hand.locator('.inventory-slot__percent')).toHaveText('50%');
   await hand.dragTo(items.locator('[data-item-id=""]').first());
   await expect.poll(audio).toMatchObject([{ filename: expect.stringMatching(/^wilson\.fsb-9[56]\.wav$/) },
     { filename: 'common.fsb-198.wav', loop: false, state: 'running' }]);
-  const paused = await page.evaluate(() => (window as any).torchGame.main.inventory.exportState().slots
-    .find((slot: any) => slot.item?.itemId === 'torch' && slot.item.remainingFuel !== undefined));
+  // An unlit torch keeps its fuel, so the meter shows exactly the value written.
+  const pausedAddress = await page.evaluate(() => (window as any).torchGame.main.inventory.exportState().slots
+    .find((slot: any) => slot.item?.itemId === 'torch' && slot.item.remainingFuel !== undefined).address);
+  await page.evaluate(address => (window as any).torchGame.main.inventory.setRemainingFuel(address, 37.5), pausedAddress);
+  await expect(items.locator(`[data-slot-key="${pausedAddress.slotKey}"] .inventory-slot__percent`)).toHaveText('50%');
+  const paused = await page.evaluate(address => (window as any).torchGame.main.inventory.exportState().slots
+    .find((slot: any) => slot.address.slotKey === address.slotKey && slot.address.containerId === address.containerId), pausedAddress);
   await page.waitForTimeout(300);
   expect(await page.evaluate((address) => (window as any).torchGame.main.inventory.getEntity(address).snapshot(), paused.address)).toEqual(paused.item);
   await items.locator(`[data-slot-key="${paused.address.slotKey}"]`).click({ button: 'right', modifiers: ['Shift'] });
@@ -133,14 +132,22 @@ test('torch fuel updates the UI, pauses when unequipped, survives reskin/save/re
     const equipped = main.handEquipment.peek();
     model.userData.torch.ignite();
     model.dispatchEvent({ type: 'onextinguish' });
-    if (main.handEquipment.peek() !== equipped || model.userData.torch.isBurning || model.userData.dstPrefabLocalLight) {
+    if (main.handEquipment.peek() !== equipped || model.userData.torch.isBurning || model.userData.instance.light.peek()) {
       throw new Error('Ground extinguish affected player equipment or left the fire active');
     }
   });
   await expect.poll(() => audio().then((sounds) => sounds.filter((sound: any) => sound.filename === 'common.fsb-198.wav').length)).toBe(2);
   await page.waitForTimeout(1800);
-  await page.evaluate(() => (window as any).torchGame.scene.children.find((model: any) => model.name === 'GroundItem:torch').userData.torch.ignite());
+  // Igniting plays the one-shot `land` clip without moving the torch. Its frames need not cover the first triangle,
+  // so sample the idle pose and click once `land` holds still on its last frame.
   const pickupPoint = await spritePoint();
+  await page.evaluate(() => (window as any).torchGame.scene.children.find((model: any) => model.name === 'GroundItem:torch').userData.torch.ignite());
+  let landing = await spritePoint();
+  await expect.poll(async () => {
+    const previous = landing;
+    landing = await spritePoint();
+    return previous.x === landing.x && previous.y === landing.y;
+  }).toBe(true);
   await page.mouse.click(pickupPoint.x, pickupPoint.y);
   const skinnedSlot = items.locator('[data-item-id="torch"][data-skin-id="torch_barber"]');
   await expect(skinnedSlot).toHaveCount(1);

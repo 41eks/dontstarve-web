@@ -44,7 +44,8 @@ export interface SpriteJson {
   /** Turned to the camera by the display: the source's default orientation, unlike OnGround art. Declared at creation. */
   readonly billboard?: boolean;
   readonly queue: readonly { readonly name: string; readonly loop: boolean }[];
-  readonly frame?: number;
+  /** A frame of the clip, or `at`, a fraction of its length that the display resolves once the clip's art has loaded. */
+  readonly frame?: number | { readonly at: number };
   /** A fresh object is one more request for a brief feedback clip. */
   readonly transient?: { readonly name: string };
   readonly image?: number;
@@ -95,10 +96,13 @@ export interface ArchiveSpriteCommands {
   setAwake(awake: boolean): void;
   start(name: string): void;
   playOnce(name: string, complete?: () => void): void;
+  pushAnimation(name: string, loop?: boolean): void;
   holdLastFrame(name: string): void;
   /** AnimState with no animation playing: nothing is drawn until a clip is played again. */
   clearAnimation(): void;
   setFrame(frame: number): void;
+  /** AnimState:SetFrame at `fraction` of the clip's frames, for a frame chosen before the art has loaded. */
+  setFrameAt(fraction: number): void;
   setFacing(facing: number): void;
   setColour(colour: readonly number[]): void;
   setOpacity(opacity: number): void;
@@ -226,6 +230,10 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
     this.write({ clip: { name: name ?? this.initialAnimation, loop: false, finished: true, pose: { name } }, queue: [], frame: undefined });
   }
   setFrame(frame: number): void { if (frame !== this.state.frame) this.write({ frame }); }
+  setFrameAt(fraction: number): void {
+    if (!(fraction >= 0 && fraction <= 1)) throw new RangeError('Frame fraction must be within [0, 1]');
+    this.write({ frame: { at: fraction } });
+  }
   setArtSource(source: SpriteArtSource): void { if (source !== this.state.source) this.write({ source }); }
   setAnimState(state: AnimStateJson, art?: AnimStateArt): void { this.withAppearance('anim-state', { kind: 'anim-state', state, art }); }
   setTint(tint: SpriteTint): void { this.write({ tint }); }

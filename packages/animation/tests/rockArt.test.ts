@@ -19,7 +19,7 @@ function firstMesh(model: THREE.Object3D): THREE.Mesh {
 }
 
 it('shares split-bank cave-in art and preserves its variation, raised pose, identity and resources through reload', async () => {
-  const world = { prepareSpawn: vi.fn(async () => ({ spawn: () => true, dispose() {} })) };
+  const world = { spawnGroundItem: () => undefined };
   const manager = new RockManager(new THREE.Scene(), '/dst/data/anim', world);
   const restored = new RockManager(new THREE.Scene(), '/dst/data/anim', world);
   const saved: RockRecord = { id: 'raised-boulder', transform: { position: [3, 0, 4], rotationY: 0 },
@@ -47,9 +47,9 @@ it('shares split-bank cave-in art and preserves its variation, raised pose, iden
   } finally { manager.dispose(); restored.dispose(); }
 });
 
-it('keeps the celestial orb as static art without mining or preparing loot', async () => {
+it('keeps the celestial orb as static art without mining or dropping loot', async () => {
   const manager = new RockManager(new THREE.Scene(), '/dst/data/anim', {
-    prepareSpawn: async () => { throw new Error('Static art must not prepare loot'); },
+    spawnGroundItem: () => { throw new Error('Static art must not drop loot'); },
   });
   try {
     const model = await manager.spawn('moonrockseed', new THREE.Vector3());
@@ -60,16 +60,11 @@ it('keeps the celestial orb as static art without mining or preparing loot', asy
   } finally { manager.dispose(); }
 });
 
-it('cancels a pending spawn on disposal and releases every prepared drop without attaching stale art', async () => {
-  let release!: () => void;
-  const gate = new Promise<void>(resolve => { release = resolve; });
-  const scene = new THREE.Scene(), dispose = vi.fn();
-  const manager = new RockManager(scene, '/dst/data/anim', {
-    prepareSpawn: async () => { await gate; return { spawn: () => true, dispose }; },
-  });
+it('cancels a pending spawn on disposal without attaching stale art', async () => {
+  const scene = new THREE.Scene();
+  const manager = new RockManager(scene, '/dst/data/anim', { spawnGroundItem: () => undefined });
   const pending = manager.spawn('rock1', new THREE.Vector3());
-  manager.dispose(); release();
+  manager.dispose();
   await expect(pending).rejects.toThrow('disposed');
-  expect(dispose).toHaveBeenCalledTimes(7);
   expect(scene.children).toEqual([]);
 });

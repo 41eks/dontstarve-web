@@ -47,6 +47,7 @@
     "./cave_fern": "./src/cave_fern.ts",
     "./grass": "./src/grass.ts",
     "./houndbone": "./src/houndbone.ts",
+    "./beequeenhivegrown": "./src/beequeenhivegrown.ts",
     "./rock_avocado_fruit": "./src/rock_avocado_fruit.ts",
     "./marbleshrub": "./src/marbleshrub.ts",
     "./archive_props": "./src/archive_props.ts",

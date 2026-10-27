@@ -30,7 +30,7 @@ export const GRASS_DEFINITION: PickablePlantDefinition = {
 
 /** grass.lua's native grass, with source component ownership for PICK, DIG and burning. */
 export class GrassManager extends PickablePlantManager {
-  spawn(position: THREE.Vector3, saved?: GrassRecord): Promise<THREE.Group> {
+  spawn(position: THREE.Vector3, saved?: GrassRecord): THREE.Group {
     return this.spawnPlant(GRASS_DEFINITION, position, saved);
   }
 

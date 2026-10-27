@@ -2,10 +2,8 @@ import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import { modelEntries } from './modelRecords';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
-import { preloadSharedArchiveSprite, ArchiveSpriteAssets } from '@dontstarve-web/animation/archiveSprite';
-import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
+import { SpriteResources, type ArchiveSpriteCommands, type PrefabDisplay } from '@dontstarve-web/display';
 import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
-import { smallHash } from '@dontstarve-web/animation/animationAssets';
 import { watchTileActivity } from './tileActivity';
 import { ComponentTimer } from '../../componets/src/timer';
 import type { PickaxeTarget } from '@dontstarve-web/stategraphs/pickaxe';
@@ -18,8 +16,8 @@ import { MiniMapEntity } from './minimapEntity';
 import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
 import { MakeObstaclePhysics, RemovePhysicsColliders } from './standardcomponents';
-import type { GroundItemDefinition, PreparedGroundSpawn } from './groundPrefab';
-import { PlaySound, PreloadSounds, type SoundEventPath, type SoundHandle } from './sound';
+import type { SpawnGroundItem } from './groundPrefab';
+import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
 import catalog from './groundItems.json' with { type: 'json' };
 
 export const MARBLESHRUB_ID = 'marbleshrub' as const;
@@ -38,20 +36,21 @@ const PHYSICS_RADIUS = .1;
 
 interface StageData {
   idle: string; hit: string; broken: string; grow: string; growsound: SoundEventPath;
+  /** The `broken` clip's length in marbleshrub.zip; its animover removes the mined shrub. */
+  brokenSeconds: number;
   workleft: number; loot(roll: (chance: number) => boolean): string[];
 }
 // marbleshrub.lua statedata; TryLuckRoll(worker, chance) without luck is a plain roll.
 const STAGES: readonly StageData[] = [
-  { idle: 'idle_short', hit: 'hit_short', broken: 'mined_short', grow: 'grow_tall_to_short',
+  { idle: 'idle_short', hit: 'hit_short', broken: 'mined_short', brokenSeconds: 32 / 30, grow: 'grow_tall_to_short',
     growsound: 'dontstarve/common/together/marble_shrub/wilt_to_grow', workleft: 6, loot: () => ['marble'] },
-  { idle: 'idle_normal', hit: 'hit_normal', broken: 'mined_normal', grow: 'grow_short_to_normal',
+  { idle: 'idle_normal', hit: 'hit_normal', broken: 'mined_normal', brokenSeconds: 32 / 30, grow: 'grow_short_to_normal',
     growsound: 'dontstarve/common/together/marble_shrub/grow', workleft: 8,
     loot: roll => roll(MED_MARBLEBEAN_CHANCE) ? ['marble'] : ['marble', 'marblebean'] },
-  { idle: 'idle_tall', hit: 'hit_tall', broken: 'mined_tall', grow: 'grow_normal_to_tall',
+  { idle: 'idle_tall', hit: 'hit_tall', broken: 'mined_tall', brokenSeconds: 32 / 30, grow: 'grow_normal_to_tall',
     growsound: 'dontstarve/common/together/marble_shrub/grow', workleft: 10,
     loot: roll => ['marble', roll(TALL_MARBLEBEAN_CHANCE) ? 'marble' : 'marblebean'] },
 ];
-const LOOT_PREPARATIONS = ['marble', 'marble', 'marblebean'] as const;
 
 /** marbleshrub.lua OnSave: shapenumber is written only when it is not 1; color is always written. */
 export interface MarbleShrubSaveState { shapenumber?: number; color: number; }
@@ -67,7 +66,8 @@ export interface MarbleShrubWorld extends ToolMouseTargetWorld {
   physics?: CANNON.World;
   /** Snow level is read through a lifecycle-managed bridge owned by each shrub. */
   getWatchWorldContent?: GetWatchWorldContent;
-  prepareSpawn(definition: GroundItemDefinition, fling?: boolean): Promise<PreparedGroundSpawn>;
+  /** lootdropper:SpawnLootPrefab when the shrub is mined; the loot's display loads its art. */
+  spawnGroundItem: SpawnGroundItem;
 }
 
 interface Shrub {
@@ -79,7 +79,6 @@ interface Shrub {
   stopAppearance?: () => void;
   growable: Growable;
   workable: Workable;
-  loot: Map<string, PreparedGroundSpawn[]>;
   shapenumber: number;
   color: number;
   stage: StageData;
@@ -96,8 +95,7 @@ export class MarbleShrubManager {
   private readonly world: MarbleShrubWorld;
   private readonly scheduler: GameTimeScheduler;
   private readonly ownsScheduler: boolean;
-  private readonly assets = new ArchiveSpriteAssets();
-  private source?: ReturnType<typeof preloadSharedArchiveSprite>;
+  private readonly resources = new SpriteResources();
   private readonly shrubs = new Map<THREE.Group, Shrub>();
   private disposed = false;
 
@@ -108,72 +106,30 @@ export class MarbleShrubManager {
   }
 
   /** `c_spawn("marbleshrub_<stage>")`, or a saved record; the saved growable restores the stage and its remaining time. */
-  async spawn(prefabId: MarbleShrubSpawnId, position: THREE.Vector3, saved?: MarbleShrubRecord): Promise<THREE.Group> {
+  spawn(prefabId: MarbleShrubSpawnId, position: THREE.Vector3, saved?: MarbleShrubRecord): THREE.Group {
     const stage = Math.max(1, MARBLESHRUB_SPAWN_IDS.indexOf(prefabId));
-    const prepared = await this.prepare(saved?.components.marbleShrub.shapenumber ?? 1,
-      saved?.components.marbleShrub.color ?? 1);
-    return prepared.spawn(position, stage, saved);
+    return this.createShrub(position, saved?.components.marbleShrub.shapenumber ?? 1, saved?.components.marbleShrub.color ?? 1, stage, saved);
   }
 
-  /** marbleshrub.lua growfromseed: random shape and colour, stage 1, then `grow_seed_to_short`. */
-  async prepareGrowFromSeed(): Promise<{ spawn(position: THREE.Vector3): THREE.Group; dispose(): void }> {
-    const prepared = await this.prepare(1 + Math.floor(Math.random() * NUM_BUILDS), .5 + Math.random() * .5);
-    return { dispose: prepared.dispose, spawn: position => prepared.spawn(position, 1, undefined, true) };
+  /** marbleshrub.lua growfromseed: random shape and colour, stage 1, then `grow_seed_to_short`; the display loads the art. */
+  growFromSeed(position: THREE.Vector3): THREE.Group {
+    return this.createShrub(position, 1 + Math.floor(Math.random() * NUM_BUILDS), .5 + Math.random() * .5, 1, undefined, true);
   }
 
-  private async prepare(shapenumber: number, color: number) {
+  private createShrub(position: THREE.Vector3, shapenumber: number, color: number, startStage: number, saved?: MarbleShrubRecord, fromSeed = false): THREE.Group {
+    if (this.disposed) throw new Error('Marble shrubs disposed');
     if (!Number.isInteger(shapenumber) || shapenumber < 1 || shapenumber > NUM_BUILDS) throw new RangeError('Invalid marble shrub shape');
-    const resources = await Promise.allSettled([
-      this.source ??= preloadSharedArchiveSprite(this.assets, {
-        animationArchive: 'marbleshrub.zip', buildArchives: ['marbleshrub.zip', 'marbleshrub_build.zip', 'snow.zip'],
-        bank: 'marbleshrub', hiddenSymbols: ['snow'],
-      }, { instancedAnimations: 'all', staticBillboard: true }).catch(error => { this.source = undefined; throw error; }),
-      PreloadSounds('dontstarve/wilson/rock_break', ...new Set(STAGES.map(({ growsound }) => growsound))),
-      this.assets.loadAnimation('marbleshrub.zip'),
-      ...LOOT_PREPARATIONS.map(itemId => this.world.prepareSpawn({
-        ...catalog.items[itemId], itemId, count: 1,
-      }, true)),
-    ] as const);
-    const loot = new Map<string, PreparedGroundSpawn[]>();
-    LOOT_PREPARATIONS.forEach((itemId, index) => {
-      const result = resources[index + 3];
-      if (result.status === 'fulfilled') loot.set(itemId, [...loot.get(itemId) ?? [], result.value as PreparedGroundSpawn]);
-    });
-    const disposeResources = () => {
-      for (const outputs of loot.values()) outputs.forEach(output => output.dispose());
-    };
-    const failed = resources.find(result => result.status === 'rejected');
-    if (failed || this.disposed) {
-      disposeResources();
-      throw failed?.status === 'rejected' ? failed.reason : new Error('Marble shrubs disposed');
-    }
-    const source = (resources[0] as PromiseFulfilledResult<Awaited<ReturnType<typeof preloadSharedArchiveSprite>>>).value;
-    const animations = (resources[2] as PromiseFulfilledResult<Awaited<ReturnType<ArchiveSpriteAssets['loadAnimation']>>>).value;
-    const breakDuration = (name: string) => {
-      const clip = animations.animations.find(clip => clip.bankHash === smallHash('marbleshrub') && clip.name === name);
-      if (!clip?.frames.length) throw new Error(`Missing marble shrub clip ${name}`);
-      return clip.frames.length / clip.frameRate;
-    };
-    let durations: number[];
-    try { durations = STAGES.map(stage => breakDuration(stage.broken)); }
-    catch (error) { disposeResources(); throw error; }
-    let used = false;
-    return {
-      dispose: () => { if (!used) { used = true; disposeResources(); } },
-      spawn: (position: THREE.Vector3, startStage: number, saved?: MarbleShrubRecord, fromSeed = false): THREE.Group => {
-        if (used || this.disposed) throw new Error('Prepared marble shrub is unavailable');
-        if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError('Invalid marble shrub position');
-        used = true;
-        const create = (clip: { name: string; loop: boolean }) => source(clip.name, clip.loop, MARBLESHRUB_ID, { colour: [1, 1, 1] });
-        const clip = { name: STAGES[0].idle, loop: false };
-        const entity = createArchiveEntity(MARBLESHRUB_ID, { create, initial: create(clip) }, { name: clip.name, billboard: true }, MARBLESHRUB_ID);
-        return this.create(entity, loot, position, shapenumber, color, startStage, saved, fromSeed, durations);
-      },
-    };
+    if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError('Invalid marble shrub position');
+    // Each shrub owns its colour (setColour), so its sprites are created with one.
+    const entity = createArchiveEntity(MARBLESHRUB_ID, this.resources.archive({
+      animationArchive: 'marbleshrub.zip', buildArchives: ['marbleshrub.zip', 'marbleshrub_build.zip', 'snow.zip'],
+      bank: 'marbleshrub', hiddenSymbols: ['snow'],
+    }, { instancedAnimations: 'all', staticBillboard: true, colour: [1, 1, 1] }), { name: STAGES[0].idle, billboard: true }, MARBLESHRUB_ID);
+    return this.create(entity, position, shapenumber, color, startStage, saved, fromSeed);
   }
 
-  private create({ instance, display }: ReturnType<typeof createArchiveEntity>, loot: Map<string, PreparedGroundSpawn[]>, position: THREE.Vector3, shapenumber: number, color: number,
-    startStage: number, saved: MarbleShrubRecord | undefined, fromSeed: boolean, breakDurations: readonly number[]): THREE.Group {
+  private create({ instance, display }: ReturnType<typeof createArchiveEntity>, position: THREE.Vector3, shapenumber: number, color: number,
+    startStage: number, saved: MarbleShrubRecord | undefined, fromSeed: boolean): THREE.Group {
     const model = display.model;
     const sprite = instance.sprite;
     model.userData.animationController = sprite;
@@ -182,15 +138,10 @@ export class MarbleShrubManager {
     Object.assign(model.userData, { deploySmartRadius: 1 });
     for (const tag of ['boulder', 'SnowCovered']) instance.addTag(tag);
     const inst = actionEntity(model, MARBLESHRUB_ID);
-    const shrub: Shrub = { instance, display, sprite, completion: new ComponentTimer(this.scheduler, () => this.remove(model)), loot, shapenumber, color, stage: STAGES[0], broken: false, sounds: new Set(), minimap: new MiniMapEntity(model.position), workable: undefined!, growable: undefined! };
+    const shrub: Shrub = { instance, display, sprite, completion: new ComponentTimer(this.scheduler, () => this.remove(model)), shapenumber, color, stage: STAGES[0], broken: false, sounds: new Set(), minimap: new MiniMapEntity(model.position), workable: undefined!, growable: undefined! };
     const play = (clip: string, then?: string) => sprite.playOnce(clip, then ? () => sprite.playOnce(then) : undefined);
-    const lootdropper = new LootDropper(inst, (prefab, point) => {
-      const prepared = shrub.loot.get(prefab)?.shift();
-      if (!prepared) return undefined;
-      const spawned = prepared.spawn(new THREE.Vector3(point.x, point.y, point.z));
-      if (!spawned) prepared.dispose();
-      return spawned ? prepared.spawnedEntity : undefined;
-    });
+    const lootdropper = new LootDropper(inst, (prefab, point) => this.world.spawnGroundItem(
+      { ...catalog.items[prefab as keyof typeof catalog.items], itemId: prefab, count: 1 }, new THREE.Vector3(point.x, point.y, point.z), { fling: true }));
     // marbleshrub.lua SetGrowth: stage data, idle pose and a fresh mining workload.
     const setGrowth = (stage: number) => {
       shrub.stage = STAGES[stage - 1];
@@ -218,7 +169,7 @@ export class MarbleShrubManager {
       inst.addTag('NOCLICK');
       shrub.instance.persists = false;
       sprite.playOnce(shrub.stage.broken);
-      shrub.completion.start(breakDurations[shrub.growable.GetStage() - 1]);
+      shrub.completion.start(STAGES[shrub.growable.GetStage() - 1].brokenSeconds);
       shrub.sounds.add(PlaySound('dontstarve/wilson/rock_break', model.position));
       for (const prefab of shrub.stage.loot(chance => Math.random() <= chance)) lootdropper.SpawnLootPrefab(prefab, inst.getPosition());
       RemovePhysicsColliders(instance);
@@ -292,15 +243,14 @@ export class MarbleShrubManager {
     shrub.stopSnow?.(); shrub.minimap.dispose(); shrub.completion.stop();
     shrub.growable.dispose(); shrub.workable.dispose();
     for (const sound of shrub.sounds) sound.stop();
-    for (const outputs of shrub.loot.values()) outputs.forEach(output => output.dispose());
-    shrub.loot.clear(); shrub.instance.remove();
+    shrub.instance.remove();
   }
 
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
     for (const model of [...this.shrubs.keys()]) this.remove(model);
-    this.assets.dispose();
+    this.resources.dispose();
     if (this.ownsScheduler) this.scheduler.dispose();
   }
 }

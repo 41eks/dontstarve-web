@@ -20,6 +20,8 @@ export interface DisplayEngine {
   /** Changes whenever the drawn sprite is attached or released. */
   readonly art: ReadonlySignal<number>;
   readonly loaded: boolean;
+  /** The sprite being built from a source that is still loading, if any. */
+  readonly pending?: Promise<void>;
   /** The drawn sprite's shared-batch instance, which the display lists for its pass. */
   readonly instanced?: InstancedSprite;
   readonly currentAnimation: string;
@@ -81,6 +83,7 @@ export class ArchiveEngine implements DisplayEngine {
   get model(): THREE.Group { return this.resident.model; }
   get art(): ReadonlySignal<number> { return this.resident.art; }
   get loaded(): boolean { return this.resident.loaded; }
+  get pending(): Promise<void> | undefined { return this.resident.pending; }
   get instanced(): InstancedSprite | undefined { return this.resident.instanced; }
   get currentAnimation(): string { return this.resident.currentAnimation; }
   get numFrames(): number { return this.resident.frameCount; }
@@ -115,7 +118,7 @@ export class ArchiveEngine implements DisplayEngine {
 
   setPose(): void { unsupported('A static pose'); }
   setPercent(): void { unsupported('A percent pose'); }
-  pushAnimation(): void { unsupported('A queued animation'); }
+  pushAnimation(name: string, loop = false): void { this.resident.pushAnimation(name, loop); }
   playTransient(): void { unsupported('A transient animation'); }
   showImage(): void { unsupported('A static image'); }
   hideLayer(layer: string): void { this.resident.setLayerHidden(layer, true); }

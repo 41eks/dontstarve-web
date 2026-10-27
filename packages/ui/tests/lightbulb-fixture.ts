@@ -1,5 +1,6 @@
 import { fixturePickup } from './pickup-fixture';
 import * as THREE from 'three';
+import type { PrefabDisplay } from '@dontstarve-web/display';
 import { DstLightingRenderer } from '../../../src/dstLighting';
 import { GroundItemManager } from '../../../src/groundItems';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
@@ -38,7 +39,8 @@ export async function checkLightbulbLighting() {
   };
   const baseline = await sample(0);
   const assets = new GroundItemAssets();
-  const bulb = await createLightbulbGroundSprite({ assets });
+  const bulb = createLightbulbGroundSprite({ assets });
+  await (bulb.model.userData.display as PrefabDisplay).artLoaded();
   scene.add(bulb.model);
   bulb.model.quaternion.copy(camera.quaternion);
   const parameters = getDeclaredLight(bulb.model);

@@ -1,4 +1,5 @@
 import { readSaveDownload } from './save-download';
+import { minimalSave, savePageUrl } from './inline-save';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 
@@ -10,14 +11,6 @@ test('spawns and gives neutral thermal stones, reskins and transfers one, then s
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
-  await page.route('**/saves/initial-world.json', async route => {
-    const response = await route.fetch(), save = await response.json();
-    save.world.entities = {}; save.world.elapsedSeconds = 0;
-    save.players.local.transform.position = [0, 0, 0];
-    for (const container of Object.values(save.players.local.inventory.containers) as any[]) container.slots = [];
-    save.players.local.inventory.bufferedBuilds = [];
-    await route.fulfill({ response, json: save });
-  });
   const prepare = () => page.evaluate(async urls => {
     const main = await import(urls.main), { scene, renderer } = await import(urls.universal);
     const { camera } = await import(urls.camera), { player, playerBody } = await import(urls.player);
@@ -27,20 +20,20 @@ test('spawns and gives neutral thermal stones, reskins and transfers one, then s
     new CustomEvent('game:debug-command', { detail: { command } })), command);
   const saveGame = async () => {
     const download = page.waitForEvent('download'); await submit('c_save()');
-    return JSON.parse(await readSaveDownload((await (await download).path())!));
+    return JSON.parse(await readSaveDownload((await (await download).path())!, 'Master'));
   };
   const ground = () => page.evaluate(() => (window as any).heatRockGame.scene.children
     .filter((model: any) => model.userData.itemId === 'heatrock').map((model: any) => ({
       id: model.userData.instance?.entityId, skin: model.userData.instance?.skinId,
-      vertices: model.children[0].children[0].geometry.drawRange.count,
-      materials: model.children[0].children[0].material.map((material: any) => material.name),
+      vertices: model.getObjectByProperty('isMesh', true).geometry.drawRange.count,
+      materials: model.getObjectByProperty('isMesh', true).material.map((material: any) => material.name),
     })));
   const clickStone = async (id: string, button: 'left' | 'right') => {
     await expect.poll(() => page.evaluate(() => !(window as any).heatRockGame.player.userData.stategraph.hasStateTag('busy')),
       { timeout: 20_000 }).toBe(true);
     const point = await page.evaluate(async ({ id, pointerUrl }) => {
       const { scene, camera, renderer } = (window as any).heatRockGame;
-      const model = scene.children.find((model: any) => model.userData.instance?.entityId === id), mesh = model.children[0].children[0];
+      const model = scene.children.find((model: any) => model.userData.instance?.entityId === id), mesh = model.getObjectByProperty('isMesh', true);
       const { PointerRaycaster } = await import(pointerUrl);
       const pointer = new PointerRaycaster({ scene, camera, renderer });
       const rect = renderer.domElement.getBoundingClientRect();
@@ -78,7 +71,7 @@ test('spawns and gives neutral thermal stones, reskins and transfers one, then s
       actual.world.elapsedSeconds - expected.world.elapsedSeconds));
   };
 
-  await page.goto('/tests/dst-lighting.html'); await prepare();
+  await page.goto(savePageUrl(minimalSave())); await prepare();
   await submit('c_give("heatrock", 2); c_give("reskin_tool"); c_spawn("heatrock")');
   const bar = page.locator('dst-inventory-bar'), bag = bar.locator('.inventory-bar__items');
   await expect(bag.locator('[data-item-id="heatrock"]')).toHaveCount(2);
@@ -88,7 +81,7 @@ test('spawns and gives neutral thermal stones, reskins and transfers one, then s
   expect(spawned.vertices).toBeGreaterThan(0); expect(spawned.materials).toContain('ground:heat_rock');
   await page.evaluate(id => {
     const game = (window as any).heatRockGame;
-    game.scene.children.find((model: any) => model.userData.instance?.entityId === id).userData.components.fueled.remaining = 75;
+    game.scene.children.find((model: any) => model.userData.instance?.entityId === id).userData.components.fueled.SetPercent(.75);
     game.playerBody.position.set(-3, game.playerBody.shapes[0].radius, 3); game.player.position.set(-3, 0, 3);
   }, spawned.id);
   await bag.locator('[data-item-id="reskin_tool"]').dragTo(bar.locator('[data-slot-key="hand"]'));
@@ -109,8 +102,7 @@ test('spawns and gives neutral thermal stones, reskins and transfers one, then s
   const dropped = await saveGame();
   expectStoneState(dropped.world.entities.ground_item.find((record: any) => record.id === spawned.id).components.stack,
     savedStone.components.stack, dropped.world.elapsedSeconds - groundSave.world.elapsedSeconds);
-  await page.route('**/saves/initial-world.json', route => route.fulfill({ json: dropped }));
-  await page.reload(); await prepare();
+  await page.goto(savePageUrl(dropped)); await prepare();
   await expect.poll(async () => (await ground())[0]?.skin).toBe('heatrock_fantasy');
   const restored = await saveGame();
   expect(restored.world.entities.ground_item).toHaveLength(dropped.world.entities.ground_item.length);
@@ -127,8 +119,7 @@ test('spawns and gives neutral thermal stones, reskins and transfers one, then s
   expectStoneState(stones(taken).find(item => item.entityId === spawned.id), { entityId: spawned.id, ...savedStone.components.stack },
     taken.world.elapsedSeconds - groundSave.world.elapsedSeconds);
   expect(taken.world.entities.ground_item ?? []).toEqual([]);
-  await page.route('**/saves/initial-world.json', route => route.fulfill({ json: taken }));
-  await page.reload(); await prepare();
+  await page.goto(savePageUrl(taken)); await prepare();
   expectInventoryStones(await saveGame(), taken);
   await expect(skinned.locator('.inventory-slot__icon')).toHaveAttribute('data-element', 'heatrock_fantasy3.tex');
   expect(errors).toEqual([]);

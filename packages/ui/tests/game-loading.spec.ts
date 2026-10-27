@@ -51,6 +51,15 @@ test('keeps world generation visible until the complete game renders and preserv
     await pending;
     await route.continue();
   });
+  let releaseSound!: () => void;
+  const pendingSound = new Promise<void>(resolve => { releaseSound = resolve; });
+  let waitingForSound = false;
+  // An event absent from the empty save must still be ready for a later summon.
+  await page.route('**/dst/data/sound/sfx.fsb-796.wav', async route => {
+    waitingForSound = true;
+    await pendingSound;
+    await route.continue();
+  });
   await openGame(page);
   const generatingPage = page.getByRole('main', { name: '世界生成中' });
   const canvas = page.locator('canvas[data-game-canvas]');
@@ -60,6 +69,11 @@ test('keeps world generation visible until the complete game renders and preserv
   const clock = await page.evaluate(async ({ sceneUrl, lightingUrl }) => {
     const { world, worldState } = await import(sceneUrl);
     const { DstLightingRenderer } = await import(lightingUrl);
+    const prewarm = DstLightingRenderer.prototype.prewarm;
+    DstLightingRenderer.prototype.prewarm = async function (...args: any[]) {
+      await prewarm.apply(this, args);
+      (window as any).loadingGraphicsPrepared = true;
+    };
     (window as any).loadingWorld = worldState;
     (window as any).loadingSteps = 0;
     (window as any).loadingDraws = 0;
@@ -100,6 +114,13 @@ test('keeps world generation visible until the complete game renders and preserv
   await expect(canvas).toHaveAttribute('data-loaded', 'false');
   expect(await page.evaluate(() => (window as any).loadingSteps)).toBe(0);
   await page.evaluate(() => (window as any).releaseTerrain());
+  await expect.poll(() => waitingForSound, { timeout: 30_000 }).toBe(true);
+  await expect.poll(() => page.evaluate(() => (window as any).loadingGraphicsPrepared), { timeout: 30_000 }).toBe(true);
+  await expect(generatingPage).toBeVisible();
+  await expect(canvas).toHaveAttribute('data-loaded', 'false');
+  expect(await page.evaluate(() => ({ steps: (window as any).loadingSteps, draws: (window as any).loadingDraws,
+    clock: (window as any).loadingWorld.clock.peek() }))).toEqual({ steps: 0, draws: 0, clock });
+  releaseSound();
   await expect(canvas).toHaveAttribute('data-loaded', 'true', { timeout: 30_000 });
   await expect(generatingPage).toHaveCount(0);
   expect(await page.evaluate(() => (window as any).drawsAtReady)).toBe(1);

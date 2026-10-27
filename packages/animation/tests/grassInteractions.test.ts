@@ -33,7 +33,7 @@ function setup() {
   const scheduler = new GameTimeScheduler();
   bindTestWorld(scheduler);
   const grass = new GrassManager(scene, '/dst/data/anim', {
-    prepareSpawn: (definition, fling) => ground.prepareSpawn(definition, fling),
+    spawnGroundItem: (definition, position, options) => ground.spawnGroundItem(definition, position, options),
   });
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
   const save = () => serializeSave(template, {

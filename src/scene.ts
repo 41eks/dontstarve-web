@@ -33,6 +33,7 @@ import type { DisposalEvents } from './registerDisposal';
 import { disposeTextureAssets } from '@dontstarve-web/animation/textureLoader';
 import { preloadAnimationArchives } from '@dontstarve-web/animation/preloadArchives';
 import { savedPrefabArchives } from './prefabDefinitions';
+import { PrewarmSounds } from '@dontstarve-web/prefab/sound';
 
 export { world, worldState };
 
@@ -215,7 +216,14 @@ export async function startScene(
       updateCharacterRenderOrder(registry);
       preparing = true;
       try {
-        await dstLighting.prewarm(scene, camera, preparation.signal);
+        // Retain resources until both preparations settle, including on failure or disposal.
+        const results = await Promise.allSettled([
+          dstLighting.prewarm(scene, camera, preparation.signal),
+          PrewarmSounds(),
+        ]);
+        for (const result of results) {
+          if (result.status === 'rejected') throw result.reason;
+        }
       } finally {
         preparing = false;
       }

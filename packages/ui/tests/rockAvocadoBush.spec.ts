@@ -98,11 +98,12 @@ test('picks rock avocado, clears overripe fruit, digs and replants a root, ferti
   const saved = JSON.parse(await readSaveDownload((await (await download).path())!, 'Master'));
   const plant = saved.world.entities.rock_avocado_bush.find((record: any) => record.id === root.id);
   expect(plant.transform.position).toEqual(root.position);
-  expect(plant.components.pickable).toMatchObject({ picked: true, transplanted: true, cyclesLeft: 3 });
+  expect(plant.components.pickable).toMatchObject({ picked: true, transplanted: true });
   expect(plant.components.growable.stage).toBe(1);
   expect(plant.components.growable.time).toBeGreaterThan(0);
   expect(plant.components.growable.time).toBeLessThanOrEqual(660);
-  expect(plant.components.pickable.cyclesLeft).toBe(3);
+  // Fertilize restores the full cycles, and Pickable:OnSave writes them only once some have been used.
+  expect(plant.components.pickable.cyclesLeft).toBeUndefined();
   await page.route('**/saves/initial-world.json', route => route.fulfill({ json: saved }));
   await page.reload(); await prepare();
   await expect.poll(() => page.evaluate(id => {

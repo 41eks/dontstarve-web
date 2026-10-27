@@ -6,7 +6,7 @@ import { GroundItemManager } from '../../../src/groundItems';
 import { createInventoryStore } from '../../../src/inventory';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
-import { bindTestWorld } from './worldContentFixture';
+import { bindTestWorld, drawn } from './worldContentFixture';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -21,9 +21,9 @@ it('takes an instanced plant out of the scene outside the tickingarea and restor
   const ground = new GroundItemManager(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
   const bushes = new BerrybushManager(scene, '/dst/data/anim', { tickingarea: () => createMemo(() => awake.get()),
-    prepareSpawn: (definition, fling) => ground.prepareSpawn(definition, fling) });
+    spawnGroundItem: (definition, position, options) => ground.spawnGroundItem(definition, position, options) });
   try {
-    await bushes.spawn(new THREE.Vector3(4, 0, 6), { id: 'bush:resident', transform: { position: [4, 0, 6], rotationY: 0 }, components: {} });
+    await drawn(bushes.spawn(new THREE.Vector3(4, 0, 6), { id: 'bush:resident', transform: { position: [4, 0, 6], rotationY: 0 }, components: {} }));
     await tick();
     const model = bushes.digTargets[0].model;
     expect(model.parent).toBe(scene);

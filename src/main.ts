@@ -190,10 +190,11 @@ const handEquipmentBinding = await bindPlayerHandEquipment({
   setHandAction: action => cursorUi.setHandAction(action, handPointer),
   lightStaffWorld: {
     map: spellCastMap,
-    preparePrefab: prefab => (prefab === 'staffcoldlight' ? polarLights : dwarfStars).prepare(),
-    spawnPrefab: (prefab, position) => (prefab === 'staffcoldlight' ? polarLights : dwarfStars).spawnPrepared(position),
+    spawnPrefab: (prefab, position) => (prefab === 'staffcoldlight' ? polarLights : dwarfStars).spawn(position),
   },
-  greenStaffWorld: { prepareLoot: items => groundItems.prepareLoot(items) },
+  greenStaffWorld: {
+    spawnLoot: (items, position) => groundItems.flingLoot(items.map(({ itemId, count }) => ({ ...inventory.getItemSpec(itemId), itemId, count })), position),
+  },
   fireStaffWorld: {
     prepare: () => staffProjectiles.prepare(),
     launch: (owner, target, attacker) => staffProjectiles.launch(owner, target, attacker),
@@ -201,7 +202,6 @@ const handEquipmentBinding = await bindPlayerHandEquipment({
   },
   tridentWorld: {
     map: spellCastMap,
-    prepareWaterspout: () => worldFx.prepare('crab_king_waterspout'),
     spawnWaterspout: position => worldFx.spawn('crab_king_waterspout', position),
   },
 });

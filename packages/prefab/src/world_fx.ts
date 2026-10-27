@@ -46,7 +46,8 @@ interface FxInstance {
   model: THREE.Group;
   footPosition: THREE.Vector3;
   renderer: SpriteFrameRenderer;
-  assets: FxAssets;
+  /** Undefined while the art loads: the entity exists and plays from its first frame once drawn. */
+  assets?: FxAssets;
   elapsed: number;
   frame: number;
   lingerFrames: number;
@@ -68,7 +69,7 @@ export class WorldFx {
     this.assets = new GroundItemAssets();
   }
 
-  /** Load art and sound before the effect is spawned. */
+  /** Load art and sound ahead of a spawn, so its first frame is drawn at once. */
   async prepare(prefab: WorldFxPrefab): Promise<void> {
     if (this.disposed) throw new Error('World fx have been disposed');
     let request = this.prepared.get(prefab);
@@ -95,8 +96,8 @@ export class WorldFx {
   }
 
   spawn(prefab: WorldFxPrefab, position: THREE.Vector3): void {
+    if (this.disposed) throw new Error('World fx have been disposed');
     const assets = this.ready.get(prefab);
-    if (!assets || this.disposed) throw new Error(`FX prefab ${prefab} has not been prepared`);
     const entity = createEmptyEntity(prefab), model = entity.display.model;
     model.userData.billboard = true;
     entity.instance.persists = false;
@@ -111,7 +112,15 @@ export class WorldFx {
     if ('finalOffset' in definition) visual.position.z = definition.finalOffset * .001;
     const effect: FxInstance = { entity, model, footPosition: model.position.clone(), renderer: new SpriteFrameRenderer(visual),
       assets, elapsed: 0, frame: -1, lingerFrames: 'lingerFrames' in definition ? definition.lingerFrames : 0 };
-    this.showFrame(effect, 0);
+    if (assets) this.showFrame(effect, 0);
+    else void this.prepare(prefab).then(() => {
+      if (!this.active.has(effect)) return;
+      effect.assets = this.ready.get(prefab);
+      this.showFrame(effect, 0);
+    }, (error: unknown) => {
+      if (this.active.has(effect)) this.remove(effect);
+      if (!this.disposed) console.error(`Unable to load FX ${prefab}`, error);
+    });
     this.active.add(effect);
     this.scene.add(model);
     if ('sound' in definition) PlaySound(definition.sound, effect.footPosition);
@@ -123,14 +132,16 @@ export class WorldFx {
 
   update(dt: number, cameraQuaternion: THREE.Quaternion): void {
     for (const effect of this.active) {
+      const { assets } = effect;
+      effect.model.quaternion.copy(cameraQuaternion);
+      if (!assets) continue;
       effect.elapsed += Math.min(dt, 0.1);
-      const frame = Math.floor(effect.elapsed * effect.assets.animation.frameRate + 1e-8);
-      if (frame >= effect.assets.animation.frames.length + effect.lingerFrames) {
+      const frame = Math.floor(effect.elapsed * assets.animation.frameRate + 1e-8);
+      if (frame >= assets.animation.frames.length + effect.lingerFrames) {
         this.remove(effect);
         continue;
       }
-      effect.model.quaternion.copy(cameraQuaternion);
-      this.showFrame(effect, Math.min(frame, effect.assets.animation.frames.length - 1));
+      this.showFrame(effect, Math.min(frame, assets.animation.frames.length - 1));
     }
   }
 
@@ -156,11 +167,12 @@ export class WorldFx {
   }
 
   private showFrame(effect: FxInstance, index: number): void {
-    if (effect.frame === index) return;
+    const { assets } = effect;
+    if (effect.frame === index || !assets) return;
     const sprites: ResolvedSprite[] = [];
-    for (const element of [...effect.assets.animation.frames[index].elements].sort((a, b) => b.z - a.z)) {
-      const image = findImage(effect.assets.build.build, element.imageHash, element.imageIndex);
-      if (image) sprites.push({ element, image, materials: effect.assets.build.materials });
+    for (const element of [...assets.animation.frames[index].elements].sort((a, b) => b.z - a.z)) {
+      const image = findImage(assets.build.build, element.imageHash, element.imageIndex);
+      if (image) sprites.push({ element, image, materials: assets.build.materials });
     }
     effect.renderer.show(sprites);
     effect.frame = index;

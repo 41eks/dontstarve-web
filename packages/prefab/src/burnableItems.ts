@@ -1,11 +1,11 @@
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { createSignal, readonlySignal, getBoundWatchWorldContent } from '@dontstarve-web/signals';
-import { createSharedArchiveSprite, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { createSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { createArchiveEntity, prefabInstance } from './prefabInstance';
 import { Burnable } from '../../componets/src/burnable';
 import { Propagator } from '../../componets/src/propagator';
 import type { BurnableInst } from '../../componets/src/burnable';
-import type { GroundPrefabContext, GroundItemVisual, PreparedGroundSpawn } from './groundPrefab';
+import type { GroundPrefabContext, GroundItemVisual } from './groundPrefab';
 import type { ResidentGroundItem } from './groundItems';
 import type { PrefabDisplay } from '@dontstarve-web/display';
 import catalog from './groundItems.json' with { type: 'json' };
@@ -43,8 +43,6 @@ const ASH_MAX_STACK = 40; // ash.lua: TUNING.STACK_SIZE_SMALLITEM
 
 interface BurnPresentation {
   context: GroundPrefabContext;
-  /** Absent for explosives: their burnt callback is nil and the explosive component removes the inst. */
-  ash?: PreparedGroundSpawn;
 }
 
 /** The inst owns the burning clock and persistence; preparing/replacing art keeps this component. */
@@ -81,7 +79,9 @@ export class BurnableItemController {
       const count = Math.min(ASH_MAX_STACK, entity.components.stackable.count);
       const position = entity.transform.position.clone();
       // DefaultBurntFn creates one ash stack at the original inst's position, then removes the inst.
-      if (!this.presentation?.ash?.spawn(position, count)) throw new Error('Burning item requires prepared ash output');
+      const spawnGroundItem = this.presentation?.context.spawnGroundItem;
+      if (!spawnGroundItem) throw new Error('Burning item requires a world to spawn ash');
+      spawnGroundItem({ ...catalog.items.ash, itemId: 'ash', count }, position);
       this.burntState.set(true);
       entity.remove();
     });
@@ -113,34 +113,23 @@ export function configureBurnableItemEntity(entity: ItemEntity): void {
 }
 
 /**
- * Existing ground art, generic fire FX and a prepared ash stack; all resources precede ignition. The prefab declares the
- * fire as an effect that is active while the item burns; its display shows it as a child of the item, as DST's
- * Burnable:SpawnFX does. Sound and light follow the same burning signal.
+ * Existing ground art and generic fire FX; the item's own display and the fire's display load their art. The prefab
+ * declares the fire as an effect that is active while the item burns; its display shows it as a child of the item, as
+ * DST's Burnable:SpawnFX does. Sound and light follow the same burning signal.
  */
-export async function createBurnableItemVisual(context: GroundPrefabContext,
-  itemId: string, base: ResidentGroundItem, displays: Set<PrefabDisplay>, fxLevel: 2 | 3 = 2): Promise<GroundItemVisual> {
-  if (!context.prepareSpawn) throw new Error('Burnable ground items require prepared ground output');
+export function createBurnableItemVisual(context: GroundPrefabContext,
+  itemId: string, base: ResidentGroundItem, displays: Set<PrefabDisplay>, fxLevel: 2 | 3 = 2): GroundItemVisual {
   const { visual, instance, display } = base;
-  const { igniteSound, loopSound, explosive } = BURNABLE_ITEM_DEFINITIONS[itemId];
+  const { igniteSound, loopSound } = BURNABLE_ITEM_DEFINITIONS[itemId];
+  // Decoding starts with the item; PlaySound waits for whatever has not finished.
+  void PreloadSounds('dontstarve/common/campfire', 'dontstarve/common/fireOut', ...(igniteSound ? [igniteSound] : []), ...(loopSound ? [loopSound] : []));
   const createFire = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(context.assets, { animationArchive: 'fire.zip',
     buildArchives: ['fire.zip'], bank: 'fire', animation: clip.name, loop: clip.loop }, { name: 'fire', dynamicParent: true });
-  const prepared = await Promise.allSettled([
-    createFire({ name: `level${fxLevel}`, loop: true }),
-    explosive ? Promise.resolve(undefined) : context.prepareSpawn({ ...catalog.items.ash, itemId: 'ash', count: ASH_MAX_STACK }),
-    PreloadSounds('dontstarve/common/campfire', 'dontstarve/common/fireOut',
-      ...(igniteSound ? [igniteSound] : []), ...(loopSound ? [loopSound] : [])),
-  ]);
-  if (prepared.some(result => result.status === 'rejected')) {
-    for (const result of prepared) if (result.status === 'fulfilled') result.value?.dispose();
-    throw (prepared.find(result => result.status === 'rejected') as PromiseRejectedResult).reason;
-  }
   // fire.lua: the burning fx entity, drawn by its own display as a child of the item; tags FX and HASHEATER.
-  const fire = createArchiveEntity('fire', { create: createFire, initial: (prepared[0] as PromiseFulfilledResult<ArchiveSprite>).value },
-    { name: `level${fxLevel}` }, 'fire');
+  const fire = createArchiveEntity('fire', { create: createFire }, { name: `level${fxLevel}` }, 'fire');
   for (const tag of ['FX', 'HASHEATER']) fire.instance.addTag(tag);
   fire.instance.persists = false;
-  const ash = (prepared[1] as PromiseFulfilledResult<PreparedGroundSpawn | undefined>).value;
-  const presentation = { context, ash };
+  const presentation = { context };
   const model = display.model;
   let controller: BurnableItemController | undefined;
   let stopBurning: (() => void) | undefined;
@@ -193,7 +182,7 @@ export async function createBurnableItemVisual(context: GroundPrefabContext,
       disposed = true;
       stopBurning?.(); stopIgnite?.(); controller?.release(presentation);
       clearBurning(); displays.delete(display);
-      instance.sprite.detachFx('fire'); fire.instance.remove(); fire.display.dispose(); ash?.dispose(); visual.dispose();
+      instance.sprite.detachFx('fire'); fire.instance.remove(); fire.display.dispose(); visual.dispose();
     },
   };
 }

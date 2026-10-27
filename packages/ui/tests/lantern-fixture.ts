@@ -1,13 +1,16 @@
 import { fixturePickup } from './pickup-fixture';
 import * as THREE from 'three';
+import type { PrefabDisplay } from '@dontstarve-web/display';
 import { DstLightingRenderer } from '../../../src/dstLighting';
 import { GroundItemManager } from '../../../src/groundItems';
 import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
-import { createLanternHandLifecycle, createLanternGroundSprite } from '../../prefab/src/lantern';
+import { LANTERN_FUEL, configureLanternEntity, createLanternHandLifecycle, createLanternGroundSprite } from '../../prefab/src/lantern';
 import { ItemEntity } from '../../inventory/src';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 
+/** mininglantern.lua's prefab fn adds fueled before the saved fuel loads. */
+const lanternSpec = { maxFuel: LANTERN_FUEL, configureEntity: configureLanternEntity };
 /** The inst.Light a model's entity declares. */
 const getDeclaredLight = (model: THREE.Object3D) => prefabInstance(model)?.light.peek();
 import { clockstate, seasonstate } from '@dontstarve-web/signals';
@@ -50,6 +53,7 @@ export async function checkLanternLighting() {
   const controller = player.userData.animationController as WilsonAnimationController;
   await controller.setCarryItem('lantern');
   const handEntity = new ItemEntity({ itemId: 'lantern', count: 1 });
+  handEntity.configure(lanternSpec);
   const handLifecycle = createLanternHandLifecycle(handEntity, {
     lightParent: player, AnimState: controller.AnimState,
   });
@@ -72,8 +76,10 @@ export async function checkLanternLighting() {
         if (mesh.material.some((material) => !material.forceSinglePass)) failures.push('split face passes');
       }
     }
-    const ground = await createLanternGroundSprite({ assets }, skin);
+    const ground = createLanternGroundSprite({ assets }, skin);
+    await (ground.model.userData.display as PrefabDisplay).artLoaded();
     const entity = new ItemEntity({ itemId: 'lantern', count: 1, ...(skin ? { skinId: skin } : {}) });
+    entity.configure(lanternSpec);
     ground.bindEntity!(entity);
     ground.model.dispatchEvent({ type: 'ondropped' });
     scene.add(ground.model);

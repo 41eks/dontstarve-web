@@ -9,6 +9,7 @@ import type { ArchiveSpriteCommands } from '@dontstarve-web/display';
 import { createArchiveEntity } from './prefabInstance';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Workable } from '../../componets/src/workable';
+import { Machine } from '../../componets/src/machine';
 import { listenInventoryEvents } from './inventoryEvents';
 import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
 import { RECORD_ID, RECORD_SONGS } from './records';
@@ -17,7 +18,10 @@ export const PHONOGRAPH_ID = 'phonograph';
 export const PHONOGRAPH_PLAY_TIME = 64;
 const END_SOUND = 'dontstarve/music/gramaphone_end';
 
-/** Ground-only machine: its record survives stopping, inventory transfers and reskins. */
+/**
+ * phonograph.lua: a ground-only `machine` whose turnon plays the loaded record (TryToPlayRecord) and whose turnoff
+ * stops it (StopPlayingRecord). The record survives stopping, inventory transfers and reskins.
+ */
 export class PhonographController {
   private unboundRecord?: string;
   private entity?: ItemEntity;
@@ -42,21 +46,69 @@ export class PhonographController {
     this.sprite = sprite; this.position = position; this.record = record;
     this.ownsScheduler = scheduler === undefined;
     this.scheduler = scheduler ?? new GameTimeScheduler();
-    this.playback = new ComponentTimer(this.scheduler, () => this.stop());
+    // play_song's DoTaskInTime(PHONOGRAPH_PLAY_TIME, TurnOffMachine).
+    this.playback = new ComponentTimer(this.scheduler, () => { if (this.machine) this.machine.TurnOff(); else this.stop(); });
     this.timer = this.playback.snapshot;
     this.playing = createMemo(() => this.timer.get().status === 'scheduled');
   }
 
   get isPlaying(): boolean { return this.playing.peek(); }
 
+  /** The inst's machine; a reskin's new art takes over its turnon/turnoff. */
+  get machine(): Machine | undefined { return this.entity?.components.machine; }
+
   bindEntity(entity: ItemEntity): void {
     this.entity = entity;
+    let machine = entity.components.machine;
+    if (!machine) {
+      const scheduler = this.scheduler;
+      machine = entity.components.machine = new Machine(entity, () => entity.components.perishable.scheduler ?? scheduler);
+      machine.SetGroundOnlyMachine(true);
+      machine.enabled = false;
+    }
+    machine.turnonfn = () => this.TryToPlayRecord();
+    machine.turnofffn = () => this.stop();
   }
 
+  /** OnGetItemFromPlayer: DropRecord, keep the new record, play "open", then turn the machine on. */
   insert(record: string): void {
-    this.stop();
+    const machine = this.machine;
+    if (!machine) throw new Error('A phonograph needs its inst to take a record');
+    this.DropRecord();
     this.record = record;
-    this.play(PHONOGRAPH_PLAY_TIME, true);
+    this.opening = true;
+    if (!machine.IsOn()) machine.TurnOn();
+    this.opening = false;
+  }
+
+  /** DropRecord: turn off and disable; the caller ejects the record itself. */
+  DropRecord(): void {
+    const machine = this.machine;
+    if (!machine) return;
+    if (machine.IsOn()) machine.TurnOff();
+    machine.enabled = false;
+  }
+
+  /** OnPutInInventory: a pocketed phonograph stops. */
+  OnPutInInventory(): void { if (this.machine?.IsOn()) this.machine.TurnOff(); }
+  /** OnDroppedFromInventory / OnLoad: a loaded phonograph can be switched again. */
+  OnDropped(): void { if (this.machine && this.record) this.machine.enabled = true; }
+
+  /** Resume a saved song: the machine is on, with the rest of its play time. */
+  resume(seconds: number): void {
+    const machine = this.machine;
+    if (!machine || !this.play(seconds)) return;
+    machine.enabled = true;
+    machine.isOn = true;
+  }
+
+  private opening = false;
+  /** TryToPlayRecord: without a record, or while held, the machine is disabled instead. */
+  private TryToPlayRecord(): void {
+    const machine = this.machine!;
+    if (!this.record || this.entity?.components.inventoryitem.owner) { machine.enabled = false; return; }
+    machine.enabled = true;
+    this.play(PHONOGRAPH_PLAY_TIME, this.opening);
   }
 
   play(seconds = PHONOGRAPH_PLAY_TIME, open = false): boolean {
@@ -102,19 +154,18 @@ export function createPhonographGroundFactory(context: GroundPrefabContext): Gro
     update(dt, quaternion) { for (const effect of effects) { effect.display.model.quaternion.copy(quaternion); effect.instance.sprite.update(dt); } },
     renderEntities: () => [...effects].map(({ display: { model } }) => ({ object: model, footPosition: model.position, cameraDepth: 0 })),
     dispose() { disposed = true; for (const effect of effects) release(effect); effects.clear(); },
-    async create(item) {
-      await Promise.all([context.assets.loadAnimation('structure_collapse_fx.zip'), context.assets.loadBuild('structure_collapse_fx.zip')]);
-      await PreloadSounds(...Object.values(RECORD_SONGS), END_SOUND,
-        'dontstarve/common/destroy_smoke', 'dontstarve/common/destroy_wood');
-      const { visual, instance, display } = await createResidentGroundItem(context, item);
+    create(item) {
+      void PreloadSounds(...Object.values(RECORD_SONGS), END_SOUND, 'dontstarve/common/destroy_smoke', 'dontstarve/common/destroy_wood');
+      const { visual, instance, display } = createResidentGroundItem(context, item);
       const model = display.model, sprite = instance.sprite;
       for (const tag of ['structure', 'trader', 'recordplayer', 'furnituredecor', 'groundonlymachine']) instance.addTag(tag);
       const controller = new PhonographController(sprite, model.position, item.phonographRecord, context.scheduler);
       model.userData.phonograph = controller;
       const removeEvents = listenInventoryEvents(model, {
-        onputininventory: () => controller.stop(),
+        onputininventory: () => controller.OnPutInInventory(),
         // Dropping a loaded machine enables it, but does not turn it on.
-        onload: () => { if (item.playbackRemaining) controller.play(item.playbackRemaining); },
+        ondropped: () => controller.OnDropped(),
+        onload: () => { controller.OnDropped(); if (item.playbackRemaining) controller.resume(item.playbackRemaining); },
       });
       return {
         ...visual,
@@ -133,11 +184,10 @@ export function createPhonographGroundFactory(context: GroundPrefabContext): Gro
           workable.SetOnFinishCallback(() => {
             const position = model.position.clone();
             const loaded = controller.record;
-            controller.stop();
+            controller.DropRecord();
             if (loaded) {
               const skinId = loaded === RECORD_ID ? undefined : loaded;
-              void context.dropLoot?.([{ ...GROUND_ITEM_DEFINITIONS.record, itemId: RECORD_ID, count: 1, skinId }], position)
-                .catch((error: unknown) => console.error('Unable to drop record', error));
+              context.dropLoot?.([{ ...GROUND_ITEM_DEFINITIONS.record, itemId: RECORD_ID, count: 1, skinId }], position);
             }
             PlaySound('dontstarve/common/destroy_smoke', position);
             PlaySound('dontstarve/common/destroy_wood', position);
@@ -145,14 +195,13 @@ export function createPhonographGroundFactory(context: GroundPrefabContext): Gro
               animationArchive: 'structure_collapse_fx.zip', buildArchives: ['structure_collapse_fx.zip'],
               bank: 'collapse', animation: clip.name, loop: clip.loop,
             });
-            void create({ name: 'collapse_small', loop: false }).then(initial => {
-              if (disposed) { initial.dispose(); return; }
-              const effect = createArchiveEntity('collapse_small', { create, initial }, { name: 'collapse_small' }, 'collapse_small');
+            if (!disposed) {
+              const effect = createArchiveEntity('collapse_small', { create }, { name: 'collapse_small' }, 'collapse_small');
               for (const tag of ['FX', 'NOCLICK']) effect.instance.addTag(tag);
               effect.instance.persists = false;
               effect.instance.position.copy(position); context.scene.add(effect.display.model); effects.add(effect);
               effect.instance.sprite.playOnce('collapse_small', () => { release(effect); effects.delete(effect); });
-            }).catch((error: unknown) => console.error('Unable to play collapse effect', error));
+            }
             entity.remove();
           });
         },

@@ -40,6 +40,7 @@ import { MushtreeManager } from '@dontstarve-web/prefab/mushtree';
 import { MarbleShrubManager, MARBLESHRUB_ID } from '@dontstarve-web/prefab/marbleshrub';
 import { ArchivePropsManager, type ArchivePropId } from '@dontstarve-web/prefab/archive_props';
 import { HoundboneManager } from '@dontstarve-web/prefab/houndbone';
+import { BeeQueenHiveManager } from '@dontstarve-web/prefab/beequeenhivegrown';
 import { SkeletonManager, type SkeletonId } from '@dontstarve-web/prefab/skeleton';
 import { MarbleBeanSaplingManager, MARBLEBEAN_SAPLING_ID } from '@dontstarve-web/prefab/marblebean_sapling';
 import { RockAvocadoSaplingManager, ROCK_AVOCADO_SAPLING_ID } from '@dontstarve-web/prefab/rock_avocado_fruit_sprout_sapling';
@@ -111,6 +112,7 @@ const MANAGER_DEFINITIONS = {
   'archive_props': PREFAB_DEFINITIONS.archiveProps,
   'skeleton': PREFAB_DEFINITIONS.skeletons,
   'houndbone': PREFAB_DEFINITIONS.houndbones,
+  'beequeenhivegrown': PREFAB_DEFINITIONS.beeQueenHives,
   'marblebean_sapling': PREFAB_DEFINITIONS.marbleBeanSaplings,
   'rock_avocado_bush': PREFAB_DEFINITIONS.rockAvocadoBushes,
   'rock_avocado_fruit_sprout_sapling': PREFAB_DEFINITIONS.rockAvocadoSaplings,
@@ -173,6 +175,7 @@ const SCENE_LIFECYCLE_ORDER = [
   PREFAB_DEFINITIONS.archiveProps,
   PREFAB_DEFINITIONS.skeletons,
   PREFAB_DEFINITIONS.houndbones,
+  PREFAB_DEFINITIONS.beeQueenHives,
   PREFAB_DEFINITIONS.rockAvocadoSaplings,
   PREFAB_DEFINITIONS.rockAvocadoBushes,
   PREFAB_DEFINITIONS.berrybushes,
@@ -228,6 +231,7 @@ export async function createSceneEntities(
     'archive_props': ReturnType<typeof registerArchiveProps>;
     'skeleton': ReturnType<typeof registerSkeletons>;
     'houndbone': ReturnType<typeof registerHoundbones>;
+    'beequeenhivegrown': ReturnType<typeof registerBeeQueenHives>;
     'marblebean_sapling': ReturnType<typeof registerMarbleBeanSaplings>;
     'rock_avocado_bush': ReturnType<typeof registerRockAvocadoBushes>;
     'rock_avocado_fruit_sprout_sapling': ReturnType<typeof registerRockAvocadoSaplings>;
@@ -299,6 +303,7 @@ export async function createSceneEntities(
   Managers['archive_props'] = registerArchiveProps(registry, 'archive_props', worldState);
   Managers['skeleton'] = registerSkeletons(registry, 'skeleton', worldState);
   Managers['houndbone'] = registerHoundbones(registry, 'houndbone', worldState);
+  Managers['beequeenhivegrown'] = registerBeeQueenHives(registry, 'beequeenhivegrown', worldState);
   Managers['marblebean_sapling'] = registerMarbleBeanSaplings(registry, 'marblebean_sapling', worldState);
   Managers['rock_avocado_bush'] = registerRockAvocadoBushes(registry, 'rock_avocado_bush', worldState);
   Managers['rock_avocado_fruit_sprout_sapling'] = registerRockAvocadoSaplings(registry, 'rock_avocado_fruit_sprout_sapling', worldState);
@@ -335,8 +340,8 @@ export async function createSceneEntities(
     const itemId = turfItemForTile(tileId);
     if (!itemId) return;
     const spec = GROUND_ITEM_DISPLAY_SPECS[itemId];
-    void Managers['ground_item'].flingLoot([{ itemId, count: 1, name: spec.name, icon: spec.icon, atlas: spec.atlas }],
-      new THREE.Vector3(point.x, 0, point.z)).catch((error: unknown) => console.error('Unable to drop dug turf', error));
+    Managers['ground_item'].flingLoot([{ itemId, count: 1, name: spec.name, icon: spec.icon, atlas: spec.atlas }],
+      new THREE.Vector3(point.x, 0, point.z));
   });
 
   const dispose = () => {
@@ -366,6 +371,7 @@ export async function createSceneEntities(
     archiveProps: Managers['archive_props'],
     skeletons: Managers['skeleton'],
     houndbones: Managers['houndbone'],
+    beeQueenHives: Managers['beequeenhivegrown'],
     marbleBeanSaplings: Managers['marblebean_sapling'],
     rockAvocadoSaplings: Managers['rock_avocado_fruit_sprout_sapling'],
     rockAvocadoBushes: Managers['rock_avocado_bush'],
@@ -399,8 +405,7 @@ export async function createSceneEntities(
         dropItem: (entity, position) => { sceneInventory.DropItem(entity, position); },
         registerContainer: (id, container, saved) => sceneInventory.registerContainer(id, container, saved),
         unregisterContainer: (id, container) => sceneInventory.unregisterContainer(id, container), dropLoot: (items, position, launch) => {
-        void Managers['ground_item'].flingLoot(items.map((item) => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position, launch)
-          .catch((error: unknown) => console.error('Unable to drop building loot', error));
+        Managers['ground_item'].flingLoot(items.map((item) => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position, launch);
       } },
       consumeBufferedBuild,
       onBuildingInteraction,
@@ -433,10 +438,7 @@ export async function createSceneEntities(
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (_, record) => flowerPlanting.spawnFromSave(record.id,
         record.components.flower!.animation, new THREE.Vector3(...record.transform.position), record.components.flower!.planted === true),
-      debugSpawn: async () => {
-        const prepared = await flowerPlanting.prepareTransplant();
-        try { prepared.spawn(view.player.position); } finally { prepared.dispose(); }
-      },
+      debugSpawn: async () => { flowerPlanting.transplant(view.player.position); },
       exportRecords: () => flowerPlanting.exportRecords().map((record) => ({ prefabId: 'flower', record })),
       update: (dt, quaternion) => flowerPlanting.update(quaternion, dt),
       renderEntities: () => flowerPlanting.renderEntities,
@@ -489,11 +491,10 @@ export async function createSceneEntities(
         new THREE.Vector3(target.x, target.y, target.z), { cellSize: 1.5, isWalkable: moleWalkable }),
       spawnItem: state => { const entity = sceneInventory.entities.create(state); sceneInventory.configureItem(entity); return entity; },
       dropItem: (entity, position) => sceneInventory.DropItem(entity, position),
-      showMole: (entity, position) => { void Managers['ground_item'].spawnFromSave(entity.id, {
+      showMole: (entity, position) => { Managers['ground_item'].spawnFromSave(entity.id, {
         ...SAVE_CATALOG.items.mole, ...entity.snapshot(), entity,
-      }, position).catch((error: unknown) => console.error('Unable to render mole', error)); },
-      dropLoot: (itemId, position) => { void Managers['ground_item'].flingLoot([{ ...SAVE_CATALOG.items[itemId], itemId, count: 1 }], position)
-        .catch((error: unknown) => console.error('Unable to drop mole loot', error)); },
+      }, position); },
+      dropLoot: (itemId, position) => { Managers['ground_item'].flingLoot([{ ...SAVE_CATALOG.items[itemId], itemId, count: 1 }], position); },
       getEntities: () => {
         for (const entity of sceneInventory.entities.values()) if (entity.components.bait && !moleBaits.has(entity.id))
           moleBaits.set(entity.id, new MoleBait(entity, moleScheduler, moleWalkable));
@@ -582,9 +583,8 @@ export async function createSceneEntities(
       scheduler: scheduler ?? worldState.scheduler, getWatchWorldContent: worldState.getWatchWorldContent, tickingarea: worldState.tickingarea, cameraHeading: view.cameraHeading,
       getPlayers: () => [lightFlierPlayer],
       spawnItem: state => { const entity = sceneInventory.entities.create(state); sceneInventory.configureItem(entity); return entity; },
-      showItem: (entity, position) => Managers['ground_item'].spawnPreparedEntity(entity, position),
-      dropLoot: (itemId, count, position) => { void Managers['ground_item'].flingLoot([{ ...SAVE_CATALOG.items[itemId], itemId, count }], position)
-        .catch((error: unknown) => console.error('Unable to drop lightflier loot', error)); },
+      showItem: (entity, position) => Managers['ground_item'].spawnEntity(entity, position),
+      dropLoot: (itemId, count, position) => { Managers['ground_item'].flingLoot([{ ...SAVE_CATALOG.items[itemId], itemId, count }], position); },
     }, model => dstLighting.sampleLightLevel(model.position, model));
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (_, record) => flowers.spawn(new THREE.Vector3(...record.transform.position), record as LightFlierFlowerRecord),
@@ -621,7 +621,7 @@ export async function createSceneEntities(
       physics: world,
       tickingarea: worldState.tickingarea,
       scheduler,
-      prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
+      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (id, record) => rockManager.spawn(id, new THREE.Vector3(...record.transform.position), {
@@ -639,7 +639,7 @@ export async function createSceneEntities(
   function registerCaveEntrances(registry: EntityRegistry, prefabId: 'cave_entrance', worldState: SceneWorldState) {
     const caveEntrances = new CaveEntranceManager(scene, {
       handEquipment: sceneInventory.handEquipment,
-      physics: world, tickingarea: worldState.tickingarea, prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
+      physics: world, tickingarea: worldState.tickingarea, spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
       shard: shardLink,
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
@@ -658,7 +658,7 @@ export async function createSceneEntities(
 
   function registerMushroomPlants(registry: EntityRegistry, prefabId: 'mushroom_plant', worldState: SceneWorldState) {
     const mushrooms = new MushroomPlantManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
-      prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
+      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
       rain: worldState.weather.preciptype,
       tickingarea: worldState.tickingarea,
     });
@@ -680,8 +680,7 @@ export async function createSceneEntities(
       handEquipment: sceneInventory.handEquipment,
       physics: world, scheduler, scene, getWatchWorldContent: worldState.getWatchWorldContent, tickingarea: worldState.tickingarea, worldEvents,
       dropLoot: (items, position) => {
-        void Managers['ground_item'].flingLoot(items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position)
-          .catch((error: unknown) => console.error('Unable to drop mushtree loot', error));
+        Managers['ground_item'].flingLoot(items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position);
       },
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
@@ -703,7 +702,7 @@ export async function createSceneEntities(
       handEquipment: sceneInventory.handEquipment,
       physics: world, scheduler: scheduler ?? worldState.scheduler, playerPosition: () => player.position,
       getWatchWorldContent: worldState.getWatchWorldContent, tickingarea: worldState.tickingarea, fx: Managers['world_fx'],
-      prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
+      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (id, record) => grottoPools.spawn(id, new THREE.Vector3(...record.transform.position), {
@@ -739,7 +738,7 @@ export async function createSceneEntities(
     const marbleShrubs = new MarbleShrubManager(scene, {
       handEquipment: sceneInventory.handEquipment,
       scheduler, physics: world, getWatchWorldContent: worldState.getWatchWorldContent, tickingarea: worldState.tickingarea,
-      prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
+      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (_, record) => marbleShrubs.spawn(MARBLESHRUB_ID, new THREE.Vector3(...record.transform.position), {
@@ -760,7 +759,7 @@ export async function createSceneEntities(
     const archiveProps = new ArchivePropsManager(scene, {
       handEquipment: sceneInventory.handEquipment,
       physics: world, cameraFacing: view.cameraFacing, tickingarea: worldState.tickingarea,
-      prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
+      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (id, record) => archiveProps.spawn(id, new THREE.Vector3(...record.transform.position), {
@@ -780,7 +779,7 @@ export async function createSceneEntities(
     const houndbones = new HoundboneManager(scene, {
       handEquipment: sceneInventory.handEquipment,
       tickingarea: worldState.tickingarea,
-      prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
+      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (_, record) => houndbones.spawn(new THREE.Vector3(...record.transform.position), {
@@ -795,12 +794,30 @@ export async function createSceneEntities(
     return houndbones;
   }
 
+  function registerBeeQueenHives(registry: EntityRegistry, prefabId: 'beequeenhivegrown', worldState: SceneWorldState) {
+    const hives = new BeeQueenHiveManager(scene, { handEquipment: sceneInventory.handEquipment,
+      tickingarea: worldState.tickingarea, physics: world, scheduler: worldState.scheduler });
+    registry.register(MANAGER_DEFINITIONS[prefabId], {
+      restore: (_, record) => hives.spawn(new THREE.Vector3(...record.transform.position), {
+        id: record.id, transform: record.transform,
+        components: { workable: record.components.workable, beeQueenHiveTimer: record.components.beeQueenHiveTimer },
+      }),
+      debugSpawn: () => hives.spawn(player.position.clone()),
+      exportRecords: () => hives.exportRecords(),
+      update: dt => hives.update(dt),
+      renderEntities: () => hives.renderEntities,
+      miniMapEntities: () => hives.miniMapEntities,
+      dispose: () => hives.dispose(),
+    });
+    return hives;
+  }
+
   function registerSkeletons(registry: EntityRegistry, prefabId: 'skeleton', worldState: SceneWorldState) {
     const skeletons = new SkeletonManager(scene, {
       handEquipment: sceneInventory.handEquipment,
       tickingarea: worldState.tickingarea,
       physics: world,
-      prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
+      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (id, record) => skeletons.spawn(id, new THREE.Vector3(...record.transform.position), {
@@ -819,7 +836,7 @@ export async function createSceneEntities(
     const marbleBeanSaplings = new MarbleBeanSaplingManager(scene, {
       handEquipment: sceneInventory.handEquipment,
       scheduler, shrubs: Managers['marbleshrub'], tickingarea: worldState.tickingarea,
-      prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
+      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (_, record) => marbleBeanSaplings.spawn(new THREE.Vector3(...record.transform.position), record),
@@ -837,7 +854,7 @@ export async function createSceneEntities(
       tickingarea: worldState.tickingarea,
       rain: worldState.weather.preciptype,
       physics: world, getLocalTemperature: position => GetTemperatureAtXZ(() => worldState.temperature.peek(), position.x, position.z),
-      prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
+      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (_, record) => rockAvocadoBushes.spawn(new THREE.Vector3(...record.transform.position), record),
@@ -854,7 +871,7 @@ export async function createSceneEntities(
     const rockAvocadoSaplings = new RockAvocadoSaplingManager(scene, {
       handEquipment: sceneInventory.handEquipment,
       scheduler, bushes: Managers['rock_avocado_bush'], tickingarea: worldState.tickingarea,
-      prepareSpawn: definition => Managers['ground_item'].prepareSpawn(definition),
+      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (_, record) => rockAvocadoSaplings.spawn(new THREE.Vector3(...record.transform.position), record),
@@ -872,7 +889,7 @@ export async function createSceneEntities(
       tickingarea: worldState.tickingarea,
       rain: worldState.weather.preciptype,
       physics: world, getLocalTemperature: position => GetTemperatureAtXZ(() => worldState.temperature.peek(), position.x, position.z),
-      prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
+      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (_, record) => berrybushes.spawn(new THREE.Vector3(...record.transform.position), record),
@@ -890,7 +907,7 @@ export async function createSceneEntities(
       tickingarea: worldState.tickingarea,
       rain: worldState.weather.preciptype,
       getLocalTemperature: position => GetTemperatureAtXZ(() => worldState.temperature.peek(), position.x, position.z),
-      prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
+      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (_, record) => monkeytails.spawn(new THREE.Vector3(...record.transform.position), record),
@@ -906,7 +923,7 @@ export async function createSceneEntities(
   function registerGrasses(registry: EntityRegistry, prefabId: 'grass', worldState: SceneWorldState) {
     const grasses = new GrassManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
       tickingarea: worldState.tickingarea,
-      prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
+      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (_, record) => grasses.spawn(new THREE.Vector3(...record.transform.position), {
@@ -924,7 +941,7 @@ export async function createSceneEntities(
   function registerSaplings(registry: EntityRegistry, prefabId: 'sapling', worldState: SceneWorldState) {
     const saplings = new SaplingManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
       tickingarea: worldState.tickingarea,
-      prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
+      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (id, record) => saplings.spawn(id, new THREE.Vector3(...record.transform.position), {
@@ -942,7 +959,7 @@ export async function createSceneEntities(
   function registerCaveFerns(registry: EntityRegistry, prefabId: 'cave_fern', worldState: SceneWorldState) {
     const caveFerns = new CaveFernManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
       tickingarea: worldState.tickingarea,
-      prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
+      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (id, record) => caveFerns.spawn(id, new THREE.Vector3(...record.transform.position), {
@@ -961,7 +978,7 @@ export async function createSceneEntities(
     const cacti = new CactusManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
       tickingarea: worldState.tickingarea,
       physics: world,
-      prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
+      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
       spawnItem: state => { const entity = sceneInventory.entities.create(state); sceneInventory.configureItem(entity); return entity; },
       dropItem: (entity, position) => { sceneInventory.DropItem(entity, position); },
     });
@@ -1018,8 +1035,7 @@ export async function createSceneEntities(
         const counts = new Map<string, number>();
         for (const itemId of items) if (Object.hasOwn(SAVE_CATALOG.items, itemId)) counts.set(itemId, (counts.get(itemId) ?? 0) + 1);
         if (counts.size === 0) return;
-        void Managers['ground_item'].flingLoot([...counts].map(([itemId, count]) => ({ ...SAVE_CATALOG.items[itemId], itemId, count })), position)
-          .catch((error: unknown) => console.error('Unable to drop tumbleweed loot', error));
+        Managers['ground_item'].flingLoot([...counts].map(([itemId, count]) => ({ ...SAVE_CATALOG.items[itemId], itemId, count })), position);
       },
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
@@ -1125,16 +1141,15 @@ export async function createSceneEntities(
         position.z = THREE.MathUtils.clamp(position.z, -edge, edge);
       },
       spawnPrize(prefab, count, position) {
-        void Managers['ground_item'].flingLoot([{ ...SAVE_CATALOG.items[prefab], itemId: prefab, count }], position)
-          .catch((error: unknown) => console.error(`Unable to spawn beefalo ${prefab}`, error));
+        Managers['ground_item'].flingLoot([{ ...SAVE_CATALOG.items[prefab], itemId: prefab, count }], position);
       },
       getPoopPositions() {
         return Managers['ground_item'].iteratePrefabPositions('poop');
       },
       spawnPoop(position) {
-        void Managers['ground_item'].spawnFromSave(newEntityId(), {
+        Managers['ground_item'].spawnFromSave(newEntityId(), {
           ...SAVE_CATALOG.items.poop, itemId: 'poop', count: 1,
-        }, position).catch((error: unknown) => console.error('Unable to spawn beefalo manure', error));
+        }, position);
       },
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
@@ -1160,8 +1175,7 @@ export async function createSceneEntities(
       camera, scene, scheduler, physics: world, worldEvents, tickingarea: worldState.tickingarea,
       growthDuration: seconds => seconds * (worldState.season.peek().season === 'spring' ? .75 : 1),
       dropLoot: (items, position) => {
-        void Managers['ground_item'].flingLoot(items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position)
-          .catch((error: unknown) => console.error('Unable to drop evergreen loot', error));
+        Managers['ground_item'].flingLoot(items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position);
       },
     });
     scene.add(evergreenForest.group);
@@ -1185,8 +1199,7 @@ export async function createSceneEntities(
       secondsUntilNextDay: now => TUNING.TOTAL_DAY_TIME - now % TUNING.TOTAL_DAY_TIME,
       growthDuration: seconds => seconds * (worldState.season.peek().season === 'spring' ? .75 : 1),
       dropLoot: (items, position) => {
-        void Managers['ground_item'].flingLoot(items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position)
-          .catch((error: unknown) => console.error('Unable to drop deciduous tree loot', error));
+        Managers['ground_item'].flingLoot(items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position);
       },
     });
     scene.add(deciduousForest.group);
@@ -1260,8 +1273,7 @@ export async function createSceneEntities(
       worldEvents,
       growthDuration: seconds => seconds * (worldState.season.peek().season === 'spring' ? .75 : 1),
       dropLoot: (items, position) => {
-        void Managers['ground_item'].flingLoot(items.map((item) => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position)
-          .catch((error: unknown) => console.error('Unable to drop tree loot', error));
+        Managers['ground_item'].flingLoot(items.map((item) => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position);
       },
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
@@ -1294,8 +1306,7 @@ export async function createSceneEntities(
     const pigKings = new PigKingManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
       camera, scheduler: worldState.scheduler, physics: world, tickingarea: worldState.tickingarea,
       dropLoot: (items, position, launch) => {
-        void Managers['ground_item'].flingLoot(items.map((item) => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position, launch)
-          .catch((error: unknown) => console.error('Unable to drop pig king gold', error));
+        Managers['ground_item'].flingLoot(items.map((item) => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position, launch);
       },
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {

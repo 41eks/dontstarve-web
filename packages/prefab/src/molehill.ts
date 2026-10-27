@@ -3,10 +3,8 @@ import { ModelRecords } from './modelRecords';
 import * as THREE from 'three';
 import { createEffect, WorldContentKey, type TileStateQuery } from '@dontstarve-web/signals';
 import type { InventoryStack } from '@dontstarve-web/inventory';
-import { loadAnim, loadBuild } from '@dontstarve-web/animation/animationAssets';
-import { createSpriteFactory, type AnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
 import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
-import type { PrefabDisplay } from '@dontstarve-web/display';
+import { SpriteResources, type PrefabDisplay } from '@dontstarve-web/display';
 import { watchTileActivity } from './tileActivity';
 import { Inventory } from '../../componets/src/inventory';
 import { Spawner } from '../../componets/src/spawner';
@@ -24,7 +22,7 @@ export interface MolehillSave { items: InventoryStack[]; child?: InventoryStack;
 export interface MolehillRecord {
   id: string; transform: { position: [number, number, number]; rotationY: number }; components: { molehill: MolehillSave };
 }
-export interface MoleHabitat extends MoleWorld, ToolMouseTargetWorld { tickingarea?: TileStateQuery; prepare(): Promise<void>; showMole(entity: import('@dontstarve-web/inventory').ItemEntity, position: THREE.Vector3): void }
+export interface MoleHabitat extends MoleWorld, ToolMouseTargetWorld { tickingarea?: TileStateQuery; showMole(entity: import('@dontstarve-web/inventory').ItemEntity, position: THREE.Vector3): void }
 
 /** molehill.lua owns the dig callback, stored minerals and its one persistent child. */
 export class Molehill implements BrainEntity {
@@ -39,7 +37,7 @@ export class Molehill implements BrainEntity {
   readonly instance: PrefabInstance;
   readonly display: PrefabDisplay;
   private readonly world: MoleHabitat;
-  constructor(id: string, { instance, display }: ReturnType<typeof createPrefabEntity>, world: MoleHabitat, lengths: ReadonlyMap<string, number>, saved?: MolehillSave, adopt?: Mole) {
+  constructor(id: string, { instance, display }: ReturnType<typeof createPrefabEntity>, world: MoleHabitat, saved?: MolehillSave, adopt?: Mole) {
     this.id = id; this.model = display.model; this.world = world;
     this.instance = instance; this.display = display;
     const model = this.model;
@@ -47,8 +45,8 @@ export class Molehill implements BrainEntity {
     const inventory = new Inventory(this, 50, world.dropItem, world.itemSpecs);
     const spawner = new Spawner(this, this.cycle.scheduler, () => {
       const entity = world.spawnItem({ itemId: 'mole', count: 1 }); configureMoleEntity(entity);
-      const mole = entity.getComponent<Mole>('mole')!; mole.bindWorld(world, lengths);
-      // Rendering is prepared; dropping a spawned child does not invoke mole.lua's inventory-drop stun.
+      const mole = entity.getComponent<Mole>('mole')!; mole.bindWorld(world);
+      // Dropping a spawned child does not invoke mole.lua's inventory-drop stun.
       world.showMole(entity, this.getPosition()); return mole;
     }, MOLE_RESPAWN_TIME);
     const inst = actionEntity(model, MOLEHILL_ID);
@@ -61,7 +59,7 @@ export class Molehill implements BrainEntity {
     if (adopt) { spawner.TakeOwnership(adopt); this.stopSpawning(); }
     else if (saved?.child) {
       const entity = world.spawnItem(saved.child); configureMoleEntity(entity);
-      const child = entity.getComponent<Mole>('mole')!; child.bindWorld(world, lengths);
+      const child = entity.getComponent<Mole>('mole')!; child.bindWorld(world);
       child.getPosition().copy(model.position); world.showMole(entity, model.position);
       spawner.TakeOwnership(child); spawner.GoHome(child);
     } else if (saved?.childid) this.pendingChildId = saved.childid;
@@ -126,51 +124,35 @@ export class MolehillManager {
   private readonly mouseRecords = new ModelRecords<Molehill>();
   private readonly hills = new Map<string, Molehill>();
   private readonly moles = new Set<Mole>();
-  private factory?: AnimatedSpriteFactory;
-  private fxFactory?: AnimatedSpriteFactory;
-  private request?: Promise<void>;
+  private readonly resources: SpriteResources;
   private disposed = false;
-  private lengths = new Map<string, number>();
   readonly habitat: MoleHabitat;
   private readonly scene: THREE.Scene;
-  private readonly base: string;
   constructor(scene: THREE.Scene, base: string,
-    services: Omit<MoleWorld, 'getMoles' | 'makeHome' | 'registerMole' | 'spawnMoveFx' | 'prepare'> & ToolMouseTargetWorld & { tickingarea?: TileStateQuery; showMole(entity: import('@dontstarve-web/inventory').ItemEntity, position: THREE.Vector3): void }) {
-    this.scene = scene; this.base = base;
+    services: Omit<MoleWorld, 'getMoles' | 'makeHome' | 'registerMole' | 'spawnMoveFx'> & ToolMouseTargetWorld & { tickingarea?: TileStateQuery; showMole(entity: import('@dontstarve-web/inventory').ItemEntity, position: THREE.Vector3): void }) {
+    this.scene = scene; this.resources = new SpriteResources(base);
     this.habitat = { ...services, showMole: services.showMole,
-      getMoles: () => [...this.moles], makeHome: mole => this.spawnPrepared(mole.getPosition().clone(), undefined, mole),
+      getMoles: () => [...this.moles], makeHome: mole => this.createHill(mole.getPosition().clone(), undefined, mole),
       registerMole: mole => { this.moles.add(mole); return () => this.moles.delete(mole); },
-      spawnMoveFx: position => this.spawnMoveFx(position), prepare: () => this.prepare() };
+      spawnMoveFx: position => this.spawnMoveFx(position) };
   }
-  async prepare(): Promise<void> {
-    if (this.request) return this.request;
-    this.request = (async () => {
-      const [build, bank, fxBuild, fxBank] = await Promise.all([loadBuild('mole_build.zip', this.base), loadAnim('mole_basic.zip', this.base),
-        loadBuild('mole_move_fx.zip', this.base), loadAnim('mole_move_fx.zip', this.base)]);
-      if (this.disposed) return;
-      this.lengths = new Map(bank.animations.map(clip => [clip.name, clip.frames.length / clip.frameRate]));
-      this.factory = createSpriteFactory(build, bank); this.fxFactory = createSpriteFactory(fxBuild, fxBank);
-    })();
-    return this.request;
-  }
-  async spawn(position: THREE.Vector3, saved?: MolehillRecord): Promise<THREE.Group> { await this.prepare(); return this.spawnPrepared(position, saved).model; }
-  private spawnPrepared(position: THREE.Vector3, saved?: MolehillRecord, adopt?: Mole): Molehill {
-    if (this.disposed || !this.factory) throw new Error('Molehill assets unavailable');
-    const factory = this.factory;
-    const entity = createPrefabEntity(MOLEHILL_ID, { create: animation => factory.create({ initialAnimation: animation, name: MOLEHILL_ID }),
-      release: drawn => factory.disposeSprite(drawn) }, { name: 'mound_idle', billboard: true }, MOLEHILL_ID);
+  spawn(position: THREE.Vector3, saved?: MolehillRecord): THREE.Group { return this.createHill(position, saved).model; }
+  /** SpawnPrefab("molehill"), as mole.lua's MakeNewHome does; the display loads the art. */
+  private createHill(position: THREE.Vector3, saved?: MolehillRecord, adopt?: Mole): Molehill {
+    if (this.disposed) throw new Error('Molehill assets unavailable');
+    const entity = createPrefabEntity(MOLEHILL_ID, this.resources.factory({ animationArchive: 'mole_basic.zip', buildArchive: 'mole_build.zip' }),
+      { name: 'mound_idle', billboard: true }, MOLEHILL_ID);
     entity.instance.sprite.setGround(-.5, false);
     const model = entity.display.model; entity.instance.position.copy(position);
-    const hill = new Molehill(saved?.id ?? newEntityId(), entity, this.habitat, this.lengths, saved?.components.molehill, adopt);
+    const hill = new Molehill(saved?.id ?? newEntityId(), entity, this.habitat, saved?.components.molehill, adopt);
     this.hills.set(hill.id, hill); this.mouseRecords.set(hill.model, hill); this.scene.add(model);
     return hill;
   }
   private readonly fx = new Set<ReturnType<typeof createPrefabEntity>>();
   private spawnMoveFx(position: THREE.Vector3): void {
-    if (!this.fxFactory) return;
-    const factory = this.fxFactory;
-    const entity = createPrefabEntity('mole_move_fx', { create: animation => factory.create({ initialAnimation: animation, name: 'mole_move_fx' }),
-      release: drawn => factory.disposeSprite(drawn) }, { name: 'move', billboard: true }, 'mole_move_fx');
+    if (this.disposed) return;
+    const entity = createPrefabEntity('mole_move_fx', this.resources.factory({ animationArchive: 'mole_move_fx.zip', buildArchive: 'mole_move_fx.zip' }),
+      { name: 'move', billboard: true }, 'mole_move_fx');
     entity.instance.position.copy(position); entity.instance.persists = false;
     entity.instance.addTag('FX');
     this.scene.add(entity.display.model); this.fx.add(entity);
@@ -198,6 +180,6 @@ export class MolehillManager {
     if (this.disposed) return; this.disposed = true;
     for (const hill of this.hills.values()) hill.dispose();
     for (const { instance } of this.fx) instance.remove();
-    this.fx.clear(); this.hills.clear(); this.factory?.dispose(); this.fxFactory?.dispose();
+    this.fx.clear(); this.hills.clear(); this.resources.dispose();
   }
 }

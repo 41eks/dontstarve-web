@@ -104,7 +104,8 @@ it('renders real flies child art, preloads looping audio and preserves manure th
     const model = await manager.spawnFromSave('poop-identity', item, new THREE.Vector3());
     expect([...manager.iteratePrefabPositions('poop')]).toEqual([manager.entities.get('poop-identity')!.transform.position]);
     manager.update(.1, new THREE.Quaternion());
-    expect(sources).toHaveLength(1);
+    // The swarm's loop starts once the sound preloaded with the manure has decoded.
+    await vi.waitFor(() => expect(sources).toHaveLength(1));
     expect(sources[0].loop).toBe(true);
     for (let index = 75; index <= 81; index++) expect(fetch).toHaveBeenCalledWith(`/dst/data/sound/common.fsb-${index}.wav`);
     expect(context.decodeAudioData).toHaveBeenCalled();

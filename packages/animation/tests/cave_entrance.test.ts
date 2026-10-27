@@ -21,7 +21,7 @@ it('mines a closed entrance into cave_entrance_open, dropping rocks and flint, a
   const inventory = createInventoryStore([]), scene = new THREE.Scene(), physics = new CANNON.World();
   const ground = new GroundItemManager(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', new THREE.Group());
-  const caves = new CaveEntranceManager(scene, { physics, prepareSpawn: (definition, fling) => ground.prepareSpawn(definition, fling) });
+  const caves = new CaveEntranceManager(scene, { physics, spawnGroundItem: (definition, position, options) => ground.spawnGroundItem(definition, position, options) });
   try {
     await caves.spawn('cave_entrance', new THREE.Vector3(5, 0, 7));
     expect(caves.miniMapEntities.map(({ icon }) => icon)).toEqual(['cave_closed.png']);
@@ -40,7 +40,7 @@ it('mines a closed entrance into cave_entrance_open, dropping rocks and flint, a
     await vi.waitFor(() => expect(ground.exportRecords().map(r => r.components.stack?.itemId).sort())
       .toEqual(['flint', 'flint', 'flint', 'rocks', 'rocks']));
 
-    const restored = new CaveEntranceManager(scene, { physics: new CANNON.World(), prepareSpawn: () => { throw new Error('unused'); } });
+    const restored = new CaveEntranceManager(scene, { physics: new CANNON.World(), spawnGroundItem: () => { throw new Error('unused'); } });
     await restored.spawn('cave_entrance_open', new THREE.Vector3(...record.transform.position), record);
     expect(restored.exportRecords()).toEqual(caves.exportRecords());
     restored.dispose();
@@ -52,8 +52,8 @@ it('offers MIGRATE on an open entrance whose Caves destination is available and 
   vi.stubGlobal('window', new EventTarget());
   const scene = new THREE.Scene(), migrated: unknown[][] = [];
   const shard = { isWorldAvailable: (id: string) => id === 'Caves', isWorldFull: () => false, migratePlayer: (...args: unknown[]) => { migrated.push(args); } };
-  const caves = new CaveEntranceManager(scene, { shard, prepareSpawn: () => { throw new Error('unused'); } });
-  const unavailable = new CaveEntranceManager(scene, { prepareSpawn: () => { throw new Error('unused'); } });
+  const caves = new CaveEntranceManager(scene, { shard, spawnGroundItem: () => { throw new Error('unused'); } });
+  const unavailable = new CaveEntranceManager(scene, { spawnGroundItem: () => { throw new Error('unused'); } });
   try {
     const open = await caves.spawn('cave_entrance_open', new THREE.Vector3(1, 0, 2));
     const [action] = getMigrateActions(open);
@@ -75,7 +75,7 @@ it('stays clickable after its tile leaves and re-enters the tickingarea', async 
   vi.stubGlobal('window', new EventTarget());
   const scene = new THREE.Scene(), active = createSignal(true);
   const tickingarea = (() => Object.assign(readonlySignal(active), { dispose: () => {} })) as never;
-  const caves = new CaveEntranceManager(scene, { tickingarea, prepareSpawn: () => { throw new Error('unused'); } });
+  const caves = new CaveEntranceManager(scene, { tickingarea, spawnGroundItem: () => { throw new Error('unused'); } });
   const camera = new THREE.PerspectiveCamera(60, 1, .1, 200);
   camera.position.set(5, 13, 27); camera.lookAt(5, 1, 7); camera.updateMatrixWorld();
   const renderer = { domElement: { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) } } as unknown as THREE.WebGLRenderer;

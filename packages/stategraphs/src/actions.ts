@@ -16,6 +16,8 @@ export const ACTIONS = {
   EAT: { priority: 0, strings: { GENERIC: '吃', DRINK: '饮用', PROCESS: '处理' } },
   PICK: { priority: 0, strings: { GENERIC: '采集' } },
   HARVEST: { priority: 0, strings: { GENERIC: '采收' } },
+  TURNON: { priority: 2, strings: { GENERIC: '打开' } },
+  TURNOFF: { priority: 2, strings: { GENERIC: '关闭' } },
   PICKUP: { priority: 1, strings: { GENERIC: '拾起' } },
   STORE: { priority: 0, strings: { GENERIC: '存放', IMPRISON: '关入鸟笼' } },
   TAKEITEM: { priority: 0, strings: { GENERIC: '拿取物品', BIRDCAGE: '打扫' } },

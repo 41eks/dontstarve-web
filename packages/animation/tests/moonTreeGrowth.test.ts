@@ -60,9 +60,9 @@ it('plants one moonbutterfly with original baby-tree art and cycles short/normal
     return { entity, isValid, take: () => isValid() ? inventory.extract(address, 1, entity) ?? undefined : undefined,
       putBack: (item: typeof entity) => { inventory.receiveAt(address, item); } };
   };
-  const prepare = vi.fn(() => s.forest.prepareTransplant());
+  const transplant = vi.fn((position: THREE.Vector3) => s.forest.transplant(position));
   const planting = new PlantDeployment(world, animation, locomotor, source,
-    { plants: { moonbutterfly_sapling: { prepareTransplant: prepare } }, canPlant });
+    { plants: { moonbutterfly_sapling: { transplant } }, canPlant });
   const point = new THREE.Vector3(6, 0, 0);
   let restored: Awaited<ReturnType<typeof setup>> | undefined;
   const restoredInventory = createInventoryStore([]);
@@ -76,7 +76,7 @@ it('plants one moonbutterfly with original baby-tree art and cycles short/normal
     expect(planting.request(point)).toBe(false);
     canPlant.mockReturnValue(true);
     expect(planting.request(point)).toBe(true);
-    await prepare.mock.results.at(-1)!.value; await new Promise(resolve => setTimeout(resolve, 0));
+    await new Promise(resolve => setTimeout(resolve, 0));
     planting.update();
     expect(locomotor.goToPoint).toHaveBeenCalled();
     expect(s.forest.exportSaplings()).toEqual([]);
@@ -85,7 +85,7 @@ it('plants one moonbutterfly with original baby-tree art and cycles short/normal
     expect(inventory.get(cursorSlotAddress())?.count).toBe(2);
     expect(s.forest.exportSaplings()).toEqual([]);
     expect(planting.request(point)).toBe(true);
-    await prepare.mock.results.at(-1)!.value; await new Promise(resolve => setTimeout(resolve, 0));
+    await new Promise(resolve => setTimeout(resolve, 0));
     planting.update(); graph.update(5 / 30);
     expect(inventory.get(cursorSlotAddress())?.count).toBe(2);
     graph.update(1 / 30);

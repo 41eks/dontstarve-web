@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { PrefabDisplay } from '@dontstarve-web/display';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { MonkeytailManager, MONKEYTAIL_REGROW_TIME } from '../../prefab/src/monkeytail';
@@ -19,7 +20,7 @@ import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { inventoryStateFromSave } from '../../../src/save/inventoryState';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
-import { bindTestWorld } from './worldContentFixture';
+import { bindTestWorld, drawn } from './worldContentFixture';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 
@@ -38,12 +39,12 @@ function setup() {
   let temperature = 20;
   const monkeytails = new MonkeytailManager(scene, '/dst/data/anim', {
     rain, getLocalTemperature: () => temperature,
-    prepareSpawn: (definition, fling) => ground.prepareSpawn(definition, fling),
+    spawnGroundItem: (definition, position, options) => ground.spawnGroundItem(definition, position, options),
   });
   const registry = new EntityRegistry();
   registry.register(PREFAB_DEFINITIONS.monkeytails, {
-    restore: (_, record) => monkeytails.spawn(new THREE.Vector3(...record.transform.position), record),
-    debugSpawn: () => monkeytails.spawn(player.position.clone()),
+    restore: (_, record) => drawn(monkeytails.spawn(new THREE.Vector3(...record.transform.position), record)),
+    debugSpawn: () => drawn(monkeytails.spawn(player.position.clone())),
     exportRecords: () => monkeytails.exportRecords().map(record => ({ prefabId: 'monkeytail', record })),
     dispose: () => monkeytails.dispose(),
   });
@@ -100,7 +101,7 @@ it('spawns wild monkeytail, picks reeds, pauses in winter and reloads its discre
     expect((await executeDebugCommand('c_save()', s.inventory, undefined, () => { json = s.save(); })).ok).toBe(true);
     const saved = deserializeSave(json, SAVE_CATALOG), record = saved.world.entities.monkeytail[0];
     restored.season.set({ season: 'winter', progress: 0 });
-    await restored.monkeytails.spawn(new THREE.Vector3(...record.transform.position), record);
+    await drawn(restored.monkeytails.spawn(new THREE.Vector3(...record.transform.position), record));
     restored.inventory.replaceState(inventoryStateFromSave(saved), SAVE_CATALOG.recipes);
     expect(restored.monkeytails.exportRecords()).toEqual([record]);
     expect(restored.inventory.exportState()).toEqual(s.inventory.exportState());
@@ -128,6 +129,7 @@ it('plants cursor-held roots and fertilizes at frame six, preserves cancellation
     expect(s.inventory.getItemSpec('dug_monkeytail').maxStack).toBe(10);
     expect(s.inventory.getItemSpec('dug_monkeytail').atlas).toBe('images/inventoryimages2.xml');
     let groundMesh!: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
+    await (s.ground.reskinTargets[0].model.userData.display as PrefabDisplay).artLoaded();
     s.ground.reskinTargets[0].model.traverse(object => { if (object instanceof THREE.Mesh) groundMesh ??= object as typeof groundMesh; });
     expect(groundMesh.material.some(material => material.name === 'ground:reeds_monkeytails')).toBe(true);
     expect(groundMesh.geometry.drawRange.count).toBeGreaterThan(0);
@@ -140,21 +142,20 @@ it('plants cursor-held roots and fertilizes at frame six, preserves cancellation
       return { entity, isValid, take: () => isValid() ? s.inventory.extract(address, 1, entity) ?? undefined : undefined,
         putBack: (item: typeof entity) => { s.inventory.receiveAt(address, item); } };
     };
-    const prepare = vi.fn(() => s.monkeytails.prepareTransplant());
+    const transplant = vi.fn((position: THREE.Vector3) => s.monkeytails.transplant(position));
     deployment = new PlantDeployment(s.world, a.animation, a.locomotor, source, {
-      plants: { monkeytail: { prepareTransplant: prepare } },
+      plants: { monkeytail: { transplant } },
       canPlant: point => point.x >= 0,
     });
     expect(deployment.request(new THREE.Vector3(-1, 0, 0))).toBe(false);
     expect(deployment.request(new THREE.Vector3(2, 0, 0))).toBe(true);
-    await prepare.mock.results.at(-1)!.value;
     await new Promise(resolve => setTimeout(resolve, 0));
     deployment.update(); a.graph.update(5 / 30); deployment.cancel();
     a.graph.update(1);
+    expect(transplant).not.toHaveBeenCalled();
     expect(s.inventory.get(cursorSlotAddress())?.count).toBe(2);
     expect(s.monkeytails.exportRecords()).toEqual([]);
     expect(deployment.request(new THREE.Vector3(2, 0, 0))).toBe(true);
-    await prepare.mock.results.at(-1)!.value;
     await new Promise(resolve => setTimeout(resolve, 0));
     deployment.update(); a.graph.update(5 / 30);
     expect(s.inventory.get(cursorSlotAddress())?.count).toBe(2);
@@ -196,7 +197,7 @@ it('plants cursor-held roots and fertilizes at frame six, preserves cancellation
     expect((await executeDebugCommand('c_save()', s.inventory, undefined, () => { json = s.save(); })).ok).toBe(true);
     const saved = deserializeSave(json, SAVE_CATALOG);
     restored.inventory.replaceState(inventoryStateFromSave(saved), SAVE_CATALOG.recipes);
-    for (const record of saved.world.entities.monkeytail) await restored.monkeytails.spawn(new THREE.Vector3(...record.transform.position), record);
+    for (const record of saved.world.entities.monkeytail) await drawn(restored.monkeytails.spawn(new THREE.Vector3(...record.transform.position), record));
     for (const record of saved.world.entities.ground_item) {
       const item = record.components.stack!;
       await restored.ground.spawnFromSave(record.id, { ...SAVE_CATALOG.items[item.itemId], ...item }, new THREE.Vector3(...record.transform.position));
@@ -212,13 +213,13 @@ it('plants cursor-held roots and fertilizes at frame six, preserves cancellation
 it('withers in heat, reloads its recovery delay, regrows after rain and digs the Lua-specific loot', async () => {
   const s = setup(), restored = setup();
   try {
-    const model = await s.monkeytails.spawn(new THREE.Vector3(3, 0, 6));
+    const model = await drawn(s.monkeytails.spawn(new THREE.Vector3(3, 0, 6)));
     const pickable = model.userData.components.pickable, witherable = model.userData.components.witherable;
     s.setTemperature(100); s.advance(60);
     expect(witherable.IsWithered()).toBe(true); expect(pickable.IsBarren()).toBe(true);
     expect(model.userData.animationController.currentAnimation).toBe('full_to_dead');
     const saved = deserializeSave(s.save(), SAVE_CATALOG), record = saved.world.entities.monkeytail[0];
-    await restored.monkeytails.spawn(new THREE.Vector3(...record.transform.position), record);
+    await drawn(restored.monkeytails.spawn(new THREE.Vector3(...record.transform.position), record));
     expect(restored.monkeytails.exportRecords()).toEqual([record]);
     s.rain.set('rain');
     await new Promise(resolve => setTimeout(resolve, 0));
@@ -230,7 +231,7 @@ it('withers in heat, reloads its recovery delay, regrows after rain and digs the
     const mature = s.monkeytails.digTargets[0];
     expect(performToolWork('DIG', mature.entity!, {})).toBe(true);
     expect(s.ground.exportRecords().map(record => record.components.stack?.itemId)).toEqual(['cutreeds', 'dug_monkeytail']);
-    const dead = await s.monkeytails.spawn(new THREE.Vector3(80, 0, 6));
+    const dead = await drawn(s.monkeytails.spawn(new THREE.Vector3(80, 0, 6)));
     dead.userData.components.witherable.ForceWither();
     expect(performToolWork('DIG', s.monkeytails.digTargets[0].entity!, {})).toBe(true);
     expect(s.ground.exportRecords().map(record => record.components.stack?.itemId)).toEqual(['cutreeds', 'dug_monkeytail', 'cutreeds']);

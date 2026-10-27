@@ -126,7 +126,7 @@ export const CACTUS_DEFINITIONS: Readonly<Record<CactusId, PickablePlantDefiniti
 
 /** cactus.lua: PICK cactus_meat (and a summer flower) at the cost of thorns, burning and regrowth. */
 export class CactusManager extends PickablePlantManager {
-  spawn(prefabId: CactusId, position: THREE.Vector3, saved?: CactusRecord): Promise<THREE.Group> {
+  spawn(prefabId: CactusId, position: THREE.Vector3, saved?: CactusRecord): THREE.Group {
     return this.spawnPlant(CACTUS_DEFINITIONS[prefabId], position, saved);
   }
 

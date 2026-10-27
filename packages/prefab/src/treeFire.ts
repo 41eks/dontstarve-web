@@ -1,15 +1,11 @@
 import * as THREE from 'three';
 import { createEffect, createSignal, getBoundWatchWorldContent } from '@dontstarve-web/signals';
-import { loadAnim, loadBuild } from '@dontstarve-web/animation/animationAssets';
-import {
-  createSpriteFactory, type AnimatedSpriteFactory,
-} from '@dontstarve-web/animation/sprite';
 import { createPrefabEntity, prefabInstance, type PrefabInstance } from './prefabInstance';
-import type { ArchiveSpriteCommands } from '@dontstarve-web/display';
+import { SpriteResources, type ArchiveSpriteCommands } from '@dontstarve-web/display';
 import { Burnable, type BurnableInst } from '../../componets/src/burnable';
 import { Propagator } from '../../componets/src/propagator';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { PlaySound, PreloadSounds, type SoundEventPath, type SoundHandle } from './sound';
+import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
 import { TILE_SIZE } from './tile';
 
 /** tuning.lua TREE_BURN_TIME. */
@@ -33,23 +29,21 @@ export interface FireHandle { stop(extinguished: boolean): void }
 export class FireFxHost {
   private readonly fires = new Map<THREE.Group, { entity: ReturnType<typeof createPrefabEntity>; position: THREE.Vector3;
     owner?: THREE.Object3D; instance?: PrefabInstance<ArchiveSpriteCommands>; stop(extinguished: boolean): void }>();
-  private readonly factory: AnimatedSpriteFactory;
+  private readonly resources: SpriteResources;
   private disposed = false;
-  private constructor(factory: AnimatedSpriteFactory) { this.factory = factory; }
+  private constructor(assetBaseUrl: string) { this.resources = new SpriteResources(assetBaseUrl); }
 
-  static async load(assetBaseUrl: string): Promise<FireFxHost> {
-    const [build, anim] = await Promise.all([
-      loadBuild('fire.zip', assetBaseUrl), loadAnim('fire.zip', assetBaseUrl),
-      PreloadSounds('dontstarve/common/campfire', 'dontstarve/common/forestfire', 'dontstarve/common/fireOut'),
-    ]);
-    return new FireFxHost(createSpriteFactory(build, anim));
-  }
+  /** The host now: each fire is spawned at once and its display draws it when the shared art has loaded. */
+  static create(assetBaseUrl: string): FireFxHost { return new FireFxHost(assetBaseUrl); }
+
+  /** Transitional for the tree managers that still await their hosts; it loads nothing. */
+  static async load(assetBaseUrl: string): Promise<FireFxHost> { return FireFxHost.create(assetBaseUrl); }
 
   start(parent: THREE.Object3D, position: THREE.Vector3, fxLevel: number, owner?: THREE.Object3D): FireHandle {
     if (this.disposed) throw new Error('Fire effects have been disposed');
     const level = FIRE_LEVELS[Math.min(fxLevel, FIRE_LEVELS.length) - 1];
-    const entity = createPrefabEntity('fire', { create: animation => this.factory.create({ initialAnimation: animation, name: 'fire' }),
-      release: drawn => this.factory.disposeSprite(drawn) }, { name: level.anim, billboard: true }, 'fire');
+    const entity = createPrefabEntity('fire', this.resources.factory({ animationArchive: 'fire.zip', buildArchive: 'fire.zip' }),
+      { name: level.anim, billboard: true }, 'fire');
     const fire = entity.display.model; entity.instance.persists = false;
     const instance = owner && prefabInstance(owner), key = `fire:${fire.id}`;
     fire.position.set(position.x, 0, position.z);
@@ -87,7 +81,7 @@ export class FireFxHost {
     this.disposed = true;
     for (const { stop } of [...this.fires.values()]) stop(false);
     this.fires.clear();
-    this.factory.dispose();
+    this.resources.dispose();
   }
 }
 

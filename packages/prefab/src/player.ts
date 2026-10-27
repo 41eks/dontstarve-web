@@ -77,7 +77,7 @@ export interface WilsonAnimationController extends ActionAnimationController {
   bindInventory(inventory: Parameters<typeof equipSamePrefab>[0]): void;
   playItemTransition(state: 'item_in' | 'item_out', item?: WilsonCarryItem): void;
   playPickup(): void;
-  playDrop(onDrop: () => boolean, onCancel: () => void): boolean;
+  playDrop(onDrop: () => boolean, onCancel?: () => void): boolean;
   setCrafting(crafting: boolean): void;
   setCarryItem(item: WilsonCarryItem | null, skinId?: string): void;
   readonly AnimState: AnimState;
@@ -358,12 +358,12 @@ class WilsonController implements WilsonAnimationController {
     return this.startAction('EAT', onEat, true, foodDrink);
   }
   /** ACTIONS.DROP: doshortaction performs the drop on its frame 6; onCancel runs if the action never performs. */
-  playDrop(onDrop: () => boolean, onCancel: () => void): boolean {
+  playDrop(onDrop: () => boolean, onCancel?: () => void): boolean {
     if (this.stategraph.hasStateTag('busy')) return false;
     this.cancelEmote();
     const action = new BufferedAction<WilsonAction>('DROP', onDrop);
     const stop = this.stategraph.listenForEvent('actionfailed', data => {
-      if ((data as { action?: unknown } | undefined)?.action === action) { stop(); onCancel(); }
+      if ((data as { action?: unknown } | undefined)?.action === action) { stop(); onCancel?.(); }
     });
     action.addSuccessAction(stop);
     if (this.stategraph.pushBufferedAction(action)) return true;

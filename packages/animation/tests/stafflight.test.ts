@@ -42,6 +42,12 @@ afterEach(async () => {
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 /** The factory sprite the star's display has drawn, if any. */
 const drawn = (model: THREE.Object3D) => model.children.find(child => child.userData.animationController);
+/** A star exists as soon as it is spawned; its display then loads the art and the presentation starts in a later task. */
+async function artLoaded<T extends THREE.Object3D>(model: T): Promise<T> {
+  await model.userData.display.artLoaded();
+  await settle();
+  return model;
+}
 
 function setup(prefab: StaffLightId = 'stafflight') {
   const scene = new THREE.Scene(), player = new THREE.Vector3();
@@ -152,7 +158,7 @@ it('cools nearby thermal stones with endothermic falloff until permanent removal
 
 it('settles lifetime at frame 60 using actual dt and releases light, sound and geometry after disappearance', async () => {
   const { manager, scene, update } = setup();
-  const model = await manager.spawn(new THREE.Vector3(), { id: 'e_star', remainingSeconds: 0.8 });
+  const model = await artLoaded(manager.spawn(new THREE.Vector3(), { id: 'e_star', remainingSeconds: 0.8 }));
   const state = getStaffLightState(model)!;
   const remainingChanges: number[] = [], phases: string[] = [];
   state.remaining.subscribe(value => remainingChanges.push(value));
@@ -206,8 +212,7 @@ it('unloads outside the circular XZ range and rebuilds in place after catching u
   const { manager, scene, player, update } = setup();
   const position = new THREE.Vector3(4, 0, 6);
   const appearances = vi.spyOn(SpriteState.prototype, 'playOnce');
-  const model = await manager.spawn(position);
-  await settle();
+  const model = await artLoaded(manager.spawn(position));
   const instance = prefabInstance(model)!;
   const oldAppearDone = appearances.mock.calls.find(([clip]) => clip === 'appear')![1]!;
   const state = getStaffLightState(model)!;
@@ -329,7 +334,7 @@ it('haunting starts disappearance once and keeps the original one-second removal
   expect(play).toHaveBeenCalledOnce();
 });
 
-it('does not create an entity or sounds when the scene is disposed during resource preparation', async () => {
+it('removes a star disposed while its art is loading and draws nothing when the art arrives', async () => {
   const { manager, scene } = setup();
   const fetchAsset = globalThis.fetch;
   let finishLoading!: () => void;
@@ -338,14 +343,19 @@ it('does not create an entity or sounds when the scene is disposed during resour
     await loading;
     return fetchAsset(...args);
   });
-  const spawning = manager.spawn(new THREE.Vector3());
-  const rejected = expect(spawning).rejects.toThrow('disposed');
+  // SpawnPrefab is synchronous: the star, its light and its loop exist before the art.
+  const model = manager.spawn(new THREE.Vector3());
+  expect(model.parent).toBe(scene);
+  expect(drawn(model)).toBeUndefined();
+  const loop = vi.mocked(PlaySound).mock.results.at(-1)!.value;
   manager.dispose();
+  expect(loop.stop).toHaveBeenCalled();
+  expect(getStaffLightState(model)!.removed.peek()).toBe(true);
   finishLoading();
-  await rejected;
+  await settle(); await settle();
   expect(scene.children).toEqual([]);
+  expect(drawn(model)).toBeUndefined();
   expect(manager.exportRecords()).toEqual([]);
-  expect(PlaySound).not.toHaveBeenCalled();
 });
 
 it('flushes partial and sleeping time for saves, restores identity and removes expired sleepers before waking', async () => {

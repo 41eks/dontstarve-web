@@ -70,7 +70,7 @@ it('retains a lantern machine, light and fuel while its tile releases and rebuil
     expect(visual.light.parent).toBe(model);
     // Fuel follows the item's game time, not its sprite or frames.
     world.advance(60);
-    expect(item.components.fueled.remaining).toBeCloseTo(LANTERN_FUEL - 60 - 1 / 60);
+    expect(item.components.fueled!.currentfuel).toBeCloseTo(LANTERN_FUEL - 60 - 1 / 60);
     tile.set(true); await tick();
     expect(model.parent).toBe(scene);
     expect(model.getObjectByName('lanternlight')).toBe(light);

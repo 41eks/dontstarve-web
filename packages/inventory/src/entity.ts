@@ -7,11 +7,10 @@ import { InventoryItem } from '../../componets/src/inventoryitem';
 import { MiniMapEntity } from '../../componets/src/minimapentity';
 import { Equippable } from '../../componets/src/equippable';
 import { Perishable, type PerishWorld } from '../../componets/src/perishable';
-import { ComponentTimer } from '../../componets/src/timer';
-import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { EventEmitter } from '@dontstarve-web/signals';
 import { Vector3 } from 'three';
-import type { Fuel, FuelItem } from '../../componets/src/fuel';
+import type { Fuel } from '../../componets/src/fuel';
+import { Fueled } from '../../componets/src/fueled';
 import { Temperature, type TemperatureWorld, type TemperatureSaveData } from '../../componets/src/temperature';
 import type { Heater } from '../../componets/src/heater';
 
@@ -52,128 +51,6 @@ export class StackableComponent {
   }
   get count(): number { return this.state.peek(); }
   set count(value: number) { this.state.set(value); }
-}
-
-/** fueled.lua: remaining fuel is the source; percent derives from the configured maximum. */
-export class FueledComponent {
-  private readonly state;
-  private readonly maximum = createSignal<number | undefined>(undefined);
-  readonly fuel;
-  readonly percent = createMemo(() => {
-    const maximum = this.maximum.get();
-    return maximum === undefined ? undefined : Math.max(0, Math.min(1, (this.state.get() ?? maximum) / maximum));
-  });
-  private type = 'BURNABLE';
-  private acceptingFuel = false;
-  private ontakefuel?: (inst: ItemEntity, fuelvalue: number) => void;
-  private readonly inst: ItemEntity;
-  /** fueled.lua's consuming task, on the game time of the world the item is bound to. */
-  private consuming?: { readonly scheduler: GameTimeScheduler; readonly task: ComponentTimer; settledAt: number };
-  /** The consumer while consuming, including before the item's world is bound. */
-  private onupdate?: (dt: number) => void;
-  private readonly taskState = createSignal<ComponentTimer | undefined>(undefined);
-  /** The consuming task's timer, while consuming in a world. */
-  readonly task = readonlySignal(this.taskState);
-  period = 1;
-  constructor(inst: ItemEntity, remaining?: number) {
-    this.inst = inst;
-    this.state = createSignal(remaining);
-    this.fuel = readonlySignal(this.state);
-  }
-  get isConsuming(): boolean { return this.onupdate !== undefined; }
-  /**
-   * fueled.lua StartConsuming: DoPeriodicTask(period, OnDoUpdate) on the item's game time. Each run reports the game
-   * seconds since the last settlement to `onupdate`, which consumes them. The task starts once the item's world is bound.
-   */
-  StartConsuming(onupdate: (dt: number) => void): void {
-    if (this.onupdate || this.inst.isRemoved) return;
-    this.onupdate = onupdate;
-    this.startTask();
-  }
-  /** The item's world was bound or replaced: consumption continues on its game time. */
-  OnWorldBound(): void {
-    const scheduler = this.inst.components.perishable.scheduler;
-    if (!this.onupdate || this.consuming?.scheduler === scheduler) return;
-    this.Settle();
-    this.stopTask();
-    this.startTask();
-  }
-  private startTask(): void {
-    const scheduler = this.inst.components.perishable.scheduler;
-    if (!scheduler || this.consuming) return;
-    const consuming = { scheduler, settledAt: scheduler.now, task: new ComponentTimer(scheduler, () => {
-      if (this.consuming !== consuming) return;
-      consuming.task.start(this.period);
-      this.Settle();
-    }) };
-    this.consuming = consuming;
-    this.taskState.set(consuming.task);
-    consuming.task.start(this.period);
-  }
-  private stopTask(): void {
-    this.consuming?.task.stop();
-    this.consuming = undefined;
-    this.taskState.set(undefined);
-  }
-  /** Consume the part of the current period that has passed, before saving, transferring or stopping. */
-  Settle(): void {
-    const consuming = this.consuming, onupdate = this.onupdate;
-    if (!consuming || !onupdate) return;
-    const dt = consuming.scheduler.now - consuming.settledAt;
-    // Settle first: consumption may remove the item and stop consuming.
-    consuming.settledAt = consuming.scheduler.now;
-    if (dt > 0) onupdate(dt);
-  }
-  /** fueled.lua StopConsuming, after settling the elapsed part of the period. */
-  StopConsuming(): void {
-    this.Settle();
-    this.onupdate = undefined;
-    this.stopTask();
-  }
-  get fueltype(): string { return this.type; }
-  set fueltype(value: string) {
-    this.inst.removeTag(`${this.type}_fueled`);
-    this.type = value;
-    if (this.acceptingFuel) this.inst.addTag(`${value}_fueled`);
-  }
-  get accepting(): boolean { return this.acceptingFuel; }
-  set accepting(value: boolean) {
-    this.acceptingFuel = value;
-    if (value) this.inst.addTag(`${this.type}_fueled`);
-    else this.inst.removeTag(`${this.type}_fueled`);
-  }
-  SetTakeFuelFn(fn: (inst: ItemEntity, fuelvalue: number) => void): void { this.ontakefuel = fn; }
-  CanAcceptFuelItem(item: Pick<FuelItem, 'components'>): boolean {
-    return !this.inst.isRemoved && this.acceptingFuel && item.components.fuel?.fueltype === this.type;
-  }
-  /** fueled.lua TakeFuelItem: settle consumption, clamp the delta, notify fuel, remove it, then notify the target. */
-  TakeFuelItem(item: FuelItem): boolean {
-    if (item.isRemoved || !this.CanAcceptFuelItem(item)) return false;
-    this.inst.flush();
-    if (this.inst.isRemoved || item.isRemoved || !this.CanAcceptFuelItem(item)) return false;
-    const maximum = this.maximum.peek();
-    if (maximum === undefined) return false;
-    const fuel = item.components.fuel!;
-    const fuelvalue = fuel.fuelvalue * (item.GetIsWet() ? .75 : 1);
-    this.inst.setRemainingFuel(Math.max(0, Math.min(maximum, (this.remaining ?? maximum) + fuelvalue)));
-    fuel.Taken(this.inst);
-    item.remove();
-    this.ontakefuel?.(this.inst, fuelvalue);
-    this.inst.PushEvent('takefuel', { fuelvalue });
-    return true;
-  }
-  get remaining(): number | undefined { return this.state.peek(); }
-  set remaining(value: number | undefined) { this.state.set(value); }
-  setMaxFuel(maximum: number): void {
-    if (!Number.isFinite(maximum) || maximum <= 0) throw new RangeError('Invalid fuel maximum');
-    this.maximum.set(maximum);
-  }
-  dispose(): void {
-    this.StopConsuming();
-    this.inst.removeTag(`${this.type}_fueled`);
-    this.ontakefuel = undefined;
-    this.percent.dispose();
-  }
 }
 
 /** finiteuses.lua: Use changes the component and invokes inst removal on depletion. */
@@ -249,7 +126,7 @@ export class ItemEntity {
     sleeper?: import('../../componets/src/sleeper').Sleeper;
     freezable?: import('../../componets/src/freezable').Freezable;
     stackable: StackableComponent;
-    fueled: FueledComponent;
+    fueled?: Fueled<ItemEntity>;
     finiteuses: FiniteUsesComponent;
     inventoryitem: InventoryItem<ItemEntity, ItemOwner>;
     perishable: Perishable;
@@ -279,6 +156,7 @@ export class ItemEntity {
     setbonus?: import('../../componets/src/setbonus').SetBonus;
     hauntable?: import('../../componets/src/hauntable').Hauntable;
     useableitem?: import('../../componets/src/useableitem').UseableItem;
+    machine?: import('../../componets/src/machine').Machine;
   };
   readonly signals: InventoryItemSignals;
   /** Display-only itemtile freshness for items without a perishable timer. */
@@ -291,6 +169,10 @@ export class ItemEntity {
   /** components.armor is attached by prefab configuration, after the durability memo exists. */
   private readonly armorState = createSignal<import('../../componets/src/armor').Armor | undefined>(undefined);
   private savedArmor?: InventoryStack['armor'];
+  /** components.fueled is added by prefab configuration, after the durability memo exists. */
+  private readonly fueledState = createSignal<Fueled<ItemEntity> | undefined>(undefined);
+  /** The saved fuel, loaded once the prefab has added and initialized its fueled. */
+  private savedFuel?: number;
   readonly transform: { readonly position: Vector3; rotationY: number } = { position: new Vector3(), rotationY: 0 };
   private miniMapEntity?: MiniMapEntity;
   get MiniMapEntity(): MiniMapEntity | undefined { return this.miniMapEntity; }
@@ -314,10 +196,20 @@ export class ItemEntity {
   AddTemperature(): Temperature {
     return this.components.temperature ??= this.component('temperature', () => new Temperature(this, this.temperatureWorld, this.savedTemperature));
   }
+  /** inst:AddComponent("fueled"), consuming on the game time of the item's world. */
+  AddFueled(): Fueled<ItemEntity> {
+    let fueled = this.components.fueled;
+    if (fueled) return fueled;
+    fueled = this.components.fueled = new Fueled<ItemEntity>(this, this.components.perishable.scheduler);
+    // inventoryitem.lua OnPercentUsedChanged: the item tile follows the fuel.
+    this.ListenForEvent('percentusedchange', () => this.components.inventoryitem.owner?.changed());
+    this.fueledState.set(fueled);
+    return fueled;
+  }
   /** perishable.lua's world, whose game-time scheduler also runs this item's fueled task. */
   BindPerishWorld(world: PerishWorld): void {
     this.components.perishable.BindWorld(world);
-    this.components.fueled.OnWorldBound();
+    this.components.fueled?.BindScheduler(this.components.perishable.scheduler);
   }
   BindTemperatureWorld(world: TemperatureWorld): void {
     this.temperatureWorld = world;
@@ -341,12 +233,11 @@ export class ItemEntity {
     this.wetState.set(state.wet ?? false);
     this.components = {
       stackable: new StackableComponent(state.count),
-      fueled: new FueledComponent(this, state.remainingFuel),
       finiteuses: new FiniteUsesComponent(this, state.remainingUses),
       inventoryitem: new InventoryItem<ItemEntity, ItemOwner>(this),
       perishable: new Perishable(this, readonlySignal(this.wetState), perishWorld),
     };
-    this.durability = createMemo(() => this.components.finiteuses.percent.get() ?? this.components.fueled.percent.get()
+    this.durability = createMemo(() => this.components.finiteuses.percent.get() ?? this.fueledState.get()?.percent.get()
       ?? this.armorState.get()?.percent.get());
     this.freshness = createMemo(() => this.components.perishable.perishtime.get() === undefined
       ? this.freshnessState.get() : this.components.perishable.percent.get());
@@ -393,6 +284,7 @@ export class ItemEntity {
       ? this.freshnessState.peek() : this.components.perishable.GetPercent();
     const mole = this.getComponent<ItemRuntimeComponent & { OnSave(): NonNullable<InventoryStack['mole']> }>('mole')?.OnSave() ?? this.mole;
     const lightflier = this.getComponent<ItemRuntimeComponent & { OnSave(): NonNullable<InventoryStack['lightflier']> }>('lightflier')?.OnSave() ?? this.lightflier;
+    const remainingFuel = this.components.fueled ? this.components.fueled.OnSave()?.fuel : this.savedFuel;
     return {
       ...(lightflier === undefined ? {} : { lightflier }),
       ...(mole === undefined ? {} : { mole }),
@@ -403,7 +295,7 @@ export class ItemEntity {
       ...(includeIdentity ? { entityId: this.id } : {}), itemId: this.prefab, count: this.components.stackable.count,
       ...(this.skinId === undefined ? {} : { skinId: this.skinId }),
       ...(this.variant === undefined ? {} : { variant: this.variant }),
-      ...(this.components.fueled.remaining === undefined ? {} : { remainingFuel: this.components.fueled.remaining }),
+      ...(remainingFuel === undefined ? {} : { remainingFuel }),
       ...(this.components.finiteuses.remaining === undefined ? {} : { remainingUses: this.components.finiteuses.remaining }),
       ...(freshness === undefined ? {} : { freshnessPercent: freshness }),
       ...(this.wetState.peek() ? { wet: true } : {}),
@@ -435,7 +327,10 @@ export class ItemEntity {
     if (armor && state.armor && state.armor.condition !== armor.condition.peek()) armor.OnLoad(state.armor);
     batch(() => {
       this.components.stackable.count = state.count;
-      this.components.fueled.remaining = state.remainingFuel;
+      const fueled = this.components.fueled;
+      // fueled.lua OnSave omits a full inst.
+      if (!fueled) this.savedFuel = state.remainingFuel;
+      else if ((state.remainingFuel ?? fueled.maxfuel) !== fueled.currentfuel) fueled.OnLoad({ fuel: state.remainingFuel ?? fueled.maxfuel });
       this.components.finiteuses.remaining = state.remainingUses;
       if (this.components.perishable.perishtime.peek() === undefined) this.freshnessState.set(state.freshnessPercent);
       else if (state.freshnessPercent !== undefined) this.components.perishable.SetPercent(state.freshnessPercent);
@@ -451,7 +346,6 @@ export class ItemEntity {
     this.components.inventoryitem.cangoincontainer = spec.canGoInContainer !== false;
     batch(() => {
       if (spec.maxUses !== undefined) this.components.finiteuses.setMaxUses(spec.maxUses);
-      if (spec.maxFuel !== undefined) this.components.fueled.setMaxFuel(spec.maxFuel);
       const perishable = this.components.perishable;
       if (spec.perishTime !== undefined && perishable.perishtime.peek() === undefined) {
         // SetPerishTime starts full; a stack's saved/transferred percent then restores perishremainingtime.
@@ -464,6 +358,11 @@ export class ItemEntity {
       }
     });
     spec.configureEntity?.(this);
+    // fueled.lua OnLoad runs after the prefab's InitializeFuelLevel.
+    if (this.components.fueled && this.savedFuel !== undefined) {
+      this.components.fueled.OnLoad({ fuel: this.savedFuel });
+      this.savedFuel = undefined;
+    }
     // armor.lua OnLoad runs after the prefab's InitCondition.
     const armor = this.components.armor;
     if (armor && this.armorState.peek() !== armor) {
@@ -487,11 +386,12 @@ export class ItemEntity {
     return true;
   }
 
-  /** fueled.lua clamps at zero; whether an empty inst is removed belongs to its depleted callback. */
+  /** fueled.lua DoDelta to `seconds`, after settling elapsed consumption; depletion belongs to the prefab's callbacks. */
   setRemainingFuel(seconds: number): boolean {
-    if (this.isRemoved || !Number.isFinite(seconds) || seconds < 0) return false;
-    this.components.fueled.remaining = seconds;
-    this.components.inventoryitem.owner?.changed();
+    const fueled = this.components.fueled;
+    if (this.isRemoved || !fueled || !Number.isFinite(seconds) || seconds < 0) return false;
+    fueled.Settle();
+    if (!this.isRemoved) fueled.DoDelta(seconds - fueled.currentfuel);
     return true;
   }
 
@@ -504,6 +404,7 @@ export class ItemEntity {
 
   flush(): void {
     this.components.perishable.flush();
+    this.components.fueled?.Settle();
     this.components.container?.flush();
     for (const component of this.runtime.values()) component.flush?.();
   }
@@ -532,7 +433,7 @@ export class ItemEntity {
     this.durability.dispose();
     this.freshness.dispose();
     this.components.perishable.dispose();
-    this.components.fueled.dispose();
+    this.components.fueled?.dispose();
     this.components.finiteuses.dispose();
   }
 }

@@ -358,11 +358,10 @@ export class FirefliesAssets {
   }
 }
 
-export async function createFirefliesGroundSprite(assets: FirefliesAssets, world: FirefliesWorld) {
+export function createFirefliesGroundSprite(assets: FirefliesAssets, world: FirefliesWorld) {
   // fireflies.lua gives the AnimState a bank and build but plays nothing until fadein: no sprite is built until a clip
-  // plays, and the display releases it when the swarm's tile is found inactive. Frames and instance batches belong to assets.
-  const create = await assets.preload();
-  const { instance, display } = createArchiveEntity(FIREFLIES_ID, { create: clip => create(clip.name, clip.loop) },
+  // plays, and the display releases it when the swarm's tile is found inactive. The display loads the shared archive.
+  const { instance, display } = createArchiveEntity(FIREFLIES_ID, { create: clip => assets.preload().then(create => create(clip.name, clip.loop)) },
     { name: 'swarm_pre', none: true }, `GroundItem:${FIREFLIES_ID}`);
   const model = display.model;
   const active = createSignal(true);

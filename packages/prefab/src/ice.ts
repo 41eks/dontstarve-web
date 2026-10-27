@@ -18,8 +18,8 @@ export function createIceGroundFactory(context: GroundPrefabContext): GroundItem
   return {
     itemIds: [ICE_ID],
     configureEntity: configureIceEntity,
-    async create(item) {
-      const { visual, instance } = await createResidentGroundItem(context, item);
+    create(item) {
+      const { visual, instance } = createResidentGroundItem(context, item);
       let stop: (() => void) | undefined;
       let melting = false;
       const melt = (entity: ItemEntity) => {

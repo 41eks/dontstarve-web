@@ -77,7 +77,7 @@ export class PrefabDisplay {
   // The owner may add the model to the scene after its tile was already found inactive.
   private readonly onAdded = () => { if (this.asleep) this.sleep(); };
   // What the controller has been given, so that each snapshot only sends what changed.
-  private applied: { clip: ClipJson | undefined; queue: number; frame?: number; transient?: SpriteJson['transient'];
+  private applied: { clip: ClipJson | undefined; queue: number; frame?: SpriteJson['frame']; transient?: SpriteJson['transient'];
     image?: number; facing?: number; mirrored?: boolean; colour?: readonly number[]; opacity?: number; paused?: boolean; erosion?: number; ground?: SpriteJson['ground']; meshOrder?: number; depthOffset?: boolean;
     source?: SpriteJson['source']; tint?: SpriteJson['tint']; appearance: ReadonlyMap<string, AppearanceJson> };
 
@@ -270,7 +270,12 @@ export class PrefabDisplay {
       const entry = json.queue[applied.queue];
       controller.pushAnimation(entry.name, entry.loop);
     }
-    if (json.frame !== applied.frame) { applied.frame = json.frame; if (json.frame !== undefined) controller.setFrame(json.frame); }
+    if (json.frame !== applied.frame) {
+      const frame = this.frameIndex(json.frame);
+      // A fractional frame waits for the clip's art; dressing the drawn sprite applies it.
+      if (frame !== undefined || json.frame === undefined) applied.frame = json.frame;
+      if (frame !== undefined) controller.setFrame(frame);
+    }
     if (json.transient !== applied.transient) { applied.transient = json.transient; if (json.transient) controller.playTransient(json.transient.name); }
     if (json.image !== applied.image) { applied.image = json.image; if (json.image !== undefined) controller.showImage(json.image); }
     if (json.facing !== applied.facing || json.mirrored !== applied.mirrored) {
@@ -290,6 +295,13 @@ export class PrefabDisplay {
     this.updateSymbolFollowers(json);
   }
 
+  /** The frame index of a json frame; a fraction resolves only once the drawn sprite knows its clip's length. */
+  private frameIndex(frame: SpriteJson['frame']): number | undefined {
+    if (typeof frame !== 'object') return frame;
+    const frames = this.engine.loaded ? this.engine.numFrames : 0;
+    return frames > 0 ? Math.min(frames - 1, Math.floor(frame.at * frames)) : undefined;
+  }
+
   /** Every sprite that is drawn starts undressed: give it the entity's appearance again. */
   private dress(json: SpriteJson): void {
     const controller = this.engine;
@@ -299,7 +311,8 @@ export class PrefabDisplay {
     if (this.facing) controller.faceCamera?.(this.facing);
     if (json.image !== undefined) controller.showImage(json.image);
     if (json.facing !== undefined) controller.setFacing(json.facing, json.mirrored);
-    if (json.frame !== undefined && controller.currentAnimation === json.clip.name) controller.setFrame(json.frame);
+    const frame = this.frameIndex(json.frame);
+    if (frame !== undefined && controller.currentAnimation === json.clip.name) { controller.setFrame(frame); this.applied.frame = json.frame; }
     if (json.colour) controller.setColour(json.colour);
     if (json.opacity !== undefined) controller.setOpacity(json.opacity);
     if (json.tint) controller.setTint?.(json.tint);
@@ -355,6 +368,7 @@ export class PrefabDisplay {
   /** Settles once this entity's sprite source, the art its AnimState names, its follower effects and its declared FX entities have loaded. */
   async artLoaded(): Promise<void> {
     await this.sourceLoading;
+    await this.engine.pending;
     this.updateSymbolFollowers(this.json.peek());
     await Promise.all([...this.symbolNodes.values()].map(fx => fx?.loaded));
     // The FX of a fresh declaration reach their displays in a later task.

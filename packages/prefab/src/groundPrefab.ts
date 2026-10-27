@@ -57,7 +57,7 @@ export interface GroundItemVisual {
   isClickable?(): boolean;
   isWorkable?(): boolean;
   getDefinition?(): Partial<GroundItemDefinition>;
-  /** Rebind prepared visuals to the state committed after asynchronous asset loading. */
+  /** Rebind a replacement display to the item's current authoritative state. */
   setDefinition?(definition: GroundItemDefinition): void;
   dispose(): void;
 }
@@ -83,17 +83,17 @@ export interface GroundPrefabOptions {
   bernieWorld: BernieWorld;
   butterflyWorld: ButterflyWorld;
   firefliesWorld: FirefliesWorld;
-  dropLoot?(items: readonly GroundItemDefinition[], position: THREE.Vector3): Promise<void>;
-  /** Prepare a normal ground stack so timed prefab actions can commit without an asset-load gap. */
-  prepareSpawn?(definition: GroundItemDefinition): Promise<PreparedGroundSpawn>;
+  /** lootdropper.lua DropLoot: each piece is spawned now and flung; the displays load the art. */
+  dropLoot?(items: readonly GroundItemDefinition[], position: THREE.Vector3): void;
+  /** SpawnPrefab of a ground stack at `position`, synchronously; its display loads the art. */
+  spawnGroundItem?: SpawnGroundItem;
 }
 
-export interface PreparedGroundSpawn {
-  /** Actual committed inst, available after spawning a prepared stack. */
-  readonly spawnedEntity?: ItemEntity;
-  spawn(position: THREE.Vector3, count?: number, launch?: import('./lootFling').LootLaunch): boolean;
-  dispose(): void;
-}
+/** lootdropper.lua FlingItem scatters the stack (`fling`), or `launch` gives its exact flight; otherwise it is placed. */
+export interface GroundSpawnOptions { fling?: boolean; launch?: import('./lootFling').LootLaunch }
+
+/** Creates the inst and its display now; returns undefined when the world can no longer spawn. */
+export type SpawnGroundItem = (definition: GroundItemDefinition, position: THREE.Vector3, options?: GroundSpawnOptions) => ItemEntity | undefined;
 
 export interface GroundPrefabContext extends GroundPrefabOptions {
   assets: GroundItemAssets;
@@ -102,9 +102,8 @@ export interface GroundPrefabContext extends GroundPrefabOptions {
 /** Each prefab binds its own assets, events and world dependencies. */
 export interface GroundItemFactory {
   itemIds: readonly string[];
-  create(definition: GroundItemDefinition): Promise<GroundItemVisual>;
-  /** Available after the owning prefab has preloaded its shared resources. */
-  createPrepared?(definition: GroundItemDefinition): GroundItemVisual;
+  /** The inst and its display exist synchronously; its display loads the art. */
+  create(definition: GroundItemDefinition): GroundItemVisual;
   capture?: 'net';
   configureEntity?(entity: ItemEntity): void;
   update?(dt: number, cameraQuaternion: THREE.Quaternion): void;

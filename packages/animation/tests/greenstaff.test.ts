@@ -35,8 +35,8 @@ describe('greenstaff source deconstruction', () => {
     const inventory = new InventoryStore([{ address: slot, slot: new HandSlot() }], INVENTORY_ITEM_SPECS);
     inventory.replaceState({ bufferedBuilds: [], slots: [{ address: slot, item: { itemId: 'greenstaff', count: 1, remainingUses: 1 } }] }, {});
     const entity = inventory.getEntity(slot)!;
-    const spawn = vi.fn(() => true), dispose = vi.fn();
-    const staff = new GreenStaffController(entity, { prepareLoot: async () => ({ spawn, dispose }) });
+    const spawn = vi.fn();
+    const staff = new GreenStaffController(entity, { spawnLoot: spawn });
     staff.onequip();
     const opal = target();
     const event = vi.fn(); opal.entity.ListenForEvent('ondeconstructstructure', event);
@@ -47,8 +47,7 @@ describe('greenstaff source deconstruction', () => {
     expect(entity.hasTag('castontargets')).toBe(false);
     expect(collectEquippedActions(entity, opal, true)).toEqual(['CASTSPELL']);
     expect(collectEquippedActions(entity, { prefab: 'livinglog', isRemoved: false, hasTag: () => false }, true)).toEqual([]);
-    const prepared = await staff.spellcaster.prepareCast(opal);
-    const action = createCastSpellAction(entity, doer, opal.position, () => true, opal, () => prepared || undefined);
+    const action = createCastSpellAction(entity, doer, opal.position, () => true, opal);
     expect(action.target).toBe(opal);
     expect(action.do()).toBe(true);
     expect(spawn).toHaveBeenCalledWith([
@@ -59,18 +58,17 @@ describe('greenstaff source deconstruction', () => {
     expect(staffDelta).toHaveBeenCalledWith(-20); expect(doDelta).not.toHaveBeenCalled();
     expect(inventory.getEntity(slot)).toBeNull();
     expect(inventory.handEquipment.peek()).toBeNull();
-    prepared?.dispose(); inventory.dispose();
+    inventory.dispose();
   });
 
   it('revalidates buffered targets and held identity without consuming or removing anything', async () => {
     const entity = new ItemEntity({ itemId: 'greenstaff', count: 1 });
-    const spawn = vi.fn(() => true), dispose = vi.fn();
-    const staff = new GreenStaffController(entity, { prepareLoot: async () => ({ spawn, dispose }) });
+    const spawn = vi.fn();
+    new GreenStaffController(entity, { spawnLoot: spawn });
     const opal = target(), doDelta = vi.fn();
     const doer = { position: new THREE.Vector3(), hasTag: () => false, components: { sanity: { doDelta } } };
-    const prepared = await staff.spellcaster.prepareCast(opal);
     let held = true;
-    const action = createCastSpellAction(entity, doer, opal.position, () => held, opal, () => prepared || undefined);
+    const action = createCastSpellAction(entity, doer, opal.position, () => held, opal);
     held = false;
     expect(action.do()).toBe(false);
     held = true; opal.entity.addTag('INLIMBO');
@@ -78,6 +76,6 @@ describe('greenstaff source deconstruction', () => {
     expect(spawn).not.toHaveBeenCalled(); expect(doDelta).not.toHaveBeenCalled();
     expect(entity.components.finiteuses.percent.peek()).toBe(1);
     expect(opal.isRemoved).toBe(false);
-    prepared?.dispose(); entity.destroy(); opal.entity.destroy();
+    entity.destroy(); opal.entity.destroy();
   });
 });

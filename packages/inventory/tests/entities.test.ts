@@ -1,10 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import { HandSlot, InventorySlot, InventoryStore, ItemEntityRegistry, equipmentSlotAddress, inventorySlotAddress } from '../src';
+import { addFueled } from './fueled';
 
 const a = inventorySlotAddress(0), b = inventorySlotAddress(1), hand = equipmentSlotAddress('hand');
 const specs = {
   farm_plow_item: { name: 'farm plow', icon: 'farm_plow_item.tex', maxStack: 1, maxUses: 4 },
-  torch: { name: 'torch', icon: 'torch.tex', maxStack: 1, maxFuel: 75, equippable: 'hand' as const },
+  torch: { name: 'torch', icon: 'torch.tex', maxStack: 1, maxFuel: 75, equippable: 'hand' as const, configureEntity: addFueled(75) },
   log: { name: 'log', icon: 'log.tex', maxStack: 20 },
 };
 function setup() {

@@ -101,7 +101,7 @@ it('cools stones to the source floor, resumes ambient changes outside the fridge
     expect(temp.GetCurrent()).toBe(0);
     expect(rock.range.peek()).toBe(1);
     expect(item.lowTemp).toBe(0);
-    expect(item.components.fueled.remaining).toBe(100);
+    expect(item.components.fueled!.currentfuel).toBe(100);
     ambient.set(-10); temp.OnUpdate(100);
     expect(temp.GetCurrent()).toBe(-10);
     ambient.set(34);
@@ -115,10 +115,10 @@ it('cools stones to the source floor, resumes ambient changes outside the fridge
     expect(rock.range.peek()).toBe(2); // strict > ambient - 10
     temp.OnUpdate(.1);
     expect(rock.range.peek()).toBe(3);
-    expect(item.components.fueled.remaining).toBe(87.5);
+    expect(item.components.fueled!.currentfuel).toBe(87.5);
     expect(item.lowTemp).toBeUndefined();
     for (let second = 0; second < 20; second++) temp.OnUpdate(1);
-    expect(item.components.fueled.remaining).toBe(87.5);
+    expect(item.components.fueled!.currentfuel).toBe(87.5);
     item.setRemainingFuel(12.5);
     inventory.transfer(held, chilled, 1); temp.OnUpdate(100);
     inventory.transfer(chilled, held, 1);
@@ -205,7 +205,7 @@ it('saves a spawned fridge with skinned cold stones and food through c_save and 
     expect(restored.getEntity({ ...chilled, slotKey: '1' })!.snapshot()).toEqual(food.snapshot());
     loaded.components.temperature!.OnUpdate(10);
     expect(loaded.components.temperature!.GetCurrent()).toBe(0);
-    expect(loaded.components.fueled.remaining).toBe(100);
+    expect(loaded.components.fueled!.currentfuel).toBe(100);
     restoredWorld.advance(10);
     restored.getEntity({ ...chilled, slotKey: '1' })!.components.perishable.flush();
     expect(restored.getEntity({ ...chilled, slotKey: '1' })!.components.perishable.GetPercent()).toBeCloseTo(1 - 8.5 / 4800);

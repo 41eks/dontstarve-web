@@ -26,7 +26,7 @@ export interface EntityRecord {
 export interface EntityRegistration<PrefabId extends string> {
   restore?: (prefabId: PrefabId, record: SavedEntity) => Promise<THREE.Object3D | ResidentEntity> | THREE.Object3D | ResidentEntity;
   /** Only these IDs are exposed through c_spawn, including any aliases. */
-  debugSpawn?: (prefabId: PrefabId) => Promise<unknown>;
+  debugSpawn?: (prefabId: PrefabId) => unknown;
   exportRecords: () => readonly EntityRecord[];
   beforePhysics?: (dt: number) => void;
   update?: (dt: number, cameraQuaternion: THREE.Quaternion) => void;
@@ -39,7 +39,7 @@ export interface EntityRegistration<PrefabId extends string> {
 export class EntityRegistry {
   readonly byEntityId = new Map<string, THREE.Object3D | ResidentEntity>();
   private readonly restorers = new Map<string, (record: SavedEntity) => ReturnType<NonNullable<EntityRegistration<string>['restore']>>>();
-  private readonly creators = new Map<string, () => Promise<unknown>>();
+  private readonly creators = new Map<string, () => unknown>();
   private readonly registrations: (EntityRegistration<string> & { definition: PrefabDefinition })[] = [];
   private readonly lifecycleOrder: ReadonlyMap<PrefabDefinition, number>;
   private disposed = false;

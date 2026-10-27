@@ -72,11 +72,10 @@ export function createGroundItemFactory(context: GroundPrefabContext): GroundIte
       : entity.prefab === PANFLUTE_ID ? configurePanfluteEntity(entity)
       : isBook(entity.prefab) ? configureBookEntity(entity) : configureBurnableItemEntity(entity);
     },
-    async create(item) {
-      const base = await createResidentGroundItem(context, item, item.itemId === HEATROCK_ID ? declareHeatRockSprite : undefined);
+    create(item) {
+      const base = createResidentGroundItem(context, item, item.itemId === HEATROCK_ID ? declareHeatRockSprite : undefined);
       if (!Object.hasOwn(BURNABLE_ITEM_DEFINITIONS, item.itemId)) return base.visual;
-      try { return await createBurnableItemVisual(context, item.itemId, base, displays, BURNABLE_ITEM_DEFINITIONS[item.itemId].fxLevel); }
-      catch (error) { base.visual.dispose(); throw error; }
+      return createBurnableItemVisual(context, item.itemId, base, displays, BURNABLE_ITEM_DEFINITIONS[item.itemId].fxLevel);
     },
     renderEntities: () => [...displays].flatMap(display => display.fxRenderEntries),
     dispose() { displays.clear(); },
@@ -95,9 +94,9 @@ export class GroundItemAssets extends ArchiveSpriteAssets {
 /** A ground item's visual with the instance and display behind it, for prefabs that declare more on its sprite. */
 export interface ResidentGroundItem { readonly visual: GroundItemVisual; readonly instance: PrefabInstance<ArchiveSpriteCommands>; readonly display: PrefabDisplay }
 
-export async function createResidentGroundItem(context: Pick<GroundPrefabContext, 'assets' | 'tickingarea'>, item: Pick<GroundItemDefinition, 'itemId' | 'skinId' | 'variant'>,
+export function createResidentGroundItem(context: Pick<GroundPrefabContext, 'assets' | 'tickingarea'>, item: Pick<GroundItemDefinition, 'itemId' | 'skinId' | 'variant'>,
   /** The prefab's declaration of what its sprite follows, made once the item's entity is bound. */
-  declare?: (entity: ItemEntity, sprite: ArchiveSpriteCommands) => void): Promise<ResidentGroundItem> {
+  declare?: (entity: ItemEntity, sprite: ArchiveSpriteCommands) => void): ResidentGroundItem {
   const { itemId, skinId } = item;
   const base = GROUND_ART_DEFINITIONS[itemId];
   const variant = item.variant === undefined ? undefined : GROUND_ART_VARIANTS[itemId]?.[item.variant];
@@ -108,8 +107,8 @@ export async function createResidentGroundItem(context: Pick<GroundPrefabContext
   if (skinId !== undefined && !skinArchive) throw new Error(`Unknown ground skin ${skinId} for ${itemId}`);
   const create = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(context.assets,
     { ...definition, animation: clip.name, loop: clip.loop }, { skinArchive, name: `GroundItem:${itemId}`, instancedAnimations: 'all' });
-  const clip = { name: definition.animation, loop: definition.loop };
-  const { instance, display } = createArchiveEntity(itemId, { create, initial: await create(clip) },
+  // The display loads the art and draws the item once it is ready; the entity exists from now on.
+  const { instance, display } = createArchiveEntity(itemId, { create },
     { name: definition.animation, held: !definition.loop }, `GroundItem:${itemId}`,
     entity => {
       for (const tag of definition.tags ?? []) entity.addTag(tag);

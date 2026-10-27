@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { PrefabDisplay } from '@dontstarve-web/display';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { GroundItemManager } from '../../../src/groundItems';
@@ -56,6 +57,7 @@ it('burns dropped live grass/log stacks to prepared ash, notifies signals and im
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(fires()).toHaveLength(2);
     expect(fires().every(fire => modelHasTag(fire, 'FX') && modelHasTag(fire, 'HASHEATER'))).toBe(true);
+    await Promise.all(fires().map(fire => (fire.userData.display as PrefabDisplay).artLoaded()));
     // Drawn on the item's plane after it: the depth the item's instance batch writes cannot hide it at any heading.
     const fireMaterials = () => fires().flatMap(fire => (fire.getObjectByProperty('type', 'Mesh') as THREE.Mesh<THREE.BufferGeometry, THREE.Material[]>).material);
     expect(fireMaterials().length).toBeGreaterThan(0);

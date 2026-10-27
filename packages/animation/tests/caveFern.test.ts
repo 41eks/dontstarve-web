@@ -29,7 +29,7 @@ it('preserves cave fern poses and components across residency, then picks foliag
   camerarotation.set(rotation);
   const ferns = new CaveFernManager(scene, '/dst/data/anim', {
     tickingarea: () => createMemo(() => awake.get()),
-    prepareSpawn: async () => ({ spawn: () => true, dispose() {} }),
+    spawnGroundItem: () => undefined,
   });
 
   const fern = await ferns.spawn('cave_fern', new THREE.Vector3(2, 0, 3));

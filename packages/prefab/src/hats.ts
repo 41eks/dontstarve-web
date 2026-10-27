@@ -1,8 +1,7 @@
 import type { AnimStateArt } from '@dontstarve-web/animation/animState';
 import { HatArtAssets, type HatArtDefinition, type HatEquipMode } from '@dontstarve-web/animation/hatAssets';
 import {
-  createAnimatedSpriteSource, loadBuildOverride,
-  type AnimatedSpriteFactory, type AnimatedSpriteSourceOptions, type LoadedBuildOverride,
+  createAnimatedSpriteSource, type AnimatedSpriteFactory, type AnimatedSpriteSourceOptions,
 } from '@dontstarve-web/animation/sprite';
 import type { InventoryItemSpec, InventoryRecipeDefinition, InventorySkinSpec } from '@dontstarve-web/inventory';
 import { createMemo, createSignal, readonlySignal, watchSignal, type Memo, type ReadonlySignal } from '@dontstarve-web/signals';
@@ -214,43 +213,44 @@ const RABBITHAT_GROUND = { build: 'rabbit_build.zip', overrideBuild: 'hat_rabbit
  */
 export function createHatGroundFactory(context: GroundPrefabContext): GroundItemFactory {
   const sources = new Map<string, Promise<AnimatedSpriteFactory>>();
-  let rabbitOverride: Promise<LoadedBuildOverride> | undefined;
+  const loaded = new Map<string, AnimatedSpriteFactory>();
   const source = (archive: string, options: AnimatedSpriteSourceOptions) => {
     const key = JSON.stringify([archive, options.buildArchive, options.skinArchive]);
     let request = sources.get(key);
     if (!request) {
       request = createAnimatedSpriteSource(context.animationBaseUrl, archive, options);
+      void request.then(factory => loaded.set(key, factory), () => sources.delete(key));
       sources.set(key, request);
-      void request.catch(() => sources.delete(key));
     }
-    return request;
+    return { peek: () => loaded.get(key), load: () => request };
   };
   return {
     itemIds: Object.keys(HAT_DEFINITIONS),
-    async create({ itemId, skinId }) {
+    create({ itemId, skinId }) {
       const hat = HAT_DEFINITIONS[itemId];
       const skinArchive = skinId === undefined ? undefined : hat.skinArchives[skinId];
       if (skinId !== undefined && !skinArchive) throw new Error(`Unknown skin ${skinId} for ${hat.archive}`);
       const rabbit = itemId === 'rabbithat';
-      const [factory, override] = await Promise.all([
-        source(hat.archive, { skinArchive, buildArchive: rabbit ? RABBITHAT_GROUND.build : undefined }),
-        rabbit ? rabbitOverride ??= loadBuildOverride(context.animationBaseUrl, `${RABBITHAT_GROUND.overrideBuild}.zip`) : undefined,
-      ]);
+      const art = source(hat.archive, rabbit
+        ? { skinArchive, buildArchive: RABBITHAT_GROUND.build, overrideBuilds: { [RABBITHAT_GROUND.overrideBuild]: `${RABBITHAT_GROUND.overrideBuild}.zip` } }
+        : { skinArchive });
       const name = `GroundHat:${itemId}`;
-      // The rabbit's animqueueover restarts its ground idle; other hats rest on anim's last frame.
+      const draw = (factory: AnimatedSpriteFactory) => ({
+        create: (animation: string, frame?: 'first' | 'last') => factory.create({ initialAnimation: animation, initialFrame: frame, name }),
+        release: (sprite: THREE.Group) => factory.disposeSprite(sprite),
+      });
+      // The rabbit's animqueueover restarts its ground idle; other hats rest on anim's last frame. The display loads the source.
       const { instance, display } = createPrefabEntity(itemId, {
-        create: (animation, frame) => factory.create({ initialAnimation: animation, initialFrame: frame, name }),
-        release: sprite => factory.disposeSprite(sprite),
-      }, { name: 'anim', held: !rabbit }, name, override && (entity => entity.sprite.addOverrideBuild(RABBITHAT_GROUND.overrideBuild, override)));
+        peek: () => { const factory = art.peek(); return factory && draw(factory); },
+        load: () => art.load().then(draw),
+      }, { name: 'anim', held: !rabbit }, name);
       instance.skinId = skinId;
       return bindResidentGroundItem(context, instance, display);
     },
     // The manager releases every hat entity first; only then can the atlases they drew from go.
     dispose() {
       for (const request of sources.values()) void request.then(factory => factory.dispose(), () => undefined);
-      sources.clear();
-      void rabbitOverride?.then(override => override.dispose(), () => undefined);
-      rabbitOverride = undefined;
+      sources.clear(); loaded.clear();
     },
   };
 }

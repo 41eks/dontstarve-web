@@ -43,6 +43,7 @@ ENTITY_WHITELIST = {
     'flower_cave_triple': PICKABLE['flower_cave_components']('flower_cave_triple'),
     'lightflier_flower': PICKABLE['lightflier_flower_components'],
     'houndbone': WORKABLE['houndbone_components'],
+    'beequeenhivegrown': WORKABLE['beequeenhivegrown_components'],
     'cave_fern': PICKABLE['cave_fern_components']('cave_fern'),
     'cave_fern_withered': PICKABLE['cave_fern_components']('cave_fern_withered'),
     'rock1': WORKABLE['rock_components'],

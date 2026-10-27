@@ -1,10 +1,10 @@
 import type * as THREE from 'three';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import type { EquipmentLifecycle, ReadonlySignal } from '@dontstarve-web/signals';
-import { SpellCaster, type PreparedSpellCast, type SpellCastDoer } from '../../componets/src/spellcaster';
+import { SpellCaster, type SpellCastDoer } from '../../componets/src/spellcaster';
 import { getDeconstructionRecipe } from '../../componets/src/recipes';
 import type { SpellCastTarget } from '../../stategraphs/src/spellcaster';
-import { PlaySound, PreloadSounds, type SoundEventPath } from './sound';
+import { PlaySound, type SoundEventPath } from './sound';
 
 export const GREENSTAFF_USES = 5;
 export const GREENSTAFF_COLOUR = [51 / 255, 153 / 255, 51 / 255] as const;
@@ -22,11 +22,9 @@ export interface DeconstructionTarget extends SpellCastTarget {
   removeOne(): boolean;
 }
 export interface DeconstructionLoot { readonly itemId: string; readonly count: number; }
-export interface PreparedDeconstruction extends PreparedSpellCast {
-  spawn(items: readonly DeconstructionLoot[], position: THREE.Vector3): boolean;
-}
 export interface GreenStaffWorld {
-  prepareLoot(items: readonly DeconstructionLoot[]): Promise<PreparedDeconstruction>;
+  /** lootdropper:SpawnLootPrefab for each piece, flung from `position`; created synchronously. */
+  spawnLoot(items: readonly DeconstructionLoot[], position: THREE.Vector3): void;
 }
 
 /** staff.lua destroystructure: one recipe product, scaled by its current condition. */
@@ -63,30 +61,18 @@ export class GreenStaffController implements EquipmentLifecycle {
     entity.components.spellcaster = this.spellcaster;
     this.spellcaster.canUseOnTargets = true;
     this.spellcaster.canOnlyUseOnRecipes = true;
-    this.spellcaster.setSpellFn((_staff, target, _position, doer, prepared) =>
-      this.destroyStructure(target as DeconstructionTarget, doer, prepared as PreparedDeconstruction | undefined), async target => {
-      const inst = target as DeconstructionTarget;
-      inst.flush?.();
-      const recipe = getDeconstructionRecipe(inst.prefab)!;
-      const sounds = recipe.ingredients.flatMap(({ type }) => ingredientSounds[type] ? [ingredientSounds[type]] : []);
-      // Reserve full-condition loot so condition changes before impact cannot exhaust prepared art.
-      const loot = deconstructionLoot({ prefab: inst.prefab, components: {} });
-      const results = await Promise.allSettled([world.prepareLoot(loot),
-        PreloadSounds('dontstarve/wilson/use_gemstaff', 'dontstarve/common/staff_dissassemble', 'dontstarve/common/gem_shatter', ...sounds)]);
-      if (results[0].status === 'rejected') throw results[0].reason;
-      if (results[1].status === 'rejected') { results[0].value.dispose(); throw results[1].reason; }
-      return results[0].value;
-    });
+    this.spellcaster.setSpellFn((_staff, target, _position, doer) =>
+      this.destroyStructure(target as DeconstructionTarget, doer, world));
   }
   onequip(): void {}
   onunequip(): void {}
   dispose(): void {}
-  private destroyStructure(target: DeconstructionTarget, doer: SpellCastDoer, prepared?: PreparedDeconstruction): boolean {
+  private destroyStructure(target: DeconstructionTarget, doer: SpellCastDoer, world: GreenStaffWorld): boolean {
     const recipe = getDeconstructionRecipe(target.prefab);
-    if (!recipe || !prepared || !target.isValid() || this.entity.isRemoved) return false;
+    if (!recipe || !target.isValid() || this.entity.isRemoved) return false;
     target.flush?.();
     if (!target.isValid()) return false;
-    if (!prepared.spawn(deconstructionLoot(target), target.position)) return false;
+    world.spawnLoot(deconstructionLoot(target), target.position);
     for (const ingredient of recipe.ingredients) {
       const sound = ingredientSounds[ingredient.type];
       if (sound) PlaySound(sound, doer.position);

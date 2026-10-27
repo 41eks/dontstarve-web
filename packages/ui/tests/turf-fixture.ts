@@ -35,7 +35,8 @@ export async function checkTurfOcclusion() {
   let comparisons = 0;
   try {
     for (const id of ['meatballs', 'log', 'torch', 'wall_stone_item']) {
-      const { visual: sprite } = await createResidentGroundItem({ assets }, { itemId: id });
+      const { visual: sprite, display } = createResidentGroundItem({ assets }, { itemId: id });
+      await display.artLoaded();
       sprite.model.position.copy(feet);
       scene.add(sprite.model);
       assets.instancedSprites.flush(renderer);

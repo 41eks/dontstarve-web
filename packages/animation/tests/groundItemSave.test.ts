@@ -6,7 +6,7 @@ import type { GroundItemDefinition, GroundItemVisual } from '../../prefab/src/gr
 import type { ItemEntity } from '../../inventory/src';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GroundItemManager } from '../../../src/groundItems';
-const { createTestVisual } = vi.hoisted(() => ({ createTestVisual: vi.fn<(definition: GroundItemDefinition) => Promise<GroundItemVisual & { update: ReturnType<typeof vi.fn<(dt: number) => void>> }>>() }));
+const { createTestVisual } = vi.hoisted(() => ({ createTestVisual: vi.fn<(definition: GroundItemDefinition) => GroundItemVisual & { update: ReturnType<typeof vi.fn<(dt: number) => void>> }>() }));
 import { FindEntities } from '../../prefab/src/actionEntity';
 import { EventEmitter } from '@dontstarve-web/signals';
 import type { WorldEvents } from '../../prefab/src/worldContext';
@@ -21,7 +21,7 @@ vi.mock('@dontstarve-web/animation/imageAtlas', () => ({
 // This suite checks save/transfer state; browser tests load the real DST assets.
 vi.mock('@dontstarve-web/prefab/groundItems', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@dontstarve-web/prefab/groundItems')>();
-  createTestVisual.mockImplementation(async definition => {
+  createTestVisual.mockImplementation(definition => {
     const { instance, display } = createEmptyEntity(definition.itemId);
     const model = display.model;
     model.add(new THREE.Group());
@@ -44,7 +44,7 @@ vi.mock('@dontstarve-web/prefab/butterfly', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@dontstarve-web/prefab/butterfly')>();
   class MockButterflyAssets {
     dispose() {}
-    async create(prefab: 'butterfly' | 'moonbutterfly', world: import('../../prefab/src/butterfly').ButterflyWorld) {
+    create(prefab: 'butterfly' | 'moonbutterfly', world: import('../../prefab/src/butterfly').ButterflyWorld) {
       const { instance, display } = createEmptyEntity(prefab);
       const model = display.model;
       model.add(new THREE.Group());
@@ -152,28 +152,17 @@ describe('ground item save records', () => {
     }
   });
 
-  it('queries only the requested prefab using live positions, replacing spawn reservations without duplicate entries', async () => {
+  it('queries only the requested prefab using live positions without duplicate entries', async () => {
     const { manager, inventory } = setup();
-    const createSprite = vi.mocked(createTestVisual).getMockImplementation() as (...args: Parameters<typeof createTestVisual>) => ReturnType<typeof createTestVisual>;
     const position = new THREE.Vector3(8, 0, 9);
-    let release!: () => void;
-    const loading = new Promise<void>(resolve => { release = resolve; });
-    let atCommit: THREE.Vector3[] = [];
     try {
-      const unrelated = await manager.spawnFromSave('unrelated', { ...definition, itemId: 'ash' }, new THREE.Vector3());
-      vi.mocked(createTestVisual).mockImplementationOnce(async (...args) => {
-        await loading;
-        const sprite = await createSprite(...args);
-        sprite.model.addEventListener('onload', () => { atCommit = [...manager.iteratePrefabPositions('log')]; });
-        return sprite;
-      });
-      const spawning = manager.spawnFromSave('query:log', definition, position);
-      expect([...manager.iteratePrefabPositions('log')]).toEqual([position]);
-      release();
-      const model = await spawning;
-      model.removeFromParent(); // A logical ground item remains queryable without attached art.
+      const unrelated = manager.spawnFromSave('unrelated', { ...definition, itemId: 'ash' }, new THREE.Vector3());
+      // SpawnPrefab is synchronous: the inst is queryable at its position as soon as it is restored.
+      const model = manager.spawnFromSave('query:log', definition, position);
       const entity = manager.entities.get('query:log')!;
-      expect(atCommit).toEqual([entity.transform.position]);
+      expect([...manager.iteratePrefabPositions('log')]).toEqual([entity.transform.position]);
+      model.removeFromParent(); // A logical ground item remains queryable without attached art.
+      expect([...manager.iteratePrefabPositions('log')]).toHaveLength(1);
       const exportRecords = vi.spyOn(manager, 'exportRecords');
       const snapshot = vi.spyOn(entity, 'snapshot');
       const unrelatedEntity = unrelated.userData.pickupTarget.entity as ItemEntity;
@@ -194,29 +183,17 @@ describe('ground item save records', () => {
       expect([...manager.iteratePrefabPositions('log')]).toEqual([]);
       entity.destroy();
       expect([...manager.iteratePrefabPositions('log')]).toEqual([]);
-    } finally { release(); manager.dispose(); inventory.dispose(); }
+    } finally { manager.dispose(); inventory.dispose(); }
   });
 
-  it('releases failed and disposed spawn reservations while art is loading', async () => {
+  it('leaves no queryable inst when its visual cannot be created', async () => {
     const { manager, inventory } = setup();
-    const createSprite = vi.mocked(createTestVisual).getMockImplementation() as (...args: Parameters<typeof createTestVisual>) => ReturnType<typeof createTestVisual>;
-    let release!: () => void;
-    const loading = new Promise<void>(resolve => { release = resolve; });
     try {
-      vi.mocked(createTestVisual).mockRejectedValueOnce(new Error('art failed'));
-      const failed = manager.spawnFromSave('failed', definition, new THREE.Vector3());
-      expect([...manager.iteratePrefabPositions('log')]).toHaveLength(1);
-      await expect(failed).rejects.toThrow('art failed');
+      vi.mocked(createTestVisual).mockImplementationOnce(() => { throw new Error('art failed'); });
+      expect(() => manager.spawnFromSave('failed', definition, new THREE.Vector3())).toThrow('art failed');
       expect([...manager.iteratePrefabPositions('log')]).toEqual([]);
-      vi.mocked(createTestVisual).mockImplementationOnce(async (...args) => { await loading; return createSprite(...args); });
-      const late = manager.spawnFromSave('late', definition, new THREE.Vector3());
-      expect([...manager.iteratePrefabPositions('log')]).toHaveLength(1);
-      manager.dispose();
-      expect([...manager.iteratePrefabPositions('log')]).toEqual([]);
-      release();
-      await expect(late).rejects.toThrow('disposed');
-      expect([...manager.iteratePrefabPositions('log')]).toEqual([]);
-    } finally { release(); manager.dispose(); inventory.dispose(); }
+      expect(manager.exportRecords()).toEqual([]);
+    } finally { manager.dispose(); inventory.dispose(); }
   });
 
   it('spawns ash through scene events, preserves its saved identity and position, and stops listening on disposal', async () => {
@@ -247,7 +224,7 @@ describe('ground item save records', () => {
     }
   });
 
-  it('saves and restores inventory overflow before its ground art finishes loading', async () => {
+  it('places inventory overflow on the ground at once, saved once and restored', async () => {
     const { manager, inventory, player } = setup();
     try {
       const capacity = inventory.GetNumSlots() * inventory.getStackSpec({ itemId: 'log', count: 1 }).maxStack;
@@ -255,17 +232,16 @@ describe('ground item save records', () => {
       player.position.set(4, 0, 5);
       const entity = inventory.entities.create({ itemId: 'log', count: 1 });
       expect(inventory.GiveItem(entity, new THREE.Vector3(8, 0, 9))).toBe(true);
-      expect(manager.renderEntities).toHaveLength(0);
+      expect(manager.renderEntities).toHaveLength(1);
       expect([...manager.iteratePrefabPositions('log')]).toEqual([entity.transform.position]);
       const records = manager.exportRecords();
       expect(records).toHaveLength(1);
       expect(records[0].id).toBe(entity.id);
       expect(records[0].transform.position).toEqual([4, 0, 5]);
       expect(records[0].components.stack).toMatchObject({ itemId: 'log', count: 1 });
-      // The logical drop is saved immediately; loading art must not add another record.
+      // Its display loading the art adds no other record.
       await new Promise(resolve => setTimeout(resolve, 0));
       expect(manager.exportRecords()).toEqual(records);
-      expect(manager.renderEntities).toHaveLength(1);
       expect([...manager.iteratePrefabPositions('log')]).toEqual([entity.transform.position]);
       expect(inventory.count('log')).toBe(capacity);
       const restored = setup();
@@ -277,21 +253,16 @@ describe('ground item save records', () => {
     } finally { manager.dispose(); inventory.dispose(); }
   });
 
-  it('commits prepared output synchronously for saves and disposes canceled preparations', async () => {
+  it('spawns a ground stack synchronously, so it is saved before its art has loaded', () => {
     const { manager } = setup();
-    const prepared = await manager.prepareSpawn({ ...definition, count: 3 });
-    expect(manager.exportRecords()).toEqual([]);
-    expect(prepared.spawn(new THREE.Vector3(4, 0, 5), 2)).toBe(true);
-    prepared.dispose();
+    const entity = manager.spawnGroundItem({ ...definition, count: 2 }, new THREE.Vector3(4, 0, 5));
     const records = manager.exportRecords();
     expect(records).toHaveLength(1);
+    expect(records[0].id).toBe(entity?.id);
     expect(records[0].transform.position).toEqual([4, 0, 5]);
     expect(records[0].components.stack).toMatchObject({ itemId: 'log', count: 2 });
-    const canceled = await manager.prepareSpawn(definition);
-    canceled.dispose();
-    expect(canceled.spawn(new THREE.Vector3())).toBe(false);
-    expect(manager.exportRecords()).toEqual(records);
     manager.dispose();
+    expect(manager.spawnGroundItem(definition, new THREE.Vector3())).toBeUndefined();
   });
   it('uses entity coordinates for rendering, reskinning, pickup and saves, ignoring stale model or foot projections', async () => {
     const { manager, player, inventory, pick } = setup();
@@ -344,7 +315,7 @@ describe('ground item save records', () => {
     const { manager, pickup, player, pick } = setup();
     vi.spyOn(Math, 'random').mockReturnValue(0.5);
     try {
-      await manager.flingLoot([{ ...definition, count: 3 }], new THREE.Vector3(1, 0, 2));
+      manager.flingLoot([{ ...definition, count: 3 }], new THREE.Vector3(1, 0, 2));
       const models = manager.renderEntities.map(({ object }) => object);
       expect(models).toHaveLength(3);
       expect(manager.exportRecords().map(({ components }) => components.stack?.count)).toEqual([1, 1, 1]);
@@ -374,8 +345,7 @@ describe('ground item save records', () => {
     const lastModel = async () => (await vi.mocked(createTestVisual).mock.results.at(-1)!.value).model;
     expect(await manager.drop(definition, new THREE.Vector3(), () => false)).toBe(false);
     expect((await lastModel()).userData.events).toEqual(['dispose']);
-    await expect(manager.drop(definition, new THREE.Vector3(), () => { throw new Error('transfer failed'); }))
-      .rejects.toThrow('transfer failed');
+    expect(() => manager.drop(definition, new THREE.Vector3(), () => { throw new Error('transfer failed'); })).toThrow('transfer failed');
     expect((await lastModel()).userData.events).toEqual(['dispose']);
     await manager.drop(definition, new THREE.Vector3(3, 7, 4), () => true);
     const model = await lastModel();

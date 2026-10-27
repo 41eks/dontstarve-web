@@ -9,7 +9,7 @@ import { collectEquippedActions } from '../../stategraphs/src/componentactions';
 import type { ActionAnimationController, ActionWorldContext } from '../../stategraphs/src/actionContext';
 import { createSignal, type HandEquipment } from '../../signals/src';
 import { ItemEntity } from '../../inventory/src';
-import { configureTorchEntity } from '../../prefab/src/torch';
+import { TORCH_FUEL, configureTorchEntity } from '../../prefab/src/torch';
 import { actionEntity } from '../../prefab/src/actionEntity';
 import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
 import { TREASURE_CHEST_DEFINITION } from '../../prefab/src/treasurechest';
@@ -70,7 +70,7 @@ it('walks to the foot, cancels on unequip and commits LIGHT once at frame 13 wit
   const burnable = new Burnable(actionEntity(model, 'treasurechest'));
   target.components.burnable = burnable;
   const torch = new ItemEntity({ itemId: 'torch', count: 1, remainingFuel: 30 });
-  configureTorchEntity(torch);
+  torch.configure({ maxFuel: TORCH_FUEL, configureEntity: configureTorchEntity });
   const equipment = { itemId: 'torch', EQUIPSLOTS: 'HANDS' as const, entity: torch };
   const hand = createSignal<HandEquipment | null>(equipment);
   const graph = new WilsonStateGraph({ playAnimation: () => 1, playSound() {}, setCasting() {}, onStateChanged() {} });
@@ -93,7 +93,7 @@ it('walks to the foot, cancels on unequip and commits LIGHT once at frame 13 wit
     graph.update(12 / 30); expect(burnable.IsBurning()).toBe(false);
     graph.update(1 / 30); expect(burnable.IsBurning()).toBe(true);
     graph.update(3); expect(started).toHaveBeenCalledTimes(1);
-    expect(torch.components.fueled.remaining).toBe(30);
+    expect(torch.components.fueled!.currentfuel).toBe(30);
     expect(target.hasTag('fire')).toBe(true); expect(target.hasTag('canlight')).toBe(false);
     expect(controller.request(target)).toBe(false);
     burnable.Extinguish(); target.addTag('fueldepleted'); expect(controller.request(target)).toBe(false);

@@ -12,7 +12,7 @@ import { FACING } from '../src/facing';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
-const prepareSpawn = async () => ({ spawnedEntity: undefined, spawn: () => true, dispose() {} }) as never;
+const spawnGroundItem = () => undefined;
 const meshes = (model: THREE.Object3D) => { const found: THREE.Mesh[] = []; model.traverse(o => { if (o instanceof THREE.Mesh) found.push(o); }); return found; };
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
@@ -22,7 +22,7 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 it('restores portal ground layers, its declared shadow and statue work state without replacing logical entities', async () => {
   const scene = new THREE.Scene(), awake = createSignal(true), cameraFacing = createSignal<number>(FACING.DOWN);
-  const manager = new ArchivePropsManager(scene, { prepareSpawn, cameraFacing, tickingarea: () => createMemo(() => awake.get()) });
+  const manager = new ArchivePropsManager(scene, { spawnGroundItem, cameraFacing, tickingarea: () => createMemo(() => awake.get()) });
   try {
     const portal = (await manager.spawn('archive_portal', new THREE.Vector3(3, 0, 6)))!;
     const statue = (await manager.spawn('archive_moon_statue', new THREE.Vector3(9, 0, 6)))!;
@@ -70,7 +70,7 @@ it('restores portal ground layers, its declared shadow and statue work state wit
 
 it('grows an unloaded marble shrub and keeps shape, colour and the scheduled mined-removal deadline', async () => {
   const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), awake = createSignal(false);
-  const manager = new MarbleShrubManager(scene, { scheduler, prepareSpawn, tickingarea: () => createMemo(() => awake.get()) });
+  const manager = new MarbleShrubManager(scene, { scheduler, spawnGroundItem, tickingarea: () => createMemo(() => awake.get()) });
   try {
     const model = await manager.spawn('marbleshrub', new THREE.Vector3(12, 0, 24), {
       id: 'growing-shrub', transform: { position: [12, 0, 24], rotationY: 0 },

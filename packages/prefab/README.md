@@ -36,7 +36,7 @@ symbol，炼金打印舱的 `researchlab2_pod_fx` 动画层合并到同一帧几
 接入 `onhit` 和 `onhammered`：4 次成功锤击后掉落配方材料（50%，逐项向上取整），
 生成原版 `structure_collapse_fx.zip` 的 `collapse_small` 木质坍塌效果并移除实体。
 掉落通过 `WorldContext.dropLoot` 交给应用的地面物品管理器，以 `flingLoot()`
-逐件生成。`LootFling` 按 `lootdropper.lua:FlingItem()` 的随机方向、水平 `0–2`、
+逐件同步生成：实体与 display 立即存在并写入存档，美术由 display 加载后绘制。`LootFling` 按 `lootdropper.lua:FlingItem()` 的随机方向、水平 `0–2`、
 向上 `8±4` 和物品/建筑碰撞半径初始化，场景长度换算为 `TILE_SIZE / 4`。
 简化轨迹负责回落、轻微弹跳和停稳；抛起高度只影响 visual，地面脚点用于排序、
 拾取和存档。飞行中保存只保存当前地面位置，读档不重播散射。短暂坍塌特效由
@@ -148,12 +148,12 @@ W.A.R.B.I.S. 头戴装备、检查镜和兔子帽的主体跟随部件直接合�
 sprite 来自按帽子 archive 与皮肤共享的 `createAnimatedSpriteSource()`，由 `PrefabDisplay` 绘制；
 落地／读档后经 `bindResidentGroundItem()` 绑定 tile 活动，与目录物品相同。
 落地帽子按实体的地面接触点参与遮挡排序，点击合并 Mesh 可拾取，存档保存真实落点。
-兔子帽按 `rabbit_custom_init` 以 `rabbit_build` 为 build，并通过 `instance.sprite.addOverrideBuild('hat_rabbit', …)` 声明帽子部件。
+兔子帽按 `rabbit_custom_init` 以 `rabbit_build` 为 build，并以 sprite 来源的 `overrideBuilds: { hat_rabbit: 'hat_rabbit.zip' }` 声明帽子部件，由 display 随来源一起加载。
 
 `@dontstarve-web/prefab/groundItems` 提供 `GROUND_ITEM_DEFINITIONS`、
 `GroundItemAssets` 和 `createResidentGroundItem({ assets, tickingarea? }, { itemId, skinId? })`。
-返回 `{ visual, instance, display }`，prefab 通过 `instance.sprite` 声明动画与外观，
-由 `PrefabDisplay` 创建和释放 sprite；落地／读档后绑定 tile，休眠时保留稳定模型、身份与组件。
+同步返回 `{ visual, instance, display }`，prefab 通过 `instance.sprite` 声明动画与外观，
+由 `PrefabDisplay` 加载美术、创建和释放 sprite（需要等待绘制时用 `display.artLoaded()`）；落地／读档后绑定 tile，休眠时保留稳定模型、身份与组件。
 其他 sprite 来源（如 factory 路径的落地帽子）用 `groundItemLifecycle.ts` 的 `bindResidentGroundItem(context, instance, display)` 获得同一生命周期。
 通用资源加载、动画选择、符号覆盖、模型创建和逐帧绘制由
 `@dontstarve-web/animation/archiveSprite` 提供。`GroundItemAssets` 继承其共享缓存，
@@ -182,7 +182,7 @@ sprite 来自按帽子 archive 与皮肤共享的 `createAnimatedSpriteSource()`
 
 ```ts
 const assets = new GroundItemAssets();
-const lamp = await createLanternGroundSprite({ assets, tickingarea });
+const lamp = createLanternGroundSprite({ assets, tickingarea }); // display 随后加载美术
 const item = new ItemEntity({ itemId: 'lantern', count: 1 });
 configureLanternEntity(item);
 lamp.bindEntity!(item);
@@ -287,10 +287,10 @@ RGB `(237,237,209)/255`。范围不随掉落堆叠数量增加，也没有火把
 局部光源每 20 秒脉动一次，半径为 33～36 世界单位。矮星固定在右键 raycaster
 命中的地面点，持续 24 分钟（1440 秒），到期播放
 消失动画并在 1 秒后移除；存档保存各自的落点和剩余寿命，恢复时继续计时。
-`prepare()` 可提前加载资源，`spawnPrepared(position)` 同步提交预加载的召唤，`spawn(position)` 提供异步加载入口，`update(dt, cameraQuaternion)`
+`spawn(position, saved?)` 同步创建矮星，施法提交帧与读档都用它，美术由 display 通过 `SpriteResources` 加载；`update(dt, cameraQuaternion)`
 更新动画与光照，`exportRecords()` 返回可保存记录，`dispose()` 释放共享精灵资源并停止所属声音。
 
-`prepare()` 同时预加载矮星音频：出现时播放 `dontstarve/common/staff_star_create`，
+矮星音频随场景启动时的 `PrewarmSounds()` 一起解码：出现时播放 `dontstarve/common/staff_star_create`，
 每颗矮星独立循环 `dontstarve/common/staff_star_LP`，消失动画结束时停止；
 移除及 `dispose()` 会停止并断开所属矮星的音源。恢复存档时只接续循环声。
 音频由 vgmstream 从 `sound/common.fsb` 的流 273（`staff_star_create`）和
@@ -305,7 +305,9 @@ RGB `(237,237,209)/255`。范围不随掉落堆叠数量增加，也没有火把
 `dontstarve/wilson/use_pick_rock`（`wilson.fsb` 流 124）。还支持冰箱开关声
 `dontstarve/common/icebox_open` / `icebox_close`（`sfx.fsb` 流 383 / 382）及木箱开关声
 `dontstarve/wilson/chest_open` / `chest_close`（`wilson.fsb` 流 15 / 14）。循环行为由事件映射
-决定；返回句柄的 `stop()` 停止该次播放，`PreloadSounds(...paths)` 预加载共享音频，
+决定；返回句柄的 `stop()` 停止该次播放，`PreloadSounds(...paths)` 预加载指定事件的共享音频，
+`PrewarmSounds()` 在场景启动时预加载声音表中全部事件的所有层与随机变体，等待下载和解码完成。
+预热可在音频上下文暂停时完成，用户交互负责恢复播放；按需加载与预热共享同一份请求及解码缓存，失败音频允许后续重试。
 `DisposeSounds()` 用于页面内显式结束游戏时停止全部声音并释放音频上下文；`pagehide` 不调用该清理。
 
 锤子与两种鹤嘴锄在装备时预加载音效，在共享 `pickaxe_loop` 第 7 帧分别调用

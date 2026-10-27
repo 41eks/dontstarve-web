@@ -95,7 +95,9 @@ test('renders inventory-owned signals without replacing the UI item and unbinds 
     const address = inventorySlotAddress(0);
     const store = new InventoryStore([{ address, slot: new InventorySlot() }], {
       berries: { name: '浆果', icon: 'berries.tex', maxStack: 40 },
-      torch: { name: '火把', icon: 'torch.tex', maxStack: 1, maxFuel: 75 },
+      // A fueled prefab adds fueled and InitializeFuelLevel in its configuration.
+      torch: { name: '火把', icon: 'torch.tex', maxStack: 1, maxFuel: 75,
+        configureEntity: (entity: any) => { if (!entity.components.fueled) entity.AddFueled().InitializeFuelLevel(75); } },
     });
     store.add('berries', 3);
     const entity = store.getEntity(address);

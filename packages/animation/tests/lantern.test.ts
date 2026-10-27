@@ -20,6 +20,7 @@ import { AnimState } from '../src/animState';
 import { bindPlayerHandEquipment } from '../../../src/playerHandEquipment';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { createPerishWorld } from './perishWorldFixture';
+import { getMachineActions } from '../../stategraphs/src/machine';
 
 /** The inst.Light an entity's model declares. */
 const declaredLight = (model: THREE.Object3D) => prefabInstance(model)?.light.peek();
@@ -80,13 +81,13 @@ describe('lantern fuel', () => {
       expect(light).toHaveBeenLastCalledWith(true);
       // Fuel and its percent change once per one-second period of game time, plus the full-fuel first period.
       const fuelChanges: unknown[] = [];
-      const stop = entity.components.fueled.fuel.subscribe(fuel => fuelChanges.push(fuel));
+      const stop = entity.components.fueled!.fuel.subscribe(fuel => fuelChanges.push(fuel));
       world.advance(0.5);
-      expect(fuelChanges).toEqual([]);
+      expect(fuelChanges).toEqual([LANTERN_FUEL - 1 / 60]);
       world.advance(0.5);
-      expect(fuelChanges).toEqual([LANTERN_FUEL - 1 - 1 / 60]);
+      expect(fuelChanges).toEqual([LANTERN_FUEL - 1 / 60, LANTERN_FUEL - 1 - 1 / 60]);
       stop();
-      expect(controller.fuelPercent.peek()).toBeCloseTo((LANTERN_FUEL - 1 - 1 / 60) / LANTERN_FUEL, 9);
+      expect(entity.components.fueled!.percent.peek()).toBeCloseTo((LANTERN_FUEL - 1 - 1 / 60) / LANTERN_FUEL, 9);
 
       // Unequipping clears the overlay; entering inventory settles the elapsed part and stops consumption.
       world.advance(9.5);
@@ -94,16 +95,16 @@ describe('lantern fuel', () => {
       expect(controller.isOn).toBe(true);
       entity.components.inventoryitem.OnPutInInventory({ hasTag: () => true, GetPosition: () => new THREE.Vector3(), PushEvent() {} });
       expect(controller.isOn).toBe(false);
-      expect(entity.components.fueled.remaining).toBeCloseTo(LANTERN_FUEL - 10.5 - 1 / 60, 9);
+      expect(entity.components.fueled!.currentfuel).toBeCloseTo(LANTERN_FUEL - 10.5 - 1 / 60, 9);
       expect(light).toHaveBeenLastCalledWith(false);
       world.advance(100);
-      expect(entity.components.fueled.remaining).toBeCloseTo(LANTERN_FUEL - 10.5 - 1 / 60, 9);
+      expect(entity.components.fueled!.currentfuel).toBeCloseTo(LANTERN_FUEL - 10.5 - 1 / 60, 9);
 
       // A partial lantern pays TURNON_FUELED_CONSUMPTION; running out only turns it off.
       lifecycle.onequip(owner);
       world.advance(LANTERN_FUEL);
       expect(entity.isRemoved).toBe(false);
-      expect(entity.components.fueled.remaining).toBe(0);
+      expect(entity.components.fueled!.currentfuel).toBe(0);
       expect(controller.isOn).toBe(false);
       expect(owner.PushEvent).toHaveBeenCalledExactlyOnceWith('torchranout', { prefab: 'lantern', equipslot: 'HANDS' });
       expect(light).toHaveBeenLastCalledWith(false);
@@ -126,6 +127,8 @@ describe('lantern fuel', () => {
       ListenForEvent: (name: string, listener: (data: unknown) => void) => events.on(name, listener),
     };
     inventory.bindActor(owner);
+    const world = createPerishWorld();
+    inventory.entities.bindPerishWorld(world);
     const anim = new AnimState(() => {});
     const show = vi.spyOn(anim, 'Show');
     const hide = vi.spyOn(anim, 'Hide');
@@ -144,10 +147,13 @@ describe('lantern fuel', () => {
       expect(declaredLight(player)).toBeUndefined();
       expect(lightAt(player)).toMatchObject({ radius: 15, intensity: .6 });
       expect(show).toHaveBeenLastCalledWith('LANTERN_OVERLAY');
-      entity.setRemainingFuel(LANTERN_FUEL / 2);
-      await new Promise(resolve => setTimeout(resolve, 0));
+      // fueled:SetUpdateFn(fuelupdate): the light follows the fuel on fueled's updates.
+      entity.setRemainingFuel(LANTERN_FUEL / 2 + 1 + 1 / 60);
+      expect(lightAt(player)).toMatchObject({ radius: 15, intensity: .6 });
+      world.advance(1);
       expect(player.getObjectByName('lanternlight')).toBe(node);
-      expect(lightAt(player)).toMatchObject({ radius: 12, intensity: .5 });
+      expect(lightAt(player)!.radius).toBeCloseTo(12, 9);
+      expect(lightAt(player)!.intensity).toBeCloseTo(.5, 9);
       hide.mockClear();
       expect(inventory.transfer(hand, slot, 1)).toBe(true);
       expect(controller.isOn).toBe(false);
@@ -164,16 +170,14 @@ describe('lantern fuel', () => {
       expect(lightAt(player)).toBeUndefined();
       inventory.GiveItem(detached);
       inventory.transfer(slot, hand, 1);
-      const fuelRead = vi.spyOn(entity.components.fueled.fuel, 'get');
       inventory.Unequip('hand');
       const turnoff = vi.spyOn(controller, 'TurnOff');
       entity.destroy();
-      turnoff.mockClear(); fuelRead.mockClear();
+      turnoff.mockClear();
       owner.PushEvent('equip', { item: {}, eslot: 'HANDS' });
-      entity.components.fueled.remaining = 1;
-      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(entity.setRemainingFuel(1)).toBe(false);
+      world.advance(1);
       expect(turnoff).not.toHaveBeenCalled();
-      expect(fuelRead).not.toHaveBeenCalled();
       expect(lightAt(player)).toBeUndefined();
     } finally { binding.dispose(); inventory.dispose(); }
   });
@@ -211,7 +215,18 @@ describe('lantern fuel', () => {
       // A lit ground lantern consumes on its world's game time; frames play no part.
       manager.update(1, new THREE.Quaternion());
       world.advance(120);
-      expect(ground.components.fueled.remaining).toBeCloseTo(LANTERN_FUEL - 120 - 1 / 60, 6);
+      expect(ground.components.fueled!.currentfuel).toBeCloseTo(LANTERN_FUEL - 120 - 1 / 60, 6);
+      // componentactions.lua SCENE.machine: RMB turns the lit ground lantern off, which removes its light and stops fuel.
+      expect(getMachineActions(model).map(candidate => candidate.action.action)).toEqual(['TURNOFF']);
+      ground.components.machine!.TurnOff();
+      const off = ground.components.fueled!.currentfuel;
+      world.advance(60);
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(lightAt(model)).toBeUndefined();
+      expect(ground.components.fueled!.currentfuel).toBe(off);
+      expect(getMachineActions(model).map(candidate => candidate.action.action)).toEqual(['TURNON']);
+      ground.components.machine!.TurnOn();
+      expect(lightAt(model)).toMatchObject({ radius: expect.any(Number) });
       expect(inventory.setRemainingFuel(inventorySlotAddress(1), 0)).toBe(true);
 
       const before = registry.exportRecords(), held = inventory.exportState();
@@ -230,7 +245,7 @@ describe('lantern fuel', () => {
       const loaded = restored.entities.get('spawn:lantern')!;
       // machine:OnLoad turns it on again; StartConsuming charges a new first period on the next settlement.
       expect(getLanternController(loaded).isOn).toBe(true);
-      expect(loaded.components.fueled.remaining).toBe(ground.components.fueled.remaining);
+      expect(loaded.components.fueled!.currentfuel).toBe(ground.components.fueled!.currentfuel);
       for (const index of [0, 1]) {
         expect(restoredInventory.getEntity(inventorySlotAddress(index))!.snapshot())
           .toEqual(inventory.getEntity(inventorySlotAddress(index))!.snapshot());

@@ -72,6 +72,8 @@ it('lights gunpowder with a torch, explodes its stack, works nearby stone fruit 
       .reduce((sum, record) => sum + record.components.stack!.count, 0)).toBe(3);
     expect(records.some(record => record.id === far.id)).toBe(true);
     expect(s.fx.renderEntities).toHaveLength(1);
+    // explode_small plays from its first frame once its art has loaded.
+    await s.fx.prepare('explode_small');
     s.advance(1.5); expect(s.fx.renderEntities).toHaveLength(0);
   } finally { s.dispose(); }
 }, 20000);

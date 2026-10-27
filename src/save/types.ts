@@ -64,6 +64,7 @@ export interface SavedEntity {
     marbleShrub?: import('../../packages/prefab/src/marbleshrub').MarbleShrubSaveState;
     archiveProp?: import('../../packages/prefab/src/archive_props').ArchivePropSaveState;
     houndbone?: import('../../packages/prefab/src/houndbone').HoundboneSaveState;
+    beeQueenHiveTimer?: import('../../packages/componets/src/timer').NamedTimerSave;
     skeleton?: import('../../packages/prefab/src/skeleton').SkeletonSaveState;
     growable?: import('../../packages/componets/src/growable').GrowableSave;
     deciduousTimer?: import('../../packages/componets/src/timer').NamedTimerSave;

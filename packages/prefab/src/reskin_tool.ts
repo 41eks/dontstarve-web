@@ -26,7 +26,7 @@ export function configureReskinToolEntity(entity: ItemEntity): void {
       if (!inst.preparedReskin?.apply(inst.reskinFx)) return false;
       entity._cached_reskinname!.set(inst.prefabId, inst.skinId);
       return true;
-    }, async () => {});
+    });
     caster.setCanCastFn((_doer, target) => {
       const inst = target as ReskinTarget | undefined;
       return !!inst && !inst.reskinToolCannotTargetThis && inst.isValid()

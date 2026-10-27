@@ -99,7 +99,7 @@ export class FarmPlowPlacement implements FarmActionWorld {
   private readonly mouseDecor = new ModelRecords<Decor>();
   private readonly decor = new Map<string, Decor>();
   private readonly plantedSeeds = new Map<string, FarmEntity>();
-  private debrisLoot?: (itemId: string, position: THREE.Vector3) => Promise<void>;
+  private debrisLoot?: (itemId: string, position: THREE.Vector3) => void;
   private readonly effects = new Set<FarmEntity>();
   private readonly pendingTiles = new Set<string>();
   private preview?: FarmEntity;
@@ -317,7 +317,7 @@ export class FarmPlowPlacement implements FarmActionWorld {
     }));
   }
 
-  setDebrisLootHandler(handler: (itemId: string, position: THREE.Vector3) => Promise<void>): void {
+  setDebrisLootHandler(handler: (itemId: string, position: THREE.Vector3) => void): void {
     this.debrisLoot = handler;
   }
 
@@ -337,9 +337,7 @@ export class FarmPlowPlacement implements FarmActionWorld {
         if (this.random() < 0.25 && this.debrisLoot) {
           let roll = this.random() * 100;
           const loot = DEBRIS_LOOT.find(([, weight]) => { roll -= weight; return roll < 0; })?.[0] ?? 'goldnugget';
-          void this.debrisLoot(loot, origin).catch((error: unknown) => {
-            if (!this.disposed) console.error('Unable to drop farm debris loot', error);
-          });
+          this.debrisLoot(loot, origin);
         }
         return true;
       } };

@@ -19,7 +19,6 @@ function setup(prefab: 'butterfly' | 'moonbutterfly' = 'butterfly', dropLoot = v
     start: vi.fn((name: string) => { current = name; }), update: vi.fn(),
     playOnce: vi.fn((name: string, callback?: () => void) => { current = name; complete = callback; }),
     get currentAnimation() { return current; },
-    get currentAnimationLength() { return 1; },
   };
   let threats: THREE.Vector3[] = [];
   let flowers: ButterflyFlower[] = [];
@@ -39,7 +38,8 @@ function setup(prefab: 'butterfly' | 'moonbutterfly' = 'butterfly', dropLoot = v
     setThreats: (value: THREE.Vector3[]) => { threats = value; },
     setFlowers: (value: ButterflyFlower[]) => { flowers = value; },
     setDay: (value: boolean) => { cycle.set(value ? 'day' : 'dusk'); },
-    complete: () => { const callback = complete; complete = undefined; callback?.(); },
+    // The animover is handled on the stategraph's next update.
+    complete: () => { const callback = complete; complete = undefined; callback?.(); controller.update(0); },
     tick: (seconds: number) => { for (let i = 0; i < Math.round(seconds * 10); i++) controller.update(0.1); },
   };
 }
@@ -64,11 +64,11 @@ describe('live butterfly source behavior', () => {
 
   it('runs away from scarytoprey inside 5 units until 10 units away', () => {
     const s = setup();
-    s.setThreats([new THREE.Vector3(1, 100, 0)]);
-    s.tick(5);
+    s.setThreats([new THREE.Vector3(3, 100, 0)]);
+    s.tick(4.5);
     // RunAway keeps the walking butterfly moving until it is farther than STOP_RUN_AWAY_DIST, then stops.
-    expect(s.position().x).toBeLessThan(-9);
-    expect(Math.abs(s.position().x - 1)).toBeGreaterThanOrEqual(10);
+    expect(s.position().x).toBeLessThan(-6);
+    expect(Math.abs(s.position().x - 3)).toBeGreaterThanOrEqual(10);
     expect(s.controller.state).toBe('idle');
     const position = s.position().clone();
     s.tick(.5);

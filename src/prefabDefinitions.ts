@@ -12,6 +12,7 @@ import { ROCK_ENTITY_IDS, rockArchives } from '@dontstarve-web/prefab/rocks';
 import { MARBLESHRUB_ID, MARBLESHRUB_SPAWN_IDS, MARBLESHRUB_MAX_GROW_TIME } from '@dontstarve-web/prefab/marbleshrub';
 import { ARCHIVE_PROP_IDS, ARCHIVE_PROP_SPAWN_IDS, ARCHIVE_MOON_STATUE_ID, ARCHIVE_RUNE_STATUE_ID } from '@dontstarve-web/prefab/archive_props';
 import { HOUNDBONE_ID } from '@dontstarve-web/prefab/houndbone';
+import { BEEQUEENHIVEGROWN_ID, BEEQUEEN_HIVE_MAX_WORK } from '@dontstarve-web/prefab/beequeenhivegrown';
 import { SKELETON_IDS, SKELETON_ANIMS, SKELETON_PLAYER_ID } from '@dontstarve-web/prefab/skeleton';
 import { MARBLEBEAN_SAPLING_ID } from '@dontstarve-web/prefab/marblebean_sapling';
 import { ROCK_AVOCADO_SAPLING_ID, ROCK_AVOCADO_SPROUT_GROW_TIME } from '@dontstarve-web/prefab/rock_avocado_fruit_sprout_sapling';
@@ -43,6 +44,7 @@ import type { AnimationArchiveSpec } from '@dontstarve-web/animation/preloadArch
 import definitions from '@dontstarve-web/prefab/definitions.json' with { type: 'json' };
 import { componentParser, type PrefabComponentParser } from './save/prefabComponents';
 import { fail } from './save/validation';
+import { number, object } from './save/validation';
 
 /** Pure definitions are available before loading a save or constructing a scene. */
 export interface PrefabDefinition<Id extends string = string> {
@@ -111,6 +113,27 @@ const bulbSingle = componentParser({ keys: ['bulbPlant'], bulbVariants: ['single
 const bulbDouble = componentParser({ keys: ['bulbPlant'], bulbVariants: ['double'] });
 const bulbTriple = componentParser({ keys: ['bulbPlant'], bulbVariants: ['triple'] });
 const caveinBoulder = componentParser({ keys: ['caveinBoulder'] });
+const beeQueenHiveComponents: PrefabComponentParser = (value, path) => {
+  const data = object(value, path, ['workable', 'beeQueenHiveTimer']);
+  const components: ReturnType<PrefabComponentParser> = {};
+  if (data.workable !== undefined) {
+    const work = object(data.workable, `${path}.workable`, ['maxwork', 'workleft']);
+    const maximum = number(work.maxwork, `${path}.workable.maxwork`, BEEQUEEN_HIVE_MAX_WORK, BEEQUEEN_HIVE_MAX_WORK);
+    components.workable = { maxwork: maximum, workleft: number(work.workleft, `${path}.workable.workleft`, 0, maximum) };
+  }
+  if (data.beeQueenHiveTimer !== undefined) {
+    const timer = object(data.beeQueenHiveTimer, `${path}.beeQueenHiveTimer`, ['timers']);
+    const timers = object(timer.timers, `${path}.beeQueenHiveTimer.timers`, ['hiveregen']);
+    const regen = object(timers.hiveregen, `${path}.beeQueenHiveTimer.timers.hiveregen`, ['timeleft', 'paused', 'initial_time']);
+    if (typeof regen.paused !== 'boolean') fail(`${path}.beeQueenHiveTimer.timers.hiveregen.paused`, 'expected boolean');
+    const duration = number(regen.initial_time, `${path}.beeQueenHiveTimer.timers.hiveregen.initial_time`, 0, 120);
+    components.beeQueenHiveTimer = { timers: { hiveregen: {
+      timeleft: number(regen.timeleft, `${path}.beeQueenHiveTimer.timers.hiveregen.timeleft`, 0, duration),
+      paused: regen.paused, initial_time: duration,
+    } } };
+  }
+  return components;
+};
 
 /** One declaration supplies saved IDs, debug aliases and component schemas to both consumers. */
 export const PREFAB_DEFINITIONS = {
@@ -179,6 +202,7 @@ export const PREFAB_DEFINITIONS = {
   skeletons: definePrefabs(SKELETON_IDS, (value, path, context) =>
     componentParser({ keys: ['skeleton'], skeletonAnims: SKELETON_ANIMS[context.prefab as keyof typeof SKELETON_ANIMS], skeletonDescribed: context.prefab === SKELETON_PLAYER_ID })(value, path, context), true, ['skeletons.zip', 'structure_collapse_fx.zip']),
   houndbones: definePrefabs([HOUNDBONE_ID], componentParser({ keys: ['houndbone'] }), true, ['hound_base.zip', 'structure_collapse_fx.zip']),
+  beeQueenHives: definePrefabs([BEEQUEENHIVEGROWN_ID], beeQueenHiveComponents, true, ['bee_queen_hive.zip']),
   marbleBeanSaplings: definePrefabs([MARBLEBEAN_SAPLING_ID], componentParser({ keys: ['saplingTimer'] }), true, ['marblebean.zip']),
   marbleShrubs: definePrefabs([MARBLESHRUB_ID], componentParser({ keys: ['growable', 'marbleShrub'], growthTime: MARBLESHRUB_MAX_GROW_TIME }), MARBLESHRUB_SPAWN_IDS,
     ['marbleshrub.zip', 'marbleshrub_build.zip']),

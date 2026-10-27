@@ -16,16 +16,16 @@ beforeEach(() => {
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
 });
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
-const prepareSpawn = async () => ({ spawnedEntity: undefined, spawn: () => true, dispose() {} }) as never;
+const spawnGroundItem = () => undefined;
 const meshes = (model: THREE.Object3D) => { const found: THREE.Mesh[] = []; model.traverse(o => { if (o instanceof THREE.Mesh) found.push(o); }); return found; };
 
 it('releases rock, skeleton and houndbone sprites outside the tickingarea and redresses them on return', async () => {
   const awake = createSignal(true), scheduler = new GameTimeScheduler();
   const tickingarea = () => createMemo(() => awake.get());
   const scene = new THREE.Scene();
-  const rocks = new RockManager(scene, '/dst/data/anim', { scheduler, tickingarea, prepareSpawn });
-  const skeletons = new SkeletonManager(scene, { tickingarea, prepareSpawn });
-  const bones = new HoundboneManager(scene, { tickingarea, prepareSpawn });
+  const rocks = new RockManager(scene, '/dst/data/anim', { scheduler, tickingarea, spawnGroundItem });
+  const skeletons = new SkeletonManager(scene, { tickingarea, spawnGroundItem });
+  const bones = new HoundboneManager(scene, { tickingarea, spawnGroundItem });
   const rotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), .6);
   // The displays turn themselves to the world's camera rotation.
   const content = bindTestWorld(scheduler);

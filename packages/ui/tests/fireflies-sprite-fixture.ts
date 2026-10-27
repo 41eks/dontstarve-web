@@ -18,6 +18,8 @@ export async function checkFirefliesInstances() {
   cycle.set('night');
   const handEquipment = createSignal<HandEquipment | null>(null);
   const assets = new FirefliesAssets('/dst/data/anim');
+  // Prewarm: the swarm art is loaded ahead, so each display draws as soon as fadein plays; no entity is created by it.
+  await assets.preload();
   const net = new ItemEntity({ itemId: 'bugnet', count: 1 }); configureBugNetEntity(net);
   const swarms = await Promise.all(Array.from({ length: 32 }, () => createFirefliesGroundSprite(assets, { getWatchWorldContent, handEquipment })));
   const entities = swarms.map((swarm, index) => {

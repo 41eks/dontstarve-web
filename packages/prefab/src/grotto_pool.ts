@@ -16,7 +16,7 @@ import { MiniMapEntity } from './minimapEntity';
 import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
 import { MakeObstaclePhysics } from './standardcomponents';
-import type { GroundItemDefinition, PreparedGroundSpawn } from './groundPrefab';
+import type { SpawnGroundItem } from './groundPrefab';
 import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
 import type { WorldFx } from './world_fx';
 import { TILE_SIZE } from './tile';
@@ -84,7 +84,6 @@ const CHILDREN: Readonly<Record<ChildId, ChildDefinition>> = {
   grotto_waterfall_small1: { animation: 'water_small1', smartRadius: 1.5, physicsRadius: 2.5, lightOverride: .1, lootTable: 'smallfalls' },
   grotto_waterfall_small2: { animation: 'water_small2', smartRadius: 1, physicsRadius: 2.5, lightOverride: .1, lootTable: 'smallfalls' },
 };
-const LOOT_COUNT = { moonglass_prop: 3, smallfalls: 2 } as const;
 
 /** on_save: the child entity IDs with their prefab_layout index (the small pool's `wf_id` is index 1). */
 export interface GrottoPoolSaveState { children: { index: number; id: string }[] }
@@ -105,7 +104,8 @@ export interface GrottoPoolWorld extends ToolMouseTargetWorld {
   /** The world's tickingarea query: props outside it are neither drawn, animated nor watching the moon. */
   tickingarea?: TileStateQuery;
   fx: Pick<WorldFx, 'prepare' | 'spawn'>;
-  prepareSpawn(definition: GroundItemDefinition, fling?: boolean): Promise<PreparedGroundSpawn>;
+  /** lootdropper:SpawnLootPrefab when a prop is mined; the loot's display loads its art. */
+  spawnGroundItem: SpawnGroundItem;
 }
 
 export function isGrottoId(value: string): value is GrottoId { return (GROTTO_IDS as readonly string[]).includes(value); }
@@ -124,7 +124,6 @@ interface Grotto {
   minimap?: MiniMapEntity;
   workable?: Workable;
   lootdropper?: LootDropper;
-  loot: Map<string, PreparedGroundSpawn[]>;
   /** `_children` (prefab_layout order) / `_waterfall`. */
   children: (THREE.Group | undefined)[];
   savedChildren: { index: number; id: string }[];
@@ -176,8 +175,6 @@ export class GrottoPoolManager {
     const pool = isPoolId(prefab);
     const definition = pool ? undefined : CHILDREN[prefab as ChildId];
     const table = definition?.lootTable;
-    // A prop saved mined out has nothing to drop until it regrows.
-    const lootItems = table && saved?.components.grottoGlass?.workleft !== 0 ? Array.from({ length: LOOT_COUNT[table] }, () => 'moonglass' as const) : [];
     const mistAnimation = prefab === GROTTO_POOL_BIG_ID ? 'steam_big' : `steam_small${1 + Math.floor(Math.random() * 2)}`;
     const spriteArchive = pool ? 'moonglasspool_tile' : 'moonglass_bigwaterfall';
     const spriteClip = { name: pool ? POOLS[prefab].animation : definition!.animation, loop: true };
@@ -190,34 +187,28 @@ export class GrottoPoolManager {
       pool ? createMist({ name: mistAnimation, loop: true }) : undefined,
       pool ? PreloadSounds(WATERFALL_LOOP) : undefined,
       table ? Promise.all([PreloadSounds('dontstarve/wilson/rock_break'), this.world.fx.prepare('halloween_moonpuff')]) : undefined,
-      ...lootItems.map(itemId => this.world.prepareSpawn({ ...catalog.items[itemId], itemId, count: 1 }, true)),
     ] as const);
     const created = resources[0].status === 'fulfilled' ? resources[0].value : undefined;
     const createdMist = resources[1].status === 'fulfilled' ? resources[1].value : undefined;
-    const loot = new Map<string, PreparedGroundSpawn[]>();
-    for (const result of resources.slice(4)) {
-      if (result.status === 'fulfilled') loot.set('moonglass', [...loot.get('moonglass') ?? [], result.value as PreparedGroundSpawn]);
-    }
     const failed = resources.find(result => result.status === 'rejected');
     if (failed || this.disposed || !created) {
       created?.dispose(); createdMist?.dispose();
-      for (const outputs of loot.values()) outputs.forEach(output => output.dispose());
       throw failed?.status === 'rejected' ? failed.reason : new Error('Grotto pools have been disposed');
     }
     // The pool surface is OnGround; the props and the mist are billboards.
     const entity = createArchiveEntity(prefab, { create: createSprite, initial: created }, { name: spriteClip.name, billboard: !pool }, prefab);
     const mist = createdMist && createArchiveEntity(`${prefab}_mist`, { create: createMist, initial: createdMist }, { name: mistAnimation, billboard: true }, `${prefab}_mist`);
-    return this.create(prefab, entity, mist, loot, position, saved);
+    return this.create(prefab, entity, mist, position, saved);
   }
 
-  private create(prefab: GrottoId, { instance, display }: ReturnType<typeof createArchiveEntity>, mist: Grotto['mist'], loot: Map<string, PreparedGroundSpawn[]>,
+  private create(prefab: GrottoId, { instance, display }: ReturnType<typeof createArchiveEntity>, mist: Grotto['mist'],
     position: THREE.Vector3, saved: GrottoRecord | undefined): THREE.Group {
     const model = display.model, sprite = instance.sprite;
     model.position.set(position.x, 0, position.z);
     const id = saved?.id ?? newEntityId();
     instance.entityId = id;
     Object.assign(model.userData, { noWetPrefix: true, remove: () => this.remove(model) });
-    const grotto: Grotto = { prefab, model, instance, display, sprite, mist, visible: true, loot, children: [], savedChildren: [], stopMoonWatch: [], stopArea: [], removed: false,
+    const grotto: Grotto = { prefab, model, instance, display, sprite, mist, visible: true, children: [], savedChildren: [], stopMoonWatch: [], stopArea: [], removed: false,
       tracker: new TileTracker(() => model.position) };
     const inst = actionEntity(model, prefab);
     if (isPoolId(prefab)) this.createPool(grotto, prefab, inst, saved?.components.grottoPool);
@@ -303,13 +294,8 @@ export class GrottoPoolManager {
     workable.savestate = true;
     workable.SetWorkAction('MINE');
     workable.SetWorkLeft(ROCKS_MINE);
-    const lootdropper = new LootDropper(inst, (itemId, point) => {
-      const prepared = grotto.loot.get(itemId)?.shift();
-      if (!prepared) return undefined;
-      const spawned = prepared.spawn(new THREE.Vector3(point.x, point.y, point.z));
-      if (!spawned) prepared.dispose();
-      return spawned ? prepared.spawnedEntity : undefined;
-    });
+    const lootdropper = new LootDropper(inst, (itemId, point) => this.world.spawnGroundItem(
+      { ...catalog.items[itemId as keyof typeof catalog.items], itemId, count: 1 }, new THREE.Vector3(point.x, point.y, point.z), { fling: true }));
     grotto.lootdropper = lootdropper;
     lootdropper.SetChanceLootTable(definition.lootTable);
     // on_mined: rock_break_fx, then the loot drops at the worker, then the prop sits mined out.
@@ -358,18 +344,6 @@ export class GrottoPoolManager {
     grotto.workable!.SetWorkLeft(ROCKS_MINE);
     this.world.fx.spawn('halloween_moonpuff', model.position);
     grotto.sprite.start(definition.animation);
-    this.prepareLoot(grotto, definition);
-  }
-
-  /** The prepared drops of the next mining; the previous ones were consumed by DropLoot. */
-  private prepareLoot(grotto: Grotto, definition: ChildDefinition): void {
-    const missing = LOOT_COUNT[definition.lootTable!] - (grotto.loot.get('moonglass')?.length ?? 0);
-    for (let i = 0; i < missing; i++) {
-      void this.world.prepareSpawn({ ...catalog.items.moonglass, itemId: 'moonglass', count: 1 }, true).then(prepared => {
-        if (grotto.removed || this.disposed) { prepared.dispose(); return; }
-        grotto.loot.set('moonglass', [...grotto.loot.get('moonglass') ?? [], prepared]);
-      }, (error: unknown) => console.error('Unable to prepare moonglass', error));
-    }
   }
 
   update(dt: number, _quaternion: THREE.Quaternion): void {
@@ -506,8 +480,6 @@ export class GrottoPoolManager {
     }
     prefabInstance(model)!.light.set(null);
     grotto.minimap?.dispose(); grotto.workable?.dispose();
-    for (const outputs of grotto.loot.values()) outputs.forEach(output => output.dispose());
-    grotto.loot.clear();
     grotto.mist?.instance.remove(); grotto.mist?.display.dispose();
     grotto.instance.remove(); grotto.display.dispose();
   }

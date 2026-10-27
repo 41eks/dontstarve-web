@@ -461,6 +461,7 @@
     "flower_cave_triple",
     "lightflier_flower",
     "houndbone",
+    "beequeenhivegrown",
     "cave_fern",
     "cave_fern_withered",
     "rock1",
@@ -608,6 +609,10 @@
     "houndbone": {
       "source": 3,
       "imported": 3
+    },
+    "beequeenhivegrown": {
+      "source": 0,
+      "imported": 0
     },
     "cave_fern": {
       "source": 1238,

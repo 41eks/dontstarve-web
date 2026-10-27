@@ -15,7 +15,7 @@ function setup(remainingUses: number, ocean: (point: THREE.Vector3) => boolean) 
   const spawnWaterspout = vi.fn();
   const trident = new TridentController(entity, {
     map: { isAboveGroundAtPoint: () => true, isOceanAtPoint: ocean, isGroundTargetBlocked: () => false },
-    prepareWaterspout: async () => {}, spawnWaterspout,
+    spawnWaterspout,
   });
   return { inventory, slot, entity, trident, spawnWaterspout };
 }
@@ -27,8 +27,7 @@ describe('trident water spell', () => {
     expect(entity.hasTag('castonpoint')).toBe(false);
     const land = new THREE.Vector3(-30, 0, 0), water = new THREE.Vector3(60, 0, 0);
     expect(trident.spellcaster.canCast(doer, undefined, land)).toBe(false);
-    const prepared = await trident.spellcaster.prepareCast();
-    expect(createCastSpellAction(entity, doer, water, () => true, undefined, () => prepared || undefined).do()).toBe(true);
+    expect(createCastSpellAction(entity, doer, water, () => true).do()).toBe(true);
     expect(spawnWaterspout).toHaveBeenCalledTimes(4);
     for (const [point] of spawnWaterspout.mock.calls) expect(point.distanceTo(water)).toBeCloseTo(2.75 * 0.65 * 3, 5);
     expect(entity.components.finiteuses.remaining).toBe(196);

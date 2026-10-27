@@ -3,7 +3,9 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
-import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { createArchiveEntity, prefabInstance } from '../../prefab/src/prefabInstance';
+import { ArchiveSpriteAssets, preloadSharedArchiveSprite } from '../src/archiveSprite';
+import { ResidentSprite } from '../src/residentSprite';
 import { displayLightOverride } from '../../display/src/displaySprites';
 import { TREASURE_CHEST_DEFINITION } from '../../prefab/src/treasurechest';
 import type { WorldContext } from '../../prefab/src/worldContext';
@@ -77,4 +79,25 @@ it('the model stands on the entity\'s own position vector, so moving it never to
   instance.sprite.start('open');
   expect(published).toHaveBeenCalledOnce();
   expect(instance.position.toArray()).toEqual([3, 0, 4]);
+});
+
+it('draws a frame declared as a fraction of the clip once the art it was declared before has loaded', async () => {
+  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  vi.stubGlobal('window', new EventTarget());
+  const assets = new ArchiveSpriteAssets();
+  const loading = preloadSharedArchiveSprite(assets, { animationArchive: 'sapling.zip', buildArchives: ['sapling.zip'], bank: 'sapling' },
+    { instancedAnimations: 'all', staticBillboard: true });
+  const { instance, display } = createArchiveEntity('sapling', { create: clip => loading.then(create => create(clip.name, clip.loop, 'sapling')) },
+    { name: 'sway' }, 'sapling');
+  const setFrame = vi.spyOn(ResidentSprite.prototype, 'setFrame');
+  try {
+    // sapling.lua SetFrame(math.random(GetCurrentAnimationNumFrames()) - 1), declared while the clip's length is unknown.
+    instance.sprite.setFrameAt(.5);
+    expect(instance.sprite.loaded).toBe(false);
+    expect(setFrame).not.toHaveBeenCalled();
+    await display.artLoaded();
+    const frames = instance.sprite.numFrames;
+    expect(frames).toBeGreaterThan(1);
+    expect(setFrame).toHaveBeenLastCalledWith(Math.floor(.5 * frames));
+  } finally { instance.remove(); display.dispose(); assets.dispose(); }
 });

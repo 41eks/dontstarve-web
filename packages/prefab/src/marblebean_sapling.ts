@@ -1,9 +1,8 @@
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import { modelEntries } from './modelRecords';
 import * as THREE from 'three';
-import { preloadSharedArchiveSprite, ArchiveSpriteAssets } from '@dontstarve-web/animation/archiveSprite';
 import type { TileStateQuery } from '@dontstarve-web/signals';
-import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
+import { SpriteResources, type ArchiveSpriteCommands, type PrefabDisplay } from '@dontstarve-web/display';
 import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
 import { watchTileActivity } from './tileActivity';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -11,7 +10,7 @@ import { Timer, type NamedTimerSave } from '../../componets/src/timer';
 import { Workable } from '../../componets/src/workable';
 import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
-import type { GroundItemDefinition, PreparedGroundSpawn } from './groundPrefab';
+import type { SpawnGroundItem } from './groundPrefab';
 import type { MarbleShrubManager } from './marbleshrub';
 import type { ShovelTarget } from '../../stategraphs/src/shovel';
 import { performToolWork } from '../../stategraphs/src/componentactions';
@@ -33,14 +32,13 @@ interface Sapling {
   stopActivity?: () => void;
   timer: Timer;
   workable: Workable;
-  loot: PreparedGroundSpawn;
-  shrub: Awaited<ReturnType<MarbleShrubManager['prepareGrowFromSeed']>>;
 }
 export interface MarbleBeanSaplingWorld extends ToolMouseTargetWorld {
   scheduler?: GameTimeScheduler;
   tickingarea?: TileStateQuery;
-  shrubs: Pick<MarbleShrubManager, 'prepareGrowFromSeed'>;
-  prepareSpawn(definition: GroundItemDefinition, fling?: boolean): Promise<PreparedGroundSpawn>;
+  shrubs: Pick<MarbleShrubManager, 'growFromSeed'>;
+  /** digup's marblebean; its display loads the art. */
+  spawnGroundItem: SpawnGroundItem;
 }
 
 /** planted_tree.lua sapling_fn("marblebean", ...): a fireproof sapling with a `grow` timer and a DIG workable. */
@@ -49,8 +47,7 @@ export class MarbleBeanSaplingManager {
   private readonly world: MarbleBeanSaplingWorld;
   private readonly scheduler: GameTimeScheduler;
   private readonly ownsScheduler: boolean;
-  private readonly assets = new ArchiveSpriteAssets();
-  private source?: ReturnType<typeof preloadSharedArchiveSprite>;
+  private readonly resources = new SpriteResources();
   private readonly saplings = new Map<THREE.Group, Sapling>();
   private disposed = false;
 
@@ -60,76 +57,48 @@ export class MarbleBeanSaplingManager {
     this.ownsScheduler = !world.scheduler;
   }
 
-  async spawn(position: THREE.Vector3, saved?: MarbleBeanSaplingRecord): Promise<THREE.Group> {
-    return (await this.prepare()).spawn(position, saved);
+  /** marblebean.lua ondeploy: spawn the sapling and StartGrowing at the planted point; the display loads the art. */
+  transplant(position: THREE.Vector3): boolean {
+    this.spawn(position);
+    return true;
   }
 
-  /** marblebean.lua ondeploy: spawn the sapling and StartGrowing at the planted point. */
-  async prepareTransplant() {
-    const prepared = await this.prepare();
-    return { dispose: prepared.dispose, spawn: (position: THREE.Vector3) => { prepared.spawn(position); return true; } };
-  }
-
-  private async prepare() {
-    const resources = await Promise.allSettled([
-      this.source ??= preloadSharedArchiveSprite(this.assets, { animationArchive: 'marblebean.zip', buildArchives: ['marblebean.zip'],
-        bank: 'marblebean' }, { instancedAnimations: 'all', staticBillboard: true }).catch(error => { this.source = undefined; throw error; }),
-      this.world.prepareSpawn({ ...catalog.items.marblebean, itemId: 'marblebean', count: 1 }, true),
-      this.world.shrubs.prepareGrowFromSeed(),
-    ] as const);
-    const disposeResources = () => {
-      for (const result of resources) if (result.status === 'fulfilled' && 'dispose' in result.value) result.value.dispose();
-    };
-    const failed = resources.find(result => result.status === 'rejected');
-    if (failed || this.disposed) {
-      disposeResources();
-      throw failed?.status === 'rejected' ? failed.reason : new Error('Marble bean saplings disposed');
+  spawn(position: THREE.Vector3, saved?: MarbleBeanSaplingRecord): THREE.Group {
+    if (this.disposed) throw new Error('Marble bean saplings disposed');
+    if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError('Invalid sapling position');
+    const { instance, display } = createArchiveEntity(MARBLEBEAN_SAPLING_ID, this.resources.archive({ animationArchive: 'marblebean.zip',
+      buildArchives: ['marblebean.zip'], bank: 'marblebean' }, { instancedAnimations: 'all', staticBillboard: true }),
+      { name: 'idle_planted', billboard: true }, MARBLEBEAN_SAPLING_ID);
+    instance.sprite.playOnce('idle_planted');
+    const model = display.model;
+    instance.position.set(position.x, 0, position.z);
+    instance.entityId = saved?.id ?? newEntityId();
+    Object.assign(model.userData, { deploySmartRadius: 1 });
+    instance.addTag('marbleshrub');
+    const entity = actionEntity(model, MARBLEBEAN_SAPLING_ID);
+    const timer = new Timer(this.scheduler, name => {
+      // growtree: the shrub replaces the sapling at its position and grows from seed.
+      if (name === 'grow') { this.world.shrubs.growFromSeed(model.position.clone()); this.remove(model); }
+    }, ['grow']);
+    const workable = new Workable(entity);
+    workable.SetWorkAction('DIG'); workable.SetWorkLeft(1);
+    // digup: lootdropper loot is `marblebean`, then the sapling is removed.
+    workable.SetOnFinishCallback(() => {
+      this.world.spawnGroundItem({ ...catalog.items.marblebean, itemId: 'marblebean', count: 1 }, model.position.clone(), { fling: true });
+      this.remove(model);
+    });
+    Object.assign(entity.components, { workable, timer });
+    new ToolMouseTarget(entity, instance, workable, this.world.handEquipment);
+    const sapling: Sapling = { instance, display, timer, workable };
+    this.saplings.set(model, sapling);
+    // startgrowing runs on construction and from marblebean's StartGrowing; a saved timer then replaces it.
+    if (!timer.TimerExists('grow')) {
+      timer.StartTimer('grow', MARBLEBEAN_GROW_TIME.base + (Math.random() * 2 - 1) * MARBLEBEAN_GROW_TIME.random);
     }
-    const source = (resources[0] as PromiseFulfilledResult<Awaited<ReturnType<typeof preloadSharedArchiveSprite>>>).value;
-    const loot = (resources[1] as PromiseFulfilledResult<PreparedGroundSpawn>).value;
-    const shrub = (resources[2] as PromiseFulfilledResult<Sapling['shrub']>).value;
-    let used = false;
-    return {
-      dispose: () => { if (!used) { used = true; disposeResources(); } },
-      spawn: (position: THREE.Vector3, saved?: MarbleBeanSaplingRecord): THREE.Group => {
-        if (used || this.disposed) throw new Error('Prepared sapling is unavailable');
-        if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError('Invalid sapling position');
-        used = true;
-        const create = (clip: { name: string; loop: boolean }) => source(clip.name, clip.loop, MARBLEBEAN_SAPLING_ID);
-        const { instance, display } = createArchiveEntity(MARBLEBEAN_SAPLING_ID, { create, initial: create({ name: 'idle_planted', loop: false }) },
-          { name: 'idle_planted', billboard: true }, MARBLEBEAN_SAPLING_ID);
-        instance.sprite.playOnce('idle_planted');
-        const model = display.model;
-        instance.position.set(position.x, 0, position.z);
-        instance.entityId = saved?.id ?? newEntityId();
-        Object.assign(model.userData, { deploySmartRadius: 1 });
-        instance.addTag('marbleshrub');
-        const entity = actionEntity(model, MARBLEBEAN_SAPLING_ID);
-        const timer = new Timer(this.scheduler, name => {
-          // growtree: the shrub replaces the sapling at its position and grows from seed.
-          if (name === 'grow') { shrub.spawn(model.position); this.remove(model); }
-        }, ['grow']);
-        const workable = new Workable(entity);
-        workable.SetWorkAction('DIG'); workable.SetWorkLeft(1);
-        // digup: lootdropper loot is `marblebean`, then the sapling is removed.
-        workable.SetOnFinishCallback(() => {
-          if (!loot.spawn(model.position)) throw new Error('Missing marblebean DIG loot');
-          this.remove(model);
-        });
-        Object.assign(entity.components, { workable, timer });
-        new ToolMouseTarget(entity, instance, workable, this.world.handEquipment);
-        const sapling: Sapling = { instance, display, timer, workable, loot, shrub };
-        this.saplings.set(model, sapling);
-        // startgrowing runs on construction and from marblebean's StartGrowing; a saved timer then replaces it.
-        if (!timer.TimerExists('grow')) {
-          timer.StartTimer('grow', MARBLEBEAN_GROW_TIME.base + (Math.random() * 2 - 1) * MARBLEBEAN_GROW_TIME.random);
-        }
-        timer.OnLoad(saved?.components.saplingTimer);
-        this.scene.add(model);
-        sapling.stopActivity = watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active));
-        return model;
-      },
-    };
+    timer.OnLoad(saved?.components.saplingTimer);
+    this.scene.add(model);
+    sapling.stopActivity = watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active));
+    return model;
   }
 
   update(dt: number, _quaternion: THREE.Quaternion): void {
@@ -164,14 +133,14 @@ export class MarbleBeanSaplingManager {
     this.saplings.delete(model); model.userData.removed = true;
     sapling.stopActivity?.();
     sapling.timer.dispose(); sapling.workable.dispose();
-    sapling.instance.remove(); sapling.display.dispose(); sapling.loot.dispose(); sapling.shrub.dispose();
+    sapling.instance.remove(); sapling.display.dispose();
   }
 
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
     for (const model of [...this.saplings.keys()]) this.remove(model);
-    this.assets.dispose();
+    this.resources.dispose();
     if (this.ownsScheduler) this.scheduler.dispose();
   }
 }

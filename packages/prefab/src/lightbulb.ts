@@ -28,8 +28,8 @@ export const LIGHTBULB_LIGHT: PrefabLocalLight = {
 };
 
 /** Ground lightbulbs glow until picked up; they use bulb.zip's idle world art. */
-export async function createLightbulbGroundSprite(context: Pick<GroundPrefabContext, 'assets' | 'tickingarea'>, options: { lit?: boolean; skinId?: string } = {}) {
-  const { visual } = await createResidentGroundItem(context, { itemId: LIGHTBULB_ID, skinId: options.skinId });
+export function createLightbulbGroundSprite(context: Pick<GroundPrefabContext, 'assets' | 'tickingarea'>, options: { lit?: boolean; skinId?: string } = {}) {
+  const { visual } = createResidentGroundItem(context, { itemId: LIGHTBULB_ID, skinId: options.skinId });
   const setLit = (lit: boolean) => prefabInstance(visual.model)!.light.set(lit ? LIGHTBULB_LIGHT : null);
   setLit(options.lit ?? true);
   const removeInventoryEvents = listenInventoryEvents(visual.model, {

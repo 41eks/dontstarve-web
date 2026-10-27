@@ -82,6 +82,9 @@ test('cursor records, machine switches and pickup use real input and release dec
     const ndc = min.add(max).multiplyScalar(0.5).project(view.camera), bounds = view.renderer.domElement.getBoundingClientRect();
     return { x: bounds.left + (ndc.x + 1) * bounds.width / 2, y: bounds.top + (1 - ndc.y) * bounds.height / 2 };
   });
+  // machine.lua's cooldown: no TURNON / TURNOFF for 3 game seconds after each switch.
+  const afterCooldown = () => expect.poll(() => page.evaluate(() => (window as any).phonographGame.scene.children
+    .find((model: any) => model.userData.itemId === 'phonograph').userData.actionEntity.hasTag('cooldown')), { timeout: 10_000 }).toBe(false);
   const clickMachine = async (button: 'left' | 'right') => { const p = await point(); await page.mouse.click(p.x, p.y, { button }); };
   await record.click();
   await expect(page.locator('.slot-drag-preview[data-cursor="true"]')).toHaveAttribute('data-item-id', 'record');
@@ -93,8 +96,11 @@ test('cursor records, machine switches and pickup use real input and release dec
   await clickMachine('left');
   await expect(record).toHaveCount(0);
   await expect.poll(music).toEqual([{ stops: 0, loop: true, state: 'running', channels: 1 }]);
+  // Inserting turns the machine on, so RMB offers TURNOFF once its cooldown has passed.
+  await afterCooldown();
   await clickMachine('right');
   await expect.poll(music).toEqual([{ stops: 1, loop: true, state: 'running', channels: 1 }]);
+  await afterCooldown();
   await clickMachine('right');
   await expect.poll(music).toHaveLength(2);
   await clickMachine('left');

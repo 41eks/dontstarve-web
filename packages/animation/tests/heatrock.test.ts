@@ -3,7 +3,10 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ItemEntity, equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { createPickupInventory } from './pickupFixture';
-import { configureHeatRockEntity, type HeatRock } from '../../prefab/src/heatrock';
+import { HEATROCK_FUEL, configureHeatRockEntity, type HeatRock } from '../../prefab/src/heatrock';
+
+/** heatrock.lua's prefab fn adds fueled before the saved fuel loads. */
+const heatrockSpec = { maxFuel: HEATROCK_FUEL, configureEntity: configureHeatRockEntity };
 import { GroundItemAssets, createGroundItemFactory } from '../../prefab/src/groundItems';
 import { createGroundItemVisual } from './groundItemVisual';
 import type { GroundPrefabContext } from '../../prefab/src/groundPrefab';
@@ -23,14 +26,16 @@ it('creates individual unequippable stones with source tags and preserves their 
   try {
     expect(inventory.add('heatrock', 2)).toBe(true);
     const first = inventory.getEntity(inventorySlotAddress(0))!;
-    expect(first.snapshot()).toMatchObject({ itemId: 'heatrock', count: 1, remainingFuel: 100 });
+    // fueled.lua OnSave omits a full stone.
+    expect(first.components.fueled!.currentfuel).toBe(HEATROCK_FUEL);
+    expect(first.snapshot()).not.toHaveProperty('remainingFuel');
     expect(inventory.get(inventorySlotAddress(1))).toMatchObject({ itemId: 'heatrock', count: 1 });
     expect(first.hasTag('heatrock')).toBe(true);
     expect(first.hasTag('icebox_valid')).toBe(true);
     expect(first.signals.durabilityPercent.peek()).toBe(1);
     expect(inventory.transfer(inventorySlotAddress(0), equipmentSlotAddress('hand'), 1)).toBe(false);
     expect(inventory.getEntity(inventorySlotAddress(0))).toBe(first);
-    configureHeatRockEntity(saved); configureHeatRockEntity(saved);
+    saved.configure(heatrockSpec); saved.configure(heatrockSpec);
     expect(saved.snapshot().remainingFuel).toBe(62.5);
     expect(saved.signals.durabilityPercent.peek()).toBe(.625);
   } finally { inventory.dispose(); saved.destroy(); }
@@ -77,7 +82,7 @@ it('registers temperature updates once, moves them between worlds and unregister
 it('derives range from temperature signals, updates icons in effects and preserves synchronous usage accounting', async () => {
   const ambient = createSignal(35), updates = new ComponentUpdates();
   const entity = new ItemEntity({ itemId: 'heatrock', count: 1, temperature: { current: 66 }, remainingFuel: 75 });
-  configureHeatRockEntity(entity);
+  entity.configure(heatrockSpec);
   entity.BindTemperatureWorld({ temperature: ambient, componentUpdates: updates });
   const temperature = entity.components.temperature!, rock = entity.getComponent<HeatRock>('heatrock')!;
   const image = () => entity.components.inventoryitem.image.peek()!.icon;

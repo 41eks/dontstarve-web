@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DwarfStarManager } from '../../prefab/src/stafflight';
-import { DisposeSounds, PlaySound, PreloadSounds, UpdateSoundListener, inverseSquareAttenuation, SOUND_MAX_DISTANCE } from '../../prefab/src/sound';
+import { DisposeSounds, PlaySound, PreloadSounds, PrewarmSounds, UpdateSoundListener, inverseSquareAttenuation, SOUND_MAX_DISTANCE } from '../../prefab/src/sound';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { DynamicMusic } from '../../componets/src/dynamicmusic';
 
@@ -44,6 +44,51 @@ async function setup() {
   return { events, sources, gains, context, fetchMock };
 }
 
+it('prewarms registered sounds while suspended, waits for decoding and reuses shared layers and variants', async () => {
+  const s = await setup();
+  let finish!: (buffer: AudioBuffer) => void;
+  s.context.decodeAudioData.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+  let ready = false;
+  const loading = PrewarmSounds().then(() => { ready = true; });
+  await new Promise(resolve => setTimeout(resolve, 0));
+  expect(s.context.decodeAudioData).toHaveBeenCalled();
+  expect(ready).toBe(false);
+  expect(s.context.state).toBe('suspended');
+  expect(s.context.resume).not.toHaveBeenCalled();
+  expect(s.sources).toHaveLength(0);
+  finish({} as AudioBuffer);
+  await loading;
+  const urls = s.fetchMock.mock.calls.map(([url]) => url);
+  expect(new Set(urls).size).toBe(urls.length);
+  expect(s.context.decodeAudioData).toHaveBeenCalledTimes(urls.length);
+  expect(urls).toEqual(expect.arrayContaining([
+    '/dst/data/sound/sfx.fsb-796.wav', '/dst/data/sound/sfx.fsb-797.wav',
+    '/dst/data/sound/common.fsb-158.wav', '/dst/data/sound/common.fsb-284.wav',
+    '/dst/data/sound/sfx.fsb-423.wav', '/dst/data/sound/sfx.fsb-424.wav',
+  ]));
+  await PrewarmSounds();
+  await PreloadSounds('dontstarve/common/staff_coldlight_LP', 'dontstarve/wilson/hit');
+  PlaySound('dontstarve/common/staff_coldlight_LP');
+  PlaySound('dontstarve/wilson/hit');
+  expect(s.sources).toHaveLength(4);
+  expect(s.sources.every(source => source.start.mock.calls.length === 1)).toBe(true);
+  expect(s.fetchMock).toHaveBeenCalledTimes(urls.length);
+  expect(s.context.decodeAudioData).toHaveBeenCalledTimes(urls.length);
+  s.events.dispatchEvent(new Event('pointerdown'));
+  expect(s.context.resume).toHaveBeenCalledOnce();
+});
+
+it('skips prewarming without Web Audio and can prepare when it becomes available', async () => {
+  vi.stubGlobal('AudioContext', undefined);
+  const fetchMock = vi.fn();
+  vi.stubGlobal('fetch', fetchMock);
+  await PrewarmSounds();
+  expect(fetchMock).not.toHaveBeenCalled();
+  const s = await setup();
+  await PrewarmSounds();
+  expect(s.context.decodeAudioData).toHaveBeenCalled();
+});
+
 describe('dwarf star source sounds', () => {
 
   it('mutes at and beyond the cutoff, with a configurable maximum distance', () => {
@@ -63,6 +108,8 @@ describe('dwarf star source sounds', () => {
   it('attenuates independent stars as the player moves and releases their gains', async () => {
     const s = await setup();
     const manager = new DwarfStarManager(new THREE.Scene(), '/dst/data/anim');
+    // The scene decodes every event before it starts, so a star's loop begins when it is spawned.
+    await PrewarmSounds();
     UpdateSoundListener(new THREE.Vector3());
     const near = await manager.spawn(new THREE.Vector3());
     const far = await manager.spawn(new THREE.Vector3(24, 0, 0));

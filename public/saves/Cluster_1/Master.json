@@ -788288,6 +788288,25 @@
           }
         }
       ],
+      "beequeenhivegrown": [
+        {
+          "id": "dst_03741E1B78B29575_beequeenhivegrown_id_107380",
+          "transform": {
+            "position": [
+              -236.4,
+              0.0,
+              -331.11
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "workable": {
+              "maxwork": 16,
+              "workleft": 16
+            }
+          }
+        }
+      ],
       "rock1": [
         {
           "id": "dst_03741E1B78B29575_rock1_index_000001",

@@ -89,15 +89,15 @@ export const ROCK_AVOCADO_BUSH_DEFINITION: PickablePlantDefinition = {
 };
 
 export class RockAvocadoBushManager extends PickablePlantManager {
-  prepareNaturalSpawn() { return this.preparePlant(ROCK_AVOCADO_BUSH_DEFINITION); }
-  spawn(position: THREE.Vector3, saved?: PickablePlantRecord): Promise<THREE.Group> {
+  /** A sprout's growtree: SpawnPrefab of a natural bush at `position`; the display loads the art. */
+  spawnNatural(position: THREE.Vector3): THREE.Group { return this.spawnPlant(ROCK_AVOCADO_BUSH_DEFINITION, position); }
+  spawn(position: THREE.Vector3, saved?: PickablePlantRecord): THREE.Group {
     return this.spawnPlant(ROCK_AVOCADO_BUSH_DEFINITION, position, saved);
   }
-  async prepareTransplant(): Promise<{ spawn(position: THREE.Vector3): boolean; dispose(): void }> {
-    const prepared = await this.preparePlant(ROCK_AVOCADO_BUSH_DEFINITION);
-    return { dispose: () => prepared.dispose(), spawn: position => {
-      const model = prepared.spawn(position); model.userData.components.pickable.OnTransplant(); return true;
-    } };
+  /** dug_rock_avocado_bush ondeploy: SpawnPrefab, then OnTransplant; the display loads the art. */
+  transplant(position: THREE.Vector3): boolean {
+    this.spawnPlant(ROCK_AVOCADO_BUSH_DEFINITION, position).userData.components.pickable.OnTransplant();
+    return true;
   }
   exportRecords(): PickablePlantRecord[] { return this.exportPlants().map(({ record }) => record); }
 }

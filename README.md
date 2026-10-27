@@ -2,13 +2,11 @@
 
 https://41eks.github.io/dontstarve-web/
 
-生产构建通过 Service Worker 和 Cache Storage 按需缓存 `public/dst/data/`、`hamlet-assets/`、`generating-world/`、`creepy-hands/` 和 `audio/` 的资源，沿用现有 URL 和部署子路径。命中后直接从本地返回，未命中时下载并缓存完整成功响应；音频支持从完整缓存返回单段字节范围。缓存不可用或配额不足时继续网络加载。构建根据上述文件的路径、内容及 Worker 源码自动生成缓存版本，无需手动更新版本号；文件变化后旧缓存会在新 Worker 激活时清除，新版本默认等待旧页面关闭，避免运行中的游戏切换资源。
 
 仅 `pnpm build` 的产物启用缓存，开发服务器不注册 Worker。首次安装接管之前的请求仍走网络；后续请求和再次访问会使用缓存。可在开发者工具 Application → Cache Storage 查看 `dontstarve-assets:` 缓存；清理站点数据会删除缓存。HTML、应用 JS/CSS 和存档不在该缓存范围内，因此尚不提供整个应用的离线启动。运行 `pnpm test:asset-cache` 验证构建版本更新、实际浏览器缓存命中、离线资源读取、音频范围请求及更新生命周期。
 
 场景实体的活动区域与资源管理方案见 [按 tile 管理生命周期](docs/tile-lifecycle.md)：每个 tile 持有活动 signal，玩家跨 tile 时更新区域差集，prefab 用 `createMemo` 派生活动状态。活动网格已接入运行时；萤火虫按活动区域加载／释放动画资源，温泉控制显隐，海浪休眠移除。
 
-DST Lua 的世界／局部环境温度、实体升降温与暖石档位、耐久和保存机制见 [温度系统源码总结](docs/dst-temperature.md)。昼夜和季节使用 signal，`WorldTemperature` 通过 `createMemo` 派生环境温度；主循环每 60 个活动帧按累计实际 `dt` 结算昼夜进度和世界温度。
 
 
 ## 调试命令（debugCommand）
@@ -43,7 +41,7 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 
 玩家美术改用 Wortox 默认外观（`wortox_none`）：本体 `anim/dynamic/wortox.zip` / `.dyn`，幽灵 `anim/dynamic/ghost_wortox_build.zip` / `.dyn`；地图图标和物品栏自检头像同步使用 Wortox。共用 `wilson` 动画 bank、装备符号覆盖、死亡／复活及存档流程沿用现有实现，角色数值和存档角色字段沿用现有实现。资源按原路径和字节镜像，运行 `python3 packages/prefab/scripts/import-player-art.py --check` 校验，去掉 `--check` 可重新导入。调试命令语法、参数和支持的 `c_spawn` / `c_give` ID 不变。
 
-默认加载 `public/saves/Cluster_1/Master.json`，无需 URL 参数。`scripts/import-dst-region.py --cluster public/saves/Cluster_62 --output public/saves/Cluster_1 --origin-cell 214 213 --forest-origin-cell 189 197` 一次转换地表与洞穴，分别输出 `Master.json`、`Caves.json` 和各自的 `.import.json` 来源报告。当前 `Cluster_62` 导入结果包含地表 6,451 个实体（含 2 个带内容物的箱子和 36 头野生 `beefalo`）、洞穴 4,757 个实体，其中静态散落物品分别为 137 种／961 个实体和 20 种／130 个实体。地表各海洋类型、海冰、码头／农田底层地皮，以及常青树已保存的腐朽计时器均随存档保留；出生点排除海洋与虚空。`--origin-cell 214 213` 在整簇导入时只固定洞穴原点，地表独立居中，可用 `--forest-origin-cell COL ROW` 指定。可用 `?save=Cluster_1/Caves.json` 加载洞穴，或 `?save=initial-world.json` 加载原地表存档。`c_spawn` 新增静态散落物品 ID，详见下方调试命令说明；`c_save()` 无参数，下载包含 `Cluster_1/` 目录的 `Cluster_1.zip`，更新当前分片并保留另一分片。将 ZIP 解压到 `public/saves/`，覆盖 `Cluster_1/` 后重载。完整参数和 `--check` 见 [地表与洞穴地图导入](docs/dst-static-layouts.md#从完整存档导入地表与洞穴地图)。
+默认加载 `public/saves/Cluster_1/Master.json`，无需 URL 参数。`scripts/import-dst-region.py --cluster public/saves/Cluster_62 --output public/saves/Cluster_1 --origin-cell 214 213 --forest-origin-cell 189 197` 一次转换地表与洞穴，分别输出 `Master.json`、`Caves.json` 和各自的 `.import.json` 来源报告。当前 `Cluster_62` 导入结果包含地表 6,452 个实体（含 1 个 `beequeenhivegrown`、2 个带内容物的箱子和 36 头野生 `beefalo`）、洞穴 4,757 个实体，其中静态散落物品分别为 137 种／961 个实体和 20 种／130 个实体。地表各海洋类型、海冰、码头／农田底层地皮，以及常青树已保存的腐朽计时器均随存档保留；出生点排除海洋与虚空。`--origin-cell 214 213` 在整簇导入时只固定洞穴原点，地表独立居中，可用 `--forest-origin-cell COL ROW` 指定。可用 `?save=Cluster_1/Caves.json` 加载洞穴，或 `?save=initial-world.json` 加载原地表存档。也可用 `?saveData=<base64url>` 直接传入存档 JSON（UTF-8 后按 base64url 编码，无需对应文件），它优先于 `?save=`，并与文件存档一样经过完整校验；浏览器测试用它从测试内构造的存档启动。`c_spawn` 新增静态散落物品 ID，详见下方调试命令说明；`c_save()` 无参数，下载包含 `Cluster_1/` 目录的 `Cluster_1.zip`，更新当前分片并保留另一分片。将 ZIP 解压到 `public/saves/`，覆盖 `Cluster_1/` 后重载。完整参数和 `--check` 见 [地表与洞穴地图导入](docs/dst-static-layouts.md#从完整存档导入地表与洞穴地图)。
 
 已实现树木的导入白名单包含 `evergreen`、`deciduoustree`、`moon_tree`、`mushtree_moon`、`mushtree_medium`、`mushtree_tall`，以及月树幼苗 `moonbutterfly_sapling`。本次重新导入默认存档新增 198 棵月树。常青树、桦树、月树按 Lua 使用原版地图图标、优先级 `-1`，砍倒或烧毁后切换树桩／焦木图标；蘑菇树沿用现有图标。图标属于逻辑树，远处卸载模型时继续显示，永久移除时清理。月树保留大小、生长及 `moonTreeTimer` 腐朽计时器；幼苗保留 `saplingTimer`，按原版不显示地图图标。现有 `c_spawn("evergreen_normal")`、`c_spawn("deciduoustree_normal")`、`c_spawn("moon_tree_normal")` 等命令与支持 ID 不变；`c_save()` 保存树木身份、位置及相应组件状态。
 
@@ -67,7 +65,7 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 
 可选地表存档 `public/saves/initial-world.json` 保留以原点为中心、tile 中心距离不超过 20 格的陆地（本项目每格 12 世界单位，半径 240），外侧 5,792 格使用原版 `OCEAN_COASTAL`（地皮 ID `201`），已移除海洋格上的实体。加载器和 `c_save()`（无参数）支持保存、导出并重新加载这些海洋格，陆地上的实体身份和组件状态照常保存。近海使用原版 `levels/textures/ocean_noise.tex`、海域颜色及三层动态噪声；昼夜颜色纹理按原版九点核执行 3 轮横向／纵向模糊，然后进行 RGBA 昼夜混合、动态噪声与世界光照合成、2 倍编码及屏幕空间解码，详见 [海洋渲染管线](docs/dst-ocean-rendering.md)。地面积雪按 `ground_overlay.ksh` 乘上实际地皮 atlas 的 alpha，沿陆地伸入海洋格的岸边过渡区域渐隐，海面内部不积雪；挖地或耕地后同步更新遮罩。岸浪与浅海波纹通过注入的 `tickingarea` 监听玩家周围默认 10 格方形活动区域，按 Lua 的 `OnEntitySleep = inst.Remove` 在离开范围时立即移除并释放独立几何和订阅，返回范围不恢复旧波浪；播放结束也自动移除，不参与存档，未注入查询或查询返回 `undefined` 时保持原有动画生命周期；船只与海洋生物尚未接入。调试命令语法、参数和支持的 `c_spawn` / `c_give` ID 不变，海洋属于地图地皮。
 
-入口在主场景资源、存档实体和交互绑定初始化完成并渲染完整场景后才关闭世界生成页；可等待 `src/main.ts` 导出的 `gameReady`，或检查主 canvas 的 `data-loaded="true"`。地皮 KTEX 解码由共享 Worker 完成，重复路径复用解码结果；纹理上传和世界／光照／后处理着色器分批预热，预热完成后才启动物理和游戏时间循环，`gameReady` 使用循环的首次渲染，不再额外绘制。加载失败时保留生成页并显示错误，开发模式也使用相同的加载等待。调试命令语法、参数及支持 ID 不变。
+入口在主场景资源、存档实体和交互绑定初始化完成并渲染完整场景后才关闭世界生成页；可等待 `src/main.ts` 导出的 `gameReady`，或检查主 canvas 的 `data-loaded="true"`。地皮 KTEX 解码由共享 Worker 完成，重复路径复用解码结果；纹理上传和世界／光照／后处理着色器分批预热，同时通过 `PrewarmSounds()` 下载并解码声音表中全部事件的音频（含各层与随机变体，也覆盖后续合成、`c_spawn` / `c_give` 的物品）。两者完成后才启动物理和游戏时间循环，`gameReady` 使用循环的首次渲染，不再额外绘制。音频预热不等待用户手势，实际播放仍在交互时恢复；重复音频复用共享缓存，单个音频失败沿用警告并允许后续重试，不阻止进入游戏。其他加载失败时保留生成页并显示错误，开发模式也使用相同的加载等待。调试命令语法、参数及支持 ID 不变。
 
 
 采摘产物统一交给 `Inventory.GiveItem()` 处理：先填充可用槽位和堆叠，背包满时把余量掉在玩家脚边，采摘仍然成功；采摘入口不再预加载或手动生成地面产物。地面贴图加载期间，掉落实体的 ID、数量、位置和组件状态仍可由 `c_save()` 保存。调试命令的语法、参数和支持的 prefab/item ID 不变。
@@ -92,6 +90,8 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 
 
 在游戏页面按反引号键（`Backquote`，通常与 `~` 共用）打开或关闭调试控制台，输入命令后按 `Enter` 执行。执行后控制台自动关闭；`Esc` 可关闭，`↑` / `↓` 可浏览最近 50 条历史命令。执行结果或错误显示在浏览器开发者工具的 Console 中。
+
+掉落物不再预先创建：植物、岩石、骨头、雕像、洞口等在采集／开采／锤击／烧毁的提交时刻用 `spawnGroundItem()` 同步生成掉落实体，实体与存档记录立即存在，美术由 display 加载后绘制（`flingLoot()`、`dropLoot` 同样同步）。地面物品工厂的 `create()` 同步返回，资源只由 display 加载；Bernie、蝴蝶、鼹鼠和光虫的逻辑仍读取已加载动画的时长，暂保留异步创建。`c_spawn`、`c_give`、`c_save()` 的语法、参数、支持 ID 与存档格式不变。
 
 通过 `createResidentGroundItem()` 绘制的地面物品使用 `InstancedMesh` 合批，覆盖静态姿态、循环及单次动画；兼容外观共享合成图集和批次，各实体保留独立位置、动画、拾取与休眠生命周期。`c_spawn`、`c_give`、`c_save()` 的语法、参数、支持 ID 与存档格式不变。
 
@@ -125,7 +125,7 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 玩家动作控制器统一由 `@dontstarve-web/stategraphs` 导出，实现在 `packages/stategraphs/src`：锤击、采矿、捕虫、铲地、园艺锄耕坑、铲垃圾、种子交互、换肤及法杖施法输入。锤子、镐、干草叉、铲子、园艺锄、捕虫网、清洁扫把和光照法杖控制器接收只读 `inventory.handEquipment` signal，在内部读取装备实体的能力；锤子、铲子、捕虫网和清洁扫把按组件及标签选择动作，其他手部工具保留其已支持的 ID 分支；卸装、换成另一实体或换肤会立即取消旧动作，控制器销毁时释放订阅。同一装备实体和皮肤的状态更新不重复取消，控制器不写入装备 signal。光照法杖按召唤目标 `stafflight/staffcoldlight` 选择 `yellowstaff/opalstaff`，更换装备后原先预加载或排入时间线的施法不会生成新光源。`src/main.ts` 注入装备 signal、`registerFrameTask` 帧调度服务、移动、动画和目标操作接口；控制器根据 signal 自行注册／移除帧任务，每帧只更新当前装备对应的手部动作控制器，读档后已有装备也立即注册。卸装和销毁会移除任务，同一身份重复发布不重复注册；法杖由输入事件与状态图时间线驱动，无独立帧任务。`packages/prefab` 负责工具美术、目标实体与特效，`SGwilson` 负责动作状态和提交帧。`c_give`、`c_spawn` 和 `c_save` 的语法与参数保持不变；当前支持 ID 见下方对象表。
 
 
-悬停文字按 Lua 的动作选择与 `hoverer` 分工统一显示：共享鼠标命中，按源优先级分别选择左右键动作，文字取自源简体中文字符串；控制器只注册动作候选。左键显示原版左键图标及动作文字，右键显示原版右键图标及 `: 动作文字`，可以同时显示两条；建造预览提示优先，鼠标位于 UI 上时隐藏世界提示，文字限制在屏幕边界内。用 `c_give("bugnet")`、`c_give("hammer")`、`c_give("reskin_tool")` 获取并装备相应工具后，目标上分别显示“捕捉”“敲”“打扫”；播种提示为“栽种”，铲子/干草叉为“挖”。选中唱片后，仅在靠近且可插片的留声机上显示“放置唱片”。卸装或目标失效后提示自动清除。详见 [鼠标悬停动作文字](docs/dst-hover-text.md)。这些命令的参数和支持 prefab/item ID 保持不变。
+悬停文字按 Lua 的动作选择与 `hoverer` 分工统一显示：共享鼠标命中，按源优先级分别选择左右键动作，文字取自源简体中文字符串；控制器只注册动作候选。左键显示原版左键图标及动作文字，右键显示原版右键图标及 `: 动作文字`，可以同时显示两条；建造预览提示优先，鼠标位于 UI 上时隐藏世界提示，文字限制在屏幕边界内。用 `c_give("bugnet")`、`c_give("hammer")`、`c_give("reskin_tool")` 获取并装备相应工具后，目标上分别显示“捕捉”“敲”“打扫”；播种提示为“栽种”，铲子/干草叉为“挖”。选中唱片后，仅在靠近且可插片的留声机上显示“放置唱片”。地面的提灯（`c_spawn("lantern")`）和装有唱片的留声机（`c_spawn("phonograph")`）由 `machine` 组件按 `componentactions.lua` 提供右键“打开”／“关闭”（TURNON／TURNOFF）；留声机每次切换后有 3 秒冷却，提灯没有。卸装或目标失效后提示自动清除。详见 [鼠标悬停动作文字](docs/dst-hover-text.md)。这些命令的参数和支持 prefab/item ID 保持不变。
 
 未显示的建造提示不触发全局悬停刷新，重复隐藏也不重新收集动作。没有鼠标位置或鼠标被其他 DOM UI 遮挡时，在动作收集前直接隐藏提示，避免空闲的各建造控制器重复遍历地面物品和捕虫候选。回到场景后照常查询当前装备、目标和左右键动作；上述命令与交互规则不变。
 
@@ -420,11 +420,8 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 `c_give("marblebean", 3)` 获取大理石豌豆（每叠 40 个，地面使用 `marblebean/marblebean/idle`，库存图标为 `images/inventoryimages.xml` 的 `marblebean.tex`），`c_spawn("marblebean")` 生成地面种子；`c_spawn("marblebean_sapling")` 生成树苗，`c_spawn("marbleshrub")`（等同 `marbleshrub_short`）、`marbleshrub_normal`、`marbleshrub_tall` 生成对应阶段的灌木，世界实体不能 `c_give`。拿到鼠标后右键种植：预览为 `marblebean/idle_planted`，默认 2 DST 单位间距，成功只消耗 1 个并播放 `plant_tree`。树苗防火，不可点燃；`grow` 计时为 225 ± 75 游戏秒（`PINECONE_GROWTIME`），到期由游戏时间调度器原地换成随机外形 / 明度的 `marbleshrub` 短阶段并播放 `grow_seed_to_short`。装备铲子右键挖起树苗掉落 1 个 `marblebean` 并取消计时。灌木按 `idle_short → idle_normal → idle_tall → idle_short` 循环，每阶段约 2700 ± 300 游戏秒，进入阶段播放对应生长动画和 `marble_shrub` 音效。装备 `pickaxe` / `goldenpickaxe` 右键执行 `MINE`：短 / 中 / 大阶段分别需 6 / 8 / 10 次工作，命中播放 `hit_*`，完成后播放 `mined_*` 并掉落——短阶段 1 个 `marble`；中阶段 `marble`，25% 额外 `marblebean`；大阶段 `marble` + 50% `marble` / 50% `marblebean`。开采后立即取消碰撞且不再存档。灌木带 `SnowCovered` 标签：世界积雪量 ≥ 0.015 时显示共享 `snow.zip` 的 `snow` 层，低于时隐藏；小地图图标为 `marbleshrub1～3.png`（与外形编号一致，优先级 -1），树苗没有小地图图标。`beeswax_spray` 打蜡和猫玩具 / 鼹鼠诱饵标签暂未移植。`c_save()` 保留灌木 / 树苗 ID、脚点、阶段与剩余生长时间、外形编号和明度，以及物品栏中种子的身份和数量。示例：`c_give("marblebean", 2); c_give("shovel"); c_give("pickaxe"); c_spawn("marblebean_sapling"); c_spawn("marbleshrub_tall"); c_save()`。
 
 
-`c_spawn("berrybush")` 在玩家脚点生成普通浆果丛，使用 `anim/berrybush.zip` 的 `berrybush` bank/build。左键采摘获得 1 个 `berries`；浆果按剩余采摘额度显示 `berriesmost` / `berriesmore` / `berries` 三种层级，采摘播放 `picked → idle` 并在 `picked` 结束后隐藏果实，再生播放 `grow → idle`。原生浆果丛不消耗采摘额度；再生为 1440 秒 + 已消耗额度 × 240 秒 + 0–960 秒随机变化，春季登记新任务时乘 0.75，冬季暂停。登记后等待期间不重新抽取随机值，保存／读档保留剩余时间。浆果使用现有食品新鲜度组件。
 
-装备铲子右键 `berrybush`：成熟健康植株掉落 1 个 `berries` 和 1 个 `dug_berrybush`，采摘后尚可再生的植株只掉落 `dug_berrybush`，缺肥或枯萎植株改掉两根独立 `twigs`。`c_give("dug_berrybush", 2)` 获取挖起的浆果丛，每叠最多 10 个，`c_spawn("dug_berrybush")` 生成可拾取地面物品；库存图标使用 `images/inventoryimages.xml`，地面使用 `berrybush/dropped`。拿到鼠标后右键种植，预览为 `dead`，默认间距为 2 DST 单位；沿用 `DEPLOY` 走近与第 6 帧提交，成功只消耗 1 株，位置无效或取消时保留物品。重新栽种后必须施肥：将 `poop`、`guano` 或 `spoiled_food` 拿到鼠标，左键缺肥植株“施肥”；恢复 4–5 次采摘额度，最后一次采摘后进入 `idle_to_dead → dead` 并停止再生。冬季施肥仍等待冬季结束。高温枯萎、肥料防枯萎次数、季节积雪和小型障碍碰撞沿用组件机制。
 
-浆果丛与石果灌木的动画 controller 在构造函数中接收世界内容 getter，持有私有 SnowLevel 信号；雪量达到 0.015 时显示原版雪层。生成和换肤时立即读取当前雪量，换肤释放旧 controller，移除时释放当前 controller 的监听。调试命令语法、参数和支持 ID 不变。
 
 
 
@@ -461,6 +458,7 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 | 仙人掌 | `cactus`、`oasis_cactus`（`c_spawn` 生成在玩家脚点；左键 `PICK` 得 `cactus_meat`，并对玩家造成 6 点伤害：先经身上护甲按吸收率分摊并扣耐久，剩余伤害扣生命，玩家进入 `hit` 受击状态；夏季开花时另得 `cactus_flower`；采后关闭碰撞，4 游戏日后长回；可燃烧；小地图图标；`c_save()` 保留 ID、位置和采摘／再生状态，存档 `Cluster_1/Master.json` 含原版导入的 14 株 `cactus` 与 18 株 `oasis_cactus`） |
 | 树苗 | `sapling`、`sapling_moon`（共享 archive sprite，`instancedAnimations: 'all'` 合批；命令与 ID 不变） |
 | 猎犬骨 | `houndbone`（bank `houndbase`、build `hound_base`，随机或存档的 `bonetype` 1～3 对应 `piece1`～`piece3`；装备锤子右键 `HAMMER` 一次即碎，掉落 `boneshard`，`piece3` 另有 50% `houndstooth`，并播放 `collapse_small`（岩石材质）；通过共享 archive sprite 的 `instancedAnimations: 'all'` 合批；只可 `c_spawn`，无 `c_give`，`c_save()` 保留 ID、位置与 `bonetype`） |
+| 长成的蜂后蜂巢 | `beequeenhivegrown`（`c_spawn("beequeenhivegrown")`，无参数；世界实体无 `c_give`。源 `prefabs/beequeenhive.lua` 使用 `anim/bee_queen_hive.zip`，bank/build 均为 `bee_queen_hive`，生成时播放非循环 `large`，锤击声明 `large_hit` → 非循环 `large`；`c_save()` 保留 ID、脚点、`workable` 的 16 次最大工作量与剩余量，以及存在时的 `hiveregen` 计时器。源无皮肤；`beequeenhive` 基座生成蜂巢、蜂后生成与锤击掉落尚未接入） |
 | 洞穴蕨 | `cave_fern`、`cave_fern_withered`（bank `ferns`，build 分别为 `cave_ferns` / `cave_ferns_withered_build`，生成时随机选 `f1`～`f10` 姿态；快速 `PICK` 分别得 `foliage` / `cutgrass`，采后按 `remove_when_picked` 直接移除，无 `workable` 不能铲；可燃烧；通过共享 archive sprite 的 `instancedAnimations: 'all'` 合批，使用 `ResidentSprite` 随活动区卸载／重建 visual，保留实体、组件与姿态，重建后恢复相机朝向；无 `c_give`，`c_save()` 保留 ID、位置与姿态） |
 | 池塘 | `pond` |
 | 温泉 | `hotspring` |

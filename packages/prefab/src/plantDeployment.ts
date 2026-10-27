@@ -1,8 +1,7 @@
 import { placementEntities, ignoresPlacement, type PlacementQuery } from './placementEntities';
 import * as THREE from 'three';
 import type { ItemEntity } from '@dontstarve-web/inventory';
-import { loadBuild, loadAnim, loadSpriteSkinArchive } from '@dontstarve-web/animation/animationAssets';
-import { createSpriteFactory, SpriteController, type AnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
+import { SpriteResources } from '@dontstarve-web/display';
 import { createPrefabEntity } from './prefabInstance';
 import { BufferedAction } from '../../stategraphs/src/bufferedaction';
 import { bindActionCancellation } from '../../stategraphs/src/actionEvents';
@@ -14,29 +13,28 @@ import type { TurfSource } from './turfDeployment';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { PLANTABLES } from './plantables';
 import { TILE_SIZE } from './tile';
-import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
+import { PlaySound, type SoundHandle } from './sound';
 
-export interface PreparedPlant { spawn(position: THREE.Vector3): boolean; dispose(): void; }
 export interface PlantDeploymentWorld {
   canPlant(position: THREE.Vector3): boolean;
   blockers?: PlacementQuery;
-  plants: Readonly<Record<string, { prepareTransplant(skinId?: string): Promise<PreparedPlant> }>>;
+  /** ondeploy's SpawnPrefab of the planted prefab, with the deployed item's skin; its display loads the art. */
+  plants: Readonly<Record<string, { transplant(position: THREE.Vector3, skinId?: string): boolean }>>;
 }
 
 /** PLANT deployment: source-owned placer art, locomotion and SGwilson's frame-six commit. */
 export class PlantDeployment {
   private readonly pointer: PointerRaycaster;
-  private readonly factories = new Map<string, Promise<AnimatedSpriteFactory>>();
+  private readonly resources = new SpriteResources();
   private readonly cleanups: (() => void)[] = [];
   private readonly reach = 1.1 * TILE_SIZE / 4;
   private version = 0;
   private disposed = false;
-  private pending?: { point: THREE.Vector3; source: TurfSource; prepared?: PreparedPlant };
+  private pending?: { point: THREE.Vector3; source: TurfSource };
   private buffered?: BufferedAction<'DEPLOY'>;
   /** The placer entity, drawn by its own display; `visible` is what its sprite json was last told. */
   private preview?: ReturnType<typeof createPrefabEntity> & { model: THREE.Group; visible: boolean };
   private previewEntity?: ItemEntity;
-  private previewVersion = 0;
   private previewSkin?: string;
   private sound?: SoundHandle;
 
@@ -89,19 +87,7 @@ export class PlantDeployment {
     this.cancel();
     this.world.actionEvents?.emit('action:begin', { owner: this, action: 'DEPLOY' });
     this.animation.cancelEmote();
-    const pending = { point: point.clone(), source, prepared: undefined as PreparedPlant | undefined };
-    this.pending = pending;
-    const version = this.version;
-    void Promise.allSettled([this.planting.plants[definition.prefab].prepareTransplant(source.entity.skinId), PreloadSounds(definition.plantSound ?? 'dontstarve/common/plant')])
-      .then(results => {
-        const prepared = results[0].status === 'fulfilled' ? results[0].value : undefined;
-        const failed = results.find(result => result.status === 'rejected');
-        if (this.disposed || version !== this.version || failed) {
-          prepared?.dispose();
-          if (version === this.version) this.cancel();
-          if (failed?.status === 'rejected') console.error('Unable to prepare plant deployment', failed.reason);
-        } else pending.prepared = prepared;
-      });
+    this.pending = { point: point.clone(), source };
     return true;
   }
 
@@ -122,7 +108,6 @@ export class PlantDeployment {
       return;
     }
     this.locomotor.stop();
-    if (!pending.prepared) return;
     const direction = point.clone().sub(this.world.player.position);
     const forward = this.world.camera.getWorldDirection(new THREE.Vector3()); forward.y = 0; forward.normalize();
     const side = direction.dot(new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0))), depth = direction.dot(forward);
@@ -132,7 +117,7 @@ export class PlantDeployment {
       && this.world.player.position.distanceToSquared(point) <= this.reach ** 2;
     const map: PlantDeployMap = {
       canDeployPlant: position => this.canDeploy(position, source.entity),
-      deployPlant: position => pending.prepared!.spawn(position),
+      deployPlant: position => this.planting.plants[PLANTABLES[source.entity.prefab].prefab].transplant(position, source.entity.skinId),
     };
     const buffered = new BufferedAction('DEPLOY', () => {
       const item = source.take();
@@ -146,7 +131,7 @@ export class PlantDeployment {
         this.sound?.stop(); this.sound = PlaySound(PLANTABLES[item.prefab].plantSound ?? 'dontstarve/common/plant', point);
         this.world.player.dispatchEvent({ type: 'itemplanted', data: { pos: point } } as never);
       }
-      pending.prepared?.dispose(); this.pending = undefined;
+      this.pending = undefined;
       return success;
     }, valid, { pos: point, invobject: source.entity, distance: this.reach });
     if (this.animation.stategraph.pushBufferedAction(buffered)) this.buffered = buffered;
@@ -155,32 +140,21 @@ export class PlantDeployment {
   private updatePreview(dt: number): void {
     const source = this.getSource(), entity = source?.entity;
     if (entity !== this.previewEntity || entity?.skinId !== this.previewSkin) {
-      const version = ++this.previewVersion;
       this.previewEntity = entity; this.previewSkin = entity?.skinId;
       this.releasePreview();
       const definition = entity && PLANTABLES[entity.prefab];
       if (definition) {
-        const key = `${entity!.prefab}:${entity!.skinId ?? ''}`;
-        let request = this.factories.get(key);
-        if (!request) {
-          const baseUrl = `${import.meta.env.BASE_URL}dst/data/anim`;
-          const skinArchive = entity!.skinId && GROUND_ITEM_DEFINITIONS[entity!.prefab].skinArchives[entity!.skinId];
-          request = Promise.all([loadBuild(`${definition.build}.zip`, baseUrl), loadAnim(definition.animationArchive ?? `${definition.bank}.zip`, baseUrl),
-            skinArchive ? loadSpriteSkinArchive(skinArchive, baseUrl) : undefined])
-            .then(([build, anim, skin]) => createSpriteFactory(build, anim, SpriteController, skin));
-          this.factories.set(key, request);
-        }
-        void request.then(factory => {
-          if (this.disposed || this.previewVersion !== version) return;
-          const placer = createPrefabEntity(`${entity!.prefab}_placer`, { create: initialAnimation => factory.create({ initialAnimation, name: 'PlantPlacer' }),
-            release: sprite => factory.disposeSprite(sprite) }, { name: definition.animation }, 'PlantPlacer');
-          const model = placer.display.model;
-          for (const tag of ['FX', 'NOCLICK']) placer.instance.addTag(tag);
-          placer.instance.persists = false; model.userData.placer = true;
-          placer.instance.sprite.setLightOverride(1);
-          placer.instance.sprite.setVisible(false);
-          this.preview = { ...placer, model, visible: false }; this.world.scene.add(model);
-        }).catch(error => console.error('Unable to load plant placer', error));
+        const skinArchive = entity!.skinId && GROUND_ITEM_DEFINITIONS[entity!.prefab].skinArchives[entity!.skinId];
+        // The placer's display loads its art; it is hidden until the pointer is over the ground.
+        const placer = createPrefabEntity(`${entity!.prefab}_placer`, this.resources.factory({ buildArchive: `${definition.build}.zip`,
+          animationArchive: definition.animationArchive ?? `${definition.bank}.zip`, ...skinArchive ? { skinArchive } : {} }),
+          { name: definition.animation }, 'PlantPlacer');
+        const model = placer.display.model;
+        for (const tag of ['FX', 'NOCLICK']) placer.instance.addTag(tag);
+        placer.instance.persists = false; model.userData.placer = true;
+        placer.instance.sprite.setLightOverride(1);
+        placer.instance.sprite.setVisible(false);
+        this.preview = { ...placer, model, visible: false }; this.world.scene.add(model);
       }
     }
     const preview = this.preview;
@@ -206,7 +180,7 @@ export class PlantDeployment {
   cancel(): void {
     this.version++;
     if (this.pending || this.buffered) this.locomotor.stop();
-    this.pending?.prepared?.dispose(); this.pending = undefined;
+    this.pending = undefined;
     if (this.buffered && this.animation.stategraph.isActionActive(this.buffered)) this.animation.stategraph.cancelAction('DEPLOY');
     this.buffered = undefined;
   }
@@ -228,7 +202,7 @@ export class PlantDeployment {
     this.disposed = true; this.cancel(); this.cleanups.splice(0).forEach(cleanup => cleanup());
     this.sound?.stop();
     this.releasePreview();
-    for (const request of this.factories.values()) void request.then(factory => factory.dispose(), () => undefined);
+    this.resources.dispose();
     this.world.renderer.domElement.removeEventListener('pointerdown', this.pointerDown, true);
     window.removeEventListener('keydown', this.keyDown);
     if (this.pointer !== this.world.mouseActions?.pointer) this.pointer.dispose();

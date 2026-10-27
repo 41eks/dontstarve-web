@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { DwarfStarManager } from '../../prefab/src/stafflight';
 import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
 import { BufferedAction } from '../../stategraphs/src';
-import { DisposeSounds } from '../../prefab/src/sound';
+import { DisposeSounds, PrewarmSounds } from '../../prefab/src/sound';
 
 export async function prepareStarAudioCheck() {
   const sources: { source: AudioBufferSourceNode; stops: number }[] = [];
@@ -18,7 +18,8 @@ export async function prepareStarAudioCheck() {
     return source;
   };
   const manager = new DwarfStarManager(new THREE.Scene(), '/dst/data/anim');
-  await manager.prepare();
+  // As the scene does before it starts, so each star's sounds play when it is spawned.
+  await PrewarmSounds();
   await manager.spawn(new THREE.Vector3());
   await manager.spawn(new THREE.Vector3(2, 0, 3));
   const restored = await manager.spawn(new THREE.Vector3(4, 0, 5), { id: 'e_saved', remainingSeconds: 0.1 });

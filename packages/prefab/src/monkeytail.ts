@@ -16,16 +16,13 @@ export const MONKEYTAIL_DEFINITION: PickablePlantDefinition = {
 
 /** monkeytail.lua: wild reeds regrow indefinitely; transplanted plants require fertilizer. */
 export class MonkeytailManager extends PickablePlantManager {
-  spawn(position: THREE.Vector3, saved?: PickablePlantRecord): Promise<THREE.Group> {
+  spawn(position: THREE.Vector3, saved?: PickablePlantRecord): THREE.Group {
     return this.spawnPlant(MONKEYTAIL_DEFINITION, position, saved);
   }
-  async prepareTransplant(): Promise<{ spawn(position: THREE.Vector3): boolean; dispose(): void }> {
-    const prepared = await this.preparePlant(MONKEYTAIL_DEFINITION);
-    return { dispose: () => prepared.dispose(), spawn: position => {
-      const model = prepared.spawn(position);
-      model.userData.components.pickable.OnTransplant();
-      return true;
-    } };
+  /** dug_monkeytail ondeploy: SpawnPrefab, then OnTransplant; the display loads the art. */
+  transplant(position: THREE.Vector3): boolean {
+    this.spawnPlant(MONKEYTAIL_DEFINITION, position).userData.components.pickable.OnTransplant();
+    return true;
   }
   exportRecords(): PickablePlantRecord[] { return this.exportPlants().map(({ record }) => record); }
 }

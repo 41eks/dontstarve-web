@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { PrefabDisplay } from '@dontstarve-web/display';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { strFromU8, unzipSync } from 'fflate';
@@ -45,6 +46,8 @@ it('reuses ground item resources and activity, and skips sleeping visuals in the
   try {
     const first = await world.spawn('sculpture_bishophead', 'head:1');
     const second = await world.spawn('sculpture_bishophead', 'head:2');
+    // The displays load the art after the items exist.
+    await Promise.all([first, second].map(model => (model.userData.display as PrefabDisplay).artLoaded()));
     const mesh = firstMesh(first), dispose = vi.fn();
     expect(mesh.geometry.getAttribute('position').count).toBeGreaterThan(0);
     expect(mesh.geometry).toBe(firstMesh(second).geometry);
@@ -68,6 +71,20 @@ it('reuses ground item resources and activity, and skips sleeping visuals in the
     expect(world.manager.exportRecords()).toEqual(before);
     world.manager.dispose();
     expect(dispose).toHaveBeenCalledOnce();
+  } finally { world.dispose(); }
+});
+
+it('creates a spawned item at once and lets its display draw it when the art has loaded', async () => {
+  const world = setup();
+  try {
+    const entity = world.manager.spawnGroundItem({ ...SAVE_CATALOG.items.twigs, itemId: 'twigs', count: 1 }, new THREE.Vector3(3, 0, 4))!;
+    // The inst, its model and its save record exist before any art is loaded; nothing is drawn yet.
+    const [model] = world.scene.children;
+    expect(prefabInstance(model)!.entityId).toBe(entity.id);
+    expect(model.position.toArray()).toEqual([3, 0, 4]);
+    expect(firstMesh(model)).toBeUndefined();
+    await vi.waitFor(() => expect(firstMesh(model)?.geometry.getAttribute('position').count).toBeGreaterThan(0));
+    expect(model.position.toArray()).toEqual([3, 0, 4]);
   } finally { world.dispose(); }
 });
 

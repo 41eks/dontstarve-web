@@ -13,8 +13,8 @@ import { RockAvocadoSaplingManager } from '../../prefab/src/rock_avocado_fruit_s
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import type { WorldContext, WorldEvents } from '../../prefab/src/worldContext';
-import type { GroundItemDefinition, PreparedGroundSpawn } from '../../prefab/src/groundPrefab';
-import { bindTestWorld } from './worldContentFixture';
+import type { GroundItemDefinition } from '../../prefab/src/groundPrefab';
+import { bindTestWorld, drawn } from './worldContentFixture';
 import { modelHasTag, prefabInstance } from '../../prefab/src/prefabInstance';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
@@ -37,14 +37,13 @@ function environment() {
   const tickingarea = () => createMemo(() => awake.get());
   const sources = bindTestWorld(scheduler, tickingarea);
   const spawned = vi.fn();
-  const prepareSpawn = async (definition: GroundItemDefinition): Promise<PreparedGroundSpawn> => {
+  const spawnGroundItem = (definition: GroundItemDefinition, point: THREE.Vector3) => {
     const entity = new ItemEntity({ itemId: definition.itemId, count: definition.count });
-    let consumed = false;
-    return { spawnedEntity: entity, spawn: point => { consumed = true; entity.transform.position.copy(point); spawned(definition.itemId, point.clone()); return true; },
-      dispose: () => { if (!consumed) entity.remove(); } };
+    entity.transform.position.copy(point); spawned(definition.itemId, point.clone());
+    return entity;
   };
   const rotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), .6);
-  return { scene, scheduler, physics, awake, tickingarea, sources, prepareSpawn, spawned, rotation,
+  return { scene, scheduler, physics, awake, tickingarea, sources, spawnGroundItem, spawned, rotation,
     dispose: () => { sources.unbind(); scheduler.dispose(); } };
 }
 
@@ -54,7 +53,7 @@ it('preserves a natural rose, shares its art after wake and burns while dormant'
   const world = { scene: env.scene, camera: new THREE.PerspectiveCamera(), scheduler: env.scheduler, tickingarea: env.tickingarea } as unknown as WorldContext;
   const flowers = new FlowerPlanting(world, Math.random, { scheduler: env.scheduler, worldEvents });
   try {
-    const model = await flowers.spawnFromSave('rose', 'rose', new THREE.Vector3(12, 0, 24), false);
+    const model = await drawn(flowers.spawnFromSave('rose', 'rose', new THREE.Vector3(12, 0, 24), false));
     await settle();
     const sprite = model.userData.animationController as SpriteState;
     expect(sprite).toBeInstanceOf(SpriteState);
@@ -88,12 +87,12 @@ it('preserves a natural rose, shares its art after wake and burns while dormant'
 it('grows a dormant marblebean, restores shrub shape/tint/snow and preserves the mined removal deadline', async () => {
   const env = environment();
   const shrubs = new MarbleShrubManager(env.scene, { scheduler: env.scheduler, physics: env.physics, tickingarea: env.tickingarea,
-    getWatchWorldContent: env.sources.getWatchWorldContent, prepareSpawn: env.prepareSpawn });
-  const saplings = new MarbleBeanSaplingManager(env.scene, { scheduler: env.scheduler, tickingarea: env.tickingarea, shrubs, prepareSpawn: env.prepareSpawn });
+    getWatchWorldContent: env.sources.getWatchWorldContent, spawnGroundItem: env.spawnGroundItem });
+  const saplings = new MarbleBeanSaplingManager(env.scene, { scheduler: env.scheduler, tickingarea: env.tickingarea, shrubs, spawnGroundItem: env.spawnGroundItem });
   const restored = new MarbleShrubManager(env.scene, { scheduler: env.scheduler, tickingarea: env.tickingarea,
-    getWatchWorldContent: env.sources.getWatchWorldContent, prepareSpawn: env.prepareSpawn });
+    getWatchWorldContent: env.sources.getWatchWorldContent, spawnGroundItem: env.spawnGroundItem });
   try {
-    const bean = await saplings.spawn(new THREE.Vector3(12, 0, 24));
+    const bean = await drawn(saplings.spawn(new THREE.Vector3(12, 0, 24)));
     const beanSprite = bean.userData.animationController as SpriteState;
     env.awake.set(false); await settle();
     expect(beanSprite.loaded).toBe(false);
@@ -110,7 +109,7 @@ it('grows a dormant marblebean, restores shrub shape/tint/snow and preserves the
     expect(shrubs.exportRecords()[0].components.growable.stage).toBe(2);
     env.sources.snowLevel.set(.02); env.sources.camerarotation.set(env.rotation); shrubs.update(0, env.rotation);
     const record = shrubs.exportRecords()[0];
-    const loaded = await restored.spawn('marbleshrub', new THREE.Vector3(...record.transform.position), record);
+    const loaded = await drawn(restored.spawn('marbleshrub', new THREE.Vector3(...record.transform.position), record));
     await settle(); expect(restored.exportRecords()).toEqual([record]);
     env.awake.set(true); await settle();
     expect(sprite.currentAnimation).toBe('idle_normal');
@@ -140,10 +139,10 @@ it('grows a dormant marblebean, restores shrub shape/tint/snow and preserves the
 it('keeps a sprout completion task alive without visual reload and cancels a second dormant sprout when dug', async () => {
   const env = environment();
   const spawnBush = vi.fn();
-  const bushes = { prepareNaturalSpawn: async () => ({ spawn: (position: THREE.Vector3) => { spawnBush(position.clone()); return new THREE.Group(); }, dispose: vi.fn() }) };
-  const sprouts = new RockAvocadoSaplingManager(env.scene, { scheduler: env.scheduler, tickingarea: env.tickingarea, bushes, prepareSpawn: env.prepareSpawn });
+  const bushes = { spawnNatural: (position: THREE.Vector3) => { spawnBush(position.clone()); return new THREE.Group(); } };
+  const sprouts = new RockAvocadoSaplingManager(env.scene, { scheduler: env.scheduler, tickingarea: env.tickingarea, bushes, spawnGroundItem: env.spawnGroundItem });
   try {
-    const model = await sprouts.spawn(new THREE.Vector3(12, 0, 24));
+    const model = await drawn(sprouts.spawn(new THREE.Vector3(12, 0, 24)));
     const sprite = model.userData.animationController as SpriteState;
     const timer = model.userData.components.timer;
     env.awake.set(false); await settle();
@@ -158,7 +157,7 @@ it('keeps a sprout completion task alive without visual reload and cancels a sec
     expect(spawnBush).toHaveBeenCalledExactlyOnceWith(new THREE.Vector3(12, 0, 24));
     expect(sprouts.exportRecords()).toEqual([]); expect(completion.peek().status).toBe('stopped');
     expect(timer.snapshot('grow').peek().status).toBe('expired');
-    const second = await sprouts.spawn(new THREE.Vector3(24, 0, 24)); await settle();
+    const second = await drawn(sprouts.spawn(new THREE.Vector3(24, 0, 24))); await settle();
     expect((second.userData.animationController as SpriteState).loaded).toBe(false);
     expect(sprouts.digTargets[0].dig()).toBe(true);
     env.awake.set(true); env.scheduler.advance(2000); await settle();

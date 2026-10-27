@@ -12,7 +12,7 @@ export interface ExplosiveTarget extends WorkInst {
     burnable?: Burnable;
     inventoryitem?: unknown;
     stackable?: { readonly count: number };
-    fueled?: { readonly remaining?: number };
+    fueled?: unknown;
   };
 }
 
@@ -68,7 +68,7 @@ export class Explosive {
       // Recheck validity after work.
       if (target.isRemoved || target.hasTag('INLIMBO')) continue;
       const burnable = target.components.burnable;
-      if (this.lightonexplode && target.components.fueled?.remaining === undefined
+      if (this.lightonexplode && target.components.fueled === undefined
         && burnable && !burnable.IsBurning() && !target.hasTag('burnt')) burnable.Ignite();
       target.PushEvent?.('explosion', { explosive: this.inst });
     }

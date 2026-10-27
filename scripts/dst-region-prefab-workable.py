@@ -65,3 +65,28 @@ def houndbone_components(data):
     if set(data) != {'bonetype'} or type(data['bonetype']) is not int or not 1 <= data['bonetype'] <= 3:
         raise ValueError('Unsupported houndbone save state')
     return {'houndbone': {'bonetype': data['bonetype']}}
+
+
+def beequeenhivegrown_components(data):
+    # beequeenhive.lua: workable.savestate = true; timer.lua saves an optional hiveregen task.
+    if set(data) - {'workable', 'timer'}:
+        raise ValueError('Unsupported beequeenhivegrown save state')
+    result = {}
+    work = data.get('workable')
+    if work is not None:
+        if not isinstance(work, dict) or set(work) - {'maxwork', 'workleft'} or work.get('maxwork') != 16 \
+                or type(work.get('workleft')) not in (int, float) or not 0 <= work['workleft'] <= 16:
+            raise ValueError('Unsupported beequeenhivegrown workable state')
+        result['workable'] = {'maxwork': 16, 'workleft': work['workleft']}
+    timer = data.get('timer')
+    if timer is not None:
+        if not isinstance(timer, dict) or set(timer) != {'timers'} or not isinstance(timer['timers'], dict) \
+                or set(timer['timers']) != {'hiveregen'}:
+            raise ValueError('Unsupported beequeenhivegrown timer state')
+        entry = timer['timers']['hiveregen']
+        if not isinstance(entry, dict) or set(entry) != {'timeleft', 'paused', 'initial_time'} \
+                or type(entry['timeleft']) not in (int, float) or type(entry['initial_time']) not in (int, float) \
+                or type(entry['paused']) is not bool or not 0 <= entry['timeleft'] <= entry['initial_time'] <= 120:
+            raise ValueError('Unsupported beequeenhivegrown timer state')
+        result['beeQueenHiveTimer'] = {'timers': {'hiveregen': entry}}
+    return result

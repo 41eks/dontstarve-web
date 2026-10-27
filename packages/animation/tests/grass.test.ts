@@ -6,7 +6,7 @@ import type { InventoryStore } from '../../../src/inventory';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { GrassManager, GRASS_ID } from '../../prefab/src/grass';
-import { bindTestWorld, tickWorld } from './worldContentFixture';
+import { bindTestWorld, tickWorld, drawn } from './worldContentFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 
 afterEach(() => {
@@ -27,14 +27,14 @@ it('spawns grass through the debug command using its source bank and build, then
   const scheduler = new GameTimeScheduler();
   const { season } = bindTestWorld(scheduler);
   const grasses = new GrassManager(scene, '/dst/data/anim', {
-    prepareSpawn: async () => ({ spawn: () => true, dispose() {} }),
+    spawnGroundItem: () => undefined,
   });
   const registry = new EntityRegistry();
   registry.register(PREFAB_DEFINITIONS.grasses, {
-    restore: (_, record) => grasses.spawn(new THREE.Vector3(...record.transform.position), {
+    restore: (_, record) => drawn(grasses.spawn(new THREE.Vector3(...record.transform.position), {
       id: record.id, transform: record.transform, components: {},
-    }),
-    debugSpawn: () => grasses.spawn(new THREE.Vector3(4, 0, -6)),
+    })),
+    debugSpawn: () => drawn(grasses.spawn(new THREE.Vector3(4, 0, -6))),
     exportRecords: () => grasses.exportRecords().map((record) => ({ prefabId: GRASS_ID, record })),
     update: (dt, quaternion) => tickWorld(scheduler, grasses, dt, quaternion),
     renderEntities: () => grasses.renderEntities,
@@ -75,7 +75,7 @@ it('spawns grass through the debug command using its source bank and build, then
   const pickedRecord = grasses.exportRecords()[0];
   expect(pickedRecord.components.pickable?.picked).toBe(true);
   expect(pickedRecord.components.pickable?.regrowSeconds).toBeCloseTo(1438);
-  const pickedRestored = await grasses.spawn(new THREE.Vector3(...pickedRecord.transform.position), pickedRecord);
+  const pickedRestored = await drawn(grasses.spawn(new THREE.Vector3(...pickedRecord.transform.position), pickedRecord));
   expect(pickedRestored.userData.animationController.currentAnimation).toBe('picked');
   expect(pickedRestored.userData.components.pickable.state.phase.peek()).toBe('picked');
   expect(pickedRestored.userData.components.pickable.remainingSeconds).toBeCloseTo(1438);
@@ -85,9 +85,9 @@ it('spawns grass through the debug command using its source bank and build, then
   for (let i = 0; i < 60; i++) tickWorld(scheduler, grasses, 1 / 30, new THREE.Quaternion());
   expect(controller.currentAnimation).toBe('idle');
 
-  const restored = await grasses.spawn(new THREE.Vector3(...record.transform.position), {
+  const restored = await drawn(grasses.spawn(new THREE.Vector3(...record.transform.position), {
     id: record.id, transform: record.transform, components: {},
-  });
+  }));
   expect(restored.position.toArray()).toEqual([4, 0, -6]);
   expect(restored.userData.instance?.entityId).toBe(record.id);
 

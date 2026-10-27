@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { createEffect, createSignal, readonlySignal, watchSignal } from '@dontstarve-web/signals';
-import { ArchiveSpriteAssets, preloadSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
-import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
+import { SpriteResources, type ArchiveSpriteCommands, type PrefabDisplay } from '@dontstarve-web/display';
+import { animationLengths } from './animationTimings';
 import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
 import { AnimState } from '../../componets/src/animstate';
 import { ComponentTimer } from '../../componets/src/timer';
@@ -16,7 +16,7 @@ import { LightFlierHabitat, type LightFlier, type LightFlierServices } from './l
 import { watchTileActivity } from './tileActivity';
 import { actionEntity, disposeActionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
-import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
+import { PlaySound, type SoundHandle } from './sound';
 import { WORLD_SCALE } from './standardcomponents';
 import type { BrainEntity } from '../../brains/src/types';
 
@@ -200,33 +200,26 @@ export class LightFlierFlower implements BrainEntity {
 export class LightFlierFlowerManager {
   readonly habitat: LightFlierHabitat;
   private readonly plants = new Map<LightFlierFlower, PrefabDisplay>();
-  private readonly assets: ArchiveSpriteAssets;
-  private readonly factories = new Map<string, Promise<{ create: Awaited<ReturnType<typeof preloadSharedArchiveSprite>>; lengths: Map<string, number> }>>();
+  private readonly resources: SpriteResources;
   private readonly cleanups = new Map<LightFlierFlower, () => void>();
   private readonly scene: THREE.Scene;
   private readonly getLightLevel: (model: THREE.Group) => number;
   private disposed = false;
   constructor(scene: THREE.Scene, base: string, services: LightFlierServices, getLightLevel: (model: THREE.Group) => number) {
     this.scene = scene; this.getLightLevel = getLightLevel;
-    this.habitat = new LightFlierHabitat(base, services); this.assets = new ArchiveSpriteAssets(LIGHTFLIER_FLOWER_ID, base);
+    this.habitat = new LightFlierHabitat(base, services); this.resources = new SpriteResources(base, LIGHTFLIER_FLOWER_ID);
   }
-  async spawn(position: THREE.Vector3, saved?: LightFlierFlowerRecord): Promise<THREE.Group> {
+  spawn(position: THREE.Vector3, saved?: LightFlierFlowerRecord): THREE.Group {
     const state = saved?.components.lightflierFlower, variant = state?.variant ?? (Math.random() < .5 ? 'single' : 'springy');
-    const archive = `bulb_plant_${variant}.zip`;
-    let prepared = this.factories.get(variant);
-    if (!prepared) {
-      prepared = Promise.all([
-        preloadSharedArchiveSprite(this.assets, { animationArchive: archive, buildArchives: [archive], bank: `bulb_plant_${variant}` }, { instancedAnimations: ['idle'], staticBillboard: true }),
-        this.assets.loadAnimation(archive), this.habitat.prepare(), PreloadSounds('dontstarve/wilson/pickup_lightbulb', 'dontstarve/wilson/pickup_reeds'),
-      ]).then(([create, bank]) => ({ create, lengths: new Map(bank.animations.map(clip => [clip.name, clip.frames.length / clip.frameRate])) }));
-      this.factories.set(variant, prepared);
-    }
-    const { create, lengths } = await prepared;
+    const archive = `bulb_plant_${variant}.zip` as const;
+    const lengths = animationLengths(archive);
     if (this.disposed) throw new Error('Lightflier flower manager disposed');
     const tint = .75 + Math.random() * .25;
-    const appearance = { colour: [tint, tint, tint] as const };
-    const { instance, display } = createArchiveEntity(LIGHTFLIER_FLOWER_ID, { create: clip => create(clip.name, clip.loop, LIGHTFLIER_FLOWER_ID, appearance),
-      initial: create('off', false, LIGHTFLIER_FLOWER_ID, appearance) }, { name: 'off', billboard: true }, LIGHTFLIER_FLOWER_ID);
+    const { instance, display } = createArchiveEntity(LIGHTFLIER_FLOWER_ID,
+      this.resources.archive({ animationArchive: archive, buildArchives: [archive], bank: `bulb_plant_${variant}` },
+        // Each flower owns its tint (SetMultColour), so its sprites are created with a colour.
+        { instancedAnimations: ['idle'], staticBillboard: true, colour: [1, 1, 1] }),
+      { name: 'off', billboard: true }, LIGHTFLIER_FLOWER_ID, instance => instance.sprite.setColour([tint, tint, tint]));
     const sprite = instance.sprite, model = display.model;
     sprite.playOnce('off');
     instance.position.copy(position); instance.position.y = 0;
@@ -253,6 +246,6 @@ export class LightFlierFlowerManager {
   dispose(): void {
     if (this.disposed) return; this.disposed = true;
     for (const [plant, display] of this.plants) { plant.dispose(); this.release(plant, display); }
-    this.habitat.dispose(); this.assets.dispose();
+    this.habitat.dispose(); this.resources.dispose();
   }
 }

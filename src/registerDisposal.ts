@@ -6,7 +6,7 @@ import {
   AttackActionController, SpellCastActionController, BugNetCaptureController, FishingActionController, HammerActionController,
   LighterActionController, PickaxeActionController, PitchforkActionController,
   FarmHoeActionController, ShovelActionController, FoodActionController,
-  PickActionController, HarvestActionController, OccupiableActionController, PickupActionController, ReadActionController, PlayActionController, ItemUseActionController,
+  PickActionController, HarvestActionController, OccupiableActionController, MachineActionController, PickupActionController, ReadActionController, PlayActionController, ItemUseActionController,
   ReskinActionController, SleepActionController, MigrateActionController, HauntActionController, type PickupDoer, type FoodSource, type ActionLocomotor, type PlayerActionEvents,
 } from '@dontstarve-web/stategraphs';
 import { ItemEntity } from '@dontstarve-web/inventory';
@@ -110,7 +110,7 @@ interface ApplicationResourcesOptions {
 }
 
 type SceneResources = Pick<Awaited<ReturnType<typeof startScene>>,
-  'registry' | 'moonTrees' | 'evergreenForest' | 'deciduousForest' | 'buildingPlacement' | 'groundItems' | 'farmPlow' | 'rockManager' | 'caveEntrances' | 'grottoPools' | 'mushtrees' | 'mushroomPlants' | 'wormholes' | 'reskinEffects' | 'worldFx' | 'flowerPlanting' | 'marbleShrubs' | 'archiveProps' | 'skeletons' | 'houndbones' | 'marbleBeanSaplings' | 'rockAvocadoSaplings' | 'rockAvocadoBushes' | 'berrybushes' | 'monkeytails' | 'grasses' | 'saplings' | 'scheduler' | 'weather' | 'moon' | 'getWatchWorldContent' | 'beefalos' | 'molehills' | 'ponds'>;
+  'registry' | 'moonTrees' | 'evergreenForest' | 'deciduousForest' | 'buildingPlacement' | 'groundItems' | 'farmPlow' | 'rockManager' | 'caveEntrances' | 'grottoPools' | 'mushtrees' | 'mushroomPlants' | 'wormholes' | 'reskinEffects' | 'worldFx' | 'flowerPlanting' | 'marbleShrubs' | 'archiveProps' | 'skeletons' | 'houndbones' | 'beeQueenHives' | 'marbleBeanSaplings' | 'rockAvocadoSaplings' | 'rockAvocadoBushes' | 'berrybushes' | 'monkeytails' | 'grasses' | 'saplings' | 'scheduler' | 'weather' | 'moon' | 'getWatchWorldContent' | 'beefalos' | 'molehills' | 'ponds'>;
 
 /** Create panels before scene loading, then own action setup and its explicit disposal. */
 export function createDisposalResources({ gameUi, view, inventory, playerAnimation, locomotor, pickupDoer,
@@ -129,7 +129,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         .setOpen(model, isOpen, buildId);
     },
     register(events: EventEmitter<DisposalEvents>, scene: SceneResources) {
-      const { moonTrees, evergreenForest, deciduousForest, buildingPlacement, groundItems, molehills, farmPlow, rockManager, caveEntrances, grottoPools, mushtrees, mushroomPlants, wormholes, reskinEffects, worldFx, flowerPlanting, marbleShrubs, archiveProps, skeletons, houndbones, marbleBeanSaplings, rockAvocadoSaplings, rockAvocadoBushes, berrybushes, monkeytails, grasses, saplings, scheduler, weather, moon, getWatchWorldContent, ponds } = scene;
+      const { moonTrees, evergreenForest, deciduousForest, buildingPlacement, groundItems, molehills, farmPlow, rockManager, caveEntrances, grottoPools, mushtrees, mushroomPlants, wormholes, reskinEffects, worldFx, flowerPlanting, marbleShrubs, archiveProps, skeletons, houndbones, beeQueenHives, marbleBeanSaplings, rockAvocadoSaplings, rockAvocadoBushes, berrybushes, monkeytails, grasses, saplings, scheduler, weather, moon, getWatchWorldContent, ponds } = scene;
       const handEquipment = inventory.handEquipment;
       const handSlotAddress = equipmentSlotAddress('hand');
       const bodySlotAddress = equipmentSlotAddress('body');
@@ -201,22 +201,23 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         }, isActionInterrupting);
         const picking = new PickActionController(view, playerAnimation, locomotor, preparePickDoer, isActionInterrupting);
         const pickup = new PickupActionController(view, playerAnimation, locomotor, pickupDoer, isActionInterrupting);
-        const harvesting = new HarvestActionController(view, playerAnimation, locomotor, async (itemId, count) => {
-          const drop = await groundItems.prepareSpawn({ ...SAVE_CATALOG.items[itemId], itemId, count });
-          return {
-            giveItem: (_prefab, _count, position) => {
-              const sourcePosition = view.player.position.clone().set(position.x, position.y, position.z);
-              const received = inventory.addAvailable(itemId, count, undefined,
-                inventoryReceiveEffect(gameUi, view.camera, view.renderer.domElement, sourcePosition));
-              return received === count || drop.spawn(view.player.position.clone().setY(0), count - received);
-            },
-            dispose: () => drop.dispose(),
-          };
-        }, isActionInterrupting);
+        const harvesting = new HarvestActionController(view, playerAnimation, locomotor, async (itemId, count) => ({
+          giveItem: (_prefab, _count, position) => {
+            const sourcePosition = view.player.position.clone().set(position.x, position.y, position.z);
+            const received = inventory.addAvailable(itemId, count, undefined,
+              inventoryReceiveEffect(gameUi, view.camera, view.renderer.domElement, sourcePosition));
+            // What the inventory cannot hold is spawned at the player's feet; its display loads the art.
+            return received === count || groundItems.spawnGroundItem({ ...SAVE_CATALOG.items[itemId], itemId, count: count - received },
+              view.player.position.clone().setY(0)) !== undefined;
+          },
+          dispose: () => {},
+        }), isActionInterrupting);
         // actions.lua HARVEST (occupiable) / TAKEITEM (shelf): the released inst goes to the player's inventory.
         const occupiables = new OccupiableActionController(view, playerAnimation, locomotor, (item, position) =>
           inventory.GiveItem(item as ItemEntity, position), isActionInterrupting);
-        frameControllers.push(itemUse, picking, pickup, harvesting, occupiables);
+        // actions.lua TURNON / TURNOFF on a scene machine, such as a ground lantern.
+        const machines = new MachineActionController(view, playerAnimation, locomotor, isActionInterrupting);
+        frameControllers.push(itemUse, picking, pickup, harvesting, occupiables, machines);
         // sleepingbaguser.lua on the player: per-tick hunger, sanity and health while in a bed.
         const phase = createMemo(() => clockstate.get().phase);
         const sleeper = new SleepingBagUser({
@@ -362,8 +363,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         // fishingrod.lua / pond.lua: the equipped rod fishes the pond's fishable component; a landed fish is a ground item.
         const fishingWorld = {
           landFish: (fish: { prefab: string }, position: Vector3) => {
-            void groundItems.flingLoot([{ ...inventory.getItemSpec(fish.prefab), itemId: fish.prefab, count: 1 }], position)
-              .catch((error: unknown) => console.error('Unable to land caught fish', error));
+            groundItems.flingLoot([{ ...inventory.getItemSpec(fish.prefab), itemId: fish.prefab, count: 1 }], position);
           },
         };
         const fishing = new FishingActionController(view, playerAnimation, locomotor, handEquipment,
@@ -413,12 +413,12 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
           position: player.position,
           hasTag: tag => modelHasTag(player, tag),
           components: { sanity: { doDelta: delta => playerStats.sanity.set(playerStats.sanity.peek() + delta) } },
-        }, isActionInterrupting, (error) => console.error('Unable to cast spell', error),
+        }, isActionInterrupting,
         (model) => [...groundItems.getSpellTargets(model), ...buildingPlacement.getSpellTargets(model)]);
 
         const hammer = new HammerActionController(view, playerAnimation, locomotor,
           handEquipment,
-          (model) => [...buildingPlacement.getHammerTargets(model), ...farmPlow.getHammerTargets(model), ...skeletons.getHammerTargets(model), ...houndbones.getHammerTargets(model), ...groundItems.getHammerTargets(model)],
+          (model) => [...buildingPlacement.getHammerTargets(model), ...farmPlow.getHammerTargets(model), ...skeletons.getHammerTargets(model), ...houndbones.getHammerTargets(model), ...beeQueenHives.getHammerTargets(model), ...groundItems.getHammerTargets(model)],
           isActionInterrupting);
         const pickaxe = new PickaxeActionController(view, playerAnimation, locomotor,
           handEquipment, (model) => [...rockManager.getMineTargets(model), ...caveEntrances.getMineTargets(model), ...grottoPools.getMineTargets(model), ...marbleShrubs.getMineTargets(model), ...archiveProps.getMineTargets(model), ...groundItems.getMineTargets(model)], isActionInterrupting);
@@ -440,8 +440,8 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
           plants: {
             marblebean_sapling: marbleBeanSaplings, rock_avocado_fruit_sprout_sapling: rockAvocadoSaplings,
             rock_avocado_bush: rockAvocadoBushes, monkeytail: monkeytails, berrybush: berrybushes,
-            sapling: { prepareTransplant: () => saplings.prepareTransplant('sapling') },
-            sapling_moon: { prepareTransplant: () => saplings.prepareTransplant('sapling_moon') },
+            sapling: { transplant: position => saplings.transplant('sapling', position) },
+            sapling_moon: { transplant: position => saplings.transplant('sapling_moon', position) },
             planted_flower: flowerPlanting, moonbutterfly_sapling: moonTrees,
           },
           canPlant: point => turfMap.canDeployPlantAtPoint(point),
@@ -498,14 +498,8 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
               || current.count !== stack.count || current.remainingUses !== stack.remainingUses || current.phonographRecord !== stack.phonographRecord) return false;
             return inventory.extract(slot, stack.count, entity) ?? false;
           };
-          // Load the art first, then let the animation's perform frame take the item and place it.
-          void groundItems.prepareDrop(definition).then((prepared) => {
-            const started = playerAnimation?.playDrop(
-              () => prepared.commit(player.position.clone(), take), () => prepared.dispose());
-            if (!started) prepared.dispose();
-          }).catch((error: unknown) => {
-            console.error(`Unable to drop ${stack.itemId}`, error);
-          });
+          // DROP's perform frame transfers the item immediately; its display loads the art.
+          playerAnimation?.playDrop(() => groundItems.drop(definition, player.position.clone(), take));
           return;
         }
         if (PLANTABLES[stack.itemId]) {
@@ -559,7 +553,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
             });
           }
           const entity = inventory.getEntity(slot), fuel = inventory.getEntity(cursorSlotAddress());
-          if (!itemUse || !entity || !fuel?.components.fuel || !entity.components.fueled.CanAcceptFuelItem(fuel)) return false;
+          if (!itemUse || !entity || !fuel?.components.fuel || !entity.components.fueled?.CanAcceptFuelItem(fuel)) return false;
           return itemUse.request(fuel.GetIsWet() ? 'ADDWETFUEL' : 'ADDFUEL', {
             prefab: entity.prefab, model: player, components: entity.components,
             hasTag: tag => entity.hasTag(tag),

@@ -1,12 +1,6 @@
 import * as THREE from 'three';
 import { WorldContentKey, type GetWatchWorldContent, type WorldContentSignal, type WorldPhase } from '@dontstarve-web/signals';
-import {
-  createAnimatedSpriteFactory,
-  createSpriteFactory,
-  SpriteController,
-  type AnimatedSpriteFactory,
-} from '@dontstarve-web/animation/sprite';
-import { loadAnimationArchive, loadSpriteSkinArchive } from '@dontstarve-web/animation/animationAssets';
+import { SpriteResources } from '@dontstarve-web/display';
 import { listenInventoryEvents } from './inventoryEvents';
 import type { GroundItemDefinition, GroundItemFactory, GroundPrefabContext } from './groundPrefab';
 import { ItemEntity } from '@dontstarve-web/inventory';
@@ -26,8 +20,9 @@ import type { BrainComponents, BrainEntity, BrainInst, BrainWorld } from '../../
 import catalog from './groundItems.json' with { type: 'json' };
 import { MOONBUTTERFLY_PERISH_INV_MODIFIER, MOONBUTTERFLY_PERISH_TIME, MOONBUTTERFLY_SPEED } from './moonbutterflyTuning';
 import { FindEntities, type FoundEntity } from './actionEntity';
-import { PlaySound, PreloadSounds } from './sound';
+import { PlaySound } from './sound';
 import { TILE_SIZE } from './tile';
+import { animationLengths } from './animationTimings';
 import { createPrefabEntity, prefabInstance } from './prefabInstance';
 
 export const BUTTERFLY_ID = 'butterfly';
@@ -117,8 +112,10 @@ interface ButterflyAnimation {
   playOnce(name: string, onComplete?: () => void): void;
   update(dt: number): void;
   readonly currentAnimation: string;
-  readonly currentAnimationLength: number;
 }
+
+/** butterfly.lua and moonbutterfly.lua share the butterfly bank; its clip lengths come from the source anim.bin. */
+const BUTTERFLY_ANIMATION_LENGTHS = animationLengths('butterfly_basic.zip');
 
 const BASE_TAGS = ['butterfly', 'flying', 'ignorewalkableplatformdrowning', 'insect', 'smallcreature',
   'cattoyairborne', 'wildfireprotected', 'deployedplant'] as const;
@@ -242,7 +239,9 @@ export class ButterflyCreature extends SimpleEntity implements BrainInst, Butter
   private readonly cleanups: (() => void)[] = [];
   private readonly getOthers: (position: LocoMotorPoint, radius: number) => readonly ButterflyCreature[];
   private readonly randomSource: () => number;
-  private readonly onAnimationOver: () => void;
+  /** The engine's animover, buffered like SG events in stategraph.lua and handled on the next stategraph update. */
+  private animationOver = false;
+  private readonly onAnimationOver = () => { this.animationOver = true; };
   private readonly dropLootItems?: (itemIds: readonly string[], position: THREE.Vector3) => void;
   private snapshot: { flowers: SimpleEntity[]; threats: SimpleEntity[] } = { flowers: [], threats: [] };
   private readonly scratch = new THREE.Vector3();
@@ -270,7 +269,6 @@ export class ButterflyCreature extends SimpleEntity implements BrainInst, Butter
     this.components.locomotor = this.locomotor;
     this.components.knownlocations = new KnownLocations();
     if (definition.pollinates) this.components.pollinator = new Pollinator<BrainEntity>(this);
-    this.onAnimationOver = () => this.sg.pushEvent('animover');
     this.sg = new ButterflyStateGraph(this);
     this.brain = definition.createBrain(this);
     this.brain.inst.brain = this.brain;
@@ -356,7 +354,7 @@ export class ButterflyCreature extends SimpleEntity implements BrainInst, Butter
   // PushAnimation is only used after the previous animation completed, so it plays immediately.
   pushAnimation(name: string, loop = false): void { this.playAnimation(name, loop); }
   isCurrentAnimation(name: string): boolean { return this.animation.currentAnimation === name; }
-  getCurrentAnimationLength(): number { return this.animation.currentAnimationLength; }
+  getCurrentAnimationLength(): number { return BUTTERFLY_ANIMATION_LENGTHS.get(this.animation.currentAnimation)!; }
   stopPhysics(): void { this.motorSpeed = 0; }
   removePhysicsColliders(): void { /* flying creatures have no physics body in this world */ }
   setMotorSpeed(speed: number): void { this.motorSpeed = speed; }
@@ -416,6 +414,11 @@ export class ButterflyCreature extends SimpleEntity implements BrainInst, Butter
     this.brain.tick(this.time);
     if (this.locomotor.isUpdating) this.locomotor.update(step);
     if (this.removed) return;
+    if (this.animationOver) {
+      this.animationOver = false;
+      this.sg.pushEvent('animover');
+      if (this.removed) return;
+    }
     this.sg.update(step);
     if (this.removed) return;
     this.stepMotor(step);
@@ -470,48 +473,20 @@ export class ButterflyCreature extends SimpleEntity implements BrainInst, Butter
 
 /** Share original DST build textures across separately animated butterflies. */
 export class ButterflyAssets {
-  private readonly factories = new Map<ButterflyPrefabId, Promise<AnimatedSpriteFactory>>();
+  private readonly resources: SpriteResources;
   private disposed = false;
-  private readonly assetBaseUrl: string;
+  constructor(assetBaseUrl: string) { this.resources = new SpriteResources(assetBaseUrl); }
+  dispose(): void { this.disposed = true; this.resources.dispose(); }
 
-  constructor(assetBaseUrl: string) { this.assetBaseUrl = assetBaseUrl; }
-
-  dispose(): void {
-    if (this.disposed) return;
-    this.disposed = true;
-    for (const factory of this.factories.values()) void factory.then((value) => value.dispose(), () => undefined);
-    this.factories.clear();
-  }
-
-  private factory(prefab: ButterflyPrefabId): Promise<AnimatedSpriteFactory> {
-    let request = this.factories.get(prefab);
-    if (!request) {
-      // butterfly.lua: bank butterfly / build butterfly_basic. moonbutterfly.lua: the same bank with butterfly_moon.
-      request = prefab === BUTTERFLY_ID
-        ? createAnimatedSpriteFactory(this.assetBaseUrl, 'butterfly_basic.zip')
-        : (async () => {
-          const [{ buildPackage, animations }, skin] = await Promise.all([
-            loadAnimationArchive('butterfly_basic.zip', this.assetBaseUrl),
-            loadSpriteSkinArchive('butterfly_moon.zip', this.assetBaseUrl),
-          ]);
-          return createSpriteFactory(buildPackage, animations, SpriteController, skin);
-        })();
-      this.factories.set(prefab, request);
-      void request.catch(() => this.factories.delete(prefab));
-    }
-    return request;
-  }
-
-  async create(prefab: ButterflyPrefabId, world: ButterflyWorld,
+  create(prefab: ButterflyPrefabId, world: ButterflyWorld,
     getOthers: (position: LocoMotorPoint, radius: number) => readonly ButterflyCreature[],
     dropLoot?: ButterflyCreature['dropLootItems']) {
     if (this.disposed) throw new Error('Insect assets have been disposed');
-    const factory = await this.factory(prefab);
-    if (this.disposed) throw new Error('Insect assets have been disposed');
+    // butterfly.lua and moonbutterfly.lua share a bank; only the latter substitutes its build.
+    const source = this.resources.factory({ animationArchive: 'butterfly_basic.zip', buildArchive: 'butterfly_basic.zip',
+      skinArchive: prefab === BUTTERFLY_ID ? undefined : 'butterfly_moon.zip' });
     const name = `GroundItem:${prefab}`;
-    const { instance, display } = createPrefabEntity(prefab, {
-      create: initialAnimation => factory.create({ initialAnimation, name }), release: sprite => factory.disposeSprite(sprite),
-    }, { name: 'idle_flight_loop' }, name);
+    const { instance, display } = createPrefabEntity(prefab, source, { name: 'idle_flight_loop' }, name);
     const model = display.model;
     let creature: ButterflyCreature | undefined;
     const removeInventoryEvents = listenInventoryEvents(model, {
@@ -540,7 +515,7 @@ export class ButterflyAssets {
 }
 
 /** Keep the butterfly's flower-occupancy rules with its own prefab. */
-export async function createButterflyGroundSprite(
+export function createButterflyGroundSprite(
   assets: ButterflyAssets,
   world: ButterflyWorld,
   findEntities: (position: THREE.Vector3, radius: number, mustTags: readonly string[]) => readonly FoundEntity[],
@@ -549,7 +524,7 @@ export async function createButterflyGroundSprite(
 ) {
   let model: THREE.Group | undefined;
   const origin = new THREE.Vector3();
-  const visual = await assets.create(prefab, world, (position, radius) => findEntities(origin.set(position.x, position.y, position.z), radius, ['butterfly'])
+  const visual = assets.create(prefab, world, (position, radius) => findEntities(origin.set(position.x, position.y, position.z), radius, ['butterfly'])
     .flatMap(neighbour => {
       const neighbourModel = (neighbour as { model?: THREE.Object3D }).model;
       const creature = neighbourModel !== model
@@ -571,7 +546,7 @@ export function createButterflyGroundFactory(context: GroundPrefabContext): Grou
     const items: GroundItemDefinition[] = [...counts].map(([itemId, count]) => ({
       ...catalog.items[itemId as keyof typeof catalog.items], itemId, count,
     }));
-    void context.dropLoot?.(items, position).catch((error: unknown) => console.error('Unable to drop butterfly loot', error));
+    context.dropLoot?.(items, position);
   };
   return {
     itemIds: [BUTTERFLY_ID, MOONBUTTERFLY_ID], capture: 'net',
@@ -579,10 +554,9 @@ export function createButterflyGroundFactory(context: GroundPrefabContext): Grou
       (entity.prefab === MOONBUTTERFLY_ID ? configureMoonButterflyEntity : configureButterflyEntity)(entity);
       if (entity.prefab === BUTTERFLY_ID && !entity.components.inventoryitem.owner) entity.components.perishable.StopPerishing();
     },
-    create: async (definition) => {
+    create: (definition) => {
       const prefab = definition.itemId === MOONBUTTERFLY_ID ? MOONBUTTERFLY_ID : BUTTERFLY_ID;
-      await PreloadSounds('dontstarve/common/butterfly_trap');
-      const visual = await createButterflyGroundSprite(assets, context.butterflyWorld,
+      const visual = createButterflyGroundSprite(assets, context.butterflyWorld,
         (position, radius, mustTags) => FindEntities(position, radius, mustTags), prefab, dropLoot);
       if (prefab === MOONBUTTERFLY_ID) bindMoonButterflyVisual(visual);
       return visual;

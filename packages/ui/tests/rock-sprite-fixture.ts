@@ -8,7 +8,7 @@ import { GameTimeScheduler } from '@dontstarve-web/signals';
 export async function checkRockInstances() {
   const scene = new THREE.Scene();
   const manager = new RockManager(scene, '/dst/data/anim', {
-    prepareSpawn: async () => ({ spawn: () => true, dispose() {} }),
+    spawnGroundItem: () => undefined,
   });
   const renderer = new THREE.WebGLRenderer(); renderer.setSize(256, 256); renderer.setClearColor(0);
   const target = new THREE.WebGLRenderTarget(256, 256);
@@ -55,7 +55,7 @@ export async function checkRockInstances() {
 export async function checkMoonShellErosion() {
   const scene = new THREE.Scene(), scheduler = new GameTimeScheduler();
   const manager = new RockManager(scene, '/dst/data/anim', { scheduler,
-    prepareSpawn: async () => ({ spawn: () => true, dispose() {} }),
+    spawnGroundItem: () => undefined,
   });
   const renderer = new THREE.WebGLRenderer(); renderer.setSize(256, 256); renderer.setClearColor(0);
   const target = new THREE.WebGLRenderTarget(256, 256);

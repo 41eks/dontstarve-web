@@ -12,7 +12,7 @@ import { Workable } from '../../componets/src/workable';
 import { modelEntries } from './modelRecords';
 import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
-import type { GroundItemDefinition, PreparedGroundSpawn } from './groundPrefab';
+import type { SpawnGroundItem } from './groundPrefab';
 import { PlaySound, PreloadSounds } from './sound';
 import catalog from './groundItems.json' with { type: 'json' };
 
@@ -34,7 +34,8 @@ export interface HoundboneRecord {
 
 export interface HoundboneWorld extends ToolMouseTargetWorld {
   tickingarea?: TileStateQuery;
-  prepareSpawn(definition: GroundItemDefinition, fling?: boolean): Promise<PreparedGroundSpawn>;
+  /** lootdropper:SpawnLootPrefab when the bone is hammered; the loot's display loads its art. */
+  spawnGroundItem: SpawnGroundItem;
 }
 
 interface Houndbone {
@@ -44,7 +45,6 @@ interface Houndbone {
   sprite: ArchiveSpriteCommands;
   stopActivity?: () => void;
   workable: Workable;
-  loot: { itemId: string; output: PreparedGroundSpawn }[];
   bonetype: number;
 }
 
@@ -73,34 +73,24 @@ export class HoundboneManager {
     // fn: SetBoneType(inst, math.random(#names)); onload restores data.bonetype.
     const bonetype = saved?.components.houndbone?.bonetype ?? 1 + Math.floor(Math.random() * HOUNDBONE_PIECES.length);
     if (!Number.isInteger(bonetype) || bonetype < 1 || bonetype > HOUNDBONE_PIECES.length) throw new RangeError(`Unsupported houndbone type: ${bonetype}`);
-    const [create, loot] = await Promise.all([this.getCreator(), this.prepareHammered(bonetype)]);
-    if (this.disposed) { loot.forEach(({ output }) => output.dispose()); throw new Error('Hound bones have been disposed'); }
+    const [create] = await Promise.all([this.getCreator(), this.prepareHammered()]);
+    if (this.disposed) throw new Error('Hound bones have been disposed');
     const build = (clip: { name: string; loop: boolean }) => create(clip.name, clip.loop, HOUNDBONE_ID);
     const clip = { name: HOUNDBONE_PIECES[bonetype - 1], loop: false };
     const entity = createArchiveEntity(HOUNDBONE_ID, { create: build, initial: build(clip) }, { name: clip.name, billboard: true }, HOUNDBONE_ID);
     entity.instance.sprite.playOnce(clip.name);
-    return this.create(entity, loot, position, bonetype, saved);
+    return this.create(entity, position, bonetype, saved);
   }
 
-  /** The collapse effect, rock_break sound and every item the bone's loot can roll, ready before the hit. */
-  private async prepareHammered(bonetype: number): Promise<Houndbone['loot']> {
-    const itemIds = bonetype === TOOTH_BONETYPE ? ['boneshard', 'houndstooth'] as const : ['boneshard'] as const;
-    const settled = await Promise.allSettled([
+  /** The collapse effect and its sounds, ready before the hit. */
+  private async prepareHammered(): Promise<void> {
+    await Promise.all([
       this.assets.loadAnimation('structure_collapse_fx.zip'), this.assets.loadBuild('structure_collapse_fx.zip'),
       PreloadSounds('dontstarve/common/destroy_smoke', 'dontstarve/wilson/rock_break'),
-      ...itemIds.map(itemId => this.world.prepareSpawn({ ...catalog.items[itemId], itemId, count: 1 }, true)),
-    ] as const);
-    const loot = settled.slice(3).flatMap((result, index) => result.status === 'fulfilled'
-      ? [{ itemId: itemIds[index], output: result.value as PreparedGroundSpawn }] : []);
-    const failed = settled.find(result => result.status === 'rejected');
-    if (failed) {
-      loot.forEach(({ output }) => output.dispose());
-      throw failed.status === 'rejected' ? failed.reason : undefined;
-    }
-    return loot;
+    ]);
   }
 
-  private create({ instance, display }: ReturnType<typeof createArchiveEntity>, loot: Houndbone['loot'], position: THREE.Vector3, bonetype: number, saved?: HoundboneRecord): THREE.Group {
+  private create({ instance, display }: ReturnType<typeof createArchiveEntity>, position: THREE.Vector3, bonetype: number, saved?: HoundboneRecord): THREE.Group {
     const model = display.model;
     const sprite = instance.sprite;
     model.position.set(position.x, 0, position.z);
@@ -112,15 +102,9 @@ export class HoundboneManager {
     const workable = new Workable(inst);
     workable.SetWorkAction('HAMMER');
     workable.SetWorkLeft(1);
-    const bone: Houndbone = { model, instance, display, sprite, workable, loot, bonetype };
-    const lootdropper = new LootDropper(inst, (itemId, point) => {
-      const index = bone.loot.findIndex(entry => entry.itemId === itemId);
-      const [prepared] = index < 0 ? [] : bone.loot.splice(index, 1).map(entry => entry.output);
-      if (!prepared) return undefined;
-      const spawned = prepared.spawn(new THREE.Vector3(point.x, point.y, point.z));
-      if (!spawned) prepared.dispose();
-      return spawned ? prepared.spawnedEntity : undefined;
-    });
+    const bone: Houndbone = { model, instance, display, sprite, workable, bonetype };
+    const lootdropper = new LootDropper(inst, (itemId, point) => this.world.spawnGroundItem(
+      { ...catalog.items[itemId as keyof typeof catalog.items], itemId, count: 1 }, new THREE.Vector3(point.x, point.y, point.z), { fling: true }));
     lootdropper.SetChanceLootTable('houndbone');
     // SetBoneType: the chance loot is rebuilt for each bonetype.
     lootdropper.ClearChanceLoot();
@@ -194,7 +178,6 @@ export class HoundboneManager {
     this.bones.delete(model); model.userData.removed = true;
     bone.stopActivity?.();
     bone.workable.dispose();
-    bone.loot.forEach(({ output }) => output.dispose()); bone.loot.length = 0;
     bone.instance.remove();
   }
 

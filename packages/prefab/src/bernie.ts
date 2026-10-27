@@ -1,5 +1,7 @@
-import { loadAnim, loadBuild, loadSpriteSkinArchive, smallHash, type Animation } from '@dontstarve-web/animation/animationAssets';
-import { createSpriteFactory, SpriteController, type AnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
+import { smallHash, type Animation } from '@dontstarve-web/animation/animationAssets';
+import { SpriteController } from '@dontstarve-web/animation/sprite';
+import { SpriteResources } from '@dontstarve-web/display';
+import { animationTiming } from './animationTimings';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { createPrefabEntity } from './prefabInstance';
 import { listenInventoryEvents } from './inventoryEvents';
@@ -33,62 +35,27 @@ class BernieSpriteController extends SpriteController {
   }
 }
 
-interface BernieSource { readonly factory: AnimatedSpriteFactory; readonly clips: ReadonlyMap<string, Animation> }
-
-/** Both banks preloaded per skin, so a sanity change never removes or asynchronously swaps an entity. */
+/** The display shares both banks and each skin; gameplay uses imported clip timings. */
 export class BernieAssets {
-  private readonly sources = new Map<string | undefined, Promise<BernieSource>>();
-  private readonly assetBaseUrl: string;
-  private disposed = false;
-  constructor(assetBaseUrl: string) { this.assetBaseUrl = assetBaseUrl; }
-
-  load(skinId?: string): Promise<BernieSource> {
-    if (this.disposed) throw new Error('Bernie assets have been disposed');
-    let request = this.sources.get(skinId);
-    if (!request) {
-      const skinArchive = skinId === undefined ? undefined : GROUND_ITEM_DEFINITIONS[BERNIE_ITEM_ID].skinArchives[skinId];
-      if (skinId !== undefined && !skinArchive) throw new Error(`Unknown Bernie skin: ${skinId}`);
-      request = (async () => {
-        const [build, small, big, skin] = await Promise.all([
-          loadBuild('bernie_build.zip', this.assetBaseUrl), loadAnim('bernie.zip', this.assetBaseUrl), loadAnim('bernie_big.zip', this.assetBaseUrl),
-          skinArchive ? loadSpriteSkinArchive(skinArchive, this.assetBaseUrl) : undefined,
-        ]);
-        const factory = createSpriteFactory(build, { animations: [...small.animations, ...big.animations] }, BernieSpriteController, skin);
-        const clips = new Map<string, Animation>();
-        for (const [form, parsed, bank] of [['bernie_active', small, 'bernie'], ['bernie_big', big, 'bernie_big'], [BERNIE_ITEM_ID, small, 'bernie']] as const) {
-          for (const clip of parsed.animations) if (clip.bankHash === smallHash(bank)) clips.set(`${form}:${clip.name}`, clip);
-        }
-        return { factory, clips };
-      })();
-      this.sources.set(skinId, request);
-      void request.catch(() => this.sources.delete(skinId));
-    }
-    return request;
+  private readonly resources: SpriteResources;
+  constructor(assetBaseUrl: string) { this.resources = new SpriteResources(assetBaseUrl); }
+  source(skinId?: string) {
+    const skinArchive = skinId === undefined ? undefined : GROUND_ITEM_DEFINITIONS[BERNIE_ITEM_ID].skinArchives[skinId];
+    if (skinId !== undefined && !skinArchive) throw new Error(`Unknown Bernie skin: ${skinId}`);
+    return this.resources.factory({ buildArchive: 'bernie_build.zip', animationArchive: 'bernie.zip',
+      extraAnimationArchives: ['bernie_big.zip'], skinArchive }, BernieSpriteController);
   }
-
-  dispose(): void {
-    if (this.disposed) return;
-    this.disposed = true;
-    for (const source of this.sources.values()) void source.then(({ factory }) => factory.dispose(), () => undefined);
-    this.sources.clear();
-  }
+  dispose(): void { this.resources.dispose(); }
 }
 
-export async function createBernieGroundSprite(assets: BernieAssets, world: BernieWorld, skinId?: string) {
-  const { factory, clips } = await assets.load(skinId);
-  const clipOf = (form: BernieAnimationForm, name: string): Animation => {
-    const clip = clips.get(`${form}:${name}`);
-    if (!clip) throw new Error(`Missing Bernie animation ${form}:${name}`);
-    return clip;
-  };
+export function createBernieGroundSprite(assets: BernieAssets, world: BernieWorld, skinId?: string) {
+  const clipOf = (form: BernieAnimationForm, name: string) => animationTiming(form === 'bernie_big' ? 'bernie_big.zip' : 'bernie.zip', name);
   const required = [...(['bernie_active', 'bernie_big'] as const).flatMap(form => ['idle_loop', 'idle_loop_nodir', 'activate'].map(name => [form, name] as const)),
     ['bernie_big', 'deactivate'], ['bernie_big', 'deactivate_pst'], [BERNIE_ITEM_ID, 'inactive']] as const;
   for (const [form, name] of required) clipOf(form, name);
   let form: BernieAnimationForm = bernieGroundForm(world.getSanityPercent());
   const spriteName = `GroundItem:${BERNIE_ITEM_ID}`;
-  const { instance, display } = createPrefabEntity(BERNIE_ITEM_ID, {
-    create: initialAnimation => factory.create({ initialAnimation, name: spriteName }), release: drawn => factory.disposeSprite(drawn),
-  }, { name: `${form}:idle_loop` }, spriteName);
+  const { instance, display } = createPrefabEntity(BERNIE_ITEM_ID, assets.source(skinId), { name: `${form}:idle_loop` }, spriteName);
   const model = display.model, sprite = instance.sprite;
   model.userData.itemId = BERNIE_ITEM_ID; instance.skinId = skinId;
   let clip = clipOf(form, 'idle_loop');
@@ -116,7 +83,7 @@ export async function createBernieGroundSprite(assets: BernieAssets, world: Bern
     }
     elapsed += Math.max(0, Math.min(dt, 0.1));
     while (clip.name !== 'idle_loop') {
-      const duration = clip.name === 'idle_loop_nodir' ? 0.5 : clip.frames.length / clip.frameRate;
+      const duration = clip.name === 'idle_loop_nodir' ? 0.5 : clip.frames / clip.frameRate;
       if (elapsed + 1e-8 < duration) break;
       const remaining = Math.max(0, elapsed - duration);
       switch (clip.name) {
@@ -133,7 +100,7 @@ export async function createBernieGroundSprite(assets: BernieAssets, world: Bern
     // A clip started during this update is shown at the time the stategraph has reached in it.
     if (clip !== previous) {
       const frame = Math.floor(elapsed * clip.frameRate);
-      if (frame > 0) sprite.setFrame(clip.name === 'idle_loop' ? frame % clip.frames.length : Math.min(frame, clip.frames.length - 1));
+      if (frame > 0) sprite.setFrame(clip.name === 'idle_loop' ? frame % clip.frames : Math.min(frame, clip.frames - 1));
       sprite.update(0);
     }
   };

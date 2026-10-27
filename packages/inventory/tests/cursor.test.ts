@@ -1,10 +1,11 @@
 import { expect, it } from 'vitest';
 import { InventorySlot, InventoryStore, HandSlot, cursorSlotAddress, equipmentSlotAddress, inventorySlotAddress } from '../src';
+import { addFueled } from './fueled';
 
 const first = inventorySlotAddress(0), second = inventorySlotAddress(1), cursor = cursorSlotAddress();
 const specs = {
   log: { name: '木头', icon: 'log.tex', maxStack: 20 },
-  torch: { name: '火把', icon: 'torch.tex', maxStack: 1, equippable: 'hand' as const, maxFuel: 75 },
+  torch: { name: '火把', icon: 'torch.tex', maxStack: 1, equippable: 'hand' as const, maxFuel: 75, configureEntity: addFueled(75) },
 };
 function createStore() {
   return new InventoryStore([

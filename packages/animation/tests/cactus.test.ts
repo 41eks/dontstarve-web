@@ -29,7 +29,7 @@ async function setup() {
   const world = bindTestWorld(scheduler);
   const inventory = createPickupInventory();
   const cacti = new CactusManager(new THREE.Scene(), '/dst/data/anim', {
-    prepareSpawn: async () => ({ spawn: () => true, dispose() {} }),
+    spawnGroundItem: () => undefined,
     spawnItem: state => { const entity = inventory.entities.create(state); inventory.configureItem(entity); return entity; },
   });
   // The picker: player combat whose GetAttacked runs through the inventory's worn armor.
