@@ -68,6 +68,20 @@ describe('SpriteFrameRenderer', () => {
     shared.geometry.dispose(); renderer.dispose();
   });
 
+  it('bakes each part\'s symbol light override into its four vertices of the merged frame', () => {
+    const visual = new THREE.Group();
+    const renderer = new SpriteFrameRenderer(visual);
+    const mesh = visual.children[0] as THREE.Mesh;
+    const material = new THREE.MeshBasicMaterial();
+    renderer.show([sprite(material), { ...sprite(material), lightOverride: .5 }]);
+    const light = mesh.geometry.getAttribute('spriteLightOverride');
+    expect(Array.from({ length: 8 }, (_, i) => light.getX(i))).toEqual([0, 0, 0, 0, .5, .5, .5, .5]);
+    // A later frame without the override restores the part's own light.
+    renderer.show([sprite(material), sprite(material)]);
+    expect(light.getX(4)).toBe(0);
+    renderer.dispose();
+  });
+
   it('renders mirrored and ordinary billboard parts in the same face pass', () => {
     const [material] = createMaterials({
       build: { name: 'test', atlasNames: ['test'], symbols: new Map() },

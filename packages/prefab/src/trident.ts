@@ -3,8 +3,8 @@ import type { EquipmentLifecycle } from '@dontstarve-web/signals';
 import type { SpellCastMap } from '@dontstarve-web/stategraphs/spellcaster';
 import type * as THREE from 'three';
 import { SpellCaster } from '../../componets/src/spellcaster';
-import { handEquipmentVisual, type PrepareEquipmentVisual } from './equipmentVisual';
-import { GROUND_ITEM_DEFINITIONS, GroundItemAssets } from './groundItems';
+import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory } from './equipmentVisual';
+import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { PreloadSounds } from './sound';
 import { TILE_SIZE } from './tile';
 
@@ -72,25 +72,8 @@ export function getTridentController(entity: ItemEntity, world: TridentWorld): T
   return entity.component('trident', () => new TridentController(entity, world));
 }
 
-type TridentBuild = Awaited<ReturnType<GroundItemAssets['loadBuild']>>;
-export interface TridentEquipment { readonly builds: readonly TridentBuild[] }
-
-/** trident.lua on_equipped: swap_object uses swap_trident, or the same symbol of the skin build. */
-export async function loadTridentEquipment(assets: GroundItemAssets, skinId?: string): Promise<TridentEquipment> {
-  const skinArchive = skinId ? GROUND_ITEM_DEFINITIONS.trident.skinArchives[skinId] : undefined;
-  if (skinId && !skinArchive) throw new Error(`Unknown trident skin: ${skinId}`);
-  const [base, skin] = await Promise.all([
-    assets.loadBuild('swap_trident.zip'),
-    skinArchive ? assets.loadBuild(skinArchive) : undefined,
-  ]);
-  return { builds: skin ? [skin, base] : [base] };
-}
-
-/** Source prefab onequip/onunequip: prepared art is applied through the owner's AnimState. */
-export const prepareTridentVisual: PrepareEquipmentVisual = async (assets, item) => {
-  const [equipment] = await Promise.all([loadTridentEquipment(assets, item.skinId), PreloadSounds(TRIDENT_STRUM_SOUND)]);
-  // SGwilson's play_strum uses the unskinned swap_trident symbol.
-  const plain = await assets.loadBuild('swap_trident.zip');
-  const visual = handEquipmentVisual(item, equipment.builds, 'swap_trident');
-  return { ...visual, onequip(owner) { owner.AnimState.RegisterBuild('swap_trident', plain); visual.onequip(owner); } };
+/** trident.lua on_equipped: swap_object uses swap_trident, or the same symbol of the skin build. SGwilson's play_strum names the plain swap_trident. */
+export const tridentVisual: EquipmentVisualFactory = item => {
+  const skin = skinArchive('trident', GROUND_ITEM_DEFINITIONS.trident.skinArchives, item.skinId);
+  return handEquipmentVisual(item, [...skin ? [skin] : [], 'swap_trident'], 'swap_trident');
 };

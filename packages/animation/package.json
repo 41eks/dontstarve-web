@@ -11,7 +11,6 @@
     "./animationAssets": "./src/animationAssets.ts",
     "./preloadArchives": "./src/preloadArchives.ts",
     "./hatAssets": "./src/hatAssets.ts",
-    "./lightOverride": "./src/lightOverride.ts",
     "./renderOrder": "./src/renderOrder.ts",
     "./sceneRenderPass": "./src/sceneRenderPass.ts",
     "./rgbaSpriteAtlas": "./src/rgbaSpriteAtlas.ts",

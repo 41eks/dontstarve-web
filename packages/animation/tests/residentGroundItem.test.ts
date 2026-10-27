@@ -3,6 +3,7 @@ import { expect, it, vi } from 'vitest';
 import { createSignal } from '@dontstarve-web/signals';
 import type { ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import type { GroundPrefabContext } from '../../prefab/src/groundPrefab';
+import { createPerishWorld } from './perishWorldFixture';
 
 const created: ArchiveSprite[] = [];
 vi.mock('@dontstarve-web/animation/archiveSprite', async importOriginal => ({
@@ -51,6 +52,8 @@ it('retains a lantern machine, light and fuel while its tile releases and rebuil
   const tile = createSignal(true), assets = new GroundItemAssets();
   const visual = await createLanternGroundSprite({ assets, tickingarea: () => Object.assign(tile, { dispose() {} }) as never });
   const item = new ItemEntity({ itemId: 'lantern', count: 1 });
+  const world = createPerishWorld();
+  item.BindPerishWorld(world);
   configureLanternEntity(item); visual.bindEntity!(item);
   const scene = new THREE.Scene(), model = visual.model;
   scene.add(model); model.position.set(3, 0, 4);
@@ -65,7 +68,8 @@ it('retains a lantern machine, light and fuel while its tile releases and rebuil
     expect(model.parent).toBeNull();
     expect(controller.isOn).toBe(true);
     expect(visual.light.parent).toBe(model);
-    for (let frame = 0; frame < 60; frame++) visual.update!(1);
+    // Fuel follows the item's game time, not its sprite or frames.
+    world.advance(60);
     expect(item.components.fueled.remaining).toBeCloseTo(LANTERN_FUEL - 60 - 1 / 60);
     tile.set(true); await tick();
     expect(model.parent).toBe(scene);

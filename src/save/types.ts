@@ -76,6 +76,7 @@ export interface SavedEntity {
     finiteuses?: { uses: number };
     moonbase?: import('@dontstarve-web/prefab/moonbase').MoonbaseSaveState;
     lightningrod?: import('@dontstarve-web/prefab/lightning_rod').LightningRodSaveState;
+    firepit?: import('@dontstarve-web/prefab/firepit').FirePitSaveState;
     farmPlow?: FarmPlowSaveState;
     farmSoil?: FarmSoilSaveState;
     farmDebris?: FarmDebrisSaveState;

@@ -285,7 +285,8 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
   readonly model: THREE.Group;
   private readonly placeholder = new THREE.Group();
   private readonly matrixGate: ReturnType<typeof installRootMatrixGate>;
-  private create: (initialAnimation: string) => THREE.Group;
+  /** Undefined while the source the display loads is not ready: nothing is drawn yet. */
+  private create: (initialAnimation: string) => THREE.Group | undefined;
   private release: (sprite: THREE.Group) => void;
   private readonly visual = createSignal<THREE.Group | undefined>(undefined);
   private readonly artVersion = createSignal(0);
@@ -300,9 +301,9 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
   private frame?: number;
   private disposed = false;
 
-  /** `initial` is the first sprite, already built in `clip`; `held` marks a clip shown on its last frame. */
-  constructor(model: THREE.Group, create: (initialAnimation: string) => THREE.Group, release: (sprite: THREE.Group) => void,
-    initial: THREE.Group, clip: { name: string; held?: boolean }) {
+  /** `initial` is the first sprite, already built in `clip`, if its source is ready; `held` marks a clip shown on its last frame. */
+  constructor(model: THREE.Group, create: (initialAnimation: string) => THREE.Group | undefined, release: (sprite: THREE.Group) => void,
+    initial: THREE.Group | undefined, clip: { name: string; held?: boolean }) {
     this.model = model;
     this.initialAnimation = clip.name;
     this.matrixGate = installRootMatrixGate(model, this.placeholder);
@@ -311,7 +312,7 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
     this.clip = { name: clip.name, loop: !clip.held, finished: clip.held === true };
     model.userData.billboard = true;
     registerSpriteRenderGroup(model, this.placeholder);
-    this.attach(initial, false);
+    if (initial) this.attach(initial, false); else model.add(this.placeholder);
     this.stopVisualEffect = createEffect(() => this.matrixGate.setRenderEnabled(this.visual.get() !== undefined));
   }
 
@@ -325,7 +326,8 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
     if (this.disposed) return;
     if (!active) { this.unload(); return; }
     if (this.sprite) return;
-    this.attach(this.create(this.clip.name), true);
+    const sprite = this.create(this.clip.name);
+    if (sprite) this.attach(sprite, true);
   }
 
   /** Release the drawn sprite to its owner; the logical state stays. */
@@ -412,7 +414,7 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
   setOpacity(opacity: number): void { this.staticController?.setOpacity(opacity); }
   setPaused(paused: boolean): void { this.controller?.setPaused?.(paused); }
   setArtSource(source: import('./sprite').SpriteArtSource): void { this.controller?.setArtSource?.(source); }
-  setAnimState(state: import('./animState').AnimStateJson): void { this.controller?.setAnimState?.(state); }
+  setAnimState(state: import('./animState').ResolvedAnimState): void { this.controller?.setAnimState?.(state); }
   setTint(tint: import('./sprite').SpriteTint): void { this.controller?.setTint?.(tint); }
   setComposites(frames: readonly import('./sprite').CompositeSpriteFrame[]): void { this.controller?.setComposites?.(frames); }
   getResolvedFrame(): readonly import('./animationAssets').ResolvedSprite[] { return this.controller?.getResolvedFrame?.() ?? []; }

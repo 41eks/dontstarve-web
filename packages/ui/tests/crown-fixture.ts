@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
+import type { PrefabDisplay } from '../../display/src';
 
 import { DstLocalLighting } from '../../../src/dstLocalLighting';
 import { createSanityState } from '@dontstarve-web/signals';
@@ -34,7 +35,10 @@ export async function checkCrown() {
     return canvas.toDataURL();
   };
   capture('Unequipped');
-  await animation.setHat('alterguardianhat');
+  const display = player.userData.display as PrefabDisplay;
+  animation.setHat('alterguardianhat');
+  // The worn crown names its builds and spawns its layers; their displays load the art.
+  await display.artLoaded();
   animation.update(0.1);
   const rising = capture('Crown: activating');
   for (let i = 0; i < 9; i++) animation.update(0.1);
@@ -58,7 +62,8 @@ export async function checkCrown() {
     }
   }
   animation.setFacing('down');
-  await animation.setHat('alterguardianhat', 'alterguardianhat_lastprism');
+  animation.setHat('alterguardianhat', 'alterguardianhat_lastprism');
+  await display.artLoaded();
   for (let i = 0; i < 10; i++) animation.update(0.1);
   capture('Last Prism: floating orbit');
   sanity.set(170);

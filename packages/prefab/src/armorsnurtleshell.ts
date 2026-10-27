@@ -3,7 +3,7 @@ import type { EquipmentLifecycle, EquipmentOwner } from '@dontstarve-web/signals
 import { Armor } from '../../componets/src/armor';
 import { Equippable } from '../../componets/src/equippable';
 import { UseableItem } from '../../componets/src/useableitem';
-import type { EquipmentVisualOwner, PrepareEquipmentVisual } from './equipmentVisual';
+import type { EquipmentVisualFactory, EquipmentVisualOwner } from './equipmentVisual';
 import { PlaySound } from './sound';
 
 // tuning.lua: wilson_health * 7 * multiplayer_armor_durability_modifier (.7), absorption .6 * 1, FULL_ABSORPTION.
@@ -53,13 +53,12 @@ export function createArmorSnurtleshellLifecycle(entity: ItemEntity): EquipmentL
 }
 
 /** armor_snurtleshell.lua onequip: swap_body_tall comes from the item's own build. */
-export const prepareArmorSnurtleshellVisual: PrepareEquipmentVisual = async assets => {
-  const build = await assets.loadBuild('armor_slurtleshell.zip');
+export const armorSnurtleshellVisual: EquipmentVisualFactory = () => {
   let owner: EquipmentVisualOwner | undefined;
   return {
     onequip(equipper) {
       owner = equipper;
-      owner.AnimState.OverrideSymbol('swap_body_tall', build, 'swap_body_tall');
+      owner.AnimState.OverrideSymbol('swap_body_tall', 'armor_slurtleshell', 'swap_body_tall');
     },
     onunequip() {
       owner?.AnimState.ClearOverrideSymbol('swap_body_tall');

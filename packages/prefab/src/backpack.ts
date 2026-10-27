@@ -5,22 +5,20 @@ export function configureBackpackEntity(entity: ItemEntity): void {
   entity.AddMiniMapEntity().SetIcon('backpack.png');
 }
 
-import type { EquipmentVisualOwner, PrepareEquipmentVisual } from './equipmentVisual';
+import { skinArchive, wornEquipmentLifecycle, type EquipmentVisualContext, type EquipmentVisualFactory, type EquipmentVisualItem, type EquipmentVisualOwner } from './equipmentVisual';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 
 /** backpack.lua onequip/onunequip: the container lifecycle stays with inventory. */
-export const prepareBackpackVisual: PrepareEquipmentVisual = async (assets, item) => {
-  const archive = item.skinId ? GROUND_ITEM_DEFINITIONS.backpack.skinArchives[item.skinId] : undefined;
-  if (item.skinId && !archive) throw new Error(`Unknown backpack skin: ${item.skinId}`);
-  const [base, skin] = await Promise.all([assets.loadBuild('swap_backpack.zip'), archive ? assets.loadBuild(archive) : undefined]);
+export const backpackVisual: EquipmentVisualFactory = item => {
+  const skin = skinArchive('backpack', GROUND_ITEM_DEFINITIONS.backpack.skinArchives, item.skinId);
   let owner: EquipmentVisualOwner | undefined;
   return {
     onequip(equipper) {
       owner = equipper;
       if (skin) {
         owner.PushEvent('equipskinneditem', item.skinId);
-        owner.AnimState.OverrideItemSkinSymbol('swap_body', skin, 'swap_body', item.id, base);
-      } else owner.AnimState.OverrideSymbol('swap_body', base, 'swap_body');
+        owner.AnimState.OverrideItemSkinSymbol('swap_body', skin, 'swap_body', item.id, 'swap_backpack');
+      } else owner.AnimState.OverrideSymbol('swap_body', 'swap_backpack', 'swap_body');
     },
     onunequip() {
       if (!owner) return;
@@ -32,7 +30,6 @@ export const prepareBackpackVisual: PrepareEquipmentVisual = async (assets, item
   };
 };
 
-import { preparedEquipmentLifecycle, type EquipmentVisualContext, type EquipmentVisualItem } from './equipmentVisual';
-export function createBackpackEquipmentLifecycle(item: EquipmentVisualItem, context: EquipmentVisualContext) {
-  return preparedEquipmentLifecycle(() => prepareBackpackVisual(context.assets, item), context);
+export function createBackpackEquipmentLifecycle(item: EquipmentVisualItem, context: Pick<EquipmentVisualContext, 'owner'>) {
+  return wornEquipmentLifecycle(backpackVisual(item), context);
 }

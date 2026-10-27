@@ -4,8 +4,7 @@ import { world, worldState } from './physics';
 import CannonDebugger from 'cannon-es-debugger';
 import * as THREE from 'three';
 import { updateSpriteRenderOrders } from '@dontstarve-web/animation';
-import { createEffect, EventEmitter, watchSignal } from '@dontstarve-web/signals';
-import { playerGhostMode, playerStats } from './playerStats';
+import { EventEmitter } from '@dontstarve-web/signals';
 
 import { animate, backTasks, middleTasks } from './animate';
 import { createAnimationUpdater } from './animation';
@@ -164,14 +163,8 @@ export async function startScene(
       findSlipperyEntities: (position, radius) => FindEntities(position, radius, ['slipperyfeettarget']) as never,
     });
   };
-  // CommonPlayerDeath removes the component and CommonActualRez adds it back: it exists while the player is alive.
-  // A ghost has health too (RESURRECT_HEALTH), so ghost mode keeps it off.
-  const stopSlipperyWatch: (() => void)[] = [];
-  const watchedHealth = watchSignal(playerStats.health, stop => stopSlipperyWatch.push(stop));
-  const watchedGhostMode = watchSignal(playerGhostMode, stop => stopSlipperyWatch.push(stop));
-  createEffect(() => {
-    if (watchedHealth.get() > 0 && !watchedGhostMode.get()) addSlipperyFeet(); else removeSlipperyFeet();
-  });
+  // CommonPlayerDeath removes it and CommonActualRez adds it back, through the ghost owner.
+  addSlipperyFeet();
   const updateSlipperyFeet = (dt: number) => (player.userData.slipperyfeet as SlipperyFeet | undefined)?.update(dt);
   if (stategraph) backTasks.push(updateSlipperyFeet);
   const updateBeforePhysics = (dt: number) => registry.beforePhysics(dt);
@@ -242,7 +235,6 @@ export async function startScene(
     animation?.stop();
     builder.dispose();
     if (player.userData.components?.builder === builder) delete player.userData.components.builder;
-    stopSlipperyWatch.splice(0).forEach(stop => stop());
     removeSlipperyFeet();
     const slipTask = backTasks.indexOf(updateSlipperyFeet);
     if (slipTask >= 0) backTasks.splice(slipTask, 1);
@@ -274,7 +266,7 @@ export async function startScene(
   return { ...entities, byEntityId: registry.byEntityId, scheduler, weather: worldState.weather,
     getWatchWorldContent: worldState.getWatchWorldContent,
     moon: { SetMoonPhase: worldState.SetMoonPhase },
-    getSaveState, disposalEvents, start, dispose };
+    addSlipperyFeet, removeSlipperyFeet, getSaveState, disposalEvents, start, dispose };
 }
 
 export function scene_add(model:THREE.Object3D){

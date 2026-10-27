@@ -4,7 +4,8 @@ import { smallHash } from '../src/animationAssets';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { loadFarmHoeEquipment } from '../../prefab/src/farm_hoe';
+import { farmHoeVisual } from '../../prefab/src/farm_hoe';
+import { declaredSymbol, overrideArchives } from './animStateFixture';
 import { FarmHoeActionController } from '../../stategraphs/src/farm_hoe';
 import { createEquipmentExistenceState } from '../../signals/src';
 import { FarmPlowPlacement } from '../../prefab/src/farm_plow';
@@ -15,7 +16,6 @@ import { createGroundItemVisual } from './groundItemVisual';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src/slots';
 import { PlaySound } from '../../prefab/src/sound';
-import type { AnimElement } from '../src/animationAssets';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
 beforeEach(() => {
@@ -49,19 +49,19 @@ it('resolves both source ground builds, the separate golden held build and invis
     expect(GROUND_ITEM_DEFINITIONS.golden_farm_hoe).toMatchObject({ bank: 'goldenhoe', animation: 'idle', atlas: 'images/inventoryimages2.xml' });
     expect(inventoryItemEquipmentKind('farm_hoe')).toBe('hand');
     expect(inventoryItemMaxStack('golden_farm_hoe')).toBe(1);
-    expect((await loadFarmHoeEquipment(assets, 'farm_hoe')).symbol).toBe('swap_quagmire_hoe');
-    const golden = await loadFarmHoeEquipment(assets, 'golden_farm_hoe');
-    expect(golden.builds[0].build.name).toBe('swap_goldenhoe');
-    const garden = await loadFarmHoeEquipment(assets, 'golden_farm_hoe', 'golden_farmhoe_garden');
     const anim = new AnimState(() => {});
-    const anchor = { imageHash: smallHash('swap_object'), imageIndex: 0 } as AnimElement;
-    anim.OverrideSymbol('swap_object', garden.builds, garden.symbol);
-    const heldSkin = anim.ResolveSymbol(anchor)!;
+    const owner = { AnimState: anim, PushEvent() {} };
+    const equip = (prefab: string, skinId?: string) => farmHoeVisual({ id: prefab, prefab, skinId }).onequip(owner);
+    equip('farm_hoe');
+    expect(anim.json.peek().overrides.get(smallHash('swap_object'))?.sources[0].symbol).toBe(smallHash('swap_quagmire_hoe'));
+    equip('golden_farm_hoe');
+    expect(overrideArchives(anim, 'swap_object')).toEqual(['swap_goldenhoe.zip']);
+    equip('golden_farm_hoe', 'golden_farmhoe_garden');
+    const heldSkin = (await declaredSymbol(anim, assets, 'swap_object'))!;
     expect(heldSkin).toHaveLength(1);
     expect(heldSkin[0].materials[0].name).toBe('ground:golden_farmhoe_garden');
-    const invisible = await loadFarmHoeEquipment(assets, 'golden_farm_hoe', 'golden_farmhoe_invisible');
-    anim.OverrideSymbol('swap_object', invisible.builds, invisible.symbol);
-    expect(anim.ResolveSymbol(anchor)).toHaveLength(0);
+    equip('golden_farm_hoe', 'golden_farmhoe_invisible');
+    expect(await declaredSymbol(anim, assets, 'swap_object')).toHaveLength(0);
   } finally { assets.dispose(); }
 });
 

@@ -74,6 +74,8 @@ export interface AnimatedBuildingDefinition {
     hammerHeldLoot?: (context: AnimatedBuildingEventContext) => readonly { itemId: string; count: number }[];
     /** Existing insts the building holds (occupants, shelved items) leave with their identity and state. */
     hammerDropEntities?: (context: AnimatedBuildingEventContext) => void;
+    /** Animations of the fx children the prefab spawns (SpawnPrefab), shared by the placement and loaded with its art. */
+    fxArchives?: readonly string[];
     /** standardcomponents.lua's burn time, generic fire level and heat propagator size. */
     burnable?: { burnTime: number; fxLevel: 2 | 3 | 4; propagator: 'small' | 'medium' | 'large' };
     onhit?: (context: AnimatedBuildingHammerContext) => void;
@@ -138,6 +140,8 @@ export interface AnimatedBuildingEventContext {
     skinId?: string;
     /** Result of the definition's prepare() for the art currently displayed. */
     prepared?: AnimatedBuildingPreparedResources;
+    /** The definition's fxArchives, by archive. */
+    fxFactories?: ReadonlyMap<string, AnimatedSpriteFactory>;
     itemEntities?: WorldContext['itemEntities'];
     world?: WorldContext;
     /** inst:Remove(): releases the building's art, components and physics. */
@@ -198,6 +202,7 @@ interface AnimatedBuildingInstance<BuildId extends string> {
     skinArtReleased?: boolean;
     effectFactory?: AnimatedSpriteFactory;
     fireFactory?: AnimatedSpriteFactory;
+    fxFactories?: ReadonlyMap<string, AnimatedSpriteFactory>;
     fire?: DrawnEffect;
     minimap?: MiniMapEntity;
 }
@@ -334,8 +339,9 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
                             : building.interactionState === 'open' || building.interactionState === 'opening'
                                 ? 'open' : 'closed',
                         ...(building.skinId.peek() === undefined ? {} : { skinId: building.skinId.peek() }),
-                        ...(building.burnt.peek()
-                            || building.model.userData.components?.burnable?.IsBurning() ? { burnt: true as const } : {}),
+                        // A burning structure saves as burnt; a firepit's own fire is restored from its fuel.
+                        ...(building.burnt.peek() || (this.definitions[building.buildId].burnable
+                            && building.model.userData.components?.burnable?.IsBurning()) ? { burnt: true as const } : {}),
                     },
                 },
             },
@@ -630,7 +636,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
 
     private eventContext(building: AnimatedBuildingInstance<BuildId>): AnimatedBuildingEventContext {
         return { model: building.model, instance: building.instance, animation: building.animation, art: building.animation.art, skinId: building.skinId.peek(), prepared: building.prepared,
-            itemEntities: this.worldContext.itemEntities, world: this.worldContext,
+            fxFactories: building.fxFactories, itemEntities: this.worldContext.itemEntities, world: this.worldContext,
             remove: () => this.hammerContext(building).remove() };
     }
 
@@ -938,14 +944,16 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         const initialAnimation = preview && definition.previewAnimation ? definition.previewAnimation
             : state === 'open' && definition.interaction ? definition.interaction.openAnimation : this.idleAnimation(buildId);
         const held = state === 'open' && !definition.interaction?.openAnimationLoop;
-        const [source, [preparedResult], effectFactory, fireFactory] = await Promise.all([
+        const [source, [preparedResult], effectFactory, fireFactory, fxFactories] = await Promise.all([
             // A preview is made translucent through its materials, so it keeps a source of its own.
             preview ? createAnimatedSpriteSource(`${import.meta.env.BASE_URL}dst/data/anim`, archive, sourceOptions)
                 : this.spriteSource(archive, sourceOptions),
             Promise.all([definition.prepare?.(), definition.hammerMaterial
                 ? PreloadSounds('dontstarve/common/destroy_smoke', `dontstarve/common/destroy_${definition.hammerMaterial}`) : undefined]),
             definition.hammerEffect ? this.prepareEffect(definition.hammerEffect.archive) : undefined,
-            definition.burnable ? Promise.all([this.prepareEffect('fire.zip'), PreloadSounds('dontstarve/common/campfire', 'dontstarve/common/fireOut')]).then(([factory]) => factory) : undefined]);
+            definition.burnable ? Promise.all([this.prepareEffect('fire.zip'), PreloadSounds('dontstarve/common/campfire', 'dontstarve/common/fireOut')]).then(([factory]) => factory) : undefined,
+            definition.fxArchives && Promise.all(definition.fxArchives.map(async archive => [archive, await this.prepareEffect(archive)] as const))
+                .then(factories => new Map(factories))]);
         const spriteOptions = (animation: string, initialFrame: 'first' | 'last' = 'first') => ({
             initialAnimation: animation, initialFrame, name: definition.name, scale: definition.scale,
             skinSymbols: definition.skinSymbols, baseSymbols: definition.baseSymbols,
@@ -972,6 +980,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             animation: entity.sprite,
             effectFactory,
             fireFactory,
+            fxFactories,
             groundOffset: -bounds.min.y,
             ...(definition.interaction ? { interactionState: state === 'open' ? 'open' as const : 'closed' as const } : {}),
             isPlacing: false,

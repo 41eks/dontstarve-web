@@ -52,6 +52,9 @@ const sounds = {
   'dontstarve/common/fireOut': { bank: 'common', streams: [198], loop: false },
   // fx.lua halloween_moonpuff → dontstarve.fev sounddef 63 (Fire_addFuelFlare.wav), common file_index 66.
   'dontstarve/common/fireAddFuel': { bank: 'common', streams: [67], loop: false },
+  // firefx.lua SetLevel ignite sounds → dontstarve.fev sounddefs 77 / 76, the same Fire_addFuelFlare.wav (file_index 66).
+  'dontstarve/common/fireBurstSmall': { bank: 'common', streams: [67], loop: false },
+  'dontstarve/common/fireBurstLarge': { bank: 'common', streams: [67], loop: false },
   // grottowaterfallsoundcontroller.lua → grotto.fev common/waterfall_LP: sounddef 41 (waterfall_grotto_DST_LP-004, grotto_sfx file_index 556)
   // plus sounddef 99 (waterfall_condensed_LP_DST-001..012, file_index 544–555), each + 1.
   'grotto/common/waterfall_LP': { bank: 'grotto_sfx', streams: [557], loop: true,

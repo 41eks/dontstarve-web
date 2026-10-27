@@ -14,6 +14,8 @@ export interface ResolvedSprite {
   element: AnimElement;
   image: BuildImage;
   materials: THREE.MeshBasicMaterial[];
+  /** AnimState:SetSymbolLightOverride of the part's symbol, baked into the merged frame as a vertex attribute. */
+  lightOverride?: number;
 }
 
 export async function loadAnim(file: string, assetBaseUrl: string): Promise<ParsedAnim> {
@@ -248,6 +250,7 @@ export class SpriteFrameRenderer {
   private readonly mesh: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
   private positions = new Float32Array();
   private uvs = new Float32Array();
+  private lightOverrides = new Float32Array();
   private quadCapacity = 0;
   private instanced = false;
   private frameVisible = false;
@@ -372,7 +375,7 @@ export class SpriteFrameRenderer {
     let groupCount = 0;
 
     for (let spriteIndex = 0; spriteIndex < sprites.length; spriteIndex++) {
-      const { element, image, materials } = sprites[spriteIndex];
+      const { element, image, materials, lightOverride = 0 } = sprites[spriteIndex];
       const material = materials[image.sampler ?? 0];
       if (!material) {
         throw new Error(`Sprite part ${spriteIndex} references a missing atlas material`);
@@ -419,6 +422,7 @@ export class SpriteFrameRenderer {
       this.uvs[uvOffset + 5] = v1;
       this.uvs[uvOffset + 6] = u0;
       this.uvs[uvOffset + 7] = v1;
+      this.lightOverrides.fill(lightOverride, spriteIndex * 4, spriteIndex * 4 + 4);
     }
 
     if (groupCount > 0) {
@@ -428,6 +432,7 @@ export class SpriteFrameRenderer {
     this.updateBoundingSphere(sprites.length * 4);
     this.geometry.getAttribute('position').needsUpdate = true;
     this.geometry.getAttribute('uv').needsUpdate = true;
+    this.geometry.getAttribute('spriteLightOverride').needsUpdate = true;
     markSpatialGeometryBounds(this.geometry);
     // The own frame's materials were rebuilt in place above.
     if (this.offsetCopies) this.draw(this.materials);
@@ -473,6 +478,7 @@ export class SpriteFrameRenderer {
     this.quadCapacity = THREE.MathUtils.ceilPowerOfTwo(Math.max(quadCount, 16));
     this.positions = new Float32Array(this.quadCapacity * 4 * 3);
     this.uvs = new Float32Array(this.quadCapacity * 4 * 2);
+    this.lightOverrides = new Float32Array(this.quadCapacity * 4);
     const indices = new Uint16Array(this.quadCapacity * 6);
     for (let quadIndex = 0; quadIndex < this.quadCapacity; quadIndex++) {
       const vertexOffset = quadIndex * 4;
@@ -487,8 +493,11 @@ export class SpriteFrameRenderer {
     const uvAttribute = new THREE.BufferAttribute(this.uvs, 2);
     positionAttribute.setUsage(THREE.DynamicDrawUsage);
     uvAttribute.setUsage(THREE.DynamicDrawUsage);
+    const lightOverrideAttribute = new THREE.BufferAttribute(this.lightOverrides, 1).setUsage(THREE.DynamicDrawUsage);
     this.geometry.setAttribute('position', positionAttribute);
     this.geometry.setAttribute('uv', uvAttribute);
+    // Read by the world lighting as each part's minimum light (AnimState:SetSymbolLightOverride).
+    this.geometry.setAttribute('spriteLightOverride', lightOverrideAttribute);
     this.geometry.setIndex(new THREE.BufferAttribute(indices, 1));
   }
 }

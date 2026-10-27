@@ -1,7 +1,7 @@
 import type * as CANNON from 'cannon-es';
 import type { Object3D, Vector3 } from 'three';
 import { createSignal, readonlySignal, type ReadonlySignal } from '@dontstarve-web/signals';
-import { LightState, PrefabDisplay, SpriteState, type ArchiveSpriteCommands, type ArchiveSpriteSource, type PrefabStatus, type SpriteSource } from '@dontstarve-web/display';
+import { LightState, PrefabDisplay, SpriteState, type ArchiveSpriteCommands, type ArchiveSpriteSource, type LoadedSpriteSource, type PrefabStatus, type SpriteSource } from '@dontstarve-web/display';
 import { bindPhysics, type PhysicsBinding } from '../../componets/src/physicsBinding';
 import { PhysicsState } from '../../componets/src/physicsState';
 import type { Brain } from '../../brains/src/brain';
@@ -151,7 +151,7 @@ export function setModelTag(model: Object3D, tag: string, present: boolean): voi
 }
 
 /** A new entity and the display that draws it. The model is the display's; the entity never holds it. */
-export function createPrefabEntity(prefab: string, source: SpriteSource, clip: ConstructorParameters<typeof SpriteState>[0], name?: string,
+export function createPrefabEntity(prefab: string, source: SpriteSource | LoadedSpriteSource, clip: ConstructorParameters<typeof SpriteState>[0], name?: string,
   /** Sets the entity's appearance before the first sprite is drawn, so it is drawn dressed. */
   initialize?: (instance: PrefabInstance) => void, parentStatus?: ReadonlySignal<PrefabStatus>):
   { instance: PrefabInstance; display: PrefabDisplay } {

@@ -1,9 +1,8 @@
 import { PLAYER_EQUIPMENT_CONTAINER_ID, type ItemEntity } from '@dontstarve-web/inventory';
 import { FishingRod, type FishingWorld } from '../../componets/src/fishingrod';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { handEquipmentVisual, type PrepareEquipmentVisual } from './equipmentVisual';
-import { GROUND_ITEM_DEFINITIONS, GroundItemAssets } from './groundItems';
-import { PreloadSounds } from './sound';
+import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory } from './equipmentVisual';
+import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 
 export const FISHINGROD_ID = 'fishingrod';
 /** tuning.lua FISHINGROD_USES; the wait and strain windows are set by fishingrod.lua. */
@@ -48,21 +47,16 @@ export function getFishingRod(entity: ItemEntity, scheduler: GameTimeScheduler, 
 }
 
 /** fishingrod.lua onequip: swap_object plus the fishingline and FX_fishing symbols from swap_fishingrod. */
-export const prepareFishingRodVisual: PrepareEquipmentVisual = async (assets, item) => {
-  const skinArchive = item.skinId ? GROUND_ITEM_DEFINITIONS.fishingrod.skinArchives[item.skinId] : undefined;
-  if (item.skinId && !skinArchive) throw new Error(`Unknown fishingrod skin: ${item.skinId}`);
-  type Build = Awaited<ReturnType<GroundItemAssets['loadBuild']>>;
-  const [base, skin]: [Build, Build | undefined, unknown] = await Promise.all([
-    assets.loadBuild('swap_fishingrod.zip'), skinArchive ? assets.loadBuild(skinArchive) : undefined, PreloadSounds(...FISHING_SOUNDS),
-  ]);
-  const visual = handEquipmentVisual(item, skin ? [skin, base] : [base], 'swap_fishingrod');
+export const fishingRodVisual: EquipmentVisualFactory = item => {
+  const skin = skinArchive('fishingrod', GROUND_ITEM_DEFINITIONS.fishingrod.skinArchives, item.skinId);
+  const visual = handEquipmentVisual(item, [...skin ? [skin] : [], 'swap_fishingrod'], 'swap_fishingrod');
   let owner: Parameters<typeof visual.onequip>[0] | undefined;
   return {
     onequip(equipper) {
       owner = equipper;
       visual.onequip(equipper);
-      equipper.AnimState.OverrideSymbol('fishingline', [base], 'fishingline');
-      equipper.AnimState.OverrideSymbol('FX_fishing', [base], 'FX_fishing');
+      equipper.AnimState.OverrideSymbol('fishingline', 'swap_fishingrod', 'fishingline');
+      equipper.AnimState.OverrideSymbol('FX_fishing', 'swap_fishingrod', 'FX_fishing');
     },
     onunequip() {
       owner?.AnimState.ClearOverrideSymbol('fishingline');

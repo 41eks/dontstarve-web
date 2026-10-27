@@ -8,7 +8,6 @@ vi.mock('../../../src/universal', () => ({
   resizeRendererToDisplaySize: () => ({ width: 800, height: 600, needsResize: false }),
 }));
 vi.mock('../../../src/debugStats', () => ({ createDebugStats: () => undefined }));
-vi.mock('../../../src/debugFps', () => ({ createDebugFpsDisplay: () => ({ update: vi.fn(), dispose: vi.fn() }) }));
 import { animate, frontTasks, middleTasks, backTasks } from '../../../src/animate';
 
 const frames = new Map<number, FrameRequestCallback>();

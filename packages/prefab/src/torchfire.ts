@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { parseKtex } from '@dontstarve-web/animation/parseKtex';
+import type { FollowerFx } from '@dontstarve-web/display';
 import { WORLD_SCALE } from './standardcomponents';
 
 // torchfire.lua: two VFX emitters (smoke, fire) on an entity that follows the holder's swap_object symbol.
@@ -204,60 +204,24 @@ class Emitter {
   }
 }
 
-const textures = new Map<string, Promise<THREE.DataTexture>>();
-
-function loadTexture(dataBaseUrl: string, path: string): Promise<THREE.DataTexture> {
-  const url = `${dataBaseUrl.replace(/\/$/, '')}/${path}`;
-  let request = textures.get(url);
-  if (!request) {
-    request = (async () => {
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(`Unable to load ${url}: ${response.status}`);
-      const decoded = parseKtex(new Uint8Array(await response.arrayBuffer()), path);
-      const texture = new THREE.DataTexture(decoded.pixels, decoded.width, decoded.height, THREE.RGBAFormat);
-      // The engine blends texel values directly; no sRGB decode.
-      texture.flipY = false;
-      texture.magFilter = THREE.LinearFilter;
-      texture.minFilter = THREE.LinearFilter;
-      texture.generateMipmaps = false;
-      texture.needsUpdate = true;
-      return texture;
-    })();
-    textures.set(url, request);
-    void request.catch(() => textures.delete(url));
-  }
-  return request;
-}
-
 /**
  * torchfire.lua: smoke and flame particles emitted at its follower node, i.e. the holder's
  * `swap_object` symbol. Particles keep their world position after emission, so they trail a moving holder.
  */
-export class TorchFireEffect {
+class TorchFireEffect {
   private readonly follower: THREE.Object3D;
-  private readonly emitters: Emitter[] = [];
+  private readonly emitters: Emitter[];
   private readonly origin = new THREE.Vector3();
   private tickRemainder = 0;
-  private disposed = false;
 
-  constructor(follower: THREE.Object3D, dataBaseUrl: string) {
+  constructor(follower: THREE.Object3D, textures: readonly THREE.Texture[]) {
     this.follower = follower;
-    void Promise.all(EMITTERS.map(async (spec) => [spec, await loadTexture(dataBaseUrl, spec.texture)] as const))
-      .then((loaded) => {
-        if (this.disposed) return;
-        for (const [spec, texture] of loaded) {
-          const emitter = new Emitter(spec, texture);
-          this.emitters.push(emitter);
-          this.follower.add(emitter.mesh);
-        }
-      }, (error: unknown) => {
-        if (!this.disposed) console.error('Unable to load torch fire', error);
-      });
+    this.emitters = EMITTERS.map((spec, i) => new Emitter(spec, textures[i]));
+    for (const emitter of this.emitters) follower.add(emitter.mesh);
   }
 
   update(dt: number): void {
-    (globalThis as any).__tf = ((globalThis as any).__tf ?? 0) + 1;
-    if (this.disposed || !Number.isFinite(dt) || dt <= 0 || !this.emitters.length) return;
+    if (!Number.isFinite(dt) || dt <= 0) return;
     this.follower.updateWorldMatrix(true, false);
     this.origin.setFromMatrixPosition(this.follower.matrixWorld);
     this.tickRemainder = Math.min(this.tickRemainder + dt, TICK_TIME * MAX_TICKS_PER_FRAME);
@@ -273,9 +237,16 @@ export class TorchFireEffect {
 
   /** inst:Remove(): the particles leave with the entity. */
   dispose(): void {
-    if (this.disposed) return;
-    this.disposed = true;
     for (const emitter of this.emitters) emitter.dispose();
     this.emitters.length = 0;
   }
+}
+
+/** The torchfire entity as a follower effect: the holder's display loads its textures and draws it. */
+export function torchFireFx(dataBaseUrl: string): FollowerFx {
+  const base = dataBaseUrl.replace(/\/$/, '');
+  return {
+    textures: EMITTERS.map(spec => `${base}/${spec.texture}`),
+    create: (node, textures) => new TorchFireEffect(node, textures),
+  };
 }

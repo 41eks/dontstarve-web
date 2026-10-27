@@ -56,7 +56,6 @@ export interface EquipmentOwner {
 export interface EquipmentLifecycle {
   onequip(owner?: EquipmentOwner): void;
   onunequip(): void;
-  onFrame?(dt: number): void;
   flush?(): void;
 }
 
@@ -75,6 +74,60 @@ export function createEquipmentExistenceState<S extends EquipmentSlot>(slot: S):
         throw new TypeError(`Equipment must declare EQUIPSLOTS = "${slot}"`);
       }
       state.set(value);
+    },
+  };
+}
+
+/**
+ * Runs the equip lifecycle of whatever a slot's existence state holds: the previous item is unequipped before the
+ * next is equipped with the injected owner, and a write made during a transition is processed after it.
+ */
+export function bindEquipmentLifecycle<S extends EquipmentSlot>(options: {
+  existenceState: Signal<Equipment<S> | null>;
+  owner?: EquipmentOwner;
+  createLifecycle?(equipment: Equipment<S>): EquipmentLifecycle | undefined;
+  present(equipment: Equipment<S> | null): void;
+}) {
+  const slot = options.existenceState;
+  let active: EquipmentLifecycle | undefined;
+  let disposed = false;
+  let transitioning = false;
+  let pending = false;
+  const stop = slot.subscribe(equipment => {
+    if (disposed || slot.peek() !== equipment) return;
+    pending = true;
+    if (transitioning) return;
+    transitioning = true;
+    try {
+      while (pending && !disposed) {
+        pending = false;
+        const current = slot.peek();
+        const previous = active;
+        active = undefined;
+        previous?.onunequip();
+        if (disposed || pending || slot.peek() !== current) continue;
+        if (current) {
+          active = options.createLifecycle?.(current);
+          active?.onequip(options.owner);
+        }
+        if (disposed || pending || slot.peek() !== current) continue;
+        options.present(current);
+      }
+    } finally {
+      transitioning = false;
+    }
+  });
+
+  return {
+    /** Settle the equipped item's consumption, before saving or transferring it. */
+    flush() { active?.flush?.(); },
+    dispose() {
+      if (disposed) return;
+      disposed = true;
+      stop();
+      const previous = active;
+      active = undefined;
+      previous?.onunequip();
     },
   };
 }

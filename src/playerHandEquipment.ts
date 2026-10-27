@@ -1,9 +1,8 @@
 import { ItemEntity } from '@dontstarve-web/inventory';
-import type { EquipmentOwner, HandEquipment, Signal } from '@dontstarve-web/signals';
+import { bindEquipmentLifecycle, type EquipmentOwner, type HandEquipment, type Signal } from '@dontstarve-web/signals';
 import type { ActionDescription } from '@dontstarve-web/stategraphs';
 import { createHandEquipmentLifecycle, getHandEquipmentDefinition, preloadHandEquipment, type HandEquipmentContext } from '@dontstarve-web/prefab/handEquipment';
 import type { WilsonAnimationController } from '@dontstarve-web/prefab/player';
-import { bindPlayerEquipment } from './playerEquipment';
 
 export interface PlayerHandEquipmentOptions extends HandEquipmentContext {
   animation?: Pick<WilsonAnimationController, 'setEquippedCarryItem' | 'playItemTransition'> & Partial<Pick<WilsonAnimationController, 'equipmentContext'>>;
@@ -18,28 +17,21 @@ export async function bindPlayerHandEquipment(options: PlayerHandEquipmentOption
   const slot = options.handEquipmentExistenceState;
   let disposed = false;
   let presented: HandEquipment | null = null;
-  let presentationVersion = 0;
   let silentDepth = 0;
-  let hand: ReturnType<typeof createHandEquipmentLifecycle> | undefined;
   const prefabContext = {
     ...options,
     AnimState: options.AnimState ?? options.animation?.equipmentContext?.owner.AnimState,
-    assets: options.assets ?? options.animation?.equipmentContext?.assets,
   };
-  const binding = bindPlayerEquipment({
+  const binding = bindEquipmentLifecycle({
     existenceState: slot,
     owner: options.owner,
     createLifecycle(equipment) {
       const entry = getHandEquipmentDefinition(equipment.itemId);
-      if (entry && equipment.entity instanceof ItemEntity && !equipment.entity.isRemoved) {
-        hand = createHandEquipmentLifecycle(equipment.entity, prefabContext);
-        return hand;
-      }
+      if (entry && equipment.entity instanceof ItemEntity && !equipment.entity.isRemoved) return createHandEquipmentLifecycle(equipment.entity, prefabContext);
     },
     present(equipment) {
       const previous = presented;
       presented = equipment;
-      const version = ++presentationVersion;
       const entry = equipment ? getHandEquipmentDefinition(equipment.itemId) : undefined;
       const previousEntry = previous ? getHandEquipmentDefinition(previous.itemId) : undefined;
       const sameItem = equipment && previous && (equipment.entity && previous.entity
@@ -50,20 +42,13 @@ export async function bindPlayerHandEquipment(options: PlayerHandEquipmentOption
           ? { state: 'item_in' as const, item: previousEntry.carryItem } : undefined;
       const animation = options.animation;
       animation?.setEquippedCarryItem(entry?.carryItem ?? null);
-      const ready = hand?.ready ?? Promise.resolve();
-      void ready.then(() => {
-        // Asset loading may finish after another equip, depletion or shutdown.
-        if (disposed || version !== presentationVersion || slot.peek() !== equipment || !transition) return;
-        if (!equipment && previous?.entity?.isRemoved) return;
-        options.animation?.playItemTransition(transition.state, transition.item);
-      })
-        .catch((error: unknown) => console.error('Unable to equip hand item', error));
+      // The held art is named on the AnimState; the player's display draws it once loaded.
+      if (transition && !(!equipment && previous?.entity?.isRemoved)) animation?.playItemTransition(transition.state, transition.item);
       if (slot.peek() !== equipment) return;
       options.setHandAction(entry?.definition.handAction ?? null);
     },
   });
   return {
-    update: binding.update,
     flush: binding.flush,
     /** Restore committed equipment normally, without playing inventory interaction animations. */
     withoutTransitions(action: () => void): void {
@@ -73,7 +58,6 @@ export async function bindPlayerHandEquipment(options: PlayerHandEquipmentOption
     dispose() {
       if (disposed) return;
       disposed = true;
-      presentationVersion++;
       binding.dispose();
       options.animation?.setEquippedCarryItem(null);
     },

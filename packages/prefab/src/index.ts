@@ -124,8 +124,7 @@ export { MOONBASE_DEFINITION, MOONBASE_ID } from './moonbase';
 export { MOONDIAL_DEFINITION, MOONDIAL_ID } from './moondial';
 export { SCULPTING_TABLE_DEFINITION, SCULPTING_TABLE_ID, SCULPTABLE_MATERIALS, isSculptableMaterial } from './sculptingtable';
 export { WARDROBE_DEFINITION, WARDROBE_ID } from './wardrobe';
-export { loadReskinToolEquipment, ReskinEffects, nextReskin, reskinEffectSound } from './reskin_tool';
-export { type ReskinToolEquipment } from './reskin_tool';
+export { reskinToolVisual, ReskinEffects, nextReskin, reskinEffectSound } from './reskin_tool';
 export { FencePlacement, FENCE_ID, FENCE_ITEM_ID, FENCE_IDS, isFenceId, type FenceId } from './fence';
 export {
   WALL_DEFINITIONS,
@@ -141,13 +140,12 @@ export {
 export type { PointerContext, WorldContext } from './worldContext';
 export {
   LANTERN_ID, LANTERN_COLOUR, LANTERN_FUEL, LanternController, LanternLightController, getLanternController,
-  createLanternGroundSprite, createLanternHandLifecycle, loadLanternEquipment,
-  type LanternEquipment,
+  createLanternGroundSprite, createLanternHandLifecycle, lanternVisual,
 } from './lantern';
 export { spawnLightEntity, type PrefabLocalLight } from './localLight';
 export { LIGHTBULB_ID, LIGHTBULB_LIGHT, createLightbulbGroundSprite } from './lightbulb';
 export { FlowerPlanting, FLOWER_ANIMATIONS, type FlowerAnimation, type FlowerSaveRecord } from './flower';
-export { BUGNET_ID, loadBugNetEquipment, type BugNetEquipment } from './bugnet';
+export { BUGNET_ID, bugnetVisual } from './bugnet';
 export {
   ButterflyAssets, ButterflyController, ButterflyCreature,
   BUTTERFLY_ID, MOONBUTTERFLY_ID, createButterflyGroundSprite,
@@ -158,9 +156,9 @@ export { TORCH_ID, TORCH_FUEL, TORCH_SOUNDS, TorchController, getTorchController
   type TorchLifecycleOptions } from './torch';
 export { GroundPrefabRegistry } from './groundPrefabRegistry';
 export type { GroundItemDefinition, GroundItemVisual, GroundItemFactory, GroundPrefabContext, GroundPrefabOptions } from './groundPrefab';
-export { YELLOWSTAFF_ID, YELLOWSTAFF_COLOUR, YELLOWSTAFF_CAST_TIME, OPALSTAFF_ID, OPALSTAFF_COLOUR, isLightStaff, loadLightStaffEquipment, loadYellowStaffEquipment, StaffCastingLight, getLightStaffController, LIGHT_STAFF_USES, LIGHT_STAFF_SANITY_COST, type LightStaffWorld, type YellowStaffEquipment, type LightStaffId } from './yellowstaff';
+export { YELLOWSTAFF_ID, YELLOWSTAFF_COLOUR, YELLOWSTAFF_CAST_TIME, OPALSTAFF_ID, OPALSTAFF_COLOUR, isLightStaff, staffVisual, yellowstaffVisual, StaffCastingLight, getLightStaffController, LIGHT_STAFF_USES, LIGHT_STAFF_SANITY_COST, type LightStaffWorld, type LightStaffId } from './yellowstaff';
 export { GREENSTAFF_USES, GREENSTAFF_COLOUR, GreenStaffController, getGreenStaffController, deconstructionLoot, type GreenStaffWorld, type DeconstructionTarget } from './greenstaff';
-export { TRIDENT_ID, TRIDENT_DAMAGE, TRIDENT_USES, TRIDENT_STRUM_SOUND, TridentController, getTridentController, loadTridentEquipment, type TridentWorld, type TridentEquipment } from './trident';
+export { TRIDENT_ID, TRIDENT_DAMAGE, TRIDENT_USES, TRIDENT_STRUM_SOUND, TridentController, getTridentController, tridentVisual, type TridentWorld } from './trident';
 export { DWARF_STAR_ID, DWARF_STAR_DURATION, POLAR_LIGHT_ID, POLAR_LIGHT_DURATION,
   dwarfStarLight, polarLight, DwarfStarManager, type DwarfStarRecord, type StaffLightId } from './stafflight';
 export { PlaySound, PreloadSounds, DisposeSounds, UpdateSoundListener, inverseSquareAttenuation, SOUND_MAX_DISTANCE,
@@ -177,9 +175,9 @@ export {
   type RockPrefabId, type RockEntityId, type RockRecord, type CaveinBoulderSave,
 } from './rocks';
 
-export { isAxeTool, loadAxeEquipment, type AxeEquipment, type AxeTool } from './axe';
-export { isPickaxeTool, loadPickaxeEquipment, type PickaxeEquipment, type PickaxeTool } from './pickaxe';
-export { NIGHTSWORD_DAPPERNESS, configureNightswordEntity, loadNightswordEquipment, type NightswordEquipment } from './nightsword';
+export { isAxeTool, axeVisual, type AxeTool } from './axe';
+export { isPickaxeTool, pickaxeVisual, type PickaxeTool } from './pickaxe';
+export { NIGHTSWORD_DAPPERNESS, configureNightswordEntity, nightswordVisual } from './nightsword';
 
 export {
   GROUND_ITEM_DEFINITIONS, GROUND_ITEM_DISPLAY_SPECS, GROUND_ITEM_SKIN_SPECS,
@@ -190,8 +188,8 @@ export { bindResidentGroundItem } from './groundItemLifecycle';
 
 export {
   HAT_DEFINITIONS, HAT_IDS, HAT_ITEM_SPECS, HAT_SKIN_SPECS, HAT_RECIPES, HAT_CRAFTING_DEFINITIONS,
-  isHatId, HatEquipmentAssets, resolveHatSprites, createHatGroundFactory,
-  type HatDefinition, type HatEquipMode, type HatEquipment,
+  isHatId, HatEquipmentAssets, hatVisual, createHatGroundFactory,
+  type HatDefinition, type HatEquipMode,
 } from './hats';
 
 export {

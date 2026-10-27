@@ -53,7 +53,12 @@ it('renders source ground and held art for the base sweeper and brush skin, then
   for (const skinId of [undefined, ...skins]) {
     const ground = await createGroundItemVisual(assets, 'reskin_tool', skinId);
     expect((ground.model.children[0].children[0].children[0] as THREE.Mesh).geometry.drawRange.count).toBeGreaterThan(0);
-    await animation.setCarryItem('reskin_tool', skinId);
+    animation.setCarryItem('reskin_tool', skinId);
+    await vi.waitFor(() => {
+      animation.update(0);
+      const mesh = player.getObjectByProperty('isMesh', true) as THREE.Mesh;
+      expect((mesh.material as THREE.Material[]).some((material) => material.name === `ground:${skinId ?? 'swap_reskin_tool'}`)).toBe(true);
+    });
     for (const facing of ['down', 'side', 'up'] as const) {
       animation.setFacing(facing);
       animation.update(1 / 30);

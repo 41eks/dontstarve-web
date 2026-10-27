@@ -15,6 +15,7 @@ export interface PlacementSaveRecord {
     finiteuses?: { uses: number };
     moonbase?: import('./moonbase').MoonbaseSaveState;
     lightningrod?: import('./lightning_rod').LightningRodSaveState;
+    firepit?: import('./firepit').FirePitSaveState;
   };
 }
 

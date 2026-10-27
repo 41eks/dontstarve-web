@@ -3,9 +3,9 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS, GROUND_ITEM_SKIN_SPECS } from '../../prefab/src/groundItems';
 import { createGroundItemVisual } from './groundItemVisual';
-import { loadNightswordEquipment } from '../../prefab/src/nightsword';
+import { nightswordVisual } from '../../prefab/src/nightsword';
+import { declaredSymbol } from './animStateFixture';
 import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
-import { smallHash, type AnimElement } from '../src/animationAssets';
 import { AnimState } from '../src/animState';
 import { GroundItemManager } from '../../../src/groundItems';
 import { EntityRegistry } from '../../../src/entityRegistry';
@@ -42,19 +42,18 @@ it('uses separate source ground and equipped art and renders a skin while moving
     });
     expect(Object.keys(GROUND_ITEM_DEFINITIONS.nightsword.skinArchives)).toHaveLength(5);
     expect(GROUND_ITEM_SKIN_SPECS.nightsword_cotl).toMatchObject({ itemId: 'nightsword', icon: 'nightsword_cotl.tex' });
-    const equipment = await loadNightswordEquipment(assets);
-    expect(equipment.build.build.name).toBe('swap_nightmaresword');
     const animState = new AnimState(() => {});
-    animState.OverrideSymbol('swap_object', equipment.build, 'swap_nightmaresword');
-    expect(animState.ResolveSymbol({ imageHash: smallHash('swap_object'), imageIndex: 0 } as AnimElement)).toHaveLength(1);
-    await expect(loadNightswordEquipment(assets, 'pickaxe_invisible')).rejects.toThrow('Unknown nightsword skin');
+    nightswordVisual({ id: 'nightsword', prefab: 'nightsword' }).onequip({ AnimState: animState, PushEvent() {} });
+    expect((await declaredSymbol(animState, assets, 'swap_object'))?.[0].materials[0].name).toBe('ground:swap_nightmaresword');
+    expect(() => nightswordVisual({ id: 'nightsword', prefab: 'nightsword', skinId: 'pickaxe_invisible' })).toThrow('Unknown nightsword skin');
     for (const skinId of [undefined, 'nightsword_cotl']) {
       const ground = await createGroundItemVisual(assets, 'nightsword', skinId);
       try {
         const groundMesh = ground.model.children[0].children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
         expect(groundMesh.geometry.drawRange.count).toBeGreaterThan(0);
         expect(groundMesh.material.some(material => material.name === `ground:${skinId ?? 'nightmaresword'}`)).toBe(true);
-        await animation.setCarryItem('nightsword', skinId);
+        animation.setCarryItem('nightsword', skinId);
+        await vi.waitFor(() => { animation.update(0); expect(usedMaterials()).toContain(`ground:${skinId ?? 'swap_nightmaresword'}`); });
         for (const [facing, mirrored] of [['up', false], ['down', false], ['side', true]] as const) {
           animation.setFacing(facing, mirrored); animation.start('walk'); animation.update(1 / 30);
           expect(usedMaterials()).toContain(`ground:${skinId ?? 'swap_nightmaresword'}`);

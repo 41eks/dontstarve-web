@@ -6,6 +6,7 @@ import { ItemEntity, InventoryStore, InventorySlot, HandSlot, inventorySlotAddre
 import { getTorchController } from '../../prefab/src/torch';
 import { PreloadSounds } from '../../prefab/src/sound';
 import { bindPlayerHandEquipment } from '../../../src/playerHandEquipment';
+import { createPerishWorld } from './perishWorldFixture';
 
 vi.mock('../../prefab/src/sound', () => ({
   PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })),
@@ -24,6 +25,8 @@ it('equips from the restore signal write, unequips before replacement and releas
     { address: hand, slot: new HandSlot() },
   ], { torch: { name: 'torch', icon: 'torch.tex', maxStack: 1, maxFuel: 75, equippable: 'hand' } },
   { torch_barber: { itemId: 'torch', name: 'torch', icon: 'torch_barber.tex', atlas: 'images/inventoryimages.xml' } });
+  const world = createPerishWorld();
+  store.entities.bindPerishWorld(world);
   const ui = presentation();
   const binding = await bindPlayerHandEquipment({ ...ui, handEquipmentExistenceState: store.handEquipmentExistenceState });
   try {
@@ -47,7 +50,7 @@ it('equips from the restore signal write, unequips before replacement and releas
     expect(oldTorch.isBurning).toBe(true);
     expect(ui.animation.setEquippedCarryItem).toHaveBeenLastCalledWith('torch');
     expect(ui.lightParent.getObjectByName('torchfire_light')).toBeDefined();
-    binding.update(0.25);
+    world.advance(0.25);
     store.applySlotChanges([
       { slot: hand, itemId: 'torch', skinId: 'torch_barber', delta: -1 },
       { slot: b, itemId: 'torch', skinId: 'torch_barber', delta: 1 },
@@ -57,7 +60,7 @@ it('equips from the restore signal write, unequips before replacement and releas
     expect(store.handEquipment.peek()?.entity).toBe(nextEntity);
     expect(oldEntity.components.fueled.remaining).toBe(9.75);
     expect(oldTorch.isBurning).toBe(false);
-    binding.update(0.5); binding.flush();
+    world.advance(0.5); binding.flush();
     expect(nextEntity.components.fueled.remaining).toBe(19.5);
     store.setRemainingFuel(hand, 18);
     expect(equip).toHaveBeenCalledOnce();
@@ -78,7 +81,7 @@ it('equips from the restore signal write, unequips before replacement and releas
     const remove = vi.spyOn(nextEntity, 'remove');
     await Promise.resolve();
     const transitions = ui.animation.playItemTransition.mock.calls.length;
-    binding.update(18); binding.flush();
+    world.advance(18); binding.flush();
     await Promise.resolve();
     expect(ui.animation.playItemTransition).toHaveBeenCalledTimes(transitions);
     expect(store.handEquipmentExistenceState.peek()).toBeNull();
@@ -93,7 +96,7 @@ it('equips from the restore signal write, unequips before replacement and releas
     const calls = ui.animation.setEquippedCarryItem.mock.calls.length;
     store.transfer(b, hand, 1);
     store.getEntity(hand)!.remove();
-    binding.update(10);
+    world.advance(10);
     expect(ui.animation.setEquippedCarryItem).toHaveBeenCalledTimes(calls);
   } finally { binding.dispose(); store.dispose(); }
 });

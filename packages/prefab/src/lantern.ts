@@ -2,8 +2,8 @@ import type { AnimState } from '@dontstarve-web/animation/animState';
 import type { ItemEntity, ItemRuntimeComponent } from '@dontstarve-web/inventory';
 import { createEffect, createMemo, createSignal, readonlySignal, watchSignal, type EquipmentLifecycle, type EquipmentOwner, type ReadonlySignal } from '@dontstarve-web/signals';
 import * as THREE from 'three';
-import { handEquipmentVisual, type PrepareEquipmentVisual } from './equipmentVisual';
-import { GROUND_ITEM_DEFINITIONS, GroundItemAssets, createResidentGroundItem } from './groundItems';
+import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory } from './equipmentVisual';
+import { GROUND_ITEM_DEFINITIONS, createResidentGroundItem } from './groundItems';
 import type { GroundItemFactory, GroundItemVisual, GroundPrefabContext } from './groundPrefab';
 import { listenInventoryEvents } from './inventoryEvents';
 import { TILE_SIZE } from './tile';
@@ -16,7 +16,6 @@ export const LANTERN_FUEL = (30 * 2 + 30 * 4) * 2.6;
 // tuning.lua: fueled:SetFirstPeriod(TURNON_FUELED_CONSUMPTION, TURNON_FULL_FUELED_CONSUMPTION).
 const TURNON_FUELED_CONSUMPTION = .5;
 const TURNON_FULL_FUELED_CONSUMPTION = 1 / 60;
-const SETTLEMENT_FRAMES = 60;
 
 /**
  * mininglantern.lua's machine and fueled lifecycle on the inst. Unlike the torch,
@@ -32,8 +31,6 @@ export class LanternController implements ItemRuntimeComponent {
   private readonly entity: ItemEntity;
   private consuming = false;
   private firstPeriod = 0;
-  private pendingSeconds = 0;
-  private pendingFrames = 0;
   readonly light = new LanternLightController();
   private ground?: THREE.Object3D;
   private hand?: LanternHandContext;
@@ -65,6 +62,7 @@ export class LanternController implements ItemRuntimeComponent {
       this.consuming = true;
       // fueled:StartConsuming charges the first period once, on top of elapsed time.
       this.firstPeriod = this.currentFuel() >= LANTERN_FUEL ? TURNON_FULL_FUELED_CONSUMPTION : TURNON_FUELED_CONSUMPTION;
+      this.entity.components.fueled.StartConsuming(dt => this.consume(dt));
     }
     this.light.setFuelPercent(this.fuelPercent.peek());
     this.light.setLit(true);
@@ -78,8 +76,7 @@ export class LanternController implements ItemRuntimeComponent {
     this.stopTrackingOwner?.();
     this.stopTrackingOwner = undefined;
     this.flushFuel();
-    this.consuming = false;
-    this.firstPeriod = 0;
+    this.stopConsuming();
     this.light.setLit(false);
     if (this.equipped) this.hand?.AnimState?.Hide('LANTERN_OVERLAY');
     this.isOnState.set(false);
@@ -128,18 +125,16 @@ export class LanternController implements ItemRuntimeComponent {
   }
   get isEquipped(): boolean { return this.equipped; }
 
-  /** Frame scheduling only accumulates; fuel changes once per 60 active frames. */
-  onFrame(dt: number): void {
-    if (!this.consuming || this.disposed || !Number.isFinite(dt) || dt <= 0) return;
-    this.pendingSeconds += dt;
-    if (++this.pendingFrames >= SETTLEMENT_FRAMES) this.flushFuel();
+  /** Settle the elapsed part of the fuel period before saving, transferring, dropping or switching off. */
+  flushFuel(): void {
+    if (this.entity.isRemoved) return;
+    this.entity.components.fueled.Settle();
+    if (this.firstPeriod > 0) this.consume(0);
   }
 
-  /** Settle a partial batch before saving, transferring, dropping or switching off. */
-  flushFuel(): void {
-    const elapsed = this.pendingSeconds + this.firstPeriod;
-    this.pendingSeconds = 0;
-    this.pendingFrames = 0;
+  /** fueled:DoUpdate with the game seconds of a period, plus an uncharged first period. */
+  private consume(dt: number): void {
+    const elapsed = dt + this.firstPeriod;
     this.firstPeriod = 0;
     if (!this.consuming || elapsed <= 0 || this.entity.isRemoved) return;
     const next = Math.max(0, this.currentFuel() - elapsed);
@@ -153,7 +148,7 @@ export class LanternController implements ItemRuntimeComponent {
   dispose(): void {
     if (this.disposed) return;
     this.flushFuel();
-    this.consuming = false;
+    this.stopConsuming();
     this.isOnState.set(false);
     this.disposed = true;
     this.stopTrackingOwner?.();
@@ -165,9 +160,14 @@ export class LanternController implements ItemRuntimeComponent {
     this.ground = undefined;
   }
 
-  private nofuel(): void {
+  private stopConsuming(): void {
     this.consuming = false;
     this.firstPeriod = 0;
+    if (!this.entity.isRemoved) this.entity.components.fueled.StopConsuming();
+  }
+
+  private nofuel(): void {
+    this.stopConsuming();
     const owner = this.equipped ? this.owner : undefined;
     this.TurnOff();
     owner?.PushEvent('torchranout', { prefab: this.entity.prefab, equipslot: 'HANDS' });
@@ -253,7 +253,6 @@ export function createLanternHandLifecycle(entity: ItemEntity, context: LanternH
   return {
     onequip: owner => controller.onequip(owner, context),
     onunequip: () => controller.onunequip(),
-    onFrame: dt => controller.onFrame(dt),
     flush: () => controller.flushFuel(),
   };
 }
@@ -291,20 +290,9 @@ export async function createLanternGroundSprite(context: Pick<GroundPrefabContex
       controller?.flushFuel();
       return controller ? { lanternOn: controller.isOn } : {};
     },
-    update(dt: number) { controller?.onFrame(dt); visual.update?.(dt); },
+    update(dt: number) { visual.update?.(dt); },
     dispose() { removeInventoryEvents(); stopState?.(); controller?.releaseGround(model); visual.dispose(); },
   };
-}
-
-type LanternBuild = Awaited<ReturnType<GroundItemAssets['loadBuild']>>;
-export interface LanternEquipment { readonly builds: readonly LanternBuild[]; }
-
-export async function loadLanternEquipment(assets: GroundItemAssets, skinId?: string): Promise<LanternEquipment> {
-  const skinArchive = skinId ? GROUND_ITEM_DEFINITIONS.lantern.skinArchives[skinId] : undefined;
-  if (skinId && !skinArchive) throw new Error(`Unknown lantern skin: ${skinId}`);
-  const base = await assets.loadBuild('swap_lantern.zip');
-  const skin = skinArchive ? await assets.loadBuild(skinArchive) : undefined;
-  return { builds: skin ? [skin, base] : [base] };
 }
 
 export function createLanternGroundFactory(context: GroundPrefabContext): GroundItemFactory {
@@ -315,8 +303,8 @@ export function createLanternGroundFactory(context: GroundPrefabContext): Ground
   };
 }
 
-/** Source prefab onequip/onunequip: prepared art is applied through the owner's AnimState. */
-export const prepareLanternVisual: PrepareEquipmentVisual = async (assets, item) => {
-  const equipment = await loadLanternEquipment(assets, item.skinId);
-  return handEquipmentVisual(item, equipment.builds, 'swap_lantern', [{ symbol: 'lantern_overlay', source: 'lantern_overlay' }]);
+/** Source prefab onequip/onunequip: swap_lantern, or the skin's, named on the owner's AnimState. */
+export const lanternVisual: EquipmentVisualFactory = item => {
+  const skin = skinArchive('lantern', GROUND_ITEM_DEFINITIONS.lantern.skinArchives, item.skinId);
+  return handEquipmentVisual(item, [...skin ? [skin] : [], 'swap_lantern'], 'swap_lantern', [{ symbol: 'lantern_overlay', source: 'lantern_overlay' }]);
 };

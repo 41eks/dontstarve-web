@@ -1,9 +1,9 @@
 import { AnimState } from '../src/animState';
-import { smallHash } from '../src/animationAssets';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { configureShovelEntity, loadShovelEquipment } from '../../prefab/src/shovel';
+import { configureShovelEntity, shovelVisual } from '../../prefab/src/shovel';
+import { declaredSymbol, overrideArchives } from './animStateFixture';
 import { ShovelActionController } from '../../stategraphs/src/shovel';
 import { FarmPlowPlacement } from '../../prefab/src/farm_plow';
 import { TurfMap } from '../../prefab/src/turfMap';
@@ -13,7 +13,6 @@ import { createGroundItemVisual } from './groundItemVisual';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src/slots';
 import { PlaySound } from '../../prefab/src/sound';
-import type { AnimElement } from '../src/animationAssets';
 import { createEquipmentExistenceState } from '../../signals/src';
 import { ItemEntity } from '../../inventory/src/entity';
 
@@ -48,18 +47,19 @@ it('loads original ground and separate equipped art, visible skins and hidden eq
     expect(GROUND_ITEM_DEFINITIONS.goldenshovel).toMatchObject({ bank: 'goldenshovel', animation: 'idle', atlas: 'images/inventoryimages.xml' });
     expect(inventoryItemEquipmentKind('shovel')).toBe('hand');
     expect(inventoryItemMaxStack('goldenshovel')).toBe(1);
-    expect((await loadShovelEquipment(assets, 'shovel')).builds[0].build.name).toBe('swap_shovel');
-    expect((await loadShovelEquipment(assets, 'goldenshovel')).builds[0].build.name).toBe('swap_goldenshovel');
-    const skin = await loadShovelEquipment(assets, 'shovel', 'shovel_feathered');
     const anim = new AnimState(() => {});
-    const anchor = { imageHash: smallHash('swap_object'), imageIndex: 0 } as AnimElement;
-    anim.OverrideSymbol('swap_object', skin.builds, skin.symbol);
-    const frames = anim.ResolveSymbol(anchor)!;
+    const owner = { AnimState: anim, PushEvent() {} };
+    const equip = (prefab: string, skinId?: string) => shovelVisual({ id: prefab, prefab, skinId }).onequip(owner);
+    equip('shovel');
+    expect(overrideArchives(anim, 'swap_object')).toEqual(['swap_shovel.zip']);
+    equip('goldenshovel');
+    expect(overrideArchives(anim, 'swap_object')).toEqual(['swap_goldenshovel.zip']);
+    equip('shovel', 'shovel_feathered');
+    const frames = (await declaredSymbol(anim, assets, 'swap_object'))!;
     expect(frames).toHaveLength(1);
     expect(frames[0].materials[0].name).toBe('ground:shovel_feathered');
-    const invisible = await loadShovelEquipment(assets, 'goldenshovel', 'goldenshovel_invisible');
-    anim.OverrideSymbol('swap_object', invisible.builds, invisible.symbol);
-    expect(anim.ResolveSymbol(anchor)).toHaveLength(0);
+    equip('goldenshovel', 'goldenshovel_invisible');
+    expect(await declaredSymbol(anim, assets, 'swap_object')).toHaveLength(0);
   } finally { assets.dispose(); }
 });
 

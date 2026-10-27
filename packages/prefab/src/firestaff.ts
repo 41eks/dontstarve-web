@@ -5,10 +5,9 @@ import type { CombatActor, CombatInst } from '../../componets/src/combat';
 import type { Projectile, ProjectileTarget } from '../../componets/src/projectile';
 import type { Burnable } from '../../componets/src/burnable';
 import type { WorkInst } from '../../componets/src/workable';
-import { handEquipmentVisual, type PrepareEquipmentVisual } from './equipmentVisual';
-import { loadLightStaffEquipment } from './yellowstaff';
+import type { EquipmentVisualFactory } from './equipmentVisual';
+import { staffVisual } from './yellowstaff';
 import { FIRE_PROJECTILE_ID } from './staff_projectile';
-import { PreloadSounds } from './sound';
 
 export const FIRESTAFF_ID = 'firestaff' as const;
 /** tuning.lua FIRESTAFF_USES and SANITY_SUPERTINY. */
@@ -108,7 +107,4 @@ export function getFireStaffController(entity: ItemEntity, world: FireStaffWorld
 }
 
 /** swap_staffs symbol `swap_redstaff`, plus the swing and impact sounds. */
-export const prepareFireStaffVisual: PrepareEquipmentVisual = async (assets, item) => {
-  const [equipment] = await Promise.all([loadLightStaffEquipment(assets, FIRESTAFF_ID, item.skinId), PreloadSounds(...FIRESTAFF_SOUNDS)]);
-  return handEquipmentVisual(item, equipment.builds, equipment.symbol);
-};
+export const fireStaffVisual: EquipmentVisualFactory = item => staffVisual({ ...item, prefab: FIRESTAFF_ID });

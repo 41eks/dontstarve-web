@@ -160,6 +160,8 @@ gl_FragColor.rgb *= max(light.rgb,
 
 `vfx_particle.ksh` 把纹理色乘粒子色和透明度，再乘光照贴图采样结果。`postprocess_bloom.ksh` 的合成则是原画面 RGB 加 Bloom 缓冲 RGB。Bloom 的完整提取、模糊和调度流程不由这一个合成 shader 说明。
 
+本项目中 [`torchfire.ts`](../packages/prefab/src/torchfire.ts) 的 `torchFireFx()` 只按纹理路径声明这两个发射器；火把装备时通过持有者的 `followSymbol('swap_object', 0, -110, fx)` 声明到 `swap_object` 跟随节点上。持有者的 `PrefabDisplay` 加载并缓存纹理，加载完成后才创建粒子，每帧推进，跟随节点移除或 display 释放时一并释放。
+
 因此，局部照明、火焰粒子和 Bloom 应作为三个环节处理；光源的半径不会直接控制粒子大小，粒子的加法混合也不能替代照亮地面和角色的光照贴图。
 
 ## 当前项目的实现与估计参数
@@ -292,6 +294,18 @@ Falloff `0.9 - 0.4k`；颜色为 `(223,208,69)/255`，半径乘场景单位比�
 这只改变预览本身，不产生局部光源；季节颜色校正仍作用于世界预览。
 落地或取消时清除覆盖，后续动画帧恢复普通环境光和局部光照。
 预览使用独立的动画/皮肤 atlas 材质，不修改其他世界实体的共享材质。
+
+### 符号光照覆盖
+
+`AnimState:SetSymbolLightOverride(symbol, value)` 由 `AnimState.SetSymbolLightOverride()`
+声明在实体的 AnimState json（`symbolLightOverrides`）中，值为 0 即清除。`SpriteController`
+解析帧时把该值写到对应符号部件的 `ResolvedSprite.lightOverride`，`SpriteFrameRenderer`
+将其烘焙为合并帧几何的逐顶点 `spriteLightOverride` 属性；跟随实体合入拥有者帧时保留自身的值。
+`dstLocalLighting.ts` 对所有接入的材质读取该属性，没有该属性的几何体经
+`defaultAttributeValues` 取 0，最终光照下限为
+`max(dstLight, max(dstLightOverride, vSpriteLightOverride))`。实例批次沿用同名实例属性。
+光照覆盖不再写在材质上：启迪之冠的 `alterguardian_hat_equipped` 只按源码为 `flame_swap`
+声明 0.5，`fx_glow` 与 bloom 近似光晕不设覆盖，由冠冕光源照亮。
 
 鼠标 label 的 DOM、样式与按钮字形由 `packages/ui/src/cursor-label.ts`
 管理，prefab 通过 `WorldContext.createCursorLabel` 注入显示接口。

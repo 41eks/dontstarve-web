@@ -41,6 +41,8 @@ it('settles lightbulb freshness in batches, applies spoilage to eating, and repl
 
 it('accepts cave fuel, settles pending consumption, applies wet penalties and relights only equipped lanterns', () => {
   const inventory = createPickupInventory();
+  const world = createPerishWorld();
+  inventory.entities.bindPerishWorld(world);
   const dry = new ItemEntity({ itemId: 'lightbulb', count: 1 }), wet = new ItemEntity({ itemId: 'lightbulb', count: 1, wet: true });
   try {
     inventory.add('lantern', 1);
@@ -58,7 +60,7 @@ it('accepts cave fuel, settles pending consumption, applies wet penalties and re
     expect(fueled.remaining).toBe(100);
     expect(controller.isOn).toBe(false);
     controller.onequip();
-    for (let frame = 0; frame < 30; frame++) controller.onFrame(1);
+    world.advance(30);
     expect(fueled.TakeFuelItem(wet)).toBe(true);
     expect(fueled.remaining).toBeCloseTo(100 - 30 - .5 + 67.5);
     lantern.setRemainingFuel(0); controller.TurnOff();

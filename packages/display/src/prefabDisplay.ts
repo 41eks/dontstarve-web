@@ -3,11 +3,13 @@ import { createEffect, createMemo, getBoundWatchWorldContent, watchSignal, World
 import { ResidentSprite, ResidentSpriteController } from '@dontstarve-web/animation/residentSprite';
 import { AnimationFollower } from './animationFollower';
 import { FxAttachments, type FxRenderEntry } from './fxAttachments';
+import { FollowerFxSlot } from './followerFx';
 import { ArchiveEngine, type ArchiveSpriteSource, type DisplayEngine } from './displayEngine';
 import { DisplaySprite, listDisplayLight, type DisplayLight } from './displaySprites';
 import type { LightState } from './lightState';
 import type { AppearanceJson, ClipJson, SpriteJson, SpriteState } from './spriteState';
 import type { ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
+import { resolveAnimState } from '@dontstarve-web/animation/animState';
 
 /** active: drawn and in the scene; asleep: nothing drawn and out of the scene; removed: everything released. */
 export type PrefabStatus = 'active' | 'asleep' | 'removed';
@@ -19,10 +21,16 @@ export interface SpriteSource {
   release(sprite: THREE.Group): void;
 }
 
+/**
+ * A sprite source the display loads before it can draw; the entity exists and plays meanwhile, undrawn. `peek` is the
+ * source when its owner has it already, so the first sprite is drawn at once.
+ */
+export interface LoadedSpriteSource { peek(): SpriteSource | undefined; load(): Promise<SpriteSource> }
+
 export interface PrefabDisplayOptions {
   readonly name?: string;
   /** Draw with factory sprites; exactly one of `source` and `archive` is given. */
-  readonly source?: SpriteSource;
+  readonly source?: SpriteSource | LoadedSpriteSource;
   /** Draw with a shared archive sprite. */
   readonly archive?: ArchiveSpriteSource;
   /** Transform-only entities have no art to load. The display still owns their model and lifecycle. */
@@ -50,8 +58,12 @@ export class PrefabDisplay {
   private readonly status: ReadonlySignal<PrefabStatus>;
   private readonly cleanups: (() => void)[] = [];
   private readonly disposalHandlers = new Set<() => void>();
-  private readonly symbolNodes = new Set<THREE.Object3D>();
+  private readonly symbolNodes = new Map<THREE.Object3D, FollowerFxSlot | undefined>();
+  /** Archives the AnimState names that this display is loading. */
+  private readonly loadingArt = new Set<string>();
   private dressedVersion = -1;
+  /** The deferred sprite source while this display loads it. */
+  private sourceLoading?: Promise<unknown>;
   private fx!: FxAttachments;
   private readonly follower = new AnimationFollower(name => {
     if (!this.engine.setAnimation) throw new Error('This display cannot follow an animation');
@@ -91,9 +103,16 @@ export class PrefabDisplay {
       };
       this.engine = new ArchiveEngine(new ResidentSprite(create, clip, archive.initial && prepare(archive.initial), options.name));
     } else if (source) {
-      this.engine = new ResidentSpriteController(new THREE.Group(), animation => source.create(animation),
-        drawn => source.release(drawn), source.create(first.clip.name, held ? 'last' : 'first'), { name: first.clip.name, held });
+      let ready = 'load' in source ? source.peek() : source;
+      this.engine = new ResidentSpriteController(new THREE.Group(), animation => ready?.create(animation),
+        drawn => ready!.release(drawn), ready?.create(first.clip.name, held ? 'last' : 'first'), { name: first.clip.name, held });
       if (options.name) this.engine.model.name = options.name;
+      if (!ready && 'load' in source) this.sourceLoading = source.load().then(loaded => {
+        this.sourceLoading = undefined;
+        if (this.disposed) return;
+        ready = loaded;
+        this.applyStatus(this.status.peek());
+      }, (error: unknown) => { this.sourceLoading = undefined; if (!this.disposed) console.error(`Unable to load ${options.name ?? 'a sprite'}`, error); });
     } else throw new Error('A display needs a sprite source');
     // The controller starts in a looping or held clip; any other first clip is sent by the first snapshot.
     const plain = first.clip.pose === undefined && first.clip.percent === undefined && (first.clip.loop ? !first.clip.finished : first.clip.finished);
@@ -112,6 +131,7 @@ export class PrefabDisplay {
         this.fx.update(dt, this.json.peek());
         if (this.fx.hasComposites) controller.setComposites?.(this.fx.compositeFrames());
         this.updateSymbolFollowers(this.json.peek());
+        for (const fx of this.symbolNodes.values()) fx?.update(dt);
       },
       createFollower: () => new THREE.Object3D(),
     });
@@ -166,9 +186,12 @@ export class PrefabDisplay {
   }
 
   private updateSymbolFollowers(json: SpriteJson): void {
-    for (const node of this.symbolNodes) if (!json.followers?.has(node)) { node.removeFromParent(); this.symbolNodes.delete(node); }
-    for (const [node, { symbol, x, y }] of json.followers ?? []) {
-      if (!this.symbolNodes.has(node)) { this.symbolNodes.add(node); this.model.add(node); }
+    for (const [node, fx] of this.symbolNodes) if (!json.followers?.has(node)) { fx?.dispose(); node.removeFromParent(); this.symbolNodes.delete(node); }
+    for (const [node, { symbol, x, y, fx }] of json.followers ?? []) {
+      if (!this.symbolNodes.has(node)) {
+        this.symbolNodes.set(node, fx && new FollowerFxSlot(node, fx, this.model.name || 'a sprite'));
+        this.model.add(node);
+      }
       node.visible = this.engine.getSymbolPosition?.(symbol, x, y, node.position) ?? false;
     }
   }
@@ -291,7 +314,7 @@ export class PrefabDisplay {
   private dressOne(op: AppearanceJson): void {
     const controller = this.engine;
     switch (op.kind) {
-      case 'anim-state': controller.setAnimState?.(op.state); break;
+      case 'anim-state': this.dressAnimState(op); break;
       case 'archive-symbol': controller.setSymbolOverride?.(op.symbol, op.archive, op.sourceSymbol); break;
       case 'archive-hidden': controller.setSymbolHidden?.(op.symbol, op.hidden); break;
       case 'archive-build': controller.setBuildArchive?.(op.archive); break;
@@ -301,6 +324,50 @@ export class PrefabDisplay {
       case 'build':
         if (op.override) controller.addOverrideBuild(op.name, op.override); else controller.clearOverrideBuild(op.name);
         break;
+    }
+  }
+
+  /**
+   * The AnimState names its art; what has loaded is drawn now and the rest is loaded from the entity's art source. Each
+   * load dresses whatever is declared once it lands, so a declaration replaced meanwhile only leaves the art cached.
+   */
+  private dressAnimState(op: Extract<AppearanceJson, { kind: 'anim-state' }>): void {
+    const { state, missing } = resolveAnimState(op.state, op.art);
+    this.engine.setAnimState?.(state);
+    const art = op.art;
+    if (!art) return;
+    const load = (key: string, request: () => Promise<unknown>) => {
+      if (this.loadingArt.has(key)) return;
+      this.loadingArt.add(key);
+      void request().then(() => {
+        this.loadingArt.delete(key);
+        const current = this.json.peek().appearance.get('anim-state');
+        if (!this.disposed && current?.kind === 'anim-state' && this.engine.loaded) this.dressAnimState(current);
+      }, (error: unknown) => {
+        this.loadingArt.delete(key);
+        if (!this.disposed) console.error(`Unable to load ${key} for ${this.model.name || 'a sprite'}`, error);
+      });
+    };
+    for (const archive of missing.builds) load(`build:${archive}`, () => art.loadBuild(archive));
+    for (const archive of missing.animations) load(`anim:${archive}`, () => art.loadAnimation(archive));
+  }
+
+  /** Settles once this entity's sprite source, the art its AnimState names, its follower effects and its declared FX entities have loaded. */
+  async artLoaded(): Promise<void> {
+    await this.sourceLoading;
+    this.updateSymbolFollowers(this.json.peek());
+    await Promise.all([...this.symbolNodes.values()].map(fx => fx?.loaded));
+    // The FX of a fresh declaration reach their displays in a later task.
+    await new Promise(resolve => setTimeout(resolve, 0));
+    await Promise.all([...this.state.fx.peek().values()].map(fx => fx.display?.artLoaded()));
+    for (;;) {
+      const op = this.json.peek().appearance.get('anim-state');
+      if (this.disposed || op?.kind !== 'anim-state' || !op.art) return;
+      const { art } = op, { missing } = resolveAnimState(op.state, art);
+      if (missing.builds.size + missing.animations.size === 0) return;
+      await Promise.all([...[...missing.builds].map(archive => art.loadBuild(archive)), ...[...missing.animations].map(archive => art.loadAnimation(archive))]);
+      // The display's own load callbacks dress the sprite first.
+      await new Promise(resolve => setTimeout(resolve, 0));
     }
   }
 
@@ -317,7 +384,7 @@ export class PrefabDisplay {
     this.state.bind(undefined);
     this.engine.dispose();
     this.listed.dispose();
-    for (const node of this.symbolNodes) node.removeFromParent();
+    for (const [node, fx] of this.symbolNodes) { fx?.dispose(); node.removeFromParent(); }
     this.symbolNodes.clear();
     this.model.removeFromParent();
     for (const dispose of this.disposalHandlers) dispose();

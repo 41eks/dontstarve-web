@@ -5,8 +5,8 @@ import type { ReskinFxMessage, ReskinTarget } from '@dontstarve-web/stategraphs/
 import type * as THREE from 'three';
 import { Vector3 } from 'three';
 import { SpellCaster } from '../../componets/src/spellcaster';
-import { handEquipmentVisual, type PrepareEquipmentVisual } from './equipmentVisual';
-import { GROUND_ITEM_DEFINITIONS, GroundItemAssets } from './groundItems';
+import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory } from './equipmentVisual';
+import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { bindInstance, PrefabInstance } from './prefabInstance';
 import { PlaySound, PreloadSounds, type SoundEventPath } from './sound';
 import { TILE_SIZE } from './tile';
@@ -158,21 +158,8 @@ export class ReskinEffects {
   }
 }
 
-type ReskinToolBuild = Awaited<ReturnType<GroundItemAssets['loadBuild']>>;
-export interface ReskinToolEquipment { readonly builds: readonly ReskinToolBuild[] }
-
-export async function loadReskinToolEquipment(assets: GroundItemAssets, skinId?: string): Promise<ReskinToolEquipment> {
-  const skinArchive = skinId ? GROUND_ITEM_DEFINITIONS.reskin_tool.skinArchives[skinId] : undefined;
-  if (skinId && !skinArchive) throw new Error(`Unknown reskin_tool skin: ${skinId}`);
-  const [base, skin] = await Promise.all([
-    assets.loadBuild('swap_reskin_tool.zip'),
-    skinArchive ? assets.loadBuild(skinArchive) : undefined,
-  ]);
-  return { builds: skin ? [skin, base] : [base] };
-}
-
-/** Source prefab onequip/onunequip: prepared art is applied through the owner's AnimState. */
-export const prepareReskinToolVisual: PrepareEquipmentVisual = async (assets, item) => {
-  const [equipment] = await Promise.all([loadReskinToolEquipment(assets, item.skinId), PreloadSounds('dontstarve/wilson/attack_weapon')]);
-  return handEquipmentVisual(item, equipment.builds, 'swap_reskin_tool');
+/** reskin_tool.lua onequip: swap_reskin_tool, or the skin's, named on the owner's AnimState. */
+export const reskinToolVisual: EquipmentVisualFactory = item => {
+  const skin = skinArchive('reskin_tool', GROUND_ITEM_DEFINITIONS.reskin_tool.skinArchives, item.skinId);
+  return handEquipmentVisual(item, [...skin ? [skin] : [], 'swap_reskin_tool'], 'swap_reskin_tool');
 };

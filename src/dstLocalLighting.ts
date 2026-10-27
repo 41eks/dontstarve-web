@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
-import { getMaterialLightOverride } from '@dontstarve-web/animation/lightOverride';
 import { displayLightOverride, displayLights, type DisplayLight } from '@dontstarve-web/display';
 import { prewarmScene, yieldLoadingFrame } from './prewarmScene';
 import type { ScenePassLighting } from '@dontstarve-web/animation/sceneRenderPass';
@@ -290,8 +289,8 @@ export class DstLocalLighting {
     this.patchMaterial(material);
     const uniform = this.lightOverrides.get(material);
     if (!uniform) return;
-    // The entity's AnimState light override is declared on its display; glow art inside a merged mesh keeps its own.
-    const value = Math.max(displayLightOverride(object), getMaterialLightOverride(material) ?? 0);
+    // The entity's AnimState light override is declared on its display; a symbol's own override is a vertex attribute.
+    const value = displayLightOverride(object);
     // Sprite materials are per entity; three uploads this uniform when the material changes,
     // so objects that share one material also share its override.
     uniform.value = value;
@@ -309,8 +308,26 @@ export class DstLocalLighting {
     const previousKey = material.customProgramCacheKey();
     const lightOverride = { value: 0 };
     this.lightOverrides.set(material, lightOverride);
+    // Geometry without per-part overrides (anything but merged sprite frames and instance batches) reads 0.
+    const withDefaults = material as THREE.Material & { defaultAttributeValues?: Record<string, number[]> };
+    withDefaults.defaultAttributeValues = { ...withDefaults.defaultAttributeValues, spriteLightOverride: [0] };
     material.onBeforeCompile = (shader, renderer) => {
       previousCompile.call(material, shader, renderer);
+      // Instance batches already pass their members' overrides through these names.
+      if (!shader.vertexShader.includes('attribute float spriteLightOverride')) {
+        shader.vertexShader = shader.vertexShader.replace('#include <common>', `
+          #include <common>
+          attribute float spriteLightOverride;
+          varying float vSpriteLightOverride;
+        `).replace('#include <begin_vertex>', `
+          #include <begin_vertex>
+          vSpriteLightOverride = spriteLightOverride;
+        `);
+        shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `
+          #include <common>
+          varying float vSpriteLightOverride;
+        `);
+      }
       shader.uniforms.dstAmbientColour = this.ambient;
       shader.uniforms.dstLightmap = this.lightmap;
       shader.uniforms.dstLightmapExtents = this.extents;
@@ -344,16 +361,13 @@ export class DstLocalLighting {
           dstLight = texture2D(dstLightmap, dstLightUv).rgb;
         }
         // The original ambient colours and LUTs operate in display space.
-        dstLight = max(dstLight, vec3(dstLightOverride));
-        #ifdef DST_INSTANCED_LIGHT_OVERRIDE
-          dstLight = max(dstLight, vec3(vSpriteLightOverride));
-        #endif
+        dstLight = max(dstLight, vec3(max(dstLightOverride, vSpriteLightOverride)));
         vec3 dstDisplay = sRGBTransferOETF(vec4(max(gl_FragColor.rgb, 0.0), 1.0)).rgb;
         gl_FragColor.rgb = sRGBTransferEOTF(vec4(dstDisplay * dstLight, 1.0)).rgb;
         #include <colorspace_fragment>
       `);
     };
-    material.customProgramCacheKey = () => `${previousKey}:dst-world-lightmap-v2`;
+    material.customProgramCacheKey = () => `${previousKey}:dst-world-lightmap-v3`;
     material.needsUpdate = true;
     this.patchedMaterials.add(material);
   }

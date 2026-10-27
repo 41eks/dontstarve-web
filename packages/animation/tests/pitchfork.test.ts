@@ -1,7 +1,9 @@
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { loadPitchforkEquipment, type PitchforkTool } from '../../prefab/src/pitchfork';
+import { pitchforkVisual, type PitchforkTool } from '../../prefab/src/pitchfork';
+import { AnimState } from '../src/animState';
+import { overrideArchives } from './animStateFixture';
 import { PitchforkActionController } from '../../stategraphs/src/pitchfork';
 import { TurfMap, WORLD_TILES } from '../../prefab/src/turfMap';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
@@ -35,7 +37,9 @@ describe('pitchfork source art and TERRAFORM timing', () => {
     expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
     expect((mesh.material as THREE.Material[]).some((material) => material.name === `ground:${tool}`)).toBe(true);
     for (const skin of Object.keys(GROUND_ITEM_DEFINITIONS[tool].skinArchives)) {
-      expect((await loadPitchforkEquipment(assets, tool, skin)).builds).toHaveLength(2);
+      const anim = new AnimState(() => {});
+      pitchforkVisual({ id: tool, prefab: tool, skinId: skin }).onequip({ AnimState: anim, PushEvent() {} });
+      expect(overrideArchives(anim, 'swap_object')).toEqual([GROUND_ITEM_DEFINITIONS[tool].skinArchives[skin], `swap_${tool}.zip`]);
       const skinned = await createGroundItemVisual(assets, tool, skin);
       skinned.dispose();
     }
@@ -43,9 +47,9 @@ describe('pitchfork source art and TERRAFORM timing', () => {
     const animation = player.userData.animationController as WilsonAnimationController;
     const dig = vi.fn();
     expect(animation.playDig(dig)).toBe(false);
-    await animation.setCarryItem(tool);
+    animation.setCarryItem(tool);
     const held = player.getObjectByProperty('isMesh', true) as THREE.Mesh;
-    expect((held.material as THREE.Material[]).some((material) => material.name === `ground:swap_${tool}`)).toBe(true);
+    await vi.waitFor(() => expect((held.material as THREE.Material[]).some((material) => material.name === `ground:swap_${tool}`)).toBe(true));
     expect(animation.playDig(dig)).toBe(true);
     expect(animation.playDig(dig)).toBe(false);
     advance(animation, 49); // 24.5 source frames: shovel_pre + part of shovel_loop.

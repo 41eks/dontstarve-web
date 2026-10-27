@@ -101,6 +101,7 @@ const storage = componentParser({ keys: ['building', 'container'] });
 const sculptingTable = componentParser({ keys: ['building', 'sculptingtable'] });
 const birdcage = componentParser({ keys: ['building', 'birdcage'] });
 const lightningRod = componentParser({ keys: ['building', 'lightningrod'] });
+const firepit = componentParser({ keys: ['building', 'firepit'] });
 const moonbase = componentParser({ keys: ['building', 'workable', 'moonbase'] });
 const tent = componentParser({ keys: ['building', 'finiteuses'], finiteUses: TENT_USES });
 const cookPot = componentParser({ keys: ['building', 'container', 'stewer'] });
@@ -139,7 +140,8 @@ export const PREFAB_DEFINITIONS = {
     const spec = Object.hasOwn(context.catalog.buildings, context.prefab) ? context.catalog.buildings[context.prefab] : undefined;
     if (spec) return (context.prefab === 'cookpot' ? cookPot : context.prefab === 'sculptingtable' ? sculptingTable
       : context.prefab === 'birdcage' ? birdcage : context.prefab === TENT_ID ? tent
-      : context.prefab === 'moonbase' ? moonbase : context.prefab === 'lightning_rod' ? lightningRod : spec.container ? storage : building)(value, path, context);
+      : context.prefab === 'moonbase' ? moonbase : context.prefab === 'lightning_rod' ? lightningRod
+      : context.prefab === 'firepit' ? firepit : spec.container ? storage : building)(value, path, context);
     if (context.prefab === FENCE_ID) return fence(value, path, context);
     if (context.catalog.walls.includes(context.prefab)) return wall(value, path, context);
     return fail(path, `missing building definition for ${context.prefab}`);

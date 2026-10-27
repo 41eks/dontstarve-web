@@ -102,16 +102,36 @@ W.A.R.B.I.S. 头戴装备、检查镜和兔子帽的主体跟随部件直接合�
 同一帧的 `BufferGeometry`，保持原始层序及连续材质组。上述帽子的发光与粒子部件
 被排除，头盔主体和活动机械部件保留。
 
-启迪之冠另加载 `hat_alterguardian_equipped.zip`，以 `hair` 为跟随点，播放
-`activate_pre` → `activate_loop`，保持 `SetNoFaced()` 的环绕方向。`back` / `front`
-分别合入玩家帧的前后绘制顺序，保留最终棱镜皮肤的 `p4_piece` / `fx_glow`
-覆盖。用源冠冕贴图的局部模糊加色光晕近似原版 bloom；模糊限制在图集元素边界内，
-光晕也合入玩家几何体。独立的光源子节点使用原版半径 4（本场景 12）、强度 0.8、衰减 0.5 和空容器
+启迪之冠激活时按 `hats.lua` 的 `alterguardian_activate` 生成两个
+`alterguardian_hat_equipped` FX 实体（`alterguardian_hat_equipped.ts`，`FX`、`DECOR`、
+`persists = false`），各自 `OnActivated(owner, is_front)`：`Hide("back" / "front")`，
+在玩家 sprite 上以 `attachFx` 声明跟随 `hair`、`SetFinalOffset(±1)` 与 `SetNoFaced()`，
+并播放自己的 `activate_pre` → `activate_loop`。玩家 display 把两者的帧分别合入自身帧的
+最前与最后，仍是同一 `BufferGeometry`。实体的 AnimState 声明 `SetSymbolLightOverride("flame_swap", 0.5)`；
+有皮肤时 `SetSkin` 覆盖 `p4_piece` / `fx_glow`。用源冠冕贴图的局部模糊加色光晕近似原版
+`SetBloomEffectHandle`；模糊限制在图集元素边界内。原版只给 `flame_swap` 设光照覆盖，
+`fx_glow` 与光晕在夜间由冠冕自身光源照亮。理智下降时 `OnDeactivated` 播放 `activate_pst`，
+动画结束移除实体及其跟随声明；卸下帽子立即移除。种子火焰（`SetFlameLevel`）及其
+`SetSymbolMultColour` 尚未移植。独立的光源子节点使用原版半径 4（本场景 12）、强度 0.8、衰减 0.5 和空容器
 的黄绿色光。创建玩家时通过 `options.sanityPercent` 注入拥有者的只读理智比例 signal，
-激活 memo 直接读取该 signal，高于 0.85 激活；降到阈值时立即关灯，播放
-`activate_pst`，第 8 帧恢复静态帽子。应用传入 `playerStats.sanity.percent`，
-未注入状态的独立预览默认按满理智展示；卸下或换帽立即清除动画及光源，
+激活 memo 直接读取该 signal，高于 0.85 激活；降到阈值时立即关灯，
+第 8 帧恢复静态帽子。应用传入 `playerStats.sanity.percent`，
+未注入状态的独立预览默认按满理智展示；卸下或换帽立即移除 FX 实体及光源，
 并解除 memo 对理智的依赖，不与手持提灯的光源互相覆盖。
+
+火坑（`firepit.ts`）按 `firepit.lua` 挂载 `burnable` 与 `fueled`（`packages/componets/src/fueled.ts`，
+世界实体的 `fueled.lua`：4 段、`FIREPIT_FUEL_MAX` 360、初始 180、`bonusmult` 2，消耗为游戏时间
+调度器上每秒一次的周期任务）。燃料段变化时 `onfuelchange` 点燃或熄灭，并以
+`Burnable:SetFXLevel(段, 段内比例)` 设置火焰等级；熄灭把燃料归零，燃到最高段后熄灭掉落 1 个木炭。
+`Burnable:AddBurnFX("campfirefire", (0, 25, 0), "firefx", true, nil, true)` 由 `SpawnFX` / `KillFX`
+生成和移除 `campfirefire`（`campfirefire.ts`，`FX`、`HASHEATER`、`persists = false`，
+`anim/campfire_fire.zip`）：它以 `attachFx` 的 `composite` 跟随火坑的 `firefx` 符号，偏移在符号空间内，
+帧合入火坑同一 `BufferGeometry` 的该符号层。`firefx` 组件（`packages/componets/src/firefx.ts`）按
+等级播放 `level1`–`level4`、调整 `firefx_light` 子实体的半径／亮度并按 `OnUpdate` 闪烁，管理
+`campfire` 循环声与 `fireBurstSmall/Large`、`fireOut`；光源挂在火坑上。各皮肤的 `SetFXOffset`
+与换肤后的 `restart_firepit` 已接入。保存 `firepit.fueled.fuel`（满燃料时按 Lua 省略）与
+`queued_charcoal`；燃烧中的火坑不按结构燃烧存为 `burnt`。可燃物品的 `fuel` 组件、雨天加速消耗、
+`heater` 供热、烹饪、作祟和火鸟皮肤加燃料特效尚未移植。
 
 `HAT_CRAFTING_DEFINITIONS` 保留 52 条原始配方及科技、角色、技能、制作站
 元数据。`HAT_RECIPES` 提供现有 InventoryStore 可以执行的 51 条背包配方；

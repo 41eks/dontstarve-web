@@ -58,6 +58,10 @@ export interface PlayerGhostOwner {
   spawnDieFx(position: THREE.Vector3): void;
   /** inst:DoTaskInTime on the game-time scheduler; returns the cancel. */
   schedule(seconds: number, fn: () => void): () => void;
+  /** inst:AddComponent("slipperyfeet") */
+  addSlipperyFeet(): void;
+  /** inst:RemoveComponent("slipperyfeet") */
+  removeSlipperyFeet(): void;
   /** inst:Hide() / inst:Show() */
   setHidden(hidden: boolean): void;
   /** inst.Light:Enable(enabled): the ghost's own light. */
@@ -102,6 +106,7 @@ export function OnMakePlayerGhost(owner: PlayerGhostOwner, data?: { skeleton?: b
     hunger.set(hunger.maximum * 2 / 3);
   }
   owner.sanity.ignore = true;
+  owner.removeSlipperyFeet();
 
   MakeGhostPhysics(owner, 1, .5);
   owner.actionPicker.PushActionFilter(GhostActionFilter, GHOST_ACTION_FILTER_PRIORITY);
@@ -221,6 +226,7 @@ function finishRez(owner: PlayerGhostOwner, source: RezSource, position: THREE.V
   owner.actionPicker.PopActionFilter(GhostActionFilter);
   owner.stats.health.canheal = true;
   owner.sanity.ignore = false;
+  owner.addSlipperyFeet();
   entity.removeTag('playerghost');
   entity.removeTag('reviving');
   owner.model.dispatchEvent({ type: 'ms_respawnedfromghost' } as never);

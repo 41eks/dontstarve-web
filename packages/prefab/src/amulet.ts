@@ -4,7 +4,7 @@ import type { EquipmentLifecycle, EquipmentOwner } from '@dontstarve-web/signals
 import { Equippable } from '../../componets/src/equippable';
 import { Hauntable, HAUNT_INSTANT_REZ, type HauntableInst } from '../../componets/src/hauntable';
 import { ComponentTimer } from '../../componets/src/timer';
-import type { EquipmentVisualOwner, PrepareEquipmentVisual } from './equipmentVisual';
+import { skinArchive, type EquipmentVisualFactory, type EquipmentVisualOwner } from './equipmentVisual';
 import catalog from './groundItems.json' with { type: 'json' };
 
 /** amulet.lua registers the red amulet as prefab `amulet`; the other colours are separate prefabs. */
@@ -95,19 +95,16 @@ export function createAmuletEquipmentLifecycle(entity: ItemEntity, art: Pick<Equ
 }
 
 /** amulet.lua onequip_red: swap_body from torso_amulets' redamulet, or the skin's swap_body. */
-export const prepareAmuletVisual: PrepareEquipmentVisual = async (assets, item) => {
-  const archives: Readonly<Record<string, string>> = catalog.items.amulet.skinArchives;
-  const archive = item.skinId ? archives[item.skinId] : undefined;
-  if (item.skinId && !archive) throw new Error(`Unknown amulet skin: ${item.skinId}`);
-  const [base, skin] = await Promise.all([assets.loadBuild('torso_amulets.zip'), archive ? assets.loadBuild(archive) : undefined]);
+export const amuletVisual: EquipmentVisualFactory = item => {
+  const skin = skinArchive('amulet', catalog.items.amulet.skinArchives as Readonly<Record<string, string>>, item.skinId);
   let owner: EquipmentVisualOwner | undefined;
   return {
     onequip(equipper) {
       owner = equipper;
       if (skin) {
         owner.PushEvent('equipskinneditem', item.skinId);
-        owner.AnimState.OverrideItemSkinSymbol('swap_body', skin, 'swap_body', item.id, base);
-      } else owner.AnimState.OverrideSymbol('swap_body', base, 'redamulet');
+        owner.AnimState.OverrideItemSkinSymbol('swap_body', skin, 'swap_body', item.id, 'torso_amulets');
+      } else owner.AnimState.OverrideSymbol('swap_body', 'torso_amulets', 'redamulet');
     },
     onunequip() {
       if (!owner) return;

@@ -4,7 +4,8 @@ import { InventoryStore, InventorySlot, HeadSlot, BodySlot, equipmentSlotAddress
 import { bindPlayerHeadEquipment } from '../../../src/playerHeadEquipment';
 import { bindPlayerBodyEquipment } from '../../../src/playerBodyEquipment';
 import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
-import { smallHash, type AnimElement } from '../src/animationAssets';
+import { resolveAnimState, resolveAnimStateSymbol } from '../src/animState';
+import { element } from './animStateFixture';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -23,7 +24,8 @@ it('equips through prefab lifecycles after restore/transfer and releases head/bo
   const setBackpackActive = vi.fn();
   const headBinding = bindPlayerHeadEquipment({ headEquipmentExistenceState: store.headEquipmentExistenceState, animation });
   const bodyBinding = bindPlayerBodyEquipment({ bodyEquipmentExistenceState: store.bodyEquipmentExistenceState, animation, setBackpackActive });
-  const symbol = (name: string) => animation.AnimState.ResolveSymbol({ imageHash: smallHash(name), imageIndex: 0 } as AnimElement);
+  // What the player's display draws for the symbol: it loads the named builds itself.
+  const symbol = (name: string) => resolveAnimStateSymbol(resolveAnimState(animation.AnimState.json.peek(), animation.equipmentAssets).state, element(name), 0);
   try {
     expect(setBackpackActive).not.toHaveBeenCalled();
     store.replaceState({ slots: [

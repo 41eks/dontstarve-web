@@ -11,13 +11,15 @@ import {
   smallHash,
   SpriteFrameRenderer,
   type Animation,
+  type AnimElement,
   type BuildPackage,
   type ParsedAnim,
   type ParsedBuild,
   type ResolvedSprite,
   type Matrix2D,
+  type BuildImage,
 } from './animationAssets';
-import { animStateVisible, resolveAnimStateSymbol, type AnimStateJson, type SymbolBuild } from './animState';
+import { animStateVisible, resolveAnimStateSymbol, type ResolvedAnimState, type SymbolBuild } from './animState';
 import { registerSpriteRenderGroup } from './renderOrder';
 import { publishSpriteSpatialBounds, spriteSpatialRadius } from './spatialBounds';
 import { installMatrixGate } from './matrixGate';
@@ -113,6 +115,12 @@ export interface CompositeSpriteFrame {
   readonly sprites: readonly ResolvedSprite[];
   readonly symbol?: number;
   readonly detached?: { readonly position: THREE.Vector3; readonly mirrored: boolean };
+  /** AnimState:SetFinalOffset of a follower: negative draws it behind the whole owner, positive in front, 0 at the symbol's layer. */
+  readonly finalOffset?: number;
+  /** Transform:SetNoFaced: the follower keeps its own orientation, unmirrored by the owner's facing. */
+  readonly noFaced?: boolean;
+  /** Follower:FollowSymbol's x/y offset, in the followed symbol's space. */
+  readonly offset?: readonly [number, number];
 }
 
 export interface SpriteTint { readonly colour: readonly number[]; readonly amount: number }
@@ -148,7 +156,11 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
   private snowLevel?: WorldContentSignal<number>;
   private stopSnow?: () => void;
   private artSource?: SpriteArtSource;
-  private animState?: AnimStateJson;
+  private animState?: ResolvedAnimState;
+  /** Seconds the AnimState's symbol animations have played. */
+  private animStateElapsed = 0;
+  /** Bloom halos of dressed materials, per halo image. */
+  private readonly bloomMaterials = new Map<THREE.MeshBasicMaterial, Map<BuildImage, THREE.MeshBasicMaterial>>();
   private artFacing?: number;
   private mirrored = false;
   private composites: readonly CompositeSpriteFrame[] = [];
@@ -210,6 +222,8 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
     this.renderer.dispose();
     for (const material of this.privateMaterials.values()) material.dispose();
     this.privateMaterials.clear();
+    for (const halos of this.bloomMaterials.values()) for (const material of halos.values()) material.dispose();
+    this.bloomMaterials.clear();
   }
 
   /** Draw frames from the factory's shared cache while this sprite has no per-instance appearance. */
@@ -252,7 +266,7 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
       this.reshowFrame();
     }
   }
-  setAnimState(state: AnimStateJson): void { this.animState = state; this.reshowFrame(); }
+  setAnimState(state: ResolvedAnimState): void { this.animState = state; this.reshowFrame(); }
   setFacing(facing: number, mirrored = false): void {
     if (facing === this.artFacing && mirrored === this.mirrored) return;
     this.artFacing = facing; this.mirrored = mirrored;
@@ -269,7 +283,9 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
   }
   setComposites(frames: readonly CompositeSpriteFrame[]): void {
     if (frames.length === this.composites.length && frames.every((frame, i) => frame.sprites === this.composites[i].sprites
-      && frame.symbol === this.composites[i].symbol && frame.detached === this.composites[i].detached)) return;
+      && frame.symbol === this.composites[i].symbol && frame.detached === this.composites[i].detached
+      && frame.finalOffset === this.composites[i].finalOffset && frame.noFaced === this.composites[i].noFaced
+      && frame.offset?.[0] === this.composites[i].offset?.[0] && frame.offset?.[1] === this.composites[i].offset?.[1])) return;
     this.composites = frames; this.reshowFrame();
   }
   getResolvedFrame(): readonly ResolvedSprite[] { return this.resolvedFrame; }
@@ -288,6 +304,7 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
       material.color.copy(source.color).multiply(this.colour);
       material.opacity = source.opacity * this.opacity;
     }
+    for (const [base, halos] of this.bloomMaterials) for (const halo of halos.values()) halo.color.copy(base.color);
     this.reshowFrame();
   }
   private dressedMaterial(source: THREE.MeshBasicMaterial): THREE.MeshBasicMaterial {
@@ -442,8 +459,10 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
 
   update(dt: number) {
     const attachments = this.animState?.attachments ?? [];
-    const animating = attachments.some(attachment => attachment.isAnimating);
+    const following = (this.animState?.symbolAnimations.size ?? 0) > 0;
+    const animating = following || attachments.some(attachment => attachment.isAnimating);
     for (const attachment of attachments) attachment.update(dt);
+    if (following) this.animStateElapsed += dt;
     if (animating) this.frameKey = '';
     if (this.paused) { if (animating) this.reshowFrame(); return; }
     this.elapsed += Math.min(dt, 0.1);
@@ -529,7 +548,9 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
   private resolveSprites(index: number, layerIndices: readonly number[]): ResolvedSprite[] {
     const frames = [this.animation.frames[index], ...this.layers.map((layer, i) => layer.frames[layerIndices[i]])];
     const followers = new Map<number, CompositeSpriteFrame[]>();
-    for (const fx of this.composites) if (fx.symbol !== undefined) {
+    // Each halo part, with the unpadded image its blur is bounded to.
+    const halos = new Map<ResolvedSprite, BuildImage>();
+    for (const fx of this.composites) if (fx.symbol !== undefined && !fx.finalOffset) {
       const entries = followers.get(fx.symbol) ?? [];
       entries.push(fx); followers.set(fx.symbol, entries);
     }
@@ -537,53 +558,132 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
       .filter((element) => (!this.animState || animStateVisible(this.animState, element))
         && !this.hiddenLayers.has(element.layerHash) && !this.animStateHiddenLayers.has(element.layerHash) && this.isLayerVisible(element.layerHash))
       .sort((a, b) => b.z - a.z)
-      .map((element) => {
-        // Follower anchors can have no image in the owner's build. Resolve them before looking up body art.
-        const followed = followers.get(element.imageHash);
-        if (followed) return followed.flatMap(fx => fx.sprites.map(sprite => ({ ...sprite,
-          element: { ...sprite.element, matrix: composeSpriteMatrix(element.matrix, sprite.element.matrix) } })));
-        const declared = this.animState && resolveAnimStateSymbol(this.animState, element);
-        if (declared) return declared;
-        const override = this.overrides.get(element.imageHash);
-        if (override) {
-          const image = findImage(override.build, override.symbolHash, element.imageIndex);
-          return image ? { element, image, materials: override.materials } : undefined;
-        }
-        for (const override of [...this.buildOverrides.values()].reverse()) {
-          const image = findImage(override.build, element.imageHash, element.imageIndex);
-          if (image) return { element, image, materials: override.materials };
-        }
-        const skin = this.skin;
-        if (skin && !skin.baseSymbols.has(element.imageHash)
-          && (skin.symbols === undefined || skin.symbols.has(element.imageHash))) {
-          const image = findImage(skin.build, element.imageHash, element.imageIndex);
-          if (image) return { element, image, materials: skin.materials };
-        }
-        for (const source of this.artSource ? [this.artSource.build, ...this.artSource.fallbackBuilds ?? []] : [{ build: this.build, materials: this.materials }]) {
-          const image = findImage(source.build, element.imageHash, element.imageIndex);
-          if (image) return { element, image, materials: source.materials };
-        }
-        return undefined;
-      })
-      .flatMap(sprite => sprite === undefined ? [] : Array.isArray(sprite) ? sprite : [sprite]));
+      .flatMap((element) => {
+        const sprite = this.resolveElement(element, followers);
+        const parts = sprite === undefined ? [] : Array.isArray(sprite) ? sprite : [sprite];
+        // Followers are their own entities; the owner's symbol light override and bloom are for its own art.
+        if (followers.has(element.imageHash)) return parts;
+        const light = this.animState?.symbolLightOverrides.get(element.imageHash);
+        const lit = light === undefined ? parts : parts.map(part => ({ ...part, lightOverride: light }));
+        return this.animState?.blooms.has(element.imageHash) ? lit.flatMap(part => [bloomHalo(part, halos), part]) : lit;
+      }));
     const elements = frames[0].elements;
     const back: ResolvedSprite[] = [], front: ResolvedSprite[] = [];
-    for (const attachment of this.animState?.attachments ?? []) {
-      const fx = attachment.resolve?.(elements, this.mirrored);
-      if (fx) { back.push(...fx.back); front.push(...fx.front); }
-    }
     for (const fx of this.composites) {
-      if (fx.symbol !== undefined) continue;
+      if (fx.symbol !== undefined && !fx.finalOffset) continue;
       let matrix: Matrix2D = [1, 0, 0, 1, 0, 0];
-      if (fx.detached) {
+      if (fx.symbol !== undefined) {
+        // Follower:FollowSymbol takes the symbol's position only; SetFinalOffset draws it before or after the owner.
+        const anchor = elements.find(element => element.imageHash === fx.symbol);
+        if (!anchor) continue;
+        const [a, b, c, d, tx, ty] = anchor.matrix, [x, y] = fx.offset ?? [0, 0];
+        matrix = fx.noFaced ? [this.mirrored ? -1 : 1, 0, 0, 1, a * x + c * y + tx, b * x + d * y + ty] : followMatrix(anchor.matrix, fx.offset);
+      } else if (fx.detached) {
         this.visual.updateWorldMatrix(true, false);
         this.visual.worldToLocal(this.compositePoint.copy(fx.detached.position));
         matrix = [fx.detached.mirrored === this.mirrored ? 1 : -1, 0, 0, 1, this.compositePoint.x, this.compositePoint.y];
       }
-      front.push(...fx.sprites.map(sprite => ({ ...sprite, element: { ...sprite.element, matrix: composeSpriteMatrix(matrix, sprite.element.matrix) } })));
+      (fx.finalOffset! < 0 ? back : front).push(...fx.sprites.map(sprite => ({ ...sprite, element: { ...sprite.element, matrix: composeSpriteMatrix(matrix, sprite.element.matrix) } })));
     }
-    return [...back, ...sprites, ...front].map(sprite => ({ ...sprite, materials: sprite.materials.map(material => this.dressedMaterial(material)) }));
+    return [...back, ...sprites, ...front].map(sprite => ({ ...sprite, materials: sprite.materials.map(material => {
+      const dressed = this.dressedMaterial(material);
+      const halo = halos.get(sprite);
+      return halo ? this.bloomMaterial(dressed, halo) : dressed;
+    }) }));
   }
+
+  private bloomMaterial(base: THREE.MeshBasicMaterial, image: BuildImage): THREE.MeshBasicMaterial {
+    let halos = this.bloomMaterials.get(base);
+    if (!halos) this.bloomMaterials.set(base, halos = new Map());
+    let material = halos.get(image);
+    if (!material) halos.set(image, material = createBloomMaterial(base, image));
+    return material;
+  }
+
+  private resolveElement(element: AnimElement, followers: ReadonlyMap<number, readonly CompositeSpriteFrame[]>): ResolvedSprite | ResolvedSprite[] | undefined {
+    // Follower anchors can have no image in the owner's build. Resolve them before looking up body art.
+    const followed = followers.get(element.imageHash);
+    if (followed) return followed.flatMap(fx => fx.sprites.map(sprite => ({ ...sprite,
+      element: { ...sprite.element, matrix: composeSpriteMatrix(followMatrix(element.matrix, fx.offset), sprite.element.matrix) } })));
+    const declared = this.animState && resolveAnimStateSymbol(this.animState, element, this.animStateElapsed);
+    if (declared) return declared;
+    const override = this.overrides.get(element.imageHash);
+    if (override) {
+      const image = findImage(override.build, override.symbolHash, element.imageIndex);
+      return image ? { element, image, materials: override.materials } : undefined;
+    }
+    for (const override of [...this.buildOverrides.values()].reverse()) {
+      const image = findImage(override.build, element.imageHash, element.imageIndex);
+      if (image) return { element, image, materials: override.materials };
+    }
+    const skin = this.skin;
+    if (skin && !skin.baseSymbols.has(element.imageHash)
+      && (skin.symbols === undefined || skin.symbols.has(element.imageHash))) {
+      const image = findImage(skin.build, element.imageHash, element.imageIndex);
+      if (image) return { element, image, materials: skin.materials };
+    }
+    for (const source of this.artSource ? [this.artSource.build, ...this.artSource.fallbackBuilds ?? []] : [{ build: this.build, materials: this.materials }]) {
+      const image = findImage(source.build, element.imageHash, element.imageIndex);
+      if (image) return { element, image, materials: source.materials };
+    }
+    return undefined;
+  }
+}
+
+const BLOOM_PADDING = 12;
+
+/** The halo of a bloomed part: its image padded so the blur has room, drawn just behind it. */
+function bloomHalo(part: ResolvedSprite, halos: Map<ResolvedSprite, BuildImage>): ResolvedSprite {
+  const { image } = part;
+  const halo = { ...part, image: { ...image, width: image.width + BLOOM_PADDING * 2, height: image.height + BLOOM_PADDING * 2,
+    bbx: image.bbx! - BLOOM_PADDING, bby: image.bby! - BLOOM_PADDING } };
+  halos.set(halo, image);
+  return halo;
+}
+
+/** Local approximation of SetBloomEffectHandle: an additive blur of the part's own atlas art, bounded to its image. */
+function createBloomMaterial(base: THREE.MeshBasicMaterial, image: BuildImage): THREE.MeshBasicMaterial {
+  const material = base.clone();
+  material.name += ':bloom';
+  material.blending = THREE.AdditiveBlending;
+  material.opacity = 0.6;
+  material.alphaTest = 0.001;
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.hatBloomBounds = { value: new THREE.Vector4(
+      image.bbx! / image.canvasWidth!, image.bby! / image.canvasHeight!,
+      (image.bbx! + image.width) / image.canvasWidth!, (image.bby! + image.height) / image.canvasHeight!,
+    ) };
+    shader.uniforms.hatBloomStep = { value: new THREE.Vector2(BLOOM_PADDING / 2 / image.canvasWidth!, BLOOM_PADDING / 2 / image.canvasHeight!) };
+    shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `
+      #include <common>
+      uniform vec4 hatBloomBounds;
+      uniform vec2 hatBloomStep;
+    `).replace('#include <map_fragment>', `
+      vec4 halo = vec4(0.0);
+      float weights = 0.0;
+      for (int x = -2; x <= 2; x++) {
+        for (int y = -2; y <= 2; y++) {
+          vec2 delta = vec2(float(x), float(y));
+          vec2 uv = vMapUv + delta * hatBloomStep;
+          float weight = exp(-dot(delta, delta) * 0.5);
+          weights += weight;
+          if (all(greaterThanEqual(uv, hatBloomBounds.xy))
+            && all(lessThanEqual(uv, hatBloomBounds.zw))) {
+            vec4 texel = texture2D(map, uv);
+            halo += vec4(texel.rgb * texel.a, texel.a) * weight;
+          }
+        }
+      }
+      diffuseColor *= vec4(halo.rgb / max(halo.a, 0.0001), halo.a / weights);
+    `);
+  };
+  material.customProgramCacheKey = () => 'dst-hat-bloom-v1';
+  return material;
+}
+
+/** A followed symbol's transform moved by the follower's offset in that symbol's space. */
+function followMatrix(matrix: Matrix2D, offset: readonly [number, number] | undefined): Matrix2D {
+  return offset ? composeSpriteMatrix(matrix, [1, 0, 0, 1, offset[0], offset[1]]) : matrix;
 }
 
 /** A build symbol that can replace another symbol at runtime, with its own atlas materials. */

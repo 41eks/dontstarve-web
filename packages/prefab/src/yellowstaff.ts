@@ -4,8 +4,8 @@ import { WILSON_ACTION_TIMES } from '@dontstarve-web/stategraphs/SGwilson';
 import type { SpellCastDoer, SpellCastMap } from '@dontstarve-web/stategraphs/spellcaster';
 import * as THREE from 'three';
 import { SpellCaster } from '../../componets/src/spellcaster';
-import { handEquipmentVisual, type PrepareEquipmentVisual } from './equipmentVisual';
-import { GROUND_ITEM_DEFINITIONS, GroundItemAssets } from './groundItems';
+import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory, type EquipmentVisualItem } from './equipmentVisual';
+import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { PlaySound, PreloadSounds } from './sound';
 import { TILE_SIZE } from './tile';
 import { spawnLightEntity } from './localLight';
@@ -71,20 +71,10 @@ export function isLightStaff(itemId: string | null | undefined): itemId is Light
   return itemId === YELLOWSTAFF_ID || itemId === OPALSTAFF_ID;
 }
 export const YELLOWSTAFF_CAST_TIME = WILSON_ACTION_TIMES.cast;
-type StaffBuild = Awaited<ReturnType<GroundItemAssets['loadBuild']>>;
-export interface YellowStaffEquipment { readonly builds: readonly StaffBuild[]; readonly symbol: string; }
-
-export async function loadYellowStaffEquipment(assets: GroundItemAssets, skinId?: string): Promise<YellowStaffEquipment> {
-  return loadLightStaffEquipment(assets, YELLOWSTAFF_ID, skinId);
-}
-
-export async function loadLightStaffEquipment(assets: GroundItemAssets, itemId: StaffId, skinId?: string): Promise<YellowStaffEquipment> {
-  const skinArchive = skinId ? GROUND_ITEM_DEFINITIONS[itemId].skinArchives[skinId] : undefined;
-  if (skinId && !skinArchive) throw new Error(`Unknown ${itemId} skin: ${skinId}`);
-  const base = await assets.loadBuild('swap_staffs.zip');
-  const skin = skinArchive ? await assets.loadBuild(skinArchive) : undefined;
-  // staff.lua swaps `swap_<colour>staff`; the red staff's prefab id is firestaff.
-  return { builds: skin ? [skin, base] : [base], symbol: `swap_${itemId === 'firestaff' ? 'redstaff' : itemId}` };
+/** staff.lua onequip: `swap_<colour>staff` of swap_staffs, or the skin's; the red staff's prefab id is firestaff. */
+export function staffVisual(item: EquipmentVisualItem & { readonly prefab: StaffId }) {
+  const skin = skinArchive(item.prefab, GROUND_ITEM_DEFINITIONS[item.prefab].skinArchives, item.skinId);
+  return handEquipmentVisual(item, [...skin ? [skin] : [], 'swap_staffs'], `swap_${item.prefab === 'firestaff' ? 'redstaff' : item.prefab}`);
 }
 
 /** staff_castinglight.lua's expanding light: a non-persistent FX light entity parented to the caster. */
@@ -141,8 +131,4 @@ export class StaffCastingLight {
   }
 }
 
-/** Source prefab onequip/onunequip: prepared art is applied through the owner's AnimState. */
-export const prepareYellowstaffVisual: PrepareEquipmentVisual = async (assets, item) => {
-  const [equipment] = await Promise.all([loadLightStaffEquipment(assets, item.prefab as StaffId, item.skinId), PreloadSounds(item.prefab === 'greenstaff' ? 'dontstarve/wilson/use_gemstaff' : 'dontstarve/common/staffteleport')]);
-  return handEquipmentVisual(item, equipment.builds, equipment.symbol);
-};
+export const yellowstaffVisual: EquipmentVisualFactory = item => staffVisual({ ...item, prefab: item.prefab as StaffId });

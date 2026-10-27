@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { DstLightingRenderer } from '../../../src/dstLighting';
 import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
+import type { PrefabDisplay } from '../../display/src';
 import { GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { getLightStaffController, type LightStaffId } from '../../prefab/src/yellowstaff';
 import { SpellCastActionController } from '../../stategraphs/src/spellcaster';
@@ -60,7 +61,8 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   const failures: string[] = [];
   const skins = [undefined, ...Object.keys(GROUND_ITEM_DEFINITIONS[itemId].skinArchives)];
   for (const skin of skins) {
-    await animation.setCarryItem(itemId, skin);
+    animation.setCarryItem(itemId, skin);
+    await (player.userData.display as PrefabDisplay).artLoaded();
     const build = skin ? GROUND_ITEM_DEFINITIONS[itemId].skinArchives[skin].split('/').at(-1)!.replace('.zip', '') : 'swap_staffs';
     for (const facing of ['up', 'down', 'side'] as const) {
       for (const mirrored of [false, true]) {

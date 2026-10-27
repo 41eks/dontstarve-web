@@ -104,7 +104,7 @@ test('a ghost that haunts the multiplayer portal is resurrected there with a hea
   await page.evaluate(() => (window as any).ghostGame.stats.playerStats.health.set(0));
   await expect.poll(async () => (await player()).ghost, { timeout: 30_000 }).toBe(true);
   await expect.poll(async () => (await player()).state, { timeout: 15_000 }).toBe('idle');
-  // The slipperyfeet component follows health and ghost mode: gone while a ghost.
+  // CommonPlayerDeath removed the slipperyfeet component; CommonActualRez adds it back.
   expect(await player()).toMatchObject({ slippery: false });
 
   // A real left click on the portal: the death state disabled the controller and OnMakePlayerGhost enables it again.

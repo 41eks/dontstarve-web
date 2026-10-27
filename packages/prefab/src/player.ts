@@ -11,22 +11,22 @@ import {
 import { AnimState } from '@dontstarve-web/animation/animState';
 import { createSpriteFactory, type SpriteArtSource } from '@dontstarve-web/animation/sprite';
 import type { SymbolBuild } from '@dontstarve-web/animation/animState';
-import type { PrefabDisplay } from '@dontstarve-web/display';
+import type { FollowerFx, PrefabDisplay } from '@dontstarve-web/display';
 import { createRenderEffect, watchSignal, type ReadonlySignal } from '@dontstarve-web/signals';
 import { BufferedAction, WilsonStateGraph, type BufferedActionObject, type WilsonAction, type WilsonAnimationClip, type WilsonAnimationKey, type WilsonCombat, type WilsonFishingHost, type WilsonMovementState, type WilsonOneShotState, type WilsonSleepHost, type WilsonDeathHost, type WilsonRebirthHost } from '@dontstarve-web/stategraphs';
 import type { ActionAnimationController } from '@dontstarve-web/stategraphs/actionContext';
 import type * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { isAxeTool, type AxeTool } from './axe';
-import { prepareBackpackVisual } from './backpack';
+import { backpackVisual } from './backpack';
 import { BookFxController, type BookFxPrefab } from './book_fx';
 import { WILSON_EMOTES, type WilsonEmote, type WilsonEmoteDefinition } from './emotes';
-import { equipmentVisualLifecycle, type EquipmentVisualContext, type EquipmentVisualOwner } from './equipmentVisual';
+import type { EquipmentVisual, EquipmentVisualContext, EquipmentVisualOwner } from './equipmentVisual';
 import { isFarmHoeTool, type FarmHoeTool } from './farm_hoe';
 import { FISHING_SOUNDS } from './fishingrod';
 import { GroundItemAssets } from './groundItems';
 import { getHandEquipmentDefinition } from './handEquipment';
-import { HatEquipmentAssets, prepareHatVisual } from './hats';
+import { HatEquipmentAssets, hatVisual } from './hats';
 import { MiniMapEntity } from './minimapEntity';
 import { isPickaxeTool, type PickaxeTool } from './pickaxe';
 import { isPitchforkTool, type PitchforkTool } from './pitchfork';
@@ -79,16 +79,17 @@ export interface WilsonAnimationController extends ActionAnimationController {
   playPickup(): void;
   playDrop(onDrop: () => boolean, onCancel: () => void): boolean;
   setCrafting(crafting: boolean): void;
-  setCarryItem(item: WilsonCarryItem | null, skinId?: string): Promise<void>;
+  setCarryItem(item: WilsonCarryItem | null, skinId?: string): void;
   readonly AnimState: AnimState;
   readonly equipmentAssets: GroundItemAssets;
   readonly equipmentContext: EquipmentVisualContext;
   /** Action identity only; the equipped prefab applies its own art through AnimState. */
   setEquippedCarryItem(item: WilsonCarryItem | null): void;
-  setHat(itemId: string | null, skinId?: string): Promise<void>;
+  setHat(itemId: string | null, skinId?: string): void;
   /** Follower:FollowSymbol(owner.GUID, symbol, offsetX, offsetY): a node tracking the symbol, in the player's space. */
-  followSymbol(symbol: string, offsetX: number, offsetY: number): SymbolFollower;
-  setBackpack(equipped: boolean, skinId?: string): Promise<void>;
+  /** `fx` is drawn at the follower by the player's display, which loads its art. */
+  followSymbol(symbol: string, offsetX: number, offsetY: number, fx?: FollowerFx): SymbolFollower;
+  setBackpack(equipped: boolean, skinId?: string): void;
   /** The application's sleeper services for SGwilson's tent and wakeup states. */
   bindSleep(sleep: WilsonSleepHost | undefined): void;
   /** SGwilson's death state: DropAllItemsForDeath through the application's inventory. */
@@ -170,12 +171,11 @@ class WilsonController implements WilsonAnimationController {
   private equippedCarryItem: WilsonCarryItem | null = null;
   private carryItem: WilsonCarryItem | null = null;
   private carryKey = '';
-  private carryRequest = 0;
   readonly equipmentAssets: GroundItemAssets;
   readonly equipmentContext: EquipmentVisualContext;
   readonly AnimState: AnimState;
   private readonly visualOwner: EquipmentVisualOwner;
-  private handVisual?: ReturnType<typeof equipmentVisualLifecycle>;
+  private handVisual?: EquipmentVisual;
   private handReady = false;
   private readonly castingLight: StaffCastingLight;
   private animation!: Animation;
@@ -202,18 +202,17 @@ class WilsonController implements WilsonAnimationController {
   private soulHopHost?: WilsonSoulHopHost;
   private readonly portalSounds = new Set<SoundHandle>();
   private readonly hatAssets: HatEquipmentAssets;
-  private readonly sanityPercent?: ReadonlySignal<number>;
-  private headVisual?: ReturnType<typeof equipmentVisualLifecycle>;
+  private headVisual?: EquipmentVisual;
   private hatKey = '';
-  private bodyVisual?: ReturnType<typeof equipmentVisualLifecycle>;
+  private bodyVisual?: EquipmentVisual;
   private backpackKey = '';
   private readonly emoteAssets = new Map<string, Promise<EmoteAssets>>();
   private emote: ActiveEmote | null = null;
   private emoteRequest = 0;
   private emotePending = false;
   private uniqueItemAnimations: ParsedAnim | null = null;
-  /** Loaded builds by name, for AnimState:OverrideSymbol and AddOverrideBuild. */
-  private readonly symbolBuilds = new Map<string, CarryBuild>();
+  /** player_actions_uniqueitem's build, drawn for the unique-item clips' own symbols. */
+  private uniqueItemBuild?: CarryBuild;
   private readonly bookFx: BookFxController;
   private sleepHost?: WilsonSleepHost;
   private deathHost?: WilsonDeathHost;
@@ -244,12 +243,13 @@ class WilsonController implements WilsonAnimationController {
     this.equipmentAssets = new GroundItemAssets();
     this.AnimState = new AnimState();
     const appearance = watchSignal(this.AnimState.json, stop => this.cleanups.push(stop));
-    createRenderEffect(() => instance.sprite.setAnimState(appearance.get()));
+    // The AnimState names builds; the player's display loads them from the equipment assets.
+    createRenderEffect(() => instance.sprite.setAnimState(appearance.get(), this.equipmentAssets));
     this.visualOwner = { AnimState: this.AnimState, PushEvent: (name, data) => model.dispatchEvent({ type: name, data } as never) };
     for (const layer of ['ARM_carry', 'LANTERN_OVERLAY', 'HAT', 'HAIR_HAT', 'HEAD_HAT', 'HEAD_HAT_NOHELM', 'HEAD_HAT_HELM']) this.AnimState.Hide(layer);
     this.castingLight = new StaffCastingLight(model);
     this.hatAssets = new HatEquipmentAssets(assetBaseUrl);
-    this.sanityPercent = sanityPercent;
+
     this.equipmentContext = { owner: this.visualOwner, assets: this.equipmentAssets, hats: this.hatAssets, lightParent: model, sanityPercent };
     this.bookFx = new BookFxController(instance, this.fxScheduler, assetBaseUrl);
     const controller = this;
@@ -300,12 +300,10 @@ class WilsonController implements WilsonAnimationController {
       hideLayer: layer => this.AnimState.Hide(layer),
       clearOverrideSymbol: symbol => this.AnimState.ClearOverrideSymbol(symbol),
       spawnFx: (prefab, followSymbol) => this.bookFx.spawn(prefab, followSymbol),
-      overrideSymbol: (symbol, build, sourceSymbol) => this.overrideSymbol(symbol, build, sourceSymbol),
-      overrideItemSkinSymbol: (symbol, skinBuild, skinSymbol, build, sourceSymbol) => {
-        const skin = this.symbolBuilds.get(skinBuild);
-        if (skin?.build.symbols.has(smallHash(skinSymbol))) this.overrideSymbol(symbol, skinBuild, skinSymbol);
-        else this.overrideSymbol(symbol, build, sourceSymbol);
-      },
+      overrideSymbol: (symbol, build, sourceSymbol) => this.AnimState.OverrideSymbol(symbol, build, sourceSymbol),
+      // Item skin builds are dynamic/<skin>.zip; the skin's symbol is drawn when its build has it, else the stock one.
+      overrideItemSkinSymbol: (symbol, skinBuild, skinSymbol, build, sourceSymbol) =>
+        this.AnimState.OverrideItemSkinSymbol(symbol, `dynamic/${skinBuild}.zip`, skinSymbol, 'player', build, sourceSymbol),
       stopSound: cue => {
         if (cue === 'shave') { this.shaveSound?.stop(); this.shaveSound = undefined; return; }
         this.makeSound?.stop(); this.makeSound = undefined;
@@ -413,8 +411,6 @@ class WilsonController implements WilsonAnimationController {
       loadAnim('player_ghost_withhat.zip', this.assetBaseUrl),
       // amulet_rebirth: the resurrecting amulet's clip, FX build and worn art, ready before a haunt can reach it.
       loadAnim('player_amulet_resurrect.zip', this.assetBaseUrl),
-      this.loadSymbolBuild('player_amulet_resurrect.zip'),
-      this.loadSymbolBuild('torso_amulets.zip'),
       PreloadSounds('dontstarve/ghost/ghost_howl', 'dontstarve/common/rebirth_amulet_raise', 'dontstarve/common/rebirth_amulet_poof'),
     ]).then(([buildPackage, animations, amulet]) => {
       this.amuletAnimations = amulet;
@@ -470,9 +466,7 @@ class WilsonController implements WilsonAnimationController {
       book.castsound ?? 'dontstarve/common/book_spell', ...book.def?.layer_sound ? [book.def.layer_sound.sound] : []];
     const [animations] = await Promise.all([
       this.uniqueItemAnimations ?? this.equipmentAssets.loadAnimation(`${UNIQUE_ITEM_BUILD}.zip`),
-      this.loadSymbolBuild(`${UNIQUE_ITEM_BUILD}.zip`),
-      book.swap_build ? this.loadSymbolBuild(`${book.swap_build}.zip`) : undefined,
-      book.skinBuild ? this.loadSymbolBuild(`dynamic/${book.skinBuild}.zip`) : undefined,
+      this.loadUniqueItemBuild(),
       this.bookFx.prepare(...fx),
       PreloadSounds(...sounds as SoundEventPath[]),
     ]);
@@ -481,8 +475,7 @@ class WilsonController implements WilsonAnimationController {
   }
 
   playRead(book: BufferedActionObject, onRead: () => boolean): boolean {
-    if (this.stategraph.hasStateTag('busy') || !this.uniqueItemAnimations
-      || (book.swap_build && !this.symbolBuilds.has(book.swap_build))) return false;
+    if (this.stategraph.hasStateTag('busy') || !this.uniqueItemAnimations) return false;
     this.cancelEmote();
     return this.stategraph.pushBufferedAction(new BufferedAction('READ', onRead, undefined, { invobject: book }));
   }
@@ -492,12 +485,10 @@ class WilsonController implements WilsonAnimationController {
   get isPlayingInstrument(): boolean { return this.stategraph.isPerformingAction('PLAY'); }
 
   /** Load SGwilson's play_flute art and the flute loop before buffering the action. */
-  async prepareFlute(skinArchive?: string): Promise<void> {
+  async prepareFlute(): Promise<void> {
     const [animations] = await Promise.all([
       this.uniqueItemAnimations ?? this.equipmentAssets.loadAnimation(`${UNIQUE_ITEM_BUILD}.zip`),
-      this.loadSymbolBuild(`${UNIQUE_ITEM_BUILD}.zip`),
-      this.loadSymbolBuild('pan_flute.zip'),
-      skinArchive ? this.loadSymbolBuild(skinArchive) : undefined,
+      this.loadUniqueItemBuild(),
       PreloadSounds('dontstarve/wilson/flute_LP'),
     ]);
     this.uniqueItemAnimations = animations;
@@ -505,22 +496,15 @@ class WilsonController implements WilsonAnimationController {
   }
 
   playFlute(instrument: BufferedActionObject, onPlay: () => boolean): boolean {
-    if (this.stategraph.hasStateTag('busy') || !this.uniqueItemAnimations || !this.symbolBuilds.has('pan_flute')) return false;
+    if (this.stategraph.hasStateTag('busy') || !this.uniqueItemAnimations) return false;
     this.cancelEmote();
     return this.stategraph.pushBufferedAction(new BufferedAction('PLAY', onPlay, undefined, { invobject: instrument }));
   }
 
   cancelPlay(): void { this.stategraph.cancelAction('PLAY'); }
 
-  private async loadSymbolBuild(archive: string): Promise<void> {
-    const build = await this.equipmentAssets.loadBuild(archive);
-    this.symbolBuilds.set(build.build.name.toLowerCase(), build);
-    this.AnimState.RegisterBuild(build.build.name.toLowerCase(), build);
-  }
-
-  private overrideSymbol(symbol: string, build: string, sourceSymbol: string): void {
-    const source = this.symbolBuilds.get(build);
-    this.AnimState.OverrideSymbol(symbol, source ?? build, sourceSymbol);
+  private async loadUniqueItemBuild(): Promise<void> {
+    this.uniqueItemBuild ??= await this.equipmentAssets.loadBuild(`${UNIQUE_ITEM_BUILD}.zip`);
   }
 
   get currentEmote(): WilsonEmote | null { return this.emote?.id ?? null; }
@@ -635,14 +619,13 @@ class WilsonController implements WilsonAnimationController {
   cancelChop(): void { this.stategraph.cancelAction('CHOP'); }
   cancelHammer(): void { this.stategraph.cancelAction('HAMMER'); }
 
-  /** Load the catchfish state's fish01 swap build and the fishing sounds before FISH is buffered. */
+  /** The fishing sounds, decoded before FISH is buffered; the catchfish state names its fish01 build. */
   async prepareFishing(): Promise<void> {
-    await Promise.all([this.symbolBuilds.has('fish01') ? undefined : this.loadSymbolBuild('fish01.zip'), PreloadSounds(...FISHING_SOUNDS)]);
+    await PreloadSounds(...FISHING_SOUNDS);
   }
 
   playFish(onFish: () => void): boolean {
-    return this.symbolBuilds.has('fish01')
-      && this.startAction('FISH', onFish, this.carryItem === 'fishingrod' && this.handReady);
+    return this.startAction('FISH', onFish, this.carryItem === 'fishingrod' && this.handReady);
   }
   cancelFishing(): void { this.stategraph.cancelAction('FISH'); }
 
@@ -689,48 +672,39 @@ class WilsonController implements WilsonAnimationController {
   }
 
   /** Standalone preview adapter: use the same prefab equip/unequip functions as live inventory. */
-  async setCarryItem(item: WilsonCarryItem | null, skinId?: string): Promise<void> {
+  setCarryItem(item: WilsonCarryItem | null, skinId?: string): void {
     const key = item === null ? '' : `${item}:${skinId ?? ''}`;
-    if (key === this.carryKey) return this.handVisual?.ready;
+    if (key === this.carryKey) return;
     this.carryKey = key;
-    const request = ++this.carryRequest;
     this.handVisual?.onunequip(); this.handVisual = undefined;
     this.setEquippedCarryItem(item);
-    this.handReady = false;
     if (!item) return;
-    const definition = getHandEquipmentDefinition(item)!.definition;
-    const lifecycle = equipmentVisualLifecycle(() => definition.prepareVisual(this.equipmentAssets, { id: 'preview:hand', prefab: item, skinId }), this.visualOwner);
-    this.handVisual = lifecycle;
-    try { await lifecycle.ready; if (request === this.carryRequest) this.handReady = true; }
-    catch (error) { if (request === this.carryRequest) { this.carryKey = ''; throw error; } }
+    this.handVisual = getHandEquipmentDefinition(item)!.definition.visual({ id: 'preview:hand', prefab: item, skinId });
+    this.handVisual.onequip(this.visualOwner);
   }
 
-  async setHat(itemId: string | null, skinId?: string): Promise<void> {
+  setHat(itemId: string | null, skinId?: string): void {
     const key = itemId === null ? '' : `${itemId}:${skinId ?? ''}`;
-    if (key === this.hatKey) return this.headVisual?.ready;
+    if (key === this.hatKey) return;
     this.hatKey = key;
     this.headVisual?.onunequip(); this.headVisual = undefined;
     if (!itemId) return;
-    const lifecycle = equipmentVisualLifecycle(() => prepareHatVisual(this.hatAssets,
-      { id: 'preview:head', prefab: itemId, skinId }, this.model, this.sanityPercent), this.visualOwner);
-    this.headVisual = lifecycle;
-    try { await lifecycle.ready; } catch (error) { if (this.headVisual === lifecycle) { this.hatKey = ''; throw error; } }
+    this.headVisual = hatVisual({ id: 'preview:head', prefab: itemId, skinId }, this.equipmentContext);
+    this.headVisual.onequip(this.visualOwner);
   }
 
-  async setBackpack(equipped: boolean, skinId?: string): Promise<void> {
+  setBackpack(equipped: boolean, skinId?: string): void {
     const key = equipped ? `backpack:${skinId ?? ''}` : '';
-    if (key === this.backpackKey) return this.bodyVisual?.ready;
+    if (key === this.backpackKey) return;
     this.backpackKey = key;
     this.bodyVisual?.onunequip(); this.bodyVisual = undefined;
     if (!equipped) return;
-    const lifecycle = equipmentVisualLifecycle(() => prepareBackpackVisual(this.equipmentAssets,
-      { id: 'preview:body', prefab: 'backpack', skinId }), this.visualOwner);
-    this.bodyVisual = lifecycle;
-    try { await lifecycle.ready; } catch (error) { if (this.bodyVisual === lifecycle) { this.backpackKey = ''; throw error; } }
+    this.bodyVisual = backpackVisual({ id: 'preview:body', prefab: 'backpack', skinId });
+    this.bodyVisual.onequip(this.visualOwner);
   }
 
-  followSymbol(symbol: string, offsetX: number, offsetY: number): SymbolFollower {
-    return this.instance.sprite.followSymbol(symbol, offsetX, offsetY);
+  followSymbol(symbol: string, offsetX: number, offsetY: number, fx?: FollowerFx): SymbolFollower {
+    return this.instance.sprite.followSymbol(symbol, offsetX, offsetY, fx);
   }
 
   private refreshFrame(): void { this.instance.sprite.update(0); }
@@ -783,7 +757,7 @@ class WilsonController implements WilsonAnimationController {
     this.animation = candidates.find((animation) => animation.facing === facing) ??
       candidates.find((animation) => (animation.facing & facing) !== 0) ?? candidates[0];
     if (!this.animation) throw new Error(`Wilson animation ${this.clipName} is unavailable`);
-    const fallbackBuilds = [this.symbolBuilds.get(UNIQUE_ITEM_BUILD), this.emote?.props].filter((build): build is CarryBuild => build !== undefined);
+    const fallbackBuilds = [this.uniqueItemBuild, this.emote?.props].filter((build): build is CarryBuild => build !== undefined);
     if (!this.artSource || this.artSource.animations !== parsed || this.artSource.build.build !== this.build
       || fallbackBuilds.length !== (this.artSource.fallbackBuilds?.length ?? 0)
       || fallbackBuilds.some((build, index) => build !== this.artSource!.fallbackBuilds?.[index])) {
@@ -812,7 +786,7 @@ class WilsonController implements WilsonAnimationController {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
-    ++this.emoteRequest; ++this.carryRequest;
+    ++this.emoteRequest;
     this.stategraph.dispose();
     this.handVisual?.onunequip(); this.headVisual?.onunequip(); this.bodyVisual?.onunequip();
     this.cleanups.splice(0).forEach(stop => stop());

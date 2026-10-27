@@ -1,12 +1,5 @@
-import {
-  findImage, smallHash, type AnimElement, type Matrix2D, type ResolvedSprite,
-} from '@dontstarve-web/animation/animationAssets';
-import {
-  bloomPadding, compose, HatArtAssets, resolveHatSprites,
-  type HatEquipment as ArtHatEquipment,
-  type HatArtDefinition,
-  type HatEquipMode,
-} from '@dontstarve-web/animation/hatAssets';
+import type { AnimStateArt } from '@dontstarve-web/animation/animState';
+import { HatArtAssets, type HatArtDefinition, type HatEquipMode } from '@dontstarve-web/animation/hatAssets';
 import {
   createAnimatedSpriteSource, loadBuildOverride,
   type AnimatedSpriteFactory, type AnimatedSpriteSourceOptions, type LoadedBuildOverride,
@@ -17,14 +10,13 @@ import * as THREE from 'three';
 import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
 import catalog from './hats.json' with { type: 'json' };
 import { bindResidentGroundItem } from './groundItemLifecycle';
-import { createPrefabEntity } from './prefabInstance';
+import { createPrefabEntity, prefabInstance } from './prefabInstance';
+import { AlterguardianHatEquipped } from './alterguardian_hat_equipped';
 import { spawnLightEntity, type PrefabLocalLight } from './localLight';
 import { TILE_SIZE } from './tile';
 import { ARMOR_DREADSTONEHAT, DREADSTONEHAT_ID, configureDreadstoneHatEntity } from './dreadstonehat';
 
 export type { HatEquipMode };
-export type HatEquipment = ArtHatEquipment<HatDefinition>;
-export { resolveHatSprites };
 
 export interface HatDefinition extends HatArtDefinition {
   readonly name: string;
@@ -89,48 +81,60 @@ export const HAT_RECIPES: Readonly<Record<string, InventoryRecipeDefinition>> = 
   }),
 );
 
-/** One cache per player; loads only hats actually equipped and shares atlas materials. */
-export class HatEquipmentAssets extends HatArtAssets<HatDefinition> {
-  constructor(assetBaseUrl: string) { super(assetBaseUrl, HAT_DEFINITIONS); }
+/** One cache per player: the sprite sources of the entities worn hats spawn. */
+export class HatEquipmentAssets extends HatArtAssets {}
+
+export interface HatActivationOptions {
+  readonly assets: HatEquipmentAssets;
+  readonly sanityPercent?: ReadonlySignal<number>;
+  /** The owner's art source, where the layers' display loads the skin build they name. */
+  readonly art?: AnimStateArt;
+  /** The worn swap_hat is hidden while the layers show and until the 8-frame restore. */
+  onSwapHatHidden?(hidden: boolean): void;
 }
 
-/** hats.lua activation and alterguardian_hat_equipped.lua's two NoFaced layers. */
+/** hats.lua alterguardian_activate / alterguardian_deactivate: the two alterguardian_hat_equipped layers and the light. */
 export class HatActivationController {
   private readonly owner: THREE.Object3D;
+  private readonly options: HatActivationOptions;
   private removeLight: (() => void) | null = null;
-  private readonly hat = createSignal<HatEquipment | null>(null);
+  private readonly hat = createSignal<{ readonly definition: HatDefinition; readonly skinId?: string } | null>(null);
   /** Derived from the equipped hat's threshold and the owner's sanity ratio (hats.lua's 85% boundary). */
   readonly activated: ReadonlySignal<boolean>;
   private readonly activatedMemo: Memo<boolean>;
   private readonly stopActivated: () => void;
   private stopSanity?: () => void;
   private active = false;
-  private deactivating = false;
-  private elapsed = 0;
+  private hidden = false;
+  private front: AlterguardianHatEquipped | undefined;
+  private back: AlterguardianHatEquipped | undefined;
+  /** Seconds since deactivation, until the 8-frame task restores the swap_hat. */
+  private restoring: number | undefined;
 
-  constructor(owner: THREE.Object3D, sanityPercent?: ReadonlySignal<number>) {
+  constructor(owner: THREE.Object3D, options: HatActivationOptions) {
     this.owner = owner;
-    const sanity = sanityPercent && watchSignal(sanityPercent, stop => { this.stopSanity = stop; });
+    this.options = options;
+    const sanity = options.sanityPercent && watchSignal(options.sanityPercent, stop => { this.stopSanity = stop; });
     this.activatedMemo = createMemo(() => {
       const percent = sanity?.get() ?? 1;
-      const hat = this.hat.get();
-      const config = hat?.definition.equip.activated;
-      return !!hat?.activated && !!config && percent > config.sanityThreshold;
+      const config = this.hat.get()?.definition.equip.activated;
+      return !!config && percent > config.sanityThreshold;
     });
     this.activated = readonlySignal(this.activatedMemo);
     this.stopActivated = this.activatedMemo.subscribe(active => this.apply(active));
   }
 
-  get isAnimating(): boolean { return this.active || this.deactivating; }
-  get hidesSwapHat(): boolean {
-    return this.active || (this.deactivating && this.elapsed < 8 / 30);
+  /** The swap_hat is redrawn each frame until it is restored. */
+  get isAnimating(): boolean { return this.restoring !== undefined; }
+  get hidesSwapHat(): boolean { return this.active || this.restoring !== undefined; }
+  /** The layers currently following the owner; a deactivated pair plays out on its own. */
+  get layers(): { readonly front?: AlterguardianHatEquipped; readonly back?: AlterguardianHatEquipped } {
+    return { front: this.front, back: this.back };
   }
 
-  setHat(hat: HatEquipment | null): void {
+  setHat(hat: { readonly definition: HatDefinition; readonly skinId?: string } | null): void {
+    this.removeAll();
     this.hat.set(hat);
-    this.active = false;
-    this.deactivating = false;
-    this.elapsed = 0;
     this.apply(this.activatedMemo.peek());
   }
 
@@ -138,72 +142,66 @@ export class HatActivationController {
     this.stopActivated();
     if (this.stopSanity) this.stopSanity();
     else this.activatedMemo.dispose();
-    this.removeLight?.(); this.removeLight = null;
+    this.removeAll();
   }
 
   update(dt: number): void {
-    if (!this.isAnimating) return;
-    this.elapsed += dt;
-    if (this.deactivating) {
-      const clip = this.hat.peek()!.activated!.animations.animations.find(({ name }) => name === 'activate_pst')!;
-      if (this.elapsed >= clip.frames.length / clip.frameRate) this.deactivating = false;
-    }
+    if (this.restoring === undefined) return;
+    this.restoring += dt;
+    if (this.restoring >= 8 / 30) this.restoring = undefined;
+    this.syncHidden();
   }
 
-  resolve(anchor: AnimElement, mirrored: boolean): { back: ResolvedSprite[]; front: ResolvedSprite[] } {
-    const back: ResolvedSprite[] = [];
-    const front: ResolvedSprite[] = [];
-    const fx = this.hat.peek()?.activated;
-    if (!fx || !this.isAnimating) return { back, front };
-    const clips = fx.animations.animations;
-    const pre = clips.find(({ name }) => name === 'activate_pre')!;
-    const preDuration = pre.frames.length / pre.frameRate;
-    const clip = clips.find(({ name }) => name === (this.active
-      ? this.elapsed < preDuration ? 'activate_pre' : 'activate_loop'
-      : 'activate_pst'))!;
-    const time = this.active && this.elapsed >= preDuration ? this.elapsed - preDuration : this.elapsed;
-    const index = Math.floor((time + 1e-8) * clip.frameRate);
-    const frame = clip.frames[clip.name === 'activate_loop'
-      ? index % clip.frames.length : Math.min(index, clip.frames.length - 1)];
-    // FollowSymbol supplies the hair position, but SetNoFaced keeps the orbit
-    // independent of head rotation, facing and the player's mirrored scale.
-    const anchorMatrix: Matrix2D = [mirrored ? -1 : 1, 0, 0, 1, anchor.matrix[4], anchor.matrix[5]];
-    for (const element of [...frame.elements].sort((a, b) => b.z - a.z)) {
-      const hash = element.imageHash;
-      const skinnable = hash === smallHash('p4_piece') || hash === smallHash('fx_glow');
-      const source = skinnable ? fx.builds.find(({ build }) => build.symbols.has(hash)) : fx.builds.at(-1);
-      if (!source) continue;
-      // No seed contents: flame_swap/outline have no source build images.
-      const image = findImage(source.build, hash, element.imageIndex);
-      if (!image) continue;
-      const sprites = element.layerHash === smallHash('back') ? back : front;
-      const transformed = { ...element, matrix: compose(anchorMatrix, element.matrix) };
-      if (hash === smallHash('p4_piece')) {
-        sprites.push({ element: transformed, image: { ...image,
-          width: image.width + bloomPadding * 2, height: image.height + bloomPadding * 2,
-          bbx: image.bbx! - bloomPadding, bby: image.bby! - bloomPadding,
-        }, materials: fx.bloomMaterials.get(source)! });
-      }
-      sprites.push({ element: transformed, image,
-        materials: hash === smallHash('fx_glow') ? fx.glowMaterials.get(source)! : source.materials });
-    }
-    return { back, front };
+  private syncHidden(): void {
+    if (this.hidesSwapHat === this.hidden) return;
+    this.hidden = this.hidesSwapHat;
+    this.options.onSwapHatHidden?.(this.hidden);
   }
 
   private apply(active: boolean): void {
-    const config = this.hat.peek()?.definition.equip.activated;
-    if (active !== this.active) {
-      this.deactivating = this.active && !active;
-      this.active = active;
-      this.elapsed = 0;
+    if (active === this.active) return;
+    this.active = active;
+    if (active) this.activate(); else this.deactivate();
+    this.syncHidden();
+  }
+
+  private activate(): void {
+    const { definition, skinId } = this.hat.peek()!;
+    const config = definition.equip.activated!;
+    const owner = prefabInstance(this.owner);
+    if (!owner) throw new Error('The crown owner has no entity');
+    this.restoring = undefined;
+    const skin = skinId === undefined ? undefined : definition.skinArchives[skinId];
+    const assets = this.options.assets;
+    const art = { archive: config.archive, peekFactory: (archive: string) => assets.peekFactory(archive), loadFactory: (archive: string) => assets.loadFactory(archive),
+      ...skin && this.options.art ? { skin: { archive: skin, art: this.options.art } } : {} };
+    for (const isFront of [true, false]) {
+      const fx = new AlterguardianHatEquipped(art, owner);
+      fx.OnActivated(isFront);
+      fx.SetSkin();
+      if (isFront) this.front = fx; else this.back = fx;
     }
-    // hats.lua spawns alterguardianhatlight under the owner on activation and removes it on deactivation.
+    // alterguardianhatlight is parented to the owner.
+    const light = spawnLightEntity(this.owner, 'alterguardianhatlight');
+    light.instance.light.set({ ...config.light, radius: config.light.radius * (TILE_SIZE / 4) });
+    this.removeLight = light.remove;
+  }
+
+  private deactivate(): void {
     this.removeLight?.(); this.removeLight = null;
-    if (active && config) {
-      const light = spawnLightEntity(this.owner, 'alterguardianhatlight');
-      light.instance.light.set({ ...config.light, radius: config.light.radius * (TILE_SIZE / 4) });
-      this.removeLight = light.remove;
-    }
+    if (this.front) this.restoring = 0;
+    this.front?.OnDeactivated(); this.front = undefined;
+    this.back?.OnDeactivated(); this.back = undefined;
+  }
+
+  /** alterguardian_onunequip: the light and both layers go at once. */
+  private removeAll(): void {
+    this.active = false;
+    this.restoring = undefined;
+    this.removeLight?.(); this.removeLight = null;
+    this.front?.Remove(); this.front = undefined;
+    this.back?.Remove(); this.back = undefined;
+    this.syncHidden();
   }
 }
 
@@ -257,28 +255,29 @@ export function createHatGroundFactory(context: GroundPrefabContext): GroundItem
   };
 }
 
-import type { EquipmentVisual, EquipmentVisualItem, EquipmentVisualOwner } from './equipmentVisual';
 
-/** hats.lua's simple/opentop/fullhelm equip branches and their owned follower FX. */
-export async function prepareHatVisual(
-  assets: HatEquipmentAssets, item: EquipmentVisualItem, lightParent: THREE.Object3D,
-  sanityPercent?: ReadonlySignal<number>,
-): Promise<EquipmentVisual> {
-  const hat = await assets.load(item.prefab, item.skinId);
+import { skinArchive, wornEquipmentLifecycle, type EquipmentVisual, type EquipmentVisualContext, type EquipmentVisualItem, type EquipmentVisualOwner } from './equipmentVisual';
+
+/** hats.lua's simple/opentop/fullhelm equip branches and their owned follower FX; builds are named for the owner's display. */
+export function hatVisual(item: EquipmentVisualItem, context: Pick<EquipmentVisualContext, 'assets' | 'hats' | 'lightParent' | 'sanityPercent'>): EquipmentVisual {
+  const definition = Object.hasOwn(HAT_DEFINITIONS, item.prefab) ? HAT_DEFINITIONS[item.prefab] : undefined;
+  if (!definition) throw new Error(`Unknown hat: ${item.prefab}`);
+  const skin = skinArchive(item.prefab, definition.skinArchives, item.skinId);
+  const mode = (item.skinId !== undefined ? definition.skinEquipModes[item.skinId] : undefined) ?? definition.equip.mode;
+  const symbol = mode === 'fullhelm' ? 'headbase_hat' : 'swap_hat';
+  const follow = definition.equip.follow;
+  const builds = [...skin ? [skin] : [], definition.archive, ...follow?.extraBuilds ?? []];
   let owner: EquipmentVisualOwner | undefined;
   const stops: (() => void)[] = [];
   let activation: HatActivationController | undefined;
-  let elapsed = 0;
-  const mode = hat.definition.equip.mode;
-  const symbol = mode === 'fullhelm' ? 'headbase_hat' : 'swap_hat';
   return {
     onequip(equipper) {
       owner = equipper;
       const anim = owner.AnimState;
       if (item.skinId) {
         owner.PushEvent('equipskinneditem', item.skinId);
-        anim.OverrideItemSkinSymbol(symbol, hat.builds, hat.definition.equip.symbol, item.id);
-      } else anim.OverrideSymbol(symbol, hat.builds, hat.definition.equip.symbol);
+        anim.OverrideItemSkinSymbol(symbol, builds, definition.equip.symbol, item.id);
+      } else anim.OverrideSymbol(symbol, builds, definition.equip.symbol);
       if (mode !== 'fullhelm') anim.ClearOverrideSymbol('headbase_hat');
       for (const layer of ['HAT', 'HAIR_HAT', 'HAIR_NOHAT', 'HAIR', 'HEAD', 'HEAD_HAT', 'HEAD_HAT_NOHELM', 'HEAD_HAT_HELM']) {
         const visible = layer === 'HAT' ? mode !== 'fullhelm'
@@ -289,19 +288,16 @@ export async function prepareHatVisual(
         if (visible) anim.Show(layer); else anim.Hide(layer);
       }
       if (mode === 'fullhelm') for (const name of ['face', 'swap_face', 'beard', 'cheeks']) anim.HideSymbol(name);
-      activation = new HatActivationController(lightParent, sanityPercent);
-      activation.setHat(hat);
-      if (hat.definition.equip.follow || hat.activated) {
-        stops.push(anim.FollowSymbol(symbol, element => activation!.hidesSwapHat ? [] : resolveHatSprites(hat, element, elapsed)));
+      // The hat's own animation follows the symbol, drawn from its bank by the owner's display.
+      if (follow) stops.push(anim.FollowSymbolAnimation(symbol, { bank: definition.archive, animation: follow.animation, builds, symbols: follow.symbols }));
+      if (definition.equip.activated) {
+        const current = activation = new HatActivationController(context.lightParent, {
+          assets: context.hats, sanityPercent: context.sanityPercent, art: context.assets,
+          onSwapHatHidden: hidden => { if (hidden) anim.HideSymbol(symbol); else anim.ShowSymbol(symbol); },
+        });
+        current.setHat({ definition, skinId: item.skinId });
+        stops.push(anim.AddAttachment({ get isAnimating() { return current.isAnimating; }, update(dt) { current.update(dt); } }));
       }
-      stops.push(anim.AddAttachment({
-        get isAnimating() { return !!hat.definition.equip.follow || activation!.isAnimating; },
-        update(dt) { elapsed += dt; activation!.update(dt); },
-        resolve(elements, mirrored) {
-          const anchor = elements.find(element => element.imageHash === smallHash(hat.definition.equip.activated?.symbol ?? 'hair'));
-          return anchor ? activation!.resolve(anchor, mirrored) : { back: [], front: [] };
-        },
-      }));
     },
     onunequip() {
       if (!owner) return;
@@ -320,7 +316,6 @@ export async function prepareHatVisual(
   };
 }
 
-import { preparedEquipmentLifecycle, type EquipmentVisualContext } from './equipmentVisual';
 export function createHatEquipmentLifecycle(item: EquipmentVisualItem, context: EquipmentVisualContext) {
-  return preparedEquipmentLifecycle(() => prepareHatVisual(context.hats, item, context.lightParent, context.sanityPercent), context);
+  return wornEquipmentLifecycle(hatVisual(item, context), context);
 }

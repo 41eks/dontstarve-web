@@ -24,9 +24,11 @@ it('loads the Wortox build with shared player animations and renders every facin
   expect(urls).toContain('/dst/data/anim/dynamic/wortox.zip');
   expect(urls).toContain('/dst/data/anim/dynamic/wortox.dyn');
   expect(urls).not.toContain('/dst/data/anim/wilson.zip');
-  await animation.setHat('strawhat');
-  await animation.setCarryItem('torch');
+  animation.setHat('strawhat');
+  animation.setCarryItem('torch');
   const mesh = player.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
+  // The player's display loads the hat and torch builds the prefabs name.
+  await vi.waitFor(() => expect(mesh.material.some((material) => material.name === 'ground:hat_straw')).toBe(true));
   const visual = mesh.parent!;
   for (const facing of ['up', 'down', 'side'] as const) {
     for (const mirrored of [false, true]) {
@@ -35,7 +37,7 @@ it('loads the Wortox build with shared player animations and renders every facin
       animation.update(1 / 30);
       expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
       expect(Array.from(mesh.geometry.getAttribute('position').array).every(Number.isFinite)).toBe(true);
-      expect(mesh.material.some((material) => material.name.startsWith('hat:'))).toBe(true);
+      expect(mesh.material.some((material) => material.name === 'ground:hat_straw')).toBe(true);
       expect(mesh.material.every((material) => material.forceSinglePass)).toBe(true);
       expect(visual.children).toHaveLength(1);
     }

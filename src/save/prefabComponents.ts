@@ -430,6 +430,14 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
       if (rod.charged !== true) fail(`${p}.charged`, 'expected true');
       components.lightningrod = { charged: true, chargeleft: number(rod.chargeleft, `${p}.chargeleft`, Number.MIN_VALUE, 3) };
     }
+    if (keys.includes('firepit') && c.firepit !== undefined) {
+      const p = `${path}.firepit`, firepit = object(c.firepit, p, ['fueled', 'queued_charcoal']);
+      if (firepit.queued_charcoal !== undefined && firepit.queued_charcoal !== true) fail(`${p}.queued_charcoal`, 'expected true');
+      const fueled = firepit.fueled === undefined ? undefined : object(firepit.fueled, `${p}.fueled`, ['fuel']);
+      // fueled.lua OnSave omits a full pit; FIREPIT_FUEL_MAX is 360.
+      components.firepit = { ...(fueled ? { fueled: { fuel: number(fueled.fuel, `${p}.fueled.fuel`, 0, 360) } } : {}),
+        ...(firepit.queued_charcoal ? { queued_charcoal: true as const } : {}) };
+    }
     if (keys.includes('moonbase') && c.moonbase !== undefined) {
       const p = `${path}.moonbase`, moonbase = object(c.moonbase, p, ['staff', 'timer']);
       components.moonbase = {};

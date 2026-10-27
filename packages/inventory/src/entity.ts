@@ -7,6 +7,8 @@ import { InventoryItem } from '../../componets/src/inventoryitem';
 import { MiniMapEntity } from '../../componets/src/minimapentity';
 import { Equippable } from '../../componets/src/equippable';
 import { Perishable, type PerishWorld } from '../../componets/src/perishable';
+import { ComponentTimer } from '../../componets/src/timer';
+import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { EventEmitter } from '@dontstarve-web/signals';
 import { Vector3 } from 'three';
 import type { Fuel, FuelItem } from '../../componets/src/fuel';
@@ -65,10 +67,68 @@ export class FueledComponent {
   private acceptingFuel = false;
   private ontakefuel?: (inst: ItemEntity, fuelvalue: number) => void;
   private readonly inst: ItemEntity;
+  /** fueled.lua's consuming task, on the game time of the world the item is bound to. */
+  private consuming?: { readonly scheduler: GameTimeScheduler; readonly task: ComponentTimer; settledAt: number };
+  /** The consumer while consuming, including before the item's world is bound. */
+  private onupdate?: (dt: number) => void;
+  private readonly taskState = createSignal<ComponentTimer | undefined>(undefined);
+  /** The consuming task's timer, while consuming in a world. */
+  readonly task = readonlySignal(this.taskState);
+  period = 1;
   constructor(inst: ItemEntity, remaining?: number) {
     this.inst = inst;
     this.state = createSignal(remaining);
     this.fuel = readonlySignal(this.state);
+  }
+  get isConsuming(): boolean { return this.onupdate !== undefined; }
+  /**
+   * fueled.lua StartConsuming: DoPeriodicTask(period, OnDoUpdate) on the item's game time. Each run reports the game
+   * seconds since the last settlement to `onupdate`, which consumes them. The task starts once the item's world is bound.
+   */
+  StartConsuming(onupdate: (dt: number) => void): void {
+    if (this.onupdate || this.inst.isRemoved) return;
+    this.onupdate = onupdate;
+    this.startTask();
+  }
+  /** The item's world was bound or replaced: consumption continues on its game time. */
+  OnWorldBound(): void {
+    const scheduler = this.inst.components.perishable.scheduler;
+    if (!this.onupdate || this.consuming?.scheduler === scheduler) return;
+    this.Settle();
+    this.stopTask();
+    this.startTask();
+  }
+  private startTask(): void {
+    const scheduler = this.inst.components.perishable.scheduler;
+    if (!scheduler || this.consuming) return;
+    const consuming = { scheduler, settledAt: scheduler.now, task: new ComponentTimer(scheduler, () => {
+      if (this.consuming !== consuming) return;
+      consuming.task.start(this.period);
+      this.Settle();
+    }) };
+    this.consuming = consuming;
+    this.taskState.set(consuming.task);
+    consuming.task.start(this.period);
+  }
+  private stopTask(): void {
+    this.consuming?.task.stop();
+    this.consuming = undefined;
+    this.taskState.set(undefined);
+  }
+  /** Consume the part of the current period that has passed, before saving, transferring or stopping. */
+  Settle(): void {
+    const consuming = this.consuming, onupdate = this.onupdate;
+    if (!consuming || !onupdate) return;
+    const dt = consuming.scheduler.now - consuming.settledAt;
+    // Settle first: consumption may remove the item and stop consuming.
+    consuming.settledAt = consuming.scheduler.now;
+    if (dt > 0) onupdate(dt);
+  }
+  /** fueled.lua StopConsuming, after settling the elapsed part of the period. */
+  StopConsuming(): void {
+    this.Settle();
+    this.onupdate = undefined;
+    this.stopTask();
   }
   get fueltype(): string { return this.type; }
   set fueltype(value: string) {
@@ -109,6 +169,7 @@ export class FueledComponent {
     this.maximum.set(maximum);
   }
   dispose(): void {
+    this.StopConsuming();
     this.inst.removeTag(`${this.type}_fueled`);
     this.ontakefuel = undefined;
     this.percent.dispose();
@@ -252,6 +313,11 @@ export class ItemEntity {
   private savedTemperature?: TemperatureSaveData;
   AddTemperature(): Temperature {
     return this.components.temperature ??= this.component('temperature', () => new Temperature(this, this.temperatureWorld, this.savedTemperature));
+  }
+  /** perishable.lua's world, whose game-time scheduler also runs this item's fueled task. */
+  BindPerishWorld(world: PerishWorld): void {
+    this.components.perishable.BindWorld(world);
+    this.components.fueled.OnWorldBound();
   }
   BindTemperatureWorld(world: TemperatureWorld): void {
     this.temperatureWorld = world;
@@ -513,7 +579,7 @@ export class ItemEntityRegistry {
   bindPerishWorld(world: PerishWorld): void {
     this.perishWorld = world;
     for (const entity of this.values()) {
-      entity.components.perishable.BindWorld(world);
+      entity.BindPerishWorld(world);
       for (const slot of entity.components.container?.slots ?? []) {
         const child = slot.getEntity();
         if (child) this.adopt(child);
@@ -541,7 +607,7 @@ export class ItemEntityRegistry {
   adopt(entity: ItemEntity): void {
     const existing = this.get(entity.id);
     if (entity.isRemoved || (existing && existing !== entity)) throw new Error(`Invalid item entity: ${entity.id}`);
-    if (this.perishWorld) entity.components.perishable.BindWorld(this.perishWorld);
+    if (this.perishWorld) entity.BindPerishWorld(this.perishWorld);
     if (this.temperatureWorld) entity.BindTemperatureWorld(this.temperatureWorld);
     this.register(entity);
     for (const slot of entity.components.container?.slots ?? []) {

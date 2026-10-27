@@ -30,11 +30,13 @@ import { UpdateSoundListener } from '@dontstarve-web/prefab/sound';
 import { turfMap } from './building';
 import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
 import { SetAutopaused } from './autopause';
-import { backTasks, frontTasks, registerFrontTask } from './animate';
+import { backTasks, registerFrontTask } from './animate';
 import { input } from './InputManager';
 import { view, actionEvents } from './view';
 import { followCamera } from './camera';
-import { spellCastMap } from './spellCastMap';
+import type { SpellCastMap } from '@dontstarve-web/stategraphs/spellcaster';
+import { WORLD_TILES } from '@dontstarve-web/prefab/turfMap';
+import { isGroundTargetBlocked, placementEntities } from '../packages/prefab/src/placementEntities';
 import { backpackContainerId, inventorySlotAddress, cursorSlotAddress, type InventoryStack } from '@dontstarve-web/inventory';
 import { player, playerBody, playerPhysics } from './player';
 import { OnItemRanOut } from '@dontstarve-web/prefab/player_common';
@@ -169,13 +171,21 @@ window.addEventListener('contextmenu', (event) => {
   event.preventDefault();
 });
 
+const groundTargetBlockers = placementEntities(scene);
+/** Map:IsOceanAtPoint: the dug OCEAN_COASTAL tiles are the only water, and none of them is a visual ground. */
+const spellCastMap: SpellCastMap = {
+  isAboveGroundAtPoint: point => turfMap.getTileAtWorld(point) !== WORLD_TILES.INVALID,
+  isOceanAtPoint: point => turfMap.isOceanAtWorld(point),
+  isGroundTargetBlocked: point => isGroundTargetBlocked(groundTargetBlockers, point, .5 * WORLD_SCALE),
+};
+
 const handEquipmentBinding = await bindPlayerHandEquipment({
   handEquipmentExistenceState: inventory.handEquipmentExistenceState,
   owner: pickupDoer,
   animation: playerAnimation,
   soundPosition: player.position,
   lightParent: player,
-  followSymbol: playerAnimation && ((symbol, x, y) => playerAnimation.followSymbol(symbol, x, y)),
+  followSymbol: playerAnimation && ((symbol, x, y, fx) => playerAnimation.followSymbol(symbol, x, y, fx)),
   dataBaseUrl: `${import.meta.env.BASE_URL}dst/data`,
   setHandAction: action => cursorUi.setHandAction(action, handPointer),
   lightStaffWorld: {
@@ -264,12 +274,6 @@ inventory.subscribe((changedSlots) => {
   syncCraftingInventory();
 });
 
-frontTasks.push(dt => {
-  handEquipmentBinding.update(dt);
-  headEquipmentBinding.update(dt);
-  bodyEquipmentBinding.update(dt);
-});
-
 const disposalResources = createDisposalResources({
   gameUi, view, inventory, playerAnimation, locomotor, pickupDoer, handEquipmentBinding,
   inventorySlotItem, actionEvents, isActionInterrupting: input.isActionInterrupting,
@@ -300,6 +304,7 @@ player.userData.components.sanity = playerSanity;
 disposalEvents.on('dispose', () => {
   gameUi.minimap.dispose();
   headEquipmentBinding.dispose();
+  bodyEquipmentBinding.dispose();
   stopVignetteUpdate();
   sanityVignette.dispose();
   stopSanityUpdate();
@@ -350,15 +355,15 @@ const ghostOwner: PlayerGhostOwner | undefined = playerAnimation && {
     void worldFx.prepare('die_fx').then(() => worldFx.spawn('die_fx', position)).catch((error: unknown) => console.error('Unable to play die_fx', error));
   },
   schedule: (seconds, fn) => scheduler.schedule(seconds, fn),
+  addSlipperyFeet: sceneResources.addSlipperyFeet,
+  removeSlipperyFeet: sceneResources.removeSlipperyFeet,
   setHidden: hidden => playerAnimation.stategraph.host.rez?.setHidden(hidden),
   setGhostLight: enabled => setGhostLight(player, enabled),
   // inventory:Equip(source): whatever the body slot holds goes back into the inventory first, as Equip swaps it out.
   equipRezSource: async source => {
     const worn = inventory.Unequip('body');
     if (worn && !inventory.GiveItem(worn)) inventory.DropItem(worn);
-    if (!inventory.Equip((source as AmuletRezSource).entity)) return false;
-    await bodyEquipmentBinding.ready;
-    return true;
+    return inventory.Equip((source as AmuletRezSource).entity);
   },
   // Physics:Teleport
   teleport: position => {

@@ -131,7 +131,6 @@ function material(atlas: RgbaSpriteAtlas, source: THREE.MeshBasicMaterial): THRE
     shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `
       #include <common>
       varying float vSpriteOpacity;
-      #define DST_INSTANCED_LIGHT_OVERRIDE
       varying float vSpriteLightOverride;
       varying float vSpriteErosion;
     `).replace('#include <color_fragment>', `

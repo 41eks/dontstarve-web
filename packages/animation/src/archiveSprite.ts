@@ -82,10 +82,16 @@ function appearanceResolver(appearance: SpriteAppearance): (index: number) => Re
   return index => resolveAppearanceFrame(appearance, index);
 }
 
+const buildKey = (archive: string, options: SpriteMaterialOptions) =>
+  JSON.stringify([archive, options.multColour ?? [1, 1, 1, 1], options.pointFiltering ?? false]);
+
 /** Separate caches support animation-only banks and build-only swap archives. */
 export class ArchiveSpriteAssets {
   private readonly animations = new Map<string, Promise<ParsedAnim>>();
   private readonly builds = new Map<string, Promise<ArchiveSpriteBuild>>();
+  // What has finished loading, for callers that draw synchronously and load the rest.
+  private readonly loadedAnimations = new Map<string, ParsedAnim>();
+  private readonly loadedBuilds = new Map<string, ArchiveSpriteBuild>();
   private disposed = false;
   readonly frameCache = new FrameGeometryCache();
   readonly instancedSprites = new InstancedArchiveSprites();
@@ -108,6 +114,13 @@ export class ArchiveSpriteAssets {
     }, () => undefined);
     this.builds.clear();
     this.animations.clear();
+    this.loadedBuilds.clear();
+    this.loadedAnimations.clear();
+  }
+
+  peekAnimation(archive: string): ParsedAnim | undefined { return this.loadedAnimations.get(archive); }
+  peekBuild(archive: string, options: SpriteMaterialOptions = {}): ArchiveSpriteBuild | undefined {
+    return this.loadedBuilds.get(buildKey(archive, options));
   }
 
   loadAnimation(archive: string): Promise<ParsedAnim> {
@@ -115,6 +128,7 @@ export class ArchiveSpriteAssets {
     let request = this.animations.get(archive);
     if (!request) {
       request = loadAnim(archive, this.assetBaseUrl);
+      void request.then(animations => { if (!this.disposed) this.loadedAnimations.set(archive, animations); }, () => undefined);
       this.animations.set(archive, request);
       void request.catch(() => this.animations.delete(archive));
     }
@@ -125,13 +139,15 @@ export class ArchiveSpriteAssets {
     if (this.disposed) return Promise.reject(new Error('Sprite assets have been disposed'));
     // Sampling and colour belong to this source appearance. Sharing only by
     // archive would let an opaque caller overwrite a translucent prefab's art.
-    const key = JSON.stringify([archive, options.multColour ?? [1, 1, 1, 1], options.pointFiltering ?? false]);
+    const key = buildKey(archive, options);
     let request = this.builds.get(key);
     if (!request) {
       request = loadBuild(archive, this.assetBaseUrl).then((asset) => {
         const materials = createMaterials(asset, options);
         for (const material of materials) material.name = `${this.materialNamePrefix}:${asset.build.name}`;
-        return { build: asset.build, materials };
+        const build = { build: asset.build, materials };
+        if (!this.disposed) this.loadedBuilds.set(key, build);
+        return build;
       });
       this.builds.set(key, request);
       void request.catch(() => this.builds.delete(key));

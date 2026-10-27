@@ -11,6 +11,7 @@ import { TORCH_FUEL, TORCH_SOUNDS, TorchController, getTorchController, createTo
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { PlaySound, PreloadSounds } from '../../prefab/src/sound';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { createPerishWorld } from './perishWorldFixture';
 
 /** The inst.Light an entity's model declares. */
 const declaredLight = (model: THREE.Object3D) => prefabInstance(model)?.light.peek();
@@ -25,6 +26,9 @@ afterEach(() => { vi.clearAllMocks(); vi.restoreAllMocks(); vi.unstubAllGlobals(
 
 function fixture(initialFuel = TORCH_FUEL) {
   const entity = new ItemEntity({ itemId: 'torch', count: 1, remainingFuel: initialFuel });
+  // The item's world: fueled consumes on its game time.
+  const world = createPerishWorld();
+  entity.BindPerishWorld(world);
   const fuel = {
     getRemainingFuel: () => entity.isRemoved ? null : entity.components.fueled.remaining!,
     setRemainingFuel: vi.spyOn(entity, 'setRemainingFuel'),
@@ -33,38 +37,48 @@ function fixture(initialFuel = TORCH_FUEL) {
   const onBurningChange = vi.fn();
   const torch = new TorchController(entity);
   torch.burning.subscribe((burning) => onBurningChange(burning));
-  return { torch, fuel, onBurningChange };
+  return { torch, fuel, onBurningChange, world };
 }
 
 describe('torch prefab burning lifecycle', () => {
-  it('updates fuel every 60 frames using accumulated dt and settles a partial batch on unequip', () => {
-    const { torch, fuel } = fixture();
+  it('consumes fuel on its game-time period while burning and settles the elapsed part on unequip', () => {
+    const { torch, fuel, world } = fixture();
     const update = vi.spyOn(torch, 'update');
     torch.onequip();
-    for (const dt of [0, -1, NaN, Infinity]) torch.onFrame(dt);
-    for (let frame = 0; frame < 59; frame++) torch.onFrame(frame % 2 === 0 ? 0.01 : 0.03);
+    world.advance(0.6);
     expect(update).not.toHaveBeenCalled();
     expect(fuel.setRemainingFuel).not.toHaveBeenCalled();
-    expect(fuel.getRemainingFuel()).toBe(TORCH_FUEL);
-    torch.onFrame(0.03);
-    expect(update).toHaveBeenCalledOnce();
-    expect(update.mock.calls[0][0]).toBeCloseTo(1.2);
-    expect(fuel.getRemainingFuel()).toBeCloseTo(73.8);
-    expect(fuel.setRemainingFuel).toHaveBeenCalledOnce();
-
-    torch.onFrame(0.2);
+    // fueled.lua's DoPeriodicTask(1): one settlement per game second, whatever the frames.
+    world.advance(0.6);
+    expect(update).toHaveBeenCalledExactlyOnceWith(1);
+    expect(fuel.getRemainingFuel()).toBeCloseTo(74);
+    world.advance(0.3);
     torch.onunequip();
-    expect(fuel.getRemainingFuel()).toBeCloseTo(73.6);
+    expect(fuel.getRemainingFuel()).toBeCloseTo(73.5);
     expect(update).toHaveBeenCalledTimes(2);
-    for (let frame = 0; frame < 60; frame++) torch.onFrame(1);
+    world.advance(60);
+    expect(update).toHaveBeenCalledTimes(2);
     torch.onequip();
-    for (let frame = 0; frame < 59; frame++) torch.onFrame(0.01);
-    expect(update).toHaveBeenCalledTimes(2);
+    world.advance(0.5);
     torch.flushFuel();
-    expect(fuel.getRemainingFuel()).toBeCloseTo(73.01);
+    expect(fuel.getRemainingFuel()).toBeCloseTo(73);
     torch.dispose();
+    world.advance(5);
     expect(update).toHaveBeenCalledTimes(3);
     expect(fuel.remove).not.toHaveBeenCalled();
+  });
+
+  it('starts consuming once a torch lit before its world was bound joins that world', () => {
+    const entity = new ItemEntity({ itemId: 'torch', count: 1 });
+    const torch = new TorchController(entity);
+    // A restored inventory equips before the scene binds its world.
+    torch.onequip();
+    expect(torch.isBurning).toBe(true);
+    const world = createPerishWorld();
+    entity.BindPerishWorld(world);
+    world.advance(2);
+    expect(entity.components.fueled.remaining).toBeCloseTo(TORCH_FUEL - 2);
+    torch.dispose(); entity.destroy();
   });
 
   it('ignites on equip, pauses on unequip and resumes the same fuel independently of other torches', () => {
@@ -100,13 +114,12 @@ describe('torch prefab burning lifecycle', () => {
   });
 
   it('removes an exhausted torch and extinguishes once without persisting zero fuel', () => {
-    const { torch, fuel, onBurningChange } = fixture(0.125);
+    const { torch, fuel, onBurningChange, world } = fixture(0.125);
     torch.onequip();
-    for (const dt of [0, -1, NaN, Infinity]) torch.onFrame(dt);
-    for (let frame = 0; frame < 59; frame++) torch.onFrame(0.001);
+    world.advance(0.9);
     expect(fuel.getRemainingFuel()).toBe(0.125);
     expect(torch.isBurning).toBe(true);
-    torch.onFrame(0.125);
+    world.advance(0.1);
     expect(torch.isBurning).toBe(false);
     expect(fuel.getRemainingFuel()).toBeNull();
     expect(fuel.remove).toHaveBeenCalledOnce();
@@ -147,6 +160,8 @@ describe('torch prefab burning lifecycle', () => {
     const specs = { torch: { name: 'torch', icon: 'torch.tex', maxStack: 1, maxFuel: TORCH_FUEL, equippable: 'hand' as const } };
     const store = new InventoryStore([{ address: slot, slot: new InventorySlot() }, { address: hand, slot: new HandSlot() }], specs,
       { torch_barber: { itemId: 'torch', name: 'torch', icon: 'torch_barber.tex', atlas: 'images/inventoryimages.xml' } });
+    const world = createPerishWorld();
+    store.entities.bindPerishWorld(world);
     store.add('torch', 1);
     const entity = store.getEntity(slot)!;
     const controller = getTorchController(entity);
@@ -160,10 +175,10 @@ describe('torch prefab burning lifecycle', () => {
     try {
       store.applySlotChanges([{ slot, itemId: 'torch', delta: -1 }, { slot: hand, itemId: 'torch', delta: 1 }]);
       expect(equip).toHaveBeenCalledOnce();
-      controller.onFrame(0.5);
+      world.advance(0.5);
       const definition = { ...GROUND_ITEM_DEFINITIONS.torch, itemId: 'torch', count: 1 };
       expect(await manager.drop(definition, new THREE.Vector3(), () => {
-        controller.onFrame(0.25);
+        world.advance(0.25);
         return store.extract(hand, 1, entity) ?? false;
       })).toBe(true);
       let model = scene.children[0] as THREE.Group;
@@ -178,7 +193,7 @@ describe('torch prefab burning lifecycle', () => {
       expect(controller.isBurning).toBe(true);
       expect(entity.skinId).toBeUndefined();
       const prepared = await manager.reskinTargets[0].prepareNextSkin();
-      controller.onFrame(0.375);
+      world.advance(0.375);
       expect(prepared.apply()).toBe(true);
       model = scene.children[0] as THREE.Group;
       expect(entity.skinId).toBe('torch_barber');
@@ -189,7 +204,7 @@ describe('torch prefab burning lifecycle', () => {
       expect(record.components.stack?.remainingFuel).toBe(73.875);
       expect(record.components.torch).toEqual({ lit: true });
       vi.spyOn(THREE.Raycaster.prototype, 'intersectObjects').mockReturnValue([{ object: model } as unknown as THREE.Intersection]);
-      controller.onFrame(0.125);
+      world.advance(0.125);
       performPickupAction(model.userData.pickupTarget, createPickupDoer(player, store));
       expect(manager.exportRecords()).toEqual([]);
       expect(store.getEntity(hand)).toBe(entity);
@@ -216,6 +231,8 @@ describe('torch prefab burning lifecycle', () => {
       firefliesWorld: {} });
     const definition = { ...GROUND_ITEM_DEFINITIONS.torch, itemId: 'torch', count: 1, remainingFuel: 20, torchLit: true };
     const entity = new ItemEntity({ itemId: 'torch', count: 1, remainingFuel: 18 });
+    const world = createPerishWorld();
+    entity.BindPerishWorld(world);
     entity.transform.position.set(4, 0, 6);
     const visual = await factory.create(definition);
     try {
@@ -230,7 +247,8 @@ describe('torch prefab burning lifecycle', () => {
       expect(controller.isBurning).toBe(true);
       expect(PlaySound).not.toHaveBeenCalled();
       expect(declaredLight(visual.model)).toBeDefined();
-      visual.update?.(0.5);
+      // A lit ground torch keeps consuming on its world's game time.
+      world.advance(0.5);
       expect(visual.getDefinition?.()).toEqual({ remainingFuel: 17.5, torchLit: true });
       visual.model.dispatchEvent({ type: 'onextinguish' });
       expect(controller.isBurning).toBe(false);

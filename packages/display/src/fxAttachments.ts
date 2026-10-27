@@ -14,7 +14,16 @@ interface FxOptions {
   /** Background children keep their declared render order rather than joining billboard sorting. */
   readonly background?: boolean;
   /** Merge the child's frame into the owner's billboard, preserving a followed symbol's layer position. */
-  readonly composite?: { readonly symbol?: string; readonly detached?: { readonly position: THREE.Vector3; readonly mirrored: boolean } };
+  readonly composite?: {
+    readonly symbol?: string;
+    readonly detached?: { readonly position: THREE.Vector3; readonly mirrored: boolean };
+    /** AnimState:SetFinalOffset of a symbol follower: drawn behind (< 0) or in front of (> 0) the whole owner. */
+    readonly finalOffset?: number;
+    /** Transform:SetNoFaced: the follower keeps its single facing whatever the owner's. */
+    readonly noFaced?: boolean;
+    /** Follower:FollowSymbol's x/y offset, in the followed symbol's space. */
+    readonly offset?: readonly [number, number];
+  };
 }
 
 /** Prepared art, or an entity drawn by its own display (including children that unload with their tile). */
@@ -93,13 +102,15 @@ export class FxAttachments {
 
   compositeFrames(): readonly CompositeSpriteFrame[] {
     return [...this.attached.values()].flatMap(({ fx, enabled }) => enabled && fx.composite && fx.display && !fx.display.isRemoved
-      ? [{ sprites: fx.display.resolveFrame(), symbol: fx.composite.symbol === undefined ? undefined : smallHash(fx.composite.symbol), detached: fx.composite.detached }] : []);
+      ? [{ sprites: fx.display.resolveFrame(), symbol: fx.composite.symbol === undefined ? undefined : smallHash(fx.composite.symbol),
+        detached: fx.composite.detached, finalOffset: fx.composite.finalOffset, noFaced: fx.composite.noFaced,
+        offset: fx.composite.offset }] : []);
   }
 
   update(dt: number, owner?: SpriteJson): void {
     for (const { fx, enabled } of this.attached.values()) {
       if (fx.composite && enabled) {
-        if (owner?.facing !== undefined) (fx.sprite as import('./spriteState').SpriteState).setFacing(owner.facing);
+        if (owner?.facing !== undefined && !fx.composite.noFaced) (fx.sprite as import('./spriteState').SpriteState).setFacing(owner.facing);
         fx.sprite.update(dt);
       } else if (fxModel(fx).parent === this.owner) fx.sprite.update(dt);
     }

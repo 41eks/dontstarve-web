@@ -19,6 +19,7 @@ import { EventEmitter } from '@dontstarve-web/signals';
 import { AnimState } from '../src/animState';
 import { bindPlayerHandEquipment } from '../../../src/playerHandEquipment';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { createPerishWorld } from './perishWorldFixture';
 
 /** The inst.Light an entity's model declares. */
 const declaredLight = (model: THREE.Object3D) => prefabInstance(model)?.light.peek();
@@ -61,8 +62,10 @@ describe('lantern light lifecycle', () => {
 });
 
 describe('lantern fuel', () => {
-  it('consumes only while on, settles every 60 frames and stays as an empty unlit item', () => {
+  it('consumes only while on, settles on its game-time period and stays as an empty unlit item', () => {
     const inventory = createPickupInventory();
+    const world = createPerishWorld();
+    inventory.entities.bindPerishWorld(world);
     const hand = equipmentSlotAddress('hand');
     expect(inventory.add('lantern', 1)).toBe(true);
     const entity = inventory.getEntity(inventorySlotAddress(0))!;
@@ -75,30 +78,30 @@ describe('lantern fuel', () => {
       lifecycle.onequip(owner);
       expect(controller.isOn).toBe(true);
       expect(light).toHaveBeenLastCalledWith(true);
-      // Frames only accumulate; fuel and its percent change once per settlement, plus the full-fuel first period.
+      // Fuel and its percent change once per one-second period of game time, plus the full-fuel first period.
       const fuelChanges: unknown[] = [];
       const stop = entity.components.fueled.fuel.subscribe(fuel => fuelChanges.push(fuel));
-      for (let frame = 0; frame < 59; frame++) lifecycle.onFrame!(1);
+      world.advance(0.5);
       expect(fuelChanges).toEqual([]);
-      lifecycle.onFrame!(1);
-      expect(fuelChanges).toEqual([LANTERN_FUEL - 60 - 1 / 60]);
+      world.advance(0.5);
+      expect(fuelChanges).toEqual([LANTERN_FUEL - 1 - 1 / 60]);
       stop();
-      expect(controller.fuelPercent.peek()).toBeCloseTo((LANTERN_FUEL - 60 - 1 / 60) / LANTERN_FUEL, 9);
+      expect(controller.fuelPercent.peek()).toBeCloseTo((LANTERN_FUEL - 1 - 1 / 60) / LANTERN_FUEL, 9);
 
-      // Unequipping clears the overlay; entering inventory stops consumption.
-      for (let frame = 0; frame < 10; frame++) lifecycle.onFrame!(1);
+      // Unequipping clears the overlay; entering inventory settles the elapsed part and stops consumption.
+      world.advance(9.5);
       lifecycle.onunequip();
       expect(controller.isOn).toBe(true);
       entity.components.inventoryitem.OnPutInInventory({ hasTag: () => true, GetPosition: () => new THREE.Vector3(), PushEvent() {} });
       expect(controller.isOn).toBe(false);
-      expect(entity.components.fueled.remaining).toBeCloseTo(LANTERN_FUEL - 70 - 1 / 60, 9);
+      expect(entity.components.fueled.remaining).toBeCloseTo(LANTERN_FUEL - 10.5 - 1 / 60, 9);
       expect(light).toHaveBeenLastCalledWith(false);
-      lifecycle.onFrame!(100);
-      expect(entity.components.fueled.remaining).toBeCloseTo(LANTERN_FUEL - 70 - 1 / 60, 9);
+      world.advance(100);
+      expect(entity.components.fueled.remaining).toBeCloseTo(LANTERN_FUEL - 10.5 - 1 / 60, 9);
 
       // A partial lantern pays TURNON_FUELED_CONSUMPTION; running out only turns it off.
       lifecycle.onequip(owner);
-      for (let frame = 0; frame < 60; frame++) lifecycle.onFrame!(LANTERN_FUEL / 60);
+      world.advance(LANTERN_FUEL);
       expect(entity.isRemoved).toBe(false);
       expect(entity.components.fueled.remaining).toBe(0);
       expect(controller.isOn).toBe(false);
@@ -145,10 +148,11 @@ describe('lantern fuel', () => {
       await new Promise(resolve => setTimeout(resolve, 0));
       expect(player.getObjectByName('lanternlight')).toBe(node);
       expect(lightAt(player)).toMatchObject({ radius: 12, intensity: .5 });
+      hide.mockClear();
       expect(inventory.transfer(hand, slot, 1)).toBe(true);
       expect(controller.isOn).toBe(false);
       expect(lightAt(player)).toBeUndefined();
-      expect(hide).toHaveBeenLastCalledWith('LANTERN_OVERLAY');
+      expect(hide).toHaveBeenCalledWith('LANTERN_OVERLAY');
 
       inventory.transfer(slot, hand, 1);
       const detached = inventory.Unequip('hand')!;
@@ -177,12 +181,14 @@ describe('lantern fuel', () => {
   it('spawns/gives lanterns, then saves and reloads ground switch state and fuel, including an empty lantern', async () => {
     vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
     const inventory = createPickupInventory(), restoredInventory = createPickupInventory();
+    const world = createPerishWorld();
     const player = new THREE.Group();
     player.position.set(4, 0, -2);
     const createManager = (store: typeof inventory) => new GroundItemManager(new THREE.Scene(), new THREE.PerspectiveCamera(),
       { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer, '/dst/data/databundles/images.zip',
       store, '/dst/data/anim', player);
     const manager = createManager(inventory);
+    manager.entities.bindPerishWorld(world);
     const restoreGround = (target: GroundItemManager, record: SavedEntity) => target.spawnFromSave(record.id, {
       ...SAVE_CATALOG.items[record.components.stack!.itemId], ...record.components.stack!,
       ...(record.components.lantern ? { lanternOn: record.components.lantern.ison } : {}),
@@ -202,9 +208,10 @@ describe('lantern fuel', () => {
       const model = manager.reskinTargets[0].model;
       expect(getLanternController(ground).isOn).toBe(true);
       expect(lightAt(model)).toMatchObject({ radius: 15 });
+      // A lit ground lantern consumes on its world's game time; frames play no part.
       manager.update(1, new THREE.Quaternion());
-      for (let frame = 0; frame < 60; frame++) manager.update(2, new THREE.Quaternion());
-      expect(ground.components.fueled.remaining).toBeCloseTo(LANTERN_FUEL - 119 - 1 / 60, 6);
+      world.advance(120);
+      expect(ground.components.fueled.remaining).toBeCloseTo(LANTERN_FUEL - 120 - 1 / 60, 6);
       expect(inventory.setRemainingFuel(inventorySlotAddress(1), 0)).toBe(true);
 
       const before = registry.exportRecords(), held = inventory.exportState();

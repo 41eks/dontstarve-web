@@ -1,8 +1,9 @@
 import { ItemEntity } from '@dontstarve-web/inventory';
 import { createSignal, readonlySignal, type EquipmentLifecycle, type EquipmentOwner, type HandEquipment } from '@dontstarve-web/signals';
 import type * as THREE from 'three';
+import type { FollowerFx } from '@dontstarve-web/display';
 import { Lighter } from '../../componets/src/lighter';
-import { handEquipmentVisual, type PrepareEquipmentVisual } from './equipmentVisual';
+import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory } from './equipmentVisual';
 import { createResidentGroundItem, GROUND_ITEM_DEFINITIONS } from './groundItems';
 import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
 import { listenInventoryEvents } from './inventoryEvents';
@@ -10,7 +11,7 @@ import { spawnLightEntity, type PrefabLocalLight } from './localLight';
 import { LootFling } from './lootFling';
 import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
 import { TILE_SIZE } from './tile';
-import { TORCH_FIRE_OFFSET_Y, TorchFireEffect } from './torchfire';
+import { TORCH_FIRE_OFFSET_Y, torchFireFx } from './torchfire';
 import { modelHasTag, prefabInstance } from './prefabInstance';
 
 export function configureTorchEntity(entity: ItemEntity): void {
@@ -44,8 +45,6 @@ export class TorchController implements HandEquipment {
   private owner: EquipmentOwner | null = null;
   private held = false;
   private hasFire = false;
-  private pendingFrames = 0;
-  private pendingSeconds = 0;
   private options: TorchLifecycleOptions;
   private readonly ownSounds = new Set<SoundHandle>();
 
@@ -115,20 +114,9 @@ export class TorchController implements HandEquipment {
     this.options.onGroundExtinguish?.();
   }
 
-  /** Frame scheduling only; fuel updates use the elapsed time of each 60-frame batch. */
-  onFrame(dt: number): void {
-    if (!this.isBurning || this.disposed || !Number.isFinite(dt) || dt <= 0) return;
-    this.pendingSeconds += dt;
-    if (++this.pendingFrames === 60) this.flushFuel();
-  }
-
-  /** Settle a partial batch before saving, transferring or stopping this torch. */
+  /** Settle the elapsed part of the fuel period before saving, transferring or stopping this torch. */
   flushFuel(): void {
-    const elapsed = this.pendingSeconds;
-    // Clear first: update may synchronously remove the item and invoke onunequip/dispose.
-    this.pendingSeconds = 0;
-    this.pendingFrames = 0;
-    if (elapsed > 0) this.update(elapsed);
+    if (!this.entity.isRemoved) this.entity.components.fueled.Settle();
   }
 
   update(dt: number): void {
@@ -162,7 +150,11 @@ export class TorchController implements HandEquipment {
     this.stopOwnSounds();
   }
 
+  /** burnable:Ignite / Extinguish start and stop fueled consumption on the item's game time. */
   private setBurning(burning: boolean): void {
+    const fueled = this.entity.isRemoved ? undefined : this.entity.components.fueled;
+    if (burning) fueled?.StartConsuming(dt => this.update(dt));
+    else fueled?.StopConsuming();
     this.burningState.set(burning);
   }
 
@@ -196,7 +188,7 @@ export function createTorchHandLifecycle(
   options: {
     soundPosition?: THREE.Vector3;
     lightParent: THREE.Object3D;
-    followSymbol?(symbol: string, offsetX: number, offsetY: number): { node: THREE.Object3D; remove(): void };
+    followSymbol?(symbol: string, offsetX: number, offsetY: number, fx?: FollowerFx): { node: THREE.Object3D; remove(): void };
     dataBaseUrl?: string;
   },
 ): EquipmentLifecycle {
@@ -205,11 +197,9 @@ export function createTorchHandLifecycle(
   let stopBurning: (() => void) | undefined;
   let removeLight: (() => void) | undefined;
   let removeFire: (() => void) | undefined;
-  let fire: TorchFireEffect | undefined;
   // torch.lua onequip: torchfire follows swap_object and AttachLightTo(owner); both leave when it stops burning.
   const syncLight = (burning: boolean) => {
     removeLight?.(); removeLight = undefined;
-    fire?.dispose(); fire = undefined;
     removeFire?.(); removeFire = undefined;
     if (!burning) return;
     // torchfire_common.lua CreateLight + AttachLightTo(owner): a player owner's light is also a playerlight.
@@ -218,9 +208,8 @@ export function createTorchHandLifecycle(
     light.instance.light.set(TORCH_LIGHT);
     removeLight = light.remove;
     if (options.followSymbol && options.dataBaseUrl !== undefined) {
-      const follower = options.followSymbol('swap_object', 0, TORCH_FIRE_OFFSET_Y);
-      removeFire = follower.remove;
-      fire = new TorchFireEffect(follower.node, options.dataBaseUrl);
+      // The holder's display loads the particle textures, draws the effect and advances it each frame.
+      removeFire = options.followSymbol('swap_object', 0, TORCH_FIRE_OFFSET_Y, torchFireFx(options.dataBaseUrl)).remove;
     }
   };
   return {
@@ -236,7 +225,6 @@ export function createTorchHandLifecycle(
       syncLight(false);
       controller.releasePresentation(presentation);
     },
-    onFrame: dt => { controller.onFrame(dt); fire?.update(dt); },
     flush: () => controller.flushFuel(),
   };
 }
@@ -304,7 +292,7 @@ export function createTorchGroundFactory(context: GroundPrefabContext): GroundIt
           return { remainingFuel: entity?.components.fueled.remaining ?? state.remainingFuel, torchLit: controller?.isBurning ?? false };
         },
         update(dt: number) {
-          controller?.onFrame(dt); sprite.update(dt);
+          sprite.update(dt);
           if (fling) {
             fling.update(dt);
             model.children[0].position.y = fling.height;
@@ -322,9 +310,7 @@ export function createTorchGroundFactory(context: GroundPrefabContext): GroundIt
   };
 }
 
-export const prepareTorchVisual: PrepareEquipmentVisual = async (assets, item) => {
-  const archive = item.skinId ? GROUND_ITEM_DEFINITIONS.torch.skinArchives[item.skinId] : undefined;
-  if (item.skinId && !archive) throw new Error(`Unknown torch skin: ${item.skinId}`);
-  const [base, skin] = await Promise.all([assets.loadBuild('swap_torch.zip'), archive ? assets.loadBuild(archive) : undefined]);
-  return handEquipmentVisual(item, skin ? [skin, base] : [base], 'swap_torch');
+export const torchVisual: EquipmentVisualFactory = item => {
+  const skin = skinArchive('torch', GROUND_ITEM_DEFINITIONS.torch.skinArchives, item.skinId);
+  return handEquipmentVisual(item, [...skin ? [skin] : [], 'swap_torch'], 'swap_torch');
 };

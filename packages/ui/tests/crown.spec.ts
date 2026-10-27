@@ -31,7 +31,7 @@ test('equipped crown follows real sanity at the 85 percent boundary and recomput
     const lightOwner = player.children.find((child: any) => child.name === 'alterguardianhatlight');
     const materials = player.getObjectByProperty('isMesh', true).material;
     return { light: lightOwner ? prefabInstance(lightOwner)?.light.peek()?.radius ?? null : null,
-      crownLoaded: materials.some((material: any) => material.name === 'hat:hat_alterguardian'),
+      crownLoaded: materials.some((material: any) => material.name === 'ground:hat_alterguardian'),
       fx: materials.some((material: any) => material.name.includes('hat_alterguardian_equipped')) };
   });
   const saveGame = async () => {

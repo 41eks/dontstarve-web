@@ -3,7 +3,7 @@ import type { ReadonlySignal } from '@dontstarve-web/signals';
 import type { ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import type { InstancedSprite } from '@dontstarve-web/animation/instancedArchiveSprites';
 import { ResidentSprite } from '@dontstarve-web/animation/residentSprite';
-import type { AnimStateJson } from '@dontstarve-web/animation/animState';
+import type { ResolvedAnimState } from '@dontstarve-web/animation/animState';
 import type { ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
 import type { SpriteArtSource, SpriteTint, CompositeSpriteFrame } from '@dontstarve-web/animation/sprite';
 
@@ -40,7 +40,7 @@ export interface DisplayEngine {
   setFrame(frame: number): void;
   setPaused?(paused: boolean): void;
   setArtSource?(source: SpriteArtSource): void;
-  setAnimState?(state: AnimStateJson): void;
+  setAnimState?(state: ResolvedAnimState): void;
   setTint?(tint: SpriteTint): void;
   setComposites?(frames: readonly CompositeSpriteFrame[]): void;
   getResolvedFrame?(): readonly ResolvedSprite[];

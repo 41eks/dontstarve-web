@@ -1,10 +1,8 @@
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import type { EquipmentLifecycle } from '@dontstarve-web/signals';
 import { Tool } from '../../componets/src/tool';
-import { handEquipmentVisual, type PrepareEquipmentVisual } from './equipmentVisual';
-import type { GroundItemAssets } from './groundItems';
-import { FiniteUsesToolLifecycle, loadHeldToolEquipment, type HeldToolEquipment } from './pickaxe';
-import { PreloadSounds } from './sound';
+import type { EquipmentVisualFactory } from './equipmentVisual';
+import { FiniteUsesToolLifecycle, heldToolVisual } from './pickaxe';
 
 export const AXE_USES = 100; // tuning.lua AXE_USES.
 
@@ -40,8 +38,6 @@ export function configureAxeEntity(entity: ItemEntity): void {
   getAxeLifecycle(entity);
 }
 
-export type AxeEquipment = HeldToolEquipment<AxeTool>;
-
 const AXE_SWAP: Readonly<Record<AxeTool, { archive: string; symbol: string }>> = {
   axe: { archive: 'swap_axe.zip', symbol: 'swap_axe' },
   goldenaxe: { archive: 'swap_goldenaxe.zip', symbol: 'swap_goldenaxe' },
@@ -49,12 +45,4 @@ const AXE_SWAP: Readonly<Record<AxeTool, { archive: string; symbol: string }>> =
 };
 
 /** axe.lua: swap_object uses swap_build / sym_name, distinct from the ground bank and build. */
-export function loadAxeEquipment(assets: GroundItemAssets, tool: AxeTool, skinId?: string): Promise<AxeEquipment> {
-  return loadHeldToolEquipment(assets, tool, AXE_SWAP[tool], skinId);
-}
-
-/** Source prefab onequip/onunequip: prepared art is applied through the owner's AnimState. */
-export const prepareAxeVisual: PrepareEquipmentVisual = async (assets, item) => {
-  const [equipment] = await Promise.all([loadAxeEquipment(assets, item.prefab as AxeTool, item.skinId), PreloadSounds('dontstarve/wilson/use_axe_tree', 'dontstarve/forest/treeFall')]);
-  return handEquipmentVisual(item, equipment.builds, equipment.symbol);
-};
+export const axeVisual: EquipmentVisualFactory = item => heldToolVisual(item, AXE_SWAP[item.prefab as AxeTool]);

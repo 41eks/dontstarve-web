@@ -111,7 +111,7 @@ GroundItemManager 每帧在 prefab 更新前后从实体刷新模型，拾取命
 
 转移、提取、消耗或读档成功提交后，仅为被替换的装备槽发布新身份；普通组件变化或其他槽位更新不重新装备。存在状态只是发布结果，写入它不会移除物品；装备耗尽时由 prefab 移除自己的实体，库存 owner 清空槽位。普通卸下使用库存转移保留实体、皮肤和组件状态。
 
-`src/playerEquipment.ts` 统一处理同步订阅、生命周期切换、重入和释放。`src/playerHandEquipment.ts`、`src/playerHeadEquipment.ts`、`src/playerBodyEquipment.ts` 注入各自存在状态并更新玩家表现。`main.ts` 在恢复存档前注册三种绑定，移除了 `syncHeadEquipment()`、`syncBodyEquipment()` 以及库存 UI 通知里的装备轮询；初始外观也由存档提交的 signal 写入驱动。帽子继续使用 `setHat()`，背包继续使用 `setBackpack()`；身体装备绑定同时通知应用打开或关闭背包面板、恢复储物格显示并更新材料可访问性。玩家物品栏槽位同步仍由库存通知驱动，背包内容通过容器 DTO signal 同步。
+`packages/signals/src/equipment.ts` 的 `bindEquipmentLifecycle()` 统一处理同步订阅、生命周期切换、重入和释放。`src/playerHandEquipment.ts`、`src/playerHeadEquipment.ts`、`src/playerBodyEquipment.ts` 注入各自存在状态并更新玩家表现。`main.ts` 在恢复存档前注册三种绑定，移除了 `syncHeadEquipment()`、`syncBodyEquipment()` 以及库存 UI 通知里的装备轮询；初始外观也由存档提交的 signal 写入驱动。帽子继续使用 `setHat()`，背包继续使用 `setBackpack()`；身体装备绑定同时通知应用打开或关闭背包面板、恢复储物格显示并更新材料可访问性。玩家物品栏槽位同步仍由库存通知驱动，背包内容通过容器 DTO signal 同步。
 
 ## 火把燃料与百分比
 
@@ -119,7 +119,7 @@ GroundItemManager 每帧在 prefab 更新前后从实体刷新模型，拾取命
 
 `components/fueled.lua` 以 `currentfuel / maxfuel` 计算比例，并发出 `percentusedchange`；`widgets/itemtile.lua` 初次刷新从 `fueled:GetPercent()` 读取比例，后续监听该事件，`SetPercent()` 用 `NUMBERFONT`、42 号字及位置 `(5, -17)` 在物品图标下方显示百分比。显示为四舍五入的整数，`0 < percent * 100 < 1` 时强制显示 `1%`；普通燃料耐久使用文字，腐败度另由 `SetPerishPercent()` 显示背景动画。
 
-本项目的 `InventoryItemSpec.maxFuel` 保存满燃料秒数，`ItemEntity.components.fueled.remaining` 保存每把火把的实际剩余秒数，快照以 `InventoryStack.remainingFuel` 序列化；缺省表示满燃料，兼容旧存档与新制造物品。燃烧生命周期由 `packages/prefab/src/torch.ts` 的 `TorchController` 管理，`getTorchController(entity)` 为每个实体只创建一个控制器：`onequip(slotSignal)` 绑定具体槽位并调用 `ignite()`，`onunequip()` 停止燃烧并解除绑定，`extinguish()` 只停止燃烧，保留装备及燃料；`update()` 只在燃烧时扣减，并在耗尽时移除物品、熄灭照明。满燃料常量 `TORCH_FUEL` 也由该 prefab 提供。`onFrame(dt)` 每个燃烧帧仅累计帧数和秒数，每 60 帧才调用 `update()` 扣减全部累计秒数；`flushFuel()` 在停止生命周期、UI 手部转移、丢弃提交、换肤、拾取和保存前结算不足 60 帧的部分，防止燃料回升或丢失。
+本项目的 `InventoryItemSpec.maxFuel` 保存满燃料秒数，`ItemEntity.components.fueled.remaining` 保存每把火把的实际剩余秒数，快照以 `InventoryStack.remainingFuel` 序列化；缺省表示满燃料，兼容旧存档与新制造物品。燃烧生命周期由 `packages/prefab/src/torch.ts` 的 `TorchController` 管理，`getTorchController(entity)` 为每个实体只创建一个控制器：`onequip(slotSignal)` 绑定具体槽位并调用 `ignite()`，`onunequip()` 停止燃烧并解除绑定，`extinguish()` 只停止燃烧，保留装备及燃料；`update()` 只在燃烧时扣减，并在耗尽时移除物品、熄灭照明。满燃料常量 `TORCH_FUEL` 也由该 prefab 提供。燃烧时 `ItemEntity.components.fueled.StartConsuming()` 在物品所绑定世界的游戏时间调度器上登记周期任务（对应 `fueled.lua` 的 `DoPeriodicTask(period)`，`period` 默认 1 秒），每次到期把自上次结算以来的游戏秒数交给 `update()` 扣减；熄灭时 `StopConsuming()` 先结算再取消任务。装备不接收帧或 `dt`。`flushFuel()`（即 `fueled.Settle()`）在停止生命周期、UI 手部转移、丢弃提交、换肤、拾取和保存前结算当前周期已经过的部分，防止燃料回升或丢失。未绑定世界的物品不消耗燃料。
 
 `remainingFuel` 允许为 0：`fueled.lua` 把燃料夹在 0，是否移除空物品由各 prefab 的耗尽回调决定。火把仍在耗尽时移除自己；提灯（`packages/prefab/src/lantern.ts` 的 `LanternController`，经 `getLanternController(entity)` 每个实体一个）在耗尽时只关灯，以 0 燃料保留。提灯的 `ison` signal 对应 `machine.ison`，燃料比例由 memo 从 `fueled.fuel` 派生；装备、物品栏和地面表现只订阅这两个值。装备时有燃料就开灯，卸下和放入物品栏关灯，掉落按 `ondropped` 先关后开；开灯时按 `SetFirstPeriod` 在下一次结算额外扣一次首段燃料，关灯会取消尚未扣除的首段。提灯的耗尽不清空装备 signal。
 
