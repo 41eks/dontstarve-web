@@ -65,6 +65,8 @@ export interface SavedEntity {
     archiveProp?: import('../../packages/prefab/src/archive_props').ArchivePropSaveState;
     houndbone?: import('../../packages/prefab/src/houndbone').HoundboneSaveState;
     beeQueenHiveTimer?: import('../../packages/componets/src/timer').NamedTimerSave;
+    dragonfly?: import('@dontstarve-web/prefab/dragonfly').DragonflySaveState;
+    statueglommer?: { worked?: true; spawned?: true };
     skeleton?: import('../../packages/prefab/src/skeleton').SkeletonSaveState;
     growable?: import('../../packages/componets/src/growable').GrowableSave;
     deciduousTimer?: import('../../packages/componets/src/timer').NamedTimerSave;

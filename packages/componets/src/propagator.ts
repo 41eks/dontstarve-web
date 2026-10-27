@@ -29,7 +29,7 @@ export class Propagator {
   private readonly propagationRangeMemo;
   readonly propagationRange: ReadonlySignal<number>;
   heatoutput: number;
-  readonly decayrate: number;
+  decayrate: number;
   acceptsheat: boolean;
   currentheat = createSignal(0);
   private heatThisUpdate = 0;

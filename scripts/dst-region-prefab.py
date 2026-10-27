@@ -18,6 +18,7 @@ ITEM = runpy.run_path(str(Path(__file__).with_name('dst-region-item.py')))
 # Adding a prefab here requires an actual converter, rather than copying arbitrary Lua data.
 ENTITY_WHITELIST = {
     'pigking': STRUCTURE['pigking_components'],
+    'statueglommer': WORKABLE['statueglommer_components'],
     'deciduoustree': GROWABLE['deciduoustree_components'],
     'moon_tree': GROWABLE['moon_tree_components'],
     'moonbutterfly_sapling': GROWABLE['moonbutterfly_sapling_components'],
@@ -66,11 +67,12 @@ ENTITY_WHITELIST = {
     'lava_pond': STRUCTURE['lava_pond_components'],
     'treasurechest': CONTAINER['treasurechest_components'],
     'beefalo': CREATURE['beefalo_components'],
+    'dragonfly': CREATURE['dragonfly_components'],
 }
 # Converters that also receive the record's skin and an item-slot converter for its saved contents.
 RECORD_CONTEXT_PREFABS = {'treasurechest'}
 # Converters that also receive the record's project position and a converter for saved source positions.
-POSITION_CONTEXT_PREFABS = {'beefalo'}
+POSITION_CONTEXT_PREFABS = {'beefalo', 'dragonfly'}
 
 
 def source_prefabs():

@@ -1,6 +1,6 @@
 import { expect, expectTypeOf, it, vi } from 'vitest';
 import { Vector3 } from 'three';
-import { bindWorldContent, createEffect, createMemo, createSignal, getBoundWatchWorldContent, getWatchWorldContent, GetTileStateAtPoint, WorldContentKey,
+import { bindWorldContent, createEffect, createMemo, createRenderEffect, createSignal, getBoundWatchWorldContent, getWatchWorldContent, GetTileStateAtPoint, WorldContentKey,
   GameTimeScheduler, createIdleWeatherSources, type WorldContentSignal, type PlayerPositionsSignal, type WorldPhase, type WorldMoonState, type SeasonState, type WorldContentEnvironment, type WorldWindChange, type PerishTick, type ReadonlySignal } from '../src';
 
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -149,6 +149,22 @@ it('gates watched world inputs by the tile tickingarea memo and releases the mem
     sources.cycle.set('night');
     expect(gated.peek()).toBe('dusk'); // released: holds its last value
   } finally { area.dispose(); sources.scheduler.dispose(); }
+});
+
+it('gates watched world inputs by the consumer activity and resyncs when it becomes active', () => {
+  const sources = world('day'), active = createSignal(true), stops: (() => void)[] = [];
+  const gated = getWatchWorldContent(WorldContentKey.Cycle, stop => stops.push(stop), sources, { active });
+  const seen: string[] = [];
+  stops.push(createRenderEffect(() => { seen.push(gated.get()); }));
+  try {
+    active.set(false);
+    sources.cycle.set('night'); sources.cycle.set('dusk');
+    expect(gated.peek()).toBe('day');
+    active.set(true);
+    expect(seen).toEqual(['day', 'dusk']);
+    expect(() => getWatchWorldContent(WorldContentKey.Cycle, stop => stops.push(stop), sources,
+      { active, tile: createSignal(7) })).toThrow('either a tile or an activity');
+  } finally { stops.forEach(stop => stop()); sources.scheduler.dispose(); }
 });
 
 it('resolves weather keys to private signals that follow the injected sources', () => {

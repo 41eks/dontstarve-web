@@ -92,6 +92,11 @@ export interface WatchWorldContentOptions {
    * cleanup releases the memo. Standalone worlds or tiles outside the grid have no memo and stay subscribed.
    */
   readonly tile?: ReadonlySignal<number>;
+  /**
+   * The consumer's own activity, in place of `tile`: while false the returned signal holds its last value and does
+   * not subscribe to the world source; it resyncs when the consumer becomes active again.
+   */
+  readonly active?: ReadonlySignal<boolean>;
 }
 
 /** Player snapshots published by the world: a consumer's private signal whose value is a `Vector3[]`. */
@@ -143,9 +148,10 @@ export function getWatchWorldContent<K extends WorldContentKey>(
   const source = signals[key];
   if (!source) throw new Error(`World content ${key} is not bound`);
   if (!world.scheduler) throw new Error('World scheduler is not bound');
+  if (options?.tile && options.active) throw new Error(`World content ${key} is gated by either a tile or an activity`);
   const area = options?.tile ? world.tickingarea?.(options.tile) : undefined;
   const local = watchSignal<WorldContentValues[K]>(source,
-    area ? stop => registerCleanup(() => { stop(); area.dispose(); }) : registerCleanup, area);
+    area ? stop => registerCleanup(() => { stop(); area.dispose(); }) : registerCleanup, area ?? options?.active);
   return Object.defineProperties(local, {
     scheduler: { value: world.scheduler, enumerable: true },
     perishClock: { value: world.perishClock, enumerable: true },

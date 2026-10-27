@@ -56,6 +56,10 @@ it('releases rock, skeleton and houndbone sprites outside the tickingarea and re
       expect(model.parent).toBe(scene);
       expect(model.children[0].quaternion.equals(rotation)).toBe(true);
     }
+    // Awake billboards turn in the task that publishes the rotation, before that frame renders.
+    const turned = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), 1.2);
+    content.camerarotation.set(turned);
+    for (const model of models) expect(model.children[0].quaternion.equals(turned)).toBe(true);
     expect((meshes(rock)[0].material as THREE.MeshBasicMaterial[])[0].color.r).toBe(colour);
     expect(rocks.renderEntities).toHaveLength(1);
   } finally { rocks.dispose(); skeletons.dispose(); bones.dispose(); content.unbind(); scheduler.dispose(); }

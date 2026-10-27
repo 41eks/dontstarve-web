@@ -1,5 +1,7 @@
 # DST Lua prefab 的 c_spawn / c_give 静态核对
 
+2026-10-27 补充 `dragonfly`：`prefabs/dragonfly.lua` 注册 `Prefab("dragonfly", fn, assets, prefabs)`，`fn` 没有 `inventoryitem`，原版可 `c_spawn("dragonfly")`，不能放入物品栏。项目接入该世界实体的 `c_spawn`、`c_save()` 与读档；浏览器测试从 `?saveData=` 装入一只龙蝇，再生成一只、导出 ZIP 并重载，核对 ID、位置和组件字段。当前 `Cluster_62` 最新快照只在 `dragonfly_spawner.childspawner.childreninside` 记录待生成子代，没有独立 `dragonfly` 实体，导入保持 0→0。
+
 2026-10-27 补充 `beequeenhivegrown`：`prefabs/beequeenhive.lua` 的 `Prefab("beequeenhivegrown", fn, assets, prefabs)` 注册世界实体，`fn` 没有 `inventoryitem`。原版 `c_spawn("beequeenhivegrown")` 可生成；`c_give` 会先生成实体，但不能放入物品栏。项目接入 `c_spawn`、`c_save()` 及读档，保存 `workable` 和可选的 `hiveregen` 计时器；浏览器测试从 `?saveData=` 启动，验证生成、绘制、ZIP 导出与重载。未接入同文件的 `beequeenhive` 基座与蜂后生成路径。
 
 2026-10-25 源存档散落物品美术：`groundItems.json.staticItems` 的 63 个条目按各自 `source` 指向的 prefab Lua 核对 bank/build/clip，原版均为 inventoryitem 路径；雕塑头另外有 heavy。项目此次复用原有地面物品路径增加 `c_spawn("ID")` 展示，完整 ID 列表见 [README 调试说明](../README.md)，不为这些新美术增加库存／拾取／装备／使用交互。现有帽子等库存支持保持原路径。源 `bullkelp_beachedroot` 的拾取回调会替换成 kelp 和 bullkelp_root，本次不移植该回调；扑克牌不移植 flipdeck、playingcard 组件和库存 OverrideImage。实体复用原有 ground_item.components.stack 保存数量、源皮肤及白名单外观变体；`groundItemArt.test.ts` 验证 c_spawn、c_save ZIP 导出及重载，`import-ground-items.py --check` 验证全部 bank/clip 引用及源资源字节。
@@ -468,6 +470,7 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `toadstool` | 可生成 | 不能入栏 | `prefabs/toadstool.lua` |
 | `toadstool_dark` | 可生成 | 不能入栏 | `prefabs/toadstool.lua` |
 | `glommer` | 可生成 | 不能入栏 | `prefabs/glommer.lua` |
+| `statueglommer` | 可生成 | 不能入栏 | `prefabs/statueglommer.lua` |
 | `chester` | 可生成 | 不能入栏 | `prefabs/chester.lua` |
 | `hutch` | 可生成 | 不能入栏 | `prefabs/hutch.lua` |
 | `wormhole` | 可生成 | 不能入栏 | `prefabs/wormhole.lua` |

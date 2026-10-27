@@ -8,6 +8,8 @@ import type { ItemEntity } from '@dontstarve-web/inventory';
 
 export interface PickableSaveState {
   picked?: boolean;
+  /** pickable.lua OnSave includes this only when interaction is enabled. */
+  caninteractwith?: true;
   regrowSeconds?: number;
   paused?: boolean;
   transplanted?: boolean;

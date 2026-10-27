@@ -353,6 +353,7 @@
   "note": "Original impassable gaps and FAKE_GROUND are non-walkable; only whitelisted source entities are imported. No bridges are generated.",
   "entityWhitelist": [
     "pigking",
+    "statueglommer",
     "deciduoustree",
     "moon_tree",
     "moonbutterfly_sapling",
@@ -401,6 +402,7 @@
     "lava_pond",
     "treasurechest",
     "beefalo",
+    "dragonfly",
     "acorn",
     "amulet",
     "axe",
@@ -541,6 +543,10 @@
   ],
   "entityCounts": {
     "pigking": {
+      "source": 1,
+      "imported": 1
+    },
+    "statueglommer": {
       "source": 1,
       "imported": 1
     },
@@ -735,6 +741,10 @@
     "beefalo": {
       "source": 36,
       "imported": 36
+    },
+    "dragonfly": {
+      "source": 0,
+      "imported": 0
     },
     "acorn": {
       "source": 1,
@@ -1296,6 +1306,18 @@
         174
       ],
       "sourceNode": "Speak to the king:7:PigKingdom"
+    },
+    {
+      "id": "dst_03741E1B78B29575_statueglommer_id_105327",
+      "prefab": "statueglommer",
+      "sourceIndex": 1,
+      "sourceId": 105327,
+      "sourcePosition": [
+        -352,
+        0,
+        115
+      ],
+      "sourceNode": "Speak to the king:6:MagicalDeciduous"
     },
     {
       "id": "dst_03741E1B78B29575_deciduoustree_id_201239",

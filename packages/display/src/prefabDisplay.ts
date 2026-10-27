@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createEffect, createMemo, getBoundWatchWorldContent, watchSignal, WorldContentKey, type ReadonlySignal } from '@dontstarve-web/signals';
+import { createEffect, createMemo, createRenderEffect, getBoundWatchWorldContent, watchSignal, WorldContentKey, type ReadonlySignal } from '@dontstarve-web/signals';
 import { ResidentSprite, ResidentSpriteController } from '@dontstarve-web/animation/residentSprite';
 import { AnimationFollower } from './animationFollower';
 import { FxAttachments, type FxRenderEntry } from './fxAttachments';
@@ -160,10 +160,14 @@ export class PrefabDisplay {
     this.cleanups.push(createEffect(() => this.fx.apply(declaredFx.get())));
     this.cleanups.push(createEffect(() => { art.get(); this.listed.setSprite(this.engine.instanced); this.dress(json.peek()); state.artChanged(); }));
     // A billboard turns to TheCamera itself, through its own bridge to the world's camera rotation.
+    // The rotation changes every frame of a turn, so it applies before that frame renders, not a microtask later.
+    // An asleep display has released its sprite, so it unsubscribes and resyncs to the camera when it wakes.
     const watchWorldContent = first.billboard ? getBoundWatchWorldContent() : undefined;
     if (watchWorldContent) {
-      const camera = watchWorldContent(WorldContentKey.CameraRotation, stop => this.cleanups.push(stop));
-      this.cleanups.push(createEffect(() => this.faceCamera(camera.get())));
+      const active = createMemo(() => status.get() === 'active');
+      this.cleanups.push(() => active.dispose());
+      const camera = watchWorldContent(WorldContentKey.CameraRotation, stop => this.cleanups.push(stop), { active });
+      this.cleanups.push(createRenderEffect(() => this.faceCamera(camera.get())));
     }
   }
 

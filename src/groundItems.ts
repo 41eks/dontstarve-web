@@ -31,7 +31,7 @@ import type { GameTimeScheduler } from '../packages/componets/src/gameTimeSchedu
 import type { DeconstructionTarget } from '@dontstarve-web/prefab/greenstaff';
 import type { MiniMapEntity } from '@dontstarve-web/prefab/minimapEntity';
 import type { WorldEventEmitter } from '../packages/prefab/src/worldContext';
-import { createEffect, watchSignal, WorldContentKey, type GetWatchWorldContent, type Signal } from '@dontstarve-web/signals';
+import { createEffect, createRenderEffect, watchSignal, WorldContentKey, type GetWatchWorldContent, type Signal } from '@dontstarve-web/signals';
 
 
 export type { GroundItemDefinition } from '@dontstarve-web/prefab/groundPrefab';
@@ -126,8 +126,8 @@ export class GroundItemManager {
     });
     if (getWatchWorldContent) {
       const rotation = this.cameraRotation = getWatchWorldContent(WorldContentKey.CameraRotation, stop => this.cleanups.push(stop));
-      // Billboards face the camera: re-orient them only when the camera turns.
-      createEffect(() => {
+      // Billboards face the camera: re-orient them only when the camera turns, in the frame that turns it.
+      createRenderEffect(() => {
         const quaternion = rotation.get();
         for (const { model, instance } of this.activeItems) if (!instance.sprite.sprite.peek().ground) model.quaternion.copy(quaternion);
       });

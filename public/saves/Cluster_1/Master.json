@@ -684475,6 +684475,29 @@
           "components": {}
         }
       ],
+      "statueglommer": [
+        {
+          "id": "dst_03741E1B78B29575_statueglommer_id_105327",
+          "transform": {
+            "position": [
+              -1014.0,
+              0.0,
+              -291.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "pickable": {
+              "picked": true,
+              "caninteractwith": true
+            },
+            "workable": {
+              "maxwork": -1,
+              "workleft": 6
+            }
+          }
+        }
+      ],
       "deciduoustree": [
         {
           "id": "dst_03741E1B78B29575_deciduoustree_id_201239",

@@ -32,6 +32,18 @@ export function MakeSmallObstaclePhysics(inst: PhysicsEntity, rad: number, heigh
   return phys;
 }
 
+/** standardcomponents.lua MakeFlyingGiantCharacterPhysics: a flying giant collides with world, characters and giants. */
+export function MakeFlyingGiantCharacterPhysics(inst: PhysicsEntity, mass: number, rad: number): PhysicsState {
+  const phys = inst.physics;
+  phys.SetMass(mass);
+  phys.SetFriction(0);
+  phys.SetDamping(5);
+  phys.SetCollisionGroup(COLLISION.GIANTS);
+  phys.SetCollisionMask(COLLISION.WORLD, COLLISION.CHARACTERS, COLLISION.GIANTS);
+  phys.SetCapsule(rad, 1);
+  return phys;
+}
+
 /** COLLISION masks of a character: SGwilson ToggleOnPhysics and ChangeToCharacterPhysics share it. */
 export const CHARACTER_COLLISION_MASK = [COLLISION.WORLD, COLLISION.OBSTACLES, COLLISION.SMALLOBSTACLES, COLLISION.CHARACTERS,
   COLLISION.GIANTS] as const;

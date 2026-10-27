@@ -372,6 +372,8 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 
 ### c_spawn 支持的对象
 
+`c_spawn("statueglommer")` 在玩家脚点生成格罗姆雕像；它是世界实体，不支持 `c_give`。`c_save()` 保存雕像 ID、位置、`statueglommer.worked/spawned`、`pickable` 与 `workable` 字段；读档按 `statueglommer.lua` 的构造及 OnLoad 顺序恢复 `full`、`med` 或 `low` 的非循环动画。默认导入的地表存档含 1 座，洞穴存档无雕像；原版无雕像皮肤。此移植范围为存档和显示，满月生成格罗姆与花、采摘、采矿和发光行为尚未接入。
+
 `c_spawn("mole")` 在玩家脚点生成鼹鼠；`c_give("mole", count)` 给予活鼹鼠（数量为正整数、默认 1，每只单独占一个槽位）；`c_spawn("molehill")` 生成鼹鼠洞，无额外参数，洞穴不能 `c_give`。例如 `c_spawn("mole");c_give("rocks",3);c_give("hammer");c_give("shovel")`。鼹鼠使用原版分离的 `anim/mole_basic.zip`（bank `mole`）和 `anim/mole_build.zip`，地下移动特效使用 `anim/mole_move_fx.zip`，库存图标由导入器解析实际 atlas；原版没有鼹鼠皮肤。
 
 按 `molebrain.lua` 和 `SGmole.lua` 地下行走（2.75 DST 单位/秒）、每 15～25 游戏秒探头、在 20 DST 单位内寻找有 `molebait` / `bait` 的矿物与玩具，并在偷取动画第 12 帧由诱饵的 `onstolen` 转移真实实体（保留 ID、数量和状态）；目标被拾走或燃烧时取消。携带库存为 3 槽，无洞时先等待两段 5～10 秒延迟，在 5～15 DST 单位的可行走陆地寻找新洞；白天、库存满或同伴遇袭时回巢，将库存转入洞穴的 50 槽库存。洞穴在白天排队，黄昏／夜晚延迟 5～20 秒放出同一只鼹鼠，子代死亡或被捕后按原版 1200 游戏秒补生。 世界阶段统一为从 `clock.phase` 派生的 `cycle`（`day`、`dusk`、`night`）；鼹鼠、洞穴和 Sleeper 各自通过 `WorldContentKey.Cycle` 创建私有监听。Mole 直接传入世界的 `getWatchWorldContent`，返回的本地 signal 带有同一世界的只读 `scheduler` 引用；Mole、Molehill 和 Sleeper 从返回值取得调度器，Sleeper 不再单独接收 scheduler 参数。共享实例由世界状态创建、按游戏时间推进并在世界释放时销毁，组件清理只取消自己的任务。Sleeper 自行创建和清理本地 signal：鼹鼠白天睡觉，黄昏／夜晚醒来。调试命令的语法、参数和支持 ID 不变。
@@ -459,6 +461,7 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 | 树苗 | `sapling`、`sapling_moon`（共享 archive sprite，`instancedAnimations: 'all'` 合批；命令与 ID 不变） |
 | 猎犬骨 | `houndbone`（bank `houndbase`、build `hound_base`，随机或存档的 `bonetype` 1～3 对应 `piece1`～`piece3`；装备锤子右键 `HAMMER` 一次即碎，掉落 `boneshard`，`piece3` 另有 50% `houndstooth`，并播放 `collapse_small`（岩石材质）；通过共享 archive sprite 的 `instancedAnimations: 'all'` 合批；只可 `c_spawn`，无 `c_give`，`c_save()` 保留 ID、位置与 `bonetype`） |
 | 长成的蜂后蜂巢 | `beequeenhivegrown`（`c_spawn("beequeenhivegrown")`，无参数；世界实体无 `c_give`。源 `prefabs/beequeenhive.lua` 使用 `anim/bee_queen_hive.zip`，bank/build 均为 `bee_queen_hive`，生成时播放非循环 `large`，锤击声明 `large_hit` → 非循环 `large`；`c_save()` 保留 ID、脚点、`workable` 的 16 次最大工作量与剩余量，以及存在时的 `hiveregen` 计时器。源无皮肤；`beequeenhive` 基座生成蜂巢、蜂后生成与锤击掉落尚未接入） |
+| 龙蝇 | `dragonfly`（`c_spawn("dragonfly")`，无参数；世界实体无 `c_give`。源 `prefabs/dragonfly.lua` 使用 bank `dragonfly`、通常 build `dragonfly_build`、循环 `idle`；`c_save()` 保留 ID、位置、血量、物品栏、潮湿度、召唤波次及可选计时器等存档字段。原版节日活动还会选用 `dragonfly_yule_build`；源未定义皮肤。本移植覆盖加载、显示与存档；未实现战斗行为，缺失的组件、状态图和 brain 仅保留构造签名） |
 | 洞穴蕨 | `cave_fern`、`cave_fern_withered`（bank `ferns`，build 分别为 `cave_ferns` / `cave_ferns_withered_build`，生成时随机选 `f1`～`f10` 姿态；快速 `PICK` 分别得 `foliage` / `cutgrass`，采后按 `remove_when_picked` 直接移除，无 `workable` 不能铲；可燃烧；通过共享 archive sprite 的 `instancedAnimations: 'all'` 合批，使用 `ResidentSprite` 随活动区卸载／重建 visual，保留实体、组件与姿态，重建后恢复相机朝向；无 `c_give`，`c_save()` 保留 ID、位置与姿态） |
 | 池塘 | `pond` |
 | 温泉 | `hotspring` |

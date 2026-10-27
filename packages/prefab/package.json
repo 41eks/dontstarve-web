@@ -48,6 +48,8 @@
     "./grass": "./src/grass.ts",
     "./houndbone": "./src/houndbone.ts",
     "./beequeenhivegrown": "./src/beequeenhivegrown.ts",
+    "./dragonfly": "./src/dragonfly.ts",
+    "./statueglommer": "./src/statueglommer.ts",
     "./rock_avocado_fruit": "./src/rock_avocado_fruit.ts",
     "./marbleshrub": "./src/marbleshrub.ts",
     "./archive_props": "./src/archive_props.ts",

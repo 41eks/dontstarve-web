@@ -13,6 +13,9 @@ import { MARBLESHRUB_ID, MARBLESHRUB_SPAWN_IDS, MARBLESHRUB_MAX_GROW_TIME } from
 import { ARCHIVE_PROP_IDS, ARCHIVE_PROP_SPAWN_IDS, ARCHIVE_MOON_STATUE_ID, ARCHIVE_RUNE_STATUE_ID } from '@dontstarve-web/prefab/archive_props';
 import { HOUNDBONE_ID } from '@dontstarve-web/prefab/houndbone';
 import { BEEQUEENHIVEGROWN_ID, BEEQUEEN_HIVE_MAX_WORK } from '@dontstarve-web/prefab/beequeenhivegrown';
+import { DRAGONFLY_ID } from '@dontstarve-web/prefab/dragonfly';
+import { STATUEGLOMMER_ID, STATUEGLOMMER_WORK } from '@dontstarve-web/prefab/statueglommer';
+import { parseDragonflyState } from './save/dragonfly';
 import { SKELETON_IDS, SKELETON_ANIMS, SKELETON_PLAYER_ID } from '@dontstarve-web/prefab/skeleton';
 import { MARBLEBEAN_SAPLING_ID } from '@dontstarve-web/prefab/marblebean_sapling';
 import { ROCK_AVOCADO_SAPLING_ID, ROCK_AVOCADO_SPROUT_GROW_TIME } from '@dontstarve-web/prefab/rock_avocado_fruit_sprout_sapling';
@@ -159,6 +162,30 @@ export const PREFAB_DEFINITIONS = {
       { animation: 'evergreen_tall_old.zip', build: 'evergreen_new.zip' }, 'pine_needles.zip',
     ]),
   pigKings: definePrefabs(['pigking'], empty, true, [definitions.pigKing.archive]),
+  glommerStatues: definePrefabs([STATUEGLOMMER_ID], (value, path) => {
+    const data = object(value, path, ['statueglommer', 'pickable', 'workable']);
+    const components: import('./save/types').SavedEntity['components'] = {};
+    if (data.statueglommer !== undefined) {
+      const state = object(data.statueglommer, `${path}.statueglommer`, ['worked', 'spawned']);
+      for (const key of ['worked', 'spawned'] as const) if (state[key] !== undefined && state[key] !== true)
+        fail(`${path}.statueglommer.${key}`, 'expected true');
+      components.statueglommer = { ...(state.worked ? { worked: true } : {}), ...(state.spawned ? { spawned: true } : {}) };
+    }
+    if (data.pickable !== undefined) {
+      const state = object(data.pickable, `${path}.pickable`, ['picked', 'caninteractwith']);
+      if (state.picked !== undefined && state.picked !== true) fail(`${path}.pickable.picked`, 'expected true');
+      if (state.caninteractwith !== undefined && state.caninteractwith !== true)
+        fail(`${path}.pickable.caninteractwith`, 'expected true');
+      components.pickable = { ...(state.picked ? { picked: true } : {}),
+        ...(state.caninteractwith ? { caninteractwith: true } : {}) };
+    }
+    if (data.workable !== undefined) {
+      const state = object(data.workable, `${path}.workable`, ['maxwork', 'workleft']);
+      if (state.maxwork !== -1) fail(`${path}.workable.maxwork`, 'expected -1');
+      components.workable = { maxwork: -1, workleft: number(state.workleft, `${path}.workable.workleft`, 0, STATUEGLOMMER_WORK) };
+    }
+    return components;
+  }, true, ['glommer_statue.zip', 'glommer_swap_flower.zip']),
   buildings: definePrefabs(PLACEABLE_BUILDING_IDS.filter((id) => !id.endsWith('_item')), (value, path, context) => {
     const spec = Object.hasOwn(context.catalog.buildings, context.prefab) ? context.catalog.buildings[context.prefab] : undefined;
     if (spec) return (context.prefab === 'cookpot' ? cookPot : context.prefab === 'sculptingtable' ? sculptingTable
@@ -203,6 +230,11 @@ export const PREFAB_DEFINITIONS = {
     componentParser({ keys: ['skeleton'], skeletonAnims: SKELETON_ANIMS[context.prefab as keyof typeof SKELETON_ANIMS], skeletonDescribed: context.prefab === SKELETON_PLAYER_ID })(value, path, context), true, ['skeletons.zip', 'structure_collapse_fx.zip']),
   houndbones: definePrefabs([HOUNDBONE_ID], componentParser({ keys: ['houndbone'] }), true, ['hound_base.zip', 'structure_collapse_fx.zip']),
   beeQueenHives: definePrefabs([BEEQUEENHIVEGROWN_ID], beeQueenHiveComponents, true, ['bee_queen_hive.zip']),
+  dragonflies: definePrefabs([DRAGONFLY_ID], (value, path) => {
+    const data = object(value, path, ['dragonfly']);
+    return { dragonfly: parseDragonflyState(data.dragonfly, `${path}.dragonfly`) };
+  }, true, [{ animation: 'dragonfly_basic.zip', build: 'dragonfly_build.zip' },
+    { animation: 'dragonfly_actions.zip', build: 'dragonfly_build.zip' }]),
   marbleBeanSaplings: definePrefabs([MARBLEBEAN_SAPLING_ID], componentParser({ keys: ['saplingTimer'] }), true, ['marblebean.zip']),
   marbleShrubs: definePrefabs([MARBLESHRUB_ID], componentParser({ keys: ['growable', 'marbleShrub'], growthTime: MARBLESHRUB_MAX_GROW_TIME }), MARBLESHRUB_SPAWN_IDS,
     ['marbleshrub.zip', 'marbleshrub_build.zip']),

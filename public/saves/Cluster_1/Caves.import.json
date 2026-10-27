@@ -436,6 +436,7 @@
   "note": "Original impassable gaps and FAKE_GROUND are non-walkable; only whitelisted source entities are imported. No bridges are generated.",
   "entityWhitelist": [
     "pigking",
+    "statueglommer",
     "deciduoustree",
     "moon_tree",
     "moonbutterfly_sapling",
@@ -484,6 +485,7 @@
     "lava_pond",
     "treasurechest",
     "beefalo",
+    "dragonfly",
     "boneshard",
     "cutgrass",
     "flint",
@@ -507,6 +509,10 @@
   ],
   "entityCounts": {
     "pigking": {
+      "source": 0,
+      "imported": 0
+    },
+    "statueglommer": {
       "source": 0,
       "imported": 0
     },
@@ -699,6 +705,10 @@
       "imported": 0
     },
     "beefalo": {
+      "source": 0,
+      "imported": 0
+    },
+    "dragonfly": {
       "source": 0,
       "imported": 0
     },

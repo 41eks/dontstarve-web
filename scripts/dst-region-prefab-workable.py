@@ -2,6 +2,32 @@
 """Workable prop save states: mining/hammering work and the fixed visual variant."""
 
 
+def statueglommer_components(data):
+    # statueglommer.lua OnSave plus pickable.lua and workable.lua component records.
+    if set(data) - {'worked', 'spawned', 'pickable', 'workable'}:
+        raise ValueError('Unsupported statueglommer save state')
+    result = {}
+    state = {key: True for key in ('worked', 'spawned') if data.get(key) is True}
+    for key in ('worked', 'spawned'):
+        if key in data and data[key] is not True:
+            raise ValueError(f'Unsupported statueglommer {key} flag')
+    if state:
+        result['statueglommer'] = state
+    picked = data.get('pickable')
+    if picked is not None:
+        if not isinstance(picked, dict) or set(picked) - {'picked', 'caninteractwith'} \
+                or any(value is not True for value in picked.values()):
+            raise ValueError('Unsupported statueglommer pickable state')
+        result['pickable'] = picked
+    work = data.get('workable')
+    if work is not None:
+        if not isinstance(work, dict) or set(work) != {'maxwork', 'workleft'} or work['maxwork'] != -1 \
+                or type(work['workleft']) not in (int, float) or not 0 <= work['workleft'] <= 6:
+            raise ValueError('Unsupported statueglommer workable state')
+        result['workable'] = work
+    return result
+
+
 def pighead_components(data):
     # stickheads.lua onsave/onload. Workable.savestate is false; awake is rebuilt.
     if set(data) - {'burnt', 'workable'} or data.get('workable'):
