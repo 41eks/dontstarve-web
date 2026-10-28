@@ -99,7 +99,7 @@ test('game right-click reskins a chest and c_save keeps its skin and container c
     await animation.setCarryItem('reskin_tool', source.item.skinId);
     const target = game.scene.children.find((object: any) => object.name === 'TreasureChest' && !game.oldRoots.includes(object));
     game.target = target;
-    game.entityId = target.userData.instance?.entityId;
+    game.entityId = (window as any).__prefabInstance(target)?.entityId;
     // Record the stable world identity while requesting an actual pointer action.
     await new Promise(requestAnimationFrame);
     let mesh: any;
@@ -112,12 +112,12 @@ test('game right-click reskins a chest and c_save keeps its skin and container c
     return { x: bounds.left + (ndc.x + 1) * bounds.width / 2, y: bounds.top + (1 - ndc.y) * bounds.height / 2 };
   }, `/@fs${fileURLToPath(new URL('../../inventory/src/index.ts', import.meta.url))}`);
   await page.mouse.click(point.x, point.y, { button: 'right' });
-  await expect.poll(() => page.evaluate(() => (window as any).reskinGame.target.userData.instance?.skinId)).toBe('treasurechest_ancient');
+  await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).reskinGame.target)?.skinId)).toBe('treasurechest_ancient');
   await expect.poll(() => page.evaluate(() => (window as any).reskinGame.player.userData.animationController.isReskinning)).toBe(false);
-  await expect.poll(() => page.evaluate(() => (window as any).reskinGame.fx?.userData.instance.status.peek())).toBe('removed');
+  await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).reskinGame.fx).status.peek())).toBe('removed');
   expect(await page.evaluate(() => {
     const { fx, scene } = (window as any).reskinGame;
-    return { tagged: fx.userData.instance.hasTag('FX'), persists: fx.userData.instance.persists,
+    return { tagged: (window as any).__prefabInstance(fx).hasTag('FX'), persists: (window as any).__prefabInstance(fx).persists,
       detached: !scene.children.includes(fx) };
   })).toMatchObject({ tagged: true, persists: false, detached: true });
   await page.evaluate(async () => {
@@ -168,9 +168,9 @@ test('game right-click reskins a chest and c_save keeps its skin and container c
   await page.evaluate(async url => { await import(url); }, urls.main);
   const restored = await page.evaluate(async ({ url, id }) => {
     const { scene } = await import(url);
-    const target = scene.children.find((model: any) => model.userData.instance?.entityId === id);
-    return { skinId: target?.userData.instance?.skinId, position: target ? [target.position.x, target.position.z] : undefined,
-      container: target?.userData.instance?.saveRecord.components.container };
+    const target = scene.children.find((model: any) => (window as any).__prefabInstance(model)?.entityId === id);
+    return { skinId: (window as any).__prefabInstance(target)?.skinId, position: target ? [target.position.x, target.position.z] : undefined,
+      container: (window as any).__prefabInstance(target)?.saveRecord.components.container };
   }, { url: urls.universal, id });
   expect(restored).toEqual({ skinId: 'treasurechest_ancient', position: [chest.transform.position[0], chest.transform.position[2]],
     container: chest.components.container });

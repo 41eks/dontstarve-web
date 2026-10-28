@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { importedSave } from './importedSave';
 import { expect, it, vi } from 'vitest';
 import { createSanityState } from '../../signals/src';
 import { inventorySlotAddress } from '../../inventory/src';
@@ -86,7 +86,7 @@ it('keeps its condition through re-configuration, transfers and a save round tri
     expect(hat.inventory.Equip(hat.entity)).toBe(true);
     expect(hat.armor.condition.peek()).toBe(condition);
     expect(hat.entity.snapshot().armor).toEqual({ condition });
-    const template = deserializeSave((await readFile(new URL('../../../public/saves/Cluster_1/Caves.json', import.meta.url))).toString(), SAVE_CATALOG);
+    const template = importedSave('Caves');
     const saved = deserializeSave(serializeSave(template, {
       inventory: hat.inventory.exportState(), elapsedSeconds: 0, playerTransform: { position: [0, 0, 0], rotationY: 0 }, entities: {},
     }, SAVE_CATALOG), SAVE_CATALOG);

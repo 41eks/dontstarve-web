@@ -7,20 +7,20 @@ import { PointerRaycaster } from './pointerRaycaster.ts';
 import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor } from './actionContext.ts';
 import { collectEquippedActions, equippedActionEntity, performToolWork, type ComponentActionEntity } from './componentactions.ts';
 import type { Worker } from '../../componets/src/workable';
+import { actionTargetModel, type ActionTargetView } from './actionTargetView';
 
 export const HAMMER_HIT_TIME = WILSON_ACTION_TIMES.mine;
 export const HAMMER_REACH = 4;
 
-export interface HammerTarget {
+export type HammerTarget = ActionTargetView & {
   readonly entity: ComponentActionEntity;
   readonly id: string;
-  readonly model: THREE.Group;
   /** Ground contact, independent of the billboard's height or camera rotation. */
   readonly position: THREE.Vector3;
   isValid(): boolean;
   /** Commit one successful HAMMER hit; the prefab owns work count and destruction. */
   playHit(): void;
-}
+};
 
 /** componentactions: HAMMER_tool + HAMMER_workable, on the right mouse button. */
 export class HammerActionController {
@@ -71,7 +71,7 @@ export class HammerActionController {
     this.unregisterHover = this.picker.register(model => !model || !this.isEquipped() ? [] :
       this.getTargets(model).filter(target => target.isValid()).map(target => ({
         action: { action: 'HAMMER', invobject: equippedActionEntity(this.handEquipment.peek()), target: target.entity },
-        button: 'right', model: target.model, available: this.canWork(target), source: 'equipped',
+        button: 'right', model: actionTargetModel(target), available: this.canWork(target), source: 'equipped',
       }))) ?? (() => {});
     // Register in capture so a work click cannot open a container or place a building.
     world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown, true);
@@ -163,7 +163,7 @@ export class HammerActionController {
   private hitTarget(event?: PointerEvent): HammerTarget | undefined {
     const action = this.picker.getMouseActions(event).right, model = this.picker.targetModel;
     return model && action?.action === 'HAMMER'
-      ? this.getTargets(model).find(target => target.model === model && target.isValid()) : undefined;
+      ? this.getTargets(model).find(target => actionTargetModel(target) === model && target.isValid()) : undefined;
   }
 
   private readonly handlePointerDown = (event: PointerEvent): void => {

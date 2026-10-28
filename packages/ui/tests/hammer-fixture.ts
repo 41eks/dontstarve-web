@@ -68,7 +68,7 @@ export async function checkResearchLabDestruction() {
     const effectsCleaned = !entities.buildingPlacement.renderEntities.some(({ object }) => object.name === 'collapse_small');
     // Isolate one material stack and pick it up through the public pointer path.
     const groundModel = entities.groundItems.renderEntities[0].object;
-    const address = groundModel.userData.instance?.entityId;
+    const address = (window as any).__prefabInstance(groundModel)?.entityId;
     for (const { object } of entities.groundItems.renderEntities.slice(1)) object.userData.pickupTarget.entity.transform.position.x += 100;
     groundModel.userData.pickupTarget.entity.transform.position.copy(player.position).setY(0).add(new THREE.Vector3(5, 0, 0));
     groundModel.position.copy(groundModel.userData.pickupTarget.entity.transform.position);

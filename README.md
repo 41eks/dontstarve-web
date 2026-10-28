@@ -41,7 +41,7 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 
 玩家美术改用 Wortox 默认外观（`wortox_none`）：本体 `anim/dynamic/wortox.zip` / `.dyn`，幽灵 `anim/dynamic/ghost_wortox_build.zip` / `.dyn`；地图图标和物品栏自检头像同步使用 Wortox。共用 `wilson` 动画 bank、装备符号覆盖、死亡／复活及存档流程沿用现有实现，角色数值和存档角色字段沿用现有实现。资源按原路径和字节镜像，运行 `python3 packages/prefab/scripts/import-player-art.py --check` 校验，去掉 `--check` 可重新导入。调试命令语法、参数和支持的 `c_spawn` / `c_give` ID 不变。
 
-默认加载 `public/saves/Cluster_1/Master.json`，无需 URL 参数。`scripts/import-dst-region.py --cluster public/saves/Cluster_62 --output public/saves/Cluster_1 --origin-cell 214 213 --forest-origin-cell 189 197` 一次转换地表与洞穴，分别输出 `Master.json`、`Caves.json` 和各自的 `.import.json` 来源报告。当前 `Cluster_62` 导入结果包含地表 6,452 个实体（含 1 个 `beequeenhivegrown`、2 个带内容物的箱子和 36 头野生 `beefalo`）、洞穴 4,757 个实体，其中静态散落物品分别为 137 种／961 个实体和 20 种／130 个实体。地表各海洋类型、海冰、码头／农田底层地皮，以及常青树已保存的腐朽计时器均随存档保留；出生点排除海洋与虚空。`--origin-cell 214 213` 在整簇导入时只固定洞穴原点，地表独立居中，可用 `--forest-origin-cell COL ROW` 指定。可用 `?save=Cluster_1/Caves.json` 加载洞穴，或 `?save=initial-world.json` 加载原地表存档。也可用 `?saveData=<base64url>` 直接传入存档 JSON（UTF-8 后按 base64url 编码，无需对应文件），它优先于 `?save=`，并与文件存档一样经过完整校验；浏览器测试用它从测试内构造的存档启动。`c_spawn` 新增静态散落物品 ID，详见下方调试命令说明；`c_save()` 无参数，下载包含 `Cluster_1/` 目录的 `Cluster_1.zip`，更新当前分片并保留另一分片。将 ZIP 解压到 `public/saves/`，覆盖 `Cluster_1/` 后重载。完整参数和 `--check` 见 [地表与洞穴地图导入](docs/dst-static-layouts.md#从完整存档导入地表与洞穴地图)。
+默认按 `public/saves/Cluster_1/session.json` 选择各 Session 的最新快照及唯一未迁移的玩家；当前是位于 Atrium 的 Caves `0000000033`。存档转换方法见 [存档转换](scripts/save-convert.md)。可用 `?save=Cluster_1/Master.json` 显式加载地表，或 `?save=initial-world.json` 加载原地表存档。也可用 `?saveData=<base64url>` 直接传入存档 JSON（UTF-8 后按 base64url 编码，无需对应文件），它优先于 `?save=`，并与文件存档一样经过完整校验；浏览器测试用它从测试内构造的存档启动。`c_save()` 无参数，下载包含 `Cluster_1/` 目录的 `Cluster_1.zip`，新增当前世界快照及对应的 Session 玩家文件，更新索引和当前分片的便捷副本，并保留旧快照。将 ZIP 解压到 `public/saves/`，覆盖 `Cluster_1/` 后重载。
 
 已实现树木的导入白名单包含 `evergreen`、`deciduoustree`、`moon_tree`、`mushtree_moon`、`mushtree_medium`、`mushtree_tall`，以及月树幼苗 `moonbutterfly_sapling`。本次重新导入默认存档新增 198 棵月树。常青树、桦树、月树按 Lua 使用原版地图图标、优先级 `-1`，砍倒或烧毁后切换树桩／焦木图标；蘑菇树沿用现有图标。图标属于逻辑树，远处卸载模型时继续显示，永久移除时清理。月树保留大小、生长及 `moonTreeTimer` 腐朽计时器；幼苗保留 `saplingTimer`，按原版不显示地图图标。现有 `c_spawn("evergreen_normal")`、`c_spawn("deciduoustree_normal")`、`c_spawn("moon_tree_normal")` 等命令与支持 ID 不变；`c_save()` 保存树木身份、位置及相应组件状态。
 
@@ -372,6 +372,12 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 
 ### c_spawn 支持的对象
 
+`c_spawn("chessjunk1")`、`c_spawn("chessjunk2")`、`c_spawn("chessjunk3")` 分别在玩家脚点生成三种棋械残骸；都是世界 prefab，不支持 `c_give`。三者使用 `chessmonster_ruins.zip`，初始声明非循环 `idle1/2/3`；已修复记录按 Lua `OnLoad` 恢复循环 `hit1/2/3`。`c_save()` 保留 ID、位置和已修复记录中的 `repaired`、`repairerid`、`repairerchar`。洞穴导入分别含 23、33、25 个。无皮肤；修复、敲击、战利品及重生行为未接入。
+
+`c_spawn("ruins_statue_mage")` 在玩家脚点生成带随机宝石的遗迹法师雕像；它是世界 prefab，不支持 `c_give`。原版 `statueruins.lua` 使用 `statue_ruins.zip` 与 `statue_ruins_gem.zip`，读档恢复 `gem` 符号覆盖及正常噩梦阶段的循环 `idle_full`。`c_save()` 保存 ID、脚点和宝石种类；洞穴导入存档包含 18 座。无皮肤。采矿、噩梦阶段切换及遗迹重生行为尚未接入。
+
+`c_spawn("atrium_gate")` 在玩家脚点生成远古大门；这是世界 prefab，不支持 `c_give`。洞穴导入存档包含 1 座。主门使用 `atrium_gate.zip` 的非循环 `idle`、独立地板与源定义的无美术阻挡子实体；读档按保存的钥匙、修复、采摘及世界设置计时器字段声明外观与动画。`c_save()` 保存 ID、位置、`atriumGate`、`pickable`、`charliecutscene`、`worldsettingstimer` 和 `entitytracker` 字段。此移植覆盖存档与显示；钥匙交易、满能量战斗、计时器完成与音效事件尚未接入。原版没有大门皮肤。
+
 `c_spawn("statueglommer")` 在玩家脚点生成格罗姆雕像；它是世界实体，不支持 `c_give`。`c_save()` 保存雕像 ID、位置、`statueglommer.worked/spawned`、`pickable` 与 `workable` 字段；读档按 `statueglommer.lua` 的构造及 OnLoad 顺序恢复 `full`、`med` 或 `low` 的非循环动画。默认导入的地表存档含 1 座，洞穴存档无雕像；原版无雕像皮肤。此移植范围为存档和显示，满月生成格罗姆与花、采摘、采矿和发光行为尚未接入。
 
 `c_spawn("mole")` 在玩家脚点生成鼹鼠；`c_give("mole", count)` 给予活鼹鼠（数量为正整数、默认 1，每只单独占一个槽位）；`c_spawn("molehill")` 生成鼹鼠洞，无额外参数，洞穴不能 `c_give`。例如 `c_spawn("mole");c_give("rocks",3);c_give("hammer");c_give("shovel")`。鼹鼠使用原版分离的 `anim/mole_basic.zip`（bank `mole`）和 `anim/mole_build.zip`，地下移动特效使用 `anim/mole_move_fx.zip`，库存图标由导入器解析实际 atlas；原版没有鼹鼠皮肤。
@@ -461,7 +467,7 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 | 树苗 | `sapling`、`sapling_moon`（共享 archive sprite，`instancedAnimations: 'all'` 合批；命令与 ID 不变） |
 | 猎犬骨 | `houndbone`（bank `houndbase`、build `hound_base`，随机或存档的 `bonetype` 1～3 对应 `piece1`～`piece3`；装备锤子右键 `HAMMER` 一次即碎，掉落 `boneshard`，`piece3` 另有 50% `houndstooth`，并播放 `collapse_small`（岩石材质）；通过共享 archive sprite 的 `instancedAnimations: 'all'` 合批；只可 `c_spawn`，无 `c_give`，`c_save()` 保留 ID、位置与 `bonetype`） |
 | 长成的蜂后蜂巢 | `beequeenhivegrown`（`c_spawn("beequeenhivegrown")`，无参数；世界实体无 `c_give`。源 `prefabs/beequeenhive.lua` 使用 `anim/bee_queen_hive.zip`，bank/build 均为 `bee_queen_hive`，生成时播放非循环 `large`，锤击声明 `large_hit` → 非循环 `large`；`c_save()` 保留 ID、脚点、`workable` 的 16 次最大工作量与剩余量，以及存在时的 `hiveregen` 计时器。源无皮肤；`beequeenhive` 基座生成蜂巢、蜂后生成与锤击掉落尚未接入） |
-| 龙蝇 | `dragonfly`（`c_spawn("dragonfly")`，无参数；世界实体无 `c_give`。源 `prefabs/dragonfly.lua` 使用 bank `dragonfly`、通常 build `dragonfly_build`、循环 `idle`；`c_save()` 保留 ID、位置、血量、物品栏、潮湿度、召唤波次及可选计时器等存档字段。原版节日活动还会选用 `dragonfly_yule_build`；源未定义皮肤。本移植覆盖加载、显示与存档；未实现战斗行为，缺失的组件、状态图和 brain 仅保留构造签名） |
+| 龙蝇与生成器 | `dragonfly`、`dragonfly_spawner`（均可 `c_spawn("ID")`，无 `c_give`。生成器是不可见的 `CLASSIFIED` 实体；原始地表存档导入 1 个，保存着 `childspawner.childreninside=1` 和 `queued_spawn=true`，玩家进入活动区后释放排队的龙蝇。生成器按源 Lua 的子代计数、定时生成与 20 游戏日再生计时器保存／恢复；`c_save()` 保留生成器与龙蝇的 ID、位置及组件状态。龙蝇使用 bank `dragonfly`、通常 build `dragonfly_build`、循环 `idle`；原版节日活动还会选用 `dragonfly_yule_build`，源未定义皮肤。战斗行为尚未实现） |
 | 洞穴蕨 | `cave_fern`、`cave_fern_withered`（bank `ferns`，build 分别为 `cave_ferns` / `cave_ferns_withered_build`，生成时随机选 `f1`～`f10` 姿态；快速 `PICK` 分别得 `foliage` / `cutgrass`，采后按 `remove_when_picked` 直接移除，无 `workable` 不能铲；可燃烧；通过共享 archive sprite 的 `instancedAnimations: 'all'` 合批，使用 `ResidentSprite` 随活动区卸载／重建 visual，保留实体、组件与姿态，重建后恢复相机朝向；无 `c_give`，`c_save()` 保留 ID、位置与姿态） |
 | 池塘 | `pond` |
 | 温泉 | `hotspring` |

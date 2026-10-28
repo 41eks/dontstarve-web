@@ -1,3 +1,4 @@
+import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
@@ -18,7 +19,7 @@ it('renders the static cave_exit art as a solid obstacle and round-trips its rec
     expect(physics.bodies).toHaveLength(1);
     exits.update(0.1, new THREE.Quaternion());
     const [{ prefabId, record }] = exits.exportRecords();
-    expect([prefabId, record.id, record.transform.position]).toEqual(['cave_exit', model.userData.instance?.entityId, [5, 0, 7]]);
+    expect([prefabId, record.id, record.transform.position]).toEqual(['cave_exit', lookupPrefabInstance(model)?.entityId, [5, 0, 7]]);
 
     const restored = new CaveExitManager(new THREE.Scene(), {});
     try {

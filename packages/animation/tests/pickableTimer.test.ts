@@ -85,3 +85,18 @@ it('preserves paused regrowth through restoration and applies spring growth only
   expect(restored.state.phase.peek()).toBe('removed');
   scheduler.dispose();
 });
+
+it('restores a barren grass timer saved by pickable.lua and settles it at its deadline', () => {
+  const scheduler = new GameTimeScheduler();
+  const onRegen = vi.fn();
+  const saved = { picked: true, transplanted: true, cyclesLeft: 0, maxCycles: 20, regrowSeconds: 1059 };
+  const pickable = new Pickable(new THREE.Group(), 'cutgrass', 1440, 1, undefined, onRegen, saved, { scheduler });
+  expect(pickable.IsBarren()).toBe(true);
+  expect(pickable.canBePicked).toBe(false);
+  expect(pickable.exportState()).toEqual(saved);
+  scheduler.advance(1059);
+  expect(pickable.canBePicked).toBe(true);
+  expect(pickable.cyclesLeft).toBe(0);
+  expect(onRegen).toHaveBeenCalledOnce();
+  pickable.dispose(); scheduler.dispose();
+});

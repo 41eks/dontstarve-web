@@ -23,6 +23,7 @@ import { actionEntity } from './actionEntity';
 import { MakeFlyingGiantCharacterPhysics, WORLD_SCALE } from './standardcomponents';
 import { watchTileActivity } from './tileActivity';
 import { newEntityId } from './saveRecord';
+import type { DisplayDrivenPrefabManager, DisplayManagerWorld } from './manager';
 
 export const DRAGONFLY_ID = 'dragonfly' as const;
 export interface DragonflySaveState {
@@ -55,21 +56,21 @@ interface Dragonfly {
   save: DragonflySaveState;
   stopActivity?: () => void;
 }
+export interface DragonflyWorld extends DisplayManagerWorld {
+  tickingarea?: TileStateQuery;
+  physics?: World;
+  scheduler: GameTimeScheduler;
+  getWatchWorldContent: GetWatchWorldContent;
+}
 
 /** dragonfly.lua fn / OnLoad: saved combat state has no load-time animation transition. */
-export class DragonflyManager {
+export class DragonflyManager implements DisplayDrivenPrefabManager<{ prefabId: typeof DRAGONFLY_ID; record: DragonflyRecord }> {
   private readonly assets = new ArchiveSpriteAssets(DRAGONFLY_ID);
   private readonly entities = new Map<THREE.Group, Dragonfly>();
   private disposed = false;
   private readonly scene: THREE.Scene;
-  private readonly world: {
-    tickingarea?: TileStateQuery; physics?: World; scheduler: GameTimeScheduler;
-    getWatchWorldContent: GetWatchWorldContent;
-  };
-  constructor(scene: THREE.Scene, world: {
-    tickingarea?: TileStateQuery; physics?: World; scheduler: GameTimeScheduler;
-    getWatchWorldContent: GetWatchWorldContent;
-  }) { this.scene = scene; this.world = world; }
+  private readonly world: DragonflyWorld;
+  constructor(scene: THREE.Scene, world: DragonflyWorld) { this.scene = scene; this.world = world; }
 
   spawn(position: THREE.Vector3, saved?: DragonflyRecord): THREE.Group {
     if (this.disposed) throw new Error('Dragonflies have been disposed');
@@ -159,12 +160,20 @@ export class DragonflyManager {
     const entity: Dragonfly = { instance, display, health, knownlocations, timer, inventory,
       sleeper, freezable, propagator, save };
     this.entities.set(model, entity);
-    this.scene.add(model);
+    display.mount(this.scene);
+    this.world.trackDisplay(display);
     entity.stopActivity = watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active));
+    instance.onRemove(() => {
+      this.entities.delete(model);
+      entity.stopActivity?.(); timer.dispose(); inventory.dispose(); sleeper.dispose();
+      freezable.dispose(); propagator.dispose();
+    });
     return model;
   }
 
-  update(dt: number): void { for (const { instance } of this.entities.values()) instance.sprite.update(dt); }
+  getById(id: string): THREE.Group | undefined {
+    return [...this.entities].find(([, entity]) => entity.instance.entityId === id)?.[0];
+  }
   get renderEntities() { return [...this.entities].filter(([, entity]) => entity.instance.sprite.loaded)
     .map(([object]) => ({ object, footPosition: object.position, cameraDepth: 0 })); }
   exportRecords(): { prefabId: typeof DRAGONFLY_ID; record: DragonflyRecord }[] {
@@ -184,10 +193,7 @@ export class DragonflyManager {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
-    for (const [model, entity] of this.entities) {
-      entity.stopActivity?.(); entity.timer.dispose(); entity.inventory.dispose(); entity.sleeper.dispose();
-      entity.freezable.dispose(); entity.propagator.dispose(); entity.instance.remove(); model.userData.removed = true;
-    }
-    this.entities.clear(); this.assets.dispose();
+    for (const entity of this.entities.values()) { entity.instance.remove(); entity.display.dispose(); }
+    this.assets.dispose();
   }
 }

@@ -95,6 +95,7 @@ python3 scripts/import-dst-region.py \
 当前白名单及状态转换：
 
 - `pigking`：只接受空状态；交易与日夜／状态图状态由现有猪王 prefab 重建。
+- `researchlab`、`researchlab2`、`researchlab3`、`researchlab4`：按 `scienceprototyper.lua` / `magicprototyper.lua` 的 OnSave 迁移可选 `burnt`，保留已支持的 `skinname`；workable 默认不保存工作量。当前地表快照有 1 台 `researchlab2` 和 1 台使用 `researchlab3_nature` 皮肤的 `researchlab3`，洞穴无这四类记录。
 - `moon_tree`：迁移 `size`、`growable`、树桩／烧毁标记及 `timer.decay` → `moonTreeTimer`，保留剩余时间和暂停状态；当前快照新增 198 棵。`moonbutterfly_sapling`：`timer.grow` → `saplingTimer`，保留幼苗生长计时器，按原版不创建地图图标。
 - `deciduoustree`：迁移正常桦树的 `growable`、`build`、`leaf_state`、`target_leaf_state`、`leaveschangetime`、树桩／烧毁标记及 `timer.decay` → `deciduousTimer`。树桩可没有 `target_leaf_state`；腐朽任务由逻辑树持有，模型卸载时保留，保存／读档恢复剩余时间，移除时取消。拒绝尚未移植的 `monster` 敌对分支；自然繁殖 `plantregrowth` 沿用其他树木的现有限制，不迁移。
 - `flower`：`anim` → `flower.animation`，支持 `f1`～`f10` 和 `rose`；只在源 `planted = true` 时写入该标记，自然花不改为种植花。只接受未采摘、可交互的持久花。
@@ -108,7 +109,7 @@ python3 scripts/import-dst-region.py \
 - `rock1`、`rock2`、`rock_moon_shell`、`rock_flintless`、`rock_flintless_med`、`rock_flintless_low`、`rock_moon`：按 `rocks.lua` 不保存开采量，只接受空状态或空 workable。`cavein_boulder` 保留 `variation`（默认 1）、`raised`／`formed`，接受静止落石的 `submersible.force_no_repositioning: false`，拒绝尚未移植的下落目标和关联状态。
 - `grotto_pool_big`、`grotto_pool_small`：子物件源 GUID 转为项目实体 ID，写入 `grottoPool.children`，仅链接已导入的子物件。`grotto_moonglass_1/3/4`、`grotto_waterfall_small1/2` 保留 `workable.workleft`（`maxwork = -1`）；`grotto_waterfall_big` 不接受状态。
 - `treasurechest`：源 `container.items`（一基槽位，表或带空洞的字典）→ `container`（9 格），物品经与玩家背包相同的转换，ID 为 `<箱子 ID>_<槽位>`；未知物品、不能放入容器的物品及无对应字段的组件记入来源报告 `containerItems`。`skinname` → `building.skinId`（拒绝运行时派生的 `treasurechest_upgraded_*`），`burnt` → `building.burnt`，烧毁箱子不得带内容物。只接受未升级的 `upgradeable`（`numupgrades = 0`）与已运行的 `scenariorunner`；`smart_minisign` 晚于本地源 Lua，附带的 `minisign` 未移植，校验后丢弃。箱子按 `MakeChest` 带 `chest` 标签和 `treasurechest.png` 小地图图标。当前地表快照导入 2 个箱子。
-- `beefalo`：`knownlocations`（源坐标按同一平移／Z 轴映射转换，`herd` 同时作为 `home`）、`periodicspawner.time` → `poopRemainingSeconds`、`beard` → `beefalo.beard`；源不保存朝向，`heading` 取 0。只接受野生默认状态：`tendency` 为 `DEFAULT`、无胡萝卜鼠、未驯化、无服装、满血、饥饿 0、未命名，这些及 `leader`（追随者为未移植的 `babybeefalo`）、`uniqueid`、`brushable` 校验后丢弃。`babybeefalo`、`beefaloherd` 不在白名单中。当前地表快照导入 36 头。
+- `beefalo`：`knownlocations`（源坐标按同一平移／Z 轴映射转换，`herd` 同时作为 `home`）、`periodicspawner.time` → `poopRemainingSeconds`、`beard` → `beefalo.beard`；源不保存朝向，`heading` 取 0。只接受野生默认状态：`tendency` 为 `DEFAULT`、无胡萝卜鼠、未驯化、无服装、满血、饥饿 0、未命名，这些及 `leader`（追随者为未移植的 `babybeefalo`）、`uniqueid`、`brushable` 校验后丢弃。`babybeefalo`、`beefaloherd` 不在白名单中。当前地表快照导入 37 头。
 - `pond`：`plants`、`childspawner`、`worldsettingstimer`（青蛙生成器，未移植）校验后丢弃，鱼数量取默认；小地图图标 `pond.png`。`lava_pond`：`rocks`（`rocktype`、`offset`）→ `lavaPond.rocks`；小地图图标 `lava_pond.png`。`pond_mos`、`pond_cave` 不在白名单内。
 
 实体 ID 包含源 Session、prefab 和源 `id`；无 `id` 时使用原分组序号，同一快照重复导入保持稳定。`Master.import.json` / `Caves.import.json` 的 `scope: "full-map"` 标记完整转换，记录全部节点、地皮数量、各白名单 prefab 的源数量和导入数量，以及每个实体的源序号、源 ID、源位置和所属节点。无节点或源坐标越界时 `sourceNode` 为 `null`。源文件路径、SHA-256、尺寸、原点和平移同样保留。
@@ -143,7 +144,7 @@ python3 scripts/import-dst-region.py --cluster public/saves/Cluster_62 --output 
 python3 scripts/import-dst-region.py --cluster public/saves/Cluster_62 --output public/saves/Cluster_1 --origin-cell 214 213 --forest-origin-cell 189 197 --check
 ```
 
-地表检测到 137 种、961 个散落物品实体（合计 2,143 件），洞穴 20 种、130 个实体（146 件）。每份 `.import.json` 的 `groundItemCounts` 记录 `entities`、`quantity` 和 `sourceComponents`；数量按地面实体的 stackable.stack 计算，不遍历玩家库存、容器或包裹内容。`groundItemScope` 明确记录美术范围。
+地表检测到 144 种、1,027 个散落物品实体（合计 2,371 件），洞穴 20 种、130 个实体（146 件）。每份 `.import.json` 的 `groundItemCounts` 记录 `entities`、`quantity` 和 `sourceComponents`；数量按地面实体的 stackable.stack 计算，不遍历玩家库存、容器或包裹内容。`groundItemScope` 明确记录美术范围。
 
 这些记录存为 `ground_item.components.stack`，保存 `itemId`、`count`、可选 `skinId` 与 `variant`。石头／冰块的 anim、月亮碎片的 glassname、贝壳的 variation、稀有蓝图、包裹大小和扑克牌正面映射为白名单外观变体。保留源高度并按现有坐标比例及 Z 轴映射导入；平台坐标仍拒绝。其余源组件只在报告中记录名称，不因美术导入扩展组件实现；已有 prefab 沿用原工厂、组件及交互，仅有美术的 ID 不增加拾取／使用／装备目标、容器或计时器。
 

@@ -21,23 +21,23 @@ test('eating and drinking update the HUD and preserve food and spawned items thr
     const stats = await import(paths.playerStats);
     (window as any).juiceGame = { main, player, scene, dstLighting, stats };
   }, modules);
-  await page.goto('/tests/dst-lighting.html'); await prepare();
+  await page.goto('/tests/dst-lighting.html?save=initial-world.json'); await prepare();
   await page.evaluate(() => {
     const { main, scene } = (window as any).juiceGame;
     main.inventory.applySlotChanges(main.inventory.exportState().slots.filter((slot: any) => slot.item)
       .map((slot: any) => ({ slot: slot.address, ...slot.item, delta: -slot.item.count })));
     (window as any).existingJuiceIds = scene.children.filter((model: any) => model.userData.itemId === 'bananajuice')
-      .map((model: any) => model.userData.instance?.entityId);
-    (window as any).existingFoodIds = scene.children.map((model: any) => model.userData.instance?.entityId);
+      .map((model: any) => (window as any).__prefabInstance(model)?.entityId);
+    (window as any).existingFoodIds = scene.children.map((model: any) => (window as any).__prefabInstance(model)?.entityId);
   });
   const submit = (command: string) => page.evaluate(command => document.querySelector('dst-debug-console')!.dispatchEvent(
     new CustomEvent('game:debug-command', { detail: { command } })), command);
   await submit('c_give("bananajuice", 2)');
   await submit('c_spawn("bananajuice")');
   await expect.poll(() => page.evaluate(() => (window as any).juiceGame.scene.children.some((model: any) =>
-    model.userData.itemId === 'bananajuice' && !(window as any).existingJuiceIds.includes(model.userData.instance?.entityId)))).toBe(true);
-  const spawnedId = await page.evaluate(() => (window as any).juiceGame.scene.children.find((model: any) =>
-    model.userData.itemId === 'bananajuice' && !(window as any).existingJuiceIds.includes(model.userData.instance?.entityId)).userData.instance?.entityId);
+    model.userData.itemId === 'bananajuice' && !(window as any).existingJuiceIds.includes((window as any).__prefabInstance(model)?.entityId)))).toBe(true);
+  const spawnedId = await page.evaluate(() => (window as any).__prefabInstance((window as any).juiceGame.scene.children.find((model: any) =>
+    model.userData.itemId === 'bananajuice' && !(window as any).existingJuiceIds.includes((window as any).__prefabInstance(model)?.entityId)))?.entityId);
   const bar = page.locator('dst-inventory-bar .inventory-bar__items');
   const juice = bar.locator('[data-item-id="bananajuice"]');
   const sanity = page.locator('dst-status-hud .survival-meter--sanity output');
@@ -70,15 +70,15 @@ test('eating and drinking update the HUD and preserve food and spawned items thr
   for (const itemId of ['meatballs', 'blue_cap']) {
     await submit(`c_spawn("${itemId}")`);
     await expect.poll(() => page.evaluate(id => (window as any).juiceGame.scene.children.some((model: any) =>
-      model.userData.itemId === id && !(window as any).existingFoodIds.includes(model.userData.instance?.entityId)), itemId)).toBe(true);
-    const id = await page.evaluate(id => (window as any).juiceGame.scene.children.find((model: any) =>
-      model.userData.itemId === id && !(window as any).existingFoodIds.includes(model.userData.instance?.entityId)).userData.instance?.entityId, itemId);
+      model.userData.itemId === id && !(window as any).existingFoodIds.includes((window as any).__prefabInstance(model)?.entityId)), itemId)).toBe(true);
+    const id = await page.evaluate(id => (window as any).__prefabInstance((window as any).juiceGame.scene.children.find((model: any) =>
+      model.userData.itemId === id && !(window as any).existingFoodIds.includes((window as any).__prefabInstance(model)?.entityId)))?.entityId, itemId);
     spawnedFood.push({ itemId, id });
   }
 
   const download = page.waitForEvent('download'); await submit('c_save()');
-  const save = JSON.parse(await readSaveDownload((await (await download).path())!));
-  const savedJuice = save.players.local.inventory.containers['player:inventory'].slots.find((slot: any) => slot.item.itemId === 'bananajuice').item;
+  const save = JSON.parse(await readSaveDownload((await (await download).path())!, 'Master'));
+  const savedJuice = save.players.local.inventory.containers['player:inventory'].slots.find((slot: any) => slot.item?.itemId === 'bananajuice').item;
   expect(savedJuice.count).toBe(1);
   expect(save.players.local.stats).toEqual({ health: 149, hunger: 150, sanity: 88 });
   const ground = save.world.entities.ground_item.find((entity: any) => entity.id === spawnedId);
@@ -93,7 +93,7 @@ test('eating and drinking update the HUD and preserve food and spawned items thr
   })).toBe(savedJuice.entityId);
   expect(await page.evaluate(id => {
     const { main, scene } = (window as any).juiceGame;
-    const model = scene.children.find((model: any) => model.userData.instance?.entityId === id);
+    const model = scene.children.find((model: any) => (window as any).__prefabInstance(model)?.entityId === id);
     const entity = main.inventory.entities.get(id);
     return { id: entity.id, itemId: entity.prefab, count: entity.components.stackable.count,
       skinId: entity.skinId ?? null, position: model.position.toArray() };
@@ -111,7 +111,7 @@ test('eating and drinking update the HUD and preserve food and spawned items thr
     expect(savedGround.components.stack).toMatchObject({ itemId, count: 1 });
     expect(await page.evaluate(id => {
       const { main, scene } = (window as any).juiceGame;
-      const model = scene.children.find((model: any) => model.userData.instance?.entityId === id);
+      const model = scene.children.find((model: any) => (window as any).__prefabInstance(model)?.entityId === id);
       const entity = main.inventory.entities.get(id);
       return { id: entity.id, itemId: entity.prefab, count: entity.components.stackable.count,
         skinId: entity.skinId ?? null, position: model.position.toArray() };

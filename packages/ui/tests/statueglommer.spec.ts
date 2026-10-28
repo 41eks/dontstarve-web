@@ -19,9 +19,9 @@ test('inline statue save renders, c_spawn adds one, and c_save reloads both iden
     const { scene } = await import(sceneUrl); (window as any).statueGlommerScene = scene;
   }, { mainUrl, sceneUrl });
   const entities = () => page.evaluate(() => (window as any).statueGlommerScene.children
-    .filter((model: any) => model.userData.instance?.prefab === 'statueglommer')
-    .map((model: any) => ({ id: model.userData.instance.entityId, position: model.position.toArray(),
-      clip: model.userData.instance.sprite.sprite.peek().clip.name, loaded: model.userData.instance.sprite.loaded,
+    .filter((model: any) => (window as any).__prefabInstance(model)?.prefab === 'statueglommer')
+    .map((model: any) => ({ id: (window as any).__prefabInstance(model).entityId, position: model.position.toArray(),
+      clip: (window as any).__prefabInstance(model).sprite.sprite.peek().clip.name, loaded: (window as any).__prefabInstance(model).sprite.loaded,
       meshes: model.getObjectsByProperty('isMesh', true).length })));
   const submit = (command: string) => page.evaluate(command => document.querySelector('dst-debug-console')!.dispatchEvent(
     new CustomEvent('game:debug-command', { detail: { command } })), command);

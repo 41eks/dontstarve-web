@@ -2,6 +2,7 @@ import { readSaveDownload } from './save-download';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
+import { readImportedSave } from './imported-save';
 
 const url = (name: string) => `/@fs${fileURLToPath(new URL(`../../../src/${name}.ts`, import.meta.url))}`;
 
@@ -9,7 +10,7 @@ test('map right clicks teleport across ocean for free, release autopause once an
   test.setTimeout(180_000);
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
-  const source = JSON.parse(await readFile(new URL('../../../public/saves/Cluster_1/Master.json', import.meta.url), 'utf8'));
+  const source = await readImportedSave('Master');
   const ground = JSON.parse(await readFile(new URL('../../prefab/src/groundTiles.json', import.meta.url), 'utf8'));
   source.world.entities = {}; source.world.elapsedSeconds = 0;
   source.world.map.generator.options.size = 768;
@@ -104,7 +105,7 @@ test('empty-inventory right clicks soul-hop, show Soul Echo, preserve counters o
     if (message.type() === 'info') messages.push(message.text());
     if (message.type() === 'error' || message.type() === 'warning' && message.text().startsWith('Unable to prepare')) errors.push(message.text());
   });
-  const source = JSON.parse(await readFile(new URL('../../../public/saves/Cluster_1/Caves.json', import.meta.url), 'utf8'));
+  const source = await readImportedSave('Caves');
   source.world.entities = {}; source.world.elapsedSeconds = 0;
   source.world.map.tiles = [];
   for (let row = -3; row <= 3; row++) for (let col = -3; col <= 3; col++) source.world.map.tiles.push({ col, row, tileId: 3 });

@@ -109,8 +109,21 @@ class RegionImportTest(unittest.TestCase):
                            'nodeidtilemap': encode([1] * 49), 'topology': {'ids': ['Room']},
                            'world_tile_map': {'IMPASSABLE': 1, 'GRASS': 8, 'OCEAN_SWELL': 201, 'OCEAN_ICE': 300}}
                 source = 'tablefunctions["map_fn"] = function() return ' + literal(terrain) + '\nend\n'
-                (session / '0000000001').write_text('older snapshot must not be read')
+                (session / '0000000001').write_text(source)
                 (session / snapshot).write_text(source + 'tablefunctions["ents_grass_fn"] = function() return {{id=7,x=0,z=0}} end')
+                player = {'prefab': 'wortox', 'x': 0 if prefab == 'forest' else 2,
+                          'z': 0 if prefab == 'forest' else -2,
+                          'data': {'migration': {'worldid': '1', 'portalid': 4, 'sessionid': session_id}}
+                          if prefab == 'forest' else {}}
+                user = session / 'USER'
+                user.mkdir()
+                (user / snapshot).write_text('return ' + literal(player))
+            # The newer cave snapshot is kept in Master even though Caves/shardindex names the same Session.
+            newer_cave = cluster / 'Master/save/session/CAVE'
+            (newer_cave / 'USER').mkdir(parents=True)
+            (newer_cave / '0000000006').write_text(source)
+            (newer_cave / 'USER/0000000006').write_text('return ' + literal({
+                'prefab': 'wortox', 'x': 4, 'z': -4, 'data': {}}))
             output = Path(directory) / 'converted'
             command = [sys.executable, str(script), '--cluster', str(cluster), '--output', str(output), '--template', str(template)]
             subprocess.run(command, check=True, capture_output=True)
@@ -118,20 +131,34 @@ class RegionImportTest(unittest.TestCase):
             caves = json.loads((output / 'Caves.json').read_text())
             self.assertEqual((forest['world']['prefab'], forest['world']['shardId'], forest['snapshot']['id']),
                              ('forest', 'master', '0000000003'))
-            self.assertEqual((caves['world']['prefab'], caves['players']['local']['shardId'], caves['snapshot']['id']),
-                             ('cave', 'caves', '0000000005'))
+            self.assertEqual((caves['world']['prefab'], caves['snapshot']['id']), ('cave', '0000000006'))
+            self.assertEqual(forest['players'], {})
+            self.assertEqual(caves['players'], {})
+            forest_player = json.loads((output / forest['session']['playerFile']).read_text())
+            cave_player = json.loads((output / caves['session']['playerFile']).read_text())
+            self.assertEqual(forest_player['migration'], {'worldid': '1', 'portalid': 4, 'sessionid': 'FOREST'})
+            self.assertIsNone(cave_player['migration'])
+            self.assertEqual(cave_player['player']['shardId'], 'caves')
+            index = json.loads((output / 'session.json').read_text())
+            self.assertEqual(index['activeShard'], 'Caves')
+            self.assertEqual(len(index['snapshots']), 5)
+            self.assertEqual(index['snapshots'][-1]['worldFile'], 'Master/save/session/FOREST/0000000003.json')
+            self.assertIn('Master/save/session/CAVE/0000000006',
+                          json.loads((output / 'Caves.import.json').read_text())['source'])
             self.assertNotEqual(forest['session']['id'], caves['session']['id'])
             report = json.loads((output / 'Master.import.json').read_text())
             self.assertEqual(report['landCells'], 10)
             self.assertEqual(report['savedCells'], 49)
-            position = forest['players']['local']['transform']['position']
-            spawn = next(tile for tile in forest['world']['map']['tiles']
-                         if (tile['col'], tile['row']) == (position[0] // 12, position[2] // 12))
-            self.assertEqual(spawn['tileId'], json.loads((script.parents[1] / 'packages/prefab/src/groundTiles.json').read_text())['GRASS']['tileId'])
+            position = forest_player['player']['transform']['position']
+            self.assertEqual(position, TILE['project_position']([0, 0, 0], report['translation']))
+            cave_report = json.loads((output / 'Caves.import.json').read_text())
+            self.assertEqual(cave_player['player']['transform']['position'],
+                             TILE['project_position']([4, 0, -4], cave_report['translation']))
             self.assertIn('dst_FOREST_grass_id_7', forest['world']['entities']['grass'][0]['id'])
-            before = {path.name: path.read_bytes() for path in output.iterdir()}
+            before = {str(path.relative_to(output)): path.read_bytes() for path in output.rglob('*') if path.is_file()}
             subprocess.run([*command, '--check'], check=True, capture_output=True)
-            self.assertEqual(before, {path.name: path.read_bytes() for path in output.iterdir()})
+            self.assertEqual(before, {str(path.relative_to(output)): path.read_bytes()
+                                      for path in output.rglob('*') if path.is_file()})
             (output / 'Master.json').write_text('{}')
             self.assertNotEqual(subprocess.run([*command, '--check'], capture_output=True).returncode, 0)
             self.assertEqual((output / 'Master.json').read_text(), '{}')
@@ -209,13 +236,15 @@ class RegionImportTest(unittest.TestCase):
             with self.subTest(prefab=prefab, data=data), self.assertRaises(ValueError):
                 PREFAB['ENTITY_WHITELIST'][prefab](data)
 
-    def test_plant_import_preserves_wither_check_and_rejects_unported_protection(self):
+    def test_plant_import_preserves_wither_check_and_protection(self):
         convert = PREFAB['ENTITY_WHITELIST']['grass']
         self.assertEqual(convert({'pickable': {'caninteractwith': True},
                                   'witherable': {'task_time_remaining': 25.566665861756}}),
                          {'witherable': {'taskSeconds': 25.566665861756}})
+        self.assertEqual(convert({'witherable': {'protect_time_remaining': 30}}),
+                         {'witherable': {'protectSeconds': 30}})
         with self.assertRaisesRegex(ValueError, 'Unsupported grass witherable state'):
-            convert({'witherable': {'protect_time_remaining': 30}})
+            convert({'witherable': {'protect_time_remaining': -1}})
 
     def test_rock_import_preserves_variation_and_rejects_unsupported_source_state(self):
         self.assertEqual(PREFAB['ENTITY_WHITELIST']['rock_moon']({}), {})
@@ -229,6 +258,31 @@ class RegionImportTest(unittest.TestCase):
                 convert(data)
         with self.assertRaises(ValueError):
             PREFAB['WORKABLE']['rock_components']({'workable': {'workleft': 2}})
+
+    def test_research_labs_import_skin_burnt_state_and_identity(self):
+        encode = lambda values: base64.b64encode(b'VRSN\0\x01\0\0\0' + struct.pack(f'<{len(values)}H', *values)).decode()
+        terrain = {'width': 3, 'height': 3, 'topology': {'ids': ['Forest']}, 'nodeidtilemap': encode([1] * 9)}
+        source = {
+            'researchlab2': [{'x': 4, 'z': -8, 'data': {'workable': {}}}],
+            'researchlab3': [{'id': 19, 'skinname': 'researchlab3_nature', 'skin_id': 88267382,
+                              'data': {'burnt': True}}],
+        }
+        entities, report = PREFAB['convert_entities'](terrain, source, {'translation': [12, 0, -24]}, 'LAB')
+        self.assertEqual(entities['researchlab2'], [
+            {'id': 'dst_LAB_researchlab2_index_000001',
+             'transform': {'position': [24, 0, 48], 'rotationY': 0},
+             'components': {'building': {'state': 'idle'}}},
+        ])
+        self.assertEqual(entities['researchlab3'][0]['id'], 'dst_LAB_researchlab3_id_19')
+        self.assertEqual(entities['researchlab3'][0]['components'],
+                         {'building': {'state': 'idle', 'skinId': 'researchlab3_nature', 'burnt': True}})
+        self.assertEqual(report['entityCounts']['researchlab3'], {'source': 1, 'imported': 1})
+        self.assertTrue({'researchlab', 'researchlab2', 'researchlab3', 'researchlab4'} <= set(report['entityWhitelist']))
+        for bad in ({'burnt': False}, {'workable': {'workleft': 2}}, {'unknown': True}):
+            with self.assertRaises(ValueError):
+                PREFAB['ENTITY_WHITELIST']['researchlab2'](bad, {'skin': None})
+        with self.assertRaisesRegex(ValueError, 'Unsupported researchlab3 skin'):
+            PREFAB['ENTITY_WHITELIST']['researchlab3']({}, {'skin': 'researchlab2_pod'})
 
     def test_entity_whitelist_imports_all_nodes_and_preserves_source_state_and_identity(self):
         nodes = [0] * 48

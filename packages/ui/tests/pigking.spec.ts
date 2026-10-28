@@ -36,7 +36,7 @@ test('places the default_pigking layout: grass and woodfloor tiles around the ki
   const layout = () => page.evaluate(() => {
     const { scene } = (window as any).game;
     // One per entity: the display root carries the prefab, its drawn sprite only shares the name.
-    const count = (prefab: string) => scene.children.filter((o: any) => o.userData.instance?.prefab === prefab).length;
+    const count = (prefab: string) => scene.children.filter((o: any) => (window as any).__prefabInstance(o)?.prefab === prefab).length;
     let grass = false;
     scene.traverse((o: any) => { if (o.name === 'TurfBlend:GRASS' && o.visible) grass = true; });
     return { sanity: count('sanityrock'), insanity: count('insanityrock'), grass };
@@ -45,7 +45,7 @@ test('places the default_pigking layout: grass and woodfloor tiles around the ki
   // c_spawn adds a ninth obelisk and c_save keeps all identities.
   await page.evaluate(() => document.querySelector('dst-debug-console')!.dispatchEvent(
     new CustomEvent('game:debug-command', { detail: { command: 'c_spawn("insanityrock")' } })));
-  await expect.poll(() => page.evaluate(() => (window as any).game.scene.children.filter((o: any) => o.userData.instance?.prefab === 'insanityrock').length)).toBe(5);
+  await expect.poll(() => page.evaluate(() => (window as any).game.scene.children.filter((o: any) => (window as any).__prefabInstance(o)?.prefab === 'insanityrock').length)).toBe(5);
   const download = page.waitForEvent('download');
   await page.evaluate(() => document.querySelector('dst-debug-console')!.dispatchEvent(
     new CustomEvent('game:debug-command', { detail: { command: 'c_save()' } })));
@@ -64,10 +64,10 @@ test('walks to the pig king, trades held meat and throws the gold', async ({ pag
   const submit = (command: string) => page.evaluate(command => document.querySelector('dst-debug-console')!.dispatchEvent(
     new CustomEvent('game:debug-command', { detail: { command } })), command);
   const king = () => page.evaluate(() => {
-    const model = (window as any).game.scene.children.find((child: any) => child.userData.instance?.prefab === 'pigking');
+    const model = (window as any).game.scene.children.find((child: any) => (window as any).__prefabInstance(child)?.prefab === 'pigking');
     if (!model) return undefined;
     return { animation: model.userData.animationController.currentAnimation, x: model.position.x, z: model.position.z,
-      trader: model.userData.instance.listTags().includes('trader') };
+      trader: (window as any).__prefabInstance(model).listTags().includes('trader') };
   });
   // The king is drawn, and found in the scene, only while its tile is in the tickingarea.
   await page.evaluate(() => {
@@ -88,7 +88,7 @@ test('walks to the pig king, trades held meat and throws the gold', async ({ pag
   await page.waitForTimeout(500);
   const point = await page.evaluate(() => {
     const { scene, camera, renderer } = (window as any).game;
-    const model = scene.children.find((child: any) => child.userData.instance?.prefab === 'pigking');
+    const model = scene.children.find((child: any) => (window as any).__prefabInstance(child)?.prefab === 'pigking');
     model.updateWorldMatrix(true, true);
     let minY = Infinity, maxY = -Infinity;
     model.traverse((o: any) => { if (o.geometry) { o.geometry.computeBoundingBox(); const b = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld); minY = Math.min(minY, b.min.y); maxY = Math.max(maxY, b.max.y); } });

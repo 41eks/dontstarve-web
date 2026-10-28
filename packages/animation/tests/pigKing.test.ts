@@ -1,3 +1,4 @@
+import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
@@ -40,7 +41,7 @@ describe('Pig King prefab', () => {
       expect(physics.bodies).toContain(body);
       expect(body.position.toArray()).toEqual([feet.x, feet.y + 0.75, feet.z]);
       expect(body.shapes.some(shape => shape instanceof CANNON.Sphere && shape.radius === 6)).toBe(true);
-      expect(standee.userData.instance?.getPhysicsRadius(undefined)).toBe(6);
+      expect(lookupPrefabInstance(standee)?.getPhysicsRadius(undefined)).toBe(6);
       expect(new THREE.Box3().setFromObject(standee).min.y).toBeCloseTo(feet.y);
       // The prefab owns no terrain: pigking.lua adds no turf, the world layout does.
       expect(standee.children.every(child => child.name !== 'PigKingFloor')).toBe(true);
@@ -56,14 +57,14 @@ describe('Pig King prefab', () => {
       kings.update(0.1);
 
       const [saved] = kings.exportRecords();
-      expect(saved).toEqual({ prefabId: 'pigking', record: { id: standee.userData.instance?.entityId,
+      expect(saved).toEqual({ prefabId: 'pigking', record: { id: lookupPrefabInstance(standee)?.entityId,
         transform: { position: [feet.x, 0, feet.z], rotationY: 0 }, components: {} } });
       kings.dispose();
       expect(physics.bodies).not.toContain(body);
       expect(standee.parent).toBeNull();
       const restored = new PigKingManager(new THREE.Scene(), '/dst/data/anim', { camera: new THREE.PerspectiveCamera(), scheduler, physics, dropLoot: vi.fn() });
       const copy = await restored.spawn(new THREE.Vector3(...saved.record.transform.position), saved.record);
-      expect(copy.userData.instance?.entityId).toBe(saved.record.id);
+      expect(lookupPrefabInstance(copy)?.entityId).toBe(saved.record.id);
       expect(restored.exportRecords()).toEqual([saved]);
       restored.dispose();
     } finally { kings.dispose(); world.unbind(); scheduler.dispose(); }

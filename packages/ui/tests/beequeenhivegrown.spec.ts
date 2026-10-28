@@ -20,9 +20,9 @@ test('c_spawn draws a bee queen hive and c_save reloads its identity, position a
     new CustomEvent('game:debug-command', { detail: { command } })), command);
   await submit('c_spawn("beequeenhivegrown")');
   const entity = () => page.evaluate(() => {
-    const model = (window as any).beeQueenHiveGame.scene.children.find((child: any) => child.userData.instance?.prefab === 'beequeenhivegrown');
-    return model && { id: model.userData.instance.entityId, position: model.position.toArray(),
-      loaded: model.userData.instance.sprite.loaded,
+    const model = (window as any).beeQueenHiveGame.scene.children.find((child: any) => (window as any).__prefabInstance(child)?.prefab === 'beequeenhivegrown');
+    return model && { id: (window as any).__prefabInstance(model).entityId, position: model.position.toArray(),
+      loaded: (window as any).__prefabInstance(model).sprite.loaded,
       meshes: model.getObjectsByProperty('isMesh', true).length };
   });
   await expect.poll(entity).toMatchObject({ loaded: true, meshes: expect.any(Number) });

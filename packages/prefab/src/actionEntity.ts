@@ -11,7 +11,7 @@ import { registerMouseTarget } from './mouseTargets';
 export { activePrefabs, type FoundEntity } from './activePrefabs';
 
 /** Existing world removal writes update the sole lifecycle signal, including inside batches. */
-function modelRemoval(model: THREE.Group): ReadonlySignal<boolean> {
+function modelRemoval(model: THREE.Object3D): ReadonlySignal<boolean> {
   const state = createSignal(model.userData.removed === true);
   Object.defineProperty(model.userData, 'removed', {
     enumerable: true, configurable: true,
@@ -21,12 +21,12 @@ function modelRemoval(model: THREE.Group): ReadonlySignal<boolean> {
 }
 
 /** Project the engine inst onto its existing world model, keeping one tag/component owner. */
-export function actionEntity(model: THREE.Group, prefab: string, inst?: ComponentActionEntity & WorkableInst): ComponentActionEntity & WorkableInst & { readonly model: THREE.Group; getPosition(): THREE.Vector3; getPhysicsRadius(): number } {
+export function actionEntity(model: THREE.Object3D, prefab: string, inst?: ComponentActionEntity & WorkableInst): ComponentActionEntity & WorkableInst & { readonly model: THREE.Object3D; getPosition(): THREE.Vector3; getPhysicsRadius(): number } {
   if (model.userData.actionEntity) return model.userData.actionEntity;
-  model.userData.components ??= {};
-  const removal = inst?.removal ?? modelRemoval(model);
   const instance = prefabInstance(model);
-  const entity: ComponentActionEntity & WorkableInst & { readonly model: THREE.Group; getPosition(): THREE.Vector3; getPhysicsRadius(): number } = {
+  model.userData.components ??= instance?.components ?? {};
+  const removal = inst?.removal ?? modelRemoval(model);
+  const entity: ComponentActionEntity & WorkableInst & { readonly model: THREE.Object3D; getPosition(): THREE.Vector3; getPhysicsRadius(): number } = {
     model,
     prefab,
     removal,
@@ -61,6 +61,7 @@ export function actionEntity(model: THREE.Group, prefab: string, inst?: Componen
     },
     PushEvent: (name, data) => {
       if (inst) inst.PushEvent?.(name, data);
+      else if (instance) instance.PushEvent(name, data);
       else model.dispatchEvent({ type: name, data } as never);
     },
   };
@@ -120,7 +121,7 @@ function setPrefabActive(entity: FoundEntity, active: boolean): void {
 }
 
 /** Release a model projection, including when its logical item survives a visual replacement or pickup. */
-export function disposeActionEntity(model: THREE.Group): void {
+export function disposeActionEntity(model: THREE.Object3D): void {
   const entity = model.userData.actionEntity as FoundEntity | undefined;
   if (!entity) return;
   const dispose = disposals.get(entity);
@@ -146,7 +147,7 @@ class EntityTickingArea {
 
   add(entity: FoundEntity): void {
     if (this.records.has(entity)) return;
-    const model = (entity as FoundEntity & { model: THREE.Group }).model;
+    const model = entity.model;
     const tracker = new TileTracker(() => entity.getPosition());
     const area = this.query(tracker.tile);
     const cleanups: (() => void)[] = [];
@@ -181,7 +182,7 @@ class EntityTickingArea {
 
   dispose(): void {
     this.cleanups.splice(0).forEach(stop => stop());
-    for (const entity of [...this.records.keys()]) disposeActionEntity((entity as FoundEntity & { model: THREE.Group }).model);
+    for (const entity of [...this.records.keys()]) disposeActionEntity(entity.model);
   }
 }
 
@@ -191,7 +192,7 @@ export function bindActionEntityWorld(root: THREE.Object3D, query: TileStateQuer
   const world = new EntityTickingArea(query, positions);
   currentEntityWorld = world;
   for (const entity of liveEntities) {
-    const model = (entity as FoundEntity & { model: THREE.Group }).model;
+    const model = entity.model;
     if (isUnder(model, root) && !entityWorlds.has(entity)) world.add(entity);
   }
   return () => {

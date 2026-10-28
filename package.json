@@ -23,6 +23,7 @@
     "@dontstarve-web/inventory": "workspace:*",
     "@dontstarve-web/prefab": "workspace:*",
     "@dontstarve-web/signals": "workspace:*",
+    "@dontstarve-web/sound": "workspace:*",
     "@dontstarve-web/stategraphs": "workspace:*",
     "@dontstarve-web/ui": "workspace:*",
     "@fontsource/noto-sans-sc": "^5.3.0",

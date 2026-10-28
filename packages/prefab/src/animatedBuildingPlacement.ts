@@ -285,9 +285,9 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     async spawn(buildId: BuildId, skinId?: string): Promise<void> {
         const building = await this.createInstance(buildId, skinId);
         const target = this.playerFrontGroundPosition();
-        building.model.position.set(target.x, target.y + building.groundOffset, target.z);
+        building.instance.position.set(target.x, target.y + building.groundOffset, target.z);
         building.model.visible = true;
-        this.setOpacity(building.model, 1);
+        building.animation.setOpacity(1);
         this.faceCamera(building.model);
         this.placed.push(building); this.mouseRecords.set(building.model, building);
         this.initializeComponents(building);
@@ -302,7 +302,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         building.instance.entityId = record.id;
         building.instance.saveRecord = record;
         const [x, y, z] = record.transform.position;
-        building.model.position.set(x, y + building.groundOffset, z);
+        building.instance.position.set(x, y + building.groundOffset, z);
         this.initializeComponents(building);
         const container = building.model.userData.components?.container;
         if (!this.worldContext.registerContainer && record.components.container) {
@@ -311,7 +311,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         this.definitions[buildId].onrestore?.(this.eventContext(building), record.components);
         if (record.components.building?.burnt) this.burnBuilding(building);
         this.faceCamera(building.model);
-        this.scene.add(building.model);
+        building.display.mount(this.scene);
         this.placed.push(building); this.mouseRecords.set(building.model, building);
         return building.model;
     }
@@ -371,7 +371,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         const container = this.definitions[buildId].createContainer?.(model)
             ?? (isStorageBuildingId(buildId) ? createBuildingContainer(buildId, model) : undefined);
         if (container) {
-            model.userData.components = { container };
+            Object.assign(building.instance.components, { container });
             this.worldContext.registerContainer?.(`world:${buildId}:${String(building.instance.entityId)}`, container,
                 building.instance.saveRecord?.components.container);
             container.onclosefn = () => {
@@ -387,7 +387,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         }
         if (definition.hammerWorkLeft !== undefined) {
             const entity = actionEntity(model, buildId);
-            const workable = new Workable(entity);
+            const workable = new Workable(building.instance);
             entity.components.workable = workable;
             workable.SetWorkAction('HAMMER');
             workable.SetWorkLeft(definition.hammerWorkLeft);
@@ -470,7 +470,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
                 this.definitions[building.buildId].scale);
             fire.instance.position.copy(entity.getPosition());
             building.fire = fire;
-            this.scene.add(fire.display.model); this.effects.add(fire);
+            fire.display.mount(this.scene); this.effects.add(fire);
             prefabInstance(building.model)!.light.set({ colour: [1, 1, 192 / 255], radius: (spec.fxLevel + 1) * (TILE_SIZE / 4), intensity: .8, falloff: .33 });
             building.model.userData.fireSound = PlaySound('dontstarve/common/campfire', building.model.position);
         });
@@ -561,7 +561,8 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             const entity = actionEntity(building.model, building.buildId);
             const isValid = () => !this.disposed && this.placed.includes(building) && !building.isPlacing;
             return {
-                prefab: building.buildId, model: building.model, components: building.model.userData.components,
+                prefab: building.buildId, instance: building.instance, display: building.display,
+                components: building.instance.components as import('./greenstaff').DeconstructionTarget['components'],
                 get position() { return building.model.position.clone().add(new THREE.Vector3(0, -building.groundOffset, 0)); },
                 get isRemoved() { return !isValid(); }, isValid,
                 isVisible: () => building.model.visible,
@@ -578,8 +579,9 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         return this.mouseRecords.select(model, this.placed).filter(building => actionEntity(building.model, building.buildId).hasTag('HAMMER_workable'))
             .map((building) => ({
                 id: String(building.instance.entityId),
-                entity: actionEntity(building.model, building.buildId),
-                model: building.model,
+                entity: building.instance,
+                instance: building.instance,
+                display: building.display,
                 position: building.model.position.clone().add(new THREE.Vector3(0, -building.groundOffset, 0)),
                 isValid: () => this.isHammerTargetValid(building),
                 playHit: () => {
@@ -595,7 +597,8 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         return this.mouseRecords.select(model, this.placed).map(building => {
                 const isValid = () => !this.disposed && this.placed.includes(building) && !building.isPlacing && building.model.visible;
                 return {
-                    id: String(building.instance.entityId), prefabId: building.buildId, model: building.model,
+                    id: String(building.instance.entityId), prefabId: building.buildId,
+                    instance: building.instance, display: building.display,
                     skins: Object.keys(this.definitions[building.buildId].skinArchives ?? {}),
                     get skinId() { return building.skinId.peek(); },
                     get isRemoved() { return building.model.userData.removed === true; },
@@ -648,7 +651,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             if (!replacement) throw new Error('Skin assets must be prepared before committing a skin change');
             building.preparedSkins.delete(skinId);
             replacement.skinArtReleased = true;
-            const footY = building.model.position.y - building.groundOffset;
+            const footY = building.instance.position.y - building.groundOffset;
             // The controller, root and logical clip stay; only the source and the drawn sprite change.
             building.display.adopt(replacement.display);
             this.disposeBuildingArt(building.model);
@@ -659,7 +662,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             }
             building.instance.skinId = skinId;
             building.groundOffset = replacement.groundOffset;
-            building.model.position.y = footY + building.groundOffset;
+            building.instance.position.y = footY + building.groundOffset;
             this.definitions[building.buildId].onreskin?.(this.eventContext(building));
             if (actionEntity(building.model, building.buildId).hasTag('burnt')) building.animation.start('burnt');
             if (building.isPlayerNearby) this.definitions[building.buildId].onturnon?.(this.eventContext(building));
@@ -801,7 +804,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         const placedBuilding = this.active;
         const onbuilt = this.definitions[placedBuilding.buildId].onbuilt;
         placedBuilding.isPlacing = onbuilt !== undefined;
-        this.setOpacity(placedBuilding.model, 1);
+        placedBuilding.animation.setOpacity(1);
         placedBuilding.model.visible = true;
         this.placed.push(placedBuilding); this.mouseRecords.set(placedBuilding.model, placedBuilding);
         this.initializeComponents(placedBuilding);
@@ -919,7 +922,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             disposeSprite(instance.model);
             return;
         }
-        this.setOpacity(instance.model, 0.65);
+        instance.animation.setOpacity(0.65);
         instance.model.visible = false;
         this.active = instance;
         this.cursor.setPreview(instance.model, instance.groundOffset);
@@ -995,7 +998,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             instance.animation.start(definition.interaction.openAnimation);
         }
         if (attach) instance.instance.entityId = newEntityId();
-        if (attach) this.scene.add(model);
+        if (attach) display.mount(this.scene);
         return instance;
     }
 
@@ -1039,7 +1042,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
                 const effect = this.createEffect(building.effectFactory, definition.name, definition.animation, false, ['FX', 'NOCLICK']);
                 effect.instance.position.copy(position);
                 this.faceCamera(effect.display.model);
-                this.scene.add(effect.display.model);
+                effect.display.mount(this.scene);
                 this.effects.add(effect);
                 effect.instance.sprite.playOnce(definition.animation, () => {
                     this.effects.delete(effect);
@@ -1116,14 +1119,4 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         model.quaternion.copy(this.cameraWorldQuaternion);
     }
 
-    private setOpacity(model: THREE.Object3D, opacity: number) {
-        model.traverse((object) => {
-            if (!(object instanceof THREE.Mesh)) return;
-            const materials = Array.isArray(object.material) ? object.material : [object.material];
-            materials.forEach((material) => {
-                material.transparent = true;
-                material.opacity = opacity;
-            });
-        });
-    }
 }

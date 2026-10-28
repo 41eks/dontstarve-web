@@ -33,7 +33,7 @@ import type { DisposalEvents } from './registerDisposal';
 import { disposeTextureAssets } from '@dontstarve-web/animation/textureLoader';
 import { preloadAnimationArchives } from '@dontstarve-web/animation/preloadArchives';
 import { savedPrefabArchives } from './prefabDefinitions';
-import { PrewarmSounds } from '@dontstarve-web/prefab/sound';
+import { DisposeSounds, PrewarmSounds } from '@dontstarve-web/prefab/sound';
 
 export { world, worldState };
 
@@ -139,6 +139,7 @@ export async function startScene(
     world.dispose();
     disposeTerrain();
     worldState.dispose();
+    DisposeSounds();
     dstLighting.dispose();
     throw error;
   }
@@ -263,6 +264,7 @@ export async function startScene(
       world.dispose();
       disposeTerrain();
       worldState.dispose();
+      DisposeSounds();
       dstLighting.dispose();
       disposeTextureAssets();
     };

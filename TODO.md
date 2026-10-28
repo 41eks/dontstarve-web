@@ -5,12 +5,13 @@ FARM
 
 wall sanity debuff
 
+检查packages/prefab里有多少THREE.GROUP -> monolint 
 
 createMemo 惰性
 
 
 
-prefab_id="atrium_gate"
+prefab_id=""ruins_statue_mage""
 
 目标：把 $prefab_id 移植为可以从存档加载、显示并重新保存的 prefab，并让导入的存档包含它。
 

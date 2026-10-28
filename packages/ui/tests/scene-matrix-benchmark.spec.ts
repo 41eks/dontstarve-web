@@ -17,7 +17,7 @@ test('measures unchanged scene matrix preparation separately from drawing', asyn
     scene.traverse((object: any) => {
       objects++; if (object.matrixAutoUpdate) automatic++;
       if (Object.hasOwn(object, 'updateMatrixWorld')) observed++;
-      const family = object.userData.instance?.prefab;
+      const family = (window as any).__prefabInstance(object)?.prefab;
       if (family) families[family] = (families[family] ?? 0) + 1;
     });
     for (let i = 0; i < 10; i++) updateSceneMatrices(scene);

@@ -1,3 +1,4 @@
+import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { createPickupInventory } from './pickupFixture';
 import { createPickupDoer, performPickupAction } from '../../stategraphs/src/pickup';
 import * as THREE from 'three';
@@ -376,7 +377,7 @@ describe('ground item save records', () => {
     expect(manager.exportRecords()).toEqual([]);
     expect(await manager.drop(definition, new THREE.Vector3(8, 30, 9), () => true)).toBe(true);
     const [record] = manager.exportRecords();
-    expect(record.id).toBe(scene.children[0].userData.instance?.entityId);
+    expect(record.id).toBe(lookupPrefabInstance(scene.children[0])?.entityId);
     expect(record.transform.position).toEqual([8, 0, 9]);
     expect(record.components.stack).toEqual({ itemId: 'log', count: 1 });
     record.components.stack!.count = 20;
@@ -406,7 +407,7 @@ describe('ground item save records', () => {
     const { manager, scene, pickup, canvas } = setup();
     const butterfly = { itemId: 'butterfly', count: 1, name: '蝴蝶', icon: 'butterfly.tex' };
     await manager.drop(butterfly, new THREE.Vector3(), () => true);
-    const entity = manager.entities.get(scene.children[0].userData.instance?.entityId)!;
+    const entity = manager.entities.get(lookupPrefabInstance(scene.children[0])!.entityId!)!;
     // The brain's priority scatter and Wander's initial wait come first, then the butterfly flies.
     for (let frame = 0; frame < 40; frame++) manager.update(0.1, new THREE.Quaternion());
     expect(entity.transform.position.x).toBeGreaterThan(0);

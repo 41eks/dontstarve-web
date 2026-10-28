@@ -20,7 +20,8 @@ const setup = () => {
   const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), awake = createSignal(true);
   const sources = createTestWorldSources(scheduler);
   const dragonflies = new DragonflyManager(scene, { scheduler, tickingarea: () => createMemo(() => awake.get()),
-    getWatchWorldContent: (key, register) => getWatchWorldContent(key, register, sources) });
+    getWatchWorldContent: (key, register) => getWatchWorldContent(key, register, sources),
+    trackDisplay: () => {} });
   return { scene, scheduler, awake, dragonflies };
 };
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });

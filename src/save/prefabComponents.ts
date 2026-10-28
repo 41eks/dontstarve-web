@@ -134,7 +134,7 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
     }
     if (keys.includes('pickable') && c.pickable !== undefined) {
       const p = `${path}.pickable`;
-      const pickable = object(c.pickable, p, ['picked', 'regrowSeconds', 'paused', 'transplanted', ...(schema.pickCycles ? ['cyclesLeft', 'maxCycles', 'protectedCycles'] : [])]);
+      const pickable = object(c.pickable, p, ['picked', 'regrowSeconds', 'paused', 'transplanted', 'cyclesLeft', ...(schema.pickCycles ? ['maxCycles', 'protectedCycles'] : [])]);
       for (const key of ['picked', 'paused', 'transplanted'] as const) {
         if (pickable[key] !== undefined && typeof pickable[key] !== 'boolean') fail(`${p}.${key}`, 'expected a boolean');
       }
@@ -143,11 +143,15 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
         if ((pickable.cyclesLeft === undefined) !== (pickable.maxCycles === undefined)) fail(p, 'cyclesLeft and maxCycles must be saved together');
         if (pickable.maxCycles !== undefined) integer(pickable.maxCycles, `${p}.maxCycles`, schema.minimumPickCycles ?? 5, schema.pickCycles);
         if (pickable.cyclesLeft !== undefined) integer(pickable.cyclesLeft, `${p}.cyclesLeft`, 0, pickable.maxCycles as number);
-        if (pickable.cyclesLeft === 0 && (pickable.picked !== true || pickable.regrowSeconds !== undefined)) fail(p, 'barren plants must be picked with no regrowth timer');
+        if (pickable.cyclesLeft === 0 && pickable.picked !== true) fail(p, 'barren plants must be picked');
+      } else if (pickable.cyclesLeft !== undefined && (pickable.cyclesLeft !== 0 || pickable.picked !== true)) {
+        // pickable.lua MakeBarren saves cycles_left = 0 even when max_cycles is nil.
+        fail(`${p}.cyclesLeft`, 'only a picked barren plant may save cyclesLeft without maxCycles');
       }
       components.pickable = {
         ...(pickable.transplanted === true ? { transplanted: true } : {}),
-        ...(pickable.maxCycles === undefined ? {} : { maxCycles: pickable.maxCycles as number, cyclesLeft: pickable.cyclesLeft as number }),
+        ...(pickable.cyclesLeft === undefined ? {} : { cyclesLeft: pickable.cyclesLeft as number }),
+        ...(pickable.maxCycles === undefined ? {} : { maxCycles: pickable.maxCycles as number }),
         ...(pickable.protectedCycles === undefined ? {} : { protectedCycles: number(pickable.protectedCycles, `${p}.protectedCycles`, Number.MIN_VALUE) }),
         ...(pickable.picked === true ? { picked: true } : {}),
         ...(pickable.paused === true ? { paused: true } : {}),
@@ -157,7 +161,7 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
       };
     }
     if (keys.includes('witherable') && c.witherable !== undefined) {
-      const p = `${path}.witherable`, wither = object(c.witherable, p, ['withered', 'restoreCycles', 'delaySeconds', 'taskSeconds']);
+      const p = `${path}.witherable`, wither = object(c.witherable, p, ['withered', 'restoreCycles', 'delaySeconds', 'taskSeconds', 'protectSeconds']);
       if (wither.withered !== undefined && wither.withered !== true) fail(`${p}.withered`, 'expected true');
       if (wither.restoreCycles !== undefined && wither.withered !== true) fail(p, 'restored cycles require withering');
       if (wither.delaySeconds !== undefined && wither.taskSeconds !== undefined) fail(p, 'a delayed check cannot also be scheduled');
@@ -166,6 +170,7 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
         ...(wither.restoreCycles === undefined ? {} : { restoreCycles: integer(wither.restoreCycles, `${p}.restoreCycles`, 0, schema.pickCycles ?? Infinity) }),
         ...(wither.delaySeconds === undefined ? {} : { delaySeconds: number(wither.delaySeconds, `${p}.delaySeconds`, 0, 480) }),
         ...(wither.taskSeconds === undefined ? {} : { taskSeconds: number(wither.taskSeconds, `${p}.taskSeconds`, 0, 60) }),
+        ...(wither.protectSeconds === undefined ? {} : { protectSeconds: number(wither.protectSeconds, `${p}.protectSeconds`, 0, 9600) }),
       };
     }
     const building = keys.includes('building') ? catalog.buildings[prefab] : undefined;

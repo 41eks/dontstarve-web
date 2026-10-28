@@ -6,7 +6,7 @@ import math
 def blue_mushroom_components(data):
     # mushrooms.lua OnSave: rain only while positive. The open/closed pose follows the world phase, and the pickable
     # component saves nothing for an unpicked mushroom; a saved pickable (picked, caninteractwith...) is not carried over.
-    if set(data) - {'rain'}:
+    if set(data) - {'rain', 'pickable'} or data.get('pickable', {}) not in ({}, {'caninteractwith': True}):
         raise ValueError('Unsupported blue_mushroom save state')
     rain = data.get('rain')
     if rain is None:
@@ -52,15 +52,17 @@ def pickable_plant_components(prefab):
         # witherable.lua OnSave -> the existing Witherable component. Protection tasks are not ported.
         if 'witherable' in data:
             wither = data['witherable']
-            if not isinstance(wither, dict) or set(wither) - {'withered', 'restore_cycles', 'delay_time_remaining', 'task_time_remaining'} \
+            if not isinstance(wither, dict) or set(wither) - {'withered', 'restore_cycles', 'delay_time_remaining', 'task_time_remaining', 'protect_time_remaining'} \
                     or ('withered' in wither and wither['withered'] is not True) \
                     or ('restore_cycles' in wither and (not wither.get('withered') or type(wither['restore_cycles']) is not int or wither['restore_cycles'] < 0)) \
                     or ('delay_time_remaining' in wither and 'task_time_remaining' in wither) \
                     or any(type(wither[key]) not in (int, float) or not math.isfinite(wither[key]) or not 0 <= wither[key] <= limit
-                           for key, limit in [('delay_time_remaining', 480), ('task_time_remaining', 60)] if key in wither):
+                           for key, limit in [('delay_time_remaining', 480), ('task_time_remaining', 60),
+                                              ('protect_time_remaining', 9600)] if key in wither):
                 raise ValueError(f'Unsupported {prefab} witherable state')
             fields = {'withered': 'withered', 'restore_cycles': 'restoreCycles',
-                      'delay_time_remaining': 'delaySeconds', 'task_time_remaining': 'taskSeconds'}
+                      'delay_time_remaining': 'delaySeconds', 'task_time_remaining': 'taskSeconds',
+                      'protect_time_remaining': 'protectSeconds'}
             components['witherable'] = {fields[key]: value for key, value in wither.items()}
         return components
     return convert
@@ -125,6 +127,8 @@ def flower_cave_components(prefab):
     fixed = {'flower_cave_double': 'double', 'flower_cave_triple': 'triple'}.get(prefab)
 
     def convert(data):
+        if not data:
+            return {}
         if set(data) - {'light_state', 'pickable', 'plantname', 'timer'} or (fixed is not None and 'plantname' in data):
             raise ValueError(f'Unsupported {prefab} save state')
         variant = fixed or {'_single': 'single', '_springy': 'springy'}.get(data.get('plantname'))
@@ -151,6 +155,8 @@ def flower_cave_components(prefab):
 def lightflier_flower_components(data):
     # lightflier_flower.lua OnSave: light_state + plantname, plus the pickable, timer and childspawner components.
     # Children are source GUIDs, linked to imported entities by link_lightflier_flowers.
+    if not data:
+        return {}
     if set(data) - {'light_state', 'pickable', 'plantname', 'timer', 'childspawner'}:
         raise ValueError('Unsupported lightflier_flower save state')
     variant = {'_single': 'single', '_springy': 'springy'}.get(data.get('plantname'))
@@ -181,7 +187,10 @@ def lightflier_flower_components(data):
 def link_lightflier_flowers(result, imported_ids):
     # Only imported lightfliers can be linked; the others are not in the whitelist.
     for entity in result.get('lightflier_flower', []):
-        spawner = entity['components']['lightflierFlower']['childspawner']
+        state = entity['components'].get('lightflierFlower')
+        if state is None:
+            continue
+        spawner = state['childspawner']
         spawner['childrenoutside'] = [imported_ids[child] for child in spawner['childrenoutside'] if child in imported_ids]
 
 

@@ -53,13 +53,13 @@ test('right-click reads book_silviculture with the source states, sounds and gro
     const { main, scene } = (window as any).bookGame;
     main.inventory.applySlotChanges(main.inventory.exportState().slots.filter((slot: any) => slot.item)
       .map((slot: any) => ({ slot: slot.address, ...slot.item, delta: -slot.item.count })));
-    (window as any).existingIds = scene.children.map((model: any) => model.userData.instance?.entityId);
+    (window as any).existingIds = scene.children.map((model: any) => (window as any).__prefabInstance(model)?.entityId);
   });
   const submit = (command: string) => page.evaluate(command => document.querySelector('dst-debug-console')!.dispatchEvent(
     new CustomEvent('game:debug-command', { detail: { command } })), command);
-  const newModel = (prefab: string) => page.evaluate(prefab => (window as any).bookGame.scene.children.find((model: any) =>
-    (model.userData.itemId ?? model.userData.instance?.prefab) === prefab
-    && !(window as any).existingIds.includes(model.userData.instance?.entityId))?.userData.instance?.entityId ?? null, prefab);
+  const newModel = (prefab: string) => page.evaluate(prefab => (window as any).__prefabInstance((window as any).bookGame.scene.children.find((model: any) =>
+    (model.userData.itemId ?? (window as any).__prefabInstance(model)?.prefab) === prefab
+    && !(window as any).existingIds.includes((window as any).__prefabInstance(model)?.entityId)))?.entityId ?? null, prefab);
   const stateName = () => page.evaluate(() => (window as any).bookGame.player.userData.stategraph.stateName);
   const sanity = page.locator('dst-status-hud .survival-meter--sanity output');
 
@@ -67,11 +67,11 @@ test('right-click reads book_silviculture with the source states, sounds and gro
   await expect.poll(() => newModel('grass')).not.toBeNull();
   const grassId = await newModel('grass');
   const pickGrass = () => page.evaluate(id => {
-    const model = (window as any).bookGame.scene.children.find((model: any) => model.userData.instance?.entityId === id);
+    const model = (window as any).bookGame.scene.children.find((model: any) => (window as any).__prefabInstance(model)?.entityId === id);
     return model.userData.components.pickable.pick({ giveItem: () => true });
   }, grassId);
   const grassReady = () => page.evaluate(id => (window as any).bookGame.scene.children
-    .find((model: any) => model.userData.instance?.entityId === id).userData.components.pickable.canBePicked, grassId);
+    .find((model: any) => (window as any).__prefabInstance(model)?.entityId === id).userData.components.pickable.canBePicked, grassId);
   expect(await pickGrass()).toBe(true);
   expect(await grassReady()).toBe(false);
 
@@ -121,7 +121,7 @@ test('right-click reads book_silviculture with the source states, sounds and gro
   expect(savedBook.remainingUses).toBe(4);
   expect(await page.evaluate(id => {
     const { main, scene } = (window as any).bookGame;
-    const model = scene.children.find((model: any) => model.userData.instance?.entityId === id);
+    const model = scene.children.find((model: any) => (window as any).__prefabInstance(model)?.entityId === id);
     const entity = main.inventory.entities.get(id);
     return { itemId: entity.prefab, count: entity.components.stackable.count, position: model.position.toArray(),
       book: entity.hasTag('book') };
@@ -159,7 +159,7 @@ test('right-click reads book_rain: its fx and sounds play, moisture starts the r
       floor: weather.moisturefloor.peek(), rate: weather.rainRate.peek() };
   });
   const rainQuads = () => page.evaluate(() => ((window as any).rainGame.scene.getObjectByName('rain')?.getObjectByProperty('isMesh', true)?.geometry.drawRange.count ?? 0) / 6);
-  const fxCount = () => page.evaluate(() => (window as any).rainGame.scene.children.filter((model: any) => model.userData.instance?.prefab === 'fx_book_rain').length);
+  const fxCount = () => page.evaluate(() => (window as any).rainGame.scene.children.filter((model: any) => (window as any).__prefabInstance(model)?.prefab === 'fx_book_rain').length);
   expect((await weather()).type).toBe('none');
   expect(await rainQuads()).toBe(0);
 

@@ -32,10 +32,10 @@ test('death leaves a skeleton, becomes a ghost, and a saved ghost resumes withou
   const player = () => page.evaluate(() => {
     const { player, stats } = (window as any).ghostGame, controller = player.userData.animationController;
     return { ghost: controller.isGhost, state: controller.stategraph.stateName, ghostMode: stats.playerGhostMode.peek(),
-      health: stats.playerStats.health.peek(), tagged: player.userData.instance.listTags().includes('playerghost') };
+      health: stats.playerStats.health.peek(), tagged: (window as any).__prefabInstance(player).listTags().includes('playerghost') };
   });
   const skeletons = () => page.evaluate(() => (window as any).ghostGame.scene.children
-    .filter((model: any) => model.userData.instance?.prefab === 'skeleton_player').map((model: any) => ({ id: model.userData.instance?.entityId, ...model.userData.skeleton })));
+    .filter((model: any) => (window as any).__prefabInstance(model)?.prefab === 'skeleton_player').map((model: any) => ({ id: (window as any).__prefabInstance(model)?.entityId, ...model.userData.skeleton })));
 
   await page.goto('/tests/dst-lighting.html?save=initial-world.json'); await prepare();
   expect(await player()).toMatchObject({ ghost: false, ghostMode: false, tagged: false });
@@ -83,11 +83,11 @@ test('a ghost that haunts the multiplayer portal is resurrected there with a hea
     new CustomEvent('game:debug-command', { detail: { command } })), command);
   const player = () => page.evaluate(() => {
     const { player, stats } = (window as any).ghostGame, controller = player.userData.animationController;
-    const portal = (window as any).ghostGame.scene.children.find((model: any) => model.userData.instance?.prefab === 'multiplayer_portal_moonrock');
+    const portal = (window as any).ghostGame.scene.children.find((model: any) => (window as any).__prefabInstance(model)?.prefab === 'multiplayer_portal_moonrock');
     return { ghost: controller.isGhost, state: controller.stategraph.stateName, ghostMode: stats.playerGhostMode.peek(),
       health: stats.playerStats.health.peek(), penalty: stats.playerStats.health.penalty, invincible: stats.playerStats.health.invincible,
       visible: player.visible && player.children.every((child: any) => child.visible), x: Math.round(player.position.x * 10) / 10,
-      slippery: !!player.userData.slipperyfeet, tags: player.userData.instance.listTags(), portalTags: portal.userData.instance.listTags(), hauntable: !!portal.userData.components.hauntable };
+      slippery: !!player.userData.slipperyfeet, tags: (window as any).__prefabInstance(player).listTags(), portalTags: (window as any).__prefabInstance(portal).listTags(), hauntable: !!portal.userData.components.hauntable };
   });
 
   await page.goto('/tests/dst-lighting.html?save=initial-world.json');
@@ -111,7 +111,7 @@ test('a ghost that haunts the multiplayer portal is resurrected there with a hea
   // Aim at a solid pixel left of the portal's transparent centre.
   const click = await page.evaluate(async url => {
     const { view } = await import(url), { scene } = (window as any).ghostGame;
-    const portal = scene.children.find((model: any) => model.userData.instance?.prefab === 'multiplayer_portal_moonrock');
+    const portal = scene.children.find((model: any) => (window as any).__prefabInstance(model)?.prefab === 'multiplayer_portal_moonrock');
     const at = portal.position.clone(); at.y = 1.5;
     const ndc = at.project(view.camera), rect = view.renderer.domElement.getBoundingClientRect();
     return { x: rect.left + (ndc.x + 1) / 2 * rect.width - 60, y: rect.top + (1 - ndc.y) / 2 * rect.height };

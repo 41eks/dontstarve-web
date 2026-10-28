@@ -1,5 +1,6 @@
 import { batch, GameTimeScheduler, createMemo, createSignal, readonlySignal, bindWorldContent, getWatchWorldContent, clockstate, seasonstate, moonphasestate, type ReadonlySignal, type Signal, type ClockState, type SeasonState, type WorldMoonPhase, type WorldContentContext, type WorldContentEnvironment } from '@dontstarve-web/signals';
 import { Quaternion, type Vector3 } from 'three';
+import { SoundPresentationScheduler } from '@dontstarve-web/sound';
 import { WorldTemperature } from '../packages/componets/src/worldtemperature';
 import { Weather } from '../packages/componets/src/weather';
 import { WorldPerishClock } from '../packages/componets/src/worldperishclock';
@@ -15,6 +16,7 @@ export interface WorldState extends WorldContentContext {
   readonly moonPhase: Signal<WorldMoonPhase>;
   readonly isNight: ReadonlySignal<boolean>;
   readonly playerpositions: Signal<Vector3[]>;
+  readonly soundPresentation: SoundPresentationScheduler;
   readonly camerarotation: Signal<Quaternion>;
   /** clock.lua ms_setmoonphase: the first cycle step with the phase (waxing from the start, else from mid-cycle). */
   SetMoonPhase(phase: WorldMoonPhase, waxing?: boolean): void;
@@ -65,6 +67,7 @@ export function createWorldState(world: Pick<SaveDocument['world'], 'elapsedSeco
   const cycle = createMemo(() => clockstate.get().phase);
   const portalRez = createSignal(true);
   const playerpositions = createSignal<Vector3[]>([]);
+  const soundPresentation = new SoundPresentationScheduler(readonlySignal(playerpositions), scheduler);
   const camerarotation = createSignal(new Quaternion());
   const playerPosition = createMemo<Vector3 | undefined>(() => playerpositions.get()[0]);
   const tickingarea = bindTileStateQuery(playerPosition);
@@ -87,7 +90,7 @@ export function createWorldState(world: Pick<SaveDocument['world'], 'elapsedSeco
     moisture: worldContent.moisture, moistureceil: worldContent.moistureceil, moisturefloor: worldContent.moisturefloor,
     preciptype: worldContent.preciptype, peakprecipitationrate: worldContent.peakprecipitationrate, precipitationRate: worldContent.precipitationRate,
     rainRate: worldContent.rainRate, snowRate: worldContent.snowRate, snowCover: worldContent.snowCover,
-    playerpositions, camerarotation, tickingarea, portalRez,
+    playerpositions, soundPresentation, camerarotation, tickingarea, portalRez,
     getWatchWorldContent: (key, registerCleanup, options) => getWatchWorldContent(key, registerCleanup, worldContent, options),
     SetMoonPhase(phase, waxing) {
       const length = MOON_PHASE_CYCLES.length;
@@ -106,7 +109,7 @@ export function createWorldState(world: Pick<SaveDocument['world'], 'elapsedSeco
     moonPhaseCycle: () => ((clockstate.peek().cycles ?? 0) + moonCycleOffset) % MOON_PHASE_CYCLES.length + 1,
     clockAt,
     season: seasonstate, moonPhase: moonphasestate, moon: worldContent.moon, isNight: readonlySignal(isNight), worldtemperature, weather, perishClock,
-    dispose() { unbindWorldContent(); DisposeTileStates(playerPosition); unbindTileMapSize(); playerPosition.dispose(); componentUpdates.dispose(); worldwind.dispose(); scheduler.dispose(); moon.dispose(); isNight.dispose(); cycle.dispose(); weather.dispose(); perishClock.dispose(); worldtemperature.dispose(); } };
+    dispose() { soundPresentation.dispose(); unbindWorldContent(); DisposeTileStates(playerPosition); unbindTileMapSize(); playerPosition.dispose(); componentUpdates.dispose(); worldwind.dispose(); scheduler.dispose(); moon.dispose(); isNight.dispose(); cycle.dispose(); weather.dispose(); perishClock.dispose(); worldtemperature.dispose(); } };
 }
 
 /** Accumulate active frame time without writing clock/temperature signals between settlements. */

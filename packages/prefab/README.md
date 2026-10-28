@@ -297,8 +297,8 @@ RGB `(237,237,209)/255`。范围不随掉落堆叠数量增加，也没有火把
 274（`staff_star_fireLP`）提取，保留源 bank 的目录，导出为 `sound/common.fsb-273.wav`、
 `sound/common.fsb-274.wav`；声音在用户交互后启用。提取方法见根目录 `AGENTS.md`。
 
-通用音频 API 由 `@dontstarve-web/prefab/sound` 提供，直接调用 `PlaySound('事件路径')`。
-位置参数统一使用现有地面 `THREE.Vector3`：`PlaySound(path, position?, offsetSeconds?)`、`UpdateSoundListener(position)`，以及 `inverseSquareAttenuation(position, listenerPosition, referenceDistance?, maxDistance?)`。声源保留位置引用，监听器复用一个向量保存当前坐标；衰减通过 `distanceToSquared()` 计算平方距离，避免开方、拆分 XZ 坐标和每次更新创建临时向量。距离计算不修改传入的向量；省略声源位置仍以完整音量播放。
+通用音频 API 由 `@dontstarve-web/prefab/sound` 提供，直接调用 `PlaySound('事件路径')`；场景声音调度器由 `@dontstarve-web/sound` 提供。
+位置参数统一使用现有地面 `THREE.Vector3`：`PlaySound(path, position?, offsetSeconds?)` 和 `inverseSquareAttenuation(position, listenerPosition, referenceDistance?, maxDistance?)`。场景持有 `SoundPresentationScheduler`，直接订阅已有的 `playerpositions` signal，统一更新监听器；瀑布 prefab 只注册池的位置、半径和大小，调度器按源 Lua 每 5 帧选择最近的 3 个池并处理音量过渡。声源保留位置引用；衰减通过 `distanceToSquared()` 计算平方距离，避免开方、拆分 XZ 坐标和每次更新创建临时向量。距离计算不修改传入的向量；省略声源位置仍以完整音量播放。
 支持 `dontstarve/common/staff_star_create`、`dontstarve/common/staff_star_LP` 和
 `dontstarve/wilson/use_gemstaff`（流 284，`sound/common.fsb-284.wav`），以及
 `dontstarve/wilson/hit`（`sfx.fsb` 流 423 / 424，等权随机）和

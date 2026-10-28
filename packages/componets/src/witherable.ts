@@ -7,6 +7,7 @@ export interface WitherableSave {
   restoreCycles?: number;
   delaySeconds?: number;
   taskSeconds?: number;
+  protectSeconds?: number;
 }
 export interface WitherablePickable {
   cyclesLeft: number | undefined;
@@ -23,6 +24,7 @@ export class Witherable {
   private restoreCycles?: number;
   private readonly task: ComponentTimer;
   private readonly delay: ComponentTimer;
+  private readonly protection: ComponentTimer;
   private readonly cleanups: (() => void)[] = [];
   private readonly rain?: ReadonlySignal<'none' | 'rain' | 'snow'>;
   private readonly witherTemp: number;
@@ -43,7 +45,9 @@ export class Witherable {
     this.rejuvenateTemp = 45 + Math.floor(random() * 11);
     this.task = new ComponentTimer(scheduler, () => this.check());
     this.delay = new ComponentTimer(scheduler, () => this.Start());
-    this.state = Object.freeze({ withered: readonlySignal(this.withered), timer: this.task.snapshot, delayTimer: this.delay.snapshot });
+    this.protection = new ComponentTimer(scheduler, () => {});
+    this.state = Object.freeze({ withered: readonlySignal(this.withered), timer: this.task.snapshot,
+      delayTimer: this.delay.snapshot, protectionTimer: this.protection.snapshot });
     this.rain = rain && watchSignal(rain, cleanup => this.cleanups.push(cleanup));
     this.restoreCycles = saved?.restoreCycles;
     if (saved?.withered) { this.withered.set(true); inst.addTag('withered'); }
@@ -53,6 +57,7 @@ export class Witherable {
       else if (saved?.taskSeconds !== undefined) this.task.start(saved.taskSeconds);
       else this.Start();
     }
+    if (saved?.protectSeconds !== undefined) this.Protect(saved.protectSeconds);
     let wasRaining = this.rain?.peek() === 'rain';
     createEffect(() => {
       const raining = this.rain?.get() === 'rain';
@@ -70,7 +75,20 @@ export class Witherable {
   }
   Start(): void {
     if (this.removed || !this.enabled || this.task.remainingSeconds !== undefined || this.delay.remainingSeconds !== undefined) return;
+    if (this.protection.remainingSeconds !== undefined) {
+      this.delay.start(this.protection.remainingSeconds);
+      return;
+    }
     this.task.start(30 + Math.floor(this.random() * 31));
+  }
+  Protect(seconds: number): void {
+    if (this.removed || seconds <= (this.protection.remainingSeconds ?? 0)) return;
+    this.protection.start(seconds);
+    if (this.IsWithered()) this.ForceRejuvenate();
+    if (this.enabled && seconds > (this.delay.remainingSeconds ?? 0)) {
+      this.Stop();
+      this.delay.start(seconds);
+    }
   }
   Stop(): void { this.task.stop(); this.delay.stop(); }
   private check(): void {
@@ -107,11 +125,12 @@ export class Witherable {
   exportState(): WitherableSave {
     return { ...(this.IsWithered() ? { withered: true, ...(this.restoreCycles === undefined ? {} : { restoreCycles: this.restoreCycles }) } : {}),
       ...(this.delay.remainingSeconds === undefined ? {} : { delaySeconds: this.delay.remainingSeconds }),
-      ...(this.task.remainingSeconds === undefined ? {} : { taskSeconds: this.task.remainingSeconds }) };
+      ...(this.task.remainingSeconds === undefined ? {} : { taskSeconds: this.task.remainingSeconds }),
+      ...(this.protection.remainingSeconds === undefined ? {} : { protectSeconds: this.protection.remainingSeconds }) };
   }
   dispose(): void {
     if (this.removed) return;
-    this.removed = true; this.Stop(); this.cleanups.splice(0).forEach(cleanup => cleanup());
+    this.removed = true; this.Stop(); this.protection.stop(); this.cleanups.splice(0).forEach(cleanup => cleanup());
     this.inst.removeTag('witherable'); this.inst.removeTag('withered');
   }
 }

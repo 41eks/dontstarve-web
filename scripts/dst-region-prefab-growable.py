@@ -77,15 +77,20 @@ def deciduoustree_components(data):
 
 def evergreen_components(data):
     # evergreens.lua OnSave plus growable/plantregrowth; plantregrowth (offspring regrowth) is not ported.
-    if set(data) - {'growable', 'plantregrowth', 'stump', 'burnt', 'burntcone', 'timer'}:
+    if set(data) - {'growable', 'plantregrowth', 'stump', 'burnt', 'burntcone', 'timer', 'petrifiable'}:
         raise ValueError('Unsupported evergreen save state')
+    petrifiable = data.get('petrifiable')
+    if petrifiable is not None and (not isinstance(petrifiable, dict) or set(petrifiable) != {'remainingtime'}
+                                   or type(petrifiable['remainingtime']) not in (int, float)
+                                   or petrifiable['remainingtime'] < 0):
+        raise ValueError('Unsupported evergreen petrifiable state')
     for flag in ('stump', 'burnt', 'burntcone'):
         if flag in data and data[flag] is not True:
             raise ValueError(f'Expected a true evergreen {flag} flag')
     if data.get('stump') and data.get('burnt'):
         raise ValueError('A burnt evergreen is not a stump')
     growth = data.get('growable')
-    if growth is None and (data.get('stump') or data.get('burnt')):
+    if growth is None and (not data or data.get('stump') or data.get('burnt')):
         growth = {}
     elif not isinstance(growth, dict) or set(growth) - {'stage', 'time', 'sleeptime', 'usetimemultiplier'} \
             or growth.get('usetimemultiplier') not in (None, False) \

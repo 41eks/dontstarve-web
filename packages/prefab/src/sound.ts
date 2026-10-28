@@ -365,7 +365,7 @@ function updateGain({ position, gain, volume }: { position?: Vector3; gain: Gain
   gain.gain.value = SOUND_VOLUME * volume * (position ? inverseSquareAttenuation(position, listener) : 1);
 }
 
-/** Call each frame after movement; source positions are retained by reference. */
+/** Low-level listener update; the scene sound scheduler subscribes to player position. */
 export function UpdateSoundListener(position: Vector3): void {
   listener.copy(position);
   for (const sound of soundGains.values()) updateGain(sound);

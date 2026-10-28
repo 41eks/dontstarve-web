@@ -2,6 +2,31 @@
 """Workable prop save states: mining/hammering work and the fixed visual variant."""
 
 
+def chessjunk_components(data):
+    # chessjunk.lua OnSave; workable.savestate defaults false.
+    if set(data) - {'repaired', 'repairerid', 'repairerchar', 'workable'} or data.get('workable'):
+        raise ValueError('Unsupported chessjunk save state')
+    if not data:
+        return {}
+    if data.get('repaired') is not True:
+        raise ValueError('Expected repaired chessjunk')
+    state = {'repaired': True}
+    for field in ('repairerid', 'repairerchar'):
+        if field in data:
+            if not isinstance(data[field], str):
+                raise ValueError(f'Expected chessjunk {field} string')
+            state[field] = data[field]
+    return {'chessJunk': state}
+
+
+def ruins_statue_mage_components(data):
+    # statueruins.lua OnSave writes only gem; workable.savestate remains false.
+    gems = {'greengem', 'redgem', 'bluegem', 'yellowgem', 'orangegem', 'purplegem'}
+    if set(data) != {'gem'} or data['gem'] not in gems:
+        raise ValueError('Unsupported ruins_statue_mage save state')
+    return {'ruinsStatueMage': {'gem': data['gem']}}
+
+
 def statueglommer_components(data):
     # statueglommer.lua OnSave plus pickable.lua and workable.lua component records.
     if set(data) - {'worked', 'spawned', 'pickable', 'workable'}:
@@ -42,6 +67,8 @@ def archive_moon_statue_components(data):
     if set(data) - {'anim', 'workable'} or data.get('workable'):
         raise ValueError('Unsupported archive_moon_statue save state')
     anim = data.get('anim')
+    if anim is None:
+        return {}
     if type(anim) is not int or not 1 <= anim <= 4:
         raise ValueError('Expected archive_moon_statue anim in 1..4')
     return {'archiveProp': {'anim': anim}}
@@ -69,9 +96,16 @@ def rock_components(data):
 
 def cavein_boulder_components(data):
     # cavein_boulder.lua OnSave: the default swap_boulder symbol omits variation (1).
-    # Only ground art is ported; reject falling/linked formations rather than lose their state.
-    if set(data) - {'variation', 'raised', 'formed', 'submersible', 'workable'} or data.get('workable'):
+    # Ground art and the raised/formed state are ported; entitytracker's propped link is not simulated.
+    if set(data) - {'variation', 'raised', 'formed', 'submersible', 'workable', 'entitytracker'} or data.get('workable'):
         raise ValueError('Unsupported cavein_boulder save state')
+    tracker = data.get('entitytracker')
+    if tracker is not None and (not isinstance(tracker, dict) or set(tracker) != {'entities'}
+                                or not isinstance(tracker['entities'], list)
+                                or any(not isinstance(entry, dict) or set(entry) != {'name', 'GUID'}
+                                       or entry['name'] != 'propped' or type(entry['GUID']) is not int
+                                       for entry in tracker['entities'])):
+        raise ValueError('Unsupported cavein_boulder entitytracker')
     variation = data.get('variation', 1)
     if type(variation) is not int or not 1 <= variation <= 8:
         raise ValueError('Expected cavein_boulder variation in 1..8')

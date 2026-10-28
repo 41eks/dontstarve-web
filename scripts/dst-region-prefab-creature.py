@@ -59,6 +59,36 @@ def dragonfly_components(data, context):
     return {'dragonfly': result}
 
 
+def dragonfly_spawner_components(data):
+    # dragonfly_spawner.lua has no art; childspawner retains the queued child until OnEntityWake.
+    if not isinstance(data, dict) or set(data) - {'childspawner', 'worldsettingstimer'}:
+        raise ValueError('Unsupported dragonfly_spawner save state')
+    child = data.get('childspawner')
+    allowed = {'childreninside', 'childrenoutside', 'spawning', 'regening', 'queued_spawn',
+               'timetonextspawn', 'timetonextregen', 'emergencychildreninside'}
+    if not isinstance(child, dict) or set(child) - allowed:
+        raise ValueError('Unsupported dragonfly_spawner childspawner')
+    if type(child.get('childreninside')) is not int or not 0 <= child['childreninside'] <= 1:
+        raise ValueError('Invalid dragonfly_spawner childreninside')
+    outside = child.get('childrenoutside', [])
+    if not isinstance(outside, list) or len(outside) > 1 or any(type(value) is not int for value in outside):
+        raise ValueError('Unsupported dragonfly_spawner childrenoutside')
+    for key in ('spawning', 'regening', 'queued_spawn'):
+        if key in child and type(child[key]) is not bool:
+            raise ValueError(f'Invalid dragonfly_spawner {key}')
+    for key in ('timetonextspawn', 'timetonextregen', 'emergencychildreninside'):
+        if key in child and not _finite(child[key]):
+            raise ValueError(f'Invalid dragonfly_spawner {key}')
+    result = {'childspawner': {'childreninside': child['childreninside'], 'childrenoutside': outside,
+              **{key: child[key] for key in sorted(allowed - {'childreninside', 'childrenoutside'}) if key in child}}}
+    if 'worldsettingstimer' in data:
+        timer = data['worldsettingstimer']
+        if not isinstance(timer, dict) or set(timer) != {'timers'} or set(timer['timers']) != {'regen_dragonfly'}:
+            raise ValueError('Unsupported dragonfly_spawner worldsettingstimer')
+        result['worldsettingstimer'] = timer
+    return {'dragonflySpawner': result}
+
+
 def beefalo_components(data, context):
     # beefalo.lua OnSave (tendency, hascarrat) plus the component OnSaves. Only knownlocations, periodicspawner
     # and beard are ported. A wild, unhurt, unclothed beefalo's other components are validated and dropped:

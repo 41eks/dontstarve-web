@@ -1,3 +1,4 @@
+import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { createTestWorldSources } from './worldContentFixture';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
@@ -105,7 +106,7 @@ it('rolls with the wind, stops for a long action and restarts, is picked for loo
     const records = manager.exportRecords();
     expect(records).toHaveLength(1);
     const reloaded = await restoredManager.spawn(new THREE.Vector3(...records[0].transform.position), records[0]);
-    expect(reloaded.userData.instance?.entityId).toBe(records[0].id);
+    expect(lookupPrefabInstance(reloaded)?.entityId).toBe(records[0].id);
     expect(reloaded.position.x).toBeCloseTo(model.position.x);
 
     expect((target.action.target as any).component.pick({})).toBe(true);

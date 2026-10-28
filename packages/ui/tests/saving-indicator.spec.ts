@@ -42,7 +42,7 @@ test('c_save downloads a cluster ZIP before and after a portal spawn, plays the 
   const sceneUrl = `/@fs${fileURLToPath(new URL('../../../src/universal.ts', import.meta.url))}`;
   await expect.poll(() => page.evaluate(async (url) => {
     const { scene } = await import(url);
-    return scene.children.filter((model: any) => model.userData.instance?.prefab === 'multiplayer_portal_moonrock').length;
+    return scene.children.filter((model: any) => (window as any).__prefabInstance(model)?.prefab === 'multiplayer_portal_moonrock').length;
   }, sceneUrl)).toBe(1);
   const portalDownload = page.waitForEvent('download');
   await command('c_save()');
@@ -57,14 +57,15 @@ test('c_save downloads a cluster ZIP before and after a portal spawn, plays the 
   await page.reload();
   await page.evaluate(async (url) => { await import(url); },
     `/@fs${fileURLToPath(new URL('../../../src/main.ts', import.meta.url))}`);
+  await expect(page.locator('canvas[data-game-canvas]')).toHaveAttribute('data-loaded', 'true');
   expect(await page.evaluate(async ({ url, id }) => {
     const { scene } = await import(url);
-    const model = scene.children.find((model: any) => model.userData.instance?.entityId === id);
-    return { prefab: model?.userData.instance?.prefab, position: model?.position.toArray() };
+    const model = scene.children.find((model: any) => (window as any).__prefabInstance(model)?.entityId === id);
+    return { prefab: (window as any).__prefabInstance(model)?.prefab, position: model?.position.toArray() };
   }, { url: sceneUrl, id: portal.id })).toEqual({ prefab: 'multiplayer_portal_moonrock', position: portal.transform.position });
   expect(await page.evaluate(async ({ url, id }) => {
     const { scene } = await import(url);
-    const flower = scene.children.find((model: any) => model.userData.instance?.entityId === id);
+    const flower = scene.children.find((model: any) => (window as any).__prefabInstance(model)?.entityId === id);
     return { planted: flower?.userData.planted, animation: flower?.userData.flowerAnimation,
       position: flower?.position.toArray() };
   }, { url: sceneUrl, id: naturalFlower.id })).toEqual({ planted: false,

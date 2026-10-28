@@ -1,3 +1,4 @@
+import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -92,7 +93,7 @@ it('spawns moonbase through the debug command using its source art and restores 
   });
   const restored = await placement.spawnFromSave('moonbase', parsed.world.entities.moonbase[0]);
   expect(restored.position.toArray()).toEqual(model.position.toArray());
-  expect(restored.userData.instance?.entityId).toBe(record.id);
+  expect(lookupPrefabInstance(restored)?.entityId).toBe(record.id);
   expect(restored.userData.animationController.currentAnimation).toBe('hit_med');
   expect(placement.exportRecords()[1]).toEqual({ prefabId, record });
   placement.dispose();
@@ -217,7 +218,7 @@ it('charges through three source stages, restores the remaining timers and morph
     expect(next.charge.peek()).toBe('charging_2');
     expect(restored.model.userData.actionEntity.hasTag('intense')).toBe(true);
     expect(next.staff.peek()?.snapshot()).toEqual(record.components.moonbase?.staff);
-    expect(restored.placement.renderEntities.filter(entry => entry.object.userData.instance?.prefab?.startsWith('positron')).map(entry => 'sortLayer' in entry ? entry.sortLayer : undefined).sort()).toEqual([0, 2, 3]);
+    expect(restored.placement.renderEntities.filter(entry => lookupPrefabInstance(entry.object)?.prefab?.startsWith('positron')).map(entry => 'sortLayer' in entry ? entry.sortLayer : undefined).sort()).toEqual([0, 2, 3]);
     restoredScheduler.advance(18.7);
     expect(next.charge.peek()).toBe('charging_3');
     restoredScheduler.advance(MOONBASE_CHARGE_DURATION - 37.4);

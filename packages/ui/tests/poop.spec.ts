@@ -63,7 +63,7 @@ test('ground manure has animated flies and positional looping audio, survives sa
     const model = (window as any).poopGame.scene.children.find((model: any) => model.userData.itemId === 'poop');
     if (!model) return null;
     const child = model.userData.flies;
-    return { id: model.userData.instance?.entityId, position: model.position.toArray(), flies: child?.userData.instance?.prefab,
+    return { id: (window as any).__prefabInstance(model)?.entityId, position: model.position.toArray(), flies: (window as any).__prefabInstance(child)?.prefab,
       drawCount: child?.children[0].children[0].geometry.drawRange.count ?? 0 };
   });
   const activeSounds = () => page.evaluate(() => (window as any).fliesAudio.filter((entry: any) => !entry.stopped));

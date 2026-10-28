@@ -17,7 +17,7 @@ import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
 import { MakeObstaclePhysics } from './standardcomponents';
 import type { SpawnGroundItem } from './groundPrefab';
-import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
+import { PlaySound } from './sound';
 import type { WorldFx } from './world_fx';
 import { TILE_SIZE } from './tile';
 import catalog from './groundItems.json' with { type: 'json' };
@@ -98,8 +98,10 @@ export interface GrottoRecord {
 export interface GrottoPoolWorld extends ToolMouseTargetWorld {
   physics?: CANNON.World;
   scheduler: GameTimeScheduler;
-  /** The listener of the waterfall sound controller (`ThePlayer`). */
+  /** Standalone visual activity fallback when the world has no tickingarea query. */
   playerPosition: () => THREE.Vector3;
+  /** World sound presentation owns nearest-pool selection, fading and playback. */
+  registerWaterfallPool(position: THREE.Vector3, radius: number, large: boolean): () => void;
   getWatchWorldContent?: GetWatchWorldContent;
   /** The world's tickingarea query: props outside it are neither drawn, animated nor watching the moon. */
   tickingarea?: TileStateQuery;
@@ -136,33 +138,17 @@ interface Grotto {
   tracker: TileTracker;
   awake?: { get(): boolean; peek(): boolean };
   stopArea: (() => void)[];
+  stopSound?: () => void;
   removed: boolean;
 }
 
-/** grottowaterfallsoundcontroller.lua constants; distances are DST units. */
-const EMITTER_MAXDSQ = 1600;
-const NUM_EMITTERS = 3;
-const LARGE_VOLUME = 1;
-const SMALL_VOLUME = .8;
-const MIN_FADE_VOLUME = .05;
-const HALF_FADE_TIME = .2;
-const PROCESS_PERIOD = 5 / 30;
-const WATERFALL_LOOP = 'grotto/common/waterfall_LP' as const;
-
-interface PoolData { grotto: Grotto; dsq: number; large: boolean }
-interface Fade { from: number; to: number; elapsed: number; time: number; done?: () => void }
-/** One `grottopool_sfx` emitter with its fader component. */
-interface Emitter { handle?: SoundHandle; pool?: PoolData; volume: number; fade?: Fade }
-
-/** The grotto pools, their props and the shared waterfall sound controller (`ms_registergrottopool`). */
+/** The grotto pools and their props; sound sources are registered with the world presentation scheduler. */
 export class GrottoPoolManager {
   private readonly scene: THREE.Scene;
   private readonly world: GrottoPoolWorld;
   private readonly assets = new ArchiveSpriteAssets();
   private readonly grottos = new Map<THREE.Group, Grotto>();
   private readonly byId = new Map<string, THREE.Group>();
-  private readonly emitters: Emitter[] = Array.from({ length: NUM_EMITTERS }, () => ({ volume: 0 }));
-  private soundTime = 0;
   private disposed = false;
 
   constructor(scene: THREE.Scene, world: GrottoPoolWorld) {
@@ -185,8 +171,7 @@ export class GrottoPoolManager {
     const resources = await Promise.allSettled([
       createSprite(spriteClip),
       pool ? createMist({ name: mistAnimation, loop: true }) : undefined,
-      pool ? PreloadSounds(WATERFALL_LOOP) : undefined,
-      table ? Promise.all([PreloadSounds('dontstarve/wilson/rock_break'), this.world.fx.prepare('halloween_moonpuff')]) : undefined,
+      table ? this.world.fx.prepare('halloween_moonpuff') : undefined,
     ] as const);
     const created = resources[0].status === 'fulfilled' ? resources[0].value : undefined;
     const createdMist = resources[1].status === 'fulfilled' ? resources[1].value : undefined;
@@ -248,6 +233,7 @@ export class GrottoPoolManager {
     grotto.minimap.SetIcon(`${prefab}.png`);
     MakeObstaclePhysics(grotto.instance, POOL_RADIUS[prefab]);
     if (this.world.physics) grotto.instance.bindPhysics(this.world.physics);
+    grotto.stopSound = this.world.registerWaterfallPool(model.position, POOL_RADIUS[prefab], prefab === GROTTO_POOL_BIG_ID);
     grotto.savedChildren = saved?.children.map(child => ({ ...child })) ?? [];
     // inst:DoTaskInTime(0, setup_children): after every saved entity has been restored.
     grotto.setup = new ComponentTimer(this.world.scheduler, () => void this.setupChildren(grotto).catch((error: unknown) =>
@@ -359,7 +345,6 @@ export class GrottoPoolManager {
       sprite.update(dt);
       mist?.instance.sprite.update(dt);
     }
-    this.updateSound(dt);
   }
 
   /** Only upright art needs depth sorting; the pool surface is a background decal. */
@@ -396,75 +381,6 @@ export class GrottoPoolManager {
     });
   }
 
-  /** grottowaterfallsoundcontroller.lua ProcessPlayer, every 5 frames, plus the emitters' faders. */
-  private updateSound(dt: number): void {
-    for (const emitter of this.emitters) {
-      const fade = emitter.fade;
-      if (!fade) continue;
-      fade.elapsed += dt;
-      const finished = fade.elapsed >= fade.time;
-      this.setEmitterVolume(emitter, finished ? fade.to : fade.from + (fade.to - fade.from) * fade.elapsed / fade.time);
-      if (finished) { emitter.fade = undefined; fade.done?.(); }
-    }
-    this.soundTime += dt;
-    if (this.soundTime < PROCESS_PERIOD) return;
-    this.soundTime %= PROCESS_PERIOD;
-    this.processPlayer();
-  }
-
-  private setEmitterVolume(emitter: Emitter, volume: number): void {
-    emitter.handle?.setVolume(volume); emitter.volume = volume;
-  }
-
-  private startFade(emitter: Emitter, from: number, to: number, done?: () => void): void {
-    emitter.fade = { from, to, elapsed: 0, time: HALF_FADE_TIME, done };
-    this.setEmitterVolume(emitter, from);
-  }
-
-  private processPlayer(): void {
-    const player = this.world.playerPosition();
-    const pools: PoolData[] = [];
-    for (const grotto of this.grottos.values()) {
-      if (!isPoolId(grotto.prefab)) continue;
-      const radius = POOL_RADIUS[grotto.prefab];
-      const dsq = grotto.model.position.distanceToSquared(player) / (WORLD_SCALE * WORLD_SCALE) - radius * radius;
-      if (dsq < EMITTER_MAXDSQ) pools.push({ grotto, dsq, large: grotto.prefab === GROTTO_POOL_BIG_ID });
-    }
-    pools.sort((a, b) => a.dsq - b.dsq);
-    // Pair the closest pools with the emitters already playing on them; the rest are unclaimed.
-    const paired = new Set<Emitter>(), unclaimed: PoolData[] = [];
-    pools.slice(0, NUM_EMITTERS).forEach(data => {
-      const emitter = this.emitters.find(candidate => candidate.pool?.grotto === data.grotto);
-      if (emitter) paired.add(emitter); else unclaimed.push(data);
-    });
-    for (const emitter of this.emitters) {
-      if (paired.has(emitter)) continue;
-      const data = unclaimed.pop();
-      if (!data) {
-        emitter.fade = undefined;
-        emitter.handle?.stop(); emitter.handle = undefined; emitter.pool = undefined; emitter.volume = 0;
-      } else if (!emitter.handle?.isPlaying() || !emitter.pool || emitter.pool.grotto.removed) {
-        const volume = data.large ? LARGE_VOLUME : SMALL_VOLUME;
-        emitter.fade = undefined;
-        emitter.handle?.stop();
-        emitter.handle = PlaySound(WATERFALL_LOOP, data.grotto.model.position);
-        this.setEmitterVolume(emitter, volume);
-        emitter.pool = data;
-      } else {
-        // Move a playing emitter: fade out, hop to the new pool, fade in.
-        const oldVolume = emitter.volume;
-        emitter.pool = data;
-        this.startFade(emitter, oldVolume, MIN_FADE_VOLUME, () => {
-          const target = emitter.pool;
-          if (!target || target.grotto.removed) return;
-          emitter.handle?.stop();
-          emitter.handle = PlaySound(WATERFALL_LOOP, target.grotto.model.position);
-          this.startFade(emitter, MIN_FADE_VOLUME, target.large ? LARGE_VOLUME : SMALL_VOLUME);
-        });
-      }
-    }
-  }
-
   /** on_removed: a pool removes its children from the last slot to the first; a prop leaves its owner's slot. */
   private remove(model: THREE.Group): void {
     const grotto = this.grottos.get(model); if (!grotto) return;
@@ -475,9 +391,7 @@ export class GrottoPoolManager {
     if (grotto.setup?.snapshot.peek().status === 'scheduled') grotto.setup.stop();
     grotto.stopMoonWatch.splice(0).forEach(stop => stop());
     grotto.stopArea.splice(0).forEach(stop => stop());
-    for (const emitter of this.emitters) if (emitter.pool?.grotto === grotto) {
-      emitter.fade = undefined; emitter.handle?.stop(); emitter.handle = undefined; emitter.pool = undefined; emitter.volume = 0;
-    }
+    grotto.stopSound?.();
     prefabInstance(model)!.light.set(null);
     grotto.minimap?.dispose(); grotto.workable?.dispose();
     grotto.mist?.instance.remove(); grotto.mist?.display.dispose();

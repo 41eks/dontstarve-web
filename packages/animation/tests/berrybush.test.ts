@@ -1,3 +1,4 @@
+import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
@@ -63,7 +64,7 @@ it('picks native berries without consuming cycles, pauses in winter and reloads 
     expect(s.inventory.getItemSpec('dug_berrybush').atlas).toBe('images/inventoryimages.xml');
     const model = s.bushes.digTargets[0].model, pickable = model.userData.components.pickable;
     expect(s.physics.bodies).toHaveLength(1);
-    expect(model.userData.instance?.getPhysicsRadius(undefined)).toBeCloseTo(.3);
+    expect(lookupPrefabInstance(model)?.getPhysicsRadius(undefined)).toBeCloseTo(.3);
     expect(pickable.pick(s.picker)).toBe(true);
     expect(s.inventory.count('berries')).toBe(1);
     expect(pickable.cyclesLeft).toBe(5);
@@ -106,11 +107,11 @@ it('preserves a reskinned bush through digging, item pickup/drop, transplant, fe
   const s = setup(), restored = setup();
   try {
     const position = new THREE.Vector3(24, 0, 36);
-    const model = await drawn(s.bushes.spawn(position)), originalId = model.userData.instance?.entityId;
+    const model = await drawn(s.bushes.spawn(position)), originalId = lookupPrefabInstance(model)?.entityId;
     const reskin = await s.bushes.reskinTargets[0].prepareNextSkin();
     expect(reskin.apply()).toBe(true); reskin.dispose();
-    expect(model.userData.instance?.skinId).toBe('berrybush_cawnival');
-    expect(model.userData.instance?.entityId).toBe(originalId); expect(model.position.equals(position)).toBe(true);
+    expect(lookupPrefabInstance(model)?.skinId).toBe('berrybush_cawnival');
+    expect(lookupPrefabInstance(model)?.entityId).toBe(originalId); expect(model.position.equals(position)).toBe(true);
     const original = s.bushes.exportRecords()[0];
     expect(performToolWork('DIG', s.bushes.digTargets[0].entity!, {})).toBe(true);
     expect(s.physics.bodies).toHaveLength(0);
@@ -130,14 +131,14 @@ it('preserves a reskinned bush through digging, item pickup/drop, transplant, fe
       canDeployPlant: () => true, deployPlant: (point: THREE.Vector3) => s.bushes.transplant(point, root.skinId),
     })).toBe(true);
     const replanted = await drawn(s.bushes.digTargets[0].model), pickable = replanted.userData.components.pickable;
-    expect(replanted.userData.instance?.skinId).toBe('berrybush_cawnival');
+    expect(lookupPrefabInstance(replanted)?.skinId).toBe('berrybush_cawnival');
     expect(pickable.exportState()).toMatchObject({ picked: true, transplanted: true, cyclesLeft: 0 });
     expect(replanted.userData.animationController.currentAnimation).toBe('dead');
     s.snowLevel.set(.5); await settleEffects();
     const beforeFertilize = s.bushes.exportRecords()[0];
     const nextSkin = await s.bushes.reskinTargets[0].prepareNextSkin();
     expect(nextSkin.apply()).toBe(true); nextSkin.dispose();
-    expect(replanted.userData.instance?.skinId).toBe('berrybush_mystical');
+    expect(lookupPrefabInstance(replanted)?.skinId).toBe('berrybush_mystical');
     expect(s.bushes.exportRecords()[0].components.pickable).toEqual(beforeFertilize.components.pickable);
     expect(pickable.remainingSeconds).toBeUndefined();
     const fertilizer = s.inventory.entities.create({ itemId: 'poop', count: 1 }); s.inventory.configureItem(fertilizer);

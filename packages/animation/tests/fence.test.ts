@@ -1,3 +1,4 @@
+import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
@@ -141,7 +142,7 @@ it('is hammered in three hits for a twig, can be reskinned, and burns into ash w
 
     const fire = model.userData.actionEntity.components.burnable;
     fire.Ignite();
-    expect(model.userData.instance?.persists).toBe(false);
+    expect(lookupPrefabInstance(model)?.persists).toBe(false);
     expect(placement.exportRecords()).toEqual([]);
     fire.Extinguish();
     expect(placement.exportRecords()).toHaveLength(1);

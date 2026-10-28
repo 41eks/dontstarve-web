@@ -1,3 +1,4 @@
+import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { useTestTileMap, testMap } from './tileMapFixture';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
@@ -38,7 +39,7 @@ it('plays standalone and undefined-query waves to completion and keeps shared ar
       const [shimmer, shore] = scene.children;
       expect(shimmer.position.toArray()).toEqual([12, 0, 24]);
       expect(shore.position.toArray()).toEqual([12, 0, 24]);
-      expect(shimmer.userData.instance?.persists).toBe(false);
+      expect(lookupPrefabInstance(shimmer)?.persists).toBe(false);
       const geometryDispose = vi.spyOn(meshOf(shimmer).geometry, 'dispose');
       const material = (meshOf(shimmer).material as THREE.Material[])[0];
       const materialDispose = vi.spyOn(material, 'dispose');

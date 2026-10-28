@@ -1,3 +1,4 @@
+import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { EventEmitter } from '@dontstarve-web/signals';
 import type { WorldEvents } from '../../prefab/src/worldContext';
 import * as THREE from 'three';
@@ -199,7 +200,7 @@ it('digs a restored moon tree stump at shovel frame 15 and permanently removes i
     player.position.set(500, 0, 0); await area.visit(player.position);
     player.position.set(1, 0, 3); await area.visit(player.position);
     expect(forest.digTargets).toEqual([]);
-    expect(forest.renderEntities.filter(entry => entry.object.userData.instance?.prefab === 'moon_tree')).toHaveLength(1);
+    expect(forest.renderEntities.filter(entry => lookupPrefabInstance(entry.object)?.prefab === 'moon_tree')).toHaveLength(1);
     expect(forest.chopTargets[0].entity.components.workable!.GetWorkLeft()).toBe(16);
   } finally { controller.dispose(); forest.dispose(); inventory.dispose(); }
 });

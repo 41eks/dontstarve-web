@@ -32,7 +32,7 @@ async function openGame(page: import('@playwright/test').Page, prefab: 'cave_ent
 /** Screen position of the entrance's ground point, raised by `height` for upright art. */
 const entrancePoint = (page: import('@playwright/test').Page, height: number) => page.evaluate(height => {
   const { scene, renderer, camera } = (window as any).caveGame;
-  const entrance = scene.children.find((model: any) => model.userData.instance?.entityId === 'entrance');
+  const entrance = scene.children.find((model: any) => (window as any).__prefabInstance(model)?.entityId === 'entrance');
   const ndc = entrance.position.clone().setY(height).project(camera), rect = renderer.domElement.getBoundingClientRect();
   return { x: rect.left + (ndc.x + 1) * rect.width / 2, y: rect.top + (1 - ndc.y) * rect.height / 2 };
 }, height);
@@ -46,7 +46,7 @@ test('right-clicking a closed cave entrance with a pickaxe walks up to it and mi
   await bar.locator('.inventory-bar__items [data-item-id="pickaxe"]').dragTo(hand);
   await expect(hand).toHaveAttribute('data-item-id', 'pickaxe');
   const workLeft = () => page.evaluate(() => (window as any).caveGame.scene.children
-    .find((model: any) => model.userData.instance?.entityId === 'entrance')?.userData.components.workable?.GetWorkLeft() ?? 0);
+    .find((model: any) => (window as any).__prefabInstance(model)?.entityId === 'entrance')?.userData.components.workable?.GetWorkLeft() ?? 0);
   for (let hit = 0; hit < 6; hit++) {
     const point = await entrancePoint(page, 3);
     await page.mouse.click(point.x, point.y, { button: 'right' });
@@ -54,7 +54,7 @@ test('right-clicking a closed cave entrance with a pickaxe walks up to it and mi
     if (hit < 5) await page.waitForTimeout(1500);
   }
   await expect.poll(() => page.evaluate(() => (window as any).caveGame.scene.children
-    .some((model: any) => model.userData.instance?.prefab === 'cave_entrance_open'))).toBe(true);
+    .some((model: any) => (window as any).__prefabInstance(model)?.prefab === 'cave_entrance_open'))).toBe(true);
   expect(errors).toEqual([]);
 });
 

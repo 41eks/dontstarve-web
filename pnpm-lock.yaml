@@ -23,6 +23,9 @@ importers:
       '@dontstarve-web/signals':
         specifier: workspace:*
         version: link:packages/signals
+      '@dontstarve-web/sound':
+        specifier: workspace:*
+        version: link:packages/sound
       '@dontstarve-web/stategraphs':
         specifier: workspace:*
         version: link:packages/stategraphs
@@ -182,8 +185,30 @@ importers:
         specifier: ^5.0.1
         version: 5.0.1(@types/node@26.6.3)(vite@8.0.14(@types/node@26.6.3))
 
+  packages/sound:
+    dependencies:
+      '@dontstarve-web/prefab':
+        specifier: workspace:*
+        version: link:../prefab
+      '@dontstarve-web/signals':
+        specifier: workspace:*
+        version: link:../signals
+      three:
+        specifier: ^0.184.0
+        version: 0.184.0
+    devDependencies:
+      '@types/three':
+        specifier: ^0.184.1
+        version: 0.184.1
+      typescript:
+        specifier: ~6.0.2
+        version: 6.0.3
+
   packages/stategraphs:
     dependencies:
+      '@dontstarve-web/display':
+        specifier: workspace:*
+        version: link:../display
       three:
         specifier: ^0.184.0
         version: 0.184.0

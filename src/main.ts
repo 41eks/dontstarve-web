@@ -26,11 +26,10 @@ import { type PickupDoer, PointerRaycaster, type WilsonStateName } from '@dontst
 import type { WilsonAnimationController } from '@dontstarve-web/prefab/player';
 import { DOCK_KIT_ID } from '@dontstarve-web/prefab/dock_kit';
 import { FARM_PLOW_ITEM_ID, SEED_ITEM_IDS } from '@dontstarve-web/prefab/farm_plow';
-import { UpdateSoundListener } from '@dontstarve-web/prefab/sound';
 import { turfMap } from './building';
 import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
 import { SetAutopaused } from './autopause';
-import { backTasks, registerFrontTask } from './animate';
+import { registerFrontTask } from './animate';
 import { input } from './InputManager';
 import { view, actionEvents } from './view';
 import { followCamera } from './camera';
@@ -87,9 +86,6 @@ const lightingReady = DstLightingRenderer.create(
   },
 );
 input.setBlocked(true);
-
-UpdateSoundListener(player.position);
-backTasks.push(() => UpdateSoundListener(player.position));
 
 const gameUi = mountGameUi({ assetBaseUrl: `${import.meta.env.BASE_URL}dst/data/ui/` });
 gameUi.inventoryBar.player = player.userData.artCharacter;

@@ -1,3 +1,4 @@
+import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { EventEmitter } from '@dontstarve-web/signals';
 import type { WorldEvents } from '../../prefab/src/worldContext';
 import * as THREE from 'three';
@@ -121,7 +122,7 @@ it('plants one moonbutterfly with original baby-tree art and cycles short/normal
     const tree = s.forest.entities.find(tree => tree.position.equals(point))!;
     expect(s.forest.exportState(tree)).toEqual({ moonTree: { size: 'short' }, growable: { stage: 1, time: 450 } });
     // The new entity has no drawn sprite yet; its transition settles under the display residency contract.
-    expect(tree.model!.userData.instance.sprite.sprite.peek().clip.name).toBe('sway1_loop_short');
+    expect(lookupPrefabInstance(tree.model!)!.sprite.sprite.peek().clip.name).toBe('sway1_loop_short');
     expect(s.forest.chopTargets[0].entity.components.workable!.GetWorkLeft()).toBe(8);
     expect(performToolWork('CHOP', s.forest.chopTargets[0].entity, {})).toBe(true);
     s.setSpring(); s.scheduler.advance(450);

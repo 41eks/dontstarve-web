@@ -4,8 +4,8 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { RockManager, type RockRecord } from '../../prefab/src/rocks';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
-import cave from '../../../public/saves/Cluster_1/Caves.json' with { type: 'json' };
 import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { importedSave } from './importedSave';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
 
@@ -33,7 +33,7 @@ it('shares split-bank cave-in art and preserves its variation, raised pose, iden
     expect(prefabInstance(first)!.listTags()).toEqual(expect.arrayContaining(['heavy', 'boulder', 'caveindebris']));
     expect(manager.mineTargets).toEqual([]); // Raised cave-in boulders cannot be mined.
     const geometry = mesh(first).geometry, disposed = vi.fn(); geometry.addEventListener('dispose', disposed);
-    const document = deserializeSave(JSON.stringify(cave), SAVE_CATALOG);
+    const document = importedSave('Caves');
     document.world.entities = { cavein_boulder: manager.exportRecords().map(({ record }) => record) };
     const roundTrip = deserializeSave(JSON.stringify(document), SAVE_CATALOG);
     const [record] = roundTrip.world.entities.cavein_boulder;

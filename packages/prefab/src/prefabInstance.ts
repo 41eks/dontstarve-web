@@ -6,6 +6,7 @@ import { bindPhysics, type PhysicsBinding } from '../../componets/src/physicsBin
 import { PhysicsState } from '../../componets/src/physicsState';
 import type { Brain } from '../../brains/src/brain';
 import type { StateGraphInstance } from '../../stategraphs/src/stategraph';
+import type { ComponentActionEntity } from '../../stategraphs/src/componentactions';
 import type { PlacementSaveRecord } from './saveRecord';
 import { WORLD_SCALE } from './tile';
 import { refreshMouseTarget } from './mouseTargets';
@@ -30,6 +31,10 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState> 
   persists = true;
   /** inst.Physics: the collider the entity declares. */
   readonly physics = new PhysicsState();
+  /** EntityScript components belong to the logical entity, including while its display sleeps. */
+  readonly components: ComponentActionEntity['components'] = {};
+  private readonly removedState = createSignal(false);
+  readonly removal: ReadonlySignal<boolean> = readonlySignal(this.removedState);
   /** inst.Light: the light the entity declares; its display lists it while the entity is active. */
   readonly light = new LightState();
   /** inst.physicsradiusoverride, in DST units. */
@@ -65,6 +70,10 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState> 
     return this.model.scale;
   }
 
+  get isRemoved(): boolean { return this.lifecycle.peek() === 'removed'; }
+  getPosition(): Vector3 { return this.position; }
+  PushEvent(name: string, data: unknown): void { this.model?.dispatchEvent({ type: name, data } as never); }
+
   /** The body the binding keeps for `physics`, while one exists. */
   get physicsBody(): CANNON.Body | undefined { return this.physicsBinding?.body; }
 
@@ -75,13 +84,21 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState> 
   }
 
   /** EntityScript:GetPhysicsRadius(default), in world units. */
-  getPhysicsRadius<T extends number | undefined>(fallback: T): number | T {
+  getPhysicsRadius(): number;
+  getPhysicsRadius<T extends number | undefined>(fallback: T): number | T;
+  getPhysicsRadius(fallback: number | undefined = 0): number | undefined {
     const radius = this.physicsRadiusOverride ?? this.physics.GetRadius();
     return radius === undefined ? fallback : radius * WORLD_SCALE;
   }
 
   /** inst:HasTag / AddTag / RemoveTag: the instance is the entity's only tag owner. */
-  hasTag(tag: string): boolean { return this.tags.has(tag); }
+  hasTag(tag: string): boolean {
+    for (const component of Object.values(this.components) as { HasTag?(tag: string): boolean | undefined }[]) {
+      const value = component?.HasTag?.(tag);
+      if (value !== undefined) return value;
+    }
+    return this.tags.has(tag);
+  }
   addTag(tag: string): void {
     if (this.tags.has(tag)) return;
     this.tags.add(tag);
@@ -109,6 +126,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState> 
 
   remove(): void {
     if (this.lifecycle.peek() === 'removed') return;
+    this.removedState.set(true);
     this.lifecycle.set('removed');
     this.physicsBinding?.dispose();
     for (const remove of this.removalHandlers) remove();
@@ -123,14 +141,19 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState> 
   }
 }
 
+/** The display's model can be looked up without storing its logical entity in userData. */
+const instancesByModel = new WeakMap<Object3D, PrefabInstance<ArchiveSpriteCommands>>();
+
 /** Bind the display's model to its logical entity; metadata remains on the instance. */
 export function bindInstance(model: Object3D, instance: PrefabInstance<ArchiveSpriteCommands>): void {
-  model.userData.instance = instance;
+  instancesByModel.set(model, instance);
+  Object.assign(instance.components, model.userData.components);
+  model.userData.components = instance.components;
   instance.attach(model);
 }
 
-export function prefabInstance(model: Object3D): PrefabInstance<ArchiveSpriteCommands> | undefined {
-  return model.userData.instance as PrefabInstance<ArchiveSpriteCommands> | undefined;
+export function prefabInstance(model: Object3D | null | undefined): PrefabInstance<ArchiveSpriteCommands> | undefined {
+  return model ? instancesByModel.get(model) : undefined;
 }
 
 /** inst:HasTag on a model: its instance owns the tags; a model without one (bare FX) keeps its own `userData.tags`. */
@@ -166,12 +189,12 @@ export function createPrefabEntity(prefab: string, source: SpriteSource | Loaded
 
 /** A new entity drawn with a shared archive sprite; `clip.held` is a one-shot clip that rests on its last frame. */
 export function createArchiveEntity(prefab: string, archive: ArchiveSpriteSource, clip: ConstructorParameters<typeof SpriteState>[0], name?: string,
-  initialize?: (instance: PrefabInstance<ArchiveSpriteCommands>) => void):
+  initialize?: (instance: PrefabInstance<ArchiveSpriteCommands>) => void, parentStatus?: ReadonlySignal<PrefabStatus>):
   { instance: PrefabInstance<ArchiveSpriteCommands>; display: PrefabDisplay } {
   const state = new SpriteState(clip);
   const instance = new PrefabInstance<ArchiveSpriteCommands>(prefab, state);
   initialize?.(instance);
-  const display = new PrefabDisplay({ name, archive, status: instance.status, sprite: state, light: instance.light });
+  const display = new PrefabDisplay({ name, archive, status: instance.status, parentStatus, sprite: state, light: instance.light });
   bindInstance(display.model, instance);
   display.model.userData.display = display;
   display.model.userData.animationController = instance.sprite;
@@ -179,9 +202,9 @@ export function createArchiveEntity(prefab: string, archive: ArchiveSpriteSource
 }
 
 /** Transform-only prefab, with the same display-owned model and lifecycle as drawn entities. */
-export function createEmptyEntity(prefab: string): { instance: PrefabInstance; display: PrefabDisplay } {
+export function createEmptyEntity(prefab: string, parentStatus?: ReadonlySignal<PrefabStatus>): { instance: PrefabInstance; display: PrefabDisplay } {
   const instance = new PrefabInstance(prefab, new SpriteState({ name: '' }));
-  const display = new PrefabDisplay({ name: prefab, empty: true, status: instance.status, sprite: instance.sprite, light: instance.light });
+  const display = new PrefabDisplay({ name: prefab, empty: true, status: instance.status, parentStatus, sprite: instance.sprite, light: instance.light });
   bindInstance(display.model, instance);
   display.model.userData.display = display;
   return { instance, display };

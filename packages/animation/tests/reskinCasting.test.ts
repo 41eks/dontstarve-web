@@ -1,3 +1,4 @@
+import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { actionTool, reskinEntityFields } from './actionFixtures';
 import { createPickupInventory } from './pickupFixture';
 import { createPickupDoer, performPickupAction } from '../../stategraphs/src/pickup';
@@ -76,8 +77,8 @@ it.each([undefined, 'reskin_tool_brush'])(
     expect(footPosition.toArray()).toEqual([4, 0, 7]);
     expect(object.position.toArray()).toEqual([4, 1.5, 7]);
     expect(object.scale.toArray()).toEqual([1.4, 1.4, 1.4]);
-    expect(object.userData.instance.hasTag('FX')).toBe(true);
-    expect(object.userData.instance.persists).toBe(false);
+    expect(lookupPrefabInstance(object)!.hasTag('FX')).toBe(true);
+    expect(lookupPrefabInstance(object)!.persists).toBe(false);
     expect(displayLightOverride(object)).toBe(skinId ? 0 : 1);
     const mesh = object.children[0].children[0].children[0] as THREE.Mesh;
     expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
@@ -118,7 +119,7 @@ it('shares FX geometry while keeping playback independent and discarding unused 
   // Moving the target later does not move its independently positioned puff.
   position.set(30, 0, 40);
   expect(a.footPosition.toArray()).toEqual([3, 0, 4]);
-  a.object.userData.instance.remove();
+  lookupPrefabInstance(a.object)!.remove();
   effects.update(0, rotation);
   expect(effects.renderEntities).toEqual([b]);
   expect(release).not.toHaveBeenCalled();
@@ -146,11 +147,11 @@ it('cycles building skins while preserving the open container root, identity, st
   expect(fx.play).toHaveBeenCalledExactlyOnceWith(new THREE.Vector3(3, 0, 4), 'treasurechest');
   change.dispose();
   expect(world.scene.children).toEqual([root]);
-  expect(root.userData.instance?.entityId).toBe(record.id);
+  expect(lookupPrefabInstance(root)?.entityId).toBe(record.id);
   expect(placement.exportRecords()[0].record).toMatchObject({
     id: record.id, transform: record.transform, components: { building: { state: 'open', skinId: skins[0] } },
   });
-  expect(root.userData.instance?.saveRecord.components.container).toEqual(record.components.container);
+  expect(lookupPrefabInstance(root)!.saveRecord!.components.container).toEqual(record.components.container);
   // The final skin returns to the base rather than dropping an unsupported skin ID into the save.
   expect(nextReskin(skins, skins.at(-1))).toBeUndefined();
   expect(nextReskin(skins)).toBe(skins[0]);

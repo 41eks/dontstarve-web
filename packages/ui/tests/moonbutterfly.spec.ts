@@ -29,7 +29,7 @@ test('spawned moonbutterfly glows, flies away on its own and survives save and l
   const moth = () => page.evaluate(() => {
     const model = (window as any).mothGame.scene.children.find((child: any) => child.name === 'GroundItem:moonbutterfly');
     return model ? { x: model.position.x, z: model.position.z, state: model.userData.butterflyController.state,
-      light: model.userData.instance.light.peek()?.intensity ?? null, tags: model.userData.instance.listTags() } : null;
+      light: (window as any).__prefabInstance(model).light.peek()?.intensity ?? null, tags: (window as any).__prefabInstance(model).listTags() } : null;
   });
   const saveGame = async () => {
     const download = page.waitForEvent('download', { timeout: 15_000 }); await submit('c_save()');
@@ -96,7 +96,7 @@ test('plants a captured moonbutterfly, saves seedlings and tree commands, and gr
   await page.mouse.move(point.x, point.y);
   await expect.poll(() => page.evaluate(() => (window as any).mothGame.view.mouseActions.getMouseActions().right?.action)).toBe('DEPLOY');
   await page.mouse.click(point.x, point.y, { button: 'right' });
-  await expect.poll(() => page.evaluate(() => (window as any).mothGame.scene.children.filter((model: any) => model.userData.instance?.prefab === 'moonbutterfly_sapling').length)).toBe(1);
+  await expect.poll(() => page.evaluate(() => (window as any).mothGame.scene.children.filter((model: any) => (window as any).__prefabInstance(model)?.prefab === 'moonbutterfly_sapling').length)).toBe(1);
   await expect(page.locator('.slot-drag-preview')).toHaveAttribute('data-item-id', 'moonbutterfly');
   await page.keyboard.press('Escape');
   await expect.poll(preview).toBe(false);

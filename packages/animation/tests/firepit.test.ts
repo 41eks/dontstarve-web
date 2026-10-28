@@ -1,3 +1,4 @@
+import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -52,7 +53,7 @@ it('burns its fuel down through the fire levels, goes out empty and relights whe
     expect(components.inspectable.getstatus()).toBe('NORMAL');
     let current = fire(model);
     expect(current.fx).toMatchObject({ composite: { symbol: 'firefx', offset: [0, 25] } });
-    expect(current.fx!.display!.model.userData.instance.listTags()).toEqual(expect.arrayContaining(['FX', 'HASHEATER']));
+    expect(lookupPrefabInstance(current.fx!.display!.model)!.listTags()).toEqual(expect.arrayContaining(['FX', 'HASHEATER']));
     expect(current.animation).toBe('level3');
     expect(current.light).toMatchObject({ radius: 3 * (TILE_SIZE / 4), intensity: .8, falloff: .33 });
 

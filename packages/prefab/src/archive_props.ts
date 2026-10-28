@@ -188,7 +188,7 @@ export class ArchivePropsManager {
     saved: ArchivePropRecord | undefined): THREE.Group {
     const model = display.model;
     const sprite = instance.sprite;
-    model.position.set(position.x, 0, position.z);
+    instance.position.set(position.x, 0, position.z);
     instance.entityId = saved?.id ?? newEntityId();
     for (const tag of definition.tags) instance.addTag(tag);
     const inst = actionEntity(model, prefab);
@@ -219,7 +219,7 @@ export class ArchivePropsManager {
       if (this.world.physics) prop.instance.bindPhysics(this.world.physics);
     }
     this.props.set(model, prop);
-    this.scene.add(model);
+    display.mount(this.scene);
     instance.persists = prefab !== ARCHIVE_SWITCH_PAD_ID;
     prop.stopActivity = watchTileActivity(model, this.world.tickingarea, active => {
       instance.setActive(active); shadow?.instance.setActive(active);
@@ -241,7 +241,7 @@ export class ArchivePropsManager {
   /** statuefn: MINE workable (MARBLEPILLAR_MINE), `archive_statues` loot, work-state idle poses and collapse_small on finish. */
   private createStatue(prop: ArchiveProp, inst: ReturnType<typeof actionEntity>, anim: number, loaded: boolean): void {
     const { model, sprite } = prop;
-    const workable = new Workable(inst);
+    const workable = new Workable(prop.instance);
     prop.workable = workable;
     workable.SetWorkAction('MINE');
     workable.SetWorkLeft(MARBLEPILLAR_MINE);
@@ -260,7 +260,7 @@ export class ArchivePropsManager {
       this.playCollapse(model.position);
       this.remove(model);
     });
-    Object.assign(model.userData.components, { workable, lootdropper });
+    Object.assign(prop.instance.components, { workable, lootdropper });
     new ToolMouseTarget(inst, prop.instance, workable, this.world.handEquipment);
   }
 
@@ -277,7 +277,7 @@ export class ArchivePropsManager {
       }) }, { name: 'collapse_small', billboard: true });
       entity.instance.position.copy(at); entity.instance.persists = false;
       for (const tag of ['FX', 'NOCLICK']) entity.instance.addTag(tag);
-      this.scene.add(entity.display.model); this.effects.add(entity);
+      entity.display.mount(this.scene); this.effects.add(entity);
       entity.instance.sprite.playOnce('collapse_small', () => { entity.instance.remove(); this.effects.delete(entity); });
     }).catch((error: unknown) => console.error('Unable to play collapse effect', error));
   }
@@ -292,7 +292,7 @@ export class ArchivePropsManager {
         prop.storyprogress = this.storyprogress;
       }
     };
-    Object.assign(prop.model.userData.components, { inspectable: {
+    Object.assign(prop.instance.components, { inspectable: {
       /** getstatus: `LINE_<n>`, advancing the story on first use. */
       getstatus: () => { advance(); return `LINE_${prop.storyprogress}`; },
       /** rune_getdescription: only a viewer holding an ancient_reader gets the line's text key. */
@@ -308,14 +308,14 @@ export class ArchivePropsManager {
   private createAmbient(position: THREE.Vector3, saved?: ArchivePropRecord): THREE.Group {
     const { instance, display } = createEmptyEntity(ARCHIVE_AMBIENT_SFX_ID);
     const model = display.model;
-    model.position.set(position.x, 0, position.z);
+    instance.position.set(position.x, 0, position.z);
     instance.entityId = saved?.id ?? newEntityId();
     for (const tag of ['NOBLOCK', 'NOCLICK']) instance.addTag(tag);
     actionEntity(model, ARCHIVE_AMBIENT_SFX_ID);
     const prop: ArchiveProp = { prefab: ARCHIVE_AMBIENT_SFX_ID, model, instance, display, removed: false };
     this.props.set(model, prop);
     prop.stopActivity = watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active));
-    this.scene.add(model);
+    display.mount(this.scene);
     return model;
   }
 
@@ -342,7 +342,8 @@ export class ArchivePropsManager {
 
   getMineTargets(model?: THREE.Object3D): PickaxeTarget[] {
     return modelEntries(this.props, model).filter(([, prop]) => prop.workable?.CanBeWorked()).map(([model, prop]) => ({
-      id: String(prop.instance.entityId), model, position: model.position, entity: actionEntity(model, prop.prefab),
+      id: String(prop.instance.entityId), instance: prop.instance, display: prop.display,
+      position: prop.instance.position, entity: prop.instance,
       isValid: () => this.props.get(model) === prop && !!prop.workable?.CanBeWorked(),
     }));
   }

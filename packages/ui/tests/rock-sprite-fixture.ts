@@ -81,7 +81,7 @@ export async function checkMoonShellErosion() {
       for (let i = 0; i < 6; i++) performToolWork('MINE', target.entity, {});
       shells[index].userData.animationController.setPaused(true);
       // Remove the dropped seed rather than hiding it: a drawn prefab is visible until it sleeps or is removed.
-      for (const entity of [...scene.children]) if (entity.userData.instance?.prefab === 'moonrockseed') entity.userData.instance.remove();
+      for (const entity of [...scene.children]) if ((window as any).__prefabInstance(entity)?.prefab === 'moonrockseed') (window as any).__prefabInstance(entity).remove();
     };
     breakShell(0); scheduler.advance(1); breakShell(1);
     const intact = await draw();

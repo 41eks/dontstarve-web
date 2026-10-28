@@ -1,3 +1,4 @@
+import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -99,7 +100,7 @@ it('keeps its skin through c_save, restores the reading, and saves only the burn
         buildings: definitions.animatedBuildings, walls: Object.keys(definitions.walls) }).world.entities.winterometer[0];
     };
     const restored = await placement.spawnFromSave(WINTEROMETER_ID, parse(saved));
-    expect(restored.userData.instance?.skinId).toBe('winterometer_circus');
+    expect(lookupPrefabInstance(restored)?.skinId).toBe('winterometer_circus');
     const percent = spyPercent(restored);
     scheduler.advance(0);
     expect(percent).toHaveBeenLastCalledWith('meter', 0.5);

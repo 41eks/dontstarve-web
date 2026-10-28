@@ -35,13 +35,13 @@ test('spawns a tall deciduous tree, restores growth, chops it and digs the resto
     return JSON.parse(await readSaveDownload((await (await download).path())!, 'Master'));
   };
   const treeAnimation = () => page.evaluate(() => (window as any).deciduoustreeGame.scene.children
-    .find((model: any) => model.name === 'DeciduousForest')?.children.find((model: any) => model.userData.instance?.prefab === 'deciduoustree')
+    .find((model: any) => model.name === 'DeciduousForest')?.children.find((model: any) => (window as any).__prefabInstance(model)?.prefab === 'deciduoustree')
     ?.userData.animationController.currentAnimation ?? null);
   const clickTree = async () => {
     const action = await page.evaluate(() => (window as any).deciduoustreeGame.inventory.handEquipment.peek()?.itemId === 'shovel' ? 'DIG' : 'CHOP');
     const point = await hoverSprite(page, () => page.evaluate(async moduleUrl => {
       const { scene, camera, renderer } = (window as any).deciduoustreeGame;
-      const tree = scene.children.find((model: any) => model.name === 'DeciduousForest').children.find((model: any) => model.userData.instance?.prefab === 'deciduoustree');
+      const tree = scene.children.find((model: any) => model.name === 'DeciduousForest').children.find((model: any) => (window as any).__prefabInstance(model)?.prefab === 'deciduoustree');
       const { spriteScreenPoint } = await import(moduleUrl);
       return spriteScreenPoint(tree, camera, renderer);
     }, `/@fs${fileURLToPath(new URL('./sprite-screen-point.ts', import.meta.url))}`), 'deciduoustreeGame', 'right', action);

@@ -1,3 +1,4 @@
+import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -59,7 +60,7 @@ it('picks twigs, regrows after four days through grow → sway, and saves/restor
   try {
     s.player.position.set(3, 0, 6);
     expect((await executeDebugCommand('c_spawn("sapling")', s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
-    const [model] = s.scene.children.filter(child => child.userData.instance?.prefab === 'sapling') as THREE.Group[];
+    const [model] = s.scene.children.filter(child => lookupPrefabInstance(child)?.prefab === 'sapling') as THREE.Group[];
     const animation = model.userData.animationController;
     expect(animation.currentAnimation).toBe('sway');
     expect(prefabInstance(model)!.listTags()).toEqual(['plant', 'renewable', 'silviculture', 'lunarplant_target', 'pickable', 'tickingarea', 'canlight', 'witherable']);
@@ -78,7 +79,7 @@ it('picks twigs, regrows after four days through grow → sway, and saves/restor
     const copy = await drawn(restored.saplings.spawn('sapling', new THREE.Vector3(...record.transform.position), record));
     // Pickable:OnLoad calls makeemptyfn rather than replaying the pick.
     expect(copy.userData.animationController.currentAnimation).toBe('empty');
-    expect(copy.userData.instance?.entityId).toBe(model.userData.instance?.entityId);
+    expect(lookupPrefabInstance(copy)?.entityId).toBe(lookupPrefabInstance(model)?.entityId);
 
     tickWorld(s.scheduler, s.saplings, 920, new THREE.Quaternion());
     expect(model.userData.pickablePlantState.phase.peek()).toBe('ready');

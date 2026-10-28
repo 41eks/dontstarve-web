@@ -68,10 +68,10 @@ test('farm plow supports seed planting and ordinary/golden hoe tilling on its fa
   await page.mouse.move(point.x, point.y);
   await page.mouse.click(point.x, point.y, { button: 'right' });
   await expect.poll(() => page.evaluate(() => (window as any).farmGame.scene.children
-    .filter((model: any) => model.userData.instance?.prefab === 'farm_plow').length)).toBe(1);
+    .filter((model: any) => (window as any).__prefabInstance(model)?.prefab === 'farm_plow').length)).toBe(1);
   await expect(item).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => (window as any).farmGame.scene.children
-    .find((model: any) => model.userData.instance?.prefab === 'farm_plow')?.userData.animationController.currentAnimation)).toBe('drill_loop');
+    .find((model: any) => (window as any).__prefabInstance(model)?.prefab === 'farm_plow')?.userData.animationController.currentAnimation)).toBe('drill_loop');
   await page.screenshot({ path: '/tmp/dontstarve-farm-plow-drilling.png' });
   const duringDownload = page.waitForEvent('download');
   await submit('c_save()');
@@ -88,12 +88,12 @@ test('farm plow supports seed planting and ordinary/golden hoe tilling on its fa
   await expect.poll(() => page.evaluate(() => (window as any).farmGame.scene.children
     .some((model: any) => model.name === 'GroundItem:farm_plow_item')), { timeout: 10_000 }).toBe(true);
   await expect.poll(() => page.evaluate(() => (window as any).farmGame.scene.children
-    .some((model: any) => model.userData.instance?.prefab === 'farm_plow'))).toBe(false);
+    .some((model: any) => (window as any).__prefabInstance(model)?.prefab === 'farm_plow'))).toBe(false);
   await page.screenshot({ path: '/tmp/dontstarve-farm-plow-finished.png' });
   // Sample an alpha-hit point through the real sprite raycaster, including instanced input proxies.
   const spritePoint = async (prefab: string, name?: string) => page.evaluate(async ({ prefab, name, pointerPath }) => {
     const { scene, view, player } = (window as any).farmGame;
-    const model = scene.children.filter((model: any) => name ? model.name === name : model.userData.instance?.prefab === prefab
+    const model = scene.children.filter((model: any) => name ? model.name === name : (window as any).__prefabInstance(model)?.prefab === prefab
       && model.userData.animationController.currentAnimation === 'till_idle')
       .sort((a: any, b: any) => a.position.distanceToSquared(player.position) - b.position.distanceToSquared(player.position))[0];
     if (!model) throw new Error(`No clickable ${prefab}`);
@@ -114,7 +114,7 @@ test('farm plow supports seed planting and ordinary/golden hoe tilling on its fa
         const x = bounds.left + (minX + (maxX - minX) * fx + 1) * bounds.width / 2;
         const y = bounds.top + (1 - minY - (maxY - minY) * fy) * bounds.height / 2;
         pointer.trackPointer({ clientX: x, clientY: y });
-        if (pointer.raycastPointer([model])) return { x, y, id: model.userData.instance?.entityId, position: model.position.toArray() };
+        if (pointer.raycastPointer([model])) return { x, y, id: (window as any).__prefabInstance(model)?.entityId, position: model.position.toArray() };
       }
       throw new Error(`No alpha-hit point for ${prefab}`);
     } finally { pointer.dispose(); }
@@ -164,9 +164,9 @@ test('farm plow supports seed planting and ordinary/golden hoe tilling on its fa
   await seeds.click();
   await page.mouse.click(hole.x, hole.y);
   await expect.poll(() => page.evaluate(() => (window as any).farmGame.scene.children
-    .filter((model: any) => model.userData.instance?.prefab === 'farm_plant_randomseed').length), { timeout: 15_000 }).toBe(1);
+    .filter((model: any) => (window as any).__prefabInstance(model)?.prefab === 'farm_plant_randomseed').length), { timeout: 15_000 }).toBe(1);
   await expect.poll(() => page.evaluate(() => (window as any).farmGame.scene.children
-    .find((model: any) => model.userData.instance?.prefab === 'farm_plant_randomseed')?.userData.animationController.currentAnimation)).toBe('sow_idle');
+    .find((model: any) => (window as any).__prefabInstance(model)?.prefab === 'farm_plant_randomseed')?.userData.animationController.currentAnimation)).toBe('sow_idle');
   await expect(cursorSeed.locator('.slot-drag-preview__count')).toHaveText('');
   const plantedDownload = page.waitForEvent('download');
   await submit('c_save()');
@@ -199,7 +199,7 @@ test('farm plow supports seed planting and ordinary/golden hoe tilling on its fa
     .some((material: any) => material.name === 'ground:quagmire_hoe'))).toBe(true);
   const tillPoint = await page.evaluate(() => {
     const { scene, view, player, center } = (window as any).farmGame;
-    const blocked = scene.children.filter((model: any) => ['farm_soil_debris', 'farm_plant_randomseed'].includes(model.userData.instance?.prefab));
+    const blocked = scene.children.filter((model: any) => ['farm_soil_debris', 'farm_plant_randomseed'].includes((window as any).__prefabInstance(model)?.prefab));
     let point: any;
     for (let dx = -5; dx <= 5 && !point; dx += 1) for (let dz = -5; dz <= 5 && !point; dz += 1) {
       const candidate = player.position.clone().set(center.x + dx, 0, center.z + dz);
@@ -212,7 +212,7 @@ test('farm plow supports seed planting and ordinary/golden hoe tilling on its fa
   });
   await page.mouse.click(tillPoint.x, tillPoint.y, { button: 'right' });
   await expect.poll(() => page.evaluate((position) => (window as any).farmGame.scene.children
-    .some((model: any) => model.userData.instance?.prefab === 'farm_soil'
+    .some((model: any) => (window as any).__prefabInstance(model)?.prefab === 'farm_soil'
       && model.position.distanceToSquared((window as any).farmGame.player.position.clone().fromArray(position)) < 0.001), tillPoint.position),
   { timeout: 15_000 }).toBe(true);
   await expect.poll(() => page.evaluate(() => (window as any).farmGame.player.userData.animationController.isTilling)).toBe(false);
@@ -225,27 +225,27 @@ test('farm plow supports seed planting and ordinary/golden hoe tilling on its fa
   const retill = await page.evaluate((position) => {
     const { scene, view, player } = (window as any).farmGame;
     const point = player.position.clone().fromArray(position);
-    const previous = scene.children.find((model: any) => model.userData.instance?.prefab === 'farm_soil' && model.position.distanceToSquared(point) < 0.001);
+    const previous = scene.children.find((model: any) => (window as any).__prefabInstance(model)?.prefab === 'farm_soil' && model.position.distanceToSquared(point) < 0.001);
     const ndc = point.project(view.camera), bounds = view.renderer.domElement.getBoundingClientRect();
     return { x: bounds.left + (ndc.x + 1) * bounds.width / 2, y: bounds.top + (1 - ndc.y) * bounds.height / 2,
-      oldId: previous.userData.instance?.entityId };
+      oldId: (window as any).__prefabInstance(previous)?.entityId };
   }, tillPoint.position);
   await page.mouse.click(retill.x, retill.y, { button: 'right' });
   await expect.poll(() => page.evaluate((oldId) => (window as any).farmGame.scene.children
-    .some((model: any) => model.userData.instance?.entityId === oldId), retill.oldId)).toBe(false);
+    .some((model: any) => (window as any).__prefabInstance(model)?.entityId === oldId), retill.oldId)).toBe(false);
   await expect.poll(() => page.evaluate(() => (window as any).farmGame.player.userData.animationController.isTilling)).toBe(false);
   // Ground reskin -> pickup -> equipment must preserve the golden tool's skin.
   const beforeCancel = await page.evaluate((position) => {
     const { scene, player } = (window as any).farmGame;
-    return scene.children.find((model: any) => model.userData.instance?.prefab === 'farm_soil'
-      && model.position.distanceToSquared(player.position.clone().fromArray(position)) < 0.001).userData.instance?.entityId;
+    return (window as any).__prefabInstance(scene.children.find((model: any) => (window as any).__prefabInstance(model)?.prefab === 'farm_soil'
+      && model.position.distanceToSquared(player.position.clone().fromArray(position)) < 0.001))?.entityId;
   }, tillPoint.position);
   await page.mouse.click(retill.x, retill.y, { button: 'right' });
   await expect.poll(() => page.evaluate(() => (window as any).farmGame.player.userData.animationController.isTilling)).toBe(true);
   await page.keyboard.press('Escape');
   await page.waitForTimeout(1000);
   expect(await page.evaluate((id) => (window as any).farmGame.scene.children
-    .some((model: any) => model.userData.instance?.entityId === id), beforeCancel)).toBe(true);
+    .some((model: any) => (window as any).__prefabInstance(model)?.entityId === id), beforeCancel)).toBe(true);
   await hand.click({ button: 'right', modifiers: ['Shift'] });
   await expect.poll(() => page.evaluate(() => (window as any).farmGame.scene.children
     .some((model: any) => model.name === 'GroundItem:golden_farm_hoe'))).toBe(true);
@@ -254,8 +254,8 @@ test('farm plow supports seed planting and ordinary/golden hoe tilling on its fa
     .some((material: any) => material.name === 'ground:swap_reskin_tool'))).toBe(true);
   const goldPoint = await spritePoint('golden_farm_hoe', 'GroundItem:golden_farm_hoe');
   await page.mouse.click(goldPoint.x, goldPoint.y, { button: 'right' });
-  await expect.poll(() => page.evaluate(() => (window as any).farmGame.scene.children
-    .find((model: any) => model.name === 'GroundItem:golden_farm_hoe')?.userData.instance?.skinId)).toBe('golden_farmhoe_garden');
+  await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).farmGame.scene.children
+    .find((model: any) => model.name === 'GroundItem:golden_farm_hoe'))?.skinId)).toBe('golden_farmhoe_garden');
   const skinnedPoint = await spritePoint('golden_farm_hoe', 'GroundItem:golden_farm_hoe');
   await page.mouse.click(skinnedPoint.x, skinnedPoint.y);
   await unequipHand();
@@ -285,9 +285,9 @@ test('farm plow supports seed planting and ordinary/golden hoe tilling on its fa
     const { turfMap } = await import(paths.building);
     const { equipmentSlotAddress } = await import(paths.inventory);
     const tools = scene.children.filter((model: any) => ['farm_hoe', 'golden_farm_hoe'].includes(model.userData.itemId));
-    const holes = scene.children.filter((model: any) => model.userData.instance?.prefab === 'farm_soil');
-    return { tools: tools.map((model: any) => ({ id: model.userData.instance?.entityId, position: model.position.toArray(), count: model.userData.count })),
-      holes: holes.map((model: any) => ({ id: model.userData.instance?.entityId, position: model.position.toArray(),
+    const holes = scene.children.filter((model: any) => (window as any).__prefabInstance(model)?.prefab === 'farm_soil');
+    return { tools: tools.map((model: any) => ({ id: (window as any).__prefabInstance(model)?.entityId, position: model.position.toArray(), count: model.userData.count })),
+      holes: holes.map((model: any) => ({ id: (window as any).__prefabInstance(model)?.entityId, position: model.position.toArray(),
         animation: model.userData.animationController.currentAnimation })),
       hand: main.inventory.get(equipmentSlotAddress('hand')), ordinaryCount: main.inventory.count('farm_hoe'),
       heldSkin: player.getObjectByProperty('isMesh', true).material.some((material: any) => material.name === 'ground:golden_farmhoe_garden'),

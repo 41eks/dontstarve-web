@@ -1,3 +1,4 @@
+import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
@@ -189,7 +190,7 @@ describe('DST building skins', () => {
     await placement.begin(prefabId, skinId);
     if (skinInit) expect(skinInit).toHaveBeenCalledExactlyOnceWith(skinId);
     expect(placement.exportRecords()).toHaveLength(0);
-    expect(world.scene.children[0].userData.instance?.skinId).toBe(skinId);
+    expect(lookupPrefabInstance(world.scene.children[0])?.skinId).toBe(skinId);
     canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button: 0 }));
     expect(consume).toHaveBeenCalledWith(prefabId);
     for (let frame = 0; frame < 100; frame++) placement.update(0.1);
@@ -198,7 +199,7 @@ describe('DST building skins', () => {
     expect(record.transform.position).toEqual([3, 0, 4]);
     const restored = await placement.spawnFromSave(prefabId, record as PlacementSaveRecord);
     if (skinInit) expect(skinInit).toHaveBeenCalledTimes(2);
-    expect(restored.userData.instance?.skinId).toBe(skinId);
+    expect(lookupPrefabInstance(restored)?.skinId).toBe(skinId);
     expect(placement.exportRecords()[1].record).toEqual(record);
     await expect(placement.spawn(prefabId, 'missing_skin')).rejects.toThrow('Unsupported');
   });

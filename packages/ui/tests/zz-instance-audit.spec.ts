@@ -37,9 +37,9 @@ for (const shard of ['Master', 'Caves']) {
       let total = 0;
       for (const [model, sources] of roots) {
         total++;
-        if (model.userData.instance) continue;
+        if ((window as any).__prefabInstance(model)) continue;
         const entity = model.userData.actionEntity;
-        const prefab = entity?.prefab ?? model.userData.instance?.prefab ?? model.userData.itemId ?? model.name;
+        const prefab = entity?.prefab ?? model.userData.itemId ?? model.name;
         const entry = missing.get(prefab) ?? { count: 0, sources: new Set(), hasItemEntity: false, tagsOwner: '' };
         entry.count++; for (const s of sources) entry.sources.add(s);
         entry.hasItemEntity ||= !!model.userData.itemEntity || !!model.userData.entity;

@@ -1,3 +1,4 @@
+import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { createTestArea, useTestTileMap } from './tileMapFixture';
 import * as CANNON from 'cannon-es';
@@ -50,7 +51,7 @@ const light = (target: ComponentActionEntity) => {
 };
 /** Presentation effects (fire art) run on the signal queue, after the synchronous domain change. */
 const flush = () => new Promise(resolve => setTimeout(resolve, 0));
-const fires = (scene: THREE.Object3D) => { let count = 0; scene.traverse(child => { if (child.userData.instance?.prefab === 'fire') count++; }); return count; };
+const fires = (scene: THREE.Object3D) => { let count = 0; scene.traverse(child => { if (lookupPrefabInstance(child)?.prefab === 'fire') count++; }); return count; };
 
 async function evergreens(random = () => .5) {
   const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), dropLoot = vi.fn();

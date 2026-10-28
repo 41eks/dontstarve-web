@@ -1,5 +1,7 @@
 # DST Lua prefab 的 c_spawn / c_give 静态核对
 
+2026-10-28 补充 `dragonfly_spawner`：`prefabs/dragonfly_spawner.lua` 注册无美术、无库存组件的世界实体，可用 `c_spawn("dragonfly_spawner")`，不能 `c_give` 入栏。`Cluster_62` 最新地表快照有 1 个生成器，保存 `childreninside=1`、`queued_spawn=true`；现导入并在活动区唤醒后按 `components/childspawner.lua` 的排队分支生成 `dragonfly`。`c_save()` 保留生成器、子代引用和再生计时器；代表性单测覆盖休眠唤醒、保存重载及子代移除后的再生。
+
 2026-10-27 补充 `dragonfly`：`prefabs/dragonfly.lua` 注册 `Prefab("dragonfly", fn, assets, prefabs)`，`fn` 没有 `inventoryitem`，原版可 `c_spawn("dragonfly")`，不能放入物品栏。项目接入该世界实体的 `c_spawn`、`c_save()` 与读档；浏览器测试从 `?saveData=` 装入一只龙蝇，再生成一只、导出 ZIP 并重载，核对 ID、位置和组件字段。当前 `Cluster_62` 最新快照只在 `dragonfly_spawner.childspawner.childreninside` 记录待生成子代，没有独立 `dragonfly` 实体，导入保持 0→0。
 
 2026-10-27 补充 `beequeenhivegrown`：`prefabs/beequeenhive.lua` 的 `Prefab("beequeenhivegrown", fn, assets, prefabs)` 注册世界实体，`fn` 没有 `inventoryitem`。原版 `c_spawn("beequeenhivegrown")` 可生成；`c_give` 会先生成实体，但不能放入物品栏。项目接入 `c_spawn`、`c_save()` 及读档，保存 `workable` 和可选的 `hiveregen` 计时器；浏览器测试从 `?saveData=` 启动，验证生成、绘制、ZIP 导出与重载。未接入同文件的 `beequeenhive` 基座与蜂后生成路径。
@@ -471,6 +473,9 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `toadstool_dark` | 可生成 | 不能入栏 | `prefabs/toadstool.lua` |
 | `glommer` | 可生成 | 不能入栏 | `prefabs/glommer.lua` |
 | `statueglommer` | 可生成 | 不能入栏 | `prefabs/statueglommer.lua` |
+| `atrium_gate` | 可生成 | 不能入栏 | `prefabs/atrium_gate.lua` |
+| `ruins_statue_mage` | 可生成 | 不能入栏 | `prefabs/statueruins.lua` |
+| `chessjunk1`、`chessjunk2`、`chessjunk3` | 可生成 | 不能入栏 | `prefabs/chessjunk.lua` |
 | `chester` | 可生成 | 不能入栏 | `prefabs/chester.lua` |
 | `hutch` | 可生成 | 不能入栏 | `prefabs/hutch.lua` |
 | `wormhole` | 可生成 | 不能入栏 | `prefabs/wormhole.lua` |

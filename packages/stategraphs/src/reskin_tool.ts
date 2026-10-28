@@ -8,6 +8,7 @@ import { collectEquippedActions, equippedActionEntity, type ComponentActionEntit
 import type { SpellCastDoer, SpellTarget } from '../../componets/src/spellcaster';
 import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor } from './actionContext.ts';
 import { modelHasTag } from '../../prefab/src/prefabInstance';
+import { actionTargetModel, type ActionTargetView } from './actionTargetView';
 /** Prepared logical FX message. The target places and starts it only after committing its skin. */
 export interface ReskinFxMessage {
   play(position: THREE.Vector3, prefabId: string): void;
@@ -21,10 +22,9 @@ export interface PreparedReskin {
   dispose(): void;
 }
 
-export interface ReskinTarget extends SpellTarget {
+export type ReskinTarget = SpellTarget & ActionTargetView & {
   readonly id: string;
   readonly prefabId: string;
-  readonly model: THREE.Group;
   readonly position: THREE.Vector3;
   readonly skinId?: string;
   readonly skins: readonly string[];
@@ -33,7 +33,7 @@ export interface ReskinTarget extends SpellTarget {
   readonly reskinFx?: ReskinFxMessage;
   isValid(): boolean;
   prepareNextSkin(tool?: ComponentActionEntity): Promise<PreparedReskin>;
-}
+};
 
 export interface ReskinEffectPresenter {
   prepare(toolSkinId?: string): Promise<ReskinFxMessage>;
@@ -90,7 +90,7 @@ export class ReskinActionController {
       // playeractionpicker.lua GetEquippedItemActions: the only place that selects CASTSPELL for a target.
       return !tool ? [] : this.getTargets(model).filter(target => target.isValid()).map(target => ({
         action: { action: 'CASTSPELL', modifier: 'RESKIN', invobject: tool },
-        button: 'right', model: target.model,
+        button: 'right', model: actionTargetModel(target),
         available: collectEquippedActions(tool, target, true).includes('CASTSPELL'), source: 'equipped',
       }));
     }) ?? (() => {});

@@ -14,7 +14,11 @@ import { ARCHIVE_PROP_IDS, ARCHIVE_PROP_SPAWN_IDS, ARCHIVE_MOON_STATUE_ID, ARCHI
 import { HOUNDBONE_ID } from '@dontstarve-web/prefab/houndbone';
 import { BEEQUEENHIVEGROWN_ID, BEEQUEEN_HIVE_MAX_WORK } from '@dontstarve-web/prefab/beequeenhivegrown';
 import { DRAGONFLY_ID } from '@dontstarve-web/prefab/dragonfly';
+import { DRAGONFLY_SPAWNER_ID } from '@dontstarve-web/prefab/dragonfly_spawner';
 import { STATUEGLOMMER_ID, STATUEGLOMMER_WORK } from '@dontstarve-web/prefab/statueglommer';
+import { ATRIUM_GATE_ID, ATRIUM_GATE_TIMER_NAMES } from '@dontstarve-web/prefab/atrium_gate';
+import { RUINS_STATUE_MAGE_ID, RUINS_STATUE_GEMS } from '@dontstarve-web/prefab/ruins_statue_mage';
+import { CHESSJUNK_IDS } from '@dontstarve-web/prefab/chessjunk';
 import { parseDragonflyState } from './save/dragonfly';
 import { SKELETON_IDS, SKELETON_ANIMS, SKELETON_PLAYER_ID } from '@dontstarve-web/prefab/skeleton';
 import { MARBLEBEAN_SAPLING_ID } from '@dontstarve-web/prefab/marblebean_sapling';
@@ -47,7 +51,7 @@ import type { AnimationArchiveSpec } from '@dontstarve-web/animation/preloadArch
 import definitions from '@dontstarve-web/prefab/definitions.json' with { type: 'json' };
 import { componentParser, type PrefabComponentParser } from './save/prefabComponents';
 import { fail } from './save/validation';
-import { number, object } from './save/validation';
+import { array, integer, number, object, string } from './save/validation';
 
 /** Pure definitions are available before loading a save or constructing a scene. */
 export interface PrefabDefinition<Id extends string = string> {
@@ -186,6 +190,64 @@ export const PREFAB_DEFINITIONS = {
     }
     return components;
   }, true, ['glommer_statue.zip', 'glommer_swap_flower.zip']),
+  atriumGates: definePrefabs([ATRIUM_GATE_ID], (value, path) => {
+    const data = object(value, path, ['atriumGate', 'pickable', 'charliecutscene', 'worldsettingstimer', 'entitytracker']);
+    const components: import('./save/types').SavedEntity['components'] = {};
+    const flags = (value: unknown, field: string, keys: readonly string[]) => {
+      const record = object(value, field, keys);
+      for (const [key, flag] of Object.entries(record)) if (flag !== true) fail(`${field}.${key}`, 'expected true');
+      return record;
+    };
+    if (data.atriumGate !== undefined) components.atriumGate = flags(data.atriumGate, `${path}.atriumGate`,
+      ['vault_key_socketed', 'can_spawn_charlie_hand_keystone', 'launch_key']) as typeof components.atriumGate;
+    if (data.pickable !== undefined) components.pickable = flags(data.pickable, `${path}.pickable`,
+      ['picked', 'paused', 'caninteractwith']) as typeof components.pickable;
+    if (data.charliecutscene !== undefined) components.charliecutscene = flags(data.charliecutscene, `${path}.charliecutscene`,
+      ['running', 'gatefixed']) as typeof components.charliecutscene;
+    if (data.worldsettingstimer !== undefined) {
+      const timer = object(data.worldsettingstimer, `${path}.worldsettingstimer`, ['timers']);
+      const entries = object(timer.timers, `${path}.worldsettingstimer.timers`, ATRIUM_GATE_TIMER_NAMES);
+      const timers: NonNullable<typeof components.worldsettingstimer>['timers'] = {};
+      for (const name of ATRIUM_GATE_TIMER_NAMES) if (entries[name] !== undefined) {
+        const field = `${path}.worldsettingstimer.timers.${name}`;
+        const item = object(entries[name], field, ['timeleft', 'paused', 'blocklongupdate', 'initial_time']);
+        if (typeof item.paused !== 'boolean' || (item.blocklongupdate !== undefined && typeof item.blocklongupdate !== 'boolean'))
+          fail(field, 'expected boolean timer flags');
+        timers[name] = { timeleft: number(item.timeleft, `${field}.timeleft`, 0, 1), paused: item.paused,
+          ...(item.blocklongupdate === undefined ? {} : { blocklongupdate: item.blocklongupdate }),
+          ...(item.initial_time === undefined ? {} : { initial_time: number(item.initial_time, `${field}.initial_time`, 0, 9600) }) };
+      }
+      components.worldsettingstimer = { timers };
+    }
+    if (data.entitytracker !== undefined) {
+      const tracker = object(data.entitytracker, `${path}.entitytracker`, ['entities']);
+      if (!Array.isArray(tracker.entities)) fail(`${path}.entitytracker.entities`, 'expected array');
+      components.entitytracker = { entities: tracker.entities.map((entry: unknown, index: number) => {
+        const field = `${path}.entitytracker.entities.${index}`, item = object(entry, field, ['name', 'GUID']);
+        if (item.name !== 'stalker' && item.name !== 'charlie_hand') fail(`${field}.name`, 'unsupported target');
+        return { name: item.name, GUID: number(item.GUID, `${field}.GUID`, 0, Number.MAX_SAFE_INTEGER) };
+      }) };
+    }
+    return components;
+  }, true, ['atrium_gate.zip', 'atrium_gate_build.zip', 'atrium_floor.zip', 'atrium_gate_overload_fx.zip']),
+  ruinsStatueMages: definePrefabs([RUINS_STATUE_MAGE_ID], (value, path) => {
+    const data = object(value, path, ['ruinsStatueMage']);
+    const state = object(data.ruinsStatueMage, `${path}.ruinsStatueMage`, ['gem']);
+    if (!RUINS_STATUE_GEMS.includes(state.gem as typeof RUINS_STATUE_GEMS[number]))
+      fail(`${path}.ruinsStatueMage.gem`, 'unsupported ruins statue gem');
+    return { ruinsStatueMage: { gem: state.gem as typeof RUINS_STATUE_GEMS[number] } };
+  }, true, ['statue_ruins.zip', 'statue_ruins_gem.zip']),
+  chessJunk: definePrefabs(CHESSJUNK_IDS, (value, path) => {
+    const data = object(value, path, ['chessJunk']);
+    if (data.chessJunk === undefined) return {};
+    const state = object(data.chessJunk, `${path}.chessJunk`, ['repaired', 'repairerid', 'repairerchar']);
+    if (state.repaired !== true) fail(`${path}.chessJunk.repaired`, 'expected true');
+    for (const field of ['repairerid', 'repairerchar'] as const)
+      if (state[field] !== undefined && typeof state[field] !== 'string') fail(`${path}.chessJunk.${field}`, 'expected string');
+    return { chessJunk: { repaired: true,
+      ...(state.repairerid === undefined ? {} : { repairerid: state.repairerid as string }),
+      ...(state.repairerchar === undefined ? {} : { repairerchar: state.repairerchar as string }) } };
+  }, true, ['chessmonster_ruins.zip']),
   buildings: definePrefabs(PLACEABLE_BUILDING_IDS.filter((id) => !id.endsWith('_item')), (value, path, context) => {
     const spec = Object.hasOwn(context.catalog.buildings, context.prefab) ? context.catalog.buildings[context.prefab] : undefined;
     if (spec) return (context.prefab === 'cookpot' ? cookPot : context.prefab === 'sculptingtable' ? sculptingTable
@@ -235,6 +297,35 @@ export const PREFAB_DEFINITIONS = {
     return { dragonfly: parseDragonflyState(data.dragonfly, `${path}.dragonfly`) };
   }, true, [{ animation: 'dragonfly_basic.zip', build: 'dragonfly_build.zip' },
     { animation: 'dragonfly_actions.zip', build: 'dragonfly_build.zip' }]),
+  dragonflySpawners: definePrefabs([DRAGONFLY_SPAWNER_ID], (value, path) => {
+    const data = object(value, path, ['dragonflySpawner']);
+    const state = object(data.dragonflySpawner, `${path}.dragonflySpawner`, ['childspawner', 'worldsettingstimer']);
+    const child = object(state.childspawner, `${path}.dragonflySpawner.childspawner`,
+      ['childreninside', 'childrenoutside', 'spawning', 'regening', 'queued_spawn', 'timetonextspawn', 'timetonextregen', 'emergencychildreninside']);
+    const childspawner = {
+      childreninside: integer(child.childreninside, `${path}.dragonflySpawner.childspawner.childreninside`, 0, 1),
+      childrenoutside: child.childrenoutside === undefined ? [] : array(child.childrenoutside, `${path}.dragonflySpawner.childspawner.childrenoutside`, 1)
+        .map((id, i) => string(id, `${path}.dragonflySpawner.childspawner.childrenoutside[${i}]`)),
+      ...Object.fromEntries((['timetonextspawn', 'timetonextregen', 'emergencychildreninside'] as const)
+        .filter(key => child[key] !== undefined).map(key => [key, number(child[key], `${path}.dragonflySpawner.childspawner.${key}`, 0)])),
+      ...Object.fromEntries((['spawning', 'regening', 'queued_spawn'] as const)
+        .filter(key => child[key] !== undefined).map(key => {
+          if (typeof child[key] !== 'boolean') fail(`${path}.dragonflySpawner.childspawner.${key}`, 'expected boolean');
+          return [key, child[key]];
+        })),
+    };
+    let worldsettingstimer: import('@dontstarve-web/prefab/dragonfly_spawner').DragonflySpawnerSaveState['worldsettingstimer'];
+    if (state.worldsettingstimer !== undefined) {
+      const timer = object(state.worldsettingstimer, `${path}.dragonflySpawner.worldsettingstimer`, ['timers']);
+      const timers = object(timer.timers, `${path}.dragonflySpawner.worldsettingstimer.timers`, ['regen_dragonfly']);
+      const value = object(timers.regen_dragonfly, `${path}.dragonflySpawner.worldsettingstimer.timers.regen_dragonfly`,
+        ['timeleft', 'paused', 'initial_time']);
+      if (typeof value.paused !== 'boolean') fail(`${path}.dragonflySpawner.worldsettingstimer.paused`, 'expected boolean');
+      worldsettingstimer = { timers: { regen_dragonfly: { timeleft: number(value.timeleft, `${path}.dragonflySpawner.worldsettingstimer.timeleft`, 0),
+        paused: value.paused, initial_time: number(value.initial_time, `${path}.dragonflySpawner.worldsettingstimer.initial_time`, 0) } } };
+    }
+    return { dragonflySpawner: { childspawner, ...(worldsettingstimer ? { worldsettingstimer } : {}) } };
+  }, true),
   marbleBeanSaplings: definePrefabs([MARBLEBEAN_SAPLING_ID], componentParser({ keys: ['saplingTimer'] }), true, ['marblebean.zip']),
   marbleShrubs: definePrefabs([MARBLESHRUB_ID], componentParser({ keys: ['growable', 'marbleShrub'], growthTime: MARBLESHRUB_MAX_GROW_TIME }), MARBLESHRUB_SPAWN_IDS,
     ['marbleshrub.zip', 'marbleshrub_build.zip']),

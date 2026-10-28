@@ -19,7 +19,7 @@
 
 Wortox 的 `players.local.wortox` 可选保存 `{ freehops, soulhopcost }`，对应 `wortox.lua` 的 OnSave/OnLoad；旧存档省略时从零初始化。首跳后的 5 秒结束任务是临时任务，Lua 不保存它，因此重载只恢复计数、不重建该任务；下一次跳跃仍可结算回声。传送特效不入档，玩家变换保存已发生的实际传送落点，不续播中途动画。
 
-项目默认从 `public/saves/Cluster_1/Master.json` 反序列化初始世界，无需 URL 参数，Prefab 定义位于 `packages/prefab/src/definitions.json`。在游戏调试控制台输入 `c_save()`，会将当前内存中的世界和玩家状态校验后写入 ZIP 内对应的分片：洞穴为 `Cluster_1/Caves.json`，地表为 `Cluster_1/Master.json`。`public/saves/Cluster_1/` 中其余文件按原始字节保留，整个目录打包下载为 `Cluster_1.zip`。将 ZIP 解压到 `public/saves/` 覆盖 `Cluster_1/` 后刷新页面即可加载；浏览器下载不会直接修改项目文件。目录内容通过 Vite glob 枚举，新增文件随开发服务更新或重新构建纳入导出；任一文件读取失败则停止下载。连续保存依次执行，只有成功下载才推进快照编号。
+项目默认从 `public/saves/Cluster_1/session.json` 读取全部转换快照，按每个 Session 的最大编号找到其最新快照，再选择唯一未迁移的玩家所在世界及其 `session.playerFile` 指向的独立玩家文件；当前选中 Caves `0000000033`。Prefab 定义位于 `packages/prefab/src/definitions.json`。在游戏调试控制台输入 `c_save()`，会将当前内存中的世界和玩家状态校验后，分别新增 ZIP 内当前分片的世界 Snapshot、Session 玩家文件，更新索引和 `Master.json` 或 `Caves.json` 便捷副本。`public/saves/Cluster_1/` 中其余文件按原始字节保留，整个目录打包下载为 `Cluster_1.zip`。将 ZIP 解压到 `public/saves/` 覆盖 `Cluster_1/` 后刷新页面即可加载；浏览器下载不会直接修改项目文件。目录内容通过 Vite glob 枚举，新增文件随开发服务更新或重新构建纳入导出；任一文件读取失败则停止下载。连续保存依次执行，只有成功下载才推进快照编号。
 
 可以通过 `?save=Cluster_1/Caves.json` 选择集群洞穴，或用 `?save=initial-world.json` 选择其他 JSON。`?saveData=` 以 base64url 编码的 UTF-8 JSON 直接携带存档，不读取任何文件，优先于 `?save=`，解码后同样经 `deserializeSave` 校验（`src/save/initialSave.ts` 的 `decodeSaveData`）；浏览器测试通过 `packages/ui/tests/inline-save.ts` 的 `minimalSave()` / `savePageUrl()` 使用它。导入的地表与洞穴均使用 `world.map.defaultTileId: 1`（`IMPASSABLE`），`map.tiles` 未列出的格子均为虚空；旧地表存档省略该字段时仍使用落叶林背景。`c_save()` 保留所加载地图的类型和默认地皮；即使从旧地表 JSON 启动，最新状态也写入 ZIP 的 `Master.json`，重新加载时选择该分片。原版完整地图的转换步骤与范围见 [地表与洞穴地图导入](dst-static-layouts.md#从完整存档导入地表与洞穴地图)。
 

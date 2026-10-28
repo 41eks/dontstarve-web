@@ -34,7 +34,7 @@ test('drops source backpack ground art, reskins with a sweeper, picks up and equ
     (window as any).backpackSkinGame = { main, ...player, scene, view, backpackId };
     (window as any).backpackGroundPoint = async () => {
       await new Promise(requestAnimationFrame);
-      const target = scene.children.find((object: any) => object.userData.instance?.entityId === (window as any).backpackSkinGame.backpackId);
+      const target = scene.children.find((object: any) => (window as any).__prefabInstance(object)?.entityId === (window as any).backpackSkinGame.backpackId);
       const mesh = target.children[0].children[0];
       mesh.geometry.computeBoundingBox();
       const point = mesh.geometry.boundingBox.getCenter(target.position.clone()).applyMatrix4(mesh.matrixWorld).project(view.camera);
@@ -58,7 +58,7 @@ test('drops source backpack ground art, reskins with a sweeper, picks up and equ
   await page.keyboard.up('Shift');
   await expect.poll(() => page.evaluate(() => {
     const game = (window as any).backpackSkinGame;
-    const target = game.scene.children.find((object: any) => object.userData.instance?.entityId === (window as any).backpackSkinGame.backpackId);
+    const target = game.scene.children.find((object: any) => (window as any).__prefabInstance(object)?.entityId === (window as any).backpackSkinGame.backpackId);
     const mesh = target?.children[0].children[0];
     return Boolean(mesh?.isMesh && mesh.geometry.drawRange.count > 0
       && mesh.material.some((material: any) => material.name === 'ground:swap_backpack'));
@@ -69,8 +69,8 @@ test('drops source backpack ground art, reskins with a sweeper, picks up and equ
     .some((material: any) => material.name === 'ground:swap_reskin_tool'))).toBe(true);
   const point = await page.evaluate(() => (window as any).backpackGroundPoint());
   await page.mouse.click(point.x, point.y, { button: 'right' });
-  await expect.poll(() => page.evaluate(() => (window as any).backpackSkinGame.scene.children
-    .find((object: any) => object.userData.instance?.entityId === (window as any).backpackSkinGame.backpackId)?.userData.instance?.skinId)).toBe('backpack_babybeef');
+  await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).backpackSkinGame.scene.children
+    .find((object: any) => (window as any).__prefabInstance(object)?.entityId === (window as any).backpackSkinGame.backpackId))?.skinId)).toBe('backpack_babybeef');
   await expect.poll(() => page.evaluate(() => (window as any).backpackSkinGame.player.userData.animationController.isReskinning)).toBe(false);
   const groundDownload = page.waitForEvent('download');
   await page.evaluate(() => document.querySelector('dst-debug-console')!.dispatchEvent(

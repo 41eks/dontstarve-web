@@ -1,3 +1,4 @@
+import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -88,13 +89,13 @@ it('reskins a live opening wormhole and restores its identity and skin', async (
   const player = new THREE.Vector3(100, 0, 0);
   const manager = new WormholeManager(scene, '/dst/data/anim', () => [player]);
   const model = await manager.spawn(new THREE.Vector3(0, 0, 0));
-  const id = model.userData.instance?.entityId;
+  const id = lookupPrefabInstance(model)?.entityId;
   const step = (frames: number) => { for (let i = 0; i < frames; i++) manager.update(1 / 30, new THREE.Quaternion()); };
   try {
     const canceled = await manager.reskinTargets[0].prepareNextSkin();
     canceled.dispose();
     expect(canceled.apply()).toBe(false);
-    expect(model.userData.instance?.skinId).toBeUndefined();
+    expect(lookupPrefabInstance(model)?.skinId).toBeUndefined();
     const prepared = await manager.reskinTargets[0].prepareNextSkin();
     player.x = 0;
     step(9);
@@ -109,8 +110,8 @@ it('reskins a live opening wormhole and restores its identity and skin', async (
     prepared.dispose();
 
     const skinId = WORMHOLE_SKINS[0];
-      expect(model.userData.instance?.entityId).toBe(id);
-      expect(model.userData.instance?.skinId).toBe(skinId);
+      expect(lookupPrefabInstance(model)?.entityId).toBe(id);
+      expect(lookupPrefabInstance(model)?.skinId).toBe(skinId);
       expect(model.userData.animationController.currentAnimation).toBe('open_loop');
       expect(model.position.toArray()).toEqual([0, 0, 0]);
       const saved = manager.exportRecords()[0];
@@ -123,8 +124,8 @@ it('reskins a live opening wormhole and restores its identity and skin', async (
         expect(materials.some((material) => ((material as THREE.MeshBasicMaterial).map as THREE.DataTexture | null)?.image.data
           === skin.buildPackage.atlases[0].pixels)).toBe(true);
         const restored = await manager.spawn(new THREE.Vector3(...saved.transform.position), saved);
-        expect(restored.userData.instance?.skinId).toBe(skinId);
-        expect(restored.userData.instance?.entityId).toBe(id);
+        expect(lookupPrefabInstance(restored)?.skinId).toBe(skinId);
+        expect(lookupPrefabInstance(restored)?.entityId).toBe(id);
       }
     expect(fetchAsset.mock.calls.filter(([url]) => url.endsWith('.dyn'))).toHaveLength(1);
     await expect(manager.spawn(new THREE.Vector3(), {

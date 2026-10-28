@@ -30,7 +30,7 @@ test('picking a spawned cactus hurts through the worn dreadstone hat, flinches, 
   const submit = (command: string) => page.evaluate(command => document.querySelector('dst-debug-console')!.dispatchEvent(
     new CustomEvent('game:debug-command', { detail: { command } })), command);
   const cacti = () => page.evaluate(() => (window as any).cactusGame.scene.children
-    .filter((model: any) => ['cactus', 'oasis_cactus'].includes(model.userData.instance?.prefab)).map((model: any) => model.userData.instance.prefab));
+    .filter((model: any) => ['cactus', 'oasis_cactus'].includes((window as any).__prefabInstance(model)?.prefab)).map((model: any) => (window as any).__prefabInstance(model).prefab));
 
   await submit('c_spawn("cactus");c_give("dreadstonehat");c_give("cactus_flower", 2);c_spawn("cactus_flower")');
   await expect.poll(cacti).toEqual(['cactus']);
@@ -41,7 +41,7 @@ test('picking a spawned cactus hurts through the worn dreadstone hat, flinches, 
   await expect.poll(() => page.evaluate(() => (window as any).cactusGame.inventory.GetEquippedItem('head')?.prefab)).toBe('dreadstonehat');
   const point = () => page.evaluate(async moduleUrl => {
     const { scene, view } = (window as any).cactusGame;
-    const model = scene.children.find((model: any) => model.userData.instance?.prefab === 'cactus');
+    const model = scene.children.find((model: any) => (window as any).__prefabInstance(model)?.prefab === 'cactus');
     scene.updateMatrixWorld(true);
     const { spriteScreenPoint } = await import(moduleUrl);
     return spriteScreenPoint(model, view.camera, view.renderer);
@@ -80,7 +80,7 @@ test('picking a spawned cactus hurts through the worn dreadstone hat, flinches, 
   }, urls);
   await expect.poll(cacti).toEqual(expect.arrayContaining(['cactus', 'oasis_cactus']));
   await expect.poll(() => page.evaluate(() => (window as any).cactusGame.scene.children
-    .find((model: any) => model.userData.instance?.prefab === 'cactus').userData.components.pickable.canBePicked)).toBe(false);
+    .find((model: any) => (window as any).__prefabInstance(model)?.prefab === 'cactus').userData.components.pickable.canBePicked)).toBe(false);
   expect(await page.evaluate(() => (window as any).cactusGame.inventory.GetEquippedItem('head').components.armor.condition.peek() < 840)).toBe(true);
   expect(errors).toEqual([]);
 });

@@ -1,3 +1,4 @@
+import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { afterEach, expect, it, vi } from 'vitest';
 import { readFile } from 'node:fs/promises';
@@ -178,8 +179,8 @@ it('keeps burning art through reskin, exports source burnt state, restores a che
     expect(dropped).toEqual([item]); expect(item.snapshot()).toEqual(before);
     expect(item.transform.position.toArray()).toEqual([3, 0, -6]);
     const restored = await restoredPlacement.spawnFromSave('treasurechest', saved.world.entities.treasurechest[0]);
-    expect(restored.userData.instance?.entityId).toBe('burning_chest');
-    expect(restored.userData.instance?.skinId).toBe(record.components.building!.skinId);
+    expect(lookupPrefabInstance(restored)?.entityId).toBe('burning_chest');
+    expect(lookupPrefabInstance(restored)?.skinId).toBe(record.components.building!.skinId);
     expect(restored.userData.animationController.currentAnimation).toBe('burnt');
     expect(restored.userData.burntSignal.peek()).toBe(true);
     expect(restored.userData.components.burnable).toBeUndefined();

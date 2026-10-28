@@ -33,12 +33,17 @@ function ghostFlag(value: unknown): true {
 }
 
 /** Parses and validates all data before any resources or runtime entities are created. */
-export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocument {
+export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlayer?: unknown): SaveDocument {
   if (text.length > MAX_SAVE_BYTES || new TextEncoder().encode(text).byteLength > MAX_SAVE_BYTES) {
     fail('$', 'file is too large');
   }
   let data: unknown;
   try { data = JSON.parse(text); } catch { fail('$', 'invalid JSON'); }
+  if (sessionPlayer !== undefined) {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) fail('$', 'expected a save object');
+    const document = data as Record<string, unknown>;
+    document.players = { local: sessionPlayer };
+  }
   let nodes = 0;
   const visit = (value: unknown, depth: number) => {
     // Full forest snapshots include over 168,000 land/ocean tiles plus their entities.
@@ -51,7 +56,11 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
   const root = object(data, '$', ['format', 'schemaVersion', 'gameVersion', 'session', 'snapshot', 'world', 'players']);
   if (root.format !== 'three-roaming-save') fail('format', 'unrecognized format');
   if (root.schemaVersion !== 1) fail('schemaVersion', 'only version 1 is supported');
-  const session = object(root.session, 'session', ['id', 'createdAt']);
+  const session = object(root.session, 'session', ['id', 'createdAt', 'playerFile']);
+  const playerFile = session.playerFile === undefined ? undefined : string(session.playerFile, 'session.playerFile');
+  if (playerFile !== undefined && !/^(?:Master|Caves)\/save\/session\/[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+\/[0-9]{10}\.json$/.test(playerFile)) {
+    fail('session.playerFile', 'invalid Session player path');
+  }
   const snapshot = object(root.snapshot, 'snapshot', ['id', 'parentId', 'savedAt', 'reason']);
   const id = snapshotId(snapshot.id, 'snapshot.id');
   const parentId = snapshot.parentId === null ? null : snapshotId(snapshot.parentId, 'snapshot.parentId');
@@ -321,7 +330,8 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
   return {
     format: 'three-roaming-save', schemaVersion: 1,
     gameVersion: string(root.gameVersion, 'gameVersion'),
-    session: { id: string(session.id, 'session.id'), createdAt: timestamp(session.createdAt, 'session.createdAt') },
+    session: { id: string(session.id, 'session.id'), createdAt: timestamp(session.createdAt, 'session.createdAt'),
+      ...(playerFile === undefined ? {} : { playerFile }) },
     snapshot: { id, parentId, savedAt: timestamp(snapshot.savedAt, 'snapshot.savedAt'), reason: choice(snapshot.reason, 'snapshot.reason', ['initial', 'manual', 'autosave']) },
     world: {
       shardId, prefab: choice(world.prefab, 'world.prefab', ['forest', 'cave']),

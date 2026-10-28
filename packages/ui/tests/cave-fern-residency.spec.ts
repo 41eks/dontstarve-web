@@ -1,12 +1,13 @@
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
+import { readImportedSave } from './imported-save';
 
 test('the game unloads distant cave ferns and restores the same entities when the player approaches', async ({ page }) => {
   test.setTimeout(150_000);
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
-  const save = JSON.parse(await readFile(new URL('../../../public/saves/Cluster_1/Caves.json', import.meta.url), 'utf8'));
+  const save = await readImportedSave('Caves');
   const ground = JSON.parse(await readFile(new URL('../../prefab/src/groundTiles.json', import.meta.url), 'utf8'));
   save.world.elapsedSeconds = 0;
   save.world.map.generator.options.size = 768;
@@ -28,9 +29,9 @@ test('the game unloads distant cave ferns and restores the same entities when th
     const { scene } = await import(urls.universal);
     const models = new Map<string, any>(), components = new Map<string, unknown>();
     scene.addEventListener('childadded', ({ child }: any) => {
-      if (!['near-fern', 'far-fern'].includes(child.userData.instance?.entityId)) return;
-      models.set(child.userData.instance?.entityId, child);
-      if (!components.has(child.userData.instance?.entityId)) components.set(child.userData.instance?.entityId, child.userData.components);
+      if (!['near-fern', 'far-fern'].includes((window as any).__prefabInstance(child)?.entityId)) return;
+      models.set((window as any).__prefabInstance(child)?.entityId, child);
+      if (!components.has((window as any).__prefabInstance(child)?.entityId)) components.set((window as any).__prefabInstance(child)?.entityId, child.userData.components);
     });
     const { gameReady } = await import(urls.main);
     await gameReady;
@@ -43,7 +44,7 @@ test('the game unloads distant cave ferns and restores the same entities when th
     const { scene, models, components } = (window as any).fernResidency;
     return ['near-fern', 'far-fern'].map(id => {
       const model = models.get(id);
-      return { id: model.userData.instance?.entityId, loaded: model.userData.animationController.loaded,
+      return { id: (window as any).__prefabInstance(model)?.entityId, loaded: model.userData.animationController.loaded,
         attached: model.parent === scene, pose: model.userData.animationController.currentAnimation,
         position: model.position.toArray(), sameComponents: model.userData.components === components.get(id) };
     });

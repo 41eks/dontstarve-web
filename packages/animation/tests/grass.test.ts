@@ -1,3 +1,4 @@
+import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -48,7 +49,8 @@ it('spawns grass through the debug command using its source bank and build, then
     String(call[0]).split('/').pop()!)].sort());
 
   const [model] = scene.children;
-  expect(model.userData.instance?.prefab).toBe(GRASS_ID);
+  expect(lookupPrefabInstance(model)?.prefab).toBe(GRASS_ID);
+  expect(Object.hasOwn(model.userData, 'instance')).toBe(false);
   expect(model.position.toArray()).toEqual([4, 0, -6]);
   expect(model.userData.billboard).toBe(true);
   const controller = model.userData.animationController as { currentAnimation: string; update: (dt: number) => void };
@@ -89,7 +91,7 @@ it('spawns grass through the debug command using its source bank and build, then
     id: record.id, transform: record.transform, components: {},
   }));
   expect(restored.position.toArray()).toEqual([4, 0, -6]);
-  expect(restored.userData.instance?.entityId).toBe(record.id);
+  expect(lookupPrefabInstance(restored)?.entityId).toBe(record.id);
 
   season.set({ season: 'winter', progress: 0 });
   expect(pickable.pick({ giveItem: () => true })).toBe(true);

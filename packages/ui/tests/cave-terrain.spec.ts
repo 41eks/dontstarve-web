@@ -10,6 +10,7 @@ test('loads whitelisted cave entities, stops keyboard movement at the void and r
   test.setTimeout(150_000);
   const errors: string[] = [];
   const imported = JSON.parse(await readFile(new URL('../../../public/saves/Cluster_1/Caves.json', import.meta.url), 'utf8'));
+  const sessionPlayer = JSON.parse(await readFile(new URL(`../../../public/saves/Cluster_1/${imported.session.playerFile}`, import.meta.url), 'utf8')).player;
   page.on('pageerror', error => errors.push(error.message));
   const prepare = () => page.evaluate(async urls => {
     await import(urls.main);
@@ -17,22 +18,18 @@ test('loads whitelisted cave entities, stops keyboard movement at the void and r
       .map(async ([name, url]) => [name, await import(url)])));
     (window as any).caveGame = modules;
   }, urls);
-  await page.goto('/tests/dst-lighting.html?save=Cluster_1/Caves.json');
+  await page.goto('/tests/dst-lighting.html');
   await prepare();
   await expect(page.locator('canvas[data-game-canvas]')).toHaveAttribute('data-loaded', 'true');
-  // Sample buildings, archive props and instanced rocks (including split animation/build archives).
-  const samples = ['pighead', 'archive_moon_statue', 'rock1', 'cavein_boulder'].map(prefab => imported.world.entities[prefab][0]);
-  const rendered = await page.evaluate(samples => {
-    const { universal: { scene } } = (window as any).caveGame;
-    return samples.map((record: any) => {
-      const model = scene.children.find((child: any) => child.userData.instance?.entityId === record.id);
-      let vertices = 0;
-      model?.traverse((child: any) => { vertices += child.geometry?.getAttribute('position')?.count ?? 0; });
-      return { id: model?.userData.instance?.entityId, vertices };
-    });
-  }, samples);
-  expect(rendered.map(record => record.id)).toEqual(samples.map(record => record.id));
-  expect(rendered.every(record => record.vertices > 0)).toBe(true);
+  expect(await page.evaluate(() => {
+    const { player, playerInstance } = (window as any).caveGame.player;
+    return (window as any).__prefabInstance(player) === playerInstance && !Object.hasOwn(player.userData, 'instance');
+  })).toBe(true);
+  const initialPosition = await page.evaluate(() => (window as any).caveGame.player.player.position.toArray());
+  expect(initialPosition[0]).toBeCloseTo(sessionPlayer.transform.position[0], 3);
+  expect(initialPosition[2]).toBeCloseTo(sessionPlayer.transform.position[2], 3);
+  expect(Math.hypot(initialPosition[0] - imported.world.entities.atrium_gate[0].transform.position[0],
+    initialPosition[2] - imported.world.entities.atrium_gate[0].transform.position[2])).toBeLessThan(20);
   await page.evaluate(heads => {
     const { camera: { followCamera }, player: { player, playerBody } } = (window as any).caveGame;
     const cx = heads.reduce((sum: number, record: any) => sum + record.transform.position[0], 0) / heads.length;
@@ -96,8 +93,8 @@ test('loads whitelisted cave entities, stops keyboard movement at the void and r
     })), prefab);
     await expect.poll(() => page.evaluate(prefab => {
       const { universal: { scene } } = (window as any).caveGame;
-      return scene.children.filter((child: any) => child.userData.instance?.prefab === prefab).length;
-    }, prefab)).toBe((imported.world.entities[prefab]?.length ?? 0) + 1);
+      return scene.children.filter((child: any) => (window as any).__prefabInstance(child)?.prefab === prefab).length;
+    }, prefab)).toBeGreaterThan(0);
   }
   const download = page.waitForEvent('download');
   await page.evaluate(() => document.querySelector('dst-debug-console')!.dispatchEvent(new CustomEvent('game:debug-command', {

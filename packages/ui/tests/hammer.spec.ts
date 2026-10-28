@@ -92,7 +92,7 @@ test('game UI equips, drops and picks up hammer, then right-click hammers a buil
     .some((material: any) => material.name === 'ground:swap_hammer'))).toBe(true);
   await page.evaluate(() => {
     const { target } = (window as any).hammerGame;
-    const before = JSON.stringify(target.userData.instance?.saveRecord);
+    const before = JSON.stringify((window as any).__prefabInstance(target)?.saveRecord);
     (window as any).hammerGame.before = before;
     (window as any).hammerGame.hitSeen = false;
     const controller = target.userData.animationController;
@@ -104,7 +104,7 @@ test('game UI equips, drops and picks up hammer, then right-click hammers a buil
   await expect.poll(() => page.evaluate(() => (window as any).hammerGame.hitSeen)).toBe(true);
   expect(await page.evaluate(() => {
     const { target, before } = (window as any).hammerGame;
-    return JSON.stringify(target.userData.instance?.saveRecord) === before;
+    return JSON.stringify((window as any).__prefabInstance(target)?.saveRecord) === before;
   })).toBe(true);
   await expect(page.locator('dst-chest-panel .chest-panel')).toBeHidden();
   expect(errors).toEqual([]);

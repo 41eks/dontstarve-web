@@ -8,7 +8,7 @@ import { PlaySound, type SoundEventPath } from './sound';
 
 export const GREENSTAFF_USES = 5;
 export const GREENSTAFF_COLOUR = [51 / 255, 153 / 255, 51 / 255] as const;
-export interface DeconstructionTarget extends SpellCastTarget {
+export type DeconstructionTarget = SpellCastTarget & {
   readonly components: {
     finiteuses?: { readonly percent: ReadonlySignal<number | undefined> };
     fueled?: { readonly percent: ReadonlySignal<number | undefined> };
@@ -20,7 +20,7 @@ export interface DeconstructionTarget extends SpellCastTarget {
   flush?(): void;
   PushEvent(name: string, data: unknown): void;
   removeOne(): boolean;
-}
+};
 export interface DeconstructionLoot { readonly itemId: string; readonly count: number; }
 export interface GreenStaffWorld {
   /** lootdropper:SpawnLootPrefab for each piece, flung from `position`; created synchronously. */

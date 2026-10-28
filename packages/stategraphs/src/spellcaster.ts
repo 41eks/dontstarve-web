@@ -9,14 +9,14 @@ import type { ActionAnimationController, ActionLocomotor, ActionWorldContext } f
 import type { EquipmentEntity } from '../../signals/src/equipment.ts';
 import type { SpellCastDoer, SpellCasterComponent, SpellTarget } from '../../componets/src/spellcaster.ts';
 import { collectEquippedActions, equippedActionEntity } from './componentactions.ts';
+import { actionTargetModel, type ActionTargetView } from './actionTargetView.ts';
 export type { SpellCastDoer, SpellCastMap, SpellCasterComponent } from '../../componets/src/spellcaster.ts';
 type SpellCastAnimation = Pick<ActionAnimationController, 'stategraph' | 'cancelEmote' | 'setFacing'>;
-export interface SpellCastTarget extends SpellTarget, BufferedActionObject {
+export type SpellCastTarget = SpellTarget & BufferedActionObject & ActionTargetView & {
   readonly prefab: string;
-  readonly model: THREE.Group;
   readonly position: THREE.Vector3;
   isValid(): boolean;
-}
+};
 
 export interface SpellCasterItem extends EquipmentEntity, BufferedActionObject {
   readonly prefab: string;
@@ -68,7 +68,7 @@ export class SpellCastActionController {
       // Targets are only castable with a spell item in hand.
       const targets = !item || !model ? [] : this.getTargets(model).map(target => ({
         action: { action: 'CASTSPELL' as const, invobject: item, target }, button: 'right' as const,
-        model: target.model, source: 'equipped' as const,
+        model: actionTargetModel(target), source: 'equipped' as const,
         available: !!item && !item.hasTag('veryquickcast') && target.isValid()
           && collectEquippedActions(equippedActionEntity(this.handEquipment.peek()), target, true).includes('CASTSPELL'),
       }));

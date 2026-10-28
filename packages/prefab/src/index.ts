@@ -1,4 +1,5 @@
 export { getHandEquipmentDefinition, preloadHandEquipment, type HandEquipmentContext, type HandEquipmentDefinition } from './handEquipment';
+export type { PrefabManager, DisplayDrivenPrefabManager, FrameUpdatedPrefabManager, DisplayManagerWorld } from './manager';
 export { configureHeatRockEntity, HEATROCK_ID, HEATROCK_FUEL, HEATROCK_IMAGES } from './heatrock';
 export { LavaPondManager, LAVA_POND_ID, LAVA_POND_ROCK_IDS, LAVA_POND_HEAT, LAVA_POND_RADIUS,
   type LavaPondRecord, type LavaPondSaveState, type LavaPondRockRecord, type LavaPondRockId } from './lava_pond';

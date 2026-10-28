@@ -1,3 +1,4 @@
+import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -90,7 +91,7 @@ it('buffers planting at frame six, preserves cancelled butterflies and saves the
     const record = s.flowers.exportRecords()[0];
     expect(record.transform.position).toEqual(point.toArray());
     expect(record.components.flower).toEqual({ animation: 'f6', planted: true });
-    const flower = s.world.scene.children.find(model => model.userData.instance?.prefab === 'flower')!;
+    const flower = s.world.scene.children.find(model => lookupPrefabInstance(model)?.prefab === 'flower')!;
     expect(prefabInstance(flower)!.listTags()).toContain('flower');
     // The planted flower exists at once; its display draws it once the art has loaded.
     await flower.userData.display.artLoaded();
@@ -253,7 +254,7 @@ it('spawns the source planted_flower command as a persistent flower, including i
     s.world.player.position.set(9, 0, 6);
     expect((await executeDebugCommand('c_spawn("planted_flower")', s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
     const model = s.world.scene.children[0];
-    expect(model.userData.instance?.prefab).toBe('flower');
+    expect(lookupPrefabInstance(model)?.prefab).toBe('flower');
     expect(prefabInstance(model)!.listTags()).toContain('thorny');
     let json = '';
     expect((await executeDebugCommand('c_save()', s.inventory, undefined, () => { json = s.save(); })).ok).toBe(true);

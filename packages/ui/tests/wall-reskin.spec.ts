@@ -45,7 +45,7 @@ test('a c_spawn wall accepts sweeper right-click, retains identity and saves its
       { slot: equipmentSlotAddress('hand'), itemId: 'reskin_tool', delta: 1 },
     ])) throw new Error('Unable to equip sweeper');
     await game.player.userData.animationController.setCarryItem('reskin_tool');
-    game.entityId = game.target.userData.instance?.entityId;
+    game.entityId = (window as any).__prefabInstance(game.target)?.entityId;
     game.position = game.target.position.toArray();
     await new Promise(requestAnimationFrame);
     let mesh: any;
@@ -56,10 +56,10 @@ test('a c_spawn wall accepts sweeper right-click, retains identity and saves its
     return { x: bounds.left + (ndc.x + 1) * bounds.width / 2, y: bounds.top + (1 - ndc.y) * bounds.height / 2 };
   }, `/@fs${fileURLToPath(new URL('../../inventory/src/index.ts', import.meta.url))}`);
   await page.mouse.click(point.x, point.y, { button: 'right' });
-  await expect.poll(() => page.evaluate(() => (window as any).wallGame.target.userData.instance?.skinId)).toBe('wall_stone_an');
+  await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).wallGame.target)?.skinId)).toBe('wall_stone_an');
   const live = await page.evaluate(() => {
     const game = (window as any).wallGame;
-    return { sameEntity: game.target.userData.instance?.entityId === game.entityId,
+    return { sameEntity: (window as any).__prefabInstance(game.target)?.entityId === game.entityId,
       sameXZ: game.target.position.x === game.position[0] && game.target.position.z === game.position[2] };
   });
   expect(live).toEqual({ sameEntity: true, sameXZ: true });
@@ -82,7 +82,7 @@ test('a c_spawn wall accepts sweeper right-click, retains identity and saves its
   await page.evaluate(async url => { await import(url); }, urls.main);
   await expect.poll(() => page.evaluate(async ({ url, id }) => {
     const { scene } = await import(url);
-    return scene.children.find((model: any) => model.userData.instance?.entityId === id)?.userData.skinIdSignal?.peek();
+    return scene.children.find((model: any) => (window as any).__prefabInstance(model)?.entityId === id)?.userData.skinIdSignal?.peek();
   }, { url: urls.universal, id })).toBe('wall_stone_an');
   expect(errors).toEqual([]);
 });

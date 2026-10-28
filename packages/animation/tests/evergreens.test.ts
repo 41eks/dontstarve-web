@@ -1,3 +1,4 @@
+import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { EventEmitter } from '@dontstarve-web/signals';
 import type { WorldEvents } from '../../prefab/src/worldContext';
 import * as THREE from 'three';
@@ -84,14 +85,14 @@ it('shows growth settled while unloaded as its final stage without the transitio
     await area.visit(new THREE.Vector3(1000, 0, 1000));
     // A sleeping tree keeps its root and state but leaves the scene graph until its tile wakes.
     expect(tree.model).toBe(root); expect(root.parent).toBeNull();
-    expect(root.userData.instance.status.peek()).toBe('asleep');
+    expect(lookupPrefabInstance(root)!.status.peek()).toBe('asleep');
     expect(root.userData.components).toBe(components); expect(controller.loaded).toBe(false);
     expect(root.userData.removed).not.toBe(true);
     s.scheduler.advance(5000);
     await area.visit(new THREE.Vector3(3, 0, 0));
     expect(root.parent).toBe(s.forest.group);
-    expect(root.userData.instance.status.peek()).toBe('active');
-    expect(root.userData.instance.position).toBe(root.position);
+    expect(lookupPrefabInstance(root)!.status.peek()).toBe('active');
+    expect(lookupPrefabInstance(root)!.position).toBe(root.position);
     expect(tree.model).toBe(root); expect(root.userData.animationController).toBe(controller);
     expect(root.userData.components).toBe(components); expect(controller.loaded).toBe(true);
     expect(tree.model!.userData.components.growable.GetStage()).toBeGreaterThan(1);

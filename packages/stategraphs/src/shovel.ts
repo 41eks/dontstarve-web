@@ -2,19 +2,19 @@ import { PlayerActionPicker } from './playeractionpicker.ts';
 import { bindActionCancellation } from './actionEvents.ts';
 import { bindHandEquipmentUpdate, type HandEquipmentSignal } from './handEquipment.ts';
 import * as THREE from 'three';
+import { actionTargetModel, type ActionTargetView } from './actionTargetView';
 import { PointerRaycaster } from './pointerRaycaster.ts';
 import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor } from './actionContext.ts';
 import { collectEquippedActions, equippedActionEntity, performToolWork, type ComponentActionEntity } from './componentactions.ts';
 
 
-export interface ShovelTarget {
+export type ShovelTarget = ActionTargetView & {
   readonly id: string;
-  readonly model: THREE.Group;
   readonly position: THREE.Vector3;
   readonly entity?: ComponentActionEntity;
   isValid(): boolean;
   dig(): boolean;
-}
+};
 const SHOVEL_REACH = 4;
 
 /** componentactions: DIG_tool + DIG_workable, on the right mouse button. */
@@ -63,7 +63,7 @@ export class ShovelActionController {
     this.unregisterHover = this.picker.register(model => !model || !this.isEquipped() ? [] :
       this.getTargets(model).filter(target => target.isValid()).map(target => ({
         action: { action: 'DIG', invobject: equippedActionEntity(this.handEquipment.peek()), target: target.entity },
-        button: 'right', model: target.model, available: this.canWork(target), source: 'equipped',
+        button: 'right', model: actionTargetModel(target), available: this.canWork(target), source: 'equipped',
       }))) ?? (() => {});
     // Register in capture so a work click cannot open a container or place a building.
     world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown, true);
@@ -160,7 +160,7 @@ export class ShovelActionController {
   private hitTarget(event?: PointerEvent): ShovelTarget | undefined {
     const action = this.picker.getMouseActions(event).right, model = this.picker.targetModel;
     return model && action?.action === 'DIG'
-      ? this.getTargets(model).find(target => target.model === model && target.isValid()) : undefined;
+      ? this.getTargets(model).find(target => actionTargetModel(target) === model && target.isValid()) : undefined;
   }
 
   private readonly handlePointerDown = (event: PointerEvent): void => {

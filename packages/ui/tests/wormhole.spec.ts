@@ -32,7 +32,7 @@ test('wormhole opens nearby, closes away, accepts sweeper right-click and saves 
   }, urls);
   await expect.poll(() => page.evaluate(() => {
     const game = (window as any).wormholeGame;
-    game.target = game.scene.children.find((model: any) => model.userData.instance?.prefab === 'wormhole');
+    game.target = game.scene.children.find((model: any) => (window as any).__prefabInstance(model)?.prefab === 'wormhole');
     return game.target?.userData.animationController.currentAnimation;
   })).toBe('open_loop');
 
@@ -63,7 +63,7 @@ test('wormhole opens nearby, closes away, accepts sweeper right-click and saves 
       { slot: equipmentSlotAddress('hand'), itemId: 'reskin_tool', delta: 1 },
     ])) throw new Error('Unable to equip sweeper');
     await game.player.userData.animationController.setCarryItem('reskin_tool');
-    game.entityId = game.target.userData.instance?.entityId;
+    game.entityId = (window as any).__prefabInstance(game.target)?.entityId;
     await new Promise(requestAnimationFrame);
     return spriteScreenPoint(game.target, game.view.camera, game.view.renderer);
   }, {
@@ -71,11 +71,11 @@ test('wormhole opens nearby, closes away, accepts sweeper right-click and saves 
     spriteUrl: `/@fs${fileURLToPath(new URL('./sprite-screen-point.ts', import.meta.url))}`,
   });
   await page.mouse.click(point.x, point.y, { button: 'right' });
-  await expect.poll(() => page.evaluate(() => (window as any).wormholeGame.target.userData.instance?.skinId)).toBe('wormhole_claw');
+  await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).wormholeGame.target)?.skinId)).toBe('wormhole_claw');
   expect(await animation()).toBe('open_loop');
   expect(await page.evaluate(() => {
     const game = (window as any).wormholeGame;
-    return game.target.userData.instance?.entityId === game.entityId && game.target.children[0].children[0].renderOrder === -0.5;
+    return (window as any).__prefabInstance(game.target)?.entityId === game.entityId && game.target.children[0].children[0].renderOrder === -0.5;
   })).toBe(true);
   const download = page.waitForEvent('download');
   await page.evaluate(() => document.querySelector('dst-debug-console')!.dispatchEvent(

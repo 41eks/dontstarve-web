@@ -1,3 +1,4 @@
+import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { createTestWorldSources } from './worldContentFixture';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
@@ -133,8 +134,8 @@ it('saves an occupied molehill with its stored items and releases the same child
   hill.components.spawner.TakeOwnership(mole); expect(mole.wentHome(hill)).toBe(true);
   const record = f.manager.exportRecords()[0], moleId = mole.id, baitId = bait.entity.id;
   f.awake.set(false); await settle();
-  expect(model.userData.instance.status.peek()).toBe('asleep');
-  expect(model.userData.instance.sprite.loaded).toBe(false);
+  expect(lookupPrefabInstance(model)!.status.peek()).toBe('asleep');
+  expect(lookupPrefabInstance(model)!.sprite.loaded).toBe(false);
   expect(model.parent).toBeNull();
   expect(f.manager.exportRecords()).toEqual([record]);
   f.dispose();

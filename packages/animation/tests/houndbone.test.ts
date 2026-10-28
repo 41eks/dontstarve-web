@@ -1,3 +1,4 @@
+import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -37,7 +38,7 @@ it('hammers a hound bone once into boneshards, adds a houndstooth chance for pie
   expect(() => PREFAB_DEFINITIONS.houndbones.parseComponents({ houndbone: { bonetype: 4 } }, 'x', { grounded: true } as never)).toThrow();
 
   const restored = await bones.spawn(new THREE.Vector3(5, 0, 5));
-  expect([1, 2, 3]).toContain(bones.exportRecords().find(({ record }) => record.id === restored.userData.instance?.entityId)?.record.components.houndbone?.bonetype);
+  expect([1, 2, 3]).toContain(bones.exportRecords().find(({ record }) => record.id === lookupPrefabInstance(restored)?.entityId)?.record.components.houndbone?.bonetype);
 
   const target = bones.hammerTargets.find(({ model }) => model === one)!;
   target.playHit();

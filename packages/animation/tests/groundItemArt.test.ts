@@ -16,6 +16,7 @@ import { createClusterSaveZip } from '../../../src/save/download';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initial from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { createPickupInventory } from './pickupFixture';
+import { importedSave } from './importedSave';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 const turn = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -117,7 +118,12 @@ it('uses ground_item for c_spawn, c_save ZIP export and restore of skins, quanti
       }, SAVE_CATALOG), 'forest');
     });
     expect(result.ok, result.message).toBe(true);
-    const saved = deserializeSave(strFromU8(unzipSync(archive)['Cluster_1/Master.json']), SAVE_CATALOG);
+    const files = unzipSync(archive);
+    const worldText = strFromU8(files['Cluster_1/Master.json']);
+    const worldSave = JSON.parse(worldText) as { session: { playerFile: string }; players: object };
+    expect(worldSave.players).toEqual({});
+    const session = JSON.parse(strFromU8(files[`Cluster_1/${worldSave.session.playerFile}`])) as { player: unknown };
+    const saved = deserializeSave(worldText, SAVE_CATALOG, session.player);
     expect(saved.world.entities).toEqual(before);
     for (const record of saved.world.entities.ground_item) {
       const item = record.components.stack!;
@@ -143,9 +149,8 @@ it('uses ground_item for c_spawn, c_save ZIP export and restore of skins, quanti
 });
 
 it('loads the regenerated forest and cave ground records through the normal save parser', async () => {
-  for (const shard of ['Master', 'Caves']) {
-    const text = await readFile(new URL(`../../../public/saves/Cluster_1/${shard}.json`, import.meta.url), 'utf8');
-    const save = deserializeSave(text, SAVE_CATALOG);
+  for (const shard of ['Master', 'Caves'] as const) {
+    const save = importedSave(shard);
     expect(save.world.entities.ground_item.length).toBeGreaterThan(100);
   }
 });

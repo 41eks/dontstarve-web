@@ -173,6 +173,12 @@ export class PrefabDisplay {
 
   get model(): THREE.Group { return this.engine.model; }
 
+  /** Mount the display-owned model; status changes still remove and restore it at this parent. */
+  mount(parent: THREE.Object3D): void {
+    if (this.disposed) return;
+    parent.add(this.model);
+  }
+
   get isRemoved(): boolean { return this.disposed || this.status.peek() === 'removed'; }
 
   /** Source owners release their shared resources after the display has returned its last sprite. */

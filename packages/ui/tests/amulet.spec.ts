@@ -33,7 +33,7 @@ test('a ghost that haunts a red amulet rises from it in amulet_rebirth, which co
     return { ghost: controller.isGhost, state: controller.stategraph.stateName, ghostMode: stats.playerGhostMode.peek(),
       invincible: stats.playerStats.health.invincible, penalty: stats.playerStats.health.penalty,
       body: main.inventory.GetEquippedItem('body')?.prefab ?? null, amulets: main.inventory.count('amulet'),
-      tags: player.userData.instance.listTags() };
+      tags: (window as any).__prefabInstance(player).listTags() };
   });
 
   await page.goto('/tests/dst-lighting.html');

@@ -64,7 +64,7 @@ test('eats lightbulbs and refuels inventory, equipped and ground lanterns, then 
     }
     playerBody.position.set(model.position.x + 3, playerBody.shapes[0].radius, model.position.z + 3);
     player.position.set(model.position.x + 3, 0, model.position.z + 3);
-    return model.userData.instance?.entityId as string;
+    return (window as any).__prefabInstance(model)?.entityId as string;
   });
   // The light signal changes immediately; wait for the off pose and camera to render before raycasting it.
   await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
@@ -72,8 +72,8 @@ test('eats lightbulbs and refuels inventory, equipped and ground lanterns, then 
   const point = await page.evaluate(async ({ id, url }) => {
     const { scene, camera, renderer } = (window as any).bulbGame;
     const { spriteScreenPoint } = await import(url);
-    const model = scene.children.find((model: any) => model.userData.instance?.entityId === id);
-    return { id: model.userData.instance?.entityId as string, ...spriteScreenPoint(model, camera, renderer) };
+    const model = scene.children.find((model: any) => (window as any).__prefabInstance(model)?.entityId === id);
+    return { id: (window as any).__prefabInstance(model)?.entityId as string, ...spriteScreenPoint(model, camera, renderer) };
   }, { id: groundId, url: `/@fs${fileURLToPath(new URL('./sprite-screen-point.ts', import.meta.url))}` });
   await page.mouse.click(point.x, point.y);
   await expect.poll(cursorCount).toBe(1);

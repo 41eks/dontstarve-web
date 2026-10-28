@@ -1,3 +1,4 @@
+import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { expect, it, vi } from 'vitest';
 import { createSignal } from '@dontstarve-web/signals';
@@ -62,7 +63,7 @@ it('retains a lantern machine, light and fuel while its tile releases and rebuil
   const drawn = created.at(-1)!;
   try {
     expect(light).toBeDefined();
-    expect(model.userData.instance.hasTag('light')).toBe(true);
+    expect(lookupPrefabInstance(model)!.hasTag('light')).toBe(true);
     tile.set(false); await tick();
     expect(drawn.dispose).toHaveBeenCalledOnce();
     expect(model.parent).toBeNull();

@@ -21,6 +21,7 @@ import { BeefaloStateGraph, type BeefaloStateName } from '../../stategraphs/src/
 import { newEntityId } from './saveRecord';
 import { createPrefabEntity, prefabInstance, type PrefabInstance } from './prefabInstance';
 import { MakeCharacterPhysics, WORLD_SCALE } from './standardcomponents';
+import type { FrameUpdatedPrefabManager } from './manager';
 /** beefalo.lua, beefalobrain.lua and SGBeefalo.lua; distances use this world's scale. */
 export const BEEFALO_BEHAVIOR = {
   radius: 0.5 * WORLD_SCALE,
@@ -367,7 +368,7 @@ function distanceSquared(a: { x: number; z: number }, b: { x: number; z: number 
 }
 
 /** Shared source atlases, independent AI/merged sprite geometry and physics bodies. */
-export class BeefaloManager {
+export class BeefaloManager implements FrameUpdatedPrefabManager<BeefaloRecord> {
   private factoryRequest?: Promise<BeefaloSpriteFactory>;
   private readonly beefalos = new Map<BeefaloController, PrefabDisplay>();
   private readonly pendingSpawns = new Set<THREE.Vector3>();

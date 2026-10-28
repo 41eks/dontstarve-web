@@ -1,6 +1,32 @@
 #!/usr/bin/env python3
 """Landmark save states: shard migrators, spawned child props and pond layouts."""
+import json
 import math
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+RESEARCH_LAB_SKINS = {
+    prefab: set(definition['skinArchives'])
+    for prefab, definition in json.loads((ROOT / 'packages/prefab/src/definitions.json').read_text())['animatedBuildings'].items()
+    if prefab in ('researchlab', 'researchlab2', 'researchlab3', 'researchlab4')
+}
+
+
+def researchlab_components(prefab):
+    # scienceprototyper.lua / magicprototyper.lua OnSave write only burnt.
+    # workable.lua writes {} when savestate is false; skinname lives on the entity record.
+    def convert(data, context):
+        if set(data) - {'burnt', 'workable'} or ('workable' in data and data['workable'] != {}):
+            raise ValueError(f'Unsupported {prefab} save state')
+        if 'burnt' in data and data['burnt'] is not True:
+            raise ValueError(f'Expected a true {prefab} burnt flag')
+        skin = context['skin']
+        if skin is not None and skin not in RESEARCH_LAB_SKINS[prefab]:
+            raise ValueError(f'Unsupported {prefab} skin: {skin}')
+        return {'building': {'state': 'idle',
+                             **({'skinId': skin} if skin is not None else {}),
+                             **({'burnt': True} if data.get('burnt') else {})}}
+    return convert
 
 
 def pigking_components(data):
@@ -10,8 +36,58 @@ def pigking_components(data):
     return {}
 
 
+def atrium_gate_components(data):
+    # atrium_gate.lua OnSave plus the component records used by OnLoadPostPass.
+    if set(data) - {'vault_key_socketed', 'can_spawn_charlie_hand_keystone', 'launch_key',
+                    'pickable', 'charliecutscene', 'worldsettingstimer', 'entitytracker', 'ritual_state'}:
+        raise ValueError('Unsupported atrium_gate save state')
+    if 'ritual_state' in data and data['ritual_state'] != 0:
+        raise ValueError('Unsupported atrium_gate ritual_state')
+    result = {}
+    own = {key: True for key in ('vault_key_socketed', 'can_spawn_charlie_hand_keystone', 'launch_key') if data.get(key) is True}
+    for key in ('vault_key_socketed', 'can_spawn_charlie_hand_keystone', 'launch_key'):
+        if key in data and data[key] is not True:
+            raise ValueError(f'Unsupported atrium_gate {key} flag')
+    if own:
+        result['atriumGate'] = own
+    for source, target, allowed in (
+        ('pickable', 'pickable', {'picked', 'paused', 'caninteractwith'}),
+        ('charliecutscene', 'charliecutscene', {'running', 'gatefixed'}),
+    ):
+        value = data.get(source)
+        if value is not None:
+            if not isinstance(value, dict) or set(value) - allowed or any(flag is not True for flag in value.values()):
+                raise ValueError(f'Unsupported atrium_gate {source} state')
+            result[target] = value
+    timer = data.get('worldsettingstimer')
+    if timer is not None:
+        if not isinstance(timer, dict) or set(timer) != {'timers'} or not isinstance(timer['timers'], dict) \
+                or set(timer['timers']) - {'destabilizing', 'destabilizedelay', 'cooldown'}:
+            raise ValueError('Unsupported atrium_gate worldsettingstimer')
+        for name, entry in timer['timers'].items():
+            if not isinstance(entry, dict) or set(entry) - {'timeleft', 'paused', 'blocklongupdate', 'initial_time'} \
+                    or type(entry.get('timeleft')) not in (int, float) or not 0 <= entry['timeleft'] <= 1 \
+                    or ('paused' in entry and type(entry['paused']) is not bool) \
+                    or ('blocklongupdate' in entry and type(entry['blocklongupdate']) is not bool) \
+                    or ('initial_time' in entry and (type(entry['initial_time']) not in (int, float) or not 0 <= entry['initial_time'] <= 9600)):
+                raise ValueError(f'Unsupported atrium_gate {name} timer')
+        result['worldsettingstimer'] = {'timers': {
+            name: {**entry, 'paused': entry.get('paused', False)} for name, entry in timer['timers'].items()}}
+    tracker = data.get('entitytracker')
+    if tracker is not None:
+        if not isinstance(tracker, dict) or set(tracker) != {'entities'} or not isinstance(tracker['entities'], list) \
+                or any(not isinstance(entry, dict) or set(entry) != {'name', 'GUID'} \
+                       or entry['name'] not in ('stalker', 'charlie_hand') or type(entry['GUID']) is not int or entry['GUID'] < 0
+                       for entry in tracker['entities']):
+            raise ValueError('Unsupported atrium_gate entitytracker')
+        result['entitytracker'] = tracker
+    return result
+
+
 def cave_exit_components(data):
     # worldmigrator.lua OnSave (id/auto/linkedWorld/receivedPortal) belongs to the shard link, which is not connected yet.
+    if not data:
+        return {}
     migrator = data.get('worldmigrator')
     if set(data) != {'worldmigrator'} or not isinstance(migrator, dict) \
             or set(migrator) - {'id', 'auto', 'linkedWorld', 'receivedPortal'}:
@@ -23,6 +99,8 @@ def cave_entrance_components(allowed):
     # worldmigrator.lua OnSave belongs to the shard link; childspawner/worldsettingstimer (bats) are not ported either,
     # so the open entrance keeps only identity and position. Closed workable.savestate is false.
     def convert(data):
+        if not data:
+            return {}
         migrator = data.get('worldmigrator')
         if not isinstance(migrator, dict) or set(migrator) - {'id', 'auto', 'linkedWorld', 'receivedPortal'} \
                 or set(data) - allowed:

@@ -1,3 +1,4 @@
+import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { actionTool, reskinEntityFields } from './actionFixtures';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -174,7 +175,7 @@ it.each(['animated', 'wall'] as const)('%s right-click removes only the preview 
   }
   await begin();
   expect(store.exportState()).toEqual(paidState);
-  if (kind === 'animated') expect(world.scene.children[1].userData.instance?.skinId).toBe('selected_skin');
+  if (kind === 'animated') expect(lookupPrefabInstance(world.scene.children[1])?.skinId).toBe('selected_skin');
   click(0);
   expect(consume).toHaveBeenCalledTimes(1);
   expect(displayLightOverride(world.scene.children[1])).toBe(0);

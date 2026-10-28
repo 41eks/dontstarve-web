@@ -1,5 +1,4 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { readFile } from 'node:fs/promises';
 import { Wortox } from '../../prefab/src/wortox';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
@@ -11,6 +10,7 @@ import { deserializeSave } from '../../../src/save/deserialize';
 import { serializeSave } from '../../../src/save/serialize';
 import { inventoryStateFromSave } from '../../../src/save/inventoryState';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
+import { importedSave } from './importedSave';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -39,7 +39,7 @@ it('saves and restores Lua counters without persisting the transient finish task
   const scheduler = new GameTimeScheduler(), inventory = { ConsumeByName: vi.fn() };
   const original = new Wortox(scheduler, inventory), restored = new Wortox(scheduler, inventory);
   original.TryToPortalHop();
-  const template = deserializeSave(await readFile(new URL('../../../public/saves/Cluster_1/Caves.json', import.meta.url), 'utf8'), SAVE_CATALOG);
+  const template = importedSave('Caves');
   const document = deserializeSave(serializeSave(template, {
     entities: template.world.entities, playerTransform: template.players.local.transform,
     inventory: inventoryStateFromSave(template), elapsedSeconds: template.world.elapsedSeconds,

@@ -38,12 +38,12 @@ test('spawns native lava and independent scorched rocks, restores their layout a
   }, { x, z });
   const state = () => page.evaluate(() => {
     const { scene, camera, dstLighting, world, FindEntities } = (window as any).lavaGame;
-    const model = scene.children.find((model: any) => model.userData.instance?.prefab === 'lava_pond');
+    const model = scene.children.find((model: any) => (window as any).__prefabInstance(model)?.prefab === 'lava_pond');
     if (!model) return null;
     // A display root holds the drawn sprite (art group, then mesh) beside the child rocks.
     const controller = model.userData.lavaPond, drawn = model.children[0], mesh = drawn.children[0].children[0];
     const childRocks = controller.children.map((rock: any) => ({
-      prefab: rock.userData.instance?.prefab, foot: rock.getWorldPosition(model.position.clone()).toArray(),
+      prefab: (window as any).__prefabInstance(rock)?.prefab, foot: rock.getWorldPosition(model.position.clone()).toArray(),
       order: rock.children[0].children[0].renderOrder,
       cameraDepth: rock.getWorldPosition(model.position.clone()).applyMatrix4(camera.matrixWorldInverse).z,
       vertices: rock.children[0].children[0].children[0].geometry.drawRange.count,
@@ -51,11 +51,11 @@ test('spawns native lava and independent scorched rocks, restores their layout a
     }));
     const heaters = FindEntities(model.position, 30, ['HASHEATER'], ['INLIMBO']);
     const withoutPool = dstLighting.sampleLightLevel(model.position, model);
-    return { id: model.userData.instance?.entityId, position: model.position.toArray(), clip: model.userData.animationController.currentAnimation,
+    return { id: (window as any).__prefabInstance(model)?.entityId, position: model.position.toArray(), clip: model.userData.animationController.currentAnimation,
       vertices: mesh.geometry.drawRange.count, frameVersion: mesh.geometry.getAttribute('uv').version, build: drawn.userData.animationController.build.name,
       flat: drawn.children[0].rotation.x, poolOrder: mesh.renderOrder, childRocks,
       heat: heaters.find((inst: any) => inst.model === model)?.components.heater?.GetHeat(),
-      bodyRegistered: world.bodies.includes(model.userData.instance.physicsBody),
+      bodyRegistered: world.bodies.includes((window as any).__prefabInstance(model).physicsBody),
       light: dstLighting.sampleLightLevel(model.position), withoutPool };
   });
 
@@ -65,7 +65,7 @@ test('spawns native lava and independent scorched rocks, restores their layout a
   await movePlayer(16, -10); await submit('c_spawn("lava_pond_rock")');
   await movePlayer(22, -10); await submit('c_spawn("lava_pond_rock6")');
   await expect.poll(() => page.evaluate(() => (window as any).lavaGame.scene.children
-    .filter((model: any) => model.userData.instance?.prefab?.startsWith('lava_pond_rock')).length)).toBe(2);
+    .filter((model: any) => (window as any).__prefabInstance(model)?.prefab?.startsWith('lava_pond_rock')).length)).toBe(2);
   await movePlayer(18, 18);
   const initial = (await state())!;
   expect(initial.clip).toBe('bubble_lava'); expect(initial.vertices).toBeGreaterThan(0);
@@ -79,7 +79,7 @@ test('spawns native lava and independent scorched rocks, restores their layout a
   // Focus the visual review on the pool after checking the normal player camera's sorting.
   await page.evaluate(() => {
     const { scene, followCamera } = (window as any).lavaGame;
-    followCamera.setTarget(scene.children.find((model: any) => model.userData.instance?.prefab === 'lava_pond')); followCamera.snap();
+    followCamera.setTarget(scene.children.find((model: any) => (window as any).__prefabInstance(model)?.prefab === 'lava_pond')); followCamera.snap();
   });
   await page.screenshot({ path: '/tmp/lava-pond.png' });
   await page.evaluate(() => { const { followCamera, player } = (window as any).lavaGame; followCamera.setTarget(player); followCamera.snap(); });
@@ -105,8 +105,8 @@ test('spawns native lava and independent scorched rocks, restores their layout a
 
   expect(await page.evaluate(() => {
     const { scene, world, FindEntities, dstLighting } = (window as any).lavaGame;
-    const model = scene.children.find((model: any) => model.userData.instance?.prefab === 'lava_pond');
-    const body = model.userData.instance.physicsBody, position = model.position.clone();
+    const model = scene.children.find((model: any) => (window as any).__prefabInstance(model)?.prefab === 'lava_pond');
+    const body = (window as any).__prefabInstance(model).physicsBody, position = model.position.clone();
     const blocked = world.bodies.includes(body);
     model.userData.remove();
     return { blocked, heaters: FindEntities(position, 30, ['HASHEATER']).length,

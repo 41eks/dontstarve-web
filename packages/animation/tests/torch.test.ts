@@ -1,3 +1,4 @@
+import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { createPickupDoer, performPickupAction } from '../../stategraphs/src/pickup';
 import { bindPlayerHandEquipment } from '../../../src/playerHandEquipment';
 import { ItemEntity, InventoryStore, InventorySlot, HandSlot, inventorySlotAddress, equipmentSlotAddress } from '@dontstarve-web/inventory';
@@ -178,7 +179,7 @@ describe('torch prefab burning lifecycle', () => {
         return store.extract(hand, 1, entity) ?? false;
       })).toBe(true);
       let model = scene.children[0] as THREE.Group;
-      expect(model.userData.instance?.entityId).toBe(entity.id);
+      expect(lookupPrefabInstance(model)?.entityId).toBe(entity.id);
       expect(model.userData.torch).toBe(controller);
       expect(controller.isBurning).toBe(false);
       expect(entity.components.fueled!.currentfuel).toBeCloseTo(TORCH_FUEL - FULL_FIRST_PERIOD - .75, 9);

@@ -1,3 +1,4 @@
+import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -22,15 +23,15 @@ it('loads a burnt tree as ash and releases its independent burnt FX on game time
     const model = await trees.spawn('mushtree_moon', new THREE.Vector3(5, 0, 7), {
       id: 'burnt-mushroom', transform: { position: [5, 0, 7], rotationY: 0 }, components: { mushtree: { burnt: true } },
     });
-    expect(model.userData.instance.status.peek()).toBe('removed');
+    expect(lookupPrefabInstance(model)!.status.peek()).toBe('removed');
     expect(trees.exportRecords()).toEqual([]);
     expect(ash).toEqual([new THREE.Vector3(5, 0, 7)]);
-    await vi.waitFor(() => expect(scene.children.some(child => child.userData.instance?.prefab === 'mushtree_moon_burntfx')).toBe(true));
-    const fx = scene.children.find(child => child.userData.instance?.prefab === 'mushtree_moon_burntfx')!;
+    await vi.waitFor(() => expect(scene.children.some(child => lookupPrefabInstance(child)?.prefab === 'mushtree_moon_burntfx')).toBe(true));
+    const fx = scene.children.find(child => lookupPrefabInstance(child)?.prefab === 'mushtree_moon_burntfx')!;
     expect(prefabInstance(fx)!.listTags()).toEqual(['FX']);
-    expect(fx.userData.instance.persists).toBe(false);
+    expect(lookupPrefabInstance(fx)!.persists).toBe(false);
     scheduler.advance(10);
-    expect(fx.userData.instance.status.peek()).toBe('removed');
+    expect(lookupPrefabInstance(fx)!.status.peek()).toBe('removed');
     awake.set(true); await new Promise(resolve => setTimeout(resolve, 0));
     expect(scene.children).toEqual([]);
   } finally { trees.dispose(); scheduler.dispose(); }
@@ -139,7 +140,7 @@ it('releases the mushtree sprite outside the tickingarea and settles a transitio
     awake.set(false);
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(meshes()).toBe(0);
-    expect(model.userData.instance?.entityId).toBeDefined();
+    expect(lookupPrefabInstance(model)?.entityId).toBeDefined();
     awake.set(true);
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(meshes()).toBeGreaterThan(0);

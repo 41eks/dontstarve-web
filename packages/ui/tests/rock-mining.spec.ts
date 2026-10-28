@@ -32,7 +32,7 @@ test('right-click mining breaks a moon shell and preserves the orb and mineral d
     return JSON.parse(await readSaveDownload((await (await download).path())!, 'Master'));
   };
   const workLeft = () => page.evaluate(() => {
-    const shell = (window as any).miningGame.scene.children.find((model: any) => model.userData.instance?.entityId === 'mine-shell');
+    const shell = (window as any).miningGame.scene.children.find((model: any) => (window as any).__prefabInstance(model)?.entityId === 'mine-shell');
     return shell?.userData.components.workable.GetWorkLeft() ?? 0;
   });
   await page.goto('/tests/dst-lighting.html?save=initial-world.json'); await prepare();
@@ -44,7 +44,7 @@ test('right-click mining breaks a moon shell and preserves the orb and mineral d
   for (let hit = 0; hit < 6; hit++) {
     const point = await hoverSprite(page, () => page.evaluate(async moduleUrl => {
       const { scene, renderer, camera } = (window as any).miningGame;
-      const shell = scene.children.find((model: any) => model.userData.instance?.entityId === 'mine-shell');
+      const shell = scene.children.find((model: any) => (window as any).__prefabInstance(model)?.entityId === 'mine-shell');
       const { spriteScreenPoint } = await import(moduleUrl);
       return spriteScreenPoint(shell, camera, renderer);
     }, `/@fs${fileURLToPath(new URL('./sprite-screen-point.ts', import.meta.url))}`), 'miningGame', 'right', 'MINE');

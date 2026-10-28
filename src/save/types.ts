@@ -66,7 +66,14 @@ export interface SavedEntity {
     houndbone?: import('../../packages/prefab/src/houndbone').HoundboneSaveState;
     beeQueenHiveTimer?: import('../../packages/componets/src/timer').NamedTimerSave;
     dragonfly?: import('@dontstarve-web/prefab/dragonfly').DragonflySaveState;
+    dragonflySpawner?: import('@dontstarve-web/prefab/dragonfly_spawner').DragonflySpawnerSaveState;
     statueglommer?: { worked?: true; spawned?: true };
+    atriumGate?: import('@dontstarve-web/prefab/atrium_gate').AtriumGateRecord['components']['atriumGate'];
+    ruinsStatueMage?: import('@dontstarve-web/prefab/ruins_statue_mage').RuinsStatueMageRecord['components']['ruinsStatueMage'];
+    chessJunk?: import('@dontstarve-web/prefab/chessjunk').ChessJunkRecord['components']['chessJunk'];
+    charliecutscene?: import('@dontstarve-web/prefab/atrium_gate').AtriumGateRecord['components']['charliecutscene'];
+    worldsettingstimer?: import('@dontstarve-web/prefab/atrium_gate').AtriumGateRecord['components']['worldsettingstimer'];
+    entitytracker?: import('@dontstarve-web/prefab/atrium_gate').AtriumGateRecord['components']['entitytracker'];
     skeleton?: import('../../packages/prefab/src/skeleton').SkeletonSaveState;
     growable?: import('../../packages/componets/src/growable').GrowableSave;
     deciduousTimer?: import('../../packages/componets/src/timer').NamedTimerSave;
@@ -103,11 +110,17 @@ export interface SavedPlayer {
   wortox?: import('../../packages/prefab/src/wortox').WortoxSave;
 }
 
+/** The project's JSON counterpart of a DST per-shard Session player file. */
+export interface SavedPlayerSessionFile {
+  player: SavedPlayer;
+  migration?: { worldid: string; portalid: number; sessionid: string } | null;
+}
+
 export interface SaveDocument {
   format: 'three-roaming-save';
   schemaVersion: 1;
   gameVersion: string;
-  session: { id: string; createdAt: string };
+  session: { id: string; createdAt: string; playerFile?: string };
   snapshot: { id: string; parentId: string | null; savedAt: string; reason: string };
   world: {
     shardId: string;

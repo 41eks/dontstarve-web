@@ -1,3 +1,4 @@
+import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -126,7 +127,7 @@ it('retains regrowth on extinguish, then burns to exactly one saved ash and rele
     expect(burnable.timer.peek()).toBe(timer);
     burnable.Extinguish();
     const record = s.grass.exportRecords()[0];
-    expect(record.id).toBe(model.userData.instance?.entityId);
+    expect(record.id).toBe(lookupPrefabInstance(model)?.entityId);
     expect(record.components.pickable).toEqual({ picked: true, regrowSeconds: 1430 });
     expect(state.phase.peek()).toBe('picked');
     expect(state.persistence.peek()).toBe(true);

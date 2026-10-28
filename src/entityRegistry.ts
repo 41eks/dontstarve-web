@@ -3,6 +3,8 @@ import type { ResidentEntity } from '@dontstarve-web/animation/residentSprite';
 import type { SavedEntity } from './save/types';
 import type { PrefabDefinition } from './prefabDefinitions';
 import type { MiniMapEntity } from '@dontstarve-web/prefab/minimapEntity';
+import type { PrefabDisplay } from '@dontstarve-web/display';
+import type { DisplayDrivenPrefabManager } from '@dontstarve-web/prefab/manager';
 
 export interface EntityRenderEntry {
   object: THREE.Object3D;
@@ -35,12 +37,19 @@ export interface EntityRegistration<PrefabId extends string> {
   dispose: () => void;
 }
 
+/** A display-owned prefab family: its manager has no frame hook to forward animations through. */
+export interface DisplayDrivenEntityManager extends DisplayDrivenPrefabManager<EntityRecord> {
+  readonly renderEntities?: readonly EntityRenderEntry[];
+  readonly miniMapEntities?: readonly MiniMapEntity[];
+}
+
 /** Routes scene lifecycles through the same declarations used by debug spawning. */
 export class EntityRegistry {
   readonly byEntityId = new Map<string, THREE.Object3D | ResidentEntity>();
   private readonly restorers = new Map<string, (record: SavedEntity) => ReturnType<NonNullable<EntityRegistration<string>['restore']>>>();
   private readonly creators = new Map<string, () => unknown>();
   private readonly registrations: (EntityRegistration<string> & { definition: PrefabDefinition })[] = [];
+  private readonly displays = new Set<PrefabDisplay>();
   private readonly lifecycleOrder: ReadonlyMap<PrefabDefinition, number>;
   private disposed = false;
   /** Reused each frame: render ordering reads the list before the next frame refills it. */
@@ -68,6 +77,18 @@ export class EntityRegistry {
     this.registrations.push({ ...registration, definition, restore: undefined, debugSpawn: undefined });
     this.registrations.sort((a, b) =>
       (this.lifecycleOrder.get(a.definition) ?? this.lifecycleOrder.size) - (this.lifecycleOrder.get(b.definition) ?? this.lifecycleOrder.size));
+  }
+
+  /** Bind a display-driven manager without exposing an update callback at the scene registration site. */
+  registerDisplayManager<PrefabId extends string>(definition: PrefabDefinition<PrefabId>, manager: DisplayDrivenEntityManager,
+    handlers: Pick<EntityRegistration<PrefabId>, 'restore' | 'debugSpawn'>): void {
+    this.register(definition, {
+      ...handlers,
+      exportRecords: () => manager.exportRecords(),
+      renderEntities: () => manager.renderEntities ?? [],
+      miniMapEntities: () => manager.miniMapEntities ?? [],
+      dispose: () => manager.dispose(),
+    });
   }
 
   get prefabDefinitions(): readonly PrefabDefinition[] {
@@ -133,8 +154,17 @@ export class EntityRegistry {
     if (!this.disposed) for (const registration of this.registrations) registration.beforePhysics?.(dt);
   }
 
+  /** Scene-owned animation ticks for prefab displays; each display leaves the set when it is removed. */
+  trackDisplay(display: PrefabDisplay): void {
+    if (this.disposed || display.isRemoved) return;
+    this.displays.add(display);
+    display.onDispose(() => this.displays.delete(display));
+  }
+
   update(dt: number, cameraQuaternion: THREE.Quaternion): void {
-    if (!this.disposed) for (const registration of this.registrations) registration.update?.(dt, cameraQuaternion);
+    if (this.disposed) return;
+    for (const registration of this.registrations) registration.update?.(dt, cameraQuaternion);
+    for (const display of this.displays) display.update(dt, cameraQuaternion);
   }
 
   /** Every registration's entries, in one list that the next read refills. */
@@ -161,6 +191,7 @@ export class EntityRegistry {
     for (const registration of [...this.registrations].reverse()) {
       try { registration.dispose(); } catch (error) { errors.push(error); }
     }
+    this.displays.clear();
     if (errors.length) throw new AggregateError(errors, 'Unable to dispose scene entities');
   }
 

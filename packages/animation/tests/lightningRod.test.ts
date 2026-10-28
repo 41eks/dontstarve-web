@@ -1,3 +1,4 @@
+import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -121,7 +122,7 @@ it('keeps its charge and skin through c_save, and re-arms its day timer from the
     const record = deserializeSave(JSON.stringify(save), { items: {}, skins: {}, recipes: {}, recipeSkins: {},
       buildings: definitions.animatedBuildings, walls: Object.keys(definitions.walls) }).world.entities.lightning_rod[0];
     const restored = await placement.spawnFromSave(LIGHTNING_ROD_ID, record);
-    expect(restored.userData.instance?.skinId).toBe('lightning_rod_adventure');
+    expect(lookupPrefabInstance(restored)?.skinId).toBe('lightning_rod_adventure');
     expect(restored.userData.lightningrod.chargeleft).toBe(2);
     expect(declaredLight(restored)).toBeDefined();
     scheduler.advance(DAY);

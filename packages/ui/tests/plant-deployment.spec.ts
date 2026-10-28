@@ -46,7 +46,7 @@ test('plants butterflies and saplings, picks the restored flower and saves its p
     await page.mouse.move(point.x, point.y);
     await expect.poll(() => page.evaluate(() => (window as any).plantGame.view.mouseActions.getMouseActions().right?.action)).toBe('DEPLOY');
     await page.mouse.click(point.x, point.y, { button: 'right' });
-    await expect.poll(() => page.evaluate(prefab => (window as any).plantGame.scene.children.filter((model: any) => model.userData.instance?.prefab === prefab).length, prefab)).toBe(1);
+    await expect.poll(() => page.evaluate(prefab => (window as any).plantGame.scene.children.filter((model: any) => (window as any).__prefabInstance(model)?.prefab === prefab).length, prefab)).toBe(1);
     await page.keyboard.press('Escape');
     await expect(page.locator('.slot-drag-preview')).toHaveCount(0);
   }
@@ -64,7 +64,7 @@ test('plants butterflies and saplings, picks the restored flower and saves its p
   expect(slots[0].item.freshnessPercent).toBeGreaterThan(.9);
   const pickPoint = await page.evaluate(() => {
     const { scene, view, playerStats } = (window as any).plantGame;
-    const flower = scene.children.find((model: any) => model.userData.instance?.prefab === 'flower');
+    const flower = scene.children.find((model: any) => (window as any).__prefabInstance(model)?.prefab === 'flower');
     let mesh: any;
     flower.traverse((object: any) => { if (object.isMesh && !mesh) mesh = object; });
     mesh.updateWorldMatrix(true, false);
@@ -88,7 +88,7 @@ test('plants butterflies and saplings, picks the restored flower and saves its p
   expect(picked.players.local.stats.health).toBe(restored.players.local.stats.health - (flower.components.flower.animation === 'rose' ? 1 : 0));
   await page.route('**/saves/initial-world.json', route => route.fulfill({ json: picked }));
   await page.reload(); await prepare();
-  expect(await page.evaluate(() => (window as any).plantGame.scene.children.filter((model: any) => model.userData.instance?.prefab === 'flower').length)).toBe(0);
+  expect(await page.evaluate(() => (window as any).plantGame.scene.children.filter((model: any) => (window as any).__prefabInstance(model)?.prefab === 'flower').length)).toBe(0);
   expect(await page.evaluate(() => (window as any).plantGame.inventory.count('petals'))).toBe(1);
   expect(await page.evaluate(() => {
     const { inventory } = (window as any).plantGame;

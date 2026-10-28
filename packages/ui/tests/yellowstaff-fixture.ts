@@ -189,10 +189,10 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   const lifetimeStar = await stars.spawn(new THREE.Vector3(-70, 0, 0));
   stars.update(duration - 1, camera.quaternion);
   const survivesUntilExpiry = !!lifetimeStar.parent && !!getDeclaredLight(lifetimeStar)
-    && stars.exportRecords().some((entry) => entry.id === lifetimeStar.userData.instance?.entityId
+    && stars.exportRecords().some((entry) => entry.id === (window as any).__prefabInstance(lifetimeStar)?.entityId
       && Math.abs(entry.components.timer.remainingSeconds - 1) < 0.000001);
   stars.update(1, camera.quaternion);
-  const expiresAtLifetime = !stars.exportRecords().some((entry) => entry.id === lifetimeStar.userData.instance?.entityId);
+  const expiresAtLifetime = !stars.exportRecords().some((entry) => entry.id === (window as any).__prefabInstance(lifetimeStar)?.entityId);
   stars.update(1, camera.quaternion);
   const lifetimeRemoved = !lifetimeStar.parent && !getDeclaredLight(lifetimeStar);
   casting.dispose();

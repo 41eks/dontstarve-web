@@ -5,6 +5,8 @@ import { DwarfStarManager } from '../../prefab/src/stafflight';
 import { DisposeSounds, PlaySound, PreloadSounds, PrewarmSounds, UpdateSoundListener, inverseSquareAttenuation, SOUND_MAX_DISTANCE } from '../../prefab/src/sound';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { DynamicMusic } from '../../componets/src/dynamicmusic';
+import { createSignal } from '../../signals/src/signal';
+import { SoundPresentationScheduler } from '../../sound/src';
 
 afterEach(() => { DisposeSounds(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -241,6 +243,59 @@ describe('dwarf star source sounds', () => {
     s.events.dispatchEvent(new Event('pointerdown'));
     expect(s.context.resume).not.toHaveBeenCalled();
   });
+});
+
+it('selects registered waterfall sounds by player position and releases them on removal', async () => {
+  const s = await setup();
+  await PreloadSounds('grotto/common/waterfall_LP');
+  const playerPosition = createSignal<readonly THREE.Vector3[]>([new THREE.Vector3()]);
+  const gameTime = new GameTimeScheduler();
+  const presentation = new SoundPresentationScheduler(playerPosition, gameTime);
+  try {
+    const removePool = presentation.registerWaterfallPool(new THREE.Vector3(), 2, false);
+    gameTime.advance(5 / 30);
+    expect(s.sources).toHaveLength(2);
+    expect(s.sources.every(source => source.loop)).toBe(true);
+    expect(s.gains[0].gain.value).toBeCloseTo(.8 * .7);
+
+    playerPosition.set([new THREE.Vector3(1000, 0, 0)]);
+    expect(s.gains[0].gain.value).toBe(0);
+    gameTime.advance(5 / 30);
+    expect(s.sources.every(source => source.stop.mock.calls.length === 1)).toBe(true);
+
+    playerPosition.set([new THREE.Vector3()]);
+    gameTime.advance(5 / 30);
+    expect(s.sources).toHaveLength(4);
+    removePool();
+    expect(s.sources.slice(2).every(source => source.stop.mock.calls.length === 1)).toBe(true);
+    gameTime.advance(5 / 30);
+    expect(s.sources).toHaveLength(4);
+  } finally {
+    presentation.dispose();
+    gameTime.dispose();
+  }
+});
+
+it('keeps three waterfall emitters and moves one through a volume fade as the nearest pools change', async () => {
+  const s = await setup();
+  await PreloadSounds('grotto/common/waterfall_LP');
+  const playerPosition = createSignal<readonly THREE.Vector3[]>([new THREE.Vector3()]);
+  const gameTime = new GameTimeScheduler();
+  const presentation = new SoundPresentationScheduler(playerPosition, gameTime);
+  try {
+    for (const x of [0, 10, 20, 30]) presentation.registerWaterfallPool(new THREE.Vector3(x, 0, 0), 2, false);
+    gameTime.advance(5 / 30);
+    expect(s.sources).toHaveLength(6);
+    playerPosition.set([new THREE.Vector3(30, 0, 0)]);
+    gameTime.advance(5 / 30);
+    gameTime.advance(.4);
+    expect(s.sources).toHaveLength(6);
+    expect(s.sources.every(source => source.stop.mock.calls.length === 0)).toBe(true);
+    expect(s.gains[2].gain.value).toBeCloseTo(.8 * .7);
+  } finally {
+    presentation.dispose();
+    gameTime.dispose();
+  }
 });
 
 

@@ -1,3 +1,4 @@
+import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
@@ -14,12 +15,12 @@ import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
+import { importedSave } from './importedSave';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 
-const sound = vi.hoisted(() => ({ volumes: [] as number[], stops: 0 }));
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}),
-  PlaySound: vi.fn(() => ({ stop: () => { sound.stops++; }, isPlaying: () => true, setVolume: (volume: number) => { sound.volumes.push(volume); } })) }));
+  PlaySound: vi.fn(() => ({ stop: vi.fn(), isPlaying: () => true, setVolume: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 function setup(playerAt = new THREE.Vector3(), tickingarea?: TileStateQuery) {
@@ -28,9 +29,14 @@ function setup(playerAt = new THREE.Vector3(), tickingarea?: TileStateQuery) {
   const inventory = createInventoryStore([]), scene = new THREE.Scene(), player = new THREE.Group(), physics = new CANNON.World();
   player.position.copy(playerAt);
   const scheduler = new GameTimeScheduler(), fx = new WorldFx(scene);
+  const waterfalls = new Map<THREE.Vector3, { radius: number; large: boolean }>();
   const ground = new GroundItemManager(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
   const pools = new GrottoPoolManager(scene, { physics, scheduler, fx, playerPosition: () => player.position, tickingarea,
+    registerWaterfallPool: (position, radius, large) => {
+      waterfalls.set(position, { radius, large });
+      return () => { waterfalls.delete(position); };
+    },
     spawnGroundItem: (definition, position, options) => ground.spawnGroundItem(definition, position, options) });
   const registry = new EntityRegistry();
   registry.register(PREFAB_DEFINITIONS.grottoPools, {
@@ -49,7 +55,7 @@ function setup(playerAt = new THREE.Vector3(), tickingarea?: TileStateQuery) {
     ...Object.fromEntries(PREFAB_DEFINITIONS.grottoPools.prefabIds.map(id => [id, pools.exportRecords().filter(entry => entry.prefabId === id).map(entry => entry.record)])),
     ground_item: ground.exportRecords() },
   inventory: inventory.exportState(), elapsedSeconds: 0, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
-  return { inventory, scene, physics, ground, pools, registry, scheduler, save, player, template,
+  return { inventory, scene, physics, ground, pools, registry, scheduler, save, player, template, waterfalls,
     dispose: () => { registry.dispose(); inventory.dispose(); scheduler.dispose(); } };
 }
 const prefabs = (s: ReturnType<typeof setup>) => s.pools.exportRecords().map(({ prefabId }) => prefabId).sort();
@@ -119,11 +125,11 @@ it('spawns the big pool with its five children, mines a glass for moonglass and 
     const pickaxe = s.inventory.entities.create({ itemId: 'pickaxe', count: 1 });
     const [mine] = s.pools.mineTargets;
     for (let i = 0; i < 5; i++) expect(performToolWork('MINE', mine.entity, {}, pickaxe)).toBe(true);
-    expect(mine.model.userData.instance?.getPhysicsRadius(undefined)).toBeDefined();
+    expect(lookupPrefabInstance(mine.model)?.getPhysicsRadius(undefined)).toBeDefined();
     expect(performToolWork('MINE', mine.entity, {}, pickaxe)).toBe(true);
     expect(s.pools.mineTargets).toHaveLength(3);
     expect(mine.entity.hasTag('NOCLICK')).toBe(true);
-    expect(mine.model.userData.instance?.getPhysicsRadius(undefined)).toBeUndefined();
+    expect(lookupPrefabInstance(mine.model)?.getPhysicsRadius(undefined)).toBeUndefined();
     // moonglass_prop: two sure pieces and the 50% one (random = .5 hits).
     await vi.waitFor(() => expect(s.ground.exportRecords().map(record => record.components.stack?.itemId)).toEqual(['moonglass', 'moonglass', 'moonglass']));
 
@@ -145,7 +151,7 @@ it('spawns the big pool with its five children, mines a glass for moonglass and 
   } finally { s.dispose(); restored.dispose(); }
 }, 30000);
 
-it('spawns the small pool with one small waterfall and plays the waterfall loop only near a pool', async () => {
+it('registers a small pool sound source and unregisters it on removal', async () => {
   vi.spyOn(Math, 'random').mockReturnValue(.7);
   const s = setup();
   try {
@@ -153,24 +159,18 @@ it('spawns the small pool with one small waterfall and plays the waterfall loop 
     s.scheduler.advance(0.01);
     await vi.waitFor(() => expect(prefabs(s)).toEqual(['grotto_pool_small', 'grotto_waterfall_small2']));
     expect(s.pools.mineTargets).toHaveLength(1);
-    s.pools.update(0.2, new THREE.Quaternion());
-    expect(sound.volumes.at(-1)).toBe(0.8);
-    // Walking away stops the emitter once the pool is beyond 40 DST units.
-    s.player.position.set(1000, 0, 0);
-    const before = sound.stops;
-    s.pools.update(0.2, new THREE.Quaternion());
-    expect(sound.stops).toBe(before + 1);
+    expect([...s.waterfalls.values()]).toEqual([{ radius: 2, large: false }]);
     // Removing the pool removes its waterfall.
-    const pool = s.scene.children.find(model => model.userData.instance?.prefab === 'grotto_pool_small')!;
+    const pool = s.scene.children.find(model => lookupPrefabInstance(model)?.prefab === 'grotto_pool_small')!;
     pool.userData.remove();
+    expect(s.waterfalls.size).toBe(0);
     expect(s.pools.exportRecords()).toEqual([]);
     expect(s.physics.bodies).toHaveLength(0);
   } finally { s.dispose(); }
 }, 30000);
 
 it('accepts the imported Caves save with every grotto prop linked to an imported pool', async () => {
-  const caves = await readFile(new URL('../../../public/saves/Cluster_1/Caves.json', import.meta.url), 'utf8');
-  const { entities } = deserializeSave(caves, SAVE_CATALOG).world;
+  const { entities } = importedSave('Caves').world;
   const all = new Map(Object.values(entities).flat().map(record => [record.id, record]));
   expect([entities.grotto_pool_big.length, entities.grotto_pool_small.length]).toEqual([5, 21]);
   for (const pool of [...entities.grotto_pool_big, ...entities.grotto_pool_small]) {

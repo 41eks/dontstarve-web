@@ -1,3 +1,4 @@
+import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -141,7 +142,7 @@ describe('real plant archives, spawning and saving', () => {
     expect(records.find(p => p.prefabId === 'flower_cave_double')!.record.components.bulbPlant.variant).toBe('double');
     const saved = records.find(p => p.record.id === 'e_springy')!;
     const restored = await manager.spawn(saved.prefabId, new THREE.Vector3(...saved.record.transform.position), saved.record);
-    expect(restored.userData.instance?.entityId).toBe(saved.record.id);
+    expect(lookupPrefabInstance(restored)?.entityId).toBe(saved.record.id);
     expect(restored.userData.bulbPlantVariant).toBe('springy');
     expect(declaredLight(restored)).toEqual(BULB_PLANT_LIGHT);
     expect(manager.renderEntities.every(p => p.footPosition === p.object.position)).toBe(true);
