@@ -1,0 +1,248 @@
+{
+  "player": {
+    "prefab": "wilson",
+    "shardId": "master",
+    "transform": {
+      "position": [
+        1257.687,
+        0.0,
+        973.965
+      ],
+      "rotationY": 0
+    },
+    "stats": {
+      "health": 150,
+      "hunger": 150,
+      "sanity": 200
+    },
+    "inventory": {
+      "containers": {
+        "player:inventory": {
+          "slotCount": 15,
+          "slots": [
+            {
+              "slotKey": "0",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_0",
+                "itemId": "panflute",
+                "count": 1
+              }
+            },
+            {
+              "slotKey": "1",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_1",
+                "itemId": "glasscutter",
+                "count": 1,
+                "skinId": "glasscutter_mystical"
+              }
+            },
+            {
+              "slotKey": "2",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_2",
+                "itemId": "wortox_souljar",
+                "count": 1
+              }
+            },
+            {
+              "slotKey": "3",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_3",
+                "itemId": "goldenaxe",
+                "count": 1,
+                "remainingUses": 97
+              }
+            },
+            {
+              "slotKey": "4",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_4",
+                "itemId": "wortox_soul",
+                "count": 9
+              }
+            },
+            {
+              "slotKey": "5",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_5",
+                "itemId": "twigs",
+                "count": 18
+              }
+            },
+            {
+              "slotKey": "6",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_6",
+                "itemId": "eyebrellahat",
+                "count": 1,
+                "skinId": "eyebrellahat_fantasy"
+              }
+            },
+            {
+              "slotKey": "7",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_7",
+                "itemId": "opalstaff",
+                "count": 1,
+                "skinId": "moonstaff_relic",
+                "remainingUses": 45
+              }
+            },
+            {
+              "slotKey": "8",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_8",
+                "itemId": "orangestaff",
+                "count": 1
+              }
+            },
+            {
+              "slotKey": "9",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_9",
+                "itemId": "yellowamulet",
+                "count": 1
+              }
+            },
+            {
+              "slotKey": "10",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_10",
+                "itemId": "nightmarefuel",
+                "count": 40
+              }
+            },
+            {
+              "slotKey": "11",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_11",
+                "itemId": "eyemaskhat",
+                "count": 1
+              }
+            },
+            {
+              "slotKey": "12",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_12",
+                "itemId": "charcoal",
+                "count": 2
+              }
+            },
+            {
+              "slotKey": "13",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_13",
+                "itemId": "nightmarefuel",
+                "count": 5
+              }
+            },
+            {
+              "slotKey": "14",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_14",
+                "itemId": "goldnugget",
+                "count": 18
+              }
+            }
+          ]
+        },
+        "player:equipment": {
+          "slotCount": 3,
+          "slots": [
+            {
+              "slotKey": "body",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_equip_body",
+                "itemId": "backpack",
+                "count": 1,
+                "skinId": "backpack_catcoon",
+                "container": {
+                  "slotCount": 8,
+                  "slots": [
+                    {
+                      "slotKey": "0",
+                      "item": {
+                        "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_equip_body_0",
+                        "itemId": "twigs",
+                        "count": 1
+                      }
+                    },
+                    {
+                      "slotKey": "1",
+                      "item": {
+                        "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_equip_body_1",
+                        "itemId": "goldnugget",
+                        "count": 1
+                      }
+                    },
+                    {
+                      "slotKey": "2",
+                      "item": {
+                        "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_equip_body_2",
+                        "itemId": "lantern",
+                        "count": 1,
+                        "skinId": "lantern_mystical",
+                        "remainingFuel": 426.98333333333
+                      }
+                    },
+                    {
+                      "slotKey": "3",
+                      "item": {
+                        "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_equip_body_3",
+                        "itemId": "lightbulb",
+                        "count": 14,
+                        "freshnessPercent": 0.5272051983836459
+                      }
+                    },
+                    {
+                      "slotKey": "4",
+                      "item": {
+                        "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_equip_body_4",
+                        "itemId": "dreadstone",
+                        "count": 5
+                      }
+                    },
+                    {
+                      "slotKey": "5",
+                      "item": {
+                        "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_equip_body_5",
+                        "itemId": "rocks",
+                        "count": 23
+                      }
+                    },
+                    {
+                      "slotKey": "7",
+                      "item": {
+                        "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_equip_body_7",
+                        "itemId": "heatrock",
+                        "count": 1,
+                        "skinId": "heatrock_fantasy",
+                        "remainingFuel": 75
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "slotKey": "head",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_equip_head",
+                "itemId": "dreadstonehat",
+                "count": 1,
+                "skinId": "hat_dreadstone_horn"
+              }
+            }
+          ]
+        },
+        "player:cursor": {
+          "slotCount": 1,
+          "slots": []
+        }
+      },
+      "bufferedBuilds": []
+    }
+  },
+  "migration": null
+}

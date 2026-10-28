@@ -1,0 +1,54 @@
+{
+  "player": {
+    "prefab": "wilson",
+    "shardId": "caves",
+    "transform": {
+      "position": [
+        545.115,
+        0.0,
+        1691.586
+      ],
+      "rotationY": 0
+    },
+    "stats": {
+      "health": 150,
+      "hunger": 150,
+      "sanity": 200
+    },
+    "inventory": {
+      "containers": {
+        "player:inventory": {
+          "slotCount": 15,
+          "slots": [
+            {
+              "slotKey": "0",
+              "item": {
+                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_0",
+                "itemId": "bananajuice",
+                "count": 8
+              }
+            },
+            {
+              "slotKey": "1",
+              "item": {
+                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_1",
+                "itemId": "skeletonhat",
+                "count": 1
+              }
+            }
+          ]
+        },
+        "player:equipment": {
+          "slotCount": 3,
+          "slots": []
+        },
+        "player:cursor": {
+          "slotCount": 1,
+          "slots": []
+        }
+      },
+      "bufferedBuilds": []
+    }
+  },
+  "migration": null
+}

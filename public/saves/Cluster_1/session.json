@@ -1,0 +1,109 @@
+{
+  "activeShard": "Caves",
+  "snapshots": [
+    {
+      "shard": "Caves",
+      "sessionId": "04E26ADB66396E8D",
+      "snapshotId": "0000000002",
+      "worldFile": "Caves/save/session/04E26ADB66396E8D/0000000002.json",
+      "playerFile": null,
+      "migration": null
+    },
+    {
+      "shard": "Caves",
+      "sessionId": "04E26ADB66396E8D",
+      "snapshotId": "0000000003",
+      "worldFile": "Caves/save/session/04E26ADB66396E8D/0000000003.json",
+      "playerFile": "Caves/save/session/04E26ADB66396E8D/A7MO82FN9PR9/0000000003.json",
+      "migration": null
+    },
+    {
+      "shard": "Caves",
+      "sessionId": "04E26ADB66396E8D",
+      "snapshotId": "0000000030",
+      "worldFile": "Caves/save/session/04E26ADB66396E8D/0000000030.json",
+      "playerFile": "Caves/save/session/04E26ADB66396E8D/A7MO82FN9PR9/0000000030.json",
+      "migration": null
+    },
+    {
+      "shard": "Caves",
+      "sessionId": "04E26ADB66396E8D",
+      "snapshotId": "0000000031",
+      "worldFile": "Caves/save/session/04E26ADB66396E8D/0000000031.json",
+      "playerFile": "Caves/save/session/04E26ADB66396E8D/A7MO82FN9PR9/0000000031.json",
+      "migration": null
+    },
+    {
+      "shard": "Caves",
+      "sessionId": "04E26ADB66396E8D",
+      "snapshotId": "0000000032",
+      "worldFile": "Caves/save/session/04E26ADB66396E8D/0000000032.json",
+      "playerFile": "Caves/save/session/04E26ADB66396E8D/A7MO82FN9PR9/0000000032.json",
+      "migration": null
+    },
+    {
+      "shard": "Caves",
+      "sessionId": "04E26ADB66396E8D",
+      "snapshotId": "0000000033",
+      "worldFile": "Caves/save/session/04E26ADB66396E8D/0000000033.json",
+      "playerFile": "Caves/save/session/04E26ADB66396E8D/A7MO82FN9PR9/0000000033.json",
+      "migration": null
+    },
+    {
+      "shard": "Master",
+      "sessionId": "03741E1B78B29575",
+      "snapshotId": "0000000073",
+      "worldFile": "Master/save/session/03741E1B78B29575/0000000073.json",
+      "playerFile": "Master/save/session/03741E1B78B29575/A7MO82FN9PR9/0000000073.json",
+      "migration": {
+        "portalid": 4,
+        "worldid": "1",
+        "sessionid": "03741E1B78B29575"
+      }
+    },
+    {
+      "shard": "Master",
+      "sessionId": "03741E1B78B29575",
+      "snapshotId": "0000000074",
+      "worldFile": "Master/save/session/03741E1B78B29575/0000000074.json",
+      "playerFile": "Master/save/session/03741E1B78B29575/A7MO82FN9PR9/0000000074.json",
+      "migration": null
+    },
+    {
+      "shard": "Master",
+      "sessionId": "03741E1B78B29575",
+      "snapshotId": "0000000075",
+      "worldFile": "Master/save/session/03741E1B78B29575/0000000075.json",
+      "playerFile": "Master/save/session/03741E1B78B29575/A7MO82FN9PR9/0000000075.json",
+      "migration": null
+    },
+    {
+      "shard": "Master",
+      "sessionId": "03741E1B78B29575",
+      "snapshotId": "0000000076",
+      "worldFile": "Master/save/session/03741E1B78B29575/0000000076.json",
+      "playerFile": "Master/save/session/03741E1B78B29575/A7MO82FN9PR9/0000000076.json",
+      "migration": null
+    },
+    {
+      "shard": "Master",
+      "sessionId": "03741E1B78B29575",
+      "snapshotId": "0000000077",
+      "worldFile": "Master/save/session/03741E1B78B29575/0000000077.json",
+      "playerFile": "Master/save/session/03741E1B78B29575/A7MO82FN9PR9/0000000077.json",
+      "migration": null
+    },
+    {
+      "shard": "Master",
+      "sessionId": "03741E1B78B29575",
+      "snapshotId": "0000000078",
+      "worldFile": "Master/save/session/03741E1B78B29575/0000000078.json",
+      "playerFile": "Master/save/session/03741E1B78B29575/A7MO82FN9PR9/0000000078.json",
+      "migration": {
+        "portalid": 4,
+        "worldid": "1",
+        "sessionid": "03741E1B78B29575"
+      }
+    }
+  ]
+}

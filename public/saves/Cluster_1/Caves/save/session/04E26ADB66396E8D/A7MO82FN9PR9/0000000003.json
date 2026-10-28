@@ -1,0 +1,47 @@
+{
+  "player": {
+    "prefab": "wilson",
+    "shardId": "caves",
+    "transform": {
+      "position": [
+        -1552.044,
+        0.0,
+        404.721
+      ],
+      "rotationY": 0
+    },
+    "stats": {
+      "health": 150,
+      "hunger": 150,
+      "sanity": 200
+    },
+    "inventory": {
+      "containers": {
+        "player:inventory": {
+          "slotCount": 15,
+          "slots": []
+        },
+        "player:equipment": {
+          "slotCount": 3,
+          "slots": [
+            {
+              "slotKey": "hand",
+              "item": {
+                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_equip_hand",
+                "itemId": "goldenpickaxe",
+                "count": 1,
+                "remainingUses": 31.5
+              }
+            }
+          ]
+        },
+        "player:cursor": {
+          "slotCount": 1,
+          "slots": []
+        }
+      },
+      "bufferedBuilds": []
+    }
+  },
+  "migration": null
+}

@@ -1,0 +1,132 @@
+{
+  "player": {
+    "prefab": "wilson",
+    "shardId": "caves",
+    "transform": {
+      "position": [
+        524.4,
+        0.0,
+        1655.229
+      ],
+      "rotationY": 0
+    },
+    "stats": {
+      "health": 150,
+      "hunger": 150,
+      "sanity": 200
+    },
+    "inventory": {
+      "containers": {
+        "player:inventory": {
+          "slotCount": 15,
+          "slots": [
+            {
+              "slotKey": "0",
+              "item": {
+                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_0",
+                "itemId": "bananajuice",
+                "count": 8
+              }
+            },
+            {
+              "slotKey": "1",
+              "item": {
+                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_1",
+                "itemId": "skeletonhat",
+                "count": 1
+              }
+            },
+            {
+              "slotKey": "5",
+              "item": {
+                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_5",
+                "itemId": "messagebottleempty",
+                "count": 1
+              }
+            },
+            {
+              "slotKey": "7",
+              "item": {
+                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_7",
+                "itemId": "glasscutter",
+                "count": 1,
+                "skinId": "glasscutter_terraprisma"
+              }
+            },
+            {
+              "slotKey": "8",
+              "item": {
+                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_8",
+                "itemId": "purpleamulet",
+                "count": 1
+              }
+            },
+            {
+              "slotKey": "9",
+              "item": {
+                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_9",
+                "itemId": "glasscutter",
+                "count": 1,
+                "skinId": "glasscutter_terraprisma"
+              }
+            },
+            {
+              "slotKey": "10",
+              "item": {
+                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_10",
+                "itemId": "firestaff",
+                "count": 1,
+                "remainingUses": 19
+              }
+            },
+            {
+              "slotKey": "11",
+              "item": {
+                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_11",
+                "itemId": "ruinshat",
+                "count": 1
+              }
+            },
+            {
+              "slotKey": "12",
+              "item": {
+                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_12",
+                "itemId": "nightmarefuel",
+                "count": 22
+              }
+            }
+          ]
+        },
+        "player:equipment": {
+          "slotCount": 3,
+          "slots": [
+            {
+              "slotKey": "hand",
+              "item": {
+                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_equip_hand",
+                "itemId": "yellowstaff",
+                "count": 1,
+                "skinId": "starstaff_relic",
+                "remainingUses": 6
+              }
+            },
+            {
+              "slotKey": "head",
+              "item": {
+                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_equip_head",
+                "itemId": "ruinshat",
+                "count": 1
+              }
+            }
+          ]
+        },
+        "player:cursor": {
+          "slotCount": 1,
+          "slots": []
+        }
+      },
+      "bufferedBuilds": []
+    }
+  },
+  "migration": null
+}
