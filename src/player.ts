@@ -3,12 +3,14 @@ import { initialSave } from './save/initialSave';
 import { playerStats } from './playerStats';
 import { world } from './physics';
 
-const playerPrefab = await createWilsonPlayerPrefab(
+const playerPrefab = createWilsonPlayerPrefab(
   `${import.meta.env.BASE_URL}dst/data/anim`,
   world,
   { sanityPercent: playerStats.sanity.percent },
 );
+await playerPrefab.display.artLoaded();
 playerPrefab.model.position.set(...initialSave.players.local.transform.position);
+playerPrefab.instance.tileTracker.sync();
 playerPrefab.physics.Teleport();
 
 export const player = playerPrefab.model;

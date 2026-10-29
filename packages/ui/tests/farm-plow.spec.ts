@@ -143,7 +143,7 @@ test('farm plow supports seed planting and ordinary/golden hoe tilling on its fa
   await seeds.click({ button: 'right' });
   await expect.poll(() => page.evaluate(() => (window as any).farmGame.main.inventory.exportState().slots
     .find((slot: any) => slot.item?.itemId === 'seeds')?.item.count)).toBe(2);
-  await expect.poll(() => page.evaluate(() => (window as any).farmGame.player.userData.animationController.stategraph.stateName)).toBe('idle');
+  await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).farmGame.player).animationController.stategraph.stateName)).toBe('idle');
   await seeds.click({ button: 'right', modifiers: ['Shift'] });
   await expect.poll(() => page.evaluate(() => (window as any).farmGame.scene.children
     .some((model: any) => model.name === 'GroundItem:seeds'))).toBe(true);
@@ -215,7 +215,7 @@ test('farm plow supports seed planting and ordinary/golden hoe tilling on its fa
     .some((model: any) => (window as any).__prefabInstance(model)?.prefab === 'farm_soil'
       && model.position.distanceToSquared((window as any).farmGame.player.position.clone().fromArray(position)) < 0.001), tillPoint.position),
   { timeout: 15_000 }).toBe(true);
-  await expect.poll(() => page.evaluate(() => (window as any).farmGame.player.userData.animationController.isTilling)).toBe(false);
+  await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).farmGame.player).animationController.isTilling)).toBe(false);
   await submit('c_give("golden_farm_hoe")');
   await unequipHand();
   await bar.locator('.inventory-bar__items [data-item-id="golden_farm_hoe"]').dragTo(hand);
@@ -233,7 +233,7 @@ test('farm plow supports seed planting and ordinary/golden hoe tilling on its fa
   await page.mouse.click(retill.x, retill.y, { button: 'right' });
   await expect.poll(() => page.evaluate((oldId) => (window as any).farmGame.scene.children
     .some((model: any) => (window as any).__prefabInstance(model)?.entityId === oldId), retill.oldId)).toBe(false);
-  await expect.poll(() => page.evaluate(() => (window as any).farmGame.player.userData.animationController.isTilling)).toBe(false);
+  await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).farmGame.player).animationController.isTilling)).toBe(false);
   // Ground reskin -> pickup -> equipment must preserve the golden tool's skin.
   const beforeCancel = await page.evaluate((position) => {
     const { scene, player } = (window as any).farmGame;
@@ -241,7 +241,7 @@ test('farm plow supports seed planting and ordinary/golden hoe tilling on its fa
       && model.position.distanceToSquared(player.position.clone().fromArray(position)) < 0.001))?.entityId;
   }, tillPoint.position);
   await page.mouse.click(retill.x, retill.y, { button: 'right' });
-  await expect.poll(() => page.evaluate(() => (window as any).farmGame.player.userData.animationController.isTilling)).toBe(true);
+  await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).farmGame.player).animationController.isTilling)).toBe(true);
   await page.keyboard.press('Escape');
   await page.waitForTimeout(1000);
   expect(await page.evaluate((id) => (window as any).farmGame.scene.children

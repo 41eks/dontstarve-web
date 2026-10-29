@@ -135,9 +135,15 @@ importers:
 
   packages/map:
     dependencies:
+      '@dontstarve-web/animation':
+        specifier: workspace:*
+        version: link:../animation
       '@dontstarve-web/prefab':
         specifier: workspace:*
         version: link:../prefab
+      '@dontstarve-web/signals':
+        specifier: workspace:*
+        version: link:../signals
       '@dontstarve-web/ui':
         specifier: workspace:*
         version: link:../ui

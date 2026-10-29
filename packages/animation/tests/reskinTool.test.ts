@@ -7,7 +7,7 @@ import { executeDebugCommand } from '../../../src/debugCommands';
 import { equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { GroundItemAssets } from '../../prefab/src/groundItems';
 import { createGroundItemVisual } from './groundItemVisual';
-import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
+import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
 import { parseImageAtlasXml } from '../src/imageAtlas';
 
 // Application inventory imports the UI's metadata through its package entry point.
@@ -48,7 +48,7 @@ it('gives separate sweepers through the application inventory, resolves their ic
 it('renders source ground and held art for the base sweeper and brush skin, then removes held art', async () => {
   const assets = new GroundItemAssets();
   const player = await createWilsonPlayer('/dst/data/anim');
-  const animation = player.userData.animationController as WilsonAnimationController;
+  const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
   const skins = ['reskin_tool_brush'];
   for (const skinId of [undefined, ...skins]) {
     const ground = await createGroundItemVisual(assets, 'reskin_tool', skinId);

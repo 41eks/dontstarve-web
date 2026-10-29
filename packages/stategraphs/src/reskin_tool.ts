@@ -9,6 +9,7 @@ import type { SpellCastDoer, SpellTarget } from '../../componets/src/spellcaster
 import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor } from './actionContext.ts';
 import { modelHasTag } from '../../prefab/src/prefabInstance';
 import { actionTargetModel, type ActionTargetView } from './actionTargetView';
+import { findActionEntity } from '../../prefab/src/actionEntity';
 /** Prepared logical FX message. The target places and starts it only after committing its skin. */
 export interface ReskinFxMessage {
   play(position: THREE.Vector3, prefabId: string): void;
@@ -17,12 +18,14 @@ export interface ReskinFxMessage {
 }
 
 export interface PreparedReskin {
+  /** Proposed declaration, so the display can preload it before the timed cast. */
+  readonly skinId?: string;
   /** Commit the prepared appearance only if its source entity is still valid. */
   apply(fx?: ReskinFxMessage): boolean;
   dispose(): void;
 }
 
-export type ReskinTarget = SpellTarget & ActionTargetView & {
+type ReskinActionTarget = SpellTarget & ActionTargetView & {
   readonly id: string;
   readonly prefabId: string;
   readonly position: THREE.Vector3;
@@ -32,11 +35,27 @@ export type ReskinTarget = SpellTarget & ActionTargetView & {
   readonly preparedReskin?: PreparedReskin;
   readonly reskinFx?: ReskinFxMessage;
   isValid(): boolean;
-  prepareNextSkin(tool?: ComponentActionEntity): Promise<PreparedReskin>;
+  prepareNextSkin?(tool?: ComponentActionEntity): Promise<PreparedReskin>;
 };
+
+export type ReskinTarget = ReskinActionTarget & Required<Pick<ReskinActionTarget, 'prepareNextSkin'>>;
 
 export interface ReskinEffectPresenter {
   prepare(toolSkinId?: string): Promise<ReskinFxMessage>;
+}
+
+/** CASTSPELL can select any action entity; an entity without a skin operation fails CanCast at impact. */
+export function getReskinActionTarget(model: THREE.Object3D): ReskinActionTarget | undefined {
+  const entity = findActionEntity(model);
+  if (!entity) return undefined;
+  return entity.reskinTarget ?? {
+    id: model.uuid, prefabId: entity.prefab, model: entity.model as THREE.Group,
+    get position() { return entity.getPosition(); },
+    skins: [], get isRemoved() { return entity.isRemoved; },
+    hasTag: tag => entity.hasTag(tag),
+    isValid: () => findActionEntity(model) === entity,
+    isVisible: () => model.visible,
+  };
 }
 
 export const RESKIN_CAST_TIME = WILSON_ACTION_TIMES.reskin;
@@ -49,7 +68,6 @@ export class ReskinActionController {
   private readonly handEquipment: HandEquipmentSignal;
   private readonly stopEquipment: () => void;
   private readonly stopActionEvents: () => void;
-  private readonly getTargets: (model?: THREE.Object3D) => readonly ReskinTarget[];
   private readonly effects: ReskinEffectPresenter;
   private readonly isManualMovement: () => boolean;
   private readonly onError: (error: unknown) => void;
@@ -57,7 +75,7 @@ export class ReskinActionController {
   private readonly picker: PlayerActionPicker;
   private readonly unregisterHover: () => void;
   private version = 0;
-  private pending?: { target: ReskinTarget; prepared?: PreparedReskin; fx: ReskinFxMessage; skinId?: string; started: boolean };
+  private pending?: { target: ReskinActionTarget; prepared?: PreparedReskin; fx: ReskinFxMessage; skinId?: string; started: boolean };
   private loading = false;
   private readonly doer: SpellCastDoer;
 
@@ -66,13 +84,12 @@ export class ReskinActionController {
     animation: WilsonAnimationController,
     locomotor: Pick<Locomotor, 'stop' | 'goToPoint' | 'destination'>,
     handEquipment: HandEquipmentSignal,
-    getTargets: (model?: THREE.Object3D) => readonly ReskinTarget[],
     effects: ReskinEffectPresenter,
     isManualMovement = () => false,
     onError: (error: unknown) => void = console.error,
   ) {
     this.world = world; this.animation = animation; this.locomotor = locomotor;
-    this.handEquipment = handEquipment; this.getTargets = getTargets; this.effects = effects;
+    this.handEquipment = handEquipment; this.effects = effects;
     this.doer = { position: world.player.position, components: {}, hasTag: tag => modelHasTag(world.player, tag) };
     this.stopEquipment = bindHandEquipmentUpdate(handEquipment, {
       isEquipped: equipment => this.isEquipped(equipment),
@@ -87,18 +104,19 @@ export class ReskinActionController {
     // Equipped actions are computed only for the selected entity.
     this.unregisterHover = this.picker.register(model => {
       const tool = model && equippedActionEntity(this.getTool());
+      const target = model && getReskinActionTarget(model);
       // playeractionpicker.lua GetEquippedItemActions: the only place that selects CASTSPELL for a target.
-      return !tool ? [] : this.getTargets(model).filter(target => target.isValid()).map(target => ({
+      return !tool || !target?.isValid() ? [] : [{
         action: { action: 'CASTSPELL', modifier: 'RESKIN', invobject: tool },
         button: 'right', model: actionTargetModel(target),
         available: collectEquippedActions(tool, target, true).includes('CASTSPELL'), source: 'equipped',
-      }));
+      }];
     }) ?? (() => {});
     world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown, true);
     window.addEventListener('keydown', this.handleKeyDown);
   }
 
-  async request(target: ReskinTarget): Promise<boolean> {
+  async request(target: ReskinActionTarget): Promise<boolean> {
     const tool = this.getTool();
     if (!tool || !target.isValid() || this.loading || this.animation.isReskinning) return false;
     this.cancel();
@@ -113,7 +131,7 @@ export class ReskinActionController {
       // Selection is tag-based; CanCast belongs to actions.lua at the hit frame.
       // Prepare render assets only when this target can currently change appearance.
       const results = await Promise.allSettled([
-        this.canCast(target) ? target.prepareNextSkin(equippedActionEntity(tool)) : Promise.resolve(undefined),
+        this.canCast(target) ? this.prepareSkin(target, equippedActionEntity(tool)) : undefined,
         this.effects.prepare(tool.skinId),
       ]);
       if (results[0].status === 'fulfilled') prepared = results[0].value;
@@ -128,6 +146,15 @@ export class ReskinActionController {
     finally { prepared?.dispose(); fx?.dispose(); if (version === this.version) this.loading = false; }
   }
 
+  private async prepareSkin(target: ReskinActionTarget, tool: ComponentActionEntity | undefined): Promise<PreparedReskin | undefined> {
+    const prepared = await target.prepareNextSkin?.(tool);
+    try {
+      const display = target.display ?? actionTargetModel(target).userData.display;
+      if (prepared && 'skinId' in prepared) await display?.preloadSkin(prepared.skinId);
+      return prepared;
+    } catch (error) { prepared?.dispose(); throw error; }
+  }
+
   private isEquipped(equipment = this.handEquipment.peek()): boolean {
     const entity = equippedActionEntity(equipment);
     return !!entity?.components.spellcaster && entity.hasTag('veryquickcast') && entity.hasTag('castontargets');
@@ -139,7 +166,7 @@ export class ReskinActionController {
   }
 
   /** Asset preparation only; actions.lua CASTSPELL.fn checks CanCast again through castSpell at the hit frame. */
-  private canCast(target: ReskinTarget): boolean {
+  private canCast(target: ReskinActionTarget): boolean {
     return equippedActionEntity(this.getTool())?.components.spellcaster?.canCast(this.doer, target, target.position) ?? false;
   }
 
@@ -165,7 +192,7 @@ export class ReskinActionController {
     }
     const { target } = pending;
     if (this.distanceSquared(target.position) > RESKIN_REACH ** 2) {
-      const direction = this.world.player.position.clone().sub(target.position).setY(0).normalize();
+      const direction = this.world.player.position.clone().sub(target.position).normalize();
       const destination = target.position.clone().addScaledVector(direction, RESKIN_REACH * 0.8);
       if (!this.locomotor.destination || this.locomotor.destination.distanceToSquared(destination) > 0.01) {
         if (!this.locomotor.goToPoint(destination)) this.cancel();
@@ -180,7 +207,7 @@ export class ReskinActionController {
         || this.getTool()!.skinId !== pending.skinId || this.distanceSquared(target.position) > RESKIN_REACH ** 2) {
         this.cancel(); return;
       }
-      const castTarget = Object.assign(Object.create(target) as ReskinTarget, { preparedReskin: pending.prepared, reskinFx: pending.fx });
+      const castTarget = Object.assign(Object.create(target) as ReskinActionTarget, { preparedReskin: pending.prepared, reskinFx: pending.fx });
       equippedActionEntity(this.getTool())?.components.spellcaster?.castSpell(castTarget, target.position, this.doer);
       pending.prepared?.dispose();
       pending.fx.dispose();
@@ -200,11 +227,11 @@ export class ReskinActionController {
   }
 
   private distanceSquared(point: THREE.Vector3): number {
-    return (this.world.player.position.x - point.x) ** 2 + (this.world.player.position.z - point.z) ** 2;
+    return this.world.player.position.distanceToSquared(point);
   }
 
   private faceTarget(point: THREE.Vector3): void {
-    const direction = point.clone().sub(this.world.player.position).setY(0);
+    const direction = point.clone().sub(this.world.player.position);
     const forward = this.world.camera.getWorldDirection(new THREE.Vector3()).setY(0).normalize();
     const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0));
     const f = direction.dot(forward), r = direction.dot(right);
@@ -213,9 +240,9 @@ export class ReskinActionController {
   }
 
   /** playercontroller.lua OnRightClick uses the picked action as is; only resolve its target record. */
-  private hitTarget(event?: PointerEvent): ReskinTarget | undefined {
+  private hitTarget(event?: PointerEvent): ReskinActionTarget | undefined {
     const action = this.picker.getMouseActions(event).right, model = this.picker.targetModel;
-    return model && action?.action === 'CASTSPELL' && action.modifier === 'RESKIN' ? this.getTargets(model)[0] : undefined;
+    return model && action?.action === 'CASTSPELL' && action.modifier === 'RESKIN' ? getReskinActionTarget(model) : undefined;
   }
 
   private readonly handlePointerDown = (event: PointerEvent): void => {

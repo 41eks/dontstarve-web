@@ -7,9 +7,10 @@ import { createSanityState } from '@dontstarve-web/signals';
 
 export async function checkCrown() {
   const sanity = createSanityState(200, 200);
-  const player = await createWilsonPlayer('/dst/data/anim', { sanityPercent: sanity.percent });
+  const player = createWilsonPlayer('/dst/data/anim', { sanityPercent: sanity.percent });
+  await player.userData.display.artLoaded();
   player.position.set(0, 0, 0);
-  const animation = player.userData.animationController as WilsonAnimationController;
+  const animation = (window as any).__prefabInstance(player).animationController as WilsonAnimationController;
   const scene = new THREE.Scene();
   scene.add(player);
   const camera = new THREE.OrthographicCamera(-7, 7, 14, -1, 0.1, 100);

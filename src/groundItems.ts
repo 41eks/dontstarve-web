@@ -26,10 +26,9 @@ import { RECORD_ID, RECORD_SONGS, isPhonographRecord } from '@dontstarve-web/pre
 import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
 import type { SavedEntity } from './save/types';
 import { performToolWork } from '../packages/stategraphs/src/componentactions';
-import { actionEntity, disposeActionEntity } from '../packages/prefab/src/actionEntity';
+import { actionEntity, disposeActionEntity, findActionEntity } from '../packages/prefab/src/actionEntity';
 import type { GameTimeScheduler } from '../packages/componets/src/gameTimeScheduler';
 import type { DeconstructionTarget } from '@dontstarve-web/prefab/greenstaff';
-import type { MiniMapEntity } from '@dontstarve-web/prefab/minimapEntity';
 import type { WorldEventEmitter } from '../packages/prefab/src/worldContext';
 import { createEffect, createRenderEffect, watchSignal, WorldContentKey, type GetWatchWorldContent, type Signal } from '@dontstarve-web/signals';
 
@@ -52,12 +51,6 @@ interface GroundItemRecord extends GroundItemVisual {
 }
 
 export class GroundItemManager {
-  /** Logical item icons survive visual replacement; owned/picked-up items are
-   * hidden by inventoryitem and leave the ground-item collection.
-   */
-  get miniMapEntities(): readonly MiniMapEntity[] {
-    return this.disposed ? [] : this.entities.miniMapEntities;
-  }
   readonly entities: ItemEntityRegistry;
   private readonly atlasRequests = new Map<string, Promise<ImageAtlas>>();
   private readonly loadedAtlases = new Map<string, ImageAtlas>();
@@ -317,6 +310,7 @@ export class GroundItemManager {
     visual.instance.skinId = entity.skinId;
     id = entity.id;
     entity.transform.position.set(position.x, dropped ? 0 : position.y, position.z);
+    entity.MiniMapEntity?.tileTracker.sync();
     this.trackGroundEntity(entity);
     visual.bindTransform?.(entity.transform);
     visual.model.position.copy(entity.transform.position);
@@ -393,7 +387,7 @@ export class GroundItemManager {
     model.userData.components = entity.components;
     // Domain queries read the authoritative vector; presentation/pickup snapshots own their scratch vector.
     model.userData.getGroundPosition = () => entity.transform.position;
-    actionEntity(model, entity.prefab, entity);
+    actionEntity(model, entity.prefab, entity).reskinTarget = this.createReskinTarget(record);
     model.userData.pickupTarget = {
       model, entity, get position() { return record.footPosition; },
       hasTag: (tag: string) => entity.hasTag(tag) || modelHasTag(model, tag),
@@ -593,65 +587,39 @@ export class GroundItemManager {
     return modelValues(this.items, model, this.activeItems).filter(record => record.entity.components.workable?.GetWorkAction() === 'NET')
       .map((record) => this.captureTarget(record));
   }
-    get reskinTargets(): readonly ReskinTarget[] { return this.getReskinTargets(); }
+    get reskinTargets(): readonly ReskinTarget[] {
+        return Array.from(this.activeItems, record => findActionEntity(record.model)?.reskinTarget)
+            .filter((target): target is ReskinTarget => target !== undefined);
+    }
 
-    getReskinTargets(model?: THREE.Object3D): readonly ReskinTarget[] {
-        return modelValues(this.items, model, this.activeItems).flatMap((record) => {
-            const prefabId = record.definition.itemId;
-            const skins = Object.keys((isHatId(prefabId) ? HAT_DEFINITIONS[prefabId] : GROUND_ART_DEFINITIONS[prefabId])?.skinArchives ?? {});
-            const isValid = () => this.activeItems.has(record) && !record.entity.isRemoved && !record.isRemoved?.();
-            return [{
-                id: record.id, prefabId, model: record.model, get position() { return record.footPosition; }, isValid,
-                get isRemoved() { return record.entity.isRemoved; }, hasTag: tag => record.entity.hasTag(tag) || modelHasTag(record.model, tag),
-                isVisible: () => record.model.visible,
-                skins, get skinId() { return record.entity.skinId; },
-                prepareNextSkin: async (tool) => {
-                    const skinId = nextReskin(skins, record.definition.skinId, tool?._cached_reskinname, prefabId);
-                    const definition = this.currentDefinition(record);
-                    if (skinId === undefined) delete definition.skinId; else definition.skinId = skinId;
-                    const visual = this.createVisual(definition);
-                    let used = false;
-                    return {
-                        apply: (fx?: ReskinFxMessage) => {
-                            if (used || !isValid()) return false;
-                            // The machine may have advanced while skin assets were loading.
-                            const oldMachine = record.model.userData.phonograph as PhonographController | undefined;
-                            const newMachine = visual.model.userData.phonograph as PhonographController | undefined;
-                            if (oldMachine && newMachine) {
-                              newMachine.record = oldMachine.record;
-                              definition.phonographRecord = oldMachine.record;
-                              definition.playbackRemaining = oldMachine.isPlaying ? oldMachine.remainingSeconds : undefined;
-                            }
-                            if (record.definition.itemId === 'torch' || record.definition.itemId === 'lantern') {
-                              const current = this.currentDefinition(record);
-                              if (!isValid()) return false;
-                              definition.remainingFuel = current.remainingFuel;
-                              definition.torchLit = current.torchLit;
-                              definition.lanternOn = current.lanternOn;
-                            }
-                            record.entity.apply({ ...record.entity.snapshot(), skinId: definition.skinId });
-                            visual.bindTransform?.(record.entity.transform);
-                            visual.setDefinition?.(definition);
-                            visual.bindEntity?.(record.entity);
-                            visual.model.position.copy(record.footPosition);
-                            visual.model.quaternion.copy(record.model.quaternion);
-                            if (record.fling) visual.model.children[0].position.y = record.fling.height;
-                            visual.instance.entityId = record.entity.id;
-                            this.removeVisual(record);
-                            const replacement = this.withFootPosition({ ...record, ...visual, definition });
-                            this.items.set(visual.model, replacement);
-                            this.bindInventoryEvents(replacement);
-                            this.bindVisualActivity(replacement);
-                            visual.model.dispatchEvent({ type: 'onload' });
-                            fx?.play(record.footPosition, prefabId);
-                            used = true;
-                            return true;
-                        },
-                        dispose: () => { if (!used) { visual.dispose(); used = true; } },
-                    };
-                },
-            }];
-        });
+    private createReskinTarget(record: GroundItemRecord): ReskinTarget {
+        const prefabId = record.definition.itemId;
+        const skins = Object.keys((isHatId(prefabId) ? HAT_DEFINITIONS[prefabId] : GROUND_ART_DEFINITIONS[prefabId])?.skinArchives ?? {});
+        const isValid = () => this.activeItems.has(record) && !record.entity.isRemoved && !record.isRemoved?.();
+        return {
+            id: record.id, prefabId, model: record.model, get position() { return record.footPosition; }, isValid,
+            get isRemoved() { return record.entity.isRemoved; }, hasTag: tag => record.entity.hasTag(tag) || modelHasTag(record.model, tag),
+            isVisible: () => record.model.visible,
+            skins, get skinId() { return record.entity.skinId; },
+            prepareNextSkin: async (tool) => {
+                const previousSkin = record.entity.skinId;
+                const skinId = nextReskin(skins, previousSkin, tool?._cached_reskinname, prefabId);
+                let used = false;
+                return {
+                    skinId,
+                    apply: (fx?: ReskinFxMessage) => {
+                        if (used || !isValid() || record.entity.skinId !== previousSkin) return false;
+                        record.entity.apply({ ...record.entity.snapshot(), skinId });
+                        if (skinId === undefined) delete record.definition.skinId; else record.definition.skinId = skinId;
+                        record.instance.skinId = skinId;
+                        fx?.play(record.footPosition, prefabId);
+                        used = true;
+                        return true;
+                    },
+                    dispose: () => { used = true; },
+                };
+            },
+        };
     }
 
     private isNetCreature(itemId: string): boolean { return this.prefabs.get(itemId)?.capture === 'net'; }
@@ -743,7 +711,7 @@ export class GroundItemManager {
       } else {
         const moved = item.model.position.x !== previousX || item.model.position.y !== previousY || item.model.position.z !== previousZ;
         // Placement tracks the logical ground origin; pointer queries update visual matrices on demand.
-        if (moved) syncPlacementEntity(item.model);
+        if (moved) { syncPlacementEntity(item.model); item.entity.MiniMapEntity?.tileTracker.moved(); }
       }
     }
   }

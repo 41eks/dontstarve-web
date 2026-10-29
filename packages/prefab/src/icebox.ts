@@ -7,7 +7,7 @@ import {
     type AnimatedBuildingInteractionChange,
 } from './animatedBuildingPlacement';
 import type { WorldContext } from './worldContext';
-import { PlaySound, PreloadSounds } from './sound';
+import { PlaySound } from './sound';
 
 export const ICE_BOX_ID = 'icebox' as const;
 export type IceBoxId = typeof ICE_BOX_ID;
@@ -27,7 +27,6 @@ export const ICE_BOX_DEFINITION: AnimatedBuildingDefinition = {
     hammerEffect: { archive: 'structure_collapse_fx.zip', animation: 'collapse_small', name: 'collapse' },
     hammerDropContentsOnHit: true,
     skinInit: icebox_init_fn,
-    prepare: () => PreloadSounds('dontstarve/common/icebox_open', 'dontstarve/common/icebox_close'),
     onopen: ({ model }) => { PlaySound('dontstarve/common/icebox_open', model.position); },
     onclose: ({ model }) => { PlaySound('dontstarve/common/icebox_close', model.position); },
     onbuilt,

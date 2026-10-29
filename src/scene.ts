@@ -12,7 +12,7 @@ import { ground, turfGround, turfMap } from './building';
 import { camera } from './camera';
 import { createSceneEntities } from './sceneEntities';
 import type { EntityRegistry } from './entityRegistry';
-import { player, playerBody, disposePlayer, setPlayerNormal } from './player';
+import { player, playerBody, playerInstance, disposePlayer, setPlayerNormal } from './player';
 import {
   type PlaceableBuildingInteractionChange,
   type PlaceableBuildingId,
@@ -28,12 +28,14 @@ import type { PerishWorld } from '../packages/componets/src/perishable';
 import { Locomotor, findGroundPath, setupLocomotorInput } from '@dontstarve-web/prefab/locomotor';
 import { SlipperyFeet } from '../packages/componets/src/slipperyfeet';
 import { bindActionEntityWorld, FindEntities } from '../packages/prefab/src/actionEntity';
-import { bindPlayerBuilder, type WilsonAnimationController } from '@dontstarve-web/prefab/player';
+import { bindPlayerBuilder } from '@dontstarve-web/prefab/player';
 import type { DisposalEvents } from './registerDisposal';
 import { disposeTextureAssets } from '@dontstarve-web/animation/textureLoader';
 import { preloadAnimationArchives } from '@dontstarve-web/animation/preloadArchives';
 import { savedPrefabArchives } from './prefabDefinitions';
 import { DisposeSounds, PrewarmSounds } from '@dontstarve-web/prefab/sound';
+import { GROUND_ITEM_DEFINITIONS } from '@dontstarve-web/prefab/groundItems';
+import { prewarmCachedBuilds } from '@dontstarve-web/display';
 
 export { world, worldState };
 
@@ -113,11 +115,11 @@ export async function startScene(
   inventory?: InventoryStore,
 ) {
   const blockDisabledController = (event: PointerEvent) => {
-    if (player.userData.controllerEnabled !== false) return;
+    if (playerInstance.controllerEnabled) return;
     event.preventDefault(); event.stopImmediatePropagation();
   };
   view.renderer.domElement.addEventListener('pointerdown', blockDisabledController, true);
-  player.userData.locomotor = locomotor;
+  playerInstance.locomotor = locomotor;
   const clockUpdater = createWorldClockUpdater(worldState, initialSave.world.elapsedSeconds, () => [player.position]);
   const stopEntityWorld = bindActionEntityWorld(scene, worldState.tickingarea, worldState.playerpositions);
   const scheduler = worldState.scheduler;
@@ -148,16 +150,16 @@ export async function startScene(
   });
   builder.OnUpdate();
   // player_common.lua AddComponent("slipperyfeet"); frozen ponds are its slipperyfeettarget entities.
-  const stategraph = (player.userData.animationController as WilsonAnimationController | undefined)?.stategraph;
+  const stategraph = playerInstance.animationController.stategraph;
   const removeSlipperyFeet = () => {
-    (player.userData.slipperyfeet as SlipperyFeet | undefined)?.dispose();
-    delete player.userData.slipperyfeet;
+    playerInstance.slipperyfeet?.dispose();
+    delete playerInstance.slipperyfeet;
   };
   const addSlipperyFeet = () => {
-    if (!stategraph || player.userData.slipperyfeet) return;
-    player.userData.slipperyfeet = new SlipperyFeet({
+    if (playerInstance.slipperyfeet) return;
+    playerInstance.slipperyfeet = new SlipperyFeet({
       getPosition: () => player.position,
-      getMotorSpeed: () => player.userData.currentMotorSpeed as number ?? 0,
+      getMotorSpeed: () => playerInstance.currentMotorSpeed,
       PushEvent: (name, data) => stategraph.pushEvent(name, data),
       sg: stategraph,
     }, {
@@ -167,8 +169,8 @@ export async function startScene(
   };
   // CommonPlayerDeath removes it and CommonActualRez adds it back, through the ghost owner.
   addSlipperyFeet();
-  const updateSlipperyFeet = (dt: number) => (player.userData.slipperyfeet as SlipperyFeet | undefined)?.update(dt);
-  if (stategraph) backTasks.push(updateSlipperyFeet);
+  const updateSlipperyFeet = (dt: number) => playerInstance.slipperyfeet?.update(dt);
+  backTasks.push(updateSlipperyFeet);
   const updateBeforePhysics = (dt: number) => registry.beforePhysics(dt);
   const updateEntities = (dt: number) => {
     turfMap.update(dt);
@@ -217,10 +219,12 @@ export async function startScene(
       updateCharacterRenderOrder(registry);
       preparing = true;
       try {
-        // Retain resources until both preparations settle, including on failure or disposal.
+        // Retain resources until every preparation settles, including on failure or disposal.
         const results = await Promise.allSettled([
           dstLighting.prewarm(scene, camera, preparation.signal),
           PrewarmSounds(),
+          prewarmCachedBuilds(playerInstance.animationController.equipmentAssets,
+            ['pan_flute.zip', ...Object.values(GROUND_ITEM_DEFINITIONS.panflute.skinArchives)]),
         ]);
         for (const result of results) {
           if (result.status === 'rejected') throw result.reason;
@@ -240,10 +244,10 @@ export async function startScene(
     disposed = true;
     preparation.abort();
     view.renderer.domElement.removeEventListener('pointerdown', blockDisabledController, true);
-    if (player.userData.locomotor === locomotor) delete player.userData.locomotor;
+    if (playerInstance.locomotor === locomotor) delete playerInstance.locomotor;
     animation?.stop();
     builder.dispose();
-    if (player.userData.components?.builder === builder) delete player.userData.components.builder;
+    if (playerInstance.components.builder === builder) delete playerInstance.components.builder;
     removeSlipperyFeet();
     const slipTask = backTasks.indexOf(updateSlipperyFeet);
     if (slipTask >= 0) backTasks.splice(slipTask, 1);

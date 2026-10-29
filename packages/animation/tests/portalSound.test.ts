@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, expect, it, vi } from 'vitest';
 import { PortalManager } from '../../prefab/src/portal';
-import { PlaySound, PreloadSounds } from '../../prefab/src/sound';
+import { PlaySound } from '../../prefab/src/sound';
 import { loadAnim } from '../src/animationAssets';
 
 vi.mock('../../prefab/src/sound', () => ({
@@ -35,7 +35,6 @@ it('plays Jacob at frames 0 and 30 of every source two-second idle loop without 
   try {
     const idle = (await loadAnim('portal_moonrock.zip', '/dst/data/anim')).animations.find(({ name }) => name === 'idle_loop')!;
     expect([idle.frames.length, idle.frameRate]).toEqual([60, 30]);
-    expect(vi.mocked(PreloadSounds).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(PlaySound).mock.invocationCallOrder[0]);
     // Ten complete loops plus one frame ensures we cross the last wrap even
     // when floating-point accumulation renders the preceding frame at 20s.
     for (let i = 0; i < 601; i++) s.manager.update(1 / 30, new THREE.Quaternion());

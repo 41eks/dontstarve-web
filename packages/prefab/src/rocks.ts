@@ -16,7 +16,7 @@ import { LootDropper, SetSharedLootTable, type ChanceLootTable } from '../../com
 import { actionEntity } from './actionEntity';
 import type { SpawnGroundItem } from './groundPrefab';
 import catalog from './groundItems.json' with { type: 'json' };
-import { PlaySound, PreloadSounds } from './sound';
+import { PlaySound } from './sound';
 
 export const ROCK_PREFABS = ['rock1', 'rock2', 'rock_flintless', 'rock_flintless_med', 'rock_flintless_low',
   'cavein_boulder', 'rock_moon_shell', 'rock_moon'] as const;
@@ -201,7 +201,7 @@ export class RockManager {
     const colour = tinted ? .5 + Math.random() * .5 : 1;
     const request = this.getSource(prefabId);
     const resourcesRequest = Promise.allSettled([request,
-      definition.loot ? PreloadSounds('dontstarve/wilson/rock_break') : Promise.resolve(),
+
       prefabId === 'rock_moon_shell' ? this.getSource('moonrockseed') : Promise.resolve(undefined),
     ]);
     this.pendingSpawns.add(resourcesRequest);
@@ -212,7 +212,7 @@ export class RockManager {
       throw failure?.status === 'rejected' ? failure.reason : new Error('Rock manager has been disposed');
     }
     const source = (resources[0] as PromiseFulfilledResult<RockSource>).value;
-    const seedSource = (resources[2] as PromiseFulfilledResult<RockSource | undefined>).value;
+    const seedSource = (resources[1] as PromiseFulfilledResult<RockSource | undefined>).value;
     const sprite = this.createSprite(source, prefabId, caveinBoulder?.raised ? 'idle_raised' : definition.initialAnimation);
     const seed = seedSource;
     return this.create(prefabId, sprite, position, saved, caveinBoulder, seed, colour);

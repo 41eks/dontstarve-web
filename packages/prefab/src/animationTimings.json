@@ -708,5 +708,1449 @@
       "frameRate": 30.0,
       "frames": 15
     }
+  ],
+  "player_idles.zip": [
+    {
+      "name": "idle_loop_nofaced",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 66
+    },
+    {
+      "name": "idle",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 2
+    },
+    {
+      "name": "idle_loop",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 66
+    },
+    {
+      "name": "idle_inaction",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 49
+    },
+    {
+      "name": "idle_inaction_sanity",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 55
+    },
+    {
+      "name": "idle_sanity_pre",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 4
+    },
+    {
+      "name": "idle_sanity_loop",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 24
+    },
+    {
+      "name": "idle_hot_pre",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 4
+    },
+    {
+      "name": "idle_hot_loop",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 40
+    },
+    {
+      "name": "idle_hot_pst",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 38
+    }
+  ],
+  "player_basic.zip": [
+    {
+      "name": "run_pre",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 4
+    },
+    {
+      "name": "run_loop",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 16
+    },
+    {
+      "name": "run_pst",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 8
+    },
+    {
+      "name": "corpse",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 2
+    },
+    {
+      "name": "corpse_hit",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 11
+    }
+  ],
+  "player_jump.zip": [
+    {
+      "name": "jump_pre",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 5
+    },
+    {
+      "name": "jump_lag",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 15
+    },
+    {
+      "name": "jump",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 25
+    },
+    {
+      "name": "jumpout",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 28
+    }
+  ],
+  "player_actions_item.zip": [
+    {
+      "name": "pickup",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 5
+    },
+    {
+      "name": "pickup_lag",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 15
+    },
+    {
+      "name": "pickup_pst",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 10
+    },
+    {
+      "name": "item_out",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 16
+    },
+    {
+      "name": "item_in",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 22
+    },
+    {
+      "name": "build_pre",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 7
+    },
+    {
+      "name": "build_loop",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 16
+    },
+    {
+      "name": "build_pst",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 4
+    },
+    {
+      "name": "give",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 13
+    },
+    {
+      "name": "give_pst",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 9
+    },
+    {
+      "name": "item_hat",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 16
+    },
+    {
+      "name": "light_fire",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 13
+    },
+    {
+      "name": "light_fire_pst",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 9
+    },
+    {
+      "name": "give_equipped",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 13
+    },
+    {
+      "name": "give_equipped_pst",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 9
+    }
+  ],
+  "player_actions_eat.zip": [
+    {
+      "name": "hungry",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 61
+    },
+    {
+      "name": "eat_pre",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 8
+    },
+    {
+      "name": "eat_lag",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 15
+    },
+    {
+      "name": "eat",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 98
+    },
+    {
+      "name": "quick_eat_pre",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 12
+    },
+    {
+      "name": "quick_eat_lag",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 15
+    },
+    {
+      "name": "quick_eat",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 12
+    },
+    {
+      "name": "quick_drink_pre",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 12
+    },
+    {
+      "name": "quick_drink_lag",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 15
+    },
+    {
+      "name": "quick_drink",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 16
+    },
+    {
+      "name": "refuseeat",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 82
+    }
+  ],
+  "player_staff.zip": [
+    {
+      "name": "staff_pre",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 8
+    },
+    {
+      "name": "staff_lag",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 15
+    },
+    {
+      "name": "staff",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 73
+    }
+  ],
+  "player_actions_bugnet.zip": [
+    {
+      "name": "bugnet_pre",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 8
+    },
+    {
+      "name": "bugnet_lag",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 15
+    },
+    {
+      "name": "bugnet",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 35
+    }
+  ],
+  "player_actions_pickaxe.zip": [
+    {
+      "name": "pickaxe_pre",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 9
+    },
+    {
+      "name": "pickaxe_lag",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 15
+    },
+    {
+      "name": "pickaxe_loop",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 19
+    },
+    {
+      "name": "pickaxe_pst",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 18
+    }
+  ],
+  "player_actions_shovel.zip": [
+    {
+      "name": "shovel_pre",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 11
+    },
+    {
+      "name": "shovel_lag",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 15
+    },
+    {
+      "name": "shovel_loop",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 36
+    },
+    {
+      "name": "shovel_pst",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 12
+    }
+  ],
+  "player_attacks.zip": [
+    {
+      "name": "atk_pre",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 6
+    },
+    {
+      "name": "atk_lag",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 15
+    },
+    {
+      "name": "atk",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 19
+    },
+    {
+      "name": "punch",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 31
+    },
+    {
+      "name": "spearjab_pre",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 7
+    },
+    {
+      "name": "spearjab_lag",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 14
+    },
+    {
+      "name": "spearjab",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 23
+    },
+    {
+      "name": "toolpunch",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 24
+    }
+  ],
+  "player_actions_till.zip": [
+    {
+      "name": "ref",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 6
+    },
+    {
+      "name": "till_pre",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 10
+    },
+    {
+      "name": "till_lag",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 16
+    },
+    {
+      "name": "till_loop",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 27
+    },
+    {
+      "name": "till_pst",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 14
+    },
+    {
+      "name": "xx1",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 10
+    },
+    {
+      "name": "till2_pre",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 10
+    },
+    {
+      "name": "till2_lag",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 16
+    },
+    {
+      "name": "till2_loop",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 27
+    },
+    {
+      "name": "till2_pst",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 14
+    }
+  ],
+  "player_actions_axe.zip": [
+    {
+      "name": "chop_pre",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 14
+    },
+    {
+      "name": "chop_lag",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 24
+    },
+    {
+      "name": "chop_loop",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 26
+    }
+  ],
+  "player_actions.zip": [
+    {
+      "name": "dial_loop",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 52
+    },
+    {
+      "name": "sleep",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 1
+    },
+    {
+      "name": "wakeup",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 94
+    },
+    {
+      "name": "death",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 55
+    },
+    {
+      "name": "death_idle",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 2
+    },
+    {
+      "name": "death2",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 55
+    },
+    {
+      "name": "death2_idle",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 2
+    },
+    {
+      "name": "hit",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 21
+    },
+    {
+      "name": "hit_goo",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 21
+    },
+    {
+      "name": "research",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 51
+    },
+    {
+      "name": "distress_pre",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 4
+    },
+    {
+      "name": "distress_loop",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 16
+    },
+    {
+      "name": "distress_pst",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 12
+    },
+    {
+      "name": "fall_high",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 24
+    },
+    {
+      "name": "bucked",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 20
+    },
+    {
+      "name": "knockback_high",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 20
+    },
+    {
+      "name": "buck_pst",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 32
+    },
+    {
+      "name": "empty",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 3
+    },
+    {
+      "name": "lighthit",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 21
+    }
+  ],
+  "player_slip.zip": [
+    {
+      "name": "slip_pre",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 4
+    },
+    {
+      "name": "slip_loop",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 24
+    },
+    {
+      "name": "slip_pst",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 4
+    },
+    {
+      "name": "slip_fall_pre",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 22
+    },
+    {
+      "name": "slip_fall_idle",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 32
+    },
+    {
+      "name": "slip_fall_pst",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 18
+    }
+  ],
+  "player_strum.zip": [
+    {
+      "name": "strum_pre",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 7
+    },
+    {
+      "name": "strum_lag",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 13
+    },
+    {
+      "name": "strum",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 61
+    },
+    {
+      "name": "ref_idle",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 2
+    }
+  ],
+  "player_actions_fishing.zip": [
+    {
+      "name": "fishing_pre",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 14
+    },
+    {
+      "name": "fishing_lag",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 15
+    },
+    {
+      "name": "fishing_cast",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 10
+    },
+    {
+      "name": "fishing_idle",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 39
+    },
+    {
+      "name": "fishing_pst",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 30
+    },
+    {
+      "name": "bite_light_pre",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 6
+    },
+    {
+      "name": "bite_light_lag",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 15
+    },
+    {
+      "name": "bite_light_loop",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 20
+    },
+    {
+      "name": "bite_light_pst",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 12
+    },
+    {
+      "name": "bite_heavy_pre",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 7
+    },
+    {
+      "name": "bite_heavy_lag",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 15
+    },
+    {
+      "name": "bite_heavy_loop",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 14
+    },
+    {
+      "name": "fish_catch",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 41
+    },
+    {
+      "name": "fish_nocatch",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 45
+    }
+  ],
+  "player_slurtle_armor.zip": [
+    {
+      "name": "hideshell",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 34
+    },
+    {
+      "name": "hideshell_idle",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 3
+    },
+    {
+      "name": "hitshell",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 11
+    }
+  ],
+  "wortox_portal.zip": [
+    {
+      "name": "wortox_portal_jumpin_pre",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 5
+    },
+    {
+      "name": "wortox_portal_jumpin_lag",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 15
+    },
+    {
+      "name": "wortox_portal_jumpin",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 20
+    },
+    {
+      "name": "wortox_portal_jumpout",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 19
+    }
+  ],
+  "player_actions_uniqueitem.zip": [
+    {
+      "name": "action_uniqueitem_pre",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 8
+    },
+    {
+      "name": "action_uniqueitem_lag",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 16
+    },
+    {
+      "name": "flute",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 112
+    },
+    {
+      "name": "bedroll",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 78
+    },
+    {
+      "name": "bedroll_sleep_loop",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 44
+    },
+    {
+      "name": "bedroll_wakeup",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 45
+    },
+    {
+      "name": "horn",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 67
+    },
+    {
+      "name": "book",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 81
+    },
+    {
+      "name": "fan",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 100
+    },
+    {
+      "name": "bell",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 72
+    },
+    {
+      "name": "razor",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 38
+    },
+    {
+      "name": "whistle",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 53
+    },
+    {
+      "name": "hornblow_pre",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 4
+    },
+    {
+      "name": "hornblow_lag",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 14
+    },
+    {
+      "name": "hornblow",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 53
+    }
+  ],
+  "player_ghost_withhat.zip": [
+    {
+      "name": "idle",
+      "bank": 1912265903,
+      "frameRate": 30.0,
+      "frames": 64
+    },
+    {
+      "name": "angry",
+      "bank": 1912265903,
+      "frameRate": 30.0,
+      "frames": 64
+    },
+    {
+      "name": "shy",
+      "bank": 1912265903,
+      "frameRate": 30.0,
+      "frames": 64
+    },
+    {
+      "name": "dissipate",
+      "bank": 1912265903,
+      "frameRate": 30.0,
+      "frames": 24
+    },
+    {
+      "name": "appear",
+      "bank": 1912265903,
+      "frameRate": 30.0,
+      "frames": 11
+    },
+    {
+      "name": "hit",
+      "bank": 1912265903,
+      "frameRate": 30.0,
+      "frames": 14
+    },
+    {
+      "name": "shock_loop",
+      "bank": 1912265903,
+      "frameRate": 30.0,
+      "frames": 6
+    },
+    {
+      "name": "shock_pst",
+      "bank": 1912265903,
+      "frameRate": 30.0,
+      "frames": 12
+    }
+  ],
+  "player_amulet_resurrect.zip": [
+    {
+      "name": "amulet_rebirth",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 100
+    }
+  ],
+  "player_emotesxl.zip": [
+    {
+      "name": "wilson",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 1
+    },
+    {
+      "name": "emoteXL_waving1",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 49
+    },
+    {
+      "name": "emoteXL_waving2",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 50
+    },
+    {
+      "name": "emoteXL_waving3",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 39
+    },
+    {
+      "name": "emoteXL_waving4",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 37
+    },
+    {
+      "name": "emoteXL_happycheer",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 37
+    },
+    {
+      "name": "emoteXL_sad",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 52
+    },
+    {
+      "name": "emoteXL_angry",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 49
+    },
+    {
+      "name": "emoteXL_annoyed",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 54
+    },
+    {
+      "name": "emoteXL_bonesaw",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 61
+    },
+    {
+      "name": "emoteXL_facepalm",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 45
+    },
+    {
+      "name": "emoteXL_kiss",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 60
+    }
+  ],
+  "player_emotes_dance0.zip": [
+    {
+      "name": "emoteXL_pre_dance0",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 10
+    },
+    {
+      "name": "emoteXL_loop_dance0",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 32
+    },
+    {
+      "name": "emoteXL_pst_dance0",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 13
+    }
+  ],
+  "player_emotes_sit.zip": [
+    {
+      "name": "emote_pre_sit1",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 19
+    },
+    {
+      "name": "emote_loop_sit1",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 80
+    },
+    {
+      "name": "emote_pst_sit1",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 11
+    },
+    {
+      "name": "emote_pre_sit2",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 17
+    },
+    {
+      "name": "emote_loop_sit2",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 48
+    },
+    {
+      "name": "emote_pst_sit2",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 19
+    },
+    {
+      "name": "emote_pre_sit3",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 20
+    },
+    {
+      "name": "emote_loop_sit3",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 28
+    },
+    {
+      "name": "emote_pst_sit3",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 12
+    },
+    {
+      "name": "emote_pre_sit4",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 14
+    },
+    {
+      "name": "emote_loop_sit4",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 64
+    },
+    {
+      "name": "emote_pst_sit4",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 15
+    }
+  ],
+  "player_emotes.zip": [
+    {
+      "name": "emote_waving",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 59
+    },
+    {
+      "name": "emote_happycheer",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 57
+    },
+    {
+      "name": "emote_sad",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 66
+    },
+    {
+      "name": "emote_angry",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 58
+    },
+    {
+      "name": "emote_annoyed_palmdown",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 44
+    },
+    {
+      "name": "emote_annoyed_facepalm",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 44
+    },
+    {
+      "name": "emote_strikepose",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 54
+    },
+    {
+      "name": "emote_hands",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 61
+    },
+    {
+      "name": "emote_feet",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 56
+    },
+    {
+      "name": "emote_hat",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 36
+    },
+    {
+      "name": "emote_pants",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 49
+    },
+    {
+      "name": "emote_yawn",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 60
+    },
+    {
+      "name": "emote_sleepy",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 62
+    },
+    {
+      "name": "emote_dab_pre",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 11
+    },
+    {
+      "name": "emote_dab_loop",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 8
+    },
+    {
+      "name": "emote_dab_pst",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 8
+    },
+    {
+      "name": "emote_swoon",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 53
+    }
+  ],
+  "player_emote_extra.zip": [
+    {
+      "name": "emote_impatient",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 73
+    },
+    {
+      "name": "emote_slowclap",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 70
+    },
+    {
+      "name": "emote_flex",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 68
+    },
+    {
+      "name": "emote_shrug",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 36
+    },
+    {
+      "name": "emote_laugh",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 54
+    },
+    {
+      "name": "emote_fistshake",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 38
+    },
+    {
+      "name": "emote_jumpcheer",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 44
+    },
+    {
+      "name": "emote_pre_carol",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 23
+    },
+    {
+      "name": "emote_loop_carol",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 70
+    },
+    {
+      "name": "emote_pst_carol",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 29
+    },
+    {
+      "name": "emote_pre_toast",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 23
+    },
+    {
+      "name": "emote_loop_toast",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 40
+    },
+    {
+      "name": "emote_pst_toast",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 35
+    },
+    {
+      "name": "emote_pre_toast_chalice",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 23
+    },
+    {
+      "name": "emote_loop_toast_chalice",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 40
+    },
+    {
+      "name": "emote_pst_toast_chalice",
+      "bank": 75779832,
+      "frameRate": 30.0,
+      "frames": 35
+    }
+  ],
+  "book_fx_wicker.zip": [
+    {
+      "name": "book_fx_wicker",
+      "bank": 1214164542,
+      "frameRate": 30.0,
+      "frames": 90
+    },
+    {
+      "name": "book_fx_wicker_mount",
+      "bank": 1214164542,
+      "frameRate": 30.0,
+      "frames": 90
+    },
+    {
+      "name": "book_fx_fail_wicker",
+      "bank": 1214164542,
+      "frameRate": 30.0,
+      "frames": 30
+    },
+    {
+      "name": "book_fx_fail_wicker_mount",
+      "bank": 1214164542,
+      "frameRate": 30.0,
+      "frames": 30
+    }
+  ],
+  "fx_books.zip": [
+    {
+      "name": "lightning",
+      "bank": 4222183901,
+      "frameRate": 30.0,
+      "frames": 65
+    },
+    {
+      "name": "lightning_mount",
+      "bank": 4222183901,
+      "frameRate": 30.0,
+      "frames": 65
+    },
+    {
+      "name": "fish",
+      "bank": 4222183901,
+      "frameRate": 30.0,
+      "frames": 67
+    },
+    {
+      "name": "fish_mount",
+      "bank": 4222183901,
+      "frameRate": 30.0,
+      "frames": 66
+    },
+    {
+      "name": "roots",
+      "bank": 4222183901,
+      "frameRate": 30.0,
+      "frames": 69
+    },
+    {
+      "name": "roots_mount",
+      "bank": 4222183901,
+      "frameRate": 30.0,
+      "frames": 68
+    },
+    {
+      "name": "tentacles",
+      "bank": 4222183901,
+      "frameRate": 30.0,
+      "frames": 58
+    },
+    {
+      "name": "tentacles_mount",
+      "bank": 4222183901,
+      "frameRate": 30.0,
+      "frames": 57
+    },
+    {
+      "name": "plants_small",
+      "bank": 4222183901,
+      "frameRate": 30.0,
+      "frames": 67
+    },
+    {
+      "name": "plants_small_mount",
+      "bank": 4222183901,
+      "frameRate": 30.0,
+      "frames": 66
+    },
+    {
+      "name": "plants_big",
+      "bank": 4222183901,
+      "frameRate": 30.0,
+      "frames": 67
+    },
+    {
+      "name": "plants_big_mount",
+      "bank": 4222183901,
+      "frameRate": 30.0,
+      "frames": 66
+    }
+  ],
+  "broken_tool.zip": [
+    {
+      "name": "used",
+      "bank": 2807421265,
+      "frameRate": 30.0,
+      "frames": 24
+    }
   ]
 }

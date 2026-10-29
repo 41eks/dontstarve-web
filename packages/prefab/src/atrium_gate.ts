@@ -11,7 +11,7 @@ import { Trader } from '../../componets/src/trader';
 import { PlayerProx } from '../../componets/src/playerprox';
 import { Hauntable } from '../../componets/src/hauntable';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { MiniMapEntity } from './minimapEntity';
+import type { MiniMapState } from '../../map/src/minimapState';
 import { createArchiveEntity, createEmptyEntity, type PrefabInstance } from './prefabInstance';
 import { MakeObstaclePhysics, WORLD_SCALE } from './standardcomponents';
 import { actionEntity } from './actionEntity';
@@ -48,7 +48,7 @@ interface Gate {
   trader: Trader;
   playerprox: PlayerProx;
   hauntable: Hauntable;
-  minimap: MiniMapEntity;
+  minimap: MiniMapState;
   save: AtriumGateRecord['components'];
   stopActivity: () => void;
 }
@@ -109,7 +109,7 @@ export class AtriumGateManager implements DisplayDrivenPrefabManager<{ prefabId:
         }
       }
     }
-    const minimap = new MiniMapEntity(model.position);
+    const minimap = instance.minimap;
     const inst = actionEntity(model, ATRIUM_GATE_ID);
     const pickable = new Pickable(model, 'atrium_key', undefined, 1, undefined, undefined,
       { picked: !save.pickable || save.pickable.picked === true, paused: save.pickable?.paused === true }, { scheduler: this.world.scheduler });
@@ -166,7 +166,6 @@ export class AtriumGateManager implements DisplayDrivenPrefabManager<{ prefabId:
   }
   get renderEntities() { return [...this.gates].filter(([, gate]) => gate.instance.sprite.loaded)
     .map(([object]) => ({ object, footPosition: object.position, cameraDepth: 0 })); }
-  get miniMapEntities(): MiniMapEntity[] { return [...this.gates.values()].map(({ minimap }) => minimap); }
   exportRecords(): { prefabId: typeof ATRIUM_GATE_ID; record: AtriumGateRecord }[] {
     return [...this.gates].map(([model, gate]) => ({ prefabId: ATRIUM_GATE_ID, record: {
       id: String(gate.instance.entityId),
@@ -181,7 +180,7 @@ export class AtriumGateManager implements DisplayDrivenPrefabManager<{ prefabId:
       gate.stopActivity(); gate.playerprox.dispose(); gate.hauntable.dispose(); gate.pickable.dispose(); gate.trader.dispose();
       gate.floor.instance.remove(); gate.fx?.instance.remove();
       for (const blocker of gate.blockers) blocker.instance.remove();
-      gate.minimap.dispose(); model.userData.removed = true; gate.instance.remove();
+      model.userData.removed = true; gate.instance.remove();
     }
     this.gates.clear(); this.assets.dispose();
   }

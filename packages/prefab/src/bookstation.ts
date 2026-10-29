@@ -14,7 +14,7 @@ import {
 } from './animatedBuildingPlacement';
 import { BOOK_USE_STEP, BOOKSTATION_RESTORE_AMOUNT, isBook } from './books';
 import definitions from './definitions.json' with { type: 'json' };
-import { PlaySound, PreloadSounds } from './sound';
+import { PlaySound } from './sound';
 import { TILE_SIZE } from './tile';
 import type { BuildingContainer } from './containers';
 import type { WorldContext } from './worldContext';
@@ -187,8 +187,6 @@ export const BOOKSTATION_DEFINITION: AnimatedBuildingDefinition = {
     // MakeLargeBurnable(inst, nil, nil, true) and MakeLargePropagator.
     burnable: { burnTime: 30, fxLevel: 4, propagator: 'large' },
     skinInit: bookstation_init_fn,
-    prepare: () => PreloadSounds('wickerbottom_rework/bookstation/place', 'dontstarve/wilson/chest_open', 'dontstarve/wilson/chest_close',
-        'dontstarve/common/destroy_smoke', 'dontstarve/common/destroy_wood'),
     onbuilt, oninit, onturnon, onturnoff, onhit,
     onopen: (context) => {
         if (actionEntity(context.model, BOOKSTATION_ID).hasTag('burnt')) return;

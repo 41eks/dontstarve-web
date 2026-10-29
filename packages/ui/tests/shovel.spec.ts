@@ -78,7 +78,7 @@ test('shovels equip, clear farm-plow debris, reskin and preserve command-created
   await equip('shovel', 'ground:swap_shovel');
   let debris = await spritePoint('farm_soil_debris');
   await page.mouse.click(debris.x, debris.y, { button: 'right' });
-  await expect.poll(() => page.evaluate(() => (window as any).shovelGame.player.userData.animationController.isShoveling)).toBe(true);
+  await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).shovelGame.player).animationController.isShoveling)).toBe(true);
   await page.keyboard.press('Escape');
   await page.waitForTimeout(1100);
   expect(await page.evaluate((id) => (window as any).shovelGame.scene.children.some((model: any) => (window as any).__prefabInstance(model)?.entityId === id), debris.id)).toBe(true);

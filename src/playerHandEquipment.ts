@@ -1,7 +1,7 @@
 import { ItemEntity } from '@dontstarve-web/inventory';
 import { bindEquipmentLifecycle, type EquipmentOwner, type HandEquipment, type Signal } from '@dontstarve-web/signals';
 import type { ActionDescription } from '@dontstarve-web/stategraphs';
-import { createHandEquipmentLifecycle, getHandEquipmentDefinition, preloadHandEquipment, type HandEquipmentContext } from '@dontstarve-web/prefab/handEquipment';
+import { createHandEquipmentLifecycle, getHandEquipmentDefinition, type HandEquipmentContext } from '@dontstarve-web/prefab/handEquipment';
 import type { WilsonAnimationController } from '@dontstarve-web/prefab/player';
 
 export interface PlayerHandEquipmentOptions extends HandEquipmentContext {
@@ -12,8 +12,7 @@ export interface PlayerHandEquipmentOptions extends HandEquipmentContext {
 }
 
 /** Application wiring observes the injected existence state; prefabs own item behavior. */
-export async function bindPlayerHandEquipment(options: PlayerHandEquipmentOptions) {
-  await preloadHandEquipment();
+export function bindPlayerHandEquipment(options: PlayerHandEquipmentOptions) {
   const slot = options.handEquipmentExistenceState;
   let disposed = false;
   let presented: HandEquipment | null = null;

@@ -3,8 +3,8 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { FoodActionController, type FoodSource } from '../../stategraphs/src/food';
 import { FOOD_EFFECTS } from '../../prefab/src/food';
-import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
-import { PlaySound, PreloadSounds } from '../../prefab/src/sound';
+import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
+import { PlaySound } from '../../prefab/src/sound';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { createGroundItemVisual } from './groundItemVisual';
 import { InventoryStore, InventorySlot, inventorySlotAddress } from '@dontstarve-web/inventory';
@@ -22,7 +22,7 @@ afterEach(() => { vi.clearAllMocks(); vi.unstubAllGlobals(); });
 
 async function fixture(itemId = 'bananajuice') {
   const player = await createWilsonPlayer('/dst/data/anim');
-  const animation = player.userData.animationController as WilsonAnimationController;
+  const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
   const world = { scene: new THREE.Scene(), player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     renderer: { domElement: new EventTarget() } } as unknown as WorldContext;
   const actions = new FoodActionController(world, animation, { stop() {}, goToPoint: () => true, destination: undefined },
@@ -37,7 +37,6 @@ async function fixture(itemId = 'bananajuice') {
   const foodDrink = FOOD_EFFECTS[itemId].foodDrink;
   const source: FoodSource = {
     foodDrink,
-    prepareEat: () => PreloadSounds(foodDrink ? 'dontstarve/wilson/sip' : 'dontstarve/wilson/eat'),
     isValid: () => !entity.isRemoved && store.getEntity(slot) === entity,
     take: () => store.applySlotChanges([{ slot, itemId, delta: -1 }]),
   };
@@ -122,7 +121,9 @@ it('preserves food and stats when cancelled or replaced before commit and clamps
     await eat(); animation.update(0.1); actions.cancel(); animation.update(1);
     expect(store.get(slot)?.count).toBe(2);
     expect(getPlayerStats()).toEqual({ health: 140, hunger: 90, sanity: 35 });
-    const pending = eat(); actions.cancel(); expect(await pending).toBe(false);
+    expect(eat()).toBe(true);
+    actions.cancel(); animation.update(1);
+    expect(store.get(slot)?.count).toBe(2);
     await eat();
     const saved = store.exportState();
     store.replaceState(saved, {});

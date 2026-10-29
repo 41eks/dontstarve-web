@@ -1,12 +1,38 @@
-import { createSignal, readonlySignal, type ReadonlySignal } from '@dontstarve-web/signals';
+import { createSignal, readonlySignal, type ReadonlySignal, type Signal } from '@dontstarve-web/signals';
 import type * as THREE from 'three';
-import type { AnimStateArt, AnimStateJson } from '@dontstarve-web/animation/animState';
+import type { AnimStateArt, AnimStateJson, SymbolBuild } from '@dontstarve-web/animation/animState';
+import type { SpriteMaterialOptions } from '@dontstarve-web/animation/animationAssets';
 import type { FxJson } from './fxAttachments';
 import type { FollowerFx } from './followerFx';
 import type { LayerAnimationController, LoadedBuildOverride, PercentAnimationController, SpriteController, TransientSpriteAnimationController, SpriteArtSource, SpriteTint } from '@dontstarve-web/animation/sprite';
 
 type SymbolOverrideValue = Parameters<SpriteController['overrideSymbol']>[1];
 type SymbolOverrideMap = Parameters<SpriteController['setSymbolOverrides']>[0];
+
+interface SkinArt extends AnimStateArt {
+  peekBuild(archive: string, options?: SpriteMaterialOptions): SymbolBuild | undefined;
+  loadBuild(archive: string, options?: SpriteMaterialOptions): Promise<SymbolBuild>;
+}
+
+/** Source skin names and their resource owner; declaring this performs no IO. */
+export interface SkinJson {
+  readonly archives: Readonly<Record<string, string>>;
+  readonly art: SkinArt;
+  readonly materialOptions?: SpriteMaterialOptions;
+  readonly symbols?: readonly string[];
+  readonly baseSymbols?: readonly string[];
+  readonly animationBanks?: Readonly<Record<string, readonly string[]>>;
+}
+
+/** Named bank and builds. The display resolves them from the owner's shared cache. */
+export interface NamedSpriteArt {
+  readonly animationArchive: string;
+  readonly bank: string;
+  readonly buildArchive: string;
+  readonly fallbackBuilds?: readonly string[];
+  readonly art: AnimStateArt;
+}
+export type SpriteSourceJson = SpriteArtSource | NamedSpriteArt;
 
 /** The clip an entity is logically in. `finished` is written when its playback ends or settles, without a signal write. */
 export interface ClipJson {
@@ -24,6 +50,7 @@ export interface ClipJson {
 
 /** Appearance that belongs to the entity and is dressed again on every drawn sprite. */
 export type AppearanceJson =
+  | { readonly kind: 'skin'; readonly skin: SkinJson }
   /** The display loads the archives `state` names from `art`, the entity's resource owner. */
   | { readonly kind: 'anim-state'; readonly state: AnimStateJson; readonly art?: AnimStateArt }
   | { readonly kind: 'layer'; readonly layer: string; readonly hidden: boolean }
@@ -36,8 +63,9 @@ export type AppearanceJson =
 
 /** What an entity looks like, as plain data. The prefab writes it; the display draws it. */
 export interface SpriteJson {
+  readonly skinId?: string;
   readonly clip: ClipJson;
-  readonly source?: SpriteArtSource;
+  readonly source?: SpriteSourceJson;
   readonly tint?: SpriteTint;
   /** `fx` is drawn at the follower's node by the display, which loads its art. */
   readonly followers?: ReadonlyMap<THREE.Object3D, { readonly symbol: string; readonly x: number; readonly y: number; readonly fx?: FollowerFx }>;
@@ -86,6 +114,8 @@ export interface SpriteProbe {
  */
 export interface ArchiveSpriteCommands {
   readonly sprite: ReadonlySignal<SpriteJson>;
+  setSkinId(skinId: string | undefined): void;
+  setSkinSource(skin: SkinJson): void;
   readonly fx: ReadonlySignal<ReadonlyMap<string, FxJson>>;
   readonly animationSource: ReadonlySignal<ReadonlySignal<string | number> | undefined>;
   readonly art: ReadonlySignal<number>;
@@ -132,6 +162,8 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
   private readonly json: ReturnType<typeof createSignal<SpriteJson>>;
   /** Snapshots of the entity's sprite; the display subscribes to this. */
   readonly sprite: ReadonlySignal<SpriteJson>;
+  /** A projection of json.skinId for existing skin consumers; it stores no second value. */
+  readonly skinId: Signal<string | undefined>;
   private readonly fxDeclared = createSignal<ReadonlyMap<string, FxJson>>(new Map());
   /** Effects shown on the entity while their `active` signal is true; apart from `sprite`, so a clip change does not reach them. */
   readonly fx = readonlySignal(this.fxDeclared);
@@ -157,10 +189,18 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
       ...clip.billboard ? { billboard: true } : {},
     });
     this.sprite = readonlySignal(this.json);
+    this.skinId = {
+      get: () => this.json.get().skinId, peek: () => this.state.skinId, set: value => this.setSkinId(value),
+      subscribe: listener => this.json.subscribe((value, previous) => {
+        if (value.skinId !== previous.skinId) listener(value.skinId, previous.skinId);
+      }),
+    };
   }
 
   private get state(): SpriteJson { return this.json.peek(); }
   private write(patch: Partial<SpriteJson>): void { this.json.set({ ...this.state, ...patch }); }
+  setSkinId(skinId: string | undefined): void { if (skinId !== this.state.skinId) this.write({ skinId }); }
+  setSkinSource(skin: SkinJson): void { this.withAppearance('skin', { kind: 'skin', skin }); }
   private withAppearance(key: string, value: AppearanceJson): void {
     const appearance = new Map(this.state.appearance);
     // A later command for the same target replaces the earlier one and is dressed last.
@@ -234,7 +274,7 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
     if (!(fraction >= 0 && fraction <= 1)) throw new RangeError('Frame fraction must be within [0, 1]');
     this.write({ frame: { at: fraction } });
   }
-  setArtSource(source: SpriteArtSource): void { if (source !== this.state.source) this.write({ source }); }
+  setArtSource(source: SpriteSourceJson): void { if (source !== this.state.source) this.write({ source }); }
   setAnimState(state: AnimStateJson, art?: AnimStateArt): void { this.withAppearance('anim-state', { kind: 'anim-state', state, art }); }
   setTint(tint: SpriteTint): void { this.write({ tint }); }
   followSymbol(symbol: string, x: number, y: number, fx?: FollowerFx): { readonly node: THREE.Object3D; remove(): void } {

@@ -6,7 +6,7 @@ import {
   SpriteController,
 } from '@dontstarve-web/animation/sprite';
 import type { PrefabDisplay } from '@dontstarve-web/display';
-import { MiniMapEntity } from './minimapEntity';
+import type { MiniMapState } from '../../map/src/minimapState';
 import { createEffect, watchSignal, type ReadonlySignal } from '@dontstarve-web/signals';
 import { Hauntable, HAUNT_INSTANT_REZ } from '../../componets/src/hauntable';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -15,7 +15,7 @@ import { actionEntity } from './actionEntity';
 import type { RezSource } from './player_common';
 import { newEntityId } from './saveRecord';
 import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
-import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
+import { PlaySound, type SoundHandle } from './sound';
 
 export const PORTAL_ID = 'multiplayer_portal_moonrock' as const;
 
@@ -51,7 +51,7 @@ interface PortalEntity {
   fxModel: THREE.Group;
   main: { instance: PrefabInstance; display: PrefabDisplay };
   fx: { instance: PrefabInstance; display: PrefabDisplay };
-  minimap: MiniMapEntity;
+  minimap: MiniMapState;
   jacobSound?: SoundHandle;
   hauntable?: Hauntable;
   playJacob?: () => void;
@@ -110,7 +110,6 @@ export class PortalManager {
     const [mainFactory, fxFactory] = await Promise.all([
       this.getMainFactory(),
       this.getFxFactory(),
-      PreloadSounds(JACOB_SOUND, SPAWNING_SOUND, SHAKE_SOUND, OPEN_SOUND),
     ]);
     if (this.disposed) throw new Error('Portal manager has been disposed');
 
@@ -135,7 +134,7 @@ export class PortalManager {
     fxModel.position.copy(model.position);
     this.scene.add(fxModel);
 
-    const minimap = new MiniMapEntity(model.position);
+    const minimap = main.instance.minimap;
     minimap.SetIcon('portal_dst.png');
     const entity: PortalEntity = { model, fxModel, main, fx, minimap, stopEvents: [] };
     const playJacob = () => {
@@ -173,9 +172,6 @@ export class PortalManager {
     }));
   }
 
-  get miniMapEntities(): MiniMapEntity[] {
-    return [...this.portals].map(({ minimap }) => minimap);
-  }
 
   exportRecords(): PortalRecord[] {
     return [...this.portals].map(({ model, main }) => ({
@@ -195,7 +191,7 @@ export class PortalManager {
       entity.spawning?.loopSound?.stop();
       entity.playJacob = undefined;
       entity.jacobSound?.stop();
-      entity.minimap.dispose();
+
       for (const { instance, display } of [entity.main, entity.fx]) { instance.remove(); display.dispose(); }
     }
     this.portals.clear();

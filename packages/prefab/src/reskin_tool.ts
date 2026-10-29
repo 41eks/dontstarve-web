@@ -8,7 +8,7 @@ import { SpellCaster } from '../../componets/src/spellcaster';
 import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory } from './equipmentVisual';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { bindInstance, PrefabInstance } from './prefabInstance';
-import { PlaySound, PreloadSounds, type SoundEventPath } from './sound';
+import { PlaySound, type SoundEventPath } from './sound';
 import { TILE_SIZE } from './tile';
 
 export function configureReskinToolEntity(entity: ItemEntity): void {
@@ -112,13 +112,10 @@ export class ReskinEffects {
     if (toolSkinId && !skinArchive) throw new Error(`Unknown reskin tool skin: ${toolSkinId}`);
     let request = this.prepared.get(key);
     if (!request) {
-      request = Promise.all([
-        preloadSharedArchiveSprite(this.assets, {
-          animationArchive: 'reskin_tool_fx.zip', bank: 'fx_shadow_dust',
-          buildArchives: ['reskin_tool_fx.zip', ...skinArchive ? [skinArchive] : []],
-        }),
-        PreloadSounds('dontstarve/wilson/attack_weapon', reskinEffectSound(toolSkinId)),
-      ]).then(([create]) => create);
+      request = preloadSharedArchiveSprite(this.assets, {
+        animationArchive: 'reskin_tool_fx.zip', bank: 'fx_shadow_dust',
+        buildArchives: ['reskin_tool_fx.zip', ...skinArchive ? [skinArchive] : []],
+      });
       this.prepared.set(key, request);
       void request.catch(() => this.prepared.delete(key));
     }

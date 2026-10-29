@@ -8,7 +8,7 @@ import {
     type AnimatedBuildingHammerContext,
 } from './animatedBuildingPlacement';
 import type { WorldContext } from './worldContext';
-import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
+import { PlaySound, type SoundHandle } from './sound';
 import type { Group } from 'three';
 import { actionEntity } from './actionEntity';
 import { Prototyper } from '../../componets/src/prototyper';
@@ -135,7 +135,6 @@ function researchLabDefinition(id: ResearchLabId): AnimatedBuildingDefinition {
             stopIdleSound(model);
         },
         hammerWorkLeft: 4,
-        prepare: () => PreloadSounds(idleSoundPaths[id], 'dontstarve/common/destroy_smoke', 'dontstarve/common/destroy_wood'),
         hammerEffect: { archive: 'structure_collapse_fx.zip', animation: 'collapse_small', name: 'collapse_small' },
         onhammered: (context) => onhammered(id, context),
     };

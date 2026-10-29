@@ -10,6 +10,7 @@ import type { EquipmentEntity } from '../../signals/src/equipment.ts';
 import type { SpellCastDoer, SpellCasterComponent, SpellTarget } from '../../componets/src/spellcaster.ts';
 import { collectEquippedActions, equippedActionEntity } from './componentactions.ts';
 import { actionTargetModel, type ActionTargetView } from './actionTargetView.ts';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 export type { SpellCastDoer, SpellCastMap, SpellCasterComponent } from '../../componets/src/spellcaster.ts';
 type SpellCastAnimation = Pick<ActionAnimationController, 'stategraph' | 'cancelEmote' | 'setFacing'>;
 export type SpellCastTarget = SpellTarget & BufferedActionObject & ActionTargetView & {
@@ -62,7 +63,7 @@ export class SpellCastActionController {
     this.world = world; this.animation = animation; this.locomotor = locomotor;
     this.handEquipment = handEquipment; this.doer = doer; this.isManualMovement = isManualMovement;
     this.picker = world.mouseActions ?? new PlayerActionPicker(new PointerRaycaster(world),
-      () => world.player.userData.controllerEnabled !== false);
+      () => (prefabInstance(world.player) as { controllerEnabled?: boolean } | undefined)?.controllerEnabled !== false);
     this.stopHover = this.picker.register(model => {
       const item = this.equipped(), point = this.picker.pointer.groundPoint();
       // Targets are only castable with a spell item in hand.

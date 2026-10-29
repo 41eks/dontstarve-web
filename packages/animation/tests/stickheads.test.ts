@@ -31,7 +31,7 @@ async function setup(id: typeof HEADS[number]['id'] = PIG_HEAD_ID, tickingarea?:
     getWatchWorldContent: content.getWatchWorldContent, tickingarea, dropLoot: (items: { itemId: string; count: number }[]) => loot.push(items) } as unknown as WorldContext;
   const placement = new AnimatedBuildingPlacement(world, { [id]: HEADS.find(head => head.id === id)!.definition }, () => false);
   await placement.spawn(id);
-  const model = placement.hammerTargets[0].model, sprite = model.userData.animationController as SpriteController;
+  const model = placement.hammerTargets[0].display.model, sprite = model.userData.animationController as SpriteController;
   const settle = () => new Promise(resolve => setTimeout(resolve, 0));
   const finish = () => { for (let i = 0; i < 90; i++) sprite.update(1 / 30); };
   return { placement, scheduler, content, loot, model, sprite, settle, finish };

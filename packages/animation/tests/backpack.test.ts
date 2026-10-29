@@ -5,7 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { loadDeclaredArt } from './animStateFixture';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS, GROUND_ITEM_SKIN_SPECS } from '../../prefab/src/groundItems';
 import { createGroundItemVisual } from './groundItemVisual';
-import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
+import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
 import { parseImageAtlasXml } from '../src/imageAtlas';
 
 beforeEach(() => {
@@ -36,7 +36,7 @@ it('uses source ground art for base, ordinary, shared-build and invisible backpa
 
 it('uses skinned swap_body art in every player facing and hides invisible equipment', async () => {
   const player = await createWilsonPlayer('/dst/data/anim');
-  const controller = player.userData.animationController as WilsonAnimationController;
+  const controller = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
   const mesh = player.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
   for (const skinId of ['backpack_babybeef', 'backpack_invisible']) {
     controller.setBackpack(true, skinId);

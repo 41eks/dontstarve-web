@@ -5,7 +5,7 @@ import { FarmPlowPlacement } from '../../prefab/src/farm_plow';
 import { FOOD_EFFECTS, PERISHABLE_FOODS } from '../../prefab/src/food';
 import { SEEDS_HUNGER } from '../../prefab/src/seeds';
 import { FoodActionController } from '../../stategraphs/src/food';
-import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
+import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { createGroundItemVisual } from './groundItemVisual';
 import { TurfMap } from '../../prefab/src/turfMap';
@@ -37,7 +37,7 @@ it('renders the original ground seed pose and commits quick eating once at frame
   expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
   sprite.dispose(); assets.dispose();
   const player = await createWilsonPlayer('/dst/data/anim');
-  const animation = player.userData.animationController as WilsonAnimationController;
+  const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
   const { farm, world } = farmSetup(player);
   const seeds = new FoodActionController(world, animation, { stop() {}, goToPoint: () => true, destination: undefined }, farm);
   let count = 2;
@@ -58,8 +58,8 @@ it('renders the original ground seed pose and commits quick eating once at frame
     animation.update(0.1); seeds.cancel(); animation.update(1);
     expect(count).toBe(1);
     expect(stats.hunger).toBe(109.6875);
-    const pending = seeds.eat(source, () => { stats.hunger += SEEDS_HUNGER; });
-    seeds.cancel(); expect(await pending).toBe(false);
+    expect(seeds.eat(source, () => { stats.hunger += SEEDS_HUNGER; })).toBe(true);
+    seeds.cancel(); animation.update(1);
     expect(count).toBe(1);
   } finally { seeds.dispose(); farm.dispose(); }
 });
@@ -151,7 +151,7 @@ it('renders veggie ground art and plants split bank/build veggie seeds, preservi
 
 it('commits PLANT on frame 6 and cancels an uncommitted short action', async () => {
   const player = await createWilsonPlayer('/dst/data/anim');
-  const animation = player.userData.animationController as WilsonAnimationController;
+  const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
   const plant = vi.fn(() => true);
   expect(animation.playPlant(plant)).toBe(true);
   for (let frame = 0; frame < 5; frame++) animation.update(1 / 30);

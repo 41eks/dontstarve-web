@@ -6,7 +6,18 @@ import pathlib
 import struct
 import zipfile
 
-ARCHIVES = ('mole_basic.zip', 'lightflier.zip', 'bulb_plant_single.zip', 'bulb_plant_springy.zip', 'bernie.zip', 'bernie_big.zip', 'butterfly_basic.zip')
+ARCHIVES = (
+    'mole_basic.zip', 'lightflier.zip', 'bulb_plant_single.zip', 'bulb_plant_springy.zip',
+    'bernie.zip', 'bernie_big.zip', 'butterfly_basic.zip',
+    'player_idles.zip', 'player_basic.zip', 'player_jump.zip', 'player_actions_item.zip',
+    'player_actions_eat.zip', 'player_staff.zip', 'player_actions_bugnet.zip', 'player_actions_pickaxe.zip',
+    'player_actions_shovel.zip', 'player_attacks.zip', 'player_actions_till.zip', 'player_actions_axe.zip',
+    'player_actions.zip', 'player_slip.zip', 'player_strum.zip', 'player_actions_fishing.zip',
+    'player_slurtle_armor.zip', 'wortox_portal.zip', 'player_actions_uniqueitem.zip',
+    'player_ghost_withhat.zip', 'player_amulet_resurrect.zip', 'player_emotesxl.zip',
+    'player_emotes_dance0.zip', 'player_emotes_sit.zip', 'player_emotes.zip', 'player_emote_extra.zip',
+    'book_fx_wicker.zip', 'fx_books.zip', 'broken_tool.zip',
+)
 OUTPUT = pathlib.Path(__file__).resolve().parents[1] / 'src/animationTimings.json'
 
 

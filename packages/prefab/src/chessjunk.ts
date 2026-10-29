@@ -9,7 +9,7 @@ import { LootDropper } from '../../componets/src/lootdropper';
 import { Hauntable } from '../../componets/src/hauntable';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { MiniMapEntity } from './minimapEntity';
+import type { MiniMapState } from '../../map/src/minimapState';
 import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { actionEntity } from './actionEntity';
@@ -32,7 +32,7 @@ interface Pile {
   workable: Workable;
   repairable: Repairable;
   hauntable: Hauntable;
-  minimap: MiniMapEntity;
+  minimap: MiniMapState;
   saved?: ChessJunkRecord['components']['chessJunk'];
   stopActivity: () => void;
 }
@@ -77,7 +77,7 @@ export class ChessJunkManager implements DisplayDrivenPrefabManager<{ prefabId: 
       workable.SetWorkLeft(6);
       instance.sprite.start(`hit${style}`);
     }
-    const minimap = new MiniMapEntity(model.position); minimap.SetIcon('chessjunk.png');
+    const minimap = instance.minimap; minimap.SetIcon('chessjunk.png');
     const pile: Pile = { id, instance, display, workable, repairable, hauntable, minimap, saved: state,
       stopActivity: watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active)) };
     this.piles.set(model, pile); display.mount(this.scene); this.world.trackDisplay(display);
@@ -85,7 +85,6 @@ export class ChessJunkManager implements DisplayDrivenPrefabManager<{ prefabId: 
   }
   get renderEntities() { return [...this.piles].filter(([, pile]) => pile.instance.sprite.loaded)
     .map(([object]) => ({ object, footPosition: object.position, cameraDepth: 0 })); }
-  get miniMapEntities(): MiniMapEntity[] { return [...this.piles.values()].map(({ minimap }) => minimap); }
   exportRecords(): { prefabId: ChessJunkId; record: ChessJunkRecord }[] {
     return [...this.piles].map(([model, pile]) => ({ prefabId: pile.id, record: {
       id: String(pile.instance.entityId),
@@ -99,7 +98,7 @@ export class ChessJunkManager implements DisplayDrivenPrefabManager<{ prefabId: 
     if (this.disposed) return;
     this.disposed = true;
     for (const [model, pile] of this.piles) {
-      pile.stopActivity(); pile.workable.dispose(); pile.repairable.dispose(); pile.hauntable.dispose(); pile.minimap.dispose();
+      pile.stopActivity(); pile.workable.dispose(); pile.repairable.dispose(); pile.hauntable.dispose();
       model.userData.removed = true; pile.instance.remove();
     }
     this.piles.clear(); this.assets.dispose();

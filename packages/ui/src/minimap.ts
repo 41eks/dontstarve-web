@@ -3,7 +3,6 @@ import { AssetElement } from './assets';
 import { MinimapView, MINIMAP_ZOOM_DEFAULT, MINIMAP_ZOOM_MAX, MINIMAP_ZOOM_MIN } from './minimap-view';
 import { MinimapDomRenderer, type MinimapInspection } from './minimap-dom';
 import type { GroundImageOptions } from './minimap-ground-image';
-import type { MiniMapEntity } from '@dontstarve-web/prefab/minimapEntity';
 import { Vector3 } from 'three';
 import { createAtlasImage, registerImageAtlases, type AtlasImageElement } from '@dontstarve-web/animation/atlasImage';
 import { loadImageAtlas } from '@dontstarve-web/animation/imageAtlas';
@@ -17,23 +16,19 @@ export interface MinimapOptions extends GroundImageOptions {
   getPlayerPosition(): { x: number; z: number };
   /** TheCamera:GetHeading() in degrees; the map's up direction follows the camera. */
   cameraHeading: ReadonlySignal<number>;
-  miniMapEntities?: readonly MiniMapEntity[];
-  getMiniMapEntities?(): readonly MiniMapEntity[];
 }
 
 export interface MinimapStateDetail { isOpen: boolean; autopaused: boolean }
 /** Cancel the request event after accepting its action to release the map's own autopause. */
 export interface MinimapActionRequestDetail { position: Vector3 }
 
-/** How often live entity positions are sampled, in milliseconds. */
-export const MINIMAP_ENTITY_SAMPLE_MS = 100;
 const DRAG_THRESHOLD_PX = 3;
 const ZOOM_EASE_SECONDS = 0.1;
 /** PlayerProfile default 15; MapScreen applies sensitivity * direction / 60. */
 const ZOOM_SENSITIVITY = 15;
 
 /** Main-thread fullscreen DOM map. View changes transform a shared world container;
- * entity samples and terrain notifications update only their own nodes. */
+ * entity declarations, tile changes and terrain notifications update only their own nodes. */
 export class DstMinimapElement extends AssetElement {
   private options?: MinimapOptions;
   view?: MinimapView;
@@ -42,7 +37,6 @@ export class DstMinimapElement extends AssetElement {
   private renderer?: MinimapDomRenderer;
   private open = false;
   private autopaused = false;
-  private sampleTimer?: ReturnType<typeof setInterval>;
   private drag?: { pointer: number; x: number; y: number; moved: boolean };
   private readonly headingCleanups: (() => void)[] = [];
   private resizeObserver?: ResizeObserver;
@@ -74,7 +68,7 @@ export class DstMinimapElement extends AssetElement {
       this.updateView();
     });
     if (this.isConnected) this.resize();
-    if (this.open) this.startOpen();
+    if (this.open) this.openView();
   }
 
   /** Prepare static map art while the world generation page is still visible. */
@@ -102,10 +96,10 @@ export class DstMinimapElement extends AssetElement {
     if (this.root) this.root.hidden = !isOpen;
     if (isOpen) {
       this.resize();
-      this.startOpen(this.options.getPlayerPosition());
+      this.openView(this.options.getPlayerPosition());
     } else {
       this.cancelDrag();
-      this.stopSampling();
+      this.renderer?.stop();
       this.cancelZoom();
     }
     this.notifyMapState();
@@ -156,7 +150,6 @@ export class DstMinimapElement extends AssetElement {
   }
 
   private disposeRenderer(): void {
-    this.stopSampling();
     this.cancelZoom();
     this.renderer?.dispose();
     this.renderer = undefined;
@@ -177,26 +170,11 @@ export class DstMinimapElement extends AssetElement {
     this.view = undefined;
   }
 
-  private mapEntities(): readonly MiniMapEntity[] {
-    return this.options?.getMiniMapEntities?.() ?? this.options?.miniMapEntities ?? [];
-  }
-
-  private sampleEntities = (): void => {
-    this.renderer?.syncEntities(this.mapEntities());
-  };
-
-  private startOpen(center?: { x: number; z: number }): void {
-    this.sampleEntities();
-    this.stopSampling();
-    this.sampleTimer = setInterval(this.sampleEntities, MINIMAP_ENTITY_SAMPLE_MS);
+  private openView(center?: { x: number; z: number }): void {
+    this.renderer?.start();
     if (center) this.view?.center(center.x, center.z);
     this.cancelZoom();
     this.updateView();
-  }
-
-  private stopSampling(): void {
-    clearInterval(this.sampleTimer);
-    this.sampleTimer = undefined;
   }
 
   private updateView(): void {

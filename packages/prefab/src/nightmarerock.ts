@@ -1,8 +1,7 @@
 import type * as CANNON from 'cannon-es';
 import * as THREE from 'three';
-import { createAnimatedSpriteFactory, type AnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
 import type { TileStateQuery } from '@dontstarve-web/signals';
-import type { PrefabDisplay, SpriteState } from '@dontstarve-web/display';
+import { SpriteResources, type PrefabDisplay, type SpriteState } from '@dontstarve-web/display';
 import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
 import { watchTileActivity } from './tileActivity';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -10,7 +9,7 @@ import { ComponentTimer } from '../../componets/src/timer';
 import { NightmareRockStateGraph, type NightmareRockSound, type NightmareRockStateInst } from '../../stategraphs/src/SGnightmarerock';
 import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
-import { PlaySound, PreloadSounds } from './sound';
+import { PlaySound } from './sound';
 import { MakeObstaclePhysics, WORLD_SCALE } from './standardcomponents';
 import type { WorldFxPrefab } from './world_fx';
 import { COLLISION } from '../../componets/src/physicsState';
@@ -35,7 +34,7 @@ export interface NightmareRockWorld {
   scheduler?: GameTimeScheduler;
   physics: CANNON.World;
   getPlayers(): readonly NightmareRockPlayer[];
-  fx: { prepare(prefab: WorldFxPrefab): Promise<void>; spawn(prefab: WorldFxPrefab, position: THREE.Vector3): void };
+  fx: { spawn(prefab: WorldFxPrefab, position: THREE.Vector3): void };
 }
 
 // nightmarerock.lua constants, DST units converted to scene units.
@@ -44,8 +43,6 @@ const NEAR_DIST_SQ = (10 * WORLD_SCALE) ** 2;
 const FAR_DIST_SQ = (11 * WORLD_SCALE) ** 2;
 const UPDATE_INTERVAL = .2;
 const FRAMES = 1 / 30;
-const SOUNDS: readonly NightmareRockSound[] = ['dontstarve/sanity/shadowrock_up', 'dontstarve/sanity/shadowrock_down',
-  'dontstarve/sanity/shadowrock_conseal', 'dontstarve/sanity/shadowrock_reveal'];
 
 export function isNightmareRockId(value: string): value is NightmareRockId {
   return (NIGHTMAREROCK_IDS as readonly string[]).includes(value);
@@ -92,7 +89,7 @@ class NightmareRock implements NightmareRockStateInst {
   // --- NightmareRockStateInst ---------------------------------------------------------------------
 
   playAnimation(name: string): void {
-    this.controller.playOnce(name, () => this.sg.pushEvent('animover'));
+    this.controller.playOnce(name, () => this.sg?.pushEvent('animover'));
   }
   playSound(path: NightmareRockSound): void { PlaySound(path, this.model.position); }
   spawnFx(prefab: 'sanity_raise' | 'sanity_lower'): void { this.world.fx.spawn(prefab, this.model.position); }
@@ -182,30 +179,22 @@ class NightmareRock implements NightmareRockStateInst {
 
 /** nightmarerock.lua sanityrock / insanityrock: obelisks that rise and lower with the nearby player's sanity. */
 export class NightmareRockManager {
-  private factoryRequest?: Promise<AnimatedSpriteFactory>;
+  private readonly resources: SpriteResources;
   private readonly rocks = new Map<THREE.Group, { id: NightmareRockId; rock: NightmareRock }>();
   private readonly scene: THREE.Scene;
-  private readonly assetBaseUrl: string;
   private readonly world: NightmareRockWorld;
   private staggerOffset = 0;
   private disposed = false;
 
   constructor(scene: THREE.Scene, assetBaseUrl: string, world: NightmareRockWorld) {
-    this.scene = scene; this.assetBaseUrl = assetBaseUrl; this.world = world;
+    this.scene = scene; this.resources = new SpriteResources(assetBaseUrl); this.world = world;
   }
 
-  async spawn(id: NightmareRockId, position: THREE.Vector3, saved?: NightmareRockRecord): Promise<THREE.Group> {
+  spawn(id: NightmareRockId, position: THREE.Vector3, saved?: NightmareRockRecord): THREE.Group {
     if (this.disposed) throw new Error('Nightmare rocks have been disposed');
     if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError('Invalid nightmare rock position');
-    if (!this.factoryRequest) {
-      this.factoryRequest = createAnimatedSpriteFactory(this.assetBaseUrl, 'blocker_sanity.zip');
-      void this.factoryRequest.catch(() => { this.factoryRequest = undefined; });
-    }
-    const [factory] = await Promise.all([this.factoryRequest, PreloadSounds(...SOUNDS),
-      this.world.fx.prepare('sanity_raise'), this.world.fx.prepare('sanity_lower')]);
-    if (this.disposed) throw new Error('Nightmare rocks have been disposed');
-    const entity = createPrefabEntity(id, { create: (animation, frame) => factory.create({ initialAnimation: animation, initialFrame: frame, name: id }),
-      release: drawn => factory.disposeSprite(drawn) }, { name: 'idle_inactive', billboard: true }, id);
+    const entity = createPrefabEntity(id, this.resources.factory({ animationArchive: 'blocker_sanity.zip', buildArchive: 'blocker_sanity.zip' }),
+      { name: 'idle_inactive', billboard: true }, id);
     const model = entity.display.model;
     model.position.set(position.x, 0, position.z);
     entity.instance.entityId = saved?.id ?? newEntityId();
@@ -241,6 +230,6 @@ export class NightmareRockManager {
     this.disposed = true;
     for (const { rock } of this.rocks.values()) { rock.dispose(); }
     this.rocks.clear();
-    void this.factoryRequest?.then(factory => factory.dispose(), () => undefined);
+    this.resources.dispose();
   }
 }

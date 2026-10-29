@@ -46,9 +46,14 @@ test('right-click plays the panflute: play_flute timing and sound, one use spent
     (window as any).fluteGame = { main, player, scene };
   }, modules);
   await page.goto('/tests/dst-lighting.html?save=initial-world.json'); await prepare();
+  expect(await page.evaluate(() => {
+    const assets = (window as any).__prefabInstance((window as any).fluteGame.player).animationController.equipmentAssets;
+    return ['player_actions_uniqueitem.zip', 'pan_flute.zip', 'dynamic/panflute_an.zip']
+      .every(archive => assets.peekBuild(archive)) && !!assets.peekAnimation('player_actions_uniqueitem.zip');
+  })).toBe(true);
   const submit = (command: string) => page.evaluate(command => document.querySelector('dst-debug-console')!.dispatchEvent(
     new CustomEvent('game:debug-command', { detail: { command } })), command);
-  const stateName = () => page.evaluate(() => (window as any).fluteGame.player.userData.stategraph.stateName);
+  const stateName = () => page.evaluate(() => (window as any).__prefabInstance((window as any).fluteGame.player).animationController.stategraph.stateName);
   const beefaloIds = () => page.evaluate(() => (window as any).fluteGame.scene.children
     .filter((model: any) => (window as any).__prefabInstance(model)?.prefab === 'beefalo').map((model: any) => (window as any).__prefabInstance(model)?.entityId as string));
   const beefaloAsleep = (id: string) => page.evaluate(id => (window as any).fluteGame.scene.children

@@ -8,7 +8,7 @@ import { equipmentSlotAddress } from '../../inventory/src/addresses';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src/slots';
 import { FishingActionController } from '../../stategraphs/src/fishing';
 import { GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
-import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
+import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
 import { PondManager } from '../../prefab/src/pond';
 import { createEquipmentExistenceState, GameTimeScheduler } from '../../signals/src';
 import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
@@ -57,9 +57,8 @@ it('casts at a pond, waits for a bite, hooks, reels and lands a pondfish; a stra
   const scheduler = new GameTimeScheduler();
   const player = await createWilsonPlayer('/dst/data/anim');
   player.position.set(0, 0, 20);
-  const animation = player.userData.animationController as WilsonAnimationController;
+  const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
   await animation.setCarryItem('fishingrod');
-  await animation.prepareFishing();
   const world = { scene: new THREE.Scene(), player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
   const ponds = new PondManager(world.scene, '/dst/data/anim', scheduler);

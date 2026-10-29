@@ -71,7 +71,7 @@ test('drops source backpack ground art, reskins with a sweeper, picks up and equ
   await page.mouse.click(point.x, point.y, { button: 'right' });
   await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).backpackSkinGame.scene.children
     .find((object: any) => (window as any).__prefabInstance(object)?.entityId === (window as any).backpackSkinGame.backpackId))?.skinId)).toBe('backpack_babybeef');
-  await expect.poll(() => page.evaluate(() => (window as any).backpackSkinGame.player.userData.animationController.isReskinning)).toBe(false);
+  await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).backpackSkinGame.player).animationController.isReskinning)).toBe(false);
   const groundDownload = page.waitForEvent('download');
   await page.evaluate(() => document.querySelector('dst-debug-console')!.dispatchEvent(
     new CustomEvent('game:debug-command', { detail: { command: 'c_save()' } })));

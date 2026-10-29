@@ -44,7 +44,7 @@ test('eating and drinking update the HUD and preserve food and spawned items thr
   const count = () => page.evaluate(() => (window as any).juiceGame.main.inventory.materialSummary().bananajuice ?? 0);
   await expect(juice).toBeVisible();
   await juice.click({ button: 'right' }); await page.keyboard.press('Escape');
-  await expect.poll(() => page.evaluate(() => (window as any).juiceGame.player.userData.animationController.stategraph.hasStateTag('eating'))).toBe(false);
+  await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).juiceGame.player).animationController.stategraph.hasStateTag('eating'))).toBe(false);
   expect(await count()).toBe(2);
   await expect(sanity).toHaveText('35');
   await juice.click({ button: 'right' });
@@ -57,7 +57,7 @@ test('eating and drinking update the HUD and preserve food and spawned items thr
 
   for (const itemId of ['meatballs', 'green_cap_cooked']) {
     await submit(`c_give("${itemId}", 2)`);
-    await expect.poll(() => page.evaluate(() => (window as any).juiceGame.player.userData.animationController.stategraph.hasStateTag('eating'))).toBe(false);
+    await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).juiceGame.player).animationController.stategraph.hasStateTag('eating'))).toBe(false);
     const item = bar.locator(`[data-item-id="${itemId}"]`);
     await expect(item).toBeVisible();
     await item.click({ button: 'right' });

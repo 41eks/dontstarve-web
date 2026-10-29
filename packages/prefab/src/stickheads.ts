@@ -3,11 +3,10 @@ import definitions from './definitions.json' with { type: 'json' };
 import { createSharedArchiveSprite, ArchiveSpriteAssets } from '@dontstarve-web/animation/archiveSprite';
 import { createEffect, createMemo, WorldContentKey, type Memo } from '@dontstarve-web/signals';
 import { TileTracker } from '../../componets/src/tileManager';
-import { FliesController, FLIES_SOUND } from './flies';
+import { FliesController } from './flies';
 import { actionEntity } from './actionEntity';
 import { createArchiveEntity } from './prefabInstance';
 import { watchTileActivity } from './tileActivity';
-import { PreloadSounds } from './sound';
 import type {
     AnimatedBuildingDefinition,
     AnimatedBuildingEventContext,
@@ -31,7 +30,7 @@ async function prepare(): Promise<StickHeadResources> {
         const createFlies = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(assets, { animationArchive: 'flies.zip',
             buildArchives: ['flies.zip'], bank: 'flies', animation: clip.name, loop: clip.loop }, { name: 'flies' });
         const first = { name: 'swarm_pre', loop: false };
-        const [created] = await Promise.all([createFlies(first), PreloadSounds(FLIES_SOUND)]);
+        const created = await createFlies(first);
         const flies = createArchiveEntity('flies', { create: createFlies, initial: created }, { name: first.name }, 'flies');
         flies.instance.persists = false;
         return { materials: [], flies, dispose: () => { flies.instance.remove(); flies.display.dispose(); assets.dispose(); } };

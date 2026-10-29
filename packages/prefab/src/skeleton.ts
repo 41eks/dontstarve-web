@@ -1,8 +1,7 @@
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
-import { createSharedArchiveSprite, preloadSharedArchiveSprite, ArchiveSpriteAssets } from '@dontstarve-web/animation/archiveSprite';
-import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
+import { SpriteResources, type ArchiveSpriteCommands, type PrefabDisplay } from '@dontstarve-web/display';
 import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
 import type { TileStateQuery } from '@dontstarve-web/signals';
 import { watchTileActivity } from './tileActivity';
@@ -15,7 +14,7 @@ import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
 import { MakeSmallObstaclePhysics } from './standardcomponents';
 import type { SpawnGroundItem } from './groundPrefab';
-import { PlaySound, PreloadSounds } from './sound';
+import { PlaySound } from './sound';
 import catalog from './groundItems.json' with { type: 'json' };
 
 export const SKELETON_PLAYER_ID = 'skeleton_player' as const;
@@ -76,58 +75,27 @@ export function isSkeletonId(value: string): value is SkeletonId {
 export class SkeletonManager {
   private readonly scene: THREE.Scene;
   private readonly world: SkeletonWorld;
-  private readonly assets = new ArchiveSpriteAssets();
+  private readonly resources = new SpriteResources();
   private readonly skeletons = new Map<THREE.Group, Skeleton>();
   private readonly effects = new Set<ReturnType<typeof createArchiveEntity>>();
-  private source?: ReturnType<typeof preloadSharedArchiveSprite>;
   private disposed = false;
 
   constructor(scene: THREE.Scene, world: SkeletonWorld) {
     this.scene = scene; this.world = world;
   }
 
-  /** Decode the bones and the hammer's collapse effect ahead of the death that leaves them. */
-  async prepare(): Promise<void> {
-    if (this.disposed) throw new Error('Skeletons have been disposed');
-    await Promise.all([this.getSource(),
-      this.assets.loadAnimation('structure_collapse_fx.zip'), this.assets.loadBuild('structure_collapse_fx.zip'),
-      PreloadSounds('dontstarve/common/destroy_smoke', 'dontstarve/wilson/rock_break')]);
-  }
-
-  private getSource() {
-    return this.source ??= preloadSharedArchiveSprite(this.assets, { animationArchive: 'skeletons.zip', buildArchives: ['skeletons.zip'],
-      bank: 'skeleton' }, { instancedAnimations: 'all' }).catch((error: unknown) => { this.source = undefined; throw error; });
-  }
-
-  async spawn(prefab: SkeletonId, position: THREE.Vector3, saved?: SkeletonRecord): Promise<THREE.Group> {
+  spawn(prefab: SkeletonId, position: THREE.Vector3, saved?: SkeletonRecord): THREE.Group {
     if (this.disposed) throw new Error('Skeletons have been disposed');
     if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError('Invalid skeleton position');
     const state = saved?.components.skeleton;
     // common_fn: animnum = math.random(animnum_min, animnum_max); OnLoad restores the saved one.
     const { min, max } = SKELETON_ANIMS[prefab];
     const anim = state?.anim ?? min + Math.floor(Math.random() * (max - min + 1));
-    const resources = await Promise.allSettled([
-      this.getSource(),
-      this.prepareHammered(),
-    ] as const);
-    const create = resources[0].status === 'fulfilled' ? resources[0].value : undefined;
-    if (resources.some(result => result.status === 'rejected') || this.disposed || !create) {
-      const failed = resources.find(result => result.status === 'rejected');
-      throw failed?.status === 'rejected' ? failed.reason : new Error('Skeletons have been disposed');
-    }
-    const build = (clip: { name: string; loop: boolean }) => create(clip.name, clip.loop, prefab);
     const clip = { name: `idle${anim}`, loop: false };
-    const entity = createArchiveEntity(prefab, { create: build, initial: build(clip) }, { name: clip.name, billboard: true }, prefab);
+    const entity = createArchiveEntity(prefab, this.resources.archive({ animationArchive: 'skeletons.zip',
+      buildArchives: ['skeletons.zip'], bank: 'skeleton' }, { instancedAnimations: 'all' }), { name: clip.name, billboard: true }, prefab);
     entity.instance.sprite.playOnce(clip.name);
     return this.create(prefab, entity, position, anim, state, saved);
-  }
-
-  /** The collapse effect and its sounds, ready before the hit. */
-  private async prepareHammered(): Promise<void> {
-    await Promise.all([
-      this.assets.loadAnimation('structure_collapse_fx.zip'), this.assets.loadBuild('structure_collapse_fx.zip'),
-      PreloadSounds('dontstarve/common/destroy_smoke', 'dontstarve/wilson/rock_break'),
-    ]);
   }
 
   private create(prefab: SkeletonId, { instance, display }: ReturnType<typeof createArchiveEntity>, position: THREE.Vector3, anim: number,
@@ -177,17 +145,12 @@ export class SkeletonManager {
     const at = position.clone();
     PlaySound('dontstarve/common/destroy_smoke', at);
     PlaySound('dontstarve/wilson/rock_break', at);
-    void createSharedArchiveSprite(this.assets, { animationArchive: 'structure_collapse_fx.zip', buildArchives: ['structure_collapse_fx.zip'],
-      bank: 'collapse', animation: 'collapse_small', loop: false }).then(effect => {
-      if (this.disposed) { effect.dispose(); return; }
-      const entity = createArchiveEntity('collapse_small', { initial: effect, create: clip => createSharedArchiveSprite(this.assets, {
-        animationArchive: 'structure_collapse_fx.zip', buildArchives: ['structure_collapse_fx.zip'], bank: 'collapse', animation: clip.name, loop: clip.loop,
-      }) }, { name: 'collapse_small', billboard: true });
-      entity.instance.position.copy(at); entity.instance.persists = false;
-      for (const tag of ['FX', 'NOCLICK']) entity.instance.addTag(tag);
-      this.scene.add(entity.display.model); this.effects.add(entity);
-      entity.instance.sprite.playOnce('collapse_small', () => { entity.instance.remove(); this.effects.delete(entity); });
-    }).catch((error: unknown) => console.error('Unable to play collapse effect', error));
+    const entity = createArchiveEntity('collapse_small', this.resources.archive({ animationArchive: 'structure_collapse_fx.zip',
+      buildArchives: ['structure_collapse_fx.zip'], bank: 'collapse' }), { name: 'collapse_small', billboard: true }, 'collapse_small',
+    instance => instance.sprite.playOnce('collapse_small', () => { instance.remove(); this.effects.delete(entity); }));
+    entity.instance.position.copy(at); entity.instance.persists = false;
+    for (const tag of ['FX', 'NOCLICK']) entity.instance.addTag(tag);
+    this.scene.add(entity.display.model); this.effects.add(entity);
   }
 
   update(dt: number, _quaternion: THREE.Quaternion): void {
@@ -237,6 +200,6 @@ export class SkeletonManager {
     for (const model of [...this.skeletons.keys()]) this.remove(model);
     for (const { instance } of this.effects) instance.remove();
     this.effects.clear();
-    this.assets.dispose();
+    this.resources.dispose();
   }
 }

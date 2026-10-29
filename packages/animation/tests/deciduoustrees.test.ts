@@ -36,8 +36,8 @@ it('cycles three source size banks, swaps seasonal leaves without sharing tint, 
   try {
     const tree = s.forest.spawn('deciduoustree_short', new THREE.Vector3(2, 0, 0));
     const work = s.forest.chopTargets[0].entity.components.workable!, model = tree.model!;
-    const icon = s.forest.miniMapEntities[0];
-    expect(icon).toMatchObject({ icon: 'tree_leaf.png', priority: -1, position: tree.position });
+    const icon = prefabInstance(model)!.minimap;
+    expect(icon).toMatchObject({ icon: 'tree_leaf.png', priority: -1 });
     const growth = model.userData.components.growable, leaves = model.userData.deciduoustreeState.leaves;
     expect(work.GetWorkLeft()).toBe(5);
     await new Promise(resolve => setTimeout(resolve, 0));
@@ -60,7 +60,7 @@ it('cycles three source size banks, swaps seasonal leaves without sharing tint, 
     expect((model.children[0].children[0].children[0] as THREE.Mesh).visible).toBe(true);
     const completion = leaves.completionTimer.peek(); expect(completion.status).toBe('scheduled');
     await area.visit(new THREE.Vector3(500, 0, 0)); expect(sharedDisposed).not.toHaveBeenCalled();
-    expect(s.forest.miniMapEntities).toEqual([icon]);
+    expect(prefabInstance(model)!.minimap).toBe(icon);
     const hidden = vi.spyOn(model.userData.animationController, 'setSymbolHidden');
     world.snowLevel.set(.02); await new Promise(resolve => setTimeout(resolve, 0));
     expect(hidden).not.toHaveBeenCalled();
@@ -121,11 +121,11 @@ it('drops two autumn acorns, preserves a saved stump and its seasonal build, and
       const loaded = restored.forest.spawn('deciduoustree', new THREE.Vector3(...record.transform.position), record);
       expect(restored.forest.exportRecords()[0]).toEqual(record);
       expect(loaded.model!.userData.animationController.currentAnimation).toBe('stump_tall');
-      const icon = restored.forest.miniMapEntities[0];
+      const icon = prefabInstance(loaded.model!)!.minimap;
       expect(icon.icon).toBe('tree_leaf_stump.png');
       expect(restored.forest.digTargets[0].dig()).toBe(true);
       expect(icon.enabled).toBe(false);
-      expect(restored.forest.miniMapEntities).toEqual([]);
+      expect(prefabInstance(loaded.model!)!.isRemoved).toBe(true);
       expect(restored.dropLoot).toHaveBeenLastCalledWith([{ itemId: 'log', count: 1 }], loaded.position);
       restored.scheduler.advance(5000); await area.visit(new THREE.Vector3());
       expect(restored.forest.exportRecords()).toEqual([]); expect(restored.forest.entities).toEqual([]);

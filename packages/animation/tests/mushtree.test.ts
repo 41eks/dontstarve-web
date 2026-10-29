@@ -55,7 +55,7 @@ it('chops a moon mushtree into a diggable stump, drops catalogued loot, and keep
     const model = await trees.spawn('mushtree_moon', new THREE.Vector3(5, 0, 7));
     const mesh = model.children[0].children[0].children[0] as THREE.Mesh;
     expect(mesh.visible).toBe(false); // Idle is drawn by the shared instance batch.
-    expect(trees.miniMapEntities.map(({ icon }) => icon)).toEqual(['mushtree_moon.png']);
+    expect(prefabInstance(model)!.minimap.icon).toBe('mushtree_moon.png');
     const axe = inventory.entities.create({ itemId: 'axe', count: 1 });
     const [chop] = trees.getChopTargets();
     for (let i = 0; i < 14; i++) expect(performToolWork('CHOP', chop.entity, {}, axe)).toBe(true);
@@ -70,7 +70,7 @@ it('chops a moon mushtree into a diggable stump, drops catalogued loot, and keep
     // moon_cap has no ground item yet, so only the two logs are dropped.
     expect(drops).toEqual([{ itemId: 'log', count: 2 }]);
     const [dig] = trees.getDigTargets();
-    expect(trees.miniMapEntities.map(({ icon }) => icon)).toEqual(['mushroom_tree_stump.png']);
+    expect(prefabInstance(model)!.minimap.icon).toBe('mushroom_tree_stump.png');
 
     const [{ prefabId, record }] = trees.exportRecords();
     expect(prefabId).toBe('mushtree_moon');
@@ -122,7 +122,7 @@ it('blooms a tall mushtree in winter only and carries webbable', async () => {
   try {
     const model = await trees.spawn('mushtree_tall', new THREE.Vector3(1, 0, 2));
     expect(trees.exportRecords()[0].record.components.mushtree?.treestate).toBe('bloom');
-    expect(trees.miniMapEntities.map(({ icon }) => icon)).toEqual(['mushroom_tree.png']);
+    expect(prefabInstance(model)!.minimap.icon).toBe('mushroom_tree.png');
     expect(model.userData.actionEntity.hasTag('webbable')).toBe(true);
   } finally { trees.dispose(); }
 }, 20000);

@@ -13,8 +13,8 @@ import { Burnable } from '../../componets/src/burnable';
 import { Fueled, type FueledSave } from '../../componets/src/fueled';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { WorkInst } from '../../componets/src/workable';
-import { CAMPFIREFIRE_ARCHIVE, CAMPFIREFIRE_ID, CAMPFIREFIRE_SOUNDS, CampfireFire } from './campfirefire';
-import { PlaySound, PreloadSounds } from './sound';
+import { CAMPFIREFIRE_ARCHIVE, CAMPFIREFIRE_ID, CampfireFire } from './campfirefire';
+import { PlaySound } from './sound';
 
 export const FIRE_PIT_ID = 'firepit' as const;
 export type FirePitId = typeof FIRE_PIT_ID;
@@ -150,7 +150,6 @@ export const FIRE_PIT_DEFINITION: AnimatedBuildingDefinition = {
     hammerExtraLoot: [{ itemId: 'ash', count: 1 }],
     skinInit: firepit_init_fn,
     fxArchives: [CAMPFIREFIRE_ARCHIVE],
-    prepare: () => PreloadSounds(...CAMPFIREFIRE_SOUNDS, ADD_FUEL_SOUND),
     oninit: context => { context.model.userData.firepit = new FirePit(context); },
     onbuilt,
     onupdate: ({ model }, dt) => {

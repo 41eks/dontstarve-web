@@ -12,14 +12,14 @@ import { Burnable, type BurnableInst } from '../../componets/src/burnable';
 import { Propagator } from '../../componets/src/propagator';
 import { Workable } from '../../componets/src/workable';
 import { LootDropper } from '../../componets/src/lootdropper';
-import { actionEntity } from './actionEntity';
+import { actionEntity, findActionEntity } from './actionEntity';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import type { ShovelTarget } from '../../stategraphs/src/shovel';
 import type { SpawnGroundItem } from './groundPrefab';
 import catalog from './groundItems.json' with { type: 'json' };
 import { TILE_SIZE } from './tile';
 import { MakeObstaclePhysics, MakeSmallObstaclePhysics } from './standardcomponents';
-import { MiniMapEntity } from '../../componets/src/minimapentity';
+import type { MiniMapState } from '../../map/src/minimapState';
 import type { PhysicsState } from '../../componets/src/physicsState';
 import type { ItemEntity, InventoryStack } from '@dontstarve-web/inventory';
 import type { PickDoer } from '@dontstarve-web/stategraphs/pick';
@@ -185,7 +185,7 @@ interface Plant {
   witherable?: Witherable;
   variant?: string;
   behavior?: PickablePlantBehavior;
-  minimap?: MiniMapEntity;
+  minimap?: MiniMapState;
 }
 
 /**
@@ -262,7 +262,11 @@ export class PickablePlantManager {
     const held = initial.initialFrame === 'last';
     const loop = !held && initial.initialAnimation === idleName && definition.idle.loop !== false;
     const { instance, display } = createArchiveEntity(prefab, this.archiveSource(definition, skinId),
-      { name: initial.initialAnimation, held, billboard: true }, prefab);
+      { name: initial.initialAnimation, held, billboard: true }, prefab, entity => {
+        entity.skinId = skinId;
+        if (definition.skins) entity.sprite.setSkinSource({ art: this.resources.archives,
+          archives: Object.fromEntries(definition.skins.map(skin => [skin, `dynamic/${skin}.zip`])) });
+      });
     if (!held && !loop) instance.sprite.playOnce(initial.initialAnimation);
     const model = display.model;
     model.name = prefab;
@@ -436,6 +440,7 @@ export class PickablePlantManager {
       }
     });
     this.plants.set(model, plant);
+    entity.reskinTarget = this.createReskinTarget(plant);
     this.track(plant);
     // Layers and snow are prefab state: dress every drawn sprite again from the plant's own components.
     plant.stopActivity = watchTileActivity(model, this.world.tickingarea, active => {
@@ -444,7 +449,7 @@ export class PickablePlantManager {
       this.track(plant);
     });
     if (definition.minimapIcon) {
-      plant.minimap = new MiniMapEntity(model.position);
+      plant.minimap = plant.instance.minimap;
       plant.minimap.SetIcon(definition.minimapIcon);
     }
     if (definition.physicsRadius !== undefined) {
@@ -487,7 +492,6 @@ export class PickablePlantManager {
     }
   }
 
-  get miniMapEntities(): MiniMapEntity[] { return [...this.plants.values()].flatMap(({ minimap }) => minimap ? [minimap] : []); }
 
   /** A sleeping plant draws nothing, so it has no order to resolve. */
   get renderEntities() {
@@ -511,40 +515,35 @@ export class PickablePlantManager {
       dig: () => performToolWork('DIG', actionEntity(model, definition.prefab), {}),
     }));
   }
-  get reskinTargets(): readonly ReskinTarget[] { return this.getReskinTargets(); }
+  get reskinTargets(): readonly ReskinTarget[] {
+    return Array.from(this.plants.values(), plant => findActionEntity(plant.model)?.reskinTarget)
+      .filter((target): target is ReskinTarget => target !== undefined);
+  }
 
-  getReskinTargets(model?: THREE.Object3D): readonly ReskinTarget[] {
-    return modelValues(this.plants, model).flatMap(plant => {
-      const { definition, model, instance } = plant;
-      if (!definition.skins) return [];
-      const isValid = () => !this.disposed && this.plants.get(model) === plant && !model.userData.removed;
-      return [{ id: String(instance.entityId), prefabId: definition.prefab, model, position: model.position,
-        skins: definition.skins, isValid, get skinId() { return instance.skinId; },
-        get isRemoved() { return !isValid(); }, hasTag: (tag: string) => actionEntity(model, definition.prefab).hasTag(tag),
-        prepareNextSkin: async (tool?: Parameters<ReskinTarget['prepareNextSkin']>[0]) => {
-          const previousSkin = instance.skinId;
-          const skinId = nextReskin(definition.skins!, previousSkin, tool?._cached_reskinname, definition.prefab);
-          if (!isValid()) throw new Error('Plant is no longer available');
-          // The replacement's display loads the skin before the cast applies it; adopting it keeps this plant's entity and json.
-          const replacement = createArchiveEntity(definition.prefab, this.archiveSource(definition, skinId), { name: definition.idle.name }).display;
-          try { await replacement.artLoaded(); } catch (error) { replacement.dispose(); throw error; }
-          if (!isValid()) { replacement.dispose(); throw new Error('Plant is no longer available'); }
-          const release = () => replacement.dispose();
-          let used = false;
-          return { apply: (fx?: ReskinFxMessage) => {
+  private createReskinTarget(plant: Plant): ReskinTarget | undefined {
+    const { definition, model, instance } = plant;
+    if (!definition.skins) return undefined;
+    const isValid = () => !this.disposed && this.plants.get(model) === plant && !model.userData.removed;
+    return {
+      get id() { return String(instance.entityId); }, prefabId: definition.prefab, model, position: model.position,
+      skins: definition.skins, isValid, get skinId() { return instance.skinId; },
+      get isRemoved() { return !isValid(); }, hasTag: (tag: string) => actionEntity(model, definition.prefab).hasTag(tag),
+      prepareNextSkin: async (tool?: Parameters<ReskinTarget['prepareNextSkin']>[0]) => {
+        const previousSkin = instance.skinId;
+        const skinId = nextReskin(definition.skins!, previousSkin, tool?._cached_reskinname, definition.prefab);
+        let used = false;
+        return {
+          skinId,
+          apply: (fx?: ReskinFxMessage) => {
             if (used || !isValid() || instance.skinId !== previousSkin) return false;
-            if (definition.snowCovered) {
-              if ((this.snowLevel?.peek() ?? 0) >= .015) plant.instance.sprite.showLayer('snow'); else plant.instance.sprite.hideLayer('snow');
-            }
-            plant.display.adopt(replacement);
             plant.instance.skinId = skinId || undefined;
-            release(); used = true;
+            used = true;
             fx?.play(model.position, definition.prefab);
             return true;
-          }, dispose: () => { if (!used) { release(); used = true; } } };
-        },
-      }];
-    });
+          }, dispose: () => { used = true; }
+        };
+      },
+    };
   }
 
   /** The plant's shared archive art for a skin; its displays load it. */
@@ -553,8 +552,7 @@ export class PickablePlantManager {
     return this.resources.archive({ animationArchive: definition.animArchive,
       buildArchives: [definition.buildArchive, ...definition.snowCovered ? ['snow.zip'] : []], bank: definition.archiveSprite.bank,
       hiddenLayers: definition.snowCovered ? ['snow'] : [] },
-    { instancedAnimations: definition.archiveSprite.instancedAnimations, staticBillboard: true,
-      skinArchive: skinId ? `dynamic/${skinId}.zip` : undefined });
+    { instancedAnimations: definition.archiveSprite.instancedAnimations, staticBillboard: true });
   }
 
   protected exportPlants(): { prefab: string; record: PickablePlantRecord }[] {
@@ -581,7 +579,7 @@ export class PickablePlantManager {
     plant.burnable.dispose(); plant.propagator.dispose(); plant.workable.dispose();
     plant.witherable?.dispose();
     plant.behavior?.dispose();
-    plant.minimap?.dispose();
+
     plant.pickable.dispose(); plant.phase.dispose();
     plant.stopBurning();
     plant.fireSound?.stop(); plant.extinguishSound?.stop();

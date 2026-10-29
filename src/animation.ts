@@ -4,6 +4,8 @@
 
 import { AnimationMixer, type Group, type AnimationAction, type AnimationClip } from "three";
 import { input } from './InputManager';
+import { prefabInstance } from '../packages/prefab/src/prefabInstance';
+import type { WilsonPlayerInstance } from '@dontstarve-web/prefab/player';
 
 export default class ModelAnimation {
     // 显式声明属性类型
@@ -71,11 +73,11 @@ export default class ModelAnimation {
 
 import * as THREE from 'three';
 import { playerBody } from "./player";
-import type { WilsonAnimationController, WilsonFacing } from '@dontstarve-web/prefab/player';
+import type { WilsonFacing } from '@dontstarve-web/prefab/player';
 import { JUMP_VELOCITY } from './updatePlayerMovement';
 export function createAnimationUpdater(model: THREE.Group, camera: THREE.Camera) {
 
-    const wilsonAnimation = model.userData.animationController as WilsonAnimationController | undefined;
+    const wilsonAnimation = (prefabInstance(model) as WilsonPlayerInstance | undefined)?.animationController;
 
     if (wilsonAnimation) {
         let lastFacing: WilsonFacing = 'down';

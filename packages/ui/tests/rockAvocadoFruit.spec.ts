@@ -64,7 +64,7 @@ test('mines a hard stone fruit with a pickaxe, plants its sprout, saves it and g
   await expect.poll(() => page.evaluate(() => (window as any).rockFruitGame.scene.children.some((m: any) => m.userData.itemId === 'rock_avocado_fruit_sprout'))).toBe(true);
   await page.evaluate(() => { Math.random = (window as any).originalFruitRandom; });
   // Wait for the actual source launch to settle before targeting the seed sprite.
-  await expect.poll(() => page.evaluate(() => (window as any).rockFruitGame.player.userData.animationController.stategraph.stateName)).toBe('idle');
+  await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).rockFruitGame.player).animationController.stategraph.stateName)).toBe('idle');
   const seed = await screenPoint('rock_avocado_fruit_sprout');
   await page.mouse.click(seed.x, seed.y);
   await expect(bar.locator('[data-item-id="rock_avocado_fruit_sprout"] .inventory-slot__icon[data-loaded="true"]')).toBeVisible();

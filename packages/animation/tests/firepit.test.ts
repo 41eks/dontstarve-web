@@ -44,7 +44,7 @@ it('burns its fuel down through the fire levels, goes out empty and relights whe
   const { placement, scheduler, play } = createPlacement();
   try {
     await placement.spawn(FIRE_PIT_ID);
-    const [{ model, entity }] = placement.hammerTargets;
+    const [{ display: { model }, entity }] = placement.hammerTargets;
     const { components } = model.userData;
     for (const tag of ['campfire', 'structure', 'wildfireprotected', 'BURNABLE_fueled']) expect(entity.hasTag(tag)).toBe(true);
 
@@ -85,7 +85,7 @@ it('saves its fuel and queued charcoal, then drops the charcoal when the restore
   let record;
   try {
     await first.placement.spawn(FIRE_PIT_ID);
-    const [{ model }] = first.placement.hammerTargets;
+    const [{ display: { model } }] = first.placement.hammerTargets;
     // Filling the top section queues a charcoal.
     model.userData.components.fueled.TakeFuelItem(fuelItem(180));
     expect(fire(model).animation).toBe('level4');

@@ -14,7 +14,7 @@ import {
 } from './animatedBuildingPlacement';
 import { actionEntity } from './actionEntity';
 import { prefabInstance } from './prefabInstance';
-import { PlaySound, PreloadSounds, type SoundEventPath, type SoundHandle } from './sound';
+import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
 import { FRAMES } from '../../stategraphs/src/stategraph';
 import { TILE_SIZE } from './tile';
 
@@ -161,10 +161,7 @@ class Moondial {
 const moondialOf = (model: THREE.Object3D): Moondial => model.userData.moondial;
 
 async function prepare(): Promise<MoondialResources> {
-    const [loaded] = await Promise.all([
-        loadSymbolOverride(`${import.meta.env.BASE_URL}dst/data/anim`, WANING_BUILD, REFLECTION_SYMBOLS[0]),
-        PreloadSounds(...Object.values(SOUND), 'dontstarve/wilson/rock_break'),
-    ]);
+    const loaded = await loadSymbolOverride(`${import.meta.env.BASE_URL}dst/data/anim`, WANING_BUILD, REFLECTION_SYMBOLS[0]);
     // One waning atlas serves the three reflection symbols; the materials belong to the instance's art.
     return {
         materials: loaded.materials,

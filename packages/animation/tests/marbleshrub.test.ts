@@ -91,9 +91,9 @@ it('plants a marblebean, digs it back up, and grows it into a mineable shrub tha
     expect(s.shrubs.exportRecords()[0].components.growable.stage).toBe(3);
 
     // marbleshrub<shape>.png, MiniMapEntity priority -1; the snow layer adds geometry once the level reaches .015.
-    const [minimap] = s.shrubs.miniMapEntities;
-    expect([minimap.icon, minimap.priority, minimap.position.x]).toEqual(['marbleshrub2.png', -1, 12]);
     const model = s.shrubs.mineTargets[0].model;
+    const minimap = prefabInstance(model)!.minimap.peek();
+    expect([minimap.icon, minimap.priority, model.position.x]).toEqual(['marbleshrub2.png', -1, 12]);
     const sprite = prefabInstance(model)!.sprite;
     // growfromseed spawns the shrub at once; its display draws it once the art has loaded.
     await model.userData.display.artLoaded();

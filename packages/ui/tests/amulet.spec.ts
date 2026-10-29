@@ -29,7 +29,7 @@ test('a ghost that haunts a red amulet rises from it in amulet_rebirth, which co
       haunted: model.userData.actionEntity?.hasTag('haunted') } : null;
   });
   const player = () => page.evaluate(() => {
-    const { player, stats, main } = (window as any).amuletGame, controller = player.userData.animationController;
+    const { player, stats, main } = (window as any).amuletGame, controller = (window as any).__prefabInstance(player).animationController;
     return { ghost: controller.isGhost, state: controller.stategraph.stateName, ghostMode: stats.playerGhostMode.peek(),
       invincible: stats.playerStats.health.invincible, penalty: stats.playerStats.health.penalty,
       body: main.inventory.GetEquippedItem('body')?.prefab ?? null, amulets: main.inventory.count('amulet'),

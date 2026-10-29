@@ -93,7 +93,7 @@ test('keeps a canary in the cage, starves it onto the shelf and saves every stat
       { slot: inventorySlotAddress(Number(source.address.slotKey)), itemId: 'reskin_tool', skinId: source.item.skinId, delta: -1 },
       { slot: hand, itemId: 'reskin_tool', skinId: source.item.skinId, delta: 1 },
     ])) throw new Error('Unable to equip sweeper');
-    await game.player.userData.animationController.setCarryItem('reskin_tool', source.item.skinId);
+    await (window as any).__prefabInstance(game.player).animationController.setCarryItem('reskin_tool', source.item.skinId);
     return true;
   }, `/@fs${fileURLToPath(new URL('../../inventory/src/index.ts', import.meta.url))}`);
   expect(sweeper).toBe(true);
@@ -109,7 +109,7 @@ test('keeps a canary in the cage, starves it onto the shelf and saves every stat
   });
   await page.mouse.click(point.x, point.y, { button: 'right' });
   await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).cageGame.scene.children.find((child: any) => child.name === 'Birdcage'))?.skinId)).toBe('birdcage_adventure');
-  await expect.poll(() => page.evaluate(() => (window as any).cageGame.player.userData.animationController.isReskinning)).toBe(false);
+  await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).cageGame.player).animationController.isReskinning)).toBe(false);
   expect(await cage()).toMatchObject({ state: '_bird', bird: 'canary', animation: 'idle_bird' });
   expect(await page.evaluate(() => (window as any).cageGame.scene.children.find((child: any) => child.name === 'Birdcage').children[0].children[0].material.length))
     .toBeGreaterThanOrEqual(plainAtlases);

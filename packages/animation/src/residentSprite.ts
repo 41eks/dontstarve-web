@@ -113,26 +113,6 @@ export class ResidentSprite implements ArchiveSprite {
     sprite.dispose();
   }
 
-  /** Replace a prepared source for reskinning without replacing the root, logical clip or callbacks. */
-  adopt(other: ResidentSprite): void {
-    if (this.disposed || other === this) return;
-    this.generation++; this.loading = false;
-    other.generation++; other.loading = false;
-    const taken = other.sprite;
-    other.sprite = undefined;
-    taken?.model.removeFromParent();
-    this.create = other.create;
-    const old = this.sprite;
-    this.sprite = undefined;
-    if (old) { this.placeholder.visible = old.model.visible; this.placeholder.position.copy(old.model.position); }
-    old?.dispose();
-    if (taken && !this.asleep) this.attach(taken);
-    else {
-      taken?.dispose();
-      this.model.add(this.placeholder);
-      registerSpriteRenderGroup(this.model, this.placeholder);
-    }
-  }
 
   setActive(active: boolean): void {
     if (active) { this.wake(); this.load(); } else { this.unload(); this.asleep = true; this.sleep(); }
@@ -241,6 +221,7 @@ export class ResidentSprite implements ArchiveSprite {
     this.sprite?.setFrame(frame);
   }
   setPaused(paused: boolean): void { this.paused = paused; this.sprite?.setPaused(paused); }
+  setSkin(skin: import('./sprite').SpriteSkin | undefined): void { this.sprite?.setSkin(skin); }
   setFacing(facing: number): void { this.sprite?.setFacing(facing); }
   // Appearance is not kept here: the owning prefab dresses each drawn sprite from its own state through an
   // effect on `art`. These calls reach only the sprite that is currently drawn.
@@ -437,6 +418,7 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
   setOpacity(opacity: number): void { this.staticController?.setOpacity(opacity); }
   setPaused(paused: boolean): void { this.controller?.setPaused?.(paused); }
   setArtSource(source: import('./sprite').SpriteArtSource): void { this.controller?.setArtSource?.(source); }
+  setSkin(skin: import('./sprite').SpriteSkin | undefined): void { this.controller?.setSkin?.(skin); }
   setAnimState(state: import('./animState').ResolvedAnimState): void { this.controller?.setAnimState?.(state); }
   setTint(tint: import('./sprite').SpriteTint): void { this.controller?.setTint?.(tint); }
   setComposites(frames: readonly import('./sprite').CompositeSpriteFrame[]): void { this.controller?.setComposites?.(frames); }
@@ -498,44 +480,6 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
   clearOverrideBuild(name: string): void { this.controller?.clearOverrideBuild(name); }
   update(dt: number): void { this.controller?.update(dt); }
 
-  /** Keep a live entity's clip, progress and layers across a reskin that replaces the sprite source. */
-  copyPlaybackFrom(source: ResidentSpriteController): void {
-    this.clip = { ...source.clip };
-    this.queue = source.queue.map(entry => ({ ...entry }));
-    this.frame = source.frame;
-    const from = source.controller, to = this.controller;
-    if (from && to) to.copyPlaybackFrom(from); else if (to) this.play();
-  }
-
-  /** Take over another controller's source and loaded sprite (a reskin), keeping this root and logical state. */
-  adopt(other: ResidentSpriteController): void {
-    if (this.disposed) return;
-    this.matrixGate.markDirty();
-    const old = this.sprite, oldRelease = this.release, taken = other.takeSprite();
-    this.create = other.create; this.release = other.release;
-    this.sprite = undefined;
-    if (old && taken) {
-      taken.visible = old.visible; taken.position.copy(old.position);
-      this.attach(taken, false);
-      (taken.userData.animationController as SpriteController).copyPlaybackFrom(old.userData.animationController as SpriteController);
-      oldRelease(old);
-      return;
-    }
-    if (old) {
-      this.placeholder.visible = old.visible; this.placeholder.position.copy(old.position);
-      oldRelease(old);
-    }
-    if (taken) this.release(taken);
-    this.model.add(this.placeholder);
-    registerSpriteRenderGroup(this.model, this.placeholder);
-  }
-
-  private takeSprite(): THREE.Group | undefined {
-    const sprite = this.sprite;
-    this.sprite = undefined;
-    sprite?.removeFromParent();
-    return sprite;
-  }
 
   dispose(): void {
     if (this.disposed) return;

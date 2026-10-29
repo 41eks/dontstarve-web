@@ -10,7 +10,7 @@ import { equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src'
 import { getAxeLifecycle } from '../../prefab/src/axe';
 import { createMoonTreeManager } from '../../prefab/src/moontree';
 import { PickaxeActionController } from '../../stategraphs/src/pickaxe';
-import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
+import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { PlaySound } from '../../prefab/src/sound';
 import { ShovelActionController } from '../../stategraphs/src/shovel';
@@ -52,7 +52,7 @@ it('wears axes by CHOP consumption, with golden and moonglass variants, and remo
 
 it('chops a moon tree into a stump with an axe, dropping loot, keeping progress while unloaded and saving the stump', async () => {
   const player = await createWilsonPlayer('/dst/data/anim');
-  const animation = player.userData.animationController as WilsonAnimationController;
+  const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
   await animation.setCarryItem('axe');
   const inventory = createPickupInventory();
   inventory.add('axe', 1);
@@ -142,7 +142,7 @@ it('chops a moon tree into a stump with an axe, dropping loot, keeping progress 
 
 it('digs a restored moon tree stump at shovel frame 15 and permanently removes it, preserving other trees and cancelled work', async () => {
   const player = await createWilsonPlayer('/dst/data/anim');
-  const animation = player.userData.animationController as WilsonAnimationController;
+  const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
   await animation.setCarryItem('shovel');
   const inventory = createPickupInventory();
   inventory.add('shovel', 1);

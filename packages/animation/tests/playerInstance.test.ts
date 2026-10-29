@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { SpriteState } from '@dontstarve-web/display';
-import { createWilsonPlayerPrefab, type WilsonAnimationController, type WilsonPlayerPrefab } from '../../prefab/src/player';
+import { createWilsonPlayerPrefab, type WilsonAnimationController, type WilsonPlayerPrefab } from './playerVisual';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { smallHash } from '../src/animationAssets';
 
@@ -28,7 +28,7 @@ async function createPlayer() {
   const world = new CANNON.World();
   const prefab = await createWilsonPlayerPrefab('/dst/data/anim', world);
   players.push(prefab);
-  return { ...prefab, world, animation: prefab.model.userData.animationController as WilsonAnimationController };
+  return { ...prefab, world, animation: prefab.instance.animationController as WilsonAnimationController };
 }
 
 it('declares player art and retains its entity, equipment, body and shared assets through sleep and wake', async () => {
@@ -39,7 +39,9 @@ it('declares player art and retains its entity, equipment, body and shared asset
   expect(instance.sprite).toBeInstanceOf(SpriteState);
   expect(instance.position).toBe(model.position);
   expect(instance.physicsBody).toBe(body);
-  const materials = instance.sprite.sprite.peek().source!.build.materials;
+  const source = instance.sprite.sprite.peek().source!;
+  if (!('art' in source)) throw new Error('Expected named player art');
+  const materials = source.art.peekBuild(source.buildArchive)!.materials;
   const disposals = materials.map(material => vi.spyOn(material, 'dispose'));
   await animation.setCarryItem('pickaxe');
   const hit = vi.fn();
@@ -60,7 +62,9 @@ it('declares player art and retains its entity, equipment, body and shared asset
   expect(model.parent).toBe(scene);
   expect(meshes(model)).toHaveLength(1);
   const art = instance.sprite.sprite.peek();
-  expect(art.source!.build.materials).toBe(materials);
+  const restoredSource = art.source!;
+  if (!('art' in restoredSource)) throw new Error('Expected named player art');
+  expect(restoredSource.art.peekBuild(restoredSource.buildArchive)!.materials).toBe(materials);
   const appearance = art.appearance.get('anim-state');
   expect(appearance?.kind).toBe('anim-state');
   if (appearance?.kind === 'anim-state') expect(appearance.state.overrides.has(smallHash('swap_object'))).toBe(true);
@@ -78,12 +82,11 @@ it('declares player art and retains its entity, equipment, body and shared asset
 it('declares tagged book FX as child instances and expires them on game timers while the player visual sleeps', async () => {
   const { instance, model, display, animation } = await createPlayer();
   const book = { prefab: 'book_silviculture', swap_build: 'swap_books', swap_prefix: 'book_silviculture', def: { fx_under_prefab: 'fx_roots_under_book' } };
-  await animation.prepareRead(book);
   const read = vi.fn(() => true);
   expect(animation.playRead(book, read)).toBe(true);
   for (let frame = 0; frame < 60 && animation.stategraph.stateName !== 'book2'; frame++) animation.update(1 / 30);
   expect(animation.stategraph.stateName).toBe('book2');
-  await settle(); animation.update(0);
+  await display.artLoaded(); animation.update(0);
   const fx = [...instance.sprite.fx.peek().values()];
   expect(fx).toHaveLength(2);
   const children = fx.map(entry => prefabInstance(entry.display!.model)!);

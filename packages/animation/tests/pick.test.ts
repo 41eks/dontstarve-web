@@ -9,6 +9,8 @@ import type { ActionAnimationController, ActionWorldContext } from '../../stateg
 import type { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { EventEmitter } from '../../signals/src/EventEmitter';
 import type { PlayerActionEvents } from '../../stategraphs/src/actionEvents';
+import { SpriteState } from '../../display/src/spriteState';
+import { PrefabInstance } from '../../prefab/src/prefabInstance';
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -57,11 +59,13 @@ it('walks to reach, commits a prepared PICK and releases canceled products witho
   const locomotor = { destination: undefined as THREE.Vector3 | undefined, goToPoint: vi.fn(() => true), stop: vi.fn() };
   const world = { scene, player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     mouseActions: picker, actionEvents, renderer: { domElement: canvas } } as unknown as ActionWorldContext;
+  const playerInstance = new PrefabInstance('wortox', new SpriteState({ name: 'idle' }));
+  playerInstance.attach(player);
   const giveItem = vi.fn(() => true);
   const releaseProduct = vi.fn();
   const prepare = vi.fn(async () => ({ giveItem, dispose: releaseProduct }));
   let manual = false;
-  const controller = new PickActionController(world, animation, locomotor, prepare, () => manual);
+  const controller = new PickActionController(world, animation, locomotor, prepare, playerInstance.sprite, () => manual);
   const click = () => {
     const event = Object.assign(new Event('pointerdown', { cancelable: true }), { button: 0 });
     canvas.dispatchEvent(event);
@@ -75,6 +79,8 @@ it('walks to reach, commits a prepared PICK and releases canceled products witho
   expect(stategraph.stateName).not.toBe('dolongaction');
   player.position.x = 20 - PICK_REACH + .5;
   controller.update();
+  expect(playerInstance.sprite.sprite.peek()).toMatchObject({ facing: 5, mirrored: false });
+  expect(animation.setFacing).not.toHaveBeenCalled();
   expect(stategraph.stateName).toBe('dolongaction');
   stategraph.update(1);
   expect(giveItem).toHaveBeenCalledWith('log', 2, new THREE.Vector3(20, 0, 0));

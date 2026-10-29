@@ -4,7 +4,7 @@ import { parseKtex } from '@dontstarve-web/animation/parseKtex';
 import { createAnimatedSpriteFactory, type AnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
 import type { PrefabDisplay, SpriteState } from '@dontstarve-web/display';
 import { createEmptyEntity, createPrefabEntity, type PrefabInstance } from './prefabInstance';
-import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
+import { PlaySound, type SoundHandle } from './sound';
 import { WORLD_SCALE } from './standardcomponents';
 
 const TEXTURE = 'fx/rain.tex';
@@ -101,7 +101,7 @@ export class RainEffect {
 
   constructor(options: RainEffectOptions) {
     this.options = options;
-    void PreloadSounds(SOUND);
+
     void this.load().catch((error: unknown) => {
       if (!this.disposed) console.error('Unable to load rain effects', error);
     });

@@ -95,7 +95,7 @@ test('game right-click reskins a chest and c_save keeps its skin and container c
       { slot: inventorySlotAddress(Number(source.address.slotKey)), itemId: 'reskin_tool', skinId: source.item.skinId, delta: -1 },
       { slot: hand, itemId: 'reskin_tool', skinId: source.item.skinId, delta: 1 },
     ])) throw new Error('Unable to equip sweeper');
-    const animation = game.player.userData.animationController;
+    const animation = (window as any).__prefabInstance(game.player).animationController;
     await animation.setCarryItem('reskin_tool', source.item.skinId);
     const target = game.scene.children.find((object: any) => object.name === 'TreasureChest' && !game.oldRoots.includes(object));
     game.target = target;
@@ -113,7 +113,7 @@ test('game right-click reskins a chest and c_save keeps its skin and container c
   }, `/@fs${fileURLToPath(new URL('../../inventory/src/index.ts', import.meta.url))}`);
   await page.mouse.click(point.x, point.y, { button: 'right' });
   await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).reskinGame.target)?.skinId)).toBe('treasurechest_ancient');
-  await expect.poll(() => page.evaluate(() => (window as any).reskinGame.player.userData.animationController.isReskinning)).toBe(false);
+  await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).reskinGame.player).animationController.isReskinning)).toBe(false);
   await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).reskinGame.fx).status.peek())).toBe('removed');
   expect(await page.evaluate(() => {
     const { fx, scene } = (window as any).reskinGame;

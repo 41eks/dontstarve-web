@@ -180,7 +180,6 @@ export class PlaceableBuildingPlacement {
         this.fences.cancel();
     }
 
-    get miniMapEntities() { return this.animated.miniMapEntities; }
 
     get renderEntities() {
         return [...this.animated.renderEntities, ...this.walls.renderEntities, ...this.fences.renderEntities];
@@ -201,9 +200,8 @@ export class PlaceableBuildingPlacement {
 
     get giveTargets() { return this.animated.giveTargets; }
 
-    get reskinTargets() { return this.getReskinTargets(); }
-    getReskinTargets(model?: Object3D) {
-        return [...this.animated.getReskinTargets(model), ...this.walls.getReskinTargets(model), ...this.fences.getReskinTargets(model)];
+    get reskinTargets() {
+        return [...this.animated.reskinTargets, ...this.walls.reskinTargets, ...this.fences.reskinTargets];
     }
 
     update(dt: number): void {

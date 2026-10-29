@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { findImage, smallHash, SpriteFrameRenderer, type Animation, type ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
 import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
 import { GroundItemAssets } from './groundItems';
-import { PlaySound, PreloadSounds, type SoundEventPath } from './sound';
+import { PlaySound, type SoundEventPath } from './sound';
 import { createEmptyEntity } from './prefabInstance';
 
 /**
@@ -69,7 +69,7 @@ export class WorldFx {
     this.assets = new GroundItemAssets();
   }
 
-  /** Load art and sound ahead of a spawn, so its first frame is drawn at once. */
+  /** Load art ahead of a spawn, so its first frame is drawn at once. */
   async prepare(prefab: WorldFxPrefab): Promise<void> {
     if (this.disposed) throw new Error('World fx have been disposed');
     let request = this.prepared.get(prefab);
@@ -78,7 +78,6 @@ export class WorldFx {
       request = (async () => {
         const [parsed, build] = await Promise.all([
           this.assets.loadAnimation(definition.archive), this.assets.loadBuild(definition.archive),
-          'sound' in definition ? PreloadSounds(definition.sound) : undefined,
         ]);
         if ('opacity' in definition) for (const material of build.materials) {
           material.transparent = true; material.opacity = definition.opacity;

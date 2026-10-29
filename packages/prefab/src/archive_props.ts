@@ -10,12 +10,12 @@ import { createRenderEffect, createSignal, watchSignal, type ReadonlySignal, typ
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
 import { Workable } from '../../componets/src/workable';
 import { modelEntries } from './modelRecords';
-import { MiniMapEntity } from './minimapEntity';
+import type { MiniMapState } from '../../map/src/minimapState';
 import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
 import { MakeObstaclePhysics } from './standardcomponents';
 import type { SpawnGroundItem } from './groundPrefab';
-import { PlaySound, PreloadSounds } from './sound';
+import { PlaySound } from './sound';
 import catalog from './groundItems.json' with { type: 'json' };
 
 export const ARCHIVE_MOON_STATUE_ID = 'archive_moon_statue' as const;
@@ -104,7 +104,7 @@ interface ArchiveProp {
   sprite?: ArchiveSpriteCommands;
   shadow?: ReturnType<typeof createArchiveEntity>;
   stopActivity?: () => void;
-  minimap?: MiniMapEntity;
+  minimap?: MiniMapState;
   workable?: Workable;
   anim?: number;
   storyprogress?: number;
@@ -175,11 +175,10 @@ export class ArchivePropsManager {
     return request;
   }
 
-  /** The statue's collapse effect and rock_break sound. */
+  /** The statue's collapse effect. */
   private async prepareStatue(): Promise<void> {
     await Promise.all([
       this.assets.loadAnimation('structure_collapse_fx.zip'), this.assets.loadBuild('structure_collapse_fx.zip'),
-      PreloadSounds('dontstarve/common/destroy_smoke', 'dontstarve/wilson/rock_break'),
     ]);
   }
 
@@ -211,7 +210,7 @@ export class ArchivePropsManager {
     if (prefab === ARCHIVE_MOON_STATUE_ID) this.createStatue(prop, inst, anim!, saved !== undefined);
     else if (prefab === ARCHIVE_RUNE_STATUE_ID) this.createRune(prop, storyprogress);
     if (definition.minimap || prefab === ARCHIVE_MOON_STATUE_ID) {
-      prop.minimap = new MiniMapEntity(model.position);
+      prop.minimap = prop.instance.minimap;
       prop.minimap.SetIcon(definition.minimap ?? `archive_moon_statue${anim}.png`);
     }
     if (prefab === ARCHIVE_MOON_STATUE_ID || prefab === ARCHIVE_RUNE_STATUE_ID) {
@@ -334,9 +333,6 @@ export class ArchivePropsManager {
       .concat([...this.effects].map(({ display: { model } }) => ({ object: model, footPosition: model.position, cameraDepth: 0 })));
   }
 
-  get miniMapEntities(): MiniMapEntity[] {
-    return [...this.props.values()].flatMap(({ minimap }) => minimap ? [minimap] : []);
-  }
 
   get mineTargets(): PickaxeTarget[] { return this.getMineTargets(); }
 
@@ -364,7 +360,7 @@ export class ArchivePropsManager {
   private remove(model: THREE.Group): void {
     const prop = this.props.get(model); if (!prop) return;
     this.props.delete(model); model.userData.removed = true; prop.removed = true;
-    prop.stopActivity?.(); prop.stopFacing?.(); prop.minimap?.dispose(); prop.workable?.dispose();
+    prop.stopActivity?.(); prop.stopFacing?.(); prop.workable?.dispose();
     prop.shadow?.instance.remove(); prop.instance.remove();
   }
 

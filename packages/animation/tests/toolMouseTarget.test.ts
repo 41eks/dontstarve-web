@@ -107,13 +107,15 @@ it('matches mining and hammering to the current workable and stops intercepting 
   } finally { s.dispose(); }
 });
 
-it('preserves scene interactions with empty hands and spell targeting while still filtering tool-only structures', async () => {
+it('preserves scene interactions and selects spell targets through entity tags', async () => {
   let sceneAction = true;
-  const s = setup({ canInteractWithoutTool: () => sceneAction, spellTarget: true });
+  const s = setup({ canInteractWithoutTool: () => sceneAction });
   try {
     expect(s.pick()).toBe(s.tree);
     sceneAction = false; s.instance.addTag('burnt'); await flush(); expect(s.pick()).toBe(s.back);
     await s.equip('reskin_tool'); expect(s.pick()).toBe(s.tree);
+    s.instance.addTag('nomagic'); await flush(); expect(s.pick()).toBe(s.back);
+    s.instance.removeTag('nomagic'); await flush(); expect(s.pick()).toBe(s.tree);
     await s.equip('pickaxe'); expect(s.pick()).toBe(s.back);
     await s.equip(); expect(s.pick()).toBe(s.back);
   } finally { s.dispose(); }

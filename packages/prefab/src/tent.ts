@@ -10,7 +10,7 @@ import type {
     AnimatedBuildingEventContext,
     AnimatedBuildingHammerContext,
 } from './animatedBuildingPlacement';
-import { PlaySound, PreloadSounds } from './sound';
+import { PlaySound } from './sound';
 
 export const TENT_ID = 'tent' as const;
 /** TUNING.TENT_USES. */
@@ -105,7 +105,6 @@ export const TENT_DEFINITION: AnimatedBuildingDefinition = {
     obstacleRadius: 1,
     hammerWorkLeft: 4, hammerMaterial: 'wood',
     hammerEffect: { archive: 'structure_collapse_fx.zip', animation: 'collapse_large', name: 'collapse' },
-    prepare: () => PreloadSounds('dontstarve/common/tent_sleep', 'dontstarve/common/tent_dis_pre', 'dontstarve/common/tent_dis_twirl'),
     onbuilt, oninit, onhit, ondispose,
     exportComponents: ({ model }) => ({ finiteuses: getTentComponents(model)!.finiteuses.OnSave() }),
     onrestore: ({ model }, components) => {

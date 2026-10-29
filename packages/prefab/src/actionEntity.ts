@@ -21,12 +21,12 @@ function modelRemoval(model: THREE.Object3D): ReadonlySignal<boolean> {
 }
 
 /** Project the engine inst onto its existing world model, keeping one tag/component owner. */
-export function actionEntity(model: THREE.Object3D, prefab: string, inst?: ComponentActionEntity & WorkableInst): ComponentActionEntity & WorkableInst & { readonly model: THREE.Object3D; getPosition(): THREE.Vector3; getPhysicsRadius(): number } {
+export function actionEntity(model: THREE.Object3D, prefab: string, inst?: ComponentActionEntity & WorkableInst): FoundEntity & { getPhysicsRadius(): number } {
   if (model.userData.actionEntity) return model.userData.actionEntity;
   const instance = prefabInstance(model);
   model.userData.components ??= instance?.components ?? {};
   const removal = inst?.removal ?? modelRemoval(model);
-  const entity: ComponentActionEntity & WorkableInst & { readonly model: THREE.Object3D; getPosition(): THREE.Vector3; getPhysicsRadius(): number } = {
+  const entity: FoundEntity & { getPhysicsRadius(): number } = {
     model,
     prefab,
     removal,
@@ -90,6 +90,7 @@ export function actionEntity(model: THREE.Object3D, prefab: string, inst?: Compo
     setPrefabActive(entity, false);
     entity.removeTag('tickingarea');
     liveEntities.delete(entity);
+    delete entity.reskinTarget;
     delete model.userData.actionEntity;
   });
   if (!entity.isRemoved) {
@@ -111,6 +112,12 @@ const disposals = new Map<FoundEntity, () => void>();
 const entityWorlds = new WeakMap<FoundEntity, EntityTickingArea>();
 const mouseRegistrations = new WeakMap<FoundEntity, ReturnType<typeof registerMouseTarget>>();
 let currentEntityWorld: EntityTickingArea | undefined;
+
+/** Resolve an already registered action entity for the picked model without creating a projection. */
+export function findActionEntity(model: THREE.Object3D): FoundEntity | undefined {
+  const entity = model.userData.actionEntity as FoundEntity | undefined;
+  return entity?.model === model && liveEntities.has(entity) && !entity.isRemoved ? entity : undefined;
+}
 
 function setPrefabActive(entity: FoundEntity, active: boolean): void {
   mouseRegistrations.get(entity)?.setActive(active);

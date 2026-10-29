@@ -7,8 +7,9 @@ import { FollowerFxSlot } from './followerFx';
 import { ArchiveEngine, type ArchiveSpriteSource, type DisplayEngine } from './displayEngine';
 import { DisplaySprite, listDisplayLight, type DisplayLight } from './displaySprites';
 import type { LightState } from './lightState';
-import type { AppearanceJson, ClipJson, SpriteJson, SpriteState } from './spriteState';
-import type { ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
+import type { AppearanceJson, ClipJson, NamedSpriteArt, SkinJson, SpriteJson, SpriteSourceJson, SpriteState } from './spriteState';
+import { smallHash, type ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
+import type { SpriteArtSource, SpriteSkin } from '@dontstarve-web/animation/sprite';
 import { resolveAnimState } from '@dontstarve-web/animation/animState';
 
 /** active: drawn and in the scene; asleep: nothing drawn and out of the scene; removed: everything released. */
@@ -62,6 +63,8 @@ export class PrefabDisplay {
   /** Archives the AnimState names that this display is loading. */
   private readonly loadingArt = new Set<string>();
   private dressedVersion = -1;
+  private skin?: { declaration: SkinJson; id: string | undefined; value: SpriteSkin | undefined };
+  private sourceArt?: { declaration: NamedSpriteArt; value: SpriteArtSource };
   /** The deferred sprite source while this display loads it. */
   private sourceLoading?: Promise<unknown>;
   private fx!: FxAttachments;
@@ -79,7 +82,7 @@ export class PrefabDisplay {
   // What the controller has been given, so that each snapshot only sends what changed.
   private applied: { clip: ClipJson | undefined; queue: number; frame?: SpriteJson['frame']; transient?: SpriteJson['transient'];
     image?: number; facing?: number; mirrored?: boolean; colour?: readonly number[]; opacity?: number; paused?: boolean; erosion?: number; ground?: SpriteJson['ground']; meshOrder?: number; depthOffset?: boolean;
-    source?: SpriteJson['source']; tint?: SpriteJson['tint']; appearance: ReadonlyMap<string, AppearanceJson> };
+    skinId?: string; source?: SpriteJson['source']; tint?: SpriteJson['tint']; appearance: ReadonlyMap<string, AppearanceJson> };
 
   constructor(options: PrefabDisplayOptions) {
     const { archive, sprite: state } = options;
@@ -112,6 +115,7 @@ export class PrefabDisplay {
         if (this.disposed) return;
         ready = loaded;
         this.applyStatus(this.status.peek());
+        this.sync();
       }, (error: unknown) => { this.sourceLoading = undefined; if (!this.disposed) console.error(`Unable to load ${options.name ?? 'a sprite'}`, error); });
     } else throw new Error('A display needs a sprite source');
     // The controller starts in a looping or held clip; any other first clip is sent by the first snapshot.
@@ -158,7 +162,7 @@ export class PrefabDisplay {
     this.cleanups.push(createEffect(() => this.follower.follow(followed.get())));
     this.fx = new FxAttachments(this.model, () => this.engine.setComposites?.(this.fx.compositeFrames()));
     this.cleanups.push(createEffect(() => this.fx.apply(declaredFx.get())));
-    this.cleanups.push(createEffect(() => { art.get(); this.listed.setSprite(this.engine.instanced); this.dress(json.peek()); state.artChanged(); }));
+    this.cleanups.push(createEffect(() => { art.get(); this.listed.setSprite(this.engine.instanced); this.sync(); this.dress(json.peek()); state.artChanged(); }));
     // A billboard turns to TheCamera itself, through its own bridge to the world's camera rotation.
     // The rotation changes every frame of a turn, so it applies before that frame renders, not a microtask later.
     // An asleep display has released its sprite, so it unsubscribes and resyncs to the camera when it wakes.
@@ -220,10 +224,6 @@ export class PrefabDisplay {
   /** Render entries of the effects that are shown now, for the owner's registry to sort with it. */
   get fxRenderEntries(): readonly FxRenderEntry[] { return this.fx.entries(); }
 
-  /** Take over another display's source and drawn sprite (a reskin); this model, entity and json stay. */
-  adopt(other: PrefabDisplay): void {
-    if (!this.disposed) this.engine.adopt(other.engine);
-  }
 
   /** A static archive billboard turns its drawn sprite; any other sprite turns with the model. */
   private faceCamera(rotation: THREE.Quaternion): void {
@@ -260,9 +260,10 @@ export class PrefabDisplay {
 
   private applySprite(json: SpriteJson): void {
     const { engine: controller, applied, state } = this;
-    if (this.dressedVersion !== controller.art.peek()) this.dress(json);
-    if (json.source !== applied.source) { applied.source = json.source; if (json.source) controller.setArtSource?.(json.source); }
     if (json.visible !== undefined) this.model.visible = json.visible;
+    const source = this.resolveSource(json.source);
+    if (json.source && !source) return;
+    if (json.source !== applied.source) { applied.source = json.source; if (source) controller.setArtSource?.(source); }
     if (json.clip !== applied.clip) {
       const clip = json.clip;
       if (clip.none) {
@@ -300,8 +301,13 @@ export class PrefabDisplay {
     if (json.ground !== applied.ground) { applied.ground = json.ground; if (json.ground) controller.setGround?.(json.ground.renderOrder, json.ground.flat); }
     if (json.meshOrder !== applied.meshOrder) { applied.meshOrder = json.meshOrder; if (json.meshOrder !== undefined) controller.setMeshOrder?.(json.meshOrder); }
     if (json.depthOffset !== applied.depthOffset) { applied.depthOffset = json.depthOffset; controller.setDepthOffset?.(json.depthOffset ?? false); }
-    for (const [key, op] of json.appearance) if (applied.appearance.get(key) !== op) this.dressOne(op);
+    if (json.skinId !== applied.skinId || json.appearance.get('skin') !== applied.appearance.get('skin')) {
+      applied.skinId = json.skinId;
+      this.dress(json);
+    }
+    for (const [key, op] of json.appearance) if (op.kind !== 'skin' && applied.appearance.get(key) !== op) this.dressOne(op);
     applied.appearance = json.appearance;
+    if (this.dressedVersion !== controller.art.peek()) this.dress(json);
     this.updateSymbolFollowers(json);
   }
 
@@ -316,13 +322,20 @@ export class PrefabDisplay {
   private dress(json: SpriteJson): void {
     const controller = this.engine;
     if (!controller.loaded) return;
+    const source = this.resolveSource(json.source);
+    if (json.source && !source) return;
+    const fresh = this.dressedVersion !== controller.art.peek();
     this.dressedVersion = controller.art.peek();
-    if (json.source) controller.setArtSource?.(json.source);
+    const skin = json.appearance.get('skin');
+    if (skin?.kind === 'skin') this.dressSkin(skin.skin, json.skinId);
+    if (source) controller.setArtSource?.(source);
     if (this.facing) controller.faceCamera?.(this.facing);
     if (json.image !== undefined) controller.showImage(json.image);
     if (json.facing !== undefined) controller.setFacing(json.facing, json.mirrored);
     const frame = this.frameIndex(json.frame);
-    if (frame !== undefined && controller.currentAnimation === json.clip.name) { controller.setFrame(frame); this.applied.frame = json.frame; }
+    if (frame !== undefined && controller.currentAnimation === json.clip.name && (fresh || this.applied.frame !== json.frame)) {
+      controller.setFrame(frame); this.applied.frame = json.frame;
+    }
     if (json.colour) controller.setColour(json.colour);
     if (json.opacity !== undefined) controller.setOpacity(json.opacity);
     if (json.tint) controller.setTint?.(json.tint);
@@ -331,12 +344,13 @@ export class PrefabDisplay {
     if (json.ground) controller.setGround?.(json.ground.renderOrder, json.ground.flat);
     if (json.meshOrder !== undefined) controller.setMeshOrder?.(json.meshOrder);
     if (json.depthOffset) controller.setDepthOffset?.(true);
-    for (const op of json.appearance.values()) this.dressOne(op);
+    for (const op of json.appearance.values()) if (op.kind !== 'skin') this.dressOne(op);
   }
 
   private dressOne(op: AppearanceJson): void {
     const controller = this.engine;
     switch (op.kind) {
+      case 'skin': this.dressSkin(op.skin, this.json.peek().skinId); break;
       case 'anim-state': this.dressAnimState(op); break;
       case 'archive-symbol': controller.setSymbolOverride?.(op.symbol, op.archive, op.sourceSymbol); break;
       case 'archive-hidden': controller.setSymbolHidden?.(op.symbol, op.hidden); break;
@@ -348,6 +362,86 @@ export class PrefabDisplay {
         if (op.override) controller.addOverrideBuild(op.name, op.override); else controller.clearOverrideBuild(op.name);
         break;
     }
+  }
+
+  private async loadSource(source: NamedSpriteArt): Promise<void> {
+    await Promise.all([source.art.loadAnimation(source.animationArchive),
+      ...[source.buildArchive, ...source.fallbackBuilds ?? []].map(archive => source.art.loadBuild(archive))]);
+  }
+
+  private resolveSource(source: SpriteSourceJson | undefined): SpriteArtSource | undefined {
+    if (!source || !('art' in source)) return source;
+    if (this.sourceArt?.declaration === source) return this.sourceArt.value;
+    const animations = source.art.peekAnimation(source.animationArchive), build = source.art.peekBuild(source.buildArchive);
+    const fallbacks = (source.fallbackBuilds ?? []).map(archive => source.art.peekBuild(archive));
+    if (animations && build && fallbacks.every(value => value !== undefined)) {
+      return (this.sourceArt = { declaration: source, value: { animations, build, bank: smallHash(source.bank),
+        fallbackBuilds: fallbacks as NonNullable<SpriteArtSource['fallbackBuilds']> } }).value;
+    }
+    if (this.engine.loaded) {
+      const key = `source:${JSON.stringify([source.animationArchive, source.buildArchive, source.fallbackBuilds])}`;
+      if (!this.loadingArt.has(key)) {
+        this.loadingArt.add(key);
+        void this.loadSource(source).then(() => {
+          this.loadingArt.delete(key);
+          if (!this.disposed) this.sync();
+        }, (error: unknown) => {
+          this.loadingArt.delete(key);
+          if (!this.disposed) console.error(`Unable to load ${key} for ${this.model.name || 'a sprite'}`, error);
+        });
+      }
+    }
+    return undefined;
+  }
+
+  /** Skin assets belong to the declared owner; loading rechecks the current json before dressing anything. */
+  private dressSkin(declaration: SkinJson, id: string | undefined): void {
+    if (!this.engine.loaded) return;
+    if (id === undefined) {
+      this.skin = { declaration, id, value: undefined };
+      this.engine.setSkin(undefined);
+      return;
+    }
+    const archive = declaration.archives[id];
+    if (!archive) throw new Error(`Unsupported skin ${id} for ${this.model.name || 'a sprite'}`);
+    const build = declaration.art.peekBuild(archive, declaration.materialOptions);
+    const banks = declaration.animationBanks?.[id] ?? [];
+    const animations = banks.length ? declaration.art.peekAnimation(archive) : undefined;
+    if (!build || banks.length && !animations) {
+      const key = `skin:${archive}:${JSON.stringify(declaration.materialOptions)}`;
+      if (!this.loadingArt.has(key)) {
+        this.loadingArt.add(key);
+        void this.loadSkin(declaration, id).then(() => {
+          this.loadingArt.delete(key);
+          if (!this.disposed && this.engine.loaded) this.dress(this.json.peek());
+        }, (error: unknown) => {
+          this.loadingArt.delete(key);
+          if (!this.disposed) console.error(`Unable to load ${key} for ${this.model.name || 'a sprite'}`, error);
+        });
+      }
+      return;
+    }
+    const previous = this.skin;
+    if (previous?.declaration !== declaration || previous.id !== id || previous.value?.build !== build.build
+      || previous.value?.animations !== animations) {
+      this.skin = { declaration, id, value: { ...build, animations,
+        symbols: declaration.symbols && new Set(declaration.symbols.map(smallHash)),
+        baseSymbols: new Set(declaration.baseSymbols?.map(smallHash)), animationBanks: new Set(banks.map(smallHash)) } };
+    }
+    this.engine.setSkin(this.skin!.value);
+  }
+
+  private async loadSkin(declaration: SkinJson, id: string): Promise<void> {
+    const archive = declaration.archives[id];
+    if (!archive) throw new Error(`Unsupported skin ${id} for ${this.model.name || 'a sprite'}`);
+    await Promise.all([declaration.art.loadBuild(archive, declaration.materialOptions),
+      declaration.animationBanks?.[id]?.length ? declaration.art.loadAnimation(archive) : undefined]);
+  }
+
+  /** Prepare a proposed skin before a timed action, without changing the entity's declaration or drawing it. */
+  async preloadSkin(id: string | undefined): Promise<void> {
+    const op = this.json.peek().appearance.get('skin');
+    if (op?.kind === 'skin' && id !== undefined) await this.loadSkin(op.skin, id);
   }
 
   /**
@@ -385,11 +479,22 @@ export class PrefabDisplay {
     await new Promise(resolve => setTimeout(resolve, 0));
     await Promise.all([...this.state.fx.peek().values()].map(fx => fx.display?.artLoaded()));
     for (;;) {
-      const op = this.json.peek().appearance.get('anim-state');
-      if (this.disposed || op?.kind !== 'anim-state' || !op.art) return;
-      const { art } = op, { missing } = resolveAnimState(op.state, art);
-      if (missing.builds.size + missing.animations.size === 0) return;
-      await Promise.all([...[...missing.builds].map(archive => art.loadBuild(archive)), ...[...missing.animations].map(archive => art.loadAnimation(archive))]);
+      if (this.disposed) return;
+      const json = this.json.peek(), op = json.appearance.get('anim-state'), skin = json.appearance.get('skin');
+      const requests: Promise<unknown>[] = [];
+      if (json.source && 'art' in json.source && !this.resolveSource(json.source)) requests.push(this.loadSource(json.source));
+      if (skin?.kind === 'skin' && json.skinId !== undefined) {
+        const { art, archives, materialOptions, animationBanks } = skin.skin, archive = archives[json.skinId];
+        if (!archive) throw new Error(`Unsupported skin ${json.skinId}`);
+        if (!art.peekBuild(archive, materialOptions)) requests.push(art.loadBuild(archive, materialOptions));
+        if (animationBanks?.[json.skinId]?.length && !art.peekAnimation(archive)) requests.push(art.loadAnimation(archive));
+      }
+      if (op?.kind === 'anim-state' && op.art) {
+        const { art } = op, { missing } = resolveAnimState(op.state, art);
+        requests.push(...[...missing.builds].map(archive => art.loadBuild(archive)), ...[...missing.animations].map(archive => art.loadAnimation(archive)));
+      }
+      if (requests.length === 0) { this.applySprite(json); this.dress(json); return; }
+      await Promise.all(requests);
       // The display's own load callbacks dress the sprite first.
       await new Promise(resolve => setTimeout(resolve, 0));
     }

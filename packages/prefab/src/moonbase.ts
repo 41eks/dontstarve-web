@@ -11,7 +11,7 @@ import { Workable } from '../../componets/src/workable';
 import { Repairable } from '../../componets/src/repairable';
 import { Trader, type TradeItem } from '../../componets/src/trader';
 import { Pickable } from './components/pickable';
-import { PlaySound, PreloadSounds, type SoundEventPath, type SoundHandle } from './sound';
+import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
 import { ComponentTimer, Timer, type NamedTimerSave } from '../../componets/src/timer';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { MoonbaseEffects, type MoonbaseFxResources } from './moonbaseFx';
@@ -329,10 +329,6 @@ async function prepare(): Promise<MoonbaseResources> {
   const [overrides, beam, cold] = await Promise.all([
     Promise.all(archives.map(async ({ id, archive, symbol }) => [id, await loadSymbolOverride(base, archive, symbol)] as const)),
     loadAnimationArchive('moonbase_fx.zip', base), loadAnimationArchive('star_cold.zip', base),
-    PreloadSounds(ITEM_SOUND, REPAIR_SOUND, 'dontstarve/common/together/moonbase/beam',
-      'dontstarve/common/together/moonbase/beam_level_up', 'dontstarve/common/together/moonbase/beam_stop',
-      'dontstarve/common/together/moonbase/beam_stop_fail', 'dontstarve/common/staff_coldlight_LP',
-      'dontstarve/music/music_epicfight_moonbase', 'dontstarve/music/music_epicfight_moonbase_b'),
   ]);
   const beamFactory = createSpriteFactory(beam.buildPackage, beam.animations), coldFactory = createSpriteFactory(cold.buildPackage, cold.animations);
   return { staffOverrides: Object.fromEntries(overrides), materials: overrides.flatMap(([, override]) => override.materials),

@@ -6,7 +6,7 @@ import { equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src'
 import { getPickaxeLifecycle } from '../../prefab/src/pickaxe';
 import { RockManager } from '../../prefab/src/rocks';
 import { PickaxeActionController } from '../../stategraphs/src/pickaxe';
-import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
+import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { PlaySound } from '../../prefab/src/sound';
 import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
@@ -60,7 +60,7 @@ it('uses 33 ordinary or 132 golden mining hits and removes depleted equipment th
 
 it('walks into range and commits mining at frame seven, preserving durability when cancelled or the target disappears', async () => {
   const player = await createWilsonPlayer('/dst/data/anim');
-  const animation = player.userData.animationController as WilsonAnimationController;
+  const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
   await animation.setCarryItem('goldenpickaxe');
   const inventory = createPickupInventory();
   inventory.add('goldenpickaxe', 1);

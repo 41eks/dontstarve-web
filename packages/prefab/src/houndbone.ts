@@ -1,7 +1,6 @@
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import * as THREE from 'three';
-import { createSharedArchiveSprite, preloadSharedArchiveSprite, ArchiveSpriteAssets } from '@dontstarve-web/animation/archiveSprite';
-import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
+import { SpriteResources, type ArchiveSpriteCommands, type PrefabDisplay } from '@dontstarve-web/display';
 import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
 import type { TileStateQuery } from '@dontstarve-web/signals';
 import { watchTileActivity } from './tileActivity';
@@ -13,7 +12,7 @@ import { modelEntries } from './modelRecords';
 import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
 import type { SpawnGroundItem } from './groundPrefab';
-import { PlaySound, PreloadSounds } from './sound';
+import { PlaySound } from './sound';
 import catalog from './groundItems.json' with { type: 'json' };
 
 export const HOUNDBONE_ID = 'houndbone' as const;
@@ -52,42 +51,27 @@ interface Houndbone {
 export class HoundboneManager {
   private readonly scene: THREE.Scene;
   private readonly world: HoundboneWorld;
-  private readonly assets = new ArchiveSpriteAssets('houndbone');
+  private readonly resources = new SpriteResources(undefined, 'houndbone');
   private readonly bones = new Map<THREE.Group, Houndbone>();
   private readonly effects = new Set<ReturnType<typeof createArchiveEntity>>();
-  private creator?: Promise<Awaited<ReturnType<typeof preloadSharedArchiveSprite>>>;
   private disposed = false;
 
   constructor(scene: THREE.Scene, world: HoundboneWorld) {
     this.scene = scene; this.world = world;
   }
 
-  private getCreator() {
-    return this.creator ??= preloadSharedArchiveSprite(this.assets, { animationArchive: 'hound_base.zip', buildArchives: ['hound_base.zip'],
-      bank: 'houndbase' }, { instancedAnimations: 'all' }).catch((error: unknown) => { this.creator = undefined; throw error; });
-  }
-
-  async spawn(position: THREE.Vector3, saved?: HoundboneRecord): Promise<THREE.Group> {
+  spawn(position: THREE.Vector3, saved?: HoundboneRecord): THREE.Group {
     if (this.disposed) throw new Error('Hound bones have been disposed');
     if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError('Invalid houndbone position');
     // fn: SetBoneType(inst, math.random(#names)); onload restores data.bonetype.
     const bonetype = saved?.components.houndbone?.bonetype ?? 1 + Math.floor(Math.random() * HOUNDBONE_PIECES.length);
     if (!Number.isInteger(bonetype) || bonetype < 1 || bonetype > HOUNDBONE_PIECES.length) throw new RangeError(`Unsupported houndbone type: ${bonetype}`);
-    const [create] = await Promise.all([this.getCreator(), this.prepareHammered()]);
-    if (this.disposed) throw new Error('Hound bones have been disposed');
-    const build = (clip: { name: string; loop: boolean }) => create(clip.name, clip.loop, HOUNDBONE_ID);
     const clip = { name: HOUNDBONE_PIECES[bonetype - 1], loop: false };
-    const entity = createArchiveEntity(HOUNDBONE_ID, { create: build, initial: build(clip) }, { name: clip.name, billboard: true }, HOUNDBONE_ID);
+    const entity = createArchiveEntity(HOUNDBONE_ID, this.resources.archive({ animationArchive: 'hound_base.zip',
+      buildArchives: ['hound_base.zip'], bank: 'houndbase' }, { instancedAnimations: 'all' }),
+    { name: clip.name, billboard: true }, HOUNDBONE_ID);
     entity.instance.sprite.playOnce(clip.name);
     return this.create(entity, position, bonetype, saved);
-  }
-
-  /** The collapse effect and its sounds, ready before the hit. */
-  private async prepareHammered(): Promise<void> {
-    await Promise.all([
-      this.assets.loadAnimation('structure_collapse_fx.zip'), this.assets.loadBuild('structure_collapse_fx.zip'),
-      PreloadSounds('dontstarve/common/destroy_smoke', 'dontstarve/wilson/rock_break'),
-    ]);
   }
 
   private create({ instance, display }: ReturnType<typeof createArchiveEntity>, position: THREE.Vector3, bonetype: number, saved?: HoundboneRecord): THREE.Group {
@@ -127,17 +111,12 @@ export class HoundboneManager {
     const at = position.clone();
     PlaySound('dontstarve/common/destroy_smoke', at);
     PlaySound('dontstarve/wilson/rock_break', at);
-    void createSharedArchiveSprite(this.assets, { animationArchive: 'structure_collapse_fx.zip', buildArchives: ['structure_collapse_fx.zip'],
-      bank: 'collapse', animation: 'collapse_small', loop: false }).then(effect => {
-      if (this.disposed) { effect.dispose(); return; }
-      const entity = createArchiveEntity('collapse_small', { initial: effect, create: clip => createSharedArchiveSprite(this.assets, {
-        animationArchive: 'structure_collapse_fx.zip', buildArchives: ['structure_collapse_fx.zip'], bank: 'collapse', animation: clip.name, loop: clip.loop,
-      }) }, { name: 'collapse_small', billboard: true });
-      entity.instance.position.copy(at); entity.instance.persists = false;
-      for (const tag of ['FX', 'NOCLICK']) entity.instance.addTag(tag);
-      this.scene.add(entity.display.model); this.effects.add(entity);
-      entity.instance.sprite.playOnce('collapse_small', () => { entity.instance.remove(); this.effects.delete(entity); });
-    }).catch((error: unknown) => console.error('Unable to play collapse effect', error));
+    const entity = createArchiveEntity('collapse_small', this.resources.archive({ animationArchive: 'structure_collapse_fx.zip',
+      buildArchives: ['structure_collapse_fx.zip'], bank: 'collapse' }), { name: 'collapse_small', billboard: true }, 'collapse_small',
+    instance => instance.sprite.playOnce('collapse_small', () => { instance.remove(); this.effects.delete(entity); }));
+    entity.instance.position.copy(at); entity.instance.persists = false;
+    for (const tag of ['FX', 'NOCLICK']) entity.instance.addTag(tag);
+    this.scene.add(entity.display.model); this.effects.add(entity);
   }
 
   update(dt: number, _quaternion: THREE.Quaternion): void {
@@ -187,6 +166,6 @@ export class HoundboneManager {
     for (const model of [...this.bones.keys()]) this.remove(model);
     for (const { instance } of this.effects) instance.remove();
     this.effects.clear();
-    this.assets.dispose();
+    this.resources.dispose();
   }
 }

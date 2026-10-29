@@ -215,7 +215,7 @@ test('torch fuel updates the UI, pauses when unequipped, survives reskin/save/re
   await expect(hand.locator('.inventory-slot__percent')).toHaveText('');
   expect(await page.evaluate(() => {
     const { main, player } = (window as any).torchGame;
-    return { equipment: main.handEquipment.peek(), carry: player.userData.animationController.equippedCarryItem,
+    return { equipment: main.handEquipment.peek(), carry: (window as any).__prefabInstance(player).animationController.equippedCarryItem,
       light: !!player.getObjectByName('TorchFireLight') };
   })).toEqual({ equipment: null, carry: null, light: false });
   const exhaustedDownload = page.waitForEvent('download'); await submit('c_save()');
@@ -228,7 +228,7 @@ test('torch fuel updates the UI, pauses when unequipped, survives reskin/save/re
   expect(await page.evaluate(() => {
     const { main, player } = (window as any).torchGame;
     return { hand: main.inventory.get({ containerId: 'player:equipment', slotKey: 'hand' }),
-      equipment: main.handEquipment.peek(), carry: player.userData.animationController.equippedCarryItem };
+      equipment: main.handEquipment.peek(), carry: (window as any).__prefabInstance(player).animationController.equippedCarryItem };
   })).toEqual({ hand: null, equipment: null, carry: null });
   expect(errors).toEqual([]);
 });

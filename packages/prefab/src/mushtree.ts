@@ -11,7 +11,7 @@ import { LootDropper } from '../../componets/src/lootdropper';
 import { Workable } from '../../componets/src/workable';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { modelEntries } from './modelRecords';
-import { MiniMapEntity } from './minimapEntity';
+import type { MiniMapState } from '../../map/src/minimapState';
 import { actionEntity } from './actionEntity';
 import { ToolMouseTarget } from './toolMouseTarget';
 import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
@@ -21,7 +21,7 @@ import { watchTileActivity } from './tileActivity';
 import { newEntityId } from './saveRecord';
 import { MakeObstaclePhysics, RemovePhysicsColliders } from './standardcomponents';
 import { BurnableBinding, FireFxHost, type BurnSpec } from './treeFire';
-import { PlaySound, PreloadSounds } from './sound';
+import { PlaySound } from './sound';
 import { TILE_SIZE } from './tile';
 import type { WorldEventEmitter } from './worldContext';
 import catalog from './groundItems.json' with { type: 'json' };
@@ -120,7 +120,7 @@ interface Tree {
   model: THREE.Group;
   sprite: ArchiveSpriteCommands;
   inst: ReturnType<typeof actionEntity>;
-  minimap: MiniMapEntity;
+  minimap: MiniMapState;
   workable: Workable;
   growable?: Growable;
   burn?: BurnableBinding;
@@ -170,9 +170,6 @@ export class MushtreeManager {
     const [created, fire] = await Promise.all([
       createSprite({ name: 'idle_loop', loop: true }),
       this.fire,
-      PreloadSounds('dontstarve/wilson/use_axe_mushroom', 'dontstarve/forest/treefall', 'dontstarve/forest/treeCrumble',
-        'dontstarve/cave/mushtree_tall_grow_1', 'dontstarve/cave/mushtree_tall_grow_2', 'dontstarve/cave/mushtree_tall_grow_3',
-        'dontstarve/cave/mushtree_tall_shrink'),
     ]);
     if (this.disposed) { created.dispose(); throw new Error('Mushtrees have been disposed'); }
     const entity = createArchiveEntity(prefab, { create: createSprite, initial: created }, { name: 'idle_loop', billboard: true }, prefab);
@@ -196,7 +193,7 @@ export class MushtreeManager {
     const inst = actionEntity(model, prefab);
     for (const tag of ['cavedweller', 'mushtree', 'plant', 'shelter', 'tree', ...data.webbable ? ['webbable'] : []]) inst.addTag(tag);
     const tree: Tree = { prefab, data, instance, display, model, sprite, inst, stump: false, treestate: 'normal', removed: false, cleanups: [],
-      minimap: new MiniMapEntity(model.position), workable: new Workable(inst) };
+      minimap: instance.minimap, workable: new Workable(inst) };
     tree.minimap.SetIcon(data.icon);
     prefabInstance(model)!.light.set({ colour: data.lightColour, radius: data.lightRadius * (TILE_SIZE / 4), intensity: .8, falloff: .5 });
     MakeObstaclePhysics(instance, .25);
@@ -438,7 +435,6 @@ export class MushtreeManager {
     ];
   }
 
-  get miniMapEntities(): MiniMapEntity[] { return [...this.trees.values()].map(({ minimap }) => minimap); }
 
   getChopTargets(model?: THREE.Object3D): PickaxeTarget[] { return this.workTargets('CHOP', model); }
 
@@ -474,7 +470,7 @@ export class MushtreeManager {
     tree.burn?.dispose(); tree.growable?.dispose(); tree.workable.dispose();
     for (const cleanup of tree.cleanups.splice(0)) cleanup();
     prefabInstance(model)!.light.set(null);
-    tree.minimap.dispose(); tree.instance.remove();
+    tree.instance.remove();
   }
 
   dispose(): void {

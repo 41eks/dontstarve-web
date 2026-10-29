@@ -1,5 +1,5 @@
 import { ModelRecords } from './modelRecords';
-import { MiniMapEntity } from './minimapEntity';
+import type { MiniMapState } from '../../map/src/minimapState';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
 import { createSignal, readonlySignal, type HandEquipment, type ReadonlySignal, type Signal, type TileStateQuery } from '@dontstarve-web/signals';
@@ -22,7 +22,7 @@ import { actionEntity } from './actionEntity';
 import { ToolMouseTarget } from './toolMouseTarget';
 import { MakeObstaclePhysics, RemovePhysicsColliders, WORLD_SCALE } from './standardcomponents';
 import { newEntityId } from './saveRecord';
-import { PlaySound, PreloadSounds, type SoundEventPath, type SoundHandle } from './sound';
+import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
 import { BurnableBinding, FireFxHost, TREE_BURN_TIME, type BurnEnvironment } from './treeFire';
 import type { WorldEventEmitter } from './worldContext';
 
@@ -69,7 +69,7 @@ interface Tree {
   sprite: ArchiveSpriteCommands;
   stopActivity(): void;
   stopPlacement(): void;
-  minimap: MiniMapEntity;
+  minimap: MiniMapState;
   inst: ComponentActionEntity & WorkableInst & { model: THREE.Group; getPosition(): THREE.Vector3 };
   removeInst(): void;
   stump: Signal<boolean>;
@@ -89,7 +89,6 @@ interface Tree {
 export interface EvergreenForest {
   group: THREE.Group;
   readonly entities: readonly ResidentEntity[];
-  readonly miniMapEntities: readonly MiniMapEntity[];
   readonly chopTargets: readonly PickaxeTarget[];
   getChopTargets(model?: THREE.Object3D): readonly PickaxeTarget[];
   readonly digTargets: readonly ShovelTarget[];
@@ -113,8 +112,6 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
       [`sway1_loop_${stage}`, `stump_${stage}`, `burnt_${stage}`, 'idle_old']) }),
     createAnimatedSpriteFactory(assetBaseUrl, 'pine_needles.zip'),
     FireFxHost.load(assetBaseUrl),
-    PreloadSounds('dontstarve/wilson/use_axe_tree', 'dontstarve/forest/treeFall', 'dontstarve/forest/treeCrumble',
-      'dontstarve/forest/treeGrow', 'dontstarve/forest/treeGrowFromWilt', 'dontstarve/forest/treeWilt'),
   ]);
   const scheduler = world.scheduler ?? new GameTimeScheduler();
   const group = new THREE.Group(); group.name = 'EvergreenForest';
@@ -226,7 +223,7 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
     tree.logical.model.userData.removed = true;
     tree.changesTask?.(); tree.pineconeTask?.(); tree.removeTask?.();
     unbindFire(tree);
-    tree.minimap.dispose();
+
     tree.removeInst(); tree.workable.dispose(); tree.growable.dispose(); tree.timer.dispose();
     for (const sound of tree.sounds) sound.stop(); tree.sounds.clear();
     tree.instance.remove();
@@ -275,7 +272,7 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
     const model = tree.logical.model;
     model.userData.animationController = tree.sprite;
     Object.assign(model.userData, { deploySmartRadius: 1,
-      MiniMapEntity: tree.minimap, components: tree.inst.components,
+      components: tree.inst.components,
       evergreenState: { stump: readonlySignal(tree.stump), growth: tree.growable.state } });
     model.userData.placementLogical = true;
     const entity = actionEntity(model, 'evergreen', tree.inst);
@@ -316,7 +313,6 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
   return {
     group,
     get entities() { return entities; },
-    get miniMapEntities() { return [...trees.values()].map(tree => tree.minimap); },
     spawn(prefab, position, saved) {
       if (disposed) throw new Error('Evergreen forest has been disposed');
       const saveId = saved?.id ?? newEntityId();
@@ -328,7 +324,7 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
       instance.position.copy(position);
       const logical: ResidentEntity = { id: nextId++, saveId, model, position: model.position };
       entities.push(logical);
-      const minimap = new MiniMapEntity(logical.position);
+      const minimap = instance.minimap;
       minimap.SetIcon('evergreen.png'); minimap.SetPriority(-1);
       const removed = createSignal(false);
       for (const tag of ['plant', 'tree', 'evergreens', 'evergreen', 'petrifiable', 'SnowCovered']) instance.addTag(tag);

@@ -5,8 +5,6 @@ import type { BufferedActionObject } from './bufferedaction.ts';
 /** An inventory instrument: the BufferedAction invobject plus ACTIONS.PLAY.fn's instrument:Play call. */
 export interface PlaySource {
   readonly instrument: BufferedActionObject;
-  /** The dynamic/*.zip archive of the instrument's skin, whose pan_flute01 symbol replaces the stock one. */
-  readonly skinArchive?: string;
   isValid(): boolean;
   play(): boolean;
 }
@@ -37,7 +35,6 @@ export class PlayActionController {
     this.cancel();
     this.world.actionEvents?.emit('action:begin', { owner: this, action: 'PLAY' });
     const version = this.version;
-    await this.animation.prepareFlute(source.skinArchive);
     if (this.disposed || version !== this.version || !source.isValid()) return false;
     this.locomotor.stop();
     return this.animation.playFlute(source.instrument, () => version === this.version && source.isValid() && source.play());

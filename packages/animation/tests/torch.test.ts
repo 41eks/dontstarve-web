@@ -8,10 +8,10 @@ import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { createEquipmentExistenceState } from '@dontstarve-web/signals';
 import { OnItemRanOut } from '../../prefab/src/player_common';
-import { TORCH_FUEL, TORCH_SOUNDS, TURNON_FUELED_CONSUMPTION, TURNON_FULL_FUELED_CONSUMPTION, TorchController, configureTorchEntity,
+import { TORCH_FUEL, TURNON_FUELED_CONSUMPTION, TURNON_FULL_FUELED_CONSUMPTION, TorchController, configureTorchEntity,
   getTorchController, createTorchGroundFactory } from '../../prefab/src/torch';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
-import { PlaySound, PreloadSounds } from '../../prefab/src/sound';
+import { PlaySound } from '../../prefab/src/sound';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { createPerishWorld } from './perishWorldFixture';
 
@@ -242,7 +242,6 @@ describe('torch prefab burning lifecycle', () => {
       visual.setDefinition?.({ ...definition, remainingFuel: 18, entity });
       visual.model.dispatchEvent({ type: 'onload' });
       const controller = visual.model.userData.torch as TorchController;
-      expect(PreloadSounds).toHaveBeenCalledWith(...TORCH_SOUNDS);
       expect(controller.isBurning).toBe(true);
       expect(PlaySound).not.toHaveBeenCalled();
       expect(declaredLight(visual.model)).toBeDefined();

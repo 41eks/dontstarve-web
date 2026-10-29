@@ -10,7 +10,7 @@ import { FarmHoeActionController } from '../../stategraphs/src/farm_hoe';
 import { createEquipmentExistenceState } from '../../signals/src';
 import { FarmPlowPlacement } from '../../prefab/src/farm_plow';
 import { TurfMap } from '../../prefab/src/turfMap';
-import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
+import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { createGroundItemVisual } from './groundItemVisual';
 import type { WorldContext } from '../../prefab/src/worldContext';
@@ -113,7 +113,7 @@ it('retills broken soil at the exact point, preserves blockers and crops, and re
 it('approaches the target, creates one hole at till_loop frame 11, and cancels before an unequipped or interrupted hit', async () => {
   const player = await createWilsonPlayer('/dst/data/anim');
   player.position.set(0, 0, 15);
-  const animation = player.userData.animationController as WilsonAnimationController;
+  const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
   await animation.setCarryItem('golden_farm_hoe');
   const { world, farm, turf } = setup(player);
   const locomotor = { goToPoint: vi.fn(() => true), stop: vi.fn(), destination: undefined };

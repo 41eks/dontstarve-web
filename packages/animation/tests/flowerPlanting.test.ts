@@ -26,6 +26,7 @@ import { inventoryStateFromSave } from '../../../src/save/inventoryState';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { SpriteState } from '../../display/src/spriteState';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -117,7 +118,7 @@ it('quick-picks petals at frame six, preserves a cancelled flower and reloads th
   const sanity = vi.fn(), killed = vi.fn();
   const picker: PickActor = { hasTag: () => false, components: { sanity: { DoDelta: sanity } } };
   const prepare = vi.fn(async () => ({ picker, giveItem: (itemId: string, count: number) => s.inventory.add(itemId, count), dispose: vi.fn() }));
-  const controller = new PickActionController(s.world, animation, locomotor, prepare);
+  const controller = new PickActionController(s.world, animation, locomotor, prepare, new SpriteState({ name: 'idle' }));
   try {
     const flower = await s.flowers.spawnFromSave('flower:pick', 'f6', new THREE.Vector3(2, 0, 0));
     const component = flower.userData.components.pickable;

@@ -23,7 +23,6 @@ import {
   slotTransferController,
 } from '@dontstarve-web/ui';
 import { type PickupDoer, PointerRaycaster, type WilsonStateName } from '@dontstarve-web/stategraphs';
-import type { WilsonAnimationController } from '@dontstarve-web/prefab/player';
 import { DOCK_KIT_ID } from '@dontstarve-web/prefab/dock_kit';
 import { FARM_PLOW_ITEM_ID, SEED_ITEM_IDS } from '@dontstarve-web/prefab/farm_plow';
 import { turfMap } from './building';
@@ -37,7 +36,7 @@ import type { SpellCastMap } from '@dontstarve-web/stategraphs/spellcaster';
 import { WORLD_TILES } from '@dontstarve-web/prefab/turfMap';
 import { isGroundTargetBlocked, placementEntities } from '../packages/prefab/src/placementEntities';
 import { backpackContainerId, inventorySlotAddress, cursorSlotAddress, type InventoryStack } from '@dontstarve-web/inventory';
-import { player, playerBody, playerPhysics } from './player';
+import { player, playerBody, playerInstance, playerPhysics } from './player';
 import { OnItemRanOut } from '@dontstarve-web/prefab/player_common';
 import { bindPlayerHandEquipment } from './playerHandEquipment';
 import { bindPlayerHeadEquipment } from './playerHeadEquipment';
@@ -88,7 +87,7 @@ const lightingReady = DstLightingRenderer.create(
 input.setBlocked(true);
 
 const gameUi = mountGameUi({ assetBaseUrl: `${import.meta.env.BASE_URL}dst/data/ui/` });
-gameUi.inventoryBar.player = player.userData.artCharacter;
+gameUi.inventoryBar.player = playerInstance.prefab;
 gameUi.mapControls.addEventListener('game:map-toggle', (event) => {
   gameUi.minimap.setOpen((event as CustomEvent<{ isOpen: boolean }>).detail.isOpen);
 });
@@ -126,7 +125,7 @@ for (const panel of [gameUi.chestPanel, gameUi.cookPotPanel, gameUi.iceBoxPanel]
     inventory.setStorageAccessible(containerId, false);
   });
 }
-const playerAnimation = player.userData.animationController as WilsonAnimationController | undefined;
+const playerAnimation = playerInstance.animationController;
 const pickupDoer: PickupDoer & { ListenForEvent(name: string, listener: (data: unknown) => void): () => void; HasStateTag(tag: string): boolean; GoToState(name: string): void; IsCurrentState(name: string): boolean;
   components: PickupDoer['components'] & { health: typeof playerStats.health; hunger: typeof playerStats.hunger; sanity?: Sanity } } = {
   components: { inventory, health: playerStats.health, hunger: playerStats.hunger },
@@ -153,7 +152,7 @@ const sanityComponents: { inventory: typeof inventory; sanity?: Sanity } = { inv
 const playerSanity = new Sanity({ ...pickupDoer, components: sanityComponents, sg: playerAnimation?.stategraph }, playerStats.sanity);
 sanityComponents.sanity = pickupDoer.components.sanity = playerSanity;
 playerAnimation?.bindInventory(inventory);
-player.userData.components = { ...player.userData.components, inventory };
+playerInstance.components.inventory = inventory;
 const handSlotAddress = equipmentSlotAddress('hand');
 const handPointer = view.mouseActions?.pointer ?? new PointerRaycaster(view);
 const bodySlotAddress = equipmentSlotAddress('body');
@@ -192,7 +191,6 @@ const handEquipmentBinding = await bindPlayerHandEquipment({
     spawnLoot: (items, position) => groundItems.flingLoot(items.map(({ itemId, count }) => ({ ...inventory.getItemSpec(itemId), itemId, count })), position),
   },
   fireStaffWorld: {
-    prepare: () => staffProjectiles.prepare(),
     launch: (owner, target, attacker) => staffProjectiles.launch(owner, target, attacker),
     createFuel: () => inventory.entities.create({ itemId: 'cutgrass', count: 1 }),
   },
@@ -289,14 +287,12 @@ const sceneResources = await startScene(
   inventory,
 );
 const { scheduler, buildingPlacement, groundItems, worldFx, staffProjectiles, skeletons, dwarfStars, polarLights, farmPlow, dockKit, registry, getSaveState, disposalEvents } = sceneResources;
-gameUi.minimap.bind({ terrain: turfMap, cellSize: TILE_SIZE, getPlayerPosition: () => player.position, cameraHeading: view.cameraHeading,
-  getMiniMapEntities: () => [player.MiniMapEntity, ...registry.miniMapEntities] });
+gameUi.minimap.bind({ terrain: turfMap, cellSize: TILE_SIZE, getPlayerPosition: () => player.position, cameraHeading: view.cameraHeading });
 const sanityVignette = await SanityVignette.create(playerSanity.sane, animRoot);
 document.body.append(sanityVignette.canvas);
 const stopVignetteUpdate = registerFrontTask(dt => sanityVignette.update(dt));
 const stopSanityUpdate = registerFrontTask(dt => playerSanity.OnUpdate(dt));
-player.userData.components ??= {};
-player.userData.components.sanity = playerSanity;
+playerInstance.components.sanity = playerSanity;
 disposalEvents.on('dispose', () => {
   gameUi.minimap.dispose();
   headEquipmentBinding.dispose();
@@ -305,7 +301,7 @@ disposalEvents.on('dispose', () => {
   sanityVignette.dispose();
   stopSanityUpdate();
   playerSanity.dispose();
-  if (player.userData.components.sanity === playerSanity) delete player.userData.components.sanity;
+  if (playerInstance.components.sanity === playerSanity) delete playerInstance.components.sanity;
 });
 const disposalActions = disposalResources.register(disposalEvents, sceneResources);
 const wortox = playerAnimation ? await WortoxPlayer.create({
@@ -343,12 +339,11 @@ const ghostOwner: PlayerGhostOwner | undefined = playerAnimation && {
   actionPicker: view.mouseActions!,
   // SpawnDeathProduct: skeleton_player at the death point, described with the character, name and cause.
   spawnDeathProduct: position => {
-    void skeletons.spawn(SKELETON_PLAYER_ID, position).then(skeleton => {
-      skeletons.setSkeletonDescription(skeleton, player.userData.artCharacter as string, player.name, deathCause);
-    }).catch((error: unknown) => console.error('Unable to spawn skeleton', error));
+    const skeleton = skeletons.spawn(SKELETON_PLAYER_ID, position);
+    skeletons.setSkeletonDescription(skeleton, playerInstance.prefab, player.name, deathCause);
   },
   spawnDieFx: position => {
-    void worldFx.prepare('die_fx').then(() => worldFx.spawn('die_fx', position)).catch((error: unknown) => console.error('Unable to play die_fx', error));
+    worldFx.spawn('die_fx', position);
   },
   schedule: (seconds, fn) => scheduler.schedule(seconds, fn),
   addSlipperyFeet: sceneResources.addSlipperyFeet,
@@ -368,7 +363,7 @@ const ghostOwner: PlayerGhostOwner | undefined = playerAnimation && {
     playerPhysics.Teleport();
     playerBody.velocity.set(0, playerBody.velocity.y, 0);
   },
-  setControllerEnabled: enabled => { player.userData.controllerEnabled = enabled; },
+  setControllerEnabled: enabled => { playerInstance.controllerEnabled = enabled; },
   // inst:ShowHUD
   showHUD: show => {
     for (const element of [gameUi.statusHud, gameUi.mapControls]) element.style.visibility = show ? '' : 'hidden';
@@ -391,8 +386,7 @@ playerAnimation?.bindRebirth({
 const makePlayerGhost = (event: { data?: unknown }) => {
   if (!ghostOwner) return;
   const data = event.data as { skeleton?: boolean; loading?: boolean } | undefined;
-  playerAnimation!.prepareGhost().then(() => OnMakePlayerGhost(ghostOwner, data))
-    .catch((error: unknown) => console.error('Unable to become a ghost', error));
+  OnMakePlayerGhost(ghostOwner, data);
 };
 player.addEventListener('makeplayerghost' as never, makePlayerGhost);
 // player_common.lua ListenForEvent("respawnfromghost", ex_fns.OnRespawnFromGhost); health:SetInvincible from portal_rez's exit.
@@ -409,9 +403,6 @@ const watchedGhostMode = watchSignal(playerGhostMode, stop => stopHealthWatch.pu
 createEffect(() => { gameUi.inventoryBar.style.display = watchedGhostMode.get() ? 'none' : ''; });
 createEffect(() => {
   if (watchedHealth.get() > 0) return;
-  // Decode the skeleton, die_fx and ghost art while the death animation plays.
-  void Promise.all([playerAnimation?.prepareGhost(), skeletons.prepare(), worldFx.prepare('die_fx')])
-    .catch((error: unknown) => console.error('Unable to prepare the player death', error));
   playerAnimation?.stategraph.pushEvent('death', { cause: deathCause });
 });
 disposalEvents.on('dispose', () => {

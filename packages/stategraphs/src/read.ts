@@ -35,7 +35,6 @@ export class ReadActionController {
     this.cancel();
     this.world.actionEvents?.emit('action:begin', { owner: this, action: 'READ' });
     const version = this.version;
-    await this.animation.prepareRead(source.book);
     if (this.disposed || version !== this.version || !source.isValid()) return false;
     this.locomotor.stop();
     return this.animation.playRead(source.book, () => version === this.version && source.isValid() && source.read());

@@ -3,7 +3,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { InventoryStore, InventorySlot, HeadSlot, BodySlot, equipmentSlotAddress, inventorySlotAddress } from '@dontstarve-web/inventory';
 import { bindPlayerHeadEquipment } from '../../../src/playerHeadEquipment';
 import { bindPlayerBodyEquipment } from '../../../src/playerBodyEquipment';
-import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
+import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
 import { resolveAnimState, resolveAnimStateSymbol } from '../src/animState';
 import { element } from './animStateFixture';
 
@@ -13,7 +13,7 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 it('equips through prefab lifecycles after restore/transfer and releases head/body presentation independently', async () => {
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   const player = await createWilsonPlayer('/dst/data/anim');
-  const animation = player.userData.animationController as WilsonAnimationController;
+  const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
   const head = equipmentSlotAddress('head'), body = equipmentSlotAddress('body'), bag = inventorySlotAddress(0);
   const store = new InventoryStore([
     { address: head, slot: new HeadSlot() }, { address: body, slot: new BodySlot() }, { address: bag, slot: new InventorySlot() },

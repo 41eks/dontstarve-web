@@ -52,7 +52,7 @@ it('pricks the picker through worn armor, empties and regrows, giving a flower o
   try {
     const cactus = await test.cacti.spawn('cactus', new THREE.Vector3(1, 0, 1));
     expect(cactus.userData.animationController.currentAnimation).toBe('idle');
-    expect(test.cacti.miniMapEntities.map(entity => entity.icon)).toEqual(['cactus.png']);
+    expect(prefabInstance(cactus)!.minimap.icon).toBe('cactus.png');
     const physics = () => prefabInstance(cactus)!.physics.json.peek()!.active;
     expect(prefabInstance(cactus)!.physics.json.peek()!.capsule.radius).toBe(.3);
     test.inventory.add(DREADSTONEHAT_ID, 1);

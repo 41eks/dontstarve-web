@@ -25,8 +25,9 @@ export async function prepareStarAudioCheck() {
   const restored = await manager.spawn(new THREE.Vector3(4, 0, 5), { id: 'e_saved', remainingSeconds: 0.1 });
   const samples = sources.map(({ source }) => ({ loop: source.loop, length: source.buffer!.length,
     channels: source.buffer!.numberOfChannels, sampleRate: source.buffer!.sampleRate }));
-  const player = await createWilsonPlayer('/dst/data/anim');
-  const animation = player.userData.animationController as WilsonAnimationController;
+  const player = createWilsonPlayer('/dst/data/anim');
+  await player.userData.display.artLoaded();
+  const animation = (window as any).__prefabInstance(player).animationController as WilsonAnimationController;
   await animation.setCarryItem('yellowstaff');
   let casts = 0;
   animation.stategraph.pushBufferedAction(new BufferedAction('CASTSPELL', () => { casts += 1; }, undefined, {

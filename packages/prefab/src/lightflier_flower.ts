@@ -9,7 +9,7 @@ import { ChildSpawner, type ChildSpawnerSave } from '../../componets/src/childsp
 import { Burnable } from '../../componets/src/burnable';
 import { Propagator } from '../../componets/src/propagator';
 import { Hauntable } from '../../componets/src/hauntable';
-import { MiniMapEntity } from '../../componets/src/minimapentity';
+import type { MiniMapState } from '../../map/src/minimapState';
 import { Pickable, type PickableSaveState } from './components/pickable';
 import { bulbPlantLight, BULB_PLANT_LIGHT_SAMPLE_INTERVAL, type BulbPlantLightState } from './bulb_plant';
 import { LightFlierHabitat, type LightFlier, type LightFlierServices } from './lightflier';
@@ -40,7 +40,7 @@ export class LightFlierFlower implements BrainEntity {
   readonly id: string;
   readonly model: THREE.Group;
   readonly components: { pickable: Pickable; childspawner: ChildSpawner<LightFlierFlower, LightFlier>; burnable: Burnable; propagator: Propagator; hauntable: Hauntable };
-  readonly MiniMapEntity: MiniMapEntity;
+  readonly MiniMapEntity: MiniMapState;
   readonly animstate: AnimState;
   private readonly mode = createSignal<BulbPlantLightState>('CHARGED');
   readonly lightState = readonlySignal(this.mode);
@@ -71,7 +71,7 @@ export class LightFlierFlower implements BrainEntity {
     getLightLevel: (model: THREE.Group) => number, variant: LightFlierFlowerSave['variant'], saved?: LightFlierFlowerSave, random = Math.random) {
     this.instance = instance; this.id = id; this.model = model; this.habitat = habitat; this.variant = variant; this.getLightLevel = getLightLevel; this.random = random;
     const scheduler = habitat.services.scheduler;
-    this.MiniMapEntity = new MiniMapEntity(model.position); this.MiniMapEntity.SetIcon('bulb_plant.png');
+    this.MiniMapEntity = this.instance.minimap; this.MiniMapEntity.SetIcon('bulb_plant.png');
     this.tweenStart = scheduler.now - this.tweenTime;
     this.mode.set(saved?.lightState ?? 'CHARGED'); this.lightOn = saved?.lightState === 'ON' && !saved?.picked;
     this.animstate = new AnimState(scheduler, lengths, () => {});
@@ -191,7 +191,7 @@ export class LightFlierFlower implements BrainEntity {
     if (this.removed) return; this.removed = true; this.habitat.homes.delete(this.id); this.model.userData.removed = true;
     this.wake.stop(); this.sampleTimer.stop(); this.recharge.stop(); this.turnoff.stop(); this.recall.stop(); this.animstate.dispose(); this.sound?.stop();
     this.components.childspawner.dispose(); this.components.pickable.dispose(); this.components.burnable.dispose(); this.components.propagator.dispose();
-    this.components.hauntable.dispose(); this.MiniMapEntity.dispose();
+    this.components.hauntable.dispose();
     this.cleanups.splice(0).forEach(stop => stop()); this.events.clear(); this.instance.light.set(null);
     this.instance.remove(); this.model.removeFromParent();
   }
@@ -240,7 +240,6 @@ export class LightFlierFlowerManager {
     this.cleanups.get(plant)?.(); this.cleanups.delete(plant); disposeActionEntity(display.model); display.dispose(); this.plants.delete(plant);
   }
   get renderEntities() { return [...this.plants.values()].map(({ model }) => ({ object: model, footPosition: model.position, cameraDepth: 0 })); }
-  get miniMapEntities() { return [...this.plants.keys()].filter(plant => plant.isValid()).map(plant => plant.MiniMapEntity); }
   exportRecords(): LightFlierFlowerRecord[] { return [...this.plants.keys()].filter(plant => plant.isValid() && !plant.components.burnable.IsBurning()).map(plant => ({ id: plant.id,
     transform: { position: plant.getPosition().toArray(), rotationY: 0 }, components: { lightflierFlower: plant.OnSave() } })); }
   dispose(): void {

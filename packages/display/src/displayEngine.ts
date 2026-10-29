@@ -5,7 +5,7 @@ import type { InstancedSprite } from '@dontstarve-web/animation/instancedArchive
 import { ResidentSprite } from '@dontstarve-web/animation/residentSprite';
 import type { ResolvedAnimState } from '@dontstarve-web/animation/animState';
 import type { ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
-import type { SpriteArtSource, SpriteTint, CompositeSpriteFrame } from '@dontstarve-web/animation/sprite';
+import type { SpriteArtSource, SpriteTint, CompositeSpriteFrame, SpriteSkin } from '@dontstarve-web/animation/sprite';
 
 type SymbolOverrides = Parameters<import('@dontstarve-web/animation/sprite').SpriteController['setSymbolOverrides']>[0];
 type SymbolOverride = Parameters<import('@dontstarve-web/animation/sprite').SpriteController['overrideSymbol']>[1];
@@ -41,6 +41,7 @@ export interface DisplayEngine {
   playTransient(name: string): void;
   setFrame(frame: number): void;
   setPaused?(paused: boolean): void;
+  setSkin(skin: SpriteSkin | undefined): void;
   setArtSource?(source: SpriteArtSource): void;
   setAnimState?(state: ResolvedAnimState): void;
   setTint?(tint: SpriteTint): void;
@@ -68,7 +69,6 @@ export interface DisplayEngine {
   overrideSymbol(symbol: string, override: SymbolOverride): void;
   addOverrideBuild(name: string, override: BuildOverride): void;
   clearOverrideBuild(name: string): void;
-  adopt(other: DisplayEngine): void;
   dispose(): void;
 }
 
@@ -97,6 +97,7 @@ export class ArchiveEngine implements DisplayEngine {
   clearAnimation(): void { this.resident.clearAnimation(); }
   setFrame(frame: number): void { this.resident.setFrame(frame); }
   setPaused(paused: boolean): void { this.resident.setPaused(paused); }
+  setSkin(skin: SpriteSkin | undefined): void { this.resident.setSkin(skin); }
   setAnimation(name: string): void { this.resident.setAnimation(name); }
   setColour(colour: readonly number[]): void { this.resident.setColour([colour[0], colour[1], colour[2]]); }
   setOpacity(opacity: number): void { this.resident.setOpacity(opacity); }
@@ -110,10 +111,6 @@ export class ArchiveEngine implements DisplayEngine {
   setFacing(facing: number): void { this.resident.setFacing(facing); }
   // A static billboard ignores its root's rotation, so the drawn sprite itself is turned.
   faceCamera(rotation: THREE.Quaternion): void { this.resident.faceCamera(rotation); }
-  adopt(other: DisplayEngine): void {
-    if (other instanceof ArchiveEngine) this.resident.adopt(other.resident);
-    else unsupported('Adopting another kind of sprite');
-  }
   dispose(): void { this.resident.dispose(); }
 
   setPose(): void { unsupported('A static pose'); }

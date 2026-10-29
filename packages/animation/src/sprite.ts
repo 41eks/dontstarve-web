@@ -86,7 +86,7 @@ interface SymbolOverride {
   symbolHash: number;
 }
 
-interface SpriteSkin {
+export interface SpriteSkin {
   build: ParsedBuild;
   materials: THREE.MeshBasicMaterial[];
   animations?: ParsedAnim;
@@ -143,7 +143,7 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
   private animationQueue: { name: string; loop: boolean }[] = [];
   private queueAfter = 0;
   private transientRestore?: () => void;
-  private readonly skin?: SpriteSkin;
+  private skin?: SpriteSkin;
   private overrides = new Map<number, SymbolOverride>();
   private buildOverrides = new Map<string, LoadedBuildOverride>();
   private hiddenLayers = new Set<number>();
@@ -258,6 +258,15 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
   setDepthOffset(enabled: boolean): void { this.renderer.setDepthOffset(enabled); }
 
   setPaused(paused: boolean): void { this.paused = paused; }
+  /** Replace only the skin build and its extra layers; playback and completion remain on this controller. */
+  setSkin(skin: SpriteSkin | undefined): void {
+    if (skin === this.skin) return;
+    this.skin = skin;
+    this.layers = skin?.animations?.animations.filter(candidate => candidate.name === this.animationName
+      && skin.animationBanks.has(candidate.bankHash)) ?? [];
+    this.publishAnimationEnvelope();
+    this.reshowFrame();
+  }
   setArtSource(source: SpriteArtSource): void {
     if (source === this.artSource) return;
     this.artSource = source;
@@ -816,12 +825,13 @@ export async function createAnimatedSpriteFactory(
 
 /** Share loaded atlases while allowing specialized sprite controllers. */
 export function createSpriteFactory(
-  buildPackage: BuildPackage,
+  buildPackage: BuildPackage | SymbolBuild,
   animations: ParsedAnim,
   controllerClass: typeof SpriteController = SpriteController,
   skinArchive?: Awaited<ReturnType<typeof loadSpriteSkinArchive>>,
 ): AnimatedSpriteFactory & { readonly build: SymbolBuild } {
-  const materials = createMaterials(buildPackage);
+  const ownsMaterials = 'atlases' in buildPackage;
+  const materials = ownsMaterials ? createMaterials(buildPackage) : buildPackage.materials;
   const skinMaterials = skinArchive ? createMaterials(skinArchive.buildPackage) : [];
   const sprites = new Set<THREE.Group>();
   const frameCache = new FrameGeometryCache();
@@ -854,7 +864,7 @@ export function createSpriteFactory(
       disposed = true;
       for (const sprite of sprites) disposeSprite(sprite);
       frameCache.dispose();
-      for (const material of [...materials, ...skinMaterials]) {
+      for (const material of [...(ownsMaterials ? materials : []), ...skinMaterials]) {
         material.map?.dispose();
         material.dispose();
       }

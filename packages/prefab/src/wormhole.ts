@@ -1,18 +1,12 @@
 import { ModelRecords } from './modelRecords';
 import * as THREE from 'three';
-import { loadAnim, loadBuild, loadSpriteSkinArchive } from '@dontstarve-web/animation/animationAssets';
-import {
-  createSpriteFactory,
-  type AnimatedSpriteFactory,
-  SpriteController,
-} from '@dontstarve-web/animation/sprite';
-import type { PrefabDisplay, SpriteState } from '@dontstarve-web/display';
+import { SpriteResources, type PrefabDisplay, type SpriteState } from '@dontstarve-web/display';
 import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
 import { newEntityId } from './saveRecord';
 import { nextReskin } from './reskin_tool';
 import { type ReskinFxMessage, type ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
 import { TILE_SIZE } from './tile';
-import { actionEntity, disposeActionEntity } from './actionEntity';
+import { actionEntity, disposeActionEntity, findActionEntity } from './actionEntity';
 
 export const WORMHOLE_ID = 'wormhole' as const;
 // prefabskins.lua order; wormhole_init_fn swaps the build, retaining the base bank.
@@ -44,17 +38,16 @@ interface WormholeEntity {
 
 /** SGwormhole artwork/proximity only; no teleporter or paired destination. */
 export class WormholeManager {
-  private readonly factories = new Map<string, Promise<AnimatedSpriteFactory>>();
+  private readonly resources: SpriteResources;
   private readonly mouseRecords = new ModelRecords<WormholeEntity>();
   private readonly wormholes = new Set<WormholeEntity>();
   private readonly scene: THREE.Scene;
-  private readonly assetBaseUrl: string;
   private readonly getPlayerPositions: () => readonly THREE.Vector3[];
   private disposed = false;
 
   constructor(scene: THREE.Scene, assetBaseUrl: string, getPlayerPositions: () => readonly THREE.Vector3[] = () => []) {
     this.scene = scene;
-    this.assetBaseUrl = assetBaseUrl;
+    this.resources = new SpriteResources(assetBaseUrl);
     this.getPlayerPositions = getPlayerPositions;
   }
 
@@ -62,16 +55,23 @@ export class WormholeManager {
     if (this.disposed) throw new Error('Wormhole manager has been disposed');
     if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError('Invalid wormhole position');
     const skinId = saved?.components.wormhole?.skinId;
-    const factory = await this.getFactory(skinId);
-    if (this.disposed) throw new Error('Wormhole manager has been disposed');
-    const { instance, display } = this.createEntity(factory);
+    if (skinId !== undefined && !(WORMHOLE_SKINS as readonly string[]).includes(skinId)) throw new Error(`Unsupported wormhole skin: ${skinId}`);
+    const { instance, display } = createPrefabEntity(WORMHOLE_ID,
+      this.resources.factory({ buildArchive: 'teleporter_worm_build.zip', animationArchive: 'teleporter_worm.zip' }),
+      { name: 'idle_loop', billboard: true }, WORMHOLE_ID, entity => {
+        entity.skinId = skinId;
+        entity.sprite.setSkinSource({ art: this.resources.archives,
+          archives: Object.fromEntries(WORMHOLE_SKINS.map(id => [id, `dynamic/${id}.zip`])) });
+      });
+    await display.artLoaded();
+    if (this.disposed) { instance.remove(); display.dispose(); throw new Error('Wormhole manager has been disposed'); }
     const model = display.model;
     model.position.set(position.x, 0, position.z);
     instance.entityId = saved?.id ?? newEntityId();
     instance.skinId = skinId;
     const entity: WormholeEntity = { model, instance, display, state: 'idle', elapsed: 0, nearby: false, groundLayer: false };
     model.userData.wormholeState = entity.state;
-    actionEntity(model, WORMHOLE_ID);
+    actionEntity(model, WORMHOLE_ID).reskinTarget = this.createReskinTarget(entity);
     this.wormholes.add(entity); this.mouseRecords.set(entity.model, entity);
     this.scene.add(model);
     return model;
@@ -121,68 +121,38 @@ export class WormholeManager {
       instance.remove(); display.dispose();
     }
     this.wormholes.clear();
-    for (const request of this.factories.values()) void request.then((factory) => factory.dispose(), () => undefined);
-    this.factories.clear();
+    this.resources.dispose();
   }
 
-  get reskinTargets(): readonly ReskinTarget[] { return this.getReskinTargets(); }
-
-  getReskinTargets(model?: THREE.Object3D): readonly ReskinTarget[] {
-    return this.mouseRecords.select(model, this.wormholes).map((entity) => {
-      const { model } = entity;
-      const isValid = () => !this.disposed && this.wormholes.has(entity) && model.visible && model.parent !== null;
-      return {
-        id: String(entity.instance.entityId), prefabId: WORMHOLE_ID, model, position: model.position, isValid,
-        skins: WORMHOLE_SKINS, get skinId() { return entity.instance.skinId; },
-        get isRemoved() { return !isValid(); }, hasTag: tag => actionEntity(model, WORMHOLE_ID).hasTag(tag),
-        prepareNextSkin: async (tool) => {
-          const previousSkin = entity.instance.skinId;
-          const skinId = nextReskin(WORMHOLE_SKINS, previousSkin, tool?._cached_reskinname, WORMHOLE_ID);
-          const factory = await this.getFactory(skinId);
-          if (!isValid()) throw new Error('Wormhole is no longer available');
-          // The replacement's display only lends its source and drawn sprite; this entity, model and json stay.
-          const replacement = this.createEntity(factory);
-          const release = () => { replacement.instance.remove(); replacement.display.dispose(); };
-          let used = false;
-          return {
-            apply: (fx?: ReskinFxMessage) => {
-              if (used || !isValid() || entity.instance.skinId !== previousSkin) return false;
-              entity.display.adopt(replacement.display);
-              entity.instance.skinId = skinId;
-              release();
-              used = true;
-              fx?.play(model.position, WORMHOLE_ID);
-              return true;
-            },
-            dispose: () => { if (!used) { release(); used = true; } },
-          };
-        },
-      };
-    });
+  get reskinTargets(): readonly ReskinTarget[] {
+    return Array.from(this.wormholes, entity => findActionEntity(entity.model)?.reskinTarget)
+      .filter((target): target is ReskinTarget => target !== undefined);
   }
 
-  private getFactory(skinId?: string): Promise<AnimatedSpriteFactory> {
-    if (this.disposed) throw new Error('Wormhole manager has been disposed');
-    if (skinId !== undefined && !(WORMHOLE_SKINS as readonly string[]).includes(skinId)) {
-      throw new Error(`Unsupported wormhole skin: ${skinId}`);
-    }
-    const key = skinId ?? '';
-    let request = this.factories.get(key);
-    if (!request) {
-      request = Promise.all([
-        loadBuild('teleporter_worm_build.zip', this.assetBaseUrl),
-        loadAnim('teleporter_worm.zip', this.assetBaseUrl),
-        skinId ? loadSpriteSkinArchive(`dynamic/${skinId}.zip`, this.assetBaseUrl) : undefined,
-      ]).then(([build, animations, skin]) => createSpriteFactory(build, animations, SpriteController, skin));
-      this.factories.set(key, request);
-      void request.catch(() => { if (this.factories.get(key) === request) this.factories.delete(key); });
-    }
-    return request;
-  }
-
-  private createEntity(factory: AnimatedSpriteFactory) {
-    return createPrefabEntity(WORMHOLE_ID, { create: animation => factory.create({ initialAnimation: animation, name: WORMHOLE_ID }),
-      release: sprite => factory.disposeSprite(sprite) }, { name: 'idle_loop', billboard: true }, WORMHOLE_ID);
+  private createReskinTarget(entity: WormholeEntity): ReskinTarget {
+    const { model } = entity;
+    const isValid = () => !this.disposed && this.wormholes.has(entity) && model.visible && model.parent !== null;
+    return {
+      get id() { return String(entity.instance.entityId); }, prefabId: WORMHOLE_ID, model, position: model.position, isValid,
+      skins: WORMHOLE_SKINS, get skinId() { return entity.instance.skinId; },
+      get isRemoved() { return !isValid(); }, hasTag: tag => actionEntity(model, WORMHOLE_ID).hasTag(tag),
+      prepareNextSkin: async (tool) => {
+        const previousSkin = entity.instance.skinId;
+        const skinId = nextReskin(WORMHOLE_SKINS, previousSkin, tool?._cached_reskinname, WORMHOLE_ID);
+        let used = false;
+        return {
+          skinId,
+          apply: (fx?: ReskinFxMessage) => {
+            if (used || !isValid() || entity.instance.skinId !== previousSkin) return false;
+            entity.instance.skinId = skinId;
+            used = true;
+            fx?.play(model.position, WORMHOLE_ID);
+            return true;
+          },
+          dispose: () => { used = true; },
+        };
+      },
+    };
   }
 
   private controller(entity: WormholeEntity): SpriteState {

@@ -9,7 +9,7 @@ import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
 import { listenInventoryEvents } from './inventoryEvents';
 import { spawnLightEntity, type PrefabLocalLight } from './localLight';
 import { LootFling } from './lootFling';
-import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
+import { PlaySound, type SoundHandle } from './sound';
 import { TILE_SIZE } from './tile';
 import { TORCH_FIRE_OFFSET_Y, torchFireFx } from './torchfire';
 import { modelHasTag, prefabInstance } from './prefabInstance';
@@ -220,7 +220,7 @@ export function createTorchGroundFactory(context: GroundPrefabContext): GroundIt
     itemIds: [TORCH_ID],
     configureEntity: configureTorchEntity,
     create(item) {
-      void PreloadSounds(...TORCH_SOUNDS);
+
       const { visual, instance } = createResidentGroundItem(context, item);
       const sprite = instance.sprite;
       const model = visual.model;

@@ -24,7 +24,7 @@ it('mines a closed entrance into cave_entrance_open, dropping rocks and flint, a
   const caves = new CaveEntranceManager(scene, { physics, spawnGroundItem: (definition, position, options) => ground.spawnGroundItem(definition, position, options) });
   try {
     await caves.spawn('cave_entrance', new THREE.Vector3(5, 0, 7));
-    expect(caves.miniMapEntities.map(({ icon }) => icon)).toEqual(['cave_closed.png']);
+    expect(prefabInstance(scene.children.find(model => prefabInstance(model)?.prefab === 'cave_entrance'))!.minimap.icon).toBe('cave_closed.png');
     const pickaxe = inventory.entities.create({ itemId: 'pickaxe', count: 1 });
     const [mine] = caves.mineTargets;
     for (let i = 0; i < 5; i++) expect(performToolWork('MINE', mine.entity, {}, pickaxe)).toBe(true);
@@ -36,7 +36,7 @@ it('mines a closed entrance into cave_entrance_open, dropping rocks and flint, a
     expect([prefabId, record.transform.position]).toEqual(['cave_entrance_open', [5, 0, 7]]);
     expect(caves.mineTargets).toEqual([]);
     expect(caves.renderEntities.map(entity => entity.renderLayer)).toEqual([-1]);
-    expect(caves.miniMapEntities.map(({ icon }) => icon)).toEqual(['cave_open.png']);
+    expect(prefabInstance(caves.renderEntities[0].object)!.minimap.icon).toBe('cave_open.png');
     await vi.waitFor(() => expect(ground.exportRecords().map(r => r.components.stack?.itemId).sort())
       .toEqual(['flint', 'flint', 'flint', 'rocks', 'rocks']));
 
@@ -83,6 +83,7 @@ it('stays clickable after its tile leaves and re-enters the tickingarea', async 
   pointer.trackPointer({ clientX: 50, clientY: 50 } as PointerEvent);
   try {
     const model = await caves.spawn('cave_entrance_open', new THREE.Vector3(5, 0, 7));
+    await vi.waitFor(() => expect(prefabInstance(model)!.sprite.loaded).toBe(true));
     scene.updateMatrixWorld(true);
     const hit = () => { picker.getMouseActions(); return picker.targetModel === model; };
     expect(hit()).toBe(true);

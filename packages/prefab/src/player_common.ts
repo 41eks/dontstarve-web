@@ -86,7 +86,7 @@ export interface PlayerGhostOwner {
  * here (burnable, freezable, propagator, grogginess, moisture, sheltered, debuffable, age, temperature, frostybreather).
  */
 export function OnMakePlayerGhost(owner: PlayerGhostOwner, data?: { skeleton?: boolean; loading?: boolean }): void {
-  const entity = actionEntity(owner.model, owner.model.userData.artCharacter as string);
+  const entity = actionEntity(owner.model, prefabInstance(owner.model)!.prefab);
   if (entity.hasTag('playerghost')) return;
   const position = new THREE.Vector3(owner.model.position.x, 0, owner.model.position.z);
   const loading = data?.loading === true;
@@ -154,7 +154,7 @@ function revertRespawn(owner: PlayerGhostOwner): void {
  * remote variants are not ported and are ignored.
  */
 export function OnRespawnFromGhost(owner: PlayerGhostOwner, data?: { source?: RezSource }): void {
-  const entity = actionEntity(owner.model, owner.model.userData.artCharacter as string);
+  const entity = actionEntity(owner.model, prefabInstance(owner.model)!.prefab);
   const source = data?.source;
   if (!entity.hasTag('playerghost') || !(source?.prefab === 'amulet' || source?.hasTag('multiplayer_portal'))) return;
   entity.addTag('reviving');
@@ -206,7 +206,7 @@ function doActualRez(owner: PlayerGhostOwner, source: RezSource): void {
 }
 
 function finishRez(owner: PlayerGhostOwner, source: RezSource, position: THREE.Vector3): void {
-  const entity = actionEntity(owner.model, owner.model.userData.artCharacter as string);
+  const entity = actionEntity(owner.model, prefabInstance(owner.model)!.prefab);
   const amulet = source.prefab === 'amulet';
   owner.spawnDieFx(position);
   owner.setHidden(false);

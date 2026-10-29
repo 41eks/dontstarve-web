@@ -12,8 +12,6 @@ export interface ToolMouseTargetWorld {
 export interface ToolMouseTargetOptions {
   /** Preserve scene interactions such as opening a container or giving an item to a structure. */
   canInteractWithoutTool?: () => boolean;
-  /** The owning manager also exposes this entity to the spell/reskin controllers. */
-  spellTarget?: boolean;
 }
 
 /** Project input policy: tool targets intercept the mouse when the held tool can interact with them. */
@@ -56,7 +54,7 @@ export class ToolMouseTarget {
     if (this.options.canInteractWithoutTool?.()) return true;
     if (!tool || tool.isRemoved) return false;
     const actions = collectEquippedActions(tool, this.entity, true);
-    if (actions.some(action => action !== 'CASTSPELL') || (this.options.spellTarget && actions.includes('CASTSPELL'))) return true;
+    if (actions.length > 0) return true;
     // combat.lua CanLightTarget, for the fire staff's ATTACK (RANGEDLIGHT).
     const burnable = this.entity.components.burnable;
     return !!tool.components.weapon && tool.hasTag('rangedlighter') && !!burnable

@@ -7,7 +7,7 @@ export async function hoverSprite(page: Page, screenPoint: () => Promise<{ x: nu
   await expect.poll(async () => {
     const busy = await page.evaluate(key => {
       const { player, inventory } = (window as any)[key];
-      const graph = player.userData.animationController.stategraph;
+      const graph = (window as any).__prefabInstance(player).animationController.stategraph;
       if (graph.stateName !== 'idle') return true;
       // These fixtures switch between the source shovel and sweeper. Their assets may finish after slot state changes.
       const build: Record<string, string> = { shovel: 'ground:swap_shovel', reskin_tool: 'ground:swap_reskin_tool' };

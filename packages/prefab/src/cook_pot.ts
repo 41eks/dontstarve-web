@@ -10,8 +10,7 @@ import type { AnimatedBuildingEventContext } from './animatedBuildingPlacement';
 import { setModelTag } from './prefabInstance';
 import { createRenderEffect } from '@dontstarve-web/signals';
 import type * as THREE from 'three';
-import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
-
+import { PlaySound, type SoundHandle } from './sound';
 import { Stewer, type StewerSaveData } from '../../componets/src/stewer';
 import { BASE_COOK_TIME, GetRecipe, recipes } from '../../componets/src/cooking';
 import { createMaterials, loadBuild, smallHash, type BuildPackage } from '../../animation/src/animationAssets';
@@ -127,7 +126,7 @@ export const COOK_POT_DEFINITION: AnimatedBuildingDefinition = {
     hammerEffect: { archive: 'structure_collapse_fx.zip', animation: 'collapse_small', name: 'collapse' },
     interaction: { ...definitions.animatedBuildings.cookpot.interaction, closeImmediately: true },
     onbuilt,
-    prepare: async () => { await Promise.all([prepareFoodBuilds(), PreloadSounds('dontstarve/common/cookingpot_rattle', 'dontstarve/common/cookingpot_close', 'dontstarve/common/cookingpot_finish')]); },
+    prepare: prepareFoodBuilds,
     oninit: initializePot,
     onhit: ({ model, animation }) => {
         const stewer = model.userData.components.stewer as Stewer;

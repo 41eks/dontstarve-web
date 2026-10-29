@@ -18,7 +18,7 @@ import { SleepingBagUser } from '../packages/componets/src/sleepingbaguser';
 import { Combat, type CombatActor } from '../packages/componets/src/combat';
 import { equippedActionEntity } from '../packages/stategraphs/src/componentactions';
 import { actionEntity, FindEntities } from '../packages/prefab/src/actionEntity';
-import { modelHasTag, setModelTag } from '../packages/prefab/src/prefabInstance';
+import { modelHasTag, prefabInstance, setModelTag } from '../packages/prefab/src/prefabInstance';
 import type { PickActor } from '../packages/stategraphs/src/pick';
 import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
 import type { WilsonAnimationController } from '@dontstarve-web/prefab/player';
@@ -29,7 +29,6 @@ import type { StorageBuildingId } from '@dontstarve-web/prefab/containers';
 import { FOOD_EFFECTS, getFoodEffects, type FoodEffects } from '@dontstarve-web/prefab/food';
 import { bookActionObject, type BookReader, type BookWorld } from '@dontstarve-web/prefab/books';
 import { isWorldFx } from '@dontstarve-web/prefab/world_fx';
-import { PreloadSounds } from '@dontstarve-web/prefab/sound';
 import { registerFrontTask } from './animate';
 import { PlantDeployment } from '../packages/prefab/src/plantDeployment';
 import { PLANTABLES } from '@dontstarve-web/prefab/plantables';
@@ -41,6 +40,7 @@ import type { bindPlayerHandEquipment } from './playerHandEquipment';
 import { setupEmoteWheel } from './emoteWheel';
 import { inventoryReceiveEffect } from './inventoryReceive';
 import { playerStats, applyPlayerFoodEffects } from './playerStats';
+import { playerInstance } from './player';
 import { SAVE_CATALOG } from './save/catalog';
 
 export type DisposalEvents = { dispose: void };
@@ -129,7 +129,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         .setOpen(model, isOpen, buildId);
     },
     register(events: EventEmitter<DisposalEvents>, scene: SceneResources) {
-      const { moonTrees, evergreenForest, deciduousForest, buildingPlacement, groundItems, molehills, farmPlow, rockManager, caveEntrances, grottoPools, mushtrees, mushroomPlants, wormholes, reskinEffects, worldFx, flowerPlanting, marbleShrubs, archiveProps, skeletons, houndbones, beeQueenHives, marbleBeanSaplings, rockAvocadoSaplings, rockAvocadoBushes, berrybushes, monkeytails, grasses, saplings, scheduler, weather, moon, getWatchWorldContent, ponds } = scene;
+      const { moonTrees, evergreenForest, deciduousForest, buildingPlacement, groundItems, molehills, farmPlow, rockManager, caveEntrances, grottoPools, mushtrees, mushroomPlants, reskinEffects, worldFx, flowerPlanting, marbleShrubs, archiveProps, skeletons, houndbones, beeQueenHives, marbleBeanSaplings, rockAvocadoSaplings, rockAvocadoBushes, berrybushes, monkeytails, grasses, saplings, scheduler, weather, moon, getWatchWorldContent, ponds } = scene;
       const handEquipment = inventory.handEquipment;
       const handSlotAddress = equipmentSlotAddress('hand');
       const bodySlotAddress = equipmentSlotAddress('body');
@@ -199,7 +199,8 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
             return true;
           } };
         }, isActionInterrupting);
-        const picking = new PickActionController(view, playerAnimation, locomotor, preparePickDoer, isActionInterrupting);
+        const picking = new PickActionController(view, playerAnimation, locomotor, preparePickDoer,
+          prefabInstance(player)!.sprite, isActionInterrupting);
         const pickup = new PickupActionController(view, playerAnimation, locomotor, pickupDoer, isActionInterrupting);
         const harvesting = new HarvestActionController(view, playerAnimation, locomotor, async (itemId, count) => ({
           giveItem: (_prefab, _count, position) => {
@@ -231,7 +232,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         const wakeOnPointer = (event: PointerEvent) => { if (event.target === renderer.domElement) playerAnimation.wakeFromBed(); };
         const setSleeperState = (sleeping: boolean) => {
           // playercontroller:Enable(false) and inventory:Hide() while asleep.
-          view.player.userData.controllerEnabled = !sleeping;
+          playerInstance.controllerEnabled = !sleeping;
           gameUi.inventoryBar.style.visibility = sleeping ? 'hidden' : '';
           if (sleeping) window.addEventListener('pointerdown', wakeOnPointer, true);
           else window.removeEventListener('pointerdown', wakeOnPointer, true);
@@ -256,7 +257,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         frameControllers.push(new MigrateActionController(view, playerAnimation, locomotor,
           { hasTag: tag => tag === 'player' || modelHasTag(view.player, tag) }, isActionInterrupting));
         // SGwilsonghost's HAUNT: the ghost doer is the player inst, so `playerghost` and `respawnfromghost` reach it.
-        const ghostInst = actionEntity(view.player as never, view.player.userData.artCharacter as string);
+        const ghostInst = actionEntity(view.player as never, playerInstance.prefab);
         frameControllers.push(new HauntActionController(view, playerAnimation, locomotor,
           { hasTag: tag => ghostInst.hasTag(tag), PushEvent: (name, data) => ghostInst.PushEvent?.(name, data) }, isActionInterrupting));
         actionControllers.push({ dispose() {
@@ -281,7 +282,6 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         return {
           itemId,
           foodDrink,
-          prepareEat: () => PreloadSounds(foodDrink ? 'dontstarve/wilson/sip' : 'dontstarve/wilson/eat'),
           isValid,
           take: () => {
             if (!isValid()) return false;
@@ -329,7 +329,6 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
             prefab: entity.prefab, hasTag: tag => entity.hasTag(tag),
             ...(skinArchive ? { skinBuild: skinArchive.replace(/^dynamic\/|\.zip$/g, '') } : {}),
           },
-          ...(skinArchive ? { skinArchive } : {}),
           isValid,
           // ACTIONS.PLAY.fn, then BufferedAction:Do's finiteuses:OnUsedAsItem.
           play: () => {
@@ -344,7 +343,6 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
       const readInventoryBook = async (slot: SlotAddress, entity: ItemEntity) => {
         const isValid = () => !entity.isRemoved && inventory.getEntity(slot) === entity;
         const book = bookActionObject(entity);
-        if (book.def?.fx && isWorldFx(book.def.fx)) await worldFx.prepare(book.def.fx);
         return readActions!.read({
           book, isValid,
           read: () => isValid() && (reader.Read(entity, bookWorld)?.[0] ?? false),
@@ -419,6 +417,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         const hammer = new HammerActionController(view, playerAnimation, locomotor,
           handEquipment,
           (model) => [...buildingPlacement.getHammerTargets(model), ...farmPlow.getHammerTargets(model), ...skeletons.getHammerTargets(model), ...houndbones.getHammerTargets(model), ...beeQueenHives.getHammerTargets(model), ...groundItems.getHammerTargets(model)],
+          prefabInstance(player)!.sprite,
           isActionInterrupting);
         const pickaxe = new PickaxeActionController(view, playerAnimation, locomotor,
           handEquipment, (model) => [...rockManager.getMineTargets(model), ...caveEntrances.getMineTargets(model), ...grottoPools.getMineTargets(model), ...marbleShrubs.getMineTargets(model), ...archiveProps.getMineTargets(model), ...groundItems.getMineTargets(model)], isActionInterrupting);
@@ -455,7 +454,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
           handEquipment, (model) => [...farmPlow.getDigTargets(model), ...molehills.getDigTargets(model), ...marbleBeanSaplings.getDigTargets(model), ...rockAvocadoSaplings.getDigTargets(model), ...rockAvocadoBushes.getDigTargets(model), ...berrybushes.getDigTargets(model), ...monkeytails.getDigTargets(model), ...grasses.getDigTargets(model), ...saplings.getDigTargets(model), ...mushroomPlants.getDigTargets(model), ...moonTrees.getDigTargets(model), ...mushtrees.getDigTargets(model), ...evergreenForest.getDigTargets(model), ...deciduousForest.getDigTargets(model)], isActionInterrupting);
         const reskin = new ReskinActionController(view, playerAnimation, locomotor,
           handEquipment,
-          (model) => [...buildingPlacement.getReskinTargets(model), ...groundItems.getReskinTargets(model), ...wormholes.getReskinTargets(model), ...berrybushes.getReskinTargets(model)], reskinEffects,
+          reskinEffects,
           isActionInterrupting, (error) => console.error('Unable to reskin target', error));
         const lighter = new LighterActionController(view, playerAnimation, locomotor, handEquipment, isActionInterrupting);
         const axe = new PickaxeActionController(view, playerAnimation, locomotor,
@@ -517,9 +516,9 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         }
         if (FOOD_EFFECTS[stack.itemId] && foodActions) {
           let eaten: FoodEffects | undefined;
-          void foodActions.eat(inventoryFoodSource(slot, stack.itemId, effects => { eaten = effects; }), () => {
+          foodActions.eat(inventoryFoodSource(slot, stack.itemId, effects => { eaten = effects; }), () => {
             if (eaten) applyPlayerFoodEffects(eaten);
-          }).catch((error: unknown) => console.error(`Unable to eat ${stack.itemId}`, error));
+          });
           return;
         }
         if (stack.itemId === 'backpack' || stack.itemId === ARMORSNURTLESHELL_ID || stack.itemId === AMULET_ID) {

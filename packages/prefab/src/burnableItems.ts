@@ -9,7 +9,7 @@ import type { GroundPrefabContext, GroundItemVisual } from './groundPrefab';
 import type { ResidentGroundItem } from './groundItems';
 import type { PrefabDisplay } from '@dontstarve-web/display';
 import catalog from './groundItems.json' with { type: 'json' };
-import { PlaySound, PreloadSounds, type SoundEventPath, type SoundHandle } from './sound';
+import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
 import { TILE_SIZE } from './tile';
 
 // cutgrass.lua / log.lua / livinglog.lua / books.lua: MakeSmallBurnable(SMALL/MED_BURNTIME), MakeSmallPropagator.
@@ -121,8 +121,6 @@ export function createBurnableItemVisual(context: GroundPrefabContext,
   itemId: string, base: ResidentGroundItem, displays: Set<PrefabDisplay>, fxLevel: 2 | 3 = 2): GroundItemVisual {
   const { visual, instance, display } = base;
   const { igniteSound, loopSound } = BURNABLE_ITEM_DEFINITIONS[itemId];
-  // Decoding starts with the item; PlaySound waits for whatever has not finished.
-  void PreloadSounds('dontstarve/common/campfire', 'dontstarve/common/fireOut', ...(igniteSound ? [igniteSound] : []), ...(loopSound ? [loopSound] : []));
   const createFire = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(context.assets, { animationArchive: 'fire.zip',
     buildArchives: ['fire.zip'], bank: 'fire', animation: clip.name, loop: clip.loop }, { name: 'fire', dynamicParent: true });
   // fire.lua: the burning fx entity, drawn by its own display as a child of the item; tags FX and HASHEATER.

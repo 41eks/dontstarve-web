@@ -42,20 +42,20 @@ it('is charged by a strike for three days: zaps on the 10–40 s task, loses a d
   const { placement, scheduler, fx, scene, play } = await createPlacement();
   try {
     await placement.spawn(LIGHTNING_ROD_ID);
-    const [{ model }] = placement.hammerTargets;
+    const [{ display }] = placement.hammerTargets;
+    const model = display.model;
     scene.add(model);
     const components = model.userData.components;
     expect(components.inspectable.getstatus()).toBeUndefined();
     expect(declaredLight(model)).toBeUndefined();
 
     // The strike lands 30 units away; the rod within 40 units takes it over.
-    const struck = await strikeAt(scene, fx, model.position.clone().add(new THREE.Vector3(30 * 3, 0, 0)));
+    const struck = strikeAt(scene, fx, model.position.clone().add(new THREE.Vector3(30 * 3, 0, 0)));
     expect(struck.x).toBeCloseTo(model.position.x);
     expect(fx.spawn).toHaveBeenCalledWith('lightning', expect.any(THREE.Vector3));
     expect(components.inspectable.getstatus()).toBe('CHARGED');
     expect(declaredLight(model)).toMatchObject({ intensity: .5, falloff: 1 });
     expect((model.userData.animationController as SpriteController).currentAnimation).toBe('hit');
-    await new Promise(resolve => setTimeout(resolve, 0));
     expect(fx.spawn).toHaveBeenCalledWith('lightning_rod_fx', expect.any(THREE.Vector3));
     expect(play).toHaveBeenCalledWith('dontstarve/common/lightningrod', model.position);
 
@@ -84,7 +84,8 @@ it('draws a battery charge as one decaying point, not three', async () => {
   const { placement, fx, scene } = await createPlacement();
   try {
     await placement.spawn(LIGHTNING_ROD_ID);
-    const [{ model }] = placement.hammerTargets;
+    const [{ display }] = placement.hammerTargets;
+    const model = display.model;
     scene.add(model);
     const battery = model.userData.components.battery;
     expect(battery.CanBeUsed()).toEqual([false, 'NOT_ENOUGH_CHARGE']);
@@ -107,7 +108,8 @@ it('keeps its charge and skin through c_save, and re-arms its day timer from the
     const reskin = await placement.reskinTargets[0].prepareNextSkin();
     expect(reskin.apply()).toBe(true);
     reskin.dispose();
-    const [{ model }] = placement.hammerTargets;
+    const [{ display }] = placement.hammerTargets;
+    const model = display.model;
     scene.add(model);
     await strikeAt(scene, fx, model.position);
     scheduler.advance(DAY);

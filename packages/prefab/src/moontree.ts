@@ -24,8 +24,8 @@ import { Growable, type GrowableSave } from '../../componets/src/growable';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Timer, type NamedTimerSave } from '../../componets/src/timer';
 import { newEntityId } from './saveRecord';
-import { MiniMapEntity } from './minimapEntity';
-import { PreloadSounds, type SoundHandle } from './sound';
+import type { MiniMapState } from '../../map/src/minimapState';
+import { type SoundHandle } from './sound';
 import { BurnableBinding, FireFxHost, TREE_BURN_TIME, type BurnEnvironment, type BurnSpec } from './treeFire';
 import { getBoundWatchWorldContent, WorldContentKey, createRenderEffect, type GetWatchWorldContent, type HandEquipment, type ReadonlySignal, type TileStateQuery } from '@dontstarve-web/signals';
 import type { WorldEventEmitter } from './worldContext';
@@ -79,7 +79,7 @@ export interface MoonTreeSaplingRecord {
   components: { saplingTimer: NamedTimerSave };
 }
 
-interface TreeState { stump: boolean; burnt: boolean; workLeft: number; growable: Growable; minimap: MiniMapEntity; timer: Timer; changesTask?: () => void; removeTask?: () => void }
+interface TreeState { stump: boolean; burnt: boolean; workLeft: number; growable: Growable; minimap: MiniMapState; timer: Timer; changesTask?: () => void; removeTask?: () => void }
 
 interface TreeController {
   readonly entity: ResidentEntity;
@@ -115,7 +115,6 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
     preloadSharedArchiveSprite(treeAssets, { animationArchive: 'baby_moon_tree.zip', buildArchives: ['baby_moon_tree.zip'], bank: 'baby_moon_tree' },
       { staticBillboard: true, instancedAnimations: 'all' }),
     FireFxHost.load(assetBaseUrl),
-    PreloadSounds('dontstarve/wilson/plant_tree', 'dontstarve/forest/treeCrumble', 'dontstarve/wilson/use_axe_tree', 'dontstarve/forest/treeGrow', 'dontstarve/forest/treeGrowFromWilt'),
   ]);
   const unit = TILE_SIZE / 4;
   const entities: ResidentEntity[] = [];
@@ -168,7 +167,7 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
         },
         growfn: () => playGrowth(entity, ['grow_tall_to_short', 'grow_short_to_normal', 'grow_normal_to_tall'][index], index === 0),
       })), seconds => world.growthDuration?.(seconds) ?? seconds);
-      const minimap = new MiniMapEntity(entity.position);
+      const minimap = sprites.get(entity)!.instance.minimap;
       minimap.SetIcon('moon_tree.png'); minimap.SetPriority(-1);
       const timer = new Timer(scheduler, name => { if (name === 'decay') removeTree(entity); }, ['decay']);
       states.set(entity, state = { stump: false, burnt: false, workLeft: MOON_TREE_CHOPS[stage - 1], growable, minimap, timer });
@@ -225,7 +224,7 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
     state.changesTask?.(); state.removeTask?.();
     const controller = controllers.get(entity.model);
     if (controller) unbindFire(controller);
-    state.growable.dispose(); state.timer.dispose(); state.minimap.dispose();
+    state.growable.dispose(); state.timer.dispose();
     states.delete(entity);
     active.delete(entity);
     entities.splice(entities.indexOf(entity), 1);
@@ -333,7 +332,6 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
     mouseRecords.set(model, entity);
     controllers.set(model, controller);
     model.userData.deploySmartRadius = 1.6 * unit;
-    model.userData.MiniMapEntity = state.minimap;
     model.userData.components.growable = state.growable;
     model.userData.components.timer = state.timer;
     for (const tag of ['plant', 'tree', 'moon_tree']) inst.addTag(tag);
@@ -544,7 +542,6 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
   };
   return {
     entities,
-    get miniMapEntities() { return [...states.values()].map(state => state.minimap); },
 
     update(dt: number) {
       if (ownsScheduler) scheduler.advance(dt);

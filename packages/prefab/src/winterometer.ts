@@ -10,7 +10,7 @@ import {
     type AnimatedBuildingEventContext,
 } from './animatedBuildingPlacement';
 import { actionEntity } from './actionEntity';
-import { PlaySound, PreloadSounds } from './sound';
+import { PlaySound } from './sound';
 
 export const WINTEROMETER_ID = 'winterometer' as const;
 export type WinterometerId = typeof WINTEROMETER_ID;
@@ -90,7 +90,6 @@ export const WINTEROMETER_DEFINITION: AnimatedBuildingDefinition = {
     hammerEffect: { archive: 'structure_collapse_fx.zip', animation: 'collapse_small', name: 'collapse_small' },
     burnable: { burnTime: 10, fxLevel: 2, propagator: 'small' },
     skinInit: winterometer_init_fn,
-    prepare: () => PreloadSounds('dontstarve/common/winter_meter_craft'),
     oninit,
     onbuilt,
     onhit,

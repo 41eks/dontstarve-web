@@ -13,7 +13,7 @@ import { Pickable, type PickableSaveState } from './components/pickable';
 import { actionEntity, disposeActionEntity } from './actionEntity';
 import { watchTileActivity } from './tileActivity';
 import type { GetWatchWorldContent, TileStateQuery } from '@dontstarve-web/signals';
-import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
+import { PlaySound, type SoundHandle } from './sound';
 
 export const BULB_PLANT_ID = 'flower_cave';
 export const BULB_PLANT_PREFABS = ['flower_cave', 'flower_cave_double', 'flower_cave_triple'] as const;
@@ -312,11 +312,8 @@ export class BulbPlantManager {
       : prefabId === 'flower_cave_triple' ? 'triple' : BULB_PLANT_VARIANTS[Math.min(1, Math.floor(this.random() * 2))]);
     let request = this.factories.get(variant);
     if (!request) {
-      request = Promise.all([
-        preloadSharedArchiveSprite(this.assets, { animationArchive: `bulb_plant_${variant}.zip`,
-          buildArchives: [`bulb_plant_${variant}.zip`], bank: `bulb_plant_${variant}` }, { instancedAnimations: ['idle'], staticBillboard: true }),
-        PreloadSounds('dontstarve/wilson/pickup_lightbulb'),
-      ]).then(([factory]) => factory);
+      request = preloadSharedArchiveSprite(this.assets, { animationArchive: `bulb_plant_${variant}.zip`,
+        buildArchives: [`bulb_plant_${variant}.zip`], bank: `bulb_plant_${variant}` }, { instancedAnimations: ['idle'], staticBillboard: true });
       this.factories.set(variant, request);
       void request.catch(() => this.factories.delete(variant));
     }

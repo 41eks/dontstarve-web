@@ -23,11 +23,13 @@ export class MinimapDomView {
     this.overview.className = 'minimap__terrain';
     const iconLayer = document.createElement('div');
     iconLayer.className = 'minimap__icons';
+    // Native priorities may be negative; contain their stacking above the terrain layer.
+    iconLayer.style.zIndex = '1';
     for (const layer of [this.overview, iconLayer]) Object.assign(layer.style, {
       position: 'absolute', left: '0', top: '0', width: '100%', height: '100%',
     });
     const styles = new CSSStyleSheet();
-    styles.replaceSync('.marker { position: absolute; display: block; width: 32px; height: auto; max-width: none; transform-origin: 0 0; } [hidden] { display: none !important; }');
+    styles.replaceSync('.marker { position: absolute; display: block; width: 32px; height: auto; max-width: none; transform-origin: 0 0; background-repeat: no-repeat; } [hidden] { display: none !important; }');
     this.iconRule = styles.cssRules[0] as CSSStyleRule;
     this.icons = iconLayer.attachShadow({ mode: 'open' });
     this.icons.adoptedStyleSheets = [styles];

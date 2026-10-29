@@ -22,8 +22,6 @@ export const FIRESTAFF_SOUNDS = ['dontstarve/wilson/attack_firestaff', 'dontstar
 export const FIRESTAFF_TAGS = ['firestaff', 'rangedweapon', 'rangedlighter', 'shadowlevel'] as const;
 
 export interface FireStaffWorld {
-  /** Load the projectile art and the effect an unlit hit leaves, before the first attack. */
-  prepare(): Promise<void>;
   /** SpawnPrefab("fire_projectile") at the attacker, thrown at the target. */
   launch(owner: ItemEntity, target: ProjectileTarget, attacker: CombatActor): Projectile;
   /** SpawnPrefab("cutgrass"): the burnable fuel offered to a target that takes it. */
@@ -69,8 +67,7 @@ export class FireStaffController implements EquipmentLifecycle {
       return projectile;
     });
   }
-  /** Prepare the projectile art and effect while the staff is held. */
-  onequip(): void { void this.world.prepare().catch((error: unknown) => console.error('Unable to prepare fire staff', error)); }
+  onequip(): void {}
   onunequip(): void {}
   dispose(): void {}
 

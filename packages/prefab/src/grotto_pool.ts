@@ -12,7 +12,7 @@ import { Workable } from '../../componets/src/workable';
 import { ComponentTimer } from '../../componets/src/timer';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { modelEntries } from './modelRecords';
-import { MiniMapEntity } from './minimapEntity';
+import type { MiniMapState } from '../../map/src/minimapState';
 import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
 import { MakeObstaclePhysics } from './standardcomponents';
@@ -105,7 +105,7 @@ export interface GrottoPoolWorld extends ToolMouseTargetWorld {
   getWatchWorldContent?: GetWatchWorldContent;
   /** The world's tickingarea query: props outside it are neither drawn, animated nor watching the moon. */
   tickingarea?: TileStateQuery;
-  fx: Pick<WorldFx, 'prepare' | 'spawn'>;
+  fx: Pick<WorldFx, 'spawn'>;
   /** lootdropper:SpawnLootPrefab when a prop is mined; the loot's display loads its art. */
   spawnGroundItem: SpawnGroundItem;
 }
@@ -123,7 +123,7 @@ interface Grotto {
   mist?: ReturnType<typeof createArchiveEntity>;
   /** Drawn: inside the tickingarea, or near the player in a world without one. */
   visible: boolean;
-  minimap?: MiniMapEntity;
+  minimap?: MiniMapState;
   workable?: Workable;
   lootdropper?: LootDropper;
   /** `_children` (prefab_layout order) / `_waterfall`. */
@@ -160,7 +160,6 @@ export class GrottoPoolManager {
     if (!isGrottoId(prefab) || ![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError('Invalid grotto prefab');
     const pool = isPoolId(prefab);
     const definition = pool ? undefined : CHILDREN[prefab as ChildId];
-    const table = definition?.lootTable;
     const mistAnimation = prefab === GROTTO_POOL_BIG_ID ? 'steam_big' : `steam_small${1 + Math.floor(Math.random() * 2)}`;
     const spriteArchive = pool ? 'moonglasspool_tile' : 'moonglass_bigwaterfall';
     const spriteClip = { name: pool ? POOLS[prefab].animation : definition!.animation, loop: true };
@@ -171,7 +170,6 @@ export class GrottoPoolManager {
     const resources = await Promise.allSettled([
       createSprite(spriteClip),
       pool ? createMist({ name: mistAnimation, loop: true }) : undefined,
-      table ? this.world.fx.prepare('halloween_moonpuff') : undefined,
     ] as const);
     const created = resources[0].status === 'fulfilled' ? resources[0].value : undefined;
     const createdMist = resources[1].status === 'fulfilled' ? resources[1].value : undefined;
@@ -229,7 +227,7 @@ export class GrottoPoolManager {
       for (const tag of ['FX', 'NOCLICK']) mist.instance.addTag(tag);
       mist.instance.sprite.setLightOverride(.5); model.add(mistModel);
     }
-    grotto.minimap = new MiniMapEntity(model.position);
+    grotto.minimap = grotto.instance.minimap;
     grotto.minimap.SetIcon(`${prefab}.png`);
     MakeObstaclePhysics(grotto.instance, POOL_RADIUS[prefab]);
     if (this.world.physics) grotto.instance.bindPhysics(this.world.physics);
@@ -355,9 +353,6 @@ export class GrottoPoolManager {
     ]);
   }
 
-  get miniMapEntities(): MiniMapEntity[] {
-    return [...this.grottos.values()].flatMap(({ minimap }) => minimap ? [minimap] : []);
-  }
 
   get mineTargets(): PickaxeTarget[] { return this.getMineTargets(); }
 
@@ -393,7 +388,7 @@ export class GrottoPoolManager {
     grotto.stopArea.splice(0).forEach(stop => stop());
     grotto.stopSound?.();
     prefabInstance(model)!.light.set(null);
-    grotto.minimap?.dispose(); grotto.workable?.dispose();
+    grotto.workable?.dispose();
     grotto.mist?.instance.remove(); grotto.mist?.display.dispose();
     grotto.instance.remove(); grotto.display.dispose();
   }

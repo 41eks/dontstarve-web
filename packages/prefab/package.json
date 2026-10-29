@@ -11,7 +11,6 @@
     "./lightflier_flower": "./src/lightflier_flower.ts",
     "./backpack": "./src/backpack.ts",
     "./minimapEntity": "./src/minimapEntity.ts",
-    "./minimapIcons": "./src/minimapIcons.ts",
     "./groundTileQuads": "./src/groundTileQuads.ts",
     "./evergreens": "./src/evergreens.ts",
     "./lava_pond": "./src/lava_pond.ts",

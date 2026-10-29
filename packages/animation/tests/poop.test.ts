@@ -70,7 +70,7 @@ it('uses private player position updates for source hysteresis and releases each
   world.unbind(); scheduler.dispose();
 });
 
-it('renders real flies child art, preloads looping audio and preserves manure through pickup, drop and save restoration', async () => {
+it('renders real flies child art, plays looping audio and preserves manure through pickup, drop and save restoration', async () => {
   const sources: { loop: boolean; stop: ReturnType<typeof vi.fn>; disconnect: ReturnType<typeof vi.fn> }[] = [];
   const context = { state: 'running', destination: {}, resume: vi.fn(), close: vi.fn(async () => {}),
     decodeAudioData: vi.fn(async () => ({ duration: .8 })),
@@ -86,6 +86,7 @@ it('renders real flies child art, preloads looping audio and preserves manure th
     return new Response(await readFile(new URL(`../../../public/dst/data/${name.endsWith('.wav') ? 'sound' : 'anim'}/${name}`, import.meta.url)));
   });
   vi.stubGlobal('fetch', fetch);
+  await sound.PreloadSounds('dontstarve/common/flies');
   const scene = new THREE.Scene(), player = new THREE.Group(); player.position.x = 12;
   const scheduler = new GameTimeScheduler();
   const world = bindTestWorld(scheduler);
@@ -104,12 +105,12 @@ it('renders real flies child art, preloads looping audio and preserves manure th
     const model = await manager.spawnFromSave('poop-identity', item, new THREE.Vector3());
     expect([...manager.iteratePrefabPositions('poop')]).toEqual([manager.entities.get('poop-identity')!.transform.position]);
     manager.update(.1, new THREE.Quaternion());
-    // The swarm's loop starts once the sound preloaded with the manure has decoded.
+    // The swarm owns its looping source, which stops when the manure enters inventory.
     await vi.waitFor(() => expect(sources).toHaveLength(1));
     expect(sources[0].loop).toBe(true);
-    for (let index = 75; index <= 81; index++) expect(fetch).toHaveBeenCalledWith(`/dst/data/sound/common.fsb-${index}.wav`);
     expect(context.decodeAudioData).toHaveBeenCalled();
     const flies = model.userData.flies as THREE.Group;
+    await vi.waitFor(() => expect(prefabInstance(flies)!.sprite.loaded).toBe(true));
     expect(flies.parent).toBe(model);
     expect(prefabInstance(flies)!.listTags()).toEqual(['NOCLICK', 'DECOR']);
     for (let frame = 0; frame < 20; frame++) manager.update(.1, new THREE.Quaternion());

@@ -8,6 +8,7 @@ import { PointerRaycaster } from './pointerRaycaster.ts';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import type { Combat } from '../../componets/src/combat';
 import { modelHasTag, prefabInstance } from '../../prefab/src/prefabInstance';
+import type { SpriteState } from '@dontstarve-web/display';
 
 /** The picker inst supplied to prefab onpickedfn callbacks. */
 export interface PickActor {
@@ -91,14 +92,15 @@ export class PickActionController {
   private readonly right = new THREE.Vector3();
   private readonly world: ActionWorldContext;
   private readonly animation: ActionAnimationController;
+  private readonly playerSprite: Pick<SpriteState, 'setFacing'>;
   private readonly locomotor: ActionLocomotor;
   private readonly doer: PickDoer | PreparePickDoer;
   private readonly isManualMovement: () => boolean;
 
   constructor(world: ActionWorldContext, animation: ActionAnimationController, locomotor: ActionLocomotor,
-    doer: PickDoer | PreparePickDoer, isManualMovement = () => false) {
+    doer: PickDoer | PreparePickDoer, playerSprite: Pick<SpriteState, 'setFacing'>, isManualMovement = () => false) {
     this.world = world; this.animation = animation; this.locomotor = locomotor;
-    this.doer = doer; this.isManualMovement = isManualMovement;
+    this.doer = doer; this.playerSprite = playerSprite; this.isManualMovement = isManualMovement;
     this.picker = world.mouseActions ?? new PlayerActionPicker(new PointerRaycaster(world));
     this.unregister = this.picker.register(model => getPickActions(model));
     this.stopActionEvents = bindActionCancellation(world, this, 'pick', () => this.cancel());
@@ -186,7 +188,7 @@ export class PickActionController {
     this.world.camera.getWorldDirection(this.forward); this.forward.setY(0).normalize();
     this.right.crossVectors(this.forward, new THREE.Vector3(0, 1, 0)).normalize();
     const forward = this.direction.dot(this.forward), side = this.direction.dot(this.right);
-    this.animation.setFacing(Math.abs(forward) >= Math.abs(side) ? (forward > 0 ? 'up' : 'down') : 'side',
+    this.playerSprite.setFacing(Math.abs(forward) >= Math.abs(side) ? (forward > 0 ? 2 : 8) : 5,
       Math.abs(side) > Math.abs(forward) && side < 0);
   }
 

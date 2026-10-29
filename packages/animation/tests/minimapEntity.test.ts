@@ -3,7 +3,9 @@ import * as CANNON from 'cannon-es';
 import { PerspectiveCamera, Scene, Vector3 } from 'three';
 import { afterEach, expect, it, vi } from 'vitest';
 import { MiniMapEntity } from '../../prefab/src/minimapEntity';
-import { loadMinimapIcon } from '../../prefab/src/minimapIcons';
+import { loadMinimapIcon } from '../../map/src/minimapIcons';
+import { miniMapEntities } from '../../map/src/minimapEntities';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { ItemEntity, InventoryStore, BodySlot, equipmentSlotAddress } from '../../inventory/src';
 import { configureBackpackEntity } from '../../prefab/src/backpack';
 import { PigKingManager } from '../../prefab/src/pigking';
@@ -89,10 +91,12 @@ it('initializes the source pig king icon and priority, and hides it on scene dis
   const kings = new PigKingManager(new Scene(), '/dst/data/anim', {
     camera: new PerspectiveCamera(), scheduler: new GameTimeScheduler(), physics: new CANNON.World(), dropLoot: vi.fn() });
   const model = await kings.spawn(new Vector3(48, 0, 60));
-  const [minimap] = kings.miniMapEntities;
+  await new Promise(resolve => setTimeout(resolve, 0));
+  const minimap = [...miniMapEntities()].find(icon => icon.position === model.position)!;
   expect(minimap.icon).toBe('pigking.png');
   expect(minimap.priority).toBe(1);
   expect(minimap.position).toBe(model.position);
   kings.dispose();
-  expect(minimap.enabled).toBe(false);
+  expect(prefabInstance(model)!.minimap.peek().enabled).toBe(false);
+  expect(miniMapEntities().has(minimap)).toBe(false);
 });

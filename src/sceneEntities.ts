@@ -69,7 +69,7 @@ import { RuinsStatueMageManager } from '@dontstarve-web/prefab/ruins_statue_mage
 import { ChessJunkManager } from '@dontstarve-web/prefab/chessjunk';
 import { BeefaloManager, BEEFALO_BEHAVIOR } from '@dontstarve-web/prefab/beefalo';
 import { newEntityId } from '@dontstarve-web/prefab/saveRecord';
-import { player } from './player';
+import { player, playerInstance } from './player';
 import {
   PlaceableBuildingPlacement,
   type PlaceableBuildingInteractionChange,
@@ -431,7 +431,7 @@ export async function createSceneEntities(
         cycle: worldState.cycle, getWatchWorldContent: worldState.getWatchWorldContent, tickingarea: worldState.tickingarea, isNight: worldState.isNight, perishClock: worldState.perishClock,
         secondsUntilNextDay: now => TUNING.TOTAL_DAY_TIME - now % TUNING.TOTAL_DAY_TIME,
         // world_fx registers after the buildings; the manager is read when an fx is played.
-        fx: { prepare: prefab => Managers['world_fx'].prepare(prefab), spawn: (prefab, position) => { Managers['world_fx'].spawn(prefab, position); } },
+        fx: { spawn: (prefab, position) => { Managers['world_fx'].spawn(prefab, position); } },
         spawnItem: state => { const entity = sceneInventory.entities.create(state); sceneInventory.configureItem(entity); return entity; },
         dropItem: (entity, position) => { sceneInventory.DropItem(entity, position); },
         registerContainer: (id, container, saved) => sceneInventory.registerContainer(id, container, saved),
@@ -447,7 +447,6 @@ export async function createSceneEntities(
       exportRecords: () => buildingPlacement.exportRecords(),
       update: (dt) => buildingPlacement.update(dt),
       renderEntities: () => buildingPlacement.renderEntities,
-      miniMapEntities: () => buildingPlacement.miniMapEntities,
       dispose: () => buildingPlacement.dispose(),
     });
     return buildingPlacement;
@@ -481,7 +480,7 @@ export async function createSceneEntities(
   function registerWorldFx(registry: EntityRegistry, prefabId: 'world_fx', _worldState: SceneWorldState) {
     const worldFx = new WorldFx(scene);
     registry.register(MANAGER_DEFINITIONS[prefabId], {
-      debugSpawn: async prefab => { await worldFx.prepare(prefab); worldFx.spawn(prefab, player.position); },
+      debugSpawn: prefab => worldFx.spawn(prefab, player.position),
       exportRecords: () => [],
       update: (dt, quaternion) => worldFx.update(dt, quaternion),
       renderEntities: () => worldFx.renderEntities,
@@ -598,7 +597,6 @@ export async function createSceneEntities(
       exportRecords: () => groundItems.exportRecords().map((record) => ({ prefabId: 'ground_item', record })),
       update: (dt, quaternion) => groundItems.update(dt, quaternion),
       renderEntities: () => groundItems.renderEntities,
-      miniMapEntities: () => groundItems.miniMapEntities,
       dispose: () => groundItems.dispose(),
     });
     return groundItems;
@@ -607,8 +605,8 @@ export async function createSceneEntities(
   function registerLightFlierFlowers(registry: EntityRegistry, prefabId: 'lightflier_flower', worldState: SceneWorldState) {
     const lightFlierPlayer = { position: player.position, isValid: () => playerStats.health.peek() > 0,
       hasLightFlier: () => sceneInventory.Has('lightflier'),
-      getFacing: () => player.userData.worldHeading ?? 0, getWalkSpeed: () => 4 * WORLD_SCALE,
-      wantsToMove: () => player.userData.wantsToMoveForward === true };
+      getFacing: () => playerInstance.worldHeading, getWalkSpeed: () => 4 * WORLD_SCALE,
+      wantsToMove: () => playerInstance.wantsToMoveForward };
     const flowers = new LightFlierFlowerManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
       maxMovementStep: MAX_PHYSICS_FRAME_TIME,
       scheduler: scheduler ?? worldState.scheduler, getWatchWorldContent: worldState.getWatchWorldContent, tickingarea: worldState.tickingarea, cameraHeading: view.cameraHeading,
@@ -622,7 +620,6 @@ export async function createSceneEntities(
       debugSpawn: () => flowers.spawn(player.position.clone()),
       exportRecords: () => flowers.exportRecords().map(record => ({ prefabId, record })),
       update: (dt, quaternion) => flowers.update(dt, quaternion), renderEntities: () => flowers.renderEntities,
-      miniMapEntities: () => flowers.miniMapEntities,
       dispose: () => flowers.dispose(),
     });
     return flowers;
@@ -681,7 +678,6 @@ export async function createSceneEntities(
       exportRecords: () => caveEntrances.exportRecords(),
       update: (dt, quaternion) => caveEntrances.update(dt, quaternion),
       renderEntities: () => caveEntrances.renderEntities,
-      miniMapEntities: () => caveEntrances.miniMapEntities,
       dispose: () => caveEntrances.dispose(),
     });
     return caveEntrances;
@@ -722,7 +718,6 @@ export async function createSceneEntities(
       exportRecords: () => mushtrees.exportRecords(),
       update: (dt, quaternion) => mushtrees.update(dt, quaternion),
       renderEntities: () => mushtrees.renderEntities,
-      miniMapEntities: () => mushtrees.miniMapEntities,
       dispose: () => mushtrees.dispose(),
     });
     return mushtrees;
@@ -744,7 +739,6 @@ export async function createSceneEntities(
       exportRecords: () => grottoPools.exportRecords(),
       update: (dt, quaternion) => grottoPools.update(dt, quaternion),
       renderEntities: () => grottoPools.renderEntities,
-      miniMapEntities: () => grottoPools.miniMapEntities,
       dispose: () => grottoPools.dispose(),
     });
     return grottoPools;
@@ -760,7 +754,6 @@ export async function createSceneEntities(
       exportRecords: () => caveExits.exportRecords(),
       update: (dt, quaternion) => caveExits.update(dt, quaternion),
       renderEntities: () => caveExits.renderEntities,
-      miniMapEntities: () => caveExits.miniMapEntities,
       dispose: () => caveExits.dispose(),
     });
     return caveExits;
@@ -781,7 +774,6 @@ export async function createSceneEntities(
       exportRecords: () => marbleShrubs.exportRecords().map(record => ({ prefabId: MARBLESHRUB_ID, record })),
       update: (dt, quaternion) => marbleShrubs.update(dt, quaternion),
       renderEntities: () => marbleShrubs.renderEntities,
-      miniMapEntities: () => marbleShrubs.miniMapEntities,
       dispose: () => marbleShrubs.dispose(),
     });
     return marbleShrubs;
@@ -801,7 +793,6 @@ export async function createSceneEntities(
       exportRecords: () => archiveProps.exportRecords() as { prefabId: ArchivePropId; record: ReturnType<typeof archiveProps.exportRecords>[number]['record'] }[],
       update: (dt, quaternion) => archiveProps.update(dt, quaternion),
       renderEntities: () => archiveProps.renderEntities,
-      miniMapEntities: () => archiveProps.miniMapEntities,
       dispose: () => archiveProps.dispose(),
     });
     return archiveProps;
@@ -838,7 +829,6 @@ export async function createSceneEntities(
       exportRecords: () => hives.exportRecords(),
       update: dt => hives.update(dt),
       renderEntities: () => hives.renderEntities,
-      miniMapEntities: () => hives.miniMapEntities,
       dispose: () => hives.dispose(),
     });
     return hives;
@@ -1055,7 +1045,6 @@ export async function createSceneEntities(
       exportRecords: () => cacti.exportRecords(),
       update: (dt, quaternion) => cacti.update(dt, quaternion),
       renderEntities: () => cacti.renderEntities,
-      miniMapEntities: () => cacti.miniMapEntities,
       dispose: () => cacti.dispose(),
     });
     return cacti;
@@ -1071,7 +1060,6 @@ export async function createSceneEntities(
       exportRecords: () => lavaPonds.exportRecords().filter(record => record.prefabId === LAVA_POND_ID),
       update: (dt, quaternion) => lavaPonds.update(dt, quaternion),
       renderEntities: () => lavaPonds.renderEntities,
-      miniMapEntities: () => lavaPonds.miniMapEntities,
       dispose: () => lavaPonds.dispose(),
     });
     registry.register(PREFAB_DEFINITIONS.lavaPondRocks, {
@@ -1158,7 +1146,6 @@ export async function createSceneEntities(
       exportRecords: () => portals.exportRecords().map((record) => ({ prefabId: PORTAL_ID, record })),
       update: (dt, quaternion) => portals.update(dt, quaternion),
       renderEntities: () => portals.renderEntities,
-      miniMapEntities: () => portals.miniMapEntities,
       dispose: () => portals.dispose(),
     });
     return portals;
@@ -1250,7 +1237,6 @@ export async function createSceneEntities(
       debugSpawn: async prefab => { evergreenForest.spawn(prefab as EvergreenSpawnId, new THREE.Vector3(player.position.x, 0, player.position.z)); },
       exportRecords: () => evergreenForest.exportRecords().map(record => ({ prefabId: 'evergreen', record })),
       update: (dt, quaternion) => { evergreenForest.update(dt, quaternion); },
-      miniMapEntities: () => evergreenForest.miniMapEntities,
       renderEntities: () => evergreenForest.renderEntities,
       dispose: () => evergreenForest.dispose(),
     });
@@ -1274,7 +1260,6 @@ export async function createSceneEntities(
       debugSpawn: async prefab => { deciduousForest.spawn(prefab as DeciduousSpawnId, new THREE.Vector3(player.position.x, 0, player.position.z)); },
       exportRecords: () => deciduousForest.exportRecords().map(record => ({ prefabId: 'deciduoustree', record })),
       update: (dt, quaternion) => { deciduousForest.update(dt, quaternion); },
-      miniMapEntities: () => deciduousForest.miniMapEntities,
       renderEntities: () => deciduousForest.renderEntities,
       dispose: () => deciduousForest.dispose(),
     });
@@ -1349,7 +1334,6 @@ export async function createSceneEntities(
       debugSpawn: async id => { moonTrees.spawn(id, new THREE.Vector3(player.position.x, 0, player.position.z)); },
       exportRecords: () => moonTrees.exportRecords().map(record => ({ prefabId: 'moon_tree', record })),
       update: dt => moonTrees.update(dt),
-      miniMapEntities: () => moonTrees.miniMapEntities,
       renderEntities: () => moonTrees.renderEntities,
       dispose: () => moonTrees.dispose(),
     });
@@ -1382,7 +1366,6 @@ export async function createSceneEntities(
       exportRecords: () => pigKings.exportRecords(),
       beforePhysics: (dt) => pigKings.update(dt),
       renderEntities: () => pigKings.renderEntities,
-      miniMapEntities: () => pigKings.miniMapEntities,
       dispose: () => pigKings.dispose(),
     });
     return pigKings;
@@ -1402,7 +1385,6 @@ export async function createSceneEntities(
       exportRecords: () => statues.exportRecords(),
       update: dt => statues.update(dt),
       renderEntities: () => statues.renderEntities,
-      miniMapEntities: () => statues.miniMapEntities,
       dispose: () => statues.dispose(),
     });
     return statues;
@@ -1455,8 +1437,8 @@ export async function createSceneEntities(
     const nightmareRocks = new NightmareRockManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
       scheduler, physics: world, fx: Managers['world_fx'], tickingarea: worldState.tickingarea,
       // AllPlayers: the local player, once its sanity component is attached.
-      getPlayers: () => player.userData.components?.sanity
-        ? [{ position: player.position, sanity: player.userData.components.sanity }] : [],
+      getPlayers: () => playerInstance.components.sanity
+        ? [{ position: player.position, sanity: playerInstance.components.sanity }] : [],
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (id, record) => nightmareRocks.spawn(id, new THREE.Vector3(...record.transform.position), {
@@ -1549,7 +1531,6 @@ export async function createSceneEntities(
       exportRecords: () => ponds.exportRecords().map((record) => ({ prefabId: POND_ID, record })),
       update: (dt) => ponds.update(dt),
       // Ponds are ground layers, below the foot-sorted billboards.
-      miniMapEntities: () => ponds.miniMapEntities,
       dispose: () => ponds.dispose(),
     });
     return ponds;

@@ -232,8 +232,8 @@ export function createHatGroundFactory(context: GroundPrefabContext): GroundItem
       if (skinId !== undefined && !skinArchive) throw new Error(`Unknown skin ${skinId} for ${hat.archive}`);
       const rabbit = itemId === 'rabbithat';
       const art = source(hat.archive, rabbit
-        ? { skinArchive, buildArchive: RABBITHAT_GROUND.build, overrideBuilds: { [RABBITHAT_GROUND.overrideBuild]: `${RABBITHAT_GROUND.overrideBuild}.zip` } }
-        : { skinArchive });
+        ? { buildArchive: RABBITHAT_GROUND.build, overrideBuilds: { [RABBITHAT_GROUND.overrideBuild]: `${RABBITHAT_GROUND.overrideBuild}.zip` } }
+        : {});
       const name = `GroundHat:${itemId}`;
       const draw = (factory: AnimatedSpriteFactory) => ({
         create: (animation: string, frame?: 'first' | 'last') => factory.create({ initialAnimation: animation, initialFrame: frame, name }),
@@ -243,8 +243,10 @@ export function createHatGroundFactory(context: GroundPrefabContext): GroundItem
       const { instance, display } = createPrefabEntity(itemId, {
         peek: () => { const factory = art.peek(); return factory && draw(factory); },
         load: () => art.load().then(draw),
-      }, { name: 'anim', held: !rabbit }, name);
-      instance.skinId = skinId;
+      }, { name: 'anim', held: !rabbit }, name, entity => {
+        entity.skinId = skinId;
+        entity.sprite.setSkinSource({ archives: hat.skinArchives, art: context.assets });
+      });
       return bindResidentGroundItem(context, instance, display);
     },
     // The manager releases every hat entity first; only then can the atlases they drew from go.

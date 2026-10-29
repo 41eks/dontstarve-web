@@ -7,7 +7,7 @@ import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
 import { Workable } from '../../componets/src/workable';
 import { ComponentTimer, Timer, type NamedTimerSave } from '../../componets/src/timer';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { MiniMapEntity } from './minimapEntity';
+import type { MiniMapState } from '../../map/src/minimapState';
 import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
 import { actionEntity } from './actionEntity';
 import { MakeObstaclePhysics } from './standardcomponents';
@@ -40,7 +40,7 @@ interface Hive {
   timer: Timer;
   honeyTimer: ComponentTimer;
   pendingHoney?: number;
-  minimap: MiniMapEntity;
+  minimap: MiniMapState;
   stopActivity?: () => void;
 }
 
@@ -83,7 +83,7 @@ export class BeeQueenHiveManager {
       honeyTimer: new ComponentTimer(this.world.scheduler, () => {
         if (hive.pendingHoney !== undefined) this.showHoneyLevel(hive, hive.pendingHoney);
         hive.pendingHoney = undefined;
-      }), minimap: new MiniMapEntity(model.position) };
+      }), minimap: instance.minimap };
     hive.minimap.SetIcon('beequeenhivegrown.png');
     if (saved?.components.workable) workable.OnLoad(saved.components.workable);
     this.setHoneyLevel(hive, this.honeyLevel(workable.GetWorkLeft()));
@@ -154,7 +154,6 @@ export class BeeQueenHiveManager {
   update(dt: number): void { for (const { instance } of this.hives.values()) instance.sprite.update(dt); }
   get renderEntities() { return [...this.hives].filter(([, hive]) => hive.instance.sprite.loaded)
     .map(([object]) => ({ object, footPosition: object.position, cameraDepth: 0 })); }
-  get miniMapEntities(): MiniMapEntity[] { return [...this.hives.values()].map(hive => hive.minimap); }
   exportRecords(): { prefabId: typeof BEEQUEENHIVEGROWN_ID; record: BeeQueenHiveRecord }[] {
     return [...this.hives].map(([model, hive]) => ({ prefabId: BEEQUEENHIVEGROWN_ID, record: {
       id: String(hive.instance.entityId), transform: { position: [model.position.x, 0, model.position.z], rotationY: model.rotation.y },
@@ -166,7 +165,7 @@ export class BeeQueenHiveManager {
     const hive = this.hives.get(model); if (!hive) return;
     this.hives.delete(model);
     model.userData.removed = true;
-    hive.stopActivity?.(); hive.timer.dispose(); hive.honeyTimer.stop(); hive.workable.dispose(); hive.minimap.dispose(); hive.instance.remove();
+    hive.stopActivity?.(); hive.timer.dispose(); hive.honeyTimer.stop(); hive.workable.dispose(); hive.instance.remove();
   }
   dispose(): void {
     if (this.disposed) return;

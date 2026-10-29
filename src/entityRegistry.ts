@@ -2,7 +2,6 @@ import type * as THREE from 'three';
 import type { ResidentEntity } from '@dontstarve-web/animation/residentSprite';
 import type { SavedEntity } from './save/types';
 import type { PrefabDefinition } from './prefabDefinitions';
-import type { MiniMapEntity } from '@dontstarve-web/prefab/minimapEntity';
 import type { PrefabDisplay } from '@dontstarve-web/display';
 import type { DisplayDrivenPrefabManager } from '@dontstarve-web/prefab/manager';
 
@@ -33,14 +32,12 @@ export interface EntityRegistration<PrefabId extends string> {
   beforePhysics?: (dt: number) => void;
   update?: (dt: number, cameraQuaternion: THREE.Quaternion) => void;
   renderEntities?: () => readonly EntityRenderEntry[];
-  miniMapEntities?: () => readonly MiniMapEntity[];
   dispose: () => void;
 }
 
 /** A display-owned prefab family: its manager has no frame hook to forward animations through. */
 export interface DisplayDrivenEntityManager extends DisplayDrivenPrefabManager<EntityRecord> {
   readonly renderEntities?: readonly EntityRenderEntry[];
-  readonly miniMapEntities?: readonly MiniMapEntity[];
 }
 
 /** Routes scene lifecycles through the same declarations used by debug spawning. */
@@ -86,7 +83,6 @@ export class EntityRegistry {
       ...handlers,
       exportRecords: () => manager.exportRecords(),
       renderEntities: () => manager.renderEntities ?? [],
-      miniMapEntities: () => manager.miniMapEntities ?? [],
       dispose: () => manager.dispose(),
     });
   }
@@ -177,10 +173,6 @@ export class EntityRegistry {
       if (provided) for (let i = 0; i < provided.length; i++) entries.push(provided[i]);
     }
     return entries;
-  }
-
-  get miniMapEntities(): readonly MiniMapEntity[] {
-    return this.disposed ? [] : this.registrations.flatMap(registration => registration.miniMapEntities?.() ?? []);
   }
 
   dispose(): void {

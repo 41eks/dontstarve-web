@@ -5,7 +5,7 @@ import {
     type AnimatedBuildingDefinition,
 } from './animatedBuildingPlacement';
 import type { WorldContext } from './worldContext';
-import { PlaySound, PreloadSounds } from './sound';
+import { PlaySound } from './sound';
 
 export const TREASURE_CHEST_ID = 'treasurechest' as const;
 export type TreasureChestId = typeof TREASURE_CHEST_ID;
@@ -28,7 +28,6 @@ export const TREASURE_CHEST_DEFINITION: AnimatedBuildingDefinition = {
     burnable: { burnTime: 10, fxLevel: 2, propagator: 'medium' },
     hammerEffect: { archive: 'structure_collapse_fx.zip', animation: 'collapse_small', name: 'collapse' },
     hammerDropContentsOnHit: true,
-    prepare: () => PreloadSounds('dontstarve/wilson/chest_open', 'dontstarve/wilson/chest_close'),
     onopen: ({ model }) => { PlaySound('dontstarve/wilson/chest_open', model.position); },
     onclose: ({ model }) => { PlaySound('dontstarve/wilson/chest_close', model.position); },
     // MakeChest: inst:AddTag("structure") comes with the burnable building; "chest" is added here.

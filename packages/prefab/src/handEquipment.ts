@@ -7,10 +7,10 @@ import type * as THREE from 'three';
 import { Weapon } from '../../componets/src/weapon';
 import { AXE_USES, configureAxeEntity, getAxeLifecycle, axeVisual } from './axe';
 import { configureBugNetEntity, bugnetVisual } from './bugnet';
-import { configureFishingRodEntity, FISHING_SOUNDS, FISHINGROD_USES, fishingRodVisual } from './fishingrod';
+import { configureFishingRodEntity, FISHINGROD_USES, fishingRodVisual } from './fishingrod';
 import type { EquipmentVisual, EquipmentVisualFactory } from './equipmentVisual';
 import { farmHoeVisual } from './farm_hoe';
-import { FIRESTAFF_SOUNDS, FIRESTAFF_TAGS, FIRESTAFF_USES, getFireStaffController, fireStaffVisual, type FireStaffWorld } from './firestaff';
+import { FIRESTAFF_TAGS, FIRESTAFF_USES, getFireStaffController, fireStaffVisual, type FireStaffWorld } from './firestaff';
 import { getGreenStaffController, GREENSTAFF_USES, type GreenStaffWorld } from './greenstaff';
 import { configureHammerEntity, hammerVisual } from './hammer';
 import { configureLanternEntity, createLanternHandLifecycle, LANTERN_FUEL, lanternVisual } from './lantern';
@@ -20,9 +20,8 @@ import { pitchforkVisual } from './pitchfork';
 import type { WilsonCarryItem } from './player';
 import { configureReskinToolEntity, reskinToolVisual } from './reskin_tool';
 import { configureShovelEntity, shovelVisual, SHOVEL_USES } from './shovel';
-import { PreloadSounds } from './sound';
-import { configureTorchEntity, createTorchHandLifecycle, torchVisual, TORCH_SOUNDS } from './torch';
-import { getTridentController, tridentVisual, TRIDENT_STRUM_SOUND, TRIDENT_DAMAGE, TRIDENT_USES, type TridentWorld } from './trident';
+import { configureTorchEntity, createTorchHandLifecycle, torchVisual } from './torch';
+import { getTridentController, tridentVisual, TRIDENT_DAMAGE, TRIDENT_USES, type TridentWorld } from './trident';
 import { getLightStaffController, yellowstaffVisual, type LightStaffWorld } from './yellowstaff';
 
 // tuning.lua: wilson_attack = 34; GOLDENTOOLFACTOR = 4 lowers golden tools' attackwear.
@@ -53,45 +52,43 @@ export interface HandEquipmentDefinition {
   readonly tags?: readonly string[];
   configureEntity?(entity: ItemEntity): void;
   readonly handAction?: ActionDescription;
-  /** Sounds its use plays, decoded before it can be equipped. */
-  preload?(): Promise<void>;
   readonly visual: EquipmentVisualFactory;
   createLifecycle?(entity: ItemEntity, context: HandEquipmentContext): EquipmentLifecycle | undefined;
 }
 
 /** Source hand prefabs declare their presentation and equip lifecycle together. */
 const definitions: Record<WilsonCarryItem, HandEquipmentDefinition> = {
-  torch: { visual: torchVisual, weapon: { damage: WILSON_ATTACK * .5 }, configureEntity: configureTorchEntity, preload: () => PreloadSounds(...TORCH_SOUNDS), createLifecycle: createTorchHandLifecycle },
+  torch: { visual: torchVisual, weapon: { damage: WILSON_ATTACK * .5 }, configureEntity: configureTorchEntity, createLifecycle: createTorchHandLifecycle },
   lantern: { visual: lanternVisual, tags: ['light'], maxFuel: LANTERN_FUEL, configureEntity: configureLanternEntity, createLifecycle: createLanternHandLifecycle },
-  yellowstaff: { visual: yellowstaffVisual, preload: () => PreloadSounds('dontstarve/common/staffteleport'), tags: ['nopunch'], createLifecycle: (entity, context) => context.lightStaffWorld ? getLightStaffController(entity, context.lightStaffWorld) : undefined },
-  opalstaff: { visual: yellowstaffVisual, preload: () => PreloadSounds('dontstarve/common/staffteleport'), tags: ['nopunch'], createLifecycle: (entity, context) => context.lightStaffWorld ? getLightStaffController(entity, context.lightStaffWorld) : undefined },
-  greenstaff: { visual: yellowstaffVisual, preload: () => PreloadSounds('dontstarve/wilson/use_gemstaff'), tags: ['nopunch'], maxUses: GREENSTAFF_USES, createLifecycle: (entity, context) => context.greenStaffWorld ? getGreenStaffController(entity, context.greenStaffWorld) : undefined },
+  yellowstaff: { visual: yellowstaffVisual, tags: ['nopunch'], createLifecycle: (entity, context) => context.lightStaffWorld ? getLightStaffController(entity, context.lightStaffWorld) : undefined },
+  opalstaff: { visual: yellowstaffVisual, tags: ['nopunch'], createLifecycle: (entity, context) => context.lightStaffWorld ? getLightStaffController(entity, context.lightStaffWorld) : undefined },
+  greenstaff: { visual: yellowstaffVisual, tags: ['nopunch'], maxUses: GREENSTAFF_USES, createLifecycle: (entity, context) => context.greenStaffWorld ? getGreenStaffController(entity, context.greenStaffWorld) : undefined },
   // staff.lua red(): weapon damage 0 (the projectile only lights), FIRESTAFF_USES uses, ranged lighter tags.
-  firestaff: { visual: fireStaffVisual, preload: () => PreloadSounds(...FIRESTAFF_SOUNDS), maxUses: FIRESTAFF_USES, tags: FIRESTAFF_TAGS, weapon: { damage: 0 },
+  firestaff: { visual: fireStaffVisual, maxUses: FIRESTAFF_USES, tags: FIRESTAFF_TAGS, weapon: { damage: 0 },
     createLifecycle: (entity, context) => context.fireStaffWorld ? getFireStaffController(entity, context.fireStaffWorld) : undefined },
   // trident.lua: TRIDENT.DAMAGE over ground (OCEAN_DAMAGE applies only while the wielder stands on a boat or the sea).
-  trident: { visual: tridentVisual, preload: () => PreloadSounds(TRIDENT_STRUM_SOUND), maxUses: TRIDENT_USES, tags: ['pointy', 'sharp'], weapon: { damage: TRIDENT_DAMAGE },
+  trident: { visual: tridentVisual, maxUses: TRIDENT_USES, tags: ['pointy', 'sharp'], weapon: { damage: TRIDENT_DAMAGE },
     createLifecycle: (entity, context) => context.tridentWorld ? getTridentController(entity, context.tridentWorld) : undefined },
-  bugnet: { visual: bugnetVisual, preload: () => PreloadSounds('dontstarve/wilson/dig'), maxUses: 10, weapon: { damage: WILSON_ATTACK * .125, attackwear: 3 }, configureEntity: configureBugNetEntity },
+  bugnet: { visual: bugnetVisual, maxUses: 10, weapon: { damage: WILSON_ATTACK * .125, attackwear: 3 }, configureEntity: configureBugNetEntity },
   // fishingrod.lua: FISHINGROD_DAMAGE = wilson_attack * .125, attackwear 4.
-  fishingrod: { visual: fishingRodVisual, preload: () => PreloadSounds(...FISHING_SOUNDS), maxUses: FISHINGROD_USES, weapon: { damage: WILSON_ATTACK * .125, attackwear: 4 }, configureEntity: configureFishingRodEntity },
-  hammer: { visual: hammerVisual, preload: () => PreloadSounds('dontstarve/wilson/hit'), maxUses: 75, weapon: { damage: WILSON_ATTACK * .5 }, configureEntity: configureHammerEntity },
+  fishingrod: { visual: fishingRodVisual, maxUses: FISHINGROD_USES, weapon: { damage: WILSON_ATTACK * .125, attackwear: 4 }, configureEntity: configureFishingRodEntity },
+  hammer: { visual: hammerVisual, maxUses: 75, weapon: { damage: WILSON_ATTACK * .5 }, configureEntity: configureHammerEntity },
   // nightsword.lua: NIGHTSWORD_DAMAGE = wilson_attack * 2, NIGHTSWORD_USES = 100.
   nightsword: { visual: nightswordVisual, maxUses: 100, tags: ['shadow', 'sharp'], weapon: { damage: WILSON_ATTACK * 2 }, configureEntity: configureNightswordEntity },
-  reskin_tool: { visual: reskinToolVisual, preload: () => PreloadSounds('dontstarve/wilson/attack_weapon'), tags: ['nopunch'], configureEntity: configureReskinToolEntity },
-  pickaxe: { visual: pickaxeVisual, preload: () => PreloadSounds('dontstarve/wilson/use_pick_rock'), maxUses: PICKAXE_USES, weapon: { damage: WILSON_ATTACK * .8 }, configureEntity: configurePickaxeEntity, createLifecycle: getPickaxeLifecycle },
-  goldenpickaxe: { visual: pickaxeVisual, preload: () => PreloadSounds('dontstarve/wilson/use_pick_rock'), maxUses: PICKAXE_USES, useStep: .25, weapon: { damage: WILSON_ATTACK * .8, attackwear: GOLDEN_ATTACKWEAR }, configureEntity: configurePickaxeEntity, createLifecycle: getPickaxeLifecycle },
+  reskin_tool: { visual: reskinToolVisual, tags: ['nopunch'], configureEntity: configureReskinToolEntity },
+  pickaxe: { visual: pickaxeVisual, maxUses: PICKAXE_USES, weapon: { damage: WILSON_ATTACK * .8 }, configureEntity: configurePickaxeEntity, createLifecycle: getPickaxeLifecycle },
+  goldenpickaxe: { visual: pickaxeVisual, maxUses: PICKAXE_USES, useStep: .25, weapon: { damage: WILSON_ATTACK * .8, attackwear: GOLDEN_ATTACKWEAR }, configureEntity: configurePickaxeEntity, createLifecycle: getPickaxeLifecycle },
   // axe.lua: TUNING.AXE_DAMAGE = wilson_attack * .8; golden attackwear = 1 / GOLDENTOOLFACTOR.
-  axe: { visual: axeVisual, preload: () => PreloadSounds('dontstarve/wilson/use_axe_tree', 'dontstarve/forest/treeFall'), maxUses: AXE_USES, weapon: { damage: WILSON_ATTACK * .8 }, configureEntity: configureAxeEntity, createLifecycle: getAxeLifecycle },
-  goldenaxe: { visual: axeVisual, preload: () => PreloadSounds('dontstarve/wilson/use_axe_tree', 'dontstarve/forest/treeFall'), maxUses: AXE_USES, useStep: .25, weapon: { damage: WILSON_ATTACK * .8, attackwear: GOLDEN_ATTACKWEAR }, configureEntity: configureAxeEntity, createLifecycle: getAxeLifecycle },
+  axe: { visual: axeVisual, maxUses: AXE_USES, weapon: { damage: WILSON_ATTACK * .8 }, configureEntity: configureAxeEntity, createLifecycle: getAxeLifecycle },
+  goldenaxe: { visual: axeVisual, maxUses: AXE_USES, useStep: .25, weapon: { damage: WILSON_ATTACK * .8, attackwear: GOLDEN_ATTACKWEAR }, configureEntity: configureAxeEntity, createLifecycle: getAxeLifecycle },
   // tuning.lua MOONGLASSAXE: DAMAGE = wilson_attack, ATTACKWEAR = 2.
-  moonglassaxe: { visual: axeVisual, preload: () => PreloadSounds('dontstarve/wilson/use_axe_tree', 'dontstarve/forest/treeFall'), maxUses: AXE_USES, weapon: { damage: WILSON_ATTACK, attackwear: 2 }, configureEntity: configureAxeEntity, createLifecycle: getAxeLifecycle },
-  pitchfork: { visual: pitchforkVisual, preload: () => PreloadSounds('dontstarve/wilson/dig', 'dontstarve/wilson/equip_item_gold'), weapon: { damage: WILSON_ATTACK * .5 } },
-  goldenpitchfork: { visual: pitchforkVisual, preload: () => PreloadSounds('dontstarve/wilson/dig', 'dontstarve/wilson/equip_item_gold'), weapon: { damage: WILSON_ATTACK * .5, attackwear: GOLDEN_ATTACKWEAR } },
-  farm_hoe: { visual: farmHoeVisual, preload: () => PreloadSounds('dontstarve/wilson/dig', 'dontstarve_DLC001/creatures/mole/emerge'), weapon: { damage: WILSON_ATTACK * .5 } },
-  golden_farm_hoe: { visual: farmHoeVisual, preload: () => PreloadSounds('dontstarve/wilson/dig', 'dontstarve_DLC001/creatures/mole/emerge'), weapon: { damage: WILSON_ATTACK * .5, attackwear: GOLDEN_ATTACKWEAR } },
-  shovel: { visual: shovelVisual, preload: () => PreloadSounds('dontstarve/wilson/dig'), maxUses: SHOVEL_USES, weapon: { damage: WILSON_ATTACK * .5 }, configureEntity: configureShovelEntity },
-  goldenshovel: { visual: shovelVisual, preload: () => PreloadSounds('dontstarve/wilson/dig', 'dontstarve/wilson/equip_item_gold'), maxUses: SHOVEL_USES, useStep: .25, weapon: { damage: WILSON_ATTACK * .5, attackwear: GOLDEN_ATTACKWEAR },
+  moonglassaxe: { visual: axeVisual, maxUses: AXE_USES, weapon: { damage: WILSON_ATTACK, attackwear: 2 }, configureEntity: configureAxeEntity, createLifecycle: getAxeLifecycle },
+  pitchfork: { visual: pitchforkVisual, weapon: { damage: WILSON_ATTACK * .5 } },
+  goldenpitchfork: { visual: pitchforkVisual, weapon: { damage: WILSON_ATTACK * .5, attackwear: GOLDEN_ATTACKWEAR } },
+  farm_hoe: { visual: farmHoeVisual, weapon: { damage: WILSON_ATTACK * .5 } },
+  golden_farm_hoe: { visual: farmHoeVisual, weapon: { damage: WILSON_ATTACK * .5, attackwear: GOLDEN_ATTACKWEAR } },
+  shovel: { visual: shovelVisual, maxUses: SHOVEL_USES, weapon: { damage: WILSON_ATTACK * .5 }, configureEntity: configureShovelEntity },
+  goldenshovel: { visual: shovelVisual, maxUses: SHOVEL_USES, useStep: .25, weapon: { damage: WILSON_ATTACK * .5, attackwear: GOLDEN_ATTACKWEAR },
     configureEntity: configureShovelEntity },
 };
 
@@ -116,10 +113,6 @@ export function getHandEquipmentDefinition(itemId: string): { carryItem: WilsonC
   if (!Object.hasOwn(definitions, itemId)) return undefined;
   const carryItem = itemId as WilsonCarryItem;
   return { carryItem, definition: definitions[carryItem] };
-}
-
-export async function preloadHandEquipment(): Promise<void> {
-  await Promise.all(Object.values(definitions).map(definition => definition.preload?.()));
 }
 
 /** Prefab domain and presentation share the same equip lifetime; the holder's display loads the named art. */

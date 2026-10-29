@@ -30,7 +30,7 @@ test('death leaves a skeleton, becomes a ghost, and a saved ghost resumes withou
     return JSON.parse(await readSaveDownload((await (await download).path())!, 'Master'));
   };
   const player = () => page.evaluate(() => {
-    const { player, stats } = (window as any).ghostGame, controller = player.userData.animationController;
+    const { player, stats } = (window as any).ghostGame, controller = (window as any).__prefabInstance(player).animationController;
     return { ghost: controller.isGhost, state: controller.stategraph.stateName, ghostMode: stats.playerGhostMode.peek(),
       health: stats.playerStats.health.peek(), tagged: (window as any).__prefabInstance(player).listTags().includes('playerghost') };
   });
@@ -82,12 +82,12 @@ test('a ghost that haunts the multiplayer portal is resurrected there with a hea
   const submit = (command: string) => page.evaluate(command => document.querySelector('dst-debug-console')!.dispatchEvent(
     new CustomEvent('game:debug-command', { detail: { command } })), command);
   const player = () => page.evaluate(() => {
-    const { player, stats } = (window as any).ghostGame, controller = player.userData.animationController;
+    const { player, stats } = (window as any).ghostGame, controller = (window as any).__prefabInstance(player).animationController;
     const portal = (window as any).ghostGame.scene.children.find((model: any) => (window as any).__prefabInstance(model)?.prefab === 'multiplayer_portal_moonrock');
     return { ghost: controller.isGhost, state: controller.stategraph.stateName, ghostMode: stats.playerGhostMode.peek(),
       health: stats.playerStats.health.peek(), penalty: stats.playerStats.health.penalty, invincible: stats.playerStats.health.invincible,
       visible: player.visible && player.children.every((child: any) => child.visible), x: Math.round(player.position.x * 10) / 10,
-      slippery: !!player.userData.slipperyfeet, tags: (window as any).__prefabInstance(player).listTags(), portalTags: (window as any).__prefabInstance(portal).listTags(), hauntable: !!portal.userData.components.hauntable };
+      slippery: !!(window as any).__prefabInstance(player).slipperyfeet, tags: (window as any).__prefabInstance(player).listTags(), portalTags: (window as any).__prefabInstance(portal).listTags(), hauntable: !!portal.userData.components.hauntable };
   });
 
   await page.goto('/tests/dst-lighting.html?save=initial-world.json');

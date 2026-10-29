@@ -5,7 +5,7 @@ import { createSignal, type HandEquipment } from '@dontstarve-web/signals';
 import { WallsPlacement } from '../../prefab/src/walls';
 import { WALL_PHYSICS_RADIUS } from '../../prefab/src/wallPlacement';
 import { TILE_SIZE } from '../../prefab/src/tile';
-import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
+import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
 import { configureEquipmentEntity } from '../../prefab/src/handEquipment';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { AttackActionController } from '../../stategraphs/src/attack';
@@ -143,7 +143,7 @@ it('gives walls source health, player damage reduction, health poses, weapon wea
 it('force attacks a wall with Ctrl+F, walks into range, punches on frame 8 and repeats while held', async () => {
   const { world, placement } = setup();
   const player = await createWilsonPlayer('/dst/data/anim');
-  const animation = player.userData.animationController as WilsonAnimationController;
+  const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
   (world as { player: THREE.Object3D }).player = player;
   player.position.set(3 + 6 * UNIT, 0, -6);
   let now = 0;

@@ -2,6 +2,7 @@ import { bindActionCancellation } from './actionEvents.ts';
 import { bindHandEquipmentUpdate, type HandEquipmentSignal } from './handEquipment.ts';
 import { WILSON_ACTION_TIMES } from './SGwilson.ts';
 import * as THREE from 'three';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { PointerRaycaster } from './pointerRaycaster.ts';
 import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor } from './actionContext.ts';
 import { collectEquippedActions, equippedActionEntity, performToolWork, type ComponentActionEntity } from './componentactions.ts';
@@ -57,7 +58,7 @@ export class BugNetCaptureController {
     this.animation = animation;
     this.locomotor = locomotor;
     this.handEquipment = handEquipment;
-    this.worker = { get components() { return world.player.userData.components; },
+    this.worker = { get components() { return prefabInstance(world.player)?.components as Worker['components']; },
       PushEvent: (name, data) => world.player.dispatchEvent({ type: name, data } as never) };
     this.stopEquipment = bindHandEquipmentUpdate(handEquipment, {
       isEquipped: equipment => this.isEquipped(equipment),

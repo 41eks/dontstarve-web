@@ -22,11 +22,11 @@ export function setupEmoteWheel(
   const handleRequest = (event: Event) => {
     const { emote } = (event as CustomEvent<EmoteRequestDetail>).detail;
     actionEvents?.emit('action:interrupt', { reason: 'emote' });
-    void animation?.playEmote(emote).catch((error: unknown) => {
+    try { animation?.playEmote(emote); } catch (error) {
       console.error(`Unable to play emote ${emote}`, error);
-    });
+    }
   };
-  // Clicking the world interrupts both a looping emote and an in-flight asset load.
+  // Clicking the world interrupts a looping emote.
   const handleWorldPointer = (event: PointerEvent) => {
     if (event.button === 0 || event.button === 2) animation?.cancelEmote();
   };

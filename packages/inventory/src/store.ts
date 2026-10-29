@@ -193,6 +193,7 @@ export class InventoryStore {
     if (owner && this.extract(owner.address, entity.components.stackable.count, entity) !== entity) return;
     const position = dropPosition ?? this.actor.GetPosition();
     entity.transform.position.set(position.x, 0, position.z);
+    entity.MiniMapEntity?.tileTracker.sync();
     entity.PushEvent('ondropped', undefined);
     for (const listener of this.drops) { if (launch) listener(entity, launch); else listener(entity); }
   }

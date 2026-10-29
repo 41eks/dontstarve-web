@@ -8,7 +8,7 @@ import { PitchforkActionController } from '../../stategraphs/src/pitchfork';
 import { TurfMap, WORLD_TILES } from '../../prefab/src/turfMap';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { createGroundItemVisual } from './groundItemVisual';
-import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
+import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src/slots';
 import { createEquipmentExistenceState } from '../../signals/src';
@@ -44,7 +44,7 @@ describe('pitchfork source art and TERRAFORM timing', () => {
       skinned.dispose();
     }
     const player = await createWilsonPlayer('/dst/data/anim');
-    const animation = player.userData.animationController as WilsonAnimationController;
+    const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
     const dig = vi.fn();
     expect(animation.playDig(dig)).toBe(false);
     animation.setCarryItem(tool);

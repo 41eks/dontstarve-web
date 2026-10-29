@@ -60,9 +60,8 @@ it('mines an archive_moon_statue down for its loot and keeps its pose through sa
     // math.random(4) at .5 → variant 3; workable.savestate is false, so only the pose is saved.
     expect(s.props.exportRecords().map(({ prefabId, record }) => [prefabId, record.components])).toEqual([
       ['archive_moon_statue', { archiveProp: { anim: 3 } }]]);
-    const [minimap] = s.props.miniMapEntities;
-    expect(minimap.icon).toBe('archive_moon_statue3.png');
-    const model = s.props.mineTargets[0].model;
+    const model = s.props.mineTargets[0].display.model;
+    expect(prefabInstance(model)!.minimap.peek().icon).toBe('archive_moon_statue3.png');
     expect(lookupPrefabInstance(model)!.sprite.sprite.peek().clip).toMatchObject({ name: 'idle_full_3', loop: false });
     expect(prefabInstance(model)!.listTags()).toEqual(expect.arrayContaining(['structure', 'statue', 'dustable']));
     expect(s.physics.bodies).toHaveLength(1);
@@ -73,7 +72,7 @@ it('mines an archive_moon_statue down for its loot and keeps its pose through sa
     await restored.props.spawn('archive_moon_statue', new THREE.Vector3(...record.transform.position),
       { id: record.id, transform: record.transform, components: { archiveProp: record.components.archiveProp } });
     expect(restored.props.exportRecords()).toEqual(s.props.exportRecords());
-    expect(lookupPrefabInstance(restored.props.mineTargets[0].model)!.sprite.sprite.peek().clip)
+    expect(lookupPrefabInstance(restored.props.mineTargets[0].display.model)!.sprite.sprite.peek().clip)
       .toMatchObject({ name: 'idle_full_3', loop: true });
 
     // MARBLEPILLAR_MINE = 10 works; the final one drops the table (the 5% nugget misses at .5), collapses and removes the statue.
@@ -83,7 +82,7 @@ it('mines an archive_moon_statue down for its loot and keeps its pose through sa
     expect(s.props.exportRecords()).toHaveLength(1);
     expect(performToolWork('MINE', mine.entity, {}, pickaxe)).toBe(true);
     expect(s.props.mineTargets).toEqual([]); expect(s.props.exportRecords()).toEqual([]);
-    expect(s.physics.bodies).toHaveLength(0); expect(s.props.miniMapEntities.every(entry => !entry.enabled)).toBe(true);
+    expect(s.physics.bodies).toHaveLength(0); expect(prefabInstance(model)!.minimap.enabled).toBe(false);
     await vi.waitFor(() => expect(dropped(s)).toEqual(['moonrocknugget', 'thulecite']));
     await vi.waitFor(() => expect(s.props.renderEntities).toHaveLength(0));
   } finally { s.dispose(); restored.dispose(); }
@@ -123,7 +122,7 @@ it('hands out rune story lines once, saves static props and ignores the pad and 
     const [portal] = [...restored.scene.children].filter(model => lookupPrefabInstance(model)?.prefab === 'archive_portal');
     expect(prefabInstance(portal)!.listTags()).toEqual(expect.arrayContaining(['groundhole', 'blocker']));
     expect(portal.children.some(child => modelHasTag(child, 'NOCLICK'))).toBe(true);
-    expect(restored.props.miniMapEntities.map(entry => entry.icon).sort()).toEqual(['archive_portal.png', 'archive_runes.png', 'archive_runes.png']);
+    expect(restored.scene.children.map(model => lookupPrefabInstance(model)?.minimap.icon).filter(Boolean).sort()).toEqual(['archive_portal.png', 'archive_runes.png', 'archive_runes.png']);
     // A rune statue's counter resumes after the highest saved line.
     await restored.props.spawn('archive_rune_statue', new THREE.Vector3(30, 0, 0));
     const fresh = [...restored.scene.children].filter(model => lookupPrefabInstance(model)?.prefab === 'archive_rune_statue').at(-1)!;

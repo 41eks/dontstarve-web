@@ -1,6 +1,6 @@
 import { smallHash, type Animation } from '@dontstarve-web/animation/animationAssets';
 import { SpriteController } from '@dontstarve-web/animation/sprite';
-import { SpriteResources } from '@dontstarve-web/display';
+import { SpriteResources, type SkinJson } from '@dontstarve-web/display';
 import { animationTiming } from './animationTimings';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { createPrefabEntity } from './prefabInstance';
@@ -38,12 +38,14 @@ class BernieSpriteController extends SpriteController {
 /** The display shares both banks and each skin; gameplay uses imported clip timings. */
 export class BernieAssets {
   private readonly resources: SpriteResources;
-  constructor(assetBaseUrl: string) { this.resources = new SpriteResources(assetBaseUrl); }
-  source(skinId?: string) {
-    const skinArchive = skinId === undefined ? undefined : GROUND_ITEM_DEFINITIONS[BERNIE_ITEM_ID].skinArchives[skinId];
-    if (skinId !== undefined && !skinArchive) throw new Error(`Unknown Bernie skin: ${skinId}`);
+  readonly skins: SkinJson;
+  constructor(assetBaseUrl: string) {
+    this.resources = new SpriteResources(assetBaseUrl);
+    this.skins = { archives: GROUND_ITEM_DEFINITIONS[BERNIE_ITEM_ID].skinArchives, art: this.resources.archives };
+  }
+  source() {
     return this.resources.factory({ buildArchive: 'bernie_build.zip', animationArchive: 'bernie.zip',
-      extraAnimationArchives: ['bernie_big.zip'], skinArchive }, BernieSpriteController);
+      extraAnimationArchives: ['bernie_big.zip'] }, BernieSpriteController);
   }
   dispose(): void { this.resources.dispose(); }
 }
@@ -55,7 +57,11 @@ export function createBernieGroundSprite(assets: BernieAssets, world: BernieWorl
   for (const [form, name] of required) clipOf(form, name);
   let form: BernieAnimationForm = bernieGroundForm(world.getSanityPercent());
   const spriteName = `GroundItem:${BERNIE_ITEM_ID}`;
-  const { instance, display } = createPrefabEntity(BERNIE_ITEM_ID, assets.source(skinId), { name: `${form}:idle_loop` }, spriteName);
+  if (skinId !== undefined && !assets.skins.archives[skinId]) throw new Error(`Unknown Bernie skin: ${skinId}`);
+  const { instance, display } = createPrefabEntity(BERNIE_ITEM_ID, assets.source(), { name: `${form}:idle_loop` }, spriteName, entity => {
+    entity.skinId = skinId;
+    entity.sprite.setSkinSource(assets.skins);
+  });
   const model = display.model, sprite = instance.sprite;
   model.userData.itemId = BERNIE_ITEM_ID; instance.skinId = skinId;
   let clip = clipOf(form, 'idle_loop');

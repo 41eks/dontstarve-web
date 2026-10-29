@@ -20,12 +20,12 @@ import { Workable } from '../../componets/src/workable';
 import { bindPhysics, type PhysicsBinding } from '../../componets/src/physicsBinding';
 import { PhysicsState } from '../../componets/src/physicsState';
 import { performToolWork } from '../../stategraphs/src/componentactions';
-import { actionEntity, FindEntities } from './actionEntity';
+import { actionEntity, FindEntities, findActionEntity } from './actionEntity';
 import { BuildCursor } from './buildCursor';
 import { GroundItemAssets } from './groundItems';
 import { nextReskin } from './reskin_tool';
 import { newEntityId, saveGroundPosition, type PlacedEntitySaveRecord, type PlacementSaveRecord } from './saveRecord';
-import { PlaySound, PreloadSounds } from './sound';
+import { PlaySound } from './sound';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { snapToWallSlotCenter, TILE_SIZE } from './tile';
 import { FENCE_ID, FENCE_SKIN_ARCHIVES, fenceWorldSkin, type FenceId } from './fenceSkins';
@@ -100,8 +100,6 @@ interface FenceInstance {
     rotation: number;
     readonly skinId: Signal<string | undefined>;
     readonly inventorySkinId?: string;
-    readonly preparedSkins: Set<FenceArt>;
-    preparedSkin?: FenceArt;
     stopSkin: () => void;
     /** Present once placed: previews are not insts, so they have no tags, components or LIGHT/HAMMER targets. */
     entity?: ReturnType<typeof actionEntity>;
@@ -237,46 +235,36 @@ export class FencePlacement {
         }));
     }
 
-    get reskinTargets(): readonly ReskinTarget[] { return this.getReskinTargets(); }
+    get reskinTargets(): readonly ReskinTarget[] {
+        return Array.from(this.placed, fence => findActionEntity(fence.root)?.reskinTarget)
+            .filter((target): target is ReskinTarget => target !== undefined);
+    }
 
-    getReskinTargets(model?: THREE.Object3D): readonly ReskinTarget[] {
+    private createReskinTarget(fence: FenceInstance): ReskinTarget {
         const skins = Object.keys(FENCE_SKIN_ARCHIVES);
-        return Array.from(this.mouseRecords.select(model, this.placed), (fence) => {
-            const isValid = () => this.isLive(fence);
-            return {
-                id: String(fence.instance.entityId), prefabId: FENCE_ID, model: fence.root,
-                skins, get skinId() { return fence.skinId.peek(); },
-                get isRemoved() { return !isValid(); }, hasTag: (tag: string) => actionEntity(fence.root, FENCE_ID).hasTag(tag),
-                get position() { return fence.root.position.clone(); }, isValid,
-                prepareNextSkin: async (tool) => {
-                    const previousSkin = fence.skinId.peek();
-                    const skinId = nextReskin(skins, previousSkin, tool?._cached_reskinname, FENCE_ID);
-                    const replacement = await this.createArt(skinId, fence.art.peek().narrow);
-                    if (!isValid() || fence.skinId.peek() !== previousSkin || skinId === previousSkin) {
-                        this.disposeArt(replacement);
-                        return { apply: () => false, dispose: () => {} };
-                    }
-                    fence.preparedSkins.add(replacement);
-                    let used = false;
-                    return {
-                        apply: (fx?: ReskinFxMessage) => {
-                            if (used || !isValid() || fence.skinId.peek() !== previousSkin
-                                || !fence.preparedSkins.has(replacement)) return false;
-                            fence.preparedSkin = replacement;
-                            fence.skinId.set(skinId);
-                            fx?.play(fence.root.position, FENCE_ID);
-                            used = true;
-                            return true;
-                        },
-                        dispose: () => {
-                            if (used) return;
-                            if (fence.preparedSkins.delete(replacement)) this.disposeArt(replacement);
-                            used = true;
-                        },
-                    };
-                },
-            };
-        });
+        const isValid = () => this.isLive(fence);
+        return {
+            get id() { return String(fence.instance.entityId); }, prefabId: FENCE_ID, model: fence.root,
+            skins, get skinId() { return fence.skinId.peek(); },
+            get isRemoved() { return !isValid(); }, hasTag: (tag: string) => actionEntity(fence.root, FENCE_ID).hasTag(tag),
+            get position() { return fence.root.position.clone(); }, isValid,
+            prepareNextSkin: async (tool) => {
+                const previousSkin = fence.skinId.peek();
+                const skinId = nextReskin(skins, previousSkin, tool?._cached_reskinname, FENCE_ID);
+                let used = false;
+                return {
+                    skinId,
+                    apply: (fx?: ReskinFxMessage) => {
+                        if (used || !isValid() || fence.skinId.peek() !== previousSkin) return false;
+                        fence.skinId.set(skinId);
+                        fx?.play(fence.root.position, FENCE_ID);
+                        used = true;
+                        return true;
+                    },
+                    dispose: () => { used = true; },
+                };
+            },
+        };
     }
 
     exportRecords(): PlacedEntitySaveRecord[] {
@@ -419,6 +407,7 @@ export class FencePlacement {
         fence.art.peek().display.model.removeFromParent();
         fence.art.set(art);
         fence.root.add(art.display.model);
+        art.instance.skinId = fence.instance.skinId;
         fence.root.userData.animationController = art.instance.sprite;
         art.instance.setActive(fence.awake);
         art.instance.sprite.playOnce('idle');
@@ -437,10 +426,13 @@ export class FencePlacement {
         const create = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(this.assets, {
             animationArchive: narrow ? 'fence_thin.zip' : 'fence.zip', buildArchives: ['fence.zip'],
             bank: narrow ? 'fence_thin' : 'fence', animation: clip.name, loop: clip.loop,
-        }, { name: 'fence', skinArchive, opacity: opacity ?? 1 });
+        }, { name: 'fence', opacity: opacity ?? 1 });
         const initial = await create({ name: 'idle', loop: false });
         if (this.disposed) { initial.dispose(); throw new Error('Placement has been disposed'); }
-        const { instance, display } = createArchiveEntity(FENCE_ID, { create, initial }, { name: 'idle' }, 'fence');
+        const { instance, display } = createArchiveEntity(FENCE_ID, { create, initial }, { name: 'idle' }, 'fence', entity => {
+            entity.skinId = skinId;
+            entity.sprite.setSkinSource({ art: this.assets, archives: FENCE_SKIN_ARCHIVES });
+        });
         instance.sprite.playOnce('idle');
         // The art is the fence's sprite, not an entity of its own: it is never saved.
         instance.persists = false;
@@ -457,12 +449,12 @@ export class FencePlacement {
         await Promise.all([
             this.assets.loadAnimation('structure_collapse_fx.zip'), this.assets.loadBuild('structure_collapse_fx.zip'),
             this.assets.loadAnimation('fire.zip'), this.assets.loadBuild('fire.zip'),
-            PreloadSounds('dontstarve/common/destroy_smoke', 'dontstarve/common/destroy_wood', 'dontstarve/common/place_structure_wood',
-                'dontstarve/common/campfire', 'dontstarve/common/fireOut'),
         ]);
         const skinId = fenceWorldSkin(buildId, requestedSkin);
         const art = await this.createArt(skinId, isNarrowRotation(rotation), opacity);
         const { instance, display } = createEmptyEntity(FENCE_ID);
+        instance.skinId = skinId;
+        instance.sprite.setSkinSource({ art: this.assets, archives: FENCE_SKIN_ARCHIVES });
         const root = display.model;
         root.userData.billboard = true;
         root.add(art.display.model);
@@ -470,8 +462,8 @@ export class FencePlacement {
         root.userData.fenceRotation = rotation;
         const fence: FenceInstance = {
             buildId, instance, display, root, art: createSignal(art), opacity: createSignal(opacity ?? 1),
-            stopAppearance: () => {}, awake: true, rotation, skinId: createSignal(skinId), inventorySkinId: requestedSkin,
-            preparedSkins: new Set(), stopSkin: () => {}, physics: new PhysicsState(),
+            stopAppearance: () => {}, awake: true, rotation, skinId: instance.sprite.skinId, inventorySkinId: requestedSkin,
+            stopSkin: () => {}, physics: new PhysicsState(),
         };
         const stopFacing = createRenderEffect(() => {
             const { sprite } = fence.art.get().instance;
@@ -496,6 +488,7 @@ export class FencePlacement {
     private initializeEntity(fence: FenceInstance): void {
         const { root } = fence;
         const entity = actionEntity(root, FENCE_ID);
+        entity.reskinTarget = this.createReskinTarget(fence);
         fence.entity = entity;
         for (const tag of FENCE_TAGS) entity.addTag(tag);
         root.userData.getGroundPosition = () => root.position.clone();
@@ -524,7 +517,7 @@ export class FencePlacement {
         };
         (root as unknown as THREE.EventDispatcher<{ death: object }>).addEventListener('death', () => this.hammered(fence));
         this.initializeBurnable(fence);
-        new ToolMouseTarget(entity, fence.instance, workable, this.world.handEquipment, { spellTarget: true });
+        new ToolMouseTarget(entity, fence.instance, workable, this.world.handEquipment);
     }
 
     private playHit(fence: FenceInstance): void {
@@ -532,21 +525,14 @@ export class FencePlacement {
         sprite.playOnce('hit', () => sprite.playOnce('idle'));
     }
 
-    /** Commit prepared art when the authoritative skin changes, keeping the entity and its components. */
+    /** The logical fence declares the same skin on its active child and the placer's spare bank. */
     private bindSkin(fence: FenceInstance): void {
         fence.root.userData.skinIdSignal = readonlySignal(fence.skinId);
-        fence.stopSkin = fence.skinId.subscribe(skinId => {
-            const replacement = fence.preparedSkin;
-            if (!replacement || !fence.preparedSkins.delete(replacement)) {
-                throw new Error('Skin assets must be prepared before committing a skin change');
-            }
-            fence.preparedSkin = undefined;
-            const previous = fence.art.peek();
-            previous.display.adopt(replacement.display);
-            this.release(replacement);
-            fence.art.set({ ...replacement, instance: previous.instance, display: previous.display });
-            this.applyFacing(fence, this.heading.peek());
-            fence.instance.skinId = skinId;
+        const skin = watchSignal(fence.skinId, stop => { fence.stopSkin = stop; });
+        createEffect(() => {
+            const skinId = skin.get();
+            fence.art.peek().instance.skinId = skinId;
+            if (fence.spare) fence.spare.instance.skinId = skinId;
         });
     }
 
@@ -673,9 +659,6 @@ export class FencePlacement {
         components?.workable?.dispose();
         fence.health?.dispose();
         if (fence.combat) fence.combat.onhitfn = undefined;
-        fence.preparedSkin = undefined;
-        for (const art of fence.preparedSkins) this.disposeArt(art);
-        fence.preparedSkins.clear();
         if (fence.spare) { this.disposeArt(fence.spare); fence.spare = undefined; }
         this.disposeArt(fence.art.peek());
         registerSpriteRenderGroup(fence.root, fence.art.peek().display.model);

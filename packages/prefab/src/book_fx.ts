@@ -1,12 +1,13 @@
 import type * as THREE from 'three';
-import { loadAnimationArchive, smallHash, type ParsedAnim } from '@dontstarve-web/animation/animationAssets';
-import { createSpriteFactory } from '@dontstarve-web/animation/sprite';
+import { smallHash } from '@dontstarve-web/animation/animationAssets';
+import type { SpriteResources } from '@dontstarve-web/display';
 import type { WilsonFx } from '@dontstarve-web/stategraphs';
 import { createSignal } from '@dontstarve-web/signals';
 import { ComponentTimer } from '../../componets/src/timer';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
-import { PlaySound, PreloadSounds } from './sound';
+import { PlaySound } from './sound';
+import { animationTiming } from './animationTimings';
 
 /** book_fx.lua MakeBookFX and books.lua MakeFX, plus brokentool.lua's non-networked visual. */
 const FX_PREFABS = {
@@ -19,41 +20,32 @@ export type BookFxPrefab = keyof typeof FX_PREFABS;
 const BOOK_FX_FAIL_SOUND = 'wickerbottom_rework/book_spells/fail';
 const ACTIVE = createSignal(true);
 
-interface FxAssets {
-  readonly animations: ParsedAnim;
-  readonly factory: ReturnType<typeof createSpriteFactory>;
-  users: number;
-  retired: boolean;
-}
-
 class FxInst implements WilsonFx {
   readonly instance: PrefabInstance;
   readonly prefab: BookFxPrefab;
   private readonly owner: BookFxController;
-  private readonly assets: FxAssets;
   private readonly symbol?: string;
   private readonly timer: ComponentTimer;
   get animationTimer(): ComponentTimer['snapshot'] { return this.timer.snapshot; }
   private detached?: { position: THREE.Vector3; mirrored: boolean };
   private readonly key: string;
 
-  constructor(owner: BookFxController, prefab: BookFxPrefab, assets: FxAssets, symbol?: string) {
-    this.owner = owner; this.prefab = prefab; this.assets = assets; this.symbol = symbol;
+  constructor(owner: BookFxController, prefab: BookFxPrefab, symbol?: string) {
+    this.owner = owner; this.prefab = prefab; this.symbol = symbol;
     this.key = `book-fx:${owner.nextId++}`;
     const definition = FX_PREFABS[prefab];
-    const { instance, display } = createPrefabEntity(prefab, {
-      create: name => assets.factory.create({ initialAnimation: name }),
-      release: sprite => assets.factory.disposeSprite(sprite),
-    }, { name: definition.anim }, prefab, instance => {
+    const { instance, display } = createPrefabEntity(prefab, owner.resources.factory({
+      animationArchive: definition.archive, buildArchive: definition.archive,
+    }), { name: definition.anim }, prefab, instance => {
       instance.addTag('FX');
       instance.persists = false;
-      instance.sprite.setArtSource({ animations: assets.animations, bank: smallHash(definition.bank), build: assets.factory.build });
+      instance.sprite.setArtSource({ animationArchive: definition.archive, bank: definition.bank,
+        buildArchive: definition.archive, art: owner.resources.archives });
+      instance.sprite.playOnce(definition.anim);
       instance.sprite.setFacing(owner.instance.sprite.sprite.peek().facing ?? 8);
       if ('opacity' in definition) instance.sprite.setOpacity(definition.opacity);
     }, owner.instance.status);
     this.instance = instance;
-    assets.users++;
-    display.onDispose(() => { if (--assets.users === 0 && assets.retired) assets.factory.dispose(); });
     this.timer = new ComponentTimer(owner.scheduler, () => this.remove());
     instance.onRemove(() => {
       if (this.timer.snapshot.peek().status !== 'expired') this.timer.stop();
@@ -62,7 +54,8 @@ class FxInst implements WilsonFx {
     });
     if ('ground' in definition) this.detached = owner.groundPoint();
     this.declare(display);
-    this.play(definition.anim);
+    const clip = animationTiming(definition.archive, definition.anim, smallHash(definition.bank));
+    this.timer.start(clip.frames / clip.frameRate);
   }
 
   private declare(display: import('@dontstarve-web/display').PrefabDisplay): void {
@@ -71,10 +64,10 @@ class FxInst implements WilsonFx {
   }
 
   private play(name: string): void {
-    const clip = this.assets.animations.animations.find(clip => clip.name === name && clip.bankHash === smallHash(FX_PREFABS[this.prefab].bank));
-    if (!clip) throw new Error(`Missing FX animation ${FX_PREFABS[this.prefab].bank}:${name}`);
+    const definition = FX_PREFABS[this.prefab];
+    const clip = animationTiming(definition.archive, name, smallHash(definition.bank));
     this.instance.sprite.playOnce(name);
-    this.timer.start(clip.frames.length / clip.frameRate);
+    this.timer.start(clip.frames / clip.frameRate);
   }
 
   isValid(): boolean { return this.instance.status.peek() !== 'removed'; }
@@ -97,39 +90,18 @@ class FxInst implements WilsonFx {
 export class BookFxController {
   readonly instance: PrefabInstance;
   readonly scheduler: GameTimeScheduler;
-  private readonly assetBaseUrl: string;
-  private readonly loaded = new Map<BookFxPrefab, FxAssets>();
-  private readonly requests = new Map<BookFxPrefab, Promise<void>>();
+  readonly resources: SpriteResources;
   private readonly fx = new Set<FxInst>();
   private disposed = false;
   nextId = 0;
 
-  constructor(instance: PrefabInstance, scheduler: GameTimeScheduler, assetBaseUrl: string) {
-    this.instance = instance; this.scheduler = scheduler; this.assetBaseUrl = assetBaseUrl;
-  }
-
-  prepare(...prefabs: BookFxPrefab[]): Promise<void> {
-    return Promise.all(prefabs.map(prefab => {
-      let request = this.requests.get(prefab);
-      if (!request) {
-        request = Promise.all([
-          loadAnimationArchive(FX_PREFABS[prefab].archive, this.assetBaseUrl),
-          prefab === 'book_fx' ? PreloadSounds(BOOK_FX_FAIL_SOUND) : undefined,
-        ]).then(([{ animations, buildPackage }]) => {
-          const factory = createSpriteFactory(buildPackage, animations);
-          if (this.disposed) { factory.dispose(); return; }
-          this.loaded.set(prefab, { animations, factory, users: 0, retired: false });
-        });
-        this.requests.set(prefab, request);
-        void request.catch(() => this.requests.delete(prefab));
-      }
-      return request;
-    })).then(() => undefined);
+  constructor(instance: PrefabInstance, scheduler: GameTimeScheduler, resources: SpriteResources) {
+    this.instance = instance; this.scheduler = scheduler; this.resources = resources;
   }
 
   spawn(prefab: string, followSymbol?: string): WilsonFx {
-    if (this.disposed || !Object.hasOwn(FX_PREFABS, prefab) || !this.loaded.has(prefab as BookFxPrefab)) throw new Error(`FX prefab ${prefab} has not been prepared`);
-    const fx = new FxInst(this, prefab as BookFxPrefab, this.loaded.get(prefab as BookFxPrefab)!, followSymbol);
+    if (this.disposed || !Object.hasOwn(FX_PREFABS, prefab)) throw new Error(`Invalid FX prefab ${prefab}`);
+    const fx = new FxInst(this, prefab as BookFxPrefab, followSymbol);
     this.fx.add(fx);
     return fx;
   }
@@ -142,7 +114,5 @@ export class BookFxController {
     if (this.disposed) return;
     this.disposed = true;
     for (const fx of this.fx) fx.remove();
-    for (const assets of this.loaded.values()) { assets.retired = true; if (assets.users === 0) assets.factory.dispose(); }
-    this.loaded.clear();
   }
 }

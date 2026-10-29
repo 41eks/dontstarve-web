@@ -118,7 +118,7 @@ it('an accepted action cancels a paid preview through events, skips its own canc
     prepareNextSkin: async () => { await ready; return prepared; } };
   const animation = { isReskinning: false, cancelEmote: vi.fn(), cancelReskin: vi.fn(), playReskin: vi.fn() };
   const controller = new ReskinActionController(world, animation as unknown as ActionAnimationController,
-    { stop: vi.fn(), goToPoint: () => true, destination: undefined }, equipped, () => [target],
+    { stop: vi.fn(), goToPoint: () => true, destination: undefined }, equipped,
     { prepare: async () => ({ play: vi.fn(), dispose: vi.fn() }) });
   const cancel = vi.spyOn(controller, 'cancel');
   try {

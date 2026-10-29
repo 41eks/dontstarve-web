@@ -6,8 +6,7 @@ import { createResidentGroundItem } from './groundItems';
 import type { PrefabDisplay } from '@dontstarve-web/display';
 import { configureBurnableItemEntity, createBurnableItemVisual } from './burnableItems';
 import { configureFertilizerEntity } from './fertilizers';
-import { FliesController, FLIES_SOUND } from './flies';
-import { PreloadSounds } from './sound';
+import { FliesController } from './flies';
 import { listenInventoryEvents } from './inventoryEvents';
 import type { GroundItemFactory, GroundItemVisual, GroundPrefabContext } from './groundPrefab';
 
@@ -23,7 +22,7 @@ export function createPoopGroundFactory(context: GroundPrefabContext): GroundIte
       const createFlies = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(context.assets, { animationArchive: 'flies.zip',
         buildArchives: ['flies.zip'], bank: 'flies', animation: clip.name, loop: clip.loop }, { name: 'flies', dynamicParent: true });
       const base = createResidentGroundItem(context, item);
-      void PreloadSounds(FLIES_SOUND);
+
       const flies = createArchiveEntity('flies', { create: createFlies }, { name: 'swarm_pre' }, 'flies');
       flies.instance.persists = false;
       flies.instance.sprite.setVisible(false);

@@ -8,7 +8,7 @@ import { LootDropper } from '../../componets/src/lootdropper';
 import { Hauntable } from '../../componets/src/hauntable';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { MiniMapEntity } from './minimapEntity';
+import type { MiniMapState } from '../../map/src/minimapState';
 import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { actionEntity } from './actionEntity';
@@ -30,7 +30,7 @@ interface Statue {
   display: PrefabDisplay;
   workable: Workable;
   hauntable: Hauntable;
-  minimap: MiniMapEntity;
+  minimap: MiniMapState;
   gem: RuinsStatueGem;
   stopActivity: () => void;
 }
@@ -73,7 +73,7 @@ export class RuinsStatueMageManager implements DisplayDrivenPrefabManager<{ pref
     instance.sprite.setSymbolOverride('swap_gem', 'statue_ruins_gem.zip', initialGem);
     const gem = saved?.components.ruinsStatueMage.gem ?? initialGem;
     if (saved) instance.sprite.setSymbolOverride('swap_gem', 'statue_ruins_gem.zip', gem);
-    const minimap = new MiniMapEntity(model.position); minimap.SetIcon('statue_ruins.png');
+    const minimap = instance.minimap; minimap.SetIcon('statue_ruins.png');
     const statue: Statue = { instance, display, workable, hauntable, minimap, gem,
       stopActivity: watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active)) };
     this.statues.set(model, statue); display.mount(this.scene); this.world.trackDisplay(display);
@@ -81,7 +81,6 @@ export class RuinsStatueMageManager implements DisplayDrivenPrefabManager<{ pref
   }
   get renderEntities() { return [...this.statues].filter(([, statue]) => statue.instance.sprite.loaded)
     .map(([object]) => ({ object, footPosition: object.position, cameraDepth: 0 })); }
-  get miniMapEntities(): MiniMapEntity[] { return [...this.statues.values()].map(({ minimap }) => minimap); }
   exportRecords(): { prefabId: typeof RUINS_STATUE_MAGE_ID; record: RuinsStatueMageRecord }[] {
     return [...this.statues].map(([model, statue]) => ({ prefabId: RUINS_STATUE_MAGE_ID, record: {
       id: String(statue.instance.entityId),
@@ -93,7 +92,7 @@ export class RuinsStatueMageManager implements DisplayDrivenPrefabManager<{ pref
     if (this.disposed) return;
     this.disposed = true;
     for (const [model, statue] of this.statues) {
-      statue.stopActivity(); statue.workable.dispose(); statue.hauntable.dispose(); statue.minimap.dispose();
+      statue.stopActivity(); statue.workable.dispose(); statue.hauntable.dispose();
       model.userData.removed = true; statue.instance.remove();
     }
     this.statues.clear(); this.assets.dispose();

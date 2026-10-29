@@ -170,6 +170,8 @@ export interface ArchiveSprite {
   playOnce(name: string, onComplete?: () => void): void;
   setAnimation(name: string): void;
   setPaused(paused: boolean): void;
+  /** The display supplies a loaded shared skin build; undefined restores the original build. */
+  setSkin(skin: ArchiveSpriteBuild | undefined): void;
   /** Only for sprites created with `options.opacity`, whose materials are private. */
   setOpacity(opacity: number): void;
   /** Per-entity tint, for sprites created with options.colour; shared atlas pixels stay unchanged. */
@@ -241,6 +243,7 @@ function constructArchiveSprite(
   const materialCopies = new Map<THREE.MeshBasicMaterial, THREE.MeshBasicMaterial>();
   const own = <T extends ArchiveSpriteBuild | undefined>(source: T): T => {
     if (!source || (options.opacity === undefined && !options.colour)) return source;
+    for (const [owned, shared] of sources) if (shared === source) return owned as T;
     const materials = source.materials.map(material => {
       const copy = material.clone(); ownedMaterials.push(copy); materialCopies.set(material, copy);
       if (options.colour) copy.color.multiply(new THREE.Color().setRGB(...options.colour));
@@ -252,7 +255,7 @@ function constructArchiveSprite(
   };
   const builds = sharedBuilds.map(own);
   let activeBuilds = builds;
-  const skin = own(sharedSkin);
+  let skin = own(sharedSkin);
   const applyOpacity = (opacity: number) => {
     for (const material of ownedMaterials) {
       material.transparent = opacity < 1; material.opacity = opacity; material.needsUpdate = true;
@@ -312,11 +315,11 @@ function constructArchiveSprite(
     hidden: new Set(hidden), hiddenLayers: new Set(hiddenLayers) });
   const resolveSprites = (index: number, shared: boolean): ResolvedSprite[] => resolveAppearanceFrame(shared ? snapshotAppearance()
     : { animation, builds: activeBuilds, skin, overrides, hidden, hiddenLayers }, index);
-  const update = (dt: number) => {
-    if (paused || disposed) return;
+  const update = (dt: number, refresh = false) => {
+    if (paused && !refresh || disposed) return;
     elapsed += Math.max(0, Math.min(dt, 0.1));
     const rawFrame = Math.floor(elapsed * animation.frameRate);
-    if (!loop && elapsed * animation.frameRate + 1e-8 >= animation.frames.length && onComplete) {
+    if (!paused && !loop && elapsed * animation.frameRate + 1e-8 >= animation.frames.length && onComplete) {
       const complete = onComplete;
       onComplete = undefined;
       complete();
@@ -418,6 +421,14 @@ function constructArchiveSprite(
     },
     setErosion(amount: number) { if (!disposed) instances?.setErosion(amount); },
     setDepthOffset(enabled) { if (!disposed) renderer.setDepthOffset(enabled); },
+    setSkin(next) {
+      if (disposed) return;
+      const replacement = own(next);
+      if (replacement === skin) return;
+      skin = replacement;
+      sharedAppearance = ''; previousFrame = -1;
+      update(0, true);
+    },
     setSymbolOverride(symbol, archive, sourceSymbol = symbol) {
       if (disposed) return;
       const hash = smallHash(symbol), previous = overrides.get(hash);

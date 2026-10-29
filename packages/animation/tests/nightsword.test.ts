@@ -5,7 +5,7 @@ import { GroundItemAssets, GROUND_ITEM_DEFINITIONS, GROUND_ITEM_SKIN_SPECS } fro
 import { createGroundItemVisual } from './groundItemVisual';
 import { nightswordVisual } from '../../prefab/src/nightsword';
 import { declaredSymbol } from './animStateFixture';
-import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
+import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
 import { AnimState } from '../src/animState';
 import { GroundItemManager } from '../../../src/groundItems';
 import { EntityRegistry } from '../../../src/entityRegistry';
@@ -32,7 +32,7 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 it('uses separate source ground and equipped art and renders a skin while moving and changing facing', async () => {
   const assets = new GroundItemAssets();
   const player = await createWilsonPlayer('/dst/data/anim');
-  const animation = player.userData.animationController as WilsonAnimationController;
+  const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
   const mesh = player.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
   const usedMaterials = () => mesh.geometry.groups.map(group => mesh.material[group.materialIndex!].name);
   try {

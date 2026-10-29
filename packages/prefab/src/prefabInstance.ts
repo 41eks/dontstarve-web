@@ -1,9 +1,12 @@
+import { MiniMapState } from '../../map/src/minimapState';
+import { watchMiniMapEntity } from '../../map/src/minimapEntities';
 import type * as CANNON from 'cannon-es';
 import type { Object3D, Vector3 } from 'three';
 import { createSignal, readonlySignal, type ReadonlySignal } from '@dontstarve-web/signals';
 import { LightState, PrefabDisplay, SpriteState, type ArchiveSpriteCommands, type ArchiveSpriteSource, type LoadedSpriteSource, type PrefabStatus, type SpriteSource } from '@dontstarve-web/display';
 import { bindPhysics, type PhysicsBinding } from '../../componets/src/physicsBinding';
 import { PhysicsState } from '../../componets/src/physicsState';
+import { TileTracker } from '../../componets/src/tileManager';
 import type { Brain } from '../../brains/src/brain';
 import type { StateGraphInstance } from '../../stategraphs/src/stategraph';
 import type { ComponentActionEntity } from '../../stategraphs/src/componentactions';
@@ -26,7 +29,8 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState> 
   private model: Object3D | undefined;
   entityId?: string;
   saveRecord?: PlacementSaveRecord;
-  skinId?: string;
+  get skinId(): string | undefined { return this.sprite.sprite.peek().skinId; }
+  set skinId(skinId: string | undefined) { this.sprite.setSkinId(skinId); }
   /** inst.persists: false keeps the entity out of the save. */
   persists = true;
   /** inst.Physics: the collider the entity declares. */
@@ -37,6 +41,11 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState> 
   readonly removal: ReadonlySignal<boolean> = readonlySignal(this.removedState);
   /** inst.Light: the light the entity declares; its display lists it while the entity is active. */
   readonly light = new LightState();
+  /** inst.MiniMapEntity: map settings stay declared while the world sprite sleeps. */
+  readonly minimap = new MiniMapState();
+  private tracker?: TileTracker;
+  /** The entity owns its movement notifications; map consumers receive this tracker with its icon declaration. */
+  get tileTracker(): TileTracker { return this.tracker ??= new TileTracker(() => this.position); }
   /** inst.physicsradiusoverride, in DST units. */
   physicsRadiusOverride?: number;
   private physicsBinding?: PhysicsBinding;
@@ -126,6 +135,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState> 
 
   remove(): void {
     if (this.lifecycle.peek() === 'removed') return;
+    this.minimap.SetEnabled(false);
     this.removedState.set(true);
     this.lifecycle.set('removed');
     this.physicsBinding?.dispose();
@@ -150,6 +160,7 @@ export function bindInstance(model: Object3D, instance: PrefabInstance<ArchiveSp
   Object.assign(instance.components, model.userData.components);
   model.userData.components = instance.components;
   instance.attach(model);
+  instance.onRemove(watchMiniMapEntity(instance));
 }
 
 export function prefabInstance(model: Object3D | null | undefined): PrefabInstance<ArchiveSpriteCommands> | undefined {

@@ -111,7 +111,7 @@ it('spawns the big pool with its five children, mines a glass for moonglass and 
   const s = setup(), restored = setup();
   try {
     expect((await executeDebugCommand('c_spawn("grotto_pool_big")', s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
-    expect(s.pools.miniMapEntities.map(({ icon }) => icon)).toEqual(['grotto_pool_big.png']);
+    expect(lookupPrefabInstance(s.scene.children.find(model => lookupPrefabInstance(model)?.prefab === 'grotto_pool_big'))!.minimap.icon).toBe('grotto_pool_big.png');
     expect(s.physics.bodies).toHaveLength(1);
     // setup_children runs at the next scheduler tick, after restored entities exist.
     s.scheduler.advance(0.01);

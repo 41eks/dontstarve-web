@@ -73,7 +73,7 @@ DST 的镜像部件会反转三角形绕序。Three.js 的透明 `DoubleSide` �
 
 `anim/fence.zip` 与 `anim/fence_thin.zip` 的 `idle` / `hit` 为多 facing clip：DOWN=`8`、UP=`2`（数据内已含 `-1` 水平翻转）、左右共用=`5`、两个上斜向共用=`48`、两个下斜向共用=`192`。`ArchiveSprite.setFacing()` 在同名 clip 中选掩码包含该 facing 的一个；若 clip 同时列出某个 facing 与其左右镜像（如 `5`），按右向创作，面向左侧时对 `visual` 水平镜像（`selectsFacing()`）。这一镜像约定来自对引擎行为的推断，原版引擎代码不可见，数据中只有 UP 的 clip 自带翻转矩阵。
 
-`CalcRotationEnum` 的奇偶决定使用哪个 bank：偶数用窄的 `fence_thin`（动画在 `fence_thin.zip`，build 仍为 `fence.zip`），奇数用宽的 `fence`。预览同时持有两个 bank 的 sprite，随相机旋转切换，放置时只保留当前 bank。预览使用 `ArchiveSprite` 的私有材质副本（`options.opacity`）呈现 65% 不透明，放置时 `setOpacity(1)`，不修改资源缓存里共享的材质；实体根节点由 `FencePlacement` 持有，子节点通过 `ResidentSprite` 驻留；换肤调用 `adopt()`，换 bank 时替换驻留子节点，保留实体身份。prefab 的 `art` effect 在每次 visual 加载后恢复朝向、透明度与最内层绘制组注册。
+`CalcRotationEnum` 的奇偶决定使用哪个 bank：偶数用窄的 `fence_thin`（动画在 `fence_thin.zip`，build 仍为 `fence.zip`），奇数用宽的 `fence`。预览同时持有两个 bank 的 sprite，随相机旋转切换，放置时只保留当前 bank。预览使用 `ArchiveSprite` 的私有材质副本（`options.opacity`）呈现 65% 不透明，放置时 `setOpacity(1)`，不修改资源缓存里共享的材质；实体根节点由 `FencePlacement` 持有，子节点通过 `ResidentSprite` 驻留；换肤只写实体的 `skinId`，由 display 按声明的皮肤源重新穿上；换 bank 时替换驻留子节点，保留实体身份。prefab 的 `art` effect 在每次 visual 加载后恢复朝向、透明度与最内层绘制组注册。
 
 ## 静态墙实现
 

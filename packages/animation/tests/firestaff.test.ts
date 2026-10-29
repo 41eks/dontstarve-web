@@ -26,7 +26,7 @@ function setup() {
   const combat = new Combat(attacker, () => 0, () => staff.components.weapon);
   combat.SetRange(2);
   attacker.components.combat = combat;
-  getFireStaffController(staff, { prepare: () => projectiles.prepare(), launch: (owner, target, from) => projectiles.launch(owner, target, from) });
+  getFireStaffController(staff, { launch: (owner, target, from) => projectiles.launch(owner, target, from) });
   const tags = new Set<string>();
   const target = {
     isRemoved: false, prefab: 'evergreen', components: {} as { burnable?: Burnable; combat?: Combat },
@@ -45,7 +45,6 @@ it('shoots a burnable from range, lights it on impact, and wears one use and one
   try {
     expect(['firestaff', 'rangedweapon', 'rangedlighter'].every(tag => s.staff.hasTag(tag))).toBe(true);
     expect(s.staff.components.weapon!.attackrange).toBeGreaterThan(0);
-    await s.projectiles.prepare();
     expect(s.combat.CanLightTarget(s.target as never)).toBe(true);
     expect(s.combat.DoAttack(s.target as never)).toBe(true);
     // Nothing happens until the projectile arrives.
@@ -63,7 +62,6 @@ it('shoots a burnable from range, lights it on impact, and wears one use and one
 it('misses without cost when the target is removed in flight', async () => {
   const s = setup();
   try {
-    await s.projectiles.prepare();
     s.combat.DoAttack(s.target as never);
     s.target.isRemoved = true;
     s.fly(2);

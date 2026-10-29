@@ -225,10 +225,45 @@ test('the native DOM player icon follows its live transform above cached terrain
     return ready && icons.includes('willow.png');
   })).toBe(true);
   const map = page.locator('dst-minimap');
-  const icon = map.locator('img[data-icon="willow.png"]');
+  const icon = map.locator('.marker[data-icon="willow.png"]');
   await expect(icon).toBeVisible();
-  await expect.poll(() => icon.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
+  await expect(icon).toHaveAttribute('data-loaded', 'true');
   await expect(map.locator('canvas')).toHaveCount(0);
+  // A future prefab icon is already decoded; changing the declaration reuses the node and its prewarmed URL.
+  const futureIcon = await page.evaluate(() => {
+    const { map } = (window as any).minimapEdges;
+    (window as any).initialMapMarker = map.renderer.dom.icons.querySelector('.marker[data-icon="willow.png"]');
+    const icons = map.renderer.icons, index = icons.index('backpack.png');
+    return { ...icons.get(index), index, urls: icons.urls.size, willowIndex: icons.index('willow.png'),
+      willowUrl: icons.get(icons.index('willow.png')).imageUrl };
+  });
+  expect(futureIcon.imageUrl).toMatch(/^blob:/);
+  expect(futureIcon.urls).toBe(2);
+  expect(futureIcon.index).not.toBe(futureIcon.willowIndex);
+  expect(futureIcon.imageUrl).toBe(futureIcon.willowUrl);
+  await page.evaluate(() => (window as any).minimapEdges.playerIcon.SetIcon('backpack.png'));
+  await expect(map.locator('.marker[data-icon="backpack.png"]')).toHaveAttribute('data-image', futureIcon.imageUrl);
+  expect(await page.evaluate(() => (window as any).initialMapMarker
+    === (window as any).minimapEdges.map.renderer.dom.icons.querySelector('.marker[data-icon="backpack.png"]'))).toBe(true);
+  await page.evaluate(() => (window as any).minimapEdges.playerIcon.SetIcon('willow.png'));
+  await expect(icon).toBeVisible();
+  const suspended = await page.evaluate(async () => {
+    const { map, playerIcon } = (window as any).minimapEdges;
+    const marker = map.renderer.dom.icons.querySelector('.marker');
+    playerIcon.position.set(8, 0, 7); playerIcon.tileTracker.sync();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    const sameTile = marker.style.left === '6.25%' && marker.style.top === '6.25%';
+    map.setOpen(false);
+    playerIcon.SetIcon('backpack.png'); playerIcon.position.set(18, 0, 6); playerIcon.tileTracker.sync();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    const closed = !map.renderer.isListening && marker.dataset.icon === 'willow.png' && marker.style.left === '6.25%';
+    map.setOpen(true);
+    const resumed = map.renderer.isListening && marker.dataset.icon === 'backpack.png' && marker.style.left === '18.75%';
+    playerIcon.SetIcon('willow.png'); playerIcon.position.set(6, 0, 6); playerIcon.tileTracker.sync();
+    return { sameTile, closed, resumed };
+  });
+  expect(suspended).toEqual({ sameTile: true, closed: true, resumed: true });
+  await expect(icon).toBeVisible();
   const terrain = await map.locator('.minimap__terrain img').evaluateAll(images => images.map(image => (image as HTMLImageElement).src));
   await page.evaluate(() => (window as any).minimapEdges.playerIcon.SetEnabled(false));
   await expect(icon).toHaveCount(0);
@@ -236,7 +271,10 @@ test('the native DOM player icon follows its live transform above cached terrain
   await expect(icon).toBeVisible();
   await expect.poll(() => icon.evaluate(image => (image as HTMLElement).style.left)).toBe('6.25%');
   await page.screenshot({ path: testInfo.outputPath('player-minimap-icon.png') });
-  await page.evaluate(() => (window as any).minimapEdges.playerIcon.position.set(-18, 0, 18));
+  await page.evaluate(() => {
+    const { playerIcon } = (window as any).minimapEdges;
+    playerIcon.position.set(-18, 0, 18); playerIcon.tileTracker.sync();
+  });
   await expect.poll(() => icon.evaluate(image => (image as HTMLElement).style.left)).toBe('-18.75%');
   await expect.poll(() => icon.evaluate(image => (image as HTMLElement).style.top)).toBe('18.75%');
   const alignment = await icon.evaluate(image => {
@@ -266,12 +304,12 @@ test('DOM views preserve fixed-size icons at high DPI and release resources on r
     });
     await page.goto('/tests/minimap-edges.html');
     await page.waitForFunction(() => Boolean((window as any).minimapEdges));
-    const icon = page.locator('dst-minimap img[data-icon="willow.png"]');
+    const icon = page.locator('dst-minimap .marker[data-icon="willow.png"]');
     await expect(icon).toBeVisible();
-    await expect.poll(() => icon.evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
+    await expect(icon).toHaveAttribute('data-loaded', 'true');
     const view = await page.evaluate(async () => {
       const { map, heading, playerIcon } = (window as any).minimapEdges;
-      const marker = map.renderer.dom.icons.querySelector('img');
+      const marker = map.renderer.dom.icons.querySelector('.marker');
       let writes = 0;
       const observer = new MutationObserver(records => { writes += records.length; });
       observer.observe(marker, { attributes: true });
@@ -292,9 +330,9 @@ test('DOM views preserve fixed-size icons at high DPI and release resources on r
       observer.disconnect();
       const renderer = map.renderer;
       map.setOpen(false);
-      const stopped = map.sampleTimer === undefined && map.zoomFrame === undefined;
+      const stopped = !map.renderer.isListening && map.zoomFrame === undefined;
       map.setOpen(true);
-      return { writes, positionError, sizeError, scaleError, zoomRuleChanges, stopped, reused: marker === renderer.dom.icons.querySelector('img'), width: map.view.width };
+      return { writes, positionError, sizeError, scaleError, zoomRuleChanges, stopped, reused: marker === renderer.dom.icons.querySelector('.marker'), width: map.view.width };
     });
     expect(view).toMatchObject({ writes: 0, zoomRuleChanges: 0, stopped: true, reused: true, width: 1280 });
     // CSSOM serializes matrix coefficients with limited precision.
@@ -334,19 +372,19 @@ test('DOM views preserve fixed-size icons at high DPI and release resources on r
     expect(bounds.overflow).toBeCloseTo(0, 2); // Actual drag reaches the boundary; no corner can pass it.
     const lifecycle = await page.evaluate(async () => {
       const { map, terrain } = (window as any).minimapEdges;
-      const old = map.renderer, urls = [...old.urls];
+      const old = map.renderer, urls = [...old.icons.urls];
       const terrainUrl = old.terrain.image.src;
       map.bind(map.options);
       await map.prepareTerrain();
-      const rebound = old.urls.size === 0 && urls.every(url => (window as any).revokedMapUrls.has(url)) && (window as any).revokedMapUrls.has(terrainUrl) && old.terrain.image.getAttribute('src') === null;
+      const rebound = old.icons.urls.size === 0 && urls.every(url => (window as any).revokedMapUrls.has(url)) && (window as any).revokedMapUrls.has(terrainUrl) && old.terrain.image.getAttribute('src') === null;
       const current = map.renderer;
       terrain.setTile(0, 0, 4);
       const pending = map.prepareTerrain();
       map.dispose();
       await pending;
       await new Promise(resolve => setTimeout(resolve, 0));
-      return { rebound, urls: current.urls.size, nodes: map.shadowRoot.querySelectorAll('.minimap__viewport').length,
-        stopped: map.sampleTimer === undefined && map.zoomFrame === undefined };
+      return { rebound, urls: current.icons.urls.size, nodes: map.shadowRoot.querySelectorAll('.minimap__viewport').length,
+        stopped: !current.isListening && map.zoomFrame === undefined };
     });
     expect(lifecycle).toEqual({ rebound: true, urls: 0, nodes: 0, stopped: true });
     expect(workers.some(url => /minimap\.worker/.test(url))).toBe(false);
@@ -508,10 +546,10 @@ test('the fullscreen map opens, pauses the game, zooms, pans, follows terrain ch
   await expect(pauseButton).toBeHidden();
   expect(await page.evaluate(() => (window as any).mapGame.IsAutopaused())).toBe(true);
   expect(await page.evaluate(async playerPath => {
-    const { player } = await import(playerPath);
-    const icon = player.MiniMapEntity;
+    const { player, playerInstance } = await import(playerPath);
+    const icon = playerInstance.minimap.peek();
     return { icon: icon.icon, priority: icon.priority, canUseCache: icon.canUseCache,
-      drawOverFogOfWar: icon.drawOverFogOfWar, ownsPosition: icon.position === player.position };
+      drawOverFogOfWar: icon.drawOverFogOfWar, ownsPosition: playerInstance.position === player.position };
   }, PLAYER_PATH)).toEqual({ icon: 'wortox.png', priority: 10, canUseCache: false, drawOverFogOfWar: true, ownsPosition: true });
   await expect.poll(() => map.evaluate(async (element: any) => (await element.inspect()).icons.includes('wortox.png'))).toBe(true);
 

@@ -5,8 +5,8 @@ export function animationLengths(archive: keyof typeof timings): ReadonlyMap<str
   return new Map(timings[archive].map(clip => [clip.name, clip.frames / clip.frameRate]));
 }
 
-export function animationTiming(archive: keyof typeof timings, name: string) {
-  const timing = timings[archive].find(clip => clip.name === name);
+export function animationTiming(archive: string, name: string, bank?: number) {
+  const timing = timings[archive as keyof typeof timings]?.find(clip => clip.name === name && (bank === undefined || clip.bank === bank));
   if (!timing) throw new Error(`Missing animation timing ${archive}:${name}`);
   return timing;
 }

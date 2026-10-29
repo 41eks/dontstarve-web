@@ -14,7 +14,7 @@ import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import { newEntityId } from './saveRecord';
 import { snapToTileCenter, TILE_SIZE } from './tile';
 import { TurfMap, WORLD_TILES } from './turfMap';
-import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
+import { PlaySound, type SoundHandle } from './sound';
 import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
 import type { ShovelTarget } from '@dontstarve-web/stategraphs/shovel';
 import type { WorldContext } from './worldContext';
@@ -141,9 +141,6 @@ export class FarmPlowPlacement implements FarmActionWorld {
       this.prepareRequest = Promise.all([
         ...['farm_plow.zip', 'farm_soil.zip', 'farm_soil_debris.zip', 'smoke_puff_small.zip', 'structure_collapse_fx.zip', 'gridplacer.zip']
           .flatMap((archive) => [this.assets.loadAnimation(archive), this.assets.loadBuild(archive)]),
-        PreloadSounds('farming/common/farm/plow/drill_pre', 'farming/common/farm/plow/LP',
-          'farming/common/farm/plow/collapse', 'farming/common/farm/plow/dirt_puff', 'dontstarve/common/destroy_smoke',
-          'dontstarve/common/plant'),
       ]).then(() => undefined);
       void this.prepareRequest.catch(() => { this.prepareRequest = undefined; });
     }

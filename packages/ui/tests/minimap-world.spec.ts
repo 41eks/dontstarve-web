@@ -4,6 +4,7 @@ import { expect, test } from '@playwright/test';
 
 const urls = Object.fromEntries(['main', 'universal'].map(name =>
   [name, `/@fs${fileURLToPath(new URL(`../../../src/${name}.ts`, import.meta.url))}`]));
+urls.minimap = `/@fs${fileURLToPath(new URL('../../map/src/minimapEntities.ts', import.meta.url))}`;
 
 test('pig king and ground backpack icons render, backpack ownership hides them, and saved positions reload', async ({ page }, testInfo) => {
   test.setTimeout(240_000);
@@ -24,9 +25,9 @@ test('pig king and ground backpack icons render, backpack ownership hides them, 
   });
   const start = async () => {
     await page.evaluate(async urls => {
-      const main = await import(urls.main), { scene } = await import(urls.universal);
+      const main = await import(urls.main), { scene } = await import(urls.universal), { miniMapEntities } = await import(urls.minimap);
       const map = document.querySelector('dst-minimap') as any;
-      (window as any).worldIcons = { main, scene, map, entities: () => map.options.getMiniMapEntities() };
+      (window as any).worldIcons = { main, scene, map, entities: () => [...miniMapEntities()].filter(icon => icon.enabled) };
     }, urls);
     await page.keyboard.press('m');
     await expect(page.locator('dst-minimap section.minimap')).toBeVisible();
@@ -42,8 +43,10 @@ test('pig king and ground backpack icons render, backpack ownership hides them, 
     const model = g.scene.children.find((object: any) => object.userData.itemId === 'backpack');
     g.bag = model.userData.pickupTarget.entity;
     g.bag.transform.position.set(36, 0, -24);
+    g.bag.MiniMapEntity.tileTracker.sync();
     g.map.setView({ x: 0, z: 0, zoom: 1 });
-    const king = g.scene.getObjectByName('PigKingStandee');
+    const king = g.scene.children.find((model: any) => (window as any).__prefabInstance(model)?.prefab === 'pigking');
+    g.king = (window as any).__prefabInstance(king);
     const pigIcon = g.entities().find((icon: any) => icon.icon === 'pigking.png');
     return { backpackId: g.bag.id, pigKingId: (window as any).__prefabInstance(king)?.entityId, pigPriority: pigIcon.priority };
   });
@@ -52,30 +55,32 @@ test('pig king and ground backpack icons render, backpack ownership hides them, 
     const { icons } = await (window as any).worldIcons.map.inspect();
     return icons.includes('pigking.png') && icons.includes('backpack.png');
   })).toBe(true);
-  const icons = page.locator('dst-minimap img[data-icon="pigking.png"], dst-minimap img[data-icon="backpack.png"]');
+  const icons = page.locator('dst-minimap .marker[data-icon="pigking.png"], dst-minimap .marker[data-icon="backpack.png"]');
   await expect(icons).toHaveCount(2);
   await expect.poll(() => icons.evaluateAll(images => images.every(image => !(image as HTMLImageElement).hidden
-    && (image as HTMLImageElement).complete && (image as HTMLImageElement).naturalWidth > 0))).toBe(true);
+    && (image as HTMLElement).dataset.loaded === 'true' && Boolean((image as HTMLElement).style.backgroundImage)))).toBe(true);
   await page.screenshot({ path: testInfo.outputPath('pigking-backpack-minimap.png') });
-  await page.evaluate(() => (window as any).worldIcons.entities().forEach((icon: any) => {
-    if (icon.icon === 'pigking.png' || icon.icon === 'backpack.png') icon.SetEnabled(false);
-  }));
+  await page.evaluate(() => {
+    const g = (window as any).worldIcons;
+    g.king.minimap.SetEnabled(false);
+    g.bag.MiniMapEntity.SetEnabled(false);
+  });
   await expect(icons).toHaveCount(0);
   await page.evaluate(() => {
     const g = (window as any).worldIcons;
-    g.entities().find((icon: any) => icon.icon === 'pigking.png').SetEnabled(true);
+    g.king.minimap.SetEnabled(true);
     g.bag.MiniMapEntity.SetEnabled(true);
     if (!g.main.inventory.Equip(g.bag)) throw new Error('Backpack equip failed');
   });
   await expect.poll(() => page.evaluate(() => (window as any).worldIcons.entities().some((icon: any) => icon.icon === 'backpack.png'))).toBe(false);
   expect(await page.evaluate(() => (window as any).worldIcons.bag.MiniMapEntity.enabled)).toBe(false);
-  await expect(page.locator('dst-minimap img[data-icon="backpack.png"]')).toHaveCount(0);
+  await expect(page.locator('dst-minimap .marker[data-icon="backpack.png"]')).toHaveCount(0);
   await page.evaluate(() => {
     const g = (window as any).worldIcons;
     g.main.inventory.DropItem(g.bag, g.bag.transform.position.clone().set(36, 0, -24));
   });
   await expect.poll(() => page.evaluate(() => (window as any).worldIcons.entities().some((icon: any) => icon.icon === 'backpack.png'))).toBe(true);
-  await expect(page.locator('dst-minimap img[data-icon="backpack.png"]')).toBeVisible();
+  await expect(page.locator('dst-minimap .marker[data-icon="backpack.png"]')).toBeVisible();
   const download = page.waitForEvent('download');
   await command('c_save()');
   saved = JSON.parse(await readSaveDownload((await (await download).path())!, 'Master'));
@@ -117,17 +122,18 @@ test('tree icons use native art, survive model unloading and retain identities a
     await page.evaluate(async urls => {
       await import(urls.main);
       const { scene } = await import(urls.universal);
+      const { miniMapEntities } = await import(urls.minimap);
       const map = document.querySelector('dst-minimap') as any;
-      (window as any).treeMap = { scene, map, icons: () => map.options.getMiniMapEntities() };
+      (window as any).treeMap = { scene, map, icons: () => [...miniMapEntities()].filter(icon => icon.enabled) };
     }, urls);
     await page.keyboard.press('m');
   };
   const treeIcons = ['evergreen.png', 'tree_leaf.png', 'moon_tree.png', 'mushroom_tree_med.png'];
   const checkIcons = async () => {
     for (const icon of treeIcons) {
-      const image = page.locator(`dst-minimap img[data-icon="${icon}"]`);
+      const image = page.locator(`dst-minimap .marker[data-icon="${icon}"]`);
       await expect(image).toBeVisible({ timeout: 30_000 });
-      await expect.poll(() => image.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
+      await expect(image).toHaveAttribute('data-loaded', 'true');
     }
   };
   await page.goto('/tests/dst-lighting.html?save=initial-world.json');

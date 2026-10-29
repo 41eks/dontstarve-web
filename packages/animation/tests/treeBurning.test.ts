@@ -67,7 +67,7 @@ it('lights an evergreen with a torch, burns it for 45 seconds, then leaves one c
   const s = await evergreens();
   try {
     const tree = s.forest.spawn('evergreen_normal', new THREE.Vector3(3, 0, 0));
-    const icon = s.forest.miniMapEntities[0];
+    const icon = lookupPrefabInstance(tree.model!)!.minimap;
     expect(icon).toMatchObject({ icon: 'evergreen.png', priority: -1 });
     const model = tree.model!, target = model.userData.actionEntity as ComponentActionEntity;
     expect(light(target)).toBe(true); await flush();
@@ -176,7 +176,7 @@ it('burns a moon tree for its size-scaled time and keeps burnt state through unl
     expect(target.components.burnable).toBeUndefined(); expect(target.components.workable!.GetWorkLeft()).toBe(1);
     expect(forest.exportState(tree)).toEqual({ moonTree: { size: 'tall', burnt: true }, growable: { stage: 3 },
       moonTreeTimer: { timers: { decay: { timeleft: 14399, initial_time: 14400, paused: false } } } });
-    expect(forest.miniMapEntities[0].icon).toBe('moon_tree_burnt.png');
+    expect(lookupPrefabInstance(tree.model!)!.minimap.icon).toBe('moon_tree_burnt.png');
     await area.visit(new THREE.Vector3(500, 0, 0)); await area.visit(new THREE.Vector3());
     expect(tree.model!.userData.animationController.currentAnimation).toBe('burnt_tall');
     expect(performToolWork('CHOP', tree.model!.userData.actionEntity, {})).toBe(true);

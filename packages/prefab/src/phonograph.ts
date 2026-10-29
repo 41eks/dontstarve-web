@@ -11,7 +11,7 @@ import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Workable } from '../../componets/src/workable';
 import { Machine } from '../../componets/src/machine';
 import { listenInventoryEvents } from './inventoryEvents';
-import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
+import { PlaySound, type SoundHandle } from './sound';
 import { RECORD_ID, RECORD_SONGS } from './records';
 
 export const PHONOGRAPH_ID = 'phonograph';
@@ -155,7 +155,7 @@ export function createPhonographGroundFactory(context: GroundPrefabContext): Gro
     renderEntities: () => [...effects].map(({ display: { model } }) => ({ object: model, footPosition: model.position, cameraDepth: 0 })),
     dispose() { disposed = true; for (const effect of effects) release(effect); effects.clear(); },
     create(item) {
-      void PreloadSounds(...Object.values(RECORD_SONGS), END_SOUND, 'dontstarve/common/destroy_smoke', 'dontstarve/common/destroy_wood');
+
       const { visual, instance, display } = createResidentGroundItem(context, item);
       const model = display.model, sprite = instance.sprite;
       for (const tag of ['structure', 'trader', 'recordplayer', 'furnituredecor', 'groundonlymachine']) instance.addTag(tag);

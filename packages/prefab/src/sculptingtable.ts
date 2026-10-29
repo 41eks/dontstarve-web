@@ -12,7 +12,7 @@ import {
 import { actionEntity } from './actionEntity';
 import { Pickable } from './components/pickable';
 import { Trader, type TradeItem } from '../../componets/src/trader';
-import { PlaySound, PreloadSounds, type SoundEventPath, type SoundHandle } from './sound';
+import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
 import type { PlacementSaveRecord } from './saveRecord';
 
 export const SCULPTING_TABLE_ID = 'sculptingtable' as const;
@@ -61,11 +61,8 @@ function playTableSound(model: THREE.Group, path: SoundEventPath): void {
 
 async function prepare(): Promise<SculptingResources> {
     const base = `${import.meta.env.BASE_URL}dst/data/anim`;
-    const [overrides] = await Promise.all([
-        Promise.all(Object.values(SCULPTABLE_MATERIALS).map(({ swapfile, symbol }) =>
-            loadSymbolOverride(base, `${swapfile}.zip`, symbol))),
-        PreloadSounds(PLACE_SOUND, ITEM_SOUND),
-    ]);
+    const overrides = await Promise.all(Object.values(SCULPTABLE_MATERIALS).map(({ swapfile, symbol }) =>
+            loadSymbolOverride(base, `${swapfile}.zip`, symbol)));
     const ids = Object.keys(SCULPTABLE_MATERIALS) as SculptableMaterial[];
     return {
         materials: overrides.flatMap(override => override.materials),

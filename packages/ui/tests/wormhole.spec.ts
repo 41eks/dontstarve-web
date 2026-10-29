@@ -62,7 +62,7 @@ test('wormhole opens nearby, closes away, accepts sweeper right-click and saves 
       { slot: inventorySlotAddress(Number(source.address.slotKey)), itemId: 'reskin_tool', delta: -1 },
       { slot: equipmentSlotAddress('hand'), itemId: 'reskin_tool', delta: 1 },
     ])) throw new Error('Unable to equip sweeper');
-    await game.player.userData.animationController.setCarryItem('reskin_tool');
+    await (window as any).__prefabInstance(game.player).animationController.setCarryItem('reskin_tool');
     game.entityId = (window as any).__prefabInstance(game.target)?.entityId;
     await new Promise(requestAnimationFrame);
     return spriteScreenPoint(game.target, game.view.camera, game.view.renderer);

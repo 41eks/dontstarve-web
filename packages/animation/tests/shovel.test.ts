@@ -7,7 +7,7 @@ import { declaredSymbol, overrideArchives } from './animStateFixture';
 import { ShovelActionController } from '../../stategraphs/src/shovel';
 import { FarmPlowPlacement } from '../../prefab/src/farm_plow';
 import { TurfMap } from '../../prefab/src/turfMap';
-import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
+import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { createGroundItemVisual } from './groundItemVisual';
 import type { WorldContext } from '../../prefab/src/worldContext';
@@ -97,7 +97,7 @@ it('removes one debris with source loot while preserving soil, terrain, other de
 it('walks into reach, commits at shovel_loop frame 15, and preserves cancelled or unequipped targets', async () => {
   const player = await createWilsonPlayer('/dst/data/anim');
   player.position.set(0, 0, 15);
-  const animation = player.userData.animationController as WilsonAnimationController;
+  const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
   await animation.setCarryItem('goldenshovel');
   expect(PlaySound).toHaveBeenCalledWith('dontstarve/wilson/equip_item_gold');
   const { world, farm, turf } = setup(player);

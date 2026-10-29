@@ -5,7 +5,7 @@ import type { WorldContext } from '@dontstarve-web/prefab/worldContext';
 
 import { ground } from './building';
 import { camera, followCamera } from './camera';
-import { player } from './player';
+import { player, playerInstance } from './player';
 import { cursorUi, renderer, scene } from './universal';
 
 /** The rendering-side singletons prefabs need to place themselves in the game. */
@@ -15,5 +15,5 @@ export const view: WorldContext = {
   createCursorLabel: (pointer) => cursorUi.createLabel(pointer),
 };
 
-view.mouseActions = new PlayerActionPicker(new PointerRaycaster(view), () => player.userData.controllerEnabled !== false);
+view.mouseActions = new PlayerActionPicker(new PointerRaycaster(view), () => playerInstance.controllerEnabled);
 cursorUi.setMouseActions(view.mouseActions);

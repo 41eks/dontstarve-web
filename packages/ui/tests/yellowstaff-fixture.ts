@@ -55,10 +55,11 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
     return pixel[0] + pixel[1] + pixel[2];
   };
   const baseline = sample(30);
-  const player = await createWilsonPlayer('/dst/data/anim');
+  const player = createWilsonPlayer('/dst/data/anim');
+  await player.userData.display.artLoaded();
   player.position.set(0, 0, 0);
   scene.add(player);
-  const animation = player.userData.animationController as WilsonAnimationController;
+  const animation = (window as any).__prefabInstance(player).animationController as WilsonAnimationController;
   const failures: string[] = [];
   const skins = [undefined, ...Object.keys(GROUND_ITEM_DEFINITIONS[itemId].skinArchives)];
   for (const skin of skins) {

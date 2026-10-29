@@ -106,11 +106,14 @@ export function createResidentGroundItem(context: Pick<GroundPrefabContext, 'ass
   const skinArchive = skinId === undefined ? undefined : definition.skinArchives[skinId];
   if (skinId !== undefined && !skinArchive) throw new Error(`Unknown ground skin ${skinId} for ${itemId}`);
   const create = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(context.assets,
-    { ...definition, animation: clip.name, loop: clip.loop }, { skinArchive, name: `GroundItem:${itemId}`, instancedAnimations: 'all' });
+    { ...definition, animation: clip.name, loop: clip.loop }, { name: `GroundItem:${itemId}`, instancedAnimations: 'all' });
   // The display loads the art and draws the item once it is ready; the entity exists from now on.
   const { instance, display } = createArchiveEntity(itemId, { create },
     { name: definition.animation, held: !definition.loop }, `GroundItem:${itemId}`,
     entity => {
+      entity.skinId = skinId;
+      entity.sprite.setSkinSource({ archives: definition.skinArchives, art: context.assets,
+        materialOptions: { multColour: definition.multColour, pointFiltering: definition.pointFiltering } });
       for (const tag of definition.tags ?? []) entity.addTag(tag);
       for (const [symbol, override] of Object.entries(definition.symbolOverrides)) entity.sprite.setSymbolOverride(symbol, override.archive, override.symbol);
       for (const symbol of definition.hiddenSymbols ?? []) entity.sprite.setSymbolHidden(symbol, true);

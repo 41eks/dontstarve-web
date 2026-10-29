@@ -28,8 +28,8 @@ it('hammers a hound bone once into boneshards, adds a houndstooth chance for pie
 
   const record = (bonetype: number, id: string) => ({ id, transform: { position: [1, 0, 2] as [number, number, number], rotationY: 0 },
     components: { houndbone: { bonetype } } });
-  const one = await bones.spawn(new THREE.Vector3(1, 0, 2), record(1, 'a'));
-  const three = await bones.spawn(new THREE.Vector3(3, 0, 2), record(3, 'c'));
+  const one = bones.spawn(new THREE.Vector3(1, 0, 2), record(1, 'a'));
+  const three = bones.spawn(new THREE.Vector3(3, 0, 2), record(3, 'c'));
   // houndbone.lua: bonetype n plays piece<n>; the entity carries the `bone` tag and a HAMMER workable of 1.
   expect(one.userData.animationController.currentAnimation).toBe('piece1');
   expect(three.userData.animationController.currentAnimation).toBe('piece3');
@@ -37,11 +37,14 @@ it('hammers a hound bone once into boneshards, adds a houndstooth chance for pie
   expect(bones.exportRecords().map(({ record }) => record.components.houndbone?.bonetype)).toEqual([1, 3]);
   expect(() => PREFAB_DEFINITIONS.houndbones.parseComponents({ houndbone: { bonetype: 4 } }, 'x', { grounded: true } as never)).toThrow();
 
-  const restored = await bones.spawn(new THREE.Vector3(5, 0, 5));
+  const restored = bones.spawn(new THREE.Vector3(5, 0, 5));
   expect([1, 2, 3]).toContain(bones.exportRecords().find(({ record }) => record.id === lookupPrefabInstance(restored)?.entityId)?.record.components.houndbone?.bonetype);
 
   const target = bones.hammerTargets.find(({ model }) => model === one)!;
   target.playHit();
+  const collapse = scene.getObjectByName('collapse_small');
+  expect(collapse).toBeDefined();
+  expect(prefabInstance(collapse)!.listTags()).toEqual(expect.arrayContaining(['FX', 'NOCLICK']));
   // The single hit finishes the work: boneshard drops, the bone leaves the scene and the save.
   expect(dropped).toEqual(['boneshard']);
   expect(bones.exportRecords().map(({ record }) => record.id)).not.toContain('a');

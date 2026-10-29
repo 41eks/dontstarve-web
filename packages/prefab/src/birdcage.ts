@@ -21,7 +21,7 @@ import type {
 } from './animatedBuildingPlacement';
 import { actionEntity } from './actionEntity';
 import { BIRD_IDS, BIRD_SOUNDS, isBirdId, type BirdId } from './birds';
-import { PlaySound, PreloadSounds, type SoundEventPath } from './sound';
+import { PlaySound, type SoundEventPath } from './sound';
 
 export const BIRDCAGE_ID = 'birdcage' as const;
 export type BirdcageId = typeof BIRDCAGE_ID;
@@ -55,10 +55,6 @@ const FEED_BIRD_POOP_CHANCE = .33;
 const ANIMATION_PERIOD = 6;
 
 const ITEM_SOURCES = catalog.items as unknown as Readonly<Record<string, { readonly source: string }>>;
-const ALL_SOUNDS: readonly SoundEventPath[] = [
-    'dontstarve/birds/wingflap_cage', 'dontstarve/common/birdcage_craft',
-    ...BIRD_IDS.flatMap(id => [BIRD_SOUNDS[id].chirp, BIRD_SOUNDS[id].death]),
-];
 
 /** edible.foodtype == FOODTYPE.MEAT: prefabs/meats.lua items and cooked recipes with a MEAT primary type. */
 export function isMeatFood(prefab: string): boolean {
@@ -88,10 +84,7 @@ interface BirdcageResources extends AnimatedBuildingPreparedResources {
 
 async function prepare(): Promise<BirdcageResources> {
     const base = `${import.meta.env.BASE_URL}dst/data/anim`;
-    const [builds] = await Promise.all([
-        Promise.all(BIRD_IDS.map(id => loadBuildOverride(base, `${id}_build.zip`))),
-        PreloadSounds(...ALL_SOUNDS),
-    ]);
+    const builds = await Promise.all(BIRD_IDS.map(id => loadBuildOverride(base, `${id}_build.zip`)));
     return {
         materials: builds.flatMap(build => build.materials),
         builds: Object.fromEntries(BIRD_IDS.map((id, index) => [id, builds[index]])) as BirdcageResources['builds'],

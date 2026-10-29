@@ -9,6 +9,8 @@ import { frontTasks, registerFrontTask } from '../../../src/animate';
 import { actionTool, reskinEntityFields } from './actionFixtures';
 import { Workable } from '../../componets/src/workable';
 import { ItemEntity } from '../../inventory/src/entity';
+import { SpriteState } from '../../display/src/spriteState';
+import { PrefabInstance } from '../../prefab/src/prefabInstance';
 
 vi.mock('../../../src/universal', () => ({}));
 
@@ -28,7 +30,7 @@ it('registers only the equipped controller, handles restored equipment and remov
   const animation = { isMining: false, isHammering: false, isCasting: false, isNetting: false,
     cancelMine: vi.fn(), cancelHammer: vi.fn() } as unknown as ActionAnimationController;
   const locomotor = { goToPoint: () => true, stop: vi.fn(), destination: undefined };
-  const hammer = new HammerActionController(world, animation, locomotor, equipment, () => []);
+  const hammer = new HammerActionController(world, animation, locomotor, equipment, () => [], new SpriteState({ name: 'idle' }));
   const pickaxe = new PickaxeActionController(world, animation, locomotor, equipment, () => []);
   const hammerUpdate = vi.spyOn(hammer, 'update'), pickaxeUpdate = vi.spyOn(pickaxe, 'update');
   try {
@@ -105,6 +107,35 @@ it('uses tool components, preserves component republishing and immediately cance
   expect(animation.cancelMine).toHaveBeenCalledTimes(cancellations);
 });
 
+it('declares hammer facing on the player instance before starting the action', () => {
+  const equipment = createEquipmentExistenceState('HANDS');
+  equipment.set(actionTool('hammer'));
+  const world = context();
+  const instance = new PrefabInstance('wortox', new SpriteState({ name: 'idle' }));
+  instance.attach(world.player);
+  let facingAtAction: { facing?: number; mirrored?: boolean } | undefined;
+  const animation = { isHammering: false, isCasting: false, isNetting: false,
+    cancelEmote: vi.fn(), cancelHammer: vi.fn(), playHammer: vi.fn(() => {
+      facingAtAction = instance.sprite.sprite.peek();
+      return true;
+    }), setFacing: vi.fn() };
+  const entity = new ItemEntity({ itemId: 'skeleton', count: 1 });
+  entity.components.workable = new Workable(entity);
+  entity.components.workable.SetWorkAction('HAMMER');
+  const target = { entity, id: 'skeleton', model: new THREE.Group(), position: new THREE.Vector3(-1, 0, 0),
+    isValid: () => true, playHit: vi.fn() };
+  const controller = new HammerActionController(world, animation as unknown as ActionAnimationController,
+    { goToPoint: () => true, stop: vi.fn(), destination: undefined }, equipment, () => [target], instance.sprite);
+  try {
+    expect(controller.request(target)).toBe(true);
+    controller.update(0);
+    expect(instance.sprite.sprite.peek()).toMatchObject({ facing: 5, mirrored: true });
+    expect(facingAtAction).toMatchObject({ facing: 5, mirrored: true });
+    expect(animation.playHammer).toHaveBeenCalledOnce();
+    expect(animation.setFacing).not.toHaveBeenCalled();
+  } finally { controller.dispose(); }
+});
+
 it('discards a prepared reskin after the equipped entity changes during loading and releases subscriptions', async () => {
   const equipment = createEquipmentExistenceState('HANDS');
   const first = actionTool('reskin_tool');
@@ -118,7 +149,7 @@ it('discards a prepared reskin after the equipped entity changes during loading 
   const fx = { play: vi.fn(), dispose: vi.fn() };
   const effects = { prepare: vi.fn(async () => fx) };
   const controller = new ReskinActionController(context(), animation as unknown as ActionAnimationController,
-    { goToPoint: () => true, stop: vi.fn(), destination: undefined }, equipment, () => [target], effects);
+    { goToPoint: () => true, stop: vi.fn(), destination: undefined }, equipment, effects);
   const request = controller.request(target);
   equipment.set(actionTool('reskin_tool'));
   release();

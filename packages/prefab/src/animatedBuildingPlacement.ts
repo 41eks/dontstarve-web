@@ -1,7 +1,8 @@
 import { ToolMouseTarget } from './toolMouseTarget';
 import { ModelRecords } from './modelRecords';
 import * as THREE from 'three';
-import { createSignal, readonlySignal, getBoundWatchWorldContent, type ReadonlySignal, type Signal } from '@dontstarve-web/signals';
+import { ArchiveSpriteAssets } from '@dontstarve-web/animation/archiveSprite';
+import { createEffect, createSignal, readonlySignal, watchSignal, getBoundWatchWorldContent, type ReadonlySignal, type Signal } from '@dontstarve-web/signals';
 import { disposeSprite } from './disposeSprite';
 import {
     createAnimatedSpriteSource,
@@ -27,12 +28,12 @@ import { isPlayerNearby } from './playerProximity';
 import { createBuildingContainer, isStorageBuildingId } from './containers';
 import { performCookAction } from '../../stategraphs/src/cook';
 import { Workable } from '../../componets/src/workable';
-import { actionEntity } from './actionEntity';
-import { MiniMapEntity } from './minimapEntity';
+import { actionEntity, findActionEntity } from './actionEntity';
+import type { MiniMapState } from '../../map/src/minimapState';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { GetRecipeLoot, type LootRecipe } from '../../componets/src/lootdropper';
 import recipeData from '@dontstarve-web/animation/recipes.json';
-import { PlaySound, PreloadSounds } from './sound';
+import { PlaySound } from './sound';
 import { Burnable, type BurnableInst } from '../../componets/src/burnable';
 import { Propagator } from '../../componets/src/propagator';
 import type { TradeItem, Trader } from '../../componets/src/trader';
@@ -194,17 +195,15 @@ interface AnimatedBuildingInstance<BuildId extends string> {
     readonly skinId: Signal<string | undefined>;
     readonly burnt: Signal<boolean>;
     prepared?: AnimatedBuildingPreparedResources;
-    readonly preparedSkins: Map<string | undefined, AnimatedBuildingInstance<BuildId>>;
     stopSkin?: () => void;
     stopActivity?: () => void;
     stopBurnt?: () => void;
     stopBurning?: () => void;
-    skinArtReleased?: boolean;
     effectFactory?: AnimatedSpriteFactory;
     fireFactory?: AnimatedSpriteFactory;
     fxFactories?: ReadonlyMap<string, AnimatedSpriteFactory>;
     fire?: DrawnEffect;
-    minimap?: MiniMapEntity;
+    minimap?: MiniMapState;
 }
 
 /** A transient fx entity (fire, collapse) drawn by its own display. */
@@ -237,6 +236,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     private readonly effectFactories = new Map<string, Promise<AnimatedSpriteFactory>>();
     /** Archives, atlas materials and frame geometry shared by every placed building of one build and skin. */
     private readonly spriteSources = new Map<string, Promise<AnimatedSpriteFactory>>();
+    private readonly skinAssets = new ArchiveSpriteAssets('sprite');
     private readonly cameraWorldQuaternion = new THREE.Quaternion();
 
     constructor(
@@ -359,6 +359,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     private initializeComponents(building: AnimatedBuildingInstance<BuildId>): void {
         const { model, buildId } = building;
         model.userData.getGroundPosition = () => model.position.clone().add(new THREE.Vector3(0, -building.groundOffset, 0));
+        actionEntity(model, buildId).reskinTarget = this.createReskinTarget(building);
         const obstacleRadius = this.definitions[buildId].obstacleRadius;
         if (obstacleRadius !== undefined) MakeObstaclePhysics(building.instance, obstacleRadius);
         if (this.worldContext.physics) building.instance.bindPhysics(this.worldContext.physics, model.userData.getGroundPosition);
@@ -382,7 +383,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         this.definitions[buildId].oninit?.(this.eventContext(building));
         const definition = this.definitions[buildId];
         if (definition.minimapIcon !== undefined) {
-            building.minimap = new MiniMapEntity(model.position);
+            building.minimap = building.instance.minimap;
             building.minimap.SetIcon(definition.minimapIcon);
         }
         if (definition.hammerWorkLeft !== undefined) {
@@ -436,7 +437,6 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         if (definition.hammerWorkLeft !== undefined || definition.burnable) {
             const entity = actionEntity(model, buildId);
             new ToolMouseTarget(entity, building.instance, entity.components.workable, this.worldContext.handEquipment, {
-                spellTarget: true,
                 canInteractWithoutTool: () => !entity.hasTag('burnt') && !!(definition.interaction
                     || definition.container || model.userData.components?.container || entity.components.trader || entity.components.fueled
                     || entity.components.prototyper || entity.components.occupiable),
@@ -528,10 +528,6 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     }
 
     /** Whole sprite entities and their ground-contact points for depth sorting. */
-    get miniMapEntities(): MiniMapEntity[] {
-        return this.placed.flatMap(({ minimap }) => minimap ? [minimap] : []);
-    }
-
     get renderEntities() {
         const entries = [...this.placed, ...(this.active ? [this.active] : []),
             ...Array.from(this.effects, ({ display }) => ({ model: display.model, groundOffset: 0 }))]
@@ -591,50 +587,38 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             }));
     }
 
-    get reskinTargets(): readonly ReskinTarget[] { return this.getReskinTargets(); }
+    get reskinTargets(): readonly ReskinTarget[] {
+        return Array.from(this.placed, building => findActionEntity(building.model)?.reskinTarget)
+            .filter((target): target is ReskinTarget => target !== undefined);
+    }
 
-    getReskinTargets(model?: THREE.Object3D): readonly ReskinTarget[] {
-        return this.mouseRecords.select(model, this.placed).map(building => {
-                const isValid = () => !this.disposed && this.placed.includes(building) && !building.isPlacing && building.model.visible;
+    private createReskinTarget(building: AnimatedBuildingInstance<BuildId>): ReskinTarget {
+        const isValid = () => !this.disposed && this.placed.includes(building) && !building.isPlacing && building.model.visible;
+        return {
+            get id() { return String(building.instance.entityId); }, prefabId: building.buildId,
+            instance: building.instance, display: building.display,
+            skins: Object.keys(this.definitions[building.buildId].skinArchives ?? {}),
+            get skinId() { return building.skinId.peek(); },
+            get isRemoved() { return building.model.userData.removed === true; },
+            hasTag: tag => actionEntity(building.model, building.buildId).hasTag(tag),
+            get position() { return building.model.userData.getGroundPosition(); }, isValid,
+            prepareNextSkin: async (tool) => {
+                const previousSkin = building.skinId.peek();
+                const skinId = nextReskin(Object.keys(this.definitions[building.buildId].skinArchives ?? {}), previousSkin, tool?._cached_reskinname, building.buildId);
+                let used = false;
                 return {
-                    id: String(building.instance.entityId), prefabId: building.buildId,
-                    instance: building.instance, display: building.display,
-                    skins: Object.keys(this.definitions[building.buildId].skinArchives ?? {}),
-                    get skinId() { return building.skinId.peek(); },
-                    get isRemoved() { return building.model.userData.removed === true; },
-                    hasTag: tag => actionEntity(building.model, building.buildId).hasTag(tag),
-                    position: building.model.position.clone().add(new THREE.Vector3(0, -building.groundOffset, 0)), isValid,
-                    prepareNextSkin: async (tool) => {
-                        const previousSkin = building.skinId.peek();
-                        const previousState = building.interactionState;
-                        const skinId = nextReskin(Object.keys(this.definitions[building.buildId].skinArchives ?? {}), previousSkin, tool?._cached_reskinname, building.buildId);
-                        const replacement = await this.createInstance(building.buildId, skinId, false,
-                            previousState === 'open' ? 'open' : previousState === 'closed' ? 'closed' : 'idle');
-                        if (!isValid() || building.skinId.peek() !== previousSkin || building.interactionState !== previousState) {
-                            this.releasePreparedSkin(replacement);
-                            return { apply: () => false, dispose: () => {} };
-                        }
-                        building.preparedSkins.set(skinId, replacement);
-                        let used = false;
-                        return {
-                            apply: (fx?: ReskinFxMessage) => {
-                                if (used || !isValid() || building.skinId.peek() !== previousSkin
-                                    || building.preparedSkins.get(skinId) !== replacement) return false;
-                                building.skinId.set(skinId);
-                                fx?.play(building.model.position.clone().add(new THREE.Vector3(0, -building.groundOffset, 0)), building.buildId);
-                                used = true;
-                                return true;
-                            },
-                            dispose: () => {
-                                if (used) return;
-                                if (building.preparedSkins.get(skinId) === replacement) building.preparedSkins.delete(skinId);
-                                this.releasePreparedSkin(replacement);
-                                used = true;
-                            },
-                        };
+                    skinId,
+                    apply: (fx?: ReskinFxMessage) => {
+                        if (used || !isValid() || building.skinId.peek() !== previousSkin) return false;
+                        building.skinId.set(skinId);
+                        fx?.play(building.model.position.clone().add(new THREE.Vector3(0, -building.groundOffset, 0)), building.buildId);
+                        used = true;
+                        return true;
                     },
+                    dispose: () => { used = true; },
                 };
-            });
+            },
+        };
     }
 
     private eventContext(building: AnimatedBuildingInstance<BuildId>): AnimatedBuildingEventContext {
@@ -646,53 +630,21 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     /** Skin changes update presentation; the entity root and components retain their identity. */
     private bindSkin(building: AnimatedBuildingInstance<BuildId>): void {
         building.model.userData.skinIdSignal = readonlySignal(building.skinId);
-        building.stopSkin = building.skinId.subscribe(skinId => {
-            const replacement = building.preparedSkins.get(skinId);
-            if (!replacement) throw new Error('Skin assets must be prepared before committing a skin change');
-            building.preparedSkins.delete(skinId);
-            replacement.skinArtReleased = true;
-            const footY = building.instance.position.y - building.groundOffset;
-            // The controller, root and logical clip stay; only the source and the drawn sprite change.
-            building.display.adopt(replacement.display);
-            this.disposeBuildingArt(building.model);
-            building.prepared = replacement.prepared;
-            for (const key of ['ownedSpriteMaterials', 'disposePreparedResources', 'disposeSpriteSource'] as const) {
-                if (replacement.model.userData[key] === undefined) delete building.model.userData[key];
-                else building.model.userData[key] = replacement.model.userData[key];
-            }
-            building.instance.skinId = skinId;
-            building.groundOffset = replacement.groundOffset;
-            building.instance.position.y = footY + building.groundOffset;
+        const skin = watchSignal(building.skinId, stop => { building.stopSkin = stop; });
+        let previous = skin.peek();
+        createEffect(() => {
+            const skinId = skin.get();
+            if (skinId === previous) return;
+            previous = skinId;
             this.definitions[building.buildId].onreskin?.(this.eventContext(building));
             if (actionEntity(building.model, building.buildId).hasTag('burnt')) building.animation.start('burnt');
             if (building.isPlayerNearby) this.definitions[building.buildId].onturnon?.(this.eventContext(building));
         });
     }
 
-    /** Releases what the building's art owns besides its sprite, which its controller returns to the source. */
-    private disposeBuildingArt(model: THREE.Group): void {
-        model.userData.disposePreparedResources?.();
-        delete model.userData.disposePreparedResources;
-        model.userData.disposeSpriteSource?.();
-        delete model.userData.disposeSpriteSource;
-        for (const material of new Set<THREE.Material>(model.userData.ownedSpriteMaterials ?? [])) {
-            if (material instanceof THREE.MeshBasicMaterial) material.map?.dispose();
-            material.dispose();
-        }
-        model.userData.ownedSpriteMaterials = [];
-    }
-
     private releaseSkin(building: AnimatedBuildingInstance<BuildId>): void {
         building.stopSkin?.();
         building.stopSkin = undefined;
-        for (const replacement of building.preparedSkins.values()) this.releasePreparedSkin(replacement);
-        building.preparedSkins.clear();
-    }
-
-    private releasePreparedSkin(replacement: AnimatedBuildingInstance<BuildId>): void {
-        if (replacement.skinArtReleased) return;
-        replacement.skinArtReleased = true;
-        disposeSprite(replacement.model);
     }
 
     private releaseContainer(building: AnimatedBuildingInstance<BuildId>): void {
@@ -718,7 +670,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             this.definitions[instance.buildId].ondispose?.(this.eventContext(instance));
             this.releaseContainer(instance);
             this.releaseSkin(instance);
-            instance.minimap?.dispose();
+
             disposeSprite(instance.model);
         }
         this.placed.length = 0;
@@ -728,6 +680,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         // Every sprite is released above; only now can the atlases they drew from go.
         for (const source of this.spriteSources.values()) void source.then((value) => value.dispose(), () => undefined);
         this.spriteSources.clear();
+        this.skinAssets.dispose();
         for (const factory of this.effectFactories.values()) void factory.then((value) => value.dispose(), () => undefined);
         this.effectFactories.clear();
     }
@@ -943,18 +896,17 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         const skin = skinId === undefined ? undefined : definition.skinInit?.(skinId);
         const archive = skin?.archive ?? definition.archive;
         const sourceOptions: AnimatedSpriteSourceOptions = { buildArchive: skin?.buildArchive ?? definition.buildArchive,
-            skinArchive: skin?.skinArchive ?? skinArchive, symbolOverrides: definition.symbolOverrides };
+            symbolOverrides: definition.symbolOverrides };
         const initialAnimation = preview && definition.previewAnimation ? definition.previewAnimation
             : state === 'open' && definition.interaction ? definition.interaction.openAnimation : this.idleAnimation(buildId);
         const held = state === 'open' && !definition.interaction?.openAnimationLoop;
-        const [source, [preparedResult], effectFactory, fireFactory, fxFactories] = await Promise.all([
+        const [source, preparedResult, effectFactory, fireFactory, fxFactories] = await Promise.all([
             // A preview is made translucent through its materials, so it keeps a source of its own.
             preview ? createAnimatedSpriteSource(`${import.meta.env.BASE_URL}dst/data/anim`, archive, sourceOptions)
                 : this.spriteSource(archive, sourceOptions),
-            Promise.all([definition.prepare?.(), definition.hammerMaterial
-                ? PreloadSounds('dontstarve/common/destroy_smoke', `dontstarve/common/destroy_${definition.hammerMaterial}`) : undefined]),
+            definition.prepare?.(),
             definition.hammerEffect ? this.prepareEffect(definition.hammerEffect.archive) : undefined,
-            definition.burnable ? Promise.all([this.prepareEffect('fire.zip'), PreloadSounds('dontstarve/common/campfire', 'dontstarve/common/fireOut')]).then(([factory]) => factory) : undefined,
+            definition.burnable ? this.prepareEffect('fire.zip') : undefined,
             definition.fxArchives && Promise.all(definition.fxArchives.map(async archive => [archive, await this.prepareEffect(archive)] as const))
                 .then(factories => new Map(factories))]);
         const spriteOptions = (animation: string, initialFrame: 'first' | 'last' = 'first') => ({
@@ -965,7 +917,13 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         });
         const { instance: entity, display } = createPrefabEntity(buildId, {
             create: (animation, frame) => source.create(spriteOptions(animation, frame)), release: sprite => source.disposeSprite(sprite),
-        }, { name: initialAnimation, held }, definition.name);
+        }, { name: initialAnimation, held }, definition.name, entity => {
+            entity.skinId = skinId;
+            entity.sprite.setSkinSource({ art: this.skinAssets,
+                archives: Object.fromEntries(Object.entries(definition.skinArchives ?? {}).map(([id, archive]) =>
+                    [id, definition.skinInit?.(id).skinArchive ?? archive])),
+                symbols: definition.skinSymbols, baseSymbols: definition.baseSymbols, animationBanks: definition.skinAnimationBanks });
+        });
         const { model } = display;
         model.userData.ownedSpriteMaterials = [];
         if (preview) model.userData.disposeSpriteSource = () => source.dispose();
@@ -988,10 +946,9 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             ...(definition.interaction ? { interactionState: state === 'open' ? 'open' as const : 'closed' as const } : {}),
             isPlacing: false,
             isPlayerNearby: state === 'open',
-            skinId: createSignal(skinId),
+            skinId: entity.sprite.skinId,
             burnt: createSignal(false),
             prepared,
-            preparedSkins: new Map(),
         };
         if (skinArchive !== undefined) instance.instance.skinId = skinId;
         if (state === 'open' && definition.interaction?.openAnimationLoop) {
@@ -1059,7 +1016,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
                 this.definitions[building.buildId].ondispose?.(this.eventContext(building));
                 this.releaseSkin(building);
                 this.releaseContainer(building);
-                building.minimap?.dispose();
+
                 disposeSprite(building.model);
             },
         };

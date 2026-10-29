@@ -40,7 +40,7 @@ test('game console gives opalstaff and equipped right-click summons a saved pola
   await expect(hand).toHaveAttribute('data-item-id', 'opalstaff');
   await expect.poll(() => page.evaluate(() => (window as any).opalGame.player.getObjectByProperty('isMesh', true).material
     .some((material: any) => material.name === 'ground:swap_staffs'))).toBe(true);
-  await expect.poll(() => page.evaluate(() => (window as any).opalGame.player.userData.animationController.stategraph.isOneShot)).toBe(false);
+  await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).opalGame.player).animationController.stategraph.isOneShot)).toBe(false);
   const point = await page.evaluate(() => {
     const { player, view } = (window as any).opalGame;
     const position = player.position.clone();
@@ -52,7 +52,7 @@ test('game console gives opalstaff and equipped right-click summons a saved pola
     return { x: bounds.left + (ndc.x + 1) * bounds.width / 2, y: bounds.top + (1 - ndc.y) * bounds.height / 2 };
   });
   await page.mouse.click(point.x, point.y, { button: 'right' });
-  await expect.poll(() => page.evaluate(() => (window as any).opalGame.player.userData.animationController.isCasting)).toBe(true);
+  await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).opalGame.player).animationController.isCasting)).toBe(true);
   await expect.poll(() => page.evaluate(() => (window as any).opalGame.scene.children
     .filter((model: any) => model.name === 'staffcoldlight').length)).toBe(1);
   const download = page.waitForEvent('download');

@@ -29,7 +29,7 @@ test('spawns and gives neutral thermal stones, reskins and transfers one, then s
       materials: model.getObjectByProperty('isMesh', true).material.map((material: any) => material.name),
     })));
   const clickStone = async (id: string, button: 'left' | 'right') => {
-    await expect.poll(() => page.evaluate(() => !(window as any).heatRockGame.player.userData.stategraph.hasStateTag('busy')),
+    await expect.poll(() => page.evaluate(() => !(window as any).__prefabInstance((window as any).heatRockGame.player).animationController.stategraph.hasStateTag('busy')),
       { timeout: 20_000 }).toBe(true);
     const point = await page.evaluate(async ({ id, pointerUrl }) => {
       const { scene, camera, renderer } = (window as any).heatRockGame;

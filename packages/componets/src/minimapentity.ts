@@ -1,29 +1,21 @@
 import type { Vector3 } from 'three';
+import { MiniMapState } from '../../map/src/minimapState';
+import { watchMiniMapEntity } from '../../map/src/minimapEntities';
+import { TileTracker } from './tileManager';
 
 /** Entity primitive configured by Lua AddMiniMapEntity(), independent of terrain
  * rendering. Position is the owner's existing ground-contact transform.
  */
-export class MiniMapEntity {
-  private iconValue = '';
-  private priorityValue = 0;
-  private cacheValue = true;
-  private fogValue = false;
-  private enabledValue = true;
-
+export class MiniMapEntity extends MiniMapState {
   readonly position: Vector3;
+  readonly tileTracker: TileTracker;
+  private readonly stopWatching: () => void;
+  get minimap(): MiniMapState { return this; }
 
-  constructor(position: Vector3) { this.position = position; }
-
-  get icon(): string { return this.iconValue; }
-  get priority(): number { return this.priorityValue; }
-  get canUseCache(): boolean { return this.cacheValue; }
-  get drawOverFogOfWar(): boolean { return this.fogValue; }
-  get enabled(): boolean { return this.enabledValue; }
-
-  SetIcon(icon: string): void { this.iconValue = icon; }
-  SetPriority(priority: number): void { this.priorityValue = priority; }
-  SetCanUseCache(canUseCache: boolean): void { this.cacheValue = canUseCache; }
-  SetDrawOverFogOfWar(draw: boolean): void { this.fogValue = draw; }
-  SetEnabled(enabled: boolean): void { this.enabledValue = enabled; }
-  dispose(): void { this.enabledValue = false; }
+  constructor(position: Vector3, tileTracker = new TileTracker(() => position)) {
+    super();
+    this.position = position; this.tileTracker = tileTracker;
+    this.stopWatching = watchMiniMapEntity(this);
+  }
+  dispose(): void { this.SetEnabled(false); this.stopWatching(); }
 }

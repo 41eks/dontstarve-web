@@ -70,7 +70,7 @@ test('pitchfork digs terrain, cursor-held turf deploys on dirt and saves and rel
   const first = await point(-138, -138);
   await page.mouse.click(first.x, first.y, { button: 'right' });
   await expect.poll(() => page.evaluate(() => (window as any).pitchforkGame.turfMap.getTileAtWorld({ x: -138, z: -138 }))).toBe(4);
-  await expect.poll(() => page.evaluate(() => (window as any).pitchforkGame.player.userData.animationController.isDigging)).toBe(false);
+  await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).pitchforkGame.player).animationController.isDigging)).toBe(false);
   const cancelled = await point(-126, -138);
   await page.mouse.click(cancelled.x, cancelled.y, { button: 'right' });
   await page.keyboard.press('Escape');

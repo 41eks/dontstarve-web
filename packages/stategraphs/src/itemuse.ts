@@ -1,4 +1,4 @@
-import type { SoundHandle } from '../../prefab/src/sound.ts';
+import { PlaySound, type SoundHandle } from '../../prefab/src/sound.ts';
 import * as THREE from 'three';
 import { BufferedAction } from './bufferedaction.ts';
 import { bindActionCancellation } from './actionEvents.ts';
@@ -92,9 +92,7 @@ export class ItemUseActionController {
   private buffered?: BufferedAction<ItemUseAction>;
   private disposed = false;
   private version = 0;
-  private ready = true;
   private sound?: SoundHandle;
-  private fertilizerSounds?: Pick<typeof import('../../prefab/src/sound.ts'), 'PlaySound'>;
   private readonly world: ActionWorldContext;
   private readonly animation: ActionAnimationController;
   private readonly locomotor: ActionLocomotor;
@@ -118,14 +116,6 @@ export class ItemUseActionController {
     this.world.actionEvents?.emit('action:begin', { owner: this, action });
     this.animation.cancelEmote();
     this.pending = { action, target, source };
-    this.ready = action !== 'FERTILIZE';
-    if (!this.ready) {
-      const version = this.version;
-      void import('../../prefab/src/sound.ts').then(async sounds => {
-        await sounds.PreloadSounds('dontstarve/common/fertilize');
-        if (!this.disposed && version === this.version) { this.fertilizerSounds = sounds; this.ready = true; }
-      }).catch(error => { if (version === this.version) this.cancel(); console.error('Unable to prepare fertilizer sound', error); });
-    }
     return true;
   }
   update(): void {
@@ -146,7 +136,6 @@ export class ItemUseActionController {
       return;
     }
     this.locomotor.stop();
-    if (!this.ready) return;
     const direction = position.clone().sub(this.world.player.position);
     const forward = new THREE.Vector3(); this.world.camera.getWorldDirection(forward); forward.setY(0).normalize();
     const side = direction.dot(new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0)));
@@ -181,7 +170,7 @@ export class ItemUseActionController {
     if (!target.components.pickable?.Fertilize(source.entity)) return false;
     const fertilizer = source.entity.components!.fertilizer!;
     if (!fertilizer.OnApplied(() => source.take(true))) return false;
-    this.sound?.stop(); this.sound = this.fertilizerSounds!.PlaySound(fertilizer.fertilize_sound, this.world.player.position);
+    this.sound?.stop(); this.sound = PlaySound(fertilizer.fertilize_sound, this.world.player.position);
     return true;
   }
   /** actions.lua BATHBOMB: the target reacts first, then the doer's inventory loses the item. */

@@ -12,7 +12,7 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Growable, type GrowableSave } from '../../componets/src/growable';
 import { LootDropper } from '../../componets/src/lootdropper';
 import { Workable } from '../../componets/src/workable';
-import { MiniMapEntity } from './minimapEntity';
+import type { MiniMapState } from '../../map/src/minimapState';
 import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
 import { MakeObstaclePhysics, RemovePhysicsColliders } from './standardcomponents';
@@ -84,7 +84,7 @@ interface Shrub {
   stage: StageData;
   /** Mined: the shrub plays its break animation and is gone at animover (persists = false). */
   broken: boolean;
-  minimap: MiniMapEntity;
+  minimap: MiniMapState;
   stopSnow?: () => void;
   sounds: Set<SoundHandle>;
 }
@@ -138,7 +138,7 @@ export class MarbleShrubManager {
     Object.assign(model.userData, { deploySmartRadius: 1 });
     for (const tag of ['boulder', 'SnowCovered']) instance.addTag(tag);
     const inst = actionEntity(model, MARBLESHRUB_ID);
-    const shrub: Shrub = { instance, display, sprite, completion: new ComponentTimer(this.scheduler, () => this.remove(model)), shapenumber, color, stage: STAGES[0], broken: false, sounds: new Set(), minimap: new MiniMapEntity(model.position), workable: undefined!, growable: undefined! };
+    const shrub: Shrub = { instance, display, sprite, completion: new ComponentTimer(this.scheduler, () => this.remove(model)), shapenumber, color, stage: STAGES[0], broken: false, sounds: new Set(), minimap: instance.minimap, workable: undefined!, growable: undefined! };
     const play = (clip: string, then?: string) => sprite.playOnce(clip, then ? () => sprite.playOnce(then) : undefined);
     const lootdropper = new LootDropper(inst, (prefab, point) => this.world.spawnGroundItem(
       { ...catalog.items[prefab as keyof typeof catalog.items], itemId: prefab, count: 1 }, new THREE.Vector3(point.x, point.y, point.z), { fling: true }));
@@ -214,7 +214,6 @@ export class MarbleShrubManager {
     return [...this.shrubs].filter(([, { sprite }]) => sprite.loaded).map(([model]) => ({ object: model, footPosition: model.position, cameraDepth: 0 }));
   }
 
-  get miniMapEntities(): MiniMapEntity[] { return [...this.shrubs.values()].map(({ minimap }) => minimap); }
 
   get mineTargets(): PickaxeTarget[] { return this.getMineTargets(); }
 
@@ -240,7 +239,7 @@ export class MarbleShrubManager {
     const shrub = this.shrubs.get(model); if (!shrub) return;
     this.shrubs.delete(model); model.userData.removed = true;
     shrub.stopActivity?.(); shrub.stopAppearance?.();
-    shrub.stopSnow?.(); shrub.minimap.dispose(); shrub.completion.stop();
+    shrub.stopSnow?.(); shrub.completion.stop();
     shrub.growable.dispose(); shrub.workable.dispose();
     for (const sound of shrub.sounds) sound.stop();
     shrub.instance.remove();

@@ -7,7 +7,7 @@ type FarmPlowPlacement = Pick<FarmActionWorld, 'soilTargets' | 'prepareSeedPlant
 
 const PLANT_REACH = 4;
 
-export interface FoodSource { readonly itemId?: string; isValid(): boolean; take(): boolean; prepareEat?(): Promise<void>; readonly foodDrink?: boolean; }
+export interface FoodSource { readonly itemId?: string; isValid(): boolean; take(): boolean; readonly foodDrink?: boolean; }
 
 /** Inventory food uses timed quick eating/drinking; seeds can also be planted. */
 export class FoodActionController {
@@ -60,13 +60,11 @@ export class FoodActionController {
     this.source = source; this.animation.cancelEmote();
   }
 
-  async eat(source: FoodSource, onEaten: () => void): Promise<boolean> {
+  eat(source: FoodSource, onEaten: () => void): boolean {
     if (this.disposed || !source.isValid()) return false;
     this.cancel();
     this.world.actionEvents?.emit('action:begin', { owner: this, action: 'EAT' });
     const version = this.version;
-    await source.prepareEat?.();
-    if (this.disposed || version !== this.version || !source.isValid()) return false;
     this.locomotor.stop(); this.animation.cancelEmote();
     return this.animation.playQuickEat(() => {
       if (version !== this.version || !source.isValid() || !source.take()) return false;

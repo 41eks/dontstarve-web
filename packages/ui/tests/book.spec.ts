@@ -60,7 +60,7 @@ test('right-click reads book_silviculture with the source states, sounds and gro
   const newModel = (prefab: string) => page.evaluate(prefab => (window as any).__prefabInstance((window as any).bookGame.scene.children.find((model: any) =>
     (model.userData.itemId ?? (window as any).__prefabInstance(model)?.prefab) === prefab
     && !(window as any).existingIds.includes((window as any).__prefabInstance(model)?.entityId)))?.entityId ?? null, prefab);
-  const stateName = () => page.evaluate(() => (window as any).bookGame.player.userData.stategraph.stateName);
+  const stateName = () => page.evaluate(() => (window as any).__prefabInstance((window as any).bookGame.player).animationController.stategraph.stateName);
   const sanity = page.locator('dst-status-hud .survival-meter--sanity output');
 
   await submit('c_spawn("grass")');
@@ -152,7 +152,7 @@ test('right-click reads book_rain: its fx and sounds play, moisture starts the r
   }, modules);
   const submit = (command: string) => page.evaluate(command => document.querySelector('dst-debug-console')!.dispatchEvent(
     new CustomEvent('game:debug-command', { detail: { command } })), command);
-  const stateName = () => page.evaluate(() => (window as any).rainGame.player.userData.stategraph.stateName);
+  const stateName = () => page.evaluate(() => (window as any).__prefabInstance((window as any).rainGame.player).animationController.stategraph.stateName);
   const weather = () => page.evaluate(() => {
     const { weather } = (window as any).rainGame;
     return { type: weather.preciptype.peek(), moisture: weather.moisture.peek(), ceil: weather.moistureceil.peek(),

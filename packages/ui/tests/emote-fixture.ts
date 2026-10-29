@@ -12,11 +12,12 @@ import { bindActionCancellation, type PlayerActionEvents } from '../../stategrap
 
 export async function createEmoteFixture() {
   const { emoteWheel } = mountGameUi({ assetBaseUrl: '/dst/data/ui/' });
-  const { model, body } = await createWilsonPlayerPrefab('/dst/data/anim', new CANNON.World());
+  const { model, body, instance, display } = createWilsonPlayerPrefab('/dst/data/anim', new CANNON.World());
+  await display.artLoaded();
   model.position.set(0, 0, 0);
   body.position.set(0, 4.5, 0);
   body.canJump = true;
-  const animation = model.userData.animationController as WilsonAnimationController;
+  const animation = instance.animationController as WilsonAnimationController;
   const locomotor = new Locomotor(body);
   const renderer = new THREE.WebGLRenderer({ alpha: true, preserveDrawingBuffer: true });
   renderer.setSize(600, 480);
@@ -94,12 +95,12 @@ export async function createEmoteFixture() {
       animation.setCrafting(true);
       const craftingInterrupts = !animation.isEmoting && !await animation.playEmote('happy');
       animation.setCrafting(false);
-      const pending = animation.playEmote('sit');
+      const started = animation.playEmote('sit');
       animation.cancelEmote();
-      const cancelledRequest = !await pending && !animation.isEmoting;
+      const cancelledEmote = started && !animation.isEmoting;
       animation.start('idle');
       draw();
-      return { failures, changed, equipmentMaterials, torchRendered, pickupInterrupts, craftingInterrupts, cancelledRequest };
+      return { failures, changed, equipmentMaterials, torchRendered, pickupInterrupts, craftingInterrupts, cancelledEmote };
     },
   };
 }

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import type { Locomotor } from '@dontstarve-web/prefab/locomotor';
-import type { WilsonAnimationController } from '@dontstarve-web/prefab/player';
+import { wilsonPlayerInstance } from '@dontstarve-web/prefab/player';
 import { input } from './InputManager';
 import type { PlayerBody } from './types/Player';
 import { MAX_PHYSICS_FRAME_TIME } from './physicsTiming';
@@ -16,6 +16,7 @@ export function updateMovement(
     playerBody: PlayerBody,
     locomotor: Locomotor,
 ) {
+    const instance = wilsonPlayerInstance(player);
     const radius = (playerBody.shapes[0] as CANNON.Sphere).radius;
     const positionOffset = new THREE.Vector3(0, radius, 0);
     const forward = new THREE.Vector3();
@@ -38,14 +39,14 @@ export function updateMovement(
         if (input.isPressed('KeyD')) direction.add(right);
         const manual = input.isManualMovement();
         const interrupting = input.isActionInterrupting();
-        const animation = player.userData.animationController as WilsonAnimationController | undefined;
+        const animation = instance.animationController;
         const slipping = animation?.stategraph.isSlipping === true;
         // Locomotor facts the slip states read through the player's host.
-        player.userData.runSpeed = speed / WORLD_SCALE;
-        player.userData.wantsToMoveForward = manual || locomotor.destination !== undefined;
+        instance.runSpeed = speed / WORLD_SCALE;
+        instance.wantsToMoveForward = manual || locomotor.destination !== undefined;
         if (!slipping && Math.hypot(playerBody.velocity.x, playerBody.velocity.z) > 0.01) {
             heading.set(playerBody.velocity.x, 0, playerBody.velocity.z).normalize();
-            player.userData.worldHeading = Math.atan2(-heading.z, heading.x) * 180 / Math.PI;
+            instance.worldHeading = Math.atan2(-heading.z, heading.x) * 180 / Math.PI;
         }
         if (animation?.isEmoting && interrupting) animation.cancelEmote();
         if (animation?.isMining && interrupting) animation.cancelMine();
@@ -65,7 +66,7 @@ export function updateMovement(
         // SGwilson's death state has the dead tag: the corpse never moves.
         const dead = animation?.stategraph.isDead === true;
         const acting = animation?.stategraph.isPerformingAction('BLINK') || dead || slipping || sleeping || hiding || castingBusy || animation?.isNetting || animation?.isEmoting || animation?.isMining || animation?.isChopping || animation?.isHammering || animation?.isDigging || animation?.isReskinning;
-        if (slipping && player.userData.wantsToMoveForward) animation!.stategraph.pushLocomote();
+        if (slipping && instance.wantsToMoveForward) animation.stategraph.pushLocomote();
         if (acting) locomotor.stop();
         // Match world.step's substep budget when limiting the final travel step.
         else locomotor.update(speed, Math.min(dt, MAX_PHYSICS_FRAME_TIME), manual ? direction : undefined);
@@ -73,14 +74,14 @@ export function updateMovement(
         // Physics:GetMotorSpeed is the commanded speed; contact friction lowers the body's measured velocity.
         const commanded = !acting && ((manual && direction.lengthSq() > 0) || locomotor.destination !== undefined);
         // SG Physics:SetMotorVel: slide along the heading at the state's speed.
-        const motorSpeed = player.userData.motorSpeed as number | undefined;
+        const motorSpeed = instance.motorSpeed;
         if (animation?.stategraph.isSlipping && motorSpeed !== undefined) {
             playerBody.velocity.x = heading.x * motorSpeed * WORLD_SCALE;
             playerBody.velocity.z = heading.z * motorSpeed * WORLD_SCALE;
         }
-        player.userData.currentMotorSpeed = slipping ? motorSpeed ?? 0 : commanded ? speed / WORLD_SCALE : 0;
+        instance.currentMotorSpeed = slipping ? motorSpeed ?? 0 : commanded ? speed / WORLD_SCALE : 0;
         direction.set(playerBody.velocity.x, 0, playerBody.velocity.z);
-        if (!player.userData.billboard && direction.lengthSq() > 0) {
+        if (!instance.sprite.sprite.peek().billboard && direction.lengthSq() > 0) {
             player.lookAt(target.copy(player.position).add(direction));
         }
         if (!acting && !animation?.isGhost && input.isPressed('Space') && playerBody.canJump) {
@@ -88,5 +89,6 @@ export function updateMovement(
             playerBody.canJump = false;
         }
         player.position.copy(playerBody.position as unknown as THREE.Vector3).sub(positionOffset);
+        instance.tileTracker.moved();
     };
 }

@@ -8,6 +8,7 @@ import type { ActionWorldContext as WorldContext, ActionAnimationController as W
 import { collectEquippedActions, equippedActionEntity, performToolWork, type ComponentActionEntity } from './componentactions.ts';
 import type { Worker } from '../../componets/src/workable';
 import { actionTargetModel, type ActionTargetView } from './actionTargetView';
+import type { SpriteState } from '@dontstarve-web/display';
 
 export const HAMMER_HIT_TIME = WILSON_ACTION_TIMES.mine;
 export const HAMMER_REACH = 4;
@@ -35,6 +36,7 @@ export class HammerActionController {
   private readonly up = new THREE.Vector3(0, 1, 0);
   private readonly world: WorldContext;
   private readonly animation: WilsonAnimationController;
+  private readonly playerSprite: Pick<SpriteState, 'setFacing'>;
   private readonly locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>;
   private readonly handEquipment: HandEquipmentSignal;
   private readonly stopEquipment: () => void;
@@ -49,10 +51,12 @@ export class HammerActionController {
     locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>,
     handEquipment: HandEquipmentSignal,
     getTargets: (model?: THREE.Object3D) => readonly HammerTarget[],
+    playerSprite: Pick<SpriteState, 'setFacing'>,
     isManualMovement = () => false,
   ) {
     this.world = world;
     this.animation = animation;
+    this.playerSprite = playerSprite;
     this.locomotor = locomotor;
     this.handEquipment = handEquipment;
     this.worker = { PushEvent: (name, data) => world.player.dispatchEvent({ type: name, data } as never) };
@@ -156,7 +160,7 @@ export class HammerActionController {
     this.right.crossVectors(this.forward, this.up).normalize();
     const forward = this.direction.dot(this.forward);
     const side = this.direction.dot(this.right);
-    this.animation.setFacing(Math.abs(forward) >= Math.abs(side) ? (forward > 0 ? 'up' : 'down') : 'side',
+    this.playerSprite.setFacing(Math.abs(forward) >= Math.abs(side) ? (forward > 0 ? 2 : 8) : 5,
       Math.abs(side) > Math.abs(forward) && side < 0);
   }
 

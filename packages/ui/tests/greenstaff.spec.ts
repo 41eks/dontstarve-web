@@ -64,7 +64,7 @@ test('console greenstaff reskins, deconstructs opalstaff by right-click and relo
     const { player } = (window as any).greenGame;
     return player.getObjectByProperty('isMesh', true).material.some((material: any) => material.name.includes('greenstaff_clockwork'));
   })).toBe(true);
-  await expect.poll(() => page.evaluate(() => (window as any).greenGame.player.userData.animationController.stategraph.isOneShot)).toBe(false);
+  await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).greenGame.player).animationController.stategraph.isOneShot)).toBe(false);
   const point = await page.evaluate(() => {
     const { scene, view, opalId } = (window as any).greenGame;
     const model = scene.children.find((model: any) => (window as any).__prefabInstance(model)?.entityId === opalId);
@@ -74,15 +74,15 @@ test('console greenstaff reskins, deconstructs opalstaff by right-click and relo
     return { x: bounds.left + (ndc.x + 1) * bounds.width / 2, y: bounds.top + (1 - ndc.y) * bounds.height / 2 };
   });
   await page.mouse.click(point.x, point.y, { button: 'right' });
-  await expect.poll(() => page.evaluate(() => (window as any).greenGame.player.userData.animationController.isCasting)).toBe(true);
+  await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).greenGame.player).animationController.isCasting)).toBe(true);
   await page.keyboard.press('Escape');
-  await expect.poll(() => page.evaluate(() => (window as any).greenGame.player.userData.animationController.isCasting)).toBe(false);
+  await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).greenGame.player).animationController.isCasting)).toBe(false);
   expect(await page.evaluate(() => {
     const game = (window as any).greenGame;
     return [!!game.main.inventory.entities.get(game.opalId), game.main.inventory.entities.get(game.staffId).components.finiteuses.percent.peek()];
   })).toEqual([true, 1]);
   await page.mouse.click(point.x, point.y, { button: 'right' });
-  await expect.poll(() => page.evaluate(() => (window as any).greenGame.player.userData.animationController.isCasting)).toBe(true);
+  await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).greenGame.player).animationController.isCasting)).toBe(true);
   await expect.poll(() => page.evaluate(() => {
     const game = (window as any).greenGame;
     return !!game.main.inventory.entities.get(game.opalId);
@@ -91,7 +91,7 @@ test('console greenstaff reskins, deconstructs opalstaff by right-click and relo
     const game = (window as any).greenGame;
     return game.main.inventory.entities.get(game.staffId)?.components.finiteuses.remaining;
   })).toBe(4);
-  await expect.poll(() => page.evaluate(() => (window as any).greenGame.player.userData.animationController.stategraph.isOneShot)).toBe(false);
+  await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).greenGame.player).animationController.stategraph.isOneShot)).toBe(false);
   const download = page.waitForEvent('download');
   await command('c_save()');
   const file = await download, savedText = await readSaveDownload((await file.path())!);

@@ -2,6 +2,8 @@
 
 DST 场景预制体。该包基于 `@dontstarve-web/animation` 组合具体资源，当前提供：
 
+`skinId` 保存在 `SpriteJson.skinId` 中；`PrefabInstance.skinId` 的 getter / setter 读写同一份声明，修改时发布 sprite signal。prefab 用 `sprite.setSkinSource()` 声明源皮肤 ID 到 archive 的映射、共享资源所有者及符号／附加动画 bank 配置。`PrefabDisplay` 在收到声明后查询共享缓存，缺失的 build／animation 由 display 异步加载；完成后按当前 json 应用，过期请求只留下缓存。直接设置 `instance.skinId` 即可换皮，设为 `undefined` 恢复基础外观，保留实体、sprite 控制器、动画进度及完成回调。休眠不为换皮加载资源，唤醒后应用最新声明。
+
 - `createWilsonPlayer` / `createWilsonPlayerPrefab`
 - `PigKingManager`（`pigking`）
 - `placeStaticLayout`（`staticLayout`）：`default_pigking` 静态布局的地皮与岩石坐标，由地图生成层登记；`NightmareRockManager`（`nightmarerock`）对应 `sanityrock` / `insanityrock`。
@@ -95,7 +97,9 @@ inventory atlas 路径。`HAT_SKIN_SPECS` 及 `skinArchives` 对应 144 个皮�
 原游戏的内部实体 `shadow_thrall_parasitehat` 已从导入目录、物品定义和制作入口中排除，
 不再镜像其动画包，也不提供图标或地面图像回退。
 
-`WilsonAnimationController.setHat(itemId, skinId?)` 按需加载装备贴图，传入 `null`
+`createWilsonPlayer()` / `createWilsonPlayerPrefab()` 同步返回玩家模型／实例和刚体。玩家只声明动画 archive、bank、build 和道具 fallback；`PrefabDisplay` 通过 `SpriteResources` 加载并应用当前声明，加载完成不回写玩家逻辑。需要等到可绘制时，由应用调用 `await display.artLoaded()`。幽灵／复活、读书、工具动作和表情的时长来自导入的 `animationTimings.json`，不等待美术；读书／工具破损 FX 的定时移除也独立于资源加载。用 `python3 packages/prefab/scripts/import-animation-timings.py --check` 校验时长。
+
+`WilsonAnimationController.setHat(itemId, skinId?)` 同步声明装备贴图，由 display 按需加载；传入 `null`
 卸下帽子。普通帽、露顶帽、全头盔分别切换头发与脸部；Walter 帽使用 Wilson 的
 `swap_hat_large`，矿工帽使用不发光的 `swap_hat_off`。月亮头盔、虚空兜帽、
 W.A.R.B.I.S. 头戴装备、检查镜和兔子帽的主体跟随部件直接合入玩家
@@ -308,9 +312,10 @@ RGB `(237,237,209)/255`。范围不随掉落堆叠数量增加，也没有火把
 决定；返回句柄的 `stop()` 停止该次播放，`PreloadSounds(...paths)` 预加载指定事件的共享音频，
 `PrewarmSounds()` 在场景启动时预加载声音表中全部事件的所有层与随机变体，等待下载和解码完成。
 预热可在音频上下文暂停时完成，用户交互负责恢复播放；按需加载与预热共享同一份请求及解码缓存，失败音频允许后续重试。
+prefab、装备回调和动作状态图只调用 `PlaySound()`；它们不预加载音效，也不等待音频准备。
 `DisposeSounds()` 用于页面内显式结束游戏时停止全部声音并释放音频上下文；`pagehide` 不调用该清理。
 
-锤子与两种鹤嘴锄在装备时预加载音效，在共享 `pickaxe_loop` 第 7 帧分别调用
+锤子与两种鹤嘴锄在共享 `pickaxe_loop` 第 7 帧分别调用
 `PlaySound('dontstarve/wilson/hit')` 和 `PlaySound('dontstarve/wilson/use_pick_rock')`。
 每次挥击只触发一次；命中前取消动作不会播放声音。这里只提供动作声音及受击反馈。
 
@@ -319,10 +324,10 @@ RGB `(237,237,209)/255`。范围不随掉落堆叠数量增加，也没有火把
 
 清洁扫把的 `ReskinActionController` 由 `@dontstarve-web/stategraphs/reskin_tool` 导出，
 `ReskinEffects` 和装备资源由 `@dontstarve-web/prefab/reskin_tool` 导出。玩家手持时右键有已导入皮肤的建筑或地面物品，
-超出原版 CASTSPELL 的 20 单位距离（本场景 60）会先走近。目标和特效资源加载完成后，
+超出原版 CASTSPELL 的 20 单位距离（本场景 60）会先走近。动作控制器把目标选出的皮肤 ID 交给 display 的 `preloadSkin()`，与特效一起预热；目标声明和逻辑实体保持原样。资源加载完成后，
 `WilsonAnimationController.playReskin()` 按 `SGwilson.lua` 的 `veryquickcastspell`
 播放 `player_attacks.zip` 的 `atk_pre → atk`，第 9 帧将预备好的 FX 消息交给目标的换肤提交。
-目标成功应用下一个皮肤后处理消息，以自身的 prefab ID 和地面脚点放置、启动独立 FX；失败或取消只释放未使用的消息。
+命中时目标只更新皮肤声明，由 display 切换已加载的 build；随后以自身的 prefab ID 和地面脚点放置、启动独立 FX。失败或取消只释放未使用的消息，不创建替身实体或替换组件。
 目标目录按支持的皮肤 ID 循环，最后恢复基础外观；目前不实现原版所有权与事件锁筛选。
 
 `ReskinEffects` 使用 `reskin_tool_fx.zip` 的 `fx_shadow_dust/puff`，4 个工具皮肤按

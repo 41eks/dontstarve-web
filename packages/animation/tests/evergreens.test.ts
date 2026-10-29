@@ -12,7 +12,7 @@ import { performToolWork, collectEquippedActions } from '../../stategraphs/src/c
 import { PlaySound } from '../../prefab/src/sound';
 import { createPickupInventory } from './pickupFixture';
 import { equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
-import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
+import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
 import { PickaxeActionController } from '../../stategraphs/src/pickaxe';
 import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
 
@@ -102,7 +102,7 @@ it('shows growth settled while unloaded as its final stage without the transitio
 it('commits source axe work, cancels before impact, preserves logical components while unloaded, and fells and digs a tall tree permanently', async () => {
   const s = await setup(), inventory = createPickupInventory();
   const player = await createWilsonPlayer('/dst/data/anim');
-  const animation = player.userData.animationController as WilsonAnimationController;
+  const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
   await animation.setCarryItem('axe'); inventory.add('axe', 1);
   inventory.transfer(inventorySlotAddress(0), equipmentSlotAddress('hand'), 1);
   const axe = inventory.getEntity(equipmentSlotAddress('hand'))!;

@@ -41,7 +41,7 @@ it('keeps phase look and playback through reskin and records only its skin', asy
     moon.set(dayMoon(14)); // waning half
     const reskin = await placement.reskinTargets[0].prepareNextSkin();
     expect(reskin.apply()).toBe(true);
-    const model = placement.hammerTargets[0].model;
+    const model = placement.hammerTargets[0].display.model;
     expect(lookupPrefabInstance(model)?.skinId).toBe('moondial_an');
     expect((model.userData.animationController as SpriteController).currentAnimation).toBe('wane_to_half');
     expect(displayLightOverride(model)).toBe(.1);

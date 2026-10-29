@@ -10,7 +10,7 @@ import {
     type AnimatedBuildingEventContext,
 } from './animatedBuildingPlacement';
 import { actionEntity } from './actionEntity';
-import { PlaySound, PreloadSounds } from './sound';
+import { PlaySound } from './sound';
 import { TILE_SIZE } from './tile';
 import { prefabInstance } from './prefabInstance';
 
@@ -95,9 +95,7 @@ class LightningRod {
         const { model, world } = this.context;
         PlaySound(ZAP_SOUND, model.position);
         const position = actionEntity(model, LIGHTNING_ROD_ID).getPosition();
-        const fx = world?.fx;
-        if (fx) void fx.prepare('lightning_rod_fx').then(() => { if (!this.removed) fx.spawn('lightning_rod_fx', position); })
-            .catch((error: unknown) => console.error('Unable to play lightning_rod_fx', error));
+        world?.fx?.spawn('lightning_rod_fx', position);
         this.zapTimer?.start(10 + Math.floor(Math.random() * 31));
     }
 
@@ -175,7 +173,6 @@ export const LIGHTNING_ROD_DEFINITION: AnimatedBuildingDefinition = {
     hammerWorkLeft: 4, hammerMaterial: 'metal',
     hammerEffect: { archive: 'structure_collapse_fx.zip', animation: 'collapse_small', name: 'collapse' },
     skinInit: lightning_rod_init_fn,
-    prepare: () => PreloadSounds(ZAP_SOUND, CRAFT_SOUND),
     oninit,
     onbuilt,
     ondispose: ({ model }) => rodOf(model).dispose(),

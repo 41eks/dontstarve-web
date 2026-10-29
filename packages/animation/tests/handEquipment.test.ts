@@ -4,7 +4,6 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { createEquipmentExistenceState, type HandEquipment } from '@dontstarve-web/signals';
 import { ItemEntity, InventoryStore, InventorySlot, HandSlot, inventorySlotAddress, equipmentSlotAddress } from '@dontstarve-web/inventory';
 import { configureTorchEntity, getTorchController } from '../../prefab/src/torch';
-import { PreloadSounds } from '../../prefab/src/sound';
 import { bindPlayerHandEquipment } from '../../../src/playerHandEquipment';
 import { createPerishWorld } from './perishWorldFixture';
 
@@ -46,7 +45,6 @@ it('equips from the restore signal write, unequips before replacement and releas
     const oldUnequip = oldTorch.onunequip.bind(oldTorch), nextEquip = nextTorch.onequip.bind(nextTorch);
     vi.spyOn(oldTorch, 'onunequip').mockImplementation(() => { events.push('unequip'); oldUnequip(); });
     const equip = vi.spyOn(nextTorch, 'onequip').mockImplementation(slot => { events.push('equip'); nextEquip(slot); });
-    expect(PreloadSounds).toHaveBeenCalledBefore(ui.animation.setEquippedCarryItem);
     expect(oldTorch.isBurning).toBe(true);
     expect(ui.animation.setEquippedCarryItem).toHaveBeenLastCalledWith('torch');
     expect(ui.lightParent.getObjectByName('torchfire_light')).toBeDefined();

@@ -7,7 +7,7 @@ import { ComponentTimer } from '../../componets/src/timer';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
-import { MiniMapEntity } from './minimapEntity';
+import type { MiniMapState } from '../../map/src/minimapState';
 import { MakePondPhysics } from './standardcomponents';
 import { TILE_SIZE } from './tile';
 import { createPrefabEntity, prefabInstance } from './prefabInstance';
@@ -41,7 +41,7 @@ class LavaPond {
   readonly children: THREE.Group[] = [];
   readonly heater: Heater;
   /** lava_pond.lua: MiniMapEntity:SetIcon("lava_pond.png"). */
-  readonly minimap: MiniMapEntity;
+  readonly minimap: MiniMapState;
   readonly model: THREE.Group;
   private readonly rockFactory: AnimatedSpriteFactory;
   private readonly random: () => number;
@@ -50,7 +50,7 @@ class LavaPond {
     this.model = model; this.rockFactory = factory; this.random = random;
     const inst = actionEntity(model, LAVA_POND_ID);
     for (const tag of ['lava', 'antlion_sinkhole_blocker', 'birdblocker', 'blocker']) inst.addTag(tag);
-    this.minimap = new MiniMapEntity(model.position);
+    this.minimap = prefabInstance(model)!.minimap;
     this.minimap.SetIcon('lava_pond.png');
     this.heater = new Heater(inst); this.heater.SetHeat(LAVA_POND_HEAT);
     inst.components.heater = this.heater;
@@ -88,7 +88,7 @@ class LavaPond {
   dispose(): void {
     this.model.userData.removed = true;
     if (this.timer.peek().status === 'scheduled' || this.timer.peek().status === 'paused') this.initializer.stop();
-    this.minimap.dispose();
+
     this.heater.dispose(); delete this.model.userData.components.heater;
     prefabInstance(this.model)!.light.set(null);
     for (const child of this.children) { child.userData.removed = true; removeEntity(child); }
@@ -185,7 +185,6 @@ export class LavaPondManager {
       (rock.userData.animationController as SpriteState).update(dt);
     }
   }
-  get miniMapEntities(): MiniMapEntity[] { return [...this.pools.values()].map(pool => pool.minimap); }
   private get rockModels(): THREE.Group[] { return [...this.standaloneRocks, ...[...this.pools.values()].flatMap(pool => pool.children)]; }
   get renderEntities() {
     return this.rockModels.map(object => ({ object, footPosition: object.getWorldPosition(new THREE.Vector3()), cameraDepth: 0 }));

@@ -131,6 +131,8 @@ GroundItemManager 每帧在 prefab 更新前后从实体刷新模型，拾取命
 
 手部动作控制器接收只读 `InventoryStore.handEquipment`，在控制器内部判断工具 ID，不接收应用层的 `isEquipped()` 或过滤后的物品查询函数。镐、干草叉、铲子和园艺锄分别接受其普通／金制 ID；锤子和捕虫网从装备实体的 `tool` 与 `HAMMER_tool` / `NET_tool` 标签判断能力，清洁扫把检查 `spellcaster`、`castontargets` 和 `veryquickcast`；`componentactions.ts` 统一收集当前目标的可用动作。`workable` 维护工作量和目标标签，动作命中时重新校验并执行 prefab 回调，再消耗工具耐久。法杖实体由 prefab 配置 `SpellCaster` 和 `castonpoint` / `castonpointwater` 标签；通用 `SpellCastActionController` 读取真实装备实体的组件与能力，法术函数按法杖自身 prefab 选择星体。施法输入不含法杖 ID 或星体管理器，取消只针对自己持有的 `BufferedAction`。控制器直接读取 signal 中的皮肤和实体身份，在卸装、实体替换（即使 ID 和皮肤相同）或换肤时同步取消旧动作，阻止已经排入时间线或正在异步预加载的旧动作提交。`packages/stategraphs/src/handEquipment.ts` 仅共享身份变化的订阅判断，不维护工具 ID 清单；同一实体、同一 ID 和同一皮肤的重新发布不触发取消。`dispose()` 或施法输入的返回清理函数释放装备订阅和输入监听，控制器从不修改注入的只读 signal。
 
+清洁扫把通过 `findActionEntity(model)` 从已有 action entity 注册表解析命中实体。建筑、墙、栅栏、地面物品、虫洞和可换肤植物在注册投影时提供 `reskinTarget`，其中的皮肤、脚点和有效性读取所属实体的当前状态；移除投影时一并清理。`ReskinActionController` 直接查询该注册表，应用层只注入装备、移动、动画和 FX 服务。未提供换肤操作的普通实体仍参加标签驱动的 `CASTSPELL` 选择，是否成功由提交帧的 `SpellCaster.CanCast` 决定。
+
 主程序通过 `ActionWorldContext.registerFrameTask` 注入 `registerFrontTask()`，不逐帧遍历所有手部动作控制器。锤子、镐、干草叉、铲子、园艺锄、捕虫网和清洁扫把在内部通过 `bindHandEquipmentUpdate()` 按装备 signal 注册／移除自己的帧任务，只有当前匹配工具的控制器参加物理更新前的逐帧调度。构造时同步当前装备，支持读档后已装备的工具；同一身份重复发布不重复注册。卸装、替换或换肤时先移除旧任务并取消旧动作，再根据最新 signal 注册任务，`dispose()` 同时移除任务和订阅。法杖施法仍由输入事件及状态图时间线驱动，无需独立帧任务。未注入调度服务的独立宿主可显式调用控制器的 `update()`。
 
 前置任务按本帧快照执行。注册函数返回的移除回调会同时停用任务包装函数，确保帧中换装不会执行已缓存的旧任务，也不会因数组变化跳过其他任务；新注册的任务从下一帧开始执行。

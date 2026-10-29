@@ -10,7 +10,6 @@ import { createArchiveEntity } from './prefabInstance';
 import { turfTileName } from './turfs';
 import { TurfMap } from './turfMap';
 import { TILE_SIZE } from './tile';
-import { PreloadSounds } from './sound';
 import type { WorldContext } from './worldContext';
 
 export interface TurfSource {
@@ -73,7 +72,7 @@ export class TurfDeployment {
     this.target = new THREE.Vector3(centre.x, 0, centre.z);
     this.source = source;
     const version = this.version;
-    void Promise.all([this.turf.prepareTurf(name), PreloadSounds('dontstarve/wilson/dig')]).then(() => {
+    void this.turf.prepareTurf(name).then(() => {
       if (!this.disposed && version === this.version) this.ready = true;
     }).catch((error: unknown) => {
       if (version === this.version) this.cancel();

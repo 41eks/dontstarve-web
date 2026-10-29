@@ -151,7 +151,7 @@ it('keeps logical growth while unloaded and stops growth when chopping or diggin
     expect(target.entity.components.workable!.WorkedBy({}, 8)).toBe(true);
     expect(s.forest.exportState(tree)).toEqual({ moonTree: { size: 'short', stump: true }, growable: { stage: 1 },
       moonTreeTimer: { timers: { decay: { timeleft: 14400, initial_time: 14400, paused: false } } } });
-    expect(s.forest.miniMapEntities[0].icon).toBe('moon_tree_stump.png');
+    expect(prefabInstance(tree.model!)!.minimap.icon).toBe('moon_tree_stump.png');
     s.scheduler.advance(5000);
     expect(s.forest.digTargets[0].dig()).toBe(true);
     const sapling = s.forest.spawnSapling(new THREE.Vector3(5, 0, 0));
@@ -206,9 +206,9 @@ it('restores a paused moon-tree decay timer while unloaded, then removes its log
     const timer = { timers: { decay: { timeleft: 10, initial_time: 200, paused: true } } };
     const tree = s.forest.spawn('moon_tree_short', new THREE.Vector3(300, 0, 0), { id: 'moon-stump',
       transform: { position: [300, 0, 0], rotationY: 0 }, components: { moonTree: { size: 'short', stump: true }, growable: { stage: 1 }, moonTreeTimer: timer } });
-    const icon = s.forest.miniMapEntities[0];
+    const icon = prefabInstance(tree.model!)!.minimap;
     expect(tree.model.userData.animationController.loaded).toBe(false);
-    expect(icon).toMatchObject({ icon: 'moon_tree_stump.png', priority: -1, position: tree.position });
+    expect(icon).toMatchObject({ icon: 'moon_tree_stump.png', priority: -1 });
     s.scheduler.advance(20);
     const state = s.forest.exportState(tree);
     expect(state.moonTreeTimer).toEqual(timer);
@@ -221,7 +221,7 @@ it('restores a paused moon-tree decay timer while unloaded, then removes its log
     tree.model.userData.components.timer.ResumeTimer('decay');
     s.scheduler.advance(10);
     expect(s.forest.entities).toEqual([]);
-    expect(s.forest.miniMapEntities).toEqual([]);
+    expect(prefabInstance(tree.model!)!.isRemoved).toBe(true);
     expect(icon.enabled).toBe(false);
   } finally { s.dispose(); }
 });

@@ -41,9 +41,9 @@ test('map right clicks teleport across ocean for free, release autopause once an
   }, Object.fromEntries(['main', 'player', 'camera', 'autopause', 'playerStats'].map(name => [name, url(name)])));
   const snapshot = () => page.evaluate(() => {
     const p = (window as any).mapHop;
-    return { x: p.player.position.x, z: p.player.position.z, state: p.player.userData.stategraph.stateName,
+    return { x: p.player.position.x, z: p.player.position.z, state: (window as any).__prefabInstance(p.player).animationController.stategraph.stateName,
       paused: p.IsAutopaused(), open: p.map.isOpen, mask: p.playerBody.collisionFilterMask, invincible: p.stats.health.invincible,
-      wortox: p.player.userData.wortox.OnSave(), consumptions: p.consumptions, snaps: p.snaps };
+      wortox: (window as any).__prefabInstance(p.player).wortox.OnSave(), consumptions: p.consumptions, snaps: p.snaps };
   });
   const open = async () => {
     await page.keyboard.press('m');
@@ -132,8 +132,8 @@ test('empty-inventory right clicks soul-hop, show Soul Echo, preserve counters o
   };
   const snapshot = () => page.evaluate(() => {
     const { player, playerBody, stats, view } = (window as any).soulHop;
-    return { x: player.position.x, z: player.position.z, state: player.userData.stategraph.stateName,
-      freehops: player.userData.wortox.freeHops.peek(), timer: player.userData.wortox.echoTimer.peek().status,
+    return { x: player.position.x, z: player.position.z, state: (window as any).__prefabInstance(player).animationController.stategraph.stateName,
+      freehops: (window as any).__prefabInstance(player).wortox.freeHops.peek(), timer: (window as any).__prefabInstance(player).wortox.echoTimer.peek().status,
       invincible: stats.health.invincible, mask: playerBody.collisionFilterMask,
       action: view.mouseActions.getMouseActions().right?.action };
   });

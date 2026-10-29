@@ -11,6 +11,10 @@ import { bindTestWorld } from './worldContentFixture';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
+async function waitForVisual(model: THREE.Object3D): Promise<void> {
+  for (let attempt = 0; attempt < 30 && !prefabInstance(model)!.sprite.loaded; attempt++) await settle();
+  expect(prefabInstance(model)!.sprite.loaded).toBe(true);
+}
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
@@ -34,6 +38,7 @@ it('releases rock, skeleton and houndbone sprites outside the tickingarea and re
     const skeleton = await skeletons.spawn('skeleton', new THREE.Vector3(8, 0, 6));
     const bone = await bones.spawn(new THREE.Vector3(12, 0, 6));
     const models = [rock, skeleton, bone];
+    await Promise.all(models.map(waitForVisual));
     const records = [rocks.exportRecords(), skeletons.exportRecords(), bones.exportRecords()];
     const colour = (meshes(rock)[0].material as THREE.MeshBasicMaterial[])[0].color.r;
     const hammer = skeletons.hammerTargets[0];
@@ -49,6 +54,7 @@ it('releases rock, skeleton and houndbone sprites outside the tickingarea and re
     expect(hammer.isValid()).toBe(true);
     content.camerarotation.set(rotation);
     awake.set(true); await settle();
+    await Promise.all(models.map(waitForVisual));
     rocks.update(0, rotation); skeletons.update(0, rotation); bones.update(0, rotation);
     for (const model of models) {
       expect(prefabInstance(model)!.status.peek()).toBe('active');

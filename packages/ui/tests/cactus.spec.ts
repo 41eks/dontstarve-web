@@ -24,7 +24,7 @@ test('picking a spawned cactus hurts through the worn dreadstone hat, flinches, 
     const { player, playerBody } = await import(urls.player), { playerStats } = await import(urls.playerStats);
     playerBody.position.set(0, playerBody.shapes[0].radius, 0); playerBody.velocity.set(0, 0, 0); player.position.set(0, 0, 0);
     (window as any).cactusGame = { inventory, scene, view, player, playerStats, states: [] as string[] };
-    const { stategraph } = player.userData.animationController;
+    const { stategraph } = (window as any).__prefabInstance(player).animationController;
     stategraph.listenForEvent('newstate', () => (window as any).cactusGame.states.push(stategraph.stateName));
   }, urls);
   const submit = (command: string) => page.evaluate(command => document.querySelector('dst-debug-console')!.dispatchEvent(

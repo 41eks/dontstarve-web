@@ -8,7 +8,6 @@ import { WILSON_RUN_SPEED } from '../../componets/src/slipperyfeet';
 import { actionEntity } from './actionEntity';
 import { WORLD_SCALE } from './standardcomponents';
 import { newEntityId } from './saveRecord';
-import { MiniMapEntity } from './minimapEntity';
 import { createPrefabEntity, prefabInstance } from './prefabInstance';
 import type { PrefabDisplay } from '@dontstarve-web/display';
 
@@ -47,7 +46,6 @@ export const POND_FREEZE_SNOWLEVEL = .02;
 export class PondManager {
   private factoryRequest?: Promise<AnimatedSpriteFactory>;
   private readonly ponds = new Set<THREE.Group>();
-  private readonly minimaps = new Map<THREE.Group, MiniMapEntity>();
   private readonly scene: THREE.Scene;
   private readonly assetBaseUrl: string;
   private readonly snowLevel?: WorldContentSignal<number>;
@@ -120,9 +118,8 @@ export class PondManager {
     fishable.OnLoad(saved?.components.fishable);
     (entity.components as { fishable?: Fishable }).fishable = fishable;
     // pond.lua commonfn: MiniMapEntity:SetIcon("pond"..pondtype..".png"), pondtype "" for the forest pond.
-    const minimap = new MiniMapEntity(model.position);
+    const minimap = instance.minimap;
     minimap.SetIcon('pond.png');
-    this.minimaps.set(model, minimap);
     this.ponds.add(model);
     this.applyFrozen(model, false);
     this.scene.add(model);
@@ -136,7 +133,6 @@ export class PondManager {
     }
   }
 
-  get miniMapEntities(): MiniMapEntity[] { return [...this.minimaps.values()]; }
 
   /** Frozen ponds drop the `fishable` tag, so the fishing action no longer targets them. */
   get fishTargets(): readonly FishingPondTarget[] { return this.getFishTargets(); }
@@ -168,8 +164,6 @@ export class PondManager {
       prefabInstance(model)!.remove();
       (model.userData.display as PrefabDisplay).dispose();
     }
-    for (const minimap of this.minimaps.values()) minimap.dispose();
-    this.minimaps.clear();
     this.ponds.clear();
     void this.factoryRequest?.then((factory) => factory.dispose(), () => undefined);
   }

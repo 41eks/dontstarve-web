@@ -14,8 +14,9 @@ export async function checkToolSounds() {
     return source;
   };
   try {
-    const player = await createWilsonPlayer('/dst/data/anim');
-    const animation = player.userData.animationController as WilsonAnimationController;
+    const player = createWilsonPlayer('/dst/data/anim');
+    await player.userData.display.artLoaded();
+    const animation = (window as any).__prefabInstance(player).animationController as WilsonAnimationController;
     const cases = [];
     for (const [tool, random] of [['hammer', 0], ['hammer', 0.99], ['pickaxe', 0], ['goldenpickaxe', 0]] as const) {
       await animation.setCarryItem(tool);
@@ -76,8 +77,9 @@ export async function checkGatheringSounds() {
     return source;
   };
   try {
-    const player = await createWilsonPlayer('/dst/data/anim');
-    const animation = player.userData.animationController as WilsonAnimationController;
+    const player = createWilsonPlayer('/dst/data/anim');
+    await player.userData.display.artLoaded();
+    const animation = (window as any).__prefabInstance(player).animationController as WilsonAnimationController;
     const target = { hasTag: () => false };
     let committed = 0;
     animation.stategraph.pushBufferedAction(new BufferedAction('PICK', () => { committed++; }, () => true, { target }));

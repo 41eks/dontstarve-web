@@ -1,20 +1,19 @@
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
-import { preloadSharedArchiveSprite, ArchiveSpriteAssets } from '@dontstarve-web/animation/archiveSprite';
 import type { TileStateQuery } from '@dontstarve-web/signals';
 import type { PickaxeTarget } from '@dontstarve-web/stategraphs/pickaxe';
 import { LootDropper } from '../../componets/src/lootdropper';
 import { Workable } from '../../componets/src/workable';
 import { WorldMigrator, type WorldMigratorShard } from '../../componets/src/worldmigrator';
 import { modelEntries } from './modelRecords';
-import { MiniMapEntity } from './minimapEntity';
+import type { MiniMapState } from '../../map/src/minimapState';
 import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
 import { MakeObstaclePhysics } from './standardcomponents';
 import type { SpawnGroundItem } from './groundPrefab';
-import { PlaySound, PreloadSounds } from './sound';
-import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
+import { PlaySound } from './sound';
+import { SpriteResources, type ArchiveSpriteCommands, type PrefabDisplay } from '@dontstarve-web/display';
 import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
 import { watchTileActivity } from './tileActivity';
 import catalog from './groundItems.json' with { type: 'json' };
@@ -59,14 +58,12 @@ export function isCaveEntranceId(value: string): value is CaveEntranceId {
 
 const NO_SHARD: WorldMigratorShard = { isWorldAvailable: () => false, isWorldFull: () => false, migratePlayer: () => {} };
 
-type SpriteSource = Awaited<ReturnType<typeof preloadSharedArchiveSprite>>;
-
 interface Entrance {
   prefab: CaveEntranceId;
   instance: PrefabInstance<ArchiveSpriteCommands>;
   display: PrefabDisplay;
   sprite: ArchiveSpriteCommands;
-  minimap: MiniMapEntity;
+  minimap: MiniMapState;
   workable?: Workable;
   stopActivity: () => void;
   stopMigration?: () => void;
@@ -77,10 +74,7 @@ interface Entrance {
 export class CaveEntranceManager {
   private readonly scene: THREE.Scene;
   private readonly world: CaveEntranceWorld;
-  private readonly assets = new ArchiveSpriteAssets();
-  /** One archive load serves both prefabs: `cave_entrance_open` replaces the closed entrance synchronously. */
-  private factory?: SpriteSource;
-  private loading?: Promise<SpriteSource>;
+  private readonly resources = new SpriteResources();
   private readonly entrances = new Map<THREE.Group, Entrance>();
   private disposed = false;
 
@@ -88,28 +82,18 @@ export class CaveEntranceManager {
     this.scene = scene; this.world = world;
   }
 
-  async spawn(prefab: CaveEntranceId, position: THREE.Vector3, saved?: CaveEntranceRecord): Promise<THREE.Group> {
+  spawn(prefab: CaveEntranceId, position: THREE.Vector3, saved?: CaveEntranceRecord): THREE.Group {
     if (this.disposed) throw new Error('Cave entrances have been disposed');
     if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError('Invalid cave entrance position');
-    const resources = await Promise.allSettled([this.loadSource(), PreloadSounds('dontstarve/wilson/rock_break')]);
-    const failed = resources.find(result => result.status === 'rejected');
-    if (failed || this.disposed || !this.factory) {
-      throw failed?.status === 'rejected' ? failed.reason : new Error('Cave entrances have been disposed');
-    }
     return this.create(prefab, position, saved);
   }
 
-  private loadSource() {
-    return this.loading ??= preloadSharedArchiveSprite(this.assets, { animationArchive: 'cave_entrance.zip', buildArchives: ['cave_entrance.zip'], bank: 'cave_entrance' })
-      .then(factory => this.factory = factory);
-  }
-
   /** closed: idle_closed; open: `no_access` until its worldmigrator reports an available destination. */
-  private createSprite(source: SpriteSource, prefab: CaveEntranceId): ReturnType<typeof createArchiveEntity> {
+  private createSprite(prefab: CaveEntranceId): ReturnType<typeof createArchiveEntity> {
     const open = prefab === CAVE_ENTRANCE_OPEN_ID;
     const clip = { name: open ? 'no_access' : 'idle_closed', loop: open };
-    const create = (current: { name: string; loop: boolean }) => source(current.name, current.loop, prefab);
-    const entity = createArchiveEntity(prefab, { create, initial: create(clip) }, { name: clip.name, held: !open, billboard: true }, prefab);
+    const entity = createArchiveEntity(prefab, this.resources.archive({ animationArchive: 'cave_entrance.zip',
+      buildArchives: ['cave_entrance.zip'], bank: 'cave_entrance' }), { name: clip.name, held: !open, billboard: true }, prefab);
     // PlayAnimation("idle_closed") plays once rather than resting on its last frame.
     if (!open) entity.instance.sprite.playOnce(clip.name);
     return entity;
@@ -117,14 +101,14 @@ export class CaveEntranceManager {
 
   private create(prefab: CaveEntranceId, position: THREE.Vector3,
     saved: CaveEntranceRecord | undefined): THREE.Group {
-    const { instance, display } = this.createSprite(this.factory!, prefab);
+    const { instance, display } = this.createSprite(prefab);
     const model = display.model, sprite = instance.sprite;
     model.position.set(position.x, 0, position.z);
     instance.entityId = saved?.id ?? newEntityId();
     instance.addTag('antlion_sinkhole_blocker');
     const inst = actionEntity(model, prefab);
     const entrance: Entrance = { prefab, instance, display, sprite, removed: false, stopActivity: () => {},
-      minimap: new MiniMapEntity(model.position) };
+      minimap: instance.minimap };
     entrance.minimap.SetIcon(prefab === CAVE_ENTRANCE_ID ? 'cave_closed.png' : 'cave_open.png');
     MakeObstaclePhysics(instance, PHYSICS_RADIUS);
     if (this.world.physics) instance.bindPhysics(this.world.physics);
@@ -189,7 +173,6 @@ export class CaveEntranceManager {
     }));
   }
 
-  get miniMapEntities(): MiniMapEntity[] { return [...this.entrances.values()].map(({ minimap }) => minimap); }
 
   get mineTargets(): PickaxeTarget[] { return this.getMineTargets(); }
 
@@ -211,7 +194,7 @@ export class CaveEntranceManager {
   private remove(model: THREE.Group): void {
     const entrance = this.entrances.get(model); if (!entrance) return;
     this.entrances.delete(model); model.userData.removed = true; entrance.removed = true;
-    entrance.minimap.dispose(); entrance.workable?.dispose();
+    entrance.workable?.dispose();
     entrance.stopActivity(); entrance.stopMigration?.(); entrance.instance.remove(); entrance.display.dispose();
   }
 
@@ -219,6 +202,6 @@ export class CaveEntranceManager {
     if (this.disposed) return;
     this.disposed = true;
     for (const model of [...this.entrances.keys()]) this.remove(model);
-    this.assets.dispose();
+    this.resources.dispose();
   }
 }

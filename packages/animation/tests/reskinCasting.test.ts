@@ -5,10 +5,13 @@ import { createPickupDoer, performPickupAction } from '../../stategraphs/src/pic
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
+import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
 import { ReskinEffects, nextReskin } from '../../prefab/src/reskin_tool';
 import { type ReskinTarget } from '../../stategraphs/src/reskin_tool';
-import { ReskinActionController } from '../../stategraphs/src/reskin_tool';
+import { getReskinActionTarget, ReskinActionController } from '../../stategraphs/src/reskin_tool';
+import { actionEntity, disposeActionEntity } from '../../prefab/src/actionEntity';
+import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
+import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { createEquipmentExistenceState } from '../../signals/src';
 import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
 import { TREASURE_CHEST_DEFINITION } from '../../prefab/src/treasurechest';
@@ -40,7 +43,7 @@ function advance(animation: WilsonAnimationController, frames: number) {
 
 it('casts at source frame nine once and cancels before commitment on unequip or another action', async () => {
   const player = await createWilsonPlayer('/dst/data/anim');
-  const animation = player.userData.animationController as WilsonAnimationController;
+  const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
   await animation.setCarryItem('reskin_tool');
   const cast = vi.fn();
   expect(animation.playReskin(cast)).toBe(true);
@@ -136,6 +139,7 @@ it('cycles building skins while preserving the open container root, identity, st
   const record = { id: 'e_open_chest', transform: { position: [3, 0, 4] as const, rotationY: 0 },
     components: { building: { state: 'open' as const }, container: { slotCount: 9, slots: [] } } };
   const root = await placement.spawnFromSave('treasurechest', record);
+  expect(getReskinActionTarget(root)).toBe(placement.reskinTargets[0]);
   const skins = Object.keys(TREASURE_CHEST_DEFINITION.skinArchives!);
   const change = await placement.reskinTargets[0].prepareNextSkin();
   expect(placement.exportRecords()[0].record.components.building?.skinId).toBeUndefined();
@@ -179,7 +183,8 @@ it('reskins dropped items without changing their count or entity ID and preserve
   expect(change.apply(fx)).toBe(true);
   expect(fx.play).toHaveBeenCalledExactlyOnceWith(new THREE.Vector3(3, 0, 4), 'greenstaff');
   change.dispose();
-  expect(first.isValid()).toBe(false);
+  expect(first.isValid()).toBe(true);
+  expect(manager.reskinTargets[0]).toBe(first);
   expect(manager.exportRecords()[0]).toMatchObject({ id: 'e_staff', transform: { position: [3, 0, 4] },
     components: { stack: { itemId: 'greenstaff', count: 1, remainingUses: 4, skinId: 'greenstaff_an' } } });
   expect(manager.reskinTargets[0].isValid()).toBe(true);
@@ -194,16 +199,21 @@ it('reskins dropped items without changing their count or entity ID and preserve
   expect(manager.exportRecords()).toEqual([]);
 });
 
-it('selects an unskinnable target by tags and fails at the cast frame without changing it', async () => {
+it('selects a registered entity without a manager provider, honors nomagic and fails an unskinnable cast at impact', async () => {
   const world = setupWorld();
+  Object.assign(world.renderer.domElement, { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) });
+  world.camera.position.set(0, 2, 8); world.camera.lookAt(0, 0, 0); world.camera.updateMatrixWorld();
+  const picker = world.mouseActions = new PlayerActionPicker(new PointerRaycaster(world));
+  const model = new THREE.Group();
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+  model.add(mesh); world.scene.add(model);
+  const entity = actionEntity(model, 'twigs');
+  const target = getReskinActionTarget(model)!;
+  expect(target.skins).toEqual([]);
+  expect(target.prepareNextSkin).toBeUndefined();
   const equipped = createEquipmentExistenceState('HANDS');
   const tool = actionTool('reskin_tool');
   equipped.set(tool);
-  const prepareNextSkin = vi.fn();
-  const target: ReskinTarget = {
-    ...reskinEntityFields, skins: [], id: 'e_target', prefabId: 'twigs',
-    model: new THREE.Group(), position: new THREE.Vector3(1, 0, 0), isValid: () => true, prepareNextSkin,
-  };
   let commit: (() => void) | undefined;
   const animation = {
     isReskinning: false, cancelEmote: vi.fn(), setFacing: vi.fn(),
@@ -213,20 +223,28 @@ it('selects an unskinnable target by tags and fails at the cast frame without ch
   const fx = { play: vi.fn(), dispose: vi.fn() };
   const effects = { prepare: vi.fn(async () => fx) };
   const controller = new ReskinActionController(world, animation as unknown as WilsonAnimationController,
-    { stop: vi.fn(), goToPoint: vi.fn(() => true), destination: undefined }, equipped, () => [target], effects);
+    { stop: vi.fn(), goToPoint: vi.fn(() => true), destination: undefined }, equipped, effects);
   try {
+    picker.pointer.trackPointer({ clientX: 50, clientY: 50 } as PointerEvent);
+    expect(picker.getMouseActions().right).toMatchObject({ action: 'CASTSPELL', modifier: 'RESKIN' });
+    entity.addTag('nomagic');
+    expect(picker.getMouseActions().right).toBeUndefined();
+    entity.removeTag('nomagic');
     expect(await controller.request(target)).toBe(true);
-    expect(prepareNextSkin).not.toHaveBeenCalled();
     controller.update(1 / 30);
     expect(animation.playReskin).toHaveBeenCalledOnce();
     commit!();
     expect(fx.play).not.toHaveBeenCalled();
     expect(fx.dispose).toHaveBeenCalledOnce();
     expect(tool.entity._cached_reskinname!.size).toBe(0);
-  } finally { controller.dispose(); }
+    model.userData.removed = true;
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(getReskinActionTarget(model)).toBeUndefined();
+    expect(target.isValid()).toBe(false);
+  } finally { controller.dispose(); picker.dispose(); disposeActionEntity(model); mesh.geometry.dispose(); mesh.material.dispose(); }
 });
 
-it.each(['unequip', 'while loading'])(
+it.each(['unequip', 'while loading', 'load failed'])(
   'discards pending work and emits no effect after %s cancellation', async (reason) => {
     const world = setupWorld();
     const equipped = createEquipmentExistenceState('HANDS');
@@ -236,18 +254,28 @@ it.each(['unequip', 'while loading'])(
     let release!: () => void;
     const blocked = new Promise<void>((resolve) => { release = resolve; });
     const target: ReskinTarget = { ...reskinEntityFields, id: 'e_target', prefabId: 'icebox', model: new THREE.Group(), position: new THREE.Vector3(1, 0, 0),
-      isValid: () => valid, prepareNextSkin: async () => { if (reason === 'while loading') await blocked; return { apply, dispose }; } };
+      isValid: () => valid, prepareNextSkin: async () => ({ skinId: 'icebox_crystal', apply, dispose }) };
+    const preloadSkin = vi.fn(async () => {
+      if (reason === 'while loading') await blocked;
+      if (reason === 'load failed') throw new Error('Skin load failed');
+    });
+    target.model.userData.display = { preloadSkin };
     let callback: (() => void) | undefined;
     const animation = { isReskinning: false, cancelEmote: vi.fn(), setFacing: vi.fn(),
       playReskin: vi.fn((cast: () => void) => { callback = cast; animation.isReskinning = true; return true; }),
       cancelReskin: vi.fn(() => { animation.isReskinning = false; }) };
     const fx = { play: vi.fn(), dispose: vi.fn() };
     const effects = { prepare: vi.fn(async () => fx) };
+    const onError = vi.fn();
     const controller = new ReskinActionController(world, animation as unknown as WilsonAnimationController,
       { stop: vi.fn(), goToPoint: vi.fn(() => true), destination: undefined }, equipped,
-      () => [target], effects, () => manual);
+      effects, () => manual, onError);
     const request = controller.request(target);
-    if (reason === 'while loading') { controller.cancel(); release(); expect(await request).toBe(false); }
+    if (reason === 'while loading') {
+      await vi.waitFor(() => expect(preloadSkin).toHaveBeenCalledWith('icebox_crystal'));
+      controller.cancel(); release(); expect(await request).toBe(false);
+    }
+    else if (reason === 'load failed') { expect(await request).toBe(false); expect(onError).toHaveBeenCalledOnce(); }
     else {
       expect(await request).toBe(true);
       controller.update(1 / 30);

@@ -204,7 +204,7 @@ describe('DST building skins', () => {
     await expect(placement.spawn(prefabId, 'missing_skin')).rejects.toThrow('Unsupported');
   });
 
-  it('commits prepared skins through the skin signal and releases cancelled or removed preparations once', async () => {
+  it('commits skins through the json without replacing the sprite and rejects cancelled or removed commits', async () => {
     vi.stubGlobal('window', new EventTarget());
     vi.stubGlobal('document', { createElement: () => ({ setAttribute: vi.fn(), style: {} }), body: { appendChild: vi.fn() } });
     const world = { scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(),
@@ -228,7 +228,9 @@ describe('DST building skins', () => {
     prepared.dispose();
     expect(changes).toEqual([signal.peek()]);
     expect(signal.peek()).toBeDefined();
-    expect(disposeOldGeometry).toHaveBeenCalledOnce();
+    await model.userData.display.artLoaded();
+    expect(meshOf(model)).toBe(originalMesh);
+    expect(disposeOldGeometry).not.toHaveBeenCalled();
     expect(placement.exportRecords()[0].record).toMatchObject({ id: 'lab:signal',
       transform: { position: [3, 0, 4], rotationY: 0 }, components: { building: { skinId: signal.peek() } } });
     const pending = await placement.reskinTargets[0].prepareNextSkin();

@@ -7,7 +7,7 @@ import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/grou
 import { createHandEquipmentLifecycle } from '../../prefab/src/handEquipment';
 import { HatEquipmentAssets, hatVisual } from '../../prefab/src/hats';
 import { backpackVisual } from '../../prefab/src/backpack';
-import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
+import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
 import { declaredSymbol, element, overrideArchives } from './animStateFixture';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
@@ -101,7 +101,7 @@ it("draws a follow hat's own animation from its bank once the owner's display ha
 
 it('lets a skin replaced before its load finishes only fill the cache: the player draws the current declaration', async () => {
   const player = await createWilsonPlayer('/dst/data/anim');
-  const animation = player.userData.animationController as WilsonAnimationController;
+  const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
   const mesh = player.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
   const drawn = () => mesh.geometry.groups.map(group => mesh.material[group.materialIndex!].name);
   try {

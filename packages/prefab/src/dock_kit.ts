@@ -10,7 +10,7 @@ import { createArchiveEntity } from './prefabInstance';
 const VALID_TINT = new THREE.Color(0x66ff66).toArray() as [number, number, number];
 const BLOCKED_TINT = new THREE.Color(0xff5555).toArray() as [number, number, number];
 import { BuildCursor } from './buildCursor';
-import { PlaySound, PreloadSounds } from './sound';
+import { PlaySound } from './sound';
 import { snapToTileCenter, TILE_SIZE } from './tile';
 import { TurfMap, WORLD_TILES, isLandTile } from './turfMap';
 import type { WorldContext } from './worldContext';
@@ -68,8 +68,7 @@ export class DockKitPlacement {
 
   private prepare(): Promise<void> {
     if (this.disposed) return Promise.reject(new Error('Dock kit placement has been disposed'));
-    this.prepareRequest ??= Promise.all([this.assets.loadAnimation('gridplacer.zip'), this.assets.loadBuild('gridplacer.zip'),
-      PreloadSounds(DOCK_DEPLOY_SOUND)]).then(() => undefined);
+    this.prepareRequest ??= Promise.all([this.assets.loadAnimation('gridplacer.zip'), this.assets.loadBuild('gridplacer.zip')]).then(() => undefined);
     void this.prepareRequest.catch(() => { this.prepareRequest = undefined; });
     return this.prepareRequest;
   }

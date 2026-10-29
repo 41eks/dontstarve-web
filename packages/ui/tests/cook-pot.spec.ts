@@ -93,7 +93,7 @@ test('cooks, reloads and harvests food with player input, preserving the empty p
   await page.reload(); await prepare();
   expect(await state()).toEqual({ id: record.id, animation: 'idle_full',
     stewer: { ...record.components.stewer, phase: 'done', remainingSeconds: 0 } });
-  const playerState = () => page.evaluate(() => (window as any).potGame.player.userData.animationController.stategraph.stateName);
+  const playerState = () => page.evaluate(() => (window as any).__prefabInstance((window as any).potGame.player).animationController.stategraph.stateName);
   const clickPot = async () => { const point = await potPoint(); await page.mouse.click(point.x, point.y); };
   await clickPot();
   await expect.poll(playerState).toBe('dolongaction');

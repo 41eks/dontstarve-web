@@ -40,7 +40,6 @@ export interface ActionAnimationController {
   readonly isCasting: boolean;
   readonly isNetting: boolean;
   readonly isFishing: boolean;
-  prepareFishing(): Promise<void>;
   playFish(onFish: () => void): boolean;
   cancelFishing(): void;
   bindFishing(fishing: import('./SGwilson.ts').WilsonFishingHost | undefined): void;
@@ -68,12 +67,9 @@ export interface ActionAnimationController {
   playPlant(onPlant: () => boolean): boolean;
   cancelFoodAction(): void;
   readonly isReading: boolean;
-  /** Load the READ state's art, FX and sounds for this book before buffering the action. */
-  prepareRead(book: BufferedActionObject): Promise<void>;
   playRead(book: BufferedActionObject, onRead: () => boolean): boolean;
   cancelRead(): void;
   readonly isPlayingInstrument: boolean;
-  prepareFlute(skinArchive?: string): Promise<void>;
   playFlute(instrument: BufferedActionObject, onPlay: () => boolean): boolean;
   cancelPlay(): void;
   setFacing(facing: 'up' | 'down' | 'side', mirrored?: boolean): void;

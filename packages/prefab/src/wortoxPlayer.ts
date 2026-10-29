@@ -6,12 +6,12 @@ import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { WilsonAnimationController, PlayerBody } from './player';
 import type { WorldContext } from './worldContext';
 import type { WorldFx } from './world_fx';
-import { PreloadSounds } from './sound';
 import { CHARACTER_COLLISION_MASK, WORLD_SCALE } from './standardcomponents';
 import { COLLISION, type PhysicsState } from '../../componets/src/physicsState';
 import { Wortox, type WortoxSave } from './wortox';
 import { isGroundTargetBlocked, placementEntities, type PlacementQuery } from './placementEntities';
 import { modelHasTag } from './prefabInstance';
+import { wilsonPlayerInstance } from './player';
 
 export interface WortoxPlayerOptions {
   world: WorldContext;
@@ -44,12 +44,7 @@ export class WortoxPlayer {
   private readonly right = new THREE.Vector3();
   private readonly up = new THREE.Vector3(0, 1, 0);
 
-  static async create(options: WortoxPlayerOptions): Promise<WortoxPlayer> {
-    await Promise.all([
-      options.fx.prepare('wortox_portal_jumpin_fx'), options.fx.prepare('wortox_portal_jumpout_fx'),
-      PreloadSounds('dontstarve/creatures/together/toad_stool/infection_post', 'dontstarve/characters/wortox/soul/spawn',
-        'dontstarve/characters/wortox/soul/hop_out', 'dontstarve/movement/bodyfall_dirt'),
-    ]);
+  static create(options: WortoxPlayerOptions): WortoxPlayer {
     return new WortoxPlayer(options);
   }
 
@@ -59,13 +54,15 @@ export class WortoxPlayer {
     const { world, body, animation, locomotor, inventory, scheduler, fx } = options;
     this.state = new Wortox(scheduler, inventory);
     this.state.OnLoad(options.saved);
-    world.player.userData.wortox = this.state;
-    world.player.userData.actionEntity?.addTag('soulstealer');
+    const instance = wilsonPlayerInstance(world.player);
+    instance.wortox = this.state;
+    instance.addTag('soulstealer');
     animation.bindSoulHop({
       tryToPortalHop: () => this.state.TryToPortalHop(inventory.EquipHasTag('heavy')),
       facePoint: position => this.facePoint(position),
       teleport: position => {
         world.player.position.copy(position);
+        instance.tileTracker.sync();
         options.physics.Teleport();
         body.velocity.set(0, 0, 0);
       },
@@ -76,7 +73,7 @@ export class WortoxPlayer {
     });
     this.input = new BlinkActionController(world, animation, locomotor, {
       canSoulHop: () => !this.disposed && !animation.isGhost && !animation.stategraph.isDead
-        && world.player.userData.controllerEnabled !== false && !modelHasTag(world.player, 'riding') && !inventory.GetActiveItem(),
+        && instance.controllerEnabled && !modelHasTag(world.player, 'riding') && !inventory.GetActiveItem(),
       canBlinkTo: position => this.canBlinkTo(position),
       canMapBlinkTo: position => this.canMapBlinkTo(position),
       hasSoulEcho: () => this.state.hasSoulEcho.peek(),
@@ -124,7 +121,7 @@ export class WortoxPlayer {
     this.options.animation.bindSoulHop(undefined);
     this.setPhysicsEnabled(true);
     this.state.dispose();
-    delete this.options.world.player.userData.wortox;
-    this.options.world.player.userData.actionEntity?.removeTag('soulstealer');
+    delete wilsonPlayerInstance(this.options.world.player).wortox;
+    wilsonPlayerInstance(this.options.world.player).removeTag('soulstealer');
   }
 }

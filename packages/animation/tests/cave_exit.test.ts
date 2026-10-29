@@ -15,7 +15,7 @@ it('renders the static cave_exit art as a solid obstacle and round-trips its rec
   const exits = new CaveExitManager(scene, { physics });
   try {
     const model = await exits.spawn(new THREE.Vector3(5, 0, 7));
-    expect(exits.miniMapEntities.map(({ icon }) => icon)).toEqual(['cave_open2.png']);
+    expect(lookupPrefabInstance(model)!.minimap.icon).toBe('cave_open2.png');
     expect(physics.bodies).toHaveLength(1);
     exits.update(0.1, new THREE.Quaternion());
     const [{ prefabId, record }] = exits.exportRecords();

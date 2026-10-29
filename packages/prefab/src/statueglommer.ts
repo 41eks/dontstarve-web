@@ -10,7 +10,7 @@ import { Inspectable } from '../../componets/src/dragonflySignatures';
 import { Leader, PointOfInterest } from '../../componets/src/statueglommerSignatures';
 import { Pickable } from './components/pickable';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { MiniMapEntity } from './minimapEntity';
+import type { MiniMapState } from '../../map/src/minimapState';
 import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
 import { MakeObstaclePhysics, WORLD_SCALE } from './standardcomponents';
 import { actionEntity } from './actionEntity';
@@ -44,7 +44,7 @@ interface Statue {
   lootdropper?: LootDropper;
   pickable: Pickable;
   hauntable: Hauntable;
-  minimap: MiniMapEntity;
+  minimap: MiniMapState;
   spawned: boolean;
   stopActivity: () => void;
 }
@@ -79,7 +79,7 @@ export class StatueGlommerManager {
     instance.sprite.playOnce('full');
     instance.sprite.setSymbolHidden('swap_flower', true);
     const inst = actionEntity(model, STATUEGLOMMER_ID);
-    const minimap = new MiniMapEntity(model.position);
+    const minimap = instance.minimap;
     minimap.SetIcon('statueglommer.png');
     minimap.SetPriority(5);
     const pickable = new Pickable(model, 'glommerflower', undefined, 1, undefined, undefined,
@@ -132,7 +132,6 @@ export class StatueGlommerManager {
   update(dt: number): void { for (const { instance } of this.statues.values()) instance.sprite.update(dt); }
   get renderEntities() { return [...this.statues].filter(([, statue]) => statue.instance.sprite.loaded)
     .map(([object]) => ({ object, footPosition: object.position, cameraDepth: 0 })); }
-  get miniMapEntities(): MiniMapEntity[] { return [...this.statues.values()].map(({ minimap }) => minimap); }
   exportRecords(): { prefabId: typeof STATUEGLOMMER_ID; record: StatueGlommerRecord }[] {
     return [...this.statues].map(([model, statue]) => ({ prefabId: STATUEGLOMMER_ID, record: {
       id: String(statue.instance.entityId),
@@ -153,7 +152,7 @@ export class StatueGlommerManager {
     this.disposed = true;
     for (const [model, statue] of this.statues) {
       statue.stopActivity(); statue.pickable.dispose(); statue.workable?.dispose(); statue.hauntable.dispose();
-      statue.minimap.dispose(); model.userData.removed = true; statue.instance.remove();
+      model.userData.removed = true; statue.instance.remove();
     }
     this.statues.clear(); this.assets.dispose();
   }

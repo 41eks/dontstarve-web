@@ -4,7 +4,8 @@ import { createWilsonPlayer, type WilsonAnimationController } from '@dontstarve-
 import type { PrefabDisplay } from '../../display/src';
 
 export async function renderHatCatalog(): Promise<void> {
-  const player = await createWilsonPlayer('/dst/data/anim');
+  const player = createWilsonPlayer('/dst/data/anim');
+  await player.userData.display.artLoaded();
   player.position.set(0, 0, 0);
   const scene = new THREE.Scene();
   scene.add(player);
@@ -19,7 +20,7 @@ export async function renderHatCatalog(): Promise<void> {
   gallery.style.cssText = 'display:grid;grid-template-columns:repeat(9,144px);width:1296px';
   document.body.append(gallery);
   for (const id of [null, ...HAT_IDS]) {
-    (player.userData.animationController as WilsonAnimationController).setHat(id);
+    ((window as any).__prefabInstance(player).animationController as WilsonAnimationController).setHat(id);
     await (player.userData.display as PrefabDisplay).artLoaded();
     renderer.render(scene, camera);
     const card = document.createElement('div');

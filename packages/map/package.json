@@ -9,7 +9,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@dontstarve-web/animation": "workspace:*",
     "@dontstarve-web/prefab": "workspace:*",
+    "@dontstarve-web/signals": "workspace:*",
     "@dontstarve-web/ui": "workspace:*"
   },
   "peerDependencies": {

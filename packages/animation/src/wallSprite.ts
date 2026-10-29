@@ -15,6 +15,7 @@ import {
 } from './animationAssets';
 import { registerSpriteRenderGroup } from './renderOrder';
 import type { TransientSpriteAnimationController } from './sprite';
+import type { SymbolBuild } from './animState';
 
 /** Extra symbol drawn over the main one; `imageIndices` pairs positionally with the main list. */
 export interface StaticSpriteOverlay {
@@ -44,6 +45,7 @@ export interface StaticSpriteOptions {
 }
 
 export interface StaticSpriteController extends TransientSpriteAnimationController {
+  setSkin(skin: SymbolBuild | undefined): void;
   /** Switches to another of the sprite's `imageIndices` frames. */
   showImage(imageIndex: number): void;
   setFacing(facing: number): void;
@@ -64,14 +66,17 @@ const IDENTITY_MATRIX: Matrix2D = [1, 0, 0, 1, 0, 0];
 /** Static wall poses with optional directional hit animation feedback. */
 class StaticSprite implements StaticSpriteController {
   private readonly renderer: SpriteFrameRenderer;
-  private readonly frames: ReadonlyMap<number, ResolvedSprite[]>;
+  private frames: ReadonlyMap<number, ResolvedSprite[]>;
+  private readonly baseFrames: ReadonlyMap<number, ResolvedSprite[]>;
+  private readonly baseBuild: SymbolBuild;
+  private skin?: SymbolBuild;
   private imageIndex?: number;
   private onComplete?: () => void;
   private facing?: number;
   private clip?: Animation;
   private poseName?: string;
   private elapsed = 0;
-  private readonly builds: readonly { build: ParsedBuild; materials: THREE.MeshBasicMaterial[] }[];
+  private builds: readonly SymbolBuild[];
   private readonly animations?: ParsedAnim;
   private readonly restAnimation?: string;
   private readonly frameCache?: FrameGeometryCache;
@@ -88,6 +93,8 @@ class StaticSprite implements StaticSpriteController {
   ) {
     this.frameCache = frameCache;
     this.builds = builds;
+    this.baseBuild = builds[builds.length - 1];
+    this.baseFrames = frames;
     this.animations = animations;
     this.restAnimation = restAnimation;
     this.renderer = new SpriteFrameRenderer(visual);
@@ -98,6 +105,19 @@ class StaticSprite implements StaticSpriteController {
   start() {}
   get currentAnimation(): string { return this.clip?.name ?? this.poseName ?? this.restAnimation ?? ''; }
   get pose(): string | undefined { return this.poseName; }
+
+  setSkin(skin: SymbolBuild | undefined): void {
+    if (skin === this.skin && this.builds.length === (skin ? 2 : 1)) return;
+    this.skin = skin;
+    this.builds = skin ? [skin, this.baseBuild] : [this.baseBuild];
+    this.frames = new Map([...this.baseFrames].map(([index, parts]) => [index, parts.map(part => {
+      const { imageHash, imageIndex } = part.element;
+      const source = this.builds.find(({ build }) => findImage(build, imageHash, imageIndex));
+      return source ? { ...part, image: findImage(source.build, imageHash, imageIndex)!, materials: source.materials } : part;
+    })]));
+    if (this.clip) this.showAnimationFrame(Math.min(this.clip.frames.length - 1, Math.floor(this.elapsed * this.clip.frameRate)));
+    else this.showRest();
+  }
 
   setPose(name: string | undefined) {
     if (name !== undefined && this.animations) this.findAnimation(name);
@@ -178,7 +198,8 @@ class StaticSprite implements StaticSpriteController {
 
   private show(key: string, resolve: () => ResolvedSprite[]): void {
     if (!this.frameCache) { this.renderer.show(resolve()); return; }
-    const frame = this.frameCache.get(key, resolve);
+    const appearance = this.builds.map(source => this.frameCache!.idOf(source.build)).join(',');
+    const frame = this.frameCache.get(`${appearance}:${key}`, resolve);
     this.renderer.showShared(this.privateMaterials.size === 0 ? frame : {
       ...frame, materials: frame.materials.map(material => this.privateMaterials.get(material) ?? material),
     });

@@ -9,7 +9,7 @@ import { overrideArchives } from './animStateFixture';
 import { BugNetCaptureController, type ButterflyCaptureTarget } from '../../stategraphs/src/bugnet';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { createGroundItemVisual } from './groundItemVisual';
-import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
+import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src/slots';
 import { Locomotor } from '../../prefab/src/locomotor';
@@ -108,7 +108,7 @@ describe('original bugnet assets and Wilson action', () => {
     bugnetVisual({ id: 'bugnet', prefab: 'bugnet', skinId: 'bugnet_frog' }).onequip({ AnimState: anim, PushEvent() {} });
     expect(overrideArchives(anim, 'swap_object')).toEqual([GROUND_ITEM_DEFINITIONS.bugnet.skinArchives.bugnet_frog, 'swap_bugnet.zip']);
     const player = await createWilsonPlayer('/anim');
-    const controller = player.userData.animationController as WilsonAnimationController;
+    const controller = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
     controller.setCarryItem('bugnet');
     const mesh = player.getObjectByProperty('isMesh', true) as THREE.Mesh;
     // The player's display loads the named swap build, then draws it.
@@ -120,7 +120,7 @@ describe('original bugnet assets and Wilson action', () => {
   it('plays pre then swing, performs NET at frame 10 once and cancels on unequip', async () => {
     useRealAssets();
     const player = await createWilsonPlayer('/anim');
-    const controller = player.userData.animationController as WilsonAnimationController;
+    const controller = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
     const capture = vi.fn();
     expect(controller.playBugNet(capture)).toBe(false);
     await controller.setCarryItem('bugnet');
@@ -146,7 +146,7 @@ describe('original bugnet assets and Wilson action', () => {
     useRealAssets();
     const player = await createWilsonPlayer('/anim');
     player.position.set(0, 0, 0);
-    const animation = player.userData.animationController as WilsonAnimationController;
+    const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
     await animation.setCarryItem('bugnet');
     const body = new CANNON.Body({ mass: 1, shape: new CANNON.Sphere(0.5), linearDamping: 0 }) as PlayerBody;
     body.position.y = 0.5;

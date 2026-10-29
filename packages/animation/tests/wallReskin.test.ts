@@ -52,21 +52,23 @@ it.each(['wall_stone', 'wall_dreadstone'] as WallId[])(
         const target = placement.reskinTargets[0];
         const release = vi.spyOn(model.children[0].userData.animationController, 'dispose');
         const previousSkin = skin.peek();
+        const created = artFactory.mock.calls.length;
         const prepared = await target.prepareNextSkin();
-        expect(artFactory).toHaveBeenCalled();
+        expect(artFactory).toHaveBeenCalledTimes(created);
         expect(skin.peek()).toBe(previousSkin);
         placement.hammerTargets[0].playHit();
         placement.update(1 / 30);
         expect(prepared.apply()).toBe(true);
         expect(prepared.apply()).toBe(false);
         prepared.dispose();
+        await model.userData.display.artLoaded();
         expect(skin.peek()).toBe(skinId);
         expect(model.userData.skinIdSignal).toBe(skin);
         expect(changed).toHaveBeenLastCalledWith(skinId, previousSkin);
         for (const [name, component] of Object.entries(components)) expect(model.userData.components[name]).toBe(component);
         // walls.lua resolveanimtoplay: 123 / 400 health is at most 40%, the onequarter pose.
         expect(model.userData.animationController.currentAnimation).toBe('onequarter_hit');
-        expect(release).toHaveBeenCalledOnce();
+        expect(release).not.toHaveBeenCalled();
         for (let frame = 0; frame < 60; frame++) placement.update(1 / 30);
         expect(model.userData.animationController.currentAnimation).toBe('onequarter');
         expect(lookupPrefabInstance(model)?.skinId).toBe(skinId);
@@ -130,23 +132,18 @@ it('maps every inventory wall skin to the correct world build and consumes the s
   } finally { placement.dispose(); }
 });
 
-it('releases canceled and obsolete entity visuals, retains their shared source, and disposes a late source after shutdown', async () => {
+it('keeps the wall sprite when a skin commit is cancelled or superseded and releases it on removal', async () => {
   const { world, placement } = setup();
   const model = await placement.spawnFromSave('wall_hay', { id: 'hay', transform: { position: [0, 0, 0], rotationY: 0 }, components: {} });
   const target = placement.reskinTargets[0];
   const skin = model.userData.skinIdSignal as ReadonlySignal<string | undefined>;
-  const createSource = wallSprites.createStaticSpriteFactory;
   const sources = vi.spyOn(wallSprites, 'createStaticSpriteFactory');
-  sources.mockRejectedValueOnce(new Error('Skin load failed'));
-  await expect(target.prepareNextSkin()).rejects.toThrow('Skin load failed');
-  expect(skin.peek()).toBeUndefined();
+  const controller = model.children[0].userData.animationController;
+  const release = vi.spyOn(controller, 'dispose');
   const canceled = await target.prepareNextSkin();
-  const source = await sources.mock.results.at(-1)!.value;
-  const release = vi.spyOn(source, 'disposeSprite');
-  const dispose = vi.spyOn(source, 'dispose');
   canceled.dispose(); canceled.dispose();
-  expect(release).toHaveBeenCalledOnce();
-  expect(dispose).not.toHaveBeenCalled();
+  expect(skin.peek()).toBeUndefined();
+  expect(release).not.toHaveBeenCalled();
   expect(canceled.apply()).toBe(false);
   const first = await target.prepareNextSkin();
   const obsolete = await target.prepareNextSkin();
@@ -154,24 +151,15 @@ it('releases canceled and obsolete entity visuals, retains their shared source, 
   first.dispose();
   expect(obsolete.apply()).toBe(false);
   obsolete.dispose();
-  expect(dispose).not.toHaveBeenCalled();
-  await placement.spawnFromSave('wall_wood', { id: 'wood', transform: { position: [3, 0, 0], rotationY: 0 }, components: {} });
-  let finish!: () => void;
-  const blocked = new Promise<void>(resolve => { finish = resolve; });
-  let lateDispose: ReturnType<typeof vi.spyOn> | undefined;
-  sources.mockImplementationOnce(async (...args) => {
-    const late = await createSource(...args);
-    lateDispose = vi.spyOn(late, 'dispose');
-    await blocked;
-    return late;
-  });
-  const loading = placement.reskinTargets[1].prepareNextSkin();
-  const rejected = expect(loading).rejects.toThrow('Placement has been disposed');
+  await model.userData.display.artLoaded();
+  expect(model.children[0].userData.animationController).toBe(controller);
+  expect(sources).not.toHaveBeenCalled();
+  expect(release).not.toHaveBeenCalled();
+  // Directly changing the instance declaration follows the same display path.
+  lookupPrefabInstance(model)!.skinId = undefined;
+  await model.userData.display.artLoaded();
+  expect(skin.peek()).toBeUndefined();
   placement.dispose();
-  finish();
-  await rejected;
-  await new Promise(resolve => setTimeout(resolve, 0));
-  expect(dispose).toHaveBeenCalledOnce();
-  expect(lateDispose).toHaveBeenCalledOnce();
+  expect(release).toHaveBeenCalledOnce();
   expect(world.scene.children).toHaveLength(0);
 });

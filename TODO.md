@@ -9,6 +9,11 @@ wall sanity debuff
 
 createMemo 惰性
 
+packages/prefab/src/fence.ts skinID
+
+hammerTarget 没有用findentity
+sound层
+atrium地皮有写入深度
 
 
 prefab_id=""ruins_statue_mage""

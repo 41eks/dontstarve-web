@@ -47,10 +47,11 @@ export async function checkLanternLighting() {
     return pixel[0] + pixel[1] + pixel[2];
   };
   const baseline = await sample(0);
-  const player = await createWilsonPlayer('/dst/data/anim');
+  const player = createWilsonPlayer('/dst/data/anim');
+  await player.userData.display.artLoaded();
   player.position.set(0, 0, 0);
   scene.add(player);
-  const controller = player.userData.animationController as WilsonAnimationController;
+  const controller = (window as any).__prefabInstance(player).animationController as WilsonAnimationController;
   await controller.setCarryItem('lantern');
   const handEntity = new ItemEntity({ itemId: 'lantern', count: 1 });
   handEntity.configure(lanternSpec);

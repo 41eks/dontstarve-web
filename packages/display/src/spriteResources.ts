@@ -1,5 +1,5 @@
 import { ArchiveSpriteAssets, preloadSharedArchiveSprite, type ArchiveSpriteDefinition, type ArchiveSpriteOptions } from '@dontstarve-web/animation/archiveSprite';
-import { loadAnim, loadBuild, loadSpriteSkinArchive } from '@dontstarve-web/animation/animationAssets';
+import { loadSpriteSkinArchive } from '@dontstarve-web/animation/animationAssets';
 import { createSpriteFactory, SpriteController, type AnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
 import type { ArchiveSpriteSource } from './displayEngine';
 import type { LoadedSpriteSource, SpriteSource } from './prefabDisplay';
@@ -7,6 +7,10 @@ import type { LoadedSpriteSource, SpriteSource } from './prefabDisplay';
 type ArchiveDefinition = Omit<ArchiveSpriteDefinition, 'animation' | 'loop'>;
 type ArchiveOptions = Omit<ArchiveSpriteOptions, 'foot' | 'name' | 'sharedAnimations'>;
 interface FactoryDefinition { animationArchive: string; extraAnimationArchives?: readonly string[]; buildArchive: string; skinArchive?: string }
+
+export async function prewarmCachedBuilds(assets: ArchiveSpriteAssets, archives: readonly string[]): Promise<void> {
+  await Promise.all(archives.map(archive => assets.loadBuild(archive)));
+}
 
 /** A manager's shared display resources. Declaring a source performs no IO; its display loads it on demand. */
 export class SpriteResources {
@@ -54,8 +58,8 @@ export class SpriteResources {
       source = { peek: () => loaded, load: () => {
         if (this.disposed) return Promise.reject(new Error('Sprite resources disposed'));
         return pending ??= Promise.all([
-          loadBuild(definition.buildArchive, this.base),
-          Promise.all([definition.animationArchive, ...definition.extraAnimationArchives ?? []].map(file => loadAnim(file, this.base))),
+          this.archives.loadBuild(definition.buildArchive),
+          Promise.all([definition.animationArchive, ...definition.extraAnimationArchives ?? []].map(file => this.archives.loadAnimation(file))),
           definition.skinArchive ? loadSpriteSkinArchive(definition.skinArchive, this.base) : undefined,
         ]).then(([build, animations, skin]) => {
           const factory = createSpriteFactory(build, { animations: animations.flatMap(bank => bank.animations) }, controller, skin);
@@ -74,8 +78,8 @@ export class SpriteResources {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
-    this.archives.dispose();
     for (const factory of this.factories) factory.dispose();
+    this.archives.dispose();
     this.factories.clear(); this.archiveSources.clear(); this.factorySources.clear();
   }
 }

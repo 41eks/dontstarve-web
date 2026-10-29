@@ -5,7 +5,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { bindPhysics, GROUND_COLLISION_GROUP } from '../../componets/src/physicsBinding';
 import { COLLISION, PhysicsState } from '../../componets/src/physicsState';
 import { CHARACTER_COLLISION_MASK, MakeCharacterPhysics, MakeGhostPhysics, WORLD_SCALE } from '../../prefab/src/standardcomponents';
-import { createWilsonPlayerPrefab, PLAYER_PHYSICS_RADIUS } from '../../prefab/src/player';
+import { createWilsonPlayerPrefab, PLAYER_PHYSICS_RADIUS } from './playerVisual';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));

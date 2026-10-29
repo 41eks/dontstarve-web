@@ -8,10 +8,10 @@ import { Trader, type TradeItem } from '../../componets/src/trader';
 import { PigKingStateGraph, type PigKingStateInst } from '../../stategraphs/src/SGpigking';
 import { actionEntity } from './actionEntity';
 import type { LootLaunch } from './lootFling';
-import { PlaySound, PreloadSounds } from './sound';
+import { PlaySound } from './sound';
 import { MakeObstaclePhysics } from './standardcomponents';
 import definitions from './definitions.json' with { type: 'json' };
-import { MiniMapEntity } from './minimapEntity';
+import type { MiniMapState } from '../../map/src/minimapState';
 import { newEntityId } from './saveRecord';
 import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
 import { watchTileActivity } from './tileActivity';
@@ -40,7 +40,6 @@ export interface PigKingWorld {
 const TOSS_HEIGHT = 4.5;
 const TOSS_DELAY = 2 / 3;
 const GOLD = 'goldnugget';
-const SOUNDS = ['dontstarve/pig/PigKingThrowGold', 'dontstarve/pig/PigKingHappy', 'dontstarve/pig/PigKingReject'] as const;
 
 /** AnimState:PlayAnimation / PushAnimation: `animover` fires once the queued animations have all ended. */
 class PigKingAnimation {
@@ -76,7 +75,7 @@ class PigKing {
   readonly model: THREE.Group;
   readonly instance: PrefabInstance;
   readonly display: PrefabDisplay;
-  readonly minimap: MiniMapEntity;
+  readonly minimap: MiniMapState;
   /** pigking.lua trader: tags `trader` while enabled; GIVE discovers it through the actionEntity. */
   readonly trader: Trader<TradeItem>;
   readonly sg: PigKingStateGraph;
@@ -91,7 +90,7 @@ class PigKing {
     // MakeObstaclePhysics(inst, 2, .5): a static capsule on the feet origin.
     MakeObstaclePhysics(instance, 2, .5);
     instance.bindPhysics(world.physics);
-    this.minimap = new MiniMapEntity(model.position);
+    this.minimap = instance.minimap;
     this.minimap.SetIcon('pigking.png');
     this.minimap.SetPriority(1);
 
@@ -174,7 +173,7 @@ class PigKing {
     for (const cancel of [...this.tasks]) cancel();
     this.sg.dispose();
     this.trader.Disable();
-    this.minimap.dispose();
+
     this.model.userData.removed = true;
     this.instance.remove(); this.display.dispose();
   }
@@ -202,7 +201,7 @@ export class PigKingManager {
       this.factoryRequest = createAnimatedSpriteFactory(this.assetBaseUrl, definitions.pigKing.archive);
       void this.factoryRequest.catch(() => { this.factoryRequest = undefined; });
     }
-    const [factory] = await Promise.all([this.factoryRequest, PreloadSounds(...SOUNDS)]);
+    const factory = await this.factoryRequest;
     if (this.disposed) throw new Error('Pig kings have been disposed');
     // The art is lifted once so that its lowest point stands on the entity's feet.
     let lift: number | undefined;
@@ -239,7 +238,6 @@ export class PigKingManager {
       .map(({ model }) => ({ object: model, footPosition: model.position, cameraDepth: 0 }));
   }
 
-  get miniMapEntities(): MiniMapEntity[] { return [...this.kings.values()].map(({ minimap }) => minimap); }
 
   /** The king behind a spawned model, for its trader and stategraph. */
   get(model: THREE.Object3D): PigKing | undefined { return this.kings.get(model as THREE.Group); }

@@ -1,13 +1,12 @@
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
-import { preloadSharedArchiveSprite, ArchiveSpriteAssets } from '@dontstarve-web/animation/archiveSprite';
 import type { TileStateQuery } from '@dontstarve-web/signals';
 import { WorldMigrator, type WorldMigratorShard } from '../../componets/src/worldmigrator';
-import { MiniMapEntity } from './minimapEntity';
+import type { MiniMapState } from '../../map/src/minimapState';
 import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
 import { MakeObstaclePhysics } from './standardcomponents';
-import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
+import { SpriteResources, type ArchiveSpriteCommands, type PrefabDisplay } from '@dontstarve-web/display';
 import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
 import { watchTileActivity } from './tileActivity';
 
@@ -38,7 +37,7 @@ export interface CaveExitWorld {
 interface Exit {
   instance: PrefabInstance<ArchiveSpriteCommands>;
   display: PrefabDisplay;
-  minimap: MiniMapEntity;
+  minimap: MiniMapState;
   stopActivity: () => void;
   stopMigration: () => void;
 }
@@ -47,8 +46,7 @@ interface Exit {
 export class CaveExitManager {
   private readonly scene: THREE.Scene;
   private readonly world: CaveExitWorld;
-  private readonly assets = new ArchiveSpriteAssets();
-  private loading?: ReturnType<typeof preloadSharedArchiveSprite>;
+  private readonly resources = new SpriteResources();
   private readonly exits = new Map<THREE.Group, Exit>();
   private disposed = false;
 
@@ -56,20 +54,17 @@ export class CaveExitManager {
     this.scene = scene; this.world = world;
   }
 
-  async spawn(position: THREE.Vector3, saved?: CaveExitRecord): Promise<THREE.Group> {
+  spawn(position: THREE.Vector3, saved?: CaveExitRecord): THREE.Group {
     if (this.disposed) throw new Error('Cave exits have been disposed');
     if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError('Invalid cave exit position');
-    const source = await (this.loading ??= preloadSharedArchiveSprite(this.assets, { animationArchive: 'cave_exit.zip',
-      buildArchives: ['cave_exit.zip'], bank: 'cave_stairs' }));
-    if (this.disposed) throw new Error('Cave exits have been disposed');
-    const create = (clip: { name: string; loop: boolean }) => source(clip.name, clip.loop, CAVE_EXIT_ID);
     const clip = { name: 'open', loop: true };
-    const { instance, display } = createArchiveEntity(CAVE_EXIT_ID, { create, initial: create(clip) }, { name: clip.name, billboard: true }, CAVE_EXIT_ID);
+    const { instance, display } = createArchiveEntity(CAVE_EXIT_ID, this.resources.archive({ animationArchive: 'cave_exit.zip',
+      buildArchives: ['cave_exit.zip'], bank: 'cave_stairs' }), { name: clip.name, billboard: true }, CAVE_EXIT_ID);
     const model = display.model, sprite = instance.sprite;
     model.position.set(position.x, 0, position.z);
     instance.entityId = saved?.id ?? newEntityId();
     const inst = actionEntity(model, CAVE_EXIT_ID);
-    const exit: Exit = { instance, display, minimap: new MiniMapEntity(model.position), stopActivity: () => {}, stopMigration: () => {} };
+    const exit: Exit = { instance, display, minimap: instance.minimap, stopActivity: () => {}, stopMigration: () => {} };
     exit.minimap.SetIcon('cave_open2.png');
     MakeObstaclePhysics(instance, PHYSICS_RADIUS);
     if (this.world.physics) instance.bindPhysics(this.world.physics);
@@ -99,7 +94,6 @@ export class CaveExitManager {
     return [...this.exits.values()].map(({ display }) => ({ object: display.model, footPosition: display.model.position, cameraDepth: 0 }));
   }
 
-  get miniMapEntities(): MiniMapEntity[] { return [...this.exits.values()].map(({ minimap }) => minimap); }
 
   exportRecords(): { prefabId: typeof CAVE_EXIT_ID; record: CaveExitRecord }[] {
     return [...this.exits].map(([model, { instance }]) => ({ prefabId: CAVE_EXIT_ID, record: {
@@ -114,9 +108,9 @@ export class CaveExitManager {
     this.disposed = true;
     for (const [model, exit] of this.exits) {
       model.userData.removed = true;
-      exit.minimap.dispose(); exit.stopActivity(); exit.stopMigration(); exit.instance.remove(); exit.display.dispose();
+      exit.stopActivity(); exit.stopMigration(); exit.instance.remove(); exit.display.dispose();
     }
     this.exits.clear();
-    this.assets.dispose();
+    this.resources.dispose();
   }
 }
