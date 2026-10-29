@@ -67,18 +67,18 @@ const BASE_WALL_DEFINITIONS: Readonly<Record<WallId, WallDefinition>> = {
 };
 
 // walls.lua walldata with tuning.lua *WALL_HEALTH / *WALL_PLAYERDAMAGEMOD; health is independent of HAMMER work.
-const WALL_WORK_DEFINITIONS: Readonly<Record<string, Pick<WallDefinition, 'hammerWorkLeft' | 'hammerMaterial' | 'hammerLoot' | 'maxhealth' | 'playerdamagemod'>>> = {
-    wall_stone: { hammerMaterial: 'stone', hammerLoot: { itemId: 'rocks', maxCount: 2 }, maxhealth: 400 },
-    wall_stone_2: { hammerMaterial: 'stone', hammerLoot: { itemId: 'rocks', maxCount: 2 }, maxhealth: 400 },
-    wall_wood: { hammerMaterial: 'wood', hammerLoot: { itemId: 'log', maxCount: 2 }, maxhealth: 200 },
-    wall_hay: { hammerMaterial: 'straw', hammerLoot: { itemId: 'cutgrass', maxCount: 2 }, maxhealth: 100 },
-    wall_ruins: { hammerMaterial: 'stone', hammerLoot: { itemId: 'thulecite_pieces', maxCount: 2 }, maxhealth: 800 },
-    wall_ruins_2: { hammerMaterial: 'stone', hammerLoot: { itemId: 'thulecite_pieces', maxCount: 2 }, maxhealth: 800 },
-    wall_moonrock: { hammerWorkLeft: 25, hammerMaterial: 'stone', hammerLoot: { itemId: 'moonrocknugget', maxCount: 2 },
+const WALL_WORK_DEFINITIONS: Readonly<Record<string, Pick<WallDefinition, 'tags' | 'hammerWorkLeft' | 'hammerMaterial' | 'hammerLoot' | 'maxhealth' | 'playerdamagemod'>>> = {
+    wall_stone: { tags: ['stone'], hammerMaterial: 'stone', hammerLoot: { itemId: 'rocks', maxCount: 2 }, maxhealth: 400 },
+    wall_stone_2: { tags: ['stone'], hammerMaterial: 'stone', hammerLoot: { itemId: 'rocks', maxCount: 2 }, maxhealth: 400 },
+    wall_wood: { tags: ['wood'], hammerMaterial: 'wood', hammerLoot: { itemId: 'log', maxCount: 2 }, maxhealth: 200 },
+    wall_hay: { tags: ['grass'], hammerMaterial: 'straw', hammerLoot: { itemId: 'cutgrass', maxCount: 2 }, maxhealth: 100 },
+    wall_ruins: { tags: ['stone', 'ruins'], hammerMaterial: 'stone', hammerLoot: { itemId: 'thulecite_pieces', maxCount: 2 }, maxhealth: 800 },
+    wall_ruins_2: { tags: ['stone', 'ruins'], hammerMaterial: 'stone', hammerLoot: { itemId: 'thulecite_pieces', maxCount: 2 }, maxhealth: 800 },
+    wall_moonrock: { tags: ['stone', 'moonrock'], hammerWorkLeft: 25, hammerMaterial: 'stone', hammerLoot: { itemId: 'moonrocknugget', maxCount: 2 },
         maxhealth: 600, playerdamagemod: .25 },
-    wall_dreadstone: { hammerWorkLeft: 25, hammerMaterial: 'stone', hammerLoot: { itemId: 'dreadstone', maxCount: 2 },
+    wall_dreadstone: { tags: ['stone', 'dreadstone'], hammerWorkLeft: 25, hammerMaterial: 'stone', hammerLoot: { itemId: 'dreadstone', maxCount: 2 },
         maxhealth: 800, playerdamagemod: .25 },
-    wall_scrap: { hammerWorkLeft: 10, hammerMaterial: 'stone', hammerLoot: { itemId: 'wagpunk_bits', maxCount: 1 },
+    wall_scrap: { tags: ['stone', 'scrap'], hammerWorkLeft: 10, hammerMaterial: 'stone', hammerLoot: { itemId: 'wagpunk_bits', maxCount: 1 },
         maxhealth: 600, playerdamagemod: .25 },
 };
 

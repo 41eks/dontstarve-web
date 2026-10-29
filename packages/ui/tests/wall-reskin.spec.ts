@@ -82,7 +82,8 @@ test('a c_spawn wall accepts sweeper right-click, retains identity and saves its
   await page.evaluate(async url => { await import(url); }, urls.main);
   await expect.poll(() => page.evaluate(async ({ url, id }) => {
     const { scene } = await import(url);
-    return scene.children.find((model: any) => (window as any).__prefabInstance(model)?.entityId === id)?.userData.skinIdSignal?.peek();
+    const model = scene.children.find((model: any) => (window as any).__prefabInstance(model)?.entityId === id);
+    return (window as any).__prefabInstance(model)?.skinId;
   }, { url: urls.universal, id })).toBe('wall_stone_an');
   expect(errors).toEqual([]);
 });

@@ -12,6 +12,8 @@ import { AttackActionController } from '../../stategraphs/src/attack';
 import { Combat, type CombatInst } from '../../componets/src/combat';
 import { ItemEntity } from '../../inventory/src';
 import { PlaySound } from '../../prefab/src/sound';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { actionTargetModel } from '../../stategraphs/src/actionTargetView';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
 beforeEach(() => {
@@ -45,7 +47,8 @@ function attacker(position: THREE.Vector3, now: () => number, weapon?: ItemEntit
   return { inst, combat };
 }
 
-const pose = (model: THREE.Group) => model.userData.animationController.pose as string | undefined;
+const pose = (model: THREE.Group) => prefabInstance(model)!.sprite.sprite.peek().clip.pose?.name;
+const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 
 it('hammers out a middle wall once, invalidates stale targets and preserves the other walls and their export order', async () => {
   const { world, placement } = setup();
@@ -58,8 +61,9 @@ it('hammers out a middle wall once, invalidates stale targets and preserves the 
     }
     const before = placement.exportRecords();
     const target = placement.hammerTargets[1], combatTarget = placement.combatTargets[1], skinTarget = placement.reskinTargets[1];
+    await target.display!.artLoaded();
     const prepared = await skinTarget.prepareNextSkin();
-    const release = vi.spyOn(target.model.children[0].userData.animationController, 'dispose');
+    const release = vi.spyOn(actionTargetModel(target).children[0].userData.animationController, 'dispose');
     target.playHit(); target.playHit();
     expect(target.isValid()).toBe(true);
     expect(placement.exportRecords()).toEqual(before);
@@ -68,7 +72,7 @@ it('hammers out a middle wall once, invalidates stale targets and preserves the 
     expect(target.isValid()).toBe(false);
     expect(combatTarget.isValid()).toBe(false);
     expect(skinTarget.isValid()).toBe(false);
-    expect(target.model.parent).toBeNull();
+    expect(actionTargetModel(target).parent).toBeNull();
     expect(release).toHaveBeenCalledOnce();
     expect(prepared.apply()).toBe(false);
     prepared.dispose();
@@ -91,6 +95,7 @@ it('gives walls source health, player damage reduction, health poses, weapon wea
     await placement.spawnFromSave('wall_moonrock', { id: 'moonrock', transform: { position: [6, 0, -6], rotationY: 0 }, components: {} });
     placement.update();
     const [stoneTarget, moonrockTarget] = placement.combatTargets;
+    await placement.hammerTargets[0].display!.artLoaded();
     // walls.lua: SetMaxHealth(maxhealth) then SetCurrentHealth(maxhealth * .5); half is the static build image.
     expect(stoneTarget.inst.components.health!.OnSave()).toEqual({ health: 200, maxhealth: 400 });
     expect(pose(stone)).toBeUndefined();
@@ -105,7 +110,7 @@ it('gives walls source health, player damage reduction, health poses, weapon wea
     expect(stoneTarget.inst.components.health!.currenthealth).toBe(200 - 17);
     expect(hammer.components.finiteuses.remaining).toBe(74);
     expect(PlaySound).toHaveBeenCalledWith('dontstarve/common/destroy_stone', stone.position);
-    expect(stone.userData.animationController.currentAnimation).toBe('half_hit');
+    expect(prefabInstance(stone)!.sprite.currentAnimation).toBe('half_hit');
 
     // Moonrock walls absorb 25% of player damage; out-of-range attacks miss.
     expect(player.combat.DoAttack(moonrockTarget.inst)).toBe(true);
@@ -115,10 +120,12 @@ it('gives walls source health, player damage reduction, health poses, weapon wea
 
     // Below 40% the held pose follows the health signal; at zero the wall is broken and no longer a target.
     stoneTarget.inst.components.health!.SetVal(150);
+    await settle();
     for (let frame = 0; frame < 30; frame++) placement.update(1 / 30);
     expect(pose(stone)).toBe('onequarter');
     stoneTarget.inst.components.health!.SetVal(5);
     expect(player.combat.DoAttack(stoneTarget.inst)).toBe(true);
+    await settle();
     expect(stoneTarget.inst.components.health!.IsDead()).toBe(true);
     expect(pose(stone)).toBe('broken');
     expect(stoneTarget.isValid()).toBe(false);

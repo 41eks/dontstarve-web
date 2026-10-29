@@ -11,6 +11,7 @@ import type { AppearanceJson, ClipJson, NamedSpriteArt, SkinJson, SpriteJson, Sp
 import { smallHash, type ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
 import type { SpriteArtSource, SpriteSkin } from '@dontstarve-web/animation/sprite';
 import { resolveAnimState } from '@dontstarve-web/animation/animState';
+import { facingFromRotation, selectsFacing } from '@dontstarve-web/animation/facing';
 
 /** active: drawn and in the scene; asleep: nothing drawn and out of the scene; removed: everything released. */
 export type PrefabStatus = 'active' | 'asleep' | 'removed';
@@ -36,6 +37,8 @@ export interface PrefabDisplayOptions {
   readonly archive?: ArchiveSpriteSource;
   /** Transform-only entities have no art to load. The display still owns their model and lifecycle. */
   readonly empty?: boolean;
+  /** Keep the entity at its foot point, offsetting only its private drawn sprite. */
+  readonly alignBottom?: boolean;
   /** The entity's lifecycle, written by the logical side. */
   readonly status: ReadonlySignal<PrefabStatus>;
   /** A child shares its owner's tile residency; its own removed state still ends its display. */
@@ -45,6 +48,11 @@ export interface PrefabDisplayOptions {
   /** The entity's inst.Light declaration, listed for the renderer while the entity is active. */
   readonly light?: LightState;
 }
+
+const displaysByModel = new WeakMap<THREE.Object3D, PrefabDisplay>();
+
+/** Look up display-owned resources without writing references onto the model. */
+export function prefabDisplay(model: THREE.Object3D): PrefabDisplay | undefined { return displaysByModel.get(model); }
 
 /**
  * Draws one entity. It owns the model (the engine's root) and the drawn sprite, subscribes to the entity's `status` and `sprite` signals and
@@ -75,13 +83,14 @@ export class PrefabDisplay {
   private disposed = false;
   // The camera rotation the drawn sprite was turned to; a sprite drawn later is turned to it too.
   private facing: THREE.Quaternion | undefined;
+  private readonly cameraDirection = new THREE.Vector3();
   private asleep = false;
   private home: THREE.Object3D | undefined;
   // The owner may add the model to the scene after its tile was already found inactive.
   private readonly onAdded = () => { if (this.asleep) this.sleep(); };
   // What the controller has been given, so that each snapshot only sends what changed.
   private applied: { clip: ClipJson | undefined; queue: number; frame?: SpriteJson['frame']; transient?: SpriteJson['transient'];
-    image?: number; facing?: number; mirrored?: boolean; colour?: readonly number[]; opacity?: number; paused?: boolean; erosion?: number; ground?: SpriteJson['ground']; meshOrder?: number; depthOffset?: boolean;
+    image?: number; facingImages?: SpriteJson['facingImages']; facing?: number; facingRotation?: number; mirrored?: boolean; colour?: readonly number[]; opacity?: number; paused?: boolean; erosion?: number; ground?: SpriteJson['ground']; meshOrder?: number; depthOffset?: boolean;
     skinId?: string; source?: SpriteJson['source']; tint?: SpriteJson['tint']; appearance: ReadonlyMap<string, AppearanceJson> };
 
   constructor(options: PrefabDisplayOptions) {
@@ -93,7 +102,7 @@ export class PrefabDisplay {
     if (archive) {
       const clip = { name: first.clip.name, loop: !held, none: first.clip.none };
       const prepare = (drawn: import('@dontstarve-web/animation/archiveSprite').ArchiveSprite) => {
-        if (archive.alignBottom) {
+        if (archive.alignBottom || options.alignBottom) {
           drawn.model.updateWorldMatrix(true, true);
           const bounds = new THREE.Box3().setFromObject(drawn.model);
           drawn.model.children[0].position.y -= bounds.min.y;
@@ -107,8 +116,17 @@ export class PrefabDisplay {
       this.engine = new ArchiveEngine(new ResidentSprite(create, clip, archive.initial && prepare(archive.initial), options.name));
     } else if (source) {
       let ready = 'load' in source ? source.peek() : source;
-      this.engine = new ResidentSpriteController(new THREE.Group(), animation => ready?.create(animation),
-        drawn => ready!.release(drawn), ready?.create(first.clip.name, held ? 'last' : 'first'), { name: first.clip.name, held });
+      const create = (animation: string, frame?: 'first' | 'last') => {
+        const drawn = ready?.create(animation, frame);
+        if (drawn && options.alignBottom) {
+          drawn.updateWorldMatrix(true, true);
+          const bounds = new THREE.Box3().setFromObject(drawn);
+          if (!bounds.isEmpty()) drawn.position.y -= bounds.min.y;
+        }
+        return drawn;
+      };
+      this.engine = new ResidentSpriteController(new THREE.Group(), animation => create(animation),
+        drawn => ready!.release(drawn), create(first.clip.name, held ? 'last' : 'first'), { name: first.clip.name, held });
       if (options.name) this.engine.model.name = options.name;
       if (!ready && 'load' in source) this.sourceLoading = source.load().then(loaded => {
         this.sourceLoading = undefined;
@@ -173,6 +191,7 @@ export class PrefabDisplay {
       const camera = watchWorldContent(WorldContentKey.CameraRotation, stop => this.cleanups.push(stop), { active });
       this.cleanups.push(createRenderEffect(() => this.faceCamera(camera.get())));
     }
+    displaysByModel.set(this.model, this);
   }
 
   get model(): THREE.Group { return this.engine.model; }
@@ -211,11 +230,11 @@ export class PrefabDisplay {
   }
 
   /** Advance a display owned by a scene collection, including standalone camera-facing FX. */
-  update(dt: number, cameraRotation: THREE.Quaternion): void {
+  update(dt: number, cameraRotation?: THREE.Quaternion): void {
     if (this.disposed) return;
     this.applyStatus(this.status.peek());
     if (this.isRemoved || this.asleep) return;
-    if (this.json.peek().billboard) this.faceCamera(cameraRotation);
+    if (cameraRotation && this.json.peek().billboard) this.faceCamera(cameraRotation);
     this.state.update(dt);
     // Animation completion can remove the entity during this update.
     this.applyStatus(this.status.peek());
@@ -228,9 +247,24 @@ export class PrefabDisplay {
   /** A static archive billboard turns its drawn sprite; any other sprite turns with the model. */
   private faceCamera(rotation: THREE.Quaternion): void {
     if (this.disposed) return;
-    if (!this.engine.faceCamera) { this.model.quaternion.copy(rotation); return; }
     (this.facing ??= new THREE.Quaternion()).copy(rotation);
-    this.engine.faceCamera(this.facing);
+    if (this.engine.faceCamera) this.engine.faceCamera(this.facing);
+    else this.model.quaternion.copy(rotation);
+    this.applyFacing(this.json.peek());
+  }
+
+  private applyFacing(json: SpriteJson): void {
+    if (json.facingRotation !== undefined && this.facing) {
+      const direction = this.cameraDirection.set(0, 0, -1).applyQuaternion(this.facing);
+      const heading = THREE.MathUtils.radToDeg(Math.atan2(-direction.z, -direction.x));
+      const facing = facingFromRotation(json.facingRotation, heading);
+      const source = this.resolveSource(json.source);
+      const clips = source?.animations.animations.filter(clip => clip.name === json.clip.name && clip.bankHash === source.bank);
+      const clip = clips?.find(clip => clip.facing === facing) ?? clips?.find(clip => selectsFacing(clip.facing, facing).matches);
+      const image = json.facingImages && [...json.facingImages].find(([mask]) => (mask & facing) !== 0)?.[1];
+      if (image !== undefined) this.engine.showImage(image);
+      this.engine.setFacing(facing, clip ? selectsFacing(clip.facing, facing).flipped : false);
+    } else if (json.facing !== undefined) this.engine.setFacing(json.facing, json.mirrored);
   }
 
   private applyStatus(status: PrefabStatus): void {
@@ -289,9 +323,10 @@ export class PrefabDisplay {
     }
     if (json.transient !== applied.transient) { applied.transient = json.transient; if (json.transient) controller.playTransient(json.transient.name); }
     if (json.image !== applied.image) { applied.image = json.image; if (json.image !== undefined) controller.showImage(json.image); }
-    if (json.facing !== applied.facing || json.mirrored !== applied.mirrored) {
-      applied.facing = json.facing; applied.mirrored = json.mirrored;
-      if (json.facing !== undefined) controller.setFacing(json.facing, json.mirrored);
+    if (json.facing !== applied.facing || json.mirrored !== applied.mirrored || json.facingRotation !== applied.facingRotation || json.facingImages !== applied.facingImages) {
+      applied.facing = json.facing; applied.mirrored = json.mirrored; applied.facingRotation = json.facingRotation;
+      applied.facingImages = json.facingImages;
+      this.applyFacing(json);
     }
     if (json.colour !== applied.colour) { applied.colour = json.colour; if (json.colour) controller.setColour(json.colour); }
     if (json.opacity !== applied.opacity) { applied.opacity = json.opacity; if (json.opacity !== undefined) controller.setOpacity(json.opacity); }
@@ -331,7 +366,7 @@ export class PrefabDisplay {
     if (source) controller.setArtSource?.(source);
     if (this.facing) controller.faceCamera?.(this.facing);
     if (json.image !== undefined) controller.showImage(json.image);
-    if (json.facing !== undefined) controller.setFacing(json.facing, json.mirrored);
+    this.applyFacing(json);
     const frame = this.frameIndex(json.frame);
     if (frame !== undefined && controller.currentAnimation === json.clip.name && (fresh || this.applied.frame !== json.frame)) {
       controller.setFrame(frame); this.applied.frame = json.frame;
@@ -504,6 +539,7 @@ export class PrefabDisplay {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    displaysByModel.delete(this.model);
     this.asleep = false;
     this.home = undefined;
     this.model.removeEventListener('added', this.onAdded);

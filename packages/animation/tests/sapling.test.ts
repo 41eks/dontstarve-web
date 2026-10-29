@@ -15,7 +15,7 @@ import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
-import { bindTestWorld, tickWorld, drawn } from './worldContentFixture';
+import { bindTestWorld, tickWorld, drawn, plantInstance } from './worldContentFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { createSignal } from '../../signals/src';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
@@ -61,13 +61,13 @@ it('picks twigs, regrows after four days through grow → sway, and saves/restor
     s.player.position.set(3, 0, 6);
     expect((await executeDebugCommand('c_spawn("sapling")', s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
     const [model] = s.scene.children.filter(child => lookupPrefabInstance(child)?.prefab === 'sapling') as THREE.Group[];
-    const animation = model.userData.animationController;
+    const animation = plantInstance(model).sprite;
     expect(animation.currentAnimation).toBe('sway');
     expect(prefabInstance(model)!.listTags()).toEqual(['plant', 'renewable', 'silviculture', 'lunarplant_target', 'pickable', 'tickingarea', 'canlight', 'witherable']);
     expect(model.userData.actionEntity.hasTag('DIG_workable')).toBe(true);
     expect(getPickActions(model).find(action => action.model === model)?.available).toBe(true);
 
-    expect(model.userData.components.pickable.pick({ giveItem: (item: string, count: number) => s.inventory.add(item, count) })).toBe(true);
+    expect(plantInstance(model).components.pickable.pick({ giveItem: (item: string, count: number) => s.inventory.add(item, count) })).toBe(true);
     expect(s.inventory.count('twigs')).toBe(1);
     expect(animation.currentAnimation).toBe('picked');
     expect(prefabInstance(model)!.listTags()).not.toContain('pickable');
@@ -78,11 +78,11 @@ it('picks twigs, regrows after four days through grow → sway, and saves/restor
     expect(record.components.pickable).toEqual({ picked: true, regrowSeconds: 920 });
     const copy = await drawn(restored.saplings.spawn('sapling', new THREE.Vector3(...record.transform.position), record));
     // Pickable:OnLoad calls makeemptyfn rather than replaying the pick.
-    expect(copy.userData.animationController.currentAnimation).toBe('empty');
+    expect(plantInstance(copy).sprite.currentAnimation).toBe('empty');
     expect(lookupPrefabInstance(copy)?.entityId).toBe(lookupPrefabInstance(model)?.entityId);
 
     tickWorld(s.scheduler, s.saplings, 920, new THREE.Quaternion());
-    expect(model.userData.pickablePlantState.phase.peek()).toBe('ready');
+    expect(plantInstance(model).phase.peek()).toBe('ready');
     expect(animation.currentAnimation).toBe('grow');
     for (let frame = 0; frame < 45; frame++) tickWorld(s.scheduler, s.saplings, 1 / 30, new THREE.Quaternion());
     expect(animation.currentAnimation).toBe('sway');
@@ -106,11 +106,11 @@ it('digs sapling_moon into dug_sapling_moon plus ready twigs, and burns a picked
     expect(s.saplings.exportRecords()).toEqual([]);
 
     const model = await drawn(s.saplings.spawn('sapling', new THREE.Vector3(30, 0, 0)));
-    model.userData.components.pickable.pick({ giveItem: () => true });
+    plantInstance(model).components.pickable.pick({ giveItem: () => true });
     const torch = s.inventory.entities.create({ itemId: 'torch', count: 1 });
     s.inventory.configureItem(torch);
     expect(collectEquippedActions(torch, model.userData.actionEntity, true)).toContain('LIGHT');
-    model.userData.components.burnable.Ignite();
+    plantInstance(model).components.burnable.Ignite();
     expect(s.saplings.exportRecords()).toEqual([]);
     tickWorld(s.scheduler, s.saplings, 20, new THREE.Quaternion());
     await new Promise(resolve => setTimeout(resolve, 0));
@@ -131,14 +131,14 @@ it('restores an imported wither check through save/load, reschedules on expiry a
     const saved = deserializeSave(s.save(), SAVE_CATALOG), record = saved.world.entities.sapling[0];
     expect(record.components.witherable).toEqual({ taskSeconds: 1.5 });
     const copy = await drawn(restored.saplings.spawn('sapling', new THREE.Vector3(...record.transform.position), record));
-    const witherable = copy.userData.components.witherable;
+    const witherable = plantInstance(copy).components.witherable;
     const timer = witherable.state.timer.peek();
     tickWorld(restored.scheduler, restored.saplings, 1, new THREE.Quaternion());
     expect(witherable.state.timer.peek()).toBe(timer);
     tickWorld(restored.scheduler, restored.saplings, .5, new THREE.Quaternion());
     expect(witherable.state.timer.peek()).not.toBe(timer);
     expect(witherable.state.timer.peek().status).toBe('scheduled');
-    expect(copy.userData.components.pickable.canBePicked).toBe(true);
+    expect(plantInstance(copy).components.pickable.canBePicked).toBe(true);
     restored.saplings.remove(copy);
     expect(witherable.state.timer.peek()).toEqual({ status: 'stopped' });
     tickWorld(restored.scheduler, restored.saplings, 60, new THREE.Quaternion());

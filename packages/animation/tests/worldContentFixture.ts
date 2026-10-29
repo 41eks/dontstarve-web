@@ -2,6 +2,15 @@ import { Quaternion } from 'three';
 import { bindWorldContent, createIdleWeatherSources, createSignal, getWatchWorldContent, type GetWatchWorldContent, type WorldContentEnvironment, type SeasonState, type WorldPhase, type WorldMoonState } from '../../signals/src';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { Object3D } from 'three';
+import { prefabDisplay } from '../../display/src/prefabDisplay';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { PickablePlantInstance } from '../../prefab/src/pickablePlant';
+
+export function plantInstance(model: Object3D): PickablePlantInstance {
+  const instance = prefabInstance(model);
+  if (!(instance instanceof PickablePlantInstance)) throw new Error(`Not a pickable plant: ${model.name}`);
+  return instance;
+}
 
 /** Complete world inputs shared by standalone component fixtures. */
 export function createTestWorldSources(scheduler: GameTimeScheduler) {
@@ -36,6 +45,6 @@ export function tickWorld(scheduler: GameTimeScheduler, manager: { update(dt: nu
 /** A spawned entity exists at once; a test that inspects its drawn clips first lets its display load the art. */
 export async function drawn<T extends Object3D>(model: T | Promise<T>): Promise<T> {
   const entity = await model;
-  await entity.userData.display?.artLoaded();
+  await prefabDisplay(entity)?.artLoaded();
   return entity;
 }

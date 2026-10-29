@@ -126,6 +126,11 @@ export class SkeletonManager {
     MakeSmallObstaclePhysics(instance, PHYSICS_RADIUS);
     if (this.world.physics) instance.bindPhysics(this.world.physics);
     this.skeletons.set(model, skeleton);
+    inst.hammerTarget = {
+      get id() { return String(instance.entityId); }, instance, display, entity: inst, position: instance.position,
+      isValid: () => this.skeletons.get(model) === skeleton && workable.CanBeWorked(),
+      playHit: () => { performToolWork('HAMMER', inst, {}); },
+    };
     this.scene.add(model);
     skeleton.stopActivity = watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active));
     return model;
@@ -167,11 +172,9 @@ export class SkeletonManager {
   get hammerTargets(): HammerTarget[] { return this.getHammerTargets(); }
 
   getHammerTargets(model?: THREE.Object3D): HammerTarget[] {
-    return modelEntries(this.skeletons, model).filter(([, skeleton]) => skeleton.workable.CanBeWorked()).map(([model, skeleton]) => ({
-      id: String(skeleton.instance.entityId), model, position: model.position, entity: actionEntity(model, skeleton.prefab),
-      isValid: () => this.skeletons.get(model) === skeleton && skeleton.workable.CanBeWorked(),
-      playHit: () => { performToolWork('HAMMER', actionEntity(model, skeleton.prefab), {}); },
-    }));
+    return modelEntries(this.skeletons, model).filter(([, skeleton]) => skeleton.workable.CanBeWorked())
+      .map(([model, skeleton]) => actionEntity(model, skeleton.prefab).hammerTarget)
+      .filter((target): target is HammerTarget => target !== undefined);
   }
 
   /** workable.savestate is false: a surviving skeleton reloads with its full work count. */

@@ -3,6 +3,9 @@ export interface PlacementSaveRecord {
   id: string;
   transform: { position: readonly [number, number, number]; rotationY: number };
   components: {
+    pickable?: import('./components/pickable').PickableSaveState;
+    witherable?: import('../../componets/src/witherable').WitherableSave;
+    growable?: import('../../componets/src/growable').GrowableSave;
     building?: { state: 'idle' | 'closed' | 'open'; skinId?: string; burnt?: true };
     stewer?: import('./cook_pot').CookPotSaveState;
     container?: { slotCount: number; slots: { slotKey: string; item: import('@dontstarve-web/inventory').InventoryStack }[] };

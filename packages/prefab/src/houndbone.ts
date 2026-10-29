@@ -101,6 +101,11 @@ export class HoundboneManager {
     Object.assign(model.userData.components, { workable, lootdropper });
     new ToolMouseTarget(inst, instance, workable, this.world.handEquipment);
     this.bones.set(model, bone);
+    inst.hammerTarget = {
+      get id() { return String(instance.entityId); }, instance, display, entity: inst, position: instance.position,
+      isValid: () => this.bones.get(model) === bone && workable.CanBeWorked(),
+      playHit: () => { performToolWork('HAMMER', inst, {}); },
+    };
     this.scene.add(model);
     bone.stopActivity = watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active));
     return model;
@@ -133,11 +138,9 @@ export class HoundboneManager {
   get hammerTargets(): HammerTarget[] { return this.getHammerTargets(); }
 
   getHammerTargets(model?: THREE.Object3D): HammerTarget[] {
-    return modelEntries(this.bones, model).filter(([, bone]) => bone.workable.CanBeWorked()).map(([model, bone]) => ({
-      id: String(bone.instance.entityId), model, position: model.position, entity: actionEntity(model, HOUNDBONE_ID),
-      isValid: () => this.bones.get(model) === bone && bone.workable.CanBeWorked(),
-      playHit: () => { performToolWork('HAMMER', actionEntity(model, HOUNDBONE_ID), {}); },
-    }));
+    return modelEntries(this.bones, model).filter(([, bone]) => bone.workable.CanBeWorked())
+      .map(([model]) => actionEntity(model, HOUNDBONE_ID).hammerTarget)
+      .filter((target): target is HammerTarget => target !== undefined);
   }
 
   /** workable.savestate is false: a surviving bone reloads with its full work count. */

@@ -392,6 +392,15 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             entity.components.workable = workable;
             workable.SetWorkAction('HAMMER');
             workable.SetWorkLeft(definition.hammerWorkLeft);
+            entity.hammerTarget = {
+                get id() { return String(building.instance.entityId); },
+                entity: building.instance, instance: building.instance, display: building.display,
+                get position() { return entity.getPosition(); },
+                isValid: () => this.isHammerTargetValid(building),
+                playHit: () => {
+                    if (this.isHammerTargetValid(building)) performToolWork('HAMMER', entity, {});
+                },
+            };
             workable.SetOnWorkCallback(() => {
                 if (entity.hasTag('burnt')) return;
                 if (definition.hammerHitOnlyWhileWorking && workable.GetWorkLeft() <= 0) return;
@@ -573,18 +582,8 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
 
     getHammerTargets(model?: THREE.Object3D): readonly HammerTarget[] {
         return this.mouseRecords.select(model, this.placed).filter(building => actionEntity(building.model, building.buildId).hasTag('HAMMER_workable'))
-            .map((building) => ({
-                id: String(building.instance.entityId),
-                entity: building.instance,
-                instance: building.instance,
-                display: building.display,
-                position: building.model.position.clone().add(new THREE.Vector3(0, -building.groundOffset, 0)),
-                isValid: () => this.isHammerTargetValid(building),
-                playHit: () => {
-                    if (!this.isHammerTargetValid(building)) return;
-                    performToolWork('HAMMER', actionEntity(building.model, building.buildId), {});
-                },
-            }));
+            .map(building => actionEntity(building.model, building.buildId).hammerTarget)
+            .filter((target): target is HammerTarget => target !== undefined);
     }
 
     get reskinTargets(): readonly ReskinTarget[] {

@@ -1,3 +1,4 @@
+import { actionTargetModel } from '../../stategraphs/src/actionTargetView';
 import * as THREE from 'three';
 import type { PrefabDisplay } from '@dontstarve-web/display';
 import { readFile } from 'node:fs/promises';
@@ -20,7 +21,7 @@ import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { inventoryStateFromSave } from '../../../src/save/inventoryState';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
-import { bindTestWorld, drawn } from './worldContentFixture';
+import { bindTestWorld, drawn, plantInstance } from './worldContentFixture';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 
@@ -80,18 +81,18 @@ it('spawns wild monkeytail, picks reeds, pauses in winter and reloads its discre
   try {
     s.player.position.set(3, 0, 6);
     expect((await executeDebugCommand('c_spawn("monkeytail")', s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
-    const model = s.monkeytails.digTargets[0].model, pickable = model.userData.components.pickable;
-    expect(model.userData.animationController.currentAnimation).toBe('idle');
+    const model = actionTargetModel(s.monkeytails.digTargets[0]), pickable = plantInstance(model).components.pickable;
+    expect(plantInstance(model).sprite.currentAnimation).toBe('idle');
     expect(prefabInstance(model)!.listTags()).toContain('silviculture');
     expect(prefabInstance(model)!.listTags()).not.toContain('renewable');
-    expect(model.userData.deploySmartRadius).toBe(1.5);
+    expect(plantInstance(model).deploySmartRadius).toBe(1.5);
     const cycles = pickable.cyclesLeft;
     expect(cycles).toBeGreaterThanOrEqual(5); expect(cycles).toBeLessThanOrEqual(7);
     const doer = { giveItem: (item: string, count: number) => s.inventory.add(item, count) };
     expect(pickable.pick(doer)).toBe(true);
     expect(s.inventory.count('cutreeds')).toBe(1);
     expect(pickable.cyclesLeft).toBe(cycles);
-    expect(model.userData.animationController.currentAnimation).toBe('picking');
+    expect(plantInstance(model).sprite.currentAnimation).toBe('picking');
     const waiting = pickable.state.timer.peek();
     s.advance(400);
     expect(pickable.state.timer.peek()).toBe(waiting);
@@ -109,9 +110,9 @@ it('spawns wild monkeytail, picks reeds, pauses in winter and reloads its discre
     s.season.set({ season: 'spring', progress: 0 });
     expect(pickable.remainingSeconds).toBe(780);
     s.advance(780); expect(pickable.canBePicked).toBe(true);
-    expect(model.userData.animationController.currentAnimation).toBe('grow');
+    expect(plantInstance(model).sprite.currentAnimation).toBe('grow');
     for (let frame = 0; frame < 90; frame++) s.advance(1 / 30);
-    expect(model.userData.animationController.currentAnimation).toBe('idle');
+    expect(plantInstance(model).sprite.currentAnimation).toBe('idle');
     // A native mature plant has no transplanted-cycle limit.
     for (let i = 0; i < cycles + 1; i++) { expect(pickable.pick(doer)).toBe(true); s.advance(1080); }
     expect(pickable.cyclesLeft).toBe(cycles);
@@ -161,10 +162,10 @@ it('plants cursor-held roots and fertilizes at frame six, preserves cancellation
     expect(s.inventory.get(cursorSlotAddress())?.count).toBe(2);
     a.graph.update(1 / 30);
     expect(s.inventory.get(cursorSlotAddress())?.count).toBe(1);
-    const target = s.monkeytails.digTargets[0], pickable = target.model.userData.components.pickable;
+    const target = s.monkeytails.digTargets[0], pickable = plantInstance(actionTargetModel(target)).components.pickable;
     expect(pickable.exportState()).toMatchObject({ picked: true, transplanted: true, cyclesLeft: 0 });
     expect(pickable.state.timer.peek()).toEqual({ status: 'stopped' });
-    expect(target.model.userData.animationController.currentAnimation).toBe('idle_dead');
+    expect(plantInstance(actionTargetModel(target)).sprite.currentAnimation).toBe('idle_dead');
     expect(deployment.canDeploy(new THREE.Vector3(4, 0, 0), source()!.entity)).toBe(false);
     expect(deployment.canDeploy(new THREE.Vector3(5, 0, 0), source()!.entity)).toBe(true);
     a.graph.update(1); deployment.update();
@@ -176,7 +177,7 @@ it('plants cursor-held roots and fertilizes at frame six, preserves cancellation
         take: () => { const item = s.inventory.extract(cursorSlotAddress(), 1, entity); if (!item) return false; item.remove(); return true; } };
     };
     fertilizing = new ItemUseActionController(s.world, a.animation, a.locomotor, fertilizerSource);
-    expect(getItemUseActions(target.model, fertilizerSource()).some(candidate => candidate.action.action === 'FERTILIZE')).toBe(true);
+    expect(getItemUseActions(actionTargetModel(target), fertilizerSource()).some(candidate => candidate.action.action === 'FERTILIZE')).toBe(true);
     expect(fertilizing.request('FERTILIZE', target.entity! as never)).toBe(true);
     await new Promise(resolve => setTimeout(resolve, 0));
     fertilizing.update(); a.graph.update(5 / 30); fertilizing.cancel(); a.graph.update(1);
@@ -206,7 +207,7 @@ it('plants cursor-held roots and fertilizes at frame six, preserves cancellation
     expect(restored.ground.exportRecords()).toEqual(s.ground.exportRecords());
     expect(restored.inventory.exportState()).toEqual(s.inventory.exportState());
     expect(restored.inventory.get(cursorSlotAddress())?.itemId).toBe('poop');
-    expect(restored.monkeytails.digTargets[0].model.userData.animationController.currentAnimation).toBe('idle_dead');
+    expect(plantInstance(actionTargetModel(restored.monkeytails.digTargets[0])).sprite.currentAnimation).toBe('idle_dead');
   } finally { deployment?.dispose(); fertilizing?.dispose(); a.graph.cancelAction(); s.dispose(); restored.dispose(); }
 });
 
@@ -214,10 +215,10 @@ it('withers in heat, reloads its recovery delay, regrows after rain and digs the
   const s = setup(), restored = setup();
   try {
     const model = await drawn(s.monkeytails.spawn(new THREE.Vector3(3, 0, 6)));
-    const pickable = model.userData.components.pickable, witherable = model.userData.components.witherable;
+    const pickable = plantInstance(model).components.pickable, witherable = plantInstance(model).components.witherable;
     s.setTemperature(100); s.advance(60);
     expect(witherable.IsWithered()).toBe(true); expect(pickable.IsBarren()).toBe(true);
-    expect(model.userData.animationController.currentAnimation).toBe('full_to_dead');
+    expect(plantInstance(model).sprite.currentAnimation).toBe('full_to_dead');
     const saved = deserializeSave(s.save(), SAVE_CATALOG), record = saved.world.entities.monkeytail[0];
     await drawn(restored.monkeytails.spawn(new THREE.Vector3(...record.transform.position), record));
     expect(restored.monkeytails.exportRecords()).toEqual([record]);
@@ -232,7 +233,7 @@ it('withers in heat, reloads its recovery delay, regrows after rain and digs the
     expect(performToolWork('DIG', mature.entity!, {})).toBe(true);
     expect(s.ground.exportRecords().map(record => record.components.stack?.itemId)).toEqual(['cutreeds', 'dug_monkeytail']);
     const dead = await drawn(s.monkeytails.spawn(new THREE.Vector3(80, 0, 6)));
-    dead.userData.components.witherable.ForceWither();
+    plantInstance(dead).components.witherable.ForceWither();
     expect(performToolWork('DIG', s.monkeytails.digTargets[0].entity!, {})).toBe(true);
     expect(s.ground.exportRecords().map(record => record.components.stack?.itemId)).toEqual(['cutreeds', 'dug_monkeytail', 'cutreeds']);
     s.advance(2000); expect(s.monkeytails.exportRecords()).toEqual([]);

@@ -9,7 +9,7 @@ import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import { inventorySlotAddress } from '../../inventory/src';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
-import { bindTestWorld, tickWorld } from './worldContentFixture';
+import { bindTestWorld, tickWorld, plantInstance } from './worldContentFixture';
 import { createPickupInventory } from './pickupFixture';
 
 vi.mock('../../prefab/src/sound', async importOriginal => ({
@@ -42,7 +42,7 @@ async function setup() {
   };
   inst.components.combat = new Combat(inst, () => scheduler.now);
   const picker = { hasTag: inst.hasTag, PushEvent: inst.PushEvent!, components: { combat: inst.components.combat, inventory } };
-  const pick = (model: THREE.Group) => model.userData.components.pickable.pick({ picker, giveItem: () => true });
+  const pick = (model: THREE.Group) => plantInstance(model).components.pickable.pick({ picker, giveItem: () => true });
   return { scheduler, world, inventory, cacti, picker, events, pick, health: () => health,
     dispose() { cacti.dispose(); inventory.dispose(); world.unbind(); } };
 }
@@ -51,7 +51,7 @@ it('pricks the picker through worn armor, empties and regrows, giving a flower o
   const test = await setup();
   try {
     const cactus = await test.cacti.spawn('cactus', new THREE.Vector3(1, 0, 1));
-    expect(cactus.userData.animationController.currentAnimation).toBe('idle');
+    expect(plantInstance(cactus).sprite.currentAnimation).toBe('idle');
     expect(prefabInstance(cactus)!.minimap.icon).toBe('cactus.png');
     const physics = () => prefabInstance(cactus)!.physics.json.peek()!.active;
     expect(prefabInstance(cactus)!.physics.json.peek()!.capsule.radius).toBe(.3);
@@ -68,10 +68,10 @@ it('pricks the picker through worn armor, empties and regrows, giving a flower o
     expect(test.inventory.count('cactus_flower')).toBe(0);
 
     tickWorld(test.scheduler, test.cacti, CACTUS_REGROW_TIME - 1, new THREE.Quaternion());
-    expect(cactus.userData.components.pickable.canBePicked).toBe(false);
+    expect(plantInstance(cactus).components.pickable.canBePicked).toBe(false);
     test.world.season.set({ season: 'summer', progress: 0 });
     tickWorld(test.scheduler, test.cacti, 1, new THREE.Quaternion());
-    expect(cactus.userData.components.pickable.canBePicked).toBe(true);
+    expect(plantInstance(cactus).components.pickable.canBePicked).toBe(true);
     expect(physics()).toBe(true);
     expect(test.pick(cactus)).toBe(true);
     expect(test.inventory.count('cactus_flower')).toBe(1);
@@ -85,15 +85,15 @@ it('spares bramble_resistant pickers and restores a picked cactus empty', async 
     const attacked = vi.spyOn(test.picker.components.combat, 'GetAttacked');
     const resistant = { ...test.picker, components: { ...test.picker.components,
       inventory: Object.assign(Object.create(test.inventory) as typeof test.inventory, { EquipHasTag: (tag: string) => tag === 'bramble_resistant' }) } };
-    expect(oasis.userData.components.pickable.pick({ picker: resistant, giveItem: () => true })).toBe(true);
+    expect(plantInstance(oasis).components.pickable.pick({ picker: resistant, giveItem: () => true })).toBe(true);
     expect(attacked).not.toHaveBeenCalled();
     const [{ prefabId, record }] = test.cacti.exportRecords();
     expect(prefabId).toBe('oasis_cactus');
     expect(record.components.pickable).toMatchObject({ picked: true, regrowSeconds: CACTUS_REGROW_TIME });
     expect(PREFAB_DEFINITIONS.cacti.parseComponents(record.components, 'oasis_cactus', { grounded: true } as never)).toEqual(record.components);
     const restored = await test.cacti.spawn('oasis_cactus', new THREE.Vector3(3, 0, 3), { ...record, id: 'restored' });
-    expect(restored.userData.components.pickable.canBePicked).toBe(false);
-    expect(restored.userData.animationController.currentAnimation).toBe('empty');
+    expect(plantInstance(restored).components.pickable.canBePicked).toBe(false);
+    expect(plantInstance(restored).sprite.currentAnimation).toBe('empty');
   } finally { test.dispose(); }
 });
 

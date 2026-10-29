@@ -27,9 +27,11 @@ test('fence_item previews against the camera, places by click, rotates with the 
   const submit = (command: string) => page.evaluate(command => document.querySelector('dst-debug-console')!.dispatchEvent(
     new CustomEvent('game:debug-command', { detail: { command } })), command);
   const fences = () => page.evaluate(() => (window as any).fenceGame.scene.children
-    .filter((model: any) => model.name === 'fence').map((model: any) => ({
-      x: model.position.x, z: model.position.z, rotation: model.userData.fenceRotation, visible: model.visible,
-      placed: !!model.userData.actionEntity })));
+    .filter((model: any) => model.name === 'fence').map((model: any) => {
+      const instance = (window as any).__prefabInstance(model);
+      return { x: model.position.x, z: model.position.z, rotation: instance.rotation, visible: model.visible,
+        placed: instance.entityId !== undefined };
+    }));
   const ground = (x: number, z: number) => page.evaluate(([x, z]) => {
     const { view, player } = (window as any).fenceGame;
     const point = player.position.clone().set(x, 0, z).project(view.camera), rect = view.renderer.domElement.getBoundingClientRect();
@@ -76,9 +78,10 @@ test('fence_item previews against the camera, places by click, rotates with the 
     (window as any).fenceGame = { main, ...player, scene, view };
   }, urls);
   const restored = await page.evaluate(() => (window as any).fenceGame.scene.children
-    .filter((model: any) => model.userData.actionEntity?.prefab === 'fence').map((model: any) => ({
-      id: (window as any).__prefabInstance(model)?.entityId, position: model.position.toArray(), rot: ((Math.floor(model.userData.fenceRotation / 45) % 8) + 8) % 8,
-    })));
+    .filter((model: any) => (window as any).__prefabInstance(model)?.prefab === 'fence').map((model: any) => {
+      const instance = (window as any).__prefabInstance(model);
+      return { id: instance.entityId, position: model.position.toArray(), rot: ((Math.floor(instance.rotation / 45) % 8) + 8) % 8 };
+    }));
   expect(restored).toEqual(saved.world.entities.fence.map((fence: any) => ({
     id: fence.id, position: fence.transform.position, rot: fence.components.fence.rot ?? 0,
   })));

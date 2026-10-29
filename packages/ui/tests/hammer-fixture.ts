@@ -1,6 +1,10 @@
 import { fixturePickup } from './pickup-fixture';
+import { spriteScreenPoint } from './sprite-screen-point';
 import * as THREE from 'three';
 import { createSignal } from '../../signals/src';
+import { actionTargetModel } from '../../stategraphs/src/actionTargetView';
+import type { PrefabDisplay } from '@dontstarve-web/display';
+import { prewarmScenePasses, renderSceneWithPasses } from '../../animation/src/sceneRenderPass';
 
 /** Exercise the real host loot callback, persistence and pickup after destruction. */
 export async function checkResearchLabDestruction() {
@@ -8,6 +12,8 @@ export async function checkResearchLabDestruction() {
   const { World } = await import('cannon-es');
   const { player } = await import('../../../src/player');
   const { worldState } = await import('../../../src/scene');
+  worldState.playerpositions.set([player.position]);
+  await new Promise(resolve => setTimeout(resolve, 0));
   const pickedUp: { itemId: string; count: number }[] = [];
   const entities = await createSceneEntities(new World(), {
     ...worldState,
@@ -30,16 +36,19 @@ export async function checkResearchLabDestruction() {
         id: `destroy_${id}`, transform: { position: position.toArray(), rotationY: 0 },
         components: { building: { state: 'idle', skinId: skins[index] } },
       });
-      const target = entities.buildingPlacement.hammerTargets.find((target) => target.model === model)!;
+      const target = entities.buildingPlacement.hammerTargets.find(target => actionTargetModel(target) === model)!;
       const beforeCount = entities.groundItems.exportRecords().length;
       for (let i = 0; i < 3; i++) target.playHit();
       const remainedAfterThree = target.isValid() && entities.registry.exportRecords()[id].length === 1;
       target.playHit();
-      // Ground art loads asynchronously through the application's item store.
-      for (let i = 0; i < 100 && entities.groundItems.exportRecords().length !== beforeCount + pieceCounts[index]; i++) {
-        await new Promise((resolve) => setTimeout(resolve, 50));
-      }
-      const models = entities.groundItems.renderEntities.slice(beforeCount).map(({ object }) => object);
+      await new Promise(resolve => setTimeout(resolve, 0));
+      const lootTargets = entities.groundItems.reskinTargets.slice(beforeCount);
+      // Logical loot exists before its display finishes loading the ground art.
+      await Promise.all(lootTargets.map(target =>
+        (actionTargetModel(target).userData.display as PrefabDisplay).artLoaded()));
+      // Instanced loot stays pickable, while the batch handles its drawing order.
+      const models = lootTargets.map(actionTargetModel);
+      if (models.length !== pieceCounts[index]) throw new Error(`Missing loot targets for ${id}: ${models.length}`);
       const initialPositions = models.map((model) => model.position.clone());
       entities.groundItems.update(0.1, camera.quaternion);
       const airborne = models.every((model) => model.children[0].position.y > 0 && model.position.y === 0);
@@ -67,22 +76,28 @@ export async function checkResearchLabDestruction() {
     for (let i = 0; i < 80; i++) entities.buildingPlacement.update(1 / 30);
     const effectsCleaned = !entities.buildingPlacement.renderEntities.some(({ object }) => object.name === 'collapse_small');
     // Isolate one material stack and pick it up through the public pointer path.
-    const groundModel = entities.groundItems.renderEntities[0].object;
-    const address = (window as any).__prefabInstance(groundModel)?.entityId;
-    for (const { object } of entities.groundItems.renderEntities.slice(1)) object.userData.pickupTarget.entity.transform.position.x += 100;
+    const groundTargets = entities.groundItems.reskinTargets;
+    const pickupTarget = groundTargets.find(target => target.prefabId === 'goldnugget');
+    if (!pickupTarget) throw new Error('Missing gold loot target after destroying research labs');
+    const groundModel = actionTargetModel(pickupTarget), address = pickupTarget.id;
+    for (const target of groundTargets) {
+      if (target === pickupTarget) continue;
+      actionTargetModel(target).userData.pickupTarget.entity.transform.position.x += 100;
+    }
     groundModel.userData.pickupTarget.entity.transform.position.copy(player.position).setY(0).add(new THREE.Vector3(5, 0, 0));
     groundModel.position.copy(groundModel.userData.pickupTarget.entity.transform.position);
     const { scene, renderer } = await import('../../../src/universal');
     camera.position.copy(groundModel.position).add(new THREE.Vector3(0, 20, 35));
     camera.lookAt(groundModel.position);
     camera.updateMatrixWorld();
+    worldState.camerarotation.set(camera.quaternion.clone());
+    await new Promise(resolve => setTimeout(resolve, 0));
     entities.groundItems.update(0, camera.quaternion);
-    scene.updateMatrixWorld(true);
-    const centre = new THREE.Box3().setFromObject(groundModel).getCenter(new THREE.Vector3()).project(camera);
-    const bounds = renderer.domElement.getBoundingClientRect();
+    await prewarmScenePasses(renderer, scene, camera);
+    renderSceneWithPasses(renderer, scene, camera);
+    const point = spriteScreenPoint(groundModel, camera, renderer);
     renderer.domElement.dispatchEvent(new PointerEvent('pointerdown', { button: 0,
-      clientX: bounds.left + (centre.x + 1) * bounds.width / 2,
-      clientY: bounds.top + (1 - centre.y) * bounds.height / 2,
+      clientX: point.x, clientY: point.y,
     }));
     pickup.settle();
     return { cases, records, effectsCleaned, pickedUp,

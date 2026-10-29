@@ -3,7 +3,8 @@ import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { FencePlacement, calcRotationEnum, fixUpFenceRotation, isNarrowRotation, placerRotation } from '../../prefab/src/fence';
+import { FencePlacement, calcRotationEnum, fixUpFenceRotation, isNarrowRotation, placerRotation, type FencePrefabInstance } from '../../prefab/src/fence';
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import { FENCE_SKIN_ARCHIVES, fenceWorldSkin } from '../../prefab/src/fenceSkins';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { createGroundItemVisual } from './groundItemVisual';
@@ -98,16 +99,22 @@ it('previews against the camera, swaps banks as it rotates, places on click and 
     await placement.begin('fence_item', 'fence_rose_item');
     placement.update();
     const preview = world.scene.children[0] as THREE.Group;
+    const previewInstance = lookupPrefabInstance(preview) as FencePrefabInstance;
     expect(preview.visible).toBe(true);
     const snapped = snapToWallSlotCenter(new THREE.Vector3(7.2, 0, -4.1));
     expect([preview.position.x, preview.position.z]).toEqual([snapped.x, snapped.z]);
     // fixedcameraoffset 0 - heading: -45 is an odd enum, so the wide bank; one camera step later it is narrow.
-    expect(preview.userData.fenceRotation).toBe(-45); expect(isNarrowRotation(preview.userData.fenceRotation)).toBe(false);
+    expect(previewInstance.rotation).toBe(-45); expect(isNarrowRotation(previewInstance.rotation)).toBe(false);
+    expect(previewInstance.sprite.sprite.peek().source?.bank).toBe('fence');
+    const sprite = previewInstance.sprite;
     heading.set(90); await settle(); placement.update();
-    expect(preview.userData.fenceRotation).toBe(-90); expect(isNarrowRotation(-90)).toBe(true);
+    expect(previewInstance.rotation).toBe(-90); expect(isNarrowRotation(previewInstance.rotation)).toBe(true);
+    expect(previewInstance.sprite).toBe(sprite);
+    expect(sprite.sprite.peek().source?.bank).toBe('fence_thin');
+    expect(previewInstance.skinId).toBe('fence_rose');
     expect(placement.renderEntities).toHaveLength(1);
     // A preview is not an inst: it has no LIGHT/HAMMER target and no tags.
-    expect(preview.userData.actionEntity).toBeUndefined();
+    expect(findActionEntity(preview)).toBeUndefined();
     expect(placement.hammerTargets).toEqual([]);
 
     canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button: 0 }));
@@ -117,13 +124,13 @@ it('previews against the camera, swaps banks as it rotates, places on click and 
     const [exported] = placement.exportRecords();
     expect(exported.prefabId).toBe('fence');
     expect(exported.record.components.fence).toEqual({ rot: calcRotationEnum(-90), skinId: 'fence_rose' });
-    expect(preview.userData.actionEntity.hasTag('fence')).toBe(true);
-    expect(preview.userData.actionEntity.hasTag('wall')).toBe(true);
+    expect(previewInstance.hasTag('fence')).toBe(true);
+    expect(previewInstance.hasTag('wall')).toBe(true);
 
     // Reload the saved record on a fresh placement.
     const restored = setup();
     const model = await restored.placement.spawnFromSave('fence', exported.record);
-    expect(model.userData.fenceRotation).toBe(calcRotationEnum(-90) * 45);
+    expect((lookupPrefabInstance(model) as FencePrefabInstance).rotation).toBe(calcRotationEnum(-90) * 45);
     expect(restored.placement.exportRecords()[0].record.components).toEqual(exported.record.components);
     expect(restored.world.physics!.bodies).toHaveLength(1);
     restored.placement.dispose();
@@ -140,11 +147,19 @@ it('is hammered in three hits for a twig, can be reskinned, and burns into ash w
     expect(prepared.apply()).toBe(true);
     expect(placement.exportRecords()[0].record.components.fence).toEqual({ rot: 2, skinId: 'fence_ancient' });
 
-    const fire = model.userData.actionEntity.components.burnable;
+    const fire = lookupPrefabInstance(model)!.components.burnable!;
     fire.Ignite();
     expect(lookupPrefabInstance(model)?.persists).toBe(false);
     expect(placement.exportRecords()).toEqual([]);
+    await vi.waitFor(() => expect(placement.renderEntities.some(({ object }) => object.name === 'fire')).toBe(true));
+    const flame = placement.renderEntities.find(({ object }) => object.name === 'fire')!.object;
+    const flameInstance = lookupPrefabInstance(flame)!;
+    await vi.waitFor(() => expect(flameInstance.sprite.loaded).toBe(true));
+    expect(flameInstance.hasTag('FX')).toBe(true);
+    expect(flameInstance.hasTag('HASHEATER')).toBe(true);
     fire.Extinguish();
+    await settle();
+    expect(flameInstance.isRemoved).toBe(true);
     expect(placement.exportRecords()).toHaveLength(1);
     fire.Ignite();
     fire.StopSmoldering();

@@ -1,32 +1,26 @@
 import { ToolMouseTarget } from './toolMouseTarget';
 import { ModelRecords } from './modelRecords';
 import * as THREE from 'three';
-import { createSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
-import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
-import { createArchiveEntity, createEmptyEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
+import { PrefabDisplayGroup, SpriteResources, SpriteState, type PrefabDisplay } from '@dontstarve-web/display';
+import { PrefabInstance, bindInstance, prefabInstance } from './prefabInstance';
 import { watchTileActivity } from './tileActivity';
-import { facingFromRotation } from '@dontstarve-web/animation/facing';
-import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
-import { createEffect, createRenderEffect, createSignal, readonlySignal, watchSignal, getBoundWatchWorldContent, type Signal } from '@dontstarve-web/signals';
+import { watchSignal, type Signal } from '@dontstarve-web/signals';
 import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
 import type { ReskinFxMessage, ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
-import { Burnable, type BurnableInst } from '../../componets/src/burnable';
 import { Combat, type CombatInst } from '../../componets/src/combat';
 import { Health } from '../../componets/src/health';
-import { Propagator } from '../../componets/src/propagator';
+import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Workable } from '../../componets/src/workable';
-import { bindPhysics, type PhysicsBinding } from '../../componets/src/physicsBinding';
-import { PhysicsState } from '../../componets/src/physicsState';
 import { performToolWork } from '../../stategraphs/src/componentactions';
-import { actionEntity, FindEntities, findActionEntity } from './actionEntity';
+import { actionEntity, FindEntities } from './actionEntity';
 import { BuildCursor } from './buildCursor';
-import { GroundItemAssets } from './groundItems';
 import { nextReskin } from './reskin_tool';
 import { newEntityId, saveGroundPosition, type PlacedEntitySaveRecord, type PlacementSaveRecord } from './saveRecord';
 import { PlaySound } from './sound';
 import { MakeObstaclePhysics } from './standardcomponents';
+import { BurnableBinding, FireFxHost } from './treeFire';
 import { snapToWallSlotCenter, TILE_SIZE } from './tile';
 import { FENCE_ID, FENCE_SKIN_ARCHIVES, fenceWorldSkin, type FenceId } from './fenceSkins';
 import type { WallCombatTarget } from './wallPlacement';
@@ -77,41 +71,42 @@ export function placerRotation(heading: number): number {
     return -heading;
 }
 
-interface DrawnEntity { readonly instance: PrefabInstance<ArchiveSpriteCommands>; readonly display: PrefabDisplay }
+/** The source Transform rotation, independent of the display's camera-facing quaternion. */
+export class FencePrefabInstance extends PrefabInstance {
+    private readonly art: SpriteResources['archives'];
+    get rotation(): number { return this.sprite.sprite.peek().facingRotation ?? 0; }
 
-/** The fence's drawn sprite in one bank; the placer keeps the other bank ready for a parity change. */
-interface FenceArt extends DrawnEntity {
-    readonly narrow: boolean;
+    constructor(rotation: number, skinId: string | undefined, art: SpriteResources['archives'], opacity: number) {
+        super(FENCE_ID, new SpriteState({ name: 'idle', billboard: true }));
+        this.art = art;
+        this.skinId = skinId;
+        this.sprite.setSkinSource({ art, archives: FENCE_SKIN_ARCHIVES });
+        this.setOrientation(rotation);
+        this.sprite.setOpacity(opacity);
+        this.sprite.playOnce('idle');
+    }
+
+    /** fence.lua SetOrientation changes the AnimState bank, preserving the entity and its build. */
+    setOrientation(rotation: number): void {
+        this.sprite.setFacingRotation(rotation);
+        const bank = isNarrowRotation(rotation) ? 'fence_thin' : 'fence';
+        if (this.sprite.sprite.peek().source?.bank !== bank) {
+            this.sprite.setArtSource({ animationArchive: `${bank}.zip`, bank, buildArchive: 'fence.zip', art: this.art });
+        }
+    }
 }
 
 interface FenceInstance {
     readonly buildId: FenceId;
-    /** The fence entity: identity, tags and lifecycle; its art is drawn by a child display. */
-    readonly instance: PrefabInstance;
+    /** One logical fence and the display that draws its declared sprite. */
+    readonly instance: FencePrefabInstance;
     readonly display: PrefabDisplay;
     readonly root: THREE.Group;
-    readonly art: Signal<FenceArt>;
-    readonly opacity: Signal<number>;
-    stopAppearance: () => void;
     stopActivity?: () => void;
-    awake: boolean;
-    /** The other bank, kept only while previewing, where the camera rotation changes parity. */
-    spare?: FenceArt;
-    rotation: number;
-    readonly skinId: Signal<string | undefined>;
     readonly inventorySkinId?: string;
-    stopSkin: () => void;
     /** Present once placed: previews are not insts, so they have no tags, components or LIGHT/HAMMER targets. */
     entity?: ReturnType<typeof actionEntity>;
-    health?: Health;
-    combat?: Combat;
-    combatInst?: CombatInst;
-    /** inst.Physics; bound to the world once placed. */
-    readonly physics: PhysicsState;
-    physicsBinding?: PhysicsBinding;
-    fire?: DrawnEntity;
-    fireSound?: { stop(): void };
-    stopBurning?: () => void;
+    burn?: BurnableBinding;
 }
 
 /**
@@ -127,19 +122,19 @@ export class FencePlacement {
     private readonly ground: THREE.Object3D;
     private readonly pointer: PointerRaycaster;
     private readonly cursor: BuildCursor;
-    private readonly assets: GroundItemAssets;
+    private readonly resources = new SpriteResources(undefined, 'ground');
+    private readonly displays: PrefabDisplayGroup;
+    private readonly scheduler: GameTimeScheduler;
+    private readonly ownsScheduler: boolean;
+    private fireFx?: FireFxHost;
     private readonly consumeBufferedBuild: (buildId: FenceId, skinId?: string) => boolean;
     private readonly stopActionEvents: () => void;
     private readonly heading: Signal<number>;
     private readonly cleanups: (() => void)[] = [];
     private readonly mouseRecords = new ModelRecords<FenceInstance>();
     private readonly placed = new Set<FenceInstance>();
-    private readonly fires = new Set<DrawnEntity>();
-    private readonly effects = new Set<DrawnEntity>();
-    private readonly cameraWorldQuaternion = new THREE.Quaternion();
+    private readonly effects = new Set<PrefabInstance>();
     private active?: FenceInstance;
-    private loading?: Promise<void>;
-    private previewVersion = 0;
     private lastPreviewKey = '';
     private disposed = false;
 
@@ -151,40 +146,28 @@ export class FencePlacement {
         this.player = world.player;
         this.ground = world.ground;
         this.consumeBufferedBuild = consumeBufferedBuild;
-        this.assets = new GroundItemAssets();
+        this.displays = new PrefabDisplayGroup(this.scene);
+        this.scheduler = world.scheduler ?? new GameTimeScheduler();
+        this.ownsScheduler = !world.scheduler;
         this.stopActionEvents = bindActionCancellation(world, this, 'building', () => this.cancel());
         this.pointer = new PointerRaycaster(world);
         this.cursor = new BuildCursor(world, this.pointer);
         this.heading = watchSignal(world.cameraHeading, stop => this.cleanups.push(stop));
-        // A moving camera re-faces every fence; the preview additionally rotates against it.
-        createRenderEffect(() => {
-            const heading = this.heading.get();
-            if (this.active) this.orientPreview(this.active, heading);
-            for (const fence of this.placed) this.applyFacing(fence, heading);
-        });
         this.canvas.addEventListener('pointerdown', this.handlePointerDown);
     }
 
     begin(buildId: FenceId, skinId?: string): Promise<void> {
         if (this.disposed) return Promise.reject(new Error('Placement has been disposed'));
         if (this.active) return Promise.resolve();
-        if (this.loading) return this.loading;
         this.world.actionEvents?.emit('action:begin', { owner: this, action: 'BUILD' });
         this.cursor.show(': 建造 栅栏', 'left');
-        const version = ++this.previewVersion;
-        const request = this.createPreview(buildId, version, skinId)
-            .catch((error: unknown) => {
-                if (version === this.previewVersion) this.cursor.hide();
-                throw error;
-            })
-            .finally(() => { if (this.loading === request) this.loading = undefined; });
-        this.loading = request;
-        return request;
+        try { this.createPreview(buildId, skinId); return Promise.resolve(); }
+        catch (error) { this.cursor.hide(); return Promise.reject(error); }
     }
 
     /** c_spawn("fence"): SpawnPrefab leaves rotation 0 (the narrow bank) in front of the player. */
     async spawn(buildId: FenceId, skinId?: string): Promise<void> {
-        const fence = await this.createInstance(buildId, 0, skinId, true);
+        const fence = this.createInstance(buildId, 0, skinId);
         fence.instance.entityId = newEntityId();
         fence.root.position.copy(this.playerFrontGroundPosition());
         this.place(fence);
@@ -192,22 +175,17 @@ export class FencePlacement {
 
     async spawnFromSave(buildId: FenceId, record: PlacementSaveRecord): Promise<THREE.Group> {
         const saved = record.components.fence;
-        const fence = await this.createInstance(buildId, (saved?.rot ?? 0) * 45, saved?.skinId, false);
+        const fence = this.createInstance(buildId, (saved?.rot ?? 0) * 45, saved?.skinId);
         fence.instance.entityId = record.id;
         fence.instance.saveRecord = record;
         const [x, y, z] = record.transform.position;
         fence.root.position.set(x, y, z);
-        this.scene.add(fence.root);
         this.place(fence);
         return fence.root;
     }
 
     get renderEntities() {
-        return [...this.placed, ...(this.active ? [this.active] : [])]
-            .filter(({ root, art }) => root.visible && art.peek().instance.sprite.loaded)
-            .map(({ root }) => ({ object: root, footPosition: root.position.clone(), cameraDepth: 0 }))
-            .concat([...this.fires, ...this.effects].map(({ display }) => ({
-                object: display.model, footPosition: display.model.position, cameraDepth: 0 })));
+        return this.displays.renderEntities;
     }
 
     get hammerTargets(): readonly HammerTarget[] { return this.getHammerTargets(); }
@@ -215,14 +193,9 @@ export class FencePlacement {
     getHammerTargets(model?: THREE.Object3D): readonly HammerTarget[] {
         const targets: HammerTarget[] = [];
         for (const fence of this.mouseRecords.select(model, this.placed)) {
-            const entity = actionEntity(fence.root, FENCE_ID);
+            const entity = fence.entity!;
             if (!entity.hasTag('HAMMER_workable')) continue;
-            targets.push({
-                id: String(fence.instance.entityId), model: fence.root, entity,
-                position: fence.root.position.clone(),
-                isValid: () => this.isLive(fence),
-                playHit: () => { performToolWork('HAMMER', entity, {}); },
-            });
+            if (entity.hammerTarget) targets.push(entity.hammerTarget);
         }
         return targets;
     }
@@ -230,13 +203,13 @@ export class FencePlacement {
     /** fence.lua combat.onhitfn turns an attack into one unit of HAMMER work. */
     get combatTargets(): readonly WallCombatTarget[] {
         return Array.from(this.placed, fence => ({
-            id: String(fence.instance.entityId), model: fence.root, inst: fence.combatInst!,
-            isValid: () => this.isLive(fence) && !fence.health!.IsDead(),
+            id: String(fence.instance.entityId), model: fence.root, inst: fence.instance,
+            isValid: () => this.isLive(fence) && !fence.instance.components.health!.IsDead(),
         }));
     }
 
     get reskinTargets(): readonly ReskinTarget[] {
-        return Array.from(this.placed, fence => findActionEntity(fence.root)?.reskinTarget)
+        return Array.from(this.placed, fence => fence.entity?.reskinTarget)
             .filter((target): target is ReskinTarget => target !== undefined);
     }
 
@@ -244,19 +217,19 @@ export class FencePlacement {
         const skins = Object.keys(FENCE_SKIN_ARCHIVES);
         const isValid = () => this.isLive(fence);
         return {
-            get id() { return String(fence.instance.entityId); }, prefabId: FENCE_ID, model: fence.root,
-            skins, get skinId() { return fence.skinId.peek(); },
-            get isRemoved() { return !isValid(); }, hasTag: (tag: string) => actionEntity(fence.root, FENCE_ID).hasTag(tag),
+            get id() { return String(fence.instance.entityId); }, prefabId: FENCE_ID, instance: fence.instance, display: fence.display,
+            skins, get skinId() { return fence.instance.skinId; },
+            get isRemoved() { return !isValid(); }, hasTag: (tag: string) => fence.instance.hasTag(tag),
             get position() { return fence.root.position.clone(); }, isValid,
             prepareNextSkin: async (tool) => {
-                const previousSkin = fence.skinId.peek();
+                const previousSkin = fence.instance.skinId;
                 const skinId = nextReskin(skins, previousSkin, tool?._cached_reskinname, FENCE_ID);
                 let used = false;
                 return {
                     skinId,
                     apply: (fx?: ReskinFxMessage) => {
-                        if (used || !isValid() || fence.skinId.peek() !== previousSkin) return false;
-                        fence.skinId.set(skinId);
+                        if (used || !isValid() || fence.instance.skinId !== previousSkin) return false;
+                        fence.instance.skinId = skinId;
                         fx?.play(fence.root.position, FENCE_ID);
                         used = true;
                         return true;
@@ -270,7 +243,7 @@ export class FencePlacement {
     exportRecords(): PlacedEntitySaveRecord[] {
         // DefaultBurnFn: a burning fence has persists = false and is not saved.
         return Array.from(this.placed).filter(fence => fence.instance.persists !== false).map((fence) => {
-            const skinId = fence.skinId.peek(), rot = calcRotationEnum(fence.rotation);
+            const skinId = fence.instance.skinId, rot = calcRotationEnum(fence.instance.rotation);
             return {
                 prefabId: FENCE_ID,
                 record: {
@@ -283,26 +256,13 @@ export class FencePlacement {
     }
 
     update(dt = 0): void {
-        for (const { instance, display } of this.effects) { this.faceCamera(display.model); instance.sprite.update(dt); }
-        for (const fire of this.fires) fire.instance.sprite.update(dt);
+        if (this.ownsScheduler) this.scheduler.advance(dt);
+        this.displays.update(dt);
         this.cursor.update();
         if (this.active) this.updatePreview(this.active);
-        for (const fence of this.placed) {
-            this.faceCamera(fence.root);
-            fence.art.peek().instance.sprite.update(dt);
-            const components = fence.entity?.components;
-            components?.burnable?.Update(dt);
-            components?.propagator?.Update(dt);
-            if (fence.fire) {
-                fence.fire.instance.position.copy(fence.root.position);
-                this.faceCamera(fence.fire.display.model);
-            }
-        }
     }
 
     cancel(): void {
-        this.previewVersion += 1;
-        this.loading = undefined;
         if (this.active) this.disposeFence(this.active);
         this.active = undefined;
         this.cursor.hide();
@@ -318,19 +278,22 @@ export class FencePlacement {
         this.cancel();
         for (const fence of [...this.placed]) this.disposeFence(fence);
         this.placed.clear();
-        for (const effect of [...this.effects]) this.release(effect);
+        for (const effect of this.effects) effect.remove();
         this.effects.clear();
-        this.assets.dispose();
+        this.displays.dispose();
+        this.fireFx?.dispose();
+        this.resources.dispose();
+        if (this.ownsScheduler) this.scheduler.dispose();
     }
 
     private isLive(fence: FenceInstance): boolean {
-        return !this.disposed && this.placed.has(fence) && fence.root.visible && fence.root.parent !== null;
+        return !this.disposed && !fence.instance.isRemoved && this.placed.has(fence);
     }
 
     private readonly handlePointerDown = (event: PointerEvent) => {
         if (event.button === 2) { this.cancel(); return; }
         if (event.button !== 0 || event.defaultPrevented) return;
-        if (this.loading || this.active) event.preventDefault();
+        if (this.active) event.preventDefault();
         if (!this.active) return;
         this.pointer.trackPointer(event);
         this.cursor.update();
@@ -339,24 +302,14 @@ export class FencePlacement {
         const fence = this.active;
         this.active = undefined;
         this.cursor.hide();
-        fence.opacity.set(1);
-        if (fence.spare) { this.disposeArt(fence.spare); fence.spare = undefined; }
+        fence.instance.sprite.setOpacity(1);
         fence.instance.entityId = newEntityId();
         this.place(fence);
         PlaySound('dontstarve/common/place_structure_wood', fence.root.position);
     };
 
-    private async createPreview(buildId: FenceId, version: number, skinId?: string): Promise<void> {
-        const fence = await this.createInstance(buildId, placerRotation(this.heading.peek()), skinId, true, PREVIEW_OPACITY);
-        const spare = await this.createArt(fence.skinId.peek(), !fence.art.peek().narrow, PREVIEW_OPACITY);
-        if (version !== this.previewVersion || this.disposed) {
-            this.disposeArt(spare);
-            this.disposeFence(fence);
-            return;
-        }
-        fence.spare = spare;
-        // The spare art swaps into the placer later; it is placer art too (BuildCursor lights the drawn one).
-        spare.instance.sprite.setLightOverride(1);
+    private createPreview(buildId: FenceId, skinId?: string): void {
+        const fence = this.createInstance(buildId, placerRotation(this.heading.peek()), skinId, PREVIEW_OPACITY);
         fence.root.visible = false;
         this.active = fence;
         this.cursor.setPreview(fence.root, 0, point => {
@@ -379,131 +332,42 @@ export class FencePlacement {
 
     private orientPreview(fence: FenceInstance, heading: number): void {
         const rotation = fixUpFenceRotation(placerRotation(heading), this.neighbours(fence));
-        this.setOrientation(fence, rotation);
-        this.applyFacing(fence, heading);
+        fence.instance.setOrientation(rotation);
     }
 
     /** FindEntities(x, 0, z, 1.5, {"wall"}) as FixUpFenceOrientation sees it. */
     private neighbours(fence: FenceInstance): FenceNeighbour[] {
         return FindEntities(fence.root.position, 1.5 * UNIT, ['wall'])
-            .map(found => ({ found, model: (found as unknown as { model?: THREE.Object3D }).model }))
-            .filter(({ model }) => model !== undefined && model !== fence.root)
-            .map(({ found, model }) => ({ isFence: found.hasTag('fence'), rotation: Number(model!.userData.fenceRotation ?? 0) }));
+            .filter(found => found.model !== fence.root)
+            .map(found => ({ isFence: found.hasTag('fence'),
+                rotation: (prefabInstance(found.model) as FencePrefabInstance | undefined)?.rotation ?? 0 }));
     }
-
-    /** SetOrientation: the rotation and, for the preview, the bank that matches its parity. */
-    private setOrientation(fence: FenceInstance, rotation: number): void {
-        fence.rotation = rotation;
-        fence.root.userData.fenceRotation = rotation;
-        const narrow = isNarrowRotation(rotation);
-        if (narrow !== fence.art.peek().narrow && fence.spare?.narrow === narrow) {
-            const next = fence.spare;
-            fence.spare = fence.art.peek();
-            this.attachArt(fence, next);
-        }
-    }
-
-    private attachArt(fence: FenceInstance, art: FenceArt): void {
-        fence.art.peek().display.model.removeFromParent();
-        fence.art.set(art);
-        fence.root.add(art.display.model);
-        art.instance.skinId = fence.instance.skinId;
-        fence.root.userData.animationController = art.instance.sprite;
-        art.instance.setActive(fence.awake);
-        art.instance.sprite.playOnce('idle');
-    }
-
-    private applyFacing(fence: FenceInstance, heading: number): void {
-        const facing = facingFromRotation(fence.rotation, heading);
-        fence.art.peek().instance.sprite.setFacing(facing);
-        fence.spare?.instance.sprite.setFacing(facing);
-    }
-
-    private async createArt(skinId: string | undefined, narrow: boolean, opacity?: number): Promise<FenceArt> {
-        if (this.disposed) throw new Error('Placement has been disposed');
-        const skinArchive = skinId === undefined ? undefined : FENCE_SKIN_ARCHIVES[skinId];
-        if (skinId !== undefined && skinArchive === undefined) throw new Error(`Unsupported fence skin: ${skinId}`);
-        const create = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(this.assets, {
-            animationArchive: narrow ? 'fence_thin.zip' : 'fence.zip', buildArchives: ['fence.zip'],
-            bank: narrow ? 'fence_thin' : 'fence', animation: clip.name, loop: clip.loop,
-        }, { name: 'fence', opacity: opacity ?? 1 });
-        const initial = await create({ name: 'idle', loop: false });
-        if (this.disposed) { initial.dispose(); throw new Error('Placement has been disposed'); }
-        const { instance, display } = createArchiveEntity(FENCE_ID, { create, initial }, { name: 'idle' }, 'fence', entity => {
-            entity.skinId = skinId;
-            entity.sprite.setSkinSource({ art: this.assets, archives: FENCE_SKIN_ARCHIVES });
-        });
-        instance.sprite.playOnce('idle');
-        // The art is the fence's sprite, not an entity of its own: it is never saved.
-        instance.persists = false;
-        return { instance, display, narrow };
-    }
-
-    private disposeArt(art: FenceArt): void { this.release(art); }
-
-    private release({ instance, display }: DrawnEntity): void { instance.remove(); display.dispose(); }
 
     /** Art and skin state only; a placed fence additionally becomes an inst in `place()`. */
-    private async createInstance(buildId: FenceId, rotation: number, requestedSkin: string | undefined, attach: boolean, opacity?: number): Promise<FenceInstance> {
+    private createInstance(buildId: FenceId, rotation: number, requestedSkin?: string, opacity = 1): FenceInstance {
         if (this.disposed) throw new Error('Placement has been disposed');
-        await Promise.all([
-            this.assets.loadAnimation('structure_collapse_fx.zip'), this.assets.loadBuild('structure_collapse_fx.zip'),
-            this.assets.loadAnimation('fire.zip'), this.assets.loadBuild('fire.zip'),
-        ]);
-        const skinId = fenceWorldSkin(buildId, requestedSkin);
-        const art = await this.createArt(skinId, isNarrowRotation(rotation), opacity);
-        const { instance, display } = createEmptyEntity(FENCE_ID);
-        instance.skinId = skinId;
-        instance.sprite.setSkinSource({ art: this.assets, archives: FENCE_SKIN_ARCHIVES });
+        const instance = new FencePrefabInstance(rotation, fenceWorldSkin(buildId, requestedSkin), this.resources.archives, opacity);
+        const display = this.displays.add({ name: FENCE_ID, status: instance.status, sprite: instance.sprite, light: instance.light,
+            source: this.resources.factory({ animationArchive: 'fence.zip', extraAnimationArchives: ['fence_thin.zip'], buildArchive: 'fence.zip' }) });
         const root = display.model;
-        root.userData.billboard = true;
-        root.add(art.display.model);
-        root.userData.animationController = art.instance.sprite;
-        root.userData.fenceRotation = rotation;
-        const fence: FenceInstance = {
-            buildId, instance, display, root, art: createSignal(art), opacity: createSignal(opacity ?? 1),
-            stopAppearance: () => {}, awake: true, rotation, skinId: instance.sprite.skinId, inventorySkinId: requestedSkin,
-            stopSkin: () => {}, physics: new PhysicsState(),
-        };
-        const stopFacing = createRenderEffect(() => {
-            const { sprite } = fence.art.get().instance;
-            sprite.setFacing(facingFromRotation(fence.rotation, this.heading.get()));
-            sprite.setOpacity(fence.opacity.get());
-        });
-        // Each drawn sprite is the fence's render group.
-        const stopRenderGroup = createEffect(() => {
-            const art = fence.art.get();
-            art.instance.sprite.art.get();
-            const visual = art.display.model.children[0]?.children[0];
-            registerSpriteRenderGroup(root, visual instanceof THREE.Group ? visual : art.display.model);
-        });
-        fence.stopAppearance = () => { stopFacing(); stopRenderGroup(); };
-        this.bindSkin(fence);
-        instance.skinId = skinId;
-        if (attach) this.scene.add(root);
+        bindInstance(root, instance);
+        const fence: FenceInstance = { buildId, instance, display, root, inventorySkinId: requestedSkin };
         return fence;
     }
 
     /** prefabs/fence.lua's components, attached once the preview becomes a placed inst. */
     private initializeEntity(fence: FenceInstance): void {
         const { root } = fence;
-        const entity = actionEntity(root, FENCE_ID);
+        const entity = actionEntity(root, FENCE_ID, fence.instance);
         entity.reskinTarget = this.createReskinTarget(fence);
         fence.entity = entity;
         for (const tag of FENCE_TAGS) entity.addTag(tag);
-        root.userData.getGroundPosition = () => root.position.clone();
-        const combatInst: CombatInst = {
-            get isRemoved() { return entity.isRemoved; },
-            getPosition: () => root.position.clone(), getPhysicsRadius: () => FENCE_PHYSICS_RADIUS,
-            hasTag: tag => entity.hasTag(tag), PushEvent: (name, data) => entity.PushEvent?.(name, data),
-            get components() { return entity.components as CombatInst['components']; },
-        };
+        const combatInst: CombatInst = fence.instance;
         // SetMaxHealth(1), SetAbsorptionAmount(1), canheal = false, nofadeout = true.
         const health = new Health(1, combatInst);
         health.absorb = 1; health.canheal = false; health.nofadeout = true;
         const combat = new Combat(combatInst, () => 0);
         combat.SetKeepTargetFunction(() => false);
-        Object.assign(fence, { health, combat, combatInst });
         Object.assign(entity.components, { health, combat });
         const workable = new Workable(entity);
         entity.components.workable = workable;
@@ -512,6 +376,11 @@ export class FencePlacement {
         // onworked: hit, then idle.
         workable.SetOnWorkCallback(() => this.playHit(fence));
         workable.SetOnFinishCallback(() => this.hammered(fence));
+        entity.hammerTarget = {
+            get id() { return String(fence.instance.entityId); }, instance: fence.instance, display: fence.display, entity,
+            position: fence.instance.position, isValid: () => this.isLive(fence),
+            playHit: () => { performToolWork('HAMMER', entity, {}); },
+        };
         combat.onhitfn = (_inst, attacker) => {
             workable.WorkedBy({ PushEvent: (name, data) => attacker.PushEvent?.(name, data) });
         };
@@ -521,19 +390,8 @@ export class FencePlacement {
     }
 
     private playHit(fence: FenceInstance): void {
-        const { sprite } = fence.art.peek().instance;
+        const { sprite } = fence.instance;
         sprite.playOnce('hit', () => sprite.playOnce('idle'));
-    }
-
-    /** The logical fence declares the same skin on its active child and the placer's spare bank. */
-    private bindSkin(fence: FenceInstance): void {
-        fence.root.userData.skinIdSignal = readonlySignal(fence.skinId);
-        const skin = watchSignal(fence.skinId, stop => { fence.stopSkin = stop; });
-        createEffect(() => {
-            const skinId = skin.get();
-            fence.art.peek().instance.skinId = skinId;
-            if (fence.spare) fence.spare.instance.skinId = skinId;
-        });
     }
 
     /** onhammered: loot, collapse_small and Remove. */
@@ -548,18 +406,15 @@ export class FencePlacement {
     }
 
     private spawnCollapse(position: THREE.Vector3): void {
-        const create = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(this.assets, {
-            animationArchive: 'structure_collapse_fx.zip', buildArchives: ['structure_collapse_fx.zip'],
-            bank: 'collapse', animation: clip.name, loop: clip.loop,
-        });
-        void create({ name: 'collapse_small', loop: false }).then(initial => {
-            if (this.disposed) { initial.dispose(); return; }
-            const effect = createArchiveEntity('collapse_small', { create, initial }, { name: 'collapse_small' }, 'collapse_small');
-            for (const tag of ['NOCLICK', 'FX']) effect.instance.addTag(tag);
-            effect.instance.persists = false;
-            effect.instance.position.copy(position); this.scene.add(effect.display.model); this.effects.add(effect);
-            effect.instance.sprite.playOnce('collapse_small', () => { this.release(effect); this.effects.delete(effect); });
-        }).catch((error: unknown) => { if (!this.disposed) console.error('Unable to play fence collapse effect', error); });
+        const instance = new PrefabInstance('collapse_small', new SpriteState({ name: 'collapse_small', billboard: true }));
+        for (const tag of ['NOCLICK', 'FX']) instance.addTag(tag);
+        instance.persists = false;
+        instance.sprite.playOnce('collapse_small', () => { instance.remove(); this.effects.delete(instance); });
+        const display = this.displays.add({ name: 'collapse_small', status: instance.status, sprite: instance.sprite,
+            archive: this.resources.archive({ animationArchive: 'structure_collapse_fx.zip', buildArchives: ['structure_collapse_fx.zip'], bank: 'collapse' }) });
+        bindInstance(display.model, instance);
+        instance.position.copy(position);
+        this.effects.add(instance);
     }
 
     private removeFence(fence: FenceInstance): void {
@@ -569,105 +424,43 @@ export class FencePlacement {
 
     /** MakeMediumBurnable + MakeMediumPropagator, with DefaultBurnFn / DefaultExtinguishFn / DefaultBurntFn. */
     private initializeBurnable(fence: FenceInstance): void {
-        const entity = fence.entity!;
-        const inst: BurnableInst = entity;
-        const burnable = new Burnable(inst);
-        entity.components.burnable = burnable;
-        burnable.SetBurnTime(FENCE_BURN_TIME);
-        entity.components.propagator = new Propagator(inst, 'medium', radius => {
-            const targets: BurnableInst[] = [];
-            const origin = inst.getPosition();
-            this.scene.traverse(model => {
-                const target = model.userData.actionEntity as BurnableInst | undefined;
-                if (!target?.components.propagator || target.isRemoved || target.hasTag('INLIMBO')) return;
-                const position = target.getPosition();
-                if (position.distanceToSquared(origin) <= radius ** 2) targets.push(target);
-            });
-            return targets;
-        }, UNIT, undefined, getBoundWatchWorldContent());
-        fence.root.userData.burningSignal = burnable.burning;
-        burnable.SetOnIgniteFn(() => { fence.instance.persists = false; });
-        fence.stopBurning = burnable.burning.subscribe(burning => {
-            if (burning && fence.awake) this.showFire(fence); else this.hideFire(fence);
-        });
-        burnable.SetOnExtinguishFn(() => {
-            fence.instance.persists = true;
-            PlaySound('dontstarve/common/fireOut', fence.root.position);
-        });
-        burnable.SetOnBurntFn(() => {
-            // DefaultBurntFn: one ash at the fence, then Remove.
-            const position = fence.root.position.clone();
-            const ash = this.world.spawnItem?.({ itemId: 'ash', count: 1 });
-            if (ash) this.world.dropItem?.(ash, position);
-            this.removeFence(fence);
-        });
-    }
-
-    private showFire(fence: FenceInstance): void {
-        if (!fence.awake || fence.fire) return;
-        const create = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(this.assets, { animationArchive: 'fire.zip',
-            buildArchives: ['fire.zip'], bank: 'fire', animation: clip.name, loop: clip.loop }, { name: 'fire' });
-        const level = `level${FENCE_FX_LEVEL}`;
-        void create({ name: level, loop: true }).then(initial => {
-            if (this.disposed || !this.placed.has(fence) || !fence.awake || !fence.root.userData.burningSignal.peek() || fence.fire) { initial.dispose(); return; }
-            const fire = createArchiveEntity('fire', { create, initial }, { name: level }, 'fire');
-            for (const tag of ['FX', 'HASHEATER']) fire.instance.addTag(tag);
-            fire.instance.persists = false;
-            fire.instance.position.copy(fence.root.position);
-            this.scene.add(fire.display.model); this.fires.add(fire);
-            fence.fire = fire;
-            prefabInstance(fence.root)!.light.set({ colour: [1, 1, 192 / 255], radius: (FENCE_FX_LEVEL + 1) * UNIT, intensity: .8, falloff: .33 });
-            fence.fireSound = PlaySound('dontstarve/common/campfire', fence.root.position);
-        }).catch((error: unknown) => { if (!this.disposed) console.error('Unable to show fence fire', error); });
-    }
-
-    private hideFire(fence: FenceInstance): void {
-        if (fence.fire) { this.fires.delete(fence.fire); this.release(fence.fire); fence.fire = undefined; }
-        fence.fireSound?.stop(); fence.fireSound = undefined;
-        prefabInstance(fence.root)!.light.set(null);
+        this.fireFx ??= FireFxHost.create(`${import.meta.env.BASE_URL}dst/data/anim`);
+        fence.burn = new BurnableBinding(fence.entity!, {
+            propagator: 'medium', burnTime: FENCE_BURN_TIME, fxLevel: FENCE_FX_LEVEL,
+            onIgnite: () => { fence.instance.persists = false; },
+            onExtinguish: () => { fence.instance.persists = true; },
+            onBurnt: () => {
+                // DefaultBurntFn: one ash at the fence, then Remove.
+                const position = fence.instance.position.clone();
+                const ash = this.world.spawnItem?.({ itemId: 'ash', count: 1 });
+                if (ash) this.world.dropItem?.(ash, position);
+                this.removeFence(fence);
+            },
+        }, { scheduler: this.scheduler, root: this.scene, fire: this.fireFx });
     }
 
     private place(fence: FenceInstance): void {
         this.placed.add(fence); this.mouseRecords.set(fence.root, fence);
         fence.root.visible = true;
         this.initializeEntity(fence);
-        this.faceCamera(fence.root);
-        this.applyFacing(fence, this.heading.peek());
         // fence.lua: MakeObstaclePhysics(inst, .5); Physics:SetDontRemoveOnSleep(true), so pens hold outside the ticking area.
-        MakeObstaclePhysics(fence, .5).SetDontRemoveOnSleep(true);
-        if (this.world.physics) fence.physicsBinding ??= bindPhysics(this.world.physics, fence.physics, () => fence.root.position);
+        MakeObstaclePhysics(fence.instance, .5).SetDontRemoveOnSleep(true);
+        if (this.world.physics) fence.instance.bindPhysics(this.world.physics);
         fence.stopActivity = watchTileActivity(fence.root, this.world.tickingarea, active => {
-            fence.awake = active;
-            // Only the art follows the tile: the transform-only root stays in the scene like the pen's physics.
-            fence.art.peek().instance.setActive(active);
-            if (active && fence.root.userData.burningSignal.peek()) this.showFire(fence);
-            else this.hideFire(fence);
+            fence.instance.setActive(active);
+            fence.burn?.setActive(active);
         });
     }
 
     private disposeFence(fence: FenceInstance): void {
-        fence.physicsBinding?.dispose(); fence.physicsBinding = undefined;
-        fence.root.userData.removed = true;
+        fence.instance.remove();
         fence.stopActivity?.();
-        fence.stopAppearance();
-        fence.stopSkin();
-        fence.stopBurning?.(); fence.stopBurning = undefined;
-        this.hideFire(fence);
-        const components = fence.entity?.components;
-        components?.burnable?.SetOnExtinguishFn(undefined);
-        components?.burnable?.dispose(); components?.propagator?.dispose();
+        fence.burn?.dispose();
+        const components = fence.instance.components;
         components?.workable?.dispose();
-        fence.health?.dispose();
-        if (fence.combat) fence.combat.onhitfn = undefined;
-        if (fence.spare) { this.disposeArt(fence.spare); fence.spare = undefined; }
-        this.disposeArt(fence.art.peek());
-        registerSpriteRenderGroup(fence.root, fence.art.peek().display.model);
-        this.release(fence);
-    }
-
-    private faceCamera(model: THREE.Object3D): void {
-        this.camera.getWorldQuaternion(this.cameraWorldQuaternion);
-        model.quaternion.copy(this.cameraWorldQuaternion);
+        components.health?.dispose();
+        if (components.combat) components.combat.onhitfn = undefined;
+        fence.display.dispose();
     }
 
     private playerFrontGroundPosition(): THREE.Vector3 {

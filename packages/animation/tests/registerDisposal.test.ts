@@ -25,6 +25,7 @@ vi.mock('../../../src/emoteWheel', () => ({ setupEmoteWheel: vi.fn(() => vi.fn()
 vi.mock('../../../src/playerStats', () => ({
   playerStats: { sanity: { peek: () => 35, set: vi.fn() } }, applyPlayerFoodEffects: vi.fn(),
 }));
+vi.mock('../../../src/player', () => ({ playerInstance: {} }));
 
 it('updates application resources until scene disposal, then releases them once', () => {
   const events = new EventEmitter<DisposalEvents>();

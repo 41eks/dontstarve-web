@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { CaveFernManager } from '../../prefab/src/cave_fern';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
-import { bindTestWorld, tickWorld } from './worldContentFixture';
+import { bindTestWorld, tickWorld, plantInstance } from './worldContentFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { createMemo, createSignal } from '../../signals/src';
 import { SpriteState } from '@dontstarve-web/display';
@@ -35,9 +35,9 @@ it('preserves cave fern poses and components across residency, then picks foliag
   const fern = await ferns.spawn('cave_fern', new THREE.Vector3(2, 0, 3));
   const withered = await ferns.spawn('cave_fern_withered', new THREE.Vector3(-2, 0, 3));
   // cave_fern.lua: a random f1..f10 pose, saved as data.anim; the plant has no workable, so DIG cannot target it.
-  const pose = (model: THREE.Group) => model.userData.animationController.currentAnimation as string;
+  const pose = (model: THREE.Group) => plantInstance(model).sprite.currentAnimation as string;
   expect(pose(fern)).toMatch(/^f([1-9]|10)$/);
-  expect(fern.userData.components.workable).toBeUndefined();
+  expect(plantInstance(fern).components.workable).toBeUndefined();
   expect(ferns.digTargets).toEqual([]);
   const records = ferns.exportRecords();
   expect(records.map(({ prefabId, record }) => [prefabId, record.components.variant?.anim])).toEqual([
@@ -49,7 +49,7 @@ it('preserves cave fern poses and components across residency, then picks foliag
   expect(pose(restored)).toBe(pose(fern));
 
   const plants = [fern, withered];
-  const components = plants.map(plant => plant.userData.components);
+  const components = plants.map(plant => plantInstance(plant).components);
   const meshCount = (plant: THREE.Group) => {
     let count = 0;
     plant.traverse(object => { if ((object as THREE.Mesh).isMesh) count++; });
@@ -57,7 +57,7 @@ it('preserves cave fern poses and components across residency, then picks foliag
   };
   await new Promise(resolve => setTimeout(resolve, 0));
   for (const plant of plants) {
-    expect(plant.userData.animationController).toBeInstanceOf(SpriteState);
+    expect(plantInstance(plant).sprite).toBeInstanceOf(SpriteState);
     expect(meshCount(plant)).toBeGreaterThan(0);
   }
   awake.set(false);
@@ -67,7 +67,7 @@ it('preserves cave fern poses and components across residency, then picks foliag
   for (const [index, plant] of plants.entries()) {
     expect(meshCount(plant)).toBe(0);
     expect(plant.parent).toBeNull();
-    expect(plant.userData.components).toBe(components[index]);
+    expect(plantInstance(plant).components).toBe(components[index]);
   }
   awake.set(true);
   await new Promise(resolve => setTimeout(resolve, 0));
@@ -80,9 +80,9 @@ it('preserves cave fern poses and components across residency, then picks foliag
   expect(ferns.exportRecords().slice(0, 2)).toEqual(records);
 
   const given: string[] = [];
-  expect(fern.userData.components.pickable.quickpick).toBe(true);
-  expect(fern.userData.components.pickable.pick({ giveItem: (id: string) => { given.push(id); return true; } })).toBe(true);
-  expect(withered.userData.components.pickable.pick({ giveItem: (id: string) => { given.push(id); return true; } })).toBe(true);
+  expect(plantInstance(fern).components.pickable.quickpick).toBe(true);
+  expect(plantInstance(fern).components.pickable.pick({ giveItem: (id: string) => { given.push(id); return true; } })).toBe(true);
+  expect(plantInstance(withered).components.pickable.pick({ giveItem: (id: string) => { given.push(id); return true; } })).toBe(true);
   expect(given).toEqual(['foliage', 'cutgrass']);
   tickWorld(scheduler, ferns, 1 / 30, new THREE.Quaternion());
   // remove_when_picked: nothing remains to save or render but the restored fern.

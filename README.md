@@ -250,6 +250,8 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 
 清洁扫把从 action entity 注册表读取鼠标命中的实体，可换肤实体在注册时提供自身的换肤操作，移除或更换地面模型时清理旧注册。没有皮肤的实体仍按标签提供 `CASTSPELL`，在第 9 帧校验失败时保留目标、不播放换肤烟雾。换肤成功时将预备好的 FX 消息交给目标，目标应用 skinId 后按自身 prefab ID 和脚点启动独立烟雾。FX 的标签、动画、符号覆盖和照明由逻辑实体声明，模型、共享 sprite、场景挂载与释放由 `packages/display` 管理；烟雾不跟随目标移动，也不写入存档。`c_give("reskin_tool")`、`c_spawn("reskin_tool")`、`c_save()` 的语法、参数、支持 ID 和换肤存档行为不变。
 
+锤击与换肤统一从命中实体注册的 `hammerTarget`／`reskinTarget` 取目标，`src/registerDisposal.ts` 不再汇总各 manager 的锤击列表。目标的有效性仍由所属 prefab 判断，工作量、受击与拆除由 `workable` 处理，命中时重新检查目标与工具；实体移除或地面模型替换会清理这两项注册。`c_give("hammer")`、`c_spawn("hammer")`、`c_give("reskin_tool")` 和 `c_save()` 的语法、参数、支持 ID 与存档字段不变。
+
 `c_give("dreadstone", 3)` / `c_give("wagpunk_bits", 3)` 获取墙体拆除材料，`c_spawn("dreadstone")` / `c_spawn("wagpunk_bits")` 在玩家位置生成一份。库存图标使用各自真实 atlas，地面使用源动画的 `idle`；数量、实体 ID 和落点随 `c_save()` 保存恢复。
 
 蝴蝶 `butterfly` 与月蛾 `moonbutterfly` 现在按 Lua 的实体结构运行：行为树在 `packages/brains/src`（`behaviourtree.ts` 对应 `behaviourtree.lua`，`behaviours/{runaway,wander,doaction,findflower,panic,avoidelectricfence}.ts`、`braincommon.ts`、`butterflybrain.ts`、`moonbutterflybrain.ts` 逐一对应同名 Lua），状态图在 `packages/stategraphs/src/SGbutterfly.ts`，`locomotor`、`pollinator`、`knownlocations` 组件在 `packages/componets/src`，`packages/prefab/src/butterfly.ts` 只负责实体、世界适配和美术。蝴蝶的优先级为 恐慌 → 电栅栏 → `RunAway`（`scarytoprey`，5 单位内逃离、10 单位外停止）→ 夜晚回家 → 采满花粉回家 → `FindFlower` → `Wander`；因 `PriorityNode` 的评估周期散布和 `Wander` 的初始等待，生成后约 2–4 秒才开始飞行（`random` 固定为 0 的测试可复现），`idle` 状态只在 `idle_flight_loop` 播完一轮后才转入 `moving`。到花朵的到达距离按 `locomotor.lua` 的 `ARRIVE_STEP + 物理半径` 计算，而不再直接贴到花心；`POLLINATE` 落地后授粉 2 秒（`GetRandomWithVariance(3, 1)`）再起飞，访问过的花不会再访问，`GOHOME` 落地播放完后移除。月蛾使用 `anim/butterfly_basic.zip` 的 `butterfly` bank 与 `butterfly_moon` build，移动速度 `MOONBUTTERFLY_SPEED = 2.5`，没有授粉组件，行为树是 恐慌 → 电栅栏 → `RunAway` → 围绕 `knownlocations` 的 `home`（掉落时位置）`Wander`（最大 20 单位）；带半径 0.5、强度 0.5 并随 `OnUpdateFlicker` 闪烁的月光（颜色 0.3/0.55/0.45）和 0.15 的光照覆盖。月蛾寿命 `TOTAL_DAY_TIME / 2`，在物品栏里按 0.25 倍速腐败，在物品栏里腐败直接消失，在地面腐败则关闭光、禁用捕虫网并进入 `death`（掉落 `moonbutterflywings`），3 秒后移除。月树砍倒时的 `moonbutterfly` 掉落（100% 一只，50% 第二只）现在是真实的月蛾。`c_spawn("butterfly")`、`c_spawn("moonbutterfly")`、`c_spawn("moonbutterflywings")` 和对应的 `c_give` 都可用；月蛾翅膀可食用并会腐败。尚未接入：冻结/电击状态（`CommonStates.AddFrozenStates` / `AddElectrocuteStates`）、`Pollinator:CreateFlower`、蝴蝶生成器、`MakeFeedableSmallLivestock` 喂食、燃烧与万圣节月亮变异、墙体视线检查（`FindWalkableOffset` 的 `check_los`）和 `RunAway` 的 `safe_point_fn` / 回家分支。
@@ -400,7 +402,9 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 
 用 `c_spawn("wall_stone")`、`c_spawn("wall_wood")`、`c_spawn("wall_hay")`、`c_spawn("wall_ruins")`、`c_spawn("wall_moonrock")` 或 `c_spawn("wall_dreadstone")` 生成建成墙；`wall_*_item` 别名仍生成建成墙。`c_give("wall_stone_item", 10)` 等命令获取可放置的墙物品，库存图标、掉落地面的 `idle` 动画与建成墙的 `half` 外观分别使用各自原版资源。装备 `c_give("reskin_tool")` 获取的清洁扫把，右键建成墙可按下表循环换肤，最后回到默认外观；原有地面墙物品也可换肤。放置带皮肤的墙物品会映射到对应的建成墙皮肤，保留正面/斜面随相机朝向切换、受击动画和绝望石墙的红色覆盖层。换肤保留实体 ID、地面落点及已保存的健康状态；建成墙皮肤随 `c_save()` 保存并恢复，旧的无皮肤墙存档仍可加载。档案馆墙 `wall_stone_2` / `wall_ruins_2` 和废料墙 `wall_scrap` 没有原版皮肤，不提供换肤。
 
-墙体使用动画包的 `ResidentSpriteController` 与共享静态精灵工厂，栅栏使用 `ResidentSprite` 和共享 archive sprite；离开活动区只释放 visual，唤醒后恢复当前朝向、皮肤和姿态，实体 ID、脚点、健康／工作组件、物理登记和存档状态继续保留。栅栏燃烧计时在休眠时继续，到期仍移除实体。调试命令语法、参数与支持的 `c_spawn` / `c_give` ID 不变，`c_save()` 可继续保存休眠实体。
+墙体与栅栏的 display 使用动画包的 `ResidentSpriteController` 与共享精灵工厂；离开活动区只释放 visual，唤醒后恢复当前朝向、皮肤和姿态，实体 ID、脚点、健康／工作组件、物理登记和存档状态继续保留。栅栏燃烧计时在休眠时继续，到期仍移除实体。调试命令语法、参数与支持的 `c_spawn` / `c_give` ID 不变，`c_save()` 可继续保存休眠实体。
+
+墙体同样以 `PrefabInstance` 持有皮肤、外观、组件、物理和移除状态，prefab 不再读写模型 `userData`、等待资源或监听相机。`SpriteResources` 缓存静态工厂，`PrefabDisplay` 根据已有的世界相机输入选择正面／斜面图及对应受击动画，并保留绝望石叠层；墙体模型位置直接作为脚点，显示层负责贴图底部对齐。换肤、休眠和唤醒均保留原实例，`c_spawn("wall_stone")`、`c_give("wall_stone_item", 10)`、`c_save()` 的语法、参数、支持 ID 和既有存档字段不变。
 
 墙按 `prefabs/walls.lua` 拥有 `health` 与 `combat` 组件：最大生命为草墙 100、木墙 200、石墙与档案馆石墙 400、铥矿墙 800、月岩墙 600、绝望石墙 800、废料墙 600，新建成的墙以一半生命开始；月岩墙、绝望石墙和废料墙按 `SetAbsorptionAmountFromPlayer(.25)` 减免 25% 玩家伤害。外观由生命 signal 派生：≤0 `broken`、≤40% `onequarter`、≤50% `half`（原有静态图）、<99% `threequarter`、满血按世界坐标稳定选择 `fullA` / `fullB` / `fullC`；受击播放对应的 `*_hit` 再停在该姿态，同时播放材质的 `destroy_*` 音效。生命为 0 的墙显示破损外观，不再是攻击目标，但仍可锤毁（按 0 生命掉落 1 份材料）。墙的当前生命随换肤保留，并以 `health: { current, maximum }` 随 `c_save()` 保存恢复；旧存档缺少该字段时按一半生命加载。
 
@@ -418,6 +422,8 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 `c_give("fence_item", 6)` 获取木栅栏物品（每叠 20 个，对应 `fence.lua` 的 `STACK_SIZE_MEDITEM`），`c_spawn("fence_item")` 生成同一个可拾取的地面物品；`c_spawn("fence")` 在玩家前方的格子中心生成已建成的栅栏（旋转为 0，使用窄的 `fence_thin` bank）。`fence_item` 的库存图标为 `images/inventoryimages.xml` 的 `fence_item.tex`，地面使用 `fence/fence/inventory`；它可点燃并留下灰烬，尚未实现燃料用途。物品栏中左键 `fence_item` 进入放置预览：预览按 `MakePlacer(..., fixedcameraoffset = 0, "eight")` 相对相机放置，旋转为 `-相机 heading`，所以放置时栅栏总是正对相机；预览为 65% 不透明，格子吸附与墙相同（1 DST 单位），按 `CalcRotationEnum` 的奇偶选 bank——奇数用 `fence`（宽），偶数用 `fence_thin`（窄），旋转相机时预览随之切换。若紧贴一道与之平行的栅栏且朝向相反（从背面补洞），预览会旋转 180° 与邻居同向（`FixUpFenceOrientation`）。左键放置消耗 1 个物品并播放 `place_structure_wood`，右键取消。已建成的栅栏是八向动画实体：由 `rotation + 相机 heading` 选择 `facing` 掩码（DOWN=8、UP=2、左右共用 5、两组斜向共用 48/192），左右共用的 clip 面向左侧时水平镜像；旋转相机时已放置的栅栏随之换面，但保存的旋转不变。
 
 栅栏带 `wall`、`fence`、`alignwall`、`rotatableobject` 等标签与半径 0.5 的障碍物理；按源码拥有 3 次工作量的 `HAMMER`：每次命中播放 `hit → idle`，第三次掉落 1 个 `twigs`、播放 `collapse_small` 及 `destroy_smoke` / `destroy_wood` 后移除；`health`（最大值 1、吸收 100%）与 `combat` 让攻击折算成一次锤击。栅栏按 `MakeMediumBurnable`（20 游戏秒、火焰等级 3）与中型热传播燃烧，烧尽留下 1 个 `ash`；燃烧中的栅栏不写入存档，熄灭后恢复保存。13 款源皮肤 `fence_ancient`、`fence_factory`、`fence_fantasy`、`fence_gingerbread`、`fence_gothic`、`fence_picketbrown`、`fence_pickettan`、`fence_picketwhite`、`fence_rose`、`fence_shell`、`fence_victorianblack`、`fence_victorianbrass`、`fence_victorianbronze` 可用 `reskin_tool` 依次切换，物品皮肤为对应的 `<皮肤>_item`；换肤保留实体身份、位置和旋转。`c_save()` 的 `world.entities.fence` 记录 `components.fence`：`rot`（`CalcRotationEnum`，0 省略）和 `skinId`，读档按 `rot * 45` 恢复旋转与 bank。示例：`c_give("fence_item", 6); c_give("reskin_tool"); c_spawn("fence"); c_save()`。木门 `fence_gate`、电栅栏、`fence_rotator` 与垃圾栅栏 `fence_junk` 不在当前范围内，战斗伤害对栅栏无效（吸收 100%）。
+
+每道栅栏由一个 `PrefabInstance` 声明皮肤、旋转、bank、透明度与动画，直接使用实例的 `physics` 和组件；`PrefabDisplay` 使用已有的世界相机输入选择八向 art 与镜像，`PrefabDisplayGroup` 与 `SpriteResources` 管理场景、绘制排序、共享资源和休眠重建，燃烧与火焰复用 `BurnableBinding` 和 `FireFxHost`。预览仅按源码使用相机 heading 计算放置旋转；切换 bank 与扫把换肤均保留同一实例和 sprite 状态。栅栏逻辑不再读写模型 `userData`，上述调试命令的语法、参数、支持 ID 和 `components.fence.skinId` 存档字段不变。
 
 
 
@@ -442,6 +448,8 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 
 
 
+
+草丛、树苗、浆果丛、石果灌木、猴尾草、蘑菇、仙人掌和洞穴蕨的逻辑状态由 `PickablePlantInstance` 持有：组件、皮肤、存档身份和 `persists` 不再由植物逻辑写入 `model.userData`。`PrefabDisplay` 负责共享 archive sprite 的绘制、相机朝向和活动区卸载／恢复；燃烧复用通用火焰 FX，休眠只释放 visual，采摘再生、枯萎和燃烧计时继续。`c_spawn("grass")`、`c_spawn("berrybush")`、`c_give("dug_berrybush")` 等现有命令的语法、参数和支持 ID 不变，`c_save()` 继续保留身份、脚点、皮肤及组件计时状态。
 
 | 类型 | prefab_id |
 | --- | --- |

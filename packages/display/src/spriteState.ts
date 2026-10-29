@@ -77,7 +77,11 @@ export interface SpriteJson {
   /** A fresh object is one more request for a brief feedback clip. */
   readonly transient?: { readonly name: string };
   readonly image?: number;
+  /** Static build images selected by the source animation's facing masks. */
+  readonly facingImages?: ReadonlyMap<number, number>;
   readonly facing?: number;
+  /** Transform:SetEightFaced with this logical rotation; the display selects the view from its camera input. */
+  readonly facingRotation?: number;
   /** Left-hand facings drawn as their mirrored right-hand art. */
   readonly mirrored?: boolean;
   readonly colour?: readonly number[];
@@ -288,8 +292,14 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
     } };
   }
   showImage(image: number): void { this.write({ image }); }
+  setFacingImages(images: ReadonlyMap<number, number>): void { this.write({ facingImages: images }); }
   setFacing(facing: number, mirrored?: boolean): void {
-    if (facing !== this.state.facing || mirrored !== this.state.mirrored) this.write({ facing, mirrored });
+    if (facing !== this.state.facing || mirrored !== this.state.mirrored || this.state.facingRotation !== undefined) {
+      this.write({ facing, mirrored, facingRotation: undefined });
+    }
+  }
+  setFacingRotation(rotation: number): void {
+    if (rotation !== this.state.facingRotation) this.write({ facingRotation: rotation, facing: undefined, mirrored: undefined });
   }
   setColour(colour: readonly number[]): void { this.write({ colour }); }
   setOpacity(opacity: number): void { this.write({ opacity }); }

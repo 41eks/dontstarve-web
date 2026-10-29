@@ -45,7 +45,7 @@ export class SaplingManager extends PickablePlantManager {
 
   /** dug_sapling ondeploy: SpawnPrefab, then OnTransplant; the display loads the art. */
   transplant(prefabId: SaplingPrefabId, position: THREE.Vector3): boolean {
-    this.spawnPlant(SAPLING_DEFINITIONS[prefabId], position).userData.components.pickable.OnTransplant();
+    this.getInstance(this.spawnPlant(SAPLING_DEFINITIONS[prefabId], position))!.components.pickable.OnTransplant();
     return true;
   }
 

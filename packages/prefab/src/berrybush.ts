@@ -1,7 +1,6 @@
 import type * as THREE from 'three';
 import type { Pickable } from './components/pickable';
 import { PickablePlantManager, type PickablePlantDefinition, type PickablePlantRecord } from './pickablePlant';
-import { modelHasTag, prefabInstance } from './prefabInstance';
 
 export const BERRYBUSH_ID = 'berrybush' as const;
 export const BERRYBUSH_REGROW_TIME = 3 * 480;
@@ -27,10 +26,10 @@ export const BERRYBUSH_DEFINITION: PickablePlantDefinition = {
   witherable: true, burnTime: 30, burnFxLevel: 4, propagatorSize: 'medium', deploySmartRadius: 3,
   physicsRadius: .1, snowCovered: true,
   skins: BERRYBUSH_SKINS, dugSkins: BERRYBUSH_SKINS.map(skin => `dug_${skin}`),
-  digLoot: (model, pickable, withered) => withered || pickable.IsBarren()
+  digLoot: (instance, pickable, withered) => withered || pickable.IsBarren()
     ? [{ prefab: 'twigs' }, { prefab: 'twigs' }]
     : [...pickable.canBePicked ? [{ prefab: 'berries' }] : [],
-      { prefab: 'dug_berrybush', skinId: prefabInstance(model)!.skinId ? `dug_${prefabInstance(model)!.skinId}` : undefined }],
+      { prefab: 'dug_berrybush', skinId: instance.skinId ? `dug_${instance.skinId}` : undefined }],
   createAppearance: context => {
     const setBerries = (percent?: number) => {
       const layer = percent === undefined ? undefined : percent >= .9 ? 'berriesmost' : percent >= .33 ? 'berriesmore' : 'berries';
@@ -49,13 +48,13 @@ export const BERRYBUSH_DEFINITION: PickablePlantDefinition = {
       },
       regen: pickable => { context.play(['grow', 'idle'], true); full(pickable); },
       empty: () => {
-        if (modelHasTag(context.model, 'withered') || context.animation.currentAnimation === 'dead') {
+        if (context.instance.hasTag('withered') || context.animation.currentAnimation === 'dead') {
           context.play(['dead_to_idle', 'idle']);
         } else context.play(['idle'], true);
         setBerries();
       },
       barren: () => {
-        if (modelHasTag(context.model, 'withered') || context.animation.currentAnimation === 'idle') {
+        if (context.instance.hasTag('withered') || context.animation.currentAnimation === 'idle') {
           context.play(['idle_to_dead', 'dead']);
         } else context.play(['dead']);
         setBerries();
@@ -73,7 +72,7 @@ export class BerrybushManager extends PickablePlantManager {
   /** dug_berrybush ondeploy: SpawnPrefab with the dug skin's bush skin, then OnTransplant; the display loads the art. */
   transplant(position: THREE.Vector3, dugSkinId?: string): boolean {
     const model = this.spawnPlant(BERRYBUSH_DEFINITION, position, undefined, dugSkinId?.replace(/^dug_/, ''));
-    model.userData.components.pickable.OnTransplant();
+    this.getInstance(model)!.components.pickable.OnTransplant();
     return true;
   }
   exportRecords(): PickablePlantRecord[] { return this.exportPlants().map(({ record }) => record); }

@@ -38,7 +38,7 @@ export function registerPlacementEntity(model: Object3D, position: () => Vector3
     root: model,
     get position() { return position(); },
     get prefab() { return model.userData.actionEntity?.prefab ?? instance?.prefab; },
-    get smartRadius() { return model.userData.deploySmartRadius; },
+    get smartRadius() { return instance?.deploySmartRadius ?? model.userData.deploySmartRadius; },
     get groundTargetRadius() {
       return hasPlacementTag(entry, 'groundtargetblocker') || hasPlacementTag(entry, 'groundhole')
         ? model.userData.ground_target_blocker_radius ?? model.userData._groundhole_outerradius ?? instance?.getPhysicsRadius(0) ?? 0 : undefined;

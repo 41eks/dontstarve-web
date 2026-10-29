@@ -1,3 +1,4 @@
+import { actionTargetModel } from '../../stategraphs/src/actionTargetView';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
@@ -17,7 +18,7 @@ import initialWorld from '../../../public/saves/initial-world.json' with { type:
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { bindTestWorld, tickWorld } from './worldContentFixture';
+import { bindTestWorld, tickWorld, plantInstance } from './worldContentFixture';
 import { getPickActions } from '../../stategraphs/src/pick';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
@@ -69,7 +70,7 @@ it('digs mature/picked grass through workable, preserves dug-item commands and r
     expect(s.inventory.getItemSpec('dug_grass').maxStack).toBe(10);
     s.player.position.set(3, 0, 6);
     expect((await executeDebugCommand('c_spawn("grass")', s.inventory, id => registry.spawn(id))).ok).toBe(true);
-    const target = s.grass.digTargets[0], oldState = target.model.userData.pickablePlantState;
+    const target = s.grass.digTargets[0], oldState = plantInstance(actionTargetModel(target));
     const shovel = s.inventory.getEntity(inventorySlotAddress(1))!;
     expect(s.inventory.transfer(inventorySlotAddress(1), equipmentSlotAddress('hand'), 1)).toBe(true);
     expect(performToolWork('DIG', target.entity!, s.worker, shovel)).toBe(true);
@@ -97,7 +98,7 @@ it('digs mature/picked grass through workable, preserves dug-item commands and r
     expect(restored.inventory.GetEquippedItem('hand')?.components.finiteuses.remaining).toBe(24.75);
 
     const picked = await s.grass.spawn(new THREE.Vector3(80, 0, 6));
-    picked.userData.components.pickable.pick({ giveItem: (item: string, count: number) => s.inventory.add(item, count) });
+    plantInstance(picked).components.pickable.pick({ giveItem: (item: string, count: number) => s.inventory.add(item, count) });
     const pickedTarget = s.grass.digTargets[0];
     shovel.components.finiteuses.remaining = .25;
     expect(performToolWork('DIG', pickedTarget.entity!, s.worker, shovel)).toBe(true);
@@ -114,12 +115,12 @@ it('retains regrowth on extinguish, then burns to exactly one saved ash and rele
   const s = setup();
   try {
     const model = await s.grass.spawn(new THREE.Vector3(3, 0, 6));
-    const state = model.userData.pickablePlantState, burnable = model.userData.components.burnable;
-    model.userData.components.pickable.pick({ giveItem: () => true });
+    const state = plantInstance(model), burnable = plantInstance(model).components.burnable;
+    plantInstance(model).components.pickable.pick({ giveItem: () => true });
     burnable.Ignite();
     const timer = burnable.timer.peek();
     expect(state.phase.peek()).toBe('burning');
-    expect(state.persistence.peek()).toBe(false);
+    expect(state.persists).toBe(false);
     expect(s.grass.exportRecords()).toEqual([]);
     expect(getPickActions(model).find(action => action.model === model)?.available).toBe(false);
     expect(s.grass.digTargets[0].isValid()).toBe(true);
@@ -130,7 +131,7 @@ it('retains regrowth on extinguish, then burns to exactly one saved ash and rele
     expect(record.id).toBe(lookupPrefabInstance(model)?.entityId);
     expect(record.components.pickable).toEqual({ picked: true, regrowSeconds: 1430 });
     expect(state.phase.peek()).toBe('picked');
-    expect(state.persistence.peek()).toBe(true);
+    expect(state.persists).toBe(true);
     const torch = s.inventory.entities.create({ itemId: 'torch', count: 1 });
     s.inventory.configureItem(torch);
     expect(collectEquippedActions(torch, model.userData.actionEntity, true)).toContain('LIGHT');

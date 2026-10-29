@@ -1,11 +1,6 @@
 import { ToolMouseTarget } from './toolMouseTarget';
 import { ModelRecords } from './modelRecords';
 import * as THREE from 'three';
-import { disposeSprite } from './disposeSprite';
-import {
-    createStaticSpriteFactory,
-    type StaticSpriteFactory,
-} from '@dontstarve-web/animation/wallSprite';
 import { BuildCursor } from './buildCursor';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import { snapToWallSlotCenter } from './tile';
@@ -13,23 +8,21 @@ import type { WorldContext } from './worldContext';
 import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
 import { newEntityId, saveGroundPosition, type PlacementSaveRecord, type PlacedEntitySaveRecord } from './saveRecord';
 import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
-import { createArchiveEntity, createPrefabEntity, type PrefabInstance } from './prefabInstance';
-import type { PrefabDisplay, SpriteState } from '@dontstarve-web/display';
+import { PrefabInstance, bindInstance } from './prefabInstance';
+import { PrefabDisplayGroup, SpriteResources, SpriteState, type PrefabDisplay } from '@dontstarve-web/display';
 import { watchTileActivity } from './tileActivity';
 import { nextReskin } from './reskin_tool';
 import { type ReskinFxMessage, type ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
 import { wallWorldPrefab, wallWorldSkin } from './wallSkins';
-import { actionEntity, findActionEntity } from './actionEntity';
+import { actionEntity } from './actionEntity';
 import { Workable } from '../../componets/src/workable';
 import { performToolWork } from '../../stategraphs/src/componentactions';
-import { GroundItemAssets } from './groundItems';
-import { createSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { PlaySound } from './sound';
 import { TILE_SIZE } from './tile';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { Health } from '../../componets/src/health';
 import { Combat, type CombatInst } from '../../componets/src/combat';
-import { createRenderEffect, createMemo, createSignal, readonlySignal, watchSignal, type Memo, type Signal } from '@dontstarve-web/signals';
+import { createEffect, watchSignal } from '@dontstarve-web/signals';
 import { FACING_CARDINAL } from '@dontstarve-web/animation/facing';
 import type { PrefabSkinInitializer } from '@dontstarve-web/animation/prefabskin';
 
@@ -48,7 +41,7 @@ const WALL_HEALTH_ANIMS: readonly { threshold: number; anim: string | readonly s
 ];
 
 /** walls.lua resolveanimtoplay; the full variant is stable for a world position in DST units. */
-export function resolveWallAnim(percent: number, position: { x: number; z: number }): string {
+export function resolveWallAnim(percent: number, position: THREE.Vector3): string {
     for (const { threshold, anim } of WALL_HEALTH_ANIMS) {
         if (percent > threshold) continue;
         if (typeof anim === 'string') return anim;
@@ -98,6 +91,7 @@ export interface WallDefinition {
     symbol?: string;
     skinArchives?: Readonly<Record<string, string>>;
     skinInit?: PrefabSkinInitializer;
+    tags?: readonly string[];
     hammerWorkLeft?: number;
     hammerMaterial?: 'wood' | 'stone' | 'straw';
     hammerLoot?: { itemId: string; maxCount: number };
@@ -118,27 +112,14 @@ export interface WallHammerContext {
     remove(): void;
 }
 
-interface WallArt {
-    model: THREE.Group;
+interface WallInstance<BuildId extends string> {
+    readonly buildId: BuildId;
+    readonly model: THREE.Group;
     readonly instance: PrefabInstance;
     readonly display: PrefabDisplay;
-    animation: SpriteState;
-    opacity: Signal<number>;
-    stopAppearance: () => void;
-    groundOffset: number;
-}
-
-interface WallInstance<BuildId extends string> extends WallArt {
-    buildId: BuildId;
-    readonly skinId: Signal<string | undefined>;
+    readonly inventorySkinId?: string;
     stopActivity?: () => void;
-    inventorySkinId?: string;
-    health: Health;
-    combat: Combat;
-    combatInst: CombatInst;
-    /** resolveanimtoplay(health percent), derived from the health signal. */
-    healthAnim: Memo<string>;
-    stopHealthAnim: () => void;
+    entity?: ReturnType<typeof actionEntity>;
 }
 
 /** A live, attackable wall for combat target selection. */
@@ -156,16 +137,13 @@ function snapToWallSlot(point: THREE.Vector3): THREE.Vector3 {
 }
 
 /**
- * Places wall prefabs. A wall build archive ships no anim.bin, so its model is a
- * single build image instead of the animated sprite used by
- * `AnimatedBuildingPlacement`.
+ * Places logical wall prefabs; the display owns static build art, transient clips and tile residency.
  */
 export class WallPlacement<BuildId extends string> {
     private readonly actionEvents: WorldContext['actionEvents'];
     private readonly stopActionEvents: () => void;
     private disposed = false;
     private readonly canvas: HTMLCanvasElement;
-    private readonly scene: THREE.Scene;
     private readonly camera: THREE.Camera;
     private readonly ground: THREE.Object3D;
     private readonly player: THREE.Object3D;
@@ -174,17 +152,12 @@ export class WallPlacement<BuildId extends string> {
     private readonly cursor: BuildCursor;
     private readonly pointer: PointerRaycaster;
     private active?: WallInstance<BuildId>;
-    private loading?: Promise<void>;
-    private previewVersion = 0;
     private readonly mouseRecords = new ModelRecords<WallInstance<BuildId>>();
     private readonly placed = new Set<WallInstance<BuildId>>();
-    private readonly cameraWorldQuaternion = new THREE.Quaternion();
-    private readonly facing: Signal<number>;
-    private readonly cleanups: (() => void)[] = [];
     private readonly world: WorldContext;
-    private readonly effectAssets = new GroundItemAssets();
-    private readonly effects = new Set<ReturnType<typeof createArchiveEntity>>();
-    private readonly sources = new Map<string, Promise<StaticSpriteFactory>>();
+    private readonly resources = new SpriteResources();
+    private readonly displays: PrefabDisplayGroup;
+    private readonly effects = new Set<PrefabInstance>();
 
     constructor(
         world: WorldContext,
@@ -195,7 +168,7 @@ export class WallPlacement<BuildId extends string> {
         this.actionEvents = world.actionEvents;
         this.stopActionEvents = bindActionCancellation(world, this, 'building', () => this.cancel());
         this.canvas = world.renderer.domElement;
-        this.scene = world.scene;
+        this.displays = new PrefabDisplayGroup(world.scene);
         this.camera = world.camera;
         this.ground = world.ground;
         this.player = world.player;
@@ -203,63 +176,39 @@ export class WallPlacement<BuildId extends string> {
         this.consumeBufferedBuild = consumeBufferedBuild;
         this.pointer = new PointerRaycaster(world);
         this.cursor = new BuildCursor(world, this.pointer);
-        this.facing = watchSignal(world.cameraFacing, stop => this.cleanups.push(stop));
         world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown);
     }
 
     begin(buildId: BuildId, skinId?: string): Promise<void> {
         if (this.disposed) return Promise.reject(new Error('Placement has been disposed'));
         if (this.active) return Promise.resolve();
-        if (this.loading) return this.loading;
 
         this.actionEvents?.emit('action:begin', { owner: this, action: 'BUILD' });
         this.cursor.show(`: 建造 ${this.definitions[buildId].buildLabel}`, 'left');
-        const previewVersion = ++this.previewVersion;
-        const request = this.createPreview(buildId, previewVersion, skinId)
-            .catch((error: unknown) => {
-                if (previewVersion === this.previewVersion) this.cursor.hide();
-                throw error;
-            })
-            .finally(() => {
-                if (this.loading === request) this.loading = undefined;
-            });
-        this.loading = request;
-        return request;
+        try { this.createPreview(buildId, skinId); return Promise.resolve(); }
+        catch (error) { this.cursor.hide(); return Promise.reject(error); }
     }
 
     async spawn(buildId: BuildId, skinId?: string): Promise<void> {
-        const wall = await this.createInstance(buildId, true, skinId);
+        const wall = this.createInstance(buildId, skinId);
         const target = this.playerFrontGroundPosition();
-        wall.model.position.set(target.x, target.y + wall.groundOffset, target.z);
-        wall.model.visible = true;
-        wall.opacity.set(1);
-        this.faceCamera(wall.model);
+        wall.instance.position.copy(target);
+        wall.instance.entityId = newEntityId();
         this.place(wall);
     }
 
     async spawnFromSave(buildId: BuildId, record: PlacementSaveRecord): Promise<THREE.Group> {
-        const wall = await this.createInstance(buildId, false, record.components.wall?.skinId);
+        const wall = this.createInstance(buildId, record.components.wall?.skinId);
         wall.instance.entityId = record.id;
         wall.instance.saveRecord = record;
         const [x, y, z] = record.transform.position;
-        wall.model.position.set(x, y + wall.groundOffset, z);
-        // health:OnLoad after the position is known, so a full wall picks its stable variant.
-        const saved = record.components.health;
-        if (saved) wall.health.OnLoad({ health: saved.current, maxhealth: saved.maximum });
-        this.faceCamera(wall.model);
-        this.scene.add(wall.model);
-        this.place(wall);
+        wall.instance.position.set(x, y, z);
+        this.place(wall, record.components.health);
         return wall.model;
     }
 
     get renderEntities() {
-        return [...this.placed, ...(this.active ? [this.active] : [])]
-            .filter(({ model, animation }) => model.visible && animation.loaded)
-            .map(({ model, groundOffset }) => ({
-                object: model,
-                footPosition: model.position.clone().add(new THREE.Vector3(0, -groundOffset, 0)),
-                cameraDepth: 0,
-            })).concat([...this.effects].map(({ display: { model } }) => ({ object: model, footPosition: model.position, cameraDepth: 0 })));
+        return this.displays.renderEntities;
     }
 
     get hammerTargets(): readonly HammerTarget[] { return this.getHammerTargets(); }
@@ -267,14 +216,9 @@ export class WallPlacement<BuildId extends string> {
     getHammerTargets(model?: THREE.Object3D): readonly HammerTarget[] {
         const targets: HammerTarget[] = [];
         for (const wall of this.mouseRecords.select(model, this.placed)) {
-            const entity = actionEntity(wall.model, wallWorldPrefab(wall.buildId));
+            const entity = wall.entity!;
             if (!entity.hasTag('HAMMER_workable')) continue;
-            targets.push({
-                id: String(wall.instance.entityId), model: wall.model, entity,
-                position: wall.model.position.clone().add(new THREE.Vector3(0, -wall.groundOffset, 0)),
-                isValid: () => !this.disposed && this.placed.has(wall) && wall.model.visible && wall.model.parent !== null,
-                playHit: () => { performToolWork('HAMMER', entity, {}); },
-            });
+            if (entity.hammerTarget) targets.push(entity.hammerTarget);
         }
         return targets;
     }
@@ -282,35 +226,33 @@ export class WallPlacement<BuildId extends string> {
     /** Live walls that combat:CanTarget; broken walls are dead and excluded. */
     get combatTargets(): readonly WallCombatTarget[] {
         return Array.from(this.placed, (wall) => ({
-            id: String(wall.instance.entityId), model: wall.model, inst: wall.combatInst,
-            isValid: () => !this.disposed && this.placed.has(wall) && wall.model.visible && wall.model.parent !== null
-                && !wall.health.IsDead(),
+            id: String(wall.instance.entityId), model: wall.model, inst: wall.instance,
+            isValid: () => this.isLive(wall) && !wall.instance.components.health!.IsDead(),
         }));
     }
 
     get reskinTargets(): readonly ReskinTarget[] {
-        return Array.from(this.placed, wall => findActionEntity(wall.model)?.reskinTarget)
+        return Array.from(this.placed, wall => wall.entity?.reskinTarget)
             .filter((target): target is ReskinTarget => target !== undefined);
     }
 
     private createReskinTarget(wall: WallInstance<BuildId>): ReskinTarget {
-        const isValid = () => !this.disposed && this.placed.has(wall)
-            && wall.model.visible;
+        const isValid = () => this.isLive(wall);
         return {
-            get id() { return String(wall.instance.entityId); }, prefabId: wallWorldPrefab(wall.buildId), model: wall.model,
-            skins: Object.keys(this.definitions[wall.buildId].skinArchives ?? {}), get skinId() { return wall.skinId.peek(); },
-            get isRemoved() { return !isValid(); }, hasTag: tag => actionEntity(wall.model, wallWorldPrefab(wall.buildId)).hasTag(tag),
-            get position() { return wall.model.position.clone().add(new THREE.Vector3(0, -wall.groundOffset, 0)); }, isValid,
+            get id() { return String(wall.instance.entityId); }, prefabId: wallWorldPrefab(wall.buildId), instance: wall.instance, display: wall.display,
+            skins: Object.keys(this.definitions[wall.buildId].skinArchives ?? {}), get skinId() { return wall.instance.skinId; },
+            get isRemoved() { return !isValid(); }, hasTag: tag => wall.instance.hasTag(tag),
+            get position() { return wall.instance.position; }, isValid,
             prepareNextSkin: async (tool) => {
-                const previousSkin = wall.skinId.peek();
+                const previousSkin = wall.instance.skinId;
                 const skinId = nextReskin(Object.keys(this.definitions[wall.buildId].skinArchives ?? {}), previousSkin, tool?._cached_reskinname, wallWorldPrefab(wall.buildId));
                 let used = false;
                 return {
                     skinId,
                     apply: (fx?: ReskinFxMessage) => {
-                        if (used || !isValid() || wall.skinId.peek() !== previousSkin) return false;
-                        wall.skinId.set(skinId);
-                        fx?.play(wall.model.position.clone().add(new THREE.Vector3(0, -wall.groundOffset, 0)), wallWorldPrefab(wall.buildId));
+                        if (used || !isValid() || wall.instance.skinId !== previousSkin) return false;
+                        wall.instance.skinId = skinId;
+                        fx?.play(wall.instance.position, wallWorldPrefab(wall.buildId));
                         used = true;
                         return true;
                     },
@@ -322,14 +264,15 @@ export class WallPlacement<BuildId extends string> {
 
     exportRecords(): PlacedEntitySaveRecord[] {
         return Array.from(this.placed, (wall) => {
-            const health = { current: wall.health.currenthealth, maximum: wall.health.maxhealth };
-            const skinId = wall.skinId.peek();
+            const component = wall.instance.components.health!;
+            const health = { current: component.currenthealth, maximum: component.maxhealth };
+            const skinId = wall.instance.skinId;
             return {
                 prefabId: wall.buildId,
                 record: {
                     id: wall.instance.entityId as string,
                     transform: {
-                        position: saveGroundPosition(wall.model.position, wall.groundOffset),
+                        position: saveGroundPosition(wall.instance.position, 0),
                         rotationY: 0,
                     },
                     components: {
@@ -345,36 +288,26 @@ export class WallPlacement<BuildId extends string> {
         if (this.disposed) return;
         this.disposed = true;
         this.stopActionEvents();
-        this.cleanups.splice(0).forEach(stop => stop());
         this.canvas.removeEventListener('pointerdown', this.handlePointerDown);
         this.pointer.dispose();
         this.cancel();
-        for (const instance of this.placed) {
-            this.disposeWallComponents(instance);
-            disposeSprite(instance.model);
-        }
-        for (const { instance, display } of this.effects) { instance.remove(); display.dispose(); }
-        this.effects.clear(); this.effectAssets.dispose();
+        for (const wall of this.placed) this.disposeWall(wall);
+        for (const effect of this.effects) effect.remove();
+        this.effects.clear();
         this.placed.clear();
-        for (const source of this.sources.values()) void source.then(factory => factory.dispose(), () => {});
-        this.sources.clear();
+        this.displays.dispose();
+        this.resources.dispose();
     }
 
     cancel() {
-        this.previewVersion += 1;
-        this.loading = undefined;
-        if (this.active) { this.disposeWallComponents(this.active); disposeSprite(this.active.model); }
+        if (this.active) this.disposeWall(this.active);
         this.active = undefined;
         this.cursor.hide();
     }
 
     update(dt = 0) {
-        for (const { instance, display } of this.effects) { this.faceCamera(display.model); instance.sprite.update(dt); }
+        this.displays.update(dt);
         this.cursor.update();
-        for (const wall of this.placed) {
-            this.faceCamera(wall.model);
-            wall.animation.update(dt);
-        }
     }
 
     private readonly handlePointerDown = (event: PointerEvent) => {
@@ -383,7 +316,7 @@ export class WallPlacement<BuildId extends string> {
             return;
         }
         if (event.button !== 0 || event.defaultPrevented) return;
-        if (this.loading || this.active) event.preventDefault();
+        if (this.active) event.preventDefault();
         if (!this.active) return;
         this.pointer.trackPointer(event);
         this.cursor.update();
@@ -391,105 +324,57 @@ export class WallPlacement<BuildId extends string> {
 
         const placedWall = this.active;
         placedWall.model.visible = true;
-        placedWall.opacity.set(1);
+        placedWall.instance.sprite.setOpacity(1);
+        placedWall.instance.entityId = newEntityId();
         this.place(placedWall);
         this.active = undefined;
         this.cursor.hide();
     };
 
-    private async createPreview(buildId: BuildId, previewVersion: number, skinId?: string) {
-        const instance = await this.createInstance(buildId, true, skinId);
-        if (previewVersion !== this.previewVersion) {
-            this.disposeWallComponents(instance);
-            disposeSprite(instance.model);
-            return;
-        }
-        instance.opacity.set(0.65);
-        instance.model.visible = false;
-        this.active = instance;
-        this.updateFacing(instance, this.facing.peek());
-        this.cursor.setPreview(instance.model, instance.groundOffset, snapToWallSlot);
+    private createPreview(buildId: BuildId, skinId?: string) {
+        const wall = this.createInstance(buildId, skinId, .65);
+        wall.model.visible = false;
+        this.active = wall;
+        this.cursor.setPreview(wall.model, 0, snapToWallSlot);
         this.cursor.update();
     }
 
-    /** prefabskin.lua's wall initializers change only the build, without creating components. */
-    private async createArt(buildId: BuildId, skinId?: string): Promise<WallArt> {
+    /** Declare static images, paired layers and source skin names; the display loads and dresses them. */
+    private createInstance(buildId: BuildId, requestedSkin?: string, opacity = 1): WallInstance<BuildId> {
         if (this.disposed) throw new Error('Placement has been disposed');
         const definition = this.definitions[buildId];
-        const skinArchive = skinId === undefined ? undefined : definition.skinArchives?.[skinId];
-        if (skinId !== undefined && skinArchive === undefined) throw new Error(`Unsupported ${buildId} skin: ${skinId}`);
-        const skin = skinId === undefined ? undefined : definition.skinInit?.(skinId);
-        const options = {
-            imageIndices: [definition.sideImageIndex, definition.frontImageIndex],
-            name: definition.name, scale: definition.scale, symbol: definition.symbol,
-            ...(definition.overlay ? { overlay: { symbol: definition.overlay.symbol,
-                imageIndices: [definition.overlay.sideImageIndex, definition.overlay.frontImageIndex] } } : {}),
-            animationArchive: definition.animationArchive ?? 'wall.zip', restAnimation: 'half',
-        };
-        const archive = skin?.archive ?? definition.archive;
-        const key = JSON.stringify([archive, options]);
-        let request = this.sources.get(key);
-        if (!request) {
-            request = createStaticSpriteFactory(`${import.meta.env.BASE_URL}dst/data/anim`, archive, options);
-            this.sources.set(key, request);
-            void request.catch(() => { if (this.sources.get(key) === request) this.sources.delete(key); });
-        }
-        const source = await request;
-        if (this.disposed) throw new Error('Placement has been disposed');
-        const opacity = createSignal(1);
-        const dress = (animation: SpriteState) => {
-            const facing = this.facing.peek();
-            animation.showImage(this.isFrontFacing(facing) ? definition.frontImageIndex : definition.sideImageIndex);
-            animation.setFacing(facing);
-            if (definition.multColour) animation.setColour(definition.multColour);
-            animation.setOpacity(opacity.peek());
-        };
-        const { instance, display } = createPrefabEntity(buildId, { create: () => source.create(), release: sprite => source.disposeSprite(sprite) },
-            { name: 'half', held: true }, definition.name, entity => {
-                entity.skinId = skinId;
-                entity.sprite.setSkinSource({ art: this.effectAssets,
-                    archives: Object.fromEntries(Object.entries(definition.skinArchives ?? {}).map(([id, archive]) =>
-                        [id, definition.skinInit?.(id).skinArchive ?? archive])) });
-                entity.sprite.setPose(undefined); dress(entity.sprite);
-            });
-        const { model } = display;
-        const animation = instance.sprite;
-        const stopAppearance = createRenderEffect(() => {
-            animation.art.get();
-            const facing = this.facing.get();
-            animation.showImage(this.isFrontFacing(facing) ? definition.frontImageIndex : definition.sideImageIndex);
-            animation.setFacing(facing);
-            if (definition.multColour) animation.setColour(definition.multColour);
-            animation.setOpacity(opacity.get());
-        });
-        model.updateWorldMatrix(true, true);
-        const bounds = new THREE.Box3().setFromObject(model);
-        return { model, instance, display, animation, opacity, stopAppearance, groundOffset: -bounds.min.y };
+        const instance = new PrefabInstance(wallWorldPrefab(buildId), new SpriteState({ name: 'half', held: true, billboard: true }));
+        instance.skinId = wallWorldSkin(buildId, requestedSkin);
+        instance.sprite.setSkinSource({ art: this.resources.archives,
+            archives: Object.fromEntries(Object.entries(definition.skinArchives ?? {}).map(([id, archive]) =>
+                [id, definition.skinInit?.(id).skinArchive ?? archive])) });
+        instance.sprite.setPose(undefined);
+        instance.sprite.setFacingRotation(0);
+        instance.sprite.setFacingImages(new Map([[FACING_CARDINAL, definition.frontImageIndex], [240, definition.sideImageIndex]]));
+        if (definition.multColour) instance.sprite.setColour(definition.multColour);
+        instance.sprite.setOpacity(opacity);
+        const display = this.displays.add({ name: definition.name, status: instance.status, sprite: instance.sprite, light: instance.light, alignBottom: true,
+            source: this.resources.staticFactory(definition.archive, {
+                imageIndices: [definition.sideImageIndex, definition.frontImageIndex],
+                name: definition.name, scale: definition.scale, symbol: definition.symbol,
+                ...(definition.overlay ? { overlay: { symbol: definition.overlay.symbol,
+                    imageIndices: [definition.overlay.sideImageIndex, definition.overlay.frontImageIndex] } } : {}),
+                animationArchive: definition.animationArchive ?? 'wall.zip', restAnimation: 'half',
+            }) });
+        bindInstance(display.model, instance);
+        return { buildId, instance, display, model: display.model, inventorySkinId: requestedSkin };
     }
 
-    private async createInstance(buildId: BuildId, attach = true, requestedSkin?: string): Promise<WallInstance<BuildId>> {
-        if (this.disposed) throw new Error('Placement has been disposed');
+    /** walls.lua components are owned by the logical instance after placement. */
+    private initializeEntity(wall: WallInstance<BuildId>, saved?: { current: number; maximum: number }): void {
+        const { buildId, instance, model } = wall;
         const definition = this.definitions[buildId];
-        await Promise.all([this.effectAssets.loadAnimation('structure_collapse_fx.zip'), this.effectAssets.loadBuild('structure_collapse_fx.zip')]);
-        const skinId = requestedSkin === undefined ? undefined : wallWorldSkin(buildId, requestedSkin);
-        const art = await this.createArt(buildId, skinId);
-        const { model } = art;
-        const entity = actionEntity(model, wallWorldPrefab(buildId));
-        // Reskinning replaces the art and its ground offset on the same instance.
-        let instance: WallInstance<BuildId> | undefined;
-        const groundPosition = () => model.position.clone().setY(model.position.y - (instance?.groundOffset ?? art.groundOffset));
-        model.userData.getGroundPosition = groundPosition;
+        const entity = wall.entity = actionEntity(model, wallWorldPrefab(buildId), instance);
         entity.addTag('wall');
         entity.addTag('noauradamage');
         entity.addTag('electricdamageimmune');
-        const combatInst: CombatInst = {
-            get isRemoved() { return entity.isRemoved; },
-            getPosition: groundPosition,
-            getPhysicsRadius: () => WALL_PHYSICS_RADIUS,
-            hasTag: tag => entity.hasTag(tag),
-            PushEvent: (name, data) => entity.PushEvent?.(name, data),
-            get components() { return entity.components as CombatInst['components']; },
-        };
+        for (const tag of definition.tags ?? []) instance.addTag(tag);
+        const combatInst: CombatInst = instance;
         // walls.lua: SetMaxHealth(maxhealth), SetCurrentHealth(maxhealth * .5), canheal = false.
         const health = new Health(definition.maxhealth ?? 100, combatInst);
         health.SetCurrentHealth(health.maxhealth * .5);
@@ -498,29 +383,24 @@ export class WallPlacement<BuildId extends string> {
         if (definition.playerdamagemod !== undefined) health.SetAbsorptionAmountFromPlayer(definition.playerdamagemod);
         const combat = new Combat(combatInst, () => 0);
         combat.SetKeepTargetFunction(() => false);
-        const healthAnim = createMemo(() => resolveWallAnim(health.percent.get(), groundPosition()));
-        const wall: WallInstance<BuildId> = {
-            ...art,
-            buildId,
-            skinId: art.instance.sprite.skinId,
-            inventorySkinId: requestedSkin,
-            health, combat, combatInst, healthAnim,
-            // The held pose follows health; `half` is the static build image.
-            stopHealthAnim: healthAnim.subscribe(anim => wall.animation.setPose(anim === 'half' ? undefined : anim)),
-        };
-        instance = wall;
+        // Restore after the position is known so full walls choose their stable variant.
+        if (saved) health.OnLoad({ health: saved.current, maxhealth: saved.maximum });
         entity.reskinTarget = this.createReskinTarget(wall);
-        wall.model.userData.skinIdSignal = readonlySignal(wall.skinId);
         Object.assign(entity.components, { health, combat });
+        const percent = watchSignal(health.percent, stop => instance.onRemove(stop));
+        createEffect(() => {
+            const anim = resolveWallAnim(percent.get(), instance.position);
+            instance.sprite.setPose(anim === 'half' ? undefined : anim);
+        });
         // onhealthchange: a live wall plays <anim>_hit then holds <anim>; a broken wall holds `broken`.
         health.ondelta = (_inst, _oldPercent, newPercent) => {
-            if (newPercent > 0) wall.animation.playTransient(`${healthAnim.peek()}_hit`);
+            if (newPercent > 0) instance.sprite.playTransient(`${resolveWallAnim(newPercent, instance.position)}_hit`);
             this.setObstacle(wall, newPercent > 0);
         };
         // onhit, shared by combat.onhitfn and workable:SetOnWorkCallback.
         const onhit = () => {
             if (definition.hammerMaterial) PlaySound(`dontstarve/common/destroy_${definition.hammerMaterial}`, model.position);
-            if (health.GetPercent() > 0) wall.animation.playTransient(`${healthAnim.peek()}_hit`);
+            if (health.GetPercent() > 0) instance.sprite.playTransient(`${resolveWallAnim(health.GetPercent(), instance.position)}_hit`);
         };
         combat.onhitfn = onhit;
         const workable = new Workable(entity);
@@ -529,54 +409,51 @@ export class WallPlacement<BuildId extends string> {
         workable.SetWorkLeft(definition.hammerWorkLeft ?? 3);
         new ToolMouseTarget(entity, wall.instance, workable, this.world.handEquipment);
         workable.SetOnWorkCallback(onhit);
+        entity.hammerTarget = {
+            get id() { return String(instance.entityId); }, instance, display: wall.display, entity,
+            position: instance.position, isValid: () => this.isLive(wall),
+            playHit: () => { performToolWork('HAMMER', entity, {}); },
+        };
         workable.SetOnFinishCallback(() => {
             if (!this.placed.has(wall)) return;
             const context = this.hammerContext(wall);
             if (definition.onhammered) definition.onhammered(context);
             else context.remove();
         });
-        if (skinId !== undefined) wall.instance.skinId = skinId;
-        if (attach) wall.instance.entityId = newEntityId();
-        if (attach) this.scene.add(model);
-        return wall;
     }
 
     private hammerContext(wall: WallInstance<BuildId>): WallHammerContext {
-        const position = wall.model.position.clone().setY(wall.model.position.y - wall.groundOffset);
+        const position = wall.instance.position;
         return {
-            definition: this.definitions[wall.buildId], health: wall.health, position,
+            definition: this.definitions[wall.buildId], health: wall.instance.components.health!, position,
             dropLoot: items => this.world.dropLoot?.(items, position),
-            spawnEffect: () => {
-                const create = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(this.effectAssets, {
-                    animationArchive: 'structure_collapse_fx.zip', buildArchives: ['structure_collapse_fx.zip'],
-                    bank: 'collapse', animation: clip.name, loop: clip.loop,
-                });
-                void create({ name: 'collapse_small', loop: false }).then(initial => {
-                    if (this.disposed) { initial.dispose(); return; }
-                    const effect = createArchiveEntity('collapse_small', { create, initial }, { name: 'collapse_small' }, 'collapse_small');
-                    for (const tag of ['NOCLICK', 'FX']) effect.instance.addTag(tag);
-                    effect.instance.persists = false;
-                    effect.instance.position.copy(position); this.scene.add(effect.display.model); this.effects.add(effect);
-                    effect.instance.sprite.playOnce('collapse_small', () => {
-                        effect.instance.remove(); effect.display.dispose(); this.effects.delete(effect);
-                    });
-                }).catch((error: unknown) => { if (!this.disposed) console.error('Unable to play wall collapse effect', error); });
-            },
+            spawnEffect: () => this.spawnCollapse(position),
             remove: () => {
                 if (!this.placed.delete(wall)) return;
-                this.disposeWallComponents(wall);
-                disposeSprite(wall.model);
+                this.disposeWall(wall);
             },
         };
     }
 
-    private place(wall: WallInstance<BuildId>): void {
+    private spawnCollapse(position: THREE.Vector3): void {
+        const instance = new PrefabInstance('collapse_small', new SpriteState({ name: 'collapse_small', billboard: true }));
+        for (const tag of ['NOCLICK', 'FX']) instance.addTag(tag);
+        instance.persists = false;
+        instance.sprite.playOnce('collapse_small', () => { instance.remove(); this.effects.delete(instance); });
+        const display = this.displays.add({ name: 'collapse_small', status: instance.status, sprite: instance.sprite,
+            archive: this.resources.archive({ animationArchive: 'structure_collapse_fx.zip', buildArchives: ['structure_collapse_fx.zip'], bank: 'collapse' }) });
+        bindInstance(display.model, instance);
+        instance.position.copy(position);
+        this.effects.add(instance);
+    }
+
+    private place(wall: WallInstance<BuildId>, saved?: { current: number; maximum: number }): void {
         this.placed.add(wall); this.mouseRecords.set(wall.model, wall);
-        this.updateFacing(wall, this.facing.peek());
+        this.initializeEntity(wall, saved);
         // walls.lua: MakeObstaclePhysics(inst, .5); Physics:SetDontRemoveOnSleep(true), so pens hold outside the ticking area.
         MakeObstaclePhysics(wall.instance, .5).SetDontRemoveOnSleep(true);
-        this.setObstacle(wall, !wall.health.IsDead());
-        if (this.world.physics) wall.instance.bindPhysics(this.world.physics, wall.model.userData.getGroundPosition);
+        this.setObstacle(wall, !wall.instance.components.health!.IsDead());
+        if (this.world.physics) wall.instance.bindPhysics(this.world.physics);
         wall.stopActivity = watchTileActivity(wall.model, this.world.tickingarea, active => wall.instance.setActive(active));
     }
 
@@ -585,15 +462,18 @@ export class WallPlacement<BuildId extends string> {
         if (this.placed.has(wall)) wall.instance.physics.SetActive(active);
     }
 
-    private disposeWallComponents(wall: WallInstance<BuildId>): void {
-        wall.model.userData.removed = true;
+    private disposeWall(wall: WallInstance<BuildId>): void {
+        wall.instance.remove();
         wall.stopActivity?.();
-        wall.stopAppearance();
-        actionEntity(wall.model, wallWorldPrefab(wall.buildId)).components.workable?.dispose();
-        wall.stopHealthAnim();
-        wall.healthAnim.dispose();
-        wall.health.dispose();
-        wall.combat.onhitfn = undefined;
+        const { workable, health, combat } = wall.instance.components;
+        workable?.dispose();
+        health?.dispose();
+        if (combat) combat.onhitfn = undefined;
+        wall.display.dispose();
+    }
+
+    private isLive(wall: WallInstance<BuildId>): boolean {
+        return !this.disposed && !wall.instance.isRemoved && this.placed.has(wall);
     }
 
     private playerFrontGroundPosition(): THREE.Vector3 {
@@ -608,24 +488,6 @@ export class WallPlacement<BuildId extends string> {
         if (hit) return snapToWallSlot(hit.point.clone());
         target.y = 0;
         return snapToWallSlot(target);
-    }
-
-    private updateFacing(wall: WallInstance<BuildId>, facing: number) {
-        const definition = this.definitions[wall.buildId];
-        wall.animation.showImage(
-            this.isFrontFacing(facing) ? definition.frontImageIndex : definition.sideImageIndex,
-        );
-        wall.animation.setFacing(facing);
-    }
-
-    /** `facing=15` animations cover RIGHT/UP/LEFT/DOWN; `facing=240` covers the four diagonals. */
-    private isFrontFacing(facing: number): boolean {
-        return (facing & FACING_CARDINAL) !== 0;
-    }
-
-    private faceCamera(model: THREE.Object3D) {
-        this.camera.getWorldQuaternion(this.cameraWorldQuaternion);
-        model.quaternion.copy(this.cameraWorldQuaternion);
     }
 
 }

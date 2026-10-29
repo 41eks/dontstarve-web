@@ -56,7 +56,7 @@ export class FireFxHost {
     const stop = (extinguished: boolean) => {
       if (!this.fires.delete(fire)) return;
       instance?.sprite.detachFx(key);
-      entity.instance.remove(); sound?.stop(); sound = undefined;
+      entity.instance.remove(); entity.display.dispose(); sound?.stop(); sound = undefined;
       prefabInstance(fire)!.light.set(null);
       if (extinguished && !this.disposed) PlaySound('dontstarve/common/fireOut', position);
     };

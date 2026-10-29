@@ -1,6 +1,5 @@
 import type * as THREE from 'three';
 import { createEffect, watchSignal, WorldContentKey, type WorldPhase } from '@dontstarve-web/signals';
-import { TileTracker } from '../../componets/src/tileManager';
 import { PlaySound } from './sound';
 import { PickablePlantManager, type PickablePlantBehavior, type PickablePlantBehaviorContext,
   type PickablePlantDefinition, type PickablePlantRecord } from './pickablePlant';
@@ -37,7 +36,7 @@ class MushroomPlant implements PickablePlantBehavior {
   constructor(context: PickablePlantBehaviorContext, data: MushroomData) {
     this.context = context; this.data = data;
     // The phase is watched through this mushroom's own tile key: outside the tickingarea it holds its last value.
-    const tracker = new TileTracker(() => context.model.position);
+    const tracker = context.instance.tileTracker;
     const cycle = context.getWatchWorldContent?.(WorldContentKey.Cycle, cleanup => this.cleanups.push(cleanup), { tile: tracker.tile });
     const rain = context.rain ? watchSignal(context.rain, cleanup => this.cleanups.push(cleanup)) : undefined;
     this.isOpenPhase = () => cycle?.peek() === data.openTime;
@@ -85,9 +84,9 @@ class MushroomPlant implements PickablePlantBehavior {
   }
 
   private openTask(): void {
-    const { play, pickable, model } = this.context;
+    const { play, pickable, instance } = this.context;
     play(['open_inground', `open_${this.data.animname}`, this.data.animname]);
-    PlaySound('dontstarve/common/mushroom_up', model.position);
+    PlaySound('dontstarve/common/mushroom_up', instance.position);
     this.growTask = undefined;
     pickable.canInteractWith = true;
   }
@@ -101,7 +100,7 @@ class MushroomPlant implements PickablePlantBehavior {
   }
 
   private sinkSound(): void {
-    const task = this.context.scheduler.schedule(.25, () => { this.soundTasks.delete(task); PlaySound('dontstarve/common/mushroom_down', this.context.model.position); });
+    const task = this.context.scheduler.schedule(.25, () => { this.soundTasks.delete(task); PlaySound('dontstarve/common/mushroom_down', this.context.instance.position); });
     this.soundTasks.add(task);
   }
   private readonly soundTasks = new Set<() => void>();

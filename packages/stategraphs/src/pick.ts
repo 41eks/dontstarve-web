@@ -9,6 +9,7 @@ import type { ItemEntity } from '@dontstarve-web/inventory';
 import type { Combat } from '../../componets/src/combat';
 import { modelHasTag, prefabInstance } from '../../prefab/src/prefabInstance';
 import type { SpriteState } from '@dontstarve-web/display';
+import { findActionEntity } from '../../prefab/src/actionEntity';
 
 /** The picker inst supplied to prefab onpickedfn callbacks. */
 export interface PickActor {
@@ -62,15 +63,16 @@ function canPick(target: PickTarget): boolean {
 export function getPickActions(model: THREE.Object3D | undefined): MouseActionCandidate[] {
   const actions: MouseActionCandidate[] = [];
   if (!model) return actions;
-  const component: PickableComponent | undefined = model.userData.components?.pickable;
+  const entity = findActionEntity(model), instance = prefabInstance(model);
+  const component = (entity?.components.pickable ?? instance?.components.pickable ?? model.userData.components?.pickable) as PickableComponent | undefined;
   if (!component) return actions;
   const target: PickTarget = {
-    model, component, prefab: model.userData.actionEntity?.prefab ?? prefabInstance(model)?.prefab,
+    model, component, prefab: entity?.prefab ?? instance?.prefab,
     quickpick: component.quickpick,
-    hasTag: tag => model.userData.actionEntity?.hasTag(tag) ?? modelHasTag(model, tag),
-    getPosition: () => model.userData.getGroundPosition?.() ?? model.position,
-    getPhysicsRadius: () => model.userData.actionEntity?.getPhysicsRadius?.() ?? 0,
-    PushEvent: (name, data) => model.userData.actionEntity?.PushEvent?.(name, data),
+    hasTag: tag => entity?.hasTag(tag) ?? modelHasTag(model, tag),
+    getPosition: () => entity?.getPosition() ?? instance?.position ?? model.userData.getGroundPosition?.() ?? model.position,
+    getPhysicsRadius: () => entity?.getPhysicsRadius?.() ?? instance?.getPhysicsRadius(0) ?? 0,
+    PushEvent: (name, data) => { if (entity) entity.PushEvent?.(name, data); else instance?.PushEvent(name, data); },
   };
   actions.push({ action: { action: 'PICK', target }, button: 'left', model, available: canPick(target) });
 

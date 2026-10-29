@@ -1,7 +1,6 @@
 import type * as THREE from 'three';
 import { WorldContentKey, type SeasonState, type WorldContentSignal } from '@dontstarve-web/signals';
 import type { PickDoer } from '@dontstarve-web/stategraphs/pick';
-import { actionEntity } from './actionEntity';
 import { PickablePlantManager, type PickablePlantBehavior, type PickablePlantBehaviorContext,
   type PickablePlantDefinition, type PickablePlantRecord } from './pickablePlant';
 
@@ -23,13 +22,12 @@ export type CactusRecord = PickablePlantRecord;
  */
 class Cactus implements PickablePlantBehavior {
   private readonly context: PickablePlantBehaviorContext;
-  private readonly prefab: CactusId;
   private readonly season?: WorldContentSignal<SeasonState>;
   private readonly cleanups: (() => void)[] = [];
   private has_flower = false;
 
-  constructor(context: PickablePlantBehaviorContext, prefab: CactusId) {
-    this.context = context; this.prefab = prefab;
+  constructor(context: PickablePlantBehaviorContext) {
+    this.context = context;
     this.season = context.getWatchWorldContent?.(WorldContentKey.Season, cleanup => this.cleanups.push(cleanup));
   }
 
@@ -49,17 +47,17 @@ class Cactus implements PickablePlantBehavior {
 
   /** onpickedfn */
   picked(doer?: PickDoer): void {
-    const { physics, play, model } = this.context;
+    const { physics, play, instance } = this.context;
     physics.SetActive(false);
     play([this.has_flower ? 'picked_flower' : 'picked', 'empty'], true);
     const picker = doer?.picker;
     if (picker) {
       const { combat, inventory } = picker.components;
       if (combat && !inventory?.EquipHasTag('bramble_resistant') && !picker.hasTag('shadowminion')) {
-        combat.GetAttacked(actionEntity(model, this.prefab), CACTUS_DAMAGE);
+        combat.GetAttacked(instance, CACTUS_DAMAGE);
         picker.PushEvent?.('thorns');
       }
-      if (this.has_flower) this.giveFlower(picker.components.inventory?.GiveItem?.bind(picker.components.inventory), model.position);
+      if (this.has_flower) this.giveFlower(picker.components.inventory?.GiveItem?.bind(picker.components.inventory), instance.position);
     }
     this.has_flower = false;
   }
@@ -116,7 +114,7 @@ function cactusDefinition(prefab: CactusId): PickablePlantDefinition {
     obstaclePhysics: true,
     minimapIcon: `${prefab}.png`,
     onTransplant: pickable => pickable.MakeEmpty(),
-    createBehavior: context => new Cactus(context, prefab),
+    createBehavior: context => new Cactus(context),
   };
 }
 export const CACTUS_DEFINITIONS: Readonly<Record<CactusId, PickablePlantDefinition>> = {

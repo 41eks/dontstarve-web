@@ -1,10 +1,8 @@
 import type * as THREE from 'three';
 import { Growable } from '../../componets/src/growable';
 import { SimpleMagicGrower } from '../../componets/src/simplemagicgrower';
-import { actionEntity } from './actionEntity';
 import { PickablePlantManager, type PickablePlantBehavior, type PickablePlantBehaviorContext,
   type PickablePlantDefinition, type PickablePlantRecord } from './pickablePlant';
-import { modelHasTag } from './prefabInstance';
 
 export const ROCK_AVOCADO_BUSH_ID = 'rock_avocado_bush' as const;
 export const ROCK_AVOCADO_FRUIT_ID = 'rock_avocado_fruit' as const;
@@ -27,15 +25,15 @@ class RockAvocadoBush implements PickablePlantBehavior {
     this.growable.loopstages = true;
     this.growable.springgrowth = true;
     this.growable.magicgrowable = true;
-    context.model.userData.components.growable = this.growable;
-    this.magicgrower = new SimpleMagicGrower(actionEntity(context.model, ROCK_AVOCADO_BUSH_ID), this.growable, context.scheduler);
+    context.instance.components.growable = this.growable;
+    this.magicgrower = new SimpleMagicGrower(context.instance, this.growable, context.scheduler);
     this.magicgrower.SetLastStage(3);
-    context.model.userData.components.simplemagicgrower = this.magicgrower;
+    context.instance.components.simplemagicgrower = this.magicgrower;
   }
   initialize(saved?: PickablePlantRecord): void {
     if (saved?.components.growable) this.growable.OnLoad(saved.components.growable);
     else { this.growable.SetStage(1 + Math.floor(Math.random() * 4)); this.growable.StartGrowing(); }
-    if (this.context.pickable.IsBarren() || modelHasTag(this.context.model, 'withered')) this.barren();
+    if (this.context.pickable.IsBarren() || this.context.instance.hasTag('withered')) this.barren();
   }
   private setStage(stage: number): void {
     const { pickable, play } = this.context;
@@ -57,12 +55,12 @@ class RockAvocadoBush implements PickablePlantBehavior {
   empty(): void {
     const wasDead = this.context.animation.currentAnimation === 'dead1';
     this.growable.SetStage(1); this.growable.StartGrowing(); this.growable.magicgrowable = true;
-    this.context.play(modelHasTag(this.context.model, 'withered') || wasDead
+    this.context.play(this.context.instance.hasTag('withered') || wasDead
       ? ['dead1_to_idle1', 'idle1'] : ['idle1']);
   }
   barren(): void {
     this.growable.SetStage(1); this.growable.StopGrowing(); this.growable.magicgrowable = false;
-    this.context.play(modelHasTag(this.context.model, 'withered') ? ['idle1_to_dead1', 'dead1'] : ['dead1']);
+    this.context.play(this.context.instance.hasTag('withered') ? ['idle1_to_dead1', 'dead1'] : ['dead1']);
   }
   burnt(): void {
     if (this.growable.GetStage() === 3) for (let i = 0; i < 3; i++) this.context.spawnLoot(ROCK_AVOCADO_FRUIT_ID);
@@ -81,9 +79,9 @@ export const ROCK_AVOCADO_BUSH_DEFINITION: PickablePlantDefinition = {
   grow: 'grow2', barren: 'dead1', maxCycles: () => 3, witherable: true,
   dugLoot: 'dug_rock_avocado_bush', extraLoot: ['twigs', 'twigs', ROCK_AVOCADO_FRUIT_ID, ROCK_AVOCADO_FRUIT_ID],
   physicsRadius: .1, deploySmartRadius: 3, snowCovered: true, propagatorSize: 'medium', persistBurning: true,
-  digLoot: (model, pickable, withered) => withered || pickable.IsBarren()
+  digLoot: (instance, pickable, withered) => withered || pickable.IsBarren()
     ? [{ prefab: 'twigs' }, { prefab: 'twigs' }]
-    : [...model.userData.components.growable.GetStage() === 3
+    : [...instance.components.growable!.GetStage() === 3
       ? Array.from({ length: 3 }, () => ({ prefab: ROCK_AVOCADO_FRUIT_ID })) : [], { prefab: 'dug_rock_avocado_bush' }],
   createBehavior: context => new RockAvocadoBush(context),
 };
@@ -96,7 +94,7 @@ export class RockAvocadoBushManager extends PickablePlantManager {
   }
   /** dug_rock_avocado_bush ondeploy: SpawnPrefab, then OnTransplant; the display loads the art. */
   transplant(position: THREE.Vector3): boolean {
-    this.spawnPlant(ROCK_AVOCADO_BUSH_DEFINITION, position).userData.components.pickable.OnTransplant();
+    this.getInstance(this.spawnPlant(ROCK_AVOCADO_BUSH_DEFINITION, position))!.components.pickable.OnTransplant();
     return true;
   }
   exportRecords(): PickablePlantRecord[] { return this.exportPlants().map(({ record }) => record); }

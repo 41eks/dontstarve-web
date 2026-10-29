@@ -1,3 +1,4 @@
+import { actionTargetModel } from '../../stategraphs/src/actionTargetView';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
@@ -16,7 +17,7 @@ import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { inventoryStateFromSave } from '../../../src/save/inventoryState';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
-import { bindTestWorld, drawn } from './worldContentFixture';
+import { bindTestWorld, drawn, plantInstance } from './worldContentFixture';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
@@ -62,16 +63,16 @@ it('picks native berries without consuming cycles, pauses in winter and reloads 
       s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
     expect(s.inventory.getItemSpec('dug_berrybush').maxStack).toBe(10);
     expect(s.inventory.getItemSpec('dug_berrybush').atlas).toBe('images/inventoryimages.xml');
-    const model = s.bushes.digTargets[0].model, pickable = model.userData.components.pickable;
+    const model = actionTargetModel(s.bushes.digTargets[0]), pickable = plantInstance(model).components.pickable;
     expect(s.physics.bodies).toHaveLength(1);
     expect(lookupPrefabInstance(model)?.getPhysicsRadius(undefined)).toBeCloseTo(.3);
     expect(pickable.pick(s.picker)).toBe(true);
     expect(s.inventory.count('berries')).toBe(1);
     expect(pickable.cyclesLeft).toBe(5);
     expect(pickable.remainingSeconds).toBe(1920);
-    expect(model.userData.animationController.currentAnimation).toBe('picked');
+    expect(plantInstance(model).sprite.currentAnimation).toBe('picked');
     for (let frame = 0; frame < 90; frame++) s.advance(1 / 30);
-    expect(model.userData.animationController.currentAnimation).toBe('idle');
+    expect(plantInstance(model).sprite.currentAnimation).toBe('idle');
     const waiting = pickable.state.timer.peek(); s.advance(100);
     expect(pickable.state.timer.peek()).toBe(waiting);
     s.season.set({ season: 'winter', progress: 0 }); await settleEffects();
@@ -92,7 +93,7 @@ it('picks native berries without consuming cycles, pauses in winter and reloads 
     s.season.set({ season: 'spring', progress: 0 }); await settleEffects();
     expect(pickable.remainingSeconds).toBeCloseTo(remaining * .75);
     s.advance(pickable.remainingSeconds); expect(pickable.canBePicked).toBe(true);
-    expect(model.userData.animationController.currentAnimation).toBe('grow');
+    expect(plantInstance(model).sprite.currentAnimation).toBe('grow');
     expect(pickable.pick(s.picker)).toBe(true);
     expect(pickable.cyclesLeft).toBe(5);
     expect(pickable.remainingSeconds).toBe(1440);
@@ -130,10 +131,10 @@ it('preserves a reskinned bush through digging, item pickup/drop, transplant, fe
     expect(item.components.deployable!.Deploy(position, { position, PushEvent: vi.fn() }, {
       canDeployPlant: () => true, deployPlant: (point: THREE.Vector3) => s.bushes.transplant(point, root.skinId),
     })).toBe(true);
-    const replanted = await drawn(s.bushes.digTargets[0].model), pickable = replanted.userData.components.pickable;
+    const replanted = await drawn(actionTargetModel(s.bushes.digTargets[0])), pickable = plantInstance(replanted).components.pickable;
     expect(lookupPrefabInstance(replanted)?.skinId).toBe('berrybush_cawnival');
     expect(pickable.exportState()).toMatchObject({ picked: true, transplanted: true, cyclesLeft: 0 });
-    expect(replanted.userData.animationController.currentAnimation).toBe('dead');
+    expect(plantInstance(replanted).sprite.currentAnimation).toBe('dead');
     s.snowLevel.set(.5); await settleEffects();
     const beforeFertilize = s.bushes.exportRecords()[0];
     const nextSkin = await s.bushes.reskinTargets[0].prepareNextSkin();
@@ -144,7 +145,7 @@ it('preserves a reskinned bush through digging, item pickup/drop, transplant, fe
     const fertilizer = s.inventory.entities.create({ itemId: 'poop', count: 1 }); s.inventory.configureItem(fertilizer);
     expect(pickable.Fertilize(fertilizer)).toBe(true);
     expect(pickable.remainingSeconds).toBe(1920);
-    expect(replanted.userData.animationController.currentAnimation).toBe('dead_to_idle');
+    expect(plantInstance(replanted).sprite.currentAnimation).toBe('dead_to_idle');
     s.advance(1920);
     expect(pickable.pick(s.picker)).toBe(true);
     expect(pickable.cyclesLeft).toBe(4); expect(pickable.remainingSeconds).toBe(2160);
@@ -159,7 +160,7 @@ it('preserves a reskinned bush through digging, item pickup/drop, transplant, fe
       s.advance(pickable.remainingSeconds); expect(pickable.pick(s.picker)).toBe(true);
     }
     expect(pickable.IsBarren()).toBe(true); expect(pickable.remainingSeconds).toBeUndefined();
-    expect(replanted.userData.animationController.currentAnimation).toBe('idle_to_dead');
+    expect(plantInstance(replanted).sprite.currentAnimation).toBe('idle_to_dead');
     expect(performToolWork('DIG', s.bushes.digTargets[0].entity!, {})).toBe(true);
     expect(s.ground.exportRecords().slice(-2).map(record => record.components.stack?.itemId)).toEqual(['twigs', 'twigs']);
     expect(s.ground.exportRecords().slice(-2).map(record => record.components.stack?.count)).toEqual([1, 1]);
@@ -183,36 +184,37 @@ it('updates snow art after spawning and reskinning and cleans up each removed pl
     expect(drawnIndices(first)).toBeLessThan(initialSnow);
     s.snowLevel.set(.015); await settleEffects();
     expect(drawnIndices(first)).toBe(initialSnow);
-    // The sprite json stays with the plant; a reskin replaces only its drawn sprite.
-    const controller = first.userData.animationController, oldSprite = first.children[0];
+    // Reskin declares appearance on the same plant, without replacing its resident sprite.
+    const controller = plantInstance(first).sprite, oldSprite = first.children[0];
     const oldMesh = oldSprite.getObjectByProperty('isMesh', true) as THREE.Mesh;
-    const oldCount = oldMesh.geometry.drawRange.count;
     const skin = await s.bushes.reskinTargets[0].prepareNextSkin();
     expect(skin.apply()).toBe(true); skin.dispose();
+    await drawn(first);
     await settleEffects();
-    expect(first.userData.animationController).toBe(controller);
-    expect(first.children[0]).not.toBe(oldSprite);
-    expect(oldSprite.parent).toBeNull();
+    expect(plantInstance(first).sprite).toBe(controller);
+    expect(first.children[0]).toBe(oldSprite);
+    expect(oldSprite.parent).toBe(first);
     const reskinnedSnow = drawnIndices(first);
     s.snowLevel.set(0); await settleEffects();
     expect(drawnIndices(first)).toBeLessThan(reskinnedSnow);
     s.snowLevel.set(.5); await settleEffects();
     expect(drawnIndices(first)).toBe(reskinnedSnow);
-    expect(oldMesh.geometry.drawRange.count).toBe(oldCount);
-    // A prepared replacement reads the latest snow even if applied before its queued effect runs.
+    expect(oldSprite.getObjectByProperty('isMesh', true)).toBe(oldMesh);
+    // The next appearance also reads the latest snow declaration.
     const nextSkin = await s.bushes.reskinTargets[0].prepareNextSkin();
     s.snowLevel.set(0);
     expect(nextSkin.apply()).toBe(true); nextSkin.dispose();
+    await drawn(first);
     await settleEffects();
     const bareReplacement = drawnIndices(first);
     await settleEffects();
     expect(drawnIndices(first)).toBe(bareReplacement);
-    // Discarding a prepared skin also releases its controller without touching the live plant.
+    // Discarding a prepared skin leaves the live plant unchanged.
     const canceled = await s.bushes.reskinTargets[0].prepareNextSkin();
     canceled.dispose();
     s.snowLevel.set(.5); await settleEffects();
     expect(drawnIndices(first)).toBeGreaterThan(bareReplacement);
-    const hide = vi.spyOn(first.userData.animationController, 'hideLayer');
+    const hide = vi.spyOn(plantInstance(first).sprite, 'hideLayer');
     s.snowLevel.set(0);
     expect(hide).toHaveBeenCalledExactlyOnceWith('snow');
     hide.mockClear();

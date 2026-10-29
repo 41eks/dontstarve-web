@@ -110,7 +110,7 @@ interface ApplicationResourcesOptions {
 }
 
 type SceneResources = Pick<Awaited<ReturnType<typeof startScene>>,
-  'registry' | 'moonTrees' | 'evergreenForest' | 'deciduousForest' | 'buildingPlacement' | 'groundItems' | 'farmPlow' | 'rockManager' | 'caveEntrances' | 'grottoPools' | 'mushtrees' | 'mushroomPlants' | 'wormholes' | 'reskinEffects' | 'worldFx' | 'flowerPlanting' | 'marbleShrubs' | 'archiveProps' | 'skeletons' | 'houndbones' | 'beeQueenHives' | 'marbleBeanSaplings' | 'rockAvocadoSaplings' | 'rockAvocadoBushes' | 'berrybushes' | 'monkeytails' | 'grasses' | 'saplings' | 'scheduler' | 'weather' | 'moon' | 'getWatchWorldContent' | 'beefalos' | 'molehills' | 'ponds'>;
+  'registry' | 'moonTrees' | 'evergreenForest' | 'deciduousForest' | 'buildingPlacement' | 'groundItems' | 'farmPlow' | 'rockManager' | 'caveEntrances' | 'grottoPools' | 'mushtrees' | 'mushroomPlants' | 'wormholes' | 'reskinEffects' | 'worldFx' | 'flowerPlanting' | 'marbleShrubs' | 'archiveProps' | 'marbleBeanSaplings' | 'rockAvocadoSaplings' | 'rockAvocadoBushes' | 'berrybushes' | 'monkeytails' | 'grasses' | 'saplings' | 'scheduler' | 'weather' | 'moon' | 'getWatchWorldContent' | 'beefalos' | 'molehills' | 'ponds'>;
 
 /** Create panels before scene loading, then own action setup and its explicit disposal. */
 export function createDisposalResources({ gameUi, view, inventory, playerAnimation, locomotor, pickupDoer,
@@ -129,7 +129,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         .setOpen(model, isOpen, buildId);
     },
     register(events: EventEmitter<DisposalEvents>, scene: SceneResources) {
-      const { moonTrees, evergreenForest, deciduousForest, buildingPlacement, groundItems, molehills, farmPlow, rockManager, caveEntrances, grottoPools, mushtrees, mushroomPlants, reskinEffects, worldFx, flowerPlanting, marbleShrubs, archiveProps, skeletons, houndbones, beeQueenHives, marbleBeanSaplings, rockAvocadoSaplings, rockAvocadoBushes, berrybushes, monkeytails, grasses, saplings, scheduler, weather, moon, getWatchWorldContent, ponds } = scene;
+      const { moonTrees, evergreenForest, deciduousForest, buildingPlacement, groundItems, molehills, farmPlow, rockManager, caveEntrances, grottoPools, mushtrees, mushroomPlants, reskinEffects, worldFx, flowerPlanting, marbleShrubs, archiveProps, marbleBeanSaplings, rockAvocadoSaplings, rockAvocadoBushes, berrybushes, monkeytails, grasses, saplings, scheduler, weather, moon, getWatchWorldContent, ponds } = scene;
       const handEquipment = inventory.handEquipment;
       const handSlotAddress = equipmentSlotAddress('hand');
       const bodySlotAddress = equipmentSlotAddress('body');
@@ -416,7 +416,6 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
 
         const hammer = new HammerActionController(view, playerAnimation, locomotor,
           handEquipment,
-          (model) => [...buildingPlacement.getHammerTargets(model), ...farmPlow.getHammerTargets(model), ...skeletons.getHammerTargets(model), ...houndbones.getHammerTargets(model), ...beeQueenHives.getHammerTargets(model), ...groundItems.getHammerTargets(model)],
           prefabInstance(player)!.sprite,
           isActionInterrupting);
         const pickaxe = new PickaxeActionController(view, playerAnimation, locomotor,

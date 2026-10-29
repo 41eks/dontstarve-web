@@ -48,6 +48,8 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState> 
   get tileTracker(): TileTracker { return this.tracker ??= new TileTracker(() => this.position); }
   /** inst.physicsradiusoverride, in DST units. */
   physicsRadiusOverride?: number;
+  /** Deployable smart spacing, in world units. */
+  deploySmartRadius?: number;
   private physicsBinding?: PhysicsBinding;
   /** inst.sg: SetStateGraph's instance, as other code reads and drives it; cleared by ClearStateGraph. */
   sg?: Pick<StateGraphInstance<unknown, string>, 'stateName' | 'hasStateTag' | 'goToState' | 'pushEvent' | 'listenForEvent'>;

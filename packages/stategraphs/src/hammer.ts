@@ -9,6 +9,7 @@ import { collectEquippedActions, equippedActionEntity, performToolWork, type Com
 import type { Worker } from '../../componets/src/workable';
 import { actionTargetModel, type ActionTargetView } from './actionTargetView';
 import type { SpriteState } from '@dontstarve-web/display';
+import { findActionEntity } from '../../prefab/src/actionEntity';
 
 export const HAMMER_HIT_TIME = WILSON_ACTION_TIMES.mine;
 export const HAMMER_REACH = 4;
@@ -22,6 +23,11 @@ export type HammerTarget = ActionTargetView & {
   /** Commit one successful HAMMER hit; the prefab owns work count and destruction. */
   playHit(): void;
 };
+
+/** Resolve the picked entity's owner-declared HAMMER operation, like the reskin target lookup. */
+export function getHammerActionTarget(model: THREE.Object3D): HammerTarget | undefined {
+  return findActionEntity(model)?.hammerTarget;
+}
 
 /** componentactions: HAMMER_tool + HAMMER_workable, on the right mouse button. */
 export class HammerActionController {
@@ -41,7 +47,6 @@ export class HammerActionController {
   private readonly handEquipment: HandEquipmentSignal;
   private readonly stopEquipment: () => void;
   private readonly stopActionEvents: () => void;
-  private readonly getTargets: (model?: THREE.Object3D) => readonly HammerTarget[];
   private readonly isManualMovement: () => boolean;
   private readonly worker: Worker;
 
@@ -50,7 +55,6 @@ export class HammerActionController {
     animation: WilsonAnimationController,
     locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>,
     handEquipment: HandEquipmentSignal,
-    getTargets: (model?: THREE.Object3D) => readonly HammerTarget[],
     playerSprite: Pick<SpriteState, 'setFacing'>,
     isManualMovement = () => false,
   ) {
@@ -66,17 +70,18 @@ export class HammerActionController {
       update: dt => this.update(dt),
       registerFrameTask: world.registerFrameTask,
     });
-    this.getTargets = getTargets;
     this.isManualMovement = isManualMovement;
     this.stopActionEvents = bindActionCancellation(world, this, 'hand', () => this.cancel());
     this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
     this.picker = world.mouseActions ?? new PlayerActionPicker(this.pointer);
     // Equipped actions are computed only for the selected entity.
-    this.unregisterHover = this.picker.register(model => !model || !this.isEquipped() ? [] :
-      this.getTargets(model).filter(target => target.isValid()).map(target => ({
+    this.unregisterHover = this.picker.register(model => {
+      const target = model && this.isEquipped() ? getHammerActionTarget(model) : undefined;
+      return !target?.isValid() ? [] : [{
         action: { action: 'HAMMER', invobject: equippedActionEntity(this.handEquipment.peek()), target: target.entity },
         button: 'right', model: actionTargetModel(target), available: this.canWork(target), source: 'equipped',
-      }))) ?? (() => {});
+      }];
+    }) ?? (() => {});
     // Register in capture so a work click cannot open a container or place a building.
     world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown, true);
     window.addEventListener('keydown', this.handleKeyDown);
@@ -118,7 +123,7 @@ export class HammerActionController {
     if (distance > HAMMER_REACH ** 2) {
       // Stop short of the foot point; do not walk into the billboard's centre.
       const destination = target.position.clone();
-      this.direction.subVectors(this.world.player.position, target.position).setY(0).normalize();
+      this.direction.subVectors(this.world.player.position, target.position).normalize();
       destination.addScaledVector(this.direction, HAMMER_REACH * 0.8);
       if (!this.locomotor.destination || this.locomotor.destination.distanceToSquared(destination) > 0.01) {
         if (!this.locomotor.goToPoint(destination)) this.cancel();
@@ -148,12 +153,11 @@ export class HammerActionController {
   }
 
   private distanceSquared(target: HammerTarget): number {
-    return (this.world.player.position.x - target.position.x) ** 2
-      + (this.world.player.position.z - target.position.z) ** 2;
+    return this.world.player.position.distanceToSquared(target.position);
   }
 
   private faceTarget(target: HammerTarget): void {
-    this.direction.subVectors(target.position, this.world.player.position).setY(0);
+    this.direction.subVectors(target.position, this.world.player.position);
     if (this.direction.lengthSq() < 1e-8) return;
     this.world.camera.getWorldDirection(this.forward);
     this.forward.setY(0).normalize();
@@ -166,8 +170,8 @@ export class HammerActionController {
 
   private hitTarget(event?: PointerEvent): HammerTarget | undefined {
     const action = this.picker.getMouseActions(event).right, model = this.picker.targetModel;
-    return model && action?.action === 'HAMMER'
-      ? this.getTargets(model).find(target => actionTargetModel(target) === model && target.isValid()) : undefined;
+    const target = model && action?.action === 'HAMMER' ? getHammerActionTarget(model) : undefined;
+    return target?.isValid() ? target : undefined;
   }
 
   private readonly handlePointerDown = (event: PointerEvent): void => {

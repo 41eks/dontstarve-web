@@ -387,7 +387,17 @@ export class GroundItemManager {
     model.userData.components = entity.components;
     // Domain queries read the authoritative vector; presentation/pickup snapshots own their scratch vector.
     model.userData.getGroundPosition = () => entity.transform.position;
-    actionEntity(model, entity.prefab, entity).reskinTarget = this.createReskinTarget(record);
+    const actions = actionEntity(model, entity.prefab, entity);
+    actions.reskinTarget = this.createReskinTarget(record);
+    if (entity.components.workable?.GetWorkAction() === 'HAMMER') {
+      actions.hammerTarget = {
+        id: record.id, entity, model,
+        get position() { return record.footPosition; },
+        isValid: () => !this.disposed && this.activeItems.has(record) && !this.inserting.has(record)
+          && entity.hasTag('HAMMER_workable'),
+        playHit: () => { performToolWork('HAMMER', entity, {}); },
+      };
+    }
     model.userData.pickupTarget = {
       model, entity, get position() { return record.footPosition; },
       hasTag: (tag: string) => entity.hasTag(tag) || modelHasTag(model, tag),
@@ -570,12 +580,8 @@ export class GroundItemManager {
 
   getHammerTargets(model?: THREE.Object3D): readonly HammerTarget[] {
     return modelValues(this.items, model, this.activeItems).filter(record => record.entity.components.workable?.GetWorkAction() === 'HAMMER')
-      .map(record => ({
-        id: record.id, entity: record.entity, model: record.model, get position() { return record.footPosition; },
-        isValid: () => !this.disposed && this.activeItems.has(record) && !this.inserting.has(record)
-          && record.entity.hasTag('HAMMER_workable'),
-        playHit: () => { performToolWork('HAMMER', record.entity, {}); },
-      }));
+      .map(record => findActionEntity(record.model)?.hammerTarget)
+      .filter((target): target is HammerTarget => target !== undefined);
   }
 
   setNetCaptureHandler(handler: (target: NetCaptureTarget) => boolean): void {

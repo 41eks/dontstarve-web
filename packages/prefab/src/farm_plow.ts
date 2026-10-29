@@ -242,6 +242,13 @@ export class FarmPlowPlacement implements FarmActionWorld {
     workable.SetWorkAction('HAMMER');
     workable.SetWorkLeft(1);
     workable.SetWorkable(state.phase !== 'collapse');
+    entity.hammerTarget = {
+      id: plow.id, entity, instance: sprite.instance, display: sprite.display, position: sprite.instance.position,
+      isValid: () => !this.disposed && this.plows.get(plow.id) === plow && plow.phase !== 'collapse',
+      playHit: () => {
+        if (this.plows.get(plow.id) === plow && plow.phase !== 'collapse') performToolWork('HAMMER', entity, {});
+      },
+    };
     new ToolMouseTarget(entity, sprite.instance, workable, this.world.handEquipment);
     workable.SetOnFinishCallback(() => {
       if (this.plows.get(plow.id) !== plow || plow.phase === 'collapse') return;
@@ -498,14 +505,9 @@ export class FarmPlowPlacement implements FarmActionWorld {
   get hammerTargets(): readonly HammerTarget[] { return this.getHammerTargets(); }
 
   getHammerTargets(model?: THREE.Object3D): readonly HammerTarget[] {
-    return this.mousePlows.select(model, this.plows.values()).filter((plow) => plow.phase !== 'collapse').map((plow) => ({
-      id: plow.id, entity: actionEntity(plow.sprite.display.model, FARM_PLOW_ID), model: plow.sprite.display.model, position: plow.sprite.display.model.position,
-      isValid: () => !this.disposed && this.plows.get(plow.id) === plow && plow.phase !== 'collapse',
-      playHit: () => {
-        if (this.plows.get(plow.id) !== plow || plow.phase === 'collapse') return;
-        performToolWork('HAMMER', actionEntity(plow.sprite.display.model, FARM_PLOW_ID), {});
-      },
-    }));
+    return this.mousePlows.select(model, this.plows.values()).filter(plow => plow.phase !== 'collapse')
+      .map(plow => actionEntity(plow.sprite.display.model, FARM_PLOW_ID).hammerTarget)
+      .filter((target): target is HammerTarget => target !== undefined);
   }
 
   async spawnDecor(prefabId: FarmDecorId, position: THREE.Vector3,

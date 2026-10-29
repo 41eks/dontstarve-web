@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createEquipmentExistenceState } from '../../signals/src';
 import { PickaxeActionController } from '../../stategraphs/src/pickaxe';
-import { HammerActionController } from '../../stategraphs/src/hammer';
+import { HammerActionController, getHammerActionTarget, type HammerTarget } from '../../stategraphs/src/hammer';
 import { ReskinActionController } from '../../stategraphs/src/reskin_tool';
 import type { ActionWorldContext, ActionAnimationController } from '../../stategraphs/src/actionContext';
 import { frontTasks, registerFrontTask } from '../../../src/animate';
@@ -10,7 +10,9 @@ import { actionTool, reskinEntityFields } from './actionFixtures';
 import { Workable } from '../../componets/src/workable';
 import { ItemEntity } from '../../inventory/src/entity';
 import { SpriteState } from '../../display/src/spriteState';
-import { PrefabInstance } from '../../prefab/src/prefabInstance';
+import { PrefabInstance, createEmptyEntity } from '../../prefab/src/prefabInstance';
+import { actionEntity } from '../../prefab/src/actionEntity';
+import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 
 vi.mock('../../../src/universal', () => ({}));
 
@@ -30,7 +32,7 @@ it('registers only the equipped controller, handles restored equipment and remov
   const animation = { isMining: false, isHammering: false, isCasting: false, isNetting: false,
     cancelMine: vi.fn(), cancelHammer: vi.fn() } as unknown as ActionAnimationController;
   const locomotor = { goToPoint: () => true, stop: vi.fn(), destination: undefined };
-  const hammer = new HammerActionController(world, animation, locomotor, equipment, () => [], new SpriteState({ name: 'idle' }));
+  const hammer = new HammerActionController(world, animation, locomotor, equipment, new SpriteState({ name: 'idle' }));
   const pickaxe = new PickaxeActionController(world, animation, locomotor, equipment, () => []);
   const hammerUpdate = vi.spyOn(hammer, 'update'), pickaxeUpdate = vi.spyOn(pickaxe, 'update');
   try {
@@ -125,7 +127,7 @@ it('declares hammer facing on the player instance before starting the action', (
   const target = { entity, id: 'skeleton', model: new THREE.Group(), position: new THREE.Vector3(-1, 0, 0),
     isValid: () => true, playHit: vi.fn() };
   const controller = new HammerActionController(world, animation as unknown as ActionAnimationController,
-    { goToPoint: () => true, stop: vi.fn(), destination: undefined }, equipment, () => [target], instance.sprite);
+    { goToPoint: () => true, stop: vi.fn(), destination: undefined }, equipment, instance.sprite);
   try {
     expect(controller.request(target)).toBe(true);
     controller.update(0);
@@ -134,6 +136,53 @@ it('declares hammer facing on the player instance before starting the action', (
     expect(animation.playHammer).toHaveBeenCalledOnce();
     expect(animation.setFacing).not.toHaveBeenCalled();
   } finally { controller.dispose(); }
+});
+
+it('finds registered hammer targets from pointer input and revalidates buffered work and removal', () => {
+  const world = context(), equipment = createEquipmentExistenceState('HANDS');
+  const tool = actionTool('hammer');
+  equipment.set(tool);
+  const { instance, display } = createEmptyEntity('wall_stone');
+  display.mount(new THREE.Scene());
+  instance.position.set(1, 0, 0);
+  instance.entityId = 'wall';
+  const entity = actionEntity(display.model, instance.prefab, instance);
+  const workable = entity.components.workable = new Workable(instance);
+  workable.SetWorkAction('HAMMER'); workable.SetWorkLeft(3);
+  const worked = vi.fn();
+  workable.SetOnWorkCallback(worked);
+  const target: HammerTarget = { id: 'wall', entity, instance, display, position: instance.position,
+    isValid: () => !instance.isRemoved, playHit: vi.fn() };
+  entity.hammerTarget = target;
+  vi.spyOn(PointerRaycaster.prototype, 'trackPointer').mockImplementation(() => {});
+  vi.spyOn(PointerRaycaster.prototype, 'pickMouseTarget').mockReturnValue({ object: display.model } as THREE.Intersection);
+  let hit: (() => boolean) | undefined;
+  const animation = { isHammering: false, isCasting: false, isNetting: false, cancelEmote: vi.fn(),
+    cancelHammer: vi.fn(), playHammer: vi.fn((callback: () => boolean) => { hit = callback; return true; }) };
+  const controller = new HammerActionController(world, animation as unknown as ActionAnimationController,
+    { goToPoint: () => true, stop: vi.fn(), destination: undefined }, equipment, new SpriteState({ name: 'idle' }));
+  const click = () => {
+    const event = Object.assign(new Event('pointerdown', { cancelable: true }), { button: 2 });
+    world.renderer.domElement.dispatchEvent(event);
+    controller.update(0);
+    return event;
+  };
+  try {
+    expect(getHammerActionTarget(display.model)).toBe(target);
+    expect(click().defaultPrevented).toBe(true);
+    expect(hit?.()).toBe(true);
+    expect(worked).toHaveBeenCalledOnce();
+    expect(target.playHit).not.toHaveBeenCalled();
+    expect(workable.GetWorkLeft()).toBe(2);
+    click(); workable.SetWorkable(false);
+    expect(hit?.()).toBe(false);
+    expect(worked).toHaveBeenCalledOnce();
+    workable.SetWorkable(true); click(); instance.remove();
+    expect(hit?.()).toBe(false);
+    expect(getHammerActionTarget(display.model)).toBeUndefined();
+    expect(entity.hammerTarget).toBeUndefined();
+    expect(worked).toHaveBeenCalledOnce();
+  } finally { controller.dispose(); instance.remove(); display.dispose(); workable.dispose(); }
 });
 
 it('discards a prepared reskin after the equipped entity changes during loading and releases subscriptions', async () => {

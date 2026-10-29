@@ -15,6 +15,8 @@ import type { PlayerActionEvents } from '../../stategraphs/src/actionEvents';
 import { ReskinActionController, type ReskinTarget } from '../../stategraphs/src/reskin_tool';
 import type { ActionAnimationController } from '../../stategraphs/src/actionContext';
 import { GroundItemAssets } from '../../prefab/src/groundItems';
+import { bindTestWorld } from './worldContentFixture';
+import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 
 vi.mock('../src/sprite', async importOriginal => ({ ...await importOriginal<typeof import('../src/sprite')>(), createAnimatedSpriteSource: vi.fn() }));
 vi.mock('../src/wallSprite', () => ({ createStaticSpriteFactory: vi.fn() }));
@@ -227,6 +229,9 @@ it.each(['animated', 'wall'] as const)('%s disposal removes placed sprites, prev
   const pointerDispose = vi.spyOn(PointerRaycaster.prototype, 'dispose');
   await placement.spawn('building');
   await begin();
+  if (kind === 'wall') await vi.waitFor(() => {
+    for (const model of world.scene.children) expect(lookupPrefabInstance(model)!.sprite.loaded).toBe(true);
+  });
   const resources = world.scene.children.flatMap((model) => {
     // A resident building returns its sprite to the shared source, which keeps the atlas materials.
     const mesh = model.children[0].children[0] as THREE.Mesh;
@@ -244,19 +249,25 @@ it.each(['animated', 'wall'] as const)('%s disposal removes placed sprites, prev
   await expect(begin()).rejects.toThrow('disposed');
 });
 
-it('re-faces a wall only when the camera facing signal changes', async () => {
-  const { cameraFacing, begin, load, placement } = setup('wall');
+it('lets the display select wall images only when the shared camera orientation changes', async () => {
+  const { begin, load, placement } = setup('wall');
+  const scheduler = new GameTimeScheduler(), content = bindTestWorld(scheduler);
+  const rotation = (heading: number) => new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), (90 - heading) * Math.PI / 180);
+  content.camerarotation.set(rotation(0));
   await begin();
   const factory = await load.mock.results[0].value;
+  await vi.waitFor(() => expect(factory.create).toHaveBeenCalled());
   const controller = factory.create.mock.results[0].value.userData.animationController;
-  expect(controller.setFacing).toHaveBeenLastCalledWith(8); expect(controller.showImage).toHaveBeenLastCalledWith(14);
+  expect(controller.setFacing.mock.lastCall[0]).toBe(8); expect(controller.showImage).toHaveBeenLastCalledWith(14);
   const calls = controller.setFacing.mock.calls.length;
-  cameraFacing.set(128); await new Promise(resolve => setTimeout(resolve, 0));
-  expect(controller.setFacing).toHaveBeenLastCalledWith(128); expect(controller.showImage).toHaveBeenLastCalledWith(4);
-  cameraFacing.set(2); await new Promise(resolve => setTimeout(resolve, 0));
-  expect(controller.setFacing).toHaveBeenLastCalledWith(2); expect(controller.showImage).toHaveBeenLastCalledWith(14);
+  content.camerarotation.set(rotation(45)); await new Promise(resolve => setTimeout(resolve, 0));
+  expect(controller.setFacing.mock.lastCall[0]).toBe(128); expect(controller.showImage).toHaveBeenLastCalledWith(4);
+  const camera = rotation(180);
+  content.camerarotation.set(camera); await new Promise(resolve => setTimeout(resolve, 0));
+  expect(controller.setFacing.mock.lastCall[0]).toBe(2); expect(controller.showImage).toHaveBeenLastCalledWith(14);
   const changed = controller.setFacing.mock.calls.length;
-  cameraFacing.set(2); await new Promise(resolve => setTimeout(resolve, 0));
+  content.camerarotation.set(camera); await new Promise(resolve => setTimeout(resolve, 0));
   expect(controller.setFacing.mock.calls.length).toBe(changed); expect(changed).toBe(calls + 2);
   placement.dispose();
+  content.unbind(); scheduler.dispose();
 });

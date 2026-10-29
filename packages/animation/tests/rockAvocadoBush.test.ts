@@ -1,3 +1,4 @@
+import { actionTargetModel } from '../../stategraphs/src/actionTargetView';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
@@ -15,7 +16,7 @@ import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { inventoryStateFromSave } from '../../../src/save/inventoryState';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
-import { bindTestWorld, drawn } from './worldContentFixture';
+import { bindTestWorld, drawn, plantInstance } from './worldContentFixture';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 
@@ -59,7 +60,7 @@ it('cycles all four stages through winter, picks three fruits or clears nil prod
   const s = setup();
   try {
     const model = await drawn(s.bushes.spawn(new THREE.Vector3(12, 0, 24)));
-    const { pickable, growable } = model.userData.components;
+    const { pickable, growable } = plantInstance(model).components;
     expect(growable.GetStage()).toBe(3);
     const timer = growable.state.timer.peek();
     s.advance(100); expect(growable.state.timer.peek()).toBe(timer);
@@ -82,9 +83,9 @@ it('cycles all four stages through winter, picks three fruits or clears nil prod
     expect(growable.OnSave().time).toBe(135);
     s.advance(135); expect(growable.GetStage()).toBe(3);
     expect(growable.OnSave().time).toBe(675);
-    expect(model.userData.animationController.currentAnimation).toBe('grow2');
+    expect(plantInstance(model).sprite.currentAnimation).toBe('grow2');
     pickable.MakeEmpty();
-    model.userData.components.simplemagicgrower.StartGrowing();
+    plantInstance(model).components.simplemagicgrower.StartGrowing();
     expect(growable.GetStage()).toBe(2);
     s.advance(.5); expect(growable.GetStage()).toBe(3);
     s.advance(.5); expect(growable.GetStage()).toBe(3);
@@ -111,12 +112,12 @@ it('digs three separate fruits and a root, transplants, fertilizes and stops aft
       canDeployPlant: () => true, deployPlant: (point: THREE.Vector3) => s.bushes.transplant(point),
     })).toBe(true);
     expect(s.inventory.count('dug_rock_avocado_bush')).toBe(1);
-    const model = s.bushes.digTargets[0].model, { pickable, growable, witherable } = model.userData.components;
+    const model = actionTargetModel(s.bushes.digTargets[0]), { pickable, growable, witherable } = plantInstance(model).components;
     expect(pickable.IsBarren()).toBe(true); expect(growable.IsGrowing()).toBe(false);
-    expect(model.userData.animationController.currentAnimation).toBe('dead1');
+    expect(plantInstance(model).sprite.currentAnimation).toBe('dead1');
     const fertilizer = s.inventory.entities.create({ itemId: 'poop', count: 1 }); s.inventory.configureItem(fertilizer);
     expect(pickable.Fertilize(fertilizer)).toBe(true);
-    expect(model.userData.animationController.currentAnimation).toBe('dead1_to_idle1');
+    expect(plantInstance(model).sprite.currentAnimation).toBe('dead1_to_idle1');
     expect(growable.OnSave()).toEqual({ stage: 1, time: 600 });
     for (let cycle = 3; cycle > 0; cycle--) {
       growable.DoGrowth(); growable.DoGrowth();
@@ -129,9 +130,9 @@ it('digs three separate fruits and a root, transplants, fertilizes and stops aft
     }
     expect(s.inventory.count('rock_avocado_fruit')).toBe(9);
     expect(growable.state.timer.peek().status).toBe('stopped'); expect(growable.magicgrowable).toBe(false);
-    expect(model.userData.animationController.currentAnimation).toBe('picked');
+    expect(plantInstance(model).sprite.currentAnimation).toBe('picked');
     for (let frame = 0; frame < 150; frame++) s.advance(1 / 30);
-    expect(model.userData.animationController.currentAnimation).toBe('dead1');
+    expect(plantInstance(model).sprite.currentAnimation).toBe('dead1');
     expect(pickable.Fertilize(fertilizer)).toBe(true);
     witherable.ForceWither(); expect(growable.IsGrowing()).toBe(false);
     expect(pickable.Fertilize(fertilizer)).toBe(true); expect(growable.IsGrowing()).toBe(true);
@@ -151,9 +152,9 @@ it('exports and reloads debug commands, roots and fruit; a saved burning mature 
       s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
     expect(s.inventory.getItemSpec('dug_rock_avocado_bush').maxStack).toBe(10);
     expect(s.inventory.getItemSpec('rock_avocado_fruit').maxStack).toBe(40);
-    const model = s.bushes.digTargets[0].model;
+    const model = actionTargetModel(s.bushes.digTargets[0]);
     const beforeBurn = s.bushes.exportRecords()[0];
-    model.userData.components.burnable.Ignite();
+    plantInstance(model).components.burnable.Ignite();
     let json = '';
     expect((await executeDebugCommand('c_save()', s.inventory, undefined, () => { json = s.save(); })).ok).toBe(true);
     const saved = deserializeSave(json, SAVE_CATALOG), record = saved.world.entities.rock_avocado_bush[0];

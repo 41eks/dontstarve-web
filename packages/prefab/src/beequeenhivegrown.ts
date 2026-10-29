@@ -92,6 +92,11 @@ export class BeeQueenHiveManager {
     Object.assign(model.userData.components, { workable, timer: hive.timer });
     new ToolMouseTarget(inst, instance, workable, this.world.handEquipment);
     this.hives.set(model, hive);
+    inst.hammerTarget = {
+      get id() { return String(instance.entityId); }, instance, display, entity: inst, position: instance.position,
+      isValid: () => this.hives.get(model) === hive && workable.CanBeWorked(),
+      playHit: () => { performToolWork('HAMMER', inst, {}); },
+    };
     this.scene.add(model);
     hive.stopActivity = watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active));
     return model;
@@ -144,11 +149,9 @@ export class BeeQueenHiveManager {
 
   get hammerTargets(): HammerTarget[] { return this.getHammerTargets(); }
   getHammerTargets(model?: THREE.Object3D): HammerTarget[] {
-    return modelEntries(this.hives, model).filter(([, hive]) => hive.workable.CanBeWorked()).map(([model, hive]) => ({
-      id: String(hive.instance.entityId), model, position: model.position, entity: actionEntity(model, BEEQUEENHIVEGROWN_ID),
-      isValid: () => this.hives.get(model) === hive && hive.workable.CanBeWorked(),
-      playHit: () => { performToolWork('HAMMER', actionEntity(model, BEEQUEENHIVEGROWN_ID), {}); },
-    }));
+    return modelEntries(this.hives, model).filter(([, hive]) => hive.workable.CanBeWorked())
+      .map(([model]) => actionEntity(model, BEEQUEENHIVEGROWN_ID).hammerTarget)
+      .filter((target): target is HammerTarget => target !== undefined);
   }
 
   update(dt: number): void { for (const { instance } of this.hives.values()) instance.sprite.update(dt); }

@@ -9,20 +9,21 @@ export class PrefabDisplayGroup {
 
   constructor(scene: THREE.Scene) { this.scene = scene; }
 
-  add(options: PrefabDisplayOptions, footPosition: THREE.Vector3): PrefabDisplay {
+  add(options: PrefabDisplayOptions, footPosition?: THREE.Vector3): PrefabDisplay {
     if (this.disposed) throw new Error('Prefab displays have been disposed');
     const display = new PrefabDisplay(options);
-    this.entries.set(display, footPosition);
+    this.entries.set(display, footPosition ?? display.model.position);
+    display.onDispose(() => this.entries.delete(display));
     this.scene.add(display.model);
     return display;
   }
 
   get renderEntities() {
     return [...this.entries].filter(([display]) => !display.isRemoved && display.model.visible && display.model.parent === this.scene)
-      .map(([display, footPosition]) => ({ object: display.model, footPosition, cameraDepth: 0 }));
+      .flatMap(([display, footPosition]) => [{ object: display.model, footPosition, cameraDepth: 0 }, ...display.fxRenderEntries]);
   }
 
-  update(dt: number, cameraRotation: THREE.Quaternion): void {
+  update(dt: number, cameraRotation?: THREE.Quaternion): void {
     for (const display of this.entries.keys()) {
       display.update(dt, cameraRotation);
       if (display.isRemoved) {

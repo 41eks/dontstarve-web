@@ -7,7 +7,7 @@ import type { InventoryStore } from '../../../src/inventory';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { GrassManager, GRASS_ID } from '../../prefab/src/grass';
-import { bindTestWorld, tickWorld, drawn } from './worldContentFixture';
+import { bindTestWorld, tickWorld, drawn, plantInstance } from './worldContentFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 
 afterEach(() => {
@@ -17,7 +17,7 @@ afterEach(() => {
 
 it('spawns grass through the debug command using its source bank and build, then restores it', async () => {
   const archives = new Map<string, Uint8Array>();
-  for (const file of ['grass.zip', 'grass1.zip', 'fire.zip']) {
+  for (const file of ['grass.zip', 'grass1.zip']) {
     archives.set(file, await readFile(new URL(`../../../public/dst/data/anim/${file}`, import.meta.url)));
   }
   const fetchAsset = vi.fn(async (url: string) => new Response(new Uint8Array(archives.get(url.split('/').pop()!)!)));
@@ -52,8 +52,8 @@ it('spawns grass through the debug command using its source bank and build, then
   expect(lookupPrefabInstance(model)?.prefab).toBe(GRASS_ID);
   expect(Object.hasOwn(model.userData, 'instance')).toBe(false);
   expect(model.position.toArray()).toEqual([4, 0, -6]);
-  expect(model.userData.billboard).toBe(true);
-  const controller = model.userData.animationController as { currentAnimation: string; update: (dt: number) => void };
+  expect(plantInstance(model).sprite.sprite.peek().billboard).toBe(true);
+  const controller = plantInstance(model).sprite as { currentAnimation: string; update: (dt: number) => void };
   expect(controller.currentAnimation).toBe('idle');
   let mesh: THREE.Mesh | undefined;
   model.traverse(object => { if (!mesh && object instanceof THREE.Mesh) mesh = object; });
@@ -69,7 +69,7 @@ it('spawns grass through the debug command using its source bank and build, then
   expect(record.transform).toEqual({ position: [4, 0, -6], rotationY: 0 });
   expect(record.components).toEqual({ pickable: {}, witherable: { taskSeconds: expect.any(Number) } });
 
-  const pickable = model.userData.components.pickable;
+  const pickable = plantInstance(model).components.pickable;
   expect(pickable.pick({ giveItem: (id: string, count: number) => id === 'cutgrass' && count === 1 })).toBe(true);
   expect(controller.currentAnimation).toBe('picking');
   for (let i = 0; i < 60; i++) tickWorld(scheduler, grasses, 1 / 30, new THREE.Quaternion());
@@ -78,9 +78,9 @@ it('spawns grass through the debug command using its source bank and build, then
   expect(pickedRecord.components.pickable?.picked).toBe(true);
   expect(pickedRecord.components.pickable?.regrowSeconds).toBeCloseTo(1438);
   const pickedRestored = await drawn(grasses.spawn(new THREE.Vector3(...pickedRecord.transform.position), pickedRecord));
-  expect(pickedRestored.userData.animationController.currentAnimation).toBe('picked');
-  expect(pickedRestored.userData.components.pickable.state.phase.peek()).toBe('picked');
-  expect(pickedRestored.userData.components.pickable.remainingSeconds).toBeCloseTo(1438);
+  expect(plantInstance(pickedRestored).sprite.currentAnimation).toBe('picked');
+  expect(plantInstance(pickedRestored).components.pickable.state.phase.peek()).toBe('picked');
+  expect(plantInstance(pickedRestored).components.pickable.remainingSeconds).toBeCloseTo(1438);
   tickWorld(scheduler, grasses, pickable.remainingSeconds, new THREE.Quaternion());
   expect(controller.currentAnimation).toBe('grow');
   expect(pickable.state.phase.peek()).toBe('ready');

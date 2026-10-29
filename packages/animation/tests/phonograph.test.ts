@@ -103,6 +103,8 @@ it('preserves a loaded skinned record across reskin, pickup, inventory transfer,
     // Inventory transfers must see the loaded record immediately, before any save projection.
     expect(manager.entities.get('phonograph:test')!.phonographRecord).toBe('record_creepyforest');
     manager.update(8, new THREE.Quaternion());
+    const playingSound = vi.mocked(PlaySound).mock.results.at(-1)!.value;
+    const soundCalls = vi.mocked(PlaySound).mock.calls.length;
     const target = manager.reskinTargets.find(({ prefabId }) => prefabId === 'phonograph')!;
     const skin = await target.prepareNextSkin();
     // Playback advances during the asynchronous preparation.
@@ -111,7 +113,8 @@ it('preserves a loaded skinned record across reskin, pickup, inventory transfer,
     model = manager.reskinTargets.find(({ prefabId }) => prefabId === 'phonograph')!.model as THREE.Group;
     expect(lookupPrefabInstance(model)?.entityId).toBe('phonograph:test'); expect(model.position).toEqual(position);
     expect(model.userData.phonograph.snapshot()).toEqual({ phonographRecord: 'record_creepyforest', playbackRemaining: 54 });
-    expect(PlaySound).toHaveBeenLastCalledWith('dontstarve/music/gramaphone_creepyforest', model.position, 10);
+    expect(PlaySound).toHaveBeenCalledTimes(soundCalls);
+    expect(playingSound.stop).not.toHaveBeenCalled();
     const data = structuredClone(initialWorld) as any;
     data.players.local.inventory.containers['player:equipment'].slots = [];
     data.world.entities.ground_item = manager.exportRecords();

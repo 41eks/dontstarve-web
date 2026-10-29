@@ -7,7 +7,7 @@ import { GroundItemManager } from '../../../src/groundItems';
 import { createInventoryStore } from '../../../src/inventory';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { performToolWork } from '../../stategraphs/src/componentactions';
-import { bindTestWorld, drawn } from './worldContentFixture';
+import { bindTestWorld, drawn, plantInstance } from './worldContentFixture';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -22,7 +22,7 @@ function setup() {
   const world = bindTestWorld(scheduler), rain = createSignal<'none' | 'rain' | 'snow'>('none');
   const mushrooms = new MushroomPlantManager(scene, '/dst/data/anim', { rain, spawnGroundItem: (definition, position, options) => ground.spawnGroundItem(definition, position, options) });
   const advance = (seconds: number) => { scheduler.advance(seconds); mushrooms.update(seconds, new THREE.Quaternion()); };
-  return { inventory, scheduler, world, rain, ground, mushrooms, advance,
+  return { inventory, scene, scheduler, world, rain, ground, mushrooms, advance,
     dispose: () => { mushrooms.dispose(); ground.dispose(); inventory.dispose(); world.unbind(); scheduler.dispose(); } };
 }
 const picker = (inventory: ReturnType<typeof createInventoryStore>) => ({ giveItem: (id: string, count: number) => inventory.add(id, count) });
@@ -31,7 +31,7 @@ it('opens at night, is picked for a blue_cap, regrows after rainy periods and ke
   const s = setup();
   try {
     const model = await drawn(s.mushrooms.spawn(new THREE.Vector3(3, 0, 4)));
-    const pickable = model.userData.components.pickable;
+    const pickable = plantInstance(model).components.pickable;
     // Daytime: still in the ground, so it cannot be picked.
     expect(pickable.pick(picker(s.inventory))).toBe(false);
     s.world.cycle.set('night');
@@ -83,13 +83,13 @@ it('opens red mushrooms by day and green mushrooms at dusk, each yielding its ow
     const red = await drawn(s.mushrooms.spawn(new THREE.Vector3(1, 0, 1), undefined, 'red_mushroom'));
     const green = await drawn(s.mushrooms.spawn(new THREE.Vector3(2, 0, 1), undefined, 'green_mushroom'));
     // Day: red is already open at construction; green waits in the ground.
-    expect(green.userData.components.pickable.pick(picker(s.inventory))).toBe(false);
-    expect(red.userData.components.pickable.pick(picker(s.inventory))).toBe(true);
+    expect(plantInstance(green).components.pickable.pick(picker(s.inventory))).toBe(false);
+    expect(plantInstance(red).components.pickable.pick(picker(s.inventory))).toBe(true);
     expect(s.inventory.count('red_cap')).toBe(1);
     s.world.cycle.set('dusk');
     await settle();
     s.advance(10);
-    expect(green.userData.components.pickable.pick(picker(s.inventory))).toBe(true);
+    expect(plantInstance(green).components.pickable.pick(picker(s.inventory))).toBe(true);
     expect(s.inventory.count('green_cap')).toBe(1);
     expect(s.mushrooms.exportRecords().map(({ prefabId }) => prefabId).sort()).toEqual(['green_mushroom', 'red_mushroom']);
   } finally { s.dispose(); }
@@ -98,7 +98,7 @@ it('opens red mushrooms by day and green mushrooms at dusk, each yielding its ow
 it('turns static billboards only when the camera rotation signal changes and leaves their subtree alone otherwise', async () => {
   const s = setup();
   try {
-    const scene = s.mushrooms['scene'] as THREE.Scene;
+    const { scene } = s;
     const model = await drawn(s.mushrooms.spawn(new THREE.Vector3(3, 0, 4)));
     // The resident root holds the origin; the drawn sprite is its first child and its visual the first grandchild.
     const sprite = model.children[0], visual = sprite.children[0];
