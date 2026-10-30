@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
-import { ArchiveSpriteAssets, createSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { SpriteResources } from '@dontstarve-web/display';
 import { createArchiveEntity } from './prefabInstance';
 
 // The placer tints: valid and blocked cells.
@@ -41,7 +41,8 @@ export const dockMapOf = (turf: TurfMap): DockMap => ({
 export class DockKitPlacement {
   readonly dockmanager: DockManager;
   private readonly stopActionEvents: () => void;
-  private readonly assets: ArchiveSpriteAssets;
+  /** The gridplacer's shared archive; declaring it performs no IO, the outline's display loads it. */
+  private readonly sprites = new SpriteResources(undefined, 'dock-kit');
   private readonly pointer: PointerRaycaster;
   private readonly cursor: BuildCursor;
   private readonly world: WorldContext;
@@ -51,63 +52,44 @@ export class DockKitPlacement {
   private outline?: ReturnType<typeof createArchiveEntity> & { visible: boolean; valid?: boolean };
   private anchor?: THREE.Object3D;
   private takeItem?: () => ItemEntity | undefined;
-  private version = 0;
-  private prepareRequest?: Promise<void>;
   private disposed = false;
 
   constructor(world: WorldContext, turf: TurfMap, blockers: PlacementQuery = placementEntities(world.scene)) {
     this.world = world; this.turf = turf; this.blockers = blockers;
     this.dockmanager = new DockManager(dockMapOf(turf), { dock: WORLD_TILES.MONKEY_DOCK, farmingSoil: WORLD_TILES.FARMING_SOIL });
     this.stopActionEvents = bindActionCancellation(world, this, 'deploy', () => this.cancel());
-    this.assets = new ArchiveSpriteAssets('dock-kit');
     this.pointer = new PointerRaycaster(world);
     this.cursor = new BuildCursor(world, this.pointer);
     world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown, true);
     window.addEventListener('keydown', this.handleKeyDown);
   }
 
-  private prepare(): Promise<void> {
-    if (this.disposed) return Promise.reject(new Error('Dock kit placement has been disposed'));
-    this.prepareRequest ??= Promise.all([this.assets.loadAnimation('gridplacer.zip'), this.assets.loadBuild('gridplacer.zip')]).then(() => undefined);
-    void this.prepareRequest.catch(() => { this.prepareRequest = undefined; });
-    return this.prepareRequest;
-  }
-
   /** The gridplacer snapped to tile centres; `takeItem` detaches one kit when the deploy commits. */
-  async begin(takeItem: () => ItemEntity | undefined): Promise<void> {
+  begin(takeItem: () => ItemEntity | undefined): void {
     if (this.disposed) throw new Error('Dock kit placement has been disposed');
     this.cancel();
     this.world.actionEvents?.emit('action:begin', { owner: this, action: 'DEPLOY' });
-    const version = this.version;
     this.takeItem = takeItem;
     this.cursor.show('鼠标右键：布署', 'right');
-    try {
-      await this.prepare();
-      // Private colour and opacity copies: the placer tints only itself.
-      const create = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(this.assets, { animationArchive: 'gridplacer.zip',
-        buildArchives: ['gridplacer.zip'], bank: 'gridplacer', animation: clip.name, loop: clip.loop },
-        { name: 'DockKitGridPlacer', opacity: .65, colour: [1, 1, 1] });
-      const initial = await create({ name: 'anim', loop: false });
-      if (version !== this.version || this.disposed) { initial.dispose(); return; }
-      const entity = createArchiveEntity('gridplacer', { create, initial }, { name: 'anim' }, 'DockKitGridPlacer');
-      entity.instance.sprite.playOnce('anim');
-      const model = entity.display.model;
-      for (const tag of ['FX', 'NOCLICK']) entity.instance.addTag(tag);
-      entity.instance.persists = false;
-      model.userData.billboard = false;
-      model.rotation.x = -Math.PI / 2;
-      this.outline = { ...entity, visible: true };
-      this.world.scene.add(model);
-      // BuildCursor moves and hides an anchor; the outline follows it lifted off the ground and shows through its sprite.
-      this.anchor = new THREE.Object3D();
-      entity.instance.sprite.setLightOverride(1);
-      this.cursor.setPreview(this.anchor, 0, point => this.center(point));
-      this.cursor.update();
-    } catch (error) { if (version === this.version) this.cancel(); throw error; }
+    // Private colour and opacity copies: the placer tints only itself.
+    const entity = createArchiveEntity('gridplacer', this.sprites.archive({ animationArchive: 'gridplacer.zip',
+      buildArchives: ['gridplacer.zip'], bank: 'gridplacer' }, { opacity: .65, colour: [1, 1, 1] }), { name: 'anim' }, 'DockKitGridPlacer');
+    // gridplacer.lua: PlayAnimation("anim", true).
+    const model = entity.display.model;
+    for (const tag of ['FX', 'NOCLICK']) entity.instance.addTag(tag);
+    entity.instance.persists = false;
+    model.userData.billboard = false;
+    model.rotation.x = -Math.PI / 2;
+    this.outline = { ...entity, visible: true };
+    this.world.scene.add(model);
+    // BuildCursor moves and hides an anchor; the outline follows it lifted off the ground and shows through its sprite.
+    this.anchor = new THREE.Object3D();
+    entity.instance.sprite.setLightOverride(1);
+    this.cursor.setPreview(this.anchor, 0, point => this.center(point));
+    this.cursor.update();
   }
 
   cancel(): void {
-    this.version++;
     this.takeItem = undefined;
     this.cursor.hide();
     if (this.outline) { this.outline.instance.remove(); this.outline.display.dispose(); }
@@ -186,7 +168,7 @@ export class DockKitPlacement {
     this.disposed = true; this.cancel(); this.pointer.dispose();
     this.world.renderer.domElement.removeEventListener('pointerdown', this.handlePointerDown, true);
     window.removeEventListener('keydown', this.handleKeyDown);
-    this.assets.dispose();
+    this.sprites.dispose();
   }
 
   private readonly handlePointerDown = (event: PointerEvent): void => {

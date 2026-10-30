@@ -2,8 +2,11 @@ import { SpatialIndex } from '../../prefab/src/spatialIndex';
 import type { PlacementBlocker } from '../../prefab/src/placementEntities';
 import { ItemEntity } from '@dontstarve-web/inventory';
 import * as THREE from 'three';
+import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { DockKitPlacement } from '../../prefab/src/dock_kit';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { prefabDisplay } from '@dontstarve-web/display';
 import { TurfMap, WORLD_TILES, type TurfTileSave } from '../../prefab/src/turfMap';
 import { DockManager, type DockMap } from '../../componets/src/dockmanager';
 import { PlaySound } from '../../prefab/src/sound';
@@ -29,7 +32,7 @@ function setup(tiles = oceanTiles(), blockers = new SpatialIndex<PlacementBlocke
   const world = { scene: new THREE.Scene(), player: new THREE.Group(), camera: new THREE.PerspectiveCamera(),
     ground: new THREE.Group(), renderer: { domElement: new EventTarget() },
     createCursorLabel: () => ({ show() {}, hide() {}, update() {} }) } as unknown as WorldContext;
-  return { turf, placement: new DockKitPlacement(world, turf, blockers) };
+  return { turf, world, placement: new DockKitPlacement(world, turf, blockers) };
 }
 const kit = () => new ItemEntity({ itemId: 'dock_kit', count: 1 });
 
@@ -116,4 +119,26 @@ it('saves a dock as a MONKEY_DOCK tile over its ocean undertile and rejects one 
   expect(parse([ocean, dock]).world.map.tiles).toEqual([ocean, dock]);
   expect(() => parse([ocean, { ...dock, underTileId: undefined }])).toThrow(/dock covers an ocean tile/);
   expect(() => parse([ocean, { ...dock, underTileId: WORLD_TILES.DIRT }])).toThrow(/dock covers an ocean tile/);
+});
+
+it('shows the looping gridplacer at once, lets its display load the art, and releases it on cancel and disposal', async () => {
+  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  const { placement, world } = setup();
+  try {
+    // begin declares the placer synchronously; nothing waits for its art.
+    expect(placement.begin(() => kit())).toBeUndefined();
+    const [outline] = world.scene.children;
+    const instance = prefabInstance(outline)!;
+    expect(instance.listTags()).toEqual(expect.arrayContaining(['FX', 'NOCLICK']));
+    await prefabDisplay(outline)!.artLoaded();
+    expect(instance.sprite.loaded).toBe(true);
+    expect(instance.sprite.currentAnimation).toBe('anim');
+    placement.cancel();
+    expect(instance.isRemoved).toBe(true);
+    expect(world.scene.children).toEqual([]);
+    placement.begin(() => kit());
+    placement.dispose();
+    expect(world.scene.children).toEqual([]);
+    expect(() => placement.begin(() => kit())).toThrow('disposed');
+  } finally { placement.dispose(); }
 });

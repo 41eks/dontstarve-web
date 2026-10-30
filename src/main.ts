@@ -508,7 +508,7 @@ window.addEventListener('game:slot-select', (event) => {
     event.preventDefault();
     const entity = inventory.getEntity(slot);
     if (!entity) return;
-    void dockKit.begin(() => inventory.extract(slot, 1, entity) ?? undefined).catch((error: unknown) => console.error('Unable to deploy dock kit', error));
+    dockKit.begin(() => inventory.extract(slot, 1, entity) ?? undefined);
     return;
   }
   if (!stack || !isPlaceableBuildingId(stack.itemId)) return;
