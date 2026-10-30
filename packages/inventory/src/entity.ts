@@ -13,6 +13,7 @@ import type { Fuel } from '../../componets/src/fuel';
 import { Fueled } from '../../componets/src/fueled';
 import { Temperature, type TemperatureWorld, type TemperatureSaveData } from '../../componets/src/temperature';
 import type { Heater } from '../../componets/src/heater';
+import { SpriteState } from '@dontstarve-web/display/spriteState';
 
 let sequence = 0;
 export function newItemEntityId(): string {
@@ -187,7 +188,14 @@ export class ItemEntity {
   }
   mole?: InventoryStack['mole'];
   lightflier?: InventoryStack['lightflier'];
-  skinId?: string;
+  /**
+   * inst.AnimState: the item's sprite json for its whole life, on the ground, in a container or equipped. A ground
+   * visual draws this declaration; off the ground it plays no clip.
+   */
+  readonly sprite: SpriteState;
+  /** The item's skin is the sprite json's `skinId`; inventory, equipment and saves read it from there. */
+  get skinId(): string | undefined { return this.sprite.skinId.peek(); }
+  set skinId(skinId: string | undefined) { this.sprite.setSkinId(skinId); }
   variant?: string;
   highTemp?: number;
   lowTemp?: number;
@@ -230,6 +238,7 @@ export class ItemEntity {
   constructor(state: InventoryStack, perishWorld?: PerishWorld) {
     this.id = state.entityId ?? newItemEntityId();
     this.prefab = state.itemId;
+    this.sprite = new SpriteState({ name: state.itemId, none: true });
     this.wetState.set(state.wet ?? false);
     this.components = {
       stackable: new StackableComponent(state.count),

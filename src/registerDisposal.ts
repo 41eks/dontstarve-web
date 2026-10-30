@@ -475,7 +475,9 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
           const spec = inventory.getStackSpec(stack);
           const entity = inventory.getEntity(slot);
           if (!entity) return;
+          // The DROP hands over this inst; its ground visual draws the item's own sprite.
           const definition: GroundItemDefinition = {
+            entity,
             itemId: stack.itemId,
             ...(stack.skinId === undefined ? {} : { skinId: stack.skinId }),
             name: spec.name,

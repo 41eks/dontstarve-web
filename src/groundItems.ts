@@ -152,33 +152,60 @@ export class GroundItemManager {
     this.prefabs.dispose();
   }
 
-  /** DROP's perform frame takes and places the authoritative item; the display loads its art. */
+  /**
+   * DROP's perform frame takes and places the authoritative item; the display loads its art. A ground visual draws its
+   * inst's own sprite. An inst the caller names (`definition.entity`) leaves the inventory, which validated its skin, and
+   * only then is shown on the ground. A drop described by its definition alone becomes new insts whose visuals are created
+   * before anything is taken, so art that cannot be created takes nothing.
+   */
   drop(definition: GroundItemDefinition, position: THREE.Vector3, takeFromInventory: () => boolean | ItemEntity): boolean {
-    const visuals = this.createDropVisuals(definition);
-    let taken: boolean | ItemEntity;
-    try { taken = takeFromInventory(); }
-    catch (error) { visuals.forEach(visual => visual.dispose()); throw error; }
-    if (!taken) { visuals.forEach(visual => visual.dispose()); return false; }
-    if (taken instanceof ItemEntity) {
-      const state = taken.snapshot();
-      for (const [index, visual] of visuals.entries()) {
-        const count = visuals.length === 1 ? state.count : 1;
-        const entity = index === 0 ? taken : this.entities.create({ ...state, entityId: undefined, count });
-        if (index === 0 && visuals.length > 1) entity.apply({ ...state, count });
-        this.addVisual(entity.id, { ...definition, ...entity.snapshot(), entity }, position, visual, true);
+    const pieces = this.dropPieces(definition);
+    const prepared: { entity: ItemEntity; created: boolean; item: GroundItemDefinition; visual: GroundItemVisual }[] = [];
+    try {
+      if (!definition.entity) {
+        for (let index = 0; index < pieces; index++) {
+          const item = this.singleDropDefinition(definition);
+          const existing = item.entityId ? this.entities.get(item.entityId) : undefined;
+          const entity = existing ?? this.entities.create({ ...item, entityId: newEntityId() });
+          let visual: GroundItemVisual;
+          try { visual = this.createVisual(item, entity); }
+          catch (error) { if (!existing) this.entities.destroy(entity); throw error; }
+          prepared.push({ entity, created: !existing, item, visual });
+        }
       }
-    } else {
-      for (const visual of visuals) this.addVisual(newEntityId(), this.singleDropDefinition(definition), position, visual, true);
+      const taken = takeFromInventory();
+      if (!taken) return false;
+      if (taken instanceof ItemEntity) this.placeTaken(taken, definition, pieces, position);
+      else for (const { entity, item, visual } of prepared.splice(0)) this.addVisual(entity, item, position, visual, true);
+      return true;
+    } finally {
+      for (const { entity, created, visual } of prepared) {
+        visual.dispose();
+        if (created) this.entities.destroy(entity);
+      }
     }
-    return true;
+  }
+
+  /** The taken inst is placed itself; a stack of live insects becomes one inst per insect, as their OnDropped does. */
+  private placeTaken(taken: ItemEntity, definition: GroundItemDefinition, pieces: number, position: THREE.Vector3): void {
+    if (pieces > 1) taken.apply({ ...taken.snapshot(), count: 1 });
+    this.placeEntity(taken, { ...definition, ...taken.snapshot(), entity: taken }, position, true);
+    for (let index = 1; index < pieces; index++) {
+      const item = { ...definition, ...taken.snapshot(), entity: undefined, entityId: undefined, count: 1 };
+      this.withGroundEntity(item, newEntityId(), entity => this.placeEntity(entity, item, position, true));
+    }
   }
 
   /** Restore identity and components immediately, without playing the drop animation. */
   spawnFromSave(id: string, definition: GroundItemDefinition, position: THREE.Vector3): THREE.Group {
-    const visuals = this.createDropVisuals(definition);
-    visuals.forEach((visual, index) => this.addVisual(index === 0 ? id : newEntityId(),
-      this.singleDropDefinition(definition), position, visual));
-    return visuals[0].model;
+    const pieces = this.dropPieces(definition);
+    let first: THREE.Group | undefined;
+    for (let index = 0; index < pieces; index++) {
+      const item = this.singleDropDefinition(definition);
+      const model = this.withGroundEntity(item, index === 0 ? id : newEntityId(), entity => this.placeEntity(entity, item, position));
+      first ??= model;
+    }
+    return first!;
   }
 
   private trackGroundEntity(entity: ItemEntity): void {
@@ -215,9 +242,7 @@ export class GroundItemManager {
   spawnEntity(entity: ItemEntity, position: THREE.Vector3): void {
     if (this.disposed || entity.isRemoved) throw new Error('Cannot place removed ground entity');
     const definition = { ...this.inventory.getItemSpec(entity.prefab), ...entity.snapshot(), entity };
-    const visual = this.createVisual(definition);
-    try { this.addVisual(entity.id, definition, position, visual); }
-    catch (error) { visual.dispose(); throw error; }
+    this.placeEntity(entity, definition, position);
   }
 
   /**
@@ -232,13 +257,12 @@ export class GroundItemManager {
     let first: ItemEntity | undefined;
     for (let index = 0; index < pieces; index++) {
       const item = this.singleDropDefinition(definition);
-      const place = (visual: GroundItemVisual) => {
-        if (fling || launch) this.addFlungVisual(item, position, visual, launch);
-        else this.addVisual(newEntityId(), item, position, visual, true);
-        return this.items.get(visual.model)?.entity;
-      };
-      const visual = this.createVisual(item);
-      first ??= place(visual);
+      const entity = this.withGroundEntity(item, newEntityId(), entity => {
+        if (fling || launch) this.addFlungVisual(entity, item, position, this.createVisual(item, entity), launch);
+        else this.placeEntity(entity, item, position, true);
+        return entity;
+      });
+      first ??= entity;
     }
     return first;
   }
@@ -277,27 +301,35 @@ export class GroundItemManager {
     });
   }
 
-  private createDropVisuals(definition: GroundItemDefinition): GroundItemVisual[] {
+  /** How many insts a ground stack becomes: live insects force individual drops from a stack. */
+  private dropPieces(definition: GroundItemDefinition): number {
     if (this.disposed) throw new Error('Ground items have been disposed');
     if (!Number.isSafeInteger(definition.count) || definition.count < 1) throw new RangeError('Invalid ground item count');
-    const count = this.isNetCreature(definition.itemId) ? definition.count : 1;
-    const visuals: GroundItemVisual[] = [];
-    try {
-      // Live insects force individual drops from a stack.
-      for (let index = 0; index < count; index++) visuals.push(this.createVisual(this.singleDropDefinition(definition)));
-      if (this.disposed) throw new Error('Ground items have been disposed');
-      return visuals;
-    } catch (error) {
-      visuals.forEach((visual) => visual.dispose());
-      throw error;
-    }
+    return this.isNetCreature(definition.itemId) ? definition.count : 1;
   }
 
-  private addVisual(id: string, definition: GroundItemDefinition, position: THREE.Vector3, visual: GroundItemVisual, dropped = false): void {
+  /**
+   * Places the inst a ground definition names: the given one, a registered one by id, or a new one with `id`. Its
+   * visual draws its sprite, so the inst exists first; one created here is destroyed again if placing it fails.
+   */
+  private withGroundEntity<T>(definition: GroundItemDefinition, id: string, place: (entity: ItemEntity) => T): T {
+    const existing = definition.entity ?? (definition.entityId ? this.entities.get(definition.entityId) : undefined);
+    const entity = existing ?? this.entities.create({ ...definition, entityId: id });
+    try { return place(entity); }
+    catch (error) { if (!existing) this.entities.destroy(entity); throw error; }
+  }
+
+  /** Places the inst with a ground visual created now, which draws the item's own sprite. */
+  private placeEntity(entity: ItemEntity, definition: GroundItemDefinition, position: THREE.Vector3, dropped = false): THREE.Group {
+    const visual = this.createVisual(definition, entity);
+    try { this.addVisual(entity, definition, position, visual, dropped); }
+    catch (error) { visual.dispose(); throw error; }
+    return visual.model;
+  }
+
+  private addVisual(entity: ItemEntity, definition: GroundItemDefinition, position: THREE.Vector3, visual: GroundItemVisual, dropped = false): void {
     // A tile-bound item follows its tile from ondropped / onload.
     visual.instance.setActive(true);
-    const entity = definition.entity ?? (definition.entityId ? this.entities.get(definition.entityId) : undefined)
-      ?? this.entities.create({ ...definition, entityId: id });
     this.entities.adopt(entity);
     if (this.inventory.hasItemSpec(entity.prefab)) {
       this.inventory.configureItem(entity);
@@ -306,8 +338,7 @@ export class GroundItemManager {
       entity.components.inventoryitem.canbepickedup = false;
     }
     definition = { ...definition, ...entity.snapshot(), entity };
-    visual.instance.skinId = entity.skinId;
-    id = entity.id;
+    const id = entity.id;
     entity.transform.position.set(position.x, dropped ? 0 : position.y, position.z);
     entity.MiniMapEntity?.tileTracker.sync();
     this.trackGroundEntity(entity);
@@ -440,9 +471,8 @@ export class GroundItemManager {
       this.spawnFromSave(newEntityId(), rest, position);
     }
     const definition = { ...this.inventory.getStackSpec(entity.snapshot()), ...entity.snapshot(), entity };
-    const visual = this.createVisual(definition);
-    if (launch) this.addFlungVisual(definition, entity.transform.position.clone(), visual, launch);
-    else this.addVisual(entity.id, definition, entity.transform.position.clone(), visual, true);
+    if (launch) this.addFlungVisual(entity, definition, entity.transform.position.clone(), this.createVisual(definition, entity), launch);
+    else this.placeEntity(entity, definition, entity.transform.position.clone(), true);
   }
 
   /** Adapt the authoritative tuple for consumers requiring a live Three.js foot point. */
@@ -454,12 +484,10 @@ export class GroundItemManager {
     }) as GroundItemRecord;
   }
 
-  private addFlungVisual(definition: GroundItemDefinition, origin: THREE.Vector3, visual: GroundItemVisual, launch?: LootLaunch): void {
-    const entity = definition.entity ?? (definition.entityId ? this.entities.get(definition.entityId) : undefined)
-      ?? this.entities.create({ ...definition, entityId: newEntityId() });
+  private addFlungVisual(entity: ItemEntity, definition: GroundItemDefinition, origin: THREE.Vector3, visual: GroundItemVisual, launch?: LootLaunch): void {
     entity.transform.position.copy(origin);
     const fling = new LootFling(entity.transform, undefined, undefined, launch);
-    this.addVisual(entity.id, { ...definition, entity }, fling.position, visual, true);
+    this.addVisual(entity, { ...definition, entity }, fling.position, visual, true);
     const flung = this.items.get(visual.model)!;
     flung.fling = fling;
     this.refreshUpdating(flung);
@@ -531,7 +559,9 @@ export class GroundItemManager {
 
   private currentDefinition(record: GroundItemRecord): GroundItemDefinition {
     record.entity.flush();
-    const definition = { ...record.definition, ...record.entity.snapshot(), ...record.getDefinition?.(), entity: record.entity };
+    // The skin is read from the inst alone: a snapshot omits an unskinned item's skinId.
+    const { skinId: _placed, ...placed } = record.definition;
+    const definition = { ...placed, ...record.entity.snapshot(), ...record.getDefinition?.(), entity: record.entity };
     if (!record.entity.isRemoved) record.entity.apply(definition);
     return definition;
   }
@@ -544,24 +574,27 @@ export class GroundItemManager {
       || !isPlayerNearby(this.player.position, record.footPosition, false)) return false;
     this.inserting.add(record);
     const insertedRecord = source.entity.skinId ?? RECORD_ID;
-    let ejected: GroundItemVisual | undefined;
+    let ejected: { entity: ItemEntity; visual: GroundItemVisual } | undefined;
     try {
       const oldRecord = controller.record;
       const skinId = oldRecord === RECORD_ID ? undefined : oldRecord;
       const spec = GROUND_ITEM_DEFINITIONS.record;
       const definition = { itemId: RECORD_ID, count: 1, name: spec.name, icon: spec.icon, atlas: spec.atlas,
         ...(skinId ? { skinId } : {}) };
-      if (oldRecord) ejected = this.createVisual(definition);
+      if (oldRecord) ejected = this.withGroundEntity(definition, newEntityId(), entity => ({ entity, visual: this.createVisual(definition, entity) }));
       if (this.disposed || this.items.get(model) !== record || controller.record !== oldRecord
         || source.entity.isRemoved || !isPhonographRecord(source.entity) || (source.entity.skinId ?? RECORD_ID) !== insertedRecord
         || !isPlayerNearby(this.player.position, record.footPosition, false) || !source.take()) return false;
       controller.insert(insertedRecord);
       if (ejected) {
-        this.addFlungVisual(definition, record.footPosition, ejected);
+        this.addFlungVisual(ejected.entity, definition, record.footPosition, ejected.visual);
         ejected = undefined;
       }
       return true;
-    } finally { ejected?.dispose(); this.inserting.delete(record); }
+    } finally {
+      if (ejected) { ejected.visual.dispose(); this.entities.destroy(ejected.entity); }
+      this.inserting.delete(record);
+    }
   }
 
   get combatTargets(): import('../packages/stategraphs/src/attack').AttackTarget[] {
@@ -612,10 +645,8 @@ export class GroundItemManager {
                     skinId,
                     apply: (fx?: ReskinFxMessage) => {
                         if (used || !isValid() || record.entity.skinId !== previousSkin) return false;
-                        record.entity.apply({ ...record.entity.snapshot(), skinId });
-                        if (skinId === undefined) delete record.definition.skinId; else record.definition.skinId = skinId;
-                        record.instance.skinId = skinId;
-                        record.model.position.copy(record.entity.transform.position);
+                        // The item's sprite json owns its skin; its ground visual, slot and save follow it.
+                        record.entity.skinId = skinId;
                         fx?.play(record.footPosition, prefabId);
                         used = true;
                         return true;
@@ -723,15 +754,10 @@ export class GroundItemManager {
     }
   }
 
-  /** The item's visual, created now; only the transitional creature factories still return a Promise. */
-  private createVisual(definition: GroundItemDefinition): GroundItemVisual {
+  /** The inst's ground visual, created now; it draws the item's own sprite, which keeps its skin. */
+  private createVisual(definition: GroundItemDefinition, entity: ItemEntity): GroundItemVisual {
     const factory = this.prefabs.get(definition.itemId);
-    const finish = (visual: GroundItemVisual) => {
-      visual.instance.skinId = definition.skinId;
-      return visual;
-    };
-    const visual = factory ? factory.create(definition) : this.createIconVisual(definition);
-    return finish(visual);
+    return factory ? factory.create(definition, entity) : this.createIconVisual(definition, entity);
   }
 
   private loadAtlas(atlasPath: string): Promise<ImageAtlas> {
@@ -745,7 +771,7 @@ export class GroundItemManager {
   }
 
   /** An inventory icon billboard for items outside the ground catalog; its display loads the atlas. */
-  private createIconVisual(definition: GroundItemDefinition): GroundItemVisual {
+  private createIconVisual(definition: GroundItemDefinition, entity: ItemEntity): GroundItemVisual {
     const atlasPath = definition.atlas ?? DEFAULT_ATLAS;
     const name = `GroundItem:${definition.itemId}`;
     let art: { texture: THREE.DataTexture; material: THREE.SpriteMaterial; aspect: number } | undefined;
@@ -769,7 +795,7 @@ export class GroundItemManager {
     const { instance, display } = createPrefabEntity(definition.itemId, {
       peek: () => { const atlas = this.loadedAtlases.get(atlasPath); return atlas && draw(atlas); },
       load: () => this.loadAtlas(atlasPath).then(draw),
-    }, { name: '' }, name);
+    }, { name: '', sprite: entity.sprite }, name);
     return {
       model: display.model, instance,
       dispose() {

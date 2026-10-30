@@ -154,9 +154,9 @@ export function createPhonographGroundFactory(context: GroundPrefabContext): Gro
     update(dt) { for (const effect of effects) effect.display.update(dt); },
     renderEntities: () => [...effects].map(({ display: { model } }) => ({ object: model, footPosition: model.position, cameraDepth: 0 })),
     dispose() { disposed = true; for (const effect of effects) release(effect); effects.clear(); },
-    create(item) {
+    create(item, inst) {
 
-      const { visual, instance, display } = createResidentGroundItem(context, item);
+      const { visual, instance, display } = createResidentGroundItem(context, { ...item, sprite: inst.sprite });
       const model = display.model, sprite = instance.sprite;
       for (const tag of ['structure', 'trader', 'recordplayer', 'furnituredecor', 'groundonlymachine']) instance.addTag(tag);
       const controller = new PhonographController(sprite, model.position, item.phonographRecord, context.scheduler);

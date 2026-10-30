@@ -225,8 +225,8 @@ export function createHatGroundFactory(context: GroundPrefabContext): GroundItem
   };
   return {
     itemIds: Object.keys(HAT_DEFINITIONS),
-    create({ itemId, skinId }) {
-      const hat = HAT_DEFINITIONS[itemId];
+    create({ itemId }, inst) {
+      const hat = HAT_DEFINITIONS[itemId], skinId = inst.skinId;
       const skinArchive = skinId === undefined ? undefined : hat.skinArchives[skinId];
       if (skinId !== undefined && !skinArchive) throw new Error(`Unknown skin ${skinId} for ${hat.archive}`);
       const rabbit = itemId === 'rabbithat';
@@ -242,8 +242,7 @@ export function createHatGroundFactory(context: GroundPrefabContext): GroundItem
       const { instance, display } = createPrefabEntity(itemId, {
         peek: () => { const factory = art.peek(); return factory && draw(factory); },
         load: () => art.load().then(draw),
-      }, { name: 'anim', held: !rabbit }, name, entity => {
-        entity.skinId = skinId;
+      }, { name: 'anim', held: !rabbit, sprite: inst.sprite }, name, entity => {
         entity.sprite.setSkinSource({ archives: hat.skinArchives, art: context.assets });
       });
       return bindResidentGroundItem(context, instance, display);

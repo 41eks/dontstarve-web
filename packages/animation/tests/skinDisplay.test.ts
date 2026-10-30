@@ -1,8 +1,12 @@
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { createResidentGroundItem, GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
-import { createPrefabEntity } from '../../prefab/src/prefabInstance';
+import { createGroundItemFactory, createResidentGroundItem, GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
+import type { GroundPrefabContext } from '../../prefab/src/groundPrefab';
+import { prefabDisplay } from '@dontstarve-web/display';
+import { InventorySlot, InventoryStore, ItemEntity, inventorySlotAddress } from '../../inventory/src';
+import { INVENTORY_ITEM_SPECS } from '../../../src/inventoryItems';
+import { createPrefabEntity, prefabInstance } from '../../prefab/src/prefabInstance';
 import { SpriteResources } from '../../display/src/spriteResources';
 import { RESEARCH_LAB_DEFINITIONS } from '../../prefab/src/scienceprototyper';
 
@@ -108,4 +112,34 @@ it('applies a layered factory skin without resetting the clip, progress, callbac
     expect(sprite.sprite.peek().clip).toBe(clip);
     expect(complete).toHaveBeenCalledOnce();
   } finally { instance.remove(); display.dispose(); resources.dispose(); }
+});
+
+it('keeps an item\'s skin on its own sprite json across the ground, a container and the next drop', async () => {
+  const assets = new GroundItemAssets();
+  const factory = createGroundItemFactory({ assets } as GroundPrefabContext);
+  const slot = inventorySlotAddress(0);
+  const inventory = new InventoryStore([{ address: slot, slot: new InventorySlot() }], INVENTORY_ITEM_SPECS);
+  const entity = new ItemEntity({ itemId: 'greenstaff', count: 1 });
+  const definition = { ...entity.snapshot(), name: 'greenstaff', icon: 'greenstaff.tex' };
+  let ground = factory.create(definition, entity);
+  try {
+    // The ground visual draws the item's sprite; reskinning on the ground writes that json and nothing else.
+    expect(prefabInstance(ground.model)!.sprite).toBe(entity.sprite);
+    entity.skinId = 'greenstaff_an';
+    expect(entity.sprite.sprite.peek().skinId).toBe('greenstaff_an');
+    expect(entity.snapshot().skinId).toBe('greenstaff_an');
+    // Picked up: the visual goes, the inst and its sprite json stay, and the slot reads the skin from it.
+    ground.dispose();
+    expect(inventory.receiveAt(slot, entity)).toBe(true);
+    expect(inventory.get(slot)?.skinId).toBe('greenstaff_an');
+    entity.skinId = 'greenstaff_clockwork';
+    expect(inventory.get(slot)?.skinId).toBe('greenstaff_clockwork');
+    // Dropped again: a new visual presents the same json anew, dressed in the item's skin.
+    expect(inventory.extract(slot, 1, entity)).toBe(entity);
+    ground = factory.create({ ...definition, ...entity.snapshot() }, entity);
+    expect(prefabInstance(ground.model)!.sprite).toBe(entity.sprite);
+    const display = prefabDisplay(ground.model)!;
+    await display.artLoaded();
+    expect(materialNames(ground.model)).toContain('ground:greenstaff_clockwork');
+  } finally { ground.dispose(); entity.destroy(); inventory.dispose(); factory.dispose?.(); assets.dispose(); }
 });

@@ -234,7 +234,7 @@ describe('torch prefab burning lifecycle', () => {
     const world = createPerishWorld();
     entity.BindPerishWorld(world);
     entity.transform.position.set(4, 0, 6);
-    const visual = await factory.create(definition);
+    const visual = factory.create(definition, entity);
     try {
       const held = { itemId: 'hammer', EQUIPSLOTS: 'HANDS' as const };
       handEquipmentExistenceState.set(held);

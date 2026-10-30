@@ -286,8 +286,11 @@ describe('ground item save records', () => {
     const prepared = await preparing;
     expect(prepared.apply()).toBe(true);
     prepared.dispose();
-    const replacement = manager.renderEntities[0].object;
-    expect(replacement.position.toArray()).toEqual(entity.transform.position.toArray());
+    // Reskinning writes the item's own sprite json and replaces nothing; the next frame follows the entity.
+    expect(manager.renderEntities[0].object).toBe(model);
+    expect(entity.sprite.skinId.peek()).toBe(prepared.skinId);
+    manager.update(0, new THREE.Quaternion());
+    expect(model.position.toArray()).toEqual(entity.transform.position.toArray());
     expect(manager.entities.get(entity.id)).toBe(entity);
     expect([...manager.iteratePrefabPositions('backpack')]).toEqual([entity.transform.position]);
     const saved = manager.exportRecords()[0];
@@ -297,6 +300,10 @@ describe('ground item save records', () => {
     const restored = setup();
     await restored.manager.spawnFromSave(saved.id, { ...backpack, ...saved.components.stack }, new THREE.Vector3(...saved.transform.position));
     expect(restored.manager.exportRecords()).toEqual([saved]);
+    // The restored definition named a skin; once the inst's sprite drops it, the save follows the inst alone.
+    expect(saved.components.stack?.skinId).toBeDefined();
+    restored.manager.entities.get(saved.id)!.skinId = undefined;
+    expect(restored.manager.exportRecords()[0].components.stack).not.toHaveProperty('skinId');
     restored.manager.dispose();
 
     // Input checks current entity coordinates before the next active frame.
@@ -304,11 +311,11 @@ describe('ground item save records', () => {
     player.position.set(30, 0, 31);
     const equip = vi.spyOn(inventory, 'Equip');
     equip.mockReturnValueOnce(false);
-    pick(replacement);
+    pick(model);
     expect(manager.exportRecords()[0].transform.position).toEqual([30, 0, 31]);
-    pick(replacement);
+    pick(model);
     expect(inventory.GetEquippedItem('body')).toBe(entity);
-    expect(replacement.parent).toBeNull();
+    expect(model.parent).toBeNull();
     expect(manager.exportRecords()).toEqual([]);
     manager.dispose();
   });
@@ -349,6 +356,8 @@ describe('ground item save records', () => {
     expect((await lastModel()).userData.events).toEqual(['dispose']);
     expect(() => manager.drop(definition, new THREE.Vector3(), () => { throw new Error('transfer failed'); })).toThrow('transfer failed');
     expect((await lastModel()).userData.events).toEqual(['dispose']);
+    // The new insts prepared for those refused drops are gone with their visuals.
+    expect(manager.entities.values()).toEqual([]);
     await manager.drop(definition, new THREE.Vector3(3, 7, 4), () => true);
     const model = await lastModel();
     expect(model.userData.events).toEqual(['ondropped']);
@@ -369,6 +378,16 @@ describe('ground item save records', () => {
     expect(restored.position.toArray()).toEqual([2, 0.25, 3]);
     manager.update(0, new THREE.Quaternion());
     expect(manager.exportRecords()[0].transform.position).toEqual([2, 0.25, 3]);
+    manager.dispose();
+  });
+  it('creates the inst before its visual and destroys a new inst again when its visual cannot be created', () => {
+    const { manager } = setup();
+    vi.mocked(createTestVisual).mockImplementationOnce(() => { throw new Error('unknown art'); });
+    expect(() => manager.spawnFromSave('broken-log', definition, new THREE.Vector3())).toThrow('unknown art');
+    expect(manager.entities.get('broken-log')).toBeUndefined();
+    expect(manager.exportRecords()).toEqual([]);
+    expect(manager.spawnFromSave('broken-log', definition, new THREE.Vector3())).toBeDefined();
+    expect(manager.entities.get('broken-log')).toBeDefined();
     manager.dispose();
   });
   it('saves live drops at their ground position and excludes failed drops and picked-up items', async () => {

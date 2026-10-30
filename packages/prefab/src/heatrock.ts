@@ -20,13 +20,13 @@ export function GetHeatRockRange(temperature: number, ambient: number): number {
 export class HeatRock {
   private readonly currentTemperature;
   private readonly ambientTemperature;
-  private readonly skinState = createSignal<string | undefined>(undefined);
   private readonly rangeMemo;
   readonly range;
   // Last domain event's range, so usage accounting also works inside an open signal batch.
   private previousRange = 3;
   private readonly cleanups: (() => void)[] = [];
   private readonly stopTemperature: () => void;
+  private readonly stopAnimation: () => void;
   private readonly stopImage: () => void;
   private readonly temperature;
   private readonly heater;
@@ -41,7 +41,6 @@ export class HeatRock {
     this.ambientTemperature = createSignal(this.temperature.GetAmbientTemperature());
     this.rangeMemo = createMemo(() => GetHeatRockRange(this.currentTemperature.get(), this.ambientTemperature.get()));
     this.range = readonlySignal(this.rangeMemo);
-    this.skinState.set(entity.skinId);
     this.heater = entity.components.heater = entity.component('heater', () => new Heater(entity));
     this.heater.SetThermics(false, false);
     this.heater.SetHeatFn(() => {
@@ -52,15 +51,21 @@ export class HeatRock {
     this.stopTemperature = entity.ListenForEvent('temperaturedelta', data => this.TemperatureChange((data as { hasrate?: boolean })?.hasrate === true));
     // Evaluate restored temperature without spending a charge; fresh stones remain neutral.
     this.TemperatureChange(false);
+    // UpdateImages: PlayAnimation(range, true) on the inst's own AnimState, on the ground, in a container or equipped.
+    this.stopAnimation = createEffect(() => { entity.sprite.start(String(this.rangeMemo.get())); });
+    // ChangeImageName(skinname..range): the inventory image follows the item's sprite json, its skin and its range clip.
+    let imageName: string | undefined;
     this.stopImage = createEffect(() => {
-      const imageName = `${this.skinState.get() ?? 'heat_rock'}${this.rangeMemo.get()}.tex`;
-      const image = HEATROCK_IMAGES[imageName as keyof typeof HEATROCK_IMAGES];
-      if (!image) throw new Error(`Missing thermal stone image: ${imageName}`);
+      const { skinId, clip } = entity.sprite.sprite.get();
+      const name = `${skinId ?? 'heat_rock'}${clip.name}.tex`;
+      if (name === imageName) return;
+      const image = HEATROCK_IMAGES[name as keyof typeof HEATROCK_IMAGES];
+      if (!image) throw new Error(`Missing thermal stone image: ${name}`);
+      imageName = name;
       entity.components.inventoryitem.ChangeImageName(image.icon, image.atlas);
       entity.components.inventoryitem.owner?.changed();
     });
   }
-  RefreshSkin(): void { this.skinState.set(this.entity.skinId); }
   private TemperatureChange(hasrate: boolean): void {
     const current = this.temperature.GetCurrent(), ambient = this.temperature.GetAmbientTemperature();
     // Sample GetLocalTemperature on every event, including when current stays clamped or unchanged.
@@ -86,15 +91,16 @@ export class HeatRock {
   }
   dispose(): void {
     this.stopTemperature();
+    this.stopAnimation();
     this.stopImage();
     this.cleanups.splice(0).forEach(stop => stop());
   }
 }
 
-/** heatrock.lua: the ground animation is the stone's range, `1`..`5`. */
+/** A new ground visual presents the item's sprite in its default clip; the stone keeps playing its range, `1`..`5`. */
 export function declareHeatRockSprite(entity: ItemEntity, sprite: ArchiveSpriteCommands): void {
   const rock = entity.getComponent<HeatRock>('heatrock');
-  if (rock) sprite.followAnimation(rock.range);
+  if (rock) sprite.start(String(rock.range.peek()));
 }
 
 export function configureHeatRockEntity(entity: ItemEntity): void {
@@ -105,5 +111,5 @@ export function configureHeatRockEntity(entity: ItemEntity): void {
     fueled.InitializeFuelLevel(HEATROCK_FUEL);
     fueled.SetDepletedFn(inst => { inst.remove(); });
   }
-  entity.component('heatrock', () => new HeatRock(entity)).RefreshSkin();
+  entity.component('heatrock', () => new HeatRock(entity));
 }

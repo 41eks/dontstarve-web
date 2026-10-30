@@ -16,9 +16,9 @@ export function createGunpowderGroundFactory(context: GroundPrefabContext): Grou
   return {
     itemIds: [GUNPOWDER_ID],
     configureEntity: configureBurnableItemEntity,
-    create(item) {
+    create(item, inst) {
       if (!context.fx) throw new Error('Gunpowder requires the explode_small effect');
-      const visual = createBurnableItemVisual(context, GUNPOWDER_ID, createResidentGroundItem(context, item), displays);
+      const visual = createBurnableItemVisual(context, GUNPOWDER_ID, createResidentGroundItem(context, { ...item, sprite: inst.sprite }), displays);
       return { ...visual, bindEntity(entity: ItemEntity) {
         visual.bindEntity?.(entity);
         const explosive = entity.component('explosive', () => new Explosive(entity,

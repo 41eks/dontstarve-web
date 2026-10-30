@@ -9,7 +9,7 @@ import type { GroundItemDefinition, GroundItemFactory, GroundItemVisual, GroundP
 import { BURNABLE_ITEM_DEFINITIONS, configureBurnableItemEntity, createBurnableItemVisual } from './burnableItems';
 import { configureBookEntity, isBook } from './books';
 import { configureHeatRockEntity, declareHeatRockSprite, HEATROCK_ID } from './heatrock';
-import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
+import type { ArchiveSpriteCommands, PrefabDisplay, SpriteState } from '@dontstarve-web/display';
 import type { PrefabInstance } from './prefabInstance';
 import { createArchiveEntity } from './prefabInstance';
 import { bindResidentGroundItem } from './groundItemLifecycle';
@@ -72,8 +72,8 @@ export function createGroundItemFactory(context: GroundPrefabContext): GroundIte
       : entity.prefab === PANFLUTE_ID ? configurePanfluteEntity(entity)
       : isBook(entity.prefab) ? configureBookEntity(entity) : configureBurnableItemEntity(entity);
     },
-    create(item) {
-      const base = createResidentGroundItem(context, item, item.itemId === HEATROCK_ID ? declareHeatRockSprite : undefined);
+    create(item, entity) {
+      const base = createResidentGroundItem(context, { ...item, sprite: entity.sprite }, item.itemId === HEATROCK_ID ? declareHeatRockSprite : undefined);
       if (!Object.hasOwn(BURNABLE_ITEM_DEFINITIONS, item.itemId)) return base.visual;
       return createBurnableItemVisual(context, item.itemId, base, displays, BURNABLE_ITEM_DEFINITIONS[item.itemId].fxLevel);
     },
@@ -94,10 +94,13 @@ export class GroundItemAssets extends ArchiveSpriteAssets {
 /** A ground item's visual with the instance and display behind it, for prefabs that declare more on its sprite. */
 export interface ResidentGroundItem { readonly visual: GroundItemVisual; readonly instance: PrefabInstance<ArchiveSpriteCommands>; readonly display: PrefabDisplay }
 
-export function createResidentGroundItem(context: Pick<GroundPrefabContext, 'assets' | 'tickingarea'>, item: Pick<GroundItemDefinition, 'itemId' | 'skinId' | 'variant'>,
+export function createResidentGroundItem(context: Pick<GroundPrefabContext, 'assets' | 'tickingarea'>,
+  /** `sprite` is the item's own sprite json, whose skin it keeps; without one the visual has a sprite of its own in `skinId`. */
+  item: Pick<GroundItemDefinition, 'itemId' | 'skinId' | 'variant'> & { readonly sprite?: SpriteState },
   /** The prefab's declaration of what its sprite follows, made once the item's entity is bound. */
   declare?: (entity: ItemEntity, sprite: ArchiveSpriteCommands) => void): ResidentGroundItem {
-  const { itemId, skinId } = item;
+  const { itemId, sprite } = item;
+  const skinId = sprite ? sprite.skinId.peek() : item.skinId;
   const base = GROUND_ART_DEFINITIONS[itemId];
   const variant = item.variant === undefined ? undefined : GROUND_ART_VARIANTS[itemId]?.[item.variant];
   if (item.variant !== undefined && !variant) throw new Error(`Unknown ground variant: ${itemId}/${item.variant}`);
@@ -109,9 +112,9 @@ export function createResidentGroundItem(context: Pick<GroundPrefabContext, 'ass
     { ...definition, animation: clip.name, loop: clip.loop }, { name: `GroundItem:${itemId}`, instancedAnimations: 'all' });
   // The display loads the art and draws the item once it is ready; the entity exists from now on.
   const { instance, display } = createArchiveEntity(itemId, { create },
-    { name: definition.animation, held: !definition.loop }, `GroundItem:${itemId}`,
+    { name: definition.animation, held: !definition.loop, sprite }, `GroundItem:${itemId}`,
     entity => {
-      entity.skinId = skinId;
+      if (!sprite) entity.skinId = skinId;
       entity.sprite.setSkinSource({ archives: definition.skinArchives, art: context.assets,
         materialOptions: { multColour: definition.multColour, pointFiltering: definition.pointFiltering } });
       for (const tag of definition.tags ?? []) entity.addTag(tag);
@@ -121,6 +124,5 @@ export function createResidentGroundItem(context: Pick<GroundPrefabContext, 'ass
     });
   instance.scale.setScalar(definition.scale ?? 1);
   if (definition.ground) instance.scale.set(-1, 1.4, 1);
-  instance.skinId = skinId;
   return { visual: bindResidentGroundItem(context, instance, display, declare), instance, display };
 }

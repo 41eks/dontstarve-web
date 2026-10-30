@@ -145,13 +145,16 @@ it('renders the source neutral pose for base and skinned stones and resolves the
     const entity = new ItemEntity({ itemId: 'heatrock', count: 1, skinId: 'heatrock_fantasy', temperature: { current: 0 }, lowTemp: 0 });
     configureHeatRockEntity(entity);
     const factory = createGroundItemFactory({ assets } as GroundPrefabContext);
-    const visual = await factory.create({ ...entity.snapshot(), name: '暖石', icon: 'heatrock_fantasy1.tex' });
+    const visual = factory.create({ ...entity.snapshot(), name: '暖石', icon: 'heatrock_fantasy1.tex' }, entity);
     try {
       visual.bindEntity?.(entity);
       // The prefab only declares what the sprite follows; the display applies it.
+      // The ground visual draws the item's own sprite: the range clip and the inventory image are the same declaration.
       const sprite = prefabInstance(visual.model)!.sprite;
+      expect(sprite).toBe(entity.sprite);
       await new Promise(resolve => setTimeout(resolve, 0));
       expect(sprite.currentAnimation).toBe('1');
+      expect(entity.components.inventoryitem.image.peek()?.icon).toBe('heatrock_fantasy1.tex');
       visual.update?.(1);
       expect(entity.snapshot()).toMatchObject({ skinId: 'heatrock_fantasy', temperature: { current: 0 }, lowTemp: 0 });
       let mesh!: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
@@ -161,6 +164,7 @@ it('renders the source neutral pose for base and skinned stones and resolves the
       entity.components.temperature!.SetTemperature(80);
       await new Promise(resolve => setTimeout(resolve, 0));
       expect(sprite.currentAnimation).toBe('5');
+      expect(entity.components.inventoryitem.image.peek()?.icon).toBe('heatrock_fantasy5.tex');
     } finally { visual.dispose(); entity.destroy(); factory.dispose?.(); }
   } finally { assets.dispose(); }
 });

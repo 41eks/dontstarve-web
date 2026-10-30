@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { WorldContentKey, type GetWatchWorldContent, type WorldContentSignal, type WorldPhase } from '@dontstarve-web/signals';
-import { SpriteResources } from '@dontstarve-web/display';
+import { SpriteResources, type SpriteState } from '@dontstarve-web/display';
 import { listenInventoryEvents } from './inventoryEvents';
 import type { GroundItemDefinition, GroundItemFactory, GroundPrefabContext } from './groundPrefab';
 import { ItemEntity } from '@dontstarve-web/inventory';
@@ -479,13 +479,13 @@ export class ButterflyAssets {
 
   create(prefab: ButterflyPrefabId, world: ButterflyWorld,
     getOthers: (position: LocoMotorPoint, radius: number) => readonly ButterflyCreature[],
-    dropLoot?: ButterflyCreature['dropLootItems']) {
+    dropLoot?: ButterflyCreature['dropLootItems'], sprite?: SpriteState) {
     if (this.disposed) throw new Error('Insect assets have been disposed');
     // butterfly.lua and moonbutterfly.lua share a bank; only the latter substitutes its build.
     const source = this.resources.factory({ animationArchive: 'butterfly_basic.zip', buildArchive: 'butterfly_basic.zip',
       skinArchive: prefab === BUTTERFLY_ID ? undefined : 'butterfly_moon.zip' });
     const name = `GroundItem:${prefab}`;
-    const { instance, display } = createPrefabEntity(prefab, source, { name: 'idle_flight_loop' }, name);
+    const { instance, display } = createPrefabEntity(prefab, source, { name: 'idle_flight_loop', sprite }, name);
     const model = display.model;
     let creature: ButterflyCreature | undefined;
     const removeInventoryEvents = listenInventoryEvents(model, {
@@ -520,6 +520,8 @@ export function createButterflyGroundSprite(
   findEntities: (position: THREE.Vector3, radius: number, mustTags: readonly string[]) => readonly FoundEntity[],
   prefab: ButterflyPrefabId = BUTTERFLY_ID,
   dropLoot?: ButterflyCreature['dropLootItems'],
+  /** The item's own sprite json; without one the butterfly has a sprite of its own. */
+  sprite?: SpriteState,
 ) {
   let model: THREE.Group | undefined;
   const origin = new THREE.Vector3();
@@ -529,7 +531,7 @@ export function createButterflyGroundSprite(
       const creature = neighbourModel !== model
         ? neighbourModel?.userData.butterflyController as ButterflyCreature | undefined : undefined;
       return creature ? [creature] : [];
-    }), dropLoot);
+    }), dropLoot, sprite);
   model = visual.model;
   return { ...visual, get controller() { return visual.controller; }, isRemoved: () => visual.controller?.removed ?? false };
 }
@@ -553,10 +555,10 @@ export function createButterflyGroundFactory(context: GroundPrefabContext): Grou
       (entity.prefab === MOONBUTTERFLY_ID ? configureMoonButterflyEntity : configureButterflyEntity)(entity);
       if (entity.prefab === BUTTERFLY_ID && !entity.components.inventoryitem.owner) entity.components.perishable.StopPerishing();
     },
-    create: (definition) => {
+    create: (definition, inst) => {
       const prefab = definition.itemId === MOONBUTTERFLY_ID ? MOONBUTTERFLY_ID : BUTTERFLY_ID;
       const visual = createButterflyGroundSprite(assets, context.butterflyWorld,
-        (position, radius, mustTags) => FindEntities(position, radius, mustTags), prefab, dropLoot);
+        (position, radius, mustTags) => FindEntities(position, radius, mustTags), prefab, dropLoot, inst.sprite);
       if (prefab === MOONBUTTERFLY_ID) bindMoonButterflyVisual(visual);
       return visual;
     },

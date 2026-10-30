@@ -21,6 +21,7 @@ vi.mock('@dontstarve-web/animation/archiveSprite', async importOriginal => ({
 }));
 
 const { createGroundItemFactory, GroundItemAssets } = await import('../../prefab/src/groundItems');
+const { ItemEntity } = await import('../../inventory/src');
 
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
 
@@ -28,7 +29,7 @@ it('unloads a settled ground item sprite with its tile and rebuilds it when the 
   const tile = createSignal(true);
   const tickingarea = () => Object.assign(tile, { dispose() {} }) as never;
   const factory = createGroundItemFactory({ assets: new GroundItemAssets(), tickingarea } as unknown as GroundPrefabContext);
-  const visual = await factory.create({ itemId: 'twigs', name: 'twigs', icon: '', count: 1 });
+  const visual = factory.create({ itemId: 'twigs', name: 'twigs', icon: '', count: 1 }, new ItemEntity({ itemId: 'twigs', count: 1 }));
   expect(created).toHaveLength(1);
   visual.model.position.set(3, 0, 4);
   visual.model.dispatchEvent({ type: 'onload' } as never);
@@ -50,7 +51,6 @@ it('unloads a settled ground item sprite with its tile and rebuilds it when the 
 
 it('retains a lantern machine, light and fuel while its tile releases and rebuilds the sprite', async () => {
   const { createLanternGroundSprite, configureLanternEntity, getLanternController, LANTERN_FUEL } = await import('../../prefab/src/lantern');
-  const { ItemEntity } = await import('../../inventory/src');
   const tile = createSignal(true), assets = new GroundItemAssets();
   const visual = await createLanternGroundSprite({ assets, tickingarea: () => Object.assign(tile, { dispose() {} }) as never });
   const item = new ItemEntity({ itemId: 'lantern', count: 1 });

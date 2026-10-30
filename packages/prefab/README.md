@@ -155,7 +155,9 @@ sprite 来自按帽子 archive 与皮肤共享的 `createAnimatedSpriteSource()`
 兔子帽按 `rabbit_custom_init` 以 `rabbit_build` 为 build，并以 sprite 来源的 `overrideBuilds: { hat_rabbit: 'hat_rabbit.zip' }` 声明帽子部件，由 display 随来源一起加载。
 
 `@dontstarve-web/prefab/groundItems` 提供 `GROUND_ITEM_DEFINITIONS`、
-`GroundItemAssets` 和 `createResidentGroundItem({ assets, tickingarea? }, { itemId, skinId? })`。
+`GroundItemAssets` 和 `createResidentGroundItem({ assets, tickingarea? }, { itemId, skinId?, sprite? })`。
+`sprite` 是物品自己的 sprite json（`ItemEntity.sprite`，即 inst.AnimState）：传入时 visual 绘制它并保留其中的皮肤，不传时 visual 使用自己的 sprite 和 `skinId`。
+地面工厂的 `create(definition, entity)` 总是传入 `entity.sprite`，所以物品在地上、背包、装备栏和存档中的皮肤都来自同一份 `sprite.skinId`。
 同步返回 `{ visual, instance, display }`，prefab 通过 `instance.sprite` 声明动画与外观，
 由 `PrefabDisplay` 加载美术、创建和释放 sprite（需要等待绘制时用 `display.artLoaded()`）；落地／读档后绑定 tile，休眠时保留稳定模型、身份与组件。
 其他 sprite 来源（如 factory 路径的落地帽子）用 `groundItemLifecycle.ts` 的 `bindResidentGroundItem(context, instance, display)` 获得同一生命周期。

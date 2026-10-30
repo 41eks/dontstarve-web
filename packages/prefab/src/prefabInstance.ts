@@ -208,11 +208,23 @@ export function setModelTag(model: Object3D, tag: string, present: boolean): voi
 }
 
 /** A new entity and the display that draws it. The model is the display's; the entity never holds it. */
-export function createPrefabEntity(prefab: string, source: SpriteSource | LoadedSpriteSource, clip: ConstructorParameters<typeof SpriteState>[0], name?: string,
+/**
+ * The first clip of a new entity's sprite. `sprite` is an existing entity's own sprite json, such as an item's
+ * inst.AnimState that outlives each of its ground visuals: it is presented anew in this clip, keeping its skin.
+ */
+export type EntityClip = ConstructorParameters<typeof SpriteState>[0] & { readonly sprite?: SpriteState };
+
+function entitySprite(clip: EntityClip): SpriteState {
+  if (!clip.sprite) return new SpriteState(clip);
+  clip.sprite.resetPresentation(clip);
+  return clip.sprite;
+}
+
+export function createPrefabEntity(prefab: string, source: SpriteSource | LoadedSpriteSource, clip: EntityClip, name?: string,
   /** Sets the entity's appearance before the first sprite is drawn, so it is drawn dressed. */
   initialize?: (instance: PrefabInstance) => void, parentStatus?: ReadonlySignal<PrefabStatus>, displayOptions?: Pick<PrefabDisplayOptions, 'alignBottom' | 'dependencies'>):
   { instance: PrefabInstance; display: PrefabDisplay } {
-  const instance = new PrefabInstance(prefab, new SpriteState(clip));
+  const instance = new PrefabInstance(prefab, entitySprite(clip));
   initialize?.(instance);
   const display = new PrefabDisplay({ ...displayOptions, name, source, status: instance.status, parentStatus, sprite: instance.sprite, light: instance.light });
   bindInstance(display.model, instance);
@@ -220,10 +232,10 @@ export function createPrefabEntity(prefab: string, source: SpriteSource | Loaded
 }
 
 /** A new entity drawn with a shared archive sprite; `clip.held` is a one-shot clip that rests on its last frame. */
-export function createArchiveEntity(prefab: string, archive: ArchiveSpriteSource, clip: ConstructorParameters<typeof SpriteState>[0], name?: string,
+export function createArchiveEntity(prefab: string, archive: ArchiveSpriteSource, clip: EntityClip, name?: string,
   initialize?: (instance: PrefabInstance<ArchiveSpriteCommands>) => void, parentStatus?: ReadonlySignal<PrefabStatus>):
   { instance: PrefabInstance<ArchiveSpriteCommands>; display: PrefabDisplay } {
-  const state = new SpriteState(clip);
+  const state = entitySprite(clip);
   const instance = new PrefabInstance<ArchiveSpriteCommands>(prefab, state);
   initialize?.(instance);
   const display = new PrefabDisplay({ name, archive, status: instance.status, parentStatus, sprite: state, light: instance.light });

@@ -216,9 +216,9 @@ export function createTorchGroundFactory(context: GroundPrefabContext): GroundIt
   return {
     itemIds: [TORCH_ID],
     configureEntity: configureTorchEntity,
-    create(item) {
+    create(item, inst) {
 
-      const { visual, instance, display } = createResidentGroundItem(context, item);
+      const { visual, instance, display } = createResidentGroundItem(context, { ...item, sprite: inst.sprite });
       const sprite = instance.sprite;
       const model = visual.model;
       let fling: LootFling | undefined;

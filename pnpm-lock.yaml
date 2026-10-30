@@ -116,6 +116,9 @@ importers:
 
   packages/inventory:
     dependencies:
+      '@dontstarve-web/display':
+        specifier: workspace:*
+        version: link:../display
       '@dontstarve-web/signals':
         specifier: workspace:*
         version: link:../signals

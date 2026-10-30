@@ -32,6 +32,6 @@ export function createRecordGroundFactory(context: GroundPrefabContext): GroundI
   return {
     itemIds: [RECORD_ID],
     configureEntity: configureRecordEntity,
-    create: item => createResidentGroundItem(context, item).visual,
+    create: (item, inst) => createResidentGroundItem(context, { ...item, sprite: inst.sprite }).visual,
   };
 }

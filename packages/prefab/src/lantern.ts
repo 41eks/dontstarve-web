@@ -1,3 +1,4 @@
+import type { SpriteState } from '@dontstarve-web/display';
 import type { AnimState } from '@dontstarve-web/animation/animState';
 import type { ItemEntity, ItemRuntimeComponent } from '@dontstarve-web/inventory';
 import { createEffect, watchSignal, type EquipmentLifecycle, type EquipmentOwner, type ReadonlySignal } from '@dontstarve-web/signals';
@@ -227,10 +228,12 @@ export function createLanternHandLifecycle(entity: ItemEntity, context: LanternH
 }
 
 /** Ground art binds to the inst's lantern lifecycle; it starts unlit until a drop or load event. */
-export function createLanternGroundSprite(context: Pick<GroundPrefabContext, 'assets' | 'tickingarea'>, skinId?: string): GroundItemVisual & {
+/** `skin` is the item's own sprite json, whose skin it keeps, or the skin of a sprite of the visual's own. */
+export function createLanternGroundSprite(context: Pick<GroundPrefabContext, 'assets' | 'tickingarea'>, skin?: string | SpriteState): GroundItemVisual & {
   readonly light: LanternLightController;
 } {
-  const { visual, instance, display } = createResidentGroundItem(context, { itemId: LANTERN_ID, skinId });
+  const { visual, instance, display } = createResidentGroundItem(context, typeof skin === 'object'
+    ? { itemId: LANTERN_ID, sprite: skin } : { itemId: LANTERN_ID, skinId: skin });
   const model = display.model, sprite = instance.sprite;
   instance.addTag('light');
   let controller: LanternController | undefined;
@@ -269,7 +272,7 @@ export function createLanternGroundFactory(context: GroundPrefabContext): Ground
   return {
     itemIds: [LANTERN_ID],
     configureEntity: configureLanternEntity,
-    create: (item) => createLanternGroundSprite(context, item.skinId),
+    create: (_item, entity) => createLanternGroundSprite(context, entity.sprite),
   };
 }
 

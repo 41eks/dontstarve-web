@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { createEffect, createMemo, createSignal, readonlySignal, watchSignal, GameTimeScheduler, WorldContentKey, type GetWatchWorldContent, type HandEquipment, type PlayerPositionsSignal, type ReadonlySignal, type Signal, type WorldContentSignal, type WorldPhase } from '@dontstarve-web/signals';
 import { ArchiveSpriteAssets, createSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
-import type { ArchiveSpriteCommands, ArchiveSpriteSource } from '@dontstarve-web/display';
+import type { ArchiveSpriteCommands, ArchiveSpriteSource, SpriteState } from '@dontstarve-web/display';
 import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
 import { TILE_SIZE } from './tile';
 import { listenInventoryEvents } from './inventoryEvents';
@@ -346,10 +346,11 @@ export class FirefliesAssets {
   dispose(): void { this.assets.dispose(); }
 }
 
-export function createFirefliesGroundSprite(assets: FirefliesAssets, world: FirefliesWorld) {
+/** `sprite` is the item's own sprite json; without one the swarm has a sprite of its own. */
+export function createFirefliesGroundSprite(assets: FirefliesAssets, world: FirefliesWorld, sprite?: SpriteState) {
   // fireflies.lua gives the AnimState a bank and build but plays nothing until fadein: no sprite is built until a clip
   // plays, and the display releases it when the swarm's tile is found inactive. The display loads the shared archive.
-  const { instance, display } = createArchiveEntity(FIREFLIES_ID, assets.source, { name: 'swarm_pre', none: true }, `GroundItem:${FIREFLIES_ID}`);
+  const { instance, display } = createArchiveEntity(FIREFLIES_ID, assets.source, { name: 'swarm_pre', none: true, sprite }, `GroundItem:${FIREFLIES_ID}`);
   const model = display.model;
   const active = createSignal(true);
   const cleanups: (() => void)[] = [];
@@ -390,7 +391,7 @@ export function createFirefliesGroundFactory(context: GroundPrefabContext): Grou
   return {
     itemIds: [FIREFLIES_ID], capture: 'net',
     configureEntity: configureFirefliesEntity,
-    create: () => createFirefliesGroundSprite(assets, world),
+    create: (_item, inst) => createFirefliesGroundSprite(assets, world, inst.sprite),
     dispose: () => assets.dispose(),
   };
 }

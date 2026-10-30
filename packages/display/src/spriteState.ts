@@ -176,6 +176,17 @@ export interface ArchiveSpriteCommands {
  * The prefab-side sprite of an entity: animation commands become a `SpriteJson` snapshot, and nothing here touches a
  * model. It offers the controller surface prefabs already call, so a prefab changes the json and the display reacts.
  */
+/** The first clip of a presentation, declared by the entity's constructor or by a new presentation of it. */
+export interface SpriteClipDeclaration { readonly name: string; readonly held?: boolean; readonly none?: boolean; readonly billboard?: boolean }
+
+function initialJson(clip: SpriteClipDeclaration): SpriteJson {
+  return {
+    clip: clip.none ? { name: clip.name, loop: false, finished: true, none: true }
+      : { name: clip.name, loop: !clip.held, finished: clip.held === true }, queue: [], appearance: new Map(),
+    ...clip.billboard ? { billboard: true } : {},
+  };
+}
+
 export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimationController, PercentAnimationController, LayerAnimationController {
   private readonly json: ReturnType<typeof createSignal<SpriteJson>>;
   /** Snapshots of the entity's sprite; the display subscribes to this. */
@@ -191,7 +202,7 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
   private readonly artVersion = createSignal(0);
   /** Changes whenever the drawn sprite is attached or released; owners dress what they keep outside the json after it. */
   readonly art = readonlySignal(this.artVersion);
-  private readonly initialAnimation: string;
+  private initialAnimation: string;
   private probe: SpriteProbe | undefined;
   private awake = true;
 
@@ -199,13 +210,9 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
    * `held` marks an initial clip shown on its last frame; `none` starts with no animation playing, as an AnimState that
    * was given only a bank and build; `billboard` entities face the camera.
    */
-  constructor(clip: { name: string; held?: boolean; none?: boolean; billboard?: boolean }) {
+  constructor(clip: SpriteClipDeclaration) {
     this.initialAnimation = clip.name;
-    this.json = createSignal<SpriteJson>({
-      clip: clip.none ? { name: clip.name, loop: false, finished: true, none: true }
-        : { name: clip.name, loop: !clip.held, finished: clip.held === true }, queue: [], appearance: new Map(),
-      ...clip.billboard ? { billboard: true } : {},
-    });
+    this.json = createSignal<SpriteJson>(initialJson(clip));
     this.sprite = readonlySignal(this.json);
     this.skinId = {
       get: () => this.json.get().skinId, peek: () => this.state.skinId, set: value => this.setSkinId(value),
@@ -213,6 +220,20 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
         if (value.skinId !== previous.skinId) listener(value.skinId, previous.skinId);
       }),
     };
+  }
+
+  /**
+   * A new presentation of the same entity, as an item dropped on the ground again: its new visual declares the clip and
+   * appearance afresh, and the skin, which belongs to the entity, stays. The previous presentation's pending clip
+   * callbacks, effects and followed animation are dropped with it.
+   */
+  resetPresentation(clip: SpriteClipDeclaration): void {
+    const { skinId } = this.state;
+    this.initialAnimation = clip.name;
+    this.awake = true;
+    this.json.set({ ...initialJson(clip), ...skinId === undefined ? {} : { skinId } });
+    this.fxDeclared.set(new Map());
+    this.followed.set(undefined);
   }
 
   private get state(): SpriteJson { return this.json.peek(); }

@@ -87,9 +87,9 @@ export function createRockAvocadoGroundFactory(context: GroundPrefabContext): Gr
   const displays = new Set<PrefabDisplay>();
   return {
     itemIds: ['rock_avocado_fruit', 'rock_avocado_fruit_ripe'], configureEntity: configureRockAvocadoFruitEntity,
-    create(item) {
+    create(item, inst) {
       if (item.itemId === 'rock_avocado_fruit_ripe') {
-        const base = createResidentGroundItem(context, item), sprite = base.instance.sprite;
+        const base = createResidentGroundItem(context, { ...item, sprite: inst.sprite }), sprite = base.instance.sprite;
         let stop: (() => void) | undefined;
         const visual = createBurnableItemVisual(context, item.itemId, base, displays);
         return { ...visual, bindEntity(entity: ItemEntity) {
@@ -97,7 +97,7 @@ export function createRockAvocadoGroundFactory(context: GroundPrefabContext): Gr
           stop = entity.ListenForEvent('split_open', () => sprite.playOnce('split_open', () => sprite.playOnce('idle_split_open')));
         }, dispose() { stop?.(); visual.dispose(); } };
       }
-      const { visual, instance: { sprite } } = createResidentGroundItem(context, item);
+      const { visual, instance: { sprite } } = createResidentGroundItem(context, { ...item, sprite: inst.sprite });
       const { spawnGroundItem } = context;
       if (!spawnGroundItem) throw new Error('Stone fruit needs a world to spawn its products');
       const presentation = { sprite, spawnGroundItem };

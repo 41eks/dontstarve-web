@@ -17,11 +17,11 @@ export function createPoopGroundFactory(context: GroundPrefabContext): GroundIte
   return {
     itemIds: ['poop'],
     configureEntity: entity => { configureBurnableItemEntity(entity); configureFertilizerEntity(entity); },
-    create(item) {
+    create(item, inst) {
       if (!context.scheduler) throw new Error('Poop requires the ground registry game-time scheduler');
       const createFlies = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(context.assets, { animationArchive: 'flies.zip',
         buildArchives: ['flies.zip'], bank: 'flies', animation: clip.name, loop: clip.loop }, { name: 'flies', dynamicParent: true });
-      const base = createResidentGroundItem(context, item);
+      const base = createResidentGroundItem(context, { ...item, sprite: inst.sprite });
 
       const flies = createArchiveEntity('flies', { create: createFlies }, { name: 'swarm_pre' }, 'flies');
       flies.instance.persists = false;

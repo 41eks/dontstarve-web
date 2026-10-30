@@ -263,7 +263,7 @@ mintemp = max(default_mintemp, min(0, ambient_temperature))
 
 ## 暖石 `heatrock`
 
-当前项目已接入暖石的 `temperature`／`heater`、五档地面动画与库存图标、温度循环耐久消耗、三款原版皮肤和保存读档。自身温度由 `Temperature.current` 的只读 signal 提供；`HeatRock` 通过私有 `watchSignal` 读取它，并在 `temperaturedelta` 中采样局部环境温度，使用纯 `createMemo` 派生档位。库存图标与地面动画分别由 `createEffect` 按档位更新，换肤保留当前档位；普通 effect 保持现有微任务调度，测试在后续宏任务检查表现。极值记录、耐久消耗与耗尽移除仍由温度事件同步执行，批次内也逐次结算，不交给表现 effect。移除实体或替换地面模型时清理各自订阅。暖石热光照和角色体温尚未接入，以下规则中的灯光部分仍为 Lua 源码参考。
+当前项目已接入暖石的 `temperature`／`heater`、五档地面动画与库存图标、温度循环耐久消耗、三款原版皮肤和保存读档。自身温度由 `Temperature.current` 的只读 signal 提供；`HeatRock` 通过私有 `watchSignal` 读取它，并在 `temperaturedelta` 中采样局部环境温度，使用纯 `createMemo` 派生档位。与 `UpdateImages` 一样，档位写入物品自己的 sprite json（`ItemEntity.sprite.start(range)`），物品在地上、容器里或装备时都如此；库存图标由同一份 sprite json 的 `skinId` 与 clip 派生为 `<skin 或 heat_rock><range>.tex`。新的地面 visual 立即重放当前档位，换肤保留当前档位；普通 effect 保持现有微任务调度，测试在后续宏任务检查表现。极值记录、耐久消耗与耗尽移除仍由温度事件同步执行，批次内也逐次结算，不交给表现 effect。移除实体或替换地面模型时清理各自订阅。暖石热光照和角色体温尚未接入，以下规则中的灯光部分仍为 Lua 源码参考。
 
 ### 初始化与自身温度
 

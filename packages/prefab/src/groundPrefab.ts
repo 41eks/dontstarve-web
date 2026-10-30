@@ -104,8 +104,11 @@ export interface GroundPrefabContext extends GroundPrefabOptions {
 /** Each prefab binds its own assets, events and world dependencies. */
 export interface GroundItemFactory {
   itemIds: readonly string[];
-  /** The inst and its display exist synchronously; its display loads the art. */
-  create(definition: GroundItemDefinition): GroundItemVisual;
+  /**
+   * The inst's ground visual and its display exist synchronously; its display loads the art. The visual draws the
+   * item's own sprite (`entity.sprite`, inst.AnimState), which keeps the item's skin on the ground and off it.
+   */
+  create(definition: GroundItemDefinition, entity: ItemEntity): GroundItemVisual;
   capture?: 'net';
   configureEntity?(entity: ItemEntity): void;
   update?(dt: number, cameraQuaternion: THREE.Quaternion): void;
