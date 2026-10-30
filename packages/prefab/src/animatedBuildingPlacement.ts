@@ -3,7 +3,7 @@ import { ToolMouseTarget } from './toolMouseTarget';
 import { ModelRecords } from './modelRecords';
 import * as THREE from 'three';
 import { ArchiveSpriteAssets } from '@dontstarve-web/animation/archiveSprite';
-import { AnimState } from '@dontstarve-web/animation/animState';
+import { AnimState, type AnimStateArt } from '@dontstarve-web/animation/animState';
 import { createEffect, watchSignal, getBoundWatchWorldContent, type ReadonlySignal, type Signal } from '@dontstarve-web/signals';
 import { disposeSprite } from './disposeSprite';
 import {
@@ -144,6 +144,8 @@ export interface AnimatedBuildingEventContext {
     animation: SpriteState;
     /** Changes whenever the building's drawn sprite is rebuilt; effects that dress the sprite read it. */
     art?: ReadonlySignal<number>;
+    /** Shared resource owner for the builds named by the entity's AnimState slots; display performs the IO. */
+    animStateArt?: AnimStateArt;
     skinId?: string;
     /** Result of the definition's prepare() for the art currently displayed. */
     prepared?: AnimatedBuildingPreparedResources;
@@ -610,7 +612,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     }
 
     private eventContext(building: AnimatedBuildingInstance<BuildId>): AnimatedBuildingEventContext {
-        return { model: building.model, instance: building.instance, animation: building.animation, art: building.animation.art, skinId: building.skinId.peek(), prepared: building.prepared,
+        return { model: building.model, instance: building.instance, animation: building.animation, art: building.animation.art, animStateArt: this.skinAssets, skinId: building.skinId.peek(), prepared: building.prepared,
             fxFactories: building.fxFactories, itemEntities: this.worldContext.itemEntities, world: this.worldContext, displays: this.displays,
             remove: () => this.hammerContext(building).remove() };
     }

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { withEntity } from './entityFixture';
 import { expect, it, vi } from 'vitest';
 import { SpriteState } from '../../display/src';
 import { ItemEntity } from '../../inventory/src';
@@ -23,7 +24,7 @@ function setup(options?: ToolMouseTargetOptions) {
   tree.position.z = 2; scene.add(tree, back);
   const instance = new PrefabInstance('evergreen', new SpriteState({ name: 'idle' }));
   bindInstance(tree, instance); instance.addTag('tree');
-  const target = actionEntity(tree, 'evergreen'); actionEntity(back, 'log');
+  const target = actionEntity(tree, 'evergreen'); actionEntity(withEntity(back, 'log'), 'log');
   const workable = new Workable(target); target.components.workable = workable;
   const burnable = new Burnable(target); target.components.burnable = burnable;
   const binding = new ToolMouseTarget(target, instance, workable, hand, options);

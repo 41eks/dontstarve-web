@@ -1,6 +1,7 @@
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
+import { withEntity } from './entityFixture';
 import { afterEach, expect, it, vi } from 'vitest';
 import { readFile } from 'node:fs/promises';
 import { Burnable } from '../../componets/src/burnable';
@@ -36,7 +37,7 @@ function savedEntity(record: PlacementSaveRecord): SavedEntity {
 
 it('spreads source heat to nearby combustible structures through smoldering before ignition', () => {
   vi.spyOn(Math, 'random').mockReturnValue(.5);
-  const first = new THREE.Group(), second = new THREE.Group(); second.position.x = 2;
+  const first = withEntity(new THREE.Group(), 'treasurechest'), second = withEntity(new THREE.Group(), 'cookpot'); second.position.x = 2;
   const source = actionEntity(first, 'treasurechest'), target = actionEntity(second, 'cookpot');
   for (const inst of [source, target]) {
     inst.components.burnable = new Burnable(inst);
@@ -65,7 +66,7 @@ it('spreads source heat to nearby combustible structures through smoldering befo
 
 it('walks to the foot, cancels on unequip and commits LIGHT once at frame 13 without spending extra torch fuel', () => {
   vi.stubGlobal('window', new EventTarget());
-  const scene = new THREE.Scene(), model = new THREE.Group(), player = new THREE.Group();
+  const scene = new THREE.Scene(), model = withEntity(new THREE.Group(), 'treasurechest'), player = new THREE.Group();
   model.position.set(20, 0, 0); scene.add(model);
   const target = Object.assign(actionEntity(model, 'treasurechest'), { model }) as LighterTarget;
   const burnable = new Burnable(actionEntity(model, 'treasurechest'));

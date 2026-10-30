@@ -7,8 +7,8 @@ import { ArchiveSpriteAssets, preloadSharedArchiveSprite } from '@dontstarve-web
 import { createAnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
 import type { PickaxeTarget } from '@dontstarve-web/stategraphs/pickaxe';
 import type { ShovelTarget } from '@dontstarve-web/stategraphs/shovel';
-import { performToolWork, type ComponentActionEntity } from '../../stategraphs/src/componentactions';
-import { Workable, type WorkableInst, type Worker } from '../../componets/src/workable';
+import { performToolWork } from '../../stategraphs/src/componentactions';
+import { Workable, type Worker } from '../../componets/src/workable';
 import { Growable, type GrowableSave } from '../../componets/src/growable';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
 import { Timer, type NamedTimerSave } from '../../componets/src/timer';
@@ -67,8 +67,6 @@ interface Tree {
   stopActivity(): void;
   stopPlacement(): void;
   minimap: MiniMapState;
-  inst: ComponentActionEntity & WorkableInst & { model: THREE.Group; getPosition(): THREE.Vector3 };
-  removeInst(): void;
   stump: Signal<boolean>;
   growable: Growable;
   timer: Timer;
@@ -132,7 +130,7 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
   let disposed = false;
   const stageOf = (tree: Tree) => tree.growable.GetStage() - 1;
   const rest = (tree: Tree) => tree.stump.peek() ? `stump_${DECIDUOUS_STAGES[stageOf(tree)]}`
-    : tree.inst.hasTag('burnt') ? `burnt_${DECIDUOUS_STAGES[stageOf(tree)]}`
+    : tree.instance.hasTag('burnt') ? `burnt_${DECIDUOUS_STAGES[stageOf(tree)]}`
     : `sway1_loop_${DECIDUOUS_STAGES[stageOf(tree)]}`;
   const env: BurnEnvironment = { scheduler, fire: fireFx };
   const animationOf = (tree: Tree) => tree.sprite;
@@ -185,8 +183,8 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
   const unbindFire = (tree: Tree) => { tree.fire?.dispose(); tree.fire = undefined; };
   /** OnEntityWake: MakeLargeBurnable + MakeMediumPropagator, or the stump's small pair, unless burnt. */
   const bindFire = (tree: Tree) => {
-    if (disposed || !active.has(tree.logical) || tree.fire || tree.inst.hasTag('burnt') || tree.inst.isRemoved) return;
-    tree.fire = new BurnableBinding(tree.inst, tree.stump.peek()
+    if (disposed || !active.has(tree.logical) || tree.fire || tree.instance.hasTag('burnt') || tree.instance.isRemoved) return;
+    tree.fire = new BurnableBinding(tree.instance, tree.stump.peek()
       ? { propagator: 'small', burnTime: 10, fxLevel: 2, onBurnt: () => burnStump(tree) }
       : { propagator: 'medium', burnTime: TREE_BURN_TIME, fxLevel: 5, onBurnt: () => treeBurnt(tree) }, env);
   };
@@ -198,9 +196,9 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
   const burntChanges = (tree: Tree) => {
     unbindFire(tree);
     tree.growable.StopGrowing(); tree.leaves.Stop();
-    tree.inst.removeTag('shelter'); tree.inst.removeTag('cattoyairborne');
+    tree.instance.removeTag('shelter'); tree.instance.removeTag('cattoyairborne');
     tree.lootdropper.SetLoot([]); tree.lootdropper.SetChanceLootTable('deciduoustree_burnt');
-    if (tree.inst.components.workable === tree.workable) {
+    if (tree.instance.components.workable === tree.workable) {
       tree.workable.SetWorkLeft(1);
       tree.workable.SetOnWorkCallback(() => {});
       tree.workable.SetOnFinishCallback(() => chopDownBurnt(tree));
@@ -208,8 +206,8 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
   };
   /** OnBurnt: the burnt tag and pose at once; the component changes follow after .5 seconds. */
   const burn = (tree: Tree, immediate: boolean) => {
-    if (tree.inst.hasTag('burnt')) return;
-    tree.inst.addTag('burnt');
+    if (tree.instance.hasTag('burnt')) return;
+    tree.instance.addTag('burnt');
     tree.minimap.SetIcon('tree_leaf_burnt.png');
     animationOf(tree)?.start(rest(tree));
     if (immediate) burntChanges(tree);
@@ -234,7 +232,7 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
   };
   /** chop_down_burnt_tree: charcoal and the chance loot, then removal when the clip ends. */
   const chopDownBurnt = (tree: Tree) => {
-    tree.workable.dispose(); delete tree.inst.components.workable;
+    tree.workable.dispose(); delete tree.instance.components.workable;
     playSound(tree, 'dontstarve/forest/treeCrumble');
     playSound(tree, 'dontstarve/wilson/use_axe_tree');
     RemovePhysicsColliders(tree.instance);
@@ -252,7 +250,7 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
     tree.changesTask?.(); tree.acornTask?.(); tree.removeTask?.();
     unbindFire(tree);
 
-    tree.removeInst(); tree.workable.dispose(); tree.growable.dispose(); tree.leaves.dispose(); tree.timer.dispose();
+    tree.workable.dispose(); tree.growable.dispose(); tree.leaves.dispose(); tree.timer.dispose();
     for (const sound of tree.sounds) sound.stop(); tree.sounds.clear();
     tree.instance.remove();
   };
@@ -260,12 +258,12 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
     unbindFire(tree);
     tree.minimap.SetIcon('tree_leaf_stump.png');
     tree.stump.set(true); tree.growable.StopGrowing(); tree.leaves.Stop();
-    tree.inst.removeTag('cattoyairborne');
-    tree.inst.removeTag('shelter'); tree.inst.addTag('stump');
+    tree.instance.removeTag('cattoyairborne');
+    tree.instance.removeTag('shelter'); tree.instance.addTag('stump');
     RemovePhysicsColliders(tree.instance);
     tree.workable.dispose();
-    tree.workable = new Workable(tree.inst);
-    tree.inst.components.workable = tree.workable;
+    tree.workable = new Workable(tree.instance);
+    tree.instance.components.workable = tree.workable;
     tree.workable.SetWorkAction('DIG'); tree.workable.SetWorkLeft(1);
     tree.mouseTarget?.setWorkable(tree.workable);
     tree.workable.SetOnFinishCallback(() => {
@@ -309,10 +307,10 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
     const model = tree.logical.model;
 
     Object.assign(model.userData, { deploySmartRadius: 1,
-      components: tree.inst.components,
+      components: tree.instance.components,
       deciduoustreeState: { stump: readonlySignal(tree.stump), growth: tree.growable.state, leaves: tree.leaves.state } });
     model.userData.placementLogical = true;
-    const entity = actionEntity(model, 'deciduoustree', tree.inst);
+    const entity = actionEntity(model, 'deciduoustree');
     tree.mouseTarget = new ToolMouseTarget(entity, tree.instance, tree.workable, world.handEquipment);
     mouseRecords.set(model, tree.logical);
   };
@@ -333,7 +331,7 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
       const snow = getBoundWatchWorldContent()?.(WorldContentKey.SnowLevel, stop => { tree.stopSnow = stop; });
       if (snow) createRenderEffect(() => { tree.sprite.setSymbolHidden('snow', snow.get() < .015); });
       bindFire(tree);
-      if (tree.inst.hasTag('burnt')) startAcornTask(tree);
+      if (tree.instance.hasTag('burnt')) startAcornTask(tree);
       instance.setActive(true);
     } else {
       active.delete(logical);
@@ -351,10 +349,10 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
   };
   const targets = (action: 'CHOP' | 'DIG', model?: THREE.Object3D): PickaxeTarget[] => mouseRecords.select(model, active).flatMap(logical => {
     const tree = trees.get(logical)!, model = logical.model;
-    const isValid = () => !disposed && active.has(logical) && !tree.inst.isRemoved && logical.model === model
+    const isValid = () => !disposed && active.has(logical) && !tree.instance.isRemoved && logical.model === model
       && tree.workable.CanBeWorked() && tree.workable.GetWorkAction() === action;
     return isValid() ? [{ id: logical.saveId!, model, position: logical.position,
-      entity: actionEntity(model, 'deciduoustree', tree.inst), isValid }] : [];
+      entity: actionEntity(model, 'deciduoustree'), isValid }] : [];
   });
   const digTargets = (model?: THREE.Object3D) => targets('DIG', model).map(target => ({ ...target,
     dig: () => target.isValid() && performToolWork('DIG', target.entity, {}),
@@ -375,18 +373,11 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
       entities.push(logical);
       const minimap = instance.minimap;
       minimap.SetIcon('tree_leaf.png'); minimap.SetPriority(-1);
-      const removed = createSignal(false);
       for (const tag of ['plant', 'tree', 'birchnut', 'deciduoustree', 'cattoyairborne', 'SnowCovered', '__combat']) instance.addTag(tag);
-      const components: ComponentActionEntity['components'] & { growable?: Growable; lootdropper?: LootDropper; timer?: Timer } = {};
-      const inst: Tree['inst'] = { model,
-        prefab: 'deciduoustree', removal: readonlySignal(removed), get isRemoved() { return removed.peek(); }, components,
-        hasTag: tag => components.workable?.HasTag(tag) ?? instance.hasTag(tag),
-        addTag: tag => instance.addTag(tag), removeTag: tag => instance.removeTag(tag),
-        PushEvent: (name, data) => logical.model.dispatchEvent({ type: name, data } as never),
-        getPosition: () => logical.position,
-      };
-      const workable = new Workable(inst, () => scheduler.now); components.workable = workable;
-      const lootdropper = new LootDropper({ getPosition: () => logical.position, PushEvent: inst.PushEvent }, prefab => {
+      // The tree's components are its entity's: hasTag asks them first, as workable reports CHOP_workable.
+      const components = instance.components;
+      const workable = new Workable(instance, () => scheduler.now); components.workable = workable;
+      const lootdropper = new LootDropper({ getPosition: () => logical.position, PushEvent: (name, data) => instance.PushEvent(name, data) }, prefab => {
         world.dropLoot([{ itemId: prefab, count: 1 }], logical.position); return undefined;
       });
       components.lootdropper = lootdropper;
@@ -396,7 +387,7 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
         fn: () => setStage(trees.get(logical)!), growfn: () => grow(trees.get(logical)!),
       })), seconds => world.growthDuration?.(seconds) ?? seconds);
       components.growable = growable;
-      const tree: Tree = { logical, instance, display, sprite, stopActivity() {}, stopPlacement() {}, minimap, inst, removeInst: () => removed.set(true), stump: createSignal(false),
+      const tree: Tree = { logical, instance, display, sprite, stopActivity() {}, stopPlacement() {}, minimap, stump: createSignal(false),
         growable, workable, lootdropper, sounds: new Set(), firstFrame: true, color: .5 + random() * .5, leaves: undefined!, burntcone: false,
         timer: new Timer(scheduler, name => { if (name === 'decay') remove(tree); }, ['decay']) };
       components.timer = tree.timer;
@@ -405,7 +396,7 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
       group.add(model);
       tree.leaves = new DeciduousTreeLeaves(scheduler, world, {
         lastWorkTime: () => tree.workable.lastworktime.peek(), applyBuild: () => applyBuild(tree), updateLoot: () => updateLoot(tree),
-        setShelter: value => value ? inst.addTag('shelter') : inst.removeTag('shelter'),
+        setShelter: value => value ? instance.addTag('shelter') : instance.removeTag('shelter'),
         playTransition: kind => { playSound(tree, kind === 'grow_leaves' ? 'dontstarve/forest/treeGrow' : 'dontstarve/forest/treeWilt');
           return playOnce(tree, `${kind}_${DECIDUOUS_STAGES[stageOf(tree)]}`); },
         sway: () => animationOf(tree)?.start(rest(tree)), spawnLeafFx: () => spawnLeaves(tree),
@@ -460,7 +451,7 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
     },
     exportRecords: () => [...trees.values()].map(tree => {
       // onsave: a burning tree is saved as burnt; a burning stump is still a stump.
-      const burnt = !tree.stump.peek() && (tree.inst.hasTag('burnt') || tree.fire?.burnable.IsBurning() === true);
+      const burnt = !tree.stump.peek() && (tree.instance.hasTag('burnt') || tree.fire?.burnable.IsBurning() === true);
       const timer = tree.timer.OnSave();
       const { stump: _stump, leaveschangetime: _change, ...leaves } = tree.leaves.OnSave();
       return { id: tree.logical.saveId!,

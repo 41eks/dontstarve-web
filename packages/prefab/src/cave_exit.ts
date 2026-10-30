@@ -57,7 +57,6 @@ export class CaveExitManager {
 
   spawn(position: THREE.Vector3, saved?: CaveExitRecord): THREE.Group {
     if (this.disposed) throw new Error('Cave exits have been disposed');
-    if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError('Invalid cave exit position');
     const clip = { name: 'open', loop: true };
     const { instance, display } = createArchiveEntity(CAVE_EXIT_ID, this.resources.archive({ animationArchive: 'cave_exit.zip',
       buildArchives: ['cave_exit.zip'], bank: 'cave_stairs' }), { name: clip.name, billboard: true }, CAVE_EXIT_ID);

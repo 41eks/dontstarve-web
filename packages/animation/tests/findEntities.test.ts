@@ -1,5 +1,6 @@
 import { useTestTileMap } from './tileMapFixture';
 import * as THREE from 'three';
+import { withEntity } from './entityFixture';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ItemEntity } from '../../inventory/src';
 import { actionEntity, activePrefabs, bindActionEntityWorld, disposeActionEntity, FindEntities } from '../../prefab/src/actionEntity';
@@ -24,9 +25,8 @@ function bindArea(scene: THREE.Scene) {
 }
 
 function spawn(root: THREE.Object3D, x: number, tags: string[] = [], inst?: ItemEntity) {
-  const model = new THREE.Group();
+  const model = withEntity(new THREE.Group(), 'thing', tags);
   model.position.set(x, 0, 0);
-  model.userData.tags = tags;
   root.add(model);
   const entity = actionEntity(model, 'thing', inst);
   cleanups.push(() => disposeActionEntity(model));

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { PlayerActionPicker, PointerRaycaster, type MouseActionCandidate } from '../../stategraphs/src';
 import { CursorLabelUi } from '../src/cursor-label';
 import { actionEntity, disposeActionEntity } from '../../prefab/src/actionEntity';
+import { withEntity } from '../../animation/tests/entityFixture';
 
 export async function setupHoverer() {
   const renderer = new THREE.WebGLRenderer();
@@ -12,7 +13,7 @@ export async function setupHoverer() {
   camera.position.z = 10;
   camera.updateMatrixWorld();
   const scene = new THREE.Scene();
-  const target = new THREE.Group();
+  const target = withEntity(new THREE.Group(), 'hoverer-target');
   target.add(new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshBasicMaterial()));
   scene.add(target);
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.MeshBasicMaterial());

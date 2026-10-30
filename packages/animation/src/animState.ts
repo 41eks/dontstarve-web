@@ -36,6 +36,8 @@ export interface SymbolAnimationJson {
 /** Immutable appearance snapshot: plain declarations, apart from the time attachments of equipped pieces. */
 export interface AnimStateJson {
   readonly overrides: ReadonlyMap<number, SymbolOverrideJson>;
+  /** AddOverrideBuild: whole builds, in declaration order, beneath explicit symbol overrides. */
+  readonly overrideBuilds?: readonly string[];
   readonly hiddenLayers: ReadonlySet<number>;
   readonly hiddenSymbols: ReadonlySet<number>;
   /** Show/ShowSymbol: merged over another declaration, these are shown even where the one below hides them. */
@@ -57,8 +59,9 @@ interface ResolvedSymbolAnimation {
 }
 
 /** An AnimStateJson with its named art resolved; an undefined entry is still loading and draws nothing. */
-export interface ResolvedAnimState extends Omit<AnimStateJson, 'overrides' | 'symbolAnimations'> {
+export interface ResolvedAnimState extends Omit<AnimStateJson, 'overrides' | 'overrideBuilds' | 'symbolAnimations'> {
   readonly overrides: ReadonlyMap<number, readonly { readonly build: SymbolBuild; readonly symbol: number }[] | undefined>;
+  readonly overrideBuilds?: readonly SymbolBuild[];
   readonly symbolAnimations: ReadonlyMap<number, ResolvedSymbolAnimation | undefined>;
 }
 
@@ -74,6 +77,7 @@ export function resolveAnimState(state: AnimStateJson, art: AnimStateArt | undef
     return loaded;
   };
   const overrides = new Map<number, { build: SymbolBuild; symbol: number }[] | undefined>();
+  const overrideBuilds = (state.overrideBuilds ?? []).map(build).filter((value): value is SymbolBuild => value !== undefined);
   for (const [hash, { sources }] of state.overrides) {
     const resolved = sources.map(source => ({ build: build(source.archive), symbol: source.symbol }));
     overrides.set(hash, resolved.every(source => source.build) ? resolved as { build: SymbolBuild; symbol: number }[] : undefined);
@@ -88,19 +92,21 @@ export function resolveAnimState(state: AnimStateJson, art: AnimStateArt | undef
       ...declared.symbols ? { symbols: new Set(declared.symbols) } : {},
     } : undefined);
   }
-  return { state: { ...state, overrides, symbolAnimations }, missing };
+  return { state: { ...state, overrides, overrideBuilds, symbolAnimations }, missing };
 }
 
 /** Declarations drawn over one another, in order: a later one's overrides and shown or hidden layers and symbols win; the rest add up. */
 export function mergeAnimStates<S extends AnimStateJson | ResolvedAnimState>(states: readonly S[]): S {
   if (states.length === 1) return states[0];
   const overrides = new Map<number, unknown>();
+  const overrideBuilds: unknown[] = [];
   const symbolAnimations = new Map<number, unknown>();
   const symbolLightOverrides = new Map<number, number>();
   const hiddenLayers = new Set<number>(), hiddenSymbols = new Set<number>(), blooms = new Set<number>();
   const attachments: AnimationAttachment[] = [];
   for (const state of states) {
     for (const [hash, override] of state.overrides) overrides.set(hash, override);
+    overrideBuilds.push(...state.overrideBuilds ?? []);
     for (const [hash, animation] of state.symbolAnimations) symbolAnimations.set(hash, animation);
     for (const [hash, light] of state.symbolLightOverrides) symbolLightOverrides.set(hash, light);
     for (const layer of state.hiddenLayers) hiddenLayers.add(layer);
@@ -110,7 +116,7 @@ export function mergeAnimStates<S extends AnimStateJson | ResolvedAnimState>(sta
     for (const bloom of state.blooms) blooms.add(bloom);
     attachments.push(...state.attachments);
   }
-  return { overrides, hiddenLayers, hiddenSymbols, symbolLightOverrides, symbolAnimations, blooms, attachments } as unknown as S;
+  return { overrides, overrideBuilds, hiddenLayers, hiddenSymbols, symbolLightOverrides, symbolAnimations, blooms, attachments } as unknown as S;
 }
 
 export function animStateVisible(state: Pick<AnimStateJson, 'hiddenLayers' | 'hiddenSymbols'>, element: AnimElement): boolean {
@@ -142,7 +148,13 @@ export function resolveAnimStateSymbol(state: ResolvedAnimState, element: AnimEl
       .sort((a, b) => b.z - a.z)
       .flatMap(part => resolveImage(follow.builds, { ...part, matrix: compose(element.matrix, part.matrix) }) ?? []);
   }
-  if (!state.overrides.has(element.imageHash)) return undefined;
+  if (!state.overrides.has(element.imageHash)) {
+    for (let index = (state.overrideBuilds?.length ?? 0) - 1; index >= 0; index--) {
+      const sprite = resolveImage([state.overrideBuilds![index]], element);
+      if (sprite) return [sprite];
+    }
+    return undefined;
+  }
   const sources = state.overrides.get(element.imageHash);
   const source = sources?.find(candidate => candidate.build.build.symbols.has(candidate.symbol));
   const sprite = source && resolveImage([source.build], element, source.symbol);
@@ -158,6 +170,7 @@ const visibilityGroups = new Map([
 export class AnimState {
   private readonly builds = new Map<string, string>();
   private readonly overrides = new Map<number, SymbolOverrideJson>();
+  private readonly overrideBuilds = new Set<string>();
   private readonly hiddenLayers = new Set<number>();
   private readonly hiddenSymbols = new Set<number>();
   private readonly shownLayers = new Set<number>();
@@ -173,7 +186,7 @@ export class AnimState {
 
   constructor(changed: () => void = () => {}) { this.onChanged = changed; }
   private changed(): void {
-    this.state.set({ overrides: new Map(this.overrides), hiddenLayers: new Set(this.hiddenLayers), hiddenSymbols: new Set(this.hiddenSymbols),
+    this.state.set({ overrides: new Map(this.overrides), overrideBuilds: [...this.overrideBuilds], hiddenLayers: new Set(this.hiddenLayers), hiddenSymbols: new Set(this.hiddenSymbols),
       shownLayers: new Set(this.shownLayers), shownSymbols: new Set(this.shownSymbols), symbolLightOverrides: new Map(this.symbolLightOverrides), symbolAnimations: new Map(this.symbolAnimations),
       blooms: new Set(this.blooms), attachments: [...this.attachments] });
     this.onChanged();
@@ -185,6 +198,15 @@ export class AnimState {
   }
   private archives(source: SymbolSource): readonly string[] {
     return (typeof source === 'string' ? [source] : source).map(build => this.archive(build));
+  }
+  AddOverrideBuild(build: string): void {
+    const archive = this.archive(build);
+    this.overrideBuilds.delete(archive);
+    this.overrideBuilds.add(archive);
+    this.changed();
+  }
+  ClearOverrideBuild(build: string): void {
+    if (this.overrideBuilds.delete(this.archive(build))) this.changed();
   }
   OverrideSymbol(symbol: string, build: SymbolSource, sourceSymbol: string): void {
     const hash = smallHash(sourceSymbol);

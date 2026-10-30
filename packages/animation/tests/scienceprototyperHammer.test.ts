@@ -1,6 +1,7 @@
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
+import { withEntity } from './entityFixture';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ResearchLabPlacement, RESEARCH_LAB_IDS, RESEARCH_LAB_HAMMER_LOOT } from '../../prefab/src/scienceprototyper';
 import type { WorldContext } from '../../prefab/src/worldContext';
@@ -32,7 +33,7 @@ async function setup(id: typeof RESEARCH_LAB_IDS[number], skinId?: string) {
     id: `test_${id}`, transform: { position: [3, 0, 4], rotationY: 0 },
     components: { building: { state: 'idle', ...(skinId ? { skinId } : {}) } },
   });
-  const builder = new Builder(actionEntity(world.player as THREE.Group, 'waxwell'), {
+  const builder = new Builder(actionEntity(withEntity(world.player as THREE.Group, 'waxwell'), 'waxwell'), {
     findEntities: (...args) => FindEntities(...args), researchMachineDistance: 4 * WORLD_SCALE,
   });
   const animation = () => prefabInstance(model)!.sprite as TransientSpriteAnimationController;

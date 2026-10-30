@@ -14,7 +14,7 @@ import { bindTestWorld } from './worldContentFixture';
 import { configureBugNetEntity } from '../../prefab/src/bugnet';
 import { actionEntity, activePrefabs, disposeActionEntity } from '../../prefab/src/actionEntity';
 import { mouseTargets } from '../../prefab/src/mouseTargets';
-import { PrefabInstance, prefabInstance } from '../../prefab/src/prefabInstance';
+import { bindInstance, PrefabInstance, prefabInstance } from '../../prefab/src/prefabInstance';
 import type { ArchiveSpriteCommands } from '@dontstarve-web/display';
 import { displayLights } from '../../display/src/displaySprites';
 
@@ -47,6 +47,8 @@ function setup(night = true, position = new THREE.Vector3(10, 0, 0), random = ()
   const entity = new ItemEntity({ itemId: 'fireflies', count: 1 });
   const handEquipment = createSignal<HandEquipment | null>(netEquipment());
   const instance = swarmInstance(animation);
+  // As the swarm's display does: its model carries the swarm entity.
+  bindInstance(model, instance);
   const controller = new FirefliesController(instance, model,
     { getWatchWorldContent, handEquipment }, entity.transform, random);
   cleanups.push(() => { controller.dispose(); unbind(); scheduler.dispose(); });

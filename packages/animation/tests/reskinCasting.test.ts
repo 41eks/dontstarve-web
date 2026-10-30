@@ -5,6 +5,7 @@ import { actionTool, reskinEntityFields } from './actionFixtures';
 import { createPickupInventory } from './pickupFixture';
 import { createPickupDoer, performPickupAction } from '../../stategraphs/src/pickup';
 import * as THREE from 'three';
+import { withEntity } from './entityFixture';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
@@ -206,7 +207,7 @@ it('selects a registered entity without a manager provider, honors nomagic and f
   Object.assign(world.renderer.domElement, { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) });
   world.camera.position.set(0, 2, 8); world.camera.lookAt(0, 0, 0); world.camera.updateMatrixWorld();
   const picker = world.mouseActions = new PlayerActionPicker(new PointerRaycaster(world));
-  const model = new THREE.Group();
+  const model = withEntity(new THREE.Group(), 'twigs');
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
   model.add(mesh); world.scene.add(model);
   const entity = actionEntity(model, 'twigs');
@@ -239,7 +240,7 @@ it('selects a registered entity without a manager provider, honors nomagic and f
     expect(fx.play).not.toHaveBeenCalled();
     expect(fx.dispose).toHaveBeenCalledOnce();
     expect(tool.entity._cached_reskinname!.size).toBe(0);
-    model.userData.removed = true;
+    lookupPrefabInstance(model)!.remove();
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(getReskinActionTarget(model)).toBeUndefined();
     expect(target.isValid()).toBe(false);

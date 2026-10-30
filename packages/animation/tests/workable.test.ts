@@ -1,6 +1,7 @@
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
+import { withEntity } from './entityFixture';
 import { expect, it, vi } from 'vitest';
 import { batch } from '../../signals/src';
 import { Workable } from '../../componets/src/workable';
@@ -85,7 +86,7 @@ it('reads current action eligibility during a transaction and publishes only the
 
 it('preserves savestate rules and reacts to world removal, releasing memo dependencies on component disposal', () => {
   const source = itemWorkable(), ordinary = itemWorkable(), persistent = itemWorkable();
-  const model = new THREE.Group(), entity = actionEntity(model, 'test_world');
+  const model = withEntity(new THREE.Group(), 'test_world'), entity = actionEntity(model, 'test_world');
   const work = new Workable(entity);
   (findActionEntity(model)?.components ?? prefabInstance(model)!.components).workable = work;
   const reads = vi.spyOn(entity.removal, 'get'), eligibility = vi.fn(), finish = vi.fn();
@@ -101,7 +102,7 @@ it('preserves savestate rules and reacts to world removal, releasing memo depend
     persistent.work.OnLoad(source.work.OnSave());
     expect(persistent.work.workleft.peek()).toBe(2);
     expect(persistent.work.canBeWorked.peek()).toBe(true);
-    model.userData.removed = true;
+    prefabInstance(model)!.remove();
     expect(entity.isRemoved).toBe(true);
     expect(work.canBeWorked.peek()).toBe(false);
     expect(entity.hasTag('CHOP_workable')).toBe(false);
@@ -109,8 +110,7 @@ it('preserves savestate rules and reacts to world removal, releasing memo depend
     expect(finish).not.toHaveBeenCalled();
     work.dispose();
     reads.mockClear();
-    // A retained old model changing cannot re-run a disposed component's derivations.
-    model.userData.removed = false;
+    // A disposed component's derivations no longer read the entity's removal.
     work.SetWorkLeft(20);
     expect(reads).not.toHaveBeenCalled();
     expect(work.workleft.peek()).toBe(10);

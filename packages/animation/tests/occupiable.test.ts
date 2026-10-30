@@ -1,15 +1,17 @@
-import { createEmptyEntity } from '../../prefab/src/prefabInstance';
+import * as THREE from 'three';
+import { PrefabInstance } from '../../prefab/src/prefabInstance';
+import { SpriteState } from '@dontstarve-web/display';
 import { describe, expect, it, vi } from 'vitest';
 import { ItemEntity, type ItemOwner } from '../../inventory/src';
 import { Occupiable } from '../../componets/src/occupiable';
 import { Shelf } from '../../componets/src/shelf';
+import { Trader } from '../../componets/src/trader';
 import { PERISH_CAGE_MULT, PERISH_FAST } from '../../componets/src/perishable';
 import { BIRD_PERISH_TIME, configureBirdEntity, generateBirdLoot } from '../../prefab/src/birds';
 import { Birdcage, birdcageAcceptsItem, digestedFoodProduct } from '../../prefab/src/birdcage';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { WorldContext } from '../../prefab/src/worldContext';
-import type { SpriteAnimationController } from '../src/sprite';
-import { createSignal, type WorldPhase } from '../../signals/src';
+import { batch, createSignal, type WorldPhase } from '../../signals/src';
 import { createPerishWorld } from './perishWorldFixture';
 
 function createBird(prefab = 'canary') {
@@ -31,20 +33,11 @@ describe('caged birds', () => {
   it('subscribes to sleeper state for status and animation, stops idle tasks and detaches removed sleepers', async () => {
     const scheduler = new GameTimeScheduler();
     const cycle = createSignal<WorldPhase>('day');
-    let finish = () => {};
-    const controller = {
-      start: vi.fn(),
-      playOnce: vi.fn((_name: string, onComplete: () => void) => { finish = onComplete; }),
-      clearOverrideBuild: vi.fn(),
-    };
-    const { instance, display } = createEmptyEntity('birdcage');
-    const model = display.model;
+    const instance = new PrefabInstance('birdcage', new SpriteState({ name: 'idle_empty' }));
+    instance.attach(new THREE.Group());
     instance.entityId = 'birdcage:test';
-    vi.spyOn(instance.sprite, 'start').mockImplementation(controller.start);
-    vi.spyOn(instance.sprite, 'playOnce').mockImplementation(controller.playOnce);
-    vi.spyOn(instance.sprite, 'clearOverrideBuild').mockImplementation(controller.clearOverrideBuild);
-    const cage = new Birdcage({ model, instance, animation: controller as unknown as SpriteAnimationController,
-      world: { scheduler, cycle } as unknown as WorldContext }, () => .9);
+    const playOnce = vi.spyOn(instance.sprite, 'playOnce');
+    const cage = new Birdcage(instance, { scheduler, cycle } as unknown as WorldContext, undefined, () => .9);
     const bird = createBird();
     cage.occupiable!.Occupy(bird);
     expect(cage.status.peek()).toBe('OCCUPIED');
@@ -53,22 +46,18 @@ describe('caged birds', () => {
     await new Promise(resolve => setTimeout(resolve, 0));
     sleeper.StopTesting();
     expect(cage.status.peek()).toBe('SLEEPING');
-    expect(controller.playOnce).toHaveBeenLastCalledWith('sleep_pre', expect.any(Function));
-    finish();
-    expect(controller.start).toHaveBeenLastCalledWith('sleep_loop');
-    const calls = controller.playOnce.mock.calls.length;
+    expect(instance.sprite.sprite.peek()).toMatchObject({ clip: { name: 'sleep_pre', loop: false }, queue: [{ name: 'sleep_loop', loop: true }] });
+    const calls = playOnce.mock.calls.length;
     scheduler.advance(6);
-    expect(controller.playOnce).toHaveBeenCalledTimes(calls);
+    expect(playOnce).toHaveBeenCalledTimes(calls);
 
     sleeper.StartTesting();
     cycle.set('day');
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(cage.status.peek()).toBe('OCCUPIED');
-    expect(controller.playOnce).toHaveBeenLastCalledWith('sleep_pst', expect.any(Function));
-    finish();
-    expect(controller.start).toHaveBeenLastCalledWith('idle_bird');
+    expect(instance.sprite.sprite.peek()).toMatchObject({ clip: { name: 'sleep_pst', loop: false }, queue: [{ name: 'idle_bird', loop: true }] });
     scheduler.advance(6);
-    expect(controller.playOnce).toHaveBeenLastCalledWith('hop', expect.any(Function));
+    expect(playOnce).toHaveBeenLastCalledWith('hop');
 
     bird.components.perishable.SetPercent(.2);
     cycle.set('night');
@@ -83,26 +72,25 @@ describe('caged birds', () => {
     expect(cage.occupiable!.Harvest()).toBe(bird);
     expect(cage.status.peek()).toBe('GENERIC');
     expect(cage.sleeper).toBeUndefined();
-    controller.playOnce.mockClear();
+    playOnce.mockClear();
     cycle.set('day');
     await new Promise(resolve => setTimeout(resolve, 0));
     sleeper.WakeUp();
     scheduler.advance(12);
-    expect(controller.playOnce).not.toHaveBeenCalled();
+    expect(playOnce).not.toHaveBeenCalled();
     cage.occupiable!.Occupy(bird);
     cage.sleeper!.GoToSleep();
     expect(cage.status.peek()).toBe('SLEEPING');
     const removedSleeper = cage.sleeper!;
-    cage.dispose();
-    controller.playOnce.mockClear();
+    instance.remove();
+    playOnce.mockClear();
     cycle.set('night');
     await new Promise(resolve => setTimeout(resolve, 0));
     removedSleeper.WakeUp();
     scheduler.advance(12);
-    expect(controller.playOnce).not.toHaveBeenCalled();
+    expect(playOnce).not.toHaveBeenCalled();
     bird.destroy();
     scheduler.dispose();
-    instance.remove(); display.dispose();
   });
 
   it('starve at the cage rate, not the ground rate, and a ground bird does not starve at all', () => {
@@ -207,6 +195,29 @@ describe('shelf', () => {
 });
 
 describe('what the cage eats', () => {
+  it('follows batched trader state and stops following tags when the component is removed', async () => {
+    const inst = tags();
+    const trader = new Trader({ ...inst, hasTag: tag => inst.set.has(tag) });
+    expect([...inst.set]).toEqual(['trader']);
+    batch(() => {
+      trader.acceptsNonTradable = true;
+      trader.Disable();
+    });
+    expect(trader.AbleToAccept({ prefab: 'seeds', hasTag: () => false }).ok).toBe(false);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect([...inst.set]).toEqual([]);
+    trader.Enable();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect([...inst.set]).toEqual(['trader', 'alltrader']);
+    trader.acceptsNonTradable = false;
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect([...inst.set]).toEqual(['trader']);
+    trader.acceptsNonTradable = true;
+    trader.dispose();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect([...inst.set]).toEqual([]);
+  });
+
   it('accepts meat and seeds, refuses eggs and the rest, and picks the digested product', () => {
     expect(['smallmeat', 'meatballs', 'seeds', 'carrot', 'carrot_seeds'].map(birdcageAcceptsItem)).toEqual([true, true, true, true, true]);
     expect(['bird_egg', 'rottenegg', 'log', 'seeds_cooked', 'butterflywings'].map(birdcageAcceptsItem)).toEqual([false, false, false, false, false]);

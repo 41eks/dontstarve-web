@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { withEntity } from './entityFixture';
 import { expect, it } from 'vitest';
 import { SpriteFrameRenderer, createAtlasTexture, type ResolvedSprite } from '../src/animationAssets';
 import { intersectSpriteEntities, PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
@@ -39,7 +40,7 @@ it('selects actions behind transparent atlas pixels while opaque, mirrored and b
   camera.position.z = 10; camera.updateMatrixWorld();
   const screen = { domElement: { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) } } as unknown as THREE.WebGLRenderer;
   const pointer = new PointerRaycaster({ camera, renderer: screen, scene }), picker = new PlayerActionPicker(pointer);
-  actionEntity(front, 'front'); actionEntity(back as unknown as THREE.Group, 'back');
+  actionEntity(withEntity(front, 'front'), 'front'); actionEntity(withEntity(back, 'back') as unknown as THREE.Group, 'back');
   const reskin = { action: 'CASTSPELL' as const, modifier: 'RESKIN' };
   picker.register(target => target === back ? [{ action: reskin, model: back, button: 'right' }] : []);
   const at = (x: number, y: number) => {
@@ -76,7 +77,7 @@ it('pads outer sprite edges without filling alpha holes, stealing exact hits or 
   const vertices = Array.from(geometry.getAttribute('position').array);
   const backMesh = new THREE.Mesh(new THREE.PlaneGeometry(4, 4), new THREE.MeshBasicMaterial());
   back.add(backMesh); scene.add(front, back);
-  actionEntity(front, 'front');
+  actionEntity(withEntity(front, 'front'), 'front');
   const camera = new THREE.OrthographicCamera(-2, 2, 2, -2, .1, 100);
   camera.position.z = 10; camera.updateMatrixWorld();
   const screen = { domElement: { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) } } as unknown as THREE.WebGLRenderer;
@@ -100,7 +101,7 @@ it('pads outer sprite edges without filling alpha holes, stealing exact hits or 
     opaque.opacity = 1;
     (opaque.map as THREE.DataTexture).image.data![5 * 4 + 3] = 0;
     expect(at(37.5, 62.5)).toBeUndefined(); // A transparent interior pixel stays a hole.
-    actionEntity(back, 'back');
+    actionEntity(withEntity(back, 'back'), 'back');
     expect(at(77)).toBe(back); // Exact hits take priority over another sprite's padded edge.
     expect(at(50)).toBe(front);
     expect(mesh.geometry).toBe(geometry);

@@ -1,5 +1,6 @@
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
+import { withEntity } from './entityFixture';
 import { afterEach, expect, it, vi } from 'vitest';
 import { intersectSpriteEntities, PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
@@ -32,9 +33,9 @@ it('picks behind hidden/NOCLICK swarms, restores visible bounding-box picking an
   const pointer = new PointerRaycaster({ camera, renderer }), picker = new PlayerActionPicker(pointer);
   const pickup = { action: 'PICKUP' as const }, net = { action: 'NET' as const };
   let available = false;
-  const swarmEntity = actionEntity(swarm, 'fireflies');
+  const swarmEntity = actionEntity(withEntity(swarm, 'fireflies'), 'fireflies');
   swarmEntity.addTag('NOCLICK');
-  actionEntity(back as unknown as THREE.Group, 'back');
+  actionEntity(withEntity(back, 'back') as unknown as THREE.Group, 'back');
   const swarmActions = vi.fn(model => model === swarm ? [{ action: net, model: swarm, button: 'left' as const, available }] : []);
   picker.register(swarmActions);
   picker.register(model => model === back ? [{ action: pickup, model: back, button: 'left' }] : []);
@@ -74,7 +75,7 @@ it('picks active prefabs using logical NOCLICK/removal and resolves a pointer ev
   front.position.z = 2; scene.add(front, back); scene.updateMatrixWorld(true);
   const item = new ItemEntity({ itemId: 'log', count: 1 });
   item.addTag('NOCLICK');
-  actionEntity(front, 'log', item); actionEntity(back, 'rock');
+  actionEntity(withEntity(front, 'log'), 'log', item); actionEntity(withEntity(back, 'rock'), 'rock');
   const camera = new THREE.PerspectiveCamera(60, 1, .1, 100);
   camera.position.z = 10; camera.updateMatrixWorld();
   const renderer = { domElement: { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) } } as unknown as THREE.WebGLRenderer;
@@ -147,7 +148,7 @@ it('follows tickingarea and picks tall art away from its logical foot using curr
   const positions = createSignal([new THREE.Vector3()]);
   const player = createMemo(() => positions.get()[0]);
   const stop = bindActionEntityWorld(scene, GetTileStateAtPoint(player), positions);
-  actionEntity(tall, 'tall').addTag('NOBLOCK'); actionEntity(back, 'back');
+  actionEntity(withEntity(tall, 'tall'), 'tall').addTag('NOBLOCK'); actionEntity(withEntity(back, 'back'), 'back');
   const camera = new THREE.PerspectiveCamera(60, 1, .1, 100);
   camera.position.set(0, 8, 10); camera.updateMatrixWorld();
   const renderer = { domElement: { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) } } as unknown as THREE.WebGLRenderer;

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { withEntity } from './entityFixture';
 import { afterEach, expect, it, vi } from 'vitest';
 import { createEmptyEntity } from '../../prefab/src/prefabInstance';
 import { WORLD_SCALE } from '../../prefab/src/tile';
@@ -13,9 +14,9 @@ import type { WorldContext } from '../../prefab/src/worldContext';
 afterEach(() => vi.unstubAllGlobals());
 
 it('ground target blocking uses source tags and ring radii, including blockers whose centre is outside the query range', () => {
-  const scene = new THREE.Scene(), model = new THREE.Group();
+  const scene = new THREE.Scene(), model = withEntity(new THREE.Group(), 'test-groundhole', ['blocker']);
   model.position.set(24, 0, 0);
-  Object.assign(model.userData, { ground_target_blocker_radius: 24, _groundhole_innerradius: 3, tags: ['blocker'] });
+  Object.assign(model.userData, { ground_target_blocker_radius: 24, _groundhole_innerradius: 3 });
   const entity = actionEntity(model, 'test-groundhole'); scene.add(model);
   const query = placementEntities(scene), point = new THREE.Vector3(0, 0, 0);
   try {
@@ -55,7 +56,7 @@ it('visits local cells, stops at the first blocker and includes large smart radi
 });
 
 it('tracks tags, movement, attachment, replacement and permanent removal without walking scene/render lists', () => {
-  const scene = new THREE.Scene(), other = new THREE.Scene(), model = new THREE.Group();
+  const scene = new THREE.Scene(), other = new THREE.Scene(), model = withEntity(new THREE.Group(), 'log');
   const item = new ItemEntity({ itemId: 'log', count: 1 });
   item.addTag('NOBLOCK');
   model.userData.getGroundPosition = () => item.transform.position;
@@ -79,7 +80,7 @@ it('tracks tags, movement, attachment, replacement and permanent removal without
     scene.add(model);
     expect(query.someNear(item.transform.position, 1, () => true)).toBe(true);
     disposeActionEntity(model); model.removeFromParent();
-    replacement = new THREE.Group();
+    replacement = withEntity(new THREE.Group(), 'log');
     replacement.userData.getGroundPosition = () => item.transform.position;
     actionEntity(replacement, 'log', item); scene.add(replacement);
     let count = 0;
@@ -96,7 +97,7 @@ it('tracks tags, movement, attachment, replacement and permanent removal without
 
 it('keeps logical trees blocking their tile while only the visual is unloaded and releases permanent removals', () => {
   vi.stubGlobal('window', new EventTarget());
-  const scene = new THREE.Scene(), root = new THREE.Group(), model = new THREE.Group(), visual = new THREE.Group();
+  const scene = new THREE.Scene(), root = new THREE.Group(), model = withEntity(new THREE.Group(), 'evergreen'), visual = new THREE.Group();
   const point = new THREE.Vector3(11.99, 0, 11.99);
   model.position.copy(point); model.userData.placementLogical = true;
   const tree = { position: model.position, model };

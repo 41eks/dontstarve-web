@@ -1,4 +1,4 @@
-import { createMemo, createSignal, readonlySignal } from '../../signals/src';
+import { createEffect, createSignal, readonlySignal } from '../../signals/src';
 
 export interface TraderInst {
   hasTag(tag: string): boolean;
@@ -23,28 +23,28 @@ export class Trader<Item extends TradeItem = TradeItem, Giver = unknown> {
   readonly enabled = readonlySignal(this.enabledState);
   deleteitemonaccept = true;
   private readonly acceptNonTradableState = createSignal(false);
-  /** The trader / alltrader tags are a pure view of the two flags. */
-  private readonly tagsMemo = createMemo(() => {
-    const enabled = this.enabledState.get();
-    return { trader: enabled, alltrader: enabled && this.acceptNonTradableState.get() };
-  });
   private abletoaccepttest?: (item: Item, giver: Giver | undefined) => TradeAcceptance;
   private test?: (item: Item, giver: Giver | undefined) => boolean;
   private onaccept?: (giver: Giver | undefined, item: Item) => void;
   private onrefuse?: (giver: Giver | undefined, item: Item) => void;
   private readonly inst: TraderInst;
+  private readonly stopTags: () => void;
 
   constructor(inst: TraderInst) {
     this.inst = inst;
-    this.refreshTags();
+    this.stopTags = createEffect(() => {
+      const enabled = this.enabledState.get(), acceptsNonTradable = this.acceptNonTradableState.get();
+      if (enabled) inst.addTag('trader'); else inst.removeTag('trader');
+      if (enabled && acceptsNonTradable) inst.addTag('alltrader'); else inst.removeTag('alltrader');
+    });
   }
 
   get acceptsNonTradable(): boolean { return this.acceptNonTradableState.peek(); }
-  set acceptsNonTradable(value: boolean) { this.acceptNonTradableState.set(value); this.refreshTags(); }
+  set acceptsNonTradable(value: boolean) { this.acceptNonTradableState.set(value); }
   get isEnabled(): boolean { return this.enabledState.peek(); }
 
-  Enable(): void { this.enabledState.set(true); this.refreshTags(); }
-  Disable(): void { this.enabledState.set(false); this.refreshTags(); }
+  Enable(): void { this.enabledState.set(true); }
+  Disable(): void { this.enabledState.set(false); }
   SetAbleToAcceptTest(fn: (item: Item, giver: Giver | undefined) => TradeAcceptance): void { this.abletoaccepttest = fn; }
   SetAcceptTest(fn: (item: Item, giver: Giver | undefined) => boolean): void { this.test = fn; }
   SetOnAccept(fn: (giver: Giver | undefined, item: Item) => void): void { this.onaccept = fn; }
@@ -72,16 +72,8 @@ export class Trader<Item extends TradeItem = TradeItem, Giver = unknown> {
   }
 
   dispose(): void {
+    this.stopTags();
     this.inst.removeTag('trader');
     this.inst.removeTag('alltrader');
-    this.tagsMemo.dispose();
-  }
-
-  private refreshTags(): void {
-    const tags = this.tagsMemo.peek();
-    for (const tag of ['trader', 'alltrader'] as const) {
-      if (tags[tag]) this.inst.addTag(tag);
-      else this.inst.removeTag(tag);
-    }
   }
 }

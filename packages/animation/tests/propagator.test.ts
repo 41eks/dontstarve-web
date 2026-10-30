@@ -5,6 +5,7 @@ import { bindTestWorld } from './worldContentFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Propagator } from '../../componets/src/propagator';
 import { actionEntity } from '../../prefab/src/actionEntity';
+import { withEntity } from './entityFixture';
 import { ItemEntity } from '../../inventory/src';
 import { configureBurnableItemEntity, type BurnableItemController } from '../../prefab/src/burnableItems';
 import type { GroundPrefabContext } from '../../prefab/src/groundPrefab';
@@ -14,8 +15,8 @@ afterEach(() => vi.restoreAllMocks());
 it('uses the current spring radius for neighbour queries and heat falloff without restarting the timer', () => {
   const scheduler = new GameTimeScheduler();
   const { season, unbind } = bindTestWorld(scheduler);
-  const source = actionEntity(new THREE.Group(), 'stafflight');
-  const near = actionEntity(new THREE.Group(), 'log'), far = actionEntity(new THREE.Group(), 'cutgrass');
+  const source = actionEntity(withEntity(new THREE.Group(), 'stafflight'), 'stafflight');
+  const near = actionEntity(withEntity(new THREE.Group(), 'log'), 'log'), far = actionEntity(withEntity(new THREE.Group(), 'cutgrass'), 'cutgrass');
   near.model.position.x = 6;
   far.model.position.x = 7.5;
   const nearHeat = vi.fn(), farHeat = vi.fn();

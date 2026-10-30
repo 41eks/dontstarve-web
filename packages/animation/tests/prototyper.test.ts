@@ -5,11 +5,13 @@ import { Prototyper } from '../../componets/src/prototyper';
 import { CreateTechTree } from '../../componets/src/techtree';
 import { actionEntity, FindEntities } from '../../prefab/src/actionEntity';
 import { WORLD_SCALE } from '../../prefab/src/standardcomponents';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { withEntity } from './entityFixture';
 
 function setup() {
   const scene = new Scene();
   const entity = (prefab: string, position = new Vector3()) => {
-    const model = new Group();
+    const model = withEntity(new Group(), prefab);
     model.position.copy(position);
     scene.add(model);
     return actionEntity(model, prefab);
@@ -102,7 +104,7 @@ it('keeps a station on for its other doers and releases removal listeners on com
   expect(on).toHaveBeenCalledOnce();
   builder.dispose();
   expect(prototyper.on).toBe(true);
-  other.model.userData.removed = true;
+  prefabInstance(other.model)!.remove();
   await new Promise(resolve => setTimeout(resolve, 0));
   expect(prototyper.on).toBe(false);
   expect(off).toHaveBeenCalledOnce();
@@ -114,7 +116,7 @@ it('keeps a station on for its other doers and releases removal listeners on com
   prototyper.OnRemoveFromEntity();
   expect(inst.hasTag('prototyper')).toBe(false);
   expect(off).toHaveBeenCalledTimes(2);
-  player.model.userData.removed = true;
+  prefabInstance(player.model)!.remove();
   await new Promise(resolve => setTimeout(resolve, 0));
   expect(off).toHaveBeenCalledTimes(2);
 });

@@ -174,6 +174,7 @@ class PigKing {
     for (const cancel of [...this.tasks]) cancel();
     this.sg.dispose();
     this.trader.Disable();
+    this.trader.dispose();
 
     this.model.userData.removed = true;
     this.instance.remove(); this.display.dispose();
