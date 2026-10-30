@@ -2,8 +2,8 @@ import * as THREE from 'three';
 import { bindActionCancellation } from './actionEvents.ts';
 import { PointerRaycaster } from './pointerRaycaster.ts';
 import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor } from './actionContext.ts';
-import type { FarmActionWorld, FarmSoilTarget, PreparedSeedPlant } from './farmActions.ts';
-type FarmPlowPlacement = Pick<FarmActionWorld, 'soilTargets' | 'prepareSeedPlant'>;
+import type { FarmActionWorld, FarmSoilTarget } from './farmActions.ts';
+type FarmPlowPlacement = Pick<FarmActionWorld, 'soilTargets' | 'plantSeed'>;
 
 const PLANT_REACH = 4;
 
@@ -16,8 +16,6 @@ export class FoodActionController {
   private readonly stopActionEvents: () => void;
   private source?: FoodSource;
   private target?: FarmSoilTarget;
-  private prepared?: PreparedSeedPlant;
-  private loading = false;
   private version = 0;
   private disposed = false;
   private readonly direction = new THREE.Vector3();
@@ -28,7 +26,6 @@ export class FoodActionController {
   private readonly locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>;
   private readonly farm: FarmPlowPlacement;
   private readonly isManualMovement: () => boolean;
-  private readonly onError: (error: unknown) => void;
   private readonly onDeselect: () => void;
 
   constructor(
@@ -37,11 +34,10 @@ export class FoodActionController {
     locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>,
     farm: FarmPlowPlacement,
     isManualMovement = () => false,
-    onError: (error: unknown) => void = console.error,
     onDeselect = () => {},
   ) {
     this.world = world; this.animation = animation; this.locomotor = locomotor;
-    this.farm = farm; this.isManualMovement = isManualMovement; this.onError = onError;
+    this.farm = farm; this.isManualMovement = isManualMovement;
     this.onDeselect = onDeselect;
     this.stopActionEvents = bindActionCancellation(world, this, 'food', () => this.cancel());
     this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
@@ -75,20 +71,16 @@ export class FoodActionController {
   cancel(): void {
     this.version++;
     if (this.target) this.locomotor.stop();
-    this.target = undefined; this.source = undefined; this.loading = false;
-    this.prepared?.dispose(); this.prepared = undefined;
+    this.target = undefined; this.source = undefined;
     this.animation.cancelFoodAction(); this.onDeselect();
   }
 
   update(): void {
     if (this.isManualMovement()) { this.cancel(); return; }
     if (this.source && !this.source.isValid()) {
-      if (this.target || this.prepared || this.loading) this.cancel();
+      if (this.target) this.cancel();
       else { this.source = undefined; this.onDeselect(); }
       return;
-    }
-    if (this.prepared && !this.target && !this.animation.stategraph.isPerformingAction('PLANT')) {
-      this.prepared.dispose(); this.prepared = undefined;
     }
     const target = this.target, source = this.source;
     if (!target || !source) return;
@@ -102,29 +94,10 @@ export class FoodActionController {
       return;
     }
     this.locomotor.stop();
-    if (this.loading) return;
-    if (!this.prepared) {
-      const version = this.version;
-      this.loading = true;
-      void this.farm.prepareSeedPlant(target.id, source.itemId).then((prepared) => {
-        if (this.disposed || version !== this.version) { prepared?.dispose(); return; }
-        this.loading = false;
-        if (!prepared) this.cancel(); else this.prepared = prepared;
-      }).catch((error: unknown) => {
-        if (version === this.version) this.cancel();
-        this.onError(error);
-      });
-      return;
-    }
     this.faceTarget(target.position);
-    const prepared = this.prepared, version = this.version;
-    if (this.animation.playPlant(() => {
-      const success = version === this.version && target.isValid() && this.inReach(target)
-        && source.isValid() && prepared.apply(() => source.take());
-      prepared.dispose();
-      if (this.prepared === prepared) this.prepared = undefined;
-      return success;
-    })) this.target = undefined;
+    const version = this.version;
+    if (this.animation.playPlant(() => version === this.version && target.isValid() && this.inReach(target)
+      && source.isValid() && this.farm.plantSeed(target.id, source.itemId, () => source.take()))) this.target = undefined;
   }
 
   private inReach(target: FarmSoilTarget): boolean {
@@ -157,7 +130,7 @@ export class FoodActionController {
     const target = event.button === 0 ? this.hoveredTarget() : undefined;
     if (!target) { if (event.button === 0 || event.button === 2) this.cancel(); return; }
     event.preventDefault(); event.stopImmediatePropagation();
-    this.version++; this.prepared?.dispose(); this.prepared = undefined; this.loading = false;
+    this.version++;
     this.animation.cancelFoodAction(); this.animation.cancelEmote(); this.target = target;
   };
   private readonly handleKeyDown = (event: KeyboardEvent): void => {

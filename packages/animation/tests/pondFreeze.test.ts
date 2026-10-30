@@ -1,3 +1,4 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import { testMap } from './tileMapFixture';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
@@ -20,14 +21,14 @@ it('freezes above snowlevel 0.02, thaws below it, applies to later ponds and sto
   try {
     const first = await ponds.spawn(new THREE.Vector3());
     expect(first.userData.frozen).toBe(false);
-    expect(first.userData.actionEntity.hasTag('slipperyfeettarget')).toBe(false);
+    expect(findActionEntity(first).hasTag('slipperyfeettarget')).toBe(false);
     snow.set(.02); await tick(); expect(first.userData.frozen).toBe(false);
     snow.set(.03); await tick(); expect(first.userData.frozen).toBe(true);
     const later = await ponds.spawn(new THREE.Vector3(5, 0, 0));
     expect(later.userData.frozen).toBe(true);
-    expect([first, later].map(m => m.userData.actionEntity.hasTag('slipperyfeettarget'))).toEqual([true, true]);
+    expect([first, later].map(m => findActionEntity(m).hasTag('slipperyfeettarget'))).toEqual([true, true]);
     snow.set(0); await tick(); expect([first, later].map(m => m.userData.frozen)).toEqual([false, false]);
-    expect([first, later].map(m => m.userData.actionEntity.hasTag('slipperyfeettarget'))).toEqual([false, false]);
+    expect([first, later].map(m => findActionEntity(m).hasTag('slipperyfeettarget'))).toEqual([false, false]);
     snow.set(1); ponds.dispose(); await tick();
     expect(first.userData.frozen).toBe(false);
     expect(world.weather.snowLevel.peek()).toBe(1);

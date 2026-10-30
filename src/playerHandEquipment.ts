@@ -19,7 +19,7 @@ export function bindPlayerHandEquipment(options: PlayerHandEquipmentOptions) {
   let silentDepth = 0;
   const prefabContext = {
     ...options,
-    AnimState: options.AnimState ?? options.animation?.equipmentContext?.owner.AnimState,
+    sprite: options.sprite ?? options.animation?.equipmentContext?.sprite,
   };
   const binding = bindEquipmentLifecycle({
     existenceState: slot,

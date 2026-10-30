@@ -1,3 +1,4 @@
+import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import { modelEntries } from './modelRecords';
 import * as THREE from 'three';
@@ -8,9 +9,9 @@ import { watchTileActivity } from './tileActivity';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Timer, ComponentTimer, type NamedTimerSave } from '../../componets/src/timer';
 import { Workable } from '../../componets/src/workable';
-import { Burnable, type BurnableInst } from '../../componets/src/burnable';
+import { Burnable } from '../../componets/src/burnable';
 import { Propagator } from '../../componets/src/propagator';
-import { actionEntity } from './actionEntity';
+import { actionEntity, FindEntities } from './actionEntity';
 import { newEntityId } from './saveRecord';
 import type { SpawnGroundItem } from './groundPrefab';
 import type { RockAvocadoBushManager } from './rock_avocado_bush';
@@ -54,7 +55,7 @@ export interface RockAvocadoSaplingWorld extends ToolMouseTargetWorld {
 
 /** rock_avocado_fruit.lua's buried sprout: named growth timer, DIG, ignition and seed_growth completion. */
 export class RockAvocadoSaplingManager {
-  private readonly scene: THREE.Scene;
+  private readonly displays: PrefabDisplayGroup;
   private readonly world: RockAvocadoSaplingWorld;
   private readonly scheduler: GameTimeScheduler;
   private readonly ownsScheduler: boolean;
@@ -63,7 +64,7 @@ export class RockAvocadoSaplingManager {
   private readonly sounds = new Set<SoundHandle>();
   private disposed = false;
   constructor(scene: THREE.Scene, world: RockAvocadoSaplingWorld) {
-    this.scene = scene; this.world = world; this.scheduler = world.scheduler ?? new GameTimeScheduler();
+    this.displays = new PrefabDisplayGroup(scene); this.world = world; this.scheduler = world.scheduler ?? new GameTimeScheduler();
     this.ownsScheduler = !world.scheduler;
   }
   /** rock_avocado_fruit_sprout ondeploy: SpawnPrefab of the buried sprout; the display loads the art. */
@@ -112,13 +113,7 @@ export class RockAvocadoSaplingManager {
     });
     const burnable = new Burnable(entity, this.scheduler); burnable.SetBurnTime(7.5);
     const propagator = new Propagator(entity, 'small', radius => {
-      const nearby: BurnableInst[] = [];
-      this.scene.traverse(object => {
-        const inst = object.userData.actionEntity as BurnableInst | undefined;
-        if (inst?.components.propagator && !inst.isRemoved && !inst.hasTag('INLIMBO')
-          && inst.getPosition().distanceToSquared(model.position) <= radius ** 2) nearby.push(inst);
-      });
-      return nearby;
+      return FindEntities(entity.getPosition(), radius).filter(inst => inst.components.propagator && !inst.hasTag('INLIMBO'));
     }, 3, this.scheduler, getBoundWatchWorldContent());
     Object.assign(entity.components, { workable, timer, burnable, propagator });
     new ToolMouseTarget(entity, drawn.instance, workable, this.world.handEquipment);
@@ -141,7 +136,7 @@ export class RockAvocadoSaplingManager {
       fire.instance.setActive(visible);
       if (visible) {
         fire.instance.position.copy(model.position);
-        if (!fireModel.parent) this.scene.add(fireModel);
+        if (!fireModel.parent) this.displays.mount(prefabDisplay(fireModel)!);
         sapling.sound ??= PlaySound('dontstarve/common/campfire', model.position);
         prefabInstance(model)!.light.set({ colour: [1, 1, 192 / 255], radius: 9, intensity: .8, falloff: .33 });
       } else {
@@ -150,7 +145,7 @@ export class RockAvocadoSaplingManager {
       }
     });
     startGrowing(); timer.OnLoad(saved?.components.saplingTimer);
-    this.scene.add(model);
+    this.displays.mount(prefabDisplay(model)!);
     sapling.stopActivity = watchTileActivity(model, this.world.tickingarea, active => drawn.instance.setActive(active));
     return model;
   }
@@ -195,7 +190,8 @@ export class RockAvocadoSaplingManager {
     if (this.disposed) return;
     this.disposed = true;
     for (const model of this.saplings.keys()) this.remove(model);
-    for (const sound of this.sounds) sound.stop(); this.sounds.clear(); this.resources.dispose();
+    for (const sound of this.sounds) sound.stop(); this.sounds.clear(); this.displays.dispose(); this.resources.dispose();
     if (this.ownsScheduler) this.scheduler.dispose();
+
   }
 }

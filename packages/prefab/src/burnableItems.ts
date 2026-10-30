@@ -1,3 +1,4 @@
+import { findActionEntity } from './actionEntity';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { createSignal, readonlySignal, getBoundWatchWorldContent } from '@dontstarve-web/signals';
 import { createSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
@@ -65,7 +66,7 @@ export class BurnableItemController {
     this.propagator = new Propagator(entity, 'small', radius => {
       const origin = entity.getPosition(), neighbours: BurnableInst[] = [];
       this.presentation?.context.scene.traverse(model => {
-        const inst = model.userData.actionEntity as BurnableInst | undefined;
+        const inst = findActionEntity(model) as BurnableInst | undefined;
         if (!inst?.components.propagator || inst.isRemoved || inst.hasTag('INLIMBO')) return;
         const position = inst.getPosition();
         if ((position.x - origin.x) ** 2 + (position.z - origin.z) ** 2 <= radius ** 2) neighbours.push(inst);

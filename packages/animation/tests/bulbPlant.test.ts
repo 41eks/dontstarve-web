@@ -1,3 +1,4 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
@@ -148,7 +149,7 @@ describe('real plant archives, spawning and saving', () => {
     expect(manager.renderEntities.every(p => p.footPosition === p.object.position)).toBe(true);
     // All four archives must supply picking/picked and grow clips, including springy.
     for (const model of [single, double, triple, springy]) {
-      expect(model.userData.components.pickable.pick({ giveItem: () => true })).toBe(true);
+      expect((findActionEntity(model)?.components ?? prefabInstance(model)!.components).pickable.pick({ giveItem: () => true })).toBe(true);
     }
     for (let i = 0; i < 80; i++) manager.update(0.1, new THREE.Quaternion());
     const pickedRecord = manager.exportRecords().find(p => p.record.id === 'e_springy')!;
@@ -159,14 +160,14 @@ describe('real plant archives, spawning and saving', () => {
     for (const model of [single, double, triple, springy]) {
       expect(mesh(model).geometry.drawRange.count).toBeGreaterThan(0);
       model.userData.bulbPlantController.update(bulbPlantRegrowTime(model.userData.bulbPlantVariant));
-      expect(model.userData.components.pickable.canBePicked).toBe(true);
+      expect((findActionEntity(model)?.components ?? prefabInstance(model)!.components).pickable.canBePicked).toBe(true);
     }
     for (let i = 0; i < 80; i++) manager.update(0.1, new THREE.Quaternion());
     manager.dispose();
     expect(scene.children).toHaveLength(0);
     expect(declaredLight(single)).toBeUndefined();
     expect(prefabInstance(single)!.listTags()).toEqual(['plant']);
-    expect(single.userData.components.pickable).toBeUndefined();
+    expect((findActionEntity(single)?.components ?? prefabInstance(single)!.components).pickable).toBeUndefined();
   });
 });
 

@@ -10,7 +10,7 @@ import { registerMouseTarget } from './mouseTargets';
 
 export { activePrefabs, type FoundEntity } from './activePrefabs';
 
-/** Existing world removal writes update the sole lifecycle signal, including inside batches. */
+/** Legacy removal bridge for bare models only; instance and injected owners supply their own lifecycle. */
 function modelRemoval(model: THREE.Object3D): ReadonlySignal<boolean> {
   const state = createSignal(model.userData.removed === true);
   Object.defineProperty(model.userData, 'removed', {
@@ -21,22 +21,24 @@ function modelRemoval(model: THREE.Object3D): ReadonlySignal<boolean> {
 }
 
 /** Project the engine inst onto its existing world model, keeping one tag/component owner. */
-export function actionEntity(model: THREE.Object3D, prefab: string, inst?: ComponentActionEntity & WorkableInst): FoundEntity & { getPhysicsRadius(): number } {
-  if (model.userData.actionEntity) return model.userData.actionEntity;
+export function actionEntity(model: THREE.Object3D, prefab: string, inst?: ComponentActionEntity & WorkableInst & { getPosition?(): THREE.Vector3 }): FoundEntity & { getPhysicsRadius(): number } {
+  const existing = entitiesByModel.get(model);
+  if (existing) return existing;
   const instance = prefabInstance(model);
-  model.userData.components ??= instance?.components ?? {};
-  const removal = inst?.removal ?? modelRemoval(model);
+  const owner = inst ?? instance;
+  const components = owner?.components ?? {};
+  const removal = owner?.removal ?? modelRemoval(model);
   const entity: FoundEntity & { getPhysicsRadius(): number } = {
     model,
     prefab,
     removal,
     get isRemoved() { return removal.peek(); },
-    get components() { return inst?.components ?? model.userData.components; },
-    getPosition: () => model.userData.getGroundPosition?.() ?? model.position,
+    get components() { return components; },
+    getPosition: () => owner?.getPosition?.() ?? model.position,
     getPhysicsRadius: () => instance?.getPhysicsRadius(0) ?? 0,
     hasTag: tag => {
-      if (inst) return inst.hasTag(tag);
-      for (const component of Object.values(model.userData.components) as { HasTag?(tag: string): boolean | undefined }[]) {
+      if (owner) return owner.hasTag(tag);
+      for (const component of Object.values(components) as { HasTag?(tag: string): boolean | undefined }[]) {
         const value = component?.HasTag?.(tag);
         if (value !== undefined) return value;
       }
@@ -65,7 +67,7 @@ export function actionEntity(model: THREE.Object3D, prefab: string, inst?: Compo
       else model.dispatchEvent({ type: name, data } as never);
     },
   };
-  model.userData.actionEntity = entity;
+  entitiesByModel.set(model, entity);
   const mouse = registerMouseTarget(entity);
   mouseRegistrations.set(entity, mouse);
   const mouseCleanups: (() => void)[] = [];
@@ -75,7 +77,7 @@ export function actionEntity(model: THREE.Object3D, prefab: string, inst?: Compo
   }
   const stopPlacement = registerPlacementEntity(model, entity.getPosition);
   const tagsChanged = () => { syncPlacementEntity(model); mouse.refresh(); };
-  const stopTags = inst ? (inst as typeof inst & { ListenForEvent?(name: string, listener: () => void): () => void })
+  const stopTags = inst && inst !== instance ? (inst as typeof inst & { ListenForEvent?(name: string, listener: () => void): () => void })
     .ListenForEvent?.('tagchanged', tagsChanged)
     : instance?.onTagChanged(tagsChanged);
   liveEntities.add(entity);
@@ -92,7 +94,8 @@ export function actionEntity(model: THREE.Object3D, prefab: string, inst?: Compo
     liveEntities.delete(entity);
     delete entity.reskinTarget;
     delete entity.hammerTarget;
-    delete model.userData.actionEntity;
+    delete entity.pickupTarget;
+    entitiesByModel.delete(model);
   });
   if (!entity.isRemoved) {
     if (currentEntityWorld) currentEntityWorld.add(entity);
@@ -109,15 +112,16 @@ export function actionEntity(model: THREE.Object3D, prefab: string, inst?: Compo
  * prefab list independently of scene attachment. Mouse input has a separate, explicitly maintained registry.
  */
 const liveEntities = new Set<FoundEntity>();
+const entitiesByModel = new WeakMap<THREE.Object3D, FoundEntity & { getPhysicsRadius(): number }>();
 const disposals = new Map<FoundEntity, () => void>();
 const entityWorlds = new WeakMap<FoundEntity, EntityTickingArea>();
 const mouseRegistrations = new WeakMap<FoundEntity, ReturnType<typeof registerMouseTarget>>();
 let currentEntityWorld: EntityTickingArea | undefined;
 
 /** Resolve an already registered action entity for the picked model without creating a projection. */
-export function findActionEntity(model: THREE.Object3D): FoundEntity | undefined {
-  const entity = model.userData.actionEntity as FoundEntity | undefined;
-  return entity?.model === model && liveEntities.has(entity) && !entity.isRemoved ? entity : undefined;
+export function findActionEntity(model: THREE.Object3D | null | undefined): FoundEntity | undefined {
+  const entity = model ? entitiesByModel.get(model) : undefined;
+  return entity && entity.model === model && liveEntities.has(entity) && !entity.isRemoved ? entity : undefined;
 }
 
 function setPrefabActive(entity: FoundEntity, active: boolean): void {
@@ -130,7 +134,7 @@ function setPrefabActive(entity: FoundEntity, active: boolean): void {
 
 /** Release a model projection, including when its logical item survives a visual replacement or pickup. */
 export function disposeActionEntity(model: THREE.Object3D): void {
-  const entity = model.userData.actionEntity as FoundEntity | undefined;
+  const entity = entitiesByModel.get(model);
   if (!entity) return;
   const dispose = disposals.get(entity);
   disposals.delete(entity);

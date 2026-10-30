@@ -1,3 +1,4 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import { BufferedAction, type BufferedActionObject } from './bufferedaction.ts';
 import type { ActionWorldContext, ActionAnimationController, ActionLocomotor } from './actionContext.ts';
@@ -30,7 +31,7 @@ function sceneAction(target: MachineTarget): MachineAction | undefined {
 /** Scene actions are discovered from the machine component and its tags, never from the prefab ID. */
 export function getMachineActions(model: THREE.Object3D | undefined): MouseActionCandidate[] {
   if (!model) return [];
-  const target = model.userData.actionEntity as MachineTarget | undefined;
+  const target = findActionEntity(model) as MachineTarget | undefined;
   if (!target?.components.machine) return [];
   const action = sceneAction(target);
   return action ? [{ action: { action, target }, button: 'right', model }] : [];

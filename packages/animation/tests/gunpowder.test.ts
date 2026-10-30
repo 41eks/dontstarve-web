@@ -1,3 +1,4 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -52,7 +53,7 @@ it('lights gunpowder with a torch, explodes its stack, works nearby stone fruit 
     const powder = s.ground.entities.get('test:gunpowder:0')!, near = s.ground.entities.get('test:rock_avocado_fruit:6')!;
     const far = s.ground.entities.get('test:rock_avocado_fruit:30')!, log = s.ground.entities.get('test:log:-4')!;
     const torch = s.inventory.entities.create({ itemId: 'torch', count: 1 }); configureTorchEntity(torch);
-    const target = (id: string) => s.scene.children.find(model => model.userData.actionEntity?.components === s.ground.entities.get(id)!.components)!.userData.actionEntity;
+    const target = (id: string) => findActionEntity(s.scene.children.find(model => findActionEntity(model)?.components === s.ground.entities.get(id)!.components)!);
     // Only inst with a burnable are LIGHT targets; hard stone fruit is not.
     expect(collectEquippedActions(torch, target(powder.id), true)).toContain('LIGHT');
     expect(collectEquippedActions(torch, target(near.id), true)).not.toContain('LIGHT');

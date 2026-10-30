@@ -1,3 +1,4 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import type { Stewer, StewerHarvester } from '../../componets/src/stewer';
 import { BufferedAction, type BufferedActionObject } from './bufferedaction.ts';
@@ -19,7 +20,7 @@ export interface PreparedHarvestReceiver extends StewerHarvester { dispose(): vo
 
 function canHarvest(target: HarvestTarget): boolean {
   return !!target.model.parent && target.model.visible
-    && target.model.userData.components?.stewer === target.component
+    && (findActionEntity(target.model)?.components.stewer ?? prefabInstance(target.model)?.components.stewer) === target.component
     && !target.hasTag('burnt') && target.hasTag('donecooking') && target.component.IsDone();
 }
 
@@ -27,12 +28,12 @@ function canHarvest(target: HarvestTarget): boolean {
 export function getHarvestActions(model: THREE.Object3D | undefined): MouseActionCandidate[] {
   const actions: MouseActionCandidate[] = [];
   if (!model) return actions;
-  const component = model.userData.components?.stewer as Stewer | undefined;
+  const component = (findActionEntity(model)?.components.stewer ?? prefabInstance(model)?.components.stewer) as Stewer | undefined;
   if (!component) return actions;
   const target: HarvestTarget = {
-    model, component, prefab: model.userData.actionEntity?.prefab ?? prefabInstance(model)?.prefab,
+    model, component, prefab: findActionEntity(model)?.prefab ?? prefabInstance(model)?.prefab,
     hasTag: tag => modelHasTag(model, tag),
-    getPosition: () => model.userData.getGroundPosition?.() ?? model.position.clone(),
+    getPosition: () => findActionEntity(model)?.getPosition() ?? prefabInstance(model)?.position ?? model.position,
   };
   for (const button of ['left', 'right'] as const) actions.push({
     action: { action: 'HARVEST', target }, button, model, available: canHarvest(target),
@@ -116,7 +117,7 @@ export class HarvestActionController {
     const position = target.getPosition();
     if (!this.inReach(target)) {
       this.direction.subVectors(this.world.player.position, position).setY(0).normalize();
-      const destination = position.addScaledVector(this.direction, HARVEST_REACH * .8);
+      const destination = position.clone().addScaledVector(this.direction, HARVEST_REACH * .8);
       if (!this.locomotor.destination || this.locomotor.destination.distanceToSquared(destination) > .01) {
         if (!this.locomotor.goToPoint(destination)) this.cancel();
       }
@@ -144,7 +145,7 @@ export class HarvestActionController {
 
   private inReach(target: HarvestTarget): boolean {
     const position = target.getPosition(), player = this.world.player.position;
-    return (position.x - player.x) ** 2 + (position.z - player.z) ** 2 <= HARVEST_REACH ** 2;
+    return position.distanceToSquared(player) <= HARVEST_REACH ** 2;
   }
 
   private faceTarget(position: THREE.Vector3): void {

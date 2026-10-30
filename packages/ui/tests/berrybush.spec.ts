@@ -32,8 +32,8 @@ test('reskins and digs berrybush, replants the skinned root and restores its fer
     new CustomEvent('game:debug-command', { detail: { command } })), command);
   const screenPoint = (planted: boolean | 'dug') => page.evaluate(async ({ planted, moduleUrl }) => {
     const { scene, view } = (window as any).berrybushGame;
-    const model = scene.children.find((model: any) => planted === 'dug' ? model.userData.itemId === 'dug_berrybush'
-      : (window as any).__prefabInstance(model)?.prefab === 'berrybush' && !!model.userData.components.pickable.exportState().transplanted === planted);
+    const model = scene.children.find((model: any) => planted === 'dug' ? ((window as any).__findActionEntity(model)?.prefab ?? (window as any).__prefabInstance(model)?.prefab) === 'dug_berrybush'
+      : (window as any).__prefabInstance(model)?.prefab === 'berrybush' && !!((window as any).__findActionEntity(model)?.components ?? (window as any).__prefabInstance(model)!.components).pickable.exportState().transplanted === planted);
     if (!model) throw new Error('No berrybush target');
     scene.updateMatrixWorld(true);
     const { spriteScreenPoint } = await import(moduleUrl);
@@ -61,7 +61,7 @@ test('reskins and digs berrybush, replants the skinned root and restores its fer
   await bar.locator('[data-item-id="shovel"]').dragTo(hand);
   wild = await hover(false, 'right', 'DIG');
   await page.mouse.click(wild.x, wild.y, { button: 'right' });
-  await expect.poll(() => page.evaluate(() => (window as any).berrybushGame.scene.children.some((model: any) => model.userData.itemId === 'dug_berrybush'))).toBe(true);
+  await expect.poll(() => page.evaluate(() => (window as any).berrybushGame.scene.children.some((model: any) => ((window as any).__findActionEntity(model)?.prefab ?? (window as any).__prefabInstance(model)?.prefab) === 'dug_berrybush'))).toBe(true);
   const dug = await hover('dug', 'left', 'PICKUP');
   await page.mouse.click(dug.x, dug.y);
   await expect(bar.locator('[data-item-id="dug_berrybush"] .inventory-slot__icon[data-loaded="true"]')).toBeVisible();
@@ -77,8 +77,8 @@ test('reskins and digs berrybush, replants the skinned root and restores its fer
   await expect.poll(() => page.evaluate(() => (window as any).berrybushGame.scene.children.filter((model: any) => (window as any).__prefabInstance(model)?.prefab === 'berrybush').length)).toBe(1);
   await expect.poll(() => count('dug_berrybush')).toBe(0);
   const root = await page.evaluate(() => {
-    const model = (window as any).berrybushGame.scene.children.find((model: any) => model.userData.components?.pickable?.exportState().transplanted);
-    return { id: (window as any).__prefabInstance(model)?.entityId, position: model.position.toArray(), skinId: (window as any).__prefabInstance(model)?.skinId, state: model.userData.components.pickable.exportState() };
+    const model = (window as any).berrybushGame.scene.children.find((model: any) => ((window as any).__findActionEntity(model)?.components ?? (window as any).__prefabInstance(model)!.components)?.pickable?.exportState().transplanted);
+    return { id: (window as any).__prefabInstance(model)?.entityId, position: model.position.toArray(), skinId: (window as any).__prefabInstance(model)?.skinId, state: ((window as any).__findActionEntity(model)?.components ?? (window as any).__prefabInstance(model)!.components).pickable.exportState() };
   });
   expect(root.skinId).toBe('berrybush_cawnival');
   expect(root.state).toMatchObject({ picked: true, transplanted: true, cyclesLeft: 0 });
@@ -88,7 +88,7 @@ test('reskins and digs berrybush, replants the skinned root and restores its fer
   await expect.poll(() => count('poop')).toBe(1);
   await expect.poll(() => page.evaluate(id => {
     const model = (window as any).berrybushGame.scene.children.find((model: any) => (window as any).__prefabInstance(model)?.entityId === id);
-    return model.userData.components.pickable.state.timer.peek().status;
+    return ((window as any).__findActionEntity(model)?.components ?? (window as any).__prefabInstance(model)!.components).pickable.state.timer.peek().status;
   }, root.id)).toBe('stopped'); // Initial world is winter: fertilizer cannot bypass the winter pause.
 
   const download = page.waitForEvent('download'); await submit('c_save()');
@@ -103,7 +103,7 @@ test('reskins and digs berrybush, replants the skinned root and restores its fer
   await page.reload(); await prepare();
   await expect.poll(() => page.evaluate(id => {
     const model = (window as any).berrybushGame.scene.children.find((model: any) => (window as any).__prefabInstance(model)?.entityId === id);
-    return model?.userData.components.pickable.exportState();
+    return ((window as any).__findActionEntity(model)?.components ?? (window as any).__prefabInstance(model)!.components).pickable.exportState();
   }, root.id)).toEqual(plant.components.pickable);
   await expect.poll(() => count('dug_berrybush')).toBe(0);
   expect(errors).toEqual([]);

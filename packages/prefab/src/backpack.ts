@@ -30,6 +30,6 @@ export const backpackVisual: EquipmentVisualFactory = item => {
   };
 };
 
-export function createBackpackEquipmentLifecycle(item: EquipmentVisualItem, context: Pick<EquipmentVisualContext, 'owner'>) {
+export function createBackpackEquipmentLifecycle(item: EquipmentVisualItem, context: Pick<EquipmentVisualContext, 'owner' | 'sprite'>) {
   return wornEquipmentLifecycle(backpackVisual(item), context);
 }

@@ -118,7 +118,7 @@ describe('FindEntities', () => {
     const item = new ItemEntity({ itemId: 'rocks', count: 1 });
     const moving = spawn(scene, 0, [], item);
     const peer = spawn(scene, 0);
-    moving.model.position.set(240, 0, 0);
+    item.transform.position.set(240, 0, 0);
     positions.set([new THREE.Vector3()]); // The next 60-frame position snapshot, even if the player stayed still.
     await settle();
     expect(moving.hasTag('tickingarea')).toBe(false);

@@ -1,8 +1,10 @@
+import { type SpriteState } from '@dontstarve-web/display';
+import { prefabInstance } from './prefabInstance';
 import * as THREE from 'three';
 import definitions from './definitions.json' with { type: 'json' };
 import { sculptingtable_init_fn } from '@dontstarve-web/animation/prefabskin';
 import { createRenderEffect, createSignal, type ReadonlySignal, type Signal } from '@dontstarve-web/signals';
-import { loadSymbolOverride, type LoadedSymbolOverride, type SpriteController } from '@dontstarve-web/animation/sprite';
+import { loadSymbolOverride, type LoadedSymbolOverride } from '@dontstarve-web/animation/sprite';
 import {
     type AnimatedBuildingBuiltContext,
     type AnimatedBuildingDefinition,
@@ -74,7 +76,7 @@ async function prepare(): Promise<SculptingResources> {
 function showHeldItem(model: THREE.Group, pickable: Pickable, resources: Signal<SculptingResources | undefined>, art?: ReadonlySignal<number>): () => void {
     return createRenderEffect(() => {
         art?.get();
-        const sprite = model.userData.animationController as SpriteController;
+        const sprite = (prefabInstance(model)!.sprite as SpriteState);
         const loaded = resources.get(), held = pickable.state.canInteractWith.get();
         const itemname = held ? pickable.product : undefined;
         sprite.overrideSymbol(SCULPTING_SYMBOL, itemname !== undefined && isSculptableMaterial(itemname) && loaded ? loaded.overrides[itemname] : undefined);
@@ -121,7 +123,7 @@ function oninit({ model, prepared, art }: AnimatedBuildingEventContext): void {
     trader.SetOnAccept((_giver, item) => {
         if (isSculptableMaterial(item.prefab)) giveItem(model, item.prefab);
     });
-    model.userData.components.trader = trader;
+    prefabInstance(model)!.components.trader = trader;
     const resources = createSignal(prepared as SculptingResources | undefined);
     model.userData.sculptingtable = { pickable, trader, sounds: new Set(), resources,
         stopHeldItem: showHeldItem(model, pickable, resources, art) } satisfies SculptingState;

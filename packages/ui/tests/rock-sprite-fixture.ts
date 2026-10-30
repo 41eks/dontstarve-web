@@ -1,3 +1,4 @@
+import { prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import * as THREE from 'three';
 import { RockManager } from '../../prefab/src/rocks';
 import { performToolWork } from '../../stategraphs/src/componentactions';
@@ -81,7 +82,7 @@ export async function checkMoonShellErosion() {
       for (let i = 0; i < 6; i++) performToolWork('MINE', target.entity, {});
       shells[index].userData.animationController.setPaused(true);
       // Remove the dropped seed rather than hiding it: a drawn prefab is visible until it sleeps or is removed.
-      for (const entity of [...scene.children]) if ((window as any).__prefabInstance(entity)?.prefab === 'moonrockseed') (window as any).__prefabInstance(entity).remove();
+      for (const entity of [...scene.children]) if (prefabInstance(entity)?.prefab === 'moonrockseed') prefabInstance(entity).remove();
     };
     breakShell(0); scheduler.advance(1); breakShell(1);
     const intact = await draw();

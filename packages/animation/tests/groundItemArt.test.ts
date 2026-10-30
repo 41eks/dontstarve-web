@@ -1,3 +1,4 @@
+import { prefabDisplay } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import type { PrefabDisplay } from '@dontstarve-web/display';
 import { readFile } from 'node:fs/promises';
@@ -48,7 +49,7 @@ it('reuses ground item resources and activity, and skips sleeping visuals in the
     const first = await world.spawn('sculpture_bishophead', 'head:1');
     const second = await world.spawn('sculpture_bishophead', 'head:2');
     // The displays load the art after the items exist.
-    await Promise.all([first, second].map(model => (model.userData.display as PrefabDisplay).artLoaded()));
+    await Promise.all([first, second].map(model => (prefabDisplay(model) as PrefabDisplay).artLoaded()));
     const mesh = firstMesh(first), dispose = vi.fn();
     expect(mesh.geometry.getAttribute('position').count).toBeGreaterThan(0);
     expect(mesh.geometry).toBe(firstMesh(second).geometry);

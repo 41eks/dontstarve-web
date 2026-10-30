@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url';
-import { readFile } from 'node:fs/promises';
+
 import { expect, test } from '@playwright/test';
 
 const urls = Object.fromEntries(['main', 'universal', 'camera', 'player', 'scene'].map(name =>
@@ -32,7 +32,7 @@ test('a running player slips on a frozen pond, slides along the heading, falls o
     const pond = scene.children.find((model: any) => (window as any).__prefabInstance(model)?.prefab === 'pond');
     return { sg: (window as any).__prefabInstance(player).animationController.stategraph.stateName as string, x: player.position.x as number, z: player.position.z as number,
       speed: Math.hypot(playerBody.velocity.x, playerBody.velocity.z) as number,
-      frozen: pond?.userData.frozen as boolean | undefined, slippery: pond?.userData.actionEntity?.hasTag('slipperyfeettarget') as boolean | undefined };
+      frozen: pond?.userData.frozen as boolean | undefined, slippery: (window as any).__findActionEntity(pond)?.hasTag('slipperyfeettarget') as boolean | undefined };
   });
   const movePlayer = (x: number, z: number) => page.evaluate(({ x, z }) => {
     const { player, playerBody } = (window as any).slipGame;

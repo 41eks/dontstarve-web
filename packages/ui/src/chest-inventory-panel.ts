@@ -7,7 +7,7 @@ import definitions from '@dontstarve-web/prefab/definitions.json' with { type: '
 import type { InventoryStack } from '@dontstarve-web/inventory';
 import type { SlotItem } from './slot/slot-model';
 import type { CookRequestDetail } from './cook-pot-panel';
-import { createEffect, WorldContentKey, type GetWatchWorldContent, type ReadonlySignal } from '@dontstarve-web/signals';
+import { createEffect, WorldContentKey, type GetWatchWorldContent } from '@dontstarve-web/signals';
 
 export const CHEST_SLOT_COUNT = 9;
 export const COOK_POT_SLOT_COUNT = 4;
@@ -118,7 +118,7 @@ export function createChestInventoryPanel(
   createEffect(() => { playerpositions.get(); update(); });
   const close = () => {
     stopBurnt?.(); stopBurnt = undefined;
-    openModel?.userData.components?.container?.Close(player);
+    prefabInstance(openModel)?.components.container?.Close(player);
     if (!element.isClosing) {
       openModel = undefined;
       element.hidden = true;
@@ -137,8 +137,7 @@ export function createChestInventoryPanel(
     },
     setOpen(model, isOpen, buildingPrefab = prefab) {
       if (isOpen) {
-        const burnt = model.userData.burntSignal as ReadonlySignal<boolean> | undefined;
-        if (burnt?.peek()) return;
+        if (prefabInstance(model)?.hasTag('burnt')) return;
         if (openModel !== model && element.slotContainer) element.close();
         stopBurnt?.(); stopBurnt = undefined;
         openModel = model;
@@ -154,9 +153,11 @@ export function createChestInventoryPanel(
           singleItems: container.singleItems,
           title: definitions.animatedBuildings[buildingPrefab].buildLabel,
         });
-        const component = model.userData.components?.container;
+        const component = prefabInstance(model)?.components.container;
         if (component && toItem) element.bindContainer(component.toSignal(), toItem);
-        stopBurnt = burnt?.subscribe(value => { if (value) element.close(); });
+        const onBurnt = () => element.close();
+        model.addEventListener('burntup' as never, onBurnt);
+        stopBurnt = () => model.removeEventListener('burntup' as never, onBurnt);
       } else if (openModel === model) {
         stopBurnt?.(); stopBurnt = undefined;
         element.close();

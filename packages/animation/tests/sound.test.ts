@@ -1,3 +1,4 @@
+import { PrefabDisplayGroup } from '../../display/src';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -109,7 +110,7 @@ describe('dwarf star source sounds', () => {
 
   it('attenuates independent stars as the player moves and releases their gains', async () => {
     const s = await setup();
-    const manager = new DwarfStarManager(new THREE.Scene(), '/dst/data/anim');
+    const manager = new DwarfStarManager(new PrefabDisplayGroup(new THREE.Scene()), '/dst/data/anim');
     // The scene decodes every event before it starts, so a star's loop begins when it is spawned.
     await PrewarmSounds();
     UpdateSoundListener(new THREE.Vector3());

@@ -1,3 +1,5 @@
+import { prefabDisplay } from '../../display/src';
+import { prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import * as THREE from 'three';
 import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
 import type { PrefabDisplay } from '../../display/src';
@@ -8,9 +10,9 @@ import { createSanityState } from '@dontstarve-web/signals';
 export async function checkCrown() {
   const sanity = createSanityState(200, 200);
   const player = createWilsonPlayer('/dst/data/anim', { sanityPercent: sanity.percent });
-  await player.userData.display.artLoaded();
+  await prefabDisplay(player).artLoaded();
   player.position.set(0, 0, 0);
-  const animation = (window as any).__prefabInstance(player).animationController as WilsonAnimationController;
+  const animation = prefabInstance(player).animationController as WilsonAnimationController;
   const scene = new THREE.Scene();
   scene.add(player);
   const camera = new THREE.OrthographicCamera(-7, 7, 14, -1, 0.1, 100);
@@ -36,7 +38,7 @@ export async function checkCrown() {
     return canvas.toDataURL();
   };
   capture('Unequipped');
-  const display = player.userData.display as PrefabDisplay;
+  const display = prefabDisplay(player) as PrefabDisplay;
   animation.setHat('alterguardianhat');
   // The worn crown names its builds and spawns its layers; their displays load the art.
   await display.artLoaded();
@@ -105,7 +107,7 @@ export async function checkCrown() {
   await animation.setHat(null);
   await draw();
   const removed = sample(28, 8);
-  const removedLight = !player.children.some(child => child.name === 'alterguardianhatlight');
+  const removedLight = ![...prefabInstance(player)!.light.slots.peek().keys()].some(key => key.startsWith('alterguardianhatlight:'));
   renderer.dispose();
   return { differentFrames: rising !== orbit && orbit !== rotated, bloomChangesPixels, failures,
     groundLight: { dark, lit, far, moved, removed }, removedLight };

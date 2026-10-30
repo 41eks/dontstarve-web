@@ -1,3 +1,4 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { createPickupDoer, performPickupAction } from '../../stategraphs/src/pickup';
 import { bindPlayerHandEquipment } from '../../../src/playerHandEquipment';
@@ -12,7 +13,7 @@ import { TORCH_FUEL, TURNON_FUELED_CONSUMPTION, TURNON_FULL_FUELED_CONSUMPTION, 
   getTorchController, createTorchGroundFactory } from '../../prefab/src/torch';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { PlaySound } from '../../prefab/src/sound';
-import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { createEmptyEntity, prefabInstance } from '../../prefab/src/prefabInstance';
 import { createPerishWorld } from './perishWorldFixture';
 
 /** The inst.Light an entity's model declares. */
@@ -137,7 +138,7 @@ describe('torch prefab burning lifecycle', () => {
       pushed.push({ name, slotEmpty: store.getEntity(hand) == null });
       if (name === 'itemranout') OnItemRanOut(store, data);
     } };
-    const binding = await bindPlayerHandEquipment({ handEquipmentExistenceState: store.handEquipmentExistenceState, owner, lightParent: new THREE.Group(), setHandAction() {} });
+    const binding = await bindPlayerHandEquipment({ handEquipmentExistenceState: store.handEquipmentExistenceState, owner, lightParent: createEmptyEntity('wilson').instance, setHandAction() {} });
     try {
       store.add('torch', 2);
       store.applySlotChanges([{ slot: bag, itemId: 'torch', delta: -1 }, { slot: hand, itemId: 'torch', delta: 1 }]);
@@ -163,7 +164,7 @@ describe('torch prefab burning lifecycle', () => {
     const entity = store.getEntity(slot)!;
     const controller = getTorchController(entity);
     const equip = vi.spyOn(controller, 'onequip');
-    const binding = await bindPlayerHandEquipment({ handEquipmentExistenceState: store.handEquipmentExistenceState, lightParent: new THREE.Group(), setHandAction() {} });
+    const binding = await bindPlayerHandEquipment({ handEquipmentExistenceState: store.handEquipmentExistenceState, lightParent: createEmptyEntity('wilson').instance, setHandAction() {} });
     const scene = new THREE.Scene(), player = new THREE.Group();
     const canvas = Object.assign(new EventTarget(), { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) });
     const manager = new GroundItemManager(scene, new THREE.PerspectiveCamera(),
@@ -203,7 +204,7 @@ describe('torch prefab burning lifecycle', () => {
       expect(record.components.torch).toEqual({ lit: true });
       vi.spyOn(THREE.Raycaster.prototype, 'intersectObjects').mockReturnValue([{ object: model } as unknown as THREE.Intersection]);
       world.advance(0.125);
-      performPickupAction(model.userData.pickupTarget, createPickupDoer(player, store));
+      performPickupAction(findActionEntity(model)!.pickupTarget, createPickupDoer(player, store));
       expect(manager.exportRecords()).toEqual([]);
       expect(store.getEntity(hand)).toBe(entity);
       expect(getTorchController(entity)).toBe(controller);

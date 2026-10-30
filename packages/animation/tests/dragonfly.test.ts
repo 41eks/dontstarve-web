@@ -1,3 +1,4 @@
+import { prefabDisplay } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -30,7 +31,7 @@ it('loads the saved dragonfly through fn then OnLoad and keeps the Lua looping i
   const { scheduler, dragonflies } = setup();
   try {
     const model = dragonflies.spawn(new THREE.Vector3(...record.transform.position), record);
-    await model.userData.display.artLoaded();
+    await prefabDisplay(model).artLoaded();
     const instance = prefabInstance(model)!;
     expect(instance.sprite.sprite.peek()).toMatchObject({ clip: { name: 'idle', loop: true }, queue: [] });
     expect(instance.listTags()).toEqual(expect.arrayContaining(['epic', 'noepicmusic', 'monster', 'hostile', 'dragonfly',
@@ -45,7 +46,7 @@ it('rebuilds the declared idle clip after the tile sleeps', async () => {
   const { scene, scheduler, awake, dragonflies } = setup();
   try {
     const model = dragonflies.spawn(new THREE.Vector3(...record.transform.position), record);
-    await model.userData.display.artLoaded();
+    await prefabDisplay(model).artLoaded();
     const instance = prefabInstance(model)!;
     awake.set(false); await settle();
     expect(instance.status.peek()).toBe('asleep');

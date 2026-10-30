@@ -1,3 +1,4 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import type { ActionWorldContext as WorldContext } from './actionContext.ts';
 import { mouseTargets } from '../../prefab/src/mouseTargets';
@@ -10,7 +11,7 @@ const SPRITE_PICK_SCALE = 1.2;
 
 function mouseVisible(object: THREE.Object3D): boolean {
     if (!object.visible && !isInstancedSpriteProxy(object)) return false;
-    const inst = object.userData.actionEntity as { hasTag?(tag: string): boolean } | undefined;
+    const inst = findActionEntity(object) as { hasTag?(tag: string): boolean } | undefined;
     return !(inst?.hasTag?.('NOCLICK') ?? modelHasTag(object, 'NOCLICK'));
 }
 

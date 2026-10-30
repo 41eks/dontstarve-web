@@ -14,10 +14,16 @@ import { bindTestWorld } from './worldContentFixture';
 import { configureBugNetEntity } from '../../prefab/src/bugnet';
 import { actionEntity, activePrefabs, disposeActionEntity } from '../../prefab/src/actionEntity';
 import { mouseTargets } from '../../prefab/src/mouseTargets';
-import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { PrefabInstance, prefabInstance } from '../../prefab/src/prefabInstance';
+import type { ArchiveSpriteCommands } from '@dontstarve-web/display';
+import { displayLights } from '../../display/src/displaySprites';
 
 /** The inst.Light an entity's model declares. */
 const declaredLight = (model: THREE.Object3D) => prefabInstance(model)?.light.peek();
+/** Whether the renderer reads a light at `model`. */
+const listed = (model: THREE.Object3D) => [...displayLights()].some(entry => entry.model === model);
+/** A swarm entity drawing through a mocked sprite. */
+const swarmInstance = (animation: object) => new PrefabInstance('fireflies', animation as unknown as ArchiveSpriteCommands);
 
 useTestTileMap();
 
@@ -40,10 +46,11 @@ function setup(night = true, position = new THREE.Vector3(10, 0, 0), random = ()
   const animation = { start: vi.fn(), playOnce: vi.fn(), update: vi.fn(), clearAnimation: vi.fn(), setLightOverride: vi.fn() };
   const entity = new ItemEntity({ itemId: 'fireflies', count: 1 });
   const handEquipment = createSignal<HandEquipment | null>(netEquipment());
-  const controller = new FirefliesController(model, animation,
+  const instance = swarmInstance(animation);
+  const controller = new FirefliesController(instance, model,
     { getWatchWorldContent, handEquipment }, entity.transform, random);
   cleanups.push(() => { controller.dispose(); unbind(); scheduler.dispose(); });
-  return { model, entity, animation, controller, cycle, playerpositions, handEquipment, setNight: (value: boolean) => { cycle.set(value ? 'night' : 'day'); },
+  return { model, instance, entity, animation, controller, cycle, playerpositions, handEquipment, setNight: (value: boolean) => { cycle.set(value ? 'night' : 'day'); },
     setPlayers: (value: THREE.Vector3[]) => { playerpositions.set(value.map(player => player.clone())); },
     tick: (seconds: number) => { for (let i = 0; i < Math.round(seconds * 100); i++) { scheduler.advance(.01); controller.update(.01); } } };
 }
@@ -62,7 +69,7 @@ describe('source fireflies light and proximity', () => {
     expect(mouseTargets.has(projected)).toBe(true);
     expect(s.entity.hasTag('NOCLICK')).toBe(false);
     expect(s.entity.hasTag('NOBLOCK')).toBe(true);
-    const light = s.controller.light.peek(), clips = s.animation.playOnce.mock.calls.length;
+    const light = s.instance.light.peek(), clips = s.animation.playOnce.mock.calls.length;
     for (const hand of [{ itemId: 'axe', EQUIPSLOTS: 'HANDS' } as const, { itemId: 'bugnet', EQUIPSLOTS: 'HANDS' } as const, null]) {
       s.handEquipment.set(hand); await settle();
       expect(s.controller.clickable).toBe(false);
@@ -70,9 +77,9 @@ describe('source fireflies light and proximity', () => {
       expect(activePrefabs).toContain(projected);
       // The held-net gate only drops the mouse candidate; NOCLICK still follows the source fade.
       expect(s.entity.hasTag('NOCLICK')).toBe(false);
-      expect(s.model.userData.tags).not.toContain('NOCLICK');
+      expect(s.instance.hasTag('NOCLICK')).toBe(false);
       expect(s.controller.workable).toBe(true);
-      expect(s.controller.light.peek()).toBe(light);
+      expect(s.instance.light.peek()).toBe(light);
     }
     s.handEquipment.set(netEquipment('test_net')); await settle();
     expect(s.controller.clickable).toBe(true);
@@ -93,17 +100,18 @@ describe('source fireflies light and proximity', () => {
     s.controller.place(false);
     await new Promise(resolve => setTimeout(resolve, 0));
     s.tick(1);
-    expect(s.animation.update).not.toHaveBeenCalled();
+    // Hidden by day: the manager does not visit the swarm, so its display advances no frames.
+    expect(s.controller.updating.peek()).toBe(false);
     s.setNight(true);
     await new Promise(resolve => setTimeout(resolve, 0));
     s.tick(2.1);
     await new Promise(resolve => setTimeout(resolve, 0));
     s.tick(3.1);
-    expect(s.animation.update).toHaveBeenCalled();
-    const light = s.controller.light.peek();
+    expect(s.controller.updating.peek()).toBe(true);
+    const light = s.instance.light.peek();
     expect(light?.intensity).toBe(.5);
     s.tick(1);
-    expect(s.controller.light.peek()).toBe(light);
+    expect(s.instance.light.peek()).toBe(light);
   });
 
   it('uses private world cycle changes for the delayed night check and releases world inputs on disposal', async () => {
@@ -132,7 +140,7 @@ describe('source fireflies light and proximity', () => {
     expect(s.controller.intensity).toBe(0);
     expect(s.controller.workable).toBe(false);
     expect(s.controller.visible).toBe(false);
-    expect(s.controller.light.peek()).toBeUndefined();
+    expect(s.instance.light.peek()).toBeUndefined();
     s.controller.dispose();
     const readCycle = vi.spyOn(s.cycle, 'get');
     const readPositions = vi.spyOn(s.playerpositions, 'get');
@@ -153,7 +161,7 @@ describe('source fireflies light and proximity', () => {
     s.tick(1.5);
     expect(s.controller.intensity).toBeCloseTo(0.25);
     s.tick(1.6);
-    expect(s.controller.light.peek()).toEqual(FIREFLIES_LIGHT);
+    expect(s.instance.light.peek()).toEqual(FIREFLIES_LIGHT);
     expect(s.animation.setLightOverride).toHaveBeenLastCalledWith(1);
     const complete = s.animation.playOnce.mock.calls[0][1] as () => void;
     complete();
@@ -180,9 +188,9 @@ describe('source fireflies light and proximity', () => {
     expect(s.controller.intensity).toBeLessThan(0.5);
     s.tick(0.4);
     expect(s.controller.clickable).toBe(false);
-    expect(s.model.userData.tags).toContain('NOCLICK');
+    expect(s.instance.hasTag('NOCLICK')).toBe(true);
     expect(s.controller.workable).toBe(true);
-    expect(s.controller.light.peek()).toBeUndefined();
+    expect(s.instance.light.peek()).toBeUndefined();
     s.tick(1.6);
     expect(s.controller.workable).toBe(false);
     s.setPlayers([new THREE.Vector3(14.99, 0, 0)]);
@@ -214,7 +222,7 @@ describe('source fireflies light and proximity', () => {
     expect(s.controller.visible).toBe(true);
     s.controller.dispose();
     s.tick(5);
-    expect(s.controller.light.peek()).toBeUndefined();
+    expect(s.instance.light.peek()).toBeUndefined();
     expect(s.controller.workable).toBe(false);
   });
 });
@@ -229,7 +237,8 @@ describe('fireflies tickingarea gate', () => {
     const model = new THREE.Group();
     const entity = new ItemEntity({ itemId: 'fireflies', count: 1 });
     const animation = { start: vi.fn(), playOnce: vi.fn(), update: vi.fn(), clearAnimation: vi.fn(), setLightOverride: vi.fn() };
-    const controller = new FirefliesController(model, animation, { getWatchWorldContent,
+    const instance = swarmInstance(animation);
+    const controller = new FirefliesController(instance, model, { getWatchWorldContent,
       handEquipment: createSignal<HandEquipment | null>(netEquipment()) }, entity.transform, () => 0);
     cleanups.push(() => { controller.dispose(); unbind(); scheduler.dispose(); });
     const settle = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -245,12 +254,11 @@ describe('fireflies tickingarea gate', () => {
     cycle.set('night'); playerpositions.set([new THREE.Vector3(40, 0, 6)]);
     await settle(); tick(5);
     expect(controller.clickable).toBe(false); // Sleeping swarms cannot see night or the new player snapshot.
-    expect(animation.update).not.toHaveBeenCalled(); // OnEntitySleep: update is skipped as well
+    expect(controller.visible).toBe(false); // OnEntitySleep: no fadein while the tile sleeps
 
     awake.set(true); await settle(); tick(3.1); await settle();
     expect(controller.visible).toBe(true);
-    controller.update(.1);
-    expect(animation.update).toHaveBeenCalled();
+    expect(controller.updating.peek()).toBe(true);
     expect(controller.clickable).toBe(true); // wake resyncs cycle and positions and runs the usual night check
 
     const stale = animation.playOnce.mock.calls.at(-1)![1] as () => void;
@@ -264,8 +272,8 @@ describe('fireflies tickingarea gate', () => {
     expect(controller.workable).toBe(false);
     expect(controller.updating.peek()).toBe(false);
     expect(controller.visible).toBe(false);
-    expect(model.userData.tags).toContain('NOCLICK');
-    expect(controller.light.peek()).toBeUndefined();
+    expect(instance.hasTag('NOCLICK')).toBe(true);
+    expect(instance.light.peek()).toBeUndefined();
     expect(daytimePlayerDistance).not.toHaveBeenCalled();
     stale();
     expect(animation.start).not.toHaveBeenCalled();
@@ -276,7 +284,7 @@ describe('fireflies tickingarea gate', () => {
     expect(controller.intensity).toBe(0);
     expect(controller.clickable).toBe(false);
     expect(controller.workable).toBe(false);
-    expect(controller.light.peek()).toBeUndefined();
+    expect(instance.light.peek()).toBeUndefined();
 
     cycle.set('night'); await settle(); tick(2.1); await settle(); tick(3.1);
     expect(controller.visible).toBe(true);
@@ -332,7 +340,7 @@ describe('real fireflies archive and ground transfers', () => {
       { itemId: 'fireflies', count: 1, name: '萤火虫', icon: 'fireflies.tex' }, new THREE.Vector3());
     const settle = () => new Promise(resolve => setTimeout(resolve, 0));
     await settle();
-    const update = vi.spyOn(model.userData.firefliesController as FirefliesController, 'update');
+    const update = vi.spyOn(FirefliesController.prototype, 'update');
     for (let i = 0; i < 5; i++) { scheduler.advance(.1); manager.update(.1, new THREE.Quaternion()); }
     expect(update).not.toHaveBeenCalled();
     cycle.set('night');
@@ -374,14 +382,18 @@ describe('real fireflies archive and ground transfers', () => {
     const nearEntity = manager.entities.get('fireflies:near');
     for (let i = 0; i < 51; i++) { scheduler.advance(.1); manager.update(.1, new THREE.Quaternion()); }
     expect(declaredLight(near)?.intensity).toBe(.5);
+    await settle();
+    expect(listed(near)).toBe(true);
     const target = manager.netCaptureTargets[0];
-    const nearUpdate = vi.spyOn(near.userData.animationController, 'update');
+    const nearUpdate = vi.spyOn(prefabInstance(near)!.sprite, 'update');
     position.set(new THREE.Vector3(300, 0, 0));
     playerpositions.set([new THREE.Vector3(300, 0, 0)]);
     await settle();
     expect(geometry(near)).toBeUndefined();
     expect(near.parent).toBeNull();
-    expect(declaredLight(near)).toBeUndefined();
+    // inst.Light stays declared through OnEntitySleep; the swarm's display stops listing it for the renderer.
+    expect(declaredLight(near)?.intensity).toBe(.5);
+    expect(listed(near)).toBe(false);
     // A player standing next to the swarm keeps it from fading in: it plays no animation, so nothing is built or sorted.
     expect(geometry(far)).toBeUndefined();
     expect(manager.renderEntities).toEqual([]);

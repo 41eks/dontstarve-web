@@ -38,6 +38,9 @@ export interface AnimStateJson {
   readonly overrides: ReadonlyMap<number, SymbolOverrideJson>;
   readonly hiddenLayers: ReadonlySet<number>;
   readonly hiddenSymbols: ReadonlySet<number>;
+  /** Show/ShowSymbol: merged over another declaration, these are shown even where the one below hides them. */
+  readonly shownLayers?: ReadonlySet<number>;
+  readonly shownSymbols?: ReadonlySet<number>;
   /** AnimState:SetSymbolLightOverride: the minimum light of each listed symbol's parts. */
   readonly symbolLightOverrides: ReadonlyMap<number, number>;
   readonly symbolAnimations: ReadonlyMap<number, SymbolAnimationJson>;
@@ -88,6 +91,28 @@ export function resolveAnimState(state: AnimStateJson, art: AnimStateArt | undef
   return { state: { ...state, overrides, symbolAnimations }, missing };
 }
 
+/** Declarations drawn over one another, in order: a later one's overrides and shown or hidden layers and symbols win; the rest add up. */
+export function mergeAnimStates<S extends AnimStateJson | ResolvedAnimState>(states: readonly S[]): S {
+  if (states.length === 1) return states[0];
+  const overrides = new Map<number, unknown>();
+  const symbolAnimations = new Map<number, unknown>();
+  const symbolLightOverrides = new Map<number, number>();
+  const hiddenLayers = new Set<number>(), hiddenSymbols = new Set<number>(), blooms = new Set<number>();
+  const attachments: AnimationAttachment[] = [];
+  for (const state of states) {
+    for (const [hash, override] of state.overrides) overrides.set(hash, override);
+    for (const [hash, animation] of state.symbolAnimations) symbolAnimations.set(hash, animation);
+    for (const [hash, light] of state.symbolLightOverrides) symbolLightOverrides.set(hash, light);
+    for (const layer of state.hiddenLayers) hiddenLayers.add(layer);
+    for (const layer of state.shownLayers ?? []) hiddenLayers.delete(layer);
+    for (const symbol of state.hiddenSymbols) hiddenSymbols.add(symbol);
+    for (const symbol of state.shownSymbols ?? []) hiddenSymbols.delete(symbol);
+    for (const bloom of state.blooms) blooms.add(bloom);
+    attachments.push(...state.attachments);
+  }
+  return { overrides, hiddenLayers, hiddenSymbols, symbolLightOverrides, symbolAnimations, blooms, attachments } as unknown as S;
+}
+
 export function animStateVisible(state: Pick<AnimStateJson, 'hiddenLayers' | 'hiddenSymbols'>, element: AnimElement): boolean {
   const group = visibilityGroups.get(element.imageHash);
   return !state.hiddenSymbols.has(element.imageHash) && !state.hiddenLayers.has(element.layerHash)
@@ -135,19 +160,21 @@ export class AnimState {
   private readonly overrides = new Map<number, SymbolOverrideJson>();
   private readonly hiddenLayers = new Set<number>();
   private readonly hiddenSymbols = new Set<number>();
+  private readonly shownLayers = new Set<number>();
+  private readonly shownSymbols = new Set<number>();
   private readonly symbolLightOverrides = new Map<number, number>();
   private readonly symbolAnimations = new Map<number, SymbolAnimationJson>();
   private readonly blooms = new Set<number>();
   private readonly attachments = new Set<AnimationAttachment>();
   private readonly state = createSignal<AnimStateJson>({ overrides: new Map(), hiddenLayers: new Set(), hiddenSymbols: new Set(),
-    symbolLightOverrides: new Map(), symbolAnimations: new Map(), blooms: new Set(), attachments: [] });
+    shownLayers: new Set(), shownSymbols: new Set(), symbolLightOverrides: new Map(), symbolAnimations: new Map(), blooms: new Set(), attachments: [] });
   readonly json = readonlySignal(this.state);
   private readonly onChanged: () => void;
 
   constructor(changed: () => void = () => {}) { this.onChanged = changed; }
   private changed(): void {
     this.state.set({ overrides: new Map(this.overrides), hiddenLayers: new Set(this.hiddenLayers), hiddenSymbols: new Set(this.hiddenSymbols),
-      symbolLightOverrides: new Map(this.symbolLightOverrides), symbolAnimations: new Map(this.symbolAnimations),
+      shownLayers: new Set(this.shownLayers), shownSymbols: new Set(this.shownSymbols), symbolLightOverrides: new Map(this.symbolLightOverrides), symbolAnimations: new Map(this.symbolAnimations),
       blooms: new Set(this.blooms), attachments: [...this.attachments] });
     this.onChanged();
   }
@@ -174,10 +201,10 @@ export class AnimState {
     this.changed();
   }
   ClearOverrideSymbol(symbol: string): void { this.overrides.delete(smallHash(symbol)); this.changed(); }
-  Show(layer: string): void { this.hiddenLayers.delete(smallHash(layer.toLowerCase())); this.changed(); }
-  Hide(layer: string): void { this.hiddenLayers.add(smallHash(layer.toLowerCase())); this.changed(); }
-  ShowSymbol(symbol: string): void { this.hiddenSymbols.delete(smallHash(symbol)); this.changed(); }
-  HideSymbol(symbol: string): void { this.hiddenSymbols.add(smallHash(symbol)); this.changed(); }
+  Show(layer: string): void { const hash = smallHash(layer.toLowerCase()); this.hiddenLayers.delete(hash); this.shownLayers.add(hash); this.changed(); }
+  Hide(layer: string): void { const hash = smallHash(layer.toLowerCase()); this.shownLayers.delete(hash); this.hiddenLayers.add(hash); this.changed(); }
+  ShowSymbol(symbol: string): void { const hash = smallHash(symbol); this.hiddenSymbols.delete(hash); this.shownSymbols.add(hash); this.changed(); }
+  HideSymbol(symbol: string): void { const hash = smallHash(symbol); this.shownSymbols.delete(hash); this.hiddenSymbols.add(hash); this.changed(); }
   /** 0 restores the symbol to the entity's own light. */
   SetSymbolLightOverride(symbol: string, value: number): void {
     const hash = smallHash(symbol), clamped = Math.min(1, Math.max(0, value));

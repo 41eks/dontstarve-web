@@ -7,3 +7,7 @@
 - Keep visible horizontal and vertical gaps between crafting recipe slots.
 
 - All inventory-related slots (inventory, equipment, chest, and cook pot / prepared food) must have the same final on-screen width and height as the `inventory-bar` slots. Adjust spacing and panel/background size independently, and compensate for panel scaling so it does not change slot sizes.
+
+## Inventory slot events
+
+- Keep `game:slot-transfer-request`, `game:slot-select`, and `game:slot-context-menu` bubbling across the inventory bar's shadow root. Selection must remain cancelable and run before transfer pickup so placement can claim the click with `preventDefault()`.

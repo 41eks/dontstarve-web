@@ -2152,5 +2152,159 @@
       "frameRate": 30.0,
       "frames": 24
     }
+  ],
+  "mushroom_tree_med.zip": [
+    {
+      "name": "idle_loop",
+      "bank": 2782536434,
+      "frameRate": 30.0,
+      "frames": 65
+    },
+    {
+      "name": "chop",
+      "bank": 2782536434,
+      "frameRate": 30.0,
+      "frames": 14
+    },
+    {
+      "name": "fall",
+      "bank": 2782536434,
+      "frameRate": 30.0,
+      "frames": 37
+    },
+    {
+      "name": "idle_stump",
+      "bank": 2782536434,
+      "frameRate": 30.0,
+      "frames": 4
+    },
+    {
+      "name": "burning_loop",
+      "bank": 2782536434,
+      "frameRate": 30.0,
+      "frames": 4
+    },
+    {
+      "name": "burnt",
+      "bank": 2782536434,
+      "frameRate": 30.0,
+      "frames": 2
+    },
+    {
+      "name": "burnt_stump",
+      "bank": 2782536434,
+      "frameRate": 30.0,
+      "frames": 2
+    },
+    {
+      "name": "chop_burnt",
+      "bank": 2782536434,
+      "frameRate": 30.0,
+      "frames": 33
+    },
+    {
+      "name": "idle_chop_burnt",
+      "bank": 2782536434,
+      "frameRate": 30.0,
+      "frames": 4
+    },
+    {
+      "name": "change",
+      "bank": 2782536434,
+      "frameRate": 30.0,
+      "frames": 27
+    },
+    {
+      "name": "cough",
+      "bank": 2782536434,
+      "frameRate": 30.0,
+      "frames": 34
+    },
+    {
+      "name": "shrink",
+      "bank": 2782536434,
+      "frameRate": 30.0,
+      "frames": 27
+    }
+  ],
+  "mushroom_tree_tall.zip": [
+    {
+      "name": "idle_loop",
+      "bank": 3144482277,
+      "frameRate": 30.0,
+      "frames": 79
+    },
+    {
+      "name": "chop",
+      "bank": 3144482277,
+      "frameRate": 30.0,
+      "frames": 14
+    },
+    {
+      "name": "fall",
+      "bank": 3144482277,
+      "frameRate": 30.0,
+      "frames": 43
+    },
+    {
+      "name": "idle_stump",
+      "bank": 3144482277,
+      "frameRate": 30.0,
+      "frames": 4
+    },
+    {
+      "name": "burning_loop",
+      "bank": 3144482277,
+      "frameRate": 30.0,
+      "frames": 4
+    },
+    {
+      "name": "burnt",
+      "bank": 3144482277,
+      "frameRate": 30.0,
+      "frames": 2
+    },
+    {
+      "name": "burnt_stump",
+      "bank": 3144482277,
+      "frameRate": 30.0,
+      "frames": 2
+    },
+    {
+      "name": "chop_burnt",
+      "bank": 3144482277,
+      "frameRate": 30.0,
+      "frames": 37
+    },
+    {
+      "name": "idle_chop_burnt",
+      "bank": 3144482277,
+      "frameRate": 30.0,
+      "frames": 4
+    },
+    {
+      "name": "misc",
+      "bank": 3144482277,
+      "frameRate": 30.0,
+      "frames": 19
+    },
+    {
+      "name": "change",
+      "bank": 3144482277,
+      "frameRate": 30.0,
+      "frames": 28
+    },
+    {
+      "name": "cough",
+      "bank": 3144482277,
+      "frameRate": 30.0,
+      "frames": 33
+    },
+    {
+      "name": "shrink",
+      "bank": 3144482277,
+      "frameRate": 30.0,
+      "frames": 28
+    }
   ]
 }

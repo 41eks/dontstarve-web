@@ -7,4 +7,5 @@ export { type DisplayEngine, type ArchiveSpriteSource } from './displayEngine';
 export { DisplaySprite, displayLightOverride } from './displaySprites';
 export { displayLights, type DisplayLight } from './displaySprites';
 export { LightState, type LightJson } from './lightState';
-export { type FollowerFx, type FollowerFxInstance } from './followerFx';
+export { type FollowerFx } from './followerFx';
+export { type VfxJson, type VfxEmitterJson } from './vfx';

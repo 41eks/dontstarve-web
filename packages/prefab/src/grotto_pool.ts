@@ -1,3 +1,4 @@
+import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
@@ -144,7 +145,7 @@ interface Grotto {
 
 /** The grotto pools and their props; sound sources are registered with the world presentation scheduler. */
 export class GrottoPoolManager {
-  private readonly scene: THREE.Scene;
+  private readonly displays: PrefabDisplayGroup;
   private readonly world: GrottoPoolWorld;
   private readonly assets = new ArchiveSpriteAssets();
   private readonly grottos = new Map<THREE.Group, Grotto>();
@@ -152,7 +153,7 @@ export class GrottoPoolManager {
   private disposed = false;
 
   constructor(scene: THREE.Scene, world: GrottoPoolWorld) {
-    this.scene = scene; this.world = world;
+    this.displays = new PrefabDisplayGroup(scene); this.world = world;
   }
 
   async spawn(prefab: GrottoId, position: THREE.Vector3, saved?: GrottoRecord): Promise<THREE.Group> {
@@ -205,7 +206,7 @@ export class GrottoPoolManager {
       createEffect(() => { grotto.visible = awake.get(); instance.setActive(awake.get()); mist?.instance.setActive(awake.get()); });
     }
     this.grottos.set(model, grotto); this.byId.set(id, model);
-    this.scene.add(model);
+    this.displays.mount(prefabDisplay(model)!);
     return model;
   }
 
@@ -293,7 +294,7 @@ export class GrottoPoolManager {
     // on_minable_load: a prop saved with no work left comes back mined out.
     workable.SetOnLoadFn(() => { if (workable.workleft.peek() <= 0) this.setMined(grotto, definition); });
     if (saved) workable.OnLoad({ workleft: saved.workleft });
-    Object.assign(model.userData.components, { workable, lootdropper });
+    Object.assign(prefabInstance(model)!.components, { workable, lootdropper });
     new ToolMouseTarget(inst, grotto.instance, workable, this.world.handEquipment);
   }
 
@@ -397,6 +398,7 @@ export class GrottoPoolManager {
     if (this.disposed) return;
     for (const model of [...this.grottos.keys()]) this.remove(model);
     this.disposed = true;
+    this.displays.dispose();
     this.assets.dispose();
   }
 }

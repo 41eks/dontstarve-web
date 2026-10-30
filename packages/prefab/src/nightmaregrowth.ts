@@ -1,3 +1,4 @@
+import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import { MakeObstaclePhysics } from './standardcomponents';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
@@ -28,13 +29,13 @@ interface NightmareGrowth {
 export class NightmareGrowthManager {
   private factoryRequest?: Promise<AnimatedSpriteFactory>;
   private readonly growths = new Set<NightmareGrowth>();
-  private readonly scene: THREE.Scene;
+  private readonly displays: PrefabDisplayGroup;
   private readonly assetBaseUrl: string;
   private disposed = false;
   private readonly physics?: CANNON.World;
 
   constructor(scene: THREE.Scene, assetBaseUrl: string, physics?: CANNON.World) {
-    this.scene = scene;
+    this.displays = new PrefabDisplayGroup(scene);
     this.physics = physics;
     this.assetBaseUrl = assetBaseUrl;
   }
@@ -76,7 +77,7 @@ export class NightmareGrowthManager {
       nightmareGrowthCrack: crackModel,
     });
     this.growths.add({ model, growth, crack, crackRotation });
-    this.scene.add(crackModel, model);
+    this.displays.mount(prefabDisplay(crackModel)!); this.displays.mount(prefabDisplay(model)!);
     return model;
   }
 
@@ -98,5 +99,6 @@ export class NightmareGrowthManager {
     for (const { growth, crack } of this.growths) for (const { instance, display } of [growth, crack]) { instance.remove(); display.dispose(); }
     this.growths.clear();
     void this.factoryRequest?.then((factory) => factory.dispose(), () => undefined);
+    this.displays.dispose();
   }
 }

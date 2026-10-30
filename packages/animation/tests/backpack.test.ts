@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { unzipSync } from 'fflate';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { loadDeclaredArt } from './animStateFixture';
+import { declaredAnimState, loadDeclaredArt } from './animStateFixture';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS, GROUND_ITEM_SKIN_SPECS } from '../../prefab/src/groundItems';
 import { createGroundItemVisual } from './groundItemVisual';
 import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
@@ -41,7 +41,7 @@ it('uses skinned swap_body art in every player facing and hides invisible equipm
   for (const skinId of ['backpack_babybeef', 'backpack_invisible']) {
     controller.setBackpack(true, skinId);
     // The player's display loads the named skin build before it is drawn.
-    await loadDeclaredArt(controller.AnimState, controller.equipmentAssets);
+    await loadDeclaredArt(declaredAnimState(wilsonPlayerInstance(player).sprite), controller.equipmentAssets);
     let hasSkinnedArt = false;
     for (const facing of ['up', 'down', 'side'] as const) {
       controller.setFacing(facing);

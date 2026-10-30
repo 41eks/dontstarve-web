@@ -1,6 +1,6 @@
+import { type SpriteState } from '@dontstarve-web/display';
 import * as THREE from 'three';
-import { createEffect, createRenderEffect, createSignal, watchSignal, type ReadonlySignal } from '@dontstarve-web/signals';
-import type { SpriteController } from '@dontstarve-web/animation/sprite';
+import { createRenderEffect, createSignal, type ReadonlySignal } from '@dontstarve-web/signals';
 import { bookstation_init_fn } from '@dontstarve-web/animation/prefabskin';
 import { ComponentTimer } from '../../componets/src/timer';
 import { actionEntity } from './actionEntity';
@@ -17,8 +17,8 @@ import definitions from './definitions.json' with { type: 'json' };
 import { PlaySound } from './sound';
 import { TILE_SIZE } from './tile';
 import type { BuildingContainer } from './containers';
-import type { WorldContext } from './worldContext';
-import { modelHasTag } from './prefabInstance';
+import type { WorldContext, PrefabWorldContext } from './worldContext';
+import { modelHasTag, prefabInstance } from './prefabInstance';
 
 export const BOOKSTATION_ID = 'bookstation' as const;
 export type BookstationId = typeof BOOKSTATION_ID;
@@ -37,7 +37,7 @@ const BOOKS_FULL = 'full';
 interface BookstationHost {
     readonly model: THREE.Group;
     readonly container: BuildingContainer;
-    readonly world: WorldContext;
+    readonly world: PrefabWorldContext;
     /** Changes whenever the drawn sprite is rebuilt, so the book layers are shown again. */
     readonly art?: ReadonlySignal<number>;
 }
@@ -60,11 +60,9 @@ export class Bookstation {
         if (!scheduler) throw new Error('A bookstation needs the world scheduler');
         this.restoreTimer = new ComponentTimer(scheduler, () => this.RestoreBooks());
         this.stopLifecycle = host.container.subscribeLifecycle(() => this.refresh());
-        const burnt = host.model.userData.burntSignal as ReadonlySignal<boolean> | undefined;
-        if (burnt) {
-            const watched = watchSignal(burnt, cleanup => { this.stopWatching = cleanup; });
-            createEffect(() => { if (watched.get()) this.stopTimer(); });
-        }
+        const onBurnt = () => this.stopTimer();
+        host.model.addEventListener('burntup' as never, onBurnt);
+        this.stopWatching = () => host.model.removeEventListener('burntup' as never, onBurnt);
         // UpdateBookAesthetics: Show/Hide the book layers by fullness, also on every rebuilt sprite and reskin.
         this.stopAesthetics = createRenderEffect(() => {
             host.art?.get();
@@ -80,7 +78,7 @@ export class Bookstation {
 
     get restore() { return this.restoreTimer.snapshot; }
 
-    private get animation(): SpriteController { return this.host.model.userData.animationController as SpriteController; }
+    private get animation(): SpriteState { return (prefabInstance(this.host.model)!.sprite as SpriteState); }
 
     /** ItemGet / ItemLose: start or cancel the restore task, then UpdateBookAesthetics. */
     private refresh(): void {
@@ -105,7 +103,7 @@ export class Bookstation {
         if (this.disposed) return;
         const { container, model, world } = this.host;
         const player = world.player;
-        const nearPlayer = player.position.distanceToSquared(model.userData.getGroundPosition())
+        const nearPlayer = player.position.distanceToSquared(prefabInstance(model)!.position)
             <= BOOKSTATION_BONUS_RANGE * BOOKSTATION_BONUS_RANGE;
         const bonus = nearPlayer && modelHasTag(player, 'bookbuilder')
             ? BOOKSTATION_WICKER_BONUS : 1;
@@ -147,7 +145,7 @@ function onbuilt(context: AnimatedBuildingBuiltContext): void {
 }
 
 function oninit({ model, world, art }: AnimatedBuildingEventContext): void {
-    const container = model.userData.components?.container as BuildingContainer | undefined;
+    const container = prefabInstance(model)!.components?.container as BuildingContainer | undefined;
     if (!world || !container) throw new Error('A bookstation needs its container and world');
     const entity = actionEntity(model, BOOKSTATION_ID);
     for (const tag of ['structure', 'giftmachine', 'prototyper']) entity.addTag(tag);
@@ -159,7 +157,7 @@ function onturnon(context: AnimatedBuildingEventContext): void {
     if (bookstation) bookstation.on = true;
     if (actionEntity(context.model, BOOKSTATION_ID).hasTag('burnt')) return;
     // onbuilt's place clip hands over to proximity_loop when it finishes.
-    if ((context.model.userData.animationController as SpriteController).currentAnimation === 'place') return;
+    if ((prefabInstance(context.model)!.sprite as SpriteState).currentAnimation === 'place') return;
     context.animation.start('proximity_loop');
 }
 

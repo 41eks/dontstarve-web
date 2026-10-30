@@ -6,11 +6,11 @@ import { FxAttachments, type FxRenderEntry } from './fxAttachments';
 import { FollowerFxSlot } from './followerFx';
 import { ArchiveEngine, type ArchiveSpriteSource, type DisplayEngine } from './displayEngine';
 import { DisplaySprite, listDisplayLight, type DisplayLight } from './displaySprites';
-import type { LightState } from './lightState';
-import type { AppearanceJson, ClipJson, NamedSpriteArt, SkinJson, SpriteJson, SpriteSourceJson, SpriteState } from './spriteState';
+import type { LightJson, LightState } from './lightState';
+import { animStateDeclarations, type AppearanceJson, type ClipJson, type NamedSpriteArt, type SkinJson, type SpriteJson, type SpriteSourceJson, type SpriteState } from './spriteState';
 import { smallHash, type ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
 import type { SpriteArtSource, SpriteSkin } from '@dontstarve-web/animation/sprite';
-import { resolveAnimState } from '@dontstarve-web/animation/animState';
+import { mergeAnimStates, resolveAnimState, type AnimStateArt, type AnimStateJson } from '@dontstarve-web/animation/animState';
 import { facingFromRotation, selectsFacing } from '@dontstarve-web/animation/facing';
 
 /** active: drawn and in the scene; asleep: nothing drawn and out of the scene; removed: everything released. */
@@ -71,6 +71,10 @@ export class PrefabDisplay {
   /** Archives the AnimState names that this display is loading. */
   private readonly loadingArt = new Set<string>();
   private dressedVersion = -1;
+  /** Whether the drawn sprite was given an AnimState, so that removing the last declaration clears it. */
+  private animStateDressed = false;
+  /** The AnimState declarations this display follows, by appearance key, with the snapshot of each it last drew. */
+  private readonly animStates = new Map<string, { readonly op: Extract<AppearanceJson, { kind: 'anim-state' }>; drawn?: AnimStateJson; stop(): void }>();
   private skin?: { declaration: SkinJson; id: string | undefined; value: SpriteSkin | undefined };
   private sourceArt?: { declaration: NamedSpriteArt; value: SpriteArtSource };
   /** The deferred sprite source while this display loads it. */
@@ -170,6 +174,7 @@ export class PrefabDisplay {
       let listed: DisplayLight | undefined;
       this.cleanups.push(createEffect(() => { listed = listDisplayLight(listed, this.model, status.get() === 'active' ? light.get() : undefined); }));
       this.cleanups.push(() => { listed = listDisplayLight(listed, this.model, undefined); });
+      this.followParentedLights(options.light, status);
     }
     this.listed = new DisplaySprite(this.model, json);
     const art = watchSignal(this.engine.art, stop => this.cleanups.push(stop));
@@ -340,8 +345,11 @@ export class PrefabDisplay {
       applied.skinId = json.skinId;
       this.dress(json);
     }
-    for (const [key, op] of json.appearance) if (op.kind !== 'skin' && applied.appearance.get(key) !== op) this.dressOne(op);
+    for (const [key, op] of json.appearance) {
+      if (op.kind !== 'skin' && op.kind !== 'anim-state' && applied.appearance.get(key) !== op) this.dressOne(op);
+    }
     applied.appearance = json.appearance;
+    this.refreshAnimStates(json);
     if (this.dressedVersion !== controller.art.peek()) this.dress(json);
     this.updateSymbolFollowers(json);
   }
@@ -379,14 +387,14 @@ export class PrefabDisplay {
     if (json.ground) controller.setGround?.(json.ground.renderOrder, json.ground.flat);
     if (json.meshOrder !== undefined) controller.setMeshOrder?.(json.meshOrder);
     if (json.depthOffset) controller.setDepthOffset?.(true);
-    for (const op of json.appearance.values()) if (op.kind !== 'skin') this.dressOne(op);
+    for (const op of json.appearance.values()) if (op.kind !== 'skin' && op.kind !== 'anim-state') this.dressOne(op);
+    this.dressAnimStates(json);
   }
 
   private dressOne(op: AppearanceJson): void {
     const controller = this.engine;
     switch (op.kind) {
       case 'skin': this.dressSkin(op.skin, this.json.peek().skinId); break;
-      case 'anim-state': this.dressAnimState(op); break;
       case 'archive-symbol': controller.setSymbolOverride?.(op.symbol, op.archive, op.sourceSymbol); break;
       case 'archive-hidden': controller.setSymbolHidden?.(op.symbol, op.hidden); break;
       case 'archive-build': controller.setBuildArchive?.(op.archive); break;
@@ -480,24 +488,91 @@ export class PrefabDisplay {
   }
 
   /**
-   * The AnimState names its art; what has loaded is drawn now and the rest is loaded from the entity's art source. Each
-   * load dresses whatever is declared once it lands, so a declaration replaced meanwhile only leaves the art cached.
+   * The entity's own AnimState and the slots other entities declared on it, merged in that order. Each names its art; what
+   * has loaded is drawn now and the rest is loaded from that declaration's art source. Each load dresses whatever is declared
+   * once it lands, so a declaration replaced meanwhile only leaves the art cached.
    */
-  private dressAnimState(op: Extract<AppearanceJson, { kind: 'anim-state' }>): void {
-    const { state, missing } = resolveAnimState(op.state, op.art);
-    this.engine.setAnimState?.(state);
-    const art = op.art;
-    if (!art) return;
-    const load = (key: string, request: () => Promise<unknown>) => {
+  private dressAnimStates(json: SpriteJson): void {
+    const declared = animStateDeclarations(json.appearance);
+    if (declared.length === 0 && !this.animStateDressed) return;
+    this.animStateDressed = declared.length > 0;
+    this.engine.setAnimState?.(mergeAnimStates(declared.map(([key, op]) => {
+      const snapshot = op.state.peek(), followed = this.animStates.get(key);
+      if (followed?.op === op) followed.drawn = snapshot;
+      const { state, missing } = resolveAnimState(snapshot, op.art);
+      if (op.art) this.loadAnimStateArt(key, op.art, missing);
+      return state;
+    })));
+  }
+
+  /**
+   * Follows each declared AnimState's own signal, as FxAttachments follows an effect's `active`: a declaration that changes
+   * redraws the merged state, and one taken away stops being followed. A frame also catches a change its effect has not run for yet.
+   */
+  private refreshAnimStates(json: SpriteJson): void {
+    const declared = new Map(animStateDeclarations(json.appearance));
+    let changed = false;
+    for (const [key, entry] of [...this.animStates]) {
+      if (declared.get(key) === entry.op) continue;
+      entry.stop(); this.animStates.delete(key); changed = true;
+    }
+    for (const [key, op] of declared) {
+      const followed = this.animStates.get(key);
+      if (followed) { changed ||= followed.drawn !== op.state.peek(); continue; }
+      const entry: { op: typeof op; drawn?: AnimStateJson; stop(): void } = { op, drawn: op.state.peek(), stop: () => {} };
+      this.animStates.set(key, entry);
+      // The watched signal owns the effect that reads it: stopping the bridge stops both.
+      const state = watchSignal(op.state, stop => { entry.stop = stop; });
+      createEffect(() => { if (state.get() !== entry.drawn && !this.disposed) this.dressAnimStates(this.json.peek()); });
+      changed = true;
+    }
+    if (changed) this.dressAnimStates(json);
+  }
+
+  /**
+   * Lights other entities parent here (`LightState.declare`) stand at this model and go out while this entity is not active.
+   * Each declared signal is followed as FxAttachments follows an effect's `active`; one taken away is unlisted.
+   */
+  private followParentedLights(light: LightState, status: ReadonlySignal<PrefabStatus>): void {
+    const followed = new Map<string, { readonly source: ReadonlySignal<LightJson | undefined>; listed?: DisplayLight; stop(): void }>();
+    const unlist = (key: string) => {
+      const entry = followed.get(key)!;
+      entry.stop();
+      entry.listed = listDisplayLight(entry.listed, this.model, undefined);
+      followed.delete(key);
+    };
+    const slots = watchSignal(light.slots, stop => this.cleanups.push(stop));
+    this.cleanups.push(createEffect(() => {
+      const declared = slots.get();
+      for (const [key, entry] of [...followed]) if (declared.get(key) !== entry.source) unlist(key);
+      for (const [key, source] of declared) {
+        if (followed.has(key)) continue;
+        const entry: { readonly source: typeof source; listed?: DisplayLight; stop(): void } = { source, stop: () => {} };
+        followed.set(key, entry);
+        // The watched signal owns the effect that reads it: stopping the bridge stops both.
+        const json = watchSignal(source, stop => { entry.stop = stop; });
+        createEffect(() => { entry.listed = listDisplayLight(entry.listed, this.model, status.get() === 'active' ? json.get() : undefined); });
+      }
+    }));
+    this.cleanups.push(() => { for (const key of [...followed.keys()]) unlist(key); });
+  }
+
+  private stopAnimStates(): void {
+    for (const entry of this.animStates.values()) entry.stop();
+    this.animStates.clear();
+  }
+
+  private loadAnimStateArt(slot: string, art: AnimStateArt, missing: ReturnType<typeof resolveAnimState>['missing']): void {
+    const load = (name: string, request: () => Promise<unknown>) => {
+      const key = `${slot}:${name}`;
       if (this.loadingArt.has(key)) return;
       this.loadingArt.add(key);
       void request().then(() => {
         this.loadingArt.delete(key);
-        const current = this.json.peek().appearance.get('anim-state');
-        if (!this.disposed && current?.kind === 'anim-state' && this.engine.loaded) this.dressAnimState(current);
+        if (!this.disposed && this.engine.loaded) this.dressAnimStates(this.json.peek());
       }, (error: unknown) => {
         this.loadingArt.delete(key);
-        if (!this.disposed) console.error(`Unable to load ${key} for ${this.model.name || 'a sprite'}`, error);
+        if (!this.disposed) console.error(`Unable to load ${name} for ${this.model.name || 'a sprite'}`, error);
       });
     };
     for (const archive of missing.builds) load(`build:${archive}`, () => art.loadBuild(archive));
@@ -515,7 +590,7 @@ export class PrefabDisplay {
     await Promise.all([...this.state.fx.peek().values()].map(fx => fx.display?.artLoaded()));
     for (;;) {
       if (this.disposed) return;
-      const json = this.json.peek(), op = json.appearance.get('anim-state'), skin = json.appearance.get('skin');
+      const json = this.json.peek(), skin = json.appearance.get('skin');
       const requests: Promise<unknown>[] = [];
       if (json.source && 'art' in json.source && !this.resolveSource(json.source)) requests.push(this.loadSource(json.source));
       if (skin?.kind === 'skin' && json.skinId !== undefined) {
@@ -524,8 +599,10 @@ export class PrefabDisplay {
         if (!art.peekBuild(archive, materialOptions)) requests.push(art.loadBuild(archive, materialOptions));
         if (animationBanks?.[json.skinId]?.length && !art.peekAnimation(archive)) requests.push(art.loadAnimation(archive));
       }
-      if (op?.kind === 'anim-state' && op.art) {
-        const { art } = op, { missing } = resolveAnimState(op.state, art);
+      for (const [, op] of animStateDeclarations(json.appearance)) {
+        const art = op.art;
+        if (!art) continue;
+        const { missing } = resolveAnimState(op.state.peek(), art);
         requests.push(...[...missing.builds].map(archive => art.loadBuild(archive)), ...[...missing.animations].map(archive => art.loadAnimation(archive)));
       }
       if (requests.length === 0) { this.applySprite(json); this.dress(json); return; }
@@ -544,6 +621,7 @@ export class PrefabDisplay {
     this.home = undefined;
     this.model.removeEventListener('added', this.onAdded);
     for (const stop of this.cleanups.splice(0)) stop();
+    this.stopAnimStates();
     this.follower.dispose();
     this.fx.dispose();
     this.state.bind(undefined);

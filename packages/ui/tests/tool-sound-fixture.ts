@@ -1,3 +1,5 @@
+import { prefabDisplay } from '../../display/src';
+import { prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import { createWilsonPlayer, type WilsonAnimationController, type WilsonCarryItem } from '../../prefab/src/player';
 import { DisposeSounds } from '../../prefab/src/sound';
 import { BufferedAction } from '../../stategraphs/src/bufferedaction';
@@ -15,8 +17,8 @@ export async function checkToolSounds() {
   };
   try {
     const player = createWilsonPlayer('/dst/data/anim');
-    await player.userData.display.artLoaded();
-    const animation = (window as any).__prefabInstance(player).animationController as WilsonAnimationController;
+    await prefabDisplay(player).artLoaded();
+    const animation = prefabInstance(player).animationController as WilsonAnimationController;
     const cases = [];
     for (const [tool, random] of [['hammer', 0], ['hammer', 0.99], ['pickaxe', 0], ['goldenpickaxe', 0]] as const) {
       await animation.setCarryItem(tool);
@@ -78,8 +80,8 @@ export async function checkGatheringSounds() {
   };
   try {
     const player = createWilsonPlayer('/dst/data/anim');
-    await player.userData.display.artLoaded();
-    const animation = (window as any).__prefabInstance(player).animationController as WilsonAnimationController;
+    await prefabDisplay(player).artLoaded();
+    const animation = prefabInstance(player).animationController as WilsonAnimationController;
     const target = { hasTag: () => false };
     let committed = 0;
     animation.stategraph.pushBufferedAction(new BufferedAction('PICK', () => { committed++; }, () => true, { target }));

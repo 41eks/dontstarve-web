@@ -10,7 +10,7 @@ import { isHatId, HAT_DEFINITIONS } from '@dontstarve-web/prefab/hats';
 import { nextReskin } from '@dontstarve-web/prefab/reskin_tool';
 import { type ReskinFxMessage, type ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
 import { GROUND_ART_DEFINITIONS, GROUND_ITEM_DEFINITIONS } from '@dontstarve-web/prefab/groundItems';
-import { createPrefabEntity, modelHasTag } from '@dontstarve-web/prefab/prefabInstance';
+import { createPrefabEntity, modelHasTag, prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import { newEntityId } from '@dontstarve-web/prefab/saveRecord';
 import type { BernieWorld } from '@dontstarve-web/prefab/bernie';
 import type { ButterflyWorld } from '@dontstarve-web/prefab/butterfly';
@@ -21,14 +21,14 @@ import type { FirefliesWorld } from '@dontstarve-web/prefab/fireflies';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import { isPlayerNearby } from '@dontstarve-web/prefab/playerProximity';
 import { LootFling, type LootLaunch } from '@dontstarve-web/prefab/lootFling';
-import { PHONOGRAPH_ID, PhonographController } from '@dontstarve-web/prefab/phonograph';
+import { PHONOGRAPH_ID } from '@dontstarve-web/prefab/phonograph';
 import { RECORD_ID, RECORD_SONGS, isPhonographRecord } from '@dontstarve-web/prefab/records';
 import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
 import type { SavedEntity } from './save/types';
 import { performToolWork } from '../packages/stategraphs/src/componentactions';
 import { actionEntity, disposeActionEntity, findActionEntity } from '../packages/prefab/src/actionEntity';
 import type { GameTimeScheduler } from '../packages/componets/src/gameTimeScheduler';
-import type { DeconstructionTarget } from '@dontstarve-web/prefab/greenstaff';
+import type { DeconstructionTarget } from '@dontstarve-web/prefab/staff';
 import type { WorldEventEmitter } from '../packages/prefab/src/worldContext';
 import { createEffect, createRenderEffect, watchSignal, WorldContentKey, type GetWatchWorldContent, type Signal } from '@dontstarve-web/signals';
 
@@ -306,7 +306,6 @@ export class GroundItemManager {
       entity.components.inventoryitem.canbepickedup = false;
     }
     definition = { ...definition, ...entity.snapshot(), entity };
-    Object.assign(visual.model.userData, { itemId: entity.prefab, count: entity.components.stackable.count });
     visual.instance.skinId = entity.skinId;
     id = entity.id;
     entity.transform.position.set(position.x, dropped ? 0 : position.y, position.z);
@@ -384,9 +383,7 @@ export class GroundItemManager {
   private bindInventoryEvents(record: GroundItemRecord): void {
     const { model, entity } = record;
     if (!this.inventory.hasItemSpec(entity.prefab)) { record.isClickable = () => false; return; }
-    model.userData.components = entity.components;
     // Domain queries read the authoritative vector; presentation/pickup snapshots own their scratch vector.
-    model.userData.getGroundPosition = () => entity.transform.position;
     const actions = actionEntity(model, entity.prefab, entity);
     actions.reskinTarget = this.createReskinTarget(record);
     if (entity.components.workable?.GetWorkAction() === 'HAMMER') {
@@ -398,7 +395,7 @@ export class GroundItemManager {
         playHit: () => { performToolWork('HAMMER', entity, {}); },
       };
     }
-    model.userData.pickupTarget = {
+    actions.pickupTarget = {
       model, entity, get position() { return record.footPosition; },
       hasTag: (tag: string) => entity.hasTag(tag) || modelHasTag(model, tag),
       isValid: () => !this.disposed && this.activeItems.has(record) && !entity.isRemoved
@@ -541,7 +538,7 @@ export class GroundItemManager {
 
   async insertPhonographRecord(model: THREE.Group, source: { entity: ItemEntity; take(): boolean }): Promise<boolean> {
     const record = this.items.get(model);
-    const controller = model.userData.phonograph as PhonographController | undefined;
+    const controller = prefabInstance(model)?.components.phonograph;
     if (!record || !controller || this.inserting.has(record) || source.entity.isRemoved || !isPhonographRecord(source.entity)
       || !Object.hasOwn(RECORD_SONGS, source.entity.skinId ?? RECORD_ID)
       || !isPlayerNearby(this.player.position, record.footPosition, false)) return false;
@@ -618,6 +615,7 @@ export class GroundItemManager {
                         record.entity.apply({ ...record.entity.snapshot(), skinId });
                         if (skinId === undefined) delete record.definition.skinId; else record.definition.skinId = skinId;
                         record.instance.skinId = skinId;
+                        record.model.position.copy(record.entity.transform.position);
                         fx?.play(record.footPosition, prefabId);
                         used = true;
                         return true;
@@ -659,7 +657,7 @@ export class GroundItemManager {
     }
     const record = root ? this.items.get(root as THREE.Group) : undefined;
     if (!record) return;
-    const machine = record.model.userData.phonograph as PhonographController | undefined;
+    const machine = record.instance.components.phonograph;
     // RMB switches a phonograph through its machine component's TURNON / TURNOFF.
     if (event.button === 2) return;
     const source = this.recordSource?.();
@@ -726,7 +724,6 @@ export class GroundItemManager {
   private createVisual(definition: GroundItemDefinition): GroundItemVisual {
     const factory = this.prefabs.get(definition.itemId);
     const finish = (visual: GroundItemVisual) => {
-      Object.assign(visual.model.userData, { itemId: definition.itemId, count: definition.count });
       visual.instance.skinId = definition.skinId;
       return visual;
     };

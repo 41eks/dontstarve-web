@@ -1,3 +1,4 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import type { ActionAnimationController, ActionLocomotor, ActionWorldContext } from './actionContext.ts';
 import { BufferedAction } from './bufferedaction.ts';
@@ -56,7 +57,7 @@ export class LighterActionController {
   private getActions(model?: THREE.Object3D): MouseActionCandidate[] {
     const actions: MouseActionCandidate[] = [];
     if (!model) return actions;
-    const target = model.userData.actionEntity as LighterTarget | undefined;
+    const target = findActionEntity(model) as LighterTarget | undefined;
     if (!target?.components.burnable) return actions;
     actions.push({ action: { action: 'LIGHT', invobject: equippedActionEntity(this.hand.peek()), target },
       button: 'right', source: 'equipped', model, available: this.canLight(target) });

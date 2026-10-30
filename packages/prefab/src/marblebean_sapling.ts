@@ -1,3 +1,4 @@
+import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import { modelEntries } from './modelRecords';
 import * as THREE from 'three';
@@ -43,7 +44,7 @@ export interface MarbleBeanSaplingWorld extends ToolMouseTargetWorld {
 
 /** planted_tree.lua sapling_fn("marblebean", ...): a fireproof sapling with a `grow` timer and a DIG workable. */
 export class MarbleBeanSaplingManager {
-  private readonly scene: THREE.Scene;
+  private readonly displays: PrefabDisplayGroup;
   private readonly world: MarbleBeanSaplingWorld;
   private readonly scheduler: GameTimeScheduler;
   private readonly ownsScheduler: boolean;
@@ -52,7 +53,7 @@ export class MarbleBeanSaplingManager {
   private disposed = false;
 
   constructor(scene: THREE.Scene, world: MarbleBeanSaplingWorld) {
-    this.scene = scene; this.world = world;
+    this.displays = new PrefabDisplayGroup(scene); this.world = world;
     this.scheduler = world.scheduler ?? new GameTimeScheduler();
     this.ownsScheduler = !world.scheduler;
   }
@@ -96,7 +97,7 @@ export class MarbleBeanSaplingManager {
       timer.StartTimer('grow', MARBLEBEAN_GROW_TIME.base + (Math.random() * 2 - 1) * MARBLEBEAN_GROW_TIME.random);
     }
     timer.OnLoad(saved?.components.saplingTimer);
-    this.scene.add(model);
+    this.displays.mount(prefabDisplay(model)!);
     sapling.stopActivity = watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active));
     return model;
   }
@@ -140,7 +141,8 @@ export class MarbleBeanSaplingManager {
     if (this.disposed) return;
     this.disposed = true;
     for (const model of [...this.saplings.keys()]) this.remove(model);
-    this.resources.dispose();
+    this.displays.dispose(); this.resources.dispose();
     if (this.ownsScheduler) this.scheduler.dispose();
+
   }
 }

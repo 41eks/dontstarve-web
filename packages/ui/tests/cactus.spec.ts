@@ -79,8 +79,9 @@ test('picking a spawned cactus hurts through the worn dreadstone hat, flinches, 
     (window as any).cactusGame = { inventory, scene };
   }, urls);
   await expect.poll(cacti).toEqual(expect.arrayContaining(['cactus', 'oasis_cactus']));
-  await expect.poll(() => page.evaluate(() => (window as any).cactusGame.scene.children
-    .find((model: any) => (window as any).__prefabInstance(model)?.prefab === 'cactus').userData.components.pickable.canBePicked)).toBe(false);
+  await expect.poll(() => page.evaluate(() => ((window as any).__findActionEntity((window as any).cactusGame.scene.children
+    .find((model: any) => (window as any).__prefabInstance(model)?.prefab === 'cactus'))?.components ?? (window as any).__prefabInstance((window as any).cactusGame.scene.children
+    .find((model: any) => (window as any).__prefabInstance(model)?.prefab === 'cactus'))!.components).pickable.canBePicked)).toBe(false);
   expect(await page.evaluate(() => (window as any).cactusGame.inventory.GetEquippedItem('head').components.armor.condition.peek() < 840)).toBe(true);
   expect(errors).toEqual([]);
 });

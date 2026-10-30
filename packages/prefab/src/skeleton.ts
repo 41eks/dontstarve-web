@@ -1,8 +1,9 @@
+import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
 import { SpriteResources, type ArchiveSpriteCommands, type PrefabDisplay } from '@dontstarve-web/display';
-import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
+import { createArchiveEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
 import type { TileStateQuery } from '@dontstarve-web/signals';
 import { watchTileActivity } from './tileActivity';
 import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
@@ -73,7 +74,7 @@ export function isSkeletonId(value: string): value is SkeletonId {
 
 /** prefabs/skeleton.lua: `skeleton`, `skeleton_player` and the `skeleton_notplayer*` creature bones, hammered into boneshards. */
 export class SkeletonManager {
-  private readonly scene: THREE.Scene;
+  private readonly displays: PrefabDisplayGroup;
   private readonly world: SkeletonWorld;
   private readonly resources = new SpriteResources();
   private readonly skeletons = new Map<THREE.Group, Skeleton>();
@@ -81,7 +82,7 @@ export class SkeletonManager {
   private disposed = false;
 
   constructor(scene: THREE.Scene, world: SkeletonWorld) {
-    this.scene = scene; this.world = world;
+    this.displays = new PrefabDisplayGroup(scene); this.world = world;
   }
 
   spawn(prefab: SkeletonId, position: THREE.Vector3, saved?: SkeletonRecord): THREE.Group {
@@ -104,7 +105,6 @@ export class SkeletonManager {
     const sprite = instance.sprite;
     model.position.set(position.x, 0, position.z);
     instance.entityId = saved?.id ?? newEntityId();
-    Object.assign(model.userData, { animationController: sprite });
     for (const tag of skeletonTags(prefab)) instance.addTag(tag);
     const inst = actionEntity(model, prefab);
     // workable: HAMMER, SKELETON_WORK; OnHammered drops the table, plays collapse_small with the rock material and removes it.
@@ -121,7 +121,7 @@ export class SkeletonManager {
       this.playCollapse(model.position);
       this.remove(model);
     });
-    Object.assign(model.userData.components, { workable, lootdropper });
+    Object.assign(prefabInstance(model)!.components, { workable, lootdropper });
     new ToolMouseTarget(inst, instance, workable, this.world.handEquipment);
     MakeSmallObstaclePhysics(instance, PHYSICS_RADIUS);
     if (this.world.physics) instance.bindPhysics(this.world.physics);
@@ -131,7 +131,7 @@ export class SkeletonManager {
       isValid: () => this.skeletons.get(model) === skeleton && workable.CanBeWorked(),
       playHit: () => { performToolWork('HAMMER', inst, {}); },
     };
-    this.scene.add(model);
+    this.displays.mount(prefabDisplay(model)!);
     skeleton.stopActivity = watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active));
     return model;
   }
@@ -155,7 +155,7 @@ export class SkeletonManager {
     instance => instance.sprite.playOnce('collapse_small', () => { instance.remove(); this.effects.delete(entity); }));
     entity.instance.position.copy(at); entity.instance.persists = false;
     for (const tag of ['FX', 'NOCLICK']) entity.instance.addTag(tag);
-    this.scene.add(entity.display.model); this.effects.add(entity);
+    this.displays.mount(entity.display); this.effects.add(entity);
   }
 
   update(dt: number, _quaternion: THREE.Quaternion): void {
@@ -203,6 +203,7 @@ export class SkeletonManager {
     for (const model of [...this.skeletons.keys()]) this.remove(model);
     for (const { instance } of this.effects) instance.remove();
     this.effects.clear();
+    this.displays.dispose();
     this.resources.dispose();
   }
 }

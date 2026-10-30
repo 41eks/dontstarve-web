@@ -46,14 +46,14 @@ test('equipped torch right-click ignites structures and ground materials, closin
   const hand = bar.locator('.inventory-bar__equipment .inventory-slot').first();
   await torch.dragTo(hand); await expect(hand).toHaveAttribute('data-item-id', 'torch');
   await expect.poll(() => page.evaluate(() => (window as any).igniteGame.scene.children.some((model: any) =>
-    model.userData.actionEntity?.prefab === 'treasurechest' && !(window as any).__prefabInstance(model)?.saveRecord))).toBe(true);
+    (window as any).__findActionEntity(model)?.prefab === 'treasurechest' && !(window as any).__prefabInstance(model)?.saveRecord))).toBe(true);
 
   const point = async (prefab: string) => page.evaluate(async prefab => {
     const game = (window as any).igniteGame;
-    const model = game.scene.children.find((model: any) => model.userData.actionEntity?.prefab === prefab && !(window as any).__prefabInstance(model)?.saveRecord);
+    const model = game.scene.children.find((model: any) => (window as any).__findActionEntity(model)?.prefab === prefab && !(window as any).__prefabInstance(model)?.saveRecord);
     if (!model) throw new Error(`Missing spawned ${prefab}`);
     game.targets.set(prefab, model);
-    const foot = model.userData.getGroundPosition();
+    const foot = ((window as any).__findActionEntity(model)?.getPosition() ?? (window as any).__prefabInstance(model)!.position);
     game.playerBody.position.set(foot.x + 3, game.playerBody.shapes[0].radius, foot.z);
     game.playerBody.velocity.set(0, 0, 0); game.player.position.set(foot.x + 3, 0, foot.z);
     await new Promise(requestAnimationFrame); await new Promise(requestAnimationFrame);
@@ -73,8 +73,8 @@ test('equipped torch right-click ignites structures and ground materials, closin
   await page.mouse.move(chestPoint.x, chestPoint.y);
   await expect.poll(() => page.evaluate(() => (window as any).igniteGame.view.mouseActions.getMouseActions().right?.action)).toBe('LIGHT');
   await page.mouse.click(chestPoint.x, chestPoint.y, { button: 'right' });
-  await expect.poll(() => page.evaluate(() => (window as any).igniteGame.targets.get('treasurechest').userData.burningSignal.peek())).toBe(true);
-  await expect.poll(() => page.evaluate(() => (window as any).igniteGame.targets.get('treasurechest').userData.burntSignal.peek()), { timeout: 15_000 }).toBe(true);
+  await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).igniteGame.targets.get('treasurechest'))?.components.burnable?.burning.peek())).toBe(true);
+  await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).igniteGame.targets.get('treasurechest')).hasTag('burnt')), { timeout: 15_000 }).toBe(true);
   await expect(page.locator('dst-chest-panel .chest-panel')).toBeHidden();
 
   await page.evaluate(() => {
@@ -84,11 +84,11 @@ test('equipped torch right-click ignites structures and ground materials, closin
   });
   await submit('c_spawn("cookpot")');
   await expect.poll(() => page.evaluate(() => (window as any).igniteGame.scene.children.some((model: any) =>
-    model.userData.actionEntity?.prefab === 'cookpot' && !(window as any).__prefabInstance(model)?.saveRecord))).toBe(true);
+    (window as any).__findActionEntity(model)?.prefab === 'cookpot' && !(window as any).__prefabInstance(model)?.saveRecord))).toBe(true);
   const potPoint = await point('cookpot');
   await page.mouse.click(potPoint.x, potPoint.y, { button: 'right' });
-  await expect.poll(() => page.evaluate(() => (window as any).igniteGame.targets.get('cookpot').userData.burningSignal.peek())).toBe(true);
-  await expect.poll(() => page.evaluate(() => (window as any).igniteGame.targets.get('cookpot').userData.burntSignal.peek()), { timeout: 25_000 }).toBe(true);
+  await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).igniteGame.targets.get('cookpot'))?.components.burnable?.burning.peek())).toBe(true);
+  await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).igniteGame.targets.get('cookpot')).hasTag('burnt')), { timeout: 25_000 }).toBe(true);
   await expect(hand).toHaveAttribute('data-item-id', 'torch');
   for (const prefab of ['cutgrass', 'log']) {
     await page.evaluate(() => {
@@ -98,18 +98,18 @@ test('equipped torch right-click ignites structures and ground materials, closin
     });
     await submit(`c_spawn("${prefab}")`);
     await expect.poll(() => page.evaluate(prefab => (window as any).igniteGame.scene.children.some((model: any) =>
-      model.userData.actionEntity?.prefab === prefab && model.userData.burningSignal), prefab)).toBe(true);
+      (window as any).__findActionEntity(model)?.prefab === prefab && (window as any).__prefabInstance(model)?.components.burnable?.burning), prefab)).toBe(true);
     const materialPoint = await point(prefab);
     await page.mouse.move(materialPoint.x, materialPoint.y);
     await expect.poll(() => page.evaluate(() => (window as any).igniteGame.view.mouseActions.getMouseActions().right?.action)).toBe('LIGHT');
     await page.mouse.click(materialPoint.x, materialPoint.y, { button: 'right' });
-    await expect.poll(() => page.evaluate(prefab => (window as any).igniteGame.targets.get(prefab).userData.burningSignal.peek(), prefab)).toBe(true);
-    await expect.poll(() => page.evaluate(prefab => (window as any).igniteGame.targets.get(prefab).userData.burntSignal.peek(), prefab), { timeout: 20_000 }).toBe(true);
+    await expect.poll(() => page.evaluate(prefab => (window as any).__prefabInstance((window as any).igniteGame.targets.get(prefab))?.components.burnable?.burning.peek(), prefab)).toBe(true);
+    await expect.poll(() => page.evaluate(prefab => (window as any).__prefabInstance((window as any).igniteGame.targets.get(prefab)).hasTag('burnt'), prefab), { timeout: 20_000 }).toBe(true);
     expect(await page.evaluate(prefab => (window as any).igniteGame.targets.get(prefab).parent === null, prefab)).toBe(true);
     await expect.poll(() => page.evaluate(prefab => {
       const game = (window as any).igniteGame, target = game.targets.get(prefab);
-      const position = target.userData.getGroundPosition();
-      return game.scene.children.some((model: any) => model.userData.itemId === 'ash' && model.userData.components?.stackable?.count === 1
+      const position = ((window as any).__findActionEntity(target)?.getPosition() ?? (window as any).__prefabInstance(target)!.position);
+      return game.scene.children.some((model: any) => ((window as any).__findActionEntity(model)?.prefab ?? (window as any).__prefabInstance(model)?.prefab) === 'ash' && ((window as any).__findActionEntity(model)?.components ?? (window as any).__prefabInstance(model)!.components)?.stackable?.count === 1
         && model.position.distanceToSquared(position) < .001);
     }, prefab)).toBe(true);
   }

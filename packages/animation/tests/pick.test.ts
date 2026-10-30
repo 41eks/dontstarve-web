@@ -10,15 +10,16 @@ import type { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { EventEmitter } from '../../signals/src/EventEmitter';
 import type { PlayerActionEvents } from '../../stategraphs/src/actionEvents';
 import { SpriteState } from '../../display/src/spriteState';
-import { PrefabInstance } from '../../prefab/src/prefabInstance';
+import { PrefabInstance, createEmptyEntity } from '../../prefab/src/prefabInstance';
 
 afterEach(() => vi.restoreAllMocks());
 
 it('uses component-owned pickable tags and blocks fire/intense without consulting prefab IDs', () => {
-  const scene = new THREE.Scene(), model = new THREE.Group();
-  scene.add(model);
-  model.userData.tags = ['plant', 'custom'];
-  const component = new Pickable(model, 'log', 10);
+  const scene = new THREE.Scene();
+  const { instance, display } = createEmptyEntity('grass');
+  const model = display.model; scene.add(model);
+  instance.addTag('plant'); instance.addTag('custom');
+  const component = new Pickable(instance, 'log', 10);
   expect(getPickActions(model)[0].available).toBe(true);
   component.canInteractWith = false;
   expect(component.canBePicked).toBe(true);
@@ -26,28 +27,28 @@ it('uses component-owned pickable tags and blocks fire/intense without consultin
   expect(component.pick({ giveItem: () => true })).toBe(false);
   component.canInteractWith = true;
   for (const tag of ['fire', 'intense']) {
-    model.userData.tags.push(tag);
+    instance.addTag(tag);
     expect(getPickActions(model)[0].available).toBe(false);
-    model.userData.tags.pop();
+    instance.removeTag(tag);
   }
   component.pick({ giveItem: () => true });
-  expect(model.userData.tags).toEqual(['plant', 'custom']);
+  expect(instance.listTags()).toEqual(['plant', 'custom']);
   expect(getPickActions(model)[0].available).toBe(false);
   component.update(10);
   expect(getPickActions(model)[0].available).toBe(true);
   component.dispose();
   expect(getPickActions(model)).toEqual([]);
-  expect(model.userData.tags).toEqual(['plant', 'custom']);
+  expect(instance.listTags()).toEqual(['plant', 'custom']);
+  instance.remove(); display.dispose();
 });
 
 it('walks to reach, commits a prepared PICK and releases canceled products without changing the plant', async () => {
   vi.stubGlobal('window', new EventTarget());
-  const scene = new THREE.Scene(), parent = new THREE.Group(), model = new THREE.Group(), player = new THREE.Group();
-  parent.position.set(20, 0, 0); model.position.set(0, 0, 0);
-  parent.add(model); scene.add(parent); scene.add(player);
-  model.userData.tags = ['plant'];
-  model.userData.getGroundPosition = () => new THREE.Vector3(20, 0, 0);
-  const component = new Pickable(model, 'log', 10, 2);
+  const scene = new THREE.Scene(), player = new THREE.Group();
+  const { instance, display } = createEmptyEntity('grass');
+  const model = display.model; instance.position.set(20, 0, 0);
+  scene.add(model); scene.add(player); instance.addTag('plant');
+  const component = new Pickable(instance, 'log', 10, 2);
   actionEntity(model, 'grass');
   const pointer = { trackPointer() {}, beginFrame() {}, endFrame() {},
     pickMouseTarget: () => ({ object: model }), dispose: vi.fn() } as unknown as PointerRaycaster;
@@ -111,7 +112,7 @@ it('walks to reach, commits a prepared PICK and releases canceled products witho
   expect(component.canBePicked).toBe(true);
   expect(releaseProduct).toHaveBeenCalledTimes(3);
 
-  controller.dispose(); controller.dispose();
+  controller.dispose(); instance.remove(); display.dispose(); controller.dispose();
   expect(pointer.dispose).not.toHaveBeenCalled();
   click();
   expect(giveItem).toHaveBeenCalledTimes(2);

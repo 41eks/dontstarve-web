@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import { ItemEntity, InventoryStore, HandSlot, equipmentSlotAddress } from '../../inventory/src';
-import { GreenStaffController, deconstructionLoot, type DeconstructionTarget } from '../../prefab/src/greenstaff';
+import { GreenStaffController, deconstructionLoot, type DeconstructionTarget } from '../../prefab/src/staff';
 import { collectEquippedActions } from '../../stategraphs/src/componentactions';
 import { createCastSpellAction } from '../../stategraphs/src/spellcaster';
 import { INVENTORY_ITEM_SPECS } from '../../../src/inventoryItems';

@@ -24,4 +24,3 @@ export function disposePlayer(): void {
   playerInstance.remove();
   playerDisplay.dispose();
 }
-export const setPlayerNormal = playerPrefab.setNormal;

@@ -1,3 +1,4 @@
+import { prefabDisplay } from '@dontstarve-web/display';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -16,7 +17,7 @@ it.each([undefined, 'bernie_cat'])('plays Lua growth/shrink queues with source a
   const sprite = createBernieGroundSprite(assets, { getSanityPercent: () => sanity }, skinId);
   const { model } = sprite;
   // Bernie exists at once; its display loads every form's art before the test inspects the drawn frames.
-  await model.userData.display.artLoaded();
+  await prefabDisplay(model).artLoaded();
   // The display's root holds the drawn sprite, whose scaled visual holds the merged frame mesh.
   const visual = () => model.children[0].children[0];
   const mesh = visual().children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
@@ -69,12 +70,12 @@ it.each([undefined, 'bernie_cat'])('plays Lua growth/shrink queues with source a
     expect(state()).toEqual(['bernie_active', 'idle_loop']);
     expect(model.position.toArray()).toEqual([2, 0.25, 3]);
     expect(prefabInstance(model)).toMatchObject({ entityId: 'same-bernie', skinId });
-    expect(model.userData.itemId).toBe('bernie_inactive');
+    expect(prefabInstance(model)!.prefab).toBe('bernie_inactive');
 
     // idle_nodir -> idle_loop preserves time (frame 15), rather than restarting.
     // Independently render an idle sprite at the same source time for comparison.
     const idle = createBernieGroundSprite(assets, { getSanityPercent: () => 1 }, skinId);
-    await idle.model.userData.display.artLoaded();
+    await prefabDisplay(idle.model).artLoaded();
     for (let i = 0; i < 15; i++) idle.update(1 / 30);
     const idleMesh = idle.model.children[0].children[0].children[0] as typeof mesh;
     expect(positions()).toEqual(positions(idleMesh));
@@ -82,7 +83,7 @@ it.each([undefined, 'bernie_cat'])('plays Lua growth/shrink queues with source a
     // The skin's build replaces the base art at the same source time.
     if (skinId) {
       const plain = createBernieGroundSprite(assets, { getSanityPercent: () => 1 });
-      await plain.model.userData.display.artLoaded();
+      await prefabDisplay(plain.model).artLoaded();
       for (let i = 0; i < 15; i++) plain.update(1 / 30);
       expect(positions()).not.toEqual(positions(plain.model.children[0].children[0].children[0] as typeof mesh));
       plain.dispose();

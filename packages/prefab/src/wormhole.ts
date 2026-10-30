@@ -1,3 +1,4 @@
+import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import { ModelRecords } from './modelRecords';
 import * as THREE from 'three';
 import { SpriteResources, type PrefabDisplay, type SpriteState } from '@dontstarve-web/display';
@@ -41,12 +42,12 @@ export class WormholeManager {
   private readonly resources: SpriteResources;
   private readonly mouseRecords = new ModelRecords<WormholeEntity>();
   private readonly wormholes = new Set<WormholeEntity>();
-  private readonly scene: THREE.Scene;
+  private readonly displays: PrefabDisplayGroup;
   private readonly getPlayerPositions: () => readonly THREE.Vector3[];
   private disposed = false;
 
   constructor(scene: THREE.Scene, assetBaseUrl: string, getPlayerPositions: () => readonly THREE.Vector3[] = () => []) {
-    this.scene = scene;
+    this.displays = new PrefabDisplayGroup(scene);
     this.resources = new SpriteResources(assetBaseUrl);
     this.getPlayerPositions = getPlayerPositions;
   }
@@ -73,7 +74,7 @@ export class WormholeManager {
     model.userData.wormholeState = entity.state;
     actionEntity(model, WORMHOLE_ID).reskinTarget = this.createReskinTarget(entity);
     this.wormholes.add(entity); this.mouseRecords.set(entity.model, entity);
-    this.scene.add(model);
+    this.displays.mount(prefabDisplay(model)!);
     return model;
   }
 
@@ -121,6 +122,7 @@ export class WormholeManager {
       instance.remove(); display.dispose();
     }
     this.wormholes.clear();
+    this.displays.dispose();
     this.resources.dispose();
   }
 

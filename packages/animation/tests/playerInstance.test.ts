@@ -6,6 +6,7 @@ import { SpriteState } from '@dontstarve-web/display';
 import { createWilsonPlayerPrefab, type WilsonAnimationController, type WilsonPlayerPrefab } from './playerVisual';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { smallHash } from '../src/animationAssets';
+import { declaredAnimState } from './animStateFixture';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {}, isPlaying: () => true, setVolume() {} })) }));
 const players: WilsonPlayerPrefab[] = [];
@@ -65,9 +66,9 @@ it('declares player art and retains its entity, equipment, body and shared asset
   const restoredSource = art.source!;
   if (!('art' in restoredSource)) throw new Error('Expected named player art');
   expect(restoredSource.art.peekBuild(restoredSource.buildArchive)!.materials).toBe(materials);
-  const appearance = art.appearance.get('anim-state');
-  expect(appearance?.kind).toBe('anim-state');
-  if (appearance?.kind === 'anim-state') expect(appearance.state.overrides.has(smallHash('swap_object'))).toBe(true);
+  expect(art.appearance.get('anim-state')?.kind).toBe('anim-state');
+  // The held item's art is in its own slot over the player's AnimState, and it survives sleep and wake.
+  expect(declaredAnimState(instance.sprite).json.peek().overrides.has(smallHash('swap_object'))).toBe(true);
   for (const dispose of disposals) expect(dispose).not.toHaveBeenCalled();
   instance.remove();
   expect(world.bodies).not.toContain(body);

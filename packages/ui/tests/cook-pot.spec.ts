@@ -28,14 +28,14 @@ test('cooks, reloads and harvests food with player input, preserving the empty p
     new CustomEvent('game:debug-command', { detail: { command } })), command);
   const state = () => page.evaluate(() => {
     const pot = (window as any).potGame.scene.children.find((model: any) => model.name === 'CookPot');
-    return pot ? { id: (window as any).__prefabInstance(pot)?.entityId, stewer: pot.userData.stewer ?? null,
-      animation: pot.userData.animationController.currentAnimation } : null;
+    return pot ? { id: (window as any).__prefabInstance(pot)?.entityId, stewer: (window as any).__cookPotState(pot) ?? null,
+      animation: (window as any).__prefabInstance(pot)?.sprite.currentAnimation } : null;
   });
   const saveGame = async () => {
     const download = page.waitForEvent('download'); await submit('c_save()');
-    return JSON.parse(await readSaveDownload((await (await download).path())!));
+    return JSON.parse(await readSaveDownload((await (await download).path())!, 'Master'));
   };
-  await page.goto('/tests/dst-lighting.html'); await prepare();
+  await page.goto('/tests/dst-lighting.html?save=initial-world.json'); await prepare();
   await submit('c_spawn("cookpot")');
   await expect.poll(state).not.toBeNull();
   await submit('c_give("twigs", 1)');
@@ -51,7 +51,7 @@ test('cooks, reloads and harvests food with player input, preserving the empty p
   const potPoint = () => page.evaluate(() => {
     const { scene, camera, renderer } = (window as any).potGame;
     const pot = scene.children.find((model: any) => model.name === 'CookPot');
-    const mesh = pot.children[0].children[0];
+    const mesh = pot.getObjectByProperty('isMesh', true);
     mesh.geometry.computeBoundingBox();
     const centre = mesh.geometry.boundingBox.getCenter(pot.position.clone());
     mesh.localToWorld(centre).project(camera);

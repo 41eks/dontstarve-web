@@ -1,3 +1,4 @@
+import { PrefabDisplayGroup } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import type { World } from 'cannon-es';
 import { ArchiveSpriteAssets, createSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
@@ -18,7 +19,7 @@ import { DamageTracker, ExplosiveResist, GroundPounder, GroupTargeter, HealthTri
   Inspectable, Moisture, RampingSpawner, StuckDetection, Stunnable } from '../../componets/src/dragonflySignatures';
 import { DragonflyBrain } from '../../brains/src/dragonflybrain';
 import { DragonflyStateGraph } from '../../stategraphs/src/SGdragonfly';
-import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
+import { createArchiveEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
 import { actionEntity } from './actionEntity';
 import { MakeFlyingGiantCharacterPhysics, WORLD_SCALE } from './standardcomponents';
 import { watchTileActivity } from './tileActivity';
@@ -68,9 +69,9 @@ export class DragonflyManager implements DisplayDrivenPrefabManager<{ prefabId: 
   private readonly assets = new ArchiveSpriteAssets(DRAGONFLY_ID);
   private readonly entities = new Map<THREE.Group, Dragonfly>();
   private disposed = false;
-  private readonly scene: THREE.Scene;
+  private readonly displays: PrefabDisplayGroup;
   private readonly world: DragonflyWorld;
-  constructor(scene: THREE.Scene, world: DragonflyWorld) { this.scene = scene; this.world = world; }
+  constructor(scene: THREE.Scene, world: DragonflyWorld) { this.displays = new PrefabDisplayGroup(scene); this.world = world; }
 
   spawn(position: THREE.Vector3, saved?: DragonflyRecord): THREE.Group {
     if (this.disposed) throw new Error('Dragonflies have been disposed');
@@ -95,7 +96,7 @@ export class DragonflyManager implements DisplayDrivenPrefabManager<{ prefabId: 
     const health = new Health(27500, instance);
     const knownlocations = new KnownLocations();
     const timer = new Timer(this.world.scheduler, () => undefined, ['groundpound_cd']);
-    const components = model.userData.components ??= {};
+    const components = prefabInstance(model)!.components;
     const inst = actionEntity(model, DRAGONFLY_ID);
     const pushEvent = (name: string, data?: unknown) => inst.PushEvent?.(name, data);
     const combatActor: CombatActor = {
@@ -160,7 +161,7 @@ export class DragonflyManager implements DisplayDrivenPrefabManager<{ prefabId: 
     const entity: Dragonfly = { instance, display, health, knownlocations, timer, inventory,
       sleeper, freezable, propagator, save };
     this.entities.set(model, entity);
-    display.mount(this.scene);
+    this.displays.mount(display);
     this.world.trackDisplay(display);
     entity.stopActivity = watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active));
     instance.onRemove(() => {
@@ -194,6 +195,7 @@ export class DragonflyManager implements DisplayDrivenPrefabManager<{ prefabId: 
     if (this.disposed) return;
     this.disposed = true;
     for (const entity of this.entities.values()) { entity.instance.remove(); entity.display.dispose(); }
+    this.displays.dispose();
     this.assets.dispose();
   }
 }

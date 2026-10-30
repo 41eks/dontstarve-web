@@ -1,3 +1,4 @@
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -35,7 +36,7 @@ async function setup(definition = TREASURE_CHEST_DEFINITION) {
   const placement = new AnimatedBuildingPlacement(world, { building: definition }, () => true, changes);
   await placement.spawn('building');
   const model = scene.children[0];
-  const animation = model.userData.animationController as SpriteAnimationController;
+  const animation = prefabInstance(model)!.sprite as SpriteAnimationController;
   const playOnce = vi.spyOn(animation, 'playOnce');
   const start = vi.spyOn(animation, 'start');
   vi.spyOn(PointerRaycaster.prototype, 'raycastPointer').mockImplementation((objects) =>

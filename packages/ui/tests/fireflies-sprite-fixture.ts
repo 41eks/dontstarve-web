@@ -7,6 +7,7 @@ import { configureBugNetEntity } from '../../prefab/src/bugnet';
 import { actionEntity, disposeActionEntity } from '../../prefab/src/actionEntity';
 import { mouseTargets } from '../../prefab/src/mouseTargets';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { prefabDisplay } from '../../display/src';
 import { bindTestWorld } from '../../animation/tests/worldContentFixture';
 import { DstLocalLighting } from '../../../src/dstLocalLighting';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
@@ -18,8 +19,6 @@ export async function checkFirefliesInstances() {
   cycle.set('night');
   const handEquipment = createSignal<HandEquipment | null>(null);
   const assets = new FirefliesAssets('/dst/data/anim');
-  // Prewarm: the swarm art is loaded ahead, so each display draws as soon as fadein plays; no entity is created by it.
-  await assets.preload();
   const net = new ItemEntity({ itemId: 'bugnet', count: 1 }); configureBugNetEntity(net);
   const swarms = await Promise.all(Array.from({ length: 32 }, () => createFirefliesGroundSprite(assets, { getWatchWorldContent, handEquipment })));
   const entities = swarms.map((swarm, index) => {
@@ -62,6 +61,9 @@ export async function checkFirefliesInstances() {
     return mesh;
   });
   try {
+    await settle(); advance(.1);
+    // Each display loads the shared swarm art when fadein plays, then draws swarm_pre from its start into swarm_loop.
+    await Promise.all(swarms.map(swarm => prefabDisplay(swarm.model)!.artLoaded()));
     await settle(); advance(5); await settle();
     // Keep a dark member in the same atlas batch to check independent overrides.
     swarms[31].instance.sprite.setLightOverride(0);

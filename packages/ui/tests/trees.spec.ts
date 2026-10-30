@@ -34,9 +34,8 @@ test('spawns a tall deciduous tree, restores growth, chops it and digs the resto
     const download = page.waitForEvent('download', { timeout: 15_000 }); await submit('c_save()');
     return JSON.parse(await readSaveDownload((await (await download).path())!, 'Master'));
   };
-  const treeAnimation = () => page.evaluate(() => (window as any).deciduoustreeGame.scene.children
-    .find((model: any) => model.name === 'DeciduousForest')?.children.find((model: any) => (window as any).__prefabInstance(model)?.prefab === 'deciduoustree')
-    ?.userData.animationController.currentAnimation ?? null);
+  const treeAnimation = () => page.evaluate(() => (window as any).__prefabInstance((window as any).deciduoustreeGame.scene.children
+    .find((model: any) => model.name === 'DeciduousForest')?.children.find((model: any) => (window as any).__prefabInstance(model)?.prefab === 'deciduoustree'))?.sprite.currentAnimation ?? null);
   const clickTree = async () => {
     const action = await page.evaluate(() => (window as any).deciduoustreeGame.inventory.handEquipment.peek()?.itemId === 'shovel' ? 'DIG' : 'CHOP');
     const point = await hoverSprite(page, () => page.evaluate(async moduleUrl => {

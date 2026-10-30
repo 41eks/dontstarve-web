@@ -40,7 +40,9 @@ describe('caged birds', () => {
     const { instance, display } = createEmptyEntity('birdcage');
     const model = display.model;
     instance.entityId = 'birdcage:test';
-    model.userData.animationController = controller;
+    vi.spyOn(instance.sprite, 'start').mockImplementation(controller.start);
+    vi.spyOn(instance.sprite, 'playOnce').mockImplementation(controller.playOnce);
+    vi.spyOn(instance.sprite, 'clearOverrideBuild').mockImplementation(controller.clearOverrideBuild);
     const cage = new Birdcage({ model, instance, animation: controller as unknown as SpriteAnimationController,
       world: { scheduler, cycle } as unknown as WorldContext }, () => .9);
     const bird = createBird();

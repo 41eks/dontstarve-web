@@ -1,3 +1,4 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { createTestWorldSources } from './worldContentFixture';
 import * as THREE from 'three';
@@ -76,16 +77,15 @@ it('rolls with the wind, stops for a long action and restarts, is picked for loo
     dropLoot: (items, position) => drops.push({ items, position }) };
   const manager = new TumbleweedManager(scene, physics, world);
   const restoredManager = new TumbleweedManager(new THREE.Scene(), new CANNON.World(), { ...world, wind: undefined, getWatchWorldContent: undefined });
-  const quaternion = new THREE.Quaternion();
   const step = (seconds: number) => {
     for (let i = 0; i < Math.round(seconds * 30); i++) {
-      scheduler.advance(1 / 30); manager.beforePhysics(1 / 30); physics.step(1 / 30); manager.sync(quaternion);
+      scheduler.advance(1 / 30); manager.beforePhysics(1 / 30); physics.step(1 / 30); manager.sync();
     }
   };
   try {
     const model = await manager.spawn(new THREE.Vector3(10, 0, 4));
     const tumbleweed = model.userData.tumbleweed;
-    expect(model.userData.actionEntity.hasTag('pickable')).toBe(true);
+    expect(findActionEntity(model).hasTag('pickable')).toBe(true);
     // Angle 0 ± 10 variance (random .5 → none) rolls toward +x.
     step(3);
     expect(model.position.x).toBeGreaterThan(12); expect(Math.abs(model.position.z - 4)).toBeLessThan(.01);

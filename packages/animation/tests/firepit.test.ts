@@ -1,3 +1,4 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
@@ -26,12 +27,12 @@ function createPlacement() {
   return { placement, scheduler, play, dropLoot };
 }
 
-/** The campfirefire the pit declares, and the firefx_light attached to the pit. */
+/** The campfirefire the pit declares, and the firefx_light parented to the pit. */
 function fire(model: THREE.Object3D) {
-  const [entry] = [...prefabInstance(model)!.sprite.fx.peek()].filter(([key]) => key.startsWith('campfirefire:'));
-  const light = model.getObjectByName('firefx_light');
-  return { fx: entry?.[1], animation: (entry?.[1].sprite as SpriteState | undefined)?.currentAnimation,
-    light: light && prefabInstance(light)!.light.peek() };
+  const pit = prefabInstance(model)!;
+  const [entry] = [...pit.sprite.fx.peek()].filter(([key]) => key.startsWith('campfirefire:'));
+  const light = [...pit.light.slots.peek()].find(([key]) => key.startsWith('firefx_light:'))?.[1];
+  return { fx: entry?.[1], animation: (entry?.[1].sprite as SpriteState | undefined)?.currentAnimation, light: light?.peek() };
 }
 
 const fuelItem = (fuelvalue: number) => {
@@ -45,7 +46,7 @@ it('burns its fuel down through the fire levels, goes out empty and relights whe
   try {
     await placement.spawn(FIRE_PIT_ID);
     const [{ display: { model }, entity }] = placement.hammerTargets;
-    const { components } = model.userData;
+    const { components } = prefabInstance(model)!;
     for (const tag of ['campfire', 'structure', 'wildfireprotected', 'BURNABLE_fueled']) expect(entity.hasTag(tag)).toBe(true);
 
     // FIREPIT_FUEL_START is half of the maximum: section 3 of 4, at the bottom of its level.
@@ -87,7 +88,7 @@ it('saves its fuel and queued charcoal, then drops the charcoal when the restore
     await first.placement.spawn(FIRE_PIT_ID);
     const [{ display: { model } }] = first.placement.hammerTargets;
     // Filling the top section queues a charcoal.
-    model.userData.components.fueled.TakeFuelItem(fuelItem(180));
+    (findActionEntity(model)?.components ?? prefabInstance(model)!.components).fueled.TakeFuelItem(fuelItem(180));
     expect(fire(model).animation).toBe('level4');
     first.scheduler.advance(60);
     ({ record } = first.placement.exportRecords()[0]);
@@ -99,7 +100,7 @@ it('saves its fuel and queued charcoal, then drops the charcoal when the restore
   try {
     const model = await second.placement.spawnFromSave(FIRE_PIT_ID, record);
     expect(fire(model).animation).toBe('level4');
-    expect(model.userData.components.fueled.currentfuel).toBe(300);
+    expect((findActionEntity(model)?.components ?? prefabInstance(model)!.components).fueled.currentfuel).toBe(300);
     second.scheduler.advance(300);
     expect(fire(model).fx).toBeUndefined();
     expect(second.dropLoot).toHaveBeenCalledWith([{ itemId: 'charcoal', count: 1 }], expect.any(THREE.Vector3));

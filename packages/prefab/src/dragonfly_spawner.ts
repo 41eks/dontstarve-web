@@ -1,3 +1,4 @@
+import { PrefabDisplayGroup } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import type { TileStateQuery } from '@dontstarve-web/signals';
 import { ChildSpawner, type ChildSpawnerChild, type ChildSpawnerSave } from '../../componets/src/childspawner';
@@ -42,10 +43,10 @@ export interface DragonflySpawnerWorld {
 /** dragonfly_spawner.lua: invisible CLASSIFIED home with one queued child and a world-settings respawn timer. */
 export class DragonflySpawnerManager {
   private readonly spawners = new Map<THREE.Group, Spawner>();
-  private readonly scene: THREE.Scene;
+  private readonly displays: PrefabDisplayGroup;
   private readonly world: DragonflySpawnerWorld;
   private disposed = false;
-  constructor(scene: THREE.Scene, world: DragonflySpawnerWorld) { this.scene = scene; this.world = world; }
+  constructor(scene: THREE.Scene, world: DragonflySpawnerWorld) { this.displays = new PrefabDisplayGroup(scene); this.world = world; }
 
   spawn(position: THREE.Vector3, saved?: DragonflySpawnerRecord): THREE.Group {
     if (this.disposed) throw new Error('Dragonfly spawners have been disposed');
@@ -77,7 +78,7 @@ export class DragonflySpawnerManager {
         timer.StartTimer(REGEN_TIMER, RESPAWN_TIME);
     });
     this.spawners.set(model, spawner);
-    display.mount(this.scene);
+    this.displays.mount(display);
     spawner.stopActivity = watchTileActivity(model, this.world.tickingarea, active => {
       instance.setActive(active);
       if (active) childspawner.OnEntityWake(); else childspawner.OnEntitySleep();
@@ -101,7 +102,7 @@ export class DragonflySpawnerManager {
     }
     if (!point) return;
     const model = this.world.spawnDragonfly(point);
-    const locations = model.userData.components?.knownlocations as import('../../componets/src/knownlocations').KnownLocations | undefined;
+    const locations = prefabInstance(model)!.components?.knownlocations as import('../../componets/src/knownlocations').KnownLocations | undefined;
     locations?.RememberLocation('spawnpoint', point);
     return this.childFor(model);
   }
@@ -109,7 +110,7 @@ export class DragonflySpawnerManager {
   private childFor(model: THREE.Group): DragonflyChild {
     const instance = prefabInstance(model) as PrefabInstance | undefined;
     if (!instance?.entityId) throw new Error('Spawned dragonfly has no instance identity');
-    const locations = model.userData.components?.knownlocations as import('../../componets/src/knownlocations').KnownLocations | undefined;
+    const locations = prefabInstance(model)!.components?.knownlocations as import('../../componets/src/knownlocations').KnownLocations | undefined;
     return { id: instance.entityId, model,
       setHome: home => { if (home) locations?.RememberLocation('home', home.instance.position); },
       ListenForEvent: (name, fn) => {
@@ -132,5 +133,6 @@ export class DragonflySpawnerManager {
     if (this.disposed) return;
     this.disposed = true;
     for (const spawner of this.spawners.values()) { spawner.instance.remove(); spawner.display.dispose(); }
+    this.displays.dispose();
   }
 }

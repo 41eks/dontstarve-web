@@ -1,3 +1,4 @@
+import { prefabDisplay } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -36,7 +37,7 @@ it('restores the source save as nonlooping idle after constructor and keeps its 
     expect(gates.exportRecords()[0].record).toMatchObject({ id: 'atrium-source', components: { pickable: { picked: true } } });
     expect(PREFAB_DEFINITIONS.atriumGates.parseComponents(gates.exportRecords()[0].record.components, 'atrium', {} as never))
       .toEqual(gates.exportRecords()[0].record.components);
-    await model.userData.display.artLoaded();
+    await prefabDisplay(model).artLoaded();
     expect(instance.sprite.currentAnimation).toBe('idle');
     const cooldown = gates.spawn(new THREE.Vector3(8, 0, 7), {
       id: 'atrium-cooldown', transform: { position: [8, 0, 7], rotationY: 0 },
@@ -66,10 +67,10 @@ it('rebuilds the declared idle clip and child floor after tile sleep', async () 
     const model = gates.spawn(new THREE.Vector3(1, 0, 4), {
       id: 'atrium-sleep', transform: { position: [1, 0, 4], rotationY: 0 }, components: { pickable: { picked: true } },
     });
-    await model.userData.display.artLoaded();
+    await prefabDisplay(model).artLoaded();
     const instance = prefabInstance(model)!;
     const floor = model.children.find(child => prefabInstance(child)?.prefab === 'atrium_gate_floor')!;
-    await floor.userData.display.artLoaded();
+    await prefabDisplay(floor).artLoaded();
     awake.set(false); await settle();
     expect(instance.status.peek()).toBe('asleep');
     expect(instance.sprite.loaded).toBe(false);

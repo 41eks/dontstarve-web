@@ -14,11 +14,18 @@ function wornAmulet(health: number, hunger: number) {
   expect(inventory.EquipFromInventory(entity)).toBe(true);
   const stats = { health: createHealthState(health, 150), hunger: createHungerState(hunger, 150) };
   const art = { onequip: vi.fn(), onunequip: vi.fn() };
-  const owner = { PushEvent: vi.fn(), components: stats, IsCurrentState: (name: string) => name === state.name };
   const state = { name: 'idle' };
+  const listeners = new Set<(data: unknown) => void>();
+  const owner = { PushEvent: vi.fn(), components: stats, IsCurrentState: (name: string) => name === state.name,
+    ListenForEvent: (name: string, listener: (data: unknown) => void) => {
+      if (name !== 'newstate') return () => {};
+      listeners.add(listener);
+      return () => { listeners.delete(listener); };
+    } };
+  const enter = (name: string) => { state.name = name; for (const listener of [...listeners]) listener({ statename: name }); };
   const lifecycle = createAmuletEquipmentLifecycle(entity, art);
   lifecycle.onequip(owner);
-  return { inventory, world, entity, stats, art, lifecycle, state };
+  return { inventory, world, entity, stats, art, lifecycle, state, enter };
 }
 
 it('is a body resurrector with source uses and a hauntable that resurrects', () => {
@@ -55,13 +62,18 @@ it('converts hunger into health every 30 game seconds while hurt, spending one u
 });
 
 it('stops converting once unequipped, and keeps its worn art through amulet_rebirth', () => {
-  const { inventory, world, stats, art, lifecycle, state } = wornAmulet(100, 100);
+  const { inventory, world, stats, art, lifecycle, enter } = wornAmulet(100, 100);
   try {
-    state.name = 'amulet_rebirth';
+    enter('amulet_rebirth');
     lifecycle.onunequip();
     expect(art.onunequip).not.toHaveBeenCalled();
     world.advance(REDAMULET_CONVERSION_TIME * 2);
     expect(stats.health.peek()).toBe(100);
+    // SGwilson amulet_rebirth onexit: the art the amulet left goes as the owner leaves the state.
+    enter('idle');
+    expect(art.onunequip).toHaveBeenCalledOnce();
+    enter('amulet_rebirth');
+    expect(art.onunequip).toHaveBeenCalledOnce();
     const second = wornAmulet(100, 100);
     second.lifecycle.onunequip();
     expect(second.art.onunequip).toHaveBeenCalledOnce();

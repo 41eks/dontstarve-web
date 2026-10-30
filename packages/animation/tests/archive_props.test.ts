@@ -1,3 +1,4 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
@@ -96,12 +97,12 @@ it('hands out rune story lines once, saves static props and ignores the pad and 
       expect(await s.registry.spawn(id)).toBe(true);
     }
     const runes = [...s.scene.children].filter(model => lookupPrefabInstance(model)?.prefab === 'archive_rune_statue');
-    const status = (model: THREE.Object3D) => model.userData.components.inspectable.getstatus();
+    const status = (model: THREE.Object3D) => (findActionEntity(model)?.components ?? prefabInstance(model)!.components).inspectable.getstatus();
     expect([status(runes[0]), status(runes[1]), status(runes[0])]).toEqual(['LINE_1', 'LINE_2', 'LINE_1']);
     // Only a reader holding the ancient_reader tag gets the text.
     const reader = { components: { inventory: { EquipHasTag: (tag: string) => tag === 'ancient_reader' } } };
-    expect(runes[0].userData.components.inspectable.descriptionfn(reader)).toBe('LINE_1');
-    expect(runes[0].userData.components.inspectable.descriptionfn({})).toBeUndefined();
+    expect((findActionEntity(runes[0])?.components ?? prefabInstance(runes[0])!.components).inspectable.descriptionfn(reader)).toBe('LINE_1');
+    expect((findActionEntity(runes[0])?.components ?? prefabInstance(runes[0])!.components).inspectable.descriptionfn({})).toBeUndefined();
     s.cameraFacing.set(FACING.UPRIGHT);
     // The pad (persists = false) and the self-removing rubble never reach the save.
     const records = s.props.exportRecords();
@@ -126,6 +127,6 @@ it('hands out rune story lines once, saves static props and ignores the pad and 
     // A rune statue's counter resumes after the highest saved line.
     await restored.props.spawn('archive_rune_statue', new THREE.Vector3(30, 0, 0));
     const fresh = [...restored.scene.children].filter(model => lookupPrefabInstance(model)?.prefab === 'archive_rune_statue').at(-1)!;
-    expect(fresh.userData.components.inspectable.getstatus()).toBe('LINE_3');
+    expect((findActionEntity(fresh)?.components ?? prefabInstance(fresh)!.components).inspectable.getstatus()).toBe('LINE_3');
   } finally { s.dispose(); restored.dispose(); }
 }, 20000);

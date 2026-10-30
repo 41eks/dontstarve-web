@@ -32,12 +32,12 @@ test('a cursor-held razor refuses an awake beefalo, shaves a sleeping one, and t
   const beefalo = () => page.evaluate(() => {
     const model = (window as any).razorGame.scene.children.find((model: any) => (window as any).__prefabInstance(model)?.prefab === 'beefalo');
     if (!model) return null;
-    const { beard, sleeper } = model.userData.components, inst = model.userData.actionEntity;
+    const { beard, sleeper } = ((window as any).__findActionEntity(model)?.components ?? (window as any).__prefabInstance(model)!.components), inst = (window as any).__findActionEntity(model);
     return { id: (window as any).__prefabInstance(model)?.entityId, state: (window as any).__prefabInstance(model).sg.stateName, bits: beard.bits.peek(), growth: beard.daysgrowth.peek(),
       asleep: sleeper.IsAsleep(), bearded: inst.hasTag('bearded'), hairy: inst.hasTag('has_beard') };
   });
   const wool = () => page.evaluate(() => (window as any).razorGame.scene.children
-    .filter((model: any) => model.userData.itemId === 'beefalowool').length);
+    .filter((model: any) => ((window as any).__findActionEntity(model)?.prefab ?? (window as any).__prefabInstance(model)?.prefab) === 'beefalowool').length);
   const clickBeefalo = async () => {
     const point = await page.evaluate(() => {
       const { scene, camera, renderer } = (window as any).razorGame;
@@ -58,7 +58,7 @@ test('a cursor-held razor refuses an awake beefalo, shaves a sleeping one, and t
   await expect.poll(beefalo).not.toBeNull();
   // The ground razor is built from razor.zip/swap_razor, not from its inventory icon.
   await expect.poll(() => page.evaluate(() => (window as any).razorGame.scene.children
-    .filter((model: any) => model.userData.itemId === 'razor')
+    .filter((model: any) => ((window as any).__findActionEntity(model)?.prefab ?? (window as any).__prefabInstance(model)?.prefab) === 'razor')
     .map((model: any) => model.children[0].children[0].geometry.drawRange.count > 0))).toEqual([true]);
   // Wandering is not under test here; stop its brain while testing the player's tool input.
   await page.evaluate(() => {
@@ -70,7 +70,7 @@ test('a cursor-held razor refuses an awake beefalo, shaves a sleeping one, and t
   });
   // reskin_tool cycles the ground razor through its three source skins, keeping its identity.
   const groundRazor = () => page.evaluate(() => (window as any).razorGame.scene.children
-    .filter((model: any) => model.userData.itemId === 'razor')
+    .filter((model: any) => ((window as any).__findActionEntity(model)?.prefab ?? (window as any).__prefabInstance(model)?.prefab) === 'razor')
     .map((model: any) => ({ id: (window as any).__prefabInstance(model)?.entityId, skin: (window as any).__prefabInstance(model)?.skinId })));
   const spawnedRazor = (await groundRazor())[0];
   await submit('c_give("reskin_tool")');

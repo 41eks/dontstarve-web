@@ -26,7 +26,7 @@ test('eating and drinking update the HUD and preserve food and spawned items thr
     const { main, scene } = (window as any).juiceGame;
     main.inventory.applySlotChanges(main.inventory.exportState().slots.filter((slot: any) => slot.item)
       .map((slot: any) => ({ slot: slot.address, ...slot.item, delta: -slot.item.count })));
-    (window as any).existingJuiceIds = scene.children.filter((model: any) => model.userData.itemId === 'bananajuice')
+    (window as any).existingJuiceIds = scene.children.filter((model: any) => ((window as any).__findActionEntity(model)?.prefab ?? (window as any).__prefabInstance(model)?.prefab) === 'bananajuice')
       .map((model: any) => (window as any).__prefabInstance(model)?.entityId);
     (window as any).existingFoodIds = scene.children.map((model: any) => (window as any).__prefabInstance(model)?.entityId);
   });
@@ -35,9 +35,9 @@ test('eating and drinking update the HUD and preserve food and spawned items thr
   await submit('c_give("bananajuice", 2)');
   await submit('c_spawn("bananajuice")');
   await expect.poll(() => page.evaluate(() => (window as any).juiceGame.scene.children.some((model: any) =>
-    model.userData.itemId === 'bananajuice' && !(window as any).existingJuiceIds.includes((window as any).__prefabInstance(model)?.entityId)))).toBe(true);
+    ((window as any).__findActionEntity(model)?.prefab ?? (window as any).__prefabInstance(model)?.prefab) === 'bananajuice' && !(window as any).existingJuiceIds.includes((window as any).__prefabInstance(model)?.entityId)))).toBe(true);
   const spawnedId = await page.evaluate(() => (window as any).__prefabInstance((window as any).juiceGame.scene.children.find((model: any) =>
-    model.userData.itemId === 'bananajuice' && !(window as any).existingJuiceIds.includes((window as any).__prefabInstance(model)?.entityId)))?.entityId);
+    ((window as any).__findActionEntity(model)?.prefab ?? (window as any).__prefabInstance(model)?.prefab) === 'bananajuice' && !(window as any).existingJuiceIds.includes((window as any).__prefabInstance(model)?.entityId)))?.entityId);
   const bar = page.locator('dst-inventory-bar .inventory-bar__items');
   const juice = bar.locator('[data-item-id="bananajuice"]');
   const sanity = page.locator('dst-status-hud .survival-meter--sanity output');
@@ -70,9 +70,9 @@ test('eating and drinking update the HUD and preserve food and spawned items thr
   for (const itemId of ['meatballs', 'blue_cap']) {
     await submit(`c_spawn("${itemId}")`);
     await expect.poll(() => page.evaluate(id => (window as any).juiceGame.scene.children.some((model: any) =>
-      model.userData.itemId === id && !(window as any).existingFoodIds.includes((window as any).__prefabInstance(model)?.entityId)), itemId)).toBe(true);
+      ((window as any).__findActionEntity(model)?.prefab ?? (window as any).__prefabInstance(model)?.prefab) === id && !(window as any).existingFoodIds.includes((window as any).__prefabInstance(model)?.entityId)), itemId)).toBe(true);
     const id = await page.evaluate(id => (window as any).__prefabInstance((window as any).juiceGame.scene.children.find((model: any) =>
-      model.userData.itemId === id && !(window as any).existingFoodIds.includes((window as any).__prefabInstance(model)?.entityId)))?.entityId, itemId);
+      ((window as any).__findActionEntity(model)?.prefab ?? (window as any).__prefabInstance(model)?.prefab) === id && !(window as any).existingFoodIds.includes((window as any).__prefabInstance(model)?.entityId)))?.entityId, itemId);
     spawnedFood.push({ itemId, id });
   }
 

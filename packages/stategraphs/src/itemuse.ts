@@ -1,3 +1,4 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import { PlaySound, type SoundHandle } from '../../prefab/src/sound.ts';
 import * as THREE from 'three';
 import { BufferedAction } from './bufferedaction.ts';
@@ -49,7 +50,7 @@ export function getItemUseActions(model: THREE.Object3D | undefined, source: Ite
   if (!source) return [];
   const actions: MouseActionCandidate[] = [];
   if (!model) return actions;
-  const target = model.userData.actionEntity as ItemUseTarget | undefined;
+  const target = findActionEntity(model) as ItemUseTarget | undefined;
   if (!target) return actions;
   if (source.entity.components?.fertilizer && target.hasTag('barren')) actions.push({
     action: { action: 'FERTILIZE', target, invobject: source.entity }, button: 'left',

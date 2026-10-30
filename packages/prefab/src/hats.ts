@@ -9,7 +9,7 @@ import * as THREE from 'three';
 import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
 import catalog from './hats.json' with { type: 'json' };
 import { bindResidentGroundItem } from './groundItemLifecycle';
-import { createPrefabEntity, prefabInstance } from './prefabInstance';
+import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
 import { AlterguardianHatEquipped } from './alterguardian_hat_equipped';
 import { spawnLightEntity, type PrefabLocalLight } from './localLight';
 import { TILE_SIZE } from './tile';
@@ -94,7 +94,7 @@ export interface HatActivationOptions {
 
 /** hats.lua alterguardian_activate / alterguardian_deactivate: the two alterguardian_hat_equipped layers and the light. */
 export class HatActivationController {
-  private readonly owner: THREE.Object3D;
+  private readonly owner: PrefabInstance;
   private readonly options: HatActivationOptions;
   private removeLight: (() => void) | null = null;
   private readonly hat = createSignal<{ readonly definition: HatDefinition; readonly skinId?: string } | null>(null);
@@ -110,7 +110,7 @@ export class HatActivationController {
   /** Seconds since deactivation, until the 8-frame task restores the swap_hat. */
   private restoring: number | undefined;
 
-  constructor(owner: THREE.Object3D, options: HatActivationOptions) {
+  constructor(owner: PrefabInstance, options: HatActivationOptions) {
     this.owner = owner;
     this.options = options;
     const sanity = options.sanityPercent && watchSignal(options.sanityPercent, stop => { this.stopSanity = stop; });
@@ -167,8 +167,7 @@ export class HatActivationController {
   private activate(): void {
     const { definition, skinId } = this.hat.peek()!;
     const config = definition.equip.activated!;
-    const owner = prefabInstance(this.owner);
-    if (!owner) throw new Error('The crown owner has no entity');
+    const owner = this.owner;
     this.restoring = undefined;
     const skin = skinId === undefined ? undefined : definition.skinArchives[skinId];
     const assets = this.options.assets;
@@ -181,7 +180,7 @@ export class HatActivationController {
       if (isFront) this.front = fx; else this.back = fx;
     }
     // alterguardianhatlight is parented to the owner.
-    const light = spawnLightEntity(this.owner, 'alterguardianhatlight');
+    const light = spawnLightEntity('alterguardianhatlight', this.owner);
     light.instance.light.set({ ...config.light, radius: config.light.radius * (TILE_SIZE / 4) });
     this.removeLight = light.remove;
   }

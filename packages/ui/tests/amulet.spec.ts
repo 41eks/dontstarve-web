@@ -24,9 +24,9 @@ test('a ghost that haunts a red amulet rises from it in amulet_rebirth, which co
     return JSON.parse(await readSaveDownload((await (await download).path())!));
   };
   const amulet = () => page.evaluate(() => {
-    const model = (window as any).amuletGame.scene.children.find((model: any) => model.userData.itemId === 'amulet');
-    return model ? { resurrector: model.userData.actionEntity?.hasTag('resurrector'), hauntable: !!model.userData.components?.hauntable,
-      haunted: model.userData.actionEntity?.hasTag('haunted') } : null;
+    const model = (window as any).amuletGame.scene.children.find((model: any) => ((window as any).__findActionEntity(model)?.prefab ?? (window as any).__prefabInstance(model)?.prefab) === 'amulet');
+    return model ? { resurrector: (window as any).__findActionEntity(model)?.hasTag('resurrector'), hauntable: !!((window as any).__findActionEntity(model)?.components ?? (window as any).__prefabInstance(model)!.components)?.hauntable,
+      haunted: (window as any).__findActionEntity(model)?.hasTag('haunted') } : null;
   });
   const player = () => page.evaluate(() => {
     const { player, stats, main } = (window as any).amuletGame, controller = (window as any).__prefabInstance(player).animationController;
@@ -53,13 +53,13 @@ test('a ghost that haunts a red amulet rises from it in amulet_rebirth, which co
   // Move the amulet off the ghost, then a real left click on it: HAUNT for a ghost.
   await page.waitForTimeout(1000);
   await page.evaluate(() => {
-    const model = (window as any).amuletGame.scene.children.find((model: any) => model.userData.itemId === 'amulet');
-    model.userData.pickupTarget.entity.transform.position.x = 6; model.position.x = 6;
+    const model = (window as any).amuletGame.scene.children.find((model: any) => ((window as any).__findActionEntity(model)?.prefab ?? (window as any).__prefabInstance(model)?.prefab) === 'amulet');
+    (window as any).__findActionEntity(model)?.pickupTarget.entity.transform.position.x = 6; model.position.x = 6;
   });
   await page.waitForTimeout(500);
   const click = await page.evaluate(async url => {
     const { view } = await import(url), { scene } = (window as any).amuletGame;
-    const model = scene.children.find((model: any) => model.userData.itemId === 'amulet');
+    const model = scene.children.find((model: any) => ((window as any).__findActionEntity(model)?.prefab ?? (window as any).__prefabInstance(model)?.prefab) === 'amulet');
     const at = model.position.clone(); at.y = .15;
     const ndc = at.project(view.camera), rect = view.renderer.domElement.getBoundingClientRect();
     return { x: rect.left + (ndc.x + 1) / 2 * rect.width, y: rect.top + (1 - ndc.y) / 2 * rect.height };

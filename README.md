@@ -13,7 +13,9 @@ https://41eks.github.io/dontstarve-web/
 
 制作菜单右侧快捷栏按面板高度整体同比缩放，按钮、页码和槽位间距保持比例；窗口变矮时不再溢出面板。大小屏均将面板中心对齐窗口高度的 50%；展开和收起共用垂直定位与缩放原点，仅横向移动。该布局调整不改变调试命令的语法、参数、支持 ID 或存档格式。
 
-实体元数据直接从 `PrefabInstance` 读取：`prefab`、`entityId`、`saveRecord`、`skinId`、`persists`；半径通过 `instance.getPhysicsRadius(fallback)` 获取。模型入口通过 `prefabInstance(model)` 找到实例，地面物品状态以 `ItemEntity` 为准，visual 显式提供 `instance`。这些字段不再通过模型的 `userData` 转发。此次调整保留 `c_spawn`、`c_give`、`c_save()` 的语法、参数、支持 ID 与存档格式。
+实体元数据直接从 `PrefabInstance` 读取：`prefab`、`entityId`、`saveRecord`、`skinId`、`persists`；半径通过 `instance.getPhysicsRadius(fallback)` 获取。模型入口通过 `prefabInstance(model)` 找到实例，地面物品状态以 `ItemEntity` 为准，visual 显式提供 `instance`。公共实体创建与动作注册入口不再向模型写入 `components`、`display`、`animationController` 或动作目标；分别通过 `instance.components`、`instance.sprite`、`prefabDisplay(model)` 和 `findActionEntity(model)` 访问所属对象。建筑以实例位置作为脚点，sprite 底部对齐与资源释放由 display 处理；地面物品的数量、位置和拾取状态以 `ItemEntity` 为准。这些字段不再通过模型的 `userData` 转发。此次调整保留 `c_spawn`、`c_give`、`c_save()` 的语法、参数、支持 ID 与存档格式。
+
+prefab 包内原先直接持有 `scene` 的 38 个类改由 `PrefabDisplayGroup` 接管显示对象的场景挂载和场景内释放，燃烧传播通过逻辑实体查询发现邻居。梦魇方尖碑的升降、隐藏状态、状态图和任务直接属于 `NightmareRockInstance`，通过 `prefabInstance(model)` 读取；不再写入 `model.userData.nightmareRock` 或 `removed`。方尖碑休眠保留逻辑状态和碰撞，永久移除取消任务并释放显示；`sanityrock`／`insanityrock` 的 `c_spawn` ID、命令参数及 `c_save()` 字段不变。
 
 `PrefabInstance.skinId` 写入 `SpriteJson.skinId`，display 按 prefab 声明的源皮肤映射从共享缓存加载并应用 build，清空时恢复基础外观。扫把施法前由 display 预热，命中时更新声明，保留原实体、组件、动画进度与回调；`c_spawn`、`c_give`、`c_save()` 的语法、支持 ID 与存档字段沿用现有实现。
 

@@ -1,7 +1,8 @@
+import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import * as THREE from 'three';
 import { SpriteResources, type ArchiveSpriteCommands, type PrefabDisplay } from '@dontstarve-web/display';
-import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
+import { createArchiveEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
 import type { TileStateQuery } from '@dontstarve-web/signals';
 import { watchTileActivity } from './tileActivity';
 import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
@@ -49,7 +50,7 @@ interface Houndbone {
 
 /** prefabs/houndbone.lua: a piece of hound remains, hammered once into boneshards (and, for piece3, maybe a houndstooth). */
 export class HoundboneManager {
-  private readonly scene: THREE.Scene;
+  private readonly displays: PrefabDisplayGroup;
   private readonly world: HoundboneWorld;
   private readonly resources = new SpriteResources(undefined, 'houndbone');
   private readonly bones = new Map<THREE.Group, Houndbone>();
@@ -57,7 +58,7 @@ export class HoundboneManager {
   private disposed = false;
 
   constructor(scene: THREE.Scene, world: HoundboneWorld) {
-    this.scene = scene; this.world = world;
+    this.displays = new PrefabDisplayGroup(scene); this.world = world;
   }
 
   spawn(position: THREE.Vector3, saved?: HoundboneRecord): THREE.Group {
@@ -79,7 +80,6 @@ export class HoundboneManager {
     const sprite = instance.sprite;
     model.position.set(position.x, 0, position.z);
     instance.entityId = saved?.id ?? newEntityId();
-    Object.assign(model.userData, { animationController: sprite });
     const inst = actionEntity(model, HOUNDBONE_ID);
     inst.addTag('bone');
     // workable: HAMMER, 1 work; onhammered drops the loot, plays collapse_small with the rock material and removes it.
@@ -98,7 +98,7 @@ export class HoundboneManager {
       this.playCollapse(model.position);
       this.remove(model);
     });
-    Object.assign(model.userData.components, { workable, lootdropper });
+    Object.assign(prefabInstance(model)!.components, { workable, lootdropper });
     new ToolMouseTarget(inst, instance, workable, this.world.handEquipment);
     this.bones.set(model, bone);
     inst.hammerTarget = {
@@ -106,7 +106,7 @@ export class HoundboneManager {
       isValid: () => this.bones.get(model) === bone && workable.CanBeWorked(),
       playHit: () => { performToolWork('HAMMER', inst, {}); },
     };
-    this.scene.add(model);
+    this.displays.mount(prefabDisplay(model)!);
     bone.stopActivity = watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active));
     return model;
   }
@@ -121,7 +121,7 @@ export class HoundboneManager {
     instance => instance.sprite.playOnce('collapse_small', () => { instance.remove(); this.effects.delete(entity); }));
     entity.instance.position.copy(at); entity.instance.persists = false;
     for (const tag of ['FX', 'NOCLICK']) entity.instance.addTag(tag);
-    this.scene.add(entity.display.model); this.effects.add(entity);
+    this.displays.mount(entity.display); this.effects.add(entity);
   }
 
   update(dt: number, _quaternion: THREE.Quaternion): void {
@@ -169,6 +169,7 @@ export class HoundboneManager {
     for (const model of [...this.bones.keys()]) this.remove(model);
     for (const { instance } of this.effects) instance.remove();
     this.effects.clear();
+    this.displays.dispose();
     this.resources.dispose();
   }
 }

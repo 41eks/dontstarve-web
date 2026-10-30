@@ -87,7 +87,7 @@ test('a ghost that haunts the multiplayer portal is resurrected there with a hea
     return { ghost: controller.isGhost, state: controller.stategraph.stateName, ghostMode: stats.playerGhostMode.peek(),
       health: stats.playerStats.health.peek(), penalty: stats.playerStats.health.penalty, invincible: stats.playerStats.health.invincible,
       visible: player.visible && player.children.every((child: any) => child.visible), x: Math.round(player.position.x * 10) / 10,
-      slippery: !!(window as any).__prefabInstance(player).slipperyfeet, tags: (window as any).__prefabInstance(player).listTags(), portalTags: (window as any).__prefabInstance(portal).listTags(), hauntable: !!portal.userData.components.hauntable };
+      slippery: !!(window as any).__prefabInstance(player).slipperyfeet, tags: (window as any).__prefabInstance(player).listTags(), portalTags: (window as any).__prefabInstance(portal).listTags(), hauntable: !!((window as any).__findActionEntity(portal)?.components ?? (window as any).__prefabInstance(portal)!.components).hauntable };
   });
 
   await page.goto('/tests/dst-lighting.html?save=initial-world.json');

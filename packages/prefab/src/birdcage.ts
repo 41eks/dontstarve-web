@@ -1,8 +1,10 @@
+import { type SpriteState } from '@dontstarve-web/display';
+import { prefabInstance } from './prefabInstance';
 import * as THREE from 'three';
 import definitions from './definitions.json' with { type: 'json' };
 import catalog from './groundItems.json' with { type: 'json' };
 import { birdcage_init_fn } from '@dontstarve-web/animation/prefabskin';
-import { loadBuildOverride, type LoadedBuildOverride, type SpriteController } from '@dontstarve-web/animation/sprite';
+import { loadBuildOverride, type LoadedBuildOverride } from '@dontstarve-web/animation/sprite';
 import { batch, createRenderEffect, createMemo, createSignal, readonlySignal, getWatchWorldContent, createIdleWeatherSources, type ReadonlySignal, type Signal, type GetWatchWorldContent, type WorldContentEnvironment, type WorldPhase } from '@dontstarve-web/signals';
 import type { InventoryStack, ItemEntity, ItemOwner } from '@dontstarve-web/inventory';
 import { Occupiable } from '../../componets/src/occupiable';
@@ -95,8 +97,8 @@ async function prepare(): Promise<BirdcageResources> {
 class CageAnimation {
     private queue: { name: string; loop: boolean }[] = [];
     private playingOnce = false;
-    private readonly controller: () => SpriteController;
-    constructor(controller: () => SpriteController) { this.controller = controller; }
+    private readonly controller: () => SpriteState;
+    constructor(controller: () => SpriteState) { this.controller = controller; }
 
     play(name: string, loop = false): void {
         this.queue = [];
@@ -192,7 +194,7 @@ export class Birdcage {
                 this.controller.addOverrideBuild(activeBuild, build);
             }
         });
-        this.animation = new CageAnimation(() => context.model.userData.animationController as SpriteController);
+        this.animation = new CageAnimation(() => (prefabInstance(context.model)!.sprite as SpriteState));
         this.animationTask = scheduler ? new ComponentTimer(scheduler, () => { this.doAnimationTask(); this.animationTask!.start(ANIMATION_PERIOD); }) : undefined;
         for (const tag of ['structure', 'cage']) entity.addTag(tag);
         this.shelf = new Shelf<ItemEntity, CageEntity>(entity, this.holder);
@@ -215,7 +217,7 @@ export class Birdcage {
 
     // --- state -------------------------------------------------------------------------------
 
-    private get controller(): SpriteController { return this.context.model.userData.animationController as SpriteController; }
+    private get controller(): SpriteState { return (prefabInstance(this.context.model)!.sprite as SpriteState); }
     private get position(): THREE.Vector3 { return this.context.model.position; }
     private get groundPosition(): THREE.Vector3 { return this.entity.getPosition(); }
     get item(): ItemEntity | undefined { return this.slot; }
@@ -589,7 +591,7 @@ export class Birdcage {
     }
 }
 
-const cageOf = (model: THREE.Object3D): Birdcage => model.userData.actionEntity.components.birdcage;
+const cageOf = (model: THREE.Object3D): Birdcage => prefabInstance(model)!.components.birdcage!;
 
 function oninit(context: AnimatedBuildingEventContext): void {
     new Birdcage(context);

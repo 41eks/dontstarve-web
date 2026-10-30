@@ -32,7 +32,7 @@ test('chops a moon tree, reloads its stump, and digs it with a shovel, preservin
   };
   const treeAnimation = () => page.evaluate(() => {
     const tree = (window as any).chopGame.scene.children.find((model: any) => (window as any).__prefabInstance(model)?.prefab === 'moon_tree');
-    return tree?.userData.animationController.currentAnimation ?? null;
+    return (window as any).__prefabInstance(tree)?.sprite.currentAnimation ?? null;
   });
   const clickTree = async () => {
     const point = await page.evaluate(async () => {

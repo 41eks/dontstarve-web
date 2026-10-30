@@ -61,12 +61,12 @@ export async function checkCursorPreview() {
   const draw = () => { lighting.render(scene, camera); ui.update(); };
   draw();
   const night = { preview: sample(-6, 0), ground: sample(6, 0), label: labelState() };
-  const owner = new THREE.Object3D();
-  scene.add(owner);
-  const torchLight = spawnLightEntity(owner, 'torchfire_light'); torchLight.instance.light.set(TORCH_LIGHT);
+  const owner = createEmptyEntity('wilson');
+  scene.add(owner.display.model);
+  const torchLight = spawnLightEntity('torchfire_light', owner.instance); torchLight.instance.light.set(TORCH_LIGHT);
   const removeTorchLight = torchLight.remove;
   const settle = () => new Promise(resolve => setTimeout(resolve, 0));
-  await settle(); // The light entity's display lists its declared light.
+  await settle(); // The owner's display lists the light parented to it.
   draw();
   const torch = { preview: sample(-6, 0), ground: sample(6, 0), label: labelState() };
   removeTorchLight();

@@ -1,3 +1,4 @@
+import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
 import type { TileStateQuery } from '@dontstarve-web/signals';
@@ -7,7 +8,7 @@ import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { SpriteResources, type ArchiveSpriteCommands, type PrefabDisplay } from '@dontstarve-web/display';
-import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
+import { createArchiveEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
 import { watchTileActivity } from './tileActivity';
 
 export const CAVE_EXIT_ID = 'cave_exit' as const;
@@ -44,14 +45,14 @@ interface Exit {
 
 /** cave_exit.lua: the staircase back to the surface; `open` while the Master shard is available. */
 export class CaveExitManager {
-  private readonly scene: THREE.Scene;
+  private readonly displays: PrefabDisplayGroup;
   private readonly world: CaveExitWorld;
   private readonly resources = new SpriteResources();
   private readonly exits = new Map<THREE.Group, Exit>();
   private disposed = false;
 
   constructor(scene: THREE.Scene, world: CaveExitWorld) {
-    this.scene = scene; this.world = world;
+    this.displays = new PrefabDisplayGroup(scene); this.world = world;
   }
 
   spawn(position: THREE.Vector3, saved?: CaveExitRecord): THREE.Group {
@@ -77,9 +78,9 @@ export class CaveExitManager {
       return () => model.removeEventListener(event as never, handler);
     });
     exit.stopMigration = () => handlers.forEach(stop => stop());
-    model.userData.components.worldmigrator = migrator;
+    prefabInstance(model)!.components.worldmigrator = migrator;
     this.exits.set(model, exit);
-    this.scene.add(model);
+    this.displays.mount(prefabDisplay(model)!);
     exit.stopActivity = watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active));
     migrator.SetDestinationWorld(MASTER_SHARD);
     return model;
@@ -111,6 +112,7 @@ export class CaveExitManager {
       exit.stopActivity(); exit.stopMigration(); exit.instance.remove(); exit.display.dispose();
     }
     this.exits.clear();
+    this.displays.dispose();
     this.resources.dispose();
   }
 }

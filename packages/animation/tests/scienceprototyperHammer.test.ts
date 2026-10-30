@@ -1,3 +1,4 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -34,7 +35,7 @@ async function setup(id: typeof RESEARCH_LAB_IDS[number], skinId?: string) {
   const builder = new Builder(actionEntity(world.player as THREE.Group, 'waxwell'), {
     findEntities: (...args) => FindEntities(...args), researchMachineDistance: 4 * WORLD_SCALE,
   });
-  const animation = () => model.userData.animationController as TransientSpriteAnimationController;
+  const animation = () => prefabInstance(model)!.sprite as TransientSpriteAnimationController;
   const finish = () => { for (let i = 0; i < 80; i++) placement.update(1 / 30); };
   return { placement, model, world, animation, finish, dropLoot, builder };
 }
@@ -88,9 +89,9 @@ it('preserves work through reskinning and restores proximity after hits', async 
     finish();
     expect(animation().currentAnimation).toBe('proximity_loop');
     const prepared = await placement.reskinTargets[0].prepareNextSkin();
-    const prototyper = model.userData.components.prototyper;
+    const prototyper = (findActionEntity(model)?.components ?? prefabInstance(model)!.components).prototyper;
     expect(prepared.apply()).toBe(true);
-    expect(model.userData.components.prototyper).toBe(prototyper);
+    expect((findActionEntity(model)?.components ?? prefabInstance(model)!.components).prototyper).toBe(prototyper);
     expect(prototyper.on).toBe(true);
     prepared.dispose();
     for (let i = 0; i < 2; i++) { placement.hammerTargets[0].playHit(); finish(); }
@@ -127,12 +128,12 @@ it('queues magic station transitions across reskinning, then rebuilds transient 
     expect(animation().currentAnimation).toBe('idle'); // Placement does not select a station.
     builder.OnUpdate();
     expect(animation().currentAnimation).toBe('proximity_pre');
-    const component = model.userData.components.prototyper;
+    const component = (findActionEntity(model)?.components ?? prefabInstance(model)!.components).prototyper;
     const sound = vi.mocked(PlaySound).mock.results.at(-1)!.value;
     const prepared = await placement.reskinTargets[0].prepareNextSkin();
     expect(prepared.apply()).toBe(true);
     prepared.dispose();
-    expect(model.userData.components.prototyper).toBe(component);
+    expect((findActionEntity(model)?.components ?? prefabInstance(model)!.components).prototyper).toBe(component);
     for (let i = 0; i < 300; i++) placement.update(1 / 30);
     expect(animation().currentAnimation).toBe('proximity_loop');
     expect(sound.stop).not.toHaveBeenCalled();
@@ -149,10 +150,10 @@ it('queues magic station transitions across reskinning, then rebuilds transient 
 
     restored = new ResearchLabPlacement(world, () => true);
     const loaded = await restored.spawnFromSave('researchlab3', record);
-    expect(loaded.userData.components.prototyper.on).toBe(false);
+    expect((findActionEntity(loaded)?.components ?? prefabInstance(loaded)!.components).prototyper.on).toBe(false);
     world.player.position.copy(actionEntity(loaded, 'researchlab3').getPosition());
     builder.OnUpdate();
-    expect(loaded.userData.components.prototyper.on).toBe(true);
+    expect((findActionEntity(loaded)?.components ?? prefabInstance(loaded)!.components).prototyper.on).toBe(true);
     expect(builder.accessible_tech_trees.peek().MAGIC).toBe(3);
     expect(restored.exportRecords()[0].record).toEqual(record);
     restored.dispose();
@@ -160,7 +161,7 @@ it('queues magic station transitions across reskinning, then rebuilds transient 
     const burnt = await restored.spawnFromSave('researchlab3', { ...record,
       components: { ...record.components, building: { ...record.components.building!, burnt: true } } });
     builder.OnUpdate();
-    expect(burnt.userData.components.prototyper).toBeUndefined();
+    expect((findActionEntity(burnt)?.components ?? prefabInstance(burnt)!.components).prototyper).toBeUndefined();
     expect(actionEntity(burnt, 'researchlab3').hasTag('prototyper')).toBe(false);
     expect(builder.current_prototyper).toBeUndefined();
     expect(builder.accessible_tech_trees.peek().MAGIC).toBe(0);

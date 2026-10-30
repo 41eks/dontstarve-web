@@ -32,7 +32,7 @@ export class AlterguardianHatEquipped {
   constructor(art: AlterguardianHatEquippedArt, owner: PrefabInstance<ArchiveSpriteCommands>) {
     this.art = art;
     this.owner = owner;
-    const anim = this.anim = new AnimState(() => this.instance?.sprite.setAnimState(anim.json.peek(), art.skin?.art));
+    const anim = this.anim = new AnimState();
     // SetBank / SetBuild("hat_alterguardian_equipped"): the display loads the archive before it draws the layer.
     const source = (factory: AnimatedSpriteFactory) => ({
       create: (name: string) => factory.create({ initialAnimation: name, name: PREFAB }),
@@ -44,6 +44,8 @@ export class AlterguardianHatEquipped {
     }, { name: 'idle' }, PREFAB, instance => {
       // hats.lua's empty spore container: alterguardianhat_animstatemult sets SetMultColour(0.7, 0.7, 0.7) on both entities.
       instance.sprite.setColour([0.7, 0.7, 0.7]);
+      // The layer's own AnimState, by its json signal: its display follows it.
+      instance.sprite.setAnimState(anim.json, art.skin?.art);
       instance.addTag('FX');
       instance.addTag('DECOR');
       instance.persists = false;

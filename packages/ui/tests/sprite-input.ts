@@ -1,3 +1,4 @@
+import { prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import { expect, type Page } from '@playwright/test';
 
 /** Follow the current camera/art and wait for the previous action to finish before the next real click. */
@@ -7,7 +8,7 @@ export async function hoverSprite(page: Page, screenPoint: () => Promise<{ x: nu
   await expect.poll(async () => {
     const busy = await page.evaluate(key => {
       const { player, inventory } = (window as any)[key];
-      const graph = (window as any).__prefabInstance(player).animationController.stategraph;
+      const graph = prefabInstance(player).animationController.stategraph;
       if (graph.stateName !== 'idle') return true;
       // These fixtures switch between the source shovel and sweeper. Their assets may finish after slot state changes.
       const build: Record<string, string> = { shovel: 'ground:swap_shovel', reskin_tool: 'ground:swap_reskin_tool' };

@@ -1,3 +1,4 @@
+import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import type { World } from 'cannon-es';
 import { ArchiveSpriteAssets, createSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
@@ -8,7 +9,7 @@ import { Workable } from '../../componets/src/workable';
 import { ComponentTimer, Timer, type NamedTimerSave } from '../../componets/src/timer';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { MiniMapState } from '../../map/src/minimapState';
-import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
+import { createArchiveEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
 import { actionEntity } from './actionEntity';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { watchTileActivity } from './tileActivity';
@@ -50,9 +51,9 @@ export class BeeQueenHiveManager {
   private readonly hives = new Map<THREE.Group, Hive>();
   private disposed = false;
 
-  private readonly scene: THREE.Scene;
+  private readonly displays: PrefabDisplayGroup;
   private readonly world: BeeQueenHiveWorld;
-  constructor(scene: THREE.Scene, world: BeeQueenHiveWorld) { this.scene = scene; this.world = world; }
+  constructor(scene: THREE.Scene, world: BeeQueenHiveWorld) { this.displays = new PrefabDisplayGroup(scene); this.world = world; }
 
   spawn(position: THREE.Vector3, saved?: BeeQueenHiveRecord): THREE.Group {
     if (this.disposed) throw new Error('Bee queen hives have been disposed');
@@ -89,7 +90,7 @@ export class BeeQueenHiveManager {
     this.setHoneyLevel(hive, this.honeyLevel(workable.GetWorkLeft()));
     hive.timer.OnLoad(saved?.components.beeQueenHiveTimer);
     workable.SetOnWorkCallback(() => this.onWorked(hive));
-    Object.assign(model.userData.components, { workable, timer: hive.timer });
+    Object.assign(prefabInstance(model)!.components, { workable, timer: hive.timer });
     new ToolMouseTarget(inst, instance, workable, this.world.handEquipment);
     this.hives.set(model, hive);
     inst.hammerTarget = {
@@ -97,7 +98,7 @@ export class BeeQueenHiveManager {
       isValid: () => this.hives.get(model) === hive && workable.CanBeWorked(),
       playHit: () => { performToolWork('HAMMER', inst, {}); },
     };
-    this.scene.add(model);
+    this.displays.mount(prefabDisplay(model)!);
     hive.stopActivity = watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active));
     return model;
   }
@@ -174,6 +175,7 @@ export class BeeQueenHiveManager {
     if (this.disposed) return;
     this.disposed = true;
     for (const model of [...this.hives.keys()]) this.remove(model);
+    this.displays.dispose();
     this.assets.dispose();
   }
 }

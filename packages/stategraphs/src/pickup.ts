@@ -1,3 +1,4 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import type { ItemEntity, InventoryStore } from '../../inventory/src/index.ts';
 import type { InventoryActor } from '../../componets/src/inventoryitem.ts';
@@ -63,7 +64,7 @@ export function performPickupAction(target: PickupTarget, doer: PickupDoer): boo
 export function getPickupActions(model: THREE.Object3D | undefined, doer: PickupDoer): MouseActionCandidate[] {
   const actions: MouseActionCandidate[] = [];
   if (!model) return actions;
-  const target = model.userData.pickupTarget as PickupTarget | undefined;
+  const target = findActionEntity(model)?.pickupTarget;
   if (!target) return actions;
   model.position.copy(target.position);
   for (const button of ['left', 'right'] as const) actions.push({

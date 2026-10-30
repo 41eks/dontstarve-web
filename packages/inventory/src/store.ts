@@ -996,8 +996,8 @@ export class InventoryStore {
             if (backpack) return backpack.components.inventoryitem.owner?.getPosition?.() ?? backpack.getPosition();
           }
           const inst = this.worldContainers.get(address.containerId)?.inst as
-            { getPosition?(): import('three').Vector3; userData?: { getGroundPosition?(): import('three').Vector3 }; position?: import('three').Vector3 } | undefined;
-          const position = inst?.getPosition?.() ?? inst?.userData?.getGroundPosition?.() ?? inst?.position ?? this.actor.GetPosition();
+            { getPosition?(): import('three').Vector3; position?: import('three').Vector3 } | undefined;
+          const position = inst?.getPosition?.() ?? inst?.position ?? this.actor.GetPosition();
           return position instanceof Vector3 ? position : ownerPosition.set(position.x, position.y, position.z);
         },
         changed: () => { if (slot.getEntity() === entity) this.notify([cloneAddress(address)]); },

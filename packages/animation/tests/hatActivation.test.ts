@@ -1,14 +1,13 @@
 import { readFile } from 'node:fs/promises';
-import type * as THREE from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { HAT_DEFINITIONS, HatActivationController, HatEquipmentAssets } from '../../prefab/src/hats';
 import { LanternLightController } from '../../prefab/src/lantern';
 import { smallHash } from '../src/animationAssets';
 import { createSanityState } from '@dontstarve-web/signals';
-import { createEmptyEntity, prefabInstance } from '../../prefab/src/prefabInstance';
+import { createEmptyEntity, type PrefabInstance } from '../../prefab/src/prefabInstance';
 
-/** The inst.Light an entity's model declares. */
-const declaredLight = (model: THREE.Object3D) => prefabInstance(model)?.light.peek();
+/** The light of the `prefab` entity parented to `owner`. */
+const parentedLight = (owner: PrefabInstance, prefab: string) => [...owner.light.slots.peek()].find(([key]) => key.startsWith(`${prefab}:`))?.[1].peek();
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -32,18 +31,17 @@ describe('Enlightened Crown source activation', () => {
     // The FX archive is already cached, as after an earlier activation: its layers are drawn at once.
     await assets.loadFactory(hat.definition.equip.activated!.archive);
     const { instance: owner, display } = createEmptyEntity('wilson');
-    const lantern = new LanternLightController(display.model);
+    const lantern = new LanternLightController(owner);
     lantern.setLit(true);
-    const lanternNode = display.model.getObjectByName('lanternlight')!;
-    const lanternLight = declaredLight(lanternNode);
-    const crownLight = () => { const node = display.model.getObjectByName('alterguardianhatlight'); return node && declaredLight(node); };
+    const lanternLight = parentedLight(owner, 'lanternlight');
+    const crownLight = () => parentedLight(owner, 'alterguardianhatlight');
     const declared = () => [...owner.sprite.fx.peek().values()];
     // Each layer dresses its own material copies (SetMultColour), so frames compare by their parts and material names.
     const frame = (index: number) => declared()[index].display!.resolveFrame().map(({ element, image, materials }) => ({ element, image, materials: materials.map(({ name }) => name) }));
     const sanity = createSanityState(169, 200);
     const sanityRead = vi.spyOn(sanity.percent, 'get');
     const swapHatHidden = vi.fn();
-    const crown = new HatActivationController(display.model, { assets, sanityPercent: sanity.percent, onSwapHatHidden: swapHatHidden });
+    const crown = new HatActivationController(owner, { assets, sanityPercent: sanity.percent, onSwapHatHidden: swapHatHidden });
     expect(sanityRead).toHaveBeenCalledOnce();
     crown.setHat(hat);
     expect(crown.activated.peek()).toBe(false);
@@ -62,7 +60,7 @@ describe('Enlightened Crown source activation', () => {
       expect(layer.instance.sprite.currentAnimation).toBe('activate_pre');
       expect(layer.instance.sprite.sprite.peek().colour).toEqual([0.7, 0.7, 0.7]);
       const state = layer.instance.sprite.sprite.peek().appearance.get('anim-state');
-      expect(state?.kind === 'anim-state' && state.state.symbolLightOverrides.get(smallHash('flame_swap'))).toBe(0.5);
+      expect(state?.kind === 'anim-state' && state.state.peek().symbolLightOverrides.get(smallHash('flame_swap'))).toBe(0.5);
     }
     expect(swapHatHidden).toHaveBeenLastCalledWith(true);
     const initial = [frame(0), frame(1)];
@@ -98,7 +96,7 @@ describe('Enlightened Crown source activation', () => {
     crown.setHat(null);
     expect(declared()).toEqual([]);
     expect(crownLight()).toBeUndefined();
-    expect(declaredLight(lanternNode)).toEqual(lanternLight);
+    expect(parentedLight(owner, 'lanternlight')).toEqual(lanternLight);
     sanityRead.mockClear();
     sanity.set(200);
     expect(sanityRead).toHaveBeenCalledOnce();

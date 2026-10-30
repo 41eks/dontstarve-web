@@ -33,7 +33,7 @@ test('picks monkeytail, plants a cursor-held root and fertilizes it through real
   const screenPoint = (planted: boolean) => page.evaluate(async ({ planted, moduleUrl }) => {
     const { scene, view } = (window as any).monkeytailGame;
     const model = scene.children.find((model: any) => (window as any).__prefabInstance(model)?.prefab === 'monkeytail'
-      && !!model.userData.components.pickable.exportState().transplanted === planted);
+      && !!((window as any).__findActionEntity(model)?.components ?? (window as any).__prefabInstance(model)!.components).pickable.exportState().transplanted === planted);
     if (!model) throw new Error('No monkeytail target');
     scene.updateMatrixWorld(true);
     const { spriteScreenPoint } = await import(moduleUrl);
@@ -64,8 +64,8 @@ test('picks monkeytail, plants a cursor-held root and fertilizes it through real
   await expect.poll(() => page.evaluate(() => (window as any).monkeytailGame.scene.children.filter((model: any) => (window as any).__prefabInstance(model)?.prefab === 'monkeytail').length)).toBe(2);
   await expect.poll(() => count('dug_monkeytail')).toBe(1);
   const root = await page.evaluate(() => {
-    const model = (window as any).monkeytailGame.scene.children.find((model: any) => model.userData.components?.pickable?.exportState().transplanted);
-    return { id: (window as any).__prefabInstance(model)?.entityId, position: model.position.toArray(), state: model.userData.components.pickable.exportState() };
+    const model = (window as any).monkeytailGame.scene.children.find((model: any) => ((window as any).__findActionEntity(model)?.components ?? (window as any).__prefabInstance(model)!.components)?.pickable?.exportState().transplanted);
+    return { id: (window as any).__prefabInstance(model)?.entityId, position: model.position.toArray(), state: ((window as any).__findActionEntity(model)?.components ?? (window as any).__prefabInstance(model)!.components).pickable.exportState() };
   });
   expect(root.state).toMatchObject({ picked: true, transplanted: true, cyclesLeft: 0 });
   // Put the remaining root back, then hold manure on the cursor.
@@ -76,7 +76,7 @@ test('picks monkeytail, plants a cursor-held root and fertilizes it through real
   await expect.poll(() => count('poop')).toBe(1);
   await expect.poll(() => page.evaluate(id => {
     const model = (window as any).monkeytailGame.scene.children.find((model: any) => (window as any).__prefabInstance(model)?.entityId === id);
-    return model.userData.components.pickable.state.timer.peek().status;
+    return ((window as any).__findActionEntity(model)?.components ?? (window as any).__prefabInstance(model)!.components).pickable.state.timer.peek().status;
   }, root.id)).toBe('stopped'); // Initial world is winter: fertilizer cannot bypass the winter pause.
 
   const download = page.waitForEvent('download'); await submit('c_save()');
@@ -90,7 +90,7 @@ test('picks monkeytail, plants a cursor-held root and fertilizes it through real
   await page.reload(); await prepare();
   await expect.poll(() => page.evaluate(id => {
     const model = (window as any).monkeytailGame.scene.children.find((model: any) => (window as any).__prefabInstance(model)?.entityId === id);
-    return model?.userData.components.pickable.exportState();
+    return ((window as any).__findActionEntity(model)?.components ?? (window as any).__prefabInstance(model)!.components).pickable.exportState();
   }, root.id)).toEqual(plant.components.pickable);
   await expect.poll(() => count('dug_monkeytail')).toBe(1);
   expect(errors).toEqual([]);

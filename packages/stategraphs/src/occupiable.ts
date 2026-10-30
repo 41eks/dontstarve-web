@@ -1,3 +1,4 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import { BufferedAction, type BufferedActionObject } from './bufferedaction.ts';
 import type { ActionWorldContext, ActionAnimationController, ActionLocomotor } from './actionContext.ts';
@@ -30,7 +31,7 @@ function canAct(action: OccupiableAction, target: OccupiableTarget): boolean {
 export function getOccupiableActions(model: THREE.Object3D | undefined): MouseActionCandidate[] {
   const actions: MouseActionCandidate[] = [];
   if (!model) return actions;
-  const entity = model.userData.actionEntity as OccupiableTarget | undefined;
+  const entity = findActionEntity(model) as OccupiableTarget | undefined;
   if (!entity?.components.occupiable && !entity?.components.shelf) return actions;
   const target: OccupiableTarget = {
     model, isRemoved: entity.isRemoved, components: entity.components, prefab: entity.prefab,
@@ -105,7 +106,7 @@ export class OccupiableActionController {
     const position = target.getPosition();
     if (!this.inReach(target)) {
       this.direction.subVectors(this.world.player.position, position).setY(0).normalize();
-      const destination = position.addScaledVector(this.direction, OCCUPIABLE_REACH * .8);
+      const destination = position.clone().addScaledVector(this.direction, OCCUPIABLE_REACH * .8);
       if (!this.locomotor.destination || this.locomotor.destination.distanceToSquared(destination) > .01) {
         if (!this.locomotor.goToPoint(destination)) this.cancel();
       }

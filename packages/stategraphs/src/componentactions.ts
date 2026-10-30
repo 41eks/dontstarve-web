@@ -12,6 +12,12 @@ export interface ComponentActionEntity extends WorkInst {
   readonly prefab: string;
   getPhysicsRadius?(): number;
   readonly components: {
+    inventoryitem?: { readonly owner?: unknown };
+    container?: import('../../prefab/src/containers').BuildingContainer;
+    stewer?: import('../../componets/src/stewer').Stewer;
+    worldmigrator?: import('../../componets/src/worldmigrator').WorldMigrator;
+    sleepingbag?: import('../../componets/src/sleepingbag').SleepingBag;
+    hauntable?: import('../../componets/src/hauntable').Hauntable;
     builder?: import('../../componets/src/builder').Builder;
     prototyper?: import('../../componets/src/prototyper').Prototyper;
     eater?: import('../../componets/src/eater').Eater;
@@ -20,7 +26,7 @@ export interface ComponentActionEntity extends WorkInst {
     tool?: Tool;
     spellcaster?: SpellCasterComponent;
     equippable?: { IsRestricted(): boolean };
-    finiteuses?: { use(amount: number): boolean; useForAction?(action: WorkAction): boolean };
+    finiteuses?: { use?(amount: number): boolean; Use?(amount: number): void; GetUses?(): number; useForAction?(action: WorkAction): boolean };
     lighter?: Lighter;
     burnable?: Burnable;
     propagator?: Propagator;
@@ -81,7 +87,8 @@ export function performToolWork(action: WorkAction, target: ComponentActionEntit
   if (worked) {
     const uses = tool?.components.finiteuses;
     if (uses?.useForAction) uses.useForAction(action);
-    else uses?.use(1);
+    else if (uses?.use) uses.use(1);
+    else uses?.Use?.(1);
   }
   return worked;
 }

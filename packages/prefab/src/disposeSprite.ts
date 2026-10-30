@@ -1,15 +1,14 @@
 import * as THREE from 'three';
 import { SpriteController } from '@dontstarve-web/animation/sprite';
 import { prefabInstance } from './prefabInstance';
+import { prefabDisplay } from '@dontstarve-web/display';
 
 /** Release a standalone sprite whose geometry, materials and textures are owned. */
 export function disposeSprite(root: THREE.Object3D): void {
-  root.userData.disposePreparedResources?.();
-  delete root.userData.disposePreparedResources;
-  root.removeFromParent();
-  prefabInstance(root)?.remove();
   // The display returns its sprite to the shared source, whose atlases must not be freed with the entity.
-  root.userData.display?.dispose();
+  const display = prefabDisplay(root);
+  if (display) { prefabInstance(root)?.remove(); display.dispose(); return; }
+  root.removeFromParent();
   if (root.userData.disposeSharedSprite) { root.userData.disposeSharedSprite(); return; }
   const geometries = new Set<THREE.BufferGeometry>();
   const materials = new Set<THREE.Material>();

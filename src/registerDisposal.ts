@@ -269,8 +269,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         } });
       }
       const foodActions = playerAnimation ? new FoodActionController(view, playerAnimation, locomotor, farmPlow,
-        isActionInterrupting,
-        (error) => console.error('Unable to use food', error), () => slotTransferController.clearSelection()) : undefined;
+        isActionInterrupting, () => slotTransferController.clearSelection()) : undefined;
       if (foodActions) {
         frameControllers.push(foodActions);
       }
@@ -447,8 +446,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         const pitchfork = new PitchforkActionController(view, playerAnimation, locomotor,
           handEquipment, turfMap, isActionInterrupting);
         const farmHoe = new FarmHoeActionController(view, playerAnimation, locomotor,
-          handEquipment, farmPlow, isActionInterrupting,
-          (error) => console.error('Unable to till farm soil', error));
+          handEquipment, farmPlow, isActionInterrupting);
         const shovel = new ShovelActionController(view, playerAnimation, locomotor,
           handEquipment, (model) => [...farmPlow.getDigTargets(model), ...molehills.getDigTargets(model), ...marbleBeanSaplings.getDigTargets(model), ...rockAvocadoSaplings.getDigTargets(model), ...rockAvocadoBushes.getDigTargets(model), ...berrybushes.getDigTargets(model), ...monkeytails.getDigTargets(model), ...grasses.getDigTargets(model), ...saplings.getDigTargets(model), ...mushroomPlants.getDigTargets(model), ...moonTrees.getDigTargets(model), ...mushtrees.getDigTargets(model), ...evergreenForest.getDigTargets(model), ...deciduousForest.getDigTargets(model)], isActionInterrupting);
         const reskin = new ReskinActionController(view, playerAnimation, locomotor,

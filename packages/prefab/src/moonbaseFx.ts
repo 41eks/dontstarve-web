@@ -1,3 +1,4 @@
+import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import type { AnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
 import type { PrefabDisplay, SpriteState } from '@dontstarve-web/display';
@@ -35,23 +36,23 @@ export class MoonbaseEffects {
   private readonly lightStart: ComponentTimer;
   private readonly lightStop: ComponentTimer;
   private readonly model: THREE.Group;
-  private readonly scene: THREE.Scene;
+  private readonly displays: PrefabDisplayGroup;
   private readonly scheduler: GameTimeScheduler;
   private readonly resources: MoonbaseFxResources;
-  constructor(model: THREE.Group, scene: THREE.Scene, scheduler: GameTimeScheduler, resources: MoonbaseFxResources) {
-    this.model = model; this.scene = scene; this.scheduler = scheduler; this.resources = resources;
+  constructor(model: THREE.Group, displays: PrefabDisplayGroup, scheduler: GameTimeScheduler, resources: MoonbaseFxResources) {
+    this.model = model; this.displays = displays; this.scheduler = scheduler; this.resources = resources;
     this.lightStart = new ComponentTimer(scheduler, () => prefabInstance(model)!.light.set(
       { radius: 6, intensity: .75, falloff: .75, colour: [128 / 255, 128 / 255, 1] }));
     this.lightStop = new ComponentTimer(scheduler, () => prefabInstance(model)!.light.set(null));
   }
-  private foot(): THREE.Vector3 { return this.model.userData.getGroundPosition?.() ?? this.model.position.clone(); }
+  private foot(): THREE.Vector3 { return this.model.position; }
   private create(prefab: string, clip: string, sortLayer: number, cold = false): Fx {
     const factory = cold ? this.resources.coldFactory : this.resources.beamFactory;
     const { instance, display } = createPrefabEntity(prefab, { create: initialAnimation => factory.create({ initialAnimation, name: prefab,
       scale: cold ? .02 * .92 : .02, ...(cold ? { hiddenLayers: ['shadow'] } : {}) }), release: sprite => factory.disposeSprite(sprite) },
-      { name: clip }, prefab);
+      { name: clip, billboard: true }, prefab);
     const object = display.model;
-    instance.position.copy(this.foot()); object.quaternion.copy(this.model.quaternion);
+    instance.position.copy(this.foot());
     instance.persists = false;
     instance.addTag(cold ? 'HASHEATER' : 'FX');
     instance.sprite.setLightOverride(1);
@@ -59,7 +60,7 @@ export class MoonbaseEffects {
     const removal = new ComponentTimer(this.scheduler, () => this.remove(fx));
     fx = { object, sortLayer, instance, display, removal,
       animation: instance.sprite, createdAt: this.scheduler.now };
-    this.effects.add(fx); this.scene.add(object);
+    this.effects.add(fx); this.displays.mount(prefabDisplay(object)!);
     return fx;
   }
   private remove(fx: Fx): void {
@@ -130,7 +131,7 @@ export class MoonbaseEffects {
   update(dt: number): void {
     const foot = this.foot();
     for (const fx of this.effects) {
-      fx.instance.position.copy(foot); fx.object.quaternion.copy(this.model.quaternion); fx.animation.update(dt);
+      fx.instance.position.copy(foot); fx.animation.update(dt);
     }
     if (this.cold) prefabInstance(this.cold.object)!.light.set(polarLight(this.scheduler.now - this.cold.createdAt));
   }

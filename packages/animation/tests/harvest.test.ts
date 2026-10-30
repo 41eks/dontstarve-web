@@ -1,3 +1,6 @@
+import { createEmptyEntity } from '../../prefab/src/prefabInstance';
+
+
 import * as THREE from 'three';
 import { afterEach, expect, it, vi } from 'vitest';
 import { HarvestActionController, getHarvestActions, type HarvestTarget } from '../../stategraphs/src/harvest';
@@ -11,16 +14,15 @@ afterEach(() => vi.unstubAllGlobals());
 
 it('walks to the foot point, revalidates a buffered harvest and releases pending reception on cancellation', async () => {
   vi.stubGlobal('window', new EventTarget());
-  const scene = new THREE.Scene(), model = new THREE.Group(), player = new THREE.Group();
-  model.position.set(20, 8, 0); scene.add(model);
-  const tags = new Set<string>();
+  const scene = new THREE.Scene(), player = new THREE.Group();
+  const { instance, display } = createEmptyEntity('cookpot');
+  const model = display.model;
+  instance.position.set(20, 0, 0); scene.add(model);
   const container = { canbeopened: true, IsFull: () => false, IsOpen: () => false,
     GetAllItems: () => [], Close() {}, DestroyContents() {}, subscribeLifecycle: () => () => {} };
   const stewer = new Stewer({ prefab: 'cookpot', components: { container },
-    getPosition: () => ({ x: 20, y: 0, z: 0 }), addTag: tag => tags.add(tag), removeTag: tag => tags.delete(tag) });
-  model.userData.components = { stewer };
-  model.userData.tags = { includes: (tag: string) => tags.has(tag) };
-  model.userData.getGroundPosition = () => new THREE.Vector3(20, 0, 0);
+    getPosition: () => instance.position, addTag: tag => instance.addTag(tag), removeTag: tag => instance.removeTag(tag) });
+  instance.components.stewer = stewer;
   stewer.OnLoad({ product: 'kabobs', done: true });
   const stategraph = new WilsonStateGraph({ playAnimation: () => .2, playSound() {}, setCasting() {}, onStateChanged() {} });
   const animation = { stategraph, cancelEmote() {}, setFacing: vi.fn() } as unknown as ActionAnimationController;
@@ -37,6 +39,7 @@ it('walks to the foot point, revalidates a buffered harvest and releases pending
   await Promise.resolve();
   controller.update();
   expect(locomotor.goToPoint).toHaveBeenCalledWith(new THREE.Vector3(16.8, 0, 0));
+  expect(instance.position.toArray()).toEqual([20, 0, 0]);
   expect(receiver.giveItem).not.toHaveBeenCalled();
   player.position.x = 17;
   controller.update();
@@ -60,7 +63,7 @@ it('walks to the foot point, revalidates a buffered harvest and releases pending
   receiver.dispose.mockClear();
   await Promise.resolve();
   expect(receiver.dispose).toHaveBeenCalledOnce();
-  tags.add('burnt');
+  instance.addTag('burnt');
   expect(getHarvestActions(model).every(action => action.available === false)).toBe(true);
-  controller.dispose(); stewer.OnRemoveFromEntity();
+  controller.dispose(); stewer.OnRemoveFromEntity(); instance.remove(); display.dispose();
 });

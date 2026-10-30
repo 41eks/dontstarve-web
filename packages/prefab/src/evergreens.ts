@@ -104,15 +104,15 @@ export interface EvergreenForest {
 export async function createEvergreenForest(assetBaseUrl: string, world: EvergreenWorld,
   random = Math.random): Promise<EvergreenForest> {
   const assets = new ArchiveSpriteAssets('evergreen', assetBaseUrl);
-  const [createTree, needles, fireFx] = await Promise.all([
+  const [createTree, needles] = await Promise.all([
     // evergreens.lua builds.normal: one bank for every stage; clips are split across two anim archives.
     preloadSharedArchiveSprite(assets, { animationArchive: 'evergreen_short_normal.zip', extraAnimationArchives: ['evergreen_tall_old.zip'],
       buildArchives: ['evergreen_new.zip'], bank: 'evergreen_short' },
     { scale: .02, staticBillboard: true, instancedAnimations: EVERGREEN_STAGES.flatMap(stage =>
       [`sway1_loop_${stage}`, `stump_${stage}`, `burnt_${stage}`, 'idle_old']) }),
     createAnimatedSpriteFactory(assetBaseUrl, 'pine_needles.zip'),
-    FireFxHost.load(assetBaseUrl),
   ]);
+  const fireFx = FireFxHost.create(assetBaseUrl);
   const scheduler = world.scheduler ?? new GameTimeScheduler();
   const group = new THREE.Group(); group.name = 'EvergreenForest';
   const entities: ResidentEntity[] = [];
@@ -128,7 +128,7 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
   const rest = (tree: Tree) => tree.stump.peek() ? `stump_${EVERGREEN_STAGES[stageOf(tree)]}`
     : tree.inst.hasTag('burnt') ? `burnt_${burntStage(tree)}`
     : stageOf(tree) === 3 ? 'idle_old' : `sway1_loop_${EVERGREEN_STAGES[stageOf(tree)]}`;
-  const env: BurnEnvironment = { scheduler, root: world.scene, fire: fireFx };
+  const env: BurnEnvironment = { scheduler, fire: fireFx };
   const animationOf = (tree: Tree) => tree.sprite;
   const playSound = (tree: Tree, path: SoundEventPath) => {
     for (const sound of tree.sounds) if (sound.isPlaying?.() === false) tree.sounds.delete(sound);
@@ -270,7 +270,7 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
   };
   const initializeModel = (tree: Tree) => {
     const model = tree.logical.model;
-    model.userData.animationController = tree.sprite;
+
     Object.assign(model.userData, { deploySmartRadius: 1,
       components: tree.inst.components,
       evergreenState: { stump: readonlySignal(tree.stump), growth: tree.growable.state } });
@@ -384,12 +384,12 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
     getChopTargets(model) { return targets('CHOP', model); },
     get digTargets() { return digTargets(); },
     getDigTargets: digTargets,
-    update(dt, quaternion) {
+    update(dt, _quaternion) {
       if (!world.scheduler) scheduler.advance(dt);
-      fireFx.update(dt, quaternion);
       for (const logical of active) {
-        const { sprite } = trees.get(logical)!;
+        const { sprite, fire } = trees.get(logical)!;
         sprite.update(dt);
+        fire?.update(dt);
       }
       for (const { entity } of [...effects.values()]) {
         entity.instance.sprite.update(dt);
@@ -397,7 +397,8 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
     },
     get renderEntities() {
       return [...Array.from(active, logical => ({ object: logical.model, footPosition: logical.position, cameraDepth: 0 })),
-        ...Array.from(effects, ([object, { position }]) => ({ object, footPosition: position, cameraDepth: 0 })), ...fireFx.renderEntities];
+        ...Array.from(effects, ([object, { position }]) => ({ object, footPosition: position, cameraDepth: 0 })),
+        ...Array.from(active, logical => trees.get(logical)!.display.fxRenderEntries).flat()];
     },
     exportRecords: () => [...trees.values()].map(tree => {
       // onsave: a burning tree is saved as burnt; a burning stump is still a stump.

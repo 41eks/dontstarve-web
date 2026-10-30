@@ -1,3 +1,4 @@
+import { prefabDisplay } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -45,7 +46,7 @@ it('restores declared clip after tile sleep', async () => {
     const model = piles.spawn('chessjunk2', new THREE.Vector3(2, 0, 4), {
       id: 'repaired', transform: { position: [2, 0, 4], rotationY: 0 }, components: { chessJunk: { repaired: true } },
     });
-    await model.userData.display.artLoaded();
+    await prefabDisplay(model).artLoaded();
     const inst = prefabInstance(model)!;
     awake.set(false); await settle();
     expect(inst.status.peek()).toBe('asleep'); expect(inst.sprite.loaded).toBe(false); expect(model.parent).toBeNull();
@@ -58,7 +59,7 @@ it('advances a spawned pile through the scene display tick', async () => {
   const { piles, scheduler, registry } = setup();
   try {
     const model = piles.spawn('chessjunk1', new THREE.Vector3());
-    await model.userData.display.artLoaded();
+    await prefabDisplay(model).artLoaded();
     const sprite = prefabInstance(model)!.sprite;
     sprite.playOnce('idle1');
     const clip = sprite.sprite.peek().clip;

@@ -274,7 +274,7 @@ RGB `(237,237,209)/255`。范围不随掉落堆叠数量增加，也没有火把
 图标从真实 inventory atlas 读取，地面模型使用原始动画，不使用图标回退。
 本次提供局部照明，尚未接入原版 Bloom 后处理、腐坏和食用效果。
 
-唤星者魔杖由 `@dontstarve-web/prefab/yellowstaff` 提供，装备 API 为
+唤星者魔杖由 `@dontstarve-web/prefab/staff` 提供，装备 API 为
 `await controller.setCarryItem('yellowstaff', skinId)`。手持使用 `swap_staffs.zip`
 的 `swap_yellowstaff`，地面使用 `staffs.zip` 的 bank/build `staffs`、`yellowstaff`
 动画；基础外观和 4 个皮肤均使用原始资源。

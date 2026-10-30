@@ -1,3 +1,4 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import type { SleepingBag, SleepingBagSleeper } from '../../componets/src/sleepingbag';
 import { BufferedAction, type BufferedActionObject } from './bufferedaction.ts';
@@ -17,9 +18,9 @@ export interface SleepTarget extends BufferedActionObject {
 
 /** The bed is free, intact and has uses left. */
 function canSleep(target: SleepTarget): boolean {
-  const uses = target.model.userData.components?.finiteuses as { GetUses(): number } | undefined;
+  const uses = (findActionEntity(target.model)?.components.finiteuses ?? prefabInstance(target.model)?.components.finiteuses) as { GetUses(): number } | undefined;
   return !!target.model.parent && target.model.visible
-    && target.model.userData.components?.sleepingbag === target.component
+    && (findActionEntity(target.model)?.components.sleepingbag ?? prefabInstance(target.model)?.components.sleepingbag) === target.component
     && !target.component.InUse() && !target.hasTag('burnt') && (uses?.GetUses() ?? 1) > 0;
 }
 
@@ -27,12 +28,12 @@ function canSleep(target: SleepTarget): boolean {
 export function getSleepActions(model: THREE.Object3D | undefined): MouseActionCandidate[] {
   const actions: MouseActionCandidate[] = [];
   if (!model) return actions;
-  const component = model.userData.components?.sleepingbag as SleepingBag | undefined;
+  const component = (findActionEntity(model)?.components.sleepingbag ?? prefabInstance(model)?.components.sleepingbag) as SleepingBag | undefined;
   if (!component) return actions;
   const target: SleepTarget = {
-    model, component, prefab: model.userData.actionEntity?.prefab ?? prefabInstance(model)?.prefab,
+    model, component, prefab: findActionEntity(model)?.prefab ?? prefabInstance(model)?.prefab,
     hasTag: tag => modelHasTag(model, tag),
-    getPosition: () => model.userData.getGroundPosition?.() ?? model.position.clone(),
+    getPosition: () => findActionEntity(model)?.getPosition() ?? prefabInstance(model)?.position ?? model.position,
   };
   actions.push({ action: { action: 'SLEEPIN', target }, button: 'left', model, available: canSleep(target) });
 
@@ -96,7 +97,7 @@ export class SleepActionController {
     const position = target.getPosition();
     if (!this.inReach(target)) {
       this.direction.subVectors(this.world.player.position, position).setY(0).normalize();
-      const destination = position.addScaledVector(this.direction, SLEEPIN_REACH * .8);
+      const destination = position.clone().addScaledVector(this.direction, SLEEPIN_REACH * .8);
       if (!this.locomotor.destination || this.locomotor.destination.distanceToSquared(destination) > .01) {
         if (!this.locomotor.goToPoint(destination)) this.cancel();
       }
@@ -115,7 +116,7 @@ export class SleepActionController {
 
   private inReach(target: SleepTarget): boolean {
     const position = target.getPosition(), player = this.world.player.position;
-    return (position.x - player.x) ** 2 + (position.z - player.z) ** 2 <= SLEEPIN_REACH ** 2;
+    return position.distanceToSquared(player) <= SLEEPIN_REACH ** 2;
   }
 
   private faceTarget(position: THREE.Vector3): void {

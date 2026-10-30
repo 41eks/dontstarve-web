@@ -12,7 +12,7 @@ import { ground, turfGround, turfMap } from './building';
 import { camera } from './camera';
 import { createSceneEntities } from './sceneEntities';
 import type { EntityRegistry } from './entityRegistry';
-import { player, playerBody, playerInstance, disposePlayer, setPlayerNormal } from './player';
+import { player, playerBody, playerInstance, disposePlayer } from './player';
 import {
   type PlaceableBuildingInteractionChange,
   type PlaceableBuildingId,
@@ -172,16 +172,19 @@ export async function startScene(
   const updateSlipperyFeet = (dt: number) => playerInstance.slipperyfeet?.update(dt);
   backTasks.push(updateSlipperyFeet);
   const updateBeforePhysics = (dt: number) => registry.beforePhysics(dt);
+  // Billboard displays turn to the world's camera rotation themselves.
+  const publishCameraRotation = () => {
+    camera.getWorldQuaternion(cameraWorldQuaternion);
+    if (!worldState.camerarotation.peek().equals(cameraWorldQuaternion)) {
+      worldState.camerarotation.set(cameraWorldQuaternion.clone());
+    }
+  };
   const updateEntities = (dt: number) => {
     turfMap.update(dt);
     scheduler.advanceTo(clockUpdater.elapsedSeconds);
     builder.OnUpdate();
     worldState.componentUpdates.update(dt);
-    camera.getWorldQuaternion(cameraWorldQuaternion);
-    if (!worldState.camerarotation.peek().equals(cameraWorldQuaternion)) {
-      worldState.camerarotation.set(cameraWorldQuaternion.clone());
-    }
-    setPlayerNormal(cameraWorldQuaternion);
+    publishCameraRotation();
     registry.update(dt, cameraWorldQuaternion);
     updateCharacterRenderOrder(registry);
   };
@@ -214,8 +217,7 @@ export async function startScene(
       const { width, height } = view.renderer.domElement.getBoundingClientRect();
       camera.aspect = width / Math.max(1, height);
       camera.updateProjectionMatrix();
-      camera.getWorldQuaternion(cameraWorldQuaternion);
-      setPlayerNormal(cameraWorldQuaternion);
+      publishCameraRotation();
       updateCharacterRenderOrder(registry);
       preparing = true;
       try {

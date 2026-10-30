@@ -51,7 +51,7 @@ test('spawns native lava and independent scorched rocks, restores their layout a
     }));
     const heaters = FindEntities(model.position, 30, ['HASHEATER'], ['INLIMBO']);
     const withoutPool = dstLighting.sampleLightLevel(model.position, model);
-    return { id: (window as any).__prefabInstance(model)?.entityId, position: model.position.toArray(), clip: model.userData.animationController.currentAnimation,
+    return { id: (window as any).__prefabInstance(model)?.entityId, position: model.position.toArray(), clip: (window as any).__prefabInstance(model)?.sprite.currentAnimation,
       vertices: mesh.geometry.drawRange.count, frameVersion: mesh.geometry.getAttribute('uv').version, build: drawn.userData.animationController.build.name,
       flat: drawn.children[0].rotation.x, poolOrder: mesh.renderOrder, childRocks,
       heat: heaters.find((inst: any) => inst.model === model)?.components.heater?.GetHeat(),

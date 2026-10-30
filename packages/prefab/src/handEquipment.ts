@@ -1,4 +1,3 @@
-import type { AnimState } from '@dontstarve-web/animation/animState';
 import type { FollowerFx } from '@dontstarve-web/display';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import type { EquipmentLifecycle, EquipmentOwner } from '@dontstarve-web/signals';
@@ -8,21 +7,20 @@ import { Weapon } from '../../componets/src/weapon';
 import { AXE_USES, configureAxeEntity, getAxeLifecycle, axeVisual } from './axe';
 import { configureBugNetEntity, bugnetVisual } from './bugnet';
 import { configureFishingRodEntity, FISHINGROD_USES, fishingRodVisual } from './fishingrod';
-import type { EquipmentVisual, EquipmentVisualFactory } from './equipmentVisual';
+import { EquipmentAnimState, type EquipmentSprite, type EquipmentVisual, type EquipmentVisualFactory } from './equipmentVisual';
 import { farmHoeVisual } from './farm_hoe';
-import { FIRESTAFF_TAGS, FIRESTAFF_USES, getFireStaffController, fireStaffVisual, type FireStaffWorld } from './firestaff';
-import { getGreenStaffController, GREENSTAFF_USES, type GreenStaffWorld } from './greenstaff';
 import { configureHammerEntity, hammerVisual } from './hammer';
 import { configureLanternEntity, createLanternHandLifecycle, LANTERN_FUEL, lanternVisual } from './lantern';
 import { configureNightswordEntity, nightswordVisual } from './nightsword';
 import { configurePickaxeEntity, getPickaxeLifecycle, PICKAXE_USES, pickaxeVisual } from './pickaxe';
 import { pitchforkVisual } from './pitchfork';
 import type { WilsonCarryItem } from './player';
+import type { PrefabInstance } from './prefabInstance';
 import { configureReskinToolEntity, reskinToolVisual } from './reskin_tool';
 import { configureShovelEntity, shovelVisual, SHOVEL_USES } from './shovel';
 import { configureTorchEntity, createTorchHandLifecycle, torchVisual } from './torch';
 import { getTridentController, tridentVisual, TRIDENT_DAMAGE, TRIDENT_USES, type TridentWorld } from './trident';
-import { getLightStaffController, yellowstaffVisual, type LightStaffWorld } from './yellowstaff';
+import { FIRESTAFF_TAGS, FIRESTAFF_USES, fireStaffVisual, getFireStaffController, getGreenStaffController, getLightStaffController, GREENSTAFF_USES, yellowstaffVisual, type FireStaffWorld, type GreenStaffWorld, type LightStaffWorld } from './staff';
 
 // tuning.lua: wilson_attack = 34; GOLDENTOOLFACTOR = 4 lowers golden tools' attackwear.
 const WILSON_ATTACK = 34;
@@ -31,12 +29,11 @@ const GOLDEN_ATTACKWEAR = 1 / 4;
 export interface HandEquipmentContext {
   soundPosition?: THREE.Vector3;
   /** The holder; torchfire's light fx is parented to it while burning. */
-  lightParent: THREE.Object3D;
+  lightParent: PrefabInstance;
   /** The holder's FollowSymbol, for fx that follow swap_object; absent when there is no animated holder. */
   followSymbol?(symbol: string, offsetX: number, offsetY: number, fx?: FollowerFx): { node: THREE.Object3D; remove(): void };
-  /** Directory containing `fx/*.tex`, i.e. `${BASE_URL}dst/data`. */
-  dataBaseUrl?: string;
-  AnimState?: AnimState;
+  /** The holder's sprite: the held item declares its art in a slot of its own there. */
+  sprite?: EquipmentSprite;
   lightStaffWorld?: LightStaffWorld;
   greenStaffWorld?: GreenStaffWorld;
   fireStaffWorld?: FireStaffWorld;
@@ -53,7 +50,8 @@ export interface HandEquipmentDefinition {
   configureEntity?(entity: ItemEntity): void;
   readonly handAction?: ActionDescription;
   readonly visual: EquipmentVisualFactory;
-  createLifecycle?(entity: ItemEntity, context: HandEquipmentContext): EquipmentLifecycle | undefined;
+  /** `context.AnimState` is the item's own slot on the holder, the owner.AnimState its equip functions write. */
+  createLifecycle?(entity: ItemEntity, context: HandEquipmentContext & { AnimState?: EquipmentAnimState['AnimState'] }): EquipmentLifecycle | undefined;
 }
 
 /** Source hand prefabs declare their presentation and equip lifecycle together. */
@@ -118,17 +116,19 @@ export function getHandEquipmentDefinition(itemId: string): { carryItem: WilsonC
 /** Prefab domain and presentation share the same equip lifetime; the holder's display loads the named art. */
 export function createHandEquipmentLifecycle(entity: ItemEntity, context: HandEquipmentContext): EquipmentLifecycle {
   const definition = getHandEquipmentDefinition(entity.prefab)?.definition;
-  const domain = definition?.createLifecycle?.(entity, context);
+  const slot = context.sprite && new EquipmentAnimState(context.sprite);
+  const domain = definition?.createLifecycle?.(entity, { ...context, AnimState: slot?.AnimState });
   let visual: EquipmentVisual | undefined;
   return {
     onequip(owner?: EquipmentOwner) {
-      if (definition && context.AnimState) {
+      slot?.equip();
+      if (definition && slot) {
         visual = definition.visual({ id: entity.id, prefab: entity.prefab, skinId: entity.skinId });
-        visual.onequip({ AnimState: context.AnimState, PushEvent: (name, data) => owner?.PushEvent(name, data) });
+        visual.onequip({ AnimState: slot.AnimState, PushEvent: (name, data) => owner?.PushEvent(name, data) });
       }
       domain?.onequip(owner);
     },
-    onunequip() { domain?.onunequip(); visual?.onunequip(); visual = undefined; },
+    onunequip() { domain?.onunequip(); visual?.onunequip(); visual = undefined; slot?.unequip(); },
     flush() { domain?.flush?.(); },
   };
 }

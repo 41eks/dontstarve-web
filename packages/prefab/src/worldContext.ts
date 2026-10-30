@@ -12,9 +12,8 @@ export interface WorldEvents {
 export type WorldEventEmitter = EventEmitter<WorldEvents>;
 
 /**
- * Everything a prefab needs from the host application to place itself in the
- * running game. The application owns the scene graph, the camera, the renderer
- * and the ground, so prefabs receive them instead of creating their own.
+ * Application inputs for placement wiring. The scene is handed directly to display owners during
+ * construction; retained prefab services and behavior callbacks use PrefabWorldContext without it.
  */
 export interface WorldContext extends ActionWorldContext, Partial<WorldContentContext>, ToolMouseTargetWorld {
     worldEvents?: WorldEventEmitter;
@@ -48,3 +47,6 @@ export interface WorldContext extends ActionWorldContext, Partial<WorldContentCo
 
 /** The subset a prefab needs to turn raw pointer events into raycasts. */
 export type PointerContext = Pick<WorldContext, 'camera' | 'renderer'>;
+
+/** Long-lived prefab services exclude the application-owned scene. */
+export type PrefabWorldContext = Omit<WorldContext, 'scene'>;

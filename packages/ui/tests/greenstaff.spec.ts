@@ -50,12 +50,12 @@ test('console greenstaff reskins, deconstructs opalstaff by right-click and relo
     (window as any).greenGame.staffId = entity.id;
     main.inventory.applySlotChanges([{ slot, ...snapshot, delta: -1 },
       { slot, ...snapshot, skinId: 'greenstaff_clockwork', delta: 1 }]);
-    const ground = scene.children.filter((model: any) => model.userData.itemId === 'opalstaff');
+    const ground = scene.children.filter((model: any) => ((window as any).__findActionEntity(model)?.prefab ?? (window as any).__prefabInstance(model)?.prefab) === 'opalstaff');
     const target = ground.at(-1), opal = main.inventory.entities.get((window as any).__prefabInstance(target)?.entityId);
     opal.transform.position.set(player.position.x + 12, 0, player.position.z);
     (window as any).greenGame.opalId = opal.id;
     // Move the other command-spawned objects aside so only opalstaff is under the pointer.
-    for (const model of scene.children.filter((model: any) => ['greenstaff', 'opalpreciousgem'].includes(model.userData.itemId))) {
+    for (const model of scene.children.filter((model: any) => ['greenstaff', 'opalpreciousgem'].includes(((window as any).__findActionEntity(model)?.prefab ?? (window as any).__prefabInstance(model)?.prefab)))) {
       const item = main.inventory.entities.get((window as any).__prefabInstance(model)?.entityId);
       item.transform.position.set(player.position.x - 24, 0, player.position.z + 12);
     }

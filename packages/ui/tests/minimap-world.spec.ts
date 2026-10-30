@@ -40,8 +40,8 @@ test('pig king and ground backpack icons render, backpack ownership hides them, 
   await expect.poll(() => page.evaluate(() => (window as any).worldIcons.entities().filter((icon: any) => icon.icon === 'backpack.png').length)).toBe(1);
   const identities = await page.evaluate(() => {
     const g = (window as any).worldIcons;
-    const model = g.scene.children.find((object: any) => object.userData.itemId === 'backpack');
-    g.bag = model.userData.pickupTarget.entity;
+    const model = g.scene.children.find((object: any) => ((window as any).__findActionEntity(object)?.prefab ?? (window as any).__prefabInstance(object)?.prefab) === 'backpack');
+    g.bag = (window as any).__findActionEntity(model)?.pickupTarget.entity;
     g.bag.transform.position.set(36, 0, -24);
     g.bag.MiniMapEntity.tileTracker.sync();
     g.map.setView({ x: 0, z: 0, zoom: 1 });
@@ -98,7 +98,7 @@ test('pig king and ground backpack icons render, backpack ownership hides them, 
   await expect(icons).toHaveCount(2);
   expect(await page.evaluate(() => {
     const g = (window as any).worldIcons;
-    return (window as any).__prefabInstance(g.scene.children.find((object: any) => object.userData.itemId === 'backpack'))?.entityId;
+    return (window as any).__prefabInstance(g.scene.children.find((object: any) => ((window as any).__findActionEntity(object)?.prefab ?? (window as any).__prefabInstance(object)?.prefab) === 'backpack'))?.entityId;
   })).toBe(identities.backpackId);
   expect(errors).toEqual([]);
 });

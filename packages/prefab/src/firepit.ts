@@ -1,3 +1,4 @@
+import { prefabInstance } from './prefabInstance';
 import type * as THREE from 'three';
 import definitions from './definitions.json' with { type: 'json' };
 import { firepit_init_fn } from '@dontstarve-web/animation/prefabskin';
@@ -47,11 +48,12 @@ class FirePit {
     disable_charcoal = false;
     /** Only when the world supplies no game-time scheduler; advanced by the building's update. */
     readonly ownScheduler?: GameTimeScheduler;
-    private readonly inst: FirePitInst;
+    private readonly context: AnimatedBuildingEventContext;
 
     constructor(context: AnimatedBuildingEventContext) {
         const { model, instance } = context;
-        const inst = this.inst = actionEntity(model, FIRE_PIT_ID);
+        this.context = context;
+        const inst = actionEntity(model, FIRE_PIT_ID);
         for (const tag of ['campfire', 'structure', 'wildfireprotected', 'cooker', 'storytellingprop']) inst.addTag(tag);
         const scheduler = context.world?.scheduler ?? (this.ownScheduler = new GameTimeScheduler());
         const factory = context.fxFactories?.get(CAMPFIREFIRE_ARCHIVE);
@@ -75,7 +77,7 @@ class FirePit {
         fueled.SetSectionCallback((newsection, _oldsection, _inst, doer) => this.onfuelchange(newsection, doer as WorkInst | undefined));
         fueled.InitializeFuelLevel(FIREPIT_FUEL_START);
 
-        Object.assign(model.userData.components, {
+        Object.assign(prefabInstance(model)!.components, {
             inspectable: { getstatus: () => SECTION_STATUS[fueled.GetCurrentSection()] },
         });
         // A skinned pit runs its firepit_init_fn after the prefab fn.
@@ -113,7 +115,7 @@ class FirePit {
         if (newsection <= 0) {
             this.burnable.Extinguish();
             if (this.queued_charcoal) {
-                this.inst.model.userData.dropLoot?.([{ itemId: 'charcoal', count: 1 }]);
+                this.context.world?.dropLoot?.([{ itemId: 'charcoal', count: 1 }], this.context.instance.position);
                 this.queued_charcoal = false;
             }
             return;

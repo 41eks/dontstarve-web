@@ -1,3 +1,4 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
@@ -45,7 +46,7 @@ it('is charged by a strike for three days: zaps on the 10–40 s task, loses a d
     const [{ display }] = placement.hammerTargets;
     const model = display.model;
     scene.add(model);
-    const components = model.userData.components;
+    const components = (findActionEntity(model)?.components ?? prefabInstance(model)!.components);
     expect(components.inspectable.getstatus()).toBeUndefined();
     expect(declaredLight(model)).toBeUndefined();
 
@@ -55,7 +56,7 @@ it('is charged by a strike for three days: zaps on the 10–40 s task, loses a d
     expect(fx.spawn).toHaveBeenCalledWith('lightning', expect.any(THREE.Vector3));
     expect(components.inspectable.getstatus()).toBe('CHARGED');
     expect(declaredLight(model)).toMatchObject({ intensity: .5, falloff: 1 });
-    expect((model.userData.animationController as SpriteController).currentAnimation).toBe('hit');
+    expect((prefabInstance(model)!.sprite as SpriteController).currentAnimation).toBe('hit');
     expect(fx.spawn).toHaveBeenCalledWith('lightning_rod_fx', expect.any(THREE.Vector3));
     expect(play).toHaveBeenCalledWith('dontstarve/common/lightningrod', model.position);
 
@@ -87,7 +88,7 @@ it('draws a battery charge as one decaying point, not three', async () => {
     const [{ display }] = placement.hammerTargets;
     const model = display.model;
     scene.add(model);
-    const battery = model.userData.components.battery;
+    const battery = (findActionEntity(model)?.components ?? prefabInstance(model)!.components).battery;
     expect(battery.CanBeUsed()).toEqual([false, 'NOT_ENOUGH_CHARGE']);
     await strikeAt(scene, fx, model.position);
     expect(battery.CanBeUsed()).toEqual([true]);

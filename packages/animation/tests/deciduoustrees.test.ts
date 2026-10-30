@@ -1,3 +1,4 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import { EventEmitter } from '@dontstarve-web/signals';
 import type { WorldEvents } from '../../prefab/src/worldContext';
 import * as THREE from 'three';
@@ -38,14 +39,14 @@ it('cycles three source size banks, swaps seasonal leaves without sharing tint, 
     const work = s.forest.chopTargets[0].entity.components.workable!, model = tree.model!;
     const icon = prefabInstance(model)!.minimap;
     expect(icon).toMatchObject({ icon: 'tree_leaf.png', priority: -1 });
-    const growth = model.userData.components.growable, leaves = model.userData.deciduoustreeState.leaves;
+    const growth = (findActionEntity(model)?.components ?? prefabInstance(model)!.components).growable, leaves = model.userData.deciduoustreeState.leaves;
     expect(work.GetWorkLeft()).toBe(5);
     await new Promise(resolve => setTimeout(resolve, 0));
     expect((model.children[0].children[0].children[0] as THREE.Mesh).visible).toBe(false);
     expect((model.children[0].children[0].children[0] as THREE.Mesh).geometry.drawRange.count).toBeGreaterThan(0);
     const timer = growth.state.timer.peek(); s.scheduler.advance(100); expect(growth.state.timer.peek()).toBe(timer);
     s.scheduler.advance(350); expect(work.GetWorkLeft()).toBe(10);
-    expect(model.userData.animationController.currentAnimation).toBe('grow_short_to_normal');
+    expect(prefabInstance(model)!.sprite.currentAnimation).toBe('grow_short_to_normal');
     s.scheduler.advance(1500); expect(work.GetWorkLeft()).toBe(15);
     s.season.set({ season: 'autumn', progress: .5 }); await new Promise(resolve => setTimeout(resolve, 0));
     expect(leaves.build.peek()).toBe('orange'); expect(leaves.leaf.peek()).toBe('colorful');
@@ -56,12 +57,12 @@ it('cycles three source size banks, swaps seasonal leaves without sharing tint, 
     expect(materials.every(material => material.forceSinglePass && !material.depthWrite)).toBe(true);
     geometry.addEventListener('dispose', sharedDisposed);
     s.season.set({ season: 'winter', progress: .5 }); await new Promise(resolve => setTimeout(resolve, 0));
-    expect(model.userData.animationController.currentAnimation).toBe('drop_leaves_tall');
+    expect(prefabInstance(model)!.sprite.currentAnimation).toBe('drop_leaves_tall');
     expect((model.children[0].children[0].children[0] as THREE.Mesh).visible).toBe(true);
     const completion = leaves.completionTimer.peek(); expect(completion.status).toBe('scheduled');
     await area.visit(new THREE.Vector3(500, 0, 0)); expect(sharedDisposed).not.toHaveBeenCalled();
     expect(prefabInstance(model)!.minimap).toBe(icon);
-    const hidden = vi.spyOn(model.userData.animationController, 'setSymbolHidden');
+    const hidden = vi.spyOn(prefabInstance(model)!.sprite, 'setSymbolHidden');
     world.snowLevel.set(.02); await new Promise(resolve => setTimeout(resolve, 0));
     expect(hidden).not.toHaveBeenCalled();
     s.scheduler.advance(20);
@@ -73,13 +74,13 @@ it('cycles three source size banks, swaps seasonal leaves without sharing tint, 
     world.snowLevel.set(0); await new Promise(resolve => setTimeout(resolve, 0));
     expect((tree.model!.children[0].children[0].children[0] as THREE.Mesh).geometry.drawRange.count).toBeLessThan(covered);
     expect(s.forest.exportRecords()[0].components.deciduoustree).toMatchObject({ build: 'barren', leaf_state: 'barren' });
-    expect(tree.model!.userData.components.lootdropper.GenerateLoot()).toEqual(['log', 'log', 'log']);
+    expect((findActionEntity(tree.model!)?.components ?? prefabInstance(tree.model!)!.components).lootdropper.GenerateLoot()).toEqual(['log', 'log', 'log']);
     s.season.set({ season: 'spring', progress: .5 }); await new Promise(resolve => setTimeout(resolve, 0)); s.scheduler.advance(20);
     expect(leaves.leaf.peek()).toBe('normal');
     expect(tree.model!.userData.deciduoustreeState.leaves).toBe(leaves);
     growth.DoGrowth(); expect(work.GetWorkLeft()).toBe(5);
     expect(growth.OnSave()).toEqual({ stage: 1, time: 337 });
-    expect(tree.model!.userData.animationController.currentAnimation).toBe('grow_tall_to_short');
+    expect(prefabInstance(tree.model!)!.sprite.currentAnimation).toBe('grow_tall_to_short');
   } finally { s.forest.dispose(); world.unbind(); snowScheduler.dispose(); }
   expect(sharedDisposed).toHaveBeenCalledOnce();
 });
@@ -87,20 +88,20 @@ it('shows growth settled while unloaded as its final stage without the transitio
   const s = await setup();
   try {
     const tree = s.forest.spawn('deciduoustree_short', new THREE.Vector3(2, 0, 0));
-    const root = tree.model, controller = root.userData.animationController, components = root.userData.components;
+    const root = tree.model, controller = prefabInstance(root)!.sprite, components = (findActionEntity(root)?.components ?? prefabInstance(root)!.components);
     await area.visit(new THREE.Vector3(1000, 0, 1000));
     // A sleeping tree keeps its root and state but leaves the scene graph until its tile wakes.
     expect(tree.model).toBe(root); expect(root.parent).toBeNull();
-    expect(root.userData.components).toBe(components); expect(controller.loaded).toBe(false);
+    expect((findActionEntity(root)?.components ?? prefabInstance(root)!.components)).toBe(components); expect(controller.loaded).toBe(false);
     expect(root.userData.removed).not.toBe(true);
     s.scheduler.advance(5000);
     await area.visit(new THREE.Vector3(2, 0, 0));
     expect(root.parent).toBe(s.forest.group);
-    expect(tree.model).toBe(root); expect(root.userData.animationController).toBe(controller);
-    expect(root.userData.components).toBe(components); expect(controller.loaded).toBe(true);
+    expect(tree.model).toBe(root); expect(prefabInstance(root)!.sprite).toBe(controller);
+    expect((findActionEntity(root)?.components ?? prefabInstance(root)!.components)).toBe(components); expect(controller.loaded).toBe(true);
     const model = tree.model!;
-    expect(model.userData.components.growable.GetStage()).toBe(3);
-    expect(model.userData.animationController.currentAnimation).not.toMatch(/^grow_/);
+    expect((findActionEntity(model)?.components ?? prefabInstance(model)!.components).growable.GetStage()).toBe(3);
+    expect(prefabInstance(model)!.sprite.currentAnimation).not.toMatch(/^grow_/);
   } finally { s.forest.dispose(); }
 });
 it('drops two autumn acorns, preserves a saved stump and its seasonal build, and cancels tasks when the stump is dug', async () => {
@@ -120,7 +121,7 @@ it('drops two autumn acorns, preserves a saved stump and its seasonal build, and
     try {
       const loaded = restored.forest.spawn('deciduoustree', new THREE.Vector3(...record.transform.position), record);
       expect(restored.forest.exportRecords()[0]).toEqual(record);
-      expect(loaded.model!.userData.animationController.currentAnimation).toBe('stump_tall');
+      expect(prefabInstance(loaded.model!)!.sprite.currentAnimation).toBe('stump_tall');
       const icon = prefabInstance(loaded.model!)!.minimap;
       expect(icon.icon).toBe('tree_leaf_stump.png');
       expect(restored.forest.digTargets[0].dig()).toBe(true);

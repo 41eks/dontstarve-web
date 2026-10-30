@@ -125,10 +125,10 @@ test('shovels equip, clear farm-plow debris, reskin and preserve command-created
     const { scene } = await import(paths.universal);
     const { player } = await import(paths.player);
     const { equipmentSlotAddress } = await import(paths.inventory);
-    return { tools: scene.children.filter((model: any) => ['shovel', 'goldenshovel'].includes(model.userData.itemId))
-      .map((model: any) => ({ id: (window as any).__prefabInstance(model)?.entityId, position: model.position.toArray(), count: model.userData.count })),
+    return { tools: scene.children.filter((model: any) => ['shovel', 'goldenshovel'].includes(((window as any).__findActionEntity(model)?.prefab ?? (window as any).__prefabInstance(model)?.prefab)))
+      .map((model: any) => ({ id: (window as any).__prefabInstance(model)?.entityId, position: model.position.toArray(), count: (window as any).__findActionEntity(model)?.components.stackable?.count })),
       debris: scene.children.filter((model: any) => (window as any).__prefabInstance(model)?.prefab === 'farm_soil_debris')
-        .map((model: any) => ({ id: (window as any).__prefabInstance(model)?.entityId, position: model.position.toArray(), animation: model.userData.animationController.currentAnimation })),
+        .map((model: any) => ({ id: (window as any).__prefabInstance(model)?.entityId, position: model.position.toArray(), animation: (window as any).__prefabInstance(model)?.sprite.currentAnimation })),
       hand: main.inventory.get(equipmentSlotAddress('hand')),
       regular: main.inventory.exportState().slots.find((slot: any) => slot.item?.itemId === 'shovel')?.item,
       held: player.getObjectByProperty('isMesh', true).material.some((material: any) => material.name === 'ground:swap_goldenshovel') };

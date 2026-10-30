@@ -45,8 +45,9 @@ test('right-clicking a closed cave entrance with a pickaxe walks up to it and mi
   const bar = page.locator('dst-inventory-bar'), hand = bar.locator('.inventory-bar__equipment .inventory-slot').first();
   await bar.locator('.inventory-bar__items [data-item-id="pickaxe"]').dragTo(hand);
   await expect(hand).toHaveAttribute('data-item-id', 'pickaxe');
-  const workLeft = () => page.evaluate(() => (window as any).caveGame.scene.children
-    .find((model: any) => (window as any).__prefabInstance(model)?.entityId === 'entrance')?.userData.components.workable?.GetWorkLeft() ?? 0);
+  const workLeft = () => page.evaluate(() => ((window as any).__findActionEntity((window as any).caveGame.scene.children
+    .find((model: any) => (window as any).__prefabInstance(model)?.entityId === 'entrance'))?.components ?? (window as any).__prefabInstance((window as any).caveGame.scene.children
+    .find((model: any) => (window as any).__prefabInstance(model)?.entityId === 'entrance'))!.components).workable?.GetWorkLeft() ?? 0);
   for (let hit = 0; hit < 6; hit++) {
     const point = await entrancePoint(page, 3);
     await page.mouse.click(point.x, point.y, { button: 'right' });

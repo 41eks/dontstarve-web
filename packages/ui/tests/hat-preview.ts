@@ -1,3 +1,5 @@
+import { prefabDisplay } from '../../display/src';
+import { prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import * as THREE from 'three';
 import { HAT_IDS, HAT_DEFINITIONS } from '@dontstarve-web/prefab/hats';
 import { createWilsonPlayer, type WilsonAnimationController } from '@dontstarve-web/prefab/player';
@@ -5,7 +7,7 @@ import type { PrefabDisplay } from '../../display/src';
 
 export async function renderHatCatalog(): Promise<void> {
   const player = createWilsonPlayer('/dst/data/anim');
-  await player.userData.display.artLoaded();
+  await prefabDisplay(player).artLoaded();
   player.position.set(0, 0, 0);
   const scene = new THREE.Scene();
   scene.add(player);
@@ -20,8 +22,8 @@ export async function renderHatCatalog(): Promise<void> {
   gallery.style.cssText = 'display:grid;grid-template-columns:repeat(9,144px);width:1296px';
   document.body.append(gallery);
   for (const id of [null, ...HAT_IDS]) {
-    ((window as any).__prefabInstance(player).animationController as WilsonAnimationController).setHat(id);
-    await (player.userData.display as PrefabDisplay).artLoaded();
+    (prefabInstance(player).animationController as WilsonAnimationController).setHat(id);
+    await (prefabDisplay(player) as PrefabDisplay).artLoaded();
     renderer.render(scene, camera);
     const card = document.createElement('div');
     const canvas = document.createElement('canvas');

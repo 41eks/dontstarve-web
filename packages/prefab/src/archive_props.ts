@@ -1,3 +1,4 @@
+import { PrefabDisplayGroup } from '@dontstarve-web/display';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
@@ -115,7 +116,7 @@ interface ArchiveProp {
 
 /** archive_props.lua: the static Archive props. The power-driven security desk, switch and pulse prefabs are separate. */
 export class ArchivePropsManager {
-  private readonly scene: THREE.Scene;
+  private readonly displays: PrefabDisplayGroup;
   private readonly world: ArchivePropsWorld;
   private readonly assets = new ArchiveSpriteAssets();
   private readonly props = new Map<THREE.Group, ArchiveProp>();
@@ -126,7 +127,7 @@ export class ArchivePropsManager {
   private disposed = false;
 
   constructor(scene: THREE.Scene, world: ArchivePropsWorld) {
-    this.scene = scene; this.world = world;
+    this.displays = new PrefabDisplayGroup(scene); this.world = world;
   }
 
   async spawn(prefab: ArchivePropSpawnId, position: THREE.Vector3, saved?: ArchivePropRecord): Promise<THREE.Group | undefined> {
@@ -218,7 +219,7 @@ export class ArchivePropsManager {
       if (this.world.physics) prop.instance.bindPhysics(this.world.physics);
     }
     this.props.set(model, prop);
-    display.mount(this.scene);
+    this.displays.mount(display);
     instance.persists = prefab !== ARCHIVE_SWITCH_PAD_ID;
     prop.stopActivity = watchTileActivity(model, this.world.tickingarea, active => {
       instance.setActive(active); shadow?.instance.setActive(active);
@@ -276,7 +277,7 @@ export class ArchivePropsManager {
       }) }, { name: 'collapse_small', billboard: true });
       entity.instance.position.copy(at); entity.instance.persists = false;
       for (const tag of ['FX', 'NOCLICK']) entity.instance.addTag(tag);
-      entity.display.mount(this.scene); this.effects.add(entity);
+      this.displays.mount(entity.display); this.effects.add(entity);
       entity.instance.sprite.playOnce('collapse_small', () => { entity.instance.remove(); this.effects.delete(entity); });
     }).catch((error: unknown) => console.error('Unable to play collapse effect', error));
   }
@@ -314,7 +315,7 @@ export class ArchivePropsManager {
     const prop: ArchiveProp = { prefab: ARCHIVE_AMBIENT_SFX_ID, model, instance, display, removed: false };
     this.props.set(model, prop);
     prop.stopActivity = watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active));
-    display.mount(this.scene);
+    this.displays.mount(display);
     return model;
   }
 
@@ -370,6 +371,7 @@ export class ArchivePropsManager {
     for (const model of [...this.props.keys()]) this.remove(model);
     for (const { instance } of this.effects) instance.remove();
     this.effects.clear();
+    this.displays.dispose();
     this.assets.dispose();
   }
 }

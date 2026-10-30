@@ -1,3 +1,4 @@
+import { PrefabDisplayGroup } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import type { World } from 'cannon-es';
 import type { TileStateQuery } from '@dontstarve-web/signals';
@@ -10,7 +11,7 @@ import { Hauntable } from '../../componets/src/hauntable';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { MiniMapState } from '../../map/src/minimapState';
-import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
+import { createArchiveEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
@@ -42,9 +43,9 @@ export class ChessJunkManager implements DisplayDrivenPrefabManager<{ prefabId: 
   private readonly assets = new ArchiveSpriteAssets('chessjunk');
   private readonly piles = new Map<THREE.Group, Pile>();
   private disposed = false;
-  private readonly scene: THREE.Scene;
+  private readonly displays: PrefabDisplayGroup;
   private readonly world: ChessJunkWorld;
-  constructor(scene: THREE.Scene, world: ChessJunkWorld) { this.scene = scene; this.world = world; }
+  constructor(scene: THREE.Scene, world: ChessJunkWorld) { this.displays = new PrefabDisplayGroup(scene); this.world = world; }
 
   spawn(id: ChessJunkId, position: THREE.Vector3, saved?: ChessJunkRecord): THREE.Group {
     if (this.disposed) throw new Error('Chess junk has been disposed');
@@ -70,7 +71,7 @@ export class ChessJunkManager implements DisplayDrivenPrefabManager<{ prefabId: 
     const hauntable = new Hauntable({ addTag: tag => inst.addTag(tag), removeTag: tag => inst.removeTag(tag),
       PushEvent: (name, data) => inst.PushEvent?.(name, data) }, this.world.scheduler);
     hauntable.SetOnHauntFn(() => false);
-    Object.assign(model.userData.components, { inspectable, lootdropper, workable, repairable, hauntable });
+    Object.assign(prefabInstance(model)!.components, { inspectable, lootdropper, workable, repairable, hauntable });
     const state = saved?.components.chessJunk;
     if (state?.repaired) {
       // OnLoad sets six work, then OnRepaired plays hitN loop and marks repaired.
@@ -80,7 +81,7 @@ export class ChessJunkManager implements DisplayDrivenPrefabManager<{ prefabId: 
     const minimap = instance.minimap; minimap.SetIcon('chessjunk.png');
     const pile: Pile = { id, instance, display, workable, repairable, hauntable, minimap, saved: state,
       stopActivity: watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active)) };
-    this.piles.set(model, pile); display.mount(this.scene); this.world.trackDisplay(display);
+    this.piles.set(model, pile); this.displays.mount(display); this.world.trackDisplay(display);
     return model;
   }
   get renderEntities() { return [...this.piles].filter(([, pile]) => pile.instance.sprite.loaded)
@@ -101,6 +102,7 @@ export class ChessJunkManager implements DisplayDrivenPrefabManager<{ prefabId: 
       pile.stopActivity(); pile.workable.dispose(); pile.repairable.dispose(); pile.hauntable.dispose();
       model.userData.removed = true; pile.instance.remove();
     }
-    this.piles.clear(); this.assets.dispose();
+    this.piles.clear(); this.displays.dispose(); this.assets.dispose();
+
   }
 }

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { DstLightingRenderer } from '../../../src/dstLighting';
 import { spawnLightEntity } from '../../prefab/src/localLight';
+import { createEmptyEntity } from '../../prefab/src/prefabInstance';
 import { TORCH_LIGHT } from '../../prefab/src/torch';
 import { getDstCycle } from '../../../src/tuning';
 import { clockstate, seasonstate } from '@dontstarve-web/signals';
@@ -24,7 +25,8 @@ export async function checkDstLocalLighting() {
   camera.updateMatrixWorld();
   const plane = new THREE.PlaneGeometry(40, 40).rotateX(-Math.PI / 2);
   scene.add(new THREE.Mesh(plane, new THREE.MeshLambertMaterial({ color: 0xffffff })));
-  const owner = new THREE.Object3D();
+  const { instance: ownerInstance, display: ownerDisplay } = createEmptyEntity('wilson');
+  const owner = ownerDisplay.model;
   scene.add(owner);
   const pixels = new Uint8Array(4);
   const sample = (x: number, z: number) => {
@@ -38,7 +40,7 @@ export async function checkDstLocalLighting() {
   const draw = () => lighting.render(scene, camera);
   draw();
   const night = { phase: lighting.getPhase(), season: lighting.getSeason(), centre: sample(0, 0), far: sample(15, 0) };
-  const torchLight = spawnLightEntity(owner, 'torchfire_light'); torchLight.instance.light.set(TORCH_LIGHT);
+  const torchLight = spawnLightEntity('torchfire_light', ownerInstance); torchLight.instance.light.set(TORCH_LIGHT);
   const removeTorchLight = torchLight.remove;
   // Its display lists the declared light once the declaration settles.
   await new Promise(resolve => setTimeout(resolve, 0));

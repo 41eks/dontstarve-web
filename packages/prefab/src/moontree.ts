@@ -14,7 +14,7 @@ import { ToolMouseTarget } from './toolMouseTarget';
 import catalog from './groundItems.json' with { type: 'json' };
 import type { ResidentEntity } from '@dontstarve-web/animation/residentSprite';
 import type { ArchiveSpriteCommands } from '@dontstarve-web/display';
-import { createArchiveEntity, createPrefabEntity } from './prefabInstance';
+import { createArchiveEntity, createPrefabEntity, prefabInstance } from './prefabInstance';
 import { watchTileActivity } from './tileActivity';
 import { registerPlacementTree } from './placementEntities';
 import { PlaySound } from './sound';
@@ -105,7 +105,7 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
   const scale = definitions.moonTree.scale;
   const treeAssets = new ArchiveSpriteAssets('moon_tree', assetBaseUrl);
   const standingAnimation = definitions.moonTree.animationName;
-  const [createTree, fxFactory, createSapling, fireFx] = await Promise.all([
+  const [createTree, fxFactory, createSapling] = await Promise.all([
     // MakeSnowCoveredPristine: the `snow` placeholder is drawn from snow.zip while the snow level is covered.
     preloadSharedArchiveSprite(treeAssets, { animationArchive: definitions.moonTree.archive,
       buildArchives: [definitions.moonTree.archive, 'snow.zip'], bank: 'moon_tree', hiddenSymbols: ['snow'],
@@ -114,8 +114,8 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
     createAnimatedSpriteFactory(assetBaseUrl, 'tree_petal_fx.zip'),
     preloadSharedArchiveSprite(treeAssets, { animationArchive: 'baby_moon_tree.zip', buildArchives: ['baby_moon_tree.zip'], bank: 'baby_moon_tree' },
       { staticBillboard: true, instancedAnimations: 'all' }),
-    FireFxHost.load(assetBaseUrl),
   ]);
+  const fireFx = FireFxHost.create(assetBaseUrl);
   const unit = TILE_SIZE / 4;
   const entities: ResidentEntity[] = [];
   const active = new Set<ResidentEntity>();
@@ -136,7 +136,7 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
   const ownsScheduler = !world.scheduler;
   let disposed = false;
   const getWatchWorldContent = world.getWatchWorldContent ?? getBoundWatchWorldContent();
-  const env = (): BurnEnvironment => ({ scheduler, root: world.scene, fire: fireFx });
+  const env = (): BurnEnvironment => ({ scheduler, fire: fireFx });
   const sizeOf = (state: TreeState): MoonTreeSize => MOON_TREE_SIZES[state.growable.GetStage() - 1];
   /** Growth settled while the visual was unloaded is shown as its final stage, without the transition animation. */
   let catchingUp = false;
@@ -146,7 +146,7 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
   };
   const playGrowth = (entity: ResidentEntity, clip: string, wilt = false) => {
     if (!active.has(entity) || catchingUp) return;
-    const animation = entity.model.userData.animationController as ArchiveSpriteCommands;
+    const animation = prefabInstance(entity.model)!.sprite as ArchiveSpriteCommands;
     sound(wilt ? 'dontstarve/forest/treeGrowFromWilt' : 'dontstarve/forest/treeGrow', entity.position);
     animation.playOnce(clip, () => animation.start(`sway1_loop_${sizeOf(stateOf(entity))}`));
   };
@@ -161,7 +161,7 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
           const controller = controllers.get(entity.model);
           if (controller && !current.stump && !current.burnt) {
             controller.workable?.SetWorkLeft(current.workLeft);
-            (controller.model.userData.animationController as ArchiveSpriteCommands).start(`sway1_loop_${size}`);
+            (prefabInstance(controller.model)!.sprite as ArchiveSpriteCommands).start(`sway1_loop_${size}`);
             refreshFire(controller);
           }
         },
@@ -202,7 +202,7 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
   /** weather.lua SNOW_COVERED_THRESHOLD; without a bound world the snow layer stays hidden. */
   const bindSnow = (controller: TreeController) => {
     controller.stopSnow?.(); controller.stopSnow = undefined;
-    const sprite = controller.model.userData.animationController as ArchiveSpriteCommands;
+    const sprite = prefabInstance(controller.model)!.sprite as ArchiveSpriteCommands;
     const level = getWatchWorldContent?.(WorldContentKey.SnowLevel, stop => { controller.stopSnow = stop; });
     const stopWatch = controller.stopSnow, stopEffect = createRenderEffect(() => { sprite.setSymbolHidden('snow', level ? level.get() < .015 : true); });
     controller.stopSnow = () => { stopEffect(); (stopWatch as (() => void) | undefined)?.(); };
@@ -251,7 +251,7 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
     startDecay(state);
     const controller = controllers.get(entity.model);
     controller?.inst.addTag('burnt');
-    (controller?.model.userData.animationController as ArchiveSpriteCommands | undefined)?.start(`burnt_${sizeOf(state)}`);
+    (prefabInstance(controller?.model)?.sprite)?.start(`burnt_${sizeOf(state)}`);
     const changes = () => {
       state.growable.StopGrowing();
       const current = controllers.get(entity.model);
@@ -272,7 +272,7 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
     dropper.SetChanceLootTable('moontree_burnt');
     dropper.DropLoot();
     world.dropLoot(loot.map(itemId => ({ itemId, count: 1 })), entity.position.clone());
-    const animation = controller?.model.userData.animationController as ArchiveSpriteCommands | undefined;
+    const animation = prefabInstance(controller?.model)?.sprite;
     if (animation) animation.playOnce(`chop_burnt_${sizeOf(state)}`, () => removeTree(entity));
     else removeTree(entity);
   };
@@ -294,7 +294,7 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
     controller.workable?.dispose();
     const workable = new Workable(inst);
     controller.workable = workable;
-    model.userData.components.workable = workable;
+    prefabInstance(model)!.components.workable = workable;
     inst.removeTag('shelter');
     inst.addTag('stump');
     workable.SetWorkAction('DIG');
@@ -332,33 +332,33 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
     mouseRecords.set(model, entity);
     controllers.set(model, controller);
     model.userData.deploySmartRadius = 1.6 * unit;
-    model.userData.components.growable = state.growable;
-    model.userData.components.timer = state.timer;
+    prefabInstance(model)!.components.growable = state.growable;
+    prefabInstance(model)!.components.timer = state.timer;
     for (const tag of ['plant', 'tree', 'moon_tree']) inst.addTag(tag);
     // standardcomponents.lua MakeSnowCoveredPristine applies to trees and stumps, not saplings.
     inst.addTag('SnowCovered');
     if (state.stump) {
       makeStump(controller);
-      (model.userData.animationController as ArchiveSpriteCommands).playOnce(`stump_${sizeOf(state)}`);
+      (prefabInstance(model)!.sprite as ArchiveSpriteCommands).playOnce(`stump_${sizeOf(state)}`);
       return;
     }
     if (state.burnt) {
       inst.addTag('burnt');
       const workable = new Workable(inst);
       controller.workable = workable;
-      model.userData.components.workable = workable;
+      prefabInstance(model)!.components.workable = workable;
       workable.SetWorkAction('CHOP'); workable.SetWorkLeft(1);
       workable.SetOnFinishCallback(() => chopDownBurnt(entity));
-      (model.userData.animationController as ArchiveSpriteCommands).start(`burnt_${sizeOf(state)}`);
+      (prefabInstance(model)!.sprite as ArchiveSpriteCommands).start(`burnt_${sizeOf(state)}`);
       return;
     }
     bindFire(controller);
     inst.addTag('shelter');
-    const animation = model.userData.animationController as ArchiveSpriteCommands;
+    const animation = prefabInstance(model)!.sprite as ArchiveSpriteCommands;
     animation.start(`sway1_loop_${sizeOf(state)}`);
     const workable = new Workable(inst);
     controller.workable = workable;
-    model.userData.components.workable = workable;
+    prefabInstance(model)!.components.workable = workable;
     workable.SetWorkAction('CHOP');
     workable.SetWorkLeft(state.workLeft);
     // on_chop_tree: sound, chop pose, then back to swaying, with petals at the crown.
@@ -478,8 +478,8 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
       world.dropLoot([{ itemId: 'twigs', count: 1 }], model.position);
       removeSapling(model);
     });
-    model.userData.components.workable = workable;
-    model.userData.components.timer = timer;
+    prefabInstance(model)!.components.workable = workable;
+    prefabInstance(model)!.components.timer = timer;
     new ToolMouseTarget(inst, entity.instance, workable, world.handEquipment);
     saplings.set(model, { entity, timer, workable, stopPlacement: registerPlacementTree(world.scene, { model, position: model.position }, 'moonbutterfly_sapling', 1.6 * unit), stopActivity: watchTileActivity(model, world.tickingarea, active => entity.instance.setActive(active)) });
     world.scene.add(model);
@@ -525,7 +525,7 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
     const controller = controllers.get(entity.model);
     if (controller?.workable && state.stump) {
       makeStump(controller);
-      (controller.model.userData.animationController as ArchiveSpriteCommands).start(`stump_${sizeOf(state)}`);
+      (prefabInstance(controller.model)!.sprite as ArchiveSpriteCommands).start(`stump_${sizeOf(state)}`);
     }
     // on_load: a saved burnt tree (or one that was burning) becomes burnt at once; its stump variant is not restored.
     if (saved?.burnt && !state.stump) burn(entity, true);
@@ -545,10 +545,10 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
 
     update(dt: number) {
       if (ownsScheduler) scheduler.advance(dt);
-      fireFx.update(dt);
       for (const entity of active) {
         const drawn = sprites.get(entity)!;
         drawn.instance.sprite.update(dt);
+        controllers.get(entity.model)?.burn?.update(dt);
       }
       for (const drawn of [...effects]) { drawn.instance.sprite.update(dt); }
       for (const { entity } of saplings.values()) if (entity.instance.sprite.loaded) { entity.instance.sprite.update(dt); }
@@ -562,7 +562,7 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
         ...Array.from(active, (entity) => ({ object: entity.model, footPosition: entity.position, cameraDepth: 0 })),
         ...Array.from(effects, ({ display: { model } }) => ({ object: model, footPosition: model.userData.footPosition as THREE.Vector3, cameraDepth: 0 })),
         ...Array.from(saplings).filter(([, { entity }]) => entity.instance.sprite.loaded).map(([model]) => ({ object: model, footPosition: model.position, cameraDepth: 0 })),
-        ...fireFx.renderEntities,
+        ...Array.from(active, entity => sprites.get(entity)!.display.fxRenderEntries).flat(),
       ];
     },
     exportState,

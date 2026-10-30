@@ -1,8 +1,9 @@
+import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
 import { createSharedArchiveSprite, ArchiveSpriteAssets } from '@dontstarve-web/animation/archiveSprite';
 import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
-import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
+import { createArchiveEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
 import { fourFacingFromRotation } from '@dontstarve-web/animation/facing';
 import { WorldContentKey, watchSignal, type ReadonlySignal } from '@dontstarve-web/signals';
 import { BlowInWind } from '../../componets/src/blowinwind';
@@ -120,10 +121,10 @@ class Tumbleweed {
     this.groundCheck = new ComponentTimer(world.scheduler, () => this.onGroundCheck());
     this.restartMovement = new ComponentTimer(world.scheduler, () => this.onRestartMovement());
     this.heading = watchSignal(world.cameraHeading, stop => this.cleanups.push(stop));
-    this.model.userData.components.pickable = {
+    Object.assign(prefabInstance(this.model)!.components, { pickable: {
       canBePicked: true, quickpick: false, product: undefined,
       pick: () => this.pickup(),
-    };
+    } });
     this.model.userData.tumbleweed = this;
     // inst:ListenForEvent("startlongaction", OnLongAction) — PICK's long action pushes it on the target.
     const onLongAction = () => this.onLongAction();
@@ -209,11 +210,10 @@ class Tumbleweed {
     this.blowinwind.Update(dt);
     this.sprite.update(dt);
   }
-  sync(cameraQuaternion: THREE.Quaternion): void {
+  sync(): void {
     if (this.removed) return;
     this.model.position.set(this.body.position.x, 0, this.body.position.z);
     this.world.constrainPosition(this.model.position);
-    this.model.quaternion.copy(cameraQuaternion);
     const facing = fourFacingFromRotation(this.rotation, this.heading.peek());
     if (facing !== this.facing) this.sprite.setFacing(this.facing = facing);
   }
@@ -226,7 +226,7 @@ class Tumbleweed {
     this.blowinwind.dispose();
     this.groundCheck.stop(); this.restartMovement.stop();
     for (const cleanup of this.cleanups.splice(0)) cleanup();
-    delete this.model.userData.components.pickable;
+    delete prefabInstance(this.model)!.components.pickable;
     const fx = picked ? this.breakFx.display.model : undefined;
     if (!picked) this.disposeBreak();
     this.entity.instance.remove(); this.entity.display.dispose();
@@ -243,13 +243,13 @@ export class TumbleweedManager {
   private readonly assets: ArchiveSpriteAssets;
   private readonly tumbleweeds = new Map<THREE.Group, Tumbleweed>();
   private readonly breaking = new Set<{ tumbleweed: Tumbleweed; model: THREE.Group }>();
-  private readonly scene: THREE.Scene;
+  private readonly displays: PrefabDisplayGroup;
   private readonly physics: CANNON.World;
   private readonly world: TumbleweedWorld;
   private disposed = false;
 
   constructor(scene: THREE.Scene, physics: CANNON.World, world: TumbleweedWorld) {
-    this.scene = scene; this.physics = physics; this.world = world;
+    this.displays = new PrefabDisplayGroup(scene); this.physics = physics; this.world = world;
     this.assets = new ArchiveSpriteAssets('tumbleweed');
   }
 
@@ -258,7 +258,7 @@ export class TumbleweedManager {
       buildArchives: ['tumbleweed.zip'], bank: 'tumbleweed', animation: clip.name, loop: clip.loop,
       // swap_fire is the burn fx attach point (AddBurnFX); it has no art in the build.
       hiddenSymbols: ['swap_fire'] }, { name: prefab });
-    return createArchiveEntity(prefab, { create, initial: await create({ name: animation, loop }) }, { name: animation, held: !loop }, prefab);
+    return createArchiveEntity(prefab, { create, initial: await create({ name: animation, loop }) }, { name: animation, held: !loop, billboard: true }, prefab);
   }
 
   async spawn(position: THREE.Vector3, saved?: TumbleweedRecord): Promise<THREE.Group> {
@@ -279,7 +279,7 @@ export class TumbleweedManager {
     const tumbleweed = new Tumbleweed(entity, breakFx, this.physics, this.world, (target, picked) => this.remove(target.model, picked));
     this.tumbleweeds.set(model, tumbleweed);
     model.userData.remove = () => this.remove(model, false);
-    this.scene.add(model);
+    this.displays.mount(prefabDisplay(model)!);
     return model;
   }
 
@@ -289,9 +289,8 @@ export class TumbleweedManager {
     for (const tumbleweed of this.tumbleweeds.values()) tumbleweed.update(Math.min(dt, .1));
     for (const entry of this.breaking) entry.tumbleweed.updateBreak(Math.min(dt, .1));
   }
-  sync(cameraQuaternion: THREE.Quaternion): void {
-    for (const tumbleweed of this.tumbleweeds.values()) tumbleweed.sync(cameraQuaternion);
-    for (const { model } of this.breaking) model.quaternion.copy(cameraQuaternion);
+  sync(): void {
+    for (const tumbleweed of this.tumbleweeds.values()) tumbleweed.sync();
   }
 
   get renderEntities() {
@@ -314,7 +313,7 @@ export class TumbleweedManager {
     model.removeFromParent();
     if (!fx) return;
     fx.position.copy(position);
-    this.scene.add(fx);
+    this.displays.mount(prefabDisplay(fx)!);
     const entry = { tumbleweed, model: fx };
     this.breaking.add(entry);
     tumbleweed.setBreakFacing(this.world.cameraHeading.peek());
@@ -329,6 +328,7 @@ export class TumbleweedManager {
     for (const entry of [...this.breaking]) { entry.model.removeFromParent(); entry.tumbleweed.disposeBreak(); }
     this.breaking.clear();
     this.disposed = true;
+    this.displays.dispose();
     this.assets.dispose();
   }
 }

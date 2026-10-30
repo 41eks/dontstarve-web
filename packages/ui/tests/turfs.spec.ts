@@ -30,8 +30,8 @@ test('turf commands render native art, split stacks and preserve drops and picku
     return JSON.parse(await readSaveDownload((await (await download).path())!));
   };
   const ground = () => page.evaluate(() => (window as any).turfGame.scene.children
-    .filter((model: any) => model.userData.itemId?.startsWith('turf_')).map((model: any) => ({
-      id: (window as any).__prefabInstance(model)?.entityId, itemId: model.userData.itemId,
+    .filter((model: any) => ((window as any).__findActionEntity(model)?.prefab ?? (window as any).__prefabInstance(model)?.prefab)?.startsWith('turf_')).map((model: any) => ({
+      id: (window as any).__prefabInstance(model)?.entityId, itemId: ((window as any).__findActionEntity(model)?.prefab ?? (window as any).__prefabInstance(model)?.prefab),
       vertices: model.children[0].children[0].geometry.drawRange.count,
       materials: model.children[0].children[0].material.map((material: any) => material.name),
     })));
@@ -64,7 +64,7 @@ test('turf commands render native art, split stacks and preserve drops and picku
   const point = await page.evaluate(id => {
     const { scene, camera, renderer, player, playerBody } = (window as any).turfGame;
     const model = scene.children.find((model: any) => (window as any).__prefabInstance(model)?.entityId === id);
-    for (const other of scene.children) if (other.userData.itemId === 'turf_cotl_brick') other.position.x += 30;
+    for (const other of scene.children) if (((window as any).__findActionEntity(other)?.prefab ?? (window as any).__prefabInstance(other)?.prefab) === 'turf_cotl_brick') other.position.x += 30;
     playerBody.position.set(model.position.x + 3, playerBody.shapes[0].radius, model.position.z + 3);
     player.position.set(model.position.x + 3, 0, model.position.z + 3);
     scene.updateMatrixWorld(true);

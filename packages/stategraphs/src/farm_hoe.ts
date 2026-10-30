@@ -3,8 +3,8 @@ import * as THREE from 'three';
 import { PointerRaycaster } from './pointerRaycaster.ts';
 import { bindHandEquipmentUpdate, type HandEquipmentSignal } from './handEquipment.ts';
 import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor } from './actionContext.ts';
-import type { FarmActionWorld, PreparedFarmTill } from './farmActions.ts';
-type FarmPlowPlacement = Pick<FarmActionWorld, 'canTill' | 'prepareTill'>;
+import type { FarmActionWorld } from './farmActions.ts';
+type FarmPlowPlacement = Pick<FarmActionWorld, 'canTill' | 'till'>;
 
 export type FarmHoeTool = 'farm_hoe' | 'golden_farm_hoe';
 export function isFarmHoeTool(value: string): value is FarmHoeTool {
@@ -17,8 +17,6 @@ export class FarmHoeActionController {
   private readonly pointer: PointerRaycaster;
   private readonly unregisterHover: () => void;
   private target?: THREE.Vector3;
-  private prepared?: PreparedFarmTill;
-  private loading = false;
   private version = 0;
   private disposed = false;
   private readonly direction = new THREE.Vector3();
@@ -32,12 +30,11 @@ export class FarmHoeActionController {
   private readonly stopActionEvents: () => void;
   private readonly farm: FarmPlowPlacement;
   private readonly isManualMovement: () => boolean;
-  private readonly onError: (error: unknown) => void;
 
   constructor(world: WorldContext, animation: WilsonAnimationController,
     locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>,
     handEquipment: HandEquipmentSignal, farm: FarmPlowPlacement,
-    isManualMovement = () => false, onError: (error: unknown) => void = console.error) {
+    isManualMovement = () => false) {
     this.world = world; this.animation = animation; this.locomotor = locomotor;
     this.handEquipment = handEquipment; this.farm = farm; this.isManualMovement = isManualMovement;
     this.stopEquipment = bindHandEquipmentUpdate(handEquipment, {
@@ -46,7 +43,6 @@ export class FarmHoeActionController {
       update: () => this.update(),
       registerFrameTask: world.registerFrameTask,
     });
-    this.onError = onError;
     this.stopActionEvents = bindActionCancellation(world, this, 'hand', () => this.cancel());
     this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
     this.unregisterHover = world.mouseActions?.register(() => this.hitTarget()
@@ -70,16 +66,12 @@ export class FarmHoeActionController {
   cancel(): void {
     this.version++;
     if (this.target) this.locomotor.stop();
-    this.target = undefined; this.loading = false;
-    this.prepared?.dispose(); this.prepared = undefined;
+    this.target = undefined;
     this.animation.cancelTill();
   }
 
   update(): void {
     if (!isFarmHoeTool(this.equipped()?.itemId ?? '') || this.isManualMovement()) { this.cancel(); return; }
-    if (this.prepared && !this.target && !this.animation.isTilling) {
-      this.prepared.dispose(); this.prepared = undefined;
-    }
     const target = this.target;
     if (!target) return;
     if (!this.farm.canTill(target)) { this.cancel(); return; }
@@ -92,29 +84,12 @@ export class FarmHoeActionController {
       return;
     }
     this.locomotor.stop();
-    if (this.loading) return;
-    if (!this.prepared) {
-      const version = this.version;
-      this.loading = true;
-      void this.farm.prepareTill(target).then((prepared) => {
-        if (this.disposed || version !== this.version) { prepared?.dispose(); return; }
-        this.loading = false;
-        if (!prepared) this.cancel(); else this.prepared = prepared;
-      }).catch((error: unknown) => {
-        if (version === this.version) this.cancel();
-        this.onError(error);
-      });
-      return;
-    }
     this.faceTarget(target);
-    const prepared = this.prepared, version = this.version, tool = this.equipped()!;
+    const version = this.version, tool = this.equipped()!;
     if (this.animation.playTill(() => {
       const current = this.equipped();
-      const success = version === this.version && current?.itemId === tool.itemId && current.skinId === tool.skinId
-        && this.inReach(target) && prepared.apply();
-      prepared.dispose();
-      if (this.prepared === prepared) this.prepared = undefined;
-      return success;
+      return version === this.version && current?.itemId === tool.itemId && current.skinId === tool.skinId
+        && this.inReach(target) && this.farm.till(target);
     })) this.target = undefined;
   }
 

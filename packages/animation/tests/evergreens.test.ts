@@ -1,3 +1,5 @@
+import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { EventEmitter } from '@dontstarve-web/signals';
 import type { WorldEvents } from '../../prefab/src/worldContext';
@@ -42,7 +44,7 @@ it('cycles all four source stages and split archives, resets chop work, removes 
   try {
     const tree = s.forest.spawn('evergreen_tall', new THREE.Vector3(3, 0, 0));
     const model = tree.model!, work = s.forest.chopTargets[0].entity.components.workable!;
-    const growable = model.userData.components.growable;
+    const growable = (findActionEntity(model)?.components ?? prefabInstance(model)!.components).growable;
     await new Promise(resolve => setTimeout(resolve, 0));
     expect((model.children[0].children[0].children[0] as THREE.Mesh).geometry.drawRange.count).toBeGreaterThan(0);
     expect(work.GetWorkLeft()).toBe(15);
@@ -53,23 +55,23 @@ it('cycles all four source stages and split archives, resets chop work, removes 
     expect(s.forest.exportRecords()[0].components.growable).toEqual({ stage: 4, time: 225 });
     expect(work.GetWorkLeft()).toBe(1);
     expect(s.forest.chopTargets[0].entity.hasTag('shelter')).toBe(false);
-    expect(model.userData.animationController.currentAnimation).toBe('grow_tall_to_old');
+    expect(prefabInstance(model)!.sprite.currentAnimation).toBe('grow_tall_to_old');
     expect(PlaySound).toHaveBeenCalledWith('dontstarve/forest/treeWilt', tree.position);
     s.scheduler.advance(225);
     expect(work.GetWorkLeft()).toBe(5);
     expect(s.forest.chopTargets[0].entity.hasTag('shelter')).toBe(true);
-    expect(model.userData.animationController.currentAnimation).toBe('grow_old_to_short');
+    expect(prefabInstance(model)!.sprite.currentAnimation).toBe('grow_old_to_short');
     s.scheduler.advance(337.5);
     expect(work.GetWorkLeft()).toBe(10);
-    expect(model.userData.animationController.currentAnimation).toBe('grow_short_to_normal');
+    expect(prefabInstance(model)!.sprite.currentAnimation).toBe('grow_short_to_normal');
     s.scheduler.advance(1125);
     expect(work.GetWorkLeft()).toBe(15);
-    expect(model.userData.animationController.currentAnimation).toBe('grow_normal_to_tall');
+    expect(prefabInstance(model)!.sprite.currentAnimation).toBe('grow_normal_to_tall');
     // An old tree drops one pinecone when chopped, then one log when its stump is dug.
     s.scheduler.advance(1125);
     expect(performToolWork('CHOP', s.forest.chopTargets[0].entity, {})).toBe(true);
     expect(s.dropLoot.mock.calls.at(-1)![0]).toEqual([{ itemId: 'pinecone', count: 1 }]);
-    expect(model.userData.animationController.currentAnimation).toBe('chop_old');
+    expect(prefabInstance(model)!.sprite.currentAnimation).toBe('chop_old');
     expect(s.forest.exportRecords()[0].components).toEqual({ evergreen: { stump: true }, growable: { stage: 4 } });
     await new Promise(resolve => setTimeout(resolve, 0)); expect(s.physics.bodies).toEqual([]);
     expect(s.forest.digTargets[0].dig()).toBe(true);
@@ -81,22 +83,22 @@ it('shows growth settled while unloaded as its final stage without the transitio
   const s = await setup();
   try {
     const tree = s.forest.spawn('evergreen_short', new THREE.Vector3(3, 0, 0));
-    const root = tree.model, controller = root.userData.animationController, components = root.userData.components;
+    const root = tree.model, controller = prefabInstance(root)!.sprite, components = (findActionEntity(root)?.components ?? prefabInstance(root)!.components);
     await area.visit(new THREE.Vector3(1000, 0, 1000));
     // A sleeping tree keeps its root and state but leaves the scene graph until its tile wakes.
     expect(tree.model).toBe(root); expect(root.parent).toBeNull();
     expect(lookupPrefabInstance(root)!.status.peek()).toBe('asleep');
-    expect(root.userData.components).toBe(components); expect(controller.loaded).toBe(false);
+    expect((findActionEntity(root)?.components ?? prefabInstance(root)!.components)).toBe(components); expect(controller.loaded).toBe(false);
     expect(root.userData.removed).not.toBe(true);
     s.scheduler.advance(5000);
     await area.visit(new THREE.Vector3(3, 0, 0));
     expect(root.parent).toBe(s.forest.group);
     expect(lookupPrefabInstance(root)!.status.peek()).toBe('active');
     expect(lookupPrefabInstance(root)!.position).toBe(root.position);
-    expect(tree.model).toBe(root); expect(root.userData.animationController).toBe(controller);
-    expect(root.userData.components).toBe(components); expect(controller.loaded).toBe(true);
-    expect(tree.model!.userData.components.growable.GetStage()).toBeGreaterThan(1);
-    expect(tree.model!.userData.animationController.currentAnimation).not.toMatch(/^grow_/);
+    expect(tree.model).toBe(root); expect(prefabInstance(root)!.sprite).toBe(controller);
+    expect((findActionEntity(root)?.components ?? prefabInstance(root)!.components)).toBe(components); expect(controller.loaded).toBe(true);
+    expect((findActionEntity(tree.model!)?.components ?? prefabInstance(tree.model!)!.components).growable.GetStage()).toBeGreaterThan(1);
+    expect(prefabInstance(tree.model!)!.sprite.currentAnimation).not.toMatch(/^grow_/);
   } finally { s.forest.dispose(); }
 });
 it('commits source axe work, cancels before impact, preserves logical components while unloaded, and fells and digs a tall tree permanently', async () => {
@@ -141,7 +143,7 @@ it('commits source axe work, cancels before impact, preserves logical components
     try {
       const reloaded = restored.forest.spawn('evergreen', new THREE.Vector3(...record.transform.position), record);
       expect(restored.forest.exportRecords()[0]).toEqual(record);
-      expect(reloaded.model!.userData.animationController.currentAnimation).toBe('stump_tall');
+      expect(prefabInstance(reloaded.model!)!.sprite.currentAnimation).toBe('stump_tall');
       const stump = restored.forest.digTargets[0];
       expect(stump.dig()).toBe(true); expect(stump.dig()).toBe(false);
       restored.scheduler.advance(5000); await area.visit(player.position);

@@ -37,9 +37,9 @@ test('picks rock avocado, clears overripe fruit, digs and replants a root, ferti
     new CustomEvent('game:debug-command', { detail: { command } })), command);
   const screenPoint = (planted: boolean | 'dug' | 'overripe') => page.evaluate(async ({ planted, moduleUrl }) => {
     const { scene, view } = (window as any).rock_avocado_bushGame;
-    const model = scene.children.find((model: any) => planted === 'dug' ? model.userData.itemId === 'dug_rock_avocado_bush'
+    const model = scene.children.find((model: any) => planted === 'dug' ? ((window as any).__findActionEntity(model)?.prefab ?? (window as any).__prefabInstance(model)?.prefab) === 'dug_rock_avocado_bush'
       : planted === 'overripe' ? (window as any).__prefabInstance(model)?.entityId === 'rock-avocado:overripe'
-      : (window as any).__prefabInstance(model)?.entityId !== 'rock-avocado:overripe' && (window as any).__prefabInstance(model)?.prefab === 'rock_avocado_bush' && !!model.userData.components.pickable.exportState().transplanted === planted);
+      : (window as any).__prefabInstance(model)?.entityId !== 'rock-avocado:overripe' && (window as any).__prefabInstance(model)?.prefab === 'rock_avocado_bush' && !!((window as any).__findActionEntity(model)?.components ?? (window as any).__prefabInstance(model)!.components).pickable.exportState().transplanted === planted);
     if (!model) throw new Error('No rock_avocado_bush target');
     scene.updateMatrixWorld(true);
     const { spriteScreenPoint } = await import(moduleUrl);
@@ -56,7 +56,7 @@ test('picks rock avocado, clears overripe fruit, digs and replants a root, ferti
   const hand = page.locator('dst-inventory-bar .inventory-bar__equipment .inventory-slot').first();
   const overripe = await hover('overripe', 'left', 'PICK');
   await page.mouse.click(overripe.x, overripe.y);
-  await expect.poll(() => page.evaluate(() => (window as any).rock_avocado_bushGame.scene.children.find((m: any) => (window as any).__prefabInstance(m)?.entityId === 'rock-avocado:overripe').userData.components.growable.GetStage())).toBe(1);
+  await expect.poll(() => page.evaluate(() => ((window as any).__findActionEntity((window as any).rock_avocado_bushGame.scene.children.find((m: any) => (window as any).__prefabInstance(m)?.entityId === 'rock-avocado:overripe'))?.components ?? (window as any).__prefabInstance((window as any).rock_avocado_bushGame.scene.children.find((m: any) => (window as any).__prefabInstance(m)?.entityId === 'rock-avocado:overripe'))!.components).growable.GetStage())).toBe(1);
   expect(await count('rock_avocado_fruit')).toBe(0);
   let wild = await hover(false, 'left', 'PICK');
   await page.mouse.click(wild.x, wild.y);
@@ -65,7 +65,7 @@ test('picks rock avocado, clears overripe fruit, digs and replants a root, ferti
   await bar.locator('[data-item-id="shovel"]').dragTo(hand);
   wild = await hover(false, 'right', 'DIG');
   await page.mouse.click(wild.x, wild.y, { button: 'right' });
-  await expect.poll(() => page.evaluate(() => (window as any).rock_avocado_bushGame.scene.children.some((model: any) => model.userData.itemId === 'dug_rock_avocado_bush'))).toBe(true);
+  await expect.poll(() => page.evaluate(() => (window as any).rock_avocado_bushGame.scene.children.some((model: any) => ((window as any).__findActionEntity(model)?.prefab ?? (window as any).__prefabInstance(model)?.prefab) === 'dug_rock_avocado_bush'))).toBe(true);
   const dug = await hover('dug', 'left', 'PICKUP');
   await page.mouse.click(dug.x, dug.y);
   await expect(bar.locator('[data-item-id="dug_rock_avocado_bush"] .inventory-slot__icon[data-loaded="true"]')).toBeVisible();
@@ -81,8 +81,8 @@ test('picks rock avocado, clears overripe fruit, digs and replants a root, ferti
   await expect.poll(() => page.evaluate(() => (window as any).rock_avocado_bushGame.scene.children.filter((model: any) => (window as any).__prefabInstance(model)?.prefab === 'rock_avocado_bush').length)).toBe(2);
   await expect.poll(() => count('dug_rock_avocado_bush')).toBe(0);
   const root = await page.evaluate(() => {
-    const model = (window as any).rock_avocado_bushGame.scene.children.find((model: any) => model.userData.components?.pickable?.exportState().transplanted);
-    return { id: (window as any).__prefabInstance(model)?.entityId, position: model.position.toArray(), skinId: (window as any).__prefabInstance(model)?.skinId, state: model.userData.components.pickable.exportState() };
+    const model = (window as any).rock_avocado_bushGame.scene.children.find((model: any) => ((window as any).__findActionEntity(model)?.components ?? (window as any).__prefabInstance(model)!.components)?.pickable?.exportState().transplanted);
+    return { id: (window as any).__prefabInstance(model)?.entityId, position: model.position.toArray(), skinId: (window as any).__prefabInstance(model)?.skinId, state: ((window as any).__findActionEntity(model)?.components ?? (window as any).__prefabInstance(model)!.components).pickable.exportState() };
   });
   expect(root.state).toMatchObject({ picked: true, transplanted: true, cyclesLeft: 0 });
   await bar.locator('[data-item-id="poop"]').click();
@@ -91,7 +91,7 @@ test('picks rock avocado, clears overripe fruit, digs and replants a root, ferti
   await expect.poll(() => count('poop')).toBe(1);
   await expect.poll(() => page.evaluate(id => {
     const model = (window as any).rock_avocado_bushGame.scene.children.find((model: any) => (window as any).__prefabInstance(model)?.entityId === id);
-    return model.userData.components.growable.state.timer.peek().status;
+    return ((window as any).__findActionEntity(model)?.components ?? (window as any).__prefabInstance(model)!.components).growable.state.timer.peek().status;
   }, root.id)).toBe('scheduled'); // Rock avocado keeps growing during winter.
 
   const download = page.waitForEvent('download'); await submit('c_save()');
@@ -108,7 +108,7 @@ test('picks rock avocado, clears overripe fruit, digs and replants a root, ferti
   await page.reload(); await prepare();
   await expect.poll(() => page.evaluate(id => {
     const model = (window as any).rock_avocado_bushGame.scene.children.find((model: any) => (window as any).__prefabInstance(model)?.entityId === id);
-    return model?.userData.components.pickable.exportState();
+    return ((window as any).__findActionEntity(model)?.components ?? (window as any).__prefabInstance(model)!.components).pickable.exportState();
   }, root.id)).toEqual(plant.components.pickable);
   await expect.poll(() => count('dug_rock_avocado_bush')).toBe(0);
   expect(errors).toEqual([]);

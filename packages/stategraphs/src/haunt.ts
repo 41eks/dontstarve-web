@@ -1,3 +1,4 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import type { Hauntable } from '../../componets/src/hauntable';
 import { TILE_SIZE } from '../../prefab/src/tile.ts';
@@ -19,17 +20,17 @@ export interface HauntTarget extends BufferedActionObject {
 
 /** ACTIONS.HAUNT.fn's target test: a valid, unheld hauntable that is not already haunted or catchable. */
 function canHaunt(target: HauntTarget): boolean {
-  return !!target.model.parent && target.model.userData.components?.hauntable === target.component
+  return !!target.model.parent && (findActionEntity(target.model)?.components.hauntable ?? prefabInstance(target.model)?.components.hauntable) === target.component
     && !target.component.IsHaunted() && !target.hasTag('haunted') && !target.hasTag('catchable');
 }
 
 function hauntTarget(model: THREE.Object3D): HauntTarget | undefined {
-  const component = model.userData.components?.hauntable as Hauntable | undefined;
+  const component = (findActionEntity(model)?.components.hauntable ?? prefabInstance(model)?.components.hauntable) as Hauntable | undefined;
   if (!component) return undefined;
   return {
-    model, component, prefab: model.userData.actionEntity?.prefab ?? prefabInstance(model)?.prefab,
-    hasTag: tag => model.userData.actionEntity?.hasTag(tag) ?? modelHasTag(model, tag),
-    getPosition: () => model.userData.getGroundPosition?.() ?? model.position.clone(),
+    model, component, prefab: findActionEntity(model)?.prefab ?? prefabInstance(model)?.prefab,
+    hasTag: tag => findActionEntity(model)?.hasTag(tag) ?? modelHasTag(model, tag),
+    getPosition: () => findActionEntity(model)?.getPosition() ?? prefabInstance(model)?.position ?? model.position,
   };
 }
 

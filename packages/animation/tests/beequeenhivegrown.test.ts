@@ -1,3 +1,5 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
+import { prefabDisplay } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -21,11 +23,11 @@ it('declares the Lua large_hit then nonlooping large sequence on a hammer hit an
   const { hives, scheduler } = setup();
   try {
     const model = hives.spawn(new THREE.Vector3(2, 0, 3));
-    await model.userData.display.artLoaded();
+    await prefabDisplay(model).artLoaded();
     const instance = prefabInstance(model)!;
     expect(instance.listTags()).toEqual(expect.arrayContaining(['event_trigger', 'antlion_sinkhole_blocker']));
     expect(instance.sprite.sprite.peek().clip).toMatchObject({ name: 'large', loop: false });
-    model.userData.components.workable.WorkedBy({});
+    (findActionEntity(model)?.components ?? prefabInstance(model)!.components).workable.WorkedBy({});
     expect(instance.sprite.sprite.peek().clip).toMatchObject({ name: 'large_hit', loop: false });
     expect(instance.sprite.sprite.peek().queue).toEqual([{ name: 'large', loop: false }]);
     for (let i = 0; i < 120; i++) hives.update(.1);
@@ -42,9 +44,9 @@ it('settles the hit on tile sleep and rebuilds the declared large pose and honey
   const { scene, hives, awake, scheduler } = setup();
   try {
     const model = hives.spawn(new THREE.Vector3(1, 0, 4));
-    await model.userData.display.artLoaded();
+    await prefabDisplay(model).artLoaded();
     const instance = prefabInstance(model)!;
-    model.userData.components.workable.WorkedBy({});
+    (findActionEntity(model)?.components ?? prefabInstance(model)!.components).workable.WorkedBy({});
     awake.set(false); await settle();
     expect(instance.status.peek()).toBe('asleep');
     expect(instance.sprite.loaded).toBe(false);

@@ -6,18 +6,12 @@ export interface FarmSoilTarget {
   position: THREE.Vector3;
   isValid(): boolean;
 }
-export interface PreparedSeedPlant {
-  apply(takeSeed: () => boolean): boolean;
-  dispose(): void;
-}
-export interface PreparedFarmTill { apply(): boolean; dispose(): void; }
-
-/** Farm prefabs prepare their art and own atomic changes to soil entities. */
+/** Farm prefabs own atomic changes to soil entities, committed on the action's hit frame. */
 export interface FarmActionWorld {
   readonly soilTargets: readonly FarmSoilTarget[];
   canTill(point: THREE.Vector3): boolean;
-  prepareTill(point: THREE.Vector3): Promise<PreparedFarmTill | undefined>;
-  prepareSeedPlant(id: string, seedItemId?: string): Promise<PreparedSeedPlant | undefined>;
+  till(point: THREE.Vector3): boolean;
+  plantSeed(id: string, seedItemId: string | undefined, takeSeed: () => boolean): boolean;
 }
 
 export interface TerraformMap {

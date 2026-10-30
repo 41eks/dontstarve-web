@@ -1,3 +1,4 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
@@ -59,9 +60,9 @@ it('offers MIGRATE on an open entrance whose Caves destination is available and 
     const [action] = getMigrateActions(open);
     expect(action).toMatchObject({ button: 'left', available: true, action: { action: 'MIGRATE' } });
     expect(prefabInstance(open)!.listTags()).toContain('migrator');
-    expect(open.userData.components.worldmigrator.Activate({ hasTag: () => false })).toBe(false);
+    expect((findActionEntity(open)?.components ?? prefabInstance(open)!.components).worldmigrator.Activate({ hasTag: () => false })).toBe(false);
     const player = { hasTag: (tag: string) => tag === 'player' };
-    expect(open.userData.components.worldmigrator.Activate(player)).toBe(true);
+    expect((findActionEntity(open)?.components ?? prefabInstance(open)!.components).worldmigrator.Activate(player)).toBe(true);
     expect(migrated).toEqual([[player, undefined, 'Caves']]);
 
     const closed = await unavailable.spawn('cave_entrance_open', new THREE.Vector3(5, 0, 2));

@@ -188,9 +188,6 @@
         "researchlab4_western": "dynamic/researchlab4_western.zip",
         "researchlab4_witch_pyre": "dynamic/researchlab4_witch_pyre.zip"
       },
-      "skinSymbols": [
-        "machine_hat"
-      ],
       "hammerAnimation": "hit"
     },
     "treasurechest": {

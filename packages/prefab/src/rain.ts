@@ -192,7 +192,7 @@ export class RainEffect {
     if (!splash) {
       const factory = this.factory;
       const { instance, display } = createPrefabEntity('raindrop', { create: initialAnimation => factory.create({ initialAnimation, name: 'raindrop' }),
-        release: sprite => factory.disposeSprite(sprite) }, { name: 'anim', held: true }, 'raindrop');
+        release: sprite => factory.disposeSprite(sprite) }, { name: 'anim', held: true, billboard: true }, 'raindrop');
       instance.persists = false;
       instance.addTag('FX');
       splash = { instance, display, model: display.model, animation: instance.sprite, active: false };
@@ -328,10 +328,7 @@ export class RainEffect {
     }
     this.simulate(dt);
     this.writeGeometry();
-    for (const splash of [...this.splashes]) {
-      splash.model.quaternion.copy(cameraQuaternion);
-      splash.animation.update(dt);
-    }
+    for (const splash of [...this.splashes]) splash.animation.update(dt);
   }
 
   /** Active splashes, so the shared renderer sorts them with other foot-sorted billboards. */

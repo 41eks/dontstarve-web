@@ -1,3 +1,4 @@
+import { prefabDisplay } from '../../display/src';
 import { fixturePickup } from './pickup-fixture';
 import * as THREE from 'three';
 import type { PrefabDisplay } from '@dontstarve-web/display';
@@ -11,8 +12,6 @@ import { prefabInstance } from '../../prefab/src/prefabInstance';
 
 /** mininglantern.lua's prefab fn adds fueled before the saved fuel loads. */
 const lanternSpec = { maxFuel: LANTERN_FUEL, configureEntity: configureLanternEntity };
-/** The inst.Light a model's entity declares. */
-const getDeclaredLight = (model: THREE.Object3D) => prefabInstance(model)?.light.peek();
 import { clockstate, seasonstate } from '@dontstarve-web/signals';
 
 export async function checkLanternLighting() {
@@ -31,10 +30,9 @@ export async function checkLanternLighting() {
   camera.up.set(0, 0, -1);
   camera.lookAt(0, 0, 0);
   camera.updateMatrixWorld();
-  const lightAt = (owner: THREE.Object3D) => {
-    const node = owner.getObjectByName('lanternlight');
-    return node && getDeclaredLight(node);
-  };
+  // The lanternlight parented to `owner`'s entity.
+  const lightAt = (owner: THREE.Object3D) => [...prefabInstance(owner)!.light.slots.peek()]
+    .find(([key]) => key.startsWith('lanternlight:'))?.[1].peek();
   const pixel = new Uint8Array(4);
   const settle = () => new Promise(resolve => setTimeout(resolve, 0));
   // Lights reach the display list after the declaration settles.
@@ -48,15 +46,15 @@ export async function checkLanternLighting() {
   };
   const baseline = await sample(0);
   const player = createWilsonPlayer('/dst/data/anim');
-  await player.userData.display.artLoaded();
+  await prefabDisplay(player).artLoaded();
   player.position.set(0, 0, 0);
   scene.add(player);
-  const controller = (window as any).__prefabInstance(player).animationController as WilsonAnimationController;
+  const controller = prefabInstance(player).animationController as WilsonAnimationController;
   await controller.setCarryItem('lantern');
   const handEntity = new ItemEntity({ itemId: 'lantern', count: 1 });
   handEntity.configure(lanternSpec);
   const handLifecycle = createLanternHandLifecycle(handEntity, {
-    lightParent: player, AnimState: controller.AnimState,
+    lightParent: prefabInstance(player)!, AnimState: controller.AnimState,
   });
   handLifecycle.onequip();
   const hand = { lit: !!lightAt(player), brightness: await sample(0) };
@@ -78,7 +76,7 @@ export async function checkLanternLighting() {
       }
     }
     const ground = createLanternGroundSprite({ assets }, skin);
-    await (ground.model.userData.display as PrefabDisplay).artLoaded();
+    await (prefabDisplay(ground.model) as PrefabDisplay).artLoaded();
     const entity = new ItemEntity({ itemId: 'lantern', count: 1, ...(skin ? { skinId: skin } : {}) });
     entity.configure(lanternSpec);
     ground.bindEntity!(entity);

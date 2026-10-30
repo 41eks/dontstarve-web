@@ -1,3 +1,5 @@
+
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import { createTestWorldSources } from './worldContentFixture';
 import { readFile } from 'node:fs/promises';
 import * as CANNON from 'cannon-es';
@@ -219,8 +221,8 @@ describe('wild beefalo behavior', () => {
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(s.animation.setBuildArchive).toHaveBeenLastCalledWith(BEEFALO_SHAVED_BUILD);
     expect(s.clip()).toBe('shave');
-    expect(s.model.userData.actionEntity.hasTag('has_beard')).toBe(false);
-    expect(s.model.userData.actionEntity.hasTag('bearded')).toBe(true);
+    expect(findActionEntity(s.model).hasTag('has_beard')).toBe(false);
+    expect(findActionEntity(s.model).hasTag('bearded')).toBe(true);
     s.complete();
     expect(s.controller.state).toBe('sleeping');
     expect(s.clip()).toBe('sleep_loop');
@@ -247,7 +249,7 @@ describe('wild beefalo behavior', () => {
     const restored = new BeefaloController(restoredScene.model, restoredScene.physics, restoredScene.lengths, s.world, shavedState, () => 0);
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(restoredScene.animation.setBuildArchive).toHaveBeenLastCalledWith(BEEFALO_SHAVED_BUILD);
-    expect(restored.model.userData.actionEntity.hasTag('has_beard')).toBe(false);
+    expect(findActionEntity(restored.model).hasTag('has_beard')).toBe(false);
     restored.dispose();
     s.endDay(); s.endDay();
     expect(s.controller.beard.bits.peek()).toBe(0);
@@ -261,7 +263,7 @@ describe('wild beefalo behavior', () => {
     expect(s.controller.beard.bits.peek()).toBe(3);
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(s.animation.setBuildArchive).toHaveBeenLastCalledWith(BEEFALO_BUILD);
-    expect(s.model.userData.actionEntity.hasTag('has_beard')).toBe(true);
+    expect(findActionEntity(s.model).hasTag('has_beard')).toBe(true);
     s.complete();
     expect(s.controller.state).toBe('idle');
   });

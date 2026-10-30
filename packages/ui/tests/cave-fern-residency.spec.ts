@@ -31,7 +31,7 @@ test('the game unloads distant cave ferns and restores the same entities when th
     scene.addEventListener('childadded', ({ child }: any) => {
       if (!['near-fern', 'far-fern'].includes((window as any).__prefabInstance(child)?.entityId)) return;
       models.set((window as any).__prefabInstance(child)?.entityId, child);
-      if (!components.has((window as any).__prefabInstance(child)?.entityId)) components.set((window as any).__prefabInstance(child)?.entityId, child.userData.components);
+      if (!components.has((window as any).__prefabInstance(child)?.entityId)) components.set((window as any).__prefabInstance(child)?.entityId, ((window as any).__findActionEntity(child)?.components ?? (window as any).__prefabInstance(child)!.components));
     });
     const { gameReady } = await import(urls.main);
     await gameReady;
@@ -44,9 +44,9 @@ test('the game unloads distant cave ferns and restores the same entities when th
     const { scene, models, components } = (window as any).fernResidency;
     return ['near-fern', 'far-fern'].map(id => {
       const model = models.get(id);
-      return { id: (window as any).__prefabInstance(model)?.entityId, loaded: model.userData.animationController.loaded,
-        attached: model.parent === scene, pose: model.userData.animationController.currentAnimation,
-        position: model.position.toArray(), sameComponents: model.userData.components === components.get(id) };
+      return { id: (window as any).__prefabInstance(model)?.entityId, loaded: (window as any).__prefabInstance(model)?.sprite.loaded,
+        attached: model.parent === scene, pose: (window as any).__prefabInstance(model)?.sprite.currentAnimation,
+        position: model.position.toArray(), sameComponents: ((window as any).__findActionEntity(model)?.components ?? (window as any).__prefabInstance(model)!.components) === components.get(id) };
     });
   });
   await expect.poll(snapshot).toEqual([

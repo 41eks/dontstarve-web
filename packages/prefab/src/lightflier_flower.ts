@@ -1,8 +1,9 @@
+import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import { createEffect, createSignal, readonlySignal, watchSignal } from '@dontstarve-web/signals';
 import { SpriteResources, type ArchiveSpriteCommands, type PrefabDisplay } from '@dontstarve-web/display';
 import { animationLengths } from './animationTimings';
-import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
+import { createArchiveEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
 import { AnimState } from '../../componets/src/animstate';
 import { ComponentTimer } from '../../componets/src/timer';
 import { ChildSpawner, type ChildSpawnerSave } from '../../componets/src/childspawner';
@@ -108,7 +109,7 @@ export class LightFlierFlower implements BrainEntity {
     const hauntable = new Hauntable({ addTag: tag => inst.addTag(tag), removeTag: tag => inst.removeTag(tag),
       PushEvent: (name, data) => inst.PushEvent?.(name, data) }, scheduler);
     hauntable.SetOnHauntFn(() => false); // MakeHauntableIgnite is disabled in source.
-    this.components = { pickable, childspawner, burnable, propagator, hauntable }; model.userData.components = this.components;
+    this.components = { pickable, childspawner, burnable, propagator, hauntable }; Object.assign(prefabInstance(model)!.components, this.components);
     this.pendingChildren = [...(saved?.childspawner.childrenoutside ?? [])];
     habitat.homes.set(id, this);
     this.animstate.PlayAnimation(saved?.picked ? 'picked' : this.lightOn ? 'idle' : this.mode.peek() === 'RECHARGING' ? 'withered' : 'off', this.lightOn);
@@ -202,11 +203,11 @@ export class LightFlierFlowerManager {
   private readonly plants = new Map<LightFlierFlower, PrefabDisplay>();
   private readonly resources: SpriteResources;
   private readonly cleanups = new Map<LightFlierFlower, () => void>();
-  private readonly scene: THREE.Scene;
+  private readonly displays: PrefabDisplayGroup;
   private readonly getLightLevel: (model: THREE.Group) => number;
   private disposed = false;
   constructor(scene: THREE.Scene, base: string, services: LightFlierServices, getLightLevel: (model: THREE.Group) => number) {
-    this.scene = scene; this.getLightLevel = getLightLevel;
+    this.displays = new PrefabDisplayGroup(scene); this.getLightLevel = getLightLevel;
     this.habitat = new LightFlierHabitat(base, services); this.resources = new SpriteResources(base, LIGHTFLIER_FLOWER_ID);
   }
   spawn(position: THREE.Vector3, saved?: LightFlierFlowerRecord): THREE.Group {
@@ -226,14 +227,14 @@ export class LightFlierFlowerManager {
     const plant = new LightFlierFlower(saved?.id ?? newEntityId(), model, instance, this.habitat, lengths, this.getLightLevel, variant, state);
     const animation = watchSignal(plant.animstate.animation, stop => this.cleanups.set(plant, stop));
     createEffect(() => { const { name, loop } = animation.get(); if (loop) sprite.start(name); else sprite.playOnce(name); });
-    this.plants.set(plant, display); this.scene.add(model); return model;
+    this.plants.set(plant, display); this.displays.mount(prefabDisplay(model)!); return model;
   }
   update(dt: number, _quaternion: THREE.Quaternion): void {
     this.habitat.update(dt);
     for (const [plant, display] of this.plants) {
       if (!plant.isValid()) { this.release(plant, display); continue; }
       plant.update(); if (!plant.isActive) continue;
-      (display.model.userData.animationController as ArchiveSpriteCommands).update(dt);
+      (prefabInstance(display.model)!.sprite as ArchiveSpriteCommands).update(dt);
     }
   }
   private release(plant: LightFlierFlower, display: PrefabDisplay): void {
@@ -245,6 +246,7 @@ export class LightFlierFlowerManager {
   dispose(): void {
     if (this.disposed) return; this.disposed = true;
     for (const [plant, display] of this.plants) { plant.dispose(); this.release(plant, display); }
-    this.habitat.dispose(); this.resources.dispose();
+    this.habitat.dispose(); this.displays.dispose(); this.resources.dispose();
+
   }
 }

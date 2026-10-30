@@ -1,3 +1,4 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { bindActionCancellation } from './actionEvents.ts';
@@ -88,7 +89,7 @@ export class AttackActionController {
 
   /** weapon component action: right-click a burnable with a rangedlighter weapon is ATTACK (RANGEDLIGHT). */
   private getLightActions(model?: THREE.Object3D): MouseActionCandidate[] {
-    const inst = model?.userData.actionEntity as AttackTarget['inst'] | undefined;
+    const inst = findActionEntity(model) as AttackTarget['inst'] | undefined;
     if (!model || !inst?.components || !(inst.components as { burnable?: unknown }).burnable) return [];
     const weapon = equippedActionEntity(this.handEquipment.peek());
     if (!weapon?.components.weapon) return [];
@@ -106,7 +107,7 @@ export class AttackActionController {
 
   /** Right-click ATTACK on a lightable target: walk into weapon range, then launch the projectile. */
   lightTarget(model: THREE.Object3D): boolean {
-    const inst = model.userData.actionEntity as AttackTarget['inst'] | undefined;
+    const inst = findActionEntity(model) as AttackTarget['inst'] | undefined;
     if (!inst || !this.canLight(inst)) return false;
     if (this.target?.inst !== inst) this.world.actionEvents?.emit('action:begin', { owner: this, action: 'ATTACK' });
     this.animation.cancelEmote();

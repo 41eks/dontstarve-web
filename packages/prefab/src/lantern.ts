@@ -7,7 +7,7 @@ import { GROUND_ITEM_DEFINITIONS, createResidentGroundItem } from './groundItems
 import type { GroundItemFactory, GroundItemVisual, GroundPrefabContext } from './groundPrefab';
 import { listenInventoryEvents } from './inventoryEvents';
 import { TILE_SIZE } from './tile';
-import { spawnLightEntity } from './localLight';
+import { spawnLightEntity, type LightEntity, type LightParent } from './localLight';
 import { Machine } from '../../componets/src/machine';
 import { TURNON_FULL_FUELED_CONSUMPTION, TURNON_FUELED_CONSUMPTION } from './torch';
 
@@ -27,7 +27,7 @@ export class LanternController implements ItemRuntimeComponent {
   readonly ison: ReadonlySignal<boolean>;
   private readonly entity: ItemEntity;
   readonly light = new LanternLightController();
-  private ground?: THREE.Object3D;
+  private ground?: LightParent;
   private hand?: LanternHandContext;
   private owner?: EquipmentOwner;
   private stopTrackingOwner?: () => void;
@@ -74,14 +74,14 @@ export class LanternController implements ItemRuntimeComponent {
   OnDropped(): void { this.TurnOff(); this.light.setParent(this.ground); this.TurnOn(); }
 
   /** Visual replacement only reattaches the existing light; it does not change machine/fueled state. */
-  bindGround(model: THREE.Object3D): void {
-    this.ground = model;
-    if (!this.equipped) this.light.setParent(model);
+  bindGround(ground: LightParent): void {
+    this.ground = ground;
+    if (!this.equipped) this.light.setParent(ground);
   }
-  releaseGround(model: THREE.Object3D): void {
-    if (this.ground !== model) return;
+  releaseGround(ground: LightParent): void {
+    if (this.ground !== ground) return;
     this.ground = undefined;
-    if (!this.equipped && this.light.parent === model) this.light.setParent(undefined);
+    if (!this.equipped && this.light.parent === ground) this.light.setParent(undefined);
   }
   /** inventoryitem:SetOnPutInInventoryFn(turnoff). */
   OnPutInInventory(): void { this.TurnOff(); }
@@ -167,15 +167,14 @@ export class LanternLightController {
   private requestedOn = false;
 
   /** mininglantern.lua's lanternlight, parented to the lantern's owner while lit. */
-  private light?: ReturnType<typeof spawnLightEntity>;
-  private owner?: THREE.Object3D;
-  constructor(owner?: THREE.Object3D) { this.owner = owner; }
+  private light?: LightEntity;
+  private owner?: LightParent;
+  constructor(owner?: LightParent) { this.owner = owner; }
 
-  get parent(): THREE.Object3D | undefined { return this.owner; }
-  setParent(parent?: THREE.Object3D): void {
+  get parent(): LightParent | undefined { return this.owner; }
+  setParent(parent?: LightParent): void {
     this.owner = parent;
-    this.light?.model.removeFromParent();
-    if (parent && this.light) parent.add(this.light.model);
+    this.light?.setParent(parent);
   }
 
   get isLit(): boolean { return this.requestedOn && this.fuelPercent > 0; }
@@ -202,7 +201,7 @@ export class LanternLightController {
       this.light = undefined;
       return;
     }
-    this.light ??= spawnLightEntity(this.owner, 'lanternlight');
+    this.light ??= spawnLightEntity('lanternlight', this.owner);
     this.light.instance.light.set({
       radius: THREE.MathUtils.lerp(3, 5, this.fuelPercent) * (TILE_SIZE / 4),
       intensity: THREE.MathUtils.lerp(0.4, 0.6, this.fuelPercent),
@@ -213,7 +212,7 @@ export class LanternLightController {
 }
 
 export interface LanternHandContext {
-  lightParent: THREE.Object3D;
+  lightParent: LightParent;
   AnimState?: Pick<AnimState, 'Show' | 'Hide'>;
 }
 
@@ -253,7 +252,7 @@ export function createLanternGroundSprite(context: Pick<GroundPrefabContext, 'as
       stopState?.();
       bound = entity;
       controller = getLanternController(entity);
-      controller.bindGround(model);
+      controller.bindGround(instance);
       const ison = watchSignal(controller.ison, stop => { stopState = stop; });
       createEffect(() => sprite.playOnce(ison.get() ? 'idle_on' : 'idle_off'));
     },
@@ -263,7 +262,7 @@ export function createLanternGroundSprite(context: Pick<GroundPrefabContext, 'as
       return controller ? { lanternOn: controller.isOn } : {};
     },
     update(dt: number) { visual.update?.(dt); },
-    dispose() { removeInventoryEvents(); stopState?.(); controller?.releaseGround(model); visual.dispose(); },
+    dispose() { removeInventoryEvents(); stopState?.(); controller?.releaseGround(instance); visual.dispose(); },
   };
 }
 

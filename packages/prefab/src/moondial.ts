@@ -1,6 +1,7 @@
+import { type SpriteState } from '@dontstarve-web/display';
 import type * as THREE from 'three';
 import { createEffect, createRenderEffect, createSignal, WorldContentKey, type WorldContentSignal, type WorldMoonState, type WorldMoonPhase, type Signal } from '@dontstarve-web/signals';
-import { loadSymbolOverride, type LoadedSymbolOverride, type SpriteController } from '@dontstarve-web/animation/sprite';
+import { loadSymbolOverride, type LoadedSymbolOverride } from '@dontstarve-web/animation/sprite';
 import { smallHash } from '@dontstarve-web/animation/animationAssets';
 import { moondial_init_fn } from '@dontstarve-web/animation/prefabskin';
 import definitions from './definitions.json' with { type: 'json' };
@@ -71,7 +72,7 @@ class Moondial {
             const waxingLook = (waxing && phase !== 'new') || phase === 'full';
             for (const symbol of REFLECTION_SYMBOLS) this.sprite.overrideSymbol(symbol, waxingLook ? undefined : waning[symbol]);
             const light = LIGHT_STATES[phase];
-            prefabInstance(model)!.sprite.setLightOverride(light.override);
+            (prefabInstance(model)!.sprite as SpriteState).setLightOverride(light.override);
             prefabInstance(model)!.light.set(light.radius > 0
                 ? { radius: light.radius * (TILE_SIZE / 4), intensity: .6, falloff: .7, colour: [15 / 255, 160 / 255, 180 / 255] } : null);
         }));
@@ -88,7 +89,7 @@ class Moondial {
         });
     }
 
-    private get sprite(): SpriteController { return this.context.model.userData.animationController; }
+    private get sprite(): SpriteState { return (prefabInstance(this.context.model)!.sprite as SpriteState); }
     private get position(): THREE.Vector3 { return this.context.model.position; }
 
     refreshArt(resources: MoondialResources): void { this.resources.set(resources); }

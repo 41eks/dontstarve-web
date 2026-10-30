@@ -1,3 +1,4 @@
+import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
@@ -14,7 +15,7 @@ import { MakeObstaclePhysics } from './standardcomponents';
 import type { SpawnGroundItem } from './groundPrefab';
 import { PlaySound } from './sound';
 import { SpriteResources, type ArchiveSpriteCommands, type PrefabDisplay } from '@dontstarve-web/display';
-import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
+import { createArchiveEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
 import { watchTileActivity } from './tileActivity';
 import catalog from './groundItems.json' with { type: 'json' };
 
@@ -72,14 +73,14 @@ interface Entrance {
 
 /** cave_entrance.lua: a MINE-able sealed entrance that becomes `cave_entrance_open` (worldmigrator and bats are not connected). */
 export class CaveEntranceManager {
-  private readonly scene: THREE.Scene;
+  private readonly displays: PrefabDisplayGroup;
   private readonly world: CaveEntranceWorld;
   private readonly resources = new SpriteResources();
   private readonly entrances = new Map<THREE.Group, Entrance>();
   private disposed = false;
 
   constructor(scene: THREE.Scene, world: CaveEntranceWorld) {
-    this.scene = scene; this.world = world;
+    this.displays = new PrefabDisplayGroup(scene); this.world = world;
   }
 
   spawn(prefab: CaveEntranceId, position: THREE.Vector3, saved?: CaveEntranceRecord): THREE.Group {
@@ -115,7 +116,7 @@ export class CaveEntranceManager {
     if (prefab === CAVE_ENTRANCE_ID) this.createWorkable(entrance, inst);
     else this.createMigrator(entrance, inst);
     this.entrances.set(model, entrance);
-    this.scene.add(model);
+    this.displays.mount(prefabDisplay(model)!);
     entrance.stopActivity = watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active));
     return model;
   }
@@ -131,7 +132,7 @@ export class CaveEntranceManager {
       return () => model.removeEventListener(event as never, handler);
     });
     entrance.stopMigration = () => handlers.forEach(stop => stop());
-    model.userData.components.worldmigrator = migrator;
+    prefabInstance(model)!.components.worldmigrator = migrator;
     migrator.SetDestinationWorld(CAVES_SHARD);
   }
 
@@ -157,7 +158,7 @@ export class CaveEntranceManager {
       this.remove(model);
       this.create(CAVE_ENTRANCE_OPEN_ID, model.position, record);
     });
-    Object.assign(model.userData.components, { workable, lootdropper });
+    Object.assign(prefabInstance(model)!.components, { workable, lootdropper });
     new ToolMouseTarget(inst, entrance.instance, workable, this.world.handEquipment);
   }
 
@@ -202,6 +203,7 @@ export class CaveEntranceManager {
     if (this.disposed) return;
     this.disposed = true;
     for (const model of [...this.entrances.keys()]) this.remove(model);
+    this.displays.dispose();
     this.resources.dispose();
   }
 }

@@ -1,3 +1,4 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { createPickupInventory } from './pickupFixture';
 import { createPickupDoer, performPickupAction } from '../../stategraphs/src/pickup';
@@ -91,7 +92,7 @@ function setup() {
     { domElement: canvas } as unknown as THREE.WebGLRenderer, 'images.zip', inventory, 'anim', player,
     undefined, undefined, undefined, undefined, undefined, undefined, undefined, worldEvents);
   const doer = createPickupDoer(player, inventory);
-  const pick = (model: THREE.Object3D) => performPickupAction(model.userData.pickupTarget, doer);
+  const pick = (model: THREE.Object3D) => performPickupAction(findActionEntity(model)!.pickupTarget, doer);
   return { manager, scene, pickup, pick, player, inventory, canvas, worldEvents };
 }
 
@@ -166,7 +167,7 @@ describe('ground item save records', () => {
       expect([...manager.iteratePrefabPositions('log')]).toHaveLength(1);
       const exportRecords = vi.spyOn(manager, 'exportRecords');
       const snapshot = vi.spyOn(entity, 'snapshot');
-      const unrelatedEntity = unrelated.userData.pickupTarget.entity as ItemEntity;
+      const unrelatedEntity = findActionEntity(unrelated)!.pickupTarget.entity as ItemEntity;
       const unrelatedSnapshot = vi.spyOn(unrelatedEntity, 'snapshot');
       const unrelatedTags = vi.spyOn(unrelatedEntity, 'hasTag');
       entity.transform.position.set(20, 0, -30);
@@ -325,7 +326,7 @@ describe('ground item save records', () => {
       expect(manager.exportRecords().every((record) => record.transform.position[1] === 0)).toBe(true);
       const model = models[0];
       player.position.copy(model.position);
-      const entity = model.userData.pickupTarget.entity;
+      const entity = findActionEntity(model)!.pickupTarget.entity;
       const position = model.position.clone();
       pick(model);
       expect(pickup).toHaveBeenCalledWith(entity, position);
@@ -382,7 +383,7 @@ describe('ground item save records', () => {
     expect(record.components.stack).toEqual({ itemId: 'log', count: 1 });
     record.components.stack!.count = 20;
     expect(manager.exportRecords()[0].components.stack?.count).toBe(1);
-    const entity = scene.children[0].userData.pickupTarget.entity;
+    const entity = findActionEntity(scene.children[0])!.pickupTarget.entity;
     pick(scene.children[0]);
     expect(pickup).toHaveBeenCalledWith(entity, new THREE.Vector3(8, 0, 9));
     expect(manager.exportRecords()).toEqual([]);

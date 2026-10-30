@@ -12,10 +12,18 @@ export class PrefabDisplayGroup {
   add(options: PrefabDisplayOptions, footPosition?: THREE.Vector3): PrefabDisplay {
     if (this.disposed) throw new Error('Prefab displays have been disposed');
     const display = new PrefabDisplay(options);
+    this.mount(display, footPosition);
+    return display;
+  }
+
+  /** Adopt an existing display; the group owns its scene membership and final display cleanup. */
+  mount(display: PrefabDisplay, footPosition?: THREE.Vector3): void {
+    if (this.disposed) throw new Error('Prefab displays have been disposed');
+    if (display.isRemoved) return;
+    if (this.entries.has(display)) { display.mount(this.scene); return; }
     this.entries.set(display, footPosition ?? display.model.position);
     display.onDispose(() => this.entries.delete(display));
-    this.scene.add(display.model);
-    return display;
+    display.mount(this.scene);
   }
 
   get renderEntities() {

@@ -33,7 +33,7 @@ test('wormhole opens nearby, closes away, accepts sweeper right-click and saves 
   await expect.poll(() => page.evaluate(() => {
     const game = (window as any).wormholeGame;
     game.target = game.scene.children.find((model: any) => (window as any).__prefabInstance(model)?.prefab === 'wormhole');
-    return game.target?.userData.animationController.currentAnimation;
+    return (window as any).__prefabInstance(game.target)?.sprite.currentAnimation;
   })).toBe('open_loop');
 
   const move = async (distance: number) => page.evaluate((distance) => {
@@ -42,7 +42,7 @@ test('wormhole opens nearby, closes away, accepts sweeper right-click and saves 
     game.playerBody.position.set(game.target.position.x + distance, radius, game.target.position.z);
     game.player.position.set(game.target.position.x + distance, 0, game.target.position.z);
   }, distance);
-  const animation = () => page.evaluate(() => (window as any).wormholeGame.target.userData.animationController.currentAnimation);
+  const animation = () => page.evaluate(() => (window as any).__prefabInstance((window as any).wormholeGame.target)?.sprite.currentAnimation);
   await move(16);
   await expect.poll(animation).toBe('idle_loop');
   await move(11.5);

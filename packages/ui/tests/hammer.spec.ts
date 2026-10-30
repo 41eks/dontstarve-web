@@ -95,7 +95,7 @@ test('game UI equips, drops and picks up hammer, then right-click hammers a buil
     const before = JSON.stringify((window as any).__prefabInstance(target)?.saveRecord);
     (window as any).hammerGame.before = before;
     (window as any).hammerGame.hitSeen = false;
-    const controller = target.userData.animationController;
+    const controller = (window as any).__prefabInstance(target)?.sprite;
     const original = controller.playTransient.bind(controller);
     controller.playTransient = (name: string) => { (window as any).hammerGame.hitSeen = name === 'hit'; original(name); };
   });

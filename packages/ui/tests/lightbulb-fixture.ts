@@ -1,3 +1,4 @@
+import { prefabDisplay } from '../../display/src';
 import { fixturePickup } from './pickup-fixture';
 import * as THREE from 'three';
 import type { PrefabDisplay } from '@dontstarve-web/display';
@@ -40,7 +41,7 @@ export async function checkLightbulbLighting() {
   const baseline = await sample(0);
   const assets = new GroundItemAssets();
   const bulb = createLightbulbGroundSprite({ assets });
-  await (bulb.model.userData.display as PrefabDisplay).artLoaded();
+  await (prefabDisplay(bulb.model) as PrefabDisplay).artLoaded();
   scene.add(bulb.model);
   bulb.model.quaternion.copy(camera.quaternion);
   const parameters = getDeclaredLight(bulb.model);

@@ -1,3 +1,4 @@
+import { createEmptyEntity } from '../../prefab/src/prefabInstance';
 import { testMap } from './tileMapFixture';
 import * as THREE from 'three';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -25,10 +26,11 @@ function bookWorld(root: THREE.Scene, scheduler: GameTimeScheduler, weather: Wea
 const newWeather = () => new Weather({ totalDayTime: 480, temperature: () => 20, random: () => 0.5 });
 
 function pickedGrass(scene: THREE.Scene, scheduler: GameTimeScheduler, x: number) {
-  const model = new THREE.Group();
-  model.position.set(x, 0, 0);
-  model.userData.tags = ['plant', 'renewable', 'silviculture'];
-  const pickable = new Pickable(model, 'cutgrass', 1440, 1, undefined, undefined,
+  const { instance, display } = createEmptyEntity('grass');
+  const model = display.model; instance.position.set(x, 0, 0);
+  for (const tag of ['plant', 'renewable', 'silviculture']) instance.addTag(tag);
+  cleanups.push(() => { instance.remove(); display.dispose(); });
+  const pickable = new Pickable(instance, 'cutgrass', 1440, 1, undefined, undefined,
     { picked: true, regrowSeconds: 1440 }, { scheduler });
   actionEntity(model, 'grass');
   scene.add(model);

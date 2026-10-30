@@ -56,7 +56,7 @@ test('cursor records, machine switches and pickup use real input and release dec
   }, command);
   await submit('c_spawn("phonograph")');
   await expect.poll(() => page.evaluate(() => (window as any).phonographGame.scene.children
-    .filter((model: any) => model.userData.itemId === 'phonograph').length), { timeout: 30_000 }).toBe(1);
+    .filter((model: any) => ((window as any).__findActionEntity(model)?.prefab ?? (window as any).__prefabInstance(model)?.prefab) === 'phonograph').length), { timeout: 30_000 }).toBe(1);
   await submit('c_give("record")');
   const record = page.locator('dst-inventory-bar .inventory-bar__items [data-item-id="record"]');
   await expect(record.locator('.inventory-slot__icon[data-loaded="true"]')).toBeVisible();
@@ -70,7 +70,7 @@ test('cursor records, machine switches and pickup use real input and release dec
   const point = async () => page.evaluate(async () => {
     await new Promise(requestAnimationFrame);
     const { scene, view } = (window as any).phonographGame;
-    const model = scene.children.find((model: any) => model.userData.itemId === 'phonograph');
+    const model = scene.children.find((model: any) => ((window as any).__findActionEntity(model)?.prefab ?? (window as any).__prefabInstance(model)?.prefab) === 'phonograph');
     const mesh = model.getObjectsByProperty('isMesh', true).find((object: any) => object.geometry?.drawRange.count > 0);
     mesh.updateWorldMatrix(true, false);
     const positions = mesh.geometry.getAttribute('position');
@@ -83,8 +83,8 @@ test('cursor records, machine switches and pickup use real input and release dec
     return { x: bounds.left + (ndc.x + 1) * bounds.width / 2, y: bounds.top + (1 - ndc.y) * bounds.height / 2 };
   });
   // machine.lua's cooldown: no TURNON / TURNOFF for 3 game seconds after each switch.
-  const afterCooldown = () => expect.poll(() => page.evaluate(() => (window as any).phonographGame.scene.children
-    .find((model: any) => model.userData.itemId === 'phonograph').userData.actionEntity.hasTag('cooldown')), { timeout: 10_000 }).toBe(false);
+  const afterCooldown = () => expect.poll(() => page.evaluate(() => (window as any).__findActionEntity((window as any).phonographGame.scene.children
+    .find((model: any) => ((window as any).__findActionEntity(model)?.prefab ?? (window as any).__prefabInstance(model)?.prefab) === 'phonograph')).hasTag('cooldown')), { timeout: 10_000 }).toBe(false);
   const clickMachine = async (button: 'left' | 'right') => { const p = await point(); await page.mouse.click(p.x, p.y, { button }); };
   await record.click();
   await expect(page.locator('.slot-drag-preview[data-cursor="true"]')).toHaveAttribute('data-item-id', 'record');
@@ -110,7 +110,7 @@ test('cursor records, machine switches and pickup use real input and release dec
   await page.keyboard.down('Shift'); await machine.click({ button: 'right' }); await page.keyboard.up('Shift');
   await expect(machine).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => (window as any).phonographGame.scene.children
-    .filter((model: any) => model.userData.itemId === 'phonograph').length), { timeout: 30_000 }).toBe(1);
+    .filter((model: any) => ((window as any).__findActionEntity(model)?.prefab ?? (window as any).__prefabInstance(model)?.prefab) === 'phonograph').length), { timeout: 30_000 }).toBe(1);
   expect(await music()).toHaveLength(2);
   await clickMachine('right');
   await expect.poll(music).toHaveLength(3);

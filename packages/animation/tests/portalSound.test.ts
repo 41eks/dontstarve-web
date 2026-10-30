@@ -1,3 +1,4 @@
+
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, expect, it, vi } from 'vitest';

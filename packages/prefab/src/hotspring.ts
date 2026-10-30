@@ -1,3 +1,4 @@
+import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
 import { createAnimatedSpriteFactory, type AnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
@@ -91,7 +92,7 @@ class Hotspring {
   }
   private onBathBombed(populating: boolean): void {
     prefabInstance(this.model)!.light.set(HOTSPRING_LIGHT);
-    const controller = this.model.userData.animationController as SpriteState;
+    const controller = (prefabInstance(this.model)!.sprite as SpriteState);
     if (populating) { controller.start('glow_loop'); return; }
     controller.playOnce('bath_bomb', () => controller.playOnce('glow_pre', () => controller.start('glow_loop')));
   }
@@ -99,7 +100,7 @@ class Hotspring {
   dispose(): void {
     this.stopTileActivity?.(); this.fxTask.stop();
     this.heater.dispose(); this.bathbombable.dispose();
-    const components = this.model.userData.components;
+    const components = prefabInstance(this.model)!.components;
     delete components.heater; delete components.bathbombable;
     prefabInstance(this.model)!.light.set(null);
   }
@@ -118,14 +119,14 @@ export class HotspringManager {
   private readonly springs = new Map<THREE.Group, Hotspring>();
   private readonly entities = new Map<THREE.Group, ReturnType<typeof createPrefabEntity>>();
   private readonly activeSprings = new Set<THREE.Group>();
-  private readonly scene: THREE.Scene;
+  private readonly displays: PrefabDisplayGroup;
   private readonly physics: CANNON.World;
   private readonly baseUrl: string;
   private readonly tickingarea?: TileStateQuery;
   private disposed = false;
   constructor(scene: THREE.Scene, physics: CANNON.World, baseUrl: string, tickingarea?: TileStateQuery,
     options: { scheduler?: GameTimeScheduler; random?: () => number } = {}) {
-    this.scene = scene; this.physics = physics; this.baseUrl = baseUrl;
+    this.displays = new PrefabDisplayGroup(scene); this.physics = physics; this.baseUrl = baseUrl;
     this.tickingarea = tickingarea;
     this.ownsScheduler = !options.scheduler; this.scheduler = options.scheduler ?? new GameTimeScheduler();
     this.random = options.random ?? Math.random;
@@ -153,7 +154,7 @@ export class HotspringManager {
       instance.persists = false;
       const fx: SteamFx = { object, footPosition: object.position, instance, display };
       instance.sprite.playOnce(anim, () => this.removeSteam(fx));
-      this.steam.add(fx); this.scene.add(object);
+      this.steam.add(fx); this.displays.mount(prefabDisplay(object)!);
     });
   }
   private removeSteam(fx: SteamFx): void {
@@ -185,7 +186,7 @@ export class HotspringManager {
     model.userData.remove = () => this.remove(model);
     this.springs.set(model, spring); this.entities.set(model, entity);
     entity.instance.bindPhysics(this.physics);
-    this.scene.add(model);
+    this.displays.mount(prefabDisplay(model)!);
     const tileActivity = this.tickingarea?.(new TileTracker(() => model.position).tile);
     if (tileActivity) spring.bindTileActivity(tileActivity, active => this.setActive(model, spring, active));
     else this.setActive(model, spring, true);
@@ -207,7 +208,7 @@ export class HotspringManager {
   update(dt: number, _cameraQuaternion: THREE.Quaternion): void {
     if (this.disposed || !Number.isFinite(dt) || dt < 0) return;
     if (this.ownsScheduler) this.scheduler.advance(dt);
-    for (const model of this.activeSprings) (model.userData.animationController as SpriteState).update(dt);
+    for (const model of this.activeSprings) (prefabInstance(model)!.sprite as SpriteState).update(dt);
     for (const fx of [...this.steam]) fx.instance.sprite.update(dt);
   }
   get renderEntities() {
@@ -238,5 +239,6 @@ export class HotspringManager {
     this.disposed = true;
     void this.factoryRequest?.then(factory => factory.dispose(), () => undefined);
     for (const request of Object.values(this.steamRequests)) void request.then(factory => factory.dispose(), () => undefined);
+    this.displays.dispose();
   }
 }

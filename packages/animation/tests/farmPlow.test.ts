@@ -24,7 +24,7 @@ function setup() {
   const world = { scene: new THREE.Scene(), player: new THREE.Group(), camera: new THREE.PerspectiveCamera(),
     ground: new THREE.Group(), renderer: { domElement: new EventTarget() },
     createCursorLabel: () => ({ show() {}, hide() {}, update() {} }) } as unknown as WorldContext;
-  const returnItem = vi.fn(async () => {});
+  const returnItem = vi.fn(() => {});
   const blockers = new SpatialIndex<{ position: THREE.Vector3; tags?: string[] }>(blocker => blocker.position);
   const plow = new FarmPlowPlacement(world, turf, returnItem, blockers, () => 0.5);
   const advance = async (seconds: number) => {
@@ -58,13 +58,16 @@ it('snaps deployment, drills for 15 seconds, terraforms and returns a folded thr
   try {
     const original = item();
     const use = vi.spyOn(original.components.finiteuses, 'use');
-    expect(await plow.deploy(new THREE.Vector3(1, 0, 2), () => original)).toBe(true);
+    expect(plow.deploy(new THREE.Vector3(1, 0, 2), () => original)).toBe(true);
     expect(use).toHaveBeenCalledExactlyOnceWith(1);
     expect(original.isRemoved).toBe(true);
     const savedItem = original.snapshot();
     expect(plow.exportRecords()[0]).toMatchObject({ transform: { position: [6, 0, 6] },
       components: { farmPlow: { phase: 'drill_pre', remainingSeconds: FARM_PLOW_DRILLING_DURATION, deployItem: savedItem } } });
     expect(plow.canDeploy(new THREE.Vector3(4, 0, 4))).toBe(false);
+    // drill_pre's animover starts drilling once the display has drawn it.
+    await plow.hammerTargets[0].display!.artLoaded();
+    expect(plow.exportRecords()[0].components.farmPlow.phase).toBe('drill_pre');
     await advance(2);
     expect(plow.exportRecords()[0].components.farmPlow.phase).toBe('drill_loop');
     expect(turf.getTileAtWorld({ x: 6, z: 6 })).toBe(WORLD_TILES.DECIDUOUS);
@@ -90,19 +93,18 @@ it('does not return an exhausted item on its fourth use and one hammer hit recov
   const { plow, turf, returnItem, advance } = setup();
   try {
     const lastUse = item(1);
-    await plow.deploy(new THREE.Vector3(1, 0, 1), () => lastUse);
+    plow.deploy(new THREE.Vector3(1, 0, 1), () => lastUse);
     expect(lastUse.isRemoved).toBe(true);
     expect(plow.exportRecords()[0].components.farmPlow.deployItem).toBeNull();
     await advance(20);
     expect(turf.getTileAtWorld({ x: 6, z: 6 })).toBe(WORLD_TILES.FARMING_SOIL);
     expect(returnItem).not.toHaveBeenCalled();
     const original = item(3);
-    await plow.deploy(new THREE.Vector3(-13, 0, -1), () => original);
+    plow.deploy(new THREE.Vector3(-13, 0, -1), () => original);
     await advance(3);
     const target = plow.hammerTargets[0];
     target.playHit(); target.playHit();
     expect(target.isValid()).toBe(false);
-    await Promise.resolve();
     expect(plow.exportRecords()).toEqual([]);
     expect(returnItem).toHaveBeenCalledExactlyOnceWith(new THREE.Vector3(-18, 0, -6), original.snapshot());
     expect(turf.getTileAtWorld({ x: -18, z: -6 })).toBe(WORLD_TILES.DECIDUOUS);
@@ -110,26 +112,22 @@ it('does not return an exhausted item on its fourth use and one hammer hit recov
   } finally { plow.dispose(); }
 });
 
-it('rejects hard terrain, blocking entities and failed/cancelled item transfers without spending an item', async () => {
+it('rejects hard terrain, blocking entities and failed item transfers without spending an item', async () => {
   const { plow, turf, blockers } = setup();
   const point = new THREE.Vector3(1, 0, 1);
   const original = item();
   const take = vi.fn(() => original);
   try {
     turf.setOriginalTile(point, WORLD_TILES.WOODFLOOR);
-    expect(await plow.deploy(point, take)).toBe(false);
+    expect(plow.deploy(point, take)).toBe(false);
     turf.setOriginalTile(point, WORLD_TILES.DECIDUOUS);
     const blocker = { position: point, tags: [] as string[] };
     blockers.add(blocker);
-    expect(await plow.deploy(point, take)).toBe(false);
+    expect(plow.deploy(point, take)).toBe(false);
     blocker.tags = ['FX'];
     expect(plow.canDeploy(point)).toBe(true);
     expect(take).not.toHaveBeenCalled();
-    expect(await plow.deploy(point, () => undefined)).toBe(false);
-    const request = plow.deploy(point, take);
-    plow.cancel();
-    expect(await request).toBe(false);
-    expect(take).not.toHaveBeenCalled();
+    expect(plow.deploy(point, () => undefined)).toBe(false);
     expect(plow.exportRecords()).toEqual([]);
     expect(original.isRemoved).toBe(false);
     expect(original.components.finiteuses.remaining).toBeUndefined();
@@ -140,36 +138,16 @@ it('restores drilling progress, attached soil and remaining item uses without re
   const { plow, returnItem, turf, advance } = setup();
   try {
     const deployItem = { entityId: 'saved_item', itemId: 'farm_plow_item', count: 1, remainingUses: 1 };
-    await plow.spawn(new THREE.Vector3(6, 0, 6), { id: 'saved_plow',
+    plow.spawn(new THREE.Vector3(6, 0, 6), { id: 'saved_plow',
       state: { phase: 'drill_loop', remainingSeconds: 2, deployItem } });
     const exported = plow.exportRecords();
     exported[0].components.farmPlow.deployItem!.remainingUses = 3;
     expect(plow.exportRecords()[0].components.farmPlow.deployItem).toEqual(deployItem);
-    await plow.spawnDecor('farm_soil', new THREE.Vector3(3, 0, 3), { broken: false, plowId: 'saved_plow' }, undefined, 'saved_soil');
+    plow.spawnDecor('farm_soil', new THREE.Vector3(3, 0, 3), { broken: false, plowId: 'saved_plow' }, 'saved_soil');
     expect(plow.exportRecords()[0].id).toBe('saved_plow');
     await advance(5);
     expect(turf.getTileAtWorld({ x: 6, z: 6 })).toBe(WORLD_TILES.FARMING_SOIL);
     expect(returnItem).toHaveBeenCalledExactlyOnceWith(new THREE.Vector3(6, 0, 6), deployItem);
     expect(plow.exportRecords()).toEqual([]);
   } finally { plow.dispose(); }
-});
-
-it('keeps the complete deployed snapshot saveable until asynchronous item restoration commits', async () => {
-  const { plow, returnItem, advance } = setup();
-  let release!: () => void;
-  const pending = new Promise<void>(resolve => { release = resolve; });
-  returnItem.mockReturnValueOnce(pending);
-  try {
-    const original = item(3);
-    await plow.deploy(new THREE.Vector3(1, 0, 1), () => original);
-    const target = plow.hammerTargets[0];
-    target.playHit(); target.playHit();
-    await advance(2);
-    expect(returnItem).toHaveBeenCalledExactlyOnceWith(new THREE.Vector3(6, 0, 6), original.snapshot());
-    expect(plow.exportRecords()[0].components.farmPlow).toEqual({
-      phase: 'collapse', remainingSeconds: 0, deployItem: original.snapshot(),
-    });
-    release(); await Promise.resolve();
-    expect(plow.exportRecords()).toEqual([]);
-  } finally { release(); plow.dispose(); }
 });

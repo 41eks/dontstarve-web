@@ -1,8 +1,9 @@
+import { PrefabDisplayGroup } from '@dontstarve-web/display';
 import type * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import type { TileStateQuery } from '@dontstarve-web/signals';
-import { SpriteResources, type PrefabDisplay, type SpriteState } from '@dontstarve-web/display';
-import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
+import { SpriteResources, SpriteState } from '@dontstarve-web/display';
+import { bindInstance, PrefabInstance } from './prefabInstance';
 import { watchTileActivity } from './tileActivity';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { ComponentTimer } from '../../componets/src/timer';
@@ -49,52 +50,46 @@ export function isNightmareRockId(value: string): value is NightmareRockId {
 }
 
 /** nightmarerock.lua: rises while a player of the matching sanity is near, lowers when none is. */
-class NightmareRock implements NightmareRockStateInst {
+export class NightmareRockInstance extends PrefabInstance implements NightmareRockStateInst {
   active = false;
   active_queue = false;
   conceal = false;
   conceal_queued = false;
-  readonly model: THREE.Group;
-  readonly sg: NightmareRockStateGraph;
+  declare readonly sg: NightmareRockStateGraph['sg'];
   readonly activeonsane: boolean;
-  readonly instance: PrefabInstance;
-  readonly display: PrefabDisplay;
-  private readonly controller: SpriteState;
-  private stopActivity?: () => void;
   private readonly refreshTimer?: ComponentTimer;
   private cancelTransition?: () => void;
-  private disposed = false;
   private readonly world: NightmareRockWorld;
 
-  constructor(world: NightmareRockWorld, id: NightmareRockId, { instance, display }: ReturnType<typeof createPrefabEntity>, staggerOffset: number) {
-    this.world = world; this.model = display.model;
-    this.instance = instance; this.display = display;
-    const model = this.model;
-    this.controller = instance.sprite;
+  constructor(world: NightmareRockWorld, id: NightmareRockId, staggerOffset: number) {
+    super(id, new SpriteState({ name: 'idle_inactive', billboard: true }));
+    this.world = world;
     this.activeonsane = id === 'sanityrock';
-    const entity = actionEntity(model, id);
-    for (const tag of ['antlion_sinkhole_blocker', id]) entity.addTag(tag);
-    MakeObstaclePhysics(instance, COLLISION_SIZE);
+    for (const tag of ['antlion_sinkhole_blocker', id]) this.addTag(tag);
+    MakeObstaclePhysics(this, COLLISION_SIZE);
     this.updatePhysics();
-    instance.bindPhysics(world.physics);
-    this.sg = new NightmareRockStateGraph(this, world.scheduler);
+    this.sg = new NightmareRockStateGraph(this, world.scheduler).sg;
     if (world.scheduler) {
       // DoPeriodicTask(UPDATE_INTERVAL, refresh, UPDATE_OFFSET)
       this.refreshTimer = new ComponentTimer(world.scheduler, () => { this.refresh(); this.refreshTimer!.start(UPDATE_INTERVAL); });
       this.refreshTimer.start(staggerOffset);
     }
-    this.stopActivity = watchTileActivity(model, world.tickingarea, active => instance.setActive(active));
+    this.onRemove(() => {
+      this.cancelTransition?.();
+      this.refreshTimer?.stop();
+      this.sg.dispose();
+    });
   }
 
   // --- NightmareRockStateInst ---------------------------------------------------------------------
 
   playAnimation(name: string): void {
-    this.controller.playOnce(name, () => this.sg?.pushEvent('animover'));
+    this.sprite.playOnce(name, () => this.sg?.pushEvent('animover'));
   }
-  playSound(path: NightmareRockSound): void { PlaySound(path, this.model.position); }
-  spawnFx(prefab: 'sanity_raise' | 'sanity_lower'): void { this.world.fx.spawn(prefab, this.model.position); }
-  Hide(): void { this.controller.setVisible(false); }
-  Show(): void { this.controller.setVisible(true); }
+  playSound(path: NightmareRockSound): void { PlaySound(path, this.position); }
+  spawnFx(prefab: 'sanity_raise' | 'sanity_lower'): void { this.world.fx.spawn(prefab, this.position); }
+  Hide(): void { this.sprite.setVisible(false); }
+  Show(): void { this.sprite.setVisible(true); }
 
   OnActiveStateChanged(): void {
     this.active = this.active_queue;
@@ -108,13 +103,13 @@ class NightmareRock implements NightmareRockStateInst {
 
   /** nightmarerock.lua updatephysics: characters collide only with a raised, revealed rock. */
   private updatePhysics(): void {
-    this.instance.physics.SetCollisionGroup(COLLISION.OBSTACLES);
+    this.physics.SetCollisionGroup(COLLISION.OBSTACLES);
     let mask: number = COLLISION.WORLD;
     if (!this.conceal) {
       mask |= COLLISION.ITEMS;
       if (this.active) mask |= COLLISION.CHARACTERS;
     }
-    this.instance.physics.SetCollisionMask(mask);
+    this.physics.SetCollisionMask(mask);
   }
 
   /** ConcealForMinigame(inst, conceal) */
@@ -130,14 +125,14 @@ class NightmareRock implements NightmareRockStateInst {
   }
 
   private refresh(): void {
-    if (this.disposed) return;
+    if (this.isRemoved) return;
     if (this.conceal || this.conceal_queued) {
       // nothing to do here
     } else {
       // A raised rock lets go only beyond FAR_DIST, a lowered one rises within NEAR_DIST.
       const limit = this.active ? FAR_DIST_SQ : NEAR_DIST_SQ;
       this.active_queue = this.world.getPlayers().some(player => this.matchesPlayer(player)
-        && player.position.distanceToSquared(this.model.position) < limit);
+        && player.position.distanceToSquared(this.position) < limit);
     }
     if ((this.conceal !== this.conceal_queued || this.active_queue !== this.active) && !this.cancelTransition) {
       const scheduler = this.world.scheduler;
@@ -149,7 +144,7 @@ class NightmareRock implements NightmareRockStateInst {
   }
 
   private doTransition(): void {
-    if (this.disposed) return;
+    if (this.isRemoved) return;
     if (this.conceal !== this.conceal_queued) {
       if (!this.sg.hasStateTag('busy')) {
         if (this.conceal_queued) this.sg.goToState('conceal', this.active);
@@ -160,67 +155,57 @@ class NightmareRock implements NightmareRockStateInst {
     }
   }
 
-  update(dt: number): void {
-    if (this.controller.loaded) this.controller.update(dt);
-    this.sg.update(dt);
-  }
-
-  dispose(): void {
-    if (this.disposed) return;
-    this.disposed = true;
-    this.stopActivity?.();
-    this.cancelTransition?.();
-    this.refreshTimer?.stop();
-    this.sg.dispose();
-    this.model.userData.removed = true;
-    this.instance.remove();
-  }
 }
 
 /** nightmarerock.lua sanityrock / insanityrock: obelisks that rise and lower with the nearby player's sanity. */
 export class NightmareRockManager {
   private readonly resources: SpriteResources;
-  private readonly rocks = new Map<THREE.Group, { id: NightmareRockId; rock: NightmareRock }>();
-  private readonly scene: THREE.Scene;
+  private readonly rocks = new Map<THREE.Group, NightmareRockInstance>();
+  private readonly displays: PrefabDisplayGroup;
   private readonly world: NightmareRockWorld;
   private staggerOffset = 0;
   private disposed = false;
 
   constructor(scene: THREE.Scene, assetBaseUrl: string, world: NightmareRockWorld) {
-    this.scene = scene; this.resources = new SpriteResources(assetBaseUrl); this.world = world;
+    this.displays = new PrefabDisplayGroup(scene); this.resources = new SpriteResources(assetBaseUrl); this.world = world;
   }
 
   spawn(id: NightmareRockId, position: THREE.Vector3, saved?: NightmareRockRecord): THREE.Group {
     if (this.disposed) throw new Error('Nightmare rocks have been disposed');
     if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError('Invalid nightmare rock position');
-    const entity = createPrefabEntity(id, this.resources.factory({ animationArchive: 'blocker_sanity.zip', buildArchive: 'blocker_sanity.zip' }),
-      { name: 'idle_inactive', billboard: true }, id);
-    const model = entity.display.model;
-    model.position.set(position.x, 0, position.z);
-    entity.instance.entityId = saved?.id ?? newEntityId();
+    const instance = new NightmareRockInstance(this.world, id, this.staggerOffset);
+    const display = this.displays.add({ name: id, source: this.resources.factory({ animationArchive: 'blocker_sanity.zip', buildArchive: 'blocker_sanity.zip' }),
+      status: instance.status, sprite: instance.sprite, light: instance.light });
+    const model = display.model;
+    bindInstance(model, instance);
+    instance.position.set(position.x, 0, position.z);
+    instance.entityId = saved?.id ?? newEntityId();
+    instance.saveRecord = saved;
+    instance.bindPhysics(this.world.physics);
+    actionEntity(model, id, instance);
     // UPDATE_OFFSET staggers the periodic refresh of each spawned entity by one frame.
-    const rock = new NightmareRock(this.world, id, entity, this.staggerOffset);
     this.staggerOffset += FRAMES;
     if (this.staggerOffset > UPDATE_INTERVAL) this.staggerOffset = 0;
-    model.userData.nightmareRock = rock;
-    this.rocks.set(model, { id, rock });
-    this.scene.add(model);
+    this.rocks.set(model, instance);
+    instance.onRemove(() => { this.rocks.delete(model); display.dispose(); });
+    instance.onRemove(watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active)));
     return model;
   }
 
-  update(dt: number, _cameraQuaternion: THREE.Quaternion): void {
-    for (const { rock } of this.rocks.values()) rock.update(dt);
+  update(dt: number, cameraQuaternion: THREE.Quaternion): void {
+    for (const instance of this.rocks.values()) instance.sg.update(dt);
+    this.displays.update(dt, cameraQuaternion);
   }
 
   get renderEntities() {
-    return [...this.rocks].filter(([, { rock }]) => rock.instance.sprite.loaded).map(([model]) => ({ object: model, footPosition: model.position, cameraDepth: 0 }));
+    return this.displays.renderEntities.filter(({ object }) => this.rocks.get(object)?.sprite.loaded);
   }
 
   /** The rocks' state is derived from the nearby player on load, so only identity and position are saved. */
   exportRecords(): { prefabId: NightmareRockId; record: NightmareRockRecord }[] {
-    return [...this.rocks].map(([model, { id, rock }]) => ({ prefabId: id, record: {
-      id: String(rock.instance.entityId),
-      transform: { position: [model.position.x, 0, model.position.z], rotationY: 0 },
+    return [...this.rocks.values()].filter(instance => instance.persists).map(instance => ({ prefabId: instance.prefab as NightmareRockId, record: {
+      id: String(instance.entityId),
+      transform: { position: [instance.position.x, 0, instance.position.z], rotationY: 0 },
       components: {},
     } }));
   }
@@ -228,8 +213,9 @@ export class NightmareRockManager {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
-    for (const { rock } of this.rocks.values()) { rock.dispose(); }
+    for (const instance of [...this.rocks.values()]) instance.remove();
     this.rocks.clear();
+    this.displays.dispose();
     this.resources.dispose();
   }
 }

@@ -3,7 +3,12 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
-import { createArchiveEntity, prefabInstance } from '../../prefab/src/prefabInstance';
+import { createArchiveEntity, createEmptyEntity, createPrefabEntity, prefabInstance } from '../../prefab/src/prefabInstance';
+import { actionEntity, findActionEntity } from '../../prefab/src/actionEntity';
+import { PrefabDisplayGroup, prefabDisplay, SpriteState } from '@dontstarve-web/display';
+import { animStateDeclarations } from '../../display/src/spriteState';
+import { AnimState, mergeAnimStates, resolveAnimState, type AnimStateArt } from '../src/animState';
+import { smallHash } from '../src/animationAssets';
 import { ArchiveSpriteAssets, preloadSharedArchiveSprite } from '../src/archiveSprite';
 import { ResidentSprite } from '../src/residentSprite';
 import { displayLightOverride } from '../../display/src/displaySprites';
@@ -12,6 +17,53 @@ import type { WorldContext } from '../../prefab/src/worldContext';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
+
+it('lets the display group own an adopted display across sleep, wake and scene teardown', async () => {
+  const scene = new THREE.Scene(), group = new PrefabDisplayGroup(scene);
+  const { instance, display } = createEmptyEntity('adopted');
+  const released = vi.fn(); display.onDispose(released);
+  try {
+    group.mount(display); group.mount(display);
+    expect(display.model.parent).toBe(scene);
+    expect(group.renderEntities).toHaveLength(1);
+    instance.setActive(false); await tick();
+    expect(display.model.parent).toBeNull();
+    expect(group.renderEntities).toEqual([]);
+    instance.setActive(true); await tick();
+    expect(display.model.parent).toBe(scene);
+    expect(group.renderEntities).toHaveLength(1);
+    group.dispose(); group.dispose();
+    expect(released).toHaveBeenCalledOnce();
+    expect(scene.children).toEqual([]);
+    expect(instance.isRemoved).toBe(false);
+  } finally { instance.remove(); group.dispose(); }
+});
+
+it('keeps shared creation and action binding free of model metadata throughout the entity lifecycle', async () => {
+  const entities = [
+    createEmptyEntity('empty'),
+    createPrefabEntity('factory', { create: () => new THREE.Group(), release: model => model.removeFromParent() }, { name: 'idle' }),
+    createArchiveEntity('archive', { create: () => { throw new Error('A clip has not been declared'); } }, { name: '', none: true }),
+  ];
+  for (const { instance, display } of entities) {
+    const model = display.model, entity = actionEntity(model, instance.prefab);
+    const released = vi.fn(); display.onDispose(released);
+    const check = () => {
+      expect(prefabInstance(model)).toBe(instance);
+      expect(entity.components).toBe(instance.components);
+      for (const key of ['components', 'display', 'animationController', 'actionEntity', 'removed', 'getGroundPosition', 'skinIdSignal']) {
+        expect(Object.hasOwn(model.userData, key), key).toBe(false);
+      }
+    };
+    expect(prefabDisplay(model)).toBe(display);
+    check();
+    instance.setActive(false); await tick(); check();
+    instance.setActive(true); await tick(); check();
+    instance.remove(); display.dispose(); await tick(); check();
+    expect(findActionEntity(model)).toBeUndefined();
+    expect(released).toHaveBeenCalledOnce();
+  }
+});
 
 it('draws the entity from its status and sprite json: sleeping completes a transition, waking restores the clip, removal releases the model', async () => {
   const bytes = await readFile(new URL(`../../../public/dst/data/anim/${TREASURE_CHEST_DEFINITION.archive}`, import.meta.url));
@@ -27,6 +79,10 @@ it('draws the entity from its status and sprite json: sleeping completes a trans
   const model = world.scene.children[0], instance = prefabInstance(model)!, sprite = instance.sprite;
   const meshes = () => { let count = 0; model.traverse(object => { if (object instanceof THREE.Mesh) count++; }); return count; };
   await tick();
+  for (const key of ['components', 'display', 'animationController', 'getGroundPosition', 'burningSignal', 'burntSignal', 'skinIdSignal', 'fireSound', 'disposePreparedResources', 'disposeSpriteSource']) {
+    expect(Object.hasOwn(model.userData, key), key).toBe(false);
+  }
+  expect(instance.position.y).toBe(0);
   expect(instance.status.peek()).toBe('active');
   expect(meshes()).toBe(1);
 
@@ -100,4 +156,33 @@ it('draws a frame declared as a fraction of the clip once the art it was declare
     expect(frames).toBeGreaterThan(1);
     expect(setFrame).toHaveBeenLastCalledWith(Math.floor(.5 * frames));
   } finally { instance.remove(); display.dispose(); assets.dispose(); }
+});
+
+it('draws AnimState slots over the entity\'s own declaration in the order they were first declared', () => {
+  const builds = new Map<string, object>();
+  const art = { peekBuild: (archive: string) => builds.get(archive) ?? (builds.set(archive, { archive }), builds.get(archive)) } as unknown as AnimStateArt;
+  const sprite = new SpriteState({ name: 'idle' });
+  const own = new AnimState();
+  sprite.setAnimState(own.json, art);
+  own.Hide('ARM_carry');
+  own.OverrideSymbol('swap_body', 'base_body', 'swap_body');
+  const hand = new AnimState();
+  sprite.declareAnimState('hand', hand.json, art);
+  hand.Show('ARM_carry'); hand.Hide('ARM_normal');
+  const body = new AnimState();
+  sprite.declareAnimState('body', body.json, art);
+  body.OverrideSymbol('swap_body', 'swap_backpack', 'swap_body');
+  const merged = () => mergeAnimStates(animStateDeclarations(sprite.sprite.peek().appearance).map(([, op]) => resolveAnimState(op.state.peek(), op.art).state));
+  const swapBody = () => (merged().overrides.get(smallHash('swap_body'))?.[0].build as unknown as { archive: string }).archive;
+  const hidden = (layer: string) => merged().hiddenLayers.has(smallHash(layer.toLowerCase()));
+
+  expect([hidden('ARM_carry'), hidden('ARM_normal'), swapBody()]).toEqual([false, true, 'swap_backpack.zip']);
+  // The sprite holds the declarations themselves: later writes are drawn without declaring again, the entity's own stays beneath.
+  own.Hide('HAT'); hand.Hide('LANTERN_OVERLAY');
+  sprite.declareAnimState('hand', hand.json, art);
+  expect(animStateDeclarations(sprite.sprite.peek().appearance).map(([key]) => key)).toEqual(['anim-state', 'anim-state:hand', 'anim-state:body']);
+  expect([hidden('ARM_carry'), hidden('HAT'), swapBody()]).toEqual([false, true, 'swap_backpack.zip']);
+  // Removing a slot leaves what lies beneath it.
+  sprite.declareAnimState('hand', undefined); sprite.declareAnimState('body', undefined);
+  expect([hidden('ARM_carry'), hidden('ARM_normal'), swapBody()]).toEqual([true, false, 'base_body.zip']);
 });

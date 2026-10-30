@@ -58,7 +58,7 @@ test('right-click reads book_silviculture with the source states, sounds and gro
   const submit = (command: string) => page.evaluate(command => document.querySelector('dst-debug-console')!.dispatchEvent(
     new CustomEvent('game:debug-command', { detail: { command } })), command);
   const newModel = (prefab: string) => page.evaluate(prefab => (window as any).__prefabInstance((window as any).bookGame.scene.children.find((model: any) =>
-    (model.userData.itemId ?? (window as any).__prefabInstance(model)?.prefab) === prefab
+    (((window as any).__findActionEntity(model)?.prefab ?? (window as any).__prefabInstance(model)?.prefab) ?? (window as any).__prefabInstance(model)?.prefab) === prefab
     && !(window as any).existingIds.includes((window as any).__prefabInstance(model)?.entityId)))?.entityId ?? null, prefab);
   const stateName = () => page.evaluate(() => (window as any).__prefabInstance((window as any).bookGame.player).animationController.stategraph.stateName);
   const sanity = page.locator('dst-status-hud .survival-meter--sanity output');
@@ -68,10 +68,11 @@ test('right-click reads book_silviculture with the source states, sounds and gro
   const grassId = await newModel('grass');
   const pickGrass = () => page.evaluate(id => {
     const model = (window as any).bookGame.scene.children.find((model: any) => (window as any).__prefabInstance(model)?.entityId === id);
-    return model.userData.components.pickable.pick({ giveItem: () => true });
+    return ((window as any).__findActionEntity(model)?.components ?? (window as any).__prefabInstance(model)!.components).pickable.pick({ giveItem: () => true });
   }, grassId);
-  const grassReady = () => page.evaluate(id => (window as any).bookGame.scene.children
-    .find((model: any) => (window as any).__prefabInstance(model)?.entityId === id).userData.components.pickable.canBePicked, grassId);
+  const grassReady = () => page.evaluate(id => ((window as any).__findActionEntity((window as any).bookGame.scene.children
+    .find((model: any) => (window as any).__prefabInstance(model)?.entityId === id))?.components ?? (window as any).__prefabInstance((window as any).bookGame.scene.children
+    .find((model: any) => (window as any).__prefabInstance(model)?.entityId === id))!.components).pickable.canBePicked, grassId);
   expect(await pickGrass()).toBe(true);
   expect(await grassReady()).toBe(false);
 

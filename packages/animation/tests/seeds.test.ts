@@ -1,3 +1,4 @@
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -24,7 +25,7 @@ function farmSetup(player = new THREE.Group()) {
   const world = { scene: new THREE.Scene(), player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     renderer: { domElement: new EventTarget() } } as unknown as WorldContext;
   const turf = new TurfMap(96);
-  const farm = new FarmPlowPlacement(world, turf, async () => {});
+  const farm = new FarmPlowPlacement(world, turf, () => {});
   return { farm, turf, world };
 }
 
@@ -69,18 +70,16 @@ it('plants only an intact finished hole, replaces it atomically and restores the
   const position = new THREE.Vector3(3, 0, 3);
   const take = vi.fn(() => true);
   try {
-    await farm.spawnDecor('farm_soil', position, { broken: false }, undefined, 'soil');
+    farm.spawnDecor('farm_soil', position, { broken: false }, 'soil');
     expect(farm.soilTargets).toEqual([]);
     turf.plow(position);
-    await farm.spawnDecor('farm_soil', new THREE.Vector3(8, 0, 8), { broken: true }, undefined, 'broken');
-    await farm.spawnDecor('farm_soil', new THREE.Vector3(9, 0, 3), { broken: false, plowId: 'working' }, undefined, 'working');
+    farm.spawnDecor('farm_soil', new THREE.Vector3(8, 0, 8), { broken: true }, 'broken');
+    farm.spawnDecor('farm_soil', new THREE.Vector3(9, 0, 3), { broken: false, plowId: 'working' }, 'working');
     expect(farm.soilTargets.map(({ id }) => id)).toEqual(['soil']);
-    const prepared = (await farm.prepareSeedPlant('soil'))!;
-    expect(prepared.apply(() => false)).toBe(false);
+    expect(farm.plantSeed('soil', 'seeds', () => false)).toBe(false);
     expect(farm.soilTargets).toHaveLength(1);
-    expect(prepared.apply(take)).toBe(true);
-    expect(prepared.apply(take)).toBe(false);
-    prepared.dispose();
+    expect(farm.plantSeed('soil', 'seeds', take)).toBe(true);
+    expect(farm.plantSeed('soil', 'seeds', take)).toBe(false);
     expect(take).toHaveBeenCalledOnce();
     expect(farm.soilTargets).toEqual([]);
     expect(farm.exportDecorRecords().some(({ record }) => record.id === 'soil')).toBe(false);
@@ -89,16 +88,13 @@ it('plants only an intact finished hole, replaces it atomically and restores the
     expect(saved).toMatchObject({ prefabId: 'farm_plant_randomseed', record: { transform: { position: [3, 0, 3] }, components: {} } });
     const restore = farmSetup();
     try {
-      const model = await restore.farm.spawnPlantedSeed(new THREE.Vector3(...saved.record.transform.position), saved.record.id);
-      expect(model.userData.animationController.currentAnimation).toBe('sow_idle');
+      const model = restore.farm.spawnPlantedSeed(new THREE.Vector3(...saved.record.transform.position), saved.record.id);
+      expect(prefabInstance(model)!.sprite.currentAnimation).toBe('sow_idle');
       expect(restore.farm.exportPlantedSeedRecords()).toEqual([saved]);
     } finally { restore.farm.dispose(); }
-    await farm.spawnDecor('farm_soil', position, { broken: false }, undefined, 'cancelled');
-    const cancelled = (await farm.prepareSeedPlant('cancelled'))!;
-    cancelled.dispose(); expect(cancelled.apply(take)).toBe(false);
-    const stale = (await farm.prepareSeedPlant('cancelled'))!;
+    farm.spawnDecor('farm_soil', position, { broken: false }, 'dug');
     turf.dig(position);
-    expect(stale.apply(take)).toBe(false); stale.dispose();
+    expect(farm.plantSeed('dug', 'seeds', take)).toBe(false);
     expect(take).toHaveBeenCalledOnce();
     expect(farm.exportPlantedSeedRecords()).toEqual([saved]);
   } finally { farm.dispose(); }
@@ -126,12 +122,10 @@ it('renders veggie ground art and plants split bank/build veggie seeds, preservi
   try {
     for (const [index, [seed, plant]] of [['carrot_seeds', 'farm_plant_carrot'], ['corn_seeds', 'farm_plant_corn']].entries()) {
       const position = new THREE.Vector3(3 + index * 8, 0, 3);
-      await farm.spawnDecor('farm_soil', position, { broken: false }, undefined, `soil${index}`);
+      farm.spawnDecor('farm_soil', position, { broken: false }, `soil${index}`);
       turf.plow(position);
-      expect(await farm.prepareSeedPlant(`soil${index}`, 'unknown_seeds')).toBeUndefined();
-      const prepared = (await farm.prepareSeedPlant(`soil${index}`, seed))!;
-      expect(prepared.apply(take)).toBe(true);
-      prepared.dispose();
+      expect(farm.plantSeed(`soil${index}`, 'unknown_seeds', take)).toBe(false);
+      expect(farm.plantSeed(`soil${index}`, seed, take)).toBe(true);
       expect(farm.exportPlantedSeedRecords()[index]).toMatchObject({ prefabId: plant,
         record: { transform: { position: position.toArray() }, components: {} } });
     }
@@ -141,8 +135,8 @@ it('renders veggie ground art and plants split bank/build veggie seeds, preservi
     const restore = farmSetup();
     try {
       for (const { prefabId, record } of saved) {
-        const model = await restore.farm.spawnPlantedSeed(new THREE.Vector3(...record.transform.position), record.id, prefabId);
-        expect(model.userData.animationController.currentAnimation).toBe('crop_seed');
+        const model = restore.farm.spawnPlantedSeed(new THREE.Vector3(...record.transform.position), record.id, prefabId);
+        expect(prefabInstance(model)!.sprite.currentAnimation).toBe('crop_seed');
       }
       expect(restore.farm.exportPlantedSeedRecords()).toEqual(saved);
     } finally { restore.farm.dispose(); }

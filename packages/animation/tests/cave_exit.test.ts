@@ -1,3 +1,5 @@
+import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
@@ -40,7 +42,7 @@ it('offers MIGRATE to the Master shard once it is available and hands the player
     const model = await exits.spawn(new THREE.Vector3(1, 0, 2));
     expect(getMigrateActions(model)[0]).toMatchObject({ button: 'left', available: true, action: { action: 'MIGRATE' } });
     const player = { hasTag: (tag: string) => tag === 'player' };
-    expect(model.userData.components.worldmigrator.Activate(player)).toBe(true);
+    expect((findActionEntity(model)?.components ?? prefabInstance(model)!.components).worldmigrator.Activate(player)).toBe(true);
     expect(migrated).toEqual([[player, undefined, 'Master']]);
     expect(getMigrateActions(await unlinked.spawn(new THREE.Vector3(1, 0, 2)))).toEqual([]);
   } finally { exits.dispose(); unlinked.dispose(); }

@@ -24,7 +24,7 @@ import { BurnableBinding, FireFxHost } from './treeFire';
 import { snapToWallSlotCenter, TILE_SIZE } from './tile';
 import { FENCE_ID, FENCE_SKIN_ARCHIVES, fenceWorldSkin, type FenceId } from './fenceSkins';
 import type { WallCombatTarget } from './wallPlacement';
-import type { WorldContext } from './worldContext';
+import type { WorldContext, PrefabWorldContext } from './worldContext';
 
 export { FENCE_ID, FENCE_ITEM_ID, FENCE_IDS, isFenceId, type FenceId, type FenceSaveState } from './fenceSkins';
 
@@ -114,8 +114,8 @@ interface FenceInstance {
  * sprite whose bank (`fence` or `fence_thin`) follows the rotation parity.
  */
 export class FencePlacement {
-    private readonly world: WorldContext;
-    private readonly scene: THREE.Scene;
+    private readonly world: PrefabWorldContext;
+
     private readonly camera: THREE.Camera;
     private readonly canvas: HTMLCanvasElement;
     private readonly player: THREE.Object3D;
@@ -139,14 +139,14 @@ export class FencePlacement {
     private disposed = false;
 
     constructor(world: WorldContext, consumeBufferedBuild: (buildId: FenceId, skinId?: string) => boolean) {
-        this.world = world;
-        this.scene = world.scene;
+        const { scene, ...services } = world;
+        this.world = services;
         this.camera = world.camera;
         this.canvas = world.renderer.domElement;
         this.player = world.player;
         this.ground = world.ground;
         this.consumeBufferedBuild = consumeBufferedBuild;
-        this.displays = new PrefabDisplayGroup(this.scene);
+        this.displays = new PrefabDisplayGroup(scene);
         this.scheduler = world.scheduler ?? new GameTimeScheduler();
         this.ownsScheduler = !world.scheduler;
         this.stopActionEvents = bindActionCancellation(world, this, 'building', () => this.cancel());
@@ -258,6 +258,7 @@ export class FencePlacement {
     update(dt = 0): void {
         if (this.ownsScheduler) this.scheduler.advance(dt);
         this.displays.update(dt);
+        for (const fence of this.placed) fence.burn?.update(dt);
         this.cursor.update();
         if (this.active) this.updatePreview(this.active);
     }
@@ -436,7 +437,7 @@ export class FencePlacement {
                 if (ash) this.world.dropItem?.(ash, position);
                 this.removeFence(fence);
             },
-        }, { scheduler: this.scheduler, root: this.scene, fire: this.fireFx });
+        }, { scheduler: this.scheduler, fire: this.fireFx });
     }
 
     private place(fence: FenceInstance): void {
@@ -448,7 +449,6 @@ export class FencePlacement {
         if (this.world.physics) fence.instance.bindPhysics(this.world.physics);
         fence.stopActivity = watchTileActivity(fence.root, this.world.tickingarea, active => {
             fence.instance.setActive(active);
-            fence.burn?.setActive(active);
         });
     }
 

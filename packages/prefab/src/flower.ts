@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { watchTileActivity } from './tileActivity';
 import { newEntityId } from './saveRecord';
 import type { WorldContext, WorldEventEmitter } from './worldContext';
-import { actionEntity } from './actionEntity';
+import { actionEntity, findActionEntity } from './actionEntity';
 import { BurnableBinding, FireFxHost } from './treeFire';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Pickable } from './components/pickable';
@@ -75,10 +75,12 @@ export class FlowerPlanting {
     this.resources.dispose();
   }
 
-  update(cameraQuaternion: THREE.Quaternion, dt = 0): void {
+  update(_cameraQuaternion: THREE.Quaternion, dt = 0): void {
     if (this.ownsScheduler) this.scheduler.advance(dt);
-    this.fireFx?.update(dt, cameraQuaternion);
-    for (const { instance } of this.flowers.values()) if (instance.sprite.loaded) instance.sprite.update(dt);
+    for (const { instance, burn } of this.flowers.values()) {
+      if (instance.sprite.loaded) instance.sprite.update(dt);
+      burn?.update(dt);
+    }
   }
 
   /** The planted `flower`-tagged entities (butterflybrain FLOWER_TAGS), rebuilt only when one is planted or removed. */
@@ -90,7 +92,7 @@ export class FlowerPlanting {
   get renderEntities() {
     const models = [...this.flowers.values()].filter(({ instance }) => instance.sprite.loaded).map(({ model }) => model);
     return [...models.map((object) => ({ object, footPosition: object.position, cameraDepth: 0 })),
-      ...(this.fireFx?.renderEntities ?? [])];
+      ...[...this.flowers.values()].flatMap(({ display }) => display.fxRenderEntries)];
   }
 
   exportRecords(): FlowerSaveRecord[] {
@@ -110,7 +112,7 @@ export class FlowerPlanting {
     if (this.disposed) return false;
     const animation = this.random() < .01 ? 'rose' : FLOWER_ANIMATIONS[Math.floor(this.random() * 10)];
     const flower = this.createFlower(newEntityId(), animation, position);
-    this.addFlower(flower).userData.actionEntity.PushEvent('growfrombutterfly', undefined);
+    findActionEntity(this.addFlower(flower))!.PushEvent?.('growfrombutterfly', undefined);
     return true;
   }
 
@@ -162,7 +164,7 @@ export class FlowerPlanting {
           this.burning!.worldEvents.emit('spawnAsh', model.position.clone());
           this.removeFlower(flower);
         },
-      }, { scheduler: this.burning.scheduler, root: this.world.scene, fire: this.fireFx });
+      }, { scheduler: this.burning.scheduler, fire: this.fireFx });
     }
     return flower;
   }
@@ -170,7 +172,6 @@ export class FlowerPlanting {
   private bindActivity(flower: PlantedFlower): void {
     flower.stopActivity = watchTileActivity(flower.model, this.world.tickingarea, active => {
       flower.instance.setActive(active);
-      flower.burn?.setActive(active);
     });
   }
 

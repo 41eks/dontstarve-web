@@ -1,7 +1,7 @@
 import { smallHash } from '@dontstarve-web/animation/animationAssets';
 import { AnimState } from '@dontstarve-web/animation/animState';
 import { SpriteResources, type NamedSpriteArt, type FollowerFx, type PrefabDisplay } from '@dontstarve-web/display';
-import { createRenderEffect, watchSignal, type ReadonlySignal } from '@dontstarve-web/signals';
+import type { ReadonlySignal } from '@dontstarve-web/signals';
 import { BufferedAction, WilsonStateGraph, type BufferedActionObject, type WilsonAction, type WilsonAnimationClip, type WilsonAnimationKey, type WilsonCombat, type WilsonFishingHost, type WilsonMovementState, type WilsonOneShotState, type WilsonSleepHost, type WilsonDeathHost, type WilsonRebirthHost } from '@dontstarve-web/stategraphs';
 import type { ActionAnimationController } from '@dontstarve-web/stategraphs/actionContext';
 import type * as CANNON from 'cannon-es';
@@ -11,7 +11,7 @@ import { backpackVisual } from './backpack';
 import { BookFxController } from './book_fx';
 import { animationTiming } from './animationTimings';
 import { WILSON_EMOTES, type WilsonEmote, type WilsonEmoteDefinition } from './emotes';
-import type { EquipmentVisual, EquipmentVisualContext, EquipmentVisualOwner } from './equipmentVisual';
+import { wornEquipmentLifecycle, type EquipmentVisualContext } from './equipmentVisual';
 import { isFarmHoeTool, type FarmHoeTool } from './farm_hoe';
 import { GroundItemAssets } from './groundItems';
 import { getHandEquipmentDefinition } from './handEquipment';
@@ -28,7 +28,7 @@ import { actionEntity, disposeActionEntity } from './actionEntity';
 import { createPrefabEntity, prefabInstance, type PrefabInstance } from './prefabInstance';
 import { Builder, type BuilderWorld } from '../../componets/src/builder';
 import type { WilsonSoulHopHost } from '../../stategraphs/src/SGwilson';
-import { StaffCastingLight } from './yellowstaff';
+import { StaffCastingLight } from './staff_castinglight';
 import type { SlipperyFeet } from '../../componets/src/slipperyfeet';
 
 export type WilsonFacing = 'up' | 'down' | 'side';
@@ -165,7 +165,6 @@ export interface WilsonPlayerPrefab {
   readonly instance: WilsonPlayerInstance;
   readonly display: PrefabDisplay;
   model: PlayerModel;
-  setNormal(cameraWorldQuaternion: THREE.Quaternion): void;
 }
 
 export type PlayerModel = THREE.Group;
@@ -224,9 +223,9 @@ class WilsonController implements WilsonAnimationController {
   private carryKey = '';
   readonly equipmentAssets: GroundItemAssets;
   readonly equipmentContext: EquipmentVisualContext;
+  /** inst.AnimState: the player's own declaration, beneath the slots its equipped items declare. */
   readonly AnimState: AnimState;
-  private readonly visualOwner: EquipmentVisualOwner;
-  private handVisual?: EquipmentVisual;
+  private handVisual?: ReturnType<typeof wornEquipmentLifecycle>;
   private handReady = false;
   private readonly castingLight: StaffCastingLight;
   private animation!: ReturnType<typeof animationTiming>;
@@ -247,9 +246,9 @@ class WilsonController implements WilsonAnimationController {
   private soulHopHost?: WilsonSoulHopHost;
   private readonly portalSounds = new Set<SoundHandle>();
   private readonly hatAssets: HatEquipmentAssets;
-  private headVisual?: EquipmentVisual;
+  private headVisual?: ReturnType<typeof wornEquipmentLifecycle>;
   private hatKey = '';
-  private bodyVisual?: EquipmentVisual;
+  private bodyVisual?: ReturnType<typeof wornEquipmentLifecycle>;
   private backpackKey = '';
   private emote: ActiveEmote | null = null;
   readonly bookFx: BookFxController;
@@ -271,16 +270,14 @@ class WilsonController implements WilsonAnimationController {
     this.model = model;
     this.resources = resources;
     this.equipmentAssets = new GroundItemAssets();
+    // The sprite holds the AnimState's own json signal; the player's display follows it and loads the builds it names from the equipment assets.
     this.AnimState = new AnimState();
-    const appearance = watchSignal(this.AnimState.json, stop => this.cleanups.push(stop));
-    // The AnimState names builds; the player's display loads them from the equipment assets.
-    createRenderEffect(() => instance.sprite.setAnimState(appearance.get(), this.equipmentAssets));
-    this.visualOwner = { AnimState: this.AnimState, PushEvent: (name, data) => model.dispatchEvent({ type: name, data } as never) };
+    instance.sprite.setAnimState(this.AnimState.json, this.equipmentAssets);
     for (const layer of ['ARM_carry', 'LANTERN_OVERLAY', 'HAT', 'HAIR_HAT', 'HEAD_HAT', 'HEAD_HAT_NOHELM', 'HEAD_HAT_HELM']) this.AnimState.Hide(layer);
-    this.castingLight = new StaffCastingLight(model);
+    this.castingLight = new StaffCastingLight(instance);
     this.hatAssets = new HatEquipmentAssets(assetBaseUrl);
 
-    this.equipmentContext = { owner: this.visualOwner, assets: this.equipmentAssets, hats: this.hatAssets, lightParent: model, sanityPercent };
+    this.equipmentContext = { owner: instance, sprite: { sprite: instance.sprite, art: this.equipmentAssets }, assets: this.equipmentAssets, hats: this.hatAssets, lightParent: instance, sanityPercent };
     this.bookFx = new BookFxController(instance, this.fxScheduler, resources);
     const controller = this;
     this.stategraph = new WilsonStateGraph({
@@ -620,8 +617,8 @@ class WilsonController implements WilsonAnimationController {
     this.handVisual?.onunequip(); this.handVisual = undefined;
     this.setEquippedCarryItem(item);
     if (!item) return;
-    this.handVisual = getHandEquipmentDefinition(item)!.definition.visual({ id: 'preview:hand', prefab: item, skinId });
-    this.handVisual.onequip(this.visualOwner);
+    this.handVisual = wornEquipmentLifecycle(getHandEquipmentDefinition(item)!.definition.visual({ id: 'preview:hand', prefab: item, skinId }), this.equipmentContext);
+    this.handVisual.onequip();
   }
 
   setHat(itemId: string | null, skinId?: string): void {
@@ -630,8 +627,8 @@ class WilsonController implements WilsonAnimationController {
     this.hatKey = key;
     this.headVisual?.onunequip(); this.headVisual = undefined;
     if (!itemId) return;
-    this.headVisual = hatVisual({ id: 'preview:head', prefab: itemId, skinId }, this.equipmentContext);
-    this.headVisual.onequip(this.visualOwner);
+    this.headVisual = wornEquipmentLifecycle(hatVisual({ id: 'preview:head', prefab: itemId, skinId }, this.equipmentContext), this.equipmentContext);
+    this.headVisual.onequip();
   }
 
   setBackpack(equipped: boolean, skinId?: string): void {
@@ -640,8 +637,8 @@ class WilsonController implements WilsonAnimationController {
     this.backpackKey = key;
     this.bodyVisual?.onunequip(); this.bodyVisual = undefined;
     if (!equipped) return;
-    this.bodyVisual = backpackVisual({ id: 'preview:body', prefab: 'backpack', skinId });
-    this.bodyVisual.onequip(this.visualOwner);
+    this.bodyVisual = wornEquipmentLifecycle(backpackVisual({ id: 'preview:body', prefab: 'backpack', skinId }), this.equipmentContext);
+    this.bodyVisual.onequip();
   }
 
   followSymbol(symbol: string, offsetX: number, offsetY: number, fx?: FollowerFx): SymbolFollower {
@@ -804,8 +801,5 @@ export function createWilsonPlayerPrefab(
     instance: entity,
     display,
     model,
-    setNormal(cameraWorldQuaternion) {
-      model.quaternion.copy(cameraWorldQuaternion);
-    },
   };
 }

@@ -104,7 +104,7 @@ it('keeps logical trees blocking their tile while only the visual is unloaded an
   let stop = registerPlacementTree(root, tree, 'evergreen', 1);
   const world = { scene, player: new THREE.Group(), camera: new THREE.PerspectiveCamera(),
     renderer: { domElement: new EventTarget() }, createCursorLabel: () => ({ show() {}, hide() {}, update() {} }) } as unknown as WorldContext;
-  const farm = new FarmPlowPlacement(world, new TurfMap(96), async () => {});
+  const farm = new FarmPlowPlacement(world, new TurfMap(96), () => {});
   const query = placementEntities(scene), origin = new THREE.Vector3();
   try {
     expect(farm.canDeploy(origin)).toBe(false);
@@ -133,7 +133,7 @@ it('reads live entity metadata and radius overrides through action and placement
   instance.skinId = 'test-skin';
   instance.persists = false;
   instance.addTag('groundtargetblocker');
-  model.userData.itemId = instance.prefab;
+  instance.components.inventoryitem = {};
   const entity = actionEntity(model, instance.prefab);
   scene.add(model);
   const query = placementEntities(scene);
@@ -143,7 +143,7 @@ it('reads live entity metadata and radius overrides through action and placement
     return result!;
   };
   try {
-    for (const key of ['prefab', 'entityId', 'saveRecord', 'skinId', 'persists', 'physicsRadius']) {
+    for (const key of ['prefab', 'entityId', 'saveRecord', 'skinId', 'persists', 'physicsRadius', 'components', 'display', 'animationController', 'actionEntity', 'removed']) {
       expect(Object.hasOwn(model.userData, key)).toBe(false);
     }
     expect(entity.prefab).toBe('log');

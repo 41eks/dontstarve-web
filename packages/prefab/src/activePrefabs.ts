@@ -11,6 +11,8 @@ export type FoundEntity = ComponentActionEntity & WorkableInst & {
   reskinTarget?: ReskinTarget;
   /** The owner's HAMMER view; work and destruction still belong to its workable component. */
   hammerTarget?: HammerTarget;
+  /** The ground item's pickup view; inventory state remains on its ItemEntity. */
+  pickupTarget?: import('../../stategraphs/src/pickup').PickupTarget;
 };
 
 /** The logical world's active prefab projections, used by world/radius queries independently of mouse targeting. */

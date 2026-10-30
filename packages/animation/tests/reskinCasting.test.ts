@@ -1,3 +1,5 @@
+
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { actionTool, reskinEntityFields } from './actionFixtures';
 import { createPickupInventory } from './pickupFixture';
@@ -193,7 +195,7 @@ it('reskins dropped items without changing their count or entity ID and preserve
   vi.spyOn(THREE.Raycaster.prototype, 'intersectObjects').mockReturnValue([
     { object: manager.reskinTargets[0].model.children[0].children[0], point: new THREE.Vector3(), distance: 1 } as THREE.Intersection,
   ]);
-  performPickupAction(manager.reskinTargets[0].model.userData.pickupTarget, createPickupDoer(world.player, inventory));
+  performPickupAction(findActionEntity(manager.reskinTargets[0].model)!.pickupTarget, createPickupDoer(world.player, inventory));
   expect(picked).toHaveBeenCalledWith(expect.objectContaining({ id: 'e_staff', prefab: 'greenstaff', skinId: 'greenstaff_an' }));
   expect(inventory.getEntity(equipmentSlotAddress('hand'))?.components.finiteuses.remaining).toBe(4);
   expect(manager.exportRecords()).toEqual([]);
@@ -259,7 +261,7 @@ it.each(['unequip', 'while loading', 'load failed'])(
       if (reason === 'while loading') await blocked;
       if (reason === 'load failed') throw new Error('Skin load failed');
     });
-    target.model.userData.display = { preloadSkin };
+    Object.assign(target, { display: { model: target.model, preloadSkin } });
     let callback: (() => void) | undefined;
     const animation = { isReskinning: false, cancelEmote: vi.fn(), setFacing: vi.fn(),
       playReskin: vi.fn((cast: () => void) => { callback = cast; animation.isReskinning = true; return true; }),

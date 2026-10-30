@@ -1,3 +1,5 @@
+import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
@@ -117,7 +119,7 @@ it('plants one sprout, preserves its named deadline through save/load, and becom
       canDeployPlant: () => true, deployPlant: () => s.sprouts.transplant(point),
     })).toBe(true);
     expect(root.isRemoved).toBe(true); expect(s.inventory.count('rock_avocado_fruit_sprout')).toBe(1);
-    const model = s.sprouts.digTargets[0].model, { timer } = model.userData.components;
+    const model = s.sprouts.digTargets[0].model, { timer } = (findActionEntity(model)?.components ?? prefabInstance(model)!.components);
     const snapshot = timer.snapshot('grow').peek();
     s.advance(600); expect(timer.snapshot('grow').peek()).toBe(snapshot);
     s.season.set({ season: 'winter', progress: .5 }); await settleEffects();
@@ -160,7 +162,7 @@ it('cancels and restarts growth on ignition/extinguishing, reloads a stopped sou
   try {
     s.player.position.y = .3;
     expect((await executeDebugCommand('c_spawn("rock_avocado_fruit_sprout_sapling")', s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
-    const model = s.sprouts.digTargets[0].model, { burnable, timer } = model.userData.components;
+    const model = s.sprouts.digTargets[0].model, { burnable, timer } = (findActionEntity(model)?.components ?? prefabInstance(model)!.components);
     s.advance(400); burnable.Ignite(); expect(timer.snapshot('grow').peek().status).toBe('stopped');
     s.advance(5); burnable.Extinguish(); expect(timer.GetTimeLeft('grow')).toBe(1500);
     burnable.Ignite();
@@ -168,7 +170,7 @@ it('cancels and restarts growth on ignition/extinguishing, reloads a stopped sou
     expect(record.components.saplingTimer).toEqual({ timers: {} });
     await restored.sprouts.spawn(new THREE.Vector3(...record.transform.position), record);
     const loaded = restored.sprouts.digTargets[0].model;
-    expect(loaded.userData.components.timer.GetTimeLeft('grow')).toBe(1500);
+    expect((findActionEntity(loaded)?.components ?? prefabInstance(loaded)!.components).timer.GetTimeLeft('grow')).toBe(1500);
     restored.scheduler.advance(1500);
     const completion = loaded.userData.saplingState.completionTimer;
     expect(completion.peek().status).toBe('scheduled');

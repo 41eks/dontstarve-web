@@ -1,3 +1,4 @@
+import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import { MakeObstaclePhysics, RemovePhysicsColliders } from './standardcomponents';
 import { ModelRecords } from './modelRecords';
@@ -97,8 +98,8 @@ export class RockController {
     model.userData.rockController = this;
     this.entity = actionEntity(model, prefab);
     this.workable = new Workable(this.entity);
-    model.userData.components.workable = this.workable;
-    model.userData.components.lootdropper = lootdropper;
+    prefabInstance(model)!.components.workable = this.workable;
+    prefabInstance(model)!.components.lootdropper = lootdropper;
     this.workable.SetWorkAction('MINE');
     this.workable.SetWorkLeft(ROCK_DEFINITIONS[prefab].workLeft);
     if (prefab === 'cavein_boulder') {
@@ -126,7 +127,7 @@ export class RockController {
         const instance = prefabInstance(model)!;
         RemovePhysicsColliders(instance);
         instance.persists = false;
-        (model.userData.animationController as ArchiveSpriteCommands).playOnce('break');
+        (prefabInstance(model)!.sprite as ArchiveSpriteCommands).playOnce('break');
         this.erode!.start(2);
       };
       model.addEventListener('workfinished' as never, this.onWorkFinished);
@@ -137,7 +138,7 @@ export class RockController {
         lootdropper.DropLoot();
         if (prefab !== 'rock_moon_shell') remove();
       } else {
-        const animation = model.userData.animationController as ArchiveSpriteCommands;
+        const animation = prefabInstance(model)!.sprite as ArchiveSpriteCommands;
         animation.playOnce(workleft < 2 ? 'low' : workleft < 4 ? 'med' : 'full');
       }
     });
@@ -177,14 +178,14 @@ export class RockManager {
   private readonly pendingSpawns = new Set<Promise<unknown>>();
   private readonly mouseRecords = new ModelRecords<Rock>();
   private readonly rocks = new Set<Rock>();
-  private readonly scene: THREE.Scene;
+  private readonly displays: PrefabDisplayGroup;
   private readonly world: RockWorld;
   private readonly scheduler: GameTimeScheduler;
   private readonly ownsScheduler: boolean;
   private disposed = false;
 
   constructor(scene: THREE.Scene, assetBaseUrl: string, world: RockWorld) {
-    this.scene = scene;
+    this.displays = new PrefabDisplayGroup(scene);
     this.world = world;
     this.assets = new ArchiveSpriteAssets('rock', assetBaseUrl);
     this.scheduler = world.scheduler ?? new GameTimeScheduler();
@@ -251,7 +252,7 @@ export class RockManager {
       if (this.world.physics) instance.bindPhysics(this.world.physics);
     }
     instance.entityId = saved?.id ?? newEntityId();
-    model.userData.animationController = sprite;
+
     for (const tag of prefabId === 'cavein_boulder' ? ['heavy', 'boulder', 'caveindebris']
       : prefabId === 'moonrockseed' ? ['irreplaceable', 'nonpotatable', 'celestial_station']
       : ['boulder', 'SnowCovered', ...(prefabId === 'rock_moon_shell' ? ['meteor_protection'] : [])]) instance.addTag(tag);
@@ -279,7 +280,7 @@ export class RockManager {
       sprite.setSymbolOverride('swap_boulder', 'swap_cavein_boulder.zip', `swap_boulder${caveinBoulder.variation}`);
     }
     this.rocks.add(rock); this.mouseRecords.set(rock.model, rock);
-    this.scene.add(model);
+    this.displays.mount(prefabDisplay(model)!);
     rock.stopActivity = watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active));
     return model;
   }
@@ -328,9 +329,11 @@ export class RockManager {
     this.disposed = true;
     for (const rock of this.rocks) this.remove(rock);
     if (this.ownsScheduler) this.scheduler.dispose();
+    this.displays.dispose();
     // Pending spawns release their sprite and prepared loot before the common frame/atlas owner.
     if (this.pendingSpawns.size) void Promise.allSettled(this.pendingSpawns).then(() => this.assets.dispose());
     else this.assets.dispose();
+
   }
 
   private remove(rock: Rock): void {

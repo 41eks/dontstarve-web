@@ -1,3 +1,4 @@
+
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
@@ -58,7 +59,7 @@ it.each(['wall_stone', 'wall_dreadstone'] as WallId[])(
     try {
       for (const skinId of [undefined, Object.keys(WALL_SKIN_ARCHIVES[prefabId])[0]]) {
         const target = placement.reskinTargets[0];
-        const release = vi.spyOn(model.children[0].userData.animationController, 'dispose');
+        const release = vi.fn(); display.onDispose(release);
         const previousSkin = instance.skinId;
         const created = artFactory.mock.calls.length;
         const prepared = await target.prepareNextSkin();
@@ -148,8 +149,8 @@ it('keeps the wall sprite when a skin commit is cancelled or superseded and rele
   const display = target.display!;
   await display.artLoaded();
   const sources = vi.spyOn(wallSprites, 'createStaticSpriteFactory');
-  const controller = model.children[0].userData.animationController;
-  const release = vi.spyOn(controller, 'dispose');
+  const controller = instance.sprite;
+  const release = vi.fn(); display.onDispose(release);
   const canceled = await target.prepareNextSkin();
   canceled.dispose(); canceled.dispose();
   expect(instance.skinId).toBeUndefined();
@@ -162,7 +163,7 @@ it('keeps the wall sprite when a skin commit is cancelled or superseded and rele
   expect(obsolete.apply()).toBe(false);
   obsolete.dispose();
   await display.artLoaded();
-  expect(model.children[0].userData.animationController).toBe(controller);
+  expect(instance.sprite).toBe(controller);
   expect(sources).not.toHaveBeenCalled();
   expect(release).not.toHaveBeenCalled();
   // Directly changing the instance declaration follows the same display path.

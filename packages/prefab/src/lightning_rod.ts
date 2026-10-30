@@ -142,8 +142,8 @@ const rodOf = (model: THREE.Object3D): LightningRod => model.userData.lightningr
 
 /** onhit: AnimState:PlayAnimation("hit"), PushAnimation("idle", false). */
 function playHit(model: THREE.Object3D): void {
-    const animation = model.userData.animationController as SpriteAnimationController;
-    animation.playOnce('hit', () => (model.userData.animationController as SpriteAnimationController).start('idle'));
+    const animation = prefabInstance(model)!.sprite as SpriteAnimationController;
+    animation.playOnce('hit', () => (prefabInstance(model)!.sprite as SpriteAnimationController).start('idle'));
 }
 
 function oninit(context: AnimatedBuildingEventContext): void {
@@ -152,7 +152,7 @@ function oninit(context: AnimatedBuildingEventContext): void {
     const rod = new LightningRod(context);
     model.userData.lightningrod = rod;
     entity.addTag('lightningrod');
-    Object.assign(model.userData.components, {
+    Object.assign(prefabInstance(model)!.components, {
         battery: rod.battery,
         // getstatus: inst.charged and "CHARGED" or nil
         inspectable: { getstatus: () => rod.charged ? 'CHARGED' : undefined },

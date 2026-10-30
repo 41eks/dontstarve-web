@@ -66,7 +66,7 @@ test('walks to the pig king, trades held meat and throws the gold', async ({ pag
   const king = () => page.evaluate(() => {
     const model = (window as any).game.scene.children.find((child: any) => (window as any).__prefabInstance(child)?.prefab === 'pigking');
     if (!model) return undefined;
-    return { animation: model.userData.animationController.currentAnimation, x: model.position.x, z: model.position.z,
+    return { animation: (window as any).__prefabInstance(model)?.sprite.currentAnimation, x: model.position.x, z: model.position.z,
       trader: (window as any).__prefabInstance(model).listTags().includes('trader') };
   });
   // The king is drawn, and found in the scene, only while its tile is in the tickingarea.

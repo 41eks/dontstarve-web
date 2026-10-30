@@ -190,7 +190,7 @@ test('torch fuel updates the UI, pauses when unequipped, survives reskin/save/re
   const restored = await page.evaluate(() => {
     const { scene } = (window as any).torchGame;
     return scene.children.filter((model: any) => model.name === 'GroundItem:torch')
-      .map((model: any) => ({ id: (window as any).__prefabInstance(model)?.entityId, position: model.position.toArray(), skinId: (window as any).__prefabInstance(model)?.skinId, count: model.userData.count }));
+      .map((model: any) => ({ id: (window as any).__prefabInstance(model)?.entityId, position: model.position.toArray(), skinId: (window as any).__prefabInstance(model)?.skinId, count: (window as any).__findActionEntity(model)?.components.stackable?.count }));
   });
   expect(restored).toEqual(records.map((record: any) => ({ id: record.id, position: record.transform.position,
     skinId: record.components.stack.skinId, count: record.components.stack.count })));

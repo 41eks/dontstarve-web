@@ -33,7 +33,7 @@ test('right-click mining breaks a moon shell and preserves the orb and mineral d
   };
   const workLeft = () => page.evaluate(() => {
     const shell = (window as any).miningGame.scene.children.find((model: any) => (window as any).__prefabInstance(model)?.entityId === 'mine-shell');
-    return shell?.userData.components.workable.GetWorkLeft() ?? 0;
+    return ((window as any).__findActionEntity(shell)?.components ?? (window as any).__prefabInstance(shell)!.components).workable.GetWorkLeft() ?? 0;
   });
   await page.goto('/tests/dst-lighting.html?save=initial-world.json'); await prepare();
   await expect(page.locator('canvas[data-game-canvas]')).toHaveAttribute('data-loaded', 'true');

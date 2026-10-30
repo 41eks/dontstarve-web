@@ -1,4 +1,5 @@
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
+import { displayLights } from '../../display/src/displaySprites';
 import * as THREE from 'three';
 import { expect, it, vi } from 'vitest';
 import { createSignal } from '@dontstarve-web/signals';
@@ -13,7 +14,7 @@ vi.mock('@dontstarve-web/animation/archiveSprite', async importOriginal => ({
     const model = new THREE.Group();
     model.add(new THREE.Group());
     const sprite = { model, frameCount: 1, currentAnimation: 'idle', dispose: vi.fn(() => model.removeFromParent()), update: vi.fn(),
-      start: vi.fn(), playOnce: vi.fn(), setFrame: vi.fn(), setPaused: vi.fn() } as unknown as ArchiveSprite;
+      start: vi.fn(), playOnce: vi.fn(), setFrame: vi.fn(), setPaused: vi.fn(), setSkin: vi.fn() } as unknown as ArchiveSprite;
     created.push(sprite);
     return sprite;
   }),
@@ -59,22 +60,27 @@ it('retains a lantern machine, light and fuel while its tile releases and rebuil
   const scene = new THREE.Scene(), model = visual.model;
   scene.add(model); model.position.set(3, 0, 4);
   model.dispatchEvent({ type: 'ondropped' } as never); await tick();
-  const controller = getLanternController(item), light = model.getObjectByName('lanternlight');
+  const ground = lookupPrefabInstance(model)!, controller = getLanternController(item), light = visual.light.parent?.light.slots.peek();
+  const listed = () => [...displayLights()].some(entry => entry.model === model);
   const drawn = created.at(-1)!;
   try {
-    expect(light).toBeDefined();
+    expect(light?.size).toBe(1);
+    expect(listed()).toBe(true);
     expect(lookupPrefabInstance(model)!.hasTag('light')).toBe(true);
     tile.set(false); await tick();
     expect(drawn.dispose).toHaveBeenCalledOnce();
     expect(model.parent).toBeNull();
     expect(controller.isOn).toBe(true);
-    expect(visual.light.parent).toBe(model);
+    expect(visual.light.parent).toBe(ground);
+    // The lanternlight is parented to the ground lantern: it goes out while the lantern's tile sleeps.
+    expect(listed()).toBe(false);
     // Fuel follows the item's game time, not its sprite or frames.
     world.advance(60);
     expect(item.components.fueled!.currentfuel).toBeCloseTo(LANTERN_FUEL - 60 - 1 / 60);
     tile.set(true); await tick();
     expect(model.parent).toBe(scene);
-    expect(model.getObjectByName('lanternlight')).toBe(light);
+    expect(ground.light.slots.peek()).toBe(light);
+    expect(listed()).toBe(true);
     expect(model.position.toArray()).toEqual([3, 0, 4]);
     expect(created.at(-1)).not.toBe(drawn);
     visual.update!(0);

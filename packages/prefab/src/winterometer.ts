@@ -1,7 +1,8 @@
+import { type SpriteState } from '@dontstarve-web/display';
+import { prefabInstance } from './prefabInstance';
 import type * as THREE from 'three';
 import definitions from './definitions.json' with { type: 'json' };
 import { winterometer_init_fn } from '@dontstarve-web/animation/prefabskin';
-import type { PercentAnimationController } from '@dontstarve-web/animation/sprite';
 import { ComponentTimer } from '../../componets/src/timer';
 import { OVERHEAT_TEMP } from '../../componets/src/temperatureoverrider';
 import {
@@ -44,7 +45,7 @@ class WinterometerCheck {
         if (this.burnt || model.userData.removed || !world?.getLocalTemperature) return;
         const temperature = world.getLocalTemperature(model.position.x, model.position.z);
         // Reskinning replaces the animation controller, so read the current one from the entity.
-        (model.userData.animationController as PercentAnimationController)
+        (prefabInstance(model)!.sprite as SpriteState)
             .setPercent('meter', 1 - clamp(temperature, 0, OVERHEAT_TEMP) / OVERHEAT_TEMP);
     }
 

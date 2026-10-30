@@ -1,3 +1,4 @@
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { EventEmitter } from '@dontstarve-web/signals';
 import type { WorldEvents } from '../../prefab/src/worldContext';
@@ -96,7 +97,7 @@ it('chops a moon tree into a stump with an axe, dropping loot, keeping progress 
     expect(forest.chopTargets).toEqual([]);
     expect(target.isValid()).toBe(false);
     expect(forest.entities[0].model).toBe(originalModel);
-    expect(originalModel.userData.animationController.loaded).toBe(false);
+    expect(prefabInstance(originalModel)!.sprite.loaded).toBe(false);
     player.position.set(1, 0, 3); await area.visit(player.position);
     expect(forest.chopTargets[0].entity).toBe(originalInst);
     expect(originalInst.components.workable).toBe(originalWork);
@@ -112,7 +113,7 @@ it('chops a moon tree into a stump with an axe, dropping loot, keeping progress 
     // Four logs, two blossoms and the guaranteed moonbutterfly; the 50% second one stays away at random 0.9.
     expect(dropLoot.mock.calls[0][0]).toEqual([{ itemId: 'log', count: 4 }, { itemId: 'moon_tree_blossom', count: 2 },
       { itemId: 'moonbutterfly', count: 1 }]);
-    expect(tree.model.userData.animationController.currentAnimation).toMatch(/^fall(left|right)_tall$/);
+    expect(prefabInstance(tree.model)!.sprite.currentAnimation).toMatch(/^fall(left|right)_tall$/);
     expect(forest.chopTargets).toEqual([]);
     expect(tree.isValid()).toBe(false);
     expect(forest.digTargets).toHaveLength(1);
@@ -127,13 +128,13 @@ it('chops a moon tree into a stump with an axe, dropping loot, keeping progress 
     player.position.set(500, 0, 0); await area.visit(player.position);
     player.position.set(1, 0, 3); await area.visit(player.position);
     const model = forest.entities[0].model!;
-    expect(model.userData.animationController.currentAnimation).toBe('stump_tall');
+    expect(prefabInstance(model)!.sprite.currentAnimation).toBe('stump_tall');
     expect(forest.chopTargets).toEqual([]);
     const restored = await createMoonTreeManager('/dst/data/anim', { camera, scene: new THREE.Scene(), worldEvents: new EventEmitter<WorldEvents>(), tickingarea: area.query, dropLoot });
     try {
       restored.spawn('moon_tree_tall', new THREE.Vector3(1, 0, 0), { id: 'tree', transform: { position: [1, 0, 0], rotationY: 0 }, components: { moonTree: { stump: true } } });
       await area.visit(player.position);
-      expect(restored.entities[0].model!.userData.animationController.currentAnimation).toBe('stump_tall');
+      expect(prefabInstance(restored.entities[0].model!)!.sprite.currentAnimation).toBe('stump_tall');
       expect(restored.chopTargets).toEqual([]);
       expect(restored.exportState(restored.entities[0])).toMatchObject({ moonTree: { stump: true, size: 'tall' }, growable: { stage: 3 } });
     } finally { restored.dispose(); }

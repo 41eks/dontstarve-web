@@ -1,3 +1,5 @@
+import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import { expect, it, vi } from 'vitest';
 import { batch } from '../../signals/src';
@@ -85,7 +87,7 @@ it('preserves savestate rules and reacts to world removal, releasing memo depend
   const source = itemWorkable(), ordinary = itemWorkable(), persistent = itemWorkable();
   const model = new THREE.Group(), entity = actionEntity(model, 'test_world');
   const work = new Workable(entity);
-  model.userData.components.workable = work;
+  (findActionEntity(model)?.components ?? prefabInstance(model)!.components).workable = work;
   const reads = vi.spyOn(entity.removal, 'get'), eligibility = vi.fn(), finish = vi.fn();
   const stop = work.canBeWorked.subscribe(eligibility);
   work.SetOnFinishCallback(finish);

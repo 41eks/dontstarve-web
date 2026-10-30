@@ -1,3 +1,4 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -65,8 +66,7 @@ it('spreads source heat to nearby combustible structures through smoldering befo
 it('walks to the foot, cancels on unequip and commits LIGHT once at frame 13 without spending extra torch fuel', () => {
   vi.stubGlobal('window', new EventTarget());
   const scene = new THREE.Scene(), model = new THREE.Group(), player = new THREE.Group();
-  model.position.set(20, 8, 0); scene.add(model);
-  model.userData.getGroundPosition = () => new THREE.Vector3(20, 0, 0);
+  model.position.set(20, 0, 0); scene.add(model);
   const target = Object.assign(actionEntity(model, 'treasurechest'), { model }) as LighterTarget;
   const burnable = new Burnable(actionEntity(model, 'treasurechest'));
   target.components.burnable = burnable;
@@ -136,24 +136,21 @@ it('keeps burning art through reskin, exports source burnt state, restores a che
       } }); return true;
     })).ok).toBe(true);
     const model = placement.renderEntities[0].object;
-    const burnable = model.userData.components.burnable as Burnable;
-    const burntSignal = model.userData.burntSignal;
-    const burningSignal = model.userData.burningSignal;
-    const notified = vi.fn(() => {
-      expect(model.userData.components.container).toBeUndefined();
-      expect(model.userData.animationController.currentAnimation).toBe('burnt');
-    });
-    const stopBurnt = burntSignal.subscribe(notified);
-    expect(burntSignal.set).toBeUndefined(); expect(burningSignal.set).toBeUndefined();
+    const burnable = (findActionEntity(model)?.components ?? prefabInstance(model)!.components).burnable as Burnable;
+    const instance = prefabInstance(model)!;
+    const burningSignal = burnable.burning;
+    const notified = vi.fn();
+    model.addEventListener('burntup' as never, notified);
+    expect(burningSignal.set).toBeUndefined();
     const item = inventory.getEntity({ containerId: 'world:treasurechest:burning_chest', slotKey: '0' })!;
     const before = item.snapshot();
     burnable.Ignite(); placement.update(3);
     expect(scene.children.filter(child => child.name === 'fire')).toHaveLength(1);
     const prepared = await placement.reskinTargets[0].prepareNextSkin();
     expect(prepared.apply()).toBe(true); prepared.dispose();
-    expect(model.userData.components.burnable).toBe(burnable);
-    expect(model.userData.burntSignal).toBe(burntSignal);
-    expect(model.userData.burningSignal).toBe(burningSignal);
+    expect((findActionEntity(model)?.components ?? prefabInstance(model)!.components).burnable).toBe(burnable);
+    expect(instance.hasTag('burnt')).toBe(false);
+    expect(instance.components.burnable!.burning).toBe(burningSignal);
     expect(burningSignal.peek()).toBe(true); expect(notified).not.toHaveBeenCalled();
     expect(scene.children.filter(child => child.name === 'fire')).toHaveLength(1);
     const record = placement.exportRecords()[0].record;
@@ -170,21 +167,21 @@ it('keeps burning art through reskin, exports source burnt state, restores a che
     // Complete this session before restoring a new session from the exported document.
     placement.update(7);
     expect(prefabInstance(model)!.listTags()).toContain('burnt');
-    expect(model.userData.animationController.currentAnimation).toBe('burnt');
-    expect(model.userData.components.container).toBeUndefined();
+    expect(prefabInstance(model)!.sprite.currentAnimation).toBe('burnt');
+    expect((findActionEntity(model)?.components ?? prefabInstance(model)!.components).container).toBeUndefined();
     expect(scene.children.some(child => child.name === 'fire')).toBe(false);
-    expect(burntSignal.peek()).toBe(true); expect(burningSignal.peek()).toBe(false);
-    expect(notified).toHaveBeenCalledExactlyOnceWith(true, false);
-    stopBurnt();
+    expect(instance.hasTag('burnt')).toBe(true); expect(burningSignal.peek()).toBe(false);
+    expect(notified).toHaveBeenCalledOnce();
+    model.removeEventListener('burntup' as never, notified);
     expect(dropped).toEqual([item]); expect(item.snapshot()).toEqual(before);
     expect(item.transform.position.toArray()).toEqual([3, 0, -6]);
     const restored = await restoredPlacement.spawnFromSave('treasurechest', saved.world.entities.treasurechest[0]);
     expect(lookupPrefabInstance(restored)?.entityId).toBe('burning_chest');
     expect(lookupPrefabInstance(restored)?.skinId).toBe(record.components.building!.skinId);
-    expect(restored.userData.animationController.currentAnimation).toBe('burnt');
-    expect(restored.userData.burntSignal.peek()).toBe(true);
-    expect(restored.userData.components.burnable).toBeUndefined();
-    expect(restored.userData.components.workable.GetWorkLeft()).toBe(1);
+    expect(prefabInstance(restored)!.sprite.currentAnimation).toBe('burnt');
+    expect(prefabInstance(restored)!.hasTag('burnt')).toBe(true);
+    expect((findActionEntity(restored)?.components ?? prefabInstance(restored)!.components).burnable).toBeUndefined();
+    expect((findActionEntity(restored)?.components ?? prefabInstance(restored)!.components).workable.GetWorkLeft()).toBe(1);
     expect(dropped).toHaveLength(2);
     expect(dropped[1].snapshot()).toEqual(before);
     expect(dropped[1].transform.position.toArray()).toEqual([3, 0, -6]);
@@ -200,12 +197,12 @@ it('burns a cooking pot after 20 seconds, drops the product and disables cooking
   try {
     const model = await placement.spawnFromSave('cookpot', { id: 'burning_pot', transform: { position: [30, 0, 8], rotationY: 0 },
       components: { building: { state: 'closed', skinId: 'cookpot_cauldron' }, stewer: { product: 'meatballs', phase: 'cooking', remainingSeconds: 15 } } });
-    model.userData.components.burnable.Ignite();
+    (findActionEntity(model)?.components ?? prefabInstance(model)!.components).burnable.Ignite();
     placement.update(19.9);
     expect(prefabInstance(model)!.listTags()).not.toContain('burnt'); expect(dropLoot).not.toHaveBeenCalled();
     placement.update(.1);
-    expect(model.userData.animationController.currentAnimation).toBe('burnt');
-    expect(model.userData.components.stewer).toBeUndefined(); expect(model.userData.components.container).toBeUndefined();
+    expect(prefabInstance(model)!.sprite.currentAnimation).toBe('burnt');
+    expect((findActionEntity(model)?.components ?? prefabInstance(model)!.components).stewer).toBeUndefined(); expect((findActionEntity(model)?.components ?? prefabInstance(model)!.components).container).toBeUndefined();
     expect(placement.performContainerAction(model, 'COOK', {})).toBe(false);
     expect(dropLoot).toHaveBeenCalledExactlyOnceWith([{ itemId: 'meatballs', count: 1 }], new THREE.Vector3(30, 0, 8));
     placement.update(30); expect(dropLoot).toHaveBeenCalledTimes(1);

@@ -1,3 +1,4 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -76,14 +77,14 @@ it('casts at a pond, waits for a bite, hooks, reels and lands a pondfish; a stra
   const locomotor = { goToPoint: vi.fn(() => true), stop: vi.fn(), destination: undefined };
   const rodOf = () => getFishingRod(tool, scheduler, { landFish: (fish, position) => landed.push({ prefab: fish.prefab, position }) });
   const controller = new FishingActionController(world, animation, locomotor, equipped, () => ponds.fishTargets, rodOf);
-  const fishable = () => (pond.userData.actionEntity.components as { fishable: Fishable }).fishable;
+  const fishable = () => (findActionEntity(pond).components as { fishable: Fishable }).fishable;
   const advance = (frames: number) => { for (let i = 0; i < frames; i++) animation.update(1 / 30); };
   const advanceUntil = (done: () => boolean) => { for (let i = 0; i < 300 && !done(); i++) animation.update(1 / 30); expect(done()).toBe(true); };
   try {
     expect(inventoryItemEquipmentKind('fishingrod')).toBe('hand');
     expect(inventoryItemMaxStack('fishingrod')).toBe(1);
     expect(GROUND_ITEM_DEFINITIONS.fishingrod.skinArchives).toHaveProperty('fishingrod_sword');
-    expect(pond.userData.actionEntity.hasTag('fishable')).toBe(true);
+    expect(findActionEntity(pond).hasTag('fishable')).toBe(true);
 
     expect(controller.request(ponds.fishTargets[0])).toBe(true);
     controller.update(0);
@@ -154,7 +155,7 @@ it('gives a fishing rod with c_give and saves worn rods and pond fish through c_
     rod.PushEvent('fishingcollect', undefined);
     expect(rod.components.finiteuses.remaining).toBe(8);
     const pond = await ponds.spawn(new THREE.Vector3(30, 0, 0), { id: 'pond-1', transform: { position: [30, 0, 0], rotationY: 0 }, components: { fishable: { fish: 7 } } });
-    expect(pond.userData.actionEntity.components.fishable.fishleft).toBe(7);
+    expect(findActionEntity(pond).components.fishable.fishleft).toBe(7);
     const before = inventory.exportState();
     let json = '';
     const save = () => {
@@ -170,8 +171,8 @@ it('gives a fishing rod with c_give and saves worn rods and pond fish through c_
     const record = saved.world.entities.pond.find(({ id }) => id === 'pond-1')!;
     expect(record.components.fishable).toEqual({ fish: 7 });
     const again = await restored.spawn(new THREE.Vector3(...record.transform.position), record as never);
-    expect(again.userData.actionEntity.components.fishable.fishleft).toBe(7);
+    expect(findActionEntity(again).components.fishable.fishleft).toBe(7);
     scheduler.advance(160);
-    expect(again.userData.actionEntity.components.fishable.fishleft).toBe(8);
+    expect(findActionEntity(again).components.fishable.fishleft).toBe(8);
   } finally { ponds.dispose(); restored.dispose(); inventory.dispose(); restoredInventory.dispose(); scheduler.dispose(); }
 });

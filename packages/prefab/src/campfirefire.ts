@@ -101,11 +101,12 @@ export class CampfireFire implements BurnFX, FireFXInst {
 
   /** SpawnPrefab("firefx_light"): its radius is in DST units. */
   SpawnLight(): FireFXLight {
-    const light = spawnLightEntity(undefined, 'firefx_light');
+    const light = spawnLightEntity('firefx_light');
     return {
       set: json => light.instance.light.set(json && { ...json, radius: json.radius * (TILE_SIZE / 4) }),
-      // The fx entity has no model of its own in the scene; its light stands at the burning inst it follows.
-      SetParent: target => ((target as { model?: THREE.Object3D }).model ?? this.ownerModel).add(light.model),
+      // FireFX parents it to this entity, then Burnable:SpawnFX AttachLightTo(inst), the owner that spawned this fire. This
+      // entity's frame is merged into the owner's, so its own model is not in the scene: the light stands at the owner either way.
+      SetParent: () => light.setParent(this.owner),
       Remove: () => light.remove(),
     };
   }

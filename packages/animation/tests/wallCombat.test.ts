@@ -63,7 +63,7 @@ it('hammers out a middle wall once, invalidates stale targets and preserves the 
     const target = placement.hammerTargets[1], combatTarget = placement.combatTargets[1], skinTarget = placement.reskinTargets[1];
     await target.display!.artLoaded();
     const prepared = await skinTarget.prepareNextSkin();
-    const release = vi.spyOn(actionTargetModel(target).children[0].userData.animationController, 'dispose');
+    const release = vi.fn(); target.display!.onDispose(release);
     target.playHit(); target.playHit();
     expect(target.isValid()).toBe(true);
     expect(placement.exportRecords()).toEqual(before);

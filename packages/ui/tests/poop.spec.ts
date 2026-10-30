@@ -60,7 +60,7 @@ test('ground manure has animated flies and positional looping audio, survives sa
   const submit = (command: string) => page.evaluate(command => document.querySelector('dst-debug-console')!.dispatchEvent(
     new CustomEvent('game:debug-command', { detail: { command } })), command);
   const ground = () => page.evaluate(() => {
-    const model = (window as any).poopGame.scene.children.find((model: any) => model.userData.itemId === 'poop');
+    const model = (window as any).poopGame.scene.children.find((model: any) => ((window as any).__findActionEntity(model)?.prefab ?? (window as any).__prefabInstance(model)?.prefab) === 'poop');
     if (!model) return null;
     const child = model.userData.flies;
     return { id: (window as any).__prefabInstance(model)?.entityId, position: model.position.toArray(), flies: (window as any).__prefabInstance(child)?.prefab,
@@ -95,7 +95,7 @@ test('ground manure has animated flies and positional looping audio, survives sa
   await expect.poll(async () => (await activeSounds()).length).toBe(0);
   const point = await page.evaluate(() => {
     const { scene, camera, renderer } = (window as any).poopGame;
-    const model = scene.children.find((model: any) => model.userData.itemId === 'poop'), mesh = model.children[0].children[0];
+    const model = scene.children.find((model: any) => ((window as any).__findActionEntity(model)?.prefab ?? (window as any).__prefabInstance(model)?.prefab) === 'poop'), mesh = model.children[0].children[0];
     mesh.geometry.computeBoundingBox();
     const center = mesh.geometry.boundingBox.getCenter(model.position.clone()); mesh.localToWorld(center).project(camera);
     const rect = renderer.domElement.getBoundingClientRect();

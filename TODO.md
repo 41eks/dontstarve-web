@@ -9,6 +9,7 @@ wall sanity debuff
 
 createMemo 惰性
 
+HEALTH重复
 packages/prefab/src/fence.ts skinID
 
 hammerTarget 没有用findentity

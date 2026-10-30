@@ -151,7 +151,7 @@ export function createPhonographGroundFactory(context: GroundPrefabContext): Gro
   let disposed = false;
   return {
     itemIds: [PHONOGRAPH_ID],
-    update(dt, quaternion) { for (const effect of effects) { effect.display.model.quaternion.copy(quaternion); effect.instance.sprite.update(dt); } },
+    update(dt) { for (const effect of effects) effect.instance.sprite.update(dt); },
     renderEntities: () => [...effects].map(({ display: { model } }) => ({ object: model, footPosition: model.position, cameraDepth: 0 })),
     dispose() { disposed = true; for (const effect of effects) release(effect); effects.clear(); },
     create(item) {
@@ -160,7 +160,7 @@ export function createPhonographGroundFactory(context: GroundPrefabContext): Gro
       const model = display.model, sprite = instance.sprite;
       for (const tag of ['structure', 'trader', 'recordplayer', 'furnituredecor', 'groundonlymachine']) instance.addTag(tag);
       const controller = new PhonographController(sprite, model.position, item.phonographRecord, context.scheduler);
-      model.userData.phonograph = controller;
+      instance.components.phonograph = controller;
       const removeEvents = listenInventoryEvents(model, {
         onputininventory: () => controller.OnPutInInventory(),
         // Dropping a loaded machine enables it, but does not turn it on.
@@ -196,7 +196,7 @@ export function createPhonographGroundFactory(context: GroundPrefabContext): Gro
               bank: 'collapse', animation: clip.name, loop: clip.loop,
             });
             if (!disposed) {
-              const effect = createArchiveEntity('collapse_small', { create }, { name: 'collapse_small' }, 'collapse_small');
+              const effect = createArchiveEntity('collapse_small', { create }, { name: 'collapse_small', billboard: true }, 'collapse_small');
               for (const tag of ['FX', 'NOCLICK']) effect.instance.addTag(tag);
               effect.instance.persists = false;
               effect.instance.position.copy(position); context.scene.add(effect.display.model); effects.add(effect);

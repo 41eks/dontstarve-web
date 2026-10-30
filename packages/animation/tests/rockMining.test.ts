@@ -27,7 +27,7 @@ it('mines moon rocks in six hits and cave-in boulders in three, preserving survi
     const [moon, cavein] = s.manager.mineTargets;
     performToolWork('MINE', cavein.entity, {});
     expect(cavein.entity.components.workable!.GetWorkLeft()).toBe(2);
-    expect(boulder.userData.animationController.currentAnimation).toBe('idle');
+    expect(prefabInstance(boulder)!.sprite.currentAnimation).toBe('idle');
     const surviving = s.manager.exportRecords().find(record => record.prefabId === 'cavein_boulder')!;
     await restored.manager.spawn(surviving.prefabId, new THREE.Vector3(...surviving.record.transform.position), surviving.record);
     expect(restored.manager.exportRecords()[0]).toEqual(surviving);
@@ -50,7 +50,7 @@ it('breaks a moon shell after its minerals drop, synchronously spawns one orb an
     const [mine] = s.manager.mineTargets;
     vi.spyOn(Math, 'random').mockReturnValue(.9);
     for (let i = 0; i < 5; i++) performToolWork('MINE', mine.entity, {});
-    expect(model.userData.animationController.currentAnimation).toBe('low');
+    expect(prefabInstance(model)!.sprite.currentAnimation).toBe('low');
     expect(s.manager.exportRecords().map(record => record.prefabId)).toEqual(['rock_moon_shell']);
     const finished = vi.fn(() => {
       expect(s.drops).toEqual(['rocks', 'flint', 'moonrocknugget', 'moonrocknugget', 'moonrocknugget']);
@@ -60,7 +60,7 @@ it('breaks a moon shell after its minerals drop, synchronously spawns one orb an
     performToolWork('MINE', mine.entity, {});
     expect(finished).toHaveBeenCalledOnce();
     expect(prefabInstance(model)!.listTags()).toContain('NOCLICK');
-    expect(model.userData.animationController.currentAnimation).toBe('break');
+    expect(prefabInstance(model)!.sprite.currentAnimation).toBe('break');
     expect(s.manager.exportRecords()[0].record.transform.position).toEqual([3, 0, 4]);
     expect(s.manager.mineTargets).toEqual([]);
     expect(performToolWork('MINE', mine.entity, {})).toBe(false);

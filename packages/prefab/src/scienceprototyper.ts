@@ -1,3 +1,5 @@
+import { type SpriteState } from '@dontstarve-web/display';
+import { prefabInstance } from './prefabInstance';
 import definitions from './definitions.json' with { type: 'json' };
 import recipes from '@dontstarve-web/animation/recipes.json' with { type: 'json' };
 import {
@@ -14,7 +16,6 @@ import { actionEntity } from './actionEntity';
 import { Prototyper } from '../../componets/src/prototyper';
 import { CreateTechTree } from '../../componets/src/techtree';
 import { WORLD_SCALE } from './standardcomponents';
-import type { SpriteController } from '@dontstarve-web/animation/sprite';
 
 export const RESEARCH_LAB_IDS = [
     'researchlab',
@@ -65,12 +66,12 @@ function stopIdleSound(model: Group): void {
 
 function onbuilt({ animation, onComplete }: AnimatedBuildingBuiltContext): void {
     animation.playOnce('place', onComplete);
-    (animation as SpriteController).pushAnimation('idle');
+    (animation as SpriteState).pushAnimation('idle');
 }
 
 function onturnon(id: ResearchLabId, { model, animation }: AnimatedBuildingEventContext): void {
     if (actionEntity(model, id).hasTag('burnt')) return;
-    const controller = animation as SpriteController;
+    const controller = animation as SpriteState;
     if (id === 'researchlab3' && controller.currentAnimation !== 'proximity_loop') {
         if (controller.currentAnimation === 'place') controller.pushAnimation('proximity_pre');
         else controller.playOnce('proximity_pre');
@@ -86,7 +87,7 @@ function onturnoff(id: ResearchLabId, { model, animation }: AnimatedBuildingEven
     if (actionEntity(model, id).hasTag('burnt')) return;
     if (id === 'researchlab' || id === 'researchlab2') animation.playOnce('idle');
     else {
-        const controller = animation as SpriteController;
+        const controller = animation as SpriteState;
         if (id === 'researchlab3') controller.pushAnimation('proximity_pst');
         controller.pushAnimation('idle');
     }
@@ -94,9 +95,9 @@ function onturnoff(id: ResearchLabId, { model, animation }: AnimatedBuildingEven
 
 function onhit({ model, animation }: AnimatedBuildingHammerContext): void {
     // scienceprototyper.lua and magicprototyper.lua: hit, then the on/off loop.
-    const on = model.userData.components?.prototyper?.on === true;
+    const on = prefabInstance(model)!.components?.prototyper?.on === true;
     animation.playOnce('hit');
-    (animation as SpriteController).pushAnimation(on ? 'proximity_loop' : 'idle', on);
+    (animation as SpriteState).pushAnimation(on ? 'proximity_loop' : 'idle', on);
 }
 
 function onhammered(id: ResearchLabId, { position, dropLoot, spawnEffect, remove }: AnimatedBuildingHammerContext): void {
@@ -108,6 +109,12 @@ function onhammered(id: ResearchLabId, { position, dropLoot, spawnEffect, remove
     remove();
 }
 
+/** prefabskin.lua researchlab4_init_fn / researchlab4_clear_fn: only the hat comes from the skin build. */
+const RESEARCHLAB4_SKIN: NonNullable<AnimatedBuildingDefinition['skinAnimState']> = {
+    init: (anim, skinArchive) => anim.OverrideItemSkinSymbol('machine_hat', skinArchive, 'machine_hat', 'researchlab4', 'researchlab4'),
+    clear: anim => anim.ClearOverrideSymbol('machine_hat'),
+};
+
 function researchLabDefinition(id: ResearchLabId): AnimatedBuildingDefinition {
     const levels = {
         researchlab: { SCIENCE: 1, MAGIC: 1 }, researchlab2: { SCIENCE: 2, MAGIC: 1 },
@@ -115,6 +122,7 @@ function researchLabDefinition(id: ResearchLabId): AnimatedBuildingDefinition {
     };
     return {
         ...definitions.animatedBuildings[id], obstacleRadius: .4, onProximity: false, onbuilt, onhit,
+        ...(id === 'researchlab4' ? { skinAnimState: RESEARCHLAB4_SKIN } : {}),
         oninit: (context) => {
             const inst = actionEntity(context.model, id);
             inst.addTag('structure');
@@ -123,7 +131,7 @@ function researchLabDefinition(id: ResearchLabId): AnimatedBuildingDefinition {
             prototyper.trees = CreateTechTree(levels[id]);
             // Skin replacement preserves the component and its users, but replaces the controller.
             const currentContext = () => ({ ...context,
-                animation: context.model.userData.animationController as SpriteController });
+                animation: (prefabInstance(context.model)!.sprite as SpriteState) });
             prototyper.onturnon = () => onturnon(id, currentContext());
             prototyper.onturnoff = () => onturnoff(id, currentContext());
             inst.components.prototyper = prototyper;

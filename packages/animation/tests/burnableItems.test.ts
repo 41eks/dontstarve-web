@@ -1,3 +1,5 @@
+import { prefabDisplay } from '@dontstarve-web/display';
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import type { PrefabDisplay } from '@dontstarve-web/display';
 import { readFile } from 'node:fs/promises';
@@ -46,18 +48,18 @@ it('burns dropped live grass/log stacks to prepared ash, notifies signals and im
     });
     const torch = inventory.getEntity(inventorySlotAddress(0))!;
     for (const model of models) {
-      expect(collectEquippedActions(torch, model.userData.actionEntity, true)).toEqual(['LIGHT']);
-      expect(performLightAction(torch, model.userData.actionEntity, torch)).toBe(true);
+      expect(collectEquippedActions(torch, findActionEntity(model), true)).toEqual(['LIGHT']);
+      expect(performLightAction(torch, findActionEntity(model), torch)).toBe(true);
       expect(model.userData.burningSignal.peek()).toBe(true);
       expect(model.userData.persistenceSignal.peek()).toBe(false);
-      expect(performPickupAction(model.userData.pickupTarget, createPickupDoer(new THREE.Group(), inventory))).toBe(false);
+      expect(performPickupAction(findActionEntity(model)!.pickupTarget, createPickupDoer(new THREE.Group(), inventory))).toBe(false);
     }
     // The fire is a child of the burning item, as DST's Burnable:SpawnFX adds it, with the source's tags.
     const fires = () => models.flatMap(model => model.children.filter(child => child.name === 'fire'));
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(fires()).toHaveLength(2);
     expect(fires().every(fire => modelHasTag(fire, 'FX') && modelHasTag(fire, 'HASHEATER'))).toBe(true);
-    await Promise.all(fires().map(fire => (fire.userData.display as PrefabDisplay).artLoaded()));
+    await Promise.all(fires().map(fire => (prefabDisplay(fire) as PrefabDisplay).artLoaded()));
     // Drawn on the item's plane after it: the depth the item's instance batch writes cannot hide it at any heading.
     const fireMaterials = () => fires().flatMap(fire => (fire.getObjectByProperty('type', 'Mesh') as THREE.Mesh<THREE.BufferGeometry, THREE.Material[]>).material);
     expect(fireMaterials().length).toBeGreaterThan(0);
@@ -127,21 +129,21 @@ it('supports c_spawn, blocks noncombustible targets and preserves identity/state
     const model = manager.reskinTargets.find(target => target.prefabId === 'log')!.model;
     const rocks = manager.reskinTargets.find(target => target.prefabId === 'rocks')!.model;
     const torch = inventory.getEntity(inventorySlotAddress(0))!;
-    expect(collectEquippedActions(torch, rocks.userData.actionEntity, true)).toEqual([]);
-    performLightAction(torch, model.userData.actionEntity, torch); manager.update(5, new THREE.Quaternion());
+    expect(collectEquippedActions(torch, findActionEntity(rocks), true)).toEqual([]);
+    performLightAction(torch, findActionEntity(model), torch); manager.update(5, new THREE.Quaternion());
     entity.components.burnable!.Extinguish(); manager.update(20, new THREE.Quaternion());
     expect(entity.isRemoved).toBe(false); expect(entity.persists).toBe(true); expect(entity.snapshot()).toEqual(before);
     expect(model.userData.burningSignal.peek()).toBe(false);
     const burningSignal = model.userData.burningSignal, burntSignal = model.userData.burntSignal;
     player.position.set(3, 0, 6);
-    expect(performPickupAction(model.userData.pickupTarget, createPickupDoer(player, inventory))).toBe(true);
+    expect(performPickupAction(findActionEntity(model)!.pickupTarget, createPickupDoer(player, inventory))).toBe(true);
     expect(model.parent).toBeNull(); expect(inventory.getEntity(inventorySlotAddress(1))).toBe(entity);
     expect(await manager.drop({ ...SAVE_CATALOG.items.log, ...entity.snapshot(), entity }, new THREE.Vector3(8, 0, -4),
       () => inventory.extract(inventorySlotAddress(1), 1)!)).toBe(true);
     const dropped = manager.reskinTargets.find(target => target.prefabId === 'log')!.model;
     expect(dropped.userData.burningSignal).toBe(burningSignal); expect(dropped.userData.burntSignal).toBe(burntSignal);
     expect(entity.snapshot()).toEqual(before); expect(entity.transform.position.toArray()).toEqual([8, 0, -4]);
-    performLightAction(torch, dropped.userData.actionEntity, torch); manager.update(15, new THREE.Quaternion());
+    performLightAction(torch, findActionEntity(dropped), torch); manager.update(15, new THREE.Quaternion());
     expect(entity.isRemoved).toBe(true);
     expect(manager.exportRecords().map(record => record.components.stack?.itemId)).toEqual(['cutgrass', 'ash', 'rocks', 'ash']);
   } finally { registry.dispose(); inventory.dispose(); restored.manager.dispose(); restored.inventory.dispose(); }

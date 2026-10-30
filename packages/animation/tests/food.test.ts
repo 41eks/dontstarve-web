@@ -26,7 +26,7 @@ async function fixture(itemId = 'bananajuice') {
   const world = { scene: new THREE.Scene(), player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     renderer: { domElement: new EventTarget() } } as unknown as WorldContext;
   const actions = new FoodActionController(world, animation, { stop() {}, goToPoint: () => true, destination: undefined },
-    { soilTargets: [], prepareSeedPlant: async () => undefined });
+    { soilTargets: [], plantSeed: () => false });
   const slot = inventorySlotAddress(0);
   const { name, icon, atlas } = GROUND_ITEM_DEFINITIONS[itemId];
   const store = new InventoryStore([{ address: slot, slot: new InventorySlot() }], {

@@ -1,3 +1,4 @@
+import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import { loadAnim, loadBuild, loadSpriteSkinArchive, smallHash } from '@dontstarve-web/animation/animationAssets';
 import {
@@ -14,7 +15,7 @@ import { FRAMES } from '../../stategraphs/src/stategraph';
 import { actionEntity } from './actionEntity';
 import type { RezSource } from './player_common';
 import { newEntityId } from './saveRecord';
-import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
+import { createPrefabEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
 import { PlaySound, type SoundHandle } from './sound';
 
 export const PORTAL_ID = 'multiplayer_portal_moonrock' as const;
@@ -92,13 +93,13 @@ export class PortalManager {
   private mainFactory?: Promise<AnimatedSpriteFactory>;
   private fxFactory?: Promise<AnimatedSpriteFactory>;
   private readonly portals = new Set<PortalEntity>();
-  private readonly scene: THREE.Scene;
+  private readonly displays: PrefabDisplayGroup;
   private readonly assetBaseUrl: string;
   private readonly services?: PortalRezServices;
   private disposed = false;
 
   constructor(scene: THREE.Scene, assetBaseUrl: string, services?: PortalRezServices) {
-    this.scene = scene;
+    this.displays = new PrefabDisplayGroup(scene);
     this.assetBaseUrl = assetBaseUrl;
     this.services = services;
   }
@@ -132,7 +133,7 @@ export class PortalManager {
     fx.instance.persists = false;
     const fxModel = fx.display.model;
     fxModel.position.copy(model.position);
-    this.scene.add(fxModel);
+    this.displays.mount(prefabDisplay(fxModel)!);
 
     const minimap = main.instance.minimap;
     minimap.SetIcon('portal_dst.png');
@@ -145,7 +146,7 @@ export class PortalManager {
     entity.playJacob = playJacob;
     this.bindRez(entity);
     this.portals.add(entity);
-    this.scene.add(model);
+    this.displays.mount(prefabDisplay(model)!);
     return model;
   }
 
@@ -187,7 +188,7 @@ export class PortalManager {
     for (const entity of this.portals) {
       entity.stopEvents.splice(0).forEach(stop => stop());
       entity.hauntable?.dispose();
-      delete entity.model.userData.components?.hauntable;
+      delete prefabInstance(entity.model)!.components?.hauntable;
       entity.spawning?.loopSound?.stop();
       entity.playJacob = undefined;
       entity.jacobSound?.stop();
@@ -197,6 +198,7 @@ export class PortalManager {
     this.portals.clear();
     void this.mainFactory?.then((f) => f.dispose(), () => undefined);
     void this.fxFactory?.then((f) => f.dispose(), () => undefined);
+    this.displays.dispose();
   }
 
   /** SGmultiplayerportal's `rez_player` states and multiplayer_portal.lua OnGetPortalRez / ms_onportalrez. */
@@ -223,12 +225,12 @@ export class PortalManager {
         if (entity.hauntable) return;
         entity.hauntable = new Hauntable(source, services.scheduler);
         entity.hauntable.SetHauntValue(HAUNT_INSTANT_REZ);
-        (model.userData.components ??= {}).hauntable = entity.hauntable;
+        (prefabInstance(model)!.components).hauntable = entity.hauntable;
         inst.addTag('resurrector');
       } else if (entity.hauntable) {
         entity.hauntable.dispose();
         entity.hauntable = undefined;
-        delete model.userData.components.hauntable;
+        delete prefabInstance(model)!.components.hauntable;
         inst.removeTag('resurrector');
       }
     });

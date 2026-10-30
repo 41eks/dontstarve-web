@@ -1,3 +1,5 @@
+import { PrefabDisplayGroup } from '@dontstarve-web/display';
+import { prefabDisplay } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import { createAnimatedSpriteFactory, type AnimatedSpriteFactory, type SpriteAnimationController } from '@dontstarve-web/animation/sprite';
 import { createEffect, WorldContentKey, type GetWatchWorldContent, type WorldContentSignal } from '@dontstarve-web/signals';
@@ -46,7 +48,7 @@ export const POND_FREEZE_SNOWLEVEL = .02;
 export class PondManager {
   private factoryRequest?: Promise<AnimatedSpriteFactory>;
   private readonly ponds = new Set<THREE.Group>();
-  private readonly scene: THREE.Scene;
+  private readonly displays: PrefabDisplayGroup;
   private readonly assetBaseUrl: string;
   private readonly snowLevel?: WorldContentSignal<number>;
   private readonly cleanups: (() => void)[] = [];
@@ -56,7 +58,7 @@ export class PondManager {
 
   /** WatchWorldState("snowlevel", OnSnowLevel), with a private watched weather signal. */
   constructor(scene: THREE.Scene, assetBaseUrl: string, scheduler: GameTimeScheduler, getWatchWorldContent?: GetWatchWorldContent) {
-    this.scene = scene;
+    this.displays = new PrefabDisplayGroup(scene);
     this.scheduler = scheduler;
     this.assetBaseUrl = assetBaseUrl;
     if (getWatchWorldContent) {
@@ -86,7 +88,7 @@ export class PondManager {
       components.slipperyfeettarget.OnRemoveFromEntity();
       delete components.slipperyfeettarget;
     }
-    const controller = model.userData.animationController as SpriteAnimationController;
+    const controller = prefabInstance(model)!.sprite as SpriteAnimationController;
     if (this.frozen) controller.playOnce('frozen');
     else controller.start('idle');
     if (!animate) controller.update(0);
@@ -122,14 +124,14 @@ export class PondManager {
     minimap.SetIcon('pond.png');
     this.ponds.add(model);
     this.applyFrozen(model, false);
-    this.scene.add(model);
+    this.displays.mount(prefabDisplay(model)!);
     return model;
   }
 
   update(dt: number): void {
     if (!Number.isFinite(dt) || dt <= 0) return;
     for (const model of this.ponds) {
-      (model.userData.animationController as SpriteAnimationController).update(dt);
+      (prefabInstance(model)!.sprite as SpriteAnimationController).update(dt);
     }
   }
 
@@ -162,9 +164,10 @@ export class PondManager {
     for (const model of this.ponds) {
       (actionEntity(model, POND_ID).components as { fishable?: Fishable }).fishable?.OnRemoveFromEntity();
       prefabInstance(model)!.remove();
-      (model.userData.display as PrefabDisplay).dispose();
+      (prefabDisplay(model) as PrefabDisplay).dispose();
     }
     this.ponds.clear();
     void this.factoryRequest?.then((factory) => factory.dispose(), () => undefined);
+    this.displays.dispose();
   }
 }

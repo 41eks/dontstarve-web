@@ -213,11 +213,11 @@ export class PickablePlantManager {
   private readonly getWatchWorldContent?: GetWatchWorldContent;
   private disposed = false;
 
-  private readonly scene: THREE.Scene;
+
   private readonly world: PickablePlantWorld;
 
   constructor(scene: THREE.Scene, assetBaseUrl: string, world: PickablePlantWorld) {
-    this.scene = scene; this.world = world;
+    this.world = world;
     this.displays = new PrefabDisplayGroup(scene);
     this.fire = FireFxHost.create(assetBaseUrl);
     this.resources = new SpriteResources(assetBaseUrl, 'pickable_plant');
@@ -375,7 +375,7 @@ export class PickablePlantManager {
         if (!this.world.isOcean?.(instance.position)) this.world.spawnGroundItem({ ...catalog.items.ash, itemId: 'ash', count: 1 }, instance.position);
         instance.remove();
       },
-    }, { scheduler: this.scheduler, root: this.scene, fire: this.fire });
+    }, { scheduler: this.scheduler, fire: this.fire });
     // lootdropper:SpawnLootPrefab, flung from the plant.
     const lootdropper = new LootDropper(instance, (lootPrefab, point, lootSkin) => this.world.spawnGroundItem(
       { ...catalog.items[lootPrefab as keyof typeof catalog.items], itemId: lootPrefab, count: 1, ...(lootSkin ? { skinId: lootSkin } : {}) },
@@ -414,10 +414,7 @@ export class PickablePlantManager {
     instance.onRemove(() => this.releasePlant(plant));
     entity.reskinTarget = this.createReskinTarget(plant);
     // Layers and snow are prefab state: dress every drawn sprite again from the plant's own components.
-    plant.stopActivity = watchTileActivity(model, this.world.tickingarea, active => {
-      instance.setActive(active);
-      burn.setActive(active);
-    });
+    plant.stopActivity = watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active));
     if (definition.minimapIcon) {
       instance.minimap.SetIcon(definition.minimapIcon);
     }
@@ -450,7 +447,10 @@ export class PickablePlantManager {
     if (this.disposed) return;
     if (this.ownsScheduler) this.scheduler.advance(dt);
     const now = this.scheduler.now;
-    for (const { display, instance } of this.plants.values()) display.update(Math.min(dt, now - instance.transitionAt), cameraQuaternion);
+    for (const { display, instance, burn } of this.plants.values()) {
+      display.update(Math.min(dt, now - instance.transitionAt), cameraQuaternion);
+      burn.update(dt);
+    }
   }
 
 

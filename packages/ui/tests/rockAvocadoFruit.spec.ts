@@ -29,7 +29,7 @@ test('mines a hard stone fruit with a pickaxe, plants its sprout, saves it and g
     new CustomEvent('game:debug-command', { detail: { command } })), command);
   const screenPoint = (prefab: string) => page.evaluate(prefab => {
     const { scene, view } = (window as any).rockFruitGame;
-    const model = scene.children.find((model: any) => model.userData.itemId === prefab || (window as any).__prefabInstance(model)?.prefab === prefab);
+    const model = scene.children.find((model: any) => ((window as any).__findActionEntity(model)?.prefab ?? (window as any).__prefabInstance(model)?.prefab) === prefab || (window as any).__prefabInstance(model)?.prefab === prefab);
     if (!model) throw new Error('No rock_avocado_bush target');
     scene.updateMatrixWorld(true);
     const mesh = model.children[0].children[0], geometry = mesh.geometry;
@@ -54,14 +54,14 @@ test('mines a hard stone fruit with a pickaxe, plants its sprout, saves it and g
   const hand = page.locator('dst-inventory-bar .inventory-bar__equipment .inventory-slot').first();
   await expect(bar.locator('[data-item-id="pickaxe"] .inventory-slot__icon[data-loaded="true"]')).toBeVisible();
   await bar.locator('[data-item-id="pickaxe"]').dragTo(hand);
-  await expect.poll(() => page.evaluate(() => (window as any).rockFruitGame.scene.children.some((m: any) => m.userData.itemId === 'rock_avocado_fruit'))).toBe(true);
+  await expect.poll(() => page.evaluate(() => (window as any).rockFruitGame.scene.children.some((m: any) => ((window as any).__findActionEntity(m)?.prefab ?? (window as any).__prefabInstance(m)?.prefab) === 'rock_avocado_fruit'))).toBe(true);
   const hard = await screenPoint('rock_avocado_fruit');
   await page.mouse.move(hard.x, hard.y);
   await expect.poll(() => page.evaluate(() => (window as any).rockFruitGame.view.mouseActions.getMouseActions().right?.action)).toBe('MINE');
   // Fix the loot roll for this input flow; probability boundaries belong to the domain test.
   await page.evaluate(() => { (window as any).originalFruitRandom = Math.random; Math.random = () => .655; });
   await page.mouse.click(hard.x, hard.y, { button: 'right' });
-  await expect.poll(() => page.evaluate(() => (window as any).rockFruitGame.scene.children.some((m: any) => m.userData.itemId === 'rock_avocado_fruit_sprout'))).toBe(true);
+  await expect.poll(() => page.evaluate(() => (window as any).rockFruitGame.scene.children.some((m: any) => ((window as any).__findActionEntity(m)?.prefab ?? (window as any).__prefabInstance(m)?.prefab) === 'rock_avocado_fruit_sprout'))).toBe(true);
   await page.evaluate(() => { Math.random = (window as any).originalFruitRandom; });
   // Wait for the actual source launch to settle before targeting the seed sprite.
   await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).rockFruitGame.player).animationController.stategraph.stateName)).toBe('idle');
@@ -88,7 +88,7 @@ test('mines a hard stone fruit with a pickaxe, plants its sprout, saves it and g
   await page.reload(); await prepare();
   await expect.poll(() => page.evaluate(id => {
     const model = (window as any).rockFruitGame.scene.children.find((m: any) => (window as any).__prefabInstance(m)?.entityId === id);
-    return model && { position: model.position.toArray(), timer: model.userData.components.timer.snapshot('grow').peek().status };
+    return model && { position: model.position.toArray(), timer: ((window as any).__findActionEntity(model)?.components ?? (window as any).__prefabInstance(model)!.components).timer.snapshot('grow').peek().status };
   }, record.id)).toEqual({ position: record.transform.position, timer: 'scheduled' });
   // Restore a scene near the deadline to exercise the real growth animation without waiting 1500 seconds.
   record.components.saplingTimer.timers.grow.timeleft = .5;
@@ -97,7 +97,7 @@ test('mines a hard stone fruit with a pickaxe, plants its sprout, saves it and g
     { timeout: 15000 }).toBe(true);
   expect(await page.evaluate(() => {
     const bush = (window as any).rockFruitGame.scene.children.find((m: any) => (window as any).__prefabInstance(m)?.prefab === 'rock_avocado_bush');
-    return { position: bush.position.toArray(), transplanted: bush.userData.components.pickable.exportState().transplanted ?? false };
+    return { position: bush.position.toArray(), transplanted: ((window as any).__findActionEntity(bush)?.components ?? (window as any).__prefabInstance(bush)!.components).pickable.exportState().transplanted ?? false };
   })).toEqual({ position: record.transform.position, transplanted: false });
   expect(errors).toEqual([]);
 });

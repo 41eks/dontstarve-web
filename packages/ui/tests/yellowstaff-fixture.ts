@@ -1,12 +1,14 @@
+import { PrefabDisplayGroup } from '../../display/src';
+import { prefabDisplay } from '../../display/src';
 import * as THREE from 'three';
 import { DstLightingRenderer } from '../../../src/dstLighting';
 import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
 import type { PrefabDisplay } from '../../display/src';
 import { GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
-import { getLightStaffController, type LightStaffId } from '../../prefab/src/yellowstaff';
+import { getLightStaffController, type LightStaffId } from '../../prefab/src/staff';
 import { SpellCastActionController } from '../../stategraphs/src/spellcaster';
 import { DwarfStarManager, DWARF_STAR_DURATION, POLAR_LIGHT_DURATION } from '../../prefab/src/stafflight';
-import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { PrewarmSounds } from '../../prefab/src/sound';
 
 /** The inst.Light a model's entity declares. */
@@ -56,15 +58,15 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   };
   const baseline = sample(30);
   const player = createWilsonPlayer('/dst/data/anim');
-  await player.userData.display.artLoaded();
+  await prefabDisplay(player).artLoaded();
   player.position.set(0, 0, 0);
   scene.add(player);
-  const animation = (window as any).__prefabInstance(player).animationController as WilsonAnimationController;
+  const animation = prefabInstance(player).animationController as WilsonAnimationController;
   const failures: string[] = [];
   const skins = [undefined, ...Object.keys(GROUND_ITEM_DEFINITIONS[itemId].skinArchives)];
   for (const skin of skins) {
     animation.setCarryItem(itemId, skin);
-    await (player.userData.display as PrefabDisplay).artLoaded();
+    await (prefabDisplay(player) as PrefabDisplay).artLoaded();
     const build = skin ? GROUND_ITEM_DEFINITIONS[itemId].skinArchives[skin].split('/').at(-1)!.replace('.zip', '') : 'swap_staffs';
     for (const facing of ['up', 'down', 'side'] as const) {
       for (const mirrored of [false, true]) {
@@ -78,15 +80,17 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   }
   await animation.setCarryItem(itemId);
   const unlitHand = !getDeclaredLight(player);
-  const stars = new DwarfStarManager(scene, '/dst/data/anim', itemId === 'opalstaff' ? 'staffcoldlight' : 'stafflight');
+  // As the scene wires it: the display group is the application's, released after its manager.
+  const starDisplays = new PrefabDisplayGroup(scene);
+  const stars = new DwarfStarManager(starDisplays, '/dst/data/anim', itemId === 'opalstaff' ? 'staffcoldlight' : 'stafflight');
   const equipped = inventory.handEquipmentExistenceState;
   const entity = inventory.getEntity(equipmentSlotAddress('hand'))!;
   // The cast's SpawnPrefab creates the star at once; its display loads the art after the commit.
-  const summoned: THREE.Group[] = [];
+  const summoned: PrefabInstance[] = [];
   const staff = getLightStaffController(entity, {
     map: { isAboveGroundAtPoint: point => Math.abs(point.x) <= 130 && Math.abs(point.z) <= 130,
       isOceanAtPoint: () => false, isGroundTargetBlocked: () => false },
-    spawnPrefab: (_prefab, point) => { const model = stars.spawn(point); summoned.push(model); return model; },
+    spawnPrefab: (_prefab, point) => { summoned.push(stars.spawn(point)); },
   });
   staff.onequip();
   let stops = 0, sanity = 100;
@@ -122,7 +126,9 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   tick(52);
   const beforeCommit = stars.exportRecords().length;
   tick(3);
-  await Promise.all(summoned.map(model => (model.userData.display as PrefabDisplay).artLoaded()));
+  // Each summoned star's display, found by its entity among the scene's models, loads its art.
+  await Promise.all(scene.children.filter(child => summoned.includes(prefabInstance(child) as PrefabInstance))
+    .map(model => (prefabDisplay(model) as PrefabDisplay).artLoaded()));
   await settle();
   const record = stars.exportRecords()[0];
   const afterCommit = stars.exportRecords().length;
@@ -146,7 +152,7 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
     addresses.some(address => address.containerId === savedAddress.containerId && address.slotKey === savedAddress.slotKey)) }, SAVE_CATALOG.recipes);
   const savedStaff = entity.snapshot();
   const restoredStaff = restoredInventory.getEntity(equipmentSlotAddress('hand'))!.snapshot();
-  const restoredStars = new DwarfStarManager(new THREE.Scene(), '/dst/data/anim', stars.prefabId);
+  const restoredStars = new DwarfStarManager(new PrefabDisplayGroup(new THREE.Scene()), '/dst/data/anim', stars.prefabId);
   const starSave = saved.world.entities[stars.prefabId][0];
   await restoredStars.spawn(new THREE.Vector3(...starSave.transform.position), {
     id: starSave.id, remainingSeconds: starSave.components.timer!.remainingSeconds,
@@ -180,24 +186,24 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   stars.update(0.05, camera.quaternion);
   const fixedPosition = star.position.distanceTo(new THREE.Vector3(...record.transform.position)) < 0.000001;
 
-  const restored = await stars.spawn(new THREE.Vector3(-40, 0, 0), { id: 'e_restored_star', remainingSeconds: 0.5 });
-  const restoredLit = !!getDeclaredLight(restored);
+  const restored = stars.spawn(new THREE.Vector3(-40, 0, 0), { id: 'e_restored_star', remainingSeconds: 0.5 });
+  const restoredLit = !!restored.light.peek();
   stars.update(0.6, camera.quaternion);
   const expiredNotSaved = !stars.exportRecords().some((entry) => entry.id === 'e_restored_star');
   stars.update(1, camera.quaternion);
-  const expiredRemoved = !restored.parent && !getDeclaredLight(restored);
+  const expiredRemoved = restored.isRemoved && !restored.light.peek();
   const survivor = stars.exportRecords().length;
-  const lifetimeStar = await stars.spawn(new THREE.Vector3(-70, 0, 0));
+  const lifetimeStar = stars.spawn(new THREE.Vector3(-70, 0, 0));
   stars.update(duration - 1, camera.quaternion);
-  const survivesUntilExpiry = !!lifetimeStar.parent && !!getDeclaredLight(lifetimeStar)
-    && stars.exportRecords().some((entry) => entry.id === (window as any).__prefabInstance(lifetimeStar)?.entityId
+  const survivesUntilExpiry = lifetimeStar.status.peek() === 'active' && !!lifetimeStar.light.peek()
+    && stars.exportRecords().some((entry) => entry.id === lifetimeStar.entityId
       && Math.abs(entry.components.timer.remainingSeconds - 1) < 0.000001);
   stars.update(1, camera.quaternion);
-  const expiresAtLifetime = !stars.exportRecords().some((entry) => entry.id === (window as any).__prefabInstance(lifetimeStar)?.entityId);
+  const expiresAtLifetime = !stars.exportRecords().some((entry) => entry.id === lifetimeStar.entityId);
   stars.update(1, camera.quaternion);
-  const lifetimeRemoved = !lifetimeStar.parent && !getDeclaredLight(lifetimeStar);
+  const lifetimeRemoved = lifetimeStar.isRemoved && !lifetimeStar.light.peek();
   casting.dispose();
-  stars.dispose();
+  stars.dispose(); starDisplays.dispose();
   const disposedDark = sample(30);
   lighting.dispose();
   renderer.dispose();

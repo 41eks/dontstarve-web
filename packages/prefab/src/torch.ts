@@ -11,8 +11,8 @@ import { spawnLightEntity, type PrefabLocalLight } from './localLight';
 import { LootFling } from './lootFling';
 import { PlaySound, type SoundHandle } from './sound';
 import { TILE_SIZE } from './tile';
-import { TORCH_FIRE_OFFSET_Y, torchFireFx } from './torchfire';
-import { modelHasTag, prefabInstance } from './prefabInstance';
+import { TORCH_FIRE_OFFSET_Y, TORCH_FIRE_VFX } from './torchfire';
+import { prefabInstance, type PrefabInstance } from './prefabInstance';
 
 export function configureTorchEntity(entity: ItemEntity): void {
   entity.components.lighter = entity.component('lighter', () => new Lighter(entity));
@@ -172,9 +172,8 @@ export function createTorchHandLifecycle(
   entity: ItemEntity,
   options: {
     soundPosition?: THREE.Vector3;
-    lightParent: THREE.Object3D;
+    lightParent: PrefabInstance;
     followSymbol?(symbol: string, offsetX: number, offsetY: number, fx?: FollowerFx): { node: THREE.Object3D; remove(): void };
-    dataBaseUrl?: string;
   },
 ): EquipmentLifecycle {
   const controller = getTorchController(entity);
@@ -188,14 +187,12 @@ export function createTorchHandLifecycle(
     removeFire?.(); removeFire = undefined;
     if (!burning) return;
     // torchfire_common.lua CreateLight + AttachLightTo(owner): a player owner's light is also a playerlight.
-    const light = spawnLightEntity(options.lightParent, 'torchfire_light');
-    if (modelHasTag(options.lightParent, 'player')) light.instance.addTag('playerlight');
+    const light = spawnLightEntity('torchfire_light', options.lightParent);
+    if (options.lightParent.hasTag('player')) light.instance.addTag('playerlight');
     light.instance.light.set(TORCH_LIGHT);
     removeLight = light.remove;
-    if (options.followSymbol && options.dataBaseUrl !== undefined) {
-      // The holder's display loads the particle textures, draws the effect and advances it each frame.
-      removeFire = options.followSymbol('swap_object', 0, TORCH_FIRE_OFFSET_Y, torchFireFx(options.dataBaseUrl)).remove;
-    }
+    // The holder's display loads the particle textures, draws the effect and advances it each frame.
+    removeFire = options.followSymbol?.('swap_object', 0, TORCH_FIRE_OFFSET_Y, TORCH_FIRE_VFX).remove;
   };
   return {
     onequip(owner) {

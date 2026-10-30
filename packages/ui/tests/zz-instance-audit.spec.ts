@@ -30,7 +30,7 @@ for (const shard of ['Master', 'Caves']) {
       const { mouseTargets } = await import(urls.mouse);
       const roots = new Map<any, string[]>();
       const note = (model: any, source: string) => { if (!roots.has(model)) roots.set(model, []); roots.get(model)!.push(source); };
-      scene.traverse((object: any) => { if (object.userData.actionEntity?.model === object) note(object, 'scene'); });
+      scene.traverse((object: any) => { if ((window as any).__findActionEntity(object)?.model === object) note(object, 'scene'); });
       for (const entity of activePrefabs) note(entity.model, 'activePrefabs');
       for (const entity of mouseTargets) note(entity.model, 'mouseTargets');
       const missing = new Map<string, { count: number; sources: Set<string>; hasItemEntity: boolean; tagsOwner: string }>();
@@ -38,8 +38,8 @@ for (const shard of ['Master', 'Caves']) {
       for (const [model, sources] of roots) {
         total++;
         if ((window as any).__prefabInstance(model)) continue;
-        const entity = model.userData.actionEntity;
-        const prefab = entity?.prefab ?? model.userData.itemId ?? model.name;
+        const entity = (window as any).__findActionEntity(model);
+        const prefab = entity?.prefab ?? ((window as any).__findActionEntity(model)?.prefab ?? (window as any).__prefabInstance(model)?.prefab) ?? model.name;
         const entry = missing.get(prefab) ?? { count: 0, sources: new Set(), hasItemEntity: false, tagsOwner: '' };
         entry.count++; for (const s of sources) entry.sources.add(s);
         entry.hasItemEntity ||= !!model.userData.itemEntity || !!model.userData.entity;

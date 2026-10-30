@@ -17,6 +17,7 @@ ARCHIVES = (
     'player_ghost_withhat.zip', 'player_amulet_resurrect.zip', 'player_emotesxl.zip',
     'player_emotes_dance0.zip', 'player_emotes_sit.zip', 'player_emotes.zip', 'player_emote_extra.zip',
     'book_fx_wicker.zip', 'fx_books.zip', 'broken_tool.zip',
+    'mushroom_tree_med.zip', 'mushroom_tree_tall.zip',
 )
 OUTPUT = pathlib.Path(__file__).resolve().parents[1] / 'src/animationTimings.json'
 

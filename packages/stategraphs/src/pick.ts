@@ -64,13 +64,13 @@ export function getPickActions(model: THREE.Object3D | undefined): MouseActionCa
   const actions: MouseActionCandidate[] = [];
   if (!model) return actions;
   const entity = findActionEntity(model), instance = prefabInstance(model);
-  const component = (entity?.components.pickable ?? instance?.components.pickable ?? model.userData.components?.pickable) as PickableComponent | undefined;
+  const component = (entity?.components.pickable ?? instance?.components.pickable) as PickableComponent | undefined;
   if (!component) return actions;
   const target: PickTarget = {
     model, component, prefab: entity?.prefab ?? instance?.prefab,
     quickpick: component.quickpick,
     hasTag: tag => entity?.hasTag(tag) ?? modelHasTag(model, tag),
-    getPosition: () => entity?.getPosition() ?? instance?.position ?? model.userData.getGroundPosition?.() ?? model.position,
+    getPosition: () => entity?.getPosition() ?? instance?.position ?? model.position,
     getPhysicsRadius: () => entity?.getPhysicsRadius?.() ?? instance?.getPhysicsRadius(0) ?? 0,
     PushEvent: (name, data) => { if (entity) entity.PushEvent?.(name, data); else instance?.PushEvent(name, data); },
   };

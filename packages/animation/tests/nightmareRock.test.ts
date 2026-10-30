@@ -1,3 +1,4 @@
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
@@ -5,7 +6,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createSanityState } from '../../signals/src';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Sanity } from '../../componets/src/sanity';
-import { NightmareRockManager } from '../../prefab/src/nightmarerock';
+import { NightmareRockManager, type NightmareRockInstance } from '../../prefab/src/nightmarerock';
+import { prefabDisplay } from '@dontstarve-web/display';
 
 beforeEach(() => {
   vi.stubGlobal('fetch', vi.fn(async (url: string) => {
@@ -31,17 +33,55 @@ async function setup() {
     for (let elapsed = 0; elapsed < seconds; elapsed += 1 / 30) { scheduler.advance(1 / 30); manager.update(1 / 30, new THREE.Quaternion()); }
   };
   const rock = async (id: 'sanityrock' | 'insanityrock') =>
-    (await manager.spawn(id, new THREE.Vector3(0, 0, 0))).userData.nightmareRock as {
-      sg: { stateName: string }; active: boolean; instance: { readonly physicsBody?: CANNON.Body } };
+    prefabInstance(manager.spawn(id, new THREE.Vector3(0, 0, 0))) as NightmareRockInstance;
   return { manager, current, player, fx, run, rock, physics };
 }
 
 describe('nightmare rocks', () => {
+  it('owns its state and pending tasks on the instance, and removing one rock preserves its neighbour and shared art', async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(.5);
+    const scheduler = new GameTimeScheduler(), physics = new CANNON.World(), scene = new THREE.Scene();
+    const player = { position: new THREE.Vector3(), sanity: { IsSane: () => true, IsInsane: () => false } };
+    const fx = { spawn: vi.fn() };
+    const manager = new NightmareRockManager(scene, '/dst/data/anim', { scheduler, physics, fx, getPlayers: () => [player] });
+    try {
+      const first = manager.spawn('sanityrock', new THREE.Vector3());
+      const second = manager.spawn('sanityrock', new THREE.Vector3(6, 0, 0));
+      const instance = prefabInstance(first) as NightmareRockInstance;
+      const neighbour = prefabInstance(second) as NightmareRockInstance;
+      const neighbourDisplay = prefabDisplay(second)!;
+      scheduler.advance(0);
+      expect(instance.sg.context).toBe(instance);
+      expect(instance.active_queue).toBe(true);
+      expect(instance.active).toBe(false);
+      for (const model of [first, second]) {
+        for (const key of ['nightmareRock', 'removed', 'components', 'display', 'animationController', 'actionEntity']) {
+          expect(Object.hasOwn(model.userData, key), key).toBe(false);
+        }
+      }
+      instance.remove();
+      expect(first.parent).toBeNull();
+      expect(physics.bodies).toHaveLength(1);
+      expect(manager.exportRecords().map(({ record }) => record.id)).toEqual([neighbour.entityId]);
+      await neighbourDisplay.artLoaded();
+      scheduler.advance(.6);
+      expect(fx.spawn).toHaveBeenCalledOnce();
+      expect(fx.spawn).toHaveBeenCalledWith('sanity_raise', neighbour.position);
+      expect(neighbour.active).toBe(true);
+      expect(neighbour.sprite.loaded).toBe(true);
+      manager.dispose();
+      scheduler.advance(10);
+      expect(fx.spawn).toHaveBeenCalledOnce();
+      expect(physics.bodies).toEqual([]);
+      expect(scene.children).toEqual([]);
+    } finally { manager.dispose(); scheduler.dispose(); }
+  });
+
   it('a sanityrock rises for a sane player within 30 units, blocks them, and lowers once they leave', async () => {
     const { manager, player, fx, run, rock, physics } = await setup();
     const obelisk = await rock('sanityrock');
     await new Promise(resolve => setTimeout(resolve, 0));
-    const body = obelisk.instance.physicsBody!;
+    const body = obelisk.physicsBody!;
     expect(physics.bodies).toContain(body);
     run(2);
     expect(obelisk.sg.stateName).toBe('idle');

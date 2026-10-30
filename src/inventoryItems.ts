@@ -14,7 +14,7 @@ import { RECORD_ITEM_SPECS } from '@dontstarve-web/prefab/records';
 import { BOOK_ITEM_SPECS } from '@dontstarve-web/prefab/books';
 import { BURNABLE_ITEM_DEFINITIONS, configureBurnableItemEntity } from '@dontstarve-web/prefab/burnableItems';
 import { TORCH_FUEL } from '@dontstarve-web/prefab/torch';
-import { LIGHT_STAFF_USES, isLightStaff } from '@dontstarve-web/prefab/yellowstaff';
+import { LIGHT_STAFF_USES, isLightStaff } from '@dontstarve-web/prefab/staff';
 import { configureTradableEntity, hasTradableGoldValue } from '@dontstarve-web/prefab/tradable';
 import { configureMoonrockNugget } from '../packages/prefab/src/moonrocknugget';
 import { configureHeatRockEntity, HEATROCK_FUEL, HEATROCK_ID } from '@dontstarve-web/prefab/heatrock';

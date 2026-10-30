@@ -1,3 +1,4 @@
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { WARDROBE_DEFINITION } from '../../prefab/src/wardrobe';
@@ -59,7 +60,7 @@ it.each(buildings)('%s runs its built animation only after a successful placemen
   expect(onbuilt).not.toHaveBeenCalled();
   await placement.begin('building');
   const model = world.scene.children[1];
-  const animation = model.userData.animationController as SpriteAnimationController;
+  const animation = prefabInstance(model)!.sprite as SpriteAnimationController;
   const playOnce = vi.spyOn(animation, 'playOnce');
   const start = vi.spyOn(animation, 'start');
   expect(onbuilt).not.toHaveBeenCalled();
@@ -93,7 +94,7 @@ it('lets a prefab control built effects and keeps interaction blocked until it c
   const onbuilt = vi.fn((built: AnimatedBuildingBuiltContext) => { context = built; });
   const { placement, world, click } = await setup({ ...TREASURE_CHEST_DEFINITION, onProximity: false, onbuilt });
   await placement.begin('building');
-  const animation = world.scene.children[0].userData.animationController as SpriteAnimationController;
+  const animation = prefabInstance(world.scene.children[0])!.sprite as SpriteAnimationController;
   const playOnce = vi.spyOn(animation, 'playOnce');
   click();
   click();

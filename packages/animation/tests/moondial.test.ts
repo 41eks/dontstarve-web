@@ -1,3 +1,4 @@
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
@@ -43,7 +44,7 @@ it('keeps phase look and playback through reskin and records only its skin', asy
     expect(reskin.apply()).toBe(true);
     const model = placement.hammerTargets[0].display.model;
     expect(lookupPrefabInstance(model)?.skinId).toBe('moondial_an');
-    expect((model.userData.animationController as SpriteController).currentAnimation).toBe('wane_to_half');
+    expect((prefabInstance(model)!.sprite as SpriteController).currentAnimation).toBe('wane_to_half');
     expect(displayLightOverride(model)).toBe(.1);
     expect(placement.exportRecords()[0].record.components.building).toMatchObject({ skinId: 'moondial_an' });
     placement.dispose();

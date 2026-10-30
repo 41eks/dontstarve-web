@@ -1,3 +1,4 @@
+import { prefabDisplay } from '@dontstarve-web/display';
 import { PlayerActionPicker } from './playeractionpicker.ts';
 import { bindActionCancellation } from './actionEvents.ts';
 import { WILSON_ACTION_TIMES } from './SGwilson.ts';
@@ -149,7 +150,7 @@ export class ReskinActionController {
   private async prepareSkin(target: ReskinActionTarget, tool: ComponentActionEntity | undefined): Promise<PreparedReskin | undefined> {
     const prepared = await target.prepareNextSkin?.(tool);
     try {
-      const display = target.display ?? actionTargetModel(target).userData.display;
+      const display = target.display ?? prefabDisplay(actionTargetModel(target));
       if (prepared && 'skinId' in prepared) await display?.preloadSkin(prepared.skinId);
       return prepared;
     } catch (error) { prepared?.dispose(); throw error; }

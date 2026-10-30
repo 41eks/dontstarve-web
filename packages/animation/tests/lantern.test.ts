@@ -16,25 +16,24 @@ import { inventoryStateFromSave } from '../../../src/save/inventoryState';
 import type { SavedEntity } from '../../../src/save/types';
 import { createPickupInventory } from './pickupFixture';
 import { EventEmitter } from '@dontstarve-web/signals';
-import { AnimState } from '../src/animState';
+import { AnimState, type AnimStateArt } from '../src/animState';
+import { SpriteState } from '@dontstarve-web/display';
+import { declaredAnimState, element } from './animStateFixture';
 import { bindPlayerHandEquipment } from '../../../src/playerHandEquipment';
-import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { createEmptyEntity, prefabInstance } from '../../prefab/src/prefabInstance';
+import type { LightParent } from '../../prefab/src/localLight';
 import { createPerishWorld } from './perishWorldFixture';
 import { getMachineActions } from '../../stategraphs/src/machine';
 
-/** The inst.Light an entity's model declares. */
-const declaredLight = (model: THREE.Object3D) => prefabInstance(model)?.light.peek();
-
-const lightAt = (owner: THREE.Object3D) => {
-  const node = owner.getObjectByName('lanternlight');
-  return node && declaredLight(node);
-};
+/** The lanternlight entity parented to `owner`, by the light signal it declares there. */
+const lightSlot = (owner: LightParent) => [...owner.light.slots.peek()].find(([key]) => key.startsWith('lanternlight:'))?.[1];
+const lightAt = (owner: LightParent) => lightSlot(owner)?.peek();
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe('lantern light lifecycle', () => {
   it('uses source fuel-dependent lighting and clears the owner when extinguished', () => {
-    const owner = new THREE.Group();
+    const owner = createEmptyEntity('wilson').instance;
     const light = new LanternLightController(owner);
     expect(lightAt(owner)).toBeUndefined();
     light.setLit(true);
@@ -55,7 +54,7 @@ describe('lantern light lifecycle', () => {
   });
 
   it('rejects invalid fuel without losing an existing light', () => {
-    const light = new LanternLightController(new THREE.Group());
+    const light = new LanternLightController(createEmptyEntity('wilson').instance);
     light.setLit(true);
     expect(() => light.setFuelPercent(NaN)).toThrow(RangeError);
     expect(light.isLit).toBe(true);
@@ -73,7 +72,7 @@ describe('lantern fuel', () => {
     const controller = getLanternController(entity);
     const light = vi.fn();
     const owner = { PushEvent: vi.fn() };
-    const lifecycle = createLanternHandLifecycle(entity, { lightParent: new THREE.Group(), AnimState: { Show: () => light(true), Hide: () => light(false) } });
+    const lifecycle = createLanternHandLifecycle(entity, { lightParent: createEmptyEntity('wilson').instance, AnimState: { Show: () => light(true), Hide: () => light(false) } });
     try {
       expect(controller.isOn).toBe(false);
       lifecycle.onequip(owner);
@@ -119,7 +118,7 @@ describe('lantern fuel', () => {
 
   it('owns a child light independently of worn art, pockets it through inventory hooks and releases old-owner listeners', async () => {
     const inventory = createPickupInventory();
-    const player = new THREE.Group();
+    const player = createEmptyEntity('wilson').instance;
     const events = new EventEmitter<Record<string, unknown>>();
     const owner = {
       hasTag: () => true, GetPosition: () => player.position,
@@ -129,12 +128,14 @@ describe('lantern fuel', () => {
     inventory.bindActor(owner);
     const world = createPerishWorld();
     inventory.entities.bindPerishWorld(world);
-    const anim = new AnimState(() => {});
-    const show = vi.spyOn(anim, 'Show');
-    const hide = vi.spyOn(anim, 'Hide');
+    // The holder's own AnimState hides LANTERN_OVERLAY, as the player's does; the lantern's slot shows it while lit.
+    const sprite = new SpriteState({ name: 'idle' }), own = new AnimState();
+    own.Hide('LANTERN_OVERLAY');
+    sprite.setAnimState(own.json);
+    const overlay = () => declaredAnimState(sprite).IsVisible(element('lantern_overlay', 'LANTERN_OVERLAY'));
     const binding = await bindPlayerHandEquipment({
       handEquipmentExistenceState: inventory.handEquipmentExistenceState,
-      owner, lightParent: player, AnimState: anim, setHandAction() {},
+      owner, lightParent: player, sprite: { sprite, art: {} as AnimStateArt }, setHandAction() {},
       // No animation assets or player controller are needed to create the light.
     });
     try {
@@ -142,23 +143,22 @@ describe('lantern fuel', () => {
       const slot = inventorySlotAddress(0), hand = equipmentSlotAddress('hand');
       const entity = inventory.getEntity(slot)!, controller = getLanternController(entity);
       expect(inventory.transfer(slot, hand, 1)).toBe(true);
-      const node = player.getObjectByName('lanternlight')!;
+      const node = lightSlot(player)!;
       expect(node).toBeDefined();
-      expect(declaredLight(player)).toBeUndefined();
+      expect(player.light.peek()).toBeUndefined();
       expect(lightAt(player)).toMatchObject({ radius: 15, intensity: .6 });
-      expect(show).toHaveBeenLastCalledWith('LANTERN_OVERLAY');
+      expect(overlay()).toBe(true);
       // fueled:SetUpdateFn(fuelupdate): the light follows the fuel on fueled's updates.
       entity.setRemainingFuel(LANTERN_FUEL / 2 + 1 + 1 / 60);
       expect(lightAt(player)).toMatchObject({ radius: 15, intensity: .6 });
       world.advance(1);
-      expect(player.getObjectByName('lanternlight')).toBe(node);
+      expect(lightSlot(player)).toBe(node);
       expect(lightAt(player)!.radius).toBeCloseTo(12, 9);
       expect(lightAt(player)!.intensity).toBeCloseTo(.5, 9);
-      hide.mockClear();
       expect(inventory.transfer(hand, slot, 1)).toBe(true);
       expect(controller.isOn).toBe(false);
       expect(lightAt(player)).toBeUndefined();
-      expect(hide).toHaveBeenCalledWith('LANTERN_OVERLAY');
+      expect(overlay()).toBe(false);
 
       inventory.transfer(slot, hand, 1);
       const detached = inventory.Unequip('hand')!;
@@ -211,7 +211,7 @@ describe('lantern fuel', () => {
       const ground = manager.entities.get('spawn:lantern')!;
       const model = manager.reskinTargets[0].model;
       expect(getLanternController(ground).isOn).toBe(true);
-      expect(lightAt(model)).toMatchObject({ radius: 15 });
+      expect(lightAt(prefabInstance(model)!)).toMatchObject({ radius: 15 });
       // A lit ground lantern consumes on its world's game time; frames play no part.
       manager.update(1, new THREE.Quaternion());
       world.advance(120);
@@ -222,11 +222,11 @@ describe('lantern fuel', () => {
       const off = ground.components.fueled!.currentfuel;
       world.advance(60);
       await new Promise(resolve => setTimeout(resolve, 0));
-      expect(lightAt(model)).toBeUndefined();
+      expect(lightAt(prefabInstance(model)!)).toBeUndefined();
       expect(ground.components.fueled!.currentfuel).toBe(off);
       expect(getMachineActions(model).map(candidate => candidate.action.action)).toEqual(['TURNON']);
       ground.components.machine!.TurnOn();
-      expect(lightAt(model)).toMatchObject({ radius: expect.any(Number) });
+      expect(lightAt(prefabInstance(model)!)).toMatchObject({ radius: expect.any(Number) });
       expect(inventory.setRemainingFuel(inventorySlotAddress(1), 0)).toBe(true);
 
       const before = registry.exportRecords(), held = inventory.exportState();

@@ -56,8 +56,9 @@ test('right-click plays the panflute: play_flute timing and sound, one use spent
   const stateName = () => page.evaluate(() => (window as any).__prefabInstance((window as any).fluteGame.player).animationController.stategraph.stateName);
   const beefaloIds = () => page.evaluate(() => (window as any).fluteGame.scene.children
     .filter((model: any) => (window as any).__prefabInstance(model)?.prefab === 'beefalo').map((model: any) => (window as any).__prefabInstance(model)?.entityId as string));
-  const beefaloAsleep = (id: string) => page.evaluate(id => (window as any).fluteGame.scene.children
-    .find((model: any) => (window as any).__prefabInstance(model)?.entityId === id).userData.components.sleeper.IsAsleep() as boolean, id);
+  const beefaloAsleep = (id: string) => page.evaluate(id => ((window as any).__findActionEntity((window as any).fluteGame.scene.children
+    .find((model: any) => (window as any).__prefabInstance(model)?.entityId === id))?.components ?? (window as any).__prefabInstance((window as any).fluteGame.scene.children
+    .find((model: any) => (window as any).__prefabInstance(model)?.entityId === id))!.components).sleeper.IsAsleep() as boolean, id);
   const uses = () => page.evaluate(() => (window as any).fluteGame.main.inventory.exportState().slots
     .find((slot: any) => slot.item?.itemId === 'panflute')?.item.remainingUses);
 

@@ -1,3 +1,4 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -109,7 +110,7 @@ it('spawns/gives individual swords, preserves failed drops and reskin/pickup ide
     const groundRecord = manager.exportRecords().find(record => record.id === entity.id)!;
     expect(groundRecord.transform).toEqual(beforeSkin.transform);
     const model = manager.reskinTargets.find(target => target.id === entity.id)!.model;
-    expect(performPickupAction(model.userData.pickupTarget, createPickupDoer(player, inventory))).toBe(true);
+    expect(performPickupAction(findActionEntity(model)!.pickupTarget, createPickupDoer(player, inventory))).toBe(true);
     expect(inventory.getEntity(hand)).toBe(entity);
     expect(inventory.handEquipment.peek()?.skinId).toBe('nightsword_cotl');
     expect(manager.exportRecords().some(record => record.id === entity.id)).toBe(false);

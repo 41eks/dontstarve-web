@@ -1,3 +1,5 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
@@ -65,7 +67,7 @@ it('spawns moonbase through the debug command using its source art and restores 
   expect(consume).not.toHaveBeenCalled();
   const model = world.scene.children[0];
   expect(model.name).toBe('MoonBase');
-  expect(model.userData.animationController.currentAnimation).toBe('med');
+  expect(prefabInstance(model)!.sprite.currentAnimation).toBe('med');
   const mesh = model.children[0].children[0].children[0] as THREE.Mesh;
   expect(mesh.isMesh).toBe(true);
   expect(mesh.geometry.getAttribute('position').count).toBeGreaterThan(4);
@@ -94,7 +96,7 @@ it('spawns moonbase through the debug command using its source art and restores 
   const restored = await placement.spawnFromSave('moonbase', parsed.world.entities.moonbase[0]);
   expect(restored.position.toArray()).toEqual(model.position.toArray());
   expect(lookupPrefabInstance(restored)?.entityId).toBe(record.id);
-  expect(restored.userData.animationController.currentAnimation).toBe('hit_med');
+  expect(prefabInstance(restored)!.sprite.currentAnimation).toBe('hit_med');
   expect(placement.exportRecords()[1]).toEqual({ prefabId, record });
   placement.dispose();
 });
@@ -116,13 +118,13 @@ it('repairs with one moonrock and preserves a skinned, partly used staff through
   const staff = new ItemEntity({ entityId: 'test_moonbase_staff', itemId: 'yellowstaff', count: 1,
     skinId: 'starstaff_crystal', remainingUses: 7 });
   const rock = new ItemEntity({ itemId: 'moonrocknugget', count: 2 }); configureMoonrockNugget(rock);
-  const { trader, workable } = model.userData.components;
-  const override = vi.spyOn(model.userData.animationController, 'overrideSymbol');
+  const { trader, workable } = (findActionEntity(model)?.components ?? prefabInstance(model)!.components);
+  const override = vi.spyOn(prefabInstance(model)!.sprite, 'overrideSymbol');
   try {
     expect(workable.GetWorkAction()).toBeUndefined();
     expect(trader.AcceptGift(staff, () => true)).toBe(false);
-    const repairable = model.userData.components.repairable;
-    expect(model.userData.actionEntity.hasTag('workrepairable')).toBe(true);
+    const repairable = (findActionEntity(model)?.components ?? prefabInstance(model)!.components).repairable;
+    expect(findActionEntity(model).hasTag('workrepairable')).toBe(true);
     expect(repairable.Repair(staff, () => true)).toBe(false);
     const consume = vi.fn(() => { rock.components.stackable.count--; return true; });
     expect(repairable.Repair(rock, consume)).toBe(true);
@@ -130,8 +132,8 @@ it('repairs with one moonrock and preserves a skinned, partly used staff through
     expect(rock.components.stackable.count).toBe(1);
     expect(workable.workleft.peek()).toBe(6);
     expect(getMoonbaseState(model).phase.peek()).toBe('full');
-    expect(model.userData.components.repairable).toBeUndefined();
-    expect(model.userData.animationController.currentAnimation).toBe('fix_full');
+    expect((findActionEntity(model)?.components ?? prefabInstance(model)!.components).repairable).toBeUndefined();
+    expect(prefabInstance(model)!.sprite.currentAnimation).toBe('fix_full');
     expect(play).toHaveBeenLastCalledWith('dontstarve/common/together/moonbase/repair', model.position);
     expect(repairable.Repair(rock, consume)).toBe(false);
     expect(consume).toHaveBeenCalledOnce();
@@ -146,7 +148,7 @@ it('repairs with one moonrock and preserves a skinned, partly used staff through
     expect(override).toHaveBeenLastCalledWith('swap_staffs', expect.anything());
     expect(art.symbolHash).toBe(smallHash('yellowstaff'));
     expect(findImage(art.build, art.symbolHash, 0)).toBeDefined();
-    expect(model.userData.components.pickable.productEntity).toBe(staff);
+    expect((findActionEntity(model)?.components ?? prefabInstance(model)!.components).pickable.productEntity).toBe(staff);
     expect(trader.isEnabled).toBe(false);
     expect(trader.AcceptGift(staff, take)).toBe(false);
     expect(play).toHaveBeenLastCalledWith('dontstarve/common/together/moonbase/moonstaff_place', model.position);
@@ -159,10 +161,10 @@ it('repairs with one moonrock and preserves a skinned, partly used staff through
     save.players.local.inventory.bufferedBuilds = [];
     const parsed = deserializeSave(JSON.stringify(save), SAVE_CATALOG);
     const restored = await placement.spawnFromSave('moonbase', parsed.world.entities.moonbase[0]);
-    expect(restored.userData.components.repairable).toBeUndefined();
+    expect((findActionEntity(restored)?.components ?? prefabInstance(restored)!.components).repairable).toBeUndefined();
     const held = getMoonbaseState(restored).staff.peek()!;
     expect(held.snapshot()).toEqual(staff.snapshot());
-    const pickable = restored.userData.components.pickable;
+    const pickable = (findActionEntity(restored)?.components ?? prefabInstance(restored)!.components).pickable;
     expect(pickable.pick({ giveItem: () => true, giveEntity: () => false })).toBe(false);
     expect(getMoonbaseState(restored).staff.peek()).toBe(held);
     const giveEntity = vi.fn(() => true);
@@ -170,7 +172,7 @@ it('repairs with one moonrock and preserves a skinned, partly used staff through
     expect(giveEntity).toHaveBeenCalledWith(held, restored.position);
     expect(getMoonbaseState(restored).staff.peek()).toBeUndefined();
     expect(held.snapshot()).toEqual(staff.snapshot());
-    expect(restored.userData.components.trader.isEnabled).toBe(true);
+    expect((findActionEntity(restored)?.components ?? prefabInstance(restored)!.components).trader.isEnabled).toBe(true);
     expect(placement.exportRecords()[1].record.components.moonbase).toBeUndefined();
     held.destroy();
   } finally { placement.dispose(); rock.destroy(); }
@@ -181,10 +183,10 @@ it('charges through three source stages, restores the remaining timers and morph
   const { moon, getWatchWorldContent } = moonWorld(scheduler, false);
   const { placement, model } = await createMoonbase({ getWatchWorldContent, scheduler });
   const rock = new ItemEntity({ itemId: 'moonrocknugget', count: 1 }); configureMoonrockNugget(rock);
-  model.userData.components.repairable.Repair(rock, () => true);
+  (findActionEntity(model)?.components ?? prefabInstance(model)!.components).repairable.Repair(rock, () => true);
   scheduler.advance(0);
   const original = new ItemEntity({ entityId: 'charging_staff', itemId: 'yellowstaff', count: 1, skinId: 'starstaff_crystal', remainingUses: 7 });
-  model.userData.components.trader.AcceptGift(original, () => true);
+  (findActionEntity(model)?.components ?? prefabInstance(model)!.components).trader.AcceptGift(original, () => true);
   const state = getMoonbaseState(model), changed = vi.fn();
   const stop = state.timers.mooncharge.subscribe(changed);
   moon.set({ phase: 'full', waxing: true });
@@ -197,7 +199,7 @@ it('charges through three source stages, restores the remaining timers and morph
   expect(state.timers.mooncharge.peek()).toBe(deadline); expect(changed).toHaveBeenCalledTimes(1);
   scheduler.advanceTo(start + 18.7);
   expect(state.charge.peek()).toBe('charging_2');
-  expect(model.userData.actionEntity.hasTag('intense')).toBe(true);
+  expect(findActionEntity(model).hasTag('intense')).toBe(true);
   expect(getPickActions(model).find(action => action.model === model)?.available).toBe(false);
   const [{ record }] = placement.exportRecords();
   expect(record.components.moonbase?.timer?.timers.mooncharge.timeleft).toBeCloseTo(MOONBASE_CHARGE_DURATION - 18.7);
@@ -216,7 +218,7 @@ it('charges through three source stages, restores the remaining timers and morph
   try {
     restoredScheduler.advance(0);
     expect(next.charge.peek()).toBe('charging_2');
-    expect(restored.model.userData.actionEntity.hasTag('intense')).toBe(true);
+    expect(findActionEntity(restored.model).hasTag('intense')).toBe(true);
     expect(next.staff.peek()?.snapshot()).toEqual(record.components.moonbase?.staff);
     expect(restored.placement.renderEntities.filter(entry => lookupPrefabInstance(entry.object)?.prefab?.startsWith('positron')).map(entry => 'sortLayer' in entry ? entry.sortLayer : undefined).sort()).toEqual([0, 2, 3]);
     restoredScheduler.advance(18.7);
@@ -227,11 +229,11 @@ it('charges through three source stages, restores the remaining timers and morph
     expect(opal.snapshot()).toMatchObject({ itemId: 'opalstaff', skinId: 'moonstaff_crystal', remainingUses: 50, count: 1 });
     expect(opal.id).not.toBe(original.id);
     expect(next.timers.mooncharge.peek().status).toBe('expired');
-    expect(restored.model.userData.actionEntity.hasTag('intense')).toBe(false);
+    expect(findActionEntity(restored.model).hasTag('intense')).toBe(false);
     expect(getPickActions(restored.model).find(action => action.model === restored.model)?.available).toBe(true);
     expect(restored.placement.renderEntities.some(entry => entry.object.name === 'staffcoldlightfx')).toBe(true);
     const giveEntity = vi.fn(() => true);
-    expect(restored.model.userData.components.pickable.pick({ giveItem: vi.fn(), giveEntity })).toBe(true);
+    expect((findActionEntity(restored.model)?.components ?? prefabInstance(restored.model)!.components).pickable.pick({ giveItem: vi.fn(), giveEntity })).toBe(true);
     expect(giveEntity).toHaveBeenCalledWith(opal, restored.model.position);
     expect(restored.placement.renderEntities.some(entry => entry.object.name === 'staffcoldlightfx')).toBe(false);
     opal.destroy();
@@ -243,10 +245,10 @@ it('cancels charge on early retrieval or moonset, then starts fresh and releases
   const { cycle, getWatchWorldContent } = moonWorld(scheduler, true);
   const { placement, model } = await createMoonbase({ getWatchWorldContent, scheduler });
   const rock = new ItemEntity({ itemId: 'moonrocknugget', count: 1 }); configureMoonrockNugget(rock);
-  model.userData.components.repairable.Repair(rock, () => true);
+  (findActionEntity(model)?.components ?? prefabInstance(model)!.components).repairable.Repair(rock, () => true);
   scheduler.advance(0);
   const staff = new ItemEntity({ itemId: 'yellowstaff', count: 1 });
-  const { trader, pickable } = model.userData.components;
+  const { trader, pickable } = (findActionEntity(model)?.components ?? prefabInstance(model)!.components);
   const state = getMoonbaseState(model);
   trader.AcceptGift(staff, () => true);
   scheduler.advance(1); expect(state.charge.peek()).toBe('charging_1');
@@ -255,12 +257,12 @@ it('cancels charge on early retrieval or moonset, then starts fresh and releases
   expect(state.timers.mooncharge.peek().status).toBe('stopped');
   expect(state.charge.peek()).toBe('idle');
   trader.AcceptGift(staff, () => true); scheduler.advance(1);
-  expect(model.userData.components.timer.GetTimeLeft('mooncharge')).toBeCloseTo(MOONBASE_CHARGE_DURATION);
+  expect((findActionEntity(model)?.components ?? prefabInstance(model)!.components).timer.GetTimeLeft('mooncharge')).toBeCloseTo(MOONBASE_CHARGE_DURATION);
   scheduler.advance(19); expect(state.charge.peek()).toBe('charging_2');
   cycle.set('day');
   await new Promise(resolve => setTimeout(resolve, 0));
   expect(state.charge.peek()).toBe('idle');
-  expect(model.userData.actionEntity.hasTag('intense')).toBe(false);
+  expect(findActionEntity(model).hasTag('intense')).toBe(false);
   expect(state.staff.peek()).toBe(staff);
   cycle.set('night');
   await new Promise(resolve => setTimeout(resolve, 0)); scheduler.advance(10);
@@ -302,7 +304,7 @@ it('walks to repair range, cancels before consumption, and commits REPAIR and GI
   const source = () => { const entity = current; return { entity, isValid: () => current === entity, take }; };
   let manual = false;
   const controller = new ItemUseActionController(world, animation, locomotor, source, () => manual);
-  const target = model.userData.actionEntity as ItemUseTarget;
+  const target = findActionEntity(model) as ItemUseTarget;
   try {
     expect(getItemUseActions(model, source()).find(action => action.available)?.action.action).toBe('REPAIR');
     expect(controller.request('REPAIR', target)).toBe(true);
@@ -311,7 +313,7 @@ it('walks to repair range, cancels before consumption, and commits REPAIR and GI
     world.player.position.copy(model.position);
     controller.update(); expect(graph.stateName).toBe('dolongaction');
     graph.update(.5); manual = true; controller.update(); graph.update(1);
-    expect(take).not.toHaveBeenCalled(); expect(model.userData.components.workable.GetWorkLeft()).toBe(4);
+    expect(take).not.toHaveBeenCalled(); expect((findActionEntity(model)?.components ?? prefabInstance(model)!.components).workable.GetWorkLeft()).toBe(4);
     manual = false; expect(controller.request('REPAIR', target)).toBe(true); controller.update();
     graph.update(.99); expect(take).not.toHaveBeenCalled();
     graph.update(.01); expect(take).toHaveBeenCalledWith(true);

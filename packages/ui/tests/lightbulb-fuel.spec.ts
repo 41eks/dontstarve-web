@@ -55,11 +55,11 @@ test('eats lightbulbs and refuels inventory, equipped and ground lanterns, then 
   // Refilled empty ground lanterns remain switched off, matching ontakefuel's equipped-only branch.
   const groundId = await page.evaluate(() => {
     const { scene, camera, renderer, player, playerBody } = (window as any).bulbGame;
-    const model = scene.children.find((model: any) => model.userData.itemId === 'lantern');
-    const entity = model.userData.pickupTarget.entity;
+    const model = scene.children.find((model: any) => ((window as any).__findActionEntity(model)?.prefab ?? (window as any).__prefabInstance(model)?.prefab) === 'lantern');
+    const entity = (window as any).__findActionEntity(model)?.pickupTarget.entity;
     entity.setRemainingFuel(0); entity.getComponent('lantern').TurnOff();
-    for (const other of scene.children) if (other.userData.itemId === 'lightbulb') {
-      other.userData.pickupTarget.entity.transform.position.x += 30;
+    for (const other of scene.children) if (((window as any).__findActionEntity(other)?.prefab ?? (window as any).__prefabInstance(other)?.prefab) === 'lightbulb') {
+      (window as any).__findActionEntity(other)?.pickupTarget.entity.transform.position.x += 30;
       other.position.x += 30;
     }
     playerBody.position.set(model.position.x + 3, playerBody.shapes[0].radius, model.position.z + 3);

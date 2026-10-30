@@ -14,16 +14,13 @@ function setPlacerLightOverride(preview: THREE.Object3D, value: number | null): 
 }
 
 export class BuildCursor {
-    private readonly camera: THREE.Camera;
     private readonly pointer: PointerRaycaster;
     private readonly label: CursorLabel;
-    private readonly cameraWorldQuaternion = new THREE.Quaternion();
     private preview?: THREE.Object3D;
     private previewGroundOffset = 0;
     private snap?: BuildCursorSnap;
 
-    constructor(world: Pick<WorldContext, 'camera' | 'createCursorLabel'>, pointer: PointerRaycaster) {
-        this.camera = world.camera;
+    constructor(world: Pick<WorldContext, 'createCursorLabel'>, pointer: PointerRaycaster) {
         this.pointer = pointer;
         this.label = world.createCursorLabel?.(pointer) ?? { show() {}, hide() {}, update() {} };
     }
@@ -53,7 +50,5 @@ export class BuildCursor {
         if (!point) return;
         const target = this.snap ? this.snap(point) : point;
         this.preview.position.set(target.x, target.y + this.previewGroundOffset, target.z);
-        this.camera.getWorldQuaternion(this.cameraWorldQuaternion);
-        this.preview.quaternion.copy(this.cameraWorldQuaternion);
     }
 }

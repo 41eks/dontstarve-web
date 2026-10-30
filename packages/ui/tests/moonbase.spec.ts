@@ -44,8 +44,8 @@ test('repairs moonbase with a cursor moonrock, inserts and retrieves a skinned s
   const state = () => page.evaluate(() => {
     const model = (window as any).moonbaseGame.scene.children.find((model: any) => model.name === 'MoonBase');
     if (!model) return null;
-    return { workleft: model.userData.components.workable.GetWorkLeft(),
-      held: model.userData.moonbase.staff.peek()?.snapshot(), animation: model.userData.animationController.currentAnimation };
+    return { workleft: ((window as any).__findActionEntity(model)?.components ?? (window as any).__prefabInstance(model)!.components).workable.GetWorkLeft(),
+      held: model.userData.moonbase.staff.peek()?.snapshot(), animation: (window as any).__prefabInstance(model)?.sprite.currentAnimation };
   });
   const saveGame = async () => {
     const download = page.waitForEvent('download'); await submit('c_save()');
@@ -99,7 +99,7 @@ test('repairs moonbase with a cursor moonrock, inserts and retrieves a skinned s
   await expect(bar.locator('[data-item-id="yellowstaff"]')).toHaveAttribute('data-skin-id', 'starstaff_crystal');
   await submit('c_spawn("moonrocknugget")');
   await expect.poll(() => page.evaluate(() => (window as any).moonbaseGame.scene.children
-    .some((model: any) => model.userData.itemId === 'moonrocknugget'))).toBe(true);
+    .some((model: any) => ((window as any).__findActionEntity(model)?.prefab ?? (window as any).__prefabInstance(model)?.prefab) === 'moonrocknugget'))).toBe(true);
   const taken = await saveGame();
   expect(taken.world.entities.moonbase[0].components.moonbase).toBeUndefined();
   const slots = Object.values(taken.players.local.inventory.containers).flatMap((container: any) => container.slots) as any[];
@@ -164,7 +164,7 @@ test('shows native charge layers, resumes after a downloaded save, and returns t
     return { phase: state.charge.peek(), staff: state.staff.peek()?.snapshot(),
       orders: [order('positronbeam_back'), model.children[0].renderOrder, order('positronbeam_front'), order('positronpulse')],
       cold: scene.children.some((model: any) => model.name === 'staffcoldlightfx'),
-      intense: model.userData.actionEntity.hasTag('intense') };
+      intense: (window as any).__findActionEntity(model).hasTag('intense') };
   });
   const audio = () => page.evaluate(() => (window as any).chargeAudio as {
     duration: number; channels: number; loop: boolean; stopped: boolean;

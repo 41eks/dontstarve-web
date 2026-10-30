@@ -3,12 +3,14 @@ import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { createMemo, createSignal } from '../../signals/src';
-import { bindTestWorld } from './worldContentFixture';
+import { bindTestWorld, drawn } from './worldContentFixture';
 import { MushtreeManager, type MushtreeWorld } from '../../prefab/src/mushtree';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { createInventoryStore } from '../../../src/inventory';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
+
+
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -17,19 +19,21 @@ it('loads a burnt tree as ash and releases its independent burnt FX on game time
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   vi.stubGlobal('window', new EventTarget());
   vi.spyOn(Math, 'random').mockReturnValue(.5);
-  const { mushWorld, scheduler, ash } = world(), scene = new THREE.Scene(), awake = createSignal(false);
+  const { mushWorld, scheduler, ash } = world(), scene = new THREE.Scene(), awake = createSignal(true);
   const trees = new MushtreeManager(scene, { ...mushWorld, tickingarea: () => createMemo(() => awake.get()) });
   try {
-    const model = await trees.spawn('mushtree_moon', new THREE.Vector3(5, 0, 7), {
+    const model = trees.spawn('mushtree_moon', new THREE.Vector3(5, 0, 7), {
       id: 'burnt-mushroom', transform: { position: [5, 0, 7], rotationY: 0 }, components: { mushtree: { burnt: true } },
     });
     expect(lookupPrefabInstance(model)!.status.peek()).toBe('removed');
     expect(trees.exportRecords()).toEqual([]);
     expect(ash).toEqual([new THREE.Vector3(5, 0, 7)]);
-    await vi.waitFor(() => expect(scene.children.some(child => lookupPrefabInstance(child)?.prefab === 'mushtree_moon_burntfx')).toBe(true));
     const fx = scene.children.find(child => lookupPrefabInstance(child)?.prefab === 'mushtree_moon_burntfx')!;
     expect(prefabInstance(fx)!.listTags()).toEqual(['FX']);
     expect(lookupPrefabInstance(fx)!.persists).toBe(false);
+    awake.set(false); await new Promise(resolve => setTimeout(resolve, 0));
+    expect(lookupPrefabInstance(fx)!.status.peek()).toBe('asleep');
+    expect(fx.parent).toBeNull();
     scheduler.advance(10);
     expect(lookupPrefabInstance(fx)!.status.peek()).toBe('removed');
     awake.set(true); await new Promise(resolve => setTimeout(resolve, 0));
@@ -39,7 +43,7 @@ it('loads a burnt tree as ash and releases its independent burnt FX on game time
 
 function world(season: 'summer' | 'autumn' | 'winter' = 'autumn') {
   const scheduler = new GameTimeScheduler(), bound = bindTestWorld(scheduler), seasonSignal = bound.season;
-  seasonSignal.set({ season, temperature: 20 });
+  seasonSignal.set({ season, progress: 0 });
   const ash: THREE.Vector3[] = [], drops: { itemId: string; count: number }[] = [];
   const mushWorld = { scheduler, scene: new THREE.Scene(), getWatchWorldContent: bound.getWatchWorldContent, worldEvents: { emit: (_name: string, position: THREE.Vector3) => ash.push(position) },
     dropLoot: (items: { itemId: string; count: number }[]) => drops.push(...items) } as unknown as MushtreeWorld;
@@ -52,7 +56,7 @@ it('chops a moon mushtree into a diggable stump, drops catalogued loot, and keep
   const { mushWorld, drops, scheduler } = world(), scene = new THREE.Scene(), inventory = createInventoryStore([]);
   const trees = new MushtreeManager(scene, mushWorld);
   try {
-    const model = await trees.spawn('mushtree_moon', new THREE.Vector3(5, 0, 7));
+    const model = await drawn(trees.spawn('mushtree_moon', new THREE.Vector3(5, 0, 7)));
     const mesh = model.children[0].children[0].children[0] as THREE.Mesh;
     expect(mesh.visible).toBe(false); // Idle is drawn by the shared instance batch.
     expect(prefabInstance(model)!.minimap.icon).toBe('mushtree_moon.png');
@@ -98,7 +102,7 @@ it('blooms a medium mushtree in summer, grows by stage and restores the saved bu
     await trees.spawn('mushtree_medium', new THREE.Vector3(1, 0, 2));
     expect(trees.exportRecords()[0].record.components.mushtree?.treestate).toBe('bloom');
     // Leaving summer: the tree returns to normal after a random delay of up to three segments plus the change animation.
-    seasonSignal.set({ season: 'autumn', temperature: 20 });
+    seasonSignal.set({ season: 'autumn', progress: 0 });
     await new Promise(resolve => setTimeout(resolve, 0));
     scheduler.advance(95);
     expect(trees.exportRecords()[0].record.components.mushtree?.treestate).toBe('normal');
@@ -123,7 +127,7 @@ it('blooms a tall mushtree in winter only and carries webbable', async () => {
     const model = await trees.spawn('mushtree_tall', new THREE.Vector3(1, 0, 2));
     expect(trees.exportRecords()[0].record.components.mushtree?.treestate).toBe('bloom');
     expect(prefabInstance(model)!.minimap.icon).toBe('mushroom_tree.png');
-    expect(model.userData.actionEntity.hasTag('webbable')).toBe(true);
+    expect(prefabInstance(model)!.hasTag('webbable')).toBe(true);
   } finally { trees.dispose(); }
 }, 20000);
 
@@ -133,7 +137,7 @@ it('releases the mushtree sprite outside the tickingarea and settles a transitio
   const { mushWorld } = world(), awake = createSignal(true);
   const trees = new MushtreeManager(new THREE.Scene(), { ...mushWorld, tickingarea: () => createMemo(() => awake.get()) });
   try {
-    const model = await trees.spawn('mushtree_moon', new THREE.Vector3(5, 0, 7));
+    const model = await drawn(trees.spawn('mushtree_moon', new THREE.Vector3(5, 0, 7)));
     const meshes = () => { let count = 0; model.traverse(object => { if ((object as THREE.Mesh).isMesh) count++; }); return count; };
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(meshes()).toBeGreaterThan(0);

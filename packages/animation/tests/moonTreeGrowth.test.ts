@@ -1,3 +1,4 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { EventEmitter } from '@dontstarve-web/signals';
 import type { WorldEvents } from '../../prefab/src/worldContext';
@@ -98,7 +99,7 @@ it('plants one moonbutterfly with original baby-tree art and cycles short/normal
     expect(planting.canDeploy(point.clone().add(new THREE.Vector3(9.5, 0, 0)), source()!.entity)).toBe(false);
     expect(planting.canDeploy(point.clone().add(new THREE.Vector3(9.7, 0, 0)), source()!.entity)).toBe(true);
     const unloaded = s.forest.spawn('moon_tree_normal', new THREE.Vector3(300, 0, 0));
-    expect(unloaded.model.userData.animationController.loaded).toBe(false);
+    expect(prefabInstance(unloaded.model)!.sprite.loaded).toBe(false);
     expect(planting.canDeploy(new THREE.Vector3(309.5, 0, 0), source()!.entity)).toBe(false);
     expect(planting.canDeploy(new THREE.Vector3(309.7, 0, 0), source()!.entity)).toBe(true);
     let json = '';
@@ -146,7 +147,7 @@ it('keeps logical growth while unloaded and stops growth when chopping or diggin
     expect(s.forest.exportState(tree).growable).toEqual({ stage: 2, time: 0, sleeptime: 1600 });
     await area.visit(new THREE.Vector3());
     expect(s.forest.exportState(tree)).toEqual({ moonTree: { size: 'short' }, growable: { stage: 1, time: 250 } });
-    expect(tree.model!.userData.animationController.currentAnimation).not.toMatch(/^grow_/);
+    expect(prefabInstance(tree.model!)!.sprite.currentAnimation).not.toMatch(/^grow_/);
     const target = s.forest.chopTargets[0];
     expect(target.entity.components.workable!.WorkedBy({}, 8)).toBe(true);
     expect(s.forest.exportState(tree)).toEqual({ moonTree: { size: 'short', stump: true }, growable: { stage: 1 },
@@ -183,7 +184,7 @@ it('shows source snow art at the cover threshold, restores it on reload and rele
     expect(drawnIndices(model)).toBe(bareIndices);
     s.snowLevel.set(.015); await settle();
     expect(drawnIndices(model)).toBeGreaterThan(bareIndices);
-    const oldAnimation = model.userData.animationController;
+    const oldAnimation = prefabInstance(model)!.sprite;
     const hide = vi.spyOn(oldAnimation, 'setSymbolHidden');
     await area.visit(new THREE.Vector3(500, 0, 0));
     s.snowLevel.set(0);
@@ -192,7 +193,7 @@ it('shows source snow art at the cover threshold, restores it on reload and rele
     s.snowLevel.set(.5);
     await area.visit(new THREE.Vector3());
     expect(tree.model).toBe(model);
-    expect(tree.model.userData.animationController).toBe(oldAnimation);
+    expect(prefabInstance(tree.model)!.sprite).toBe(oldAnimation);
     expect(drawnIndices(tree.model!)).toBeGreaterThan(bareIndices);
     s.snowLevel.set(0); await settle();
     expect(drawnIndices(tree.model!)).toBe(bareIndices);
@@ -207,7 +208,7 @@ it('restores a paused moon-tree decay timer while unloaded, then removes its log
     const tree = s.forest.spawn('moon_tree_short', new THREE.Vector3(300, 0, 0), { id: 'moon-stump',
       transform: { position: [300, 0, 0], rotationY: 0 }, components: { moonTree: { size: 'short', stump: true }, growable: { stage: 1 }, moonTreeTimer: timer } });
     const icon = prefabInstance(tree.model!)!.minimap;
-    expect(tree.model.userData.animationController.loaded).toBe(false);
+    expect(prefabInstance(tree.model)!.sprite.loaded).toBe(false);
     expect(icon).toMatchObject({ icon: 'moon_tree_stump.png', priority: -1 });
     s.scheduler.advance(20);
     const state = s.forest.exportState(tree);
@@ -218,7 +219,7 @@ it('restores a paused moon-tree decay timer while unloaded, then removes its log
       elapsedSeconds: s.scheduler.now, playerTransform: { position: [0, 0, 0], rotationY: 0 },
     }, SAVE_CATALOG), SAVE_CATALOG);
     expect(save.world.entities.moon_tree[0].components).toEqual(state);
-    tree.model.userData.components.timer.ResumeTimer('decay');
+    (findActionEntity(tree.model)?.components ?? prefabInstance(tree.model)!.components).timer.ResumeTimer('decay');
     s.scheduler.advance(10);
     expect(s.forest.entities).toEqual([]);
     expect(prefabInstance(tree.model!)!.isRemoved).toBe(true);

@@ -1,3 +1,4 @@
+import { prefabDisplay } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
@@ -96,7 +97,7 @@ it('plants a marblebean, digs it back up, and grows it into a mineable shrub tha
     expect([minimap.icon, minimap.priority, model.position.x]).toEqual(['marbleshrub2.png', -1, 12]);
     const sprite = prefabInstance(model)!.sprite;
     // growfromseed spawns the shrub at once; its display draws it once the art has loaded.
-    await model.userData.display.artLoaded();
+    await prefabDisplay(model).artLoaded();
     const vertices = () => { let count = 0; model.traverse(o => { if (o instanceof THREE.Mesh) count += o.geometry.drawRange.count === Infinity ? o.geometry.index?.count ?? 0 : o.geometry.drawRange.count; }); return count; };
     const bare = vertices();
     s.snowLevel.set(.02);

@@ -1,3 +1,4 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
@@ -55,9 +56,9 @@ it('preserves a natural rose, shares its art after wake and burns while dormant'
   try {
     const model = await drawn(flowers.spawnFromSave('rose', 'rose', new THREE.Vector3(12, 0, 24), false));
     await settle();
-    const sprite = model.userData.animationController as SpriteState;
+    const sprite = prefabInstance(model)!.sprite as SpriteState;
     expect(sprite).toBeInstanceOf(SpriteState);
-    const pickable = model.userData.components.pickable;
+    const pickable = (findActionEntity(model)?.components ?? prefabInstance(model)!.components).pickable;
     const before = flowers.exportRecords();
     const geometry = meshes(model)[0].geometry;
     env.awake.set(false); await settle();
@@ -69,10 +70,10 @@ it('preserves a natural rose, shares its art after wake and burns while dormant'
     expect(model.parent).toBe(env.scene);
     expect(meshes(model)[0].geometry).toBe(geometry);
     expect(model.children[0].quaternion.equals(env.rotation)).toBe(true);
-    expect(model.userData.components.pickable).toBe(pickable);
+    expect((findActionEntity(model)?.components ?? prefabInstance(model)!.components).pickable).toBe(pickable);
     expect(prefabInstance(model)!.listTags()).toContain('thorny');
     expect(model.userData.planted).toBe(false);
-    model.userData.components.burnable.Ignite(); await settle();
+    (findActionEntity(model)?.components ?? prefabInstance(model)!.components).burnable.Ignite(); await settle();
     expect(flowers.renderEntities.some(({ object }) => object.name === 'fire')).toBe(true);
     env.awake.set(false); await settle();
     expect(flowers.renderEntities).toEqual([]);
@@ -93,7 +94,7 @@ it('grows a dormant marblebean, restores shrub shape/tint/snow and preserves the
     getWatchWorldContent: env.sources.getWatchWorldContent, spawnGroundItem: env.spawnGroundItem });
   try {
     const bean = await drawn(saplings.spawn(new THREE.Vector3(12, 0, 24)));
-    const beanSprite = bean.userData.animationController as SpriteState;
+    const beanSprite = prefabInstance(bean)!.sprite as SpriteState;
     env.awake.set(false); await settle();
     expect(beanSprite.loaded).toBe(false);
     const savedBean = saplings.exportRecords()[0];
@@ -101,7 +102,7 @@ it('grows a dormant marblebean, restores shrub shape/tint/snow and preserves the
     env.scheduler.advance(225); await settle();
     expect(saplings.exportRecords()).toEqual([]); expect(bean.userData.removed).toBe(true);
     const shrub = shrubs.mineTargets[0].model;
-    const sprite = shrub.userData.animationController as SpriteState;
+    const sprite = prefabInstance(shrub)!.sprite as SpriteState;
     expect(sprite.loaded).toBe(false);
     expect(shrubs.exportRecords()[0].components.marbleShrub).toEqual({ shapenumber: 2, color: .75 });
     expect(env.physics.bodies).toHaveLength(1);
@@ -125,12 +126,12 @@ it('grows a dormant marblebean, restores shrub shape/tint/snow and preserves the
     for (let i = 0; i < 8 && !modelHasTag(shrub, 'NOCLICK'); i++) performToolWork('MINE', target.entity, {});
     expect(prefabInstance(shrub)!.listTags()).toContain('NOCLICK');
     env.awake.set(false); await settle();
-    expect(shrub.userData.removed).toBe(false);
+    expect(prefabInstance(shrub)!.isRemoved).toBe(false);
     const bank = await loadAnim('marbleshrub.zip', '/dst/data/anim');
     const clip = bank.animations.find(clip => clip.name === 'mined_normal')!;
     const seconds = clip.frames.length / clip.frameRate;
-    env.scheduler.advance(seconds - .001); expect(shrub.userData.removed).toBe(false);
-    env.scheduler.advance(.001); expect(shrub.userData.removed).toBe(true);
+    env.scheduler.advance(seconds - .001); expect(prefabInstance(shrub)!.isRemoved).toBe(false);
+    env.scheduler.advance(.001); expect(prefabInstance(shrub)!.isRemoved).toBe(true);
     expect(shrubs.exportRecords()).toEqual([]);
     expect(env.physics.bodies).toHaveLength(0);
   } finally { saplings.dispose(); shrubs.dispose(); restored.dispose(); env.dispose(); }
@@ -143,8 +144,8 @@ it('keeps a sprout completion task alive without visual reload and cancels a sec
   const sprouts = new RockAvocadoSaplingManager(env.scene, { scheduler: env.scheduler, tickingarea: env.tickingarea, bushes, spawnGroundItem: env.spawnGroundItem });
   try {
     const model = await drawn(sprouts.spawn(new THREE.Vector3(12, 0, 24)));
-    const sprite = model.userData.animationController as SpriteState;
-    const timer = model.userData.components.timer;
+    const sprite = prefabInstance(model)!.sprite as SpriteState;
+    const timer = (findActionEntity(model)?.components ?? prefabInstance(model)!.components).timer;
     env.awake.set(false); await settle();
     expect(sprite.loaded).toBe(false);
     env.scheduler.advance(400);
@@ -158,7 +159,7 @@ it('keeps a sprout completion task alive without visual reload and cancels a sec
     expect(sprouts.exportRecords()).toEqual([]); expect(completion.peek().status).toBe('stopped');
     expect(timer.snapshot('grow').peek().status).toBe('expired');
     const second = await drawn(sprouts.spawn(new THREE.Vector3(24, 0, 24))); await settle();
-    expect((second.userData.animationController as SpriteState).loaded).toBe(false);
+    expect((prefabInstance(second)!.sprite as SpriteState).loaded).toBe(false);
     expect(sprouts.digTargets[0].dig()).toBe(true);
     env.awake.set(true); env.scheduler.advance(2000); await settle();
     expect(spawnBush).toHaveBeenCalledOnce(); expect(meshes(second)).toEqual([]);

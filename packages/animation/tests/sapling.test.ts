@@ -1,3 +1,4 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
@@ -64,7 +65,7 @@ it('picks twigs, regrows after four days through grow → sway, and saves/restor
     const animation = plantInstance(model).sprite;
     expect(animation.currentAnimation).toBe('sway');
     expect(prefabInstance(model)!.listTags()).toEqual(['plant', 'renewable', 'silviculture', 'lunarplant_target', 'pickable', 'tickingarea', 'canlight', 'witherable']);
-    expect(model.userData.actionEntity.hasTag('DIG_workable')).toBe(true);
+    expect(findActionEntity(model).hasTag('DIG_workable')).toBe(true);
     expect(getPickActions(model).find(action => action.model === model)?.available).toBe(true);
 
     expect(plantInstance(model).components.pickable.pick({ giveItem: (item: string, count: number) => s.inventory.add(item, count) })).toBe(true);
@@ -109,7 +110,7 @@ it('digs sapling_moon into dug_sapling_moon plus ready twigs, and burns a picked
     plantInstance(model).components.pickable.pick({ giveItem: () => true });
     const torch = s.inventory.entities.create({ itemId: 'torch', count: 1 });
     s.inventory.configureItem(torch);
-    expect(collectEquippedActions(torch, model.userData.actionEntity, true)).toContain('LIGHT');
+    expect(collectEquippedActions(torch, findActionEntity(model), true)).toContain('LIGHT');
     plantInstance(model).components.burnable.Ignite();
     expect(s.saplings.exportRecords()).toEqual([]);
     tickWorld(s.scheduler, s.saplings, 20, new THREE.Quaternion());

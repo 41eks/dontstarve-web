@@ -1,3 +1,5 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -31,7 +33,7 @@ async function setup(id: typeof HEADS[number]['id'] = PIG_HEAD_ID, tickingarea?:
     getWatchWorldContent: content.getWatchWorldContent, tickingarea, dropLoot: (items: { itemId: string; count: number }[]) => loot.push(items) } as unknown as WorldContext;
   const placement = new AnimatedBuildingPlacement(world, { [id]: HEADS.find(head => head.id === id)!.definition }, () => false);
   await placement.spawn(id);
-  const model = placement.hammerTargets[0].display.model, sprite = model.userData.animationController as SpriteController;
+  const model = placement.hammerTargets[0].display.model, sprite = prefabInstance(model)!.sprite as SpriteController;
   const settle = () => new Promise(resolve => setTimeout(resolve, 0));
   const finish = () => { for (let i = 0; i < 90; i++) sprite.update(1 / 30); };
   return { placement, scheduler, content, loot, model, sprite, settle, finish };
@@ -64,7 +66,7 @@ it.each(HEADS)('$id burns to a burnt head that keeps sleeping, saves only the bu
   const s = await setup(id);
   try {
     const entity = s.placement.hammerTargets[0].entity;
-    (s.model.userData.components.burnable as Burnable).Ignite(); s.placement.update(11);
+    ((findActionEntity(s.model)?.components ?? prefabInstance(s.model)!.components).burnable as Burnable).Ignite(); s.placement.update(11);
     expect(entity.hasTag('burnt')).toBe(true); expect(s.sprite.currentAnimation).toBe('burnt');
     s.content.moon.set({ phase: 'full', waxing: false }); s.content.cycle.set('night'); await s.settle();
     expect(s.sprite.currentAnimation).toBe('burnt');

@@ -1,3 +1,4 @@
+import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import { syncPlacementEntity } from './placementEntities';
 import * as CANNON from 'cannon-es';
 import { getRegisteredPhysicsBodies } from '../../componets/src/physicsWorld';
@@ -9,7 +10,7 @@ import { AnimState } from '../../componets/src/animstate';
 import { Beard, type BeardSave } from '../../componets/src/beard';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Sleeper } from '../../componets/src/sleeper';
-import { actionEntity } from './actionEntity';
+import { actionEntity, findActionEntity } from './actionEntity';
 import type { LocomotorOptions } from './locomotor';
 import { LocoMotor, type LocoMotorInst } from '../../componets/src/locomotor';
 import { KnownLocations } from '../../componets/src/knownlocations';
@@ -188,8 +189,8 @@ export class BeefaloController {
     this.periodicspawner.SetMinimumSpacing(BEEFALO_BEHAVIOR.poopSpacing);
     this.periodicspawner.Start(saved?.poopRemainingSeconds);
     const beard = this.beard;
-    model.userData.components = { ...this.components, beard, sleeper: this.sleeper,
-      beefalo: { HasTag: (tag: string) => tag === 'has_beard' ? beard.hairy.peek() : undefined } };
+    Object.assign(prefabInstance(model)!.components, this.components, { beard, sleeper: this.sleeper,
+      beefalo: { HasTag: (tag: string) => tag === 'has_beard' ? beard.hairy.peek() : undefined } });
     actionEntity(model, 'beefalo');
     const sprite = this.instance.sprite;
     this.stopAppearance = createRenderEffect(() => sprite.setBuildArchive(beard.hairy.get() ? BEEFALO_BUILD : BEEFALO_SHAVED_BUILD));
@@ -278,7 +279,7 @@ export class BeefaloController {
       getTime: () => this.world.scheduler.now, random: () => this.random(),
       getPosition: () => this.getPosition(), isValid: () => this.isValid(),
       getPhysicsRadius: () => BEEFALO_BEHAVIOR.radius,
-      hasTag: tag => this.model.userData.actionEntity.hasTag(tag),
+      hasTag: tag => findActionEntity(this.model)!.hasTag(tag),
       getAngleToPoint: (x, _y, z) => this.getAngleToPoint(x, z),
       isNear: (entity, distance) => distanceSquared(this.getPosition(), entity.getPosition()) < distance ** 2,
       facePoint: point => this.setRotation(this.getAngleToPoint(point.x, point.z)),
@@ -297,7 +298,6 @@ export class BeefaloController {
       this.body.aabbNeedsUpdate = true;
     }
     syncPlacementEntity(this.model);
-    this.model.quaternion.copy(cameraQuaternion);
     this.right.set(1, 0, 0).applyQuaternion(cameraQuaternion).setY(0).normalize();
     this.forward.set(0, 0, -1).applyQuaternion(cameraQuaternion).setY(0).normalize();
     const x = this.direction.dot(this.right);
@@ -373,7 +373,7 @@ export class BeefaloManager implements FrameUpdatedPrefabManager<BeefaloRecord> 
   private readonly beefalos = new Map<BeefaloController, PrefabDisplay>();
   private readonly pendingSpawns = new Set<THREE.Vector3>();
   private disposed = false;
-  private readonly scene: THREE.Scene;
+  private readonly displays: PrefabDisplayGroup;
   private readonly physics: CANNON.World;
   private readonly assetBaseUrl: string;
   private readonly world: BeefaloWorld;
@@ -383,7 +383,7 @@ export class BeefaloManager implements FrameUpdatedPrefabManager<BeefaloRecord> 
   private readonly ownsScheduler: boolean;
 
   constructor(scene: THREE.Scene, physics: CANNON.World, assetBaseUrl: string, world: BeefaloManagerWorld) {
-    this.scene = scene;
+    this.displays = new PrefabDisplayGroup(scene);
     this.physics = physics;
     this.assetBaseUrl = assetBaseUrl;
     this.ownsScheduler = world.scheduler === undefined;
@@ -430,14 +430,14 @@ export class BeefaloManager implements FrameUpdatedPrefabManager<BeefaloRecord> 
     const { instance, display } = createPrefabEntity('beefalo', {
       create: (animation, frame) => factory.create({ initialAnimation: animation, initialFrame: frame, name: 'beefalo' }),
       release: sprite => factory.disposeSprite(sprite),
-    }, { name: 'idle_loop' }, 'beefalo');
+    }, { name: 'idle_loop', billboard: true }, 'beefalo');
     const model = display.model;
     instance.position.copy(position).setY(0);
     this.world.constrainPosition(instance.position);
     instance.entityId = saved?.id ?? newEntityId();
     const controller = new BeefaloController(model, this.physics, factory.lengths, this.world, saved?.components.beefalo);
     this.beefalos.set(controller, display);
-    this.scene.add(model);
+    this.displays.mount(prefabDisplay(model)!);
     return model;
   }
 
@@ -464,7 +464,7 @@ export class BeefaloManager implements FrameUpdatedPrefabManager<BeefaloRecord> 
   entitiesNear(position: { readonly x: number; readonly z: number }, range: number): readonly ReturnType<typeof actionEntity>[] {
     return Array.from(this.beefalos.keys()).filter(({ model }) =>
       Math.hypot(model.position.x - position.x, model.position.z - position.z) <= range)
-      .map(({ model }) => model.userData.actionEntity as ReturnType<typeof actionEntity>);
+      .map(({ model }) => findActionEntity(model) as ReturnType<typeof actionEntity>);
   }
 
   get renderEntities() {
@@ -491,5 +491,6 @@ export class BeefaloManager implements FrameUpdatedPrefabManager<BeefaloRecord> 
     }
     this.beefalos.clear();
     void this.factoryRequest?.then((factory) => factory.dispose(), () => undefined);
+    this.displays.dispose();
   }
 }

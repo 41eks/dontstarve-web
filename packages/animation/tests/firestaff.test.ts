@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { Burnable } from '../../componets/src/burnable';
 import { Combat, type CombatActor } from '../../componets/src/combat';
-import { getFireStaffController } from '../../prefab/src/firestaff';
+import { getFireStaffController } from '../../prefab/src/staff';
 import { StaffProjectileManager } from '../../prefab/src/staff_projectile';
 import { createInventoryStore } from '../../../src/inventory';
 import { inventorySlotAddress } from '../../inventory/src';

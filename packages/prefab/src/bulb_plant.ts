@@ -1,3 +1,4 @@
+import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import { createMemo, createSignal, readonlySignal } from '@dontstarve-web/signals';
 import { GameTimeScheduler } from './components/gameTimeScheduler';
@@ -293,13 +294,13 @@ export class BulbPlantManager {
   private readonly assets: ArchiveSpriteAssets;
   private readonly factories = new Map<BulbPlantVariant, Promise<Awaited<ReturnType<typeof preloadSharedArchiveSprite>>>>();
   private readonly plants = new Set<Plant>();
-  private readonly scene: THREE.Scene;
+  private readonly displays: PrefabDisplayGroup;
   private readonly world: BulbPlantWorld;
   private readonly random: () => number;
   private disposed = false;
 
   constructor(scene: THREE.Scene, assetBaseUrl: string, world: BulbPlantWorld, random = Math.random) {
-    this.scene = scene;
+    this.displays = new PrefabDisplayGroup(scene);
     this.world = world;
     this.random = random;
     this.assets = new ArchiveSpriteAssets(BULB_PLANT_ID, assetBaseUrl);
@@ -331,7 +332,7 @@ export class BulbPlantManager {
     const controller = new BulbPlantController(model, instance.sprite, this.world, variant, state, this.random, instance);
     actionEntity(model, prefabId);
     this.plants.add({ prefabId, model, controller, variant, instance, display });
-    this.scene.add(model);
+    this.displays.mount(prefabDisplay(model)!);
     return model;
   }
 
@@ -359,6 +360,7 @@ export class BulbPlantManager {
       instance.remove(); display.dispose();
     }
     this.plants.clear();
+    this.displays.dispose();
     this.assets.dispose();
   }
 }

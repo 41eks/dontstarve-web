@@ -1,3 +1,4 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import type { WorldMigrator, WorldMigratorDoer } from '../../componets/src/worldmigrator';
 import { BufferedAction, type BufferedActionObject } from './bufferedaction.ts';
@@ -20,18 +21,18 @@ export interface MigrateTarget extends BufferedActionObject {
 /** The portal is attached and its `migrator` tag (ACTIVE destination) is present. */
 function canMigrate(target: MigrateTarget): boolean {
   return !!target.model.parent && target.model.visible
-    && target.model.userData.components?.worldmigrator === target.component && target.hasTag('migrator');
+    && (findActionEntity(target.model)?.components.worldmigrator ?? prefabInstance(target.model)?.components.worldmigrator) === target.component && target.hasTag('migrator');
 }
 
 /** componentactions.lua SCENE.worldmigrator: a `migrator` offers MIGRATE on the left button. */
 export function getMigrateActions(model: THREE.Object3D | undefined): MouseActionCandidate[] {
-  const component = model?.userData.components?.worldmigrator as WorldMigrator | undefined;
+  const component = (findActionEntity(model)?.components.worldmigrator ?? prefabInstance(model)?.components.worldmigrator) as WorldMigrator | undefined;
   if (!model || !component) return [];
   const instance = prefabInstance(model);
   const target: MigrateTarget = {
-    model, component, prefab: model.userData.actionEntity?.prefab ?? instance?.prefab,
-    hasTag: tag => model.userData.actionEntity?.hasTag(tag) ?? modelHasTag(model, tag),
-    getPosition: () => model.userData.getGroundPosition?.() ?? model.position,
+    model, component, prefab: findActionEntity(model)?.prefab ?? instance?.prefab,
+    hasTag: tag => findActionEntity(model)?.hasTag(tag) ?? modelHasTag(model, tag),
+    getPosition: () => model.position,
     getPhysicsRadius: () => instance?.getPhysicsRadius(0) ?? 0,
   };
   return target.hasTag('migrator') ? [{ action: { action: 'MIGRATE', target }, button: 'left', model, available: canMigrate(target) }] : [];

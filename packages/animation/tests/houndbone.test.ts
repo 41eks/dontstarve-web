@@ -32,8 +32,8 @@ it('hammers a hound bone once into boneshards, adds a houndstooth chance for pie
   const one = bones.spawn(new THREE.Vector3(1, 0, 2), record(1, 'a'));
   const three = bones.spawn(new THREE.Vector3(3, 0, 2), record(3, 'c'));
   // houndbone.lua: bonetype n plays piece<n>; the entity carries the `bone` tag and a HAMMER workable of 1.
-  expect(one.userData.animationController.currentAnimation).toBe('piece1');
-  expect(three.userData.animationController.currentAnimation).toBe('piece3');
+  expect(prefabInstance(one)!.sprite.currentAnimation).toBe('piece1');
+  expect(prefabInstance(three)!.sprite.currentAnimation).toBe('piece3');
   expect(prefabInstance(one)!.listTags()).toContain('bone');
   expect(bones.exportRecords().map(({ record }) => record.components.houndbone?.bonetype)).toEqual([1, 3]);
   expect(() => PREFAB_DEFINITIONS.houndbones.parseComponents({ houndbone: { bonetype: 4 } }, 'x', { grounded: true } as never)).toThrow();

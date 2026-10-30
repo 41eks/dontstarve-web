@@ -1,3 +1,4 @@
+import { PrefabDisplayGroup } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import type { World } from 'cannon-es';
 import type { TileStateQuery } from '@dontstarve-web/signals';
@@ -9,7 +10,7 @@ import { Hauntable } from '../../componets/src/hauntable';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { MiniMapState } from '../../map/src/minimapState';
-import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
+import { createArchiveEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
@@ -40,9 +41,9 @@ export class RuinsStatueMageManager implements DisplayDrivenPrefabManager<{ pref
   private readonly assets = new ArchiveSpriteAssets(RUINS_STATUE_MAGE_ID);
   private readonly statues = new Map<THREE.Group, Statue>();
   private disposed = false;
-  private readonly scene: THREE.Scene;
+  private readonly displays: PrefabDisplayGroup;
   private readonly world: RuinsStatueMageWorld;
-  constructor(scene: THREE.Scene, world: RuinsStatueMageWorld) { this.scene = scene; this.world = world; }
+  constructor(scene: THREE.Scene, world: RuinsStatueMageWorld) { this.displays = new PrefabDisplayGroup(scene); this.world = world; }
 
   spawn(position: THREE.Vector3, saved?: RuinsStatueMageRecord): THREE.Group {
     if (this.disposed) throw new Error('Ruins mage statues have been disposed');
@@ -65,7 +66,7 @@ export class RuinsStatueMageManager implements DisplayDrivenPrefabManager<{ pref
     const hauntable = new Hauntable({ addTag: tag => inst.addTag(tag), removeTag: tag => inst.removeTag(tag),
       PushEvent: (name, data) => inst.PushEvent?.(name, data) }, this.world.scheduler);
     hauntable.SetOnHauntFn(() => false);
-    Object.assign(model.userData.components, { workable, lootdropper, inspectable, hauntable });
+    Object.assign(prefabInstance(model)!.components, { workable, lootdropper, inspectable, hauntable });
     const initialGem = RUINS_STATUE_GEMS[Math.floor(Math.random() * RUINS_STATUE_GEMS.length)];
     // commonfn immediately invokes OnNightmarePhaseChanged(..., true); this world has the calm phase.
     instance.sprite.start('idle_full');
@@ -76,7 +77,7 @@ export class RuinsStatueMageManager implements DisplayDrivenPrefabManager<{ pref
     const minimap = instance.minimap; minimap.SetIcon('statue_ruins.png');
     const statue: Statue = { instance, display, workable, hauntable, minimap, gem,
       stopActivity: watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active)) };
-    this.statues.set(model, statue); display.mount(this.scene); this.world.trackDisplay(display);
+    this.statues.set(model, statue); this.displays.mount(display); this.world.trackDisplay(display);
     return model;
   }
   get renderEntities() { return [...this.statues].filter(([, statue]) => statue.instance.sprite.loaded)
@@ -95,6 +96,7 @@ export class RuinsStatueMageManager implements DisplayDrivenPrefabManager<{ pref
       statue.stopActivity(); statue.workable.dispose(); statue.hauntable.dispose();
       model.userData.removed = true; statue.instance.remove();
     }
-    this.statues.clear(); this.assets.dispose();
+    this.statues.clear(); this.displays.dispose(); this.assets.dispose();
+
   }
 }

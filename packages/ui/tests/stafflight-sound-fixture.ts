@@ -1,3 +1,6 @@
+import { PrefabDisplayGroup } from '../../display/src';
+import { prefabDisplay } from '../../display/src';
+import { prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import * as THREE from 'three';
 import { DwarfStarManager } from '../../prefab/src/stafflight';
 import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
@@ -17,7 +20,7 @@ export async function prepareStarAudioCheck() {
     sources.push(entry);
     return source;
   };
-  const manager = new DwarfStarManager(new THREE.Scene(), '/dst/data/anim');
+  const manager = new DwarfStarManager(new PrefabDisplayGroup(new THREE.Scene()), '/dst/data/anim');
   // As the scene does before it starts, so each star's sounds play when it is spawned.
   await PrewarmSounds();
   await manager.spawn(new THREE.Vector3());
@@ -26,8 +29,8 @@ export async function prepareStarAudioCheck() {
   const samples = sources.map(({ source }) => ({ loop: source.loop, length: source.buffer!.length,
     channels: source.buffer!.numberOfChannels, sampleRate: source.buffer!.sampleRate }));
   const player = createWilsonPlayer('/dst/data/anim');
-  await player.userData.display.artLoaded();
-  const animation = (window as any).__prefabInstance(player).animationController as WilsonAnimationController;
+  await prefabDisplay(player).artLoaded();
+  const animation = prefabInstance(player).animationController as WilsonAnimationController;
   await animation.setCarryItem('yellowstaff');
   let casts = 0;
   animation.stategraph.pushBufferedAction(new BufferedAction('CASTSPELL', () => { casts += 1; }, undefined, {

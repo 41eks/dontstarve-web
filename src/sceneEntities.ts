@@ -27,6 +27,7 @@ import { GROUND_ART_DEFINITIONS, GROUND_ITEM_DISPLAY_SPECS } from '@dontstarve-w
 import { DockKitPlacement } from '@dontstarve-web/prefab/dock_kit';
 import { FarmPlowPlacement, FARM_PLOW_ID } from '@dontstarve-web/prefab/farm_plow';
 import { playerStats } from './playerStats';
+import { PrefabDisplayGroup } from '@dontstarve-web/display';
 import { DwarfStarManager, DWARF_STAR_ID, POLAR_LIGHT_ID } from '@dontstarve-web/prefab/stafflight';
 import { BulbPlantManager } from '@dontstarve-web/prefab/bulb_plant';
 import { RockManager } from '@dontstarve-web/prefab/rocks';
@@ -280,7 +281,7 @@ export async function createSceneEntities(
     'sanityrock': ReturnType<typeof registerNightmareRocks>;
     'rain': ReturnType<typeof registerRain>;
     'snow': ReturnType<typeof registerSnow>;
-    'ocean_waves': Awaited<ReturnType<typeof registerOceanWaves>>;
+    'ocean_waves': ReturnType<typeof registerOceanWaves>;
     'stafflight': ReturnType<typeof registerStaffLights>;
     'staffcoldlight': ReturnType<typeof registerStaffLights>;
     'pond': ReturnType<typeof registerPonds>;
@@ -361,7 +362,7 @@ export async function createSceneEntities(
   Managers['sanityrock'] = registerNightmareRocks(registry, 'sanityrock', worldState);
   Managers['rain'] = registerRain(registry, 'rain', worldState);
   Managers['snow'] = registerSnow(registry, 'snow', worldState);
-  Managers['ocean_waves'] = await registerOceanWaves(registry, 'ocean_waves', worldState);
+  Managers['ocean_waves'] = registerOceanWaves(registry, 'ocean_waves', worldState);
 
   registry.assertDefinitions(Object.values(PREFAB_DEFINITIONS));
 
@@ -1098,7 +1099,7 @@ export async function createSceneEntities(
       debugSpawn: () => tumbleweeds.spawn(player.position.clone().setY(0)),
       exportRecords: () => tumbleweeds.exportRecords().map(record => ({ prefabId: TUMBLEWEED_ID, record })),
       beforePhysics: dt => tumbleweeds.beforePhysics(dt),
-      update: (_, quaternion) => tumbleweeds.sync(quaternion),
+      update: () => tumbleweeds.sync(),
       renderEntities: () => tumbleweeds.renderEntities,
       dispose: () => tumbleweeds.dispose(),
     });
@@ -1268,7 +1269,7 @@ export async function createSceneEntities(
 
   function registerFarmPlow(registry: EntityRegistry, prefabId: 'farm_plow', _worldState: SceneWorldState) {
     const farmPlow = new FarmPlowPlacement({ ...view, physics: world, handEquipment: sceneInventory.handEquipment }, turfMap,
-      async (position, item) => { await Managers['ground_item'].spawnFromSave(item.entityId ?? newEntityId(), {
+      (position, item) => { Managers['ground_item'].spawnFromSave(item.entityId ?? newEntityId(), {
         ...SAVE_CATALOG.items[item.itemId], ...item,
       }, position); },
     );
@@ -1287,7 +1288,7 @@ export async function createSceneEntities(
     });
     registry.register(PREFAB_DEFINITIONS.farmDecor, {
       restore: (id, record) => farmPlow.spawnDecor(id, new THREE.Vector3(...record.transform.position),
-        id === 'farm_soil' ? record.components.farmSoil : record.components.farmDebris, undefined, record.id),
+        id === 'farm_soil' ? record.components.farmSoil : record.components.farmDebris, record.id),
       debugSpawn: (id) => farmPlow.spawnDecor(id, player.position.clone()),
       exportRecords: () => farmPlow.exportDecorRecords(), dispose: () => {},
     });
@@ -1482,7 +1483,7 @@ export async function createSceneEntities(
     return snow;
   }
 
-  async function registerOceanWaves(registry: EntityRegistry, prefabId: 'ocean_waves', worldState: SceneWorldState) {
+  function registerOceanWaves(registry: EntityRegistry, prefabId: 'ocean_waves', worldState: SceneWorldState) {
     // The only ocean tile is OCEAN_COASTAL; INVALID (outside the map) is neither land nor water.
     const waveMap: WaveMap = {
       tileSize: TILE_SIZE,
@@ -1491,7 +1492,6 @@ export async function createSceneEntities(
       isOceanTile: tile => tile === WORLD_TILES.OCEAN_COASTAL,
     };
     const oceanWaves = new OceanWaves(scene, waveMap, WORLD_SCALE, worldState.tickingarea);
-    await oceanWaves.prepare();
     const waveManager = new WaveManager({
       map: waveMap, spawner: oceanWaves, scale: WORLD_SCALE,
       tiles: new Map([[WORLD_TILES.OCEAN_COASTAL, 'shore']]),
@@ -1507,7 +1507,8 @@ export async function createSceneEntities(
   }
 
   function registerStaffLights(registry: EntityRegistry, prefabId: typeof DWARF_STAR_ID | typeof POLAR_LIGHT_ID, _worldState: SceneWorldState) {
-    const lights = new DwarfStarManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, prefabId, () => player.position);
+    const displays = new PrefabDisplayGroup(scene);
+    const lights = new DwarfStarManager(displays, `${import.meta.env.BASE_URL}dst/data/anim`, prefabId, () => player.position);
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (_, record) => lights.spawn(new THREE.Vector3(...record.transform.position), {
         id: record.id, remainingSeconds: record.components.timer!.remainingSeconds,
@@ -1516,7 +1517,7 @@ export async function createSceneEntities(
       exportRecords: () => lights.exportRecords().map((record) => ({ prefabId, record })),
       update: (dt, quaternion) => lights.update(dt, quaternion),
       renderEntities: () => lights.renderEntities,
-      dispose: () => lights.dispose(),
+      dispose: () => { lights.dispose(); displays.dispose(); },
     });
     return lights;
   }

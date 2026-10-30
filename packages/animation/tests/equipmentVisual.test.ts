@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createEmptyEntity } from '../../prefab/src/prefabInstance';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { AnimState } from '../src/animState';
@@ -8,7 +9,8 @@ import { createHandEquipmentLifecycle } from '../../prefab/src/handEquipment';
 import { HatEquipmentAssets, hatVisual } from '../../prefab/src/hats';
 import { backpackVisual } from '../../prefab/src/backpack';
 import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
-import { declaredSymbol, element, overrideArchives } from './animStateFixture';
+import { declaredAnimState, declaredSymbol, element, overrideArchives } from './animStateFixture';
+import { SpriteState } from '@dontstarve-web/display';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
 beforeEach(() => vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url)))));
@@ -17,9 +19,13 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 it('names skin builds without loading them, replaces an unequipped skin and keeps invisible held symbols hidden', async () => {
   const assets = new GroundItemAssets();
   const load = vi.spyOn(assets, 'loadBuild');
-  const anim = new AnimState(() => {});
-  const owner = { AnimState: anim, PushEvent: vi.fn() };
-  const context = { AnimState: anim, lightParent: new THREE.Group() };
+  // The holder's own AnimState hides ARM_carry, as the player's does; each held item draws in a slot over it.
+  const sprite = new SpriteState({ name: 'idle' }), own = new AnimState();
+  own.Hide('ARM_carry');
+  sprite.setAnimState(own.json, assets);
+  const anim = declaredAnimState(sprite);
+  const owner = { PushEvent: vi.fn() };
+  const context = { sprite: { sprite, art: assets }, lightParent: createEmptyEntity('wilson').instance };
   const item = new ItemEntity({ itemId: 'hammer', count: 1, skinId: 'hammer_invisible' });
   const next = new ItemEntity({ itemId: 'hammer', count: 1 });
   const archive = GROUND_ITEM_DEFINITIONS.hammer.skinArchives.hammer_invisible;
@@ -45,8 +51,9 @@ it('names skin builds without loading them, replaces an unequipped skin and keep
     item.skinId = undefined; // The same inst can be reskinned before the old equip lifetime is released.
     skinned.onunequip();
     expect(owner.PushEvent).toHaveBeenLastCalledWith('unequipskinneditem', equippedSkin);
-    anim.ClearOverrideSymbol('swap_object');
+    // Unequipping takes the item's slot away: the holder's own declaration is left.
     expect(await declaredSymbol(anim, assets, 'swap_object')).toBeUndefined();
+    expect(anim.IsVisible(element('arm', 'ARM_carry'))).toBe(false);
   } finally {
     skinned.onunequip(); plain.onunequip();
     item.destroy(); next.destroy(); assets.dispose();
@@ -55,7 +62,7 @@ it('names skin builds without loading them, replaces an unequipped skin and keep
 
 it('lets the hat prefab change source visibility groups and clear its own overrides while preserving the backpack', async () => {
   const assets = new GroundItemAssets();
-  const context = { assets, hats: new HatEquipmentAssets('/dst/data/anim'), lightParent: new THREE.Group() };
+  const context = { assets, hats: new HatEquipmentAssets('/dst/data/anim'), lightParent: createEmptyEntity('wilson').instance };
   const anim = new AnimState(() => {});
   const owner = { AnimState: anim, PushEvent() {} };
   const backpack = backpackVisual({ id: 'backpack', prefab: 'backpack' });
@@ -87,7 +94,7 @@ it('lets the hat prefab change source visibility groups and clear its own overri
 
 it("draws a follow hat's own animation from its bank once the owner's display has loaded it", async () => {
   const assets = new GroundItemAssets();
-  const context = { assets, hats: new HatEquipmentAssets('/dst/data/anim'), lightParent: new THREE.Group() };
+  const context = { assets, hats: new HatEquipmentAssets('/dst/data/anim'), lightParent: createEmptyEntity('wilson').instance };
   const anim = new AnimState(() => {});
   const hat = hatVisual({ id: 'wagpunkhat', prefab: 'wagpunkhat' }, context);
   try {

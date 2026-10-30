@@ -1,3 +1,4 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -53,8 +54,8 @@ it('spawns/gives tool and wall-loot IDs, then exports and reloads identities, po
     const skinId = golden.skinId;
     expect(skinId).toBeDefined();
     const hand = equipmentSlotAddress('hand');
-    const pickup = () => performPickupAction(manager.reskinTargets.find(target => target.id === golden.id)!
-      .model.userData.pickupTarget, createPickupDoer(player, inventory));
+    const pickup = () => performPickupAction(findActionEntity(manager.reskinTargets.find(target => target.id === golden.id)!
+      .model)!.pickupTarget, createPickupDoer(player, inventory));
     expect(pickup()).toBe(true);
     expect(inventory.getEntity(hand)).toBe(golden);
     expect(await manager.drop({ ...SAVE_CATALOG.items.goldenpickaxe, ...golden.snapshot() }, player.position,

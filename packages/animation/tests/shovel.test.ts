@@ -27,7 +27,7 @@ function setup(player = new THREE.Group(), random = () => 0.9) {
   const world = { scene: new THREE.Scene(), player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     renderer: { domElement: new EventTarget() } } as unknown as WorldContext;
   const turf = new TurfMap(96);
-  const farm = new FarmPlowPlacement(world, turf, async () => {}, undefined, random);
+  const farm = new FarmPlowPlacement(world, turf, () => {}, undefined, random);
   return { farm, turf, world };
 }
 function advance(animation: WilsonAnimationController, frames: number) {
@@ -69,13 +69,13 @@ it('removes one debris with source loot while preserving soil, terrain, other de
   const point = new THREE.Vector3(3, 0, 3), loot = vi.fn(async () => {});
   farm.setDebrisLootHandler(loot);
   try {
-    await farm.spawnDecor('farm_soil_debris', point, { animation: 'f2' }, undefined, 'garbage');
+    farm.spawnDecor('farm_soil_debris', point, { animation: 'f2' }, 'garbage');
     const target = farm.digTargets[0];
     expect(target.isValid()).toBe(false);
     expect(target.dig()).toBe(false);
     turf.plow(point);
-    await farm.spawnDecor('farm_soil', new THREE.Vector3(8, 0, 3), { broken: false }, undefined, 'hole');
-    await farm.spawnDecor('farm_soil_debris', new THREE.Vector3(8, 0, 8), { animation: 'f4' }, undefined, 'other');
+    farm.spawnDecor('farm_soil', new THREE.Vector3(8, 0, 3), { broken: false }, 'hole');
+    farm.spawnDecor('farm_soil_debris', new THREE.Vector3(8, 0, 8), { animation: 'f4' }, 'other');
     random.mockReturnValueOnce(0.1).mockReturnValueOnce(0.99);
     const tiles = turf.exportTiles(), preserved = farm.exportDecorRecords().filter(({ record }) => record.id !== target.id);
     expect(target.dig()).toBe(true);
@@ -86,8 +86,8 @@ it('removes one debris with source loot while preserving soil, terrain, other de
     const restored = setup();
     try {
       restored.turf.plow(point);
-      for (const { prefabId, record } of preserved) await restored.farm.spawnDecor(prefabId, new THREE.Vector3(...record.transform.position),
-        record.components.farmSoil ?? record.components.farmDebris, undefined, record.id);
+      for (const { prefabId, record } of preserved) restored.farm.spawnDecor(prefabId, new THREE.Vector3(...record.transform.position),
+        record.components.farmSoil ?? record.components.farmDebris, record.id);
       expect(restored.farm.exportDecorRecords()).toEqual(preserved);
       expect(restored.farm.digTargets.map(({ id }) => id)).toEqual(['other']);
     } finally { restored.farm.dispose(); }
@@ -103,7 +103,7 @@ it('walks into reach, commits at shovel_loop frame 15, and preserves cancelled o
   const { world, farm, turf } = setup(player);
   const point = new THREE.Vector3(3, 0, 3);
   turf.plow(point);
-  await farm.spawnDecor('farm_soil_debris', point, { animation: 'f1' }, undefined, 'target');
+  farm.spawnDecor('farm_soil_debris', point, { animation: 'f1' }, 'target');
   const equipped = createEquipmentExistenceState('HANDS');
   const tool = new ItemEntity({ itemId: 'goldenshovel', count: 1 });
   configureShovelEntity(tool);
@@ -123,7 +123,7 @@ it('walks into reach, commits at shovel_loop frame 15, and preserves cancelled o
     expect(tool.components.finiteuses.remaining).toBe(24.75);
     expect(PlaySound).toHaveBeenCalledWith('dontstarve/wilson/dig');
     advance(animation, 60);
-    await farm.spawnDecor('farm_soil_debris', point, { animation: 'f3' }, undefined, 'preserved');
+    farm.spawnDecor('farm_soil_debris', point, { animation: 'f3' }, 'preserved');
     const preserved = farm.exportDecorRecords();
     expect(controller.request(farm.digTargets[0])).toBe(true); controller.update(0);
     controller.cancel(); advance(animation, 60);

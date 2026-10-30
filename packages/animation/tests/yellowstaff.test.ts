@@ -1,12 +1,8 @@
-import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { dwarfStarLight } from '../../prefab/src/stafflight';
-import { StaffCastingLight } from '../../prefab/src/yellowstaff';
+import { StaffCastingLight } from '../../prefab/src/staff_castinglight';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src/slots';
-import { prefabInstance } from '../../prefab/src/prefabInstance';
-
-/** The inst.Light an entity's model declares. */
-const declaredLight = (model: THREE.Object3D) => prefabInstance(model)?.light.peek();
+import { createEmptyEntity } from '../../prefab/src/prefabInstance';
 
 describe('yellowstaff source lighting', () => {
   it('pulses the dwarf star on its twenty-second cycle', () => {
@@ -19,18 +15,22 @@ describe('yellowstaff source lighting', () => {
   });
 
   it('cleans up the temporary casting light on cancellation and completion', () => {
-    const owner = new THREE.Group();
+    const owner = createEmptyEntity('wilson').instance;
     const light = new StaffCastingLight(owner);
+    // Parented to the caster: the caster declares the casting light's own signal, not a copy.
+    expect([...owner.light.slots.peek().values()]).toEqual([light.instance.light.json]);
     light.start();
-    const radius = declaredLight(light.model)!.radius;
+    const radius = light.instance.light.peek()!.radius;
     light.update(1);
-    expect(declaredLight(light.model)!.radius).toBeGreaterThan(radius);
-    expect(declaredLight(owner)).toBeUndefined();
+    expect(light.instance.light.peek()!.radius).toBeGreaterThan(radius);
+    expect(owner.light.peek()).toBeUndefined();
     light.stop();
     light.update(1);
-    expect(declaredLight(light.model)).toBeUndefined();
+    expect(light.instance.light.peek()).toBeUndefined();
     light.start();
     light.update(3);
-    expect(declaredLight(light.model)).toBeUndefined();
+    expect(light.instance.light.peek()).toBeUndefined();
+    light.dispose();
+    expect(owner.light.slots.peek().size).toBe(0);
   });
 });

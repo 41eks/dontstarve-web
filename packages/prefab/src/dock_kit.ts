@@ -98,7 +98,7 @@ export class DockKitPlacement {
       model.rotation.x = -Math.PI / 2;
       this.outline = { ...entity, visible: true };
       this.world.scene.add(model);
-      // BuildCursor copies the camera quaternion onto its preview, which would stand the flat outline up; it drives an anchor instead.
+      // BuildCursor moves and hides an anchor; the outline follows it lifted off the ground and shows through its sprite.
       this.anchor = new THREE.Object3D();
       entity.instance.sprite.setLightOverride(1);
       this.cursor.setPreview(this.anchor, 0, point => this.center(point));

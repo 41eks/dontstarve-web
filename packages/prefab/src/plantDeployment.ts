@@ -148,7 +148,7 @@ export class PlantDeployment {
         // The placer's display loads its art; it is hidden until the pointer is over the ground.
         const placer = createPrefabEntity(`${entity!.prefab}_placer`, this.resources.factory({ buildArchive: `${definition.build}.zip`,
           animationArchive: definition.animationArchive ?? `${definition.bank}.zip`, ...skinArchive ? { skinArchive } : {} }),
-          { name: definition.animation }, 'PlantPlacer');
+          { name: definition.animation, billboard: true }, 'PlantPlacer');
         const model = placer.display.model;
         for (const tag of ['FX', 'NOCLICK']) placer.instance.addTag(tag);
         placer.instance.persists = false; model.userData.placer = true;
@@ -163,7 +163,7 @@ export class PlantDeployment {
     const visible = !!point && !!source?.isValid();
     if (visible !== preview.visible) preview.instance.sprite.setVisible(preview.visible = visible);
     if (!point || !source) return;
-    preview.instance.position.copy(point); preview.model.quaternion.copy(this.world.camera.quaternion);
+    preview.instance.position.copy(point);
     preview.instance.sprite.update(dt);
     const valid = this.canDeploy(point, source.entity);
     preview.model.traverse(object => {

@@ -1,9 +1,10 @@
+import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import { ModelRecords } from './modelRecords';
 import * as THREE from 'three';
 import { createEffect, WorldContentKey, type TileStateQuery } from '@dontstarve-web/signals';
 import type { InventoryStack } from '@dontstarve-web/inventory';
-import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
+import { createPrefabEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
 import { SpriteResources, type PrefabDisplay } from '@dontstarve-web/display';
 import { watchTileActivity } from './tileActivity';
 import { Inventory } from '../../componets/src/inventory';
@@ -11,7 +12,7 @@ import { Spawner } from '../../componets/src/spawner';
 import { Workable } from '../../componets/src/workable';
 import type { BrainEntity } from '../../brains/src/types';
 import { performToolWork } from '../../stategraphs/src/componentactions';
-import { actionEntity } from './actionEntity';
+import { actionEntity, findActionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
 import { Mole, configureMoleEntity, type MoleWorld } from './mole';
 
@@ -67,11 +68,11 @@ export class Molehill implements BrainEntity {
     createEffect(() => {
       if (this.cycle.get() !== 'day' && spawner.IsOccupied()) this.startSpawning(); else this.stopSpawning();
     });
-    model.userData.components = this.components;
+    Object.assign(prefabInstance(model)!.components, this.components);
     instance.entityId = id;
     Object.assign(model.userData, { molehill: this, remove: () => this.remove() });
     // Workable's source inst owns tags, including DIG_workable.
-    model.userData.components.workable = workable; inst.addTag('DIG_workable');
+    prefabInstance(model)!.components.workable = workable; inst.addTag('DIG_workable');
     new ToolMouseTarget(inst, instance, workable, world.handEquipment);
     this.cleanups.push(watchTileActivity(model, world.tickingarea, active => instance.setActive(active)));
   }
@@ -127,10 +128,10 @@ export class MolehillManager {
   private readonly resources: SpriteResources;
   private disposed = false;
   readonly habitat: MoleHabitat;
-  private readonly scene: THREE.Scene;
+  private readonly displays: PrefabDisplayGroup;
   constructor(scene: THREE.Scene, base: string,
     services: Omit<MoleWorld, 'getMoles' | 'makeHome' | 'registerMole' | 'spawnMoveFx'> & ToolMouseTargetWorld & { tickingarea?: TileStateQuery; showMole(entity: import('@dontstarve-web/inventory').ItemEntity, position: THREE.Vector3): void }) {
-    this.scene = scene; this.resources = new SpriteResources(base);
+    this.displays = new PrefabDisplayGroup(scene); this.resources = new SpriteResources(base);
     this.habitat = { ...services, showMole: services.showMole,
       getMoles: () => [...this.moles], makeHome: mole => this.createHill(mole.getPosition().clone(), undefined, mole),
       registerMole: mole => { this.moles.add(mole); return () => this.moles.delete(mole); },
@@ -145,7 +146,7 @@ export class MolehillManager {
     entity.instance.sprite.setGround(-.5, false);
     const model = entity.display.model; entity.instance.position.copy(position);
     const hill = new Molehill(saved?.id ?? newEntityId(), entity, this.habitat, saved?.components.molehill, adopt);
-    this.hills.set(hill.id, hill); this.mouseRecords.set(hill.model, hill); this.scene.add(model);
+    this.hills.set(hill.id, hill); this.mouseRecords.set(hill.model, hill); this.displays.mount(prefabDisplay(model)!);
     return hill;
   }
   private readonly fx = new Set<ReturnType<typeof createPrefabEntity>>();
@@ -155,7 +156,7 @@ export class MolehillManager {
       { name: 'move', billboard: true }, 'mole_move_fx');
     entity.instance.position.copy(position); entity.instance.persists = false;
     entity.instance.addTag('FX');
-    this.scene.add(entity.display.model); this.fx.add(entity);
+    this.displays.mount(entity.display); this.fx.add(entity);
     entity.instance.sprite.playOnce('move', () => { this.fx.delete(entity); entity.instance.remove(); });
   }
   update(dt: number, _quaternion: THREE.Quaternion): void {
@@ -170,8 +171,8 @@ export class MolehillManager {
     for (const { instance } of this.fx) instance.sprite.update(dt);
   }
   get digTargets() { return this.getDigTargets(); }
-  getDigTargets(model?: THREE.Object3D) { return this.mouseRecords.select(model, this.hills.values()).filter(h => h.isValid()).map(h => ({ id: h.id, model: h.model, entity: h.model.userData.actionEntity,
-    position: h.getPosition(), dig: () => performToolWork('DIG', h.model.userData.actionEntity, {}), isValid: () => h.isValid() && h.components.workable.CanBeWorked() })); }
+  getDigTargets(model?: THREE.Object3D) { return this.mouseRecords.select(model, this.hills.values()).filter(h => h.isValid()).map(h => ({ id: h.id, model: h.model, entity: findActionEntity(h.model),
+    position: h.getPosition(), dig: () => performToolWork('DIG', findActionEntity(h.model)!, {}), isValid: () => h.isValid() && h.components.workable.CanBeWorked() })); }
   get renderEntities() { return [...this.fx].map(({ display }) => display.model)
     .map(object => ({ object, footPosition: object.position, cameraDepth: 0 })); }
   exportRecords(): MolehillRecord[] { return [...this.hills.values()].filter(h => h.isValid()).map(h => ({ id: h.id,
@@ -180,6 +181,7 @@ export class MolehillManager {
     if (this.disposed) return; this.disposed = true;
     for (const hill of this.hills.values()) hill.dispose();
     for (const { instance } of this.fx) instance.remove();
-    this.fx.clear(); this.hills.clear(); this.resources.dispose();
+    this.fx.clear(); this.hills.clear(); this.displays.dispose(); this.resources.dispose();
+
   }
 }

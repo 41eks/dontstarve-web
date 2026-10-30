@@ -106,7 +106,7 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
   random = Math.random): Promise<DeciduousForest> {
   const colors = ['green', 'red', 'orange', 'yellow'] as const;
   const assets = new ArchiveSpriteAssets('deciduoustree', assetBaseUrl);
-  const [createTree, banks, leafFx, fireFx] = await Promise.all([
+  const [createTree, banks, leafFx] = await Promise.all([
     preloadSharedArchiveSprite(assets, {
       animationArchive: 'tree_leaf_short.zip', extraAnimationArchives: ['tree_leaf_normal.zip', 'tree_leaf_tall.zip'],
       buildArchives: ['tree_leaf_trunk_build.zip', ...colors.map(color => `tree_leaf_${color}_build.zip`), 'snow.zip'], bank: 'tree_leaf',
@@ -117,10 +117,10 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
       [`sway1_loop_${stage}`, `sway2_loop_${stage}`, `burnt_${stage}`]) }),
     Promise.all(DECIDUOUS_STAGES.map(stage => assets.loadAnimation(`tree_leaf_${stage}.zip`))),
     Promise.all(colors.map(color => createAnimatedSpriteFactory(assetBaseUrl, `tree_leaf_fx_${color}.zip`))),
-    FireFxHost.load(assetBaseUrl),
   ]);
   const animations = { animations: banks.flatMap(bank => bank.animations) };
   const fxFactories = new Map<LeafBuild, typeof leafFx[number]>(colors.map((color, i) => [color === 'green' ? 'normal' : color, leafFx[i]]));
+  const fireFx = FireFxHost.create(assetBaseUrl);
   const scheduler = world.scheduler ?? new GameTimeScheduler();
   const group = new THREE.Group(); group.name = 'DeciduousForest';
   const entities: ResidentEntity[] = [];
@@ -134,7 +134,7 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
   const rest = (tree: Tree) => tree.stump.peek() ? `stump_${DECIDUOUS_STAGES[stageOf(tree)]}`
     : tree.inst.hasTag('burnt') ? `burnt_${DECIDUOUS_STAGES[stageOf(tree)]}`
     : `sway1_loop_${DECIDUOUS_STAGES[stageOf(tree)]}`;
-  const env: BurnEnvironment = { scheduler, root: world.scene, fire: fireFx };
+  const env: BurnEnvironment = { scheduler, fire: fireFx };
   const animationOf = (tree: Tree) => tree.sprite;
   const playSound = (tree: Tree, path: SoundEventPath) => {
     for (const sound of tree.sounds) if (sound.isPlaying?.() === false) tree.sounds.delete(sound);
@@ -307,7 +307,7 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
   };
   const initializeModel = (tree: Tree) => {
     const model = tree.logical.model;
-    model.userData.animationController = tree.sprite;
+
     Object.assign(model.userData, { deploySmartRadius: 1,
       components: tree.inst.components,
       deciduoustreeState: { stump: readonlySignal(tree.stump), growth: tree.growable.state, leaves: tree.leaves.state } });
@@ -442,12 +442,12 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
     getChopTargets(model) { return targets('CHOP', model); },
     get digTargets() { return digTargets(); },
     getDigTargets: digTargets,
-    update(dt, quaternion) {
+    update(dt, _quaternion) {
       if (!world.scheduler) scheduler.advance(dt);
-      fireFx.update(dt, quaternion);
       for (const logical of active) {
-        const { sprite } = trees.get(logical)!;
+        const { sprite, fire } = trees.get(logical)!;
         sprite.update(dt);
+        fire?.update(dt);
       }
       for (const { entity } of [...effects.values()]) {
         entity.instance.sprite.update(dt);
@@ -455,7 +455,8 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
     },
     get renderEntities() {
       return [...Array.from(active, logical => ({ object: logical.model, footPosition: logical.position, cameraDepth: 0 })),
-        ...Array.from(effects, ([object, fx]) => ({ object, footPosition: fx.position, cameraDepth: 0 })), ...fireFx.renderEntities];
+        ...Array.from(effects, ([object, fx]) => ({ object, footPosition: fx.position, cameraDepth: 0 })),
+        ...Array.from(active, logical => trees.get(logical)!.display.fxRenderEntries).flat()];
     },
     exportRecords: () => [...trees.values()].map(tree => {
       // onsave: a burning tree is saved as burnt; a burning stump is still a stump.

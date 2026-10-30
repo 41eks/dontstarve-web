@@ -2,8 +2,12 @@ import type * as THREE from 'three';
 import type { ResidentEntity } from '@dontstarve-web/animation/residentSprite';
 import type { SavedEntity } from './save/types';
 import type { PrefabDefinition } from './prefabDefinitions';
-import type { PrefabDisplay } from '@dontstarve-web/display';
+import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
+import type { PrefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import type { DisplayDrivenPrefabManager } from '@dontstarve-web/prefab/manager';
+
+/** What a restore handler hands back for the saved id: the logical entity, or for older managers its model. */
+export type RestoredEntity = THREE.Object3D | ResidentEntity | PrefabInstance<ArchiveSpriteCommands>;
 
 export interface EntityRenderEntry {
   object: THREE.Object3D;
@@ -25,7 +29,7 @@ export interface EntityRecord {
 }
 
 export interface EntityRegistration<PrefabId extends string> {
-  restore?: (prefabId: PrefabId, record: SavedEntity) => Promise<THREE.Object3D | ResidentEntity> | THREE.Object3D | ResidentEntity;
+  restore?: (prefabId: PrefabId, record: SavedEntity) => Promise<RestoredEntity> | RestoredEntity;
   /** Only these IDs are exposed through c_spawn, including any aliases. */
   debugSpawn?: (prefabId: PrefabId) => unknown;
   exportRecords: () => readonly EntityRecord[];
@@ -42,7 +46,7 @@ export interface DisplayDrivenEntityManager extends DisplayDrivenPrefabManager<E
 
 /** Routes scene lifecycles through the same declarations used by debug spawning. */
 export class EntityRegistry {
-  readonly byEntityId = new Map<string, THREE.Object3D | ResidentEntity>();
+  readonly byEntityId = new Map<string, RestoredEntity>();
   private readonly restorers = new Map<string, (record: SavedEntity) => ReturnType<NonNullable<EntityRegistration<string>['restore']>>>();
   private readonly creators = new Map<string, () => unknown>();
   private readonly registrations: (EntityRegistration<string> & { definition: PrefabDefinition })[] = [];

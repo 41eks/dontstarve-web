@@ -1,3 +1,4 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
@@ -100,7 +101,7 @@ it('creates source rock offsets, keeps each rock foot separate, blocks bodies an
     expect(restored.renderEntities.every(entry => entry.object.quaternion.equals(camera))).toBe(true);
     expect(reloaded.position.toArray()).toEqual(record.transform.position);
     manager.remove(model);
-    expect(FindEntities(model.position, 30, ['HASHEATER']).map(entity => entity === reloaded.userData.actionEntity)).toEqual([true]);
+    expect(FindEntities(model.position, 30, ['HASHEATER']).map(entity => entity === findActionEntity(reloaded))).toEqual([true]);
     expect(physics.bodies).toEqual([]); expect(declaredLight(model)).toBeUndefined();
     expect(manager.renderEntities).toEqual([]); expect(manager.exportRecords()).toEqual([]);
   } finally { manager.dispose(); restored.dispose(); content.unbind(); scheduler.dispose(); restoredScheduler.dispose(); }

@@ -10,7 +10,6 @@ import { watchTileActivity } from './tileActivity';
 export function bindResidentGroundItem(context: Pick<GroundPrefabContext, 'tickingarea'>, instance: PrefabInstance<ArchiveSpriteCommands>,
   display: PrefabDisplay, declare?: (entity: ItemEntity, sprite: ArchiveSpriteCommands) => void): GroundItemVisual {
   const model = display.model, sprite = instance.sprite;
-  model.userData.itemId = instance.prefab;
   const active = createMemo(() => instance.status.get() === 'active');
   let stopTile = () => {};
   const bindTile = () => {

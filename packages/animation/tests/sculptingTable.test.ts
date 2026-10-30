@@ -1,3 +1,4 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -41,8 +42,8 @@ it('accepts one marble or cutstone, hands it back on PICK and restores it from a
   try {
     await placement.spawn(SCULPTING_TABLE_ID);
     const [{ model, canGive }] = placement.giveTargets;
-    const trader = model.userData.components.trader, pickable = model.userData.components.pickable;
-    const sprite = model.userData.animationController as SpriteController;
+    const trader = (findActionEntity(model)?.components ?? prefabInstance(model)!.components).trader, pickable = (findActionEntity(model)?.components ?? prefabInstance(model)!.components).pickable;
+    const sprite = prefabInstance(model)!.sprite as SpriteController;
     let override = vi.spyOn(sprite, 'overrideSymbol');
     expect(prefabInstance(model)!.listTags()).toContain('trader');
     expect(prefabInstance(model)!.listTags()).not.toContain('pickable');
@@ -85,7 +86,7 @@ it('accepts one marble or cutstone, hands it back on PICK and restores it from a
     };
     expect(() => parse({ ...saved, components: { ...saved.components, sculptingtable: { itemname: 'log' } } })).toThrow(/itemname/);
     const restored = await placement.spawnFromSave(SCULPTING_TABLE_ID, parse(saved).world.entities.sculptingtable[0]);
-    expect(restored.userData.components.pickable.product).toBe('marble');
+    expect((findActionEntity(restored)?.components ?? prefabInstance(restored)!.components).pickable.product).toBe('marble');
     expect(prefabInstance(restored)!.listTags()).toContain('pickable');
     // Lua onload calls giveitem, including its sound; reskinning only replaces art.
     expect(play).toHaveBeenCalledTimes(2);
@@ -94,7 +95,7 @@ it('accepts one marble or cutstone, hands it back on PICK and restores it from a
     expect(reskin.apply()).toBe(true);
     reskin.dispose();
     expect(play).toHaveBeenCalledTimes(2);
-    override = vi.spyOn(model.userData.animationController as SpriteController, 'overrideSymbol');
+    override = vi.spyOn(prefabInstance(model)!.sprite as SpriteController, 'overrideSymbol');
 
     // pickable.lua Pick: the product goes to the picker, then the block disappears and the slot reopens.
     expect(pickable.pick({ giveItem: () => false })).toBe(false);
@@ -124,7 +125,7 @@ it('drops the held block with the recipe loot when hammered', async () => {
     await placement.spawn(SCULPTING_TABLE_ID);
     const [{ model }] = placement.giveTargets;
     const marble = offer('marble');
-    model.userData.components.trader.AcceptGift(marble.entity, marble.take);
+    (findActionEntity(model)?.components ?? prefabInstance(model)!.components).trader.AcceptGift(marble.entity, marble.take);
     const target = placement.hammerTargets[0];
     for (let hit = 0; hit < 4; hit++) target.playHit();
     expect(dropLoot).toHaveBeenCalledOnce();

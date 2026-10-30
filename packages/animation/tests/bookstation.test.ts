@@ -1,9 +1,11 @@
+import { createEmptyEntity } from '../../prefab/src/prefabInstance';
+
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { inventorySlotAddress } from '../../inventory/src';
-import { createSignal } from '../../signals/src';
+
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
 import { Bookstation, BOOKSTATION_DEFINITION } from '../../prefab/src/bookstation';
@@ -25,18 +27,18 @@ function createStation(tags: string[] = [], playerAt = new THREE.Vector3(0, 0, 0
   const container = createBuildingContainer('bookstation', {});
   inventory.registerContainer(shelf(0).containerId, container);
   const hidden = new Set<string>();
-  const model = new THREE.Group();
-  model.userData.animationController = {
-    showLayer: (layer: string) => hidden.delete(layer), hideLayer: (layer: string) => hidden.add(layer),
-  };
-  model.userData.getGroundPosition = () => new THREE.Vector3(0, 0, 0);
-  const burnt = createSignal(false);
-  model.userData.burntSignal = burnt;
+  const { instance, display } = createEmptyEntity('bookstation');
+  const model = display.model;
+  vi.spyOn(instance.sprite, 'showLayer').mockImplementation(layer => { hidden.delete(layer); });
+  vi.spyOn(instance.sprite, 'hideLayer').mockImplementation(layer => { hidden.add(layer); });
+  const burn = () => { instance.addTag('burnt'); instance.PushEvent('burntup', undefined); };
   const player = new THREE.Object3D();
   player.position.copy(playerAt);
   player.userData.tags = tags;
   const station = new Bookstation({ model, container, world: { scheduler, player } as unknown as WorldContext });
-  return { inventory, scheduler, container, station, hidden, burnt, uses: (slot: number) => container.GetItemInSlot(slot + 1)!.components.finiteuses };
+  const dispose = station.dispose.bind(station);
+  station.dispose = () => { dispose(); instance.remove(); display.dispose(); };
+  return { inventory, scheduler, container, station, hidden, burn, uses: (slot: number) => container.GetItemInSlot(slot + 1)!.components.finiteuses };
 }
 
 it('accepts only bookcabinet items, declares shelf layers synchronously by fill level and restores book uses over time', () => {
@@ -84,7 +86,7 @@ it('doubles the restore for a nearby bookbuilder and stops when the station burn
     expect(near.uses(0).remaining).toBeCloseTo(3.1);
     expect(far.uses(0).remaining).toBeCloseTo(3.05);
 
-    near.burnt.set(true);
+    near.burn();
     await Promise.resolve(); // createEffect runs queued effects on the microtask queue
     expect(near.station.restore.peek().status).toBe('stopped');
     near.scheduler.advance(300);

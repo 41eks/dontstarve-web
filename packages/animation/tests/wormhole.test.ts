@@ -1,3 +1,4 @@
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
@@ -37,7 +38,7 @@ it('opens and closes with source distance hysteresis and frame-specific layering
   expect(isMouseTarget(model)).toBe(true);
   const quaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 4);
   const step = (frames: number) => { for (let i = 0; i < frames; i++) manager.update(1 / 30, quaternion); };
-  const clip = () => model.userData.animationController.currentAnimation;
+  const clip = () => prefabInstance(model)!.sprite.currentAnimation;
   try {
     player.x = WORMHOLE_ENTER_DISTANCE + 0.01;
     step(1);
@@ -100,19 +101,19 @@ it('reskins a live opening wormhole and restores its identity and skin', async (
     player.x = 0;
     step(9);
     expect(prepared.apply()).toBe(true);
-    expect(model.userData.animationController.currentAnimation).toBe('open_pre');
+    expect(prefabInstance(model)!.sprite.currentAnimation).toBe('open_pre');
     expect(manager.renderEntities).toHaveLength(1);
     step(1);
     expect(manager.renderEntities).toHaveLength(0);
     step(60);
-    expect(model.userData.animationController.currentAnimation).toBe('open_loop');
+    expect(prefabInstance(model)!.sprite.currentAnimation).toBe('open_loop');
     expect(prepared.apply()).toBe(false);
     prepared.dispose();
 
     const skinId = WORMHOLE_SKINS[0];
       expect(lookupPrefabInstance(model)?.entityId).toBe(id);
       expect(lookupPrefabInstance(model)?.skinId).toBe(skinId);
-      expect(model.userData.animationController.currentAnimation).toBe('open_loop');
+      expect(prefabInstance(model)!.sprite.currentAnimation).toBe('open_loop');
       expect(model.position.toArray()).toEqual([0, 0, 0]);
       const saved = manager.exportRecords()[0];
       expect(saved.components).toEqual(skinId ? { wormhole: { skinId } } : {});

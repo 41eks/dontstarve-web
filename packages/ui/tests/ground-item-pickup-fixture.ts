@@ -1,3 +1,4 @@
+import { prefabDisplay } from '../../display/src';
 import { fixturePickup } from './pickup-fixture';
 import * as THREE from 'three';
 import type { PrefabDisplay } from '@dontstarve-web/display';
@@ -29,7 +30,7 @@ export async function checkGroundItemPickup() {
     const dropped = await manager.drop(definition(id), new THREE.Vector3(0, 9, 0), () => true);
     manager.update(0.05, camera.quaternion);
     const { model } = manager.reskinTargets[0];
-    await (model.userData.display as PrefabDisplay).artLoaded();
+    await (prefabDisplay(model) as PrefabDisplay).artLoaded();
     const mesh = model.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry>;
     mesh.updateWorldMatrix(true, false);
     const box = new THREE.Box3();

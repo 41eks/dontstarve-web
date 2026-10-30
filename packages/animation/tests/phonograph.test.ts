@@ -1,3 +1,5 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { createPickupDoer, performPickupAction } from '../../stategraphs/src/pickup';
 import { readFile } from 'node:fs/promises';
@@ -97,7 +99,7 @@ it('preserves a loaded skinned record across reskin, pickup, inventory transfer,
     expect(take).not.toHaveBeenCalled();
     invalid.destroy();
     expect(await manager.insertPhonographRecord(model, { entity: plain, take })).toBe(false);
-    expect(model.userData.phonograph.record).toBeUndefined();
+    expect(prefabInstance(model)!.components.phonograph.record).toBeUndefined();
     take.mockReturnValue(true);
     expect(await manager.insertPhonographRecord(model, { entity: skinned, take })).toBe(true);
     // Inventory transfers must see the loaded record immediately, before any save projection.
@@ -112,7 +114,7 @@ it('preserves a loaded skinned record across reskin, pickup, inventory transfer,
     expect(skin.apply()).toBe(true); skin.dispose();
     model = manager.reskinTargets.find(({ prefabId }) => prefabId === 'phonograph')!.model as THREE.Group;
     expect(lookupPrefabInstance(model)?.entityId).toBe('phonograph:test'); expect(model.position).toEqual(position);
-    expect(model.userData.phonograph.snapshot()).toEqual({ phonographRecord: 'record_creepyforest', playbackRemaining: 54 });
+    expect(prefabInstance(model)!.components.phonograph.snapshot()).toEqual({ phonographRecord: 'record_creepyforest', playbackRemaining: 54 });
     expect(PlaySound).toHaveBeenCalledTimes(soundCalls);
     expect(playingSound.stop).not.toHaveBeenCalled();
     const data = structuredClone(initialWorld) as any;
@@ -125,15 +127,15 @@ it('preserves a loaded skinned record across reskin, pickup, inventory transfer,
     const restored = await manager.spawnFromSave('restored', {
       ...spec, ...saved[0].components.stack!, playbackRemaining: saved[0].components.phonograph!.remainingSeconds,
     }, position.clone().setX(6));
-    expect(restored.userData.phonograph.remainingSeconds).toBe(54);
+    expect(prefabInstance(restored)!.components.phonograph.remainingSeconds).toBe(54);
     // A full inventory or canceled trade never ejects the old record or stops music.
     const before = manager.exportRecords();
     take.mockReturnValue(false);
     expect(await manager.insertPhonographRecord(model, { entity: plain, take })).toBe(false);
     expect(manager.exportRecords()).toEqual(before);
     vi.spyOn(THREE.Raycaster.prototype, 'intersectObjects').mockReturnValue([{ object: model } as unknown as THREE.Intersection]);
-    performPickupAction(model.userData.pickupTarget, createPickupDoer(player, inventory));
-    expect(model.userData.phonograph.isPlaying).toBe(false);
+    performPickupAction(findActionEntity(model)!.pickupTarget, createPickupDoer(player, inventory));
+    expect(prefabInstance(model)!.components.phonograph.isPlaying).toBe(false);
     const item = inventory.get(from)!;
     expect(item.phonographRecord).toBe('record_creepyforest');
     expect(item.skinId).toBe('decor_phonograph_cawnival');
@@ -145,8 +147,8 @@ it('preserves a loaded skinned record across reskin, pickup, inventory transfer,
       { slot: to, itemId: item.itemId, skinId: item.skinId, delta: -1 },
     ]))).toBe(true);
     const dropped = manager.reskinTargets.find(({ model }) => lookupPrefabInstance(model)?.entityId !== 'restored')!.model as THREE.Group;
-    expect(dropped.userData.phonograph.record).toBe('record_creepyforest');
-    expect(dropped.userData.phonograph.isPlaying).toBe(false);
+    expect(prefabInstance(dropped)!.components.phonograph.record).toBe('record_creepyforest');
+    expect(prefabInstance(dropped)!.components.phonograph.isPlaying).toBe(false);
     const droppedRecord = manager.exportRecords().find(({ id }) => id !== 'restored')!;
     expect(droppedRecord.components.phonograph).toBeUndefined();
     // Replacing the record ejects its original skin; one hammer hit ejects the new record.

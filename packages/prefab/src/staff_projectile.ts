@@ -1,3 +1,4 @@
+import { PrefabDisplayGroup } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import { SpriteResources } from '@dontstarve-web/display';
 import { createArchiveEntity } from './prefabInstance';
@@ -20,14 +21,14 @@ interface ActiveProjectile { component: Projectile; entity?: ReturnType<typeof c
 
 /** staff_projectile.lua: transient (persists = false) projectiles flown by components/projectile. */
 export class StaffProjectileManager {
-  private readonly scene: THREE.Scene;
+  private readonly displays: PrefabDisplayGroup;
   private readonly world: StaffProjectileWorld;
   private readonly resources = new SpriteResources();
   private readonly active = new Set<ActiveProjectile>();
   private disposed = false;
 
   constructor(scene: THREE.Scene, world: StaffProjectileWorld) {
-    this.scene = scene; this.world = world;
+    this.displays = new PrefabDisplayGroup(scene); this.world = world;
   }
 
   /** Weapon:LaunchProjectile → SpawnPrefab("fire_projectile") at the attacker, then projectile:Throw. */
@@ -49,12 +50,12 @@ export class StaffProjectileManager {
   private attach(entry: ActiveProjectile): void {
     const entity = entry.entity = createArchiveEntity(FIRE_PROJECTILE_ID, this.resources.archive({ animationArchive: 'staff_projectile.zip',
       buildArchives: ['staff_projectile.zip'], bank: 'projectile' }),
-      { name: 'fire_spin_loop' }, FIRE_PROJECTILE_ID);
+      { name: 'fire_spin_loop', billboard: true }, FIRE_PROJECTILE_ID);
     entity.instance.persists = false;
     entity.instance.addTag('projectile');
     entity.instance.position.copy(entry.component.position);
     entity.display.model.visible = entry.component.visible;
-    this.scene.add(entity.display.model);
+    this.displays.mount(entity.display);
   }
 
   /** staff_projectile.lua OnHitFire: an unlit target gets a fire_fail_fx where the projectile met its edge. */
@@ -75,7 +76,7 @@ export class StaffProjectileManager {
     this.world.fx.spawn('fire_fail_fx', point);
   }
 
-  update(dt: number, quaternion: THREE.Quaternion): void {
+  update(dt: number, _quaternion: THREE.Quaternion): void {
     if (this.disposed) return;
     for (const entry of [...this.active]) {
       entry.component.Update(dt);
@@ -83,7 +84,6 @@ export class StaffProjectileManager {
       const { instance, display: { model } } = entry.entity;
       instance.position.copy(entry.component.position);
       model.visible = entry.component.visible;
-      model.quaternion.copy(quaternion);
       instance.sprite.update(dt);
     }
   }
@@ -105,6 +105,7 @@ export class StaffProjectileManager {
     if (this.disposed) return;
     this.disposed = true;
     for (const entry of [...this.active]) this.remove(entry);
+    this.displays.dispose();
     this.resources.dispose();
   }
 }

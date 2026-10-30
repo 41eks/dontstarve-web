@@ -68,7 +68,7 @@ function healowner(entity: ItemEntity, owner: EquipmentOwner): void {
 /**
  * amulet.lua onequip_red / onunequip_red / onequiptomodel_red: while worn, a periodic task heals the owner. The task is a
  * game-time timer re-armed after each run; it is not saved, and equipping on load starts it again. The worn art keeps
- * `swap_body` while the owner is in amulet_rebirth, whose state clears it on exit.
+ * `swap_body` while the owner is in amulet_rebirth, whose state clears it on exit: the art's slot goes as the owner leaves it.
  */
 export function createAmuletEquipmentLifecycle(entity: ItemEntity, art: Pick<EquipmentLifecycle, 'onequip' | 'onunequip'>): EquipmentLifecycle {
   let task: ComponentTimer | undefined;
@@ -88,8 +88,15 @@ export function createAmuletEquipmentLifecycle(entity: ItemEntity, art: Pick<Equ
     onunequip() {
       task?.stop();
       task = undefined;
-      if (!owner?.IsCurrentState?.('amulet_rebirth')) art.onunequip();
+      const reviving = owner?.IsCurrentState?.('amulet_rebirth') ? owner : undefined;
       owner = undefined;
+      const stop = reviving?.ListenForEvent?.('newstate', data => {
+        if ((data as { statename?: string } | undefined)?.statename === 'amulet_rebirth') return;
+        stop?.();
+        art.onunequip();
+      });
+      // SGwilson amulet_rebirth onexit leaves a body item equipped meanwhile in place; its slot is drawn over this one.
+      if (!stop) art.onunequip();
     },
   };
 }

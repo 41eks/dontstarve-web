@@ -14,9 +14,10 @@ it('renders and samples only the lights displays list for active entities in the
   lit.instance.position.x = 130; asleep.instance.position.x = 131;
   scene.add(lit.display.model, asleep.display.model);
   for (const { instance } of [lit, asleep, held]) instance.light.set(red);
-  const owner = new THREE.Group(); owner.position.x = 120; scene.add(owner);
-  const child = spawnLightEntity(owner, 'lanternlight'); child.instance.light.set({ ...red, colour: [0, 1, 0] });
-  child.model.position.x = 12;
+  // A light entity parented to `owner` has no display of its own: the owner's display lists it at the owner.
+  const owner = createEmptyEntity('owner'); owner.instance.position.x = 132; scene.add(owner.display.model);
+  const child = spawnLightEntity('lanternlight', owner.instance); child.instance.light.set({ ...red, colour: [0, 1, 0] });
+  const listedModels = () => [...displayLights()].map(light => light.model);
   let sources = 0;
   const renderer = {
     autoClear: false, getRenderTarget: () => null, setRenderTarget: vi.fn(),
@@ -27,11 +28,16 @@ it('renders and samples only the lights displays list for active entities in the
   try {
     asleep.instance.setActive(false); await settle();
     // A sleeping entity's display lists nothing; one held out of the scene (in a pack) is listed but emits nothing.
-    expect([...displayLights()].map(light => light.model)).toEqual([lit.display.model, held.display.model, child.model]);
+    expect(listedModels()).toEqual([lit.display.model, held.display.model, owner.display.model]);
     render();
     expect(sources).toBe(2);
     expect(lighting.sampleLightLevel(sample)).toBeCloseTo(.2 * .2126 + .2 * .7152);
     expect(lighting.sampleLightLevel(sample, lit.display.model)).toBeCloseTo(.2 * .7152); // An entity excludes its own light.
+    // The parented light goes out while its parent sleeps and comes back with it.
+    owner.instance.setActive(false); await settle();
+    expect(listedModels()).toEqual([lit.display.model, held.display.model]);
+    owner.instance.setActive(true); await settle();
+    expect(listedModels()).toEqual([lit.display.model, held.display.model, owner.display.model]);
 
     asleep.instance.setActive(true); child.instance.light.set(null); await settle();
     render();
@@ -46,7 +52,7 @@ it('renders and samples only the lights displays list for active entities in the
     expect(lighting.sampleLightLevel(sample)).toBe(0);
   } finally {
     for (const { instance } of [lit, asleep, held]) instance.remove();
-    child.remove(); await settle();
+    child.remove(); owner.instance.remove(); await settle();
     lighting.dispose(); scene.clear();
   }
   expect(displayLights().size).toBe(0); // Removed entities release their listing.

@@ -1,9 +1,10 @@
+import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import { modelEntries } from './modelRecords';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
 import { SpriteResources, type ArchiveSpriteCommands, type PrefabDisplay } from '@dontstarve-web/display';
-import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
+import { createArchiveEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
 import { watchTileActivity } from './tileActivity';
 import { ComponentTimer } from '../../componets/src/timer';
 import type { PickaxeTarget } from '@dontstarve-web/stategraphs/pickaxe';
@@ -91,7 +92,7 @@ interface Shrub {
 
 /** marbleshrub.lua: growable loop, MINE workable, stage-dependent loot and shape/colour persistence. */
 export class MarbleShrubManager {
-  private readonly scene: THREE.Scene;
+  private readonly displays: PrefabDisplayGroup;
   private readonly world: MarbleShrubWorld;
   private readonly scheduler: GameTimeScheduler;
   private readonly ownsScheduler: boolean;
@@ -100,7 +101,7 @@ export class MarbleShrubManager {
   private disposed = false;
 
   constructor(scene: THREE.Scene, world: MarbleShrubWorld) {
-    this.scene = scene; this.world = world;
+    this.displays = new PrefabDisplayGroup(scene); this.world = world;
     this.scheduler = world.scheduler ?? new GameTimeScheduler();
     this.ownsScheduler = !world.scheduler;
   }
@@ -132,7 +133,7 @@ export class MarbleShrubManager {
     startStage: number, saved: MarbleShrubRecord | undefined, fromSeed: boolean): THREE.Group {
     const model = display.model;
     const sprite = instance.sprite;
-    model.userData.animationController = sprite;
+
     model.position.set(position.x, 0, position.z);
     instance.entityId = saved?.id ?? newEntityId();
     Object.assign(model.userData, { deploySmartRadius: 1 });
@@ -174,7 +175,7 @@ export class MarbleShrubManager {
       for (const prefab of shrub.stage.loot(chance => Math.random() <= chance)) lootdropper.SpawnLootPrefab(prefab, inst.getPosition());
       RemovePhysicsColliders(instance);
     });
-    Object.assign(model.userData.components, { growable: shrub.growable, workable: shrub.workable, lootdropper });
+    Object.assign(prefabInstance(model)!.components, { growable: shrub.growable, workable: shrub.workable, lootdropper });
     new ToolMouseTarget(inst, instance, shrub.workable, this.world.handEquipment);
     this.shrubs.set(model, shrub);
     // SetupShrubShape: shape 1 keeps the constructor icon, others use marbleshrub<n>.png.
@@ -199,7 +200,7 @@ export class MarbleShrubManager {
         shrub.sounds.add(PlaySound('dontstarve/common/together/marble_shrub/grow', model.position));
       }
     }
-    this.scene.add(model);
+    this.displays.mount(prefabDisplay(model)!);
     shrub.stopActivity = watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active));
     return model;
   }
@@ -249,7 +250,8 @@ export class MarbleShrubManager {
     if (this.disposed) return;
     this.disposed = true;
     for (const model of [...this.shrubs.keys()]) this.remove(model);
-    this.resources.dispose();
+    this.displays.dispose(); this.resources.dispose();
     if (this.ownsScheduler) this.scheduler.dispose();
+
   }
 }

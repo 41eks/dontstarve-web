@@ -1,3 +1,5 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
+import { prefabDisplay } from '../../display/src';
 import { fixturePickup } from './pickup-fixture';
 import { spriteScreenPoint } from './sprite-screen-point';
 import * as THREE from 'three';
@@ -45,7 +47,7 @@ export async function checkResearchLabDestruction() {
       const lootTargets = entities.groundItems.reskinTargets.slice(beforeCount);
       // Logical loot exists before its display finishes loading the ground art.
       await Promise.all(lootTargets.map(target =>
-        (actionTargetModel(target).userData.display as PrefabDisplay).artLoaded()));
+        (prefabDisplay(actionTargetModel(target)) as PrefabDisplay).artLoaded()));
       // Instanced loot stays pickable, while the batch handles its drawing order.
       const models = lootTargets.map(actionTargetModel);
       if (models.length !== pieceCounts[index]) throw new Error(`Missing loot targets for ${id}: ${models.length}`);
@@ -82,10 +84,10 @@ export async function checkResearchLabDestruction() {
     const groundModel = actionTargetModel(pickupTarget), address = pickupTarget.id;
     for (const target of groundTargets) {
       if (target === pickupTarget) continue;
-      actionTargetModel(target).userData.pickupTarget.entity.transform.position.x += 100;
+      findActionEntity(actionTargetModel(target))?.pickupTarget.entity.transform.position.x += 100;
     }
-    groundModel.userData.pickupTarget.entity.transform.position.copy(player.position).setY(0).add(new THREE.Vector3(5, 0, 0));
-    groundModel.position.copy(groundModel.userData.pickupTarget.entity.transform.position);
+    findActionEntity(groundModel)?.pickupTarget.entity.transform.position.copy(player.position).setY(0).add(new THREE.Vector3(5, 0, 0));
+    groundModel.position.copy(findActionEntity(groundModel)?.pickupTarget.entity.transform.position);
     const { scene, renderer } = await import('../../../src/universal');
     camera.position.copy(groundModel.position).add(new THREE.Vector3(0, 20, 35));
     camera.lookAt(groundModel.position);

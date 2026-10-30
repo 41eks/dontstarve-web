@@ -23,7 +23,7 @@ test('spawns and gives neutral thermal stones, reskins and transfers one, then s
     return JSON.parse(await readSaveDownload((await (await download).path())!, 'Master'));
   };
   const ground = () => page.evaluate(() => (window as any).heatRockGame.scene.children
-    .filter((model: any) => model.userData.itemId === 'heatrock').map((model: any) => ({
+    .filter((model: any) => ((window as any).__findActionEntity(model)?.prefab ?? (window as any).__prefabInstance(model)?.prefab) === 'heatrock').map((model: any) => ({
       id: (window as any).__prefabInstance(model)?.entityId, skin: (window as any).__prefabInstance(model)?.skinId,
       vertices: model.getObjectByProperty('isMesh', true).geometry.drawRange.count,
       materials: model.getObjectByProperty('isMesh', true).material.map((material: any) => material.name),
@@ -81,7 +81,7 @@ test('spawns and gives neutral thermal stones, reskins and transfers one, then s
   expect(spawned.vertices).toBeGreaterThan(0); expect(spawned.materials).toContain('ground:heat_rock');
   await page.evaluate(id => {
     const game = (window as any).heatRockGame;
-    game.scene.children.find((model: any) => (window as any).__prefabInstance(model)?.entityId === id).userData.components.fueled.SetPercent(.75);
+    ((window as any).__findActionEntity(game.scene.children.find((model: any) => (window as any).__prefabInstance(model)?.entityId === id))?.components ?? (window as any).__prefabInstance(game.scene.children.find((model: any) => (window as any).__prefabInstance(model)?.entityId === id))!.components).fueled.SetPercent(.75);
     game.playerBody.position.set(-3, game.playerBody.shapes[0].radius, 3); game.player.position.set(-3, 0, 3);
   }, spawned.id);
   await bag.locator('[data-item-id="reskin_tool"]').dragTo(bar.locator('[data-slot-key="hand"]'));

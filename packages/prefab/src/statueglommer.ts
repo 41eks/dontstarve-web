@@ -1,3 +1,4 @@
+import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import type { World } from 'cannon-es';
 import type { TileStateQuery } from '@dontstarve-web/signals';
@@ -11,7 +12,7 @@ import { Leader, PointOfInterest } from '../../componets/src/statueglommerSignat
 import { Pickable } from './components/pickable';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { MiniMapState } from '../../map/src/minimapState';
-import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
+import { createArchiveEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
 import { MakeObstaclePhysics, WORLD_SCALE } from './standardcomponents';
 import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
@@ -57,9 +58,9 @@ export class StatueGlommerManager {
   private readonly statues = new Map<THREE.Group, Statue>();
   private disposed = false;
 
-  private readonly scene: THREE.Scene;
+  private readonly displays: PrefabDisplayGroup;
   private readonly world: StatueGlommerWorld;
-  constructor(scene: THREE.Scene, world: StatueGlommerWorld) { this.scene = scene; this.world = world; }
+  constructor(scene: THREE.Scene, world: StatueGlommerWorld) { this.displays = new PrefabDisplayGroup(scene); this.world = world; }
 
   spawn(position: THREE.Vector3, saved?: StatueGlommerRecord): THREE.Group {
     if (this.disposed) throw new Error('Glommer statues have been disposed');
@@ -122,10 +123,10 @@ export class StatueGlommerManager {
     const statue: Statue = { instance, display, workable, lootdropper, pickable, hauntable, minimap,
       spawned: saved?.components.statueglommer?.spawned === true,
       stopActivity: watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active)) };
-    Object.assign(model.userData.components, { ...(workable ? { workable } : {}), ...(lootdropper ? { lootdropper } : {}),
+    Object.assign(prefabInstance(model)!.components, { ...(workable ? { workable } : {}), ...(lootdropper ? { lootdropper } : {}),
       inspectable, leader, pointofinterest, hauntable });
     this.statues.set(model, statue);
-    this.scene.add(model);
+    this.displays.mount(prefabDisplay(model)!);
     return model;
   }
 
@@ -154,6 +155,7 @@ export class StatueGlommerManager {
       statue.stopActivity(); statue.pickable.dispose(); statue.workable?.dispose(); statue.hauntable.dispose();
       model.userData.removed = true; statue.instance.remove();
     }
-    this.statues.clear(); this.assets.dispose();
+    this.statues.clear(); this.displays.dispose(); this.assets.dispose();
+
   }
 }

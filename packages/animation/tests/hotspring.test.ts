@@ -1,3 +1,4 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { useTestTileMap, testMap } from './tileMapFixture';
 import * as THREE from 'three';
@@ -87,11 +88,11 @@ it('lights and heats a spring only after a cursor-held bath bomb is tossed in, t
     expect((await executeDebugCommand('c_give("bathbomb",2);c_spawn("hotspring")', s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
     expect(s.inventory.getItemSpec('bathbomb').maxStack).toBe(20);
     const model = s.springs.exportRecords().length === 1 ? s.scene.children.find(child => lookupPrefabInstance(child)?.prefab === 'hotspring')! as THREE.Group : undefined;
-    const inst = model!.userData.actionEntity, heater = inst.components.heater;
+    const inst = findActionEntity(model!), heater = inst.components.heater;
     expect(inst.hasTag('HASHEATER')).toBe(true); expect(inst.hasTag('bathbombable')).toBe(true);
     expect(heater.GetHeat()).toBe(45);
     expect(declaredLight(model!)).toBeUndefined();
-    expect(model!.userData.animationController.currentAnimation).toBe('idle');
+    expect(prefabInstance(model!)!.sprite.currentAnimation).toBe('idle');
 
     expect(s.inventory.transfer(inventorySlotAddress(0), cursorSlotAddress(), 2)).toBe(true);
     toss = new ItemUseActionController(s.world, animation, locomotor, source);
@@ -108,9 +109,9 @@ it('lights and heats a spring only after a cursor-held bath bomb is tossed in, t
     expect(heater.GetHeat()).toBe(90);
     expect(inst.hasTag('bathbombable')).toBe(false);
     expect(declaredLight(model!)).toEqual(HOTSPRING_LIGHT);
-    expect(model!.userData.animationController.currentAnimation).toBe('bath_bomb');
+    expect(prefabInstance(model!)!.sprite.currentAnimation).toBe('bath_bomb');
     for (let frame = 0; frame < 180; frame++) s.springs.update(1 / 30, s.world.camera.quaternion);
-    expect(model!.userData.animationController.currentAnimation).toBe('glow_loop');
+    expect(prefabInstance(model!)!.sprite.currentAnimation).toBe('glow_loop');
     // A bombed spring refuses a second bomb.
     expect(getItemUseActions(model, source()).some(candidate => candidate.action.action === 'BATHBOMB')).toBe(false);
 
@@ -121,12 +122,12 @@ it('lights and heats a spring only after a cursor-held bath bomb is tossed in, t
     expect(record.components.hotspring).toEqual({ isbathbombed: true });
     const reloaded = await restored.springs.spawn(new THREE.Vector3(...record.transform.position), record);
     expect(restored.springs.exportRecords().map(entry => entry.record)).toEqual([record]);
-    expect(reloaded.userData.actionEntity.components.heater.GetHeat()).toBe(90);
+    expect(findActionEntity(reloaded).components.heater.GetHeat()).toBe(90);
     expect(declaredLight(reloaded)).toEqual(HOTSPRING_LIGHT);
-    expect(reloaded.userData.animationController.currentAnimation).toBe('glow_loop');
+    expect(prefabInstance(reloaded)!.sprite.currentAnimation).toBe('glow_loop');
 
     s.springs.remove(model!);
-    expect(FindEntities(model!.position, 1, ['HASHEATER']).map(entity => entity === reloaded.userData.actionEntity)).toEqual([true]);
+    expect(FindEntities(model!.position, 1, ['HASHEATER']).map(entity => entity === findActionEntity(reloaded))).toEqual([true]);
     expect(declaredLight(model!)).toBeUndefined();
   } finally { toss?.dispose(); s.dispose(); restored.dispose(); }
 });
@@ -173,7 +174,7 @@ it('keeps a spring active when the injected tile query returns undefined', async
     const position = new THREE.Vector3(5, 0, 6);
     const model = await s.springs.spawn(position);
     await new Promise(resolve => setTimeout(resolve, 0));
-    const update = vi.spyOn(model.userData.animationController, 'update');
+    const update = vi.spyOn(prefabInstance(model)!.sprite, 'update');
     expect(query).toHaveBeenCalledTimes(2); // Presentation and physics each own their tile view.
     expect(query.mock.calls.every(([tile]) => tile.peek() === GetTileKeyAtPoint(model.position))).toBe(true);
     expect(model.position).toEqual(position);
@@ -198,8 +199,8 @@ it('toggles tile visibility, physics and animation while preserving inactive sav
     const second = await s.springs.spawn(new THREE.Vector3(1, 0, 1));
     await new Promise(resolve => setTimeout(resolve, 0));
     const firstBody = bodyOf(first), secondBody = bodyOf(second);
-    const firstAnimation = vi.spyOn(first.userData.animationController, 'update');
-    const secondAnimation = vi.spyOn(second.userData.animationController, 'update');
+    const firstAnimation = vi.spyOn(prefabInstance(first)!.sprite, 'update');
+    const secondAnimation = vi.spyOn(prefabInstance(second)!.sprite, 'update');
     const records = s.springs.exportRecords();
     expect(first.parent).toBe(s.scene); expect(second.parent).toBe(s.scene);
     expect(s.registry.renderEntities.map(entry => entry.object)).toEqual([first, second]);
@@ -216,7 +217,7 @@ it('toggles tile visibility, physics and animation while preserving inactive sav
     s.springs.update(5, s.world.camera.quaternion);
     expect(firstAnimation).toHaveBeenCalledOnce(); expect(secondAnimation).toHaveBeenCalledOnce();
     expect(s.springs.exportRecords()).toEqual(records);
-    expect(first.userData.actionEntity.components.heater.GetHeat()).toBe(90);
+    expect(findActionEntity(first).components.heater.GetHeat()).toBe(90);
     let json = '';
     expect(await executeDebugCommand('c_save()', s.inventory, undefined, () => { json = s.save(); })).toMatchObject({ ok: true });
     const saved = deserializeSave(json, SAVE_CATALOG);
@@ -225,7 +226,7 @@ it('toggles tile visibility, physics and animation while preserving inactive sav
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(loaded.parent).toBeNull(); expect(restored.physics.bodies).toEqual([]);
     expect(restored.springs.exportRecords()[0]).toEqual(records[0]);
-    expect(loaded.userData.animationController.currentAnimation).toBe('glow_loop');
+    expect(prefabInstance(loaded)!.sprite.currentAnimation).toBe('glow_loop');
 
     // 移除一个休眠实例，不能停止同 tile 的其他实例，也不能在回到范围时复活。
     s.springs.remove(first);

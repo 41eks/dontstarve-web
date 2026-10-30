@@ -1,3 +1,4 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -124,7 +125,7 @@ it('renders real flies child art, plays looping audio and preserves manure throu
     expect(entries.find(entry => entry.object === flies)!.footPosition.toArray()).toEqual([0, 0, 0]);
     const [saved] = JSON.parse(JSON.stringify(manager.exportRecords()));
     expect(saved).toMatchObject({ id: 'poop-identity', transform: { position: [0, 0, 0] }, components: { stack: { itemId: 'poop', count: 3 } } });
-    const entity = model.userData.pickupTarget.entity;
+    const entity = findActionEntity(model)!.pickupTarget.entity;
     expect(inventory.GiveItem(entity)).toBe(true);
     expect([...manager.iteratePrefabPositions('poop')]).toEqual([]);
     expect(manager.exportRecords()).toEqual([]);
@@ -149,7 +150,7 @@ it('renders real flies child art, plays looping audio and preserves manure throu
     expect(restoredManager.exportRecords()).toEqual([dropped]);
     expect(restored.userData.flies).toBeDefined();
     expect(sources).toHaveLength(3);
-    const restoredEntity = restored.userData.pickupTarget.entity;
+    const restoredEntity = findActionEntity(restored)!.pickupTarget.entity;
     expect([...restoredManager.iteratePrefabPositions('poop')]).toEqual([restoredEntity.transform.position]);
     restoredEntity.components.burnable.Ignite();
     expect(restored.userData.flies).toBeUndefined();

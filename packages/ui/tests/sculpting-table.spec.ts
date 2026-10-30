@@ -59,7 +59,7 @@ test('gives marble from the cursor, takes it back with PICK and keeps it across 
     new CustomEvent('game:debug-command', { detail: { command } })), command);
   const held = () => page.evaluate(() => {
     const table = (window as any).tableGame.scene.children.find((model: any) => model.name === 'SculptingTable');
-    const pickable = table?.userData.components.pickable;
+    const pickable = ((window as any).__findActionEntity(table)?.components ?? (window as any).__prefabInstance(table)!.components).pickable;
     return pickable?.canInteractWith ? pickable.product : null;
   });
   const saveGame = async () => {

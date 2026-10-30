@@ -1,3 +1,5 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
+import { prefabDisplay } from '@dontstarve-web/display';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
@@ -95,7 +97,7 @@ it('buffers planting at frame six, preserves cancelled butterflies and saves the
     const flower = s.world.scene.children.find(model => lookupPrefabInstance(model)?.prefab === 'flower')!;
     expect(prefabInstance(flower)!.listTags()).toContain('flower');
     // The planted flower exists at once; its display draws it once the art has loaded.
-    await flower.userData.display.artLoaded();
+    await prefabDisplay(flower).artLoaded();
     expect(s.flowers.renderEntities.find(entity => entity.object === flower)?.footPosition).toBe(flower.position);
     expect(deployment.canDeploy(new THREE.Vector3(4.2, 0, 0), source()!.entity)).toBe(false);
     expect(deployment.canDeploy(new THREE.Vector3(4.3, 0, 0), source()!.entity)).toBe(true);
@@ -121,8 +123,8 @@ it('quick-picks petals at frame six, preserves a cancelled flower and reloads th
   const controller = new PickActionController(s.world, animation, locomotor, prepare, new SpriteState({ name: 'idle' }));
   try {
     const flower = await s.flowers.spawnFromSave('flower:pick', 'f6', new THREE.Vector3(2, 0, 0));
-    const component = flower.userData.components.pickable;
-    const entity = flower.userData.actionEntity;
+    const component = (findActionEntity(flower)?.components ?? prefabInstance(flower)!.components).pickable;
+    const entity = findActionEntity(flower);
     const candidate = getPickActions(flower)[0];
     expect(candidate.available).toBe(true);
     s.world.worldEvents.on('plantkilled', killed);
@@ -175,7 +177,7 @@ it('applies rose thorns through combat and respects equipped bramble protection 
     const torch = s.inventory.getEntity(inventorySlotAddress(0))!;
     torch.addTag('bramble_resistant');
     const rose = await s.flowers.spawnFromSave('rose:pick', 'rose', new THREE.Vector3());
-    const component = rose.userData.components.pickable;
+    const component = (findActionEntity(rose)?.components ?? prefabInstance(rose)!.components).pickable;
     expect(component.pick({ picker, giveItem: () => false })).toBe(false);
     expect(health.currenthealth).toBe(150); expect(sanity).not.toHaveBeenCalled();
     expect(component.pick({ picker, giveItem: (itemId: string, count: number) => s.inventory.add(itemId, count) })).toBe(true);
@@ -184,7 +186,7 @@ it('applies rose thorns through combat and respects equipped bramble protection 
     expect(sanity).toHaveBeenCalledExactlyOnceWith(5);
     expect(s.inventory.EquipFromInventory(torch)).toBe(true);
     const protectedRose = await s.flowers.spawnFromSave('rose:protected', 'rose', new THREE.Vector3(8, 0, 0));
-    expect(protectedRose.userData.components.pickable.pick({
+    expect((findActionEntity(protectedRose)?.components ?? prefabInstance(protectedRose)!.components).pickable.pick({
       picker: { ...picker, hasTag: (tag: string) => tag === 'plantkin' },
       giveItem: (itemId: string, count: number) => s.inventory.add(itemId, count),
     })).toBe(true);
@@ -204,7 +206,7 @@ it('perishes harvested petals in discrete batches and preserves freshness and qu
   ground.entities.bindPerishWorld(world); restoredGround.entities.bindPerishWorld(restoredWorld);
   try {
     const flower = await s.flowers.spawnFromSave('flower:petals', 'f1', new THREE.Vector3());
-    expect(flower.userData.components.pickable.pick({
+    expect((findActionEntity(flower)?.components ?? prefabInstance(flower)!.components).pickable.pick({
       giveItem: (itemId: string, count: number) => s.inventory.add(itemId, count),
     })).toBe(true);
     expect((await executeDebugCommand('c_give("petals")', s.inventory)).ok).toBe(true);

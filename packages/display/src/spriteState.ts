@@ -48,11 +48,25 @@ export interface ClipJson {
   readonly none?: true;
 }
 
+const ANIM_STATE_SLOT = 'anim-state:';
+type AnimStateAppearance = Extract<AppearanceJson, { kind: 'anim-state' }>;
+
+/** The entity's own AnimState first, then the slots other entities declared on it, in the order they were declared. */
+export function animStateDeclarations(appearance: SpriteJson['appearance']): readonly (readonly [string, AnimStateAppearance])[] {
+  const own = appearance.get('anim-state');
+  const declared: (readonly [string, AnimStateAppearance])[] = own?.kind === 'anim-state' ? [['anim-state', own]] : [];
+  for (const [key, op] of appearance) if (op.kind === 'anim-state' && key.startsWith(ANIM_STATE_SLOT)) declared.push([key, op]);
+  return declared;
+}
+
 /** Appearance that belongs to the entity and is dressed again on every drawn sprite. */
 export type AppearanceJson =
   | { readonly kind: 'skin'; readonly skin: SkinJson }
-  /** The display loads the archives `state` names from `art`, the entity's resource owner. */
-  | { readonly kind: 'anim-state'; readonly state: AnimStateJson; readonly art?: AnimStateArt }
+  /**
+   * The declaring AnimState's own json signal, which the display follows; it loads the archives the state names from `art`,
+   * the declaring entity's resource owner.
+   */
+  | { readonly kind: 'anim-state'; readonly state: ReadonlySignal<AnimStateJson>; readonly art?: AnimStateArt }
   | { readonly kind: 'layer'; readonly layer: string; readonly hidden: boolean }
   | { readonly kind: 'symbols'; readonly overrides: SymbolOverrideMap; readonly hiddenLayers: readonly string[] }
   | { readonly kind: 'symbol'; readonly symbol: string; readonly override: SymbolOverrideValue }
@@ -279,7 +293,19 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
     this.write({ frame: { at: fraction } });
   }
   setArtSource(source: SpriteSourceJson): void { if (source !== this.state.source) this.write({ source }); }
-  setAnimState(state: AnimStateJson, art?: AnimStateArt): void { this.withAppearance('anim-state', { kind: 'anim-state', state, art }); }
+  /** The entity's own AnimState, by its json signal: the display follows it rather than a copy. */
+  setAnimState(state: ReadonlySignal<AnimStateJson>, art?: AnimStateArt): void { this.withAppearance('anim-state', { kind: 'anim-state', state, art }); }
+  /**
+   * Another entity's AnimState on this one, by its json signal, as an equipped item names its owner's symbols. It is drawn
+   * over the entity's own (`setAnimState`) and over the slots declared before it; declaring it again keeps its place, and
+   * undefined removes it.
+   */
+  declareAnimState(key: string, state: ReadonlySignal<AnimStateJson> | undefined, art?: AnimStateArt): void {
+    const slot = `${ANIM_STATE_SLOT}${key}`, appearance = new Map(this.state.appearance);
+    if (state) appearance.set(slot, { kind: 'anim-state', state, art });
+    else if (!appearance.delete(slot)) return;
+    this.write({ appearance });
+  }
   setTint(tint: SpriteTint): void { this.write({ tint }); }
   followSymbol(symbol: string, x: number, y: number, fx?: FollowerFx): { readonly node: THREE.Object3D; remove(): void } {
     const node = this.probe?.createFollower?.();

@@ -1,3 +1,4 @@
+import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import { findImage, smallHash, SpriteFrameRenderer, type Animation, type ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
 import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
@@ -57,7 +58,7 @@ export function isWorldFx(prefab: string): prefab is WorldFxPrefab { return Obje
 
 /** Transient fx.lua prefabs spawned by components, such as the effect components/book.lua puts at the reader. */
 export class WorldFx {
-  private readonly scene: THREE.Scene;
+  private readonly displays: PrefabDisplayGroup;
   private readonly assets: GroundItemAssets;
   private readonly prepared = new Map<WorldFxPrefab, Promise<FxAssets>>();
   private readonly ready = new Map<WorldFxPrefab, FxAssets>();
@@ -65,7 +66,7 @@ export class WorldFx {
   private disposed = false;
 
   constructor(scene: THREE.Scene) {
-    this.scene = scene;
+    this.displays = new PrefabDisplayGroup(scene);
     this.assets = new GroundItemAssets();
   }
 
@@ -97,7 +98,7 @@ export class WorldFx {
   spawn(prefab: WorldFxPrefab, position: THREE.Vector3): void {
     if (this.disposed) throw new Error('World fx have been disposed');
     const assets = this.ready.get(prefab);
-    const entity = createEmptyEntity(prefab), model = entity.display.model;
+    const entity = createEmptyEntity(prefab, undefined, { billboard: true }), model = entity.display.model;
     model.userData.billboard = true;
     entity.instance.persists = false;
     entity.instance.addTag('FX');
@@ -121,7 +122,7 @@ export class WorldFx {
       if (!this.disposed) console.error(`Unable to load FX ${prefab}`, error);
     });
     this.active.add(effect);
-    this.scene.add(model);
+    this.displays.mount(prefabDisplay(model)!);
     if ('sound' in definition) PlaySound(definition.sound, effect.footPosition);
   }
 
@@ -129,10 +130,9 @@ export class WorldFx {
     return [...this.active].map(({ model, footPosition }) => ({ object: model, footPosition, cameraDepth: 0 }));
   }
 
-  update(dt: number, cameraQuaternion: THREE.Quaternion): void {
+  update(dt: number, _cameraQuaternion: THREE.Quaternion): void {
     for (const effect of this.active) {
       const { assets } = effect;
-      effect.model.quaternion.copy(cameraQuaternion);
       if (!assets) continue;
       effect.elapsed += Math.min(dt, 0.1);
       const frame = Math.floor(effect.elapsed * assets.animation.frameRate + 1e-8);
@@ -157,6 +157,7 @@ export class WorldFx {
       }
     }, () => {});
     this.prepared.clear(); this.ready.clear();
+    this.displays.dispose();
   }
 
   private remove(effect: FxInstance): void {

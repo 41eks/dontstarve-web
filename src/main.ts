@@ -179,9 +179,8 @@ const handEquipmentBinding = await bindPlayerHandEquipment({
   owner: pickupDoer,
   animation: playerAnimation,
   soundPosition: player.position,
-  lightParent: player,
+  lightParent: playerInstance,
   followSymbol: playerAnimation && ((symbol, x, y, fx) => playerAnimation.followSymbol(symbol, x, y, fx)),
-  dataBaseUrl: `${import.meta.env.BASE_URL}dst/data`,
   setHandAction: action => cursorUi.setHandAction(action, handPointer),
   lightStaffWorld: {
     map: spellCastMap,
@@ -379,7 +378,7 @@ playerAnimation?.bindRebirth({
   showHUD: show => ghostOwner?.showHUD(show),
   sleepNearby: (radius, seconds) => {
     for (const inst of FindEntities(player.position, radius * WORLD_SCALE)) {
-      (inst as unknown as { model: { userData: { components?: { sleeper?: { GoToSleep(seconds: number): void } } } } }).model.userData.components?.sleeper?.GoToSleep(seconds);
+      (inst.components as { sleeper?: { GoToSleep(seconds: number): void } }).sleeper?.GoToSleep(seconds);
     }
   },
 });
@@ -502,7 +501,7 @@ window.addEventListener('game:slot-select', (event) => {
     event.preventDefault();
     const entity = inventory.getEntity(slot);
     if (!entity) return;
-    void farmPlow.begin(() => inventory.extract(slot, 1, entity) ?? undefined).catch((error: unknown) => console.error('Unable to deploy farm plow', error));
+    farmPlow.begin(() => inventory.extract(slot, 1, entity) ?? undefined);
     return;
   }
   if (stack?.itemId === DOCK_KIT_ID) {

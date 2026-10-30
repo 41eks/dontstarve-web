@@ -1,3 +1,4 @@
+import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import type * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { createAnimatedSpriteFactory, type AnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
@@ -13,7 +14,7 @@ import { MakeObstaclePhysics } from './standardcomponents';
 import definitions from './definitions.json' with { type: 'json' };
 import type { MiniMapState } from '../../map/src/minimapState';
 import { newEntityId } from './saveRecord';
-import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
+import { createPrefabEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
 import { watchTileActivity } from './tileActivity';
 
 export const PIGKING_ID = 'pigking' as const;
@@ -97,7 +98,7 @@ class PigKing {
     const entity = actionEntity(model, PIGKING_ID);
     for (const tag of ['king', 'birdblocker', 'antlion_sinkhole_blocker']) entity.addTag(tag);
     const trader = this.trader = new Trader<TradeItem>(entity);
-    model.userData.components.trader = trader;
+    prefabInstance(model)!.components.trader = trader;
     // Lua only offers GIVE for items with the tradable component.
     trader.SetAbleToAcceptTest(item => item.components?.tradable ? { ok: true } : { ok: false });
     trader.SetAcceptTest(item => (item.components?.tradable?.goldvalue ?? 0) > 0);
@@ -183,14 +184,14 @@ class PigKing {
 export class PigKingManager {
   private factoryRequest?: Promise<AnimatedSpriteFactory>;
   private readonly kings = new Map<THREE.Group, PigKing>();
-  private readonly scene: THREE.Scene;
+  private readonly displays: PrefabDisplayGroup;
   private readonly assetBaseUrl: string;
   private readonly world: PigKingWorld;
   private readonly getWatchWorldContent?: GetWatchWorldContent;
   private disposed = false;
 
   constructor(scene: THREE.Scene, assetBaseUrl: string, world: PigKingWorld) {
-    this.scene = scene; this.assetBaseUrl = assetBaseUrl; this.world = world;
+    this.displays = new PrefabDisplayGroup(scene); this.assetBaseUrl = assetBaseUrl; this.world = world;
     this.getWatchWorldContent = getBoundWatchWorldContent();
   }
 
@@ -223,7 +224,7 @@ export class PigKingManager {
     const king = new PigKing(this.world, entity, this.getWatchWorldContent);
     model.userData.pigKing = king;
     this.kings.set(model, king);
-    this.scene.add(model);
+    this.displays.mount(prefabDisplay(model)!);
     return model;
   }
 
@@ -256,5 +257,6 @@ export class PigKingManager {
     for (const king of this.kings.values()) king.dispose();
     this.kings.clear();
     void this.factoryRequest?.then(factory => factory.dispose(), () => undefined);
+    this.displays.dispose();
   }
 }

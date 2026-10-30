@@ -1,3 +1,4 @@
+import { prefabDisplay } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -33,7 +34,7 @@ it('loads gem and declares the source calm-phase idle_full loop', async () => {
     expect(statues.exportRecords()[0].record.components.ruinsStatueMage).toEqual({ gem: 'orangegem' });
     expect(PREFAB_DEFINITIONS.ruinsStatueMages.parseComponents(statues.exportRecords()[0].record.components, 'mage', {} as never))
       .toEqual(statues.exportRecords()[0].record.components);
-    await model.userData.display.artLoaded();
+    await prefabDisplay(model).artLoaded();
     expect(inst.sprite.currentAnimation).toBe('idle_full');
   } finally { statues.dispose(); scheduler.dispose(); }
 });
@@ -44,7 +45,7 @@ it('restores the declared clip and gem after tile sleep', async () => {
     const model = statues.spawn(new THREE.Vector3(1, 0, 4), {
       id: 'mage-sleep', transform: { position: [1, 0, 4], rotationY: 0 }, components: { ruinsStatueMage: { gem: 'purplegem' } },
     });
-    await model.userData.display.artLoaded();
+    await prefabDisplay(model).artLoaded();
     const inst = prefabInstance(model)!;
     awake.set(false); await settle();
     expect(inst.status.peek()).toBe('asleep'); expect(inst.sprite.loaded).toBe(false); expect(model.parent).toBeNull();

@@ -1,3 +1,4 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import { afterEach, expect, it, vi } from 'vitest';
 import { intersectSpriteEntities, PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
@@ -94,7 +95,7 @@ it('picks active prefabs using logical NOCLICK/removal and resolves a pointer ev
     expect(provider).toHaveBeenLastCalledWith(front); // An unavailable visible entity still occludes the back.
     setMouseTargetEnabled(front, false);
     expect(activePrefabs.some(entity => entity.model === front)).toBe(true);
-    expect(mouseTargets.has(front.userData.actionEntity)).toBe(false);
+    expect(mouseTargets.has(findActionEntity(front))).toBe(false);
     expect(picker.getMouseActions().left).toBe(pickup);
     setMouseTargetEnabled(front, true);
     expect(picker.getMouseActions().left).toBeUndefined();

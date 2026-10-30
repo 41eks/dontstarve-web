@@ -1,9 +1,9 @@
-import * as THREE from 'three';
 import type { WilsonAnimationController } from '../../prefab/src/player';
 import { afterEach, expect, it, vi } from 'vitest';
 import { createEquipmentExistenceState, type HandEquipment } from '@dontstarve-web/signals';
 import { ItemEntity, InventoryStore, InventorySlot, HandSlot, inventorySlotAddress, equipmentSlotAddress } from '@dontstarve-web/inventory';
-import { configureTorchEntity, getTorchController } from '../../prefab/src/torch';
+import { configureTorchEntity, getTorchController, TORCH_LIGHT } from '../../prefab/src/torch';
+import { createEmptyEntity, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { bindPlayerHandEquipment } from '../../../src/playerHandEquipment';
 import { createPerishWorld } from './perishWorldFixture';
 
@@ -12,9 +12,12 @@ vi.mock('../../prefab/src/sound', () => ({
 }));
 afterEach(() => { vi.restoreAllMocks(); vi.clearAllMocks(); });
 
+/** The lights other entities parent to `parent`. */
+const parented = (parent: PrefabInstance) => [...parent.light.slots.peek().values()].map(light => light.peek());
+
 function presentation() {
   return { animation: { setEquippedCarryItem: vi.fn<WilsonAnimationController['setEquippedCarryItem']>(), playItemTransition: vi.fn<WilsonAnimationController['playItemTransition']>() },
-    lightParent: new THREE.Group(), setHandAction: vi.fn() };
+    lightParent: createEmptyEntity('wilson').instance, setHandAction: vi.fn() };
 }
 
 it('equips from the restore signal write, unequips before replacement and releases on shutdown', async () => {
@@ -47,7 +50,7 @@ it('equips from the restore signal write, unequips before replacement and releas
     const equip = vi.spyOn(nextTorch, 'onequip').mockImplementation(slot => { events.push('equip'); nextEquip(slot); });
     expect(oldTorch.isBurning).toBe(true);
     expect(ui.animation.setEquippedCarryItem).toHaveBeenLastCalledWith('torch');
-    expect(ui.lightParent.getObjectByName('torchfire_light')).toBeDefined();
+    expect(parented(ui.lightParent)).toEqual([TORCH_LIGHT]);
     world.advance(0.25);
     store.applySlotChanges([
       { slot: hand, itemId: 'torch', skinId: 'torch_barber', delta: -1 },
@@ -70,9 +73,7 @@ it('equips from the restore signal write, unequips before replacement and releas
     expect(store.handEquipment.peek()).toBe(stillEquipped);
     expect(store.getEntity(hand)).toBe(nextEntity);
     expect(ui.animation.setEquippedCarryItem).toHaveBeenLastCalledWith('torch');
-    // The removed light entity's display releases its model after the removal settles.
-    await new Promise(resolve => setTimeout(resolve, 0));
-    expect(ui.lightParent.getObjectByName('torchfire_light')).toBeUndefined();
+    expect(parented(ui.lightParent)).toEqual([]);
     store.setRemainingFuel(hand, 17);
     expect(equip).toHaveBeenCalledOnce();
     store.transfer(hand, a, 1); store.transfer(a, hand, 1);

@@ -33,7 +33,7 @@ test('picks a lunar flower, nets its insect, and preserves spawned insects and c
   };
   const point = (prefab: string) => page.evaluate(prefab => {
     const { scene, renderer, camera, view } = (window as any).lightFlierGame;
-    const model = scene.children.find((m: any) => (window as any).__prefabInstance(m)?.prefab === prefab || m.userData.itemId === prefab);
+    const model = scene.children.find((m: any) => (window as any).__prefabInstance(m)?.prefab === prefab || ((window as any).__findActionEntity(m)?.prefab ?? (window as any).__prefabInstance(m)?.prefab) === prefab);
     if (!model) return null;
     let mesh: any; model.traverse((m: any) => { if (!mesh && m.isMesh && m.geometry.getAttribute('position')?.count) mesh = m; });
     if (!mesh) return null;
@@ -58,10 +58,10 @@ test('picks a lunar flower, nets its insect, and preserves spawned insects and c
   await bar.locator('.inventory-bar__items [data-item-id="bugnet"]').click(); await hand.click(); await expect(hand).toHaveAttribute('data-item-id', 'bugnet');
   await expect.poll(() => page.evaluate(() => !(window as any).__prefabInstance((window as any).lightFlierGame.view.player).animationController.stategraph.hasStateTag('busy')), { timeout: 15000 }).toBe(true);
   const flower = await point('lightflier_flower'); expect(flower).not.toBeNull(); await page.mouse.click(flower!.x, flower!.y);
-  await expect.poll(() => page.evaluate(() => (window as any).lightFlierGame.scene.children.filter((m: any) => m.userData.itemId === 'lightflier').length), { timeout: 15000 }).toBe(1);
+  await expect.poll(() => page.evaluate(() => (window as any).lightFlierGame.scene.children.filter((m: any) => ((window as any).__findActionEntity(m)?.prefab ?? (window as any).__prefabInstance(m)?.prefab) === 'lightflier').length), { timeout: 15000 }).toBe(1);
   await expect.poll(() => page.evaluate(() => !(window as any).__prefabInstance((window as any).lightFlierGame.view.player).animationController.stategraph.hasStateTag('busy'))).toBe(true);
   await bar.locator('.inventory-bar__items [data-item-id="panflute"]').click({ button: 'right' });
-  await expect.poll(() => page.evaluate(() => (window as any).lightFlierGame.scene.children.find((m: any) => m.userData.itemId === 'lightflier')?.userData.lightflier.components.sleeper.IsAsleep()), { timeout: 10000 }).toBe(true);
+  await expect.poll(() => page.evaluate(() => (window as any).lightFlierGame.scene.children.find((m: any) => ((window as any).__findActionEntity(m)?.prefab ?? (window as any).__prefabInstance(m)?.prefab) === 'lightflier')?.userData.lightflier.components.sleeper.IsAsleep()), { timeout: 10000 }).toBe(true);
   await expect.poll(() => page.evaluate(() => !(window as any).__prefabInstance((window as any).lightFlierGame.view.player).animationController.stategraph.hasStateTag('busy')), { timeout: 15000 }).toBe(true);
   const bug = await point('lightflier'); expect(bug).not.toBeNull(); await page.mouse.click(bug!.x, bug!.y);
   await expect(bar.locator('.inventory-bar__items [data-item-id="lightflier"]')).toHaveCount(1, { timeout: 15000 });

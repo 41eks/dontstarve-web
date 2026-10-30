@@ -63,7 +63,7 @@ export function createBernieGroundSprite(assets: BernieAssets, world: BernieWorl
     entity.sprite.setSkinSource(assets.skins);
   });
   const model = display.model, sprite = instance.sprite;
-  model.userData.itemId = BERNIE_ITEM_ID; instance.skinId = skinId;
+  instance.skinId = skinId;
   let clip = clipOf(form, 'idle_loop');
   let inInventory = false;
   let elapsed = 0;

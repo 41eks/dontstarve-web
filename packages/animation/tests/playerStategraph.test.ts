@@ -1,3 +1,4 @@
+import { prefabDisplay } from '@dontstarve-web/display';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -50,7 +51,7 @@ it('loads the Wortox build with shared player animations and renders every facin
   animation.makeGhost(true);
   animation.update(1 / 30);
   expect(animation.isGhost).toBe(true);
-  await player.userData.display.artLoaded();
+  await prefabDisplay(player).artLoaded();
   expect(fetch).toHaveBeenCalledWith('/dst/data/anim/dynamic/ghost_wortox_build.zip');
   expect(fetch).toHaveBeenCalledWith('/dst/data/anim/dynamic/ghost_wortox_build.dyn');
   expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);

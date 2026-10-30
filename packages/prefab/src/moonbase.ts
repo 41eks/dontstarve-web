@@ -1,7 +1,10 @@
+import type { PrefabDisplayGroup } from '@dontstarve-web/display';
+import { type SpriteState } from '@dontstarve-web/display';
+import { prefabInstance } from './prefabInstance';
 import * as THREE from 'three';
 import { createEffect, createRenderEffect, createMemo, createSignal, readonlySignal, WorldContentKey, type ReadonlySignal, type Signal, type WorldContentSignal, type WorldMoonState, type WorldPhase } from '@dontstarve-web/signals';
 import { ItemEntity, type ItemEntityRegistry, type InventoryStack } from '@dontstarve-web/inventory';
-import { createSpriteFactory, loadSymbolOverride, type LoadedSymbolOverride, type SpriteController } from '@dontstarve-web/animation/sprite';
+import { createSpriteFactory, loadSymbolOverride, type LoadedSymbolOverride } from '@dontstarve-web/animation/sprite';
 import { loadAnimationArchive } from '@dontstarve-web/animation/animationAssets';
 import definitions from './definitions.json' with { type: 'json' };
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
@@ -15,7 +18,7 @@ import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
 import { ComponentTimer, Timer, type NamedTimerSave } from '../../componets/src/timer';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { MoonbaseEffects, type MoonbaseFxResources } from './moonbaseFx';
-import type { WorldContext } from './worldContext';
+import type { PrefabWorldContext } from './worldContext';
 import catalog from './groundItems.json' with { type: 'json' };
 
 export const MOONBASE_ID = 'moonbase' as const;
@@ -59,7 +62,8 @@ class Moonbase {
   readonly timer: Timer;
   private readonly scheduler: GameTimeScheduler;
   private readonly ownsScheduler: boolean;
-  private readonly world: WorldContext | undefined;
+  private readonly world: PrefabWorldContext | undefined;
+  private readonly displays: PrefabDisplayGroup;
   private readonly fullMoon;
   private readonly moon?: WorldContentSignal<WorldMoonState>;
   private readonly cycle?: WorldContentSignal<WorldPhase>;
@@ -68,7 +72,8 @@ class Moonbase {
   private readonly musicPulse: ComponentTimer;
   private effects: MoonbaseEffects;
   private disposed = false;
-  constructor(model: THREE.Group, resources: MoonbaseResources, items?: ItemEntityRegistry, world?: WorldContext, art?: ReadonlySignal<number>) {
+  constructor(model: THREE.Group, resources: MoonbaseResources, displays: PrefabDisplayGroup, items?: ItemEntityRegistry, world?: PrefabWorldContext, art?: ReadonlySignal<number>) {
+    this.displays = displays;
     this.model = model; this.resources = createSignal(resources); this.items = items;
     this.world = world; this.ownsScheduler = !world?.scheduler;
     this.scheduler = world?.scheduler ?? new GameTimeScheduler();
@@ -76,7 +81,7 @@ class Moonbase {
     this.cycle = world?.getWatchWorldContent?.(WorldContentKey.Cycle, stop => this.cleanups.push(stop));
     this.fullMoon = createMemo(() => this.isFullMoon(true));
     this.timer = new Timer(this.scheduler, name => this.onTimerDone(name), Object.keys(MOONBASE_TIMER_LIMITS));
-    this.effects = new MoonbaseEffects(model, world?.scene ?? new THREE.Scene(), this.scheduler, resources);
+    this.effects = new MoonbaseEffects(model, this.displays, this.scheduler, resources);
     this.musicPulse = new ComponentTimer(this.scheduler, () => this.pushMusic());
     this.initializer = new ComponentTimer(this.scheduler, () => {
       let previous = this.fullMoon.peek();
@@ -99,7 +104,7 @@ class Moonbase {
     this.workable.savestate = true;
     this.workable.SetOnWorkCallback(() => this.updateWorkState());
     this.workable.SetOnLoadFn(() => this.updateWorkState());
-    model.userData.components.workable = this.workable;
+    prefabInstance(model)!.components.workable = this.workable;
     this.phaseMemo = createMemo(() => animationState(this.workable.workleft.get()));
     this.phase = readonlySignal(this.phaseMemo);
     this.chargeMemo = createMemo(() => this.chargePhase(true));
@@ -114,9 +119,9 @@ class Moonbase {
       : { ok: (item.prefab === STAFF || item.prefab === 'opalstaff') && item instanceof ItemEntity });
     this.trader.SetOnAccept((_giver, item) => this.onStaffGiven(item as ItemEntity));
     this.trader.Disable();
-    model.userData.components.trader = this.trader;
-    model.userData.components.timer = this.timer;
-    model.userData.components.moonbase = this;
+    prefabInstance(model)!.components.trader = this.trader;
+    prefabInstance(model)!.components.timer = this.timer;
+    prefabInstance(model)!.components.moonbase = this;
     this.makeRepairable();
     // OverrideSymbol("swap_staffs", ...) follows the held staff and the displayed art, including after the sprite is rebuilt.
     this.cleanups.push(createRenderEffect(() => {
@@ -149,22 +154,22 @@ class Moonbase {
     const phase = this.chargePhase();
     return phase === 'charging_2' || phase === 'charging_3';
   }
-  private get sprite(): SpriteController { return this.model.userData.animationController; }
+  private get sprite(): SpriteState { return (prefabInstance(this.model)!.sprite as SpriteState); }
   private fixed(): boolean { return this.workable.workleft.peek() > MOONBASE_DAMAGED_WORK; }
   private playSound(path: SoundEventPath): void {
     for (const sound of this.sounds) if (!sound.isPlaying()) this.sounds.delete(sound);
     this.sounds.add(PlaySound(path, this.model.position));
   }
   private makeRepairable(): void {
-    if (this.model.userData.components.repairable) return;
+    if (prefabInstance(this.model)!.components.repairable) return;
     const repairable = new Repairable(actionEntity(this.model, MOONBASE_ID), this.workable, 'moonrock');
     repairable.noannounce = true;
     repairable.onrepaired = () => this.onRepaired();
-    this.model.userData.components.repairable = repairable;
+    prefabInstance(this.model)!.components.repairable = repairable;
   }
   private removeRepairable(): void {
-    this.model.userData.components.repairable?.dispose();
-    delete this.model.userData.components.repairable;
+    prefabInstance(this.model)!.components.repairable?.dispose();
+    delete prefabInstance(this.model)!.components.repairable;
   }
   private updateTrading(): void {
     if (this.fixed() && !this.pickable.canInteractWith) this.trader.Enable();
@@ -216,7 +221,7 @@ class Moonbase {
   refreshArt(resources: MoonbaseResources): void {
     if (resources === this.resources.peek()) return;
     this.effects.dispose();
-    this.effects = new MoonbaseEffects(this.model, this.world?.scene ?? new THREE.Scene(), this.scheduler, resources);
+    this.effects = new MoonbaseEffects(this.model, this.displays, this.scheduler, resources);
     this.resources.set(resources);
     if (this.staffState.peek()?.prefab === 'opalstaff') this.effects.showCold();
     const phase = this.chargePhase();
@@ -340,7 +345,10 @@ export const MOONBASE_DEFINITION: AnimatedBuildingDefinition = {
   ...definitions.animatedBuildings.moonbase,
     obstacleRadius: 1,
   prepare,
-  oninit: ({ model, prepared, itemEntities, world, art }) => { model.userData.moonbase = new Moonbase(model, prepared as MoonbaseResources, itemEntities, world, art); },
+  oninit: ({ model, prepared, itemEntities, world, art, displays }) => {
+    if (!displays) throw new Error('Moonbase needs its display group');
+    model.userData.moonbase = new Moonbase(model, prepared as MoonbaseResources, displays, itemEntities, world, art);
+  },
   onrestore: ({ model }, components) => stateOf(model).restore(components),
   exportComponents: ({ model }) => stateOf(model).exportComponents(),
   onreskin: ({ model, prepared }) => stateOf(model).refreshArt(prepared as MoonbaseResources),

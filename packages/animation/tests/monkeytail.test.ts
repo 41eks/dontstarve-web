@@ -1,3 +1,4 @@
+import { prefabDisplay } from '@dontstarve-web/display';
 import { actionTargetModel } from '../../stategraphs/src/actionTargetView';
 import * as THREE from 'three';
 import type { PrefabDisplay } from '@dontstarve-web/display';
@@ -130,7 +131,7 @@ it('plants cursor-held roots and fertilizes at frame six, preserves cancellation
     expect(s.inventory.getItemSpec('dug_monkeytail').maxStack).toBe(10);
     expect(s.inventory.getItemSpec('dug_monkeytail').atlas).toBe('images/inventoryimages2.xml');
     let groundMesh!: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
-    await (s.ground.reskinTargets[0].model.userData.display as PrefabDisplay).artLoaded();
+    await (prefabDisplay(s.ground.reskinTargets[0].model) as PrefabDisplay).artLoaded();
     s.ground.reskinTargets[0].model.traverse(object => { if (object instanceof THREE.Mesh) groundMesh ??= object as typeof groundMesh; });
     expect(groundMesh.material.some(material => material.name === 'ground:reeds_monkeytails')).toBe(true);
     expect(groundMesh.geometry.drawRange.count).toBeGreaterThan(0);

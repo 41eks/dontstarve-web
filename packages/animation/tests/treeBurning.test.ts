@@ -1,5 +1,8 @@
+import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
+import { displayLights } from '../../display/src/displaySprites';
 import { createTestArea, useTestTileMap } from './tileMapFixture';
 import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
@@ -52,6 +55,14 @@ const light = (target: ComponentActionEntity) => {
 /** Presentation effects (fire art) run on the signal queue, after the synchronous domain change. */
 const flush = () => new Promise(resolve => setTimeout(resolve, 0));
 const fires = (scene: THREE.Object3D) => { let count = 0; scene.traverse(child => { if (lookupPrefabInstance(child)?.prefab === 'fire') count++; }); return count; };
+const prefabsIn = (scene: THREE.Object3D, prefab: string) => {
+  const found: NonNullable<ReturnType<typeof lookupPrefabInstance>>[] = [];
+  scene.traverse(child => { const instance = lookupPrefabInstance(child); if (instance?.prefab === prefab) found.push(instance); });
+  return found;
+};
+
+/** The lights the renderer reads at `model`. */
+const lightsAt = (model: THREE.Object3D) => [...displayLights()].filter(listed => listed.model === model).map(({ light }) => light);
 
 async function evergreens(random = () => .5) {
   const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), dropLoot = vi.fn();
@@ -69,16 +80,19 @@ it('lights an evergreen with a torch, burns it for 45 seconds, then leaves one c
     const tree = s.forest.spawn('evergreen_normal', new THREE.Vector3(3, 0, 0));
     const icon = lookupPrefabInstance(tree.model!)!.minimap;
     expect(icon).toMatchObject({ icon: 'evergreen.png', priority: -1 });
-    const model = tree.model!, target = model.userData.actionEntity as ComponentActionEntity;
+    const model = tree.model!, target = findActionEntity(model) as ComponentActionEntity;
     expect(light(target)).toBe(true); await flush();
     expect(fires(s.scene)).toBe(1); expect(target.hasTag('fire')).toBe(true); expect(target.hasTag('canlight')).toBe(false);
+    // SetFXLevel(5): fire.lua's fifth level draws level4, and firefx_light, parented to the tree, is listed at the tree.
+    expect(prefabsIn(s.scene, 'fire')[0].sprite.currentAnimation).toBe('level4');
+    expect(lightsAt(model).map(light => light.falloff)).toEqual([.2]);
     s.scheduler.advance(44);
     expect(target.hasTag('burnt')).toBe(false);
     // A burning tree is saved as burnt, without a growth timer.
     expect(s.forest.exportRecords()[0].components).toEqual({ evergreen: { burnt: true }, growable: { stage: 2 } });
     s.scheduler.advance(1); await flush();
-    expect(fires(s.scene)).toBe(0); expect(target.hasTag('burnt')).toBe(true);
-    expect(model.userData.animationController.currentAnimation).toBe('burnt_normal');
+    expect(fires(s.scene)).toBe(0); expect(lightsAt(model)).toEqual([]); expect(target.hasTag('burnt')).toBe(true);
+    expect(prefabInstance(model)!.sprite.currentAnimation).toBe('burnt_normal');
     expect(icon.icon).toBe('evergreen_burnt.png');
     // burnt_changes follow .5 seconds later: no burnable, shelter or growth, and a single chop.
     expect(target.components.burnable).toBeDefined();
@@ -96,14 +110,14 @@ it('lights an evergreen with a torch, burns it for 45 seconds, then leaves one c
     const restored = await evergreens();
     try {
       const reloaded = restored.forest.spawn('evergreen', new THREE.Vector3(3, 0, 0), record);
-      expect(reloaded.model!.userData.animationController.currentAnimation).toBe('burnt_normal');
-      expect(reloaded.model!.userData.actionEntity.components.burnable).toBeUndefined();
+      expect(prefabInstance(reloaded.model!)!.sprite.currentAnimation).toBe('burnt_normal');
+      expect(findActionEntity(reloaded.model!).components.burnable).toBeUndefined();
       expect(restored.forest.exportRecords()[0]).toEqual(record);
     } finally { restored.forest.dispose(); }
 
     expect(performToolWork('CHOP', target, {})).toBe(true);
     expect(s.dropLoot).toHaveBeenCalledWith([{ itemId: 'charcoal', count: 1 }], tree.position);
-    expect(model.userData.animationController.currentAnimation).toBe('chop_burnt_normal');
+    expect(prefabInstance(model)!.sprite.currentAnimation).toBe('chop_burnt_normal');
     expect(performToolWork('CHOP', target, {})).toBe(false);
     for (let i = 0; i < 60; i++) s.forest.update(1 / 30, new THREE.Quaternion());
     expect(s.forest.entities).toEqual([]);
@@ -114,7 +128,7 @@ it('burns an evergreen stump to ash and removes it, and finishes a burning tree 
   const s = await evergreens();
   try {
     const stumpTree = s.forest.spawn('evergreen_short', new THREE.Vector3(2, 0, 0));
-    const stump = stumpTree.model!.userData.actionEntity as ComponentActionEntity;
+    const stump = findActionEntity(stumpTree.model!) as ComponentActionEntity;
     expect(performToolWork('CHOP', stump, {})).toBe(true); expect(stump.components.workable!.WorkedBy({}, 4)).toBe(true);
     expect(stump.hasTag('stump')).toBe(true);
     expect(light(stump)).toBe(true); await flush();
@@ -126,13 +140,13 @@ it('burns an evergreen stump to ash and removes it, and finishes a burning tree 
     expect(s.forest.entities).toEqual([]); expect(stump.isRemoved).toBe(true); expect(fires(s.scene)).toBe(0);
 
     const tree = s.forest.spawn('evergreen_tall', new THREE.Vector3(4, 0, 0));
-    const target = tree.model!.userData.actionEntity as ComponentActionEntity;
+    const target = findActionEntity(tree.model!) as ComponentActionEntity;
     expect(light(target)).toBe(true); await flush();
     await area.visit(new THREE.Vector3(500, 0, 0)); await flush(); // OnEntitySleep
     expect(fires(s.scene)).toBe(0);
     expect(s.forest.exportRecords()[0].components).toEqual({ evergreen: { burnt: true }, growable: { stage: 3 } });
     await area.visit(new THREE.Vector3());
-    expect(s.forest.entities[0].model!.userData.animationController.currentAnimation).toBe('burnt_tall');
+    expect(prefabInstance(s.forest.entities[0].model!)!.sprite.currentAnimation).toBe('burnt_tall');
   } finally { s.forest.dispose(); }
 });
 
@@ -144,11 +158,11 @@ it('burns a deciduous tree, keeps its season-independent burnt save, and drops c
   scene.add(forest.group); await area.visit(new THREE.Vector3());
   try {
     const tree = forest.spawn('deciduoustree_normal', new THREE.Vector3(3, 0, 0));
-    const target = tree.model!.userData.actionEntity as ComponentActionEntity;
+    const target = findActionEntity(tree.model!) as ComponentActionEntity;
     expect(light(target)).toBe(true); await flush(); expect(fires(scene)).toBe(1);
     scheduler.advance(45.5); await flush();
     expect(fires(scene)).toBe(0);
-    expect(tree.model!.userData.animationController.currentAnimation).toBe('burnt_normal');
+    expect(prefabInstance(tree.model!)!.sprite.currentAnimation).toBe('burnt_normal');
     expect(target.hasTag('shelter')).toBe(false); expect(target.hasTag('cattoyairborne')).toBe(false);
     const { components } = forest.exportRecords()[0];
     expect(components.deciduoustree.burnt).toBe(true); expect(components.deciduoustree.stump).toBeUndefined();
@@ -166,20 +180,20 @@ it('burns a moon tree for its size-scaled time and keeps burnt state through unl
   await area.visit(new THREE.Vector3());
   try {
     const tree = forest.spawn('moon_tree_tall', new THREE.Vector3(3, 0, 0));
-    const target = tree.model!.userData.actionEntity as ComponentActionEntity;
+    const target = findActionEntity(tree.model!) as ComponentActionEntity;
     expect(light(target)).toBe(true); await flush();
     expect(fires(scene)).toBe(1);
     scheduler.advance(67); expect(target.hasTag('burnt')).toBe(false); // TREE_BURN_TIME * 1.5
     scheduler.advance(1);
-    expect(tree.model!.userData.animationController.currentAnimation).toBe('burnt_tall');
+    expect(prefabInstance(tree.model!)!.sprite.currentAnimation).toBe('burnt_tall');
     scheduler.advance(.5);
     expect(target.components.burnable).toBeUndefined(); expect(target.components.workable!.GetWorkLeft()).toBe(1);
     expect(forest.exportState(tree)).toEqual({ moonTree: { size: 'tall', burnt: true }, growable: { stage: 3 },
       moonTreeTimer: { timers: { decay: { timeleft: 14399, initial_time: 14400, paused: false } } } });
     expect(lookupPrefabInstance(tree.model!)!.minimap.icon).toBe('moon_tree_burnt.png');
     await area.visit(new THREE.Vector3(500, 0, 0)); await area.visit(new THREE.Vector3());
-    expect(tree.model!.userData.animationController.currentAnimation).toBe('burnt_tall');
-    expect(performToolWork('CHOP', tree.model!.userData.actionEntity, {})).toBe(true);
+    expect(prefabInstance(tree.model!)!.sprite.currentAnimation).toBe('burnt_tall');
+    expect(performToolWork('CHOP', findActionEntity(tree.model!), {})).toBe(true);
     expect(dropLoot).toHaveBeenCalledWith([{ itemId: 'charcoal', count: 1 }], tree.position);
     for (let i = 0; i < 60; i++) forest.update(1 / 30);
     expect(forest.entities).toEqual([]);
@@ -194,7 +208,7 @@ it('burns a planted flower to ash, leaving it out of the save while it burns', a
   const flowers = new FlowerPlanting(world, Math.random, { scheduler, worldEvents });
   try {
     const model = await flowers.spawnFromSave('flower-1', 'f1', new THREE.Vector3(3, 0, 4));
-    const target = model.userData.actionEntity as ComponentActionEntity;
+    const target = findActionEntity(model) as ComponentActionEntity;
     expect(light(target)).toBe(true); await flush();
     expect(fires(scene)).toBe(1); expect(flowers.exportRecords()).toEqual([]);
     scheduler.advance(10); await flush();

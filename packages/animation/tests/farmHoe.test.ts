@@ -29,7 +29,7 @@ function setup(player = new THREE.Group()) {
     renderer: { domElement: new EventTarget() } } as unknown as WorldContext;
   const turf = new TurfMap(96);
   const blockers = new SpatialIndex<{ position: THREE.Vector3; tags?: string[] }>(blocker => blocker.position);
-  const farm = new FarmPlowPlacement(world, turf, async () => {}, blockers);
+  const farm = new FarmPlowPlacement(world, turf, () => {}, blockers);
   return { farm, turf, world, blockers };
 }
 function advance(animation: WilsonAnimationController, frames: number) {
@@ -71,20 +71,15 @@ it('retills broken soil at the exact point, preserves blockers and crops, and re
   try {
     expect(farm.canTill(point)).toBe(false);
     turf.plow(point);
-    await farm.spawnDecor('farm_soil', point, { broken: true }, undefined, 'broken');
-    await farm.spawnDecor('farm_soil', new THREE.Vector3(6, 0, 3), { broken: false }, undefined, 'neighbour');
+    farm.spawnDecor('farm_soil', point, { broken: true }, 'broken');
+    farm.spawnDecor('farm_soil', new THREE.Vector3(6, 0, 3), { broken: false }, 'neighbour');
     const blocker = { position: point, tags: [] as string[] };
     blockers.add(blocker);
     expect(farm.canTill(point)).toBe(false);
     blocker.tags = ['FX'];
     expect(farm.canTill(point)).toBe(true);
-    const cancelled = (await farm.prepareTill(point))!;
-    cancelled.dispose(); expect(cancelled.apply()).toBe(false);
     expect(farm.exportDecorRecords().map(({ record }) => record.id)).toEqual(['broken', 'neighbour']);
-    const prepared = (await farm.prepareTill(point))!;
-    expect(prepared.apply()).toBe(true);
-    expect(prepared.apply()).toBe(false);
-    prepared.dispose();
+    expect(farm.till(point)).toBe(true);
     const records = farm.exportDecorRecords();
     expect(records.some(({ record }) => record.id === 'broken')).toBe(false);
     expect(records.find(({ record }) => record.id === 'neighbour')?.record.components.farmSoil?.broken).toBe(true);
@@ -94,17 +89,16 @@ it('retills broken soil at the exact point, preserves blockers and crops, and re
     const restored = setup();
     try {
       restored.turf.plow(point);
-      await restored.farm.spawnDecor('farm_soil', point, hole.record.components.farmSoil, undefined, hole.record.id);
+      restored.farm.spawnDecor('farm_soil', point, hole.record.components.farmSoil, hole.record.id);
       expect(restored.farm.exportDecorRecords()).toEqual([hole]);
       expect(restored.farm.soilTargets[0].id).toBe(hole.record.id);
     } finally { restored.farm.dispose(); }
-    const stale = (await farm.prepareTill(point))!;
-    await farm.spawnPlantedSeed(point, 'crop');
+    farm.spawnPlantedSeed(point, 'crop');
     const crops = farm.exportPlantedSeedRecords();
     expect(farm.canTill(point)).toBe(false);
-    expect(stale.apply()).toBe(false); stale.dispose();
+    expect(farm.till(point)).toBe(false);
     expect(farm.exportPlantedSeedRecords()).toEqual(crops);
-    await farm.spawnDecor('farm_soil_debris', new THREE.Vector3(9, 0, 9), { animation: 'f1' });
+    farm.spawnDecor('farm_soil_debris', new THREE.Vector3(9, 0, 9), { animation: 'f1' });
     expect(farm.canTill(new THREE.Vector3(9, 0, 9))).toBe(false);
   } finally { farm.dispose(); }
   expect(world.scene.children).toHaveLength(0);

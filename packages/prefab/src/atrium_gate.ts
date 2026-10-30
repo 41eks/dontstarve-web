@@ -1,3 +1,4 @@
+import { PrefabDisplayGroup } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import type { World } from 'cannon-es';
 import type { TileStateQuery } from '@dontstarve-web/signals';
@@ -12,7 +13,7 @@ import { PlayerProx } from '../../componets/src/playerprox';
 import { Hauntable } from '../../componets/src/hauntable';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { MiniMapState } from '../../map/src/minimapState';
-import { createArchiveEntity, createEmptyEntity, type PrefabInstance } from './prefabInstance';
+import { createArchiveEntity, createEmptyEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
 import { MakeObstaclePhysics, WORLD_SCALE } from './standardcomponents';
 import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
@@ -60,12 +61,12 @@ const repaired = (save: AtriumGateRecord['components']): boolean =>
 
 /** atrium_gate.lua constructor, OnLoad and OnLoadPostPass animation declarations. */
 export class AtriumGateManager implements DisplayDrivenPrefabManager<{ prefabId: typeof ATRIUM_GATE_ID; record: AtriumGateRecord }> {
-  private readonly scene: THREE.Scene;
+  private readonly displays: PrefabDisplayGroup;
   private readonly world: AtriumGateWorld;
   private readonly assets = new ArchiveSpriteAssets(ATRIUM_GATE_ID);
   private readonly gates = new Map<THREE.Group, Gate>();
   private disposed = false;
-  constructor(scene: THREE.Scene, world: AtriumGateWorld) { this.scene = scene; this.world = world; }
+  constructor(scene: THREE.Scene, world: AtriumGateWorld) { this.displays = new PrefabDisplayGroup(scene); this.world = world; }
 
   private createSprite(animationArchive: string, buildArchives: string[], bank: string, name: string) {
     return (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(this.assets, {
@@ -120,7 +121,7 @@ export class AtriumGateManager implements DisplayDrivenPrefabManager<{ prefabId:
     const hauntable = new Hauntable({ addTag: tag => inst.addTag(tag), removeTag: tag => inst.removeTag(tag),
       PushEvent: (name, data) => inst.PushEvent?.(name, data) }, this.world.scheduler);
     hauntable.SetOnHauntFn(() => false);
-    Object.assign(model.userData.components, { charliecutscene: new CharlieCutscene(inst), pointofinterest: new PointOfInterest(inst),
+    Object.assign(prefabInstance(model)!.components, { charliecutscene: new CharlieCutscene(inst), pointofinterest: new PointOfInterest(inst),
       inspectable: new Inspectable(inst), pickable, trader, worldsettingstimer: new WorldSettingsTimer(inst),
       entitytracker: new EntityTracker(inst), colourtweener: new ColourTweener(inst), playerprox, hauntable });
     let fx: Gate['fx'];
@@ -150,7 +151,7 @@ export class AtriumGateManager implements DisplayDrivenPrefabManager<{ prefabId:
     const gate: Gate = { instance, display, floor, blockers, fx, pickable, trader, playerprox, hauntable, minimap, save,
       stopActivity: watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active)) };
     this.gates.set(model, gate);
-    display.mount(this.scene); this.world.trackDisplay(display);
+    this.displays.mount(display); this.world.trackDisplay(display);
     return model;
   }
 
@@ -182,6 +183,7 @@ export class AtriumGateManager implements DisplayDrivenPrefabManager<{ prefabId:
       for (const blocker of gate.blockers) blocker.instance.remove();
       model.userData.removed = true; gate.instance.remove();
     }
-    this.gates.clear(); this.assets.dispose();
+    this.gates.clear(); this.displays.dispose(); this.assets.dispose();
+
   }
 }

@@ -1,3 +1,4 @@
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -119,7 +120,7 @@ it('changes full/med/low source poses and resets surviving rock work on reload',
   const restored = new RockManager(new THREE.Scene(), '/dst/data/anim', world);
   try {
     await rocks.spawn('rock1', new THREE.Vector3(3, 0, 4));
-    const target = rocks.mineTargets[0], animation = target.model.userData.animationController;
+    const target = rocks.mineTargets[0], animation = prefabInstance(target.model)!.sprite;
     for (let i = 0; i < 3; i++) performToolWork('MINE', target.entity, {});
     expect(target.entity.components.workable!.GetWorkLeft()).toBe(3);
     expect(animation.currentAnimation).toBe('med');

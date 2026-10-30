@@ -29,7 +29,7 @@ async function createPlacement(temperature: { value: number }) {
   return { placement, scheduler };
 }
 
-const spyPercent = (model: THREE.Object3D) => vi.spyOn(model.userData.animationController as SpriteController, 'setPercent');
+const spyPercent = (model: THREE.Object3D) => vi.spyOn(prefabInstance(model)!.sprite as SpriteController, 'setPercent');
 
 it('reads the local temperature once per second, clamped to 0..OVERHEAT_TEMP, and stops after being burnt', async () => {
   const temperature = { value: 35 };
@@ -66,7 +66,7 @@ it('cancels the check while the hit clip plays and restarts it when the clip end
   try {
     await placement.spawn(WINTEROMETER_ID);
     const [{ display: { model }, playHit }] = placement.hammerTargets;
-    const sprite = model.userData.animationController as SpriteController;
+    const sprite = prefabInstance(model)!.sprite as SpriteController;
     scheduler.advance(0);
     const percent = spyPercent(model);
     playHit();

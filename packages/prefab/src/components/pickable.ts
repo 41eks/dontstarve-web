@@ -84,7 +84,7 @@ export class Pickable implements PickableComponent {
     if (owner instanceof THREE.Object3D) {
       const model = owner, position = new THREE.Vector3();
       this.inst = prefabInstance(model) ?? {
-        components: model.userData.components ??= {},
+        components: {},
         getPosition: () => model.getWorldPosition(position),
         hasTag: tag => modelHasTag(model, tag),
         addTag: tag => setModelTag(model, tag, true),
