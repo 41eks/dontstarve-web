@@ -16,7 +16,7 @@ import * as THREE from 'three';
 import { EventEmitter } from '@dontstarve-web/signals';
 import type { WorldEvents } from '../packages/prefab/src/worldContext';
 
-import { turfMap } from './building';
+import { groundDisplay, turfMap } from './building';
 import { createMoonTreeManager } from '@dontstarve-web/prefab/moontree';
 import { WORLD_TILES, isLandTile } from '@dontstarve-web/prefab/turfMap';
 import { placeStaticLayout } from '@dontstarve-web/prefab/staticLayout';
@@ -1473,7 +1473,7 @@ export async function createSceneEntities(
       scene, dataBaseUrl: `${import.meta.env.BASE_URL}dst/data`,
       getFocus: () => player.position, camera, rate: worldState.weather.snowRate, cover: worldState.weather.snowCover,
       groundSize: initialSave.world.map.generator.options.size,
-      groundOverlay: turfMap,
+      groundOverlay: groundDisplay,
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       exportRecords: () => [],

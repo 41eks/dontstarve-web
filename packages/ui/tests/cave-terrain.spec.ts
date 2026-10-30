@@ -74,17 +74,17 @@ test('loads whitelisted cave entities, stops keyboard movement at the void and r
   expect(position.x).toBeLessThanOrEqual(boundary.start + .01);
   await page.keyboard.press('KeyM');
   await expect(page.locator('dst-minimap .minimap__viewport')).toBeVisible();
-  await expect(page.locator('dst-minimap canvas')).toHaveCount(0);
-  // Check actual decoded terrain images, not only the visibility of their container.
+  // Check the actual drawn terrain, not only the visibility of its container.
   await expect.poll(() => page.locator('dst-minimap').evaluate(async (map: any) => {
-    const { sampleDomTerrain } = await import('./minimap-dom-samples.ts');
-    const [centre] = sampleDomTerrain(map, [{ x: map.view.centerX, z: map.view.centerZ }]);
+    const { sampleMapTerrain } = await import('./minimap-terrain-samples.ts');
+    const [centre] = sampleMapTerrain(map, [{ x: map.view.centerX, z: map.view.centerZ }], { ocean: false });
     return { ready: (await map.inspect()).ready, painted: centre[3] > 0 };
   }), { timeout: 60_000 }).toEqual({ ready: true, painted: true });
-  await page.locator('dst-minimap').evaluate((map: any) => map.setView({ zoom: 1 }));
-  const image = page.locator('dst-minimap .minimap__ground');
-  await expect(image).toHaveCount(1);
-  expect(await image.evaluate((image: HTMLImageElement) => image.naturalWidth * image.naturalHeight * 4)).toBeLessThanOrEqual(256 * 1024 * 1024);
+  // The terrain canvas is viewport-sized, independent of the cave's extent.
+  const canvas = page.locator('dst-minimap canvas.minimap__terrain-canvas');
+  await expect(canvas).toHaveCount(1);
+  const viewport = page.viewportSize()!;
+  expect(await canvas.evaluate((canvas: HTMLCanvasElement) => [canvas.width / devicePixelRatio, canvas.height / devicePixelRatio])).toEqual([viewport.width, viewport.height]);
   await page.keyboard.press('KeyM');
   const staticIds = ['cavein_boulder', 'rock_moon', 'rock_moon_shell', 'moonrockseed'];
   for (const prefab of staticIds) {

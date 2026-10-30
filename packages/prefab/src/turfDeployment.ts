@@ -30,7 +30,6 @@ export class TurfDeployment {
   private source?: TurfSource;
   private action?: BufferedAction<WilsonAction>;
   private version = 0;
-  private ready = false;
   private disposed = false;
   private previewEntity?: ItemEntity;
   /** The gridplacer entity; `visible` and `valid` are what its sprite json was last told. */
@@ -71,20 +70,14 @@ export class TurfDeployment {
     const centre = this.turf.tileCenter(point);
     this.target = new THREE.Vector3(centre.x, 0, centre.z);
     this.source = source;
-    const version = this.version;
-    void this.turf.prepareTurf(name).then(() => {
-      if (!this.disposed && version === this.version) this.ready = true;
-    }).catch((error: unknown) => {
-      if (version === this.version) this.cancel();
-      console.error('Unable to prepare turf deployment', error);
-    });
+    // The new tile's layer art loads in the ground display; the action never waits for it.
     return true;
   }
 
   cancel(): void {
     this.version++;
     if (this.target) this.locomotor.stop();
-    this.target = undefined; this.source = undefined; this.ready = false;
+    this.target = undefined; this.source = undefined;
     if (this.action && this.animation.stategraph.isPerformingAction('DEPLOY')) this.animation.stategraph.cancelAction();
     this.action = undefined;
   }
@@ -105,7 +98,6 @@ export class TurfDeployment {
       return;
     }
     this.locomotor.stop();
-    if (!this.ready) return;
     const direction = point.clone().sub(this.world.player.position);
     if (direction.lengthSq() > 1e-8) {
       const forward = this.world.camera.getWorldDirection(new THREE.Vector3());

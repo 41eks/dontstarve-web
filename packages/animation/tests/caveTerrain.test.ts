@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { Vector3, Mesh } from 'three';
+import { Vector3 } from 'three';
 import * as CANNON from 'cannon-es';
 import { afterEach, expect, it, vi } from 'vitest';
 import { TurfMap, WORLD_TILES } from '../../prefab/src/turfMap';
@@ -11,6 +11,7 @@ import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { TILE_SIZE } from '../../prefab/src/tile';
 import { placeStaticLayout } from '../../prefab/src/staticLayout';
 import { importedSave } from './importedSave';
+import { drawGround, layerGeometry } from './groundDisplayFixture';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -61,11 +62,10 @@ it('draws cave land only and blocks keyboard velocity and paths across void or f
     { col: 2, row: 0, tileId: WORLD_TILES.ARCHIVE },
   ], WORLD_TILES.IMPASSABLE);
   try {
-    const visual = await map.createVisual('/dst/data');
+    const display = await drawGround(map);
     for (const name of ['FUNGUS', 'ARCHIVE']) {
-      const mesh = visual.getObjectByName(`TurfBlend:${name}`) as Mesh;
       // One full land cell plus the eight source atlas skirts blending into neighbouring void cells.
-      expect(mesh.geometry.getIndex()!.count).toBe(9 * 6);
+      expect(layerGeometry(display, name).getIndex()!.count).toBe(9 * 6);
       expect(map.tileLayerQuads().get(WORLD_TILES[name as 'FUNGUS' | 'ARCHIVE'])).toHaveLength(1);
     }
     expect(map.isVoidAtCell(1, 0)).toBe(true);
@@ -82,6 +82,7 @@ it('draws cave land only and blocks keyboard velocity and paths across void or f
     expect(body.velocity.x).toBe(0);
     expect(locomotor.goToPoint(new Vector3(30, 0, 6))).toBe(false);
     expect(locomotor.goToPoint(new Vector3(6, 0, 6))).toBe(true);
+    display.dispose();
   } finally { map.dispose(); }
 });
 

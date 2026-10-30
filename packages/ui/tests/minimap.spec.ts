@@ -39,95 +39,26 @@ test('the source HUD frame fills landscape and portrait screens and stays fixed 
   expect(errors).toEqual([]);
 });
 
-test('precomposed tile regions reuse uploads and bounded atlas slots while preserving colour and alpha', async ({ page }) => {
-  await page.goto('/tests/minimap-edges.html');
-  await page.waitForFunction(() => Boolean((window as any).minimapEdges));
-  const result = await page.evaluate(async () => {
-    const { createMinimapTilePainter } = await import('../src/minimap-terrain.ts');
-    const mask = { width: 2, height: 2, data: new Uint8ClampedArray([
-      128, 128, 128, 255, 255, 255, 255, 128, 0, 0, 0, 0, 128, 128, 128, 255,
-    ]) };
-    const transparent = { width: 2, height: 2, data: new Uint8ClampedArray(16) };
-    const layer = { cells: new Map([[1, mask], [2, mask], [3, transparent]]), renderOrder: 0,
-      noise: { width: 1, height: 1, data: new Uint8ClampedArray([128, 64, 32, 255]) } };
-    const prototype = OffscreenCanvasRenderingContext2D.prototype, putImageData = prototype.putImageData;
-    let uploads = 0;
-    prototype.putImageData = function (...args: Parameters<typeof putImageData>) {
-      uploads++;
-      return putImageData.apply(this, args);
-    };
-    const paint = createMinimapTilePainter(layer, 2);
-    const output = new OffscreenCanvas(2, 2), context = output.getContext('2d', { willReadFrequently: true })!;
-    const draw = (tile: ReturnType<typeof paint>) => {
-      context.clearRect(0, 0, 2, 2);
-      context.drawImage(tile.canvas, tile.x, tile.y, tile.size, tile.size, 0, 0, 2, 2);
-      return Array.from(context.getImageData(0, 0, 2, 2).data);
-    };
-    try {
-      const hot = paint({ col: -1, row: -1, variant: 1 }), before = draw(hot), initialUploads = uploads;
-      const repeated = paint({ col: 7, row: 7, variant: 1 });
-      const hit = { sameRegion: hot === repeated, uploads: uploads - initialUploads };
-      const cold = paint({ col: 0, row: 0, variant: 1 });
-      const distinctPhase = cold !== hot && cold.canvas === hot.canvas;
-      for (const variant of [1, 2]) for (let row = 0; row < 8; row++) for (let col = 0; col < 8; col++)
-        paint({ col, row, variant });
-      paint({ col: 7, row: 7, variant: 1 }); // Keep this region hot before exceeding 128 cached combinations.
-      const transparentRegion = paint({ col: 0, row: 0, variant: 3 });
-      const cleared = draw(transparentRegion), retainedPixels = draw(hot), afterEviction = uploads;
-      const reused = paint({ col: -1, row: -1, variant: 1 });
-      const retained = hot === reused && uploads === afterEviction;
-      const regenerated = draw(paint({ col: 0, row: 0, variant: 1 }));
-      const atlasSize = [hot.canvas.width, hot.canvas.height];
-      paint.dispose();
-      const disposed = [hot.canvas.width, hot.canvas.height];
-      // Disposing the source atlas cannot change pixels already copied to a map chunk.
-      const preserved = Array.from(context.getImageData(0, 0, 2, 2).data);
-      return { before, hit, distinctPhase, reusedSlot: transparentRegion === cold, cleared, retainedPixels,
-        retained, regenerated, atlasSize, disposed, preserved };
-    } finally {
-      prototype.putImageData = putImageData;
-      paint.dispose(); output.width = output.height = 0;
-    }
-  });
-  const pixels = [64, 32, 16, 255, 128, 64, 32, 128, 0, 0, 0, 0, 64, 32, 16, 255];
-  expect(result.before).toEqual(pixels);
-  expect(result.hit).toEqual({ sameRegion: true, uploads: 0 });
-  expect(result).toMatchObject({ distinctPhase: true, reusedSlot: true, retained: true, atlasSize: [32, 16], disposed: [0, 0] });
-  expect(result.cleared).toEqual(Array(16).fill(0));
-  expect(result.retainedPixels).toEqual(pixels);
-  expect(result.regenerated).toEqual(pixels);
-  expect(result.preserved).toEqual(pixels);
-});
-
-test('native land silhouettes control the cursor through holes, map transforms and terrain replacement', async ({ page }) => {
+test('the land cursor and map actions follow tiles through holes, map transforms and terrain changes', async ({ page }) => {
   await page.setViewportSize({ width: 1000, height: 1000 });
   await page.goto('/tests/minimap-edges.html');
   await page.waitForFunction(() => Boolean((window as any).minimapEdges));
-  const map = page.locator('dst-minimap');
-  const hit = map.locator('.minimap__land-hit');
-  await expect(hit).toHaveAttribute('d', /^M/);
+  const map = page.locator('dst-minimap'), section = map.locator('section');
   // Make an ocean hole inside a surrounding island, plus a separate small island.
-  await page.evaluate(async () => {
+  await page.evaluate(() => {
     const { terrain, map, WORLD_TILES } = (window as any).minimapEdges;
     for (let row = -2; row <= 2; row++) for (let col = -2; col <= 2; col++)
       terrain.setTile(col, row, WORLD_TILES.GRASS);
     terrain.setTile(0, 0, WORLD_TILES.OCEAN_COASTAL);
     terrain.setTile(3, 0, WORLD_TILES.GRASS);
-    await map.prepareTerrain();
-    (window as any).landHoverQueries = 0;
-    for (const method of ['getTileAtWorld', 'tileIdAtCell', 'isPassableAtPoint']) {
-      const original = terrain[method];
-      terrain[method] = function (...args: unknown[]) { (window as any).landHoverQueries++; return original.apply(this, args); };
-    }
+    (window as any).mapRequests = [];
+    map.addEventListener('game:map-action-request', (event: CustomEvent) => (window as any).mapRequests.push(event.detail.position.toArray()));
   });
+  const screen = (x: number, z: number) => page.evaluate(({ x, z }) => (window as any).minimapEdges.map.view.worldToScreen(x, z), { x, z });
   const moveTo = async (x: number, z: number) => {
-    const point = await page.evaluate(({ x, z }) => (window as any).minimapEdges.map.view.worldToScreen(x, z), { x, z });
+    const point = await screen(x, z);
     await page.mouse.move(point.x, point.z);
-    return page.evaluate(({ x, z }) => {
-      const map = (window as any).minimapEdges.map;
-      const target = map.shadowRoot.elementFromPoint(x, z);
-      return { land: target?.classList.contains('minimap__land-hit'), cursor: getComputedStyle(target).cursor };
-    }, point);
+    return section.evaluate(element => ({ land: element.classList.contains('minimap--land'), cursor: getComputedStyle(element).cursor }));
   };
   for (const [angle, zoom] of [[-90, 19], [45, 20]]) {
     await page.evaluate(async ({ angle, zoom }) => {
@@ -141,78 +72,79 @@ test('native land silhouettes control the cursor through holes, map transforms a
     expect(await moveTo(42, 6)).toEqual({ land: true, cursor: 'crosshair' });
     expect(await moveTo(6, -30)).toEqual({ land: false, cursor: 'none' });
   }
-  expect(await page.evaluate(() => (window as any).landHoverQueries)).toBe(0);
+  // Right click requests a map action only over land.
+  await moveTo(6, 6); await page.mouse.click(...Object.values(await screen(6, 6)) as [number, number], { button: 'right' });
+  await moveTo(-6, 6); await page.mouse.click(...Object.values(await screen(-6, 6)) as [number, number], { button: 'right' });
+  const requests = await page.evaluate(() => (window as any).mapRequests);
+  expect(requests).toHaveLength(1);
+  expect(Math.floor(requests[0][0] / 12)).toBe(-1); expect(Math.floor(requests[0][2] / 12)).toBe(0);
   // Actual pointer capture still pans the map across both land and sea.
   await moveTo(-6, 6);
   const beforePan = await page.evaluate(() => (window as any).minimapEdges.map.view.centerX);
-  const mouse = await page.evaluate(() => (window as any).minimapEdges.map.view.worldToScreen(-6, 6));
+  const mouse = await screen(-6, 6);
   await page.mouse.down();
   await page.mouse.move(mouse.x + 60, mouse.z + 20, { steps: 3 });
-  await expect(map.locator('section')).toHaveClass(/minimap--dragging/);
+  await expect(section).toHaveClass(/minimap--dragging/);
   await page.mouse.up();
   expect(await page.evaluate(() => (window as any).minimapEdges.map.view.centerX)).not.toBe(beforePan);
   expect(await moveTo(6, 6)).toEqual({ land: false, cursor: 'none' });
-  // The image and native hit area change together when the hole is filled.
-  const beforePath = await hit.getAttribute('d');
-  await page.evaluate(async () => {
-    const { terrain, map, WORLD_TILES } = (window as any).minimapEdges;
-    terrain.setTile(0, 0, WORLD_TILES.GRASS);
-    await map.prepareTerrain();
+  // Filling the hole changes the drawn terrain and the land test together.
+  const sample = () => page.evaluate(async () => {
+    const { sampleMapTerrain } = await import('./minimap-terrain-samples.ts');
+    return sampleMapTerrain((window as any).minimapEdges.map, [{ x: 6, z: 6 }], { ocean: false })[0];
   });
-  expect(await hit.getAttribute('d')).not.toBe(beforePath);
+  expect((await sample())[3]).toBe(0);
+  await page.evaluate(() => {
+    const { terrain, WORLD_TILES } = (window as any).minimapEdges;
+    terrain.setTile(0, 0, WORLD_TILES.GRASS);
+  });
+  expect((await sample())[3]).toBe(255);
   expect(await moveTo(6, 6)).toEqual({ land: true, cursor: 'crosshair' });
   await page.keyboard.press('Escape');
-  // Chromium can retain :hover on a hidden SVG until the next pointer movement.
-  await expect(map.locator('section')).toBeHidden();
+  await expect(section).toBeHidden();
 });
 
-test('captures a large sparse world into one bounded image and replaces it after terrain changes', async ({ page }) => {
+test('draws a large sparse world from chunk geometry and rebuilds only the chunks a terrain edit touches', async ({ page }) => {
   await page.setViewportSize({ width: 800, height: 600 });
   await page.goto('/tests/minimap-edges.html');
   await page.waitForFunction(() => Boolean((window as any).minimapEdges));
-  const prepared = await page.evaluate(async () => {
-    const { terrain, map, WORLD_TILES } = (window as any).minimapEdges;
+  const result = await page.evaluate(async () => {
+    const { terrain, map, WORLD_TILES, GroundDisplay } = (window as any).minimapEdges;
     const big = new terrain.constructor(9480, [
       { col: -364, row: 0, tileId: WORLD_TILES.WOODFLOOR }, { col: -363, row: 0, tileId: WORLD_TILES.WOODFLOOR },
     ], 1);
     const visual = await big.createVisual('/dst/data');
+    const display = new GroundDisplay(big, '/dst/data');
+    await display.prepare();
     const element = new (customElements.get('dst-minimap')!)() as any;
     document.body.append(element);
     element.bind({ ...map.options, terrain: big });
     await element.prepareTerrain();
-    const image = element.shadowRoot.querySelector('.minimap__ground');
-    const { sampleDomTerrain } = await import('./minimap-dom-samples.ts');
-    const points = [{ x: -363.5 * 12, z: 6 }, { x: -362.5 * 12, z: 6 }, { x: 0, z: 0 }];
-    const before = sampleDomTerrain(element, points);
-    (window as any).largeMap = { big, visual, element, image, points, before, url: image.src };
-    return { ready: (await element.inspect()).ready, images: element.shadowRoot.querySelectorAll('.minimap__terrain img').length,
-      width: image.naturalWidth, height: image.naturalHeight, before, parentPreserved: visual.parent === null };
-  });
-  expect(prepared.ready).toBe(true);
-  expect(prepared.images).toBe(1);
-  expect(prepared.width).toBe(5530); expect(prepared.height).toBe(prepared.width);
-  expect(prepared.width * prepared.height * 4).toBeLessThanOrEqual(256 * 1024 * 1024);
-  expect(prepared.before[0][3]).toBeGreaterThan(0); expect(prepared.before[1][3]).toBeGreaterThan(0);
-  expect(prepared.before[2][3]).toBe(0); expect(prepared.parentPreserved).toBe(true);
-  const updated = await page.evaluate(async () => {
-    const { big, visual, element, image, points, before, url } = (window as any).largeMap;
-    const { sampleDomTerrain } = await import('./minimap-dom-samples.ts');
+    element.setOpen(true);
+    element.setView({ x: -363 * 12, z: 6, zoom: 1 });
+    const { sampleMapTerrain } = await import('./minimap-terrain-samples.ts');
+    const points = [{ x: -363.5 * 12, z: 6 }, { x: -362.5 * 12, z: 6 }, { x: -358 * 12, z: 6 }];
+    const before = sampleMapTerrain(element, points, { ocean: false });
+    const renderer = element.renderer.terrain, chunks = [...renderer.chunks.values()];
     big.setTile(-364, 0, 4);
-    await element.prepareTerrain();
-    const after = sampleDomTerrain(element, points);
-    const replaced = image.src !== url && image === element.shadowRoot.querySelector('.minimap__ground');
-    const pixels = image.naturalWidth * image.naturalHeight;
-    const old = element.renderer.terrain;
+    const dirty = chunks.filter((chunk: any) => chunk.dirty).length;
+    const after = sampleMapTerrain(element, points, { ocean: false });
+    const ready = (await element.inspect()).ready;
     element.dispose();
     big.setTile(-363, 0, 4);
-    const detached = old.updateTask === undefined && !old.ready && old.image.getAttribute('src') === null;
-    const preserved = visual.parent === null && visual.children.some((mesh: any) => mesh.geometry?.getAttribute('position')?.count > 0);
-    big.dispose();
-    return { before, after, replaced, pixels, detached, preserved };
+    const released = renderer.renderer === undefined && !renderer.canvas.isConnected && renderer.chunks.size === 0;
+    const preserved = visual.parent === null && display.root.children.some((mesh: any) => mesh.geometry?.getAttribute('position')?.count > 0);
+    display.dispose(); big.dispose();
+    return { chunks: chunks.length, dirty, before, after, ready, released, preserved };
   });
-  expect(updated.after[0]).not.toEqual(updated.before[0]);
-  expect(updated.after[2][3]).toBe(0);
-  expect(updated).toMatchObject({ replaced: true, pixels: prepared.width * prepared.height, detached: true, preserved: true });
+  // 790 cells per side in 32-cell chunks from col -395: cell -364's one-cell halo reaches the chunk starting at -363.
+  expect(result.chunks).toBe(625);
+  expect(result.dirty).toBe(2);
+  expect(result.before[0][3]).toBeGreaterThan(0); expect(result.before[1][3]).toBeGreaterThan(0);
+  expect(result.before[2][3]).toBe(0);
+  expect(result.after[0]).not.toEqual(result.before[0]);
+  expect(result.after[2][3]).toBe(0);
+  expect(result).toMatchObject({ ready: true, released: true, preserved: true });
 });
 
 test('the native DOM player icon follows its live transform above cached terrain and disappears when disabled', async ({ page }, testInfo) => {
@@ -228,7 +160,9 @@ test('the native DOM player icon follows its live transform above cached terrain
   const icon = map.locator('.marker[data-icon="willow.png"]');
   await expect(icon).toBeVisible();
   await expect(icon).toHaveAttribute('data-loaded', 'true');
-  await expect(map.locator('canvas')).toHaveCount(0);
+  // The only canvas is the terrain's; icons stay DOM nodes.
+  await expect(map.locator('canvas')).toHaveCount(1);
+  await expect(map.locator('canvas.minimap__terrain-canvas')).toHaveCount(1);
   // A future prefab icon is already decoded; changing the declaration reuses the node and its prewarmed URL.
   const futureIcon = await page.evaluate(() => {
     const { map } = (window as any).minimapEdges;
@@ -373,10 +307,10 @@ test('DOM views preserve fixed-size icons at high DPI and release resources on r
     const lifecycle = await page.evaluate(async () => {
       const { map, terrain } = (window as any).minimapEdges;
       const old = map.renderer, urls = [...old.icons.urls];
-      const terrainUrl = old.terrain.image.src;
       map.bind(map.options);
       await map.prepareTerrain();
-      const rebound = old.icons.urls.size === 0 && urls.every(url => (window as any).revokedMapUrls.has(url)) && (window as any).revokedMapUrls.has(terrainUrl) && old.terrain.image.getAttribute('src') === null;
+      const rebound = old.icons.urls.size === 0 && urls.every(url => (window as any).revokedMapUrls.has(url))
+        && old.terrain.renderer === undefined && !old.terrain.canvas.isConnected;
       const current = map.renderer;
       terrain.setTile(0, 0, 4);
       const pending = map.prepareTerrain();
@@ -464,40 +398,37 @@ test('uses world ground artwork, keeps ocean composition, and preserves shared w
   await page.goto('/tests/minimap-edges.html');
   await page.waitForFunction(() => Boolean((window as any).minimapEdges));
   const before = await page.evaluate(async () => {
-    const { map, visual, ground, scene, renderer } = (window as any).minimapEdges;
-    const { sampleDomTerrain } = await import('./minimap-dom-samples.ts');
-    const points = [{ x: 6, z: 6 }, { x: -6, z: -6 }, { x: 30, z: 30 }];
+    const { map, visual, ground, scene, renderer, groundDisplay } = (window as any).minimapEdges;
+    const { sampleMapTerrain } = await import('./minimap-terrain-samples.ts');
+    const points = [{ x: 6, z: 6 }, { x: -6, z: -6 }, { x: 30, z: 6 }];
     (window as any).worldMapPoints = points;
-    const materials = visual.children.filter((mesh: any) => mesh.material?.name.startsWith('DST ground:')).map((mesh: any) => mesh.material);
+    const materials = [...new Set(groundDisplay.root.children.filter((mesh: any) => mesh.material?.name.startsWith('DST ground:')).map((mesh: any) => mesh.material))];
     (window as any).worldMapDisposals = 0;
     for (const material of materials) material.addEventListener('dispose', () => { (window as any).worldMapDisposals++; });
     const size = [renderer.domElement.width, renderer.domElement.height];
-    const image = map.shadowRoot.querySelector('.minimap__ground');
     map.setView({ zoom: 20, x: 0, z: 0 });
-    return { samples: sampleDomTerrain(map, points), url: image.src, width: image.naturalWidth,
+    return { samples: sampleMapTerrain(map, points, { ocean: false }), withOcean: sampleMapTerrain(map, points),
       parentsPreserved: ground.parent === scene && visual.parent === scene,
       materials: materials.map((material: any) => material.name), rendererSize: size };
   });
   expect(before.parentsPreserved).toBe(true);
   expect(before.materials).toContain('DST ground:WOODFLOOR');
-  // Land is opaque; open ocean is left to the pre-rendered plate beneath the ground image.
+  // Land is opaque; open ocean is the pre-rendered plate drawn beneath the land layers.
   expect(before.samples[0][3]).toBe(255); expect(before.samples[1][3]).toBe(255);
   expect(before.samples[0]).not.toEqual(before.samples[1]);
   expect(before.samples[2][3]).toBe(0);
-  expect(await page.evaluate(() => getComputedStyle((window as any).minimapEdges.map.shadowRoot.querySelector('.minimap__ocean')).backgroundImage)).toContain('minimap/ocean.png');
+  expect(before.withOcean[2][3]).toBe(255);
+  expect(before.withOcean[0]).toEqual(before.samples[0]);
   await page.screenshot({ path: testInfo.outputPath('world-ground-map.png') });
   const after = await page.evaluate(async () => {
     const { map, terrain, renderer, scene, visual, ground } = (window as any).minimapEdges;
-    const { sampleDomTerrain } = await import('./minimap-dom-samples.ts');
+    const { sampleMapTerrain } = await import('./minimap-terrain-samples.ts');
     terrain.dig({ x: 6, z: 6 });
-    await map.prepareTerrain();
-    const image = map.shadowRoot.querySelector('.minimap__ground');
-    return { samples: sampleDomTerrain(map, (window as any).worldMapPoints), url: image.src,
-      width: image.naturalWidth, parentsPreserved: ground.parent === scene && visual.parent === scene,
+    return { samples: sampleMapTerrain(map, (window as any).worldMapPoints, { ocean: false }),
+      parentsPreserved: ground.parent === scene && visual.parent === scene,
       disposed: (window as any).worldMapDisposals,
       rendererSize: [renderer.domElement.width, renderer.domElement.height] };
   });
-  expect(after.url).not.toBe(before.url); expect(after.width).toBe(before.width);
   expect(after.samples[0]).not.toEqual(before.samples[0]);
   expect(after.samples[2]).toEqual(before.samples[2]);
   expect(after.parentsPreserved).toBe(true); expect(after.disposed).toBe(0);
@@ -564,10 +495,10 @@ test('the fullscreen map opens, pauses the game, zooms, pans, follows terrain ch
   });
 
   const viewport = map.locator('.minimap__viewport');
-  // Read the mounted terrain image at the player's position, independently of icons.
+  // Read the drawn terrain at the player's position, independently of icons.
   await expect.poll(() => map.evaluate(async (element: any) => {
-    const { sampleDomTerrain } = await import('./minimap-dom-samples.ts');
-    const [centre] = sampleDomTerrain(element, [{ x: element.view.centerX, z: element.view.centerZ }]);
+    const { sampleMapTerrain } = await import('./minimap-terrain-samples.ts');
+    const [centre] = sampleMapTerrain(element, [{ x: element.view.centerX, z: element.view.centerZ }], { ocean: false });
     return centre[3] > 0;
   })).toBe(true);
 
@@ -582,7 +513,7 @@ test('the fullscreen map opens, pauses the game, zooms, pans, follows terrain ch
   await page.mouse.up();
   await expect.poll(() => map.evaluate((element: any) => element.view.centerX)).toBeLessThan(startX);
 
-  // Terrain images update independently of the player icon and camera rotation.
+  // Terrain drawing updates independently of the player icon and camera rotation.
   await map.getByRole('button', { name: '定位玩家' }).click();
   await page.mouse.move(cx, cy);
   for (let i = 0; i < 4; i++) { await page.mouse.wheel(0, -3000); await page.waitForTimeout(150); }
@@ -592,8 +523,8 @@ test('the fullscreen map opens, pauses the game, zooms, pans, follows terrain ch
     const element = document.querySelector('dst-minimap') as any;
     const { player } = await import(playerPath);
     const centre = turfMap.tileCenter({ x: player.position.x, z: player.position.z });
-    const { sampleDomTerrain } = await import('./minimap-dom-samples.ts');
-    const pixels = sampleDomTerrain(element, [[0, 0], [-1, -1], [1, 1]].map(([dx, dz]) => ({ x: centre.x + dx, z: centre.z + dz })));
+    const { sampleMapTerrain } = await import('./minimap-terrain-samples.ts');
+    const pixels = sampleMapTerrain(element, [[0, 0], [-1, -1], [1, 1]].map(([dx, dz]) => ({ x: centre.x + dx, z: centre.z + dz })));
     return pixels.map((pixel: number[]) => pixel.slice(0, 3));
   }, PLAYER_PATH);
   const before = await sample();

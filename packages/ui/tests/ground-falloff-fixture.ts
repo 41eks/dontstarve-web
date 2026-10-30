@@ -1,13 +1,16 @@
 import * as THREE from 'three';
 import { TurfMap } from '../../prefab/src/turfMap';
+import { GroundDisplay } from '../../display/src/groundDisplay';
 import { FALLOFF_EDGES, groundFalloffGeometry, loadGroundFalloffAssets, type FalloffEdge } from '../../prefab/src/groundTiles';
 
 const save = await (await fetch('/saves/Cluster_1/Caves.json')).json();
 const map = new TurfMap(save.world.map.generator.options.size, save.world.map.tiles, save.world.map.defaultTileId);
 const visual = await map.createVisual('/dst/data');
+const display = new GroundDisplay(map, '/dst/data');
+await display.prepare();
 const assets = await loadGroundFalloffAssets('/dst/data');
 const scene = new THREE.Scene(); scene.background = new THREE.Color(0);
-scene.add(visual, new THREE.AmbientLight(0xffffff, 2));
+scene.add(visual, display.root, new THREE.AmbientLight(0xffffff, 2));
 const renderer = new THREE.WebGLRenderer({ preserveDrawingBuffer: true });
 renderer.setSize(900, 600); document.body.append(renderer.domElement);
 const camera = new THREE.PerspectiveCamera(35, 1.5, .1, 5000);

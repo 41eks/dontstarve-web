@@ -8,7 +8,7 @@ import { EventEmitter } from '@dontstarve-web/signals';
 
 import { animate, backTasks, middleTasks } from './animate';
 import { createAnimationUpdater } from './animation';
-import { ground, turfGround, turfMap } from './building';
+import { ground, groundDisplay, turfGround, turfMap } from './building';
 import { camera } from './camera';
 import { createSceneEntities } from './sceneEntities';
 import type { EntityRegistry } from './entityRegistry';
@@ -42,9 +42,10 @@ export { world, worldState };
 turfMap.bindOceanClock(worldState.clock);
 
 scene.background = new THREE.Color(initialSave.world.prefab === 'cave' ? 0x000000 : 0xbfd1e5);
-scene.add(ground, turfGround, player);
+scene.add(ground, turfGround, groundDisplay.root, player);
 
 function disposeTerrain(): void {
+  groundDisplay.dispose();
   turfMap.dispose();
   ground.removeFromParent();
   ground.geometry.dispose();

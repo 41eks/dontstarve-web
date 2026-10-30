@@ -38,17 +38,12 @@
   mix-blend-mode: plus-lighter;
 }
 
-.minimap--dragging {
-  cursor: grabbing;
-}
-
-/* Only the alpha-derived land silhouette receives native pointer hits. */
-.minimap__land-hit {
-  pointer-events: fill;
+/* Visible land, from the tile under the pointer. */
+.minimap--land {
   cursor: crosshair;
 }
 
-.minimap--dragging .minimap__land-hit {
+.minimap--dragging {
   cursor: grabbing;
 }
 

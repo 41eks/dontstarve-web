@@ -12,6 +12,7 @@ import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationControlle
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src/slots';
 import { createEquipmentExistenceState } from '../../signals/src';
+import { drawGround, layerGeometry, layerMeshes } from './groundDisplayFixture';
 
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
@@ -73,8 +74,8 @@ describe('pitchfork source art and TERRAFORM timing', () => {
     const point = { x: -1, z: 13 };
     map.setOriginalTile(point, WORLD_TILES.WOODFLOOR);
     expect(map.getTileAtWorld(point)).toBe(WORLD_TILES.WOODFLOOR);
-    const dirt = await map.createDirtMesh('/dst/data');
-    expect(dirt.visible).toBe(false);
+    const display = await drawGround(map);
+    expect(layerMeshes(display, 'DIRT')).toHaveLength(0);
     expect(map.dig(point)).toBe(true);
     expect(map.getTileAtWorld({ x: -12, z: 23.9 })).toBe(WORLD_TILES.DIRT);
     expect(map.getTileAtWorld({ x: 0, z: 13 })).toBe(WORLD_TILES.DECIDUOUS);
@@ -85,15 +86,19 @@ describe('pitchfork source art and TERRAFORM timing', () => {
     const restored = new TurfMap(1000, map.exportTiles());
     restored.setOriginalTile(point, WORLD_TILES.WOODFLOOR);
     expect(restored.canTerraform(point)).toBe(false);
-    const restoredMesh = await restored.createDirtMesh('/dst/data');
-    expect(restoredMesh.geometry.getAttribute('position').array).toEqual(dirt.geometry.getAttribute('position').array);
+    const restoredDisplay = await drawGround(restored);
+    const dirt = layerGeometry(display, 'DIRT');
+    expect(layerGeometry(restoredDisplay, 'DIRT').getAttribute('position').array).toEqual(dirt.getAttribute('position').array);
     // Like every turf layer, a lone dirt cell blends into its eight neighbours through skirt masks.
-    expect(dirt.geometry.getIndex()!.count).toBe(9 * 6);
-    expect((dirt.material as THREE.MeshLambertMaterial).depthWrite).toBe(false);
-    expect(dirt.renderOrder).toBeGreaterThan(-2);
-    expect(dirt.renderOrder).toBeLessThan(0);
-    expect(dirt.geometry.boundingBox!.min.toArray()).toEqual([-24, 0, 0]);
-    expect(dirt.geometry.boundingBox!.max.toArray()).toEqual([12, 0, 36]);
+    expect(dirt.getIndex()!.count).toBe(9 * 6);
+    const [mesh] = layerMeshes(display, 'DIRT');
+    expect((mesh.material as THREE.MeshLambertMaterial).depthWrite).toBe(false);
+    expect(mesh.renderOrder).toBeGreaterThan(-2);
+    expect(mesh.renderOrder).toBeLessThan(0);
+    dirt.computeBoundingBox();
+    expect(dirt.boundingBox!.min.toArray()).toEqual([-24, 0, 0]);
+    expect(dirt.boundingBox!.max.toArray()).toEqual([12, 0, 36]);
+    display.dispose(); restoredDisplay.dispose();
   });
 });
 

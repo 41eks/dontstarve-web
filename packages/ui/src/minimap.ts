@@ -1,8 +1,7 @@
 import { watchSignal, createEffect, type ReadonlySignal } from '@dontstarve-web/signals';
 import { AssetElement } from './assets';
 import { MinimapView, MINIMAP_ZOOM_DEFAULT, MINIMAP_ZOOM_MAX, MINIMAP_ZOOM_MIN } from './minimap-view';
-import { MinimapDomRenderer, type MinimapInspection } from './minimap-dom';
-import type { GroundImageOptions } from './minimap-ground-image';
+import { MinimapDomRenderer, type MinimapInspection, type MinimapTerrainOptions } from './minimap-dom';
 import { Vector3 } from 'three';
 import { createAtlasImage, registerImageAtlases, type AtlasImageElement } from '@dontstarve-web/animation/atlasImage';
 import { loadImageAtlas } from '@dontstarve-web/animation/imageAtlas';
@@ -12,7 +11,7 @@ export type { MinimapPixels, MinimapTileLayer } from './minimap-terrain';
 
 export type { MinimapTerrain } from './minimap-terrain';
 
-export interface MinimapOptions extends GroundImageOptions {
+export interface MinimapOptions extends MinimapTerrainOptions {
   getPlayerPosition(): { x: number; z: number };
   /** TheCamera:GetHeading() in degrees; the map's up direction follows the camera. */
   cameraHeading: ReadonlySignal<number>;
@@ -45,6 +44,8 @@ export class DstMinimapElement extends AssetElement {
   private zoomTarget = MINIMAP_ZOOM_DEFAULT;
   private zoomStartedAt = 0;
   private cursor = { x: 0, y: 0 };
+  /** The pointer over the map, in viewport pixels; the land cursor follows it through view changes. */
+  private hover?: { x: number; y: number };
 
   constructor() {
     super();
@@ -129,6 +130,7 @@ export class DstMinimapElement extends AssetElement {
     root.addEventListener('wheel', this.onWheel, { passive: false });
     root.addEventListener('pointerdown', this.onPointerDown);
     root.addEventListener('pointermove', this.onPointerMove);
+    root.addEventListener('pointerleave', () => { this.hover = undefined; this.updateLandCursor(); });
     root.addEventListener('pointerup', this.onPointerEnd);
     root.addEventListener('pointercancel', this.onPointerEnd);
     root.addEventListener('lostpointercapture', this.onPointerEnd);
@@ -178,7 +180,15 @@ export class DstMinimapElement extends AssetElement {
   }
 
   private updateView(): void {
-    if (this.open && this.view) this.renderer?.update(this.view);
+    if (!this.open || !this.view) return;
+    this.renderer?.update(this.view);
+    this.updateLandCursor();
+  }
+
+  /** The cursor shows a crosshair over visible land. One tile lookup; no pixel readback. */
+  private updateLandCursor(): void {
+    const point = this.hover && this.view?.screenToWorld(this.hover.x, this.hover.y);
+    this.root?.classList.toggle('minimap--land', Boolean(point && this.renderer?.terrain.isLandAt(point.x, point.z)));
   }
 
   private recenter(): void {
@@ -227,11 +237,11 @@ export class DstMinimapElement extends AssetElement {
   private onPointerDown = (event: PointerEvent): void => {
     if (!this.open || !this.view || event.defaultPrevented) return;
     if (event.button === 2) {
-      // The browser has already hit the alpha-derived SVG silhouette. No terrain lookup on hover.
-      if (!(event.target instanceof Element) || !event.target.matches('.minimap__land-hit')) return;
-      event.preventDefault();
+      if ((event.target as Element).closest('.minimap__center')) return;
       const rect = this.root.getBoundingClientRect();
       const point = this.view.screenToWorld(event.clientX - rect.left, event.clientY - rect.top);
+      if (!this.renderer?.terrain.isLandAt(point.x, point.z)) return;
+      event.preventDefault();
       const accepted = !this.dispatchEvent(new CustomEvent<MinimapActionRequestDetail>('game:map-action-request', {
         bubbles: true, composed: true, cancelable: true, detail: { position: new Vector3(point.x, 0, point.z) },
       }));
@@ -245,6 +255,9 @@ export class DstMinimapElement extends AssetElement {
   };
 
   private onPointerMove = (event: PointerEvent): void => {
+    const rect = this.root.getBoundingClientRect();
+    this.hover = (event.target as Element).closest('.minimap__center') ? undefined : { x: event.clientX - rect.left, y: event.clientY - rect.top };
+    this.updateLandCursor();
     const drag = this.drag;
     if (!drag || drag.pointer !== event.pointerId) return;
     const dx = event.clientX - drag.x, dy = event.clientY - drag.y;

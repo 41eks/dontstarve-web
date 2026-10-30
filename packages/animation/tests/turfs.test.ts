@@ -9,6 +9,7 @@ import { createInventoryStore } from '../../../src/inventory';
 import { inventorySlotAddress } from '../../inventory/src';
 import { TurfMap, WORLD_TILES } from '../../prefab/src/turfMap';
 import { turfItemForTile } from '../../prefab/src/turfs';
+import { drawGround, layerGeometry, layerMeshes } from './groundDisplayFixture';
 
 vi.mock('../../prefab/src/sound', () => ({ PlaySound: vi.fn(), PreloadSounds: vi.fn(async () => {}) }));
 
@@ -70,9 +71,9 @@ it('deploys one CotL turf on dirt, rejects covered ground and restores terrain a
     expect(entity.components.deployable!.CanDeploy(point, map)).toBe(false);
     expect(inventory.get(address)!.count).toBe(2);
     expect(map.dig(point)).toBe(true);
-    const visual = await map.createVisual('/dst/data');
+    await map.createVisual('/dst/data');
+    const display = await drawGround(map);
     const mini = await map.tileLayerImages();
-    await map.prepareTurf('COTL_BRICK');
     const item = inventory.extract(address, 1, entity)!;
     expect(item.components.deployable!.Deploy(point, deployer, map)).toBe(true);
     expect(item.isRemoved).toBe(true);
@@ -82,18 +83,19 @@ it('deploys one CotL turf on dirt, rejects covered ground and restores terrain a
     expect(map.canPlaceTurf(point)).toBe(false);
     expect(entity.components.deployable!.CanDeploy(point, map)).toBe(false);
     expect(deployer.PushEvent).toHaveBeenCalledWith('deployitem', { prefab: 'turf_cotl_brick' });
-    const brick = visual.getObjectByName('TurfBlend:COTL_BRICK') as THREE.Mesh;
-    expect(brick.visible).toBe(true);
-    expect(brick.geometry.getIndex()!.count).toBe(9 * 6);
-    expect(mini.has(WORLD_TILES.COTL_BRICK)).toBe(true);
+    // The deploy never waits for art: the display loads the newly declared layer, then draws it.
+    await vi.waitFor(() => expect(layerMeshes(display, 'COTL_BRICK').length).toBeGreaterThan(0));
+    const brick = layerGeometry(display, 'COTL_BRICK');
+    expect(brick.getIndex()!.count).toBe(9 * 6);
+    await vi.waitFor(() => expect(mini.has(WORLD_TILES.COTL_BRICK)).toBe(true));
     expect(map.tileLayerQuads().get(WORLD_TILES.COTL_BRICK)).toHaveLength(9);
     restored = new TurfMap(48, map.exportTiles());
-    const restoredVisual = await restored.createVisual('/dst/data');
-    const restoredBrick = restoredVisual.getObjectByName('TurfBlend:COTL_BRICK') as THREE.Mesh;
-    expect(restoredBrick.geometry.getAttribute('groundTileUv').array).toEqual(brick.geometry.getAttribute('groundTileUv').array);
+    const restoredDisplay = await drawGround(restored);
+    expect(layerGeometry(restoredDisplay, 'COTL_BRICK').getAttribute('groundTileUv').array).toEqual(brick.getAttribute('groundTileUv').array);
     expect(turfItemForTile(restored.getTileAtWorld(point))).toBe('turf_cotl_brick');
     expect(restored.dig(point)).toBe(true);
     expect(restored.getTileAtWorld(point)).toBe(WORLD_TILES.DIRT);
-    expect(restoredBrick.visible).toBe(false);
+    expect(layerMeshes(restoredDisplay, 'COTL_BRICK')).toHaveLength(0);
+    display.dispose(); restoredDisplay.dispose();
   } finally { restored?.dispose(); map.dispose(); inventory.dispose(); }
 });

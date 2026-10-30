@@ -1,11 +1,14 @@
 import { MinimapIcons } from '../../map/src/minimapIcons';
 import { miniMapEntities, subscribeMiniMapEntities, type MiniMapMarker } from '../../map/src/minimapEntities';
 import { MinimapDomView } from './minimap-dom-view';
-import { MinimapGroundImage, type GroundImageOptions } from './minimap-ground-image';
-import { MINIMAP_MARGIN_RATIO, type MinimapView } from './minimap-view';
+import { MiniMapRenderer } from '../../map/src/miniMapRenderer';
+import type { MinimapTerrain } from './minimap-terrain';
+import type { MinimapView } from './minimap-view';
 
-/** World cells covered by one repeat of the ocean plate. */
-const OCEAN_PLATE_CELLS = 32;
+export interface MinimapTerrainOptions {
+  terrain: MinimapTerrain;
+  cellSize: number;
+}
 
 export interface MinimapInspection { ready: boolean; icons: string[] }
 interface Marker { element: HTMLSpanElement; icon: string; x: number; z: number; priority: number }
@@ -15,7 +18,7 @@ interface Marker { element: HTMLSpanElement; icon: string; x: number; z: number;
  */
 export class MinimapDomRenderer {
   readonly dom: MinimapDomView;
-  readonly terrain: MinimapGroundImage;
+  readonly terrain: MiniMapRenderer;
   private readonly markers = new Map<MiniMapMarker, Marker>();
   private readonly icons: MinimapIcons;
   private readonly loadedIcons = new Set<string>();
@@ -23,21 +26,15 @@ export class MinimapDomRenderer {
   private disposed = false;
   private readonly worldSize: number;
 
-  constructor(options: GroundImageOptions, dataRoot: string) {
+  constructor(options: MinimapTerrainOptions, dataRoot: string) {
     this.icons = new MinimapIcons(dataRoot);
-    this.terrain = new MinimapGroundImage(options);
-    const { min, max } = options.terrain.cellRange(), unit = options.cellSize;
-    this.worldSize = (max - min) * unit;
+    // Open ocean is one seamless pre-rendered plate (scripts/render-minimap-ocean.mjs), drawn below the land layers.
+    this.terrain = new MiniMapRenderer({ ...options, oceanPlateUrl: `${import.meta.env.BASE_URL}minimap/ocean.png` });
+    const { min, max } = options.terrain.cellRange();
+    this.worldSize = (max - min) * options.cellSize;
     this.dom = new MinimapDomView(this.worldSize);
-    const plate = document.createElement('div');
-    const margin = MINIMAP_MARGIN_RATIO * 100, side = 100 + 2 * margin;
-    const repeat = OCEAN_PLATE_CELLS * unit / (this.worldSize * (1 + 2 * MINIMAP_MARGIN_RATIO)) * 100;
-    // Open ocean is one seamless pre-rendered plate (scripts/render-minimap-ocean.mjs), not computed per world.
-    plate.className = 'minimap__ocean';
-    Object.assign(plate.style, { position: 'absolute', left: `${min / (max - min) * 100 - margin}%`, top: `${min / (max - min) * 100 - margin}%`,
-      width: `${side}%`, height: `${side}%`,
-      backgroundImage: `url(${import.meta.env.BASE_URL}minimap/ocean.png)`, backgroundSize: `${repeat}%` });
-    this.dom.overview.append(plate, this.terrain.image, this.terrain.hitRegion);
+    // The terrain is drawn in screen space, below the world container that carries the icons.
+    this.dom.root.prepend(this.terrain.canvas);
   }
 
   get root(): HTMLElement { return this.dom.root; }
@@ -46,12 +43,13 @@ export class MinimapDomRenderer {
   /** Opening reconciles once; declarations and tile changes update only their own nodes afterwards. */
   start(): void {
     if (this.disposed || this.stopWatching) return;
+    this.terrain.start();
     const current = miniMapEntities();
     for (const entity of this.markers.keys()) if (!current.has(entity)) this.updateEntity(entity, false);
     this.stopWatching = subscribeMiniMapEntities((entity, present) => this.updateEntity(entity, present));
   }
 
-  stop(): void { this.stopWatching?.(); this.stopWatching = undefined; }
+  stop(): void { this.terrain.stop(); this.stopWatching?.(); this.stopWatching = undefined; }
 
   /** Terrain and the icon atlases are ready before the first marker or the map is shown. */
   async prepare(): Promise<void> {
@@ -69,7 +67,7 @@ export class MinimapDomRenderer {
   update(view: MinimapView): void {
     if (this.disposed) return;
     this.dom.update(view);
-    this.terrain.requestSize(view.width, view.height);
+    this.terrain.update(view);
   }
 
   /** Map notifications carry one changed entity, never a polled list. */

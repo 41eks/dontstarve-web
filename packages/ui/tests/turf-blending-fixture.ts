@@ -1,14 +1,20 @@
 import * as THREE from 'three';
 import { TurfMap, WORLD_TILES } from '../../prefab/src/turfMap';
 import { createTurfGround } from '../../prefab/src/turf';
+import { GroundDisplay } from '../../display/src/groundDisplay';
 
 export async function checkTurfBlending() {
   const map = new TurfMap(120);
   const ground = await createTurfGround({ assetBaseUrl: '/dst/data',
     noiseTexture: 'Ground_noise_deciduous', tileAtlas: 'DECIDUOUS', size: 120 });
-  const visual = await map.createVisual('/dst/data');
+  const display = new GroundDisplay(map, '/dst/data');
+  await display.prepare();
   const scene = new THREE.Scene();
-  scene.add(new THREE.AmbientLight(0xffffff, Math.PI), ground, visual);
+  scene.add(new THREE.AmbientLight(0xffffff, Math.PI), ground, display.root);
+  // The forest layer is drawn as one mesh per chunk; toggle all of them.
+  const showForest = (visible: boolean) => display.root.children.forEach(mesh => {
+    if (mesh.name === 'TurfBlend:DECIDUOUS') mesh.visible = visible;
+  });
   const renderer = new THREE.WebGLRenderer();
   renderer.setSize(480, 480);
   document.body.append(renderer.domElement);
@@ -26,10 +32,9 @@ export async function checkTurfBlending() {
   };
   const original = pixels();
   map.dig({ x: 6, z: 6 });
-  const edge = visual.getObjectByName('TurfBlend:DECIDUOUS')!;
-  edge.visible = false;
+  showForest(false);
   const withoutEdges = pixels();
-  edge.visible = true;
+  showForest(true);
   const blended = pixels();
   const pixel = (buffer: Uint8Array, x: number, y: number) => [...buffer.slice((y * 480 + x) * 4, (y * 480 + x) * 4 + 4)];
   const equal = (a: number[], b: number[]) => a.every((value, i) => value === b[i]);
@@ -40,12 +45,14 @@ export async function checkTurfBlending() {
     && (value !== withoutEdges[i] || blended[i + 1] !== withoutEdges[i + 1] || blended[i + 2] !== withoutEdges[i + 2])), 0);
   // A new lower-priority turf must receive the original forest's inward edge,
   // while its outward skirts stay underneath complete neighbouring forest cells.
-  await map.prepareTurf('COTL_BRICK');
   map.setTile(0, 0, WORLD_TILES.COTL_BRICK);
+  // The display loads the newly declared layer's art, then draws it.
+  for (let i = 0; i < 200 && !display.root.getObjectByName('TurfBlend:COTL_BRICK'); i++) await new Promise(resolve => setTimeout(resolve, 10));
+  if (!display.root.getObjectByName('TurfBlend:COTL_BRICK')) throw new Error('COTL_BRICK layer did not load');
   const brickBlended = pixels();
-  edge.visible = false;
+  showForest(false);
   const brickWithoutForest = pixels();
-  edge.visible = true;
+  showForest(true);
   let inwardChangedPixels = 0, outsideChangedPixels = 0;
   for (let y = 0; y < 480; y++) for (let x = 0; x < 480; x++) {
     const i = (y * 480 + x) * 4;
@@ -56,11 +63,12 @@ export async function checkTurfBlending() {
   }
   const brickCenterUnchanged = equal(pixel(brickBlended, 240, 240), pixel(brickWithoutForest, 240, 240));
   const restored = new TurfMap(120, map.exportTiles());
-  const restoredVisual = await restored.createVisual('/dst/data');
-  visual.removeFromParent(); scene.add(restoredVisual);
+  const restoredDisplay = new GroundDisplay(restored, '/dst/data');
+  await restoredDisplay.prepare();
+  display.root.removeFromParent(); scene.add(restoredDisplay.root);
   const restoredPixels = pixels();
   const reloadPreservesPixels = restoredPixels.every((value, i) => value === brickBlended[i]);
-  restored.dispose(); scene.add(visual);
+  restoredDisplay.dispose(); restored.dispose(); scene.add(display.root);
   // Show a larger patch, a stepped boundary and a dug woodfloor hole for inspection.
   for (const [x, z] of [[18, 6], [6, 18], [18, 18], [30, 6], [-6, 6]]) map.dig({ x, z });
   for (let x = 0; x < 3; x++) for (let z = 0; z < 3; z++) {

@@ -171,26 +171,16 @@ test('tree icons use native art, survive model unloading and retain identities a
   expect(errors).toEqual([]);
 });
 
-test('ground map image retries at a lower density when the browser cannot encode a very large image', async ({ page }) => {
+test('the full imported world prepares its terrain map before the game starts', async ({ page }) => {
   test.setTimeout(240_000);
-  const errors: string[] = [], warnings: string[] = [];
+  const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
-  page.on('console', message => {
-    if (message.type() === 'error') errors.push(message.text());
-    if (message.type() === 'warning' && message.text().startsWith('Unable to build the ground map image')) warnings.push(message.text());
-  });
-  await page.addInitScript(() => {
-    const convert = OffscreenCanvas.prototype.convertToBlob;
-    OffscreenCanvas.prototype.convertToBlob = function (this: OffscreenCanvas, ...args) {
-      return this.width > 4096 ? Promise.resolve(new Blob([])) : convert.apply(this, args);
-    };
-  });
+  page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
   await page.goto('/tests/dst-lighting.html?save=Cluster_1/Master.json');
   const ready = await page.evaluate(async url => {
     await (await import(url)).gameReady;
     return (await (document.querySelector('dst-minimap') as any).inspect()).ready;
   }, urls.main);
   expect(ready).toBe(true);
-  expect(warnings.length).toBeGreaterThan(0);
   expect(errors).toEqual([]);
 });

@@ -4,8 +4,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "bench": "node scripts/bench.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

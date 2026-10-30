@@ -140,16 +140,23 @@ it('loads all source minimap masks and noise per terrain layer, and reports chan
   expect(map.tileIdAtCell(0, 0)).toBe(WORLD_TILES.DECIDUOUS);
   expect(map.tileIdAtCell(max, 0)).toBe(WORLD_TILES.INVALID);
   const layers = await map.tileLayerImages();
+  const alphas = (atlas: { data: Uint8ClampedArray; width: number; height: number }, rect: { u0: number; v0: number; u1: number; v1: number }) => {
+    const values: number[] = [];
+    for (let y = Math.ceil(rect.v0 * atlas.height); y < Math.floor(rect.v1 * atlas.height); y++) {
+      for (let x = Math.ceil(rect.u0 * atlas.width); x < Math.floor(rect.u1 * atlas.width); x++) values.push(atlas.data[(y * atlas.width + x) * 4 + 3]);
+    }
+    return values;
+  };
   for (const id of [WORLD_TILES.DIRT, WORLD_TILES.DECIDUOUS, WORLD_TILES.FARMING_SOIL]) {
-    const { cells, noise } = layers.get(id)!;
-    expect(cells.size).toBe(48);
-    const cell = cells.get(1)!;
-    expect(cell.data).toHaveLength(cell.width * cell.height * 4);
-    expect(cell.data.some((value, i) => i % 4 === 3 && value === 255)).toBe(true);
+    const { atlas, masks, noise } = layers.get(id)!;
+    expect(masks.size).toBe(48);
+    // Every layer names the same map_edge atlas and shares its decoded pixels.
+    expect(atlas).toBe(layers.get(WORLD_TILES.DIRT)!.atlas);
+    expect(atlas.data).toHaveLength(atlas.width * atlas.height * 4);
     expect(noise.width * noise.height * 4).toBe(noise.data.length);
-    expect(cells.get(17)!.data.every((value, i) => i % 4 !== 3 || value === 0)).toBe(true);
-    const coast = cells.get(2)!;
-    expect(coast.data.some((value, i) => i % 4 === 3 && value > 0 && value < 255)).toBe(true);
+    expect(alphas(atlas, masks.get(1)!).some(value => value === 255)).toBe(true);
+    expect(alphas(atlas, masks.get(17)!).every(value => value === 0)).toBe(true);
+    expect(alphas(atlas, masks.get(2)!).some(value => value > 0 && value < 255)).toBe(true);
   }
   let changes = 0;
   map.onTerrainChanged(() => changes++);
