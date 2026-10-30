@@ -8,6 +8,7 @@ import { loadSpriteSkinArchive } from '../src/animationAssets';
 import { isMouseTarget } from '../../stategraphs/src/mouseTargets';
 import { bindTestWorld } from './worldContentFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import { reskinEntity } from '../../prefab/src/reskin_tool';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -93,22 +94,16 @@ it('reskins a live opening wormhole and restores its identity and skin', async (
   const id = lookupPrefabInstance(model)?.entityId;
   const step = (frames: number) => { for (let i = 0; i < frames; i++) manager.update(1 / 30, new THREE.Quaternion()); };
   try {
-    const canceled = await manager.reskinTargets[0].prepareNextSkin();
-    canceled.dispose();
-    expect(canceled.apply()).toBe(false);
     expect(lookupPrefabInstance(model)?.skinId).toBeUndefined();
-    const prepared = await manager.reskinTargets[0].prepareNextSkin();
     player.x = 0;
     step(9);
-    expect(prepared.apply()).toBe(true);
+    expect(reskinEntity(manager.reskinTargets[0])).toBe(true);
     expect(prefabInstance(model)!.sprite.currentAnimation).toBe('open_pre');
     expect(manager.renderEntities).toHaveLength(1);
     step(1);
     expect(manager.renderEntities).toHaveLength(0);
     step(60);
     expect(prefabInstance(model)!.sprite.currentAnimation).toBe('open_loop');
-    expect(prepared.apply()).toBe(false);
-    prepared.dispose();
 
     const skinId = WORMHOLE_SKINS[0];
       expect(lookupPrefabInstance(model)?.entityId).toBe(id);
@@ -132,10 +127,9 @@ it('reskins a live opening wormhole and restores its identity and skin', async (
     await expect(manager.spawn(new THREE.Vector3(), {
       id: 'bad_skin', transform: { position: [0, 0, 0], rotationY: 0 }, components: { wormhole: { skinId: 'missing' } },
     })).rejects.toThrow('Unsupported wormhole skin');
-    const late = await manager.reskinTargets[0].prepareNextSkin();
+    const late = manager.reskinTargets[0];
     manager.dispose();
-    expect(late.apply()).toBe(false);
-    late.dispose();
+    expect(reskinEntity(late)).toBe(false);
     expect(scene.children).toHaveLength(0);
   } finally { manager.dispose(); }
 });

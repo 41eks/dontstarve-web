@@ -14,6 +14,7 @@ import { deserializeSave } from '../../../src/save/deserialize';
 import type { SaveDocument } from '../../../src/save/types';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import definitions from '../../prefab/src/definitions.json' with { type: 'json' };
+import { reskinEntity } from '../../prefab/src/reskin_tool';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -87,9 +88,7 @@ it('keeps its skin through c_save, restores the reading, and saves only the burn
   const { placement, scheduler } = await createPlacement(temperature);
   try {
     await placement.spawn(WINTEROMETER_ID);
-    const reskin = await placement.reskinTargets[0].prepareNextSkin();
-    expect(reskin.apply()).toBe(true);
-    reskin.dispose();
+    expect(reskinEntity(placement.reskinTargets[0])).toBe(true);
     const saved = placement.exportRecords()[0].record;
     expect(saved.components.building).toMatchObject({ skinId: 'winterometer_circus' });
     expect(saved.components.building).not.toHaveProperty('burnt');

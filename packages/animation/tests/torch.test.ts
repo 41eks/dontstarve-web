@@ -15,6 +15,7 @@ import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/grou
 import { PlaySound } from '../../prefab/src/sound';
 import { createEmptyEntity, prefabInstance } from '../../prefab/src/prefabInstance';
 import { createPerishWorld } from './perishWorldFixture';
+import { reskinEntity } from '../../prefab/src/reskin_tool';
 
 /** The inst.Light an entity's model declares. */
 const declaredLight = (model: THREE.Object3D) => prefabInstance(model)?.light.peek();
@@ -186,13 +187,10 @@ describe('torch prefab burning lifecycle', () => {
       expect(entity.components.fueled!.currentfuel).toBeCloseTo(TORCH_FUEL - FULL_FIRST_PERIOD - .75, 9);
       expect(entity.components.inventoryitem.owner).toBeNull();
       controller.ignite();
-      const cancelled = await manager.reskinTargets[0].prepareNextSkin();
-      cancelled.dispose();
       expect(controller.isBurning).toBe(true);
       expect(entity.skinId).toBeUndefined();
-      const prepared = await manager.reskinTargets[0].prepareNextSkin();
       world.advance(0.375);
-      expect(prepared.apply()).toBe(true);
+      expect(reskinEntity(manager.reskinTargets[0])).toBe(true);
       model = scene.children[0] as THREE.Group;
       expect(entity.skinId).toBe('torch_barber');
       expect(model.userData.torch).toBe(controller);

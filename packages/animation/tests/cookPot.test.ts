@@ -9,6 +9,7 @@ import type { WorldContext } from '../../prefab/src/worldContext';
 import { findImage, loadBuild, smallHash } from '../src/animationAssets';
 import type { TransientSpriteAnimationController } from '../src/sprite';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { reskinEntity } from '../../prefab/src/reskin_tool';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -58,10 +59,8 @@ it('cooks with source food layers, resumes saved progress and preserves the prod
   expect(restoredAnimation.currentAnimation).toBe('cooking_loop');
   // The display loads the pot's art; one-shot clips play out once it is drawn.
   await vi.waitFor(() => expect(prefabInstance(restored)!.sprite.loaded).toBe(true));
-  const replacement = await restoredPlacement.reskinTargets[0].prepareNextSkin();
   restoredPlacement.update(1);
-  expect(replacement!.apply()).toBe(true);
-  replacement!.dispose();
+  expect(reskinEntity(restoredPlacement.reskinTargets[0])).toBe(true);
   expect(skinSignal.peek()).toBe('cookpot_cauldron');
   expect((findActionEntity(restored)?.components ?? prefabInstance(restored)!.components).stewer).toBe(restoredStewer);
   expect(cookPotState(restored)?.remainingSeconds).toBeCloseTo(BEEFALO_FEED_COOK_TIME - 4);

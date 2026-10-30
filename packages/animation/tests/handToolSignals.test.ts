@@ -185,26 +185,27 @@ it('finds registered hammer targets from pointer input and revalidates buffered 
   } finally { controller.dispose(); instance.remove(); display.dispose(); workable.dispose(); }
 });
 
-it('discards a prepared reskin after the equipped entity changes during loading and releases subscriptions', async () => {
+it('discards a pending reskin after the equipped entity changes during loading and releases subscriptions', async () => {
   const equipment = createEquipmentExistenceState('HANDS');
   const first = actionTool('reskin_tool');
   equipment.set(first);
   let release!: () => void;
   const ready = new Promise<void>(resolve => { release = resolve; });
-  const prepared = { apply: vi.fn(() => true), dispose: vi.fn() };
-  const target = { ...reskinEntityFields, id: 'target', prefabId: 'icebox', model: new THREE.Group(), position: new THREE.Vector3(1, 0, 0),
-    isValid: () => true, prepareNextSkin: async () => { await ready; return prepared; } };
+  const sprite = new SpriteState({ name: '' }), model = new THREE.Group();
+  // The display is still loading the skin the cast would choose when the equipment changes.
+  const target = { ...reskinEntityFields, id: 'target', prefabId: 'icebox', model, position: new THREE.Vector3(1, 0, 0), sprite,
+    get skinId() { return sprite.skinId.peek(); }, isValid: () => true,
+    display: { model, preloadSkin: async () => { await ready; } } as never };
   const animation = { isReskinning: false, cancelEmote: vi.fn(), cancelReskin: vi.fn(), setFacing: vi.fn() };
   const fx = { play: vi.fn(), dispose: vi.fn() };
-  const effects = { prepare: vi.fn(async () => fx) };
+  const effects = { prepare: vi.fn(() => fx) };
   const controller = new ReskinActionController(context(), animation as unknown as ActionAnimationController,
     { goToPoint: () => true, stop: vi.fn(), destination: undefined }, equipment, effects);
   const request = controller.request(target);
   equipment.set(actionTool('reskin_tool'));
   release();
   expect(await request).toBe(false);
-  expect(prepared.apply).not.toHaveBeenCalled();
-  expect(prepared.dispose).toHaveBeenCalledOnce();
+  expect(sprite.skinId.peek()).toBeUndefined();
   expect(fx.play).not.toHaveBeenCalled();
   controller.dispose();
   animation.cancelReskin.mockClear();

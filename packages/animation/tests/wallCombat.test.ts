@@ -14,6 +14,7 @@ import { ItemEntity } from '../../inventory/src';
 import { PlaySound } from '../../prefab/src/sound';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { actionTargetModel } from '../../stategraphs/src/actionTargetView';
+import { reskinEntity } from '../../prefab/src/reskin_tool';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
 beforeEach(() => {
@@ -62,7 +63,6 @@ it('hammers out a middle wall once, invalidates stale targets and preserves the 
     const before = placement.exportRecords();
     const target = placement.hammerTargets[1], combatTarget = placement.combatTargets[1], skinTarget = placement.reskinTargets[1];
     await target.display!.artLoaded();
-    const prepared = await skinTarget.prepareNextSkin();
     const release = vi.fn(); target.display!.onDispose(release);
     target.playHit(); target.playHit();
     expect(target.isValid()).toBe(true);
@@ -74,8 +74,7 @@ it('hammers out a middle wall once, invalidates stale targets and preserves the 
     expect(skinTarget.isValid()).toBe(false);
     expect(actionTargetModel(target).parent).toBeNull();
     expect(release).toHaveBeenCalledOnce();
-    expect(prepared.apply()).toBe(false);
-    prepared.dispose();
+    expect(reskinEntity(skinTarget)).toBe(false);
     target.playHit();
     expect(dropLoot).toHaveBeenCalledOnce();
     expect(placement.hammerTargets.map(wall => wall.id)).toEqual(['first', 'last']);

@@ -14,6 +14,7 @@ import { createArchiveSprite } from '../src/archiveSprite';
 import { FACING, facingFromRotation, selectsFacing } from '../src/facing';
 import { createSignal } from '../../signals/src';
 import { snapToWallSlotCenter } from '../../prefab/src/tile';
+import { reskinEntity } from '../../prefab/src/reskin_tool';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -143,8 +144,7 @@ it('is hammered in three hits for a twig, can be reskinned, and burns into ash w
     const model = await placement.spawnFromSave('fence', { id: 'fence:1', transform: { position: [6, 0, 6], rotationY: 0 }, components: { fence: { rot: 2 } } });
     const reskin = placement.reskinTargets[0];
     expect(reskin.skins).toEqual(Object.keys(FENCE_SKIN_ARCHIVES));
-    const prepared = await reskin.prepareNextSkin();
-    expect(prepared.apply()).toBe(true);
+    expect(reskinEntity(reskin)).toBe(true);
     expect(placement.exportRecords()[0].record.components.fence).toEqual({ rot: 2, skinId: 'fence_ancient' });
 
     const fire = lookupPrefabInstance(model)!.components.burnable!;

@@ -14,6 +14,7 @@ import { inventoryStateFromSave } from '../../../src/save/inventoryState';
 import { createPickupInventory } from './pickupFixture';
 import { equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { performPickupAction, createPickupDoer } from '../../stategraphs/src/pickup';
+import { reskinEntity } from '../../prefab/src/reskin_tool';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -48,9 +49,7 @@ it('spawns/gives tool and wall-loot IDs, then exports and reloads identities, po
     expect(pickaxe.components.finiteuses.useForAction('MINE')).toBe(true);
     const golden = manager.entities.get('spawn:goldenpickaxe')!;
     expect(golden.components.finiteuses.useForAction('MINE')).toBe(true);
-    const change = await manager.reskinTargets.find(target => target.id === golden.id)!.prepareNextSkin();
-    expect(change.apply()).toBe(true);
-    change.dispose();
+    expect(reskinEntity(manager.reskinTargets.find(target => target.id === golden.id)!)).toBe(true);
     const skinId = golden.skinId;
     expect(skinId).toBeDefined();
     const hand = equipmentSlotAddress('hand');

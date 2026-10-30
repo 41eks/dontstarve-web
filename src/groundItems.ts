@@ -7,8 +7,8 @@ import { loadImageAtlas, type ImageAtlas } from '@dontstarve-web/animation/image
 import * as THREE from 'three';
 import { isSpriteEntityRendered } from '@dontstarve-web/animation/renderOrder';
 import { isHatId, HAT_DEFINITIONS } from '@dontstarve-web/prefab/hats';
-import { nextReskin } from '@dontstarve-web/prefab/reskin_tool';
-import { type ReskinFxMessage, type ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
+import { reskinTarget } from '@dontstarve-web/prefab/reskin_tool';
+import type { ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
 import { GROUND_ART_DEFINITIONS, GROUND_ITEM_DEFINITIONS } from '@dontstarve-web/prefab/groundItems';
 import { createPrefabEntity, modelHasTag, prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import { newEntityId } from '@dontstarve-web/prefab/saveRecord';
@@ -632,29 +632,12 @@ export class GroundItemManager {
         const prefabId = record.definition.itemId;
         const skins = Object.keys((isHatId(prefabId) ? HAT_DEFINITIONS[prefabId] : GROUND_ART_DEFINITIONS[prefabId])?.skinArchives ?? {});
         const isValid = () => this.activeItems.has(record) && !record.entity.isRemoved && !record.isRemoved?.();
-        return {
-            id: record.id, prefabId, model: record.model, get position() { return record.footPosition; }, isValid,
-            get isRemoved() { return record.entity.isRemoved; }, hasTag: tag => record.entity.hasTag(tag) || modelHasTag(record.model, tag),
-            isVisible: () => record.model.visible,
-            skins, get skinId() { return record.entity.skinId; },
-            prepareNextSkin: async (tool) => {
-                const previousSkin = record.entity.skinId;
-                const skinId = nextReskin(skins, previousSkin, tool?._cached_reskinname, prefabId);
-                let used = false;
-                return {
-                    skinId,
-                    apply: (fx?: ReskinFxMessage) => {
-                        if (used || !isValid() || record.entity.skinId !== previousSkin) return false;
-                        // The item's sprite json owns its skin; its ground visual, slot and save follow it.
-                        record.entity.skinId = skinId;
-                        fx?.play(record.footPosition, prefabId);
-                        used = true;
-                        return true;
-                    },
-                    dispose: () => { used = true; },
-                };
-            },
-        };
+        // The item's sprite json owns its skin; its ground visual, slot and save follow it.
+        return reskinTarget({
+            id: record.id, prefabId, model: record.model, sprite: record.entity.sprite, skins, isValid,
+            get position() { return record.footPosition; }, get isRemoved() { return record.entity.isRemoved; },
+            hasTag: tag => record.entity.hasTag(tag) || modelHasTag(record.model, tag), isVisible: () => record.model.visible,
+        });
     }
 
     private isNetCreature(itemId: string): boolean { return this.prefabs.get(itemId)?.capture === 'net'; }

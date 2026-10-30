@@ -27,6 +27,7 @@ import initialWorld from '../../../public/saves/initial-world.json' with { type:
 import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
 import type { SavedEntity } from '../../../src/save/types';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { reskinEntity } from '../../prefab/src/reskin_tool';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -147,8 +148,7 @@ it('keeps burning art through reskin, exports source burnt state, restores a che
     const before = item.snapshot();
     burnable.Ignite(); placement.update(3);
     expect(scene.children.filter(child => child.name === 'fire')).toHaveLength(1);
-    const prepared = await placement.reskinTargets[0].prepareNextSkin();
-    expect(prepared.apply()).toBe(true); prepared.dispose();
+    expect(reskinEntity(placement.reskinTargets[0])).toBe(true);
     expect((findActionEntity(model)?.components ?? prefabInstance(model)!.components).burnable).toBe(burnable);
     expect(instance.hasTag('burnt')).toBe(false);
     expect(instance.components.burnable!.burning).toBe(burningSignal);

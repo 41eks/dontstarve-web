@@ -8,7 +8,7 @@ import { watchSignal, type Signal } from '@dontstarve-web/signals';
 import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
-import type { ReskinFxMessage, ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
+import type { ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
 import { Combat, type CombatInst } from '../../componets/src/combat';
 import { Health } from '../../componets/src/health';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -16,7 +16,7 @@ import { Workable } from '../../componets/src/workable';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { actionEntity, FindEntities } from './actionEntity';
 import { BuildCursor } from './buildCursor';
-import { nextReskin } from './reskin_tool';
+import { reskinTarget } from './reskin_tool';
 import { newEntityId, saveGroundPosition, type PlacedEntitySaveRecord, type PlacementSaveRecord } from './saveRecord';
 import { PlaySound } from './sound';
 import { MakeObstaclePhysics } from './standardcomponents';
@@ -214,30 +214,12 @@ export class FencePlacement {
     }
 
     private createReskinTarget(fence: FenceInstance): ReskinTarget {
-        const skins = Object.keys(FENCE_SKIN_ARCHIVES);
         const isValid = () => this.isLive(fence);
-        return {
+        return reskinTarget({
             get id() { return String(fence.instance.entityId); }, prefabId: FENCE_ID, instance: fence.instance, display: fence.display,
-            skins, get skinId() { return fence.instance.skinId; },
-            get isRemoved() { return !isValid(); }, hasTag: (tag: string) => fence.instance.hasTag(tag),
-            get position() { return fence.root.position.clone(); }, isValid,
-            prepareNextSkin: async (tool) => {
-                const previousSkin = fence.instance.skinId;
-                const skinId = nextReskin(skins, previousSkin, tool?._cached_reskinname, FENCE_ID);
-                let used = false;
-                return {
-                    skinId,
-                    apply: (fx?: ReskinFxMessage) => {
-                        if (used || !isValid() || fence.instance.skinId !== previousSkin) return false;
-                        fence.instance.skinId = skinId;
-                        fx?.play(fence.root.position, FENCE_ID);
-                        used = true;
-                        return true;
-                    },
-                    dispose: () => { used = true; },
-                };
-            },
-        };
+            sprite: fence.instance.sprite, skins: Object.keys(FENCE_SKIN_ARCHIVES),
+            hasTag: (tag: string) => fence.instance.hasTag(tag), get position() { return fence.root.position; }, isValid,
+        });
     }
 
     exportRecords(): PlacedEntitySaveRecord[] {

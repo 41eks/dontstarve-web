@@ -13,6 +13,7 @@ import { FindEntities } from '../../prefab/src/actionEntity';
 import { EventEmitter } from '@dontstarve-web/signals';
 import type { WorldEvents } from '../../prefab/src/worldContext';
 import { placementEntities } from '../../prefab/src/placementEntities';
+import { reskinEntity } from '../../prefab/src/reskin_tool';
 
 vi.mock('@dontstarve-web/animation/imageAtlas', () => ({
   loadImageAtlas: async () => ({
@@ -281,14 +282,11 @@ describe('ground item save records', () => {
     manager.update(0, new THREE.Quaternion());
     expect(model.position.toArray()).toEqual(entity.transform.position.toArray());
 
-    const preparing = manager.reskinTargets[0].prepareNextSkin();
     entity.transform.position.set(20, 0.5, 21);
-    const prepared = await preparing;
-    expect(prepared.apply()).toBe(true);
-    prepared.dispose();
+    expect(reskinEntity(manager.reskinTargets[0])).toBe(true);
     // Reskinning writes the item's own sprite json and replaces nothing; the next frame follows the entity.
     expect(manager.renderEntities[0].object).toBe(model);
-    expect(entity.sprite.skinId.peek()).toBe(prepared.skinId);
+    expect(entity.sprite.skinId.peek()).toBeDefined();
     manager.update(0, new THREE.Quaternion());
     expect(model.position.toArray()).toEqual(entity.transform.position.toArray());
     expect(manager.entities.get(entity.id)).toBe(entity);

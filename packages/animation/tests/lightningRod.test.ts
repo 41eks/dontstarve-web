@@ -15,6 +15,7 @@ import type { SaveDocument } from '../../../src/save/types';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import definitions from '../../prefab/src/definitions.json' with { type: 'json' };
 import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { reskinEntity } from '../../prefab/src/reskin_tool';
 
 /** The inst.Light an entity's model declares. */
 const declaredLight = (model: THREE.Object3D) => prefabInstance(model)?.light.peek();
@@ -108,9 +109,7 @@ it('keeps its charge and skin through c_save, and re-arms its day timer from the
   const { placement, scheduler, fx, scene } = await createPlacement();
   try {
     await placement.spawn(LIGHTNING_ROD_ID);
-    const reskin = await placement.reskinTargets[0].prepareNextSkin();
-    expect(reskin.apply()).toBe(true);
-    reskin.dispose();
+    expect(reskinEntity(placement.reskinTargets[0])).toBe(true);
     const [{ display }] = placement.hammerTargets;
     const model = display.model;
     scene.add(model);

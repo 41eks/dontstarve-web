@@ -21,8 +21,8 @@ import { MakeObstaclePhysics, MakeSmallObstaclePhysics } from './standardcompone
 import type { PhysicsState } from '../../componets/src/physicsState';
 import type { ItemEntity, InventoryStack } from '@dontstarve-web/inventory';
 import type { PickDoer } from '@dontstarve-web/stategraphs/pick';
-import { nextReskin } from './reskin_tool';
-import type { ReskinFxMessage, ReskinTarget } from '../../stategraphs/src/reskin_tool';
+import { reskinTarget } from './reskin_tool';
+import type { ReskinTarget } from '../../stategraphs/src/reskin_tool';
 import { watchTileActivity } from './tileActivity';
 import { bindInstance, PrefabInstance } from './prefabInstance';
 import { PrefabDisplayGroup, SpriteResources, SpriteState, type ArchiveSpriteCommands, type ArchiveSpriteSource, type PrefabDisplay } from '@dontstarve-web/display';
@@ -482,26 +482,10 @@ export class PickablePlantManager {
     const { definition, display, instance } = plant;
     if (!definition.skins) return undefined;
     const isValid = () => !this.disposed && !instance.isRemoved && this.plants.get(display.model) === plant;
-    return {
-      get id() { return String(instance.entityId); }, prefabId: definition.prefab, instance, display, position: instance.position,
-      skins: definition.skins, isValid, get skinId() { return instance.skinId; },
-      get isRemoved() { return !isValid(); }, hasTag: (tag: string) => instance.hasTag(tag),
-      prepareNextSkin: async (tool?: Parameters<ReskinTarget['prepareNextSkin']>[0]) => {
-        const previousSkin = instance.skinId;
-        const skinId = nextReskin(definition.skins!, previousSkin, tool?._cached_reskinname, definition.prefab);
-        let used = false;
-        return {
-          skinId,
-          apply: (fx?: ReskinFxMessage) => {
-            if (used || !isValid() || instance.skinId !== previousSkin) return false;
-            plant.instance.skinId = skinId || undefined;
-            used = true;
-            fx?.play(instance.position, definition.prefab);
-            return true;
-          }, dispose: () => { used = true; }
-        };
-      },
-    };
+    return reskinTarget({
+      get id() { return String(instance.entityId); }, prefabId: definition.prefab, instance, display, sprite: instance.sprite as SpriteState,
+      position: instance.position, skins: definition.skins, isValid, hasTag: (tag: string) => instance.hasTag(tag),
+    });
   }
 
   /** The plant's shared archive art for a skin; its displays load it. */

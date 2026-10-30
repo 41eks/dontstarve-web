@@ -11,6 +11,7 @@ import { findActionEntity } from '../../prefab/src/actionEntity';
 import { bindTestWorld } from './worldContentFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { WorldContext } from '../../prefab/src/worldContext';
+import { reskinEntity } from '../../prefab/src/reskin_tool';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -55,8 +56,7 @@ it('shares layered wall art, releases only visuals, restores current health/faci
     const material = (Array.isArray(mesh.material) ? mesh.material[0] : mesh.material) as THREE.MeshBasicMaterial;
     const textureDispose = vi.spyOn(material.map!, 'dispose');
     const components = { ...instance.components };
-    const skin = await placement.reskinTargets[0].prepareNextSkin();
-    expect(skin.apply()).toBe(true); skin.dispose();
+    expect(reskinEntity(placement.reskinTargets[0])).toBe(true);
     const saved = placement.exportRecords();
     const health = placement.combatTargets[0].inst.components.health!;
     health.SetVal(100);
@@ -110,8 +110,7 @@ it('settles a fence hit on sleep, reskins dormant art, restores mirroring, and c
     expect(entity.components.workable!.GetWorkLeft()).toBe(2);
     heading.set(90);
     content.camerarotation.set(new THREE.Quaternion());
-    const prepared = await dormantSkin.prepareNextSkin();
-    expect(prepared.apply()).toBe(true); prepared.dispose();
+    expect(reskinEntity(dormantSkin)).toBe(true);
     const saved = placement.exportRecords()[0];
     awake.set(true); await settle(); await settle();
     expect(lookupPrefabInstance(model)).toBe(instance);

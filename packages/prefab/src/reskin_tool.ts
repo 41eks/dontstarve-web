@@ -1,7 +1,6 @@
-import { ArchiveSpriteAssets, preloadSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
-import { PrefabDisplayGroup, SpriteState } from '@dontstarve-web/display';
+import { PrefabDisplayGroup, SpriteResources, SpriteState } from '@dontstarve-web/display';
 import type { ItemEntity } from '@dontstarve-web/inventory';
-import type { ReskinFxMessage, ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
+import { nextReskin, type ReskinFxMessage, type ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
 import type * as THREE from 'three';
 import { Vector3 } from 'three';
 import { SpellCaster } from '../../componets/src/spellcaster';
@@ -20,29 +19,44 @@ export function configureReskinToolEntity(entity: ItemEntity): void {
     caster.canUseOnTargets = true;
     caster.canUseOnDead = true;
     caster.veryQuickCast = true;
-    // The renderer prepares build/symbol assets before the animation commits the cast.
+    // spellCB: the skin is chosen at the hit frame; the display has preloaded the one chosen when the cast began.
     caster.setSpellFn((_tool, target) => {
       const inst = target as ReskinTarget;
-      if (!inst.preparedReskin?.apply(inst.reskinFx)) return false;
-      entity._cached_reskinname!.set(inst.prefabId, inst.skinId);
-      return true;
+      return !!inst.sprite && reskinEntity(inst, entity, inst.reskinFx);
     });
     caster.setCanCastFn((_doer, target) => {
       const inst = target as ReskinTarget | undefined;
-      return !!inst && !inst.reskinToolCannotTargetThis && inst.isValid()
+      return !!inst?.sprite && !inst.reskinToolCannotTargetThis && inst.isValid()
         && (nextReskin(inst.skins, inst.skinId, entity._cached_reskinname, inst.prefabId) !== undefined || inst.skinId !== undefined);
     });
     return caster;
   });
 }
 
-export function nextReskin(skins: readonly string[], current?: string,
-  cache?: ReadonlyMap<string, string | undefined>, prefab?: string): string | undefined {
-  if (cache && prefab) {
-    const cached = cache.get(prefab);
-    if (cached !== current) return cached;
-  }
-  return skins[(current === undefined ? -1 : skins.indexOf(current)) + 1];
+export { nextReskin };
+
+/** What a skinned entity supplies to become a reskin target; its skin is read from its own sprite json. */
+export type ReskinTargetView = Omit<ReskinTarget, 'skinId' | 'isRemoved'> & { readonly isRemoved?: boolean };
+
+/** A skinned entity as the reskin tool sees it: identity, skins and validity are its own, its skin is its sprite json's. */
+export function reskinTarget(view: ReskinTargetView): ReskinTarget {
+  return Object.create(view, {
+    skinId: { get: () => view.sprite.skinId.peek() },
+    ...'isRemoved' in view ? {} : { isRemoved: { get: () => !view.isValid() } },
+  }) as ReskinTarget;
+}
+
+/**
+ * spellCB: GetNextSkin, remembered on the tool for the prefab, then TheSim:ReskinEntity, which writes the skin into the
+ * entity's sprite json; the entity's own skin functions follow that declaration. The fx plays at the entity.
+ */
+export function reskinEntity(target: ReskinTarget, tool?: Pick<ItemEntity, '_cached_reskinname'>, fx?: ReskinFxMessage): boolean {
+  if (!target.isValid() || target.reskinToolCannotTargetThis) return false;
+  const skinId = nextReskin(target.skins, target.skinId, tool?._cached_reskinname, target.prefabId);
+  tool?._cached_reskinname?.set(target.prefabId, skinId);
+  target.sprite.skinId.set(skinId);
+  fx?.play(target.position, target.prefabId);
+  return true;
 }
 
 // reskin_tool.lua's GetReskinFXInfo. Offsets use DST units, converted below.
@@ -67,8 +81,6 @@ export function reskinEffectSound(toolSkinId?: string): SoundEventPath {
   return toolSkinId === 'reskin_tool_brush' ? 'terraria1/skins/spectrepaintbrush'
     : 'dontstarve/common/together/reskin_tool';
 }
-
-type CreateEffectSprite = Awaited<ReturnType<typeof preloadSharedArchiveSprite>>;
 
 /** A logical FX request: the receiving target supplies its own prefab and ground-contact position. */
 class ReskinFx implements ReskinFxMessage {
@@ -97,30 +109,23 @@ class ReskinFx implements ReskinFxMessage {
 
 /** explode_small.lua: logical one-shot entities; all visual ownership stays in packages/display. */
 export class ReskinEffects {
-  private readonly assets = new ArchiveSpriteAssets('ground');
+  /** The puff art shared by every effect; declaring its source performs no IO, each effect's display loads it. */
+  private readonly sprites = new SpriteResources(undefined, 'ground');
   private readonly displays: PrefabDisplayGroup;
-  private readonly prepared = new Map<string, Promise<CreateEffectSprite>>();
   private readonly effects = new Set<ReskinFx>();
   private disposed = false;
 
   constructor(scene: THREE.Scene) { this.displays = new PrefabDisplayGroup(scene); }
 
-  async prepare(toolSkinId?: string): Promise<ReskinFxMessage> {
+  /** Spawns the hidden puff at once; its display loads the art while the cast plays. */
+  prepare(toolSkinId?: string): ReskinFxMessage {
     if (this.disposed) throw new Error('Reskin effects have been disposed');
-    const key = toolSkinId ?? '';
     const skinArchive = toolSkinId ? GROUND_ITEM_DEFINITIONS.reskin_tool.skinArchives[toolSkinId] : undefined;
     if (toolSkinId && !skinArchive) throw new Error(`Unknown reskin tool skin: ${toolSkinId}`);
-    let request = this.prepared.get(key);
-    if (!request) {
-      request = preloadSharedArchiveSprite(this.assets, {
-        animationArchive: 'reskin_tool_fx.zip', bank: 'fx_shadow_dust',
-        buildArchives: ['reskin_tool_fx.zip', ...skinArchive ? [skinArchive] : []],
-      });
-      this.prepared.set(key, request);
-      void request.catch(() => this.prepared.delete(key));
-    }
-    const create = await request;
-    if (this.disposed) throw new Error('Reskin effects have been disposed');
+    const archive = this.sprites.archive({
+      animationArchive: 'reskin_tool_fx.zip', bank: 'fx_shadow_dust',
+      buildArchives: ['reskin_tool_fx.zip', ...skinArchive ? [skinArchive] : []],
+    });
     const prefab = toolSkinId ? `explode_${toolSkinId.replace('_tool', '')}` : 'explode_reskin';
     const sprite = new SpriteState({ name: 'puff', held: true, billboard: true });
     const instance = new PrefabInstance(prefab, sprite);
@@ -131,7 +136,7 @@ export class ReskinEffects {
     if (skinArchive) sprite.setSymbolOverride('shadow_dust', skinArchive);
     const effect = new ReskinFx(instance, toolSkinId);
     const display = this.displays.add({ name: prefab, status: instance.status, sprite, light: instance.light,
-      archive: { create: clip => create(clip.name, clip.loop) } }, effect.footPosition);
+      archive }, effect.footPosition);
     bindInstance(display.model, instance);
     this.effects.add(effect);
     return effect;
@@ -150,8 +155,7 @@ export class ReskinEffects {
     for (const effect of this.effects) effect.instance.remove();
     this.effects.clear();
     this.displays.dispose();
-    this.assets.dispose();
-    this.prepared.clear();
+    this.sprites.dispose();
   }
 }
 

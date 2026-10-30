@@ -22,6 +22,7 @@ import { inventoryStateFromSave } from '../../../src/save/inventoryState';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { createSanityState } from '../../signals/src';
 import { Sanity } from '../../componets/src/sanity';
+import { reskinEntity } from '../../prefab/src/reskin_tool';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
 beforeEach(() => {
@@ -103,8 +104,7 @@ it('spawns/gives individual swords, preserves failed drops and reskin/pickup ide
     expect(await manager.drop(definition, position, () => inventory.extract(hand, 1, entity) ?? false)).toBe(true);
     expect(inventory.handEquipment.peek()).toBeNull();
     const beforeSkin = manager.exportRecords().find(record => record.id === entity.id)!;
-    const change = await manager.reskinTargets.find(target => target.id === entity.id)!.prepareNextSkin();
-    expect(change.apply()).toBe(true); change.dispose();
+    expect(reskinEntity(manager.reskinTargets.find(target => target.id === entity.id)!)).toBe(true);
     expect(entity.skinId).toBe('nightsword_cotl');
     expect(entity.signals.wet.peek()).toBe(true);
     const groundRecord = manager.exportRecords().find(record => record.id === entity.id)!;

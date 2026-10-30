@@ -15,6 +15,7 @@ import * as wallSprites from '../src/wallSprite';
 import { createSignal } from '@dontstarve-web/signals';
 import { bindTestWorld } from './worldContentFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import { reskinEntity } from '../../prefab/src/reskin_tool';
 
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
@@ -62,14 +63,10 @@ it.each(['wall_stone', 'wall_dreadstone'] as WallId[])(
         const release = vi.fn(); display.onDispose(release);
         const previousSkin = instance.skinId;
         const created = artFactory.mock.calls.length;
-        const prepared = await target.prepareNextSkin();
-        expect(artFactory).toHaveBeenCalledTimes(created);
-        expect(instance.skinId).toBe(previousSkin);
         placement.hammerTargets[0].playHit();
         placement.update(1 / 30);
-        expect(prepared.apply()).toBe(true);
-        expect(prepared.apply()).toBe(false);
-        prepared.dispose();
+        expect(reskinEntity(target)).toBe(true);
+        expect(artFactory).toHaveBeenCalledTimes(created);
         await display.artLoaded();
         expect(instance.skinId).toBe(skinId);
         expect(instance.sprite).toBe(sprite);
@@ -151,17 +148,8 @@ it('keeps the wall sprite when a skin commit is cancelled or superseded and rele
   const sources = vi.spyOn(wallSprites, 'createStaticSpriteFactory');
   const controller = instance.sprite;
   const release = vi.fn(); display.onDispose(release);
-  const canceled = await target.prepareNextSkin();
-  canceled.dispose(); canceled.dispose();
   expect(instance.skinId).toBeUndefined();
-  expect(release).not.toHaveBeenCalled();
-  expect(canceled.apply()).toBe(false);
-  const first = await target.prepareNextSkin();
-  const obsolete = await target.prepareNextSkin();
-  expect(first.apply()).toBe(true);
-  first.dispose();
-  expect(obsolete.apply()).toBe(false);
-  obsolete.dispose();
+  expect(reskinEntity(target)).toBe(true);
   await display.artLoaded();
   expect(instance.sprite).toBe(controller);
   expect(sources).not.toHaveBeenCalled();

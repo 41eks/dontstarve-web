@@ -19,6 +19,7 @@ import { inventoryStateFromSave } from '../../../src/save/inventoryState';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { bindTestWorld, drawn, plantInstance } from './worldContentFixture';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
+import { reskinEntity } from '../../prefab/src/reskin_tool';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -109,8 +110,7 @@ it('preserves a reskinned bush through digging, item pickup/drop, transplant, fe
   try {
     const position = new THREE.Vector3(24, 0, 36);
     const model = await drawn(s.bushes.spawn(position)), originalId = lookupPrefabInstance(model)?.entityId;
-    const reskin = await s.bushes.reskinTargets[0].prepareNextSkin();
-    expect(reskin.apply()).toBe(true); reskin.dispose();
+    expect(reskinEntity(s.bushes.reskinTargets[0])).toBe(true);
     expect(lookupPrefabInstance(model)?.skinId).toBe('berrybush_cawnival');
     expect(lookupPrefabInstance(model)?.entityId).toBe(originalId); expect(model.position.equals(position)).toBe(true);
     const original = s.bushes.exportRecords()[0];
@@ -137,8 +137,7 @@ it('preserves a reskinned bush through digging, item pickup/drop, transplant, fe
     expect(plantInstance(replanted).sprite.currentAnimation).toBe('dead');
     s.snowLevel.set(.5); await settleEffects();
     const beforeFertilize = s.bushes.exportRecords()[0];
-    const nextSkin = await s.bushes.reskinTargets[0].prepareNextSkin();
-    expect(nextSkin.apply()).toBe(true); nextSkin.dispose();
+    expect(reskinEntity(s.bushes.reskinTargets[0])).toBe(true);
     expect(lookupPrefabInstance(replanted)?.skinId).toBe('berrybush_mystical');
     expect(s.bushes.exportRecords()[0].components.pickable).toEqual(beforeFertilize.components.pickable);
     expect(pickable.remainingSeconds).toBeUndefined();
@@ -187,8 +186,7 @@ it('updates snow art after spawning and reskinning and cleans up each removed pl
     // Reskin declares appearance on the same plant, without replacing its resident sprite.
     const controller = plantInstance(first).sprite, oldSprite = first.children[0];
     const oldMesh = oldSprite.getObjectByProperty('isMesh', true) as THREE.Mesh;
-    const skin = await s.bushes.reskinTargets[0].prepareNextSkin();
-    expect(skin.apply()).toBe(true); skin.dispose();
+    expect(reskinEntity(s.bushes.reskinTargets[0])).toBe(true);
     await drawn(first);
     await settleEffects();
     expect(plantInstance(first).sprite).toBe(controller);
@@ -201,17 +199,13 @@ it('updates snow art after spawning and reskinning and cleans up each removed pl
     expect(drawnIndices(first)).toBe(reskinnedSnow);
     expect(oldSprite.getObjectByProperty('isMesh', true)).toBe(oldMesh);
     // The next appearance also reads the latest snow declaration.
-    const nextSkin = await s.bushes.reskinTargets[0].prepareNextSkin();
     s.snowLevel.set(0);
-    expect(nextSkin.apply()).toBe(true); nextSkin.dispose();
+    expect(reskinEntity(s.bushes.reskinTargets[0])).toBe(true);
     await drawn(first);
     await settleEffects();
     const bareReplacement = drawnIndices(first);
     await settleEffects();
     expect(drawnIndices(first)).toBe(bareReplacement);
-    // Discarding a prepared skin leaves the live plant unchanged.
-    const canceled = await s.bushes.reskinTargets[0].prepareNextSkin();
-    canceled.dispose();
     s.snowLevel.set(.5); await settleEffects();
     expect(drawnIndices(first)).toBeGreaterThan(bareReplacement);
     const hide = vi.spyOn(plantInstance(first).sprite, 'hideLayer');

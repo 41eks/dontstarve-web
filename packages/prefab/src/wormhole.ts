@@ -4,8 +4,8 @@ import * as THREE from 'three';
 import { SpriteResources, type PrefabDisplay, type SpriteState } from '@dontstarve-web/display';
 import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
 import { newEntityId } from './saveRecord';
-import { nextReskin } from './reskin_tool';
-import { type ReskinFxMessage, type ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
+import { reskinTarget } from './reskin_tool';
+import type { ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
 import { TILE_SIZE } from './tile';
 import { actionEntity, disposeActionEntity, findActionEntity } from './actionEntity';
 
@@ -134,27 +134,10 @@ export class WormholeManager {
   private createReskinTarget(entity: WormholeEntity): ReskinTarget {
     const { model } = entity;
     const isValid = () => !this.disposed && this.wormholes.has(entity) && model.visible && model.parent !== null;
-    return {
-      get id() { return String(entity.instance.entityId); }, prefabId: WORMHOLE_ID, model, position: model.position, isValid,
-      skins: WORMHOLE_SKINS, get skinId() { return entity.instance.skinId; },
-      get isRemoved() { return !isValid(); }, hasTag: tag => actionEntity(model, WORMHOLE_ID).hasTag(tag),
-      prepareNextSkin: async (tool) => {
-        const previousSkin = entity.instance.skinId;
-        const skinId = nextReskin(WORMHOLE_SKINS, previousSkin, tool?._cached_reskinname, WORMHOLE_ID);
-        let used = false;
-        return {
-          skinId,
-          apply: (fx?: ReskinFxMessage) => {
-            if (used || !isValid() || entity.instance.skinId !== previousSkin) return false;
-            entity.instance.skinId = skinId;
-            used = true;
-            fx?.play(model.position, WORMHOLE_ID);
-            return true;
-          },
-          dispose: () => { used = true; },
-        };
-      },
-    };
+    return reskinTarget({
+      get id() { return String(entity.instance.entityId); }, prefabId: WORMHOLE_ID, model, sprite: entity.instance.sprite,
+      position: model.position, skins: WORMHOLE_SKINS, isValid, hasTag: tag => actionEntity(model, WORMHOLE_ID).hasTag(tag),
+    });
   }
 
   private controller(entity: WormholeEntity): SpriteState {

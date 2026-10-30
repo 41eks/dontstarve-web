@@ -9,7 +9,8 @@ import { withEntity } from './entityFixture';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
-import { ReskinEffects, nextReskin } from '../../prefab/src/reskin_tool';
+import { ReskinEffects, nextReskin, reskinEntity } from '../../prefab/src/reskin_tool';
+import { SpriteState } from '@dontstarve-web/display';
 import { type ReskinTarget } from '../../stategraphs/src/reskin_tool';
 import { getReskinActionTarget, ReskinActionController } from '../../stategraphs/src/reskin_tool';
 import { actionEntity, disposeActionEntity } from '../../prefab/src/actionEntity';
@@ -23,6 +24,7 @@ import { equipmentSlotAddress } from '../../inventory/src';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { DisposeSounds } from '../../prefab/src/sound';
 import { displayLightOverride } from '../../display/src/displaySprites';
+import { prefabDisplay } from '../../display/src/prefabDisplay';
 
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
@@ -75,7 +77,9 @@ it.each([undefined, 'reskin_tool_brush'])(
   'draws %s puff with its source build and removes it at animation end', async (skinId) => {
     const scene = new THREE.Scene();
     const effects = new ReskinEffects(scene);
-    const fx = await effects.prepare(skinId);
+    const fx = effects.prepare(skinId);
+    // The hidden puff's display loads its art while the cast plays.
+    await prefabDisplay(scene.children[0])!.artLoaded();
     expect(effects.renderEntities).toEqual([]);
     fx.play(new THREE.Vector3(4, 0, 7), 'cookpot');
     await new Promise(resolve => setTimeout(resolve, 0));
@@ -105,12 +109,13 @@ it('shares FX geometry while keeping playback independent and discarding unused 
   const scene = new THREE.Scene();
   const effects = new ReskinEffects(scene);
   const rotation = new THREE.Quaternion();
-  const first = await effects.prepare();
-  const second = await effects.prepare();
-  const unused = await effects.prepare();
+  const first = effects.prepare();
+  const second = effects.prepare();
+  const unused = effects.prepare();
   unused.dispose();
   effects.update(0, rotation);
   expect(scene.children).toHaveLength(2);
+  await Promise.all(scene.children.map(model => prefabDisplay(model)!.artLoaded()));
   const position = new THREE.Vector3(3, 0, 4);
   first.play(position, 'treasurechest');
   second.play(position, 'treasurechest');
@@ -144,15 +149,14 @@ it('cycles building skins while preserving the open container root, identity, st
   const root = await placement.spawnFromSave('treasurechest', record);
   expect(getReskinActionTarget(root)).toBe(placement.reskinTargets[0]);
   const skins = Object.keys(TREASURE_CHEST_DEFINITION.skinArchives!);
-  const change = await placement.reskinTargets[0].prepareNextSkin();
   expect(placement.exportRecords()[0].record.components.building?.skinId).toBeUndefined();
   const fx = { play: vi.fn(), dispose: vi.fn() };
   const tool = actionTool('reskin_tool');
-  // The tool forwards its message to the target's skin commit; it does not draw the FX.
+  // The tool chooses the skin at the cast and forwards its message to the target; it does not draw the FX.
   const doer = { position: world.player.position, hasTag: () => false, components: {} };
-  expect(tool.entity.components.spellcaster!.castSpell({ ...placement.reskinTargets[0], preparedReskin: change, reskinFx: fx }, root.position, doer)).toBe(true);
+  const castTarget = Object.assign(Object.create(placement.reskinTargets[0]) as ReskinTarget, { reskinFx: fx });
+  expect(tool.entity.components.spellcaster!.castSpell(castTarget, root.position, doer)).toBe(true);
   expect(fx.play).toHaveBeenCalledExactlyOnceWith(new THREE.Vector3(3, 0, 4), 'treasurechest');
-  change.dispose();
   expect(world.scene.children).toEqual([root]);
   expect(lookupPrefabInstance(root)?.entityId).toBe(record.id);
   expect(placement.exportRecords()[0].record).toMatchObject({
@@ -162,13 +166,9 @@ it('cycles building skins while preserving the open container root, identity, st
   // The final skin returns to the base rather than dropping an unsupported skin ID into the save.
   expect(nextReskin(skins, skins.at(-1))).toBeUndefined();
   expect(nextReskin(skins)).toBe(skins[0]);
-  const stale = await placement.reskinTargets[0].prepareNextSkin();
-  const fresh = await placement.reskinTargets[0].prepareNextSkin();
-  expect(fresh.apply()).toBe(true);
-  fx.play.mockClear();
-  expect(stale.apply(fx)).toBe(false);
-  expect(fx.play).not.toHaveBeenCalled();
-  stale.dispose(); fresh.dispose();
+  // GetNextSkin runs at each cast, from the skin the entity has then.
+  expect(reskinEntity(placement.reskinTargets[0])).toBe(true);
+  expect(placement.exportRecords()[0].record.components.building?.skinId).toBe(skins[1]);
 });
 
 it('reskins dropped items without changing their count or entity ID and preserves the skin on pickup', async () => {
@@ -181,11 +181,9 @@ it('reskins dropped items without changing their count or entity ID and preserve
     itemId: 'greenstaff', count: 1, remainingUses: 4, name: '拆解魔杖', icon: 'greenstaff.tex', atlas: 'images/inventoryimages.xml',
   }, new THREE.Vector3(3, 0, 4));
   const first = manager.reskinTargets[0];
-  const change = await first.prepareNextSkin();
   const fx = { play: vi.fn(), dispose: vi.fn() };
-  expect(change.apply(fx)).toBe(true);
+  expect(reskinEntity(first, undefined, fx)).toBe(true);
   expect(fx.play).toHaveBeenCalledExactlyOnceWith(new THREE.Vector3(3, 0, 4), 'greenstaff');
-  change.dispose();
   expect(first.isValid()).toBe(true);
   expect(manager.reskinTargets[0]).toBe(first);
   expect(manager.exportRecords()[0]).toMatchObject({ id: 'e_staff', transform: { position: [3, 0, 4] },
@@ -213,7 +211,7 @@ it('selects a registered entity without a manager provider, honors nomagic and f
   const entity = actionEntity(model, 'twigs');
   const target = getReskinActionTarget(model)!;
   expect(target.skins).toEqual([]);
-  expect(target.prepareNextSkin).toBeUndefined();
+  expect(target.sprite).toBeUndefined();
   const equipped = createEquipmentExistenceState('HANDS');
   const tool = actionTool('reskin_tool');
   equipped.set(tool);
@@ -224,7 +222,7 @@ it('selects a registered entity without a manager provider, honors nomagic and f
     cancelReskin: vi.fn(() => { animation.isReskinning = false; }),
   };
   const fx = { play: vi.fn(), dispose: vi.fn() };
-  const effects = { prepare: vi.fn(async () => fx) };
+  const effects = { prepare: vi.fn(() => fx) };
   const controller = new ReskinActionController(world, animation as unknown as WilsonAnimationController,
     { stop: vi.fn(), goToPoint: vi.fn(() => true), destination: undefined }, equipped, effects);
   try {
@@ -253,11 +251,11 @@ it.each(['unequip', 'while loading', 'load failed'])(
     const equipped = createEquipmentExistenceState('HANDS');
     equipped.set(actionTool('reskin_tool'));
     let manual = false, valid = true;
-    const apply = vi.fn(() => true), dispose = vi.fn();
     let release!: () => void;
     const blocked = new Promise<void>((resolve) => { release = resolve; });
-    const target: ReskinTarget = { ...reskinEntityFields, id: 'e_target', prefabId: 'icebox', model: new THREE.Group(), position: new THREE.Vector3(1, 0, 0),
-      isValid: () => valid, prepareNextSkin: async () => ({ skinId: 'icebox_crystal', apply, dispose }) };
+    const sprite = new SpriteState({ name: '' });
+    const target: ReskinTarget = { ...reskinEntityFields, skins: ['icebox_crystal'], id: 'e_target', prefabId: 'icebox', model: new THREE.Group(),
+      position: new THREE.Vector3(1, 0, 0), sprite, get skinId() { return sprite.skinId.peek(); }, isValid: () => valid };
     const preloadSkin = vi.fn(async () => {
       if (reason === 'while loading') await blocked;
       if (reason === 'load failed') throw new Error('Skin load failed');
@@ -268,7 +266,7 @@ it.each(['unequip', 'while loading', 'load failed'])(
       playReskin: vi.fn((cast: () => void) => { callback = cast; animation.isReskinning = true; return true; }),
       cancelReskin: vi.fn(() => { animation.isReskinning = false; }) };
     const fx = { play: vi.fn(), dispose: vi.fn() };
-    const effects = { prepare: vi.fn(async () => fx) };
+    const effects = { prepare: vi.fn(() => fx) };
     const onError = vi.fn();
     const controller = new ReskinActionController(world, animation as unknown as WilsonAnimationController,
       { stop: vi.fn(), goToPoint: vi.fn(() => true), destination: undefined }, equipped,
@@ -290,10 +288,11 @@ it.each(['unequip', 'while loading', 'load failed'])(
       controller.update(1 / 30);
       callback?.();
     }
-    expect(apply).not.toHaveBeenCalled();
-    expect(dispose).toHaveBeenCalledOnce();
+    expect(sprite.skinId.peek()).toBeUndefined();
     expect(fx.play).not.toHaveBeenCalled();
-    expect(fx.dispose).toHaveBeenCalledOnce();
+    // The FX entity is declared only once the skin is ready, so a cancelled or failed load creates none.
+    if (reason === 'unequip') expect(fx.dispose).toHaveBeenCalledOnce();
+    else expect(effects.prepare).not.toHaveBeenCalled();
     controller.dispose();
   },
 );

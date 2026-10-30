@@ -11,6 +11,7 @@ import { actionEntity, FindEntities } from '../../prefab/src/actionEntity';
 import { WORLD_SCALE } from '../../prefab/src/standardcomponents';
 import { PlaySound } from '../../prefab/src/sound';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { reskinEntity } from '../../prefab/src/reskin_tool';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}),
   PlaySound: vi.fn(() => ({ stop: vi.fn(), isPlaying: () => true })) }));
@@ -91,12 +92,10 @@ it('preserves work through reskinning and restores proximity after hits', async 
     placement.hammerTargets[0].playHit();
     finish();
     expect(animation().currentAnimation).toBe('proximity_loop');
-    const prepared = await placement.reskinTargets[0].prepareNextSkin();
     const prototyper = (findActionEntity(model)?.components ?? prefabInstance(model)!.components).prototyper;
-    expect(prepared.apply()).toBe(true);
+    expect(reskinEntity(placement.reskinTargets[0])).toBe(true);
     expect((findActionEntity(model)?.components ?? prefabInstance(model)!.components).prototyper).toBe(prototyper);
     expect(prototyper.on).toBe(true);
-    prepared.dispose();
     for (let i = 0; i < 2; i++) { placement.hammerTargets[0].playHit(); finish(); }
     expect(dropLoot).not.toHaveBeenCalled();
     placement.hammerTargets[0].playHit();
@@ -133,9 +132,7 @@ it('queues magic station transitions across reskinning, then rebuilds transient 
     expect(animation().currentAnimation).toBe('proximity_pre');
     const component = (findActionEntity(model)?.components ?? prefabInstance(model)!.components).prototyper;
     const sound = vi.mocked(PlaySound).mock.results.at(-1)!.value;
-    const prepared = await placement.reskinTargets[0].prepareNextSkin();
-    expect(prepared.apply()).toBe(true);
-    prepared.dispose();
+    expect(reskinEntity(placement.reskinTargets[0])).toBe(true);
     expect((findActionEntity(model)?.components ?? prefabInstance(model)!.components).prototyper).toBe(component);
     for (let i = 0; i < 300; i++) placement.update(1 / 30);
     expect(animation().currentAnimation).toBe('proximity_loop');

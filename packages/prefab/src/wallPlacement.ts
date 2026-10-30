@@ -11,8 +11,8 @@ import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
 import { PrefabInstance, bindInstance } from './prefabInstance';
 import { PrefabDisplayGroup, SpriteResources, SpriteState, type PrefabDisplay } from '@dontstarve-web/display';
 import { watchTileActivity } from './tileActivity';
-import { nextReskin } from './reskin_tool';
-import { type ReskinFxMessage, type ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
+import { reskinTarget } from './reskin_tool';
+import type { ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
 import { wallWorldPrefab, wallWorldSkin } from './wallSkins';
 import { actionEntity } from './actionEntity';
 import { Workable } from '../../componets/src/workable';
@@ -238,28 +238,11 @@ export class WallPlacement<BuildId extends string> {
 
     private createReskinTarget(wall: WallInstance<BuildId>): ReskinTarget {
         const isValid = () => this.isLive(wall);
-        return {
+        return reskinTarget({
             get id() { return String(wall.instance.entityId); }, prefabId: wallWorldPrefab(wall.buildId), instance: wall.instance, display: wall.display,
-            skins: Object.keys(this.definitions[wall.buildId].skinArchives ?? {}), get skinId() { return wall.instance.skinId; },
-            get isRemoved() { return !isValid(); }, hasTag: tag => wall.instance.hasTag(tag),
-            get position() { return wall.instance.position; }, isValid,
-            prepareNextSkin: async (tool) => {
-                const previousSkin = wall.instance.skinId;
-                const skinId = nextReskin(Object.keys(this.definitions[wall.buildId].skinArchives ?? {}), previousSkin, tool?._cached_reskinname, wallWorldPrefab(wall.buildId));
-                let used = false;
-                return {
-                    skinId,
-                    apply: (fx?: ReskinFxMessage) => {
-                        if (used || !isValid() || wall.instance.skinId !== previousSkin) return false;
-                        wall.instance.skinId = skinId;
-                        fx?.play(wall.instance.position, wallWorldPrefab(wall.buildId));
-                        used = true;
-                        return true;
-                    },
-                    dispose: () => { used = true; },
-                };
-            },
-        };
+            sprite: wall.instance.sprite, skins: Object.keys(this.definitions[wall.buildId].skinArchives ?? {}),
+            hasTag: tag => wall.instance.hasTag(tag), get position() { return wall.instance.position; }, isValid,
+        });
     }
 
     exportRecords(): PlacedEntitySaveRecord[] {

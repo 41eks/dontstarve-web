@@ -17,8 +17,8 @@ import type { WorldContext, PrefabWorldContext } from './worldContext';
 import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
 import { newEntityId, saveGroundPosition, type PlacementSaveRecord, type PlacedEntitySaveRecord } from './saveRecord';
 import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
-import { nextReskin } from './reskin_tool';
-import { type ReskinFxMessage, type ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
+import { reskinTarget } from './reskin_tool';
+import type { ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
 import { isPlayerNearby } from './playerProximity';
 import { createBuildingContainer, isStorageBuildingId } from './containers';
 import { performCookAction } from '../../stategraphs/src/cook';
@@ -557,31 +557,14 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
 
     private createReskinTarget(building: AnimatedBuildingInstance<BuildId>): ReskinTarget {
         const isValid = () => !this.disposed && this.placed.includes(building) && !building.isPlacing && building.model.visible;
-        return {
+        return reskinTarget({
             get id() { return String(building.instance.entityId); }, prefabId: building.buildId,
-            instance: building.instance, display: building.display,
+            instance: building.instance, display: building.display, sprite: building.animation,
             skins: Object.keys(this.definitions[building.buildId].skinArchives ?? {}),
-            get skinId() { return building.skinId.peek(); },
             get isRemoved() { return building.instance.isRemoved; },
             hasTag: tag => actionEntity(building.model, building.buildId).hasTag(tag),
             get position() { return building.instance.position; }, isValid,
-            prepareNextSkin: async (tool) => {
-                const previousSkin = building.skinId.peek();
-                const skinId = nextReskin(Object.keys(this.definitions[building.buildId].skinArchives ?? {}), previousSkin, tool?._cached_reskinname, building.buildId);
-                let used = false;
-                return {
-                    skinId,
-                    apply: (fx?: ReskinFxMessage) => {
-                        if (used || !isValid() || building.skinId.peek() !== previousSkin) return false;
-                        building.skinId.set(skinId);
-                        fx?.play(building.instance.position, building.buildId);
-                        used = true;
-                        return true;
-                    },
-                    dispose: () => { used = true; },
-                };
-            },
-        };
+        });
     }
 
     private eventContext(building: AnimatedBuildingInstance<BuildId>): AnimatedBuildingEventContext {

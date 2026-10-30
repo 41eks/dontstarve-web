@@ -26,6 +26,7 @@ import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { recipeSkins } from '../../ui/src/categories/generated';
+import { reskinEntity } from '../../prefab/src/reskin_tool';
 
 const prefabIds = [
   'cookpot', 'researchlab2', 'researchlab4',
@@ -159,8 +160,7 @@ describe('DST building skins', () => {
       dispose(base);
 
       // Reskinning runs researchlab4_clear_fn, then the next skin's init_fn, on the same AnimState.
-      const prepared = await placement.reskinTargets[0].prepareNextSkin();
-      expect(prepared.apply()).toBe(true);
+      expect(reskinEntity(placement.reskinTargets[0])).toBe(true);
       await new Promise(resolve => setTimeout(resolve, 0));
       const next = sprite.skinId.peek();
       expect(hat()).toEqual(next === undefined ? undefined
@@ -226,7 +226,7 @@ describe('DST building skins', () => {
     expect(() => placement.spawn(prefabId, 'missing_skin')).toThrow('Unsupported');
   });
 
-  it('commits skins through the json without replacing the sprite and rejects cancelled or removed commits', async () => {
+  it('commits skins through the json without replacing the sprite and rejects a removed target', async () => {
     vi.stubGlobal('window', new EventTarget());
     vi.stubGlobal('document', { createElement: () => ({ setAttribute: vi.fn(), style: {} }), body: { appendChild: vi.fn() } });
     const world = { scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(),
@@ -240,15 +240,11 @@ describe('DST building skins', () => {
     const stop = signal.subscribe((skinId: unknown) => changes.push(skinId));
     const originalMesh = meshOf(model);
     const disposeOldGeometry = vi.spyOn(originalMesh.geometry, 'dispose');
-    const cancelled = await placement.reskinTargets[0].prepareNextSkin();
-    cancelled.dispose(); cancelled.dispose();
     expect(signal.peek()).toBeUndefined();
     expect(meshOf(model)).toBe(originalMesh);
     expect(changes).toEqual([]);
 
-    const prepared = await placement.reskinTargets[0].prepareNextSkin();
-    expect(prepared.apply()).toBe(true);
-    prepared.dispose();
+    expect(reskinEntity(placement.reskinTargets[0])).toBe(true);
     expect(changes).toEqual([signal.peek()]);
     expect(signal.peek()).toBeDefined();
     await prefabDisplay(model).artLoaded();
@@ -256,11 +252,10 @@ describe('DST building skins', () => {
     expect(disposeOldGeometry).not.toHaveBeenCalled();
     expect(placement.exportRecords()[0].record).toMatchObject({ id: 'lab:signal',
       transform: { position: [3, 0, 4], rotationY: 0 }, components: { building: { skinId: signal.peek() } } });
-    const pending = await placement.reskinTargets[0].prepareNextSkin();
+    const removed = placement.reskinTargets[0];
     const disposeCurrent = vi.spyOn(meshOf(model).geometry, 'dispose');
     placement.dispose();
-    expect(pending.apply()).toBe(false);
-    pending.dispose(); pending.dispose();
+    expect(reskinEntity(removed)).toBe(false);
     expect(disposeCurrent).toHaveBeenCalledOnce();
     expect(changes).toHaveLength(1);
     stop();
@@ -291,8 +286,7 @@ describe('DST building skins', () => {
     const animation = instance.sprite;
     animation.start('proximity_loop');
     expect(animation.currentAnimation).toBe('proximity_loop');
-    const prepared = await placement.reskinTargets[0].prepareNextSkin();
-    expect(prepared.apply()).toBe(true);
+    expect(reskinEntity(placement.reskinTargets[0])).toBe(true);
     const skinId = prefabInstance(model)!.sprite.skinId.peek();
     expect(meshes()).toBe(0);
 

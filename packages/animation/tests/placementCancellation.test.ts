@@ -17,6 +17,7 @@ import type { ActionAnimationController } from '../../stategraphs/src/actionCont
 import { GroundItemAssets } from '../../prefab/src/groundItems';
 import { bindTestWorld } from './worldContentFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import { SpriteState } from '@dontstarve-web/display';
 
 vi.mock('../src/sprite', async importOriginal => ({ ...await importOriginal<typeof import('../src/sprite')>(), createAnimatedSpriteSource: vi.fn() }));
 vi.mock('../src/wallSprite', () => ({ createStaticSpriteFactory: vi.fn() }));
@@ -115,14 +116,14 @@ it('an accepted action cancels a paid preview through events, skips its own canc
   equipped.set(actionTool('reskin_tool'));
   let valid = false, release!: () => void;
   const ready = new Promise<void>(resolve => { release = resolve; });
-  const prepared = { apply: vi.fn(() => true), dispose: vi.fn() };
-  const target: ReskinTarget = { ...reskinEntityFields, id: 'target', prefabId: 'icebox', model: new THREE.Group(),
-    position: new THREE.Vector3(1, 0, 0), isValid: () => valid,
-    prepareNextSkin: async () => { await ready; return prepared; } };
+  const sprite = new SpriteState({ name: '' }), model = new THREE.Group();
+  const target: ReskinTarget = { ...reskinEntityFields, id: 'target', prefabId: 'icebox', model, sprite,
+    get skinId() { return sprite.skinId.peek(); }, position: new THREE.Vector3(1, 0, 0), isValid: () => valid,
+    display: { model, preloadSkin: async () => { await ready; } } as never };
   const animation = { isReskinning: false, cancelEmote: vi.fn(), cancelReskin: vi.fn(), playReskin: vi.fn() };
   const controller = new ReskinActionController(world, animation as unknown as ActionAnimationController,
     { stop: vi.fn(), goToPoint: () => true, destination: undefined }, equipped,
-    { prepare: async () => ({ play: vi.fn(), dispose: vi.fn() }) });
+    { prepare: () => ({ play: vi.fn(), dispose: vi.fn() }) });
   const cancel = vi.spyOn(controller, 'cancel');
   try {
     expect(await controller.request(target)).toBe(false);
@@ -139,8 +140,7 @@ it('an accepted action cancels a paid preview through events, skips its own canc
     world.actionEvents!.emit('action:interrupt', { reason: 'slot-select' });
     release();
     expect(await request).toBe(false);
-    expect(prepared.apply).not.toHaveBeenCalled();
-    expect(prepared.dispose).toHaveBeenCalledOnce();
+    expect(sprite.skinId.peek()).toBeUndefined();
     expect(animation.playReskin).not.toHaveBeenCalled();
     controller.dispose();
     cancel.mockClear();

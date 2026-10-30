@@ -15,6 +15,7 @@ import { INVENTORY_SKIN_SPECS, INVENTORY_RECIPES, INVENTORY_RECIPE_SKINS } from 
 import definitions from '../../prefab/src/definitions.json' with { type: 'json' };
 import { deserializeSave } from '../../../src/save/deserialize';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
+import { reskinEntity } from '../../prefab/src/reskin_tool';
 
 const SAVE_CATALOG = { items: INVENTORY_ITEM_SPECS, skins: INVENTORY_SKIN_SPECS, recipes: INVENTORY_RECIPES,
   recipeSkins: INVENTORY_RECIPE_SKINS, buildings: definitions.animatedBuildings, walls: Object.keys(definitions.walls) };
@@ -108,10 +109,9 @@ it('preserves a loaded skinned record across reskin, pickup, inventory transfer,
     const playingSound = vi.mocked(PlaySound).mock.results.at(-1)!.value;
     const soundCalls = vi.mocked(PlaySound).mock.calls.length;
     const target = manager.reskinTargets.find(({ prefabId }) => prefabId === 'phonograph')!;
-    const skin = await target.prepareNextSkin();
     // Playback advances during the asynchronous preparation.
     manager.update(2, new THREE.Quaternion());
-    expect(skin.apply()).toBe(true); skin.dispose();
+    expect(reskinEntity(target)).toBe(true);
     model = manager.reskinTargets.find(({ prefabId }) => prefabId === 'phonograph')!.model as THREE.Group;
     expect(lookupPrefabInstance(model)?.entityId).toBe('phonograph:test'); expect(model.position).toEqual(position);
     expect(prefabInstance(model)!.components.phonograph.snapshot()).toEqual({ phonographRecord: 'record_creepyforest', playbackRemaining: 54 });

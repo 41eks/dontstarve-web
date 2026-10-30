@@ -199,4 +199,4 @@ Lua 链路是 containers.lua:buttoninfo.fn → ACTIONS.COOK.fn → stewer:StartC
 
 components/stewer.ts 管理烹饪任务、readytocook/donecooking 标签、原料与厨师记录及保存恢复；prefab/cook_pot.ts 将开始、继续、完成回调接到动画和声音，并按配方的 build、symbol 和 potlevel 显示锅中产物。外部存档仍保留 product/phase/remainingSeconds 的已有格式，新增可选 ingredient_prefabs 与 chef_id，旧存档可继续读取。目前的分支覆盖开始、完成和恢复，收获及锅内腐败另行实现。
 
-建筑换肤的逻辑状态由 skinId signal 持有；prepareNextSkin() 准备美术，apply() 校验当前皮肤和交互状态后只 set()。表现订阅同步替换已准备的美术，保留实体根、组件、脚点和动画进度。取消、失效或移除释放待用资源及订阅，保存读取 skinId.peek()。
+换肤的逻辑状态是实体 sprite json 的 skinId（建筑、墙、栅栏、植物、虫洞为 `PrefabInstance.sprite`，物品为 `ItemEntity.sprite`）。任何带 sprite 的实体经 `reskinTarget(view)` 成为 reskin 目标；施法开始时控制器只让 display 预载按当前状态会选中的皮肤，命中帧由 `reskinEntity()` 按 `reskin_tool.lua` 的 `spellCB` 重新计算 `GetNextSkin`、记入工具缓存并写入 sprite json。display 按声明换上皮肤，保留实体根、组件、脚点和动画进度；实体自己的换肤后处理订阅该 skinId，保存读取 skinId.peek()。

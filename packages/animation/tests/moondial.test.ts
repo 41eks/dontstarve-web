@@ -13,6 +13,7 @@ import { smallHash } from '../src/animationAssets';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import * as sound from '../../prefab/src/sound';
 import { getDstClock, TUNING } from '../../../src/tuning';
+import { reskinEntity } from '../../prefab/src/reskin_tool';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -44,8 +45,9 @@ it('keeps phase look and playback through reskin and records only its skin', asy
     // The transition clip plays out only once the display has drawn the dial.
     await vi.waitFor(() => expect(sprite.loaded).toBe(true));
     moon.set(dayMoon(14)); // waning half
-    const reskin = await placement.reskinTargets[0].prepareNextSkin();
-    expect(reskin.apply()).toBe(true);
+    // WatchWorldState reaches the dial in its effect, before the reskin.
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(reskinEntity(placement.reskinTargets[0])).toBe(true);
     const model = placement.hammerTargets[0].display.model;
     expect(lookupPrefabInstance(model)?.skinId).toBe('moondial_an');
     expect((prefabInstance(model)!.sprite as SpriteController).currentAnimation).toBe('wane_to_half');

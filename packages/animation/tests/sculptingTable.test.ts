@@ -12,6 +12,7 @@ import definitions from '../../prefab/src/definitions.json' with { type: 'json' 
 import type { WorldContext } from '../../prefab/src/worldContext';
 import * as sound from '../../prefab/src/sound';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { reskinEntity } from '../../prefab/src/reskin_tool';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -95,9 +96,7 @@ it('accepts one marble or cutstone, hands it back on PICK and restores it from a
     // Lua onload calls giveitem, including its sound; reskinning only replaces art.
     expect(play).toHaveBeenCalledTimes(2);
     expect(play).toHaveBeenLastCalledWith(itemSound, restored.position);
-    const reskin = await placement.reskinTargets[0].prepareNextSkin();
-    expect(reskin.apply()).toBe(true);
-    reskin.dispose();
+    expect(reskinEntity(placement.reskinTargets[0])).toBe(true);
     expect(play).toHaveBeenCalledTimes(2);
     // The declaration belongs to the entity, so the new skin's sprite is dressed with the same block.
     expect(heldBlock(model)).toEqual([{ archive: 'marble.zip', symbol: smallHash('marble01') }]);
