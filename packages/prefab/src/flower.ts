@@ -77,8 +77,9 @@ export class FlowerPlanting {
 
   update(_cameraQuaternion: THREE.Quaternion, dt = 0): void {
     if (this.ownsScheduler) this.scheduler.advance(dt);
-    for (const { instance, burn } of this.flowers.values()) {
-      if (instance.sprite.loaded) instance.sprite.update(dt);
+    // Each display advances its flower's declared clip; the fire binding then runs its burnable's FX.
+    for (const { display, burn } of this.flowers.values()) {
+      display.update(dt);
       burn?.update(dt);
     }
   }

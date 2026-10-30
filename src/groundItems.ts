@@ -357,10 +357,10 @@ export class GroundItemManager {
     createEffect(() => setActive(active.get()));
   }
 
-  /** A visual joins the frame loop while it can change by itself: it has an update, a removal check or a fling. */
+  /** A visual joins the frame loop while it can change by itself: a display to advance, an update, a removal check or a fling. */
   private refreshUpdating(record: GroundItemRecord): void {
     const needed = this.activeItems.has(record) && (record.fling !== undefined
-      || ((record.update !== undefined || record.isRemoved !== undefined) && (record.updating?.peek() ?? true)));
+      || ((record.display !== undefined || record.update !== undefined || record.isRemoved !== undefined) && (record.updating?.peek() ?? true)));
     if (needed) this.updatingItems.add(record); else this.updatingItems.delete(record);
   }
 
@@ -702,7 +702,10 @@ export class GroundItemManager {
     for (const item of [...this.updatingItems]) {
       const previousX = item.model.position.x, previousY = item.model.position.y, previousZ = item.model.position.z;
       item.model.position.copy(item.entity.transform.position);
-      item.update?.(dt);
+      // The display advances the declared clips, then the visual's own update runs prefab logic. What that logic
+      // declares this frame (a new clip, a set frame) is drawn now, as the engine renders the latest AnimState.
+      item.display?.update(dt);
+      if (item.update) { item.update(dt); item.display?.update(0); }
       if (item.fling) {
         item.fling.update(dt);
         item.model.children[0].position.y = item.fling.height;

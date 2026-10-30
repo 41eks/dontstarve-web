@@ -78,7 +78,6 @@ export function createBernieGroundSprite(assets: BernieAssets, world: BernieWorl
   };
   const update = (dt: number) => {
     if (inInventory) return;
-    sprite.update(dt);
     const desired = bernieGroundForm(world.getSanityPercent());
     const previous = clip;
     // Finish busy states before responding to another sanity change, as the
@@ -107,23 +106,21 @@ export function createBernieGroundSprite(assets: BernieAssets, world: BernieWorl
     if (clip !== previous) {
       const frame = Math.floor(elapsed * clip.frameRate);
       if (frame > 0) sprite.setFrame(clip.name === 'idle_loop' ? frame % clip.frames : Math.min(frame, clip.frames - 1));
-      sprite.update(0);
     }
   };
   const onGround = () => {
     inInventory = false;
     play(bernieGroundForm(world.getSanityPercent()), 'idle_loop');
-    sprite.update(0);
   };
   const removeInventoryEvents = listenInventoryEvents(model, {
     ondropped: onGround,
     onload: onGround,
-    onputininventory: () => { inInventory = true; play(BERNIE_ITEM_ID, 'inactive'); sprite.update(0); },
+    onputininventory: () => { inInventory = true; play(BERNIE_ITEM_ID, 'inactive'); },
   });
   model.userData.animation = 'idle_loop';
   model.name = `GroundItem:${form}`;
   return {
-    model, instance, update,
+    model, instance, display, update,
     dispose() {
       removeInventoryEvents();
       inInventory = true;

@@ -288,10 +288,8 @@ export class RockManager {
   update(dt: number, _cameraQuaternion: THREE.Quaternion): void {
     if (this.disposed) return;
     if (this.ownsScheduler) this.scheduler.advance(dt);
-    for (const rock of this.rocks) {
-      if (rock.sprite.loaded) rock.sprite.update(dt);
-      rock.controller?.update();
-    }
+    this.displays.update(dt);
+    for (const rock of this.rocks) rock.controller?.update();
   }
 
   get mineTargets(): PickaxeTarget[] { return this.getMineTargets(); }

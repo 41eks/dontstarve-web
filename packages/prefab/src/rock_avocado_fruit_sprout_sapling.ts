@@ -153,8 +153,10 @@ export class RockAvocadoSaplingManager {
     if (this.disposed) return;
     if (this.ownsScheduler) this.scheduler.advance(dt);
     for (const { entity, fire, transitionAt } of this.saplings.values()) {
-      if (entity.instance.sprite.loaded) entity.instance.sprite.update(Math.min(dt, this.scheduler.now - transitionAt));
-      if (fire.instance.sprite.loaded) { fire.instance.position.copy(entity.instance.position); fire.instance.sprite.update(dt); }
+      // A clip that started this frame advances only by the game time since its transition.
+      entity.display.update(Math.min(dt, this.scheduler.now - transitionAt));
+      fire.instance.position.copy(entity.instance.position);
+      fire.display.update(dt);
     }
   }
   get renderEntities() {

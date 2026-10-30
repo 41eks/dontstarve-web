@@ -160,11 +160,9 @@ export class PortalManager {
         spawning.elapsed += dt;
         if (spawning.elapsed >= OPEN_TIME) { spawning.opened = true; PlaySound(OPEN_SOUND, model.position); }
       }
-      if (Number.isFinite(dt) && dt > 0) {
-        entity.main.instance.sprite.update(dt);
-        entity.fx.instance.sprite.update(dt);
-      }
     }
+    // The display group advances each portal and its fx.
+    if (Number.isFinite(dt) && dt > 0) this.displays.update(dt);
   }
 
   get renderEntities() {

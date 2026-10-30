@@ -359,7 +359,7 @@ export function createFirefliesGroundSprite(assets: FirefliesAssets, world: Fire
     onputininventory: () => controller?.onPutInInventory(),
     onload: () => controller?.place(false),
   });
-  return { model, instance, active: readonlySignal(active), get controller() { return controller; },
+  return { model, instance, display, active: readonlySignal(active), get controller() { return controller; },
     bindEntity(entity: ItemEntity) { controller?.bindEntity(entity); },
     bindTransform(transform: ItemEntity['transform']) {
       controller = new FirefliesController(instance, model, world, transform);
@@ -372,8 +372,8 @@ export function createFirefliesGroundSprite(assets: FirefliesAssets, world: Fire
       });
     },
     get updating() { return controller?.updating; },
-    // The display advances the declared clip; the controller only runs updatefade.
-    update: (dt: number) => { instance.sprite.update(dt); controller?.update(dt); },
+    // The ground item manager advances the display; the controller only runs updatefade.
+    update: (dt: number) => controller?.update(dt),
     isClickable: () => controller?.clickable ?? false, isWorkable: () => controller?.workable ?? false,
     dispose() {
       cleanups.splice(0).forEach(stop => stop());

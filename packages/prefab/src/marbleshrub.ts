@@ -208,7 +208,7 @@ export class MarbleShrubManager {
   update(dt: number, _quaternion: THREE.Quaternion): void {
     if (this.disposed) return;
     if (this.ownsScheduler) this.scheduler.advance(dt);
-    for (const { sprite } of this.shrubs.values()) if (sprite.loaded) sprite.update(dt);
+    this.displays.update(dt);
   }
 
   get renderEntities() {

@@ -155,7 +155,8 @@ export class BeeQueenHiveManager {
       .filter((target): target is HammerTarget => target !== undefined);
   }
 
-  update(dt: number): void { for (const { instance } of this.hives.values()) instance.sprite.update(dt); }
+  // The display group advances each entity's declared clip; sleeping and removed entities are skipped.
+  update(dt: number): void { this.displays.update(dt); }
   get renderEntities() { return [...this.hives].filter(([, hive]) => hive.instance.sprite.loaded)
     .map(([object]) => ({ object, footPosition: object.position, cameraDepth: 0 })); }
   exportRecords(): { prefabId: typeof BEEQUEENHIVEGROWN_ID; record: BeeQueenHiveRecord }[] {

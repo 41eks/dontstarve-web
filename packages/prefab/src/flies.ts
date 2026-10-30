@@ -74,8 +74,6 @@ export class FliesController {
     this.playerprox.OnEntitySleep();
     this.stopSound();
   }
-  /** For an owner that advances the child's frames itself; a display-declared child is advanced by its owner's display. */
-  update(dt: number): void { if (!this.disposed && !this.asleep) this.sprite.update(dt); }
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;

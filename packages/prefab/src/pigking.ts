@@ -162,10 +162,7 @@ class PigKing {
     }));
   }
 
-  update(dt: number): void {
-    if (this.instance.sprite.loaded) this.instance.sprite.update(dt);
-    this.sg.update(dt);
-  }
+  update(dt: number): void { this.sg.update(dt); }
 
   dispose(): void {
     if (this.disposed) return;
@@ -229,9 +226,10 @@ export class PigKingManager {
     return model;
   }
 
-  /** The king's stategraph and sprite advance before physics, like the other world entities' brains. */
+  /** The display group advances the kings' clips; their stategraphs then run before physics, like the other world entities' brains. */
   update(dt: number): void {
     if (this.disposed) return;
+    this.displays.update(dt);
     for (const king of this.kings.values()) king.update(dt);
   }
 

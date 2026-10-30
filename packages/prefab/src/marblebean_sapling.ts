@@ -105,7 +105,7 @@ export class MarbleBeanSaplingManager {
   update(dt: number, _quaternion: THREE.Quaternion): void {
     if (this.disposed) return;
     if (this.ownsScheduler) this.scheduler.advance(dt);
-    for (const { instance } of this.saplings.values()) if (instance.sprite.loaded) instance.sprite.update(dt);
+    this.displays.update(dt);
   }
 
   get renderEntities() {

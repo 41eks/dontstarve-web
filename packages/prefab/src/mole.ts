@@ -346,7 +346,7 @@ export function createMoleGroundFactory(context: GroundPrefabContext): GroundIte
       const cleanups: (() => void)[] = [];
       const heading = watchSignal(context.moleWorld.cameraHeading, stop => cleanups.push(stop));
       return {
-        model, instance,
+        model, instance, display,
         bindEntity: entity => {
           configureMoleEntity(entity); mole = entity.getComponent<Mole>('mole')!;
           mole.bindWorld(context.moleWorld!);
@@ -361,7 +361,6 @@ export function createMoleGroundFactory(context: GroundPrefabContext): GroundIte
           if (nextVisible !== visible) sprite.setVisible(visible = nextVisible);
           const nextFacing = fourFacingFromRotation(mole?.facing ?? 0, heading.peek());
           if (nextFacing !== facing) sprite.setFacing(facing = nextFacing);
-          sprite.update(dt);
         },
         isClickable: () => mole?.isValid() ?? true,
         dispose: () => { cleanups.splice(0).forEach(stop => stop()); instance.remove(); display.dispose(); },

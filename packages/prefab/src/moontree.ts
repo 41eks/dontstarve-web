@@ -545,13 +545,13 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
 
     update(dt: number) {
       if (ownsScheduler) scheduler.advance(dt);
+      // Each display advances its entity's declared clip: trees, their effects and saplings.
       for (const entity of active) {
-        const drawn = sprites.get(entity)!;
-        drawn.instance.sprite.update(dt);
+        sprites.get(entity)!.display.update(dt);
         controllers.get(entity.model)?.burn?.update(dt);
       }
-      for (const drawn of [...effects]) { drawn.instance.sprite.update(dt); }
-      for (const { entity } of saplings.values()) if (entity.instance.sprite.loaded) { entity.instance.sprite.update(dt); }
+      for (const drawn of [...effects]) drawn.display.update(dt);
+      for (const { entity } of saplings.values()) entity.display.update(dt);
     },
     get chopTargets() { return workTargets('CHOP'); },
     getChopTargets(model?: THREE.Object3D) { return workTargets('CHOP', model); },

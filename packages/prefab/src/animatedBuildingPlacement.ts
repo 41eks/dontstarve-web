@@ -3,7 +3,7 @@ import { ToolMouseTarget } from './toolMouseTarget';
 import { ModelRecords } from './modelRecords';
 import * as THREE from 'three';
 import { AnimState, type AnimStateArt } from '@dontstarve-web/animation/animState';
-import { createEffect, watchSignal, getBoundWatchWorldContent, type ReadonlySignal, type Signal } from '@dontstarve-web/signals';
+import { createEffect, watchSignal, getBoundWatchWorldContent, WorldContentKey, type ReadonlySignal, type Signal } from '@dontstarve-web/signals';
 import { disposeSprite } from './disposeSprite';
 import type { AnimatedSpriteSourceOptions } from '@dontstarve-web/animation/sprite';
 import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
@@ -223,6 +223,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     /** Archives, atlas materials and frame geometry shared by every placed building of one build and skin, and by their effects. */
     private readonly sprites = new SpriteResources();
     private readonly skinAssets = this.sprites.archives;
+    private stopPlayerPositions?: () => void;
 
     constructor(
         world: WorldContext,
@@ -246,6 +247,12 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         this.pointer = new PointerRaycaster(world);
         this.cursor = new BuildCursor(world, this.pointer);
         world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown);
+        // Proximity follows the world's player snapshots; interactions still recheck the live position.
+        const playerpositions = getBoundWatchWorldContent()?.(WorldContentKey.PlayerPositions, stop => { this.stopPlayerPositions = stop; });
+        if (playerpositions) createEffect(() => {
+            const [position] = playerpositions.get();
+            if (position) for (const building of this.placed) this.updateProximity(building, position);
+        });
     }
 
     /** Shows the placer at once; its display draws the preview when its art has loaded. */
@@ -622,6 +629,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         if (this.disposed) return;
         this.disposed = true;
         this.stopActionEvents();
+        this.stopPlayerPositions?.();
         this.canvas.removeEventListener('pointerdown', this.handlePointerDown);
         this.pointer.dispose();
         this.cancel();
@@ -650,19 +658,16 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     }
 
     update(dt: number) {
-        if (this.active) {
-            this.active.animation.update(dt);
-        }
+        // Displays advance the declared clips: the placer preview's own, then the group's buildings and fire effects.
+        this.active?.display.update(dt);
+        this.displays.update(dt);
         this.cursor.update();
         for (const building of this.placed) {
-            this.updateProximity(building);
-            building.animation.update(dt);
             this.definitions[building.buildId].onupdate?.(this.eventContext(building), dt);
             const components = actionEntity(building.model, building.buildId).components;
             components.burnable?.Update(dt);
             components.propagator?.Update(dt);
         }
-        for (const effect of this.effects) effect.instance.sprite.update(dt);
     }
 
     private readonly handlePointerDown = (event: PointerEvent) => {
@@ -942,13 +947,13 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         return target;
     }
 
-    private updateProximity(building: AnimatedBuildingInstance<BuildId>) {
+    private updateProximity(building: AnimatedBuildingInstance<BuildId>, playerPosition: THREE.Vector3 = this.player.position) {
         if (building.isPlacing) return;
 
         const definition = this.definitions[building.buildId];
         if (!definition.onProximity) return;
 
-        const nearby = isPlayerNearby(this.player.position, building.model.position, building.isPlayerNearby);
+        const nearby = isPlayerNearby(playerPosition, building.model.position, building.isPlayerNearby);
         if (nearby === building.isPlayerNearby) return;
 
         building.isPlayerNearby = nearby;

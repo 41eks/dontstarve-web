@@ -171,11 +171,7 @@ export function createBurnableItemVisual(context: GroundPrefabContext,
       // inst:ListenForEvent("onignite", ...) fires only on a new ignition, not when a burning save is restored.
       if (igniteSound) stopIgnite = entity.ListenForEvent('onignite', () => { PlaySound(igniteSound, model.position); });
     },
-    update(dt) {
-      controller?.update(dt);
-      if (disposed) return;
-      visual.update?.(dt);
-    },
+    update(dt) { controller?.update(dt); },
     dispose() {
       if (disposed) return;
       disposed = true;

@@ -335,14 +335,14 @@ export class GrottoPoolManager {
     if (this.disposed) return;
     const focus = this.world.playerPosition();
     for (const grotto of this.grottos.values()) {
-      const { model, sprite, mist } = grotto;
+      const { model, sprite, display, mist } = grotto;
       if (!grotto.awake) {
         const visible = model.position.distanceToSquared(focus) <= ACTIVE_RADIUS_SQUARED;
         if (visible !== grotto.visible) { grotto.visible = visible; sprite.setVisible(visible); }
       }
       if (!grotto.visible) continue;
-      sprite.update(dt);
-      mist?.instance.sprite.update(dt);
+      display.update(dt);
+      mist?.display.update(dt);
     }
   }
 

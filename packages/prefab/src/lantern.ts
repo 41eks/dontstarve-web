@@ -261,7 +261,6 @@ export function createLanternGroundSprite(context: Pick<GroundPrefabContext, 'as
       bound?.components.fueled?.Settle();
       return controller ? { lanternOn: controller.isOn } : {};
     },
-    update(dt: number) { visual.update?.(dt); },
     dispose() { removeInventoryEvents(); stopState?.(); controller?.releaseGround(instance); visual.dispose(); },
   };
 }

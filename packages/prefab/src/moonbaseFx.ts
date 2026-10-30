@@ -142,7 +142,7 @@ export class MoonbaseEffects {
   update(dt: number): void {
     const foot = this.foot();
     for (const fx of this.effects) {
-      fx.instance.position.copy(foot); fx.animation.update(dt);
+      fx.instance.position.copy(foot); fx.display.update(dt);
     }
     if (this.cold) prefabInstance(this.cold.object)!.light.set(polarLight(this.scheduler.now - this.cold.createdAt));
   }

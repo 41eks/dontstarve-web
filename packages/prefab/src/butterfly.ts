@@ -422,7 +422,6 @@ export class ButterflyCreature extends SimpleEntity implements BrainInst, Butter
     this.sg.update(step);
     if (this.removed) return;
     this.stepMotor(step);
-    this.animation.update(step);
   }
 
   private stepMotor(dt: number): void {
@@ -500,7 +499,7 @@ export class ButterflyAssets {
       for (const tag of tags) instance.addTag(tag);
     };
     return {
-      model, instance, get controller() { return creature; },
+      model, instance, display, get controller() { return creature; },
       bindTransform(transform: ItemEntity['transform']) {
         creature = new ButterflyCreature(BUTTERFLY_DEFINITIONS[prefab], transform, instance.sprite, world, getOthers, undefined, dropLoot);
         creature.tagsChanged = syncTags;

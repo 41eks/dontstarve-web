@@ -82,7 +82,8 @@ class StickHead {
         return [{ object: this.flies.display.model, sortLayer: 2 }];
     }
 
-    update(dt: number): void { this.fliesController?.update(dt); }
+    /** The flies' display advances their declared clip. */
+    update(dt: number): void { this.flies.display.update(dt); }
 
     dispose(): void {
         this.cleanups.splice(0).forEach(stop => stop());

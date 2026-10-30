@@ -192,7 +192,7 @@ describe('flower_cave sprite residency', () => {
 });
 
 describe('flower_cave tickingarea gate', () => {
-  it('stops light watching and animation outside the area and resamples on return', async () => {
+  it('stops light watching outside the area and resamples on return; the display advances the clips', async () => {
     const awake = createSignal(false);
     const model = new THREE.Group();
     const animation = { update: vi.fn(), playOnce: vi.fn(), start: vi.fn() };
@@ -201,7 +201,6 @@ describe('flower_cave tickingarea gate', () => {
       'single', undefined, () => 0);
     await new Promise(resolve => setTimeout(resolve, 0));
     controller.update(5);
-    expect(animation.update).not.toHaveBeenCalled();
     const sampledAsleep = getLightLevel.mock.calls.length;
     controller.update(5);
     expect(getLightLevel.mock.calls.length).toBe(sampledAsleep);
@@ -209,8 +208,8 @@ describe('flower_cave tickingarea gate', () => {
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(controller.isActive).toBe(true);
     controller.update(0.1);
-    expect(animation.update).toHaveBeenCalled();
     expect(getLightLevel.mock.calls.length).toBeGreaterThan(sampledAsleep);
+    expect(animation.update).not.toHaveBeenCalled();
     controller.dispose();
   });
 });

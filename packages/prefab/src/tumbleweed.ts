@@ -208,7 +208,6 @@ class Tumbleweed {
   update(dt: number): void {
     if (this.removed) return;
     this.blowinwind.Update(dt);
-    this.sprite.update(dt);
   }
   sync(): void {
     if (this.removed) return;
@@ -234,7 +233,6 @@ class Tumbleweed {
   }
   setBreakFacing(heading: number): void { this.breakFx.instance.sprite.setFacing(fourFacingFromRotation(this.rotation, heading)); }
   playBreak(onDone: () => void): void { this.breakFx.instance.sprite.playOnce('break', onDone); }
-  updateBreak(dt: number): void { this.breakFx.instance.sprite.update(dt); }
   disposeBreak(): void { this.breakFx.instance.remove(); this.breakFx.display.dispose(); }
 }
 
@@ -287,7 +285,8 @@ export class TumbleweedManager {
   beforePhysics(dt: number): void {
     if (this.disposed || !Number.isFinite(dt) || dt < 0) return;
     for (const tumbleweed of this.tumbleweeds.values()) tumbleweed.update(Math.min(dt, .1));
-    for (const entry of this.breaking) entry.tumbleweed.updateBreak(Math.min(dt, .1));
+    // The display group advances the tumbleweeds and their break effects.
+    this.displays.update(Math.min(dt, .1));
   }
   sync(): void {
     for (const tumbleweed of this.tumbleweeds.values()) tumbleweed.sync();

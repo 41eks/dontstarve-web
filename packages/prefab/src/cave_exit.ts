@@ -87,7 +87,7 @@ export class CaveExitManager {
 
   update(dt: number, _quaternion: THREE.Quaternion): void {
     if (this.disposed) return;
-    for (const { instance } of this.exits.values()) instance.sprite.update(dt);
+    this.displays.update(dt);
   }
 
   get renderEntities() {

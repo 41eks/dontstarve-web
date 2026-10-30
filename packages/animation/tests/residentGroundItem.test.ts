@@ -40,9 +40,9 @@ it('unloads a settled ground item sprite with its tile and rebuilds it when the 
   tile.set(true); await tick();
   expect(created).toHaveLength(2);
   expect(visual.model.children[0]).toBe(created[1].model);
-  // Pausing is sprite json: it reaches the drawn sprite on its next frame.
+  // Pausing is sprite json: it reaches the drawn sprite on the next frame the manager advances its display.
   visual.model.dispatchEvent({ type: 'onputininventory' } as never);
-  visual.update!(0);
+  visual.display!.update(0);
   expect(created[1].setPaused).toHaveBeenLastCalledWith(true);
   visual.dispose();
   expect(created[1].dispose).toHaveBeenCalledOnce();
@@ -83,7 +83,7 @@ it('retains a lantern machine, light and fuel while its tile releases and rebuil
     expect(listed()).toBe(true);
     expect(model.position.toArray()).toEqual([3, 0, 4]);
     expect(created.at(-1)).not.toBe(drawn);
-    visual.update!(0);
+    visual.display!.update(0);
     expect(created.at(-1)!.playOnce).toHaveBeenCalledWith('idle_on');
   } finally { visual.dispose(); item.destroy(); assets.dispose(); }
 });

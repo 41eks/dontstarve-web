@@ -67,7 +67,6 @@ export function createPoopGroundFactory(context: GroundPrefabContext): GroundIte
           visual.bindEntity?.(inst);
           stopIgnite?.(); stopIgnite = inst.ListenForEvent('onignite', removeFlies);
         },
-        update(dt) { visual.update?.(dt); },
         dispose() {
           if (disposed) return;
           disposed = true;

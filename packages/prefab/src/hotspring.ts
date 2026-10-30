@@ -208,8 +208,8 @@ export class HotspringManager {
   update(dt: number, _cameraQuaternion: THREE.Quaternion): void {
     if (this.disposed || !Number.isFinite(dt) || dt < 0) return;
     if (this.ownsScheduler) this.scheduler.advance(dt);
-    for (const model of this.activeSprings) (prefabInstance(model)!.sprite as SpriteState).update(dt);
-    for (const fx of [...this.steam]) fx.instance.sprite.update(dt);
+    // The display group advances the springs and their steam; sleeping springs are skipped.
+    this.displays.update(dt);
   }
   get renderEntities() {
     return [

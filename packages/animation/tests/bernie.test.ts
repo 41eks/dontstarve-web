@@ -25,7 +25,7 @@ it.each([undefined, 'bernie_cat'])('plays Lua growth/shrink queues with source a
   const state = () => [model.name.slice('GroundItem:'.length), model.userData.animation];
   const advance = (frames: number) => {
     for (let i = 0; i < frames; i++) {
-      sprite.update(1 / 30);
+      tick(sprite, 1 / 30);
       expect(visual().children).toHaveLength(1);
       expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
     }
@@ -37,7 +37,7 @@ it.each([undefined, 'bernie_cat'])('plays Lua growth/shrink queues with source a
     prefabInstance(model)!.entityId = 'same-bernie';
     expect(state()).toEqual(['bernie_active', 'idle_loop']);
     sanity = 0.1;
-    sprite.update(0);
+    tick(sprite, 0);
     expect(state()).toEqual(['bernie_big', 'activate']);
     expect(visual().scale.x).toBeCloseTo(0.014);
     const firstGrowthFrame = positions();
@@ -52,7 +52,7 @@ it.each([undefined, 'bernie_cat'])('plays Lua growth/shrink queues with source a
     expect(state()).toEqual(['bernie_big', 'idle_loop']);
 
     sanity = 0.15;
-    sprite.update(0);
+    tick(sprite, 0);
     expect(state()).toEqual(['bernie_big', 'deactivate']);
     advance(21);
     expect(state()[1]).toBe('deactivate');
@@ -76,7 +76,7 @@ it.each([undefined, 'bernie_cat'])('plays Lua growth/shrink queues with source a
     // Independently render an idle sprite at the same source time for comparison.
     const idle = createBernieGroundSprite(assets, { getSanityPercent: () => 1 }, skinId);
     await prefabDisplay(idle.model).artLoaded();
-    for (let i = 0; i < 15; i++) idle.update(1 / 30);
+    for (let i = 0; i < 15; i++) tick(idle, 1 / 30);
     const idleMesh = idle.model.children[0].children[0].children[0] as typeof mesh;
     expect(positions()).toEqual(positions(idleMesh));
     idle.dispose();
@@ -84,19 +84,25 @@ it.each([undefined, 'bernie_cat'])('plays Lua growth/shrink queues with source a
     if (skinId) {
       const plain = createBernieGroundSprite(assets, { getSanityPercent: () => 1 });
       await prefabDisplay(plain.model).artLoaded();
-      for (let i = 0; i < 15; i++) plain.update(1 / 30);
+      for (let i = 0; i < 15; i++) tick(plain, 1 / 30);
       expect(positions()).not.toEqual(positions(plain.model.children[0].children[0].children[0] as typeof mesh));
       plain.dispose();
     }
   } finally { sprite.dispose(); assets.dispose(); }
 });
 
+
+/** As GroundItemManager does each frame: the display advances, Bernie's logic runs, then what it declared is drawn. */
+function tick(visual: ReturnType<typeof createBernieGroundSprite>, dt: number): void {
+  const display = prefabDisplay(visual.model);
+  display?.update(dt); visual.update(dt); display?.update(0);
+}
 it('finishes a busy transformation using the latest sanity and cancels it on inventory/load events', async () => {
   let sanity = 1;
   const assets = new BernieAssets('/dst/data/anim');
   const sprite = await createBernieGroundSprite(assets, { getSanityPercent: () => sanity });
   const animation = () => sprite.model.userData.animation;
-  const advance = (frames: number) => { for (let i = 0; i < frames; i++) sprite.update(1 / 30); };
+  const advance = (frames: number) => { for (let i = 0; i < frames; i++) tick(sprite, 1 / 30); };
   try {
     sanity = 0.1;
     advance(5);
@@ -106,7 +112,7 @@ it('finishes a busy transformation using the latest sanity and cancels it on inv
     sanity = 0.1;
     advance(47);
     expect(animation()).toBe('idle_loop');
-    sprite.update(0);
+    tick(sprite, 0);
     expect(animation()).toBe('idle_loop');
     sanity = 1;
     advance(5);
@@ -114,7 +120,7 @@ it('finishes a busy transformation using the latest sanity and cancels it on inv
     sanity = 0.1;
     advance(64);
     expect([sprite.model.name, animation()]).toEqual(['GroundItem:bernie_active', 'idle_loop']);
-    sprite.update(0);
+    tick(sprite, 0);
     expect(animation()).toBe('activate');
     sprite.model.dispatchEvent({ type: 'onputininventory' });
     advance(90);

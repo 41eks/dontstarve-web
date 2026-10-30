@@ -435,14 +435,13 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
     getDigTargets: digTargets,
     update(dt, _quaternion) {
       if (!world.scheduler) scheduler.advance(dt);
+      // Each display advances its entity's declared clip; the fire binding then runs its burnable's FX.
       for (const logical of active) {
-        const { sprite, fire } = trees.get(logical)!;
-        sprite.update(dt);
+        const { display, fire } = trees.get(logical)!;
+        display.update(dt);
         fire?.update(dt);
       }
-      for (const { entity } of [...effects.values()]) {
-        entity.instance.sprite.update(dt);
-      }
+      for (const { entity } of [...effects.values()]) entity.display.update(dt);
     },
     get renderEntities() {
       return [...Array.from(active, logical => ({ object: logical.model, footPosition: logical.position, cameraDepth: 0 })),

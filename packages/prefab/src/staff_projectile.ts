@@ -81,10 +81,10 @@ export class StaffProjectileManager {
     for (const entry of [...this.active]) {
       entry.component.Update(dt);
       if (entry.removed || !entry.entity) continue;
-      const { instance, display: { model } } = entry.entity;
+      const { instance, display } = entry.entity;
       instance.position.copy(entry.component.position);
-      model.visible = entry.component.visible;
-      instance.sprite.update(dt);
+      display.model.visible = entry.component.visible;
+      display.update(dt);
     }
   }
 

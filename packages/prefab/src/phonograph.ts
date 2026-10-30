@@ -151,7 +151,7 @@ export function createPhonographGroundFactory(context: GroundPrefabContext): Gro
   let disposed = false;
   return {
     itemIds: [PHONOGRAPH_ID],
-    update(dt) { for (const effect of effects) effect.instance.sprite.update(dt); },
+    update(dt) { for (const effect of effects) effect.display.update(dt); },
     renderEntities: () => [...effects].map(({ display: { model } }) => ({ object: model, footPosition: model.position, cameraDepth: 0 })),
     dispose() { disposed = true; for (const effect of effects) release(effect); effects.clear(); },
     create(item) {
@@ -206,7 +206,7 @@ export function createPhonographGroundFactory(context: GroundPrefabContext): Gro
           });
         },
         getDefinition: () => controller.snapshot(),
-        update(dt: number) { controller.update(dt); visual.update?.(dt); },
+        update(dt: number) { controller.update(dt); },
         dispose() { removeEvents(); controller.dispose(); visual.dispose(); },
       };
     },

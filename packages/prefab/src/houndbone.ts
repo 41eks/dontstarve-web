@@ -126,8 +126,8 @@ export class HoundboneManager {
 
   update(dt: number, _quaternion: THREE.Quaternion): void {
     if (this.disposed) return;
-    for (const { sprite } of this.bones.values()) if (sprite.loaded) sprite.update(dt);
-    for (const { instance } of [...this.effects]) instance.sprite.update(dt);
+    // The display group advances the bones and their collapse effects.
+    this.displays.update(dt);
   }
 
   get renderEntities() {

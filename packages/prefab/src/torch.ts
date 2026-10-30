@@ -218,7 +218,7 @@ export function createTorchGroundFactory(context: GroundPrefabContext): GroundIt
     configureEntity: configureTorchEntity,
     create(item) {
 
-      const { visual, instance } = createResidentGroundItem(context, item);
+      const { visual, instance, display } = createResidentGroundItem(context, item);
       const sprite = instance.sprite;
       const model = visual.model;
       let fling: LootFling | undefined;
@@ -263,7 +263,7 @@ export function createTorchGroundFactory(context: GroundPrefabContext): GroundIt
       });
       // No `active`: a burning torch keeps consuming fuel while its tile only releases the sprite.
       return {
-        model, instance,
+        model, instance, display,
         isRemoved: () => entity?.isRemoved ?? false,
         setDefinition: (definition) => {
           state = definition;
@@ -275,7 +275,6 @@ export function createTorchGroundFactory(context: GroundPrefabContext): GroundIt
           return { remainingFuel: fueled ? fueled.OnSave()?.fuel : state.remainingFuel, torchLit: controller?.isBurning ?? false };
         },
         update(dt: number) {
-          sprite.update(dt);
           if (fling) {
             fling.update(dt);
             model.children[0].position.y = fling.height;

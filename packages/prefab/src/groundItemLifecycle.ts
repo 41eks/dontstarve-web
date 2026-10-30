@@ -22,10 +22,9 @@ export function bindResidentGroundItem(context: Pick<GroundPrefabContext, 'ticki
     onputininventory: () => { sprite.setPaused(true); stopTile(); stopTile = () => {}; },
   });
   return {
-    model, instance,
+    model, instance, display,
     active,
     bindEntity: declare && (entity => declare(entity, sprite)),
-    update: dt => sprite.update(dt),
     dispose() { removeInventoryEvents(); stopTile(); active.dispose(); instance.remove(); display.dispose(); },
   };
 }

@@ -44,7 +44,8 @@ export async function checkFirefliesInstances() {
   const settle = () => new Promise(resolve => setTimeout(resolve, 0));
   const advance = (seconds: number) => {
     for (let t = 0; t < seconds - .001; t += .1) {
-      scheduler.advance(.1); swarms.forEach(swarm => swarm.update(.1));
+      // As GroundItemManager does: each display advances, the swarm's logic runs, then its declarations are drawn.
+      scheduler.advance(.1); swarms.forEach(swarm => { swarm.display.update(.1); swarm.update(.1); swarm.display.update(0); });
     }
   };
   const draw = () => {

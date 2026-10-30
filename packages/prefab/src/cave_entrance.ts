@@ -164,7 +164,7 @@ export class CaveEntranceManager {
 
   update(dt: number, _quaternion: THREE.Quaternion): void {
     if (this.disposed) return;
-    for (const { sprite } of this.entrances.values()) sprite.update(dt);
+    this.displays.update(dt);
   }
 
   get renderEntities() {

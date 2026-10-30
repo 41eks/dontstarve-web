@@ -238,6 +238,8 @@ class WilsonController implements WilsonAnimationController {
   private frameIndex = -1;
   private readonly model: PlayerModel;
   private readonly instance: WilsonPlayerInstance;
+  /** The player's display: it advances the declared clip in step with the stategraph. */
+  private readonly display: PrefabDisplay;
   private readonly fxScheduler = new GameTimeScheduler();
   private readonly cleanups: (() => void)[] = [];
   private disposed = false;
@@ -261,13 +263,14 @@ class WilsonController implements WilsonAnimationController {
 
   constructor(
     instance: WilsonPlayerInstance,
-    model: PlayerModel,
+    display: PrefabDisplay,
     assetBaseUrl: string,
     resources: SpriteResources,
     sanityPercent?: ReadonlySignal<number>,
   ) {
     this.instance = instance;
-    this.model = model;
+    this.display = display;
+    const model = this.model = display.model;
     this.resources = resources;
     this.equipmentAssets = new GroundItemAssets();
     // The sprite holds the AnimState's own json signal; the player's display follows it and loads the builds it names from the equipment assets.
@@ -598,7 +601,7 @@ class WilsonController implements WilsonAnimationController {
     // Facing changes select different art without restarting the state timeline.
     this.selectAnimation(this.stategraph.animationClip, false);
     this.showCurrentFrame();
-    this.instance.sprite.update(0);
+    this.display.update(0);
   }
 
   setEquippedCarryItem(item: WilsonCarryItem | null): void {
@@ -645,7 +648,7 @@ class WilsonController implements WilsonAnimationController {
     return this.instance.sprite.followSymbol(symbol, offsetX, offsetY, fx);
   }
 
-  private refreshFrame(): void { this.instance.sprite.update(0); }
+  private refreshFrame(): void { this.display.update(0); }
 
   update(dt: number, jumpProgress?: number): void {
     if (this.disposed) return;
@@ -654,7 +657,7 @@ class WilsonController implements WilsonAnimationController {
     this.stategraph.update(step);
     this.castingLight.update(step);
     this.showCurrentFrame(jumpProgress);
-    this.instance.sprite.update(step);
+    this.display.update(step);
   }
 
   private showCurrentFrame(jumpProgress?: number) {
@@ -762,10 +765,10 @@ function createWilsonPlayerEntity(
   player.position.set(0, 30, 0);
   actionEntity(player, PLAYER_ART_CHARACTER);
 
-  const controller = new WilsonController(instance, player, assetBaseUrl, resources, options.sanityPercent);
+  const controller = new WilsonController(instance, display, assetBaseUrl, resources, options.sanityPercent);
   instance.onRemove(() => { controller.dispose(); disposeActionEntity(player); });
   display.onDispose(() => controller.releaseAssets());
-  instance.sprite.update(0);
+  display.update(0);
   instance.animationController = controller;
   instance.sg = controller.stategraph as never;
   return { model: player, instance, display };

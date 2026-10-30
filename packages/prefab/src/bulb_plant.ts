@@ -208,7 +208,6 @@ export class BulbPlantController {
 
   update(dt: number): void {
     if (this.disposed || !Number.isFinite(dt) || dt < 0) return;
-    if (this.active) this.animation.update(dt);
     if (this.ownsScheduler) this.scheduler.advance(dt);
     if (this.active) this.refreshLight();
   }
@@ -337,6 +336,8 @@ export class BulbPlantManager {
   }
 
   update(dt: number, _cameraQuaternion: THREE.Quaternion): void {
+    // The display group advances the active plants' clips; sleeping plants are skipped.
+    if (Number.isFinite(dt) && dt >= 0) this.displays.update(dt);
     for (const plant of this.plants) plant.controller.update(dt);
   }
 

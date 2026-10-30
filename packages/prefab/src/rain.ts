@@ -328,7 +328,7 @@ export class RainEffect {
     }
     this.simulate(dt);
     this.writeGeometry();
-    for (const splash of [...this.splashes]) splash.animation.update(dt);
+    for (const splash of [...this.splashes]) splash.display.update(dt);
   }
 
   /** Active splashes, so the shared renderer sorts them with other foot-sorted billboards. */

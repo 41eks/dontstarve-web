@@ -130,7 +130,8 @@ export class StatueGlommerManager {
     return model;
   }
 
-  update(dt: number): void { for (const { instance } of this.statues.values()) instance.sprite.update(dt); }
+  // The display group advances each entity's declared clip; sleeping and removed entities are skipped.
+  update(dt: number): void { this.displays.update(dt); }
   get renderEntities() { return [...this.statues].filter(([, statue]) => statue.instance.sprite.loaded)
     .map(([object]) => ({ object, footPosition: object.position, cameraDepth: 0 })); }
   exportRecords(): { prefabId: typeof STATUEGLOMMER_ID; record: StatueGlommerRecord }[] {

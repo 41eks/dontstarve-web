@@ -166,9 +166,9 @@ export class MolehillManager {
         const child = [...this.moles].find(mole => mole.id === hill.pendingChildId);
         if (child) { hill.components.spawner.TakeOwnership(child); hill.pendingChildId = undefined; }
       }
-      if (hill.instance.sprite.loaded) hill.instance.sprite.update(dt);
     }
-    for (const { instance } of this.fx) instance.sprite.update(dt);
+    // The display group advances the hills and their move effects.
+    this.displays.update(dt);
   }
   get digTargets() { return this.getDigTargets(); }
   getDigTargets(model?: THREE.Object3D) { return this.mouseRecords.select(model, this.hills.values()).filter(h => h.isValid()).map(h => ({ id: h.id, model: h.model, entity: findActionEntity(h.model),

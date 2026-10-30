@@ -164,7 +164,7 @@ export class PlantDeployment {
     if (visible !== preview.visible) preview.instance.sprite.setVisible(preview.visible = visible);
     if (!point || !source) return;
     preview.instance.position.copy(point);
-    preview.instance.sprite.update(dt);
+    preview.display.update(dt);
     const valid = this.canDeploy(point, source.entity);
     preview.model.traverse(object => {
       if (!(object instanceof THREE.Mesh)) return;

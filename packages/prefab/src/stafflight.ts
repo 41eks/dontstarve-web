@@ -173,10 +173,11 @@ export class DwarfStarManager {
       const removalAt = star.removalAtSeconds ?? star.lastSettlementSeconds + star.remaining.peek() + 1;
       star.propagator?.Update(Math.max(0, Math.min(dt, removalAt - (this.elapsedSeconds - dt))));
       if (!star.awake) continue;
-      star.instance.sprite.update(dt);
       const age = star.ageSeconds + this.elapsedSeconds - star.lastSettlementSeconds;
       star.instance.light.set(this.light(age));
     }
+    // The display group advances the awake stars' clips.
+    this.displays.update(dt);
   }
 
   exportRecords(): DwarfStarRecord[] {

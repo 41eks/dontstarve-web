@@ -159,7 +159,7 @@ export class TurfDeployment {
     const preview = this.preview;
     if (!preview) return;
     const { sprite } = preview.instance;
-    sprite.update(dt);
+    preview.display.update(dt);
     const point = this.pointer.groundPoint();
     const visible = point !== undefined && source?.isValid() === true;
     if (visible !== preview.visible) sprite.setVisible(preview.visible = visible);

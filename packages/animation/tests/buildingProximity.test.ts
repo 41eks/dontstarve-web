@@ -8,8 +8,13 @@ import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { TREASURE_CHEST_DEFINITION } from '../../prefab/src/treasurechest';
 import { COOK_POT_DEFINITION } from '../../prefab/src/cook_pot';
 import type { WorldContext } from '../../prefab/src/worldContext';
+import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import { bindTestWorld } from './worldContentFixture';
 
+let unbindWorld: (() => void) | undefined;
 afterEach(() => {
+  unbindWorld?.();
+  unbindWorld = undefined;
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
@@ -25,6 +30,8 @@ async function setup(definition = TREASURE_CHEST_DEFINITION) {
   const canvas = new EventTarget();
   const scene = new THREE.Scene();
   const player = new THREE.Object3D();
+  const { playerpositions, unbind } = bindTestWorld(new GameTimeScheduler());
+  unbindWorld = unbind;
   const world = {
     scene,
     player,
@@ -44,8 +51,11 @@ async function setup(definition = TREASURE_CHEST_DEFINITION) {
   vi.spyOn(PointerRaycaster.prototype, 'raycastPointer').mockImplementation((objects) =>
     ({ object: objects[0], point: new THREE.Vector3() }) as THREE.Intersection,
   );
-  const distance = (value: number) => {
+  // The world publishes player snapshots; proximity effects run after the microtask.
+  const distance = async (value: number) => {
     player.position.copy(model.position).add(new THREE.Vector3(value, 100, 0));
+    playerpositions.set([player.position.clone()]);
+    await Promise.resolve();
   };
   const click = () => canvas.dispatchEvent(Object.assign(new Event('pointerdown'), {
     button: 0, clientX: 0, clientY: 0,
@@ -59,10 +69,10 @@ async function setup(definition = TREASURE_CHEST_DEFINITION) {
 describe('building proximity interactions', () => {
   it('opens the cook pot immediately, loops its animation and closes on click or leaving', async () => {
     const { placement, distance, click, finish, changes, model, start } = await setup(COOK_POT_DEFINITION);
-    distance(11);
+    await distance(11);
     click();
     expect(changes).not.toHaveBeenCalled();
-    distance(0);
+    await distance(0);
     click();
     expect(changes).toHaveBeenLastCalledWith({ buildId: 'building', isOpen: true, model });
     expect(start).toHaveBeenLastCalledWith('cooking_pre_loop');
@@ -73,17 +83,17 @@ describe('building proximity interactions', () => {
     finish();
     expect(start).toHaveBeenLastCalledWith('idle_empty');
     click();
-    distance(11);
+    await distance(11);
     finish();
     expect(changes).toHaveBeenLastCalledWith({ buildId: 'building', isOpen: false, model });
     expect(start).toHaveBeenLastCalledWith('idle_empty');
   });
   it('blocks distant chest clicks and checks the current position on click', async () => {
     const { distance, click, playOnce, finish, changes, model } = await setup();
-    distance(9.01);
+    await distance(9.01);
     click();
     expect(playOnce).not.toHaveBeenCalled();
-    distance(9);
+    await distance(9);
     click();
     expect(playOnce).toHaveBeenCalledWith('open', expect.any(Function));
     finish();
@@ -91,33 +101,30 @@ describe('building proximity interactions', () => {
   });
 
   it('keeps an open chest nearby through 10 units, then closes it and its panel', async () => {
-    const { placement, distance, click, playOnce, start, finish, changes, model } = await setup();
-    distance(9);
+    const { distance, click, playOnce, start, finish, changes, model } = await setup();
+    await distance(9);
     click();
     finish();
-    distance(10);
-    placement.update(0);
+    await distance(10);
     expect(changes).toHaveBeenCalledTimes(1);
-    distance(10.01);
-    placement.update(0);
+    await distance(10.01);
     expect(changes).toHaveBeenLastCalledWith({ buildId: 'building', isOpen: false, model });
     expect(playOnce).toHaveBeenLastCalledWith('close', expect.any(Function));
     finish();
     expect(start).toHaveBeenLastCalledWith('closed');
     click();
     expect(playOnce).toHaveBeenCalledTimes(2);
-    distance(9);
+    await distance(9);
     click();
     finish();
     expect(changes).toHaveBeenLastCalledWith({ buildId: 'building', isOpen: true, model });
   });
 
   it('cancels opening when the player leaves before the animation finishes', async () => {
-    const { placement, distance, click, playOnce, start, finish, changes, model } = await setup();
-    distance(0);
+    const { distance, click, playOnce, start, finish, changes, model } = await setup();
+    await distance(0);
     click();
-    distance(11);
-    placement.update(0.1);
+    await distance(11);
     finish();
     expect(playOnce.mock.calls.map(([name]) => name)).toEqual(['open', 'close']);
     expect(changes.mock.calls).toEqual([[{ buildId: 'building', isOpen: false, model }]]);
