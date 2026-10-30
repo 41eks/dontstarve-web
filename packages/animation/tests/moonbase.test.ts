@@ -22,7 +22,7 @@ import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import type { ActionAnimationController } from '../../stategraphs/src/actionContext';
 import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
 import type { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
-import { findImage, smallHash } from '../src/animationAssets';
+import { smallHash } from '../src/animationAssets';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Timer } from '../../componets/src/timer';
 import { createSignal } from '../../signals/src';
@@ -68,6 +68,8 @@ it('spawns moonbase through the debug command using its source art and restores 
   const model = world.scene.children[0];
   expect(model.name).toBe('MoonBase');
   expect(prefabInstance(model)!.sprite.currentAnimation).toBe('med');
+  // The display loads the source art; a later moonbase of the same art is drawn at once.
+  await vi.waitFor(() => expect(prefabInstance(model)!.sprite.loaded).toBe(true));
   const mesh = model.children[0].children[0].children[0] as THREE.Mesh;
   expect(mesh.isMesh).toBe(true);
   expect(mesh.geometry.getAttribute('position').count).toBeGreaterThan(4);
@@ -108,8 +110,11 @@ async function createMoonbase(options: Partial<WorldContext> = {}, saved?: Param
     camera: new THREE.PerspectiveCamera(), cameraFacing: createSignal(8), cameraHeading: createSignal(45), renderer: { domElement: new EventTarget() },
     createCursorLabel: () => ({ show() {}, hide() {}, update() {} }), ...options } as unknown as WorldContext;
   const placement = new PlaceableBuildingPlacement(world, () => false);
-  if (saved) await placement.spawnFromSave('moonbase', saved); else await placement.spawn('moonbase');
-  return { placement, world, model: world.scene.children[0] as THREE.Group };
+  if (saved) placement.spawnFromSave('moonbase', saved); else await placement.spawn('moonbase');
+  const model = world.scene.children[0] as THREE.Group;
+  // One-shot clips such as fix_full play out only once the display has drawn the moonbase.
+  await vi.waitFor(() => expect(prefabInstance(model)!.sprite.loaded).toBe(true));
+  return { placement, world, model };
 }
 
 it('repairs with one moonrock and preserves a skinned, partly used staff through insertion, save/load and PICK', async () => {
@@ -119,7 +124,10 @@ it('repairs with one moonrock and preserves a skinned, partly used staff through
     skinId: 'starstaff_crystal', remainingUses: 7 });
   const rock = new ItemEntity({ itemId: 'moonrocknugget', count: 2 }); configureMoonrockNugget(rock);
   const { trader, workable } = (findActionEntity(model)?.components ?? prefabInstance(model)!.components);
-  const override = vi.spyOn(prefabInstance(model)!.sprite, 'overrideSymbol');
+  const staffSymbol = () => {
+    const declared = prefabInstance(model)!.sprite.sprite.peek().appearance.get('anim-state');
+    return declared?.kind === 'anim-state' ? declared.state.peek().overrides.get(smallHash('swap_staffs'))?.sources : undefined;
+  };
   try {
     expect(workable.GetWorkAction()).toBeUndefined();
     expect(trader.AcceptGift(staff, () => true)).toBe(false);
@@ -144,10 +152,9 @@ it('repairs with one moonrock and preserves a skinned, partly used staff through
     expect(getMoonbaseState(model).staff.peek()).toBe(staff);
     expect(staff.isRemoved).toBe(false);
     await new Promise(resolve => setTimeout(resolve, 0));
-    const art = override.mock.calls.at(-1)![1] as { build: Parameters<typeof findImage>[0]; symbolHash: number };
-    expect(override).toHaveBeenLastCalledWith('swap_staffs', expect.anything());
-    expect(art.symbolHash).toBe(smallHash('yellowstaff'));
-    expect(findImage(art.build, art.symbolHash, 0)).toBeDefined();
+    // OverrideItemSkinSymbol("swap_staffs", skin_build, "yellowstaff", item.GUID, "staffs")
+    expect(staffSymbol()).toEqual([{ archive: 'dynamic/starstaff_crystal.zip', symbol: smallHash('yellowstaff') },
+      { archive: 'staffs.zip', symbol: smallHash('yellowstaff') }]);
     expect((findActionEntity(model)?.components ?? prefabInstance(model)!.components).pickable.productEntity).toBe(staff);
     expect(trader.isEnabled).toBe(false);
     expect(trader.AcceptGift(staff, take)).toBe(false);

@@ -29,7 +29,7 @@ async function setup(id: typeof RESEARCH_LAB_IDS[number], skinId?: string) {
     ground: new THREE.Group(), renderer: { domElement: new EventTarget() }, dropLoot } as unknown as WorldContext;
   world.player.position.set(100, 0, 100);
   const placement = new ResearchLabPlacement(world, () => true);
-  const model = await placement.spawnFromSave(id, {
+  const model = placement.spawnFromSave(id, {
     id: `test_${id}`, transform: { position: [3, 0, 4], rotationY: 0 },
     components: { building: { state: 'idle', ...(skinId ? { skinId } : {}) } },
   });
@@ -38,6 +38,8 @@ async function setup(id: typeof RESEARCH_LAB_IDS[number], skinId?: string) {
   });
   const animation = () => prefabInstance(model)!.sprite as TransientSpriteAnimationController;
   const finish = () => { for (let i = 0; i < 80; i++) placement.update(1 / 30); };
+  // The display loads the lab's art, and its collapse fx with it; one-shot clips play out once they are drawn.
+  await vi.waitFor(() => expect(animation().loaded).toBe(true));
   return { placement, model, world, animation, finish, dropLoot, builder };
 }
 

@@ -1,14 +1,13 @@
-import type { PrefabDisplayGroup } from '@dontstarve-web/display';
+import type { PrefabDisplayGroup, SpriteResources } from '@dontstarve-web/display';
 import { type SpriteState } from '@dontstarve-web/display';
 import { prefabInstance } from './prefabInstance';
 import * as THREE from 'three';
-import { createEffect, createRenderEffect, createMemo, createSignal, readonlySignal, WorldContentKey, type ReadonlySignal, type Signal, type WorldContentSignal, type WorldMoonState, type WorldPhase } from '@dontstarve-web/signals';
+import { createEffect, createMemo, createSignal, readonlySignal, WorldContentKey, type WorldContentSignal, type WorldMoonState, type WorldPhase } from '@dontstarve-web/signals';
 import { ItemEntity, type ItemEntityRegistry, type InventoryStack } from '@dontstarve-web/inventory';
-import { createSpriteFactory, loadSymbolOverride, type LoadedSymbolOverride } from '@dontstarve-web/animation/sprite';
-import { loadAnimationArchive } from '@dontstarve-web/animation/animationAssets';
+import type { AnimState } from '@dontstarve-web/animation/animState';
 import definitions from './definitions.json' with { type: 'json' };
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
-import type { AnimatedBuildingDefinition, AnimatedBuildingPreparedResources } from './animatedBuildingPlacement';
+import type { AnimatedBuildingDefinition } from './animatedBuildingPlacement';
 import { actionEntity } from './actionEntity';
 import { Workable } from '../../componets/src/workable';
 import { Repairable } from '../../componets/src/repairable';
@@ -17,7 +16,7 @@ import { Pickable } from './components/pickable';
 import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
 import { ComponentTimer, Timer, type NamedTimerSave } from '../../componets/src/timer';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { MoonbaseEffects, type MoonbaseFxResources } from './moonbaseFx';
+import { MoonbaseEffects, moonbaseFxSources } from './moonbaseFx';
 import type { PrefabWorldContext } from './worldContext';
 import catalog from './groundItems.json' with { type: 'json' };
 
@@ -40,10 +39,6 @@ const REPAIR_SOUND = 'dontstarve/common/together/moonbase/repair';
 const animationState = (workleft: number) => workleft > MOONBASE_DAMAGED_WORK ? 'full'
   : workleft * 2 > MOONBASE_DAMAGED_WORK ? 'med' : workleft > 0 ? 'medlow' : 'low';
 
-interface MoonbaseResources extends AnimatedBuildingPreparedResources, MoonbaseFxResources {
-  readonly staffOverrides: Readonly<Record<string, LoadedSymbolOverride>>;
-}
-
 /** moonbase.lua: workable owns repairs; trader and pickable own insertion and retrieval. */
 class Moonbase {
   private readonly staffState = createSignal<ItemEntity | undefined>(undefined);
@@ -57,7 +52,6 @@ class Moonbase {
   readonly pickable: Pickable;
   private readonly sounds = new Set<SoundHandle>();
   private readonly model: THREE.Group;
-  private readonly resources: Signal<MoonbaseResources>;
   private readonly items?: ItemEntityRegistry;
   readonly timer: Timer;
   private readonly scheduler: GameTimeScheduler;
@@ -70,18 +64,18 @@ class Moonbase {
   private readonly cleanups: (() => void)[] = [];
   private readonly initializer: ComponentTimer;
   private readonly musicPulse: ComponentTimer;
-  private effects: MoonbaseEffects;
+  private readonly effects: MoonbaseEffects;
   private disposed = false;
-  constructor(model: THREE.Group, resources: MoonbaseResources, displays: PrefabDisplayGroup, items?: ItemEntityRegistry, world?: PrefabWorldContext, art?: ReadonlySignal<number>) {
+  constructor(model: THREE.Group, animState: AnimState, sprites: SpriteResources, displays: PrefabDisplayGroup, items?: ItemEntityRegistry, world?: PrefabWorldContext) {
     this.displays = displays;
-    this.model = model; this.resources = createSignal(resources); this.items = items;
+    this.model = model; this.items = items;
     this.world = world; this.ownsScheduler = !world?.scheduler;
     this.scheduler = world?.scheduler ?? new GameTimeScheduler();
     this.moon = world?.getWatchWorldContent?.(WorldContentKey.Moon, stop => this.cleanups.push(stop));
     this.cycle = world?.getWatchWorldContent?.(WorldContentKey.Cycle, stop => this.cleanups.push(stop));
     this.fullMoon = createMemo(() => this.isFullMoon(true));
     this.timer = new Timer(this.scheduler, name => this.onTimerDone(name), Object.keys(MOONBASE_TIMER_LIMITS));
-    this.effects = new MoonbaseEffects(model, this.displays, this.scheduler, resources);
+    this.effects = new MoonbaseEffects(model, this.displays, this.scheduler, sprites);
     this.musicPulse = new ComponentTimer(this.scheduler, () => this.pushMusic());
     this.initializer = new ComponentTimer(this.scheduler, () => {
       let previous = this.fullMoon.peek();
@@ -123,11 +117,13 @@ class Moonbase {
     prefabInstance(model)!.components.timer = this.timer;
     prefabInstance(model)!.components.moonbase = this;
     this.makeRepairable();
-    // OverrideSymbol("swap_staffs", ...) follows the held staff and the displayed art, including after the sprite is rebuilt.
-    this.cleanups.push(createRenderEffect(() => {
-      art?.get();
-      const staff = this.staffState.get(), { staffOverrides } = this.resources.get();
-      this.sprite.overrideSymbol('swap_staffs', staff ? staffOverrides[`${staff.prefab}:${staff.skinId ?? 'base'}`] : undefined);
+    // OverrideItemSkinSymbol / OverrideSymbol("swap_staffs", ...) follow the held staff; the display dresses every drawn sprite in the AnimState.
+    this.cleanups.push(createEffect(() => {
+      const staff = this.staffState.get();
+      if (!staff) { animState.ClearOverrideSymbol('swap_staffs'); return; }
+      const skin = staff.skinId === undefined ? undefined : GROUND_ITEM_DEFINITIONS[staff.prefab]?.skinArchives?.[staff.skinId];
+      if (skin !== undefined) animState.OverrideItemSkinSymbol('swap_staffs', skin, staff.prefab, String(staff.id), 'staffs');
+      else animState.OverrideSymbol('swap_staffs', 'staffs', staff.prefab);
     }));
     this.initializer.start(0);
   }
@@ -217,16 +213,7 @@ class Moonbase {
     this.updateTrading();
     if (this.initializer.snapshot.peek().status === 'expired') this.toggleCharge();
   }
-  /** A reskin brings new prepared art: the staff overlay follows through the effect on `resources`. */
-  refreshArt(resources: MoonbaseResources): void {
-    if (resources === this.resources.peek()) return;
-    this.effects.dispose();
-    this.effects = new MoonbaseEffects(this.model, this.displays, this.scheduler, resources);
-    this.resources.set(resources);
-    if (this.staffState.peek()?.prefab === 'opalstaff') this.effects.showCold();
-    const phase = this.chargePhase();
-    if (phase.startsWith('charging_')) this.effects.start(phase === 'charging_1' ? 1 : phase === 'charging_2' ? 2 : 3, true);
-  }
+
   private restingAnimation(): string {
     const state = animationState(this.workable.workleft.peek());
     return this.chargePhase().startsWith('charging_') || this.chargePhase() === 'preparing' ? `recharging_${state}` : state;
@@ -327,31 +314,17 @@ export function getMoonbaseState(model: THREE.Group) {
     timers: Object.fromEntries(Object.keys(MOONBASE_TIMER_LIMITS).map(name => [name, state.timer.snapshot(name)])) };
 }
 
-async function prepare(): Promise<MoonbaseResources> {
-  const base = `${import.meta.env.BASE_URL}dst/data/anim`;
-  const archives = ['yellowstaff', 'opalstaff'].flatMap(prefab => Object.entries({ base: 'staffs.zip', ...GROUND_ITEM_DEFINITIONS[prefab].skinArchives })
-    .map(([skin, archive]) => ({ id: `${prefab}:${skin}`, archive, symbol: prefab })));
-  const [overrides, beam, cold] = await Promise.all([
-    Promise.all(archives.map(async ({ id, archive, symbol }) => [id, await loadSymbolOverride(base, archive, symbol)] as const)),
-    loadAnimationArchive('moonbase_fx.zip', base), loadAnimationArchive('star_cold.zip', base),
-  ]);
-  const beamFactory = createSpriteFactory(beam.buildPackage, beam.animations), coldFactory = createSpriteFactory(cold.buildPackage, cold.animations);
-  return { staffOverrides: Object.fromEntries(overrides), materials: overrides.flatMap(([, override]) => override.materials),
-    beamFactory, coldFactory, durations: Object.fromEntries(beam.animations.animations.map(animation => [animation.name, animation.frames.length / animation.frameRate])),
-    dispose() { beamFactory.dispose(); coldFactory.dispose(); } };
-}
-
 export const MOONBASE_DEFINITION: AnimatedBuildingDefinition = {
   ...definitions.animatedBuildings.moonbase,
     obstacleRadius: 1,
-  prepare,
-  oninit: ({ model, prepared, itemEntities, world, art, displays }) => {
+  fxSources: moonbaseFxSources,
+  oninit: ({ model, animState, sprites, itemEntities, world, displays }) => {
     if (!displays) throw new Error('Moonbase needs its display group');
-    model.userData.moonbase = new Moonbase(model, prepared as MoonbaseResources, displays, itemEntities, world, art);
+    if (!sprites) throw new Error('Moonbase needs the placement sprite resources');
+    model.userData.moonbase = new Moonbase(model, animState, sprites, displays, itemEntities, world);
   },
   onrestore: ({ model }, components) => stateOf(model).restore(components),
   exportComponents: ({ model }) => stateOf(model).exportComponents(),
-  onreskin: ({ model, prepared }) => stateOf(model).refreshArt(prepared as MoonbaseResources),
   ondispose: ({ model }) => stateOf(model).dispose(),
   onupdate: ({ model }, dt) => stateOf(model).update(dt),
   renderEffects: ({ model }) => stateOf(model).renderEffects,

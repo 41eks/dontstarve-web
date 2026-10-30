@@ -34,9 +34,11 @@ async function setup(definition = TREASURE_CHEST_DEFINITION) {
   } as unknown as WorldContext;
   const changes = vi.fn();
   const placement = new AnimatedBuildingPlacement(world, { building: definition }, () => true, changes);
-  await placement.spawn('building');
+  placement.spawn('building');
   const model = scene.children[0];
   const animation = prefabInstance(model)!.sprite as SpriteAnimationController;
+  // Opening and closing clips play out only once the display has drawn the building.
+  await vi.waitFor(() => expect(prefabInstance(model)!.sprite.loaded).toBe(true));
   const playOnce = vi.spyOn(animation, 'playOnce');
   const start = vi.spyOn(animation, 'start');
   vi.spyOn(PointerRaycaster.prototype, 'raycastPointer').mockImplementation((objects) =>

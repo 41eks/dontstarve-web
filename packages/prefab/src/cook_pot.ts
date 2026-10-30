@@ -1,4 +1,4 @@
-import { prefabDisplay, type SpriteState } from '@dontstarve-web/display';
+import { type SpriteState } from '@dontstarve-web/display';
 import definitions from './definitions.json' with { type: 'json' };
 import {
     AnimatedBuildingPlacement,
@@ -9,12 +9,11 @@ import {
 import type { WorldContext } from './worldContext';
 import type { AnimatedBuildingEventContext } from './animatedBuildingPlacement';
 import { prefabInstance } from './prefabInstance';
-import { createRenderEffect } from '@dontstarve-web/signals';
 import type * as THREE from 'three';
 import { PlaySound, type SoundHandle } from './sound';
 import { Stewer, type StewerSaveData } from '../../componets/src/stewer';
-import { BASE_COOK_TIME, GetRecipe, recipes } from '../../componets/src/cooking';
-import { createMaterials, loadBuild, smallHash, type BuildPackage } from '../../animation/src/animationAssets';
+import { BASE_COOK_TIME, GetRecipe } from '../../componets/src/cooking';
+import type { AnimState } from '@dontstarve-web/animation/animState';
 import { createBuildingContainer } from './containers';
 
 export const BEEFALO_FEED_COOK_TIME = BASE_COOK_TIME * GetRecipe('cookpot', 'beefalofeed')!.cooktime;
@@ -26,18 +25,9 @@ export interface CookPotSaveState {
     chef_id?: string;
 }
 
-const foodBuilds = new Map<string, BuildPackage>();
-async function prepareFoodBuilds(): Promise<void> {
-    const builds = new Set(Object.values(recipes.cookpot).map(recipe => recipe.overridebuild ?? 'cook_pot_food'));
-    await Promise.all([...builds].map(async build => {
-        foodBuilds.set(build, await loadBuild(`${build}.zip`, `${import.meta.env.BASE_URL}dst/data/anim`));
-    }));
-}
-
 interface PotPresentation {
-    readonly foodMaterials: Map<string, ReturnType<typeof createMaterials>>;
+    readonly animState: AnimState;
     sound?: SoundHandle;
-    stopProduct?: () => void;
 }
 const presentations = new WeakMap<THREE.Group, PotPresentation>();
 
@@ -46,18 +36,12 @@ function showProduct(model: THREE.Group): void {
     const stewer = prefabInstance(model)!.components.stewer as Stewer;
     if (!stewer.product) return;
     const recipe = stewer.GetRecipeForProduct();
-    const buildName = recipe?.overridebuild ?? 'cook_pot_food';
-    const build = foodBuilds.get(buildName)!;
-    const presentation = presentations.get(model)!;
-    let materials = presentation.foodMaterials.get(buildName);
-    if (!materials) {
-        materials = createMaterials(build);
-        presentation.foodMaterials.set(buildName, materials);
-    }
+    const { animState } = presentations.get(model)!;
     const level = recipe?.potlevel ?? 'mid';
-    (prefabInstance(model)!.sprite as SpriteState).setSymbolOverrides(new Map([
-        [smallHash('swap_cooked'), { build: build.build, materials, symbolHash: smallHash(recipe?.overridesymbolname ?? stewer.product) }],
-    ]), ['high', 'mid', 'low'].filter(candidate => candidate !== level).map(candidate => `swap_${candidate}`));
+    for (const candidate of ['high', 'mid', 'low']) {
+        if (candidate === level) animState.Show(`swap_${candidate}`); else animState.Hide(`swap_${candidate}`);
+    }
+    animState.OverrideSymbol('swap_cooked', recipe?.overridebuild ?? 'cook_pot_food', recipe?.overridesymbolname ?? stewer.product);
 }
 
 export function cookPotState(model: THREE.Group): CookPotSaveState | undefined {
@@ -78,13 +62,9 @@ function continueCooking(model: THREE.Group): void {
     presentation.sound = PlaySound('dontstarve/common/cookingpot_rattle', model.position);
 }
 
-function initializePot({ model, instance, art, world }: AnimatedBuildingEventContext): void {
-    const presentation: PotPresentation = { foodMaterials: new Map() };
+function initializePot({ model, instance, animState, world }: AnimatedBuildingEventContext): void {
+    const presentation: PotPresentation = { animState };
     presentations.set(model, presentation);
-    prefabDisplay(model)!.onDispose(() => {
-        for (const materials of presentation.foodMaterials.values()) for (const material of materials) material.dispose();
-        presentations.delete(model);
-    });
     const components = instance.components;
     const stewer = new Stewer({ prefab: 'cookpot', components: { container: components.container! },
         getPosition: () => instance.position,
@@ -94,18 +74,15 @@ function initializePot({ model, instance, art, world }: AnimatedBuildingEventCon
     components.stewer = stewer;
     stewer.onstartcooking = () => continueCooking(model);
     stewer.oncontinuecooking = () => continueCooking(model);
-    // cookpot.lua showproduct on donecooking / continuedone, redone for every rebuilt sprite.
-    presentation.stopProduct = createRenderEffect(() => {
-        art?.get();
-        if (stewer.state.done.get() && stewer.state.product.get() !== undefined) showProduct(model);
-    });
     stewer.ondonecooking = () => {
         presentation.sound?.stop();
         presentation.sound = undefined;
         PlaySound('dontstarve/common/cookingpot_finish', model.position);
         (prefabInstance(model)!.sprite as SpriteState).playOnce('cooking_pst', () => (prefabInstance(model)!.sprite as SpriteState).start('idle_full'));
+        // ShowProduct: the display dresses every drawn sprite in the AnimState.
+        showProduct(model);
     };
-    stewer.oncontinuedone = () => { (prefabInstance(model)!.sprite as SpriteState).start('idle_full'); };
+    stewer.oncontinuedone = () => { (prefabInstance(model)!.sprite as SpriteState).start('idle_full'); showProduct(model); };
     stewer.onharvest = () => {
         (prefabInstance(model)!.sprite as SpriteState).start('idle_empty');
         PlaySound('dontstarve/common/cookingpot_close', model.position);
@@ -114,7 +91,6 @@ function initializePot({ model, instance, art, world }: AnimatedBuildingEventCon
     model.addEventListener('burntup' as never, stopSound);
     instance.onRemove(() => {
         stopSound();
-        presentation.stopProduct?.();
         model.removeEventListener('burntup' as never, stopSound);
     });
 }
@@ -140,7 +116,6 @@ export const COOK_POT_DEFINITION: AnimatedBuildingDefinition = {
     hammerEffect: { archive: 'structure_collapse_fx.zip', animation: 'collapse_small', name: 'collapse' },
     interaction: { ...definitions.animatedBuildings.cookpot.interaction, closeImmediately: true },
     onbuilt,
-    prepare: prepareFoodBuilds,
     oninit: initializePot,
     onhit: ({ model, animation }) => {
         const stewer = prefabInstance(model)!.components.stewer as Stewer;
@@ -191,7 +166,6 @@ export const COOK_POT_DEFINITION: AnimatedBuildingDefinition = {
     onupdate: ({ model }, dt) => (prefabInstance(model)!.components.stewer as Stewer | undefined)?.LongUpdate(dt),
     ondispose: ({ model }) => {
         presentations.get(model)?.sound?.stop();
-        presentations.get(model)?.stopProduct?.();
         (prefabInstance(model)!.components.stewer as Stewer | undefined)?.OnRemoveFromEntity();
     },
 };

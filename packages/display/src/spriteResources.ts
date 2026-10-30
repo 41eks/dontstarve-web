@@ -1,12 +1,15 @@
 import { ArchiveSpriteAssets, preloadSharedArchiveSprite, type ArchiveSpriteDefinition, type ArchiveSpriteOptions } from '@dontstarve-web/animation/archiveSprite';
 import { loadSpriteSkinArchive } from '@dontstarve-web/animation/animationAssets';
-import { createSpriteFactory, SpriteController, type AnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
+import { createAnimatedSpriteSource, createSpriteFactory, SpriteController, type AnimatedSpriteFactory, type AnimatedSpriteOptions,
+  type AnimatedSpriteSourceOptions } from '@dontstarve-web/animation/sprite';
 import { createStaticSpriteFactory, type StaticSpriteFactory, type StaticSpriteOptions } from '@dontstarve-web/animation/wallSprite';
 import type { ArchiveSpriteSource } from './displayEngine';
 import type { LoadedSpriteSource, SpriteSource } from './prefabDisplay';
 
 type ArchiveDefinition = Omit<ArchiveSpriteDefinition, 'animation' | 'loop'>;
 type ArchiveOptions = Omit<ArchiveSpriteOptions, 'foot' | 'name' | 'sharedAnimations'>;
+/** Per-entity options of an animated source's sprites; the clip and its first frame come from the display. */
+export type AnimatedSpriteDeclaration = Omit<AnimatedSpriteOptions, 'initialAnimation' | 'initialFrame' | 'getWatchWorldContent' | 'snowCovered'>;
 interface FactoryDefinition { animationArchive: string; extraAnimationArchives?: readonly string[]; buildArchive: string; skinArchive?: string }
 
 export async function prewarmCachedBuilds(assets: ArchiveSpriteAssets, archives: readonly string[]): Promise<void> {
@@ -19,6 +22,8 @@ export class SpriteResources {
   private readonly archiveSources = new Map<string, ArchiveSpriteSource>();
   private readonly factorySources = new Map<typeof SpriteController, Map<string, LoadedSpriteSource>>();
   private readonly factories = new Set<AnimatedSpriteFactory>();
+  private readonly animatedFactories = new Map<string, Promise<AnimatedSpriteFactory>>();
+  private readonly animatedSources = new Map<string, LoadedSpriteSource>();
   private readonly staticSources = new Map<string, LoadedSpriteSource>();
   private readonly staticFactories = new Set<StaticSpriteFactory>();
   private disposed = false;
@@ -77,6 +82,35 @@ export class SpriteResources {
     return source;
   }
 
+  /**
+   * `createAnimatedSpriteSource` art: one bank, build, skin and symbol overrides shared by every declaration of the same
+   * archive and source options; `sprite` holds each declaration's own options, such as scale and hidden layers.
+   */
+  animated(archive: string, source: AnimatedSpriteSourceOptions = {}, sprite: AnimatedSpriteDeclaration = {}): LoadedSpriteSource {
+    const factoryKey = JSON.stringify([archive, source]), key = JSON.stringify([factoryKey, sprite]);
+    let declared = this.animatedSources.get(key);
+    if (!declared) {
+      let loaded: SpriteSource | undefined;
+      declared = { peek: () => loaded, load: () => {
+        if (this.disposed) return Promise.reject(new Error('Sprite resources disposed'));
+        let request = this.animatedFactories.get(factoryKey);
+        if (!request) {
+          request = createAnimatedSpriteSource(this.base, archive, source).then(factory => {
+            if (this.disposed) { factory.dispose(); throw new Error('Sprite resources disposed'); }
+            this.factories.add(factory);
+            return factory;
+          });
+          this.animatedFactories.set(factoryKey, request);
+          void request.catch(() => this.animatedFactories.delete(factoryKey));
+        }
+        return request.then(factory => loaded = { create: (animation, frame) => factory.create({ ...sprite, initialAnimation: animation, initialFrame: frame }),
+          release: drawn => factory.disposeSprite(drawn) });
+      } };
+      this.animatedSources.set(key, declared);
+    }
+    return declared;
+  }
+
   /** Static build poses and their transient clips share one factory per compatible declaration. */
   staticFactory(buildArchive: string, options: StaticSpriteOptions): LoadedSpriteSource {
     const key = JSON.stringify([buildArchive, options]);
@@ -105,6 +139,6 @@ export class SpriteResources {
     for (const factory of this.staticFactories) factory.dispose();
     this.archives.dispose();
     this.factories.clear(); this.archiveSources.clear(); this.factorySources.clear();
-    this.staticFactories.clear(); this.staticSources.clear();
+    this.staticFactories.clear(); this.staticSources.clear(); this.animatedFactories.clear(); this.animatedSources.clear();
   }
 }

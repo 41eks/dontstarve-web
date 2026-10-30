@@ -1,27 +1,29 @@
 import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import * as THREE from 'three';
-import type { AnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
-import type { PrefabDisplay, SpriteState } from '@dontstarve-web/display';
+import type { PrefabDisplay, SpriteResources, SpriteState } from '@dontstarve-web/display';
 import { createPrefabEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
 import { ComponentTimer } from '../../componets/src/timer';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
 import { polarLight } from './stafflight';
+import { createEffect } from '@dontstarve-web/signals';
 import type { BuildingRenderEffect } from './animatedBuildingPlacement';
 
-export interface MoonbaseFxResources {
-  beamFactory: AnimatedSpriteFactory;
-  coldFactory: AnimatedSpriteFactory;
-  durations: Readonly<Record<string, number>>;
-}
 interface Fx extends BuildingRenderEffect {
   instance: PrefabInstance;
   display: PrefabDisplay;
   animation: SpriteState;
   removal: ComponentTimer;
   createdAt: number;
+  stop?: () => void;
 }
 const PATH = 'dontstarve/common/together/moonbase/';
+const beamSource = (sprites: SpriteResources, prefab: string) => sprites.animated('moonbase_fx.zip', {}, { name: prefab, scale: .02 });
+const coldSource = (sprites: SpriteResources, prefab: string) =>
+  sprites.animated('star_cold.zip', {}, { name: prefab, scale: .02 * .92, hiddenLayers: ['shadow'] });
+/** positronbeam / positronpulse / staffcoldlightfx, the moonbase's prefab dependencies. */
+export const moonbaseFxSources = (sprites: SpriteResources) => [
+  ...['positronbeam_back', 'positronbeam_front', 'positronpulse'].map(prefab => beamSource(sprites, prefab)), coldSource(sprites, 'staffcoldlightfx')];
 
 /** positronbeam.lua and stafflight.lua's nonpersistent, parented staffcoldlightfx branch. */
 export class MoonbaseEffects {
@@ -38,19 +40,18 @@ export class MoonbaseEffects {
   private readonly model: THREE.Group;
   private readonly displays: PrefabDisplayGroup;
   private readonly scheduler: GameTimeScheduler;
-  private readonly resources: MoonbaseFxResources;
-  constructor(model: THREE.Group, displays: PrefabDisplayGroup, scheduler: GameTimeScheduler, resources: MoonbaseFxResources) {
-    this.model = model; this.displays = displays; this.scheduler = scheduler; this.resources = resources;
+  /** The placement's shared sources: moonbase_fx for the beam and pulse, star_cold for the staff's cold light. */
+  private readonly sprites: SpriteResources;
+  constructor(model: THREE.Group, displays: PrefabDisplayGroup, scheduler: GameTimeScheduler, sprites: SpriteResources) {
+    this.model = model; this.displays = displays; this.scheduler = scheduler; this.sprites = sprites;
     this.lightStart = new ComponentTimer(scheduler, () => prefabInstance(model)!.light.set(
       { radius: 6, intensity: .75, falloff: .75, colour: [128 / 255, 128 / 255, 1] }));
     this.lightStop = new ComponentTimer(scheduler, () => prefabInstance(model)!.light.set(null));
   }
   private foot(): THREE.Vector3 { return this.model.position; }
   private create(prefab: string, clip: string, sortLayer: number, cold = false): Fx {
-    const factory = cold ? this.resources.coldFactory : this.resources.beamFactory;
-    const { instance, display } = createPrefabEntity(prefab, { create: initialAnimation => factory.create({ initialAnimation, name: prefab,
-      scale: cold ? .02 * .92 : .02, ...(cold ? { hiddenLayers: ['shadow'] } : {}) }), release: sprite => factory.disposeSprite(sprite) },
-      { name: clip, billboard: true }, prefab);
+    const source = cold ? coldSource(this.sprites, prefab) : beamSource(this.sprites, prefab);
+    const { instance, display } = createPrefabEntity(prefab, source, { name: clip, billboard: true }, prefab);
     const object = display.model;
     instance.position.copy(this.foot());
     instance.persists = false;
@@ -65,7 +66,7 @@ export class MoonbaseEffects {
   }
   private remove(fx: Fx): void {
     if (!this.effects.delete(fx)) return;
-    fx.removal.stop(); fx.instance.remove(); fx.display.dispose();
+    fx.stop?.(); fx.removal.stop(); fx.instance.remove(); fx.display.dispose();
   }
   private sound(event: string): void {
     for (const sound of this.oneShots) if (!sound.isPlaying()) this.oneShots.delete(sound);
@@ -101,7 +102,8 @@ export class MoonbaseEffects {
     this.beamSound?.stop(); this.beamSound = undefined;
     this.sound('beam_stop'); pulse.animation.setVisible(true);
     pulse.animation.playOnce('lunar_full_pst');
-    pulse.removal.start(this.resources.durations.lunar_full_pst + 2 / 30);
+    // DoTaskInTime(AnimState:GetCurrentAnimationLength() + 2 * FRAMES, inst.Remove)
+    pulse.removal.start(pulse.animation.currentAnimationLength + 2 / 30);
   }
   stop(): void {
     if (this.pulse) { this.remove(this.pulse); this.pulse = undefined; }
@@ -109,8 +111,9 @@ export class MoonbaseEffects {
     if (this.front || this.back) {
       for (const [fx, layer] of [[this.front, 'front'], [this.back, 'back']] as const) if (fx) {
         if (layer === 'front') this.sound('beam_stop_fail');
-        fx.animation.playOnce(`lunar_${layer}_pst`);
-        fx.removal.start(this.resources.durations[`lunar_${layer}_pst`] + 1 / 30);
+        // ListenForEvent("animover", inst.Remove) and DoTaskInTime(GetCurrentAnimationLength() + FRAMES, inst.Remove)
+        fx.animation.playOnce(`lunar_${layer}_pst`, () => this.remove(fx));
+        fx.removal.start(fx.animation.currentAnimationLength + 1 / 30);
       }
       this.front = undefined; this.back = undefined;
       this.lightStop.start(9 / 30);
@@ -120,8 +123,16 @@ export class MoonbaseEffects {
   showCold(): void {
     if (this.cold) return;
     const cold = this.cold = this.create('staffcoldlightfx', 'idle_loop', 1, true);
-    const idle = () => { if (this.cold === cold) cold.animation.playOnce(['idle_loop', 'idle_loop2', 'idle_loop3'][Math.floor(Math.random() * 3)], idle); };
-    cold.animation.playOnce('idle_loop', idle);
+    // ListenForEvent("animover", PlayRandomStarIdle): an undrawn sprite has no animover, so it holds idle_loop and the random
+    // chain resumes once the display has drawn it again.
+    let chaining = false;
+    const idle = () => {
+      if (this.cold !== cold) return;
+      chaining = cold.animation.loaded;
+      if (chaining) cold.animation.playOnce(['idle_loop', 'idle_loop2', 'idle_loop3'][Math.floor(Math.random() * 3)], idle);
+      else cold.animation.start('idle_loop');
+    };
+    cold.stop = createEffect(() => { cold.animation.art.get(); if (!chaining) idle(); });
     this.coldSound = PlaySound('dontstarve/common/staff_coldlight_LP', this.model.position);
   }
   hideCold(): void {

@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
 import { SCULPTING_TABLE_DEFINITION, SCULPTING_TABLE_ID } from '../../prefab/src/sculptingtable';
-import type { SpriteController } from '../src/sprite';
+import { smallHash } from '../src/animationAssets';
 import { deserializeSave } from '../../../src/save/deserialize';
 import type { SaveDocument } from '../../../src/save/types';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
@@ -25,6 +25,12 @@ async function createPlacement() {
   return { placement, dropLoot };
 }
 
+/** The held block the table's own AnimState declares for its sprite: OverrideSymbol("cutstone01", swapfile, symbol). */
+const heldBlock = (model: THREE.Object3D) => {
+  const declared = prefabInstance(model)!.sprite.sprite.peek().appearance.get('anim-state');
+  return declared?.kind === 'anim-state' ? declared.state.peek().overrides.get(smallHash('cutstone01'))?.sources : undefined;
+};
+
 const offer = (prefab: string) => {
   const taken = vi.fn(() => true);
   return { entity: { prefab, hasTag: () => false }, take: taken };
@@ -40,11 +46,10 @@ it('accepts one marble or cutstone, hands it back on PICK and restores it from a
   const itemSound = 'dontstarve/common/together/moonbase/moonstaff_place';
   const { placement } = await createPlacement();
   try {
-    await placement.spawn(SCULPTING_TABLE_ID);
+    placement.spawn(SCULPTING_TABLE_ID);
     const [{ model, canGive }] = placement.giveTargets;
     const trader = (findActionEntity(model)?.components ?? prefabInstance(model)!.components).trader, pickable = (findActionEntity(model)?.components ?? prefabInstance(model)!.components).pickable;
-    const sprite = prefabInstance(model)!.sprite as SpriteController;
-    let override = vi.spyOn(sprite, 'overrideSymbol');
+    expect(heldBlock(model)).toBeUndefined();
     expect(prefabInstance(model)!.listTags()).toContain('trader');
     expect(prefabInstance(model)!.listTags()).not.toContain('pickable');
     expect(placement.exportRecords()[0].record.components).not.toHaveProperty('sculptingtable');
@@ -64,8 +69,7 @@ it('accepts one marble or cutstone, hands it back on PICK and restores it from a
     expect(trader.AcceptGift(marble.entity, marble.take)).toBe(true);
     expect(marble.take).toHaveBeenCalledOnce();
     expect(play).toHaveBeenCalledExactlyOnceWith(itemSound, model.position);
-    await new Promise(resolve => setTimeout(resolve, 0));
-    expect(override).toHaveBeenLastCalledWith('cutstone01', expect.objectContaining({ symbolHash: expect.any(Number) }));
+    expect(heldBlock(model)).toEqual([{ archive: 'marble.zip', symbol: smallHash('marble01') }]);
     expect(prefabInstance(model)!.listTags()).toContain('pickable');
     expect(canGive(offer('cutstone').entity)).toBe(false);
     expect(trader.AbleToAccept(offer('cutstone').entity)).toEqual({ ok: false, reason: 'SLOTFULL' });
@@ -85,7 +89,7 @@ it('accepts one marble or cutstone, hands it back on PICK and restores it from a
         buildings: definitions.animatedBuildings, walls: Object.keys(definitions.walls) });
     };
     expect(() => parse({ ...saved, components: { ...saved.components, sculptingtable: { itemname: 'log' } } })).toThrow(/itemname/);
-    const restored = await placement.spawnFromSave(SCULPTING_TABLE_ID, parse(saved).world.entities.sculptingtable[0]);
+    const restored = placement.spawnFromSave(SCULPTING_TABLE_ID, parse(saved).world.entities.sculptingtable[0]);
     expect((findActionEntity(restored)?.components ?? prefabInstance(restored)!.components).pickable.product).toBe('marble');
     expect(prefabInstance(restored)!.listTags()).toContain('pickable');
     // Lua onload calls giveitem, including its sound; reskinning only replaces art.
@@ -95,7 +99,8 @@ it('accepts one marble or cutstone, hands it back on PICK and restores it from a
     expect(reskin.apply()).toBe(true);
     reskin.dispose();
     expect(play).toHaveBeenCalledTimes(2);
-    override = vi.spyOn(prefabInstance(model)!.sprite as SpriteController, 'overrideSymbol');
+    // The declaration belongs to the entity, so the new skin's sprite is dressed with the same block.
+    expect(heldBlock(model)).toEqual([{ archive: 'marble.zip', symbol: smallHash('marble01') }]);
 
     // pickable.lua Pick: the product goes to the picker, then the block disappears and the slot reopens.
     expect(pickable.pick({ giveItem: () => false })).toBe(false);
@@ -105,8 +110,7 @@ it('accepts one marble or cutstone, hands it back on PICK and restores it from a
     expect(play).toHaveBeenCalledTimes(3);
     expect(play).toHaveBeenLastCalledWith(itemSound, model.position);
     expect(doer.giveItem).toHaveBeenCalledWith('marble', 1, expect.anything());
-    await new Promise(resolve => setTimeout(resolve, 0));
-    expect(override).toHaveBeenLastCalledWith('cutstone01', undefined);
+    expect(heldBlock(model)).toBeUndefined();
     expect(prefabInstance(model)!.listTags()).not.toContain('pickable');
     expect(pickable.pick(doer)).toBe(false);
     expect(play).toHaveBeenCalledTimes(3);

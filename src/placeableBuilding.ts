@@ -135,7 +135,8 @@ export class PlaceableBuildingPlacement {
         this.fences = new FencePlacement(world, consumeBufferedBuild);
     }
 
-    begin(buildId: PlaceableBuildingId, skinId?: string): Promise<void> {
+    /** Animated buildings draw their placer at once; fences and walls still resolve once their art has loaded. */
+    async begin(buildId: PlaceableBuildingId, skinId?: string): Promise<void> {
         if (isFenceId(buildId)) {
             this.animated.cancel(); this.walls.cancel();
             return this.fences.begin(buildId, skinId);
@@ -148,7 +149,7 @@ export class PlaceableBuildingPlacement {
         return this.animated.begin(buildId, skinId);
     }
 
-    spawn(buildId: PlaceableBuildingId, skinId?: string): Promise<void> {
+    async spawn(buildId: PlaceableBuildingId, skinId?: string): Promise<void> {
         return isFenceId(buildId) ? this.fences.spawn(buildId, skinId)
             : isWallId(buildId) ? this.walls.spawn(buildId, skinId)
             : this.animated.spawn(buildId, skinId);

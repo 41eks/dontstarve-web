@@ -5,7 +5,7 @@ import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
 import { createArchiveEntity, createEmptyEntity, createPrefabEntity, prefabInstance } from '../../prefab/src/prefabInstance';
 import { actionEntity, findActionEntity } from '../../prefab/src/actionEntity';
-import { PrefabDisplayGroup, prefabDisplay, SpriteState } from '@dontstarve-web/display';
+import { PrefabDisplayGroup, prefabDisplay, SpriteResources, SpriteState } from '@dontstarve-web/display';
 import { animStateDeclarations } from '../../display/src/spriteState';
 import { AnimState, mergeAnimStates, resolveAnimState, type AnimStateArt } from '../src/animState';
 import { smallHash } from '../src/animationAssets';
@@ -135,6 +135,29 @@ it('the model stands on the entity\'s own position vector, so moving it never to
   instance.sprite.start('open');
   expect(published).toHaveBeenCalledOnce();
   expect(instance.position.toArray()).toEqual([3, 0, 4]);
+});
+
+it('stands a deferred first sprite on the foot of the entity\'s first clip, and keeps that foot through sleep and wake', async () => {
+  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  vi.stubGlobal('window', new EventTarget());
+  const resources = new SpriteResources('/dst/data/anim');
+  const source = resources.animated('cook_pot.zip', {}, { name: 'CookPot', scale: .02 });
+  const { instance, display } = createPrefabEntity('cookpot', source, { name: 'idle_empty', billboard: true }, 'CookPot',
+    undefined, undefined, { alignBottom: true });
+  try {
+    // A restored pot is already full before its art arrives; it is drawn at the empty pot's foot, as one drawn at once would be.
+    instance.sprite.start('idle_full');
+    await display.artLoaded();
+    const loaded = await source.load(), empty = loaded.create('idle_empty', 'first');
+    empty.updateWorldMatrix(true, true);
+    const foot = -new THREE.Box3().setFromObject(empty).min.y;
+    loaded.release(empty);
+    expect(foot).toBeGreaterThan(0);
+    expect(display.model.children[0].position.y).toBeCloseTo(foot);
+    instance.setActive(false); await tick();
+    instance.setActive(true); await tick();
+    expect(display.model.children[0].position.y).toBeCloseTo(foot);
+  } finally { instance.remove(); display.dispose(); resources.dispose(); }
 });
 
 it('draws a frame declared as a fraction of the clip once the art it was declared before has loaded', async () => {

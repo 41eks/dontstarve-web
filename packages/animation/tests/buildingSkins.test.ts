@@ -223,7 +223,7 @@ describe('DST building skins', () => {
     if (skinInit) expect(skinInit).toHaveBeenCalledTimes(2);
     expect(lookupPrefabInstance(restored)?.skinId).toBe(skinId);
     expect(placement.exportRecords()[1].record).toEqual(record);
-    await expect(placement.spawn(prefabId, 'missing_skin')).rejects.toThrow('Unsupported');
+    expect(() => placement.spawn(prefabId, 'missing_skin')).toThrow('Unsupported');
   });
 
   it('commits skins through the json without replacing the sprite and rejects cancelled or removed commits', async () => {
@@ -232,8 +232,9 @@ describe('DST building skins', () => {
     const world = { scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(),
       camera: new THREE.PerspectiveCamera(), renderer: { domElement: new EventTarget() } } as unknown as WorldContext;
     const placement = new AnimatedBuildingPlacement(world, { researchlab4: RESEARCH_LAB_DEFINITIONS.researchlab4 }, () => true);
-    const model = await placement.spawnFromSave('researchlab4', { id: 'lab:signal', transform: { position: [3, 0, 4], rotationY: 0 },
+    const model = placement.spawnFromSave('researchlab4', { id: 'lab:signal', transform: { position: [3, 0, 4], rotationY: 0 },
       components: { building: { state: 'idle' } } });
+    await prefabDisplay(model)!.artLoaded();
     const signal = prefabInstance(model)!.sprite.skinId;
     const changes: unknown[] = [];
     const stop = signal.subscribe((skinId: unknown) => changes.push(skinId));
@@ -273,11 +274,11 @@ describe('DST building skins', () => {
       camera: new THREE.PerspectiveCamera(), renderer: { domElement: new EventTarget() },
       tickingarea: () => createMemo(() => awake.get()) } as unknown as WorldContext;
     const placement = new AnimatedBuildingPlacement(world, { researchlab4: RESEARCH_LAB_DEFINITIONS.researchlab4 }, () => true);
-    const model = await placement.spawnFromSave('researchlab4', { id: 'lab:resident', transform: { position: [3, 0, 4], rotationY: 0 },
+    const model = placement.spawnFromSave('researchlab4', { id: 'lab:resident', transform: { position: [3, 0, 4], rotationY: 0 },
       components: { building: { state: 'idle' } } });
     const meshes = () => { let count = 0; model.traverse(object => { if (object instanceof THREE.Mesh) count++; }); return count; };
     const tick = () => new Promise(resolve => setTimeout(resolve, 0));
-    await tick();
+    await prefabDisplay(model)!.artLoaded();
     expect(meshes()).toBe(1);
 
     awake.set(false);

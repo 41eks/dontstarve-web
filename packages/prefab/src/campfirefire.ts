@@ -1,6 +1,6 @@
 import type * as THREE from 'three';
 import { createEffect, createSignal, watchSignal } from '@dontstarve-web/signals';
-import type { AnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
+import type { LoadedSpriteSource } from '@dontstarve-web/display';
 import type { BurnFX, BurnFXData } from '../../componets/src/burnable';
 import { FireFX, type FireFXInst, type FireFXLevel, type FireFXLight } from '../../componets/src/firefx';
 import { spawnLightEntity } from './localLight';
@@ -39,13 +39,10 @@ export class CampfireFire implements BurnFX, FireFXInst {
   private readonly cleanups: (() => void)[] = [];
   private onAnimOver?: () => void;
 
-  constructor(factory: AnimatedSpriteFactory, owner: PrefabInstance, ownerModel: THREE.Object3D, data: BurnFXData) {
+  constructor(source: LoadedSpriteSource, owner: PrefabInstance, ownerModel: THREE.Object3D, data: BurnFXData) {
     this.owner = owner;
     this.ownerModel = ownerModel;
-    const { instance, display } = createPrefabEntity(CAMPFIREFIRE_ID, {
-      create: name => factory.create({ initialAnimation: name, name: CAMPFIREFIRE_ID }),
-      release: sprite => factory.disposeSprite(sprite),
-    }, { name: FIRE_LEVELS[0].anim }, CAMPFIREFIRE_ID, instance => {
+    const { instance, display } = createPrefabEntity(CAMPFIREFIRE_ID, source, { name: FIRE_LEVELS[0].anim }, CAMPFIREFIRE_ID, instance => {
       instance.addTag('FX');
       instance.addTag('HASHEATER');
       instance.persists = false;

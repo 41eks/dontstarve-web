@@ -1,6 +1,6 @@
 export { PrefabDisplay, prefabDisplay, type PrefabStatus, type SpriteSource, type LoadedSpriteSource, type PrefabDisplayOptions } from './prefabDisplay';
 export { PrefabDisplayGroup } from './prefabDisplayGroup';
-export { SpriteResources, prewarmCachedBuilds } from './spriteResources';
+export { SpriteResources, prewarmCachedBuilds, type AnimatedSpriteDeclaration } from './spriteResources';
 export { SpriteState, type ArchiveSpriteCommands, type SpriteJson, type ClipJson, type AppearanceJson, type SpriteProbe, type SkinJson, type NamedSpriteArt, type SpriteSourceJson } from './spriteState';
 export { type FxJson, type FxRenderEntry } from './fxAttachments';
 export { type DisplayEngine, type ArchiveSpriteSource } from './displayEngine';

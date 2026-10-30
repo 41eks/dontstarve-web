@@ -16,6 +16,7 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { WorkInst } from '../../componets/src/workable';
 import { CAMPFIREFIRE_ARCHIVE, CAMPFIREFIRE_ID, CampfireFire } from './campfirefire';
 import { PlaySound } from './sound';
+import type { SpriteResources } from '@dontstarve-web/display';
 
 export const FIRE_PIT_ID = 'firepit' as const;
 export type FirePitId = typeof FIRE_PIT_ID;
@@ -31,6 +32,9 @@ const FIREPIT_FUEL_START = 60 + 120;
 const FIREPIT_BONUS_MULT = 2;
 const ADD_FUEL_SOUND = 'dontstarve/common/fireAddFuel';
 const SECTION_STATUS = ['OUT', 'EMBERS', 'LOW', 'NORMAL', 'HIGH'] as const;
+
+/** SpawnPrefab("campfirefire") draws from the placement's shared campfire_fire archive. */
+const campfireFireSource = (sprites: SpriteResources) => sprites.animated(CAMPFIREFIRE_ARCHIVE, {}, { name: CAMPFIREFIRE_ID });
 
 /** skinprefabs.lua: each skin's firepit_init_fn fxoffset. */
 const SKIN_FX_OFFSET: Readonly<Record<string, number>> = {
@@ -56,12 +60,12 @@ class FirePit {
         const inst = actionEntity(model, FIRE_PIT_ID);
         for (const tag of ['campfire', 'structure', 'wildfireprotected', 'cooker', 'storytellingprop']) inst.addTag(tag);
         const scheduler = context.world?.scheduler ?? (this.ownScheduler = new GameTimeScheduler());
-        const factory = context.fxFactories?.get(CAMPFIREFIRE_ARCHIVE);
-        if (!factory) throw new Error('firepit requires the campfirefire animation');
+        if (!context.sprites) throw new Error('firepit requires the placement sprite resources');
+        const source = campfireFireSource(context.sprites);
 
         const burnable = this.burnable = new Burnable(inst, scheduler);
         inst.components.burnable = burnable;
-        burnable.SetFXSpawner(data => data.prefab === CAMPFIREFIRE_ID ? new CampfireFire(factory, instance, model, data) : undefined);
+        burnable.SetFXSpawner(data => data.prefab === CAMPFIREFIRE_ID ? new CampfireFire(source, instance, model, data) : undefined);
         burnable.AddBurnFX(CAMPFIREFIRE_ID, { x: 0, y: 25, z: 0 }, 'firefx', true, undefined, true);
         // ListenForEvent("onextinguish", onextinguish)
         burnable.SetOnExtinguishFn(() => this.fueled.InitializeFuelLevel(0));
@@ -149,9 +153,9 @@ export const FIRE_PIT_DEFINITION: AnimatedBuildingDefinition = {
     obstacleRadius: 0.3,
     hammerWorkLeft: 4, hammerMaterial: 'stone',
     hammerEffect: { archive: 'structure_collapse_fx.zip', animation: 'collapse_small', name: 'collapse' },
+    fxSources: sprites => [campfireFireSource(sprites)],
     hammerExtraLoot: [{ itemId: 'ash', count: 1 }],
     skinInit: firepit_init_fn,
-    fxArchives: [CAMPFIREFIRE_ARCHIVE],
     oninit: context => { context.model.userData.firepit = new FirePit(context); },
     onbuilt,
     onupdate: ({ model }, dt) => {

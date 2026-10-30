@@ -1,17 +1,11 @@
-import { PrefabDisplayGroup } from '@dontstarve-web/display';
+import { PrefabDisplayGroup, SpriteResources, type LoadedSpriteSource } from '@dontstarve-web/display';
 import { ToolMouseTarget } from './toolMouseTarget';
 import { ModelRecords } from './modelRecords';
 import * as THREE from 'three';
-import { ArchiveSpriteAssets } from '@dontstarve-web/animation/archiveSprite';
 import { AnimState, type AnimStateArt } from '@dontstarve-web/animation/animState';
 import { createEffect, watchSignal, getBoundWatchWorldContent, type ReadonlySignal, type Signal } from '@dontstarve-web/signals';
 import { disposeSprite } from './disposeSprite';
-import {
-    createAnimatedSpriteSource,
-    createAnimatedSpriteFactory,
-    type AnimatedSpriteFactory,
-    type AnimatedSpriteSourceOptions,
-} from '@dontstarve-web/animation/sprite';
+import type { AnimatedSpriteSourceOptions } from '@dontstarve-web/animation/sprite';
 import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
 import type { PrefabDisplay, SpriteState } from '@dontstarve-web/display';
 import { watchTileActivity } from './tileActivity';
@@ -76,23 +70,18 @@ export interface AnimatedBuildingDefinition {
     hammerHeldLoot?: (context: AnimatedBuildingEventContext) => readonly { itemId: string; count: number }[];
     /** Existing insts the building holds (occupants, shelved items) leave with their identity and state. */
     hammerDropEntities?: (context: AnimatedBuildingEventContext) => void;
-    /** Animations of the fx children the prefab spawns (SpawnPrefab), shared by the placement and loaded with its art. */
-    fxArchives?: readonly string[];
     /** standardcomponents.lua's burn time, generic fire level and heat propagator size. */
     burnable?: { burnTime: number; fxLevel: 2 | 3 | 4; propagator: 'small' | 'medium' | 'large' };
     onhit?: (context: AnimatedBuildingHammerContext) => void;
     onhammered?: (context: AnimatedBuildingHammerContext) => void;
-    /** Preloaded, temporary destruction art, independent of a building's skin. */
+    /** Temporary destruction art, independent of a building's skin. */
     hammerEffect?: { archive: string; animation: string; name: string };
+    /** Sources of the fx children the prefab spawns (its Lua prefab dependencies), declared on the placement's shared resources. */
+    fxSources?: (sprites: SpriteResources) => readonly LoadedSpriteSource[];
     name: string;
     /** Source AddMiniMapEntity() + MiniMapEntity:SetIcon(); omitted buildings have no map icon. */
     minimapIcon?: string;
     container?: BuildingContainerDefinition;
-    /**
-     * Prepares prefab resources alongside the sprite, without playing effects. Returned
-     * materials belong to this instance's art and are released with it.
-     */
-    prepare?: () => Promise<void | AnimatedBuildingPreparedResources>;
     /** Runs only after successful placement; call onComplete when built effects finish. */
     onbuilt?: (context: AnimatedBuildingBuiltContext) => void;
     /** Runs when an accepted interaction starts its opening animation. */
@@ -132,11 +121,6 @@ export interface AnimatedBuildingDefinition {
 /** An effect drawn at its building's foot point, behind (0) or after (2+) the building (1). */
 export interface BuildingRenderEffect { object: THREE.Group; sortLayer: number; }
 
-export interface AnimatedBuildingPreparedResources {
-    readonly materials: readonly THREE.Material[];
-    dispose?(): void;
-}
-
 export interface AnimatedBuildingEventContext {
     model: THREE.Group;
     /** The building entity: identity, tags and persistence. */
@@ -144,13 +128,13 @@ export interface AnimatedBuildingEventContext {
     animation: SpriteState;
     /** Changes whenever the building's drawn sprite is rebuilt; effects that dress the sprite read it. */
     art?: ReadonlySignal<number>;
+    /** inst.AnimState: the building's own symbol overrides and layers, declared once on its sprite and dressed by the display. */
+    animState: AnimState;
     /** Shared resource owner for the builds named by the entity's AnimState slots; display performs the IO. */
     animStateArt?: AnimStateArt;
+    /** The placement's shared sprite sources for the fx children a building spawns; declaring one performs no IO. */
+    sprites?: SpriteResources;
     skinId?: string;
-    /** Result of the definition's prepare() for the art currently displayed. */
-    prepared?: AnimatedBuildingPreparedResources;
-    /** The definition's fxArchives, by archive. */
-    fxFactories?: ReadonlyMap<string, AnimatedSpriteFactory>;
     itemEntities?: WorldContext['itemEntities'];
     world?: PrefabWorldContext;
     displays?: PrefabDisplayGroup;
@@ -197,19 +181,15 @@ interface AnimatedBuildingInstance<BuildId extends string> {
     /** Draws the building; its sprite is built only while the building's tile is active. */
     readonly display: PrefabDisplay;
     readonly animation: SpriteState;
-    /** The entity's AnimState, for a definition whose skins write it (`skinAnimState`). */
-    readonly animState?: AnimState;
+    /** The entity's own AnimState. */
+    readonly animState: AnimState;
     interactionState?: AnimatedBuildingInteractionState;
     isPlacing: boolean;
     isPlayerNearby: boolean;
     readonly skinId: Signal<string | undefined>;
-    prepared?: AnimatedBuildingPreparedResources;
     stopSkin?: () => void;
     stopActivity?: () => void;
     stopBurning?: () => void;
-    effectFactory?: AnimatedSpriteFactory;
-    fireFactory?: AnimatedSpriteFactory;
-    fxFactories?: ReadonlyMap<string, AnimatedSpriteFactory>;
     fire?: DrawnEffect;
     fireSound?: SoundHandle;
     minimap?: MiniMapState;
@@ -237,15 +217,12 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     private readonly cursor: BuildCursor;
     private readonly pointer: PointerRaycaster;
     private active?: AnimatedBuildingInstance<BuildId>;
-    private loading?: Promise<void>;
-    private previewVersion = 0;
     private readonly mouseRecords = new ModelRecords<AnimatedBuildingInstance<BuildId>>();
     private readonly placed: AnimatedBuildingInstance<BuildId>[] = [];
     private readonly effects = new Set<DrawnEffect>();
-    private readonly effectFactories = new Map<string, Promise<AnimatedSpriteFactory>>();
-    /** Archives, atlas materials and frame geometry shared by every placed building of one build and skin. */
-    private readonly spriteSources = new Map<string, Promise<AnimatedSpriteFactory>>();
-    private readonly skinAssets = new ArchiveSpriteAssets('sprite');
+    /** Archives, atlas materials and frame geometry shared by every placed building of one build and skin, and by their effects. */
+    private readonly sprites = new SpriteResources();
+    private readonly skinAssets = this.sprites.archives;
 
     constructor(
         world: WorldContext,
@@ -271,28 +248,18 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown);
     }
 
-    begin(buildId: BuildId, skinId?: string): Promise<void> {
-        if (this.disposed) return Promise.reject(new Error('Placement has been disposed'));
-        if (this.active) return Promise.resolve();
-        if (this.loading) return this.loading;
+    /** Shows the placer at once; its display draws the preview when its art has loaded. */
+    begin(buildId: BuildId, skinId?: string): void {
+        if (this.disposed) throw new Error('Placement has been disposed');
+        if (this.active) return;
 
         this.actionEvents?.emit('action:begin', { owner: this, action: 'BUILD' });
         this.cursor.show(`: 建造 ${this.definitions[buildId].buildLabel}`, 'left');
-        const previewVersion = ++this.previewVersion;
-        const request = this.createPreview(buildId, previewVersion, skinId)
-            .catch((error: unknown) => {
-                if (previewVersion === this.previewVersion) this.cursor.hide();
-                throw error;
-            })
-            .finally(() => {
-                if (this.loading === request) this.loading = undefined;
-            });
-        this.loading = request;
-        return request;
+        try { this.createPreview(buildId, skinId); } catch (error) { this.cursor.hide(); throw error; }
     }
 
-    async spawn(buildId: BuildId, skinId?: string): Promise<void> {
-        const building = await this.createInstance(buildId, skinId);
+    spawn(buildId: BuildId, skinId?: string): void {
+        const building = this.createInstance(buildId, skinId);
         const target = this.playerFrontGroundPosition();
         building.instance.position.set(target.x, target.y, target.z);
         building.model.visible = true;
@@ -302,8 +269,8 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     }
 
     /** Restores a logical record directly, without crafting or placement callbacks. */
-    async spawnFromSave(buildId: BuildId, record: PlacementSaveRecord): Promise<THREE.Group> {
-        const building = await this.createInstance(
+    spawnFromSave(buildId: BuildId, record: PlacementSaveRecord): THREE.Group {
+        const building = this.createInstance(
             buildId, record.components.building?.skinId, false,
             record.components.building?.state,
         );
@@ -468,8 +435,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         }, TILE_SIZE / 4, undefined, getBoundWatchWorldContent());
         building.stopBurning = burnable.burning.subscribe(burning => {
             if (!burning) { this.releaseFire(building); return; }
-            const fire = this.createEffect(building.fireFactory!, 'fire', `level${spec.fxLevel}`, true, ['FX', 'HASHEATER'],
-                this.definitions[building.buildId].scale);
+            const fire = this.createEffect(this.fireSource(building.buildId), 'fire', `level${spec.fxLevel}`, true, ['FX', 'HASHEATER']);
             fire.instance.position.copy(entity.getPosition());
             building.fire = fire;
             this.displays.mount(fire.display); this.effects.add(fire);
@@ -612,8 +578,9 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     }
 
     private eventContext(building: AnimatedBuildingInstance<BuildId>): AnimatedBuildingEventContext {
-        return { model: building.model, instance: building.instance, animation: building.animation, art: building.animation.art, animStateArt: this.skinAssets, skinId: building.skinId.peek(), prepared: building.prepared,
-            fxFactories: building.fxFactories, itemEntities: this.worldContext.itemEntities, world: this.worldContext, displays: this.displays,
+        return { model: building.model, instance: building.instance, animation: building.animation, art: building.animation.art,
+            animState: building.animState, animStateArt: this.skinAssets, sprites: this.sprites, skinId: building.skinId.peek(),
+            itemEntities: this.worldContext.itemEntities, world: this.worldContext, displays: this.displays,
             remove: () => this.hammerContext(building).remove() };
     }
 
@@ -626,7 +593,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             if (skinId === previous) return;
             const definition = this.definitions[building.buildId];
             // Reskinning runs the old skin's clear_fn, then the new skin's init_fn.
-            if (building.animState && definition.skinAnimState) {
+            if (definition.skinAnimState) {
                 if (previous !== undefined) definition.skinAnimState.clear(building.animState);
                 if (skinId !== undefined) definition.skinAnimState.init(building.animState, definition.skinArchives![skinId]);
             }
@@ -672,18 +639,11 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         for (const effect of this.effects) this.releaseEffect(effect);
         this.effects.clear();
         // Every sprite is released above; only now can the atlases they drew from go.
-        for (const source of this.spriteSources.values()) void source.then((value) => value.dispose(), () => undefined);
-        this.spriteSources.clear();
-        this.displays.dispose(); this.skinAssets.dispose();
-        for (const factory of this.effectFactories.values()) void factory.then((value) => value.dispose(), () => undefined);
-        this.effectFactories.clear();
-
+        this.displays.dispose(); this.sprites.dispose();
     }
 
     cancel() {
-        // Cancel only the placer, including pending asset loads. The buffered build stays in inventory.
-        this.previewVersion += 1;
-        this.loading = undefined;
+        // Cancel only the placer; its display stops any load it started. The buffered build stays in inventory.
         if (this.active) disposeSprite(this.active.model);
         this.active = undefined;
         this.cursor.hide();
@@ -712,10 +672,6 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         }
         if (event.button !== 0) return;
         if (event.defaultPrevented) return;
-        if (this.loading) {
-            event.preventDefault();
-            return;
-        }
         if (this.active) {
             event.preventDefault();
             this.placeActiveBuilding(event);
@@ -796,12 +752,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             const container = building.instance.components?.container;
             if (container && (!container.canbeopened || !container.CanOpen())) return;
             container?.Open(this.player);
-            definition.onopen?.({
-                model: building.model,
-                instance: building.instance,
-                animation: building.animation,
-                skinId: building.skinId.peek(),
-            });
+            definition.onopen?.(this.eventContext(building));
             if (interaction.openImmediately) {
                 building.interactionState = 'open';
                 this.onInteractionChange?.({ buildId: building.buildId, isOpen: true, model: building.model });
@@ -842,12 +793,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
 
         building.interactionState = interaction.closeImmediately ? 'closed' : 'closing';
         building.instance.components?.container?.Close(this.player);
-        definition.onclose?.({
-            model: building.model,
-            instance: building.instance,
-            animation: building.animation,
-            skinId: building.skinId.peek(),
-        });
+        definition.onclose?.(this.eventContext(building));
         this.onInteractionChange?.({
             buildId: building.buildId,
             isOpen: false,
@@ -860,12 +806,8 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         });
     }
 
-    private async createPreview(buildId: BuildId, previewVersion: number, skinId?: string) {
-        const instance = await this.createInstance(buildId, skinId, true, undefined, true);
-        if (previewVersion !== this.previewVersion) {
-            disposeSprite(instance.model);
-            return;
-        }
+    private createPreview(buildId: BuildId, skinId?: string): void {
+        const instance = this.createInstance(buildId, skinId, true, undefined, true);
         instance.animation.setOpacity(0.65);
         instance.model.visible = false;
         this.active = instance;
@@ -873,13 +815,13 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         this.cursor.update();
     }
 
-    private async createInstance(
+    private createInstance(
         buildId: BuildId,
         skinId?: string,
         attach = true,
         state?: 'idle' | 'closed' | 'open',
         preview = false,
-    ): Promise<AnimatedBuildingInstance<BuildId>> {
+    ): AnimatedBuildingInstance<BuildId> {
         if (this.disposed) throw new Error('Placement has been disposed');
         const definition = this.definitions[buildId];
         const skinArchive = skinId === undefined ? undefined : definition.skinArchives?.[skinId];
@@ -891,56 +833,43 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         const initialAnimation = preview && definition.previewAnimation ? definition.previewAnimation
             : state === 'open' && definition.interaction ? definition.interaction.openAnimation : this.idleAnimation(buildId);
         const held = state === 'open' && !definition.interaction?.openAnimationLoop;
-        const [source, preparedResult, effectFactory, fireFactory, fxFactories] = await Promise.all([
-            // A preview is made translucent through its materials, so it keeps a source of its own.
-            preview ? createAnimatedSpriteSource(`${import.meta.env.BASE_URL}dst/data/anim`, archive, sourceOptions)
-                : this.spriteSource(archive, sourceOptions),
-            definition.prepare?.(),
-            definition.hammerEffect ? this.prepareEffect(definition.hammerEffect.archive) : undefined,
-            definition.burnable ? this.prepareEffect('fire.zip') : undefined,
-            definition.fxArchives && Promise.all(definition.fxArchives.map(async archive => [archive, await this.prepareEffect(archive)] as const))
-                .then(factories => new Map(factories))]);
-        const spriteOptions = (animation: string, initialFrame: 'first' | 'last' = 'first') => ({
-            initialAnimation: animation, initialFrame, name: definition.name, scale: definition.scale,
+        // A preview is made translucent through its materials, so it keeps resources of its own.
+        const resources = preview ? new SpriteResources() : this.sprites;
+        const source: LoadedSpriteSource = resources.animated(archive, sourceOptions, {
+            name: definition.name, scale: definition.scale,
             skinSymbols: definition.skinSymbols, baseSymbols: definition.baseSymbols,
             skinAnimationBanks: skinId === undefined ? undefined : definition.skinAnimationBanks?.[skinId],
             hiddenLayers: definition.hiddenLayers,
         });
-        const animState = definition.skinAnimState && new AnimState();
-        if (animState && skinArchive !== undefined) definition.skinAnimState!.init(animState, skinArchive);
-        const { instance: entity, display } = createPrefabEntity(buildId, {
-            create: (animation, frame) => source.create(spriteOptions(animation, frame)), release: sprite => source.disposeSprite(sprite),
-        }, { name: initialAnimation, held, billboard: true }, definition.name, entity => {
+        // The fx it spawns load with the building, so that they are drawn when they are spawned.
+        const dependencies = preview ? [] : [
+            ...definition.hammerEffect ? [this.hammerEffectSource(definition.hammerEffect)] : [],
+            ...definition.burnable ? [this.fireSource(buildId)] : [],
+            ...definition.fxSources?.(this.sprites) ?? []];
+        const animState = new AnimState();
+        if (definition.skinAnimState && skinArchive !== undefined) definition.skinAnimState.init(animState, skinArchive);
+        const { instance: entity, display } = createPrefabEntity(buildId, source, { name: initialAnimation, held, billboard: true }, definition.name, entity => {
             entity.skinId = skinId;
-            if (animState) { entity.sprite.setAnimState(animState.json, this.skinAssets); return; }
+            entity.sprite.setAnimState(animState.json, this.skinAssets);
+            if (definition.skinAnimState) return;
             entity.sprite.setSkinSource({ art: this.skinAssets,
                 archives: Object.fromEntries(Object.entries(definition.skinArchives ?? {}).map(([id, archive]) =>
                     [id, definition.skinInit?.(id).skinArchive ?? archive])),
                 symbols: definition.skinSymbols, baseSymbols: definition.baseSymbols, animationBanks: definition.skinAnimationBanks });
-        }, undefined, { alignBottom: true });
+        }, undefined, { alignBottom: true, dependencies });
         const { model } = display;
-        const prepared = preparedResult as AnimatedBuildingPreparedResources | undefined;
-        display.onDispose(() => {
-            prepared?.dispose?.();
-            for (const material of prepared?.materials ?? []) material.dispose();
-            if (preview) source.dispose();
-        });
-        if (this.disposed) { disposeSprite(model); throw new Error('Placement has been disposed'); }
+        if (preview) display.onDispose(() => resources.dispose());
         const instance: AnimatedBuildingInstance<BuildId> = {
             buildId,
             model,
             instance: entity,
             display,
             animation: entity.sprite,
-            ...(animState ? { animState } : {}),
-            effectFactory,
-            fireFactory,
-            fxFactories,
+            animState,
             ...(definition.interaction ? { interactionState: state === 'open' ? 'open' as const : 'closed' as const } : {}),
             isPlacing: false,
             isPlayerNearby: state === 'open',
             skinId: entity.sprite.skinId,
-            prepared,
         };
         if (skinArchive !== undefined) instance.instance.skinId = skinId;
         if (state === 'open' && definition.interaction?.openAnimationLoop) {
@@ -951,44 +880,31 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         return instance;
     }
 
+    private hammerEffectSource({ archive, name }: NonNullable<AnimatedBuildingDefinition['hammerEffect']>): LoadedSpriteSource {
+        return this.sprites.animated(archive, {}, { name });
+    }
+
+    private fireSource(buildId: BuildId): LoadedSpriteSource {
+        return this.sprites.animated('fire.zip', {}, { name: 'fire', scale: this.definitions[buildId].scale });
+    }
+
     private isHammerTargetValid(building: AnimatedBuildingInstance<BuildId>): boolean {
         return !this.disposed && this.placed.includes(building) && !building.isPlacing
             && actionEntity(building.model, building.buildId).components.workable?.CanBeWorked() === true
             && building.model.visible && building.model.parent !== null;
     }
 
-    private spriteSource(archive: string, options: AnimatedSpriteSourceOptions): Promise<AnimatedSpriteFactory> {
-        const key = JSON.stringify([archive, options.buildArchive, options.skinArchive, options.symbolOverrides]);
-        let request = this.spriteSources.get(key);
-        if (!request) {
-            request = createAnimatedSpriteSource(`${import.meta.env.BASE_URL}dst/data/anim`, archive, options);
-            this.spriteSources.set(key, request);
-            void request.catch(() => this.spriteSources.delete(key));
-        }
-        return request;
-    }
-
-    private prepareEffect(archive: string): Promise<AnimatedSpriteFactory> {
-        let request = this.effectFactories.get(archive);
-        if (!request) {
-            request = createAnimatedSpriteFactory(`${import.meta.env.BASE_URL}dst/data/anim`, archive);
-            this.effectFactories.set(archive, request);
-            void request.catch(() => this.effectFactories.delete(archive));
-        }
-        return request;
-    }
-
     private hammerContext(building: AnimatedBuildingInstance<BuildId>): AnimatedBuildingHammerContext {
         const position = building.instance.position.clone();
         return {
-            model: building.model, instance: building.instance, animation: building.animation, skinId: building.skinId.peek(), prepared: building.prepared,
+            ...this.eventContext(building),
             workLeft: actionEntity(building.model, building.buildId).components.workable?.GetWorkLeft() ?? 0,
             position, isPlayerNearby: building.isPlayerNearby,
             dropLoot: (items) => this.dropLoot?.(items, position.clone()),
             spawnEffect: () => {
                 const definition = this.definitions[building.buildId].hammerEffect;
-                if (!definition || !building.effectFactory || this.disposed) return;
-                const effect = this.createEffect(building.effectFactory, definition.name, definition.animation, false, ['FX', 'NOCLICK']);
+                if (!definition || this.disposed) return;
+                const effect = this.createEffect(this.hammerEffectSource(definition), definition.name, definition.animation, false, ['FX', 'NOCLICK']);
                 effect.instance.position.copy(position);
                 this.displays.mount(effect.display);
                 this.effects.add(effect);
@@ -1038,22 +954,15 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         building.isPlayerNearby = nearby;
         if (!nearby) this.closeInteraction(building);
         const onProximityChange = nearby ? definition.onturnon : definition.onturnoff;
-        onProximityChange?.({
-            model: building.model,
-            instance: building.instance,
-            animation: building.animation,
-            skinId: building.skinId.peek(),
-        });
+        onProximityChange?.(this.eventContext(building));
     }
 
     private idleAnimation(buildId: BuildId) {
         return this.definitions[buildId].idleAnimation ?? 'idle';
     }
 
-    private createEffect(factory: AnimatedSpriteFactory, prefab: string, animation: string, loop: boolean, tags: readonly string[],
-        scale?: number): DrawnEffect {
-        const effect = createPrefabEntity(prefab, { create: initialAnimation => factory.create({ initialAnimation, name: prefab, scale }),
-            release: sprite => factory.disposeSprite(sprite) }, { name: animation, held: !loop, billboard: true }, prefab);
+    private createEffect(source: LoadedSpriteSource, prefab: string, animation: string, loop: boolean, tags: readonly string[]): DrawnEffect {
+        const effect = createPrefabEntity(prefab, source, { name: animation, held: !loop, billboard: true }, prefab);
         effect.instance.persists = false;
         for (const tag of tags) effect.instance.addTag(tag);
         return effect;

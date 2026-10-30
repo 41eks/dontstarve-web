@@ -35,7 +35,8 @@ it('reads the local temperature once per second, clamped to 0..OVERHEAT_TEMP, an
   const temperature = { value: 35 };
   const { placement, scheduler } = await createPlacement(temperature);
   try {
-    const model = await placement.spawn(WINTEROMETER_ID).then(() => placement.hammerTargets[0].display.model);
+    placement.spawn(WINTEROMETER_ID);
+    const model = placement.hammerTargets[0].display.model;
     const percent = spyPercent(model);
     // StartCheckTemp uses delay 0: the first reading happens on the next scheduler tick, then every second.
     scheduler.advance(0);
@@ -64,9 +65,11 @@ it('cancels the check while the hit clip plays and restarts it when the clip end
   const temperature = { value: 70 };
   const { placement, scheduler } = await createPlacement(temperature);
   try {
-    await placement.spawn(WINTEROMETER_ID);
+    placement.spawn(WINTEROMETER_ID);
     const [{ display: { model }, playHit }] = placement.hammerTargets;
     const sprite = prefabInstance(model)!.sprite as SpriteController;
+    // The hit clip plays out only once the display has drawn the meter.
+    await vi.waitFor(() => expect(sprite.loaded).toBe(true));
     scheduler.advance(0);
     const percent = spyPercent(model);
     playHit();

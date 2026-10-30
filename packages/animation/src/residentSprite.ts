@@ -304,6 +304,8 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
   private queue: { name: string; loop: boolean }[] = [];
   private frame?: number;
   private disposed = false;
+  /** The placeholder holds the transform of a released sprite; before the first sprite it holds none to restore. */
+  private released = false;
 
   /** `initial` is the first sprite, already built in `clip`, if its source is ready; `held` marks a clip shown on its last frame. */
   constructor(model: THREE.Group, create: (initialAnimation: string) => THREE.Group | undefined, release: (sprite: THREE.Group) => void,
@@ -341,6 +343,7 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
     this.settle();
     this.placeholder.visible = sprite.visible;
     this.placeholder.position.copy(sprite.position);
+    this.released = true;
     this.matrixGate.markDirty();
     this.sprite = undefined;
     this.release(sprite);
@@ -366,7 +369,11 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
   private attach(sprite: THREE.Group, replay: boolean): void {
     this.matrixGate.markDirty();
     this.sprite = sprite;
-    if (replay) { sprite.visible = this.placeholder.visible; sprite.position.copy(this.placeholder.position); }
+    if (replay) {
+      sprite.visible = this.placeholder.visible;
+      // A sprite rebuilt on wake stands where the released one stood; a deferred first sprite keeps its own offset.
+      if (this.released) sprite.position.copy(this.placeholder.position);
+    }
     this.placeholder.removeFromParent();
     this.model.add(sprite);
     registerSpriteRenderGroup(this.model, sprite.children[0] as THREE.Group);

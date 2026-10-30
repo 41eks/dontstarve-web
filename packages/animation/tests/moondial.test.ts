@@ -9,6 +9,7 @@ import { MOONDIAL_DEFINITION, MOONDIAL_ID } from '../../prefab/src/moondial';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { displayLightOverride } from '../../display/src/displaySprites';
 import type { SpriteController } from '../src/sprite';
+import { smallHash } from '../src/animationAssets';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import * as sound from '../../prefab/src/sound';
 import { getDstClock, TUNING } from '../../../src/tuning';
@@ -38,7 +39,10 @@ const dayMoon = (day: number) => {
 it('keeps phase look and playback through reskin and records only its skin', async () => {
   const { placement, moon, dispose } = await createPlacement();
   try {
-    await placement.spawn(MOONDIAL_ID);
+    placement.spawn(MOONDIAL_ID);
+    const sprite = prefabInstance(placement.hammerTargets[0].display.model)!.sprite;
+    // The transition clip plays out only once the display has drawn the dial.
+    await vi.waitFor(() => expect(sprite.loaded).toBe(true));
     moon.set(dayMoon(14)); // waning half
     const reskin = await placement.reskinTargets[0].prepareNextSkin();
     expect(reskin.apply()).toBe(true);
@@ -46,6 +50,11 @@ it('keeps phase look and playback through reskin and records only its skin', asy
     expect(lookupPrefabInstance(model)?.skinId).toBe('moondial_an');
     expect((prefabInstance(model)!.sprite as SpriteController).currentAnimation).toBe('wane_to_half');
     expect(displayLightOverride(model)).toBe(.1);
+    // The waning look is the dial's own AnimState, so the new skin's sprite is dressed with it too.
+    const declared = sprite.sprite.peek().appearance.get('anim-state')!;
+    if (declared.kind !== 'anim-state') throw new Error('Missing the dial AnimState');
+    expect(declared.state.peek().overrides.get(smallHash('reflection_half'))?.sources)
+      .toEqual([{ archive: 'moondial_waning_build.zip', symbol: smallHash('reflection_half') }]);
     expect(placement.exportRecords()[0].record.components.building).toMatchObject({ skinId: 'moondial_an' });
     placement.dispose();
     const readMoon = vi.spyOn(moon, 'get');

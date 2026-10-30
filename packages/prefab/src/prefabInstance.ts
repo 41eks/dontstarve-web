@@ -210,7 +210,7 @@ export function setModelTag(model: Object3D, tag: string, present: boolean): voi
 /** A new entity and the display that draws it. The model is the display's; the entity never holds it. */
 export function createPrefabEntity(prefab: string, source: SpriteSource | LoadedSpriteSource, clip: ConstructorParameters<typeof SpriteState>[0], name?: string,
   /** Sets the entity's appearance before the first sprite is drawn, so it is drawn dressed. */
-  initialize?: (instance: PrefabInstance) => void, parentStatus?: ReadonlySignal<PrefabStatus>, displayOptions?: Pick<PrefabDisplayOptions, 'alignBottom'>):
+  initialize?: (instance: PrefabInstance) => void, parentStatus?: ReadonlySignal<PrefabStatus>, displayOptions?: Pick<PrefabDisplayOptions, 'alignBottom' | 'dependencies'>):
   { instance: PrefabInstance; display: PrefabDisplay } {
   const instance = new PrefabInstance(prefab, new SpriteState(clip));
   initialize?.(instance);

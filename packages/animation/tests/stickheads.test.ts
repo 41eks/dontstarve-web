@@ -32,8 +32,10 @@ async function setup(id: typeof HEADS[number]['id'] = PIG_HEAD_ID, tickingarea?:
     ground: new THREE.Group(), renderer: { domElement: new EventTarget() }, scheduler,
     getWatchWorldContent: content.getWatchWorldContent, tickingarea, dropLoot: (items: { itemId: string; count: number }[]) => loot.push(items) } as unknown as WorldContext;
   const placement = new AnimatedBuildingPlacement(world, { [id]: HEADS.find(head => head.id === id)!.definition }, () => false);
-  await placement.spawn(id);
+  placement.spawn(id);
   const model = placement.hammerTargets[0].display.model, sprite = prefabInstance(model)!.sprite as SpriteController;
+  // The display loads the head's art; its clips play once it is drawn.
+  await vi.waitFor(() => expect(sprite.loaded).toBe(true));
   const settle = () => new Promise(resolve => setTimeout(resolve, 0));
   const finish = () => { for (let i = 0; i < 90; i++) sprite.update(1 / 30); };
   return { placement, scheduler, content, loot, model, sprite, settle, finish };
@@ -84,15 +86,14 @@ it('releases the flies swarm sprite outside the tickingarea and rebuilds it with
     const swarm = s.model.children.find(child => child.name === 'flies')!;
     const flies = () => swarm;
     const meshes = () => { let count = 0; flies().traverse(object => { if ((object as THREE.Mesh).isMesh) count++; }); return count; };
-    await s.settle();
-    expect(meshes()).toBeGreaterThan(0);
+    await vi.waitFor(() => expect(meshes()).toBeGreaterThan(0));
     awake.set(false); await s.settle();
     expect(meshes()).toBe(0);
     // The inactive swarm leaves the scene graph and returns to the same parent on wake.
     expect(swarm.parent).toBeNull();
     awake.set(true); await s.settle();
     expect(swarm.parent).toBe(s.model);
-    expect(meshes()).toBeGreaterThan(0);
+    await vi.waitFor(() => expect(meshes()).toBeGreaterThan(0));
     flies().traverse(object => { if ((object as THREE.Mesh).isMesh) expect(object.raycast).not.toBe(THREE.Mesh.prototype.raycast); });
   } finally { s.placement.dispose(); }
 });

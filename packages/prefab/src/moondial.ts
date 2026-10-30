@@ -1,8 +1,6 @@
 import { type SpriteState } from '@dontstarve-web/display';
 import type * as THREE from 'three';
-import { createEffect, createRenderEffect, createSignal, WorldContentKey, type WorldContentSignal, type WorldMoonState, type WorldMoonPhase, type Signal } from '@dontstarve-web/signals';
-import { loadSymbolOverride, type LoadedSymbolOverride } from '@dontstarve-web/animation/sprite';
-import { smallHash } from '@dontstarve-web/animation/animationAssets';
+import { createEffect, createSignal, WorldContentKey, type WorldContentSignal, type WorldMoonState, type WorldMoonPhase } from '@dontstarve-web/signals';
 import { moondial_init_fn } from '@dontstarve-web/animation/prefabskin';
 import definitions from './definitions.json' with { type: 'json' };
 import {
@@ -11,7 +9,6 @@ import {
     type AnimatedBuildingDefinition,
     type AnimatedBuildingEventContext,
     type AnimatedBuildingHammerContext,
-    type AnimatedBuildingPreparedResources,
 } from './animatedBuildingPlacement';
 import { actionEntity } from './actionEntity';
 import { prefabInstance } from './prefabInstance';
@@ -23,7 +20,7 @@ export const MOONDIAL_ID = 'moondial' as const;
 export type MoondialId = typeof MOONDIAL_ID;
 export const MOONDIAL_SKIN_ARCHIVES: Readonly<Record<string, string>> = definitions.animatedBuildings.moondial.skinArchives;
 
-const WANING_BUILD = 'moondial_waning_build.zip';
+const WANING_BUILD = 'moondial_waning_build';
 const REFLECTION_SYMBOLS = ['reflection_quarter', 'reflection_half', 'reflection_threequarter'] as const;
 const SOUND = {
     fill: 'dontstarve/common/together/moondial/fill',
@@ -41,14 +38,9 @@ const LIGHT_STATES: Readonly<Record<WorldMoonPhase, { override: number; radius: 
     full: { override: .5, radius: 5 },
 };
 
-interface MoondialResources extends AnimatedBuildingPreparedResources {
-    readonly waning: Readonly<Record<string, LoadedSymbolOverride>>;
-}
-
 /** moondial.lua's phase look plus SGmoondial.lua's idle / next / hit / placed states. */
 class Moondial {
     private readonly context: AnimatedBuildingEventContext;
-    private readonly resources: Signal<MoondialResources>;
     /** The phase look inputs; the effect in the constructor dresses the current and every rebuilt sprite from them. */
     private readonly look = createSignal<{ phase: WorldMoonPhase; waxing: boolean }>({ phase: 'new', waxing: true });
     private readonly cleanups: (() => void)[] = [];
@@ -62,15 +54,16 @@ class Moondial {
 
     constructor(context: AnimatedBuildingEventContext) {
         this.context = context;
-        this.resources = createSignal(context.prepared as MoondialResources);
         const model = context.model;
         actionEntity(model, MOONDIAL_ID).addTag('structure');
-        // Reflection symbols, light override and light for the current phase. Reskinning rebuilds the sprite.
-        this.cleanups.push(createRenderEffect(() => {
-            context.art?.get();
-            const { phase, waxing } = this.look.get(), { waning } = this.resources.get();
+        // Reflection symbols, light override and light for the current phase; the display dresses every drawn sprite in the AnimState.
+        this.cleanups.push(createEffect(() => {
+            const { phase, waxing } = this.look.get();
             const waxingLook = (waxing && phase !== 'new') || phase === 'full';
-            for (const symbol of REFLECTION_SYMBOLS) this.sprite.overrideSymbol(symbol, waxingLook ? undefined : waning[symbol]);
+            for (const symbol of REFLECTION_SYMBOLS) {
+                if (waxingLook) context.animState.ClearOverrideSymbol(symbol);
+                else context.animState.OverrideSymbol(symbol, WANING_BUILD, symbol);
+            }
             const light = LIGHT_STATES[phase];
             (prefabInstance(model)!.sprite as SpriteState).setLightOverride(light.override);
             prefabInstance(model)!.light.set(light.radius > 0
@@ -91,8 +84,6 @@ class Moondial {
 
     private get sprite(): SpriteState { return (prefabInstance(this.context.model)!.sprite as SpriteState); }
     private get position(): THREE.Vector3 { return this.context.model.position; }
-
-    refreshArt(resources: MoondialResources): void { this.resources.set(resources); }
 
     private phaseAnimation(prefix: string): string { return `${prefix}_${this.phase}`; }
 
@@ -161,15 +152,6 @@ class Moondial {
 
 const moondialOf = (model: THREE.Object3D): Moondial => model.userData.moondial;
 
-async function prepare(): Promise<MoondialResources> {
-    const loaded = await loadSymbolOverride(`${import.meta.env.BASE_URL}dst/data/anim`, WANING_BUILD, REFLECTION_SYMBOLS[0]);
-    // One waning atlas serves the three reflection symbols; the materials belong to the instance's art.
-    return {
-        materials: loaded.materials,
-        waning: Object.fromEntries(REFLECTION_SYMBOLS.map(symbol => [symbol, { ...loaded, symbolHash: smallHash(symbol) }])),
-    };
-}
-
 /** onhammered: DropLoot, rock_break_fx (its Stone_break sound), inst:Remove(). */
 function onhammered({ position, dropLoot, remove }: AnimatedBuildingHammerContext): void {
     dropLoot(buildingRecipeLoot(MOONDIAL_ID));
@@ -182,11 +164,9 @@ export const MOONDIAL_DEFINITION: AnimatedBuildingDefinition = {
     obstacleRadius: 0.45,
     hammerWorkLeft: 4,
     skinInit: moondial_init_fn,
-    prepare,
     onhammered,
     oninit: context => { context.model.userData.moondial = new Moondial(context); },
     onbuilt: (context: AnimatedBuildingBuiltContext) => moondialOf(context.model).placed(context.onComplete),
     onhit: ({ model }) => moondialOf(model).hit(),
-    onreskin: ({ model, prepared }) => moondialOf(model).refreshArt(prepared as MoondialResources),
     ondispose: ({ model }) => moondialOf(model).dispose(),
 };

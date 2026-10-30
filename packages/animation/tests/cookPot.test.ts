@@ -56,6 +56,8 @@ it('cooks with source food layers, resumes saved progress and preserves the prod
   const restoredStewer = (findActionEntity(restored)?.components ?? prefabInstance(restored)!.components).stewer;
   const skinSignal = prefabInstance(restored)!.sprite.skinId;
   expect(restoredAnimation.currentAnimation).toBe('cooking_loop');
+  // The display loads the pot's art; one-shot clips play out once it is drawn.
+  await vi.waitFor(() => expect(prefabInstance(restored)!.sprite.loaded).toBe(true));
   const replacement = await restoredPlacement.reskinTargets[0].prepareNextSkin();
   restoredPlacement.update(1);
   expect(replacement!.apply()).toBe(true);
@@ -74,10 +76,13 @@ it('cooks with source food layers, resumes saved progress and preserves the prod
   const food = await loadBuild('cook_pot_food11.zip', '/dst/data/anim');
   const foodImage = findImage(food.build, smallHash('beefalofeed'), 0)!;
   expect(foodImage).toBeDefined();
-  const mesh = restored.children[0].children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
-  expect(mesh.geometry.groups.some(({ materialIndex }) =>
-    (mesh.material[materialIndex!].map!.image as { data: Uint8Array }).data === food.atlases[0].pixels)).toBe(true);
-  expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
+  const drawsAtlas = (model: THREE.Object3D, pixels: Uint8Array) => {
+    const mesh = model.children[0].children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
+    return mesh.geometry.drawRange.count > 0 && mesh.geometry.groups.some(({ materialIndex }) =>
+      (mesh.material[materialIndex!].map!.image as { data: Uint8Array }).data === pixels);
+  };
+  // The display loads the food build the AnimState names and redraws the pot with it.
+  await vi.waitFor(() => expect(drawsAtlas(restored, food.atlases[0].pixels)).toBe(true));
   const fullRecord = restoredPlacement.exportRecords()[0].record;
   expect(fullRecord.id).toBe(saved.id);
   expect(fullRecord.transform).toEqual(saved.transform);
@@ -89,13 +94,14 @@ it('cooks with source food layers, resumes saved progress and preserves the prod
       stewer: { product: 'kabobs', phase: 'done', remainingSeconds: 0 } } });
   const ordinaryFood = await loadBuild('cook_pot_food.zip', '/dst/data/anim');
   expect(findImage(ordinaryFood.build, smallHash('kabobs'), 0)).toBeDefined();
-  const highMesh = high.children[0].children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
-  expect(highMesh.geometry.groups.some(({ materialIndex }) =>
-    (highMesh.material[materialIndex!].map!.image as { data: Uint8Array }).data === ordinaryFood.atlases[0].pixels)).toBe(true);
-  const appearance = prefabInstance(full)!.sprite.sprite.peek().appearance.get('symbols')!;
-  if (appearance.kind !== 'symbols') throw new Error('Missing cooked food symbols');
-  const unusedMaterial = appearance.overrides.get(smallHash('swap_cooked'))!.materials.at(-1)!;
-  const disposed = vi.spyOn(unusedMaterial, 'dispose');
+  await vi.waitFor(() => expect(drawsAtlas(high, ordinaryFood.atlases[0].pixels)).toBe(true));
+  // SetProductSymbol: kabobs fills the pot high; the food comes from the recipe's build and symbol.
+  const declared = prefabInstance(high)!.sprite.sprite.peek().appearance.get('anim-state')!;
+  if (declared.kind !== 'anim-state') throw new Error('Missing the pot AnimState');
+  const product = declared.state.peek();
+  expect(product.overrides.get(smallHash('swap_cooked'))?.sources).toEqual([{ archive: 'cook_pot_food.zip', symbol: smallHash('kabobs') }]);
+  expect([...product.shownLayers]).toEqual([smallHash('swap_high')]);
+  expect([...product.hiddenLayers].sort()).toEqual([smallHash('swap_mid'), smallHash('swap_low')].sort());
   const receiver = { giveItem: vi.fn(() => true) };
   expect((findActionEntity(full)?.components ?? prefabInstance(full)!.components).stewer.Harvest(receiver)).toBe(true);
   expect(receiver.giveItem).toHaveBeenCalledWith('beefalofeed', 1, new THREE.Vector3(...saved.transform.position));
@@ -108,5 +114,4 @@ it('cooks with source food layers, resumes saved progress and preserves the prod
   expect(prefabInstance(empty)!.listTags()).not.toContain('donecooking');
   expect(prefabInstance(empty)!.sprite.currentAnimation).toBe('idle_empty');
   restoredPlacement.dispose();
-  expect(disposed).toHaveBeenCalledTimes(1);
 });

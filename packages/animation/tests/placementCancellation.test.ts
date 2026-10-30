@@ -109,6 +109,7 @@ it('an accepted action cancels a paid preview through events, skips its own canc
   await begin();
   const paidState = store.exportState();
   const preview = world.scene.children[1];
+  await vi.waitFor(() => expect(lookupPrefabInstance(preview)!.sprite.loaded).toBe(true));
   const geometry = vi.spyOn((preview.children[0].children[0] as THREE.Mesh).geometry, 'dispose');
   const equipped = createEquipmentExistenceState('HANDS');
   equipped.set(actionTool('reskin_tool'));
@@ -229,7 +230,7 @@ it.each(['animated', 'wall'] as const)('%s disposal removes placed sprites, prev
   const pointerDispose = vi.spyOn(PointerRaycaster.prototype, 'dispose');
   await placement.spawn('building');
   await begin();
-  if (kind === 'wall') await vi.waitFor(() => {
+  await vi.waitFor(() => {
     for (const model of world.scene.children) expect(lookupPrefabInstance(model)!.sprite.loaded).toBe(true);
   });
   const resources = world.scene.children.flatMap((model) => {
@@ -246,7 +247,8 @@ it.each(['animated', 'wall'] as const)('%s disposal removes placed sprites, prev
   resources.forEach((resource) => expect(resource).toHaveBeenCalledOnce());
   click(0);
   expect(consume).not.toHaveBeenCalled();
-  await expect(begin()).rejects.toThrow('disposed');
+  // The animated placer throws at once; walls still reject their load.
+  await expect(async () => begin()).rejects.toThrow('disposed');
 });
 
 it('lets the display select wall images only when the shared camera orientation changes', async () => {

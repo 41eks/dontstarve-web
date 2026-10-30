@@ -42,9 +42,11 @@ const strikeAt = (scene: THREE.Scene, fx: object, position: THREE.Vector3) =>
 it('is charged by a strike for three days: zaps on the 10–40 s task, loses a day per cycle, then goes dark', async () => {
   const { placement, scheduler, fx, scene, play } = await createPlacement();
   try {
-    await placement.spawn(LIGHTNING_ROD_ID);
+    placement.spawn(LIGHTNING_ROD_ID);
     const [{ display }] = placement.hammerTargets;
     const model = display.model;
+    // The hit clip plays out only once the display has drawn the rod.
+    await vi.waitFor(() => expect(prefabInstance(model)!.sprite.loaded).toBe(true));
     scene.add(model);
     const components = (findActionEntity(model)?.components ?? prefabInstance(model)!.components);
     expect(components.inspectable.getstatus()).toBeUndefined();

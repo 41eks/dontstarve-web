@@ -1,6 +1,5 @@
 import type * as THREE from 'three';
 import definitions from './definitions.json' with { type: 'json' };
-import { createSharedArchiveSprite, ArchiveSpriteAssets } from '@dontstarve-web/animation/archiveSprite';
 import { createEffect, createMemo, WorldContentKey, type Memo } from '@dontstarve-web/signals';
 import { TileTracker } from '../../componets/src/tileManager';
 import { FliesController } from './flies';
@@ -11,7 +10,6 @@ import type {
     AnimatedBuildingDefinition,
     AnimatedBuildingEventContext,
     AnimatedBuildingHammerContext,
-    AnimatedBuildingPreparedResources,
     BuildingRenderEffect,
 } from './animatedBuildingPlacement';
 
@@ -20,22 +18,6 @@ export type PigHeadId = typeof PIG_HEAD_ID;
 export const MERM_HEAD_ID = 'mermhead' as const;
 export type MermHeadId = typeof MERM_HEAD_ID;
 type StickHeadId = PigHeadId | MermHeadId;
-
-interface StickHeadResources extends AnimatedBuildingPreparedResources { readonly flies: ReturnType<typeof createArchiveEntity>; }
-
-/** stickheads.lua create_common: SpawnChild("flies") beside the head; the sprite is released with the head's art. */
-async function prepare(): Promise<StickHeadResources> {
-    const assets = new ArchiveSpriteAssets();
-    try {
-        const createFlies = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(assets, { animationArchive: 'flies.zip',
-            buildArchives: ['flies.zip'], bank: 'flies', animation: clip.name, loop: clip.loop }, { name: 'flies' });
-        const first = { name: 'swarm_pre', loop: false };
-        const created = await createFlies(first);
-        const flies = createArchiveEntity('flies', { create: createFlies, initial: created }, { name: first.name }, 'flies');
-        flies.instance.persists = false;
-        return { materials: [], flies, dispose: () => { flies.instance.remove(); flies.display.dispose(); assets.dispose(); } };
-    } catch (error) { assets.dispose(); throw error; }
-}
 
 /** inst.awake plus the isfullmoon watcher; `awake` is never saved and is rebuilt from the world on load. */
 class StickHead {
@@ -50,7 +32,10 @@ class StickHead {
     constructor(id: StickHeadId, context: AnimatedBuildingEventContext) {
         this.id = id; this.context = context;
         const { model, world } = context;
-        this.flies = (context.prepared as StickHeadResources).flies;
+        // create_common: SpawnChild("flies") beside the head, drawn from the placement's shared flies archive.
+        if (!context.sprites) throw new Error('Stick heads need the placement sprite resources');
+        this.flies = createArchiveEntity('flies', context.sprites.archive({ animationArchive: 'flies.zip', buildArchives: ['flies.zip'], bank: 'flies' }),
+            { name: 'swarm_pre' }, 'flies', flies => { flies.persists = false; });
         const flies = this.flies.display.model;
         model.add(flies);
         // The decorative child must not enlarge the head's pickup target, whenever its sprite is rebuilt.
@@ -102,7 +87,7 @@ class StickHead {
     dispose(): void {
         this.cleanups.splice(0).forEach(stop => stop());
         this.fliesController?.dispose();
-        this.flies.display.model.removeFromParent();
+        this.flies.instance.remove(); this.flies.display.dispose();
     }
 }
 
@@ -120,7 +105,6 @@ const stickHead = (id: StickHeadId): AnimatedBuildingDefinition => ({
     hammerEffect: { archive: 'structure_collapse_fx.zip', animation: 'collapse_small', name: 'collapse_small' },
     // MakeSmallBurnable(inst, nil, nil, true): SMALL_BURNTIME, fire level 2, small propagator, burnt structure.
     burnable: { burnTime: 10, fxLevel: 2, propagator: 'small' },
-    prepare,
     oninit: context => { context.model.userData.stickhead = new StickHead(id, context); },
     onhit: (context: AnimatedBuildingHammerContext) => headOf(context.model).hit(),
     hammerBonusLoot: bonusLoot,
