@@ -10,6 +10,7 @@ import type { Combat } from '../../componets/src/combat';
 import { modelHasTag, prefabInstance } from '../../prefab/src/prefabInstance';
 import type { SpriteState } from '@dontstarve-web/display';
 import { findActionEntity } from '../../prefab/src/actionEntity';
+import { faceSpritePoint } from './facing.ts';
 
 /** The picker inst supplied to prefab onpickedfn callbacks. */
 export interface PickActor {
@@ -90,8 +91,6 @@ export class PickActionController {
   private version = 0;
   private disposed = false;
   private readonly direction = new THREE.Vector3();
-  private readonly forward = new THREE.Vector3();
-  private readonly right = new THREE.Vector3();
   private readonly world: ActionWorldContext;
   private readonly animation: ActionAnimationController;
   private readonly playerSprite: Pick<SpriteState, 'setFacing'>;
@@ -155,7 +154,7 @@ export class PickActionController {
     this.locomotor.stop();
     const receiver = this.receiver;
     if (!receiver) return;
-    this.faceTarget(position);
+    faceSpritePoint(this.playerSprite, this.world.camera, this.world.player.position, position);
     const version = this.version;
     const action = new BufferedAction('PICK', () => {
       try { return target.component.pick(receiver); }
@@ -174,16 +173,6 @@ export class PickActionController {
   private inReach(target: PickTarget): boolean {
     const position = target.getPosition(), player = this.world.player.position;
     return position.distanceToSquared(player) <= (PICK_REACH + (target.getPhysicsRadius?.() ?? 0)) ** 2;
-  }
-
-  private faceTarget(position: THREE.Vector3): void {
-    this.direction.subVectors(position, this.world.player.position);
-    if (this.direction.lengthSq() < 1e-8) return;
-    this.world.camera.getWorldDirection(this.forward); this.forward.setY(0).normalize();
-    this.right.crossVectors(this.forward, new THREE.Vector3(0, 1, 0)).normalize();
-    const forward = this.direction.dot(this.forward), side = this.direction.dot(this.right);
-    this.playerSprite.setFacing(Math.abs(forward) >= Math.abs(side) ? (forward > 0 ? 2 : 8) : 5,
-      Math.abs(side) > Math.abs(forward) && side < 0);
   }
 
   private readonly handlePointerDown = (event: PointerEvent): void => {

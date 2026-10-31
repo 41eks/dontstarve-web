@@ -8,6 +8,7 @@ import type { ComponentActionEntity } from './componentactions.ts';
 import type { MouseActionCandidate } from './playeractionpicker.ts';
 import { PlayerActionPicker } from './playeractionpicker.ts';
 import { PointerRaycaster } from './pointerRaycaster.ts';
+import { facePoint } from './facing.ts';
 import type { TradeItem } from '../../componets/src/trader';
 import type { FuelItem } from '../../componets/src/fuel';
 
@@ -137,12 +138,7 @@ export class ItemUseActionController {
       return;
     }
     this.locomotor.stop();
-    const direction = position.clone().sub(this.world.player.position);
-    const forward = new THREE.Vector3(); this.world.camera.getWorldDirection(forward); forward.setY(0).normalize();
-    const side = direction.dot(new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0)));
-    const depth = direction.dot(forward);
-    this.animation.setFacing(Math.abs(depth) >= Math.abs(side) ? (depth > 0 ? 'up' : 'down') : 'side',
-      Math.abs(side) > Math.abs(depth) && side < 0);
+    facePoint(this.animation, this.world.camera, this.world.player.position, position);
     const version = this.version;
     const buffered = new BufferedAction(action, () => action === 'ADDFUEL' || action === 'ADDWETFUEL'
       ? this.addFuel(target, source)

@@ -7,6 +7,7 @@ import { PointerRaycaster } from './pointerRaycaster.ts';
 import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor } from './actionContext.ts';
 import { collectEquippedActions, equippedActionEntity, performToolWork, type ComponentActionEntity } from './componentactions.ts';
 import type { Worker } from '../../componets/src/workable';
+import { facePoint } from './facing.ts';
 
 export const BUGNET_HIT_TIME = WILSON_ACTION_TIMES.net;
 export const BUGNET_CAPTURE_RANGE = 4;
@@ -39,9 +40,6 @@ export class BugNetCaptureController {
   private target?: NetCaptureTarget;
   private actionVersion = 0;
   private repathRemaining = 0;
-  private readonly direction = new THREE.Vector3();
-  private readonly forward = new THREE.Vector3();
-  private readonly right = new THREE.Vector3();
   private readonly worker: Worker;
   private readonly unitScale: number;
 
@@ -116,7 +114,7 @@ export class BugNetCaptureController {
     const distanceSquared = this.distanceSquared(target);
     if (distanceSquared <= (APPROACH_DISTANCE * this.unitScale) ** 2) {
       this.locomotor.stop();
-      this.faceTarget(target);
+      facePoint(this.animation, this.world.camera, this.world.player.position, target.position);
       const version = this.actionVersion;
       const started = this.animation.playBugNet(() => {
         if (version === this.actionVersion && this.canWork(target)
@@ -149,18 +147,6 @@ export class BugNetCaptureController {
 
   private distanceSquared(target: ButterflyCaptureTarget): number {
     return this.world.player.position.distanceToSquared(target.position);
-  }
-
-  private faceTarget(target: ButterflyCaptureTarget): void {
-    this.direction.subVectors(target.position, this.world.player.position).setY(0);
-    if (this.direction.lengthSq() < 1e-8) return;
-    this.world.camera.getWorldDirection(this.forward);
-    this.forward.setY(0).normalize();
-    this.right.crossVectors(this.forward, new THREE.Vector3(0, 1, 0)).normalize();
-    const forward = this.direction.dot(this.forward);
-    const side = this.direction.dot(this.right);
-    this.animation.setFacing(Math.abs(forward) >= Math.abs(side) ? (forward > 0 ? 'up' : 'down') : 'side',
-      Math.abs(side) > Math.abs(forward) && side < 0);
   }
 
   private readonly handleGroundClick = (event: PointerEvent) => {

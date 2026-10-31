@@ -5,6 +5,7 @@ import type { ActionWorldContext, ActionAnimationController, ActionLocomotor } f
 import { bindActionCancellation } from './actionEvents.ts';
 import { PlayerActionPicker, type MouseActionCandidate } from './playeractionpicker.ts';
 import { PointerRaycaster } from './pointerRaycaster.ts';
+import { facePoint } from './facing.ts';
 
 export const OCCUPIABLE_REACH = 4;
 type OccupiableAction = 'HARVEST' | 'TAKEITEM';
@@ -58,8 +59,6 @@ export class OccupiableActionController {
   private version = 0;
   private disposed = false;
   private readonly direction = new THREE.Vector3();
-  private readonly forward = new THREE.Vector3();
-  private readonly right = new THREE.Vector3();
   private readonly world: ActionWorldContext;
   private readonly animation: ActionAnimationController;
   private readonly locomotor: ActionLocomotor;
@@ -113,7 +112,7 @@ export class OccupiableActionController {
       return;
     }
     this.locomotor.stop();
-    this.faceTarget(position);
+    facePoint(this.animation, this.world.camera, this.world.player.position, position);
     const version = this.version;
     const source = target.getPosition();
     const buffered = new BufferedAction(action, () => {
@@ -133,16 +132,6 @@ export class OccupiableActionController {
   private inReach(target: OccupiableTarget): boolean {
     const position = target.getPosition(), player = this.world.player.position;
     return (position.x - player.x) ** 2 + (position.z - player.z) ** 2 <= OCCUPIABLE_REACH ** 2;
-  }
-
-  private faceTarget(position: THREE.Vector3): void {
-    this.direction.subVectors(position, this.world.player.position).setY(0);
-    if (this.direction.lengthSq() < 1e-8) return;
-    this.world.camera.getWorldDirection(this.forward); this.forward.setY(0).normalize();
-    this.right.crossVectors(this.forward, new THREE.Vector3(0, 1, 0)).normalize();
-    const forward = this.direction.dot(this.forward), side = this.direction.dot(this.right);
-    this.animation.setFacing(Math.abs(forward) >= Math.abs(side) ? (forward > 0 ? 'up' : 'down') : 'side',
-      Math.abs(side) > Math.abs(forward) && side < 0);
   }
 
   private readonly handlePointerDown = (event: PointerEvent): void => {

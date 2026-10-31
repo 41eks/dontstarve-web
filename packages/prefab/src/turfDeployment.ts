@@ -11,6 +11,7 @@ import { turfTileName } from './turfs';
 import { TurfMap } from './turfMap';
 import { TILE_SIZE } from './tile';
 import type { WorldContext } from './worldContext';
+import { facePoint } from '@dontstarve-web/stategraphs';
 
 export interface TurfSource {
   readonly entity: ItemEntity;
@@ -98,15 +99,7 @@ export class TurfDeployment {
       return;
     }
     this.locomotor.stop();
-    const direction = point.clone().sub(this.world.player.position);
-    if (direction.lengthSq() > 1e-8) {
-      const forward = this.world.camera.getWorldDirection(new THREE.Vector3());
-      forward.y = 0; forward.normalize();
-      const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0));
-      const along = direction.dot(forward), side = direction.dot(right);
-      this.animation.setFacing(Math.abs(along) >= Math.abs(side) ? (along > 0 ? 'up' : 'down') : 'side',
-        Math.abs(side) > Math.abs(along) && side < 0);
-    }
+    facePoint(this.animation, this.world.camera, this.world.player.position, point);
     const version = this.version;
     const valid = () => !this.disposed && version === this.version && source.isValid()
       && this.turf.canPlaceTurf(point) && this.world.player.position.distanceToSquared(point) <= this.reach ** 2;

@@ -6,6 +6,7 @@ import { PointerRaycaster } from './pointerRaycaster.ts';
 import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor } from './actionContext.ts';
 import { equippedActionEntity, type ComponentActionEntity } from './componentactions.ts';
 import type { Fisherman, FishingRod } from '../../componets/src/fishingrod';
+import { facePoint } from './facing.ts';
 
 export const FISHING_ITEM_ID = 'fishingrod';
 /** locomotor.lua arrive_dist: ARRIVE_STEP + the doer's radius + the target's radius, in DST units. */
@@ -30,9 +31,6 @@ export class FishingActionController {
   private activeRod?: FishingRod;
   private actionVersion = 0;
   private readonly direction = new THREE.Vector3();
-  private readonly forward = new THREE.Vector3();
-  private readonly right = new THREE.Vector3();
-  private readonly up = new THREE.Vector3(0, 1, 0);
   private readonly world: WorldContext;
   private readonly animation: WilsonAnimationController;
   private readonly locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>;
@@ -168,7 +166,7 @@ export class FishingActionController {
       return;
     }
     this.locomotor.stop();
-    this.faceTarget(target);
+    facePoint(this.animation, this.world.camera, this.world.player.position, target.position);
     const version = this.actionVersion;
     if (this.animation.playFish(() => {
       // actions.lua FISH: the rod begins fishing the target once the cast lands.
@@ -187,18 +185,6 @@ export class FishingActionController {
     if (this.picker !== this.world.mouseActions) this.picker.dispose();
     this.world.renderer.domElement.removeEventListener('pointerdown', this.handlePointerDown, true);
     window.removeEventListener('keydown', this.handleKeyDown);
-  }
-
-  private faceTarget(target: FishingTarget): void {
-    this.direction.subVectors(target.position, this.world.player.position);
-    if (this.direction.lengthSq() < 1e-8) return;
-    this.world.camera.getWorldDirection(this.forward);
-    this.forward.setY(0).normalize();
-    this.right.crossVectors(this.forward, this.up).normalize();
-    const forward = this.direction.dot(this.forward);
-    const side = this.direction.dot(this.right);
-    this.animation.setFacing(Math.abs(forward) >= Math.abs(side) ? (forward > 0 ? 'up' : 'down') : 'side',
-      Math.abs(side) > Math.abs(forward) && side < 0);
   }
 
   private hitTarget(event?: PointerEvent): FishingTarget | undefined {
