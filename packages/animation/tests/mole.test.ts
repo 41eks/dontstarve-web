@@ -113,7 +113,7 @@ it('hammer attacks stun above ground, drop stolen inventory, allow pickup and de
   expect(mole.entity.snapshot().mole?.health).toBe(13);
   mole.entity.components.perishable.SetPercent(.25);
   const food = f.bait('rocks', new THREE.Vector3(), 2).entity;
-  expect(mole.entity.components.eater!.Eat(food, () => { food.components.stackable.count--; return true; })).toBe(true);
+  expect(mole.entity.components.eater!.Eat(food)).toBe(true);
   expect(mole.components.health.currenthealth).toBe(23);
   expect(mole.entity.components.perishable.GetPercent()).toBe(1);
   expect(food.components.stackable.count).toBe(1);

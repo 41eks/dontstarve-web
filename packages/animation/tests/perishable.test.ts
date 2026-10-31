@@ -17,7 +17,7 @@ import { PERISH_MED, Perishable } from '../../componets/src/perishable';
 import { batch, createSignal } from '../../signals/src';
 import type { WorldPerishClock } from '../../componets/src/worldperishclock';
 import { createPerishWorld } from './perishWorldFixture';
-import { PERISHABLE_FOODS, getFoodEffects } from '../../prefab/src/food';
+import { PERISHABLE_FOODS, configureFoodEntity, getFoodEffects } from '../../prefab/src/food';
 import { configureIceEntity } from '../../prefab/src/ice';
 import { PERISH_FAST, PERISH_SUPERFAST } from '../../componets/src/perishable';
 
@@ -25,7 +25,7 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 const a = inventorySlotAddress(0), b = inventorySlotAddress(1);
 const specs = {
-  red_cap: { name: '红蘑菇', icon: 'red_cap.tex', maxStack: 40,
+  red_cap: { configureEntity: configureFoodEntity, name: '红蘑菇', icon: 'red_cap.tex', maxStack: 40,
     perishTime: PERISHABLE_FOODS.red_cap.perishTime, perishReplacement: PERISHABLE_FOODS.red_cap.replacement },
   spoiled_food: { name: '腐烂物', icon: 'spoiled_food.tex', maxStack: 40 },
 };

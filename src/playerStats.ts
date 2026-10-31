@@ -1,7 +1,6 @@
 import { createSignal } from '@dontstarve-web/signals';
 import { playerInstance } from './player';
 import type { SavedPlayer } from './save/types';
-import type { FoodEffects } from '@dontstarve-web/prefab/food';
 
 export { WILSON_MAX_HEALTH, WILSON_MAX_HUNGER, WILSON_MAX_SANITY } from '@dontstarve-web/prefab/player_common';
 export const playerStats = playerInstance.stats;
@@ -16,12 +15,6 @@ export function getPlayerStats(): NonNullable<SavedPlayer['stats']> {
     ...playerStats.health.penalty > 0 ? { penalty: playerStats.health.penalty } : {},
     ...sanity.sane ? {} : { sanitySane: false },
     ...sanity.mode === 0 ? {} : { sanityMode: sanity.mode } };
-}
-
-export function applyPlayerFoodEffects(effects: FoodEffects, cause?: string): void {
-  playerStats.health.DoDelta(effects.health, false, cause);
-  playerStats.hunger.DoDelta(effects.hunger);
-  playerStats.sanity.DoDelta(effects.sanity);
 }
 
 export function setPlayerSanityPercent(percent: number): void {

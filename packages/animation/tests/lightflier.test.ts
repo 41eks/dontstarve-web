@@ -108,7 +108,7 @@ it('feeds captured livestock and replaces an entire starving stack with the same
     const bug = inventory.getEntity(stack.address)!;
     bug.components.perishable.SetPercent(.2);
     const food = inventory.entities.create({ itemId: 'carrot', count: 1 }); inventory.configureItem(food);
-    expect(bug.components.eater!.Eat(food, () => food.remove())).toBe(true);
+    expect(bug.components.eater!.Eat(food)).toBe(true);
     expect(bug.components.perishable.GetPercent()).toBe(1);
     bug.components.perishable.Perish();
     expect(inventory.get(stack.address)?.itemId).toBe('lightbulb');
