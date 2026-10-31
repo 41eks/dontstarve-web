@@ -443,6 +443,7 @@
     "statueglommer",
     "atrium_gate",
     "ruins_statue_mage",
+    "ruins_statue_head_nogem",
     "chessjunk1",
     "chessjunk2",
     "chessjunk3",
@@ -549,6 +550,10 @@
     "ruins_statue_mage": {
       "source": 18,
       "imported": 18
+    },
+    "ruins_statue_head_nogem": {
+      "source": 8,
+      "imported": 8
     },
     "chessjunk1": {
       "source": 23,
@@ -1071,6 +1076,102 @@
         296.06
       ],
       "sourceNode": "Military:BG_91:MilitaryMaze"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_statue_head_nogem_id_110117",
+      "prefab": "ruins_statue_head_nogem",
+      "sourceIndex": 1,
+      "sourceId": 110117,
+      "sourcePosition": [
+        548.12,
+        0,
+        -263.88
+      ],
+      "sourceNode": "MuddySacred:3:SacredBarracks"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_statue_head_nogem_id_110145",
+      "prefab": "ruins_statue_head_nogem",
+      "sourceIndex": 2,
+      "sourceId": 110145,
+      "sourcePosition": [
+        439.87,
+        0,
+        -544.13
+      ],
+      "sourceNode": "SacredDanger:0:SacredBarracks"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_statue_head_nogem_id_110172",
+      "prefab": "ruins_statue_head_nogem",
+      "sourceIndex": 3,
+      "sourceId": 110172,
+      "sourcePosition": [
+        435.87,
+        0,
+        -436.13
+      ],
+      "sourceNode": "Sacred:4:SacredBarracks"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_statue_head_nogem_id_110204",
+      "prefab": "ruins_statue_head_nogem",
+      "sourceIndex": 4,
+      "sourceId": 110204,
+      "sourcePosition": [
+        422.9,
+        0,
+        -638.12
+      ],
+      "sourceNode": "SacredDanger:BG_51:BGSacred"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_statue_head_nogem_id_110285",
+      "prefab": "ruins_statue_head_nogem",
+      "sourceIndex": 5,
+      "sourceId": 110285,
+      "sourcePosition": [
+        -257.88,
+        0,
+        337.93
+      ],
+      "sourceNode": "Military:BG_94:MilitaryMaze"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_statue_head_nogem_id_110371",
+      "prefab": "ruins_statue_head_nogem",
+      "sourceIndex": 6,
+      "sourceId": 110371,
+      "sourcePosition": [
+        461.93,
+        0,
+        -578.29
+      ],
+      "sourceNode": "SacredDanger:BG_51:BGSacred"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_statue_head_nogem_id_110444",
+      "prefab": "ruins_statue_head_nogem",
+      "sourceIndex": 7,
+      "sourceId": 110444,
+      "sourcePosition": [
+        482.24,
+        0,
+        -591
+      ],
+      "sourceNode": "SacredDanger:BG_51:BGSacred"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_statue_head_nogem_id_110453",
+      "prefab": "ruins_statue_head_nogem",
+      "sourceIndex": 8,
+      "sourceId": 110453,
+      "sourcePosition": [
+        460.12,
+        0,
+        -428.13
+      ],
+      "sourceNode": "Sacred:3:SacredBarracks"
     },
     {
       "id": "dst_04E26ADB66396E8D_chessjunk1_id_110138",

@@ -229986,6 +229986,44 @@
           }
         }
       ],
+      "ruins_statue_head_nogem": [
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_head_nogem_id_108798",
+          "transform": {
+            "position": [
+              1692.36,
+              0.0,
+              731.64
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_head_nogem_id_108799",
+          "transform": {
+            "position": [
+              1367.61,
+              0.0,
+              1572.39
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_head_nogem_id_108800",
+          "transform": {
+            "position": [
+              1355.61,
+              0.0,
+              1248.39
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        }
+      ],
       "chessjunk1": [
         {
           "id": "dst_04E26ADB66396E8D_chessjunk1_id_107480",

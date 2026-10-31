@@ -475,6 +475,7 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `statueglommer` | 可生成 | 不能入栏 | `prefabs/statueglommer.lua` |
 | `atrium_gate` | 可生成 | 不能入栏 | `prefabs/atrium_gate.lua` |
 | `ruins_statue_mage` | 可生成 | 不能入栏 | `prefabs/statueruins.lua` |
+| `ruins_statue_head_nogem` | 可生成 | 不能入栏 | `prefabs/statueruins.lua` |
 | `chessjunk1`、`chessjunk2`、`chessjunk3` | 可生成 | 不能入栏 | `prefabs/chessjunk.lua` |
 | `chester` | 可生成 | 不能入栏 | `prefabs/chester.lua` |
 | `hutch` | 可生成 | 不能入栏 | `prefabs/hutch.lua` |

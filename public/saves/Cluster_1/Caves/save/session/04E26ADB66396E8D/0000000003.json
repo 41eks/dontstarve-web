@@ -230226,6 +230226,104 @@
           }
         }
       ],
+      "ruins_statue_head_nogem": [
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_head_nogem_id_110117",
+          "transform": {
+            "position": [
+              1692.36,
+              0.0,
+              731.64
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_head_nogem_id_110145",
+          "transform": {
+            "position": [
+              1367.61,
+              0.0,
+              1572.39
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_head_nogem_id_110172",
+          "transform": {
+            "position": [
+              1355.61,
+              0.0,
+              1248.39
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_head_nogem_id_110204",
+          "transform": {
+            "position": [
+              1316.7,
+              0.0,
+              1854.36
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_head_nogem_id_110285",
+          "transform": {
+            "position": [
+              -725.64,
+              0.0,
+              -1073.79
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_head_nogem_id_110371",
+          "transform": {
+            "position": [
+              1433.79,
+              0.0,
+              1674.87
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_head_nogem_id_110444",
+          "transform": {
+            "position": [
+              1494.72,
+              0.0,
+              1713.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_head_nogem_id_110453",
+          "transform": {
+            "position": [
+              1428.36,
+              0.0,
+              1224.39
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        }
+      ],
       "chessjunk1": [
         {
           "id": "dst_04E26ADB66396E8D_chessjunk1_id_110138",

@@ -380,7 +380,9 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 
 `c_spawn("chessjunk1")`、`c_spawn("chessjunk2")`、`c_spawn("chessjunk3")` 分别在玩家脚点生成三种棋械残骸；都是世界 prefab，不支持 `c_give`。三者使用 `chessmonster_ruins.zip`，初始声明非循环 `idle1/2/3`；已修复记录按 Lua `OnLoad` 恢复循环 `hit1/2/3`。`c_save()` 保留 ID、位置和已修复记录中的 `repaired`、`repairerid`、`repairerchar`。洞穴导入分别含 23、33、25 个。无皮肤；修复、敲击、战利品及重生行为未接入。
 
-`c_spawn("ruins_statue_mage")` 在玩家脚点生成带随机宝石的遗迹法师雕像；它是世界 prefab，不支持 `c_give`。原版 `statueruins.lua` 使用 `statue_ruins.zip` 与 `statue_ruins_gem.zip`，读档恢复 `gem` 符号覆盖及正常噩梦阶段的循环 `idle_full`。`c_save()` 保存 ID、脚点和宝石种类；洞穴导入存档包含 18 座。无皮肤。采矿、噩梦阶段切换及遗迹重生行为尚未接入。
+`c_spawn("ruins_statue_mage")` 在玩家脚点生成带随机宝石的遗迹法师雕像；它是世界 prefab，不支持 `c_give`。原版 `statueruins.lua` 使用 `statue_ruins.zip` 与 `statue_ruins_gem.zip`，读档恢复 `gem` 符号覆盖及正常噩梦阶段的循环 `idle_full`。`c_save()` 保存 ID、脚点和宝石种类；洞穴导入存档包含 3 座。无皮肤。采矿、噩梦阶段切换及遗迹重生行为尚未接入。
+
+`c_spawn("ruins_statue_head_nogem")` 在玩家脚点生成无宝石的遗迹头像，无额外参数；它是世界 prefab，不支持 `c_give`。原版 `statueruins.lua` 的 `nogem(true)` 使用 `anim/statue_ruins_small.zip`（bank/build 都是 `statue_ruins_small`），构造时按噩梦阶段播放循环 `idle_full`；本项目没有噩梦时钟，不使用 `_night` 动画。tag 为 `cavedweller`、`structure`、`statue`，不覆盖 `swap_gem` 符号，掉落表为 `statue_ruins_no_gem`；`OnSave` 只写 `gem`，无宝石时不保存任何字段。`c_save()` 保存 ID 与脚点；洞穴导入存档包含 3 座。无皮肤。采矿、噩梦阶段切换、悬浮音效与遗迹重生行为尚未接入。
 
 `c_spawn("atrium_gate")` 在玩家脚点生成远古大门；这是世界 prefab，不支持 `c_give`。洞穴导入存档包含 1 座。主门使用 `atrium_gate.zip` 的非循环 `idle`、独立地板与源定义的无美术阻挡子实体；读档按保存的钥匙、修复、采摘及世界设置计时器字段声明外观与动画。`c_save()` 保存 ID、位置、`atriumGate`、`pickable`、`charliecutscene`、`worldsettingstimer` 和 `entitytracker` 字段。此移植覆盖存档与显示；钥匙交易、满能量战斗、计时器完成与音效事件尚未接入。原版没有大门皮肤。
 

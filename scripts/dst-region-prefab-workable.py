@@ -27,6 +27,13 @@ def ruins_statue_mage_components(data):
     return {'ruinsStatueMage': {'gem': data['gem']}}
 
 
+def ruins_statue_head_nogem_components(data):
+    # statueruins.lua nogem() never sets inst.gemmed, so OnSave writes nothing; workable.savestate remains false.
+    if data:
+        raise ValueError('Unsupported ruins_statue_head_nogem save state')
+    return {}
+
+
 def statueglommer_components(data):
     # statueglommer.lua OnSave plus pickable.lua and workable.lua component records.
     if set(data) - {'worked', 'spawned', 'pickable', 'workable'}:
