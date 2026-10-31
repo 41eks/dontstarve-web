@@ -29,6 +29,7 @@ import { ROCK_AVOCADO_BUSH_ID, ROCK_AVOCADO_FRUIT_ID } from '@dontstarve-web/pre
 import { BERRYBUSH_DEFINITION, BERRYBUSH_ID, BERRYBUSH_MAX_REGROW_TIME, BERRYBUSH_SKINS } from '@dontstarve-web/prefab/berrybush';
 import { MONKEYTAIL_ID, MONKEYTAIL_REGROW_TIME } from '@dontstarve-web/prefab/monkeytail';
 import { GRASS_CYCLES, GRASS_DEFINITION, GRASS_ID, GRASS_REGROW_TIME } from '@dontstarve-web/prefab/grass';
+import { LICHEN_DEFINITION, LICHEN_ID, LICHEN_REGROW_TIME } from '@dontstarve-web/prefab/lichen';
 import { SAPLING_PREFABS, SAPLING_REGROW_TIME } from '@dontstarve-web/prefab/sapling';
 import { POND_ID } from '@dontstarve-web/prefab/pond';
 import { TRINKET_IDS } from '@dontstarve-web/prefab/trinkets';
@@ -372,6 +373,9 @@ export const PREFAB_DEFINITIONS = {
   monkeytails: definePrefabs([MONKEYTAIL_ID], componentParser({ keys: ['pickable', 'witherable'], regrowTime: MONKEYTAIL_REGROW_TIME, pickCycles: 7 }), true),
   grasses: definePrefabs([GRASS_ID], componentParser({ keys: ['pickable', 'witherable'], regrowTime: GRASS_REGROW_TIME, pickCycles: GRASS_CYCLES, minimumPickCycles: GRASS_CYCLES }), true,
     [{ animation: GRASS_DEFINITION.animArchive, build: GRASS_DEFINITION.buildArchive }]),
+  // lichen.lua: only pickable saves state.
+  lichens: definePrefabs([LICHEN_ID], componentParser({ keys: ['pickable'], regrowTime: LICHEN_REGROW_TIME }), true,
+    [{ animation: LICHEN_DEFINITION.animArchive, build: LICHEN_DEFINITION.buildArchive }]),
   caveFerns: definePrefabs(CAVE_FERN_IDS, componentParser({ keys: ['pickable', 'variant'], plantVariants: CAVE_FERN_ANIMATIONS }), true,
     prefab => [{ animation: CAVE_FERN_DEFINITIONS[prefab].animArchive, build: CAVE_FERN_DEFINITIONS[prefab].buildArchive }]),
   cacti: definePrefabs(CACTUS_IDS, componentParser({ keys: ['pickable'], regrowTime: CACTUS_REGROW_TIME }), true,

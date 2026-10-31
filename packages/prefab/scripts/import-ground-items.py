@@ -15,7 +15,7 @@ petals petals_evil ash beefalowool boneshard butterflywings butter honey honeyco
 thulecite thulecite_pieces guano tentaclespots spidergland slurtleslime
 slurtle_shellpieces walrus_tusk deerclops_eyeball bearger_fur dragon_scales
 glommerfuel acorn marblebean dreadstone wagpunk_bits moonrocknugget moonglass dock_kit papyrus featherpencil
-foliage beardhair cookingrecipecard scrapbook_page blueprint'''.split()
+foliage cutlichen beardhair cookingrecipecard scrapbook_page blueprint'''.split()
 
 
 def main():

@@ -121,6 +121,8 @@ export interface PickablePlantDefinition {
   readonly idle: { readonly name: string; readonly randomFrame?: boolean;
     /** PlayAnimation(name) without looping, as cave_fern's pose. */
     readonly loop?: false };
+  /** fn: AnimState:SetMultColour(c, c, c, 1) with a grey level chosen per plant (lichen.lua: .75 + random * .25). */
+  readonly multColour?: () => number;
   /** onpickedfn: an optional sound, then one clip or a clip followed by its rest pose. */
   readonly picked: { readonly sound?: SoundEventPath; readonly clips: readonly [] | readonly [string] | readonly [string, string] };
   /** makeemptyfn as restored by Pickable:OnLoad; absent when the plant is removed once picked. */
@@ -296,6 +298,7 @@ export class PickablePlantManager {
     if (held) instance.sprite.setFrameAt(1);
     // sapling.lua: AnimState:SetFrame(math.random(GetCurrentAnimationNumFrames()) - 1), resolved once the clip has loaded.
     if (!state?.picked && definition.idle.randomFrame) instance.sprite.setFrameAt(Math.random());
+    if (definition.multColour) { const grey = definition.multColour(); instance.sprite.setColour([grey, grey, grey]); }
     const playSequence = (first: string, last?: string, loop = false) => {
       const version = ++instance.animationVersion;
       instance.transitionAt = this.scheduler.now;
@@ -493,7 +496,9 @@ export class PickablePlantManager {
     return this.resources.archive({ animationArchive: definition.animArchive,
       buildArchives: [definition.buildArchive, ...definition.snowCovered ? ['snow.zip'] : []], bank: definition.archiveSprite.bank,
       hiddenLayers: definition.snowCovered ? ['snow'] : [] },
-    { instancedAnimations: definition.archiveSprite.instancedAnimations, staticBillboard: true });
+    // A per-plant SetMultColour needs sprites that own their colour.
+    { instancedAnimations: definition.archiveSprite.instancedAnimations, staticBillboard: true,
+      ...definition.multColour ? { colour: [1, 1, 1] as [number, number, number] } : {} });
   }
 
   protected exportPlants(): { prefab: string; record: PickablePlantRecord }[] {

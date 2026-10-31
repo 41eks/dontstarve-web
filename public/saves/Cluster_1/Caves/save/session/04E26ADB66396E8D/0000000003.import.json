@@ -485,6 +485,7 @@
     "sapling",
     "cactus",
     "oasis_cactus",
+    "lichen",
     "evergreen",
     "flower_cave",
     "flower_cave_double",
@@ -738,6 +739,10 @@
     "oasis_cactus": {
       "source": 0,
       "imported": 0
+    },
+    "lichen": {
+      "source": 258,
+      "imported": 258
     },
     "evergreen": {
       "source": 317,
@@ -28639,6 +28644,3102 @@
         510.41
       ],
       "sourceNode": "CaveExitTask7:0:SinkholeOasis"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103362",
+      "prefab": "lichen",
+      "sourceIndex": 1,
+      "sourceId": 103362,
+      "sourcePosition": [
+        133,
+        0,
+        -70.42
+      ],
+      "sourceNode": "LichenLand:5:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103363",
+      "prefab": "lichen",
+      "sourceIndex": 2,
+      "sourceId": 103363,
+      "sourcePosition": [
+        121.32,
+        0,
+        -61.98
+      ],
+      "sourceNode": "LichenLand:5:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103364",
+      "prefab": "lichen",
+      "sourceIndex": 3,
+      "sourceId": 103364,
+      "sourcePosition": [
+        134.86,
+        0,
+        -46.09
+      ],
+      "sourceNode": "LichenLand:5:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103365",
+      "prefab": "lichen",
+      "sourceIndex": 4,
+      "sourceId": 103365,
+      "sourcePosition": [
+        181.54,
+        0,
+        -45.84
+      ],
+      "sourceNode": "LichenLand:5:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103366",
+      "prefab": "lichen",
+      "sourceIndex": 5,
+      "sourceId": 103366,
+      "sourcePosition": [
+        170.94,
+        0,
+        -46.25
+      ],
+      "sourceNode": "LichenLand:5:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103367",
+      "prefab": "lichen",
+      "sourceIndex": 6,
+      "sourceId": 103367,
+      "sourcePosition": [
+        165.26,
+        0,
+        -62.09
+      ],
+      "sourceNode": "LichenLand:5:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103368",
+      "prefab": "lichen",
+      "sourceIndex": 7,
+      "sourceId": 103368,
+      "sourcePosition": [
+        137.44,
+        0,
+        -58.88
+      ],
+      "sourceNode": "LichenLand:5:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103369",
+      "prefab": "lichen",
+      "sourceIndex": 8,
+      "sourceId": 103369,
+      "sourcePosition": [
+        153.51,
+        0,
+        -62.62
+      ],
+      "sourceNode": "LichenLand:5:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103370",
+      "prefab": "lichen",
+      "sourceIndex": 9,
+      "sourceId": 103370,
+      "sourcePosition": [
+        145.01,
+        0,
+        -53.29
+      ],
+      "sourceNode": "LichenLand:5:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103371",
+      "prefab": "lichen",
+      "sourceIndex": 10,
+      "sourceId": 103371,
+      "sourcePosition": [
+        133.72,
+        0,
+        -74.06
+      ],
+      "sourceNode": "LichenLand:5:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103372",
+      "prefab": "lichen",
+      "sourceIndex": 11,
+      "sourceId": 103372,
+      "sourcePosition": [
+        118.45,
+        0,
+        -61.54
+      ],
+      "sourceNode": "LichenLand:5:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103373",
+      "prefab": "lichen",
+      "sourceIndex": 12,
+      "sourceId": 103373,
+      "sourcePosition": [
+        125.73,
+        0,
+        -70.05
+      ],
+      "sourceNode": "LichenLand:5:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103374",
+      "prefab": "lichen",
+      "sourceIndex": 13,
+      "sourceId": 103374,
+      "sourcePosition": [
+        154.05,
+        0,
+        -53.47
+      ],
+      "sourceNode": "LichenLand:5:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103375",
+      "prefab": "lichen",
+      "sourceIndex": 14,
+      "sourceId": 103375,
+      "sourcePosition": [
+        162.34,
+        0,
+        -53.44
+      ],
+      "sourceNode": "LichenLand:5:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103376",
+      "prefab": "lichen",
+      "sourceIndex": 15,
+      "sourceId": 103376,
+      "sourcePosition": [
+        145.7,
+        0,
+        -65.29
+      ],
+      "sourceNode": "LichenLand:5:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103377",
+      "prefab": "lichen",
+      "sourceIndex": 16,
+      "sourceId": 103377,
+      "sourcePosition": [
+        174.85,
+        0,
+        -42.71
+      ],
+      "sourceNode": "LichenLand:5:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103378",
+      "prefab": "lichen",
+      "sourceIndex": 17,
+      "sourceId": 103378,
+      "sourcePosition": [
+        145.51,
+        0,
+        -57.35
+      ],
+      "sourceNode": "LichenLand:5:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103379",
+      "prefab": "lichen",
+      "sourceIndex": 18,
+      "sourceId": 103379,
+      "sourcePosition": [
+        130.05,
+        0,
+        -57.85
+      ],
+      "sourceNode": "LichenLand:5:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103380",
+      "prefab": "lichen",
+      "sourceIndex": 19,
+      "sourceId": 103380,
+      "sourcePosition": [
+        137.19,
+        0,
+        -49.12
+      ],
+      "sourceNode": "LichenLand:5:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103381",
+      "prefab": "lichen",
+      "sourceIndex": 20,
+      "sourceId": 103381,
+      "sourcePosition": [
+        169.84,
+        0,
+        -41.42
+      ],
+      "sourceNode": "LichenLand:5:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103382",
+      "prefab": "lichen",
+      "sourceIndex": 21,
+      "sourceId": 103382,
+      "sourcePosition": [
+        162.77,
+        0,
+        -62.64
+      ],
+      "sourceNode": "LichenLand:5:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103383",
+      "prefab": "lichen",
+      "sourceIndex": 22,
+      "sourceId": 103383,
+      "sourcePosition": [
+        125.67,
+        0,
+        -49.4
+      ],
+      "sourceNode": "LichenLand:5:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103384",
+      "prefab": "lichen",
+      "sourceIndex": 23,
+      "sourceId": 103384,
+      "sourcePosition": [
+        166.85,
+        0,
+        -59
+      ],
+      "sourceNode": "LichenLand:5:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103385",
+      "prefab": "lichen",
+      "sourceIndex": 24,
+      "sourceId": 103385,
+      "sourcePosition": [
+        73.48,
+        0,
+        -125.86
+      ],
+      "sourceNode": "LichenLand:0:LichenMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103386",
+      "prefab": "lichen",
+      "sourceIndex": 25,
+      "sourceId": 103386,
+      "sourcePosition": [
+        78.2,
+        0,
+        -109.99
+      ],
+      "sourceNode": "LichenLand:0:LichenMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103387",
+      "prefab": "lichen",
+      "sourceIndex": 26,
+      "sourceId": 103387,
+      "sourcePosition": [
+        73.37,
+        0,
+        -142.65
+      ],
+      "sourceNode": "LichenLand:0:LichenMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103388",
+      "prefab": "lichen",
+      "sourceIndex": 27,
+      "sourceId": 103388,
+      "sourcePosition": [
+        61.68,
+        0,
+        -130.15
+      ],
+      "sourceNode": "LichenLand:0:LichenMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103389",
+      "prefab": "lichen",
+      "sourceIndex": 28,
+      "sourceId": 103389,
+      "sourcePosition": [
+        82.87,
+        0,
+        -110.4
+      ],
+      "sourceNode": "LichenLand:0:LichenMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103390",
+      "prefab": "lichen",
+      "sourceIndex": 29,
+      "sourceId": 103390,
+      "sourcePosition": [
+        70.85,
+        0,
+        -109.98
+      ],
+      "sourceNode": "LichenLand:0:LichenMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103391",
+      "prefab": "lichen",
+      "sourceIndex": 30,
+      "sourceId": 103391,
+      "sourcePosition": [
+        158,
+        0,
+        -6.08
+      ],
+      "sourceNode": "LichenLand:BG_82:BGWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103392",
+      "prefab": "lichen",
+      "sourceIndex": 31,
+      "sourceId": 103392,
+      "sourcePosition": [
+        182.9,
+        0,
+        37.25
+      ],
+      "sourceNode": "LichenLand:BG_82:BGWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103393",
+      "prefab": "lichen",
+      "sourceIndex": 32,
+      "sourceId": 103393,
+      "sourcePosition": [
+        121.46,
+        0,
+        34.98
+      ],
+      "sourceNode": "LichenLand:BG_82:BGWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103394",
+      "prefab": "lichen",
+      "sourceIndex": 33,
+      "sourceId": 103394,
+      "sourcePosition": [
+        185.93,
+        0,
+        -42.89
+      ],
+      "sourceNode": "LichenLand:BG_82:BGWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103395",
+      "prefab": "lichen",
+      "sourceIndex": 34,
+      "sourceId": 103395,
+      "sourcePosition": [
+        126.12,
+        0,
+        2.75
+      ],
+      "sourceNode": "LichenLand:4:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103396",
+      "prefab": "lichen",
+      "sourceIndex": 35,
+      "sourceId": 103396,
+      "sourcePosition": [
+        121.07,
+        0,
+        -30.91
+      ],
+      "sourceNode": "LichenLand:4:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103397",
+      "prefab": "lichen",
+      "sourceIndex": 36,
+      "sourceId": 103397,
+      "sourcePosition": [
+        126.88,
+        0,
+        -6.7
+      ],
+      "sourceNode": "LichenLand:4:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103398",
+      "prefab": "lichen",
+      "sourceIndex": 37,
+      "sourceId": 103398,
+      "sourcePosition": [
+        121.73,
+        0,
+        -25.31
+      ],
+      "sourceNode": "LichenLand:4:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103399",
+      "prefab": "lichen",
+      "sourceIndex": 38,
+      "sourceId": 103399,
+      "sourcePosition": [
+        129.45,
+        0,
+        -26.61
+      ],
+      "sourceNode": "LichenLand:4:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103400",
+      "prefab": "lichen",
+      "sourceIndex": 39,
+      "sourceId": 103400,
+      "sourcePosition": [
+        113.92,
+        0,
+        -13.49
+      ],
+      "sourceNode": "LichenLand:4:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103401",
+      "prefab": "lichen",
+      "sourceIndex": 40,
+      "sourceId": 103401,
+      "sourcePosition": [
+        130.87,
+        0,
+        -34.67
+      ],
+      "sourceNode": "LichenLand:4:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103402",
+      "prefab": "lichen",
+      "sourceIndex": 41,
+      "sourceId": 103402,
+      "sourcePosition": [
+        105.54,
+        0,
+        -41.53
+      ],
+      "sourceNode": "LichenLand:4:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103403",
+      "prefab": "lichen",
+      "sourceIndex": 42,
+      "sourceId": 103403,
+      "sourcePosition": [
+        121.62,
+        0,
+        -21.48
+      ],
+      "sourceNode": "LichenLand:4:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103404",
+      "prefab": "lichen",
+      "sourceIndex": 43,
+      "sourceId": 103404,
+      "sourcePosition": [
+        110.18,
+        0,
+        -38.87
+      ],
+      "sourceNode": "LichenLand:4:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103405",
+      "prefab": "lichen",
+      "sourceIndex": 44,
+      "sourceId": 103405,
+      "sourcePosition": [
+        122.63,
+        0,
+        -41.97
+      ],
+      "sourceNode": "LichenLand:4:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103406",
+      "prefab": "lichen",
+      "sourceIndex": 45,
+      "sourceId": 103406,
+      "sourcePosition": [
+        129.43,
+        0,
+        -9.24
+      ],
+      "sourceNode": "LichenLand:4:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103407",
+      "prefab": "lichen",
+      "sourceIndex": 46,
+      "sourceId": 103407,
+      "sourcePosition": [
+        137.56,
+        0,
+        -25.12
+      ],
+      "sourceNode": "LichenLand:4:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103408",
+      "prefab": "lichen",
+      "sourceIndex": 47,
+      "sourceId": 103408,
+      "sourcePosition": [
+        113.79,
+        0,
+        -37.59
+      ],
+      "sourceNode": "LichenLand:4:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103409",
+      "prefab": "lichen",
+      "sourceIndex": 48,
+      "sourceId": 103409,
+      "sourcePosition": [
+        113.28,
+        0,
+        -25.11
+      ],
+      "sourceNode": "LichenLand:4:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103410",
+      "prefab": "lichen",
+      "sourceIndex": 49,
+      "sourceId": 103410,
+      "sourcePosition": [
+        126.07,
+        0,
+        -33.28
+      ],
+      "sourceNode": "LichenLand:4:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103411",
+      "prefab": "lichen",
+      "sourceIndex": 50,
+      "sourceId": 103411,
+      "sourcePosition": [
+        102.07,
+        0,
+        -38.73
+      ],
+      "sourceNode": "LichenLand:4:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103412",
+      "prefab": "lichen",
+      "sourceIndex": 51,
+      "sourceId": 103412,
+      "sourcePosition": [
+        109.53,
+        0,
+        -46.17
+      ],
+      "sourceNode": "LichenLand:4:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103413",
+      "prefab": "lichen",
+      "sourceIndex": 52,
+      "sourceId": 103413,
+      "sourcePosition": [
+        121.74,
+        0,
+        -6.42
+      ],
+      "sourceNode": "LichenLand:4:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103414",
+      "prefab": "lichen",
+      "sourceIndex": 53,
+      "sourceId": 103414,
+      "sourcePosition": [
+        110.46,
+        0,
+        -13.55
+      ],
+      "sourceNode": "LichenLand:4:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103415",
+      "prefab": "lichen",
+      "sourceIndex": 54,
+      "sourceId": 103415,
+      "sourcePosition": [
+        105.6,
+        0,
+        -30.64
+      ],
+      "sourceNode": "LichenLand:4:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103416",
+      "prefab": "lichen",
+      "sourceIndex": 55,
+      "sourceId": 103416,
+      "sourcePosition": [
+        105.4,
+        0,
+        -22.16
+      ],
+      "sourceNode": "LichenLand:4:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103417",
+      "prefab": "lichen",
+      "sourceIndex": 56,
+      "sourceId": 103417,
+      "sourcePosition": [
+        125.1,
+        0,
+        -25.86
+      ],
+      "sourceNode": "LichenLand:4:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103418",
+      "prefab": "lichen",
+      "sourceIndex": 57,
+      "sourceId": 103418,
+      "sourcePosition": [
+        118.82,
+        0,
+        -9.31
+      ],
+      "sourceNode": "LichenLand:4:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103419",
+      "prefab": "lichen",
+      "sourceIndex": 58,
+      "sourceId": 103419,
+      "sourcePosition": [
+        97.34,
+        0,
+        -34.22
+      ],
+      "sourceNode": "LichenLand:4:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103420",
+      "prefab": "lichen",
+      "sourceIndex": 59,
+      "sourceId": 103420,
+      "sourcePosition": [
+        42.17,
+        0,
+        -139
+      ],
+      "sourceNode": "LichenLand:1:LichenMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103421",
+      "prefab": "lichen",
+      "sourceIndex": 60,
+      "sourceId": 103421,
+      "sourcePosition": [
+        58.06,
+        0,
+        -122.04
+      ],
+      "sourceNode": "LichenLand:1:LichenMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103422",
+      "prefab": "lichen",
+      "sourceIndex": 61,
+      "sourceId": 103422,
+      "sourcePosition": [
+        46.8,
+        0,
+        -98.87
+      ],
+      "sourceNode": "LichenLand:1:LichenMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103423",
+      "prefab": "lichen",
+      "sourceIndex": 62,
+      "sourceId": 103423,
+      "sourcePosition": [
+        33.67,
+        0,
+        -113.3
+      ],
+      "sourceNode": "LichenLand:1:LichenMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103424",
+      "prefab": "lichen",
+      "sourceIndex": 63,
+      "sourceId": 103424,
+      "sourcePosition": [
+        38.22,
+        0,
+        -93.49
+      ],
+      "sourceNode": "LichenLand:1:LichenMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103425",
+      "prefab": "lichen",
+      "sourceIndex": 64,
+      "sourceId": 103425,
+      "sourcePosition": [
+        38,
+        0,
+        -105.79
+      ],
+      "sourceNode": "LichenLand:1:LichenMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103426",
+      "prefab": "lichen",
+      "sourceIndex": 65,
+      "sourceId": 103426,
+      "sourcePosition": [
+        46.23,
+        0,
+        -109.88
+      ],
+      "sourceNode": "LichenLand:1:LichenMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103427",
+      "prefab": "lichen",
+      "sourceIndex": 66,
+      "sourceId": 103427,
+      "sourcePosition": [
+        58.98,
+        0,
+        -74.35
+      ],
+      "sourceNode": "LichenLand:BG_83:BGWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103428",
+      "prefab": "lichen",
+      "sourceIndex": 67,
+      "sourceId": 103428,
+      "sourcePosition": [
+        65.03,
+        0,
+        -85.11
+      ],
+      "sourceNode": "LichenLand:BG_83:BGWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103429",
+      "prefab": "lichen",
+      "sourceIndex": 68,
+      "sourceId": 103429,
+      "sourcePosition": [
+        181.58,
+        0,
+        -89.32
+      ],
+      "sourceNode": "LichenLand:7:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103430",
+      "prefab": "lichen",
+      "sourceIndex": 69,
+      "sourceId": 103430,
+      "sourcePosition": [
+        190.23,
+        0,
+        -130.27
+      ],
+      "sourceNode": "LichenLand:7:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103431",
+      "prefab": "lichen",
+      "sourceIndex": 70,
+      "sourceId": 103431,
+      "sourcePosition": [
+        174.24,
+        0,
+        -81.12
+      ],
+      "sourceNode": "LichenLand:7:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103432",
+      "prefab": "lichen",
+      "sourceIndex": 71,
+      "sourceId": 103432,
+      "sourcePosition": [
+        173.84,
+        0,
+        -61.86
+      ],
+      "sourceNode": "LichenLand:7:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103433",
+      "prefab": "lichen",
+      "sourceIndex": 72,
+      "sourceId": 103433,
+      "sourcePosition": [
+        178.48,
+        0,
+        -86.7
+      ],
+      "sourceNode": "LichenLand:7:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103434",
+      "prefab": "lichen",
+      "sourceIndex": 73,
+      "sourceId": 103434,
+      "sourcePosition": [
+        145.43,
+        0,
+        -97.64
+      ],
+      "sourceNode": "LichenLand:7:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103435",
+      "prefab": "lichen",
+      "sourceIndex": 74,
+      "sourceId": 103435,
+      "sourcePosition": [
+        194.48,
+        0,
+        -110.27
+      ],
+      "sourceNode": "LichenLand:7:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103436",
+      "prefab": "lichen",
+      "sourceIndex": 75,
+      "sourceId": 103436,
+      "sourcePosition": [
+        178.63,
+        0,
+        -77.24
+      ],
+      "sourceNode": "LichenLand:7:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103437",
+      "prefab": "lichen",
+      "sourceIndex": 76,
+      "sourceId": 103437,
+      "sourcePosition": [
+        170.86,
+        0,
+        -90.18
+      ],
+      "sourceNode": "LichenLand:7:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103438",
+      "prefab": "lichen",
+      "sourceIndex": 77,
+      "sourceId": 103438,
+      "sourcePosition": [
+        189.9,
+        0,
+        -86.28
+      ],
+      "sourceNode": "LichenLand:7:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103439",
+      "prefab": "lichen",
+      "sourceIndex": 78,
+      "sourceId": 103439,
+      "sourcePosition": [
+        185.74,
+        0,
+        -97.06
+      ],
+      "sourceNode": "LichenLand:7:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103440",
+      "prefab": "lichen",
+      "sourceIndex": 79,
+      "sourceId": 103440,
+      "sourcePosition": [
+        174.51,
+        0,
+        -94.89
+      ],
+      "sourceNode": "LichenLand:7:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103441",
+      "prefab": "lichen",
+      "sourceIndex": 80,
+      "sourceId": 103441,
+      "sourcePosition": [
+        177.08,
+        0,
+        -109.94
+      ],
+      "sourceNode": "LichenLand:7:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103442",
+      "prefab": "lichen",
+      "sourceIndex": 81,
+      "sourceId": 103442,
+      "sourcePosition": [
+        157.59,
+        0,
+        -94.16
+      ],
+      "sourceNode": "LichenLand:7:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103443",
+      "prefab": "lichen",
+      "sourceIndex": 82,
+      "sourceId": 103443,
+      "sourcePosition": [
+        530.45,
+        0,
+        -343
+      ],
+      "sourceNode": "TheLabyrinth:7:LabyrinthEntrance"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103444",
+      "prefab": "lichen",
+      "sourceIndex": 83,
+      "sourceId": 103444,
+      "sourcePosition": [
+        529.94,
+        0,
+        -337.97
+      ],
+      "sourceNode": "TheLabyrinth:7:LabyrinthEntrance"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103445",
+      "prefab": "lichen",
+      "sourceIndex": 84,
+      "sourceId": 103445,
+      "sourcePosition": [
+        526.5,
+        0,
+        -329.02
+      ],
+      "sourceNode": "TheLabyrinth:7:LabyrinthEntrance"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103446",
+      "prefab": "lichen",
+      "sourceIndex": 85,
+      "sourceId": 103446,
+      "sourcePosition": [
+        510.47,
+        0,
+        -349.46
+      ],
+      "sourceNode": "TheLabyrinth:7:LabyrinthEntrance"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103189",
+      "prefab": "lichen",
+      "sourceIndex": 86,
+      "sourceId": 103189,
+      "sourcePosition": [
+        644.14,
+        0,
+        -403.46
+      ],
+      "sourceNode": "TheLabyrinth:0:RuinedGuarden"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103190",
+      "prefab": "lichen",
+      "sourceIndex": 87,
+      "sourceId": 103190,
+      "sourcePosition": [
+        66.7,
+        0,
+        -345.29
+      ],
+      "sourceNode": "Residential2:BG_12:BGWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103191",
+      "prefab": "lichen",
+      "sourceIndex": 88,
+      "sourceId": 103191,
+      "sourcePosition": [
+        133.81,
+        0,
+        -321.81
+      ],
+      "sourceNode": "Residential2:BG_12:BGWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103192",
+      "prefab": "lichen",
+      "sourceIndex": 89,
+      "sourceId": 103192,
+      "sourcePosition": [
+        138.27,
+        0,
+        -361.01
+      ],
+      "sourceNode": "Residential2:BG_12:BGWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103193",
+      "prefab": "lichen",
+      "sourceIndex": 90,
+      "sourceId": 103193,
+      "sourcePosition": [
+        89.41,
+        0,
+        -178.51
+      ],
+      "sourceNode": "Residential2:4:RuinedCityEntrance"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103194",
+      "prefab": "lichen",
+      "sourceIndex": 91,
+      "sourceId": 103194,
+      "sourcePosition": [
+        81.57,
+        0,
+        -237.15
+      ],
+      "sourceNode": "Residential2:2:CaveJungle"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103195",
+      "prefab": "lichen",
+      "sourceIndex": 92,
+      "sourceId": 103195,
+      "sourcePosition": [
+        82.43,
+        0,
+        -266.22
+      ],
+      "sourceNode": "Residential2:2:CaveJungle"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103196",
+      "prefab": "lichen",
+      "sourceIndex": 93,
+      "sourceId": 103196,
+      "sourcePosition": [
+        73.57,
+        0,
+        -241.11
+      ],
+      "sourceNode": "Residential2:2:CaveJungle"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103197",
+      "prefab": "lichen",
+      "sourceIndex": 94,
+      "sourceId": 103197,
+      "sourcePosition": [
+        86.49,
+        0,
+        -254.24
+      ],
+      "sourceNode": "Residential2:2:CaveJungle"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103198",
+      "prefab": "lichen",
+      "sourceIndex": 95,
+      "sourceId": 103198,
+      "sourcePosition": [
+        69.72,
+        0,
+        -254.39
+      ],
+      "sourceNode": "Residential2:2:CaveJungle"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103199",
+      "prefab": "lichen",
+      "sourceIndex": 96,
+      "sourceId": 103199,
+      "sourcePosition": [
+        74.65,
+        0,
+        -194.61
+      ],
+      "sourceNode": "Residential2:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103200",
+      "prefab": "lichen",
+      "sourceIndex": 97,
+      "sourceId": 103200,
+      "sourcePosition": [
+        105,
+        0,
+        -198.12
+      ],
+      "sourceNode": "Residential2:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103201",
+      "prefab": "lichen",
+      "sourceIndex": 98,
+      "sourceId": 103201,
+      "sourcePosition": [
+        94.65,
+        0,
+        -190.31
+      ],
+      "sourceNode": "Residential2:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103202",
+      "prefab": "lichen",
+      "sourceIndex": 99,
+      "sourceId": 103202,
+      "sourcePosition": [
+        70.96,
+        0,
+        -237.11
+      ],
+      "sourceNode": "Residential2:BG_11:BGWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103203",
+      "prefab": "lichen",
+      "sourceIndex": 100,
+      "sourceId": 103203,
+      "sourcePosition": [
+        50.27,
+        0,
+        -222.23
+      ],
+      "sourceNode": "Residential2:BG_11:BGWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103204",
+      "prefab": "lichen",
+      "sourceIndex": 101,
+      "sourceId": 103204,
+      "sourcePosition": [
+        146.74,
+        0,
+        -302.47
+      ],
+      "sourceNode": "Residential2:0:RuinedCity"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103205",
+      "prefab": "lichen",
+      "sourceIndex": 102,
+      "sourceId": 103205,
+      "sourcePosition": [
+        61.64,
+        0,
+        -309.99
+      ],
+      "sourceNode": "Residential2:0:RuinedCity"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103206",
+      "prefab": "lichen",
+      "sourceIndex": 103,
+      "sourceId": 103206,
+      "sourcePosition": [
+        54.14,
+        0,
+        -297.77
+      ],
+      "sourceNode": "Residential2:0:RuinedCity"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103207",
+      "prefab": "lichen",
+      "sourceIndex": 104,
+      "sourceId": 103207,
+      "sourcePosition": [
+        101.42,
+        0,
+        -270.78
+      ],
+      "sourceNode": "Residential2:0:RuinedCity"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103208",
+      "prefab": "lichen",
+      "sourceIndex": 105,
+      "sourceId": 103208,
+      "sourcePosition": [
+        226.15,
+        0,
+        -305.92
+      ],
+      "sourceNode": "AtriumMaze:8:AtriumMazeEntrance"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103209",
+      "prefab": "lichen",
+      "sourceIndex": 106,
+      "sourceId": 103209,
+      "sourcePosition": [
+        221,
+        0,
+        -302.36
+      ],
+      "sourceNode": "AtriumMaze:8:AtriumMazeEntrance"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103210",
+      "prefab": "lichen",
+      "sourceIndex": 107,
+      "sourceId": 103210,
+      "sourcePosition": [
+        218.35,
+        0,
+        -294.47
+      ],
+      "sourceNode": "AtriumMaze:8:AtriumMazeEntrance"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103211",
+      "prefab": "lichen",
+      "sourceIndex": 108,
+      "sourceId": 103211,
+      "sourcePosition": [
+        190.88,
+        0,
+        -313.82
+      ],
+      "sourceNode": "AtriumMaze:8:AtriumMazeEntrance"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103212",
+      "prefab": "lichen",
+      "sourceIndex": 109,
+      "sourceId": 103212,
+      "sourcePosition": [
+        194.91,
+        0,
+        -301.5
+      ],
+      "sourceNode": "AtriumMaze:8:AtriumMazeEntrance"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103213",
+      "prefab": "lichen",
+      "sourceIndex": 110,
+      "sourceId": 103213,
+      "sourcePosition": [
+        181.34,
+        0,
+        -293.55
+      ],
+      "sourceNode": "AtriumMaze:8:AtriumMazeEntrance"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103214",
+      "prefab": "lichen",
+      "sourceIndex": 111,
+      "sourceId": 103214,
+      "sourcePosition": [
+        214.41,
+        0,
+        -298.05
+      ],
+      "sourceNode": "AtriumMaze:8:AtriumMazeEntrance"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103215",
+      "prefab": "lichen",
+      "sourceIndex": 112,
+      "sourceId": 103215,
+      "sourcePosition": [
+        198.7,
+        0,
+        -302.31
+      ],
+      "sourceNode": "AtriumMaze:8:AtriumMazeEntrance"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103216",
+      "prefab": "lichen",
+      "sourceIndex": 113,
+      "sourceId": 103216,
+      "sourcePosition": [
+        173.54,
+        0,
+        -298.46
+      ],
+      "sourceNode": "AtriumMaze:8:AtriumMazeEntrance"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103217",
+      "prefab": "lichen",
+      "sourceIndex": 114,
+      "sourceId": 103217,
+      "sourcePosition": [
+        209.3,
+        0,
+        -309.64
+      ],
+      "sourceNode": "AtriumMaze:8:AtriumMazeEntrance"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103218",
+      "prefab": "lichen",
+      "sourceIndex": 115,
+      "sourceId": 103218,
+      "sourcePosition": [
+        181.59,
+        0,
+        -298.31
+      ],
+      "sourceNode": "AtriumMaze:8:AtriumMazeEntrance"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103219",
+      "prefab": "lichen",
+      "sourceIndex": 116,
+      "sourceId": 103219,
+      "sourcePosition": [
+        -178.93,
+        0,
+        153.66
+      ],
+      "sourceNode": "CaveJungle:2:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103220",
+      "prefab": "lichen",
+      "sourceIndex": 117,
+      "sourceId": 103220,
+      "sourcePosition": [
+        -178.5,
+        0,
+        137.84
+      ],
+      "sourceNode": "CaveJungle:2:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103221",
+      "prefab": "lichen",
+      "sourceIndex": 118,
+      "sourceId": 103221,
+      "sourcePosition": [
+        -177.31,
+        0,
+        141.41
+      ],
+      "sourceNode": "CaveJungle:2:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103222",
+      "prefab": "lichen",
+      "sourceIndex": 119,
+      "sourceId": 103222,
+      "sourcePosition": [
+        -181.86,
+        0,
+        149.9
+      ],
+      "sourceNode": "CaveJungle:2:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103223",
+      "prefab": "lichen",
+      "sourceIndex": 120,
+      "sourceId": 103223,
+      "sourcePosition": [
+        -173.22,
+        0,
+        158.04
+      ],
+      "sourceNode": "CaveJungle:2:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103224",
+      "prefab": "lichen",
+      "sourceIndex": 121,
+      "sourceId": 103224,
+      "sourcePosition": [
+        -206.48,
+        0,
+        154.69
+      ],
+      "sourceNode": "CaveJungle:2:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103225",
+      "prefab": "lichen",
+      "sourceIndex": 122,
+      "sourceId": 103225,
+      "sourcePosition": [
+        -174.68,
+        0,
+        149.21
+      ],
+      "sourceNode": "CaveJungle:2:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103226",
+      "prefab": "lichen",
+      "sourceIndex": 123,
+      "sourceId": 103226,
+      "sourcePosition": [
+        -170.07,
+        0,
+        165.11
+      ],
+      "sourceNode": "CaveJungle:2:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103227",
+      "prefab": "lichen",
+      "sourceIndex": 124,
+      "sourceId": 103227,
+      "sourcePosition": [
+        -181.73,
+        0,
+        174.95
+      ],
+      "sourceNode": "CaveJungle:2:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103228",
+      "prefab": "lichen",
+      "sourceIndex": 125,
+      "sourceId": 103228,
+      "sourcePosition": [
+        6.97,
+        0,
+        -30.33
+      ],
+      "sourceNode": "CaveJungle:6:CaveJungle"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103229",
+      "prefab": "lichen",
+      "sourceIndex": 126,
+      "sourceId": 103229,
+      "sourcePosition": [
+        -9.74,
+        0,
+        -22.71
+      ],
+      "sourceNode": "CaveJungle:6:CaveJungle"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103230",
+      "prefab": "lichen",
+      "sourceIndex": 127,
+      "sourceId": 103230,
+      "sourcePosition": [
+        -18.25,
+        0,
+        -21.58
+      ],
+      "sourceNode": "CaveJungle:6:CaveJungle"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103231",
+      "prefab": "lichen",
+      "sourceIndex": 128,
+      "sourceId": 103231,
+      "sourcePosition": [
+        -9.16,
+        0,
+        -33.53
+      ],
+      "sourceNode": "CaveJungle:6:CaveJungle"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103232",
+      "prefab": "lichen",
+      "sourceIndex": 129,
+      "sourceId": 103232,
+      "sourcePosition": [
+        -101.43,
+        0,
+        85.06
+      ],
+      "sourceNode": "CaveJungle:4:LichenMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103233",
+      "prefab": "lichen",
+      "sourceIndex": 130,
+      "sourceId": 103233,
+      "sourcePosition": [
+        -94.28,
+        0,
+        81.44
+      ],
+      "sourceNode": "CaveJungle:4:LichenMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103234",
+      "prefab": "lichen",
+      "sourceIndex": 131,
+      "sourceId": 103234,
+      "sourcePosition": [
+        -102.68,
+        0,
+        93.97
+      ],
+      "sourceNode": "CaveJungle:4:LichenMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103235",
+      "prefab": "lichen",
+      "sourceIndex": 132,
+      "sourceId": 103235,
+      "sourcePosition": [
+        -97.37,
+        0,
+        90.94
+      ],
+      "sourceNode": "CaveJungle:4:LichenMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103236",
+      "prefab": "lichen",
+      "sourceIndex": 133,
+      "sourceId": 103236,
+      "sourcePosition": [
+        -109.95,
+        0,
+        90.41
+      ],
+      "sourceNode": "CaveJungle:4:LichenMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103237",
+      "prefab": "lichen",
+      "sourceIndex": 134,
+      "sourceId": 103237,
+      "sourcePosition": [
+        -161.02,
+        0,
+        81.55
+      ],
+      "sourceNode": "CaveJungle:BG_52:BGWildsRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103238",
+      "prefab": "lichen",
+      "sourceIndex": 135,
+      "sourceId": 103238,
+      "sourcePosition": [
+        -205.91,
+        0,
+        69.02
+      ],
+      "sourceNode": "CaveJungle:BG_52:BGWildsRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103239",
+      "prefab": "lichen",
+      "sourceIndex": 136,
+      "sourceId": 103239,
+      "sourcePosition": [
+        25.04,
+        0,
+        2.22
+      ],
+      "sourceNode": "CaveJungle:BG_55:BGWildsRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103240",
+      "prefab": "lichen",
+      "sourceIndex": 137,
+      "sourceId": 103240,
+      "sourcePosition": [
+        -129.54,
+        0,
+        153.65
+      ],
+      "sourceNode": "CaveJungle:BG_53:BGWildsRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103241",
+      "prefab": "lichen",
+      "sourceIndex": 138,
+      "sourceId": 103241,
+      "sourcePosition": [
+        -202.51,
+        0,
+        101.73
+      ],
+      "sourceNode": "CaveJungle:BG_54:BGWildsRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103242",
+      "prefab": "lichen",
+      "sourceIndex": 139,
+      "sourceId": 103242,
+      "sourcePosition": [
+        -250.08,
+        0,
+        105.58
+      ],
+      "sourceNode": "CaveJungle:BG_54:BGWildsRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103243",
+      "prefab": "lichen",
+      "sourceIndex": 140,
+      "sourceId": 103243,
+      "sourcePosition": [
+        -258.82,
+        0,
+        162.42
+      ],
+      "sourceNode": "CaveJungle:BG_54:BGWildsRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103244",
+      "prefab": "lichen",
+      "sourceIndex": 141,
+      "sourceId": 103244,
+      "sourcePosition": [
+        -265.02,
+        0,
+        102.98
+      ],
+      "sourceNode": "CaveJungle:BG_54:BGWildsRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103245",
+      "prefab": "lichen",
+      "sourceIndex": 142,
+      "sourceId": 103245,
+      "sourcePosition": [
+        -222.01,
+        0,
+        194.43
+      ],
+      "sourceNode": "CaveJungle:BG_56:BGWildsRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103246",
+      "prefab": "lichen",
+      "sourceIndex": 143,
+      "sourceId": 103246,
+      "sourcePosition": [
+        -217.82,
+        0,
+        206.21
+      ],
+      "sourceNode": "CaveJungle:BG_56:BGWildsRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103247",
+      "prefab": "lichen",
+      "sourceIndex": 144,
+      "sourceId": 103247,
+      "sourcePosition": [
+        -58.08,
+        0,
+        50.07
+      ],
+      "sourceNode": "CaveJungle:5:CaveJungle"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103248",
+      "prefab": "lichen",
+      "sourceIndex": 145,
+      "sourceId": 103248,
+      "sourcePosition": [
+        -62,
+        0,
+        45.62
+      ],
+      "sourceNode": "CaveJungle:5:CaveJungle"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103249",
+      "prefab": "lichen",
+      "sourceIndex": 146,
+      "sourceId": 103249,
+      "sourcePosition": [
+        -70,
+        0,
+        54.29
+      ],
+      "sourceNode": "CaveJungle:5:CaveJungle"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103250",
+      "prefab": "lichen",
+      "sourceIndex": 147,
+      "sourceId": 103250,
+      "sourcePosition": [
+        625.97,
+        0,
+        -186.01
+      ],
+      "sourceNode": "MuddySacred:0:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103251",
+      "prefab": "lichen",
+      "sourceIndex": 148,
+      "sourceId": 103251,
+      "sourcePosition": [
+        629.06,
+        0,
+        -290.56
+      ],
+      "sourceNode": "MuddySacred:0:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103252",
+      "prefab": "lichen",
+      "sourceIndex": 149,
+      "sourceId": 103252,
+      "sourcePosition": [
+        650.94,
+        0,
+        -285.08
+      ],
+      "sourceNode": "MuddySacred:0:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103253",
+      "prefab": "lichen",
+      "sourceIndex": 150,
+      "sourceId": 103253,
+      "sourcePosition": [
+        625.47,
+        0,
+        -270.41
+      ],
+      "sourceNode": "MuddySacred:0:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103254",
+      "prefab": "lichen",
+      "sourceIndex": 151,
+      "sourceId": 103254,
+      "sourcePosition": [
+        606.55,
+        0,
+        -229.78
+      ],
+      "sourceNode": "MuddySacred:0:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103255",
+      "prefab": "lichen",
+      "sourceIndex": 152,
+      "sourceId": 103255,
+      "sourcePosition": [
+        621.67,
+        0,
+        -242.1
+      ],
+      "sourceNode": "MuddySacred:0:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103256",
+      "prefab": "lichen",
+      "sourceIndex": 153,
+      "sourceId": 103256,
+      "sourcePosition": [
+        633.29,
+        0,
+        -229.64
+      ],
+      "sourceNode": "MuddySacred:0:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103257",
+      "prefab": "lichen",
+      "sourceIndex": 154,
+      "sourceId": 103257,
+      "sourcePosition": [
+        633.86,
+        0,
+        -241.21
+      ],
+      "sourceNode": "MuddySacred:0:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103258",
+      "prefab": "lichen",
+      "sourceIndex": 155,
+      "sourceId": 103258,
+      "sourcePosition": [
+        613.18,
+        0,
+        -210.21
+      ],
+      "sourceNode": "MuddySacred:0:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103259",
+      "prefab": "lichen",
+      "sourceIndex": 156,
+      "sourceId": 103259,
+      "sourcePosition": [
+        629.93,
+        0,
+        -298.63
+      ],
+      "sourceNode": "MuddySacred:0:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103260",
+      "prefab": "lichen",
+      "sourceIndex": 157,
+      "sourceId": 103260,
+      "sourcePosition": [
+        637.29,
+        0,
+        -278.42
+      ],
+      "sourceNode": "MuddySacred:0:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103261",
+      "prefab": "lichen",
+      "sourceIndex": 158,
+      "sourceId": 103261,
+      "sourcePosition": [
+        634.17,
+        0,
+        -261.41
+      ],
+      "sourceNode": "MuddySacred:0:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103262",
+      "prefab": "lichen",
+      "sourceIndex": 159,
+      "sourceId": 103262,
+      "sourcePosition": [
+        625.23,
+        0,
+        -294.75
+      ],
+      "sourceNode": "MuddySacred:0:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103263",
+      "prefab": "lichen",
+      "sourceIndex": 160,
+      "sourceId": 103263,
+      "sourcePosition": [
+        622.32,
+        0,
+        -254.01
+      ],
+      "sourceNode": "MuddySacred:0:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103264",
+      "prefab": "lichen",
+      "sourceIndex": 161,
+      "sourceId": 103264,
+      "sourcePosition": [
+        630.66,
+        0,
+        -274.45
+      ],
+      "sourceNode": "MuddySacred:0:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103265",
+      "prefab": "lichen",
+      "sourceIndex": 162,
+      "sourceId": 103265,
+      "sourcePosition": [
+        637.63,
+        0,
+        -245.17
+      ],
+      "sourceNode": "MuddySacred:0:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103266",
+      "prefab": "lichen",
+      "sourceIndex": 163,
+      "sourceId": 103266,
+      "sourcePosition": [
+        629.79,
+        0,
+        -226.34
+      ],
+      "sourceNode": "MuddySacred:0:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103267",
+      "prefab": "lichen",
+      "sourceIndex": 164,
+      "sourceId": 103267,
+      "sourcePosition": [
+        618.4,
+        0,
+        -209.9
+      ],
+      "sourceNode": "MuddySacred:0:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103268",
+      "prefab": "lichen",
+      "sourceIndex": 165,
+      "sourceId": 103268,
+      "sourcePosition": [
+        609.31,
+        0,
+        -250.5
+      ],
+      "sourceNode": "MuddySacred:0:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103269",
+      "prefab": "lichen",
+      "sourceIndex": 166,
+      "sourceId": 103269,
+      "sourcePosition": [
+        622.23,
+        0,
+        -229.71
+      ],
+      "sourceNode": "MuddySacred:0:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103270",
+      "prefab": "lichen",
+      "sourceIndex": 167,
+      "sourceId": 103270,
+      "sourcePosition": [
+        630.72,
+        0,
+        -246.14
+      ],
+      "sourceNode": "MuddySacred:0:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103271",
+      "prefab": "lichen",
+      "sourceIndex": 168,
+      "sourceId": 103271,
+      "sourcePosition": [
+        601.63,
+        0,
+        -190.92
+      ],
+      "sourceNode": "MuddySacred:0:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103272",
+      "prefab": "lichen",
+      "sourceIndex": 169,
+      "sourceId": 103272,
+      "sourcePosition": [
+        638.96,
+        0,
+        -293.43
+      ],
+      "sourceNode": "MuddySacred:0:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103273",
+      "prefab": "lichen",
+      "sourceIndex": 170,
+      "sourceId": 103273,
+      "sourcePosition": [
+        598.11,
+        0,
+        -225.57
+      ],
+      "sourceNode": "MuddySacred:0:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103274",
+      "prefab": "lichen",
+      "sourceIndex": 171,
+      "sourceId": 103274,
+      "sourcePosition": [
+        625.77,
+        0,
+        -262.45
+      ],
+      "sourceNode": "MuddySacred:0:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103275",
+      "prefab": "lichen",
+      "sourceIndex": 172,
+      "sourceId": 103275,
+      "sourcePosition": [
+        641.44,
+        0,
+        -277.76
+      ],
+      "sourceNode": "MuddySacred:0:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103276",
+      "prefab": "lichen",
+      "sourceIndex": 173,
+      "sourceId": 103276,
+      "sourcePosition": [
+        602.6,
+        0,
+        -197.98
+      ],
+      "sourceNode": "MuddySacred:0:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103277",
+      "prefab": "lichen",
+      "sourceIndex": 174,
+      "sourceId": 103277,
+      "sourcePosition": [
+        649.86,
+        0,
+        -290.81
+      ],
+      "sourceNode": "MuddySacred:0:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103278",
+      "prefab": "lichen",
+      "sourceIndex": 175,
+      "sourceId": 103278,
+      "sourcePosition": [
+        638.23,
+        0,
+        -234.44
+      ],
+      "sourceNode": "MuddySacred:0:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103279",
+      "prefab": "lichen",
+      "sourceIndex": 176,
+      "sourceId": 103279,
+      "sourcePosition": [
+        610.85,
+        0,
+        -210.39
+      ],
+      "sourceNode": "MuddySacred:0:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103280",
+      "prefab": "lichen",
+      "sourceIndex": 177,
+      "sourceId": 103280,
+      "sourcePosition": [
+        610.76,
+        0,
+        -178.87
+      ],
+      "sourceNode": "MuddySacred:0:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103281",
+      "prefab": "lichen",
+      "sourceIndex": 178,
+      "sourceId": 103281,
+      "sourcePosition": [
+        618.04,
+        0,
+        -246.81
+      ],
+      "sourceNode": "MuddySacred:0:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103282",
+      "prefab": "lichen",
+      "sourceIndex": 179,
+      "sourceId": 103282,
+      "sourcePosition": [
+        622.58,
+        0,
+        -274.86
+      ],
+      "sourceNode": "MuddySacred:0:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103283",
+      "prefab": "lichen",
+      "sourceIndex": 180,
+      "sourceId": 103283,
+      "sourcePosition": [
+        713.8,
+        0,
+        -190.55
+      ],
+      "sourceNode": "MuddySacred:BG_59:BGWildsRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103284",
+      "prefab": "lichen",
+      "sourceIndex": 181,
+      "sourceId": 103284,
+      "sourcePosition": [
+        749,
+        0,
+        -218.77
+      ],
+      "sourceNode": "MuddySacred:BG_59:BGWildsRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103285",
+      "prefab": "lichen",
+      "sourceIndex": 182,
+      "sourceId": 103285,
+      "sourcePosition": [
+        705.65,
+        0,
+        -197.78
+      ],
+      "sourceNode": "MuddySacred:BG_59:BGWildsRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103286",
+      "prefab": "lichen",
+      "sourceIndex": 183,
+      "sourceId": 103286,
+      "sourcePosition": [
+        710.88,
+        0,
+        -301.77
+      ],
+      "sourceNode": "MuddySacred:BG_59:BGWildsRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103287",
+      "prefab": "lichen",
+      "sourceIndex": 184,
+      "sourceId": 103287,
+      "sourcePosition": [
+        750.85,
+        0,
+        -245.81
+      ],
+      "sourceNode": "MuddySacred:BG_59:BGWildsRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103288",
+      "prefab": "lichen",
+      "sourceIndex": 185,
+      "sourceId": 103288,
+      "sourcePosition": [
+        665.39,
+        0,
+        -237.61
+      ],
+      "sourceNode": "MuddySacred:BG_59:BGWildsRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103289",
+      "prefab": "lichen",
+      "sourceIndex": 186,
+      "sourceId": 103289,
+      "sourcePosition": [
+        726.02,
+        0,
+        -234.44
+      ],
+      "sourceNode": "MuddySacred:BG_59:BGWildsRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103290",
+      "prefab": "lichen",
+      "sourceIndex": 187,
+      "sourceId": 103290,
+      "sourcePosition": [
+        709.38,
+        0,
+        -209.33
+      ],
+      "sourceNode": "MuddySacred:BG_59:BGWildsRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103291",
+      "prefab": "lichen",
+      "sourceIndex": 188,
+      "sourceId": 103291,
+      "sourcePosition": [
+        741.44,
+        0,
+        -209.37
+      ],
+      "sourceNode": "MuddySacred:BG_59:BGWildsRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103292",
+      "prefab": "lichen",
+      "sourceIndex": 189,
+      "sourceId": 103292,
+      "sourcePosition": [
+        693.67,
+        0,
+        -254.4
+      ],
+      "sourceNode": "MuddySacred:BG_59:BGWildsRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103293",
+      "prefab": "lichen",
+      "sourceIndex": 190,
+      "sourceId": 103293,
+      "sourcePosition": [
+        522.04,
+        0,
+        -254
+      ],
+      "sourceNode": "MuddySacred:2:MonkeyMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103294",
+      "prefab": "lichen",
+      "sourceIndex": 191,
+      "sourceId": 103294,
+      "sourcePosition": [
+        533.16,
+        0,
+        -278.46
+      ],
+      "sourceNode": "MuddySacred:2:MonkeyMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103295",
+      "prefab": "lichen",
+      "sourceIndex": 192,
+      "sourceId": 103295,
+      "sourcePosition": [
+        513.85,
+        0,
+        -286.78
+      ],
+      "sourceNode": "MuddySacred:2:MonkeyMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103296",
+      "prefab": "lichen",
+      "sourceIndex": 193,
+      "sourceId": 103296,
+      "sourcePosition": [
+        513.67,
+        0,
+        -249.71
+      ],
+      "sourceNode": "MuddySacred:2:MonkeyMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103297",
+      "prefab": "lichen",
+      "sourceIndex": 194,
+      "sourceId": 103297,
+      "sourcePosition": [
+        505,
+        0,
+        -277.17
+      ],
+      "sourceNode": "MuddySacred:2:MonkeyMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103298",
+      "prefab": "lichen",
+      "sourceIndex": 195,
+      "sourceId": 103298,
+      "sourcePosition": [
+        125.06,
+        0,
+        -201.53
+      ],
+      "sourceNode": "Residential:4:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103299",
+      "prefab": "lichen",
+      "sourceIndex": 196,
+      "sourceId": 103299,
+      "sourcePosition": [
+        170.33,
+        0,
+        -166.96
+      ],
+      "sourceNode": "Residential:4:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103300",
+      "prefab": "lichen",
+      "sourceIndex": 197,
+      "sourceId": 103300,
+      "sourcePosition": [
+        186.31,
+        0,
+        -186.36
+      ],
+      "sourceNode": "Residential:4:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103301",
+      "prefab": "lichen",
+      "sourceIndex": 198,
+      "sourceId": 103301,
+      "sourcePosition": [
+        165.26,
+        0,
+        -170.21
+      ],
+      "sourceNode": "Residential:4:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103302",
+      "prefab": "lichen",
+      "sourceIndex": 199,
+      "sourceId": 103302,
+      "sourcePosition": [
+        141.76,
+        0,
+        -169.9
+      ],
+      "sourceNode": "Residential:4:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103303",
+      "prefab": "lichen",
+      "sourceIndex": 200,
+      "sourceId": 103303,
+      "sourcePosition": [
+        170.04,
+        0,
+        -157.6
+      ],
+      "sourceNode": "Residential:4:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103304",
+      "prefab": "lichen",
+      "sourceIndex": 201,
+      "sourceId": 103304,
+      "sourcePosition": [
+        146.97,
+        0,
+        -202.98
+      ],
+      "sourceNode": "Residential:4:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103305",
+      "prefab": "lichen",
+      "sourceIndex": 202,
+      "sourceId": 103305,
+      "sourcePosition": [
+        137.17,
+        0,
+        -214.02
+      ],
+      "sourceNode": "Residential:4:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103306",
+      "prefab": "lichen",
+      "sourceIndex": 203,
+      "sourceId": 103306,
+      "sourcePosition": [
+        170.9,
+        0,
+        -162.5
+      ],
+      "sourceNode": "Residential:4:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103307",
+      "prefab": "lichen",
+      "sourceIndex": 204,
+      "sourceId": 103307,
+      "sourcePosition": [
+        174.36,
+        0,
+        -173.56
+      ],
+      "sourceNode": "Residential:4:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103308",
+      "prefab": "lichen",
+      "sourceIndex": 205,
+      "sourceId": 103308,
+      "sourcePosition": [
+        125.62,
+        0,
+        -194.12
+      ],
+      "sourceNode": "Residential:4:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103309",
+      "prefab": "lichen",
+      "sourceIndex": 206,
+      "sourceId": 103309,
+      "sourcePosition": [
+        145.94,
+        0,
+        -197.58
+      ],
+      "sourceNode": "Residential:4:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103310",
+      "prefab": "lichen",
+      "sourceIndex": 207,
+      "sourceId": 103310,
+      "sourcePosition": [
+        145.89,
+        0,
+        -170.79
+      ],
+      "sourceNode": "Residential:4:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103311",
+      "prefab": "lichen",
+      "sourceIndex": 208,
+      "sourceId": 103311,
+      "sourcePosition": [
+        165.9,
+        0,
+        -157.06
+      ],
+      "sourceNode": "Residential:4:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103312",
+      "prefab": "lichen",
+      "sourceIndex": 209,
+      "sourceId": 103312,
+      "sourcePosition": [
+        214.89,
+        0,
+        -206.51
+      ],
+      "sourceNode": "Residential:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103313",
+      "prefab": "lichen",
+      "sourceIndex": 210,
+      "sourceId": 103313,
+      "sourcePosition": [
+        169.27,
+        0,
+        -249.52
+      ],
+      "sourceNode": "Residential:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103314",
+      "prefab": "lichen",
+      "sourceIndex": 211,
+      "sourceId": 103314,
+      "sourcePosition": [
+        165.9,
+        0,
+        -217.66
+      ],
+      "sourceNode": "Residential:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103315",
+      "prefab": "lichen",
+      "sourceIndex": 212,
+      "sourceId": 103315,
+      "sourcePosition": [
+        202.16,
+        0,
+        -206.2
+      ],
+      "sourceNode": "Residential:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103316",
+      "prefab": "lichen",
+      "sourceIndex": 213,
+      "sourceId": 103316,
+      "sourcePosition": [
+        186.87,
+        0,
+        -194.29
+      ],
+      "sourceNode": "Residential:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103317",
+      "prefab": "lichen",
+      "sourceIndex": 214,
+      "sourceId": 103317,
+      "sourcePosition": [
+        230.49,
+        0,
+        -197.63
+      ],
+      "sourceNode": "Residential:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103318",
+      "prefab": "lichen",
+      "sourceIndex": 215,
+      "sourceId": 103318,
+      "sourcePosition": [
+        230.15,
+        0,
+        -189.39
+      ],
+      "sourceNode": "Residential:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103319",
+      "prefab": "lichen",
+      "sourceIndex": 216,
+      "sourceId": 103319,
+      "sourcePosition": [
+        222.8,
+        0,
+        -181.76
+      ],
+      "sourceNode": "Residential:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103320",
+      "prefab": "lichen",
+      "sourceIndex": 217,
+      "sourceId": 103320,
+      "sourcePosition": [
+        194.64,
+        0,
+        -258.3
+      ],
+      "sourceNode": "Residential:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103321",
+      "prefab": "lichen",
+      "sourceIndex": 218,
+      "sourceId": 103321,
+      "sourcePosition": [
+        174.18,
+        0,
+        -270.34
+      ],
+      "sourceNode": "Residential:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103322",
+      "prefab": "lichen",
+      "sourceIndex": 219,
+      "sourceId": 103322,
+      "sourcePosition": [
+        210.26,
+        0,
+        -206.24
+      ],
+      "sourceNode": "Residential:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103323",
+      "prefab": "lichen",
+      "sourceIndex": 220,
+      "sourceId": 103323,
+      "sourcePosition": [
+        170.03,
+        0,
+        -213.47
+      ],
+      "sourceNode": "Residential:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103324",
+      "prefab": "lichen",
+      "sourceIndex": 221,
+      "sourceId": 103324,
+      "sourcePosition": [
+        170.64,
+        0,
+        -257.13
+      ],
+      "sourceNode": "Residential:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103325",
+      "prefab": "lichen",
+      "sourceIndex": 222,
+      "sourceId": 103325,
+      "sourcePosition": [
+        189.85,
+        0,
+        -194.95
+      ],
+      "sourceNode": "Residential:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103326",
+      "prefab": "lichen",
+      "sourceIndex": 223,
+      "sourceId": 103326,
+      "sourcePosition": [
+        234.25,
+        0,
+        -165.14
+      ],
+      "sourceNode": "Residential:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103327",
+      "prefab": "lichen",
+      "sourceIndex": 224,
+      "sourceId": 103327,
+      "sourcePosition": [
+        213.69,
+        0,
+        -181.63
+      ],
+      "sourceNode": "Residential:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103328",
+      "prefab": "lichen",
+      "sourceIndex": 225,
+      "sourceId": 103328,
+      "sourcePosition": [
+        246.61,
+        0,
+        -177.48
+      ],
+      "sourceNode": "Residential:BG_62:RuinedCity"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103329",
+      "prefab": "lichen",
+      "sourceIndex": 226,
+      "sourceId": 103329,
+      "sourcePosition": [
+        261.81,
+        0,
+        -218.35
+      ],
+      "sourceNode": "Residential:BG_62:RuinedCity"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103330",
+      "prefab": "lichen",
+      "sourceIndex": 227,
+      "sourceId": 103330,
+      "sourcePosition": [
+        246.74,
+        0,
+        -218.65
+      ],
+      "sourceNode": "Residential:BG_62:RuinedCity"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103331",
+      "prefab": "lichen",
+      "sourceIndex": 228,
+      "sourceId": 103331,
+      "sourcePosition": [
+        114.83,
+        0,
+        -137.83
+      ],
+      "sourceNode": "Residential:5:RuinedCityEntrance"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103332",
+      "prefab": "lichen",
+      "sourceIndex": 229,
+      "sourceId": 103332,
+      "sourcePosition": [
+        94.61,
+        0,
+        -153.13
+      ],
+      "sourceNode": "Residential:5:RuinedCityEntrance"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103333",
+      "prefab": "lichen",
+      "sourceIndex": 230,
+      "sourceId": 103333,
+      "sourcePosition": [
+        214.11,
+        0,
+        -269.83
+      ],
+      "sourceNode": "Residential:2:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103334",
+      "prefab": "lichen",
+      "sourceIndex": 231,
+      "sourceId": 103334,
+      "sourcePosition": [
+        230.2,
+        0,
+        -249.49
+      ],
+      "sourceNode": "Residential:2:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103335",
+      "prefab": "lichen",
+      "sourceIndex": 232,
+      "sourceId": 103335,
+      "sourcePosition": [
+        221.27,
+        0,
+        -285.58
+      ],
+      "sourceNode": "Residential:2:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103336",
+      "prefab": "lichen",
+      "sourceIndex": 233,
+      "sourceId": 103336,
+      "sourcePosition": [
+        222.64,
+        0,
+        -245.97
+      ],
+      "sourceNode": "Residential:2:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103337",
+      "prefab": "lichen",
+      "sourceIndex": 234,
+      "sourceId": 103337,
+      "sourcePosition": [
+        285.63,
+        0,
+        -157.96
+      ],
+      "sourceNode": "Residential:BG_61:RuinedCity"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103338",
+      "prefab": "lichen",
+      "sourceIndex": 235,
+      "sourceId": 103338,
+      "sourcePosition": [
+        282.16,
+        0,
+        -145.42
+      ],
+      "sourceNode": "Residential:BG_61:RuinedCity"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103339",
+      "prefab": "lichen",
+      "sourceIndex": 236,
+      "sourceId": 103339,
+      "sourcePosition": [
+        234.25,
+        0,
+        -73.38
+      ],
+      "sourceNode": "LichenLand:BG_84:BGWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103340",
+      "prefab": "lichen",
+      "sourceIndex": 237,
+      "sourceId": 103340,
+      "sourcePosition": [
+        89.02,
+        0,
+        -114.6
+      ],
+      "sourceNode": "LichenLand:BG_80:BGWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103341",
+      "prefab": "lichen",
+      "sourceIndex": 238,
+      "sourceId": 103341,
+      "sourcePosition": [
+        121.04,
+        0,
+        -82.16
+      ],
+      "sourceNode": "LichenLand:6:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103342",
+      "prefab": "lichen",
+      "sourceIndex": 239,
+      "sourceId": 103342,
+      "sourcePosition": [
+        129.15,
+        0,
+        -105.95
+      ],
+      "sourceNode": "LichenLand:6:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103343",
+      "prefab": "lichen",
+      "sourceIndex": 240,
+      "sourceId": 103343,
+      "sourcePosition": [
+        133.31,
+        0,
+        -82.89
+      ],
+      "sourceNode": "LichenLand:6:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103344",
+      "prefab": "lichen",
+      "sourceIndex": 241,
+      "sourceId": 103344,
+      "sourcePosition": [
+        134.78,
+        0,
+        -102.74
+      ],
+      "sourceNode": "LichenLand:6:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103345",
+      "prefab": "lichen",
+      "sourceIndex": 242,
+      "sourceId": 103345,
+      "sourcePosition": [
+        138.37,
+        0,
+        -98.93
+      ],
+      "sourceNode": "LichenLand:6:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103346",
+      "prefab": "lichen",
+      "sourceIndex": 243,
+      "sourceId": 103346,
+      "sourcePosition": [
+        138.74,
+        0,
+        -93.36
+      ],
+      "sourceNode": "LichenLand:6:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103347",
+      "prefab": "lichen",
+      "sourceIndex": 244,
+      "sourceId": 103347,
+      "sourcePosition": [
+        126.05,
+        0,
+        -113.2
+      ],
+      "sourceNode": "LichenLand:6:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103348",
+      "prefab": "lichen",
+      "sourceIndex": 245,
+      "sourceId": 103348,
+      "sourcePosition": [
+        114.87,
+        0,
+        -89.84
+      ],
+      "sourceNode": "LichenLand:6:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103349",
+      "prefab": "lichen",
+      "sourceIndex": 246,
+      "sourceId": 103349,
+      "sourcePosition": [
+        130.83,
+        0,
+        -98.78
+      ],
+      "sourceNode": "LichenLand:6:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103350",
+      "prefab": "lichen",
+      "sourceIndex": 247,
+      "sourceId": 103350,
+      "sourcePosition": [
+        118.37,
+        0,
+        -109.05
+      ],
+      "sourceNode": "LichenLand:6:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103351",
+      "prefab": "lichen",
+      "sourceIndex": 248,
+      "sourceId": 103351,
+      "sourcePosition": [
+        142.56,
+        0,
+        -89.1
+      ],
+      "sourceNode": "LichenLand:6:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103352",
+      "prefab": "lichen",
+      "sourceIndex": 249,
+      "sourceId": 103352,
+      "sourcePosition": [
+        138.4,
+        0,
+        -101.56
+      ],
+      "sourceNode": "LichenLand:6:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103353",
+      "prefab": "lichen",
+      "sourceIndex": 250,
+      "sourceId": 103353,
+      "sourcePosition": [
+        137.25,
+        0,
+        -85.4
+      ],
+      "sourceNode": "LichenLand:6:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103354",
+      "prefab": "lichen",
+      "sourceIndex": 251,
+      "sourceId": 103354,
+      "sourcePosition": [
+        126.35,
+        0,
+        -110.77
+      ],
+      "sourceNode": "LichenLand:6:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103355",
+      "prefab": "lichen",
+      "sourceIndex": 252,
+      "sourceId": 103355,
+      "sourcePosition": [
+        118.08,
+        0,
+        -86.83
+      ],
+      "sourceNode": "LichenLand:6:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103356",
+      "prefab": "lichen",
+      "sourceIndex": 253,
+      "sourceId": 103356,
+      "sourcePosition": [
+        121.67,
+        0,
+        -86.6
+      ],
+      "sourceNode": "LichenLand:6:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103357",
+      "prefab": "lichen",
+      "sourceIndex": 254,
+      "sourceId": 103357,
+      "sourcePosition": [
+        118.57,
+        0,
+        -81.03
+      ],
+      "sourceNode": "LichenLand:6:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103358",
+      "prefab": "lichen",
+      "sourceIndex": 255,
+      "sourceId": 103358,
+      "sourcePosition": [
+        141.25,
+        0,
+        -57.72
+      ],
+      "sourceNode": "LichenLand:5:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103359",
+      "prefab": "lichen",
+      "sourceIndex": 256,
+      "sourceId": 103359,
+      "sourcePosition": [
+        145.17,
+        0,
+        -74.15
+      ],
+      "sourceNode": "LichenLand:5:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103360",
+      "prefab": "lichen",
+      "sourceIndex": 257,
+      "sourceId": 103360,
+      "sourcePosition": [
+        130.5,
+        0,
+        -66.93
+      ],
+      "sourceNode": "LichenLand:5:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_lichen_id_103361",
+      "prefab": "lichen",
+      "sourceIndex": 258,
+      "sourceId": 103361,
+      "sourcePosition": [
+        142.41,
+        0,
+        -61.93
+      ],
+      "sourceNode": "LichenLand:5:LichenLand"
     },
     {
       "id": "dst_04E26ADB66396E8D_evergreen_id_108087",

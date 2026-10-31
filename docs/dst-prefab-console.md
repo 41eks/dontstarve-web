@@ -61,6 +61,7 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `cutstone` | 可生成 | 可入栏 | `prefabs/cutstone.lua:33` |
 | `marble` | 可生成 | 可入栏 | `prefabs/inv_marble.lua:36` |
 | `foliage`、`beardhair`、`scrapbook_page` | 可生成 | 可入栏 | `prefabs/foliage.lua`、`beardhair.lua`、`scrapbook_page.lua`：仅接入地面美术、库存图标和堆叠 40；干燥、雪人装饰、图鉴教学、燃烧等交互未实现 |
+| `cutlichen` | 可生成 | 可入栏 | `prefabs/cutlichen.lua`：仅接入地面美术（`algae.zip`）、库存图标和堆叠 40；食用、腐烂和交易未实现 |
 | `cookingrecipecard`、`blueprint` | 可生成 | 可入栏 | `prefabs/cookingrecipecard.lua`、`blueprint.lua`：仅接入地面美术和图标（`blueprint_rare` 作为稀有变体资源），不堆叠；随机配方、命名、教学与燃烧未实现 |
 | `trinket_1`～`trinket_46` | 可生成 | 可入栏 | `prefabs/trinkets.lua` 按 `NUM_TRINKETS = 46` 注册的实际 ID：`trinkets.zip` 的编号剪辑与 `inventoryimages.xml` 图标，堆叠 40；可交易、诱饵、弹药、海钓配件等交互未实现 |
 | `moon_tree_blossom` | 可生成 | 可入栏 | `prefabs/moontree_blossom.lua` 的 `inventoryitem` 分支 |
@@ -479,6 +480,7 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `ruins_statue_mage_nogem` | 可生成 | 不能入栏 | `prefabs/statueruins.lua` |
 | `ruins_statue_head` | 可生成 | 不能入栏 | `prefabs/statueruins.lua` |
 | `ruins_statue_head_nogem` | 可生成 | 不能入栏 | `prefabs/statueruins.lua` |
+| `lichen` | 可生成 | 不能入栏 | `prefabs/lichen.lua` |
 | `chessjunk1`、`chessjunk2`、`chessjunk3` | 可生成 | 不能入栏 | `prefabs/chessjunk.lua` |
 | `chester` | 可生成 | 不能入栏 | `prefabs/chester.lua` |
 | `hutch` | 可生成 | 不能入栏 | `prefabs/hutch.lua` |

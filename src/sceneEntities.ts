@@ -53,6 +53,7 @@ import { BerrybushManager, BERRYBUSH_ID } from '@dontstarve-web/prefab/berrybush
 import { MonkeytailManager, MONKEYTAIL_ID } from '@dontstarve-web/prefab/monkeytail';
 import { GrassManager, GRASS_ID } from '@dontstarve-web/prefab/grass';
 import { CaveFernManager } from '@dontstarve-web/prefab/cave_fern';
+import { LichenManager, LICHEN_ID } from '@dontstarve-web/prefab/lichen';
 import { CactusManager } from '@dontstarve-web/prefab/cactus';
 import type { GameTimeScheduler } from '@dontstarve-web/prefab/gameTimeScheduler';
 import { TumbleweedManager, TUMBLEWEED_ID } from '@dontstarve-web/prefab/tumbleweed';
@@ -132,6 +133,7 @@ const MANAGER_DEFINITIONS = {
   'grass': PREFAB_DEFINITIONS.grasses,
   'sapling': PREFAB_DEFINITIONS.saplings,
   'cave_fern': PREFAB_DEFINITIONS.caveFerns,
+  'lichen': PREFAB_DEFINITIONS.lichens,
   'cactus': PREFAB_DEFINITIONS.cacti,
   'lava_pond': PREFAB_DEFINITIONS.lavaPonds,
   'tumbleweed': PREFAB_DEFINITIONS.tumbleweeds,
@@ -212,6 +214,7 @@ const SCENE_LIFECYCLE_ORDER = [
   PREFAB_DEFINITIONS.grasses,
   PREFAB_DEFINITIONS.saplings,
   PREFAB_DEFINITIONS.caveFerns,
+  PREFAB_DEFINITIONS.lichens,
   PREFAB_DEFINITIONS.ponds,
   PREFAB_DEFINITIONS.lavaPonds,
   PREFAB_DEFINITIONS.lavaPondRocks,
@@ -271,6 +274,7 @@ export async function createSceneEntities(
     'grass': ReturnType<typeof registerGrasses>;
     'sapling': ReturnType<typeof registerSaplings>;
     'cave_fern': ReturnType<typeof registerCaveFerns>;
+    'lichen': ReturnType<typeof registerLichens>;
     'cactus': ReturnType<typeof registerCacti>;
     'lava_pond': ReturnType<typeof registerLavaPonds>;
     'tumbleweed': ReturnType<typeof registerTumbleweeds>;
@@ -354,6 +358,7 @@ export async function createSceneEntities(
   Managers['grass'] = registerGrasses(registry, 'grass', worldState);
   Managers['sapling'] = registerSaplings(registry, 'sapling', worldState);
   Managers['cave_fern'] = registerCaveFerns(registry, 'cave_fern', worldState);
+  Managers['lichen'] = registerLichens(registry, 'lichen', worldState);
   Managers['cactus'] = registerCacti(registry, 'cactus', worldState);
   Managers['lava_pond'] = registerLavaPonds(registry, 'lava_pond', worldState);
 
@@ -1049,6 +1054,24 @@ export async function createSceneEntities(
       dispose: () => caveFerns.dispose(),
     });
     return caveFerns;
+  }
+
+  function registerLichens(registry: EntityRegistry, prefabId: 'lichen', worldState: SceneWorldState) {
+    const lichens = new LichenManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
+      tickingarea: worldState.tickingarea,
+      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
+    });
+    registry.register(MANAGER_DEFINITIONS[prefabId], {
+      restore: (_, record) => lichens.spawn(new THREE.Vector3(...record.transform.position), {
+        id: record.id, transform: record.transform, components: { pickable: record.components.pickable },
+      }),
+      debugSpawn: () => lichens.spawn(player.position.clone()),
+      exportRecords: () => lichens.exportRecords().map((record) => ({ prefabId: LICHEN_ID, record })),
+      update: (dt, quaternion) => lichens.update(dt, quaternion),
+      renderEntities: () => lichens.renderEntities,
+      dispose: () => lichens.dispose(),
+    });
+    return lichens;
   }
 
   function registerCacti(registry: EntityRegistry, prefabId: 'cactus', worldState: SceneWorldState) {

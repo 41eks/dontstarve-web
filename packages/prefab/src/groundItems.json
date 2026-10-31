@@ -1702,6 +1702,21 @@
       "symbolOverrides": {},
       "skinArchives": {}
     },
+    "cutlichen": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/cutlichen.lua",
+      "name": "苔藓",
+      "icon": "cutlichen.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "algae.zip",
+      "buildArchives": [
+        "algae.zip"
+      ],
+      "bank": "algae",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
     "beardhair": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/beardhair.lua",
       "name": "胡须",
