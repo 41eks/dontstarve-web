@@ -1,6 +1,6 @@
-# 世界地皮与 DOM 地图
+# 世界地皮与地图图标
 
-游戏地图由 `packages/ui` 在主线程中维护：地皮由 `packages/map` 的 `MiniMapRenderer` 画在一张视口大小的 WebGL 画布上，实体图标是其上方世界坐标容器中的 DOM 节点。没有地图 Worker，也没有持续的地图渲染循环。
+游戏地图由 `packages/ui` 在主线程中维护：地皮由 `packages/map` 的 `MiniMapRenderer` 画在一张视口大小的 WebGL 画布上，实体图标由其上方一张视口大小的 Canvas 2D 画布绘制。没有地图 Worker，也没有持续的地图渲染循环。
 
 全屏装饰背景对应 `widgets/mapwidget.lua:24` 的 `Image("images/hud.xml", "map.tex")`：`hud.xml` 把 `map.tex` 映射到 `images/hud.tex` 的一块图集区域，二者均从原始 `databundles/images.zip` 读取。`DstMinimapElement` 通过共享 `createAtlasImage()` 绘制该区域，横纵方向分别拉伸到视口边缘，对应中点注册／锚定及 `SCALEMODE_FILLSCREEN`；横屏、竖屏均不保留原图宽高比或留边。背景固定在屏幕上，不随地图平移、缩放或转向。解码器把源预乘纹理恢复为普通 RGBA，浏览器以标准 alpha 合成背景，对应 Lua 的 Premultiplied 绘制。
 
@@ -20,19 +20,19 @@
 
 陆地判定不读取像素：悬停和右键时把屏幕坐标转为世界坐标，查询该格地皮，非空、非虚空且非海洋即为陆地。根节点据此切换 `minimap--land`，显示十字光标；海洋处隐藏光标，左键拖动时显示抓取光标，定位按钮保留普通按钮光标。视图变化后按最后的指针位置重新判定。这只是可见陆地的范围，不代表传送动作许可。
 
-`MinimapDomView` 提供图标的视口布局。缩放由 JS 更新世界容器的宽高，图标位置使用相对世界边长的百分比；图标保持 32 CSS 像素宽度及原始宽高比，不随容器尺寸缩放。父容器的 CSS 矩阵只包含平移和旋转，平移不遍历图标；只有相机转向才更新图标层 ShadowRoot 内的共享反向旋转规则。缩放不写图标属性或共享规则，也不重建节点；浏览器仍需为百分比坐标重新布局，是否优于 transform 缩放要通过实际场景测量。
+`MinimapIconView` 将所有图标绘制到一张视口大小的 Canvas 2D 画布，使用共享已解码图集及其裁切矩形。位置通过 `MinimapView.worldToScreen()` 投影，图标始终直立并保持源宽高比；默认 zoom=3 时宽 32 CSS 像素，之后宽高乘以 `3 / zoom`，与地皮按同一比例缩放；画布分辨率按 DPR 设置。屏外图标不提交绘制，部分进入视口的图标保留。按源 priority 稳定排序，负优先级也位于地形上方；相同优先级保留注册顺序。只有成员或优先级变化才重新排序。视图或实体通知把图标画布标脏，多次通知合并到下一个 RAF；地图静止、关闭后没有图标帧循环。关闭取消待绘制帧，重开复用图集和图标记录；显式销毁释放画布缓冲区及记录。
 
 世界 prefab 在 `PrefabInstance.minimap`（`MiniMapState`）声明图标、优先级、启用状态和原版缓存／迷雾标志，只读 `json` signal 保存这些设置，同时向 map 提供自己拥有的 `tileTracker`。`packages/map/src/minimapEntities.ts` 为每个逻辑实体建立自己的 `watchSignal` 桥接，通过 `createEffect` 订阅声明、生命周期和 tracker 的 tile key，汇入 `miniMapEntities()`；位置直接引用实体已有的脚点 `Vector3`，不复制、不写入 signal。没有图标的 prefab 不创建地图所需的 tracker 和 tile 订阅。休眠和世界 visual 的替换／释放保留地图图标，实体永久移除时注销并释放订阅。manager 和场景实体注册表不再汇总图标；库存物品的 `MiniMapEntity` 同样声明 `MiniMapState` 并提供自己的 tracker，由 inventoryitem 的所有权控制启用状态，两类图标统一由 map 发布变化。
 
-`packages/map/src/minimapIcons.ts` 的 `MinimapIcons.prewarm()` 在加载页读取两个共用图集 `minimap/minimap_data1.xml` / `minimap_data2.xml` 及对应 TEX，将每张完整图集转换为一个 PNG Blob URL 并预解码，建立 `图标名 → index → 图集 URL 与裁切矩形` 映射。同一图集中的全部图标共用图片和 URL，不逐图标裁切或编码。资源位于原版 `data/minimap/`，不在各 prefab 的动画 ZIP 中。`packages/display` 不参与地图订阅或图标资源加载。小地图 UI 只读取预热结果，通过 `<span class="marker">` 的 CSS 背景裁切展示。打开时同步一次当前实体列表和位置，之后通过 `subscribeMiniMapEntities()` 接收单个实体的变化，不使用定时采样或新增帧循环。位置沿用 tracker 的通知粒度：拥有者在移动后调用 `moved()`（默认累计 60 次检查一次），掉落或传送后调用 `sync()`；只有 tile key 变化才通知地图，格内移动不写坐标，重新打开时按当前位置同步。声明、启用状态和优先级变化独立触发相应节点的 diff。关闭地图解除 DOM 订阅，保留图集和节点，重新打开时补齐关闭期间的变化。位置使用 `left` / `top` 百分比，优先级直接决定 `z-index`，图标层建立自己的堆叠上下文，保证负优先级仍在地形上方。显式销毁或重新绑定地图时统一释放图片 URL 和订阅。
+`packages/map/src/minimapIcons.ts` 的 `MinimapIcons.prewarm()` 在加载页读取两个共用图集 `minimap/minimap_data1.xml` / `minimap_data2.xml` 及对应 TEX，将每张完整图集转换为一个 PNG Blob URL 并保留预解码的共享 Image，建立 `图标名 → index → 图集 URL 与裁切矩形` 映射。同一图集中的全部图标共用图片和 URL，不逐图标裁切或编码。资源位于原版 `data/minimap/`，不在各 prefab 的动画 ZIP 中。`packages/display` 不参与地图订阅或图标资源加载。小地图 UI 只读取预热结果，通过 `drawImage()` 裁切共享 Image；不逐图标创建 DOM 节点或独立图片。打开时同步一次当前实体列表和位置，之后通过 `subscribeMiniMapEntities()` 接收单个实体的变化，不使用定时采样或新增帧循环。位置沿用 tracker 的通知粒度：拥有者在移动后调用 `moved()`（默认累计 60 次检查一次），掉落或传送后调用 `sync()`；只有 tile key 变化才通知地图，格内移动不更新采样坐标，重新打开时按当前位置同步。声明、启用状态和优先级变化独立更新相应图标记录。关闭地图解除实体订阅，保留图集和图标记录，重新打开时补齐关闭期间的变化。显式销毁或重新绑定地图时统一释放图片 URL 和订阅。
 
-视口缩放沿用 MapScreen 的 0.1 秒插值，`zoom` 范围 1～20、默认 3，数值越小地图越大。输入起点和插值进度均采样 `performance.now()`，避免 RAF 帧时间戳早于输入导致负进度。连续输入从当前视口续接，光标下世界坐标保持锚定。只有缩放插值期间申请动画帧，关闭地图取消插值并解除图标 DOM 订阅。
+视口缩放沿用 MapScreen 的 0.1 秒插值，`zoom` 范围 1～20、默认 3，数值越小地图越大。输入起点和插值进度均采样 `performance.now()`，避免 RAF 帧时间戳早于输入导致负进度。连续输入从当前视口续接，光标下世界坐标保持锚定。只有缩放插值期间申请动画帧，关闭地图取消插值并解除图标实体订阅。
 
 右键点在陆地格上时，地图调用 `screenToWorld()` 转为 `Vector3`，发送可取消的 `game:map-action-request`；`src/main.ts` 将位置交给 `WortoxPlayer`，由现有 `BlinkActionController` 校验角色和真实陆地并缓冲 `BLINK_MAP`。动作没有普通跳跃的距离／寻路要求；预备动画结束通过缓冲动作再次验证落点，随后复用入场与出场状态。按项目要求，地图跳跃跳过距离计费、库存灵魂检查及消耗，不调用普通跳跃的回声结算，不增加或结束其计数与计时器。实际传送后调用地图中心重置和镜头 `snap()`；地图动作不使用普通地面跳跃的地面目标 blocker 校验，当前裸海面和虚空仍不可落地。
 
 动作被接受后，处理方通过请求事件的 `preventDefault()` 确认；地图保持打开，将自己的 `autopaused` 改为 `false`，通过 `game:map-state` 发布 `{ isOpen, autopaused }`。应用只在地图暂停原因发生变化时增减 `SetAutopaused` 的计数，不释放其他原因的暂停。地图打开期间继续屏蔽键盘移动。应用同时把 `isOpen` 传给世界光标的 `setWorldCovered()`：覆盖期间立即隐藏提示，逐帧刷新和显式提示更新都跳过 DOM 命中测试及世界动作查询；保留已有提示状态，关闭后立即重新命中并刷新。该状态独立于 `autopaused`，地图动作解除暂停后仍保持覆盖。连续地图动作和关闭地图不重复解除暂停，重新打开会重新登记地图暂停；请求未被接受时保留暂停。该行为对应 `MapScreen:OnControl()` 的 `SetAutopaused(false)` 及 `BLINK_MAP` 未设置 `closes_map`。
 
-验证覆盖完整范围和空洞、按格的陆地光标与右键动作、拖动、地皮修改后只重建所触及的分块并重画、地皮素材与海洋底板、图标交互、DPR 与窗口调整、共享资源保留、绑定中断与资源释放、加载页等待、完整洞穴存档导出与重载。
+验证覆盖完整范围和空洞、按格的陆地光标与右键动作、拖动、地皮修改后只重建所触及的分块并重画、地皮素材与海洋底板、图标缩放与直立方向、DPR 与窗口调整、共享资源保留、绑定中断与资源释放、加载页等待、完整洞穴存档导出与重载。
 
 ## Lua 与原生投影依据
 
@@ -53,3 +53,7 @@
 初始 `zoom=3`、1～20 范围、反比例缩放及输入插值沿用源实现。打开时居中玩家，重新打开保留已有缩放并重置偏移。
 
 常青树、桦树和月树在各自 `PrefabInstance.minimap` 声明图标，由 `packages/map` 订阅；模型卸载不移除图标，永久移除时注销。图标分别使用 `evergreen`、`tree_leaf`、`moon_tree` 的 `.png`、`_stump.png` 和 `_burnt.png`，按 Lua 设置优先级 `-1`。蘑菇树沿用原版对应图标和默认优先级；月树幼苗按 `planted_tree.lua` 不声明地图图标。`import-minimap-icons.py --check` 同时核对这些图标存在于原版图集。
+
+## 2026-10-31 缩放性能
+
+`Trace-20261031T195544.json.gz` 中滚轮事件通常约 0.1 ms；主要开销在 PrePaint（累计约 7.9 秒）和 Layerize（约 5.9 秒）。原 DOM 图标使用百分比定位，缩放时改变父容器宽高，即使背景共用图集仍会触发子元素布局、预绘制和合成更新。本机 1920×1080、Master 存档的 3,143 个树图标、160 帧相同缩放轨迹对照中，DOM 帧间隔中位数约 51 ms、P95 约 75 ms；仅屏外 DOM 裁剪后 P95 仍约 61 ms；Canvas 2D 最终实现（图标随地皮缩放且保持直立）中位数约 16.6 ms、重复测量 P95 约 17～23 ms。这些数值来自本机无头浏览器，不代表用户设备帧率。

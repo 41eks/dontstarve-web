@@ -27,6 +27,8 @@ export async function loadMinimapIcon(root: string, icon: string): Promise<Image
 
 export interface MinimapIcon {
   readonly imageUrl: string;
+  /** Shared, decoded atlas page. Draw the source rectangle without per-icon images. */
+  readonly image: HTMLImageElement;
   readonly x: number;
   readonly y: number;
   readonly width: number;
@@ -74,14 +76,14 @@ export class MinimapIcons {
       if (result.status !== 'fulfilled' || !result.value) continue;
       for (const [name, element] of page.elements) if (!this.indices.has(name)) {
         this.indices.set(name, this.icons.length);
-        this.icons.push({ imageUrl: result.value, ...atlasElementBounds(page.decodedTexture, element),
+        this.icons.push({ imageUrl: result.value.src, image: result.value, ...atlasElementBounds(page.decodedTexture, element),
           atlasWidth: page.decodedTexture.width, atlasHeight: page.decodedTexture.height });
       }
     }
     this.prepared = true;
   }
 
-  private async preparePage(page: ImageAtlasPage): Promise<string | undefined> {
+  private async preparePage(page: ImageAtlasPage): Promise<HTMLImageElement | undefined> {
     const { width, height, pixels } = page.decodedTexture;
     const canvas = new OffscreenCanvas(width, height);
     canvas.getContext('2d')!.putImageData(new ImageData(Uint8ClampedArray.from(pixels), width, height), 0, 0);
@@ -96,7 +98,7 @@ export class MinimapIcons {
       await image.decode();
       if (this.disposed) return;
       retained = true;
-      return url;
+      return image;
     } finally {
       canvas.width = canvas.height = 0;
       if (url && !retained && this.urls.delete(url)) URL.revokeObjectURL(url);
