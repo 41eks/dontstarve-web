@@ -28,6 +28,7 @@ import { Timer } from '../../componets/src/timer';
 import { createSignal } from '../../signals/src';
 import { getPickActions } from '../../stategraphs/src/pick';
 import { bindTestWorld } from './worldContentFixture';
+import { importedSave } from './importedSave';
 
 const worldCleanups: (() => void)[] = [];
 function moonWorld(scheduler: GameTimeScheduler, full: boolean) {
@@ -116,6 +117,24 @@ async function createMoonbase(options: Partial<WorldContext> = {}, saved?: Param
   await vi.waitFor(() => expect(prefabInstance(model)!.sprite.loaded).toBe(true));
   return { placement, world, model };
 }
+
+it('restores the converted native moonbase as repaired and preserves its identity, position and work on export', async () => {
+  const save = importedSave('Master');
+  expect(save.world.entities.moonbase).toHaveLength(1);
+  const [record] = save.world.entities.moonbase;
+  expect(record.components.workable).toEqual({ maxwork: 6, workleft: 6 });
+  const { placement, model } = await createMoonbase({}, record);
+  try {
+    expect(prefabInstance(model)!.entityId).toBe(record.id);
+    expect(model.position.toArray()).toEqual(record.transform.position);
+    expect(getMoonbaseState(model).workleft.peek()).toBe(6);
+    expect(prefabInstance(model)!.components.repairable).toBeUndefined();
+    expect(prefabInstance(model)!.components.trader!.isEnabled).toBe(true);
+    expect(placement.exportRecords()).toEqual([{ prefabId: 'moonbase', record }]);
+    save.world.entities = { moonbase: placement.exportRecords().map(({ record }) => record) };
+    expect(deserializeSave(JSON.stringify(save), SAVE_CATALOG).world.entities.moonbase).toEqual([record]);
+  } finally { placement.dispose(); }
+});
 
 it('repairs with one moonrock and preserves a skinned, partly used staff through insertion, save/load and PICK', async () => {
   const play = vi.spyOn(sound, 'PlaySound');

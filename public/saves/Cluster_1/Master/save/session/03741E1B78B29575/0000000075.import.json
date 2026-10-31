@@ -353,6 +353,7 @@
   "note": "Original impassable gaps and FAKE_GROUND are non-walkable; only whitelisted source entities are imported. No bridges are generated.",
   "entityWhitelist": [
     "pigking",
+    "moonbase",
     "researchlab",
     "researchlab2",
     "researchlab3",
@@ -568,6 +569,10 @@
   ],
   "entityCounts": {
     "pigking": {
+      "source": 1,
+      "imported": 1
+    },
+    "moonbase": {
       "source": 1,
       "imported": 1
     },
@@ -1431,6 +1436,18 @@
         174
       ],
       "sourceNode": "Speak to the king:7:PigKingdom"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moonbase_id_104806",
+      "prefab": "moonbase",
+      "sourceIndex": 1,
+      "sourceId": 104806,
+      "sourcePosition": [
+        -20,
+        0,
+        172
+      ],
+      "sourceNode": "Forest hunters:2:MoonbaseOne"
     },
     {
       "id": "dst_03741E1B78B29575_researchlab2_index_000001",

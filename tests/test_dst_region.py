@@ -284,6 +284,42 @@ class RegionImportTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Unsupported researchlab3 skin'):
             PREFAB['ENTITY_WHITELIST']['researchlab3']({}, {'skin': 'researchlab2_pod'})
 
+    def test_moonbase_imports_repair_state_and_held_staff_charge_timers(self):
+        encode = lambda values: base64.b64encode(b'VRSN\0\x01\0\0\0' + struct.pack(f'<{len(values)}H', *values)).decode()
+        terrain = {'width': 3, 'height': 3, 'topology': {'ids': ['Forest']}, 'nodeidtilemap': encode([1] * 9)}
+        catalog = {'items': {'yellowstaff': {'maxStack': 1, 'maxUses': 20},
+                             'opalstaff': {'maxStack': 1, 'maxUses': 50}},
+                   'skins': {'starstaff_crystal': 'yellowstaff'}}
+        timer = {'timers': {'mooncharge': {'timeleft': 25, 'paused': False, 'initial_time': 49.9},
+                            'mooncharge3': {'timeleft': 3, 'paused': True, 'initial_time': 18.7}}}
+        source = {'moonbase': [
+            {'id': 8, 'x': -20, 'z': 172, 'data': {
+                'workable': {'maxwork': 6, 'workleft': 6}, 'pickable': {'paused': True, 'picked': True}}},
+            {'id': 9, 'data': {'workable': {'maxwork': 6, 'workleft': 2},
+                              'pickable': {'caninteractwith': True, 'paused': True},
+                              'staff': {'prefab': 'yellowstaff', 'skinname': 'starstaff_crystal',
+                                        'data': {'finiteuses': {'uses': 7}}}, 'timer': timer}},
+            {'data': {'pickable': {'caninteractwith': True}, 'staffname': 'opalstaff', 'staffuse': 12}},
+        ]}
+        entities, report = PREFAB['convert_entities'](terrain, source, {'translation': [12, 0, -24]}, 'MOON', catalog)
+        fixed, charging, legacy = entities['moonbase']
+        self.assertEqual(fixed, {'id': 'dst_MOON_moonbase_id_8',
+                                'transform': {'position': [-48, 0, -492], 'rotationY': 0},
+                                'components': {'building': {'state': 'idle'},
+                                               'workable': {'maxwork': 6, 'workleft': 6}}})
+        self.assertEqual(charging['components'], {
+            'building': {'state': 'idle'}, 'workable': {'maxwork': 6, 'workleft': 2},
+            'moonbase': {'staff': {'entityId': 'dst_MOON_moonbase_id_9_staff', 'itemId': 'yellowstaff',
+                                   'count': 1, 'skinId': 'starstaff_crystal', 'remainingUses': 7}, 'timer': timer}})
+        self.assertEqual(legacy['components']['moonbase']['staff']['remainingUses'], 12)
+        self.assertEqual(report['entityCounts']['moonbase'], {'source': 3, 'imported': 3})
+        self.assertIn('moonbase', PREFAB['source_prefabs']())
+        convert = PREFAB['ENTITY_WHITELIST']['moonbase']
+        for bad in ({'workable': {'maxwork': 6, 'workleft': 7}},
+                    {'timer': timer}, {'pickable': {'caninteractwith': True}, 'staffname': 'firestaff'}):
+            with self.assertRaises(ValueError):
+                convert(bad, {'skin': None})
+
     def test_entity_whitelist_imports_all_nodes_and_preserves_source_state_and_identity(self):
         nodes = [0] * 48
         nodes[3 * 8 + 3] = nodes[3 * 8 + 4] = 1

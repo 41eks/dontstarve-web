@@ -36,6 +36,63 @@ def pigking_components(data):
     return {}
 
 
+def moonbase_components(data, context):
+    # moonbase.lua OnSave/OnLoad: workable owns the repair state; pickable gates the held staff.
+    if context['skin'] is not None or set(data) - {'workable', 'pickable', 'staff', 'staffname', 'staffuse', 'timer'}:
+        raise ValueError('Unsupported moonbase save state')
+    result = {'building': {'state': 'idle'}}
+    work = data.get('workable', {})
+    if not isinstance(work, dict) or set(work) - {'maxwork', 'workleft'} \
+            or type(work.get('maxwork', 6)) not in (int, float) or work.get('maxwork', 6) != 6 \
+            or type(work.get('workleft', 4)) not in (int, float) or not 0 <= work.get('workleft', 4) <= 6:
+        raise ValueError('Unsupported moonbase workable state')
+    if work:
+        result['workable'] = {'maxwork': 6, 'workleft': work.get('workleft', 4)}
+    pickable = data.get('pickable', {})
+    if not isinstance(pickable, dict) or set(pickable) - {'picked', 'paused', 'caninteractwith', 'time', 'pause_time'} \
+            or any(value is not True for key, value in pickable.items() if key not in ('time', 'pause_time')) \
+            or any(type(pickable[key]) not in (int, float) or not 0 <= pickable[key] <= 1000000
+                   for key in ('time', 'pause_time') if key in pickable):
+        raise ValueError('Unsupported moonbase pickable state')
+    state = {}
+    if pickable.get('caninteractwith') and ('staff' in data or 'staffname' in data):
+        staff = data.get('staff')
+        if staff is None:
+            staff = {'prefab': data['staffname'], 'data': {
+                **({'finiteuses': {'uses': data['staffuse']}} if 'staffuse' in data else {})}}
+        if not isinstance(staff, dict) or staff.get('prefab') not in ('yellowstaff', 'opalstaff') \
+                or work.get('workleft', 4) <= 0:
+            raise ValueError('Unsupported moonbase staff')
+        state['staff'] = context['item'](staff, 'staff')
+        if state['staff'] is None or state['staff']['count'] != 1:
+            raise ValueError('Expected one supported moonbase staff')
+    timer = data.get('timer')
+    if timer is not None:
+        # timer.lua OnSave; limits from tuning.lua MOONBASE_CHARGE_*.
+        limits = {'fullmoonstartdelay': 10, 'moonchargepre': 10, 'mooncharge': 49.9,
+                  'mooncharge2': 18.7, 'mooncharge3': 18.7}
+        if not isinstance(timer, dict) or set(timer) != {'timers'} or not isinstance(timer['timers'], dict) \
+                or set(timer['timers']) - limits.keys():
+            raise ValueError('Unsupported moonbase timer')
+        timers = timer['timers']
+        for name, entry in timers.items():
+            if not isinstance(entry, dict) or set(entry) != {'timeleft', 'paused', 'initial_time'} \
+                    or type(entry['paused']) is not bool \
+                    or type(entry['timeleft']) not in (int, float) or type(entry['initial_time']) not in (int, float) \
+                    or not 0 <= entry['timeleft'] <= entry['initial_time'] <= limits[name]:
+                raise ValueError(f'Unsupported moonbase {name} timer')
+        charging = {'moonchargepre', 'mooncharge', 'mooncharge2', 'mooncharge3'} & timers.keys()
+        if (charging and state.get('staff', {}).get('itemId') != 'yellowstaff') \
+                or ('moonchargepre' in timers and 'mooncharge' in timers) \
+                or ({'mooncharge2', 'mooncharge3'} & timers.keys() and 'mooncharge' not in timers) \
+                or {'mooncharge2', 'mooncharge3'} <= timers.keys():
+            raise ValueError('Unsupported moonbase charge state')
+        state['timer'] = timer
+    if state:
+        result['moonbase'] = state
+    return result
+
+
 def atrium_statue_components(data):
     # atrium_statue.lua MakeStatue("atrium_statue", false) has no OnSave; only the _facing variant saves savedrotation.
     if data:

@@ -18,6 +18,7 @@ ITEM = runpy.run_path(str(Path(__file__).with_name('dst-region-item.py')))
 # Adding a prefab here requires an actual converter, rather than copying arbitrary Lua data.
 ENTITY_WHITELIST = {
     'pigking': STRUCTURE['pigking_components'],
+    'moonbase': STRUCTURE['moonbase_components'],
     'researchlab': STRUCTURE['researchlab_components']('researchlab'),
     'researchlab2': STRUCTURE['researchlab_components']('researchlab2'),
     'researchlab3': STRUCTURE['researchlab_components']('researchlab3'),
@@ -84,9 +85,10 @@ ENTITY_WHITELIST = {
     'dragonfly': CREATURE['dragonfly_components'],
     'dragonfly_spawner': CREATURE['dragonfly_spawner_components'],
 }
-# Converters that also receive the record's skin; the chests alone use the item-slot converter.
+# Converters that also receive the record's skin and item converters.
 CONTAINER_PREFABS = {'treasurechest', 'pandoraschest'}
-RECORD_CONTEXT_PREFABS = {*CONTAINER_PREFABS, 'researchlab', 'researchlab2', 'researchlab3', 'researchlab4'}
+ITEM_CONTEXT_PREFABS = {*CONTAINER_PREFABS, 'moonbase'}
+RECORD_CONTEXT_PREFABS = {*ITEM_CONTEXT_PREFABS, 'researchlab', 'researchlab2', 'researchlab3', 'researchlab4'}
 # Converters that also receive the record's project position and a converter for saved source positions.
 POSITION_CONTEXT_PREFABS = {'beefalo', 'dragonfly'}
 
@@ -142,10 +144,12 @@ def convert_entities(terrain, source_entities, report, session_id, catalog=None)
             else:
                 try:
                     if prefab in RECORD_CONTEXT_PREFABS:
-                        if prefab in CONTAINER_PREFABS and catalog is None:
+                        if prefab in ITEM_CONTEXT_PREFABS and catalog is None:
                             raise ValueError(f'{prefab} contents need the save item catalog')
                         components = convert_components(data, {
                             'skin': record.get('skinname'),
+                            'item': lambda item, path, entity_id=entity_id, suffix=suffix: ITEM['convert_item'](
+                                item, f'{prefab}.{suffix}.{path}', f'{entity_id}_{path}', catalog, container_items),
                             'items': lambda items, path, slot_count, entity_id=entity_id, suffix=suffix: ITEM['convert_slots'](
                                 items, f'{prefab}.{suffix}.{path}', slot_count, entity_id, catalog, container_items)})
                     elif prefab in POSITION_CONTEXT_PREFABS:
