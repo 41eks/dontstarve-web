@@ -24,6 +24,7 @@ def main():
             'evergreen.png', 'evergreen_stump.png', 'evergreen_burnt.png',
             'tree_leaf.png', 'tree_leaf_stump.png', 'tree_leaf_burnt.png',
             'moon_tree.png', 'moon_tree_stump.png', 'moon_tree_burnt.png',
+            'sapling.png', 'grass.png', 'berrybush.png',
             'mushtree_moon.png', 'mushroom_tree_med.png', 'mushroom_tree.png', 'mushroom_tree_stump.png'} <= icons:
         raise ValueError('Missing supported native minimap icons')
     destination = Path(__file__).resolve().parents[3] / 'public/dst/data'

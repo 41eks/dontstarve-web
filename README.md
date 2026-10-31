@@ -465,7 +465,7 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 
 
 
-草丛、树苗、浆果丛、石果灌木、猴尾草、蘑菇、仙人掌和洞穴蕨的逻辑状态由 `PickablePlantInstance` 持有：组件、皮肤、存档身份和 `persists` 不再由植物逻辑写入 `model.userData`。`PrefabDisplay` 负责共享 archive sprite 的绘制、相机朝向和活动区卸载／恢复；燃烧复用通用火焰 FX，休眠只释放 visual，采摘再生、枯萎和燃烧计时继续。`c_spawn("grass")`、`c_spawn("berrybush")`、`c_give("dug_berrybush")` 等现有命令的语法、参数和支持 ID 不变，`c_save()` 继续保留身份、脚点、皮肤及组件计时状态。
+草丛、树苗、浆果丛、石果灌木、猴尾草、蘑菇、仙人掌和洞穴蕨的逻辑状态由 `PickablePlantInstance` 持有：组件、皮肤、存档身份和 `persists` 不再由植物逻辑写入 `model.userData`。`PrefabDisplay` 负责共享 archive sprite 的绘制、相机朝向和活动区卸载／恢复；燃烧复用通用火焰 FX，休眠只释放 visual，采摘再生、枯萎和燃烧计时继续。小地图按 Lua 由实例声明：`sapling`／`sapling_moon` 共用 `sapling.png`，`grass` 使用 `grass.png`，`berrybush` 使用 `berrybush.png`；采摘和休眠保留标记，读档重建声明，永久移除时清理。`c_spawn("grass")`、`c_spawn("berrybush")`、`c_give("dug_berrybush")` 等现有命令的语法、参数和支持 ID 不变，`c_save()` 继续保留身份、脚点、皮肤及组件计时状态。
 
 | 类型 | prefab_id |
 | --- | --- |

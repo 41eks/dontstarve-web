@@ -12,6 +12,7 @@ export type GrassWorld = PickablePlantWorld;
 /** grass.lua: grass bank with the grass1 build, picking → picked, and dug_grass loot. */
 export const GRASS_DEFINITION: PickablePlantDefinition = {
   prefab: GRASS_ID,
+  minimapIcon: 'grass.png',
   animArchive: 'grass.zip',
   buildArchive: 'grass1.zip',
   archiveSprite: { bank: 'grass', instancedAnimations: 'all' },

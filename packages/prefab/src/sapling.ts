@@ -14,6 +14,7 @@ export type SaplingWorld = PickablePlantWorld;
 function saplingDefinition(prefab: SaplingPrefabId): PickablePlantDefinition {
   return {
     prefab,
+    minimapIcon: 'sapling.png',
     animArchive: `${prefab}.zip`,
     buildArchive: `${prefab}.zip`,
     archiveSprite: { bank: prefab, instancedAnimations: 'all' },
