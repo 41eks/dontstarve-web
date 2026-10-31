@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { BufferedAction } from '../../stategraphs/src/bufferedaction';
 import type { WilsonAction } from '../../stategraphs/src/SGwilson';
-import type { ActionAnimationController, ActionLocomotor } from '../../stategraphs/src/actionContext';
+import type { ActionPerformer, ActionLocomotor } from '../../stategraphs/src/actionContext';
 import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import { ArchiveSpriteAssets, createSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
@@ -38,13 +38,13 @@ export class TurfDeployment {
   private readonly reach = 1.1 * TILE_SIZE / 4;
   private readonly world: WorldContext;
   private readonly turf: TurfMap;
-  private readonly animation: ActionAnimationController;
+  private readonly animation: ActionPerformer;
   private readonly locomotor: ActionLocomotor;
   private readonly getSource: () => TurfSource | undefined;
   private readonly isManualMovement: () => boolean;
 
   constructor(world: WorldContext, turf: TurfMap,
-    animation: ActionAnimationController, locomotor: ActionLocomotor,
+    animation: ActionPerformer, locomotor: ActionLocomotor,
     getSource: () => TurfSource | undefined, isManualMovement = () => false) {
     this.world = world; this.turf = turf; this.animation = animation; this.locomotor = locomotor;
     this.getSource = getSource; this.isManualMovement = isManualMovement;

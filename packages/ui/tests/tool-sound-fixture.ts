@@ -24,7 +24,7 @@ export async function checkToolSounds() {
       await animation.setCarryItem(tool);
       let hits = 0;
       const before = sources.length;
-      const start = () => tool === 'hammer' ? animation.playHammer(() => { hits++; }) : animation.playMine(() => { hits++; });
+      const start = () => animation.stategraph.pushBufferedAction(new BufferedAction(tool === 'hammer' ? 'HAMMER' : 'MINE', () => { hits++; }));
       const started = start();
       const ignoresBusy = !start();
       for (let f = 0; f < 15; f++) animation.update(1 / 30);
@@ -45,10 +45,10 @@ export async function checkToolSounds() {
       await animation.setCarryItem(tool);
       let hits = 0;
       const before = sources.length;
-      const start = () => tool === 'hammer' ? animation.playHammer(() => { hits++; }) : animation.playMine(() => { hits++; });
+      const start = () => animation.stategraph.pushBufferedAction(new BufferedAction(tool === 'hammer' ? 'HAMMER' : 'MINE', () => { hits++; }));
       start();
       for (let f = 0; f < 15; f++) animation.update(1 / 30);
-      if (tool === 'hammer') animation.cancelHammer(); else animation.cancelMine();
+      animation.stategraph.cancelAction(tool === 'hammer' ? 'HAMMER' : 'MINE');
       for (let f = 0; f < 90; f++) animation.update(1 / 30);
       cancellations.push(hits === 0 && sources.length === before);
       start();

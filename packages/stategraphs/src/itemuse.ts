@@ -3,7 +3,7 @@ import { PlaySound, type SoundHandle } from '../../prefab/src/sound.ts';
 import * as THREE from 'three';
 import { BufferedAction } from './bufferedaction.ts';
 import { bindActionCancellation } from './actionEvents.ts';
-import type { ActionAnimationController, ActionLocomotor, ActionWorldContext } from './actionContext.ts';
+import type { ActionPerformer, ActionLocomotor, ActionWorldContext } from './actionContext.ts';
 import type { ComponentActionEntity } from './componentactions.ts';
 import type { MouseActionCandidate } from './playeractionpicker.ts';
 import { PlayerActionPicker } from './playeractionpicker.ts';
@@ -96,11 +96,11 @@ export class ItemUseActionController {
   private version = 0;
   private sound?: SoundHandle;
   private readonly world: ActionWorldContext;
-  private readonly animation: ActionAnimationController;
+  private readonly animation: ActionPerformer;
   private readonly locomotor: ActionLocomotor;
   private readonly source: () => ItemUseSource | undefined;
   private readonly interrupted: () => boolean;
-  constructor(world: ActionWorldContext, animation: ActionAnimationController, locomotor: ActionLocomotor,
+  constructor(world: ActionWorldContext, animation: ActionPerformer, locomotor: ActionLocomotor,
     source: () => ItemUseSource | undefined, interrupted = () => false) {
     this.world = world; this.animation = animation; this.locomotor = locomotor;
     this.source = source; this.interrupted = interrupted;

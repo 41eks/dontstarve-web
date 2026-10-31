@@ -2,12 +2,12 @@ import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { bindActionCancellation } from './actionEvents.ts';
-import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor } from './actionContext.ts';
+import type { ActionWorldContext as WorldContext, ActionPerformer, ActionLocomotor as Locomotor } from './actionContext.ts';
 import type { HandEquipmentSignal } from './handEquipment.ts';
 import { equippedActionEntity } from './componentactions.ts';
 import { PlayerActionPicker, type MouseActionCandidate } from './playeractionpicker.ts';
 import { PointerRaycaster } from './pointerRaycaster.ts';
-import type { BufferedActionObject } from './bufferedaction.ts';
+import { BufferedAction, type BufferedActionObject } from './bufferedaction.ts';
 import type { Combat, CombatInst, CombatActor } from '../../componets/src/combat';
 import { facePoint } from './facing.ts';
 
@@ -40,7 +40,7 @@ export class AttackActionController {
   private readonly stopActionEvents: () => void;
   private readonly stopFrame: () => void;
   private readonly world: WorldContext;
-  private readonly animation: WilsonAnimationController;
+  private readonly animation: ActionPerformer;
   private readonly locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>;
   private readonly handEquipment: HandEquipmentSignal;
   private readonly attacker: Attacker;
@@ -51,7 +51,7 @@ export class AttackActionController {
 
   constructor(
     world: WorldContext,
-    animation: WilsonAnimationController,
+    animation: ActionPerformer,
     locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>,
     handEquipment: HandEquipmentSignal,
     attacker: Attacker,
@@ -140,7 +140,7 @@ export class AttackActionController {
     this.version++;
     if (this.target) this.locomotor.stop();
     this.target = undefined;
-    this.animation.cancelAttack();
+    this.animation.stategraph.cancelAction('ATTACK');
   }
 
   update(): void {
@@ -167,8 +167,8 @@ export class AttackActionController {
     facePoint(this.animation, this.world.camera, this.world.player.position, target.inst.getPosition());
     const version = this.version;
     const objects = this.actionObjects(target);
-    if (this.animation.playAttack(() => version === this.version && this.isValidTarget(target, true)
-      && combat.DoAttack(target.inst, this.weapon()), objects.target, objects.invobject)) this.target = undefined;
+    if (this.animation.stategraph.pushBufferedAction(new BufferedAction('ATTACK', () => version === this.version
+      && this.isValidTarget(target, true) && combat.DoAttack(target.inst, this.weapon()), undefined, objects))) this.target = undefined;
   }
 
   dispose(): void {

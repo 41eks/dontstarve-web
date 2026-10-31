@@ -8,7 +8,8 @@ import { PointerRaycaster } from './pointerRaycaster.ts';
 import { bindHandEquipmentUpdate, type HandEquipmentSignal } from './handEquipment.ts';
 import { collectEquippedActions, equippedActionEntity, type ComponentActionEntity } from './componentactions.ts';
 import type { SpellCastDoer, SpellTarget } from '../../componets/src/spellcaster';
-import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor } from './actionContext.ts';
+import type { ActionWorldContext as WorldContext, ActionPerformer, ActionLocomotor as Locomotor } from './actionContext.ts';
+import { BufferedAction } from './bufferedaction.ts';
 import { modelHasTag } from '../../prefab/src/prefabInstance';
 import { actionTargetModel, type ActionTargetView } from './actionTargetView';
 import { findActionEntity } from '../../prefab/src/actionEntity';
@@ -75,7 +76,7 @@ export const RESKIN_REACH = 60; // CASTSPELL range 20, scaled by 3 world units.
 
 export class ReskinActionController {
   private readonly world: WorldContext;
-  private readonly animation: WilsonAnimationController;
+  private readonly animation: ActionPerformer;
   private readonly locomotor: Pick<Locomotor, 'stop' | 'goToPoint' | 'destination'>;
   private readonly handEquipment: HandEquipmentSignal;
   private readonly stopEquipment: () => void;
@@ -93,7 +94,7 @@ export class ReskinActionController {
 
   constructor(
     world: WorldContext,
-    animation: WilsonAnimationController,
+    animation: ActionPerformer,
     locomotor: Pick<Locomotor, 'stop' | 'goToPoint' | 'destination'>,
     handEquipment: HandEquipmentSignal,
     effects: ReskinEffectPresenter,
@@ -130,7 +131,7 @@ export class ReskinActionController {
 
   async request(target: ReskinActionTarget): Promise<boolean> {
     const tool = this.getTool();
-    if (!tool || !target.isValid() || this.loading || this.animation.isReskinning) return false;
+    if (!tool || !target.isValid() || this.loading || this.isReskinning) return false;
     this.cancel();
     this.world.actionEvents?.emit('action:begin', { owner: this, action: 'CASTSPELL' });
     const version = this.version;
@@ -178,7 +179,7 @@ export class ReskinActionController {
     this.pending?.fx.dispose();
     this.pending = undefined;
     this.loading = false;
-    this.animation.cancelReskin();
+    if (this.isReskinning) this.animation.stategraph.cancelAction('CASTSPELL');
   }
 
   update(_dt: number): void {
@@ -188,7 +189,7 @@ export class ReskinActionController {
     // bufferedaction.lua IsValid: keep the picked action while its target stays valid, without recollecting actions.
     if (!pending.target.isValid() || this.getTool()!.skinId !== pending.skinId) { this.cancel(); return; }
     if (pending.started) {
-      if (!this.animation.isReskinning) this.cancel();
+      if (!this.isReskinning) this.cancel();
       return;
     }
     const { target } = pending;
@@ -203,7 +204,7 @@ export class ReskinActionController {
     this.locomotor.stop();
     facePoint(this.animation, this.world.camera, this.world.player.position, target.position);
     const version = this.version;
-    pending.started = this.animation.playReskin(() => {
+    pending.started = this.animation.stategraph.pushBufferedAction(new BufferedAction('CASTSPELL', () => {
       if (version !== this.version || !target.isValid() || !this.getTool()
         || this.getTool()!.skinId !== pending.skinId || this.distanceSquared(target.position) > RESKIN_REACH ** 2) {
         this.cancel(); return;
@@ -212,9 +213,11 @@ export class ReskinActionController {
       equippedActionEntity(this.getTool())?.components.spellcaster?.castSpell(castTarget, target.position, this.doer);
       pending.fx.dispose();
       this.pending = undefined;
-    });
+    }, undefined, { invobject: equippedActionEntity(this.getTool()) }));
     if (!pending.started) this.cancel();
   }
+
+  private get isReskinning(): boolean { return this.animation.stategraph.isPerformingAction('CASTSPELL', 'reskin_tool'); }
 
   dispose(): void {
     this.stopActionEvents();

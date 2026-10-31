@@ -2,7 +2,7 @@ import { findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import type { Stewer, StewerHarvester } from '../../componets/src/stewer';
 import { BufferedAction, type BufferedActionObject } from './bufferedaction.ts';
-import type { ActionWorldContext, ActionAnimationController, ActionLocomotor } from './actionContext.ts';
+import type { ActionWorldContext, ActionPerformer, ActionLocomotor } from './actionContext.ts';
 import { bindActionCancellation } from './actionEvents.ts';
 import { PlayerActionPicker, type MouseActionCandidate } from './playeractionpicker.ts';
 import { PointerRaycaster } from './pointerRaycaster.ts';
@@ -55,14 +55,14 @@ export class HarvestActionController {
   private disposed = false;
   private readonly direction = new THREE.Vector3();
   private readonly world: ActionWorldContext;
-  private readonly animation: ActionAnimationController;
+  private readonly animation: ActionPerformer;
   private readonly locomotor: ActionLocomotor;
   private readonly prepareReceiver: (prefab: string, count: number) => PreparedHarvestReceiver;
   private readonly isManualMovement: () => boolean;
 
   constructor(
     world: ActionWorldContext,
-    animation: ActionAnimationController,
+    animation: ActionPerformer,
     locomotor: ActionLocomotor,
     prepareReceiver: (prefab: string, count: number) => PreparedHarvestReceiver,
     isManualMovement = () => false,

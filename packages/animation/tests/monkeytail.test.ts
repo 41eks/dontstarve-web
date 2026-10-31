@@ -12,7 +12,7 @@ import { inventorySlotAddress, cursorSlotAddress } from '../../inventory/src';
 import { createSignal } from '../../signals/src';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
-import type { ActionAnimationController } from '../../stategraphs/src/actionContext';
+import type { ActionPerformer } from '../../stategraphs/src/actionContext';
 import { ItemUseActionController, getItemUseActions } from '../../stategraphs/src/itemuse';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { EntityRegistry } from '../../../src/entityRegistry';
@@ -72,7 +72,7 @@ function setup() {
 
 function actor() {
   const graph = new WilsonStateGraph({ playAnimation: () => 1, playSound: () => {}, stopSound: () => {}, setCasting: () => {}, onStateChanged: () => {} });
-  const animation = { stategraph: graph, cancelEmote: vi.fn(), setFacing: vi.fn() } as unknown as ActionAnimationController;
+  const animation = { stategraph: graph, cancelEmote: vi.fn(), setFacing: vi.fn() } as unknown as ActionPerformer;
   const locomotor = { destination: undefined, goToPoint: vi.fn(() => true), stop: vi.fn() };
   return { graph, animation, locomotor };
 }

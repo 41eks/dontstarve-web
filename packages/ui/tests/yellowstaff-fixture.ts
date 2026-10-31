@@ -117,11 +117,11 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   await PrewarmSounds();
   click(0);
   await settle();
-  const ignoredLeft = !animation.isCasting;
+  const ignoredLeft = !animation.stategraph.isPerformingAction('CASTSPELL');
   click();
   click();
   await settle();
-  const busy = animation.isCasting;
+  const busy = animation.stategraph.isPerformingAction('CASTSPELL');
   window.dispatchEvent(new PointerEvent('pointermove', { clientX: 1, clientY: 1 }));
   tick(52);
   const beforeCommit = stars.exportRecords().length;
@@ -177,11 +177,11 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   staff.onunequip();
   await animation.setCarryItem(null);
   tick(90);
-  const cancelled = !animation.isCasting && stars.exportRecords().length === 1;
+  const cancelled = !animation.stategraph.isPerformingAction('CASTSPELL') && stars.exportRecords().length === 1;
   const noCastingLight = player.children.filter((child) => getDeclaredLight(child)).length === 0;
   click();
   await settle();
-  const ignoredUnequipped = !animation.isCasting;
+  const ignoredUnequipped = !animation.stategraph.isPerformingAction('CASTSPELL');
   player.position.set(-60, 0, 40);
   stars.update(0.05, camera.quaternion);
   const fixedPosition = star.position.distanceTo(new THREE.Vector3(...record.transform.position)) < 0.000001;

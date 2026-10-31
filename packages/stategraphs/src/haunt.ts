@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import type { Hauntable } from '../../componets/src/hauntable';
 import { TILE_SIZE } from '../../prefab/src/tile.ts';
 import { BufferedAction, type BufferedActionObject } from './bufferedaction.ts';
-import type { ActionWorldContext, ActionAnimationController, ActionLocomotor } from './actionContext.ts';
+import type { ActionWorldContext, ActionPerformer, ActionLocomotor } from './actionContext.ts';
 import { bindActionCancellation } from './actionEvents.ts';
 import { PlayerActionPicker, type MouseActionCandidate } from './playeractionpicker.ts';
 import { PointerRaycaster } from './pointerRaycaster.ts';
@@ -51,12 +51,12 @@ export class HauntActionController {
   private disposed = false;
   private readonly direction = new THREE.Vector3();
   private readonly world: ActionWorldContext;
-  private readonly animation: ActionAnimationController & { readonly isGhost: boolean };
+  private readonly animation: ActionPerformer & { readonly isGhost: boolean };
   private readonly locomotor: ActionLocomotor;
   private readonly doer: { hasTag(tag: string): boolean; PushEvent(name: string, data?: unknown): void };
   private readonly isManualMovement: () => boolean;
 
-  constructor(world: ActionWorldContext, animation: ActionAnimationController & { readonly isGhost: boolean }, locomotor: ActionLocomotor,
+  constructor(world: ActionWorldContext, animation: ActionPerformer & { readonly isGhost: boolean }, locomotor: ActionLocomotor,
     doer: HauntActionController['doer'], isManualMovement = () => false) {
     this.world = world; this.animation = animation; this.locomotor = locomotor; this.doer = doer; this.isManualMovement = isManualMovement;
     this.picker = world.mouseActions ?? new PlayerActionPicker(new PointerRaycaster(world));

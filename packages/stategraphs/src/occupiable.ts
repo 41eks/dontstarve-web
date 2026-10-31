@@ -1,7 +1,7 @@
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import { BufferedAction, type BufferedActionObject } from './bufferedaction.ts';
-import type { ActionWorldContext, ActionAnimationController, ActionLocomotor } from './actionContext.ts';
+import type { ActionWorldContext, ActionPerformer, ActionLocomotor } from './actionContext.ts';
 import { bindActionCancellation } from './actionEvents.ts';
 import { PlayerActionPicker, type MouseActionCandidate } from './playeractionpicker.ts';
 import { PointerRaycaster } from './pointerRaycaster.ts';
@@ -60,13 +60,13 @@ export class OccupiableActionController {
   private disposed = false;
   private readonly direction = new THREE.Vector3();
   private readonly world: ActionWorldContext;
-  private readonly animation: ActionAnimationController;
+  private readonly animation: ActionPerformer;
   private readonly locomotor: ActionLocomotor;
   private readonly give: (item: unknown, source: THREE.Vector3) => boolean;
   private readonly isManualMovement: () => boolean;
 
   /** `give` is inventory:GiveItem(item, nil, position) for the acting player. */
-  constructor(world: ActionWorldContext, animation: ActionAnimationController, locomotor: ActionLocomotor,
+  constructor(world: ActionWorldContext, animation: ActionPerformer, locomotor: ActionLocomotor,
     give: (item: unknown, source: THREE.Vector3) => boolean, isManualMovement = () => false) {
     this.world = world; this.animation = animation; this.locomotor = locomotor;
     this.give = give; this.isManualMovement = isManualMovement;

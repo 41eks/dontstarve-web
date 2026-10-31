@@ -6,7 +6,7 @@ import { createPrefabEntity } from './prefabInstance';
 import { BufferedAction } from '../../stategraphs/src/bufferedaction';
 import { bindActionCancellation } from '../../stategraphs/src/actionEvents';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
-import type { ActionAnimationController, ActionLocomotor } from '../../stategraphs/src/actionContext';
+import type { ActionPerformer, ActionLocomotor } from '../../stategraphs/src/actionContext';
 import type { PlantDeployMap } from '../../componets/src/deployable';
 import type { WorldContext } from './worldContext';
 import type { TurfSource } from './turfDeployment';
@@ -40,14 +40,14 @@ export class PlantDeployment {
   private sound?: SoundHandle;
 
   private readonly world: WorldContext;
-  private readonly animation: ActionAnimationController;
+  private readonly animation: ActionPerformer;
   private readonly locomotor: ActionLocomotor;
   private readonly getSource: () => TurfSource | undefined;
   private readonly planting: PlantDeploymentWorld;
   private readonly blockers: PlacementQuery;
   private readonly interrupted: () => boolean;
 
-  constructor(world: WorldContext, animation: ActionAnimationController,
+  constructor(world: WorldContext, animation: ActionPerformer,
     locomotor: ActionLocomotor, getSource: () => TurfSource | undefined,
     planting: PlantDeploymentWorld, interrupted = () => false) {
     this.world = world; this.animation = animation; this.locomotor = locomotor;

@@ -4,7 +4,6 @@ import type { PointerRaycaster } from './pointerRaycaster.ts';
 import type { PlayerActionPicker } from './playeractionpicker.ts';
 import type { EventEmitter } from '../../signals/src/EventEmitter.ts';
 import type { PlayerActionEvents } from './actionEvents.ts';
-import type { BufferedActionObject } from './bufferedaction.ts';
 
 /** Services supplied by the application and prefab implementations to actions. */
 export interface CursorLabel {
@@ -32,48 +31,22 @@ export interface ActionLocomotor {
   stop(): void;
 }
 
-export interface ActionAnimationController {
+/**
+ * The player inst as the action controllers reach it. Like Lua's PlayerController, they push a
+ * BufferedAction onto `stategraph` (EntityScript:PushBufferedAction), read it back through
+ * `isPerformingAction` and cancel it through `cancelAction`; the stategraph chooses the state.
+ */
+export interface ActionPerformer {
   readonly stategraph: WilsonStateGraph;
-  readonly isReskinning: boolean;
-  playReskin(onCast: () => void): boolean;
-  cancelReskin(): void;
-  readonly isCasting: boolean;
-  readonly isNetting: boolean;
-  readonly isFishing: boolean;
-  playFish(onFish: () => void): boolean;
-  cancelFishing(): void;
-  bindFishing(fishing: import('./SGwilson.ts').WilsonFishingHost | undefined): void;
-  readonly isMining: boolean;
-  playMine(onHit: () => void | boolean): boolean;
-  cancelMine(): void;
-  readonly isChopping: boolean;
-  playChop(onHit: () => void | boolean): boolean;
-  cancelChop(): void;
-  readonly isHammering: boolean;
-  playHammer(onHit: () => void): boolean;
-  cancelHammer(): void;
-  readonly isDigging: boolean;
-  playDig(onDig: () => void): boolean;
-  cancelDig(): void;
-  playShovelDig(onDig: () => boolean): boolean;
-  cancelShovelDig(): void;
-  readonly isShoveling: boolean;
-  readonly isTilling: boolean;
-  playTill(onTill: () => boolean): boolean;
-  cancelTill(): void;
   cancelEmote(): void;
-  playBugNet(onCatch: () => void): boolean;
-  playQuickEat(onEat: () => boolean, foodDrink?: boolean): boolean;
-  playPlant(onPlant: () => boolean): boolean;
-  cancelFoodAction(): void;
-  readonly isReading: boolean;
-  playRead(book: BufferedActionObject, onRead: () => boolean): boolean;
-  cancelRead(): void;
-  readonly isPlayingInstrument: boolean;
-  playFlute(instrument: BufferedActionObject, onPlay: () => boolean): boolean;
-  cancelPlay(): void;
   setFacing(facing: 'up' | 'down' | 'side', mirrored?: boolean): void;
-  readonly isAttacking: boolean;
-  playAttack(onHit: () => boolean, target: BufferedActionObject, invobject?: BufferedActionObject): boolean;
-  cancelAttack(): void;
+}
+
+/**
+ * Browser admission for hand-tool requests (PlayerController has no such rule): a spell cast other
+ * than reskin_tool's veryquickcast, or a bug-net swing, keeps the hand until it ends.
+ */
+export function isHandActionBusy(stategraph: WilsonStateGraph): boolean {
+  return stategraph.isPerformingAction('NET')
+    || (stategraph.isPerformingAction('CASTSPELL') && !stategraph.isPerformingAction('CASTSPELL', 'reskin_tool'));
 }

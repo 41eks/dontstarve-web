@@ -4,7 +4,8 @@ import { WILSON_ACTION_TIMES } from './SGwilson.ts';
 import * as THREE from 'three';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { PointerRaycaster } from './pointerRaycaster.ts';
-import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor } from './actionContext.ts';
+import { isHandActionBusy, type ActionWorldContext as WorldContext, type ActionPerformer, type ActionLocomotor as Locomotor } from './actionContext.ts';
+import { BufferedAction } from './bufferedaction.ts';
 import { collectEquippedActions, equippedActionEntity, performToolWork, type ComponentActionEntity } from './componentactions.ts';
 import type { Worker } from '../../componets/src/workable';
 import { facePoint } from './facing.ts';
@@ -28,7 +29,7 @@ export type ButterflyCaptureTarget = NetCaptureTarget;
 /** Queues the NET action, follows a moving target, then validates the swing hit. */
 export class BugNetCaptureController {
   private readonly world: WorldContext;
-  private readonly animation: WilsonAnimationController;
+  private readonly animation: ActionPerformer;
   private readonly locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>;
   private readonly handEquipment: HandEquipmentSignal;
   private readonly stopEquipment: () => void;
@@ -45,7 +46,7 @@ export class BugNetCaptureController {
 
   constructor(
     world: WorldContext,
-    animation: WilsonAnimationController,
+    animation: ActionPerformer,
     locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>,
     handEquipment: HandEquipmentSignal,
     getTargets: (model?: THREE.Object3D) => readonly NetCaptureTarget[],
@@ -90,7 +91,7 @@ export class BugNetCaptureController {
 
   request(target: NetCaptureTarget): boolean {
     if (!this.canWork(target) || target.isClickable?.() === false
-      || this.animation.isNetting || this.animation.isCasting) return false;
+      || isHandActionBusy(this.animation.stategraph)) return false;
     this.cancel();
     this.world.actionEvents?.emit('action:begin', { owner: this, action: 'NET' });
     this.target = target;
@@ -116,13 +117,14 @@ export class BugNetCaptureController {
       this.locomotor.stop();
       facePoint(this.animation, this.world.camera, this.world.player.position, target.position);
       const version = this.actionVersion;
-      const started = this.animation.playBugNet(() => {
+      const tool = equippedActionEntity(this.handEquipment.peek());
+      const started = this.animation.stategraph.pushBufferedAction(new BufferedAction('NET', () => {
         if (version === this.actionVersion && this.canWork(target)
           && this.distanceSquared(target) <= (BUGNET_CAPTURE_RANGE * this.unitScale) ** 2) {
           return performToolWork('NET', target.entity, this.worker, equippedActionEntity(this.handEquipment.peek()));
         }
         return false;
-      });
+      }, undefined, { invobject: tool }));
       if (started) this.target = undefined;
       return;
     }

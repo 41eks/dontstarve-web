@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
 import { DisposeSounds } from '../../prefab/src/sound';
+import { BufferedAction } from '../../stategraphs/src/bufferedaction';
 
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
@@ -72,7 +73,7 @@ it('keeps the source mining timeline when Wortox changes facing and emits one ac
   animation.stategraph.listenForEvent('performaction', (data) => {
     events.push((data as { action: { action: string } }).action.action);
   });
-  expect(animation.playMine(hit)).toBe(true);
+  expect(animation.stategraph.pushBufferedAction(new BufferedAction('MINE', hit))).toBe(true);
   for (let frame = 1; frame <= 15; frame++) {
     if (frame === 5) animation.setFacing('up');
     if (frame === 12) animation.setFacing('side', true);
@@ -86,6 +87,28 @@ it('keeps the source mining timeline when Wortox changes facing and emits one ac
   for (let frame = 0; frame < 60; frame++) animation.update(1 / 30);
   expect(hit).toHaveBeenCalledOnce();
   expect(animation.stategraph.stateName).toBe('idle');
+});
+
+it('keeps a buffered action when the same action, target and invobject is pushed again, as PushBufferedAction does', async () => {
+  const animation = wilsonPlayerInstance(await createWilsonPlayer('/dst/data/anim')).animationController as WilsonAnimationController;
+  const rod = { prefab: 'fishingrod', hasTag: (tag: string) => tag === 'fishingrod' };
+  const pond = { prefab: 'pond', hasTag: () => false };
+  const failed: unknown[] = [];
+  animation.stategraph.listenForEvent('actionfailed', data => failed.push((data as { action: unknown }).action));
+  const cast = vi.fn(), repeat = vi.fn(), other = vi.fn();
+  const first = new BufferedAction('FISH', cast, undefined, { invobject: rod, target: pond });
+  expect(animation.stategraph.pushBufferedAction(first)).toBe(true);
+  for (let frame = 0; frame < 5; frame++) animation.update(1 / 30);
+  // fishing_pre is not busy: the duplicate is dropped and the first cast keeps its timeline.
+  expect(animation.stategraph.pushBufferedAction(new BufferedAction('FISH', repeat, undefined, { invobject: rod, target: pond }))).toBe(false);
+  for (let frame = 0; frame < 11 && !cast.mock.calls.length; frame++) animation.update(1 / 30);
+  expect(cast).toHaveBeenCalledOnce();
+  expect(repeat).not.toHaveBeenCalled();
+  // Another target replaces the buffered action; the replaced one fails.
+  const second = new BufferedAction('FISH', vi.fn(), undefined, { invobject: rod, target: pond });
+  expect(animation.stategraph.pushBufferedAction(second)).toBe(true);
+  expect(animation.stategraph.pushBufferedAction(new BufferedAction('FISH', other, undefined, { invobject: rod, target: { ...pond } }))).toBe(true);
+  expect(failed).toEqual([second]);
 });
 
 it('performs a drop on the doshortaction frame and reports a cancelled drop', async () => {

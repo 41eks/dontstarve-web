@@ -7,7 +7,7 @@ import { getFoodEffects } from '../../prefab/src/food';
 import { getLanternController, LANTERN_FUEL } from '../../prefab/src/lantern';
 import { ItemUseActionController, type ItemUseSource, type ItemUseTarget } from '../../stategraphs/src/itemuse';
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
-import type { ActionAnimationController } from '../../stategraphs/src/actionContext';
+import type { ActionPerformer } from '../../stategraphs/src/actionContext';
 import { createPickupInventory } from './pickupFixture';
 import { createPerishWorld } from './perishWorldFixture';
 
@@ -102,7 +102,7 @@ it('buffers one fuel item until frame six, preserves it on cancellation and retu
   const graph = new WilsonStateGraph({ playAnimation: () => 1, playSound() {}, setCasting() {}, onStateChanged() {} });
   const controller = new ItemUseActionController({ scene: new THREE.Scene(), camera: new THREE.PerspectiveCamera(),
     renderer: { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer, ground: new THREE.Group(), player: new THREE.Group() },
-  { stategraph: graph, cancelEmote() {}, setFacing() {} } as unknown as ActionAnimationController,
+  { stategraph: graph, cancelEmote() {}, setFacing() {} } as unknown as ActionPerformer,
   { destination: undefined, goToPoint: () => true, stop() {} }, () => source);
   const target: ItemUseTarget = Object.assign(lantern, { model: new THREE.Group() });
   try {

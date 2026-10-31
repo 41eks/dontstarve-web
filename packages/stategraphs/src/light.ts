@@ -1,6 +1,6 @@
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
-import type { ActionAnimationController, ActionLocomotor, ActionWorldContext } from './actionContext.ts';
+import type { ActionPerformer, ActionLocomotor, ActionWorldContext } from './actionContext.ts';
 import { BufferedAction } from './bufferedaction.ts';
 import { bindActionCancellation } from './actionEvents.ts';
 import { bindHandEquipmentUpdate, type HandEquipmentSignal } from './handEquipment.ts';
@@ -28,12 +28,12 @@ export class LighterActionController {
   private readonly direction = new THREE.Vector3();
   private readonly destination = new THREE.Vector3();
   private readonly world: ActionWorldContext;
-  private readonly animation: ActionAnimationController;
+  private readonly animation: ActionPerformer;
   private readonly locomotor: ActionLocomotor;
   private readonly hand: HandEquipmentSignal;
   private readonly isManualMovement: () => boolean;
 
-  constructor(world: ActionWorldContext, animation: ActionAnimationController,
+  constructor(world: ActionWorldContext, animation: ActionPerformer,
     locomotor: ActionLocomotor, hand: HandEquipmentSignal, isManualMovement = () => false) {
     this.world = world; this.animation = animation; this.locomotor = locomotor; this.hand = hand;
     this.isManualMovement = isManualMovement;

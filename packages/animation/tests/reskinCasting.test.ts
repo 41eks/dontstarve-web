@@ -25,6 +25,8 @@ import type { WorldContext } from '../../prefab/src/worldContext';
 import { DisposeSounds } from '../../prefab/src/sound';
 import { displayLightOverride } from '../../display/src/displaySprites';
 import { prefabDisplay } from '../../display/src/prefabDisplay';
+import { BufferedAction } from '../../stategraphs/src/bufferedaction';
+import { bufferingPerformer } from './bufferingPerformer';
 
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
@@ -51,22 +53,24 @@ it('casts at source frame nine once and cancels before commitment on unequip or 
   const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
   await animation.setCarryItem('reskin_tool');
   const cast = vi.fn();
-  expect(animation.playReskin(cast)).toBe(true);
-  expect(animation.playReskin(cast)).toBe(false);
+  const tool = { prefab: 'reskin_tool', spelltype: 'RESKIN', hasTag: (tag: string) => tag === 'veryquickcast' };
+  const push = () => animation.stategraph.pushBufferedAction(new BufferedAction('CASTSPELL', cast, undefined, { invobject: tool }));
+  expect(push()).toBe(true);
+  expect(push()).toBe(false);
   advance(animation, 8);
   expect(cast).not.toHaveBeenCalled();
   advance(animation, 1);
   expect(cast).toHaveBeenCalledOnce();
   advance(animation, 30);
   expect(cast).toHaveBeenCalledOnce();
-  expect(animation.isReskinning).toBe(false);
-  animation.playReskin(cast);
+  expect(animation.stategraph.isPerformingAction('CASTSPELL')).toBe(false);
+  push();
   advance(animation, 8);
   await animation.setCarryItem(null);
   advance(animation, 30);
   expect(cast).toHaveBeenCalledOnce();
   await animation.setCarryItem('reskin_tool');
-  animation.playReskin(cast);
+  push();
   advance(animation, 8);
   animation.playPickup();
   advance(animation, 60);
@@ -215,15 +219,10 @@ it('selects a registered entity without a manager provider, honors nomagic and f
   const equipped = createEquipmentExistenceState('HANDS');
   const tool = actionTool('reskin_tool');
   equipped.set(tool);
-  let commit: (() => void) | undefined;
-  const animation = {
-    isReskinning: false, cancelEmote: vi.fn(), setFacing: vi.fn(),
-    playReskin: vi.fn((callback: () => void) => { commit = callback; animation.isReskinning = true; return true; }),
-    cancelReskin: vi.fn(() => { animation.isReskinning = false; }),
-  };
+  const animation = bufferingPerformer();
   const fx = { play: vi.fn(), dispose: vi.fn() };
   const effects = { prepare: vi.fn(() => fx) };
-  const controller = new ReskinActionController(world, animation as unknown as WilsonAnimationController,
+  const controller = new ReskinActionController(world, animation.performer,
     { stop: vi.fn(), goToPoint: vi.fn(() => true), destination: undefined }, equipped, effects);
   try {
     picker.pointer.trackPointer({ clientX: 50, clientY: 50 } as PointerEvent);
@@ -233,8 +232,9 @@ it('selects a registered entity without a manager provider, honors nomagic and f
     entity.removeTag('nomagic');
     expect(await controller.request(target)).toBe(true);
     controller.update(1 / 30);
-    expect(animation.playReskin).toHaveBeenCalledOnce();
-    commit!();
+    expect(animation.stategraph.pushBufferedAction).toHaveBeenCalledOnce();
+    expect(animation.last?.invobject).toBe(tool.entity);
+    animation.hit();
     expect(fx.play).not.toHaveBeenCalled();
     expect(fx.dispose).toHaveBeenCalledOnce();
     expect(tool.entity._cached_reskinname!.size).toBe(0);
@@ -261,14 +261,11 @@ it.each(['unequip', 'while loading', 'load failed'])(
       if (reason === 'load failed') throw new Error('Skin load failed');
     });
     Object.assign(target, { display: { model: target.model, preloadSkin } });
-    let callback: (() => void) | undefined;
-    const animation = { isReskinning: false, cancelEmote: vi.fn(), setFacing: vi.fn(),
-      playReskin: vi.fn((cast: () => void) => { callback = cast; animation.isReskinning = true; return true; }),
-      cancelReskin: vi.fn(() => { animation.isReskinning = false; }) };
+    const animation = bufferingPerformer();
     const fx = { play: vi.fn(), dispose: vi.fn() };
     const effects = { prepare: vi.fn(() => fx) };
     const onError = vi.fn();
-    const controller = new ReskinActionController(world, animation as unknown as WilsonAnimationController,
+    const controller = new ReskinActionController(world, animation.performer,
       { stop: vi.fn(), goToPoint: vi.fn(() => true), destination: undefined }, equipped,
       effects, () => manual, onError);
     const request = controller.request(target);
@@ -280,13 +277,13 @@ it.each(['unequip', 'while loading', 'load failed'])(
     else {
       expect(await request).toBe(true);
       controller.update(1 / 30);
-      expect(animation.playReskin).toHaveBeenCalledOnce();
+      expect(animation.stategraph.pushBufferedAction).toHaveBeenCalledOnce();
       if (reason === 'manual') manual = true;
       if (reason === 'unequip') equipped.set(null);
       if (reason === 'target removed') valid = false;
       if (reason === 'escape') window.dispatchEvent(Object.assign(new Event('keydown'), { code: 'Escape' }));
       controller.update(1 / 30);
-      callback?.();
+      animation.hit();
     }
     expect(sprite.skinId.peek()).toBeUndefined();
     expect(fx.play).not.toHaveBeenCalled();

@@ -12,6 +12,7 @@ import { createGroundItemVisual } from './groundItemVisual';
 import { TurfMap } from '../../prefab/src/turfMap';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { PlaySound } from '../../prefab/src/sound';
+import { BufferedAction } from '../../stategraphs/src/bufferedaction';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}),
   PlaySound: vi.fn(() => ({ stop() {} })) }));
@@ -147,14 +148,15 @@ it('commits PLANT on frame 6 and cancels an uncommitted short action', async () 
   const player = await createWilsonPlayer('/dst/data/anim');
   const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
   const plant = vi.fn(() => true);
-  expect(animation.playPlant(plant)).toBe(true);
+  const push = () => animation.stategraph.pushBufferedAction(new BufferedAction('PLANT', plant));
+  expect(push()).toBe(true);
   for (let frame = 0; frame < 5; frame++) animation.update(1 / 30);
   expect(plant).not.toHaveBeenCalled();
   animation.update(1 / 30);
   expect(plant).toHaveBeenCalledOnce();
   for (let frame = 0; frame < 40; frame++) animation.update(1 / 30);
-  expect(animation.playPlant(plant)).toBe(true);
-  animation.cancelFoodAction();
+  expect(push()).toBe(true);
+  animation.stategraph.cancelAction('PLANT');
   for (let frame = 0; frame < 40; frame++) animation.update(1 / 30);
   expect(plant).toHaveBeenCalledOnce();
 });

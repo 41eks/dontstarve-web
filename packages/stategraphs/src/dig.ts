@@ -4,7 +4,8 @@ import { bindHandEquipmentUpdate, type HandEquipmentSignal } from './handEquipme
 import * as THREE from 'three';
 import { actionTargetModel, type ActionTargetView } from './actionTargetView';
 import { PointerRaycaster } from './pointerRaycaster.ts';
-import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor } from './actionContext.ts';
+import { isHandActionBusy, type ActionWorldContext as WorldContext, type ActionPerformer, type ActionLocomotor as Locomotor } from './actionContext.ts';
+import { BufferedAction } from './bufferedaction.ts';
 import { collectEquippedActions, equippedActionEntity, performToolWork, type ComponentActionEntity } from './componentactions.ts';
 import { facePoint } from './facing.ts';
 
@@ -26,7 +27,7 @@ export class ShovelActionController {
   private actionVersion = 0;
   private readonly direction = new THREE.Vector3();
   private readonly world: WorldContext;
-  private readonly animation: WilsonAnimationController;
+  private readonly animation: ActionPerformer;
   private readonly locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>;
   private readonly handEquipment: HandEquipmentSignal;
   private readonly stopEquipment: () => void;
@@ -36,7 +37,7 @@ export class ShovelActionController {
 
   constructor(
     world: WorldContext,
-    animation: WilsonAnimationController,
+    animation: ActionPerformer,
     locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>,
     handEquipment: HandEquipmentSignal,
     getTargets: (model?: THREE.Object3D) => readonly ShovelTarget[],
@@ -78,8 +79,7 @@ export class ShovelActionController {
   }
 
   request(target: ShovelTarget): boolean {
-    if (!this.canWork(target) || this.animation.isShoveling
-      || this.animation.isCasting || this.animation.isNetting) return false;
+    if (!this.canWork(target) || this.isShoveling || isHandActionBusy(this.animation.stategraph)) return false;
     this.cancel();
     this.world.actionEvents?.emit('action:begin', { owner: this, action: 'DIG' });
     this.animation.cancelEmote();
@@ -90,9 +90,9 @@ export class ShovelActionController {
   cancel(owned = this.isEquipped()): void {
     this.actionVersion++;
     // Cancel only this controller's DIG state, preserving pitchfork terraform.
-    if (this.target || (owned && this.animation.isShoveling)) this.locomotor.stop();
+    if (this.target || (owned && this.isShoveling)) this.locomotor.stop();
     this.target = undefined;
-    this.animation.cancelShovelDig();
+    this.animation.stategraph.cancelAction('DIG');
   }
 
   update(_dt: number): void {
@@ -115,7 +115,7 @@ export class ShovelActionController {
     facePoint(this.animation, this.world.camera, this.world.player.position, target.position);
     const version = this.actionVersion;
     const tool = equippedActionEntity(this.handEquipment.peek());
-    if (this.animation.playShovelDig(() => {
+    if (this.animation.stategraph.pushBufferedAction(new BufferedAction('DIG', () => {
       if (version !== this.actionVersion || !this.canWork(target)
         || equippedActionEntity(this.handEquipment.peek()) !== tool
         || this.distanceSquared(target) > SHOVEL_REACH ** 2) return false;
@@ -125,8 +125,10 @@ export class ShovelActionController {
       const success = target.dig();
       if (success) tool?.components.finiteuses?.useForAction?.('DIG');
       return success;
-    })) this.target = undefined;
+    }, undefined, { invobject: tool }))) this.target = undefined;
   }
+
+  private get isShoveling(): boolean { return this.animation.stategraph.isPerformingAction('DIG'); }
 
   dispose(): void {
     this.stopActionEvents();

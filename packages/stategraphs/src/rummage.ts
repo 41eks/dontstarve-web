@@ -2,7 +2,7 @@ import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { BufferedAction, type BufferedActionObject } from './bufferedaction.ts';
-import type { ActionWorldContext, ActionAnimationController, ActionLocomotor } from './actionContext.ts';
+import type { ActionWorldContext, ActionPerformer, ActionLocomotor } from './actionContext.ts';
 import { bindActionCancellation } from './actionEvents.ts';
 import { PlayerActionPicker, type MouseActionCandidate } from './playeractionpicker.ts';
 import { PointerRaycaster } from './pointerRaycaster.ts';
@@ -70,11 +70,11 @@ export class RummageActionController {
   private disposed = false;
   private readonly direction = new THREE.Vector3();
   private readonly world: ActionWorldContext;
-  private readonly animation: ActionAnimationController;
+  private readonly animation: ActionPerformer;
   private readonly locomotor: ActionLocomotor;
   private readonly isManualMovement: () => boolean;
 
-  constructor(world: ActionWorldContext, animation: ActionAnimationController, locomotor: ActionLocomotor, isManualMovement = () => false) {
+  constructor(world: ActionWorldContext, animation: ActionPerformer, locomotor: ActionLocomotor, isManualMovement = () => false) {
     this.world = world; this.animation = animation; this.locomotor = locomotor; this.isManualMovement = isManualMovement;
     this.picker = world.mouseActions ?? new PlayerActionPicker(new PointerRaycaster(world));
     this.unregister = this.picker.register(model => getRummageActions(model, world.player));

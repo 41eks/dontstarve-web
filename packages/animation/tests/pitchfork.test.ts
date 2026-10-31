@@ -13,6 +13,8 @@ import type { WorldContext } from '../../prefab/src/worldContext';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src/slots';
 import { createEquipmentExistenceState } from '../../signals/src';
 import { drawGround, layerGeometry, layerMeshes } from './groundDisplayFixture';
+import { BufferedAction } from '../../stategraphs/src/bufferedaction';
+import { bufferingPerformer } from './bufferingPerformer';
 
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
@@ -47,25 +49,26 @@ describe('pitchfork source art and TERRAFORM timing', () => {
     const player = await createWilsonPlayer('/dst/data/anim');
     const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
     const dig = vi.fn();
-    expect(animation.playDig(dig)).toBe(false);
+    const push = () => animation.stategraph.pushBufferedAction(new BufferedAction('TERRAFORM', dig));
+    const digging = () => animation.stategraph.isPerformingAction('TERRAFORM');
     animation.setCarryItem(tool);
     const held = player.getObjectByProperty('isMesh', true) as THREE.Mesh;
     await vi.waitFor(() => expect((held.material as THREE.Material[]).some((material) => material.name === `ground:swap_${tool}`)).toBe(true));
-    expect(animation.playDig(dig)).toBe(true);
-    expect(animation.playDig(dig)).toBe(false);
+    expect(push()).toBe(true);
+    expect(push()).toBe(false);
     advance(animation, 49); // 24.5 source frames: shovel_pre + part of shovel_loop.
     expect(dig).not.toHaveBeenCalled();
     advance(animation, 1);
     expect(dig).toHaveBeenCalledOnce();
     advance(animation, 100);
     expect(dig).toHaveBeenCalledOnce();
-    expect(animation.isDigging).toBe(false);
-    expect(animation.playDig(dig)).toBe(true);
+    expect(digging()).toBe(false);
+    expect(push()).toBe(true);
     advance(animation, 10);
     await animation.setCarryItem(null);
     advance(animation, 100);
     expect(dig).toHaveBeenCalledOnce();
-    expect(animation.isDigging).toBe(false);
+    expect(digging()).toBe(false);
     ground.dispose();
   });
 
@@ -109,17 +112,15 @@ function setupAction() {
     renderer: { domElement: canvas } } as unknown as WorldContext;
   const equipped = createEquipmentExistenceState('HANDS');
   equipped.set({ itemId: 'pitchfork', EQUIPSLOTS: 'HANDS' });
-  let manual = false, onDig: (() => void) | undefined;
-  const animation = { isDigging: false, isCasting: false, isNetting: false,
-    cancelEmote: vi.fn(), cancelDig: vi.fn(), setFacing: vi.fn(),
-    playDig: vi.fn((callback: () => void) => { onDig = callback; return true; }) };
+  let manual = false;
+  const animation = bufferingPerformer();
   const locomotor = { goToPoint: vi.fn((_point: THREE.Vector3) => true), stop: vi.fn(), destination: undefined };
   const map = new TurfMap(1000);
-  const controller = new PitchforkActionController(world, animation as unknown as WilsonAnimationController,
+  const controller = new PitchforkActionController(world, animation.performer,
     locomotor, equipped, map, () => manual);
   return { controller, map, canvas, player, animation, locomotor,
     equip: (value: boolean) => equipped.set(value ? { itemId: 'pitchfork', EQUIPSLOTS: 'HANDS' } : null),
-    move: () => { manual = true; }, hit: () => onDig?.() };
+    move: () => { manual = true; }, hit: () => animation.hit() };
 }
 
 describe('pitchfork point action', () => {
@@ -133,10 +134,10 @@ describe('pitchfork point action', () => {
     s.controller.update(0.1);
     const destination = s.locomotor.goToPoint.mock.calls[0][0];
     expect(destination.distanceTo(new THREE.Vector3(18, 0, 6))).toBeCloseTo(3.2);
-    expect(s.animation.playDig).not.toHaveBeenCalled();
+    expect(s.animation.stategraph.pushBufferedAction).not.toHaveBeenCalled();
     s.player.position.set(18, 0, 9);
     s.controller.update(0.1);
-    expect(s.animation.playDig).toHaveBeenCalledOnce();
+    expect(s.animation.stategraph.pushBufferedAction).toHaveBeenCalledOnce();
     expect(s.map.getTileAtWorld(point)).toBe(WORLD_TILES.DECIDUOUS);
     s.hit();
     expect(s.map.getTileAtWorld(point)).toBe(WORLD_TILES.DIRT);

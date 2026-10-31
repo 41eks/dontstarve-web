@@ -2,24 +2,24 @@ import { smallHash } from '@dontstarve-web/animation/animationAssets';
 import { AnimState } from '@dontstarve-web/animation/animState';
 import { SpriteResources, type NamedSpriteArt, type FollowerFx, type PrefabDisplay } from '@dontstarve-web/display';
 import type { ReadonlySignal } from '@dontstarve-web/signals';
-import { BufferedAction, PLAYER_FACING_VALUES, WilsonStateGraph, type BufferedActionObject, type WilsonAction, type WilsonAnimationClip, type WilsonAnimationKey, type WilsonCombat, type WilsonFishingHost, type WilsonMovementState, type WilsonOneShotState, type PlayerFacing, type WilsonSleepHost, type WilsonDeathHost, type WilsonRebirthHost } from '@dontstarve-web/stategraphs';
-import type { ActionAnimationController } from '@dontstarve-web/stategraphs/actionContext';
+import { BufferedAction, PLAYER_FACING_VALUES, WilsonStateGraph, type WilsonAction, type WilsonAnimationClip, type WilsonAnimationKey, type WilsonCombat, type WilsonFishingHost, type WilsonMovementState, type WilsonOneShotState, type PlayerFacing, type WilsonSleepHost, type WilsonDeathHost, type WilsonRebirthHost } from '@dontstarve-web/stategraphs';
+import type { ActionPerformer } from '@dontstarve-web/stategraphs/actionContext';
 import type * as CANNON from 'cannon-es';
 import * as THREE from 'three';
-import { isAxeTool, type AxeTool } from './axe';
+import type { AxeTool } from './axe';
 import { backpackVisual } from './backpack';
 import { BookFxController } from './book_fx';
 import { animationTiming } from './animationTimings';
 import { WILSON_EMOTES, type WilsonEmote, type WilsonEmoteDefinition } from './emotes';
 import { wornEquipmentLifecycle, type EquipmentVisualContext } from './equipmentVisual';
-import { isFarmHoeTool, type FarmHoeTool } from './farm_hoe';
+import type { FarmHoeTool } from './farm_hoe';
 import { GroundItemAssets } from './groundItems';
 import { getHandEquipmentDefinition } from './handEquipment';
 import { HatEquipmentAssets, hatVisual } from './hats';
-import { isPickaxeTool, type PickaxeTool } from './pickaxe';
-import { isPitchforkTool, type PitchforkTool } from './pitchfork';
+import type { PickaxeTool } from './pickaxe';
+import type { PitchforkTool } from './pitchfork';
 import { createPlayerStats, equipSamePrefab, type PlayerStats, type PlayerStatsSave } from './player_common';
-import { isShovelTool, type ShovelTool } from './shovel';
+import type { ShovelTool } from './shovel';
 import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
 import { MakeCharacterPhysics, WORLD_SCALE } from './standardcomponents';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -113,7 +113,7 @@ const WILSON_ANIMATION_ARCHIVES: WilsonAnimations = {
 /** player_common_extensions.lua AddOverrideBuild, named in the display declaration. */
 const UNIQUE_ITEM_BUILD = 'player_actions_uniqueitem';
 
-export interface WilsonAnimationController extends ActionAnimationController {
+export interface WilsonAnimationController extends ActionPerformer {
   readonly currentEmote: WilsonEmote | null;
   readonly isEmoting: boolean;
   /** The player inst's combat component, read by the attack state. */
@@ -131,7 +131,7 @@ export interface WilsonAnimationController extends ActionAnimationController {
   readonly AnimState: AnimState;
   readonly equipmentAssets: GroundItemAssets;
   readonly equipmentContext: EquipmentVisualContext;
-  /** Action identity only; the equipped prefab applies its own art through AnimState. */
+  /** SGwilson's unequip event on a hand change; actions read the equipped entity itself as their invobject. */
   setEquippedCarryItem(item: WilsonCarryItem | null): void;
   setHat(itemId: string | null, skinId?: string): void;
   /** Follower:FollowSymbol(owner.GUID, symbol, offsetX, offsetY): a node tracking the symbol, in the player's space. */
@@ -142,6 +142,8 @@ export interface WilsonAnimationController extends ActionAnimationController {
   bindSleep(sleep: Omit<WilsonSleepHost, 'setHidden'> | undefined): void;
   /** SGwilson's death state: DropAllItemsForDeath through the application's inventory. */
   bindDeath(death: WilsonDeathHost | undefined): void;
+  /** The equipped rod's component for SGwilson's fishing states. */
+  bindFishing(fishing: WilsonFishingHost | undefined): void;
   /** SGwilson's amulet_rebirth state: the inventory, HUD and sleepers it reaches (its light is the controller's). */
   bindRebirth(rebirth: Omit<WilsonRebirthHost, 'castLight'> | undefined): void;
   /** AnimState:SetBank("ghost") + skinner ghost_skin + SetStateGraph("SGwilsonghost"); `loading` is inst.loading_ghost. */
@@ -203,13 +205,6 @@ export interface WilsonPlayerPrefabOptions {
   componentUpdates?: ComponentUpdates;
 }
 
-/** Source tags: bugnet tool component and reskin_tool.lua's veryquickcast. */
-const ACTION_TOOL_METADATA: Partial<Record<WilsonCarryItem, { tags: readonly string[]; spelltype?: string }>> = {
-  bugnet: { tags: ['NET_tool'] },
-  fishingrod: { tags: ['fishingrod'] },
-  reskin_tool: { tags: ['veryquickcast'], spelltype: 'RESKIN' },
-};
-
 interface ActiveEmote {
   id: WilsonEmote;
   archive: string;
@@ -221,15 +216,12 @@ interface ActiveEmote {
 class WilsonController implements WilsonAnimationController {
   readonly stategraph: WilsonStateGraph;
   private state: WilsonAnimationKey = 'idle';
-  private equippedCarryItem: WilsonCarryItem | null = null;
-  private carryItem: WilsonCarryItem | null = null;
   private carryKey = '';
   readonly equipmentAssets: GroundItemAssets;
   readonly equipmentContext: EquipmentVisualContext;
   /** inst.AnimState: the player's own declaration, beneath the slots its equipped items declare. */
   readonly AnimState: AnimState;
   private handVisual?: ReturnType<typeof wornEquipmentLifecycle>;
-  private handReady = false;
   private readonly castingLight: StaffCastingLight;
   private animation!: ReturnType<typeof animationTiming>;
   private makeSound?: SoundHandle;
@@ -362,8 +354,6 @@ class WilsonController implements WilsonAnimationController {
       },
       equipSamePrefab: (prefab) => this.inventory !== undefined && equipSamePrefab(this.inventory, prefab),
       onStateChanged: (name) => {
-        // toolbroke hides ARM_carry and shows ARM_normal.
-        this.carryItem = name === 'toolbroke' ? null : this.equippedCarryItem;
         if (name !== 'emote') this.emote = null;
         // stategraph.lua pushes "newstate" to the inst; armorsnurtleshell's ProtectionLevels listens for it.
         model.dispatchEvent({ type: 'newstate', data: { statename: name } } as never);
@@ -383,9 +373,6 @@ class WilsonController implements WilsonAnimationController {
     this.startOneShot('eat');
   }
 
-  playQuickEat(onEat: () => boolean, foodDrink = false): boolean {
-    return this.startAction('EAT', onEat, true, foodDrink);
-  }
   /** ACTIONS.DROP: doshortaction performs the drop on its frame 6; onCancel runs if the action never performs. */
   playDrop(onDrop: () => boolean, onCancel?: () => void): boolean {
     if (this.stategraph.hasStateTag('busy')) return false;
@@ -399,13 +386,6 @@ class WilsonController implements WilsonAnimationController {
     stop();
     return false;
   }
-  playPlant(onPlant: () => boolean): boolean { return this.startAction('PLANT', onPlant, true); }
-  cancelFoodAction(): void {
-    if (this.stategraph.isPerformingAction('EAT') || this.stategraph.isPerformingAction('PLANT')) this.stategraph.cancelAction();
-  }
-
-  get isReading(): boolean { return this.stategraph.isPerformingAction('READ'); }
-
   /** The application's sleeper services for SGwilson's tent and wakeup states. */
   bindSleep(sleep: Omit<WilsonSleepHost, 'setHidden'> | undefined): void {
     const { sprite } = this.instance;
@@ -469,24 +449,6 @@ class WilsonController implements WilsonAnimationController {
   /** sleepingbaguser:DoWakeUp's `inst.sg:GoToState("wakeup")`. */
   goToWakeup(): void { this.stategraph.wakeUp(); }
 
-  playRead(book: BufferedActionObject, onRead: () => boolean): boolean {
-    if (this.stategraph.hasStateTag('busy')) return false;
-    this.cancelEmote();
-    return this.stategraph.pushBufferedAction(new BufferedAction('READ', onRead, undefined, { invobject: book }));
-  }
-
-  cancelRead(): void { this.stategraph.cancelAction('READ'); }
-
-  get isPlayingInstrument(): boolean { return this.stategraph.isPerformingAction('PLAY'); }
-
-  playFlute(instrument: BufferedActionObject, onPlay: () => boolean): boolean {
-    if (this.stategraph.hasStateTag('busy')) return false;
-    this.cancelEmote();
-    return this.stategraph.pushBufferedAction(new BufferedAction('PLAY', onPlay, undefined, { invobject: instrument }));
-  }
-
-  cancelPlay(): void { this.stategraph.cancelAction('PLAY'); }
-
   get currentEmote(): WilsonEmote | null { return this.emote?.id ?? null; }
   get isEmoting(): boolean { return this.emote !== null; }
 
@@ -511,85 +473,10 @@ class WilsonController implements WilsonAnimationController {
     this.emote = null;
   }
 
-  get isCasting(): boolean { return this.stategraph.isPerformingAction('CASTSPELL') && !this.isReskinning; }
-  get isNetting(): boolean { return this.stategraph.isPerformingAction('NET'); }
-  get isFishing(): boolean { return this.stategraph.isPerformingAction('FISH'); }
-  get isMining(): boolean { return this.stategraph.isPerformingAction('MINE'); }
-  get isChopping(): boolean { return this.stategraph.isPerformingAction('CHOP'); }
-  get isHammering(): boolean { return this.stategraph.isPerformingAction('HAMMER'); }
-  get isDigging(): boolean { return this.stategraph.isPerformingAction('TERRAFORM'); }
-  get isReskinning(): boolean { return this.stategraph.isPerformingAction('CASTSPELL', 'reskin_tool'); }
-
-  private startAction(action: WilsonAction, execute: () => void | boolean, ready: boolean, foodDrink = false): boolean {
-    if (!ready || this.stategraph.hasStateTag('busy')) return false;
-    this.cancelEmote();
-    const tool = this.carryItem;
-    const metadata = tool ? ACTION_TOOL_METADATA[tool] : undefined;
-    const invobject: BufferedActionObject | undefined = tool
-      ? { prefab: tool, spelltype: metadata?.spelltype, hasTag: tag => metadata?.tags.includes(tag) ?? false } : undefined;
-    return this.stategraph.pushBufferedAction(new BufferedAction(action, execute, undefined, { invobject }), foodDrink);
-  }
-
-  playReskin(onCast: () => void): boolean {
-    return this.startAction('CASTSPELL', onCast, this.carryItem === 'reskin_tool' && this.handReady);
-  }
-
-  cancelReskin(): void { if (this.isReskinning) this.stategraph.cancelAction('CASTSPELL'); }
-
-  playDig(onDig: () => void): boolean {
-    return this.startAction('TERRAFORM', onDig, isPitchforkTool(this.carryItem ?? '') && this.handReady);
-  }
-
-  cancelDig(): void { this.stategraph.cancelAction('TERRAFORM'); }
-  playShovelDig(onDig: () => boolean): boolean {
-    return this.startAction('DIG', onDig, isShovelTool(this.carryItem ?? '') && this.handReady);
-  }
-  cancelShovelDig(): void { this.stategraph.cancelAction('DIG'); }
-  get isShoveling(): boolean { return this.stategraph.isPerformingAction('DIG'); }
-  get isTilling(): boolean { return this.stategraph.isPerformingAction('TILL'); }
-  playTill(onTill: () => boolean): boolean {
-    return this.startAction('TILL', onTill, isFarmHoeTool(this.carryItem ?? '') && this.handReady);
-  }
-  cancelTill(): void { this.stategraph.cancelAction('TILL'); }
-
-  playMine(onHit: () => void | boolean): boolean {
-    const hammer = this.carryItem === 'hammer';
-    const ready = hammer ? this.handReady : isPickaxeTool(this.carryItem ?? '') && this.handReady;
-    return this.startAction(hammer ? 'HAMMER' : 'MINE', onHit, ready);
-  }
-
-  playHammer(onHit: () => void): boolean { return this.playMine(onHit); }
-
-  playChop(onHit: () => void | boolean): boolean {
-    return this.startAction('CHOP', onHit, isAxeTool(this.carryItem ?? '') && this.handReady);
-  }
-
-  /** ATTACK with the equipped inst as invobject; its tags select the attack branch. */
-  playAttack(onHit: () => boolean, target: BufferedActionObject, invobject?: BufferedActionObject): boolean {
-    if (this.stategraph.hasStateTag('busy')) return false;
-    this.cancelEmote();
-    return this.stategraph.pushBufferedAction(new BufferedAction('ATTACK', onHit, undefined, { invobject, target }));
-  }
-  get isAttacking(): boolean { return this.stategraph.hasStateTag('attack') || this.stategraph.isPerformingAction('ATTACK'); }
-  cancelAttack(): void { if (this.stategraph.isPerformingAction('ATTACK')) this.stategraph.cancelAction('ATTACK'); }
-  cancelMine(): void { this.stategraph.cancelAction('MINE'); }
-  cancelChop(): void { this.stategraph.cancelAction('CHOP'); }
-  cancelHammer(): void { this.stategraph.cancelAction('HAMMER'); }
-
-  playFish(onFish: () => void): boolean {
-    return this.startAction('FISH', onFish, this.carryItem === 'fishingrod' && this.handReady);
-  }
-  cancelFishing(): void { this.stategraph.cancelAction('FISH'); }
-
-  playBugNet(onCatch: () => void): boolean {
-    return this.startAction('NET', onCatch, this.carryItem === 'bugnet' && this.handReady);
-  }
-
-  playItemTransition(state: 'item_in' | 'item_out', item: WilsonCarryItem = 'torch') {
+  playItemTransition(state: 'item_in' | 'item_out') {
     if (this.stategraph.isDead) return;
     this.startOneShot(state);
     if (state === 'item_in') {
-      this.carryItem = item;
       this.frameIndex = -1;
       this.showFrame(0);
     }
@@ -614,11 +501,8 @@ class WilsonController implements WilsonAnimationController {
     this.display.update(0);
   }
 
-  setEquippedCarryItem(item: WilsonCarryItem | null): void {
+  setEquippedCarryItem(): void {
     this.stategraph.pushEvent('unequip');
-    this.equippedCarryItem = item;
-    this.carryItem = item;
-    this.handReady = item !== null;
     this.refreshFrame();
   }
 
@@ -628,7 +512,7 @@ class WilsonController implements WilsonAnimationController {
     if (key === this.carryKey) return;
     this.carryKey = key;
     this.handVisual?.onunequip(); this.handVisual = undefined;
-    this.setEquippedCarryItem(item);
+    this.setEquippedCarryItem();
     if (!item) return;
     this.handVisual = wornEquipmentLifecycle(getHandEquipmentDefinition(item)!.definition.visual({ id: 'preview:hand', prefab: item, skinId }), this.equipmentContext);
     this.handVisual.onequip();

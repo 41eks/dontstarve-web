@@ -113,7 +113,7 @@ test('game right-click reskins a chest and c_save keeps its skin and container c
   }, `/@fs${fileURLToPath(new URL('../../inventory/src/index.ts', import.meta.url))}`);
   await page.mouse.click(point.x, point.y, { button: 'right' });
   await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).reskinGame.target)?.skinId)).toBe('treasurechest_ancient');
-  await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).reskinGame.player).animationController.isReskinning)).toBe(false);
+  await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).reskinGame.player).animationController.stategraph.isPerformingAction('CASTSPELL', 'reskin_tool'))).toBe(false);
   await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).reskinGame.fx).status.peek())).toBe('removed');
   expect(await page.evaluate(() => {
     const { fx, scene } = (window as any).reskinGame;

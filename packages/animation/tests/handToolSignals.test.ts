@@ -4,7 +4,7 @@ import { createEquipmentExistenceState } from '../../signals/src';
 import { PickaxeActionController } from '../../stategraphs/src/mine';
 import { HammerActionController, getHammerActionTarget, type HammerTarget } from '../../stategraphs/src/hammer';
 import { ReskinActionController } from '../../stategraphs/src/reskin_tool';
-import type { ActionWorldContext, ActionAnimationController } from '../../stategraphs/src/actionContext';
+import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
 import { frontTasks, registerFrontTask } from '../../../src/animate';
 import { actionTool, reskinEntityFields } from './actionFixtures';
 import { Workable } from '../../componets/src/workable';
@@ -13,6 +13,7 @@ import { SpriteState } from '../../display/src/spriteState';
 import { PrefabInstance, createEmptyEntity } from '../../prefab/src/prefabInstance';
 import { actionEntity } from '../../prefab/src/actionEntity';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
+import { bufferingPerformer } from './bufferingPerformer';
 
 vi.mock('../../../src/universal', () => ({}));
 
@@ -29,8 +30,7 @@ it('registers only the equipped controller, handles restored equipment and remov
   world.registerFrameTask = registerFrontTask;
   const first = actionTool('goldenpickaxe');
   equipment.set(first);
-  const animation = { isMining: false, isHammering: false, isCasting: false, isNetting: false,
-    cancelMine: vi.fn(), cancelHammer: vi.fn() } as unknown as ActionAnimationController;
+  const animation = bufferingPerformer().performer;
   const locomotor = { goToPoint: () => true, stop: vi.fn(), destination: undefined };
   const hammer = new HammerActionController(world, animation, locomotor, equipment, new SpriteState({ name: 'idle' }));
   const pickaxe = new PickaxeActionController(world, animation, locomotor, equipment, () => []);
@@ -72,10 +72,7 @@ it('uses tool components, preserves component republishing and immediately cance
   const equipment = createEquipmentExistenceState('HANDS');
   equipment.set({ itemId: 'torch', EQUIPSLOTS: 'HANDS' });
   const first = actionTool('goldenpickaxe');
-  let hit: (() => void) | undefined;
-  const animation = { isMining: false, isCasting: false, isNetting: false, cancelEmote: vi.fn(), setFacing: vi.fn(),
-    playMine: vi.fn((callback: () => void) => { hit = callback; animation.isMining = true; return true; }),
-    cancelMine: vi.fn(() => { animation.isMining = false; }) };
+  const animation = bufferingPerformer();
   const entity = new ItemEntity({ itemId: 'rock1', count: 1 });
   entity.components.workable = new Workable(entity);
   entity.components.workable.SetWorkAction('MINE');
@@ -83,30 +80,31 @@ it('uses tool components, preserves component republishing and immediately cance
   entity.components.workable.SetOnWorkCallback(playHit);
   const target = { entity, id: 'rock', model: new THREE.Group(), position: new THREE.Vector3(1, 0, 0),
     isValid: () => true };
-  const controller = new PickaxeActionController(context(), animation as unknown as ActionAnimationController,
+  const controller = new PickaxeActionController(context(), animation.performer,
     { goToPoint: () => true, stop: vi.fn(), destination: undefined }, equipment, () => [target]);
   expect(controller.request(target)).toBe(false);
   equipment.set(first);
   expect(controller.request(target)).toBe(true);
   controller.update(0);
-  animation.cancelMine.mockClear();
+  animation.stategraph.cancelAction.mockClear();
   equipment.set({ ...first });
-  expect(animation.cancelMine).not.toHaveBeenCalled();
-  hit?.();
+  expect(animation.stategraph.cancelAction).not.toHaveBeenCalled();
+  expect(animation.last?.invobject).toBe(first.entity);
+  animation.hit();
   expect(playHit).toHaveBeenCalledOnce();
-  animation.isMining = false;
+  animation.finish();
   expect(controller.request(target)).toBe(true);
   controller.update(0);
   const replacement = actionTool('goldenpickaxe');
   equipment.set(replacement);
-  expect(animation.isMining).toBe(false);
-  hit?.();
+  expect(animation.stategraph.isPerformingAction('MINE')).toBe(false);
+  animation.hit();
   expect(playHit).toHaveBeenCalledOnce();
   expect(equipment.peek()).toBe(replacement);
   controller.dispose();
-  const cancellations = animation.cancelMine.mock.calls.length;
+  const cancellations = animation.stategraph.cancelAction.mock.calls.length;
   equipment.set(null);
-  expect(animation.cancelMine).toHaveBeenCalledTimes(cancellations);
+  expect(animation.stategraph.cancelAction).toHaveBeenCalledTimes(cancellations);
 });
 
 it('declares hammer facing on the player instance before starting the action', () => {
@@ -116,24 +114,21 @@ it('declares hammer facing on the player instance before starting the action', (
   const instance = new PrefabInstance('wortox', new SpriteState({ name: 'idle' }));
   instance.attach(world.player);
   let facingAtAction: { facing?: number; mirrored?: boolean } | undefined;
-  const animation = { isHammering: false, isCasting: false, isNetting: false,
-    cancelEmote: vi.fn(), cancelHammer: vi.fn(), playHammer: vi.fn(() => {
-      facingAtAction = instance.sprite.sprite.peek();
-      return true;
-    }), setFacing: vi.fn() };
+  const animation = bufferingPerformer(() => { facingAtAction = instance.sprite.sprite.peek(); });
   const entity = new ItemEntity({ itemId: 'skeleton', count: 1 });
   entity.components.workable = new Workable(entity);
   entity.components.workable.SetWorkAction('HAMMER');
   const target = { entity, id: 'skeleton', model: new THREE.Group(), position: new THREE.Vector3(-1, 0, 0),
     isValid: () => true, playHit: vi.fn() };
-  const controller = new HammerActionController(world, animation as unknown as ActionAnimationController,
+  const controller = new HammerActionController(world, animation.performer,
     { goToPoint: () => true, stop: vi.fn(), destination: undefined }, equipment, instance.sprite);
   try {
     expect(controller.request(target)).toBe(true);
     controller.update(0);
     expect(instance.sprite.sprite.peek()).toMatchObject({ facing: 5, mirrored: true });
     expect(facingAtAction).toMatchObject({ facing: 5, mirrored: true });
-    expect(animation.playHammer).toHaveBeenCalledOnce();
+    expect(animation.stategraph.pushBufferedAction).toHaveBeenCalledOnce();
+    expect(animation.last?.action).toBe('HAMMER');
     expect(animation.setFacing).not.toHaveBeenCalled();
   } finally { controller.dispose(); }
 });
@@ -156,10 +151,9 @@ it('finds registered hammer targets from pointer input and revalidates buffered 
   entity.hammerTarget = target;
   vi.spyOn(PointerRaycaster.prototype, 'trackPointer').mockImplementation(() => {});
   vi.spyOn(PointerRaycaster.prototype, 'pickMouseTarget').mockReturnValue({ object: display.model } as THREE.Intersection);
-  let hit: (() => boolean) | undefined;
-  const animation = { isHammering: false, isCasting: false, isNetting: false, cancelEmote: vi.fn(),
-    cancelHammer: vi.fn(), playHammer: vi.fn((callback: () => boolean) => { hit = callback; return true; }) };
-  const controller = new HammerActionController(world, animation as unknown as ActionAnimationController,
+  const animation = bufferingPerformer();
+  const hit = () => { const done = animation.hit(); animation.finish(); return done; };
+  const controller = new HammerActionController(world, animation.performer,
     { goToPoint: () => true, stop: vi.fn(), destination: undefined }, equipment, new SpriteState({ name: 'idle' }));
   const click = () => {
     const event = Object.assign(new Event('pointerdown', { cancelable: true }), { button: 2 });
@@ -170,15 +164,15 @@ it('finds registered hammer targets from pointer input and revalidates buffered 
   try {
     expect(getHammerActionTarget(display.model)).toBe(target);
     expect(click().defaultPrevented).toBe(true);
-    expect(hit?.()).toBe(true);
+    expect(hit()).toBe(true);
     expect(worked).toHaveBeenCalledOnce();
     expect(target.playHit).not.toHaveBeenCalled();
     expect(workable.GetWorkLeft()).toBe(2);
     click(); workable.SetWorkable(false);
-    expect(hit?.()).toBe(false);
+    expect(hit()).toBe(false);
     expect(worked).toHaveBeenCalledOnce();
     workable.SetWorkable(true); click(); instance.remove();
-    expect(hit?.()).toBe(false);
+    expect(hit()).toBe(false);
     expect(getHammerActionTarget(display.model)).toBeUndefined();
     expect(entity.hammerTarget).toBeUndefined();
     expect(worked).toHaveBeenCalledOnce();
@@ -196,10 +190,10 @@ it('discards a pending reskin after the equipped entity changes during loading a
   const target = { ...reskinEntityFields, id: 'target', prefabId: 'icebox', model, position: new THREE.Vector3(1, 0, 0), sprite,
     get skinId() { return sprite.skinId.peek(); }, isValid: () => true,
     display: { model, preloadSkin: async () => { await ready; } } as never };
-  const animation = { isReskinning: false, cancelEmote: vi.fn(), cancelReskin: vi.fn(), setFacing: vi.fn() };
+  const animation = bufferingPerformer();
   const fx = { play: vi.fn(), dispose: vi.fn() };
   const effects = { prepare: vi.fn(() => fx) };
-  const controller = new ReskinActionController(context(), animation as unknown as ActionAnimationController,
+  const controller = new ReskinActionController(context(), animation.performer,
     { goToPoint: () => true, stop: vi.fn(), destination: undefined }, equipment, effects);
   const request = controller.request(target);
   equipment.set(actionTool('reskin_tool'));
@@ -208,7 +202,7 @@ it('discards a pending reskin after the equipped entity changes during loading a
   expect(sprite.skinId.peek()).toBeUndefined();
   expect(fx.play).not.toHaveBeenCalled();
   controller.dispose();
-  animation.cancelReskin.mockClear();
+  animation.stategraph.cancelAction.mockClear();
   equipment.set(null);
-  expect(animation.cancelReskin).not.toHaveBeenCalled();
+  expect(animation.stategraph.cancelAction).not.toHaveBeenCalled();
 });

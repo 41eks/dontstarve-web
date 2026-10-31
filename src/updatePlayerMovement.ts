@@ -49,23 +49,25 @@ export function updateMovement(
             instance.worldHeading = Math.atan2(-heading.z, heading.x) * 180 / Math.PI;
         }
         if (animation?.isEmoting && interrupting) animation.cancelEmote();
-        if (animation?.isMining && interrupting) animation.cancelMine();
-        if (animation?.isChopping && interrupting) animation.cancelChop();
-        if (animation?.isHammering && interrupting) animation.cancelHammer();
-        if (animation?.isDigging && interrupting) animation.cancelDig();
-        if (animation?.isReskinning && interrupting) animation.cancelReskin();
+        const sg = animation?.stategraph;
+        const reskinning = () => sg?.isPerformingAction('CASTSPELL', 'reskin_tool') === true;
+        // The tool actions' looping states yield to movement input.
+        if (sg && interrupting) for (const action of ['MINE', 'CHOP', 'HAMMER', 'TERRAFORM'] as const) sg.cancelAction(action);
+        if (reskinning() && interrupting) sg!.cancelAction('CASTSPELL');
         // SGwilson's locomote event leaves the non-busy fishing states.
-        if (animation?.isFishing && (interrupting || locomotor.destination)) animation.cancelFishing();
+        if (sg && (interrupting || locomotor.destination)) sg.cancelAction('FISH');
         // Movement while asleep is the locomote event that wakes the sleeper; the sleeper never walks.
         const sleeping = animation?.isSleeping === true;
         if (sleeping && (manual || locomotor.destination)) animation!.wakeFromBed();
         // SGwilson's locomote event: movement input leaves the idle-tagged shell state; the busy ones ignore it.
         const hiding = animation?.stategraph.hasStateTag('shell') === true;
         if (hiding && (manual || locomotor.destination)) animation!.stategraph.pushLocomote();
-        const castingBusy = (animation?.isCasting || animation?.isReading || animation?.isPlayingInstrument) && animation.stategraph.hasStateTag('busy');
+        const castingBusy = sg !== undefined && sg.hasStateTag('busy')
+            && ((sg.isPerformingAction('CASTSPELL') && !reskinning()) || sg.isPerformingAction('READ') || sg.isPerformingAction('PLAY'));
         // SGwilson's death state has the dead tag: the corpse never moves.
         const dead = animation?.stategraph.isDead === true;
-        const acting = animation?.stategraph.isPerformingAction('BLINK') || dead || slipping || sleeping || hiding || castingBusy || animation?.isNetting || animation?.isEmoting || animation?.isMining || animation?.isChopping || animation?.isHammering || animation?.isDigging || animation?.isReskinning;
+        const acting = sg?.isPerformingAction('BLINK') || dead || slipping || sleeping || hiding || castingBusy || animation?.isEmoting
+            || reskinning() || (['NET', 'MINE', 'CHOP', 'HAMMER', 'TERRAFORM'] as const).some(action => sg?.isPerformingAction(action));
         if (slipping && instance.wantsToMoveForward) animation.stategraph.pushLocomote();
         if (acting) locomotor.stop();
         // Match world.step's substep budget when limiting the final travel step.

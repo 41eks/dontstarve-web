@@ -1,6 +1,6 @@
 import { bindActionCancellation } from './actionEvents.ts';
-import type { ActionAnimationController, ActionLocomotor, ActionWorldContext } from './actionContext.ts';
-import type { BufferedActionObject } from './bufferedaction.ts';
+import type { ActionPerformer, ActionLocomotor, ActionWorldContext } from './actionContext.ts';
+import { BufferedAction, type BufferedActionObject } from './bufferedaction.ts';
 
 /** An inventory instrument: the BufferedAction invobject plus ACTIONS.PLAY.fn's instrument:Play call. */
 export interface PlaySource {
@@ -15,11 +15,11 @@ export class PlayActionController {
   private version = 0;
   private disposed = false;
   private readonly world: ActionWorldContext;
-  private readonly animation: ActionAnimationController;
+  private readonly animation: ActionPerformer;
   private readonly locomotor: Pick<ActionLocomotor, 'stop'>;
   private readonly isInterrupting: () => boolean;
 
-  constructor(world: ActionWorldContext, animation: ActionAnimationController,
+  constructor(world: ActionWorldContext, animation: ActionPerformer,
     locomotor: Pick<ActionLocomotor, 'stop'>, isInterrupting = () => false) {
     this.world = world; this.animation = animation; this.locomotor = locomotor; this.isInterrupting = isInterrupting;
     this.stopActionEvents = bindActionCancellation(world, this, 'play', () => this.cancel());
@@ -36,17 +36,18 @@ export class PlayActionController {
     this.world.actionEvents?.emit('action:begin', { owner: this, action: 'PLAY' });
     const version = this.version;
     this.locomotor.stop();
-    return this.animation.playFlute(source.instrument, () => version === this.version && source.isValid() && source.play());
+    return this.animation.stategraph.pushBufferedAction(new BufferedAction('PLAY',
+      () => version === this.version && source.isValid() && source.play(), undefined, { invobject: source.instrument }));
   }
 
   cancel(): void {
     this.version++;
-    this.animation.cancelPlay();
+    this.animation.stategraph.cancelAction('PLAY');
   }
 
   /** PlayerController input interrupts the playing state only after it drops "busy". */
   update(): void {
-    if (this.animation.isPlayingInstrument && !this.animation.stategraph.hasStateTag('busy') && this.isInterrupting()) this.cancel();
+    if (this.animation.stategraph.isPerformingAction('PLAY') && !this.animation.stategraph.hasStateTag('busy') && this.isInterrupting()) this.cancel();
   }
 
   dispose(): void {

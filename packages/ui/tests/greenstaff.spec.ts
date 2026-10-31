@@ -74,15 +74,15 @@ test('console greenstaff reskins, deconstructs opalstaff by right-click and relo
     return { x: bounds.left + (ndc.x + 1) * bounds.width / 2, y: bounds.top + (1 - ndc.y) * bounds.height / 2 };
   });
   await page.mouse.click(point.x, point.y, { button: 'right' });
-  await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).greenGame.player).animationController.isCasting)).toBe(true);
+  await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).greenGame.player).animationController.stategraph.isPerformingAction('CASTSPELL'))).toBe(true);
   await page.keyboard.press('Escape');
-  await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).greenGame.player).animationController.isCasting)).toBe(false);
+  await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).greenGame.player).animationController.stategraph.isPerformingAction('CASTSPELL'))).toBe(false);
   expect(await page.evaluate(() => {
     const game = (window as any).greenGame;
     return [!!game.main.inventory.entities.get(game.opalId), game.main.inventory.entities.get(game.staffId).components.finiteuses.percent.peek()];
   })).toEqual([true, 1]);
   await page.mouse.click(point.x, point.y, { button: 'right' });
-  await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).greenGame.player).animationController.isCasting)).toBe(true);
+  await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).greenGame.player).animationController.stategraph.isPerformingAction('CASTSPELL'))).toBe(true);
   await expect.poll(() => page.evaluate(() => {
     const game = (window as any).greenGame;
     return !!game.main.inventory.entities.get(game.opalId);

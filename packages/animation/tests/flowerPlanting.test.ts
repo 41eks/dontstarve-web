@@ -8,7 +8,7 @@ import { FlowerPlanting } from '../../prefab/src/flower';
 import { PlantDeployment } from '../../prefab/src/plantDeployment';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
-import type { ActionAnimationController } from '../../stategraphs/src/actionContext';
+import type { ActionPerformer } from '../../stategraphs/src/actionContext';
 import { createInventoryStore } from '../../../src/inventory';
 import { cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { createSignal, EventEmitter } from '../../signals/src';
@@ -58,7 +58,7 @@ function setup(random = () => .5) {
 it('buffers planting at frame six, preserves cancelled butterflies and saves the flower and cursor stack', async () => {
   const s = setup(), restored = setup();
   const graph = new WilsonStateGraph({ playAnimation: () => 1, playSound() {}, stopSound() {}, setCasting() {}, onStateChanged() {} });
-  const animation = { stategraph: graph, cancelEmote: vi.fn(), setFacing: vi.fn() } as unknown as ActionAnimationController;
+  const animation = { stategraph: graph, cancelEmote: vi.fn(), setFacing: vi.fn() } as unknown as ActionPerformer;
   const locomotor = { destination: undefined, goToPoint: vi.fn(() => true), stop: vi.fn() };
   let deployment: PlantDeployment | undefined;
   try {
@@ -115,7 +115,7 @@ it('buffers planting at frame six, preserves cancelled butterflies and saves the
 it('quick-picks petals at frame six, preserves a cancelled flower and reloads the harvested result', async () => {
   const s = setup(), restored = setup();
   const graph = new WilsonStateGraph({ playAnimation: () => 1, playSound() {}, stopSound() {}, setCasting() {}, onStateChanged() {} });
-  const animation = { stategraph: graph, cancelEmote: vi.fn(), setFacing: vi.fn() } as unknown as ActionAnimationController;
+  const animation = { stategraph: graph, cancelEmote: vi.fn(), setFacing: vi.fn() } as unknown as ActionPerformer;
   const locomotor = { destination: undefined, goToPoint: vi.fn(() => true), stop: vi.fn() };
   const sanity = vi.fn(), killed = vi.fn();
   const picker: PickActor = { hasTag: () => false, components: { sanity: { DoDelta: sanity } } };

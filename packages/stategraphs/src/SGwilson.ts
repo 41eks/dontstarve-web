@@ -1748,7 +1748,15 @@ export class WilsonStateGraph {
     this.sg.goToState(state);
   }
 
+  /**
+   * EntityScript:PushBufferedAction. The same action, target and invobject already buffered outside idle
+   * keeps running and the new one is dropped (false: its callback never runs); otherwise the old one fails,
+   * TestForStart validates the new one and sg:StartAction enters its handler's destination state.
+   */
   pushBufferedAction(action: BufferedAction<WilsonAction>, foodDrink = false): boolean {
+    const current = this.bufferedAction;
+    if (current && current.action === action.action && current.target === action.target
+      && current.invobject === action.invobject && !this.hasStateTag('idle')) return false;
     // Browser input admission mirrors PlayerController:IsBusy(). The generic
     // stategraph resolves the action's source destination without this UI guard.
     if (this.hasStateTag('busy') || !action.isValid()) return false;

@@ -4,7 +4,8 @@ import { bindHandEquipmentUpdate, type HandEquipmentSignal } from './handEquipme
 import { WILSON_ACTION_TIMES } from './SGwilson.ts';
 import * as THREE from 'three';
 import { PointerRaycaster } from './pointerRaycaster.ts';
-import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor } from './actionContext.ts';
+import { isHandActionBusy, type ActionWorldContext as WorldContext, type ActionPerformer, type ActionLocomotor as Locomotor } from './actionContext.ts';
+import { BufferedAction } from './bufferedaction.ts';
 import { collectEquippedActions, equippedActionEntity, performToolWork, type ComponentActionEntity } from './componentactions.ts';
 import type { Worker } from '../../componets/src/workable';
 import { actionTargetModel, type ActionTargetView } from './actionTargetView';
@@ -39,7 +40,7 @@ export class HammerActionController {
   private actionVersion = 0;
   private readonly direction = new THREE.Vector3();
   private readonly world: WorldContext;
-  private readonly animation: WilsonAnimationController;
+  private readonly animation: ActionPerformer;
   private readonly playerSprite: Pick<SpriteState, 'setFacing'>;
   private readonly locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>;
   private readonly handEquipment: HandEquipmentSignal;
@@ -50,7 +51,7 @@ export class HammerActionController {
 
   constructor(
     world: WorldContext,
-    animation: WilsonAnimationController,
+    animation: ActionPerformer,
     locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>,
     handEquipment: HandEquipmentSignal,
     playerSprite: Pick<SpriteState, 'setFacing'>,
@@ -95,8 +96,7 @@ export class HammerActionController {
   }
 
   request(target: HammerTarget): boolean {
-    if (!this.canWork(target) || this.animation.isHammering
-      || this.animation.isCasting || this.animation.isNetting) return false;
+    if (!this.canWork(target) || this.isHammering || isHandActionBusy(this.animation.stategraph)) return false;
     this.cancel();
     this.world.actionEvents?.emit('action:begin', { owner: this, action: 'HAMMER' });
     this.animation.cancelEmote();
@@ -107,9 +107,9 @@ export class HammerActionController {
   cancel(owned = this.isEquipped()): void {
     this.actionVersion++;
     // Only the equipped tool cancels its own action.
-    if (this.target || (owned && this.animation.isHammering)) this.locomotor.stop();
+    if (this.target || (owned && this.isHammering)) this.locomotor.stop();
     this.target = undefined;
-    if (owned) this.animation.cancelHammer();
+    if (owned) this.animation.stategraph.cancelAction('HAMMER');
   }
 
   update(_dt: number): void {
@@ -131,14 +131,17 @@ export class HammerActionController {
     this.locomotor.stop();
     faceSpritePoint(this.playerSprite, this.world.camera, this.world.player.position, target.position);
     const version = this.actionVersion;
-    if (this.animation.playHammer(() => {
+    const tool = equippedActionEntity(this.handEquipment.peek());
+    if (this.animation.stategraph.pushBufferedAction(new BufferedAction('HAMMER', () => {
       if (version === this.actionVersion && this.canWork(target)
         && this.distanceSquared(target) <= HAMMER_REACH ** 2) {
         return performToolWork('HAMMER', target.entity, this.worker, equippedActionEntity(this.handEquipment.peek()));
       }
       return false;
-    })) this.target = undefined;
+    }, undefined, { invobject: tool }))) this.target = undefined;
   }
+
+  private get isHammering(): boolean { return this.animation.stategraph.isPerformingAction('HAMMER'); }
 
   dispose(): void {
     this.stopActionEvents();

@@ -3,7 +3,9 @@ import { bindHandEquipmentUpdate, type HandEquipmentSignal } from './handEquipme
 import { WILSON_ACTION_TIMES } from './SGwilson.ts';
 import * as THREE from 'three';
 import { PointerRaycaster } from './pointerRaycaster.ts';
-import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor } from './actionContext.ts';
+import { isHandActionBusy, type ActionWorldContext as WorldContext, type ActionPerformer, type ActionLocomotor as Locomotor } from './actionContext.ts';
+import { BufferedAction } from './bufferedaction.ts';
+import { equippedActionEntity } from './componentactions.ts';
 import type { TerraformMap as TurfMap } from './farmActions.ts';
 import { facePoint } from './facing.ts';
 
@@ -18,7 +20,7 @@ export class PitchforkActionController {
   private actionVersion = 0;
   private readonly direction = new THREE.Vector3();
   private readonly world: WorldContext;
-  private readonly animation: WilsonAnimationController;
+  private readonly animation: ActionPerformer;
   private readonly locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>;
   private readonly handEquipment: HandEquipmentSignal;
   private readonly stopEquipment: () => void;
@@ -28,7 +30,7 @@ export class PitchforkActionController {
 
   constructor(
     world: WorldContext,
-    animation: WilsonAnimationController,
+    animation: ActionPerformer,
     locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>,
     handEquipment: HandEquipmentSignal,
     turf: TurfMap,
@@ -61,8 +63,8 @@ export class PitchforkActionController {
   }
 
   request(point: THREE.Vector3): boolean {
-    if (!this.isEquipped() || !this.turf.canTerraform(point) || this.animation.isDigging
-      || this.animation.isCasting || this.animation.isNetting) return false;
+    if (!this.isEquipped() || !this.turf.canTerraform(point) || this.isDigging
+      || isHandActionBusy(this.animation.stategraph)) return false;
     this.cancel();
     this.world.actionEvents?.emit('action:begin', { owner: this, action: 'TERRAFORM' });
     this.animation.cancelEmote();
@@ -76,9 +78,9 @@ export class PitchforkActionController {
   cancel(owned = this.isEquipped()): void {
     this.actionVersion++;
     // Cancel only this controller's active action.
-    if (this.target || (owned && this.animation.isDigging)) this.locomotor.stop();
+    if (this.target || (owned && this.isDigging)) this.locomotor.stop();
     this.target = undefined;
-    if (owned) this.animation.cancelDig();
+    if (owned) this.animation.stategraph.cancelAction('TERRAFORM');
   }
 
   update(_dt: number): void {
@@ -100,11 +102,13 @@ export class PitchforkActionController {
     this.locomotor.stop();
     facePoint(this.animation, this.world.camera, this.world.player.position, target);
     const version = this.actionVersion;
-    if (this.animation.playDig(() => {
+    if (this.animation.stategraph.pushBufferedAction(new BufferedAction('TERRAFORM', () => {
       if (version === this.actionVersion && this.isEquipped() && this.turf.canTerraform(target)
         && this.distanceSquared(target) <= PITCHFORK_REACH ** 2) this.turf.dig(target);
-    })) this.target = undefined;
+    }, undefined, { invobject: equippedActionEntity(this.handEquipment.peek()) }))) this.target = undefined;
   }
+
+  private get isDigging(): boolean { return this.animation.stategraph.isPerformingAction('TERRAFORM'); }
 
   dispose(): void {
     this.stopActionEvents();

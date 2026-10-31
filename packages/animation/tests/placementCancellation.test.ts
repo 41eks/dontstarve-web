@@ -13,11 +13,11 @@ import { InventorySlot, InventoryStore, inventorySlotAddress } from '../../inven
 import { EventEmitter, createEquipmentExistenceState, createSignal } from '../../signals/src';
 import type { PlayerActionEvents } from '../../stategraphs/src/actionEvents';
 import { ReskinActionController, type ReskinTarget } from '../../stategraphs/src/reskin_tool';
-import type { ActionAnimationController } from '../../stategraphs/src/actionContext';
 import { GroundItemAssets } from '../../prefab/src/groundItems';
 import { bindTestWorld } from './worldContentFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { SpriteState } from '@dontstarve-web/display';
+import { bufferingPerformer } from './bufferingPerformer';
 
 vi.mock('../src/sprite', async importOriginal => ({ ...await importOriginal<typeof import('../src/sprite')>(), createAnimatedSpriteSource: vi.fn() }));
 vi.mock('../src/wallSprite', () => ({ createStaticSpriteFactory: vi.fn() }));
@@ -120,8 +120,8 @@ it('an accepted action cancels a paid preview through events, skips its own canc
   const target: ReskinTarget = { ...reskinEntityFields, id: 'target', prefabId: 'icebox', model, sprite,
     get skinId() { return sprite.skinId.peek(); }, position: new THREE.Vector3(1, 0, 0), isValid: () => valid,
     display: { model, preloadSkin: async () => { await ready; } } as never };
-  const animation = { isReskinning: false, cancelEmote: vi.fn(), cancelReskin: vi.fn(), playReskin: vi.fn() };
-  const controller = new ReskinActionController(world, animation as unknown as ActionAnimationController,
+  const animation = bufferingPerformer();
+  const controller = new ReskinActionController(world, animation.performer,
     { stop: vi.fn(), goToPoint: () => true, destination: undefined }, equipped,
     { prepare: () => ({ play: vi.fn(), dispose: vi.fn() }) });
   const cancel = vi.spyOn(controller, 'cancel');
@@ -141,7 +141,7 @@ it('an accepted action cancels a paid preview through events, skips its own canc
     release();
     expect(await request).toBe(false);
     expect(sprite.skinId.peek()).toBeUndefined();
-    expect(animation.playReskin).not.toHaveBeenCalled();
+    expect(animation.stategraph.pushBufferedAction).not.toHaveBeenCalled();
     controller.dispose();
     cancel.mockClear();
     world.actionEvents!.emit('action:interrupt', { reason: 'emote' });

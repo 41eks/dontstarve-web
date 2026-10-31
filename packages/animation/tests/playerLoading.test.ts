@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { afterEach, expect, it, vi } from 'vitest';
 import { createWilsonPlayerPrefab } from '../../prefab/src/player';
+import { BufferedAction } from '../../stategraphs/src/bufferedaction';
 
 vi.mock('../../prefab/src/sound', () => ({ PlaySound: vi.fn(() => ({ stop() {}, isPlaying: () => true, setVolume() {} })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -31,7 +32,8 @@ it('creates the logical player and body synchronously and completes actions and 
     instance.sprite.setVisible(true); await tick();
     expect(model.visible).toBe(true);
     const read = vi.fn(() => true);
-    expect(animation.playRead({ prefab: 'book_silviculture', def: { fx_under_prefab: 'fx_roots_under_book' } }, read)).toBe(true);
+    const book = { prefab: 'book_silviculture', def: { fx_under_prefab: 'fx_roots_under_book' }, hasTag: () => false };
+    expect(animation.stategraph.pushBufferedAction(new BufferedAction('READ', read, undefined, { invobject: book }))).toBe(true);
     for (let frame = 0; frame < 60 && animation.stategraph.stateName !== 'book2'; frame++) animation.update(1 / 30);
     expect(animation.stategraph.stateName).toBe('book2');
     const fx = [...instance.sprite.fx.peek().values()];

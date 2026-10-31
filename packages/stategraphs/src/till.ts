@@ -2,7 +2,9 @@ import { bindActionCancellation } from './actionEvents.ts';
 import * as THREE from 'three';
 import { PointerRaycaster } from './pointerRaycaster.ts';
 import { bindHandEquipmentUpdate, type HandEquipmentSignal } from './handEquipment.ts';
-import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor } from './actionContext.ts';
+import { isHandActionBusy, type ActionWorldContext as WorldContext, type ActionPerformer, type ActionLocomotor as Locomotor } from './actionContext.ts';
+import { BufferedAction } from './bufferedaction.ts';
+import { equippedActionEntity } from './componentactions.ts';
 import type { FarmActionWorld } from './farmActions.ts';
 import { facePoint } from './facing.ts';
 type FarmPlowPlacement = Pick<FarmActionWorld, 'canTill' | 'till'>;
@@ -22,7 +24,7 @@ export class FarmHoeActionController {
   private disposed = false;
   private readonly direction = new THREE.Vector3();
   private readonly world: WorldContext;
-  private readonly animation: WilsonAnimationController;
+  private readonly animation: ActionPerformer;
   private readonly locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>;
   private readonly handEquipment: HandEquipmentSignal;
   private readonly stopEquipment: () => void;
@@ -30,7 +32,7 @@ export class FarmHoeActionController {
   private readonly farm: FarmPlowPlacement;
   private readonly isManualMovement: () => boolean;
 
-  constructor(world: WorldContext, animation: WilsonAnimationController,
+  constructor(world: WorldContext, animation: ActionPerformer,
     locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>,
     handEquipment: HandEquipmentSignal, farm: FarmPlowPlacement,
     isManualMovement = () => false) {
@@ -52,7 +54,7 @@ export class FarmHoeActionController {
 
   request(point: THREE.Vector3): boolean {
     if (this.disposed || !isFarmHoeTool(this.equipped()?.itemId ?? '') || !this.farm.canTill(point)
-      || this.animation.isTilling || this.animation.isCasting || this.animation.isNetting) return false;
+      || this.animation.stategraph.isPerformingAction('TILL') || isHandActionBusy(this.animation.stategraph)) return false;
     this.cancel();
     this.world.actionEvents?.emit('action:begin', { owner: this, action: 'TILL' });
     this.animation.cancelEmote();
@@ -66,7 +68,7 @@ export class FarmHoeActionController {
     this.version++;
     if (this.target) this.locomotor.stop();
     this.target = undefined;
-    this.animation.cancelTill();
+    this.animation.stategraph.cancelAction('TILL');
   }
 
   update(): void {
@@ -85,11 +87,11 @@ export class FarmHoeActionController {
     this.locomotor.stop();
     facePoint(this.animation, this.world.camera, this.world.player.position, target);
     const version = this.version, tool = this.equipped()!;
-    if (this.animation.playTill(() => {
+    if (this.animation.stategraph.pushBufferedAction(new BufferedAction('TILL', () => {
       const current = this.equipped();
       return version === this.version && current?.itemId === tool.itemId && current.skinId === tool.skinId
         && this.inReach(target) && this.farm.till(target);
-    })) this.target = undefined;
+    }, undefined, { invobject: equippedActionEntity(tool) }))) this.target = undefined;
   }
 
   private inReach(point: THREE.Vector3): boolean {

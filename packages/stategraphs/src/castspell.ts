@@ -5,7 +5,7 @@ import { bindActionCancellation } from './actionEvents.ts';
 import { bindHandEquipmentUpdate, type HandEquipmentSignal } from './handEquipment.ts';
 import { PlayerActionPicker } from './playeractionpicker.ts';
 import { PointerRaycaster } from './pointerRaycaster.ts';
-import type { ActionAnimationController, ActionLocomotor, ActionWorldContext } from './actionContext.ts';
+import type { ActionPerformer, ActionLocomotor, ActionWorldContext } from './actionContext.ts';
 import type { EquipmentEntity } from '../../signals/src/equipment.ts';
 import type { SpellCastDoer, SpellCasterComponent, SpellTarget } from '../../componets/src/spellcaster.ts';
 import { collectEquippedActions, equippedActionEntity } from './componentactions.ts';
@@ -13,7 +13,7 @@ import { actionTargetModel, type ActionTargetView } from './actionTargetView.ts'
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { facePoint } from './facing.ts';
 export type { SpellCastDoer, SpellCastMap, SpellCasterComponent } from '../../componets/src/spellcaster.ts';
-type SpellCastAnimation = Pick<ActionAnimationController, 'stategraph' | 'cancelEmote' | 'setFacing'>;
+type SpellCastAnimation = Pick<ActionPerformer, 'stategraph' | 'cancelEmote' | 'setFacing'>;
 export type SpellCastTarget = SpellTarget & BufferedActionObject & ActionTargetView & {
   readonly prefab: string;
   readonly position: THREE.Vector3;

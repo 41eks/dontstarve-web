@@ -3,7 +3,12 @@ import { bindActionCancellation } from './actionEvents.ts';
 import { bindHandEquipmentUpdate, type HandEquipmentSignal } from './handEquipment.ts';
 import * as THREE from 'three';
 import { PointerRaycaster } from './pointerRaycaster.ts';
-import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor } from './actionContext.ts';
+import { isHandActionBusy, type ActionWorldContext as WorldContext, type ActionPerformer, type ActionLocomotor as Locomotor } from './actionContext.ts';
+import { BufferedAction } from './bufferedaction.ts';
+import type { WilsonFishingHost } from './SGwilson.ts';
+
+/** The player inst, with the rod component SGwilson's fishing states reach bound to it. */
+export type FishingPerformer = ActionPerformer & { bindFishing(fishing: WilsonFishingHost | undefined): void };
 import { equippedActionEntity, type ComponentActionEntity } from './componentactions.ts';
 import type { Fisherman, FishingRod } from '../../componets/src/fishingrod';
 import { facePoint } from './facing.ts';
@@ -32,7 +37,7 @@ export class FishingActionController {
   private actionVersion = 0;
   private readonly direction = new THREE.Vector3();
   private readonly world: WorldContext;
-  private readonly animation: WilsonAnimationController;
+  private readonly animation: FishingPerformer;
   private readonly locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>;
   private readonly handEquipment: HandEquipmentSignal;
   private readonly stopEquipment: () => void;
@@ -44,7 +49,7 @@ export class FishingActionController {
 
   constructor(
     world: WorldContext,
-    animation: WilsonAnimationController,
+    animation: FishingPerformer,
     locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>,
     handEquipment: HandEquipmentSignal,
     getTargets: (model?: THREE.Object3D) => readonly FishingTarget[],
@@ -99,7 +104,7 @@ export class FishingActionController {
   }
 
   private isFishingAt(rod: FishingRod | undefined, target: FishingTarget): boolean {
-    return rod?.target === target.entity && this.animation.isFishing && this.animation.stategraph.hasStateTag('fishing');
+    return rod?.target === target.entity && this.animation.stategraph.isPerformingAction('FISH') && this.animation.stategraph.hasStateTag('fishing');
   }
 
   private hoverCandidates(model?: THREE.Object3D) {
@@ -118,7 +123,7 @@ export class FishingActionController {
   request(target: FishingTarget): boolean {
     const rod = this.isEquipped() ? this.getRod() : undefined;
     if (!rod || !target.isValid() || !target.entity.hasTag('fishable') || rod.HasCaughtFish()
-      || this.animation.stategraph.hasStateTag('busy') || this.animation.isCasting || this.animation.isNetting) return false;
+      || this.animation.stategraph.hasStateTag('busy') || isHandActionBusy(this.animation.stategraph)) return false;
     // actions.lua REEL (instant): hook a biting fish, reel a hooked one, or stop fishing.
     if (this.isFishingAt(rod, target)) {
       if (rod.IsFishing()) {
@@ -141,7 +146,7 @@ export class FishingActionController {
     this.target = undefined;
     this.activeRod?.StopFishing();
     this.activeRod = undefined;
-    this.animation.cancelFishing();
+    this.animation.stategraph.cancelAction('FISH');
   }
 
   update(_dt: number): void {
@@ -168,12 +173,12 @@ export class FishingActionController {
     this.locomotor.stop();
     facePoint(this.animation, this.world.camera, this.world.player.position, target.position);
     const version = this.actionVersion;
-    if (this.animation.playFish(() => {
+    if (this.animation.stategraph.pushBufferedAction(new BufferedAction('FISH', () => {
       // actions.lua FISH: the rod begins fishing the target once the cast lands.
       if (version !== this.actionVersion || !this.isEquipped() || !target.isValid()) return;
       this.activeRod = rod;
       rod.StartFishing(target.entity as never, this.fisherman);
-    })) this.target = undefined;
+    }, undefined, { invobject: equippedActionEntity(this.handEquipment.peek()) }))) this.target = undefined;
   }
 
   dispose(): void {

@@ -3,7 +3,8 @@ import { bindActionCancellation } from './actionEvents.ts';
 import { bindHandEquipmentUpdate, type HandEquipmentSignal } from './handEquipment.ts';
 import * as THREE from 'three';
 import { PointerRaycaster } from './pointerRaycaster.ts';
-import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor } from './actionContext.ts';
+import { isHandActionBusy, type ActionWorldContext as WorldContext, type ActionPerformer, type ActionLocomotor as Locomotor } from './actionContext.ts';
+import { BufferedAction } from './bufferedaction.ts';
 import { collectEquippedActions, equippedActionEntity, performToolWork, type ComponentActionEntity } from './componentactions.ts';
 import type { Worker } from '../../componets/src/workable';
 import { actionTargetModel, type ActionTargetView } from './actionTargetView';
@@ -30,7 +31,7 @@ export class PickaxeActionController {
   private actionVersion = 0;
   private readonly direction = new THREE.Vector3();
   private readonly world: WorldContext;
-  private readonly animation: WilsonAnimationController;
+  private readonly animation: ActionPerformer;
   private readonly locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>;
   private readonly handEquipment: HandEquipmentSignal;
   private readonly stopEquipment: () => void;
@@ -42,7 +43,7 @@ export class PickaxeActionController {
 
   constructor(
     world: WorldContext,
-    animation: WilsonAnimationController,
+    animation: ActionPerformer,
     locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>,
     handEquipment: HandEquipmentSignal,
     getTargets: (model?: THREE.Object3D) => readonly PickaxeTarget[],
@@ -92,7 +93,7 @@ export class PickaxeActionController {
 
   request(target: PickaxeTarget): boolean {
     if (!this.canWork(target) || this.isActing
-      || this.animation.isCasting || this.animation.isNetting) return false;
+      || isHandActionBusy(this.animation.stategraph)) return false;
     this.cancel();
     this.world.actionEvents?.emit('action:begin', { owner: this, action: this.action });
     this.animation.cancelEmote();
@@ -105,10 +106,7 @@ export class PickaxeActionController {
     // Only the equipped tool cancels its own action.
     if (this.target || (owned && this.isActing)) this.locomotor.stop();
     this.target = undefined;
-    if (owned) {
-      if (this.action === 'CHOP') this.animation.cancelChop();
-      else this.animation.cancelMine();
-    }
+    if (owned) this.animation.stategraph.cancelAction(this.action);
   }
 
   update(_dt: number): void {
@@ -132,14 +130,13 @@ export class PickaxeActionController {
     this.locomotor.stop();
     facePoint(this.animation, this.world.camera, this.world.player.position, target.position);
     const version = this.actionVersion;
-    const play = this.action === 'CHOP' ? this.animation.playChop.bind(this.animation) : this.animation.playMine.bind(this.animation);
-    if (play(() => {
+    if (this.animation.stategraph.pushBufferedAction(new BufferedAction(this.action, () => {
       if (version === this.actionVersion && this.canWork(target)
         && this.distanceSquared(target) <= reach ** 2) {
         return performToolWork(this.action, target.entity, this.worker, equippedActionEntity(this.handEquipment.peek()));
       }
       return false;
-    })) this.target = undefined;
+    }, undefined, { invobject: equippedActionEntity(this.handEquipment.peek()) }))) this.target = undefined;
   }
 
   dispose(): void {
@@ -153,7 +150,7 @@ export class PickaxeActionController {
   }
 
   private get isActing(): boolean {
-    return this.action === 'CHOP' ? this.animation.isChopping : this.animation.isMining;
+    return this.animation.stategraph.isPerformingAction(this.action);
   }
 
   private distanceSquared(target: PickaxeTarget): number {

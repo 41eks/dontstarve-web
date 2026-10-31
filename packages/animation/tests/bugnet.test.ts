@@ -17,6 +17,8 @@ import { updateMovement } from '../../../src/updatePlayerMovement';
 import { FIXED_TIMESTEP, MAX_SUBSTEPS } from '../../../src/physicsTiming';
 import { createEquipmentExistenceState } from '../../signals/src';
 import type { PlayerBody } from '../../../src/types/Player';
+import { BufferedAction } from '../../stategraphs/src/bufferedaction';
+import { bufferingPerformer } from './bufferingPerformer';
 
 vi.mock('../../../src/InputManager', () => ({ input: { isPressed: () => false, isManualMovement: () => false, isActionInterrupting: () => false } }));
 
@@ -33,16 +35,14 @@ function setup() {
   const net = actionTool('bugnet');
   equipped.set(net);
   let manual = false;
-  let hit: (() => void) | undefined;
-  const animation = { isNetting: false, isCasting: false, setFacing: vi.fn(),
-    playBugNet: vi.fn((callback: () => void) => { hit = callback; return true; }) };
+  const animation = bufferingPerformer();
   const target: ButterflyCaptureTarget = { id: 'butterfly1', entity: netEntity(() => target.capture()), model: new THREE.Group(),
     position: new THREE.Vector3(8, 0, 0), isValid: vi.fn(() => true), capture: vi.fn(() => true) };
-  const controller = new BugNetCaptureController(world, animation as unknown as WilsonAnimationController,
+  const controller = new BugNetCaptureController(world, animation.performer,
     locomotor, equipped, () => [target], () => manual);
   return { canvas, player, locomotor, animation, target, controller,
     equip: (value: boolean) => equipped.set(value ? net : null),
-    moveManually: () => { manual = true; }, hit: () => hit?.() };
+    moveManually: () => { manual = true; }, hit: () => animation.hit() };
 }
 
 describe('NET action on a moving butterfly', () => {
@@ -54,14 +54,14 @@ describe('NET action on a moving butterfly', () => {
     expect(s.controller.request(s.target)).toBe(true);
     s.controller.update(0.01);
     expect(s.locomotor.goToPoint).toHaveBeenCalledWith(s.target.position);
-    expect(s.animation.playBugNet).not.toHaveBeenCalled();
+    expect(s.animation.stategraph.pushBufferedAction).not.toHaveBeenCalled();
     s.target.position.x = 10;
     s.controller.update(0.2);
     expect(s.locomotor.goToPoint).toHaveBeenCalledTimes(2);
     s.player.position.x = 9;
     s.controller.update(0.01);
     expect(s.locomotor.stop).toHaveBeenCalled();
-    expect(s.animation.playBugNet).toHaveBeenCalledOnce();
+    expect(s.animation.stategraph.pushBufferedAction).toHaveBeenCalledOnce();
     expect(s.target.capture).not.toHaveBeenCalled();
     s.target.position.x = 12.9;
     s.hit();
@@ -122,23 +122,25 @@ describe('original bugnet assets and Wilson action', () => {
     const player = await createWilsonPlayer('/anim');
     const controller = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
     const capture = vi.fn();
-    expect(controller.playBugNet(capture)).toBe(false);
+    const net = { prefab: 'bugnet', hasTag: (tag: string) => tag === 'NET_tool' };
+    const swing = () => controller.stategraph.pushBufferedAction(new BufferedAction('NET', capture, undefined, { invobject: net }));
+    const netting = () => controller.stategraph.isPerformingAction('NET');
     await controller.setCarryItem('bugnet');
-    expect(controller.playBugNet(capture)).toBe(true);
-    expect(controller.isNetting).toBe(true);
-    expect(controller.playBugNet(capture)).toBe(false);
+    expect(swing()).toBe(true);
+    expect(netting()).toBe(true);
+    expect(swing()).toBe(false);
     advance(controller, 35); // Before pre's 8 frames + swing's 10 frames (0.6 s).
     expect(capture).not.toHaveBeenCalled();
     advance(controller, 3);
     expect(capture).toHaveBeenCalledOnce();
     advance(controller, 60);
     expect(capture).toHaveBeenCalledOnce();
-    expect(controller.isNetting).toBe(false);
-    expect(controller.playBugNet(capture)).toBe(true);
+    expect(netting()).toBe(false);
+    expect(swing()).toBe(true);
     advance(controller, 10);
     await controller.setCarryItem(null);
     advance(controller, 100);
-    expect(controller.isNetting).toBe(false);
+    expect(netting()).toBe(false);
     expect(capture).toHaveBeenCalledOnce();
   });
 
@@ -186,7 +188,7 @@ describe('NET hover candidates', () => {
     const target: ButterflyCaptureTarget = { id: 'butterfly1', entity: netEntity(() => true), model: new THREE.Group(),
       position: new THREE.Vector3(), isValid: () => true, capture: () => true };
     const getTargets = vi.fn(() => [target]);
-    const controller = new BugNetCaptureController(world, { isNetting: false, isCasting: false } as unknown as WilsonAnimationController,
+    const controller = new BugNetCaptureController(world, bufferingPerformer().performer,
       { goToPoint: vi.fn(), stop: vi.fn(), destination: undefined } as never, equipped, getTargets);
     expect(provider()).toEqual([]);
     expect(getTargets).not.toHaveBeenCalled();

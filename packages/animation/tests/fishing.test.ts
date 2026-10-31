@@ -136,7 +136,7 @@ it('casts at a pond, waits for a bite, hooks, reels and lands a pondfish; a stra
     equipped.set({ itemId: 'fishingrod', EQUIPSLOTS: 'HANDS', entity: tool });
     expect(controller.request(ponds.fishTargets[0])).toBe(true); controller.update(0);
     advanceUntil(() => animation.stategraph.stateName === 'fishing');
-    animation.cancelFishing();
+    animation.stategraph.cancelAction('FISH');
     controller.update(0);
     expect(animation.stategraph.hasStateTag('fishing')).toBe(false);
     expect(rodOf().IsFishing()).toBe(false);

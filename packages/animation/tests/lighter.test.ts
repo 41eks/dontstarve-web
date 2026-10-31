@@ -9,7 +9,7 @@ import { Propagator } from '../../componets/src/propagator';
 import { LighterActionController, type LighterTarget } from '../../stategraphs/src/light';
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import { collectEquippedActions } from '../../stategraphs/src/componentactions';
-import type { ActionAnimationController, ActionWorldContext } from '../../stategraphs/src/actionContext';
+import type { ActionPerformer, ActionWorldContext } from '../../stategraphs/src/actionContext';
 import { createSignal, type HandEquipment } from '../../signals/src';
 import { ItemEntity } from '../../inventory/src';
 import { TORCH_FUEL, configureTorchEntity } from '../../prefab/src/torch';
@@ -77,7 +77,7 @@ it('walks to the foot, cancels on unequip and commits LIGHT once at frame 13 wit
   const equipment = { itemId: 'torch', EQUIPSLOTS: 'HANDS' as const, entity: torch };
   const hand = createSignal<HandEquipment | null>(equipment);
   const graph = new WilsonStateGraph({ playAnimation: () => 1, playSound() {}, setCasting() {}, onStateChanged() {} });
-  const animation = { stategraph: graph, cancelEmote() {}, setFacing: vi.fn() } as unknown as ActionAnimationController;
+  const animation = { stategraph: graph, cancelEmote() {}, setFacing: vi.fn() } as unknown as ActionPerformer;
   const locomotor = { destination: undefined, goToPoint: vi.fn(() => true), stop: vi.fn() };
   const world = { scene, player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(), cameraFacing: createSignal(8), cameraHeading: createSignal(45),
     renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;

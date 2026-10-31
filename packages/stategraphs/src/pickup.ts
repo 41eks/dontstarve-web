@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import type { ItemEntity, InventoryStore } from '../../inventory/src/index.ts';
 import type { InventoryActor } from '../../componets/src/inventoryitem.ts';
 import { BufferedAction } from './bufferedaction.ts';
-import type { ActionWorldContext, ActionAnimationController, ActionLocomotor } from './actionContext.ts';
+import type { ActionWorldContext, ActionPerformer, ActionLocomotor } from './actionContext.ts';
 import { bindActionCancellation } from './actionEvents.ts';
 import { PlayerActionPicker, type MouseActionCandidate } from './playeractionpicker.ts';
 import { PointerRaycaster } from './pointerRaycaster.ts';
@@ -78,7 +78,7 @@ export function getPickupActions(model: THREE.Object3D | undefined, doer: Pickup
 /** PlayerController/Locomotor browser adapter; SGwilson chooses when PICKUP commits. */
 export class PickupActionController {
   private readonly world: ActionWorldContext;
-  private readonly animation: ActionAnimationController;
+  private readonly animation: ActionPerformer;
   private readonly locomotor: ActionLocomotor;
   private readonly doer: PickupDoer;
   private readonly isManualMovement: () => boolean;
@@ -91,7 +91,7 @@ export class PickupActionController {
   private version = 0;
   private readonly direction = new THREE.Vector3();
 
-  constructor(world: ActionWorldContext, animation: ActionAnimationController, locomotor: ActionLocomotor,
+  constructor(world: ActionWorldContext, animation: ActionPerformer, locomotor: ActionLocomotor,
     doer: PickupDoer, isManualMovement = () => false) {
     this.world = world; this.animation = animation; this.locomotor = locomotor;
     this.doer = doer; this.isManualMovement = isManualMovement;

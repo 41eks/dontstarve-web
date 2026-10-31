@@ -7,6 +7,7 @@ import { createWilsonPlayerPrefab, type WilsonAnimationController, type WilsonPl
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { smallHash } from '../src/animationAssets';
 import { declaredAnimState } from './animStateFixture';
+import { BufferedAction } from '../../stategraphs/src/bufferedaction';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {}, isPlaying: () => true, setVolume() {} })) }));
 const players: WilsonPlayerPrefab[] = [];
@@ -46,7 +47,7 @@ it('declares player art and retains its entity, equipment, body and shared asset
   const disposals = materials.map(material => vi.spyOn(material, 'dispose'));
   await animation.setCarryItem('pickaxe');
   const hit = vi.fn();
-  expect(animation.playMine(hit)).toBe(true);
+  expect(animation.stategraph.pushBufferedAction(new BufferedAction('MINE', hit))).toBe(true);
   for (let frame = 0; frame < 5; frame++) animation.update(1 / 30);
   animation.setFacing('side', true);
   expect(instance.sprite.sprite.peek()).toMatchObject({ facing: 5, mirrored: true, paused: true });
@@ -82,9 +83,10 @@ it('declares player art and retains its entity, equipment, body and shared asset
 
 it('declares tagged book FX as child instances and expires them on game timers while the player visual sleeps', async () => {
   const { instance, model, display, animation } = await createPlayer();
-  const book = { prefab: 'book_silviculture', swap_build: 'swap_books', swap_prefix: 'book_silviculture', def: { fx_under_prefab: 'fx_roots_under_book' } };
+  const book = { prefab: 'book_silviculture', swap_build: 'swap_books', swap_prefix: 'book_silviculture', def: { fx_under_prefab: 'fx_roots_under_book' }, hasTag: () => false };
   const read = vi.fn(() => true);
-  expect(animation.playRead(book, read)).toBe(true);
+  const push = () => animation.stategraph.pushBufferedAction(new BufferedAction('READ', read, undefined, { invobject: book }));
+  expect(push()).toBe(true);
   for (let frame = 0; frame < 60 && animation.stategraph.stateName !== 'book2'; frame++) animation.update(1 / 30);
   expect(animation.stategraph.stateName).toBe('book2');
   await display.artLoaded(); animation.update(0);
@@ -111,7 +113,7 @@ it('declares tagged book FX as child instances and expires them on game timers w
   instance.setActive(true); await settle(); animation.update(0);
   expect(meshes(model)).toHaveLength(1);
   // Removing the player during the next read cancels its child timers and buffered action.
-  expect(animation.playRead(book, read)).toBe(true);
+  expect(push()).toBe(true);
   await settle();
   const cancelled = [...instance.sprite.fx.peek().values()].map(entry => prefabInstance(entry.display!.model)!);
   expect(cancelled).toHaveLength(1);

@@ -6,7 +6,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { HarvestActionController, getHarvestActions, type HarvestTarget } from '../../stategraphs/src/harvest';
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import { Stewer } from '../../componets/src/stewer';
-import type { ActionAnimationController, ActionWorldContext } from '../../stategraphs/src/actionContext';
+import type { ActionPerformer, ActionWorldContext } from '../../stategraphs/src/actionContext';
 import { EventEmitter } from '../../signals/src/EventEmitter';
 import type { PlayerActionEvents } from '../../stategraphs/src/actionEvents';
 
@@ -25,7 +25,7 @@ it('walks to the foot point, revalidates a buffered harvest and releases pending
   instance.components.stewer = stewer;
   stewer.OnLoad({ product: 'kabobs', done: true });
   const stategraph = new WilsonStateGraph({ playAnimation: () => .2, playSound() {}, setCasting() {}, onStateChanged() {} });
-  const animation = { stategraph, cancelEmote() {}, setFacing: vi.fn() } as unknown as ActionAnimationController;
+  const animation = { stategraph, cancelEmote() {}, setFacing: vi.fn() } as unknown as ActionPerformer;
   const locomotor = { destination: undefined, goToPoint: vi.fn(() => true), stop: vi.fn() };
   const receiver = { giveItem: vi.fn(() => true), dispose: vi.fn() };
   const actionEvents = new EventEmitter<PlayerActionEvents>();

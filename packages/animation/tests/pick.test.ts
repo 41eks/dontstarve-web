@@ -5,7 +5,7 @@ import { getPickActions, PickActionController, PICK_REACH } from '../../stategra
 import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import { Pickable } from '../../prefab/src/components/pickable';
-import type { ActionAnimationController, ActionWorldContext } from '../../stategraphs/src/actionContext';
+import type { ActionPerformer, ActionWorldContext } from '../../stategraphs/src/actionContext';
 import type { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { EventEmitter } from '../../signals/src/EventEmitter';
 import type { PlayerActionEvents } from '../../stategraphs/src/actionEvents';
@@ -56,7 +56,7 @@ it('walks to reach, commits a prepared PICK and releases canceled products witho
   const actionEvents = new EventEmitter<PlayerActionEvents>(), begin = vi.fn();
   const stopEvents = actionEvents.on('action:begin', begin);
   const stategraph = new WilsonStateGraph({ playAnimation: () => .2, playSound() {}, setCasting() {}, onStateChanged() {} });
-  const animation = { stategraph, cancelEmote() {}, setFacing: vi.fn() } as unknown as ActionAnimationController;
+  const animation = { stategraph, cancelEmote() {}, setFacing: vi.fn() } as unknown as ActionPerformer;
   const locomotor = { destination: undefined as THREE.Vector3 | undefined, goToPoint: vi.fn(() => true), stop: vi.fn() };
   const world = { scene, player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     mouseActions: picker, actionEvents, renderer: { domElement: canvas } } as unknown as ActionWorldContext;

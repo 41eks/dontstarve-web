@@ -8,7 +8,7 @@ import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
 import { RummageActionController, RUMMAGE_REACH } from '../../stategraphs/src/rummage';
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
-import type { ActionAnimationController } from '../../stategraphs/src/actionContext';
+import type { ActionPerformer } from '../../stategraphs/src/actionContext';
 import { getActionString } from '../../stategraphs/src/actions';
 import { TREASURE_CHEST_DEFINITION } from '../../prefab/src/treasurechest';
 import { COOK_POT_DEFINITION } from '../../prefab/src/cook_pot';
@@ -53,7 +53,7 @@ async function setup(definition = TREASURE_CHEST_DEFINITION, id = 'treasurechest
     ({ object: model, point: new THREE.Vector3() }) as THREE.Intersection);
   const stategraph = new WilsonStateGraph({ playAnimation: () => .2, playSound() {}, setCasting() {}, onStateChanged() {} });
   const locomotor = { destination: undefined as THREE.Vector3 | undefined, goToPoint: vi.fn(() => true), stop: vi.fn() };
-  const rummage = new RummageActionController(world, { stategraph, cancelEmote() {}, setFacing() {} } as unknown as ActionAnimationController,
+  const rummage = new RummageActionController(world, { stategraph, cancelEmote() {}, setFacing() {} } as unknown as ActionPerformer,
     locomotor);
   // The world publishes player snapshots; proximity effects run after the microtask.
   const distance = async (value: number) => {

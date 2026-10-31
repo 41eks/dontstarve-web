@@ -137,11 +137,11 @@ it('approaches the target, creates one hole at till_loop frame 11, and cancels b
     expect(farm.exportDecorRecords()).toHaveLength(1);
     const preserved = farm.exportDecorRecords();
     expect(controller.request(point)).toBe(true);
-    await vi.waitFor(() => { controller.update(); expect(animation.isTilling).toBe(true); });
+    await vi.waitFor(() => { controller.update(); expect(animation.stategraph.isPerformingAction('TILL')).toBe(true); });
     controller.cancel(); advance(animation, 60);
     expect(farm.exportDecorRecords()).toEqual(preserved);
     expect(controller.request(point)).toBe(true);
-    await vi.waitFor(() => { controller.update(); expect(animation.isTilling).toBe(true); });
+    await vi.waitFor(() => { controller.update(); expect(animation.stategraph.isPerformingAction('TILL')).toBe(true); });
     tool.set(null); await animation.setCarryItem(null); controller.update(); advance(animation, 60);
     expect(farm.exportDecorRecords()).toEqual(preserved);
   } finally { controller.dispose(); farm.dispose(); }

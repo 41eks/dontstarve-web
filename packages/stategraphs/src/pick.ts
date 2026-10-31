@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { ActionWorldContext, ActionAnimationController, ActionLocomotor } from './actionContext.ts';
+import type { ActionWorldContext, ActionPerformer, ActionLocomotor } from './actionContext.ts';
 import { BufferedAction, type BufferedActionObject } from './bufferedaction.ts';
 import { bindActionCancellation } from './actionEvents.ts';
 import type { MouseActionCandidate } from './playeractionpicker.ts';
@@ -92,13 +92,13 @@ export class PickActionController {
   private disposed = false;
   private readonly direction = new THREE.Vector3();
   private readonly world: ActionWorldContext;
-  private readonly animation: ActionAnimationController;
+  private readonly animation: ActionPerformer;
   private readonly playerSprite: Pick<SpriteState, 'setFacing'>;
   private readonly locomotor: ActionLocomotor;
   private readonly doer: PickDoer | PreparePickDoer;
   private readonly isManualMovement: () => boolean;
 
-  constructor(world: ActionWorldContext, animation: ActionAnimationController, locomotor: ActionLocomotor,
+  constructor(world: ActionWorldContext, animation: ActionPerformer, locomotor: ActionLocomotor,
     doer: PickDoer | PreparePickDoer, playerSprite: Pick<SpriteState, 'setFacing'>, isManualMovement = () => false) {
     this.world = world; this.animation = animation; this.locomotor = locomotor;
     this.doer = doer; this.playerSprite = playerSprite; this.isManualMovement = isManualMovement;

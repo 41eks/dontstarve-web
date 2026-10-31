@@ -11,7 +11,7 @@ import { GroundItemManager } from '../../../src/groundItems';
 import { createInventoryStore } from '../../../src/inventory';
 import { cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
-import type { ActionAnimationController } from '../../stategraphs/src/actionContext';
+import type { ActionPerformer } from '../../stategraphs/src/actionContext';
 import { ItemUseActionController, getItemUseActions } from '../../stategraphs/src/itemuse';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
@@ -75,7 +75,7 @@ function setup(tickingarea?: TileStateQuery, random?: () => number) {
 it('lights and heats a spring only after a cursor-held bath bomb is tossed in, then saves and reloads the state', async () => {
   const s = setup(), restored = setup();
   const graph = new WilsonStateGraph({ playAnimation: () => 1, playSound: () => {}, stopSound: () => {}, setCasting: () => {}, onStateChanged: () => {} });
-  const animation = { stategraph: graph, cancelEmote: vi.fn(), setFacing: vi.fn() } as unknown as ActionAnimationController;
+  const animation = { stategraph: graph, cancelEmote: vi.fn(), setFacing: vi.fn() } as unknown as ActionPerformer;
   const locomotor = { destination: undefined, goToPoint: vi.fn(() => true), stop: vi.fn() };
   const source = () => {
     const entity = s.inventory.getEntity(cursorSlotAddress());
