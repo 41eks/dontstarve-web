@@ -73,6 +73,6 @@ prefab 直接添加的 tags 都由实例持有。constructor-only 的 inspectabl
 | `ruins_rubble_vase` | 0 → 0 | 35 → 35 |
 | 六种 `ruinsrelic_*`（每种） | 0 → 0 | 0 → 0 |
 
-本任务基线的 Master 总数 6,497 → 6,497，Caves 总数 5,134 → 5,288。Caves 0000000002 / 0000000003 各新增 159 个，其余四份洞穴快照各新增 154 个；六份地表快照实体数不变。所有快照的其他 prefab 数量变化均为 0。并行任务后续导入的实体另按其所属任务统计。
+合并最新 main 后，Master 总数 6,497 → 6,497，Caves 总数 5,392 → 5,546（仅本任务新增 154 个）。任务最初基线的 Caves 为 5,134，期间并行任务已将 258 株 lichen 合入 main。Caves 0000000002 / 0000000003 各新增 159 个，其余四份洞穴快照各新增 154 个；六份地表快照实体数不变。所有快照的其他 prefab 数量变化均为 0。并行任务后续导入的实体另按其所属任务统计。
 
 `packages/animation/tests/ruinsrelic.test.ts` 的三个代表用例覆盖源码动画队列与状态恢复、皮肤休眠重建，以及 c_spawn / c_give → c_save → 反序列化和重载。Playwright 复用 `packages/ui/tests/default-save-load.spec.ts` 的 Master / Caves 默认存档加载用例，没有新增交互浏览器用例。资源完整性、全部 bank/clip 名与原路径字节用 `python3 packages/prefab/scripts/import-ground-items.py --check` 检查。
