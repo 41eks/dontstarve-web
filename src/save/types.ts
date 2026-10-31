@@ -69,7 +69,7 @@ export interface SavedEntity {
     dragonflySpawner?: import('@dontstarve-web/prefab/dragonfly_spawner').DragonflySpawnerSaveState;
     statueglommer?: { worked?: true; spawned?: true };
     atriumGate?: import('@dontstarve-web/prefab/atrium_gate').AtriumGateRecord['components']['atriumGate'];
-    ruinsStatueMage?: import('@dontstarve-web/prefab/ruins_statue_mage').RuinsStatueMageRecord['components']['ruinsStatueMage'];
+    ruinsStatueMage?: import('@dontstarve-web/prefab/ruins_statue_mage').RuinsStatueGemRecord['components']['ruinsStatueMage'];
     chessJunk?: import('@dontstarve-web/prefab/chessjunk').ChessJunkRecord['components']['chessJunk'];
     charliecutscene?: import('@dontstarve-web/prefab/atrium_gate').AtriumGateRecord['components']['charliecutscene'];
     worldsettingstimer?: import('@dontstarve-web/prefab/atrium_gate').AtriumGateRecord['components']['worldsettingstimer'];

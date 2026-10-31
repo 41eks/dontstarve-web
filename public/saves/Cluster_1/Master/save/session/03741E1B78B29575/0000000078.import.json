@@ -361,6 +361,8 @@
     "atrium_gate",
     "atrium_statue",
     "ruins_statue_mage",
+    "ruins_statue_mage_nogem",
+    "ruins_statue_head",
     "ruins_statue_head_nogem",
     "chessjunk1",
     "chessjunk2",
@@ -595,6 +597,14 @@
       "imported": 0
     },
     "ruins_statue_mage": {
+      "source": 0,
+      "imported": 0
+    },
+    "ruins_statue_mage_nogem": {
+      "source": 0,
+      "imported": 0
+    },
+    "ruins_statue_head": {
       "source": 0,
       "imported": 0
     },
