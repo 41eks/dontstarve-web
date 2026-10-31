@@ -46,6 +46,7 @@
     "./rocks": "./src/rocks.ts",
     "./cave_fern": "./src/cave_fern.ts",
     "./grass": "./src/grass.ts",
+    "./lichen": "./src/lichen.ts",
     "./houndbone": "./src/houndbone.ts",
     "./beequeenhivegrown": "./src/beequeenhivegrown.ts",
     "./dragonfly": "./src/dragonfly.ts",

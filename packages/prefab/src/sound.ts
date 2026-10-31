@@ -25,6 +25,8 @@ const sounds = {
   'dontstarve/common/researchmachine_lvl4_idle_LP': { bank: 'common', streams: [213], loop: true, volume: .10000000149011612, pitchOctaves: -.25 },
   // rock_avocado_bush.lua picksound → dontstarve.fev sounddef 86 → wilson file_index 19–21.
   'dontstarve/wilson/harvest_berries': { bank: 'wilson', streams: [20, 21, 22], loop: false },
+  // lichen.lua onpickedfn → dontstarve.fev sounddef 1022 → wilson file_index 19–21 (Harvest_berries_1..3), with the event's own volume and pitch.
+  'dontstarve/wilson/pickup_lichen': { bank: 'wilson', streams: [20, 21, 22], loop: false, volume: .2818382978439331, pitchOctaves: -.125 },
   // flies.lua → dontstarve.fev sounddef 56 → common file_index 74–80 (Flies_soothed_DST_-001..007).
   'dontstarve/common/flies': { bank: 'common', streams: [75, 76, 77, 78, 79, 80, 81], loop: true },
   // grass.lua → dontstarve.fev sounddef 19 → wilson file_index 115–118.

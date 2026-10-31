@@ -386,6 +386,7 @@
     "sapling",
     "cactus",
     "oasis_cactus",
+    "lichen",
     "evergreen",
     "flower_cave",
     "flower_cave_double",
@@ -702,6 +703,10 @@
     "oasis_cactus": {
       "source": 18,
       "imported": 18
+    },
+    "lichen": {
+      "source": 0,
+      "imported": 0
     },
     "evergreen": {
       "source": 2344,
