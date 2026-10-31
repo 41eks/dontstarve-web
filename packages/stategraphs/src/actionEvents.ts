@@ -1,7 +1,7 @@
 import type { ActionWorldContext } from './actionContext.ts';
 
 export type PlayerActionKind = 'BLINK' | 'BLINK_MAP' | 'ATTACK' | 'HAMMER' | 'MINE' | 'CHOP' | 'TERRAFORM' | 'TILL' | 'DIG'
-  | 'NET' | 'PICK' | 'PICKUP' | 'HARVEST' | 'EAT' | 'READ' | 'SEED_SELECT' | 'BUILD' | 'DEPLOY' | 'FERTILIZE' | 'BATHBOMB' | 'CASTSPELL' | 'LIGHT' | 'GIVE' | 'FEED' | 'REPAIR' | 'SHAVE' | 'STORE' | 'TAKEITEM' | 'ADDFUEL' | 'ADDWETFUEL' | 'SLEEPIN' | 'PLAY' | 'FISH' | 'HAUNT' | 'MIGRATE' | 'TURNON' | 'TURNOFF';
+  | 'NET' | 'PICK' | 'PICKUP' | 'HARVEST' | 'EAT' | 'READ' | 'SEED_SELECT' | 'BUILD' | 'DEPLOY' | 'FERTILIZE' | 'BATHBOMB' | 'CASTSPELL' | 'LIGHT' | 'GIVE' | 'FEED' | 'REPAIR' | 'SHAVE' | 'STORE' | 'TAKEITEM' | 'ADDFUEL' | 'ADDWETFUEL' | 'SLEEPIN' | 'PLAY' | 'FISH' | 'HAUNT' | 'MIGRATE' | 'TURNON' | 'TURNOFF' | 'RUMMAGE';
 export type ActionInterruptReason = 'slot-select' | 'slot-context-menu' | 'drop' | 'craft' | 'crafting' | 'emote';
 export interface PlayerActionEvents {
   'action:begin': { owner: object; action: PlayerActionKind };
@@ -14,7 +14,7 @@ interface CancellationRule {
   interrupts: readonly ActionInterruptReason[];
 }
 const inventoryInterrupts = ['slot-select', 'slot-context-menu', 'craft', 'crafting', 'emote'] as const;
-const inventoryActions = ['EAT', 'READ', 'SEED_SELECT', 'BUILD', 'DEPLOY', 'HARVEST', 'PICKUP', 'GIVE', 'FEED', 'REPAIR', 'STORE', 'TAKEITEM', 'ADDFUEL', 'ADDWETFUEL', 'FERTILIZE', 'BATHBOMB', 'PLAY', 'TURNON', 'TURNOFF'] as const;
+const inventoryActions = ['EAT', 'READ', 'SEED_SELECT', 'BUILD', 'DEPLOY', 'HARVEST', 'PICKUP', 'GIVE', 'FEED', 'REPAIR', 'STORE', 'TAKEITEM', 'ADDFUEL', 'ADDWETFUEL', 'FERTILIZE', 'BATHBOMB', 'PLAY', 'TURNON', 'TURNOFF', 'RUMMAGE'] as const;
 const workActions = ['BLINK', 'BLINK_MAP', 'ATTACK', 'HAMMER', 'MINE', 'CHOP', 'TERRAFORM', 'TILL', 'DIG', 'CASTSPELL', 'LIGHT', 'FISH'] as const;
 
 /** Existing interruption scopes, expressed as action categories rather than controller instances. */

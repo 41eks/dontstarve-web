@@ -14,6 +14,8 @@ import { COOK_POT_DEFINITION } from '../../prefab/src/cook_pot';
 import { TREASURE_CHEST_DEFINITION } from '../../prefab/src/treasurechest';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { modelHasTag } from '../../prefab/src/prefabInstance';
+import { findActionEntity } from '../../prefab/src/actionEntity';
+import { getRummageActions, performRummageAction, type RummageTarget } from '../../stategraphs/src/rummage';
 import { miniMapEntities } from '../../map/src/minimapEntities';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import type { SpriteAnimationController } from '../src/sprite';
@@ -23,7 +25,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-async function setup(definition: AnimatedBuildingDefinition) {
+async function setup(definition: AnimatedBuildingDefinition, id = 'building') {
   const bytes = await readFile(new URL(`../../../public/dst/data/anim/${definition.archive}`, import.meta.url));
   vi.stubGlobal('fetch', vi.fn(async () => new Response(bytes)));
   vi.stubGlobal('window', new EventTarget());
@@ -38,7 +40,7 @@ async function setup(definition: AnimatedBuildingDefinition) {
   } as unknown as WorldContext;
   world.player.position.set(100, 0, 100);
   const consume = vi.fn(() => true);
-  const placement = new AnimatedBuildingPlacement(world, { building: definition }, consume);
+  const placement = new AnimatedBuildingPlacement(world, { [id]: definition }, consume);
   vi.spyOn(PointerRaycaster.prototype, 'trackPointer').mockImplementation(() => {});
   vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(new THREE.Vector3(3, 0, 4));
   const isOverGround = vi.spyOn(PointerRaycaster.prototype, 'isOverGround', 'get').mockReturnValue(true);
@@ -105,17 +107,22 @@ it.each(buildings)('%s runs its built animation only after a successful placemen
 it('lets a prefab control built effects and keeps interaction blocked until it completes', async () => {
   let context: AnimatedBuildingBuiltContext;
   const onbuilt = vi.fn((built: AnimatedBuildingBuiltContext) => { context = built; });
-  const { placement, click } = await setup({ ...TREASURE_CHEST_DEFINITION, onProximity: false, onbuilt });
-  await placement.begin('building');
+  // A storage building's real ID gives it its container.
+  const { placement, world, click } = await setup({ ...TREASURE_CHEST_DEFINITION, onProximity: false, onbuilt }, 'treasurechest');
+  await placement.begin('treasurechest');
   click();
   const playOnce = vi.spyOn(context!.animation as SpriteAnimationController, 'playOnce');
-  click();
+  const { model } = context!, chest = findActionEntity(model) as unknown as RummageTarget;
+  // While the place clip runs, its container cannot be opened, so RUMMAGE is neither offered nor performed.
+  expect(getRummageActions(model, world.player)).toEqual([]);
+  expect(performRummageAction(chest, world.player)).toBe(false);
   placement.update(0.1);
   expect(onbuilt).toHaveBeenCalledTimes(1);
   expect(playOnce).not.toHaveBeenCalled();
 
   context!.onComplete();
-  click();
+  expect(getRummageActions(model, world.player).map(({ action }) => action.action)).toEqual(['RUMMAGE']);
+  expect(performRummageAction(chest, world.player)).toBe(true);
   expect(playOnce).toHaveBeenCalledExactlyOnceWith('open', expect.any(Function));
 });
 

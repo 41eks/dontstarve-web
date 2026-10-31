@@ -140,7 +140,6 @@ export const COOK_POT_DEFINITION: AnimatedBuildingDefinition = {
         remove();
     },
     createContainer: inst => createBuildingContainer('cookpot', inst),
-    canInteract: ({ model }) => prefabInstance(model)!.components?.container?.canbeopened !== false,
     onclose: ({ model, animation }) => {
         if (!(prefabInstance(model)!.components.stewer as Stewer).IsCooking()) animation.start('idle_empty');
         PlaySound('dontstarve/common/cookingpot_close', model.position);

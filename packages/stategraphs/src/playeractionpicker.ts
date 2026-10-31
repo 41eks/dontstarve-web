@@ -27,6 +27,7 @@ export class PlayerActionPicker {
   private readonly providers = new Set<(target: THREE.Object3D | undefined) => readonly MouseActionCandidate[]>();
   private readonly isEnabled: () => boolean;
   private readonly activeItemSources = new Set<() => boolean>();
+  private readonly placerSources = new Set<() => boolean>();
   private readonly eventActions = new WeakMap<PointerEvent, { actions: MouseActions; target?: THREE.Object3D }>();
   private selectedModel?: THREE.Object3D;
   private readonly actionFilters: { fn: ActionFilter; priority: number }[] = [];
@@ -55,11 +56,23 @@ export class PlayerActionPicker {
     return () => { this.activeItemSources.delete(source); };
   }
 
+  /** PlayerController's build placer: while one is shown, a click places or cancels it instead of picking an action. */
+  registerPlacer(source: () => boolean): () => void {
+    this.placerSources.add(source);
+    return () => { this.placerSources.delete(source); };
+  }
+
   getMouseActions(event?: PointerEvent): MouseActions {
     if (event) {
       const cached = this.eventActions.get(event);
       if (cached) { this.selectedModel = cached.target; return cached.actions; }
       this.pointer.trackPointer(event);
+      // OnLeftClick / OnRightClick return before GetLeft/RightMouseAction while placer_recipe is set.
+      if ([...this.placerSources].some(source => source())) {
+        this.eventActions.set(event, { actions: {}, target: undefined });
+        this.selectedModel = undefined;
+        return {};
+      }
     }
     if (!this.isEnabled()) { this.selectedModel = undefined; return {}; }
     this.pointer.beginFrame();
@@ -92,5 +105,5 @@ export class PlayerActionPicker {
     } finally { this.pointer.endFrame(); }
   }
 
-  dispose(): void { this.providers.clear(); this.activeItemSources.clear(); this.pointer.dispose(); }
+  dispose(): void { this.providers.clear(); this.activeItemSources.clear(); this.placerSources.clear(); this.pointer.dispose(); }
 }

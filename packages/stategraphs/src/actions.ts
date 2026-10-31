@@ -39,6 +39,7 @@ export const ACTIONS = {
   SLEEPIN: { priority: 0, strings: { GENERIC: '睡觉' } },
   MIGRATE: { priority: 0, strings: { GENERIC: '进入' } },
   HAUNT: { priority: 0, ghost_valid: true, strings: { GENERIC: '作祟' } },
+  RUMMAGE: { priority: -1, strings: { GENERIC: '打开', CLOSE: '关闭' } },
 } as const;
 
 export type MouseActionId = keyof typeof ACTIONS;

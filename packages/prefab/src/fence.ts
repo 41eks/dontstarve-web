@@ -121,6 +121,7 @@ export class FencePlacement {
     private readonly player: THREE.Object3D;
     private readonly ground: THREE.Object3D;
     private readonly pointer: PointerRaycaster;
+    private readonly stopPlacerGate?: () => void;
     private readonly cursor: BuildCursor;
     private readonly resources = new SpriteResources(undefined, 'ground');
     private readonly displays: PrefabDisplayGroup;
@@ -150,9 +151,11 @@ export class FencePlacement {
         this.scheduler = world.scheduler ?? new GameTimeScheduler();
         this.ownsScheduler = !world.scheduler;
         this.stopActionEvents = bindActionCancellation(world, this, 'building', () => this.cancel());
-        this.pointer = new PointerRaycaster(world);
+        this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
         this.cursor = new BuildCursor(world, this.pointer);
         this.heading = watchSignal(world.cameraHeading, stop => this.cleanups.push(stop));
+        // Action controllers see no mouse action while the placer is shown, so the click reaches the placer.
+        this.stopPlacerGate = world.mouseActions?.registerPlacer(() => this.active !== undefined);
         this.canvas.addEventListener('pointerdown', this.handlePointerDown);
     }
 
@@ -257,7 +260,8 @@ export class FencePlacement {
         this.stopActionEvents();
         this.cleanups.splice(0).forEach(stop => stop());
         this.canvas.removeEventListener('pointerdown', this.handlePointerDown);
-        this.pointer.dispose();
+        this.stopPlacerGate?.();
+        if (this.pointer !== this.world.mouseActions?.pointer) this.pointer.dispose();
         this.cancel();
         for (const fence of [...this.placed]) this.disposeFence(fence);
         this.placed.clear();

@@ -86,9 +86,9 @@ export interface AnimatedBuildingDefinition {
     container?: BuildingContainerDefinition;
     /** Runs only after successful placement; call onComplete when built effects finish. */
     onbuilt?: (context: AnimatedBuildingBuiltContext) => void;
-    /** Runs when an accepted interaction starts its opening animation. */
+    /** Runs when the container opens (RUMMAGE) and its opening animation starts. */
     onopen?: (context: AnimatedBuildingEventContext) => void;
-    /** Runs when a click or proximity exit starts its closing animation. */
+    /** Runs when the container closes (RUMMAGE, the panel or a proximity exit) and its closing animation starts. */
     onclose?: (context: AnimatedBuildingEventContext) => void;
     /** Runs when the player enters the building's proximity range. */
     onturnon?: (context: AnimatedBuildingEventContext) => void;
@@ -109,7 +109,6 @@ export interface AnimatedBuildingDefinition {
     skinAnimationBanks?: Readonly<Record<string, readonly string[]>>;
     symbolOverrides?: Readonly<Record<string, { archive: string; symbol: string }>>;
     hiddenLayers?: readonly string[];
-    canInteract?: (context: AnimatedBuildingEventContext) => boolean;
     onrestore?: (context: AnimatedBuildingEventContext, components: PlacementSaveRecord['components']) => void;
     onupdate?: (context: AnimatedBuildingEventContext, dt: number) => void;
     exportComponents?: (context: AnimatedBuildingEventContext) => PlacementSaveRecord['components'];
@@ -234,6 +233,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     ) => void;
     private readonly cursor: BuildCursor;
     private readonly pointer: PointerRaycaster;
+    private readonly stopPlacerGate?: () => void;
     private placer?: BuildingPlacer<BuildId>;
     private readonly mouseRecords = new ModelRecords<AnimatedBuildingInstance<BuildId>>();
     private readonly placed: AnimatedBuildingInstance<BuildId>[] = [];
@@ -264,8 +264,10 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         this.definitions = definitions;
         this.consumeBufferedBuild = consumeBufferedBuild;
         this.onInteractionChange = onInteractionChange;
-        this.pointer = new PointerRaycaster(world);
+        this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
         this.cursor = new BuildCursor(world, this.pointer);
+        // Action controllers see no mouse action while the placer is shown, so the click reaches the placer.
+        this.stopPlacerGate = world.mouseActions?.registerPlacer(() => this.placer !== undefined);
         world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown);
         // Proximity follows the world's player snapshots; interactions still recheck the live position.
         const playerpositions = getBoundWatchWorldContent()?.(WorldContentKey.PlayerPositions, stop => { this.stopPlayerPositions = stop; });
@@ -371,6 +373,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             Object.assign(building.instance.components, { container });
             this.worldContext.registerContainer?.(`world:${buildId}:${String(building.instance.entityId)}`, container,
                 building.instance.saveRecord?.components.container);
+            container.onopenfn = () => this.openInteraction(building);
             container.onclosefn = () => {
                 if (building.interactionState !== 'open' && building.interactionState !== 'opening') return;
                 this.closeInteraction(building);
@@ -635,7 +638,8 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         this.stopActionEvents();
         this.stopPlayerPositions?.();
         this.canvas.removeEventListener('pointerdown', this.handlePointerDown);
-        this.pointer.dispose();
+        this.stopPlacerGate?.();
+        if (this.pointer !== this.worldContext.mouseActions?.pointer) this.pointer.dispose();
         this.cancel();
         for (const instance of this.placed) {
             actionEntity(instance.model, instance.buildId).components.workable?.dispose();
@@ -682,14 +686,9 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             this.cancel();
             return;
         }
-        if (event.button !== 0) return;
-        if (event.defaultPrevented) return;
-        if (this.placer) {
-            event.preventDefault();
-            this.placeBuilding(event);
-            return;
-        }
-        this.interactWithPlacedBuilding(event);
+        if (event.button !== 0 || event.defaultPrevented || !this.placer) return;
+        event.preventDefault();
+        this.placeBuilding(event);
     };
 
     /** Hover candidates for the shared GIVE action: every building with a trader. */
@@ -722,78 +721,42 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         building.isPlacing = onbuilt !== undefined;
         this.placed.push(building); this.mouseRecords.set(building.model, building);
         this.initializeComponents(building);
+        // An opening clip would replace the place clip and drop its completion, so RUMMAGE waits for it.
+        const container = building.instance.components?.container;
+        if (container && building.isPlacing) container.canbeopened = false;
         onbuilt?.({
             ...this.eventContext(building),
-            onComplete: () => { building.isPlacing = false; },
+            onComplete: () => {
+                building.isPlacing = false;
+                if (container) container.canbeopened = true;
+            },
         });
     }
 
-    private interactWithPlacedBuilding(event: PointerEvent) {
-        const interactable = this.placed.filter((building) =>
-            this.definitions[building.buildId].interaction !== undefined
-            && !building.isPlacing
-        );
-        if (interactable.length === 0) return;
-
-        this.pointer.trackPointer(event);
-        const byModel = new Map<THREE.Object3D, AnimatedBuildingInstance<BuildId>>(
-            interactable.map((building) => [building.model, building]),
-        );
-        const hit = this.pointer.raycastPointer([...byModel.keys()], true);
-        let object: THREE.Object3D | null = hit?.object ?? null;
-        while (object && !byModel.has(object)) object = object.parent;
-        if (!object) return;
-
-        const building = byModel.get(object);
-        if (building) {
-            event.preventDefault();
-            this.toggleInteraction(building);
-        }
-    }
-
-    private toggleInteraction(building: AnimatedBuildingInstance<BuildId>) {
-        if (actionEntity(building.model, building.buildId).hasTag('burnt')) return;
+    /** container.onopenfn: RUMMAGE opened the container, so the building plays its opening (treasurechest onopen). */
+    private openInteraction(building: AnimatedBuildingInstance<BuildId>) {
         const definition = this.definitions[building.buildId];
         const interaction = definition.interaction;
-        if (!interaction) return;
-        if (definition.canInteract?.(this.eventContext(building)) === false) return;
+        if (!interaction || actionEntity(building.model, building.buildId).hasTag('burnt')) return;
         this.updateProximity(building);
-        if (definition.onProximity && !building.isPlayerNearby) return;
-
-        if (building.interactionState === 'closed') {
-            const container = building.instance.components?.container;
-            if (container && (!container.canbeopened || !container.CanOpen())) return;
-            container?.Open(this.player);
-            definition.onopen?.(this.eventContext(building));
-            if (interaction.openImmediately) {
-                building.interactionState = 'open';
-                this.onInteractionChange?.({ buildId: building.buildId, isOpen: true, model: building.model });
-                return;
-            }
-            if (interaction.openAnimationLoop) {
-                building.interactionState = 'open';
-                building.animation.start(interaction.openAnimation);
-                this.onInteractionChange?.({
-                    buildId: building.buildId,
-                    isOpen: true,
-                    model: building.model,
-                });
-                return;
-            }
-            building.interactionState = 'opening';
-            building.animation.playOnce(interaction.openAnimation, () => {
-                building.interactionState = 'open';
-                this.onInteractionChange?.({
-                    buildId: building.buildId,
-                    isOpen: true,
-                    model: building.model,
-                });
-            });
+        definition.onopen?.(this.eventContext(building));
+        const opened = () => this.onInteractionChange?.({ buildId: building.buildId, isOpen: true, model: building.model });
+        if (interaction.openImmediately) {
+            building.interactionState = 'open';
+            opened();
             return;
         }
-        if (building.interactionState !== 'open') return;
-
-        this.closeInteraction(building);
+        if (interaction.openAnimationLoop) {
+            building.interactionState = 'open';
+            building.animation.start(interaction.openAnimation);
+            opened();
+            return;
+        }
+        building.interactionState = 'opening';
+        building.animation.playOnce(interaction.openAnimation, () => {
+            building.interactionState = 'open';
+            opened();
+        });
     }
 
     private closeInteraction(building: AnimatedBuildingInstance<BuildId>) {

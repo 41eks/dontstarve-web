@@ -31,6 +31,7 @@ export * from './haunt.ts';
 export * from './blink.ts';
 export * from './occupiable.ts';
 export * from './turnon.ts';
+export * from './rummage.ts';
 export * from './light.ts';
 export * from './pickup.ts';
 export * from './reskin_tool.ts';

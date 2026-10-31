@@ -6,7 +6,7 @@ import {
   AttackActionController, SpellCastActionController, BugNetCaptureController, FishingActionController, HammerActionController,
   LighterActionController, PickaxeActionController, PitchforkActionController,
   FarmHoeActionController, ShovelActionController, FoodActionController,
-  PickActionController, HarvestActionController, OccupiableActionController, MachineActionController, PickupActionController, ReadActionController, PlayActionController, ItemUseActionController,
+  PickActionController, HarvestActionController, OccupiableActionController, MachineActionController, RummageActionController, PickupActionController, ReadActionController, PlayActionController, ItemUseActionController,
   ReskinActionController, SleepActionController, MigrateActionController, HauntActionController, type PickupDoer, type FoodSource, type ActionLocomotor, type PlayerActionEvents,
 } from '@dontstarve-web/stategraphs';
 import { ItemEntity } from '@dontstarve-web/inventory';
@@ -218,7 +218,9 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
           inventory.GiveItem(item as ItemEntity, position), isActionInterrupting);
         // actions.lua TURNON / TURNOFF on a scene machine, such as a ground lantern.
         const machines = new MachineActionController(view, playerAnimation, locomotor, isActionInterrupting);
-        frameControllers.push(itemUse, picking, pickup, harvesting, occupiables, machines);
+        // actions.lua RUMMAGE: open or close a scene container, such as a chest or the cook pot.
+        const rummage = new RummageActionController(view, playerAnimation, locomotor, isActionInterrupting);
+        frameControllers.push(itemUse, picking, pickup, harvesting, occupiables, machines, rummage);
         // sleepingbaguser.lua on the player: per-tick hunger, sanity and health while in a bed.
         const phase = createMemo(() => clockstate.get().phase);
         const sleeper = new SleepingBagUser({

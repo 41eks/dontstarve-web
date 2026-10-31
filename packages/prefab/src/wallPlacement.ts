@@ -151,6 +151,7 @@ export class WallPlacement<BuildId extends string> {
     private readonly consumeBufferedBuild: (buildId: BuildId, skinId?: string) => boolean;
     private readonly cursor: BuildCursor;
     private readonly pointer: PointerRaycaster;
+    private readonly stopPlacerGate?: () => void;
     private active?: WallInstance<BuildId>;
     private readonly mouseRecords = new ModelRecords<WallInstance<BuildId>>();
     private readonly placed = new Set<WallInstance<BuildId>>();
@@ -174,8 +175,10 @@ export class WallPlacement<BuildId extends string> {
         this.player = world.player;
         this.definitions = definitions;
         this.consumeBufferedBuild = consumeBufferedBuild;
-        this.pointer = new PointerRaycaster(world);
+        this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
         this.cursor = new BuildCursor(world, this.pointer);
+        // Action controllers see no mouse action while the placer is shown, so the click reaches the placer.
+        this.stopPlacerGate = world.mouseActions?.registerPlacer(() => this.active !== undefined);
         world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown);
     }
 
@@ -272,7 +275,8 @@ export class WallPlacement<BuildId extends string> {
         this.disposed = true;
         this.stopActionEvents();
         this.canvas.removeEventListener('pointerdown', this.handlePointerDown);
-        this.pointer.dispose();
+        this.stopPlacerGate?.();
+        if (this.pointer !== this.world.mouseActions?.pointer) this.pointer.dispose();
         this.cancel();
         for (const wall of this.placed) this.disposeWall(wall);
         for (const effect of this.effects) effect.remove();

@@ -22,7 +22,7 @@ export type WilsonStateName = WilsonMovementState | WilsonOneShotState | 'build'
   | 'portal_rez' | 'portal_jumpin_pre' | 'portal_jumpin' | 'portal_jumpout'
   /** SGwilson.lua amulet_rebirth: the player rising from a red amulet after a haunt resurrection. */
   | 'amulet_rebirth';
-export type WilsonAction = 'BLINK' | 'BLINK_MAP' | 'ATTACK' | 'MINE' | 'CHOP' | 'HAMMER' | 'NET' | 'TERRAFORM' | 'CASTSPELL' | 'EAT' | 'PLANT' | 'TILL' | 'DIG' | 'HARVEST' | 'PICK' | 'PICKUP' | 'LIGHT' | 'READ' | 'GIVE' | 'FEED' | 'REPAIR' | 'SHAVE' | 'STORE' | 'TAKEITEM' | 'DROP' | 'ADDFUEL' | 'ADDWETFUEL' | 'SLEEPIN' | 'PLAY' | 'DEPLOY' | 'FERTILIZE' | 'BATHBOMB' | 'FISH' | 'HAUNT' | 'MIGRATE' | 'TURNON' | 'TURNOFF';
+export type WilsonAction = 'BLINK' | 'BLINK_MAP' | 'ATTACK' | 'MINE' | 'CHOP' | 'HAMMER' | 'NET' | 'TERRAFORM' | 'CASTSPELL' | 'EAT' | 'PLANT' | 'TILL' | 'DIG' | 'HARVEST' | 'PICK' | 'PICKUP' | 'LIGHT' | 'READ' | 'GIVE' | 'FEED' | 'REPAIR' | 'SHAVE' | 'STORE' | 'TAKEITEM' | 'DROP' | 'ADDFUEL' | 'ADDWETFUEL' | 'SLEEPIN' | 'PLAY' | 'DEPLOY' | 'FERTILIZE' | 'BATHBOMB' | 'FISH' | 'HAUNT' | 'MIGRATE' | 'TURNON' | 'TURNOFF' | 'RUMMAGE';
 export type WilsonAnimationKey = 'wortox_portal' | WilsonMovementState | WilsonOneShotState | 'build' | 'emote'
   | 'pickaxe_pre' | 'pickaxe_loop' | 'pickaxe_pst' | 'chop_pre' | 'chop_loop' | 'bugnet_pre' | 'bugnet'
   | 'shovel_pre' | 'shovel_loop' | 'shovel_pst' | 'staff_pre' | 'staff' | 'atk_pre' | 'atk'
@@ -1446,6 +1446,8 @@ const actionHandlers: StateActionHandler<WilsonStateGraph, WilsonStateName>[] = 
     ? action.target?.hasTag('INLIMBO') ? 'doshortaction' : 'give' : 'dolongaction'),
   ActionHandler('TURNOFF', 'give'),
   ActionHandler('TURNON', 'give'),
+  // SGwilson.lua RUMMAGE: the pocket rummage branches (invobject, mount) are not ported.
+  ActionHandler('RUMMAGE', 'doshortaction'),
   ActionHandler('GIVE', (_inst, action) => action.target?.hasTag('give_dolongaction') ? 'dolongaction' : 'give'),
   ActionHandler('PICK', (_inst, action) => {
     // SGwilson.lua:1043-1077 — jostle/skill/riding branches remain unported.
