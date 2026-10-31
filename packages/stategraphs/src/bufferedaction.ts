@@ -17,8 +17,6 @@ export interface BufferedActionObject {
   /** staff.lua inst.projectiledelay: seconds a launched projectile stays hidden. */
   readonly projectiledelay?: number;
   readonly fxcolour?: readonly [number, number, number];
-  /** pickable.lua quickpick field, read by the SGwilson PICK deststate. */
-  readonly quickpick?: boolean;
   /** books.lua inst.def / swap_build / swap_prefix and the item's skin build. */
   readonly def?: BookDef;
   readonly swap_build?: string;

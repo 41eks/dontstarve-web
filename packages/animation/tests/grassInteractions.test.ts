@@ -19,8 +19,8 @@ import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { bindTestWorld, tickWorld, plantInstance } from './worldContentFixture';
-import { getPickActions } from '../../stategraphs/src/pick';
 import { workTargets } from './workTargets';
+import { canDoSceneAction } from './sceneActions';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -123,7 +123,7 @@ it('retains regrowth on extinguish, then burns to exactly one saved ash and rele
     expect(state.phase.peek()).toBe('burning');
     expect(state.persists).toBe(false);
     expect(s.grass.exportRecords()).toEqual([]);
-    expect(getPickActions(model).find(action => action.model === model)?.available).toBe(false);
+    expect(canDoSceneAction('PICK', model)).toBe(false);
     expect(workTargets('DIG')[0].isValid()).toBe(true);
     tickWorld(s.scheduler, s.grass, 10, new THREE.Quaternion());
     expect(burnable.timer.peek()).toBe(timer);

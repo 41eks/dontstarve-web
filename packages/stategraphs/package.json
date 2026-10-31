@@ -16,10 +16,9 @@
     "./farmActions": "./src/farmActions.ts",
     "./actionContext": "./src/actionContext.ts",
     "./actionEvents": "./src/actionEvents.ts",
-    "./occupiable": "./src/occupiable.ts",
-    "./turnon": "./src/turnon.ts",
     "./playercontroller": "./src/playercontroller.ts",
-    "./actionfns": "./src/actionfns.ts"
+    "./actionfns": "./src/actionfns.ts",
+    "./actions": "./src/actions.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

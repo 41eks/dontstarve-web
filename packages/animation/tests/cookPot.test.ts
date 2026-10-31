@@ -9,7 +9,8 @@ import { findImage, loadBuild, smallHash } from '../src/animationAssets';
 import type { TransientSpriteAnimationController } from '../src/sprite';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { reskinEntity } from '../../prefab/src/reskin_tool';
-import { getRummageActions, performRummageAction, type RummageTarget } from '../../stategraphs/src/rummage';
+import { performRummageAction, type RummageTarget } from '../../stategraphs/src/rummage';
+import { sceneActions } from './sceneActions';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -67,7 +68,7 @@ it('cooks with source food layers, resumes saved progress and preserves the prod
   expect(prefabInstance(restored)!.sprite.currentAnimation).toBe('idle_full');
   expect(cookPotState(restored)).toMatchObject({ product: 'beefalofeed', phase: 'done', remainingSeconds: 0 });
   // A finished pot cannot be opened, so RUMMAGE is not offered (stewer.lua sets canbeopened false).
-  expect(getRummageActions(restored, world.player)).toEqual([]);
+  expect(sceneActions(restored)).not.toContain('RUMMAGE');
   const food = await loadBuild('cook_pot_food11.zip', '/dst/data/anim');
   const foodImage = findImage(food.build, smallHash('beefalofeed'), 0)!;
   expect(foodImage).toBeDefined();

@@ -14,6 +14,9 @@ import { PlayerController } from '../../stategraphs/src/playercontroller';
 import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
+import { PlayerActionFilter, isGhostValidAction } from '../../stategraphs/src/actions';
+import { Hauntable } from '../../componets/src/hauntable';
+import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
 import type { PlayerActionEvents } from '../../stategraphs/src/actionEvents';
 import { equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
@@ -136,6 +139,42 @@ describe('PlayerController', () => {
         expect(s.animation.stategraph.pushBufferedAction).not.toHaveBeenCalled();
       } finally { s.dispose(); }
     });
+});
+
+describe('PlayerController scene actions', () => {
+  it('keeps ghost-exclusive HAUNT from the living, offers it to a ghost and walks to its mindistance', () => {
+    const s = setup('pickaxe');
+    const scheduler = new GameTimeScheduler();
+    try {
+      s.hand.set(null);
+      const { instance, display } = createEmptyEntity('pighouse');
+      display.mount(s.world.scene);
+      instance.position.set(10, 0, 0);
+      const hauntable = new Hauntable(instance, scheduler);
+      const haunted = vi.fn(() => true);
+      hauntable.SetOnHauntFn(haunted);
+      instance.components.hauntable = hauntable;
+      const entity = actionEntity(display.model, 'pighouse', instance);
+      vi.mocked(PointerRaycaster.prototype.pickMouseTarget).mockReturnValue({ object: display.model } as unknown as THREE.Intersection);
+      const picker = s.world.mouseActions!;
+      // player_common.lua PlayerActionFilter (default priority) and the ghost's GhostActionFilter above it.
+      picker.PushActionFilter(PlayerActionFilter, -99);
+      expect(picker.getMouseActions().left).toBeUndefined();
+      picker.PushActionFilter(isGhostValidAction, 99);
+      expect(picker.getMouseActions().left).toMatchObject({ action: 'HAUNT', target: entity });
+      expect(s.click(0).defaultPrevented).toBe(true);
+      // mindistance = 2 outweighs ARRIVE_STEP plus the player's .5 radius.
+      s.player.position.x = 10 - 2.1 * WORLD_SCALE; s.locomotor.update(16, 1 / 30);
+      expect(s.animation.stategraph.pushBufferedAction).not.toHaveBeenCalled();
+      s.player.position.x = 10 - 1.9 * WORLD_SCALE; s.locomotor.update(16, 1 / 30);
+      expect(s.animation.last).toMatchObject({ action: 'HAUNT', target: entity });
+      expect(s.animation.hit()).toBe(true);
+      expect(haunted).toHaveBeenCalledOnce();
+      picker.PopActionFilter(isGhostValidAction);
+      expect(picker.getMouseActions().left).toBeUndefined();
+      instance.remove();
+    } finally { s.dispose(); scheduler.dispose(); }
+  });
 });
 
 function pickNothing() {

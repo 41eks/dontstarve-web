@@ -10,7 +10,7 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { BlowInWind } from '../../componets/src/blowinwind';
 import { WorldWind } from '../../componets/src/worldwind';
 import { TumbleweedManager, rollTumbleweedLoot, type TumbleweedWorld } from '../../prefab/src/tumbleweed';
-import { getPickActions } from '../../stategraphs/src/pick';
+import { canDoSceneAction } from './sceneActions';
 
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
@@ -90,8 +90,7 @@ it('rolls with the wind, stops for a long action and restarts, is picked for loo
     step(3);
     expect(model.position.x).toBeGreaterThan(12); expect(Math.abs(model.position.z - 4)).toBeLessThan(.01);
     expect(manager.renderEntities).toHaveLength(1);
-    const target = getPickActions(model).find(candidate => candidate.model === model)!;
-    expect(target.available).toBe(true);
+    expect(canDoSceneAction('PICK', model)).toBe(true);
     const before = model.position.x;
 
     model.dispatchEvent({ type: 'startlongaction' } as never);
@@ -109,7 +108,8 @@ it('rolls with the wind, stops for a long action and restarts, is picked for loo
     expect(lookupPrefabInstance(reloaded)?.entityId).toBe(records[0].id);
     expect(reloaded.position.x).toBeCloseTo(model.position.x);
 
-    expect((target.action.target as any).component.pick({})).toBe(true);
+    const pickable = findActionEntity(model)!.components.pickable as unknown as { pick(doer: { giveItem(): boolean }): boolean };
+    expect(pickable.pick({ giveItem: () => false })).toBe(true);
     expect(drops).toHaveLength(1); expect(drops[0].items).toEqual(['twigs', 'twigs', 'twigs']);
     expect(manager.exportRecords()).toEqual([]);
     expect(scene.children.some(child => child.userData.tumbleweed)).toBe(false);

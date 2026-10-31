@@ -1,18 +1,22 @@
 import { actionEntity, disposeActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
+import * as CANNON from 'cannon-es';
 import { afterEach, expect, it, vi } from 'vitest';
-import { getPickActions, PickActionController, PICK_REACH } from '../../stategraphs/src/pick';
 import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
+import { PlayerController } from '../../stategraphs/src/playercontroller';
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import { Pickable } from '../../prefab/src/components/pickable';
+import { Locomotor } from '../../prefab/src/locomotor';
+import { WORLD_SCALE } from '../../prefab/src/tile';
 import type { ActionPerformer, ActionWorldContext } from '../../stategraphs/src/actionContext';
 import type { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { EventEmitter } from '../../signals/src/EventEmitter';
+import { createEquipmentExistenceState } from '../../signals/src';
 import type { PlayerActionEvents } from '../../stategraphs/src/actionEvents';
-import { SpriteState } from '../../display/src/spriteState';
-import { PrefabInstance, createEmptyEntity } from '../../prefab/src/prefabInstance';
+import { createEmptyEntity } from '../../prefab/src/prefabInstance';
+import { canDoSceneAction, sceneActions } from './sceneActions';
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 it('uses component-owned pickable tags and blocks fire/intense without consulting prefab IDs', () => {
   const scene = new THREE.Scene();
@@ -20,29 +24,30 @@ it('uses component-owned pickable tags and blocks fire/intense without consultin
   const model = display.model; scene.add(model);
   instance.addTag('plant'); instance.addTag('custom');
   const component = new Pickable(instance, 'log', 10);
-  expect(getPickActions(model)[0].available).toBe(true);
+  actionEntity(model, 'grass');
+  expect(canDoSceneAction('PICK', model)).toBe(true);
   component.canInteractWith = false;
   expect(component.canBePicked).toBe(true);
-  expect(getPickActions(model)[0].available).toBe(false);
+  expect(canDoSceneAction('PICK', model)).toBe(false);
   expect(component.pick({ giveItem: () => true })).toBe(false);
   component.canInteractWith = true;
   for (const tag of ['fire', 'intense']) {
     instance.addTag(tag);
-    expect(getPickActions(model)[0].available).toBe(false);
+    expect(sceneActions(model)).not.toContain('PICK');
     instance.removeTag(tag);
   }
   component.pick({ giveItem: () => true });
-  expect(instance.listTags()).toEqual(['plant', 'custom']);
-  expect(getPickActions(model)[0].available).toBe(false);
+  expect(instance.listTags().filter(tag => tag !== 'tickingarea')).toEqual(['plant', 'custom']);
+  expect(canDoSceneAction('PICK', model)).toBe(false);
   component.update(10);
-  expect(getPickActions(model)[0].available).toBe(true);
+  expect(canDoSceneAction('PICK', model)).toBe(true);
   component.dispose();
-  expect(getPickActions(model)).toEqual([]);
-  expect(instance.listTags()).toEqual(['plant', 'custom']);
-  instance.remove(); display.dispose();
+  expect(sceneActions(model)).toEqual([]);
+  expect(instance.listTags().filter(tag => tag !== 'tickingarea')).toEqual(['plant', 'custom']);
+  disposeActionEntity(model); instance.remove(); display.dispose();
 });
 
-it('walks to reach, commits a prepared PICK and releases canceled products without changing the plant', async () => {
+it('walks to the arrive distance, gives the PICK product to the doer inventory and releases unclaimed products', () => {
   vi.stubGlobal('window', new EventTarget());
   const scene = new THREE.Scene(), player = new THREE.Group();
   const { instance, display } = createEmptyEntity('grass');
@@ -57,65 +62,60 @@ it('walks to reach, commits a prepared PICK and releases canceled products witho
   const stopEvents = actionEvents.on('action:begin', begin);
   const stategraph = new WilsonStateGraph({ playAnimation: () => .2, playSound() {}, setCasting() {}, onStateChanged() {} });
   const animation = { stategraph, cancelEmote() {}, setFacing: vi.fn() } as unknown as ActionPerformer;
-  const locomotor = { destination: undefined as THREE.Vector3 | undefined, goToPoint: vi.fn(() => true), stop: vi.fn() };
+  const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body,
+    { physicsRadius: .5 * WORLD_SCALE });
   const world = { scene, player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     mouseActions: picker, actionEvents, renderer: { domElement: canvas } } as unknown as ActionWorldContext;
-  const playerInstance = new PrefabInstance('wortox', new SpriteState({ name: 'idle' }));
-  playerInstance.attach(player);
-  const giveItem = vi.fn(() => true);
-  const releaseProduct = vi.fn();
-  const prepare = vi.fn(() => ({ giveItem, dispose: releaseProduct }));
+  // pickable:Pick spawns the product and the picker's inventory takes it.
+  const product = { isRemoved: false };
+  const inventory = { GetNumSlots: () => 15, EquipHasTag: () => false, GiveItem: vi.fn(() => true),
+    entities: { create: vi.fn(() => product), destroy: vi.fn() } };
+  const doer = { hasTag: (tag: string) => tag === 'player', PushEvent: vi.fn(), GetPosition: () => player.position,
+    getPosition: () => player.position, components: { inventory } };
   let manual = false;
-  const controller = new PickActionController(world, animation, locomotor, prepare, playerInstance.sprite, () => manual);
+  const controller = new PlayerController(world, animation, locomotor, createEquipmentExistenceState('HANDS'), () => manual, doer as never);
   const click = () => {
     const event = Object.assign(new Event('pointerdown', { cancelable: true }), { button: 0 });
     canvas.dispatchEvent(event);
+    return event;
   };
-  click();
-  await Promise.resolve();
-  expect(giveItem).not.toHaveBeenCalled();
-  expect(begin).toHaveBeenCalledExactlyOnceWith({ owner: controller, action: 'PICK' });
-  controller.update();
-  expect(locomotor.goToPoint).toHaveBeenCalledWith(new THREE.Vector3(20 - PICK_REACH * .8, 0, 0));
-  expect(stategraph.stateName).not.toBe('dolongaction');
-  player.position.x = 20 - PICK_REACH + .5;
-  controller.update();
-  expect(playerInstance.sprite.sprite.peek()).toMatchObject({ facing: 5, mirrored: false });
-  expect(animation.setFacing).not.toHaveBeenCalled();
-  expect(stategraph.stateName).toBe('dolongaction');
-  stategraph.update(1);
-  expect(giveItem).toHaveBeenCalledWith('log', 2, new THREE.Vector3(20, 0, 0));
-  expect(component.exportState()).toMatchObject({ picked: true });
-  expect(component.canBePicked).toBe(false);
-  expect(prepare).toHaveBeenCalledWith('log', 2);
-  expect(releaseProduct).toHaveBeenCalledTimes(1);
+  try {
+    expect(picker.getMouseActions().left).toMatchObject({ action: 'PICK', target: { prefab: 'grass' }, doer });
+    expect(click().defaultPrevented).toBe(true);
+    expect(begin).toHaveBeenCalledExactlyOnceWith({ owner: controller, action: 'PICK' });
+    expect(locomotor.destination).toBeDefined();
+    expect(stategraph.stateName).not.toBe('dolongaction');
+    player.position.x = 20 - 1.9; locomotor.update(16, 1 / 30);
+    expect(animation.setFacing).toHaveBeenCalled();
+    expect(stategraph.stateName).toBe('dolongaction');
+    stategraph.update(1);
+    expect(inventory.entities.create).toHaveBeenCalledExactlyOnceWith({ itemId: 'log', count: 2 });
+    expect(inventory.GiveItem).toHaveBeenCalledWith(product, new THREE.Vector3(20, 0, 0));
+    expect(component.exportState()).toMatchObject({ picked: true });
+    expect(inventory.entities.destroy).not.toHaveBeenCalled();
 
-  giveItem.mockReturnValue(false);
-  component.update(10);
-  expect(component.canBePicked).toBe(true);
-  player.position.x = 0;
-  click();
-  expect(begin).toHaveBeenCalledTimes(2);
-  manual = true;
-  controller.update();
-  await Promise.resolve();
-  expect(locomotor.stop).toHaveBeenCalled();
-  expect(releaseProduct).toHaveBeenCalledTimes(2);
-  manual = false;
-  player.position.x = 20 - PICK_REACH + .5;
-  click();
-  await Promise.resolve();
-  controller.update();
-  stategraph.update(1);
-  expect(giveItem).toHaveBeenCalledTimes(2);
-  expect(component.exportState()).toEqual({});
-  expect(component.canBePicked).toBe(true);
-  expect(releaseProduct).toHaveBeenCalledTimes(3);
-
-  controller.dispose(); instance.remove(); display.dispose(); controller.dispose();
-  expect(pointer.dispose).not.toHaveBeenCalled();
-  click();
-  expect(giveItem).toHaveBeenCalledTimes(2);
-  expect(picker.getMouseActions().left).toBeUndefined();
-  component.dispose(); disposeActionEntity(model); picker.dispose(); stopEvents();
+    // An inventory that refuses the product leaves the plant unpicked and destroys the spawned product.
+    inventory.GiveItem.mockReturnValue(false);
+    component.update(10);
+    expect(component.canBePicked).toBe(true);
+    player.position.x = 0;
+    click();
+    expect(begin).toHaveBeenCalledTimes(2);
+    manual = true;
+    controller.update();
+    expect(locomotor.bufferedAction).toBeUndefined();
+    manual = false;
+    player.position.x = 20 - 1.9;
+    click();
+    stategraph.update(1);
+    expect(inventory.GiveItem).toHaveBeenCalledTimes(2);
+    expect(component.exportState()).toEqual({});
+    expect(component.canBePicked).toBe(true);
+    expect(inventory.entities.destroy).toHaveBeenCalledExactlyOnceWith(product);
+  } finally {
+    controller.dispose(); instance.remove(); display.dispose();
+    expect(pointer.dispose).not.toHaveBeenCalled();
+    expect(picker.getMouseActions().left).toBeUndefined();
+    component.dispose(); disposeActionEntity(model); picker.dispose(); stopEvents();
+  }
 });

@@ -37,8 +37,8 @@ export const ACTIONS = {
   DEPLOY: { priority: 0, distance: 1.1, strings: { GENERIC: '放置', PLANT: '种植' } },
   SHAVE: { priority: 0, strings: { GENERIC: '刮', SELF: '给自己刮胡子' } },
   SLEEPIN: { priority: 0, strings: { GENERIC: '睡觉' } },
-  MIGRATE: { priority: 0, strings: { GENERIC: '进入' } },
-  HAUNT: { priority: 0, ghost_valid: true, strings: { GENERIC: '作祟' } },
+  MIGRATE: { priority: 0, rmb: false, ghost_valid: true, strings: { GENERIC: '进入' } },
+  HAUNT: { priority: 0, rmb: false, mindistance: 2, ghost_valid: true, ghost_exclusive: true, strings: { GENERIC: '作祟' } },
   RUMMAGE: { priority: -1, strings: { GENERIC: '打开', CLOSE: '关闭' } },
 } as const;
 
@@ -46,13 +46,23 @@ export type MouseActionId = keyof typeof ACTIONS;
 export interface ActionDescription {
   action: string;
   modifier?: string;
+  /** BufferedAction.doer, for the strfns that ask who acts. */
+  doer?: object;
   invobject?: BufferedActionObject;
   target?: BufferedActionObject;
 }
 
-/** actions.lua `ghost_valid`; only the actions ported here that a ghost may do. */
+type ActionFlags = { ghost_valid?: boolean; ghost_exclusive?: boolean };
+
+/** actions.lua `ghost_valid` (a ghost-exclusive action is ghost-valid); only the actions ported here that a ghost may do. */
 export function isGhostValidAction(action: ActionDescription): boolean {
-  return (ACTIONS[action.action as MouseActionId] as { ghost_valid?: boolean } | undefined)?.ghost_valid === true;
+  const flags = ACTIONS[action.action as MouseActionId] as ActionFlags | undefined;
+  return flags?.ghost_valid === true || flags?.ghost_exclusive === true;
+}
+
+/** player_common.lua PlayerActionFilter, at the bottom of the filter stack: the living cannot do ghost-exclusive actions. */
+export function PlayerActionFilter(action: ActionDescription): boolean {
+  return (ACTIONS[action.action as MouseActionId] as ActionFlags | undefined)?.ghost_exclusive !== true;
 }
 
 export function getActionPriority(action: ActionDescription): number {
@@ -62,8 +72,20 @@ export function getActionPriority(action: ActionDescription): number {
 /** BufferedAction:GetActionString -> GetActionString(action.id, action.strfn(action)). */
 export function getActionString(action: ActionDescription): string {
   const strings: Readonly<Record<string, string>> | undefined = ACTIONS[action.action as MouseActionId]?.strings;
-  const modifier = action.modifier ?? (action.action === 'CASTSPELL' ? action.invobject?.spelltype
-    : action.action === 'EAT' && action.invobject?.hasTag('fooddrink') ? 'DRINK' : undefined);
+  const modifier = action.modifier ?? strfn(action);
   const text = (modifier && strings?.[modifier]) || strings?.GENERIC || 'ACTION';
   return text.includes('{item}') ? text.replace('{item}', action.invobject?.getDisplayName?.() ?? '') : text;
+}
+
+/** actions.lua ACTIONS.<id>.strfn, for the ported actions whose string depends on the act. */
+function strfn(act: ActionDescription): string | undefined {
+  const target = act.target as (BufferedActionObject & { components?: { container?: { IsOpenedBy(doer: object): boolean } } }) | undefined;
+  switch (act.action) {
+    case 'CASTSPELL': return act.invobject?.spelltype;
+    case 'EAT': return act.invobject?.hasTag('fooddrink') ? 'DRINK' : undefined;
+    case 'RUMMAGE': return act.doer && target?.components?.container?.IsOpenedBy(act.doer) ? 'CLOSE' : undefined;
+    case 'HARVEST': return target?.prefab === 'birdcage' ? 'FREE' : undefined;
+    case 'TAKEITEM': return target?.prefab === 'birdcage' ? 'BIRDCAGE' : 'GENERIC';
+    default: return undefined;
+  }
 }

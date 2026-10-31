@@ -6,7 +6,7 @@ import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { CaveExitManager } from '../../prefab/src/cave_exit';
-import { getMigrateActions } from '../../stategraphs/src/migrate';
+import { canDoSceneAction, sceneActions } from './sceneActions';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -40,10 +40,10 @@ it('offers MIGRATE to the Master shard once it is available and hands the player
   const exits = new CaveExitManager(new THREE.Scene(), { shard }), unlinked = new CaveExitManager(new THREE.Scene(), {});
   try {
     const model = await exits.spawn(new THREE.Vector3(1, 0, 2));
-    expect(getMigrateActions(model)[0]).toMatchObject({ button: 'left', available: true, action: { action: 'MIGRATE' } });
+    expect(canDoSceneAction('MIGRATE', model)).toBe(true);
     const player = { hasTag: (tag: string) => tag === 'player' };
     expect((findActionEntity(model)?.components ?? prefabInstance(model)!.components).worldmigrator.Activate(player)).toBe(true);
     expect(migrated).toEqual([[player, undefined, 'Master']]);
-    expect(getMigrateActions(await unlinked.spawn(new THREE.Vector3(1, 0, 2)))).toEqual([]);
+    expect(sceneActions(await unlinked.spawn(new THREE.Vector3(1, 0, 2)))).not.toContain('MIGRATE');
   } finally { exits.dispose(); unlinked.dispose(); }
 });

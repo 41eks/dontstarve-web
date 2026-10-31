@@ -26,10 +26,10 @@ import { smallHash } from '../src/animationAssets';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Timer } from '../../componets/src/timer';
 import { createSignal } from '../../signals/src';
-import { getPickActions } from '../../stategraphs/src/pick';
 import { bindTestWorld } from './worldContentFixture';
 import { importedSave } from './importedSave';
 import { workTargets } from './workTargets';
+import { canDoSceneAction } from './sceneActions';
 
 const worldCleanups: (() => void)[] = [];
 function moonWorld(scheduler: GameTimeScheduler, full: boolean) {
@@ -227,7 +227,7 @@ it('charges through three source stages, restores the remaining timers and morph
   scheduler.advanceTo(start + 18.7);
   expect(state.charge.peek()).toBe('charging_2');
   expect(findActionEntity(model).hasTag('intense')).toBe(true);
-  expect(getPickActions(model).find(action => action.model === model)?.available).toBe(false);
+  expect(canDoSceneAction('PICK', model)).toBe(false);
   const [{ record }] = placement.exportRecords();
   expect(record.components.moonbase?.timer?.timers.mooncharge.timeleft).toBeCloseTo(MOONBASE_CHARGE_DURATION - 18.7);
   expect(record.components.moonbase?.timer?.timers).not.toHaveProperty('mooncharge2');
@@ -257,7 +257,7 @@ it('charges through three source stages, restores the remaining timers and morph
     expect(opal.id).not.toBe(original.id);
     expect(next.timers.mooncharge.peek().status).toBe('expired');
     expect(findActionEntity(restored.model).hasTag('intense')).toBe(false);
-    expect(getPickActions(restored.model).find(action => action.model === restored.model)?.available).toBe(true);
+    expect(canDoSceneAction('PICK', restored.model)).toBe(true);
     expect(restored.placement.renderEntities.some(entry => entry.object.name === 'staffcoldlightfx')).toBe(true);
     const giveEntity = vi.fn(() => true);
     expect((findActionEntity(restored.model)?.components ?? prefabInstance(restored.model)!.components).pickable.pick({ giveItem: vi.fn(), giveEntity })).toBe(true);

@@ -6,7 +6,11 @@ import type { SpriteAnimationController } from '../src/sprite';
 import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
-import { RummageActionController, RUMMAGE_REACH } from '../../stategraphs/src/rummage';
+import { PlayerController } from '../../stategraphs/src/playercontroller';
+import { Locomotor } from '../../prefab/src/locomotor';
+import { WORLD_SCALE } from '../../prefab/src/tile';
+import * as CANNON from 'cannon-es';
+import { createEquipmentExistenceState } from '../../signals/src';
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import type { ActionPerformer } from '../../stategraphs/src/actionContext';
 import { getActionString } from '../../stategraphs/src/actions';
@@ -52,9 +56,13 @@ async function setup(definition = TREASURE_CHEST_DEFINITION, id = 'treasurechest
   vi.spyOn(PointerRaycaster.prototype, 'pickMouseTarget').mockImplementation(() =>
     ({ object: model, point: new THREE.Vector3() }) as THREE.Intersection);
   const stategraph = new WilsonStateGraph({ playAnimation: () => .2, playSound() {}, setCasting() {}, onStateChanged() {} });
-  const locomotor = { destination: undefined as THREE.Vector3 | undefined, goToPoint: vi.fn(() => true), stop: vi.fn() };
-  const rummage = new RummageActionController(world, { stategraph, cancelEmote() {}, setFacing() {} } as unknown as ActionPerformer,
-    locomotor);
+  const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body,
+    { physicsRadius: .5 * WORLD_SCALE });
+  // The player inst RUMMAGE opens the container for; SCENE.container needs its inventory.
+  const doer = { hasTag: (tag: string) => tag === 'player', PushEvent: vi.fn(), getPosition: () => player.position,
+    components: { inventory: { GetNumSlots: () => 15 } } };
+  const rummage = new PlayerController(world, { stategraph, cancelEmote() {}, setFacing() {} } as unknown as ActionPerformer,
+    locomotor, createEquipmentExistenceState('HANDS'), undefined, doer as never);
   // The world publishes player snapshots; proximity effects run after the microtask.
   const distance = async (value: number) => {
     player.position.copy(model.position).add(new THREE.Vector3(value, 0, 0));
@@ -64,8 +72,8 @@ async function setup(definition = TREASURE_CHEST_DEFINITION, id = 'treasurechest
   const click = () => canvas.dispatchEvent(Object.assign(new Event('pointerdown', { cancelable: true }), {
     button: 0, clientX: 0, clientY: 0,
   }));
-  /** LMB RUMMAGE: the controller buffers it in reach and doshortaction performs it on frame 6. */
-  const act = () => { click(); rummage.update(); stategraph.update(1); };
+  /** LMB RUMMAGE: the locomotor buffers it in reach and doshortaction performs it on frame 6. */
+  const act = () => { click(); locomotor.update(16, 1 / 30); stategraph.update(1); };
   const finish = () => {
     for (let frame = 0; frame < 50; frame++) placement.update(0.1);
   };
@@ -96,15 +104,15 @@ describe('building RUMMAGE and proximity', () => {
   });
 
   it('walks a distant player into reach before the chest opens', async () => {
-    const { distance, act, rummage, locomotor, playOnce, finish, changes, model } = await setup();
+    const { distance, act, locomotor, playOnce, finish, changes, model } = await setup();
     await distance(9);
     act();
-    expect(locomotor.goToPoint).toHaveBeenCalledWith(model.position.clone().add(new THREE.Vector3(RUMMAGE_REACH * .8, 0, 0)));
+    expect(locomotor.bufferedAction).toBeDefined();
     expect(playOnce).not.toHaveBeenCalled();
     finish();
     expect(changes).not.toHaveBeenCalled();
-    await distance(RUMMAGE_REACH);
-    rummage.update();
+    // ARRIVE_STEP plus both physics radii: the chest has none, the player .5.
+    await distance(1.5);
     act();
     expect(playOnce).toHaveBeenCalledWith('open', expect.any(Function));
     finish();

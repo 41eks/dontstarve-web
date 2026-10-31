@@ -409,7 +409,7 @@ test('PICK chooses dolongaction or doshortaction from the pickable quickpick fie
   assert.equal(graph.stateName, 'dolongaction');
   graph.cancelAction('PICK');
   const quick = new BufferedAction('PICK', () => { picked++; }, undefined,
-    { target: { ...taggedObject('flower'), quickpick: true } });
+    { target: { ...taggedObject('flower'), components: { pickable: { quickpick: true } } } });
   assert.equal(graph.pushBufferedAction(quick), true);
   assert.equal(graph.stateName, 'doshortaction');
   graph.update(6 * FRAMES);

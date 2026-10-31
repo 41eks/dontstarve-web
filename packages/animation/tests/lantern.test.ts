@@ -23,7 +23,7 @@ import { bindPlayerHandEquipment } from '../../../src/playerHandEquipment';
 import { createEmptyEntity, prefabInstance } from '../../prefab/src/prefabInstance';
 import type { LightParent } from '../../prefab/src/localLight';
 import { createPerishWorld } from './perishWorldFixture';
-import { getMachineActions } from '../../stategraphs/src/turnon';
+import { sceneActions } from './sceneActions';
 
 /** The lanternlight entity parented to `owner`, by the light signal it declares there. */
 const lightSlot = (owner: LightParent) => [...owner.light.slots.peek()].find(([key]) => key.startsWith('lanternlight:'))?.[1];
@@ -216,15 +216,15 @@ describe('lantern fuel', () => {
       manager.update(1, new THREE.Quaternion());
       world.advance(120);
       expect(ground.components.fueled!.currentfuel).toBeCloseTo(LANTERN_FUEL - 120 - 1 / 60, 6);
-      // componentactions.lua SCENE.machine: RMB turns the lit ground lantern off, which removes its light and stops fuel.
-      expect(getMachineActions(model).map(candidate => candidate.action.action)).toEqual(['TURNOFF']);
+      // componentactions.lua SCENE.machine: RMB offers TURNOFF (priority 2, over the inventoryitem's PICKUP); off, it removes the light and stops fuel.
+      expect(sceneActions(model!, undefined, true)).toEqual(['PICKUP', 'TURNOFF']);
       ground.components.machine!.TurnOff();
       const off = ground.components.fueled!.currentfuel;
       world.advance(60);
       await new Promise(resolve => setTimeout(resolve, 0));
       expect(lightAt(prefabInstance(model)!)).toBeUndefined();
       expect(ground.components.fueled!.currentfuel).toBe(off);
-      expect(getMachineActions(model).map(candidate => candidate.action.action)).toEqual(['TURNON']);
+      expect(sceneActions(model!, undefined, true)).toEqual(['PICKUP', 'TURNON']);
       ground.components.machine!.TurnOn();
       expect(lightAt(prefabInstance(model)!)).toMatchObject({ radius: expect.any(Number) });
       expect(inventory.setRemainingFuel(inventorySlotAddress(1), 0)).toBe(true);

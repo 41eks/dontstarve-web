@@ -30,6 +30,8 @@ export interface LocomotorAction {
   readonly target: { getPosition(): THREE.Vector3; getPhysicsRadius?(): number };
   /** actions.lua Action.distance, already in world units. */
   readonly distance?: number;
+  /** actions.lua Action.mindistance, already in world units: GoToEntity arrives no closer than this. */
+  readonly minDistance?: number;
   isValid(): boolean;
 }
 

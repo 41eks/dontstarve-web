@@ -7,12 +7,12 @@ import { CaveEntranceManager } from '../../prefab/src/cave_entrance';
 import { GroundItemManager } from '../../../src/groundItems';
 import { createInventoryStore } from '../../../src/inventory';
 import { performToolWork } from '../../stategraphs/src/componentactions';
-import { getMigrateActions } from '../../stategraphs/src/migrate';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
 import { createSignal, readonlySignal } from '../../signals/src';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { workTargets } from './workTargets';
+import { canDoSceneAction, sceneActions } from './sceneActions';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -58,8 +58,7 @@ it('offers MIGRATE on an open entrance whose Caves destination is available and 
   const unavailable = new CaveEntranceManager(scene, { spawnGroundItem: () => { throw new Error('unused'); } });
   try {
     const open = await caves.spawn('cave_entrance_open', new THREE.Vector3(1, 0, 2));
-    const [action] = getMigrateActions(open);
-    expect(action).toMatchObject({ button: 'left', available: true, action: { action: 'MIGRATE' } });
+    expect(canDoSceneAction('MIGRATE', open)).toBe(true);
     expect(prefabInstance(open)!.listTags()).toContain('migrator');
     expect((findActionEntity(open)?.components ?? prefabInstance(open)!.components).worldmigrator.Activate({ hasTag: () => false })).toBe(false);
     const player = { hasTag: (tag: string) => tag === 'player' };
@@ -67,7 +66,7 @@ it('offers MIGRATE on an open entrance whose Caves destination is available and 
     expect(migrated).toEqual([[player, undefined, 'Caves']]);
 
     const closed = await unavailable.spawn('cave_entrance_open', new THREE.Vector3(5, 0, 2));
-    expect(getMigrateActions(closed)).toEqual([]);
+    expect(sceneActions(closed)).not.toContain('MIGRATE');
     expect(prefabInstance(closed)!.listTags()).not.toContain('migrator');
   } finally { caves.dispose(); unavailable.dispose(); }
 }, 20000);

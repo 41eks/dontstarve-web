@@ -6,8 +6,8 @@ import {
   AttackActionController, SpellCastActionController, FishingActionController, PlayerController,
   LighterActionController, PitchforkActionController,
   FarmHoeActionController, FoodActionController,
-  PickActionController, HarvestActionController, OccupiableActionController, MachineActionController, RummageActionController, PickupActionController, ReadActionController, PlayActionController, ItemUseActionController,
-  ReskinActionController, SleepActionController, MigrateActionController, HauntActionController, type PickupDoer, type PlayerLocomotor, type PlayerActionEvents,
+  ReadActionController, PlayActionController, ItemUseActionController,
+  ReskinActionController, type PickupDoer, type PlayerLocomotor, type PlayerActionEvents,
 } from '@dontstarve-web/stategraphs';
 import { ItemEntity } from '@dontstarve-web/inventory';
 import { ARMORSNURTLESHELL_ID } from '@dontstarve-web/prefab/armorsnurtleshell';
@@ -17,9 +17,8 @@ import { Reader } from '../packages/componets/src/reader';
 import { SleepingBagUser } from '../packages/componets/src/sleepingbaguser';
 import { Combat, type CombatActor } from '../packages/componets/src/combat';
 import { equippedActionEntity } from '../packages/stategraphs/src/componentactions';
-import { actionEntity, FindEntities } from '../packages/prefab/src/actionEntity';
-import { modelHasTag, prefabInstance, setModelTag } from '../packages/prefab/src/prefabInstance';
-import type { PickActor } from '../packages/stategraphs/src/pick';
+import { FindEntities } from '../packages/prefab/src/actionEntity';
+import { modelHasTag, setModelTag } from '../packages/prefab/src/prefabInstance';
 import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
 import type { WilsonAnimationController } from '@dontstarve-web/prefab/player';
 import { GROUND_ITEM_DEFINITIONS } from '@dontstarve-web/prefab/groundItems';
@@ -40,7 +39,6 @@ import { setupEmoteWheel } from './emoteWheel';
 import { inventoryReceiveEffect } from './inventoryReceive';
 import { playerStats } from './playerStats';
 import { playerInstance } from './player';
-import { SAVE_CATALOG } from './save/catalog';
 
 export type DisposalEvents = { dispose: void };
 
@@ -139,35 +137,6 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
       }
       const frameControllers: FrameController[] = [];
       const actionControllers: Disposable[] = [];
-      let playerCombat: Combat | undefined;
-      const pickActor: PickActor = {
-        hasTag: tag => tag === 'player' || modelHasTag(player, tag),
-        PushEvent: (name, data) => player.dispatchEvent({ type: name, data } as never),
-        components: {
-          sanity: playerStats.sanity,
-          inventory,
-          get combat() { return playerCombat; },
-        },
-      };
-      const preparePickDoer = (itemId: string, count: number, original?: ItemEntity) => {
-        const entity = original ?? inventory.entities.create({ itemId, count });
-        let committed = false;
-        return {
-          loot: entity,
-          picker: pickActor,
-          giveItem: (_itemId: string, _count: number, sourcePosition: Vector3) => {
-            if (committed || entity.isRemoved) return false;
-            committed = inventory.GiveItem(entity, sourcePosition);
-            return committed;
-          },
-          giveEntity: (item: ItemEntity, sourcePosition: Vector3) => {
-            if (committed || item !== entity || item.isRemoved) return false;
-            committed = inventory.GiveItem(item, sourcePosition);
-            return committed;
-          },
-          dispose: () => { if (!committed && !original) inventory.entities.destroy(entity); },
-        };
-      };
       const stopInventoryReceived = inventory.subscribeReceived((received, source) => {
         if (source) inventoryReceiveEffect(gameUi, view.camera, view.renderer.domElement,
           player.position.clone().set(source.x, source.y, source.z))(received);
@@ -198,28 +167,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
             return true;
           } };
         }, isActionInterrupting);
-        const picking = new PickActionController(view, playerAnimation, locomotor, preparePickDoer,
-          prefabInstance(player)!.sprite, isActionInterrupting);
-        const pickup = new PickupActionController(view, playerAnimation, locomotor, pickupDoer, isActionInterrupting);
-        const harvesting = new HarvestActionController(view, playerAnimation, locomotor, (itemId, count) => ({
-          giveItem: (_prefab, _count, position) => {
-            const sourcePosition = view.player.position.clone().set(position.x, position.y, position.z);
-            const received = inventory.addAvailable(itemId, count, undefined,
-              inventoryReceiveEffect(gameUi, view.camera, view.renderer.domElement, sourcePosition));
-            // What the inventory cannot hold is spawned at the player's feet; its display loads the art.
-            return received === count || groundItems.spawnGroundItem({ ...SAVE_CATALOG.items[itemId], itemId, count: count - received },
-              view.player.position.clone().setY(0)) !== undefined;
-          },
-          dispose: () => {},
-        }), isActionInterrupting);
-        // actions.lua HARVEST (occupiable) / TAKEITEM (shelf): the released inst goes to the player's inventory.
-        const occupiables = new OccupiableActionController(view, playerAnimation, locomotor, (item, position) =>
-          inventory.GiveItem(item as ItemEntity, position), isActionInterrupting);
-        // actions.lua TURNON / TURNOFF on a scene machine, such as a ground lantern.
-        const machines = new MachineActionController(view, playerAnimation, locomotor, isActionInterrupting);
-        // actions.lua RUMMAGE: open or close a scene container, such as a chest or the cook pot.
-        const rummage = new RummageActionController(view, playerAnimation, locomotor, isActionInterrupting);
-        frameControllers.push(itemUse, picking, pickup, harvesting, occupiables, machines, rummage);
+        frameControllers.push(itemUse);
         // sleepingbaguser.lua on the player: per-tick hunger, sanity and health while in a bed.
         const phase = createMemo(() => clockstate.get().phase);
         const sleeper = new SleepingBagUser({
@@ -252,18 +200,13 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
           get hasBed() { return sleeper.bed !== undefined; },
           wakeBed: nostatechange => sleeper.bed?.DoWakeUp(nostatechange),
         });
-        const sleeping = new SleepActionController(view, playerAnimation, locomotor, sleeper, isActionInterrupting);
-        frameControllers.push(sleeping);
-        frameControllers.push(new MigrateActionController(view, playerAnimation, locomotor,
-          { hasTag: tag => tag === 'player' || modelHasTag(view.player, tag) }, isActionInterrupting));
-        // SGwilsonghost's HAUNT: the ghost doer is the player inst, so `playerghost` and `respawnfromghost` reach it.
-        const ghostInst = actionEntity(view.player as never, playerInstance.prefab);
-        frameControllers.push(new HauntActionController(view, playerAnimation, locomotor,
-          { hasTag: tag => ghostInst.hasTag(tag), PushEvent: (name, data) => ghostInst.PushEvent?.(name, data) }, isActionInterrupting));
+        // SLEEPIN's sleepingbag:DoSleep(act.doer) reaches the player's sleepingbaguser.
+        pickupDoer.components.sleepingbaguser = sleeper;
         actionControllers.push({ dispose() {
           sleeper.bed?.DoWakeUp(true);
           setSleeperState(false);
           playerAnimation.bindSleep(undefined);
+          delete pickupDoer.components.sleepingbaguser;
           sleeper.dispose(); phase.dispose();
         } });
       }
@@ -329,7 +272,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
       if (playerAnimation) {
         view.registerFrameTask = registerFrontTask;
         // playercontroller.lua: the picker's actions on any entity, buffered for the player.
-        actionControllers.push(new PlayerController(view, playerAnimation, locomotor, handEquipment, isActionInterrupting));
+        actionControllers.push(new PlayerController(view, playerAnimation, locomotor, handEquipment, isActionInterrupting, pickupDoer));
 
         // fishingrod.lua / pond.lua: the equipped rod fishes the pond's fishable component; a landed fish is a ground item.
         const fishingWorld = {
@@ -368,7 +311,8 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         combat.SetAttackPeriod(.4);
         combat.SetRange(2 * unit);
         attackerInst.components.combat = combat;
-        playerCombat = combat;
+        // pickable onpickedfn callbacks hurt the picker through its combat.
+        pickupDoer.components.combat = combat;
         playerAnimation.combat = combat;
         actionControllers.push(new AttackActionController(view, playerAnimation, locomotor, handEquipment,
           { inst: attackerInst, combat }, () => [...buildingPlacement.combatTargets, ...groundItems.combatTargets], isActionInterrupting, unit));

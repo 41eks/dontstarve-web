@@ -214,8 +214,10 @@ export class Locomotor {
      */
     PushAction(action: LocomotorAction, arrive: () => void, fail: () => void): void {
         this.stop();
-        const arriveDistance = Math.max(ARRIVE_STEP + (action.target.getPhysicsRadius?.() ?? 0) + this.physicsRadius,
-            action.distance ?? 0);
+        // distance raises the physical arrive distance; without one, mindistance does.
+        const physical = ARRIVE_STEP + (action.target.getPhysicsRadius?.() ?? 0) + this.physicsRadius;
+        const arriveDistance = action.distance !== undefined ? Math.max(physical, action.distance)
+            : Math.max(physical, action.minDistance ?? 0);
         const pending: PendingAction = { action, arriveDistance, arrive, fail, pathTarget: action.target.getPosition().clone() };
         this.pending = pending;
         if (!action.isValid()) { this.stop(); return; }

@@ -64,10 +64,64 @@ export type ComponentActionTarget = Pick<ComponentActionEntity, 'hasTag' | 'isRe
 };
 
 type IsValidFn = (inst: ComponentActionTarget, action: string, right: boolean) => boolean;
+
+/** The acting player as SCENE entries read it: its tags and inventory. */
+export interface SceneActionDoer {
+  hasTag(tag: string): boolean;
+  readonly components?: { inventory?: { GetNumSlots(): number } };
+}
+export type SceneAction = 'PICKUP' | 'PICK' | 'HARVEST' | 'TURNON' | 'TURNOFF' | 'RUMMAGE' | 'SLEEPIN' | 'MIGRATE' | 'TAKEITEM' | 'HAUNT';
+type SceneFn = (inst: ComponentActionEntity, doer: SceneActionDoer, actions: SceneAction[], right: boolean) => void;
+type SceneComponents = {
+  inventoryitem?: { CanBePickedUp(doer: object): boolean; readonly owner?: unknown };
+  container?: { canbeopened: boolean };
+  machine?: object;
+};
 type EquippedFn = (inst: ComponentActionEntity, doer: unknown, target: ComponentActionTarget, actions: ToolAction[], right: boolean) => void;
 
 /** componentactions.lua COMPONENT_ACTIONS, for the component entries ported here. */
-export const COMPONENT_ACTIONS: { readonly EQUIPPED: Readonly<Record<string, EquippedFn>>; readonly ISVALID: Readonly<Record<string, IsValidFn>> } = {
+export const COMPONENT_ACTIONS: {
+  readonly SCENE: Readonly<Record<string, SceneFn>>;
+  readonly EQUIPPED: Readonly<Record<string, EquippedFn>>;
+  readonly ISVALID: Readonly<Record<string, IsValidFn>>;
+} = {
+  SCENE: {
+    container: (inst, doer, actions) => {
+      // The bundle branch (WRAPBUNDLE / APPLYCONSTRUCTION) is not ported.
+      if (!inst.hasTag('bundle') && !inst.hasTag('burnt') && (inst.components as SceneComponents).container?.canbeopened
+        && doer.components?.inventory) actions.push('RUMMAGE');
+    },
+    hauntable: (inst, _doer, actions) => {
+      if (!inst.hasTag('haunted') && !inst.hasTag('catchable')) actions.push('HAUNT');
+    },
+    inventoryitem: (inst, doer, actions, right) => {
+      const item = (inst.components as SceneComponents).inventoryitem;
+      const inventory = doer.components?.inventory;
+      if (item?.CanBePickedUp(doer) && inventory && (inventory.GetNumSlots() > 0 || !!inst.components.equippable)
+        && !(inst.hasTag('catchable') || (inst.hasTag('fire') && !inst.hasTag('lighter')) || inst.hasTag('smolder'))
+        && (!inst.hasTag('spider') || (doer.hasTag('spiderwhisperer') && right))
+        && (right || !inst.hasTag('heavy') || inst.hasTag('heavylift_lmb'))
+        && !(right && inst.components.container && !inst.components.equippable)) actions.push('PICKUP');
+    },
+    machine: (inst, _doer, actions, right) => {
+      if (!right || ['cooldown', 'fueldepleted', 'alwayson', 'emergency'].some(tag => inst.hasTag(tag)) || !inst.hasTag('enabled')) return;
+      // A held machine is only usable while equipped, and equipped items are not in the scene.
+      if ((inst.components as SceneComponents).inventoryitem?.owner) return;
+      actions.push(inst.hasTag('turnedon') ? 'TURNOFF' : 'TURNON');
+    },
+    occupiable: (inst, _doer, actions) => { if (inst.hasTag('occupied')) actions.push('HARVEST'); },
+    pickable: (inst, _doer, actions) => {
+      if (inst.hasTag('pickable') && !(inst.hasTag('fire') || inst.hasTag('intense'))) actions.push('PICK');
+    },
+    shelf: (inst, _doer, actions) => { if (inst.hasTag('takeshelfitem')) actions.push('TAKEITEM'); },
+    sleepingbag: (inst, doer, actions) => {
+      if (doer.hasTag('player') && !doer.hasTag('insomniac') && !inst.hasTag('hassleeper')
+        && (!inst.hasTag('spiderden') || doer.hasTag('spiderwhisperer'))) actions.push('SLEEPIN');
+    },
+    // The readytocook / full-container COOK branch is the cook pot panel's.
+    stewer: (inst, _doer, actions) => { if (!inst.hasTag('burnt') && inst.hasTag('donecooking')) actions.push('HARVEST'); },
+    worldmigrator: (inst, _doer, actions) => { if (inst.hasTag('migrator')) actions.push('MIGRATE'); },
+  },
   EQUIPPED: {
     tool: (inst, _doer, target, actions, right) => {
       if (target.hasTag('INLIMBO') || inst.components.equippable?.IsRestricted()) return;
@@ -81,11 +135,18 @@ export const COMPONENT_ACTIONS: { readonly EQUIPPED: Readonly<Record<string, Equ
   },
 };
 
-/** EntityScript:IsActionValid: rmb actions only on the right button, then any registered component's ISVALID. */
+/** EntityScript:IsActionValid: an `rmb` action only on the right button, then any registered component's ISVALID. */
 export function isActionValid(inst: ComponentActionTarget, action: string, right: boolean): boolean {
-  const rmb = (ACTIONS[action as MouseActionId] as { rmb?: boolean } | undefined)?.rmb;
-  if (rmb !== undefined && rmb !== right) return false;
+  if ((ACTIONS[action as MouseActionId] as { rmb?: boolean } | undefined)?.rmb === true && !right) return false;
   return Object.keys(inst.components ?? {}).some(name => COMPONENT_ACTIONS.ISVALID[name]?.(inst, action, right) === true);
+}
+
+/** EntityScript:CollectActions("SCENE", doer, actions, right): the actions an entity in the world offers the doer. */
+export function collectSceneActions(inst: ComponentActionEntity, doer: SceneActionDoer, right: boolean): SceneAction[] {
+  const actions: SceneAction[] = [];
+  if (inst.isRemoved) return actions;
+  for (const name of Object.keys(inst.components)) COMPONENT_ACTIONS.SCENE[name]?.(inst, doer, actions, right);
+  return actions;
 }
 
 /** EntityScript:CollectActions("EQUIPPED", doer, target, actions, right) for the item in the doer's hands. */

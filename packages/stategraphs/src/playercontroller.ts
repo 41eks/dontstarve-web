@@ -3,7 +3,7 @@ import { isHandActionBusy, type ActionLocomotor, type ActionPerformer, type Acti
 import { createBufferedAction, hasActionFn } from './actionfns.ts';
 import { ACTIONS, type ActionDescription, type MouseActionId } from './actions.ts';
 import type { BufferedAction, BufferedActionDoer, BufferedActionObject } from './bufferedaction.ts';
-import { equippedActionEntity, type ComponentActionEntity } from './componentactions.ts';
+import { equippedActionEntity, type ComponentActionEntity, type SceneActionDoer } from './componentactions.ts';
 import { facePoint } from './facing.ts';
 import { watchHandEquipment, type HandEquipmentSignal } from './handEquipment.ts';
 import { PlayerActionPicker } from './playeractionpicker.ts';
@@ -21,7 +21,7 @@ type ActionTargetEntity = ComponentActionEntity & {
 export type PlayerLocomotor = ActionLocomotor & Required<Pick<ActionLocomotor, 'PushAction'>>;
 
 /**
- * playercontroller.lua for the actions whose actions.lua fn is ported: a mouse click takes the picker's action for
+ * playercontroller.lua for the actions whose actions.lua fn is ported (equipped tool work and scene actions): a mouse click takes the picker's action for
  * that button, wraps it in a BufferedAction for the player and DoAction hands it to locomotor:PushAction, which
  * walks to the target and buffers it on the stategraph. The stategraph's ActionHandler chooses the state and its
  * hit frame runs ACTIONS[action].fn. The player has one buffered action: a new one, another click, movement input,
@@ -35,7 +35,7 @@ export class PlayerController {
   private readonly isManualMovement: () => boolean;
   private readonly picker: PlayerActionPicker;
   private readonly ownsPicker: boolean;
-  private readonly doer: BufferedActionDoer;
+  private readonly doer: BufferedActionDoer & SceneActionDoer;
   private readonly cleanups: (() => void)[] = [];
   /** The action this controller pushed: walked to by the locomotor, then buffered on the stategraph. */
   private action?: BufferedAction<WilsonAction>;
@@ -48,6 +48,8 @@ export class PlayerController {
     locomotor: PlayerLocomotor,
     handEquipment: HandEquipmentSignal,
     isManualMovement = () => false,
+    /** The player inst as act.doer; standalone controllers adapt their player model. */
+    doer?: BufferedActionDoer & SceneActionDoer,
   ) {
     this.world = world;
     this.performer = performer;
@@ -57,13 +59,14 @@ export class PlayerController {
     this.ownsPicker = !world.mouseActions;
     this.picker = world.mouseActions ?? new PlayerActionPicker(new PointerRaycaster(world));
     const player = world.player;
-    this.doer = {
-      get components() { return prefabInstance(player)?.components as BufferedActionDoer['components']; },
+    this.doer = doer ?? {
+      get components() { return prefabInstance(player)?.components as (BufferedActionDoer & SceneActionDoer)['components']; },
+      hasTag: tag => tag === 'player' || prefabInstance(player)?.hasTag(tag) === true,
       PushEvent: (name, data) => player.dispatchEvent({ type: name, data } as never),
       getPosition: () => player.position,
       sg: { HasStateTag: tag => performer.stategraph.hasStateTag(tag) },
     };
-    this.cleanups.push(this.picker.bindEquippedItem(() => this.equippedItem()));
+    this.cleanups.push(this.picker.bindPlayer(this.doer, () => this.equippedItem()));
     this.cleanups.push(bindActionCancellation(world, this, 'player', () => this.cancel()));
     // An action keeps the hand item it was picked with; equipping another drops it.
     this.cleanups.push(watchHandEquipment(handEquipment, equipment => {
@@ -106,10 +109,11 @@ export class PlayerController {
     this.performer.cancelEmote();
     this.action = action;
     this.walking = true;
-    const distance = (ACTIONS[action.action as MouseActionId] as { distance?: number } | undefined)?.distance;
+    const { distance, mindistance } = (ACTIONS[action.action as MouseActionId] ?? {}) as { distance?: number; mindistance?: number };
     this.locomotor.PushAction({
       target: { getPosition: () => target.getPosition!(), getPhysicsRadius: () => target.getPhysicsRadius?.() ?? 0 },
       ...(distance === undefined ? {} : { distance: distance * WORLD_SCALE }),
+      ...(mindistance === undefined ? {} : { minDistance: mindistance * WORLD_SCALE }),
       isValid: () => action.isValid(),
     }, () => this.arrive(action), () => {
       if (this.action !== action || !this.walking) return;

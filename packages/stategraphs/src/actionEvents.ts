@@ -8,7 +8,7 @@ export interface PlayerActionEvents {
   'action:interrupt': { reason: ActionInterruptReason };
 }
 
-type ActionGroup = 'player' | 'attack' | 'hand' | 'spell' | 'net' | 'food' | 'read' | 'play' | 'building' | 'deploy' | 'movement' | 'fishing' | 'harvest' | 'sleep' | 'haunt' | 'migrate' | 'pickup' | 'pick' | 'itemuse';
+type ActionGroup = 'player' | 'attack' | 'hand' | 'spell' | 'food' | 'read' | 'play' | 'building' | 'deploy' | 'movement' | 'fishing' | 'itemuse';
 interface CancellationRule {
   begins: readonly PlayerActionKind[];
   interrupts: readonly ActionInterruptReason[];
@@ -23,15 +23,8 @@ const rules: Record<ActionGroup, CancellationRule> = {
   player: { begins: [...workActions, ...inventoryActions, 'NET', 'PICK', 'CASTSPELL'], interrupts: inventoryInterrupts },
   itemuse: { begins: [...workActions, ...inventoryActions, 'NET', 'PICK'], interrupts: [...inventoryInterrupts, 'drop'] },
   attack: { begins: [...workActions, ...inventoryActions, 'NET', 'PICK'], interrupts: inventoryInterrupts },
-  haunt: { begins: [...workActions, ...inventoryActions, 'NET', 'PICK', 'CASTSPELL'], interrupts: inventoryInterrupts },
-  pickup: { begins: [...workActions, ...inventoryActions, 'NET', 'PICK', 'CASTSPELL'], interrupts: inventoryInterrupts },
-  harvest: { begins: [...workActions, ...inventoryActions, 'NET', 'PICK', 'CASTSPELL'], interrupts: inventoryInterrupts },
-  migrate: { begins: [...workActions, ...inventoryActions, 'NET', 'PICK', 'CASTSPELL'], interrupts: inventoryInterrupts },
-  sleep: { begins: [...workActions, ...inventoryActions, 'NET', 'PICK', 'CASTSPELL'], interrupts: inventoryInterrupts },
-  pick: { begins: [...workActions, ...inventoryActions, 'NET', 'PICK', 'CASTSPELL'], interrupts: inventoryInterrupts },
   hand: { begins: ['ATTACK', 'CASTSPELL', 'LIGHT', ...inventoryActions], interrupts: inventoryInterrupts },
   spell: { begins: [...workActions, ...inventoryActions, 'NET', 'PICK', 'CASTSPELL'], interrupts: inventoryInterrupts },
-  net: { begins: [...workActions, 'PICK', 'EAT', 'SEED_SELECT'], interrupts: ['emote'] },
   food: { begins: ['TILL', 'DIG', 'LIGHT', ...inventoryActions], interrupts: inventoryInterrupts },
   read: { begins: [...workActions, 'NET', 'PICK', ...inventoryActions], interrupts: inventoryInterrupts },
   play: { begins: [...workActions, 'NET', 'PICK', ...inventoryActions], interrupts: inventoryInterrupts },

@@ -8,7 +8,6 @@ import { GroundItemManager } from '../../../src/groundItems';
 import { createPickupInventory } from './pickupFixture';
 import { createPickupDoer } from '../../stategraphs/src/pickup';
 import { performToolWork, collectEquippedActions } from '../../stategraphs/src/componentactions';
-import { getPickActions } from '../../stategraphs/src/pick';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
@@ -21,6 +20,7 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { createSignal } from '../../signals/src';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { workTargets } from './workTargets';
+import { canDoSceneAction } from './sceneActions';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -67,7 +67,7 @@ it('picks twigs, regrows after four days through grow → sway, and saves/restor
     expect(animation.currentAnimation).toBe('sway');
     expect(prefabInstance(model)!.listTags()).toEqual(['plant', 'renewable', 'silviculture', 'lunarplant_target', 'pickable', 'tickingarea', 'canlight', 'witherable']);
     expect(findActionEntity(model).hasTag('DIG_workable')).toBe(true);
-    expect(getPickActions(model).find(action => action.model === model)?.available).toBe(true);
+    expect(canDoSceneAction('PICK', model)).toBe(true);
 
     expect(plantInstance(model).components.pickable.pick({ giveItem: (item: string, count: number) => s.inventory.add(item, count) })).toBe(true);
     expect(s.inventory.count('twigs')).toBe(1);

@@ -12,7 +12,13 @@ import type { ActionPerformer } from '../../stategraphs/src/actionContext';
 import { createInventoryStore } from '../../../src/inventory';
 import { cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { createSignal, EventEmitter } from '../../signals/src';
-import { PickActionController, getPickActions, type PickActor } from '../../stategraphs/src/pick';
+import { PlayerController } from '../../stategraphs/src/playercontroller';
+import { Locomotor } from '../../prefab/src/locomotor';
+import { WORLD_SCALE } from '../../prefab/src/tile';
+import * as CANNON from 'cannon-es';
+import { createEquipmentExistenceState } from '../../signals/src';
+import { canDoSceneAction } from './sceneActions';
+import type { PickActor } from '../../stategraphs/src/pick';
 import type { WorldEvents } from '../../prefab/src/worldContext';
 import { Combat, type CombatInst } from '../../componets/src/combat';
 import { Health } from '../../componets/src/health';
@@ -28,7 +34,6 @@ import { inventoryStateFromSave } from '../../../src/save/inventoryState';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { prefabInstance } from '../../prefab/src/prefabInstance';
-import { SpriteState } from '../../display/src/spriteState';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -116,31 +121,31 @@ it('quick-picks petals at frame six, preserves a cancelled flower and reloads th
   const s = setup(), restored = setup();
   const graph = new WilsonStateGraph({ playAnimation: () => 1, playSound() {}, stopSound() {}, setCasting() {}, onStateChanged() {} });
   const animation = { stategraph: graph, cancelEmote: vi.fn(), setFacing: vi.fn() } as unknown as ActionPerformer;
-  const locomotor = { destination: undefined, goToPoint: vi.fn(() => true), stop: vi.fn() };
+  const locomotor = new Locomotor({ position: s.world.player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body,
+    { physicsRadius: .5 * WORLD_SCALE });
   const sanity = vi.fn(), killed = vi.fn();
-  const picker: PickActor = { hasTag: () => false, components: { sanity: { DoDelta: sanity } } };
-  const prepare = vi.fn(() => ({ picker, giveItem: (itemId: string, count: number) => s.inventory.add(itemId, count), dispose: vi.fn() }));
-  const controller = new PickActionController(s.world, animation, locomotor, prepare, new SpriteState({ name: 'idle' }));
+  // The player inst: pickable:Pick(act.doer) spawns the petals into its inventory and its sanity takes the delta.
+  const picker = { hasTag: () => false, PushEvent: vi.fn(), getPosition: () => s.world.player.position,
+    components: { sanity: { DoDelta: sanity }, inventory: s.inventory } };
+  const controller = new PlayerController(s.world, animation, locomotor, createEquipmentExistenceState('HANDS'), undefined, picker as never);
   try {
     const flower = await s.flowers.spawnFromSave('flower:pick', 'f6', new THREE.Vector3(2, 0, 0));
     const component = (findActionEntity(flower)?.components ?? prefabInstance(flower)!.components).pickable;
-    const entity = findActionEntity(flower);
-    const candidate = getPickActions(flower)[0];
-    expect(candidate.available).toBe(true);
+    const entity = findActionEntity(flower)!;
+    expect(canDoSceneAction('PICK', flower, picker as never)).toBe(true);
     s.world.worldEvents.on('plantkilled', killed);
     const picked = vi.fn(() => expect(flower.parent).toBe(s.world.scene));
     flower.addEventListener('picked' as never, picked);
-    const target = candidate.action.target as Parameters<PickActionController['request']>[0];
-    expect(controller.request(target)).toBe(true);
-    await new Promise(resolve => setTimeout(resolve, 0));
-    controller.update(); expect(graph.stateName).toBe('doshortaction');
+    const pick = () => controller.DoAction(controller.createAction({ action: 'PICK', target: entity })!);
+    s.world.player.position.set(.5, 0, 0);
+    expect(pick()).toBe(true);
+    expect(graph.stateName).toBe('doshortaction');
     graph.update(5 / 30); controller.cancel(); graph.update(1);
     expect(s.inventory.count('petals')).toBe(0);
     expect(s.flowers.exportRecords()).toHaveLength(1);
     expect(sanity).not.toHaveBeenCalled();
-    expect(controller.request(target)).toBe(true);
-    await new Promise(resolve => setTimeout(resolve, 0));
-    controller.update(); graph.update(5 / 30);
+    expect(pick()).toBe(true);
+    graph.update(5 / 30);
     expect(s.inventory.count('petals')).toBe(0);
     graph.update(1 / 30);
     expect(s.inventory.count('petals')).toBe(1);

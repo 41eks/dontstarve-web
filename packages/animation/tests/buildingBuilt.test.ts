@@ -15,10 +15,11 @@ import { TREASURE_CHEST_DEFINITION } from '../../prefab/src/treasurechest';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { modelHasTag } from '../../prefab/src/prefabInstance';
 import { findActionEntity } from '../../prefab/src/actionEntity';
-import { getRummageActions, performRummageAction, type RummageTarget } from '../../stategraphs/src/rummage';
+import { performRummageAction, type RummageTarget } from '../../stategraphs/src/rummage';
 import { miniMapEntities } from '../../map/src/minimapEntities';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import type { SpriteAnimationController } from '../src/sprite';
+import { sceneActions } from './sceneActions';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -114,14 +115,14 @@ it('lets a prefab control built effects and keeps interaction blocked until it c
   const playOnce = vi.spyOn(context!.animation as SpriteAnimationController, 'playOnce');
   const { model } = context!, chest = findActionEntity(model) as unknown as RummageTarget;
   // While the place clip runs, its container cannot be opened, so RUMMAGE is neither offered nor performed.
-  expect(getRummageActions(model, world.player)).toEqual([]);
+  expect(sceneActions(model)).not.toContain('RUMMAGE');
   expect(performRummageAction(chest, world.player)).toBe(false);
   placement.update(0.1);
   expect(onbuilt).toHaveBeenCalledTimes(1);
   expect(playOnce).not.toHaveBeenCalled();
 
   context!.onComplete();
-  expect(getRummageActions(model, world.player).map(({ action }) => action.action)).toEqual(['RUMMAGE']);
+  expect(sceneActions(model).filter(action => action === 'RUMMAGE')).toEqual(['RUMMAGE']);
   expect(performRummageAction(chest, world.player)).toBe(true);
   expect(playOnce).toHaveBeenCalledExactlyOnceWith('open', expect.any(Function));
 });

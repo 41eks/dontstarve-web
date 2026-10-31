@@ -1453,7 +1453,8 @@ const actionHandlers: StateActionHandler<WilsonStateGraph, WilsonStateName>[] = 
     // SGwilson.lua:1043-1077 — jostle/skill/riding branches remain unported.
     if (action.target?.hasTag('jostlepick')) return null;
     if (action.target?.hasTag('noquickpick')) return 'dolongaction';
-    return action.target?.quickpick ? 'doshortaction' : 'dolongaction';
+    const pickable = (action.target as { components?: { pickable?: { quickpick?: boolean } } } | undefined)?.components?.pickable;
+    return pickable?.quickpick ? 'doshortaction' : 'dolongaction';
   }),
   ActionHandler('LIGHT', 'catchonfire'),
   ActionHandler('SHAVE', 'shave'),

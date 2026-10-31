@@ -23,6 +23,7 @@ import {
   slotTransferController,
 } from '@dontstarve-web/ui';
 import { type PickupDoer, PointerRaycaster, type WilsonStateName } from '@dontstarve-web/stategraphs';
+import { PlayerActionFilter } from '@dontstarve-web/stategraphs/actions';
 import { DOCK_KIT_ID } from '@dontstarve-web/prefab/dock_kit';
 import { FARM_PLOW_ITEM_ID, SEED_ITEM_IDS } from '@dontstarve-web/prefab/farm_plow';
 import { turfMap } from './building';
@@ -137,6 +138,8 @@ const pickupDoer: PickupDoer & { ListenForEvent(name: string, listener: (data: u
   },
   hasTag: tag => tag === 'player' || modelHasTag(player, tag),
   GetPosition: () => player.position,
+  getPosition: () => player.position,
+  sg: { HasStateTag: tag => playerAnimation?.stategraph.hasStateTag(tag) ?? false },
   HasStateTag: tag => playerAnimation?.stategraph.hasStateTag(tag) ?? false,
   GoToState: name => playerAnimation?.stategraph.goToState(name as WilsonStateName),
   IsCurrentState: name => playerAnimation?.stategraph.stateName === name,
@@ -326,6 +329,9 @@ playerAnimation?.bindDeath({
   // TheWorld.Map:IsPassableAtPoint: neither open ocean nor the void.
   isPassableAtPoint: () => turfMap.isPassableAtPoint(player.position),
 });
+// player_common.lua OnSetOwner: PlayerActionFilter at the bottom of the stack (ACTION_FILTER_PRIORITIES.default);
+// the ghost's filter is pushed above it while dead.
+view.mouseActions?.PushActionFilter(PlayerActionFilter, -99);
 // player_common.lua ListenForEvent("makeplayerghost", ex_fns.OnMakePlayerGhost), with the ghost art prepared beforehand.
 let deathCause = 'unknown';
 const ghostOwner: PlayerGhostOwner | undefined = playerAnimation && {

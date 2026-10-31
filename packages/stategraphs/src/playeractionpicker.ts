@@ -2,7 +2,7 @@ import type * as THREE from 'three';
 import { getActionPriority, type ActionDescription } from './actions.ts';
 import { PointerRaycaster } from './pointerRaycaster.ts';
 import { isMouseTarget } from './mouseTargets.ts';
-import { collectEquippedItemActions, type ComponentActionEntity } from './componentactions.ts';
+import { collectEquippedItemActions, collectSceneActions, type ComponentActionEntity, type SceneActionDoer } from './componentactions.ts';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 
 export interface MouseActionCandidate {
@@ -32,7 +32,7 @@ export class PlayerActionPicker {
   private readonly placerSources = new Set<() => boolean>();
   private readonly eventActions = new WeakMap<PointerEvent, { actions: MouseActions; target?: THREE.Object3D }>();
   private selectedModel?: THREE.Object3D;
-  private equippedItem?: () => ComponentActionEntity | undefined;
+  private player?: { readonly doer: SceneActionDoer; equippedItem(): ComponentActionEntity | undefined };
   private readonly actionFilters: { fn: ActionFilter; priority: number }[] = [];
   get targetModel(): THREE.Object3D | undefined { return this.selectedModel; }
 
@@ -49,20 +49,30 @@ export class PlayerActionPicker {
       (top, filter) => !top || filter.priority >= top.priority ? filter : top, undefined)?.fn;
   }
 
-  /** inventory:GetEquippedItem(EQUIPSLOTS.HANDS), whose EQUIPPED component actions the picker collects itself. */
-  bindEquippedItem(source: () => ComponentActionEntity | undefined): () => void {
-    this.equippedItem = source;
-    return () => { if (this.equippedItem === source) this.equippedItem = undefined; };
+  /** playeractionpicker.inst: the player whose hand item and scene actions the picker collects itself. */
+  bindPlayer(doer: SceneActionDoer, equippedItem: () => ComponentActionEntity | undefined): () => void {
+    const player = { doer, equippedItem };
+    this.player = player;
+    return () => { if (this.player === player) this.player = undefined; };
   }
 
-  /** GetEquippedItemActions: the hand item's EQUIPPED actions on the picked entity, for each button. */
-  private equippedItemActions(target: THREE.Object3D | undefined): MouseActionCandidate[] {
-    const item = this.equippedItem?.(), entity = findActionEntity(target);
-    if (!item || !entity || !target) return [];
-    return ([false, true] as const).flatMap(right => collectEquippedItemActions(item, undefined, entity, right).map(action => ({
-      action: { action, invobject: item, target: entity }, button: right ? 'right' as const : 'left' as const,
-      model: target, source: 'equipped' as const,
-    })));
+  /**
+   * GetEquippedItemActions(target, inventory:GetEquippedItem(HANDS)) and GetSceneActions(target): the picked entity's
+   * component actions for the bound player, on each button.
+   */
+  private componentActions(target: THREE.Object3D | undefined): MouseActionCandidate[] {
+    const player = this.player, entity = findActionEntity(target);
+    if (!player || !entity || !target) return [];
+    const item = player.equippedItem(), doer = player.doer;
+    return ([false, true] as const).flatMap(right => {
+      const button = right ? 'right' as const : 'left' as const;
+      return [
+        ...(item ? collectEquippedItemActions(item, doer, entity, right) : []).map(action => ({
+          action: { action, doer, invobject: item, target: entity }, button, model: target, source: 'equipped' as const })),
+        ...collectSceneActions(entity, doer, right).map(action => ({
+          action: { action, doer, target: entity }, button, model: target, source: 'scene' as const })),
+      ];
+    });
   }
 
   register(provider: (target: THREE.Object3D | undefined) => readonly MouseActionCandidate[]): () => void {
@@ -100,7 +110,7 @@ export class PlayerActionPicker {
       let target = hit?.object ?? null;
       while (target && !isMouseTarget(target)) target = target.parent;
       this.selectedModel = target ?? undefined;
-      const candidates = [...this.equippedItemActions(target ?? undefined), ...[...this.providers].flatMap(provider => provider(target ?? undefined))];
+      const candidates = [...this.componentActions(target ?? undefined), ...[...this.providers].flatMap(provider => provider(target ?? undefined))];
       const filter = this.actionFilter;
       const activeItem = [...this.activeItemSources].some(source => source());
       const result: MouseActions = {};
@@ -124,5 +134,5 @@ export class PlayerActionPicker {
     } finally { this.pointer.endFrame(); }
   }
 
-  dispose(): void { this.equippedItem = undefined; this.providers.clear(); this.activeItemSources.clear(); this.placerSources.clear(); this.pointer.dispose(); }
+  dispose(): void { this.player = undefined; this.providers.clear(); this.activeItemSources.clear(); this.placerSources.clear(); this.pointer.dispose(); }
 }
