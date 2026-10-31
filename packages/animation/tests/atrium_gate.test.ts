@@ -31,6 +31,8 @@ it('restores the source save as nonlooping idle after constructor and keeps its 
     expect(instance.listTags()).toEqual(expect.arrayContaining(['gemsocket', 'stargate', 'give_dolongaction']));
     expect(instance.sprite.sprite.peek().clip).toMatchObject({ name: 'idle', loop: false });
     expect(instance.sprite.sprite.peek().queue).toEqual([]);
+    // An unrepaired gate draws only SetBuild("atrium_gate"), never pieces of the repaired build.
+    expect(instance.sprite.sprite.peek().appearance.get('archive-build')).toMatchObject({ archive: 'atrium_gate.zip' });
     const floor = model.children.find(child => prefabInstance(child)?.prefab === 'atrium_gate_floor')!;
     expect(prefabInstance(floor)!.listTags()).toEqual(['DECOR', 'NOCLICK']);
     expect(model.children.filter(child => prefabInstance(child)?.prefab === 'atrium_gate_terraform_blocker')).toHaveLength(24);
@@ -56,6 +58,9 @@ it('restores the source save as nonlooping idle after constructor and keeps its 
     // The unloaded pre transition settles per ResidentSprite's contract; the queued loop is the restored clip.
     expect(overloading.sprite.sprite.peek().clip).toMatchObject({ name: 'overload_loop', loop: true });
     expect(overloading.sprite.sprite.peek().queue).toEqual([]);
+    // AnimState:Hide("KEY") hides the vault key's KEY layer; the socketed atrium key (KEY symbol) stays drawn.
+    expect(overloading.sprite.sprite.peek().appearance.get('layer:KEY')).toEqual({ kind: 'layer', layer: 'KEY', hidden: true });
+    expect(overloading.sprite.sprite.peek().appearance.has('archive-hidden:KEY')).toBe(false);
     const fx = destabilizing.children.find(child => prefabInstance(child)?.prefab === 'atrium_gate_activatedfx')!;
     expect(prefabInstance(fx)!.listTags()).toEqual(['DECOR', 'NOCLICK']);
   } finally { gates.dispose(); scheduler.dispose(); }
@@ -80,6 +85,11 @@ it('rebuilds the declared idle clip and child floor after tile sleep', async () 
     expect(model.parent).toBe(scene);
     expect(instance.sprite.currentAnimation).toBe('idle');
     expect(prefabInstance(floor)!.sprite.currentAnimation).toBe('idle_active');
+    await prefabDisplay(floor).artLoaded();
+    // LAYER_BACKGROUND: its own mesh draws after every turf layer (< -0.6), outside the depth-writing instance batch.
+    const meshes = floor.getObjectsByProperty('isMesh', true) as THREE.Mesh[];
+    expect(meshes.filter(mesh => mesh.visible).map(mesh => mesh.renderOrder)).toEqual([-.56]);
+    for (let node = meshes[0].parent; node && node !== floor; node = node.parent) expect(node.renderOrder).toBe(0);
     expect(gates.exportRecords()[0].record.components.pickable).toEqual({ picked: true });
   } finally { gates.dispose(); scheduler.dispose(); }
 });

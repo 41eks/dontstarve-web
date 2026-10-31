@@ -21,6 +21,9 @@ import { watchTileActivity } from './tileActivity';
 import type { DisplayDrivenPrefabManager, DisplayManagerWorld } from './manager';
 
 export const ATRIUM_GATE_ID = 'atrium_gate' as const;
+/** LAYER_BACKGROUND always draws over LAYER_GROUND (turf, mesh orders [-1, -0.6)); SetSortOrder(-3) only orders it among
+ * background decals. A group order would sort it before every turf mesh, so the order goes on the mesh, as for ponds. */
+const FLOOR_RENDER_ORDER = -.5 + (-3 - 3) * .01;
 export const ATRIUM_GATE_TIMER_NAMES = ['destabilizing', 'destabilizedelay', 'cooldown'] as const;
 export type AtriumGateTimerName = typeof ATRIUM_GATE_TIMER_NAMES[number];
 export interface AtriumGateTimerSave {
@@ -68,10 +71,11 @@ export class AtriumGateManager implements DisplayDrivenPrefabManager<{ prefabId:
   private disposed = false;
   constructor(scene: THREE.Scene, world: AtriumGateWorld) { this.displays = new PrefabDisplayGroup(scene); this.world = world; }
 
-  private createSprite(animationArchive: string, buildArchives: string[], bank: string, name: string) {
+  /** Instance batches draw upright billboards with a depth prepass; LAYER_BACKGROUND ground art must not join them. */
+  private createSprite(animationArchive: string, buildArchives: string[], bank: string, name: string, instanced = true) {
     return (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(this.assets, {
       animationArchive, buildArchives, bank, animation: clip.name, loop: clip.loop,
-    }, { instancedAnimations: 'all', name });
+    }, { ...(instanced ? { instancedAnimations: 'all' as const } : {}), name });
   }
 
   spawn(position: THREE.Vector3, saved?: AtriumGateRecord): THREE.Group {
@@ -87,16 +91,18 @@ export class AtriumGateManager implements DisplayDrivenPrefabManager<{ prefabId:
     MakeObstaclePhysics(instance, 1);
     if (this.world.physics) instance.bindPhysics(this.world.physics);
     instance.sprite.playOnce('idle');
-    instance.sprite.setSymbolHidden('KEY', true);
+    instance.sprite.hideLayer('KEY');
     const save: AtriumGateRecord['components'] = structuredClone(saved?.components ?? { pickable: { picked: true } });
     // OnLoad: SocketVaultKey and CharlieCutscene:OnLoad change appearance before OnLoadPostPass.
-    if (save.atriumGate?.vault_key_socketed) instance.sprite.setSymbolHidden('KEY', false);
-    if (repaired(save)) instance.sprite.setBuildArchive('atrium_gate_build.zip');
+    if (save.atriumGate?.vault_key_socketed) instance.sprite.showLayer('KEY');
+    // Constructor SetBuild("atrium_gate"): without it, symbols missing there (dreadstone, the repair pieces) would
+    // resolve from the listed repaired build. CharlieCutscene:OnLoad switches to atrium_gate_build.
+    instance.sprite.setBuildArchive(repaired(save) ? 'atrium_gate_build.zip' : 'atrium_gate.zip');
     const floor = createArchiveEntity('atrium_gate_floor', { create: this.createSprite('atrium_floor.zip',
-      ['atrium_floor.zip'], 'atrium_floor', 'atrium_gate_floor') },
+      ['atrium_floor.zip'], 'atrium_floor', 'atrium_gate_floor', false) },
     { name: 'idle_active', held: true, billboard: false }, 'atrium_gate_floor', undefined, instance.status);
     floor.instance.addTag('DECOR'); floor.instance.addTag('NOCLICK'); floor.instance.persists = false;
-    floor.instance.sprite.playOnce('idle_active'); floor.instance.sprite.setGround(-3);
+    floor.instance.sprite.playOnce('idle_active'); floor.instance.sprite.setGround(0); floor.instance.sprite.setMeshOrder(FLOOR_RENDER_ORDER);
     floor.display.mount(model); this.world.trackDisplay(floor.display);
     const blockers: ReturnType<typeof createEmptyEntity>[] = [];
     const radius = Math.ceil(14.55 / 3), diameter = radius * 2;
