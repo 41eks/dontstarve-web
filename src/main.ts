@@ -106,7 +106,7 @@ gameUi.minimap.addEventListener('game:map-state', (event) => {
 function syncPlayerStats(): void {
   gameUi.statusHud.setStats(getPlayerStats());
 }
-Object.values(playerStats).forEach(stat => stat.subscribe(syncPlayerStats));
+[playerStats.health.current, playerStats.hunger, playerStats.sanity].forEach(stat => stat.subscribe(syncPlayerStats));
 syncPlayerStats();
 export const inventory = createInventoryStore();
 const cursorAddress = cursorSlotAddress();
@@ -148,7 +148,7 @@ const pickupDoer: PickupDoer & { ListenForEvent(name: string, listener: (data: u
 };
 inventory.bindActor(pickupDoer);
 // owner.components.sanity, for equipment and the dapperfn's owner; created before any equip runs.
-const sanityComponents: { inventory: typeof inventory; sanity?: Sanity } = { inventory };
+const sanityComponents: { inventory: typeof inventory; health: typeof playerStats.health; sanity?: Sanity } = { inventory, health: playerStats.health };
 const playerSanity = new Sanity({ ...pickupDoer, components: sanityComponents, sg: playerAnimation?.stategraph }, playerStats.sanity);
 sanityComponents.sanity = pickupDoer.components.sanity = playerSanity;
 playerAnimation?.bindInventory(inventory);
@@ -390,25 +390,24 @@ const makePlayerGhost = (event: { data?: unknown }) => {
 player.addEventListener('makeplayerghost' as never, makePlayerGhost);
 // player_common.lua ListenForEvent("respawnfromghost", ex_fns.OnRespawnFromGhost); health:SetInvincible from portal_rez's exit.
 const respawnFromGhost = (event: { data?: unknown }) => { if (ghostOwner) OnRespawnFromGhost(ghostOwner, event.data as { source?: RezSource } | undefined); };
-const setInvincible = (event: { data?: unknown }) => { playerStats.health.invincible = event.data === true; };
 player.addEventListener('respawnfromghost' as never, respawnFromGhost);
-player.addEventListener('setinvincible' as never, setInvincible);
 // A saved ghost resumes as a ghost (OnLoad is_ghost → OnMakePlayerGhost({ loading = true })).
 if (initialSave.players.local.ghost) makePlayerGhost({ data: { loading: true } });
-const stopHealthWatch: (() => void)[] = [];
-const watchedHealth = watchSignal(playerStats.health, stop => stopHealthWatch.push(stop));
+const stopGhostWatch: (() => void)[] = [];
 // A ghost has no inventory: the bar follows the ghost-mode signal, hidden while true and shown again once false.
-const watchedGhostMode = watchSignal(playerGhostMode, stop => stopHealthWatch.push(stop));
+const watchedGhostMode = watchSignal(playerGhostMode, stop => stopGhostWatch.push(stop));
 createEffect(() => { gameUi.inventoryBar.style.display = watchedGhostMode.get() ? 'none' : ''; });
-createEffect(() => {
-  if (watchedHealth.get() > 0) return;
-  playerAnimation?.stategraph.pushEvent('death', { cause: deathCause });
-});
+const recordDeathCause = (event: { data?: unknown }) => {
+  deathCause = (event.data as { cause?: string } | undefined)?.cause ?? 'unknown';
+};
+player.addEventListener('death' as never, recordDeathCause);
+// A saved living player at zero health resumes the death flow after inventory and death handlers are bound.
+if (playerStats.health.IsDead() && !playerGhostMode.peek()) playerInstance.PushEvent('death', { cause: deathCause });
 disposalEvents.on('dispose', () => {
-  stopHealthWatch.splice(0).forEach(stop => stop());
+  stopGhostWatch.splice(0).forEach(stop => stop());
   player.removeEventListener('makeplayerghost' as never, makePlayerGhost);
   player.removeEventListener('respawnfromghost' as never, respawnFromGhost);
-  player.removeEventListener('setinvincible' as never, setInvincible);
+  player.removeEventListener('death' as never, recordDeathCause);
   playerAnimation?.bindDeath(undefined);
   playerAnimation?.bindRebirth(undefined);
 });

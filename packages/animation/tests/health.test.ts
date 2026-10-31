@@ -1,7 +1,56 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { Health } from '../../componets/src/health';
 
 describe('basic health component', () => {
+  it('uses the same invincibility, healing and absorption rules for every host, preserving direct assignments', () => {
+    const events = vi.fn(), stateTags = new Set<string>();
+    const health = new Health(150, { PushEvent: events, sg: { hasStateTag: tag => stateTags.has(tag) } });
+    health.SetInvincible(true);
+    expect(events).toHaveBeenLastCalledWith('invincibletoggle', { invincible: true });
+    expect(health.DoDelta(-20)).toBe(0);
+    health.SetCurrentHealth(50);
+    expect(health.currenthealth).toBe(50);
+    health.SetInvincible(false);
+    health.canheal = false;
+    // Lua canheal is action metadata: walls still accept repair through DoDelta.
+    expect(health.DoDelta(20)).toBe(20);
+    health.absorb = .5;
+    expect(health.DoDelta(-20)).toBe(-10);
+    health.canheal = true;
+    stateTags.add('temp_invincible');
+    expect(health.DoDelta(-20)).toBe(0);
+    expect(health.DoDelta(-20, false, 'test', true, undefined, true)).toBe(-20);
+    stateTags.clear();
+    health.DoDelta(-100, false, 'red_cap');
+    health.DoDelta(-100);
+    expect(events.mock.calls.filter(([name]) => name === 'death')).toEqual([
+      ['death', { cause: 'red_cap', afflicter: undefined }],
+    ]);
+    health.dispose();
+  });
+
+  it('caps healing with the resurrection penalty and restores it atomically through component saves', () => {
+    const health = new Health(150);
+    health.DeltaPenalty(.25);
+    expect(health.currenthealth).toBe(112.5);
+    expect(health.IsHurt()).toBe(false);
+    health.DoDelta(-20); health.DoDelta(100);
+    expect(health.currenthealth).toBe(112.5);
+    health.SetMaxHealth(200);
+    expect(health.currenthealth).toBe(150);
+    const restored = new Health();
+    restored.OnLoad(JSON.parse(JSON.stringify(health.OnSave())));
+    expect(restored.OnSave()).toEqual(health.OnSave());
+    expect(restored.GetPercentWithPenalty()).toBe(1);
+    const previous = restored.OnSave();
+    expect(() => restored.OnLoad({ health: 20, maxhealth: 500, penalty: NaN })).toThrow(RangeError);
+    expect(restored.OnSave()).toEqual(previous);
+    restored.DeltaPenalty(10);
+    expect(restored.GetMaxWithPenalty()).toBe(50);
+    restored.DeltaPenalty(-10);
+    expect(restored.penalty).toBe(0);
+    health.dispose(); restored.dispose();
+  });
   it('heals and damages without exceeding the health bounds, including zero health', () => {
     const health = new Health();
     expect(health.currenthealth).toBe(100);

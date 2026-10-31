@@ -18,7 +18,7 @@ import { getHandEquipmentDefinition } from './handEquipment';
 import { HatEquipmentAssets, hatVisual } from './hats';
 import { isPickaxeTool, type PickaxeTool } from './pickaxe';
 import { isPitchforkTool, type PitchforkTool } from './pitchfork';
-import { equipSamePrefab } from './player_common';
+import { createPlayerStats, equipSamePrefab, type PlayerStats, type PlayerStatsSave } from './player_common';
 import { isShovelTool, type ShovelTool } from './shovel';
 import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
 import { MakeCharacterPhysics, WORLD_SCALE } from './standardcomponents';
@@ -171,6 +171,7 @@ export type PlayerModel = THREE.Group;
 
 /** Player-owned state kept on the logical inst, including the movement facts read by SGwilson. */
 export interface WilsonPlayerInstance extends PrefabInstance {
+  readonly stats: PlayerStats;
   readonly components: PrefabInstance['components'] & {
     inventory?: import('@dontstarve-web/inventory').InventoryStore;
     sanity?: import('../../componets/src/sanity').Sanity;
@@ -196,6 +197,7 @@ export function wilsonPlayerInstance(model: THREE.Object3D): WilsonPlayerInstanc
 export interface WilsonPlayerPrefabOptions {
   /** The owner's authoritative sanity ratio; standalone previews default to full sanity. */
   sanityPercent?: ReadonlySignal<number>;
+  stats?: PlayerStatsSave;
 }
 
 /** Source tags: bugnet tool component and reskin_tool.lua's veryquickcast. */
@@ -292,7 +294,7 @@ class WilsonController implements WilsonAnimationController {
         setHidden: hidden => instance.sprite.setVisible(!hidden),
         get isHidden() { return instance.sprite.sprite.peek().visible === false; },
         setMultColour: (r, g, b) => this.setMultColour(r, g, b),
-        setInvincible: invincible => { model.dispatchEvent({ type: 'setinvincible', data: invincible } as never); },
+        setInvincible: invincible => { instance.components.health!.SetInvincible(invincible); },
       },
       get fishing() { return controller.fishingHost; },
       playEvent: event => { PlaySound(event as SoundEventPath); },
@@ -735,7 +737,7 @@ class WilsonController implements WilsonAnimationController {
 
 function createWilsonPlayerEntity(
   assetBaseUrl: string,
-  options: Pick<WilsonPlayerPrefabOptions, 'sanityPercent'> = {},
+  options: WilsonPlayerPrefabOptions = {},
 ): { model: PlayerModel; instance: WilsonPlayerInstance; display: PrefabDisplay } {
   const resources = new SpriteResources(assetBaseUrl);
   const archives = [...new Set([...Object.values(WILSON_ANIMATION_ARCHIVES), `${UNIQUE_ITEM_BUILD}.zip`,
@@ -751,6 +753,7 @@ function createWilsonPlayerEntity(
     instance.sprite.setPaused(true);
   });
   const instance = Object.assign(baseInstance, {
+    stats: createPlayerStats(baseInstance, options.stats),
     controllerEnabled: true, runSpeed: 0, currentMotorSpeed: 0, wantsToMoveForward: false, worldHeading: 0,
   }) as WilsonPlayerInstance;
   const player = display.model;
@@ -765,8 +768,11 @@ function createWilsonPlayerEntity(
   player.position.set(0, 30, 0);
   actionEntity(player, PLAYER_ART_CHARACTER);
 
-  const controller = new WilsonController(instance, display, assetBaseUrl, resources, options.sanityPercent);
-  instance.onRemove(() => { controller.dispose(); disposeActionEntity(player); });
+  const controller = new WilsonController(instance, display, assetBaseUrl, resources,
+    options.sanityPercent ?? (options.stats ? instance.stats.sanity.percent : undefined));
+  const onDeath = (event: { data?: unknown }) => controller.stategraph.pushEvent('death', event.data);
+  player.addEventListener('death' as never, onDeath);
+  instance.onRemove(() => { player.removeEventListener('death' as never, onDeath); controller.dispose(); disposeActionEntity(player); });
   display.onDispose(() => controller.releaseAssets());
   display.update(0);
   instance.animationController = controller;

@@ -46,7 +46,7 @@ export interface EquipmentOwner {
   IsCurrentState?(name: string): boolean;
   /** owner.components: the stats equipment reads and changes. */
   readonly components?: {
-    readonly health?: EquipmentStat & { GetMaxWithPenalty(): number };
+    readonly health?: { IsHurt(): boolean; DoDelta(amount: number, overtime?: boolean, cause?: string): number };
     readonly hunger?: EquipmentStat;
     readonly sanity?: EquipmentSanity;
   };

@@ -52,7 +52,7 @@ test('picking a spawned cactus hurts through the worn dreadstone hat, flinches, 
   // CACTUS_DAMAGE 6: the hat absorbs 90%, so 0.6 reaches health and 5.4 wears the hat, which starts regenerating.
   const after = await page.evaluate(() => {
     const { inventory, playerStats, states } = (window as any).cactusGame;
-    return { health: playerStats.health.peek(), armor: inventory.GetEquippedItem('head').components.armor.condition.peek(), states: [...states] };
+    return { health: playerStats.health.currenthealth, armor: inventory.GetEquippedItem('head').components.armor.condition.peek(), states: [...states] };
   });
   expect(after.health).toBeCloseTo(150 - .6);
   expect(after.armor).toBeGreaterThanOrEqual(840 - 5.4 - 1e-9);

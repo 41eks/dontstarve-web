@@ -14,7 +14,7 @@ function setup(hunger = 100) {
     scheduler, phase,
     hunger: { doDelta: delta => { stats.hunger = Math.max(0, stats.hunger + delta); }, isStarving: () => stats.hunger <= 0 },
     sanity: { doDelta: delta => { stats.sanity += delta; }, getPercentWithPenalty: () => stats.sanity / 200 },
-    health: { doDelta: delta => { stats.health += delta; } },
+    health: { DoDelta: delta => { stats.health += delta; } },
     goToWakeup,
   });
   const bag = new SleepingBag({ addTag: tag => tags.add(tag), removeTag: tag => tags.delete(tag) });

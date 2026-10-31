@@ -12,11 +12,16 @@ import type { WorldContext } from '../../prefab/src/worldContext';
 import { applyPlayerFoodEffects, getPlayerStats, playerStats } from '../../../src/playerStats';
 
 vi.mock('../../../src/save/initialSave', () => ({ initialSave: { players: { local: { stats: { health: 140, hunger: 90, sanity: 35 } } } } }));
+vi.mock('../../../src/player', async () => {
+  const { initialSave } = await import('../../../src/save/initialSave');
+  const { playerStatsFixture } = await import('./playerStatsFixture');
+  return { playerInstance: playerStatsFixture(initialSave.players.local.stats!) };
+});
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
-  playerStats.health.set(140); playerStats.hunger.set(90); playerStats.sanity.set(35);
+  playerStats.health.SetVal(140); playerStats.hunger.set(90); playerStats.sanity.set(35);
 });
 afterEach(() => { vi.clearAllMocks(); vi.unstubAllGlobals(); });
 

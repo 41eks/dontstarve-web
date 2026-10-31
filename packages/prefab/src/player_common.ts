@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import type { PhysicsState } from '../../componets/src/physicsState';
-import type { HealthState, HungerState, SanityState, Signal } from '@dontstarve-web/signals';
+import { createHungerState, createSanityState, type HungerState, type SanityState, type Signal } from '@dontstarve-web/signals';
+import { Health } from '../../componets/src/health';
+import type { PrefabInstance } from './prefabInstance';
 import { actionEntity } from './actionEntity';
 import { prefabInstance } from './prefabInstance';
 import { MakeCharacterPhysics, MakeGhostPhysics, WORLD_SCALE } from './standardcomponents';
@@ -9,6 +11,27 @@ import { isGhostValidAction } from '../../stategraphs/src/actions';
 import type { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
 import type { WilsonAnimationController } from './player';
 import type { EquipmentKind, InventoryStore } from '@dontstarve-web/inventory';
+
+// Existing Wilson stat defaults, from tuning.lua. Older saves may omit all stats.
+export const WILSON_MAX_HEALTH = 150;
+export const WILSON_MAX_HUNGER = 150;
+export const WILSON_MAX_SANITY = 200;
+export interface PlayerStats {
+  readonly health: Health;
+  readonly hunger: HungerState;
+  readonly sanity: SanityState;
+}
+export interface PlayerStatsSave { health?: number; hunger?: number; sanity?: number; penalty?: number }
+
+/** player_common.lua AddComponent("health"): the player's health has the same owner as every other prefab. */
+export function createPlayerStats(inst: PrefabInstance, saved: PlayerStatsSave = {}): PlayerStats {
+  const health = inst.components.health = new Health(WILSON_MAX_HEALTH, inst);
+  health.nofadeout = true;
+  health.OnLoad({ health: saved.health ?? WILSON_MAX_HEALTH, penalty: saved.penalty ?? 0 });
+  inst.onRemove(() => health.dispose());
+  return { health, hunger: createHungerState(saved.hunger ?? 105, WILSON_MAX_HUNGER),
+    sanity: createSanityState(saved.sanity ?? 35, WILSON_MAX_SANITY) };
+}
 
 /**
  * player_common.lua OnItemRanOut and the SGwilson.lua toolbroke exit:
@@ -47,7 +70,7 @@ export interface PlayerGhostOwner {
   readonly animation: Pick<WilsonAnimationController, 'makeGhost' | 'makeAlive' | 'stategraph'>;
   /** inst.Physics */
   readonly physics: PhysicsState;
-  readonly stats: { readonly health: HealthState; readonly hunger: HungerState; readonly sanity: SanityState };
+  readonly stats: PlayerStats;
   /** sanity.ignore = true */
   readonly sanity: { ignore: boolean };
   /** player_classified isghostmode (SetGhostMode): playervision's ghost colour cube, and the ghost's save flag. */
@@ -99,7 +122,7 @@ export function OnMakePlayerGhost(owner: PlayerGhostOwner, data?: { skeleton?: b
 
   // CommonPlayerDeath
   const { health, hunger, sanity } = owner.stats;
-  health.invincible = true;
+  health.SetInvincible(true);
   health.canheal = false;
   if (!loading) {
     sanity.set(sanity.maximum / 2);

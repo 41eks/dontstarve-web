@@ -9,7 +9,7 @@ export interface SleepingBagUserOptions {
   phase: ReadonlySignal<WorldPhase>;
   hunger?: { doDelta(delta: number): void; isStarving(): boolean };
   sanity?: { doDelta(delta: number): void; getPercentWithPenalty(): number };
-  health?: { doDelta(delta: number): void };
+  health?: { DoDelta(delta: number, overtime?: boolean, cause?: string, ignoreInvincible?: boolean): number | void };
   /** `inst.sg:GoToState("wakeup", { goodsleep })`, skipped when `nostatechange` is set. */
   goToWakeup(data: { goodsleep: boolean }): void;
   /** Whether a head item tagged `good_sleep_aid` is equipped. */
@@ -82,7 +82,7 @@ export class SleepingBagUser implements SleepingBagSleeper {
       starving = hunger.isStarving();
     }
     if (sanity && sanity.getPercentWithPenalty() < 1) sanity.doDelta(sanityTick);
-    if (!starving && bed.healthsleep) health?.doDelta(healthTick);
+    if (!starving && bed.healthsleep) health?.DoDelta(healthTick, true, undefined, true);
     bed.TemperatureTick(this);
     if (starving) bed.DoWakeUp();
   }

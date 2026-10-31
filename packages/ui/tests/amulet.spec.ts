@@ -42,7 +42,7 @@ test('a ghost that haunts a red amulet rises from it in amulet_rebirth, which co
     const { player } = await import(urls.player), stats = await import(urls.playerStats);
     (window as any).amuletGame = { main, scene, player, stats };
   }, { main: urlOf('src/main.ts'), universal: urlOf('src/universal.ts'), player: urlOf('src/player.ts'), playerStats: urlOf('src/playerStats.ts') });
-  await page.evaluate(() => (window as any).amuletGame.stats.playerStats.health.set(0));
+  await page.evaluate(() => (window as any).amuletGame.stats.playerStats.health.DoDelta(-150));
   await expect.poll(async () => (await player()).ghost, { timeout: 30_000 }).toBe(true);
   await expect.poll(async () => (await player()).state, { timeout: 15_000 }).toBe('idle');
 

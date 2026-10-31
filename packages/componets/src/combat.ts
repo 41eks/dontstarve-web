@@ -13,7 +13,7 @@ export interface CombatInst<HealthComponent extends Pick<Health, 'IsDead' | 'DoD
     inventory?: { ApplyDamage?(damage: number, attacker?: CombatActor, weapon?: Weapon): number } };
 }
 
-/** Players may bind the combat health operations to their existing authoritative stat store. */
+/** Combat needs only these operations from the actor's health component. */
 export type CombatActor = CombatInst<Pick<Health, 'IsDead' | 'DoDelta'>>;
 
 /**

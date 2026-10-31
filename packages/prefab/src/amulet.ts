@@ -59,8 +59,8 @@ export function configureAmuletEntity(entity: ItemEntity): void {
 /** amulet.lua healowner: convert hunger into health while hurt, one use per conversion. */
 function healowner(entity: ItemEntity, owner: EquipmentOwner): void {
   const { health, hunger } = owner.components ?? {};
-  if (!health || !hunger || health.peek() >= health.GetMaxWithPenalty() || hunger.peek() <= REDAMULET_MIN_HUNGER) return;
-  health.set(health.peek() + REDAMULET_CONVERSION);
+  if (!health || !hunger || !health.IsHurt() || hunger.peek() <= REDAMULET_MIN_HUNGER) return;
+  health.DoDelta(REDAMULET_CONVERSION, false, 'redamulet');
   hunger.set(hunger.peek() - REDAMULET_CONVERSION);
   entity.components.finiteuses.use(1);
 }

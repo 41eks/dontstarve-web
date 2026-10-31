@@ -1,5 +1,6 @@
 import { expect, it, vi } from 'vitest';
-import { createHealthState, createHungerState } from '../../signals/src';
+import { createHungerState } from '../../signals/src';
+import { Health } from '../../componets/src/health';
 import { equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { AMULET_ID, REDAMULET_CONVERSION, REDAMULET_CONVERSION_TIME, REDAMULET_USES, createAmuletEquipmentLifecycle } from '../../prefab/src/amulet';
 import { HAUNT_COOLDOWN_MEDIUM } from '../../componets/src/hauntable';
@@ -12,7 +13,8 @@ function wornAmulet(health: number, hunger: number) {
   inventory.add(AMULET_ID, 1);
   const entity = inventory.getEntity(inventorySlotAddress(0))!;
   expect(inventory.EquipFromInventory(entity)).toBe(true);
-  const stats = { health: createHealthState(health, 150), hunger: createHungerState(hunger, 150) };
+  const stats = { health: new Health(150), hunger: createHungerState(hunger, 150) };
+  stats.health.SetCurrentHealth(health);
   const art = { onequip: vi.fn(), onunequip: vi.fn() };
   const state = { name: 'idle' };
   const listeners = new Set<(data: unknown) => void>();
@@ -43,20 +45,20 @@ it('converts hunger into health every 30 game seconds while hurt, spending one u
   const { inventory, world, entity, stats } = wornAmulet(100, 100);
   try {
     world.advance(REDAMULET_CONVERSION_TIME - 1);
-    expect(stats.health.peek()).toBe(100);
+    expect(stats.health.currenthealth).toBe(100);
     world.advance(1);
-    expect(stats.health.peek()).toBe(100 + REDAMULET_CONVERSION);
+    expect(stats.health.currenthealth).toBe(100 + REDAMULET_CONVERSION);
     expect(stats.hunger.peek()).toBe(100 - REDAMULET_CONVERSION);
     expect(entity.components.finiteuses.remaining).toBe(REDAMULET_USES - 1);
     world.advance(REDAMULET_CONVERSION_TIME);
-    expect(stats.health.peek()).toBe(100 + 2 * REDAMULET_CONVERSION);
+    expect(stats.health.currenthealth).toBe(100 + 2 * REDAMULET_CONVERSION);
     // Healthy owners and nearly empty stomachs cost nothing.
-    stats.health.set(150);
+    stats.health.SetVal(150);
     world.advance(REDAMULET_CONVERSION_TIME);
     expect(entity.components.finiteuses.remaining).toBe(REDAMULET_USES - 2);
-    stats.health.set(100); stats.hunger.set(5);
+    stats.health.SetVal(100); stats.hunger.set(5);
     world.advance(REDAMULET_CONVERSION_TIME);
-    expect(stats.health.peek()).toBe(100);
+    expect(stats.health.currenthealth).toBe(100);
     expect(entity.components.finiteuses.remaining).toBe(REDAMULET_USES - 2);
   } finally { inventory.dispose(); }
 });
@@ -68,7 +70,7 @@ it('stops converting once unequipped, and keeps its worn art through amulet_rebi
     lifecycle.onunequip();
     expect(art.onunequip).not.toHaveBeenCalled();
     world.advance(REDAMULET_CONVERSION_TIME * 2);
-    expect(stats.health.peek()).toBe(100);
+    expect(stats.health.currenthealth).toBe(100);
     // SGwilson amulet_rebirth onexit: the art the amulet left goes as the owner leaves the state.
     enter('idle');
     expect(art.onunequip).toHaveBeenCalledOnce();

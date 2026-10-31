@@ -621,7 +621,7 @@ export async function createSceneEntities(
   }
 
   function registerLightFlierFlowers(registry: EntityRegistry, prefabId: 'lightflier_flower', worldState: SceneWorldState) {
-    const lightFlierPlayer = { position: player.position, isValid: () => playerStats.health.peek() > 0,
+    const lightFlierPlayer = { position: player.position, isValid: () => !playerStats.health.IsDead(),
       hasLightFlier: () => sceneInventory.Has('lightflier'),
       getFacing: () => playerInstance.worldHeading, getWalkSpeed: () => 4 * WORLD_SCALE,
       wantsToMove: () => playerInstance.wantsToMoveForward };

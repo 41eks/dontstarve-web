@@ -227,7 +227,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
           scheduler, phase: readonlySignal(phase),
           hunger: { doDelta: delta => playerStats.hunger.set(playerStats.hunger.peek() + delta), isStarving: () => playerStats.hunger.peek() <= 0 },
           sanity: { doDelta: delta => playerStats.sanity.set(playerStats.sanity.peek() + delta), getPercentWithPenalty: () => playerStats.sanity.percent.peek() },
-          health: { doDelta: delta => playerStats.health.set(playerStats.health.peek() + delta) },
+          health: playerStats.health,
           goToWakeup: () => playerAnimation.goToWakeup(),
         });
         // Pointer input is blocked while the controller is disabled, so waking listens ahead of the canvas.
@@ -382,13 +382,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
           getPhysicsRadius: () => .5 * unit,
           hasTag: tag => tag === 'player' || modelHasTag(player, tag),
           PushEvent: (name, data) => player.dispatchEvent({ type: name, data } as never),
-          components: { health: {
-            IsDead: () => playerStats.health.peek() <= 0,
-            DoDelta: delta => {
-              playerStats.health.set(playerStats.health.peek() + delta);
-              return delta;
-            },
-          }, sanity: { doDelta: delta => playerStats.sanity.set(playerStats.sanity.peek() + delta) }, inventory },
+          components: { health: playerStats.health, sanity: { doDelta: delta => playerStats.sanity.set(playerStats.sanity.peek() + delta) }, inventory },
         };
         // inst:PushEvent reaches the stategraph's EventHandlers.
         for (const name of ['attacked', 'blocked'] as const) {
@@ -518,7 +512,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         if (FOOD_EFFECTS[stack.itemId] && foodActions) {
           let eaten: FoodEffects | undefined;
           foodActions.eat(inventoryFoodSource(slot, stack.itemId, effects => { eaten = effects; }), () => {
-            if (eaten) applyPlayerFoodEffects(eaten);
+            if (eaten) applyPlayerFoodEffects(eaten, stack.itemId);
           });
           return;
         }
