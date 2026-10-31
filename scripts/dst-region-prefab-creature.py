@@ -14,6 +14,23 @@ def _finite(value):
     return type(value) in (int, float) and math.isfinite(value)
 
 
+ARCHIVE_CENTIPEDE_HUSK_HEALTH = 300
+
+
+def archive_centipede_husk_components(data):
+    # archive_centipede.lua huskfn has no OnSave; health:OnSave writes health (and maxhealth only with save_maxhealth).
+    if not isinstance(data, dict) or set(data) - {'health'}:
+        raise ValueError('Unsupported archive_centipede_husk save state')
+    health = data.get('health')
+    if health is None:
+        return {}
+    maximum = health.get('maxhealth', ARCHIVE_CENTIPEDE_HUSK_HEALTH) if isinstance(health, dict) else None
+    if not isinstance(health, dict) or set(health) - {'health', 'maxhealth'} or not _finite(maximum) or maximum <= 0 \
+            or not _finite(health.get('health')) or not 0 <= health['health'] <= maximum:
+        raise ValueError('Unsupported archive_centipede_husk health')
+    return {'health': {'current': health['health'], 'maximum': maximum}}
+
+
 def dragonfly_components(data, context):
     # dragonfly.lua OnSave playercombat; component OnSave: health, inventory, moisture and rampingspawner
     # always write, while knownlocations/timer/resistances write only when populated.

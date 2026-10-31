@@ -8,6 +8,14 @@ const sounds = {
     layers: [{ bank: 'grotto_sfx', streams: [351, 352, 353, 354, 355] }] },
   'grotto/creatures/light_bug/hit': { bank: 'grotto_sfx', streams: [347, 348, 349, 350], loop: false, volume: .2540972828865051 },
   'grotto/creatures/light_bug/death': { bank: 'grotto_sfx', streams: [341, 342, 343, 344, 345, 346], loop: false, volume: .2540972828865051 },
+  // archive_centipede.lua husk playidle2 → grotto.fev sounddefs 142 + 145, two simultaneous layers over
+  // electric_LP_thunderbird_DSH-001..017 (grotto_sfx file_index 317–333).
+  'grotto/creatures/centipede/electricity/idle2': { bank: 'grotto_sfx', streams: [318, 319, 320, 321, 322, 323, 324, 325, 326, 327, 328,
+    329, 330, 331, 332, 333, 334], loop: false, volume: .4570882022380829,
+    layers: [{ bank: 'grotto_sfx', streams: [318, 319, 320, 321, 322, 323, 324, 325, 326, 327, 328, 329, 330, 331, 332, 333, 334] }] },
+  // husk OnHealthDelta → sounddef 152 (low_to_med_archive_centipede_DST, file_index 91) / 151 (med_to_full, file_index 123).
+  'grotto/creatures/centipede/low_to_med': { bank: 'grotto_sfx', streams: [92], loop: false, volume: .5495408773422241 },
+  'grotto/creatures/centipede/med_to_full': { bank: 'grotto_sfx', streams: [124], loop: false, volume: .5495408773422241 },
   // SGwilson portal_jumpout, sounddef 516, wilson file_index 1.
   'dontstarve/movement/bodyfall_dirt': { bank: 'wilson', streams: [2], loop: false },
   // SGwilson portal jump: dontstarve.fev sounddef 2210; together file_index 1487–1491.

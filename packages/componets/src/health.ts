@@ -1,4 +1,5 @@
 import { batch, createMemo, createSignal, readonlySignal, type Memo, type ReadonlySignal, type Signal } from '../../signals/src';
+import type { GameTimeScheduler } from '../../signals/src/gameTimeScheduler';
 
 export interface HealthSaveData {
   health: number;
@@ -60,9 +61,14 @@ export class Health {
   nofadeout = false;
   ondelta?: (inst: HealthInst, oldPercent: number, newPercent: number, overtime?: boolean, cause?: string, afflicter?: HealthAfflicter, amount?: number) => void;
   readonly inst: HealthInst;
+  /** inst:DoPeriodicTask for StartRegen; absent for health that never regenerates. */
+  private readonly scheduler?: GameTimeScheduler;
+  /** health.lua self.regen: the amount, period and periodic task of StartRegen. */
+  regen?: { amount: number; period: number; task?: () => void };
 
-  constructor(maxhealth = 100, inst: HealthInst = {}) {
+  constructor(maxhealth = 100, inst: HealthInst = {}, scheduler?: GameTimeScheduler) {
     this.inst = inst;
+    this.scheduler = scheduler;
     this.maximumState = createSignal(maximum(maxhealth));
     this.currentState = createSignal(this.maximumState.peek());
     this.maximum = readonlySignal(this.maximumState);
@@ -137,6 +143,27 @@ export class Health {
     this.DoDelta(0, overtime, cause, true, undefined, true);
   }
 
+  /** health.lua StartRegen: DoDelta(amount, true, "regen") every `period` seconds while not dead. */
+  StartRegen(amount: number, period: number, interruptcurrentregen?: boolean): void {
+    if (!this.scheduler) throw new Error('Health regen needs a scheduler');
+    if (interruptcurrentregen !== false) this.StopRegen();
+    const regen = this.regen ??= { amount, period };
+    regen.amount = finite(amount, 'regen amount');
+    regen.period = finite(period, 'regen period');
+    if (regen.task) return;
+    const scheduler = this.scheduler;
+    const tick = () => {
+      regen.task = scheduler.schedule(regen.period, tick);
+      if (!this.IsDead()) this.DoDelta(regen.amount, true, 'regen');
+    };
+    regen.task = scheduler.schedule(regen.period, tick);
+  }
+
+  StopRegen(): void {
+    this.regen?.task?.();
+    this.regen = undefined;
+  }
+
   IsDead(): boolean { return this.currentState.peek() <= 0; }
   IsHurt(): boolean { return this.currentState.peek() < this.GetMaxWithPenalty(); }
 
@@ -161,7 +188,7 @@ export class Health {
     });
   }
 
-  dispose(): void { this.percent.dispose(); this.maxWithPenalty.dispose(); this.ondelta = undefined; }
+  dispose(): void { this.StopRegen(); this.percent.dispose(); this.maxWithPenalty.dispose(); this.ondelta = undefined; }
 }
 
 export default Health;

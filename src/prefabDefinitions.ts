@@ -22,6 +22,7 @@ import { ATRIUM_GATE_ID, ATRIUM_GATE_TIMER_NAMES } from '@dontstarve-web/prefab/
 import { RUINS_STATUE_MAGE_ID, RUINS_STATUE_MAGE_NOGEM_ID, RUINS_STATUE_HEAD_ID, RUINS_STATUE_HEAD_NOGEM_ID, RUINS_STATUE_GEMS } from '@dontstarve-web/prefab/ruins_statue_mage';
 import { ATRIUM_STATUE_ID } from '@dontstarve-web/prefab/atrium_statue';
 import { CHESSJUNK_IDS } from '@dontstarve-web/prefab/chessjunk';
+import { ARCHIVE_CENTIPEDE_HUSK_ID } from '@dontstarve-web/prefab/archive_centipede';
 import { parseDragonflyState } from './save/dragonfly';
 import { SKELETON_IDS, SKELETON_ANIMS, SKELETON_PLAYER_ID } from '@dontstarve-web/prefab/skeleton';
 import { MARBLEBEAN_SAPLING_ID } from '@dontstarve-web/prefab/marblebean_sapling';
@@ -286,6 +287,9 @@ export const PREFAB_DEFINITIONS = {
       ...(state.repairerid === undefined ? {} : { repairerid: state.repairerid as string }),
       ...(state.repairerchar === undefined ? {} : { repairerchar: state.repairerchar as string }) } };
   }, true, ['chessmonster_ruins.zip']),
+  // archive_centipede.lua huskfn has no OnSave; health:OnSave writes the current health.
+  archiveCentipedeHusks: definePrefabs([ARCHIVE_CENTIPEDE_HUSK_ID], componentParser({ keys: ['health'] }), true,
+    [{ animation: 'archive_centipede.zip', build: 'archive_centipede_build.zip' }]),
   buildings: definePrefabs(PLACEABLE_BUILDING_IDS.filter((id) => !id.endsWith('_item')), (value, path, context) => {
     const spec = Object.hasOwn(context.catalog.buildings, context.prefab) ? context.catalog.buildings[context.prefab] : undefined;
     if (spec) return (context.prefab === 'cookpot' ? cookPot : context.prefab === 'sculptingtable' ? sculptingTable

@@ -48,6 +48,7 @@ ENTITY_WHITELIST = {
     'chessjunk1': WORKABLE['chessjunk_components'],
     'chessjunk2': WORKABLE['chessjunk_components'],
     'chessjunk3': WORKABLE['chessjunk_components'],
+    'archive_centipede_husk': CREATURE['archive_centipede_husk_components'],
     'deciduoustree': GROWABLE['deciduoustree_components'],
     'moon_tree': GROWABLE['moon_tree_components'],
     'moonbutterfly_sapling': GROWABLE['moonbutterfly_sapling_components'],

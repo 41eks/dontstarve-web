@@ -58,6 +58,7 @@
     "./ruinsrelic": "./src/ruinsrelic.ts",
     "./atrium_statue": "./src/atrium_statue.ts",
     "./chessjunk": "./src/chessjunk.ts",
+    "./archive_centipede": "./src/archive_centipede.ts",
     "./rock_avocado_fruit": "./src/rock_avocado_fruit.ts",
     "./marbleshrub": "./src/marbleshrub.ts",
     "./archive_props": "./src/archive_props.ts",

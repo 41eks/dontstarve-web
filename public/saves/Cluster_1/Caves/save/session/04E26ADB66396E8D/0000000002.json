@@ -232053,6 +232053,32 @@
           }
         }
       ],
+      "archive_centipede_husk": [
+        {
+          "id": "dst_04E26ADB66396E8D_archive_centipede_husk_index_000001",
+          "transform": {
+            "position": [
+              -2113.2,
+              0.0,
+              292.47
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_archive_centipede_husk_index_000002",
+          "transform": {
+            "position": [
+              -2272.14,
+              0.0,
+              206.46
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        }
+      ],
       "ground_item": [
         {
           "id": "dst_04E26ADB66396E8D_fireflies_index_000001",

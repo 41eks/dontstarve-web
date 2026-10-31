@@ -463,6 +463,7 @@
     "chessjunk1",
     "chessjunk2",
     "chessjunk3",
+    "archive_centipede_husk",
     "deciduoustree",
     "moon_tree",
     "moonbutterfly_sapling",
@@ -661,6 +662,10 @@
     "chessjunk3": {
       "source": 0,
       "imported": 0
+    },
+    "archive_centipede_husk": {
+      "source": 2,
+      "imported": 2
     },
     "deciduoustree": {
       "source": 0,
@@ -2880,6 +2885,28 @@
         -329.35
       ],
       "sourceNode": "TheLabyrinth:BG_86:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_archive_centipede_husk_index_000001",
+      "prefab": "archive_centipede_husk",
+      "sourceIndex": 1,
+      "sourcePosition": [
+        -720.4,
+        0,
+        -117.49
+      ],
+      "sourceNode": "ArchiveMaze:BG_95:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_archive_centipede_husk_index_000002",
+      "prefab": "archive_centipede_husk",
+      "sourceIndex": 2,
+      "sourcePosition": [
+        -773.38,
+        0,
+        -88.82
+      ],
+      "sourceNode": "ArchiveMaze:BG_96:ArchiveMazeRooms"
     },
     {
       "id": "dst_04E26ADB66396E8D_fireflies_index_000001",
