@@ -21,6 +21,7 @@ import { ARMORSNURTLESHELL_ID, configureArmorSnurtleshellEntity } from './armors
 import { AMULET_ID, configureAmuletEntity } from './amulet';
 import { configureRockAvocadoFruitEntity } from './rock_avocado_fruit';
 import { configurePlantableEntity } from './plantables';
+import { configureFoodEntity } from './food';
 import { configureFertilizerEntity, FERTILIZER_CYCLES } from './fertilizers';
 import { configureTurfEntity, turfTileName } from './turfs';
 
@@ -61,6 +62,7 @@ export function createGroundItemFactory(context: GroundPrefabContext): GroundIte
     itemIds: Object.keys(GROUND_ART_DEFINITIONS),
     configureEntity: entity => {
       configurePlantableEntity(entity); configureRockAvocadoFruitEntity(entity);
+      configureFoodEntity(entity);
       if (Object.hasOwn(FERTILIZER_CYCLES, entity.prefab)) configureFertilizerEntity(entity);
       return turfTileName(entity.prefab) ? configureTurfEntity(entity)
       : isBirdId(entity.prefab) ? configureBirdEntity(entity)

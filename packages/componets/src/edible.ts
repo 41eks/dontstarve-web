@@ -7,8 +7,16 @@ const STALE_FOOD_HEALTH = .333;
 const SPOILED_FOOD_HEALTH = 0;
 const SANITY_SMALL = 10;
 
+interface EdibleInstance {
+  readonly isRemoved: boolean;
+  readonly components: { stackable?: { Consume(): boolean } };
+  remove(): boolean;
+  PushEvent(name: string, data: unknown): void;
+}
+
 /** components/edible.lua value getters for an eater without eater-specific spoilage rules. */
 export class Edible {
+  private readonly inst?: EdibleInstance;
   healthvalue = 10;
   hungervalue = 10;
   sanityvalue = 0;
@@ -20,8 +28,18 @@ export class Edible {
   private readonly perishStage: () => PerishStage | undefined;
 
   /** The stage reads the inst's perishable component at eating time, if it has one. */
-  constructor(perishStage: () => PerishStage | undefined = () => undefined) {
+  constructor(perishStage: () => PerishStage | undefined = () => undefined, inst?: EdibleInstance) {
     this.perishStage = perishStage;
+    this.inst = inst;
+  }
+
+  OnEaten(eater: unknown): void { this.inst?.PushEvent('oneaten', { eater }); }
+
+  /** edible.lua HandleEatRemove: OnEaten may already have removed the food. */
+  HandleEatRemove(): boolean {
+    if (!this.inst) return false;
+    if (this.inst.isRemoved) return true;
+    return this.inst.components.stackable?.Consume() ?? this.inst.remove();
   }
 
   GetSanity(): number {

@@ -1,15 +1,18 @@
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { FoodActionController, type FoodSource } from '../../stategraphs/src/eat';
+import { FoodActionController } from '../../stategraphs/src/eat';
 import { FOOD_EFFECTS } from '../../prefab/src/food';
 import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
 import { PlaySound } from '../../prefab/src/sound';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { createGroundItemVisual } from './groundItemVisual';
-import { InventoryStore, InventorySlot, inventorySlotAddress } from '@dontstarve-web/inventory';
+import { inventorySlotAddress } from '@dontstarve-web/inventory';
+import { createPickupInventory } from './pickupFixture';
+import { playerInstance } from '../../../src/player';
+import { createPerishWorld } from './perishWorldFixture';
 import type { WorldContext } from '../../prefab/src/worldContext';
-import { applyPlayerFoodEffects, getPlayerStats, playerStats } from '../../../src/playerStats';
+import { getPlayerStats, playerStats } from '../../../src/playerStats';
 
 vi.mock('../../../src/save/initialSave', () => ({ initialSave: { players: { local: { stats: { health: 140, hunger: 90, sanity: 35 } } } } }));
 vi.mock('../../../src/player', async () => {
@@ -30,30 +33,22 @@ async function fixture(itemId = 'bananajuice') {
   const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
   const world = { scene: new THREE.Scene(), player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     renderer: { domElement: new EventTarget() } } as unknown as WorldContext;
+  const slot = inventorySlotAddress(0), store = createPickupInventory();
+  playerInstance.components.inventory = store;
   const actions = new FoodActionController(world, animation, { stop() {}, goToPoint: () => true, destination: undefined },
-    { soilTargets: [], plantSeed: () => false });
-  const slot = inventorySlotAddress(0);
-  const { name, icon, atlas } = GROUND_ITEM_DEFINITIONS[itemId];
-  const store = new InventoryStore([{ address: slot, slot: new InventorySlot() }], {
-    [itemId]: { name, icon, atlas, maxStack: 40 },
-  });
+    { soilTargets: [], plantSeed: () => false }, playerInstance);
   store.add(itemId, 2);
   const entity = store.getEntity(slot)!;
-  const foodDrink = FOOD_EFFECTS[itemId].foodDrink;
-  const source: FoodSource = {
-    foodDrink,
-    isValid: () => !entity.isRemoved && store.getEntity(slot) === entity,
-    take: () => store.applySlotChanges([{ slot, itemId, delta: -1 }]),
-  };
-  return { animation, actions, store, slot, entity, source };
+  return { animation, actions, store, slot, entity };
 }
 
-it('eats meatballs through the solid-food action and applies source stats only after consumption', async () => {
-  const { animation, actions, store, slot, source } = await fixture('meatballs');
+it('eats meatballs through the solid-food action and commits edible stats and one item at the eat frame', async () => {
+  const { animation, actions, store, slot, entity } = await fixture('meatballs');
   playerStats.hunger.SetCurrent(50);
-  const onEaten = vi.fn(() => applyPlayerFoodEffects(FOOD_EFFECTS.meatballs));
+  const onEaten = vi.fn();
+  entity.ListenForEvent('oneaten', onEaten);
   try {
-    expect(await actions.eat(source, onEaten)).toBe(true);
+    expect(await actions.eat(entity)).toBe(true);
     expect(animation.stategraph.animationClip.key).toBe('quick_eat_pre');
     for (let frame = 0; frame < 11; frame++) animation.update(1 / 30);
     expect(onEaten).not.toHaveBeenCalled();
@@ -71,7 +66,7 @@ it('renders source raw/cooked mushroom poses and applies harmful and restorative
   const assets = new GroundItemAssets();
   const raw = await createGroundItemVisual(assets, 'green_cap');
   const cooked = await createGroundItemVisual(assets, 'blue_cap_cooked');
-  const { animation, actions, store, slot, source } = await fixture('green_cap');
+  const { animation, actions, store, slot, entity } = await fixture('green_cap');
   try {
     expect(GROUND_ITEM_DEFINITIONS.green_cap).toMatchObject({ bank: 'mushrooms', animationArchive: 'mushrooms.zip',
       buildArchives: ['mushrooms.zip'], animation: 'green_cap', atlas: 'images/inventoryimages.xml', skinArchives: {} });
@@ -80,26 +75,28 @@ it('renders source raw/cooked mushroom poses and applies harmful and restorative
       const mesh = sprite.model.children[0].children[0].children[0] as THREE.Mesh;
       expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
     }
-    await actions.eat(source, () => applyPlayerFoodEffects(FOOD_EFFECTS.green_cap));
+    await actions.eat(entity);
     for (let frame = 0; frame < 40; frame++) animation.update(1 / 30);
     expect(store.get(slot)?.count).toBe(1);
     expect(getPlayerStats()).toEqual({ health: 140, hunger: 102.5, sanity: 0, sanitySane: false });
-    applyPlayerFoodEffects(FOOD_EFFECTS.blue_cap_cooked);
+    store.add('blue_cap_cooked', 1);
+    expect(playerInstance.components.eater!.Eat(store.getEntity(inventorySlotAddress(1))!)).toBe(true);
     expect(getPlayerStats()).toEqual({ health: 137, hunger: 102.5, sanity: 10, sanitySane: false });
   } finally { actions.dispose(); store.dispose(); raw.dispose(); cooked.dispose(); assets.dispose(); }
 });
 
 it('drinks source bananajuice art, consumes once at frame 12 and restores the remaining item and numerical stats', async () => {
-  const { animation, actions, store, slot, entity, source } = await fixture();
+  const { animation, actions, store, slot, entity } = await fixture();
   const assets = new GroundItemAssets();
   const ground = await createGroundItemVisual(assets, 'bananajuice');
-  const onEaten = vi.fn(() => applyPlayerFoodEffects(FOOD_EFFECTS.bananajuice));
+  const onEaten = vi.fn();
+  entity.ListenForEvent('oneaten', onEaten);
   try {
     expect(GROUND_ITEM_DEFINITIONS.bananajuice).toMatchObject({ atlas: 'images/inventoryimages1.xml', animationArchive: 'cook_pot_food.zip',
       buildArchives: ['cook_pot_food10.zip'], symbolOverrides: { swap_food: { symbol: 'bananajuice' } }, skinArchives: {} });
     const mesh = ground.model.children[0].children[0].children[0] as THREE.Mesh;
     expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
-    expect(await actions.eat(source, onEaten)).toBe(true);
+    expect(await actions.eat(entity)).toBe(true);
     expect(animation.stategraph.animationClip.key).toBe('quick_drink_pre');
     for (let frame = 0; frame < 11; frame++) animation.update(1 / 30);
     expect(store.get(slot)?.count).toBe(2);
@@ -120,8 +117,8 @@ it('drinks source bananajuice art, consumes once at frame 12 and restores the re
 });
 
 it('preserves food and stats when cancelled or replaced before commit and clamps a completed drink to the sanity maximum', async () => {
-  const { animation, actions, store, slot, source } = await fixture();
-  const eat = () => actions.eat(source, () => applyPlayerFoodEffects(FOOD_EFFECTS.bananajuice));
+  const { animation, actions, store, slot, entity } = await fixture();
+  const eat = () => actions.eat(entity);
   try {
     await eat(); animation.update(0.1); actions.cancel(); animation.update(1);
     expect(store.get(slot)?.count).toBe(2);
@@ -137,7 +134,7 @@ it('preserves food and stats when cancelled or replaced before commit and clamps
     expect(playerStats.sanity.current).toBe(35);
     playerStats.sanity.SetCurrent(190);
     const replacement = store.getEntity(slot)!;
-    expect(await actions.eat({ ...source, isValid: () => store.getEntity(slot) === replacement }, () => applyPlayerFoodEffects(FOOD_EFFECTS.bananajuice))).toBe(true);
+    expect(await actions.eat(replacement)).toBe(true);
     for (let frame = 0; frame < 40; frame++) animation.update(1 / 30);
     expect(store.get(slot)?.count).toBe(1);
     expect(playerStats.sanity.current).toBe(200);
@@ -146,4 +143,44 @@ it('preserves food and stats when cancelled or replaced before commit and clamps
 
 it('makes bananapop edible with its source preparedfoods values as a solid VEGGIE food', () => {
   expect(FOOD_EFFECTS.bananapop).toEqual({ health: 20, hunger: 12.5, sanity: 33 });
+});
+
+it('keeps the buffered food entity when it moves to another inventory slot', async () => {
+  const { animation, actions, store, slot, entity } = await fixture();
+  const destination = inventorySlotAddress(1);
+  try {
+    expect(actions.eat(entity)).toBe(true);
+    expect(store.transfer(slot, destination, 2)).toBe(true);
+    for (let frame = 0; frame < 12; frame++) animation.update(1 / 30);
+    expect(store.getEntity(slot)).toBeNull();
+    expect(store.getEntity(destination)).toBe(entity);
+    expect(store.get(destination)?.count).toBe(1);
+    expect(getPlayerStats()).toEqual({ health: 148, hunger: 115, sanity: 68 });
+  } finally { actions.dispose(); store.dispose(); }
+});
+
+it('settles the current perish stage at the eat frame and rejects food replaced by rot', async () => {
+  const { animation, actions, store, slot, entity } = await fixture('butterflywings');
+  const world = createPerishWorld();
+  store.entities.bindPerishWorld(world);
+  const perish = entity.components.perishable;
+  try {
+    perish.SetPercent(.50001);
+    expect(actions.eat(entity)).toBe(true);
+    world.advance(.5);
+    expect(perish.stage.peek()).toBe('fresh');
+    for (let frame = 0; frame < 12; frame++) animation.update(1 / 30);
+    expect(perish.stage.peek()).toBe('stale');
+    expect(getPlayerStats()).toEqual({ health: 140 + 8 * .333, hunger: 90 + 9.375 * .667, sanity: 35 });
+    expect(store.get(slot)?.count).toBe(1);
+    for (let frame = 0; frame < 40; frame++) animation.update(1 / 30);
+    perish.SetPercent(.00001);
+    expect(actions.eat(entity)).toBe(true);
+    const stats = getPlayerStats();
+    world.advance(.5);
+    for (let frame = 0; frame < 12; frame++) animation.update(1 / 30);
+    expect(entity.isRemoved).toBe(true);
+    expect(store.get(slot)).toMatchObject({ itemId: 'spoiled_food', count: 1 });
+    expect(getPlayerStats()).toEqual(stats);
+  } finally { actions.dispose(); store.dispose(); }
 });

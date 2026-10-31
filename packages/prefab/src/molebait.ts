@@ -11,7 +11,7 @@ import type { Vector3 } from 'three';
 export function configureMoleBaitEntity(entity: ItemEntity): void {
   const definition = (catalog.items as Record<string, { moleBait?: boolean; elementalFoodHunger?: number }>)[entity.prefab];
   if (definition?.elementalFoodHunger !== undefined && !entity.components.edible) {
-    const edible = new Edible(() => entity.components.perishable.stage.peek());
+    const edible = new Edible(() => entity.components.perishable.stage.peek(), entity);
     edible.hungervalue = definition.elementalFoodHunger; entity.components.edible = edible; entity.addTag('edible_ELEMENTAL');
   }
   if (!definition?.moleBait) return;

@@ -4,13 +4,14 @@ import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { FarmPlowPlacement } from '../../prefab/src/farm_plow';
 import { FOOD_EFFECTS, PERISHABLE_FOODS } from '../../prefab/src/food';
-import { SEEDS_HUNGER } from '../../prefab/src/seeds';
 import { FoodActionController } from '../../stategraphs/src/eat';
 import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { createGroundItemVisual } from './groundItemVisual';
 import { TurfMap } from '../../prefab/src/turfMap';
 import type { WorldContext } from '../../prefab/src/worldContext';
+import { createPickupInventory } from './pickupFixture';
+import { inventorySlotAddress } from '@dontstarve-web/inventory';
 import { PlaySound } from '../../prefab/src/sound';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}),
@@ -40,29 +41,31 @@ it('renders the original ground seed pose and commits quick eating once at frame
   const player = await createWilsonPlayer('/dst/data/anim');
   const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
   const { farm, world } = farmSetup(player);
-  const seeds = new FoodActionController(world, animation, { stop() {}, goToPoint: () => true, destination: undefined }, farm);
-  let count = 2;
-  const stats = { hunger: 105, health: 150, sanity: 35 };
-  const source = { isValid: () => count > 0, take: () => { count--; return true; } };
+  const instance = wilsonPlayerInstance(player), store = createPickupInventory();
+  instance.components.inventory = store;
+  const seeds = new FoodActionController(world, animation, { stop() {}, goToPoint: () => true, destination: undefined }, farm, instance);
+  store.add('seeds', 2);
+  const slot = inventorySlotAddress(0), source = store.getEntity(slot)!;
+  const stats = () => ({ hunger: instance.stats.hunger.current, health: instance.stats.health.currenthealth, sanity: instance.stats.sanity.current });
   try {
-    expect(await seeds.eat(source, () => { stats.hunger += SEEDS_HUNGER; })).toBe(true);
+    expect(await seeds.eat(source)).toBe(true);
     for (let frame = 0; frame < 11; frame++) animation.update(1 / 30);
-    expect(count).toBe(2);
+    expect(store.get(slot)?.count).toBe(2);
     expect(PlaySound).toHaveBeenCalledWith('dontstarve/wilson/eat');
     animation.update(1 / 30);
-    expect(count).toBe(1);
-    expect(stats).toEqual({ hunger: 109.6875, health: 150, sanity: 35 });
+    expect(store.get(slot)?.count).toBe(1);
+    expect(stats()).toEqual({ hunger: 109.6875, health: 150, sanity: 35 });
     for (let frame = 0; frame < 40; frame++) animation.update(1 / 30);
-    expect(count).toBe(1);
+    expect(store.get(slot)?.count).toBe(1);
     expect(animation.stategraph.stateName).toBe('idle');
-    await seeds.eat(source, () => { stats.hunger += SEEDS_HUNGER; });
+    await seeds.eat(source);
     animation.update(0.1); seeds.cancel(); animation.update(1);
-    expect(count).toBe(1);
-    expect(stats.hunger).toBe(109.6875);
-    expect(seeds.eat(source, () => { stats.hunger += SEEDS_HUNGER; })).toBe(true);
+    expect(store.get(slot)?.count).toBe(1);
+    expect(stats().hunger).toBe(109.6875);
+    expect(seeds.eat(source)).toBe(true);
     seeds.cancel(); animation.update(1);
-    expect(count).toBe(1);
-  } finally { seeds.dispose(); farm.dispose(); }
+    expect(store.get(slot)?.count).toBe(1);
+  } finally { seeds.dispose(); store.dispose(); farm.dispose(); }
 });
 
 it('plants only an intact finished hole, replaces it atomically and restores the planted entity without spending seeds', async () => {

@@ -4,6 +4,7 @@ import type { GameTimeScheduler, Signal } from '@dontstarve-web/signals';
 import { Health } from '../../componets/src/health';
 import { Hunger } from '../../componets/src/hunger';
 import { Sanity, type SanityMode } from '../../componets/src/sanity';
+import { Eater } from '../../componets/src/eater';
 import type { PrefabInstance } from './prefabInstance';
 import { actionEntity } from './actionEntity';
 import { prefabInstance } from './prefabInstance';
@@ -25,7 +26,7 @@ export interface PlayerStats {
 }
 export interface PlayerStatsSave { health?: number; hunger?: number; sanity?: number; penalty?: number; sanitySane?: boolean; sanityMode?: SanityMode }
 
-/** player_common.lua: assemble the three authoritative components before restoring player data. */
+/** player_common.lua: assemble the player's authoritative stats and eater components. */
 export function createPlayerStats(inst: PrefabInstance, saved: PlayerStatsSave = {}, scheduler?: GameTimeScheduler): PlayerStats {
   const health = inst.components.health = new Health(WILSON_MAX_HEALTH, inst);
   health.nofadeout = true;
@@ -36,7 +37,8 @@ export function createPlayerStats(inst: PrefabInstance, saved: PlayerStatsSave =
   hunger.OnLoad({ hunger: saved.hunger ?? 105 });
   const sanity = inst.components.sanity = new Sanity(inst, WILSON_MAX_SANITY);
   sanity.OnLoad({ current: saved.sanity ?? 35, sane: saved.sanitySane, mode: saved.sanityMode });
-  inst.onRemove(() => { health.dispose(); hunger.dispose(); sanity.dispose(); });
+  const eater = inst.components.eater = new Eater(inst);
+  inst.onRemove(() => { eater.dispose(); health.dispose(); hunger.dispose(); sanity.dispose(); });
   return { health, hunger, sanity };
 }
 

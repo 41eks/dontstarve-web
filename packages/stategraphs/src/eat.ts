@@ -3,18 +3,22 @@ import { bindActionCancellation } from './actionEvents.ts';
 import { PointerRaycaster } from './pointerRaycaster.ts';
 import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor } from './actionContext.ts';
 import type { FarmActionWorld, FarmSoilTarget } from './farmActions.ts';
+import type { InventoryStore, ItemEntity } from '@dontstarve-web/inventory';
+import type { Eater } from '../../componets/src/eater';
 type FarmPlowPlacement = Pick<FarmActionWorld, 'soilTargets' | 'plantSeed'>;
 
 const PLANT_REACH = 4;
 
-export interface FoodSource { readonly itemId?: string; isValid(): boolean; take(): boolean; readonly foodDrink?: boolean; }
+interface FoodActor {
+  readonly components: { inventory?: Pick<InventoryStore, 'getEntity'>; eater?: Eater };
+}
 
 /** Inventory food uses timed quick eating/drinking; seeds can also be planted. */
 export class FoodActionController {
   private readonly pointer: PointerRaycaster;
   private readonly unregisterHover: () => void;
   private readonly stopActionEvents: () => void;
-  private source?: FoodSource;
+  private source?: ItemEntity;
   private target?: FarmSoilTarget;
   private version = 0;
   private disposed = false;
@@ -25,6 +29,7 @@ export class FoodActionController {
   private readonly animation: WilsonAnimationController;
   private readonly locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>;
   private readonly farm: FarmPlowPlacement;
+  private readonly actor: FoodActor;
   private readonly isManualMovement: () => boolean;
   private readonly onDeselect: () => void;
 
@@ -33,39 +38,47 @@ export class FoodActionController {
     animation: WilsonAnimationController,
     locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>,
     farm: FarmPlowPlacement,
+    actor: FoodActor,
     isManualMovement = () => false,
     onDeselect = () => {},
   ) {
     this.world = world; this.animation = animation; this.locomotor = locomotor;
     this.farm = farm; this.isManualMovement = isManualMovement;
+    this.actor = actor;
     this.onDeselect = onDeselect;
     this.stopActionEvents = bindActionCancellation(world, this, 'food', () => this.cancel());
     this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
     this.unregisterHover = world.mouseActions?.register(() =>
       this.farm.soilTargets.filter(target => target.isValid()).map(target => ({
-        action: { action: 'PLANT' }, button: 'left', model: target.model, available: !!this.source?.isValid(),
+        action: { action: 'PLANT' }, button: 'left', model: target.model, available: !!this.source && this.isValid(this.source),
       }))) ?? (() => {});
     world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown, true);
     window.addEventListener('keydown', this.handleKeyDown);
   }
 
-  begin(source: FoodSource): void {
-    if (this.disposed || !source.isValid()) return;
+  begin(source: ItemEntity): boolean {
+    if (this.disposed || !this.isValid(source)) return false;
     this.cancel();
     this.world.actionEvents?.emit('action:begin', { owner: this, action: 'SEED_SELECT' });
     this.source = source; this.animation.cancelEmote();
+    return true;
   }
 
-  eat(source: FoodSource, onEaten: () => void): boolean {
-    if (this.disposed || !source.isValid()) return false;
+  eat(food: ItemEntity): boolean {
+    const eater = this.actor.components.eater;
+    if (this.disposed || !this.isValid(food) || !eater?.CanEat(food)) return false;
     this.cancel();
     this.world.actionEvents?.emit('action:begin', { owner: this, action: 'EAT' });
     const version = this.version;
     this.locomotor.stop(); this.animation.cancelEmote();
-    return this.animation.playQuickEat(() => {
-      if (version !== this.version || !source.isValid() || !source.take()) return false;
-      onEaten(); return true;
-    }, source.foodDrink);
+    return this.animation.playQuickEat(() => version === this.version && this.isValid(food) && eater.Eat(food),
+      food.hasTag('fooddrink'));
+  }
+
+  /** BufferedAction keeps the invobject entity; moving slots or changing skin preserves its identity. */
+  private isValid(item: ItemEntity): boolean {
+    const owner = item.components.inventoryitem.owner;
+    return !item.isRemoved && !!owner && this.actor.components.inventory?.getEntity(owner.address) === item;
   }
 
   cancel(): void {
@@ -77,7 +90,7 @@ export class FoodActionController {
 
   update(): void {
     if (this.isManualMovement()) { this.cancel(); return; }
-    if (this.source && !this.source.isValid()) {
+    if (this.source && !this.isValid(this.source)) {
       if (this.target) this.cancel();
       else { this.source = undefined; this.onDeselect(); }
       return;
@@ -97,7 +110,7 @@ export class FoodActionController {
     this.faceTarget(target.position);
     const version = this.version;
     if (this.animation.playPlant(() => version === this.version && target.isValid() && this.inReach(target)
-      && source.isValid() && this.farm.plantSeed(target.id, source.itemId, () => source.take()))) this.target = undefined;
+      && this.isValid(source) && this.farm.plantSeed(target.id, source.prefab, () => source.components.stackable.Consume()))) this.target = undefined;
   }
 
   private inReach(target: FarmSoilTarget): boolean {
@@ -106,7 +119,7 @@ export class FoodActionController {
   }
 
   private hoveredTarget(): FarmSoilTarget | undefined {
-    if (!this.source?.isValid()) return undefined;
+    if (!this.source || !this.isValid(this.source)) return undefined;
     const targets = this.farm.soilTargets;
     const hit = this.pointer.raycastPointer(targets.map(({ model }) => model));
     let root: THREE.Object3D | null = hit?.object ?? null;

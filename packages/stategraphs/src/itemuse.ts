@@ -147,7 +147,7 @@ export class ItemUseActionController {
     const buffered = new BufferedAction(action, () => action === 'ADDFUEL' || action === 'ADDWETFUEL'
       ? this.addFuel(target, source)
       : action === 'FERTILIZE' ? this.fertilize(target, source)
-      : action === 'FEED' ? target.components.eater!.Eat(source.entity, () => source.take(true), this.world.player)
+      : action === 'FEED' ? target.components.eater!.Eat(source.entity, this.world.player)
       : action === 'BATHBOMB' ? this.bathbomb(target, source)
       : action === 'STORE'
       // actions.lua STORE: Occupy(inventoryitem:RemoveFromOwner()) — the same inst leaves the cursor.

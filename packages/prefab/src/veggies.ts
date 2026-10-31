@@ -82,7 +82,7 @@ export const VEGGIE_PERISH_TIMES = Object.fromEntries(Object.entries(ITEMS).map(
 export function configureVeggieEntity(entity: ItemEntity): void {
   const values = ITEMS[entity.prefab];
   if (!values || entity.components.edible) return;
-  const edible = new Edible(() => entity.components.perishable.stage.peek());
+  const edible = new Edible(() => entity.components.perishable.stage.peek(), entity);
   edible.healthvalue = values.health; edible.hungervalue = values.hunger; edible.sanityvalue = values.sanity;
   entity.components.edible = edible;
   entity.addTag(VEGGIE_SEED_IDS.includes(entity.prefab) ? 'edible_SEEDS' : 'edible_VEGGIE');
