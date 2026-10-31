@@ -1,3 +1,5 @@
+import { Workable } from '../../componets/src/workable';
+import { createStructureLootDropper } from './structureLoot';
 import type { PrefabInstance } from './prefabInstance';
 import * as THREE from 'three';
 import definitions from './definitions.json' with { type: 'json' };
@@ -17,7 +19,6 @@ import type {
     AnimatedBuildingBuiltContext,
     AnimatedBuildingDefinition,
     AnimatedBuildingEventContext,
-    AnimatedBuildingHammerContext,
 } from './animatedBuildingPlacement';
 import type { PrefabWorldContext } from './worldContext';
 import { BIRD_SOUNDS, isBirdId } from './birds';
@@ -530,6 +531,12 @@ export class Birdcage {
 const cageOf = (instance: PrefabInstance): Birdcage => instance.components.birdcage!;
 
 function oninit({ instance, world, animStateArt }: AnimatedBuildingEventContext): void {
+    const workable = instance.components.workable = new Workable(instance);
+    workable.SetWorkAction('HAMMER');
+    workable.SetWorkLeft(4);
+    workable.SetOnWorkCallback(onworked);
+    workable.SetOnFinishCallback(onhammered);
+    instance.components.lootdropper = createStructureLootDropper(instance);
     new Birdcage(instance, world, animStateArt);
 }
 
@@ -538,20 +545,23 @@ function onbuilt({ instance, onComplete }: AnimatedBuildingBuiltContext): void {
     onComplete();
 }
 
-function onhit({ instance }: AnimatedBuildingHammerContext): void {
-    cageOf(instance).onWorked();
+function onworked(inst: PrefabInstance): void {
+    cageOf(inst).onWorked();
+}
+
+function onhammered(inst: PrefabInstance): void {
+    cageOf(inst).dropContents();
+    inst.components.lootdropper!.DropLoot();
+    inst.worldServices?.fx?.collapse?.('small', inst.position, 'metal');
+    inst.remove();
 }
 
 export const BIRDCAGE_DEFINITION: AnimatedBuildingDefinition = {
     ...definitions.animatedBuildings.birdcage,
     obstacleRadius: 0.5,
-    hammerWorkLeft: 4, hammerMaterial: 'metal',
-    hammerEffect: { archive: 'structure_collapse_fx.zip', animation: 'collapse_small', name: 'collapse_small' },
     skinInit: birdcage_init_fn,
     oninit,
     onbuilt,
-    onhit,
-    hammerDropEntities: ({ instance }) => cageOf(instance).dropContents(),
     onrestore: ({ instance }, components) => { if (components.birdcage) cageOf(instance).restore(components.birdcage); },
     exportComponents: ({ instance }) => ({ birdcage: cageOf(instance).save() }),
 };

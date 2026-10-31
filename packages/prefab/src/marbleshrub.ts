@@ -163,7 +163,7 @@ export class MarbleShrubManager {
     shrub.workable = new Workable(inst);
     shrub.workable.SetWorkAction('MINE');
     shrub.workable.SetWorkLeft(STAGES[0].workleft);
-    shrub.workable.SetOnWorkCallback((_worker, workleft) => {
+    shrub.workable.SetOnWorkCallback((_inst, _worker, workleft) => {
       if (workleft > 0) { play(shrub.stage.hit); return; }
       // onworked: break pose, rock_break_fx, loot at the shrub, then no collision, NOCLICK and removal at animover.
       shrub.broken = true;

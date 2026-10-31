@@ -416,7 +416,7 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
         spawnLeaves(tree, true);
         playOnce(tree, `chop_${DECIDUOUS_STAGES[stageOf(tree)]}`);
       });
-      workable.SetOnFinishCallback(worker => chopDown(tree, worker));
+      workable.SetOnFinishCallback((_inst, worker) => chopDown(tree, worker));
       if (saved?.components.deciduoustree?.stump) makeStump(tree);
       else if (saved?.components.deciduoustree?.burnt) {
         tree.burntcone = saved.components.deciduoustree.burntcone === true;

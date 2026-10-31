@@ -4,7 +4,6 @@ import { ModelRecords } from './modelRecords';
 import * as THREE from 'three';
 import { AnimState, type AnimStateArt } from '@dontstarve-web/animation/animState';
 import { createEffect, watchSignal, getBoundWatchWorldContent, WorldContentKey, type ReadonlySignal, type Signal } from '@dontstarve-web/signals';
-import { disposeSprite } from './disposeSprite';
 import type { AnimatedSpriteSourceOptions } from '@dontstarve-web/animation/sprite';
 import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
 import type { PrefabDisplay, SpriteState } from '@dontstarve-web/display';
@@ -22,29 +21,16 @@ import type { ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
 import { isPlayerNearby } from './playerProximity';
 import { createBuildingContainer, isStorageBuildingId } from './containers';
 import { performCookAction } from '../../stategraphs/src/cook';
-import { Workable } from '../../componets/src/workable';
 import { actionEntity, findActionEntity, FindEntities } from './actionEntity';
 import type { MiniMapState } from '../../map/src/minimapState';
 import { performToolWork } from '../../stategraphs/src/componentactions';
-import { GetRecipeLoot, type LootRecipe } from '../../componets/src/lootdropper';
-import recipeData from '@dontstarve-web/animation/recipes.json';
 import { PlaySound, type SoundHandle } from './sound';
 import { Burnable, type BurnableInst } from '../../componets/src/burnable';
 import { Propagator } from '../../componets/src/propagator';
 import type { TradeItem, Trader } from '../../componets/src/trader';
 import { TILE_SIZE } from './tile';
 import { MakeObstaclePhysics } from './standardcomponents';
-
-const lootRecipes = new Map<string, LootRecipe>([
-    ...recipeData.recipes
-        .filter(recipe => recipe.ingredients.every(ingredient => typeof ingredient.type === 'string' && typeof ingredient.amount === 'number'))
-        .map((recipe): [string, LootRecipe] => [recipe.name, { ingredients: recipe.ingredients as LootRecipe['ingredients'] }]),
-    // DeconstructRecipe registers its returnIngredients in AllRecipes, which lootdropper reads for structures such as pighead.
-    ...recipeData.deconstructionRecipes.map((recipe): [string, LootRecipe] => [recipe.name, { ingredients: recipe.returnIngredients as LootRecipe['ingredients'] }]),
-]);
-
-/** Recipe.ingredients-based DropLoot of a buildable prefab (lootdropper's default for structures). */
-export const buildingRecipeLoot = (buildId: string) => GetRecipeLoot(lootRecipes.get(buildId), lootRecipes);
+import { WorldFx } from './world_fx';
 
 export interface AnimatedBuildingDefinition {
     /** Source MakeObstaclePhysics radius in DST units; previews never bind a body. */
@@ -58,26 +44,8 @@ export interface AnimatedBuildingDefinition {
     idleHeld?: boolean;
     previewAnimation?: string;
     interaction?: AnimatedBuildingToggleInteraction;
-    /** Source SetWorkAction(ACTIONS.HAMMER) and its OnWork animation. */
-    hammerAnimation?: string;
-    /** Source workable work count; omitted buildings retain animation-only hits. */
-    hammerWorkLeft?: number;
-    hammerMaterial?: 'wood' | 'stone' | 'metal';
-    hammerDropContentsOnHit?: boolean;
-    hammerHitOnlyWhileWorking?: boolean;
-    hammerExtraLoot?: readonly { itemId: string; count: number }[];
-    /** Loot the finishing callback adds on both the intact and the burnt path, from the world's current state. */
-    hammerBonusLoot?: (context: AnimatedBuildingEventContext) => readonly { itemId: string; count: number }[];
-    /** Items the building itself holds, dropped with its recipe loot when hammered. */
-    hammerHeldLoot?: (context: AnimatedBuildingEventContext) => readonly { itemId: string; count: number }[];
-    /** Existing insts the building holds (occupants, shelved items) leave with their identity and state. */
-    hammerDropEntities?: (context: AnimatedBuildingEventContext) => void;
     /** standardcomponents.lua's burn time, generic fire level and heat propagator size. */
     burnable?: { burnTime: number; fxLevel: 2 | 3 | 4; propagator: 'small' | 'medium' | 'large' };
-    onhit?: (context: AnimatedBuildingHammerContext) => void;
-    onhammered?: (context: AnimatedBuildingHammerContext) => void;
-    /** Temporary destruction art, independent of a building's skin. */
-    hammerEffect?: { archive: string; animation: string; name: string };
     /** Sources of the fx children the prefab spawns (its Lua prefab dependencies), declared on the placement's shared resources. */
     fxSources?: (sprites: SpriteResources) => readonly LoadedSpriteSource[];
     name: string;
@@ -139,21 +107,10 @@ export interface AnimatedBuildingEventContext {
     itemEntities?: WorldContext['itemEntities'];
     world?: PrefabWorldContext;
     displays?: PrefabDisplayGroup;
-    /** inst:Remove(): releases the building's art, components and physics. */
-    remove?: () => void;
 }
 
 export interface AnimatedBuildingBuiltContext extends AnimatedBuildingEventContext {
     onComplete: () => void;
-}
-
-export interface AnimatedBuildingHammerContext extends AnimatedBuildingEventContext {
-    workLeft: number;
-    isPlayerNearby: boolean;
-    position: THREE.Vector3;
-    dropLoot: (items: readonly { itemId: string; count: number }[]) => void;
-    spawnEffect: () => void;
-    remove: () => void;
 }
 
 /** Animations used by buildings that toggle between closed and open on click. */
@@ -196,7 +153,7 @@ interface AnimatedBuildingInstance<BuildId extends string> {
     minimap?: MiniMapState;
 }
 
-/** A transient fx entity (fire, collapse) drawn by its own display. */
+/** A fire entity drawn by its own display. */
 interface DrawnEffect { readonly instance: PrefabInstance; readonly display: PrefabDisplay }
 
 /**
@@ -225,7 +182,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     private readonly camera: THREE.Camera;
     private readonly ground: THREE.Object3D;
     private readonly player: THREE.Object3D;
-    private readonly dropLoot?: WorldContext['dropLoot'];
+    private readonly ownedFx?: WorldFx;
     private readonly definitions: Readonly<Record<BuildId, AnimatedBuildingDefinition>>;
     private readonly consumeBufferedBuild: (buildId: BuildId) => boolean;
     private readonly onInteractionChange?: (
@@ -252,6 +209,12 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         onInteractionChange?: (change: AnimatedBuildingInteractionChange<BuildId>) => void,
     ) {
         const { scene, ...services } = world;
+        if (!services.fx?.collapse) {
+            const sharedFx = services.fx;
+            const fx = this.ownedFx = new WorldFx(scene);
+            services.fx = { spawn: (prefab, position) => (sharedFx ?? fx).spawn(prefab, position),
+                collapse: (size, position, material) => fx.collapse(size, position, material) };
+        }
         this.worldContext = services;
         this.actionEvents = world.actionEvents;
         this.stopActionEvents = bindActionCancellation(world, this, 'building', () => this.cancel());
@@ -260,7 +223,6 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         this.camera = world.camera;
         this.ground = world.ground;
         this.player = world.player;
-        this.dropLoot = world.dropLoot;
         this.definitions = definitions;
         this.consumeBufferedBuild = consumeBufferedBuild;
         this.onInteractionChange = onInteractionChange;
@@ -362,6 +324,8 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
 
     private initializeComponents(building: AnimatedBuildingInstance<BuildId>): void {
         const { model, buildId } = building;
+        building.instance.worldServices = this.worldContext;
+        building.instance.onRemove(() => this.releaseBuilding(building));
         actionEntity(model, buildId).reskinTarget = this.createReskinTarget(building);
         const obstacleRadius = this.definitions[buildId].obstacleRadius;
         if (obstacleRadius !== undefined) MakeObstaclePhysics(building.instance, obstacleRadius);
@@ -385,12 +349,9 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             building.minimap = building.instance.minimap;
             building.minimap.SetIcon(definition.minimapIcon);
         }
-        if (definition.hammerWorkLeft !== undefined) {
+        const workable = building.instance.components.workable;
+        if (workable?.GetWorkAction() === 'HAMMER') {
             const entity = actionEntity(model, buildId);
-            const workable = new Workable(building.instance);
-            entity.components.workable = workable;
-            workable.SetWorkAction('HAMMER');
-            workable.SetWorkLeft(definition.hammerWorkLeft);
             entity.hammerTarget = {
                 get id() { return String(building.instance.entityId); },
                 entity: building.instance, instance: building.instance, display: building.display,
@@ -400,49 +361,9 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
                     if (this.isHammerTargetValid(building)) performToolWork('HAMMER', entity, {});
                 },
             };
-            workable.SetOnWorkCallback(() => {
-                if (entity.hasTag('burnt')) return;
-                if (definition.hammerHitOnlyWhileWorking && workable.GetWorkLeft() <= 0) return;
-                this.updateProximity(building);
-                const context = this.hammerContext(building);
-                if (definition.hammerDropContentsOnHit) {
-                    building.instance.components?.container?.DropEverything(context.position);
-                    building.instance.components?.container?.Close();
-                }
-                if (definition.onhit) definition.onhit(context);
-                else {
-                    const current = building.animation.currentAnimation;
-                    const hit = definition.hammerAnimation === 'hit_empty'
-                        ? current === 'cooking_loop' ? 'hit_cooking' : current === 'idle_full' ? 'hit_full' : 'hit_empty'
-                        : (buildId === 'mushroom_light' || buildId === 'mushroom_light2') && current.endsWith('_on')
-                            ? 'hit_on' : definition.hammerAnimation!;
-                    building.animation.playTransient(hit);
-                }
-            });
-            workable.SetOnFinishCallback(() => {
-                const context = this.hammerContext(building);
-                building.instance.components?.burnable?.Extinguish();
-                if (entity.hasTag('burnt')) {
-                    const loot = GetRecipeLoot(lootRecipes.get(buildId), lootRecipes, true);
-                    if (Math.random() < .4) loot.push({ itemId: 'charcoal', count: 1 });
-                    loot.push(...definition.hammerBonusLoot?.(this.eventContext(building)) ?? []);
-                    context.dropLoot(loot); context.spawnEffect(); context.remove();
-                } else if (definition.onhammered) definition.onhammered(context);
-                else {
-                    context.dropLoot([...GetRecipeLoot(lootRecipes.get(buildId), lootRecipes), ...(definition.hammerExtraLoot ?? []),
-                        ...(definition.hammerBonusLoot?.(this.eventContext(building)) ?? []),
-                        ...(definition.hammerHeldLoot?.(this.eventContext(building)) ?? [])]);
-                    building.instance.components?.container?.DropEverything(context.position);
-                    definition.hammerDropEntities?.(this.eventContext(building));
-                    context.spawnEffect();
-                    PlaySound('dontstarve/common/destroy_smoke', context.position);
-                    if (definition.hammerMaterial) PlaySound(`dontstarve/common/destroy_${definition.hammerMaterial}`, context.position);
-                    context.remove();
-                }
-            });
         }
         if (definition.burnable) this.initializeBurnable(building);
-        if (definition.hammerWorkLeft !== undefined || definition.burnable) {
+        if (workable || definition.burnable) {
             const entity = actionEntity(model, buildId);
             new ToolMouseTarget(entity, building.instance, entity.components.workable, this.worldContext.handEquipment, {
                 canInteractWithoutTool: () => !entity.hasTag('burnt') && !!(definition.interaction
@@ -539,7 +460,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         const fires = this.placed.filter(({ fire }) => fire?.display.model.visible).map(({ model, fire }) => ({
             object: fire!.display.model, footPosition: model.position,
             cameraDepth: 0, sortLayer: 2 }));
-        return [...entries, ...fires, ...this.placed.flatMap(building => {
+        return [...this.ownedFx?.renderEntities ?? [], ...entries, ...fires, ...this.placed.flatMap(building => {
             const effects = (this.definitions[building.buildId].renderEffects?.(this.eventContext(building)) ?? []).filter(effect => effect.object.visible);
             if (!effects.length) return [];
             const footPosition = building.instance.position;
@@ -561,7 +482,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
                 isVisible: () => building.model.visible,
                 hasTag: (tag: string) => entity.hasTag(tag),
                 PushEvent: (name: string, data: unknown) => entity.PushEvent?.(name, data),
-                removeOne: () => { if (!isValid()) return false; this.hammerContext(building).remove(); return true; },
+                removeOne: () => { if (!isValid()) return false; building.instance.remove(); return true; },
             };
         });
     }
@@ -594,8 +515,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     private eventContext(building: AnimatedBuildingInstance<BuildId>): AnimatedBuildingEventContext {
         return { model: building.model, instance: building.instance, animation: building.animation, art: building.animation.art,
             animState: building.animState, animStateArt: this.skinAssets, sprites: this.sprites, skinId: building.skinId.peek(),
-            itemEntities: this.worldContext.itemEntities, world: this.worldContext, displays: this.displays,
-            remove: () => this.hammerContext(building).remove() };
+            itemEntities: this.worldContext.itemEntities, world: this.worldContext, displays: this.displays };
     }
 
     /** Skin changes update presentation; the entity root and components retain their identity. */
@@ -641,20 +561,13 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         this.stopPlacerGate?.();
         if (this.pointer !== this.worldContext.mouseActions?.pointer) this.pointer.dispose();
         this.cancel();
-        for (const instance of this.placed) {
-            actionEntity(instance.model, instance.buildId).components.workable?.dispose();
-            this.releaseBurnable(instance);
-            this.definitions[instance.buildId].ondispose?.(this.eventContext(instance));
-            this.releaseContainer(instance);
-            this.releaseSkin(instance);
-
-            disposeSprite(instance.model);
-        }
+        for (const building of [...this.placed]) building.instance.remove();
         this.placed.length = 0;
         // Factory-owned effects share materials: each entity returns its sprite before the factories go.
         for (const effect of this.effects) this.releaseEffect(effect);
         this.effects.clear();
         // Every sprite is released above; only now can the atlases they drew from go.
+        this.ownedFx?.dispose();
         this.displays.dispose(); this.sprites.dispose(); this.placerSprites.dispose();
     }
 
@@ -672,6 +585,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     update(dt: number) {
         // Displays advance the declared clips of the placer, the buildings and their fire effects.
         this.displays.update(dt);
+        this.ownedFx?.update(dt, this.camera.quaternion);
         this.cursor.update();
         for (const building of this.placed) {
             this.definitions[building.buildId].onupdate?.(this.eventContext(building), dt);
@@ -845,7 +759,6 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         const held = state === 'open' ? !definition.interaction?.openAnimationLoop : definition.idleHeld === true;
         // The fx it spawns load with the building, so that they are drawn when they are spawned.
         const dependencies = [
-            ...definition.hammerEffect ? [this.hammerEffectSource(definition.hammerEffect)] : [],
             ...definition.burnable ? [this.fireSource(buildId)] : [],
             ...definition.fxSources?.(this.sprites) ?? []];
         const { instance: entity, display } = createPrefabEntity(buildId, source, { name: initialAnimation, held, billboard: true },
@@ -871,10 +784,6 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         return instance;
     }
 
-    private hammerEffectSource({ archive, name }: NonNullable<AnimatedBuildingDefinition['hammerEffect']>): LoadedSpriteSource {
-        return this.sprites.animated(archive, {}, { name });
-    }
-
     private fireSource(buildId: BuildId): LoadedSpriteSource {
         return this.sprites.animated('fire.zip', {}, { name: 'fire', scale: this.definitions[buildId].scale });
     }
@@ -885,38 +794,16 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             && building.model.visible && building.model.parent !== null;
     }
 
-    private hammerContext(building: AnimatedBuildingInstance<BuildId>): AnimatedBuildingHammerContext {
-        const position = building.instance.position.clone();
-        return {
-            ...this.eventContext(building),
-            workLeft: actionEntity(building.model, building.buildId).components.workable?.GetWorkLeft() ?? 0,
-            position, isPlayerNearby: building.isPlayerNearby,
-            dropLoot: (items) => this.dropLoot?.(items, position.clone()),
-            spawnEffect: () => {
-                const definition = this.definitions[building.buildId].hammerEffect;
-                if (!definition || this.disposed) return;
-                const effect = this.createEffect(this.hammerEffectSource(definition), definition.name, definition.animation, false, ['FX', 'NOCLICK']);
-                effect.instance.position.copy(position);
-                this.displays.mount(effect.display);
-                this.effects.add(effect);
-                effect.instance.sprite.playOnce(definition.animation, () => {
-                    this.effects.delete(effect);
-                    this.releaseEffect(effect);
-                });
-            },
-            remove: () => {
-                const index = this.placed.indexOf(building);
-                if (index < 0) return;
-                this.placed.splice(index, 1);
-                actionEntity(building.model, building.buildId).components.workable?.dispose();
-                this.releaseBurnable(building);
-                this.definitions[building.buildId].ondispose?.(this.eventContext(building));
-                this.releaseSkin(building);
-                this.releaseContainer(building);
-
-                disposeSprite(building.model);
-            },
-        };
+    /** Inst removal owns the decision; the manager releases its registrations and shared-resource references. */
+    private releaseBuilding(building: AnimatedBuildingInstance<BuildId>): void {
+        const index = this.placed.indexOf(building);
+        if (index >= 0) this.placed.splice(index, 1);
+        building.instance.components.workable?.dispose();
+        this.releaseBurnable(building);
+        this.definitions[building.buildId].ondispose?.(this.eventContext(building));
+        this.releaseSkin(building);
+        this.releaseContainer(building);
+        building.display.dispose();
     }
 
     private playerFrontGroundPosition(): THREE.Vector3 {

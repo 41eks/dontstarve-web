@@ -360,7 +360,7 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
         animationOf(tree)!.playOnce(`chop_${EVERGREEN_STAGES[stageOf(tree)]}`, () => animationOf(tree)?.start(rest(tree)));
         spawnNeedles(tree);
       });
-      workable.SetOnFinishCallback(worker => chopDown(tree, worker));
+      workable.SetOnFinishCallback((_inst, worker) => chopDown(tree, worker));
       if (saved?.components.evergreen?.stump) makeStump(tree);
       else if (saved?.components.evergreen?.burnt) {
         tree.burntcone = saved.components.evergreen.burntcone === true;

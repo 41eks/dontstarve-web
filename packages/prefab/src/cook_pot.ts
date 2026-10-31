@@ -1,3 +1,5 @@
+import { Workable } from '../../componets/src/workable';
+import { createStructureLootDropper } from './structureLoot';
 import { type SpriteState } from '@dontstarve-web/display';
 import definitions from './definitions.json' with { type: 'json' };
 import {
@@ -8,7 +10,7 @@ import {
 } from './animatedBuildingPlacement';
 import type { WorldContext } from './worldContext';
 import type { AnimatedBuildingEventContext } from './animatedBuildingPlacement';
-import { prefabInstance } from './prefabInstance';
+import { prefabInstance, type PrefabInstance } from './prefabInstance';
 import type * as THREE from 'three';
 import { PlaySound, type SoundHandle } from './sound';
 import { Stewer, type StewerSaveData } from '../../componets/src/stewer';
@@ -63,6 +65,12 @@ function continueCooking(model: THREE.Group): void {
 }
 
 function initializePot({ model, instance, animState, world }: AnimatedBuildingEventContext): void {
+    const workable = instance.components.workable = new Workable(instance);
+    workable.SetWorkAction('HAMMER');
+    workable.SetWorkLeft(4);
+    workable.SetOnWorkCallback(onworked);
+    workable.SetOnFinishCallback(onhammered);
+    instance.components.lootdropper = createStructureLootDropper(instance);
     const presentation: PotPresentation = { animState };
     presentations.set(model, presentation);
     const components = instance.components;
@@ -109,36 +117,41 @@ function onbuilt({ animation, onComplete }: AnimatedBuildingBuiltContext): void 
     });
 }
 
+function onworked(inst: PrefabInstance): void {
+    if (inst.hasTag('burnt')) return;
+    const stewer = inst.components.stewer as Stewer;
+    if (stewer.IsCooking()) {
+        inst.sprite.playOnce('hit_cooking');
+        inst.sprite.pushAnimation('cooking_loop', true);
+        PlaySound('dontstarve/common/cookingpot_close', inst.position);
+    } else if (stewer.IsDone()) {
+        inst.sprite.playOnce('hit_full');
+        inst.sprite.pushAnimation('idle_full', false);
+    } else {
+        const container = inst.components.container!;
+        if (container.IsOpen()) container.Close();
+        else PlaySound('dontstarve/common/cookingpot_close', inst.position);
+        inst.sprite.playOnce('hit_empty');
+        inst.sprite.pushAnimation('idle_empty', false);
+    }
+}
+
+function onhammered(inst: PrefabInstance): void {
+    if (inst.components.burnable?.IsBurning()) inst.components.burnable.Extinguish();
+    const stewer = inst.components.stewer as Stewer | undefined;
+    if (!inst.hasTag('burnt') && stewer?.IsDone()) stewer.Harvest();
+    inst.components.container?.DropEverything(inst.position);
+    inst.components.lootdropper!.DropLoot();
+    inst.worldServices?.fx?.collapse?.('small', inst.position, 'metal');
+    inst.remove();
+}
+
 export const COOK_POT_DEFINITION: AnimatedBuildingDefinition = {
     ...definitions.animatedBuildings.cookpot,
-    hammerWorkLeft: 4, hammerMaterial: 'metal',
     burnable: { burnTime: 20, fxLevel: 3, propagator: 'small' },
-    hammerEffect: { archive: 'structure_collapse_fx.zip', animation: 'collapse_small', name: 'collapse' },
     interaction: { ...definitions.animatedBuildings.cookpot.interaction, closeImmediately: true },
     onbuilt,
     oninit: initializePot,
-    onhit: ({ model, animation }) => {
-        const stewer = prefabInstance(model)!.components.stewer as Stewer;
-        if (stewer.IsCooking()) {
-            animation.playOnce('hit_cooking', () => animation.start('cooking_loop'));
-            PlaySound('dontstarve/common/cookingpot_close', model.position);
-        } else if (stewer.IsDone()) animation.playOnce('hit_full', () => animation.start('idle_full'));
-        else {
-            const container = prefabInstance(model)!.components.container!;
-            if (container.IsOpen()) container.Close();
-            else PlaySound('dontstarve/common/cookingpot_close', model.position);
-            animation.playOnce('hit_empty', () => animation.start('idle_empty'));
-        }
-    },
-    onhammered: ({ model, position, dropLoot, spawnEffect, remove }) => {
-        const stewer = prefabInstance(model)!.components.stewer as Stewer;
-        if (stewer.IsDone()) stewer.Harvest({ giveItem: (itemId, count) => { dropLoot([{ itemId, count }]); return true; } });
-        prefabInstance(model)!.components.container!.DropEverything(position);
-        dropLoot([{ itemId: 'cutstone', count: 2 }, { itemId: 'charcoal', count: 3 }, { itemId: 'twigs', count: 3 }]);
-        spawnEffect();
-        PlaySound('dontstarve/common/destroy_smoke', position); PlaySound('dontstarve/common/destroy_metal', position);
-        remove();
-    },
     createContainer: inst => createBuildingContainer('cookpot', inst),
     onclose: ({ model, animation }) => {
         if (!(prefabInstance(model)!.components.stewer as Stewer).IsCooking()) animation.start('idle_empty');

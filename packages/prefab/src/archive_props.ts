@@ -253,7 +253,7 @@ export class ArchivePropsManager {
     const lootdropper = new LootDropper(inst, (itemId, point) => this.world.spawnGroundItem(
       { ...catalog.items[itemId as keyof typeof catalog.items], itemId, count: 1 }, new THREE.Vector3(point.x, point.y, point.z), { fling: true }));
     lootdropper.SetChanceLootTable('archive_statues');
-    workable.SetOnWorkCallback((_worker, workleft) => showWorkState(workleft));
+    workable.SetOnWorkCallback((_inst, _worker, workleft) => showWorkState(workleft));
     workable.SetOnFinishCallback(() => {
       // OnWorkFinished: DropLoot at the statue, collapse_small with the rock material, then Remove.
       lootdropper.DropLoot();

@@ -29,8 +29,14 @@ const canWork = (disposed: boolean, removed: boolean, enabled: boolean, workleft
 const workTag = (canBeWorked: boolean, action: WorkAction | undefined): string | undefined =>
   canBeWorked && action ? `${action}_workable` : undefined;
 
+// Component registries erase the concrete host type; prefab registration retains its own host signature.
+type WorkCallback<Inst extends WorkableInst> = {
+  call(inst: Inst, worker: Worker, workleft: number, numworks: number): void;
+}['call'];
+type FinishCallback<Inst extends WorkableInst> = { call(inst: Inst, worker: Worker): void }['call'];
+
 /** components/workable.lua: signals own work state; the action tag is a pure derived view. */
-export class Workable {
+export class Workable<Inst extends WorkableInst = WorkableInst> {
   private readonly actionState = createSignal<WorkAction | undefined>('CHOP');
   private readonly workleftState = createSignal(10);
   private readonly maxworkState = createSignal(-1);
@@ -46,14 +52,14 @@ export class Workable {
   private readonly actionTagMemo: Memo<string | undefined>;
   readonly canBeWorked: ReadonlySignal<boolean>;
   readonly actionTag: ReadonlySignal<string | undefined>;
-  private onwork?: (worker: Worker, workleft: number, numworks: number) => void;
-  private onfinish?: (worker: Worker) => void;
+  private onwork?: WorkCallback<Inst>;
+  private onfinish?: FinishCallback<Inst>;
   private onload?: () => void;
   savestate = false;
 
-  private readonly inst: WorkableInst;
+  private readonly inst: Inst;
   private readonly now?: () => number;
-  constructor(inst: WorkableInst, now?: () => number) {
+  constructor(inst: Inst, now?: () => number) {
     this.now = now;
     this.inst = inst;
     this.canBeWorkedMemo = createMemo(() => canWork(this.disposedState.get(), inst.removal.get(),
@@ -83,8 +89,8 @@ export class Workable {
   HasTag(tag: string): boolean | undefined {
     return WORKABLE_TAGS.has(tag) ? workTag(this.CanBeWorked(), this.actionState.peek()) === tag : undefined;
   }
-  SetOnWorkCallback(fn: ((worker: Worker, workleft: number, numworks: number) => void) | undefined): void { this.onwork = fn; }
-  SetOnFinishCallback(fn: (worker: Worker) => void): void { this.onfinish = fn; }
+  SetOnWorkCallback(fn: WorkCallback<Inst> | undefined): void { this.onwork = fn; }
+  SetOnFinishCallback(fn: FinishCallback<Inst>): void { this.onfinish = fn; }
 
   WorkedBy(worker: Worker, numworks = 1): boolean {
     if (!this.CanBeWorked()) return false;
@@ -96,9 +102,9 @@ export class Workable {
     }
     worker.PushEvent?.('working', { target: this.inst });
     this.inst.PushEvent?.('worked', { worker, workleft: this.workleftState.peek() });
-    this.onwork?.(worker, this.workleftState.peek(), numworks);
+    this.onwork?.(this.inst, worker, this.workleftState.peek(), numworks);
     if (this.workleftState.peek() <= 0) {
-      this.onfinish?.(worker);
+      this.onfinish?.(this.inst, worker);
       this.inst.PushEvent?.('workfinished', { worker });
       worker.PushEvent?.('finishedwork', { target: this.inst, action: this.actionState.peek() });
     }

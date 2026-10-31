@@ -252,7 +252,9 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 
 清洁扫把从 action entity 注册表读取鼠标命中的实体，可换肤实体在注册时提供自身的换肤操作，移除或更换地面模型时清理旧注册。没有皮肤的实体仍按标签提供 `CASTSPELL`，在第 9 帧校验失败时保留目标、不播放换肤烟雾。换肤成功时将预备好的 FX 消息交给目标，目标应用 skinId 后按自身 prefab ID 和脚点启动独立烟雾。FX 的标签、动画、符号覆盖和照明由逻辑实体声明，模型、共享 sprite、场景挂载与释放由 `packages/display` 管理；烟雾不跟随目标移动，也不写入存档。`c_give("reskin_tool")`、`c_spawn("reskin_tool")`、`c_save()` 的语法、参数、支持 ID 和换肤存档行为不变。
 
-锤击与换肤统一从命中实体注册的 `hammerTarget`／`reskinTarget` 取目标，`src/registerDisposal.ts` 不再汇总各 manager 的锤击列表。目标的有效性仍由所属 prefab 判断，工作量、受击与拆除由 `workable` 处理，命中时重新检查目标与工具；实体移除或地面模型替换会清理这两项注册。`c_give("hammer")`、`c_spawn("hammer")`、`c_give("reskin_tool")` 和 `c_save()` 的语法、参数、支持 ID 与存档字段不变。
+锤击与换肤统一从命中实体注册的 `hammerTarget`／`reskinTarget` 取目标，`src/registerDisposal.ts` 不再汇总各 manager 的锤击列表。目标的有效性仍由所属 prefab 判断，工作量由 `workable` 结算，受击与拆除由各 prefab 注册的组件回调处理，命中时重新检查目标与工具；实体移除或地面模型替换会清理这两项注册。`c_give("hammer")`、`c_spawn("hammer")`、`c_give("reskin_tool")` 和 `c_save()` 的语法、参数、支持 ID 与存档字段不变。
+
+建筑由各 prefab 创建 `workable` 并注册 `onworked(inst, worker, workleft, numworks)`／`onhammered(inst, worker)`，直接使用实例及组件；`LootDropper` 按配方、剩余使用次数比例和烧毁状态计算返还，并处理木炭概率，manager 维护集合与移除清理。`c_spawn`、`c_give`、`c_save()` 的语法、参数、支持 ID 和存档字段不变。
 
 `c_give("dreadstone", 3)` / `c_give("wagpunk_bits", 3)` 获取墙体拆除材料，`c_spawn("dreadstone")` / `c_spawn("wagpunk_bits")` 在玩家位置生成一份。库存图标使用各自真实 atlas，地面使用源动画的 `idle`；数量、实体 ID 和落点随 `c_save()` 保存恢复。
 

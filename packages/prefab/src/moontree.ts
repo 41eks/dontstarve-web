@@ -362,14 +362,14 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
     workable.SetWorkAction('CHOP');
     workable.SetWorkLeft(state.workLeft);
     // on_chop_tree: sound, chop pose, then back to swaying, with petals at the crown.
-    workable.SetOnWorkCallback((_worker, workLeft) => {
+    workable.SetOnWorkCallback((_inst, _worker, workLeft) => {
       state.workLeft = workLeft;
       PlaySound('dontstarve/wilson/use_axe_tree', entity.position);
       animation.playOnce(`chop_${sizeOf(state)}`, () => animation.start(`sway1_loop_${sizeOf(state)}`));
       spawnChopFx(entity.position, sizeOf(state));
     });
     // on_chop_tree_down: fall away from the chopper, scatter loot on the fall side and leave a stump.
-    workable.SetOnFinishCallback((worker: Worker) => {
+    workable.SetOnFinishCallback((_inst, worker: Worker) => {
       PlaySound('dontstarve/forest/treeFall', entity.position);
       const right = cameraRight();
       const chopper = worker.getPosition?.();

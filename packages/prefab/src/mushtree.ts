@@ -253,7 +253,7 @@ export class MushtreeInstance extends PrefabInstance<ArchiveSpriteCommands> {
   private setupWork(): void {
     const { workable, lootdropper } = this.components;
     workable.SetWorkAction('CHOP'); workable.SetWorkLeft(this.data.work);
-    workable.SetOnWorkCallback((_worker, workleft) => {
+    workable.SetOnWorkCallback((_inst, _worker, workleft) => {
       PlaySound('dontstarve/wilson/use_axe_mushroom', this.position);
       if (workleft > 0) this.sprite.playOnce('chop', () => this.sprite.start('idle_loop'));
     });

@@ -1,10 +1,10 @@
-import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
+import { PrefabDisplayGroup, SpriteResources, prefabDisplay } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import { findImage, smallHash, SpriteFrameRenderer, type Animation, type ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
 import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
 import { GroundItemAssets } from './groundItems';
 import { PlaySound, type SoundEventPath } from './sound';
-import { createEmptyEntity } from './prefabInstance';
+import { createEmptyEntity, createArchiveEntity } from './prefabInstance';
 
 /**
  * prefabs/fx.lua entries that play one animation at a world position, optionally play a sound and remove
@@ -63,11 +63,34 @@ export class WorldFx {
   private readonly prepared = new Map<WorldFxPrefab, Promise<FxAssets>>();
   private readonly ready = new Map<WorldFxPrefab, FxAssets>();
   private readonly active = new Set<FxInstance>();
+  private readonly collapseSprites = new SpriteResources();
+  private readonly collapses = new Set<ReturnType<typeof createArchiveEntity>>();
   private disposed = false;
 
   constructor(scene: THREE.Scene) {
     this.displays = new PrefabDisplayGroup(scene);
     this.assets = new GroundItemAssets();
+  }
+
+  /** structure_collapse_fx.lua: shared art, material sounds and an independent animover lifetime. */
+  collapse(size: 'small' | 'big', position: THREE.Vector3, material: 'wood' | 'metal' | 'stone'): void {
+    if (this.disposed) return;
+    const animation = size === 'big' ? 'collapse_large' : 'collapse_small';
+    const source = this.collapseSprites.archive({ animationArchive: 'structure_collapse_fx.zip',
+      buildArchives: ['structure_collapse_fx.zip'], bank: 'collapse' }, { scale: .02 });
+    const effect = createArchiveEntity(`collapse_${size}`, source, { name: animation, held: true, billboard: true }, `collapse_${size}`, inst => {
+      inst.persists = false;
+      inst.addTag('NOCLICK'); inst.addTag('FX');
+      // Declare before the display binds: the one-shot must wait for its first drawn frame.
+      inst.sprite.playOnce(animation, () => inst.remove());
+    });
+    const { instance, display } = effect;
+    instance.position.copy(position);
+    this.collapses.add(effect);
+    instance.onRemove(() => this.collapses.delete(effect));
+    this.displays.mount(display);
+    PlaySound('dontstarve/common/destroy_smoke', position);
+    PlaySound(`dontstarve/common/destroy_${material}`, position);
   }
 
   /** Load art ahead of a spawn, so its first frame is drawn at once. */
@@ -127,10 +150,12 @@ export class WorldFx {
   }
 
   get renderEntities() {
-    return [...this.active].map(({ model, footPosition }) => ({ object: model, footPosition, cameraDepth: 0 }));
+    return [...this.active].map(({ model, footPosition }) => ({ object: model, footPosition, cameraDepth: 0 }))
+      .concat([...this.collapses].map(({ display, instance }) => ({ object: display.model, footPosition: instance.position, cameraDepth: 0 })));
   }
 
   update(dt: number, _cameraQuaternion: THREE.Quaternion): void {
+    this.displays.update(dt, _cameraQuaternion);
     for (const effect of this.active) {
       const { assets } = effect;
       if (!assets) continue;
@@ -148,6 +173,8 @@ export class WorldFx {
     if (this.disposed) return;
     this.disposed = true;
     for (const effect of [...this.active]) this.remove(effect);
+    for (const { instance, display } of this.collapses) { instance.remove(); display.dispose(); }
+    this.collapses.clear();
     const released = new Set<THREE.Material>();
     for (const request of this.prepared.values()) void request.then(({ build }) => {
       for (const material of build.materials) {
@@ -158,6 +185,7 @@ export class WorldFx {
     }, () => {});
     this.prepared.clear(); this.ready.clear();
     this.displays.dispose();
+    this.collapseSprites.dispose();
   }
 
   private remove(effect: FxInstance): void {

@@ -1,4 +1,6 @@
-import { prefabInstance } from './prefabInstance';
+import { Workable } from '../../componets/src/workable';
+import { createStructureLootDropper } from './structureLoot';
+import { prefabInstance, type PrefabInstance } from './prefabInstance';
 import * as THREE from 'three';
 import definitions from './definitions.json' with { type: 'json' };
 import { sculptingtable_init_fn } from '@dontstarve-web/animation/prefabskin';
@@ -46,7 +48,8 @@ interface SculptingState {
     readonly animState: AnimState;
 }
 
-const stateOf = (model: THREE.Object3D): SculptingState => model.userData.sculptingtable;
+interface SculptingInstance extends PrefabInstance { sculpting: SculptingState }
+const stateOf = (model: THREE.Object3D): SculptingState => (prefabInstance(model)! as SculptingInstance).sculpting;
 
 function playTableSound(model: THREE.Group, path: SoundEventPath): void {
     const { sounds } = stateOf(model);
@@ -75,7 +78,13 @@ function onbuilt({ animation, model, onComplete }: AnimatedBuildingBuiltContext)
     });
 }
 
-function oninit({ model, animState }: AnimatedBuildingEventContext): void {
+function oninit({ model, instance, animState }: AnimatedBuildingEventContext): void {
+    const workable = instance.components.workable = new Workable(instance);
+    workable.SetWorkAction('HAMMER');
+    workable.SetWorkLeft(4);
+    workable.SetOnWorkCallback(onworked);
+    workable.SetOnFinishCallback(onhammered);
+    instance.components.lootdropper = createStructureLootDropper(instance);
     const entity = actionEntity(model, SCULPTING_TABLE_ID);
     entity.addTag('structure');
     // onitemtaken: the pickable stops being interactable and the block disappears.
@@ -98,19 +107,27 @@ function oninit({ model, animState }: AnimatedBuildingEventContext): void {
         if (isSculptableMaterial(item.prefab)) giveItem(model, item.prefab);
     });
     prefabInstance(model)!.components.trader = trader;
-    model.userData.sculptingtable = { pickable, trader, sounds: new Set(), animState } satisfies SculptingState;
+    (instance as SculptingInstance).sculpting = { pickable, trader, sounds: new Set(), animState } satisfies SculptingState;
+}
+
+function onworked(inst: PrefabInstance): void {
+    if (inst.hasTag('burnt')) return;
+    const on = inst.components.prototyper?.on === true;
+    inst.sprite.playOnce('hit');
+    inst.sprite.pushAnimation(on ? 'proximity_loop' : 'idle', on);
+}
+
+function onhammered(inst: PrefabInstance): void {
+    inst.components.lootdropper!.DropLoot();
+    const { pickable } = (inst as SculptingInstance).sculpting;
+    if (pickable.canInteractWith && pickable.product) inst.components.lootdropper!.SpawnLootPrefab(pickable.product);
+    inst.worldServices?.fx?.collapse?.('small', inst.position, 'wood');
+    inst.remove();
 }
 
 export const SCULPTING_TABLE_DEFINITION: AnimatedBuildingDefinition = {
     ...definitions.animatedBuildings.sculptingtable,
     obstacleRadius: 0.4,
-    hammerWorkLeft: 4, hammerMaterial: 'wood',
-    hammerEffect: { archive: 'structure_collapse_fx.zip', animation: 'collapse_small', name: 'collapse' },
-    // dropitems: the held block comes out with the recipe loot.
-    hammerHeldLoot: ({ model }) => {
-        const { pickable } = stateOf(model);
-        return pickable.canInteractWith && pickable.product ? [{ itemId: pickable.product, count: 1 }] : [];
-    },
     skinInit: sculptingtable_init_fn,
     onbuilt,
     oninit,

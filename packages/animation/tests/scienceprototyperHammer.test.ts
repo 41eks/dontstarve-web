@@ -1,9 +1,10 @@
+import { prefabDisplay } from '@dontstarve-web/display';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { withEntity } from './entityFixture';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { ResearchLabPlacement, RESEARCH_LAB_IDS, RESEARCH_LAB_HAMMER_LOOT } from '../../prefab/src/scienceprototyper';
+import { ResearchLabPlacement, RESEARCH_LAB_IDS } from '../../prefab/src/scienceprototyper';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import type { TransientSpriteAnimationController } from '../src/sprite';
 import { Builder } from '../../componets/src/builder';
@@ -39,7 +40,7 @@ async function setup(id: typeof RESEARCH_LAB_IDS[number], skinId?: string) {
   });
   const animation = () => prefabInstance(model)!.sprite as TransientSpriteAnimationController;
   const finish = () => { for (let i = 0; i < 80; i++) placement.update(1 / 30); };
-  // The display loads the lab's art, and its collapse fx with it; one-shot clips play out once they are drawn.
+  // The display loads the lab art; standalone collapse effects load from their own shared owner.
   await vi.waitFor(() => expect(animation().loaded).toBe(true));
   return { placement, model, world, animation, finish, dropLoot, builder };
 }
@@ -60,7 +61,9 @@ it.each(['researchlab'] as const)('%s fires hit/finish callbacks once and remove
       expect(animation().currentAnimation).toBe('idle');
     }
     target.playHit();
-    expect(dropLoot).toHaveBeenCalledExactlyOnceWith(RESEARCH_LAB_HAMMER_LOOT[id], new THREE.Vector3(3, 0, 4));
+    const dropped = dropLoot.mock.calls.flatMap(([items]) => items.flatMap(({ itemId, count }: { itemId: string; count: number }) => Array(count).fill(itemId)));
+    expect(dropped.sort()).toEqual(['goldnugget', 'log', 'log', 'rocks', 'rocks']);
+    expect(dropLoot.mock.calls.every(([, position]) => position.equals(new THREE.Vector3(3, 0, 4)))).toBe(true);
     expect(PlaySound).toHaveBeenCalledTimes(2);
     expect(PlaySound).toHaveBeenCalledWith('dontstarve/common/destroy_wood', new THREE.Vector3(3, 0, 4));
     expect(model.parent).toBeNull();
@@ -71,11 +74,13 @@ it.each(['researchlab'] as const)('%s fires hit/finish callbacks once and remove
     expect(placement.exportRecords()).toEqual([]);
     const effect = world.scene.children.find((model) => model.name === 'collapse_small')!;
     expect(prefabInstance(effect)!.persists).toBe(false);
-    expect(prefabInstance(effect)!.listTags()).toEqual(['FX', 'NOCLICK']);
+    expect([...prefabInstance(effect)!.listTags()].sort()).toEqual(['FX', 'NOCLICK']);
     expect(effect.position.toArray()).toEqual([3, 0, 4]);
     expect(placement.renderEntities.map(({ object }) => object)).toEqual([effect]);
+    dropLoot.mockClear();
     target.playHit();
-    expect(dropLoot).toHaveBeenCalledOnce();
+    expect(dropLoot).not.toHaveBeenCalled();
+    await prefabDisplay(effect)!.artLoaded();
     finish();
     expect(effect.parent).toBeNull();
     expect(placement.renderEntities).toEqual([]);
@@ -100,8 +105,9 @@ it('preserves work through reskinning and restores proximity after hits', async 
     expect(dropLoot).not.toHaveBeenCalled();
     placement.hammerTargets[0].playHit();
     expect(model.parent).toBeNull();
-    expect(dropLoot).toHaveBeenCalledOnce();
+    expect(dropLoot).toHaveBeenCalled();
     const effect = world.scene.children[0];
+    await prefabDisplay(effect)!.artLoaded();
     let effectMesh!: THREE.Mesh;
     effect.traverse(object => { if (object instanceof THREE.Mesh) effectMesh ??= object; });
     const disposeMaterial = vi.spyOn((effectMesh.material as THREE.Material[])[0], 'dispose');
@@ -110,15 +116,6 @@ it('preserves work through reskinning and restores proximity after hits', async 
     expect(effect.parent).toBeNull();
     expect(disposeMaterial).toHaveBeenCalledOnce();
   } finally { builder.dispose(); placement.dispose(); }
-});
-
-it('matches unburnt Lua recipe salvage quantities', () => {
-  expect(RESEARCH_LAB_HAMMER_LOOT).toEqual({
-    researchlab: [{ itemId: 'goldnugget', count: 1 }, { itemId: 'log', count: 2 }, { itemId: 'rocks', count: 2 }],
-    researchlab2: [{ itemId: 'boards', count: 2 }, { itemId: 'cutstone', count: 1 }, { itemId: 'transistor', count: 1 }],
-    researchlab3: [{ itemId: 'livinglog', count: 2 }, { itemId: 'purplegem', count: 1 }, { itemId: 'nightmarefuel', count: 4 }],
-    researchlab4: [{ itemId: 'rabbit', count: 2 }, { itemId: 'boards', count: 2 }, { itemId: 'tophat', count: 1 }],
-  });
 });
 
 it('queues magic station transitions across reskinning, then rebuilds transient use state on load', async () => {

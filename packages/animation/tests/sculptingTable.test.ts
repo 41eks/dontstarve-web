@@ -131,8 +131,7 @@ it('drops the held block with the recipe loot when hammered', async () => {
     (findActionEntity(model)?.components ?? prefabInstance(model)!.components).trader.AcceptGift(marble.entity, marble.take);
     const target = placement.hammerTargets[0];
     for (let hit = 0; hit < 4; hit++) target.playHit();
-    expect(dropLoot).toHaveBeenCalledOnce();
-    const items = dropLoot.mock.calls[0][0] as { itemId: string; count: number }[];
+    const items = dropLoot.mock.calls.flatMap(([items]) => items) as { itemId: string; count: number }[];
     expect(items).toContainEqual({ itemId: 'marble', count: 1 });
     expect(items.some(({ itemId }) => itemId === 'boards')).toBe(true);
     expect(placement.exportRecords()).toEqual([]);
