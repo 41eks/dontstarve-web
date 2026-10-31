@@ -29,7 +29,7 @@ export class FliesController {
     const sprite = this.sprite = instance.sprite; this.position = position;
     sprite.setVisible(true);
     for (const tag of ['NOCLICK', 'DECOR']) instance.addTag(tag);
-    this.playerprox = new PlayerProx({ isValid: () => !this.disposed, getPosition: () => position }, scheduler, getWatchWorldContent);
+    this.playerprox = new PlayerProx({ isValid: () => !this.disposed, getPosition: () => position }, getWatchWorldContent);
     this.playerprox.SetDist(2 * WORLD_SCALE, 3 * WORLD_SCALE);
     this.playerprox.SetOnPlayerNear(() => {
       this.stopSound();

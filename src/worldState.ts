@@ -122,7 +122,11 @@ export function createWorldClockUpdater(
   let pendingFrames = 0, pendingSeconds = 0;
   let playerPositionFrames = 0;
   const publishPlayerPositions = () => {
-    if (getPlayerPositions) state.playerpositions.set(getPlayerPositions().map(position => position.clone()));
+    if (!getPlayerPositions) return;
+    const positions = getPlayerPositions(), previous = state.playerpositions.peek();
+    if (positions.length !== previous.length || positions.some((position, index) => !position.equals(previous[index]))) {
+      state.playerpositions.set(positions.map(position => position.clone()));
+    }
   };
   publishPlayerPositions();
   const flush = () => {

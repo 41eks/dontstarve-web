@@ -90,7 +90,7 @@ function setup(kind: 'animated' | 'wall') {
   const placement = kind === 'animated'
     ? new AnimatedBuildingPlacement(world, {
       building: {
-        archive: 'building.zip', name: 'Building', buildLabel: 'building', onProximity: false,
+        archive: 'building.zip', name: 'Building', buildLabel: 'building',
         scale: 1, skinArchives: { selected_skin: 'dynamic/selected_skin.zip' }, onbuilt,
       },
     }, consume)

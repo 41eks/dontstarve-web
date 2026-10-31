@@ -210,6 +210,8 @@ const sounds = {
   'dontstarve/rain/thunder_close': { bank: 'forest_stream', streams: [94, 95, 96, 97], loop: false },
   // sculptingtable.lua onbuilt → dontstarve.fev sounddef sfx/together/sculpting_table/sculpting_station_craft-01.wav → sfx stream 910.
   'dontstarve/common/together/sculpting_table/craft': { bank: 'sfx', streams: [910], loop: false },
+  // sculptingtable.lua onturnon -> dontstarve.fev sounddef 1373, sfx file_index 910.
+  'dontstarve/common/together/sculpting_table/proximity_LP': { bank: 'sfx', streams: [911], loop: true, volume: .09527961909770966, pitchOctaves: -1 / 6 },
   // dock_kit.lua on_deploy PlaySoundWithParams(intensity = .8) → turnoftides.fev common/together/boat/damage: four layers,
   // sounddefs 160 (armoured_1..8), 165 (cargo_1..8), 128 (kickdrum_1..2), 142 (woodbreak_DST-001..026), turnoftides
   // file_index + 1. Volume envelopes (EPRP 24–25, 26–28, 29–30, 10 + 31) are linear in `intensity`; the layer-0

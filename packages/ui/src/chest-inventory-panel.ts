@@ -118,7 +118,7 @@ export function createChestInventoryPanel(
   createEffect(() => { playerpositions.get(); update(); });
   const close = () => {
     stopBurnt?.(); stopBurnt = undefined;
-    prefabInstance(openModel)?.components.container?.Close(player);
+    prefabInstance(openModel)?.components.container?.Close(prefabInstance(player) ?? player);
     if (!element.isClosing) {
       openModel = undefined;
       element.hidden = true;
