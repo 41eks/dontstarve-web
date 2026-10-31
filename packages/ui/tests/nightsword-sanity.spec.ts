@@ -19,7 +19,7 @@ test('equipping a nightsword updates the sanity HUD, persists through reload and
     const { main, playerStats } = (window as any).nightswordGame;
     main.inventory.applySlotChanges(main.inventory.exportState().slots.filter((slot: any) => slot.item)
       .map((slot: any) => ({ slot: slot.address, ...slot.item, delta: -slot.item.count })));
-    playerStats.sanity.set(100);
+    playerStats.sanity.SetCurrent(100);
     document.querySelector('dst-debug-console')!.dispatchEvent(new CustomEvent('game:debug-command', {
       detail: { command: 'c_give("nightsword")' },
     }));
@@ -40,18 +40,18 @@ test('equipping a nightsword updates the sanity HUD, persists through reload and
   await page.route('**/saves/initial-world.json', route => route.fulfill({ json: saved }));
   await page.reload(); await prepare();
   await expect(hand).toHaveAttribute('data-item-id', 'nightsword');
-  await expect.poll(() => page.evaluate(() => (window as any).nightswordGame.playerStats.sanity.peek()))
+  await expect.poll(() => page.evaluate(() => (window as any).nightswordGame.playerStats.sanity.current))
     .toBeLessThan(saved.players.local.stats.sanity);
   await hand.dragTo(items.locator('[data-item-id=""]').first());
   await expect(hand).toHaveAttribute('data-item-id', '');
-  const unequipped = await page.evaluate(() => (window as any).nightswordGame.playerStats.sanity.peek());
+  const unequipped = await page.evaluate(() => (window as any).nightswordGame.playerStats.sanity.current);
   // Observe active gameplay frames after the actual inventory drag finished.
   await page.evaluate(() => new Promise<void>(resolve => {
     let frames = 0;
     const advance = () => { if (++frames === 30) resolve(); else requestAnimationFrame(advance); };
     requestAnimationFrame(advance);
   }));
-  expect(await page.evaluate(() => (window as any).nightswordGame.playerStats.sanity.peek())).toBe(unequipped);
+  expect(await page.evaluate(() => (window as any).nightswordGame.playerStats.sanity.current)).toBe(unequipped);
   await expect(meter).toHaveText(String(Math.round(unequipped)));
   expect(errors).toEqual([]);
 });

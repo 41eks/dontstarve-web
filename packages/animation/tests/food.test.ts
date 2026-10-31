@@ -21,7 +21,7 @@ vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}),
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
-  playerStats.health.SetVal(140); playerStats.hunger.set(90); playerStats.sanity.set(35);
+  playerStats.health.SetVal(140); playerStats.hunger.SetCurrent(90); playerStats.sanity.SetCurrent(35);
 });
 afterEach(() => { vi.clearAllMocks(); vi.unstubAllGlobals(); });
 
@@ -50,7 +50,7 @@ async function fixture(itemId = 'bananajuice') {
 
 it('eats meatballs through the solid-food action and applies source stats only after consumption', async () => {
   const { animation, actions, store, slot, source } = await fixture('meatballs');
-  playerStats.hunger.set(50);
+  playerStats.hunger.SetCurrent(50);
   const onEaten = vi.fn(() => applyPlayerFoodEffects(FOOD_EFFECTS.meatballs));
   try {
     expect(await actions.eat(source, onEaten)).toBe(true);
@@ -83,9 +83,9 @@ it('renders source raw/cooked mushroom poses and applies harmful and restorative
     await actions.eat(source, () => applyPlayerFoodEffects(FOOD_EFFECTS.green_cap));
     for (let frame = 0; frame < 40; frame++) animation.update(1 / 30);
     expect(store.get(slot)?.count).toBe(1);
-    expect(getPlayerStats()).toEqual({ health: 140, hunger: 102.5, sanity: 0 });
+    expect(getPlayerStats()).toEqual({ health: 140, hunger: 102.5, sanity: 0, sanitySane: false });
     applyPlayerFoodEffects(FOOD_EFFECTS.blue_cap_cooked);
-    expect(getPlayerStats()).toEqual({ health: 137, hunger: 102.5, sanity: 10 });
+    expect(getPlayerStats()).toEqual({ health: 137, hunger: 102.5, sanity: 10, sanitySane: false });
   } finally { actions.dispose(); store.dispose(); raw.dispose(); cooked.dispose(); assets.dispose(); }
 });
 
@@ -134,13 +134,13 @@ it('preserves food and stats when cancelled or replaced before commit and clamps
     store.replaceState(saved, {});
     for (let frame = 0; frame < 40; frame++) animation.update(1 / 30);
     expect(store.get(slot)?.count).toBe(2);
-    expect(playerStats.sanity.peek()).toBe(35);
-    playerStats.sanity.set(190);
+    expect(playerStats.sanity.current).toBe(35);
+    playerStats.sanity.SetCurrent(190);
     const replacement = store.getEntity(slot)!;
     expect(await actions.eat({ ...source, isValid: () => store.getEntity(slot) === replacement }, () => applyPlayerFoodEffects(FOOD_EFFECTS.bananajuice))).toBe(true);
     for (let frame = 0; frame < 40; frame++) animation.update(1 / 30);
     expect(store.get(slot)?.count).toBe(1);
-    expect(playerStats.sanity.peek()).toBe(200);
+    expect(playerStats.sanity.current).toBe(200);
   } finally { actions.dispose(); store.dispose(); }
 });
 

@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest';
-import { createHungerState } from '../../signals/src';
+import { Hunger } from '../../componets/src/hunger';
 import { Health } from '../../componets/src/health';
 import { equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { AMULET_ID, REDAMULET_CONVERSION, REDAMULET_CONVERSION_TIME, REDAMULET_USES, createAmuletEquipmentLifecycle } from '../../prefab/src/amulet';
@@ -13,8 +13,9 @@ function wornAmulet(health: number, hunger: number) {
   inventory.add(AMULET_ID, 1);
   const entity = inventory.getEntity(inventorySlotAddress(0))!;
   expect(inventory.EquipFromInventory(entity)).toBe(true);
-  const stats = { health: new Health(150), hunger: createHungerState(hunger, 150) };
+  const stats = { health: new Health(150), hunger: new Hunger({ components: {} }, 150) };
   stats.health.SetCurrentHealth(health);
+  stats.hunger.SetCurrent(hunger);
   const art = { onequip: vi.fn(), onunequip: vi.fn() };
   const state = { name: 'idle' };
   const listeners = new Set<(data: unknown) => void>();
@@ -48,7 +49,7 @@ it('converts hunger into health every 30 game seconds while hurt, spending one u
     expect(stats.health.currenthealth).toBe(100);
     world.advance(1);
     expect(stats.health.currenthealth).toBe(100 + REDAMULET_CONVERSION);
-    expect(stats.hunger.peek()).toBe(100 - REDAMULET_CONVERSION);
+    expect(stats.hunger.current).toBe(100 - REDAMULET_CONVERSION);
     expect(entity.components.finiteuses.remaining).toBe(REDAMULET_USES - 1);
     world.advance(REDAMULET_CONVERSION_TIME);
     expect(stats.health.currenthealth).toBe(100 + 2 * REDAMULET_CONVERSION);
@@ -56,7 +57,7 @@ it('converts hunger into health every 30 game seconds while hurt, spending one u
     stats.health.SetVal(150);
     world.advance(REDAMULET_CONVERSION_TIME);
     expect(entity.components.finiteuses.remaining).toBe(REDAMULET_USES - 2);
-    stats.health.SetVal(100); stats.hunger.set(5);
+    stats.health.SetVal(100); stats.hunger.SetCurrent(5);
     world.advance(REDAMULET_CONVERSION_TIME);
     expect(stats.health.currenthealth).toBe(100);
     expect(entity.components.finiteuses.remaining).toBe(REDAMULET_USES - 2);

@@ -30,6 +30,7 @@ import { Builder, type BuilderWorld } from '../../componets/src/builder';
 import type { WilsonSoulHopHost } from '../../stategraphs/src/SGwilson';
 import { StaffCastingLight } from './staff_castinglight';
 import type { SlipperyFeet } from '../../componets/src/slipperyfeet';
+import type { ComponentUpdates } from '../../componets/src/componentUpdates';
 
 export type WilsonFacing = 'up' | 'down' | 'side';
 /** skinprefabs.lua wortox_none: normal_skin = wortox, ghost_skin = ghost_wortox_build. */
@@ -198,6 +199,8 @@ export interface WilsonPlayerPrefabOptions {
   /** The owner's authoritative sanity ratio; standalone previews default to full sanity. */
   sanityPercent?: ReadonlySignal<number>;
   stats?: PlayerStatsSave;
+  scheduler?: GameTimeScheduler;
+  componentUpdates?: ComponentUpdates;
 }
 
 /** Source tags: bugnet tool component and reskin_tool.lua's veryquickcast. */
@@ -753,10 +756,12 @@ function createWilsonPlayerEntity(
     instance.sprite.setPaused(true);
   });
   const instance = Object.assign(baseInstance, {
-    stats: createPlayerStats(baseInstance, options.stats),
+    stats: createPlayerStats(baseInstance, options.stats, options.scheduler),
     controllerEnabled: true, runSpeed: 0, currentMotorSpeed: 0, wantsToMoveForward: false, worldHeading: 0,
   }) as WilsonPlayerInstance;
   const player = display.model;
+  const stopSanity = options.componentUpdates?.register(instance.stats.sanity);
+  if (stopSanity) instance.onRemove(stopSanity);
   instance.minimap.SetIcon(`${PLAYER_ART_CHARACTER}.png`);
   instance.minimap.SetPriority(10);
   instance.minimap.SetCanUseCache(false);

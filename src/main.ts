@@ -67,7 +67,7 @@ import { inventoryReceiveEffect } from './inventoryReceive';
 import { playerStats, playerGhostMode, getPlayerStats, setPlayerSanityPercent } from './playerStats';
 import { loadAnimationArchive } from '@dontstarve-web/animation/animationAssets';
 import { createEffect, watchSignal } from '@dontstarve-web/signals';
-import { Sanity } from '../packages/componets/src/sanity';
+import type { Sanity } from '../packages/componets/src/sanity';
 import { OnMakePlayerGhost, OnRespawnFromGhost, setGhostLight, type PlayerGhostOwner, type RezSource } from '@dontstarve-web/prefab/player_common';
 import { SKELETON_PLAYER_ID } from '@dontstarve-web/prefab/skeleton';
 import { modelHasTag } from '@dontstarve-web/prefab/prefabInstance';
@@ -106,7 +106,8 @@ gameUi.minimap.addEventListener('game:map-state', (event) => {
 function syncPlayerStats(): void {
   gameUi.statusHud.setStats(getPlayerStats());
 }
-[playerStats.health.current, playerStats.hunger, playerStats.sanity].forEach(stat => stat.subscribe(syncPlayerStats));
+const stopStatsUpdates = [playerStats.health.current, playerStats.hunger.value, playerStats.sanity.value]
+  .map(stat => stat.subscribe(syncPlayerStats));
 syncPlayerStats();
 export const inventory = createInventoryStore();
 const cursorAddress = cursorSlotAddress();
@@ -147,10 +148,8 @@ const pickupDoer: PickupDoer & { ListenForEvent(name: string, listener: (data: u
   },
 };
 inventory.bindActor(pickupDoer);
-// owner.components.sanity, for equipment and the dapperfn's owner; created before any equip runs.
-const sanityComponents: { inventory: typeof inventory; health: typeof playerStats.health; sanity?: Sanity } = { inventory, health: playerStats.health };
-const playerSanity = new Sanity({ ...pickupDoer, components: sanityComponents, sg: playerAnimation?.stategraph }, playerStats.sanity);
-sanityComponents.sanity = pickupDoer.components.sanity = playerSanity;
+const playerSanity = playerStats.sanity;
+pickupDoer.components.sanity = playerSanity;
 playerAnimation?.bindInventory(inventory);
 playerInstance.components.inventory = inventory;
 const handSlotAddress = equipmentSlotAddress('hand');
@@ -290,17 +289,13 @@ gameUi.minimap.bind({ terrain: turfMap, cellSize: TILE_SIZE, getPlayerPosition: 
 const sanityVignette = await SanityVignette.create(playerSanity.sane, animRoot);
 document.body.append(sanityVignette.canvas);
 const stopVignetteUpdate = registerFrontTask(dt => sanityVignette.update(dt));
-const stopSanityUpdate = registerFrontTask(dt => playerSanity.OnUpdate(dt));
-playerInstance.components.sanity = playerSanity;
 disposalEvents.on('dispose', () => {
   gameUi.minimap.dispose();
+  stopStatsUpdates.forEach(stop => stop());
   headEquipmentBinding.dispose();
   bodyEquipmentBinding.dispose();
   stopVignetteUpdate();
   sanityVignette.dispose();
-  stopSanityUpdate();
-  playerSanity.dispose();
-  if (playerInstance.components.sanity === playerSanity) delete playerInstance.components.sanity;
 });
 const disposalActions = disposalResources.register(disposalEvents, sceneResources);
 const wortox = playerAnimation ? await WortoxPlayer.create({
@@ -334,7 +329,7 @@ playerAnimation?.bindDeath({
 // player_common.lua ListenForEvent("makeplayerghost", ex_fns.OnMakePlayerGhost), with the ghost art prepared beforehand.
 let deathCause = 'unknown';
 const ghostOwner: PlayerGhostOwner | undefined = playerAnimation && {
-  model: player, animation: playerAnimation, physics: playerPhysics, stats: playerStats, sanity: playerSanity, ghostMode: playerGhostMode,
+  model: player, animation: playerAnimation, physics: playerPhysics, stats: playerStats, ghostMode: playerGhostMode,
   actionPicker: view.mouseActions!,
   // SpawnDeathProduct: skeleton_player at the death point, described with the character, name and cause.
   spawnDeathProduct: position => {

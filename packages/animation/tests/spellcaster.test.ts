@@ -39,7 +39,7 @@ function fixture(itemId: LightStaffId, remainingUses?: number) {
     actionEvents: new EventEmitter<PlayerActionEvents>(),
     renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
   const doDelta = vi.fn();
-  const doer: SpellCastDoer = { position: player.position, hasTag: () => false, components: { sanity: { doDelta } } };
+  const doer: SpellCastDoer = { position: player.position, hasTag: () => false, components: { sanity: { DoDelta: doDelta } } };
   const locomotor = { destination: undefined, goToPoint: vi.fn(() => true), stop: vi.fn() };
   const input = new SpellCastActionController(world, { stategraph: graph, cancelEmote() {}, setFacing() {} }, locomotor,
     store.handEquipment, doer);

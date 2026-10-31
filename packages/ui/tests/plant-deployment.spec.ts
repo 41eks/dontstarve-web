@@ -74,7 +74,7 @@ test('plants butterflies and saplings, picks the restored flower and saves its p
     center.divideScalar(count).project(view.camera);
     const bounds = view.renderer.domElement.getBoundingClientRect();
     return { x: bounds.left + (center.x + 1) * bounds.width / 2, y: bounds.top + (1 - center.y) * bounds.height / 2,
-      sanity: playerStats.sanity.peek() };
+      sanity: playerStats.sanity.current };
   });
   await page.mouse.move(pickPoint.x, pickPoint.y);
   await expect.poll(() => page.evaluate(() => (window as any).plantGame.view.mouseActions.getMouseActions().left?.action)).toBe('PICK');

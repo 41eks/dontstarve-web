@@ -20,7 +20,6 @@ import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { inventoryStateFromSave } from '../../../src/save/inventoryState';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
-import { createSanityState } from '../../signals/src';
 import { Sanity } from '../../componets/src/sanity';
 import { reskinEntity } from '../../prefab/src/reskin_tool';
 
@@ -78,8 +77,9 @@ it('spawns/gives individual swords, preserves failed drops and reskin/pickup ide
   const manager = new GroundItemManager(scene, camera, renderer, '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
   const restored = new GroundItemManager(new THREE.Scene(), camera, renderer, '/dst/data/databundles/images.zip', restoredInventory, '/dst/data/anim', player);
   const registry = new EntityRegistry();
-  const currentSanity = createSanityState(100, 200);
-  const sanity = new Sanity({ components: { inventory }, hasTag: () => false }, currentSanity);
+  const sanity = new Sanity({ components: { inventory }, hasTag: () => false }, 200);
+  sanity.SetCurrent(100);
+  const currentSanity = sanity;
   registry.register(PREFAB_DEFINITIONS.groundItems, {
     debugSpawn: id => manager.spawnFromSave(`spawn:${id}`, { ...SAVE_CATALOG.items[id], itemId: id, count: 1 }, player.position),
     restore: (_id, record) => manager.spawnFromSave(record.id, { ...SAVE_CATALOG.items[record.components.stack!.itemId],
@@ -115,14 +115,14 @@ it('spawns/gives individual swords, preserves failed drops and reskin/pickup ide
     expect(inventory.handEquipment.peek()?.skinId).toBe('nightsword_cotl');
     expect(manager.exportRecords().some(record => record.id === entity.id)).toBe(false);
     sanity.OnUpdate(30);
-    expect(currentSanity.peek()).toBeCloseTo(87);
+    expect(currentSanity.current).toBeCloseTo(87);
     const before = registry.exportRecords(), held = inventory.exportState();
     let json = '';
     expect((await executeDebugCommand('c_save()', inventory, undefined, () => {
       json = serializeSave(deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG), {
         entities: before, inventory: held, elapsedSeconds: 12.5,
         playerTransform: { position: [3, 0, -6], rotationY: 0 },
-        playerStats: { health: 150, hunger: 150, sanity: currentSanity.peek() },
+        playerStats: { health: 150, hunger: 150, sanity: currentSanity.current },
       }, SAVE_CATALOG);
     })).ok).toBe(true);
     const saved = deserializeSave(json, SAVE_CATALOG);
@@ -134,10 +134,11 @@ it('spawns/gives individual swords, preserves failed drops and reskin/pickup ide
     expect(restoredInventory.exportState()).toEqual(held);
     expect(restoredInventory.getEntity(hand)!.snapshot()).toEqual(entity.snapshot());
     expect(saved.players.local.stats!.sanity).toBeCloseTo(87);
-    const restoredSanity = createSanityState(saved.players.local.stats!.sanity, 200);
-    const restoredComponent = new Sanity({ components: { inventory: restoredInventory }, hasTag: () => false }, restoredSanity);
+    const restoredComponent = new Sanity({ components: { inventory: restoredInventory }, hasTag: () => false }, 200);
+    restoredComponent.SetCurrent(saved.players.local.stats!.sanity);
+    const restoredSanity = restoredComponent;
     restoredComponent.OnUpdate(30);
-    expect(restoredSanity.peek()).toBeCloseTo(74);
+    expect(restoredSanity.current).toBeCloseTo(74);
     restoredComponent.dispose();
   } finally { sanity.dispose(); registry.dispose(); restored.dispose(); inventory.dispose(); restoredInventory.dispose(); }
 });

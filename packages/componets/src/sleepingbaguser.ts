@@ -7,8 +7,8 @@ export interface SleepingBagUserOptions {
   scheduler: GameTimeScheduler;
   /** TheWorld.state.phase, which WatchWorldState("phase") observes. */
   phase: ReadonlySignal<WorldPhase>;
-  hunger?: { doDelta(delta: number): void; isStarving(): boolean };
-  sanity?: { doDelta(delta: number): void; getPercentWithPenalty(): number };
+  hunger?: { DoDelta(delta: number, overtime?: boolean, ignoreInvincible?: boolean): void; IsStarving(): boolean };
+  sanity?: { DoDelta(delta: number, overtime?: boolean): void; GetPercentWithPenalty(): number };
   health?: { DoDelta(delta: number, overtime?: boolean, cause?: string, ignoreInvincible?: boolean): number | void };
   /** `inst.sg:GoToState("wakeup", { goodsleep })`, skipped when `nostatechange` is set. */
   goToWakeup(data: { goodsleep: boolean }): void;
@@ -78,10 +78,10 @@ export class SleepingBagUser implements SleepingBagSleeper {
 
     let starving = false;
     if (hunger) {
-      hunger.doDelta(hungerTick);
-      starving = hunger.isStarving();
+      hunger.DoDelta(hungerTick, true, true);
+      starving = hunger.IsStarving();
     }
-    if (sanity && sanity.getPercentWithPenalty() < 1) sanity.doDelta(sanityTick);
+    if (sanity && sanity.GetPercentWithPenalty() < 1) sanity.DoDelta(sanityTick, true);
     if (!starving && bed.healthsleep) health?.DoDelta(healthTick, true, undefined, true);
     bed.TemperatureTick(this);
     if (starving) bed.DoWakeUp();

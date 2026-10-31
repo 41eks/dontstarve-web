@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 import type { PhysicsState } from '../../componets/src/physicsState';
-import { createHungerState, createSanityState, type HungerState, type SanityState, type Signal } from '@dontstarve-web/signals';
+import type { GameTimeScheduler, Signal } from '@dontstarve-web/signals';
 import { Health } from '../../componets/src/health';
+import { Hunger } from '../../componets/src/hunger';
+import { Sanity, type SanityMode } from '../../componets/src/sanity';
 import type { PrefabInstance } from './prefabInstance';
 import { actionEntity } from './actionEntity';
 import { prefabInstance } from './prefabInstance';
@@ -18,19 +20,24 @@ export const WILSON_MAX_HUNGER = 150;
 export const WILSON_MAX_SANITY = 200;
 export interface PlayerStats {
   readonly health: Health;
-  readonly hunger: HungerState;
-  readonly sanity: SanityState;
+  readonly hunger: Hunger;
+  readonly sanity: Sanity;
 }
-export interface PlayerStatsSave { health?: number; hunger?: number; sanity?: number; penalty?: number }
+export interface PlayerStatsSave { health?: number; hunger?: number; sanity?: number; penalty?: number; sanitySane?: boolean; sanityMode?: SanityMode }
 
-/** player_common.lua AddComponent("health"): the player's health has the same owner as every other prefab. */
-export function createPlayerStats(inst: PrefabInstance, saved: PlayerStatsSave = {}): PlayerStats {
+/** player_common.lua: assemble the three authoritative components before restoring player data. */
+export function createPlayerStats(inst: PrefabInstance, saved: PlayerStatsSave = {}, scheduler?: GameTimeScheduler): PlayerStats {
   const health = inst.components.health = new Health(WILSON_MAX_HEALTH, inst);
   health.nofadeout = true;
   health.OnLoad({ health: saved.health ?? WILSON_MAX_HEALTH, penalty: saved.penalty ?? 0 });
-  inst.onRemove(() => health.dispose());
-  return { health, hunger: createHungerState(saved.hunger ?? 105, WILSON_MAX_HUNGER),
-    sanity: createSanityState(saved.sanity ?? 35, WILSON_MAX_SANITY) };
+  const hunger = inst.components.hunger = new Hunger(inst, WILSON_MAX_HUNGER, scheduler);
+  hunger.SetRate(75 / 480);
+  hunger.SetKillRate(WILSON_MAX_HEALTH / 120);
+  hunger.OnLoad({ hunger: saved.hunger ?? 105 });
+  const sanity = inst.components.sanity = new Sanity(inst, WILSON_MAX_SANITY);
+  sanity.OnLoad({ current: saved.sanity ?? 35, sane: saved.sanitySane, mode: saved.sanityMode });
+  inst.onRemove(() => { health.dispose(); hunger.dispose(); sanity.dispose(); });
+  return { health, hunger, sanity };
 }
 
 /**
@@ -71,8 +78,6 @@ export interface PlayerGhostOwner {
   /** inst.Physics */
   readonly physics: PhysicsState;
   readonly stats: PlayerStats;
-  /** sanity.ignore = true */
-  readonly sanity: { ignore: boolean };
   /** player_classified isghostmode (SetGhostMode): playervision's ghost colour cube, and the ghost's save flag. */
   readonly ghostMode: Signal<boolean>;
   /** SpawnDeathProduct: the skeleton (or corpse) at the death point. */
@@ -125,10 +130,11 @@ export function OnMakePlayerGhost(owner: PlayerGhostOwner, data?: { skeleton?: b
   health.SetInvincible(true);
   health.canheal = false;
   if (!loading) {
-    sanity.set(sanity.maximum / 2);
-    hunger.set(hunger.maximum * 2 / 3);
+    sanity.SetPercent(.5);
+    hunger.SetPercent(2 / 3);
   }
-  owner.sanity.ignore = true;
+  hunger.Pause();
+  owner.stats.sanity.ignore = true;
   owner.removeSlipperyFeet();
 
   MakeGhostPhysics(owner, 1, .5);
@@ -212,7 +218,7 @@ function doRezDelay(owner: PlayerGhostOwner, source: RezSource, delay: number): 
 /**
  * DoActualRez with the multiplayer_portal source, then CommonActualRez: die_fx at the portal, the living bank and skin,
  * the portal's PORTAL_HEALTH_PENALTY, `rez_player` on the portal and the SGwilson portal_rez state.
- * Not ported: the player_classified map explorer, age, hunger, temperature and moisture pauses a ghost does not have
+ * Not ported: the player_classified map explorer, age, temperature and moisture pauses a ghost does not have
  * here, burnable/freezable/grogginess/sheltered/debuffable and the rez announcement.
  */
 function doActualRez(owner: PlayerGhostOwner, source: RezSource): void {
@@ -248,7 +254,8 @@ function finishRez(owner: PlayerGhostOwner, source: RezSource, position: THREE.V
   // CommonActualRez
   owner.actionPicker.PopActionFilter(GhostActionFilter);
   owner.stats.health.canheal = true;
-  owner.sanity.ignore = false;
+  owner.stats.hunger.Resume();
+  owner.stats.sanity.ignore = false;
   owner.addSlipperyFeet();
   entity.removeTag('playerghost');
   entity.removeTag('reviving');

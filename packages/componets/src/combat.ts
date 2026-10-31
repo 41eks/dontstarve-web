@@ -8,7 +8,7 @@ export interface CombatInst<HealthComponent extends Pick<Health, 'IsDead' | 'DoD
   getPhysicsRadius(): number;
   hasTag(tag: string): boolean;
   PushEvent?(name: string, data: unknown): void;
-  readonly components: { combat?: Combat; health?: HealthComponent; sanity?: { doDelta(delta: number): void };
+  readonly components: { combat?: Combat; health?: HealthComponent; sanity?: { DoDelta(delta: number): void };
     /** inventory:ApplyDamage: equipped armor absorbs its share before health; creature inventories wear none. */
     inventory?: { ApplyDamage?(damage: number, attacker?: CombatActor, weapon?: Weapon): number } };
 }

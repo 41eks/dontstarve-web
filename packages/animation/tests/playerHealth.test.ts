@@ -23,7 +23,7 @@ it('eats eight red caps, dies through component events, becomes a ghost and save
   vi.stubGlobal('window', new EventTarget());
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   const scheduler = new GameTimeScheduler(), inventory = createPickupInventory();
-  const prefab = await createWilsonPlayerPrefab('/dst/data/anim', new World(), { stats: { health: 150 } });
+  const prefab = await createWilsonPlayerPrefab('/dst/data/anim', new World(), { stats: { health: 150 }, scheduler });
   const { model: player, instance, physics, display } = prefab;
   player.position.set(0, 0, 0);
   const animation = instance.animationController, stats = instance.stats, health = instance.components.health!;
@@ -34,7 +34,7 @@ it('eats eight red caps, dies through component events, becomes a ghost and save
     { stop() {}, goToPoint: () => true, destination: undefined }, { soilTargets: [], plantSeed: () => false });
   const ghost = createSignal(false), skeleton = vi.fn(), death = vi.fn();
   const owner: PlayerGhostOwner = {
-    model: player, animation, physics, stats, sanity: { ignore: false }, ghostMode: ghost,
+    model: player, animation, physics, stats, ghostMode: ghost,
     spawnDeathProduct: skeleton, spawnDieFx() {}, schedule: (seconds, fn) => scheduler.schedule(seconds, fn),
     addSlipperyFeet() {}, removeSlipperyFeet() {}, setHidden: hidden => instance.sprite.setVisible(!hidden),
     setGhostLight() {}, teleport: position => { player.position.copy(position); physics.Teleport(); },
@@ -48,6 +48,8 @@ it('eats eight red caps, dies through component events, becomes a ghost and save
   const frames = (count: number) => { for (let i = 0; i < count; i++) animation.update(1 / 30); };
   try {
     expect(stats.health).toBe(health);
+    expect(instance.components.hunger).toBe(stats.hunger);
+    expect(instance.components.sanity).toBe(stats.sanity);
     expect(health).toBeInstanceOf(Health);
     inventory.add('red_cap', 8);
     const slot = inventorySlotAddress(0), cap = inventory.getEntity(slot)!;
@@ -71,6 +73,10 @@ it('eats eight red caps, dies through component events, becomes a ghost and save
     expect(skeleton).toHaveBeenCalledOnce();
     expect(health.currenthealth).toBe(50);
     expect(health.IsInvincible()).toBe(true);
+    expect(stats.hunger.IsPaused()).toBe(true);
+    const ghostSanity = stats.sanity.current;
+    stats.sanity.DoDelta(-50);
+    expect(stats.sanity.current).toBe(ghostSanity);
     expect(health.DoDelta(-20)).toBe(0);
     expect(health.currenthealth).toBe(50);
     const portal = { prefab: 'multiplayer_portal', position: new Vector3(12, 0, 0),
@@ -82,13 +88,15 @@ it('eats eight red caps, dies through component events, becomes a ghost and save
     frames(200);
     expect(health.IsInvincible()).toBe(false);
     expect(health.canheal).toBe(true);
+    expect(stats.hunger.IsPaused()).toBe(false);
+    expect(stats.sanity.ignore).toBe(false);
     expect(instance.components.health).toBe(health);
     health.DoDelta(100);
     expect(health.currenthealth).toBe(112.5);
     const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
     const saved = deserializeSave(serializeSave(template, { entities: {}, elapsedSeconds: 3,
       playerTransform: { position: [12, 0, 0], rotationY: 0 }, inventory: inventory.exportState(),
-      playerStats: { health: health.currenthealth, penalty: health.penalty, hunger: stats.hunger.peek(), sanity: stats.sanity.peek() },
+      playerStats: { health: health.currenthealth, penalty: health.penalty, hunger: stats.hunger.current, sanity: stats.sanity.current },
       playerGhost: ghost.peek(),
     }, SAVE_CATALOG), SAVE_CATALOG);
     const restored = new Health(150);

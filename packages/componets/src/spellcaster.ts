@@ -4,7 +4,7 @@ export interface SpellCastDoer {
   readonly position: THREE.Vector3;
   hasTag(tag: string): boolean;
   readonly components: {
-    sanity?: { doDelta(delta: number): void };
+    sanity?: { DoDelta(delta: number): void };
     staffsanity?: { doCastingDelta(delta: number): void };
   };
 }

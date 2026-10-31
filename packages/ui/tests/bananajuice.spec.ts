@@ -117,7 +117,7 @@ test('eating and drinking update the HUD and preserve food and spawned items thr
         skinId: entity.skinId ?? null, position: model.position.toArray() };
     }, id)).toEqual({ id, itemId, count: 1, skinId: null, position: savedGround.transform.position });
   }
-  await page.evaluate(() => (window as any).juiceGame.stats.playerStats.sanity.set(190));
+  await page.evaluate(() => (window as any).juiceGame.stats.playerStats.sanity.SetCurrent(190));
   await juice.click({ button: 'right' });
   await expect.poll(count).toBe(0);
   await expect(sanity).toHaveText('200');

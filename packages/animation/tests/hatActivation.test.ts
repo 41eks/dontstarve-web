@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { HAT_DEFINITIONS, HatActivationController, HatEquipmentAssets } from '../../prefab/src/hats';
 import { LanternLightController } from '../../prefab/src/lantern';
 import { smallHash } from '../src/animationAssets';
-import { createSanityState } from '@dontstarve-web/signals';
+import { Sanity } from '../../componets/src/sanity';
 import { createEmptyEntity, type PrefabInstance } from '../../prefab/src/prefabInstance';
 
 /** The light of the `prefab` entity parented to `owner`. */
@@ -38,7 +38,8 @@ describe('Enlightened Crown source activation', () => {
     const declared = () => [...owner.sprite.fx.peek().values()];
     // Each layer dresses its own material copies (SetMultColour), so frames compare by their parts and material names.
     const frame = (index: number) => declared()[index].display!.resolveFrame().map(({ element, image, materials }) => ({ element, image, materials: materials.map(({ name }) => name) }));
-    const sanity = createSanityState(169, 200);
+    const sanity = new Sanity({ components: {}, hasTag: () => false }, 200);
+  sanity.SetCurrent(169);
     const sanityRead = vi.spyOn(sanity.percent, 'get');
     const swapHatHidden = vi.fn();
     const crown = new HatActivationController(owner, { assets, sanityPercent: sanity.percent, onSwapHatHidden: swapHatHidden });
@@ -47,7 +48,7 @@ describe('Enlightened Crown source activation', () => {
     expect(crown.activated.peek()).toBe(false);
     expect(crownLight()).toBeUndefined();
     expect(declared()).toEqual([]);
-    sanity.set(171);
+    sanity.SetCurrent(171);
     expect(crown.activated.peek()).toBe(true);
     expect(crownLight()).toMatchObject({ radius: 12, intensity: 0.8, falloff: 0.5 });
     // Each layer is its own FX entity following the owner's hair, one behind and one in front of it.
@@ -75,7 +76,7 @@ describe('Enlightened Crown source activation', () => {
     expect(front!.instance.sprite.currentAnimation).toBe('activate_loop');
     expect(frame(0)[0].element.matrix).not.toEqual(initial[0][0].element.matrix);
 
-    sanity.set(170);
+    sanity.SetCurrent(170);
     expect(crown.activated.peek()).toBe(false);
     expect(crownLight()).toBeUndefined();
     expect(crown.layers).toEqual({ front: undefined, back: undefined });
@@ -90,7 +91,7 @@ describe('Enlightened Crown source activation', () => {
     expect(declared()).toEqual([]);
     expect([front, back].map(layer => layer!.instance.status.peek())).toEqual(['removed', 'removed']);
 
-    sanity.set(172);
+    sanity.SetCurrent(172);
     expect([frame(0), frame(1)]).toEqual(initial);
     // Unequipping removes the layers at once.
     crown.setHat(null);
@@ -98,14 +99,14 @@ describe('Enlightened Crown source activation', () => {
     expect(crownLight()).toBeUndefined();
     expect(parentedLight(owner, 'lanternlight')).toEqual(lanternLight);
     sanityRead.mockClear();
-    sanity.set(200);
+    sanity.SetCurrent(200);
     expect(sanityRead).toHaveBeenCalledOnce();
     crown.setHat(hat);
     expect(crown.activated.peek()).toBe(true);
     crown.dispose();
     expect(declared()).toEqual([]);
     sanityRead.mockClear();
-    sanity.set(0);
+    sanity.SetCurrent(0);
     expect(sanityRead).not.toHaveBeenCalled();
     expect(crownLight()).toBeUndefined();
     lantern.dispose();

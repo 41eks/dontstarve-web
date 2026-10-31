@@ -103,7 +103,7 @@ export interface SavedPlayer {
   shardId: string;
   transform: SavedTransform;
   inventory: SavedInventory;
-  stats?: { health: number; hunger: number; sanity: number; penalty?: number };
+  stats?: { health: number; hunger: number; sanity: number; penalty?: number; sanitySane?: boolean; sanityMode?: 0 | 1 };
   /** player_common.lua OnSave `is_ghost`: the player resumes as a ghost on load. */
   ghost?: true;
   /** wortox.lua OnSave counters; the transient finishportalhoptask is not saved. */

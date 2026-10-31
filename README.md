@@ -112,7 +112,7 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 
 `c_spawn("nightmaregrowth")` |
 | `c_save()` | 无参数。将当前游戏状态（包括挖过的地皮、耕地地皮和月岩多人传送门）校验后写入 ZIP 内对应分片：洞穴为 `Cluster_1/Caves.json`，地表为 `Cluster_1/Master.json`；保留 `public/saves/Cluster_1/` 内其他文件及子目录的原始字节，下载为 `Cluster_1.zip`，同时在画面上方偏右显示原版 `anim/saving.zip` 的保存动画（`save_pre` → `save_loop` → `save_post`），结束后隐藏；保存超过 0.5 秒显示“正在保存…”。快速保存也会完整播放一轮动画；校验失败或目录文件读取失败时结束提示，并在浏览器 Console 报告“保存失败”，下载不会开始。连续保存依次执行，成功下载后推进快照编号。要重新加载，将 ZIP 解压到 `public/saves/` 并覆盖 `Cluster_1/`；默认加载洞穴，地表可使用 `?save=Cluster_1/Master.json`。使用旧地表 JSON 启动时，保存结果也写入 ZIP 内的 `Master.json`。 | `c_save()` |
-| `c_setsanity(percent)` | 设置 Wilson 的理智比例；`percent` 为必填的 `0` 到 `1` 数字（上限 200），写入理智 signal，由订阅同步状态栏和低理智滤镜，并随 `c_save()` 保存。调色按每 10% 一档四舍五入；实际理智、晃动速度和幅度保留连续值。理智 ≤15% 时边缘播放原版红色花纹，回升到 ≥17.5% 时恢复普通暗角，中间区间保持原状态。 | `c_setsanity(0)`、`c_setsanity(0.175)`、`c_setsanity(1)` |
+| `c_setsanity(percent)` | 设置 Wilson 的理智比例；`percent` 为必填的 `0` 到 `1` 数字（上限 200），调用玩家 `components.sanity:SetPercent()`，由组件的只读信号同步状态栏和低理智滤镜，并随 `c_save()` 保存。调色按每 10% 一档四舍五入；实际理智、晃动速度和幅度保留连续值。理智 ≤15% 时边缘播放原版红色花纹，回升到 ≥17.5% 时恢复普通暗角，中间区间保持原状态。 | `c_setsanity(0)`、`c_setsanity(0.175)`、`c_setsanity(1)` |
 
 物品栏左键点击普通物品时，将整叠实体从原槽转移到真实鼠标槽 `player:cursor/0`，图标、数量和耐久跟随鼠标。再点击空槽放下，点击已占用槽则交换鼠标槽与目标槽的整叠物品（包括同类物品），换出的物品继续由鼠标持有；拖放仍执行移动或合堆。失败时保留鼠标物品；`Esc` 尝试放回来源槽，再尝试普通物品栏，无法完整放回时继续持有。鼠标槽不作为 `c_give`、普通拾取或制造产物的自动接收槽，也不自动消耗其中的制造材料。`c_save()` 保存鼠标槽内的实体 ID、数量、皮肤、燃料和容器等状态，读档恢复鼠标持有；旧存档缺少该容器时初始化为空。调试命令语法、参数和支持 prefab/item ID 不变。
 
@@ -207,6 +207,8 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 
 
 幽灵滤镜按 `playervision.lua` 的 `GHOSTVISION_COLOURCUBES` 移植：`OnMakePlayerGhost` 更新 `playerGhostMode` signal，渲染器通过只读 memo 把昼夜、季节调色统一替换为原版 `images/colour_cubes/ghost_cc.tex`（0.25 秒渐变，与 `colourcube.lua` 的 `DEFAULT_BLEND_TIME` 一致），复活后恢复；低理智调色与边缘晃动仍叠加。目前没有直接设置生命的调试命令，可用下述 `red_cap` 食用流程验证。
+
+玩家的三项属性由 `components.health`、`components.hunger`、`components.sanity` 各自持有，`signals` 不再保存独立属性。`hunger.lua` 每 1 游戏秒结算：Wilson 每秒消耗 75/480 饥饿，归零后从下一次结算起每秒受到 150/120 生命伤害；无敌、传送期间按 Lua 阻止扣减，幽灵暂停任务，复活重新启用。`sanity.lua` 同步处理 15%/17.5% 的疯狂迟滞、月狂模式 85%/82.5% 阈值、强制模式、上限惩罚、装备理智速率和事件；普通装备及潮湿装备沿用原版速率。`c_setsanity()` 语法与支持 ID 不变，`c_save()` 在玩家 `stats` 中按需增加 `sanitySane`、`sanityMode`，保留迟滞区间内的状态并兼容旧存档。环境光照、实体理智光环及潮湿角色本体的理智结算仍待相应逻辑组件接入；不会从渲染器读取这些数值。
 
 玩家、生物和建筑共用 `packages/componets/src/health.ts` 的 `Health`，生命值只由实例的 `components.health` 持有；HUD 读取组件的只读信号。伤害、治疗、无敌、生命上限惩罚和保存恢复使用同一套组件方法，`signals` 不再实现玩家专用生命规则。可用 `c_give("red_cap", 8)` 连续食用验证每个 −20 生命、归零死亡、变鬼和复活；传送门复活增加 25% 生命上限惩罚，`c_save()` 和读档保留生命值及惩罚。命令语法、参数、支持 ID 与存档格式保持不变。
 
@@ -353,7 +355,7 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 
 `c_give("meatballs", 2)` 获取两份肉丸，第二个参数可省略，默认一份；`c_spawn("meatballs")` 在玩家脚下生成可拾取的一份。右键物品栏肉丸播放 `quick_eat_pre → quick_eat`，第 10 帧播放 `dontstarve/wilson/eat`，第 12 帧成功扣除一份后恢复表中的属性，超过 Wilson 上限的部分截断。取消或物品被替换时不消耗、不恢复属性。图标来自 `images/inventoryimages.xml:meatballs.tex`，地面使用原版 `anim/cook_pot_food.zip` 的 `cook_pot_food` bank/build、`idle` 和 `swap_food:meatballs` 符号覆盖，无原版皮肤。支持 Shift + 右键丢弃和左键拾回；数量、实体身份、地面位置及食用后的属性随 `c_save()` 保存恢复。
 
-`c_give("bananajuice", 2)` 获取两份香蕉奶昔，第二个参数可省略，默认一份；`c_spawn("bananajuice")` 在玩家脚下生成可拾取的一份。右键物品栏香蕉奶昔按原版 `preparedfoods.lua` 的 `fooddrink` 标签播放 `anim/player_actions_eat.zip` 中的 `quick_drink_pre → quick_drink`：第 10 帧播放 `dontstarve/wilson/sip`，第 12 帧成功扣除一份后增加 **33 理智、25 饥饿、8 生命**，Wilson 上限分别为 200、150、150。生命通过 `playerStats.health.DoDelta()` 结算，饥饿、理智分别写入 `playerStats.hunger`、`playerStats.sanity` signal，HUD 订阅生命组件的只读 `current` 及另两项属性更新，低理智滤镜订阅理智比例更新；提前按 Esc、移动或跳跃取消时不消耗、不恢复属性，物品实体或所在槽位被替换时也不提交。基础图标使用 `images/inventoryimages1.xml:bananajuice.tex`，地面仍使用 `cook_pot_food.zip` 的 `idle` 和 `cook_pot_food10.zip:bananajuice` 符号覆盖，无原版皮肤。支持 Shift + 右键丢弃和左键拾回；剩余数量、实体身份、地面位置及食用后的玩家属性随 `c_save()` 保存恢复。当前按新鲜食物的基础数值结算，尚未接入腐败、调味和角色专属食物加成。
+`c_give("bananajuice", 2)` 获取两份香蕉奶昔，第二个参数可省略，默认一份；`c_spawn("bananajuice")` 在玩家脚下生成可拾取的一份。右键物品栏香蕉奶昔按原版 `preparedfoods.lua` 的 `fooddrink` 标签播放 `anim/player_actions_eat.zip` 中的 `quick_drink_pre → quick_drink`：第 10 帧播放 `dontstarve/wilson/sip`，第 12 帧成功扣除一份后增加 **33 理智、25 饥饿、8 生命**，Wilson 上限分别为 200、150、150。生命通过 `playerStats.health.DoDelta()` 结算，饥饿、理智分别通过 `playerStats.hunger.DoDelta()`、`playerStats.sanity.DoDelta()` 结算，HUD 订阅生命组件的只读 `current` 和另两项组件的只读 `value`，低理智滤镜订阅理智比例更新；提前按 Esc、移动或跳跃取消时不消耗、不恢复属性，物品实体或所在槽位被替换时也不提交。基础图标使用 `images/inventoryimages1.xml:bananajuice.tex`，地面仍使用 `cook_pot_food.zip` 的 `idle` 和 `cook_pot_food10.zip:bananajuice` 符号覆盖，无原版皮肤。支持 Shift + 右键丢弃和左键拾回；剩余数量、实体身份、地面位置及食用后的玩家属性随 `c_save()` 保存恢复。当前按新鲜食物的基础数值结算，尚未接入腐败、调味和角色专属食物加成。
 
 `c_give("seeds", 10)` 获取种子，`c_spawn("seeds")` 在玩家脚下生成可拾取的原版地面种子（`anim/seeds.zip`，bank/build `seeds`，`idle`；物品图标来自 `images/inventoryimages.xml`）。Shift + 右键丢弃、左键拾回；右键物品栏种子播放 `quick_eat_pre → quick_eat`，第 12 帧消耗一粒并增加 4.6875 饥饿，上限 150，健康和理智不变。左键物品栏种子选中种植，鼠标跟随原版种子图标及剩余数量，种子仍保留在原槽；左键耕地机完成后农田 tile 上的完整坑（`farm_soil`）自动走近，在 `pickup → pickup_pst` 的第 6 帧消耗一粒，替换为原版 `farm_plant_randomseed`（`anim/farm_soil.zip` 的 `sow → sow_idle`）。正在耕地的坑、破损坑和空地不可种植；移动、跳跃、Esc、点击空地或切换物品取消未提交的操作，失败不消耗种子。`c_spawn("farm_plant_randomseed")` 直接生成播种后的外观；地面种子及已播种实体的 ID、位置和数量随 `c_save()` 保存并恢复。本次仅实现种子地面美术、进食和坑内播种，播种后保持种子阶段。
 

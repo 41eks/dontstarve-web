@@ -1,6 +1,5 @@
 import { importedSave } from './importedSave';
 import { expect, it, vi } from 'vitest';
-import { createSanityState } from '../../signals/src';
 import { inventorySlotAddress } from '../../inventory/src';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { serializeSave } from '../../../src/save/serialize';
@@ -21,9 +20,10 @@ function wornHat(sanityPoints: number) {
   inventory.add(DREADSTONEHAT_ID, 1);
   const entity = inventory.getEntity(inventorySlotAddress(0))!;
   expect(inventory.EquipFromInventory(entity)).toBe(true);
-  const current = createSanityState(sanityPoints, 200);
   const components: { inventory: typeof inventory; sanity?: Sanity } = { inventory };
-  const sanity = components.sanity = new Sanity({ components, hasTag: () => false }, current);
+  const sanity = components.sanity = new Sanity({ components, hasTag: () => false }, 200);
+  sanity.SetCurrent(sanityPoints);
+  const current = sanity;
   const lifecycle = createDreadstoneHatLifecycle(entity);
   lifecycle.onequip({ PushEvent: vi.fn(), components: { sanity } });
   const armor = entity.components.armor!;
@@ -46,7 +46,7 @@ it('regenerates once per second after damage, faster at lower sanity, draining s
     expect(hat.armor.condition.peek()).toBe(ARMOR_DREADSTONEHAT - 10);
     hat.world.advance(0.5);
     expect(hat.armor.condition.peek()).toBeCloseTo(ARMOR_DREADSTONEHAT - 10 + ARMOR_DREADSTONEHAT * ARMOR_DREADSTONE_REGEN_MAXRATE);
-    hat.current.set(200);
+    hat.current.SetCurrent(200);
     hat.world.advance(1);
     expect(hat.armor.condition.peek()).toBeCloseTo(ARMOR_DREADSTONEHAT - 10
       + ARMOR_DREADSTONEHAT * (ARMOR_DREADSTONE_REGEN_MAXRATE + ARMOR_DREADSTONE_REGEN_MINRATE));

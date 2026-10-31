@@ -42,7 +42,7 @@ describe('greenstaff source deconstruction', () => {
     const event = vi.fn(); opal.entity.ListenForEvent('ondeconstructstructure', event);
     const doDelta = vi.fn(), staffDelta = vi.fn();
     const doer = { position: new THREE.Vector3(), hasTag: () => false,
-      components: { sanity: { doDelta }, staffsanity: { doCastingDelta: staffDelta } } };
+      components: { sanity: { DoDelta: doDelta }, staffsanity: { doCastingDelta: staffDelta } } };
     expect(entity.hasTag('castonrecipes')).toBe(true);
     expect(entity.hasTag('castontargets')).toBe(false);
     expect(collectEquippedActions(entity, opal, true)).toEqual(['CASTSPELL']);
@@ -66,7 +66,7 @@ describe('greenstaff source deconstruction', () => {
     const spawn = vi.fn();
     new GreenStaffController(entity, { spawnLoot: spawn });
     const opal = target(), doDelta = vi.fn();
-    const doer = { position: new THREE.Vector3(), hasTag: () => false, components: { sanity: { doDelta } } };
+    const doer = { position: new THREE.Vector3(), hasTag: () => false, components: { sanity: { DoDelta: doDelta } } };
     let held = true;
     const action = createCastSpellAction(entity, doer, opal.position, () => held, opal);
     held = false;

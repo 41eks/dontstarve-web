@@ -49,7 +49,7 @@ interface PlayerReaderInst extends BookReader {
   hasTag(tag: string): boolean;
   addTag(tag: string): void;
   removeTag(tag: string): void;
-  readonly components: { sanity: { doDelta(delta: number): void }; reader?: Reader<PlayerReaderInst, BookWorld> };
+  readonly components: { sanity: { DoDelta(delta: number): void }; reader?: Reader<PlayerReaderInst, BookWorld> };
 }
 
 export interface Disposable {
@@ -145,7 +145,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         hasTag: tag => tag === 'player' || modelHasTag(player, tag),
         PushEvent: (name, data) => player.dispatchEvent({ type: name, data } as never),
         components: {
-          sanity: { DoDelta: delta => playerStats.sanity.set(playerStats.sanity.peek() + delta) },
+          sanity: playerStats.sanity,
           inventory,
           get combat() { return playerCombat; },
         },
@@ -225,8 +225,8 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         const phase = createMemo(() => clockstate.get().phase);
         const sleeper = new SleepingBagUser({
           scheduler, phase: readonlySignal(phase),
-          hunger: { doDelta: delta => playerStats.hunger.set(playerStats.hunger.peek() + delta), isStarving: () => playerStats.hunger.peek() <= 0 },
-          sanity: { doDelta: delta => playerStats.sanity.set(playerStats.sanity.peek() + delta), getPercentWithPenalty: () => playerStats.sanity.percent.peek() },
+          hunger: playerStats.hunger,
+          sanity: playerStats.sanity,
           health: playerStats.health,
           goToWakeup: () => playerAnimation.goToWakeup(),
         });
@@ -244,7 +244,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
           clockstate.peek().phase === 'day' ? '光线太亮了。'
             : bed.hasTag('burnt') ? '我没有在那里面睡觉的强烈欲望。'
               // TUNING.CALORIES_MED
-              : playerStats.hunger.peek() < 25 ? '我太饿了，睡不着，我肚子的咕咕叫声会让我一直醒着的！' : undefined;
+              : playerStats.hunger.current < 25 ? '我太饿了，睡不着，我肚子的咕咕叫声会让我一直醒着的！' : undefined;
         playerAnimation.bindSleep({
           setSleeperState,
           setHidden: hidden => { view.player.visible = !hidden; },
@@ -304,7 +304,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         removeTag: (tag: string) => setModelTag(player, tag, false),
         getPosition: () => player.position,
         components: {
-          sanity: { doDelta: (delta: number) => playerStats.sanity.set(playerStats.sanity.peek() + delta) },
+          sanity: playerStats.sanity,
         },
       };
       const reader = new Reader<PlayerReaderInst, BookWorld>(readerInst);
@@ -382,7 +382,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
           getPhysicsRadius: () => .5 * unit,
           hasTag: tag => tag === 'player' || modelHasTag(player, tag),
           PushEvent: (name, data) => player.dispatchEvent({ type: name, data } as never),
-          components: { health: playerStats.health, sanity: { doDelta: delta => playerStats.sanity.set(playerStats.sanity.peek() + delta) }, inventory },
+          components: { health: playerStats.health, sanity: playerStats.sanity, inventory },
         };
         // inst:PushEvent reaches the stategraph's EventHandlers.
         for (const name of ['attacked', 'blocked'] as const) {
@@ -405,7 +405,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         const spellcast = new SpellCastActionController(view, playerAnimation, locomotor, handEquipment, {
           position: player.position,
           hasTag: tag => modelHasTag(player, tag),
-          components: { sanity: { doDelta: delta => playerStats.sanity.set(playerStats.sanity.peek() + delta) } },
+          components: { sanity: playerStats.sanity },
         }, isActionInterrupting,
         (model) => [...groundItems.getSpellTargets(model), ...buildingPlacement.getSpellTargets(model)]);
 

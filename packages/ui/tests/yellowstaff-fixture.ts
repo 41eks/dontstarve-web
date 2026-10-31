@@ -97,7 +97,7 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   const casting = new SpellCastActionController({ scene, camera, renderer, ground, player }, animation,
     { destination: undefined, stop: () => { stops += 1; }, goToPoint: () => true }, inventory.handEquipment,
     { position: player.position, hasTag: () => false,
-      components: { sanity: { doDelta: delta => { sanity = Math.max(0, sanity + delta); } } } },
+      components: { sanity: { DoDelta: delta => { sanity = Math.max(0, sanity + delta); } } } },
     () => false);
   const click = (button = 2) => {
     const point = new THREE.Vector3(30, 0, 0).project(camera);
