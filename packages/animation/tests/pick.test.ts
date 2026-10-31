@@ -73,7 +73,7 @@ it('walks to the arrive distance, gives the PICK product to the doer inventory a
   const doer = { hasTag: (tag: string) => tag === 'player', PushEvent: vi.fn(), GetPosition: () => player.position,
     getPosition: () => player.position, components: { inventory } };
   let manual = false;
-  const controller = new PlayerController(world, animation, locomotor, createEquipmentExistenceState('HANDS'), () => manual, doer as never);
+  const controller = new PlayerController(world, animation, locomotor, createEquipmentExistenceState('HANDS'), doer as never, () => manual);
   const click = () => {
     const event = Object.assign(new Event('pointerdown', { cancelable: true }), { button: 0 });
     canvas.dispatchEvent(event);

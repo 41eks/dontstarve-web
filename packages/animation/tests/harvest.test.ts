@@ -39,7 +39,7 @@ it('walks to a finished pot, gives its product to the doer at the hit frame, and
   const world = { scene, player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     renderer: { domElement: new EventTarget() }, actionEvents: new EventEmitter<PlayerActionEvents>() } as unknown as ActionWorldContext;
   let manual = false;
-  const controller = new PlayerController(world, animation, locomotor, createEquipmentExistenceState('HANDS'), () => manual, doer as never);
+  const controller = new PlayerController(world, animation, locomotor, createEquipmentExistenceState('HANDS'), doer as never, () => manual);
   const harvest = () => controller.DoAction(controller.createAction({ action: 'HARVEST', target: actionEntity(model, 'cookpot') })!);
   try {
     // componentactions SCENE.stewer: a pot done cooking offers HARVEST on both buttons.

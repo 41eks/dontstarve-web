@@ -62,7 +62,7 @@ async function setup(definition = TREASURE_CHEST_DEFINITION, id = 'treasurechest
   const doer = { hasTag: (tag: string) => tag === 'player', PushEvent: vi.fn(), getPosition: () => player.position,
     components: { inventory: { GetNumSlots: () => 15 } } };
   const rummage = new PlayerController(world, { stategraph, cancelEmote() {}, setFacing() {} } as unknown as ActionPerformer,
-    locomotor, createEquipmentExistenceState('HANDS'), undefined, doer as never);
+    locomotor, createEquipmentExistenceState('HANDS'), doer as never);
   // The world publishes player snapshots; proximity effects run after the microtask.
   const distance = async (value: number) => {
     player.position.copy(model.position).add(new THREE.Vector3(value, 0, 0));

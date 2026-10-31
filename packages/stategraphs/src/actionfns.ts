@@ -4,7 +4,7 @@ import { performLightAction, performToolWork, type ComponentActionEntity, type T
 import type { Combat } from '../../componets/src/combat';
 import type { Weapon } from '../../componets/src/weapon';
 import type { SpellCasterComponent } from '../../componets/src/spellcaster';
-import type { FishingRod, Fisherman } from '../../componets/src/fishingrod';
+import type { FishingRod } from '../../componets/src/fishingrod';
 import { preparePickReceiver, type PickableComponent } from './pick.ts';
 import { performPickupAction, type PickupDoer, type PickupTarget } from './pickup.ts';
 import { performRummageAction, type RummageContainer, type RummageTarget } from './rummage.ts';
@@ -78,17 +78,6 @@ type DoerCombat = Pick<Combat, 'DoAttack' | 'CanTarget' | 'CanLightTarget'>;
 const doerCombat = (act: BufferedAction) => (act.doer as { components?: { combat?: DoerCombat } } | undefined)?.components?.combat;
 const invobjectComponents = (act: BufferedAction) =>
   (act.invobject as { components?: { spellcaster?: SpellCasterComponent; weapon?: Weapon; fishingrod?: FishingRod } } | undefined)?.components ?? {};
-
-/** fishingrod.lua's fisherman is the doer inst: its events reach its stategraph, whose tags gate the rod. */
-function fisherman(act: BufferedAction): Fisherman {
-  const doer = playerDoer(act);
-  return {
-    PushEvent: (name, data) => doer.PushEvent(name, data),
-    getPosition: () => { const position = doer.getPosition(); return new Vector3(position.x, 0, position.z); },
-    isValid: () => true,
-    hasStateTag: tag => doer.sg?.HasStateTag(tag) ?? false,
-  };
-}
 
 export const ACTION_FNS: Readonly<Partial<Record<string, ActionFns>>> = {
   CHOP: toolWork('CHOP'),
@@ -195,7 +184,7 @@ export const ACTION_FNS: Readonly<Partial<Record<string, ActionFns>>> = {
       && performLightAction(act.invobject as ComponentActionEntity, act.target as ComponentActionEntity, playerDoer(act) as never),
   },
   FISH: {
-    fn: act => { invobjectComponents(act).fishingrod?.StartFishing(act.target as never, fisherman(act)); return true; },
+    fn: act => { invobjectComponents(act).fishingrod?.StartFishing(act.target as never, playerDoer(act)); return true; },
   },
   REEL: {
     fn: act => {

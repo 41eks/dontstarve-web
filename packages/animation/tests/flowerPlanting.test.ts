@@ -127,7 +127,7 @@ it('quick-picks petals at frame six, preserves a cancelled flower and reloads th
   // The player inst: pickable:Pick(act.doer) spawns the petals into its inventory and its sanity takes the delta.
   const picker = { hasTag: () => false, PushEvent: vi.fn(), getPosition: () => s.world.player.position,
     components: { sanity: { DoDelta: sanity }, inventory: s.inventory } };
-  const controller = new PlayerController(s.world, animation, locomotor, createEquipmentExistenceState('HANDS'), undefined, picker as never);
+  const controller = new PlayerController(s.world, animation, locomotor, createEquipmentExistenceState('HANDS'), picker as never);
   try {
     const flower = await s.flowers.spawnFromSave('flower:pick', 'f6', new THREE.Vector3(2, 0, 0));
     const component = (findActionEntity(flower)?.components ?? prefabInstance(flower)!.components).pickable;

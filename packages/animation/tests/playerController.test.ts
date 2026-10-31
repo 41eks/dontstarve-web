@@ -1,3 +1,4 @@
+import { playerDoer } from './playerDoer';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
@@ -49,7 +50,7 @@ function setup(tool: Parameters<typeof actionTool>[0]) {
   hand.set(equipped);
   const animation = bufferingPerformer();
   let manual = false;
-  const controller = new PlayerController(world, animation.performer, locomotor, hand, () => manual);
+  const controller = new PlayerController(world, animation.performer, locomotor, hand, playerDoer(player), () => manual);
   vi.spyOn(PointerRaycaster.prototype, 'trackPointer').mockImplementation(() => {});
   const pick = vi.spyOn(PointerRaycaster.prototype, 'pickMouseTarget');
   const created: { remove(): void }[] = [];
@@ -217,7 +218,7 @@ describe('PlayerController with the Wilson stategraph', () => {
     const world = { player, scene, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
       renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
     const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body);
-    const controller = new PlayerController(world, animation, locomotor, inventory.handEquipment);
+    const controller = new PlayerController(world, animation, locomotor, inventory.handEquipment, playerDoer(player));
     const advance = (frames: number) => { for (let i = 0; i < frames; i++) animation.update(1 / 30); };
     const mine = () => controller.createAction({ action: 'MINE', target: workTargets('MINE')[0].entity, invobject: tool })!;
     const begin = () => {
@@ -280,7 +281,7 @@ describe('PlayerController with the Wilson stategraph', () => {
     const hand = createEquipmentExistenceState('HANDS');
     const net = actionTool('bugnet');
     hand.set(net);
-    const controller = new PlayerController(world, animation, locomotor, hand);
+    const controller = new PlayerController(world, animation, locomotor, hand, playerDoer(player));
     const move = updateMovement(camera, player, body, locomotor);
     try {
       expect(controller.DoAction(controller.createAction({ action: 'NET', target: butterfly, invobject: net.entity })!)).toBe(true);

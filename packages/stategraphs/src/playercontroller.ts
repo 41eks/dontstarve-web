@@ -9,7 +9,6 @@ import { watchHandEquipment, type HandEquipmentSignal } from './handEquipment.ts
 import { PlayerActionPicker } from './playeractionpicker.ts';
 import { PointerRaycaster } from './pointerRaycaster.ts';
 import type { WilsonAction } from './SGwilson.ts';
-import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { FindEntities } from '../../prefab/src/actionEntity';
 import { WORLD_SCALE } from '../../prefab/src/tile';
 import type { Combat, CombatInst } from '../../componets/src/combat';
@@ -60,9 +59,9 @@ export class PlayerController {
     performer: ActionPerformer,
     locomotor: PlayerLocomotor,
     handEquipment: HandEquipmentSignal,
+    /** The player inst as act.doer: actions reach its tags, events, position, stategraph and components. */
+    doer: PlayerDoer,
     isManualMovement = () => false,
-    /** The player inst as act.doer; standalone controllers adapt their player model. */
-    doer?: PlayerDoer,
   ) {
     this.world = world;
     this.performer = performer;
@@ -71,14 +70,7 @@ export class PlayerController {
     this.isManualMovement = isManualMovement;
     this.ownsPicker = !world.mouseActions;
     this.picker = world.mouseActions ?? new PlayerActionPicker(new PointerRaycaster(world));
-    const player = world.player;
-    this.doer = doer ?? {
-      get components() { return prefabInstance(player)?.components as PlayerDoer['components']; },
-      hasTag: tag => tag === 'player' || prefabInstance(player)?.hasTag(tag) === true,
-      PushEvent: (name, data) => player.dispatchEvent({ type: name, data } as never),
-      getPosition: () => player.position,
-      sg: { HasStateTag: tag => performer.stategraph.hasStateTag(tag) },
-    };
+    this.doer = doer;
     this.cleanups.push(this.picker.bindPlayer(this.doer, () => this.equippedItem()));
     this.cleanups.push(bindActionCancellation(world, this, 'player', () => this.cancel()));
     // An action keeps the hand item it was picked with; equipping another drops it.

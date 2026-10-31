@@ -1,3 +1,4 @@
+import { playerDoer } from './playerDoer';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { actionTool } from './actionFixtures';
 import * as THREE from 'three';
@@ -119,7 +120,7 @@ it('an accepted action cancels a paid preview through events and skips its own c
   const animation = bufferingPerformer();
   // The player walks towards the target; the cast is never buffered in this test.
   const controller = new PlayerController(world, animation.performer,
-    { stop: vi.fn(), goToPoint: () => true, destination: undefined, PushAction: () => {} }, equipped);
+    { stop: vi.fn(), goToPoint: () => true, destination: undefined, PushAction: () => {} }, equipped, playerDoer(world.player));
   const cast = () => controller.DoAction(controller.createAction({ action: 'CASTSPELL', target, invobject: tool.entity })!);
   const cancel = vi.spyOn(controller, 'cancel');
   try {

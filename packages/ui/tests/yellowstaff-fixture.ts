@@ -99,7 +99,7 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
     components: { sanity: { DoDelta: (delta: number) => { sanity = Math.max(0, sanity + delta); } } } };
   const casting = new PlayerController({ scene, camera, renderer, ground, player }, animation,
     { destination: undefined, stop: () => { stops += 1; }, goToPoint: () => true, PushAction: (_action, arrive) => arrive() },
-    inventory.handEquipment, () => false, doer as never);
+    inventory.handEquipment, doer as never, () => false);
   const click = (button = 2) => {
     const point = new THREE.Vector3(30, 0, 0).project(camera);
     const bounds = renderer.domElement.getBoundingClientRect();

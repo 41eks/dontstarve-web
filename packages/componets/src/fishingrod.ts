@@ -4,12 +4,13 @@ import type { Fishable, HookedFish } from './fishable';
 import { ComponentTimer } from './timer';
 import type { ComponentUpdates } from './componentUpdates';
 
-/** The fishing doer: its stategraph tags gate the rod's per-frame validity check. */
+/** The fishing doer inst: its events reach its stategraph, whose tags gate the rod each frame. */
 export interface Fisherman {
   PushEvent(name: string, data?: unknown): void;
   getPosition(): Vector3;
-  isValid(): boolean;
-  hasStateTag(tag: string): boolean;
+  readonly sg?: { HasStateTag(tag: string): boolean };
+  /** inst:IsValid(); a doer without one is taken as valid. */
+  IsValid?(): boolean;
 }
 
 export interface FishingTarget {
@@ -91,14 +92,14 @@ export class FishingRod {
   OnUpdate(): void {
     if (!this.IsFishing()) return;
     const fisherman = this.fisherman!;
-    if (!fisherman.isValid() || (!fisherman.hasStateTag('fishing') && !fisherman.hasStateTag('catchfish'))
+    if (fisherman.IsValid?.() === false || (!fisherman.sg?.HasStateTag('fishing') && !fisherman.sg?.HasStateTag('catchfish'))
       || !this.inst.isEquipped()) this.StopFishing();
   }
 
   IsFishing(): boolean { return this.target !== undefined && this.fisherman !== undefined; }
   HasHookedFish(): boolean { return this.target !== undefined && this.hookedfish !== undefined; }
   HasCaughtFish(): boolean { return this.caughtfish !== undefined; }
-  FishIsBiting(): boolean { return this.fisherman?.hasStateTag('nibble') ?? false; }
+  FishIsBiting(): boolean { return this.fisherman?.sg?.HasStateTag('nibble') ?? false; }
 
   StartFishing(target: FishingTarget, fisherman: Fisherman): void {
     this.StopFishing();
@@ -168,7 +169,7 @@ export class FishingRod {
     this.CancelFishTask();
     if (!this.caughtfish) return;
     // The fish lands one unit beyond the fisherman, directly away from the water.
-    const position = this.fisherman.getPosition();
+    const position = this.fisherman.getPosition().clone().setY(0);
     this.caughtPosition = position.clone().add(position.clone().sub(this.target!.getPosition()).normalize());
     const data = { build: this.caughtfish.build };
     this.inst.PushEvent('fishingcatch', data);

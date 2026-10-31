@@ -15,7 +15,7 @@ export function fixturePickup(scene: THREE.Scene, camera: THREE.Camera, renderer
   const locomotor: PlayerLocomotor = { destination: undefined, stop() {}, goToPoint(point) { player.position.copy(point); return true; },
     PushAction(action, arrive) { player.position.copy(action.target.getPosition()); arrive(); } };
   const controller = new PlayerController({ scene, camera, renderer, player, ground: new THREE.Group() }, animation,
-    locomotor, createEquipmentExistenceState('HANDS'), undefined, createPickupDoer(player, inventory));
+    locomotor, createEquipmentExistenceState('HANDS'), createPickupDoer(player, inventory));
   let allowed = true;
   const give = inventory.GiveItem.bind(inventory), equip = inventory.Equip.bind(inventory);
   inventory.GiveItem = (...args) => allowed && give(...args);

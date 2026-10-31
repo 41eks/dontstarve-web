@@ -270,7 +270,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
       if (playerAnimation) {
         view.registerFrameTask = registerFrontTask;
         // playercontroller.lua: the picker's actions on any entity, buffered for the player.
-        actionControllers.push(new PlayerController(view, playerAnimation, locomotor, handEquipment, isActionInterrupting, pickupDoer));
+        actionControllers.push(new PlayerController(view, playerAnimation, locomotor, handEquipment, pickupDoer, isActionInterrupting));
 
         // SGwilson.lua fishing states reach inst.components.inventory:GetEquippedItem(HANDS).components.fishingrod.
         const heldRod = () => (equippedActionEntity(handEquipment.peek())?.components as { fishingrod?: import('../packages/componets/src/fishingrod').FishingRod } | undefined)?.fishingrod;

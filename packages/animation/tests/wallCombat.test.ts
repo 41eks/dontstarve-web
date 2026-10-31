@@ -169,7 +169,7 @@ it('force attacks a wall with Ctrl+F, walks into range, punches on frame 8 and r
   // The player inst: DoAttackButton searches around it and ATTACK runs its combat.
   const doer = { hasTag: (tag: string) => tag === 'player', PushEvent: vi.fn(), getPosition: () => player.position,
     getPhysicsRadius: () => .5 * UNIT, components: { combat } };
-  const controller = new PlayerController(world, animation, locomotor, hand, () => false, doer as never);
+  const controller = new PlayerController(world, animation, locomotor, hand, doer as never, () => false);
   const key = (type: string, code: string, ctrlKey: boolean) => {
     const event = Object.assign(new Event(type, { cancelable: true }), { code, ctrlKey, repeat: false });
     window.dispatchEvent(event);

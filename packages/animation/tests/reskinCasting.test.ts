@@ -226,7 +226,7 @@ it('offers CASTSPELL on any entity, honors nomagic and fails an unskinnable or u
   const doer = { hasTag: () => false, position: world.player.position, getPosition: () => world.player.position, components: {} };
   const controller = new PlayerController(world, animation.performer,
     { stop: vi.fn(), goToPoint: vi.fn(() => true), destination: undefined, PushAction: (_action, arrive) => arrive() },
-    equipped, () => false, doer as never);
+    equipped, doer as never, () => false);
   try {
     picker.pointer.trackPointer({ clientX: 50, clientY: 50 } as PointerEvent);
     // componentactions EQUIPPED.spellcaster: castontargets on the right button; CASTSPELL.strfn is the tool's spelltype.

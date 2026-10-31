@@ -1,3 +1,4 @@
+import { playerDoer } from './playerDoer';
 import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
@@ -67,7 +68,7 @@ it('chops a moon tree into a stump with an axe, dropping loot, keeping progress 
   const forest = await createMoonTreeManager('/dst/data/anim', { camera, scene, worldEvents: new EventEmitter<WorldEvents>(), tickingarea: area.query, dropLoot });
   forest.spawn('moon_tree', new THREE.Vector3(1, 0, 0), { id: 'tree', transform: { position: [1, 0, 0], rotationY: 0 }, components: {} });
   const world = { player, scene, camera, ground: new THREE.Group(), renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
-  const controller = new PlayerController(world, animation, new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body, { physicsRadius: .5 * WORLD_SCALE }), inventory.handEquipment);
+  const controller = new PlayerController(world, animation, new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body, { physicsRadius: .5 * WORLD_SCALE }), inventory.handEquipment, playerDoer(player));
   const chop = (target: { entity: object }) => controller.DoAction(controller.createAction({ action: 'CHOP', target: target.entity as never, invobject: axe })!);
   const advance = (frames: number) => { for (let i = 0; i < frames; i++) animation.update(1 / 30); };
   try {
@@ -158,7 +159,7 @@ it('digs a restored moon tree stump at shovel frame 15 and permanently removes i
   player.position.set(1, 0, 3);
   await area.visit(player.position);
   const world = { player, scene, camera, ground: new THREE.Group(), renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
-  const controller = new PlayerController(world, animation, new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body, { physicsRadius: .5 * WORLD_SCALE }), inventory.handEquipment);
+  const controller = new PlayerController(world, animation, new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body, { physicsRadius: .5 * WORLD_SCALE }), inventory.handEquipment, playerDoer(player));
   const dig = (target: { entity: object }) => controller.DoAction(controller.createAction({ action: 'DIG', target: target.entity as never, invobject: shovel })!);
   const advance = (frames: number) => { for (let i = 0; i < frames; i++) animation.update(1 / 30); };
   try {

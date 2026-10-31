@@ -92,7 +92,7 @@ it('casts at a pond, waits for a bite, hooks, reels and lands a pondfish; a stra
   const doer = { hasTag: (tag: string) => tag === 'player', getPosition: () => player.position,
     PushEvent: (name: string, data: unknown) => animation.stategraph.pushEvent(name, data),
     sg: { HasStateTag: (tag: string) => animation.stategraph.hasStateTag(tag) } };
-  const playerController = new PlayerController(world, animation, locomotor, equipped, () => false, doer as never);
+  const playerController = new PlayerController(world, animation, locomotor, equipped, doer as never, () => false);
   const pondEntity = () => findActionEntity(pond)!;
   const controller = {
     // EQUIPPED.fishingrod on the left button: FISH a pond, or REEL the one being fished (an instant action).

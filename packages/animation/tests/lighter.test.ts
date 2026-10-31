@@ -89,7 +89,7 @@ it('walks to the foot, cancels on unequip and commits LIGHT once at frame 13 wit
   // The player inst: LIGHT pushes onstartedfire on it.
   const doer = { hasTag: (tag: string) => tag === 'player', getPosition: () => player.position,
     PushEvent: (name: string, data: unknown) => player.dispatchEvent({ type: name, data } as never) };
-  const playerController = new PlayerController(world, animation, locomotor, hand, () => false, doer as never);
+  const playerController = new PlayerController(world, animation, locomotor, hand, doer as never, () => false);
   // EQUIPPED.lighter on the right button, then DoAction.
   const controller = {
     request: (inst: typeof target) => collectEquippedItemActions(torch, doer, inst, true).includes('LIGHT')
