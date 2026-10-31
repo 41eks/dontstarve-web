@@ -1,3 +1,4 @@
+import { RuinsRelicManager, type RuinsRelicRecord } from '@dontstarve-web/prefab/ruinsrelic';
 import { LightFlierFlowerManager, type LightFlierFlowerRecord } from '../packages/prefab/src/lightflier_flower';
 import { MAX_PHYSICS_FRAME_TIME } from './physicsTiming';
 import { MolehillManager, type MolehillRecord } from '../packages/prefab/src/molehill';
@@ -151,6 +152,7 @@ const MANAGER_DEFINITIONS = {
   'ruins_statue_mage_nogem': PREFAB_DEFINITIONS.ruinsStatueMagesNoGem,
   'ruins_statue_head': PREFAB_DEFINITIONS.ruinsStatueHeads,
   'ruins_statue_head_nogem': PREFAB_DEFINITIONS.ruinsStatueHeadsNoGem,
+  'ruinsrelic': PREFAB_DEFINITIONS.ruinsRelics,
   'atrium_statue': PREFAB_DEFINITIONS.atriumStatues,
   'chessjunk': PREFAB_DEFINITIONS.chessJunk,
   'sanityrock': PREFAB_DEFINITIONS.nightmareRocks,
@@ -289,6 +291,7 @@ export async function createSceneEntities(
     'ruins_statue_mage_nogem': RuinsStatueManager<'ruins_statue_mage_nogem'>;
     'ruins_statue_head': RuinsStatueManager<'ruins_statue_head'>;
     'ruins_statue_head_nogem': RuinsStatueManager<'ruins_statue_head_nogem'>;
+    'ruinsrelic': ReturnType<typeof registerRuinsRelics>;
     'atrium_statue': ReturnType<typeof registerAtriumStatue>;
     'chessjunk': ReturnType<typeof registerChessJunk>;
     'sanityrock': ReturnType<typeof registerNightmareRocks>;
@@ -373,6 +376,7 @@ export async function createSceneEntities(
   Managers['ruins_statue_mage_nogem'] = registerRuinsStatue(registry, 'ruins_statue_mage_nogem', worldState);
   Managers['ruins_statue_head'] = registerRuinsStatue(registry, 'ruins_statue_head', worldState);
   Managers['ruins_statue_head_nogem'] = registerRuinsStatue(registry, 'ruins_statue_head_nogem', worldState);
+  Managers['ruinsrelic'] = registerRuinsRelics(registry, worldState);
   Managers['atrium_statue'] = registerAtriumStatue(registry, 'atrium_statue', worldState);
   Managers['chessjunk'] = registerChessJunk(registry, 'chessjunk', worldState);
   Managers['pond'] = registerPonds(registry, 'pond', worldState);
@@ -1436,6 +1440,16 @@ export async function createSceneEntities(
       debugSpawn: () => statues.spawn(new THREE.Vector3(player.position.x, 0, player.position.z)),
     });
     return statues;
+  }
+
+  function registerRuinsRelics(registry: EntityRegistry, worldState: SceneWorldState) {
+    const relics = new RuinsRelicManager(scene, { scheduler: worldState.scheduler, tickingarea: worldState.tickingarea,
+      physics: world, trackDisplay: display => registry.trackDisplay(display) });
+    registry.registerDisplayManager(PREFAB_DEFINITIONS.ruinsRelics, relics, {
+      restore: (id, record) => relics.spawn(id, new THREE.Vector3(...record.transform.position), record as RuinsRelicRecord),
+      debugSpawn: id => relics.spawn(id, new THREE.Vector3(player.position.x, 0, player.position.z)),
+    });
+    return relics;
   }
 
   function registerAtriumStatue(registry: EntityRegistry, prefabId: 'atrium_statue', worldState: SceneWorldState) {

@@ -128,6 +128,14 @@ def main():
     heatrock_images('heat_rock')
     # razor.lua: bank razor from razor.zip with the swap_razor build; the cursor-held shaver has no equipped art.
     add('razor', 'razor', 'swap_razor', 'idle', 'razor', animation_archive='razor.zip')
+    # ruinsrelic.lua: only the four decor entries have inventoryitem; every idle is non-looping.
+    for name in ['plate', 'bowl', 'chipbowl', 'vase']:
+        add('ruinsrelic_' + name, 'ruins_' + name, 'ruins_' + name, 'idle', 'ruinsrelic')
+        items['ruinsrelic_' + name]['tags'] = ['furnituredecor']
+    # smashables.lua shares these banks/builds. Only the replica chair has skins (prefabskin.lua basic_init_fn).
+    assets.update('anim/ruins_' + name + '.zip' for name in ['table', 'chair'])
+    assets.update('anim/dynamic/ruinsrelic_chair_' + name + suffix
+                  for name in ['tesla', 'toilet'] for suffix in ['.zip', '.dyn'])
     # panflute.lua: bank/build pan_flute from pan_flute.zip; SGwilson's play_flute overrides pan_flute01 from the same build.
     add('panflute', 'pan_flute', 'pan_flute', 'idle', 'panflute', animation_archive='pan_flute.zip')
     # moonbutterfly.lua uses the butterfly bank from butterfly_basic.zip with its own build.
@@ -384,7 +392,11 @@ def main():
     static_source = runpy.run_path(str(Path(__file__).with_name('static-ground-items.py')))
     static_items = static_source['read_static_items'](add, items, read)
     static_variants = static_source['read_static_variants']()
-    static_source['check_animation_clips'](items | static_items, static_variants, args.source)
+    # Exhaustively check the shared relic banks/poses, without rendering every prefab.
+    relic_art = {f'ruins_{name}/{clip}': {'animationArchive': f'ruins_{name}.zip', 'bank': f'ruins_{name}', 'animation': clip}
+                 for name in ['table', 'chair', 'vase', 'chipbowl', 'bowl', 'plate']
+                 for clip in (['idle', 'broken', 'hit', 'repair'] if name in ['table', 'chair', 'vase'] else ['idle', 'broken'])}
+    static_source['check_animation_clips'](items | static_items | relic_art, static_variants, args.source)
 
     # Skin builds replace matching symbols while the original bank keeps its pose.
     skin_specs = {}
