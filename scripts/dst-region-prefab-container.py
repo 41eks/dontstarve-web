@@ -46,3 +46,20 @@ def treasurechest_components(data, context):
     if not isinstance(container, dict) or set(container) - {'items'}:
         raise ValueError('Unsupported treasurechest container state')
     return {'container': context['items'](container.get('items', {}), 'container', CHEST_SLOT_COUNT), 'building': building}
+
+
+def pandoraschest_components(data, context):
+    # MakeChest(indestructible = true): no burnable, so onsave writes nothing; container.lua OnSave writes items.
+    # The chest_labyrinth scenariorunner is added by SpawnSaveRecord; one that has run does nothing more on load.
+    if set(data) - {'container', 'scenariorunner'}:
+        raise ValueError('Unsupported pandoraschest save state')
+    if context['skin'] is not None:
+        raise ValueError('pandoraschest has no skins')
+    scenario = data.get('scenariorunner')
+    if scenario is not None and scenario != {'hasrunonce': True, 'scriptname': 'chest_labyrinth'}:
+        raise ValueError('Unsupported pandoraschest scenariorunner state')
+    container = data.get('container') or {}
+    if not isinstance(container, dict) or set(container) - {'items'}:
+        raise ValueError('Unsupported pandoraschest container state')
+    return {'container': context['items'](container.get('items', {}), 'container', CHEST_SLOT_COUNT),
+            'building': {'state': 'closed'}}

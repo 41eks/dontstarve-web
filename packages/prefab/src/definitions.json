@@ -249,6 +249,25 @@
       },
       "hammerAnimation": "hit"
     },
+    "pandoraschest": {
+      "archive": "pandoras_chest.zip",
+      "buildLabel": "华丽箱子",
+      "idleAnimation": "closed",
+      "interaction": {
+        "closeAnimation": "close",
+        "closedAnimation": "closed",
+        "openAnimation": "open"
+      },
+      "name": "PandorasChest",
+      "onProximity": true,
+      "scale": 0.02,
+      "container": {
+        "slotCount": 9,
+        "columns": 3,
+        "singleItems": false,
+        "panelArchive": "ui_chest_3x3.zip"
+      }
+    },
     "tent": {
       "archive": "tent.zip",
       "buildLabel": "帐篷",

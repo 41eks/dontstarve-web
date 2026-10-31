@@ -411,6 +411,7 @@
     "pond",
     "lava_pond",
     "treasurechest",
+    "pandoraschest",
     "beefalo",
     "dragonfly",
     "dragonfly_spawner",
@@ -795,6 +796,10 @@
     "treasurechest": {
       "source": 2,
       "imported": 2
+    },
+    "pandoraschest": {
+      "source": 0,
+      "imported": 0
     },
     "beefalo": {
       "source": 37,

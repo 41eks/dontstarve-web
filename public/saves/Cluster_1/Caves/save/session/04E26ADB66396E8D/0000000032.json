@@ -314188,6 +314188,1582 @@
             }
           }
         }
+      ],
+      "pandoraschest": [
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_101861",
+          "transform": {
+            "position": [
+              2316.0,
+              0.0,
+              852.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101861_0",
+                    "itemId": "footballhat",
+                    "count": 1
+                  }
+                },
+                {
+                  "slotKey": "1",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101861_1",
+                    "itemId": "spear",
+                    "count": 1
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_101867",
+          "transform": {
+            "position": [
+              1932.0,
+              0.0,
+              900.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101867_0",
+                    "itemId": "footballhat",
+                    "count": 1
+                  }
+                },
+                {
+                  "slotKey": "1",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101867_1",
+                    "itemId": "redgem",
+                    "count": 1
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_101873",
+          "transform": {
+            "position": [
+              2100.0,
+              0.0,
+              900.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101873_0",
+                    "itemId": "armorwood",
+                    "count": 1
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_101877",
+          "transform": {
+            "position": [
+              2220.0,
+              0.0,
+              948.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101877_0",
+                    "itemId": "spear",
+                    "count": 1
+                  }
+                },
+                {
+                  "slotKey": "1",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101877_1",
+                    "itemId": "nightmarefuel",
+                    "count": 1
+                  }
+                },
+                {
+                  "slotKey": "2",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101877_2",
+                    "itemId": "icestaff",
+                    "count": 1
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_101885",
+          "transform": {
+            "position": [
+              2316.0,
+              0.0,
+              972.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101885_0",
+                    "itemId": "spear",
+                    "count": 1
+                  }
+                },
+                {
+                  "slotKey": "1",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101885_1",
+                    "itemId": "thulecite_pieces",
+                    "count": 2
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_101891",
+          "transform": {
+            "position": [
+              1740.0,
+              0.0,
+              996.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101891_0",
+                    "itemId": "armorwood",
+                    "count": 1
+                  }
+                },
+                {
+                  "slotKey": "1",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101891_1",
+                    "itemId": "nightmarefuel",
+                    "count": 1
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_101897",
+          "transform": {
+            "position": [
+              2028.0,
+              0.0,
+              996.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101897_0",
+                    "itemId": "armorwood",
+                    "count": 1
+                  }
+                },
+                {
+                  "slotKey": "1",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101897_1",
+                    "itemId": "nightmarefuel",
+                    "count": 2
+                  }
+                },
+                {
+                  "slotKey": "2",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101897_2",
+                    "itemId": "thulecite",
+                    "count": 2
+                  }
+                },
+                {
+                  "slotKey": "3",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101897_3",
+                    "itemId": "orangegem",
+                    "count": 1
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_101907",
+          "transform": {
+            "position": [
+              1980.0,
+              0.0,
+              1020.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101907_0",
+                    "itemId": "thulecite",
+                    "count": 2
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_101911",
+          "transform": {
+            "position": [
+              2196.0,
+              0.0,
+              1020.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101911_0",
+                    "itemId": "thulecite_pieces",
+                    "count": 4
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_101915",
+          "transform": {
+            "position": [
+              2316.0,
+              0.0,
+              1020.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101915_0",
+                    "itemId": "nightmarefuel",
+                    "count": 2
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_101919",
+          "transform": {
+            "position": [
+              1716.0,
+              0.0,
+              1068.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": []
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_101921",
+          "transform": {
+            "position": [
+              1908.0,
+              0.0,
+              1116.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101921_0",
+                    "itemId": "thulecite",
+                    "count": 1
+                  }
+                },
+                {
+                  "slotKey": "1",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101921_1",
+                    "itemId": "greengem",
+                    "count": 1
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_101927",
+          "transform": {
+            "position": [
+              2124.0,
+              0.0,
+              1236.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101927_0",
+                    "itemId": "spear",
+                    "count": 1
+                  }
+                },
+                {
+                  "slotKey": "1",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101927_1",
+                    "itemId": "purplegem",
+                    "count": 1
+                  }
+                },
+                {
+                  "slotKey": "2",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101927_2",
+                    "itemId": "thulecite_pieces",
+                    "count": 2
+                  }
+                },
+                {
+                  "slotKey": "3",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101927_3",
+                    "itemId": "orangegem",
+                    "count": 1
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_101937",
+          "transform": {
+            "position": [
+              2172.0,
+              0.0,
+              1260.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101937_0",
+                    "itemId": "spear",
+                    "count": 1
+                  }
+                },
+                {
+                  "slotKey": "1",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101937_1",
+                    "itemId": "nightmarefuel",
+                    "count": 2
+                  }
+                },
+                {
+                  "slotKey": "2",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101937_2",
+                    "itemId": "greengem",
+                    "count": 1
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_101945",
+          "transform": {
+            "position": [
+              1836.0,
+              0.0,
+              1284.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101945_0",
+                    "itemId": "thulecite_pieces",
+                    "count": 2
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_101949",
+          "transform": {
+            "position": [
+              2292.0,
+              0.0,
+              1308.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101949_0",
+                    "itemId": "multitool_axe_pickaxe",
+                    "count": 1
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_101953",
+          "transform": {
+            "position": [
+              1956.0,
+              0.0,
+              1332.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101953_0",
+                    "itemId": "thulecite_pieces",
+                    "count": 4
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_101957",
+          "transform": {
+            "position": [
+              2460.0,
+              0.0,
+              1332.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101957_0",
+                    "itemId": "spear",
+                    "count": 1
+                  }
+                },
+                {
+                  "slotKey": "1",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101957_1",
+                    "itemId": "thulecite_pieces",
+                    "count": 3
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_101963",
+          "transform": {
+            "position": [
+              2460.0,
+              0.0,
+              1380.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101963_0",
+                    "itemId": "thulecite_pieces",
+                    "count": 4
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_101967",
+          "transform": {
+            "position": [
+              1812.0,
+              0.0,
+              1404.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101967_0",
+                    "itemId": "bluegem",
+                    "count": 1
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_101971",
+          "transform": {
+            "position": [
+              2052.0,
+              0.0,
+              1404.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101971_0",
+                    "itemId": "footballhat",
+                    "count": 1
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_101975",
+          "transform": {
+            "position": [
+              2004.0,
+              0.0,
+              1428.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101975_0",
+                    "itemId": "bluegem",
+                    "count": 1
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_101979",
+          "transform": {
+            "position": [
+              1788.0,
+              0.0,
+              1452.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101979_0",
+                    "itemId": "footballhat",
+                    "count": 1
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_101983",
+          "transform": {
+            "position": [
+              1908.0,
+              0.0,
+              1452.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101983_0",
+                    "itemId": "icestaff",
+                    "count": 1
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_101987",
+          "transform": {
+            "position": [
+              2460.0,
+              0.0,
+              1452.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101987_0",
+                    "itemId": "footballhat",
+                    "count": 1
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_101991",
+          "transform": {
+            "position": [
+              2172.0,
+              0.0,
+              1476.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101991_0",
+                    "itemId": "spear",
+                    "count": 1
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_101995",
+          "transform": {
+            "position": [
+              2220.0,
+              0.0,
+              1500.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101995_0",
+                    "itemId": "thulecite",
+                    "count": 3
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_101999",
+          "transform": {
+            "position": [
+              1764.0,
+              0.0,
+              1524.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_101999_0",
+                    "itemId": "batbat",
+                    "count": 1
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_102003",
+          "transform": {
+            "position": [
+              2364.0,
+              0.0,
+              1524.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_102003_0",
+                    "itemId": "footballhat",
+                    "count": 1
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_102007",
+          "transform": {
+            "position": [
+              1812.0,
+              0.0,
+              1572.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_102007_0",
+                    "itemId": "spear",
+                    "count": 1
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_102011",
+          "transform": {
+            "position": [
+              2004.0,
+              0.0,
+              1572.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_102011_0",
+                    "itemId": "spear",
+                    "count": 1
+                  }
+                },
+                {
+                  "slotKey": "1",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_102011_1",
+                    "itemId": "nightmarefuel",
+                    "count": 1
+                  }
+                },
+                {
+                  "slotKey": "2",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_102011_2",
+                    "itemId": "batbat",
+                    "count": 1
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_102019",
+          "transform": {
+            "position": [
+              2220.0,
+              0.0,
+              1620.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_102019_0",
+                    "itemId": "spear",
+                    "count": 1
+                  }
+                },
+                {
+                  "slotKey": "1",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_102019_1",
+                    "itemId": "firestaff",
+                    "count": 1,
+                    "remainingUses": 9
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_102025",
+          "transform": {
+            "position": [
+              729.0,
+              0.0,
+              1317.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_102025_0",
+                    "itemId": "redgem",
+                    "count": 2
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_102029",
+          "transform": {
+            "position": [
+              399.0,
+              0.0,
+              1389.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_102029_0",
+                    "itemId": "nightmarefuel",
+                    "count": 3
+                  }
+                },
+                {
+                  "slotKey": "1",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_102029_1",
+                    "itemId": "thulecite_pieces",
+                    "count": 3
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_102035",
+          "transform": {
+            "position": [
+              408.0,
+              0.0,
+              1776.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_102035_0",
+                    "itemId": "spear",
+                    "count": 1
+                  }
+                },
+                {
+                  "slotKey": "1",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_102035_1",
+                    "itemId": "orangegem",
+                    "count": 1
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_102041",
+          "transform": {
+            "position": [
+              846.0,
+              0.0,
+              1506.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_102041_0",
+                    "itemId": "armorwood",
+                    "count": 1
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_102045",
+          "transform": {
+            "position": [
+              786.0,
+              0.0,
+              1494.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_102045_0",
+                    "itemId": "spear",
+                    "count": 1
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_102049",
+          "transform": {
+            "position": [
+              612.0,
+              0.0,
+              1164.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_102049_0",
+                    "itemId": "armorwood",
+                    "count": 1
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_102053",
+          "transform": {
+            "position": [
+              882.0,
+              0.0,
+              1218.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_102053_0",
+                    "itemId": "armorwood",
+                    "count": 1
+                  }
+                },
+                {
+                  "slotKey": "1",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_102053_1",
+                    "itemId": "spear",
+                    "count": 1
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_102059",
+          "transform": {
+            "position": [
+              894.0,
+              0.0,
+              1158.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_102059_0",
+                    "itemId": "armorwood",
+                    "count": 1
+                  }
+                },
+                {
+                  "slotKey": "1",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_102059_1",
+                    "itemId": "spear",
+                    "count": 1
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_102065",
+          "transform": {
+            "position": [
+              828.0,
+              0.0,
+              1788.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_102065_0",
+                    "itemId": "nightmarefuel",
+                    "count": 2
+                  }
+                },
+                {
+                  "slotKey": "1",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_102065_1",
+                    "itemId": "purplegem",
+                    "count": 1
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_102071",
+          "transform": {
+            "position": [
+              924.0,
+              0.0,
+              1692.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_102071_0",
+                    "itemId": "nightmarefuel",
+                    "count": 3
+                  }
+                },
+                {
+                  "slotKey": "1",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_102071_1",
+                    "itemId": "thulecite_pieces",
+                    "count": 4
+                  }
+                },
+                {
+                  "slotKey": "2",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_102071_2",
+                    "itemId": "yellowgem",
+                    "count": 1
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_102079",
+          "transform": {
+            "position": [
+              636.0,
+              0.0,
+              1308.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_102079_0",
+                    "itemId": "spear",
+                    "count": 1
+                  }
+                },
+                {
+                  "slotKey": "1",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_102079_1",
+                    "itemId": "thulecite_pieces",
+                    "count": 2
+                  }
+                },
+                {
+                  "slotKey": "2",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_102079_2",
+                    "itemId": "thulecite",
+                    "count": 2
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_102087",
+          "transform": {
+            "position": [
+              627.0,
+              0.0,
+              1782.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_102087_0",
+                    "itemId": "spear",
+                    "count": 1
+                  }
+                },
+                {
+                  "slotKey": "1",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_102087_1",
+                    "itemId": "thulecite_pieces",
+                    "count": 2
+                  }
+                },
+                {
+                  "slotKey": "2",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_102087_2",
+                    "itemId": "yellowgem",
+                    "count": 1
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_102095",
+          "transform": {
+            "position": [
+              744.0,
+              0.0,
+              1080.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_102095_0",
+                    "itemId": "spear",
+                    "count": 1
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pandoraschest_id_102099",
+          "transform": {
+            "position": [
+              2268.0,
+              0.0,
+              852.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_102099_0",
+                    "itemId": "thulecite_pieces",
+                    "count": 4
+                  }
+                },
+                {
+                  "slotKey": "1",
+                  "item": {
+                    "entityId": "dst_04E26ADB66396E8D_pandoraschest_id_102099_1",
+                    "itemId": "batbat",
+                    "count": 1
+                  }
+                }
+              ]
+            },
+            "building": {
+              "state": "closed"
+            }
+          }
+        }
       ]
     }
   },

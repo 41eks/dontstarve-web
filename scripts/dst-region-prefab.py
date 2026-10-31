@@ -76,12 +76,14 @@ ENTITY_WHITELIST = {
     'pond': STRUCTURE['pond_components'],
     'lava_pond': STRUCTURE['lava_pond_components'],
     'treasurechest': CONTAINER['treasurechest_components'],
+    'pandoraschest': CONTAINER['pandoraschest_components'],
     'beefalo': CREATURE['beefalo_components'],
     'dragonfly': CREATURE['dragonfly_components'],
     'dragonfly_spawner': CREATURE['dragonfly_spawner_components'],
 }
-# Converters that also receive the record's skin; the chest alone uses the item-slot converter.
-RECORD_CONTEXT_PREFABS = {'treasurechest', 'researchlab', 'researchlab2', 'researchlab3', 'researchlab4'}
+# Converters that also receive the record's skin; the chests alone use the item-slot converter.
+CONTAINER_PREFABS = {'treasurechest', 'pandoraschest'}
+RECORD_CONTEXT_PREFABS = {*CONTAINER_PREFABS, 'researchlab', 'researchlab2', 'researchlab3', 'researchlab4'}
 # Converters that also receive the record's project position and a converter for saved source positions.
 POSITION_CONTEXT_PREFABS = {'beefalo', 'dragonfly'}
 
@@ -137,7 +139,7 @@ def convert_entities(terrain, source_entities, report, session_id, catalog=None)
             else:
                 try:
                     if prefab in RECORD_CONTEXT_PREFABS:
-                        if prefab == 'treasurechest' and catalog is None:
+                        if prefab in CONTAINER_PREFABS and catalog is None:
                             raise ValueError(f'{prefab} contents need the save item catalog')
                         components = convert_components(data, {
                             'skin': record.get('skinname'),

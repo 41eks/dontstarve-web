@@ -17,7 +17,7 @@ sound层
 atrium地皮有写入深度
 
 
-prefab_id=""ruins_statue_mage""
+prefab_id=	"pandoraschest"
 
 目标：把 $prefab_id 移植为可以从存档加载、显示并重新保存的 prefab，并让导入的存档包含它。
 

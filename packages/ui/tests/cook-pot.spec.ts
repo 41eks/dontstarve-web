@@ -89,6 +89,9 @@ test('cooks, reloads and harvests food with player input, preserving the empty p
   const finished = await saveGame();
   expect(finished.world.entities.cookpot[0]).toEqual({ ...record, components: { ...record.components,
     stewer: { ...record.components.stewer, phase: 'done', remainingSeconds: 0 } } });
+  // RUMMAGE walked the player up to the pot; stand beside it so the player's sprite does not cover the pot.
+  const [potX, , potZ] = finished.world.entities.cookpot[0].transform.position;
+  finished.players.local.transform.position = [potX + 5, 0, potZ];
   await page.route('**/saves/initial-world.json', route => route.fulfill({ json: finished }));
   await page.reload(); await prepare();
   expect(await state()).toEqual({ id: record.id, animation: 'idle_full',

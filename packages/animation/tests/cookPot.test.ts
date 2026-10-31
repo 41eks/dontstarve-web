@@ -4,12 +4,12 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
 import { BEEFALO_FEED_COOK_TIME, COOK_POT_DEFINITION, cookPotState } from '../../prefab/src/cook_pot';
-import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { findImage, loadBuild, smallHash } from '../src/animationAssets';
 import type { TransientSpriteAnimationController } from '../src/sprite';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { reskinEntity } from '../../prefab/src/reskin_tool';
+import { getRummageActions, performRummageAction, type RummageTarget } from '../../stategraphs/src/rummage';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -25,14 +25,10 @@ it('cooks with source food layers, resumes saved progress and preserves the prod
     camera: new THREE.PerspectiveCamera(), renderer: { domElement: canvas } } as unknown as WorldContext;
   const changed = vi.fn();
   const placement = new AnimatedBuildingPlacement(world, { cookpot: COOK_POT_DEFINITION }, () => true, changed);
-  vi.spyOn(PointerRaycaster.prototype, 'trackPointer').mockImplementation(() => {});
-  vi.spyOn(PointerRaycaster.prototype, 'raycastPointer').mockImplementation(objects =>
-    ({ object: objects[0], point: new THREE.Vector3() }) as THREE.Intersection);
-  const click = () => canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button: 0 }));
   const model = await placement.spawnFromSave('cookpot', { id: 'pot:feed',
     transform: { position: [1, 0, 2], rotationY: 0 }, components: { building: { state: 'closed', skinId: 'cookpot_candy' } } });
   const animation = prefabInstance(model)!.sprite as TransientSpriteAnimationController;
-  click();
+  expect(performRummageAction(findActionEntity(model) as unknown as RummageTarget, world.player)).toBe(true);
   expect(changed).toHaveBeenLastCalledWith({ buildId: 'cookpot', model, isOpen: true });
   const container = (findActionEntity(model)?.components ?? prefabInstance(model)!.components).container;
   expect(placement.performContainerAction(model, 'COOK', world.player)).toBe(false);
@@ -70,8 +66,8 @@ it('cooks with source food layers, resumes saved progress and preserves the prod
   for (let i = 0; i < 30; i++) restoredPlacement.update(.1);
   expect(prefabInstance(restored)!.sprite.currentAnimation).toBe('idle_full');
   expect(cookPotState(restored)).toMatchObject({ product: 'beefalofeed', phase: 'done', remainingSeconds: 0 });
-  changed.mockClear(); click();
-  expect(changed).not.toHaveBeenCalled();
+  // A finished pot cannot be opened, so RUMMAGE is not offered (stewer.lua sets canbeopened false).
+  expect(getRummageActions(restored, world.player)).toEqual([]);
   const food = await loadBuild('cook_pot_food11.zip', '/dst/data/anim');
   const foodImage = findImage(food.build, smallHash('beefalofeed'), 0)!;
   expect(foodImage).toBeDefined();

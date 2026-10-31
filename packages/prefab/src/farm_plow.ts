@@ -9,7 +9,7 @@ import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents
 import * as THREE from 'three';
 import { PrefabDisplayGroup, SpriteResources, type ArchiveSpriteSource } from '@dontstarve-web/display';
 import { createArchiveEntity } from './prefabInstance';
-import { BuildCursor } from './buildCursor';
+import { BuildCursor, entityPlacer } from './buildCursor';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import { newEntityId } from './saveRecord';
 import { snapToTileCenter, TILE_SIZE } from './tile';
@@ -143,8 +143,9 @@ export class FarmPlowPlacement implements FarmActionWorld {
     this.previewOutline = outline;
     outline.display.model.rotation.x = -Math.PI / 2;
     outline.display.model.userData.billboard = false;
-    outline.instance.sprite.setLightOverride(1);
-    this.cursor.setPreview(preview.display.model, 0, (point) => this.center(point));
+    // MakePlacer: AnimState:SetLightOverride(1) on each placer entity.
+    for (const placer of [preview, outline]) placer.instance.sprite.setLightOverride(1);
+    this.cursor.setPreview(entityPlacer(preview.instance), 0, (point) => this.center(point));
     this.cursor.update();
   }
 
@@ -242,7 +243,7 @@ export class FarmPlowPlacement implements FarmActionWorld {
     const step = Math.max(0, Math.min(dt, 0.1));
     this.cursor.update();
     // BuildCursor shows and hides the plow placer; its tile outline follows it.
-    const previewVisible = this.preview?.display.model.visible ?? false;
+    const previewVisible = this.preview !== undefined && this.cursor.previewVisible;
     if (this.previewOutline) {
       if (previewVisible !== this.previewVisible) this.previewOutline.instance.sprite.setVisible(this.previewVisible = previewVisible);
       if (this.preview) this.previewOutline.instance.position.copy(this.preview.instance.position).setY(0.05);

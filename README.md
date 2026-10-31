@@ -129,7 +129,7 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 玩家动作控制器统一由 `@dontstarve-web/stategraphs` 导出，实现在 `packages/stategraphs/src`：锤击、采矿、捕虫、铲地、园艺锄耕坑、铲垃圾、种子交互、换肤及法杖施法输入。锤子、镐、干草叉、铲子、园艺锄、捕虫网、清洁扫把和光照法杖控制器接收只读 `inventory.handEquipment` signal，在内部读取装备实体的能力；锤子、铲子、捕虫网和清洁扫把按组件及标签选择动作，其他手部工具保留其已支持的 ID 分支；卸装、换成另一实体或换肤会立即取消旧动作，控制器销毁时释放订阅。同一装备实体和皮肤的状态更新不重复取消，控制器不写入装备 signal。光照法杖按召唤目标 `stafflight/staffcoldlight` 选择 `yellowstaff/opalstaff`，更换装备后原先预加载或排入时间线的施法不会生成新光源。`src/main.ts` 注入装备 signal、`registerFrameTask` 帧调度服务、移动、动画和目标操作接口；控制器根据 signal 自行注册／移除帧任务，每帧只更新当前装备对应的手部动作控制器，读档后已有装备也立即注册。卸装和销毁会移除任务，同一身份重复发布不重复注册；法杖由输入事件与状态图时间线驱动，无独立帧任务。`packages/prefab` 负责工具美术、目标实体与特效，`SGwilson` 负责动作状态和提交帧。`c_give`、`c_spawn` 和 `c_save` 的语法与参数保持不变；当前支持 ID 见下方对象表。
 
 
-悬停文字按 Lua 的动作选择与 `hoverer` 分工统一显示：共享鼠标命中，按源优先级分别选择左右键动作，文字取自源简体中文字符串；控制器只注册动作候选。左键显示原版左键图标及动作文字，右键显示原版右键图标及 `: 动作文字`，可以同时显示两条；建造预览提示优先，鼠标位于 UI 上时隐藏世界提示，文字限制在屏幕边界内。用 `c_give("bugnet")`、`c_give("hammer")`、`c_give("reskin_tool")` 获取并装备相应工具后，目标上分别显示“捕捉”“敲”“打扫”；播种提示为“栽种”，铲子/干草叉为“挖”。选中唱片后，仅在靠近且可插片的留声机上显示“放置唱片”。地面的提灯（`c_spawn("lantern")`）和装有唱片的留声机（`c_spawn("phonograph")`）由 `machine` 组件按 `componentactions.lua` 提供右键“打开”／“关闭”（TURNON／TURNOFF）；留声机每次切换后有 3 秒冷却，提灯没有。卸装或目标失效后提示自动清除。详见 [鼠标悬停动作文字](docs/dst-hover-text.md)。这些命令的参数和支持 prefab/item ID 保持不变。
+悬停文字按 Lua 的动作选择与 `hoverer` 分工统一显示：共享鼠标命中，按源优先级分别选择左右键动作，文字取自源简体中文字符串；控制器只注册动作候选。左键显示原版左键图标及动作文字，右键显示原版右键图标及 `: 动作文字`，可以同时显示两条；建造预览提示优先，鼠标位于 UI 上时隐藏世界提示，文字限制在屏幕边界内。用 `c_give("bugnet")`、`c_give("hammer")`、`c_give("reskin_tool")` 获取并装备相应工具后，目标上分别显示“捕捉”“敲”“打扫”；播种提示为“栽种”，铲子/干草叉为“挖”。选中唱片后，仅在靠近且可插片的留声机上显示“放置唱片”。地面的提灯（`c_spawn("lantern")`）和装有唱片的留声机（`c_spawn("phonograph")`）由 `machine` 组件按 `componentactions.lua` 提供右键“打开”／“关闭”（TURNON／TURNOFF）；留声机每次切换后有 3 秒冷却，提灯没有。箱子、冰箱、烹饪锅等场景容器由 `container` 组件按 `componentactions.lua` 提供左键“打开”，玩家已打开时显示“关闭”（RUMMAGE）；建造预览显示时点击只放置或取消预览，不选取场景动作。卸装或目标失效后提示自动清除。详见 [鼠标悬停动作文字](docs/dst-hover-text.md)。这些命令的参数和支持 prefab/item ID 保持不变。
 
 未显示的建造提示不触发全局悬停刷新，重复隐藏也不重新收集动作。没有鼠标位置或鼠标被其他 DOM UI 遮挡时，在动作收集前直接隐藏提示，避免空闲的各建造控制器重复遍历地面物品和捕虫候选。回到场景后照常查询当前装备、目标和左右键动作；上述命令与交互规则不变。
 
@@ -220,7 +220,7 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 
 
 
-用 `c_spawn("icebox")` 或 `c_spawn("treasurechest")` 生成冰箱或木箱后，走近并左键点击可打开，再次点击关闭。开关动画开始时分别播放原版 `dontstarve/common/icebox_open` / `icebox_close` 或 `dontstarve/wilson/chest_open` / `chest_close`；走远自动关闭时也播放关闭声。恢复存档时不重放开门声。
+用 `c_spawn("icebox")` 或 `c_spawn("treasurechest")` 生成冰箱或木箱后，左键点击（RUMMAGE）后玩家走到箱旁、播放 `doshortaction` 并在第 6 帧打开，再次点击以同样流程关闭；箱子放置动画播放期间不能打开。开关动画开始时分别播放原版 `dontstarve/common/icebox_open` / `icebox_close` 或 `dontstarve/wilson/chest_open` / `chest_close`；走远自动关闭时也播放关闭声。恢复存档时不重放开门声。
 
 冰箱按 `icebox.lua` 使用 `fridge` 标签，本身没有体温组件，也不降低周围环境温度。冰箱内易腐物的基础腐烂倍率为 0.5，再叠加已有环境温度、潮湿和局部倍率；带 `frozen` 标签的易腐物在正常冰箱中停止腐烂。开门／关门不改变保鲜效果，木箱使用普通容器倍率。腐烂仍每 10 游戏秒结算，转移、保存及移除前结算不足 10 秒的部分。可用 `c_spawn("icebox"); c_give("red_cap", 2); c_give("heatrock")` 准备场景，将蘑菇和暖石移入冰箱，再用 `c_save()` 验证新鲜度和暖石温度保存恢复。冰块自身的融化组件尚未移植；此处冻结分支适用于已安装 `perishable` 并带 `frozen` 标签的物品。
 
@@ -383,6 +383,8 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 `c_spawn("ruins_statue_mage")` 在玩家脚点生成带随机宝石的遗迹法师雕像；它是世界 prefab，不支持 `c_give`。原版 `statueruins.lua` 使用 `statue_ruins.zip` 与 `statue_ruins_gem.zip`，读档恢复 `gem` 符号覆盖及正常噩梦阶段的循环 `idle_full`。`c_save()` 保存 ID、脚点和宝石种类；洞穴导入存档包含 3 座。无皮肤。采矿、噩梦阶段切换及遗迹重生行为尚未接入。
 
 `c_spawn("ruins_statue_head_nogem")` 在玩家脚点生成无宝石的遗迹头像，无额外参数；它是世界 prefab，不支持 `c_give`。原版 `statueruins.lua` 的 `nogem(true)` 使用 `anim/statue_ruins_small.zip`（bank/build 都是 `statue_ruins_small`），构造时按噩梦阶段播放循环 `idle_full`；本项目没有噩梦时钟，不使用 `_night` 动画。tag 为 `cavedweller`、`structure`、`statue`，不覆盖 `swap_gem` 符号，掉落表为 `statue_ruins_no_gem`；`OnSave` 只写 `gem`，无宝石时不保存任何字段。`c_save()` 保存 ID 与脚点；洞穴导入存档包含 3 座。无皮肤。采矿、噩梦阶段切换、悬浮音效与遗迹重生行为尚未接入。
+
+`c_spawn("pandoraschest")` 在玩家前方生成华丽箱子（遗迹宝箱），无额外参数；它是世界 prefab，不支持 `c_give`，也不能制作。原版 `treasurechest.lua` 的 `MakeChest("pandoraschest", "pandoras_chest", "pandoras_chest", indestructible)` 使用 `anim/pandoras_chest.zip`，初始声明非循环 `closed`；打开播放非循环 `open`，关闭播放 `close` 后排队非循环 `closed`。它是 3×3 容器，不可锤、不可燃，无皮肤。`c_save()` 保存 ID、位置和箱内物品；洞穴导入存档包含 46 个，源存档中已运行过的 `chest_labyrinth` 场景记录不导入。遗迹重置、拟态箱转换、闹鬼与灵视行为尚未接入。
 
 `c_spawn("atrium_gate")` 在玩家脚点生成远古大门；这是世界 prefab，不支持 `c_give`。洞穴导入存档包含 1 座。主门使用 `atrium_gate.zip` 的非循环 `idle`、独立地板与源定义的无美术阻挡子实体；读档按保存的钥匙、修复、采摘及世界设置计时器字段声明外观与动画。`c_save()` 保存 ID、位置、`atriumGate`、`pickable`、`charliecutscene`、`worldsettingstimer` 和 `entitytracker` 字段。此移植覆盖存档与显示；钥匙交易、满能量战斗、计时器完成与音效事件尚未接入。原版没有大门皮肤。
 

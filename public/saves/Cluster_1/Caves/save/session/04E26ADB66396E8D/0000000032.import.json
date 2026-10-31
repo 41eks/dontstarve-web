@@ -494,6 +494,7 @@
     "pond",
     "lava_pond",
     "treasurechest",
+    "pandoraschest",
     "beefalo",
     "dragonfly",
     "dragonfly_spawner",
@@ -785,6 +786,10 @@
     "treasurechest": {
       "source": 1,
       "imported": 1
+    },
+    "pandoraschest": {
+      "source": 46,
+      "imported": 46
     },
     "beefalo": {
       "source": 0,
@@ -57157,6 +57162,558 @@
       "sourceNode": "Sacred:2:BrokenAltar"
     },
     {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_101861",
+      "prefab": "pandoraschest",
+      "sourceIndex": 1,
+      "sourceId": 101861,
+      "sourcePosition": [
+        756,
+        0,
+        -304
+      ],
+      "sourceNode": "TheLabyrinth:BG_89:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_101867",
+      "prefab": "pandoraschest",
+      "sourceIndex": 2,
+      "sourceId": 101867,
+      "sourcePosition": [
+        628,
+        0,
+        -320
+      ],
+      "sourceNode": "TheLabyrinth:BG_86:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_101873",
+      "prefab": "pandoraschest",
+      "sourceIndex": 3,
+      "sourceId": 101873,
+      "sourcePosition": [
+        684,
+        0,
+        -320
+      ],
+      "sourceNode": "TheLabyrinth:BG_86:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_101877",
+      "prefab": "pandoraschest",
+      "sourceIndex": 4,
+      "sourceId": 101877,
+      "sourcePosition": [
+        724,
+        0,
+        -336
+      ],
+      "sourceNode": "TheLabyrinth:BG_89:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_101885",
+      "prefab": "pandoraschest",
+      "sourceIndex": 5,
+      "sourceId": 101885,
+      "sourcePosition": [
+        756,
+        0,
+        -344
+      ],
+      "sourceNode": "TheLabyrinth:BG_89:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_101891",
+      "prefab": "pandoraschest",
+      "sourceIndex": 6,
+      "sourceId": 101891,
+      "sourcePosition": [
+        564,
+        0,
+        -352
+      ],
+      "sourceNode": "TheLabyrinth:6:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_101897",
+      "prefab": "pandoraschest",
+      "sourceIndex": 7,
+      "sourceId": 101897,
+      "sourcePosition": [
+        660,
+        0,
+        -352
+      ],
+      "sourceNode": "TheLabyrinth:BG_86:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_101907",
+      "prefab": "pandoraschest",
+      "sourceIndex": 8,
+      "sourceId": 101907,
+      "sourcePosition": [
+        644,
+        0,
+        -360
+      ],
+      "sourceNode": "TheLabyrinth:BG_86:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_101911",
+      "prefab": "pandoraschest",
+      "sourceIndex": 9,
+      "sourceId": 101911,
+      "sourcePosition": [
+        716,
+        0,
+        -360
+      ],
+      "sourceNode": "TheLabyrinth:BG_89:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_101915",
+      "prefab": "pandoraschest",
+      "sourceIndex": 10,
+      "sourceId": 101915,
+      "sourcePosition": [
+        756,
+        0,
+        -360
+      ],
+      "sourceNode": "TheLabyrinth:BG_89:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_101919",
+      "prefab": "pandoraschest",
+      "sourceIndex": 11,
+      "sourceId": 101919,
+      "sourcePosition": [
+        556,
+        0,
+        -376
+      ],
+      "sourceNode": "TheLabyrinth:6:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_101921",
+      "prefab": "pandoraschest",
+      "sourceIndex": 12,
+      "sourceId": 101921,
+      "sourcePosition": [
+        620,
+        0,
+        -392
+      ],
+      "sourceNode": "TheLabyrinth:5:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_101927",
+      "prefab": "pandoraschest",
+      "sourceIndex": 13,
+      "sourceId": 101927,
+      "sourcePosition": [
+        692,
+        0,
+        -432
+      ],
+      "sourceNode": "TheLabyrinth:BG_87:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_101937",
+      "prefab": "pandoraschest",
+      "sourceIndex": 14,
+      "sourceId": 101937,
+      "sourcePosition": [
+        708,
+        0,
+        -440
+      ],
+      "sourceNode": "TheLabyrinth:2:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_101945",
+      "prefab": "pandoraschest",
+      "sourceIndex": 15,
+      "sourceId": 101945,
+      "sourcePosition": [
+        596,
+        0,
+        -448
+      ],
+      "sourceNode": "TheLabyrinth:4:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_101949",
+      "prefab": "pandoraschest",
+      "sourceIndex": 16,
+      "sourceId": 101949,
+      "sourcePosition": [
+        748,
+        0,
+        -456
+      ],
+      "sourceNode": "TheLabyrinth:BG_90:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_101953",
+      "prefab": "pandoraschest",
+      "sourceIndex": 17,
+      "sourceId": 101953,
+      "sourcePosition": [
+        636,
+        0,
+        -464
+      ],
+      "sourceNode": "TheLabyrinth:4:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_101957",
+      "prefab": "pandoraschest",
+      "sourceIndex": 18,
+      "sourceId": 101957,
+      "sourcePosition": [
+        804,
+        0,
+        -464
+      ],
+      "sourceNode": "TheLabyrinth:BG_90:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_101963",
+      "prefab": "pandoraschest",
+      "sourceIndex": 19,
+      "sourceId": 101963,
+      "sourcePosition": [
+        804,
+        0,
+        -480
+      ],
+      "sourceNode": "TheLabyrinth:BG_90:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_101967",
+      "prefab": "pandoraschest",
+      "sourceIndex": 20,
+      "sourceId": 101967,
+      "sourcePosition": [
+        588,
+        0,
+        -488
+      ],
+      "sourceNode": "TheLabyrinth:BG_85:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_101971",
+      "prefab": "pandoraschest",
+      "sourceIndex": 21,
+      "sourceId": 101971,
+      "sourcePosition": [
+        668,
+        0,
+        -488
+      ],
+      "sourceNode": "TheLabyrinth:3:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_101975",
+      "prefab": "pandoraschest",
+      "sourceIndex": 22,
+      "sourceId": 101975,
+      "sourcePosition": [
+        652,
+        0,
+        -496
+      ],
+      "sourceNode": "TheLabyrinth:BG_85:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_101979",
+      "prefab": "pandoraschest",
+      "sourceIndex": 23,
+      "sourceId": 101979,
+      "sourcePosition": [
+        580,
+        0,
+        -504
+      ],
+      "sourceNode": "TheLabyrinth:BG_85:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_101983",
+      "prefab": "pandoraschest",
+      "sourceIndex": 24,
+      "sourceId": 101983,
+      "sourcePosition": [
+        620,
+        0,
+        -504
+      ],
+      "sourceNode": "TheLabyrinth:BG_85:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_101987",
+      "prefab": "pandoraschest",
+      "sourceIndex": 25,
+      "sourceId": 101987,
+      "sourcePosition": [
+        804,
+        0,
+        -504
+      ],
+      "sourceNode": "TheLabyrinth:BG_90:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_101991",
+      "prefab": "pandoraschest",
+      "sourceIndex": 26,
+      "sourceId": 101991,
+      "sourcePosition": [
+        708,
+        0,
+        -512
+      ],
+      "sourceNode": "TheLabyrinth:BG_88:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_101995",
+      "prefab": "pandoraschest",
+      "sourceIndex": 27,
+      "sourceId": 101995,
+      "sourcePosition": [
+        724,
+        0,
+        -520
+      ],
+      "sourceNode": "TheLabyrinth:BG_88:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_101999",
+      "prefab": "pandoraschest",
+      "sourceIndex": 28,
+      "sourceId": 101999,
+      "sourcePosition": [
+        572,
+        0,
+        -528
+      ],
+      "sourceNode": "TheLabyrinth:BG_85:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_102003",
+      "prefab": "pandoraschest",
+      "sourceIndex": 29,
+      "sourceId": 102003,
+      "sourcePosition": [
+        772,
+        0,
+        -528
+      ],
+      "sourceNode": "TheLabyrinth:BG_90:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_102007",
+      "prefab": "pandoraschest",
+      "sourceIndex": 30,
+      "sourceId": 102007,
+      "sourcePosition": [
+        588,
+        0,
+        -544
+      ],
+      "sourceNode": "TheLabyrinth:BG_85:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_102011",
+      "prefab": "pandoraschest",
+      "sourceIndex": 31,
+      "sourceId": 102011,
+      "sourcePosition": [
+        652,
+        0,
+        -544
+      ],
+      "sourceNode": "TheLabyrinth:BG_88:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_102019",
+      "prefab": "pandoraschest",
+      "sourceIndex": 32,
+      "sourceId": 102019,
+      "sourcePosition": [
+        724,
+        0,
+        -560
+      ],
+      "sourceNode": "TheLabyrinth:BG_88:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_102025",
+      "prefab": "pandoraschest",
+      "sourceIndex": 33,
+      "sourceId": 102025,
+      "sourcePosition": [
+        227,
+        0,
+        -459
+      ],
+      "sourceNode": "AtriumMaze:1:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_102029",
+      "prefab": "pandoraschest",
+      "sourceIndex": 34,
+      "sourceId": 102029,
+      "sourcePosition": [
+        117,
+        0,
+        -483
+      ],
+      "sourceNode": "AtriumMaze:5:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_102035",
+      "prefab": "pandoraschest",
+      "sourceIndex": 35,
+      "sourceId": 102035,
+      "sourcePosition": [
+        120,
+        0,
+        -612
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_102041",
+      "prefab": "pandoraschest",
+      "sourceIndex": 36,
+      "sourceId": 102041,
+      "sourcePosition": [
+        266,
+        0,
+        -522
+      ],
+      "sourceNode": "AtriumMaze:BG_29:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_102045",
+      "prefab": "pandoraschest",
+      "sourceIndex": 37,
+      "sourceId": 102045,
+      "sourcePosition": [
+        246,
+        0,
+        -518
+      ],
+      "sourceNode": "AtriumMaze:BG_29:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_102049",
+      "prefab": "pandoraschest",
+      "sourceIndex": 38,
+      "sourceId": 102049,
+      "sourcePosition": [
+        188,
+        0,
+        -408
+      ],
+      "sourceNode": "AtriumMaze:6:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_102053",
+      "prefab": "pandoraschest",
+      "sourceIndex": 39,
+      "sourceId": 102053,
+      "sourcePosition": [
+        278,
+        0,
+        -426
+      ],
+      "sourceNode": "AtriumMaze:BG_32:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_102059",
+      "prefab": "pandoraschest",
+      "sourceIndex": 40,
+      "sourceId": 102059,
+      "sourcePosition": [
+        282,
+        0,
+        -406
+      ],
+      "sourceNode": "AtriumMaze:BG_32:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_102065",
+      "prefab": "pandoraschest",
+      "sourceIndex": 41,
+      "sourceId": 102065,
+      "sourcePosition": [
+        260,
+        0,
+        -616
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_102071",
+      "prefab": "pandoraschest",
+      "sourceIndex": 42,
+      "sourceId": 102071,
+      "sourcePosition": [
+        292,
+        0,
+        -584
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_102079",
+      "prefab": "pandoraschest",
+      "sourceIndex": 43,
+      "sourceId": 102079,
+      "sourcePosition": [
+        196,
+        0,
+        -456
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_102087",
+      "prefab": "pandoraschest",
+      "sourceIndex": 44,
+      "sourceId": 102087,
+      "sourcePosition": [
+        193,
+        0,
+        -614
+      ],
+      "sourceNode": "AtriumMaze:3:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_102095",
+      "prefab": "pandoraschest",
+      "sourceIndex": 45,
+      "sourceId": 102095,
+      "sourcePosition": [
+        232,
+        0,
+        -380
+      ],
+      "sourceNode": "AtriumMaze:7:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pandoraschest_id_102099",
+      "prefab": "pandoraschest",
+      "sourceIndex": 46,
+      "sourceId": 102099,
+      "sourcePosition": [
+        740,
+        0,
+        -304
+      ],
+      "sourceNode": "TheLabyrinth:BG_89:Labyrinth"
+    },
+    {
       "id": "dst_04E26ADB66396E8D_axe_id_106567",
       "prefab": "axe",
       "sourceIndex": 1,
@@ -61878,6 +62435,258 @@
         "prefab": "rocks",
         "components": [
           "anim"
+        ]
+      },
+      {
+        "path": "pandoraschest.id_101861.container.1",
+        "prefab": "footballhat",
+        "components": [
+          "armor"
+        ]
+      },
+      {
+        "path": "pandoraschest.id_101861.container.2",
+        "prefab": "spear",
+        "components": [
+          "finiteuses"
+        ]
+      },
+      {
+        "path": "pandoraschest.id_101867.container.1",
+        "prefab": "footballhat",
+        "components": [
+          "armor"
+        ]
+      },
+      {
+        "path": "pandoraschest.id_101873.container.1",
+        "prefab": "armorwood",
+        "components": [
+          "armor"
+        ]
+      },
+      {
+        "path": "pandoraschest.id_101877.container.1",
+        "prefab": "spear",
+        "components": [
+          "finiteuses"
+        ]
+      },
+      {
+        "path": "pandoraschest.id_101877.container.3",
+        "prefab": "icestaff",
+        "components": [
+          "finiteuses"
+        ]
+      },
+      {
+        "path": "pandoraschest.id_101885.container.1",
+        "prefab": "spear",
+        "components": [
+          "finiteuses"
+        ]
+      },
+      {
+        "path": "pandoraschest.id_101891.container.1",
+        "prefab": "armorwood",
+        "components": [
+          "armor"
+        ]
+      },
+      {
+        "path": "pandoraschest.id_101897.container.1",
+        "prefab": "armorwood",
+        "components": [
+          "armor"
+        ]
+      },
+      {
+        "path": "pandoraschest.id_101927.container.1",
+        "prefab": "spear",
+        "components": [
+          "finiteuses"
+        ]
+      },
+      {
+        "path": "pandoraschest.id_101937.container.1",
+        "prefab": "spear",
+        "components": [
+          "finiteuses"
+        ]
+      },
+      {
+        "path": "pandoraschest.id_101949.container.1",
+        "prefab": "multitool_axe_pickaxe",
+        "components": [
+          "finiteuses"
+        ]
+      },
+      {
+        "path": "pandoraschest.id_101957.container.1",
+        "prefab": "spear",
+        "components": [
+          "finiteuses"
+        ]
+      },
+      {
+        "path": "pandoraschest.id_101971.container.1",
+        "prefab": "footballhat",
+        "components": [
+          "armor"
+        ]
+      },
+      {
+        "path": "pandoraschest.id_101979.container.1",
+        "prefab": "footballhat",
+        "components": [
+          "armor"
+        ]
+      },
+      {
+        "path": "pandoraschest.id_101983.container.1",
+        "prefab": "icestaff",
+        "components": [
+          "finiteuses"
+        ]
+      },
+      {
+        "path": "pandoraschest.id_101987.container.1",
+        "prefab": "footballhat",
+        "components": [
+          "armor"
+        ]
+      },
+      {
+        "path": "pandoraschest.id_101991.container.1",
+        "prefab": "spear",
+        "components": [
+          "finiteuses"
+        ]
+      },
+      {
+        "path": "pandoraschest.id_101999.container.1",
+        "prefab": "batbat",
+        "components": [
+          "finiteuses"
+        ]
+      },
+      {
+        "path": "pandoraschest.id_102003.container.1",
+        "prefab": "footballhat",
+        "components": [
+          "armor"
+        ]
+      },
+      {
+        "path": "pandoraschest.id_102007.container.1",
+        "prefab": "spear",
+        "components": [
+          "finiteuses"
+        ]
+      },
+      {
+        "path": "pandoraschest.id_102011.container.1",
+        "prefab": "spear",
+        "components": [
+          "finiteuses"
+        ]
+      },
+      {
+        "path": "pandoraschest.id_102011.container.3",
+        "prefab": "batbat",
+        "components": [
+          "finiteuses"
+        ]
+      },
+      {
+        "path": "pandoraschest.id_102019.container.1",
+        "prefab": "spear",
+        "components": [
+          "finiteuses"
+        ]
+      },
+      {
+        "path": "pandoraschest.id_102035.container.1",
+        "prefab": "spear",
+        "components": [
+          "finiteuses"
+        ]
+      },
+      {
+        "path": "pandoraschest.id_102041.container.1",
+        "prefab": "armorwood",
+        "components": [
+          "armor"
+        ]
+      },
+      {
+        "path": "pandoraschest.id_102045.container.1",
+        "prefab": "spear",
+        "components": [
+          "finiteuses"
+        ]
+      },
+      {
+        "path": "pandoraschest.id_102049.container.1",
+        "prefab": "armorwood",
+        "components": [
+          "armor"
+        ]
+      },
+      {
+        "path": "pandoraschest.id_102053.container.1",
+        "prefab": "armorwood",
+        "components": [
+          "armor"
+        ]
+      },
+      {
+        "path": "pandoraschest.id_102053.container.2",
+        "prefab": "spear",
+        "components": [
+          "finiteuses"
+        ]
+      },
+      {
+        "path": "pandoraschest.id_102059.container.1",
+        "prefab": "armorwood",
+        "components": [
+          "armor"
+        ]
+      },
+      {
+        "path": "pandoraschest.id_102059.container.2",
+        "prefab": "spear",
+        "components": [
+          "finiteuses"
+        ]
+      },
+      {
+        "path": "pandoraschest.id_102079.container.1",
+        "prefab": "spear",
+        "components": [
+          "finiteuses"
+        ]
+      },
+      {
+        "path": "pandoraschest.id_102087.container.1",
+        "prefab": "spear",
+        "components": [
+          "finiteuses"
+        ]
+      },
+      {
+        "path": "pandoraschest.id_102095.container.1",
+        "prefab": "spear",
+        "components": [
+          "finiteuses"
+        ]
+      },
+      {
+        "path": "pandoraschest.id_102099.container.2",
+        "prefab": "batbat",
+        "components": [
+          "finiteuses"
         ]
       }
     ]
