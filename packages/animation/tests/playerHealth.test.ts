@@ -11,7 +11,6 @@ import { OnMakePlayerGhost, OnRespawnFromGhost, type PlayerGhostOwner } from '..
 import { FoodActionController } from '../../stategraphs/src/eat';
 import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
-import { getFoodEffects } from '../../prefab/src/food';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { createPickupInventory } from './pickupFixture';
 import { serializeSave } from '../../../src/save/serialize';
@@ -29,9 +28,10 @@ it('eats eight red caps, dies through component events, becomes a ghost and save
   const animation = instance.animationController, stats = instance.stats, health = instance.components.health!;
   const world = { scene: new Scene(), player, camera: new PerspectiveCamera(), ground: new Group(),
     renderer: { domElement: new EventTarget() } } as unknown as WorldContext;
+  instance.components.inventory = inventory;
   const picker = new PlayerActionPicker(new PointerRaycaster(world));
   const food = new FoodActionController({ ...world, mouseActions: picker }, animation,
-    { stop() {}, goToPoint: () => true, destination: undefined }, { soilTargets: [], plantSeed: () => false });
+    { stop() {}, goToPoint: () => true, destination: undefined }, { soilTargets: [], plantSeed: () => false }, instance);
   const ghost = createSignal(false), skeleton = vi.fn(), death = vi.fn();
   const owner: PlayerGhostOwner = {
     model: player, animation, physics, stats, ghostMode: ghost,
@@ -53,11 +53,8 @@ it('eats eight red caps, dies through component events, becomes a ghost and save
     expect(health).toBeInstanceOf(Health);
     inventory.add('red_cap', 8);
     const slot = inventorySlotAddress(0), cap = inventory.getEntity(slot)!;
-    const source = { isValid: () => inventory.getEntity(slot) === cap && !cap.isRemoved,
-      take: () => inventory.applySlotChanges([{ slot, itemId: 'red_cap', delta: -1 }]) };
     for (let eaten = 1; eaten <= 8; eaten++) {
-      const effects = getFoodEffects(cap)!;
-      expect(food.eat(source, () => health.DoDelta(effects.health, false, cap.prefab))).toBe(true);
+      expect(food.eat(cap)).toBe(true);
       frames(11);
       expect(health.currenthealth).toBe(Math.max(0, 150 - 20 * (eaten - 1)));
       frames(1);

@@ -7,7 +7,7 @@ import {
   LighterActionController, PickaxeActionController, PitchforkActionController,
   FarmHoeActionController, ShovelActionController, FoodActionController,
   PickActionController, HarvestActionController, OccupiableActionController, MachineActionController, RummageActionController, PickupActionController, ReadActionController, PlayActionController, ItemUseActionController,
-  ReskinActionController, SleepActionController, MigrateActionController, HauntActionController, type PickupDoer, type FoodSource, type ActionLocomotor, type PlayerActionEvents,
+  ReskinActionController, SleepActionController, MigrateActionController, HauntActionController, type PickupDoer, type ActionLocomotor, type PlayerActionEvents,
 } from '@dontstarve-web/stategraphs';
 import { ItemEntity } from '@dontstarve-web/inventory';
 import { ARMORSNURTLESHELL_ID } from '@dontstarve-web/prefab/armorsnurtleshell';
@@ -26,7 +26,6 @@ import { GROUND_ITEM_DEFINITIONS } from '@dontstarve-web/prefab/groundItems';
 import type { WorldContext } from '@dontstarve-web/prefab/worldContext';
 import type { GroundItemDefinition } from '@dontstarve-web/prefab/groundPrefab';
 import type { StorageBuildingId } from '@dontstarve-web/prefab/containers';
-import { FOOD_EFFECTS, getFoodEffects, type FoodEffects } from '@dontstarve-web/prefab/food';
 import { bookActionObject, type BookReader, type BookWorld } from '@dontstarve-web/prefab/books';
 import { isWorldFx } from '@dontstarve-web/prefab/world_fx';
 import { registerFrontTask } from './animate';
@@ -39,7 +38,7 @@ import type { startScene } from './scene';
 import type { bindPlayerHandEquipment } from './playerHandEquipment';
 import { setupEmoteWheel } from './emoteWheel';
 import { inventoryReceiveEffect } from './inventoryReceive';
-import { playerStats, applyPlayerFoodEffects } from './playerStats';
+import { playerStats } from './playerStats';
 import { playerInstance } from './player';
 import { SAVE_CATALOG } from './save/catalog';
 
@@ -269,30 +268,9 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         } });
       }
       const foodActions = playerAnimation ? new FoodActionController(view, playerAnimation, locomotor, farmPlow,
-        isActionInterrupting, () => slotTransferController.clearSelection()) : undefined;
+        playerInstance, isActionInterrupting, () => slotTransferController.clearSelection()) : undefined;
       if (foodActions) {
         frameControllers.push(foodActions);
-      }
-      function inventoryFoodSource(slot: SlotAddress, itemId: string, onTaken?: (effects: FoodEffects) => void): FoodSource {
-        const entity = inventory.getEntity(slot), skinId = entity?.skinId;
-        const isValid = () => entity !== null && !entity.isRemoved && entity.prefab === itemId
-          && entity.skinId === skinId && inventory.getEntity(slot) === entity;
-        const foodDrink = FOOD_EFFECTS[itemId]?.foodDrink;
-        return {
-          itemId,
-          foodDrink,
-          isValid,
-          take: () => {
-            if (!isValid()) return false;
-            // eater:Eat reads edible values, including the settled perish stage, before removing one.
-            entity!.flush();
-            if (!isValid()) return false;
-            const effects = getFoodEffects(entity!);
-            if (!inventory.applySlotChanges([{ slot, itemId, skinId, delta: -1 }])) return false;
-            if (effects) onTaken?.(effects);
-            return true;
-          },
-        };
       }
 
       // The player inst carries reader.lua's component and tag, plus the sanity it charges.
@@ -507,11 +485,8 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
           readInventoryBook(slot, entity);
           return;
         }
-        if (FOOD_EFFECTS[stack.itemId] && foodActions) {
-          let eaten: FoodEffects | undefined;
-          foodActions.eat(inventoryFoodSource(slot, stack.itemId, effects => { eaten = effects; }), () => {
-            if (eaten) applyPlayerFoodEffects(eaten, stack.itemId);
-          });
+        if (foodActions && entity && playerInstance.components.eater?.CanEat(entity)) {
+          foodActions.eat(entity);
           return;
         }
         if (stack.itemId === 'backpack' || stack.itemId === ARMORSNURTLESHELL_ID || stack.itemId === AMULET_ID) {
@@ -557,8 +532,8 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         },
         beginFood(slot: SlotAddress, itemId: string): boolean {
           if (!foodActions) return false;
-          foodActions.begin(inventoryFoodSource(slot, itemId));
-          return true;
+          const item = inventory.getEntity(slot);
+          return !!item && item.prefab === itemId && foodActions.begin(item);
         },
       };
     },

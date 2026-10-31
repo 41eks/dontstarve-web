@@ -8,7 +8,7 @@ vi.mock('../../../src/player', async () => {
   const { playerStatsFixture } = await import('./playerStatsFixture');
   return { playerInstance: playerStatsFixture(initialSave.players.local.stats!) };
 });
-import { applyPlayerFoodEffects, getPlayerStats, playerStats, setPlayerSanityPercent } from '../../../src/playerStats';
+import { getPlayerStats, playerStats, setPlayerSanityPercent } from '../../../src/playerStats';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
@@ -64,15 +64,15 @@ it('restores all stats into signals and exports detached numerical snapshots', (
   expect(saved).toEqual({ health: 140, hunger: 90, sanity: 35 });
 });
 
-it('publishes food effects and bounded stat changes until subscriptions are released', () => {
+it('publishes bounded stat changes until subscriptions are released', () => {
   const health = vi.fn(), hungerPercent = vi.fn();
   const stopHealth = playerStats.health.current.subscribe(health);
   const stopHunger = playerStats.hunger.percent.subscribe(hungerPercent);
   try {
-    applyPlayerFoodEffects({ health: 8, hunger: 25, sanity: 33 });
+    playerStats.health.DoDelta(8); playerStats.hunger.DoDelta(25); playerStats.sanity.DoDelta(33);
     expect(health).toHaveBeenCalledExactlyOnceWith(148, 140);
     expect(hungerPercent).toHaveBeenCalledExactlyOnceWith(115 / 150, 0.6);
-    applyPlayerFoodEffects({ health: 100, hunger: 100, sanity: 0 });
+    playerStats.health.DoDelta(100); playerStats.hunger.DoDelta(100);
     expect(getPlayerStats()).toEqual({ health: 150, hunger: 150, sanity: 153 });
     playerStats.health.SetVal(200);
     expect(health).toHaveBeenCalledTimes(2);

@@ -6,7 +6,7 @@ import { SEEDS_HUNGER } from './seeds';
 import { MOONBUTTERFLY_PERISH_TIME } from './moonbutterflyTuning';
 import { BUTTERFLY_PERISH_TIME } from './butterfly';
 import { BIRD_IDS, BIRD_PERISH_TIME } from './birds';
-import { VEGGIE_FOOD_EFFECTS, VEGGIE_PERISH_TIMES } from './veggies';
+import { configureVeggieEntity, VEGGIE_FOOD_EFFECTS, VEGGIE_PERISH_TIMES } from './veggies';
 
 export const BANANAJUICE_ID = 'bananajuice';
 export const MUSHROOM_ITEM_IDS = [
@@ -20,7 +20,7 @@ export interface FoodEffects {
   readonly foodDrink?: boolean;
 }
 
-/** Source edible values; food effects are applied only after inventory consumption succeeds. */
+/** Source prefab declarations used to configure each food's edible component. */
 export const FOOD_EFFECTS: Readonly<Record<string, FoodEffects>> = {
   butterflywings: { health: 8, hunger: 9.375, sanity: 0 },
   butter: { health: 40, hunger: 25, sanity: 0 },
@@ -94,14 +94,28 @@ export const PERISHABLE_FOODS: Readonly<Record<string, { readonly perishTime: nu
   ...Object.fromEntries(Object.entries(VEGGIE_PERISH_TIMES).map(([id, perishTime]) => [id, { perishTime, replacement: 'spoiled_food' }])),
 };
 
-/** edible:GetHealth/GetHunger/GetSanity for the inst at eating time, including its perish stage. */
-export function getFoodEffects(entity: Pick<ItemEntity, 'prefab' | 'components'>): FoodEffects | undefined {
+/** The supported prefab branches install edible on the food inst, as in Lua. */
+export function configureFoodEntity(entity: ItemEntity): void {
+  configureVeggieEntity(entity);
   const values = FOOD_EFFECTS[entity.prefab];
-  if (!values) return undefined;
-  const perishable = entity.components.perishable;
-  const edible = new Edible(() => perishable.perishtime.peek() === undefined ? undefined : perishable.stage.peek());
-  edible.healthvalue = values.health;
-  edible.hungervalue = values.hunger;
-  edible.sanityvalue = values.sanity;
-  return { ...values, health: edible.GetHealth(), hunger: edible.GetHunger(), sanity: edible.GetSanity() };
+  if (!values) return;
+  if (!entity.components.edible) {
+    const perishable = entity.components.perishable;
+    const edible = entity.components.edible = new Edible(
+      () => perishable.perishtime.peek() === undefined ? undefined : perishable.stage.peek(), entity);
+    edible.healthvalue = values.health;
+    edible.hungervalue = values.hunger;
+    edible.sanityvalue = values.sanity;
+    const foodtype = entity.prefab === 'seeds' ? 'SEEDS'
+      : entity.prefab === 'meatballs' || entity.prefab === 'pondfish' ? 'MEAT'
+      : entity.prefab === 'butter' ? 'GENERIC' : 'VEGGIE';
+    entity.addTag(`edible_${foodtype}`);
+  }
+  if (values.foodDrink) entity.addTag('fooddrink');
+}
+
+/** Read the food's existing edible component, including its current perish stage. */
+export function getFoodEffects(entity: Pick<ItemEntity, 'components'>): FoodEffects | undefined {
+  const edible = entity.components.edible;
+  return edible && { health: edible.GetHealth(), hunger: edible.GetHunger(), sanity: edible.GetSanity() };
 }

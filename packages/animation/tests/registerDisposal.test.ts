@@ -23,7 +23,7 @@ vi.mock('@dontstarve-web/ui', () => ({
 }));
 vi.mock('../../../src/emoteWheel', () => ({ setupEmoteWheel: vi.fn(() => vi.fn()) }));
 vi.mock('../../../src/playerStats', () => ({
-  playerStats: { sanity: { peek: () => 35, set: vi.fn() } }, applyPlayerFoodEffects: vi.fn(),
+  playerStats: { sanity: { peek: () => 35, set: vi.fn() } },
 }));
 vi.mock('../../../src/player', () => ({ playerInstance: {} }));
 

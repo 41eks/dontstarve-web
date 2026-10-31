@@ -44,14 +44,25 @@ export interface ItemOwner {
 
 /** stackable.lua: stack size belongs to the item, independent of its current slot. */
 export class StackableComponent {
+  private readonly entity: ItemEntity;
   private readonly state;
   readonly size;
-  constructor(count: number) {
+  constructor(entity: ItemEntity, count: number) {
+    this.entity = entity;
     this.state = createSignal(count);
     this.size = readonlySignal(this.state);
   }
   get count(): number { return this.state.peek(); }
   set count(value: number) { this.state.set(value); }
+  /** stackable:Get():Remove(), without creating a temporary entity just to destroy it. */
+  Consume(): boolean {
+    this.entity.flush();
+    if (this.entity.isRemoved || this.count < 1) return false;
+    if (this.count === 1) return this.entity.remove();
+    this.count--;
+    this.entity.components.inventoryitem.owner?.changed();
+    return true;
+  }
 }
 
 /** finiteuses.lua: Use changes the component and invokes inst removal on depletion. */
@@ -241,7 +252,7 @@ export class ItemEntity {
     this.sprite = new SpriteState({ name: state.itemId, none: true });
     this.wetState.set(state.wet ?? false);
     this.components = {
-      stackable: new StackableComponent(state.count),
+      stackable: new StackableComponent(this, state.count),
       finiteuses: new FiniteUsesComponent(this, state.remainingUses),
       inventoryitem: new InventoryItem<ItemEntity, ItemOwner>(this),
       perishable: new Perishable(this, readonlySignal(this.wetState), perishWorld),

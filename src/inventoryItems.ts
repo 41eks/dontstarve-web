@@ -1,5 +1,4 @@
 import { configureRuinsRelicItem, isRelicItem } from '@dontstarve-web/prefab/ruinsrelic';
-import { configureVeggieEntity } from '../packages/prefab/src/veggies';
 import { configureLightFlierEntity, LIGHTFLIER_PERISH_TIME } from '../packages/prefab/src/lightflier';
 import { configureMoleEntity, MOLE_PERISH_TIME } from '../packages/prefab/src/mole';
 import { configureMoleBaitEntity } from '../packages/prefab/src/molebait';
@@ -27,7 +26,7 @@ import { configureBackpackEntity } from '@dontstarve-web/prefab/backpack';
 import { ARMORSNURTLESHELL, ARMORSNURTLESHELL_ID, configureArmorSnurtleshellEntity } from '@dontstarve-web/prefab/armorsnurtleshell';
 import { AMULET_ID, REDAMULET_USES, configureAmuletEntity } from '@dontstarve-web/prefab/amulet';
 import { configureIceEntity, ICE_ID } from '@dontstarve-web/prefab/ice';
-import { PERISHABLE_FOODS } from '@dontstarve-web/prefab/food';
+import { PERISHABLE_FOODS, configureFoodEntity } from '@dontstarve-web/prefab/food';
 import { INVENTORY_ITEM_DISPLAY_SPECS } from '../packages/ui/src/inventory-items';
 import { INVENTORY_SKIN_SPECS } from '../packages/ui/src/categories/shared';
 import {
@@ -45,7 +44,7 @@ export interface InventoryItemDefinition {
 
 function withTradable(itemId: string, configure: ((entity: ItemEntity) => void) | undefined): ((entity: ItemEntity) => void) | undefined {
   return entity => {
-    configure?.(entity); configureVeggieEntity(entity); configureMoleBaitEntity(entity); configurePlantableEntity(entity); configureRockAvocadoFruitEntity(entity);
+    configure?.(entity); configureFoodEntity(entity); configureMoleBaitEntity(entity); configurePlantableEntity(entity); configureRockAvocadoFruitEntity(entity);
     if (Object.hasOwn(FERTILIZER_CYCLES, itemId)) configureFertilizerEntity(entity);
     if (itemId === BATHBOMB_ID) configureBathbombEntity(entity);
     if (hasTradableGoldValue(itemId)) configureTradableEntity(entity);
