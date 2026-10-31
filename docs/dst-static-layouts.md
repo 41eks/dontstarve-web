@@ -95,6 +95,7 @@ python3 scripts/import-dst-region.py \
 当前白名单及状态转换：
 
 - `pigking`：只接受空状态；交易与日夜／状态图状态由现有猪王 prefab 重建。
+- `moonbase`：`workable.maxwork/workleft` 保留修复／损坏状态；按 Lua `pickable.caninteractwith` 恢复 `staff` 或旧版 `staffname/staffuse`，转为 `moonbase.staff`，保留支持的法杖皮肤和耐久；`timer` → `moonbase.timer`，保留充能各阶段的剩余时间和暂停状态。采摘状态由持有法杖重建。`Cluster_62` 的 6 份地表快照各有 1 座工作量为 6 的已修复月台，洞穴无源记录。
 - `researchlab`、`researchlab2`、`researchlab3`、`researchlab4`：按 `scienceprototyper.lua` / `magicprototyper.lua` 的 OnSave 迁移可选 `burnt`，保留已支持的 `skinname`；workable 默认不保存工作量。当前地表快照有 1 台 `researchlab2` 和 1 台使用 `researchlab3_nature` 皮肤的 `researchlab3`，洞穴无这四类记录。
 - `moon_tree`：迁移 `size`、`growable`、树桩／烧毁标记及 `timer.decay` → `moonTreeTimer`，保留剩余时间和暂停状态；当前快照新增 198 棵。`moonbutterfly_sapling`：`timer.grow` → `saplingTimer`，保留幼苗生长计时器，按原版不创建地图图标。
 - `deciduoustree`：迁移正常桦树的 `growable`、`build`、`leaf_state`、`target_leaf_state`、`leaveschangetime`、树桩／烧毁标记及 `timer.decay` → `deciduousTimer`。树桩可没有 `target_leaf_state`；腐朽任务由逻辑树持有，模型卸载时保留，保存／读档恢复剩余时间，移除时取消。拒绝尚未移植的 `monster` 敌对分支；自然繁殖 `plantregrowth` 沿用其他树木的现有限制，不迁移。

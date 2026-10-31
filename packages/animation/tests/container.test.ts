@@ -1,12 +1,41 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Container } from '../../componets/src/container';
 import { ItemEntity, StorageSlot, type InventoryStack } from '../../inventory/src';
+import { Vector3 } from 'three';
+import { createSignal } from '@dontstarve-web/signals';
+import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import { bindTestWorld } from './worldContentFixture';
 
 function createContainer(loadItem = (record: InventoryStack) => new ItemEntity(record)) {
   return new Container({}, () => new StorageSlot(), loadItem);
 }
 
 describe('Lua container component', () => {
+  it('checks actual openers on position changes and releases subscriptions when the last opener leaves', async () => {
+    const scheduler = new GameTimeScheduler(), world = bindTestWorld(scheduler);
+    const container = new Container({ getPosition: () => new Vector3() }, () => new StorageSlot(), (record: InventoryStack) => new ItemEntity(record));
+    container.SetAutoClose(world.getWatchWorldContent, 9);
+    const first = { position: new Vector3(), removal: createSignal(false) };
+    const second = { position: new Vector3(1, 0, 0), removal: createSignal(false) };
+    const closed = container.onclosefn = vi.fn();
+    const check = vi.spyOn(container, 'CheckOpeners');
+    const settle = () => new Promise(resolve => setTimeout(resolve, 0));
+    try {
+      container.Open(first); container.Open(second);
+      check.mockClear(); scheduler.advance(30); await settle();
+      expect(check).not.toHaveBeenCalled();
+      first.position.x = 9.01;
+      world.playerpositions.set([first.position.clone(), second.position.clone()]); await settle();
+      expect(container.GetOpeners()).toEqual([second]);
+      expect(closed).not.toHaveBeenCalled();
+      // Opener removal closes without waiting for another position snapshot.
+      second.removal.set(true); await settle();
+      expect(closed).toHaveBeenCalledOnce();
+      check.mockClear();
+      world.playerpositions.set([new Vector3(100, 0, 0)]); await settle();
+      expect(check).not.toHaveBeenCalled();
+    } finally { container.dispose(); world.unbind(); scheduler.dispose(); }
+  });
   it('provides a stable read-only DTO signal and publishes complete loads and cleared slots', () => {
     const container = createContainer();
     container.SetNumSlots(2);

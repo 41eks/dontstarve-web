@@ -1,6 +1,4 @@
-import { createSignal, readonlySignal, createEffect, createMemo, watchSignal, WorldContentKey, type GetWatchWorldContent, type Memo, type PlayerPositionsSignal } from '../../signals/src';
-import type { GameTimeScheduler } from './gameTimeScheduler';
-import { ComponentTimer } from './timer';
+import { createSignal, readonlySignal, createEffect, createMemo, watchSignal, WorldContentKey, getBoundWatchWorldContent, type GetWatchWorldContent, type Memo, type PlayerPositionsSignal } from '../../signals/src';
 import { GetTileCoordsAtPoint, TileTracker } from './tileManager';
 import { TILE_SIZE } from '../../prefab/src/tile';
 import type { Vector3 } from 'three';
@@ -23,36 +21,30 @@ function getTileDistance(a: readonly [number, number], b: readonly [number, numb
   return distance;
 }
 
-/** playerprox.lua's default AnyPlayer mode. No save data; world sleep stops its periodic task. */
+/** playerprox.lua's AnyPlayer state and hysteresis, evaluated on position signals instead of polling. */
 export class PlayerProx {
   private readonly close = createSignal(false);
   readonly isclose = readonlySignal(this.close);
-  private readonly timer: ComponentTimer;
   private enabled = false;
   private disposed = false;
   private near = 2;
   private far = 3;
-  private period = 10 / 30;
   private readonly inst: PlayerProxInst;
   private readonly playerpositions?: PlayerPositionsSignal;
   private readonly playerTiles?: Memo<readonly [number, number][]>;
   private stopPlayers?: () => void;
   private stopArea?: () => void;
-  /** The periodic task was stopped because the inst left the tickingarea, not by its owner. */
+  /** Tickingarea suspension must not undo an explicit Stop(). */
   private pausedByArea = false;
   private onnear?: () => void;
   private onfar?: () => void;
 
-  constructor(inst: PlayerProxInst, scheduler: GameTimeScheduler, getWatchWorldContent?: GetWatchWorldContent) {
+  constructor(inst: PlayerProxInst, getWatchWorldContent: GetWatchWorldContent | undefined = getBoundWatchWorldContent()) {
     this.inst = inst;
     // A private tile key gates the player positions by tickingarea; the inst's position is read once, so it must not move.
     const tracker = new TileTracker(() => inst.getPosition());
     this.playerpositions = getWatchWorldContent?.(WorldContentKey.PlayerPositions, stop => { this.stopPlayers = stop; }, { tile: tracker.tile });
     if (this.playerpositions) this.playerTiles = createMemo(() => this.playerpositions!.get().map(GetTileCoordsAtPoint));
-    this.timer = new ComponentTimer(scheduler, () => {
-      this.ForceUpdate();
-      if (this.enabled && !this.disposed) this.timer.start(this.period);
-    });
     if (this.playerpositions) createEffect(() => {
       this.playerpositions!.get();
       this.ForceUpdate();
@@ -60,7 +52,7 @@ export class PlayerProx {
     this.Schedule();
     const area = this.playerpositions?.area;
     if (area) {
-      // Outside the tickingarea the positions hold their last value, so the periodic poll sleeps until the area is active again.
+      // The private position bridge resyncs when this tile becomes active again.
       const active = watchSignal(area, stop => { this.stopArea = stop; });
       let previous = active.peek();
       createEffect(() => {
@@ -72,14 +64,13 @@ export class PlayerProx {
       });
     }
   }
-  get timerState() { return this.timer.snapshot; }
   SetDist(near: number, far: number): void { this.near = near; this.far = far; }
   SetOnPlayerNear(fn: () => void): void { this.onnear = fn; }
   SetOnPlayerFar(fn: () => void): void { this.onfar = fn; }
   IsPlayerClose(): boolean { return this.close.peek(); }
-  Schedule(period = this.period): void {
+  Schedule(): void {
     if (this.disposed) return;
-    this.Stop(); this.period = period; this.enabled = true; this.timer.start(period);
+    this.enabled = true;
   }
   ForceUpdate(): void {
     if (!this.enabled || this.disposed || !this.inst.isValid()) return;
@@ -98,7 +89,7 @@ export class PlayerProx {
     this.close.set(isClose);
     if (isClose) this.onnear?.(); else this.onfar?.();
   }
-  Stop(): void { this.enabled = false; this.pausedByArea = false; this.timer.stop(); }
+  Stop(): void { this.enabled = false; this.pausedByArea = false; }
   OnEntityWake(): void { this.Schedule(); this.ForceUpdate(); }
   OnEntitySleep(): void { this.ForceUpdate(); this.Stop(); }
   dispose(): void {

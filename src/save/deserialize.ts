@@ -279,9 +279,12 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
   });
   let stats: SaveDocument['players']['local']['stats'];
   if (player.stats !== undefined) {
-    const o = object(player.stats, 'players.local.stats', ['health', 'hunger', 'sanity', 'penalty']);
+    const o = object(player.stats, 'players.local.stats', ['health', 'hunger', 'sanity', 'penalty', 'sanitySane', 'sanityMode']);
+    if (o.sanitySane !== undefined && typeof o.sanitySane !== 'boolean') fail('players.local.stats.sanitySane', 'expected boolean');
     stats = { health: number(o.health, 'players.local.stats.health'), hunger: number(o.hunger, 'players.local.stats.hunger'), sanity: number(o.sanity, 'players.local.stats.sanity'),
-      ...o.penalty === undefined ? {} : { penalty: number(o.penalty, 'players.local.stats.penalty') } };
+      ...o.penalty === undefined ? {} : { penalty: number(o.penalty, 'players.local.stats.penalty') },
+      ...o.sanitySane === undefined ? {} : { sanitySane: o.sanitySane as boolean },
+      ...o.sanityMode === undefined ? {} : { sanityMode: integer(o.sanityMode, 'players.local.stats.sanityMode', 0, 1) as 0 | 1 } };
   }
   const systemsData = object(world.systems, 'world.systems', ['clock', 'season', 'worldtemperature', 'weather', 'moon', 'random']);
   const systems: SaveDocument['world']['systems'] = {};

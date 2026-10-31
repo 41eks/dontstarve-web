@@ -3,7 +3,6 @@ import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createSanityState } from '../../signals/src';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Sanity } from '../../componets/src/sanity';
 import { NightmareRockManager, type NightmareRockInstance } from '../../prefab/src/nightmarerock';
@@ -24,8 +23,8 @@ afterEach(() => {
 async function setup() {
   const scheduler = new GameTimeScheduler();
   const physics = new CANNON.World();
-  const current = createSanityState(200, 200);
-  const sanity = new Sanity({ components: { inventory: { GetEquippedItem: () => null } }, hasTag: () => false } as never, current);
+  const sanity = new Sanity({ components: { inventory: { GetEquippedItem: () => null } }, hasTag: () => false } as never, 200);
+  const current = sanity;
   const player = { position: new THREE.Vector3(100, 0, 0), sanity };
   const fx = { prepare: vi.fn(async () => undefined), spawn: vi.fn() };
   const manager = new NightmareRockManager(new THREE.Scene(), '/dst/data/anim', { scheduler, physics, fx, getPlayers: () => [player] });
@@ -117,17 +116,17 @@ describe('nightmare rocks', () => {
     run(2);
     expect(obelisk.active).toBe(false);
 
-    current.set(0.14 * 200);
+    current.SetCurrent(0.14 * 200);
     await Promise.resolve();
     expect(player.sanity.IsInsane()).toBe(true);
     run(2);
     expect(obelisk.active).toBe(true);
 
     // 32/200 is above the 30/200 insane threshold but below 35/200: still insane.
-    current.set(32);
+    current.SetCurrent(32);
     await Promise.resolve();
     expect(player.sanity.IsInsane()).toBe(true);
-    current.set(36);
+    current.SetCurrent(36);
     await Promise.resolve();
     expect(player.sanity.IsSane()).toBe(true);
     run(3);

@@ -21,7 +21,7 @@ function setup() {
   const sanity = vi.fn();
   const attacker: CombatActor = {
     getPosition: () => new THREE.Vector3(0, 0, 0), getPhysicsRadius: () => .5, hasTag: tag => tag === 'player',
-    components: { sanity: { doDelta: sanity } },
+    components: { sanity: { DoDelta: sanity } },
   };
   const combat = new Combat(attacker, () => 0, () => staff.components.weapon);
   combat.SetRange(2);

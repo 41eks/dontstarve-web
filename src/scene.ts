@@ -27,7 +27,7 @@ import { createWorldClockUpdater } from './worldState';
 import type { PerishWorld } from '../packages/componets/src/perishable';
 import { Locomotor, findGroundPath, setupLocomotorInput } from '@dontstarve-web/prefab/locomotor';
 import { SlipperyFeet } from '../packages/componets/src/slipperyfeet';
-import { bindActionEntityWorld, FindEntities } from '../packages/prefab/src/actionEntity';
+import { actionEntitiesChanged, bindActionEntityWorld, FindEntities } from '../packages/prefab/src/actionEntity';
 import { bindPlayerBuilder } from '@dontstarve-web/prefab/player';
 import type { DisposalEvents } from './registerDisposal';
 import { disposeTextureAssets } from '@dontstarve-web/animation/textureLoader';
@@ -148,8 +148,9 @@ export async function startScene(
   }
   const builder = bindPlayerBuilder(player, {
     findEntities: (position, radius, mustTags, cantTags) => FindEntities(position, radius, mustTags, cantTags),
+    entitiesChanged: actionEntitiesChanged,
+    getWatchWorldContent: worldState.getWatchWorldContent,
   });
-  builder.OnUpdate();
   // player_common.lua AddComponent("slipperyfeet"); frozen ponds are its slipperyfeettarget entities.
   const stategraph = playerInstance.animationController.stategraph;
   const removeSlipperyFeet = () => {
@@ -183,7 +184,6 @@ export async function startScene(
   const updateEntities = (dt: number) => {
     turfMap.update(dt);
     scheduler.advanceTo(clockUpdater.elapsedSeconds);
-    builder.OnUpdate();
     worldState.componentUpdates.update(dt);
     publishCameraRotation();
     registry.update(dt, cameraWorldQuaternion);

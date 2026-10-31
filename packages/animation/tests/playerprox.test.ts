@@ -11,8 +11,8 @@ it('shares tile-pair distances across prefabs, reversed pairs and snapshots whil
   const { playerpositions, getWatchWorldContent, unbind } = bindTestWorld(scheduler);
   // Unique out-of-map tiles keep this cache assertion independent of other tests.
   const origin = new THREE.Vector3(1200.1, 0, 2400.1), otherOrigin = new THREE.Vector3(1211.9, 0, 2400.1);
-  const first = new PlayerProx({ isValid: () => true, getPosition: () => origin }, scheduler, getWatchWorldContent);
-  const second = new PlayerProx({ isValid: () => true, getPosition: () => otherOrigin }, scheduler, getWatchWorldContent);
+  const first = new PlayerProx({ isValid: () => true, getPosition: () => origin }, getWatchWorldContent);
+  const second = new PlayerProx({ isValid: () => true, getPosition: () => otherOrigin }, getWatchWorldContent);
   first.SetDist(3, 15); second.SetDist(3, 15);
   const max = vi.spyOn(Math, 'max');
   const computations = (x: number, z: number) => max.mock.calls.filter(args => args.length === 2 && args[0] === x && args[1] === z).length;
@@ -42,14 +42,14 @@ it('shares tile-pair distances across prefabs, reversed pairs and snapshots whil
   }
 });
 
-it('caches player tiles between polls and skips far players without missing adjacent players or the far transition', async () => {
+it('caches player tiles between position snapshots and skips far players without missing adjacent players or the far transition', async () => {
   const scheduler = new GameTimeScheduler();
   const { playerpositions, getWatchWorldContent, unbind } = bindTestWorld(scheduler);
   const origin = new THREE.Vector3(11.9, 0, -.1), onnear = vi.fn(), onfar = vi.fn();
   const farX = new THREE.Vector3(48, 0, -.1), farZ = new THREE.Vector3(11.9, 0, 48);
   const distanceX = vi.spyOn(farX, 'distanceToSquared'), distanceZ = vi.spyOn(farZ, 'distanceToSquared');
   const tiles = vi.spyOn(tileManager, 'GetTileCoordsAtPoint');
-  const prox = new PlayerProx({ isValid: () => true, getPosition: () => origin }, scheduler, getWatchWorldContent);
+  const prox = new PlayerProx({ isValid: () => true, getPosition: () => origin }, getWatchWorldContent);
   prox.SetDist(3, 15); prox.SetOnPlayerNear(onnear); prox.SetOnPlayerFar(onfar);
   const settle = () => new Promise(resolve => setTimeout(resolve, 0));
   try {
@@ -79,7 +79,7 @@ it('keeps large radii, negative and out-of-map coordinates, and strict 3D distan
   const scheduler = new GameTimeScheduler();
   const { playerpositions, getWatchWorldContent, unbind } = bindTestWorld(scheduler);
   const origin = new THREE.Vector3(-.1, 0, -.1);
-  const prox = new PlayerProx({ isValid: () => true, getPosition: () => origin }, scheduler, getWatchWorldContent);
+  const prox = new PlayerProx({ isValid: () => true, getPosition: () => origin }, getWatchWorldContent);
   prox.SetDist(24, 30);
   const settle = () => new Promise(resolve => setTimeout(resolve, 0));
   try {
@@ -97,25 +97,28 @@ it('keeps large radii, negative and out-of-map coordinates, and strict 3D distan
   } finally { prox.dispose(); unbind(); scheduler.dispose(); }
 });
 
-it('stops polling outside the tickingarea and resyncs when it becomes active again', async () => {
+it('suspends detection outside the tickingarea and resyncs when it becomes active again', async () => {
   const scheduler = new GameTimeScheduler(), awake = createSignal(true), area = createMemo(() => awake.get());
   const { playerpositions, getWatchWorldContent, unbind } = bindTestWorld(scheduler, () => area);
   const origin = new THREE.Vector3(0, 0, 0), near = vi_fn(), far = vi_fn();
-  const prox = new PlayerProx({ isValid: () => true, getPosition: () => origin }, scheduler, getWatchWorldContent);
+  const prox = new PlayerProx({ isValid: () => true, getPosition: () => origin }, getWatchWorldContent);
   prox.SetDist(2, 3); prox.SetOnPlayerNear(near.fn); prox.SetOnPlayerFar(far.fn);
   const settle = () => new Promise(resolve => setTimeout(resolve, 0));
   try {
     playerpositions.set([new THREE.Vector3(1, 0, 0)]); await settle();
     expect(prox.IsPlayerClose()).toBe(true);
-    expect(prox.timerState.peek().status).toBe('scheduled');
+    const update = vi.spyOn(prox, 'ForceUpdate');
+    scheduler.advance(30); await settle();
+    expect(update).not.toHaveBeenCalled();
+
 
     awake.set(false); await settle();
-    expect(prox.timerState.peek().status).not.toBe('scheduled');
+
     playerpositions.set([new THREE.Vector3(40, 0, 0)]); await settle(); scheduler.advance(5);
     expect(prox.IsPlayerClose()).toBe(true); // the gated positions kept their last value, and nothing polled
 
     awake.set(true); await settle();
-    expect(prox.timerState.peek().status).toBe('scheduled');
+
     expect(prox.IsPlayerClose()).toBe(false);
     expect(far.calls).toBe(1);
   } finally { prox.dispose(); unbind(); scheduler.dispose(); }

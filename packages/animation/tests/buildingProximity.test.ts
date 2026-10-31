@@ -111,14 +111,14 @@ describe('building RUMMAGE and proximity', () => {
     expect(changes).toHaveBeenLastCalledWith({ buildId: 'treasurechest', isOpen: true, model });
   });
 
-  it('keeps an open chest nearby through 10 units, then closes it and its panel', async () => {
+  it('keeps an open chest nearby through 9 units, then closes it and its panel', async () => {
     const { distance, act, playOnce, start, finish, changes, model } = await setup();
     await distance(0);
     act();
     finish();
-    await distance(10);
+    await distance(9);
     expect(changes).toHaveBeenCalledTimes(1);
-    await distance(10.01);
+    await distance(9.01);
     expect(changes).toHaveBeenLastCalledWith({ buildId: 'treasurechest', isOpen: false, model });
     expect(playOnce).toHaveBeenLastCalledWith('close', expect.any(Function));
     finish();

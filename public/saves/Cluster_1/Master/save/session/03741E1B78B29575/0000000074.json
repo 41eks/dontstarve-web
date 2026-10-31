@@ -684476,6 +684476,28 @@
           "components": {}
         }
       ],
+      "moonbase": [
+        {
+          "id": "dst_03741E1B78B29575_moonbase_id_104806",
+          "transform": {
+            "position": [
+              -18.0,
+              0.0,
+              -462.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "building": {
+              "state": "idle"
+            },
+            "workable": {
+              "maxwork": 6,
+              "workleft": 6
+            }
+          }
+        }
+      ],
       "researchlab2": [
         {
           "id": "dst_03741E1B78B29575_researchlab2_index_000001",

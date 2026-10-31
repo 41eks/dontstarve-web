@@ -1,17 +1,16 @@
-import { createSanityState } from '@dontstarve-web/signals';
 import { Sanity } from '../../componets/src/sanity';
 import { SanityVignette } from '../src/sanity-vignette';
 
 export async function checkSanityVignette() {
-  const current = createSanityState(200, 200);
-  const sanity = new Sanity({ components: { inventory: { GetEquippedItem: () => null } }, hasTag: () => false }, current);
+  const sanity = new Sanity({ components: { inventory: { GetEquippedItem: () => null } }, hasTag: () => false }, 200);
+  const current = sanity;
   const vignette = await SanityVignette.create(sanity.sane, '/dst/data/anim');
   document.body.append(vignette.canvas);
   const context = vignette.canvas.getContext('2d')!;
   const pixels = () => context.getImageData(0, 0, 1280, 720).data;
   const basic = pixels();
-  current.set(20);
-  // Sanity state effect and its presentation effect settle in separate microtasks.
+  current.SetCurrent(20);
+  // Component transitions are synchronous; presentation settles in the microtask.
   await Promise.resolve(); await Promise.resolve();
   const initialFrame = vignette.canvas.dataset.frame;
   const insane = pixels();
@@ -29,17 +28,17 @@ export async function checkSanityVignette() {
   vignette.update(0);
   const paused = pixels().every((v, i) => v === beforePause[i]);
   // Recovery within the hysteresis band leaves the UI animation running.
-  current.set(32);
+  current.SetCurrent(32);
   await Promise.resolve(); await Promise.resolve();
   const stillInsane = vignette.canvas.dataset.animation;
-  current.set(35);
+  current.SetCurrent(35);
   await Promise.resolve(); await Promise.resolve();
   const restored = pixels().every((v, i) => v === basic[i]);
   const restoredAnimation = vignette.canvas.dataset.animation;
   const hit = document.elementFromPoint(10, 10);
   const blocksInput = hit === vignette.canvas;
   vignette.dispose();
-  current.set(0);
+  current.SetCurrent(0);
   await Promise.resolve(); await Promise.resolve();
   vignette.update(1);
   const disposed = !vignette.canvas.isConnected && vignette.canvas.width === 0

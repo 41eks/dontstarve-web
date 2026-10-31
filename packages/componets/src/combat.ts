@@ -8,12 +8,12 @@ export interface CombatInst<HealthComponent extends Pick<Health, 'IsDead' | 'DoD
   getPhysicsRadius(): number;
   hasTag(tag: string): boolean;
   PushEvent?(name: string, data: unknown): void;
-  readonly components: { combat?: Combat; health?: HealthComponent; sanity?: { doDelta(delta: number): void };
+  readonly components: { combat?: Combat; health?: HealthComponent; sanity?: { DoDelta(delta: number): void };
     /** inventory:ApplyDamage: equipped armor absorbs its share before health; creature inventories wear none. */
     inventory?: { ApplyDamage?(damage: number, attacker?: CombatActor, weapon?: Weapon): number } };
 }
 
-/** Players may bind the combat health operations to their existing authoritative stat store. */
+/** Combat needs only these operations from the actor's health component. */
 export type CombatActor = CombatInst<Pick<Health, 'IsDead' | 'DoDelta'>>;
 
 /**

@@ -21,13 +21,6 @@ export type HandEquipment = Equipment<'HANDS'>;
 export type HeadEquipment = Equipment<'HEAD'>;
 export type BodyEquipment = Equipment<'BODY'>;
 
-/** A character stat as equipment sees it: the value, its maximum and a capped assignment. */
-export interface EquipmentStat {
-  peek(): number;
-  set(value: number): void;
-  readonly maximum: number;
-}
-
 /** owner.components.sanity as equipment reads it; the mode is the wearer's, not the item's. */
 export interface EquipmentSanity {
   IsInsanityMode(): boolean;
@@ -46,8 +39,8 @@ export interface EquipmentOwner {
   IsCurrentState?(name: string): boolean;
   /** owner.components: the stats equipment reads and changes. */
   readonly components?: {
-    readonly health?: EquipmentStat & { GetMaxWithPenalty(): number };
-    readonly hunger?: EquipmentStat;
+    readonly health?: { IsHurt(): boolean; DoDelta(amount: number, overtime?: boolean, cause?: string): number };
+    readonly hunger?: { readonly current: number; DoDelta(delta: number): void };
     readonly sanity?: EquipmentSanity;
   };
 }

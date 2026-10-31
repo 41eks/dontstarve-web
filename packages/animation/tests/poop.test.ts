@@ -33,9 +33,7 @@ it('uses private player position updates for source hysteresis and releases each
   const second = new FliesController(new PrefabInstance('flies', b as never), new THREE.Vector3(-20, 0, 0), scheduler, world.getWatchWorldContent);
   scheduler.advance(0);
   expect(handles).toHaveLength(2);
-  const waiting = first.playerprox.timerState.peek();
   scheduler.advance(.2);
-  expect(first.playerprox.timerState.peek()).toBe(waiting);
   const stale = a.playOnce.mock.calls[0][1];
   player.x = 6; publishPlayer(); scheduler.advance(.2);
   expect(first.playerprox.IsPlayerClose()).toBe(false); // source near is strictly < 2 DST units
@@ -56,7 +54,6 @@ it('uses private player position updates for source hysteresis and releases each
   expect(a.playOnce).toHaveBeenLastCalledWith('swarm_pre', expect.any(Function));
   first.OnEntitySleep();
   expect(handles[2].stop).toHaveBeenCalledOnce();
-  expect(first.playerprox.timerState.peek()).toEqual({ status: 'stopped' });
   first.OnEntityWake();
   expect(handles).toHaveLength(4);
   first.dispose(); second.dispose();

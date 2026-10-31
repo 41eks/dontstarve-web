@@ -91,7 +91,7 @@ it('preserves work through reskinning and restores proximity after hits', async 
   const { placement, model, world, animation, finish, dropLoot, builder } = await setup('researchlab2', 'researchlab2_pod');
   try {
     world.player.position.copy(model.position);
-    builder.OnUpdate();
+    builder.EvaluateTechTrees();
     placement.update(0);
     expect(animation().currentAnimation).toBe('proximity_loop');
     placement.hammerTargets[0].playHit();
@@ -125,7 +125,7 @@ it('queues magic station transitions across reskinning, then rebuilds transient 
     world.player.position.copy(actionEntity(model, 'researchlab3').getPosition());
     placement.update(0);
     expect(animation().currentAnimation).toBe('idle'); // Placement does not select a station.
-    builder.OnUpdate();
+    builder.EvaluateTechTrees();
     expect(animation().currentAnimation).toBe('proximity_pre');
     const component = (findActionEntity(model)?.components ?? prefabInstance(model)!.components).prototyper;
     const sound = vi.mocked(PlaySound).mock.results.at(-1)!.value;
@@ -137,7 +137,7 @@ it('queues magic station transitions across reskinning, then rebuilds transient 
     const record = placement.exportRecords()[0].record;
     expect(record.components).not.toHaveProperty('prototyper');
     world.player.position.x += 4 * WORLD_SCALE + .01;
-    builder.OnUpdate();
+    builder.EvaluateTechTrees();
     expect(component.on).toBe(false);
     expect(animation().currentAnimation).toBe('proximity_loop'); // PushAnimation waits for the current pass.
     expect(sound.stop).toHaveBeenCalledOnce();
@@ -149,7 +149,7 @@ it('queues magic station transitions across reskinning, then rebuilds transient 
     const loaded = await restored.spawnFromSave('researchlab3', record);
     expect((findActionEntity(loaded)?.components ?? prefabInstance(loaded)!.components).prototyper.on).toBe(false);
     world.player.position.copy(actionEntity(loaded, 'researchlab3').getPosition());
-    builder.OnUpdate();
+    builder.EvaluateTechTrees();
     expect((findActionEntity(loaded)?.components ?? prefabInstance(loaded)!.components).prototyper.on).toBe(true);
     expect(builder.accessible_tech_trees.peek().MAGIC).toBe(3);
     expect(restored.exportRecords()[0].record).toEqual(record);
@@ -157,7 +157,7 @@ it('queues magic station transitions across reskinning, then rebuilds transient 
     restored = new ResearchLabPlacement(world, () => true);
     const burnt = await restored.spawnFromSave('researchlab3', { ...record,
       components: { ...record.components, building: { ...record.components.building!, burnt: true } } });
-    builder.OnUpdate();
+    builder.EvaluateTechTrees();
     expect((findActionEntity(burnt)?.components ?? prefabInstance(burnt)!.components).prototyper).toBeUndefined();
     expect(actionEntity(burnt, 'researchlab3').hasTag('prototyper')).toBe(false);
     expect(builder.current_prototyper).toBeUndefined();

@@ -37,22 +37,24 @@ export function getRummageActions(model: THREE.Object3D | undefined, doer: objec
   const target = findActionEntity(model) as RummageTarget | undefined;
   if (!target || !canRummage(target)) return [];
   // actions.lua RUMMAGE.strfn: CLOSE while the doer has it open.
-  const modifier = target.components.container!.IsOpenedBy(doer) ? 'CLOSE' : undefined;
+  const opener = doer instanceof THREE.Object3D ? prefabInstance(doer) ?? doer : doer;
+  const modifier = target.components.container!.IsOpenedBy(opener) ? 'CLOSE' : undefined;
   return [{ action: { action: 'RUMMAGE', target, ...modifier ? { modifier } : {} }, button: 'left', model }];
 }
 
 /** actions.lua RUMMAGE.fn for a scene container: close it if the doer has it open, otherwise open it. */
 export function performRummageAction(target: RummageTarget, doer: THREE.Object3D): boolean {
   const container = target.components.container;
+  const opener = prefabInstance(doer) ?? doer;
   if (target.isRemoved || !container) return false;
-  if (container.IsOpenedBy(doer)) {
-    container.Close(doer);
+  if (container.IsOpenedBy(opener)) {
+    container.Close(opener);
     prefabInstance(doer)?.PushEvent('closecontainer', { container: target });
     return true;
   }
   if (!container.CanOpen() || !container.canbeopened) return false;
   prefabInstance(doer)?.PushEvent('opencontainer', { container: target });
-  container.Open(doer);
+  container.Open(opener);
   return true;
 }
 

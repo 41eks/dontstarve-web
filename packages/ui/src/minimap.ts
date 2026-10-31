@@ -26,8 +26,8 @@ const ZOOM_EASE_SECONDS = 0.1;
 /** PlayerProfile default 15; MapScreen applies sensitivity * direction / 60. */
 const ZOOM_SENSITIVITY = 15;
 
-/** Main-thread fullscreen DOM map. View changes transform a shared world container;
- * entity declarations, tile changes and terrain notifications update only their own nodes. */
+/** Main-thread fullscreen map. View and entity changes invalidate viewport-sized
+ * icon and terrain surfaces; closed maps keep their prepared resources. */
 export class DstMinimapElement extends AssetElement {
   private options?: MinimapOptions;
   view?: MinimapView;
@@ -200,7 +200,7 @@ export class DstMinimapElement extends AssetElement {
 
   private resize(): void {
     if (!this.view || !this.root || !this.open) return;
-    // DOM positions are CSS pixels; devicePixelRatio is handled by the browser.
+    // View coordinates are CSS pixels; each surface applies devicePixelRatio when drawing.
     this.view.resize(this.root.clientWidth, this.root.clientHeight);
     this.updateView();
   }

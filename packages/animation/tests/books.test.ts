@@ -42,7 +42,7 @@ function readerFor(position: THREE.Vector3) {
   const doDelta = vi.fn();
   const inst = {
     addTag: (tag: string) => tags.push(tag), removeTag: (tag: string) => tags.splice(tags.indexOf(tag), 1),
-    getPosition: () => position, components: { sanity: { doDelta } },
+    getPosition: () => position, components: { sanity: { DoDelta: doDelta } },
   };
   return { reader: new Reader<typeof inst, BookWorld>(inst), tags, doDelta };
 }

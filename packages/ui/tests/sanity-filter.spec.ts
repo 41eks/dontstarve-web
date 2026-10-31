@@ -101,10 +101,10 @@ test('game restores saved sanity and synchronizes debug commands, HUD and manual
   expect(await page.evaluate(async (urls) => {
     const { dstLighting } = await import(urls.universal);
     const { playerStats } = await import(urls.stats);
-    return { percent: dstLighting.getSanityPercent(), sanity: playerStats.sanity.peek() };
+    return { percent: dstLighting.getSanityPercent(), sanity: playerStats.sanity.current };
   }, urls)).toEqual({ percent: 0.175, sanity: 35 });
   // Writing the source signal directly must update both consumers without the command callback.
-  await page.evaluate(async url => (await import(url)).playerStats.sanity.set(100), urls.stats);
+  await page.evaluate(async url => (await import(url)).playerStats.sanity.SetCurrent(100), urls.stats);
   await expect(meter.locator('output')).toHaveText('100');
   expect(await page.evaluate(async url => (await import(url)).dstLighting.getSanityPercent(), urls.universal)).toBe(0.5);
   await submit('c_setsanity(0.1)');

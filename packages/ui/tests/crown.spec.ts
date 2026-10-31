@@ -59,7 +59,7 @@ test('equipped crown follows real sanity at the 85 percent boundary and recomput
   await expect.poll(crown).toEqual({ light: null, crownLoaded: true, fx: false });
   expect(head(await saveGame())).toEqual(equipped);
   // Direct stat writes use the same subscription as commands and food/equipment effects.
-  await page.evaluate(() => (window as any).crownGame.playerStats.sanity.set(171));
+  await page.evaluate(() => (window as any).crownGame.playerStats.sanity.SetCurrent(171));
   await expect.poll(crown).toMatchObject({ light: 12, fx: true });
   await bar.locator('[data-slot-key="head"]').dragTo(bar.locator('.inventory-bar__items [data-slot-key="0"]'));
   await expect.poll(crown).toEqual({ light: null, crownLoaded: false, fx: false });

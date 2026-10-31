@@ -1,5 +1,7 @@
 import type { PrefabInstance } from './prefabInstance';
 import { Workable } from '../../componets/src/workable';
+import { Prototyper } from '../../componets/src/prototyper';
+import { CreateTechTree } from '../../componets/src/techtree';
 import { createStructureLootDropper } from './structureLoot';
 import { type SpriteState } from '@dontstarve-web/display';
 import * as THREE from 'three';
@@ -44,7 +46,7 @@ interface BookstationHost {
     readonly art?: ReadonlySignal<number>;
 }
 
-/** bookstation.lua's RestoreTask, book-count art and prototyper on/off state for one placed inst. */
+/** bookstation.lua's RestoreTask and book-count art for one placed inst. */
 export class Bookstation {
     private readonly host: BookstationHost;
     private readonly restoreTimer: ComponentTimer;
@@ -53,8 +55,6 @@ export class Bookstation {
     private readonly bookCount = createSignal(0);
     private stopWatching?: () => void;
     private disposed = false;
-    /** prototyper.on: the player is close enough for onturnon. */
-    on = false;
 
     constructor(host: BookstationHost) {
         this.host = host;
@@ -137,7 +137,7 @@ function bookstationOf(model: THREE.Group): Bookstation | undefined {
 
 /** The animation that follows a one-shot clip: proximity_loop while prototyper.on, else idle. */
 function settle({ model, animation }: Pick<AnimatedBuildingEventContext, 'model' | 'animation'>): void {
-    animation.start(bookstationOf(model)?.on ? 'proximity_loop' : 'idle');
+    animation.start(prefabInstance(model)!.components.prototyper?.on ? 'proximity_loop' : 'idle');
 }
 
 function onbuilt(context: AnimatedBuildingBuiltContext): void {
@@ -158,24 +158,24 @@ function oninit({ model, instance, world, art }: AnimatedBuildingEventContext): 
     const container = instance.components.container as BuildingContainer | undefined;
     if (!world || !container) throw new Error('A bookstation needs its container and world');
     const entity = actionEntity(model, BOOKSTATION_ID);
-    for (const tag of ['structure', 'giftmachine', 'prototyper']) entity.addTag(tag);
+    for (const tag of ['structure', 'giftmachine']) entity.addTag(tag);
+    const prototyper = instance.components.prototyper = new Prototyper(instance, 4 * (TILE_SIZE / 4));
+    prototyper.trees = CreateTechTree({ BOOKCRAFT: 1 });
+    prototyper.onturnon = onturnon;
+    prototyper.onturnoff = onturnoff;
     (instance as BookstationInstance).bookstation = new Bookstation({ model, container, world, art });
 }
 
-function onturnon(context: AnimatedBuildingEventContext): void {
-    const bookstation = bookstationOf(context.model);
-    if (bookstation) bookstation.on = true;
-    if (actionEntity(context.model, BOOKSTATION_ID).hasTag('burnt')) return;
+function onturnon(inst: PrefabInstance): void {
+    if (inst.hasTag('burnt')) return;
     // onbuilt's place clip hands over to proximity_loop when it finishes.
-    if ((prefabInstance(context.model)!.sprite as SpriteState).currentAnimation === 'place') return;
-    context.animation.start('proximity_loop');
+    if (inst.sprite.currentAnimation === 'place') return;
+    inst.sprite.start('proximity_loop');
 }
 
-function onturnoff(context: AnimatedBuildingEventContext): void {
-    const bookstation = bookstationOf(context.model);
-    if (bookstation) bookstation.on = false;
-    if (actionEntity(context.model, BOOKSTATION_ID).hasTag('burnt')) return;
-    context.animation.start('idle');
+function onturnoff(inst: PrefabInstance): void {
+    if (inst.hasTag('burnt')) return;
+    inst.sprite.start('idle');
 }
 
 function hitThenSettle(context: AnimatedBuildingEventContext): void {
@@ -184,7 +184,7 @@ function hitThenSettle(context: AnimatedBuildingEventContext): void {
 
 function onworked(inst: PrefabInstance): void {
     if (inst.hasTag('burnt')) return;
-    const on = (inst as BookstationInstance).bookstation?.on === true;
+    const on = inst.components.prototyper?.on === true;
     inst.sprite.playOnce('hit');
     inst.sprite.pushAnimation(on ? 'proximity_loop' : 'idle', on);
 }
@@ -203,7 +203,7 @@ export const BOOKSTATION_DEFINITION: AnimatedBuildingDefinition = {
     // MakeLargeBurnable(inst, nil, nil, true) and MakeLargePropagator.
     burnable: { burnTime: 30, fxLevel: 4, propagator: 'large' },
     skinInit: bookstation_init_fn,
-    onbuilt, oninit, onturnon, onturnoff,
+    onbuilt, oninit,
     onopen: (context) => {
         if (actionEntity(context.model, BOOKSTATION_ID).hasTag('burnt')) return;
         hitThenSettle(context);
@@ -214,7 +214,7 @@ export const BOOKSTATION_DEFINITION: AnimatedBuildingDefinition = {
         hitThenSettle(context);
         PlaySound('dontstarve/wilson/chest_close', context.model.position);
     },
-    ondispose: ({ model }) => { bookstationOf(model)?.dispose(); delete (prefabInstance(model)! as BookstationInstance).bookstation; },
+    ondispose: ({ model, instance }) => { instance.components.prototyper?.OnRemoveFromEntity(); bookstationOf(model)?.dispose(); delete (prefabInstance(model)! as BookstationInstance).bookstation; },
 };
 
 export class BookstationPlacement extends AnimatedBuildingPlacement<BookstationId> {

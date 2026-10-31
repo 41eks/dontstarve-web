@@ -19,6 +19,9 @@ type ActionComponents = ComponentActionEntity['components'];
 
 /** Components owned by a world prefab, beyond the capabilities used to select actions. */
 export interface PrefabComponents extends ActionComponents {
+  hunger?: import('../../componets/src/hunger').Hunger;
+  sanity?: import('../../componets/src/sanity').Sanity;
+  inventory?: import('@dontstarve-web/inventory').InventoryStore;
   finiteuses?: import('../../componets/src/finiteuses').FiniteUses;
   knownlocations?: import('../../componets/src/knownlocations').KnownLocations;
   lootdropper?: import('../../componets/src/lootdropper').LootDropper;

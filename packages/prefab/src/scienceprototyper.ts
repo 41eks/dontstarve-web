@@ -101,7 +101,7 @@ function researchLabDefinition(id: ResearchLabId): AnimatedBuildingDefinition {
         researchlab3: { MAGIC: 3 }, researchlab4: { MAGIC: 2 },
     };
     return {
-        ...definitions.animatedBuildings[id], obstacleRadius: .4, onProximity: false, onbuilt,
+        ...definitions.animatedBuildings[id], obstacleRadius: .4, onbuilt,
         ...(id === 'researchlab4' ? { skinAnimState: RESEARCHLAB4_SKIN } : {}),
         oninit: (context) => {
             const workable = context.instance.components.workable = new Workable(context.instance);

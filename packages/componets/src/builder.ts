@@ -1,4 +1,4 @@
-import { createEffect, createSignal, readonlySignal, watchSignal } from '@dontstarve-web/signals';
+import { createEffect, createSignal, readonlySignal, watchSignal, getBoundWatchWorldContent, WorldContentKey, type GetWatchWorldContent, type ReadonlySignal } from '@dontstarve-web/signals';
 import type { Vector3 } from 'three';
 import type { PrototyperDoer, PrototyperInst } from './prototyper';
 import { CreateTechTree } from './techtree';
@@ -6,9 +6,12 @@ import { CreateTechTree } from './techtree';
 export interface BuilderWorld {
   findEntities(position: Vector3, radius: number, mustTags: readonly string[], cantTags: readonly string[]): PrototyperInst[];
   researchMachineDistance?: number;
+  getWatchWorldContent?: GetWatchWorldContent;
+  /** World query-index changes: creation, removal, activity and tags. */
+  entitiesChanged?: ReadonlySignal<number>;
 }
 
-/** components/builder.lua's per-frame tech evaluation; station state belongs to prototyper. */
+/** builder.lua's tech selection, evaluated on position/query/configuration changes. */
 export class Builder {
   private readonly techTrees = createSignal(CreateTechTree());
   readonly accessible_tech_trees = readonlySignal(this.techTrees);
@@ -17,6 +20,8 @@ export class Builder {
   private enabled = true;
   private disposed = false;
   private stopRemoval?: () => void;
+  private readonly cleanups: (() => void)[] = [];
+  private readonly stationWatches = new Map<PrototyperInst, () => void>();
   private readonly inst: PrototyperDoer;
   private readonly world: BuilderWorld;
   readonly exclude_tags = ['INLIMBO', 'fire'];
@@ -26,6 +31,15 @@ export class Builder {
     this.world = world;
     const removal = watchSignal(inst.removal, stop => { this.stopRemoval = stop; });
     createEffect(() => { if (removal.get()) this.dispose(); });
+    if (this.disposed) return;
+    const positions = (world.getWatchWorldContent ?? getBoundWatchWorldContent())?.(
+      WorldContentKey.PlayerPositions, stop => this.cleanups.push(stop));
+    const entities = world.entitiesChanged && watchSignal(world.entitiesChanged, stop => this.cleanups.push(stop));
+    if (positions || entities) createEffect(() => {
+      positions?.get();
+      entities?.get();
+      this.EvaluateTechTrees();
+    });
   }
   get current_prototyper(): PrototyperInst | undefined { return this.current; }
 
@@ -38,10 +52,29 @@ export class Builder {
   UsePrototyper(station?: PrototyperInst): boolean {
     if (!this.enabled || this.disposed || (station && !this.eligible(station))) return false;
     this.override = station;
+    this.EvaluateTechTrees();
     return true;
   }
-  SetCraftingEnabled(enabled: boolean): void { this.enabled = enabled; }
-  OnUpdate(): void { this.EvaluateTechTrees(); }
+  SetCraftingEnabled(enabled: boolean): void { this.enabled = enabled; this.EvaluateTechTrees(); }
+
+  private watchStations(stations: PrototyperInst[]): void {
+    for (const [station, stop] of this.stationWatches) {
+      if (!stations.includes(station)) { stop(); this.stationWatches.delete(station); }
+    }
+    for (const station of stations) {
+      if (!station.components.prototyper || this.stationWatches.has(station)) continue;
+      const stops: (() => void)[] = [];
+      const config = watchSignal(station.components.prototyper.configurationChanged, stop => stops.push(stop));
+      const removal = watchSignal(station.removal, stop => stops.push(stop));
+      this.stationWatches.set(station, () => stops.forEach(stop => stop()));
+      let initialized = false;
+      createEffect(() => {
+        config.get(); removal.get();
+        if (initialized) this.EvaluateTechTrees();
+        initialized = true;
+      });
+    }
+  }
 
   EvaluateTechTrees(): void {
     if (this.disposed) return;
@@ -56,6 +89,7 @@ export class Builder {
         .sort((a, b) => a.getPosition().distanceToSquared(position) - b.getPosition().distanceToSquared(position));
     }
     this.current = undefined;
+    this.watchStations(stations);
     for (const station of stations) {
       if (!this.eligible(station)) continue;
       if (!this.current) {
@@ -76,6 +110,7 @@ export class Builder {
     this.enabled = false;
     this.EvaluateTechTrees();
     this.disposed = true;
+    this.cleanups.splice(0).forEach(stop => stop());
     this.stopRemoval?.();
     this.stopRemoval = undefined;
   }

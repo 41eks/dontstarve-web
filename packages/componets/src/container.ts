@@ -1,6 +1,15 @@
-import { createSignal, readonlySignal, type ReadonlySignal, type Signal } from '../../signals/src';
+import { createEffect, createSignal, readonlySignal, watchSignal, WorldContentKey, type GetWatchWorldContent, type ReadonlySignal, type Signal } from '../../signals/src';
 import { modelHasTag } from '../../prefab/src/prefabInstance';
-import type { Object3D } from 'three';
+import type { Object3D, Vector3 } from 'three';
+
+/** Logical scene-container hosts/openers. Bare transform holders remain supported by detached inventories. */
+interface ContainerEntity {
+  getPosition?(): Vector3;
+  readonly position?: Vector3;
+  isValid?(): boolean;
+  readonly isRemoved?: boolean;
+  readonly removal?: ReadonlySignal<boolean>;
+}
 
 /** Detached presentation data; empty slots remain explicit so UI can clear them. */
 export interface ContainerDTO<TRecord> {
@@ -46,6 +55,40 @@ export class Container<TRecord, TItem extends ContainerItem<TRecord>, TSlot exte
   private dtoState?: Signal<ContainerDTO<TRecord>>;
   private dtoView?: ReadonlySignal<ContainerDTO<TRecord>>;
   private readonly lifecycleListeners = new Set<() => void>();
+  private autoCloseWorld?: GetWatchWorldContent;
+  private autoCloseDistance = 3;
+  private stopPositions?: () => void;
+  private readonly openerCleanups = new Map<object, () => void>();
+
+  /** container.lua's scene-container autoclose branch, driven by world position snapshots. */
+  SetAutoClose(getWatchWorldContent: GetWatchWorldContent | undefined, distance = 3): void {
+    this.stopPositions?.();
+    this.stopPositions = undefined;
+    this.autoCloseWorld = getWatchWorldContent;
+    this.autoCloseDistance = distance;
+    if (this.IsOpen()) this.watchOpeners();
+  }
+
+  private watchOpeners(): void {
+    if (!this.autoCloseWorld || this.stopPositions) return;
+    const positions = this.autoCloseWorld(WorldContentKey.PlayerPositions, stop => { this.stopPositions = stop; });
+    createEffect(() => {
+      positions.get();
+      this.CheckOpeners();
+    });
+  }
+
+  CheckOpeners(): void {
+    const holder = this.inst as ContainerEntity;
+    const position = holder.getPosition?.() ?? holder.position;
+    if (!position) return;
+    for (const opener of this.openlist) {
+      const entity = opener as ContainerEntity;
+      const origin = entity.getPosition?.() ?? entity.position;
+      if (holder.isRemoved || entity.isRemoved || entity.isValid?.() === false || !origin
+        || origin.distanceToSquared(position) > this.autoCloseDistance ** 2) this.Close(opener);
+    }
+  }
 
   subscribeLifecycle(listener: () => void): () => void {
     this.lifecycleListeners.add(listener);
@@ -146,14 +189,24 @@ export class Container<TRecord, TItem extends ContainerItem<TRecord>, TSlot exte
     if (!doer || this.openlist.has(doer)) return;
     const wasOpen = this.IsOpen();
     this.openlist.add(doer);
+    const removal = (doer as ContainerEntity).removal;
+    if (removal) {
+      const removed = watchSignal(removal, stop => this.openerCleanups.set(doer, stop));
+      createEffect(() => { if (removed.get()) this.Close(doer); });
+    }
     if (!wasOpen) this.onopenfn?.(this.inst, doer);
     this.publishLifecycle();
+    if (this.IsOpen()) this.watchOpeners();
   }
 
   Close(doer?: object): void {
     const wasOpen = this.IsOpen();
-    if (doer) this.openlist.delete(doer);
-    else this.openlist.clear();
+    for (const opener of doer ? [doer] : this.openlist) {
+      this.openlist.delete(opener);
+      this.openerCleanups.get(opener)?.();
+      this.openerCleanups.delete(opener);
+    }
+    if (!this.IsOpen()) { this.stopPositions?.(); this.stopPositions = undefined; }
     if (wasOpen && !this.IsOpen()) this.onclosefn?.(this.inst, doer);
     if (wasOpen) this.publishLifecycle();
   }

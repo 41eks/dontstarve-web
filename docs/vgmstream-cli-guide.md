@@ -74,6 +74,10 @@ done
 
 `rocks.lua:OnWork` 完成时生成 `rock_break_fx`，其 `PlayRockBreak` 播放 `dontstarve/wilson/rock_break`。核对 `dontstarve.fev` 的事件 → sound definition 84（`use_pick_rock Copy_108`）→ `sfx/objects/Stone_break.wav`，bank 为 `wilson`，零基 `file_index` 为 24，对应提取索引 25。已检查安装 CLI 的 `-h` 和 `-m -s 25`，以 `-i -s 25` 导出 `public/dst/data/sound/wilson.fsb-25.wav`，与源目录已有 `wilson.fsb#25.wav` 字节一致；统一 `sound.ts` 预加载，完成开采时播放。
 
+### 陶轮制作站循环声
+
+`sculptingtable.lua:onturnon` 的 `dontstarve/common/together/sculpting_table/proximity_LP` 对应 `dontstarve.fev` sounddef 1373，样本 `sfx/together/sculpting_table/sculpting_table_idle.wav`，bank `sfx`、零基 `file_index` 910，提取索引 911。核对 CLI `-h` 和 `-m -s 911`（`sculpting_table_idle`，4 秒）后，用 `-i` 导出 `public/dst/data/sound/sfx.fsb-911.wav`，与源目录已有 `sfx.fsb#911.wav` 字节一致。事件音量 0.09527961909770966、音高 −1/6 octave；统一 `sound.ts` 播放循环，在最后一个制作使用者离开或实体移除时停止。
+
 ### 月亮石魔杖 / 陶轮材料放置声
 
 `prefabs/moonbase.lua:346,366` 在 `OnStaffGiven` / `OnStaffTaken` 播放 `dontstarve/common/together/moonbase/moonstaff_place`；`prefabs/sculptingtable.lua:25,90,110` 在 `AddSketch` / `onitemtaken` / `giveitem` 复用此事件。陶轮 `onload` 调用 `giveitem`，因此恢复已有材料也播放声音；换肤只恢复符号覆盖，不播放。

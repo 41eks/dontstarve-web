@@ -1,4 +1,7 @@
 import { Workable } from '../../componets/src/workable';
+import { Prototyper } from '../../componets/src/prototyper';
+import { CreateTechTree } from '../../componets/src/techtree';
+import { WORLD_SCALE } from './standardcomponents';
 import { createStructureLootDropper } from './structureLoot';
 import { prefabInstance, type PrefabInstance } from './prefabInstance';
 import * as THREE from 'three';
@@ -46,6 +49,7 @@ interface SculptingState {
     readonly sounds: Set<SoundHandle>;
     /** inst.AnimState: the display dresses every drawn sprite and reskin with the held block. */
     readonly animState: AnimState;
+    loop?: SoundHandle;
 }
 
 interface SculptingInstance extends PrefabInstance { sculpting: SculptingState }
@@ -68,14 +72,13 @@ function giveItem(model: THREE.Group, itemname: SculptableMaterial): void {
     }
     const { swapfile, symbol } = SCULPTABLE_MATERIALS[itemname];
     animState.OverrideSymbol(SCULPTING_SYMBOL, swapfile, symbol);
+    prefabInstance(model)!.components.prototyper!.SetTechLevel('SCULPTING', 2);
 }
 
 function onbuilt({ animation, model, onComplete }: AnimatedBuildingBuiltContext): void {
     playTableSound(model, PLACE_SOUND);
-    animation.playOnce('place', () => {
-        animation.start('idle');
-        onComplete();
-    });
+    animation.playOnce('place', onComplete);
+    animation.pushAnimation('idle', false);
 }
 
 function oninit({ model, instance, animState }: AnimatedBuildingEventContext): void {
@@ -87,6 +90,10 @@ function oninit({ model, instance, animState }: AnimatedBuildingEventContext): v
     instance.components.lootdropper = createStructureLootDropper(instance);
     const entity = actionEntity(model, SCULPTING_TABLE_ID);
     entity.addTag('structure');
+    const prototyper = instance.components.prototyper = new Prototyper(instance, 4 * WORLD_SCALE);
+    prototyper.trees = CreateTechTree({ SCULPTING: 1 });
+    prototyper.onturnon = onturnon;
+    prototyper.onturnoff = onturnoff;
     // onitemtaken: the pickable stops being interactable and the block disappears.
     const pickable = new Pickable(model, '', HELD_ITEM_REGEN_TIME, 1, () => {
         if (pickable.canInteractWith) {
@@ -94,6 +101,7 @@ function oninit({ model, instance, animState }: AnimatedBuildingEventContext): v
             playTableSound(model, ITEM_SOUND);
         }
         animState.ClearOverrideSymbol(SCULPTING_SYMBOL);
+        prototyper.SetTechLevel('SCULPTING', 1);
     });
     pickable.canInteractWith = false;
     pickable.pause();
@@ -108,6 +116,22 @@ function oninit({ model, instance, animState }: AnimatedBuildingEventContext): v
     });
     prefabInstance(model)!.components.trader = trader;
     (instance as SculptingInstance).sculpting = { pickable, trader, sounds: new Set(), animState } satisfies SculptingState;
+}
+
+function onturnon(inst: PrefabInstance): void {
+    if (inst.hasTag('burnt')) return;
+    if (inst.sprite.currentAnimation === 'place' || inst.sprite.currentAnimation === 'proximity_loop') {
+        inst.sprite.pushAnimation('proximity_loop', true);
+    } else inst.sprite.start('proximity_loop');
+    const state = (inst as SculptingInstance).sculpting;
+    state.loop = PlaySound('dontstarve/common/together/sculpting_table/proximity_LP', inst.position);
+}
+
+function onturnoff(inst: PrefabInstance): void {
+    if (inst.hasTag('burnt')) return;
+    inst.sprite.pushAnimation('idle', false);
+    (inst as SculptingInstance).sculpting.loop?.stop();
+    (inst as SculptingInstance).sculpting.loop = undefined;
 }
 
 function onworked(inst: PrefabInstance): void {
@@ -131,7 +155,8 @@ export const SCULPTING_TABLE_DEFINITION: AnimatedBuildingDefinition = {
     skinInit: sculptingtable_init_fn,
     onbuilt,
     oninit,
-    ondispose: ({ model }) => {
+    ondispose: ({ model, instance }) => {
+        instance.components.prototyper?.OnRemoveFromEntity();
         const { pickable, trader, sounds } = stateOf(model);
         for (const sound of sounds) sound.stop();
         sounds.clear();

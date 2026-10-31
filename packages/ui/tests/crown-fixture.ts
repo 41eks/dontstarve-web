@@ -1,15 +1,14 @@
 import { prefabDisplay } from '../../display/src';
 import { prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import * as THREE from 'three';
-import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
+import { createWilsonPlayer, wilsonPlayerInstance, type WilsonAnimationController } from '../../prefab/src/player';
 import type { PrefabDisplay } from '../../display/src';
 
 import { DstLocalLighting } from '../../../src/dstLocalLighting';
-import { createSanityState } from '@dontstarve-web/signals';
 
 export async function checkCrown() {
-  const sanity = createSanityState(200, 200);
-  const player = createWilsonPlayer('/dst/data/anim', { sanityPercent: sanity.percent });
+  const player = createWilsonPlayer('/dst/data/anim', { stats: { sanity: 200 } });
+  const sanity = wilsonPlayerInstance(player).stats.sanity;
   await prefabDisplay(player).artLoaded();
   player.position.set(0, 0, 0);
   const animation = prefabInstance(player).animationController as WilsonAnimationController;
@@ -69,7 +68,7 @@ export async function checkCrown() {
   await display.artLoaded();
   for (let i = 0; i < 10; i++) animation.update(0.1);
   capture('Last Prism: floating orbit');
-  sanity.set(170);
+  sanity.SetCurrent(170);
   for (let i = 0; i < 6; i++) animation.update(0.1);
   capture('Sanity <= 85%: inactive');
 
@@ -97,7 +96,7 @@ export async function checkCrown() {
   };
   await draw();
   const dark = sample(8, 8);
-  sanity.set(200);
+  sanity.SetCurrent(200);
   await draw();
   const lit = sample(8, 8);
   const far = sample(-35, -35);

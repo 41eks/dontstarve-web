@@ -1,5 +1,5 @@
 import type { Vector3 } from 'three';
-import { createEffect, watchSignal } from '@dontstarve-web/signals';
+import { createEffect, createSignal, readonlySignal, watchSignal } from '@dontstarve-web/signals';
 import type { WorkableInst } from './workable';
 import { CreateTechTree, type TechTree } from './techtree';
 
@@ -9,21 +9,28 @@ export interface PrototyperInst extends PrototyperDoer {
 }
 
 /** components/prototyper.lua: a station stays on until its last builder leaves. */
-export class Prototyper {
-  trees: TechTree = CreateTechTree();
-  restrictedtag?: string;
-  onturnon?: (inst: PrototyperInst) => void;
-  onturnoff?: (inst: PrototyperInst) => void;
-  onturnonfordoer?: (inst: PrototyperInst, doer: PrototyperDoer) => void;
-  onturnofffordoer?: (inst: PrototyperInst, doer: PrototyperDoer) => void;
-  canuseprototyperfn?: (inst: PrototyperInst, doer: PrototyperDoer) => boolean;
+export class Prototyper<Inst extends PrototyperInst = PrototyperInst> {
+  private levels: TechTree = CreateTechTree();
+  private restriction?: string;
+  private readonly revision = createSignal(0);
+  readonly configurationChanged = readonlySignal(this.revision);
+  get trees(): Readonly<TechTree> { return this.levels; }
+  set trees(trees: TechTree) { this.levels = { ...trees }; this.revision.set(this.revision.peek() + 1); }
+  SetTechLevel(branch: string, level: number): void { this.trees = { ...this.levels, [branch]: level }; }
+  get restrictedtag(): string | undefined { return this.restriction; }
+  set restrictedtag(tag: string | undefined) { this.restriction = tag; this.revision.set(this.revision.peek() + 1); }
+  onturnon?: { call(inst: Inst): void }['call'];
+  onturnoff?: { call(inst: Inst): void }['call'];
+  onturnonfordoer?: { call(inst: Inst, doer: PrototyperDoer): void }['call'];
+  onturnofffordoer?: { call(inst: Inst, doer: PrototyperDoer): void }['call'];
+  canuseprototyperfn?: { call(inst: Inst, doer: PrototyperDoer): boolean }['call'];
   private readonly doers = new Map<PrototyperDoer, () => void>();
   private active = false;
   private disposed = false;
-  private readonly inst: PrototyperInst;
+  private readonly inst: Inst;
   private readonly distance: number;
 
-  constructor(inst: PrototyperInst, distance = 4) {
+  constructor(inst: Inst, distance = 4) {
     this.inst = inst;
     this.distance = distance;
     inst.addTag('prototyper');

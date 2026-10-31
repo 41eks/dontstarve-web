@@ -1,12 +1,11 @@
 import { createWilsonPlayerPrefab } from '@dontstarve-web/prefab/player';
 import { initialSave } from './save/initialSave';
-import { playerStats } from './playerStats';
-import { world } from './physics';
+import { world, worldState } from './physics';
 
 const playerPrefab = createWilsonPlayerPrefab(
   `${import.meta.env.BASE_URL}dst/data/anim`,
   world,
-  { sanityPercent: playerStats.sanity.percent },
+  { stats: { ...initialSave.players.local.stats }, scheduler: worldState.scheduler, componentUpdates: worldState.componentUpdates },
 );
 await playerPrefab.display.artLoaded();
 playerPrefab.model.position.set(...initialSave.players.local.transform.position);

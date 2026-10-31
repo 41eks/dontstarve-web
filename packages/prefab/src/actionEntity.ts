@@ -10,6 +10,11 @@ import { registerMouseTarget } from './mouseTargets';
 
 export { activePrefabs, type FoundEntity } from './activePrefabs';
 
+const queryRevision = createSignal(0);
+/** Changes to the logical query index, independent of rendered frames. */
+export const actionEntitiesChanged = readonlySignal(queryRevision);
+function invalidateQueries(): void { queryRevision.set(queryRevision.peek() + 1); }
+
 /** Legacy removal bridge for bare models only; instance and injected owners supply their own lifecycle. */
 function modelRemoval(model: THREE.Object3D): ReadonlySignal<boolean> {
   const state = createSignal(model.userData.removed === true);
@@ -53,6 +58,7 @@ export function actionEntity(model: THREE.Object3D, prefab: string, inst?: Compo
       }
       syncPlacementEntity(model);
       mouseRegistrations.get(entity)?.refresh();
+      if (!owner) invalidateQueries();
     },
     removeTag(tag) {
       const owner = inst ?? instance;
@@ -60,6 +66,7 @@ export function actionEntity(model: THREE.Object3D, prefab: string, inst?: Compo
       else model.userData.tags = (model.userData.tags ?? []).filter((value: string) => value !== tag);
       syncPlacementEntity(model);
       mouseRegistrations.get(entity)?.refresh();
+      if (!owner) invalidateQueries();
     },
     PushEvent: (name, data) => {
       if (inst) inst.PushEvent?.(name, data);
@@ -76,7 +83,7 @@ export function actionEntity(model: THREE.Object3D, prefab: string, inst?: Compo
     createEffect(() => mouse.setAwake(status.get() === 'active'));
   }
   const stopPlacement = registerPlacementEntity(model, entity.getPosition);
-  const tagsChanged = () => { syncPlacementEntity(model); mouse.refresh(); };
+  const tagsChanged = () => { syncPlacementEntity(model); mouse.refresh(); invalidateQueries(); };
   const stopTags = inst && inst !== instance ? (inst as typeof inst & { ListenForEvent?(name: string, listener: () => void): () => void })
     .ListenForEvent?.('tagchanged', tagsChanged)
     : instance?.onTagChanged(tagsChanged);
@@ -128,8 +135,8 @@ function setPrefabActive(entity: FoundEntity, active: boolean): void {
   mouseRegistrations.get(entity)?.setActive(active);
   const index = activePrefabs.indexOf(entity);
   if (active && !entity.isRemoved) {
-    if (index === -1) activePrefabs.push(entity);
-  } else if (index !== -1) activePrefabs.splice(index, 1);
+    if (index === -1) { activePrefabs.push(entity); invalidateQueries(); }
+  } else if (index !== -1) { activePrefabs.splice(index, 1); invalidateQueries(); }
 }
 
 /** Release a model projection, including when its logical item survives a visual replacement or pickup. */

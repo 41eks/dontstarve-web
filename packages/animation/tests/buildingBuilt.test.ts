@@ -108,7 +108,7 @@ it('lets a prefab control built effects and keeps interaction blocked until it c
   let context: AnimatedBuildingBuiltContext;
   const onbuilt = vi.fn((built: AnimatedBuildingBuiltContext) => { context = built; });
   // A storage building's real ID gives it its container.
-  const { placement, world, click } = await setup({ ...TREASURE_CHEST_DEFINITION, onProximity: false, onbuilt }, 'treasurechest');
+  const { placement, world, click } = await setup({ ...TREASURE_CHEST_DEFINITION, onbuilt }, 'treasurechest');
   await placement.begin('treasurechest');
   click();
   const playOnce = vi.spyOn(context!.animation as SpriteAnimationController, 'playOnce');

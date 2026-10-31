@@ -65,7 +65,7 @@ export class LightStaffController implements EquipmentLifecycle {
     if (!this.entity.components.finiteuses.use(1)) return false;
     if (depleted) PlaySound('dontstarve/common/gem_shatter', doer.position);
     if (doer.components.staffsanity) doer.components.staffsanity.doCastingDelta(-LIGHT_STAFF_SANITY_COST);
-    else doer.components.sanity?.doDelta(-LIGHT_STAFF_SANITY_COST);
+    else doer.components.sanity?.DoDelta(-LIGHT_STAFF_SANITY_COST);
     return true;
   }
 }
@@ -122,7 +122,7 @@ export interface FireStaffTarget extends CombatInst {
 }
 export interface FireStaffAttacker extends CombatActor {
   readonly components: CombatActor['components'] & {
-    sanity?: { doDelta(delta: number): void };
+    sanity?: { DoDelta(delta: number): void };
     staffsanity?: { doCastingDelta(delta: number): void };
   };
 }
@@ -152,7 +152,7 @@ export class FireStaffController implements EquipmentLifecycle {
   private onAttack(attacker: FireStaffAttacker | undefined, target: FireStaffTarget, skipsanity = false): void {
     if (!skipsanity && attacker) {
       if (attacker.components.staffsanity) attacker.components.staffsanity.doCastingDelta(-SANITY_SUPERTINY);
-      else attacker.components.sanity?.doDelta(-SANITY_SUPERTINY);
+      else attacker.components.sanity?.DoDelta(-SANITY_SUPERTINY);
     }
     if (target.isRemoved) return; // killed or removed in the combat damage phase
     const { burnable, freezable, fueled, sleeper, combat } = target.components;
@@ -262,7 +262,7 @@ export class GreenStaffController implements EquipmentLifecycle {
     target.removeOne();
     PlaySound('dontstarve/common/staff_dissassemble', doer.position);
     if (doer.components.staffsanity) doer.components.staffsanity.doCastingDelta(-20);
-    else doer.components.sanity?.doDelta(-20);
+    else doer.components.sanity?.DoDelta(-20);
     const depleted = (this.entity.components.finiteuses.remaining ?? GREENSTAFF_USES) === 1;
     this.entity.components.finiteuses.use(1);
     if (depleted) PlaySound('dontstarve/common/gem_shatter', doer.position);

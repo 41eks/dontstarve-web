@@ -101,6 +101,9 @@ describe('session world temperature', () => {
       expect(published[0]).toEqual(new Vector3(12, 0, 15));
       updater.update(.02);
       expect(state.playerpositions.peek()).toEqual([new Vector3(20, 0, 30)]);
+      const stationary = state.playerpositions.peek();
+      for (let frame = 0; frame < 120; frame++) updater.update(.02);
+      expect(state.playerpositions.peek()).toBe(stationary);
     } finally { state.dispose(); }
   });
 

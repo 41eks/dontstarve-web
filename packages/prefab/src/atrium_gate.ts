@@ -122,7 +122,7 @@ export class AtriumGateManager implements DisplayDrivenPrefabManager<{ prefabId:
       { picked: !save.pickable || save.pickable.picked === true, paused: save.pickable?.paused === true }, { scheduler: this.world.scheduler });
     pickable.canInteractWith = save.pickable?.caninteractwith === true;
     const trader = new Trader(inst);
-    const playerprox = new PlayerProx({ isValid: () => instance.status.peek() !== 'removed', getPosition: () => instance.position }, this.world.scheduler);
+    const playerprox = new PlayerProx({ isValid: () => instance.status.peek() !== 'removed', getPosition: () => instance.position });
     playerprox.SetDist(14.55 * WORLD_SCALE, Math.ceil(14.55 + 4) * WORLD_SCALE);
     const hauntable = new Hauntable({ addTag: tag => inst.addTag(tag), removeTag: tag => inst.removeTag(tag),
       PushEvent: (name, data) => inst.PushEvent?.(name, data) }, this.world.scheduler);

@@ -3,7 +3,7 @@ import { ToolMouseTarget } from './toolMouseTarget';
 import { ModelRecords } from './modelRecords';
 import * as THREE from 'three';
 import { AnimState, type AnimStateArt } from '@dontstarve-web/animation/animState';
-import { createEffect, watchSignal, getBoundWatchWorldContent, WorldContentKey, type ReadonlySignal, type Signal } from '@dontstarve-web/signals';
+import { createEffect, watchSignal, getBoundWatchWorldContent, type ReadonlySignal, type Signal } from '@dontstarve-web/signals';
 import type { AnimatedSpriteSourceOptions } from '@dontstarve-web/animation/sprite';
 import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
 import type { PrefabDisplay, SpriteState } from '@dontstarve-web/display';
@@ -58,12 +58,6 @@ export interface AnimatedBuildingDefinition {
     onopen?: (context: AnimatedBuildingEventContext) => void;
     /** Runs when the container closes (RUMMAGE, the panel or a proximity exit) and its closing animation starts. */
     onclose?: (context: AnimatedBuildingEventContext) => void;
-    /** Runs when the player enters the building's proximity range. */
-    onturnon?: (context: AnimatedBuildingEventContext) => void;
-    /** Runs when the player leaves the building's proximity range. */
-    onturnoff?: (context: AnimatedBuildingEventContext) => void;
-    /** Enable player proximity events and interaction range checks. */
-    onProximity: boolean;
     scale: number;
     skinArchives?: Readonly<Record<string, string>>;
     skinInit?: PrefabSkinInitializer;
@@ -143,7 +137,6 @@ interface AnimatedBuildingInstance<BuildId extends string> {
     readonly animState: AnimState;
     interactionState?: AnimatedBuildingInteractionState;
     isPlacing: boolean;
-    isPlayerNearby: boolean;
     readonly skinId: Signal<string | undefined>;
     stopSkin?: () => void;
     stopActivity?: () => void;
@@ -198,7 +191,6 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     private readonly skinAssets = this.sprites.archives;
     /** Placers are made translucent through their materials, so they draw from resources apart from the buildings'. */
     private readonly placerSprites = new SpriteResources();
-    private stopPlayerPositions?: () => void;
 
     constructor(
         world: WorldContext,
@@ -229,12 +221,6 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         // Action controllers see no mouse action while the placer is shown, so the click reaches the placer.
         this.stopPlacerGate = world.mouseActions?.registerPlacer(() => this.placer !== undefined);
         world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown);
-        // Proximity follows the world's player snapshots; interactions still recheck the live position.
-        const playerpositions = getBoundWatchWorldContent()?.(WorldContentKey.PlayerPositions, stop => { this.stopPlayerPositions = stop; });
-        if (playerpositions) createEffect(() => {
-            const [position] = playerpositions.get();
-            if (position) for (const building of this.placed) this.updateProximity(building, position);
-        });
     }
 
     /** Shows the placer at once; its display draws the preview when its art has loaded. */
@@ -315,8 +301,6 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     performContainerAction(model: THREE.Object3D, action: 'COOK', doer: object): boolean {
         const building = this.placed.find(instance => instance.model === model);
         if (!building || this.disposed || building.isPlacing || !model.visible || !model.parent) return false;
-        this.updateProximity(building);
-        if (this.definitions[building.buildId].onProximity && !building.isPlayerNearby) return false;
         return action === 'COOK' && performCookAction(building.instance, doer);
     }
 
@@ -329,10 +313,11 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         if (obstacleRadius !== undefined) MakeObstaclePhysics(building.instance, obstacleRadius);
         if (this.worldContext.physics) building.instance.bindPhysics(this.worldContext.physics);
         this.bindSkin(building);
-        const container = this.definitions[buildId].createContainer?.(model)
-            ?? (isStorageBuildingId(buildId) ? createBuildingContainer(buildId, model) : undefined);
+        const container = this.definitions[buildId].createContainer?.(building.instance)
+            ?? (isStorageBuildingId(buildId) ? createBuildingContainer(buildId, building.instance) : undefined);
         if (container) {
             Object.assign(building.instance.components, { container });
+            container.SetAutoClose(this.worldContext.getWatchWorldContent ?? getBoundWatchWorldContent(), 3 * (TILE_SIZE / 4));
             this.worldContext.registerContainer?.(`world:${buildId}:${String(building.instance.entityId)}`, container,
                 building.instance.saveRecord?.components.container);
             container.onopenfn = () => this.openInteraction(building);
@@ -532,7 +517,6 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             previous = skinId;
             definition.onreskin?.(this.eventContext(building));
             if (actionEntity(building.model, building.buildId).hasTag('burnt')) building.animation.start('burnt');
-            if (building.isPlayerNearby) this.definitions[building.buildId].onturnon?.(this.eventContext(building));
         });
     }
 
@@ -554,7 +538,6 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         if (this.disposed) return;
         this.disposed = true;
         this.stopActionEvents();
-        this.stopPlayerPositions?.();
         this.canvas.removeEventListener('pointerdown', this.handlePointerDown);
         this.stopPlacerGate?.();
         if (this.pointer !== this.worldContext.mouseActions?.pointer) this.pointer.dispose();
@@ -650,7 +633,6 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         const definition = this.definitions[building.buildId];
         const interaction = definition.interaction;
         if (!interaction || actionEntity(building.model, building.buildId).hasTag('burnt')) return;
-        this.updateProximity(building);
         definition.onopen?.(this.eventContext(building));
         const opened = () => this.onInteractionChange?.({ buildId: building.buildId, isOpen: true, model: building.model });
         if (interaction.openImmediately) {
@@ -679,7 +661,6 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             && building.interactionState !== 'opening')) return;
 
         building.interactionState = interaction.closeImmediately ? 'closed' : 'closing';
-        building.instance.components?.container?.Close(this.player);
         definition.onclose?.(this.eventContext(building));
         this.onInteractionChange?.({
             buildId: building.buildId,
@@ -767,7 +748,6 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             animState,
             ...(definition.interaction ? { interactionState: state === 'open' ? 'open' as const : 'closed' as const } : {}),
             isPlacing: false,
-            isPlayerNearby: state === 'open',
             skinId: entity.sprite.skinId,
         };
         if (state === 'open' && definition.interaction?.openAnimationLoop) {
@@ -812,21 +792,6 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         if (hit) return hit.point.clone();
         target.y = 0;
         return target;
-    }
-
-    private updateProximity(building: AnimatedBuildingInstance<BuildId>, playerPosition: THREE.Vector3 = this.player.position) {
-        if (building.isPlacing) return;
-
-        const definition = this.definitions[building.buildId];
-        if (!definition.onProximity) return;
-
-        const nearby = isPlayerNearby(playerPosition, building.model.position, building.isPlayerNearby);
-        if (nearby === building.isPlayerNearby) return;
-
-        building.isPlayerNearby = nearby;
-        if (!nearby) this.closeInteraction(building);
-        const onProximityChange = nearby ? definition.onturnon : definition.onturnoff;
-        onProximityChange?.(this.eventContext(building));
     }
 
     private idleAnimation(buildId: BuildId) {

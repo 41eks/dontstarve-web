@@ -7,7 +7,7 @@ export interface BookInst {
 
 export interface BookReaderInst {
   readonly components: {
-    sanity?: { doDelta(delta: number): void };
+    sanity?: { DoDelta(delta: number): void };
     reader?: { getSanityPenaltyMultiplier(): number };
   };
 }
@@ -51,7 +51,7 @@ export class Book<Inst extends BookInst, Reader extends BookReaderInst, World ex
   }
 
   DoReadPenalties(reader: Reader): void {
-    reader.components.sanity?.doDelta((this.readSanity ?? 0)
+    reader.components.sanity?.DoDelta((this.readSanity ?? 0)
       * (reader.components.reader?.getSanityPenaltyMultiplier() ?? 1));
   }
 
