@@ -412,6 +412,14 @@
     "beequeenhivegrown",
     "cave_fern",
     "cave_fern_withered",
+    "stalagmite",
+    "stalagmite_full",
+    "stalagmite_med",
+    "stalagmite_low",
+    "stalagmite_tall",
+    "stalagmite_tall_full",
+    "stalagmite_tall_med",
+    "stalagmite_tall_low",
     "rock1",
     "rock2",
     "cavein_boulder",
@@ -822,6 +830,38 @@
       "imported": 0
     },
     "cave_fern_withered": {
+      "source": 0,
+      "imported": 0
+    },
+    "stalagmite": {
+      "source": 0,
+      "imported": 0
+    },
+    "stalagmite_full": {
+      "source": 0,
+      "imported": 0
+    },
+    "stalagmite_med": {
+      "source": 0,
+      "imported": 0
+    },
+    "stalagmite_low": {
+      "source": 0,
+      "imported": 0
+    },
+    "stalagmite_tall": {
+      "source": 0,
+      "imported": 0
+    },
+    "stalagmite_tall_full": {
+      "source": 0,
+      "imported": 0
+    },
+    "stalagmite_tall_med": {
+      "source": 0,
+      "imported": 0
+    },
+    "stalagmite_tall_low": {
       "source": 0,
       "imported": 0
     },

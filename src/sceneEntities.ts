@@ -1,3 +1,4 @@
+import { StalagmiteManager, type StalagmiteRecord } from '@dontstarve-web/prefab/stalagmite';
 import { RuinsRelicManager, type RuinsRelicRecord } from '@dontstarve-web/prefab/ruinsrelic';
 import { LightFlierFlowerManager, type LightFlierFlowerRecord } from '../packages/prefab/src/lightflier_flower';
 import { MAX_PHYSICS_FRAME_TIME } from './physicsTiming';
@@ -112,6 +113,7 @@ const MANAGER_DEFINITIONS = {
   'lightflier_flower': PREFAB_DEFINITIONS.lightflierFlowers,
   'ground_item': PREFAB_DEFINITIONS.groundItems,
   'bulb_plant': PREFAB_DEFINITIONS.bulbPlants,
+  'stalagmite': PREFAB_DEFINITIONS.stalagmites,
   'rocks': PREFAB_DEFINITIONS.rocks,
   'cave_entrance': PREFAB_DEFINITIONS.caveEntrances,
   'cave_exit': PREFAB_DEFINITIONS.caveExits,
@@ -193,6 +195,7 @@ const SCENE_LIFECYCLE_ORDER = [
   PREFAB_DEFINITIONS.bulbPlants,
   PREFAB_DEFINITIONS.molehills,
   PREFAB_DEFINITIONS.beefalos,
+  PREFAB_DEFINITIONS.stalagmites,
   PREFAB_DEFINITIONS.rocks,
   PREFAB_DEFINITIONS.caveEntrances,
   PREFAB_DEFINITIONS.caveExits,
@@ -253,6 +256,7 @@ export async function createSceneEntities(
     'lightflier_flower': ReturnType<typeof registerLightFlierFlowers>;
     'ground_item': ReturnType<typeof registerGroundItems>;
     'bulb_plant': ReturnType<typeof registerBulbPlants>;
+    'stalagmite': ReturnType<typeof registerStalagmites>;
     'rocks': ReturnType<typeof registerRocks>;
     'cave_entrance': ReturnType<typeof registerCaveEntrances>;
     'cave_exit': ReturnType<typeof registerCaveExits>;
@@ -330,6 +334,7 @@ export async function createSceneEntities(
   Managers['stafflight'] = registerStaffLights(registry, 'stafflight', worldState);
   Managers['staffcoldlight'] = registerStaffLights(registry, 'staffcoldlight', worldState);
   Managers['bulb_plant'] = registerBulbPlants(registry, 'bulb_plant', worldState);
+  Managers['stalagmite'] = registerStalagmites(registry, worldState);
   Managers['rocks'] = registerRocks(registry, 'rocks', worldState);
   /** ms_playerdespawnandmigrate: the destination shard is the cluster's other save, loaded by reloading the page. */
   const shardLink: WorldMigratorShard = {
@@ -668,6 +673,21 @@ export async function createSceneEntities(
       dispose: () => bulbPlants.dispose(),
     });
     return bulbPlants;
+  }
+
+  function registerStalagmites(registry: EntityRegistry, worldState: SceneWorldState) {
+    const stalagmites = new StalagmiteManager(scene, { scheduler: worldState.scheduler, physics: world,
+      tickingarea: worldState.tickingarea, trackDisplay: display => registry.trackDisplay(display),
+      spawnLoot: (id, position) => {
+        const definition = GROUND_ART_DEFINITIONS[id];
+        return definition ? Managers['ground_item'].spawnGroundItem({ ...definition, icon: definition.icon ?? '',
+          itemId: id, count: 1 }, position, { fling: true }) : undefined;
+      } });
+    registry.registerDisplayManager(PREFAB_DEFINITIONS.stalagmites, stalagmites, {
+      restore: (id, record) => stalagmites.spawn(id, new THREE.Vector3(...record.transform.position), record as StalagmiteRecord),
+      debugSpawn: id => stalagmites.spawn(id, player.position.clone()),
+    });
+    return stalagmites;
   }
 
   function registerRocks(registry: EntityRegistry, prefabId: 'rocks', worldState: SceneWorldState) {

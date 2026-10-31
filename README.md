@@ -476,6 +476,7 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 | 墙 | `wall_stone`、`wall_stone_2`、`wall_wood`、`wall_hay`、`wall_ruins`、`wall_ruins_2`、`wall_moonrock`、`wall_dreadstone`、`wall_scrap`，以及各自的 `wall_*_item`（两种 ID 均生成建成的墙） |
 | 洞穴植物 | `flower_cave`、`flower_cave_double`、`flower_cave_triple`、`lightflier_flower`（采摘或亮灯计时结束释放 `lightflier`，虫在外时暂停生长，回巢立即恢复；`idle` 使用共享 InstancedMesh） |
 | 光照星体 | `stafflight`、`staffcoldlight` |
+| 石笋 | 世界实体：`stalagmite`、`stalagmite_full`、`stalagmite_med`、`stalagmite_low`、`stalagmite_tall`、`stalagmite_tall_full`、`stalagmite_tall_med`、`stalagmite_tall_low`；例如 `c_spawn("stalagmite_tall_med"); c_save()`，均无额外参数、无 `c_give`。非循环 full/med/low，高型随机左右款式；按 Lua 不保存工作进度、左右款式或明暗。默认洞穴导入 834 个，源/导入逐项一致；[源码、字段与验收说明](docs/dst-stalagmite.md) |
 | 岩石 | `rock1`、`rock2`、`rock_flintless`、`rock_flintless_med`、`rock_flintless_low`、`cavein_boulder`、`rock_moon_shell`、`rock_moon` 均可开采；`moonrockseed` 仅静态地面美术；均支持 `c_spawn("ID")` |
 | 草丛 | `grass`（共享 archive sprite，`instancedAnimations: 'all'` 合批；命令与 ID 不变） |
 | 石果灌木及幼苗 | `rock_avocado_bush`、`rock_avocado_fruit_sprout_sapling` |

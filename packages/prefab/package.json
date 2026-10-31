@@ -43,6 +43,7 @@
     "./armorsnurtleshell": "./src/armorsnurtleshell.ts",
     "./amulet": "./src/amulet.ts",
     "./equipmentVisual": "./src/equipmentVisual.ts",
+    "./stalagmite": "./src/stalagmite.ts",
     "./rocks": "./src/rocks.ts",
     "./cave_fern": "./src/cave_fern.ts",
     "./grass": "./src/grass.ts",
