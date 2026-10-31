@@ -24,6 +24,7 @@ ENTITY_WHITELIST = {
     'researchlab4': STRUCTURE['researchlab_components']('researchlab4'),
     'statueglommer': WORKABLE['statueglommer_components'],
     'atrium_gate': STRUCTURE['atrium_gate_components'],
+    'atrium_statue': STRUCTURE['atrium_statue_components'],
     'ruins_statue_mage': WORKABLE['ruins_statue_mage_components'],
     'ruins_statue_head_nogem': WORKABLE['ruins_statue_head_nogem_components'],
     'chessjunk1': WORKABLE['chessjunk_components'],

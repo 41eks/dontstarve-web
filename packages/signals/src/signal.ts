@@ -7,7 +7,10 @@ export interface ReadonlySignal<T> {
     get(): T;
     /** Read without making the current effect depend on this signal. */
     peek(): T;
-    /** Observe synchronously, after the outer batch commits when batched. */
+    /**
+     * Observe each change synchronously as (next, previous); not called on subscribe. Inside a batch every change is
+     * delivered in order after the outer batch commits. Setting an identical (===) value notifies nobody.
+     */
     subscribe(listener: SignalListener<T>): () => void;
 }
 
@@ -80,6 +83,12 @@ export function onCleanUp(fn: () => void) {
 
 }
 
+/**
+ * Runs fn once synchronously now. After a dependency changes, fn reruns in a microtask: changes in the same burst
+ * coalesce into one rerun that reads the latest values, and inside batch() it is still the microtask, not the commit.
+ * Chained effects settle in the same microtask drain. Disposing cancels a queued rerun.
+ * Full table: packages/signals/AGENTS.md "Effect scheduling" (pinned by tests/schedulingContract.test.ts).
+ */
 export function createEffect(fn: () => void, synchronous = false) {
     // 构造出一个标准的 Effect 对象
     const effect: Effect = {
@@ -114,8 +123,8 @@ export function createEffect(fn: () => void, synchronous = false) {
 }
 
 /**
- * Run fn in the synchronous task of each dependency change instead of the microtask queue.
- * Inside a batch it runs once after the batch commits, together with memos.
+ * Runs fn once synchronously now, then synchronously on each dependency change instead of in the microtask queue.
+ * Inside a batch it runs once after the batch commits, together with memos. See AGENTS.md "Effect scheduling".
  */
 export function createRenderEffect(fn: () => void) {
     return createEffect(fn, true);
@@ -313,6 +322,10 @@ export function watchSignal<T>(source: ReadonlySignal<T>, registerCleanup: (stop
     return local;
 }
 
+/**
+ * Derived value, recomputed synchronously on each dependency change, so reads are current; inside a batch it reads
+ * the pre-batch value until the batch commits. See AGENTS.md "Effect scheduling".
+ */
 export function createMemo<T>(fn: () => T): Memo<T> {
     const memoState = createSignal<T | undefined>(undefined);
 

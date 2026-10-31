@@ -67,6 +67,7 @@ import { PigKingManager } from '@dontstarve-web/prefab/pigking';
 import { StatueGlommerManager } from '@dontstarve-web/prefab/statueglommer';
 import { AtriumGateManager } from '@dontstarve-web/prefab/atrium_gate';
 import { RuinsStatueMageManager, RuinsStatueManager, RUINS_STATUE_HEAD_NOGEM_ID } from '@dontstarve-web/prefab/ruins_statue_mage';
+import { AtriumStatueManager } from '@dontstarve-web/prefab/atrium_statue';
 import { ChessJunkManager } from '@dontstarve-web/prefab/chessjunk';
 import { BeefaloManager, BEEFALO_BEHAVIOR } from '@dontstarve-web/prefab/beefalo';
 import { newEntityId } from '@dontstarve-web/prefab/saveRecord';
@@ -148,6 +149,7 @@ const MANAGER_DEFINITIONS = {
   'atrium_gate': PREFAB_DEFINITIONS.atriumGates,
   'ruins_statue_mage': PREFAB_DEFINITIONS.ruinsStatueMages,
   'ruins_statue_head_nogem': PREFAB_DEFINITIONS.ruinsStatueHeadsNoGem,
+  'atrium_statue': PREFAB_DEFINITIONS.atriumStatues,
   'chessjunk': PREFAB_DEFINITIONS.chessJunk,
   'sanityrock': PREFAB_DEFINITIONS.nightmareRocks,
   'rain': PREFAB_DEFINITIONS.rain,
@@ -173,6 +175,7 @@ const SCENE_LIFECYCLE_ORDER = [
   PREFAB_DEFINITIONS.atriumGates,
   PREFAB_DEFINITIONS.ruinsStatueMages,
   PREFAB_DEFINITIONS.ruinsStatueHeadsNoGem,
+  PREFAB_DEFINITIONS.atriumStatues,
   PREFAB_DEFINITIONS.buildings,
   PREFAB_DEFINITIONS.lightflierFlowers,
   PREFAB_DEFINITIONS.groundItems,
@@ -280,6 +283,7 @@ export async function createSceneEntities(
     'atrium_gate': ReturnType<typeof registerAtriumGate>;
     'ruins_statue_mage': ReturnType<typeof registerRuinsStatueMage>;
     'ruins_statue_head_nogem': ReturnType<typeof registerRuinsStatueHeadNoGem>;
+    'atrium_statue': ReturnType<typeof registerAtriumStatue>;
     'chessjunk': ReturnType<typeof registerChessJunk>;
     'sanityrock': ReturnType<typeof registerNightmareRocks>;
     'rain': ReturnType<typeof registerRain>;
@@ -361,6 +365,7 @@ export async function createSceneEntities(
   Managers['atrium_gate'] = registerAtriumGate(registry, 'atrium_gate', worldState);
   Managers['ruins_statue_mage'] = registerRuinsStatueMage(registry, 'ruins_statue_mage', worldState);
   Managers['ruins_statue_head_nogem'] = registerRuinsStatueHeadNoGem(registry, 'ruins_statue_head_nogem', worldState);
+  Managers['atrium_statue'] = registerAtriumStatue(registry, 'atrium_statue', worldState);
   Managers['chessjunk'] = registerChessJunk(registry, 'chessjunk', worldState);
   Managers['pond'] = registerPonds(registry, 'pond', worldState);
   Managers['sanityrock'] = registerNightmareRocks(registry, 'sanityrock', worldState);
@@ -1429,6 +1434,17 @@ export async function createSceneEntities(
   function registerRuinsStatueHeadNoGem(registry: EntityRegistry, prefabId: typeof RUINS_STATUE_HEAD_NOGEM_ID, worldState: SceneWorldState) {
     const statues = new RuinsStatueManager(scene, { tickingarea: worldState.tickingarea, scheduler: worldState.scheduler, physics: world,
       trackDisplay: display => registry.trackDisplay(display) }, prefabId);
+    registry.registerDisplayManager(MANAGER_DEFINITIONS[prefabId], statues, {
+      restore: (_, record) => statues.spawn(new THREE.Vector3(...record.transform.position),
+        { id: record.id, transform: record.transform, components: {} }),
+      debugSpawn: () => statues.spawn(new THREE.Vector3(player.position.x, 0, player.position.z)),
+    });
+    return statues;
+  }
+
+  function registerAtriumStatue(registry: EntityRegistry, prefabId: 'atrium_statue', worldState: SceneWorldState) {
+    const statues = new AtriumStatueManager(scene, { tickingarea: worldState.tickingarea, physics: world,
+      trackDisplay: display => registry.trackDisplay(display) });
     registry.registerDisplayManager(MANAGER_DEFINITIONS[prefabId], statues, {
       restore: (_, record) => statues.spawn(new THREE.Vector3(...record.transform.position),
         { id: record.id, transform: record.transform, components: {} }),

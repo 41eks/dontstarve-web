@@ -53,6 +53,7 @@
     "./statueglommer": "./src/statueglommer.ts",
     "./atrium_gate": "./src/atrium_gate.ts",
     "./ruins_statue_mage": "./src/ruins_statue_mage.ts",
+    "./atrium_statue": "./src/atrium_statue.ts",
     "./chessjunk": "./src/chessjunk.ts",
     "./rock_avocado_fruit": "./src/rock_avocado_fruit.ts",
     "./marbleshrub": "./src/marbleshrub.ts",

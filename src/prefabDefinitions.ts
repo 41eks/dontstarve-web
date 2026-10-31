@@ -18,6 +18,7 @@ import { DRAGONFLY_SPAWNER_ID } from '@dontstarve-web/prefab/dragonfly_spawner';
 import { STATUEGLOMMER_ID, STATUEGLOMMER_WORK } from '@dontstarve-web/prefab/statueglommer';
 import { ATRIUM_GATE_ID, ATRIUM_GATE_TIMER_NAMES } from '@dontstarve-web/prefab/atrium_gate';
 import { RUINS_STATUE_MAGE_ID, RUINS_STATUE_HEAD_NOGEM_ID, RUINS_STATUE_GEMS } from '@dontstarve-web/prefab/ruins_statue_mage';
+import { ATRIUM_STATUE_ID } from '@dontstarve-web/prefab/atrium_statue';
 import { CHESSJUNK_IDS } from '@dontstarve-web/prefab/chessjunk';
 import { parseDragonflyState } from './save/dragonfly';
 import { SKELETON_IDS, SKELETON_ANIMS, SKELETON_PLAYER_ID } from '@dontstarve-web/prefab/skeleton';
@@ -239,6 +240,8 @@ export const PREFAB_DEFINITIONS = {
   }, true, ['statue_ruins.zip', 'statue_ruins_gem.zip']),
   // statueruins.lua nogem(true): onsave writes gem = nil.
   ruinsStatueHeadsNoGem: definePrefabs([RUINS_STATUE_HEAD_NOGEM_ID], empty, true, ['statue_ruins_small.zip']),
+  // atrium_statue.lua has no OnSave data.
+  atriumStatues: definePrefabs([ATRIUM_STATUE_ID], empty, true, ['atrium_statue.zip']),
   chessJunk: definePrefabs(CHESSJUNK_IDS, (value, path) => {
     const data = object(value, path, ['chessJunk']);
     if (data.chessJunk === undefined) return {};

@@ -81,8 +81,8 @@ export async function checkCursorPreview() {
   const dayLabel = labelState();
   placer.instance.remove();
 
-  // Real animation/build assets: previews stay in the scene and foot sorting,
-  // and both successful placement and cancellation clear the light override.
+  // Real animation/build assets: previews stay in the scene and foot sorting; a committed building draws without
+  // the placer's light override, and cancellation clears it.
   const player = new THREE.Object3D();
   const world: WorldContext = { scene, camera, cameraFacing: createSignal(8), cameraHeading: createSignal(45), renderer, ground, player,
     createCursorLabel: (value) => ui.createLabel(value) };
@@ -98,8 +98,10 @@ export async function checkCursorPreview() {
   const leftPixels = leftGlyph.getContext('2d')!.getImageData(0, 0, leftGlyph.width, leftGlyph.height).data;
   const differentButtons = rightPixels.some((value, index) => value !== leftPixels[index]);
   renderer.domElement.dispatchEvent(new PointerEvent('pointerdown', { button: 0, clientX: 200, clientY: 220 }));
-  const placed = { inScene: chestPreview.parent === scene, override: displayLightOverride(chestPreview) || null,
-    count: chest.exportRecords().length, label: labelState() };
+  // The build spawns the chest itself; the placer entity is released.
+  const builtChest = chest.renderEntities[0]?.object;
+  const placed = { previewRemoved: chestPreview.parent === null, inScene: builtChest !== chestPreview && builtChest?.parent === scene,
+    override: (builtChest && displayLightOverride(builtChest)) || null, count: chest.exportRecords().length, label: labelState() };
   await wall.begin('wall_stone');
   wall.update();
   const wallPreview = wall.renderEntities[0].object;

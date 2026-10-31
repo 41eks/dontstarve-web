@@ -10,7 +10,7 @@ import type { PrefabDisplay, SpriteState } from '@dontstarve-web/display';
 import { watchTileActivity } from './tileActivity';
 import type { PrefabSkinInitializer } from '@dontstarve-web/animation/prefabskin';
 import type { BuildingContainerDefinition } from './containers';
-import { BuildCursor, entityPlacer } from './buildCursor';
+import { BuildCursor, declarePlacer, entityPlacer } from './buildCursor';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import type { WorldContext, PrefabWorldContext } from './worldContext';
 import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
@@ -169,8 +169,6 @@ interface BuildingPlacer<BuildId extends string> {
 
 /** This project draws placers translucent; MakePlacer itself only sets SetLightOverride(1). */
 const PLACER_OPACITY = 0.65;
-/** MakePlacer: AddTag("CLASSIFIED"), AddTag("NOCLICK"), AddTag("placer"). */
-const PLACER_TAGS = ['CLASSIFIED', 'NOCLICK', 'placer'] as const;
 
 export class AnimatedBuildingPlacement<BuildId extends string> {
     private readonly actionEvents: WorldContext['actionEvents'];
@@ -703,16 +701,12 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     private createPlacer(buildId: BuildId, skinId?: string): BuildingPlacer<BuildId> {
         const definition = this.definitions[buildId];
         const art = this.declareArt(this.placerSprites, buildId, skinId);
-        // MakePlacer: PlayAnimation(anim, true), SetLightOverride(1), persists = false. It is hidden until the
-        // pointer is over the ground.
+        // MakePlacer: PlayAnimation(anim, true) with the shared placer declarations.
         const { instance, display } = createPrefabEntity(`${buildId}_placer`, art.source,
             { name: definition.previewAnimation ?? this.idleAnimation(buildId), billboard: true }, `${definition.name}Placer`, entity => {
                 art.initialize(entity);
-                for (const tag of PLACER_TAGS) entity.addTag(tag);
-                entity.persists = false;
-                entity.sprite.setLightOverride(1);
+                declarePlacer(entity);
                 entity.sprite.setOpacity(PLACER_OPACITY);
-                entity.sprite.setVisible(false);
             }, undefined, { alignBottom: true });
         this.displays.mount(display);
         return { buildId, skinId, instance, display };

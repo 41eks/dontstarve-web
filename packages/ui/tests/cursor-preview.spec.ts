@@ -24,7 +24,7 @@ test('world previews override lighting and UI labels use controllers mouse glyph
   expect(result.differentButtons).toBe(true);
   expect(result.building).toMatchObject({ inScene: true, override: 1, footY: 0,
     label: { hidden: false, glyph: 'U+E100' } });
-  expect(result.placed).toMatchObject({ inScene: true, override: null, count: 1, label: result.night.label });
+  expect(result.placed).toMatchObject({ previewRemoved: true, inScene: true, override: null, count: 1, label: result.night.label });
   expect(result.wallBefore).toEqual({ inScene: true, override: 1 });
   expect(result.cancelled).toMatchObject({ removed: true, override: null, count: 0, label: result.night.label });
   expect(result.overUiHidden).toBe(true);

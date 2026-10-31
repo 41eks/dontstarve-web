@@ -129,7 +129,8 @@ it('shows the looping gridplacer at once, lets its display load the art, and rel
     expect(placement.begin(() => kit())).toBeUndefined();
     const [outline] = world.scene.children;
     const instance = prefabInstance(outline)!;
-    expect(instance.listTags()).toEqual(expect.arrayContaining(['FX', 'NOCLICK']));
+    // gridplacer.lua: AddTag("CLASSIFIED"), AddTag("NOCLICK"), AddTag("placer").
+    expect(instance.listTags()).toEqual(expect.arrayContaining(['CLASSIFIED', 'NOCLICK', 'placer']));
     await prefabDisplay(outline)!.artLoaded();
     expect(instance.sprite.loaded).toBe(true);
     expect(instance.sprite.currentAnimation).toBe('anim');

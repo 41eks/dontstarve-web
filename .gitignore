@@ -22,8 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-
-.mimocode
-public/saves/Cluster_62
+.claude
 Trace-*.json.gz
 trace_with_heap_dump.json.gz

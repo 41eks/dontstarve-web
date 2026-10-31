@@ -36,6 +36,13 @@ def pigking_components(data):
     return {}
 
 
+def atrium_statue_components(data):
+    # atrium_statue.lua MakeStatue("atrium_statue", false) has no OnSave; only the _facing variant saves savedrotation.
+    if data:
+        raise ValueError('Unsupported atrium_statue save state')
+    return {}
+
+
 def atrium_gate_components(data):
     # atrium_gate.lua OnSave plus the component records used by OnLoadPostPass.
     if set(data) - {'vault_key_socketed', 'can_spawn_charlie_hand_keystone', 'launch_key',

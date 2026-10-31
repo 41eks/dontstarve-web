@@ -2,6 +2,16 @@
 
 本文件只划分 monorepo 各部分的职责，并列出全仓库通用的规则。各 package 的具体规则写在其目录下的 `AGENTS.md`，修改某个 package 前先读对应文件；规则只写在它所属的 package 中，不在此重复。
 
+## Task workflow: one git worktree per task
+
+多个会话会同时使用主检出目录（`main`），其中可能有其他会话未提交的修改。每个任务按以下流程进行：
+
+- 开始前从最新的 `main` 为任务新建分支和独立的 git worktree，例如 `git worktree add ../dontstarve-web-<task> -b <task> main`，然后在 worktree 内执行 `pnpm install --offline --frozen-lockfile`。所有修改、导入脚本和测试都在该 worktree 内完成，不在主检出目录中改代码。
+- 浏览器测试使用本 worktree 自己启动的 vite 测试服务和未被占用的端口，不复用其他 worktree 或会话的服务；不终止不属于本任务的进程。
+- 相关 vitest 测试和类型检查通过（改动影响启动、加载或性能时还需通过 Playwright）后，在任务分支上提交，再把最新的 `main` 合并进来并重新运行受影响的测试，然后把任务分支合并到 `main`。
+- 合并到 `main` 时不得覆盖主检出目录中其他会话未提交的修改：不对主检出目录执行 `git stash`、`git reset`、`git checkout -- <path>` 或 `git clean`。如果合并会触及这些文件，先暂停并向用户确认处理方式。
+- 合并完成后删除该任务的 worktree 和分支。
+
 ## Packages and ownership
 
 以下职责适用于新增代码和迁移代码；已有兼容实现不能作为继续跨层存取状态、加载资源或复制控制器的依据。
@@ -51,7 +61,8 @@
 - Tests may copy `public/saves/Cluster_1` into the relevant `tests` directory and modify the copied save to construct any required test scene.
 - Keep tests focused on representative behavior: a normal flow, a meaningful boundary or cancellation, and state/resource preservation where relevant. Avoid adding a separate test for every prefab, cosmetic skin, equivalent command spelling, or combination of inputs handled by the same implementation.
 - Sample distinct asset/rendering paths, such as split bank/build archives, symbol overrides, layered sprites and invisible equipment. Use the asset import scripts' `--check` modes for exhaustive catalog/path/byte validation instead of rendering every cosmetic variant in tests.
-- Keep browser tests for actual input, layout, WebGL/audio behavior and a few complete gameplay flows. Cover pure domain rules in unit tests and avoid repeating the same assertion in both suites. Remove obsolete tests and unused fixtures rather than leaving them skipped or excluding them through runner configuration.
+- Playwright 只测试游戏能否正常启动和加载，以及性能（加载耗时、帧耗时等）。其他交互流程，包括输入、动作选取与提交、UI 事件、`c_spawn`／`c_give`／`c_save()` 和存档往返，都在 vitest 中从代码层面测试：直接驱动所属的类、事件和调试命令函数，不为它们新增 Playwright 用例。纯领域规则同样用单元测试覆盖，同一断言不在两处重复。
+- Remove obsolete tests and unused fixtures rather than leaving them skipped or excluding them through runner configuration.
 
 
 ## Debug command documentation

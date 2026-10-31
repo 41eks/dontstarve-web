@@ -5,7 +5,7 @@ UI、库存和 prefab 共用的响应式原语、装备协议与状态工厂，�
 - `createSignal(value)` 返回 `get()`、`peek()`、`set(value)` 和 `subscribe(listener)`。
 - `get()` 收集当前 effect 的依赖，`peek()` 仅读取值；`set()` 同步写入。
 - `subscribe((value, previous) => ...)` 同步观察每次变化，返回取消订阅函数；适合装备与燃烧生命周期。不会在订阅时立即调用，初始化可用 `peek()`。
-- `createEffect(fn)` 立即执行一次，后续在微任务中合并更新；返回释放函数，同时取消排队执行并运行 `onCleanUp(fn)` 注册的清理。
+- `createEffect(fn)` 立即同步执行一次，后续在微任务中合并更新（完整调度表见 [AGENTS.md](AGENTS.md#effect-scheduling)）；返回释放函数，同时取消排队执行并运行 `onCleanUp(fn)` 注册的清理。
 - `createMemo(fn)` 返回派生值的读取函数。
 - `readonlySignal(signal)` 暴露没有 `set()` 的读取和订阅接口，状态写入由拥有者负责。
 - `watchSignal(source, registerCleanup)` 返回标准可写 signal，接口仍为 `get()`、`set()`、`peek()`、`subscribe()`，没有 `.effect()` 或 `.dispose()`。每个 class 对同一世界输入创建一个本地 signal，源 signal 只登记一条同步 effect；class 的多个普通 `createEffect` / memo 和 subscriber 都登记在本地 signal 中。

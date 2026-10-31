@@ -101,7 +101,11 @@ it('previews against the camera, swaps banks as it rotates, places on click and 
     placement.update();
     const preview = world.scene.children[0] as THREE.Group;
     const previewInstance = lookupPrefabInstance(preview) as FencePrefabInstance;
-    expect(preview.visible).toBe(true);
+    // MakePlacer("fence_item_placer", ...): its own non-persisting entity, shown once the pointer is over the ground.
+    expect(previewInstance.prefab).toBe('fence_item_placer');
+    expect(previewInstance.persists).toBe(false);
+    for (const tag of ['CLASSIFIED', 'NOCLICK', 'placer']) expect(previewInstance.hasTag(tag)).toBe(true);
+    expect(previewInstance.sprite.sprite.peek()).toMatchObject({ clip: { name: 'idle', loop: true }, lightOverride: 1, visible: true });
     const snapped = snapToWallSlotCenter(new THREE.Vector3(7.2, 0, -4.1));
     expect([preview.position.x, preview.position.z]).toEqual([snapped.x, snapped.z]);
     // fixedcameraoffset 0 - heading: -45 is an odd enum, so the wide bank; one camera step later it is narrow.
@@ -114,8 +118,9 @@ it('previews against the camera, swaps banks as it rotates, places on click and 
     expect(sprite.sprite.peek().source?.bank).toBe('fence_thin');
     expect(previewInstance.skinId).toBe('fence_rose');
     expect(placement.renderEntities).toHaveLength(1);
-    // A preview is not an inst: it has no LIGHT/HAMMER target and no tags.
+    // The placer has no LIGHT/HAMMER target and no fence tags.
     expect(findActionEntity(preview)).toBeUndefined();
+    expect(previewInstance.hasTag('fence')).toBe(false);
     expect(placement.hammerTargets).toEqual([]);
 
     canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button: 0 }));
@@ -125,8 +130,15 @@ it('previews against the camera, swaps banks as it rotates, places on click and 
     const [exported] = placement.exportRecords();
     expect(exported.prefabId).toBe('fence');
     expect(exported.record.components.fence).toEqual({ rot: calcRotationEnum(-90), skinId: 'fence_rose' });
-    expect(previewInstance.hasTag('fence')).toBe(true);
-    expect(previewInstance.hasTag('wall')).toBe(true);
+    // The build spawns a new fence with the placer's rotation and skin; the placer is released.
+    expect(previewInstance.status.peek()).toBe('removed');
+    expect(preview.parent).toBeNull();
+    const built = placement.hammerTargets[0].instance as FencePrefabInstance;
+    expect(built).not.toBe(previewInstance);
+    expect([built.prefab, built.rotation, built.skinId]).toEqual(['fence', -90, 'fence_rose']);
+    expect(built.sprite.sprite.peek().lightOverride).toBeUndefined();
+    expect(built.hasTag('fence')).toBe(true);
+    expect(built.hasTag('wall')).toBe(true);
 
     // Reload the saved record on a fresh placement.
     const restored = setup();

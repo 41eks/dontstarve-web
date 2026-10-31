@@ -15,7 +15,7 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Workable } from '../../componets/src/workable';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { actionEntity, FindEntities } from './actionEntity';
-import { BuildCursor, modelPlacer } from './buildCursor';
+import { BuildCursor, declarePlacer, entityPlacer } from './buildCursor';
 import { reskinTarget } from './reskin_tool';
 import { newEntityId, saveGroundPosition, type PlacedEntitySaveRecord, type PlacementSaveRecord } from './saveRecord';
 import { PlaySound } from './sound';
@@ -76,8 +76,8 @@ export class FencePrefabInstance extends PrefabInstance {
     private readonly art: SpriteResources['archives'];
     get rotation(): number { return this.sprite.sprite.peek().facingRotation ?? 0; }
 
-    constructor(rotation: number, skinId: string | undefined, art: SpriteResources['archives'], opacity: number) {
-        super(FENCE_ID, new SpriteState({ name: 'idle', billboard: true }));
+    constructor(rotation: number, skinId: string | undefined, art: SpriteResources['archives'], opacity: number, prefab: string = FENCE_ID) {
+        super(prefab, new SpriteState({ name: 'idle', billboard: true }));
         this.art = art;
         this.skinId = skinId;
         this.sprite.setSkinSource({ art, archives: FENCE_SKIN_ARCHIVES });
@@ -104,7 +104,7 @@ interface FenceInstance {
     readonly root: THREE.Group;
     stopActivity?: () => void;
     readonly inventorySkinId?: string;
-    /** Present once placed: previews are not insts, so they have no tags, components or LIGHT/HAMMER targets. */
+    /** Present once placed: the placer entity has no components or LIGHT/HAMMER targets. */
     entity?: ReturnType<typeof actionEntity>;
     burn?: BurnableBinding;
 }
@@ -135,7 +135,8 @@ export class FencePlacement {
     private readonly mouseRecords = new ModelRecords<FenceInstance>();
     private readonly placed = new Set<FenceInstance>();
     private readonly effects = new Set<PrefabInstance>();
-    private active?: FenceInstance;
+    /** The `fence_item_placer` entity; committing spawns a new fence, never this one. */
+    private placer?: FenceInstance;
     private lastPreviewKey = '';
     private disposed = false;
 
@@ -155,17 +156,26 @@ export class FencePlacement {
         this.cursor = new BuildCursor(world, this.pointer);
         this.heading = watchSignal(world.cameraHeading, stop => this.cleanups.push(stop));
         // Action controllers see no mouse action while the placer is shown, so the click reaches the placer.
-        this.stopPlacerGate = world.mouseActions?.registerPlacer(() => this.active !== undefined);
+        this.stopPlacerGate = world.mouseActions?.registerPlacer(() => this.placer !== undefined);
         this.canvas.addEventListener('pointerdown', this.handlePointerDown);
     }
 
     begin(buildId: FenceId, skinId?: string): Promise<void> {
         if (this.disposed) return Promise.reject(new Error('Placement has been disposed'));
-        if (this.active) return Promise.resolve();
+        if (this.placer) return Promise.resolve();
+        let placer: FenceInstance;
+        try { placer = this.createPlacer(buildId, skinId); } catch (error) { return Promise.reject(error); }
         this.world.actionEvents?.emit('action:begin', { owner: this, action: 'BUILD' });
         this.cursor.show(': 建造 栅栏', 'left');
-        try { this.createPreview(buildId, skinId); return Promise.resolve(); }
-        catch (error) { this.cursor.hide(); return Promise.reject(error); }
+        this.placer = placer;
+        this.cursor.setPreview(entityPlacer(placer.instance), 0, point => {
+            const snapped = snapToWallSlotCenter(point);
+            return point.set(snapped.x, point.y, snapped.z);
+        });
+        this.lastPreviewKey = '';
+        this.cursor.update();
+        this.updatePreview(placer);
+        return Promise.resolve();
     }
 
     /** c_spawn("fence"): SpawnPrefab leaves rotation 0 (the narrow bank) in front of the player. */
@@ -245,12 +255,12 @@ export class FencePlacement {
         this.displays.update(dt);
         for (const fence of this.placed) fence.burn?.update(dt);
         this.cursor.update();
-        if (this.active) this.updatePreview(this.active);
+        if (this.placer) this.updatePreview(this.placer);
     }
 
     cancel(): void {
-        if (this.active) this.disposeFence(this.active);
-        this.active = undefined;
+        if (this.placer) this.disposeFence(this.placer);
+        this.placer = undefined;
         this.cursor.hide();
     }
 
@@ -280,32 +290,28 @@ export class FencePlacement {
     private readonly handlePointerDown = (event: PointerEvent) => {
         if (event.button === 2) { this.cancel(); return; }
         if (event.button !== 0 || event.defaultPrevented) return;
-        if (this.active) event.preventDefault();
-        if (!this.active) return;
+        const placer = this.placer;
+        if (!placer) return;
+        event.preventDefault();
         this.pointer.trackPointer(event);
         this.cursor.update();
-        this.updatePreview(this.active);
-        if (!this.pointer.isOverGround || !this.consumeBufferedBuild(this.active.buildId, this.active.inventorySkinId)) return;
-        const fence = this.active;
-        this.active = undefined;
-        this.cursor.hide();
-        fence.instance.sprite.setOpacity(1);
+        this.updatePreview(placer);
+        if (!this.pointer.isOverGround || !this.consumeBufferedBuild(placer.buildId, placer.inventorySkinId)) return;
+        // The build spawns the fence itself with the placer's fixed-up rotation and slot; the placer is released.
+        const fence = this.createInstance(placer.buildId, placer.instance.rotation, placer.inventorySkinId);
+        fence.root.position.copy(placer.root.position);
         fence.instance.entityId = newEntityId();
+        this.cancel();
         this.place(fence);
         PlaySound('dontstarve/common/place_structure_wood', fence.root.position);
     };
 
-    private createPreview(buildId: FenceId, skinId?: string): void {
-        const fence = this.createInstance(buildId, placerRotation(this.heading.peek()), skinId, PREVIEW_OPACITY);
-        fence.root.visible = false;
-        this.active = fence;
-        this.cursor.setPreview(modelPlacer(fence.root), 0, point => {
-            const snapped = snapToWallSlotCenter(point);
-            return point.set(snapped.x, point.y, snapped.z);
-        });
-        this.lastPreviewKey = '';
-        this.cursor.update();
-        this.updatePreview(fence);
+    /** fence.lua MakeWallPlacer -> MakePlacer("fence_item_placer", "fence", "fence", "idle", ...), looping, eight-faced. */
+    private createPlacer(buildId: FenceId, skinId?: string): FenceInstance {
+        const placer = this.createInstance(buildId, placerRotation(this.heading.peek()), skinId, PREVIEW_OPACITY, `${FENCE_ID}_item_placer`);
+        declarePlacer(placer.instance);
+        placer.instance.sprite.start('idle');
+        return placer;
     }
 
     /** placerupdate: FixUpFenceOrientation against the neighbours at the snapped position. */
@@ -331,9 +337,9 @@ export class FencePlacement {
     }
 
     /** Art and skin state only; a placed fence additionally becomes an inst in `place()`. */
-    private createInstance(buildId: FenceId, rotation: number, requestedSkin?: string, opacity = 1): FenceInstance {
+    private createInstance(buildId: FenceId, rotation: number, requestedSkin?: string, opacity = 1, prefab: string = FENCE_ID): FenceInstance {
         if (this.disposed) throw new Error('Placement has been disposed');
-        const instance = new FencePrefabInstance(rotation, fenceWorldSkin(buildId, requestedSkin), this.resources.archives, opacity);
+        const instance = new FencePrefabInstance(rotation, fenceWorldSkin(buildId, requestedSkin), this.resources.archives, opacity, prefab);
         const display = this.displays.add({ name: FENCE_ID, status: instance.status, sprite: instance.sprite, light: instance.light,
             source: this.resources.factory({ animationArchive: 'fence.zip', extraAnimationArchives: ['fence_thin.zip'], buildArchive: 'fence.zip' }) });
         const root = display.model;
@@ -428,7 +434,6 @@ export class FencePlacement {
 
     private place(fence: FenceInstance): void {
         this.placed.add(fence); this.mouseRecords.set(fence.root, fence);
-        fence.root.visible = true;
         this.initializeEntity(fence);
         // fence.lua: MakeObstaclePhysics(inst, .5); Physics:SetDontRemoveOnSleep(true), so pens hold outside the ticking area.
         MakeObstaclePhysics(fence.instance, .5).SetDontRemoveOnSleep(true);

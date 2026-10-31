@@ -442,6 +442,7 @@
     "researchlab4",
     "statueglommer",
     "atrium_gate",
+    "atrium_statue",
     "ruins_statue_mage",
     "ruins_statue_head_nogem",
     "chessjunk1",
@@ -574,6 +575,10 @@
     "atrium_gate": {
       "source": 1,
       "imported": 1
+    },
+    "atrium_statue": {
+      "source": 15,
+      "imported": 15
     },
     "ruins_statue_mage": {
       "source": 3,
@@ -1000,6 +1005,171 @@
         -574
       ],
       "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_statue_index_000001",
+      "prefab": "atrium_statue",
+      "sourceIndex": 1,
+      "sourcePosition": [
+        216,
+        0,
+        -555
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_statue_index_000002",
+      "prefab": "atrium_statue",
+      "sourceIndex": 2,
+      "sourcePosition": [
+        216,
+        0,
+        -539
+      ],
+      "sourceNode": "AtriumMaze:2:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_statue_index_000003",
+      "prefab": "atrium_statue",
+      "sourceIndex": 3,
+      "sourcePosition": [
+        216,
+        0,
+        -533
+      ],
+      "sourceNode": "AtriumMaze:2:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_statue_index_000004",
+      "prefab": "atrium_statue",
+      "sourceIndex": 4,
+      "sourcePosition": [
+        216,
+        0,
+        -549
+      ],
+      "sourceNode": "AtriumMaze:2:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_statue_index_000005",
+      "prefab": "atrium_statue",
+      "sourceIndex": 5,
+      "sourcePosition": [
+        230,
+        0,
+        -442
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_statue_index_000006",
+      "prefab": "atrium_statue",
+      "sourceIndex": 6,
+      "sourcePosition": [
+        134,
+        0,
+        -486
+      ],
+      "sourceNode": "AtriumMaze:5:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_statue_index_000007",
+      "prefab": "atrium_statue",
+      "sourceIndex": 7,
+      "sourcePosition": [
+        117,
+        0,
+        -504
+      ],
+      "sourceNode": "AtriumMaze:4:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_statue_index_000008",
+      "prefab": "atrium_statue",
+      "sourceIndex": 8,
+      "sourcePosition": [
+        133,
+        0,
+        -504
+      ],
+      "sourceNode": "AtriumMaze:4:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_statue_index_000009",
+      "prefab": "atrium_statue",
+      "sourceIndex": 9,
+      "sourcePosition": [
+        139,
+        0,
+        -504
+      ],
+      "sourceNode": "AtriumMaze:4:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_statue_index_000010",
+      "prefab": "atrium_statue",
+      "sourceIndex": 10,
+      "sourcePosition": [
+        123,
+        0,
+        -504
+      ],
+      "sourceNode": "AtriumMaze:4:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_statue_index_000011",
+      "prefab": "atrium_statue",
+      "sourceIndex": 11,
+      "sourcePosition": [
+        160,
+        0,
+        -608
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_statue_index_000012",
+      "prefab": "atrium_statue",
+      "sourceIndex": 12,
+      "sourcePosition": [
+        224,
+        0,
+        -608
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_statue_index_000013",
+      "prefab": "atrium_statue",
+      "sourceIndex": 13,
+      "sourcePosition": [
+        224,
+        0,
+        -576
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_statue_index_000014",
+      "prefab": "atrium_statue",
+      "sourceIndex": 14,
+      "sourcePosition": [
+        198,
+        0,
+        -378
+      ],
+      "sourceNode": "AtriumMaze:7:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_statue_index_000015",
+      "prefab": "atrium_statue",
+      "sourceIndex": 15,
+      "sourcePosition": [
+        198,
+        0,
+        -390
+      ],
+      "sourceNode": "AtriumMaze:7:AtriumMazeRooms"
     },
     {
       "id": "dst_04E26ADB66396E8D_ruins_statue_mage_id_108826",

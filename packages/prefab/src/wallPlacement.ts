@@ -1,7 +1,7 @@
 import { ToolMouseTarget } from './toolMouseTarget';
 import { ModelRecords } from './modelRecords';
 import * as THREE from 'three';
-import { BuildCursor, modelPlacer } from './buildCursor';
+import { BuildCursor, declarePlacer, entityPlacer } from './buildCursor';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import { snapToWallSlotCenter } from './tile';
 import type { WorldContext } from './worldContext';
@@ -131,6 +131,9 @@ export interface WallCombatTarget {
 }
 
 
+/** This project draws placers translucent; MakePlacer itself only sets SetLightOverride(1). */
+const PLACER_OPACITY = .65;
+
 function snapToWallSlot(point: THREE.Vector3): THREE.Vector3 {
     const snapped = snapToWallSlotCenter(point);
     return point.set(snapped.x, point.y, snapped.z);
@@ -152,7 +155,8 @@ export class WallPlacement<BuildId extends string> {
     private readonly cursor: BuildCursor;
     private readonly pointer: PointerRaycaster;
     private readonly stopPlacerGate?: () => void;
-    private active?: WallInstance<BuildId>;
+    /** The `wall_<name>_item_placer` entity; committing spawns a new wall, never this one. */
+    private placer?: WallInstance<BuildId>;
     private readonly mouseRecords = new ModelRecords<WallInstance<BuildId>>();
     private readonly placed = new Set<WallInstance<BuildId>>();
     private readonly world: WorldContext;
@@ -178,18 +182,22 @@ export class WallPlacement<BuildId extends string> {
         this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
         this.cursor = new BuildCursor(world, this.pointer);
         // Action controllers see no mouse action while the placer is shown, so the click reaches the placer.
-        this.stopPlacerGate = world.mouseActions?.registerPlacer(() => this.active !== undefined);
+        this.stopPlacerGate = world.mouseActions?.registerPlacer(() => this.placer !== undefined);
         world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown);
     }
 
     begin(buildId: BuildId, skinId?: string): Promise<void> {
         if (this.disposed) return Promise.reject(new Error('Placement has been disposed'));
-        if (this.active) return Promise.resolve();
+        if (this.placer) return Promise.resolve();
 
+        let placer: WallInstance<BuildId>;
+        try { placer = this.createPlacer(buildId, skinId); } catch (error) { return Promise.reject(error); }
         this.actionEvents?.emit('action:begin', { owner: this, action: 'BUILD' });
         this.cursor.show(`: 建造 ${this.definitions[buildId].buildLabel}`, 'left');
-        try { this.createPreview(buildId, skinId); return Promise.resolve(); }
-        catch (error) { this.cursor.hide(); return Promise.reject(error); }
+        this.placer = placer;
+        this.cursor.setPreview(entityPlacer(placer.instance), 0, snapToWallSlot);
+        this.cursor.update();
+        return Promise.resolve();
     }
 
     async spawn(buildId: BuildId, skinId?: string): Promise<void> {
@@ -287,8 +295,8 @@ export class WallPlacement<BuildId extends string> {
     }
 
     cancel() {
-        if (this.active) this.disposeWall(this.active);
-        this.active = undefined;
+        if (this.placer) this.disposeWall(this.placer);
+        this.placer = undefined;
         this.cursor.hide();
     }
 
@@ -303,34 +311,33 @@ export class WallPlacement<BuildId extends string> {
             return;
         }
         if (event.button !== 0 || event.defaultPrevented) return;
-        if (this.active) event.preventDefault();
-        if (!this.active) return;
+        const placer = this.placer;
+        if (!placer) return;
+        event.preventDefault();
         this.pointer.trackPointer(event);
         this.cursor.update();
-        if (!this.pointer.isOverGround || !this.consumeBufferedBuild(this.active.buildId, this.active.inventorySkinId)) return;
+        if (!this.pointer.isOverGround || !this.consumeBufferedBuild(placer.buildId, placer.inventorySkinId)) return;
 
-        const placedWall = this.active;
-        placedWall.model.visible = true;
-        placedWall.instance.sprite.setOpacity(1);
-        placedWall.instance.entityId = newEntityId();
-        this.place(placedWall);
-        this.active = undefined;
-        this.cursor.hide();
+        // The build spawns the wall itself at the placer's slot; the placer is released.
+        const wall = this.createInstance(placer.buildId, placer.inventorySkinId);
+        wall.instance.position.copy(placer.instance.position);
+        wall.instance.entityId = newEntityId();
+        this.cancel();
+        this.place(wall);
     };
 
-    private createPreview(buildId: BuildId, skinId?: string) {
-        const wall = this.createInstance(buildId, skinId, .65);
-        wall.model.visible = false;
-        this.active = wall;
-        this.cursor.setPreview(modelPlacer(wall.model), 0, snapToWallSlot);
-        this.cursor.update();
+    /** walls.lua MakePlacer("wall_<name>_item_placer", bank, build, "half", ...): a separate, non-persisting entity. */
+    private createPlacer(buildId: BuildId, skinId?: string): WallInstance<BuildId> {
+        const placer = this.createInstance(buildId, skinId, PLACER_OPACITY, `${wallWorldPrefab(buildId)}_item_placer`);
+        declarePlacer(placer.instance);
+        return placer;
     }
 
     /** Declare static images, paired layers and source skin names; the display loads and dresses them. */
-    private createInstance(buildId: BuildId, requestedSkin?: string, opacity = 1): WallInstance<BuildId> {
+    private createInstance(buildId: BuildId, requestedSkin?: string, opacity = 1, prefab = wallWorldPrefab(buildId)): WallInstance<BuildId> {
         if (this.disposed) throw new Error('Placement has been disposed');
         const definition = this.definitions[buildId];
-        const instance = new PrefabInstance(wallWorldPrefab(buildId), new SpriteState({ name: 'half', held: true, billboard: true }));
+        const instance = new PrefabInstance(prefab, new SpriteState({ name: 'half', held: true, billboard: true }));
         instance.skinId = wallWorldSkin(buildId, requestedSkin);
         instance.sprite.setSkinSource({ art: this.resources.archives,
             archives: Object.fromEntries(Object.entries(definition.skinArchives ?? {}).map(([id, archive]) =>

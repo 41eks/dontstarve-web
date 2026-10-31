@@ -359,6 +359,7 @@
     "researchlab4",
     "statueglommer",
     "atrium_gate",
+    "atrium_statue",
     "ruins_statue_mage",
     "ruins_statue_head_nogem",
     "chessjunk1",
@@ -587,6 +588,10 @@
       "imported": 1
     },
     "atrium_gate": {
+      "source": 0,
+      "imported": 0
+    },
+    "atrium_statue": {
       "source": 0,
       "imported": 0
     },

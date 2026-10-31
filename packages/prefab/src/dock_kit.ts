@@ -9,7 +9,7 @@ import { createArchiveEntity } from './prefabInstance';
 // The placer tints: valid and blocked cells.
 const VALID_TINT = new THREE.Color(0x66ff66).toArray() as [number, number, number];
 const BLOCKED_TINT = new THREE.Color(0xff5555).toArray() as [number, number, number];
-import { BuildCursor, modelPlacer } from './buildCursor';
+import { BuildCursor, declarePlacer, entityPlacer } from './buildCursor';
 import { PlaySound } from './sound';
 import { snapToTileCenter, TILE_SIZE } from './tile';
 import { TurfMap, WORLD_TILES, isLandTile } from './turfMap';
@@ -48,9 +48,8 @@ export class DockKitPlacement {
   private readonly world: WorldContext;
   private readonly turf: TurfMap;
   private readonly blockers: PlacementQuery;
-  /** The gridplacer entity; `visible` and `valid` are what its sprite json was last told. */
-  private outline?: ReturnType<typeof createArchiveEntity> & { visible: boolean; valid?: boolean };
-  private anchor?: THREE.Object3D;
+  /** The gridplacer entity; `valid` is the tint its sprite json was last told. The cursor moves and shows it. */
+  private outline?: ReturnType<typeof createArchiveEntity> & { valid?: boolean };
   private takeItem?: () => ItemEntity | undefined;
   private disposed = false;
 
@@ -74,18 +73,15 @@ export class DockKitPlacement {
     // Private colour and opacity copies: the placer tints only itself.
     const entity = createArchiveEntity('gridplacer', this.sprites.archive({ animationArchive: 'gridplacer.zip',
       buildArchives: ['gridplacer.zip'], bank: 'gridplacer' }, { opacity: .65, colour: [1, 1, 1] }), { name: 'anim' }, 'DockKitGridPlacer');
-    // gridplacer.lua: PlayAnimation("anim", true).
+    // gridplacer.lua: PlayAnimation("anim", true) with the shared placer tags, persists and light override.
     const model = entity.display.model;
-    for (const tag of ['FX', 'NOCLICK']) entity.instance.addTag(tag);
-    entity.instance.persists = false;
+    declarePlacer(entity.instance);
     model.userData.billboard = false;
     model.rotation.x = -Math.PI / 2;
-    this.outline = { ...entity, visible: true };
-    this.world.scene.add(model);
-    // BuildCursor moves and hides an anchor; the outline follows it lifted off the ground and shows through its sprite.
-    this.anchor = new THREE.Object3D();
-    entity.instance.sprite.setLightOverride(1);
-    this.cursor.setPreview(modelPlacer(this.anchor), 0, point => this.center(point));
+    this.outline = entity;
+    entity.display.mount(this.world.scene);
+    // The outline is lifted off the ground it marks.
+    this.cursor.setPreview(entityPlacer(entity.instance), .05, point => this.center(point));
     this.cursor.update();
   }
 
@@ -93,7 +89,7 @@ export class DockKitPlacement {
     this.takeItem = undefined;
     this.cursor.hide();
     if (this.outline) { this.outline.instance.remove(); this.outline.display.dispose(); }
-    this.outline = undefined; this.anchor = undefined;
+    this.outline = undefined;
   }
 
   private center(point: Pick<THREE.Vector3, 'x' | 'z'>): THREE.Vector3 {
@@ -149,17 +145,15 @@ export class DockKitPlacement {
   update(): void {
     if (this.disposed) return;
     this.cursor.update();
-    if (!this.outline || !this.anchor) return;
-    const outline = this.outline, { sprite } = outline.instance;
-    if (outline.visible !== this.anchor.visible) sprite.setVisible(outline.visible = this.anchor.visible);
-    outline.instance.position.copy(this.anchor.position).setY(.05);
-    const valid = outline.visible && this.canDeploy(outline.instance.position);
-    if (valid !== outline.valid) sprite.setColour((outline.valid = valid) ? VALID_TINT : BLOCKED_TINT);
+    const outline = this.outline;
+    if (!outline) return;
+    const valid = this.cursor.previewVisible && this.canDeploy(outline.instance.position);
+    if (valid !== outline.valid) outline.instance.sprite.setColour((outline.valid = valid) ? VALID_TINT : BLOCKED_TINT);
   }
 
   get renderEntities() {
     const outline = this.outline;
-    return outline?.visible ? [{ object: outline.display.model, footPosition: outline.instance.position.clone().setY(0), cameraDepth: 0 }] : [];
+    return outline && this.cursor.previewVisible ? [{ object: outline.display.model, footPosition: outline.instance.position.clone().setY(0), cameraDepth: 0 }] : [];
   }
 
   dispose(): void {

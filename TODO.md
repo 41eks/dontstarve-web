@@ -17,7 +17,7 @@ sound层
 atrium地皮有写入深度
 
 
-prefab_id=	"pandoraschest"
+prefab_id="ruins_statue_head_nogem"
 
 目标：把 $prefab_id 移植为可以从存档加载、显示并重新保存的 prefab，并让导入的存档包含它。
 
@@ -72,5 +72,6 @@ prefab_id=	"pandoraschest"
 - 测试保持代表性，各写一个即可：
   - 从存档记录加载后，声明的动画与 Lua 一致（单元测试）；
   - tile 休眠后重建，恢复声明的 clip（单元测试）；
-  - 一个浏览器流程：用 ?saveData= 传入测试内构造、包含 $prefab_id 的存档（packages/ui/tests/inline-save.ts）
-    → 渲染 → c_save → 用导出的存档重新加载。不依赖默认存档文件。
+  - c_spawn → c_save → 用导出的存档重新加载，确认 ID、位置、组件字段和动画保留（vitest，从代码层面驱动调试命令与存档函数）；
+  - Playwright 只运行共用的默认存档加载用例：用重新导入后的默认存档（public/saves/Cluster_1）打开游戏，确认正常完成加载、没有页面错误。
+    所有 prefab 共用这一个用例，不为每个 prefab 新增；仓库中还没有时新建一个。

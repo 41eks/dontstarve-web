@@ -229936,6 +229936,188 @@
           }
         }
       ],
+      "atrium_statue": [
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_statue_index_000001",
+          "transform": {
+            "position": [
+              696.0,
+              0.0,
+              1605.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_statue_index_000002",
+          "transform": {
+            "position": [
+              696.0,
+              0.0,
+              1557.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_statue_index_000003",
+          "transform": {
+            "position": [
+              696.0,
+              0.0,
+              1539.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_statue_index_000004",
+          "transform": {
+            "position": [
+              696.0,
+              0.0,
+              1587.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_statue_index_000005",
+          "transform": {
+            "position": [
+              738.0,
+              0.0,
+              1266.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_statue_index_000006",
+          "transform": {
+            "position": [
+              450.0,
+              0.0,
+              1398.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_statue_index_000007",
+          "transform": {
+            "position": [
+              399.0,
+              0.0,
+              1452.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_statue_index_000008",
+          "transform": {
+            "position": [
+              447.0,
+              0.0,
+              1452.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_statue_index_000009",
+          "transform": {
+            "position": [
+              465.0,
+              0.0,
+              1452.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_statue_index_000010",
+          "transform": {
+            "position": [
+              417.0,
+              0.0,
+              1452.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_statue_index_000011",
+          "transform": {
+            "position": [
+              528.0,
+              0.0,
+              1764.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_statue_index_000012",
+          "transform": {
+            "position": [
+              720.0,
+              0.0,
+              1764.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_statue_index_000013",
+          "transform": {
+            "position": [
+              720.0,
+              0.0,
+              1668.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_statue_index_000014",
+          "transform": {
+            "position": [
+              642.0,
+              0.0,
+              1074.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_statue_index_000015",
+          "transform": {
+            "position": [
+              642.0,
+              0.0,
+              1110.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        }
+      ],
       "ruins_statue_mage": [
         {
           "id": "dst_04E26ADB66396E8D_ruins_statue_mage_id_110116",
