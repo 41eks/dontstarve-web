@@ -6,6 +6,12 @@
 
 - When porting a prefab or child/FX entity, keep every tag the Lua source adds (`inst:AddTag(...)`, such as `FX`, `NOCLICK`, `DECOR`), regardless of whether its semantics seem relevant or are consumed yet. Apply them on the entity exactly as in Lua, including non-networked child entities like mist or particles; never drop or substitute a tag because it looks unused. An entity with a `PrefabInstance` owns its tags there: write them with `instance.addTag()` / `removeTag()` (or through its `actionEntity`) and read them with `instance.hasTag()`; its model has no `userData.tags`. Code that only holds a model uses `modelHasTag()` / `setModelTag()`. Only models without an instance, such as bare FX sprites, keep their tags in `userData.tags`.
 
+## Prefab callbacks
+
+- Lua prefab 自己定义的特殊回调（如 `OnWork`、`OnFinish`、`OnEat`、`OnAccept`）必须实现在所属 prefab 模块内，与该 prefab 的 `PrefabInstance`／专用实例构造放在同一模块，并按 Lua 注册到真实实例或其组件。回调通过传入的 `inst` 操作所属状态；同一模块内的相关 prefab 可以按源码共享回调。
+- controller 只做动作请求和真实实例引用的转发，严禁在 controller 中用 `if`／`switch` 或 prefab 分发表实现 prefab 专属业务分支；也不得用 controller 内的闭包、helper 或注入的业务回调隐藏这些分支。已有此类逻辑迁移时必须移回所属 prefab 模块。
+- 保持 Lua 的调用关系：共享 `ACTIONS.fn` 调用组件，组件执行通用规则并触发已注册的 prefab 回调。伤害、工作量、进食、消耗等组件规则继续由组件负责；通用动作入口不在各 prefab 重复实现。动作转发细则见 [stategraphs](../stategraphs/AGENTS.md)。
+
 ## Instances, display contract and ownership
 
 - prefab、专用实例、行为回调及 manager 不得持有 `scene`（包括 `private readonly scene: THREE.Scene`、构造参数属性、闭包捕获，以及以 `root`、`world.scene` 等方式保留或访问场景的别名）。应用层注入的场景只在接线时交给 `PrefabDisplay`／`PrefabDisplayGroup` 等 display 层所有者；实体的挂载、显示更新、渲染条目与显示资源释放由 display 层管理。prefab 只声明实例状态、transform、动画、外观和 FX；邻居发现使用注入的逻辑查询或既有实体查询入口，不遍历场景。迁移必须移动实际职责，不能仅改字段名、换成转发回调或增加包装类来隐藏场景引用。
