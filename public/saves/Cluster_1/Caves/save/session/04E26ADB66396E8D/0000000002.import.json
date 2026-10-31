@@ -441,6 +441,21 @@
     "statueglommer",
     "atrium_gate",
     "atrium_statue",
+    "ruinsrelic_table",
+    "ruinsrelic_chair",
+    "ruinsrelic_vase",
+    "ruinsrelic_chipbowl",
+    "ruinsrelic_bowl",
+    "ruinsrelic_plate",
+    "ruins_table",
+    "ruins_chair",
+    "ruins_vase",
+    "ruins_chipbowl",
+    "ruins_bowl",
+    "ruins_plate",
+    "ruins_rubble_table",
+    "ruins_rubble_chair",
+    "ruins_rubble_vase",
     "ruins_statue_mage",
     "ruins_statue_mage_nogem",
     "ruins_statue_head",
@@ -551,6 +566,66 @@
     "atrium_statue": {
       "source": 15,
       "imported": 15
+    },
+    "ruinsrelic_table": {
+      "source": 0,
+      "imported": 0
+    },
+    "ruinsrelic_chair": {
+      "source": 0,
+      "imported": 0
+    },
+    "ruinsrelic_vase": {
+      "source": 0,
+      "imported": 0
+    },
+    "ruinsrelic_chipbowl": {
+      "source": 0,
+      "imported": 0
+    },
+    "ruinsrelic_bowl": {
+      "source": 0,
+      "imported": 0
+    },
+    "ruinsrelic_plate": {
+      "source": 0,
+      "imported": 0
+    },
+    "ruins_table": {
+      "source": 8,
+      "imported": 8
+    },
+    "ruins_chair": {
+      "source": 23,
+      "imported": 23
+    },
+    "ruins_vase": {
+      "source": 17,
+      "imported": 17
+    },
+    "ruins_chipbowl": {
+      "source": 2,
+      "imported": 2
+    },
+    "ruins_bowl": {
+      "source": 1,
+      "imported": 1
+    },
+    "ruins_plate": {
+      "source": 2,
+      "imported": 2
+    },
+    "ruins_rubble_table": {
+      "source": 23,
+      "imported": 23
+    },
+    "ruins_rubble_chair": {
+      "source": 48,
+      "imported": 48
+    },
+    "ruins_rubble_vase": {
+      "source": 35,
+      "imported": 35
     },
     "ruins_statue_mage": {
       "source": 0,
@@ -1021,6 +1096,1755 @@
         -390
       ],
       "sourceNode": "AtriumMaze:7:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_table_index_000001",
+      "prefab": "ruins_table",
+      "sourceIndex": 1,
+      "sourcePosition": [
+        221,
+        0,
+        -451
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_table_index_000002",
+      "prefab": "ruins_table",
+      "sourceIndex": 2,
+      "sourcePosition": [
+        125,
+        0,
+        -477
+      ],
+      "sourceNode": "AtriumMaze:5:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_table_index_000003",
+      "prefab": "ruins_table",
+      "sourceIndex": 3,
+      "sourcePosition": [
+        -759,
+        0,
+        -162.32
+      ],
+      "sourceNode": "ArchiveMaze:BG_95:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_table_index_000004",
+      "prefab": "ruins_table",
+      "sourceIndex": 4,
+      "sourcePosition": [
+        -750.82,
+        0,
+        5.12
+      ],
+      "sourceNode": "ArchiveMaze:2:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_table_index_000005",
+      "prefab": "ruins_table",
+      "sourceIndex": 5,
+      "sourcePosition": [
+        -713.69,
+        0,
+        -35
+      ],
+      "sourceNode": "ArchiveMaze:2:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_table_index_000006",
+      "prefab": "ruins_table",
+      "sourceIndex": 6,
+      "sourcePosition": [
+        -776.57,
+        0,
+        -79.32
+      ],
+      "sourceNode": "ArchiveMaze:BG_96:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_table_index_000007",
+      "prefab": "ruins_table",
+      "sourceIndex": 7,
+      "sourcePosition": [
+        -788.94,
+        0,
+        -104.07
+      ],
+      "sourceNode": "ArchiveMaze:BG_96:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_table_index_000008",
+      "prefab": "ruins_table",
+      "sourceIndex": 8,
+      "sourcePosition": [
+        371.42,
+        0,
+        -325.05
+      ],
+      "sourceNode": "Sacred:7:Spiral"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_chair_index_000001",
+      "prefab": "ruins_chair",
+      "sourceIndex": 1,
+      "sourcePosition": [
+        297.37,
+        0,
+        -223.94
+      ],
+      "sourceNode": "Residential:BG_61:RuinedCity"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_chair_index_000002",
+      "prefab": "ruins_chair",
+      "sourceIndex": 2,
+      "sourcePosition": [
+        -756.32,
+        0,
+        -160.38
+      ],
+      "sourceNode": "ArchiveMaze:BG_95:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_chair_index_000003",
+      "prefab": "ruins_chair",
+      "sourceIndex": 3,
+      "sourcePosition": [
+        -761.57,
+        0,
+        -159.75
+      ],
+      "sourceNode": "ArchiveMaze:BG_95:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_chair_index_000004",
+      "prefab": "ruins_chair",
+      "sourceIndex": 4,
+      "sourcePosition": [
+        -751.44,
+        0,
+        2.25
+      ],
+      "sourceNode": "ArchiveMaze:2:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_chair_index_000005",
+      "prefab": "ruins_chair",
+      "sourceIndex": 5,
+      "sourcePosition": [
+        -761.94,
+        0,
+        2.37
+      ],
+      "sourceNode": "ArchiveMaze:2:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_chair_index_000006",
+      "prefab": "ruins_chair",
+      "sourceIndex": 6,
+      "sourcePosition": [
+        -715.63,
+        0,
+        -32.32
+      ],
+      "sourceNode": "ArchiveMaze:2:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_chair_index_000007",
+      "prefab": "ruins_chair",
+      "sourceIndex": 7,
+      "sourcePosition": [
+        -716.25,
+        0,
+        -37.57
+      ],
+      "sourceNode": "ArchiveMaze:2:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_chair_index_000008",
+      "prefab": "ruins_chair",
+      "sourceIndex": 8,
+      "sourcePosition": [
+        -779.82,
+        0,
+        -80.69
+      ],
+      "sourceNode": "ArchiveMaze:BG_96:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_chair_index_000009",
+      "prefab": "ruins_chair",
+      "sourceIndex": 9,
+      "sourcePosition": [
+        -772.5,
+        0,
+        -97.88
+      ],
+      "sourceNode": "ArchiveMaze:BG_96:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_chair_index_000010",
+      "prefab": "ruins_chair",
+      "sourceIndex": 10,
+      "sourcePosition": [
+        126.5,
+        0,
+        -237.13
+      ],
+      "sourceNode": "Residential2:1:RuinedCity"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_chair_index_000011",
+      "prefab": "ruins_chair",
+      "sourceIndex": 11,
+      "sourcePosition": [
+        489.93,
+        0,
+        -437.88
+      ],
+      "sourceNode": "Sacred:3:SacredBarracks"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_chair_index_000012",
+      "prefab": "ruins_chair",
+      "sourceIndex": 12,
+      "sourcePosition": [
+        490.12,
+        0,
+        -426.07
+      ],
+      "sourceNode": "MoreAltars:0:BrokenAltar"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_chair_index_000013",
+      "prefab": "ruins_chair",
+      "sourceIndex": 13,
+      "sourcePosition": [
+        497.93,
+        0,
+        -413.82
+      ],
+      "sourceNode": "MoreAltars:0:BrokenAltar"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_chair_index_000014",
+      "prefab": "ruins_chair",
+      "sourceIndex": 14,
+      "sourcePosition": [
+        497.93,
+        0,
+        -437.94
+      ],
+      "sourceNode": "MoreAltars:0:BrokenAltar"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_chair_index_000015",
+      "prefab": "ruins_chair",
+      "sourceIndex": 15,
+      "sourcePosition": [
+        501.93,
+        0,
+        -374.13
+      ],
+      "sourceNode": "Sacred:2:BrokenAltar"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_chair_index_000016",
+      "prefab": "ruins_chair",
+      "sourceIndex": 16,
+      "sourcePosition": [
+        502.12,
+        0,
+        -385.94
+      ],
+      "sourceNode": "Sacred:2:BrokenAltar"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_chair_index_000017",
+      "prefab": "ruins_chair",
+      "sourceIndex": 17,
+      "sourcePosition": [
+        509.93,
+        0,
+        -398.19
+      ],
+      "sourceNode": "MoreAltars:1:PitRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_chair_index_000018",
+      "prefab": "ruins_chair",
+      "sourceIndex": 18,
+      "sourcePosition": [
+        509.93,
+        0,
+        -374.07
+      ],
+      "sourceNode": "Sacred:2:BrokenAltar"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_chair_index_000019",
+      "prefab": "ruins_chair",
+      "sourceIndex": 19,
+      "sourcePosition": [
+        578.06,
+        0,
+        -258.13
+      ],
+      "sourceNode": "MuddySacred:1:BrokenAltar"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_chair_index_000020",
+      "prefab": "ruins_chair",
+      "sourceIndex": 20,
+      "sourcePosition": [
+        577.87,
+        0,
+        -269.94
+      ],
+      "sourceNode": "MuddySacred:1:BrokenAltar"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_chair_index_000021",
+      "prefab": "ruins_chair",
+      "sourceIndex": 21,
+      "sourcePosition": [
+        570.06,
+        0,
+        -282.19
+      ],
+      "sourceNode": "MuddySacred:1:BrokenAltar"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_chair_index_000022",
+      "prefab": "ruins_chair",
+      "sourceIndex": 22,
+      "sourcePosition": [
+        570.06,
+        0,
+        -258.07
+      ],
+      "sourceNode": "MuddySacred:3:SacredBarracks"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_chair_index_000023",
+      "prefab": "ruins_chair",
+      "sourceIndex": 23,
+      "sourcePosition": [
+        365.75,
+        0,
+        -298.92
+      ],
+      "sourceNode": "Sacred:7:Spiral"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_vase_index_000001",
+      "prefab": "ruins_vase",
+      "sourceIndex": 1,
+      "sourcePosition": [
+        -758.07,
+        0,
+        -158.13
+      ],
+      "sourceNode": "ArchiveMaze:BG_95:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_vase_index_000002",
+      "prefab": "ruins_vase",
+      "sourceIndex": 2,
+      "sourcePosition": [
+        -742,
+        0,
+        10
+      ],
+      "sourceNode": "ArchiveMaze:2:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_vase_index_000003",
+      "prefab": "ruins_vase",
+      "sourceIndex": 3,
+      "sourcePosition": [
+        -741.94,
+        0,
+        -5.94
+      ],
+      "sourceNode": "ArchiveMaze:2:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_vase_index_000004",
+      "prefab": "ruins_vase",
+      "sourceIndex": 4,
+      "sourcePosition": [
+        -762.75,
+        0,
+        -4
+      ],
+      "sourceNode": "ArchiveMaze:2:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_vase_index_000005",
+      "prefab": "ruins_vase",
+      "sourceIndex": 5,
+      "sourcePosition": [
+        -760.69,
+        0,
+        -5.88
+      ],
+      "sourceNode": "ArchiveMaze:2:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_vase_index_000006",
+      "prefab": "ruins_vase",
+      "sourceIndex": 6,
+      "sourcePosition": [
+        -717.88,
+        0,
+        -34.07
+      ],
+      "sourceNode": "ArchiveMaze:2:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_vase_index_000007",
+      "prefab": "ruins_vase",
+      "sourceIndex": 7,
+      "sourcePosition": [
+        -763.57,
+        0,
+        -53.32
+      ],
+      "sourceNode": "ArchiveMaze:1:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_vase_index_000008",
+      "prefab": "ruins_vase",
+      "sourceIndex": 8,
+      "sourcePosition": [
+        -765.82,
+        0,
+        -53.69
+      ],
+      "sourceNode": "ArchiveMaze:1:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_vase_index_000009",
+      "prefab": "ruins_vase",
+      "sourceIndex": 9,
+      "sourcePosition": [
+        -750,
+        0,
+        -67
+      ],
+      "sourceNode": "ArchiveMaze:1:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_vase_index_000010",
+      "prefab": "ruins_vase",
+      "sourceIndex": 10,
+      "sourcePosition": [
+        -792.75,
+        0,
+        -80.25
+      ],
+      "sourceNode": "ArchiveMaze:BG_96:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_vase_index_000011",
+      "prefab": "ruins_vase",
+      "sourceIndex": 11,
+      "sourcePosition": [
+        -794.63,
+        0,
+        -95.57
+      ],
+      "sourceNode": "ArchiveMaze:BG_96:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_vase_index_000012",
+      "prefab": "ruins_vase",
+      "sourceIndex": 12,
+      "sourcePosition": [
+        -786,
+        0,
+        -105.19
+      ],
+      "sourceNode": "ArchiveMaze:BG_96:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_vase_index_000013",
+      "prefab": "ruins_vase",
+      "sourceIndex": 13,
+      "sourcePosition": [
+        368.65,
+        0,
+        -313.69
+      ],
+      "sourceNode": "Sacred:7:Spiral"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_vase_index_000014",
+      "prefab": "ruins_vase",
+      "sourceIndex": 14,
+      "sourcePosition": [
+        368.88,
+        0,
+        -320.2
+      ],
+      "sourceNode": "Sacred:7:Spiral"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_vase_index_000015",
+      "prefab": "ruins_vase",
+      "sourceIndex": 15,
+      "sourcePosition": [
+        386.71,
+        0,
+        -301.55
+      ],
+      "sourceNode": "Sacred:7:Spiral"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_vase_index_000016",
+      "prefab": "ruins_vase",
+      "sourceIndex": 16,
+      "sourcePosition": [
+        364.93,
+        0,
+        -317.59
+      ],
+      "sourceNode": "Sacred:7:Spiral"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_vase_index_000017",
+      "prefab": "ruins_vase",
+      "sourceIndex": 17,
+      "sourcePosition": [
+        380.81,
+        0,
+        -299.98
+      ],
+      "sourceNode": "Sacred:7:Spiral"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_chipbowl_index_000001",
+      "prefab": "ruins_chipbowl",
+      "sourceIndex": 1,
+      "sourcePosition": [
+        364.92,
+        0,
+        -314.44
+      ],
+      "sourceNode": "Sacred:7:Spiral"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_chipbowl_index_000002",
+      "prefab": "ruins_chipbowl",
+      "sourceIndex": 2,
+      "sourcePosition": [
+        371.2,
+        0,
+        -326.64
+      ],
+      "sourceNode": "Sacred:7:Spiral"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_bowl_index_000001",
+      "prefab": "ruins_bowl",
+      "sourceIndex": 1,
+      "sourcePosition": [
+        379.7,
+        0,
+        -312.92
+      ],
+      "sourceNode": "Sacred:7:Spiral"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_plate_index_000001",
+      "prefab": "ruins_plate",
+      "sourceIndex": 1,
+      "sourcePosition": [
+        381.14,
+        0,
+        -320.22
+      ],
+      "sourceNode": "Sacred:7:Spiral"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_plate_index_000002",
+      "prefab": "ruins_plate",
+      "sourceIndex": 2,
+      "sourcePosition": [
+        370.73,
+        0,
+        -326.14
+      ],
+      "sourceNode": "Sacred:7:Spiral"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_table_index_000001",
+      "prefab": "ruins_rubble_table",
+      "sourceIndex": 1,
+      "sourcePosition": [
+        227,
+        0,
+        -451
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_table_index_000002",
+      "prefab": "ruins_rubble_table",
+      "sourceIndex": 2,
+      "sourcePosition": [
+        125,
+        0,
+        -483
+      ],
+      "sourceNode": "AtriumMaze:5:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_table_index_000003",
+      "prefab": "ruins_rubble_table",
+      "sourceIndex": 3,
+      "sourcePosition": [
+        118,
+        0,
+        -243
+      ],
+      "sourceNode": "Residential2:1:RuinedCity"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_table_index_000004",
+      "prefab": "ruins_rubble_table",
+      "sourceIndex": 4,
+      "sourcePosition": [
+        389.27,
+        0,
+        -299.08
+      ],
+      "sourceNode": "Sacred:7:Spiral"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_table_index_000005",
+      "prefab": "ruins_rubble_table",
+      "sourceIndex": 5,
+      "sourcePosition": [
+        102.1,
+        0,
+        -198.61
+      ],
+      "sourceNode": "Residential2:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_table_index_000006",
+      "prefab": "ruins_rubble_table",
+      "sourceIndex": 6,
+      "sourcePosition": [
+        189.15,
+        0,
+        -158.81
+      ],
+      "sourceNode": "Residential:4:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_table_index_000007",
+      "prefab": "ruins_rubble_table",
+      "sourceIndex": 7,
+      "sourcePosition": [
+        193.92,
+        0,
+        -234.02
+      ],
+      "sourceNode": "Residential:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_table_index_000008",
+      "prefab": "ruins_rubble_table",
+      "sourceIndex": 8,
+      "sourcePosition": [
+        197.44,
+        0,
+        -213.28
+      ],
+      "sourceNode": "Residential:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_table_index_000009",
+      "prefab": "ruins_rubble_table",
+      "sourceIndex": 9,
+      "sourcePosition": [
+        189.35,
+        0,
+        -234.02
+      ],
+      "sourceNode": "Residential:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_table_index_000010",
+      "prefab": "ruins_rubble_table",
+      "sourceIndex": 10,
+      "sourcePosition": [
+        193.97,
+        0,
+        -202.78
+      ],
+      "sourceNode": "Residential:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_table_index_000011",
+      "prefab": "ruins_rubble_table",
+      "sourceIndex": 11,
+      "sourcePosition": [
+        209.68,
+        0,
+        -214.18
+      ],
+      "sourceNode": "Residential:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_table_index_000012",
+      "prefab": "ruins_rubble_table",
+      "sourceIndex": 12,
+      "sourcePosition": [
+        246,
+        0,
+        -269.69
+      ],
+      "sourceNode": "Residential:2:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_table_index_000013",
+      "prefab": "ruins_rubble_table",
+      "sourceIndex": 13,
+      "sourcePosition": [
+        570.11,
+        0,
+        -517.99
+      ],
+      "sourceNode": "TheLabyrinth:BG_85:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_table_index_000014",
+      "prefab": "ruins_rubble_table",
+      "sourceIndex": 14,
+      "sourcePosition": [
+        729.1,
+        0,
+        -410.99
+      ],
+      "sourceNode": "TheLabyrinth:1:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_table_index_000015",
+      "prefab": "ruins_rubble_table",
+      "sourceIndex": 15,
+      "sourcePosition": [
+        737.19,
+        0,
+        -537.95
+      ],
+      "sourceNode": "TheLabyrinth:BG_88:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_table_index_000016",
+      "prefab": "ruins_rubble_table",
+      "sourceIndex": 16,
+      "sourcePosition": [
+        733.22,
+        0,
+        -426.28
+      ],
+      "sourceNode": "TheLabyrinth:2:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_table_index_000017",
+      "prefab": "ruins_rubble_table",
+      "sourceIndex": 17,
+      "sourcePosition": [
+        613.11,
+        0,
+        -445.11
+      ],
+      "sourceNode": "TheLabyrinth:4:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_table_index_000018",
+      "prefab": "ruins_rubble_table",
+      "sourceIndex": 18,
+      "sourcePosition": [
+        601.55,
+        0,
+        -413.72
+      ],
+      "sourceNode": "TheLabyrinth:5:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_table_index_000019",
+      "prefab": "ruins_rubble_table",
+      "sourceIndex": 19,
+      "sourcePosition": [
+        593.23,
+        0,
+        -381.71
+      ],
+      "sourceNode": "TheLabyrinth:5:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_table_index_000020",
+      "prefab": "ruins_rubble_table",
+      "sourceIndex": 20,
+      "sourcePosition": [
+        585.46,
+        0,
+        -382.81
+      ],
+      "sourceNode": "TheLabyrinth:6:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_table_index_000021",
+      "prefab": "ruins_rubble_table",
+      "sourceIndex": 21,
+      "sourcePosition": [
+        633.36,
+        0,
+        -341.26
+      ],
+      "sourceNode": "TheLabyrinth:BG_86:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_table_index_000022",
+      "prefab": "ruins_rubble_table",
+      "sourceIndex": 22,
+      "sourcePosition": [
+        646.35,
+        0,
+        -361.71
+      ],
+      "sourceNode": "TheLabyrinth:BG_86:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_table_index_000023",
+      "prefab": "ruins_rubble_table",
+      "sourceIndex": 23,
+      "sourcePosition": [
+        637.47,
+        0,
+        -341.8
+      ],
+      "sourceNode": "TheLabyrinth:BG_86:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000001",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 1,
+      "sourcePosition": [
+        219.68,
+        0,
+        -453.13
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000002",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 2,
+      "sourcePosition": [
+        219.81,
+        0,
+        -449.57
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000003",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 3,
+      "sourcePosition": [
+        222.06,
+        0,
+        -449.13
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000004",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 4,
+      "sourcePosition": [
+        227.81,
+        0,
+        -452.75
+      ],
+      "sourceNode": "AtriumMaze:1:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000005",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 5,
+      "sourcePosition": [
+        228.25,
+        0,
+        -449
+      ],
+      "sourceNode": "AtriumMaze:1:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000006",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 6,
+      "sourcePosition": [
+        122.87,
+        0,
+        -475.69
+      ],
+      "sourceNode": "AtriumMaze:5:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000007",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 7,
+      "sourcePosition": [
+        126.43,
+        0,
+        -475.82
+      ],
+      "sourceNode": "AtriumMaze:5:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000008",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 8,
+      "sourcePosition": [
+        126.87,
+        0,
+        -478.07
+      ],
+      "sourceNode": "AtriumMaze:5:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000009",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 9,
+      "sourcePosition": [
+        123.25,
+        0,
+        -483.82
+      ],
+      "sourceNode": "AtriumMaze:5:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000010",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 10,
+      "sourcePosition": [
+        127,
+        0,
+        -484.25
+      ],
+      "sourceNode": "AtriumMaze:5:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000011",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 11,
+      "sourcePosition": [
+        93,
+        0,
+        -305
+      ],
+      "sourceNode": "Residential2:0:RuinedCity"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000012",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 12,
+      "sourcePosition": [
+        490.18,
+        0,
+        -430.32
+      ],
+      "sourceNode": "MoreAltars:0:BrokenAltar"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000013",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 13,
+      "sourcePosition": [
+        490.25,
+        0,
+        -418.25
+      ],
+      "sourceNode": "MoreAltars:0:BrokenAltar"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000014",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 14,
+      "sourcePosition": [
+        490,
+        0,
+        -410.38
+      ],
+      "sourceNode": "MoreAltars:0:BrokenAltar"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000015",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 15,
+      "sourcePosition": [
+        498,
+        0,
+        -418.13
+      ],
+      "sourceNode": "MoreAltars:0:BrokenAltar"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000016",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 16,
+      "sourcePosition": [
+        497.87,
+        0,
+        -430.25
+      ],
+      "sourceNode": "MoreAltars:0:BrokenAltar"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000017",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 17,
+      "sourcePosition": [
+        497.56,
+        0,
+        -434.5
+      ],
+      "sourceNode": "MoreAltars:0:BrokenAltar"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000018",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 18,
+      "sourcePosition": [
+        502.18,
+        0,
+        -381.69
+      ],
+      "sourceNode": "Sacred:2:BrokenAltar"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000019",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 19,
+      "sourcePosition": [
+        502.25,
+        0,
+        -393.75
+      ],
+      "sourceNode": "Sacred:2:BrokenAltar"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000020",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 20,
+      "sourcePosition": [
+        502,
+        0,
+        -401.63
+      ],
+      "sourceNode": "MoreAltars:1:PitRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000021",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 21,
+      "sourcePosition": [
+        510,
+        0,
+        -393.88
+      ],
+      "sourceNode": "MoreAltars:1:PitRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000022",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 22,
+      "sourcePosition": [
+        509.87,
+        0,
+        -381.75
+      ],
+      "sourceNode": "Sacred:2:BrokenAltar"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000023",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 23,
+      "sourcePosition": [
+        509.56,
+        0,
+        -377.5
+      ],
+      "sourceNode": "Sacred:2:BrokenAltar"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000024",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 24,
+      "sourcePosition": [
+        577.81,
+        0,
+        -265.69
+      ],
+      "sourceNode": "MuddySacred:1:BrokenAltar"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000025",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 25,
+      "sourcePosition": [
+        577.75,
+        0,
+        -277.75
+      ],
+      "sourceNode": "MuddySacred:1:BrokenAltar"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000026",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 26,
+      "sourcePosition": [
+        578,
+        0,
+        -285.63
+      ],
+      "sourceNode": "MuddySacred:1:BrokenAltar"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000027",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 27,
+      "sourcePosition": [
+        570,
+        0,
+        -277.88
+      ],
+      "sourceNode": "MuddySacred:1:BrokenAltar"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000028",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 28,
+      "sourcePosition": [
+        570.12,
+        0,
+        -265.75
+      ],
+      "sourceNode": "MuddySacred:1:BrokenAltar"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000029",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 29,
+      "sourcePosition": [
+        570.43,
+        0,
+        -261.5
+      ],
+      "sourceNode": "MuddySacred:3:SacredBarracks"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000030",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 30,
+      "sourcePosition": [
+        89.54,
+        0,
+        -206.56
+      ],
+      "sourceNode": "Residential2:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000031",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 31,
+      "sourcePosition": [
+        186.49,
+        0,
+        -153.2
+      ],
+      "sourceNode": "Residential:4:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000032",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 32,
+      "sourcePosition": [
+        142.98,
+        0,
+        -186.63
+      ],
+      "sourceNode": "Residential:4:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000033",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 33,
+      "sourcePosition": [
+        145.06,
+        0,
+        -214.42
+      ],
+      "sourceNode": "Residential:4:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000034",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 34,
+      "sourcePosition": [
+        210.99,
+        0,
+        -162.23
+      ],
+      "sourceNode": "Residential:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000035",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 35,
+      "sourcePosition": [
+        210.32,
+        0,
+        -185.3
+      ],
+      "sourceNode": "Residential:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000036",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 36,
+      "sourcePosition": [
+        218.35,
+        0,
+        -218.06
+      ],
+      "sourceNode": "Residential:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000037",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 37,
+      "sourcePosition": [
+        161.94,
+        0,
+        -225.95
+      ],
+      "sourceNode": "Residential:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000038",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 38,
+      "sourcePosition": [
+        194.91,
+        0,
+        -254.45
+      ],
+      "sourceNode": "Residential:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000039",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 39,
+      "sourcePosition": [
+        193.5,
+        0,
+        -225.22
+      ],
+      "sourceNode": "Residential:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000040",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 40,
+      "sourcePosition": [
+        657.58,
+        0,
+        -438.76
+      ],
+      "sourceNode": "TheLabyrinth:BG_87:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000041",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 41,
+      "sourcePosition": [
+        757.51,
+        0,
+        -398.8
+      ],
+      "sourceNode": "TheLabyrinth:BG_89:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000042",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 42,
+      "sourcePosition": [
+        709.45,
+        0,
+        -342.62
+      ],
+      "sourceNode": "TheLabyrinth:BG_89:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000043",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 43,
+      "sourcePosition": [
+        574.15,
+        0,
+        -521.07
+      ],
+      "sourceNode": "TheLabyrinth:BG_85:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000044",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 44,
+      "sourcePosition": [
+        697.68,
+        0,
+        -369.25
+      ],
+      "sourceNode": "TheLabyrinth:1:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000045",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 45,
+      "sourcePosition": [
+        701.22,
+        0,
+        -578.48
+      ],
+      "sourceNode": "TheLabyrinth:BG_88:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000046",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 46,
+      "sourcePosition": [
+        645.88,
+        0,
+        -429.77
+      ],
+      "sourceNode": "TheLabyrinth:4:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000047",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 47,
+      "sourcePosition": [
+        601.66,
+        0,
+        -370.43
+      ],
+      "sourceNode": "TheLabyrinth:5:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_index_000048",
+      "prefab": "ruins_rubble_chair",
+      "sourceIndex": 48,
+      "sourcePosition": [
+        697,
+        0,
+        -317.86
+      ],
+      "sourceNode": "TheLabyrinth:BG_86:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_index_000001",
+      "prefab": "ruins_rubble_vase",
+      "sourceIndex": 1,
+      "sourcePosition": [
+        295.62,
+        0,
+        -205.75
+      ],
+      "sourceNode": "Residential:BG_61:RuinedCity"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_index_000002",
+      "prefab": "ruins_rubble_vase",
+      "sourceIndex": 2,
+      "sourcePosition": [
+        122.93,
+        0,
+        -231.82
+      ],
+      "sourceNode": "Residential2:1:RuinedCity"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_index_000003",
+      "prefab": "ruins_rubble_vase",
+      "sourceIndex": 3,
+      "sourcePosition": [
+        369.05,
+        0,
+        -314.4
+      ],
+      "sourceNode": "Sacred:7:Spiral"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_index_000004",
+      "prefab": "ruins_rubble_vase",
+      "sourceIndex": 4,
+      "sourcePosition": [
+        364.2,
+        0,
+        -319.62
+      ],
+      "sourceNode": "Sacred:7:Spiral"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_index_000005",
+      "prefab": "ruins_rubble_vase",
+      "sourceIndex": 5,
+      "sourcePosition": [
+        106.2,
+        0,
+        -202.46
+      ],
+      "sourceNode": "Residential2:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_index_000006",
+      "prefab": "ruins_rubble_vase",
+      "sourceIndex": 6,
+      "sourcePosition": [
+        145.68,
+        0,
+        -206.81
+      ],
+      "sourceNode": "Residential:4:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_index_000007",
+      "prefab": "ruins_rubble_vase",
+      "sourceIndex": 7,
+      "sourcePosition": [
+        217.66,
+        0,
+        -233.82
+      ],
+      "sourceNode": "Residential:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_index_000008",
+      "prefab": "ruins_rubble_vase",
+      "sourceIndex": 8,
+      "sourcePosition": [
+        205.4,
+        0,
+        -206.93
+      ],
+      "sourceNode": "Residential:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_index_000009",
+      "prefab": "ruins_rubble_vase",
+      "sourceIndex": 9,
+      "sourcePosition": [
+        225.43,
+        0,
+        -282.36
+      ],
+      "sourceNode": "Residential:2:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_index_000010",
+      "prefab": "ruins_rubble_vase",
+      "sourceIndex": 10,
+      "sourcePosition": [
+        249.88,
+        0,
+        -270.01
+      ],
+      "sourceNode": "Residential:2:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_index_000011",
+      "prefab": "ruins_rubble_vase",
+      "sourceIndex": 11,
+      "sourcePosition": [
+        218.38,
+        0,
+        -274.02
+      ],
+      "sourceNode": "Residential:2:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_index_000012",
+      "prefab": "ruins_rubble_vase",
+      "sourceIndex": 12,
+      "sourcePosition": [
+        221.78,
+        0,
+        -273.34
+      ],
+      "sourceNode": "Residential:2:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_index_000013",
+      "prefab": "ruins_rubble_vase",
+      "sourceIndex": 13,
+      "sourcePosition": [
+        614.88,
+        0,
+        -534.53
+      ],
+      "sourceNode": "TheLabyrinth:BG_85:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_index_000014",
+      "prefab": "ruins_rubble_vase",
+      "sourceIndex": 14,
+      "sourcePosition": [
+        645.74,
+        0,
+        -477.64
+      ],
+      "sourceNode": "TheLabyrinth:BG_85:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_index_000015",
+      "prefab": "ruins_rubble_vase",
+      "sourceIndex": 15,
+      "sourcePosition": [
+        685.06,
+        0,
+        -369.34
+      ],
+      "sourceNode": "TheLabyrinth:1:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_index_000016",
+      "prefab": "ruins_rubble_vase",
+      "sourceIndex": 16,
+      "sourcePosition": [
+        678.29,
+        0,
+        -489.7
+      ],
+      "sourceNode": "TheLabyrinth:BG_88:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_index_000017",
+      "prefab": "ruins_rubble_vase",
+      "sourceIndex": 17,
+      "sourcePosition": [
+        721.54,
+        0,
+        -557.69
+      ],
+      "sourceNode": "TheLabyrinth:BG_88:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_index_000018",
+      "prefab": "ruins_rubble_vase",
+      "sourceIndex": 18,
+      "sourcePosition": [
+        678.17,
+        0,
+        -538.26
+      ],
+      "sourceNode": "TheLabyrinth:BG_88:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_index_000019",
+      "prefab": "ruins_rubble_vase",
+      "sourceIndex": 19,
+      "sourcePosition": [
+        674.01,
+        0,
+        -502.18
+      ],
+      "sourceNode": "TheLabyrinth:BG_88:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_index_000020",
+      "prefab": "ruins_rubble_vase",
+      "sourceIndex": 20,
+      "sourcePosition": [
+        669.02,
+        0,
+        -525.06
+      ],
+      "sourceNode": "TheLabyrinth:BG_88:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_index_000021",
+      "prefab": "ruins_rubble_vase",
+      "sourceIndex": 21,
+      "sourcePosition": [
+        722.09,
+        0,
+        -542.16
+      ],
+      "sourceNode": "TheLabyrinth:BG_88:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_index_000022",
+      "prefab": "ruins_rubble_vase",
+      "sourceIndex": 22,
+      "sourcePosition": [
+        674.53,
+        0,
+        -538.62
+      ],
+      "sourceNode": "TheLabyrinth:BG_88:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_index_000023",
+      "prefab": "ruins_rubble_vase",
+      "sourceIndex": 23,
+      "sourcePosition": [
+        721.44,
+        0,
+        -418.81
+      ],
+      "sourceNode": "TheLabyrinth:2:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_index_000024",
+      "prefab": "ruins_rubble_vase",
+      "sourceIndex": 24,
+      "sourcePosition": [
+        642.47,
+        0,
+        -430.93
+      ],
+      "sourceNode": "TheLabyrinth:4:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_index_000025",
+      "prefab": "ruins_rubble_vase",
+      "sourceIndex": 25,
+      "sourcePosition": [
+        638.12,
+        0,
+        -461.97
+      ],
+      "sourceNode": "TheLabyrinth:4:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_index_000026",
+      "prefab": "ruins_rubble_vase",
+      "sourceIndex": 26,
+      "sourcePosition": [
+        762.75,
+        0,
+        -441.67
+      ],
+      "sourceNode": "TheLabyrinth:BG_90:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_index_000027",
+      "prefab": "ruins_rubble_vase",
+      "sourceIndex": 27,
+      "sourcePosition": [
+        766.52,
+        0,
+        -494.77
+      ],
+      "sourceNode": "TheLabyrinth:BG_90:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_index_000028",
+      "prefab": "ruins_rubble_vase",
+      "sourceIndex": 28,
+      "sourcePosition": [
+        786.72,
+        0,
+        -489.97
+      ],
+      "sourceNode": "TheLabyrinth:BG_90:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_index_000029",
+      "prefab": "ruins_rubble_vase",
+      "sourceIndex": 29,
+      "sourcePosition": [
+        766.09,
+        0,
+        -441.31
+      ],
+      "sourceNode": "TheLabyrinth:BG_90:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_index_000030",
+      "prefab": "ruins_rubble_vase",
+      "sourceIndex": 30,
+      "sourcePosition": [
+        745.69,
+        0,
+        -494.54
+      ],
+      "sourceNode": "TheLabyrinth:BG_90:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_index_000031",
+      "prefab": "ruins_rubble_vase",
+      "sourceIndex": 31,
+      "sourcePosition": [
+        806.03,
+        0,
+        -466.2
+      ],
+      "sourceNode": "TheLabyrinth:BG_90:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_index_000032",
+      "prefab": "ruins_rubble_vase",
+      "sourceIndex": 32,
+      "sourcePosition": [
+        749.58,
+        0,
+        -489.58
+      ],
+      "sourceNode": "TheLabyrinth:BG_90:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_index_000033",
+      "prefab": "ruins_rubble_vase",
+      "sourceIndex": 33,
+      "sourcePosition": [
+        573.98,
+        0,
+        -381.67
+      ],
+      "sourceNode": "TheLabyrinth:6:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_index_000034",
+      "prefab": "ruins_rubble_vase",
+      "sourceIndex": 34,
+      "sourcePosition": [
+        557.39,
+        0,
+        -373.1
+      ],
+      "sourceNode": "TheLabyrinth:6:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_index_000035",
+      "prefab": "ruins_rubble_vase",
+      "sourceIndex": 35,
+      "sourcePosition": [
+        625.75,
+        0,
+        -329.35
+      ],
+      "sourceNode": "TheLabyrinth:BG_86:Labyrinth"
     },
     {
       "id": "dst_04E26ADB66396E8D_archive_centipede_husk_index_000001",

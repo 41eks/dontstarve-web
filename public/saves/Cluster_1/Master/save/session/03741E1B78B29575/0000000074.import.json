@@ -361,6 +361,21 @@
     "statueglommer",
     "atrium_gate",
     "atrium_statue",
+    "ruinsrelic_table",
+    "ruinsrelic_chair",
+    "ruinsrelic_vase",
+    "ruinsrelic_chipbowl",
+    "ruinsrelic_bowl",
+    "ruinsrelic_plate",
+    "ruins_table",
+    "ruins_chair",
+    "ruins_vase",
+    "ruins_chipbowl",
+    "ruins_bowl",
+    "ruins_plate",
+    "ruins_rubble_table",
+    "ruins_rubble_chair",
+    "ruins_rubble_vase",
     "ruins_statue_mage",
     "ruins_statue_mage_nogem",
     "ruins_statue_head",
@@ -604,6 +619,66 @@
       "imported": 0
     },
     "atrium_statue": {
+      "source": 0,
+      "imported": 0
+    },
+    "ruinsrelic_table": {
+      "source": 0,
+      "imported": 0
+    },
+    "ruinsrelic_chair": {
+      "source": 0,
+      "imported": 0
+    },
+    "ruinsrelic_vase": {
+      "source": 0,
+      "imported": 0
+    },
+    "ruinsrelic_chipbowl": {
+      "source": 0,
+      "imported": 0
+    },
+    "ruinsrelic_bowl": {
+      "source": 0,
+      "imported": 0
+    },
+    "ruinsrelic_plate": {
+      "source": 0,
+      "imported": 0
+    },
+    "ruins_table": {
+      "source": 0,
+      "imported": 0
+    },
+    "ruins_chair": {
+      "source": 0,
+      "imported": 0
+    },
+    "ruins_vase": {
+      "source": 0,
+      "imported": 0
+    },
+    "ruins_chipbowl": {
+      "source": 0,
+      "imported": 0
+    },
+    "ruins_bowl": {
+      "source": 0,
+      "imported": 0
+    },
+    "ruins_plate": {
+      "source": 0,
+      "imported": 0
+    },
+    "ruins_rubble_table": {
+      "source": 0,
+      "imported": 0
+    },
+    "ruins_rubble_chair": {
+      "source": 0,
+      "imported": 0
+    },
+    "ruins_rubble_vase": {
       "source": 0,
       "imported": 0
     },

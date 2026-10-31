@@ -26,6 +26,8 @@ export interface SavedEntity {
   id: string;
   transform: SavedTransform;
   components: {
+    ruinsRelic?: import('@dontstarve-web/prefab/ruinsrelic').RuinsRelicSaveState;
+    inventoryitemmoisture?: import('@dontstarve-web/prefab/ruinsrelic').RelicMoistureSave;
     building?: { state: 'idle' | 'closed' | 'open'; skinId?: string; burnt?: true };
     container?: SavedContainer;
     stewer?: import('@dontstarve-web/prefab/cook_pot').CookPotSaveState;

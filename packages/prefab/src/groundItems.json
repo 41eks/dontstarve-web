@@ -1995,6 +1995,78 @@
         "donotautopick"
       ]
     },
+    "ruinsrelic_plate": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/ruinsrelic.lua",
+      "name": "仿制遗物碟子",
+      "icon": "ruinsrelic_plate.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "ruins_plate.zip",
+      "buildArchives": [
+        "ruins_plate.zip"
+      ],
+      "bank": "ruins_plate",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": [
+        "furnituredecor"
+      ]
+    },
+    "ruinsrelic_bowl": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/ruinsrelic.lua",
+      "name": "仿制遗物碗",
+      "icon": "ruinsrelic_bowl.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "ruins_bowl.zip",
+      "buildArchives": [
+        "ruins_bowl.zip"
+      ],
+      "bank": "ruins_bowl",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": [
+        "furnituredecor"
+      ]
+    },
+    "ruinsrelic_chipbowl": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/ruinsrelic.lua",
+      "name": "仿制遗物盘子",
+      "icon": "ruinsrelic_chipbowl.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "ruins_chipbowl.zip",
+      "buildArchives": [
+        "ruins_chipbowl.zip"
+      ],
+      "bank": "ruins_chipbowl",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": [
+        "furnituredecor"
+      ]
+    },
+    "ruinsrelic_vase": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/ruinsrelic.lua",
+      "name": "仿制遗物花瓶",
+      "icon": "ruinsrelic_vase.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "ruins_vase.zip",
+      "buildArchives": [
+        "ruins_vase.zip"
+      ],
+      "bank": "ruins_vase",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": [
+        "furnituredecor"
+      ]
+    },
     "panflute": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/panflute.lua",
       "name": "排箫",

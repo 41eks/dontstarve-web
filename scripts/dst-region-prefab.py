@@ -26,6 +26,21 @@ ENTITY_WHITELIST = {
     'statueglommer': WORKABLE['statueglommer_components'],
     'atrium_gate': STRUCTURE['atrium_gate_components'],
     'atrium_statue': STRUCTURE['atrium_statue_components'],
+    'ruinsrelic_table': STRUCTURE['ruins_relic_components']('ruinsrelic_table'),
+    'ruinsrelic_chair': STRUCTURE['ruins_relic_components']('ruinsrelic_chair'),
+    'ruinsrelic_vase': STRUCTURE['ruins_relic_components']('ruinsrelic_vase'),
+    'ruinsrelic_chipbowl': STRUCTURE['ruins_relic_components']('ruinsrelic_chipbowl'),
+    'ruinsrelic_bowl': STRUCTURE['ruins_relic_components']('ruinsrelic_bowl'),
+    'ruinsrelic_plate': STRUCTURE['ruins_relic_components']('ruinsrelic_plate'),
+    'ruins_table': STRUCTURE['ruins_relic_components']('ruins_table'),
+    'ruins_chair': STRUCTURE['ruins_relic_components']('ruins_chair'),
+    'ruins_vase': STRUCTURE['ruins_relic_components']('ruins_vase'),
+    'ruins_chipbowl': STRUCTURE['ruins_relic_components']('ruins_chipbowl'),
+    'ruins_bowl': STRUCTURE['ruins_relic_components']('ruins_bowl'),
+    'ruins_plate': STRUCTURE['ruins_relic_components']('ruins_plate'),
+    'ruins_rubble_table': STRUCTURE['ruins_relic_components']('ruins_rubble_table'),
+    'ruins_rubble_chair': STRUCTURE['ruins_relic_components']('ruins_rubble_chair'),
+    'ruins_rubble_vase': STRUCTURE['ruins_relic_components']('ruins_rubble_vase'),
     'ruins_statue_mage': WORKABLE['ruins_statue_gem_components']('ruins_statue_mage'),
     'ruins_statue_mage_nogem': WORKABLE['ruins_statue_nogem_components']('ruins_statue_mage_nogem'),
     'ruins_statue_head': WORKABLE['ruins_statue_gem_components']('ruins_statue_head'),
@@ -91,7 +106,7 @@ ENTITY_WHITELIST = {
 # Converters that also receive the record's skin and item converters.
 CONTAINER_PREFABS = {'treasurechest', 'pandoraschest'}
 ITEM_CONTEXT_PREFABS = {*CONTAINER_PREFABS, 'moonbase'}
-RECORD_CONTEXT_PREFABS = {*ITEM_CONTEXT_PREFABS, 'researchlab', 'researchlab2', 'researchlab3', 'researchlab4'}
+RECORD_CONTEXT_PREFABS = {'ruinsrelic_chair', *ITEM_CONTEXT_PREFABS, 'researchlab', 'researchlab2', 'researchlab3', 'researchlab4'}
 # Converters that also receive the record's project position and a converter for saved source positions.
 POSITION_CONTEXT_PREFABS = {'beefalo', 'dragonfly'}
 

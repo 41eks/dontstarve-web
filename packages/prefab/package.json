@@ -54,6 +54,7 @@
     "./statueglommer": "./src/statueglommer.ts",
     "./atrium_gate": "./src/atrium_gate.ts",
     "./ruins_statue_mage": "./src/ruins_statue_mage.ts",
+    "./ruinsrelic": "./src/ruinsrelic.ts",
     "./atrium_statue": "./src/atrium_statue.ts",
     "./chessjunk": "./src/chessjunk.ts",
     "./archive_centipede": "./src/archive_centipede.ts",

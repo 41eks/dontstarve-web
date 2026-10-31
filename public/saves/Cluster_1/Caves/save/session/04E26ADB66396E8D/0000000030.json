@@ -230118,6 +230118,2951 @@
           "components": {}
         }
       ],
+      "ruins_table": [
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_table_id_113737",
+          "transform": {
+            "position": [
+              711.0,
+              0.0,
+              1293.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 72.813446786444,
+              "maximum": 91.016808483055
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_table_id_113738",
+          "transform": {
+            "position": [
+              423.0,
+              0.0,
+              1371.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 75.513311316146,
+              "maximum": 94.391639145182
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_table_id_113739",
+          "transform": {
+            "position": [
+              -2229.0,
+              0.0,
+              426.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 68.493665973771,
+              "maximum": 85.617082467214
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_table_id_113740",
+          "transform": {
+            "position": [
+              -2204.46,
+              0.0,
+              -75.36
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 79.365272721128,
+              "maximum": 99.20659090141
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_table_id_113741",
+          "transform": {
+            "position": [
+              -2093.07,
+              0.0,
+              45.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 74.501001310186,
+              "maximum": 93.126251637732
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_table_id_113742",
+          "transform": {
+            "position": [
+              -2281.71,
+              0.0,
+              177.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 69.920734870695,
+              "maximum": 87.400918588368
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_table_id_113743",
+          "transform": {
+            "position": [
+              -2318.82,
+              0.0,
+              252.21
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 71.543240014357,
+              "maximum": 89.429050017947
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_table_id_113744",
+          "transform": {
+            "position": [
+              1162.26,
+              0.0,
+              915.15
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 42.712765762283,
+              "maximum": 78.390957202853
+            }
+          }
+        }
+      ],
+      "ruins_chair": [
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_chair_id_103535",
+          "transform": {
+            "position": [
+              940.11,
+              0.0,
+              611.82
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 84.157009295224,
+              "maximum": 105.19626161903
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_chair_id_103536",
+          "transform": {
+            "position": [
+              -2220.96,
+              0.0,
+              421.14
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 75.857674662922,
+              "maximum": 94.822093328652
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_chair_id_103537",
+          "transform": {
+            "position": [
+              -2236.71,
+              0.0,
+              419.25
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 56.732092879883,
+              "maximum": 70.915116099854
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_chair_id_103538",
+          "transform": {
+            "position": [
+              -2206.32,
+              0.0,
+              -66.75
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 70.762525472502,
+              "maximum": 88.453156840627
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_chair_id_103539",
+          "transform": {
+            "position": [
+              -2237.82,
+              0.0,
+              -67.11
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 58.913139224731,
+              "maximum": 73.641424030913
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_chair_id_103540",
+          "transform": {
+            "position": [
+              -2098.89,
+              0.0,
+              36.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 76.507067200846,
+              "maximum": 95.633834001057
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_chair_id_103541",
+          "transform": {
+            "position": [
+              -2100.75,
+              0.0,
+              52.71
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 83.160534015661,
+              "maximum": 103.95066751958
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_chair_id_103542",
+          "transform": {
+            "position": [
+              -2291.46,
+              0.0,
+              182.07
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 78.499288780265,
+              "maximum": 98.124110975332
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_chair_id_103543",
+          "transform": {
+            "position": [
+              -2269.5,
+              0.0,
+              233.64
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 63.626573683607,
+              "maximum": 79.533217104509
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_chair_id_103544",
+          "transform": {
+            "position": [
+              427.5,
+              0.0,
+              651.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 75.7778858663,
+              "maximum": 94.722357332875
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_chair_id_103545",
+          "transform": {
+            "position": [
+              1517.79,
+              0.0,
+              1253.64
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 63.879003370153,
+              "maximum": 79.848754212691
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_chair_id_103546",
+          "transform": {
+            "position": [
+              1541.79,
+              0.0,
+              1253.82
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 71.815996777223,
+              "maximum": 89.769995971529
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_chair_id_103547",
+          "transform": {
+            "position": [
+              1553.79,
+              0.0,
+              1062.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 81.436867421827,
+              "maximum": 101.79608427728
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_chair_id_103548",
+          "transform": {
+            "position": [
+              1554.36,
+              0.0,
+              1097.82
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 80.170812776352,
+              "maximum": 100.21351597044
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_chair_id_103549",
+          "transform": {
+            "position": [
+              1577.79,
+              0.0,
+              1134.57
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 62.218541586357,
+              "maximum": 77.773176982946
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_chair_id_103550",
+          "transform": {
+            "position": [
+              1577.79,
+              0.0,
+              1062.21
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 81.864087937834,
+              "maximum": 102.33010992229
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_chair_id_103551",
+          "transform": {
+            "position": [
+              1782.18,
+              0.0,
+              714.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 79.389585314176,
+              "maximum": 99.236981642721
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_chair_id_103552",
+          "transform": {
+            "position": [
+              1781.61,
+              0.0,
+              749.82
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 70.578787181196,
+              "maximum": 88.223483976494
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_chair_id_103553",
+          "transform": {
+            "position": [
+              1758.18,
+              0.0,
+              786.57
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 76.177508433391,
+              "maximum": 95.221885541738
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_chair_id_103554",
+          "transform": {
+            "position": [
+              1758.18,
+              0.0,
+              714.21
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 84.282090052097,
+              "maximum": 105.35261256512
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_chair_id_103555",
+          "transform": {
+            "position": [
+              1145.25,
+              0.0,
+              836.76
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 68.483621942923,
+              "maximum": 85.604527428654
+            }
+          }
+        }
+      ],
+      "ruins_vase": [
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_vase_id_108829",
+          "transform": {
+            "position": [
+              -2226.21,
+              0.0,
+              414.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 57.538831420601,
+              "maximum": 71.923539275751
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_vase_id_108830",
+          "transform": {
+            "position": [
+              -2178.0,
+              0.0,
+              -90.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 60.408082128597,
+              "maximum": 75.510102660747
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_vase_id_108831",
+          "transform": {
+            "position": [
+              -2177.82,
+              0.0,
+              -42.18
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 87.683812275455,
+              "maximum": 109.60476534432
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_vase_id_108832",
+          "transform": {
+            "position": [
+              -2240.25,
+              0.0,
+              -48.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 60.54668330507,
+              "maximum": 75.683354131338
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_vase_id_108833",
+          "transform": {
+            "position": [
+              -2234.07,
+              0.0,
+              -42.36
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 81.595302423834,
+              "maximum": 101.99412802979
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_vase_id_108834",
+          "transform": {
+            "position": [
+              -2105.64,
+              0.0,
+              42.21
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 56.353744044982,
+              "maximum": 70.442180056228
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_vase_id_108835",
+          "transform": {
+            "position": [
+              -2242.71,
+              0.0,
+              99.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 84.404639623222,
+              "maximum": 105.50579952903
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_vase_id_108836",
+          "transform": {
+            "position": [
+              -2249.46,
+              0.0,
+              101.07
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 63.763096960206,
+              "maximum": 79.703871200258
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_vase_id_108837",
+          "transform": {
+            "position": [
+              -2202.0,
+              0.0,
+              141.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 71.097040597139,
+              "maximum": 88.871300746424
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_vase_id_108838",
+          "transform": {
+            "position": [
+              -2330.25,
+              0.0,
+              180.75
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 59.887813926648,
+              "maximum": 74.85976740831
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_vase_id_108839",
+          "transform": {
+            "position": [
+              -2335.89,
+              0.0,
+              226.71
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 87.59824030837,
+              "maximum": 109.49780038546
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_vase_id_108840",
+          "transform": {
+            "position": [
+              -2310.0,
+              0.0,
+              255.57
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 85.175247117219,
+              "maximum": 106.46905889652
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_vase_id_108841",
+          "transform": {
+            "position": [
+              1153.95,
+              0.0,
+              881.07
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 69.577154691698,
+              "maximum": 86.971443364623
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_vase_id_108842",
+          "transform": {
+            "position": [
+              1154.64,
+              0.0,
+              900.6
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 80.923757879279,
+              "maximum": 101.1546973491
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_vase_id_108843",
+          "transform": {
+            "position": [
+              1208.13,
+              0.0,
+              844.65
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 86.257374330949,
+              "maximum": 107.82171791369
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_vase_id_108844",
+          "transform": {
+            "position": [
+              1142.79,
+              0.0,
+              892.77
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 69.430002275256,
+              "maximum": 86.78750284407
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_vase_id_108845",
+          "transform": {
+            "position": [
+              1190.43,
+              0.0,
+              839.94
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 72.465085025985,
+              "maximum": 90.581356282481
+            }
+          }
+        }
+      ],
+      "ruins_chipbowl": [
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_chipbowl_id_107498",
+          "transform": {
+            "position": [
+              1142.76,
+              0.0,
+              883.32
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 74.825803828152,
+              "maximum": 93.53225478519
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_chipbowl_id_107499",
+          "transform": {
+            "position": [
+              1161.6,
+              0.0,
+              919.92
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 41.143977792269,
+              "maximum": 76.429972240336
+            }
+          }
+        }
+      ],
+      "ruins_bowl": [
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_bowl_id_102406",
+          "transform": {
+            "position": [
+              1187.1,
+              0.0,
+              878.76
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 86.742907635575,
+              "maximum": 108.42863454447
+            }
+          }
+        }
+      ],
+      "ruins_plate": [
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_plate_id_101129",
+          "transform": {
+            "position": [
+              1191.42,
+              0.0,
+              900.66
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 79.478570034606,
+              "maximum": 99.348212543258
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_plate_id_101130",
+          "transform": {
+            "position": [
+              1160.19,
+              0.0,
+              918.42
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 50.579164687213,
+              "maximum": 88.223955859017
+            }
+          }
+        }
+      ],
+      "ruins_rubble_table": [
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_table_id_110991",
+          "transform": {
+            "position": [
+              729.0,
+              0.0,
+              1293.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 15.249468744092,
+              "maximum": 76.24734372046
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_table_id_110992",
+          "transform": {
+            "position": [
+              423.0,
+              0.0,
+              1389.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 21.117435758728,
+              "maximum": 105.58717879364
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_table_id_110993",
+          "transform": {
+            "position": [
+              402.0,
+              0.0,
+              669.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 21.313277743597,
+              "maximum": 106.56638871798
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_table_id_110994",
+          "transform": {
+            "position": [
+              1215.81,
+              0.0,
+              837.24
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 19.349197964498,
+              "maximum": 96.745989822491
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_table_id_110995",
+          "transform": {
+            "position": [
+              354.3,
+              0.0,
+              535.83
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 18.66619298902,
+              "maximum": 93.330964945101
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_table_id_110996",
+          "transform": {
+            "position": [
+              615.45,
+              0.0,
+              416.43
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 17.898277540668,
+              "maximum": 89.491387703338
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_table_id_110997",
+          "transform": {
+            "position": [
+              629.76,
+              0.0,
+              642.06
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 21.272506659681,
+              "maximum": 106.36253329841
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_table_id_110998",
+          "transform": {
+            "position": [
+              640.32,
+              0.0,
+              579.84
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 18.704662944354,
+              "maximum": 93.523314721771
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_table_id_110999",
+          "transform": {
+            "position": [
+              616.05,
+              0.0,
+              642.06
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 14.318637160659,
+              "maximum": 71.593185803293
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_table_id_111000",
+          "transform": {
+            "position": [
+              629.91,
+              0.0,
+              548.34
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 20.186821650292,
+              "maximum": 100.93410825146
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_table_id_111001",
+          "transform": {
+            "position": [
+              677.04,
+              0.0,
+              582.54
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 16.143166333936,
+              "maximum": 80.71583166968
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_table_id_111002",
+          "transform": {
+            "position": [
+              786.0,
+              0.0,
+              749.07
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 17.133398390173,
+              "maximum": 85.666991950867
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_table_id_111003",
+          "transform": {
+            "position": [
+              1758.33,
+              0.0,
+              1493.97
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 20.105794367871,
+              "maximum": 100.52897183935
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_table_id_111004",
+          "transform": {
+            "position": [
+              2235.3,
+              0.0,
+              1172.97
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 16.192822268743,
+              "maximum": 80.964111343716
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_table_id_111005",
+          "transform": {
+            "position": [
+              2259.57,
+              0.0,
+              1553.85
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 18.798962607234,
+              "maximum": 93.994813036172
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_table_id_111006",
+          "transform": {
+            "position": [
+              2247.66,
+              0.0,
+              1218.84
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 21.580524967886,
+              "maximum": 107.90262483943
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_table_id_111007",
+          "transform": {
+            "position": [
+              1887.33,
+              0.0,
+              1275.33
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 21.57893317928,
+              "maximum": 107.8946658964
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_table_id_111008",
+          "transform": {
+            "position": [
+              1852.65,
+              0.0,
+              1181.16
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 21.272252579982,
+              "maximum": 106.36126289991
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_table_id_111009",
+          "transform": {
+            "position": [
+              1827.69,
+              0.0,
+              1085.13
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 21.647766949527,
+              "maximum": 108.23883474763
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_table_id_111010",
+          "transform": {
+            "position": [
+              1804.38,
+              0.0,
+              1088.43
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 17.762286272776,
+              "maximum": 88.81143136388
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_table_id_111011",
+          "transform": {
+            "position": [
+              1948.08,
+              0.0,
+              963.78
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 14.840508684712,
+              "maximum": 74.202543423558
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_table_id_111012",
+          "transform": {
+            "position": [
+              1987.05,
+              0.0,
+              1025.13
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 18.523008824448,
+              "maximum": 92.615044122239
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_table_id_111013",
+          "transform": {
+            "position": [
+              1960.41,
+              0.0,
+              965.4
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 14.835053252251,
+              "maximum": 74.175266261253
+            }
+          }
+        }
+      ],
+      "ruins_rubble_chair": [
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103632",
+          "transform": {
+            "position": [
+              707.04,
+              0.0,
+              1299.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 20.294819663813,
+              "maximum": 101.47409831907
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103633",
+          "transform": {
+            "position": [
+              707.43,
+              0.0,
+              1288.71
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 21.75288821006,
+              "maximum": 108.7644410503
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103634",
+          "transform": {
+            "position": [
+              714.18,
+              0.0,
+              1287.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 16.551218936814,
+              "maximum": 82.756094684069
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103635",
+          "transform": {
+            "position": [
+              731.43,
+              0.0,
+              1298.25
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 19.466903486631,
+              "maximum": 97.334517433153
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103636",
+          "transform": {
+            "position": [
+              732.75,
+              0.0,
+              1287.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 16.039728271319,
+              "maximum": 80.198641356593
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103637",
+          "transform": {
+            "position": [
+              416.61,
+              0.0,
+              1367.07
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 20.060576764415,
+              "maximum": 100.30288382208
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103638",
+          "transform": {
+            "position": [
+              427.29,
+              0.0,
+              1367.46
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 18.7561173804,
+              "maximum": 93.780586902001
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103639",
+          "transform": {
+            "position": [
+              428.61,
+              0.0,
+              1374.21
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 14.560811815914,
+              "maximum": 72.80405907957
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103640",
+          "transform": {
+            "position": [
+              417.75,
+              0.0,
+              1391.46
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 15.881028980455,
+              "maximum": 79.405144902273
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103641",
+          "transform": {
+            "position": [
+              429.0,
+              0.0,
+              1392.75
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 16.837853445401,
+              "maximum": 84.189267227005
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103642",
+          "transform": {
+            "position": [
+              327.0,
+              0.0,
+              855.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 20.798283116612,
+              "maximum": 103.99141558306
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103643",
+          "transform": {
+            "position": [
+              1518.75,
+              0.0,
+              1194.75
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 17.641812038524,
+              "maximum": 88.209060192622
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103644",
+          "transform": {
+            "position": [
+              1518.0,
+              0.0,
+              1171.14
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 21.366407925116,
+              "maximum": 106.83203962558
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103645",
+          "transform": {
+            "position": [
+              1541.61,
+              0.0,
+              1230.75
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 20.458424076079,
+              "maximum": 102.2921203804
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103646",
+          "transform": {
+            "position": [
+              1540.68,
+              0.0,
+              1243.5
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 14.057702312259,
+              "maximum": 70.288511561297
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103647",
+          "transform": {
+            "position": [
+              1554.54,
+              0.0,
+              1085.07
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 15.242967911354,
+              "maximum": 76.21483955677
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103648",
+          "transform": {
+            "position": [
+              1554.75,
+              0.0,
+              1121.25
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 14.110273856695,
+              "maximum": 70.551369283477
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103649",
+          "transform": {
+            "position": [
+              1578.0,
+              0.0,
+              1121.64
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 17.599980047811,
+              "maximum": 87.999900239054
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103650",
+          "transform": {
+            "position": [
+              1577.61,
+              0.0,
+              1085.25
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 20.559211242609,
+              "maximum": 102.79605621304
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103651",
+          "transform": {
+            "position": [
+              1576.68,
+              0.0,
+              1072.5
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 16.281155214245,
+              "maximum": 81.405776071224
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103652",
+          "transform": {
+            "position": [
+              1781.43,
+              0.0,
+              737.07
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 21.466365959371,
+              "maximum": 107.33182979686
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103653",
+          "transform": {
+            "position": [
+              1781.25,
+              0.0,
+              773.25
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 18.879569757003,
+              "maximum": 94.397848785016
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103654",
+          "transform": {
+            "position": [
+              1782.0,
+              0.0,
+              796.89
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 17.875393207156,
+              "maximum": 89.37696603578
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103655",
+          "transform": {
+            "position": [
+              1758.0,
+              0.0,
+              773.64
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 16.907863153822,
+              "maximum": 84.539315769109
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103656",
+          "transform": {
+            "position": [
+              1758.36,
+              0.0,
+              737.25
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 18.826615189395,
+              "maximum": 94.133075946973
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103657",
+          "transform": {
+            "position": [
+              1759.29,
+              0.0,
+              724.5
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 17.396878990204,
+              "maximum": 86.984394951021
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103658",
+          "transform": {
+            "position": [
+              316.62,
+              0.0,
+              559.68
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 18.775712766865,
+              "maximum": 93.878563834326
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103659",
+          "transform": {
+            "position": [
+              607.47,
+              0.0,
+              399.6
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 19.978459665081,
+              "maximum": 99.892298325406
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103660",
+          "transform": {
+            "position": [
+              476.94,
+              0.0,
+              499.89
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 21.830394048204,
+              "maximum": 109.15197024102
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103661",
+          "transform": {
+            "position": [
+              483.18,
+              0.0,
+              583.26
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 20.781217397838,
+              "maximum": 103.90608698919
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103662",
+          "transform": {
+            "position": [
+              680.97,
+              0.0,
+              426.69
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 16.252972014773,
+              "maximum": 81.264860073865
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103663",
+          "transform": {
+            "position": [
+              678.96,
+              0.0,
+              495.9
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 21.311962127525,
+              "maximum": 106.55981063763
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103664",
+          "transform": {
+            "position": [
+              703.05,
+              0.0,
+              594.18
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 14.650935296121,
+              "maximum": 73.254676480604
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103665",
+          "transform": {
+            "position": [
+              533.82,
+              0.0,
+              617.85
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 15.777944628563,
+              "maximum": 78.889723142816
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103666",
+          "transform": {
+            "position": [
+              632.73,
+              0.0,
+              703.35
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 16.879644305184,
+              "maximum": 84.398221525922
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103667",
+          "transform": {
+            "position": [
+              628.5,
+              0.0,
+              615.66
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 16.428391509323,
+              "maximum": 82.141957546617
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103668",
+          "transform": {
+            "position": [
+              2020.74,
+              0.0,
+              1256.28
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 18.936146271633,
+              "maximum": 94.680731358165
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103669",
+          "transform": {
+            "position": [
+              2320.53,
+              0.0,
+              1136.4
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 15.024556774885,
+              "maximum": 75.122783874423
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103670",
+          "transform": {
+            "position": [
+              2176.35,
+              0.0,
+              967.86
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 21.228999223381,
+              "maximum": 106.1449961169
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103671",
+          "transform": {
+            "position": [
+              1770.45,
+              0.0,
+              1503.21
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 20.084154821486,
+              "maximum": 100.42077410743
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103672",
+          "transform": {
+            "position": [
+              2141.04,
+              0.0,
+              1047.75
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 17.340028225291,
+              "maximum": 86.700141126453
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103673",
+          "transform": {
+            "position": [
+              2151.66,
+              0.0,
+              1675.44
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 20.414121469114,
+              "maximum": 102.07060734557
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103674",
+          "transform": {
+            "position": [
+              1985.64,
+              0.0,
+              1229.31
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 17.755146809797,
+              "maximum": 88.775734048983
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103675",
+          "transform": {
+            "position": [
+              1852.98,
+              0.0,
+              1051.29
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 16.60556619675,
+              "maximum": 83.027830983751
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_chair_id_103676",
+          "transform": {
+            "position": [
+              2139.0,
+              0.0,
+              893.58
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 16.726293624082,
+              "maximum": 83.631468120411
+            }
+          }
+        }
+      ],
+      "ruins_rubble_vase": [
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_id_106465",
+          "transform": {
+            "position": [
+              416.79,
+              0.0,
+              635.46
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 20.644429215846,
+              "maximum": 103.22214607923
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_id_106466",
+          "transform": {
+            "position": [
+              1155.15,
+              0.0,
+              883.2
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 20.5977534723,
+              "maximum": 102.9887673615
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_id_106467",
+          "transform": {
+            "position": [
+              1140.6,
+              0.0,
+              898.86
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 17.394479543761,
+              "maximum": 86.972397718805
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_id_106468",
+          "transform": {
+            "position": [
+              366.6,
+              0.0,
+              547.38
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 14.376579972072,
+              "maximum": 71.882899860359
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_id_106469",
+          "transform": {
+            "position": [
+              485.04,
+              0.0,
+              560.43
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 20.863553009663,
+              "maximum": 104.31776504831
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_id_106470",
+          "transform": {
+            "position": [
+              700.98,
+              0.0,
+              641.46
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 19.774011617008,
+              "maximum": 98.870058085041
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_id_106471",
+          "transform": {
+            "position": [
+              664.2,
+              0.0,
+              560.79
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 19.475127091043,
+              "maximum": 97.375635455217
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_id_106472",
+          "transform": {
+            "position": [
+              724.29,
+              0.0,
+              787.08
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 21.294661983683,
+              "maximum": 106.47330991842
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_id_106473",
+          "transform": {
+            "position": [
+              797.64,
+              0.0,
+              750.03
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 17.802916006139,
+              "maximum": 89.014580030696
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_id_106474",
+          "transform": {
+            "position": [
+              703.14,
+              0.0,
+              762.06
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 16.111067055285,
+              "maximum": 80.555335276424
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_id_106475",
+          "transform": {
+            "position": [
+              713.34,
+              0.0,
+              760.02
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 15.38749139602,
+              "maximum": 76.9374569801
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_id_106476",
+          "transform": {
+            "position": [
+              1892.64,
+              0.0,
+              1543.59
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 20.155920324418,
+              "maximum": 100.77960162209
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_id_106477",
+          "transform": {
+            "position": [
+              1985.22,
+              0.0,
+              1372.92
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 17.583060690105,
+              "maximum": 87.915303450524
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_id_106478",
+          "transform": {
+            "position": [
+              2103.18,
+              0.0,
+              1048.02
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 19.079404398119,
+              "maximum": 95.397021990595
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_id_106479",
+          "transform": {
+            "position": [
+              2082.87,
+              0.0,
+              1409.1
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 21.434593601021,
+              "maximum": 107.1729680051
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_id_106480",
+          "transform": {
+            "position": [
+              2212.62,
+              0.0,
+              1613.07
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 20.949328114965,
+              "maximum": 104.74664057483
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_id_106481",
+          "transform": {
+            "position": [
+              2082.51,
+              0.0,
+              1554.78
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 18.087591617389,
+              "maximum": 90.437958086943
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_id_106482",
+          "transform": {
+            "position": [
+              2070.03,
+              0.0,
+              1446.54
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 14.890645552634,
+              "maximum": 74.45322776317
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_id_106483",
+          "transform": {
+            "position": [
+              2055.06,
+              0.0,
+              1515.18
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 14.825508069439,
+              "maximum": 74.127540347196
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_id_106484",
+          "transform": {
+            "position": [
+              2214.27,
+              0.0,
+              1566.48
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 16.977448767744,
+              "maximum": 84.887243838722
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_id_106485",
+          "transform": {
+            "position": [
+              2071.59,
+              0.0,
+              1555.86
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 21.339235717277,
+              "maximum": 106.69617858638
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_id_106486",
+          "transform": {
+            "position": [
+              2212.32,
+              0.0,
+              1196.43
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 21.532549384873,
+              "maximum": 107.66274692436
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_id_106487",
+          "transform": {
+            "position": [
+              1975.41,
+              0.0,
+              1232.79
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 21.349815321935,
+              "maximum": 106.74907660967
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_id_106488",
+          "transform": {
+            "position": [
+              1962.36,
+              0.0,
+              1325.91
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 15.818335667676,
+              "maximum": 79.09167833838
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_id_106489",
+          "transform": {
+            "position": [
+              2336.25,
+              0.0,
+              1265.01
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 18.23589846963,
+              "maximum": 91.179492348148
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_id_106490",
+          "transform": {
+            "position": [
+              2347.56,
+              0.0,
+              1424.31
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 14.543536616616,
+              "maximum": 72.717683083079
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_id_106491",
+          "transform": {
+            "position": [
+              2408.16,
+              0.0,
+              1409.91
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 20.096766477008,
+              "maximum": 100.48383238504
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_id_106492",
+          "transform": {
+            "position": [
+              2346.27,
+              0.0,
+              1263.93
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 14.663366740724,
+              "maximum": 73.31683370362
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_id_106493",
+          "transform": {
+            "position": [
+              2285.07,
+              0.0,
+              1423.62
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 15.632384268947,
+              "maximum": 78.161921344735
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_id_106494",
+          "transform": {
+            "position": [
+              2466.09,
+              0.0,
+              1338.6
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 18.536603666036,
+              "maximum": 92.683018330178
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_id_106495",
+          "transform": {
+            "position": [
+              2296.74,
+              0.0,
+              1408.74
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 15.15949171436,
+              "maximum": 75.7974585718
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_id_106496",
+          "transform": {
+            "position": [
+              1769.94,
+              0.0,
+              1085.01
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 14.373133795423,
+              "maximum": 71.865668977114
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_id_106497",
+          "transform": {
+            "position": [
+              1720.17,
+              0.0,
+              1059.3
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 16.548194291663,
+              "maximum": 82.740971458317
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_id_106498",
+          "transform": {
+            "position": [
+              1925.25,
+              0.0,
+              928.05
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 20.3074727427,
+              "maximum": 101.5373637135
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_rubble_vase_id_106464",
+          "transform": {
+            "position": [
+              934.86,
+              0.0,
+              557.25
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsRelic": {
+              "rubble": true
+            },
+            "health": {
+              "current": 21.351777287049,
+              "maximum": 106.75888643525
+            }
+          }
+        }
+      ],
       "ruins_statue_mage": [
         {
           "id": "dst_04E26ADB66396E8D_ruins_statue_mage_id_108826",
