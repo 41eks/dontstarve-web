@@ -1,3 +1,5 @@
+import { Workable } from '../../componets/src/workable';
+import { createStructureLootDropper } from './structureLoot';
 import type * as THREE from 'three';
 import definitions from './definitions.json' with { type: 'json' };
 import { lightning_rod_init_fn } from '@dontstarve-web/animation/prefabskin';
@@ -12,7 +14,7 @@ import {
 import { actionEntity } from './actionEntity';
 import { PlaySound } from './sound';
 import { TILE_SIZE } from './tile';
-import { prefabInstance } from './prefabInstance';
+import { prefabInstance, type PrefabInstance } from './prefabInstance';
 
 export const LIGHTNING_ROD_ID = 'lightning_rod' as const;
 export type LightningRodId = typeof LIGHTNING_ROD_ID;
@@ -147,7 +149,14 @@ function playHit(model: THREE.Object3D): void {
 }
 
 function oninit(context: AnimatedBuildingEventContext): void {
-    const { model } = context;
+    const { model, instance } = context;
+    const workable = instance.components.workable = new Workable(instance);
+    workable.SetWorkAction('HAMMER');
+    workable.SetWorkLeft(4);
+    workable.SetOnWorkCallback(onworked);
+    workable.SetOnFinishCallback(onhammered);
+    instance.components.lootdropper = createStructureLootDropper(instance);
+
     const entity = actionEntity(model, LIGHTNING_ROD_ID);
     const rod = new LightningRod(context);
     model.userData.lightningrod = rod;
@@ -168,10 +177,19 @@ function onbuilt({ animation, model, onComplete }: AnimatedBuildingBuiltContext)
     PlaySound(CRAFT_SOUND, model.position);
 }
 
+function onworked(inst: PrefabInstance): void {
+    inst.sprite.playOnce('hit');
+    inst.sprite.pushAnimation('idle', false);
+}
+
+function onhammered(inst: PrefabInstance): void {
+    inst.components.lootdropper!.DropLoot();
+    inst.worldServices?.fx?.collapse?.('small', inst.position, 'metal');
+    inst.remove();
+}
+
 export const LIGHTNING_ROD_DEFINITION: AnimatedBuildingDefinition = {
     ...definitions.animatedBuildings.lightning_rod,
-    hammerWorkLeft: 4, hammerMaterial: 'metal',
-    hammerEffect: { archive: 'structure_collapse_fx.zip', animation: 'collapse_small', name: 'collapse' },
     skinInit: lightning_rod_init_fn,
     oninit,
     onbuilt,

@@ -71,7 +71,7 @@ export function configureButterflyEntity(entity: ItemEntity): void {
     const workable = new Workable(entity);
     workable.SetWorkAction('NET');
     workable.SetWorkLeft(1);
-    workable.SetOnFinishCallback(worker => {
+    workable.SetOnFinishCallback((_inst, worker) => {
       worker.components?.inventory?.GiveItem(entity, entity.transform.position);
       if (worker.components?.inventory) PlaySound('dontstarve/common/butterfly_trap', entity.transform.position);
     });

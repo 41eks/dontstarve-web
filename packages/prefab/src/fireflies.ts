@@ -25,7 +25,7 @@ export function configureFirefliesEntity(entity: ItemEntity): void {
     workable.SetWorkAction('NET');
     workable.SetWorkLeft(1);
     workable.SetWorkable(false);
-    workable.SetOnFinishCallback(worker => {
+    workable.SetOnFinishCallback((_inst, worker) => {
       worker.components?.inventory?.GiveItem(entity, entity.transform.position.clone());
     });
     entity.ListenForEvent('ondropped', () => workable.SetWorkLeft(1));

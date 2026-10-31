@@ -1,4 +1,6 @@
-import { prefabInstance } from './prefabInstance';
+import { Workable } from '../../componets/src/workable';
+import { createStructureLootDropper } from './structureLoot';
+import { prefabInstance, type PrefabInstance } from './prefabInstance';
 import type * as THREE from 'three';
 import definitions from './definitions.json' with { type: 'json' };
 import { firepit_init_fn } from '@dontstarve-web/animation/prefabskin';
@@ -57,6 +59,12 @@ class FirePit {
     constructor(context: AnimatedBuildingEventContext) {
         const { model, instance } = context;
         this.context = context;
+    const workable = instance.components.workable = new Workable(instance);
+    workable.SetWorkAction('HAMMER');
+    workable.SetWorkLeft(4);
+    workable.SetOnWorkCallback(onworked);
+    workable.SetOnFinishCallback(onhammered);
+    instance.components.lootdropper = createStructureLootDropper(instance);
         const inst = actionEntity(model, FIRE_PIT_ID);
         for (const tag of ['campfire', 'structure', 'wildfireprotected', 'cooker', 'storytellingprop']) inst.addTag(tag);
         const scheduler = context.world?.scheduler ?? (this.ownScheduler = new GameTimeScheduler());
@@ -148,13 +156,22 @@ function onbuilt({ animation, model, onComplete }: AnimatedBuildingBuiltContext)
     PlaySound(ADD_FUEL_SOUND, model.position);
 }
 
+function onworked(inst: PrefabInstance): void {
+    inst.sprite.playOnce('hit');
+    inst.sprite.pushAnimation('idle', false);
+}
+
+function onhammered(inst: PrefabInstance): void {
+    inst.components.lootdropper!.DropLoot();
+    inst.components.lootdropper!.SpawnLootPrefab('ash');
+    inst.worldServices?.fx?.collapse?.('small', inst.position, 'stone');
+    inst.remove();
+}
+
 export const FIRE_PIT_DEFINITION: AnimatedBuildingDefinition = {
     ...definitions.animatedBuildings.firepit,
     obstacleRadius: 0.3,
-    hammerWorkLeft: 4, hammerMaterial: 'stone',
-    hammerEffect: { archive: 'structure_collapse_fx.zip', animation: 'collapse_small', name: 'collapse' },
     fxSources: sprites => [campfireFireSource(sprites)],
-    hammerExtraLoot: [{ itemId: 'ash', count: 1 }],
     skinInit: firepit_init_fn,
     oninit: context => { context.model.userData.firepit = new FirePit(context); },
     onbuilt,

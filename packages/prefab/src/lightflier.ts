@@ -406,7 +406,7 @@ export function configureLightFlierEntity(entity: ItemEntity): void {
   entity.component(LIGHTFLIER_ID, () => new LightFlier(entity));
   entity.components.workable = entity.component('workable', () => {
     const workable = new Workable(entity); workable.SetWorkAction('NET'); workable.SetWorkLeft(1);
-    workable.SetOnFinishCallback(worker => {
+    workable.SetOnFinishCallback((_inst, worker) => {
       const fly = entity.getComponent<LightFlier>(LIGHTFLIER_ID)!;
       fly.home?.components.childspawner.OnChildKilled(fly);
       worker.components?.inventory?.GiveItem(entity, entity.getPosition().clone());

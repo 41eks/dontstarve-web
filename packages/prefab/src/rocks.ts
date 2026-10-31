@@ -104,7 +104,7 @@ export class RockController {
     this.workable.SetWorkLeft(ROCK_DEFINITIONS[prefab].workLeft);
     if (prefab === 'cavein_boulder') {
       this.workable.SetWorkable(!context.caveinBoulder?.raised);
-      this.workable.SetOnFinishCallback(worker => {
+      this.workable.SetOnFinishCallback((_inst, worker) => {
         PlaySound('dontstarve/wilson/rock_break', model.position);
         if (context.caveinBoulder?.raised) lootdropper.DropLoot(new THREE.Vector3(model.position.x, 6, model.position.z));
         else if (context.caveinBoulder?.formed && worker.sg?.HasStateTag('working') && worker.getPosition) {
@@ -132,7 +132,7 @@ export class RockController {
       };
       model.addEventListener('workfinished' as never, this.onWorkFinished);
     }
-    this.workable.SetOnWorkCallback((_worker, workleft) => {
+    this.workable.SetOnWorkCallback((_inst, _worker, workleft) => {
       if (workleft <= 0) {
         PlaySound('dontstarve/wilson/rock_break', model.position);
         lootdropper.DropLoot();

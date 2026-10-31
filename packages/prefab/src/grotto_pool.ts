@@ -284,7 +284,7 @@ export class GrottoPoolManager {
     grotto.lootdropper = lootdropper;
     lootdropper.SetChanceLootTable(definition.lootTable);
     // on_mined: rock_break_fx, then the loot drops at the worker, then the prop sits mined out.
-    workable.SetOnWorkCallback((worker, workleft) => {
+    workable.SetOnWorkCallback((_inst, worker, workleft) => {
       if (workleft > 0) return;
       PlaySound('dontstarve/wilson/rock_break', model.position);
       const at = worker.getPosition?.() ?? model.position;

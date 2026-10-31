@@ -1,6 +1,8 @@
+import { Workable } from '../../componets/src/workable';
+import { createStructureLootDropper } from './structureLoot';
 import type * as THREE from 'three';
 import { type SpriteState } from '@dontstarve-web/display';
-import { prefabInstance } from './prefabInstance';
+import { prefabInstance, type PrefabInstance } from './prefabInstance';
 import definitions from './definitions.json' with { type: 'json' };
 import { FiniteUses } from '../../componets/src/finiteuses';
 import { SleepingBag } from '../../componets/src/sleepingbag';
@@ -10,7 +12,6 @@ import type {
     AnimatedBuildingBuiltContext,
     AnimatedBuildingDefinition,
     AnimatedBuildingEventContext,
-    AnimatedBuildingHammerContext,
 } from './animatedBuildingPlacement';
 import { PlaySound } from './sound';
 
@@ -46,7 +47,13 @@ function periodic(scheduler: GameTimeScheduler, period: number, initialDelay: nu
 }
 
 /** tent.lua common_fn / tent(): sleepingbag, finiteuses and their sleep, wake, hit and finish callbacks. */
-function oninit({ model, instance, world, remove }: AnimatedBuildingEventContext): void {
+function oninit({ model, instance, world }: AnimatedBuildingEventContext): void {
+    const workable = instance.components.workable = new Workable(instance);
+    workable.SetWorkAction('HAMMER');
+    workable.SetWorkLeft(4);
+    workable.SetOnWorkCallback(onworked);
+    workable.SetOnFinishCallback(onhammered);
+    instance.components.lootdropper = createStructureLootDropper(instance);
     const scheduler = world?.scheduler;
     if (!scheduler) throw new Error('A tent needs the world scheduler');
     const entity = actionEntity(model, TENT_ID);
@@ -67,7 +74,7 @@ function oninit({ model, instance, world, remove }: AnimatedBuildingEventContext
         if (entity.hasTag('burnt')) return;
         stopSleepSound();
         instance.persists = false;
-        animation().playOnce('destroy', () => remove?.());
+        animation().playOnce('destroy', () => instance.remove());
         PlaySound('dontstarve/common/tent_dis_pre', model.position);
         scheduler.schedule(16 * FRAME, () => PlaySound('dontstarve/common/tent_dis_twirl', model.position));
     });
@@ -85,29 +92,38 @@ function oninit({ model, instance, world, remove }: AnimatedBuildingEventContext
         uses.Use();
     };
     Object.assign(prefabInstance(model)!.components, { sleepingbag: bag, finiteuses: uses });
-    model.userData.stopTentSleepSound = stopSleepSound;
+    (instance as TentInstance).stopSleepSound = stopSleepSound;
 }
 
-/** tent.lua onhit: stop the sleep sound, play hit, then idle; the sleeper is woken. */
-function onhit({ model, animation }: AnimatedBuildingHammerContext): void {
-    model.userData.stopTentSleepSound?.();
-    animation.playOnce('hit', () => (prefabInstance(model)!.sprite as SpriteState).start('idle'));
-    getTentComponents(model)?.sleepingbag.DoWakeUp();
+interface TentInstance extends PrefabInstance { stopSleepSound(): void }
+
+/** tent.lua onhit wakes a sleeper even when the tent is burnt. */
+function onworked(inst: PrefabInstance): void {
+    if (!inst.hasTag('burnt')) {
+        (inst as TentInstance).stopSleepSound();
+        inst.sprite.playOnce('hit');
+        inst.sprite.pushAnimation('idle', true);
+    }
+    inst.components.sleepingbag?.DoWakeUp();
 }
 
-function ondispose({ model }: AnimatedBuildingEventContext): void {
-    const tent = getTentComponents(model);
-    model.userData.stopTentSleepSound?.();
-    tent?.sleepingbag.dispose();
-    tent?.finiteuses.dispose();
+function onhammered(inst: PrefabInstance): void {
+    if (inst.components.burnable?.IsBurning()) inst.components.burnable.Extinguish();
+    inst.components.lootdropper!.DropLoot();
+    inst.worldServices?.fx?.collapse?.('big', inst.position, 'wood');
+    inst.remove();
+}
+
+function ondispose({ instance }: AnimatedBuildingEventContext): void {
+    (instance as TentInstance).stopSleepSound();
+    instance.components.sleepingbag?.dispose();
+    instance.components.finiteuses?.dispose();
 }
 
 export const TENT_DEFINITION: AnimatedBuildingDefinition = {
     ...definitions.animatedBuildings.tent,
     obstacleRadius: 1,
-    hammerWorkLeft: 4, hammerMaterial: 'wood',
-    hammerEffect: { archive: 'structure_collapse_fx.zip', animation: 'collapse_large', name: 'collapse' },
-    onbuilt, oninit, onhit, ondispose,
+    onbuilt, oninit, ondispose,
     exportComponents: ({ model }) => ({ finiteuses: getTentComponents(model)!.finiteuses.OnSave() }),
     onrestore: ({ model }, components) => {
         if (components.finiteuses) getTentComponents(model)!.finiteuses.OnLoad(components.finiteuses);

@@ -146,7 +146,7 @@ export class CaveEntranceManager {
     const lootdropper = new LootDropper(inst, (itemId, point) => this.world.spawnGroundItem(
       { ...catalog.items[itemId as keyof typeof catalog.items], itemId, count: 1 }, new THREE.Vector3(point.x, point.y, point.z), { fling: true }));
     lootdropper.SetLoot(CLOSED_LOOT);
-    workable.SetOnWorkCallback((_worker, workleft) => {
+    workable.SetOnWorkCallback((_inst, _worker, workleft) => {
       if (workleft > 0) {
         sprite.playOnce(workleft < ROCKS_MINE / 3 ? 'low' : workleft < ROCKS_MINE * 2 / 3 ? 'med' : 'idle_closed');
         return;

@@ -1,3 +1,6 @@
+import type { PrefabInstance } from './prefabInstance';
+import { Workable } from '../../componets/src/workable';
+import { createStructureLootDropper } from './structureLoot';
 import definitions from './definitions.json' with { type: 'json' };
 import { pighouse_init_fn } from '@dontstarve-web/animation/prefabskin';
 import {
@@ -12,6 +15,29 @@ export type PigHouseId = typeof PIG_HOUSE_ID;
 export const PIG_HOUSE_SKIN_ARCHIVES: Readonly<Record<string, string>> =
     definitions.animatedBuildings.pighouse.skinArchives;
 
+function onworked(inst: PrefabInstance): void {
+    if (inst.hasTag('burnt')) return;
+    inst.sprite.playOnce('hit');
+    inst.sprite.pushAnimation('idle', false);
+}
+
+function onhammered(inst: PrefabInstance): void {
+    if (inst.components.burnable?.IsBurning()) inst.components.burnable.Extinguish();
+    inst.components.lootdropper!.DropLoot();
+    inst.worldServices?.fx?.collapse?.('big', inst.position, 'wood');
+    inst.remove();
+}
+
+function initializeWorkable(instance: PrefabInstance): void {
+    instance.addTag('structure');
+    const workable = instance.components.workable = new Workable(instance);
+    workable.SetWorkAction('HAMMER');
+    workable.SetWorkLeft(4);
+    workable.SetOnWorkCallback(onworked);
+    workable.SetOnFinishCallback(onhammered);
+    instance.components.lootdropper = createStructureLootDropper(instance);
+}
+
 function onbuilt({ animation, onComplete }: AnimatedBuildingBuiltContext): void {
     animation.playOnce('place', () => {
         animation.start('idle');
@@ -22,9 +48,8 @@ function onbuilt({ animation, onComplete }: AnimatedBuildingBuiltContext): void 
 export const PIG_HOUSE_DEFINITION: AnimatedBuildingDefinition = {
     ...definitions.animatedBuildings.pighouse,
     obstacleRadius: 1,
-    hammerWorkLeft: 4, hammerMaterial: 'wood',
-    hammerEffect: { archive: 'structure_collapse_fx.zip', animation: 'collapse_large', name: 'collapse' },
     skinInit: pighouse_init_fn,
+    oninit: ({ instance }) => initializeWorkable(instance),
     onbuilt,
 };
 

@@ -39,7 +39,7 @@ export class RockAvocadoFruit {
     this.workable = new Workable(entity);
     entity.components.workable = this.workable;
     this.workable.SetWorkAction('MINE');
-    this.workable.SetOnWorkCallback((worker, _remaining, workdone) => this.mine(worker, workdone));
+    this.workable.SetOnWorkCallback((_inst, worker, _remaining, workdone) => this.mine(worker, workdone));
     // Explosions knock around these fruits in specific.
     this.cleanups.push(entity.ListenForEvent('explosion', data => this.explode(data as { explosive?: Worker } | undefined)));
     const count = watchSignal(entity.components.stackable.size, stop => this.cleanups.push(stop));

@@ -26,14 +26,16 @@ it('publishes readonly work and derived eligibility, while successful work expli
   });
   entity.ListenForEvent('workfinished', () => events.push('workfinished'));
   const worker = { PushEvent: (name: string) => events.push(name) };
-  work.SetOnWorkCallback(() => events.push('onwork'));
-  work.SetOnFinishCallback(() => { events.push('onfinish'); finish(); });
+  const worked = vi.fn(() => { events.push('onwork'); });
+  work.SetOnWorkCallback(worked);
+  work.SetOnFinishCallback((inst, doer) => { events.push('onfinish'); finish(inst, doer); });
   try {
     for (const signal of [work.workleft, work.enabled, work.action, work.canBeWorked, work.actionTag, entity.removal]) {
       expect('set' in signal).toBe(false);
     }
     expect(work.WorkedBy(worker)).toBe(true);
     expect(work.workleft.peek()).toBe(2);
+    expect(worked).toHaveBeenCalledExactlyOnceWith(entity, worker, 2, 1);
     work.SetWorkable(false);
     expect(work.GetWorkLeft()).toBe(0);
     expect(work.workleft.peek()).toBe(2);
@@ -49,7 +51,7 @@ it('publishes readonly work and derived eligibility, while successful work expli
     expect(entity.hasTag('HAMMER_workable')).toBe(false);
     expect(events).toEqual(['working', 'worked', 'onwork', 'working', 'worked', 'onwork',
       'working', 'worked', 'onwork', 'onfinish', 'workfinished', 'finishedwork']);
-    expect(finish).toHaveBeenCalledOnce();
+    expect(finish).toHaveBeenCalledExactlyOnceWith(entity, worker);
     expect(work.WorkedBy(worker)).toBe(false);
     work.SetWorkLeft(2); work.OnLoad({ workleft: 0 });
     expect(finish).toHaveBeenCalledOnce(); // Restoring zero updates state; it does not perform work.

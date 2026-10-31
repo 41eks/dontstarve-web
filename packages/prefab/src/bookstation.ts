@@ -1,3 +1,6 @@
+import type { PrefabInstance } from './prefabInstance';
+import { Workable } from '../../componets/src/workable';
+import { createStructureLootDropper } from './structureLoot';
 import { type SpriteState } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import { createRenderEffect, createSignal, type ReadonlySignal } from '@dontstarve-web/signals';
@@ -9,7 +12,6 @@ import {
     type AnimatedBuildingBuiltContext,
     type AnimatedBuildingDefinition,
     type AnimatedBuildingEventContext,
-    type AnimatedBuildingHammerContext,
     type AnimatedBuildingInteractionChange,
 } from './animatedBuildingPlacement';
 import { BOOK_USE_STEP, BOOKSTATION_RESTORE_AMOUNT, isBook } from './books';
@@ -127,8 +129,10 @@ export class Bookstation {
     }
 }
 
+interface BookstationInstance extends PrefabInstance { bookstation?: Bookstation }
+
 function bookstationOf(model: THREE.Group): Bookstation | undefined {
-    return model.userData.bookstation as Bookstation | undefined;
+    return (prefabInstance(model)! as BookstationInstance).bookstation;
 }
 
 /** The animation that follows a one-shot clip: proximity_loop while prototyper.on, else idle. */
@@ -144,12 +148,18 @@ function onbuilt(context: AnimatedBuildingBuiltContext): void {
     });
 }
 
-function oninit({ model, world, art }: AnimatedBuildingEventContext): void {
-    const container = prefabInstance(model)!.components?.container as BuildingContainer | undefined;
+function oninit({ model, instance, world, art }: AnimatedBuildingEventContext): void {
+    const workable = instance.components.workable = new Workable(instance);
+    workable.SetWorkAction('HAMMER');
+    workable.SetWorkLeft(4);
+    workable.SetOnWorkCallback(onworked);
+    workable.SetOnFinishCallback(onhammered);
+    instance.components.lootdropper = createStructureLootDropper(instance);
+    const container = instance.components.container as BuildingContainer | undefined;
     if (!world || !container) throw new Error('A bookstation needs its container and world');
     const entity = actionEntity(model, BOOKSTATION_ID);
     for (const tag of ['structure', 'giftmachine', 'prototyper']) entity.addTag(tag);
-    model.userData.bookstation = new Bookstation({ model, container, world, art });
+    (instance as BookstationInstance).bookstation = new Bookstation({ model, container, world, art });
 }
 
 function onturnon(context: AnimatedBuildingEventContext): void {
@@ -172,20 +182,28 @@ function hitThenSettle(context: AnimatedBuildingEventContext): void {
     context.animation.playOnce('hit', () => settle(context));
 }
 
-function onhit(context: AnimatedBuildingHammerContext): void {
-    if (actionEntity(context.model, BOOKSTATION_ID).hasTag('burnt')) return;
-    hitThenSettle(context);
+function onworked(inst: PrefabInstance): void {
+    if (inst.hasTag('burnt')) return;
+    const on = (inst as BookstationInstance).bookstation?.on === true;
+    inst.sprite.playOnce('hit');
+    inst.sprite.pushAnimation(on ? 'proximity_loop' : 'idle', on);
+}
+
+function onhammered(inst: PrefabInstance): void {
+    if (inst.components.burnable?.IsBurning()) inst.components.burnable.Extinguish();
+    inst.components.container?.DropEverything(inst.position);
+    inst.components.lootdropper!.DropLoot();
+    inst.worldServices?.fx?.collapse?.('small', inst.position, 'wood');
+    inst.remove();
 }
 
 export const BOOKSTATION_DEFINITION: AnimatedBuildingDefinition = {
     ...definitions.animatedBuildings.bookstation,
     obstacleRadius: 0.4,
-    hammerWorkLeft: 4, hammerMaterial: 'wood',
-    hammerEffect: { archive: 'structure_collapse_fx.zip', animation: 'collapse_small', name: 'collapse' },
     // MakeLargeBurnable(inst, nil, nil, true) and MakeLargePropagator.
     burnable: { burnTime: 30, fxLevel: 4, propagator: 'large' },
     skinInit: bookstation_init_fn,
-    onbuilt, oninit, onturnon, onturnoff, onhit,
+    onbuilt, oninit, onturnon, onturnoff,
     onopen: (context) => {
         if (actionEntity(context.model, BOOKSTATION_ID).hasTag('burnt')) return;
         hitThenSettle(context);
@@ -196,7 +214,7 @@ export const BOOKSTATION_DEFINITION: AnimatedBuildingDefinition = {
         hitThenSettle(context);
         PlaySound('dontstarve/wilson/chest_close', context.model.position);
     },
-    ondispose: ({ model }) => { bookstationOf(model)?.dispose(); delete model.userData.bookstation; },
+    ondispose: ({ model }) => { bookstationOf(model)?.dispose(); delete (prefabInstance(model)! as BookstationInstance).bookstation; },
 };
 
 export class BookstationPlacement extends AnimatedBuildingPlacement<BookstationId> {

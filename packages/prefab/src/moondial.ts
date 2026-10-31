@@ -1,17 +1,17 @@
+import { Workable } from '../../componets/src/workable';
+import { createStructureLootDropper } from './structureLoot';
 import { type SpriteState } from '@dontstarve-web/display';
 import type * as THREE from 'three';
 import { createEffect, createSignal, WorldContentKey, type WorldContentSignal, type WorldMoonState, type WorldMoonPhase } from '@dontstarve-web/signals';
 import { moondial_init_fn } from '@dontstarve-web/animation/prefabskin';
 import definitions from './definitions.json' with { type: 'json' };
 import {
-    buildingRecipeLoot,
     type AnimatedBuildingBuiltContext,
     type AnimatedBuildingDefinition,
     type AnimatedBuildingEventContext,
-    type AnimatedBuildingHammerContext,
 } from './animatedBuildingPlacement';
 import { actionEntity } from './actionEntity';
-import { prefabInstance } from './prefabInstance';
+import { prefabInstance, type PrefabInstance } from './prefabInstance';
 import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
 import { FRAMES } from '../../stategraphs/src/stategraph';
 import { TILE_SIZE } from './tile';
@@ -150,23 +150,31 @@ class Moondial {
     }
 }
 
-const moondialOf = (model: THREE.Object3D): Moondial => model.userData.moondial;
+interface MoondialInstance extends PrefabInstance { moondial: Moondial }
+const moondialOf = (model: THREE.Object3D): Moondial => (prefabInstance(model)! as MoondialInstance).moondial;
 
 /** onhammered: DropLoot, rock_break_fx (its Stone_break sound), inst:Remove(). */
-function onhammered({ position, dropLoot, remove }: AnimatedBuildingHammerContext): void {
-    dropLoot(buildingRecipeLoot(MOONDIAL_ID));
-    PlaySound('dontstarve/wilson/rock_break', position);
-    remove();
+function onworked(inst: PrefabInstance): void { (inst as MoondialInstance).moondial.hit(); }
+
+function onhammered(inst: PrefabInstance): void {
+    inst.components.lootdropper!.DropLoot();
+    PlaySound('dontstarve/wilson/rock_break', inst.position);
+    inst.remove();
 }
 
 export const MOONDIAL_DEFINITION: AnimatedBuildingDefinition = {
     ...definitions.animatedBuildings.moondial,
     obstacleRadius: 0.45,
-    hammerWorkLeft: 4,
     skinInit: moondial_init_fn,
-    onhammered,
-    oninit: context => { context.model.userData.moondial = new Moondial(context); },
+    oninit: context => {
+        const workable = context.instance.components.workable = new Workable(context.instance);
+        workable.SetWorkAction('HAMMER');
+        workable.SetWorkLeft(4);
+        workable.SetOnWorkCallback(onworked);
+        workable.SetOnFinishCallback(onhammered);
+        context.instance.components.lootdropper = createStructureLootDropper(context.instance);
+        (context.instance as MoondialInstance).moondial = new Moondial(context);
+    },
     onbuilt: (context: AnimatedBuildingBuiltContext) => moondialOf(context.model).placed(context.onComplete),
-    onhit: ({ model }) => moondialOf(model).hit(),
     ondispose: ({ model }) => moondialOf(model).dispose(),
 };

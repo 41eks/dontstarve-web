@@ -39,7 +39,10 @@ it('restores container contents, drops their live entities at the building foot 
     target.playHit(); target.playHit();
     expect(target.entity.hasTag('HAMMER_workable')).toBe(false);
     expect(model.parent).toBeNull(); expect(placement.exportRecords()).toEqual([]);
-    expect(dropLoot).toHaveBeenCalledExactlyOnceWith([{ itemId: 'goldnugget', count: 1 }, { itemId: 'gears', count: 1 }, { itemId: 'cutstone', count: 1 }], new THREE.Vector3(3, 0, -6));
+    expect(dropLoot.mock.calls.flatMap(([items]) => items)).toEqual([
+      { itemId: 'goldnugget', count: 1 }, { itemId: 'gears', count: 1 }, { itemId: 'cutstone', count: 1 },
+    ]);
+    expect(dropLoot.mock.calls.every(([, position]) => position.equals(new THREE.Vector3(3, 0, -6)))).toBe(true);
     expect(item.isRemoved).toBe(false);
   } finally { stop(); placement.dispose(); inventory.dispose(); }
 });

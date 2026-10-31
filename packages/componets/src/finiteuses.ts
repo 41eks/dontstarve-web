@@ -30,6 +30,7 @@ export class FiniteUses {
 
   SetOnFinished(fn: ((inst: FiniteUsesInst) => void) | undefined): void { this.onfinished = fn; }
   GetUses(): number { return this.currentState.peek(); }
+  GetPercent(): number { return this.currentState.peek() / this.totalState.peek(); }
 
   /** finiteuses.lua SetUses: percentusedchange first, then onfinished when nothing is left. */
   SetUses(value: number): void {

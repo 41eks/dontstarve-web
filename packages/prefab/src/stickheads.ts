@@ -1,15 +1,17 @@
+import type { PrefabInstance } from './prefabInstance';
+import { Workable } from '../../componets/src/workable';
+import { createStructureLootDropper } from './structureLoot';
 import type * as THREE from 'three';
 import definitions from './definitions.json' with { type: 'json' };
 import { createEffect, createMemo, WorldContentKey, type Memo } from '@dontstarve-web/signals';
 import { TileTracker } from '../../componets/src/tileManager';
 import { FliesController } from './flies';
 import { actionEntity } from './actionEntity';
-import { createArchiveEntity } from './prefabInstance';
+import { prefabInstance, createArchiveEntity } from './prefabInstance';
 import { watchTileActivity } from './tileActivity';
 import type {
     AnimatedBuildingDefinition,
     AnimatedBuildingEventContext,
-    AnimatedBuildingHammerContext,
     BuildingRenderEffect,
 } from './animatedBuildingPlacement';
 
@@ -92,23 +94,35 @@ class StickHead {
     }
 }
 
-const headOf = (model: THREE.Object3D): StickHead => model.userData.stickhead;
+interface StickHeadInstance extends PrefabInstance { head: StickHead }
+const headOf = (model: THREE.Object3D): StickHead => (prefabInstance(model)! as StickHeadInstance).head;
 
-/** OnFinish: a full moon adds nightmarefuel; recipe loot itself comes from the deconstruct recipe. */
-function bonusLoot({ model }: AnimatedBuildingEventContext): { itemId: string; count: number }[] {
-    return headOf(model).isFullMoon ? [{ itemId: 'nightmarefuel', count: 1 }] : [];
+function onworked(inst: PrefabInstance): void {
+    if (!inst.hasTag('burnt')) (inst as StickHeadInstance).head.hit();
+}
+
+function onhammered(inst: PrefabInstance): void {
+    if (inst.components.burnable?.IsBurning()) inst.components.burnable.Extinguish();
+    inst.worldServices?.fx?.collapse?.('small', inst.position, 'wood');
+    if ((inst as StickHeadInstance).head.isFullMoon) inst.components.lootdropper!.SpawnLootPrefab('nightmarefuel');
+    inst.components.lootdropper!.DropLoot();
+    inst.remove();
 }
 
 /** stickheads.lua create_common: both heads share work, burn, loot and full-moon behaviour; only art and recipe loot differ. */
 const stickHead = (id: StickHeadId): AnimatedBuildingDefinition => ({
     ...definitions.animatedBuildings[id],
-    hammerWorkLeft: 3, hammerMaterial: 'wood',
-    hammerEffect: { archive: 'structure_collapse_fx.zip', animation: 'collapse_small', name: 'collapse_small' },
     // MakeSmallBurnable(inst, nil, nil, true): SMALL_BURNTIME, fire level 2, small propagator, burnt structure.
     burnable: { burnTime: 10, fxLevel: 2, propagator: 'small' },
-    oninit: context => { context.model.userData.stickhead = new StickHead(id, context); },
-    onhit: (context: AnimatedBuildingHammerContext) => headOf(context.model).hit(),
-    hammerBonusLoot: bonusLoot,
+    oninit: context => {
+        const workable = context.instance.components.workable = new Workable(context.instance);
+        workable.SetWorkAction('HAMMER');
+        workable.SetWorkLeft(3);
+        workable.SetOnWorkCallback(onworked);
+        workable.SetOnFinishCallback(onhammered);
+        context.instance.components.lootdropper = createStructureLootDropper(context.instance);
+        (context.instance as StickHeadInstance).head = new StickHead(id, context);
+    },
     onupdate: ({ model }, dt) => headOf(model).update(dt),
     renderEffects: ({ model }) => headOf(model).renderEffects,
     ondispose: ({ model }) => headOf(model).dispose(),

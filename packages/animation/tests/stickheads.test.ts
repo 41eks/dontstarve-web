@@ -59,7 +59,9 @@ it.each(HEADS)('$id sleeps by default, wakes on a full-moon night, is hit by the
     expect(performToolWork('HAMMER', entity, {})).toBe(true);
     expect(performToolWork('HAMMER', entity, {})).toBe(true);
     // The deconstruct recipe at the 50% hammer rate, plus nightmarefuel while the moon is full.
-    expect(s.loot.flat()).toEqual(expect.arrayContaining([...loot, { itemId: 'nightmarefuel', count: 1 }]));
+    const dropped = s.loot.flat().flatMap(({ itemId, count }) => Array(count).fill(itemId));
+    const expected = [...loot, { itemId: 'nightmarefuel', count: 1 }].flatMap(({ itemId, count }) => Array(count).fill(itemId));
+    expect(dropped.sort()).toEqual(expected.sort());
     expect(s.placement.exportRecords()).toEqual([]);
   } finally { s.placement.dispose(); }
 });

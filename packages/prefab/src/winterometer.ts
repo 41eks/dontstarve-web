@@ -1,5 +1,7 @@
+import { Workable } from '../../componets/src/workable';
+import { createStructureLootDropper } from './structureLoot';
 import { type SpriteState } from '@dontstarve-web/display';
-import { prefabInstance } from './prefabInstance';
+import { prefabInstance, type PrefabInstance } from './prefabInstance';
 import type * as THREE from 'three';
 import definitions from './definitions.json' with { type: 'json' };
 import { winterometer_init_fn } from '@dontstarve-web/animation/prefabskin';
@@ -59,11 +61,18 @@ class WinterometerCheck {
     cancel(): void { this.timer?.stop(); }
 }
 
-const checkOf = (model: THREE.Object3D): WinterometerCheck => model.userData.winterometer;
+interface WinterometerInstance extends PrefabInstance { temperatureCheck: WinterometerCheck }
+const checkOf = (model: THREE.Object3D): WinterometerCheck => (prefabInstance(model)! as WinterometerInstance).temperatureCheck;
 
 function oninit(context: AnimatedBuildingEventContext): void {
+    const workable = context.instance.components.workable = new Workable(context.instance);
+    workable.SetWorkAction('HAMMER');
+    workable.SetWorkLeft(4);
+    workable.SetOnWorkCallback(onworked);
+    workable.SetOnFinishCallback(onhammered);
+    context.instance.components.lootdropper = createStructureLootDropper(context.instance);
     const check = new WinterometerCheck(context);
-    context.model.userData.winterometer = check;
+    (context.instance as WinterometerInstance).temperatureCheck = check;
     check.check();
     check.start();
 }
@@ -78,22 +87,27 @@ function onbuilt(context: AnimatedBuildingBuiltContext): void {
     PlaySound('dontstarve/common/winter_meter_craft', model.position);
 }
 
-function onhit({ model, animation }: AnimatedBuildingEventContext): void {
-    checkOf(model).cancel();
-    // The global animover handler restarts the check once the hit clip finishes.
-    animation.playOnce('hit', () => checkOf(model).start());
+function onworked(inst: PrefabInstance): void {
+    if (inst.hasTag('burnt')) return;
+    const check = (inst as WinterometerInstance).temperatureCheck;
+    check.cancel();
+    inst.sprite.playOnce('hit', () => check.start());
+}
+
+function onhammered(inst: PrefabInstance): void {
+    if (inst.components.burnable?.IsBurning()) inst.components.burnable.Extinguish();
+    inst.components.lootdropper!.DropLoot();
+    inst.worldServices?.fx?.collapse?.('small', inst.position, 'wood');
+    inst.remove();
 }
 
 export const WINTEROMETER_DEFINITION: AnimatedBuildingDefinition = {
     ...definitions.animatedBuildings.winterometer,
     obstacleRadius: 0.4,
-    hammerWorkLeft: 4, hammerMaterial: 'wood',
-    hammerEffect: { archive: 'structure_collapse_fx.zip', animation: 'collapse_small', name: 'collapse_small' },
     burnable: { burnTime: 10, fxLevel: 2, propagator: 'small' },
     skinInit: winterometer_init_fn,
     oninit,
     onbuilt,
-    onhit,
     onreskin: ({ model }) => checkOf(model).check(),
     ondispose: ({ model }) => checkOf(model).cancel(),
 };

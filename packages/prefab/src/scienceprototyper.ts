@@ -1,13 +1,13 @@
+import { Workable } from '../../componets/src/workable';
+import { createStructureLootDropper } from './structureLoot';
 import { type SpriteState } from '@dontstarve-web/display';
-import { prefabInstance } from './prefabInstance';
+import { prefabInstance, type PrefabInstance } from './prefabInstance';
 import definitions from './definitions.json' with { type: 'json' };
-import recipes from '@dontstarve-web/animation/recipes.json' with { type: 'json' };
 import {
     AnimatedBuildingPlacement,
     type AnimatedBuildingBuiltContext,
     type AnimatedBuildingDefinition,
     type AnimatedBuildingEventContext,
-    type AnimatedBuildingHammerContext,
 } from './animatedBuildingPlacement';
 import type { WorldContext } from './worldContext';
 import { PlaySound, type SoundHandle } from './sound';
@@ -25,24 +25,6 @@ export const RESEARCH_LAB_IDS = [
 ] as const;
 
 export type ResearchLabId = typeof RESEARCH_LAB_IDS[number];
-
-// lootdropper:GetRecipeLoot() rounds each ingredient up after applying
-// tuning.lua's HAMMER_LOOT_PERCENT = 0.5. These four recipes do not deconstruct.
-function researchLabLoot(id: ResearchLabId) {
-    const recipe = recipes.recipes.find((recipe) => recipe.name === id);
-    if (!recipe) throw new Error(`Missing recipe for ${id}`);
-    return recipe.ingredients.map((ingredient) => {
-        if (typeof ingredient.type !== 'string' || typeof ingredient.amount !== 'number') {
-            throw new Error(`Unsupported loot ingredient for ${id}`);
-        }
-        return { itemId: ingredient.type, count: Math.ceil(ingredient.amount * 0.5) };
-    });
-}
-
-export const RESEARCH_LAB_HAMMER_LOOT = {
-    researchlab: researchLabLoot('researchlab'), researchlab2: researchLabLoot('researchlab2'),
-    researchlab3: researchLabLoot('researchlab3'), researchlab4: researchLabLoot('researchlab4'),
-} as const;
 
 export const RESEARCH_LAB_SKIN_ARCHIVES: Readonly<Record<ResearchLabId, Readonly<Record<string, string>>>> = {
     researchlab: definitions.animatedBuildings.researchlab.skinArchives,
@@ -93,20 +75,18 @@ function onturnoff(id: ResearchLabId, { model, animation }: AnimatedBuildingEven
     }
 }
 
-function onhit({ model, animation }: AnimatedBuildingHammerContext): void {
-    // scienceprototyper.lua and magicprototyper.lua: hit, then the on/off loop.
-    const on = prefabInstance(model)!.components?.prototyper?.on === true;
-    animation.playOnce('hit');
-    (animation as SpriteState).pushAnimation(on ? 'proximity_loop' : 'idle', on);
+function onworked(inst: PrefabInstance): void {
+    if (inst.hasTag('burnt')) return;
+    const on = inst.components.prototyper?.on === true;
+    inst.sprite.playOnce('hit');
+    inst.sprite.pushAnimation(on ? 'proximity_loop' : 'idle', on);
 }
 
-function onhammered(id: ResearchLabId, { position, dropLoot, spawnEffect, remove }: AnimatedBuildingHammerContext): void {
-    dropLoot(RESEARCH_LAB_HAMMER_LOOT[id]);
-    spawnEffect();
-    // structure_collapse_fx.lua: collapse_small:SetMaterial("wood").
-    PlaySound('dontstarve/common/destroy_smoke', position);
-    PlaySound('dontstarve/common/destroy_wood', position);
-    remove();
+function onhammered(inst: PrefabInstance): void {
+    if (inst.components.burnable?.IsBurning()) inst.components.burnable.Extinguish();
+    inst.components.lootdropper!.DropLoot();
+    inst.worldServices?.fx?.collapse?.('small', inst.position, 'wood');
+    inst.remove();
 }
 
 /** prefabskin.lua researchlab4_init_fn / researchlab4_clear_fn: only the hat comes from the skin build. */
@@ -121,9 +101,15 @@ function researchLabDefinition(id: ResearchLabId): AnimatedBuildingDefinition {
         researchlab3: { MAGIC: 3 }, researchlab4: { MAGIC: 2 },
     };
     return {
-        ...definitions.animatedBuildings[id], obstacleRadius: .4, onProximity: false, onbuilt, onhit,
+        ...definitions.animatedBuildings[id], obstacleRadius: .4, onProximity: false, onbuilt,
         ...(id === 'researchlab4' ? { skinAnimState: RESEARCHLAB4_SKIN } : {}),
         oninit: (context) => {
+            const workable = context.instance.components.workable = new Workable(context.instance);
+            workable.SetWorkAction('HAMMER');
+            workable.SetWorkLeft(4);
+            workable.SetOnWorkCallback(onworked);
+            workable.SetOnFinishCallback(onhammered);
+            context.instance.components.lootdropper = createStructureLootDropper(context.instance);
             const inst = actionEntity(context.model, id);
             inst.addTag('structure');
             inst.addTag(`level${RESEARCH_LAB_IDS.indexOf(id) + 1}`);
@@ -142,9 +128,6 @@ function researchLabDefinition(id: ResearchLabId): AnimatedBuildingDefinition {
             delete inst.components.prototyper;
             stopIdleSound(model);
         },
-        hammerWorkLeft: 4,
-        hammerEffect: { archive: 'structure_collapse_fx.zip', animation: 'collapse_small', name: 'collapse_small' },
-        onhammered: (context) => onhammered(id, context),
     };
 }
 
