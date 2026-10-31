@@ -368,6 +368,7 @@
     "chessjunk1",
     "chessjunk2",
     "chessjunk3",
+    "archive_centipede_husk",
     "deciduoustree",
     "moon_tree",
     "moonbutterfly_sapling",
@@ -628,6 +629,10 @@
       "imported": 0
     },
     "chessjunk3": {
+      "source": 0,
+      "imported": 0
+    },
+    "archive_centipede_husk": {
       "source": 0,
       "imported": 0
     },
