@@ -12,8 +12,6 @@ export type { ActionWorldContext, ActionPerformer, ActionLocomotor, CursorLabel 
 export { bindActionCancellation } from './actionEvents.ts';
 export { facePoint, faceSpritePoint, facingToward, PLAYER_FACING_VALUES, type PlayerFacing } from './facing.ts';
 export type { PlayerActionEvents, PlayerActionKind, ActionInterruptReason } from './actionEvents.ts';
-export * from './attack.ts';
-export * from './fish.ts';
 export * from './terraform.ts';
 export * from './till.ts';
 export * from './eat.ts';
@@ -23,7 +21,6 @@ export * from './pick.ts';
 export * from './itemuse.ts';
 export * from './blink.ts';
 export * from './rummage.ts';
-export * from './light.ts';
 export * from './pickup.ts';
 export * from './reskin_tool.ts';
 export * from './castspell.ts';

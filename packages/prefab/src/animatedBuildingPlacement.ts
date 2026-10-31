@@ -307,6 +307,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         building.instance.worldServices = this.worldContext;
         building.instance.onRemove(() => this.releaseBuilding(building));
         actionEntity(model, buildId).reskinTarget = this.createReskinTarget(building);
+        actionEntity(model, buildId).deconstructionTarget = this.createDeconstructionTarget(building);
         const obstacleRadius = this.definitions[buildId].obstacleRadius;
         if (obstacleRadius !== undefined) MakeObstaclePhysics(building.instance, obstacleRadius);
         if (this.worldContext.physics) building.instance.bindPhysics(this.worldContext.physics);
@@ -437,30 +438,25 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         })];
     }
 
-    get spellTargets(): readonly import('./staff').DeconstructionTarget[] { return this.getSpellTargets(); }
-
-    getSpellTargets(model?: THREE.Object3D): readonly import('./staff').DeconstructionTarget[] {
-        return this.mouseRecords.select(model, this.placed).map(building => {
-            const entity = actionEntity(building.model, building.buildId);
-            const isValid = () => !this.disposed && this.placed.includes(building) && !building.isPlacing;
-            return {
-                prefab: building.buildId, instance: building.instance, display: building.display,
-                components: building.instance.components as import('./staff').DeconstructionTarget['components'],
-                get position() { return building.instance.position; },
-                get isRemoved() { return !isValid(); }, isValid,
-                isVisible: () => building.model.visible,
-                hasTag: (tag: string) => entity.hasTag(tag),
-                PushEvent: (name: string, data: unknown) => entity.PushEvent?.(name, data),
-                removeOne: () => { if (!isValid()) return false; building.instance.remove(); return true; },
-            };
-        });
-    }
-
-
-
     get reskinTargets(): readonly ReskinTarget[] {
         return Array.from(this.placed, building => findActionEntity(building.model)?.reskinTarget)
             .filter((target): target is ReskinTarget => target !== undefined);
+    }
+
+    /** The greenstaff's view of a placed building: deconstruction removes the building. */
+    private createDeconstructionTarget(building: AnimatedBuildingInstance<BuildId>): import('./staff').DeconstructionTarget {
+        const entity = actionEntity(building.model, building.buildId);
+        const isValid = () => !this.disposed && this.placed.includes(building) && !building.isPlacing;
+        return {
+            prefab: building.buildId, instance: building.instance, display: building.display,
+            components: building.instance.components as import('./staff').DeconstructionTarget['components'],
+            get position() { return building.instance.position; },
+            get isRemoved() { return !isValid(); }, isValid,
+            isVisible: () => building.model.visible,
+            hasTag: (tag: string) => entity.hasTag(tag),
+            PushEvent: (name: string, data: unknown) => entity.PushEvent?.(name, data),
+            removeOne: () => { if (!isValid()) return false; building.instance.remove(); return true; },
+        };
     }
 
     private createReskinTarget(building: AnimatedBuildingInstance<BuildId>): ReskinTarget {

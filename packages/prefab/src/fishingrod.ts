@@ -1,6 +1,8 @@
 import { PLAYER_EQUIPMENT_CONTAINER_ID, type ItemEntity } from '@dontstarve-web/inventory';
 import { FishingRod, type FishingWorld } from '../../componets/src/fishingrod';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import type { ComponentUpdates } from '../../componets/src/componentUpdates';
+import type { EquipmentLifecycle } from '@dontstarve-web/signals';
 import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory } from './equipmentVisual';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 
@@ -26,8 +28,14 @@ export function configureFishingRodEntity(entity: ItemEntity): void {
   });
 }
 
-/** The rod component is attached on first use, when the running scene supplies its scheduler and world. */
-export function getFishingRod(entity: ItemEntity, scheduler: GameTimeScheduler, world: FishingWorld): FishingRod {
+/** The running scene's services a rod needs: game time, per-frame component updates and where a landed fish goes. */
+export interface FishingRodWorld extends FishingWorld {
+  readonly scheduler: GameTimeScheduler;
+  readonly componentUpdates: ComponentUpdates;
+}
+
+/** The rod component is attached when the rod is first held in a running scene, which supplies its scheduler and world. */
+export function getFishingRod(entity: ItemEntity, scheduler: GameTimeScheduler, world: FishingWorld, updates?: ComponentUpdates): FishingRod {
   const rod = entity.component('fishingrod', () => {
     const rod = new FishingRod({
       addTag: tag => entity.addTag(tag),
@@ -37,13 +45,22 @@ export function getFishingRod(entity: ItemEntity, scheduler: GameTimeScheduler, 
         const address = entity.components.inventoryitem.owner?.address;
         return address?.containerId === PLAYER_EQUIPMENT_CONTAINER_ID && address.slotKey === 'hand';
       },
-    }, scheduler, world);
+    }, scheduler, world, updates);
     rod.SetWaitTimes(...FISHINGROD_WAIT_TIMES);
     rod.SetStrainTimes(...FISHINGROD_STRAIN_TIMES);
     return rod;
   });
-  rod.bind(scheduler, world);
+  rod.bind(scheduler, world, updates);
+  entity.components.fishingrod = rod;
   return rod;
+}
+
+/** Holding the rod in the scene gives it its fishingrod component; the rod stops fishing once it leaves the hand. */
+export function createFishingRodLifecycle(entity: ItemEntity, world: FishingRodWorld): EquipmentLifecycle {
+  return {
+    onequip() { getFishingRod(entity, world.scheduler, world, world.componentUpdates); },
+    onunequip() { entity.components.fishingrod?.StopFishing(); },
+  };
 }
 
 /** fishingrod.lua onequip: swap_object plus the fishingline and FX_fishing symbols from swap_fishingrod. */

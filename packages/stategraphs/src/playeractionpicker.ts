@@ -2,7 +2,7 @@ import type * as THREE from 'three';
 import { getActionPriority, type ActionDescription } from './actions.ts';
 import { PointerRaycaster } from './pointerRaycaster.ts';
 import { isMouseTarget } from './mouseTargets.ts';
-import { collectEquippedItemActions, collectSceneActions, type ComponentActionEntity, type SceneActionDoer } from './componentactions.ts';
+import { collectEquippedItemActions, collectPointActions, collectSceneActions, type ComponentActionEntity, type EquippedActionDoer, type SceneActionDoer } from './componentactions.ts';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 
 export interface MouseActionCandidate {
@@ -32,7 +32,7 @@ export class PlayerActionPicker {
   private readonly placerSources = new Set<() => boolean>();
   private readonly eventActions = new WeakMap<PointerEvent, { actions: MouseActions; target?: THREE.Object3D }>();
   private selectedModel?: THREE.Object3D;
-  private player?: { readonly doer: SceneActionDoer; equippedItem(): ComponentActionEntity | undefined };
+  private player?: { readonly doer: SceneActionDoer & EquippedActionDoer; equippedItem(): ComponentActionEntity | undefined };
   private readonly actionFilters: { fn: ActionFilter; priority: number }[] = [];
   get targetModel(): THREE.Object3D | undefined { return this.selectedModel; }
 
@@ -50,7 +50,7 @@ export class PlayerActionPicker {
   }
 
   /** playeractionpicker.inst: the player whose hand item and scene actions the picker collects itself. */
-  bindPlayer(doer: SceneActionDoer, equippedItem: () => ComponentActionEntity | undefined): () => void {
+  bindPlayer(doer: SceneActionDoer & EquippedActionDoer, equippedItem: () => ComponentActionEntity | undefined): () => void {
     const player = { doer, equippedItem };
     this.player = player;
     return () => { if (this.player === player) this.player = undefined; };
@@ -62,7 +62,8 @@ export class PlayerActionPicker {
    */
   private componentActions(target: THREE.Object3D | undefined): MouseActionCandidate[] {
     const player = this.player, entity = findActionEntity(target);
-    if (!player || !entity || !target) return [];
+    if (!player) return [];
+    if (!entity || !target) return this.pointActions(player);
     const item = player.equippedItem(), doer = player.doer;
     return ([false, true] as const).flatMap(right => {
       const button = right ? 'right' as const : 'left' as const;
@@ -73,6 +74,15 @@ export class PlayerActionPicker {
           action: { action, doer, target: entity }, button, model: target, source: 'scene' as const })),
       ];
     });
+  }
+
+  /** GetPointActions(position, inventory:GetEquippedItem(HANDS)) on the ground under the pointer, with no entity hit. */
+  private pointActions(player: NonNullable<PlayerActionPicker['player']>): MouseActionCandidate[] {
+    const item = player.equippedItem(), point = item && this.pointer.groundPoint();
+    if (!item || !point) return [];
+    const pos = point.clone(), doer = player.doer;
+    return ([false, true] as const).flatMap(right => collectPointActions(item, doer, pos, right).map(action => ({
+      action: { action, doer, invobject: item, pos }, button: right ? 'right' as const : 'left' as const, source: 'equipped' as const })));
   }
 
   register(provider: (target: THREE.Object3D | undefined) => readonly MouseActionCandidate[]): () => void {

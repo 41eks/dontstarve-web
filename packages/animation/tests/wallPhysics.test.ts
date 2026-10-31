@@ -1,3 +1,4 @@
+import { activePrefabs } from '../../prefab/src/activePrefabs';
 import { createSignal } from '@dontstarve-web/signals';
 import { PhysicsWorld } from '../../componets/src/physicsWorld';
 import { DisposeTileStates, GetTileStateAtPoint } from '../../componets/src/tileManager';
@@ -33,8 +34,9 @@ function setup(physics: CANNON.World = new CANNON.World()) {
   return { physics, placement: new WallsPlacement(world, () => false) };
 }
 
-const healthOf = (placement: WallsPlacement, index: number) =>
-  (placement.combatTargets[index].inst.components as { health: Health }).health;
+/** The placed walls' health, in placement order (their combat entities, as FindEntities lists them). */
+const healthOf = (_placement: WallsPlacement, index: number) =>
+  (activePrefabs.filter(entity => (entity.components as { combat?: unknown }).combat)[index].components as { health: Health }).health;
 const wallBodies = (physics: CANNON.World) => physics.bodies.filter(body => body.type === CANNON.Body.STATIC);
 
 it('blocks with a static obstacle at the foot point only while the wall has health', async () => {

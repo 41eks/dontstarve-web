@@ -1,4 +1,3 @@
-import type { Object3D } from 'three';
 import {
     COOK_POT_DEFINITION,
     COOK_POT_ID,
@@ -190,13 +189,7 @@ export class PlaceableBuildingPlacement {
     }
 
 
-    /** Placed insts with combat and live health; walls and fences are the only ported structures with combat. */
-    get combatTargets() {
-        return [...this.walls.combatTargets, ...this.fences.combatTargets];
-    }
 
-    get spellTargets() { return this.getSpellTargets(); }
-    getSpellTargets(model?: Object3D) { return this.animated.getSpellTargets(model); }
 
     get giveTargets() { return this.animated.giveTargets; }
 

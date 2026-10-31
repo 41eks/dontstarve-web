@@ -128,6 +128,8 @@ for (const panel of [gameUi.chestPanel, gameUi.cookPotPanel, gameUi.iceBoxPanel]
   });
 }
 const playerAnimation = playerInstance.animationController;
+/** inst:PushEvent reaches SGwilson's handlers; these are the ones the player's own components and actions push. */
+const STATEGRAPH_EVENTS = new Set(['toolbroke', 'fishingnibble', 'fishingloserod', 'fishingstrain', 'fishingcatch', 'fishingcancel']);
 const pickupDoer: PickupDoer & { ListenForEvent(name: string, listener: (data: unknown) => void): () => void; HasStateTag(tag: string): boolean; GoToState(name: string): void; IsCurrentState(name: string): boolean;
   components: PickupDoer['components'] & { health: typeof playerStats.health; hunger: typeof playerStats.hunger; sanity?: Sanity } } = {
   components: { inventory, health: playerStats.health, hunger: playerStats.hunger },
@@ -139,13 +141,14 @@ const pickupDoer: PickupDoer & { ListenForEvent(name: string, listener: (data: u
   hasTag: tag => tag === 'player' || modelHasTag(player, tag),
   GetPosition: () => player.position,
   getPosition: () => player.position,
+  position: player.position,
   sg: { HasStateTag: tag => playerAnimation?.stategraph.hasStateTag(tag) ?? false },
   HasStateTag: tag => playerAnimation?.stategraph.hasStateTag(tag) ?? false,
   GoToState: name => playerAnimation?.stategraph.goToState(name as WilsonStateName),
   IsCurrentState: name => playerAnimation?.stategraph.stateName === name,
   PushEvent: (name, data) => {
-    // player_common.lua listens for itemranout; SGwilson.lua handles toolbroke.
-    if (name === 'toolbroke') playerAnimation?.stategraph.pushEvent(name, data);
+    // player_common.lua listens for itemranout; SGwilson.lua handles toolbroke and the fishing rod's events.
+    if (STATEGRAPH_EVENTS.has(name)) playerAnimation?.stategraph.pushEvent(name, data);
     else if (name === 'itemranout') OnItemRanOut(inventory, data);
     player.dispatchEvent({ type: name, data } as never);
   },
@@ -198,6 +201,15 @@ const handEquipmentBinding = await bindPlayerHandEquipment({
   tridentWorld: {
     map: spellCastMap,
     spawnWaterspout: position => worldFx.spawn('crab_king_waterspout', position),
+  },
+  reskinEffects: { prepare: toolSkinId => sceneResources.reskinEffects.prepare(toolSkinId) },
+  // fishingrod.lua / pond.lua: the held rod fishes on game time and lands its fish as a ground item.
+  fishingWorld: {
+    scheduler: worldState.scheduler,
+    componentUpdates: worldState.componentUpdates,
+    landFish: (fish, position) => {
+      groundItems.flingLoot([{ ...inventory.getItemSpec(fish.prefab), itemId: fish.prefab, count: 1 }], position);
+    },
   },
 });
 

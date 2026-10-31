@@ -2,6 +2,7 @@ import type { Vector3 } from 'three';
 import type { GameTimeScheduler } from './gameTimeScheduler';
 import type { Fishable, HookedFish } from './fishable';
 import { ComponentTimer } from './timer';
+import type { ComponentUpdates } from './componentUpdates';
 
 /** The fishing doer: its stategraph tags gate the rod's per-frame validity check. */
 export interface Fisherman {
@@ -47,10 +48,13 @@ export class FishingRod {
   private scheduler: GameTimeScheduler;
   private readonly inst: FishingRodInst;
   private world: FishingWorld;
+  private updates?: ComponentUpdates;
+  private stopUpdating?: () => void;
 
-  constructor(inst: FishingRodInst, scheduler: GameTimeScheduler, world: FishingWorld) {
+  constructor(inst: FishingRodInst, scheduler: GameTimeScheduler, world: FishingWorld, updates?: ComponentUpdates) {
     this.inst = inst;
     this.world = world;
+    this.updates = updates;
     this.scheduler = scheduler;
     this.fishtask = this.createTimer(scheduler);
     inst.addTag('fishingrod');
@@ -70,13 +74,14 @@ export class FishingRod {
   }
 
   /** The rod's inst is created with the item; the scene's scheduler is attached when it is first used. */
-  bind(scheduler: GameTimeScheduler, world?: FishingWorld): void {
-    if (scheduler !== this.scheduler) {
+  bind(scheduler: GameTimeScheduler, world?: FishingWorld, updates?: ComponentUpdates): void {
+    if (scheduler !== this.scheduler || (updates && updates !== this.updates)) {
       this.StopFishing();
       this.scheduler = scheduler;
       this.fishtask = this.createTimer(scheduler);
     }
     if (world) this.world = world;
+    if (updates) this.updates = updates;
   }
 
   SetWaitTimes(min: number, max: number): void { this.minwaittime = min; this.maxwaittime = max; }
@@ -100,6 +105,8 @@ export class FishingRod {
     if (!target.components.fishable) return;
     this.target = target;
     this.fisherman = fisherman;
+    // inst:StartUpdatingComponent(self): OnUpdate watches the fisherman's state each frame.
+    this.stopUpdating = this.updates?.register(this);
   }
 
   WaitForFish(): void {
@@ -121,6 +128,7 @@ export class FishingRod {
   }
 
   StopFishing(): void {
+    this.stopUpdating?.(); this.stopUpdating = undefined;
     if (this.target && this.fisherman) {
       this.fisherman.PushEvent('fishingcancel');
       this.target = undefined;

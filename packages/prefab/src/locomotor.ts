@@ -230,6 +230,7 @@ export class Locomotor {
 
     /** OnUpdate's reached_dest: within the arrive distance, or half this frame's run distance when that is longer. */
     private hasArrived(pending: PendingAction, runDistance = 0): boolean {
+        if (pending.action.arrived) return pending.action.arrived();
         const target = pending.action.target.getPosition();
         return (target.x - this.body.position.x) ** 2 + (target.z - this.body.position.z) ** 2
             <= Math.max(pending.arriveDistance, runDistance * .5) ** 2;

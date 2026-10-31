@@ -1,3 +1,4 @@
+import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
@@ -13,7 +14,7 @@ import { createMoonTreeManager } from '../../prefab/src/moontree';
 import { FlowerPlanting } from '../../prefab/src/flower';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Lighter } from '../../componets/src/lighter';
-import { collectEquippedActions, performLightAction, performToolWork, type ComponentActionEntity } from '../../stategraphs/src/componentactions';
+import { performLightAction, performToolWork, type ComponentActionEntity } from '../../stategraphs/src/componentactions';
 import { EventEmitter, createSignal, type SeasonState } from '@dontstarve-web/signals';
 import type { WorldContext, WorldEvents } from '../../prefab/src/worldContext';
 
@@ -49,7 +50,7 @@ const doer = (): ComponentActionEntity => ({ prefab: 'wilson', isRemoved: false,
   hasTag: () => false, addTag() {}, removeTag() {} });
 const light = (target: ComponentActionEntity) => {
   const tool = torch();
-  expect(collectEquippedActions(tool, target, true)).toEqual(['LIGHT']);
+  expect(collectEquippedItemActions(tool, undefined, target, true)).toEqual(['LIGHT']);
   return performLightAction(tool, target, doer());
 };
 /** Presentation effects (fire art) run on the signal queue, after the synchronous domain change. */

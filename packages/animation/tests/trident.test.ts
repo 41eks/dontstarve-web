@@ -1,8 +1,8 @@
+import { createBufferedAction } from '../../stategraphs/src/actionfns';
 import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import { InventoryStore, HandSlot, equipmentSlotAddress } from '../../inventory/src';
 import { TridentController } from '../../prefab/src/trident';
-import { createCastSpellAction } from '../../stategraphs/src/castspell';
 import { INVENTORY_ITEM_SPECS } from '../../../src/inventoryItems';
 
 const doer = { position: new THREE.Vector3(), hasTag: () => false, components: {} };
@@ -27,7 +27,7 @@ describe('trident water spell', () => {
     expect(entity.hasTag('castonpoint')).toBe(false);
     const land = new THREE.Vector3(-30, 0, 0), water = new THREE.Vector3(60, 0, 0);
     expect(trident.spellcaster.canCast(doer, undefined, land)).toBe(false);
-    expect(createCastSpellAction(entity, doer, water, () => true).do()).toBe(true);
+    expect(createBufferedAction('CASTSPELL', { doer: doer as never, invobject: entity, pos: water }).do()).toBe(true);
     expect(spawnWaterspout).toHaveBeenCalledTimes(4);
     for (const [point] of spawnWaterspout.mock.calls) expect(point.distanceTo(water)).toBeCloseTo(2.75 * 0.65 * 3, 5);
     expect(entity.components.finiteuses.remaining).toBe(196);

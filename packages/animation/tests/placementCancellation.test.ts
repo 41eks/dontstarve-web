@@ -1,5 +1,5 @@
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
-import { actionTool, reskinEntityFields } from './actionFixtures';
+import { actionTool } from './actionFixtures';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createAnimatedSpriteSource } from '../src/sprite';
@@ -12,11 +12,11 @@ import { displayLightOverride } from '../../display/src/displaySprites';
 import { InventorySlot, InventoryStore, inventorySlotAddress } from '../../inventory/src';
 import { EventEmitter, createEquipmentExistenceState, createSignal } from '../../signals/src';
 import type { PlayerActionEvents } from '../../stategraphs/src/actionEvents';
-import { ReskinActionController, type ReskinTarget } from '../../stategraphs/src/reskin_tool';
+import { PlayerController } from '../../stategraphs/src/playercontroller';
+import { actionEntity, disposeActionEntity } from '../../prefab/src/actionEntity';
 import { GroundItemAssets } from '../../prefab/src/groundItems';
 import { bindTestWorld } from './worldContentFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { SpriteState } from '@dontstarve-web/display';
 import { bufferingPerformer } from './bufferingPerformer';
 
 vi.mock('../src/sprite', async importOriginal => ({ ...await importOriginal<typeof import('../src/sprite')>(), createAnimatedSpriteSource: vi.fn() }));
@@ -103,7 +103,7 @@ function setup(kind: 'animated' | 'wall') {
   return { world, cameraFacing, cursor, store, recipe, consume, onbuilt, placement, begin, click, load };
 }
 
-it('an accepted action cancels a paid preview through events, skips its own cancellation and invalidates late loading', async () => {
+it('an accepted action cancels a paid preview through events and skips its own cancellation', async () => {
   const { world, store, placement, begin, consume, cursor } = setup('animated');
   await placement.spawn('building');
   const existing = world.scene.children[0];
@@ -113,41 +113,37 @@ it('an accepted action cancels a paid preview through events, skips its own canc
   await vi.waitFor(() => expect(lookupPrefabInstance(preview)!.sprite.loaded).toBe(true));
   const geometry = vi.spyOn((preview.children[0].children[0] as THREE.Mesh).geometry, 'dispose');
   const equipped = createEquipmentExistenceState('HANDS');
-  equipped.set(actionTool('reskin_tool'));
-  let valid = false, release!: () => void;
-  const ready = new Promise<void>(resolve => { release = resolve; });
-  const sprite = new SpriteState({ name: '' }), model = new THREE.Group();
-  const target: ReskinTarget = { ...reskinEntityFields, id: 'target', prefabId: 'icebox', model, sprite,
-    get skinId() { return sprite.skinId.peek(); }, position: new THREE.Vector3(1, 0, 0), isValid: () => valid,
-    display: { model, preloadSkin: async () => { await ready; } } as never };
+  const tool = actionTool('reskin_tool');
+  const model = new THREE.Group(); world.scene.add(model);
+  const target = actionEntity(model, 'icebox');
   const animation = bufferingPerformer();
-  const controller = new ReskinActionController(world, animation.performer,
-    { stop: vi.fn(), goToPoint: () => true, destination: undefined }, equipped,
-    { prepare: () => ({ play: vi.fn(), dispose: vi.fn() }) });
+  // The player walks towards the target; the cast is never buffered in this test.
+  const controller = new PlayerController(world, animation.performer,
+    { stop: vi.fn(), goToPoint: () => true, destination: undefined, PushAction: () => {} }, equipped);
+  const cast = () => controller.DoAction(controller.createAction({ action: 'CASTSPELL', target, invobject: tool.entity })!);
   const cancel = vi.spyOn(controller, 'cancel');
   try {
-    expect(await controller.request(target)).toBe(false);
-    expect(world.scene.children).toEqual([existing, preview]);
+    // Without the tool in hand the action is invalid: nothing begins.
+    expect(cast()).toBe(false);
+    expect(world.scene.children).toEqual([existing, preview, model]);
     expect(cancel).not.toHaveBeenCalled();
-    valid = true;
-    const request = controller.request(target);
+    equipped.set(tool);
+    expect(cast()).toBe(true);
     expect(cancel).toHaveBeenCalledOnce(); // The owner resets itself once; its event skips itself.
-    expect(world.scene.children).toEqual([existing]);
+    expect(world.scene.children).toEqual([existing, model]);
     expect(geometry).toHaveBeenCalledOnce();
     expect(cursor.hidden).toBe(true);
     expect(store.exportState()).toEqual(paidState);
     expect(consume).not.toHaveBeenCalled();
     world.actionEvents!.emit('action:interrupt', { reason: 'slot-select' });
-    release();
-    expect(await request).toBe(false);
-    expect(sprite.skinId.peek()).toBeUndefined();
+    expect(controller.bufferedAction).toBeUndefined();
     expect(animation.stategraph.pushBufferedAction).not.toHaveBeenCalled();
     controller.dispose();
     cancel.mockClear();
     world.actionEvents!.emit('action:interrupt', { reason: 'emote' });
     expect(cancel).not.toHaveBeenCalled();
     expect(store.exportState()).toEqual(paidState);
-  } finally { release(); controller.dispose(); placement.dispose(); store.dispose(); }
+  } finally { controller.dispose(); disposeActionEntity(model); placement.dispose(); store.dispose(); }
 });
 
 it.each(['animated', 'wall'] as const)('%s right-click removes only the preview and lets the paid build resume', async (kind) => {

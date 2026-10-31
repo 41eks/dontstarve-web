@@ -1,9 +1,9 @@
+import { createBufferedAction } from '../../stategraphs/src/actionfns';
+import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
 import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import { ItemEntity, InventoryStore, HandSlot, equipmentSlotAddress } from '../../inventory/src';
 import { GreenStaffController, deconstructionLoot, type DeconstructionTarget } from '../../prefab/src/staff';
-import { collectEquippedActions } from '../../stategraphs/src/componentactions';
-import { createCastSpellAction } from '../../stategraphs/src/castspell';
 import { INVENTORY_ITEM_SPECS } from '../../../src/inventoryItems';
 
 function target(itemId = 'opalstaff', remainingUses = 50): DeconstructionTarget & { entity: ItemEntity } {
@@ -45,9 +45,9 @@ describe('greenstaff source deconstruction', () => {
       components: { sanity: { DoDelta: doDelta }, staffsanity: { doCastingDelta: staffDelta } } };
     expect(entity.hasTag('castonrecipes')).toBe(true);
     expect(entity.hasTag('castontargets')).toBe(false);
-    expect(collectEquippedActions(entity, opal, true)).toEqual(['CASTSPELL']);
-    expect(collectEquippedActions(entity, { prefab: 'livinglog', isRemoved: false, hasTag: () => false }, true)).toEqual([]);
-    const action = createCastSpellAction(entity, doer, opal.position, () => true, opal);
+    expect(collectEquippedItemActions(entity, undefined, opal, true)).toEqual(['CASTSPELL']);
+    expect(collectEquippedItemActions(entity, undefined, { prefab: 'livinglog', isRemoved: false, hasTag: () => false }, true)).toEqual([]);
+    const action = createBufferedAction('CASTSPELL', { doer: doer as never, target: opal as never, invobject: entity, pos: opal.position });
     expect(action.target).toBe(opal);
     expect(action.do()).toBe(true);
     expect(spawn).toHaveBeenCalledWith([
@@ -68,7 +68,7 @@ describe('greenstaff source deconstruction', () => {
     const opal = target(), doDelta = vi.fn();
     const doer = { position: new THREE.Vector3(), hasTag: () => false, components: { sanity: { DoDelta: doDelta } } };
     let held = true;
-    const action = createCastSpellAction(entity, doer, opal.position, () => held, opal);
+    const action = createBufferedAction('CASTSPELL', { doer: doer as never, target: opal as never, invobject: entity, pos: opal.position }, () => held);
     held = false;
     expect(action.do()).toBe(false);
     held = true; opal.entity.addTag('INLIMBO');

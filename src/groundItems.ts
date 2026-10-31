@@ -1,5 +1,4 @@
 import { syncPlacementEntity } from '../packages/prefab/src/placementEntities';
-import { modelValues } from '../packages/prefab/src/modelRecords';
 import { ItemEntity, ItemEntityRegistry, type InventoryStore } from '@dontstarve-web/inventory';
 import type { PickupTarget } from '@dontstarve-web/stategraphs';
 import type { PlayerActionPicker } from '@dontstarve-web/stategraphs';
@@ -275,28 +274,6 @@ export class GroundItemManager {
     }
   }
 
-  get spellTargets(): readonly DeconstructionTarget[] { return this.getSpellTargets(); }
-
-  getSpellTargets(model?: THREE.Object3D): readonly DeconstructionTarget[] {
-    return modelValues(this.items, model, this.activeItems).map(record => {
-      const entity = record.entity;
-      const isValid = () => !this.disposed && this.activeItems.has(record) && !entity.isRemoved
-        && !entity.components.inventoryitem.owner && record.isClickable?.() !== false && !record.isRemoved?.();
-      return {
-        prefab: entity.prefab, model: record.model, components: entity.components,
-        get position() { return record.footPosition; }, get isRemoved() { return !isValid(); }, isValid,
-        isVisible: () => record.model.visible,
-        hasTag: (tag: string) => entity.hasTag(tag) || modelHasTag(record.model, tag), flush: () => entity.flush(),
-        PushEvent: (name: string, data: unknown) => entity.PushEvent(name, data),
-        removeOne: () => {
-          if (!isValid()) return false;
-          if (entity.components.stackable.count > 1) { entity.components.stackable.count--; return true; }
-          return entity.remove();
-        },
-      };
-    });
-  }
-
   /** How many insts a ground stack becomes: live insects force individual drops from a stack. */
   private dropPieces(definition: GroundItemDefinition): number {
     if (this.disposed) throw new Error('Ground items have been disposed');
@@ -413,8 +390,7 @@ export class GroundItemManager {
     // Domain queries read the authoritative vector; presentation/pickup snapshots own their scratch vector.
     const actions = actionEntity(model, entity.prefab, entity);
     actions.reskinTarget = this.createReskinTarget(record);
-    if (entity.components.workable?.GetWorkAction() === 'HAMMER') {
-    }
+    actions.deconstructionTarget = this.createDeconstructionTarget(record);
     actions.pickupTarget = {
       model, entity, get position() { return record.footPosition; },
       hasTag: (tag: string) => entity.hasTag(tag) || modelHasTag(model, tag),
@@ -575,15 +551,6 @@ export class GroundItemManager {
     }
   }
 
-  get combatTargets(): import('../packages/stategraphs/src/attack').AttackTarget[] {
-    return [...this.activeItems].filter(({ entity, isClickable }) => entity.components.combat && isClickable?.() !== false)
-      .map(record => ({ id: record.entity.id, model: record.model,
-        inst: { prefab: record.entity.prefab, components: record.entity.components,
-          get isRemoved() { return record.entity.isRemoved; },
-          getPosition: () => record.entity.getPosition(), getPhysicsRadius: () => record.instance.getPhysicsRadius(0),
-          hasTag: (tag: string) => record.entity.hasTag(tag), PushEvent: (name: string, data: unknown) => record.entity.PushEvent(name, data) },
-        isValid: () => this.activeItems.has(record) && !record.entity.isRemoved && !record.entity.hasTag('INLIMBO') }));
-  }
 
 
 
@@ -591,6 +558,25 @@ export class GroundItemManager {
         return Array.from(this.activeItems, record => findActionEntity(record.model)?.reskinTarget)
             .filter((target): target is ReskinTarget => target !== undefined);
     }
+
+  /** The greenstaff's view of a ground stack: it removes one item of the stack at a time. */
+  private createDeconstructionTarget(record: GroundItemRecord): DeconstructionTarget {
+    const entity = record.entity;
+    const isValid = () => !this.disposed && this.activeItems.has(record) && !entity.isRemoved
+      && !entity.components.inventoryitem.owner && record.isClickable?.() !== false && !record.isRemoved?.();
+    return {
+      prefab: entity.prefab, model: record.model, components: entity.components,
+      get position() { return record.footPosition; }, get isRemoved() { return !isValid(); }, isValid,
+      isVisible: () => record.model.visible,
+      hasTag: (tag: string) => entity.hasTag(tag) || modelHasTag(record.model, tag), flush: () => entity.flush(),
+      PushEvent: (name: string, data: unknown) => entity.PushEvent(name, data),
+      removeOne: () => {
+        if (!isValid()) return false;
+        if (entity.components.stackable.count > 1) { entity.components.stackable.count--; return true; }
+        return entity.remove();
+      },
+    };
+  }
 
     private createReskinTarget(record: GroundItemRecord): ReskinTarget {
         const prefabId = record.definition.itemId;

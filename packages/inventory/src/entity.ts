@@ -152,6 +152,7 @@ export class ItemEntity {
     instrument?: ItemRuntimeComponent & { Play(musician: unknown, listeners: (range: number) => Iterable<never>): boolean };
     workable?: import('../../componets/src/workable').Workable;
     spellcaster?: import('../../componets/src/spellcaster').SpellCasterComponent;
+    fishingrod?: import('../../componets/src/fishingrod').FishingRod;
     lighter?: import('../../componets/src/lighter').Lighter;
     burnable?: import('../../componets/src/burnable').Burnable;
     propagator?: import('../../componets/src/propagator').Propagator;

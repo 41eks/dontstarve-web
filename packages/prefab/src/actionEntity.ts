@@ -101,6 +101,7 @@ export function actionEntity(model: THREE.Object3D, prefab: string, inst?: Compo
     liveEntities.delete(entity);
     delete entity.reskinTarget;
     delete entity.pickupTarget;
+    delete entity.deconstructionTarget;
     entitiesByModel.delete(model);
   });
   if (!entity.isRemoved) {

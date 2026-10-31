@@ -1,3 +1,4 @@
+import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
 import { prefabDisplay } from '@dontstarve-web/display';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
@@ -9,7 +10,7 @@ import { executeDebugCommand } from '../../../src/debugCommands';
 import { INVENTORY_ITEM_SPECS } from '../../../src/inventoryItems';
 import { inventorySlotAddress } from '../../inventory/src';
 import { createPickupInventory } from './pickupFixture';
-import { collectEquippedActions, performLightAction } from '../../stategraphs/src/componentactions';
+import { performLightAction } from '../../stategraphs/src/componentactions';
 import { createPickupDoer, performPickupAction } from '../../stategraphs/src/pickup';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
@@ -48,7 +49,7 @@ it('burns dropped live grass/log stacks to prepared ash, notifies signals and im
     });
     const torch = inventory.getEntity(inventorySlotAddress(0))!;
     for (const model of models) {
-      expect(collectEquippedActions(torch, findActionEntity(model), true)).toEqual(['LIGHT']);
+      expect(collectEquippedItemActions(torch, undefined, findActionEntity(model), true)).toEqual(['LIGHT']);
       expect(performLightAction(torch, findActionEntity(model), torch)).toBe(true);
       expect(model.userData.burningSignal.peek()).toBe(true);
       expect(model.userData.persistenceSignal.peek()).toBe(false);
@@ -129,7 +130,7 @@ it('supports c_spawn, blocks noncombustible targets and preserves identity/state
     const model = manager.reskinTargets.find(target => target.prefabId === 'log')!.model;
     const rocks = manager.reskinTargets.find(target => target.prefabId === 'rocks')!.model;
     const torch = inventory.getEntity(inventorySlotAddress(0))!;
-    expect(collectEquippedActions(torch, findActionEntity(rocks), true)).toEqual([]);
+    expect(collectEquippedItemActions(torch, undefined, findActionEntity(rocks), true)).toEqual([]);
     performLightAction(torch, findActionEntity(model), torch); manager.update(5, new THREE.Quaternion());
     entity.components.burnable!.Extinguish(); manager.update(20, new THREE.Quaternion());
     expect(entity.isRemoved).toBe(false); expect(entity.persists).toBe(true); expect(entity.snapshot()).toEqual(before);

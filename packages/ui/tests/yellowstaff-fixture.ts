@@ -6,7 +6,7 @@ import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab
 import type { PrefabDisplay } from '../../display/src';
 import { GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { getLightStaffController, type LightStaffId } from '../../prefab/src/staff';
-import { SpellCastActionController } from '../../stategraphs/src/castspell';
+import { PlayerController } from '../../stategraphs/src/playercontroller';
 import { DwarfStarManager, DWARF_STAR_DURATION, POLAR_LIGHT_DURATION } from '../../prefab/src/stafflight';
 import { prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { PrewarmSounds } from '../../prefab/src/sound';
@@ -94,11 +94,12 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   });
   staff.onequip();
   let stops = 0, sanity = 100;
-  const casting = new SpellCastActionController({ scene, camera, renderer, ground, player }, animation,
-    { destination: undefined, stop: () => { stops += 1; }, goToPoint: () => true }, inventory.handEquipment,
-    { position: player.position, hasTag: () => false,
-      components: { sanity: { DoDelta: delta => { sanity = Math.max(0, sanity + delta); } } } },
-    () => false);
+  // The player inst as act.doer: spellcaster.lua reads its position, tags and sanity; the point is in CASTSPELL range.
+  const doer = { position: player.position, getPosition: () => player.position, hasTag: () => false, PushEvent() {},
+    components: { sanity: { DoDelta: (delta: number) => { sanity = Math.max(0, sanity + delta); } } } };
+  const casting = new PlayerController({ scene, camera, renderer, ground, player }, animation,
+    { destination: undefined, stop: () => { stops += 1; }, goToPoint: () => true, PushAction: (_action, arrive) => arrive() },
+    inventory.handEquipment, () => false, doer as never);
   const click = (button = 2) => {
     const point = new THREE.Vector3(30, 0, 0).project(camera);
     const bounds = renderer.domElement.getBoundingClientRect();

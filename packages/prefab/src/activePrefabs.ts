@@ -8,6 +8,8 @@ export type FoundEntity = ComponentActionEntity & WorkableInst & {
   getPosition(): Vector3;
   /** The entity's skin operation, supplied by its owner; skin state stays on that entity. */
   reskinTarget?: ReskinTarget;
+  /** The owner's greenstaff deconstruction view; loot and removal follow the recipe and the owner. */
+  deconstructionTarget?: import('./staff').DeconstructionTarget;
   /** The ground item's pickup view; inventory state remains on its ItemEntity. */
   pickupTarget?: import('../../stategraphs/src/pickup').PickupTarget;
 };

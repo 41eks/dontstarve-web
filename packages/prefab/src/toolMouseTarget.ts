@@ -1,6 +1,6 @@
 import { createEffect, createSignal, watchSignal, type HandEquipment, type ReadonlySignal } from '@dontstarve-web/signals';
 import type { Workable } from '../../componets/src/workable';
-import { collectEquippedActions, equippedActionEntity, type ComponentActionEntity } from '../../stategraphs/src/componentactions';
+import { collectEquippedItemActions, equippedActionEntity, type ComponentActionEntity } from '../../stategraphs/src/componentactions';
 import type { FoundEntity } from './activePrefabs';
 import type { PrefabInstance } from './prefabInstance';
 import { setMouseTargetEnabled } from './mouseTargets';
@@ -53,7 +53,7 @@ export class ToolMouseTarget {
     if (this.entity.isRemoved || this.entity.hasTag('INLIMBO')) return false;
     if (this.options.canInteractWithoutTool?.()) return true;
     if (!tool || tool.isRemoved) return false;
-    const actions = collectEquippedActions(tool, this.entity, true);
+    const actions = collectEquippedItemActions(tool, undefined, this.entity, true);
     if (actions.length > 0) return true;
     // combat.lua CanLightTarget, for the fire staff's ATTACK (RANGEDLIGHT).
     const burnable = this.entity.components.burnable;

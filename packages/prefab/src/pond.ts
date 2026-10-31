@@ -31,15 +31,6 @@ export const FISH_RESPAWN_TIME = 480 / 3;
 /** pondfish.lua `inst.build`: the build SGwilson's catchfish swaps into fish01. */
 export const POND_FISH = { prefab: 'pondfish', build: 'fish01' } as const;
 
-/** A pond as the fishing action sees it. */
-export interface FishingPondTarget {
-  readonly entity: ReturnType<typeof actionEntity>;
-  readonly model: THREE.Group;
-  readonly position: THREE.Vector3;
-  /** MakePondPhysics radius in scene units. */
-  readonly radius: number;
-  isValid(): boolean;
-}
 
 /** pond.lua OnSnowLevel: snowlevel above this freezes the pond. */
 export const POND_FREEZE_SNOWLEVEL = .02;
@@ -111,6 +102,8 @@ export class PondManager {
     // group order 0 and use mesh order. A negative group order would draw the pond before transparent turf, which covers it up.
     instance.sprite.setGround(0); instance.sprite.setMeshOrder(-0.5);
     instance.entityId = saved?.id ?? newEntityId();
+    // MakePondPhysics(inst, 1.95) is not ported; its radius still sets how close the fisher comes (GoToEntity).
+    instance.physicsRadiusOverride = 1.95;
     model.userData.billboard = false;
     // pond.lua: the fishable component holds pondfish and respawns one every FISH_RESPAWN_TIME.
     const entity = actionEntity(model, POND_ID);
@@ -136,15 +129,7 @@ export class PondManager {
   }
 
 
-  /** Frozen ponds drop the `fishable` tag, so the fishing action no longer targets them. */
-  get fishTargets(): readonly FishingPondTarget[] { return this.getFishTargets(); }
 
-  getFishTargets(model?: THREE.Object3D): readonly FishingPondTarget[] {
-    return (model && this.ponds.has(model as THREE.Group) ? [model as THREE.Group] : model ? [] : [...this.ponds]).map(model => {
-      const entity = actionEntity(model, POND_ID);
-      return { entity, model, position: entity.getPosition(), radius: POND_RADIUS, isValid: () => !entity.isRemoved && this.ponds.has(model) };
-    });
-  }
 
   exportRecords(): PondRecord[] {
     return [...this.ponds].map((model) => {

@@ -240,8 +240,10 @@ export class GreenStaffController implements EquipmentLifecycle {
     entity.components.spellcaster = this.spellcaster;
     this.spellcaster.canUseOnTargets = true;
     this.spellcaster.canOnlyUseOnRecipes = true;
+    // The entity cast on carries its owner's deconstruction view; tests may hand the view itself.
     this.spellcaster.setSpellFn((_staff, target, _position, doer) =>
-      this.destroyStructure(target as DeconstructionTarget, doer, world));
+      this.destroyStructure((target as { deconstructionTarget?: DeconstructionTarget }).deconstructionTarget
+        ?? target as DeconstructionTarget, doer, world));
   }
   onequip(): void {}
   onunequip(): void {}

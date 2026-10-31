@@ -9,16 +9,20 @@ import { modelHasTag, prefabInstance } from '../../prefab/src/prefabInstance';
  */
 export interface PickupDoer extends InventoryActor {
   getPosition(): THREE.Vector3;
+  /** spellcaster.lua reads the caster's position. */
+  readonly position: THREE.Vector3;
   readonly sg?: { HasStateTag(tag: string): boolean };
   components: {
     inventory: InventoryStore;
     sanity?: { DoDelta(delta: number): void };
-    combat?: Pick<import('../../componets/src/combat').Combat, 'GetAttacked'>;
+    combat?: import('../../componets/src/combat').Combat;
     sleepingbaguser?: import('../../componets/src/sleepingbag').SleepingBagSleeper;
+    staffsanity?: { doCastingDelta(delta: number): void };
   };
 }
 export function createPickupDoer(player: THREE.Object3D, inventory: InventoryStore): PickupDoer {
   const doer: PickupDoer = { components: { inventory }, GetPosition: () => player.position, getPosition: () => player.position,
+    position: player.position,
     // inst.sg:HasStateTag, as workable callbacks read the worker's state.
     get sg() { const sg = prefabInstance(player)?.sg; return sg && { HasStateTag: (tag: string) => sg.hasStateTag(tag) }; },
     hasTag: tag => tag === 'player' || modelHasTag(player, tag),

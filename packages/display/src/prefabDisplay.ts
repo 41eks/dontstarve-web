@@ -503,11 +503,6 @@ export class PrefabDisplay {
       declaration.animationBanks?.[id]?.length ? declaration.art.loadAnimation(archive) : undefined]);
   }
 
-  /** Prepare a proposed skin before a timed action, without changing the entity's declaration or drawing it. */
-  async preloadSkin(id: string | undefined): Promise<void> {
-    const op = this.json.peek().appearance.get('skin');
-    if (op?.kind === 'skin' && id !== undefined) await this.loadSkin(op.skin, id);
-  }
 
   /**
    * The entity's own AnimState and the slots other entities declared on it, merged in that order. Each names its art; what

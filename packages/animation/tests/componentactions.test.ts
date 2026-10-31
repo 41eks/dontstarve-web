@@ -1,9 +1,10 @@
+import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
 import * as THREE from 'three';
 import { expect, it, vi } from 'vitest';
 import { ItemEntity } from '../../inventory/src/entity';
 import { Tool } from '../../componets/src/tool';
 import { Workable } from '../../componets/src/workable';
-import { collectEquippedActions, performToolWork } from '../../stategraphs/src/componentactions';
+import { performToolWork } from '../../stategraphs/src/componentactions';
 import { configureReskinToolEntity, nextReskin, reskinTarget } from '../../prefab/src/reskin_tool';
 import { SpriteState } from '@dontstarve-web/display';
 import type { ReskinTarget } from '../../stategraphs/src/reskin_tool';
@@ -20,8 +21,8 @@ it('selects work from component tags, revalidates changes at impact and consumes
   const hit = vi.fn(), finish = vi.fn(() => target.destroy());
   work.SetOnWorkCallback(hit); work.SetOnFinishCallback(finish);
   try {
-    expect(collectEquippedActions(tool, target, false)).toEqual([]);
-    expect(collectEquippedActions(tool, target, true)).toEqual(['HAMMER']);
+    expect(collectEquippedItemActions(tool, undefined, target, false)).toEqual([]);
+    expect(collectEquippedItemActions(tool, undefined, target, true)).toEqual(['HAMMER']);
     expect(performToolWork('HAMMER', target, {}, tool)).toBe(true);
     expect(work.GetWorkLeft()).toBe(1);
     expect(tool.components.finiteuses.remaining).toBe(1);
@@ -51,14 +52,14 @@ it('validates reskin spells and advances each tool cache only after a successful
   });
   const doer = { position: new THREE.Vector3(), hasTag: () => false, components: {} };
   try {
-    expect(collectEquippedActions(first, target, true)).toEqual(['CASTSPELL']);
+    expect(collectEquippedItemActions(first, undefined, target, true)).toEqual(['CASTSPELL']);
     // CanCast only asks; the tool's cache advances with a cast.
     expect(first.components.spellcaster!.canCast(doer, target, target.position)).toBe(true);
     expect(first._cached_reskinname!.size).toBe(0);
     visible = false;
     expect(first.components.spellcaster!.canCast(doer, target, target.position)).toBe(false);
     visible = true; blocked = true;
-    expect(collectEquippedActions(first, target, true)).toEqual([]);
+    expect(collectEquippedItemActions(first, undefined, target, true)).toEqual([]);
     blocked = false;
     expect(first.components.spellcaster!.castSpell(target, target.position, doer)).toBe(true);
     expect(sprite.skinId.peek()).toBe('skin_a');

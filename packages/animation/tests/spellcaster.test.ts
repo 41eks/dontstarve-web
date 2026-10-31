@@ -1,7 +1,11 @@
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { InventoryStore, InventorySlot, HandSlot, inventorySlotAddress, equipmentSlotAddress } from '../../inventory/src';
-import { SpellCastActionController, type SpellCastDoer } from '../../stategraphs/src/castspell';
+import type { SpellCastDoer } from '../../stategraphs/src/castspell';
+import { PlayerController } from '../../stategraphs/src/playercontroller';
+import { collectPointActions } from '../../stategraphs/src/componentactions';
+import { Locomotor } from '../../prefab/src/locomotor';
+import * as CANNON from 'cannon-es';
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import { getLightStaffController, LIGHT_STAFF_USES, LIGHT_STAFF_CAST_SOUND, type LightStaffId } from '../../prefab/src/staff';
 import { PlaySound } from '../../prefab/src/sound';
@@ -40,9 +44,17 @@ function fixture(itemId: LightStaffId, remainingUses?: number) {
     renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
   const doDelta = vi.fn();
   const doer: SpellCastDoer = { position: player.position, hasTag: () => false, components: { sanity: { DoDelta: doDelta } } };
-  const locomotor = { destination: undefined, goToPoint: vi.fn(() => true), stop: vi.fn() };
-  const input = new SpellCastActionController(world, { stategraph: graph, cancelEmote() {}, setFacing() {} }, locomotor,
-    store.handEquipment, doer);
+  const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body);
+  // The player inst as act.doer: spellcaster.lua reads its position, tags and sanity.
+  const playerDoer = Object.assign(doer, { getPosition: () => player.position, PushEvent: vi.fn() });
+  const controller = new PlayerController(world, { stategraph: graph, cancelEmote() {}, setFacing() {} } as never, locomotor,
+    store.handEquipment, () => false, playerDoer as never);
+  const input = {
+    // GetPointActions(position, equipitem) on the right button, then DoAction.
+    request: (point: THREE.Vector3) => collectPointActions(entity, playerDoer as never, point, true).includes('CASTSPELL')
+      && controller.DoAction(controller.createAction({ action: 'CASTSPELL', invobject: entity, pos: point.clone() })!),
+    dispose: () => controller.dispose(),
+  };
   return { store, hand, entity, staff, world, worldServices, graph, input, spawn, doDelta, sound, casting, locomotor, player,
     setBlocked: (value: boolean) => { blocked = value; },
     dispose: () => { input.dispose(); store.dispose(); } };
@@ -58,10 +70,11 @@ it('uses source capabilities and the real invobject, approaches distant points, 
     expect(s.input.request(point)).toBe(false);
     s.setBlocked(false);
     expect(s.input.request(point)).toBe(true);
-    await vi.waitFor(() => expect(s.locomotor.goToPoint).toHaveBeenCalled());
+    expect(s.locomotor.bufferedAction).toBeDefined();
     expect(s.graph.stateName).toBe('idle');
+    // CASTSPELL distance 20 (60 world units) is the arrive distance.
     s.player.position.set(31, 0, 0);
-    s.input.update();
+    s.locomotor.update(16, 1 / 30);
     expect(s.graph.getBufferedAction()?.invobject).toBe(s.entity);
     point.set(-50, 0, 0); // Pointer movement cannot change the buffered point.
     s.graph.update(13 / 30);

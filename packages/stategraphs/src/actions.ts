@@ -50,6 +50,8 @@ export interface ActionDescription {
   doer?: object;
   invobject?: BufferedActionObject;
   target?: BufferedActionObject;
+  /** A point action's ground position. */
+  pos?: { readonly x: number; readonly y: number; readonly z: number };
 }
 
 type ActionFlags = { ghost_valid?: boolean; ghost_exclusive?: boolean };
@@ -86,6 +88,19 @@ function strfn(act: ActionDescription): string | undefined {
     case 'RUMMAGE': return act.doer && target?.components?.container?.IsOpenedBy(act.doer) ? 'CLOSE' : undefined;
     case 'HARVEST': return target?.prefab === 'birdcage' ? 'FREE' : undefined;
     case 'TAKEITEM': return target?.prefab === 'birdcage' ? 'BIRDCAGE' : 'GENERIC';
+    case 'ATTACK': {
+      // The invobject is the weapon; PROP, RANGEDSMOTHER and WHACK are not ported.
+      const combat = (act.doer as { components?: { combat?: { CanLightTarget(target: never, weapon?: never): boolean } } } | undefined)?.components?.combat;
+      const weapon = (act.invobject as { components?: { weapon?: unknown } } | undefined)?.components?.weapon;
+      return target && act.invobject && combat?.CanLightTarget(target as never, weapon as never) ? 'RANGEDLIGHT' : undefined;
+    }
+    case 'REEL': {
+      const rod = (act.invobject as { components?: { fishingrod?: { readonly target?: unknown; HasHookedFish(): boolean } } } | undefined)?.components?.fishingrod;
+      if (!rod || rod.target !== act.target) return undefined;
+      if (rod.HasHookedFish()) return 'REEL';
+      // act.doer:HasTag("nibble"): the hook string is REEL's GENERIC.
+      return (act.doer as { sg?: { HasStateTag(tag: string): boolean } } | undefined)?.sg?.HasStateTag('nibble') ? undefined : 'CANCEL';
+    }
     default: return undefined;
   }
 }

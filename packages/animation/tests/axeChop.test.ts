@@ -1,3 +1,4 @@
+import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { EventEmitter } from '@dontstarve-web/signals';
@@ -13,7 +14,6 @@ import { createMoonTreeManager } from '../../prefab/src/moontree';
 import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { PlaySound } from '../../prefab/src/sound';
-import { collectEquippedActions } from '../../stategraphs/src/componentactions';
 import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
 import { workTargets } from './workTargets';
 import * as CANNON from 'cannon-es';
@@ -165,8 +165,8 @@ it('digs a restored moon tree stump at shovel frame 15 and permanently removes i
     const target = workTargets('DIG')[0];
     expect(workTargets('CHOP').map(target => target.id)).toEqual(['standing']);
     expect(target.entity!.components.workable!.GetWorkLeft()).toBe(1);
-    expect(collectEquippedActions(shovel, target.entity!, false)).toEqual([]);
-    expect(collectEquippedActions(shovel, target.entity!, true)).toEqual(['DIG']);
+    expect(collectEquippedItemActions(shovel, undefined, target.entity!, false)).toEqual([]);
+    expect(collectEquippedItemActions(shovel, undefined, target.entity!, true)).toEqual(['DIG']);
     expect(dig(target)).toBe(true);
     controller.cancel(); advance(60);
     expect(target.isValid()).toBe(true);

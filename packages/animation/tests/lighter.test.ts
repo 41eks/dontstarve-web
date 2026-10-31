@@ -1,3 +1,4 @@
+import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
@@ -6,9 +7,11 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { readFile } from 'node:fs/promises';
 import { Burnable } from '../../componets/src/burnable';
 import { Propagator } from '../../componets/src/propagator';
-import { LighterActionController, type LighterTarget } from '../../stategraphs/src/light';
+import { PlayerController } from '../../stategraphs/src/playercontroller';
+import { Locomotor } from '../../prefab/src/locomotor';
+import { WORLD_SCALE } from '../../prefab/src/tile';
+import * as CANNON from 'cannon-es';
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
-import { collectEquippedActions } from '../../stategraphs/src/componentactions';
 import type { ActionPerformer, ActionWorldContext } from '../../stategraphs/src/actionContext';
 import { createSignal, type HandEquipment } from '../../signals/src';
 import { ItemEntity } from '../../inventory/src';
@@ -70,7 +73,7 @@ it('walks to the foot, cancels on unequip and commits LIGHT once at frame 13 wit
   vi.stubGlobal('window', new EventTarget());
   const scene = new THREE.Scene(), model = withEntity(new THREE.Group(), 'treasurechest'), player = new THREE.Group();
   model.position.set(20, 0, 0); scene.add(model);
-  const target = Object.assign(actionEntity(model, 'treasurechest'), { model }) as LighterTarget;
+  const target = actionEntity(model, 'treasurechest');
   const burnable = new Burnable(actionEntity(model, 'treasurechest'));
   target.components.burnable = burnable;
   const torch = new ItemEntity({ itemId: 'torch', count: 1, remainingFuel: 30 });
@@ -79,16 +82,28 @@ it('walks to the foot, cancels on unequip and commits LIGHT once at frame 13 wit
   const hand = createSignal<HandEquipment | null>(equipment);
   const graph = new WilsonStateGraph({ playAnimation: () => 1, playSound() {}, setCasting() {}, onStateChanged() {} });
   const animation = { stategraph: graph, cancelEmote() {}, setFacing: vi.fn() } as unknown as ActionPerformer;
-  const locomotor = { destination: undefined, goToPoint: vi.fn(() => true), stop: vi.fn() };
+  const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body,
+    { physicsRadius: .5 * WORLD_SCALE });
   const world = { scene, player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(), cameraFacing: createSignal(8), cameraHeading: createSignal(45),
     renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
-  const controller = new LighterActionController(world, animation, locomotor, hand);
+  // The player inst: LIGHT pushes onstartedfire on it.
+  const doer = { hasTag: (tag: string) => tag === 'player', getPosition: () => player.position,
+    PushEvent: (name: string, data: unknown) => player.dispatchEvent({ type: name, data } as never) };
+  const playerController = new PlayerController(world, animation, locomotor, hand, () => false, doer as never);
+  // EQUIPPED.lighter on the right button, then DoAction.
+  const controller = {
+    request: (inst: typeof target) => collectEquippedItemActions(torch, doer, inst, true).includes('LIGHT')
+      && playerController.DoAction(playerController.createAction({ action: 'LIGHT', target: inst, invobject: torch })!),
+    update: () => locomotor.update(16, 1 / 30),
+    cancel: () => playerController.cancel(),
+    dispose: () => playerController.dispose(),
+  };
   const started = vi.fn(); player.addEventListener('onstartedfire' as never, started);
   try {
-    expect(collectEquippedActions(torch, target, false)).toEqual([]);
+    expect(collectEquippedItemActions(torch, undefined, target, false)).toEqual([]);
     expect(controller.request(target)).toBe(true); controller.update();
-    expect(locomotor.goToPoint).toHaveBeenCalledWith(new THREE.Vector3(16.8, 0, 0));
-    player.position.x = 17; controller.update();
+    expect(locomotor.bufferedAction).toBeDefined();
+    player.position.x = 18.1; controller.update();
     expect(graph.stateName).toBe('catchonfire'); expect(graph.hasStateTag('igniting')).toBe(true);
     graph.update(12 / 30); expect(burnable.IsBurning()).toBe(false);
     hand.set(null); graph.update(2);

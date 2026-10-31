@@ -21,7 +21,6 @@ import { MakeObstaclePhysics } from './standardcomponents';
 import { BurnableBinding, FireFxHost } from './treeFire';
 import { snapToWallSlotCenter, TILE_SIZE } from './tile';
 import { FENCE_ID, FENCE_SKIN_ARCHIVES, fenceWorldSkin, type FenceId } from './fenceSkins';
-import type { WallCombatTarget } from './wallPlacement';
 import type { WorldContext, PrefabWorldContext } from './worldContext';
 
 export { FENCE_ID, FENCE_ITEM_ID, FENCE_IDS, isFenceId, type FenceId, type FenceSaveState } from './fenceSkins';
@@ -201,13 +200,6 @@ export class FencePlacement {
 
 
 
-    /** fence.lua combat.onhitfn turns an attack into one unit of HAMMER work. */
-    get combatTargets(): readonly WallCombatTarget[] {
-        return Array.from(this.placed, fence => ({
-            id: String(fence.instance.entityId), model: fence.root, inst: fence.instance,
-            isValid: () => this.isLive(fence) && !fence.instance.components.health!.IsDead(),
-        }));
-    }
 
     get reskinTargets(): readonly ReskinTarget[] {
         return Array.from(this.placed, fence => fence.entity?.reskinTarget)

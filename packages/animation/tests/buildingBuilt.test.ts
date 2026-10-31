@@ -147,7 +147,7 @@ it('gives placed and restored chests a map icon at their foot and releases it wi
     await settle();
     expect(icons().map(({ position }) => [position.x, position.z])).toEqual([[3, 4], [-12, 24]]);
     expect(modelHasTag(restored, 'chest')).toBe(true);
-    expect(placement.getSpellTargets(world.scene.children[0])[0].removeOne()).toBe(true);
+    expect(findActionEntity(world.scene.children[0])!.deconstructionTarget!.removeOne()).toBe(true);
     await settle();
     expect(built.enabled).toBe(false);
     expect(icons().map(({ position }) => position)).toEqual([restored.position]);

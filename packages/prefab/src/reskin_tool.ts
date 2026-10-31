@@ -1,6 +1,7 @@
 import { PrefabDisplayGroup, SpriteResources, SpriteState } from '@dontstarve-web/display';
 import type { ItemEntity } from '@dontstarve-web/inventory';
-import { nextReskin, type ReskinFxMessage, type ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
+import { nextReskin, type ReskinEffectPresenter, type ReskinFxMessage, type ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
+import type { EquipmentLifecycle } from '@dontstarve-web/signals';
 import type * as THREE from 'three';
 import { Vector3 } from 'three';
 import { SpellCaster } from '../../componets/src/spellcaster';
@@ -9,6 +10,16 @@ import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { bindInstance, PrefabInstance } from './prefabInstance';
 import { PlaySound, type SoundEventPath } from './sound';
 import { TILE_SIZE } from './tile';
+
+/** The entity a CASTSPELL targets carries its owner's skin operation; tests may hand the operation itself. */
+function reskinOperation(target: object | undefined): ReskinTarget | undefined {
+  if (!target) return undefined;
+  const registered = (target as { reskinTarget?: ReskinTarget }).reskinTarget;
+  return registered ?? ((target as Partial<ReskinTarget>).sprite ? target as ReskinTarget : undefined);
+}
+
+/** The scene's explode_reskin presenter for each held tool, bound by its hand lifecycle. */
+const reskinFxPresenters = new WeakMap<ItemEntity, ReskinEffectPresenter>();
 
 export function configureReskinToolEntity(entity: ItemEntity): void {
   entity.addTag('nopunch');
@@ -19,18 +30,31 @@ export function configureReskinToolEntity(entity: ItemEntity): void {
     caster.canUseOnTargets = true;
     caster.canUseOnDead = true;
     caster.veryQuickCast = true;
-    // spellCB: the skin is chosen at the hit frame; the display has preloaded the one chosen when the cast began.
+    // spellCB: the skin is chosen at the hit frame and the explode_reskin fx is spawned with it; the display loads
+    // the chosen skin's art when the sprite json names it.
     caster.setSpellFn((_tool, target) => {
-      const inst = target as ReskinTarget;
-      return !!inst.sprite && reskinEntity(inst, entity, inst.reskinFx);
+      const inst = reskinOperation(target);
+      if (!inst) return false;
+      const fx = reskinFxPresenters.get(entity)?.prepare(entity.skinId);
+      const reskinned = reskinEntity(inst, entity, fx);
+      if (!reskinned) fx?.dispose();
+      return reskinned;
     });
     caster.setCanCastFn((_doer, target) => {
-      const inst = target as ReskinTarget | undefined;
-      return !!inst?.sprite && !inst.reskinToolCannotTargetThis && inst.isValid()
+      const inst = reskinOperation(target);
+      return !!inst && !inst.reskinToolCannotTargetThis && inst.isValid()
         && (nextReskin(inst.skins, inst.skinId, entity._cached_reskinname, inst.prefabId) !== undefined || inst.skinId !== undefined);
     });
     return caster;
   });
+}
+
+/** While held, the tool's spell spawns its fx through the scene's presenter. */
+export function createReskinToolLifecycle(entity: ItemEntity, effects: ReskinEffectPresenter | undefined): EquipmentLifecycle {
+  return {
+    onequip() { if (effects) reskinFxPresenters.set(entity, effects); },
+    onunequip() { reskinFxPresenters.delete(entity); },
+  };
 }
 
 export { nextReskin };

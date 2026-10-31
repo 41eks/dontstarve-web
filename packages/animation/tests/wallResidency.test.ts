@@ -59,7 +59,7 @@ it('shares layered wall art, releases only visuals, restores current health/faci
     const components = { ...instance.components };
     expect(reskinEntity(placement.reskinTargets[0])).toBe(true);
     const saved = placement.exportRecords();
-    const health = placement.combatTargets[0].inst.components.health!;
+    const health = instance.components.health!;
     health.SetVal(100);
     awake.set(false); await settle();
     expect(controller.loaded).toBe(false);

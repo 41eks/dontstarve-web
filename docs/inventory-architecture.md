@@ -129,9 +129,9 @@ GroundItemManager 每帧在 prefab 更新前后从实体刷新模型，拾取命
 
 `HandEquipment` 要求公开字面量属性 `readonly EQUIPSLOTS: 'HANDS'`，共享 setter 同时做运行时校验；身体装备或缺少该属性的对象不能写入，失败不修改状态、不通知订阅者。torch 实现该结构类型，公开 `itemId = 'torch'` 与 `EQUIPSLOTS = 'HANDS'`；库存只为成功提交到手部槽的物品发布此属性，存档仍使用库存领域字段，不保存运行时槽位声明。
 
-手部动作控制器接收只读 `InventoryStore.handEquipment`，在控制器内部判断工具 ID，不接收应用层的 `isEquipped()` 或过滤后的物品查询函数。镐、干草叉、铲子和园艺锄分别接受其普通／金制 ID；锤子和捕虫网从装备实体的 `tool` 与 `HAMMER_tool` / `NET_tool` 标签判断能力，清洁扫把检查 `spellcaster`、`castontargets` 和 `veryquickcast`；`componentactions.ts` 统一收集当前目标的可用动作。`workable` 维护工作量和目标标签，动作命中时重新校验并执行 prefab 回调，再消耗工具耐久。法杖实体由 prefab 配置 `SpellCaster` 和 `castonpoint` / `castonpointwater` 标签；通用 `SpellCastActionController` 读取真实装备实体的组件与能力，法术函数按法杖自身 prefab 选择星体。施法输入不含法杖 ID 或星体管理器，取消只针对自己持有的 `BufferedAction`。控制器直接读取 signal 中的皮肤和实体身份，在卸装、实体替换（即使 ID 和皮肤相同）或换肤时同步取消旧动作，阻止已经排入时间线或正在异步预加载的旧动作提交。`packages/stategraphs/src/handEquipment.ts` 仅共享身份变化的订阅判断，不维护工具 ID 清单；同一实体、同一 ID 和同一皮肤的重新发布不触发取消。`dispose()` 或施法输入的返回清理函数释放装备订阅和输入监听，控制器从不修改注入的只读 signal。
+`PlayerController` 接收只读 `InventoryStore.handEquipment`，picker 把当前手持实体交给 `componentactions.ts` 收集 EQUIPPED / POINT 动作：能力来自实体的组件与标签（`tool` 的 `<动作>_tool`、`spellcaster` 的 `castontargets` / `castonrecipes` / `castonpoint`、`lighter`、`weapon`、`fishingrod`），不按物品 ID 判断。`workable` 维护工作量和目标标签，命中帧的 `ACTIONS.<动作>.fn` 重新校验并执行 prefab 回调，再消耗工具耐久。缓冲动作的 `invobject` 是选中时手上的实体；卸装或换成另一实体会取消它，同一实体的重新发布不触发取消。手持物品需要的世界服务（法杖的地图与生成、清洁扫把的特效、鱼竿的游戏时间与组件更新）由各自的手部生命周期在装备时注入，控制器从不修改注入的只读 signal。
 
-清洁扫把通过 `findActionEntity(model)` 从已有 action entity 注册表解析命中实体。建筑、墙、栅栏、地面物品、虫洞和可换肤植物在注册投影时提供 `reskinTarget`，其中的皮肤、脚点和有效性读取所属实体的当前状态；移除投影时一并清理。`ReskinActionController` 直接查询该注册表，应用层只注入装备、移动、动画和 FX 服务。未提供换肤操作的普通实体仍参加标签驱动的 `CASTSPELL` 选择，是否成功由提交帧的 `SpellCaster.CanCast` 决定。
+清洁扫把的 `CASTSPELL` 目标就是鼠标命中的实体。建筑、墙、栅栏、地面物品、虫洞和可换肤植物在注册 action entity 投影时提供 `reskinTarget`，其中的皮肤、脚点和有效性读取所属实体的当前状态；移除投影时一并清理。法术函数从实体读取该视图，未提供换肤操作的普通实体仍参加标签驱动的 `CASTSPELL` 选择，是否成功由提交帧的 `SpellCaster.CanCast` 决定。绿法杖的分解同理读取所有者注册的 `deconstructionTarget`。
 
 主程序通过 `ActionWorldContext.registerFrameTask` 注入 `registerFrontTask()`，不逐帧遍历所有手部动作控制器。锤子、镐、干草叉、铲子、园艺锄、捕虫网和清洁扫把在内部通过 `bindHandEquipmentUpdate()` 按装备 signal 注册／移除自己的帧任务，只有当前匹配工具的控制器参加物理更新前的逐帧调度。构造时同步当前装备，支持读档后已装备的工具；同一身份重复发布不重复注册。卸装、替换或换肤时先移除旧任务并取消旧动作，再根据最新 signal 注册任务，`dispose()` 同时移除任务和订阅。法杖施法仍由输入事件及状态图时间线驱动，无需独立帧任务。未注入调度服务的独立宿主可显式调用控制器的 `update()`。
 
@@ -199,4 +199,4 @@ Lua 链路是 containers.lua:buttoninfo.fn → ACTIONS.COOK.fn → stewer:StartC
 
 components/stewer.ts 管理烹饪任务、readytocook/donecooking 标签、原料与厨师记录及保存恢复；prefab/cook_pot.ts 将开始、继续、完成回调接到动画和声音，并按配方的 build、symbol 和 potlevel 显示锅中产物。外部存档仍保留 product/phase/remainingSeconds 的已有格式，新增可选 ingredient_prefabs 与 chef_id，旧存档可继续读取。目前的分支覆盖开始、完成和恢复，收获及锅内腐败另行实现。
 
-换肤的逻辑状态是实体 sprite json 的 skinId（建筑、墙、栅栏、植物、虫洞为 `PrefabInstance.sprite`，物品为 `ItemEntity.sprite`）。任何带 sprite 的实体经 `reskinTarget(view)` 成为 reskin 目标；施法开始时控制器只让 display 预载按当前状态会选中的皮肤，命中帧由 `reskinEntity()` 按 `reskin_tool.lua` 的 `spellCB` 重新计算 `GetNextSkin`、记入工具缓存并写入 sprite json。display 按声明换上皮肤，保留实体根、组件、脚点和动画进度；实体自己的换肤后处理订阅该 skinId，保存读取 skinId.peek()。
+换肤的逻辑状态是实体 sprite json 的 skinId（建筑、墙、栅栏、植物、虫洞为 `PrefabInstance.sprite`，物品为 `ItemEntity.sprite`）。任何带 sprite 的实体经 `reskinTarget(view)` 成为 reskin 目标；施法前不等待皮肤资源，命中帧由 `reskinEntity()` 按 `reskin_tool.lua` 的 `spellCB` 重新计算 `GetNextSkin`、记入工具缓存并写入 sprite json。display 按声明加载并换上皮肤，保留实体根、组件、脚点和动画进度；实体自己的换肤后处理订阅该 skinId，保存读取 skinId.peek()。

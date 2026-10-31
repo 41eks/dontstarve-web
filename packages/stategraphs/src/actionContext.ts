@@ -32,6 +32,8 @@ export interface LocomotorAction {
   readonly distance?: number;
   /** actions.lua Action.mindistance, already in world units: GoToEntity arrives no closer than this. */
   readonly minDistance?: number;
+  /** actions.lua customarrivecheck / combat:LocomotorCanAttack, in place of the arrive distance. */
+  arrived?(): boolean;
   isValid(): boolean;
 }
 

@@ -1,3 +1,4 @@
+import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
@@ -7,7 +8,7 @@ import { SaplingManager } from '../../prefab/src/sapling';
 import { GroundItemManager } from '../../../src/groundItems';
 import { createPickupInventory } from './pickupFixture';
 import { createPickupDoer } from '../../stategraphs/src/pickup';
-import { performToolWork, collectEquippedActions } from '../../stategraphs/src/componentactions';
+import { performToolWork } from '../../stategraphs/src/componentactions';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
@@ -111,7 +112,7 @@ it('digs sapling_moon into dug_sapling_moon plus ready twigs, and burns a picked
     plantInstance(model).components.pickable.pick({ giveItem: () => true });
     const torch = s.inventory.entities.create({ itemId: 'torch', count: 1 });
     s.inventory.configureItem(torch);
-    expect(collectEquippedActions(torch, findActionEntity(model), true)).toContain('LIGHT');
+    expect(collectEquippedItemActions(torch, undefined, findActionEntity(model), true)).toContain('LIGHT');
     plantInstance(model).components.burnable.Ignite();
     expect(s.saplings.exportRecords()).toEqual([]);
     tickWorld(s.scheduler, s.saplings, 20, new THREE.Quaternion());

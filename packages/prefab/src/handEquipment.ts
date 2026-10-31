@@ -6,7 +6,7 @@ import type * as THREE from 'three';
 import { Weapon } from '../../componets/src/weapon';
 import { AXE_USES, configureAxeEntity, getAxeLifecycle, axeVisual } from './axe';
 import { configureBugNetEntity, bugnetVisual } from './bugnet';
-import { configureFishingRodEntity, FISHINGROD_USES, fishingRodVisual } from './fishingrod';
+import { configureFishingRodEntity, createFishingRodLifecycle, FISHINGROD_USES, fishingRodVisual } from './fishingrod';
 import { EquipmentAnimState, type EquipmentSprite, type EquipmentVisual, type EquipmentVisualFactory } from './equipmentVisual';
 import { farmHoeVisual } from './farm_hoe';
 import { configureHammerEntity, hammerVisual } from './hammer';
@@ -16,7 +16,7 @@ import { configurePickaxeEntity, getPickaxeLifecycle, PICKAXE_USES, pickaxeVisua
 import { pitchforkVisual } from './pitchfork';
 import type { WilsonCarryItem } from './player';
 import type { PrefabInstance } from './prefabInstance';
-import { configureReskinToolEntity, reskinToolVisual } from './reskin_tool';
+import { configureReskinToolEntity, createReskinToolLifecycle, reskinToolVisual } from './reskin_tool';
 import { configureShovelEntity, shovelVisual, SHOVEL_USES } from './shovel';
 import { configureTorchEntity, createTorchHandLifecycle, torchVisual } from './torch';
 import { getTridentController, tridentVisual, TRIDENT_DAMAGE, TRIDENT_USES, type TridentWorld } from './trident';
@@ -38,6 +38,9 @@ export interface HandEquipmentContext {
   greenStaffWorld?: GreenStaffWorld;
   fireStaffWorld?: FireStaffWorld;
   tridentWorld?: TridentWorld;
+  /** reskin_tool.lua SpawnPrefab(fx_prefab): the scene's reskin fx. */
+  reskinEffects?: import('@dontstarve-web/stategraphs/reskin_tool').ReskinEffectPresenter;
+  fishingWorld?: import('./fishingrod').FishingRodWorld;
 }
 export interface HandEquipmentDefinition {
   readonly maxUses?: number;
@@ -69,11 +72,13 @@ const definitions: Record<WilsonCarryItem, HandEquipmentDefinition> = {
     createLifecycle: (entity, context) => context.tridentWorld ? getTridentController(entity, context.tridentWorld) : undefined },
   bugnet: { visual: bugnetVisual, maxUses: 10, weapon: { damage: WILSON_ATTACK * .125, attackwear: 3 }, configureEntity: configureBugNetEntity },
   // fishingrod.lua: FISHINGROD_DAMAGE = wilson_attack * .125, attackwear 4.
-  fishingrod: { visual: fishingRodVisual, maxUses: FISHINGROD_USES, weapon: { damage: WILSON_ATTACK * .125, attackwear: 4 }, configureEntity: configureFishingRodEntity },
+  fishingrod: { visual: fishingRodVisual, maxUses: FISHINGROD_USES, weapon: { damage: WILSON_ATTACK * .125, attackwear: 4 }, configureEntity: configureFishingRodEntity,
+    createLifecycle: (entity, context) => context.fishingWorld ? createFishingRodLifecycle(entity, context.fishingWorld) : undefined },
   hammer: { visual: hammerVisual, maxUses: 75, weapon: { damage: WILSON_ATTACK * .5 }, configureEntity: configureHammerEntity },
   // nightsword.lua: NIGHTSWORD_DAMAGE = wilson_attack * 2, NIGHTSWORD_USES = 100.
   nightsword: { visual: nightswordVisual, maxUses: 100, tags: ['shadow', 'sharp'], weapon: { damage: WILSON_ATTACK * 2 }, configureEntity: configureNightswordEntity },
-  reskin_tool: { visual: reskinToolVisual, tags: ['nopunch'], configureEntity: configureReskinToolEntity },
+  reskin_tool: { visual: reskinToolVisual, tags: ['nopunch'], configureEntity: configureReskinToolEntity,
+    createLifecycle: (entity, context) => createReskinToolLifecycle(entity, context.reskinEffects) },
   pickaxe: { visual: pickaxeVisual, maxUses: PICKAXE_USES, weapon: { damage: WILSON_ATTACK * .8 }, configureEntity: configurePickaxeEntity, createLifecycle: getPickaxeLifecycle },
   goldenpickaxe: { visual: pickaxeVisual, maxUses: PICKAXE_USES, useStep: .25, weapon: { damage: WILSON_ATTACK * .8, attackwear: GOLDEN_ATTACKWEAR }, configureEntity: configurePickaxeEntity, createLifecycle: getPickaxeLifecycle },
   // axe.lua: TUNING.AXE_DAMAGE = wilson_attack * .8; golden attackwear = 1 / GOLDENTOOLFACTOR.

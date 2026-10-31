@@ -1,3 +1,4 @@
+import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
@@ -15,7 +16,7 @@ import { WorldFx } from '../../prefab/src/world_fx';
 import { configureTorchEntity } from '../../prefab/src/torch';
 import { Explosive, EXPLOSIVE_MAX_WORKABLE_INVENTORYITEMS, type ExplosiveInst, type ExplosiveTarget } from '../../componets/src/explosive';
 import { Workable } from '../../componets/src/workable';
-import { collectEquippedActions, performLightAction } from '../../stategraphs/src/componentactions';
+import { performLightAction } from '../../stategraphs/src/componentactions';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -55,8 +56,8 @@ it('lights gunpowder with a torch, explodes its stack, works nearby stone fruit 
     const torch = s.inventory.entities.create({ itemId: 'torch', count: 1 }); configureTorchEntity(torch);
     const target = (id: string) => findActionEntity(s.scene.children.find(model => findActionEntity(model)?.components === s.ground.entities.get(id)!.components)!);
     // Only inst with a burnable are LIGHT targets; hard stone fruit is not.
-    expect(collectEquippedActions(torch, target(powder.id), true)).toContain('LIGHT');
-    expect(collectEquippedActions(torch, target(near.id), true)).not.toContain('LIGHT');
+    expect(collectEquippedItemActions(torch, undefined, target(powder.id), true)).toContain('LIGHT');
+    expect(collectEquippedItemActions(torch, undefined, target(near.id), true)).not.toContain('LIGHT');
     expect(powder.hasTag('explosive')).toBe(true); expect(powder.hasTag('molebait')).toBe(true);
     expect(performLightAction(torch, target(powder.id), { prefab: 'wilson' } as never)).toBe(true);
     // DefaultBurnFn: a lit fuse is not saved.

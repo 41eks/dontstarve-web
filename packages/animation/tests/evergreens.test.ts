@@ -1,3 +1,4 @@
+import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
@@ -10,7 +11,7 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createEvergreenForest } from '../../prefab/src/evergreens';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { performToolWork, collectEquippedActions } from '../../stategraphs/src/componentactions';
+import { performToolWork } from '../../stategraphs/src/componentactions';
 import { PlaySound } from '../../prefab/src/sound';
 import { createPickupInventory } from './pickupFixture';
 import { equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
@@ -119,7 +120,7 @@ it('commits source axe work, cancels before impact, preserves logical components
     player.position.set(1, 0, 3);
     const tree = s.forest.spawn('evergreen_tall', new THREE.Vector3(1, 0, 0));
     const target = workTargets('CHOP')[0], work = target.entity.components.workable!;
-    expect(collectEquippedActions(axe, target.entity, true)).toEqual(['CHOP']);
+    expect(collectEquippedItemActions(axe, undefined, target.entity, true)).toEqual(['CHOP']);
     expect(chop(target)).toBe(true); controller.cancel(); advance(60);
     expect(work.GetWorkLeft()).toBe(15); expect(axe.components.finiteuses.remaining).toBeUndefined();
     expect(chop(target)).toBe(true);

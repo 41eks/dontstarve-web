@@ -8,8 +8,12 @@ import { TILE_SIZE } from '../../prefab/src/tile';
 import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
 import { configureEquipmentEntity } from '../../prefab/src/handEquipment';
 import type { WorldContext } from '../../prefab/src/worldContext';
-import { AttackActionController } from '../../stategraphs/src/attack';
+import { PlayerController } from '../../stategraphs/src/playercontroller';
+import { Locomotor } from '../../prefab/src/locomotor';
+import * as CANNON from 'cannon-es';
+import { findActionEntity, activePrefabs } from '../../prefab/src/actionEntity';
 import { Combat, type CombatInst } from '../../componets/src/combat';
+import type { Health } from '../../componets/src/health';
 import { ItemEntity } from '../../inventory/src';
 import { PlaySound } from '../../prefab/src/sound';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
@@ -48,6 +52,10 @@ function attacker(position: THREE.Vector3, now: () => number, weapon?: ItemEntit
   return { inst, combat };
 }
 
+/** The walls DoAttackButton finds: live combat entities, as FindEntities lists them. */
+const combatTargets = () => activePrefabs.filter(entity => (entity.components as { combat?: unknown }).combat)
+  .map(entity => ({ inst: prefabInstance(entity.model)! as unknown as CombatInst & { components: { health?: Health } },
+    isValid: () => !entity.isRemoved && !prefabInstance(entity.model)!.components.health!.IsDead() }));
 const pose = (model: THREE.Group) => prefabInstance(model)!.sprite.sprite.peek().clip.pose?.name;
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 
@@ -61,7 +69,7 @@ it('hammers out a middle wall once, invalidates stale targets and preserves the 
         components: { health: { current: 100, maximum: 400 } } });
     }
     const before = placement.exportRecords();
-    const target = workTargets('HAMMER')[1], combatTarget = placement.combatTargets[1], skinTarget = placement.reskinTargets[1];
+    const target = workTargets('HAMMER')[1], combatTarget = combatTargets()[1], skinTarget = placement.reskinTargets[1];
     await target.display!.artLoaded();
     const release = vi.fn(); target.display!.onDispose(release);
     target.work(); target.work();
@@ -93,7 +101,7 @@ it('gives walls source health, player damage reduction, health poses, weapon wea
     const stone = await placement.spawnFromSave('wall_stone', { id: 'stone', transform: { position: [3, 0, -6], rotationY: 0 }, components: {} });
     await placement.spawnFromSave('wall_moonrock', { id: 'moonrock', transform: { position: [6, 0, -6], rotationY: 0 }, components: {} });
     placement.update();
-    const [stoneTarget, moonrockTarget] = placement.combatTargets;
+    const [stoneTarget, moonrockTarget] = combatTargets();
     await workTargets('HAMMER')[0].display!.artLoaded();
     // walls.lua: SetMaxHealth(maxhealth) then SetCurrentHealth(maxhealth * .5); half is the static build image.
     expect(stoneTarget.inst.components.health!.OnSave()).toEqual({ health: 200, maxhealth: 400 });
@@ -153,13 +161,15 @@ it('force attacks a wall with Ctrl+F, walks into range, punches on frame 8 and r
   (world as { player: THREE.Object3D }).player = player;
   player.position.set(3 + 6 * UNIT, 0, -6);
   let now = 0;
-  const { inst, combat } = attacker(player.position, () => now);
+  const { combat } = attacker(player.position, () => now);
   animation.combat = combat;
-  let destination: THREE.Vector3 | undefined;
-  const locomotor = { get destination() { return destination; }, goToPoint: (point: THREE.Vector3) => { destination = point.clone(); return true; },
-    stop: () => { destination = undefined; } };
+  const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body,
+    { physicsRadius: .5 * UNIT });
   const hand = createSignal<HandEquipment | null>(null);
-  const controller = new AttackActionController(world, animation, locomotor, hand, { inst, combat }, () => placement.combatTargets, () => false, UNIT);
+  // The player inst: DoAttackButton searches around it and ATTACK runs its combat.
+  const doer = { hasTag: (tag: string) => tag === 'player', PushEvent: vi.fn(), getPosition: () => player.position,
+    getPhysicsRadius: () => .5 * UNIT, components: { combat } };
+  const controller = new PlayerController(world, animation, locomotor, hand, () => false, doer as never);
   const key = (type: string, code: string, ctrlKey: boolean) => {
     const event = Object.assign(new Event(type, { cancelable: true }), { code, ctrlKey, repeat: false });
     window.dispatchEvent(event);
@@ -169,17 +179,16 @@ it('force attacks a wall with Ctrl+F, walks into range, punches on frame 8 and r
     for (let frame = 0; frame < frames; frame++) { now += 1 / 30; animation.update(1 / 30); controller.update(); }
   };
   try {
-    await placement.spawnFromSave('wall_hay', { id: 'hay', transform: { position: [3, 0, -6], rotationY: 0 }, components: {} });
-    const health = placement.combatTargets[0].inst.components.health!;
+    const hay = await placement.spawnFromSave('wall_hay', { id: 'hay', transform: { position: [3, 0, -6], rotationY: 0 }, components: {} });
+    const health = prefabInstance(hay)!.components.health!;
     // Walls are not hostile: F alone finds no target; Ctrl+F force attacks and claims the browser shortcut.
     key('keydown', 'KeyF', false); key('keyup', 'KeyF', false);
-    expect(controller.currentTarget).toBeUndefined();
+    expect(controller.bufferedAction).toBeUndefined();
     expect(key('keydown', 'KeyF', true).defaultPrevented).toBe(true);
-    expect(controller.currentTarget?.id).toBe('hay');
-    controller.update();
-    expect(destination).toBeDefined();
-    player.position.copy(destination!);
-    controller.update();
+    expect(controller.bufferedAction).toMatchObject({ action: 'ATTACK', target: findActionEntity(hay) });
+    expect(locomotor.bufferedAction).toBeDefined();
+    // combat:LocomotorCanAttack: inside the attack range of the wall's edge.
+    player.position.x = 3 + 2 * UNIT; locomotor.update(16, 1 / 30);
     expect(animation.stategraph.stateName).toBe('attack');
     expect(animation.stategraph.animationClip.key).toBe('punch');
     expect(PlaySound).toHaveBeenCalledWith('dontstarve/wilson/attack_whoosh');

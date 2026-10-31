@@ -14,7 +14,7 @@ import { PlayerController } from '../../stategraphs/src/playercontroller';
 import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
-import { PlayerActionFilter, isGhostValidAction } from '../../stategraphs/src/actions';
+import { PlayerActionFilter, getActionString, isGhostValidAction } from '../../stategraphs/src/actions';
 import { Hauntable } from '../../componets/src/hauntable';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
@@ -174,6 +174,23 @@ describe('PlayerController scene actions', () => {
       expect(picker.getMouseActions().left).toBeUndefined();
       instance.remove();
     } finally { s.dispose(); scheduler.dispose(); }
+  });
+});
+
+describe('PlayerController equipped actions', () => {
+  it('offers ATTACK (RANGEDLIGHT) on the right button for a weapon that can light the target', () => {
+    const weapon = { prefab: 'firestaff', isRemoved: false, hasTag: () => false, components: { weapon: {} } } as never;
+    const target = { prefab: 'evergreen', isRemoved: false, hasTag: () => false, components: {} };
+    const canLight = vi.fn((_target: unknown, _weapon: unknown) => true);
+    const doer = { hasTag: () => false, components: { combat: { CanLightTarget: canLight } } };
+    // componentactions EQUIPPED.weapon: combat:CanLightTarget on the right button only.
+    expect(collectEquippedItemActions(weapon, doer as never, target, false)).toEqual([]);
+    expect(collectEquippedItemActions(weapon, doer as never, target, true)).toEqual(['ATTACK']);
+    expect(canLight).toHaveBeenLastCalledWith(target, (weapon as { components: { weapon: object } }).components.weapon);
+    expect(getActionString({ action: 'ATTACK', doer, invobject: weapon, target: target as never })).toBe('点燃');
+    canLight.mockReturnValue(false);
+    expect(collectEquippedItemActions(weapon, doer as never, target, true)).toEqual([]);
+    expect(getActionString({ action: 'ATTACK', doer, invobject: weapon, target: target as never })).toBe('攻击');
   });
 });
 

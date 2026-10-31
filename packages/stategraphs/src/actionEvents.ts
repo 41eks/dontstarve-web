@@ -8,7 +8,7 @@ export interface PlayerActionEvents {
   'action:interrupt': { reason: ActionInterruptReason };
 }
 
-type ActionGroup = 'player' | 'attack' | 'hand' | 'spell' | 'food' | 'read' | 'play' | 'building' | 'deploy' | 'movement' | 'fishing' | 'itemuse';
+type ActionGroup = 'player' | 'hand' | 'spell' | 'food' | 'read' | 'play' | 'building' | 'deploy' | 'movement' | 'itemuse';
 interface CancellationRule {
   begins: readonly PlayerActionKind[];
   interrupts: readonly ActionInterruptReason[];
@@ -22,7 +22,6 @@ const rules: Record<ActionGroup, CancellationRule> = {
   // PlayerController: the player's one buffered action yields to any action begun elsewhere.
   player: { begins: [...workActions, ...inventoryActions, 'NET', 'PICK', 'CASTSPELL'], interrupts: inventoryInterrupts },
   itemuse: { begins: [...workActions, ...inventoryActions, 'NET', 'PICK'], interrupts: [...inventoryInterrupts, 'drop'] },
-  attack: { begins: [...workActions, ...inventoryActions, 'NET', 'PICK'], interrupts: inventoryInterrupts },
   hand: { begins: ['ATTACK', 'CASTSPELL', 'LIGHT', ...inventoryActions], interrupts: inventoryInterrupts },
   spell: { begins: [...workActions, ...inventoryActions, 'NET', 'PICK', 'CASTSPELL'], interrupts: inventoryInterrupts },
   food: { begins: ['TILL', 'DIG', 'LIGHT', ...inventoryActions], interrupts: inventoryInterrupts },
@@ -30,7 +29,6 @@ const rules: Record<ActionGroup, CancellationRule> = {
   play: { begins: [...workActions, 'NET', 'PICK', ...inventoryActions], interrupts: inventoryInterrupts },
   building: { begins: [...workActions, 'NET', 'PICK', ...inventoryActions], interrupts: ['emote'] },
   deploy: { begins: [...workActions, 'NET', 'PICK', ...inventoryActions], interrupts: inventoryInterrupts },
-  fishing: { begins: [...workActions, ...inventoryActions, 'NET', 'PICK'], interrupts: inventoryInterrupts },
   movement: { begins: ['BLINK', 'BLINK_MAP', 'PICK', ...inventoryActions, 'CASTSPELL', 'LIGHT'], interrupts: ['crafting', 'emote'] },
 };
 

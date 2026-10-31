@@ -10,7 +10,10 @@ import { PlayerActionPicker } from './playeractionpicker.ts';
 import { PointerRaycaster } from './pointerRaycaster.ts';
 import type { WilsonAction } from './SGwilson.ts';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { FindEntities } from '../../prefab/src/actionEntity';
 import { WORLD_SCALE } from '../../prefab/src/tile';
+import type { Combat, CombatInst } from '../../componets/src/combat';
+import { Vector3 } from 'three';
 
 /** An entity the picker resolved as an action target: tags and components plus its ground position and radius. */
 type ActionTargetEntity = ComponentActionEntity & {
@@ -20,12 +23,19 @@ type ActionTargetEntity = ComponentActionEntity & {
 
 export type PlayerLocomotor = ActionLocomotor & Required<Pick<ActionLocomotor, 'PushAction'>>;
 
+type PlayerDoer = BufferedActionDoer & SceneActionDoer & {
+  readonly components?: { combat?: Combat };
+  /** player_common.lua MakeCharacterPhysics(inst, 75, .5). */
+  getPhysicsRadius?(): number;
+};
+
 /**
- * playercontroller.lua for the actions whose actions.lua fn is ported (equipped tool work and scene actions): a mouse click takes the picker's action for
+ * playercontroller.lua for the actions whose actions.lua fn is ported (equipped, point and scene actions): a mouse click takes the picker's action for
  * that button, wraps it in a BufferedAction for the player and DoAction hands it to locomotor:PushAction, which
  * walks to the target and buffers it on the stategraph. The stategraph's ActionHandler chooses the state and its
  * hit frame runs ACTIONS[action].fn. The player has one buffered action: a new one, another click, movement input,
- * Escape or a change of the hand item drops it.
+ * Escape or a change of the hand item drops it. CONTROL_ATTACK (F) runs DoAttackButton; instant actions such as REEL
+ * are done at once.
  */
 export class PlayerController {
   private readonly world: ActionWorldContext;
@@ -35,7 +45,10 @@ export class PlayerController {
   private readonly isManualMovement: () => boolean;
   private readonly picker: PlayerActionPicker;
   private readonly ownsPicker: boolean;
-  private readonly doer: BufferedActionDoer & SceneActionDoer;
+  private readonly doer: PlayerDoer;
+  /** CONTROL_ATTACK held: attacks repeat after each one; CONTROL_FORCE_ATTACK (Ctrl) allows non-hostile targets. */
+  private attackHeld = false;
+  private forceAttack = false;
   private readonly cleanups: (() => void)[] = [];
   /** The action this controller pushed: walked to by the locomotor, then buffered on the stategraph. */
   private action?: BufferedAction<WilsonAction>;
@@ -49,7 +62,7 @@ export class PlayerController {
     handEquipment: HandEquipmentSignal,
     isManualMovement = () => false,
     /** The player inst as act.doer; standalone controllers adapt their player model. */
-    doer?: BufferedActionDoer & SceneActionDoer,
+    doer?: PlayerDoer,
   ) {
     this.world = world;
     this.performer = performer;
@@ -60,7 +73,7 @@ export class PlayerController {
     this.picker = world.mouseActions ?? new PlayerActionPicker(new PointerRaycaster(world));
     const player = world.player;
     this.doer = doer ?? {
-      get components() { return prefabInstance(player)?.components as (BufferedActionDoer & SceneActionDoer)['components']; },
+      get components() { return prefabInstance(player)?.components as PlayerDoer['components']; },
       hasTag: tag => tag === 'player' || prefabInstance(player)?.hasTag(tag) === true,
       PushEvent: (name, data) => player.dispatchEvent({ type: name, data } as never),
       getPosition: () => player.position,
@@ -78,6 +91,8 @@ export class PlayerController {
     // Capture, so a work click cannot also open a container, place a building or walk.
     world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown, true);
     window.addEventListener('keydown', this.handleKeyDown);
+    window.addEventListener('keyup', this.handleKeyUp);
+    window.addEventListener('blur', this.handleBlur);
   }
 
   private equippedItem(): ComponentActionEntity | undefined {
@@ -91,29 +106,51 @@ export class PlayerController {
   /** PlayerActionPicker:SortActionList's BufferedAction(doer, target, action, invobject) for a picked action. */
   createAction(description: ActionDescription): BufferedAction<WilsonAction> | undefined {
     const target = description.target as (BufferedActionObject & Partial<ActionTargetEntity>) | undefined;
-    if (!hasActionFn(description.action) || !target?.getPosition) return undefined;
+    const pos = description.pos;
+    if (!hasActionFn(description.action) || (target ? !target.getPosition : !pos)) return undefined;
     const invobject = description.invobject as (BufferedActionObject & { isRemoved?: boolean }) | undefined;
     // GetEquippedItemActions: the action is the hand item's for as long as it stays in the hand.
     const validfn = () => invobject === undefined || invobject === this.equippedItem();
-    return createBufferedAction(description.action as WilsonAction, { doer: this.doer, target, invobject }, validfn);
+    return createBufferedAction(description.action as WilsonAction,
+      { doer: this.doer, target, invobject, ...(pos ? { pos: { x: pos.x, y: pos.y, z: pos.z } } : {}) }, validfn);
+  }
+
+  /** BufferedAction:GetActionPoint: the target's position, else the action's pos. */
+  private actionPoint(action: BufferedAction<WilsonAction>): Vector3 {
+    const target = action.target as Partial<ActionTargetEntity> | undefined;
+    if (target?.getPosition) return target.getPosition();
+    const pos = action.pos!;
+    return new Vector3(pos.x, pos.y, pos.z);
   }
 
   /** PlayerController:DoAction: locomotor:PushAction walks to the target and the inst buffers the action there. */
   DoAction(action: BufferedAction<WilsonAction>): boolean {
     const { stategraph } = this.performer;
     const target = action.target as Partial<ActionTargetEntity> | undefined;
-    if (this.disposed || !target?.getPosition || stategraph.hasStateTag('busy') || isHandActionBusy(stategraph)
-      || !action.isValid()) return false;
-    this.cancel();
+    if (this.disposed || (target ? !target.getPosition : !action.pos) || stategraph.hasStateTag('busy')
+      || isHandActionBusy(stategraph) || !action.isValid()) return false;
+    const { distance, mindistance, instant } = (ACTIONS[action.action as MouseActionId] ?? {}) as
+      { distance?: number; mindistance?: number; instant?: boolean };
+    // EntityScript:PushBufferedAction for an instant action: face the target and do it now, keeping the
+    // buffered action and the state it runs in.
+    if (instant) {
+      facePoint(this.performer, this.world.camera, this.world.player.position, this.actionPoint(action));
+      return action.do();
+    }
+    // A repeated attack replaces the last through the stategraph's ATTACK handler; anything else ends it first.
+    this.cancel(action.action === 'ATTACK' && this.action?.action === 'ATTACK');
     this.world.actionEvents?.emit('action:begin', { owner: this, action: action.action as PlayerActionKind });
     this.performer.cancelEmote();
     this.action = action;
     this.walking = true;
-    const { distance, mindistance } = (ACTIONS[action.action as MouseActionId] ?? {}) as { distance?: number; mindistance?: number };
+    const combat = this.doer.components?.combat;
     this.locomotor.PushAction({
-      target: { getPosition: () => target.getPosition!(), getPhysicsRadius: () => target.getPhysicsRadius?.() ?? 0 },
+      target: { getPosition: () => this.actionPoint(action), getPhysicsRadius: () => target?.getPhysicsRadius?.() ?? 0 },
       ...(distance === undefined ? {} : { distance: distance * WORLD_SCALE }),
       ...(mindistance === undefined ? {} : { minDistance: mindistance * WORLD_SCALE }),
+      // locomotor OnUpdate for ATTACK: combat:LocomotorCanAttack, inside the attack range of the target's edge.
+      ...(action.action === 'ATTACK' && combat && target ? { arrived: () => this.doer.getPosition!()
+        .distanceToSquared(target.getPosition!()) <= combat.CalcAttackRangeSq(target as unknown as CombatInst) } : {}),
       isValid: () => action.isValid(),
     }, () => this.arrive(action), () => {
       if (this.action !== action || !this.walking) return;
@@ -127,23 +164,63 @@ export class PlayerController {
   private arrive(action: BufferedAction<WilsonAction>): void {
     if (this.action !== action) return;
     this.walking = false;
-    const target = action.target as Partial<ActionTargetEntity>;
-    facePoint(this.performer, this.world.camera, this.world.player.position, target.getPosition!());
+    facePoint(this.performer, this.world.camera, this.world.player.position, this.actionPoint(action));
     if (!this.performer.stategraph.pushBufferedAction(action)) this.action = undefined;
   }
 
-  /** locomotor:Clear and inst:ClearBufferedAction for this controller's action. */
-  cancel(): void {
+  /** playercontroller.lua GetAttackTarget: the nearest valid combat target in reach, none while already attacking. */
+  getAttackTarget(forceAttack: boolean): ActionTargetEntity | undefined {
+    const combat = this.doer.components?.combat, position = this.doer.getPosition?.();
+    if (!combat || !position || this.performer.stategraph.hasStateTag('attack')) return undefined;
+    // Autowalking searches 6 extra units; direct (WASD) walking only reaches attack range.
+    const rad = this.isManualMovement() ? combat.GetAttackRange() : combat.GetAttackRange() + 6 * WORLD_SCALE;
+    const reach = (this.doer.getPhysicsRadius?.() ?? 0) + rad + .1 * WORLD_SCALE;
+    let nearest: ActionTargetEntity | undefined, nearestDistance = Infinity;
+    // TheSim:FindEntities around the doer for "_combat" insts, excluding INLIMBO.
+    for (const entity of FindEntities(position, reach + 5 * WORLD_SCALE, [], ['INLIMBO'])) {
+      const target = entity as unknown as ActionTargetEntity;
+      if (!(entity.components as { combat?: unknown }).combat || !this.isValidAttackTarget(target, forceAttack)) continue;
+      const radius = target.getPhysicsRadius?.() ?? 0;
+      const dsq = target.getPosition().distanceToSquared(position);
+      if (dsq > (reach + radius) ** 2) continue;
+      const distance = Math.max(0, Math.sqrt(dsq) - radius);
+      if (distance < nearestDistance) { nearestDistance = distance; nearest = target; }
+    }
+    return nearest;
+  }
+
+  /** ValidateAttackTarget for the ported cases: a lightable target, or a combat target that is hostile or forced. */
+  private isValidAttackTarget(target: ActionTargetEntity, forceAttack: boolean): boolean {
+    const combat = this.doer.components?.combat, inst = target as unknown as CombatInst;
+    if (!combat || target.isRemoved || target.hasTag('stealth')) return false;
+    return combat.CanLightTarget(inst) || (combat.CanTarget(inst) && (forceAttack || target.hasTag('hostile')));
+  }
+
+  /** playercontroller.lua DoAttackButton: ATTACK the attack target with the hand item as invobject. */
+  DoAttackButton(forceAttack = this.forceAttack): boolean {
+    const target = this.getAttackTarget(forceAttack);
+    if (!target) return false;
+    if (this.action?.action === 'ATTACK' && this.action.target === target && this.walking) return true;
+    const invobject = this.equippedItem();
+    const action = createBufferedAction('ATTACK' as WilsonAction, { doer: this.doer, target, invobject },
+      () => invobject === undefined || invobject === this.equippedItem());
+    return this.DoAction(action);
+  }
+
+  /** locomotor:Clear and inst:ClearBufferedAction for this controller's action; `keepState` leaves its state running. */
+  cancel(keepState = false): void {
     const action = this.action;
     if (!action) return;
     this.action = undefined;
     if (this.walking) { this.walking = false; this.locomotor.stop(); }
     const { stategraph } = this.performer;
-    if (stategraph.isActionActive(action)) stategraph.cancelAction(action.action);
+    if (!keepState && stategraph.isActionActive(action)) stategraph.cancelAction(action.action);
   }
 
   update(): void {
     if (this.action && this.isManualMovement()) this.cancel();
+    // A held attack key repeats DoAttackButton once the last attack has let go of its target.
+    if (this.attackHeld && !this.walking) this.DoAttackButton();
   }
 
   dispose(): void {
@@ -154,6 +231,8 @@ export class PlayerController {
     if (this.ownsPicker) this.picker.dispose();
     this.world.renderer.domElement.removeEventListener('pointerdown', this.handlePointerDown, true);
     window.removeEventListener('keydown', this.handleKeyDown);
+    window.removeEventListener('keyup', this.handleKeyUp);
+    window.removeEventListener('blur', this.handleBlur);
   }
 
   private readonly handlePointerDown = (event: PointerEvent): void => {
@@ -169,6 +248,27 @@ export class PlayerController {
   };
 
   private readonly handleKeyDown = (event: KeyboardEvent): void => {
-    if (event.code === 'Escape') this.cancel();
+    if (isTextInput(event)) return;
+    this.forceAttack = event.ctrlKey;
+    if (event.code === 'Escape') { this.attackHeld = false; this.cancel(); return; }
+    if (event.code !== 'KeyF') return;
+    // Ctrl+F is the browser's find shortcut; the game owns it as force attack.
+    if (event.ctrlKey) event.preventDefault();
+    if (event.repeat) return;
+    this.attackHeld = true;
+    this.DoAttackButton(event.ctrlKey);
   };
+
+  private readonly handleKeyUp = (event: KeyboardEvent): void => {
+    this.forceAttack = event.ctrlKey;
+    if (event.code === 'KeyF') this.attackHeld = false;
+  };
+
+  private readonly handleBlur = (): void => { this.attackHeld = false; this.forceAttack = false; };
+}
+
+function isTextInput(event: KeyboardEvent): boolean {
+  if (typeof HTMLElement === 'undefined') return false;
+  return event.composedPath().some(target => target instanceof HTMLInputElement
+    || target instanceof HTMLTextAreaElement || (target instanceof HTMLElement && target.isContentEditable));
 }

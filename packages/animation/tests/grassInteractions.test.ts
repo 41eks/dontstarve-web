@@ -1,3 +1,4 @@
+import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
@@ -7,7 +8,7 @@ import { GrassManager } from '../../prefab/src/grass';
 import { GroundItemManager } from '../../../src/groundItems';
 import { createPickupInventory } from './pickupFixture';
 import { createPickupDoer } from '../../stategraphs/src/pickup';
-import { performToolWork, collectEquippedActions } from '../../stategraphs/src/componentactions';
+import { performToolWork } from '../../stategraphs/src/componentactions';
 import { inventorySlotAddress, equipmentSlotAddress } from '../../inventory/src';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { serializeSave } from '../../../src/save/serialize';
@@ -135,7 +136,7 @@ it('retains regrowth on extinguish, then burns to exactly one saved ash and rele
     expect(state.persists).toBe(true);
     const torch = s.inventory.entities.create({ itemId: 'torch', count: 1 });
     s.inventory.configureItem(torch);
-    expect(collectEquippedActions(torch, findActionEntity(model), true)).toContain('LIGHT');
+    expect(collectEquippedItemActions(torch, undefined, findActionEntity(model), true)).toContain('LIGHT');
     burnable.Ignite();
     tickWorld(s.scheduler, s.grass, 20, new THREE.Quaternion());
     expect(state.phase.peek()).toBe('removed');

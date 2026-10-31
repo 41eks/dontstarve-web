@@ -120,13 +120,6 @@ interface WallInstance<BuildId extends string> {
     entity?: ReturnType<typeof actionEntity>;
 }
 
-/** A live, attackable wall for combat target selection. */
-export interface WallCombatTarget {
-    readonly id: string;
-    readonly model: THREE.Group;
-    readonly inst: CombatInst;
-    isValid(): boolean;
-}
 
 
 /** This project draws placers translucent; MakePlacer itself only sets SetLightOverride(1). */
@@ -222,13 +215,6 @@ export class WallPlacement<BuildId extends string> {
 
 
 
-    /** Live walls that combat:CanTarget; broken walls are dead and excluded. */
-    get combatTargets(): readonly WallCombatTarget[] {
-        return Array.from(this.placed, (wall) => ({
-            id: String(wall.instance.entityId), model: wall.model, inst: wall.instance,
-            isValid: () => this.isLive(wall) && !wall.instance.components.health!.IsDead(),
-        }));
-    }
 
     get reskinTargets(): readonly ReskinTarget[] {
         return Array.from(this.placed, wall => wall.entity?.reskinTarget)

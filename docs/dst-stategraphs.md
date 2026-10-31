@@ -62,7 +62,7 @@
 
 不再提供自定义 `RESKIN` 动作或基于 `isOneShot/crafting/isJumping` 的 `canStartAction()` 白名单。工作动作在源前摇标签移除后，可由新的显式请求直接回到动作循环；按住输入自动重复仍依赖尚未移植的控制器分支。
 
-普通法杖由 `SpellCastActionController` 从共享 `PlayerActionPicker` 的标签候选构造 `CASTSPELL`。真实 `ItemEntity` 作为 `invobject`，动作有效性核对原实体仍被持有且 `spellcaster.CanCast` 通过；执行时调用实体组件的 `CastSpell`，原始落点随动作保持。`castspell.onenter` 停止移动并禁用世界控制，声音与光色来自实际 `invobject.castsound/fxcolour`。第 13 帧播声，第 53 帧在 `PerformBufferedAction` 前释放光效取消所有权，避免最后一次耐久引起的卸装清掉已提交光效；第 69 帧恢复控制，退出状态也恢复控制。`isActionActive(bufferedAction)` 按动作引用核对归属，旧控制器不能取消替换动作。
+普通法杖的 `CASTSPELL` 由 `PlayerActionPicker` 按 `componentactions.lua` 的 EQUIPPED / POINT `spellcaster` 条目选择，`PlayerController` 构造 `BufferedAction`：真实 `ItemEntity` 作为 `invobject`，动作有效性核对原实体仍在手上；执行时 `actionfns.ts` 的 `CASTSPELL.fn` 先 `spellcaster.CanCast` 再 `CastSpell`，原始落点随动作保持。`castspell.onenter` 停止移动并禁用世界控制，声音与光色来自实际 `invobject.castsound/fxcolour`。第 13 帧播声，第 53 帧在 `PerformBufferedAction` 前释放光效取消所有权，避免最后一次耐久引起的卸装清掉已提交光效；第 69 帧恢复控制，退出状态也恢复控制。`isActionActive(bufferedAction)` 按动作引用核对归属，`PlayerController` 只取消自己缓冲的动作。
 
 库存书本由 `ReadActionController` 构造 `READ`：`invobject` 投影书本的 `def`、`swap_build`、`swap_prefix` 与皮肤 build，执行时调用玩家 `reader` 组件的 `Read`，再由 `book` 组件扣耐久与理智。`book` 进入时停止移动并生成 `book_fx`，动画结束后带着 `book_fx` 进入 `book2`；`book2` 覆盖书本符号、生成 `def.fx_under_prefab` 跟随 `swap_book_fx_under`，按 `layer_sound.frame` 安排命名层音效。第 19 帧翻页，第 50 帧分离 `book_fx`、播放 `castsound`、移除 `busy` 并 `PerformBufferedAction()`（返回值为假时 `book_fx` 收到 `fail_fx`），第 51 帧合书，第 52 帧再次移除 `busy`。退出时恢复 `player_actions_uniqueitem` 符号、移除未分离的特效，取消未到期的层音效或把正在播放的层音效降为一半音量。`performBufferedAction()` 现在返回执行结果，供该分支判断失败。
 

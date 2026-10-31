@@ -1,6 +1,10 @@
 import { BufferedAction, type BufferedActionDoer, type BufferedActionObject } from './bufferedaction.ts';
 import { Vector3 } from 'three';
-import { performToolWork, type ComponentActionEntity, type ToolAction } from './componentactions.ts';
+import { performLightAction, performToolWork, type ComponentActionEntity, type ToolAction } from './componentactions.ts';
+import type { Combat } from '../../componets/src/combat';
+import type { Weapon } from '../../componets/src/weapon';
+import type { SpellCasterComponent } from '../../componets/src/spellcaster';
+import type { FishingRod, Fisherman } from '../../componets/src/fishingrod';
 import { preparePickReceiver, type PickableComponent } from './pick.ts';
 import { performPickupAction, type PickupDoer, type PickupTarget } from './pickup.ts';
 import { performRummageAction, type RummageContainer, type RummageTarget } from './rummage.ts';
@@ -61,6 +65,29 @@ function productReceiver(act: BufferedAction): StewerHarvester {
 function canPick(act: BufferedAction): boolean {
   const target = act.target!;
   return !!components(act).pickable?.canBePicked && target.hasTag('pickable') && !target.hasTag('fire') && !target.hasTag('intense');
+}
+
+/** BufferedAction:GetActionPoint: the action's pos, else its target's position. */
+function actionPoint(act: BufferedAction): Vector3 {
+  const pos = act.pos;
+  return pos ? new Vector3(pos.x, pos.y, pos.z) : targetPosition(act);
+}
+
+/** The doer's combat, as ATTACK and the weapon's RANGEDLIGHT reach it. */
+type DoerCombat = Pick<Combat, 'DoAttack' | 'CanTarget' | 'CanLightTarget'>;
+const doerCombat = (act: BufferedAction) => (act.doer as { components?: { combat?: DoerCombat } } | undefined)?.components?.combat;
+const invobjectComponents = (act: BufferedAction) =>
+  (act.invobject as { components?: { spellcaster?: SpellCasterComponent; weapon?: Weapon; fishingrod?: FishingRod } } | undefined)?.components ?? {};
+
+/** fishingrod.lua's fisherman is the doer inst: its events reach its stategraph, whose tags gate the rod. */
+function fisherman(act: BufferedAction): Fisherman {
+  const doer = playerDoer(act);
+  return {
+    PushEvent: (name, data) => doer.PushEvent(name, data),
+    getPosition: () => { const position = doer.getPosition(); return new Vector3(position.x, 0, position.z); },
+    isValid: () => true,
+    hasStateTag: tag => doer.sg?.HasStateTag(tag) ?? false,
+  };
 }
 
 export const ACTION_FNS: Readonly<Partial<Record<string, ActionFns>>> = {
@@ -145,6 +172,42 @@ export const ACTION_FNS: Readonly<Partial<Record<string, ActionFns>>> = {
     fn: act => components(act).worldmigrator?.Activate(playerDoer(act)) ?? false,
     validfn: act => act.target!.hasTag('migrator'),
   },
+  ATTACK: {
+    // The propattack, thrusting and helmsplitting branches are not ported; combat:DoAttack uses the equipped weapon.
+    fn: act => { doerCombat(act)?.DoAttack(act.target as never); return true; },
+    validfn: act => {
+      const combat = doerCombat(act), target = act.target as never;
+      return !!combat && !act.target!.hasTag('stealth') && (combat.CanTarget(target)
+        || combat.CanLightTarget(target, invobjectComponents(act).weapon as never));
+    },
+  },
+  CASTSPELL: {
+    // spellcaster:CanCast, then CastSpell at the action point; the item mimic and crushitemcast checks are not ported.
+    fn: act => {
+      const spellcaster = invobjectComponents(act).spellcaster, point = actionPoint(act);
+      if (!spellcaster?.canCast(playerDoer(act), act.target, point)) return false;
+      return spellcaster.castSpell(act.target, point, playerDoer(act));
+    },
+    validfn: act => !act.target?.hasTag('nomagic'),
+  },
+  LIGHT: {
+    fn: act => !!act.invobject && !!act.target
+      && performLightAction(act.invobject as ComponentActionEntity, act.target as ComponentActionEntity, playerDoer(act) as never),
+  },
+  FISH: {
+    fn: act => { invobjectComponents(act).fishingrod?.StartFishing(act.target as never, fisherman(act)); return true; },
+  },
+  REEL: {
+    fn: act => {
+      const rod = invobjectComponents(act).fishingrod;
+      if (rod?.IsFishing()) {
+        if (rod.HasHookedFish()) rod.Reel();
+        else if (rod.FishIsBiting()) rod.Hook();
+        else rod.StopFishing();
+      }
+      return true;
+    },
+  },
   HAUNT: {
     fn: act => {
       const target = act.target!, hauntable = components(act).hauntable;
@@ -166,6 +229,7 @@ export function hasActionFn(action: string): boolean { return ACTION_FNS[action]
  */
 export function createBufferedAction<Action extends string>(action: Action, objects: {
   readonly doer: BufferedActionDoer;
+  readonly pos?: { readonly x: number; readonly y: number; readonly z: number };
   readonly target?: BufferedActionObject & { readonly isRemoved?: boolean };
   readonly invobject?: BufferedActionObject & { readonly isRemoved?: boolean };
 }, validfn: () => boolean = () => true): BufferedAction<Action> {

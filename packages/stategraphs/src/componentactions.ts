@@ -5,6 +5,7 @@ import type { HandEquipment } from '../../signals/src';
 import type { Lighter } from '../../componets/src/lighter';
 import type { Burnable } from '../../componets/src/burnable';
 import type { Propagator } from '../../componets/src/propagator';
+import type { Vector3 } from 'three';
 import { getDeconstructionRecipe } from '../../componets/src/recipes.ts';
 import { ACTIONS, type MouseActionId } from './actions.ts';
 
@@ -77,11 +78,26 @@ type SceneComponents = {
   container?: { canbeopened: boolean };
   machine?: object;
 };
-type EquippedFn = (inst: ComponentActionEntity, doer: unknown, target: ComponentActionTarget, actions: ToolAction[], right: boolean) => void;
+/** The acting player as EQUIPPED / POINT entries read it. */
+export interface EquippedActionDoer {
+  hasTag(tag: string): boolean;
+  readonly sg?: { HasStateTag(tag: string): boolean };
+  readonly components?: { combat?: { CanLightTarget(target: never, weapon?: never): boolean } };
+}
+export type EquippedAction = ToolAction | 'CASTSPELL' | 'LIGHT' | 'ATTACK' | 'FISH' | 'REEL';
+type EquippedFn = (inst: ComponentActionEntity, doer: EquippedActionDoer | undefined, target: ComponentActionTarget,
+  actions: EquippedAction[], right: boolean) => void;
+type PointFn = (inst: ComponentActionEntity, doer: EquippedActionDoer & { readonly position?: Vector3 }, pos: Vector3,
+  actions: EquippedAction[], right: boolean) => void;
+type EquippedComponents = {
+  spellcaster?: SpellCasterComponent;
+  fishingrod?: { readonly target?: unknown; HasCaughtFish(): boolean };
+};
 
 /** componentactions.lua COMPONENT_ACTIONS, for the component entries ported here. */
 export const COMPONENT_ACTIONS: {
   readonly SCENE: Readonly<Record<string, SceneFn>>;
+  readonly POINT: Readonly<Record<string, PointFn>>;
   readonly EQUIPPED: Readonly<Record<string, EquippedFn>>;
   readonly ISVALID: Readonly<Record<string, IsValidFn>>;
 } = {
@@ -122,7 +138,37 @@ export const COMPONENT_ACTIONS: {
     stewer: (inst, _doer, actions) => { if (!inst.hasTag('burnt') && inst.hasTag('donecooking')) actions.push('HARVEST'); },
     worldmigrator: (inst, _doer, actions) => { if (inst.hasTag('migrator')) actions.push('MIGRATE'); },
   },
+  POINT: {
+    // The SPELLTYPES (<type>_spellcaster / _spelluser) gate is not ported; spellcaster:CanCast stands in for the map's
+    // IsAboveGroundAtPoint / IsOceanAtPoint and IsGroundTargetBlocked checks.
+    spellcaster: (inst, doer, pos, actions, right) => {
+      if (!right || !(inst.hasTag('castonpoint') || inst.hasTag('castonpointwater'))
+        || doer.hasTag('steeringboat') || doer.hasTag('rotatingboat')) return;
+      if ((inst.components as EquippedComponents).spellcaster?.canCast(doer as never, undefined, pos)) actions.push('CASTSPELL');
+    },
+  },
   EQUIPPED: {
+    fishingrod: (inst, doer, target, actions) => {
+      const rod = (inst.components as EquippedComponents).fishingrod;
+      if (!rod || !target.hasTag('fishable') || rod.HasCaughtFish()) return;
+      if (target !== rod.target) actions.push('FISH');
+      else if (!doer?.sg || doer.sg.HasStateTag('fishing')) actions.push('REEL');
+    },
+    lighter: (_inst, _doer, target, actions, right) => {
+      if (right && target.hasTag('canlight') && !((target.hasTag('fueldepleted') && !target.hasTag('burnableignorefuel'))
+        || target.hasTag('INLIMBO'))) actions.push('LIGHT');
+    },
+    // The castonlocomotors, castonworkable, castoncombat and crushitemcast branches are not ported.
+    spellcaster: (inst, _doer, target, actions, right) => {
+      if (right && !target.hasTag('nomagic') && (inst.hasTag('castontargets')
+        || (inst.hasTag('castonrecipes') && !!target.prefab && !!getDeconstructionRecipe(target.prefab)))) actions.push('CASTSPELL');
+    },
+    // Only the CanLightTarget (RANGEDLIGHT) branch is ported: there is no CanExtinguishTarget, and the left-button
+    // attack on a combat target is not offered here.
+    weapon: (inst, doer, target, actions, right) => {
+      if (inst.hasTag('outofammo') || !doer?.components?.combat) return;
+      if (right && doer.components.combat.CanLightTarget(target as never, inst.components.weapon as never)) actions.push('ATTACK');
+    },
     tool: (inst, _doer, target, actions, right) => {
       if (target.hasTag('INLIMBO') || inst.components.equippable?.IsRestricted()) return;
       for (const action of TOOLACTIONS) {
@@ -150,22 +196,20 @@ export function collectSceneActions(inst: ComponentActionEntity, doer: SceneActi
 }
 
 /** EntityScript:CollectActions("EQUIPPED", doer, target, actions, right) for the item in the doer's hands. */
-export function collectEquippedItemActions(item: ComponentActionEntity | undefined, doer: unknown,
-  target: ComponentActionTarget, right: boolean): ToolAction[] {
-  const actions: ToolAction[] = [];
+export function collectEquippedItemActions(item: ComponentActionEntity | undefined, doer: EquippedActionDoer | undefined,
+  target: ComponentActionTarget, right: boolean): EquippedAction[] {
+  const actions: EquippedAction[] = [];
   if (!item || item.isRemoved || target.isRemoved) return actions;
   for (const name of Object.keys(item.components)) COMPONENT_ACTIONS.EQUIPPED[name]?.(item, doer, target, actions, right);
   return actions;
 }
 
-/** EQUIPPED.tool, plus the spellcaster and lighter branches not yet moved into COMPONENT_ACTIONS. */
-export function collectEquippedActions(tool: ComponentActionEntity | undefined, target: ComponentActionTarget, right: boolean): (ToolAction | 'CASTSPELL' | 'LIGHT')[] {
-  if (!tool || tool.isRemoved || target.isRemoved || target.hasTag('INLIMBO')) return [];
-  const actions: (ToolAction | 'CASTSPELL' | 'LIGHT')[] = collectEquippedItemActions(tool, undefined, target, right);
-  if (right && tool.components.spellcaster && !target.hasTag('nomagic') && (tool.hasTag('castontargets')
-    || (tool.hasTag('castonrecipes') && target.prefab && getDeconstructionRecipe(target.prefab)))) actions.push('CASTSPELL');
-  if (right && tool.components.lighter && target.hasTag('canlight')
-    && !(target.hasTag('fueldepleted') && !target.hasTag('burnableignorefuel'))) actions.push('LIGHT');
+/** EntityScript:CollectActions("POINT", doer, pos, actions, right) for the item in the doer's hands. */
+export function collectPointActions(item: ComponentActionEntity | undefined, doer: EquippedActionDoer, pos: Vector3,
+  right: boolean): EquippedAction[] {
+  const actions: EquippedAction[] = [];
+  if (!item || item.isRemoved) return actions;
+  for (const name of Object.keys(item.components)) COMPONENT_ACTIONS.POINT[name]?.(item, doer, pos, actions, right);
   return actions;
 }
 
