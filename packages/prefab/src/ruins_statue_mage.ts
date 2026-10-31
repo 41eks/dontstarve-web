@@ -18,6 +18,8 @@ import { watchTileActivity } from './tileActivity';
 import type { DisplayDrivenPrefabManager, DisplayManagerWorld } from './manager';
 
 export const RUINS_STATUE_MAGE_ID = 'ruins_statue_mage' as const;
+export const RUINS_STATUE_MAGE_NOGEM_ID = 'ruins_statue_mage_nogem' as const;
+export const RUINS_STATUE_HEAD_ID = 'ruins_statue_head' as const;
 export const RUINS_STATUE_HEAD_NOGEM_ID = 'ruins_statue_head_nogem' as const;
 export const RUINS_STATUE_GEMS = ['greengem', 'redgem', 'bluegem', 'yellowgem', 'orangegem', 'purplegem'] as const;
 export type RuinsStatueGem = typeof RUINS_STATUE_GEMS[number];
@@ -26,24 +28,34 @@ interface RuinsStatueSaveRecord<Components> {
   transform: { position: [number, number, number]; rotationY: number };
   components: Components;
 }
-export type RuinsStatueMageRecord = RuinsStatueSaveRecord<{ ruinsStatueMage: { gem: RuinsStatueGem } }>;
+/** onsave: data.gem = inst.gemmed. gem() statues save their gem; the save field keeps the mage's original name. */
+export type RuinsStatueGemRecord = RuinsStatueSaveRecord<{ ruinsStatueMage: { gem: RuinsStatueGem } }>;
 /** nogem() never calls SetGemmed, so onsave writes `gem = nil`: the record holds only identity and transform. */
-export type RuinsStatueHeadNoGemRecord = RuinsStatueSaveRecord<Record<string, never>>;
+export type RuinsStatueNoGemRecord = RuinsStatueSaveRecord<Record<string, never>>;
 interface RuinsStatueRecords {
-  [RUINS_STATUE_MAGE_ID]: RuinsStatueMageRecord;
-  [RUINS_STATUE_HEAD_NOGEM_ID]: RuinsStatueHeadNoGemRecord;
+  [RUINS_STATUE_MAGE_ID]: RuinsStatueGemRecord;
+  [RUINS_STATUE_MAGE_NOGEM_ID]: RuinsStatueNoGemRecord;
+  [RUINS_STATUE_HEAD_ID]: RuinsStatueGemRecord;
+  [RUINS_STATUE_HEAD_NOGEM_ID]: RuinsStatueNoGemRecord;
 }
 export type RuinsStatueId = keyof RuinsStatueRecords;
-export interface RuinsStatueMageWorld extends DisplayManagerWorld { tickingarea?: TileStateQuery; physics?: World; scheduler: GameTimeScheduler }
+export type RuinsStatueRecord<Id extends RuinsStatueId> = RuinsStatueRecords[Id];
+export interface RuinsStatueWorld extends DisplayManagerWorld { tickingarea?: TileStateQuery; physics?: World; scheduler: GameTimeScheduler }
 
 // statueruins.lua SetSharedLootTable('statue_ruins_no_gem', ...).
 SetSharedLootTable('statue_ruins_no_gem', [['thulecite', 1], ['nightmarefuel', 1], ['thulecite', .05]]);
 
-/** commonfn(small): SetBank / SetBuild; gem() adds SetGemmed from the matching gem build, nogem() a chance loot table. */
+/**
+ * The Prefab(...) list of statueruins.lua: commonfn(small) picks SetBank / SetBuild, gem() adds SetGemmed from the
+ * matching gem build (`inst.small and "statue_ruins_small_gem" or "statue_ruins_gem"`), nogem() a chance loot table.
+ */
 const VARIANTS: Readonly<Record<RuinsStatueId, { archive: string; bank: string; gemArchive?: string; chanceLootTable?: string }>> = {
   [RUINS_STATUE_MAGE_ID]: { archive: 'statue_ruins.zip', bank: 'statue_ruins', gemArchive: 'statue_ruins_gem.zip' },
+  [RUINS_STATUE_MAGE_NOGEM_ID]: { archive: 'statue_ruins.zip', bank: 'statue_ruins', chanceLootTable: 'statue_ruins_no_gem' },
+  [RUINS_STATUE_HEAD_ID]: { archive: 'statue_ruins_small.zip', bank: 'statue_ruins_small', gemArchive: 'statue_ruins_small_gem.zip' },
   [RUINS_STATUE_HEAD_NOGEM_ID]: { archive: 'statue_ruins_small.zip', bank: 'statue_ruins_small', chanceLootTable: 'statue_ruins_no_gem' },
 };
+export const RUINS_STATUE_IDS = Object.keys(VARIANTS) as RuinsStatueId[];
 
 interface Statue {
   instance: PrefabInstance<ArchiveSpriteCommands>;
@@ -61,9 +73,9 @@ export class RuinsStatueManager<Id extends RuinsStatueId> implements DisplayDriv
   private readonly statues = new Map<THREE.Group, Statue>();
   private disposed = false;
   private readonly displays: PrefabDisplayGroup;
-  private readonly world: RuinsStatueMageWorld;
+  private readonly world: RuinsStatueWorld;
   private readonly prefabId: Id;
-  constructor(scene: THREE.Scene, world: RuinsStatueMageWorld, prefabId: Id) {
+  constructor(scene: THREE.Scene, world: RuinsStatueWorld, prefabId: Id) {
     this.displays = new PrefabDisplayGroup(scene); this.world = world; this.prefabId = prefabId;
     this.assets = new ArchiveSpriteAssets(prefabId);
   }
@@ -96,12 +108,19 @@ export class RuinsStatueManager<Id extends RuinsStatueId> implements DisplayDriv
     // `_night` suffix because this world has the calm phase.
     instance.sprite.start('idle_full');
     let gem: RuinsStatueGem | undefined;
-    if (variant.gemArchive) {
-      // gem() chooses a gem; OnLoad calls SetGemmed again when data.gem exists.
-      const initialGem = RUINS_STATUE_GEMS[Math.floor(Math.random() * RUINS_STATUE_GEMS.length)];
-      instance.sprite.setSymbolOverride('swap_gem', variant.gemArchive, initialGem);
-      gem = (saved as RuinsStatueMageRecord | undefined)?.components.ruinsStatueMage.gem ?? initialGem;
-      if (saved) instance.sprite.setSymbolOverride('swap_gem', variant.gemArchive, gem);
+    const gemArchive = variant.gemArchive;
+    if (gemArchive) {
+      // SetGemmed: the swap_gem override from the gem build, SetLoot({ "thulecite", gem }) and AddChanceLoot("thulecite", .05).
+      const SetGemmed = (value: RuinsStatueGem) => {
+        gem = value;
+        instance.sprite.setSymbolOverride('swap_gem', gemArchive, value);
+        lootdropper.SetLoot(['thulecite', value]);
+        lootdropper.AddChanceLoot('thulecite', .05);
+      };
+      // gem() calls SetGemmed with a random gem; OnLoad calls it again when data.gem exists.
+      SetGemmed(RUINS_STATUE_GEMS[Math.floor(Math.random() * RUINS_STATUE_GEMS.length)]);
+      const savedGem = (saved as RuinsStatueGemRecord | undefined)?.components.ruinsStatueMage?.gem;
+      if (savedGem !== undefined) SetGemmed(savedGem);
     }
     const minimap = instance.minimap; minimap.SetIcon('statue_ruins.png');
     const statue: Statue = { instance, display, workable, hauntable, minimap, gem,
@@ -128,9 +147,4 @@ export class RuinsStatueManager<Id extends RuinsStatueId> implements DisplayDriv
     }
     this.statues.clear(); this.displays.dispose(); this.assets.dispose();
   }
-}
-
-/** statueruins.lua gem() / commonfn() for the large mage statue. */
-export class RuinsStatueMageManager extends RuinsStatueManager<typeof RUINS_STATUE_MAGE_ID> {
-  constructor(scene: THREE.Scene, world: RuinsStatueMageWorld) { super(scene, world, RUINS_STATUE_MAGE_ID); }
 }

@@ -230408,6 +230408,518 @@
           }
         }
       ],
+      "ruins_statue_mage_nogem": [
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_mage_nogem_id_110113",
+          "transform": {
+            "position": [
+              1499.61,
+              0.0,
+              875.82
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_mage_nogem_id_110143",
+          "transform": {
+            "position": [
+              1404.0,
+              0.0,
+              959.82
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_mage_nogem_id_110160",
+          "transform": {
+            "position": [
+              1572.0,
+              0.0,
+              876.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_mage_nogem_id_110193",
+          "transform": {
+            "position": [
+              1523.79,
+              0.0,
+              876.21
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_mage_nogem_id_110223",
+          "transform": {
+            "position": [
+              1500.18,
+              0.0,
+              984.39
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_mage_nogem_id_110263",
+          "transform": {
+            "position": [
+              1499.79,
+              0.0,
+              960.21
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_mage_nogem_id_110296",
+          "transform": {
+            "position": [
+              1500.0,
+              0.0,
+              912.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_mage_nogem_id_110462",
+          "transform": {
+            "position": [
+              1364.61,
+              0.0,
+              1803.54
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_mage_nogem_id_110497",
+          "transform": {
+            "position": [
+              1524.18,
+              0.0,
+              972.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        }
+      ],
+      "ruins_statue_head": [
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_head_id_110111",
+          "transform": {
+            "position": [
+              1296.36,
+              0.0,
+              1644.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsStatueMage": {
+              "gem": "orangegem"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_head_id_110114",
+          "transform": {
+            "position": [
+              -909.0,
+              0.0,
+              -957.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsStatueMage": {
+              "gem": "purplegem"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_head_id_110118",
+          "transform": {
+            "position": [
+              -1116.0,
+              0.0,
+              -1164.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsStatueMage": {
+              "gem": "purplegem"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_head_id_110130",
+          "transform": {
+            "position": [
+              1367.61,
+              0.0,
+              1643.82
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsStatueMage": {
+              "gem": "orangegem"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_head_id_110166",
+          "transform": {
+            "position": [
+              -987.0,
+              0.0,
+              -957.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsStatueMage": {
+              "gem": "redgem"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_head_id_110185",
+          "transform": {
+            "position": [
+              1464.0,
+              0.0,
+              1248.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsStatueMage": {
+              "gem": "purplegem"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_head_id_110194",
+          "transform": {
+            "position": [
+              1692.18,
+              0.0,
+              660.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsStatueMage": {
+              "gem": "orangegem"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_head_id_110202",
+          "transform": {
+            "position": [
+              -1068.0,
+              0.0,
+              -828.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsStatueMage": {
+              "gem": "greengem"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_head_id_110219",
+          "transform": {
+            "position": [
+              1836.0,
+              0.0,
+              720.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsStatueMage": {
+              "gem": "orangegem"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_head_id_110238",
+          "transform": {
+            "position": [
+              -891.0,
+              0.0,
+              -843.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsStatueMage": {
+              "gem": "orangegem"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_head_id_110245",
+          "transform": {
+            "position": [
+              1500.0,
+              0.0,
+              1295.64
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsStatueMage": {
+              "gem": "orangegem"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_head_id_110257",
+          "transform": {
+            "position": [
+              1355.79,
+              0.0,
+              1320.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsStatueMage": {
+              "gem": "bluegem"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_head_id_110274",
+          "transform": {
+            "position": [
+              1284.0,
+              0.0,
+              1319.64
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsStatueMage": {
+              "gem": "orangegem"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_head_id_110295",
+          "transform": {
+            "position": [
+              -1212.0,
+              0.0,
+              -924.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsStatueMage": {
+              "gem": "bluegem"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_head_id_110306",
+          "transform": {
+            "position": [
+              1763.79,
+              0.0,
+              731.64
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsStatueMage": {
+              "gem": "redgem"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_head_id_110315",
+          "transform": {
+            "position": [
+              1428.18,
+              0.0,
+              1296.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsStatueMage": {
+              "gem": "redgem"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_head_id_110349",
+          "transform": {
+            "position": [
+              -1005.0,
+              0.0,
+              -843.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsStatueMage": {
+              "gem": "yellowgem"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_head_id_110350",
+          "transform": {
+            "position": [
+              -588.0,
+              0.0,
+              -1068.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsStatueMage": {
+              "gem": "bluegem"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_head_id_110399",
+          "transform": {
+            "position": [
+              1499.79,
+              0.0,
+              1224.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsStatueMage": {
+              "gem": "purplegem"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_head_id_110409",
+          "transform": {
+            "position": [
+              1764.0,
+              0.0,
+              660.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsStatueMage": {
+              "gem": "orangegem"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_head_id_110410",
+          "transform": {
+            "position": [
+              -828.0,
+              0.0,
+              -1020.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsStatueMage": {
+              "gem": "redgem"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_head_id_110440",
+          "transform": {
+            "position": [
+              1284.18,
+              0.0,
+              1248.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsStatueMage": {
+              "gem": "orangegem"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_head_id_110460",
+          "transform": {
+            "position": [
+              1500.0,
+              0.0,
+              1068.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsStatueMage": {
+              "gem": "redgem"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_head_id_110502",
+          "transform": {
+            "position": [
+              -1116.0,
+              0.0,
+              -1020.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsStatueMage": {
+              "gem": "yellowgem"
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_ruins_statue_head_id_110504",
+          "transform": {
+            "position": [
+              1296.0,
+              0.0,
+              1572.21
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "ruinsStatueMage": {
+              "gem": "orangegem"
+            }
+          }
+        }
+      ],
       "ruins_statue_head_nogem": [
         {
           "id": "dst_04E26ADB66396E8D_ruins_statue_head_nogem_id_110117",

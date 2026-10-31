@@ -444,6 +444,8 @@
     "atrium_gate",
     "atrium_statue",
     "ruins_statue_mage",
+    "ruins_statue_mage_nogem",
+    "ruins_statue_head",
     "ruins_statue_head_nogem",
     "chessjunk1",
     "chessjunk2",
@@ -585,6 +587,14 @@
     "ruins_statue_mage": {
       "source": 3,
       "imported": 3
+    },
+    "ruins_statue_mage_nogem": {
+      "source": 0,
+      "imported": 0
+    },
+    "ruins_statue_head": {
+      "source": 10,
+      "imported": 10
     },
     "ruins_statue_head_nogem": {
       "source": 3,
@@ -1216,6 +1226,126 @@
         -252
       ],
       "sourceNode": "MuddySacred:3:SacredBarracks"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_statue_head_id_106555",
+      "prefab": "ruins_statue_head",
+      "sourceIndex": 1,
+      "sourceId": 106555,
+      "sourcePosition": [
+        416.12,
+        0,
+        -568
+      ],
+      "sourceNode": "SacredDanger:0:SacredBarracks"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_statue_head_id_106556",
+      "prefab": "ruins_statue_head",
+      "sourceIndex": 2,
+      "sourceId": 106556,
+      "sourcePosition": [
+        439.87,
+        0,
+        -567.94
+      ],
+      "sourceNode": "SacredDanger:0:SacredBarracks"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_statue_head_id_106557",
+      "prefab": "ruins_statue_head",
+      "sourceIndex": 3,
+      "sourceId": 106557,
+      "sourcePosition": [
+        548.06,
+        0,
+        -240
+      ],
+      "sourceNode": "MuddySacred:3:SacredBarracks"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_statue_head_id_106558",
+      "prefab": "ruins_statue_head",
+      "sourceIndex": 4,
+      "sourceId": 106558,
+      "sourcePosition": [
+        484,
+        0,
+        -451.88
+      ],
+      "sourceNode": "Sacred:3:SacredBarracks"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_statue_head_id_106559",
+      "prefab": "ruins_statue_head",
+      "sourceIndex": 5,
+      "sourceId": 106559,
+      "sourcePosition": [
+        435.93,
+        0,
+        -460
+      ],
+      "sourceNode": "Sacred:4:SacredBarracks"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_statue_head_id_106560",
+      "prefab": "ruins_statue_head",
+      "sourceIndex": 6,
+      "sourceId": 106560,
+      "sourcePosition": [
+        412,
+        0,
+        -459.88
+      ],
+      "sourceNode": "Sacred:4:SacredBarracks"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_statue_head_id_106561",
+      "prefab": "ruins_statue_head",
+      "sourceIndex": 7,
+      "sourceId": 106561,
+      "sourcePosition": [
+        571.93,
+        0,
+        -263.88
+      ],
+      "sourceNode": "MuddySacred:3:SacredBarracks"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_statue_head_id_106562",
+      "prefab": "ruins_statue_head",
+      "sourceIndex": 8,
+      "sourceId": 106562,
+      "sourcePosition": [
+        572,
+        0,
+        -240.13
+      ],
+      "sourceNode": "MuddySacred:3:SacredBarracks"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_statue_head_id_106563",
+      "prefab": "ruins_statue_head",
+      "sourceIndex": 9,
+      "sourceId": 106563,
+      "sourcePosition": [
+        412.06,
+        0,
+        -436.13
+      ],
+      "sourceNode": "Sacred:4:SacredBarracks"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_ruins_statue_head_id_106564",
+      "prefab": "ruins_statue_head",
+      "sourceIndex": 10,
+      "sourceId": 106564,
+      "sourcePosition": [
+        416,
+        0,
+        -544.07
+      ],
+      "sourceNode": "SacredDanger:0:SacredBarracks"
     },
     {
       "id": "dst_04E26ADB66396E8D_ruins_statue_head_nogem_id_106546",

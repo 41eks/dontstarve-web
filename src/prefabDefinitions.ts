@@ -17,7 +17,7 @@ import { DRAGONFLY_ID } from '@dontstarve-web/prefab/dragonfly';
 import { DRAGONFLY_SPAWNER_ID } from '@dontstarve-web/prefab/dragonfly_spawner';
 import { STATUEGLOMMER_ID, STATUEGLOMMER_WORK } from '@dontstarve-web/prefab/statueglommer';
 import { ATRIUM_GATE_ID, ATRIUM_GATE_TIMER_NAMES } from '@dontstarve-web/prefab/atrium_gate';
-import { RUINS_STATUE_MAGE_ID, RUINS_STATUE_HEAD_NOGEM_ID, RUINS_STATUE_GEMS } from '@dontstarve-web/prefab/ruins_statue_mage';
+import { RUINS_STATUE_MAGE_ID, RUINS_STATUE_MAGE_NOGEM_ID, RUINS_STATUE_HEAD_ID, RUINS_STATUE_HEAD_NOGEM_ID, RUINS_STATUE_GEMS } from '@dontstarve-web/prefab/ruins_statue_mage';
 import { ATRIUM_STATUE_ID } from '@dontstarve-web/prefab/atrium_statue';
 import { CHESSJUNK_IDS } from '@dontstarve-web/prefab/chessjunk';
 import { parseDragonflyState } from './save/dragonfly';
@@ -102,6 +102,14 @@ function groundItemArchives(_prefab: string, records: readonly unknown[]): reado
 }
 
 const empty = componentParser({ keys: [] });
+/** statueruins.lua onsave/onload for gem() statues: data.gem, saved under the mage's original field name. */
+const ruinsStatueGem: PrefabComponentParser = (value, path) => {
+  const data = object(value, path, ['ruinsStatueMage']);
+  const state = object(data.ruinsStatueMage, `${path}.ruinsStatueMage`, ['gem']);
+  if (!RUINS_STATUE_GEMS.includes(state.gem as typeof RUINS_STATUE_GEMS[number]))
+    fail(`${path}.ruinsStatueMage.gem`, 'unsupported ruins statue gem');
+  return { ruinsStatueMage: { gem: state.gem as typeof RUINS_STATUE_GEMS[number] } };
+};
 const archiveStatue = componentParser({ keys: ['archiveProp'], archivePropVariants: 4 });
 const archiveRune = componentParser({ keys: ['archiveProp'], archivePropVariants: 3, archiveStoryLines: 5 });
 const farmSoil = componentParser({ keys: ['farmSoil'] });
@@ -231,14 +239,10 @@ export const PREFAB_DEFINITIONS = {
     }
     return components;
   }, true, ['atrium_gate.zip', 'atrium_gate_build.zip', 'atrium_floor.zip', 'atrium_gate_overload_fx.zip']),
-  ruinsStatueMages: definePrefabs([RUINS_STATUE_MAGE_ID], (value, path) => {
-    const data = object(value, path, ['ruinsStatueMage']);
-    const state = object(data.ruinsStatueMage, `${path}.ruinsStatueMage`, ['gem']);
-    if (!RUINS_STATUE_GEMS.includes(state.gem as typeof RUINS_STATUE_GEMS[number]))
-      fail(`${path}.ruinsStatueMage.gem`, 'unsupported ruins statue gem');
-    return { ruinsStatueMage: { gem: state.gem as typeof RUINS_STATUE_GEMS[number] } };
-  }, true, ['statue_ruins.zip', 'statue_ruins_gem.zip']),
-  // statueruins.lua nogem(true): onsave writes gem = nil.
+  ruinsStatueMages: definePrefabs([RUINS_STATUE_MAGE_ID], ruinsStatueGem, true, ['statue_ruins.zip', 'statue_ruins_gem.zip']),
+  ruinsStatueHeads: definePrefabs([RUINS_STATUE_HEAD_ID], ruinsStatueGem, true, ['statue_ruins_small.zip', 'statue_ruins_small_gem.zip']),
+  // statueruins.lua nogem(): onsave writes gem = nil.
+  ruinsStatueMagesNoGem: definePrefabs([RUINS_STATUE_MAGE_NOGEM_ID], empty, true, ['statue_ruins.zip']),
   ruinsStatueHeadsNoGem: definePrefabs([RUINS_STATUE_HEAD_NOGEM_ID], empty, true, ['statue_ruins_small.zip']),
   // atrium_statue.lua has no OnSave data.
   atriumStatues: definePrefabs([ATRIUM_STATUE_ID], empty, true, ['atrium_statue.zip']),

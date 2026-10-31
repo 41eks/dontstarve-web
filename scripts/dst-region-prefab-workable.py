@@ -19,19 +19,25 @@ def chessjunk_components(data):
     return {'chessJunk': state}
 
 
-def ruins_statue_mage_components(data):
-    # statueruins.lua OnSave writes only gem; workable.savestate remains false.
+def ruins_statue_gem_components(prefab):
+    # statueruins.lua gem(): OnSave writes only gem; workable.savestate remains false.
     gems = {'greengem', 'redgem', 'bluegem', 'yellowgem', 'orangegem', 'purplegem'}
-    if set(data) != {'gem'} or data['gem'] not in gems:
-        raise ValueError('Unsupported ruins_statue_mage save state')
-    return {'ruinsStatueMage': {'gem': data['gem']}}
+
+    def convert(data):
+        if set(data) != {'gem'} or data['gem'] not in gems:
+            raise ValueError(f'Unsupported {prefab} save state')
+        # The project field keeps the mage's original name for every gem() statue.
+        return {'ruinsStatueMage': {'gem': data['gem']}}
+    return convert
 
 
-def ruins_statue_head_nogem_components(data):
+def ruins_statue_nogem_components(prefab):
     # statueruins.lua nogem() never sets inst.gemmed, so OnSave writes nothing; workable.savestate remains false.
-    if data:
-        raise ValueError('Unsupported ruins_statue_head_nogem save state')
-    return {}
+    def convert(data):
+        if data:
+            raise ValueError(f'Unsupported {prefab} save state')
+        return {}
+    return convert
 
 
 def statueglommer_components(data):
