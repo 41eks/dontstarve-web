@@ -54,15 +54,22 @@ const buildings = [
 ] as const;
 
 it.each(buildings)('%s runs its built animation only after a successful placement', async (_id, definition, idle) => {
-  const onbuilt = vi.fn(definition.onbuilt!);
+  let playOnce: ReturnType<typeof vi.spyOn> | undefined;
+  const onbuilt = vi.fn((context: AnimatedBuildingBuiltContext) => {
+    playOnce = vi.spyOn(context.animation as SpriteAnimationController, 'playOnce');
+    definition.onbuilt!(context);
+  });
   const { placement, world, consume, isOverGround, click } = await setup({ ...definition, onbuilt });
   await placement.spawn('building');
   expect(onbuilt).not.toHaveBeenCalled();
   await placement.begin('building');
-  const model = world.scene.children[1];
-  const animation = prefabInstance(model)!.sprite as SpriteAnimationController;
-  const playOnce = vi.spyOn(animation, 'playOnce');
-  const start = vi.spyOn(animation, 'start');
+  const placerModel = world.scene.children[1], placer = prefabInstance(placerModel)!;
+  // MakePlacer: its own non-persisting entity, declaring a looping clip, SetLightOverride(1) and the placer tags.
+  expect(placer.prefab).toBe('building_placer');
+  expect(placer.persists).toBe(false);
+  for (const tag of ['CLASSIFIED', 'NOCLICK', 'placer']) expect(placer.hasTag(tag)).toBe(true);
+  expect(placer.sprite.sprite.peek()).toMatchObject({ clip: { name: idle, loop: true }, lightOverride: 1, opacity: .65, visible: true });
+  expect(placer.position.toArray()).toEqual([3, 0, 4]);
   expect(onbuilt).not.toHaveBeenCalled();
 
   isOverGround.mockReturnValue(false);
@@ -77,11 +84,17 @@ it.each(buildings)('%s runs its built animation only after a successful placemen
   consume.mockReturnValue(true);
   click();
   expect(onbuilt).toHaveBeenCalledTimes(1);
-  expect(onbuilt.mock.calls[0][0]).toMatchObject({ model, animation });
+  // The build spawns the building itself and releases the placer.
+  const { model, animation } = onbuilt.mock.calls[0][0];
+  expect(model).not.toBe(placerModel);
+  expect(placer.status.peek()).toBe('removed');
+  expect(placerModel.parent).toBeNull();
+  expect(prefabInstance(model)!.prefab).toBe('building');
   expect(playOnce).toHaveBeenCalledExactlyOnceWith('place', expect.any(Function));
+  expect(prefabInstance(model)!.sprite.sprite.peek().lightOverride).toBeUndefined();
   expect(placement.exportRecords()[1].record.transform.position).toEqual([3, 0, 4]);
   for (let frame = 0; frame < 100; frame++) placement.update(0.1);
-  expect(start).toHaveBeenLastCalledWith(idle);
+  expect(animation.sprite.peek().clip).toMatchObject({ name: idle, loop: true });
 
   await placement.spawnFromSave('building', placement.exportRecords()[1].record);
   await placement.begin('building');
@@ -92,11 +105,10 @@ it.each(buildings)('%s runs its built animation only after a successful placemen
 it('lets a prefab control built effects and keeps interaction blocked until it completes', async () => {
   let context: AnimatedBuildingBuiltContext;
   const onbuilt = vi.fn((built: AnimatedBuildingBuiltContext) => { context = built; });
-  const { placement, world, click } = await setup({ ...TREASURE_CHEST_DEFINITION, onProximity: false, onbuilt });
+  const { placement, click } = await setup({ ...TREASURE_CHEST_DEFINITION, onProximity: false, onbuilt });
   await placement.begin('building');
-  const animation = prefabInstance(world.scene.children[0])!.sprite as SpriteAnimationController;
-  const playOnce = vi.spyOn(animation, 'playOnce');
   click();
+  const playOnce = vi.spyOn(context!.animation as SpriteAnimationController, 'playOnce');
   click();
   placement.update(0.1);
   expect(onbuilt).toHaveBeenCalledTimes(1);

@@ -382,6 +382,8 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 
 `c_spawn("ruins_statue_mage")` 在玩家脚点生成带随机宝石的遗迹法师雕像；它是世界 prefab，不支持 `c_give`。原版 `statueruins.lua` 使用 `statue_ruins.zip` 与 `statue_ruins_gem.zip`，读档恢复 `gem` 符号覆盖及正常噩梦阶段的循环 `idle_full`。`c_save()` 保存 ID、脚点和宝石种类；洞穴导入存档包含 18 座。无皮肤。采矿、噩梦阶段切换及遗迹重生行为尚未接入。
 
+`c_spawn("pandoraschest")` 在玩家前方生成华丽箱子（遗迹宝箱），无额外参数；它是世界 prefab，不支持 `c_give`，也不能制作。原版 `treasurechest.lua` 的 `MakeChest("pandoraschest", "pandoras_chest", "pandoras_chest", indestructible)` 使用 `anim/pandoras_chest.zip`，初始声明非循环 `closed`；打开播放非循环 `open`，关闭播放 `close` 后排队非循环 `closed`。它是 3×3 容器，不可锤、不可燃，无皮肤。`c_save()` 保存 ID、位置和箱内物品；洞穴导入存档包含 46 个，源存档中已运行过的 `chest_labyrinth` 场景记录不导入。遗迹重置、拟态箱转换、闹鬼与灵视行为尚未接入。
+
 `c_spawn("atrium_gate")` 在玩家脚点生成远古大门；这是世界 prefab，不支持 `c_give`。洞穴导入存档包含 1 座。主门使用 `atrium_gate.zip` 的非循环 `idle`、独立地板与源定义的无美术阻挡子实体；读档按保存的钥匙、修复、采摘及世界设置计时器字段声明外观与动画。`c_save()` 保存 ID、位置、`atriumGate`、`pickable`、`charliecutscene`、`worldsettingstimer` 和 `entitytracker` 字段。此移植覆盖存档与显示；钥匙交易、满能量战斗、计时器完成与音效事件尚未接入。原版没有大门皮肤。
 
 `c_spawn("statueglommer")` 在玩家脚点生成格罗姆雕像；它是世界实体，不支持 `c_give`。`c_save()` 保存雕像 ID、位置、`statueglommer.worked/spawned`、`pickable` 与 `workable` 字段；读档按 `statueglommer.lua` 的构造及 OnLoad 顺序恢复 `full`、`med` 或 `low` 的非循环动画。默认导入的地表存档含 1 座，洞穴存档无雕像；原版无雕像皮肤。此移植范围为存档和显示，满月生成格罗姆与花、采摘、采矿和发光行为尚未接入。

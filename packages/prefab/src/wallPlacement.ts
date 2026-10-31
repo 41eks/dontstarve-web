@@ -1,7 +1,7 @@
 import { ToolMouseTarget } from './toolMouseTarget';
 import { ModelRecords } from './modelRecords';
 import * as THREE from 'three';
-import { BuildCursor } from './buildCursor';
+import { BuildCursor, modelPlacer } from './buildCursor';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import { snapToWallSlotCenter } from './tile';
 import type { WorldContext } from './worldContext';
@@ -318,7 +318,7 @@ export class WallPlacement<BuildId extends string> {
         const wall = this.createInstance(buildId, skinId, .65);
         wall.model.visible = false;
         this.active = wall;
-        this.cursor.setPreview(wall.model, 0, snapToWallSlot);
+        this.cursor.setPreview(modelPlacer(wall.model), 0, snapToWallSlot);
         this.cursor.update();
     }
 

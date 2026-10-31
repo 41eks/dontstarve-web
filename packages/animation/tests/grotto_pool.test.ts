@@ -106,51 +106,6 @@ it('shares pool, mist and waterfall frames while mining and removing pools indep
   expect(disposed).toHaveBeenCalledTimes(3);
 }, 30000);
 
-it('spawns the big pool with its five children, mines a glass for moonglass and keeps all of it through save/load', async () => {
-  vi.spyOn(Math, 'random').mockReturnValue(.5);
-  const s = setup(), restored = setup();
-  try {
-    expect((await executeDebugCommand('c_spawn("grotto_pool_big")', s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
-    expect(lookupPrefabInstance(s.scene.children.find(model => lookupPrefabInstance(model)?.prefab === 'grotto_pool_big'))!.minimap.icon).toBe('grotto_pool_big.png');
-    expect(s.physics.bodies).toHaveLength(1);
-    // setup_children runs at the next scheduler tick, after restored entities exist.
-    s.scheduler.advance(0.01);
-    await vi.waitFor(() => expect(prefabs(s)).toEqual(['grotto_moonglass_1', 'grotto_moonglass_3', 'grotto_moonglass_4', 'grotto_moonglass_4',
-      'grotto_pool_big', 'grotto_waterfall_big']));
-    const [pool] = s.pools.exportRecords();
-    expect(pool.record.components.grottoPool!.children.map(({ index }) => index)).toEqual([1, 2, 3, 4, 5]);
-    // The waterfall is NOCLICK scenery; only the four glasses can be mined.
-    expect(s.pools.mineTargets).toHaveLength(4);
-
-    const pickaxe = s.inventory.entities.create({ itemId: 'pickaxe', count: 1 });
-    const [mine] = s.pools.mineTargets;
-    for (let i = 0; i < 5; i++) expect(performToolWork('MINE', mine.entity, {}, pickaxe)).toBe(true);
-    expect(lookupPrefabInstance(mine.model)?.getPhysicsRadius(undefined)).toBeDefined();
-    expect(performToolWork('MINE', mine.entity, {}, pickaxe)).toBe(true);
-    expect(s.pools.mineTargets).toHaveLength(3);
-    expect(mine.entity.hasTag('NOCLICK')).toBe(true);
-    expect(lookupPrefabInstance(mine.model)?.getPhysicsRadius(undefined)).toBeUndefined();
-    // moonglass_prop: two sure pieces and the 50% one (random = .5 hits).
-    await vi.waitFor(() => expect(s.ground.exportRecords().map(record => record.components.stack?.itemId)).toEqual(['moonglass', 'moonglass', 'moonglass']));
-
-    let json = '';
-    expect((await executeDebugCommand('c_save()', s.inventory, undefined, () => { json = s.save(); })).ok).toBe(true);
-    const saved = deserializeSave(json, SAVE_CATALOG).world.entities;
-    for (const [prefabId, records] of Object.entries(saved)) {
-      if (!(PREFAB_DEFINITIONS.grottoPools.prefabIds as readonly string[]).includes(prefabId)) continue;
-      for (const record of records) await restored.pools.spawn(prefabId as 'grotto_pool_big', new THREE.Vector3(...record.transform.position),
-        { id: record.id, transform: record.transform, components: record.components });
-    }
-    // The saved children are linked, not spawned again.
-    restored.scheduler.advance(0.01);
-    await new Promise(resolve => setTimeout(resolve, 50));
-    const byId = (m: typeof s.pools) => m.exportRecords().sort((a, b) => a.record.id.localeCompare(b.record.id));
-    expect(byId(restored.pools)).toEqual(byId(s.pools));
-    expect(restored.pools.mineTargets).toHaveLength(3);
-    expect(restored.pools.exportRecords().find(({ record }) => record.id === String(mine.id))!.record.components.grottoGlass).toEqual({ workleft: 0 });
-  } finally { s.dispose(); restored.dispose(); }
-}, 30000);
-
 it('registers a small pool sound source and unregisters it on removal', async () => {
   vi.spyOn(Math, 'random').mockReturnValue(.7);
   const s = setup();

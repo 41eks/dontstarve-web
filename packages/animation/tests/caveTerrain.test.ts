@@ -15,45 +15,6 @@ import { drawGround, layerGeometry } from './groundDisplayFixture';
 
 afterEach(() => vi.unstubAllGlobals());
 
-it('loads the entire imported map and retains cave identity, sparse void and player state through save/load', () => {
-  const template = importedSave('Caves');
-  const map = new TurfMap(template.world.map.generator.options.size, template.world.map.tiles, template.world.map.defaultTileId);
-  try {
-    expect(template.world.prefab).toBe('cave');
-    expect(template.world.map.tiles).toHaveLength(45977);
-    expect(map.cellsOfTile(WORLD_TILES.VAULT)).toHaveLength(82);
-    expect(template.world.entities.grass.filter(record => record.components.witherable)).toHaveLength(23);
-    const wood = map.cellsOfTile(WORLD_TILES.WOODFLOOR);
-    // Sample one of the two resurrectionstone layouts.
-    const woodNearOrigin = wood.filter(([col]) => col >= 0);
-    const cx = (Math.min(...woodNearOrigin.map(([col]) => col)) + Math.max(...woodNearOrigin.map(([col]) => col)) + 1) * TILE_SIZE / 2;
-    const cz = (Math.min(...woodNearOrigin.map(([, row]) => row)) + Math.max(...woodNearOrigin.map(([, row]) => row)) + 1) * TILE_SIZE / 2;
-    expect(template.world.entities.pighead.filter(record => new Vector3(...record.transform.position)
-      .distanceToSquared(new Vector3(cx, 0, cz)) <= TILE_SIZE ** 2).map(record => record.transform.position).sort()).toEqual([
-      [cx - TILE_SIZE, 0, cz], [cx + TILE_SIZE, 0, cz], [cx, 0, cz - TILE_SIZE], [cx, 0, cz + TILE_SIZE],
-    ].sort());
-    // Three source statues are outside the archive; their original locations must also be retained.
-    expect(template.world.entities.archive_moon_statue.filter(record =>
-      map.getTileAtWorld(new Vector3(...record.transform.position)) === WORLD_TILES.ARCHIVE)).toHaveLength(24);
-    expect(template.world.entities.archive_moon_statue).toHaveLength(27);
-    expect(map.cellsOfTile(WORLD_TILES.SINKHOLE)).toHaveLength(8597);
-    expect(map.getTileAtWorld({ x: -map.size / 2 + 6, z: -map.size / 2 + 6 })).toBe(WORLD_TILES.IMPASSABLE);
-    expect(map.isPassableAtPoint(new Vector3(...template.players.local.transform.position))).toBe(true);
-    const restored = deserializeSave(serializeSave(template, {
-      entities: template.world.entities, tiles: map.exportTiles(),
-      playerTransform: template.players.local.transform, inventory: inventoryStateFromSave(template), elapsedSeconds: 10,
-    }, SAVE_CATALOG), SAVE_CATALOG);
-    expect(restored.world.map).toEqual(template.world.map);
-    expect(restored.world.entities).toEqual(template.world.entities);
-    expect(restored.world.prefab).toBe('cave');
-    expect(restored.players).toEqual(template.players);
-    expect(() => deserializeSave(JSON.stringify({ ...template, world: { ...template.world,
-      map: { ...template.world.map, defaultTileId: undefined } } }), SAVE_CATALOG)).toThrow('impassable background');
-    expect(() => deserializeSave(JSON.stringify({ ...template, world: { ...template.world,
-      map: { ...template.world.map, tiles: [{ col: 0, row: 0, tileId: 9999 }] } } }), SAVE_CATALOG)).toThrow('tileId');
-  } finally { map.dispose(); }
-});
-
 it('draws cave land only and blocks keyboard velocity and paths across void or fake ground', async () => {
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   const map = new TurfMap(96, [

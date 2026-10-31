@@ -35,7 +35,7 @@ export interface BuildingContainerDefinition {
 }
 
 export const STORAGE_BUILDING_IDS = [
-    'treasurechest', 'icebox', 'cookpot', 'dragonflychest', 'saltbox', 'mushroom_light', 'mushroom_light2', 'bookstation',
+    'treasurechest', 'pandoraschest', 'icebox', 'cookpot', 'dragonflychest', 'saltbox', 'mushroom_light', 'mushroom_light2', 'bookstation',
 ] as const;
 export type StorageBuildingId = typeof STORAGE_BUILDING_IDS[number];
 

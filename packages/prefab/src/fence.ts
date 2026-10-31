@@ -15,7 +15,7 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Workable } from '../../componets/src/workable';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { actionEntity, FindEntities } from './actionEntity';
-import { BuildCursor } from './buildCursor';
+import { BuildCursor, modelPlacer } from './buildCursor';
 import { reskinTarget } from './reskin_tool';
 import { newEntityId, saveGroundPosition, type PlacedEntitySaveRecord, type PlacementSaveRecord } from './saveRecord';
 import { PlaySound } from './sound';
@@ -295,7 +295,7 @@ export class FencePlacement {
         const fence = this.createInstance(buildId, placerRotation(this.heading.peek()), skinId, PREVIEW_OPACITY);
         fence.root.visible = false;
         this.active = fence;
-        this.cursor.setPreview(fence.root, 0, point => {
+        this.cursor.setPreview(modelPlacer(fence.root), 0, point => {
             const snapped = snapToWallSlotCenter(point);
             return point.set(snapped.x, point.y, snapped.z);
         });

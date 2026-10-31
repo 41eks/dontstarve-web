@@ -130,6 +130,7 @@
     "./player": "./src/player.ts",
     "./scienceprototyper": "./src/scienceprototyper.ts",
     "./treasurechest": "./src/treasurechest.ts",
+    "./pandoraschest": "./src/pandoraschest.ts",
     "./tent": "./src/tent.ts",
     "./walls": "./src/walls.ts",
     "./fence": "./src/fence.ts",

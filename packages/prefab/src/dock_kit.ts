@@ -9,7 +9,7 @@ import { createArchiveEntity } from './prefabInstance';
 // The placer tints: valid and blocked cells.
 const VALID_TINT = new THREE.Color(0x66ff66).toArray() as [number, number, number];
 const BLOCKED_TINT = new THREE.Color(0xff5555).toArray() as [number, number, number];
-import { BuildCursor } from './buildCursor';
+import { BuildCursor, modelPlacer } from './buildCursor';
 import { PlaySound } from './sound';
 import { snapToTileCenter, TILE_SIZE } from './tile';
 import { TurfMap, WORLD_TILES, isLandTile } from './turfMap';
@@ -85,7 +85,7 @@ export class DockKitPlacement {
     // BuildCursor moves and hides an anchor; the outline follows it lifted off the ground and shows through its sprite.
     this.anchor = new THREE.Object3D();
     entity.instance.sprite.setLightOverride(1);
-    this.cursor.setPreview(this.anchor, 0, point => this.center(point));
+    this.cursor.setPreview(modelPlacer(this.anchor), 0, point => this.center(point));
     this.cursor.update();
   }
 

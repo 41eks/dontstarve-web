@@ -28,6 +28,7 @@ import { FencePlacement, FENCE_IDS, isFenceId, type FenceId } from '@dontstarve-
 import type { WorldContext } from '@dontstarve-web/prefab/worldContext';
 import type { PlacementSaveRecord } from '@dontstarve-web/prefab/saveRecord';
 import { TENT_DEFINITION, TENT_ID } from '@dontstarve-web/prefab/tent';
+import { PANDORAS_CHEST_DEFINITION, PANDORAS_CHEST_ID, type PandorasChestId } from '@dontstarve-web/prefab/pandoraschest';
 import { MOONBASE_DEFINITION, MOONBASE_ID } from '@dontstarve-web/prefab/moonbase';
 import { SCULPTING_TABLE_DEFINITION, SCULPTING_TABLE_ID, type SculptingTableId } from '@dontstarve-web/prefab/sculptingtable';
 import { WARDROBE_DEFINITION, WARDROBE_ID } from '@dontstarve-web/prefab/wardrobe';
@@ -50,7 +51,7 @@ export { TREASURE_CHEST_ID } from '@dontstarve-web/prefab/treasurechest';
 
 export { TENT_ID } from '@dontstarve-web/prefab/tent';
 
-export type AnimatedBuildingId = CookPotId | FirePitId | IceBoxId | ResearchLabId | TreasureChestId | typeof TENT_ID
+export type AnimatedBuildingId = CookPotId | FirePitId | IceBoxId | ResearchLabId | TreasureChestId | PandorasChestId | typeof TENT_ID
     | DragonflyChestId | BookstationId | CampfireId | SaltBoxId | NightLightId | PigHouseId | MushroomLightId | WinterometerId | LightningRodId | PigHeadId | MermHeadId | BirdcageId | SculptingTableId | typeof MOONBASE_ID | typeof MOONDIAL_ID | typeof WARDROBE_ID;
 export type PlaceableBuildingId = AnimatedBuildingId | WallId | FenceId;
 export type PlaceableBuildingInteractionChange = AnimatedBuildingInteractionChange<AnimatedBuildingId>;
@@ -61,6 +62,7 @@ const ANIMATED_BUILDING_IDS: readonly AnimatedBuildingId[] = [
     ICE_BOX_ID,
     ...RESEARCH_LAB_IDS,
     TREASURE_CHEST_ID,
+    PANDORAS_CHEST_ID,
     TENT_ID,
     MOONBASE_ID,
     MOONDIAL_ID,
@@ -86,6 +88,7 @@ const ANIMATED_BUILDING_DEFINITIONS = {
     [ICE_BOX_ID]: ICE_BOX_DEFINITION,
     ...RESEARCH_LAB_DEFINITIONS,
     [TREASURE_CHEST_ID]: TREASURE_CHEST_DEFINITION,
+    [PANDORAS_CHEST_ID]: PANDORAS_CHEST_DEFINITION,
     [TENT_ID]: TENT_DEFINITION,
     [MOONBASE_ID]: MOONBASE_DEFINITION,
     [MOONDIAL_ID]: MOONDIAL_DEFINITION,
