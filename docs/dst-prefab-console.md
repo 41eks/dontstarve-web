@@ -482,6 +482,7 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `ruins_statue_head_nogem` | 可生成 | 不能入栏 | `prefabs/statueruins.lua` |
 | `lichen` | 可生成 | 不能入栏 | `prefabs/lichen.lua` |
 | `chessjunk1`、`chessjunk2`、`chessjunk3` | 可生成 | 不能入栏 | `prefabs/chessjunk.lua` |
+| `archive_centipede_husk` | 可生成 | 不能入栏 | `prefabs/archive_centipede.lua`（仅残骸；活体 `archive_centipede` 未接入） |
 | `chester` | 可生成 | 不能入栏 | `prefabs/chester.lua` |
 | `hutch` | 可生成 | 不能入栏 | `prefabs/hutch.lua` |
 | `wormhole` | 可生成 | 不能入栏 | `prefabs/wormhole.lua` |
@@ -621,3 +622,7 @@ spider.lua 还有其他共享构造的蜘蛛，但本表只单列已查看的 `s
 2026-10-18 补充 `red_mushroom`、`green_mushroom`：与 `blue_mushroom` 同属 `prefabs/mushrooms.lua` 的 `mushcommonfn(data)`，仅 `animname` / `pickloot` / `open_time` 不同——红：`red` / `red_cap` / `day`，绿：`green` / `green_cap` / `dusk`。共用 `mushrooms.zip`（bank/build `mushrooms`）、`mushroom_up` / `mushroom_down` 音效、采后下雨再生、`DIG` 与燃烧，沿用 `MushroomPlant` 行为类并改由数据表选择；管理器 `spawn` 接收 prefab ID，`exportRecords` 保存各自的 `prefabId`。未移植 `hauntable`（`OnHauntMush` 换色）、`transformer`（Lua 中已注释）与 `AddToRegrowthManager`。`packages/animation/tests/mushroomPlant.test.ts` 验证红蘑菇白天可采、绿蘑菇黄昏后可采、各自产出对应帽并在保存记录中保留 prefab ID。
 
 2026-10-26 补充 `cactus`、`oasis_cactus`：`prefabs/cactus.lua` 的 `MakeCactus(name)` 是没有 inventoryitem 的世界实体，只可 `c_spawn`，没有 `c_give`；bank/build 与 prefab 同名（`anim/cactus.zip`、`anim/oasis_cactus.zip`），小地图 `cactus.png` / `oasis_cactus.png`，`MakeObstaclePhysics(inst, .3)`。`pickable:SetUp("cactus_meat", CACTUS_REGROW_TIME)`（4 游戏日），不是 quickpick，没有 `workable`；`onpickedfn` 对没有装备 `bramble_resistant`、也不是 `shadowminion` 的采摘者执行 `combat:GetAttacked(inst, CACTUS_DAMAGE)`（6）并推送 `thorns`，夏季长出的花（`has_flower`，不存档，读档时按季节决定）另外 `GiveItem` 一个 `cactus_flower`。`MakeLargeBurnable` + `MakeMediumPropagator`；没有 `MakeNoGrowInWinter`。存档只有 `pickable` 状态；导入器 `ENTITY_WHITELIST` 已接受两者。
+
+2026-11-01：`ruinsrelic.lua` 六种复制品和 `smashables.lua` 九种天然遗迹 / 碎石支持 `c_spawn`；仅复制品 vase/chipbowl/bowl/plate 带 inventoryitem，另支持 `c_give`（不可堆叠）。天然版本和复制品 table/chair 无 `c_give`。`ruinsrelic.test.ts` 从命令执行器验证 `c_spawn`、`c_give`、`c_save()`、导出反序列化和重载，覆盖 ID、位置、生命值、rubble、椅子皮肤、装饰湿度载荷与物品数量。Lua 动画、tags、字段和依赖签名逐项核对见 [遗迹家具移植](dst-ruinsrelic.md)。
+
+2026-11-01：核对 `prefabs/stalagmite.lua` / `stalagmite_tall.lua` 的八个世界 prefab：`stalagmite`、`stalagmite_full/med/low`、`stalagmite_tall`、`stalagmite_tall_full/med/low`，均没有 inventoryitem，只提供 `c_spawn("完整ID")`。无 prefab OnSave/OnLoad，workable 不保存进度；高型左右款式和明暗按源码重新随机。`stalagmite.test.ts` 直接驱动命令执行器验证 c_spawn、拒绝 c_give、c_save ZIP 导出和重载，覆盖身份、位置、空组件字段、恢复动画与工作量重置。详见 [石笋移植说明](dst-stalagmite.md)。

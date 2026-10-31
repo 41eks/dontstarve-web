@@ -9,6 +9,7 @@ import { PlayerActionPicker, type MouseActionCandidate } from './playeractionpic
 import { PointerRaycaster } from './pointerRaycaster.ts';
 import type { BufferedActionObject } from './bufferedaction.ts';
 import type { Combat, CombatInst, CombatActor } from '../../componets/src/combat';
+import { facePoint } from './facing.ts';
 
 /** A placed or world inst with combat and health. */
 export interface AttackTarget {
@@ -36,9 +37,6 @@ export class AttackActionController {
   private forceAttack = false;
   private version = 0;
   private readonly direction = new THREE.Vector3();
-  private readonly forward = new THREE.Vector3();
-  private readonly right = new THREE.Vector3();
-  private readonly up = new THREE.Vector3(0, 1, 0);
   private readonly stopActionEvents: () => void;
   private readonly stopFrame: () => void;
   private readonly world: WorldContext;
@@ -166,7 +164,7 @@ export class AttackActionController {
       return;
     }
     this.locomotor.stop();
-    this.faceTarget(target);
+    facePoint(this.animation, this.world.camera, this.world.player.position, target.inst.getPosition());
     const version = this.version;
     const objects = this.actionObjects(target);
     if (this.animation.playAttack(() => version === this.version && this.isValidTarget(target, true)
@@ -206,18 +204,6 @@ export class AttackActionController {
   private distanceSquared(target: AttackTarget): number {
     const a = this.attacker.inst.getPosition(), b = target.inst.getPosition();
     return (a.x - b.x) ** 2 + (a.y - b.y) ** 2 + (a.z - b.z) ** 2;
-  }
-
-  private faceTarget(target: AttackTarget): void {
-    const point = target.inst.getPosition();
-    this.direction.set(point.x, 0, point.z).sub(this.world.player.position).setY(0);
-    if (this.direction.lengthSq() < 1e-8) return;
-    this.world.camera.getWorldDirection(this.forward);
-    this.forward.setY(0).normalize();
-    this.right.crossVectors(this.forward, this.up).normalize();
-    const forward = this.direction.dot(this.forward), side = this.direction.dot(this.right);
-    this.animation.setFacing(Math.abs(forward) >= Math.abs(side) ? (forward > 0 ? 'up' : 'down') : 'side',
-      Math.abs(side) > Math.abs(forward) && side < 0);
   }
 
   private readonly handleLightPointerDown = (event: PointerEvent): void => {

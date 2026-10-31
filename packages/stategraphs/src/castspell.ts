@@ -11,6 +11,7 @@ import type { SpellCastDoer, SpellCasterComponent, SpellTarget } from '../../com
 import { collectEquippedActions, equippedActionEntity } from './componentactions.ts';
 import { actionTargetModel, type ActionTargetView } from './actionTargetView.ts';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { facePoint } from './facing.ts';
 export type { SpellCastDoer, SpellCastMap, SpellCasterComponent } from '../../componets/src/spellcaster.ts';
 type SpellCastAnimation = Pick<ActionAnimationController, 'stategraph' | 'cancelEmote' | 'setFacing'>;
 export type SpellCastTarget = SpellTarget & BufferedActionObject & ActionTargetView & {
@@ -125,13 +126,7 @@ export class SpellCastActionController {
     }
     this.locomotor.stop();
     if (this.animation.stategraph.hasStateTag('busy')) return;
-    const direction = pending.point.clone().sub(this.doer.position).setY(0);
-    if (direction.lengthSq() > 0) {
-      const forward = this.world.camera.getWorldDirection(new THREE.Vector3()).setY(0).normalize();
-      const side = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0));
-      const f = direction.dot(forward), r = direction.dot(side);
-      this.animation.setFacing(Math.abs(f) >= Math.abs(r) ? (f > 0 ? 'up' : 'down') : 'side', Math.abs(r) > Math.abs(f) && r < 0);
-    }
+    facePoint(this.animation, this.world.camera, this.doer.position, pending.point);
     this.animation.cancelEmote();
     if (this.animation.stategraph.pushBufferedAction(pending.action)) {
       this.active = pending.action;

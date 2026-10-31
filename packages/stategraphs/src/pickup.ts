@@ -7,6 +7,7 @@ import type { ActionWorldContext, ActionAnimationController, ActionLocomotor } f
 import { bindActionCancellation } from './actionEvents.ts';
 import { PlayerActionPicker, type MouseActionCandidate } from './playeractionpicker.ts';
 import { PointerRaycaster } from './pointerRaycaster.ts';
+import { facePoint } from './facing.ts';
 import { modelHasTag } from '../../prefab/src/prefabInstance';
 
 export interface PickupDoer extends InventoryActor { components: { inventory: InventoryStore }; }
@@ -89,8 +90,6 @@ export class PickupActionController {
   private disposed = false;
   private version = 0;
   private readonly direction = new THREE.Vector3();
-  private readonly forward = new THREE.Vector3();
-  private readonly right = new THREE.Vector3();
 
   constructor(world: ActionWorldContext, animation: ActionAnimationController, locomotor: ActionLocomotor,
     doer: PickupDoer, isManualMovement = () => false) {
@@ -133,12 +132,7 @@ export class PickupActionController {
       return;
     }
     this.locomotor.stop();
-    this.direction.subVectors(position, this.world.player.position).setY(0);
-    this.world.camera.getWorldDirection(this.forward); this.forward.setY(0).normalize();
-    this.right.crossVectors(this.forward, new THREE.Vector3(0, 1, 0)).normalize();
-    const forward = this.direction.dot(this.forward), side = this.direction.dot(this.right);
-    this.animation.setFacing(Math.abs(forward) >= Math.abs(side) ? (forward > 0 ? 'up' : 'down') : 'side',
-      Math.abs(side) > Math.abs(forward) && side < 0);
+    facePoint(this.animation, this.world.camera, this.world.player.position, position);
     const version = this.version;
     const action = new BufferedAction('PICKUP', () => performPickupAction(target, this.doer),
       () => version === this.version && target.isValid() && this.inReach(target), { target });

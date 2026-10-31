@@ -1,3 +1,4 @@
+import { configureRuinsRelicItem, isRelicItem } from './ruinsrelic';
 import {
   ArchiveSpriteAssets, createSharedArchiveSprite,
   type ArchiveSpriteDefinition,
@@ -61,6 +62,7 @@ export function createGroundItemFactory(context: GroundPrefabContext): GroundIte
   return {
     itemIds: Object.keys(GROUND_ART_DEFINITIONS),
     configureEntity: entity => {
+      if (isRelicItem(entity.prefab)) configureRuinsRelicItem(entity);
       configurePlantableEntity(entity); configureRockAvocadoFruitEntity(entity);
       configureFoodEntity(entity);
       if (Object.hasOwn(FERTILIZER_CYCLES, entity.prefab)) configureFertilizerEntity(entity);

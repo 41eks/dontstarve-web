@@ -14,6 +14,7 @@ import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { PLANTABLES } from './plantables';
 import { TILE_SIZE } from './tile';
 import { PlaySound, type SoundHandle } from './sound';
+import { facePoint } from '@dontstarve-web/stategraphs';
 
 export interface PlantDeploymentWorld {
   canPlant(position: THREE.Vector3): boolean;
@@ -108,10 +109,7 @@ export class PlantDeployment {
       return;
     }
     this.locomotor.stop();
-    const direction = point.clone().sub(this.world.player.position);
-    const forward = this.world.camera.getWorldDirection(new THREE.Vector3()); forward.y = 0; forward.normalize();
-    const side = direction.dot(new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0))), depth = direction.dot(forward);
-    this.animation.setFacing(Math.abs(depth) >= Math.abs(side) ? (depth > 0 ? 'up' : 'down') : 'side', Math.abs(side) > Math.abs(depth) && side < 0);
+    facePoint(this.animation, this.world.camera, this.world.player.position, point);
     const version = this.version;
     const valid = () => !this.disposed && version === this.version && source.isValid() && this.canDeploy(point, source.entity)
       && this.world.player.position.distanceToSquared(point) <= this.reach ** 2;

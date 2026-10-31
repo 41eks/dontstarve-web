@@ -1,3 +1,4 @@
+import { configureRuinsRelicItem, isRelicItem } from '@dontstarve-web/prefab/ruinsrelic';
 import { configureLightFlierEntity, LIGHTFLIER_PERISH_TIME } from '../packages/prefab/src/lightflier';
 import { configureMoleEntity, MOLE_PERISH_TIME } from '../packages/prefab/src/mole';
 import { configureMoleBaitEntity } from '../packages/prefab/src/molebait';
@@ -55,8 +56,9 @@ export const INVENTORY_ITEM_SPECS: Readonly<Record<string, InventoryItemSpec>> =
     const equippable = inventoryItemEquipmentKind(itemId);
     return [itemId, {
       ...display,
-      maxStack: inventoryItemMaxStack(itemId),
-      configureEntity: withTradable(itemId, isBirdId(itemId) ? configureBirdEntity
+      maxStack: isRelicItem(itemId) ? 1 : inventoryItemMaxStack(itemId),
+      configureEntity: withTradable(itemId, isRelicItem(itemId) ? configureRuinsRelicItem
+        : isBirdId(itemId) ? configureBirdEntity
         : itemId === 'butterfly' ? configureButterflyEntity
         : itemId === 'moonbutterfly' ? configureMoonButterflyEntity
         : itemId === 'mole' ? configureMoleEntity

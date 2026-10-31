@@ -1,3 +1,5 @@
+import { StalagmiteManager, type StalagmiteRecord } from '@dontstarve-web/prefab/stalagmite';
+import { RuinsRelicManager, type RuinsRelicRecord } from '@dontstarve-web/prefab/ruinsrelic';
 import { LightFlierFlowerManager, type LightFlierFlowerRecord } from '../packages/prefab/src/lightflier_flower';
 import { MAX_PHYSICS_FRAME_TIME } from './physicsTiming';
 import { MolehillManager, type MolehillRecord } from '../packages/prefab/src/molehill';
@@ -70,6 +72,7 @@ import { AtriumGateManager } from '@dontstarve-web/prefab/atrium_gate';
 import { RuinsStatueManager, type RuinsStatueId, type RuinsStatueRecord } from '@dontstarve-web/prefab/ruins_statue_mage';
 import { AtriumStatueManager } from '@dontstarve-web/prefab/atrium_statue';
 import { ChessJunkManager } from '@dontstarve-web/prefab/chessjunk';
+import { ArchiveCentipedeHuskManager } from '@dontstarve-web/prefab/archive_centipede';
 import { BeefaloManager, BEEFALO_BEHAVIOR } from '@dontstarve-web/prefab/beefalo';
 import { newEntityId } from '@dontstarve-web/prefab/saveRecord';
 import { player, playerInstance } from './player';
@@ -111,6 +114,7 @@ const MANAGER_DEFINITIONS = {
   'lightflier_flower': PREFAB_DEFINITIONS.lightflierFlowers,
   'ground_item': PREFAB_DEFINITIONS.groundItems,
   'bulb_plant': PREFAB_DEFINITIONS.bulbPlants,
+  'stalagmite': PREFAB_DEFINITIONS.stalagmites,
   'rocks': PREFAB_DEFINITIONS.rocks,
   'cave_entrance': PREFAB_DEFINITIONS.caveEntrances,
   'cave_exit': PREFAB_DEFINITIONS.caveExits,
@@ -153,8 +157,10 @@ const MANAGER_DEFINITIONS = {
   'ruins_statue_mage_nogem': PREFAB_DEFINITIONS.ruinsStatueMagesNoGem,
   'ruins_statue_head': PREFAB_DEFINITIONS.ruinsStatueHeads,
   'ruins_statue_head_nogem': PREFAB_DEFINITIONS.ruinsStatueHeadsNoGem,
+  'ruinsrelic': PREFAB_DEFINITIONS.ruinsRelics,
   'atrium_statue': PREFAB_DEFINITIONS.atriumStatues,
   'chessjunk': PREFAB_DEFINITIONS.chessJunk,
+  'archive_centipede_husk': PREFAB_DEFINITIONS.archiveCentipedeHusks,
   'sanityrock': PREFAB_DEFINITIONS.nightmareRocks,
   'rain': PREFAB_DEFINITIONS.rain,
   'snow': PREFAB_DEFINITIONS.snow,
@@ -191,6 +197,7 @@ const SCENE_LIFECYCLE_ORDER = [
   PREFAB_DEFINITIONS.bulbPlants,
   PREFAB_DEFINITIONS.molehills,
   PREFAB_DEFINITIONS.beefalos,
+  PREFAB_DEFINITIONS.stalagmites,
   PREFAB_DEFINITIONS.rocks,
   PREFAB_DEFINITIONS.caveEntrances,
   PREFAB_DEFINITIONS.caveExits,
@@ -251,6 +258,7 @@ export async function createSceneEntities(
     'lightflier_flower': ReturnType<typeof registerLightFlierFlowers>;
     'ground_item': ReturnType<typeof registerGroundItems>;
     'bulb_plant': ReturnType<typeof registerBulbPlants>;
+    'stalagmite': ReturnType<typeof registerStalagmites>;
     'rocks': ReturnType<typeof registerRocks>;
     'cave_entrance': ReturnType<typeof registerCaveEntrances>;
     'cave_exit': ReturnType<typeof registerCaveExits>;
@@ -293,8 +301,10 @@ export async function createSceneEntities(
     'ruins_statue_mage_nogem': RuinsStatueManager<'ruins_statue_mage_nogem'>;
     'ruins_statue_head': RuinsStatueManager<'ruins_statue_head'>;
     'ruins_statue_head_nogem': RuinsStatueManager<'ruins_statue_head_nogem'>;
+    'ruinsrelic': ReturnType<typeof registerRuinsRelics>;
     'atrium_statue': ReturnType<typeof registerAtriumStatue>;
     'chessjunk': ReturnType<typeof registerChessJunk>;
+    'archive_centipede_husk': ReturnType<typeof registerArchiveCentipedeHusks>;
     'sanityrock': ReturnType<typeof registerNightmareRocks>;
     'rain': ReturnType<typeof registerRain>;
     'snow': ReturnType<typeof registerSnow>;
@@ -327,6 +337,7 @@ export async function createSceneEntities(
   Managers['stafflight'] = registerStaffLights(registry, 'stafflight', worldState);
   Managers['staffcoldlight'] = registerStaffLights(registry, 'staffcoldlight', worldState);
   Managers['bulb_plant'] = registerBulbPlants(registry, 'bulb_plant', worldState);
+  Managers['stalagmite'] = registerStalagmites(registry, worldState);
   Managers['rocks'] = registerRocks(registry, 'rocks', worldState);
   /** ms_playerdespawnandmigrate: the destination shard is the cluster's other save, loaded by reloading the page. */
   const shardLink: WorldMigratorShard = {
@@ -378,8 +389,10 @@ export async function createSceneEntities(
   Managers['ruins_statue_mage_nogem'] = registerRuinsStatue(registry, 'ruins_statue_mage_nogem', worldState);
   Managers['ruins_statue_head'] = registerRuinsStatue(registry, 'ruins_statue_head', worldState);
   Managers['ruins_statue_head_nogem'] = registerRuinsStatue(registry, 'ruins_statue_head_nogem', worldState);
+  Managers['ruinsrelic'] = registerRuinsRelics(registry, worldState);
   Managers['atrium_statue'] = registerAtriumStatue(registry, 'atrium_statue', worldState);
   Managers['chessjunk'] = registerChessJunk(registry, 'chessjunk', worldState);
+  Managers['archive_centipede_husk'] = registerArchiveCentipedeHusks(registry, 'archive_centipede_husk', worldState);
   Managers['pond'] = registerPonds(registry, 'pond', worldState);
   Managers['sanityrock'] = registerNightmareRocks(registry, 'sanityrock', worldState);
   Managers['rain'] = registerRain(registry, 'rain', worldState);
@@ -664,6 +677,21 @@ export async function createSceneEntities(
       dispose: () => bulbPlants.dispose(),
     });
     return bulbPlants;
+  }
+
+  function registerStalagmites(registry: EntityRegistry, worldState: SceneWorldState) {
+    const stalagmites = new StalagmiteManager(scene, { scheduler: worldState.scheduler, physics: world,
+      tickingarea: worldState.tickingarea, trackDisplay: display => registry.trackDisplay(display),
+      spawnLoot: (id, position) => {
+        const definition = GROUND_ART_DEFINITIONS[id];
+        return definition ? Managers['ground_item'].spawnGroundItem({ ...definition, icon: definition.icon ?? '',
+          itemId: id, count: 1 }, position, { fling: true }) : undefined;
+      } });
+    registry.registerDisplayManager(PREFAB_DEFINITIONS.stalagmites, stalagmites, {
+      restore: (id, record) => stalagmites.spawn(id, new THREE.Vector3(...record.transform.position), record as StalagmiteRecord),
+      debugSpawn: id => stalagmites.spawn(id, player.position.clone()),
+    });
+    return stalagmites;
   }
 
   function registerRocks(registry: EntityRegistry, prefabId: 'rocks', worldState: SceneWorldState) {
@@ -1461,6 +1489,16 @@ export async function createSceneEntities(
     return statues;
   }
 
+  function registerRuinsRelics(registry: EntityRegistry, worldState: SceneWorldState) {
+    const relics = new RuinsRelicManager(scene, { scheduler: worldState.scheduler, tickingarea: worldState.tickingarea,
+      physics: world, trackDisplay: display => registry.trackDisplay(display) });
+    registry.registerDisplayManager(PREFAB_DEFINITIONS.ruinsRelics, relics, {
+      restore: (id, record) => relics.spawn(id, new THREE.Vector3(...record.transform.position), record as RuinsRelicRecord),
+      debugSpawn: id => relics.spawn(id, new THREE.Vector3(player.position.x, 0, player.position.z)),
+    });
+    return relics;
+  }
+
   function registerAtriumStatue(registry: EntityRegistry, prefabId: 'atrium_statue', worldState: SceneWorldState) {
     const statues = new AtriumStatueManager(scene, { tickingarea: worldState.tickingarea, physics: world,
       trackDisplay: display => registry.trackDisplay(display) });
@@ -1482,6 +1520,18 @@ export async function createSceneEntities(
       debugSpawn: id => piles.spawn(id, new THREE.Vector3(player.position.x, 0, player.position.z)),
     });
     return piles;
+  }
+
+  function registerArchiveCentipedeHusks(registry: EntityRegistry, prefabId: 'archive_centipede_husk', worldState: SceneWorldState) {
+    const husks = new ArchiveCentipedeHuskManager(scene, { tickingarea: worldState.tickingarea, scheduler: worldState.scheduler,
+      trackDisplay: display => registry.trackDisplay(display) });
+    registry.registerDisplayManager(MANAGER_DEFINITIONS[prefabId], husks, {
+      restore: (_, record) => husks.spawn(new THREE.Vector3(...record.transform.position), {
+        id: record.id, transform: record.transform, components: record.components.health ? { health: record.components.health } : {},
+      }),
+      debugSpawn: () => husks.spawn(new THREE.Vector3(player.position.x, 0, player.position.z)),
+    });
+    return husks;
   }
 
   function registerNightmareRocks(registry: EntityRegistry, prefabId: 'sanityrock', worldState: SceneWorldState) {

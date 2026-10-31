@@ -26,6 +26,21 @@ ENTITY_WHITELIST = {
     'statueglommer': WORKABLE['statueglommer_components'],
     'atrium_gate': STRUCTURE['atrium_gate_components'],
     'atrium_statue': STRUCTURE['atrium_statue_components'],
+    'ruinsrelic_table': STRUCTURE['ruins_relic_components']('ruinsrelic_table'),
+    'ruinsrelic_chair': STRUCTURE['ruins_relic_components']('ruinsrelic_chair'),
+    'ruinsrelic_vase': STRUCTURE['ruins_relic_components']('ruinsrelic_vase'),
+    'ruinsrelic_chipbowl': STRUCTURE['ruins_relic_components']('ruinsrelic_chipbowl'),
+    'ruinsrelic_bowl': STRUCTURE['ruins_relic_components']('ruinsrelic_bowl'),
+    'ruinsrelic_plate': STRUCTURE['ruins_relic_components']('ruinsrelic_plate'),
+    'ruins_table': STRUCTURE['ruins_relic_components']('ruins_table'),
+    'ruins_chair': STRUCTURE['ruins_relic_components']('ruins_chair'),
+    'ruins_vase': STRUCTURE['ruins_relic_components']('ruins_vase'),
+    'ruins_chipbowl': STRUCTURE['ruins_relic_components']('ruins_chipbowl'),
+    'ruins_bowl': STRUCTURE['ruins_relic_components']('ruins_bowl'),
+    'ruins_plate': STRUCTURE['ruins_relic_components']('ruins_plate'),
+    'ruins_rubble_table': STRUCTURE['ruins_relic_components']('ruins_rubble_table'),
+    'ruins_rubble_chair': STRUCTURE['ruins_relic_components']('ruins_rubble_chair'),
+    'ruins_rubble_vase': STRUCTURE['ruins_relic_components']('ruins_rubble_vase'),
     'ruins_statue_mage': WORKABLE['ruins_statue_gem_components']('ruins_statue_mage'),
     'ruins_statue_mage_nogem': WORKABLE['ruins_statue_nogem_components']('ruins_statue_mage_nogem'),
     'ruins_statue_head': WORKABLE['ruins_statue_gem_components']('ruins_statue_head'),
@@ -33,6 +48,7 @@ ENTITY_WHITELIST = {
     'chessjunk1': WORKABLE['chessjunk_components'],
     'chessjunk2': WORKABLE['chessjunk_components'],
     'chessjunk3': WORKABLE['chessjunk_components'],
+    'archive_centipede_husk': CREATURE['archive_centipede_husk_components'],
     'deciduoustree': GROWABLE['deciduoustree_components'],
     'moon_tree': GROWABLE['moon_tree_components'],
     'moonbutterfly_sapling': GROWABLE['moonbutterfly_sapling_components'],
@@ -63,6 +79,14 @@ ENTITY_WHITELIST = {
     'beequeenhivegrown': WORKABLE['beequeenhivegrown_components'],
     'cave_fern': PICKABLE['cave_fern_components']('cave_fern'),
     'cave_fern_withered': PICKABLE['cave_fern_components']('cave_fern_withered'),
+    'stalagmite': WORKABLE['rock_components'],
+    'stalagmite_full': WORKABLE['rock_components'],
+    'stalagmite_med': WORKABLE['rock_components'],
+    'stalagmite_low': WORKABLE['rock_components'],
+    'stalagmite_tall': WORKABLE['rock_components'],
+    'stalagmite_tall_full': WORKABLE['rock_components'],
+    'stalagmite_tall_med': WORKABLE['rock_components'],
+    'stalagmite_tall_low': WORKABLE['rock_components'],
     'rock1': WORKABLE['rock_components'],
     'rock2': WORKABLE['rock_components'],
     'cavein_boulder': WORKABLE['cavein_boulder_components'],
@@ -90,7 +114,7 @@ ENTITY_WHITELIST = {
 # Converters that also receive the record's skin and item converters.
 CONTAINER_PREFABS = {'treasurechest', 'pandoraschest'}
 ITEM_CONTEXT_PREFABS = {*CONTAINER_PREFABS, 'moonbase'}
-RECORD_CONTEXT_PREFABS = {*ITEM_CONTEXT_PREFABS, 'researchlab', 'researchlab2', 'researchlab3', 'researchlab4'}
+RECORD_CONTEXT_PREFABS = {'ruinsrelic_chair', *ITEM_CONTEXT_PREFABS, 'researchlab', 'researchlab2', 'researchlab3', 'researchlab4'}
 # Converters that also receive the record's project position and a converter for saved source positions.
 POSITION_CONTEXT_PREFABS = {'beefalo', 'dragonfly'}
 

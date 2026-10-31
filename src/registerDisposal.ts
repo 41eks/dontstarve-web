@@ -246,7 +246,6 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
               : playerStats.hunger.current < 25 ? '我太饿了，睡不着，我肚子的咕咕叫声会让我一直醒着的！' : undefined;
         playerAnimation.bindSleep({
           setSleeperState,
-          setHidden: hidden => { view.player.visible = !hidden; },
           failReason: bedRefusal,
           announce: reason => console.info(reason),
           canCommit: bed => clockstate.peek().phase !== 'day' && !bed.hasTag('hassleeper') && !bed.hasTag('burnt'),
@@ -264,7 +263,6 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         actionControllers.push({ dispose() {
           sleeper.bed?.DoWakeUp(true);
           setSleeperState(false);
-          view.player.visible = true;
           playerAnimation.bindSleep(undefined);
           sleeper.dispose(); phase.dispose();
         } });

@@ -2,7 +2,7 @@ import { smallHash } from '@dontstarve-web/animation/animationAssets';
 import { AnimState } from '@dontstarve-web/animation/animState';
 import { SpriteResources, type NamedSpriteArt, type FollowerFx, type PrefabDisplay } from '@dontstarve-web/display';
 import type { ReadonlySignal } from '@dontstarve-web/signals';
-import { BufferedAction, WilsonStateGraph, type BufferedActionObject, type WilsonAction, type WilsonAnimationClip, type WilsonAnimationKey, type WilsonCombat, type WilsonFishingHost, type WilsonMovementState, type WilsonOneShotState, type WilsonSleepHost, type WilsonDeathHost, type WilsonRebirthHost } from '@dontstarve-web/stategraphs';
+import { BufferedAction, PLAYER_FACING_VALUES, WilsonStateGraph, type BufferedActionObject, type WilsonAction, type WilsonAnimationClip, type WilsonAnimationKey, type WilsonCombat, type WilsonFishingHost, type WilsonMovementState, type WilsonOneShotState, type PlayerFacing, type WilsonSleepHost, type WilsonDeathHost, type WilsonRebirthHost } from '@dontstarve-web/stategraphs';
 import type { ActionAnimationController } from '@dontstarve-web/stategraphs/actionContext';
 import type * as CANNON from 'cannon-es';
 import * as THREE from 'three';
@@ -32,7 +32,7 @@ import { StaffCastingLight } from './staff_castinglight';
 import type { SlipperyFeet } from '../../componets/src/slipperyfeet';
 import type { ComponentUpdates } from '../../componets/src/componentUpdates';
 
-export type WilsonFacing = 'up' | 'down' | 'side';
+export type WilsonFacing = PlayerFacing;
 /** skinprefabs.lua wortox_none: normal_skin = wortox, ghost_skin = ghost_wortox_build. */
 export const PLAYER_ART_CHARACTER = 'wortox' as const;
 
@@ -138,8 +138,8 @@ export interface WilsonAnimationController extends ActionAnimationController {
   /** `fx` is drawn at the follower by the player's display, which loads its art. */
   followSymbol(symbol: string, offsetX: number, offsetY: number, fx?: FollowerFx): SymbolFollower;
   setBackpack(equipped: boolean, skinId?: string): void;
-  /** The application's sleeper services for SGwilson's tent and wakeup states. */
-  bindSleep(sleep: WilsonSleepHost | undefined): void;
+  /** The application's sleeper services for SGwilson's tent and wakeup states; inst:Hide() / inst:Show() is the player's own sprite. */
+  bindSleep(sleep: Omit<WilsonSleepHost, 'setHidden'> | undefined): void;
   /** SGwilson's death state: DropAllItemsForDeath through the application's inventory. */
   bindDeath(death: WilsonDeathHost | undefined): void;
   /** SGwilson's amulet_rebirth state: the inventory, HUD and sleepers it reaches (its light is the controller's). */
@@ -209,8 +209,6 @@ const ACTION_TOOL_METADATA: Partial<Record<WilsonCarryItem, { tags: readonly str
   fishingrod: { tags: ['fishingrod'] },
   reskin_tool: { tags: ['veryquickcast'], spelltype: 'RESKIN' },
 };
-
-const facingValues: Record<WilsonFacing, number> = { down: 8, side: 5, up: 2 };
 
 interface ActiveEmote {
   id: WilsonEmote;
@@ -409,7 +407,14 @@ class WilsonController implements WilsonAnimationController {
   get isReading(): boolean { return this.stategraph.isPerformingAction('READ'); }
 
   /** The application's sleeper services for SGwilson's tent and wakeup states. */
-  bindSleep(sleep: WilsonSleepHost | undefined): void { this.sleepHost = sleep; }
+  bindSleep(sleep: Omit<WilsonSleepHost, 'setHidden'> | undefined): void {
+    const { sprite } = this.instance;
+    // A sleeper unbound while hidden in its bed (scene teardown) is shown again, as the tent state's onexit would.
+    if (!sleep && this.sleepHost && this.stategraph.hasStateTag('sleeping')) sprite.setVisible(true);
+    // SGwilson.lua tent: inst:Hide() / inst:Show() with the DynamicShadow, declared on the sprite for the player's display.
+    this.sleepHost = sleep && Object.assign(Object.create(sleep) as WilsonSleepHost,
+      { setHidden: (hidden: boolean) => sprite.setVisible(!hidden) });
+  }
   bindDeath(death: WilsonDeathHost | undefined): void { this.deathHost = death; }
   bindRebirth(rebirth: Omit<WilsonRebirthHost, 'castLight'> | undefined): void {
     this.rebirthHost = rebirth && { ...rebirth, castLight: (colour, duration, delay) => this.castingLight.start(colour, duration, delay) };
@@ -601,8 +606,8 @@ class WilsonController implements WilsonAnimationController {
 
   setFacing(facing: WilsonFacing, mirrored = false) {
     const current = this.instance.sprite.sprite.peek();
-    if (facingValues[facing] === current.facing && mirrored === (current.mirrored ?? false)) return;
-    this.instance.sprite.setFacing(facingValues[facing], mirrored);
+    if (PLAYER_FACING_VALUES[facing] === current.facing && mirrored === (current.mirrored ?? false)) return;
+    this.instance.sprite.setFacing(PLAYER_FACING_VALUES[facing], mirrored);
     // Facing changes select different art without restarting the state timeline.
     this.selectAnimation(this.stategraph.animationClip, false);
     this.showCurrentFrame();

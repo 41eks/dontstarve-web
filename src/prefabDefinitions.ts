@@ -1,3 +1,5 @@
+import { STALAGMITE_IDS, stalagmiteBank } from '@dontstarve-web/prefab/stalagmite';
+import { RUINS_RELIC_IDS, RUINS_CHAIR_SKINS, relicName, isRelicItem } from '@dontstarve-web/prefab/ruinsrelic';
 import { BERNIE_ITEM_ID } from '@dontstarve-web/prefab/bernie';
 import { HEATROCK_ID } from '@dontstarve-web/prefab/heatrock';
 import { GROUND_ART_DEFINITIONS, GROUND_ART_VARIANTS, GROUND_ART_SPAWN_IDS, TURF_ITEM_IDS } from '@dontstarve-web/prefab/groundItems';
@@ -20,6 +22,7 @@ import { ATRIUM_GATE_ID, ATRIUM_GATE_TIMER_NAMES } from '@dontstarve-web/prefab/
 import { RUINS_STATUE_MAGE_ID, RUINS_STATUE_MAGE_NOGEM_ID, RUINS_STATUE_HEAD_ID, RUINS_STATUE_HEAD_NOGEM_ID, RUINS_STATUE_GEMS } from '@dontstarve-web/prefab/ruins_statue_mage';
 import { ATRIUM_STATUE_ID } from '@dontstarve-web/prefab/atrium_statue';
 import { CHESSJUNK_IDS } from '@dontstarve-web/prefab/chessjunk';
+import { ARCHIVE_CENTIPEDE_HUSK_ID } from '@dontstarve-web/prefab/archive_centipede';
 import { parseDragonflyState } from './save/dragonfly';
 import { SKELETON_IDS, SKELETON_ANIMS, SKELETON_PLAYER_ID } from '@dontstarve-web/prefab/skeleton';
 import { MARBLEBEAN_SAPLING_ID } from '@dontstarve-web/prefab/marblebean_sapling';
@@ -245,6 +248,32 @@ export const PREFAB_DEFINITIONS = {
   // statueruins.lua nogem(): onsave writes gem = nil.
   ruinsStatueMagesNoGem: definePrefabs([RUINS_STATUE_MAGE_NOGEM_ID], empty, true, ['statue_ruins.zip']),
   ruinsStatueHeadsNoGem: definePrefabs([RUINS_STATUE_HEAD_NOGEM_ID], empty, true, ['statue_ruins_small.zip']),
+  ruinsRelics: definePrefabs(RUINS_RELIC_IDS, (value, path, context) => {
+    const replica = context.prefab.startsWith('ruinsrelic_');
+    const decor = isRelicItem(context.prefab);
+    const data = object(value, path, ['ruinsRelic', ...replica ? decor ? ['inventoryitemmoisture'] : [] : ['health']]);
+    const components: import('./save/types').SavedEntity['components'] = {};
+    if (data.ruinsRelic !== undefined) {
+      const state = object(data.ruinsRelic, `${path}.ruinsRelic`, replica ? context.prefab === 'ruinsrelic_chair' ? ['skinId'] : [] : ['rubble']);
+      if (state.rubble !== undefined && state.rubble !== true) fail(`${path}.ruinsRelic.rubble`, 'expected true');
+      if (state.skinId !== undefined && !Object.hasOwn(RUINS_CHAIR_SKINS, String(state.skinId))) fail(`${path}.ruinsRelic.skinId`, 'unsupported chair skin');
+      components.ruinsRelic = state as import('@dontstarve-web/prefab/ruinsrelic').RuinsRelicSaveState;
+    }
+    if (data.health !== undefined) {
+      const health = object(data.health, `${path}.health`, ['current', 'maximum']);
+      const maximum = number(health.maximum, `${path}.health.maximum`, Number.MIN_VALUE);
+      components.health = { maximum, current: number(health.current, `${path}.health.current`, 0, maximum) };
+    }
+    if (data.inventoryitemmoisture !== undefined) {
+      const moisture = object(data.inventoryitemmoisture, `${path}.inventoryitemmoisture`, ['moisture', 'wet']);
+      if (moisture.wet !== undefined && moisture.wet !== true) fail(`${path}.inventoryitemmoisture.wet`, 'expected true');
+      components.inventoryitemmoisture = {
+        ...moisture.moisture === undefined ? {} : { moisture: number(moisture.moisture, `${path}.inventoryitemmoisture.moisture`, 0, 100) },
+        ...moisture.wet === true ? { wet: true as const } : {},
+      };
+    }
+    return components;
+  }, true, id => [`ruins_${relicName(id)}.zip`]),
   // atrium_statue.lua has no OnSave data.
   atriumStatues: definePrefabs([ATRIUM_STATUE_ID], empty, true, ['atrium_statue.zip']),
   chessJunk: definePrefabs(CHESSJUNK_IDS, (value, path) => {
@@ -258,6 +287,9 @@ export const PREFAB_DEFINITIONS = {
       ...(state.repairerid === undefined ? {} : { repairerid: state.repairerid as string }),
       ...(state.repairerchar === undefined ? {} : { repairerchar: state.repairerchar as string }) } };
   }, true, ['chessmonster_ruins.zip']),
+  // archive_centipede.lua huskfn has no OnSave; health:OnSave writes the current health.
+  archiveCentipedeHusks: definePrefabs([ARCHIVE_CENTIPEDE_HUSK_ID], componentParser({ keys: ['health'] }), true,
+    [{ animation: 'archive_centipede.zip', build: 'archive_centipede_build.zip' }]),
   buildings: definePrefabs(PLACEABLE_BUILDING_IDS.filter((id) => !id.endsWith('_item')), (value, path, context) => {
     const spec = Object.hasOwn(context.catalog.buildings, context.prefab) ? context.catalog.buildings[context.prefab] : undefined;
     if (spec) return (context.prefab === 'cookpot' ? cookPot : context.prefab === 'sculptingtable' ? sculptingTable
@@ -280,6 +312,7 @@ export const PREFAB_DEFINITIONS = {
   lightflierFlowers: definePrefabs(['lightflier_flower'], componentParser({ keys: ['lightflierFlower'] }), true, ['bulb_plant_single.zip', 'bulb_plant_springy.zip', 'lightflier.zip']),
   molehills: definePrefabs(['molehill'], componentParser({ keys: ['molehill'] }), true),
   beefalos: definePrefabs(['beefalo'], componentParser({ keys: ['beefalo'] }), true),
+  stalagmites: definePrefabs(STALAGMITE_IDS, empty, true, id => [`${stalagmiteBank(id)}.zip`]),
   rocks: definePrefabs(ROCK_ENTITY_IDS, (value, path, context) =>
     (context.prefab === 'cavein_boulder' ? caveinBoulder : empty)(value, path, context), true,
     prefab => rockArchives(prefab)),

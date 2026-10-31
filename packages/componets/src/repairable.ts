@@ -1,10 +1,11 @@
 import { createMemo, createSignal, readonlySignal } from '@dontstarve-web/signals';
 import type { WorkInst, Workable } from './workable';
 import type { Repairer } from './repairer';
+import type { Health } from './health';
 
 export interface RepairItem { readonly components?: { repairer?: Repairer }; }
 
-/** repairable.lua's workable branch. The target owns repair amounts; the inventory consumes one item. */
+/** repairable.lua's work and health branches. The inventory consumes one repair item. */
 export class Repairable {
   private readonly disposed = createSignal(false);
   private readonly repairableMemo;
@@ -12,30 +13,35 @@ export class Repairable {
   noannounce = false;
   onrepaired?: () => void;
   private readonly inst: WorkInst;
-  private readonly workable: Workable;
+  private readonly workable?: Workable;
+  private readonly health?: Health;
   readonly repairmaterial: string;
-  constructor(inst: WorkInst, workable: Workable, repairmaterial: string) {
+  constructor(inst: WorkInst & { components?: { health?: Health } }, workable: Workable | undefined, repairmaterial: string) {
     this.inst = inst; this.workable = workable; this.repairmaterial = repairmaterial;
-    this.repairableMemo = createMemo(() => !this.disposed.get() && workable.enabled.get() && workable.maxwork.get() > 0
+    this.health = inst.components?.health;
+    this.repairableMemo = createMemo(() => !this.disposed.get() && !!workable && workable.enabled.get() && workable.maxwork.get() > 0
       && workable.workleft.get() < workable.maxwork.get());
     this.workrepairable = readonlySignal(this.repairableMemo);
     inst.addTag(`repairable_${repairmaterial}`);
   }
   HasTag(tag: string): boolean | undefined {
+    if (tag === 'healthrepairable') return !this.disposed.peek() && !!this.health?.IsHurt();
     return tag === 'workrepairable' ? !this.disposed.peek() && this.CanRepairWork() : undefined;
   }
   private CanRepairWork(): boolean {
-    return this.workable.enabled.peek() && this.workable.maxwork.peek() > 0
+    return !!this.workable && this.workable.enabled.peek() && this.workable.maxwork.peek() > 0
       && this.workable.workleft.peek() < this.workable.maxwork.peek();
   }
   CanRepair(item: RepairItem): boolean {
     const repairer = item.components?.repairer;
-    return !this.disposed.peek() && !this.inst.isRemoved && this.CanRepairWork()
-      && repairer?.repairmaterial === this.repairmaterial && repairer.workrepairvalue > 0;
+    return !this.disposed.peek() && !this.inst.isRemoved && repairer?.repairmaterial === this.repairmaterial
+      && (this.CanRepairWork() && repairer.workrepairvalue > 0 || !!this.health?.IsHurt() && repairer.healthrepairvalue > 0);
   }
   Repair(item: RepairItem, consume: () => boolean): boolean {
     if (!this.CanRepair(item) || !consume()) return false;
-    this.workable.SetWorkLeft(this.workable.GetWorkLeft() + item.components!.repairer!.workrepairvalue);
+    const repairer = item.components!.repairer!;
+    if (this.health?.IsHurt() && repairer.healthrepairvalue > 0) this.health.DoDelta(repairer.healthrepairvalue);
+    else this.workable!.SetWorkLeft(this.workable!.GetWorkLeft() + repairer.workrepairvalue);
     this.onrepaired?.();
     return true;
   }

@@ -390,6 +390,8 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 
 `c_spawn("chessjunk1")`、`c_spawn("chessjunk2")`、`c_spawn("chessjunk3")` 分别在玩家脚点生成三种棋械残骸；都是世界 prefab，不支持 `c_give`。三者使用 `chessmonster_ruins.zip`，初始声明非循环 `idle1/2/3`；已修复记录按 Lua `OnLoad` 恢复循环 `hit1/2/3`。`c_save()` 保留 ID、位置和已修复记录中的 `repaired`、`repairerid`、`repairerchar`。洞穴导入分别含 23、33、25 个。无皮肤；修复、敲击、战利品及重生行为未接入。
 
+`c_spawn("archive_centipede_husk")` 在玩家脚点生成档案馆蜈蚣残骸，无额外参数；它是世界 prefab，不支持 `c_give`。原版 `archive_centipede.lua` 的 `huskfn` 使用 bank `archive_centipede`、build `archive_centipede_build`（`anim/archive_centipede.zip` + `anim/archive_centipede_build.zip`），构造时声明非循环 `idle_full`，tag 为 `security_powerpoint`、`mech`、`electricdamageimmune`，无小地图图标与碰撞体。生命值 300，每秒回复 1 点；生命百分比跨越 66%／33% 时按源 `OnHealthDelta` 播放 `idle_med`／`idle_low`，或 `low_to_med`、`med_to_full` 后排队对应待机，低于 20% 时移除 `combat` 并保底 15%。每 3～6 秒（之后每 8～18 秒）在待机时按生命区段播放 `idle2_full/med/low` 并排队对应待机，同时播放 `electricity/idle2` 音效。源没有 `OnSave`，`c_save()` 保存 ID、脚点和 `health`（`current`／`maximum`）；按 `health:OnLoad` 读档不切换动画，仍为 `idle_full`。洞穴导入存档包含 2 个（源存档每个洞穴快照 2 个）。无皮肤；活体 `archive_centipede`、`possess` 复活、攻击接线和闹鬼效果尚未接入。
+
 `c_spawn("ruins_statue_mage")`、`c_spawn("ruins_statue_mage_nogem")`、`c_spawn("ruins_statue_head")`、`c_spawn("ruins_statue_head_nogem")` 在玩家脚点生成遗迹雕像，无额外参数；都是世界 prefab，不支持 `c_give`。原版 `statueruins.lua` 的 `commonfn(small)`：法师雕像使用 `anim/statue_ruins.zip`（bank/build `statue_ruins`），头像使用 `anim/statue_ruins_small.zip`（bank/build `statue_ruins_small`）。构造时按噩梦阶段播放循环 `idle_full`；本项目没有噩梦时钟，不使用 `_night` 动画。tag 均为 `cavedweller`、`structure`、`statue`。带宝石的 `ruins_statue_mage` / `ruins_statue_head` 按 `SetGemmed` 从 `statue_ruins_gem.zip` / `statue_ruins_small_gem.zip` 覆盖 `swap_gem` 符号，掉落 `thulecite` 与宝石，并保存 `gem`（存档字段为 `ruinsStatueMage.gem`）；`_nogem` 两种不覆盖宝石、使用 `statue_ruins_no_gem` 掉落表，不保存任何字段。`c_save()` 保存 ID、脚点及宝石种类；当前洞穴导入存档包含法师雕像 3 座、头像 10 座、无宝石头像 3 座，无宝石法师雕像 0 座（较早的快照 `0000000003` 中有 9 座）。无皮肤。采矿、噩梦阶段切换、悬浮音效与遗迹重生行为尚未接入。
 
 `c_spawn("pandoraschest")` 在玩家前方生成华丽箱子（遗迹宝箱），无额外参数；它是世界 prefab，不支持 `c_give`，也不能制作。原版 `treasurechest.lua` 的 `MakeChest("pandoraschest", "pandoras_chest", "pandoras_chest", indestructible)` 使用 `anim/pandoras_chest.zip`，初始声明非循环 `closed`；打开播放非循环 `open`，关闭播放 `close` 后排队非循环 `closed`。它是 3×3 容器，不可锤、不可燃，无皮肤。`c_save()` 保存 ID、位置和箱内物品；洞穴导入存档包含 46 个，源存档中已运行过的 `chest_labyrinth` 场景记录不导入。遗迹重置、拟态箱转换、闹鬼与灵视行为尚未接入。
@@ -476,6 +478,7 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 | 墙 | `wall_stone`、`wall_stone_2`、`wall_wood`、`wall_hay`、`wall_ruins`、`wall_ruins_2`、`wall_moonrock`、`wall_dreadstone`、`wall_scrap`，以及各自的 `wall_*_item`（两种 ID 均生成建成的墙） |
 | 洞穴植物 | `flower_cave`、`flower_cave_double`、`flower_cave_triple`、`lightflier_flower`（采摘或亮灯计时结束释放 `lightflier`，虫在外时暂停生长，回巢立即恢复；`idle` 使用共享 InstancedMesh） |
 | 光照星体 | `stafflight`、`staffcoldlight` |
+| 石笋 | 世界实体：`stalagmite`、`stalagmite_full`、`stalagmite_med`、`stalagmite_low`、`stalagmite_tall`、`stalagmite_tall_full`、`stalagmite_tall_med`、`stalagmite_tall_low`；例如 `c_spawn("stalagmite_tall_med"); c_save()`，均无额外参数、无 `c_give`。非循环 full/med/low，高型随机左右款式；按 Lua 不保存工作进度、左右款式或明暗。默认洞穴导入 834 个，源/导入逐项一致；[源码、字段与验收说明](docs/dst-stalagmite.md) |
 | 岩石 | `rock1`、`rock2`、`rock_flintless`、`rock_flintless_med`、`rock_flintless_low`、`cavein_boulder`、`rock_moon_shell`、`rock_moon` 均可开采；`moonrockseed` 仅静态地面美术；均支持 `c_spawn("ID")` |
 | 草丛 | `grass`（共享 archive sprite，`instancedAnimations: 'all'` 合批；命令与 ID 不变） |
 | 石果灌木及幼苗 | `rock_avocado_bush`、`rock_avocado_fruit_sprout_sapling` |
@@ -494,6 +497,7 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 | 仙人掌 | `cactus`、`oasis_cactus`（`c_spawn` 生成在玩家脚点；左键 `PICK` 得 `cactus_meat`，并对玩家造成 6 点伤害：先经身上护甲按吸收率分摊并扣耐久，剩余伤害扣生命，玩家进入 `hit` 受击状态；夏季开花时另得 `cactus_flower`；采后关闭碰撞，4 游戏日后长回；可燃烧；小地图图标；`c_save()` 保留 ID、位置和采摘／再生状态，存档 `Cluster_1/Master.json` 含原版导入的 14 株 `cactus` 与 18 株 `oasis_cactus`） |
 | 树苗 | `sapling`、`sapling_moon`（共享 archive sprite，`instancedAnimations: 'all'` 合批；命令与 ID 不变） |
 | 猎犬骨 | `houndbone`（bank `houndbase`、build `hound_base`，随机或存档的 `bonetype` 1～3 对应 `piece1`～`piece3`；装备锤子右键 `HAMMER` 一次即碎，掉落 `boneshard`，`piece3` 另有 50% `houndstooth`，并播放 `collapse_small`（岩石材质）；通过共享 archive sprite 的 `instancedAnimations: 'all'` 合批；只可 `c_spawn`，无 `c_give`，`c_save()` 保留 ID、位置与 `bonetype`） |
+| 遗迹家具 | 天然世界实体：`ruins_table`、`ruins_chair`、`ruins_vase`、`ruins_chipbowl`、`ruins_bowl`、`ruins_plate`，以及 `ruins_rubble_table/chair/vase`；例如 `c_spawn("ruins_rubble_chair"); c_save()`，无额外参数，无 `c_give`。复制品：`ruinsrelic_table/chair/vase/chipbowl/bowl/plate` 均可 `c_spawn("完整ID")`；只有 vase/chipbowl/bowl/plate 可 `c_give("完整ID", count)`（默认 1，每份占一格）。保存身份、位置、生命值、碎石状态及椅子复制品的两种皮肤；资源和源码动画逐项说明见 [遗迹家具移植](docs/dst-ruinsrelic.md)。默认洞穴新增 154 个天然遗迹，所有源数量与导入数量一致 |
 | 长成的蜂后蜂巢 | `beequeenhivegrown`（`c_spawn("beequeenhivegrown")`，无参数；世界实体无 `c_give`。源 `prefabs/beequeenhive.lua` 使用 `anim/bee_queen_hive.zip`，bank/build 均为 `bee_queen_hive`，生成时播放非循环 `large`，锤击声明 `large_hit` → 非循环 `large`；`c_save()` 保留 ID、脚点、`workable` 的 16 次最大工作量与剩余量，以及存在时的 `hiveregen` 计时器。源无皮肤；`beequeenhive` 基座生成蜂巢、蜂后生成与锤击掉落尚未接入） |
 | 龙蝇与生成器 | `dragonfly`、`dragonfly_spawner`（均可 `c_spawn("ID")`，无 `c_give`。生成器是不可见的 `CLASSIFIED` 实体；原始地表存档导入 1 个，保存着 `childspawner.childreninside=1` 和 `queued_spawn=true`，玩家进入活动区后释放排队的龙蝇。生成器按源 Lua 的子代计数、定时生成与 20 游戏日再生计时器保存／恢复；`c_save()` 保留生成器与龙蝇的 ID、位置及组件状态。龙蝇使用 bank `dragonfly`、通常 build `dragonfly_build`、循环 `idle`；原版节日活动还会选用 `dragonfly_yule_build`，源未定义皮肤。战斗行为尚未实现） |
 | 洞穴蕨 | `cave_fern`、`cave_fern_withered`（bank `ferns`，build 分别为 `cave_ferns` / `cave_ferns_withered_build`，生成时随机选 `f1`～`f10` 姿态；快速 `PICK` 分别得 `foliage` / `cutgrass`，采后按 `remove_when_picked` 直接移除，无 `workable` 不能铲；可燃烧；通过共享 archive sprite 的 `instancedAnimations: 'all'` 合批，使用 `ResidentSprite` 随活动区卸载／重建 visual，保留实体、组件与姿态，重建后恢复相机朝向；无 `c_give`，`c_save()` 保留 ID、位置与姿态） |
@@ -548,3 +552,10 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 `c_spawn("lightflier_flower")` 生成月亮蘑菇花，`c_spawn("lightflier")` 生成活动的球状光虫；`c_give("lightflier", 3)` 给予可堆叠的活虫（上限 40）。持有活虫会吸引附近的光虫围绕玩家编队；地面活虫需装备 `bugnet` 捕获，放下整堆时拆成独立实体。活虫在容器中 2 游戏日饥饿，可喂蔬菜恢复存活时间，饿死或被击杀产生荧光果。支持睡眠、冷冻／解冻、受击惊慌、原版发光与飞行声音；远处休眠的虫白天可直接回巢。`c_save()` 保存花的品种、采摘／暂停状态、亮灯计时及子代引用，并保留虫的身份、位置、生命、已知巢址和物品数量／新鲜度；编队是临时状态，读档后重新寻找持虫玩家。
 
 `c_give` 可用的物品 ID 由 [src/inventoryItems.ts](src/inventoryItems.ts) 汇总的物品定义决定；命令解析见 [src/debugCommands.ts](src/debugCommands.ts)，场景与存档共享 [src/prefabDefinitions.ts](src/prefabDefinitions.ts) 的 prefab 注册定义，统一声明持久化 ID、`c_spawn` ID/别名及组件校验规则；[src/sceneEntities.ts](src/sceneEntities.ts) 将创建、恢复、导出、更新和销毁绑定到同一份定义，由 [src/entityRegistry.ts](src/entityRegistry.ts) 调度。新增 prefab 无需再维护存档 ID 白名单；启动时会检查共享定义是否都已绑定场景处理函数。`c_spawn` 的支持 ID 来自定义的 `debugSpawnIds`，落点规则由对应创建函数决定。
+
+默认存档整簇重新导入（完整参数说明见 [存档转换](scripts/save-convert.md)）：
+
+```bash
+python3 scripts/import-dst-region.py --cluster public/saves/Cluster_62 --output public/saves/Cluster_1 --origin-cell 214 213 --forest-origin-cell 189 197
+python3 scripts/import-dst-region.py --cluster public/saves/Cluster_62 --output public/saves/Cluster_1 --origin-cell 214 213 --forest-origin-cell 189 197 --check
+```

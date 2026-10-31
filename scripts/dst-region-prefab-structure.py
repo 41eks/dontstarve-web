@@ -237,3 +237,52 @@ def lava_pond_components(data):
             or any(type(v) not in (int, float) or not math.isfinite(v) for v in rock['offset']) for rock in rocks):
         raise ValueError('Unsupported lava_pond rocks')
     return {'lavaPond': {'rocks': [{'rocktype': rock['rocktype'], 'offset': rock['offset']} for rock in rocks]}}
+
+
+def ruins_relic_components(prefab):
+    # ruinsrelic.lua has no prefab OnSave; smashables.lua OnSave/OnPreLoad keeps rubble and maxhealth.
+    replica = prefab.startswith('ruinsrelic_')
+    decor = replica and prefab.rsplit('_', 1)[1] in {'plate', 'bowl', 'chipbowl', 'vase'}
+
+    def convert(data, context=None):
+        allowed = {'workable', 'inventoryitemmoisture'} if decor else {'workable'} if replica else {'rubble', 'maxhealth', 'health'}
+        if set(data) - allowed or data.get('workable'):
+            raise ValueError(f'Unsupported {prefab} save fields')
+        result = {}
+        if replica:
+            skin = (context or {}).get('skin')
+            if skin:
+                if prefab != 'ruinsrelic_chair' or skin not in {'ruinsrelic_chair_tesla', 'ruinsrelic_chair_toilet'}:
+                    raise ValueError(f'Unsupported {prefab} skin')
+                result['ruinsRelic'] = {'skinId': skin}
+            moisture = data.get('inventoryitemmoisture')
+            if moisture:
+                if not isinstance(moisture, dict) or set(moisture) - {'moisture', 'wet'} \
+                        or ('wet' in moisture and moisture['wet'] is not True) \
+                        or ('moisture' in moisture and (type(moisture['moisture']) not in (int, float)
+                            or not 0 <= moisture['moisture'] <= 100)):
+                    raise ValueError(f'Unsupported {prefab} moisture')
+                result['inventoryitemmoisture'] = moisture
+            return result
+        if 'rubble' in data and data['rubble'] is not True:
+            raise ValueError(f'Unsupported {prefab} rubble flag')
+        if data.get('rubble'):
+            result['ruinsRelic'] = {'rubble': True}
+        maximum = data.get('maxhealth')
+        health = data.get('health', {})
+        if not isinstance(health, dict) or set(health) - {'health'}:
+            raise ValueError(f'Unsupported {prefab} health')
+        if maximum is None:
+            if not data and prefab.startswith('ruins_rubble_'):
+                result['ruinsRelic'] = {'rubble': True}
+            if data:
+                raise ValueError(f'Missing {prefab} maxhealth')
+            return result  # Early snapshots omit all data; the constructor supplies it.
+        if type(maximum) not in (int, float) or not math.isfinite(maximum) or maximum <= 0:
+            raise ValueError(f'Invalid {prefab} maxhealth')
+        current = health.get('health', maximum * (.2 if data.get('rubble') else .8))
+        if type(current) not in (int, float) or not math.isfinite(current) or not 0 <= current <= maximum:
+            raise ValueError(f'Invalid {prefab} health')
+        result['health'] = {'current': current, 'maximum': maximum}
+        return result
+    return convert

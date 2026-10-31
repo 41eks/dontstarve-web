@@ -361,6 +361,21 @@
     "statueglommer",
     "atrium_gate",
     "atrium_statue",
+    "ruinsrelic_table",
+    "ruinsrelic_chair",
+    "ruinsrelic_vase",
+    "ruinsrelic_chipbowl",
+    "ruinsrelic_bowl",
+    "ruinsrelic_plate",
+    "ruins_table",
+    "ruins_chair",
+    "ruins_vase",
+    "ruins_chipbowl",
+    "ruins_bowl",
+    "ruins_plate",
+    "ruins_rubble_table",
+    "ruins_rubble_chair",
+    "ruins_rubble_vase",
     "ruins_statue_mage",
     "ruins_statue_mage_nogem",
     "ruins_statue_head",
@@ -368,6 +383,7 @@
     "chessjunk1",
     "chessjunk2",
     "chessjunk3",
+    "archive_centipede_husk",
     "deciduoustree",
     "moon_tree",
     "moonbutterfly_sapling",
@@ -397,6 +413,14 @@
     "beequeenhivegrown",
     "cave_fern",
     "cave_fern_withered",
+    "stalagmite",
+    "stalagmite_full",
+    "stalagmite_med",
+    "stalagmite_low",
+    "stalagmite_tall",
+    "stalagmite_tall_full",
+    "stalagmite_tall_med",
+    "stalagmite_tall_low",
     "rock1",
     "rock2",
     "cavein_boulder",
@@ -602,6 +626,66 @@
       "source": 0,
       "imported": 0
     },
+    "ruinsrelic_table": {
+      "source": 0,
+      "imported": 0
+    },
+    "ruinsrelic_chair": {
+      "source": 0,
+      "imported": 0
+    },
+    "ruinsrelic_vase": {
+      "source": 0,
+      "imported": 0
+    },
+    "ruinsrelic_chipbowl": {
+      "source": 0,
+      "imported": 0
+    },
+    "ruinsrelic_bowl": {
+      "source": 0,
+      "imported": 0
+    },
+    "ruinsrelic_plate": {
+      "source": 0,
+      "imported": 0
+    },
+    "ruins_table": {
+      "source": 0,
+      "imported": 0
+    },
+    "ruins_chair": {
+      "source": 0,
+      "imported": 0
+    },
+    "ruins_vase": {
+      "source": 0,
+      "imported": 0
+    },
+    "ruins_chipbowl": {
+      "source": 0,
+      "imported": 0
+    },
+    "ruins_bowl": {
+      "source": 0,
+      "imported": 0
+    },
+    "ruins_plate": {
+      "source": 0,
+      "imported": 0
+    },
+    "ruins_rubble_table": {
+      "source": 0,
+      "imported": 0
+    },
+    "ruins_rubble_chair": {
+      "source": 0,
+      "imported": 0
+    },
+    "ruins_rubble_vase": {
+      "source": 0,
+      "imported": 0
+    },
     "ruins_statue_mage": {
       "source": 0,
       "imported": 0
@@ -627,6 +711,10 @@
       "imported": 0
     },
     "chessjunk3": {
+      "source": 0,
+      "imported": 0
+    },
+    "archive_centipede_husk": {
       "source": 0,
       "imported": 0
     },
@@ -743,6 +831,38 @@
       "imported": 0
     },
     "cave_fern_withered": {
+      "source": 0,
+      "imported": 0
+    },
+    "stalagmite": {
+      "source": 0,
+      "imported": 0
+    },
+    "stalagmite_full": {
+      "source": 0,
+      "imported": 0
+    },
+    "stalagmite_med": {
+      "source": 0,
+      "imported": 0
+    },
+    "stalagmite_low": {
+      "source": 0,
+      "imported": 0
+    },
+    "stalagmite_tall": {
+      "source": 0,
+      "imported": 0
+    },
+    "stalagmite_tall_full": {
+      "source": 0,
+      "imported": 0
+    },
+    "stalagmite_tall_med": {
+      "source": 0,
+      "imported": 0
+    },
+    "stalagmite_tall_low": {
       "source": 0,
       "imported": 0
     },

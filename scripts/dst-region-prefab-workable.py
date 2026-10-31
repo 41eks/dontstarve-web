@@ -101,7 +101,7 @@ def grotto_glass_components(data):
 
 
 def rock_components(data):
-    # rocks.lua: these prefabs have no OnSave fields; workable.savestate defaults to false.
+    # rocks.lua / stalagmite.lua / stalagmite_tall.lua: no prefab OnSave; workable.savestate defaults false.
     if set(data) - {'workable'} or data.get('workable'):
         raise ValueError('Unsupported rock save state')
     return {}
