@@ -478,7 +478,7 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 | 墙 | `wall_stone`、`wall_stone_2`、`wall_wood`、`wall_hay`、`wall_ruins`、`wall_ruins_2`、`wall_moonrock`、`wall_dreadstone`、`wall_scrap`，以及各自的 `wall_*_item`（两种 ID 均生成建成的墙） |
 | 洞穴植物 | `flower_cave`、`flower_cave_double`、`flower_cave_triple`、`lightflier_flower`（采摘或亮灯计时结束释放 `lightflier`，虫在外时暂停生长，回巢立即恢复；`idle` 使用共享 InstancedMesh） |
 | 光照星体 | `stafflight`、`staffcoldlight` |
-| 石笋 | 世界实体：`stalagmite`、`stalagmite_full`、`stalagmite_med`、`stalagmite_low`、`stalagmite_tall`、`stalagmite_tall_full`、`stalagmite_tall_med`、`stalagmite_tall_low`；例如 `c_spawn("stalagmite_tall_med"); c_save()`，均无额外参数、无 `c_give`。非循环 full/med/low，高型随机左右款式；按 Lua 不保存工作进度、左右款式或明暗。默认洞穴导入 834 个，源/导入逐项一致；[源码、字段与验收说明](docs/dst-stalagmite.md) |
+| 石笋 | 世界实体：`stalagmite`、`stalagmite_full`、`stalagmite_med`、`stalagmite_low`、`stalagmite_tall`、`stalagmite_tall_full`、`stalagmite_tall_med`、`stalagmite_tall_low`；例如 `c_spawn("stalagmite_tall_med"); c_save()`，均无额外参数、无 `c_give`。full/med/low（含高型左右款式）使用共享 `InstancedMesh` 绘制，保留 Lua 的非循环播放；高型随机左右款式；按 Lua 不保存工作进度、左右款式或明暗。默认洞穴导入 834 个，源/导入逐项一致；[源码、字段与验收说明](docs/dst-stalagmite.md) |
 | 岩石 | `rock1`、`rock2`、`rock_flintless`、`rock_flintless_med`、`rock_flintless_low`、`cavein_boulder`、`rock_moon_shell`、`rock_moon` 均可开采；`moonrockseed` 仅静态地面美术；均支持 `c_spawn("ID")` |
 | 草丛 | `grass`（共享 archive sprite，`instancedAnimations: 'all'` 合批；命令与 ID 不变） |
 | 石果灌木及幼苗 | `rock_avocado_bush`、`rock_avocado_fruit_sprout_sapling` |
@@ -501,7 +501,7 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 | 长成的蜂后蜂巢 | `beequeenhivegrown`（`c_spawn("beequeenhivegrown")`，无参数；世界实体无 `c_give`。源 `prefabs/beequeenhive.lua` 使用 `anim/bee_queen_hive.zip`，bank/build 均为 `bee_queen_hive`，生成时播放非循环 `large`，锤击声明 `large_hit` → 非循环 `large`；`c_save()` 保留 ID、脚点、`workable` 的 16 次最大工作量与剩余量，以及存在时的 `hiveregen` 计时器。源无皮肤；`beequeenhive` 基座生成蜂巢、蜂后生成与锤击掉落尚未接入） |
 | 龙蝇与生成器 | `dragonfly`、`dragonfly_spawner`（均可 `c_spawn("ID")`，无 `c_give`。生成器是不可见的 `CLASSIFIED` 实体；原始地表存档导入 1 个，保存着 `childspawner.childreninside=1` 和 `queued_spawn=true`，玩家进入活动区后释放排队的龙蝇。生成器按源 Lua 的子代计数、定时生成与 20 游戏日再生计时器保存／恢复；`c_save()` 保留生成器与龙蝇的 ID、位置及组件状态。龙蝇使用 bank `dragonfly`、通常 build `dragonfly_build`、循环 `idle`；原版节日活动还会选用 `dragonfly_yule_build`，源未定义皮肤。战斗行为尚未实现） |
 | 洞穴蕨 | `cave_fern`、`cave_fern_withered`（bank `ferns`，build 分别为 `cave_ferns` / `cave_ferns_withered_build`，生成时随机选 `f1`～`f10` 姿态；快速 `PICK` 分别得 `foliage` / `cutgrass`，采后按 `remove_when_picked` 直接移除，无 `workable` 不能铲；可燃烧；通过共享 archive sprite 的 `instancedAnimations: 'all'` 合批，使用 `ResidentSprite` 随活动区卸载／重建 visual，保留实体、组件与姿态，重建后恢复相机朝向；无 `c_give`，`c_save()` 保留 ID、位置与姿态） |
-| 苔藓 | `lichen`（`c_spawn("lichen")`，无参数；世界实体无 `c_give`。源 `prefabs/lichen.lua` 使用 `anim/algae_bush.zip`，bank/build 均为 `algae_bush`，tag `lichen`；构造时从随机帧开始循环 `idle`，并随机 `SetMultColour`（0.75～1 灰度，不保存）。左键 `PICK` 得 `cutlichen`，播放 `pickup_lichen` 音效与 `picking` → 非循环 `picked`，5 游戏日后 `grow` → 循环 `idle`；冬季不生长；可燃烧，无 `workable` 不能铲；`c_save()` 保留 ID、位置和采摘／再生状态；洞穴导入存档包含 258 株。无皮肤） |
+| 苔藓 | `lichen`（`c_spawn("lichen")`，无参数；世界实体无 `c_give`。源 `prefabs/lichen.lua` 使用 `anim/algae_bush.zip`，bank/build 均为 `algae_bush`，tag `lichen`；构造时从随机帧开始循环 `idle`，通过共享 `InstancedMesh` 绘制（采摘、生长与已采姿态也复用批次），并随机 `SetMultColour`（0.75～1 灰度，不保存）。左键 `PICK` 得 `cutlichen`，播放 `pickup_lichen` 音效与 `picking` → 非循环 `picked`，5 游戏日后 `grow` → 循环 `idle`；冬季不生长；可燃烧，无 `workable` 不能铲；`c_save()` 保留 ID、位置和采摘／再生状态；洞穴导入存档包含 258 株。无皮肤） |
 | 池塘 | `pond` |
 | 温泉 | `hotspring` |
 | 风滚草 | `tumbleweed` |
