@@ -30,12 +30,11 @@ export class PlayActionController {
     return item.components.instrument !== undefined;
   }
 
-  async play(source: PlaySource): Promise<boolean> {
+  play(source: PlaySource): boolean {
     if (this.disposed || !source.isValid()) return false;
     this.cancel();
     this.world.actionEvents?.emit('action:begin', { owner: this, action: 'PLAY' });
     const version = this.version;
-    if (this.disposed || version !== this.version || !source.isValid()) return false;
     this.locomotor.stop();
     return this.animation.playFlute(source.instrument, () => version === this.version && source.isValid() && source.play());
   }

@@ -7,7 +7,7 @@ import { configureFishingRodEntity, getFishingRod } from '../../prefab/src/fishi
 import { ItemEntity } from '../../inventory/src/entity';
 import { equipmentSlotAddress } from '../../inventory/src/addresses';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src/slots';
-import { FishingActionController } from '../../stategraphs/src/fishing';
+import { FishingActionController } from '../../stategraphs/src/fish';
 import { GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
 import { PondManager } from '../../prefab/src/pond';

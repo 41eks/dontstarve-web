@@ -2,7 +2,7 @@ import type * as THREE from 'three';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import type { EquipmentLifecycle, ReadonlySignal } from '@dontstarve-web/signals';
 import { WILSON_ACTION_TIMES } from '@dontstarve-web/stategraphs/SGwilson';
-import type { SpellCastMap, SpellCastTarget } from '@dontstarve-web/stategraphs/spellcaster';
+import type { SpellCastMap, SpellCastTarget } from '@dontstarve-web/stategraphs/castspell';
 import type { CombatActor, CombatInst } from '../../componets/src/combat';
 import type { Projectile, ProjectileTarget } from '../../componets/src/projectile';
 import type { Burnable } from '../../componets/src/burnable';

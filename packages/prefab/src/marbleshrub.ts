@@ -7,7 +7,7 @@ import { SpriteResources, type ArchiveSpriteCommands, type PrefabDisplay } from 
 import { createArchiveEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
 import { watchTileActivity } from './tileActivity';
 import { ComponentTimer } from '../../componets/src/timer';
-import type { PickaxeTarget } from '@dontstarve-web/stategraphs/pickaxe';
+import type { PickaxeTarget } from '@dontstarve-web/stategraphs/mine';
 import { createRenderEffect, WorldContentKey, type GetWatchWorldContent, type TileStateQuery } from '@dontstarve-web/signals';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Growable, type GrowableSave } from '../../componets/src/growable';

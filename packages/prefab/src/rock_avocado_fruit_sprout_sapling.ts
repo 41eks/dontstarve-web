@@ -15,7 +15,7 @@ import { actionEntity, FindEntities } from './actionEntity';
 import { newEntityId } from './saveRecord';
 import type { SpawnGroundItem } from './groundPrefab';
 import type { RockAvocadoBushManager } from './rock_avocado_bush';
-import type { ShovelTarget } from '../../stategraphs/src/shovel';
+import type { ShovelTarget } from '../../stategraphs/src/dig';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { PlaySound, type SoundHandle } from './sound';
 import catalog from './groundItems.json' with { type: 'json' };

@@ -5,7 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { FarmPlowPlacement } from '../../prefab/src/farm_plow';
 import { FOOD_EFFECTS, PERISHABLE_FOODS } from '../../prefab/src/food';
 import { SEEDS_HUNGER } from '../../prefab/src/seeds';
-import { FoodActionController } from '../../stategraphs/src/food';
+import { FoodActionController } from '../../stategraphs/src/eat';
 import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { createGroundItemVisual } from './groundItemVisual';

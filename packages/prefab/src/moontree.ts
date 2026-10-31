@@ -5,7 +5,7 @@ import {
   createAnimatedSpriteFactory,
 } from '@dontstarve-web/animation/sprite';
 import { ArchiveSpriteAssets, preloadSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
-import type { PickaxeTarget } from '@dontstarve-web/stategraphs/pickaxe';
+import type { PickaxeTarget } from '@dontstarve-web/stategraphs/mine';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
 import { Workable, type Worker } from '../../componets/src/workable';

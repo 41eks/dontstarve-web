@@ -150,7 +150,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
           get combat() { return playerCombat; },
         },
       };
-      const preparePickDoer = async (itemId: string, count: number, original?: ItemEntity) => {
+      const preparePickDoer = (itemId: string, count: number, original?: ItemEntity) => {
         const entity = original ?? inventory.entities.create({ itemId, count });
         let committed = false;
         return {
@@ -202,7 +202,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         const picking = new PickActionController(view, playerAnimation, locomotor, preparePickDoer,
           prefabInstance(player)!.sprite, isActionInterrupting);
         const pickup = new PickupActionController(view, playerAnimation, locomotor, pickupDoer, isActionInterrupting);
-        const harvesting = new HarvestActionController(view, playerAnimation, locomotor, async (itemId, count) => ({
+        const harvesting = new HarvestActionController(view, playerAnimation, locomotor, (itemId, count) => ({
           giveItem: (_prefab, _count, position) => {
             const sourcePosition = view.player.position.clone().set(position.x, position.y, position.z);
             const received = inventory.addAvailable(itemId, count, undefined,
@@ -339,7 +339,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
           },
         });
       };
-      const readInventoryBook = async (slot: SlotAddress, entity: ItemEntity) => {
+      const readInventoryBook = (slot: SlotAddress, entity: ItemEntity) => {
         const isValid = () => !entity.isRemoved && inventory.getEntity(slot) === entity;
         const book = bookActionObject(entity);
         return readActions!.read({
@@ -506,11 +506,11 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         }
         const entity = inventory.getEntity(slot);
         if (playActions && entity && PlayActionController.canPlay(entity)) {
-          void playInventoryInstrument(slot, entity).catch((error: unknown) => console.error(`Unable to play ${stack.itemId}`, error));
+          playInventoryInstrument(slot, entity);
           return;
         }
         if (readActions && entity && ReadActionController.canRead(readerInst, entity)) {
-          void readInventoryBook(slot, entity).catch((error: unknown) => console.error(`Unable to read ${stack.itemId}`, error));
+          readInventoryBook(slot, entity);
           return;
         }
         if (FOOD_EFFECTS[stack.itemId] && foodActions) {

@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { farmHoeVisual } from '../../prefab/src/farm_hoe';
 import { declaredSymbol, overrideArchives } from './animStateFixture';
-import { FarmHoeActionController } from '../../stategraphs/src/farm_hoe';
+import { FarmHoeActionController } from '../../stategraphs/src/till';
 import { createEquipmentExistenceState } from '../../signals/src';
 import { FarmPlowPlacement } from '../../prefab/src/farm_plow';
 import { TurfMap } from '../../prefab/src/turfMap';

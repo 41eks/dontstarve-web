@@ -35,7 +35,7 @@ export interface PickDoer {
 }
 
 export interface PreparedPickDoer extends PickDoer { dispose(): void; }
-export type PreparePickDoer = (itemId: string, count: number, entity?: ItemEntity) => Promise<PreparedPickDoer>;
+export type PreparePickDoer = (itemId: string, count: number, entity?: ItemEntity) => PreparedPickDoer;
 
 export interface PickableComponent {
   readonly canBePicked: boolean;
@@ -116,21 +116,13 @@ export class PickActionController {
     this.world.actionEvents?.emit('action:begin', { owner: this, action: 'PICK' });
     this.animation.cancelEmote();
     this.target = target;
-    const version = this.version;
     if (typeof this.doer === 'function') {
       // pickable.lua permits a nil product (for example clearing an overripe bush).
       if (!target.component.product) { this.receiver = { giveItem: () => false }; return true; }
       const product = target.component.productEntity;
-      const preparing = product
+      this.receiver = product
         ? this.doer(target.component.product, target.component.numToHarvest ?? 1, product)
         : this.doer(target.component.product, target.component.numToHarvest ?? 1);
-      void preparing.then(receiver => {
-        if (this.disposed || version !== this.version) receiver.dispose();
-        else this.receiver = receiver;
-      }).catch((error: unknown) => {
-        if (version === this.version) this.cancel();
-        console.error('Unable to prepare picked product', error);
-      });
     } else this.receiver = this.doer;
     return true;
   }

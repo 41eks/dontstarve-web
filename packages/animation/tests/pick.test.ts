@@ -64,7 +64,7 @@ it('walks to reach, commits a prepared PICK and releases canceled products witho
   playerInstance.attach(player);
   const giveItem = vi.fn(() => true);
   const releaseProduct = vi.fn();
-  const prepare = vi.fn(async () => ({ giveItem, dispose: releaseProduct }));
+  const prepare = vi.fn(() => ({ giveItem, dispose: releaseProduct }));
   let manual = false;
   const controller = new PickActionController(world, animation, locomotor, prepare, playerInstance.sprite, () => manual);
   const click = () => {

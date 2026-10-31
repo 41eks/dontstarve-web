@@ -16,7 +16,7 @@ import { snapToTileCenter, TILE_SIZE } from './tile';
 import { TurfMap, WORLD_TILES } from './turfMap';
 import { PlaySound, type SoundHandle } from './sound';
 import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
-import type { ShovelTarget } from '@dontstarve-web/stategraphs/shovel';
+import type { ShovelTarget } from '@dontstarve-web/stategraphs/dig';
 import type { WorldContext } from './worldContext';
 import { FARM_PLANT_ART, VEGGIE_SEED_IDS } from './veggies';
 import { actionEntity, disposeActionEntity, findActionEntity } from './actionEntity';

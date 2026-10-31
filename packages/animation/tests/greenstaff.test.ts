@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { ItemEntity, InventoryStore, HandSlot, equipmentSlotAddress } from '../../inventory/src';
 import { GreenStaffController, deconstructionLoot, type DeconstructionTarget } from '../../prefab/src/staff';
 import { collectEquippedActions } from '../../stategraphs/src/componentactions';
-import { createCastSpellAction } from '../../stategraphs/src/spellcaster';
+import { createCastSpellAction } from '../../stategraphs/src/castspell';
 import { INVENTORY_ITEM_SPECS } from '../../../src/inventoryItems';
 
 function target(itemId = 'opalstaff', remainingUses = 50): DeconstructionTarget & { entity: ItemEntity } {

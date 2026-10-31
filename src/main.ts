@@ -32,7 +32,7 @@ import { registerFrontTask } from './animate';
 import { input } from './InputManager';
 import { view, actionEvents } from './view';
 import { followCamera } from './camera';
-import type { SpellCastMap } from '@dontstarve-web/stategraphs/spellcaster';
+import type { SpellCastMap } from '@dontstarve-web/stategraphs/castspell';
 import { WORLD_TILES } from '@dontstarve-web/prefab/turfMap';
 import { isGroundTargetBlocked, placementEntities } from '../packages/prefab/src/placementEntities';
 import { backpackContainerId, inventorySlotAddress, cursorSlotAddress, type InventoryStack } from '@dontstarve-web/inventory';

@@ -1,8 +1,8 @@
-import type { FarmHoeTool } from '@dontstarve-web/stategraphs/farm_hoe';
+import type { FarmHoeTool } from '@dontstarve-web/stategraphs/till';
 import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory } from './equipmentVisual';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 
-export { isFarmHoeTool, type FarmHoeTool } from '@dontstarve-web/stategraphs/farm_hoe';
+export { isFarmHoeTool, type FarmHoeTool } from '@dontstarve-web/stategraphs/till';
 const SWAPS = {
   farm_hoe: { archive: 'quagmire_hoe.zip', symbol: 'swap_quagmire_hoe' },
   golden_farm_hoe: { archive: 'swap_goldenhoe.zip', symbol: 'swap_goldenhoe' },

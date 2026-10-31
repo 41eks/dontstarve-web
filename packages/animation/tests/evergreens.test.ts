@@ -15,7 +15,7 @@ import { PlaySound } from '../../prefab/src/sound';
 import { createPickupInventory } from './pickupFixture';
 import { equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
-import { PickaxeActionController } from '../../stategraphs/src/pickaxe';
+import { PickaxeActionController } from '../../stategraphs/src/mine';
 import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
 
 useTestTileMap();

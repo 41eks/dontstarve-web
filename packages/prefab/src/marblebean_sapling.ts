@@ -13,7 +13,7 @@ import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
 import type { SpawnGroundItem } from './groundPrefab';
 import type { MarbleShrubManager } from './marbleshrub';
-import type { ShovelTarget } from '../../stategraphs/src/shovel';
+import type { ShovelTarget } from '../../stategraphs/src/dig';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import catalog from './groundItems.json' with { type: 'json' };
 

@@ -1,6 +1,6 @@
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import type { EquipmentLifecycle } from '@dontstarve-web/signals';
-import type { SpellCastMap } from '@dontstarve-web/stategraphs/spellcaster';
+import type { SpellCastMap } from '@dontstarve-web/stategraphs/castspell';
 import type * as THREE from 'three';
 import { SpellCaster } from '../../componets/src/spellcaster';
 import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory } from './equipmentVisual';

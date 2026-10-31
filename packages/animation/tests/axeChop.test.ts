@@ -10,11 +10,11 @@ import { createPickupInventory } from './pickupFixture';
 import { equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { getAxeLifecycle } from '../../prefab/src/axe';
 import { createMoonTreeManager } from '../../prefab/src/moontree';
-import { PickaxeActionController } from '../../stategraphs/src/pickaxe';
+import { PickaxeActionController } from '../../stategraphs/src/mine';
 import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { PlaySound } from '../../prefab/src/sound';
-import { ShovelActionController } from '../../stategraphs/src/shovel';
+import { ShovelActionController } from '../../stategraphs/src/dig';
 import { collectEquippedActions } from '../../stategraphs/src/componentactions';
 import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
 

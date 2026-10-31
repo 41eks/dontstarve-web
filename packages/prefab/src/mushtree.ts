@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
-import type { PickaxeTarget } from '@dontstarve-web/stategraphs/pickaxe';
-import type { ShovelTarget } from '@dontstarve-web/stategraphs/shovel';
+import type { PickaxeTarget } from '@dontstarve-web/stategraphs/mine';
+import type { ShovelTarget } from '@dontstarve-web/stategraphs/dig';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { createEffect, WorldContentKey, type GetWatchWorldContent, type HandEquipment, type ReadonlySignal, type WorldContentSignal, type SeasonState, type TileStateQuery } from '@dontstarve-web/signals';
 import { Growable, type GrowableSave } from '../../componets/src/growable';

@@ -33,10 +33,9 @@ it('walks to the foot point, revalidates a buffered harvest and releases pending
     renderer: { domElement: new EventTarget() }, actionEvents } as unknown as ActionWorldContext;
   let manual = false;
   const controller = new HarvestActionController(world, animation, locomotor,
-    async () => receiver, () => manual);
+    () => receiver, () => manual);
   const target = getHarvestActions(model)[0].action.target as HarvestTarget;
   expect(controller.request(target)).toBe(true);
-  await Promise.resolve();
   controller.update();
   expect(locomotor.goToPoint).toHaveBeenCalledWith(new THREE.Vector3(16.8, 0, 0));
   expect(instance.position.toArray()).toEqual([20, 0, 0]);
@@ -52,16 +51,15 @@ it('walks to the foot point, revalidates a buffered harvest and releases pending
   manual = false;
   receiver.dispose.mockClear();
   controller.request(target);
-  await Promise.resolve(); controller.update();
+  controller.update();
   model.removeFromParent();
   stategraph.update(1); controller.update(); stategraph.update(1); controller.update();
   expect(receiver.giveItem).not.toHaveBeenCalled();
   expect(receiver.dispose).toHaveBeenCalledOnce();
   scene.add(model);
   controller.request(target);
-  controller.cancel();
   receiver.dispose.mockClear();
-  await Promise.resolve();
+  controller.cancel();
   expect(receiver.dispose).toHaveBeenCalledOnce();
   instance.addTag('burnt');
   expect(getHarvestActions(model).every(action => action.available === false)).toBe(true);

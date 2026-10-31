@@ -3,7 +3,7 @@ import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
 import type { TileStateQuery } from '@dontstarve-web/signals';
-import type { PickaxeTarget } from '@dontstarve-web/stategraphs/pickaxe';
+import type { PickaxeTarget } from '@dontstarve-web/stategraphs/mine';
 import { LootDropper } from '../../componets/src/lootdropper';
 import { Workable } from '../../componets/src/workable';
 import { WorldMigrator, type WorldMigratorShard } from '../../componets/src/worldmigrator';

@@ -14,7 +14,7 @@ import { Workable } from '../../componets/src/workable';
 import { LootDropper } from '../../componets/src/lootdropper';
 import { actionEntity } from './actionEntity';
 import { performToolWork } from '../../stategraphs/src/componentactions';
-import type { ShovelTarget } from '../../stategraphs/src/shovel';
+import type { ShovelTarget } from '../../stategraphs/src/dig';
 import type { SpawnGroundItem } from './groundPrefab';
 import catalog from './groundItems.json' with { type: 'json' };
 import { MakeObstaclePhysics, MakeSmallObstaclePhysics } from './standardcomponents';

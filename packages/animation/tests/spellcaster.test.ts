@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { InventoryStore, InventorySlot, HandSlot, inventorySlotAddress, equipmentSlotAddress } from '../../inventory/src';
-import { SpellCastActionController, type SpellCastDoer } from '../../stategraphs/src/spellcaster';
+import { SpellCastActionController, type SpellCastDoer } from '../../stategraphs/src/castspell';
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import { getLightStaffController, LIGHT_STAFF_USES, LIGHT_STAFF_CAST_SOUND, type LightStaffId } from '../../prefab/src/staff';
 import { PlaySound } from '../../prefab/src/sound';

@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { bugnetVisual } from '../../prefab/src/bugnet';
 import { AnimState } from '../src/animState';
 import { overrideArchives } from './animStateFixture';
-import { BugNetCaptureController, type ButterflyCaptureTarget } from '../../stategraphs/src/bugnet';
+import { BugNetCaptureController, type ButterflyCaptureTarget } from '../../stategraphs/src/net';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { createGroundItemVisual } from './groundItemVisual';
 import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';

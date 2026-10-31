@@ -6,7 +6,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { readFile } from 'node:fs/promises';
 import { Burnable } from '../../componets/src/burnable';
 import { Propagator } from '../../componets/src/propagator';
-import { LighterActionController, type LighterTarget } from '../../stategraphs/src/lighter';
+import { LighterActionController, type LighterTarget } from '../../stategraphs/src/light';
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import { collectEquippedActions } from '../../stategraphs/src/componentactions';
 import type { ActionAnimationController, ActionWorldContext } from '../../stategraphs/src/actionContext';

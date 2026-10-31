@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { FoodActionController, type FoodSource } from '../../stategraphs/src/food';
+import { FoodActionController, type FoodSource } from '../../stategraphs/src/eat';
 import { FOOD_EFFECTS } from '../../prefab/src/food';
 import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
 import { PlaySound } from '../../prefab/src/sound';

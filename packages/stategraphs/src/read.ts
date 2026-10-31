@@ -30,12 +30,11 @@ export class ReadActionController {
     return item.components.book !== undefined && doer.hasTag('reader');
   }
 
-  async read(source: ReadSource): Promise<boolean> {
+  read(source: ReadSource): boolean {
     if (this.disposed || !source.isValid()) return false;
     this.cancel();
     this.world.actionEvents?.emit('action:begin', { owner: this, action: 'READ' });
     const version = this.version;
-    if (this.disposed || version !== this.version || !source.isValid()) return false;
     this.locomotor.stop();
     return this.animation.playRead(source.book, () => version === this.version && source.isValid() && source.read());
   }

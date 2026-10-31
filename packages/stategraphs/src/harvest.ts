@@ -58,20 +58,18 @@ export class HarvestActionController {
   private readonly world: ActionWorldContext;
   private readonly animation: ActionAnimationController;
   private readonly locomotor: ActionLocomotor;
-  private readonly prepareReceiver: (prefab: string, count: number) => Promise<PreparedHarvestReceiver>;
+  private readonly prepareReceiver: (prefab: string, count: number) => PreparedHarvestReceiver;
   private readonly isManualMovement: () => boolean;
-  private readonly onError: (error: unknown) => void;
 
   constructor(
     world: ActionWorldContext,
     animation: ActionAnimationController,
     locomotor: ActionLocomotor,
-    prepareReceiver: (prefab: string, count: number) => Promise<PreparedHarvestReceiver>,
+    prepareReceiver: (prefab: string, count: number) => PreparedHarvestReceiver,
     isManualMovement = () => false,
-    onError: (error: unknown) => void = console.error,
   ) {
     this.world = world; this.animation = animation; this.locomotor = locomotor;
-    this.prepareReceiver = prepareReceiver; this.isManualMovement = isManualMovement; this.onError = onError;
+    this.prepareReceiver = prepareReceiver; this.isManualMovement = isManualMovement;
     this.picker = world.mouseActions ?? new PlayerActionPicker(new PointerRaycaster(world));
     this.unregister = this.picker.register(model => getHarvestActions(model));
     this.stopActionEvents = bindActionCancellation(world, this, 'harvest', () => this.cancel());
@@ -86,15 +84,7 @@ export class HarvestActionController {
     this.world.actionEvents?.emit('action:begin', { owner: this, action: 'HARVEST' });
     this.animation.cancelEmote();
     this.target = target;
-    const version = this.version;
-    void this.prepareReceiver(target.component.product, target.component.GetRecipeForProduct()?.stacksize ?? 1)
-      .then(receiver => {
-        if (this.disposed || version !== this.version) receiver.dispose();
-        else this.receiver = receiver;
-      }).catch((error: unknown) => {
-        if (version === this.version) this.cancel();
-        this.onError(error);
-      });
+    this.receiver = this.prepareReceiver(target.component.product, target.component.GetRecipeForProduct()?.stacksize ?? 1);
     return true;
   }
 

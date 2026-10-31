@@ -119,7 +119,7 @@ it('quick-picks petals at frame six, preserves a cancelled flower and reloads th
   const locomotor = { destination: undefined, goToPoint: vi.fn(() => true), stop: vi.fn() };
   const sanity = vi.fn(), killed = vi.fn();
   const picker: PickActor = { hasTag: () => false, components: { sanity: { DoDelta: sanity } } };
-  const prepare = vi.fn(async () => ({ picker, giveItem: (itemId: string, count: number) => s.inventory.add(itemId, count), dispose: vi.fn() }));
+  const prepare = vi.fn(() => ({ picker, giveItem: (itemId: string, count: number) => s.inventory.add(itemId, count), dispose: vi.fn() }));
   const controller = new PickActionController(s.world, animation, locomotor, prepare, new SpriteState({ name: 'idle' }));
   try {
     const flower = await s.flowers.spawnFromSave('flower:pick', 'f6', new THREE.Vector3(2, 0, 0));

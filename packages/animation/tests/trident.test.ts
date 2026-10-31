@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import { InventoryStore, HandSlot, equipmentSlotAddress } from '../../inventory/src';
 import { TridentController } from '../../prefab/src/trident';
-import { createCastSpellAction } from '../../stategraphs/src/spellcaster';
+import { createCastSpellAction } from '../../stategraphs/src/castspell';
 import { INVENTORY_ITEM_SPECS } from '../../../src/inventoryItems';
 
 const doer = { position: new THREE.Vector3(), hasTag: () => false, components: {} };

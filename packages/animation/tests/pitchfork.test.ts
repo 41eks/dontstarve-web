@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { pitchforkVisual, type PitchforkTool } from '../../prefab/src/pitchfork';
 import { AnimState } from '../src/animState';
 import { overrideArchives } from './animStateFixture';
-import { PitchforkActionController } from '../../stategraphs/src/pitchfork';
+import { PitchforkActionController } from '../../stategraphs/src/terraform';
 import { TurfMap, WORLD_TILES } from '../../prefab/src/turfMap';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { createGroundItemVisual } from './groundItemVisual';

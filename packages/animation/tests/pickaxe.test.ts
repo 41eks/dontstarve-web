@@ -6,7 +6,7 @@ import { createPickupInventory } from './pickupFixture';
 import { equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { getPickaxeLifecycle } from '../../prefab/src/pickaxe';
 import { RockManager } from '../../prefab/src/rocks';
-import { PickaxeActionController } from '../../stategraphs/src/pickaxe';
+import { PickaxeActionController } from '../../stategraphs/src/mine';
 import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { PlaySound } from '../../prefab/src/sound';

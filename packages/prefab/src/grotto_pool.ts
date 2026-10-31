@@ -5,7 +5,7 @@ import type * as CANNON from 'cannon-es';
 import { createSharedArchiveSprite, ArchiveSpriteAssets } from '@dontstarve-web/animation/archiveSprite';
 import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
 import { createArchiveEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
-import type { PickaxeTarget } from '@dontstarve-web/stategraphs/pickaxe';
+import type { PickaxeTarget } from '@dontstarve-web/stategraphs/mine';
 import { createEffect, createMemo, watchSignal, WorldContentKey, type GetWatchWorldContent, type TileStateQuery } from '@dontstarve-web/signals';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
 import { TileTracker } from '../../componets/src/tileManager';

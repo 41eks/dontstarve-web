@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { configureShovelEntity, shovelVisual } from '../../prefab/src/shovel';
 import { declaredSymbol, overrideArchives } from './animStateFixture';
-import { ShovelActionController } from '../../stategraphs/src/shovel';
+import { ShovelActionController } from '../../stategraphs/src/dig';
 import { FarmPlowPlacement } from '../../prefab/src/farm_plow';
 import { TurfMap } from '../../prefab/src/turfMap';
 import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';

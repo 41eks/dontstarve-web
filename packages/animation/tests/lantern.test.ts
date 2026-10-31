@@ -23,7 +23,7 @@ import { bindPlayerHandEquipment } from '../../../src/playerHandEquipment';
 import { createEmptyEntity, prefabInstance } from '../../prefab/src/prefabInstance';
 import type { LightParent } from '../../prefab/src/localLight';
 import { createPerishWorld } from './perishWorldFixture';
-import { getMachineActions } from '../../stategraphs/src/machine';
+import { getMachineActions } from '../../stategraphs/src/turnon';
 
 /** The lanternlight entity parented to `owner`, by the light signal it declares there. */
 const lightSlot = (owner: LightParent) => [...owner.light.slots.peek()].find(([key]) => key.startsWith('lanternlight:'))?.[1];

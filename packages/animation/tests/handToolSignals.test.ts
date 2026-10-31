@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createEquipmentExistenceState } from '../../signals/src';
-import { PickaxeActionController } from '../../stategraphs/src/pickaxe';
+import { PickaxeActionController } from '../../stategraphs/src/mine';
 import { HammerActionController, getHammerActionTarget, type HammerTarget } from '../../stategraphs/src/hammer';
 import { ReskinActionController } from '../../stategraphs/src/reskin_tool';
 import type { ActionWorldContext, ActionAnimationController } from '../../stategraphs/src/actionContext';

@@ -6,7 +6,7 @@ import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab
 import type { PrefabDisplay } from '../../display/src';
 import { GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { getLightStaffController, type LightStaffId } from '../../prefab/src/staff';
-import { SpellCastActionController } from '../../stategraphs/src/spellcaster';
+import { SpellCastActionController } from '../../stategraphs/src/castspell';
 import { DwarfStarManager, DWARF_STAR_DURATION, POLAR_LIGHT_DURATION } from '../../prefab/src/stafflight';
 import { prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { PrewarmSounds } from '../../prefab/src/sound';

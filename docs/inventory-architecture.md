@@ -177,7 +177,7 @@ torch 的专用 ground factory 注册 `onputininventory` 和 `onextinguish`。�
 
 `packages/prefab/src/food.ts` 定义已接入食物的源 Lua 数值：种子为 4.6875 饥饿，香蕉奶昔为 8 生命、25 饥饿、33 理智。`bananajuice` 来自 `preparedfoods.lua:571`，数值分别为 `TUNING.HEALING_MEDSMALL`、`CALORIES_MED`、`SANITY_LARGE`；共享 `prefabs/preparedfoods.lua` 将这些数值装到 edible 组件，`fooddrink` 标签决定喝饮料动画。
 
-`FoodActionController` 共用进食与种植的取消/预加载流程，原种子控制器已泛化为 `packages/stategraphs/src/food.ts`。应用从点击时的槽位捕获实际物品实体及皮肤；第 12 帧提交前再核对实体仍在原槽，库存扣除成功后才调用 `applyPlayerFoodEffects()`。生命与饥饿上限 150，理智通过 signal 限制到 200；直接修改同 ID 的另一实体不能让旧动作误消耗替代物。`SGwilson` 的 EAT 使用同一个 quickeat 时间线，根据 `foodDrink` 选择 `quick_drink_pre → quick_drink` 或 `quick_eat_pre → quick_eat`；饮料与进食动画均来自 `player_actions_eat.zip`，第 10 帧分别播放 sip / eat。预加载前后取消、动作取消或物品失效都不会产生食用效果。
+`FoodActionController` 共用进食与种植的取消/预加载流程，原种子控制器已泛化为 `packages/stategraphs/src/eat.ts`。应用从点击时的槽位捕获实际物品实体及皮肤；第 12 帧提交前再核对实体仍在原槽，库存扣除成功后才调用 `applyPlayerFoodEffects()`。生命与饥饿上限 150，理智通过 signal 限制到 200；直接修改同 ID 的另一实体不能让旧动作误消耗替代物。`SGwilson` 的 EAT 使用同一个 quickeat 时间线，根据 `foodDrink` 选择 `quick_drink_pre → quick_drink` 或 `quick_eat_pre → quick_eat`；饮料与进食动画均来自 `player_actions_eat.zip`，第 10 帧分别播放 sip / eat。预加载前后取消、动作取消或物品失效都不会产生食用效果。
 
 右键 `meatballs` 调用 `WilsonAnimationController.playEat()`，播放 `anim/player_actions_eat.zip`；当前只播放动作，不消耗该堆物品。
 

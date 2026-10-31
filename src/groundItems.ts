@@ -16,7 +16,7 @@ import type { BernieWorld } from '@dontstarve-web/prefab/bernie';
 import type { ButterflyWorld } from '@dontstarve-web/prefab/butterfly';
 import { GroundPrefabRegistry } from '@dontstarve-web/prefab/groundPrefabRegistry';
 import type { GroundItemDefinition, GroundItemVisual, GroundPrefabOptions, GroundSpawnOptions } from '@dontstarve-web/prefab/groundPrefab';
-import type { NetCaptureTarget } from '@dontstarve-web/stategraphs/bugnet';
+import type { NetCaptureTarget } from '@dontstarve-web/stategraphs/net';
 import type { FirefliesWorld } from '@dontstarve-web/prefab/fireflies';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import { isPlayerNearby } from '@dontstarve-web/prefab/playerProximity';
@@ -494,9 +494,9 @@ export class GroundItemManager {
   }
 
   /** Component-driven ground work, including inventory prefabs such as hard stone fruit. */
-  get mineTargets(): import('@dontstarve-web/stategraphs/pickaxe').PickaxeTarget[] { return this.getMineTargets(); }
+  get mineTargets(): import('@dontstarve-web/stategraphs/mine').PickaxeTarget[] { return this.getMineTargets(); }
 
-  getMineTargets(model?: THREE.Object3D): import('@dontstarve-web/stategraphs/pickaxe').PickaxeTarget[] {
+  getMineTargets(model?: THREE.Object3D): import('@dontstarve-web/stategraphs/mine').PickaxeTarget[] {
     return modelValues(this.items, model, this.activeItems).filter(({ entity }) => entity.components.workable?.GetWorkAction() === 'MINE'
       && entity.components.workable.CanBeWorked()).map(record => ({
       id: record.entity.id, model: record.model, position: record.footPosition,

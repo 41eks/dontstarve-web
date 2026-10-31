@@ -9,7 +9,7 @@ import { createArchiveEntity, prefabInstance, type PrefabInstance } from './pref
 import type { TileStateQuery } from '@dontstarve-web/signals';
 import { watchTileActivity } from './tileActivity';
 import { newEntityId } from './saveRecord';
-import type { PickaxeTarget } from '@dontstarve-web/stategraphs/pickaxe';
+import type { PickaxeTarget } from '@dontstarve-web/stategraphs/mine';
 import { Workable } from '../../componets/src/workable';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { ErodeAway } from '../../componets/src/erodeaway';

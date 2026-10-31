@@ -6,7 +6,7 @@ import { createSharedArchiveSprite, preloadSharedArchiveSprite, ArchiveSpriteAss
 import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
 import { createArchiveEntity, createEmptyEntity, type PrefabInstance } from './prefabInstance';
 import { watchTileActivity } from './tileActivity';
-import type { PickaxeTarget } from '@dontstarve-web/stategraphs/pickaxe';
+import type { PickaxeTarget } from '@dontstarve-web/stategraphs/mine';
 import { createRenderEffect, createSignal, watchSignal, type ReadonlySignal, type TileStateQuery } from '@dontstarve-web/signals';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
 import { Workable } from '../../componets/src/workable';
