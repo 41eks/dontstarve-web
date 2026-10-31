@@ -10,6 +10,7 @@ export type {
 
 export type { ActionWorldContext, ActionAnimationController, ActionLocomotor, CursorLabel } from './actionContext.ts';
 export { bindActionCancellation } from './actionEvents.ts';
+export { facePoint, faceSpritePoint, facingToward, PLAYER_FACING_VALUES, type PlayerFacing } from './facing.ts';
 export type { PlayerActionEvents, PlayerActionKind, ActionInterruptReason } from './actionEvents.ts';
 export * from './attack.ts';
 export * from './hammer.ts';

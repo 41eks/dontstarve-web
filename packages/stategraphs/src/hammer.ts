@@ -10,6 +10,7 @@ import type { Worker } from '../../componets/src/workable';
 import { actionTargetModel, type ActionTargetView } from './actionTargetView';
 import type { SpriteState } from '@dontstarve-web/display';
 import { findActionEntity } from '../../prefab/src/actionEntity';
+import { faceSpritePoint } from './facing.ts';
 
 export const HAMMER_HIT_TIME = WILSON_ACTION_TIMES.mine;
 export const HAMMER_REACH = 4;
@@ -37,9 +38,6 @@ export class HammerActionController {
   private target?: HammerTarget;
   private actionVersion = 0;
   private readonly direction = new THREE.Vector3();
-  private readonly forward = new THREE.Vector3();
-  private readonly right = new THREE.Vector3();
-  private readonly up = new THREE.Vector3(0, 1, 0);
   private readonly world: WorldContext;
   private readonly animation: WilsonAnimationController;
   private readonly playerSprite: Pick<SpriteState, 'setFacing'>;
@@ -131,7 +129,7 @@ export class HammerActionController {
       return;
     }
     this.locomotor.stop();
-    this.faceTarget(target);
+    faceSpritePoint(this.playerSprite, this.world.camera, this.world.player.position, target.position);
     const version = this.actionVersion;
     if (this.animation.playHammer(() => {
       if (version === this.actionVersion && this.canWork(target)
@@ -154,18 +152,6 @@ export class HammerActionController {
 
   private distanceSquared(target: HammerTarget): number {
     return this.world.player.position.distanceToSquared(target.position);
-  }
-
-  private faceTarget(target: HammerTarget): void {
-    this.direction.subVectors(target.position, this.world.player.position);
-    if (this.direction.lengthSq() < 1e-8) return;
-    this.world.camera.getWorldDirection(this.forward);
-    this.forward.setY(0).normalize();
-    this.right.crossVectors(this.forward, this.up).normalize();
-    const forward = this.direction.dot(this.forward);
-    const side = this.direction.dot(this.right);
-    this.playerSprite.setFacing(Math.abs(forward) >= Math.abs(side) ? (forward > 0 ? 2 : 8) : 5,
-      Math.abs(side) > Math.abs(forward) && side < 0);
   }
 
   private hitTarget(event?: PointerEvent): HammerTarget | undefined {

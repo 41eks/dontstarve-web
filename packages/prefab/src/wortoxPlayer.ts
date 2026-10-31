@@ -12,6 +12,7 @@ import { Wortox, type WortoxSave } from './wortox';
 import { isGroundTargetBlocked, placementEntities, type PlacementQuery } from './placementEntities';
 import { modelHasTag } from './prefabInstance';
 import { wilsonPlayerInstance } from './player';
+import { facePoint } from '@dontstarve-web/stategraphs';
 
 export interface WortoxPlayerOptions {
   world: WorldContext;
@@ -39,10 +40,6 @@ export class WortoxPlayer {
   /** statemem.isphysicstoggle */
   private physicsToggled = false;
   private disposed = false;
-  private readonly direction = new THREE.Vector3();
-  private readonly forward = new THREE.Vector3();
-  private readonly right = new THREE.Vector3();
-  private readonly up = new THREE.Vector3(0, 1, 0);
 
   static create(options: WortoxPlayerOptions): WortoxPlayer {
     return new WortoxPlayer(options);
@@ -95,14 +92,7 @@ export class WortoxPlayer {
 
   private facePoint(position: THREE.Vector3): void {
     const { world, animation } = this.options;
-    this.direction.subVectors(position, world.player.position);
-    if (this.direction.lengthSq() < 1e-8) return;
-    world.camera.getWorldDirection(this.forward);
-    this.forward.setY(0).normalize();
-    this.right.crossVectors(this.forward, this.up).normalize();
-    const forward = this.direction.dot(this.forward), side = this.direction.dot(this.right);
-    animation.setFacing(Math.abs(forward) >= Math.abs(side) ? forward > 0 ? 'up' : 'down' : 'side',
-      Math.abs(side) > Math.abs(forward) && side < 0);
+    facePoint(animation, world.camera, world.player.position, position);
   }
 
   private setPhysicsEnabled(enabled: boolean): void {

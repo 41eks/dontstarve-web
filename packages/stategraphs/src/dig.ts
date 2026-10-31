@@ -6,7 +6,7 @@ import { actionTargetModel, type ActionTargetView } from './actionTargetView';
 import { PointerRaycaster } from './pointerRaycaster.ts';
 import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor } from './actionContext.ts';
 import { collectEquippedActions, equippedActionEntity, performToolWork, type ComponentActionEntity } from './componentactions.ts';
-
+import { facePoint } from './facing.ts';
 
 export type ShovelTarget = ActionTargetView & {
   readonly id: string;
@@ -25,9 +25,6 @@ export class ShovelActionController {
   private target?: ShovelTarget;
   private actionVersion = 0;
   private readonly direction = new THREE.Vector3();
-  private readonly forward = new THREE.Vector3();
-  private readonly right = new THREE.Vector3();
-  private readonly up = new THREE.Vector3(0, 1, 0);
   private readonly world: WorldContext;
   private readonly animation: WilsonAnimationController;
   private readonly locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>;
@@ -115,7 +112,7 @@ export class ShovelActionController {
       return;
     }
     this.locomotor.stop();
-    this.faceTarget(target);
+    facePoint(this.animation, this.world.camera, this.world.player.position, target.position);
     const version = this.actionVersion;
     const tool = equippedActionEntity(this.handEquipment.peek());
     if (this.animation.playShovelDig(() => {
@@ -143,18 +140,6 @@ export class ShovelActionController {
 
   private distanceSquared(target: ShovelTarget): number {
     return this.world.player.position.distanceToSquared(target.position);
-  }
-
-  private faceTarget(target: ShovelTarget): void {
-    this.direction.subVectors(target.position, this.world.player.position);
-    if (this.direction.lengthSq() < 1e-8) return;
-    this.world.camera.getWorldDirection(this.forward);
-    this.forward.setY(0).normalize();
-    this.right.crossVectors(this.forward, this.up).normalize();
-    const forward = this.direction.dot(this.forward);
-    const side = this.direction.dot(this.right);
-    this.animation.setFacing(Math.abs(forward) >= Math.abs(side) ? (forward > 0 ? 'up' : 'down') : 'side',
-      Math.abs(side) > Math.abs(forward) && side < 0);
   }
 
   private hitTarget(event?: PointerEvent): ShovelTarget | undefined {

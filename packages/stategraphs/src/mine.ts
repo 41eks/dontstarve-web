@@ -7,6 +7,7 @@ import type { ActionWorldContext as WorldContext, ActionAnimationController as W
 import { collectEquippedActions, equippedActionEntity, performToolWork, type ComponentActionEntity } from './componentactions.ts';
 import type { Worker } from '../../componets/src/workable';
 import { actionTargetModel, type ActionTargetView } from './actionTargetView';
+import { facePoint } from './facing.ts';
 
 export const PICKAXE_REACH = 4;
 
@@ -28,9 +29,6 @@ export class PickaxeActionController {
   private target?: PickaxeTarget;
   private actionVersion = 0;
   private readonly direction = new THREE.Vector3();
-  private readonly forward = new THREE.Vector3();
-  private readonly right = new THREE.Vector3();
-  private readonly up = new THREE.Vector3(0, 1, 0);
   private readonly world: WorldContext;
   private readonly animation: WilsonAnimationController;
   private readonly locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>;
@@ -132,7 +130,7 @@ export class PickaxeActionController {
       return;
     }
     this.locomotor.stop();
-    this.faceTarget(target);
+    facePoint(this.animation, this.world.camera, this.world.player.position, target.position);
     const version = this.actionVersion;
     const play = this.action === 'CHOP' ? this.animation.playChop.bind(this.animation) : this.animation.playMine.bind(this.animation);
     if (play(() => {
@@ -160,18 +158,6 @@ export class PickaxeActionController {
 
   private distanceSquared(target: PickaxeTarget): number {
     return this.world.player.position.distanceToSquared(target.position);
-  }
-
-  private faceTarget(target: PickaxeTarget): void {
-    this.direction.subVectors(target.position, this.world.player.position);
-    if (this.direction.lengthSq() < 1e-8) return;
-    this.world.camera.getWorldDirection(this.forward);
-    this.forward.setY(0).normalize();
-    this.right.crossVectors(this.forward, this.up).normalize();
-    const forward = this.direction.dot(this.forward);
-    const side = this.direction.dot(this.right);
-    this.animation.setFacing(Math.abs(forward) >= Math.abs(side) ? (forward > 0 ? 'up' : 'down') : 'side',
-      Math.abs(side) > Math.abs(forward) && side < 0);
   }
 
   private hitTarget(event?: PointerEvent): PickaxeTarget | undefined {

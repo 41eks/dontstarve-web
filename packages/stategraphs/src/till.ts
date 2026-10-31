@@ -4,6 +4,7 @@ import { PointerRaycaster } from './pointerRaycaster.ts';
 import { bindHandEquipmentUpdate, type HandEquipmentSignal } from './handEquipment.ts';
 import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor } from './actionContext.ts';
 import type { FarmActionWorld } from './farmActions.ts';
+import { facePoint } from './facing.ts';
 type FarmPlowPlacement = Pick<FarmActionWorld, 'canTill' | 'till'>;
 
 export type FarmHoeTool = 'farm_hoe' | 'golden_farm_hoe';
@@ -20,8 +21,6 @@ export class FarmHoeActionController {
   private version = 0;
   private disposed = false;
   private readonly direction = new THREE.Vector3();
-  private readonly forward = new THREE.Vector3();
-  private readonly right = new THREE.Vector3();
   private readonly world: WorldContext;
   private readonly animation: WilsonAnimationController;
   private readonly locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>;
@@ -84,7 +83,7 @@ export class FarmHoeActionController {
       return;
     }
     this.locomotor.stop();
-    this.faceTarget(target);
+    facePoint(this.animation, this.world.camera, this.world.player.position, target);
     const version = this.version, tool = this.equipped()!;
     if (this.animation.playTill(() => {
       const current = this.equipped();
@@ -95,15 +94,6 @@ export class FarmHoeActionController {
 
   private inReach(point: THREE.Vector3): boolean {
     return (point.x - this.world.player.position.x) ** 2 + (point.z - this.world.player.position.z) ** 2 <= TILL_REACH ** 2;
-  }
-  private faceTarget(point: THREE.Vector3): void {
-    this.direction.subVectors(point, this.world.player.position).setY(0);
-    if (this.direction.lengthSq() < 1e-8) return;
-    this.world.camera.getWorldDirection(this.forward); this.forward.setY(0).normalize();
-    this.right.crossVectors(this.forward, new THREE.Vector3(0, 1, 0)).normalize();
-    const forward = this.direction.dot(this.forward), side = this.direction.dot(this.right);
-    this.animation.setFacing(Math.abs(forward) >= Math.abs(side) ? (forward > 0 ? 'up' : 'down') : 'side',
-      Math.abs(side) > Math.abs(forward) && side < 0);
   }
   private hitTarget(): THREE.Vector3 | undefined {
     if (!isFarmHoeTool(this.equipped()?.itemId ?? '')) return undefined;

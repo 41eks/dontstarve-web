@@ -12,6 +12,7 @@ import type { ActionWorldContext as WorldContext, ActionAnimationController as W
 import { modelHasTag } from '../../prefab/src/prefabInstance';
 import { actionTargetModel, type ActionTargetView } from './actionTargetView';
 import { findActionEntity } from '../../prefab/src/actionEntity';
+import { facePoint } from './facing.ts';
 /** Prepared logical FX message. The target places and starts it only after committing its skin. */
 export interface ReskinFxMessage {
   play(position: THREE.Vector3, prefabId: string): void;
@@ -200,7 +201,7 @@ export class ReskinActionController {
       return;
     }
     this.locomotor.stop();
-    this.faceTarget(target.position);
+    facePoint(this.animation, this.world.camera, this.world.player.position, target.position);
     const version = this.version;
     pending.started = this.animation.playReskin(() => {
       if (version !== this.version || !target.isValid() || !this.getTool()
@@ -227,15 +228,6 @@ export class ReskinActionController {
 
   private distanceSquared(point: THREE.Vector3): number {
     return this.world.player.position.distanceToSquared(point);
-  }
-
-  private faceTarget(point: THREE.Vector3): void {
-    const direction = point.clone().sub(this.world.player.position);
-    const forward = this.world.camera.getWorldDirection(new THREE.Vector3()).setY(0).normalize();
-    const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0));
-    const f = direction.dot(forward), r = direction.dot(right);
-    this.animation.setFacing(Math.abs(f) >= Math.abs(r) ? (f > 0 ? 'up' : 'down') : 'side',
-      Math.abs(r) > Math.abs(f) && r < 0);
   }
 
   /** playercontroller.lua OnRightClick uses the picked action as is; only resolve its target record. */
