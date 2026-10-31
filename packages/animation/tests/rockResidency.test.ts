@@ -8,6 +8,7 @@ import { SkeletonManager } from '../../prefab/src/skeleton';
 import { HoundboneManager } from '../../prefab/src/houndbone';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { bindTestWorld } from './worldContentFixture';
+import { workTargets } from './workTargets';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -41,7 +42,7 @@ it('releases rock, skeleton and houndbone sprites outside the tickingarea and re
     await Promise.all(models.map(waitForVisual));
     const records = [rocks.exportRecords(), skeletons.exportRecords(), bones.exportRecords()];
     const colour = (meshes(rock)[0].material as THREE.MeshBasicMaterial[])[0].color.r;
-    const hammer = skeletons.hammerTargets[0];
+    const hammer = workTargets('HAMMER')[0];
     awake.set(false); await settle();
     for (const model of models) {
       expect(prefabInstance(model)!.status.peek()).toBe('asleep');

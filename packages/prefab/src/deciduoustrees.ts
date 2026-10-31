@@ -5,9 +5,6 @@ import type * as CANNON from 'cannon-es';
 import { createSignal, readonlySignal, createRenderEffect, getBoundWatchWorldContent, WorldContentKey, type HandEquipment, type ReadonlySignal, type Signal, type TileStateQuery } from '@dontstarve-web/signals';
 import { ArchiveSpriteAssets, preloadSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { createAnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
-import type { PickaxeTarget } from '@dontstarve-web/stategraphs/mine';
-import type { ShovelTarget } from '@dontstarve-web/stategraphs/dig';
-import { performToolWork } from '../../stategraphs/src/componentactions';
 import { Workable, type Worker } from '../../componets/src/workable';
 import { Growable, type GrowableSave } from '../../componets/src/growable';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
@@ -88,10 +85,6 @@ interface Tree {
 export interface DeciduousForest {
   group: THREE.Group;
   readonly entities: readonly ResidentEntity[];
-  readonly chopTargets: readonly PickaxeTarget[];
-  getChopTargets(model?: THREE.Object3D): readonly PickaxeTarget[];
-  readonly digTargets: readonly ShovelTarget[];
-  getDigTargets(model?: THREE.Object3D): readonly ShovelTarget[];
   readonly renderEntities: readonly { object: THREE.Group; footPosition: THREE.Vector3; cameraDepth: number }[];
   spawn(prefab: DeciduousSpawnId, position: THREE.Vector3, saved?: DeciduousRecord): ResidentEntity;
   update(dt: number, quaternion: THREE.Quaternion): void;
@@ -347,16 +340,6 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
       instance.setActive(false);
     }
   };
-  const targets = (action: 'CHOP' | 'DIG', model?: THREE.Object3D): PickaxeTarget[] => mouseRecords.select(model, active).flatMap(logical => {
-    const tree = trees.get(logical)!, model = logical.model;
-    const isValid = () => !disposed && active.has(logical) && !tree.instance.isRemoved && logical.model === model
-      && tree.workable.CanBeWorked() && tree.workable.GetWorkAction() === action;
-    return isValid() ? [{ id: logical.saveId!, model, position: logical.position,
-      entity: actionEntity(model, 'deciduoustree'), isValid }] : [];
-  });
-  const digTargets = (model?: THREE.Object3D) => targets('DIG', model).map(target => ({ ...target,
-    dig: () => target.isValid() && performToolWork('DIG', target.entity, {}),
-  }));
   return {
     group,
     get entities() { return entities; },
@@ -429,10 +412,6 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
       tree.stopActivity = watchTileActivity(model, world.tickingarea, awake => setActive(tree, awake));
       return logical;
     },
-    get chopTargets() { return targets('CHOP'); },
-    getChopTargets(model) { return targets('CHOP', model); },
-    get digTargets() { return digTargets(); },
-    getDigTargets: digTargets,
     update(dt, _quaternion) {
       if (!world.scheduler) scheduler.advance(dt);
       // Each display advances its entity's declared clip; the fire binding then runs its burnable's FX.

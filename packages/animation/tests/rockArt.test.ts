@@ -6,6 +6,7 @@ import { deserializeSave } from '../../../src/save/deserialize';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { importedSave } from './importedSave';
+import { workTargets } from './workTargets';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
 
@@ -31,7 +32,7 @@ it('shares split-bank cave-in art and preserves its variation, raised pose, iden
     expect(mesh(first).geometry).toBe(mesh(second).geometry);
     expect(prefabInstance(first)!.sprite.currentAnimation).toBe('idle_raised');
     expect(prefabInstance(first)!.listTags()).toEqual(expect.arrayContaining(['heavy', 'boulder', 'caveindebris']));
-    expect(manager.mineTargets).toEqual([]); // Raised cave-in boulders cannot be mined.
+    expect(workTargets('MINE')).toEqual([]); // Raised cave-in boulders cannot be mined.
     const geometry = mesh(first).geometry, disposed = vi.fn(); geometry.addEventListener('dispose', disposed);
     const document = importedSave('Caves');
     document.world.entities = { cavein_boulder: manager.exportRecords().map(({ record }) => record) };
@@ -56,7 +57,7 @@ it('keeps the celestial orb as static art without mining or dropping loot', asyn
     expect(prefabInstance(model)!.sprite.currentAnimation).toBe('idle');
     expect(prefabInstance(model)!.listTags()).toEqual(expect.arrayContaining(['irreplaceable', 'nonpotatable', 'celestial_station']));
     expect(firstMesh(model).geometry.getAttribute('position').count).toBeGreaterThan(0);
-    expect(manager.mineTargets).toEqual([]);
+    expect(workTargets('MINE')).toEqual([]);
   } finally { manager.dispose(); }
 });
 

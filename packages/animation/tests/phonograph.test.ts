@@ -16,6 +16,7 @@ import definitions from '../../prefab/src/definitions.json' with { type: 'json' 
 import { deserializeSave } from '../../../src/save/deserialize';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { reskinEntity } from '../../prefab/src/reskin_tool';
+import { workTargets } from './workTargets';
 
 const SAVE_CATALOG = { items: INVENTORY_ITEM_SPECS, skins: INVENTORY_SKIN_SPECS, recipes: INVENTORY_RECIPES,
   recipeSkins: INVENTORY_RECIPE_SKINS, buildings: definitions.animatedBuildings, walls: Object.keys(definitions.walls) };
@@ -157,7 +158,7 @@ it('preserves a loaded skinned record across reskin, pickup, inventory transfer,
     expect(manager.exportRecords().some(({ components }) => components.stack?.skinId === 'record_creepyforest')).toBe(true);
     const ejected = manager.reskinTargets.find(({ prefabId }) => prefabId === 'record')!.model;
     expect(manager.reskinTargets.find(target => target.model === ejected)!.hasTag('phonograph_record')).toBe(true);
-    manager.hammerTargets.find(({ model }) => model === dropped)!.playHit();
+    workTargets('HAMMER').find(({ model }) => model === dropped)!.work();
     await vi.waitFor(() => expect(manager.exportRecords().filter(({ components }) => components.stack?.itemId === 'record')).toHaveLength(2));
     expect(manager.exportRecords().some(({ id }) => id === droppedRecord.id)).toBe(false);
     plain.destroy(); skinned.destroy();

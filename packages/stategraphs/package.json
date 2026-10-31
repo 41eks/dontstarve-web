@@ -6,10 +6,6 @@
   "exports": {
     ".": "./src/index.ts",
     "./SGwilson": "./src/SGwilson.ts",
-    "./hammer": "./src/hammer.ts",
-    "./mine": "./src/mine.ts",
-    "./net": "./src/net.ts",
-    "./dig": "./src/dig.ts",
     "./terraform": "./src/terraform.ts",
     "./till": "./src/till.ts",
     "./eat": "./src/eat.ts",
@@ -21,7 +17,9 @@
     "./actionContext": "./src/actionContext.ts",
     "./actionEvents": "./src/actionEvents.ts",
     "./occupiable": "./src/occupiable.ts",
-    "./turnon": "./src/turnon.ts"
+    "./turnon": "./src/turnon.ts",
+    "./playercontroller": "./src/playercontroller.ts",
+    "./actionfns": "./src/actionfns.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

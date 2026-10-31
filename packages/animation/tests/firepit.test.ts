@@ -12,6 +12,7 @@ import type { SpriteState } from '@dontstarve-web/display';
 import * as sound from '../../prefab/src/sound';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { TILE_SIZE } from '../../prefab/src/tile';
+import { workTargets } from './workTargets';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -45,7 +46,7 @@ it('burns its fuel down through the fire levels, goes out empty and relights whe
   const { placement, scheduler, play } = createPlacement();
   try {
     await placement.spawn(FIRE_PIT_ID);
-    const [{ display: { model }, entity }] = placement.hammerTargets;
+    const [{ display: { model }, entity }] = workTargets('HAMMER');
     const { components } = prefabInstance(model)!;
     for (const tag of ['campfire', 'structure', 'wildfireprotected', 'BURNABLE_fueled']) expect(entity.hasTag(tag)).toBe(true);
 
@@ -86,7 +87,7 @@ it('saves its fuel and queued charcoal, then drops the charcoal when the restore
   let record;
   try {
     await first.placement.spawn(FIRE_PIT_ID);
-    const [{ display: { model } }] = first.placement.hammerTargets;
+    const [{ display: { model } }] = workTargets('HAMMER');
     // Filling the top section queues a charcoal.
     (findActionEntity(model)?.components ?? prefabInstance(model)!.components).fueled.TakeFuelItem(fuelItem(180));
     expect(fire(model).animation).toBe('level4');

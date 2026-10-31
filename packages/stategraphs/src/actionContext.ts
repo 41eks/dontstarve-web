@@ -25,10 +25,20 @@ export interface ActionWorldContext {
   registerFrameTask?: (update: (dt: number) => void) => () => void;
 }
 
+/** What locomotor:PushAction / GoToEntity reads from a BufferedAction with an entity target. */
+export interface LocomotorAction {
+  readonly target: { getPosition(): THREE.Vector3; getPhysicsRadius?(): number };
+  /** actions.lua Action.distance, already in world units. */
+  readonly distance?: number;
+  isValid(): boolean;
+}
+
 export interface ActionLocomotor {
   readonly destination: THREE.Vector3 | undefined;
   goToPoint(point: THREE.Vector3): boolean;
   stop(): void;
+  /** locomotor:PushAction: walk to the action's target, then `arrive` buffers it on the inst; otherwise `fail`. */
+  PushAction?(action: LocomotorAction, arrive: () => void, fail: () => void): void;
 }
 
 /**

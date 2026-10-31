@@ -1,4 +1,3 @@
-import { modelValues } from './modelRecords';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
 import { createEffect, createRenderEffect, createMemo, getBoundWatchWorldContent, WorldContentKey, type Memo, type ReadonlySignal, type WorldContentSignal, type GetWatchWorldContent, type SeasonState, type TileStateQuery } from '@dontstarve-web/signals';
@@ -13,8 +12,6 @@ import type { Propagator } from '../../componets/src/propagator';
 import { Workable } from '../../componets/src/workable';
 import { LootDropper } from '../../componets/src/lootdropper';
 import { actionEntity } from './actionEntity';
-import { performToolWork } from '../../stategraphs/src/componentactions';
-import type { ShovelTarget } from '../../stategraphs/src/dig';
 import type { SpawnGroundItem } from './groundPrefab';
 import catalog from './groundItems.json' with { type: 'json' };
 import { MakeObstaclePhysics, MakeSmallObstaclePhysics } from './standardcomponents';
@@ -462,19 +459,9 @@ export class PickablePlantManager {
     return this.displays.renderEntities;
   }
 
-  get digTargets(): readonly ShovelTarget[] { return this.getDigTargets(); }
-
   /** The logical plant behind this manager's display, including while it sleeps. */
   getInstance(model: THREE.Object3D): PickablePlantInstance | undefined {
     return this.plants.get(model)?.instance;
-  }
-
-  getDigTargets(model?: THREE.Object3D): readonly ShovelTarget[] {
-    return modelValues(this.plants, model).filter(({ definition }) => definition.dugLoot).map(({ display, instance }) => ({
-      id: String(instance.entityId), instance, display, position: instance.position, entity: instance,
-      isValid: () => !this.disposed && !instance.isRemoved && instance.components.workable!.CanBeWorked(),
-      dig: () => performToolWork('DIG', instance, {}),
-    }));
   }
   get reskinTargets(): readonly ReskinTarget[] {
     return Array.from(this.plants.values(), plant => plant.entity.reskinTarget)

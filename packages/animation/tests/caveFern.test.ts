@@ -7,6 +7,7 @@ import { bindTestWorld, tickWorld, plantInstance } from './worldContentFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { createMemo, createSignal } from '../../signals/src';
 import { SpriteState } from '@dontstarve-web/display';
+import { workTargets } from './workTargets';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -38,7 +39,7 @@ it('preserves cave fern poses and components across residency, then picks foliag
   const pose = (model: THREE.Group) => plantInstance(model).sprite.currentAnimation as string;
   expect(pose(fern)).toMatch(/^f([1-9]|10)$/);
   expect(plantInstance(fern).components.workable).toBeUndefined();
-  expect(ferns.digTargets).toEqual([]);
+  expect(workTargets('DIG')).toEqual([]);
   const records = ferns.exportRecords();
   expect(records.map(({ prefabId, record }) => [prefabId, record.components.variant?.anim])).toEqual([
     ['cave_fern', pose(fern)], ['cave_fern_withered', pose(withered)]]);

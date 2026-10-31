@@ -98,3 +98,29 @@ it('tests ground points against nearby static colliders, following a relocated b
   expect(moved(new THREE.Vector3(10, 0, 0))).toBe(false);
   expect(moved(new THREE.Vector3(-20, 0, 0))).toBe(true);
 });
+
+it('PushAction walks to an obstacle-centred target, buffers it within ARRIVE_STEP plus both radii and fails when replaced', () => {
+  const player = body();
+  const world = new CANNON.World();
+  world.addBody(player);
+  const obstacle = new THREE.Vector3(10, 0, 0);
+  // The obstacle's own centre is not walkable, so the path ends in front of it.
+  const findPath = vi.fn((_start: THREE.Vector3, target: THREE.Vector3) => target.distanceTo(obstacle) < 2 ? null : [target]);
+  const locomotor = new Locomotor(player, { findPath, physicsRadius: 1.5 });
+  const arrive = vi.fn(), fail = vi.fn();
+  const action = { target: { getPosition: () => obstacle, getPhysicsRadius: () => 1 }, isValid: () => true };
+  locomotor.PushAction(action, arrive, fail);
+  expect(locomotor.bufferedAction).toBe(action);
+  expect(locomotor.destination!.distanceTo(obstacle)).toBeGreaterThanOrEqual(2);
+  for (let i = 0; i < 120 && !arrive.mock.calls.length; i++) { locomotor.update(16, 1 / 60); world.step(1 / 60); }
+  expect(arrive).toHaveBeenCalledOnce();
+  // ARRIVE_STEP (.15 * WORLD_SCALE) + 1 + 1.5.
+  expect(player.position.distanceTo(new CANNON.Vec3(10, player.position.y, 0))).toBeLessThanOrEqual(.45 + 2.5);
+  expect(locomotor.bufferedAction).toBeUndefined();
+  expect(fail).not.toHaveBeenCalled();
+  player.position.set(-10, player.position.y, 0);
+  locomotor.PushAction(action, arrive, fail);
+  expect(locomotor.goToPoint(new THREE.Vector3(-5, 0, 0))).toBe(true);
+  expect(fail).toHaveBeenCalledOnce();
+  expect(arrive).toHaveBeenCalledOnce();
+});

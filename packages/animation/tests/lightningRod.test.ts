@@ -16,6 +16,7 @@ import initialWorld from '../../../public/saves/initial-world.json' with { type:
 import definitions from '../../prefab/src/definitions.json' with { type: 'json' };
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { reskinEntity } from '../../prefab/src/reskin_tool';
+import { workTargets } from './workTargets';
 
 /** The inst.Light an entity's model declares. */
 const declaredLight = (model: THREE.Object3D) => prefabInstance(model)?.light.peek();
@@ -44,7 +45,7 @@ it('is charged by a strike for three days: zaps on the 10–40 s task, loses a d
   const { placement, scheduler, fx, scene, play } = await createPlacement();
   try {
     placement.spawn(LIGHTNING_ROD_ID);
-    const [{ display }] = placement.hammerTargets;
+    const [{ display }] = workTargets('HAMMER');
     const model = display.model;
     // The hit clip plays out only once the display has drawn the rod.
     await vi.waitFor(() => expect(prefabInstance(model)!.sprite.loaded).toBe(true));
@@ -88,7 +89,7 @@ it('draws a battery charge as one decaying point, not three', async () => {
   const { placement, fx, scene } = await createPlacement();
   try {
     await placement.spawn(LIGHTNING_ROD_ID);
-    const [{ display }] = placement.hammerTargets;
+    const [{ display }] = workTargets('HAMMER');
     const model = display.model;
     scene.add(model);
     const battery = (findActionEntity(model)?.components ?? prefabInstance(model)!.components).battery;
@@ -110,7 +111,7 @@ it('keeps its charge and skin through c_save, and re-arms its day timer from the
   try {
     await placement.spawn(LIGHTNING_ROD_ID);
     expect(reskinEntity(placement.reskinTargets[0])).toBe(true);
-    const [{ display }] = placement.hammerTargets;
+    const [{ display }] = workTargets('HAMMER');
     const model = display.model;
     scene.add(model);
     await strikeAt(scene, fx, model.position);

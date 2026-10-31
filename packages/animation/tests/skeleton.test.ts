@@ -14,7 +14,7 @@ import { deserializeSave } from '../../../src/save/deserialize';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { prefabInstance } from '../../prefab/src/prefabInstance';
-import { actionTargetModel } from '../../stategraphs/src/actionTargetView';
+import { workTargets } from './workTargets';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -50,10 +50,10 @@ it('hammers a described player skeleton into two boneshards and keeps its pose a
   const s = setup(), restored = setup();
   try {
     expect((await executeDebugCommand('c_spawn("skeleton_player")', s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
-    const [target] = s.skeletons.hammerTargets;
+    const [target] = workTargets('HAMMER', s.scene);
     // math.random(1, 6) at .5 → idle4; Player_SetSkeletonDescription lowercases the cause.
-    s.skeletons.setSkeletonDescription(actionTargetModel(target), 'waxwell', 'Maxwell', 'Starvation');
-    expect(prefabInstance(actionTargetModel(target))!.listTags()).toEqual(expect.arrayContaining(['skeleton', 'playerskeleton']));
+    s.skeletons.setSkeletonDescription(target.model, 'waxwell', 'Maxwell', 'Starvation');
+    expect(prefabInstance(target.model)!.listTags()).toEqual(expect.arrayContaining(['skeleton', 'playerskeleton']));
     expect(s.physics.bodies).toHaveLength(1);
 
     let json = '';
@@ -69,7 +69,7 @@ it('hammers a described player skeleton into two boneshards and keeps its pose a
     for (let i = 0; i < 2; i++) expect(performToolWork('HAMMER', target.entity, {}, hammer)).toBe(true);
     expect(s.skeletons.exportRecords()).toHaveLength(1);
     expect(performToolWork('HAMMER', target.entity, {}, hammer)).toBe(true);
-    expect(s.skeletons.hammerTargets).toEqual([]); expect(s.skeletons.exportRecords()).toEqual([]);
+    expect(workTargets('HAMMER', s.scene)).toEqual([]); expect(s.skeletons.exportRecords()).toEqual([]);
     expect(s.physics.bodies).toHaveLength(0);
     await vi.waitFor(() => expect(s.ground.exportRecords().map(item => item.components.stack?.itemId)).toEqual(['boneshard', 'boneshard']));
   } finally { s.dispose(); restored.dispose(); }
@@ -82,14 +82,14 @@ it('spawns a creature skeleton with its own pose range and shared table, droppin
     for (const id of ['skeleton_notplayer_2', 'skeleton']) {
       expect((await executeDebugCommand(`c_spawn("${id}")`, s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
     }
-    const targets = s.skeletons.hammerTargets;
+    const targets = workTargets('HAMMER', s.scene);
     // skeleton_notplayer_2 is fixed to idle8; skeleton rolls math.random(1, 6) at .05 → idle1. Neither is a playerskeleton.
     expect(s.skeletons.exportRecords().map(({ prefabId, record }) => [prefabId, record.components.skeleton])).toEqual([
       ['skeleton_notplayer_2', { anim: 8 }], ['skeleton', { anim: 1 }]]);
     for (const target of targets) {
-      expect(prefabInstance(actionTargetModel(target))!.listTags()).toContain('skeleton'); expect(prefabInstance(actionTargetModel(target))!.listTags()).not.toContain('playerskeleton');
+      expect(prefabInstance(target.model)!.listTags()).toContain('skeleton'); expect(prefabInstance(target.model)!.listTags()).not.toContain('playerskeleton');
     }
-    s.skeletons.setSkeletonDescription(actionTargetModel(targets[1]), 'waxwell', 'Maxwell', 'Starvation');
+    s.skeletons.setSkeletonDescription(targets[1].model, 'waxwell', 'Maxwell', 'Starvation');
     expect(s.skeletons.exportRecords()[1].record.components.skeleton).toEqual({ anim: 1 });
 
     const [record] = s.skeletons.exportRecords();

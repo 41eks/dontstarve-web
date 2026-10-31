@@ -1,12 +1,10 @@
 import { MakeObstaclePhysics, RemovePhysicsColliders } from './standardcomponents';
-import { ModelRecords, modelEntries } from './modelRecords';
+import { ModelRecords } from './modelRecords';
 import * as THREE from 'three';
 import {
   createAnimatedSpriteFactory,
 } from '@dontstarve-web/animation/sprite';
 import { ArchiveSpriteAssets, preloadSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
-import type { PickaxeTarget } from '@dontstarve-web/stategraphs/mine';
-import { performToolWork } from '../../stategraphs/src/componentactions';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
 import { Workable, type Worker } from '../../componets/src/workable';
 import { actionEntity, disposeActionEntity } from './actionEntity';
@@ -488,28 +486,7 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
     return model;
   };
 
-  const workTargets = (action: 'CHOP' | 'DIG', selectedModel?: THREE.Object3D): PickaxeTarget[] => {
-    return mouseRecords.select(selectedModel, active).flatMap(entity => {
-      const model = entity.model!;
-      const controller = controllers.get(model);
-      const isValid = () => active.has(entity) && controllers.get(model) === controller
-        && controller?.workable?.CanBeWorked() === true
-        && controller.workable.GetWorkAction() === action;
-      if (!controller || !isValid()) return [];
-      return [{ id: entity.saveId ?? String(entity.id), entity: controller.inst, model,
-        position: entity.position, isValid }];
-    });
-  };
 
-  const digTargets = (model?: THREE.Object3D) => {
-    const saplingTargets = modelEntries(saplings, model).map(([model, { workable, entity }]) => ({
-      id: String(entity.instance.entityId), model, position: model.position, entity: actionEntity(model, 'moonbutterfly_sapling'),
-      isValid: () => saplings.has(model) && workable.CanBeWorked(),
-    }));
-    return [...workTargets('DIG', model), ...saplingTargets].map(target => ({ ...target,
-      dig: () => target.isValid() && performToolWork('DIG', target.entity, {}),
-    }));
-  };
   const restoreState = (entity: ResidentEntity, saved: MoonTreeSaveState | undefined, growth?: GrowableSave, timer?: NamedTimerSave) => {
     const state = stateOf(entity);
     state.timer.OnLoad(timer);
@@ -553,10 +530,6 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
       for (const drawn of [...effects]) drawn.display.update(dt);
       for (const { entity } of saplings.values()) entity.display.update(dt);
     },
-    get chopTargets() { return workTargets('CHOP'); },
-    getChopTargets(model?: THREE.Object3D) { return workTargets('CHOP', model); },
-    get digTargets() { return digTargets(); },
-    getDigTargets: digTargets,
     get renderEntities() {
       return [
         ...Array.from(active, (entity) => ({ object: entity.model, footPosition: entity.position, cameraDepth: 0 })),

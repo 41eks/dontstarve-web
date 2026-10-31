@@ -29,6 +29,7 @@ import { createSignal } from '../../signals/src';
 import { getPickActions } from '../../stategraphs/src/pick';
 import { bindTestWorld } from './worldContentFixture';
 import { importedSave } from './importedSave';
+import { workTargets } from './workTargets';
 
 const worldCleanups: (() => void)[] = [];
 function moonWorld(scheduler: GameTimeScheduler, full: boolean) {
@@ -75,7 +76,7 @@ it('spawns moonbase through the debug command using its source art and restores 
   expect(mesh.isMesh).toBe(true);
   expect(mesh.geometry.getAttribute('position').count).toBeGreaterThan(4);
   expect(mesh.geometry.groups.length).toBeGreaterThan(0);
-  expect(placement.hammerTargets).toEqual([]);
+  expect(workTargets('HAMMER')).toEqual([]);
   placement.update(1 / 30);
 
   const [{ prefabId, record }] = placement.exportRecords();

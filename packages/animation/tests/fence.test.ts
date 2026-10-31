@@ -15,6 +15,7 @@ import { FACING, facingFromRotation, selectsFacing } from '../src/facing';
 import { createSignal } from '../../signals/src';
 import { snapToWallSlotCenter } from '../../prefab/src/tile';
 import { reskinEntity } from '../../prefab/src/reskin_tool';
+import { workTargets } from './workTargets';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -121,11 +122,11 @@ it('previews against the camera, swaps banks as it rotates, places on click and 
     // The placer has no LIGHT/HAMMER target and no fence tags.
     expect(findActionEntity(preview)).toBeUndefined();
     expect(previewInstance.hasTag('fence')).toBe(false);
-    expect(placement.hammerTargets).toEqual([]);
+    expect(workTargets('HAMMER')).toEqual([]);
 
     canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button: 0 }));
     expect(consume).toHaveBeenCalledWith('fence_item', 'fence_rose_item');
-    expect(placement.hammerTargets).toHaveLength(1);
+    expect(workTargets('HAMMER')).toHaveLength(1);
     expect(world.physics!.bodies).toHaveLength(1);
     const [exported] = placement.exportRecords();
     expect(exported.prefabId).toBe('fence');
@@ -133,7 +134,7 @@ it('previews against the camera, swaps banks as it rotates, places on click and 
     // The build spawns a new fence with the placer's rotation and skin; the placer is released.
     expect(previewInstance.status.peek()).toBe('removed');
     expect(preview.parent).toBeNull();
-    const built = placement.hammerTargets[0].instance as FencePrefabInstance;
+    const built = lookupPrefabInstance(workTargets('HAMMER')[0].model) as FencePrefabInstance;
     expect(built).not.toBe(previewInstance);
     expect([built.prefab, built.rotation, built.skinId]).toEqual(['fence', -90, 'fence_rose']);
     expect(built.sprite.sprite.peek().lightOverride).toBeUndefined();
@@ -181,19 +182,19 @@ it('is hammered in three hits for a twig, can be reskinned, and burns into ash w
     placement.update(25);
     expect(spawnItem).toHaveBeenCalledWith({ itemId: 'ash', count: 1 });
     expect(dropItem).toHaveBeenCalled();
-    expect(placement.hammerTargets).toEqual([]);
+    expect(workTargets('HAMMER')).toEqual([]);
     expect(world.physics!.bodies).toHaveLength(0);
 
     await placement.spawn('fence');
     expect(placement.exportRecords().at(-1)!.record.id).toMatch(/^e_/);
-    expect(placement.hammerTargets).toHaveLength(1);
-    await placement.hammerTargets[0].entity.components.workable!.WorkedBy({}, 3);
-    expect(placement.hammerTargets).toEqual([]);
+    expect(workTargets('HAMMER')).toHaveLength(1);
+    await workTargets('HAMMER')[0].entity.components.workable!.WorkedBy({}, 3);
+    expect(workTargets('HAMMER')).toEqual([]);
     const second = await placement.spawnFromSave('fence', { id: 'fence:2', transform: { position: [9, 0, 6], rotationY: 0 }, components: {} });
-    const target = placement.hammerTargets[0];
-    for (let hit = 0; hit < 3; hit++) { expect(placement.hammerTargets).toHaveLength(1); target.playHit(); }
+    const target = workTargets('HAMMER')[0];
+    for (let hit = 0; hit < 3; hit++) { expect(workTargets('HAMMER')).toHaveLength(1); target.work(); }
     expect(dropLoot).toHaveBeenCalledWith([{ itemId: 'twigs', count: 1 }], expect.any(THREE.Vector3));
-    expect(placement.hammerTargets).toEqual([]);
+    expect(workTargets('HAMMER')).toEqual([]);
     expect(second.parent).toBeNull();
     expect(world.physics!.bodies).toHaveLength(0);
   } finally { placement.dispose(); }

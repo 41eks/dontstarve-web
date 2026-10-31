@@ -6,6 +6,7 @@ import type { Lighter } from '../../componets/src/lighter';
 import type { Burnable } from '../../componets/src/burnable';
 import type { Propagator } from '../../componets/src/propagator';
 import { getDeconstructionRecipe } from '../../componets/src/recipes.ts';
+import { ACTIONS, type MouseActionId } from './actions.ts';
 
 export interface ComponentActionEntity extends WorkInst {
   readonly _cached_reskinname?: Map<string, string | undefined>;
@@ -52,16 +53,54 @@ export function equippedActionEntity(equipment: HandEquipment | null | undefined
   return entity && 'hasTag' in entity && 'components' in entity ? entity as unknown as ComponentActionEntity : undefined;
 }
 
-/** EQUIPPED.tool + ISVALID.workable, for the supported tool actions. */
-export function collectEquippedActions(tool: ComponentActionEntity | undefined, target: Pick<ComponentActionEntity, 'hasTag' | 'isRemoved'> & { readonly prefab?: string }, right: boolean): ('NET' | 'HAMMER' | 'MINE' | 'CHOP' | 'DIG' | 'CASTSPELL' | 'LIGHT')[] {
+/** constants.lua TOOLACTIONS, for the work actions ported here. */
+const TOOLACTIONS = ['NET', 'HAMMER', 'MINE', 'CHOP', 'DIG'] as const;
+export type ToolAction = typeof TOOLACTIONS[number];
+
+/** The parts of an entity componentactions reads: its tags and the components it registered. */
+export type ComponentActionTarget = Pick<ComponentActionEntity, 'hasTag' | 'isRemoved'> & {
+  readonly prefab?: string;
+  readonly components?: object;
+};
+
+type IsValidFn = (inst: ComponentActionTarget, action: string, right: boolean) => boolean;
+type EquippedFn = (inst: ComponentActionEntity, doer: unknown, target: ComponentActionTarget, actions: ToolAction[], right: boolean) => void;
+
+/** componentactions.lua COMPONENT_ACTIONS, for the component entries ported here. */
+export const COMPONENT_ACTIONS: { readonly EQUIPPED: Readonly<Record<string, EquippedFn>>; readonly ISVALID: Readonly<Record<string, IsValidFn>> } = {
+  EQUIPPED: {
+    tool: (inst, _doer, target, actions, right) => {
+      if (target.hasTag('INLIMBO') || inst.components.equippable?.IsRestricted()) return;
+      for (const action of TOOLACTIONS) {
+        if (inst.hasTag(`${action}_tool`) && isActionValid(target, action, right)) { actions.push(action); return; }
+      }
+    },
+  },
+  ISVALID: {
+    workable: (inst, action, right) => (right || action !== 'HAMMER') && inst.hasTag(`${action}_workable`),
+  },
+};
+
+/** EntityScript:IsActionValid: rmb actions only on the right button, then any registered component's ISVALID. */
+export function isActionValid(inst: ComponentActionTarget, action: string, right: boolean): boolean {
+  const rmb = (ACTIONS[action as MouseActionId] as { rmb?: boolean } | undefined)?.rmb;
+  if (rmb !== undefined && rmb !== right) return false;
+  return Object.keys(inst.components ?? {}).some(name => COMPONENT_ACTIONS.ISVALID[name]?.(inst, action, right) === true);
+}
+
+/** EntityScript:CollectActions("EQUIPPED", doer, target, actions, right) for the item in the doer's hands. */
+export function collectEquippedItemActions(item: ComponentActionEntity | undefined, doer: unknown,
+  target: ComponentActionTarget, right: boolean): ToolAction[] {
+  const actions: ToolAction[] = [];
+  if (!item || item.isRemoved || target.isRemoved) return actions;
+  for (const name of Object.keys(item.components)) COMPONENT_ACTIONS.EQUIPPED[name]?.(item, doer, target, actions, right);
+  return actions;
+}
+
+/** EQUIPPED.tool, plus the spellcaster and lighter branches not yet moved into COMPONENT_ACTIONS. */
+export function collectEquippedActions(tool: ComponentActionEntity | undefined, target: ComponentActionTarget, right: boolean): (ToolAction | 'CASTSPELL' | 'LIGHT')[] {
   if (!tool || tool.isRemoved || target.isRemoved || target.hasTag('INLIMBO')) return [];
-  const actions: ('NET' | 'HAMMER' | 'MINE' | 'CHOP' | 'DIG' | 'CASTSPELL' | 'LIGHT')[] = [];
-  if (tool.components.tool) {
-    for (const action of ['NET', 'HAMMER', 'MINE', 'CHOP', 'DIG'] as const) {
-      if (tool.hasTag(`${action}_tool`) && (right || (action !== 'HAMMER' && action !== 'DIG'))
-        && target.hasTag(`${action}_workable`)) { actions.push(action); break; }
-    }
-  }
+  const actions: (ToolAction | 'CASTSPELL' | 'LIGHT')[] = collectEquippedItemActions(tool, undefined, target, right);
   if (right && tool.components.spellcaster && !target.hasTag('nomagic') && (tool.hasTag('castontargets')
     || (tool.hasTag('castonrecipes') && target.prefab && getDeconstructionRecipe(target.prefab)))) actions.push('CASTSPELL');
   if (right && tool.components.lighter && target.hasTag('canlight')

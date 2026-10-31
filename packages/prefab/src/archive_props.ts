@@ -6,11 +6,9 @@ import { createSharedArchiveSprite, preloadSharedArchiveSprite, ArchiveSpriteAss
 import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
 import { createArchiveEntity, createEmptyEntity, type PrefabInstance } from './prefabInstance';
 import { watchTileActivity } from './tileActivity';
-import type { PickaxeTarget } from '@dontstarve-web/stategraphs/mine';
 import { createRenderEffect, createSignal, watchSignal, type ReadonlySignal, type TileStateQuery } from '@dontstarve-web/signals';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
 import { Workable } from '../../componets/src/workable';
-import { modelEntries } from './modelRecords';
 import type { MiniMapState } from '../../map/src/minimapState';
 import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
@@ -330,17 +328,6 @@ export class ArchivePropsManager {
     return [...this.props.values()].filter(({ model, sprite }) => sprite?.loaded && model.userData.billboard !== false)
       .map(({ model }) => ({ object: model, footPosition: model.position, cameraDepth: 0 }))
       .concat([...this.effects].map(({ display: { model } }) => ({ object: model, footPosition: model.position, cameraDepth: 0 })));
-  }
-
-
-  get mineTargets(): PickaxeTarget[] { return this.getMineTargets(); }
-
-  getMineTargets(model?: THREE.Object3D): PickaxeTarget[] {
-    return modelEntries(this.props, model).filter(([, prop]) => prop.workable?.CanBeWorked()).map(([model, prop]) => ({
-      id: String(prop.instance.entityId), instance: prop.instance, display: prop.display,
-      position: prop.instance.position, entity: prop.instance,
-      isValid: () => this.props.get(model) === prop && !!prop.workable?.CanBeWorked(),
-    }));
   }
 
   /** workable.savestate is false: a surviving statue reloads with its full work count. */

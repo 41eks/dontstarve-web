@@ -100,7 +100,6 @@ export function actionEntity(model: THREE.Object3D, prefab: string, inst?: Compo
     entity.removeTag('tickingarea');
     liveEntities.delete(entity);
     delete entity.reskinTarget;
-    delete entity.hammerTarget;
     delete entity.pickupTarget;
     entitiesByModel.delete(model);
   });

@@ -9,7 +9,6 @@ import { createArchiveEntity, prefabInstance, type PrefabInstance } from './pref
 import type { TileStateQuery } from '@dontstarve-web/signals';
 import { watchTileActivity } from './tileActivity';
 import { newEntityId } from './saveRecord';
-import type { PickaxeTarget } from '@dontstarve-web/stategraphs/mine';
 import { Workable } from '../../componets/src/workable';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { ErodeAway } from '../../componets/src/erodeaway';
@@ -290,21 +289,6 @@ export class RockManager {
     if (this.ownsScheduler) this.scheduler.advance(dt);
     this.displays.update(dt);
     for (const rock of this.rocks) rock.controller?.update();
-  }
-
-  get mineTargets(): PickaxeTarget[] { return this.getMineTargets(); }
-
-  getMineTargets(model?: THREE.Object3D): PickaxeTarget[] {
-    return this.mouseRecords.select(model, this.rocks).flatMap((rock) => {
-      const controller = rock.controller;
-      return controller?.canMine ? [{
-        id: String(rock.instance.entityId),
-        model: rock.model,
-        position: rock.model.position,
-        entity: controller.entity,
-        isValid: () => controller.canMine,
-      }] : [];
-    });
   }
 
   get renderEntities() {

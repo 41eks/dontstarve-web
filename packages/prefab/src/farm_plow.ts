@@ -15,13 +15,10 @@ import { newEntityId } from './saveRecord';
 import { snapToTileCenter, TILE_SIZE } from './tile';
 import { TurfMap, WORLD_TILES } from './turfMap';
 import { PlaySound, type SoundHandle } from './sound';
-import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
-import type { ShovelTarget } from '@dontstarve-web/stategraphs/dig';
 import type { WorldContext } from './worldContext';
 import { FARM_PLANT_ART, VEGGIE_SEED_IDS } from './veggies';
 import { actionEntity, disposeActionEntity, findActionEntity } from './actionEntity';
 import { Workable } from '../../componets/src/workable';
-import { performToolWork } from '../../stategraphs/src/componentactions';
 
 export const FARM_PLOW_ITEM_ID = 'farm_plow_item';
 export const FARM_PLOW_ID = 'farm_plow';
@@ -208,13 +205,6 @@ export class FarmPlowPlacement implements FarmActionWorld {
     workable.SetWorkAction('HAMMER');
     workable.SetWorkLeft(1);
     workable.SetWorkable(state.phase !== 'collapse');
-    inst.hammerTarget = {
-      id: plow.id, entity: inst, instance, display, position: instance.position,
-      isValid: () => !this.disposed && this.plows.get(plow.id) === plow && plow.phase !== 'collapse',
-      playHit: () => {
-        if (this.plows.get(plow.id) === plow && plow.phase !== 'collapse') performToolWork('HAMMER', inst, {});
-      },
-    };
     new ToolMouseTarget(inst, instance, workable, this.world.handEquipment);
     workable.SetOnFinishCallback(() => {
       if (this.plows.get(plow.id) !== plow || plow.phase === 'collapse') return;
@@ -282,28 +272,7 @@ export class FarmPlowPlacement implements FarmActionWorld {
     this.debrisLoot = handler;
   }
 
-  /** farm_soil_debris.lua: one successful DIG removes only that debris entity. */
-  get digTargets(): readonly ShovelTarget[] { return this.getDigTargets(); }
 
-  getDigTargets(model?: THREE.Object3D): readonly ShovelTarget[] {
-    return this.mouseDecor.select(model, this.decor.values()).filter(({ prefabId }) => prefabId === 'farm_soil_debris').map((item) => {
-      const position = item.entity.instance.position;
-      const isValid = () => !this.disposed && this.decor.get(item.id) === item
-        && this.turf.getTileAtWorld(position) === WORLD_TILES.FARMING_SOIL;
-      return { id: item.id, model: item.entity.display.model, position, isValid, dig: () => {
-        if (!isValid()) return false;
-        const origin = position.clone();
-        this.decor.delete(item.id); item.stopTracking?.(); item.entity.instance.remove(); this.puff(origin);
-        // Base FARM_SOIL_DEBRIS_LOOT_CHANCE, without porting unrelated luck skills.
-        if (this.random() < 0.25 && this.debrisLoot) {
-          let roll = this.random() * 100;
-          const loot = DEBRIS_LOOT.find(([, weight]) => { roll -= weight; return roll < 0; })?.[0] ?? 'goldnugget';
-          this.debrisLoot(loot, origin);
-        }
-        return true;
-      } };
-    });
-  }
 
   /** map.lua: soil can be retilled; debris and planted crops still block the point. */
   canTill(point: THREE.Vector3): boolean {
@@ -429,13 +398,7 @@ export class FarmPlowPlacement implements FarmActionWorld {
     this.removePlow(plow);
   }
 
-  get hammerTargets(): readonly HammerTarget[] { return this.getHammerTargets(); }
 
-  getHammerTargets(model?: THREE.Object3D): readonly HammerTarget[] {
-    return this.mousePlows.select(model, this.plows.values()).filter(plow => plow.phase !== 'collapse')
-      .map(plow => actionEntity(plow.entity.display.model, FARM_PLOW_ID).hammerTarget)
-      .filter((target): target is HammerTarget => target !== undefined);
-  }
 
   spawnDecor(prefabId: FarmDecorId, position: THREE.Vector3,
     saved?: FarmSoilSaveState | FarmDebrisSaveState, id = newEntityId()): THREE.Group {
@@ -465,9 +428,31 @@ export class FarmPlowPlacement implements FarmActionWorld {
     const item: Decor = { id, prefabId, entity, broken, animation, ...(plowId ? { plowId } : {}) };
     this.decor.set(id, item); this.mouseDecor.set(entity.display.model, item);
     this.decorPositions.add(item);
+    if (prefabId === 'farm_soil_debris') {
+      // farm_soil_debris.lua: workable DIG with one work, finished by onfinishcallback.
+      const workable = new Workable(entity.instance);
+      workable.SetWorkAction('DIG');
+      workable.SetWorkLeft(1);
+      workable.SetOnFinishCallback(() => this.digDebris(item));
+      entity.instance.components.workable = workable;
+      entity.instance.onRemove(() => workable.dispose());
+    }
     actionEntity(entity.display.model, prefabId);
     item.stopTracking = () => { disposeActionEntity(entity.display.model); this.decorPositions.delete(item); };
     return item;
+  }
+
+  /** farm_soil_debris.lua onfinishcallback: dirt puff, remove, then the FARM_SOIL_DEBRIS_LOOT_CHANCE loot roll. */
+  private digDebris(item: Decor): void {
+    if (this.disposed || this.decor.get(item.id) !== item) return;
+    const origin = item.entity.instance.position.clone();
+    this.decor.delete(item.id); item.stopTracking?.(); item.entity.instance.remove(); this.puff(origin);
+    // Base FARM_SOIL_DEBRIS_LOOT_CHANCE, without porting unrelated luck skills.
+    if (this.random() < 0.25 && this.debrisLoot) {
+      let roll = this.random() * 100;
+      const loot = DEBRIS_LOOT.find(([, weight]) => { roll -= weight; return roll < 0; })?.[0] ?? 'goldnugget';
+      this.debrisLoot(loot, origin);
+    }
   }
 
   private collapseSoil(position: THREE.Vector3): void {

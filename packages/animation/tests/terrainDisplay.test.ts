@@ -10,6 +10,7 @@ import { NightmareRockManager, type NightmareRockInstance } from '../../prefab/s
 import { prefabInstance, modelHasTag } from '../../prefab/src/prefabInstance';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { FACING } from '../src/facing';
+import { workTargets } from './workTargets';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -28,7 +29,7 @@ it('restores portal ground layers, its declared shadow and statue work state wit
     const portal = (await manager.spawn('archive_portal', new THREE.Vector3(3, 0, 6)))!;
     const statue = (await manager.spawn('archive_moon_statue', new THREE.Vector3(9, 0, 6)))!;
     const ambient = (await manager.spawn('archive_ambient_sfx', new THREE.Vector3(15, 0, 6)))!;
-    const mine = manager.mineTargets[0];
+    const mine = workTargets('MINE')[0];
     mine.entity.components.workable!.WorkedBy({}, 5);
     await settle();
     const shadow = portal.children.find(child => modelHasTag(child, 'DECOR'))!;
@@ -93,7 +94,7 @@ it('grows an unloaded marble shrub and keeps shape, colour and the scheduled min
     expect(instance.sprite.sprite.peek().colour).toEqual([.7, .7, .7]);
     expect(instance.sprite.sprite.peek().appearance.get('archive-symbol:marbleshrub_top1')).toMatchObject({ sourceSymbol: 'marbleshrub_top3' });
     awake.set(false); await settle();
-    const target = manager.mineTargets[0];
+    const target = workTargets('MINE')[0];
     target.entity.components.workable!.WorkedBy({}, 8);
     expect(instance.status.peek()).toBe('asleep');
     expect(instance.persists).toBe(false);

@@ -1,4 +1,3 @@
-import { actionTargetModel } from '../../stategraphs/src/actionTargetView';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
@@ -19,6 +18,7 @@ import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { bindTestWorld, drawn, plantInstance } from './worldContentFixture';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { workTargets } from './workTargets';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -100,7 +100,7 @@ it('digs three separate fruits and a root, transplants, fertilizes and stops aft
   try {
     const position = new THREE.Vector3(24, 0, 36);
     await drawn(s.bushes.spawn(position));
-    expect(performToolWork('DIG', s.bushes.digTargets[0].entity!, {})).toBe(true);
+    expect(performToolWork('DIG', workTargets('DIG')[0].entity!, {})).toBe(true);
     const loot = s.ground.exportRecords();
     expect(loot.map(record => record.components.stack?.itemId)).toEqual([
       'rock_avocado_fruit', 'rock_avocado_fruit', 'rock_avocado_fruit', 'dug_rock_avocado_bush']);
@@ -112,7 +112,7 @@ it('digs three separate fruits and a root, transplants, fertilizes and stops aft
       canDeployPlant: () => true, deployPlant: (point: THREE.Vector3) => s.bushes.transplant(point),
     })).toBe(true);
     expect(s.inventory.count('dug_rock_avocado_bush')).toBe(1);
-    const model = actionTargetModel(s.bushes.digTargets[0]), { pickable, growable, witherable } = plantInstance(model).components;
+    const model = workTargets('DIG')[0].model, { pickable, growable, witherable } = plantInstance(model).components;
     expect(pickable.IsBarren()).toBe(true); expect(growable.IsGrowing()).toBe(false);
     expect(plantInstance(model).sprite.currentAnimation).toBe('dead1');
     const fertilizer = s.inventory.entities.create({ itemId: 'poop', count: 1 }); s.inventory.configureItem(fertilizer);
@@ -138,7 +138,7 @@ it('digs three separate fruits and a root, transplants, fertilizes and stops aft
     expect(pickable.Fertilize(fertilizer)).toBe(true); expect(growable.IsGrowing()).toBe(true);
     expect(witherable.IsWithered()).toBe(false);
     witherable.ForceWither();
-    expect(performToolWork('DIG', s.bushes.digTargets[0].entity!, {})).toBe(true);
+    expect(performToolWork('DIG', workTargets('DIG')[0].entity!, {})).toBe(true);
     expect(s.ground.exportRecords().slice(-2).map(record => record.components.stack?.itemId)).toEqual(['twigs', 'twigs']);
     s.advance(10000); expect(s.bushes.exportRecords()).toEqual([]); expect(s.physics.bodies).toHaveLength(0);
   } finally { s.dispose(); restored.dispose(); }
@@ -152,7 +152,7 @@ it('exports and reloads debug commands, roots and fruit; a saved burning mature 
       s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
     expect(s.inventory.getItemSpec('dug_rock_avocado_bush').maxStack).toBe(10);
     expect(s.inventory.getItemSpec('rock_avocado_fruit').maxStack).toBe(40);
-    const model = actionTargetModel(s.bushes.digTargets[0]);
+    const model = workTargets('DIG')[0].model;
     const beforeBurn = s.bushes.exportRecords()[0];
     plantInstance(model).components.burnable.Ignite();
     let json = '';

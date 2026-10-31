@@ -1,3 +1,4 @@
+import { performToolWork } from '../../stategraphs/src/componentactions';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabDisplay } from '../../display/src';
 import { fixturePickup } from './pickup-fixture';
@@ -38,11 +39,11 @@ export async function checkResearchLabDestruction() {
         id: `destroy_${id}`, transform: { position: position.toArray(), rotationY: 0 },
         components: { building: { state: 'idle', skinId: skins[index] } },
       });
-      const target = entities.buildingPlacement.hammerTargets.find(target => actionTargetModel(target) === model)!;
+      const target = findActionEntity(model)!;
       const beforeCount = entities.groundItems.exportRecords().length;
-      for (let i = 0; i < 3; i++) target.playHit();
-      const remainedAfterThree = target.isValid() && entities.registry.exportRecords()[id].length === 1;
-      target.playHit();
+      for (let i = 0; i < 3; i++) performToolWork('HAMMER', target, {});
+      const remainedAfterThree = target.hasTag('HAMMER_workable') && entities.registry.exportRecords()[id].length === 1;
+      performToolWork('HAMMER', target, {});
       await new Promise(resolve => setTimeout(resolve, 0));
       const lootTargets = entities.groundItems.reskinTargets.slice(beforeCount);
       // Logical loot exists before its display finishes loading the ground art.
@@ -67,7 +68,7 @@ export async function checkResearchLabDestruction() {
         const stack = record.components.stack!;
         loot.set(stack.itemId, (loot.get(stack.itemId) ?? 0) + stack.count);
       }
-      cases.push({ id, remainedAfterThree, removed: !target.isValid() && model.parent === null,
+      cases.push({ id, remainedAfterThree, removed: !target.hasTag('HAMMER_workable') && model.parent === null,
         records: entities.registry.exportRecords()[id],
         loot: Array.from(loot, ([itemId, count]) => ({ itemId, count })),
         airborne, moved, spread, inFlightGrounded, settled, stable,

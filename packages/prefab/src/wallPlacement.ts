@@ -7,7 +7,6 @@ import { snapToWallSlotCenter } from './tile';
 import type { WorldContext } from './worldContext';
 import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
 import { newEntityId, saveGroundPosition, type PlacementSaveRecord, type PlacedEntitySaveRecord } from './saveRecord';
-import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
 import { PrefabInstance, bindInstance } from './prefabInstance';
 import { PrefabDisplayGroup, SpriteResources, SpriteState, type PrefabDisplay } from '@dontstarve-web/display';
 import { watchTileActivity } from './tileActivity';
@@ -16,7 +15,6 @@ import type { ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
 import { wallWorldPrefab, wallWorldSkin } from './wallSkins';
 import { actionEntity } from './actionEntity';
 import { Workable } from '../../componets/src/workable';
-import { performToolWork } from '../../stategraphs/src/componentactions';
 import { PlaySound } from './sound';
 import { TILE_SIZE } from './tile';
 import { MakeObstaclePhysics } from './standardcomponents';
@@ -222,17 +220,7 @@ export class WallPlacement<BuildId extends string> {
         return this.displays.renderEntities;
     }
 
-    get hammerTargets(): readonly HammerTarget[] { return this.getHammerTargets(); }
 
-    getHammerTargets(model?: THREE.Object3D): readonly HammerTarget[] {
-        const targets: HammerTarget[] = [];
-        for (const wall of this.mouseRecords.select(model, this.placed)) {
-            const entity = wall.entity!;
-            if (!entity.hasTag('HAMMER_workable')) continue;
-            if (entity.hammerTarget) targets.push(entity.hammerTarget);
-        }
-        return targets;
-    }
 
     /** Live walls that combat:CanTarget; broken walls are dead and excluded. */
     get combatTargets(): readonly WallCombatTarget[] {
@@ -403,11 +391,6 @@ export class WallPlacement<BuildId extends string> {
         workable.SetWorkLeft(definition.hammerWorkLeft ?? 3);
         new ToolMouseTarget(entity, wall.instance, workable, this.world.handEquipment);
         workable.SetOnWorkCallback(onhit);
-        entity.hammerTarget = {
-            get id() { return String(instance.entityId); }, instance, display: wall.display, entity,
-            position: instance.position, isValid: () => this.isLive(wall),
-            playHit: () => { performToolWork('HAMMER', entity, {}); },
-        };
         workable.SetOnFinishCallback(() => {
             if (!this.placed.has(wall)) return;
             const context = this.hammerContext(wall);

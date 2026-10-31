@@ -19,6 +19,7 @@ export function bufferingPerformer(onPush?: (action: BufferedAction<string>) => 
       return true;
     }),
     cancelAction: vi.fn((action?: string) => { if (active && (!action || active.action === action)) active = undefined; }),
+    isActionActive: (action: BufferedAction<string>) => active === action,
   };
   return {
     stategraph,

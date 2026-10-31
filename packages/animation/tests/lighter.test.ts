@@ -28,6 +28,7 @@ import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
 import type { SavedEntity } from '../../../src/save/types';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { reskinEntity } from '../../prefab/src/reskin_tool';
+import { workTargets } from './workTargets';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -210,7 +211,7 @@ it('burns a cooking pot after 20 seconds, drops the product and disables cooking
     const record = placement.exportRecords()[0].record;
     expect(record.components.building).toMatchObject({ burnt: true, skinId: 'cookpot_cauldron' });
     expect(record.components.stewer).toBeUndefined();
-    placement.hammerTargets[0].playHit();
+    workTargets('HAMMER')[0].work();
     expect(model.parent).toBeNull(); expect(placement.exportRecords()).toEqual([]);
   } finally { placement.dispose(); inventory.dispose(); }
 });

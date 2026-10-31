@@ -16,16 +16,13 @@ import type { BernieWorld } from '@dontstarve-web/prefab/bernie';
 import type { ButterflyWorld } from '@dontstarve-web/prefab/butterfly';
 import { GroundPrefabRegistry } from '@dontstarve-web/prefab/groundPrefabRegistry';
 import type { GroundItemDefinition, GroundItemVisual, GroundPrefabOptions, GroundSpawnOptions } from '@dontstarve-web/prefab/groundPrefab';
-import type { NetCaptureTarget } from '@dontstarve-web/stategraphs/net';
 import type { FirefliesWorld } from '@dontstarve-web/prefab/fireflies';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import { isPlayerNearby } from '@dontstarve-web/prefab/playerProximity';
 import { LootFling, type LootLaunch } from '@dontstarve-web/prefab/lootFling';
 import { PHONOGRAPH_ID } from '@dontstarve-web/prefab/phonograph';
 import { RECORD_ID, RECORD_SONGS, isPhonographRecord } from '@dontstarve-web/prefab/records';
-import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
 import type { SavedEntity } from './save/types';
-import { performToolWork } from '../packages/stategraphs/src/componentactions';
 import { actionEntity, disposeActionEntity, findActionEntity } from '../packages/prefab/src/actionEntity';
 import type { GameTimeScheduler } from '../packages/componets/src/gameTimeScheduler';
 import type { DeconstructionTarget } from '@dontstarve-web/prefab/staff';
@@ -68,7 +65,6 @@ export class GroundItemManager {
   private readonly inventory: InventoryStore;
   private readonly stopDrops: () => void;
   private readonly stopSpawnAsh?: () => void;
-  private onNetCapture?: (target: NetCaptureTarget) => boolean;
   private readonly pointer: PointerRaycaster;
   private readonly mouseActions?: PlayerActionPicker;
   private readonly renderer: THREE.WebGLRenderer;
@@ -418,13 +414,6 @@ export class GroundItemManager {
     const actions = actionEntity(model, entity.prefab, entity);
     actions.reskinTarget = this.createReskinTarget(record);
     if (entity.components.workable?.GetWorkAction() === 'HAMMER') {
-      actions.hammerTarget = {
-        id: record.id, entity, model,
-        get position() { return record.footPosition; },
-        isValid: () => !this.disposed && this.activeItems.has(record) && !this.inserting.has(record)
-          && entity.hasTag('HAMMER_workable'),
-        playHit: () => { performToolWork('HAMMER', entity, {}); },
-      };
     }
     actions.pickupTarget = {
       model, entity, get position() { return record.footPosition; },
@@ -493,18 +482,7 @@ export class GroundItemManager {
     this.refreshUpdating(flung);
   }
 
-  /** Component-driven ground work, including inventory prefabs such as hard stone fruit. */
-  get mineTargets(): import('@dontstarve-web/stategraphs/mine').PickaxeTarget[] { return this.getMineTargets(); }
 
-  getMineTargets(model?: THREE.Object3D): import('@dontstarve-web/stategraphs/mine').PickaxeTarget[] {
-    return modelValues(this.items, model, this.activeItems).filter(({ entity }) => entity.components.workable?.GetWorkAction() === 'MINE'
-      && entity.components.workable.CanBeWorked()).map(record => ({
-      id: record.entity.id, model: record.model, position: record.footPosition,
-      entity: actionEntity(record.model, record.entity.prefab, record.entity),
-      isValid: () => this.activeItems.has(record) && !record.entity.isRemoved
-        && record.entity.components.workable?.CanBeWorked() === true,
-    }));
-  }
 
   exportRecords(): SavedEntity[] {
     return [...[...this.items.values()].flatMap<SavedEntity>((record) => {
@@ -606,23 +584,9 @@ export class GroundItemManager {
           hasTag: (tag: string) => record.entity.hasTag(tag), PushEvent: (name: string, data: unknown) => record.entity.PushEvent(name, data) },
         isValid: () => this.activeItems.has(record) && !record.entity.isRemoved && !record.entity.hasTag('INLIMBO') }));
   }
-  get hammerTargets(): readonly HammerTarget[] { return this.getHammerTargets(); }
 
-  getHammerTargets(model?: THREE.Object3D): readonly HammerTarget[] {
-    return modelValues(this.items, model, this.activeItems).filter(record => record.entity.components.workable?.GetWorkAction() === 'HAMMER')
-      .map(record => findActionEntity(record.model)?.hammerTarget)
-      .filter((target): target is HammerTarget => target !== undefined);
-  }
 
-  setNetCaptureHandler(handler: (target: NetCaptureTarget) => boolean): void {
-    this.onNetCapture = handler;
-  }
-  get netCaptureTargets(): readonly NetCaptureTarget[] { return this.getNetCaptureTargets(); }
 
-  getNetCaptureTargets(model?: THREE.Object3D): readonly NetCaptureTarget[] {
-    return modelValues(this.items, model, this.activeItems).filter(record => record.entity.components.workable?.GetWorkAction() === 'NET')
-      .map((record) => this.captureTarget(record));
-  }
     get reskinTargets(): readonly ReskinTarget[] {
         return Array.from(this.activeItems, record => findActionEntity(record.model)?.reskinTarget)
             .filter((target): target is ReskinTarget => target !== undefined);
@@ -642,22 +606,12 @@ export class GroundItemManager {
 
     private isNetCreature(itemId: string): boolean { return this.prefabs.get(itemId)?.capture === 'net'; }
 
-  private captureTarget(record: GroundItemRecord): NetCaptureTarget {
-    const isValid = () => this.activeItems.has(record) && !record.entity.isRemoved && !record.isRemoved?.() && record.entity.hasTag('NET_workable');
-    return {
-      id: record.id, entity: record.entity, model: record.model, get position() { return record.footPosition; }, isValid,
-      isClickable: () => record.isClickable?.() !== false,
-      capture: () => {
-        return isValid() && performToolWork('NET', record.entity, { components: { inventory: this.inventory } })
-          && (!!record.entity.components.inventoryitem.owner || record.entity.isRemoved);
-      },
-    };
-  }
 
   private readonly handlePointerDown = (event: PointerEvent) => {
     if ((event.button !== 0 && event.button !== 2) || event.defaultPrevented || this.activeItems.size === 0) return;
 
-    const actions = this.mouseActions?.getMouseActions(event);
+    // The shared picker resolves this event's target model.
+    this.mouseActions?.getMouseActions(event);
     let root: THREE.Object3D | null;
     if (this.mouseActions) root = this.mouseActions.targetModel ?? null;
     else {
@@ -679,12 +633,6 @@ export class GroundItemManager {
       event.preventDefault();
       void this.insertPhonographRecord(record.model, source)
         .catch((error: unknown) => console.error('Unable to insert record', error));
-      return;
-    }
-    if (record.entity.components.workable?.GetWorkAction() === 'NET') {
-      if (this.mouseActions && actions?.left?.action !== 'NET') return;
-      event.preventDefault();
-      this.onNetCapture?.(this.captureTarget(record));
       return;
     }
   };

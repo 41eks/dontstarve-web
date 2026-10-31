@@ -9,6 +9,7 @@ import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/grou
 import { createGroundItemVisual } from './groundItemVisual';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { PlaySound } from '../../prefab/src/sound';
+import { workTargets } from './workTargets';
 
 const soundStops = vi.hoisted(() => [] as ReturnType<typeof vi.fn>[]);
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}),
@@ -66,7 +67,7 @@ it('snaps deployment, drills for 15 seconds, terraforms and returns a folded thr
       components: { farmPlow: { phase: 'drill_pre', remainingSeconds: FARM_PLOW_DRILLING_DURATION, deployItem: savedItem } } });
     expect(plow.canDeploy(new THREE.Vector3(4, 0, 4))).toBe(false);
     // drill_pre's animover starts drilling once the display has drawn it.
-    await plow.hammerTargets[0].display!.artLoaded();
+    await workTargets('HAMMER')[0].display!.artLoaded();
     expect(plow.exportRecords()[0].components.farmPlow.phase).toBe('drill_pre');
     await advance(2);
     expect(plow.exportRecords()[0].components.farmPlow.phase).toBe('drill_loop');
@@ -102,8 +103,8 @@ it('does not return an exhausted item on its fourth use and one hammer hit recov
     const original = item(3);
     plow.deploy(new THREE.Vector3(-13, 0, -1), () => original);
     await advance(3);
-    const target = plow.hammerTargets[0];
-    target.playHit(); target.playHit();
+    const target = workTargets('HAMMER')[0];
+    target.work(); target.work();
     expect(target.isValid()).toBe(false);
     expect(plow.exportRecords()).toEqual([]);
     expect(returnItem).toHaveBeenCalledExactlyOnceWith(new THREE.Vector3(-18, 0, -6), original.snapshot());

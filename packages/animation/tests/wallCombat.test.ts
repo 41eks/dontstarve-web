@@ -13,8 +13,8 @@ import { Combat, type CombatInst } from '../../componets/src/combat';
 import { ItemEntity } from '../../inventory/src';
 import { PlaySound } from '../../prefab/src/sound';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
-import { actionTargetModel } from '../../stategraphs/src/actionTargetView';
 import { reskinEntity } from '../../prefab/src/reskin_tool';
+import { workTargets } from './workTargets';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
 beforeEach(() => {
@@ -61,23 +61,23 @@ it('hammers out a middle wall once, invalidates stale targets and preserves the 
         components: { health: { current: 100, maximum: 400 } } });
     }
     const before = placement.exportRecords();
-    const target = placement.hammerTargets[1], combatTarget = placement.combatTargets[1], skinTarget = placement.reskinTargets[1];
+    const target = workTargets('HAMMER')[1], combatTarget = placement.combatTargets[1], skinTarget = placement.reskinTargets[1];
     await target.display!.artLoaded();
     const release = vi.fn(); target.display!.onDispose(release);
-    target.playHit(); target.playHit();
+    target.work(); target.work();
     expect(target.isValid()).toBe(true);
     expect(placement.exportRecords()).toEqual(before);
-    target.playHit();
+    target.work();
     expect(dropLoot).toHaveBeenCalledExactlyOnceWith([{ itemId: 'rocks', count: 1 }], new THREE.Vector3(7, 0, -6));
     expect(target.isValid()).toBe(false);
     expect(combatTarget.isValid()).toBe(false);
     expect(skinTarget.isValid()).toBe(false);
-    expect(actionTargetModel(target).parent).toBeNull();
+    expect(target.model.parent).toBeNull();
     expect(release).toHaveBeenCalledOnce();
     expect(reskinEntity(skinTarget)).toBe(false);
-    target.playHit();
+    target.work();
     expect(dropLoot).toHaveBeenCalledOnce();
-    expect(placement.hammerTargets.map(wall => wall.id)).toEqual(['first', 'last']);
+    expect(workTargets('HAMMER').map(wall => wall.id)).toEqual(['first', 'last']);
     expect(placement.exportRecords()).toEqual([before[0], before[2]]);
     const restored = setup();
     try {
@@ -94,7 +94,7 @@ it('gives walls source health, player damage reduction, health poses, weapon wea
     await placement.spawnFromSave('wall_moonrock', { id: 'moonrock', transform: { position: [6, 0, -6], rotationY: 0 }, components: {} });
     placement.update();
     const [stoneTarget, moonrockTarget] = placement.combatTargets;
-    await placement.hammerTargets[0].display!.artLoaded();
+    await workTargets('HAMMER')[0].display!.artLoaded();
     // walls.lua: SetMaxHealth(maxhealth) then SetCurrentHealth(maxhealth * .5); half is the static build image.
     expect(stoneTarget.inst.components.health!.OnSave()).toEqual({ health: 200, maxhealth: 400 });
     expect(pose(stone)).toBeUndefined();
@@ -129,7 +129,7 @@ it('gives walls source health, player damage reduction, health poses, weapon wea
     expect(pose(stone)).toBe('broken');
     expect(stoneTarget.isValid()).toBe(false);
     expect(player.combat.CanTarget(stoneTarget.inst)).toBe(false);
-    expect(placement.hammerTargets.map(target => target.id)).toContain('stone');
+    expect(workTargets('HAMMER').map(target => target.id)).toContain('stone');
 
     const records = placement.exportRecords();
     expect(records.map(({ record }) => record.components.health)).toEqual([

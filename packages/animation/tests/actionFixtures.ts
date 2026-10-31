@@ -2,7 +2,7 @@ import { ItemEntity } from '../../inventory/src/entity';
 import { getHandEquipmentDefinition } from '../../prefab/src/handEquipment';
 import { configureButterflyEntity } from '../../prefab/src/butterfly';
 
-export function actionTool(itemId: 'hammer' | 'bugnet' | 'reskin_tool' | 'pickaxe' | 'goldenpickaxe') {
+export function actionTool(itemId: 'hammer' | 'bugnet' | 'reskin_tool' | 'pickaxe' | 'goldenpickaxe' | 'shovel' | 'axe') {
   const entity = new ItemEntity({ itemId, count: 1 });
   getHandEquipmentDefinition(itemId)!.definition.configureEntity!(entity);
   return { itemId, EQUIPSLOTS: 'HANDS' as const, entity };

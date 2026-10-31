@@ -7,13 +7,11 @@ import { watchTileActivity } from './tileActivity';
 import { watchSignal, type Signal } from '@dontstarve-web/signals';
 import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
-import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
 import type { ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
 import { Combat, type CombatInst } from '../../componets/src/combat';
 import { Health } from '../../componets/src/health';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Workable } from '../../componets/src/workable';
-import { performToolWork } from '../../stategraphs/src/componentactions';
 import { actionEntity, FindEntities } from './actionEntity';
 import { BuildCursor, declarePlacer, entityPlacer } from './buildCursor';
 import { reskinTarget } from './reskin_tool';
@@ -201,17 +199,7 @@ export class FencePlacement {
         return this.displays.renderEntities;
     }
 
-    get hammerTargets(): readonly HammerTarget[] { return this.getHammerTargets(); }
 
-    getHammerTargets(model?: THREE.Object3D): readonly HammerTarget[] {
-        const targets: HammerTarget[] = [];
-        for (const fence of this.mouseRecords.select(model, this.placed)) {
-            const entity = fence.entity!;
-            if (!entity.hasTag('HAMMER_workable')) continue;
-            if (entity.hammerTarget) targets.push(entity.hammerTarget);
-        }
-        return targets;
-    }
 
     /** fence.lua combat.onhitfn turns an attack into one unit of HAMMER work. */
     get combatTargets(): readonly WallCombatTarget[] {
@@ -369,11 +357,6 @@ export class FencePlacement {
         // onworked: hit, then idle.
         workable.SetOnWorkCallback(() => this.playHit(fence));
         workable.SetOnFinishCallback(() => this.hammered(fence));
-        entity.hammerTarget = {
-            get id() { return String(fence.instance.entityId); }, instance: fence.instance, display: fence.display, entity,
-            position: fence.instance.position, isValid: () => this.isLive(fence),
-            playHit: () => { performToolWork('HAMMER', entity, {}); },
-        };
         combat.onhitfn = (_inst, attacker) => {
             workable.WorkedBy({ PushEvent: (name, data) => attacker.PushEvent?.(name, data) });
         };

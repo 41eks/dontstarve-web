@@ -3,11 +3,11 @@ import { clockstate, createMemo, readonlySignal, type EventEmitter, type GetWatc
 import { cursorSlotAddress, equipmentSlotAddress, inventorySlotAddress, type InventoryStore, type InventoryStack } from '@dontstarve-web/inventory';
 import { createChestInventoryPanel, slotTransferController, type mountGameUi, type SlotAddress, type SlotItem } from '@dontstarve-web/ui';
 import {
-  AttackActionController, SpellCastActionController, BugNetCaptureController, FishingActionController, HammerActionController,
-  LighterActionController, PickaxeActionController, PitchforkActionController,
-  FarmHoeActionController, ShovelActionController, FoodActionController,
+  AttackActionController, SpellCastActionController, FishingActionController, PlayerController,
+  LighterActionController, PitchforkActionController,
+  FarmHoeActionController, FoodActionController,
   PickActionController, HarvestActionController, OccupiableActionController, MachineActionController, RummageActionController, PickupActionController, ReadActionController, PlayActionController, ItemUseActionController,
-  ReskinActionController, SleepActionController, MigrateActionController, HauntActionController, type PickupDoer, type ActionLocomotor, type PlayerActionEvents,
+  ReskinActionController, SleepActionController, MigrateActionController, HauntActionController, type PickupDoer, type PlayerLocomotor, type PlayerActionEvents,
 } from '@dontstarve-web/stategraphs';
 import { ItemEntity } from '@dontstarve-web/inventory';
 import { ARMORSNURTLESHELL_ID } from '@dontstarve-web/prefab/armorsnurtleshell';
@@ -97,7 +97,7 @@ interface ApplicationResourcesOptions {
   view: WorldContext;
   inventory: InventoryStore;
   playerAnimation?: WilsonAnimationController;
-  locomotor: ActionLocomotor;
+  locomotor: PlayerLocomotor;
   pickupDoer: PickupDoer;
   handEquipmentBinding: Pick<Awaited<ReturnType<typeof bindPlayerHandEquipment>>, 'flush'>;
   inventorySlotItem: (stack: Readonly<InventoryStack>, maxStack?: number) => SlotItem;
@@ -128,7 +128,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         .setOpen(model, isOpen, buildId);
     },
     register(events: EventEmitter<DisposalEvents>, scene: SceneResources) {
-      const { moonTrees, evergreenForest, deciduousForest, buildingPlacement, groundItems, molehills, farmPlow, rockManager, caveEntrances, grottoPools, mushtrees, mushroomPlants, reskinEffects, worldFx, flowerPlanting, marbleShrubs, archiveProps, marbleBeanSaplings, rockAvocadoSaplings, rockAvocadoBushes, berrybushes, monkeytails, grasses, saplings, scheduler, weather, moon, getWatchWorldContent, ponds } = scene;
+      const { moonTrees, buildingPlacement, groundItems, farmPlow, reskinEffects, worldFx, flowerPlanting, marbleBeanSaplings, rockAvocadoSaplings, rockAvocadoBushes, berrybushes, monkeytails, saplings, scheduler, weather, moon, getWatchWorldContent, ponds } = scene;
       const handEquipment = inventory.handEquipment;
       const handSlotAddress = equipmentSlotAddress('hand');
       const bodySlotAddress = equipmentSlotAddress('body');
@@ -328,12 +328,8 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
 
       if (playerAnimation) {
         view.registerFrameTask = registerFrontTask;
-        const bugNet = new BugNetCaptureController(view, playerAnimation, locomotor,
-          handEquipment,
-          (model) => groundItems.getNetCaptureTargets(model),
-          isActionInterrupting, TILE_SIZE / 4);
-        actionControllers.push(bugNet);
-        groundItems.setNetCaptureHandler(target => bugNet.request(target));
+        // playercontroller.lua: the picker's actions on any entity, buffered for the player.
+        actionControllers.push(new PlayerController(view, playerAnimation, locomotor, handEquipment, isActionInterrupting));
 
         // fishingrod.lua / pond.lua: the equipped rod fishes the pond's fishable component; a landed fish is a ground item.
         const fishingWorld = {
@@ -385,12 +381,6 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         }, isActionInterrupting,
         (model) => [...groundItems.getSpellTargets(model), ...buildingPlacement.getSpellTargets(model)]);
 
-        const hammer = new HammerActionController(view, playerAnimation, locomotor,
-          handEquipment,
-          prefabInstance(player)!.sprite,
-          isActionInterrupting);
-        const pickaxe = new PickaxeActionController(view, playerAnimation, locomotor,
-          handEquipment, (model) => [...rockManager.getMineTargets(model), ...caveEntrances.getMineTargets(model), ...grottoPools.getMineTargets(model), ...marbleShrubs.getMineTargets(model), ...archiveProps.getMineTargets(model), ...groundItems.getMineTargets(model)], isActionInterrupting);
         const turfDeployment = new TurfDeployment(view, turfMap, playerAnimation, locomotor, () => {
           const address = cursorSlotAddress(), entity = inventory.getEntity(address);
           if (!entity || !turfTileName(entity.prefab)) return undefined;
@@ -419,16 +409,12 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
           handEquipment, turfMap, isActionInterrupting);
         const farmHoe = new FarmHoeActionController(view, playerAnimation, locomotor,
           handEquipment, farmPlow, isActionInterrupting);
-        const shovel = new ShovelActionController(view, playerAnimation, locomotor,
-          handEquipment, (model) => [...farmPlow.getDigTargets(model), ...molehills.getDigTargets(model), ...marbleBeanSaplings.getDigTargets(model), ...rockAvocadoSaplings.getDigTargets(model), ...rockAvocadoBushes.getDigTargets(model), ...berrybushes.getDigTargets(model), ...monkeytails.getDigTargets(model), ...grasses.getDigTargets(model), ...saplings.getDigTargets(model), ...mushroomPlants.getDigTargets(model), ...moonTrees.getDigTargets(model), ...mushtrees.getDigTargets(model), ...evergreenForest.getDigTargets(model), ...deciduousForest.getDigTargets(model)], isActionInterrupting);
         const reskin = new ReskinActionController(view, playerAnimation, locomotor,
           handEquipment,
           reskinEffects,
           isActionInterrupting, (error) => console.error('Unable to reskin target', error));
         const lighter = new LighterActionController(view, playerAnimation, locomotor, handEquipment, isActionInterrupting);
-        const axe = new PickaxeActionController(view, playerAnimation, locomotor,
-          handEquipment, (model) => [...moonTrees.getChopTargets(model), ...mushtrees.getChopTargets(model), ...evergreenForest.getChopTargets(model), ...deciduousForest.getChopTargets(model)], isActionInterrupting, 'CHOP');
-        actionControllers.push(spellcast, hammer, pickaxe, axe, pitchfork, turfDeployment, plantDeployment, farmHoe, shovel, reskin, lighter);
+        actionControllers.push(spellcast, pitchfork, turfDeployment, plantDeployment, farmHoe, reskin, lighter);
       }
 
       const stopEmoteWheel = setupEmoteWheel(gameUi.emoteWheel, view.renderer.domElement, playerAnimation,

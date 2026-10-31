@@ -4,7 +4,6 @@ import type { World } from 'cannon-es';
 import { ArchiveSpriteAssets, createSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
 import type { TileStateQuery } from '@dontstarve-web/signals';
-import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
 import { Workable } from '../../componets/src/workable';
 import { ComponentTimer, Timer, type NamedTimerSave } from '../../componets/src/timer';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -13,10 +12,8 @@ import { createArchiveEntity, type PrefabInstance, prefabInstance } from './pref
 import { actionEntity } from './actionEntity';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { watchTileActivity } from './tileActivity';
-import { modelEntries } from './modelRecords';
 import { newEntityId } from './saveRecord';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
-import { performToolWork } from '../../stategraphs/src/componentactions';
 
 export const BEEQUEENHIVEGROWN_ID = 'beequeenhivegrown' as const;
 export const BEEQUEEN_HIVE_MAX_WORK = 16;
@@ -93,11 +90,6 @@ export class BeeQueenHiveManager {
     Object.assign(prefabInstance(model)!.components, { workable, timer: hive.timer });
     new ToolMouseTarget(inst, instance, workable, this.world.handEquipment);
     this.hives.set(model, hive);
-    inst.hammerTarget = {
-      get id() { return String(instance.entityId); }, instance, display, entity: inst, position: instance.position,
-      isValid: () => this.hives.get(model) === hive && workable.CanBeWorked(),
-      playHit: () => { performToolWork('HAMMER', inst, {}); },
-    };
     this.displays.mount(prefabDisplay(model)!);
     hive.stopActivity = watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active));
     return model;
@@ -148,12 +140,6 @@ export class BeeQueenHiveManager {
     }
   }
 
-  get hammerTargets(): HammerTarget[] { return this.getHammerTargets(); }
-  getHammerTargets(model?: THREE.Object3D): HammerTarget[] {
-    return modelEntries(this.hives, model).filter(([, hive]) => hive.workable.CanBeWorked())
-      .map(([model]) => actionEntity(model, BEEQUEENHIVEGROWN_ID).hammerTarget)
-      .filter((target): target is HammerTarget => target !== undefined);
-  }
 
   // The display group advances each entity's declared clip; sleeping and removed entities are skipped.
   update(dt: number): void { this.displays.update(dt); }

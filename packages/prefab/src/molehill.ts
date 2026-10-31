@@ -11,8 +11,7 @@ import { Inventory } from '../../componets/src/inventory';
 import { Spawner } from '../../componets/src/spawner';
 import { Workable } from '../../componets/src/workable';
 import type { BrainEntity } from '../../brains/src/types';
-import { performToolWork } from '../../stategraphs/src/componentactions';
-import { actionEntity, findActionEntity } from './actionEntity';
+import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
 import { Mole, configureMoleEntity, type MoleWorld } from './mole';
 
@@ -170,9 +169,6 @@ export class MolehillManager {
     // The display group advances the hills and their move effects.
     this.displays.update(dt);
   }
-  get digTargets() { return this.getDigTargets(); }
-  getDigTargets(model?: THREE.Object3D) { return this.mouseRecords.select(model, this.hills.values()).filter(h => h.isValid()).map(h => ({ id: h.id, model: h.model, entity: findActionEntity(h.model),
-    position: h.getPosition(), dig: () => performToolWork('DIG', findActionEntity(h.model)!, {}), isValid: () => h.isValid() && h.components.workable.CanBeWorked() })); }
   get renderEntities() { return [...this.fx].map(({ display }) => display.model)
     .map(object => ({ object, footPosition: object.position, cameraDepth: 0 })); }
   exportRecords(): MolehillRecord[] { return [...this.hills.values()].filter(h => h.isValid()).map(h => ({ id: h.id,

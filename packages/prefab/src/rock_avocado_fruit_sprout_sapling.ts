@@ -1,6 +1,5 @@
 import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
-import { modelEntries } from './modelRecords';
 import * as THREE from 'three';
 import { createEffect, createMemo, readonlySignal, getBoundWatchWorldContent, type TileStateQuery } from '@dontstarve-web/signals';
 import { SpriteResources, type ArchiveSpriteCommands, type PrefabDisplay } from '@dontstarve-web/display';
@@ -15,8 +14,6 @@ import { actionEntity, FindEntities } from './actionEntity';
 import { newEntityId } from './saveRecord';
 import type { SpawnGroundItem } from './groundPrefab';
 import type { RockAvocadoBushManager } from './rock_avocado_bush';
-import type { ShovelTarget } from '../../stategraphs/src/dig';
-import { performToolWork } from '../../stategraphs/src/componentactions';
 import { PlaySound, type SoundHandle } from './sound';
 import catalog from './groundItems.json' with { type: 'json' };
 
@@ -163,14 +160,6 @@ export class RockAvocadoSaplingManager {
     return [...this.saplings.values()].flatMap(({ entity, fire }) => [...entity.instance.sprite.loaded ? [entity.display.model] : [],
       ...fire.instance.sprite.loaded ? [fire.display.model] : []]
       .map(object => ({ object, footPosition: entity.display.model.position, cameraDepth: 0 })));
-  }
-  get digTargets(): ShovelTarget[] { return this.getDigTargets(); }
-
-  getDigTargets(model?: THREE.Object3D): ShovelTarget[] {
-    return modelEntries(this.saplings, model).map(([model, sapling]) => ({ id: String(sapling.entity.instance.entityId), model, position: model.position,
-      entity: actionEntity(model, ROCK_AVOCADO_SAPLING_ID), isValid: () => this.saplings.get(model) === sapling && sapling.workable.CanBeWorked(),
-      dig: () => performToolWork('DIG', actionEntity(model, ROCK_AVOCADO_SAPLING_ID), {}),
-    }));
   }
   exportRecords(): RockAvocadoSaplingRecord[] {
     this.scheduler.advanceTo(this.scheduler.now);

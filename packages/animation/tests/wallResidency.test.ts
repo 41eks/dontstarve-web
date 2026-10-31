@@ -12,6 +12,7 @@ import { bindTestWorld } from './worldContentFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { reskinEntity } from '../../prefab/src/reskin_tool';
+import { workTargets } from './workTargets';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -102,7 +103,7 @@ it('settles a fence hit on sleep, reskins dormant art, restores mirroring, and c
     await vi.waitFor(() => expect(instance.sprite.loaded).toBe(true));
     const entity = findActionEntity(model)!;
     const resident = instance.sprite;
-    placement.hammerTargets[0].playHit();
+    workTargets('HAMMER')[0].work();
     const dormantSkin = placement.reskinTargets[0];
     awake.set(false); await settle();
     expect(meshes(model)).toHaveLength(0);

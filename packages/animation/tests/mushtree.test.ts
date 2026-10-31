@@ -9,6 +9,7 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { createInventoryStore } from '../../../src/inventory';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { workTargets } from './workTargets';
 
 
 
@@ -61,19 +62,19 @@ it('chops a moon mushtree into a diggable stump, drops catalogued loot, and keep
     expect(mesh.visible).toBe(false); // Idle is drawn by the shared instance batch.
     expect(prefabInstance(model)!.minimap.icon).toBe('mushtree_moon.png');
     const axe = inventory.entities.create({ itemId: 'axe', count: 1 });
-    const [chop] = trees.getChopTargets();
+    const [chop] = workTargets('CHOP');
     for (let i = 0; i < 14; i++) expect(performToolWork('CHOP', chop.entity, {}, axe)).toBe(true);
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(mesh.visible).toBe(true); // Working uses the ordinary shared-frame mesh.
     for (let i = 0; i < 100 && mesh.visible; i++) trees.update(.1, new THREE.Quaternion());
     expect(mesh.visible).toBe(false); // Completing work rejoins idle instancing.
-    expect(trees.getDigTargets()).toEqual([]);
+    expect(workTargets('DIG')).toEqual([]);
     expect(performToolWork('CHOP', chop.entity, {}, axe)).toBe(true);
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(mesh.visible).toBe(true);
     // moon_cap has no ground item yet, so only the two logs are dropped.
     expect(drops).toEqual([{ itemId: 'log', count: 2 }]);
-    const [dig] = trees.getDigTargets();
+    const [dig] = workTargets('DIG');
     expect(prefabInstance(model)!.minimap.icon).toBe('mushroom_tree_stump.png');
 
     const [{ prefabId, record }] = trees.exportRecords();
@@ -86,7 +87,7 @@ it('chops a moon mushtree into a diggable stump, drops catalogued loot, and keep
     } finally { restored.dispose(); }
 
     drops.length = 0;
-    expect(dig.dig()).toBe(true);
+    expect(dig.work()).toBe(true);
     expect(drops).toEqual([{ itemId: 'log', count: 1 }]);
     expect(trees.exportRecords()).toEqual([]);
     scheduler.advance(1);

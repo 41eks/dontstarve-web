@@ -17,6 +17,7 @@ import { mouseTargets } from '../../prefab/src/mouseTargets';
 import { bindInstance, PrefabInstance, prefabInstance } from '../../prefab/src/prefabInstance';
 import type { ArchiveSpriteCommands } from '@dontstarve-web/display';
 import { displayLights } from '../../display/src/displaySprites';
+import { workTargets } from './workTargets';
 
 /** The inst.Light an entity's model declares. */
 const declaredLight = (model: THREE.Object3D) => prefabInstance(model)?.light.peek();
@@ -386,7 +387,7 @@ describe('real fireflies archive and ground transfers', () => {
     expect(declaredLight(near)?.intensity).toBe(.5);
     await settle();
     expect(listed(near)).toBe(true);
-    const target = manager.netCaptureTargets[0];
+    const target = workTargets('NET')[0];
     const nearUpdate = vi.spyOn(prefabInstance(near)!.sprite, 'update');
     position.set(new THREE.Vector3(300, 0, 0));
     playerpositions.set([new THREE.Vector3(300, 0, 0)]);
@@ -399,8 +400,7 @@ describe('real fireflies archive and ground transfers', () => {
     // A player standing next to the swarm keeps it from fading in: it plays no animation, so nothing is built or sorted.
     expect(geometry(far)).toBeUndefined();
     expect(manager.renderEntities).toEqual([]);
-    expect(target.isValid()).toBe(false);
-    expect(target.capture()).toBe(false);
+    expect(prefabInstance(target.model)!.status.peek()).toBe('asleep');
     nearUpdate.mockClear();
     manager.update(.1, new THREE.Quaternion());
     expect(nearUpdate).not.toHaveBeenCalled();
@@ -447,12 +447,12 @@ describe('real fireflies archive and ground transfers', () => {
     const records = manager.exportRecords();
     expect(records[0].id).toBe(entity.id);
     expect(records[1].id).not.toBe(entity.id);
-    const [target] = manager.netCaptureTargets;
-    expect(target.capture()).toBe(false);
+    const [target] = workTargets('NET');
+    expect((target.work({ components: { inventory } }) && (!!target.entity.components.inventoryitem?.owner || target.entity.isRemoved))).toBe(false);
     expect(scene.children).toHaveLength(2);
-    expect(target.capture()).toBe(true);
+    expect((target.work({ components: { inventory } }) && (!!target.entity.components.inventoryitem?.owner || target.entity.isRemoved))).toBe(true);
     expect(pickup).toHaveBeenLastCalledWith(entity, { x: 8, y: 0, z: 9 });
-    expect(target.capture()).toBe(false);
+    expect((target.work({ components: { inventory } }) && (!!target.entity.components.inventoryitem?.owner || target.entity.isRemoved))).toBe(false);
     expect(declaredLight(target.model)).toBeUndefined();
     expect(manager.exportRecords()).toHaveLength(1);
     const dark = new GroundItemManager(new THREE.Scene(), new THREE.PerspectiveCamera(),
@@ -461,7 +461,7 @@ describe('real fireflies archive and ground transfers', () => {
     const restored = await dark.spawnFromSave(records[0].id, { ...definition, count: 1 }, new THREE.Vector3(8, 0, 9));
     expect(dark.exportRecords()).toEqual([records[0]]);
     expect(declaredLight(restored)).toBeUndefined();
-    expect(dark.netCaptureTargets[0].isValid()).toBe(false);
+    expect(workTargets('NET', restored)).toEqual([]);
     dark.update(5, new THREE.Quaternion());
     expect(dark.exportRecords()).toHaveLength(1);
   });

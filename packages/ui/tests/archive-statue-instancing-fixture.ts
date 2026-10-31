@@ -1,3 +1,4 @@
+import { activePrefabs } from '../../prefab/src/activePrefabs';
 import * as THREE from 'three';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { ArchivePropsManager } from '../../prefab/src/archive_props';
@@ -32,11 +33,11 @@ export async function checkArchiveStatueInstancing() {
     }
     await tick();
     const full = await sample();
-    const targets = manager.mineTargets;
-    for (const target of targets) target.entity.components.workable!.WorkedBy({}, 4);
+    const targets = activePrefabs.filter(entity => entity.hasTag('MINE_workable'));
+    for (const target of targets) target.components.workable!.WorkedBy({}, 4);
     await tick();
     const med = await sample();
-    for (const target of targets) target.entity.components.workable!.WorkedBy({}, 3);
+    for (const target of targets) target.components.workable!.WorkedBy({}, 3);
     await tick();
     const low = await sample();
     const batch = scene.getObjectByName('ArchiveSpriteInstances:colour');
@@ -47,8 +48,8 @@ export async function checkArchiveStatueInstancing() {
     const restored = await sample();
     const shared = scene.getObjectByName('ArchiveSpriteInstances:colour') === batch;
     const preserved = JSON.stringify(manager.exportRecords()) === records
-      && targets.every(target => target.entity.components.workable!.GetWorkLeft() === 3);
-    targets[0].entity.components.workable!.WorkedBy({}, 3);
+      && targets.every(target => target.components.workable!.GetWorkLeft() === 3);
+    targets[0].components.workable!.WorkedBy({}, 3);
     await tick();
     const removed = await sample();
     return { full, med, low, asleep, restored, shared, preserved, remaining: removed.count };

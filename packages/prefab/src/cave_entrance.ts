@@ -3,11 +3,9 @@ import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
 import type { TileStateQuery } from '@dontstarve-web/signals';
-import type { PickaxeTarget } from '@dontstarve-web/stategraphs/mine';
 import { LootDropper } from '../../componets/src/lootdropper';
 import { Workable } from '../../componets/src/workable';
 import { WorldMigrator, type WorldMigratorShard } from '../../componets/src/worldmigrator';
-import { modelEntries } from './modelRecords';
 import type { MiniMapState } from '../../map/src/minimapState';
 import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
@@ -171,16 +169,6 @@ export class CaveEntranceManager {
     return [...this.entrances.values()].map(({ prefab, display }) => ({
       object: display.model, footPosition: display.model.position, cameraDepth: 0,
       ...prefab === CAVE_ENTRANCE_OPEN_ID ? { renderLayer: CAVE_ENTRANCE_OPEN_RENDER_LAYER } : {},
-    }));
-  }
-
-
-  get mineTargets(): PickaxeTarget[] { return this.getMineTargets(); }
-
-  getMineTargets(model?: THREE.Object3D): PickaxeTarget[] {
-    return modelEntries(this.entrances, model).filter(([, entrance]) => entrance.workable?.CanBeWorked()).map(([model, entrance]) => ({
-      id: String(entrance.instance.entityId), model, position: model.position, entity: actionEntity(model, entrance.prefab),
-      isValid: () => this.entrances.get(model) === entrance && !!entrance.workable?.CanBeWorked(),
     }));
   }
 

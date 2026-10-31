@@ -4,7 +4,11 @@ import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { configureShovelEntity, shovelVisual } from '../../prefab/src/shovel';
 import { declaredSymbol, overrideArchives } from './animStateFixture';
-import { ShovelActionController } from '../../stategraphs/src/dig';
+import * as CANNON from 'cannon-es';
+import { PlayerController } from '../../stategraphs/src/playercontroller';
+import { Locomotor } from '../../prefab/src/locomotor';
+import { WORLD_SCALE } from '../../prefab/src/tile';
+import { workTargets } from './workTargets';
 import { FarmPlowPlacement } from '../../prefab/src/farm_plow';
 import { TurfMap } from '../../prefab/src/turfMap';
 import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
@@ -69,32 +73,33 @@ it('removes one debris with source loot while preserving soil, terrain, other de
   const point = new THREE.Vector3(3, 0, 3), loot = vi.fn(async () => {});
   farm.setDebrisLootHandler(loot);
   try {
-    farm.spawnDecor('farm_soil_debris', point, { animation: 'f2' }, 'garbage');
-    const target = farm.digTargets[0];
-    expect(target.isValid()).toBe(false);
-    expect(target.dig()).toBe(false);
     turf.plow(point);
+    farm.spawnDecor('farm_soil_debris', point, { animation: 'f2' }, 'garbage');
+    // farm_soil_debris.lua: workable DIG with one work.
+    const [target] = workTargets('DIG');
+    expect(target.id).toBe('garbage');
     farm.spawnDecor('farm_soil', new THREE.Vector3(8, 0, 3), { broken: false }, 'hole');
     farm.spawnDecor('farm_soil_debris', new THREE.Vector3(8, 0, 8), { animation: 'f4' }, 'other');
     random.mockReturnValueOnce(0.1).mockReturnValueOnce(0.99);
     const tiles = turf.exportTiles(), preserved = farm.exportDecorRecords().filter(({ record }) => record.id !== target.id);
-    expect(target.dig()).toBe(true);
-    expect(target.dig()).toBe(false);
+    expect(target.work()).toBe(true);
+    expect(target.work()).toBe(false);
     expect(loot).toHaveBeenCalledExactlyOnceWith('goldnugget', point);
     expect(turf.exportTiles()).toEqual(tiles);
     expect(farm.exportDecorRecords()).toEqual(preserved);
+    farm.dispose();
     const restored = setup();
     try {
       restored.turf.plow(point);
       for (const { prefabId, record } of preserved) restored.farm.spawnDecor(prefabId, new THREE.Vector3(...record.transform.position),
         record.components.farmSoil ?? record.components.farmDebris, record.id);
       expect(restored.farm.exportDecorRecords()).toEqual(preserved);
-      expect(restored.farm.digTargets.map(({ id }) => id)).toEqual(['other']);
+      expect(workTargets('DIG').map(({ id }) => id)).toEqual(['other']);
     } finally { restored.farm.dispose(); }
   } finally { farm.dispose(); }
 });
 
-it('walks into reach, commits at shovel_loop frame 15, and preserves cancelled or unequipped targets', async () => {
+it('walks into reach, commits DIG at shovel_loop frame 15, and preserves cancelled or unequipped targets', async () => {
   const player = await createWilsonPlayer('/dst/data/anim');
   player.position.set(0, 0, 15);
   const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
@@ -108,12 +113,14 @@ it('walks into reach, commits at shovel_loop frame 15, and preserves cancelled o
   const tool = new ItemEntity({ itemId: 'goldenshovel', count: 1 });
   configureShovelEntity(tool);
   equipped.set({ itemId: 'goldenshovel', EQUIPSLOTS: 'HANDS', entity: tool });
-  const locomotor = { goToPoint: vi.fn(() => true), stop: vi.fn(), destination: undefined };
-  const controller = new ShovelActionController(world, animation, locomotor, equipped, () => farm.digTargets);
+  const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body,
+    { physicsRadius: .5 * WORLD_SCALE });
+  const controller = new PlayerController(world, animation, locomotor, equipped);
+  const dig = () => controller.DoAction(controller.createAction({ action: 'DIG', target: workTargets('DIG')[0].entity, invobject: tool })!);
   try {
-    expect(controller.request(farm.digTargets[0])).toBe(true); controller.update(0);
-    expect(locomotor.goToPoint).toHaveBeenCalled();
-    player.position.set(3, 0, 6); controller.update(0);
+    expect(dig()).toBe(true);
+    expect(locomotor.destination).toBeDefined();
+    player.position.set(3, 0, 4.5); locomotor.update(16, 1 / 30);
     while (animation.stategraph.stateName === 'dig_start') animation.update(1 / 30);
     advance(animation, 14);
     expect(farm.exportDecorRecords()).toHaveLength(1);
@@ -125,12 +132,12 @@ it('walks into reach, commits at shovel_loop frame 15, and preserves cancelled o
     advance(animation, 60);
     farm.spawnDecor('farm_soil_debris', point, { animation: 'f3' }, 'preserved');
     const preserved = farm.exportDecorRecords();
-    expect(controller.request(farm.digTargets[0])).toBe(true); controller.update(0);
+    expect(dig()).toBe(true);
     controller.cancel(); advance(animation, 60);
     expect(farm.exportDecorRecords()).toEqual(preserved);
     expect(tool.components.finiteuses.remaining).toBe(24.75);
-    expect(controller.request(farm.digTargets[0])).toBe(true); controller.update(0);
-    equipped.set(null); await animation.setCarryItem(null); controller.update(0); advance(animation, 60);
+    expect(dig()).toBe(true);
+    equipped.set(null); await animation.setCarryItem(null); advance(animation, 60);
     expect(farm.exportDecorRecords()).toEqual(preserved);
     expect(tool.components.finiteuses.remaining).toBe(24.75);
   } finally { controller.dispose(); farm.dispose(); tool.remove(); }

@@ -12,6 +12,7 @@ import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
 import { createSignal, readonlySignal } from '../../signals/src';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { workTargets } from './workTargets';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -27,7 +28,7 @@ it('mines a closed entrance into cave_entrance_open, dropping rocks and flint, a
     await caves.spawn('cave_entrance', new THREE.Vector3(5, 0, 7));
     expect(prefabInstance(scene.children.find(model => prefabInstance(model)?.prefab === 'cave_entrance'))!.minimap.icon).toBe('cave_closed.png');
     const pickaxe = inventory.entities.create({ itemId: 'pickaxe', count: 1 });
-    const [mine] = caves.mineTargets;
+    const [mine] = workTargets('MINE');
     for (let i = 0; i < 5; i++) expect(performToolWork('MINE', mine.entity, {}, pickaxe)).toBe(true);
     expect(caves.exportRecords().map(({ prefabId }) => prefabId)).toEqual(['cave_entrance']);
     expect(performToolWork('MINE', mine.entity, {}, pickaxe)).toBe(true);
@@ -35,7 +36,7 @@ it('mines a closed entrance into cave_entrance_open, dropping rocks and flint, a
     // The open entrance replaces it at the same point, is background layered, and is no longer mineable.
     const [{ prefabId, record }] = caves.exportRecords();
     expect([prefabId, record.transform.position]).toEqual(['cave_entrance_open', [5, 0, 7]]);
-    expect(caves.mineTargets).toEqual([]);
+    expect(workTargets('MINE')).toEqual([]);
     expect(caves.renderEntities.map(entity => entity.renderLayer)).toEqual([-1]);
     expect(prefabInstance(caves.renderEntities[0].object)!.minimap.icon).toBe('cave_open.png');
     await vi.waitFor(() => expect(ground.exportRecords().map(r => r.components.stack?.itemId).sort())

@@ -15,8 +15,11 @@ import { PlaySound } from '../../prefab/src/sound';
 import { createPickupInventory } from './pickupFixture';
 import { equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
-import { PickaxeActionController } from '../../stategraphs/src/mine';
 import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
+import { workTargets } from './workTargets';
+import { PlayerController } from '../../stategraphs/src/playercontroller';
+import { Locomotor } from '../../prefab/src/locomotor';
+import { WORLD_SCALE } from '../../prefab/src/tile';
 
 useTestTileMap();
 let area: ReturnType<typeof createTestArea>;
@@ -43,7 +46,7 @@ it('cycles all four source stages and split archives, resets chop work, removes 
   const s = await setup();
   try {
     const tree = s.forest.spawn('evergreen_tall', new THREE.Vector3(3, 0, 0));
-    const model = tree.model!, work = s.forest.chopTargets[0].entity.components.workable!;
+    const model = tree.model!, work = workTargets('CHOP')[0].entity.components.workable!;
     const growable = (findActionEntity(model)?.components ?? prefabInstance(model)!.components).growable;
     await new Promise(resolve => setTimeout(resolve, 0));
     expect((model.children[0].children[0].children[0] as THREE.Mesh).geometry.drawRange.count).toBeGreaterThan(0);
@@ -54,12 +57,12 @@ it('cycles all four source stages and split archives, resets chop work, removes 
     s.spring(); s.scheduler.advance(1400);
     expect(s.forest.exportRecords()[0].components.growable).toEqual({ stage: 4, time: 225 });
     expect(work.GetWorkLeft()).toBe(1);
-    expect(s.forest.chopTargets[0].entity.hasTag('shelter')).toBe(false);
+    expect(workTargets('CHOP')[0].entity.hasTag('shelter')).toBe(false);
     expect(prefabInstance(model)!.sprite.currentAnimation).toBe('grow_tall_to_old');
     expect(PlaySound).toHaveBeenCalledWith('dontstarve/forest/treeWilt', tree.position);
     s.scheduler.advance(225);
     expect(work.GetWorkLeft()).toBe(5);
-    expect(s.forest.chopTargets[0].entity.hasTag('shelter')).toBe(true);
+    expect(workTargets('CHOP')[0].entity.hasTag('shelter')).toBe(true);
     expect(prefabInstance(model)!.sprite.currentAnimation).toBe('grow_old_to_short');
     s.scheduler.advance(337.5);
     expect(work.GetWorkLeft()).toBe(10);
@@ -69,12 +72,12 @@ it('cycles all four source stages and split archives, resets chop work, removes 
     expect(prefabInstance(model)!.sprite.currentAnimation).toBe('grow_normal_to_tall');
     // An old tree drops one pinecone when chopped, then one log when its stump is dug.
     s.scheduler.advance(1125);
-    expect(performToolWork('CHOP', s.forest.chopTargets[0].entity, {})).toBe(true);
+    expect(performToolWork('CHOP', workTargets('CHOP')[0].entity, {})).toBe(true);
     expect(s.dropLoot.mock.calls.at(-1)![0]).toEqual([{ itemId: 'pinecone', count: 1 }]);
     expect(prefabInstance(model)!.sprite.currentAnimation).toBe('chop_old');
     expect(s.forest.exportRecords()[0].components).toEqual({ evergreen: { stump: true }, growable: { stage: 4 } });
     await new Promise(resolve => setTimeout(resolve, 0)); expect(s.physics.bodies).toEqual([]);
-    expect(s.forest.digTargets[0].dig()).toBe(true);
+    expect(workTargets('DIG')[0].work()).toBe(true);
     expect(s.dropLoot).toHaveBeenLastCalledWith([{ itemId: 'log', count: 1 }], tree.position);
   } finally { s.forest.dispose(); }
 });
@@ -109,17 +112,17 @@ it('commits source axe work, cancels before impact, preserves logical components
   inventory.transfer(inventorySlotAddress(0), equipmentSlotAddress('hand'), 1);
   const axe = inventory.getEntity(equipmentSlotAddress('hand'))!;
   const world = { player, camera: s.camera, scene: new THREE.Scene(), ground: new THREE.Group(), renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
-  const controller = new PickaxeActionController(world, animation, { goToPoint: vi.fn(() => true), stop: vi.fn(), destination: undefined },
-    inventory.handEquipment, () => s.forest.chopTargets, undefined, 'CHOP');
+  const controller = new PlayerController(world, animation, new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body, { physicsRadius: .5 * WORLD_SCALE }), inventory.handEquipment);
+  const chop = (target: { entity: object }) => controller.DoAction(controller.createAction({ action: 'CHOP', target: target.entity as never, invobject: axe })!);
   const advance = (frames: number) => { for (let i = 0; i < frames; i++) animation.update(1 / 30); };
   try {
     player.position.set(1, 0, 3);
     const tree = s.forest.spawn('evergreen_tall', new THREE.Vector3(1, 0, 0));
-    const target = s.forest.chopTargets[0], work = target.entity.components.workable!;
+    const target = workTargets('CHOP')[0], work = target.entity.components.workable!;
     expect(collectEquippedActions(axe, target.entity, true)).toEqual(['CHOP']);
-    expect(controller.request(target)).toBe(true); controller.update(0); controller.cancel(); advance(60);
+    expect(chop(target)).toBe(true); controller.cancel(); advance(60);
     expect(work.GetWorkLeft()).toBe(15); expect(axe.components.finiteuses.remaining).toBeUndefined();
-    expect(controller.request(target)).toBe(true); controller.update(0);
+    expect(chop(target)).toBe(true);
     while (animation.stategraph.stateName === 'chop_start') animation.update(1 / 30);
     advance(2); expect(work.GetWorkLeft()).toBe(14); expect(axe.components.finiteuses.remaining).toBe(99);
     expect(s.forest.renderEntities.some(entry => entry.object.name === 'pine_needles_chop')).toBe(true);
@@ -127,12 +130,12 @@ it('commits source axe work, cancels before impact, preserves logical components
     const geometry = (tree.model!.children[0].children[0].children[0] as THREE.Mesh).geometry;
     const geometryDispose = vi.spyOn(geometry, 'dispose');
     await area.visit(new THREE.Vector3(500, 0, 0));
-    expect(target.isValid()).toBe(false); expect(geometryDispose).toHaveBeenCalledOnce();
+    expect(prefabInstance(target.model)!.status.peek()).toBe('asleep'); expect(geometryDispose).toHaveBeenCalledOnce();
     expect(s.physics.bodies).toHaveLength(1);
     s.scheduler.advance(10); await area.visit(player.position);
-    expect(s.forest.chopTargets[0].entity.components.workable).toBe(work);
+    expect(workTargets('CHOP')[0].entity.components.workable).toBe(work);
     expect(work.GetWorkLeft()).toBe(14);
-    const current = s.forest.chopTargets[0];
+    const current = workTargets('CHOP')[0];
     expect(work.WorkedBy({ getPosition: () => player.position }, 14)).toBe(true);
     expect(current.isValid()).toBe(false); expect(current.entity.hasTag('CHOP_workable')).toBe(false);
     expect(current.entity.hasTag('DIG_workable')).toBe(true);
@@ -144,8 +147,8 @@ it('commits source axe work, cancels before impact, preserves logical components
       const reloaded = restored.forest.spawn('evergreen', new THREE.Vector3(...record.transform.position), record);
       expect(restored.forest.exportRecords()[0]).toEqual(record);
       expect(prefabInstance(reloaded.model!)!.sprite.currentAnimation).toBe('stump_tall');
-      const stump = restored.forest.digTargets[0];
-      expect(stump.dig()).toBe(true); expect(stump.dig()).toBe(false);
+      const stump = workTargets('DIG', reloaded.model!)[0];
+      expect(stump.work()).toBe(true); expect(stump.work()).toBe(false);
       restored.scheduler.advance(5000); await area.visit(player.position);
       expect(restored.forest.entities).toEqual([]); expect(stump.entity!.isRemoved).toBe(true);
       expect(restored.forest.exportRecords()).toEqual([]);

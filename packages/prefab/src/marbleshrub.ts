@@ -1,13 +1,11 @@
 import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
-import { modelEntries } from './modelRecords';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
 import { SpriteResources, type ArchiveSpriteCommands, type PrefabDisplay } from '@dontstarve-web/display';
 import { createArchiveEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
 import { watchTileActivity } from './tileActivity';
 import { ComponentTimer } from '../../componets/src/timer';
-import type { PickaxeTarget } from '@dontstarve-web/stategraphs/mine';
 import { createRenderEffect, WorldContentKey, type GetWatchWorldContent, type TileStateQuery } from '@dontstarve-web/signals';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Growable, type GrowableSave } from '../../componets/src/growable';
@@ -213,16 +211,6 @@ export class MarbleShrubManager {
 
   get renderEntities() {
     return [...this.shrubs].filter(([, { sprite }]) => sprite.loaded).map(([model]) => ({ object: model, footPosition: model.position, cameraDepth: 0 }));
-  }
-
-
-  get mineTargets(): PickaxeTarget[] { return this.getMineTargets(); }
-
-  getMineTargets(model?: THREE.Object3D): PickaxeTarget[] {
-    return modelEntries(this.shrubs, model).filter(([, shrub]) => !shrub.broken && shrub.workable.CanBeWorked()).map(([model, shrub]) => ({
-      id: String(shrub.instance.entityId), model, position: model.position, entity: actionEntity(model, MARBLESHRUB_ID),
-      isValid: () => this.shrubs.get(model) === shrub && !shrub.broken && shrub.workable.CanBeWorked(),
-    }));
   }
 
   /** persists = false once mined: the breaking shrub is not exported. */

@@ -5,11 +5,8 @@ import { SpriteResources, type ArchiveSpriteCommands, type PrefabDisplay } from 
 import { createArchiveEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
 import type { TileStateQuery } from '@dontstarve-web/signals';
 import { watchTileActivity } from './tileActivity';
-import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
-import { performToolWork } from '../../stategraphs/src/componentactions';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
 import { Workable } from '../../componets/src/workable';
-import { modelEntries } from './modelRecords';
 import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
 import type { SpawnGroundItem } from './groundPrefab';
@@ -101,11 +98,6 @@ export class HoundboneManager {
     Object.assign(prefabInstance(model)!.components, { workable, lootdropper });
     new ToolMouseTarget(inst, instance, workable, this.world.handEquipment);
     this.bones.set(model, bone);
-    inst.hammerTarget = {
-      get id() { return String(instance.entityId); }, instance, display, entity: inst, position: instance.position,
-      isValid: () => this.bones.get(model) === bone && workable.CanBeWorked(),
-      playHit: () => { performToolWork('HAMMER', inst, {}); },
-    };
     this.displays.mount(prefabDisplay(model)!);
     bone.stopActivity = watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active));
     return model;
@@ -135,13 +127,7 @@ export class HoundboneManager {
       .map(object => ({ object, footPosition: object.position, cameraDepth: 0 }));
   }
 
-  get hammerTargets(): HammerTarget[] { return this.getHammerTargets(); }
 
-  getHammerTargets(model?: THREE.Object3D): HammerTarget[] {
-    return modelEntries(this.bones, model).filter(([, bone]) => bone.workable.CanBeWorked())
-      .map(([model]) => actionEntity(model, HOUNDBONE_ID).hammerTarget)
-      .filter((target): target is HammerTarget => target !== undefined);
-  }
 
   /** workable.savestate is false: a surviving bone reloads with its full work count. */
   exportRecords(): { prefabId: typeof HOUNDBONE_ID; record: HoundboneRecord }[] {

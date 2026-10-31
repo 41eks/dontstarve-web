@@ -15,7 +15,6 @@ import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import type { WorldContext, PrefabWorldContext } from './worldContext';
 import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
 import { newEntityId, saveGroundPosition, type PlacementSaveRecord, type PlacedEntitySaveRecord } from './saveRecord';
-import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
 import { reskinTarget } from './reskin_tool';
 import type { ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
 import { isPlayerNearby } from './playerProximity';
@@ -23,7 +22,6 @@ import { createBuildingContainer, isStorageBuildingId } from './containers';
 import { performCookAction } from '../../stategraphs/src/cook';
 import { actionEntity, findActionEntity, FindEntities } from './actionEntity';
 import type { MiniMapState } from '../../map/src/minimapState';
-import { performToolWork } from '../../stategraphs/src/componentactions';
 import { PlaySound, type SoundHandle } from './sound';
 import { Burnable, type BurnableInst } from '../../componets/src/burnable';
 import { Propagator } from '../../componets/src/propagator';
@@ -333,18 +331,6 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             building.minimap.SetIcon(definition.minimapIcon);
         }
         const workable = building.instance.components.workable;
-        if (workable?.GetWorkAction() === 'HAMMER') {
-            const entity = actionEntity(model, buildId);
-            entity.hammerTarget = {
-                get id() { return String(building.instance.entityId); },
-                entity: building.instance, instance: building.instance, display: building.display,
-                get position() { return entity.getPosition(); },
-                isValid: () => this.isHammerTargetValid(building),
-                playHit: () => {
-                    if (this.isHammerTargetValid(building)) performToolWork('HAMMER', entity, {});
-                },
-            };
-        }
         if (definition.burnable) this.initializeBurnable(building);
         if (workable || definition.burnable) {
             const entity = actionEntity(model, buildId);
@@ -470,13 +456,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         });
     }
 
-    get hammerTargets(): readonly HammerTarget[] { return this.getHammerTargets(); }
 
-    getHammerTargets(model?: THREE.Object3D): readonly HammerTarget[] {
-        return this.mouseRecords.select(model, this.placed).filter(building => actionEntity(building.model, building.buildId).hasTag('HAMMER_workable'))
-            .map(building => actionEntity(building.model, building.buildId).hammerTarget)
-            .filter((target): target is HammerTarget => target !== undefined);
-    }
 
     get reskinTargets(): readonly ReskinTarget[] {
         return Array.from(this.placed, building => findActionEntity(building.model)?.reskinTarget)
@@ -762,11 +742,6 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         return this.sprites.animated('fire.zip', {}, { name: 'fire', scale: this.definitions[buildId].scale });
     }
 
-    private isHammerTargetValid(building: AnimatedBuildingInstance<BuildId>): boolean {
-        return !this.disposed && this.placed.includes(building) && !building.isPlacing
-            && actionEntity(building.model, building.buildId).components.workable?.CanBeWorked() === true
-            && building.model.visible && building.model.parent !== null;
-    }
 
     /** Inst removal owns the decision; the manager releases its registrations and shared-resource references. */
     private releaseBuilding(building: AnimatedBuildingInstance<BuildId>): void {

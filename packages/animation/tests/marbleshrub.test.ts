@@ -19,6 +19,7 @@ import { deserializeSave } from '../../../src/save/deserialize';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { bindTestWorld } from './worldContentFixture';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
+import { workTargets } from './workTargets';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -76,10 +77,10 @@ it('plants a marblebean, digs it back up, and grows it into a mineable shrub tha
     })).toBe(true);
     expect(s.inventory.count('marblebean')).toBe(2);
     // The shovel's DIG finishes the one-work sapling and drops its only loot, then cancels growth.
-    const [dig] = s.saplings.digTargets;
-    expect(dig.dig()).toBe(true);
+    const [dig] = workTargets('DIG', s.scene);
+    expect(dig.work()).toBe(true);
     await vi.waitFor(() => expect(dropped(s)).toEqual(['marblebean']));
-    expect(s.saplings.digTargets).toEqual([]);
+    expect(workTargets('DIG', s.scene)).toEqual([]);
 
     await s.saplings.spawn(point);
     s.advance(224); expect(s.shrubs.exportRecords()).toEqual([]);
@@ -92,7 +93,7 @@ it('plants a marblebean, digs it back up, and grows it into a mineable shrub tha
     expect(s.shrubs.exportRecords()[0].components.growable.stage).toBe(3);
 
     // marbleshrub<shape>.png, MiniMapEntity priority -1; the snow layer adds geometry once the level reaches .015.
-    const model = s.shrubs.mineTargets[0].model;
+    const model = workTargets('MINE', s.scene)[0].model;
     const minimap = prefabInstance(model)!.minimap.peek();
     expect([minimap.icon, minimap.priority, model.position.x]).toEqual(['marbleshrub2.png', -1, 12]);
     const sprite = prefabInstance(model)!.sprite;
@@ -119,11 +120,11 @@ it('plants a marblebean, digs it back up, and grows it into a mineable shrub tha
 
     // Tall shrubs need ten works; the pickaxe MINE roll at exactly .5 keeps the marble branch.
     const pickaxe = s.inventory.entities.create({ itemId: 'pickaxe', count: 1 });
-    const [mine] = s.shrubs.mineTargets;
+    const [mine] = workTargets('MINE', s.scene);
     for (let i = 0; i < 9; i++) expect(performToolWork('MINE', mine.entity, {}, pickaxe)).toBe(true);
     expect(s.shrubs.exportRecords()).toHaveLength(1);
     expect(performToolWork('MINE', mine.entity, {}, pickaxe)).toBe(true);
-    expect(s.shrubs.mineTargets).toEqual([]); expect(s.shrubs.exportRecords()).toEqual([]);
+    expect(workTargets('MINE', s.scene)).toEqual([]); expect(s.shrubs.exportRecords()).toEqual([]);
     s.shrubs.dispose();
     expect(prefabInstance(model)!.status.peek()).toBe('removed');
     const removedAppearance = sprite.sprite.peek();

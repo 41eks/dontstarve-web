@@ -21,6 +21,7 @@ import { inventoryStateFromSave } from '../../../src/save/inventoryState';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { bindTestWorld } from './worldContentFixture';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
+import { workTargets } from './workTargets';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -73,7 +74,7 @@ it('mines a stack through the common tool action, rolls each consumed fruit, gro
       'rock_avocado_fruit_ripe', 'rock_avocado_fruit_ripe', 'rock_avocado_fruit_sprout', 'rock_avocado_fruit_sprout', 'rocks', 'rocks']);
     const point = new THREE.Vector3(24, 0, 36);
     const model = await s.ground.spawnFromSave('hard-fruit:stack', { ...SAVE_CATALOG.items.rock_avocado_fruit, itemId: 'rock_avocado_fruit', count: 5 }, point);
-    const target = s.ground.mineTargets[0], entity = s.ground.entities.get('hard-fruit:stack')!;
+    const target = workTargets('MINE', s.scene)[0], entity = s.ground.entities.get('hard-fruit:stack')!;
     const pickaxe = s.inventory.entities.create({ itemId: 'pickaxe', count: 1 }); s.inventory.GiveItem(pickaxe);
     const uses = pickaxe.components.finiteuses.remaining ?? s.inventory.getItemSpec('pickaxe').maxUses!;
     expect(performToolWork('MINE', target.entity, { getPosition: () => new THREE.Vector3(21, 0, 36) }, pickaxe)).toBe(true);
@@ -94,10 +95,10 @@ it('mines a stack through the common tool action, rolls each consumed fruit, gro
     for (const record of saved.world.entities.ground_item) await restored.ground.spawnFromSave(record.id,
       { ...SAVE_CATALOG.items[record.components.stack!.itemId], ...record.components.stack! }, new THREE.Vector3(...record.transform.position));
     expect(restored.ground.exportRecords()).toEqual(before);
-    expect(restored.ground.mineTargets[0].id).toBe(entity.id);
+    expect(workTargets('MINE', restored.scene)[0].id).toBe(entity.id);
     random.mockReturnValueOnce(.8);
     expect(performToolWork('MINE', target.entity, {}, pickaxe)).toBe(true);
-    expect(entity.isRemoved).toBe(true); expect(s.ground.mineTargets).toEqual([]);
+    expect(entity.isRemoved).toBe(true); expect(workTargets('MINE', s.scene)).toEqual([]);
     expect(performToolWork('MINE', target.entity, {}, pickaxe)).toBe(false);
     expect(pickaxe.components.finiteuses.remaining).toBe(uses! - 2);
   } finally { s.dispose(); restored.dispose(); }
@@ -119,7 +120,7 @@ it('plants one sprout, preserves its named deadline through save/load, and becom
       canDeployPlant: () => true, deployPlant: () => s.sprouts.transplant(point),
     })).toBe(true);
     expect(root.isRemoved).toBe(true); expect(s.inventory.count('rock_avocado_fruit_sprout')).toBe(1);
-    const model = s.sprouts.digTargets[0].model, { timer } = (findActionEntity(model)?.components ?? prefabInstance(model)!.components);
+    const model = workTargets('DIG', s.scene)[0].model, { timer } = (findActionEntity(model)?.components ?? prefabInstance(model)!.components);
     const snapshot = timer.snapshot('grow').peek();
     s.advance(600); expect(timer.snapshot('grow').peek()).toBe(snapshot);
     s.season.set({ season: 'winter', progress: .5 }); await settleEffects();
@@ -150,7 +151,7 @@ it('plants one sprout, preserves its named deadline through save/load, and becom
     expect(model.userData.saplingState.completionTimer.peek().status).toBe('stopped');
     // Sample the animated path too: seed_growth contains an unresolved engine snow placeholder.
     restored.scheduler.advance(900);
-    const loaded = restored.sprouts.digTargets[0].model;
+    const loaded = workTargets('DIG', restored.scene)[0].model;
     for (let frame = 0; frame < 180 && loaded.parent; frame++) restored.advance(1 / 30);
     expect(loaded.parent).toBeNull();
   } finally { s.dispose(); restored.dispose(); }
@@ -162,19 +163,19 @@ it('cancels and restarts growth on ignition/extinguishing, reloads a stopped sou
   try {
     s.player.position.y = .3;
     expect((await executeDebugCommand('c_spawn("rock_avocado_fruit_sprout_sapling")', s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
-    const model = s.sprouts.digTargets[0].model, { burnable, timer } = (findActionEntity(model)?.components ?? prefabInstance(model)!.components);
+    const model = workTargets('DIG', s.scene)[0].model, { burnable, timer } = (findActionEntity(model)?.components ?? prefabInstance(model)!.components);
     s.advance(400); burnable.Ignite(); expect(timer.snapshot('grow').peek().status).toBe('stopped');
     s.advance(5); burnable.Extinguish(); expect(timer.GetTimeLeft('grow')).toBe(1500);
     burnable.Ignite();
     const saved = deserializeSave(s.save(), SAVE_CATALOG), record = saved.world.entities.rock_avocado_fruit_sprout_sapling[0];
     expect(record.components.saplingTimer).toEqual({ timers: {} });
     await restored.sprouts.spawn(new THREE.Vector3(...record.transform.position), record);
-    const loaded = restored.sprouts.digTargets[0].model;
+    const loaded = workTargets('DIG', restored.scene)[0].model;
     expect((findActionEntity(loaded)?.components ?? prefabInstance(loaded)!.components).timer.GetTimeLeft('grow')).toBe(1500);
     restored.scheduler.advance(1500);
     const completion = loaded.userData.saplingState.completionTimer;
     expect(completion.peek().status).toBe('scheduled');
-    expect(restored.sprouts.digTargets[0].dig()).toBe(true);
+    expect(workTargets('DIG', restored.scene)[0].work()).toBe(true);
     expect(completion.peek().status).toBe('stopped');
     restored.scheduler.advance(5000); expect(restored.bushes.exportRecords()).toEqual([]);
     expect(restored.ground.exportRecords().at(-1)?.components.stack?.itemId).toBe('rock_avocado_fruit_sprout');

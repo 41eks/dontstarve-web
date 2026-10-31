@@ -8,6 +8,7 @@ import { createInventoryStore } from '../../../src/inventory';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { bindTestWorld, drawn, plantInstance } from './worldContentFixture';
+import { workTargets } from './workTargets';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -67,7 +68,7 @@ it('digs an unpicked mushroom into two blue_caps without releasing a neighbourin
     expect((neighbour.children[0].children[0].children[0] as THREE.Mesh).geometry).toBe(geometry);
     const disposed = vi.fn(); geometry.addEventListener('dispose', disposed);
     const neighbourRecord = s.mushrooms.exportRecords()[1];
-    const [dig] = s.mushrooms.getDigTargets();
+    const [dig] = workTargets('DIG');
     expect(performToolWork('DIG', dig.entity!, {})).toBe(true);
     await vi.waitFor(() => expect(s.ground.exportRecords().map(r => r.components.stack?.itemId)).toEqual(['blue_cap', 'blue_cap']));
     expect(s.mushrooms.exportRecords()).toEqual([neighbourRecord]);

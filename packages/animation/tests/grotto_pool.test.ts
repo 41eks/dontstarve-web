@@ -18,6 +18,7 @@ import { deserializeSave } from '../../../src/save/deserialize';
 import { importedSave } from './importedSave';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
+import { workTargets } from './workTargets';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}),
   PlaySound: vi.fn(() => ({ stop: vi.fn(), isPlaying: () => true, setVolume: vi.fn() })) }));
@@ -71,8 +72,8 @@ it('shares pool, mist and waterfall frames while mining and removing pools indep
     expect(mesh(first).geometry).toBe(mesh(second).geometry);
     expect(mesh(mist(first)).geometry).toBe(mesh(mist(second)).geometry);
     s.scheduler.advance(.01);
-    await vi.waitFor(() => expect(s.pools.mineTargets).toHaveLength(2));
-    const [firstFall, secondFall] = s.pools.mineTargets;
+    await vi.waitFor(() => expect(workTargets('MINE')).toHaveLength(2));
+    const [firstFall, secondFall] = workTargets('MINE');
     expect(mesh(firstFall.model).geometry).toBe(mesh(secondFall.model).geometry);
     s.pools.update(.1, new THREE.Quaternion());
     expect(mesh(first).geometry).toBe(mesh(second).geometry);
@@ -113,7 +114,7 @@ it('registers a small pool sound source and unregisters it on removal', async ()
     expect(await s.registry.spawn('grotto_pool_small')).toBe(true);
     s.scheduler.advance(0.01);
     await vi.waitFor(() => expect(prefabs(s)).toEqual(['grotto_pool_small', 'grotto_waterfall_small2']));
-    expect(s.pools.mineTargets).toHaveLength(1);
+    expect(workTargets('MINE')).toHaveLength(1);
     expect([...s.waterfalls.values()]).toEqual([{ radius: 2, large: false }]);
     // Removing the pool removes its waterfall.
     const pool = s.scene.children.find(model => lookupPrefabInstance(model)?.prefab === 'grotto_pool_small')!;

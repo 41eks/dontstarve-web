@@ -16,6 +16,7 @@ import { createSignal } from '@dontstarve-web/signals';
 import { bindTestWorld } from './worldContentFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { reskinEntity } from '../../prefab/src/reskin_tool';
+import { workTargets } from './workTargets';
 
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
@@ -63,7 +64,7 @@ it.each(['wall_stone', 'wall_dreadstone'] as WallId[])(
         const release = vi.fn(); display.onDispose(release);
         const previousSkin = instance.skinId;
         const created = artFactory.mock.calls.length;
-        placement.hammerTargets[0].playHit();
+        workTargets('HAMMER')[0].work();
         placement.update(1 / 30);
         expect(reskinEntity(target)).toBe(true);
         expect(artFactory).toHaveBeenCalledTimes(created);

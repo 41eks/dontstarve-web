@@ -6,11 +6,8 @@ import { SpriteResources, type ArchiveSpriteCommands, type PrefabDisplay } from 
 import { createArchiveEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
 import type { TileStateQuery } from '@dontstarve-web/signals';
 import { watchTileActivity } from './tileActivity';
-import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
-import { performToolWork } from '../../stategraphs/src/componentactions';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
 import { Workable } from '../../componets/src/workable';
-import { modelEntries } from './modelRecords';
 import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
 import { MakeSmallObstaclePhysics } from './standardcomponents';
@@ -126,11 +123,6 @@ export class SkeletonManager {
     MakeSmallObstaclePhysics(instance, PHYSICS_RADIUS);
     if (this.world.physics) instance.bindPhysics(this.world.physics);
     this.skeletons.set(model, skeleton);
-    inst.hammerTarget = {
-      get id() { return String(instance.entityId); }, instance, display, entity: inst, position: instance.position,
-      isValid: () => this.skeletons.get(model) === skeleton && workable.CanBeWorked(),
-      playHit: () => { performToolWork('HAMMER', inst, {}); },
-    };
     this.displays.mount(prefabDisplay(model)!);
     skeleton.stopActivity = watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active));
     return model;
@@ -169,13 +161,7 @@ export class SkeletonManager {
       .map(object => ({ object, footPosition: object.position, cameraDepth: 0 }));
   }
 
-  get hammerTargets(): HammerTarget[] { return this.getHammerTargets(); }
 
-  getHammerTargets(model?: THREE.Object3D): HammerTarget[] {
-    return modelEntries(this.skeletons, model).filter(([, skeleton]) => skeleton.workable.CanBeWorked())
-      .map(([model, skeleton]) => actionEntity(model, skeleton.prefab).hammerTarget)
-      .filter((target): target is HammerTarget => target !== undefined);
-  }
 
   /** workable.savestate is false: a surviving skeleton reloads with its full work count. */
   exportRecords(): { prefabId: SkeletonId; record: SkeletonRecord }[] {

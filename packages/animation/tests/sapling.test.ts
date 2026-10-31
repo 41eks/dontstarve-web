@@ -20,6 +20,7 @@ import { bindTestWorld, tickWorld, drawn, plantInstance } from './worldContentFi
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { createSignal } from '../../signals/src';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { workTargets } from './workTargets';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -102,7 +103,7 @@ it('digs sapling_moon into dug_sapling_moon plus ready twigs, and burns a picked
     expect(s.inventory.getItemSpec('dug_sapling_moon').maxStack).toBe(10);
     const shovel = s.inventory.entities.create({ itemId: 'shovel', count: 1 });
     s.inventory.configureItem(shovel);
-    expect(performToolWork('DIG', s.saplings.digTargets[0].entity!, s.worker, shovel)).toBe(true);
+    expect(performToolWork('DIG', workTargets('DIG')[0].entity!, s.worker, shovel)).toBe(true);
     expect(s.ground.exportRecords().map(record => record.components.stack?.itemId)).toEqual(['twigs', 'dug_sapling_moon']);
     expect(s.saplings.exportRecords()).toEqual([]);
 

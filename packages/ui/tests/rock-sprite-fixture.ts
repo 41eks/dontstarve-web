@@ -1,3 +1,5 @@
+import { findActionEntity } from '../../prefab/src/actionEntity';
+import { activePrefabs } from '../../prefab/src/activePrefabs';
 import { prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import * as THREE from 'three';
 import { RockManager } from '../../prefab/src/rocks';
@@ -37,7 +39,7 @@ export async function checkRockInstances() {
     renderer.readRenderTargetPixels(target, 0, 0, 256, 256, pixels);
     let painted = 0;
     for (let i = 0; i < pixels.length; i += 4) if (Math.max(pixels[i], pixels[i + 1], pixels[i + 2]) > 30) painted++;
-    const [mine] = manager.mineTargets;
+    const mine = { entity: activePrefabs.find(entity => entity.hasTag('MINE_workable'))! };
     for (let i = 0; i < 3; i++) performToolWork('MINE', mine.entity, {});
     calls.push(await draw());
     for (let i = 0; i < 3; i++) performToolWork('MINE', mine.entity, {});
@@ -78,7 +80,7 @@ export async function checkMoonShellErosion() {
   try {
     const shells = await Promise.all([-8, 8].map(x => manager.spawn('rock_moon_shell', new THREE.Vector3(x, 0, 0))));
     const breakShell = (index: number) => {
-      const target = manager.getMineTargets(shells[index])[0];
+      const target = { entity: findActionEntity(shells[index])! };
       for (let i = 0; i < 6; i++) performToolWork('MINE', target.entity, {});
       shells[index].userData.animationController.setPaused(true);
       // Remove the dropped seed rather than hiding it: a drawn prefab is visible until it sleeps or is removed.

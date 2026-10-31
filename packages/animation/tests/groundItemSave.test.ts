@@ -14,6 +14,7 @@ import { EventEmitter } from '@dontstarve-web/signals';
 import type { WorldEvents } from '../../prefab/src/worldContext';
 import { placementEntities } from '../../prefab/src/placementEntities';
 import { reskinEntity } from '../../prefab/src/reskin_tool';
+import { workTargets } from './workTargets';
 
 vi.mock('@dontstarve-web/animation/imageAtlas', () => ({
   loadImageAtlas: async () => ({
@@ -422,7 +423,7 @@ describe('ground item save records', () => {
   });
 
   it('requires NET for living butterflies and keeps a failed capture in the world', async () => {
-    const { manager, scene, pickup, canvas } = setup();
+    const { manager, scene, pickup, canvas, inventory } = setup();
     const butterfly = { itemId: 'butterfly', count: 1, name: '蝴蝶', icon: 'butterfly.tex' };
     await manager.drop(butterfly, new THREE.Vector3(), () => true);
     const entity = manager.entities.get(lookupPrefabInstance(scene.children[0])!.entityId!)!;
@@ -435,14 +436,14 @@ describe('ground item save records', () => {
     ]);
     canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button: 0, clientX: 50, clientY: 50 }));
     expect(pickup).not.toHaveBeenCalled();
-    const [target] = manager.netCaptureTargets;
+    const [target] = workTargets('NET');
     pickup.mockImplementationOnce(entity => { entity.PushEvent('ondropped', undefined); return false; });
-    expect(target.capture()).toBe(false);
+    expect((target.work({ components: { inventory } }) && (!!target.entity.components.inventoryitem?.owner || target.entity.isRemoved))).toBe(false);
     expect(target.isValid()).toBe(true);
     expect(manager.exportRecords()).toHaveLength(1);
-    expect(target.capture()).toBe(true);
+    expect((target.work({ components: { inventory } }) && (!!target.entity.components.inventoryitem?.owner || target.entity.isRemoved))).toBe(true);
     expect(target.isValid()).toBe(false);
-    expect(target.capture()).toBe(false);
+    expect((target.work({ components: { inventory } }) && (!!target.entity.components.inventoryitem?.owner || target.entity.isRemoved))).toBe(false);
     expect(pickup).toHaveBeenCalledTimes(2);
     expect(scene.children).toHaveLength(0);
     expect(manager.exportRecords()).toHaveLength(0);

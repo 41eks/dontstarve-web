@@ -13,6 +13,7 @@ import type { Burnable } from '../../componets/src/burnable';
 import * as sound from '../../prefab/src/sound';
 import { createMemo, createSignal, type TileStateQuery } from '../../signals/src';
 import { bindTestWorld } from './worldContentFixture';
+import { workTargets } from './workTargets';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -33,7 +34,7 @@ async function setup(id: typeof HEADS[number]['id'] = PIG_HEAD_ID, tickingarea?:
     getWatchWorldContent: content.getWatchWorldContent, tickingarea, dropLoot: (items: { itemId: string; count: number }[]) => loot.push(items) } as unknown as WorldContext;
   const placement = new AnimatedBuildingPlacement(world, { [id]: HEADS.find(head => head.id === id)!.definition }, () => false);
   placement.spawn(id);
-  const model = placement.hammerTargets[0].display.model, sprite = prefabInstance(model)!.sprite as SpriteController;
+  const model = workTargets('HAMMER')[0].display.model, sprite = prefabInstance(model)!.sprite as SpriteController;
   // The display loads the head's art; its clips play once it is drawn.
   await vi.waitFor(() => expect(sprite.loaded).toBe(true));
   const settle = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -48,7 +49,7 @@ it.each(HEADS)('$id sleeps by default, wakes on a full-moon night, is hit by the
     s.content.moon.set({ phase: 'full', waxing: false }); s.content.cycle.set('night'); await s.settle();
     expect(s.sprite.currentAnimation).toBe('wake'); s.finish();
     expect(s.sprite.currentAnimation).toBe('idle_awake');
-    const entity = s.placement.hammerTargets[0].entity;
+    const entity = workTargets('HAMMER')[0].entity;
     expect(performToolWork('HAMMER', entity, {})).toBe(true);
     expect(s.sprite.currentAnimation).toBe('hit'); s.finish();
     expect(s.sprite.currentAnimation).toBe('idle_awake');
@@ -69,7 +70,7 @@ it.each(HEADS)('$id sleeps by default, wakes on a full-moon night, is hit by the
 it.each(HEADS)('$id burns to a burnt head that keeps sleeping, saves only the burnt state and drops reduced loot', async ({ id }) => {
   const s = await setup(id);
   try {
-    const entity = s.placement.hammerTargets[0].entity;
+    const entity = workTargets('HAMMER')[0].entity;
     ((findActionEntity(s.model)?.components ?? prefabInstance(s.model)!.components).burnable as Burnable).Ignite(); s.placement.update(11);
     expect(entity.hasTag('burnt')).toBe(true); expect(s.sprite.currentAnimation).toBe('burnt');
     s.content.moon.set({ phase: 'full', waxing: false }); s.content.cycle.set('night'); await s.settle();

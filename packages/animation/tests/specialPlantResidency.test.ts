@@ -17,6 +17,7 @@ import type { WorldContext, WorldEvents } from '../../prefab/src/worldContext';
 import type { GroundItemDefinition } from '../../prefab/src/groundPrefab';
 import { bindTestWorld, drawn } from './worldContentFixture';
 import { modelHasTag, prefabInstance } from '../../prefab/src/prefabInstance';
+import { workTargets } from './workTargets';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -101,7 +102,7 @@ it('grows a dormant marblebean, restores shrub shape/tint/snow and preserves the
     expect(savedBean.components.saplingTimer!.timers.grow.timeleft).toBe(225);
     env.scheduler.advance(225); await settle();
     expect(saplings.exportRecords()).toEqual([]); expect(bean.userData.removed).toBe(true);
-    const shrub = shrubs.mineTargets[0].model;
+    const shrub = workTargets('MINE')[0].model;
     const sprite = prefabInstance(shrub)!.sprite as SpriteState;
     expect(sprite.loaded).toBe(false);
     expect(shrubs.exportRecords()[0].components.marbleShrub).toEqual({ shapenumber: 2, color: .75 });
@@ -122,7 +123,7 @@ it('grows a dormant marblebean, restores shrub shape/tint/snow and preserves the
     const snowyCount = meshes(shrub)[0].geometry.drawRange.count;
     env.sources.snowLevel.set(0); await settle();
     expect(meshes(shrub)[0].geometry.drawRange.count).toBeLessThan(snowyCount);
-    const target = shrubs.mineTargets[0];
+    const target = workTargets('MINE')[0];
     for (let i = 0; i < 8 && !modelHasTag(shrub, 'NOCLICK'); i++) performToolWork('MINE', target.entity, {});
     expect(prefabInstance(shrub)!.listTags()).toContain('NOCLICK');
     env.awake.set(false); await settle();
@@ -160,7 +161,7 @@ it('keeps a sprout completion task alive without visual reload and cancels a sec
     expect(timer.snapshot('grow').peek().status).toBe('expired');
     const second = await drawn(sprouts.spawn(new THREE.Vector3(24, 0, 24))); await settle();
     expect((prefabInstance(second)!.sprite as SpriteState).loaded).toBe(false);
-    expect(sprouts.digTargets[0].dig()).toBe(true);
+    expect(workTargets('DIG')[0].work()).toBe(true);
     env.awake.set(true); env.scheduler.advance(2000); await settle();
     expect(spawnBush).toHaveBeenCalledOnce(); expect(meshes(second)).toEqual([]);
     expect(env.spawned).toHaveBeenCalledWith('rock_avocado_fruit_sprout', new THREE.Vector3(24, 0, 24));

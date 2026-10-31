@@ -18,6 +18,7 @@ import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { FACING } from '../src/facing';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { modelHasTag, prefabInstance } from '../../prefab/src/prefabInstance';
+import { workTargets } from './workTargets';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -61,7 +62,7 @@ it('mines an archive_moon_statue down for its loot and keeps its pose through sa
     // math.random(4) at .5 → variant 3; workable.savestate is false, so only the pose is saved.
     expect(s.props.exportRecords().map(({ prefabId, record }) => [prefabId, record.components])).toEqual([
       ['archive_moon_statue', { archiveProp: { anim: 3 } }]]);
-    const model = s.props.mineTargets[0].display.model;
+    const model = workTargets('MINE', s.scene)[0].display.model;
     expect(prefabInstance(model)!.minimap.peek().icon).toBe('archive_moon_statue3.png');
     expect(lookupPrefabInstance(model)!.sprite.sprite.peek().clip).toMatchObject({ name: 'idle_full_3', loop: false });
     expect(prefabInstance(model)!.listTags()).toEqual(expect.arrayContaining(['structure', 'statue', 'dustable']));
@@ -73,16 +74,16 @@ it('mines an archive_moon_statue down for its loot and keeps its pose through sa
     await restored.props.spawn('archive_moon_statue', new THREE.Vector3(...record.transform.position),
       { id: record.id, transform: record.transform, components: { archiveProp: record.components.archiveProp } });
     expect(restored.props.exportRecords()).toEqual(s.props.exportRecords());
-    expect(lookupPrefabInstance(restored.props.mineTargets[0].display.model)!.sprite.sprite.peek().clip)
+    expect(lookupPrefabInstance(workTargets('MINE', restored.scene)[0].display.model)!.sprite.sprite.peek().clip)
       .toMatchObject({ name: 'idle_full_3', loop: true });
 
     // MARBLEPILLAR_MINE = 10 works; the final one drops the table (the 5% nugget misses at .5), collapses and removes the statue.
     const pickaxe = s.inventory.entities.create({ itemId: 'pickaxe', count: 1 });
-    const [mine] = s.props.mineTargets;
+    const [mine] = workTargets('MINE', s.scene);
     for (let i = 0; i < 9; i++) expect(performToolWork('MINE', mine.entity, {}, pickaxe)).toBe(true);
     expect(s.props.exportRecords()).toHaveLength(1);
     expect(performToolWork('MINE', mine.entity, {}, pickaxe)).toBe(true);
-    expect(s.props.mineTargets).toEqual([]); expect(s.props.exportRecords()).toEqual([]);
+    expect(workTargets('MINE', s.scene)).toEqual([]); expect(s.props.exportRecords()).toEqual([]);
     expect(s.physics.bodies).toHaveLength(0); expect(prefabInstance(model)!.minimap.enabled).toBe(false);
     await vi.waitFor(() => expect(dropped(s)).toEqual(['moonrocknugget', 'thulecite']));
     await vi.waitFor(() => expect(s.props.renderEntities).toHaveLength(0));

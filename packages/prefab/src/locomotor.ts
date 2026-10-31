@@ -1,7 +1,9 @@
 import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
+import type { LocomotorAction } from '@dontstarve-web/stategraphs/actionContext';
 import type { WorldContext } from './worldContext';
+import { WORLD_SCALE } from './tile';
 
 export interface GroundPathOptions {
     isWalkable: (point: THREE.Vector3) => boolean;
@@ -161,7 +163,23 @@ export interface LocomotorOptions {
     isPassable?: (x: number, z: number) => boolean;
     /** Leading-edge distance ahead of the body centre that must stay passable. */
     footprintRadius?: number;
+    /** inst:GetPhysicsRadius(0) for GoToEntity's arrive distance; defaults to the footprint radius. */
+    physicsRadius?: number;
 }
+
+/** locomotor.lua ARRIVE_STEP (0.15), in world units. */
+export const ARRIVE_STEP = 0.15 * WORLD_SCALE;
+
+interface PendingAction {
+    readonly action: LocomotorAction;
+    readonly arriveDistance: number;
+    readonly arrive: () => void;
+    readonly fail: () => void;
+    readonly pathTarget: THREE.Vector3;
+}
+
+/** A target moving farther than this from where the path led re-paths, as Dest(target) follows the entity. */
+const REPATH_DISTANCE = 0.5;
 
 /** Owns movement destinations and horizontal physics velocity, like DST's locomotor. */
 export class Locomotor {
@@ -170,6 +188,8 @@ export class Locomotor {
     private readonly findPath?: LocomotorOptions['findPath'];
     private readonly isPassable?: LocomotorOptions['isPassable'];
     private readonly footprintRadius: number;
+    private readonly physicsRadius: number;
+    private pending?: PendingAction;
     private path: readonly THREE.Vector3[] = [];
     private pathIndex = 0;
     private readonly direction = new THREE.Vector3();
@@ -181,18 +201,73 @@ export class Locomotor {
         this.findPath = options.findPath;
         this.isPassable = options.isPassable;
         this.footprintRadius = options.footprintRadius ?? 0;
+        this.physicsRadius = options.physicsRadius ?? this.footprintRadius;
+    }
+
+    /** The BufferedAction the locomotor is walking towards, before the inst buffers it. */
+    get bufferedAction(): LocomotorAction | undefined { return this.pending?.action; }
+
+    /**
+     * locomotor:PushAction for an entity target: GoToEntity with ARRIVE_STEP plus both physics radii (at least the
+     * action's distance) as the arrive distance. On arrival `arrive` runs, the inst's PushBufferedAction; an
+     * invalid action, a new destination, manual movement or Stop fails it instead.
+     */
+    PushAction(action: LocomotorAction, arrive: () => void, fail: () => void): void {
+        this.stop();
+        const arriveDistance = Math.max(ARRIVE_STEP + (action.target.getPhysicsRadius?.() ?? 0) + this.physicsRadius,
+            action.distance ?? 0);
+        const pending: PendingAction = { action, arriveDistance, arrive, fail, pathTarget: action.target.getPosition().clone() };
+        this.pending = pending;
+        if (!action.isValid()) { this.stop(); return; }
+        if (this.hasArrived(pending)) { this.arrive(pending); return; }
+        this.pathTowards(pending);
+    }
+
+    /** locomotor:Clear: drop the destination and fail the walked-to action. */
+    Clear(): void { this.stop(); }
+
+    /** OnUpdate's reached_dest: within the arrive distance, or half this frame's run distance when that is longer. */
+    private hasArrived(pending: PendingAction, runDistance = 0): boolean {
+        const target = pending.action.target.getPosition();
+        return (target.x - this.body.position.x) ** 2 + (target.z - this.body.position.z) ** 2
+            <= Math.max(pending.arriveDistance, runDistance * .5) ** 2;
+    }
+
+    private arrive(pending: PendingAction): void {
+        this.pending = undefined;
+        this.stop();
+        pending.arrive();
+    }
+
+    /**
+     * Path to the target itself, as Dest(target) does; an obstacle's centre is not walkable, so its path ends short of
+     * the centre, inside the arrive distance.
+     */
+    private pathTowards(pending: PendingAction): void {
+        const target = pending.action.target.getPosition();
+        pending.pathTarget.copy(target);
+        if (this.setPath(target)) return;
+        this.direction.set(this.body.position.x - target.x, 0, this.body.position.z - target.z).normalize();
+        const destination = new THREE.Vector3(target.x, target.y, target.z).addScaledVector(this.direction, pending.arriveDistance * 0.8);
+        if (!this.setPath(destination)) this.stop();
     }
 
     get destination(): THREE.Vector3 | undefined {
         return this.path[this.path.length - 1]?.clone();
     }
 
+    /** GoToPoint replaces any walked-to action. */
     goToPoint(target: THREE.Vector3): boolean {
+        this.failPending();
+        return this.setPath(target);
+    }
+
+    private setPath(target: THREE.Vector3): boolean {
         if (![target.x, target.y, target.z].every(Number.isFinite)) return false;
         const start = new THREE.Vector3(this.body.position.x, target.y, this.body.position.z);
         const path = this.findPath ? this.findPath(start, target.clone()) : [target];
         if (!path?.length) {
-            this.stop();
+            this.halt();
             return false;
         }
         this.path = path.map((point) => point.clone());
@@ -201,10 +276,22 @@ export class Locomotor {
     }
 
     stop(): void {
+        this.failPending();
+        this.halt();
+    }
+
+    /** Drop the path and horizontal velocity, keeping any walked-to action. */
+    private halt(): void {
         this.path = [];
         this.pathIndex = 0;
         this.body.velocity.x = 0;
         this.body.velocity.z = 0;
+    }
+
+    private failPending(): void {
+        const pending = this.pending;
+        this.pending = undefined;
+        pending?.fail();
     }
 
     /** A supplied manual direction cancels automatic travel, even when opposite keys cancel out. */
@@ -213,28 +300,44 @@ export class Locomotor {
             this.stop();
             return;
         }
+        const pending = this.pending;
+        if (pending && !manualDirection) {
+            if (!pending.action.isValid()) { this.stop(); return; }
+            if (this.hasArrived(pending, speed * dt)) { this.arrive(pending); return; }
+            if (pending.pathTarget.distanceToSquared(pending.action.target.getPosition()) > REPATH_DISTANCE ** 2) {
+                this.pathTowards(pending);
+                if (this.pending !== pending) return;
+            }
+        }
         this.direction.set(0, 0, 0);
         if (manualDirection) {
+            this.failPending();
             this.path = [];
             this.pathIndex = 0;
             this.direction.set(manualDirection.x, 0, manualDirection.z).normalize();
         } else {
-            while (this.pathIndex < this.path.length) {
-                const point = this.path[this.pathIndex];
-                this.direction.set(point.x - this.body.position.x, 0, point.z - this.body.position.z);
-                const distance = this.direction.length();
-                if (distance <= this.arriveDistance) {
-                    this.pathIndex += 1;
-                    continue;
+            // Dest(target) follows the entity: a path ending short of a moving target leads on towards it once.
+            for (let attempt = 0; ; attempt++) {
+                while (this.pathIndex < this.path.length) {
+                    const point = this.path[this.pathIndex];
+                    this.direction.set(point.x - this.body.position.x, 0, point.z - this.body.position.z);
+                    const distance = this.direction.length();
+                    if (distance <= this.arriveDistance) {
+                        this.pathIndex += 1;
+                        continue;
+                    }
+                    // Slow the last step so it cannot overshoot the waypoint.
+                    speed = Math.min(speed, distance / Math.max(dt, 1 / 60));
+                    this.direction.divideScalar(distance);
+                    break;
                 }
-                // Slow the last step so it cannot overshoot the waypoint.
-                speed = Math.min(speed, distance / Math.max(dt, 1 / 60));
-                this.direction.divideScalar(distance);
-                break;
-            }
-            if (this.pathIndex === this.path.length) {
-                this.stop();
-                return;
+                if (this.pathIndex < this.path.length) break;
+                const pending = this.pending;
+                if (!pending) { this.stop(); return; }
+                if (this.hasArrived(pending, speed * dt)) { this.arrive(pending); return; }
+                if (attempt > 0) { this.body.velocity.x = 0; this.body.velocity.z = 0; return; }
+                this.pathTowards(pending);
+                if (this.pending !== pending) return;
             }
         }
         let vx = this.direction.x * speed;

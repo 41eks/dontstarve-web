@@ -1,4 +1,3 @@
-import { actionTargetModel } from '../../stategraphs/src/actionTargetView';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
@@ -9,6 +8,7 @@ import { createInventoryStore } from '../../../src/inventory';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { bindTestWorld, drawn, plantInstance } from './worldContentFixture';
+import { workTargets } from './workTargets';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -28,7 +28,7 @@ it('restores a sleeping plant with its identity and skin, and finishes burning w
     await drawn(bushes.spawn(new THREE.Vector3(4, 0, 6), { id: 'bush:resident', transform: { position: [4, 0, 6], rotationY: 0 },
       components: { plant: { skinId: 'berrybush_cawnival' } } }));
     await tick();
-    const model = actionTargetModel(bushes.digTargets[0]);
+    const model = workTargets('DIG')[0].model;
     const instance = plantInstance(model), components = instance.components;
     expect(model.parent).toBe(scene);
     const meshes = () => { let count = 0; model.traverse(object => { if (object instanceof THREE.Mesh) count++; }); return count; };

@@ -13,6 +13,7 @@ import type { WorldContext } from '../../prefab/src/worldContext';
 import * as sound from '../../prefab/src/sound';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { reskinEntity } from '../../prefab/src/reskin_tool';
+import { workTargets } from './workTargets';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -129,8 +130,8 @@ it('drops the held block with the recipe loot when hammered', async () => {
     const [{ model }] = placement.giveTargets;
     const marble = offer('marble');
     (findActionEntity(model)?.components ?? prefabInstance(model)!.components).trader.AcceptGift(marble.entity, marble.take);
-    const target = placement.hammerTargets[0];
-    for (let hit = 0; hit < 4; hit++) target.playHit();
+    const target = workTargets('HAMMER')[0];
+    for (let hit = 0; hit < 4; hit++) target.work();
     const items = dropLoot.mock.calls.flatMap(([items]) => items) as { itemId: string; count: number }[];
     expect(items).toContainEqual({ itemId: 'marble', count: 1 });
     expect(items.some(({ itemId }) => itemId === 'boards')).toBe(true);

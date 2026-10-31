@@ -1,5 +1,4 @@
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
-import { actionTargetModel } from '../../stategraphs/src/actionTargetView';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -7,6 +6,7 @@ import { HoundboneManager } from '../../prefab/src/houndbone';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import type { GroundItemDefinition } from '../../prefab/src/groundPrefab';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { workTargets } from './workTargets';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -41,8 +41,8 @@ it('hammers a hound bone once into boneshards, adds a houndstooth chance for pie
   const restored = bones.spawn(new THREE.Vector3(5, 0, 5));
   expect([1, 2, 3]).toContain(bones.exportRecords().find(({ record }) => record.id === lookupPrefabInstance(restored)?.entityId)?.record.components.houndbone?.bonetype);
 
-  const target = bones.hammerTargets.find(target => actionTargetModel(target) === one)!;
-  target.playHit();
+  const target = workTargets('HAMMER').find(target => target.model === one)!;
+  target.work();
   const collapse = scene.getObjectByName('collapse_small');
   expect(collapse).toBeDefined();
   expect(prefabInstance(collapse)!.listTags()).toEqual(expect.arrayContaining(['FX', 'NOCLICK']));

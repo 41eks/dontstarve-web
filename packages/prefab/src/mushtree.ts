@@ -1,14 +1,10 @@
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
-import type { PickaxeTarget } from '@dontstarve-web/stategraphs/mine';
-import type { ShovelTarget } from '@dontstarve-web/stategraphs/dig';
-import { performToolWork } from '../../stategraphs/src/componentactions';
 import { createEffect, WorldContentKey, type GetWatchWorldContent, type HandEquipment, type ReadonlySignal, type WorldContentSignal, type SeasonState, type TileStateQuery } from '@dontstarve-web/signals';
 import { Growable, type GrowableSave } from '../../componets/src/growable';
 import { LootDropper } from '../../componets/src/lootdropper';
 import { Workable } from '../../componets/src/workable';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { modelEntries } from './modelRecords';
 import { actionEntity } from './actionEntity';
 import { ToolMouseTarget } from './toolMouseTarget';
 import { PrefabDisplayGroup, SpriteResources, SpriteState, type ArchiveSpriteCommands, type PrefabDisplay } from '@dontstarve-web/display';
@@ -439,18 +435,7 @@ export class MushtreeManager {
 
   get renderEntities() { return this.displays.renderEntities; }
 
-  getChopTargets(model?: THREE.Object3D): PickaxeTarget[] { return this.workTargets('CHOP', model); }
-  getDigTargets(model?: THREE.Object3D): ShovelTarget[] {
-    return this.workTargets('DIG', model).map(target => ({ ...target, dig: () => target.isValid() && performToolWork('DIG', target.entity, {}) }));
-  }
 
-  private workTargets(action: 'CHOP' | 'DIG', model?: THREE.Object3D): PickaxeTarget[] {
-    return modelEntries(this.trees, model).filter(([, { instance }]) => instance.components.workable.CanBeWorked()
-      && instance.components.workable.GetWorkAction() === action).map(([, { instance, display }]) => ({
-      id: String(instance.entityId), instance, display, position: instance.position, entity: instance,
-      isValid: () => !instance.isRemoved && instance.components.workable.CanBeWorked() && instance.components.workable.GetWorkAction() === action,
-    }));
-  }
 
   exportRecords(): { prefabId: MushtreeId; record: MushtreeRecord }[] {
     return [...this.trees.values()].filter(({ instance }) => instance.persists)

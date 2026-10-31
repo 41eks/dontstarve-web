@@ -8,7 +8,7 @@ export interface PlayerActionEvents {
   'action:interrupt': { reason: ActionInterruptReason };
 }
 
-type ActionGroup = 'attack' | 'hand' | 'spell' | 'net' | 'food' | 'read' | 'play' | 'building' | 'deploy' | 'movement' | 'fishing' | 'harvest' | 'sleep' | 'haunt' | 'migrate' | 'pickup' | 'pick' | 'itemuse';
+type ActionGroup = 'player' | 'attack' | 'hand' | 'spell' | 'net' | 'food' | 'read' | 'play' | 'building' | 'deploy' | 'movement' | 'fishing' | 'harvest' | 'sleep' | 'haunt' | 'migrate' | 'pickup' | 'pick' | 'itemuse';
 interface CancellationRule {
   begins: readonly PlayerActionKind[];
   interrupts: readonly ActionInterruptReason[];
@@ -19,6 +19,8 @@ const workActions = ['BLINK', 'BLINK_MAP', 'ATTACK', 'HAMMER', 'MINE', 'CHOP', '
 
 /** Existing interruption scopes, expressed as action categories rather than controller instances. */
 const rules: Record<ActionGroup, CancellationRule> = {
+  // PlayerController: the player's one buffered action yields to any action begun elsewhere.
+  player: { begins: [...workActions, ...inventoryActions, 'NET', 'PICK', 'CASTSPELL'], interrupts: inventoryInterrupts },
   itemuse: { begins: [...workActions, ...inventoryActions, 'NET', 'PICK'], interrupts: [...inventoryInterrupts, 'drop'] },
   attack: { begins: [...workActions, ...inventoryActions, 'NET', 'PICK'], interrupts: inventoryInterrupts },
   haunt: { begins: [...workActions, ...inventoryActions, 'NET', 'PICK', 'CASTSPELL'], interrupts: inventoryInterrupts },

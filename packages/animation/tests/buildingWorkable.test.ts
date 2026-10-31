@@ -6,6 +6,7 @@ import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlac
 import { ICE_BOX_DEFINITION } from '../../prefab/src/icebox';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { createPickupInventory } from './pickupFixture';
+import { workTargets } from './workTargets';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -25,10 +26,10 @@ it('restores container contents, drops their live entities at the building foot 
     const model = await placement.spawnFromSave('icebox', { id: 'icebox', transform: { position: [3, 0, -6], rotationY: 0 },
       components: { building: { state: 'closed' }, container: { slotCount: 9,
         slots: [{ slotKey: '0', item: { entityId: 'stored_food', itemId: 'seeds', count: 3, freshnessPercent: .6 } }] } } });
-    const target = placement.hammerTargets[0], address = { containerId: 'world:icebox:icebox', slotKey: '0' };
+    const target = workTargets('HAMMER')[0], address = { containerId: 'world:icebox:icebox', slotKey: '0' };
     const item = inventory.getEntity(address)!;
     const before = item.snapshot();
-    target.playHit();
+    target.work();
     expect(target.entity.hasTag('HAMMER_workable')).toBe(true);
     expect(target.entity.components.workable!.GetWorkLeft()).toBe(1);
     expect(inventory.getEntity(address)).toBeNull();
@@ -36,7 +37,7 @@ it('restores container contents, drops their live entities at the building foot 
     expect(item.snapshot()).toEqual(before);
     expect(item.transform.position.toArray()).toEqual([3, 0, -6]);
     expect(dropLoot).not.toHaveBeenCalled();
-    target.playHit(); target.playHit();
+    target.work(); target.work();
     expect(target.entity.hasTag('HAMMER_workable')).toBe(false);
     expect(model.parent).toBeNull(); expect(placement.exportRecords()).toEqual([]);
     expect(dropLoot.mock.calls.flatMap(([items]) => items)).toEqual([

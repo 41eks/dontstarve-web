@@ -10,6 +10,7 @@ import { WallsPlacement } from '../../prefab/src/walls';
 import { WALL_PHYSICS_RADIUS } from '../../prefab/src/wallPlacement';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import type { Health } from '../../componets/src/health';
+import { workTargets } from './workTargets';
 
 useTestTileMap();
 
@@ -70,9 +71,9 @@ it('restores a saved broken wall without an obstacle and releases the obstacle w
       components: { health: { current: 200, maximum: 400 } } });
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(wallBodies(physics).map(body => body.position.x)).toEqual([7]);
-    placement.hammerTargets.find(target => target.id === 'live')!.playHit();
-    placement.hammerTargets.find(target => target.id === 'live')!.playHit();
-    placement.hammerTargets.find(target => target.id === 'live')!.playHit();
+    workTargets('HAMMER').find(target => target.id === 'live')!.work();
+    workTargets('HAMMER').find(target => target.id === 'live')!.work();
+    workTargets('HAMMER').find(target => target.id === 'live')!.work();
     expect(wallBodies(physics)).toHaveLength(0);
   } finally { placement.dispose(); }
 });

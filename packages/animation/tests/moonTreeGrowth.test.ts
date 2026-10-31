@@ -24,6 +24,7 @@ import type { WorldContext } from '../../prefab/src/worldContext';
 import { PlaySound } from '../../prefab/src/sound';
 import { bindTestWorld } from './worldContentFixture';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { workTargets } from './workTargets';
 
 useTestTileMap();
 let area: ReturnType<typeof createTestArea>;
@@ -124,14 +125,14 @@ it('plants one moonbutterfly with original baby-tree art and cycles short/normal
     expect(s.forest.exportState(tree)).toEqual({ moonTree: { size: 'short' }, growable: { stage: 1, time: 450 } });
     // The new entity has no drawn sprite yet; its transition settles under the display residency contract.
     expect(lookupPrefabInstance(tree.model!)!.sprite.sprite.peek().clip.name).toBe('sway1_loop_short');
-    expect(s.forest.chopTargets[0].entity.components.workable!.GetWorkLeft()).toBe(8);
-    expect(performToolWork('CHOP', s.forest.chopTargets[0].entity, {})).toBe(true);
+    expect(workTargets('CHOP', tree.model!)[0].entity.components.workable!.GetWorkLeft()).toBe(8);
+    expect(performToolWork('CHOP', workTargets('CHOP', tree.model!)[0].entity, {})).toBe(true);
     s.setSpring(); s.scheduler.advance(450);
     expect(s.forest.exportState(tree)).toEqual({ moonTree: { size: 'normal' }, growable: { stage: 2, time: 1125 } });
-    expect(s.forest.chopTargets[0].entity.components.workable!.GetWorkLeft()).toBe(12);
+    expect(workTargets('CHOP', tree.model!)[0].entity.components.workable!.GetWorkLeft()).toBe(12);
     s.scheduler.advance(1125);
     expect(s.forest.exportState(tree).moonTree!.size).toBe('tall');
-    expect(s.forest.chopTargets[0].entity.components.workable!.GetWorkLeft()).toBe(16);
+    expect(workTargets('CHOP', tree.model!)[0].entity.components.workable!.GetWorkLeft()).toBe(16);
     s.scheduler.advance(1125);
     expect(s.forest.exportState(tree)).toEqual({ moonTree: { size: 'short' }, growable: { stage: 1, time: 337 } });
     expect(PlaySound).toHaveBeenCalledWith('dontstarve/forest/treeGrowFromWilt', tree.position);
@@ -148,15 +149,15 @@ it('keeps logical growth while unloaded and stops growth when chopping or diggin
     await area.visit(new THREE.Vector3());
     expect(s.forest.exportState(tree)).toEqual({ moonTree: { size: 'short' }, growable: { stage: 1, time: 250 } });
     expect(prefabInstance(tree.model!)!.sprite.currentAnimation).not.toMatch(/^grow_/);
-    const target = s.forest.chopTargets[0];
+    const target = workTargets('CHOP', tree.model!)[0];
     expect(target.entity.components.workable!.WorkedBy({}, 8)).toBe(true);
     expect(s.forest.exportState(tree)).toEqual({ moonTree: { size: 'short', stump: true }, growable: { stage: 1 },
       moonTreeTimer: { timers: { decay: { timeleft: 14400, initial_time: 14400, paused: false } } } });
     expect(prefabInstance(tree.model!)!.minimap.icon).toBe('moon_tree_stump.png');
     s.scheduler.advance(5000);
-    expect(s.forest.digTargets[0].dig()).toBe(true);
+    expect(workTargets('DIG', tree.model!)[0].work()).toBe(true);
     const sapling = s.forest.spawnSapling(new THREE.Vector3(5, 0, 0));
-    expect(s.forest.digTargets[0].dig()).toBe(true);
+    expect(workTargets('DIG', sapling)[0].work()).toBe(true);
     expect(sapling.userData.removed).toBe(true);
     expect(s.dropLoot).toHaveBeenLastCalledWith([{ itemId: 'twigs', count: 1 }], sapling.position);
     s.scheduler.advance(300);

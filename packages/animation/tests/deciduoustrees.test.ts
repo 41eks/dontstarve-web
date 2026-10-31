@@ -12,6 +12,7 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { DeciduousTreeLeaves } from '../../prefab/src/deciduousTreeLeaves';
 import { bindTestWorld } from './worldContentFixture';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { workTargets } from './workTargets';
 
 useTestTileMap();
 let area: ReturnType<typeof createTestArea>;
@@ -36,7 +37,7 @@ it('cycles three source size banks, swaps seasonal leaves without sharing tint, 
   const s = await setup(), sharedDisposed = vi.fn();
   try {
     const tree = s.forest.spawn('deciduoustree_short', new THREE.Vector3(2, 0, 0));
-    const work = s.forest.chopTargets[0].entity.components.workable!, model = tree.model!;
+    const work = workTargets('CHOP')[0].entity.components.workable!, model = tree.model!;
     const icon = prefabInstance(model)!.minimap;
     expect(icon).toMatchObject({ icon: 'tree_leaf.png', priority: -1 });
     const growth = (findActionEntity(model)?.components ?? prefabInstance(model)!.components).growable, leaves = model.userData.deciduoustreeState.leaves;
@@ -50,7 +51,7 @@ it('cycles three source size banks, swaps seasonal leaves without sharing tint, 
     s.scheduler.advance(1500); expect(work.GetWorkLeft()).toBe(15);
     s.season.set({ season: 'autumn', progress: .5 }); await new Promise(resolve => setTimeout(resolve, 0));
     expect(leaves.build.peek()).toBe('orange'); expect(leaves.leaf.peek()).toBe('colorful');
-    expect(s.forest.chopTargets[0].entity.hasTag('shelter')).toBe(true);
+    expect(workTargets('CHOP')[0].entity.hasTag('shelter')).toBe(true);
     const geometry = (model.children[0].children[0].children[0] as THREE.Mesh).geometry;
     const materials = (model.children[0].children[0].children[0] as THREE.Mesh).material as THREE.MeshBasicMaterial[];
     expect(materials.length).toBeGreaterThan(1);
@@ -68,7 +69,7 @@ it('cycles three source size banks, swaps seasonal leaves without sharing tint, 
     s.scheduler.advance(20);
     expect(leaves.build.peek()).toBe('barren'); expect(leaves.leaf.peek()).toBe('barren');
     await area.visit(new THREE.Vector3());
-    expect(s.forest.chopTargets[0].entity.components.workable).toBe(work);
+    expect(workTargets('CHOP')[0].entity.components.workable).toBe(work);
     const covered = (tree.model!.children[0].children[0].children[0] as THREE.Mesh).geometry.drawRange.count;
     expect(prefabInstance(tree.model!)!.listTags()).toContain('SnowCovered');
     world.snowLevel.set(0); await new Promise(resolve => setTimeout(resolve, 0));
@@ -108,7 +109,7 @@ it('drops two autumn acorns, preserves a saved stump and its seasonal build, and
   const s = await setup('autumn');
   try {
     const tree = s.forest.spawn('deciduoustree_tall', new THREE.Vector3(1, 0, 0));
-    const target = s.forest.chopTargets[0], work = target.entity.components.workable!;
+    const target = workTargets('CHOP')[0], work = target.entity.components.workable!;
     const leaves = tree.model!.userData.deciduoustreeState.leaves;
     expect(work.WorkedBy({ getPosition: () => new THREE.Vector3(3, 0, 0) }, 15)).toBe(true);
     expect(s.dropLoot.mock.calls[0][0]).toEqual([{ itemId: 'log', count: 3 }, { itemId: 'acorn', count: 2 }]);
@@ -124,7 +125,7 @@ it('drops two autumn acorns, preserves a saved stump and its seasonal build, and
       expect(prefabInstance(loaded.model!)!.sprite.currentAnimation).toBe('stump_tall');
       const icon = prefabInstance(loaded.model!)!.minimap;
       expect(icon.icon).toBe('tree_leaf_stump.png');
-      expect(restored.forest.digTargets[0].dig()).toBe(true);
+      expect(workTargets('DIG', loaded.model!)[0].work()).toBe(true);
       expect(icon.enabled).toBe(false);
       expect(prefabInstance(loaded.model!)!.isRemoved).toBe(true);
       expect(restored.dropLoot).toHaveBeenLastCalledWith([{ itemId: 'log', count: 1 }], loaded.position);

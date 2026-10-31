@@ -1,4 +1,3 @@
-import { actionTargetModel } from '../../stategraphs/src/actionTargetView';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
@@ -20,6 +19,7 @@ import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { bindTestWorld, drawn, plantInstance } from './worldContentFixture';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { reskinEntity } from '../../prefab/src/reskin_tool';
+import { workTargets } from './workTargets';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -64,7 +64,7 @@ it('picks native berries without consuming cycles, pauses in winter and reloads 
       s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
     expect(s.inventory.getItemSpec('dug_berrybush').maxStack).toBe(10);
     expect(s.inventory.getItemSpec('dug_berrybush').atlas).toBe('images/inventoryimages.xml');
-    const model = actionTargetModel(s.bushes.digTargets[0]), pickable = plantInstance(model).components.pickable;
+    const model = workTargets('DIG')[0].model, pickable = plantInstance(model).components.pickable;
     expect(s.physics.bodies).toHaveLength(1);
     expect(lookupPrefabInstance(model)?.getPhysicsRadius(undefined)).toBeCloseTo(.3);
     expect(pickable.pick(s.picker)).toBe(true);
@@ -114,7 +114,7 @@ it('preserves a reskinned bush through digging, item pickup/drop, transplant, fe
     expect(lookupPrefabInstance(model)?.skinId).toBe('berrybush_cawnival');
     expect(lookupPrefabInstance(model)?.entityId).toBe(originalId); expect(model.position.equals(position)).toBe(true);
     const original = s.bushes.exportRecords()[0];
-    expect(performToolWork('DIG', s.bushes.digTargets[0].entity!, {})).toBe(true);
+    expect(performToolWork('DIG', workTargets('DIG')[0].entity!, {})).toBe(true);
     expect(s.physics.bodies).toHaveLength(0);
     const loot = s.ground.exportRecords();
     expect(loot.map(record => record.components.stack?.itemId)).toEqual(['berries', 'dug_berrybush']);
@@ -131,7 +131,7 @@ it('preserves a reskinned bush through digging, item pickup/drop, transplant, fe
     expect(item.components.deployable!.Deploy(position, { position, PushEvent: vi.fn() }, {
       canDeployPlant: () => true, deployPlant: (point: THREE.Vector3) => s.bushes.transplant(point, root.skinId),
     })).toBe(true);
-    const replanted = await drawn(actionTargetModel(s.bushes.digTargets[0])), pickable = plantInstance(replanted).components.pickable;
+    const replanted = await drawn(workTargets('DIG')[0].model), pickable = plantInstance(replanted).components.pickable;
     expect(lookupPrefabInstance(replanted)?.skinId).toBe('berrybush_cawnival');
     expect(pickable.exportState()).toMatchObject({ picked: true, transplanted: true, cyclesLeft: 0 });
     expect(plantInstance(replanted).sprite.currentAnimation).toBe('dead');
@@ -160,7 +160,7 @@ it('preserves a reskinned bush through digging, item pickup/drop, transplant, fe
     }
     expect(pickable.IsBarren()).toBe(true); expect(pickable.remainingSeconds).toBeUndefined();
     expect(plantInstance(replanted).sprite.currentAnimation).toBe('idle_to_dead');
-    expect(performToolWork('DIG', s.bushes.digTargets[0].entity!, {})).toBe(true);
+    expect(performToolWork('DIG', workTargets('DIG')[0].entity!, {})).toBe(true);
     expect(s.ground.exportRecords().slice(-2).map(record => record.components.stack?.itemId)).toEqual(['twigs', 'twigs']);
     expect(s.ground.exportRecords().slice(-2).map(record => record.components.stack?.count)).toEqual([1, 1]);
     s.advance(10000); expect(s.bushes.exportRecords()).toEqual([]);

@@ -13,6 +13,7 @@ import { WORLD_SCALE } from '../../prefab/src/standardcomponents';
 import { PlaySound } from '../../prefab/src/sound';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { reskinEntity } from '../../prefab/src/reskin_tool';
+import { workTargets } from './workTargets';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}),
   PlaySound: vi.fn(() => ({ stop: vi.fn(), isPlaying: () => true })) }));
@@ -48,19 +49,19 @@ async function setup(id: typeof RESEARCH_LAB_IDS[number], skinId?: string) {
 it.each(['researchlab'] as const)('%s fires hit/finish callbacks once and removes its record on hit four', async (id) => {
   const { placement, model, world, animation, finish, dropLoot, builder } = await setup(id);
   try {
-    const target = placement.hammerTargets[0];
+    const target = workTargets('HAMMER')[0];
     const before = placement.exportRecords();
     // Frame geometry changes with the clip, so observe the release rather than one frame's geometry.
     const disposeGeometry = vi.spyOn(THREE.BufferGeometry.prototype, 'dispose');
     for (let i = 0; i < 3; i++) {
-      target.playHit();
+      target.work();
       expect(animation().currentAnimation).toBe('hit');
       expect(placement.exportRecords()).toEqual(before);
       expect(dropLoot).not.toHaveBeenCalled();
       finish();
       expect(animation().currentAnimation).toBe('idle');
     }
-    target.playHit();
+    target.work();
     const dropped = dropLoot.mock.calls.flatMap(([items]) => items.flatMap(({ itemId, count }: { itemId: string; count: number }) => Array(count).fill(itemId)));
     expect(dropped.sort()).toEqual(['goldnugget', 'log', 'log', 'rocks', 'rocks']);
     expect(dropLoot.mock.calls.every(([, position]) => position.equals(new THREE.Vector3(3, 0, 4)))).toBe(true);
@@ -69,7 +70,7 @@ it.each(['researchlab'] as const)('%s fires hit/finish callbacks once and remove
     expect(model.parent).toBeNull();
     expect(disposeGeometry).toHaveBeenCalled();
     expect(target.isValid()).toBe(false);
-    expect(placement.hammerTargets).toEqual([]);
+    expect(workTargets('HAMMER')).toEqual([]);
     expect(placement.reskinTargets).toEqual([]);
     expect(placement.exportRecords()).toEqual([]);
     const effect = world.scene.children.find((model) => model.name === 'collapse_small')!;
@@ -78,7 +79,7 @@ it.each(['researchlab'] as const)('%s fires hit/finish callbacks once and remove
     expect(effect.position.toArray()).toEqual([3, 0, 4]);
     expect(placement.renderEntities.map(({ object }) => object)).toEqual([effect]);
     dropLoot.mockClear();
-    target.playHit();
+    target.work();
     expect(dropLoot).not.toHaveBeenCalled();
     await prefabDisplay(effect)!.artLoaded();
     finish();
@@ -94,16 +95,16 @@ it('preserves work through reskinning and restores proximity after hits', async 
     builder.EvaluateTechTrees();
     placement.update(0);
     expect(animation().currentAnimation).toBe('proximity_loop');
-    placement.hammerTargets[0].playHit();
+    workTargets('HAMMER')[0].work();
     finish();
     expect(animation().currentAnimation).toBe('proximity_loop');
     const prototyper = (findActionEntity(model)?.components ?? prefabInstance(model)!.components).prototyper;
     expect(reskinEntity(placement.reskinTargets[0])).toBe(true);
     expect((findActionEntity(model)?.components ?? prefabInstance(model)!.components).prototyper).toBe(prototyper);
     expect(prototyper.on).toBe(true);
-    for (let i = 0; i < 2; i++) { placement.hammerTargets[0].playHit(); finish(); }
+    for (let i = 0; i < 2; i++) { workTargets('HAMMER')[0].work(); finish(); }
     expect(dropLoot).not.toHaveBeenCalled();
-    placement.hammerTargets[0].playHit();
+    workTargets('HAMMER')[0].work();
     expect(model.parent).toBeNull();
     expect(dropLoot).toHaveBeenCalled();
     const effect = world.scene.children[0];

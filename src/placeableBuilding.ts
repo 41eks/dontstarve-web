@@ -189,10 +189,6 @@ export class PlaceableBuildingPlacement {
         return [...this.animated.renderEntities, ...this.walls.renderEntities, ...this.fences.renderEntities];
     }
 
-    get hammerTargets() { return this.getHammerTargets(); }
-    getHammerTargets(model?: Object3D) {
-        return [...this.animated.getHammerTargets(model), ...this.walls.getHammerTargets(model), ...this.fences.getHammerTargets(model)];
-    }
 
     /** Placed insts with combat and live health; walls and fences are the only ported structures with combat. */
     get combatTargets() {

@@ -5,14 +5,12 @@ import type * as CANNON from 'cannon-es';
 import { createSharedArchiveSprite, ArchiveSpriteAssets } from '@dontstarve-web/animation/archiveSprite';
 import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
 import { createArchiveEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
-import type { PickaxeTarget } from '@dontstarve-web/stategraphs/mine';
 import { createEffect, createMemo, watchSignal, WorldContentKey, type GetWatchWorldContent, type TileStateQuery } from '@dontstarve-web/signals';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
 import { TileTracker } from '../../componets/src/tileManager';
 import { Workable } from '../../componets/src/workable';
 import { ComponentTimer } from '../../componets/src/timer';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { modelEntries } from './modelRecords';
 import type { MiniMapState } from '../../map/src/minimapState';
 import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
@@ -352,16 +350,6 @@ export class GrottoPoolManager {
       ...model.userData.billboard !== false ? [{ object: model, footPosition: model.position, cameraDepth: 0 }] : [],
       ...mist ? [{ object: mist.display.model, footPosition: model.position, cameraDepth: 0 }] : [],
     ]);
-  }
-
-
-  get mineTargets(): PickaxeTarget[] { return this.getMineTargets(); }
-
-  getMineTargets(model?: THREE.Object3D): PickaxeTarget[] {
-    return modelEntries(this.grottos, model).filter(([, grotto]) => grotto.workable?.CanBeWorked()).map(([model, grotto]) => ({
-      id: String(grotto.instance.entityId), model, position: model.position, entity: actionEntity(model, grotto.prefab),
-      isValid: () => this.grottos.get(model) === grotto && !!grotto.workable?.CanBeWorked(),
-    }));
   }
 
   /** on_save: a pool lists its live children; a prop saves its work left. */

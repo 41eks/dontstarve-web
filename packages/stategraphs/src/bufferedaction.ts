@@ -30,7 +30,11 @@ export interface BufferedActionObject {
   hasTag(tag: string): boolean;
 }
 
+/** The acting inst, as actions.lua's fns pass `act.doer` to the components they call. */
+export type BufferedActionDoer = import('../../componets/src/workable').Worker;
+
 export interface BufferedActionObjects {
+  readonly doer?: BufferedActionDoer;
   readonly invobject?: BufferedActionObject;
   readonly target?: BufferedActionObject;
   /** bufferedaction.lua pos, distance, arrivedist and forced. */
@@ -43,6 +47,7 @@ export interface BufferedActionObjects {
 /** The actor owns one pending action; animation states choose when to execute it. */
 export class BufferedAction<Action extends string = string> {
   readonly action: Action;
+  readonly doer: BufferedActionDoer | undefined;
   readonly invobject: BufferedActionObject | undefined;
   readonly target: BufferedActionObject | undefined;
   readonly pos: BufferedActionObjects['pos'];
@@ -59,6 +64,7 @@ export class BufferedAction<Action extends string = string> {
     objects: BufferedActionObjects = {},
   ) {
     this.action = action;
+    this.doer = objects.doer;
     this.invobject = objects.invobject;
     this.target = objects.target;
     this.pos = objects.pos;

@@ -1,3 +1,5 @@
+import { performToolWork } from '../../stategraphs/src/componentactions';
+import { activePrefabs } from '../../prefab/src/activePrefabs';
 import * as THREE from 'three';
 import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
 import { ICE_BOX_DEFINITION } from '../../prefab/src/icebox';
@@ -48,7 +50,7 @@ export async function checkContainerSounds() {
       const ignoresOpeningClick = sources.length === before + 1;
       finish();
       const savedOpen = placement.exportRecords()[0].record;
-      placement.hammerTargets[0].playHit();
+      performToolWork('HAMMER', activePrefabs.find(entity => entity.hasTag('HAMMER_workable'))!, {});
       finish();
       const silentHit = sources.length === before + 1;
       click();
