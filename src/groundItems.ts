@@ -3,6 +3,7 @@ import { ItemEntity, ItemEntityRegistry, type InventoryStore } from '@dontstarve
 import type { PickupTarget } from '@dontstarve-web/stategraphs';
 import type { PlayerActionPicker } from '@dontstarve-web/stategraphs';
 import { loadImageAtlas, type ImageAtlas } from '@dontstarve-web/animation/imageAtlas';
+import { PrefabDisplayGroup } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import { isSpriteEntityRendered } from '@dontstarve-web/animation/renderOrder';
 import { isHatId, HAT_DEFINITIONS } from '@dontstarve-web/prefab/hats';
@@ -67,7 +68,7 @@ export class GroundItemManager {
   private readonly pointer: PointerRaycaster;
   private readonly mouseActions?: PlayerActionPicker;
   private readonly renderer: THREE.WebGLRenderer;
-  private readonly scene: THREE.Scene;
+  private readonly displays: PrefabDisplayGroup;
   private readonly player: THREE.Object3D;
   private disposed = false;
   private readonly inserting = new Set<GroundItemRecord>();
@@ -96,7 +97,7 @@ export class GroundItemManager {
   ) {
     this.mouseActions = mouseActions;
     this.entities = entities;
-    this.scene = scene;
+    this.displays = new PrefabDisplayGroup(scene);
     this.renderer = renderer;
     this.pointer = new PointerRaycaster({ camera, renderer });
     this.archiveUrl = archiveUrl;
@@ -124,6 +125,7 @@ export class GroundItemManager {
     this.pointer.dispose();
     this.stopDrops();
     for (const item of [...this.items.values()]) { this.removeVisual(item); this.entities.destroy(item.entity); }
+    this.displays.dispose();
     for (const stop of this.groundEntityStops.values()) stop();
     this.groundEntityStops.clear();
     this.groundEntitiesByPrefab.clear();
@@ -310,6 +312,7 @@ export class GroundItemManager {
     const record = this.withFootPosition({ id, entity, definition, stops: [], ...visual });
     this.items.set(visual.model, record);
     this.bindInventoryEvents(record);
+    this.displays.mount(visual.display, record.footPosition);
     this.bindVisualActivity(record);
     this.bindVisualUpdating(record);
     this.bindEntityRemoval(record);
@@ -334,11 +337,9 @@ export class GroundItemManager {
         this.activeItems.add(record);
         this.refreshUpdating(record);
         record.model.position.copy(record.entity.transform.position);
-        this.scene.add(record.model);
       } else {
         this.activeItems.delete(record);
         this.updatingItems.delete(record);
-        record.model.removeFromParent();
       }
     };
     record.stopActivity = undefined;
@@ -347,10 +348,10 @@ export class GroundItemManager {
     createEffect(() => setActive(active.get()));
   }
 
-  /** A visual joins the frame loop while it can change by itself: a display to advance, an update, a removal check or a fling. */
+  /** Visit active records while their prefab requests frame updates or their loot is in flight. */
   private refreshUpdating(record: GroundItemRecord): void {
     const needed = this.activeItems.has(record) && (record.fling !== undefined
-      || ((record.display !== undefined || record.update !== undefined || record.isRemoved !== undefined) && (record.updating?.peek() ?? true)));
+      || (record.updating?.peek() ?? true));
     if (needed) this.updatingItems.add(record); else this.updatingItems.delete(record);
   }
 
@@ -633,8 +634,8 @@ export class GroundItemManager {
       item.model.position.copy(item.entity.transform.position);
       // The display advances the declared clips, then the visual's own update runs prefab logic. What that logic
       // declares this frame (a new clip, a set frame) is drawn now, as the engine renders the latest AnimState.
-      item.display?.update(dt, cameraQuaternion);
-      if (item.update) { item.update(dt); item.display?.update(0, cameraQuaternion); }
+      item.display.update(dt, cameraQuaternion);
+      if (item.update) { item.update(dt); item.display.update(0, cameraQuaternion); }
       if (item.fling) {
         item.fling.update(dt);
         item.model.children[0].position.y = item.fling.height;

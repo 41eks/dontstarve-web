@@ -112,6 +112,9 @@ it('reuses ground item resources and activity, and skips sleeping visuals in the
     // The displays load the art after the items exist.
     await Promise.all([first, second].map(model => (prefabDisplay(model) as PrefabDisplay).artLoaded()));
     const mesh = firstMesh(first), dispose = vi.fn();
+    const added = vi.fn(), removed = vi.fn();
+    first.addEventListener('added', added);
+    first.addEventListener('removed', removed);
     expect(mesh.geometry.getAttribute('position').count).toBeGreaterThan(0);
     expect(mesh.geometry).toBe(firstMesh(second).geometry);
     mesh.geometry.addEventListener('dispose', dispose);
@@ -123,6 +126,7 @@ it('reuses ground item resources and activity, and skips sleeping visuals in the
     const before = world.manager.exportRecords();
     active.set(false); await turn();
     expect(world.scene.children).toHaveLength(0);
+    expect(removed).toHaveBeenCalledOnce();
     update.mockClear();
     world.manager.update(.1, new THREE.Quaternion());
     expect(update).not.toHaveBeenCalled();
@@ -131,6 +135,7 @@ it('reuses ground item resources and activity, and skips sleeping visuals in the
     expect(dispose).not.toHaveBeenCalled();
     active.set(true); await turn(); await turn();
     expect(world.scene.children).toHaveLength(2);
+    expect(added).toHaveBeenCalledOnce();
     expect(world.manager.exportRecords()).toEqual(before);
     world.manager.dispose();
     expect(dispose).toHaveBeenCalledOnce();
