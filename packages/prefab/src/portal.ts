@@ -213,8 +213,7 @@ export class PortalManager {
       removeTag: tag => inst.removeTag(tag),
     };
     const onRezPlayer = () => this.startSpawn(entity);
-    model.addEventListener('rez_player' as never, onRezPlayer);
-    entity.stopEvents.push(() => model.removeEventListener('rez_player' as never, onRezPlayer));
+    entity.stopEvents.push(entity.main.instance.ListenForEvent('rez_player', onRezPlayer));
     const services = this.services;
     if (!services) return;
     const portalRez = watchSignal(services.portalRez, stop => entity.stopEvents.push(stop));

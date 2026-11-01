@@ -80,7 +80,7 @@ export async function checkLanternLighting() {
     const entity = new ItemEntity({ itemId: 'lantern', count: 1, ...(skin ? { skinId: skin } : {}) });
     entity.configure(lanternSpec);
     ground.bindEntity!(entity);
-    ground.model.dispatchEvent({ type: 'ondropped' });
+    prefabInstance(ground.model)!.PushEvent('ondropped');
     scene.add(ground.model);
     ground.model.position.set(60, 0, 0);
     ground.model.quaternion.copy(camera.quaternion);

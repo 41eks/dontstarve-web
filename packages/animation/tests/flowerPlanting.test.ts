@@ -135,7 +135,7 @@ it('quick-picks petals at frame six, preserves a cancelled flower and reloads th
     expect(canDoSceneAction('PICK', flower, picker as never)).toBe(true);
     s.world.worldEvents.on('plantkilled', killed);
     const picked = vi.fn(() => expect(flower.parent).toBe(s.world.scene));
-    flower.addEventListener('picked' as never, picked);
+    prefabInstance(flower)!.ListenForEvent('picked', picked);
     const pick = () => controller.DoAction(controller.createAction({ action: 'PICK', target: entity })!);
     s.world.player.position.set(.5, 0, 0);
     expect(pick()).toBe(true);

@@ -26,7 +26,7 @@ export function createPickupDoer(player: THREE.Object3D, inventory: InventorySto
     // inst.sg:HasStateTag, as workable callbacks read the worker's state.
     get sg() { const sg = prefabInstance(player)?.sg; return sg && { HasStateTag: (tag: string) => sg.hasStateTag(tag) }; },
     hasTag: tag => tag === 'player' || modelHasTag(player, tag),
-    PushEvent: (name, data) => player.dispatchEvent({ type: name, data } as never) };
+    PushEvent: (name, data) => prefabInstance(player)?.PushEvent(name, data) };
   inventory.bindActor(doer);
   return doer;
 }

@@ -355,7 +355,7 @@ export function createFirefliesGroundSprite(assets: FirefliesAssets, world: Fire
   const active = createSignal(true);
   const cleanups: (() => void)[] = [];
   let controller: FirefliesController | undefined;
-  const removeInventoryEvents = listenInventoryEvents(model, {
+  const removeInventoryEvents = listenInventoryEvents(instance, {
     ondropped: () => controller?.place(true),
     onputininventory: () => controller?.onPutInInventory(),
     onload: () => controller?.place(false),

@@ -146,7 +146,7 @@ export function OnMakePlayerGhost(owner: PlayerGhostOwner, data?: { skeleton?: b
   // The death state disabled the controller; a ghost can move and act.
   owner.setControllerEnabled(true);
   owner.ghostMode.set(true);
-  owner.model.dispatchEvent({ type: 'ms_becameghost' } as never);
+  entity.PushEvent?.('ms_becameghost', undefined);
 }
 
 // Light:SetIntensity(.6) SetRadius(.5) SetFalloff(.6) SetColour(180/255, 195/255, 225/255)
@@ -261,5 +261,5 @@ function finishRez(owner: PlayerGhostOwner, source: RezSource, position: THREE.V
   owner.addSlipperyFeet();
   entity.removeTag('playerghost');
   entity.removeTag('reviving');
-  owner.model.dispatchEvent({ type: 'ms_respawnedfromghost' } as never);
+  entity.PushEvent?.('ms_respawnedfromghost', undefined);
 }

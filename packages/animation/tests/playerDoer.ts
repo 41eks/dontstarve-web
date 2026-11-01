@@ -10,7 +10,7 @@ export function playerDoer(player: THREE.Object3D, components: Record<string, un
     components,
     position: player.position,
     hasTag: (tag: string) => tag === 'player' || prefabInstance(player)?.hasTag(tag) === true,
-    PushEvent: (name: string, data?: unknown) => player.dispatchEvent({ type: name, data } as never),
+    PushEvent: (name: string, data?: unknown) => prefabInstance(player)?.PushEvent(name, data),
     getPosition: () => player.position,
     get sg() { const sg = prefabInstance(player)?.sg; return sg && { HasStateTag: (tag: string) => sg.hasStateTag(tag) }; },
   };

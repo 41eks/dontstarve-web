@@ -239,7 +239,7 @@ describe('torch prefab burning lifecycle', () => {
       visual.model.position.copy(entity.transform.position);
       // Prepared visual receives the actual state committed after an asynchronous drop.
       visual.setDefinition?.({ ...definition, remainingFuel: 18, entity });
-      visual.model.dispatchEvent({ type: 'onload' });
+      prefabInstance(visual.model)!.PushEvent('onload');
       const controller = visual.model.userData.torch as TorchController;
       expect(controller.isBurning).toBe(true);
       expect(PlaySound).not.toHaveBeenCalled();
@@ -247,7 +247,7 @@ describe('torch prefab burning lifecycle', () => {
       // A lit ground torch keeps consuming on its world's game time.
       world.advance(0.5);
       expect(visual.getDefinition?.()).toEqual({ remainingFuel: 18 - FIRST_PERIOD - .5, torchLit: true });
-      visual.model.dispatchEvent({ type: 'onextinguish' });
+      prefabInstance(visual.model)!.PushEvent('onextinguish');
       expect(controller.isBurning).toBe(false);
       expect(declaredLight(visual.model)).toBeUndefined();
       expect(handEquipmentExistenceState.peek()).toBe(held);
@@ -261,7 +261,7 @@ describe('torch prefab burning lifecycle', () => {
       expect(visual.model.position.distanceTo(before)).toBeLessThan(1);
       controller.ignite();
       const groundSounds = vi.mocked(PlaySound).mock.results.map(({ value }) => value);
-      visual.model.dispatchEvent({ type: 'onputininventory' });
+      prefabInstance(visual.model)!.PushEvent('onputininventory');
       expect(PlaySound).toHaveBeenLastCalledWith('dontstarve/common/fireOut', owner);
       expect(controller.isBurning).toBe(false);
       // Pocketed before the next update, the relit torch's first period is cancelled uncharged.
@@ -269,7 +269,7 @@ describe('torch prefab burning lifecycle', () => {
       expect(handEquipmentExistenceState.peek()).toBe(held);
       groundSounds.forEach((sound) => expect(sound.stop).toHaveBeenCalledOnce());
       const calls = vi.mocked(PlaySound).mock.calls.length;
-      visual.model.dispatchEvent({ type: 'onputininventory' });
+      prefabInstance(visual.model)!.PushEvent('onputininventory');
       controller.OnExtinguish();
       expect(PlaySound).toHaveBeenCalledTimes(calls);
     } finally { visual.dispose(); entity.destroy(); assets.dispose(); }

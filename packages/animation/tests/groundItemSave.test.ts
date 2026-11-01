@@ -31,7 +31,7 @@ vi.mock('@dontstarve-web/prefab/groundItems', async (importOriginal) => {
     model.add(new THREE.Group());
     model.userData.events = [];
     for (const type of ['ondropped', 'onputininventory', 'onload'] as const) {
-      model.addEventListener(type, () => model.userData.events.push(type));
+      instance.ListenForEvent(type, () => model.userData.events.push(type));
     }
     return { model, instance, display, update: vi.fn<(dt: number) => void>(), dispose() { model.userData.events.push('dispose'); instance.remove(); display.dispose(); } };
   });
@@ -362,7 +362,7 @@ describe('ground item save records', () => {
     expect(model.userData.events).toEqual(['ondropped']);
     expect(model.position.toArray()).toEqual([3, 0, 4]);
     let attachedOnPickup = false;
-    model.addEventListener('onputininventory', () => { attachedOnPickup = model.parent === scene; });
+    lookupPrefabInstance(model)!.ListenForEvent('onputininventory', () => { attachedOnPickup = model.parent === scene; });
     const click = () => pick(model);
     pickup.mockReturnValueOnce(false);
     click();

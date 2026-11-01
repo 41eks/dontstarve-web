@@ -133,11 +133,7 @@ const STATEGRAPH_EVENTS = new Set(['toolbroke', 'fishingnibble', 'fishingloserod
 const pickupDoer: PickupDoer & WortoxDoer & { sg: NonNullable<PickupDoer['sg']> & { beginPortalJump(pos: import('three').Vector3, fromMap?: boolean): boolean }; ListenForEvent(name: string, listener: (data: unknown) => void): () => void; HasStateTag(tag: string): boolean; GoToState(name: string): void; IsCurrentState(name: string): boolean;
   components: PickupDoer['components'] & { health: typeof playerStats.health; hunger: typeof playerStats.hunger; sanity?: Sanity } } = {
   components: { inventory, health: playerStats.health, hunger: playerStats.hunger },
-  ListenForEvent(name, listener) {
-    const handler = (event: { data?: unknown }) => listener(event.data);
-    player.addEventListener(name as never, handler);
-    return () => player.removeEventListener(name as never, handler);
-  },
+  ListenForEvent: (name, listener) => playerInstance.ListenForEvent(name, listener),
   hasTag: tag => tag === 'player' || modelHasTag(player, tag),
   GetPosition: () => player.position,
   getPosition: () => player.position,
@@ -154,7 +150,7 @@ const pickupDoer: PickupDoer & WortoxDoer & { sg: NonNullable<PickupDoer['sg']> 
     // player_common.lua listens for itemranout; SGwilson.lua handles toolbroke and the fishing rod's events.
     if (STATEGRAPH_EVENTS.has(name)) playerAnimation?.stategraph.pushEvent(name, data);
     else if (name === 'itemranout') OnItemRanOut(inventory, data);
-    player.dispatchEvent({ type: name, data } as never);
+    playerInstance.PushEvent(name, data);
   },
 };
 inventory.bindActor(pickupDoer);
@@ -402,32 +398,30 @@ playerAnimation?.bindRebirth({
     }
   },
 });
-const makePlayerGhost = (event: { data?: unknown }) => {
-  if (!ghostOwner) return;
-  const data = event.data as { skeleton?: boolean; loading?: boolean } | undefined;
-  OnMakePlayerGhost(ghostOwner, data);
+const makePlayerGhost = (data: unknown) => {
+  if (ghostOwner) OnMakePlayerGhost(ghostOwner, data as { skeleton?: boolean; loading?: boolean } | undefined);
 };
-player.addEventListener('makeplayerghost' as never, makePlayerGhost);
+const stopMakePlayerGhost = playerInstance.ListenForEvent('makeplayerghost', makePlayerGhost);
 // player_common.lua ListenForEvent("respawnfromghost", ex_fns.OnRespawnFromGhost); health:SetInvincible from portal_rez's exit.
-const respawnFromGhost = (event: { data?: unknown }) => { if (ghostOwner) OnRespawnFromGhost(ghostOwner, event.data as { source?: RezSource } | undefined); };
-player.addEventListener('respawnfromghost' as never, respawnFromGhost);
+const stopRespawnFromGhost = playerInstance.ListenForEvent('respawnfromghost', data => {
+  if (ghostOwner) OnRespawnFromGhost(ghostOwner, data as { source?: RezSource } | undefined);
+});
 // A saved ghost resumes as a ghost (OnLoad is_ghost → OnMakePlayerGhost({ loading = true })).
-if (initialSave.players.local.ghost) makePlayerGhost({ data: { loading: true } });
+if (initialSave.players.local.ghost) makePlayerGhost({ loading: true });
 const stopGhostWatch: (() => void)[] = [];
 // A ghost has no inventory: the bar follows the ghost-mode signal, hidden while true and shown again once false.
 const watchedGhostMode = watchSignal(playerGhostMode, stop => stopGhostWatch.push(stop));
 createEffect(() => { gameUi.inventoryBar.style.display = watchedGhostMode.get() ? 'none' : ''; });
-const recordDeathCause = (event: { data?: unknown }) => {
-  deathCause = (event.data as { cause?: string } | undefined)?.cause ?? 'unknown';
-};
-player.addEventListener('death' as never, recordDeathCause);
+const stopRecordDeathCause = playerInstance.ListenForEvent('death', data => {
+  deathCause = (data as { cause?: string } | undefined)?.cause ?? 'unknown';
+});
 // A saved living player at zero health resumes the death flow after inventory and death handlers are bound.
 if (playerStats.health.IsDead() && !playerGhostMode.peek()) playerInstance.PushEvent('death', { cause: deathCause });
 disposalEvents.on('dispose', () => {
   stopGhostWatch.splice(0).forEach(stop => stop());
-  player.removeEventListener('makeplayerghost' as never, makePlayerGhost);
-  player.removeEventListener('respawnfromghost' as never, respawnFromGhost);
-  player.removeEventListener('death' as never, recordDeathCause);
+  stopMakePlayerGhost();
+  stopRespawnFromGhost();
+  stopRecordDeathCause();
   playerAnimation?.bindDeath(undefined);
   playerAnimation?.bindRebirth(undefined);
 });

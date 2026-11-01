@@ -113,7 +113,7 @@ export function createBernieGroundSprite(assets: BernieAssets, world: BernieWorl
     inInventory = false;
     play(bernieGroundForm(world.getSanityPercent()), 'idle_loop');
   };
-  const removeInventoryEvents = listenInventoryEvents(model, {
+  const removeInventoryEvents = listenInventoryEvents(instance, {
     ondropped: onGround,
     onload: onGround,
     onputininventory: () => { inInventory = true; play(BERNIE_ITEM_ID, 'inactive'); },

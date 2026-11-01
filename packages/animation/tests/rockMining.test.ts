@@ -57,7 +57,7 @@ it('breaks a moon shell after its minerals drop, synchronously spawns one orb an
       expect(s.drops).toEqual(['rocks', 'flint', 'moonrocknugget', 'moonrocknugget', 'moonrocknugget']);
       expect(s.manager.exportRecords().map(record => record.prefabId)).toEqual(['moonrockseed']);
     });
-    model.addEventListener('workfinished' as never, finished);
+    prefabInstance(model)!.ListenForEvent('workfinished', finished);
     performToolWork('MINE', mine.entity, {});
     expect(finished).toHaveBeenCalledOnce();
     expect(prefabInstance(model)!.listTags()).toContain('NOCLICK');

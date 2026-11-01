@@ -488,7 +488,7 @@ export class ButterflyAssets {
     const { instance, display } = createPrefabEntity(prefab, source, { name: 'idle_flight_loop', billboard: true, sprite }, name);
     const model = display.model;
     let creature: ButterflyCreature | undefined;
-    const removeInventoryEvents = listenInventoryEvents(model, {
+    const removeInventoryEvents = listenInventoryEvents(instance, {
       ondropped: () => creature?.onDropped(),
       onputininventory: () => creature?.onPutInInventory(),
     });

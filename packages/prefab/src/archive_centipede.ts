@@ -124,12 +124,11 @@ export class ArchiveCentipedeHuskManager implements DisplayDrivenPrefabManager<{
       else if (percent < MED_THRESHOLD_DOWN) play('med_hit', 'idle_med');
       else play('full_hit', 'idle_full');
     };
-    const events = model as unknown as THREE.EventDispatcher<{ attacked: object }>;
-    events.addEventListener('attacked', onAttacked);
+    const stopAttacked = instance.ListenForEvent('attacked', onAttacked);
 
     const husk: Husk = { instance, display, health, hauntable,
       stopActivity: watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active)),
-      stopAttacked: () => events.removeEventListener('attacked', onAttacked) };
+      stopAttacked };
     const playidle2 = () => {
       husk.idle2task?.(); husk.idle2task = undefined;
       const current = sprite.currentAnimation;

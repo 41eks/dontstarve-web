@@ -122,14 +122,14 @@ it('finishes a busy transformation using the latest sanity and cancels it on inv
     expect([sprite.model.name, animation()]).toEqual(['GroundItem:bernie_active', 'idle_loop']);
     tick(sprite, 0);
     expect(animation()).toBe('activate');
-    sprite.model.dispatchEvent({ type: 'onputininventory' });
+    prefabInstance(sprite.model)!.PushEvent('onputininventory');
     advance(90);
     expect([sprite.model.name, animation()]).toEqual(['GroundItem:bernie_inactive', 'inactive']);
-    sprite.model.dispatchEvent({ type: 'ondropped' });
+    prefabInstance(sprite.model)!.PushEvent('ondropped');
     expect([sprite.model.name, animation()]).toEqual(['GroundItem:bernie_big', 'idle_loop']);
     sanity = 1;
     advance(5);
-    sprite.model.dispatchEvent({ type: 'onload' });
+    prefabInstance(sprite.model)!.PushEvent('onload');
     expect([sprite.model.name, animation()]).toEqual(['GroundItem:bernie_active', 'idle_loop']);
     sprite.dispose();
     sanity = 0.1;

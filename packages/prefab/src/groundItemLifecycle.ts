@@ -16,7 +16,7 @@ export function bindResidentGroundItem(context: Pick<GroundPrefabContext, 'ticki
     stopTile();
     stopTile = watchTileActivity(model, context.tickingarea, awake => instance.setActive(awake));
   };
-  const removeInventoryEvents = listenInventoryEvents(model, {
+  const removeInventoryEvents = listenInventoryEvents(instance, {
     ondropped: () => { sprite.setPaused(false); bindTile(); },
     onload: () => { sprite.setPaused(false); bindTile(); },
     onputininventory: () => { sprite.setPaused(true); stopTile(); stopTile = () => {}; },

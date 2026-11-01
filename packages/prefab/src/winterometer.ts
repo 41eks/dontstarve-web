@@ -36,7 +36,7 @@ class WinterometerCheck {
             });
         }
         // Lua's burntup listener cancels the task; later starts are refused by the burnt tag.
-        context.model.addEventListener('burntup' as never, () => this.cancel());
+        prefabInstance(context.model)!.ListenForEvent('burntup', () => this.cancel());
     }
 
     private get burnt(): boolean { return actionEntity(this.context.model, WINTEROMETER_ID).hasTag('burnt'); }

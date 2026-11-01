@@ -53,7 +53,7 @@ export function createPoopGroundFactory(context: GroundPrefabContext): GroundIte
         swarming.set(true);
         model.userData.flies = flies.display.model;
       };
-      const stopInventoryEvents = listenInventoryEvents(model, {
+      const stopInventoryEvents = listenInventoryEvents(base.instance, {
         ondropped: spawnFlies,
         onputininventory: removeFlies,
         onload: () => { sprite.playOnce('idle'); spawnFlies(); },

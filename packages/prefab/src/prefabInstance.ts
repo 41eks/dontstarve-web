@@ -2,7 +2,7 @@ import { MiniMapState } from '../../map/src/minimapState';
 import { watchMiniMapEntity } from '../../map/src/minimapEntities';
 import type * as CANNON from 'cannon-es';
 import type { Object3D, Vector3 } from 'three';
-import { createSignal, readonlySignal, type ReadonlySignal } from '@dontstarve-web/signals';
+import { createSignal, EventEmitter, readonlySignal, type ReadonlySignal } from '@dontstarve-web/signals';
 import { LightState, PrefabDisplay, SpriteState, type ArchiveSpriteCommands, type ArchiveSpriteSource, type LoadedSpriteSource, type PrefabDisplayOptions, type PrefabStatus, type SpriteSource } from '@dontstarve-web/display';
 import { bindPhysics, type PhysicsBinding } from '../../componets/src/physicsBinding';
 import { PhysicsState } from '../../componets/src/physicsState';
@@ -83,6 +83,8 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState> 
   private tagView?: readonly string[];
   private readonly tagListeners = new Set<(tag: string) => void>();
   private readonly removalHandlers = new Set<() => void>();
+  /** inst.event_listeners: entity events belong to the logical entity, not to the model that draws it. */
+  private readonly events = new EventEmitter<Record<string, unknown>>();
 
   /** `sprite` is the entity's sprite state, typed by what its display can draw. */
   constructor(prefab: string, sprite: Sprite) {
@@ -113,7 +115,12 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState> 
 
   get isRemoved(): boolean { return this.lifecycle.peek() === 'removed'; }
   getPosition(): Vector3 { return this.position; }
-  PushEvent(name: string, data: unknown): void { this.model?.dispatchEvent({ type: name, data } as never); }
+  /** inst:PushEvent: listeners run synchronously with `data`, whether or not a display draws the entity. */
+  PushEvent(name: string, data?: unknown): void { this.events.emit(name, data); }
+  /** inst:ListenForEvent on the entity itself; the returned function removes the listener. */
+  ListenForEvent(name: string, listener: (data: unknown) => void): () => void { return this.events.on(name, listener); }
+  /** inst:RemoveEventCallback. */
+  RemoveEventCallback(name: string, listener: (data: unknown) => void): void { this.events.off(name, listener); }
 
   /** The body the binding keeps for `physics`, while one exists. */
   get physicsBody(): CANNON.Body | undefined { return this.physicsBinding?.body; }

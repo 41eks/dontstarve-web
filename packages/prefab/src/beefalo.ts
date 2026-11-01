@@ -283,8 +283,8 @@ export class BeefaloController {
       getAngleToPoint: (x, _y, z) => this.getAngleToPoint(x, z),
       isNear: (entity, distance) => distanceSquared(this.getPosition(), entity.getPosition()) < distance ** 2,
       facePoint: point => this.setRotation(this.getAngleToPoint(point.x, point.z)),
-      ListenForEvent: (name, fn) => this.model.addEventListener(name as never, fn as never),
-      RemoveEventCallback: (name, fn) => this.model.removeEventListener(name as never, fn as never),
+      ListenForEvent: (name, fn) => { this.instance.ListenForEvent(name, fn); },
+      RemoveEventCallback: (name, fn) => this.instance.RemoveEventCallback(name, fn),
     };
   }
 
@@ -346,7 +346,7 @@ export class BeefaloController {
     if (name === 'gotosleep') this.brain?.Stop();
     else if (name === 'onwakeup') this.brain?.Start();
     this.sg?.pushEvent(name, data);
-    this.model.dispatchEvent({ type: name, data } as never);
+    this.instance.PushEvent(name, data);
   }
   get components() { return { locomotor: this.locomotor, knownlocations: this.knownlocations,
     periodicspawner: this.periodicspawner }; }

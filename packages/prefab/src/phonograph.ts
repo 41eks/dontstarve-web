@@ -161,7 +161,7 @@ export function createPhonographGroundFactory(context: GroundPrefabContext): Gro
       for (const tag of ['structure', 'trader', 'recordplayer', 'furnituredecor', 'groundonlymachine']) instance.addTag(tag);
       const controller = new PhonographController(sprite, model.position, item.phonographRecord, context.scheduler);
       instance.components.phonograph = controller;
-      const removeEvents = listenInventoryEvents(model, {
+      const removeEvents = listenInventoryEvents(instance, {
         onputininventory: () => controller.OnPutInInventory(),
         // Dropping a loaded machine enables it, but does not turn it on.
         ondropped: () => controller.OnDropped(),

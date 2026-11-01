@@ -91,6 +91,7 @@ export class RockController {
   readonly workable: Workable;
   private readonly erode?: ErodeAway;
   private readonly onWorkFinished?: () => void;
+  private stopWorkFinished?: () => void;
 
   constructor(model: THREE.Group, prefab: RockPrefabId, lootdropper: LootDropper, remove: () => void,
     context: { scheduler: GameTimeScheduler; caveinBoulder?: CaveinBoulderSave; spawnSeed(): void; setErosion(amount: number): void }) {
@@ -129,7 +130,7 @@ export class RockController {
         (prefabInstance(model)!.sprite as ArchiveSpriteCommands).playOnce('break');
         this.erode!.start(2);
       };
-      model.addEventListener('workfinished' as never, this.onWorkFinished);
+      this.stopWorkFinished = prefabInstance(model)!.ListenForEvent('workfinished', this.onWorkFinished);
     }
     this.workable.SetOnWorkCallback((_inst, _worker, workleft) => {
       if (workleft <= 0) {
@@ -149,7 +150,7 @@ export class RockController {
 
   dispose(): void {
     this.disposed = true;
-    if (this.onWorkFinished) this.entity.model.removeEventListener('workfinished' as never, this.onWorkFinished);
+    this.stopWorkFinished?.();
     this.erode?.dispose();
     this.entity.model.userData.removed = true;
     this.workable.dispose();

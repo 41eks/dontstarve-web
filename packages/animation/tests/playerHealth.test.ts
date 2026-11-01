@@ -41,9 +41,8 @@ it('eats eight red caps, dies through component events, becomes a ghost and save
     setControllerEnabled: enabled => { instance.controllerEnabled = enabled; }, showHUD() {}, actionPicker: picker,
     equipRezSource: async () => false,
   };
-  const makeGhost = (event: { data?: unknown }) => OnMakePlayerGhost(owner, event.data as { skeleton?: boolean });
-  player.addEventListener('makeplayerghost' as never, makeGhost);
-  player.addEventListener('death' as never, death);
+  const stopMakeGhost = instance.ListenForEvent('makeplayerghost', data => OnMakePlayerGhost(owner, data as { skeleton?: boolean }));
+  const stopDeath = instance.ListenForEvent('death', death);
   animation.bindDeath({ dropEverything: vi.fn(), isPassableAtPoint: () => true });
   const frames = (count: number) => { for (let i = 0; i < count; i++) animation.update(1 / 30); };
   try {
@@ -64,7 +63,7 @@ it('eats eight red caps, dies through component events, becomes a ghost and save
     expect(inventory.getEntity(slot)).toBeNull();
     expect(animation.stategraph.stateName).toBe('death');
     expect(death).toHaveBeenCalledOnce();
-    expect(death.mock.calls[0][0].data.cause).toBe('red_cap');
+    expect(death.mock.calls[0][0].cause).toBe('red_cap');
     frames(100);
     expect(ghost.peek()).toBe(true);
     expect(skeleton).toHaveBeenCalledOnce();
@@ -103,8 +102,8 @@ it('eats eight red caps, dies through component events, becomes a ghost and save
     expect(saved.players.local.ghost).toBeFalsy();
     restored.dispose();
   } finally {
-    food.dispose(); player.removeEventListener('makeplayerghost' as never, makeGhost);
-    player.removeEventListener('death' as never, death); inventory.dispose(); instance.remove(); display.dispose();
+    food.dispose(); stopMakeGhost();
+    stopDeath(); inventory.dispose(); instance.remove(); display.dispose();
     scheduler.dispose(); vi.restoreAllMocks(); vi.unstubAllGlobals();
   }
 });

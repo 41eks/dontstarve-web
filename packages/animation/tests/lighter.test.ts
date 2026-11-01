@@ -13,7 +13,7 @@ import { WORLD_SCALE } from '../../prefab/src/tile';
 import * as CANNON from 'cannon-es';
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import type { ActionPerformer, ActionWorldContext } from '../../stategraphs/src/actionContext';
-import { createSignal, type HandEquipment } from '../../signals/src';
+import { createSignal, EventEmitter, type HandEquipment } from '../../signals/src';
 import { ItemEntity } from '../../inventory/src';
 import { TORCH_FUEL, configureTorchEntity } from '../../prefab/src/torch';
 import { actionEntity } from '../../prefab/src/actionEntity';
@@ -87,8 +87,9 @@ it('walks to the foot, cancels on unequip and commits LIGHT once at frame 13 wit
   const world = { scene, player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(), cameraFacing: createSignal(8), cameraHeading: createSignal(45),
     renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
   // The player inst: LIGHT pushes onstartedfire on it.
+  const playerEvents = new EventEmitter<Record<string, unknown>>();
   const doer = { hasTag: (tag: string) => tag === 'player', getPosition: () => player.position,
-    PushEvent: (name: string, data: unknown) => player.dispatchEvent({ type: name, data } as never) };
+    PushEvent: (name: string, data: unknown) => playerEvents.emit(name, data) };
   const playerController = new PlayerController(world, animation, locomotor, hand, doer as never, () => false);
   // EQUIPPED.lighter on the right button, then DoAction.
   const controller = {
@@ -98,7 +99,7 @@ it('walks to the foot, cancels on unequip and commits LIGHT once at frame 13 wit
     cancel: () => playerController.cancel(),
     dispose: () => playerController.dispose(),
   };
-  const started = vi.fn(); player.addEventListener('onstartedfire' as never, started);
+  const started = vi.fn(); playerEvents.on('onstartedfire', started);
   try {
     expect(collectEquippedItemActions(torch, undefined, target, false)).toEqual([]);
     expect(controller.request(target)).toBe(true); controller.update();
@@ -158,7 +159,7 @@ it('keeps burning art through reskin, exports source burnt state, restores a che
     const instance = prefabInstance(model)!;
     const burningSignal = burnable.burning;
     const notified = vi.fn();
-    model.addEventListener('burntup' as never, notified);
+    const stopNotified = prefabInstance(model)!.ListenForEvent('burntup', notified);
     expect(burningSignal.set).toBeUndefined();
     const item = inventory.getEntity({ containerId: 'world:treasurechest:burning_chest', slotKey: '0' })!;
     const before = item.snapshot();
@@ -189,7 +190,7 @@ it('keeps burning art through reskin, exports source burnt state, restores a che
     expect(scene.children.some(child => child.name === 'fire')).toBe(false);
     expect(instance.hasTag('burnt')).toBe(true); expect(burningSignal.peek()).toBe(false);
     expect(notified).toHaveBeenCalledOnce();
-    model.removeEventListener('burntup' as never, notified);
+    stopNotified();
     expect(dropped).toEqual([item]); expect(item.snapshot()).toEqual(before);
     expect(item.transform.position.toArray()).toEqual([3, 0, -6]);
     const restored = await restoredPlacement.spawnFromSave('treasurechest', saved.world.entities.treasurechest[0]);

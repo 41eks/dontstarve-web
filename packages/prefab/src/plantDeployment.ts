@@ -2,7 +2,7 @@ import { placementEntities, ignoresPlacement, type PlacementQuery } from './plac
 import * as THREE from 'three';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { SpriteResources } from '@dontstarve-web/display';
-import { createPrefabEntity } from './prefabInstance';
+import { createPrefabEntity, prefabInstance } from './prefabInstance';
 import { BufferedAction } from '../../stategraphs/src/bufferedaction';
 import { bindActionCancellation } from '../../stategraphs/src/actionEvents';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
@@ -122,12 +122,12 @@ export class PlantDeployment {
       if (!item) return false;
       const success = item.components.deployable?.Deploy(point, {
         position: this.world.player.position,
-        PushEvent: (name, data) => this.world.player.dispatchEvent({ type: name, data } as never),
+        PushEvent: (name, data) => prefabInstance(this.world.player)?.PushEvent(name, data),
       }, map) ?? false;
       if (!success) source.putBack(item);
       else {
         this.sound?.stop(); this.sound = PlaySound(PLANTABLES[item.prefab].plantSound ?? 'dontstarve/common/plant', point);
-        this.world.player.dispatchEvent({ type: 'itemplanted', data: { pos: point } } as never);
+        prefabInstance(this.world.player)?.PushEvent('itemplanted', { pos: point });
       }
       this.pending = undefined;
       return success;

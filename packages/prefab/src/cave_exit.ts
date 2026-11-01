@@ -73,8 +73,7 @@ export class CaveExitManager {
     const listeners = { migration_available: 'open', migration_unavailable: 'no_access', migration_full: 'over_capacity' } as const;
     const handlers = Object.entries(listeners).map(([event, animation]) => {
       const handler = () => sprite.start(animation);
-      model.addEventListener(event as never, handler);
-      return () => model.removeEventListener(event as never, handler);
+      return prefabInstance(model)!.ListenForEvent(event, handler);
     });
     exit.stopMigration = () => handlers.forEach(stop => stop());
     prefabInstance(model)!.components.worldmigrator = migrator;

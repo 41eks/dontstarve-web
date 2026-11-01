@@ -21,7 +21,7 @@ export function SendLightningStrike(world: LightningStrikeWorld, position: THREE
     const [rod] = FindEntities(position, LIGHTNINGSTRIKE_SEARCH_RANGE, [], LIGHTNINGSTRIKE_CANT_TAGS, LIGHTNINGSTRIKE_ONEOF_TAGS);
     const strike = rod ? rod.getPosition().clone() : position.clone();
     // SpawnPrefab("lightning") is placed after the rod has handled the event.
-    if (rod) (rod as unknown as { model: THREE.Object3D }).model.dispatchEvent({ type: 'lightningstrike' } as never);
+    rod?.PushEvent?.('lightningstrike', undefined);
     world.fx.spawn('lightning', strike);
     return strike;
 }

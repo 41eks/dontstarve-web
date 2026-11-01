@@ -32,7 +32,7 @@ it('unloads a settled ground item sprite with its tile and rebuilds it when the 
   const visual = factory.create({ itemId: 'twigs', name: 'twigs', icon: '', count: 1 }, new ItemEntity({ itemId: 'twigs', count: 1 }));
   expect(created).toHaveLength(1);
   visual.model.position.set(3, 0, 4);
-  visual.model.dispatchEvent({ type: 'onload' } as never);
+  lookupPrefabInstance(visual.model)!.PushEvent('onload');
   await tick();
   expect(visual.active?.peek()).toBe(true);
   tile.set(false); await tick();
@@ -42,7 +42,7 @@ it('unloads a settled ground item sprite with its tile and rebuilds it when the 
   expect(created).toHaveLength(2);
   expect(visual.model.children[0]).toBe(created[1].model);
   // Pausing is sprite json: it reaches the drawn sprite on the next frame the manager advances its display.
-  visual.model.dispatchEvent({ type: 'onputininventory' } as never);
+  lookupPrefabInstance(visual.model)!.PushEvent('onputininventory');
   visual.display!.update(0);
   expect(created[1].setPaused).toHaveBeenLastCalledWith(true);
   visual.dispose();
@@ -59,7 +59,7 @@ it('retains a lantern machine, light and fuel while its tile releases and rebuil
   configureLanternEntity(item); visual.bindEntity!(item);
   const scene = new THREE.Scene(), model = visual.model;
   scene.add(model); model.position.set(3, 0, 4);
-  model.dispatchEvent({ type: 'ondropped' } as never); await tick();
+  lookupPrefabInstance(model)!.PushEvent('ondropped'); await tick();
   const ground = lookupPrefabInstance(model)!, controller = getLanternController(item), light = visual.light.parent?.light.slots.peek();
   const listed = () => [...displayLights()].some(entry => entry.model === model);
   const drawn = created.at(-1)!;

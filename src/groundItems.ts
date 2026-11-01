@@ -316,7 +316,7 @@ export class GroundItemManager {
     this.bindVisualActivity(record);
     this.bindVisualUpdating(record);
     this.bindEntityRemoval(record);
-    visual.model.dispatchEvent({ type: dropped ? 'ondropped' : 'onload' });
+    visual.instance.PushEvent(dropped ? 'ondropped' : 'onload');
   }
 
   private removeVisual(record: GroundItemRecord): void {
@@ -387,14 +387,14 @@ export class GroundItemManager {
     } satisfies PickupTarget;
     const stops = [
       entity.ListenForEvent('onputininventory', () => {
-        model.dispatchEvent({ type: 'onputininventory' });
+        record.instance.PushEvent('onputininventory');
         this.removeVisual(record);
       }),
       entity.ListenForEvent('onremove', () => this.removeVisual(record)),
       entity.ListenForEvent('perished', () => this.replacePerished(record)),
       // physics.lua LaunchAt: any inst may be thrown from its own position.
       entity.ListenForEvent('launch', launch => { record.fling = new LootFling(entity.transform, undefined, undefined, launch as LootLaunch); this.refreshUpdating(record); }),
-      entity.ListenForEvent('ondropped', () => { record.fling = undefined; model.position.copy(entity.transform.position); syncPlacementEntity(model); model.dispatchEvent({ type: 'ondropped' }); }),
+      entity.ListenForEvent('ondropped', () => { record.fling = undefined; model.position.copy(entity.transform.position); syncPlacementEntity(model); record.instance.PushEvent('ondropped'); }),
     ];
     record.stopInventoryEvents = () => stops.forEach(stop => stop());
     // An inst that perished between holders is replaced once it reaches the ground.

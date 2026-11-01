@@ -93,7 +93,7 @@ it('rolls with the wind, stops for a long action and restarts, is picked for loo
     expect(canDoSceneAction('PICK', model)).toBe(true);
     const before = model.position.x;
 
-    model.dispatchEvent({ type: 'startlongaction' } as never);
+    lookupPrefabInstance(model)!.PushEvent('startlongaction');
     expect(tumbleweed.sprite.currentAnimation).toBe('move_pst');
     step(1); expect(model.position.x).toBeCloseTo(before, 1);
     expect(tumbleweed.sprite.currentAnimation).toBe('idle');

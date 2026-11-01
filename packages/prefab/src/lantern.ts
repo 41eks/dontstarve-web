@@ -240,7 +240,7 @@ export function createLanternGroundSprite(context: Pick<GroundPrefabContext, 'as
   let bound: ItemEntity | undefined;
   let stopState: (() => void) | undefined;
   let savedOn: boolean | undefined;
-  const removeInventoryEvents = listenInventoryEvents(model, {
+  const removeInventoryEvents = listenInventoryEvents(instance, {
     ondropped: () => controller?.OnDropped(),
     // Older saves predate machine.ison; their ground lanterns were dropped, hence on.
     onload: () => controller?.OnLoad(savedOn ?? true),

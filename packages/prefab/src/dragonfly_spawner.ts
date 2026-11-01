@@ -115,9 +115,7 @@ export class DragonflySpawnerManager {
       setHome: home => { if (home) locations?.RememberLocation('home', home.instance.position); },
       ListenForEvent: (name, fn) => {
         if (name === 'onremove') return instance.onRemove(fn);
-        const listener = () => fn();
-        model.addEventListener(name as never, listener as never);
-        return () => model.removeEventListener(name as never, listener as never);
+        return instance.ListenForEvent(name, () => fn());
       },
       remove: () => instance.remove() };
   }

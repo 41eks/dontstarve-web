@@ -352,7 +352,7 @@ export class FencePlacement {
         combat.onhitfn = (_inst, attacker) => {
             workable.WorkedBy({ PushEvent: (name, data) => attacker.PushEvent?.(name, data) });
         };
-        (root as unknown as THREE.EventDispatcher<{ death: object }>).addEventListener('death', () => this.hammered(fence));
+        fence.instance.ListenForEvent('death', () => this.hammered(fence));
         this.initializeBurnable(fence);
         new ToolMouseTarget(entity, fence.instance, workable, this.world.handEquipment);
     }

@@ -35,7 +35,7 @@ export function createLightbulbGroundSprite(context: Pick<GroundPrefabContext, '
   const { visual } = createResidentGroundItem(context, { itemId: LIGHTBULB_ID, skinId: options.skinId, sprite: options.sprite });
   const setLit = (lit: boolean) => prefabInstance(visual.model)!.light.set(lit ? LIGHTBULB_LIGHT : null);
   setLit(options.lit ?? true);
-  const removeInventoryEvents = listenInventoryEvents(visual.model, {
+  const removeInventoryEvents = listenInventoryEvents(prefabInstance(visual.model)!, {
     ondropped: () => setLit(true),
     onputininventory: () => setLit(false),
     onload: () => setLit(options.lit ?? true),

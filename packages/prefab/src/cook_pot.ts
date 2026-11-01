@@ -96,10 +96,10 @@ function initializePot({ model, instance, animState, world }: AnimatedBuildingEv
         PlaySound('dontstarve/common/cookingpot_close', model.position);
     };
     const stopSound = () => { presentation.sound?.stop(); presentation.sound = undefined; };
-    model.addEventListener('burntup' as never, stopSound);
+    const stopBurntup = prefabInstance(model)!.ListenForEvent('burntup', stopSound);
     instance.onRemove(() => {
         stopSound();
-        model.removeEventListener('burntup' as never, stopSound);
+        stopBurntup();
     });
 }
 

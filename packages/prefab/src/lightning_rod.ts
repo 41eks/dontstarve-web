@@ -166,7 +166,7 @@ function oninit(context: AnimatedBuildingEventContext): void {
         // getstatus: inst.charged and "CHARGED" or nil
         inspectable: { getstatus: () => rod.charged ? 'CHARGED' : undefined },
     });
-    model.addEventListener('lightningstrike' as never, () => rod.onlightning());
+    prefabInstance(model)!.ListenForEvent('lightningstrike', () => rod.onlightning());
 }
 
 function onbuilt({ animation, model, onComplete }: AnimatedBuildingBuiltContext): void {

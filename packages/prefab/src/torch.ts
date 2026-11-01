@@ -255,7 +255,7 @@ export function createTorchGroundFactory(context: GroundPrefabContext): GroundIt
         controller!.setPresentation(options);
         syncBurning(controller!.isBurning);
       };
-      const removeEvents = listenInventoryEvents(model, {
+      const removeEvents = listenInventoryEvents(prefabInstance(model)!, {
         onputininventory: () => { fling = undefined; controller?.OnPutInInventory(context.inventoryOwnerPosition); },
         onextinguish: () => controller?.extinguish(),
         ondropped: () => { bind(); controller!.OnDropped(); },

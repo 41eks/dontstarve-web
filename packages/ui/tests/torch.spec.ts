@@ -131,7 +131,7 @@ test('torch fuel updates the UI, pauses when unequipped, survives reskin/save/re
     const model = scene.children.find((model: any) => model.name === 'GroundItem:torch');
     const equipped = main.handEquipment.peek();
     model.userData.torch.ignite();
-    model.dispatchEvent({ type: 'onextinguish' });
+    (window as any).__prefabInstance(model).PushEvent('onextinguish');
     if (main.handEquipment.peek() !== equipped || model.userData.torch.isBurning || (window as any).__prefabInstance(model).light.peek()) {
       throw new Error('Ground extinguish affected player equipment or left the fire active');
     }

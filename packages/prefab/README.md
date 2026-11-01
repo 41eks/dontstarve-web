@@ -196,9 +196,9 @@ const item = new ItemEntity({ itemId: 'lantern', count: 1 });
 configureLanternEntity(item);
 lamp.bindEntity!(item);
 scene.add(lamp.model); // 位置由调用方设置，ondropped 开灯
-lamp.model.dispatchEvent({ type: 'ondropped' });
-lamp.model.dispatchEvent({ type: 'onputininventory' }); // 关闭地面光源
-lamp.model.dispatchEvent({ type: 'ondropped' }); // 再次放到地面，恢复灯光
+lamp.instance.PushEvent('ondropped');
+lamp.instance.PushEvent('onputininventory'); // 关闭地面光源
+lamp.instance.PushEvent('ondropped'); // 再次放到地面，恢复灯光
 lamp.light.setLit(false);
 lamp.light.setFuelPercent(0.5);
 lamp.light.setLit(true);

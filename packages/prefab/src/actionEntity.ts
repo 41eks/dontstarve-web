@@ -69,11 +69,8 @@ export function actionEntity(model: THREE.Object3D, prefab: string, inst?: Compo
       mouseRegistrations.get(entity)?.refresh();
       if (!owner) invalidateQueries();
     },
-    PushEvent: (name, data) => {
-      if (inst) inst.PushEvent?.(name, data);
-      else if (instance) instance.PushEvent(name, data);
-      else model.dispatchEvent({ type: name, data } as never);
-    },
+    // A bare model without an inst has no event listeners to reach.
+    PushEvent: (name, data) => (inst ?? instance)?.PushEvent?.(name, data),
   };
   entitiesByModel.set(model, entity);
   const mouse = registerMouseTarget(entity);

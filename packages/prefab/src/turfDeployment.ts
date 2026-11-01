@@ -6,7 +6,7 @@ import type { ActionPerformer, ActionLocomotor } from '../../stategraphs/src/act
 import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import { ArchiveSpriteAssets, createSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
-import { createArchiveEntity } from './prefabInstance';
+import { createArchiveEntity, prefabInstance } from './prefabInstance';
 import { turfTileName } from './turfs';
 import { TurfMap } from './turfMap';
 import { TILE_SIZE } from './tile';
@@ -109,7 +109,7 @@ export class TurfDeployment {
       if (!item) return false;
       const deployed = item.components.deployable?.Deploy(point, {
         position: this.world.player.position,
-        PushEvent: (name, data) => this.world.player.dispatchEvent({ type: name, data } as never),
+        PushEvent: (name, data) => prefabInstance(this.world.player)?.PushEvent(name, data),
       }, this.turf) ?? false;
       if (!deployed) source.putBack(item);
       this.source = undefined;

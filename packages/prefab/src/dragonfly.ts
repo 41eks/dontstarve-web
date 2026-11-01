@@ -131,11 +131,7 @@ export class DragonflyManager implements DisplayDrivenPrefabManager<{ prefabId: 
     const freezable = new Freezable({
       isValid: () => instance.status.peek() !== 'removed', isDead: () => health.IsDead(),
       addTag: tag => instance.addTag(tag), removeTag: tag => instance.removeTag(tag), PushEvent: pushEvent,
-      ListenForEvent: (name, fn) => {
-        const listener = (event: THREE.Event) => fn(event);
-        model.addEventListener(name as never, listener as never);
-        return () => model.removeEventListener(name as never, listener as never);
-      },
+      ListenForEvent: (name, fn) => instance.ListenForEvent(name, fn),
       stopBrain: () => undefined, restartBrain: () => undefined,
       get components() { return components; },
     }, this.world.scheduler);

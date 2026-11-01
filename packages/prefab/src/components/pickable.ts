@@ -89,7 +89,6 @@ export class Pickable implements PickableComponent {
         hasTag: tag => modelHasTag(model, tag),
         addTag: tag => setModelTag(model, tag, true),
         removeTag: tag => setModelTag(model, tag, false),
-        PushEvent: (name, data) => model.dispatchEvent({ type: name, data } as never),
       };
     } else this.inst = owner;
     this.eventEntity = owner instanceof THREE.Object3D ? prefabInstance(owner) ?? owner : owner;

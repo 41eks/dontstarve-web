@@ -156,8 +156,7 @@ export function createChestInventoryPanel(
         const component = prefabInstance(model)?.components.container;
         if (component && toItem) element.bindContainer(component.toSignal(), toItem);
         const onBurnt = () => element.close();
-        model.addEventListener('burntup' as never, onBurnt);
-        stopBurnt = () => model.removeEventListener('burntup' as never, onBurnt);
+        stopBurnt = prefabInstance(model)?.ListenForEvent('burntup', onBurnt);
       } else if (openModel === model) {
         stopBurnt?.(); stopBurnt = undefined;
         element.close();

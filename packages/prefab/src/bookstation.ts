@@ -63,8 +63,7 @@ export class Bookstation {
         this.restoreTimer = new ComponentTimer(scheduler, () => this.RestoreBooks());
         this.stopLifecycle = host.container.subscribeLifecycle(() => this.refresh());
         const onBurnt = () => this.stopTimer();
-        host.model.addEventListener('burntup' as never, onBurnt);
-        this.stopWatching = () => host.model.removeEventListener('burntup' as never, onBurnt);
+        this.stopWatching = prefabInstance(host.model)!.ListenForEvent('burntup', onBurnt);
         // UpdateBookAesthetics: Show/Hide the book layers by fullness, also on every rebuilt sprite and reskin.
         this.stopAesthetics = createRenderEffect(() => {
             host.art?.get();

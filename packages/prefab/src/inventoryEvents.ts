@@ -1,5 +1,3 @@
-import type { Object3D } from 'three';
-
 export interface PrefabInventoryEventMap {
   ondropped: {};
   onputininventory: {};
@@ -9,18 +7,17 @@ export interface PrefabInventoryEventMap {
   onload: {};
 }
 
-declare module 'three' {
-  interface Object3DEventMap extends PrefabInventoryEventMap {}
+/** The entity whose own events are listened to, like Lua's inst:ListenForEvent(). */
+export interface InventoryEventSource {
+  ListenForEvent(name: string, listener: (data: unknown) => void): () => void;
 }
 
 /** Entity-local events, like Lua's inst:ListenForEvent()/inst:PushEvent(). */
 export function listenInventoryEvents(
-  model: Object3D,
+  inst: InventoryEventSource,
   handlers: Partial<Record<keyof PrefabInventoryEventMap, () => void>>,
 ): () => void {
-  const entries = Object.entries(handlers) as [keyof PrefabInventoryEventMap, () => void][];
-  for (const [event, handler] of entries) model.addEventListener(event, handler);
-  return () => {
-    for (const [event, handler] of entries) model.removeEventListener(event, handler);
-  };
+  const stops = (Object.entries(handlers) as [keyof PrefabInventoryEventMap, () => void][])
+    .map(([event, handler]) => inst.ListenForEvent(event, () => handler()));
+  return () => { for (const stop of stops.splice(0)) stop(); };
 }

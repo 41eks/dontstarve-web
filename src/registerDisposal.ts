@@ -15,7 +15,7 @@ import { SleepingBagUser } from '../packages/componets/src/sleepingbaguser';
 import { Combat, type CombatActor } from '../packages/componets/src/combat';
 import { equippedActionEntity } from '../packages/stategraphs/src/componentactions';
 import { FindEntities } from '../packages/prefab/src/actionEntity';
-import { modelHasTag, setModelTag } from '../packages/prefab/src/prefabInstance';
+import { modelHasTag, prefabInstance, setModelTag } from '../packages/prefab/src/prefabInstance';
 import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
 import type { WilsonAnimationController } from '@dontstarve-web/prefab/player';
 import { GROUND_ITEM_DEFINITIONS } from '@dontstarve-web/prefab/groundItems';
@@ -282,14 +282,13 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
           getPosition: () => player.position,
           getPhysicsRadius: () => .5 * unit,
           hasTag: tag => tag === 'player' || modelHasTag(player, tag),
-          PushEvent: (name, data) => player.dispatchEvent({ type: name, data } as never),
+          PushEvent: (name, data) => prefabInstance(player)!.PushEvent(name, data),
           components: { health: playerStats.health, sanity: playerStats.sanity, inventory },
         };
         // inst:PushEvent reaches the stategraph's EventHandlers.
         for (const name of ['attacked', 'blocked'] as const) {
-          const forward = (event: { data?: unknown }) => playerAnimation.stategraph.pushEvent(name, event.data);
-          player.addEventListener(name as never, forward);
-          actionControllers.push({ dispose: () => player.removeEventListener(name as never, forward) });
+          const stop = prefabInstance(player)!.ListenForEvent(name, data => playerAnimation.stategraph.pushEvent(name, data));
+          actionControllers.push({ dispose: stop });
         }
         const combat = new Combat(attackerInst, () => scheduler.now,
           () => equippedActionEntity(handEquipment.peek())?.components.weapon);

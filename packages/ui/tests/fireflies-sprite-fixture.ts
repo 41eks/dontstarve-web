@@ -27,7 +27,7 @@ export async function checkFirefliesInstances() {
     entity.transform.position.set(index === 31 ? 8 : -8 + index % 4 * .3, 0, 0);
     swarm.bindTransform(entity.transform); swarm.bindEntity(entity);
     swarm.model.position.copy(entity.transform.position);
-    swarm.model.dispatchEvent({ type: 'onload' });
+    prefabInstance(swarm.model)!.PushEvent('onload');
     actionEntity(swarm.model, 'fireflies', entity);
     return entity;
   });
@@ -100,8 +100,8 @@ export async function checkFirefliesInstances() {
     swarms.forEach((swarm, index) => swarm.model.position.copy(positions[index]));
     calls.push(draw());
     // Hide during the first one-shot, then return to the loop through its callback.
-    swarms[0].model.dispatchEvent({ type: 'onputininventory' });
-    swarms[0].model.dispatchEvent({ type: 'ondropped' });
+    prefabInstance(swarms[0].model)!.PushEvent('onputininventory');
+    prefabInstance(swarms[0].model)!.PushEvent('ondropped');
     await settle(); calls.push(draw());
     const preVisible = sourceMeshes()[0]?.visible;
     advance(3); await settle(); calls.push(draw());

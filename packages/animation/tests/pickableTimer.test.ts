@@ -3,6 +3,7 @@ import { expect, it, vi } from 'vitest';
 import { GameTimeScheduler } from '../../prefab/src/components/gameTimeScheduler';
 import { ComponentTimer } from '../../prefab/src/components/timer';
 import { Pickable } from '../../prefab/src/components/pickable';
+import { createEmptyEntity } from '../../prefab/src/prefabInstance';
 
 it('publishes timer snapshots only at transitions and executes chained tasks at their actual deadlines', () => {
   const scheduler = new GameTimeScheduler(20);
@@ -34,8 +35,9 @@ it('preserves paused regrowth through restoration and applies spring growth only
   const scheduler = new GameTimeScheduler();
   let spring = false;
   const timing = { scheduler, growthDuration: (time: number) => time * (spring ? .75 : 1) };
-  const model = new THREE.Group();
-  model.userData.tags = ['plant', 'renewable'];
+  const { instance, display } = createEmptyEntity('grass');
+  const model = display.model;
+  instance.addTag('plant'); instance.addTag('renewable');
   const onRegen = vi.fn(), order: string[] = [];
   let pickable: Pickable;
   pickable = new Pickable(model, 'cutgrass', 1440, 1, () => {
@@ -44,12 +46,12 @@ it('preserves paused regrowth through restoration and applies spring growth only
   }, onRegen, undefined, timing);
   const loot = {};
   const picker = { loot, giveItem: () => { order.push('product'); return true; } };
-  const onPicked = (event: { data: unknown }) => {
-    expect(event.data).toEqual({ picker, loot, plant: model });
+  const onPicked = (data: unknown) => {
+    expect(data).toEqual({ picker, loot, plant: instance });
     expect(pickable.state.phase.peek()).toBe('picked');
     order.push('event');
   };
-  model.addEventListener('picked' as never, onPicked as never);
+  const stopPicked = instance.ListenForEvent('picked', onPicked);
   pickable.pick(picker);
   expect(order).toEqual(['product', 'prefab', 'event']);
   const timer = pickable.state.timer.peek();
@@ -61,7 +63,7 @@ it('preserves paused regrowth through restoration and applies spring growth only
   const saved = pickable.exportState();
   expect(saved).toEqual({ picked: true, paused: true, regrowSeconds: 1340 });
   pickable.dispose();
-  model.removeEventListener('picked' as never, onPicked as never);
+  stopPicked(); instance.remove(); display.dispose();
   const restored = new Pickable(new THREE.Group(), 'cutgrass', 1440, 1, undefined, onRegen, saved, timing);
   spring = true;
   restored.resume();

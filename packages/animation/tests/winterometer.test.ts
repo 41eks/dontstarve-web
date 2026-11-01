@@ -56,7 +56,7 @@ it('reads the local temperature once per second, clamped to 0..OVERHEAT_TEMP, an
 
     // burntup cancels the task and later starts are refused.
     prefabInstance(model)!.addTag('burnt');
-    model.dispatchEvent({ type: 'burntup' } as never);
+    prefabInstance(model)!.PushEvent('burntup');
     const calls = percent.mock.calls.length;
     scheduler.advance(5);
     expect(percent).toHaveBeenCalledTimes(calls);

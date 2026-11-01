@@ -128,8 +128,7 @@ class Tumbleweed {
     this.model.userData.tumbleweed = this;
     // inst:ListenForEvent("startlongaction", OnLongAction) — PICK's long action pushes it on the target.
     const onLongAction = () => this.onLongAction();
-    this.model.addEventListener('startlongaction' as never, onLongAction);
-    this.cleanups.push(() => this.model.removeEventListener('startlongaction' as never, onLongAction));
+    this.cleanups.push(prefabInstance(this.model)!.ListenForEvent('startlongaction', onLongAction));
     const wind = world.getWatchWorldContent
       ? world.getWatchWorldContent(WorldContentKey.Wind, stop => this.cleanups.push(stop))
       : world.wind ? watchSignal(world.wind.windchange, stop => this.cleanups.push(stop)) : undefined;

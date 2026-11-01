@@ -265,7 +265,7 @@ class WilsonController implements WilsonAnimationController {
   ) {
     this.instance = instance;
     this.display = display;
-    const model = this.model = display.model;
+    this.model = display.model;
     this.resources = resources;
     this.equipmentAssets = new GroundItemAssets();
     // The sprite holds the AnimState's own json signal; the player's display follows it and loads the builds it names from the equipment assets.
@@ -341,7 +341,7 @@ class WilsonController implements WilsonAnimationController {
       },
       setControllerEnabled: enabled => { instance.controllerEnabled = enabled; },
       stopMovement: () => instance.locomotor?.stop(),
-      pushPlayerEvent: (name, data) => { model.dispatchEvent({ type: name, data } as never); },
+      pushPlayerEvent: (name, data) => instance.PushEvent(name, data),
       slip: {
         runSpeed: () => instance.runSpeed,
         setMotorSpeed: speed => { instance.motorSpeed = speed; },
@@ -356,7 +356,7 @@ class WilsonController implements WilsonAnimationController {
       onStateChanged: (name) => {
         if (name !== 'emote') this.emote = null;
         // stategraph.lua pushes "newstate" to the inst; armorsnurtleshell's ProtectionLevels listens for it.
-        model.dispatchEvent({ type: 'newstate', data: { statename: name } } as never);
+        instance.PushEvent('newstate', { statename: name });
       },
     });
   }
@@ -664,9 +664,8 @@ function createWilsonPlayerEntity(
 
   const controller = new WilsonController(instance, display, assetBaseUrl, resources,
     options.sanityPercent ?? (options.stats ? instance.stats.sanity.percent : undefined));
-  const onDeath = (event: { data?: unknown }) => controller.stategraph.pushEvent('death', event.data);
-  player.addEventListener('death' as never, onDeath);
-  instance.onRemove(() => { player.removeEventListener('death' as never, onDeath); controller.dispose(); disposeActionEntity(player); });
+  const stopDeath = instance.ListenForEvent('death', data => controller.stategraph.pushEvent('death', data));
+  instance.onRemove(() => { stopDeath(); controller.dispose(); disposeActionEntity(player); });
   display.onDispose(() => controller.releaseAssets());
   display.update(0);
   instance.animationController = controller;
