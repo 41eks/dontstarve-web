@@ -435,7 +435,7 @@ export function createLightFlierGroundFactory(context: GroundPrefabContext): Gro
     },
   });
   const create = (_item: unknown, inst: ItemEntity): GroundItemVisual => {
-      const { instance, display } = createArchiveEntity(LIGHTFLIER_ID, habitat.source, { name: 'walk_loop', sprite: inst.sprite }, LIGHTFLIER_ID);
+      const { instance, display } = createArchiveEntity(LIGHTFLIER_ID, habitat.source, { name: 'walk_loop', billboard: true, sprite: inst.sprite }, LIGHTFLIER_ID);
       const sprite = instance.sprite, model = display.model;
       const active = createSignal(true);
       const cleanups: (() => void)[] = []; let fly: LightFlier | undefined;

@@ -242,7 +242,7 @@ export function createHatGroundFactory(context: GroundPrefabContext): GroundItem
       const { instance, display } = createPrefabEntity(itemId, {
         peek: () => { const factory = art.peek(); return factory && draw(factory); },
         load: () => art.load().then(draw),
-      }, { name: 'anim', held: !rabbit, sprite: inst.sprite }, name, entity => {
+      }, { name: 'anim', held: !rabbit, billboard: true, sprite: inst.sprite }, name, entity => {
         entity.sprite.setSkinSource({ archives: hat.skinArchives, art: context.assets });
       });
       return bindResidentGroundItem(context, instance, display);

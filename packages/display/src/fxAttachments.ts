@@ -49,8 +49,9 @@ const NO_ENTRIES: readonly FxRenderEntry[] = Object.freeze([]);
 
 /**
  * Shows each declared effect as a child of its owner's model, as DST adds `fx` with AddChild: it follows the owner's
- * position and camera facing, and it is in the scene only while the owner is. Declaring a different effect for a key,
- * or none, takes the old one away; the effect's own sprite stays with the prefab that made it.
+ * position, and it is in the scene only while the owner is. Each billboard display applies the camera facing.
+ * Declaring a different effect for a key, or none, takes the old one away; the effect's own sprite stays with the prefab
+ * that made it.
  */
 export class FxAttachments {
   private readonly owner: THREE.Group;
@@ -107,12 +108,15 @@ export class FxAttachments {
         offset: fx.composite.offset }] : []);
   }
 
-  update(dt: number, owner?: SpriteJson): void {
+  update(dt: number, owner?: SpriteJson, cameraRotation?: THREE.Quaternion): void {
     for (const { fx, enabled } of this.attached.values()) {
       if (fx.composite && enabled) {
         if (owner?.facing !== undefined && !fx.composite.noFaced) (fx.sprite as import('./spriteState').SpriteState).setFacing(owner.facing);
         fx.sprite.update(dt);
-      } else if (fxModel(fx).parent === this.owner) fx.sprite.update(dt);
+      } else if (fxModel(fx).parent === this.owner) {
+        if (fx.display) fx.display.update(dt, cameraRotation);
+        else fx.sprite.update(dt);
+      }
     }
   }
 

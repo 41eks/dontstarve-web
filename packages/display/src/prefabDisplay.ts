@@ -92,6 +92,7 @@ export class PrefabDisplay {
   private disposed = false;
   // The camera rotation the drawn sprite was turned to; a sprite drawn later is turned to it too.
   private facing: THREE.Quaternion | undefined;
+  private readonly followsWorldCamera: boolean;
   private readonly cameraDirection = new THREE.Vector3();
   private asleep = false;
   private home: THREE.Object3D | undefined;
@@ -176,7 +177,7 @@ export class PrefabDisplay {
       get loaded() { return controller.loaded; },
       update: dt => {
         sync(); controller.update(dt);
-        this.fx.update(dt, this.json.peek());
+        this.fx.update(dt, this.json.peek(), this.facing);
         if (this.fx.hasComposites) controller.setComposites?.(this.fx.compositeFrames());
         this.updateSymbolFollowers(this.json.peek());
         for (const fx of this.symbolNodes.values()) fx?.update(dt);
@@ -212,6 +213,7 @@ export class PrefabDisplay {
     // The rotation changes every frame of a turn, so it applies before that frame renders, not a microtask later.
     // An asleep display has released its sprite, so it unsubscribes and resyncs to the camera when it wakes.
     const watchWorldContent = first.billboard ? getBoundWatchWorldContent() : undefined;
+    this.followsWorldCamera = watchWorldContent !== undefined;
     if (watchWorldContent) {
       const active = createMemo(() => status.get() === 'active');
       this.cleanups.push(() => active.dispose());
@@ -256,12 +258,12 @@ export class PrefabDisplay {
     }
   }
 
-  /** Advance a display owned by a scene collection, including standalone camera-facing FX. */
+  /** Advance a display; the frame's camera rotation is a fallback for worlds without a bound camera signal. */
   update(dt: number, cameraRotation?: THREE.Quaternion): void {
     if (this.disposed) return;
     this.applyStatus(this.status.peek());
     if (this.isRemoved || this.asleep) return;
-    if (cameraRotation && this.json.peek().billboard) this.faceCamera(cameraRotation);
+    if (cameraRotation && !this.followsWorldCamera && this.json.peek().billboard) this.faceCamera(cameraRotation);
     this.state.update(dt);
     // Animation completion can remove the entity during this update.
     this.applyStatus(this.status.peek());

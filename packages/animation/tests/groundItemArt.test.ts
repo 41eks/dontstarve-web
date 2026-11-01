@@ -18,6 +18,8 @@ import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initial from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { createPickupInventory } from './pickupFixture';
 import { importedSave } from './importedSave';
+import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import { bindTestWorld } from './worldContentFixture';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 const turn = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -30,8 +32,8 @@ function setup(active = createSignal(true)) {
   const scene = new THREE.Scene(), inventory = createPickupInventory();
   const canvas = Object.assign(new EventTarget(), { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) });
   const manager = new GroundItemManager(scene, new THREE.PerspectiveCamera(), { domElement: canvas } as unknown as THREE.WebGLRenderer,
-    '', inventory, '', new THREE.Group(), undefined, undefined, undefined, inventory.entities,
-    undefined, undefined, undefined, undefined, undefined, undefined, undefined,
+    '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', new THREE.Group(), undefined, undefined, undefined, inventory.entities,
+    undefined, undefined, undefined, undefined, undefined, undefined,
     () => Object.assign(active, { dispose: vi.fn() }));
   const spawn = (itemId: string, id: string, position = new THREE.Vector3(3, 0, 4), state = {}) => manager.spawnFromSave(id,
     { ...GROUND_ART_DEFINITIONS[itemId], icon: GROUND_ART_DEFINITIONS[itemId].icon ?? '', itemId, count: 1, ...state }, position);
@@ -42,6 +44,65 @@ function firstMesh(model: THREE.Object3D) {
   model.traverse(child => { if (!mesh && child instanceof THREE.Mesh) mesh = child; });
   return mesh!;
 }
+
+it('lets displays orient ground archives, hats and fallback icons, and resync sleeping art to the camera on wake', async () => {
+  const scheduler = new GameTimeScheduler(), content = bindTestWorld(scheduler);
+  const active = createSignal(true), world = setup(active);
+  const rotation = (angle: number) => new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), angle);
+  const drawnRotation = (model: THREE.Object3D) => model.children[0].getWorldQuaternion(new THREE.Quaternion());
+  try {
+    const initialRotation = rotation(Math.PI / 4);
+    content.camerarotation.set(initialRotation);
+    const twig = world.spawn('twigs', 'twigs'), card = world.spawn('playing_card', 'card');
+    const hat = world.manager.spawnFromSave('hat', { ...SAVE_CATALOG.items.strawhat, itemId: 'strawhat', count: 1 }, new THREE.Vector3(4, 0, 5));
+    const icon = world.manager.spawnFromSave('icon', { itemId: 'fallback_icon', icon: 'twigs.tex', name: 'Icon', count: 1 }, new THREE.Vector3(5, 0, 6));
+    const billboards = [twig, hat, icon];
+    await Promise.all([...billboards, card].map(model => prefabDisplay(model)!.artLoaded()));
+    for (const model of billboards) expect(drawnRotation(model).angleTo(initialRotation)).toBeLessThan(1e-7);
+    const cardRotation = drawnRotation(card), feet = billboards.map(model => model.position.toArray());
+    const copies = billboards.flatMap(model => [vi.spyOn(model.quaternion, 'copy'), vi.spyOn(model.children[0].quaternion, 'copy')]);
+    const turned = rotation(Math.PI / 3);
+    content.camerarotation.set(turned);
+    // The camera's publishing frame draws the new angle, without waiting for an effect microtask or a manager tick.
+    for (const model of billboards) expect(drawnRotation(model).angleTo(turned)).toBeLessThan(1e-7);
+    expect(drawnRotation(card).angleTo(cardRotation)).toBeLessThan(1e-7);
+    copies.forEach(copy => copy.mockClear());
+    world.manager.update(.1, new THREE.Quaternion());
+    for (const copy of copies) expect(copy).not.toHaveBeenCalled();
+    expect(billboards.map(model => model.position.toArray())).toEqual(feet);
+
+    active.set(false); await turn();
+    expect(prefabInstance(twig)!.sprite.loaded).toBe(false);
+    expect(prefabInstance(hat)!.sprite.loaded).toBe(false);
+    expect(twig.parent).toBeNull();
+    expect(hat.parent).toBeNull();
+    const wakingRotation = rotation(Math.PI / 2);
+    content.camerarotation.set(wakingRotation);
+    active.set(true); await turn();
+    await Promise.all([twig, hat].map(model => prefabDisplay(model)!.artLoaded()));
+    for (const model of billboards) expect(drawnRotation(model).angleTo(wakingRotation)).toBeLessThan(1e-7);
+    expect(drawnRotation(card).angleTo(cardRotation)).toBeLessThan(1e-7);
+    world.dispose();
+    copies.forEach(copy => copy.mockClear());
+    content.camerarotation.set(rotation(Math.PI));
+    for (const copy of copies) expect(copy).not.toHaveBeenCalled();
+  } finally { world.dispose(); content.unbind(); scheduler.dispose(); }
+});
+
+it('passes a standalone camera to a ground display and its attached fire', async () => {
+  const world = setup();
+  try {
+    const log = world.spawn('log', 'log');
+    world.manager.entities.get('log')!.components.burnable!.Ignite();
+    const fire = prefabInstance(log)!.sprite.fx.peek().get('fire')!.display!;
+    await Promise.all([prefabDisplay(log)!.artLoaded(), fire.artLoaded()]);
+    const camera = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 3);
+    world.manager.update(0, camera);
+    const drawn = log.children.find(child => child !== fire.model)!;
+    expect(drawn.getWorldQuaternion(new THREE.Quaternion()).angleTo(camera)).toBeLessThan(1e-7);
+    expect(fire.model.children[0].getWorldQuaternion(new THREE.Quaternion()).angleTo(camera)).toBeLessThan(1e-7);
+  } finally { world.dispose(); }
+});
 
 it('reuses ground item resources and activity, and skips sleeping visuals in the existing update loop', async () => {
   const active = createSignal(true), world = setup(active);

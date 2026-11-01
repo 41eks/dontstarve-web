@@ -116,7 +116,7 @@ export function createResidentGroundItem(context: Pick<GroundPrefabContext, 'ass
     { ...definition, animation: clip.name, loop: clip.loop }, { name: `GroundItem:${itemId}`, instancedAnimations: 'all' });
   // The display loads the art and draws the item once it is ready; the entity exists from now on.
   const { instance, display } = createArchiveEntity(itemId, { create },
-    { name: definition.animation, held: !definition.loop, sprite }, `GroundItem:${itemId}`,
+    { name: definition.animation, held: !definition.loop, billboard: !definition.ground, sprite }, `GroundItem:${itemId}`,
     entity => {
       if (!sprite) entity.skinId = skinId;
       entity.sprite.setSkinSource({ archives: definition.skinArchives, art: context.assets,

@@ -23,7 +23,7 @@ export function createPoopGroundFactory(context: GroundPrefabContext): GroundIte
         buildArchives: ['flies.zip'], bank: 'flies', animation: clip.name, loop: clip.loop }, { name: 'flies', dynamicParent: true });
       const base = createResidentGroundItem(context, { ...item, sprite: inst.sprite });
 
-      const flies = createArchiveEntity('flies', { create: createFlies }, { name: 'swarm_pre' }, 'flies');
+      const flies = createArchiveEntity('flies', { create: createFlies }, { name: 'swarm_pre', billboard: true }, 'flies', undefined, base.instance.status);
       flies.instance.persists = false;
       flies.instance.sprite.setVisible(false);
       // The decorative child must not enlarge the manure's pickup target, whenever its sprite is drawn again.

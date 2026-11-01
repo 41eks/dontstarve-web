@@ -125,7 +125,7 @@ export function createBurnableItemVisual(context: GroundPrefabContext,
   const createFire = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(context.assets, { animationArchive: 'fire.zip',
     buildArchives: ['fire.zip'], bank: 'fire', animation: clip.name, loop: clip.loop }, { name: 'fire', dynamicParent: true });
   // fire.lua: the burning fx entity, drawn by its own display as a child of the item; tags FX and HASHEATER.
-  const fire = createArchiveEntity('fire', { create: createFire }, { name: `level${fxLevel}` }, 'fire');
+  const fire = createArchiveEntity('fire', { create: createFire }, { name: `level${fxLevel}`, billboard: true }, 'fire', undefined, instance.status);
   for (const tag of ['FX', 'HASHEATER']) fire.instance.addTag(tag);
   fire.instance.persists = false;
   const presentation = { context };
