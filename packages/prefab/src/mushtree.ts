@@ -229,7 +229,7 @@ export class MushtreeInstance extends PrefabInstance<ArchiveSpriteCommands> {
   private createGrowable(saved: GrowableSave | undefined): void {
     const growable = this.components.growable = new Growable(this.env.scheduler, STAGE_SCALE.map((scale, index) => ({
       time: () => MUSHTREE_GROWTH_TIME[index].base + (Math.random() * 2 - 1) * MUSHTREE_GROWTH_TIME[index].random,
-      fn: () => this.scale.setScalar(scale),
+      fn: () => this.setScale(scale),
       growfn: () => this.doGrow((index + 1) as 1 | 2 | 3),
     })));
     growable.loopstages = true; growable.growonly = true;
@@ -391,10 +391,10 @@ export class MushtreeManager {
     const prefab = id.replace(/_stump$/, '') as MushtreeId;
     const instance = new MushtreeInstance(prefab, { scheduler: this.scheduler, fire: this.fire,
       world: this.world, spawnBurntFx: (prefab, state, point) => this.spawnBurntFx(prefab, state, point) });
-    const display = this.displays.add({ name: prefab, archive: this.archive(TREES[prefab]),
+    const display = this.displays.add({ name: prefab, archive: this.archive(TREES[prefab]), staticTransform: true,
       status: instance.status, sprite: instance.sprite as SpriteState, light: instance.light });
     bindInstance(display.model, instance);
-    instance.position.copy(position); instance.entityId = saved?.id ?? newEntityId();
+    instance.setPosition(position.x, position.y, position.z); instance.entityId = saved?.id ?? newEntityId();
     this.trees.set(display.model, { instance, display });
     instance.onRemove(() => { this.trees.delete(display.model); display.dispose(); });
     const entity = actionEntity(display.model, prefab, instance);

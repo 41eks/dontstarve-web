@@ -348,10 +348,10 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
       const saveId = saved?.id ?? newEntityId();
       if (entities.some(entity => entity.saveId === saveId)) throw new Error(`Duplicate entity ID: ${saveId}`);
       const { instance, display } = createArchiveEntity('deciduoustree', { create: clip => createTree(clip.name, clip.loop, `Deciduous-${saveId}`, { colour: [1, 1, 1] }) },
-        { name: 'sway1_loop_short', billboard: true }, `Deciduous-${saveId}`, instance => instance.setActive(false));
+        { name: 'sway1_loop_short', billboard: true }, `Deciduous-${saveId}`, instance => instance.setActive(false), undefined, { staticTransform: true });
       instance.entityId = saveId;
       const sprite = instance.sprite, model = display.model;
-      instance.position.copy(position);
+      instance.setPosition(position.x, position.y, position.z);
       const logical: ResidentEntity = { id: nextId++, saveId, model, position: model.position };
       entities.push(logical);
       const minimap = instance.minimap;

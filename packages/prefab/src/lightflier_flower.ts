@@ -220,10 +220,11 @@ export class LightFlierFlowerManager {
       this.resources.archive({ animationArchive: archive, buildArchives: [archive], bank: `bulb_plant_${variant}` },
         // Each flower owns its tint (SetMultColour), so its sprites are created with a colour.
         { instancedAnimations: ['idle'], staticBillboard: true, colour: [1, 1, 1] }),
-      { name: 'off', billboard: true }, LIGHTFLIER_FLOWER_ID, instance => instance.sprite.setColour([tint, tint, tint]));
+      { name: 'off', billboard: true }, LIGHTFLIER_FLOWER_ID, instance => instance.sprite.setColour([tint, tint, tint]), undefined,
+      { staticTransform: true });
     const sprite = instance.sprite, model = display.model;
     sprite.playOnce('off');
-    instance.position.copy(position); instance.position.y = 0;
+    instance.setPosition(position.x, 0, position.z);
     const plant = new LightFlierFlower(saved?.id ?? newEntityId(), model, instance, this.habitat, lengths, this.getLightLevel, variant, state);
     const animation = watchSignal(plant.animstate.animation, stop => this.cleanups.set(plant, stop));
     createEffect(() => { const { name, loop } = animation.get(); if (loop) sprite.start(name); else sprite.playOnce(name); });

@@ -13,6 +13,7 @@ import type { ComponentActionEntity } from '../../stategraphs/src/componentactio
 import type { PlacementSaveRecord } from './saveRecord';
 import { WORLD_SCALE } from './tile';
 import { refreshMouseTarget } from './mouseTargets';
+import { markTransformDirty } from '@dontstarve-web/animation/transformRoot';
 import type { PrefabWorldContext } from './worldContext';
 
 type ActionComponents = ComponentActionEntity['components'];
@@ -107,10 +108,26 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState> 
     return this.model.scale;
   }
 
+  /**
+   * Transform:SetPosition. Unlike a write through `position`, it marks the transform, which an entity drawn with
+   * `staticTransform` requires: its matrices are recomputed only when marked.
+   */
+  setPosition(x: number, y: number, z: number): void {
+    this.position.set(x, y, z);
+    markTransformDirty(this.model);
+  }
+
+  /** Transform:SetScale, marked as `setPosition()` is. */
+  setScale(x: number, y = x, z = x): void {
+    this.scale.set(x, y, z);
+    markTransformDirty(this.model);
+  }
+
   /** Transform:SetRotation: the heading in degrees, counter-clockwise about +Y, on the model owned by the display. */
   setRotation(degrees: number): void {
     if (!this.model) throw new Error('The entity has no model attached');
     this.model.rotation.y = degrees * Math.PI / 180;
+    markTransformDirty(this.model);
   }
 
   get isRemoved(): boolean { return this.lifecycle.peek() === 'removed'; }
@@ -247,12 +264,13 @@ export function createPrefabEntity(prefab: string, source: SpriteSource | Loaded
 
 /** A new entity drawn with a shared archive sprite; `clip.held` is a one-shot clip that rests on its last frame. */
 export function createArchiveEntity(prefab: string, archive: ArchiveSpriteSource, clip: EntityClip, name?: string,
-  initialize?: (instance: PrefabInstance<ArchiveSpriteCommands>) => void, parentStatus?: ReadonlySignal<PrefabStatus>):
+  initialize?: (instance: PrefabInstance<ArchiveSpriteCommands>) => void, parentStatus?: ReadonlySignal<PrefabStatus>,
+  displayOptions?: Pick<PrefabDisplayOptions, 'staticTransform'>):
   { instance: PrefabInstance<ArchiveSpriteCommands>; display: PrefabDisplay } {
   const state = entitySprite(clip);
   const instance = new PrefabInstance<ArchiveSpriteCommands>(prefab, state);
   initialize?.(instance);
-  const display = new PrefabDisplay({ name, archive, status: instance.status, parentStatus, sprite: state, light: instance.light });
+  const display = new PrefabDisplay({ ...displayOptions, name, archive, status: instance.status, parentStatus, sprite: state, light: instance.light });
   bindInstance(display.model, instance);
   return { instance, display };
 }

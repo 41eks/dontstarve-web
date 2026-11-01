@@ -77,7 +77,7 @@ export class RockAvocadoSaplingManager {
       // seed_growth includes the engine's snow placeholder; this prefab has no MakeSnowCovered.
       bank: 'rock_avo_fruit_master', hiddenSymbols: ['snow'],
     }, { instancedAnimations: 'all', staticBillboard: true }),
-      { name: 'idle_buried_seed', billboard: true }, ROCK_AVOCADO_SAPLING_ID);
+      { name: 'idle_buried_seed', billboard: true }, ROCK_AVOCADO_SAPLING_ID, undefined, undefined, { staticTransform: true });
     const sprite = drawn.instance.sprite;
     sprite.playOnce('idle_buried_seed'); sprite.setSymbolHidden('snow', true);
     // The burning fx entity is drawn only while the sprout burns.
@@ -87,7 +87,7 @@ export class RockAvocadoSaplingManager {
     for (const tag of ['FX', 'HASHEATER']) fire.instance.addTag(tag);
     fire.instance.persists = false;
     const model = drawn.display.model, fireModel = fire.display.model;
-    drawn.instance.position.set(position.x, 0, position.z);
+    drawn.instance.setPosition(position.x, 0, position.z);
     drawn.instance.entityId = saved?.id ?? newEntityId();
     Object.assign(model.userData, { deploySmartRadius: 3 });
     const entity = actionEntity(model, ROCK_AVOCADO_SAPLING_ID);

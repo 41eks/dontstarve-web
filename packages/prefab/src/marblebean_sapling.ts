@@ -66,10 +66,10 @@ export class MarbleBeanSaplingManager {
     if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError('Invalid sapling position');
     const { instance, display } = createArchiveEntity(MARBLEBEAN_SAPLING_ID, this.resources.archive({ animationArchive: 'marblebean.zip',
       buildArchives: ['marblebean.zip'], bank: 'marblebean' }, { instancedAnimations: 'all', staticBillboard: true }),
-      { name: 'idle_planted', billboard: true }, MARBLEBEAN_SAPLING_ID);
+      { name: 'idle_planted', billboard: true }, MARBLEBEAN_SAPLING_ID, undefined, undefined, { staticTransform: true });
     instance.sprite.playOnce('idle_planted');
     const model = display.model;
-    instance.position.set(position.x, 0, position.z);
+    instance.setPosition(position.x, 0, position.z);
     instance.entityId = saved?.id ?? newEntityId();
     Object.assign(model.userData, { deploySmartRadius: 1 });
     instance.addTag('marbleshrub');

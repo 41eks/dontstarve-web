@@ -5,6 +5,7 @@ import type { ArchiveSprite } from './archiveSprite';
 import { registerSpriteRenderGroup, setSpriteEntityRenderOrder } from './renderOrder';
 import type { InstancedSprite } from './instancedArchiveSprites';
 import { installRootMatrixGate } from './matrixGate';
+import { TransformRoot } from './transformRoot';
 import type { LayerAnimationController, LoadedBuildOverride, PercentAnimationController, SpriteController, TransientSpriteAnimationController } from './sprite';
 
 /** `none` is AnimState with no animation playing: nothing is drawn, and no sprite is built until a clip is played. */
@@ -27,10 +28,10 @@ export interface ResidentEntity {
  * traversals (projection, matrix updates) skip inactive entities; the owner keeps the root and its state.
  */
 export class ResidentSprite implements ArchiveSprite {
-  readonly model = new THREE.Group();
+  readonly model: THREE.Group;
   private readonly placeholder = new THREE.Group();
-  // The current sprite owns its subtree cache; the stable root caches only itself.
-  private readonly matrixGate = installRootMatrixGate(this.model, this.placeholder);
+  // The current sprite owns its subtree cache; the stable root caches only itself, or is a TransformRoot.
+  private readonly matrixGate: Pick<ReturnType<typeof installRootMatrixGate>, 'markDirty' | 'setRenderEnabled' | 'dispose'>;
   private readonly visual = createSignal<ArchiveSprite | undefined>(undefined);
   private readonly artVersion = createSignal(0);
   /** Changes whenever the drawn sprite is attached or released; effects that dress the sprite (build, symbols, colour) read it. */
@@ -50,9 +51,19 @@ export class ResidentSprite implements ArchiveSprite {
   // The owner may add the root to its parent after the tile was already found inactive.
   private readonly onAdded = () => { if (this.asleep) this.sleep(); };
 
-  /** `initial` is an already created sprite in `clip`; without it the sprite stays unloaded until `load()`. */
+  /**
+   * `initial` is an already created sprite in `clip`; without it the sprite stays unloaded until `load()`.
+   * `transformRoot`: the root is a `TransformRoot`; its owner marks every write to the entity transform.
+   */
   constructor(create: ResidentSprite['create'], clip: { name: string; loop: boolean; none?: boolean }, initial?: ArchiveSprite,
-    name = 'ResidentSprite') {
+    name = 'ResidentSprite', { transformRoot = false }: { transformRoot?: boolean } = {}) {
+    if (transformRoot) {
+      const root = this.model = new TransformRoot();
+      this.matrixGate = { markDirty: () => root.markTransformDirty(), setRenderEnabled: () => {}, dispose: () => {} };
+    } else {
+      this.model = new THREE.Group();
+      this.matrixGate = installRootMatrixGate(this.model, this.placeholder);
+    }
     this.create = create;
     this.clip = { ...clip, finished: clip.none === true };
     this.model.name = name;

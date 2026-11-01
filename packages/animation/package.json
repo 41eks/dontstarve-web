@@ -25,7 +25,8 @@
     "./recipes.json": "./recipes.json",
     "./bitmapFont": "./src/bitmapFont.ts",
     "./atlasImage": "./src/atlasImage.ts",
-    "./animState": "./src/animState.ts"
+    "./animState": "./src/animState.ts",
+    "./transformRoot": "./src/transformRoot.ts"
   },
   "scripts": {
     "recipes:check": "node scripts/extract-recipes.mjs --check",

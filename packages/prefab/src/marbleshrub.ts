@@ -123,7 +123,7 @@ export class MarbleShrubManager {
     const entity = createArchiveEntity(MARBLESHRUB_ID, this.resources.archive({
       animationArchive: 'marbleshrub.zip', buildArchives: ['marbleshrub.zip', 'marbleshrub_build.zip', 'snow.zip'],
       bank: 'marbleshrub', hiddenSymbols: ['snow'],
-    }, { instancedAnimations: 'all', staticBillboard: true, colour: [1, 1, 1] }), { name: STAGES[0].idle, billboard: true }, MARBLESHRUB_ID);
+    }, { instancedAnimations: 'all', staticBillboard: true, colour: [1, 1, 1] }), { name: STAGES[0].idle, billboard: true }, MARBLESHRUB_ID, undefined, undefined, { staticTransform: true });
     return this.create(entity, position, shapenumber, color, startStage, saved, fromSeed);
   }
 
@@ -132,7 +132,7 @@ export class MarbleShrubManager {
     const model = display.model;
     const sprite = instance.sprite;
 
-    model.position.set(position.x, 0, position.z);
+    instance.setPosition(position.x, 0, position.z);
     instance.entityId = saved?.id ?? newEntityId();
     Object.assign(model.userData, { deploySmartRadius: 1 });
     for (const tag of ['boulder', 'SnowCovered']) instance.addTag(tag);

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { createEffect, createMemo, createRenderEffect, getBoundWatchWorldContent, watchSignal, WorldContentKey, type ReadonlySignal } from '@dontstarve-web/signals';
 import { ResidentSprite, ResidentSpriteController } from '@dontstarve-web/animation/residentSprite';
+import { markTransformDirty } from '@dontstarve-web/animation/transformRoot';
 import { AnimationFollower } from './animationFollower';
 import { FxAttachments, type FxRenderEntry } from './fxAttachments';
 import { FollowerFxSlot } from './followerFx';
@@ -39,6 +40,11 @@ export interface PrefabDisplayOptions {
   readonly empty?: boolean;
   /** Keep the entity at its foot point, offsetting only its private drawn sprite. */
   readonly alignBottom?: boolean;
+  /**
+   * The model is a `TransformRoot` (archive sprites only): matrix traversals skip the resting entity, so every later
+   * write to its transform goes through `PrefabInstance.setPosition()`/`setScale()`/`setRotation()`, which mark it.
+   */
+  readonly staticTransform?: boolean;
   /**
    * Sources of the fx prefabs this entity spawns, as a Lua prefab's dependency list: they load with the entity's own art,
    * so a transition such as a collapse is drawn when it is spawned rather than settled undrawn.
@@ -123,7 +129,8 @@ export class PrefabDisplay {
         const drawn = archive.create(clip);
         return drawn instanceof Promise ? drawn.then(prepare) : prepare(drawn);
       };
-      this.engine = new ArchiveEngine(new ResidentSprite(create, clip, archive.initial && prepare(archive.initial), options.name));
+      this.engine = new ArchiveEngine(new ResidentSprite(create, clip, archive.initial && prepare(archive.initial), options.name,
+        { transformRoot: options.staticTransform }));
     } else if (source) {
       let ready = 'load' in source ? source.peek() : source;
       // The foot offset is measured once, on the entity's first clip, so that every sprite drawn later, in whatever clip
@@ -278,7 +285,7 @@ export class PrefabDisplay {
     if (this.disposed) return;
     (this.facing ??= new THREE.Quaternion()).copy(rotation);
     if (this.engine.faceCamera) this.engine.faceCamera(this.facing);
-    else this.model.quaternion.copy(rotation);
+    else { this.model.quaternion.copy(rotation); markTransformDirty(this.model); }
     this.applyFacing(this.json.peek());
   }
 

@@ -280,12 +280,12 @@ export class PickablePlantManager {
     instance.deploySmartRadius = definition.deploySmartRadius;
     if (definition.skins) instance.sprite.setSkinSource({ art: this.resources.archives,
       archives: Object.fromEntries(definition.skins.map(skin => [skin, `dynamic/${skin}.zip`])) });
-    const display = this.displays.add({ name: prefab, archive: this.archiveSource(definition),
+    const display = this.displays.add({ name: prefab, archive: this.archiveSource(definition), staticTransform: true,
       status: instance.status, sprite: animation, light: instance.light });
     bindInstance(display.model, instance);
     if (!held && !loop) instance.sprite.playOnce(initial.initialAnimation);
     const model = display.model;
-    instance.position.copy(position);
+    instance.setPosition(position.x, position.y, position.z);
     instance.entityId = saved?.id ?? newEntityId();
     for (const tag of definition.tags) instance.addTag(tag);
     if (definition.snowCovered) {

@@ -128,11 +128,11 @@ export class FlowerPlanting {
   private createFlower(id: string, animation: FlowerAnimation, position: THREE.Vector3, planted = true): PlantedFlower {
     const { instance, display } = createArchiveEntity('flower', this.resources.archive({ animationArchive: 'flowers.zip',
       buildArchives: ['flowers.zip'], bank: 'flowers' }, { instancedAnimations: 'all', staticBillboard: true }),
-      { name: animation, billboard: true }, 'Flower');
+      { name: animation, billboard: true }, 'Flower', undefined, undefined, { staticTransform: true });
     // PlayAnimation(animname) without loop.
     instance.sprite.playOnce(animation);
     const model = display.model;
-    instance.position.set(position.x, 0, position.z);
+    instance.setPosition(position.x, 0, position.z);
     instance.entityId = id;
     Object.assign(model.userData, {
       rayTestOnBB: true, planted, flowerAnimation: animation,

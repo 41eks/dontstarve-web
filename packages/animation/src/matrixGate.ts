@@ -1,5 +1,6 @@
 import { Matrix4, type Object3D } from 'three';
 import { cacheMatrixUpdates, invalidateMatrixUpdates, retainWorldMatrixVersion } from './matrixUpdates';
+import { markTransformDirty } from './transformRoot';
 
 /** Inline scalar snapshots keep the common automatic-transform check compact.
  * Manual matrices allocate their snapshot only when an owner actually uses one.
@@ -47,7 +48,8 @@ class MatrixGate {
   private parentVersion?: ReturnType<typeof retainWorldMatrixVersion>;
   private capturedParentVersion = -1;
   private dirty = true;
-  readonly markDirty = () => { this.dirty = true; };
+  // A gated sprite inside a TransformRoot is only reached by traversal once that root is marked too.
+  readonly markDirty = () => { this.dirty = true; markTransformDirty(this.model); };
 
   constructor(model: Object3D, visual: Object3D, stationary: boolean, fixedVisual: boolean, dynamicParent: boolean, original: MatrixGate['original'], rootOnly: boolean) {
     this.model = model; this.visual = visual; this.stationary = stationary;

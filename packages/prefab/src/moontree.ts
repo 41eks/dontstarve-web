@@ -393,8 +393,8 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
     if (saveId && entities.some(entity => entity.saveId === saveId)) throw new Error(`Duplicate entity ID: ${saveId}`);
     const id = nextId++;
     const drawn = createArchiveEntity('moon_tree', { create: clip => createTree(clip.name, clip.loop, `MoonTree-${id}`), alignBottom: true },
-      { name: standingAnimation, billboard: true }, `MoonTree-${id}`, instance => instance.setActive(false));
-    const model = drawn.display.model; drawn.instance.position.copy(position);
+      { name: standingAnimation, billboard: true }, `MoonTree-${id}`, instance => instance.setActive(false), undefined, { staticTransform: true });
+    const model = drawn.display.model; drawn.instance.setPosition(position.x, position.y, position.z);
     MakeObstaclePhysics(drawn.instance, .5);
     if (world.physics) drawn.instance.bindPhysics(world.physics);
     model.userData.placementLogical = true;
@@ -458,10 +458,10 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
 
   const spawnSapling = (position: THREE.Vector3, saved?: MoonTreeSaplingRecord): THREE.Group => {
     const create = (clip: { name: string; loop: boolean }) => createSapling(clip.name, clip.loop, 'moonbutterfly_sapling');
-    const entity = createArchiveEntity('moonbutterfly_sapling', { create }, { name: 'idle', billboard: true }, 'moonbutterfly_sapling', instance => instance.setActive(false));
+    const entity = createArchiveEntity('moonbutterfly_sapling', { create }, { name: 'idle', billboard: true }, 'moonbutterfly_sapling', instance => instance.setActive(false), undefined, { staticTransform: true });
     const model = entity.display.model;
     entity.instance.sprite.playOnce('idle');
-    model.position.copy(position);
+    entity.instance.setPosition(position.x, position.y, position.z);
     entity.instance.entityId = saved?.id ?? newEntityId();
     Object.assign(model.userData, { placementLogical: true, deploySmartRadius: 1.6 * unit });
     for (const tag of ['plant', 'moon_tree']) entity.instance.addTag(tag);

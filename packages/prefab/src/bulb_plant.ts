@@ -322,10 +322,10 @@ export class BulbPlantManager {
     const initialAnimation = state?.picked ? 'picked' : state?.lightState === 'ON' ? 'idle' : state?.lightState === 'RECHARGING' ? 'withered' : 'off';
     const loop = initialAnimation === 'idle', created = create(initialAnimation, loop, prefabId);
     const { instance, display } = createArchiveEntity(prefabId, { create: clip => create(clip.name, clip.loop, prefabId), initial: created },
-      { name: initialAnimation, held: !loop, billboard: true }, prefabId);
+      { name: initialAnimation, held: !loop, billboard: true }, prefabId, undefined, undefined, { staticTransform: true });
     if (!loop) instance.sprite.setFrame(created.frameCount - 1);
     const model = display.model;
-    instance.position.set(position.x, 0, position.z);
+    instance.setPosition(position.x, 0, position.z);
     instance.entityId = saved?.id ?? newEntityId();
     model.userData.bulbPlantVariant = variant;
     const controller = new BulbPlantController(model, instance.sprite, this.world, variant, state, this.random, instance);
