@@ -3,7 +3,8 @@ import { getActionPriority, type ActionDescription } from './actions.ts';
 import { PointerRaycaster } from './pointerRaycaster.ts';
 import { isMouseTarget } from './mouseTargets.ts';
 import { collectEquippedItemActions, collectPointActions, collectSceneActions, type ComponentActionEntity, type EquippedActionDoer, type SceneActionDoer } from './componentactions.ts';
-import { findActionEntity } from '../../prefab/src/actionEntity';
+import { findActionEntity, actionInstance } from '../../prefab/src/actionEntity';
+import { collectUseItemActions } from './componentactions';
 
 export interface MouseActionCandidate {
   action: ActionDescription;
@@ -63,7 +64,13 @@ export class PlayerActionPicker {
   private componentActions(target: THREE.Object3D | undefined): MouseActionCandidate[] {
     const player = this.player, entity = findActionEntity(target);
     if (!player) return [];
-    if (!entity || !target) return this.pointActions(player);
+    const activeItem = player.doer.components?.inventory?.GetActiveItem?.();
+    if (!entity || !target) return activeItem ? [] : this.pointActions(player);
+    if (activeItem) {
+      const inst = actionInstance(target) ?? entity;
+      return ([false, true] as const).flatMap(right => this.GetUseItemActions(inst, activeItem, right).map(action => ({
+        action, button: right ? 'right' as const : 'left' as const, model: target, source: 'inventory' as const })));
+    }
     const item = player.equippedItem(), doer = player.doer;
     return ([false, true] as const).flatMap(right => {
       const button = right ? 'right' as const : 'left' as const;
@@ -74,6 +81,15 @@ export class PlayerActionPicker {
           action: { action, doer, target: entity }, button, model: target, source: 'scene' as const })),
       ];
     });
+  }
+
+  /** playeractionpicker.lua GetUseItemActions / SortActionList, including the current action filter. */
+  GetUseItemActions(target: ComponentActionEntity, item: ComponentActionEntity, right = false): ActionDescription[] {
+    const doer = this.player?.doer;
+    if (!doer) return [];
+    return collectUseItemActions(item, doer, target, right).map(action => ({ action, doer, target, invobject: item }))
+      .filter(action => !this.actionFilter || this.actionFilter(action))
+      .sort((a, b) => getActionPriority(b) - getActionPriority(a));
   }
 
   /**
@@ -144,7 +160,8 @@ export class PlayerActionPicker {
       this.selectedModel = target ?? undefined;
       const candidates = [...this.componentActions(target ?? undefined), ...[...this.providers].flatMap(provider => provider(target ?? undefined))];
       const filter = this.actionFilter;
-      const activeItem = [...this.activeItemSources].some(source => source());
+      const activeItem = !!this.player?.doer.components?.inventory?.GetActiveItem?.()
+        || [...this.activeItemSources].some(source => source());
       const result: MouseActions = {};
       for (const button of ['left', 'right'] as const) {
         const available = candidates.filter(candidate => candidate.button === button && candidate.available !== false

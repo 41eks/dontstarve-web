@@ -99,7 +99,7 @@ it('retills broken soil at the exact point, preserves blockers and crops, and re
       restored.turf.plow(point);
       restored.farm.spawnDecor('farm_soil', point, hole.record.components.farmSoil, hole.record.id);
       expect(restored.farm.exportDecorRecords()).toEqual([hole]);
-      expect(restored.farm.soilTargets[0].id).toBe(hole.record.id);
+      expect(restored.farm.exportDecorRecords()[0].record.id).toBe(hole.record.id);
     } finally { restored.farm.dispose(); }
     farm.spawnPlantedSeed(point, 'crop');
     const crops = farm.exportPlantedSeedRecords();

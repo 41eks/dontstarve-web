@@ -109,6 +109,9 @@ it('renders real flies child art, plays looping audio and preserves manure throu
     expect(context.decodeAudioData).toHaveBeenCalled();
     const flies = model.userData.flies as THREE.Group;
     await vi.waitFor(() => expect(prefabInstance(flies)!.sprite.loaded).toBe(true));
+    const camera = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 3);
+    world.camerarotation.set(camera);
+    expect(flies.children[0].getWorldQuaternion(new THREE.Quaternion()).angleTo(camera)).toBeLessThan(1e-7);
     expect(flies.parent).toBe(model);
     expect(prefabInstance(flies)!.listTags()).toEqual(['NOCLICK', 'DECOR']);
     for (let frame = 0; frame < 20; frame++) manager.update(.1, new THREE.Quaternion());

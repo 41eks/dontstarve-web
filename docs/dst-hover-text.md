@@ -29,7 +29,7 @@
 | `MINE` | 开采 |
 | `DIG` / `TERRAFORM` | 挖 |
 | `TILL` | 耕地 |
-| `PLANT` | 栽种 |
+| `PLANT` / `PLANTSOIL` | 栽种 |
 | `PICK` | 采集 |
 | `CASTSPELL` | 施放法术 |
 | `CASTSPELL.RESKIN` | 打扫 |

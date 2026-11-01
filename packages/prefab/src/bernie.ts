@@ -60,7 +60,7 @@ export function createBernieGroundSprite(assets: BernieAssets, world: BernieWorl
   let form: BernieAnimationForm = bernieGroundForm(world.getSanityPercent());
   const spriteName = `GroundItem:${BERNIE_ITEM_ID}`;
   if (skinId !== undefined && !assets.skins.archives[skinId]) throw new Error(`Unknown Bernie skin: ${skinId}`);
-  const { instance, display } = createPrefabEntity(BERNIE_ITEM_ID, assets.source(), { name: `${form}:idle_loop`, sprite: owned }, spriteName, entity => {
+  const { instance, display } = createPrefabEntity(BERNIE_ITEM_ID, assets.source(), { name: `${form}:idle_loop`, billboard: true, sprite: owned }, spriteName, entity => {
     if (!owned) entity.skinId = skinId;
     entity.sprite.setSkinSource(assets.skins);
   });

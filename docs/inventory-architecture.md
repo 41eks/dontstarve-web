@@ -177,9 +177,11 @@ torch 的专用 ground factory 注册 `onputininventory` 和 `onextinguish`。�
 
 `packages/prefab/src/food.ts` 定义已接入食物的源 Lua 数值：种子为 4.6875 饥饿，香蕉奶昔为 8 生命、25 饥饿、33 理智。`bananajuice` 来自 `preparedfoods.lua:571`，数值分别为 `TUNING.HEALING_MEDSMALL`、`CALORIES_MED`、`SANITY_LARGE`；共享 `prefabs/preparedfoods.lua` 将这些数值装到 edible 组件，`fooddrink` 标签决定喝饮料动画。
 
-`FoodActionController` 共用进食与种植的取消/预加载流程，原种子控制器已泛化为 `packages/stategraphs/src/eat.ts`。应用从点击时的槽位捕获实际物品实体及皮肤；第 12 帧提交前再核对实体仍在原槽，库存扣除成功后才调用 `applyPlayerFoodEffects()`。生命与饥饿上限 150，理智通过 signal 限制到 200；直接修改同 ID 的另一实体不能让旧动作误消耗替代物。`SGwilson` 的 EAT 使用同一个 quickeat 时间线，根据 `foodDrink` 选择 `quick_drink_pre → quick_drink` 或 `quick_eat_pre → quick_eat`；饮料与进食动画均来自 `player_actions_eat.zip`，第 10 帧分别播放 sip / eat。预加载前后取消、动作取消或物品失效都不会产生食用效果。
+`FoodActionController`（`packages/stategraphs/src/eat.ts`）负责库存进食请求及取消。缓冲动作保存原始食物实例，第 12 帧由该实例的 `edible` 和玩家的 `eater` 结算效果并消耗一份；同一实例移动槽位或换皮肤仍有效，替换为同 ID 的另一实例不会误消耗。`meatballs` 与其他固体食物共用这条路径。`SGwilson` 根据 `foodDrink` 选择 `quick_drink_pre → quick_drink` 或 `quick_eat_pre → quick_eat`，第 10 帧分别播放 sip / eat；业务提交不等待美术加载。
 
-右键 `meatballs` 调用 `WilsonAnimationController.playEat()`，播放 `anim/player_actions_eat.zip`；当前只播放动作，不消耗该堆物品。
+持有 active item 时，库存左键继续拿取／交换，右键按 Lua 的 `UseItemFromInvTile` 通过 `PlayerActionPicker.GetUseItemActions` 和 `PlayerController` 提交 `BufferedAction`。`FEED`、`ADDFUEL`、`ADDWETFUEL` 的共享动作函数直接访问原始目标及物品实例的组件；应用层不提供 `useFuel` 回调，也不拼装目标代理。
+
+种子左键进入光标槽，使用真实种子和土坑实例选取 `PLANTSOIL`。普通角色进入 `dolongaction`，1 秒后由共享动作函数取出一粒种子，交给 `farmplantable:Plant` 替换土坑、生成作物并通知 `on_planted` / `itemplanted`。正在耕地及破损土坑按源 `NOCLICK` 标签拒绝鼠标选取。取消时光标物品保留；没有 `beginFood` 选择回调或独立的种植目标列表。
 
 手部拿出／收起动画集中在 `src/playerHandEquipment.ts`，从装备 signal 的前后状态派生：`null → 装备` 播放新物品的 `item_out`，`装备 → null` 播放旧物品的 `item_in`，更换装备实体播放新物品的 `item_out`。动画使用 `anim/player_actions_item.zip`，具体手持物品由 prefab 的手部定义解析；同一实体换肤或重复发布身份仅同步外观，不重复播放转移动画。
 

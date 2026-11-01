@@ -485,7 +485,7 @@ export class ButterflyAssets {
     const source = this.resources.factory({ animationArchive: 'butterfly_basic.zip', buildArchive: 'butterfly_basic.zip',
       skinArchive: prefab === BUTTERFLY_ID ? undefined : 'butterfly_moon.zip' });
     const name = `GroundItem:${prefab}`;
-    const { instance, display } = createPrefabEntity(prefab, source, { name: 'idle_flight_loop', sprite }, name);
+    const { instance, display } = createPrefabEntity(prefab, source, { name: 'idle_flight_loop', billboard: true, sprite }, name);
     const model = display.model;
     let creature: ButterflyCreature | undefined;
     const removeInventoryEvents = listenInventoryEvents(model, {

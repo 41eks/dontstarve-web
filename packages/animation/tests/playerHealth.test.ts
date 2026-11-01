@@ -31,7 +31,7 @@ it('eats eight red caps, dies through component events, becomes a ghost and save
   instance.components.inventory = inventory;
   const picker = new PlayerActionPicker(new PointerRaycaster(world));
   const food = new FoodActionController({ ...world, mouseActions: picker }, animation,
-    { stop() {}, goToPoint: () => true, destination: undefined }, { soilTargets: [], plantSeed: () => false }, instance);
+    { stop() {}, goToPoint: () => true, destination: undefined }, instance);
   const ghost = createSignal(false), skeleton = vi.fn(), death = vi.fn();
   const owner: PlayerGhostOwner = {
     model: player, animation, physics, stats, ghostMode: ghost,

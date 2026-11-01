@@ -3,6 +3,7 @@ import { ItemEntity, ItemEntityRegistry, type InventoryStore } from '@dontstarve
 import type { PickupTarget } from '@dontstarve-web/stategraphs';
 import type { PlayerActionPicker } from '@dontstarve-web/stategraphs';
 import { loadImageAtlas, type ImageAtlas } from '@dontstarve-web/animation/imageAtlas';
+import { PrefabDisplayGroup } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import { isSpriteEntityRendered } from '@dontstarve-web/animation/renderOrder';
 import { isHatId, HAT_DEFINITIONS } from '@dontstarve-web/prefab/hats';
@@ -26,7 +27,7 @@ import { actionEntity, disposeActionEntity, findActionEntity } from '../packages
 import type { GameTimeScheduler } from '../packages/componets/src/gameTimeScheduler';
 import type { DeconstructionTarget } from '@dontstarve-web/prefab/staff';
 import type { WorldEventEmitter } from '../packages/prefab/src/worldContext';
-import { createEffect, createRenderEffect, watchSignal, WorldContentKey, type GetWatchWorldContent, type Signal } from '@dontstarve-web/signals';
+import { createEffect, watchSignal } from '@dontstarve-web/signals';
 
 
 export type { GroundItemDefinition } from '@dontstarve-web/prefab/groundPrefab';
@@ -67,12 +68,9 @@ export class GroundItemManager {
   private readonly pointer: PointerRaycaster;
   private readonly mouseActions?: PlayerActionPicker;
   private readonly renderer: THREE.WebGLRenderer;
-  private readonly scene: THREE.Scene;
+  private readonly displays: PrefabDisplayGroup;
   private readonly player: THREE.Object3D;
   private disposed = false;
-  /** Private view of the world camera rotation; undefined for standalone managers, which orient in update(). */
-  private readonly cameraRotation?: Signal<THREE.Quaternion>;
-  private readonly cleanups: (() => void)[] = [];
   private readonly inserting = new Set<GroundItemRecord>();
   private recordSource?: () => { entity: ItemEntity; take(): boolean } | undefined;
 
@@ -92,7 +90,6 @@ export class GroundItemManager {
     fx?: GroundPrefabOptions['fx'],
     moleWorld?: GroundPrefabOptions['moleWorld'],
     worldEvents?: WorldEventEmitter,
-    getWatchWorldContent?: GetWatchWorldContent,
     mouseActions?: PlayerActionPicker,
     lightflierWorld?: GroundPrefabOptions['lightflierWorld'],
     tickingarea?: GroundPrefabOptions['tickingarea'],
@@ -100,7 +97,7 @@ export class GroundItemManager {
   ) {
     this.mouseActions = mouseActions;
     this.entities = entities;
-    this.scene = scene;
+    this.displays = new PrefabDisplayGroup(scene);
     this.renderer = renderer;
     this.pointer = new PointerRaycaster({ camera, renderer });
     this.archiveUrl = archiveUrl;
@@ -112,14 +109,6 @@ export class GroundItemManager {
       dropLoot: (items, position) => this.flingLoot(items, position),
       spawnGroundItem: (definition, position, options) => this.spawnGroundItem(definition, position, options),
     });
-    if (getWatchWorldContent) {
-      const rotation = this.cameraRotation = getWatchWorldContent(WorldContentKey.CameraRotation, stop => this.cleanups.push(stop));
-      // Billboards face the camera: re-orient them only when the camera turns, in the frame that turns it.
-      createRenderEffect(() => {
-        const quaternion = rotation.get();
-        for (const { model, instance } of this.activeItems) if (!instance.sprite.sprite.peek().ground) model.quaternion.copy(quaternion);
-      });
-    }
     this.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown);
     this.stopDrops = inventory.subscribeDropped((entity, launch) => this.onInventoryDrop(entity, launch));
     // DefaultBurntFn requests one ash at the burnt inst's ground position.
@@ -132,11 +121,11 @@ export class GroundItemManager {
     if (this.disposed) return;
     this.disposed = true;
     this.stopSpawnAsh?.();
-    this.cleanups.splice(0).forEach(stop => stop());
     this.renderer.domElement.removeEventListener('pointerdown', this.handlePointerDown);
     this.pointer.dispose();
     this.stopDrops();
     for (const item of [...this.items.values()]) { this.removeVisual(item); this.entities.destroy(item.entity); }
+    this.displays.dispose();
     for (const stop of this.groundEntityStops.values()) stop();
     this.groundEntityStops.clear();
     this.groundEntitiesByPrefab.clear();
@@ -323,6 +312,7 @@ export class GroundItemManager {
     const record = this.withFootPosition({ id, entity, definition, stops: [], ...visual });
     this.items.set(visual.model, record);
     this.bindInventoryEvents(record);
+    this.displays.mount(visual.display, record.footPosition);
     this.bindVisualActivity(record);
     this.bindVisualUpdating(record);
     this.bindEntityRemoval(record);
@@ -347,12 +337,9 @@ export class GroundItemManager {
         this.activeItems.add(record);
         this.refreshUpdating(record);
         record.model.position.copy(record.entity.transform.position);
-        if (this.cameraRotation && !record.instance.sprite.sprite.peek().ground) record.model.quaternion.copy(this.cameraRotation.peek());
-        this.scene.add(record.model);
       } else {
         this.activeItems.delete(record);
         this.updatingItems.delete(record);
-        record.model.removeFromParent();
       }
     };
     record.stopActivity = undefined;
@@ -361,10 +348,10 @@ export class GroundItemManager {
     createEffect(() => setActive(active.get()));
   }
 
-  /** A visual joins the frame loop while it can change by itself: a display to advance, an update, a removal check or a fling. */
+  /** Visit active records while their prefab requests frame updates or their loot is in flight. */
   private refreshUpdating(record: GroundItemRecord): void {
     const needed = this.activeItems.has(record) && (record.fling !== undefined
-      || ((record.display !== undefined || record.update !== undefined || record.isRemoved !== undefined) && (record.updating?.peek() ?? true)));
+      || (record.updating?.peek() ?? true));
     if (needed) this.updatingItems.add(record); else this.updatingItems.delete(record);
   }
 
@@ -642,18 +629,13 @@ export class GroundItemManager {
 
   update(dt: number, cameraQuaternion: THREE.Quaternion): void {
     this.prefabs.update(dt, cameraQuaternion);
-    if (!this.cameraRotation) for (const { model, instance } of this.activeItems) {
-      if (instance.sprite.sprite.peek().ground) continue;
-      if (model.quaternion.equals(cameraQuaternion)) continue;
-      model.quaternion.copy(cameraQuaternion);
-    }
     for (const item of [...this.updatingItems]) {
       const previousX = item.model.position.x, previousY = item.model.position.y, previousZ = item.model.position.z;
       item.model.position.copy(item.entity.transform.position);
       // The display advances the declared clips, then the visual's own update runs prefab logic. What that logic
       // declares this frame (a new clip, a set frame) is drawn now, as the engine renders the latest AnimState.
-      item.display?.update(dt);
-      if (item.update) { item.update(dt); item.display?.update(0); }
+      item.display.update(dt, cameraQuaternion);
+      if (item.update) { item.update(dt); item.display.update(0, cameraQuaternion); }
       if (item.fling) {
         item.fling.update(dt);
         item.model.children[0].position.y = item.fling.height;
@@ -712,9 +694,9 @@ export class GroundItemManager {
     const { instance, display } = createPrefabEntity(definition.itemId, {
       peek: () => { const atlas = this.loadedAtlases.get(atlasPath); return atlas && draw(atlas); },
       load: () => this.loadAtlas(atlasPath).then(draw),
-    }, { name: '', sprite: entity.sprite }, name);
+    }, { name: '', billboard: true, sprite: entity.sprite }, name);
     return {
-      model: display.model, instance,
+      model: display.model, instance, display,
       dispose() {
         instance.remove();
         display.dispose();

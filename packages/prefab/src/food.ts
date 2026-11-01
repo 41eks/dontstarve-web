@@ -2,7 +2,7 @@ import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Edible } from '../../componets/src/edible';
 import { PERISH_FAST, PERISH_MED, PERISH_SUPERFAST } from '../../componets/src/perishable';
 import { foods } from '../../componets/src/preparedfoods';
-import { SEEDS_HUNGER } from './seeds';
+import { SEEDS_HUNGER, configureSeedEntity } from './seeds';
 import { MOONBUTTERFLY_PERISH_TIME } from './moonbutterflyTuning';
 import { BUTTERFLY_PERISH_TIME } from './butterfly';
 import { BIRD_IDS, BIRD_PERISH_TIME } from './birds';
@@ -97,6 +97,7 @@ export const PERISHABLE_FOODS: Readonly<Record<string, { readonly perishTime: nu
 /** The supported prefab branches install edible on the food inst, as in Lua. */
 export function configureFoodEntity(entity: ItemEntity): void {
   configureVeggieEntity(entity);
+  configureSeedEntity(entity);
   const values = FOOD_EFFECTS[entity.prefab];
   if (!values) return;
   if (!entity.components.edible) {

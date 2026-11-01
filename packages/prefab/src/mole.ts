@@ -338,7 +338,7 @@ export function createMoleGroundFactory(context: GroundPrefabContext): GroundIte
     itemIds: [MOLE_ID], configureEntity: configureMoleEntity,
     create: (_item, inst) => {
       if (!context.moleWorld) throw new Error('Mole world is unavailable');
-      const { instance, display } = createArchiveEntity(MOLE_ID, source, { name: 'idle_under', sprite: inst.sprite }, MOLE_ID);
+      const { instance, display } = createArchiveEntity(MOLE_ID, source, { name: 'idle_under', billboard: true, sprite: inst.sprite }, MOLE_ID);
       const sprite = instance.sprite, model = display.model;
       let mole: Mole | undefined;
       // Visibility and facing change the sprite json only when their value does.

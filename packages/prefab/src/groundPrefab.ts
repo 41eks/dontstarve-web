@@ -42,8 +42,8 @@ export interface GroundItemVisual {
   /** The display entity; live inventory state remains on the bound ItemEntity. */
   readonly instance: PrefabInstance<ArchiveSpriteCommands>;
   model: THREE.Group;
-  /** The display drawing the entity; the manager advances it each frame, so the prefab never ticks its sprite. */
-  readonly display?: PrefabDisplay;
+  /** Owns scene membership and sprite residency; the manager advances it each frame. */
+  readonly display: PrefabDisplay;
   /** Resource presence, driven by the prefab's tile activity. Logical items still persist while false. */
   active?: ReadonlySignal<boolean>;
   /** Bind movement/proximity to the committed inst; the model only projects its position. */
@@ -51,8 +51,8 @@ export interface GroundItemVisual {
   bindEntity?(entity: ItemEntity): void;
   update?(dt: number): void;
   /**
-   * StartUpdatingComponent/StopUpdatingComponent: while false the manager skips update(); absent means always
-   * updating. Visuals with neither update nor isRemoved are static.
+   * StartUpdatingComponent/StopUpdatingComponent: while false the manager skips frame updates; absent means always
+   * advancing the display and any update callback.
    */
   updating?: ReadonlySignal<boolean>;
   isRemoved?(): boolean;

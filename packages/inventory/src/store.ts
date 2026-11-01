@@ -101,6 +101,15 @@ export class InventoryStore {
   }
   GetNumSlots(): number { return this.inventorySlots().length; }
   GetActiveItem(): ItemEntity | null { return this.getEntity(cursorSlotAddress()); }
+  /** inventory.lua CanAccessItem: the original inst is still in a slot accessible through this inventory. */
+  CanAccessItem(item: ItemEntity): boolean {
+    const owner = item.components.inventoryitem?.owner;
+    return !item.isRemoved && !!owner && this.getEntity(owner.address) === item;
+  }
+  /** inventory.lua RemoveItem(item): detach one inst, configuring a split stack through the usual item registry. */
+  RemoveItem(item: ItemEntity): ItemEntity | null {
+    return this.CanAccessItem(item) ? this.extract(item.components.inventoryitem.owner!.address, 1, item) : null;
+  }
   /** inventory.lua ConsumeByName: item slots, active item, then the equipped overflow container. */
   ConsumeByName(prefab: string, amount = 1): void {
     if (!Number.isSafeInteger(amount) || amount <= 0) return;

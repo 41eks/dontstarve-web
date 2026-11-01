@@ -609,7 +609,6 @@ export async function createSceneEntities(
       Managers['world_fx'],
       Managers['molehill'].habitat,
       worldEvents,
-      worldState.getWatchWorldContent,
       view.mouseActions,
       Managers['lightflier_flower'].habitat,
       worldState.tickingarea,

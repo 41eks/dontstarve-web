@@ -33,7 +33,7 @@ vi.mock('@dontstarve-web/prefab/groundItems', async (importOriginal) => {
     for (const type of ['ondropped', 'onputininventory', 'onload'] as const) {
       model.addEventListener(type, () => model.userData.events.push(type));
     }
-    return { model, instance, update: vi.fn<(dt: number) => void>(), dispose() { model.userData.events.push('dispose'); instance.remove(); display.dispose(); } };
+    return { model, instance, display, update: vi.fn<(dt: number) => void>(), dispose() { model.userData.events.push('dispose'); instance.remove(); display.dispose(); } };
   });
   return {
     ...actual,
@@ -53,7 +53,7 @@ vi.mock('@dontstarve-web/prefab/butterfly', async (importOriginal) => {
       const model = display.model;
       model.add(new THREE.Group());
       let controller: InstanceType<typeof actual.ButterflyController> | undefined;
-      return { model, instance, get controller() { return controller; },
+      return { model, instance, display, get controller() { return controller; },
         bindTransform(transform: ItemEntity['transform']) {
           controller = new actual.ButterflyController(actual.BUTTERFLY_DEFINITIONS[prefab], transform,
             { start() {}, playOnce() {}, update() {}, currentAnimation: 'idle_flight_loop', currentAnimationLength: 1 }, world, undefined, () => 0);

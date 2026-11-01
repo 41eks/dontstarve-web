@@ -36,7 +36,7 @@ async function fixture(itemId = 'bananajuice') {
   const slot = inventorySlotAddress(0), store = createPickupInventory();
   playerInstance.components.inventory = store;
   const actions = new FoodActionController(world, animation, { stop() {}, goToPoint: () => true, destination: undefined },
-    { soilTargets: [], plantSeed: () => false }, playerInstance);
+    playerInstance);
   store.add(itemId, 2);
   const entity = store.getEntity(slot)!;
   return { animation, actions, store, slot, entity };
@@ -120,7 +120,9 @@ it('preserves food and stats when cancelled or replaced before commit and clamps
   const { animation, actions, store, slot, entity } = await fixture();
   const eat = () => actions.eat(entity);
   try {
-    await eat(); animation.update(0.1); actions.cancel(); animation.update(1);
+    await eat(); animation.update(0.1);
+    window.dispatchEvent(Object.assign(new Event('keydown'), { code: 'Escape' }));
+    animation.update(1);
     expect(store.get(slot)?.count).toBe(2);
     expect(getPlayerStats()).toEqual({ health: 140, hunger: 90, sanity: 35 });
     expect(eat()).toBe(true);

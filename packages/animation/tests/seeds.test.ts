@@ -13,7 +13,9 @@ import type { WorldContext } from '../../prefab/src/worldContext';
 import { createPickupInventory } from './pickupFixture';
 import { inventorySlotAddress } from '@dontstarve-web/inventory';
 import { PlaySound } from '../../prefab/src/sound';
-import { BufferedAction } from '../../stategraphs/src/bufferedaction';
+import { createBufferedAction } from '../../stategraphs/src/actionfns';
+import { createPickupDoer } from '../../stategraphs/src/pickup';
+import { collectUseItemActions } from '../../stategraphs/src/componentactions';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}),
   PlaySound: vi.fn(() => ({ stop() {} })) }));
@@ -44,7 +46,7 @@ it('renders the original ground seed pose and commits quick eating once at frame
   const { farm, world } = farmSetup(player);
   const instance = wilsonPlayerInstance(player), store = createPickupInventory();
   instance.components.inventory = store;
-  const seeds = new FoodActionController(world, animation, { stop() {}, goToPoint: () => true, destination: undefined }, farm, instance);
+  const seeds = new FoodActionController(world, animation, { stop() {}, goToPoint: () => true, destination: undefined }, instance);
   store.add('seeds', 2);
   const slot = inventorySlotAddress(0), source = store.getEntity(slot)!;
   const stats = () => ({ hunger: instance.stats.hunger.current, health: instance.stats.health.currenthealth, sanity: instance.stats.sanity.current });
@@ -69,40 +71,18 @@ it('renders the original ground seed pose and commits quick eating once at frame
   } finally { seeds.dispose(); store.dispose(); farm.dispose(); }
 });
 
-it('plants only an intact finished hole, replaces it atomically and restores the planted entity without spending seeds', async () => {
-  const { farm, turf, world } = farmSetup();
-  const position = new THREE.Vector3(3, 0, 3);
-  const take = vi.fn(() => true);
+it('excludes broken soil and soil still being plowed from USEITEM actions', () => {
+  const { farm, turf } = farmSetup(), inventory = createPickupInventory();
+  const seeds = inventory.entities.create({ itemId: 'seeds', count: 1 }); inventory.configureItem(seeds);
+  const doer = { hasTag: () => false };
   try {
-    farm.spawnDecor('farm_soil', position, { broken: false }, 'soil');
-    expect(farm.soilTargets).toEqual([]);
-    turf.plow(position);
-    farm.spawnDecor('farm_soil', new THREE.Vector3(8, 0, 8), { broken: true }, 'broken');
-    farm.spawnDecor('farm_soil', new THREE.Vector3(9, 0, 3), { broken: false, plowId: 'working' }, 'working');
-    expect(farm.soilTargets.map(({ id }) => id)).toEqual(['soil']);
-    expect(farm.plantSeed('soil', 'seeds', () => false)).toBe(false);
-    expect(farm.soilTargets).toHaveLength(1);
-    expect(farm.plantSeed('soil', 'seeds', take)).toBe(true);
-    expect(farm.plantSeed('soil', 'seeds', take)).toBe(false);
-    expect(take).toHaveBeenCalledOnce();
-    expect(farm.soilTargets).toEqual([]);
-    expect(farm.exportDecorRecords().some(({ record }) => record.id === 'soil')).toBe(false);
-    expect(PlaySound).toHaveBeenCalledWith('dontstarve/common/plant', position);
-    const saved = farm.exportPlantedSeedRecords()[0];
-    expect(saved).toMatchObject({ prefabId: 'farm_plant_randomseed', record: { transform: { position: [3, 0, 3] }, components: {} } });
-    const restore = farmSetup();
-    try {
-      const model = restore.farm.spawnPlantedSeed(new THREE.Vector3(...saved.record.transform.position), saved.record.id);
-      expect(prefabInstance(model)!.sprite.currentAnimation).toBe('sow_idle');
-      expect(restore.farm.exportPlantedSeedRecords()).toEqual([saved]);
-    } finally { restore.farm.dispose(); }
-    farm.spawnDecor('farm_soil', position, { broken: false }, 'dug');
-    turf.dig(position);
-    expect(farm.plantSeed('dug', 'seeds', take)).toBe(false);
-    expect(take).toHaveBeenCalledOnce();
-    expect(farm.exportPlantedSeedRecords()).toEqual([saved]);
-  } finally { farm.dispose(); }
-  expect(world.scene.children).toHaveLength(0);
+    const position = new THREE.Vector3(3, 0, 3); turf.plow(position);
+    for (const [id, state] of [['broken', { broken: true }], ['working', { broken: false, plowId: 'plow' }]] as const) {
+      const soil = prefabInstance(farm.spawnDecor('farm_soil', position, state, id))!;
+      expect(soil.hasTag('NOCLICK')).toBe(true);
+      expect(collectUseItemActions(seeds, doer, soil, false)).toEqual([]);
+    }
+  } finally { farm.dispose(); inventory.dispose(); }
 });
 
 it('renders veggie ground art and plants split bank/build veggie seeds, preserving them through save restore', async () => {
@@ -121,20 +101,19 @@ it('renders veggie ground art and plants split bank/build veggie seeds, preservi
   expect(FOOD_EFFECTS.pepper).toEqual({ health: -20, hunger: 9.375, sanity: -15 });
   expect(FOOD_EFFECTS.watermelon_cooked.sanity).toBe(7.5);
   expect(PERISHABLE_FOODS.carrot).toEqual({ perishTime: 4800, replacement: 'spoiled_food' });
-  const { farm, turf } = farmSetup();
-  const take = vi.fn(() => true);
+  const { farm, turf, world } = farmSetup();
+  const inventory = createPickupInventory(), doer = createPickupDoer(world.player, inventory);
   try {
     for (const [index, [seed, plant]] of [['carrot_seeds', 'farm_plant_carrot'], ['corn_seeds', 'farm_plant_corn']].entries()) {
       const position = new THREE.Vector3(3 + index * 8, 0, 3);
-      farm.spawnDecor('farm_soil', position, { broken: false }, `soil${index}`);
+      const soil = prefabInstance(farm.spawnDecor('farm_soil', position, { broken: false }, `soil${index}`))!;
       turf.plow(position);
-      expect(farm.plantSeed(`soil${index}`, 'unknown_seeds', take)).toBe(false);
-      expect(farm.plantSeed(`soil${index}`, seed, take)).toBe(true);
+      inventory.add(seed, 1);
+      expect(createBufferedAction('PLANTSOIL', { doer, target: soil, invobject: inventory.getEntity(inventorySlotAddress(0))! }).do()).toBe(true);
       expect(farm.exportPlantedSeedRecords()[index]).toMatchObject({ prefabId: plant,
         record: { transform: { position: position.toArray() }, components: {} } });
     }
-    expect(take).toHaveBeenCalledTimes(2);
-    expect(farm.soilTargets).toEqual([]);
+    expect(farm.exportDecorRecords()).toEqual([]);
     const saved = farm.exportPlantedSeedRecords();
     const restore = farmSetup();
     try {
@@ -144,22 +123,5 @@ it('renders veggie ground art and plants split bank/build veggie seeds, preservi
       }
       expect(restore.farm.exportPlantedSeedRecords()).toEqual(saved);
     } finally { restore.farm.dispose(); }
-  } finally { farm.dispose(); }
-});
-
-it('commits PLANT on frame 6 and cancels an uncommitted short action', async () => {
-  const player = await createWilsonPlayer('/dst/data/anim');
-  const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
-  const plant = vi.fn(() => true);
-  const push = () => animation.stategraph.pushBufferedAction(new BufferedAction('PLANT', plant));
-  expect(push()).toBe(true);
-  for (let frame = 0; frame < 5; frame++) animation.update(1 / 30);
-  expect(plant).not.toHaveBeenCalled();
-  animation.update(1 / 30);
-  expect(plant).toHaveBeenCalledOnce();
-  for (let frame = 0; frame < 40; frame++) animation.update(1 / 30);
-  expect(push()).toBe(true);
-  animation.stategraph.cancelAction('PLANT');
-  for (let frame = 0; frame < 40; frame++) animation.update(1 / 30);
-  expect(plant).toHaveBeenCalledOnce();
+  } finally { farm.dispose(); inventory.dispose(); }
 });

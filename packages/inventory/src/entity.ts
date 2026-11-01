@@ -130,6 +130,7 @@ export class ItemEntity {
   readonly id: string;
   readonly prefab: string;
   readonly components: {
+    farmplantable?: import('../../componets/src/farmplantable').FarmPlantable;
     eater?: import('../../componets/src/eater').Eater;
     edible?: import('../../componets/src/edible').Edible;
     health?: import('../../componets/src/health').Health;

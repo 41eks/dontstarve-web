@@ -305,27 +305,27 @@ describe('real fireflies archive and ground transfers', () => {
   it('orients active billboards from the world camera rotation signal only when it changes', async () => {
     assets();
     const scheduler = new GameTimeScheduler();
-    const { camerarotation, getWatchWorldContent, unbind } = bindTestWorld(scheduler);
+    const { camerarotation, cycle, playerpositions, getWatchWorldContent, unbind } = bindTestWorld(scheduler);
+    cycle.set('night'); playerpositions.set([new THREE.Vector3(40, 0, 0)]);
     const scene = new THREE.Scene(), inventory = createPickupInventory();
     const canvas = Object.assign(new EventTarget(), { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) });
     const manager = new GroundItemManager(scene, new THREE.PerspectiveCamera(),
       { domElement: canvas } as unknown as THREE.WebGLRenderer, 'images.zip', inventory, '/anim', new THREE.Group(), undefined,
-      { getWatchWorldContent }, undefined, undefined, scheduler, undefined, undefined, undefined, getWatchWorldContent);
+      { getWatchWorldContent }, undefined, undefined, scheduler, undefined, undefined, undefined);
     cleanups.push(() => { manager.dispose(); inventory.dispose(); unbind(); scheduler.dispose(); });
     const definition = { itemId: 'fireflies', count: 1, name: '萤火虫', icon: 'fireflies.tex' };
     const first = await manager.spawnFromSave('fireflies:a', definition, new THREE.Vector3());
-    const settle = () => new Promise(resolve => setTimeout(resolve, 0));
+    await vi.waitFor(() => expect(prefabInstance(first)!.sprite.loaded).toBe(true));
     const turned = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 3);
     camerarotation.set(turned);
-    await settle();
-    expect(first.quaternion.equals(turned)).toBe(true);
+    expect(first.children[0].quaternion.equals(turned)).toBe(true);
     // The per-frame argument no longer drives orientation once the world publishes the rotation.
     manager.update(.1, new THREE.Quaternion());
-    expect(first.quaternion.equals(turned)).toBe(true);
+    expect(first.children[0].quaternion.equals(turned)).toBe(true);
     // Items created after the turn start from the current rotation.
     const later = await manager.spawnFromSave('fireflies:b', definition, new THREE.Vector3(1, 0, 0));
-    await settle();
-    expect(later.quaternion.equals(turned)).toBe(true);
+    await vi.waitFor(() => expect(prefabInstance(later)!.sprite.loaded).toBe(true));
+    expect(later.children[0].quaternion.equals(turned)).toBe(true);
   });
 
   it('visits a swarm in the frame loop only while it fades or shows its animation', async () => {
@@ -337,7 +337,7 @@ describe('real fireflies archive and ground transfers', () => {
     const canvas = Object.assign(new EventTarget(), { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) });
     const manager = new GroundItemManager(scene, new THREE.PerspectiveCamera(),
       { domElement: canvas } as unknown as THREE.WebGLRenderer, 'images.zip', inventory, '/anim', new THREE.Group(), undefined,
-      { getWatchWorldContent }, undefined, undefined, scheduler, undefined, undefined, undefined, getWatchWorldContent);
+      { getWatchWorldContent }, undefined, undefined, scheduler, undefined, undefined, undefined);
     cleanups.push(() => { manager.dispose(); inventory.dispose(); unbind(); scheduler.dispose(); });
     const model = await manager.spawnFromSave('fireflies:idle',
       { itemId: 'fireflies', count: 1, name: '萤火虫', icon: 'fireflies.tex' }, new THREE.Vector3());
