@@ -10,16 +10,12 @@ import { PlayerActionPicker } from './playeractionpicker.ts';
 import { PointerRaycaster } from './pointerRaycaster.ts';
 import { facePoint } from './facing.ts';
 import type { TradeItem } from '../../componets/src/trader';
-import type { FuelItem } from '../../componets/src/fuel';
 
 export interface ItemUseSource {
   readonly entity: TradeItem;
   isValid(): boolean;
   /** Delete a consumed item, or detach the same inst for a trader with deleteitemonaccept=false. */
   take(deleteItem: boolean): boolean;
-  /** actions.lua ADDFUEL removes one live inst before passing it to fueled. */
-  extractFuel?(): FuelItem | null;
-  returnFuel?(item: FuelItem): void;
 }
 export interface ItemUseTarget extends ComponentActionEntity {
   readonly model: THREE.Object3D;
@@ -27,18 +23,15 @@ export interface ItemUseTarget extends ComponentActionEntity {
   /** Obstacle radius: the doer stops outside it, so reach is measured from its edge. */
   getPhysicsRadius?(): number;
 }
-type ItemUseAction = 'FEED' | 'GIVE' | 'REPAIR' | 'SHAVE' | 'STORE' | 'ADDFUEL' | 'ADDWETFUEL' | 'FERTILIZE' | 'BATHBOMB';
+type ItemUseAction = 'GIVE' | 'REPAIR' | 'SHAVE' | 'STORE' | 'FERTILIZE' | 'BATHBOMB';
 export const ITEM_USE_REACH = 4;
 
 function available(action: ItemUseAction, target: ItemUseTarget, source: ItemUseSource): boolean {
   if (target.isRemoved || target.hasTag('burnt') || target.hasTag('INLIMBO') || !source.isValid()) return false;
   // componentactions.lua USEITEM.bathbomb: the bathbomb tag on the item, bathbombable on the target.
-  if (action === 'FEED') return target.hasTag('small_livestock') && !!target.components.eater?.CanEat(source.entity);
   if (action === 'BATHBOMB') return source.entity.hasTag('bathbomb') && target.hasTag('bathbombable');
   if (action === 'FERTILIZE') return !!source.entity.components?.fertilizer && !!target.components.pickable?.CanBeFertilized();
   if (action === 'REPAIR') return !!target.components.repairable?.CanRepair(source.entity);
-  if (action === 'ADDFUEL' || action === 'ADDWETFUEL') return !!source.extractFuel && !!source.returnFuel
-    && !!target.components.fueled?.CanAcceptFuelItem({ components: source.entity.components ?? {} });
   // componentactions.lua shaver: the bearded tag alone offers SHAVE; the state reports why it fails.
   if (action === 'SHAVE') return target.hasTag('bearded') && !!target.components.beard && !!source.entity.components?.shaver;
   // componentactions.lua USEITEM.occupier: the occupiable only offers STORE to a matching occupier.
@@ -46,7 +39,7 @@ function available(action: ItemUseAction, target: ItemUseTarget, source: ItemUse
   return !!target.components.trader?.AbleToAccept(source.entity).ok;
 }
 
-/** USEITEM.fuel / repairer / tradable: discover actions from components, never from prefab IDs. */
+/** Remaining USEITEM repairer / tradable entries; fuel and held livestock use the shared action table. */
 export function getItemUseActions(model: THREE.Object3D | undefined, source: ItemUseSource | undefined): MouseActionCandidate[] {
   if (!source) return [];
   const actions: MouseActionCandidate[] = [];
@@ -59,12 +52,6 @@ export function getItemUseActions(model: THREE.Object3D | undefined, source: Ite
   if (source.entity.hasTag('bathbomb') && target.hasTag('bathbombable')) actions.push({
     action: { action: 'BATHBOMB', target, invobject: source.entity }, button: 'left',
     model, source: 'inventory', available: available('BATHBOMB', target, source) });
-  const fueltype = source.entity.components?.fuel?.fueltype;
-  if (fueltype && source.entity.hasTag(`${fueltype}_fuel`) && target.hasTag(`${fueltype}_fueled`)) {
-    const action = source.entity.GetIsWet?.() ? 'ADDWETFUEL' : 'ADDFUEL';
-    actions.push({ action: { action, target, invobject: source.entity }, button: 'left',
-      model, source: 'inventory', available: available(action, target, source) });
-  }
   if (target.components.repairable && source.entity.components?.repairer) {
     actions.push({ action: { action: 'REPAIR', target, invobject: source.entity }, button: 'right',
       model, source: 'inventory', available: available('REPAIR', target, source) });
@@ -140,10 +127,7 @@ export class ItemUseActionController {
     this.locomotor.stop();
     facePoint(this.animation, this.world.camera, this.world.player.position, position);
     const version = this.version;
-    const buffered = new BufferedAction(action, () => action === 'ADDFUEL' || action === 'ADDWETFUEL'
-      ? this.addFuel(target, source)
-      : action === 'FERTILIZE' ? this.fertilize(target, source)
-      : action === 'FEED' ? target.components.eater!.Eat(source.entity, this.world.player)
+    const buffered = new BufferedAction(action, () => action === 'FERTILIZE' ? this.fertilize(target, source)
       : action === 'BATHBOMB' ? this.bathbomb(target, source)
       : action === 'STORE'
       // actions.lua STORE: Occupy(inventoryitem:RemoveFromOwner()) — the same inst leaves the cursor.
@@ -178,13 +162,6 @@ export class ItemUseActionController {
     source.take(true);
     return true;
   }
-  private addFuel(target: ItemUseTarget, source: ItemUseSource): boolean {
-    const item = source.extractFuel?.();
-    if (!item) return false;
-    if (target.components.fueled?.TakeFuelItem(item)) return true;
-    source.returnFuel?.(item);
-    return false;
-  }
   cancel(): void {
     this.version++;
     if (this.pending || (this.buffered && this.animation.stategraph.isActionActive(this.buffered))) this.locomotor.stop();
@@ -197,7 +174,7 @@ export class ItemUseActionController {
     this.picker.pointer.trackPointer(event);
     const actions = this.picker.getMouseActions(event), action = event.button === 0 ? actions.left : actions.right;
     if ((action?.action !== 'GIVE' && action?.action !== 'REPAIR' && action?.action !== 'SHAVE' && action?.action !== 'STORE'
-      && action?.action !== 'FERTILIZE' && action?.action !== 'BATHBOMB' && action?.action !== 'ADDFUEL' && action?.action !== 'ADDWETFUEL') || !action.target) { this.cancel(); return; }
+      && action?.action !== 'FERTILIZE' && action?.action !== 'BATHBOMB') || !action.target) { this.cancel(); return; }
     event.preventDefault(); event.stopImmediatePropagation();
     this.request(action.action, action.target as ItemUseTarget);
   };

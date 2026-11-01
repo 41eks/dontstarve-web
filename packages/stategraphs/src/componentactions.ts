@@ -23,6 +23,9 @@ export interface ComponentActionEntity extends WorkInst {
     builder?: import('../../componets/src/builder').Builder;
     prototyper?: import('../../componets/src/prototyper').Prototyper;
     eater?: import('../../componets/src/eater').Eater;
+    edible?: import('../../componets/src/edible').Edible;
+    fuel?: import('../../componets/src/fuel').Fuel;
+    farmplantable?: import('../../componets/src/farmplantable').FarmPlantable;
     pickable?: { CanBeFertilized(): boolean; Fertilize(item: import('../../componets/src/trader').TradeItem): boolean };
     workable?: Workable;
     tool?: Tool;
@@ -42,7 +45,7 @@ export interface ComponentActionEntity extends WorkInst {
     repairer?: import('../../componets/src/repairer').Repairer;
     fueled?: {
       CanAcceptFuelItem(item: Pick<import('../../componets/src/fuel').FuelItem, 'components'>): boolean;
-      TakeFuelItem(item: import('../../componets/src/fuel').FuelItem): boolean;
+      TakeFuelItem(item: import('../../componets/src/fuel').FuelItem, doer?: unknown): boolean;
     };
     trader?: import('../../componets/src/trader').Trader<import('../../componets/src/trader').TradeItem>;
     occupiable?: { readonly occupanttype: string | undefined; CanOccupy(item: any): boolean; Occupy(item: any): boolean };
@@ -69,7 +72,10 @@ type IsValidFn = (inst: ComponentActionTarget, action: string, right: boolean) =
 /** The acting player as SCENE entries read it: its tags and inventory. */
 export interface SceneActionDoer {
   hasTag(tag: string): boolean;
-  readonly components?: { inventory?: { GetNumSlots(): number } };
+  readonly components?: { inventory?: { GetNumSlots(): number;
+    GetActiveItem?(): import('../../inventory/src/entity').ItemEntity | null;
+    CanAccessItem?(item: import('../../inventory/src/entity').ItemEntity): boolean;
+  } };
 }
 export type SceneAction = 'PICKUP' | 'PICK' | 'HARVEST' | 'TURNON' | 'TURNOFF' | 'RUMMAGE' | 'SLEEPIN' | 'MIGRATE' | 'TAKEITEM' | 'HAUNT';
 type SceneFn = (inst: ComponentActionEntity, doer: SceneActionDoer, actions: SceneAction[], right: boolean) => void;
@@ -85,6 +91,9 @@ export interface EquippedActionDoer {
   readonly components?: { combat?: { CanLightTarget(target: never, weapon?: never): boolean } };
 }
 export type EquippedAction = ToolAction | 'CASTSPELL' | 'LIGHT' | 'ATTACK' | 'FISH' | 'REEL';
+export type UseItemAction = 'FEED' | 'ADDFUEL' | 'ADDWETFUEL' | 'PLANTSOIL';
+type UseItemFn = (inst: ComponentActionEntity, doer: SceneActionDoer, target: ComponentActionEntity,
+  actions: UseItemAction[], right: boolean) => void;
 type EquippedFn = (inst: ComponentActionEntity, doer: EquippedActionDoer | undefined, target: ComponentActionTarget,
   actions: EquippedAction[], right: boolean) => void;
 type PointFn = (inst: ComponentActionEntity, doer: EquippedActionDoer & { readonly position?: Vector3 }, pos: Vector3,
@@ -100,7 +109,24 @@ export const COMPONENT_ACTIONS: {
   readonly POINT: Readonly<Record<string, PointFn>>;
   readonly EQUIPPED: Readonly<Record<string, EquippedFn>>;
   readonly ISVALID: Readonly<Record<string, IsValidFn>>;
+  readonly USEITEM: Readonly<Record<string, UseItemFn>>;
 } = {
+  USEITEM: {
+    edible: (inst, _doer, target, actions) => {
+      // componentactions.lua edible: the held small-livestock branch (pets and riders are not ported).
+      if ((target.hasTag('small_livestock') || target.hasTag('handfed')) && target.components.inventoryitem?.owner
+        && target.components.eater?.CanEat(inst)) actions.push('FEED');
+    },
+    fuel: (inst, _doer, target, actions) => {
+      const fuel = inst.components.fuel;
+      if (fuel && target.hasTag(`${fuel.fueltype}_fueled`) && target.components.fueled?.CanAcceptFuelItem(inst)) {
+        actions.push((inst as ComponentActionEntity & { GetIsWet?(): boolean }).GetIsWet?.() ? 'ADDWETFUEL' : 'ADDFUEL');
+      }
+    },
+    farmplantable: (_inst, _doer, target, actions) => {
+      if (target.hasTag('soil') && !target.hasTag('NOCLICK')) actions.push('PLANTSOIL');
+    },
+  },
   SCENE: {
     container: (inst, doer, actions) => {
       // The bundle branch (WRAPBUNDLE / APPLYCONSTRUCTION) is not ported.
@@ -192,6 +218,15 @@ export function collectSceneActions(inst: ComponentActionEntity, doer: SceneActi
   const actions: SceneAction[] = [];
   if (inst.isRemoved) return actions;
   for (const name of Object.keys(inst.components)) COMPONENT_ACTIONS.SCENE[name]?.(inst, doer, actions, right);
+  return actions;
+}
+
+/** componentactions.lua CollectActions("USEITEM"): inspect the active inst's components and the actual target. */
+export function collectUseItemActions(item: ComponentActionEntity, doer: SceneActionDoer, target: ComponentActionEntity,
+  right: boolean): UseItemAction[] {
+  const actions: UseItemAction[] = [];
+  if (item.isRemoved || target.isRemoved) return actions;
+  for (const name of Object.keys(item.components)) COMPONENT_ACTIONS.USEITEM[name]?.(item, doer, target, actions, right);
   return actions;
 }
 

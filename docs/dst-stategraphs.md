@@ -56,6 +56,7 @@
 | `NET` | 无 `NET_tool` 的对象走 `doshortaction`；有该标签时按 `prenet/netting` 选择动作循环或前摇 |
 | `CASTSPELL` | 工具有 `veryquickcast` 时进入 `veryquickcastspell`，普通法杖进入 `castspell`；未实现的特殊工具分支拒绝 |
 | `EAT` | 检查源 `busy` 条件；当前已验证的库存食物仍进入 `quickeat` |
+| `PLANTSOIL` | 普通角色进入 `dolongaction`，超时后执行 `farmplantable:Plant`；Quagmire 专属角色分支尚未移植 |
 | `PLANT` / `TERRAFORM` / `TILL` | 源 Lua 本身使用固定目标：`doshortaction` / `terraform` / `till_start` |
 | `READ` | `book`；`simplebook` 的 `cookbook_open` 与 `aspiring_bookworm` 的 `book_peruse` 尚未移植 |
 | `LIGHT` | `catchonfire`；装备的 `lighter` 与目标 `canlight` 标签在右键提供动作，提交时复核装备、目标及距离，再调用目标 `burnable:Ignite` |

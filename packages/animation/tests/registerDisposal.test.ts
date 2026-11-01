@@ -19,7 +19,6 @@ vi.mock('@dontstarve-web/ui', () => ({
   createChestInventoryPanel: vi.fn(() => ({
     setOpen: vi.fn(), bindActions: vi.fn(), dispose: vi.fn(),
   })),
-  slotTransferController: { clearSelection: vi.fn() },
 }));
 vi.mock('../../../src/emoteWheel', () => ({ setupEmoteWheel: vi.fn(() => vi.fn()) }));
 vi.mock('../../../src/playerStats', () => ({
@@ -87,8 +86,7 @@ it('creates panels before scene initialization and owns subscriptions until expl
     resources.setContainerOpen('cookpot', player, true);
     expect(panels[1].setOpen).toHaveBeenCalledWith(player, true, 'cookpot');
     const scene = { buildingPlacement: {} } as Parameters<typeof resources.register>[1];
-    const actions = resources.register(events, scene);
-    expect(actions.beginFood({ containerId: 'player', slotKey: '0' }, 'seeds')).toBe(false);
+    expect(resources.register(events, scene)).toBeUndefined();
     expect(subscribeReceived).toHaveBeenCalledOnce();
     expect(subscribeContextMenu).toHaveBeenCalledOnce();
     expect(setupEmoteWheel).toHaveBeenCalledWith(gameUi.emoteWheel, options.view.renderer.domElement,

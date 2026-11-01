@@ -13,6 +13,7 @@ import { FindEntities } from '../../prefab/src/actionEntity';
 import { WORLD_SCALE } from '../../prefab/src/tile';
 import type { Combat, CombatInst } from '../../componets/src/combat';
 import { Vector3 } from 'three';
+import type { ItemEntity } from '../../inventory/src/entity';
 
 /** An entity the picker resolved as an action target: tags and components plus its ground position and radius. */
 type ActionTargetEntity = ComponentActionEntity & {
@@ -101,16 +102,32 @@ export class PlayerController {
     const pos = description.pos;
     if (!hasActionFn(description.action) || (target ? !target.getPosition : !pos)) return undefined;
     const invobject = description.invobject as (BufferedActionObject & { isRemoved?: boolean }) | undefined;
-    // GetEquippedItemActions: the action is the hand item's for as long as it stays in the hand.
-    const validfn = () => invobject === undefined || invobject === this.equippedItem();
+    const inventory = this.doer.components?.inventory;
+    const equipped = invobject !== undefined && invobject === this.equippedItem();
+    const heldTarget = target !== undefined && inventory?.CanAccessItem?.(target as ItemEntity) === true;
+    // An inventory action keeps the actual inst, including when it moves between accessible slots.
+    const validfn = () => (invobject === undefined || (equipped ? invobject === this.equippedItem()
+      : inventory?.CanAccessItem?.(invobject as ItemEntity) === true))
+      && (!heldTarget || inventory?.CanAccessItem?.(target as ItemEntity) === true);
     return createBufferedAction(description.action as WilsonAction,
       { doer: this.doer, target, invobject, ...(pos ? { pos: { x: pos.x, y: pos.y, z: pos.z } } : {}) }, validfn);
+  }
+
+  /** playercontroller.lua GetItemUseAction: try the active item's RMB actions, then its LMB actions. */
+  GetItemUseAction(item: ItemEntity, target: ItemEntity): BufferedAction<WilsonAction> | undefined {
+    const picked = this.picker.GetUseItemActions(target, item, true)[0]
+      ?? this.picker.GetUseItemActions(target, item, false)[0];
+    return picked && this.createAction(picked);
   }
 
   /** BufferedAction:GetActionPoint: the target's position, else the action's pos. */
   private actionPoint(action: BufferedAction<WilsonAction>): Vector3 {
     const target = action.target as Partial<ActionTargetEntity> | undefined;
-    if (target?.getPosition) return target.getPosition();
+    if (target?.getPosition) {
+      // locomotor.lua Dest(target) follows inventoryitem's owner, while the action retains the target inst.
+      const owner = (target as ComponentActionEntity).components?.inventoryitem?.owner as { getPosition?(): Vector3 } | undefined;
+      return owner?.getPosition?.() ?? target.getPosition();
+    }
     const pos = action.pos!;
     return new Vector3(pos.x, pos.y, pos.z);
   }

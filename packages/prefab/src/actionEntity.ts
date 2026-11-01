@@ -31,6 +31,7 @@ export function actionEntity(model: THREE.Object3D, prefab: string, inst?: Compo
   if (existing) return existing;
   const instance = prefabInstance(model);
   const owner = inst ?? instance;
+  if (owner) actionOwners.set(model, owner);
   const components = owner?.components ?? {};
   const removal = owner?.removal ?? modelRemoval(model);
   const entity: FoundEntity & { getPhysicsRadius(): number } = {
@@ -103,6 +104,7 @@ export function actionEntity(model: THREE.Object3D, prefab: string, inst?: Compo
     delete entity.pickupTarget;
     delete entity.deconstructionTarget;
     entitiesByModel.delete(model);
+    actionOwners.delete(model);
   });
   if (!entity.isRemoved) {
     if (currentEntityWorld) currentEntityWorld.add(entity);
@@ -120,6 +122,12 @@ export function actionEntity(model: THREE.Object3D, prefab: string, inst?: Compo
  */
 const liveEntities = new Set<FoundEntity>();
 const entitiesByModel = new WeakMap<THREE.Object3D, FoundEntity & { getPhysicsRadius(): number }>();
+const actionOwners = new WeakMap<THREE.Object3D, ComponentActionEntity>();
+
+/** The original logical inst, for actions which do not need the legacy target view. */
+export function actionInstance(model: THREE.Object3D | undefined): ComponentActionEntity | undefined {
+  return model ? actionOwners.get(model) : undefined;
+}
 const disposals = new Map<FoundEntity, () => void>();
 const entityWorlds = new WeakMap<FoundEntity, EntityTickingArea>();
 const mouseRegistrations = new WeakMap<FoundEntity, ReturnType<typeof registerMouseTarget>>();

@@ -25,7 +25,7 @@ import {
 import { type PickupDoer, PointerRaycaster, type WilsonStateName } from '@dontstarve-web/stategraphs';
 import { PlayerActionFilter } from '@dontstarve-web/stategraphs/actions';
 import { DOCK_KIT_ID } from '@dontstarve-web/prefab/dock_kit';
-import { FARM_PLOW_ITEM_ID, SEED_ITEM_IDS } from '@dontstarve-web/prefab/farm_plow';
+import { FARM_PLOW_ITEM_ID } from '@dontstarve-web/prefab/farm_plow';
 import { turfMap } from './building';
 import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
 import { SetAutopaused } from './autopause';
@@ -312,7 +312,7 @@ disposalEvents.on('dispose', () => {
   stopVignetteUpdate();
   sanityVignette.dispose();
 });
-const disposalActions = disposalResources.register(disposalEvents, sceneResources);
+disposalResources.register(disposalEvents, sceneResources);
 const wortox = playerAnimation ? await WortoxPlayer.create({
   world: view, body: playerBody, physics: playerPhysics, animation: playerAnimation, locomotor, inventory, scheduler, fx: worldFx,
   isPassableAtPoint: position => turfMap.isPassableAtPoint(position),
@@ -498,17 +498,9 @@ groundItems.setPhonographRecordSource(() => {
 });
 window.addEventListener('game:slot-select', (event) => {
   const { slot } = (event as CustomEvent<SlotSelectDetail>).detail;
-  if (inventory.getEntity(cursorAddress)) {
-    if (disposalActions.useFuel(slot)) event.preventDefault();
-    return;
-  }
+  if (inventory.GetActiveItem()) return;
   actionEvents.emit('action:interrupt', { reason: 'slot-select' });
   const stack = inventory.get(slot);
-  if (stack && SEED_ITEM_IDS.includes(stack.itemId) && disposalActions.beginFood(slot, stack.itemId)) {
-    event.preventDefault();
-    slotTransferController.showSelection(slot);
-    return;
-  }
   if (stack?.itemId === FARM_PLOW_ITEM_ID) {
     event.preventDefault();
     const entity = inventory.getEntity(slot);

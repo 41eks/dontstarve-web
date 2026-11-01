@@ -1,7 +1,7 @@
 import { Vector3, type Object3D } from 'three';
 import { clockstate, createMemo, readonlySignal, type EventEmitter, type GetWatchWorldContent } from '@dontstarve-web/signals';
 import { cursorSlotAddress, equipmentSlotAddress, inventorySlotAddress, type InventoryStore, type InventoryStack } from '@dontstarve-web/inventory';
-import { createChestInventoryPanel, slotTransferController, type mountGameUi, type SlotAddress, type SlotItem } from '@dontstarve-web/ui';
+import { createChestInventoryPanel, type mountGameUi, type SlotAddress, type SlotItem } from '@dontstarve-web/ui';
 import {
   PlayerController, PitchforkActionController,
   FarmHoeActionController, FoodActionController,
@@ -139,24 +139,13 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         if (source) inventoryReceiveEffect(gameUi, view.camera, view.renderer.domElement,
           player.position.clone().set(source.x, source.y, source.z))(received);
       });
-      let itemUse: ItemUseActionController | undefined;
       if (playerAnimation) {
-        itemUse = new ItemUseActionController(view, playerAnimation, locomotor, () => {
+        const itemUse = new ItemUseActionController(view, playerAnimation, locomotor, () => {
           const address = cursorSlotAddress(), entity = inventory.getEntity(address);
           if (!entity) return undefined;
           const skin = entity.skinId;
           const isValid = () => !entity.isRemoved && inventory.getEntity(address) === entity && entity.skinId === skin;
           return { entity, isValid,
-            extractFuel: () => {
-              if (!isValid()) return null;
-              const item = inventory.extract(address, 1, entity);
-              if (item) inventory.configureItem(item);
-              return item;
-            },
-            returnFuel: (item: import('../packages/componets/src/fuel').FuelItem) => {
-              const returned = item as ItemEntity;
-              if (!inventory.receiveAt(address, returned)) inventory.GiveItem(returned);
-            },
             take: (deleteItem: boolean) => {
             if (!isValid()) return false;
             const item = inventory.extract(address, 1, entity);
@@ -208,8 +197,8 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
           sleeper.dispose(); phase.dispose();
         } });
       }
-      const foodActions = playerAnimation ? new FoodActionController(view, playerAnimation, locomotor, farmPlow,
-        playerInstance, isActionInterrupting, () => slotTransferController.clearSelection()) : undefined;
+      const foodActions = playerAnimation ? new FoodActionController(view, playerAnimation, locomotor,
+        playerInstance, isActionInterrupting) : undefined;
       if (foodActions) {
         frameControllers.push(foodActions);
       }
@@ -270,7 +259,11 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
       if (playerAnimation) {
         view.registerFrameTask = registerFrontTask;
         // playercontroller.lua: the picker's actions on any entity, buffered for the player.
-        actionControllers.push(new PlayerController(view, playerAnimation, locomotor, handEquipment, pickupDoer, isActionInterrupting));
+        const controller = new PlayerController(view, playerAnimation, locomotor, handEquipment, pickupDoer, isActionInterrupting);
+        playerInstance.components.playercontroller = controller;
+        actionControllers.push(controller, { dispose() {
+          if (playerInstance.components.playercontroller === controller) delete playerInstance.components.playercontroller;
+        } });
 
         // SGwilson.lua fishing states reach inst.components.inventory:GetEquippedItem(HANDS).components.fishingrod.
         const heldRod = () => (equippedActionEntity(handEquipment.peek())?.components as { fishingrod?: import('../packages/componets/src/fishingrod').FishingRod } | undefined)?.fishingrod;
@@ -383,6 +376,14 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
           playerAnimation?.playDrop(() => groundItems.drop(definition, player.position.clone(), take));
           return;
         }
+        // inventory.lua UseItemFromInvTile: with an active item, use it on the original inventory target.
+        const activeItem = inventory.GetActiveItem();
+        if (activeItem) {
+          const target = inventory.getEntity(slot), controller = playerInstance.components.playercontroller;
+          const use = target && controller?.GetItemUseAction(activeItem, target);
+          if (use) controller?.DoAction(use);
+          return;
+        }
         if (PLANTABLES[stack.itemId]) {
           if (!inventory.get(cursorSlotAddress())) inventory.transfer(slot, cursorSlotAddress(), stack.count);
           return;
@@ -419,34 +420,6 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         stopInventoryReceived, stopEmoteWheel,
         stopContextMenu: () => { stopContextMenu(); reader.OnRemoveFromEntity(); },
       });
-      return {
-        useFuel(slot: SlotAddress): boolean {
-          const livestock = inventory.getEntity(slot), food = inventory.getEntity(cursorSlotAddress());
-          if (itemUse && livestock?.hasTag('small_livestock') && food && livestock.components.eater?.CanEat(food)) {
-            return itemUse.request('FEED', {
-              prefab: livestock.prefab, model: player, components: livestock.components,
-              hasTag: tag => livestock.hasTag(tag), addTag: tag => livestock.addTag(tag), removeTag: tag => livestock.removeTag(tag),
-              getPosition: () => player.position,
-              get isRemoved() { return livestock.isRemoved || inventory.getEntity(slot) !== livestock; },
-            });
-          }
-          const entity = inventory.getEntity(slot), fuel = inventory.getEntity(cursorSlotAddress());
-          if (!itemUse || !entity || !fuel?.components.fuel || !entity.components.fueled?.CanAcceptFuelItem(fuel)) return false;
-          return itemUse.request(fuel.GetIsWet() ? 'ADDWETFUEL' : 'ADDFUEL', {
-            prefab: entity.prefab, model: player, components: entity.components,
-            hasTag: tag => entity.hasTag(tag),
-            addTag: tag => entity.addTag(tag),
-            removeTag: tag => entity.removeTag(tag),
-            getPosition: () => player.position,
-            get isRemoved() { return entity.isRemoved || inventory.getEntity(slot) !== entity; },
-          });
-        },
-        beginFood(slot: SlotAddress, itemId: string): boolean {
-          if (!foodActions) return false;
-          const item = inventory.getEntity(slot);
-          return !!item && item.prefab === itemId && foodActions.begin(item);
-        },
-      };
     },
   };
 }

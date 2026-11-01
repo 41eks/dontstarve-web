@@ -13,6 +13,7 @@ export const ACTIONS = {
   TERRAFORM: { priority: 0, strings: { GENERIC: '挖' } },
   TILL: { priority: 0, strings: { GENERIC: '耕地' } },
   PLANT: { priority: 0, strings: { GENERIC: '栽种' } },
+  PLANTSOIL: { priority: 0, strings: { GENERIC: '栽种' } },
   EAT: { priority: 0, strings: { GENERIC: '吃', DRINK: '饮用', PROCESS: '处理' } },
   PICK: { priority: 0, strings: { GENERIC: '采集' } },
   HARVEST: { priority: 0, strings: { GENERIC: '采收' } },

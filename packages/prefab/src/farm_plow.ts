@@ -4,7 +4,7 @@ import { SpatialIndex } from './spatialIndex';
 import { placementEntities, registerPlacementEntity, ignoresPlacement, hasPlacementTag, type PlacementQuery, type PlacementBlocker } from './placementEntities';
 import { ModelRecords } from './modelRecords';
 import type { ItemEntity, InventoryStack } from '@dontstarve-web/inventory';
-import type { FarmSoilTarget, FarmActionWorld } from '@dontstarve-web/stategraphs/farmActions';
+import type { FarmActionWorld } from '@dontstarve-web/stategraphs/farmActions';
 import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
 import * as THREE from 'three';
 import { PrefabDisplayGroup, SpriteResources, type ArchiveSpriteSource } from '@dontstarve-web/display';
@@ -15,19 +15,14 @@ import { newEntityId } from './saveRecord';
 import { snapToTileCenter, TILE_SIZE } from './tile';
 import { TurfMap, WORLD_TILES } from './turfMap';
 import { PlaySound, type SoundHandle } from './sound';
-import type { WorldContext } from './worldContext';
-import { FARM_PLANT_ART, VEGGIE_SEED_IDS } from './veggies';
+import type { WorldContext, PrefabWorldContext } from './worldContext';
+import { FARM_PLANT_ART } from './veggies';
 import { actionEntity, disposeActionEntity, findActionEntity } from './actionEntity';
 import { Workable } from '../../componets/src/workable';
 
 export const FARM_PLOW_ITEM_ID = 'farm_plow_item';
 export const FARM_PLOW_ID = 'farm_plow';
 export const PLANTED_SEED_ID = 'farm_plant_randomseed';
-/** farmplantable.plant: raw seeds sow randomseed; veggies.lua fn_seeds sows farm_plant_<name>. */
-const SEED_PLANTS: Readonly<Record<string, string>> = {
-  seeds: PLANTED_SEED_ID, ...Object.fromEntries(VEGGIE_SEED_IDS.map((id) => [id, `farm_plant_${id.slice(0, -'_seeds'.length)}`])),
-};
-export const SEED_ITEM_IDS: readonly string[] = Object.keys(SEED_PLANTS);
 interface PlantedSeedArt { animationArchive: string; buildArchives: string[]; bank: string; pre: string; idle: string }
 /** farm_plants.lua: randomseed plays sow → sow_idle; stage "seed" plays grow_seed → crop_seed over farm_soil's soil01. */
 const PLANTED_SEED_ART: Readonly<Record<string, PlantedSeedArt>> = {
@@ -101,6 +96,7 @@ export class FarmPlowPlacement implements FarmActionWorld {
   private disposed = false;
   private readonly removeDigListener: () => void;
   private readonly world: WorldContext;
+  private readonly plantWorld: PrefabWorldContext;
   private readonly turf: TurfMap;
   private readonly returnItem: (position: THREE.Vector3, item: InventoryStack) => void;
   private readonly blockers: PlacementQuery;
@@ -110,6 +106,12 @@ export class FarmPlowPlacement implements FarmActionWorld {
     returnItem: (position: THREE.Vector3, item: InventoryStack) => void,
     blockers: PlacementQuery = placementEntities(world.scene), random = Math.random) {
     this.world = world; this.turf = turf; this.returnItem = returnItem; this.blockers = blockers; this.random = random;
+    const { scene: _scene, ...services } = world;
+    this.plantWorld = { ...services, spawnFarmPlant: (prefab, position) => {
+      const plant = this.addPlantedSeed(prefab, newEntityId(), position, true);
+      PlaySound('dontstarve/common/plant', position);
+      return plant.instance;
+    } };
     this.stopActionEvents = bindActionCancellation(world, this, 'deploy', () => this.cancel());
     this.resources = new SpriteResources(undefined, 'farm');
     this.displays = new PrefabDisplayGroup(world.scene);
@@ -261,13 +263,6 @@ export class FarmPlowPlacement implements FarmActionWorld {
     this.displays.update(step);
   }
 
-  get soilTargets(): readonly FarmSoilTarget[] {
-    return [...this.decor.values()].filter((soil) => this.isPlantableSoil(soil)).map((soil) => ({
-      id: soil.id, model: soil.entity.display.model, position: soil.entity.instance.position,
-      isValid: () => this.isPlantableSoil(soil),
-    }));
-  }
-
   setDebrisLootHandler(handler: (itemId: string, position: THREE.Vector3) => void): void {
     this.debrisLoot = handler;
   }
@@ -298,22 +293,6 @@ export class FarmPlowPlacement implements FarmActionWorld {
     if (!this.canTill(position)) return false;
     this.collapseSoil(position);
     this.addDecor('farm_soil', position, newEntityId(), { broken: false, animation: 'f1', fresh: true });
-    return true;
-  }
-
-  private isPlantableSoil(soil: Decor): boolean {
-    return !this.disposed && this.decor.get(soil.id) === soil && soil.prefabId === 'farm_soil'
-      && !soil.broken && !soil.plowId && this.turf.getTileAtWorld(soil.entity.instance.position) === WORLD_TILES.FARMING_SOIL;
-  }
-
-  /** PLANT's hit frame: farmplantable.plant takes the seed and replaces the hole with its plant. */
-  plantSeed(id: string, seedItemId = 'seeds', takeSeed: () => boolean): boolean {
-    const soil = this.decor.get(id), plantId = Object.hasOwn(SEED_PLANTS, seedItemId) ? SEED_PLANTS[seedItemId] : undefined;
-    if (!soil || !plantId || !this.isPlantableSoil(soil) || !takeSeed()) return false;
-    const position = soil.entity.instance.position.clone();
-    this.decor.delete(soil.id); soil.stopTracking?.(); soil.entity.instance.remove();
-    this.addPlantedSeed(plantId, newEntityId(), position, true);
-    PlaySound('dontstarve/common/plant', position);
     return true;
   }
 
@@ -371,7 +350,10 @@ export class FarmPlowPlacement implements FarmActionWorld {
         this.puff(center.clone().add(new THREE.Vector3(dx * (1 + this.random()) * SCALE, 0, dz * (1 + this.random()) * SCALE)));
       }
     }
-    for (const soil of this.decor.values()) if (soil.plowId === plow.id) soil.plowId = undefined;
+    for (const soil of this.decor.values()) if (soil.plowId === plow.id) {
+      soil.plowId = undefined;
+      if (!soil.broken) soil.entity.instance.removeTag('NOCLICK');
+    }
     plow.loopSound?.stop(); plow.loopSound = undefined;
     if (plow.deployItem !== null) this.fold(plow, true);
     else { this.collapseEffect(center); this.removePlow(plow); }
@@ -426,6 +408,11 @@ export class FarmPlowPlacement implements FarmActionWorld {
     entity.instance.position.copy(position).setY(0);
     entity.instance.entityId = id;
     const item: Decor = { id, prefabId, entity, broken, animation, ...(plowId ? { plowId } : {}) };
+    entity.instance.worldServices = this.plantWorld;
+    if (prefabId === 'farm_soil') {
+      if (broken || plowId) entity.instance.addTag('NOCLICK');
+      if (broken) entity.instance.addTag('NOBLOCK');
+    }
     this.decor.set(id, item); this.mouseDecor.set(entity.display.model, item);
     this.decorPositions.add(item);
     if (prefabId === 'farm_soil_debris') {
@@ -439,6 +426,10 @@ export class FarmPlowPlacement implements FarmActionWorld {
     }
     actionEntity(entity.display.model, prefabId);
     item.stopTracking = () => { disposeActionEntity(entity.display.model); this.decorPositions.delete(item); };
+    entity.instance.onRemove(() => {
+      if (this.decor.get(id) === item) this.decor.delete(id);
+      item.stopTracking?.();
+    });
     return item;
   }
 
@@ -462,6 +453,7 @@ export class FarmPlowPlacement implements FarmActionWorld {
       if (distance < SCALE * 1.25 * 0.5) this.removeSoil(soil);
       else if (distance < SCALE * 1.25 && !soil.broken) {
         soil.broken = true;
+        soil.entity.instance.addTag('NOCLICK'); soil.entity.instance.addTag('NOBLOCK');
         soil.entity.instance.sprite.playOnce('collapse');
         soil.entity.instance.sprite.pushAnimation('collapse_idle', false);
       }
@@ -470,6 +462,7 @@ export class FarmPlowPlacement implements FarmActionWorld {
 
   /** farm_soil.lua: the remove clip's animover removes the soil. */
   private removeSoil(soil: Decor): void {
+    soil.entity.instance.removeTag('soil'); soil.entity.instance.addTag('NOCLICK');
     this.decor.delete(soil.id); soil.stopTracking?.(); this.effects.add(soil.entity);
     soil.entity.instance.sprite.playOnce(soil.broken ? 'collapse_remove' : 'till_remove', () => {
       this.effects.delete(soil.entity); soil.entity.instance.remove();
