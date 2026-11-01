@@ -5,9 +5,9 @@ import { INVENTORY_ITEM_SPECS } from '../../../src/inventoryItems';
 import { PERISH_FAST } from '../../componets/src/perishable';
 import { getFoodEffects } from '../../prefab/src/food';
 import { getLanternController, LANTERN_FUEL } from '../../prefab/src/lantern';
-import { ItemUseActionController, type ItemUseSource, type ItemUseTarget } from '../../stategraphs/src/itemuse';
+import { createBufferedAction } from '../../stategraphs/src/actionfns';
+import { createPickupDoer } from '../../stategraphs/src/pickup';
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
-import type { ActionPerformer } from '../../stategraphs/src/actionContext';
 import { createPickupInventory } from './pickupFixture';
 import { createPerishWorld } from './perishWorldFixture';
 
@@ -77,7 +77,7 @@ it('accepts cave fuel, settles pending consumption, applies wet penalties and re
   } finally { dry.destroy(); wet.destroy(); inventory.dispose(); }
 });
 
-it('buffers one fuel item until frame six, preserves it on cancellation and returns a rejected item to the cursor', () => {
+it('buffers one fuel item until frame six, preserves it on cancellation and returns rejected fuel to inventory', () => {
   vi.stubGlobal('window', new EventTarget());
   const cursor = cursorSlotAddress();
   const inventory = new InventoryStore([inventorySlotAddress(0), inventorySlotAddress(1), cursor]
@@ -87,36 +87,21 @@ it('buffers one fuel item until frame six, preserves it on cancellation and retu
   lantern.setRemainingFuel(0);
   inventory.transfer(inventorySlotAddress(1), cursor, 2);
   const original = inventory.getEntity(cursor)!;
-  let reject = false;
-  const source: ItemUseSource = {
-    entity: original, isValid: () => inventory.getEntity(cursor) === original && !original.isRemoved,
-    take: () => false,
-    extractFuel: () => {
-      const item = inventory.extract(cursor, 1, original);
-      if (item) inventory.configureItem(item);
-      if (reject) lantern.components.fueled.accepting = false;
-      return item;
-    },
-    returnFuel: item => { expect(inventory.receiveAt(cursor, item as ItemEntity)).toBe(true); },
-  };
+  const doer = createPickupDoer(new THREE.Group(), inventory);
   const graph = new WilsonStateGraph({ playAnimation: () => 1, playSound() {}, setCasting() {}, onStateChanged() {} });
-  const controller = new ItemUseActionController({ scene: new THREE.Scene(), camera: new THREE.PerspectiveCamera(),
-    renderer: { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer, ground: new THREE.Group(), player: new THREE.Group() },
-  { stategraph: graph, cancelEmote() {}, setFacing() {} } as unknown as ActionPerformer,
-  { destination: undefined, goToPoint: () => true, stop() {} }, () => source);
-  const target: ItemUseTarget = Object.assign(lantern, { model: new THREE.Group() });
+  const request = () => graph.pushBufferedAction(createBufferedAction('ADDFUEL', { doer, target: lantern, invobject: original }));
   try {
-    controller.request('ADDFUEL', target); controller.update(); graph.update(5 / 30);
+    expect(request()).toBe(true); graph.update(5 / 30);
     expect(inventory.get(cursor)?.count).toBe(2); expect(lantern.components.fueled!.currentfuel).toBe(0);
-    controller.cancel(); graph.update(1);
+    graph.cancelAction('ADDFUEL'); graph.update(1);
     expect(inventory.getEntity(cursor)).toBe(original);
-    controller.request('ADDFUEL', target); controller.update(); graph.update(6 / 30);
+    expect(request()).toBe(true); graph.update(6 / 30);
     expect(inventory.get(cursor)?.count).toBe(1); expect(lantern.components.fueled!.currentfuel).toBe(90);
-    graph.update(1); controller.update();
-    reject = true;
-    controller.request('ADDFUEL', target); controller.update(); graph.update(6 / 30);
-    expect(inventory.getEntity(cursor)).toBe(original);
-    expect(inventory.get(cursor)?.count).toBe(1);
+    graph.update(1);
+    vi.spyOn(lantern.components.fueled!, 'TakeFuelItem').mockReturnValueOnce(false);
+    expect(request()).toBe(true); graph.update(6 / 30);
+    expect(inventory.getEntity(cursor)).toBeNull();
+    expect(inventory.getEntity(inventorySlotAddress(1))).toBe(original);
     expect(lantern.components.fueled!.currentfuel).toBe(90);
-  } finally { controller.dispose(); inventory.dispose(); }
+  } finally { graph.dispose(); inventory.dispose(); }
 });

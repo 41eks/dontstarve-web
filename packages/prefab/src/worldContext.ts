@@ -7,6 +7,7 @@ import type { ToolMouseTargetWorld } from './toolMouseTarget';
 /** Discrete requests emitted by prefabs; the running scene owns the handlers. */
 export interface WorldEvents {
     spawnAsh: THREE.Vector3;
+    itemplanted: { doer: unknown; pos: THREE.Vector3 };
     plantkilled: { doer: import('@dontstarve-web/stategraphs/pick').PickActor | undefined; pos: THREE.Vector3 };
 }
 export type WorldEventEmitter = EventEmitter<WorldEvents>;
@@ -38,6 +39,8 @@ export interface WorldContext extends ActionWorldContext, Partial<WorldContentCo
     isNight?: import('@dontstarve-web/signals').ReadonlySignal<boolean>;
     /** SpawnPrefab for an inventory item: a configured inst that nothing owns yet. */
     spawnItem?: (state: import('@dontstarve-web/inventory').InventoryStack) => import('@dontstarve-web/inventory').ItemEntity;
+    /** SpawnPrefab for a planted crop; the farm prefab owner creates its logical instance and display. */
+    spawnFarmPlant?: import('../../componets/src/farmplantable').FarmPlantWorld['spawnFarmPlant'];
     /** inventoryitem:OnDropped for an existing inst, placed on the ground at the position. */
     dropItem?: (entity: import('@dontstarve-web/inventory').ItemEntity, position: THREE.Vector3) => void;
     /** Place destruction loot in the application's authoritative ground-item store. */

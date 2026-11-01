@@ -22,6 +22,7 @@ export interface PrefabComponents extends ActionComponents {
   hunger?: import('../../componets/src/hunger').Hunger;
   sanity?: import('../../componets/src/sanity').Sanity;
   inventory?: import('@dontstarve-web/inventory').InventoryStore;
+  playercontroller?: import('../../stategraphs/src/playercontroller').PlayerController;
   finiteuses?: import('../../componets/src/finiteuses').FiniteUses;
   knownlocations?: import('../../componets/src/knownlocations').KnownLocations;
   lootdropper?: import('../../componets/src/lootdropper').LootDropper;

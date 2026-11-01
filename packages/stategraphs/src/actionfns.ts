@@ -12,6 +12,8 @@ import type { Stewer, StewerHarvester } from '../../componets/src/stewer';
 import type { SleepingBag } from '../../componets/src/sleepingbag';
 import type { WorldMigrator } from '../../componets/src/worldmigrator';
 import type { Hauntable } from '../../componets/src/hauntable';
+import type { ItemEntity } from '../../inventory/src/entity';
+import type { FarmSoil } from '../../componets/src/farmplantable';
 
 /** actions.lua ACTIONS.<id>.fn and validfn, for the actions the PlayerController buffers. */
 interface ActionFns {
@@ -80,6 +82,25 @@ const invobjectComponents = (act: BufferedAction) =>
   (act.invobject as { components?: { spellcaster?: SpellCasterComponent; weapon?: Weapon; fishingrod?: FishingRod } } | undefined)?.components ?? {};
 
 export const ACTION_FNS: Readonly<Partial<Record<string, ActionFns>>> = {
+  FEED: {
+    fn: act => {
+      const item = act.invobject as ItemEntity | undefined, eater = entity(act.target)?.components.eater;
+      return !!item && !!eater && eater.CanEat(item) && eater.Eat(item, act.doer);
+    },
+  },
+  ADDFUEL: { fn: addFuel },
+  ADDWETFUEL: { fn: addFuel },
+  PLANTSOIL: {
+    fn: act => {
+      const inventory = playerDoer(act).components.inventory;
+      if (!act.invobject || !act.target?.hasTag('soil')) return false;
+      const seed = inventory.RemoveItem(act.invobject as ItemEntity);
+      if (!seed) return false;
+      if (seed.components.farmplantable?.Plant(act.target as unknown as FarmSoil, act.doer)) return true;
+      inventory.GiveItem(seed);
+      return false;
+    },
+  },
   CHOP: toolWork('CHOP'),
   MINE: toolWork('MINE'),
   HAMMER: toolWork('HAMMER'),
@@ -209,6 +230,21 @@ export const ACTION_FNS: Readonly<Partial<Record<string, ActionFns>>> = {
     validfn: act => !components(act).hauntable?.IsHaunted(),
   },
 };
+
+/** actions.lua ADDFUEL: detach one live item; return rejected fuel to the active stack or inventory. */
+function addFuel(act: BufferedAction): boolean {
+  if (!act.invobject) return false;
+  const inventory = playerDoer(act).components.inventory;
+  const source = act.invobject as ItemEntity;
+  const fuel = inventory.RemoveItem(source);
+  if (!fuel) return false;
+  if (entity(act.target)?.components.fueled?.TakeFuelItem(fuel, act.doer)) return true;
+  const owner = source.components.inventoryitem.owner;
+  if (fuel === source || inventory.GetActiveItem() !== source || !owner || !inventory.receiveAt(owner.address, fuel)) {
+    inventory.GiveItem(fuel);
+  }
+  return false;
+}
 
 export function hasActionFn(action: string): boolean { return ACTION_FNS[action] !== undefined; }
 
