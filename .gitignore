@@ -25,3 +25,4 @@ dist-ssr
 .claude
 Trace-*.json.gz
 trace_with_heap_dump.json.gz
+TODO.md
