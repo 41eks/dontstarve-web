@@ -1,6 +1,9 @@
 import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory } from './equipmentVisual';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { PlaySound } from './sound';
+import type { ItemEntity } from '@dontstarve-web/inventory';
+import type { EquipmentLifecycle } from '@dontstarve-web/signals';
+import { Terraformer, type TerraformerMap } from '../../componets/src/terraformer';
 
 export type PitchforkTool = 'pitchfork' | 'goldenpitchfork';
 export function isPitchforkTool(value: string): value is PitchforkTool {
@@ -22,3 +25,16 @@ export const pitchforkVisual: EquipmentVisualFactory = item => {
     if (item.prefab === 'goldenpitchfork') PlaySound('dontstarve/wilson/equip_item_gold');
   } };
 };
+
+/** pitchfork.lua: inst:AddComponent("terraformer"). */
+export function configurePitchforkEntity(entity: ItemEntity): void {
+  entity.components.terraformer = entity.component('terraformer', () => new Terraformer(entity));
+}
+
+/** While held in a world, the terraformer works that world's map. */
+export function createTerraformerLifecycle(entity: ItemEntity, map: TerraformerMap): EquipmentLifecycle {
+  return {
+    onequip() { if (entity.components.terraformer) entity.components.terraformer.map = map; },
+    onunequip() { if (entity.components.terraformer) entity.components.terraformer.map = undefined; },
+  };
+}

@@ -3,7 +3,7 @@ import type { BufferedActionObject } from './bufferedaction.ts';
 /** Supported action strings from strings.lua + languages/chinese_s.po; priorities from actions.lua. */
 export const ACTIONS = {
   BLINK: { priority: 10, rmb: true, distance: 36, strings: { GENERIC: '传送', SOUL: '灵魂跳跃', FREESOUL: '灵魂回声' } },
-  BLINK_MAP: { priority: 10, rmb: true, map_action: true, strings: { GENERIC: '灵魂跳跃' } },
+  BLINK_MAP: { priority: 10, rmb: true, map_action: true, arrive_anywhere: true, strings: { GENERIC: '灵魂跳跃' } },
   NET: { priority: 3, strings: { GENERIC: '捕捉' } },
   ATTACK: { priority: 2, strings: { GENERIC: '攻击', RANGEDLIGHT: '点燃' } },
   HAMMER: { priority: 3, strings: { GENERIC: '敲' } },
@@ -11,7 +11,7 @@ export const ACTIONS = {
   CHOP: { priority: 0, distance: 1.75, strings: { GENERIC: '砍' } },
   DIG: { priority: 0, rmb: true, strings: { GENERIC: '挖' } },
   TERRAFORM: { priority: 0, strings: { GENERIC: '挖' } },
-  TILL: { priority: 0, strings: { GENERIC: '耕地' } },
+  TILL: { priority: 0, distance: 0.5, strings: { GENERIC: '耕地' } },
   PLANT: { priority: 0, strings: { GENERIC: '栽种' } },
   EAT: { priority: 0, strings: { GENERIC: '吃', DRINK: '饮用', PROCESS: '处理' } },
   PICK: { priority: 0, strings: { GENERIC: '采集' } },
@@ -88,6 +88,10 @@ function strfn(act: ActionDescription): string | undefined {
     case 'RUMMAGE': return act.doer && target?.components?.container?.IsOpenedBy(act.doer) ? 'CLOSE' : undefined;
     case 'HARVEST': return target?.prefab === 'birdcage' ? 'FREE' : undefined;
     case 'TAKEITEM': return target?.prefab === 'birdcage' ? 'BIRDCAGE' : 'GENERIC';
+    case 'BLINK': {
+      const doer = act.doer as { hasTag?(tag: string): boolean; _freesoulhop_counter?: number } | undefined;
+      return !act.invobject && doer?.hasTag?.('soulstealer') ? ((doer._freesoulhop_counter ?? 0) > 0 ? 'FREESOUL' : 'SOUL') : undefined;
+    }
     case 'ATTACK': {
       // The invobject is the weapon; PROP, RANGEDSMOTHER and WHACK are not ported.
       const combat = (act.doer as { components?: { combat?: { CanLightTarget(target: never, weapon?: never): boolean } } } | undefined)?.components?.combat;

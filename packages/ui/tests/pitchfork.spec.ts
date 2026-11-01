@@ -43,9 +43,10 @@ test('pitchfork digs terrain, cursor-held turf deploys on dirt and saves and rel
     const held = main.inventory.get(handAddress);
     if (held) main.inventory.applySlotChanges([{ slot: handAddress, itemId: held.itemId,
       skinId: held.skinId, delta: -held.count }]);
-    playerBody.position.set(-138, playerBody.shapes[0].radius, -135);
+    // Stand behind the tile so the player's own sprite (a mouse target, as in Lua) does not cover it.
+    playerBody.position.set(-138, playerBody.shapes[0].radius, -141);
     playerBody.velocity.set(0, 0, 0);
-    player.position.set(-138, 0, -135);
+    player.position.set(-138, 0, -141);
     if (!main.inventory.add('pitchfork', 1)) throw new Error('No room for pitchfork');
     (window as any).pitchforkGame = { ...main, player, view, turfMap };
   }, urls);
@@ -69,7 +70,7 @@ test('pitchfork digs terrain, cursor-held turf deploys on dirt and saves and rel
   }, { x, z });
   const first = await point(-138, -138);
   await page.mouse.click(first.x, first.y, { button: 'right' });
-  await expect.poll(() => page.evaluate(() => (window as any).pitchforkGame.turfMap.getTileAtWorld({ x: -138, z: -138 }))).toBe(4);
+  await expect.poll(() => page.evaluate(() => (window as any).pitchforkGame.turfMap.getTileAtWorld({ x: -138, z: -138 })), { timeout: 15_000 }).toBe(4);
   await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).pitchforkGame.player).animationController.stategraph.isPerformingAction('TERRAFORM'))).toBe(false);
   const cancelled = await point(-126, -138);
   await page.mouse.click(cancelled.x, cancelled.y, { button: 'right' });

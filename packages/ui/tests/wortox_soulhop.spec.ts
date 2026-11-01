@@ -119,8 +119,12 @@ test('empty-inventory right clicks soul-hop, show Soul Echo, preserve counters o
     const main = await import(urls.main); await main.gameReady;
     const { player, playerBody } = await import(urls.player), { view } = await import(urls.view);
     const { playerStats } = await import(urls.playerStats);
-    (window as any).soulHop = { player, playerBody, view, stats: playerStats };
-  }, Object.fromEntries(['main', 'player', 'view', 'playerStats'].map(name => [name, url(name)])));
+    const { getActionString } = await import(urls.actions);
+    // The hover text: ACTIONS.BLINK.strfn on the picker's right-click action.
+    const rightAction = () => { const right = view.mouseActions.getMouseActions().right; return right && getActionString(right); };
+    (window as any).soulHop = { player, playerBody, view, stats: playerStats, rightAction };
+  }, { ...Object.fromEntries(['main', 'player', 'view', 'playerStats'].map(name => [name, url(name)])),
+    actions: `/@fs${fileURLToPath(new URL('../../stategraphs/src/actions.ts', import.meta.url))}` });
   const moveTo = async (x: number, z: number) => {
     const point = await page.evaluate(([x, z]) => {
       const { player, view } = (window as any).soulHop;
@@ -147,13 +151,13 @@ test('empty-inventory right clicks soul-hop, show Soul Echo, preserve counters o
   await page.goto('/tests/dst-lighting.html?save=Cluster_1/Caves.json'); await prepare();
   const initial = await snapshot();
   await moveTo(30, 6);
-  await expect.poll(() => page.evaluate(() => (window as any).soulHop.view.mouseActions.getMouseActions().right?.modifier)).toBe('SOUL');
+  await expect.poll(() => page.evaluate(() => (window as any).soulHop.rightAction())).toBe('灵魂跳跃');
   await page.mouse.down({ button: 'right' }); await page.mouse.up({ button: 'right' });
   await expect.poll(async () => (await snapshot()).x, { timeout: 15_000 }).toBeCloseTo(30, 0);
   await expect.poll(async () => (await snapshot()).state).toBe('idle');
   expect(await snapshot()).toMatchObject({ freehops: 1, invincible: false, mask: initial.mask });
   await moveTo(6, 30);
-  await expect.poll(() => page.evaluate(() => (window as any).soulHop.view.mouseActions.getMouseActions().right?.modifier)).toBe('FREESOUL');
+  await expect.poll(() => page.evaluate(() => (window as any).soulHop.rightAction())).toBe('灵魂回声');
   await page.screenshot({ path: testInfo.outputPath('wortox-soul-echo.png') });
 
   // Both source FX can be debug-spawned; they are transient and must not become saved entities.

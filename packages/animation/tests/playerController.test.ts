@@ -29,6 +29,8 @@ import { bufferingPerformer } from './bufferingPerformer';
 import { createPickupInventory } from './pickupFixture';
 import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
 import { workTargets } from './workTargets';
+import { TurfMap, WORLD_TILES } from '../../prefab/src/turfMap';
+import { getHandEquipmentDefinition } from '../../prefab/src/handEquipment';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {}, setVolume() {} })) }));
 vi.mock('../../../src/InputManager', () => ({ input: { isPressed: () => false, isManualMovement: () => false, isActionInterrupting: () => false } }));
@@ -192,6 +194,40 @@ describe('PlayerController equipped actions', () => {
     canLight.mockReturnValue(false);
     expect(collectEquippedItemActions(weapon, doer as never, target, true)).toEqual([]);
     expect(getActionString({ action: 'ATTACK', doer, invobject: weapon, target: target as never })).toBe('攻击');
+  });
+});
+
+describe('PlayerController point actions', () => {
+  it('takes TERRAFORM from the held terraformer at the ground point, walks there and digs the tile at the hit frame', () => {
+    const s = setup('pitchfork');
+    const map = new TurfMap(1000);
+    const lifecycle = getHandEquipmentDefinition('pitchfork')!.definition.createLifecycle!(s.equipped.entity, { terraformMap: map } as never)!;
+    const point = new THREE.Vector3(12.1, 0, 0.1);
+    pickNothing();
+    vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(point);
+    try {
+      // The terraformer reaches TheWorld.Map only while the pitchfork is held in a world.
+      expect(s.world.mouseActions!.getMouseActions().right).toBeUndefined();
+      lifecycle.onequip();
+      expect(s.world.mouseActions!.getMouseActions().right).toMatchObject({ action: 'TERRAFORM', invobject: s.equipped.entity });
+      expect(s.click(2).defaultPrevented).toBe(true);
+      expect(s.animation.stategraph.pushBufferedAction).not.toHaveBeenCalled();
+      // No action distance: ARRIVE_STEP plus the player's radius from the point itself.
+      s.player.position.set(12.1 - 1.9, 0, 0.1); s.locomotor.update(16, 1 / 30);
+      expect(s.animation.stategraph.pushBufferedAction).toHaveBeenCalledOnce();
+      expect(map.getTileAtWorld(point)).toBe(WORLD_TILES.DECIDUOUS);
+      expect(s.animation.hit()).toBe(true);
+      expect(map.getTileAtWorld(point)).toBe(WORLD_TILES.DIRT);
+      expect(s.world.mouseActions!.getMouseActions().right).toBeUndefined();
+      // A buffered dig whose pitchfork left the hand does nothing.
+      const other = new THREE.Vector3(30, 0, 30);
+      vi.mocked(PointerRaycaster.prototype.groundPoint).mockReturnValue(other);
+      s.click(2);
+      s.player.position.copy(other); s.locomotor.update(16, 1 / 30);
+      s.hand.set(null);
+      expect(s.animation.hit()).toBe(false);
+      expect(map.getTileAtWorld(other)).toBe(WORLD_TILES.DECIDUOUS);
+    } finally { lifecycle.onunequip(); s.dispose(); }
   });
 });
 

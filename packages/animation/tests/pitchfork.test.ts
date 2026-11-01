@@ -4,17 +4,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { pitchforkVisual, type PitchforkTool } from '../../prefab/src/pitchfork';
 import { AnimState } from '../src/animState';
 import { overrideArchives } from './animStateFixture';
-import { PitchforkActionController } from '../../stategraphs/src/terraform';
 import { TurfMap, WORLD_TILES } from '../../prefab/src/turfMap';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { createGroundItemVisual } from './groundItemVisual';
 import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
-import type { WorldContext } from '../../prefab/src/worldContext';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src/slots';
-import { createEquipmentExistenceState } from '../../signals/src';
 import { drawGround, layerGeometry, layerMeshes } from './groundDisplayFixture';
 import { BufferedAction } from '../../stategraphs/src/bufferedaction';
-import { bufferingPerformer } from './bufferingPerformer';
 
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
@@ -102,58 +98,5 @@ describe('pitchfork source art and TERRAFORM timing', () => {
     expect(dirt.boundingBox!.min.toArray()).toEqual([-24, 0, 0]);
     expect(dirt.boundingBox!.max.toArray()).toEqual([12, 0, 36]);
     display.dispose(); restoredDisplay.dispose();
-  });
-});
-
-function setupAction() {
-  const canvas = new EventTarget();
-  const player = new THREE.Group();
-  const world = { player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
-    renderer: { domElement: canvas } } as unknown as WorldContext;
-  const equipped = createEquipmentExistenceState('HANDS');
-  equipped.set({ itemId: 'pitchfork', EQUIPSLOTS: 'HANDS' });
-  let manual = false;
-  const animation = bufferingPerformer();
-  const locomotor = { goToPoint: vi.fn((_point: THREE.Vector3) => true), stop: vi.fn(), destination: undefined };
-  const map = new TurfMap(1000);
-  const controller = new PitchforkActionController(world, animation.performer,
-    locomotor, equipped, map, () => manual);
-  return { controller, map, canvas, player, animation, locomotor,
-    equip: (value: boolean) => equipped.set(value ? { itemId: 'pitchfork', EQUIPSLOTS: 'HANDS' } : null),
-    move: () => { manual = true; }, hit: () => animation.hit() };
-}
-
-describe('pitchfork point action', () => {
-  it('walks into reach of the tile centre and modifies the turf only on impact', () => {
-    const s = setupAction();
-    const point = new THREE.Vector3(12.1, 0, 0.1);
-    s.equip(false);
-    expect(s.controller.request(point)).toBe(false);
-    s.equip(true);
-    expect(s.controller.request(point)).toBe(true);
-    s.controller.update(0.1);
-    const destination = s.locomotor.goToPoint.mock.calls[0][0];
-    expect(destination.distanceTo(new THREE.Vector3(18, 0, 6))).toBeCloseTo(3.2);
-    expect(s.animation.stategraph.pushBufferedAction).not.toHaveBeenCalled();
-    s.player.position.set(18, 0, 9);
-    s.controller.update(0.1);
-    expect(s.animation.stategraph.pushBufferedAction).toHaveBeenCalledOnce();
-    expect(s.map.getTileAtWorld(point)).toBe(WORLD_TILES.DECIDUOUS);
-    s.hit();
-    expect(s.map.getTileAtWorld(point)).toBe(WORLD_TILES.DIRT);
-    expect(s.controller.request(point)).toBe(false);
-  });
-
-  it.each(['escape', 'out of reach'] as const)('never changes terrain after %s cancels a pending impact', (reason) => {
-    const s = setupAction();
-    const point = new THREE.Vector3(6, 0, 6);
-    s.player.position.set(6, 0, 9);
-    s.controller.request(point);
-    s.controller.update(0.1);
-    if (reason === 'escape') window.dispatchEvent(Object.assign(new Event('keydown'), { code: 'Escape' }));
-    if (reason === 'out of reach') s.player.position.x = 100;
-    s.hit();
-    expect(s.map.getTileAtWorld(point)).toBe(WORLD_TILES.DECIDUOUS);
-    s.controller.dispose();
   });
 });

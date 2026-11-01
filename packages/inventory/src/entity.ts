@@ -153,6 +153,8 @@ export class ItemEntity {
     workable?: import('../../componets/src/workable').Workable;
     spellcaster?: import('../../componets/src/spellcaster').SpellCasterComponent;
     fishingrod?: import('../../componets/src/fishingrod').FishingRod;
+    terraformer?: import('../../componets/src/terraformer').Terraformer;
+    farmtiller?: import('../../componets/src/farmtiller').FarmTiller;
     lighter?: import('../../componets/src/lighter').Lighter;
     burnable?: import('../../componets/src/burnable').Burnable;
     propagator?: import('../../componets/src/propagator').Propagator;

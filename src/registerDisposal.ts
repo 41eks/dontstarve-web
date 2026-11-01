@@ -3,8 +3,7 @@ import { clockstate, createMemo, readonlySignal, type EventEmitter, type GetWatc
 import { cursorSlotAddress, equipmentSlotAddress, inventorySlotAddress, type InventoryStore, type InventoryStack } from '@dontstarve-web/inventory';
 import { createChestInventoryPanel, slotTransferController, type mountGameUi, type SlotAddress, type SlotItem } from '@dontstarve-web/ui';
 import {
-  PlayerController, PitchforkActionController,
-  FarmHoeActionController, FoodActionController,
+  PlayerController, FoodActionController,
   ReadActionController, PlayActionController, ItemUseActionController,
   type PickupDoer, type PlayerLocomotor, type PlayerActionEvents,
 } from '@dontstarve-web/stategraphs';
@@ -140,6 +139,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
           player.position.clone().set(source.x, source.y, source.z))(received);
       });
       let itemUse: ItemUseActionController | undefined;
+      let playerController: PlayerController | undefined;
       if (playerAnimation) {
         itemUse = new ItemUseActionController(view, playerAnimation, locomotor, () => {
           const address = cursorSlotAddress(), entity = inventory.getEntity(address);
@@ -270,7 +270,8 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
       if (playerAnimation) {
         view.registerFrameTask = registerFrontTask;
         // playercontroller.lua: the picker's actions on any entity, buffered for the player.
-        actionControllers.push(new PlayerController(view, playerAnimation, locomotor, handEquipment, pickupDoer, isActionInterrupting));
+        playerController = new PlayerController(view, playerAnimation, locomotor, handEquipment, pickupDoer, isActionInterrupting);
+        actionControllers.push(playerController);
 
         // SGwilson.lua fishing states reach inst.components.inventory:GetEquippedItem(HANDS).components.fishingrod.
         const heldRod = () => (equippedActionEntity(handEquipment.peek())?.components as { fishingrod?: import('../packages/componets/src/fishingrod').FishingRod } | undefined)?.fishingrod;
@@ -335,11 +336,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
           },
           canPlant: point => turfMap.canDeployPlantAtPoint(point),
         }, isActionInterrupting);
-        const pitchfork = new PitchforkActionController(view, playerAnimation, locomotor,
-          handEquipment, turfMap, isActionInterrupting);
-        const farmHoe = new FarmHoeActionController(view, playerAnimation, locomotor,
-          handEquipment, farmPlow, isActionInterrupting);
-        actionControllers.push(pitchfork, turfDeployment, plantDeployment, farmHoe);
+        actionControllers.push(turfDeployment, plantDeployment);
       }
 
       const stopEmoteWheel = setupEmoteWheel(gameUi.emoteWheel, view.renderer.domElement, playerAnimation,
@@ -420,6 +417,8 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         stopContextMenu: () => { stopContextMenu(); reader.OnRemoveFromEntity(); },
       });
       return {
+        /** The minimap's right click: PlayerController:OnMapAction. */
+        doMapAction: (position: Vector3) => playerController?.OnMapAction(position) ?? false,
         useFuel(slot: SlotAddress): boolean {
           const livestock = inventory.getEntity(slot), food = inventory.getEntity(cursorSlotAddress());
           if (itemUse && livestock?.hasTag('small_livestock') && food && livestock.components.eater?.CanEat(food)) {

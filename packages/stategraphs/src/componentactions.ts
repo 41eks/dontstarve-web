@@ -84,13 +84,15 @@ export interface EquippedActionDoer {
   readonly sg?: { HasStateTag(tag: string): boolean };
   readonly components?: { combat?: { CanLightTarget(target: never, weapon?: never): boolean } };
 }
-export type EquippedAction = ToolAction | 'CASTSPELL' | 'LIGHT' | 'ATTACK' | 'FISH' | 'REEL';
+export type EquippedAction = ToolAction | 'CASTSPELL' | 'LIGHT' | 'ATTACK' | 'FISH' | 'REEL' | 'TERRAFORM' | 'TILL';
 type EquippedFn = (inst: ComponentActionEntity, doer: EquippedActionDoer | undefined, target: ComponentActionTarget,
   actions: EquippedAction[], right: boolean) => void;
 type PointFn = (inst: ComponentActionEntity, doer: EquippedActionDoer & { readonly position?: Vector3 }, pos: Vector3,
   actions: EquippedAction[], right: boolean) => void;
 type EquippedComponents = {
   spellcaster?: SpellCasterComponent;
+  terraformer?: { CanTerraformAtPoint(pt: Vector3): boolean };
+  farmtiller?: { CanTillSoilAtPoint(pt: Vector3): boolean };
   fishingrod?: { readonly target?: unknown; HasCaughtFish(): boolean };
 };
 
@@ -139,6 +141,13 @@ export const COMPONENT_ACTIONS: {
     worldmigrator: (inst, _doer, actions) => { if (inst.hasTag('migrator')) actions.push('MIGRATE'); },
   },
   POINT: {
+    farmtiller: (inst, _doer, pos, actions, right) => {
+      if (right && (inst.components as EquippedComponents).farmtiller?.CanTillSoilAtPoint(pos)) actions.push('TILL');
+    },
+    // The plow branch (CanPlowAtPoint) is not ported.
+    terraformer: (inst, _doer, pos, actions, right) => {
+      if (right && (inst.components as EquippedComponents).terraformer?.CanTerraformAtPoint(pos)) actions.push('TERRAFORM');
+    },
     // The SPELLTYPES (<type>_spellcaster / _spelluser) gate is not ported; spellcaster:CanCast stands in for the map's
     // IsAboveGroundAtPoint / IsOceanAtPoint and IsGroundTargetBlocked checks.
     spellcaster: (inst, doer, pos, actions, right) => {

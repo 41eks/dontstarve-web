@@ -57,7 +57,7 @@ import {
   createInventoryStore,
 } from './inventory';
 import { locomotor, startScene, worldState } from './scene';
-import { WortoxPlayer } from '../packages/prefab/src/wortoxPlayer';
+import { WortoxPlayer, type WortoxDoer } from '../packages/prefab/src/wortoxPlayer';
 import { createDisposalResources } from './registerDisposal';
 import { initialSave } from './save/initialSave';
 import { inventoryStateFromSave } from './save/inventoryState';
@@ -130,7 +130,7 @@ for (const panel of [gameUi.chestPanel, gameUi.cookPotPanel, gameUi.iceBoxPanel]
 const playerAnimation = playerInstance.animationController;
 /** inst:PushEvent reaches SGwilson's handlers; these are the ones the player's own components and actions push. */
 const STATEGRAPH_EVENTS = new Set(['toolbroke', 'fishingnibble', 'fishingloserod', 'fishingstrain', 'fishingcatch', 'fishingcancel']);
-const pickupDoer: PickupDoer & { ListenForEvent(name: string, listener: (data: unknown) => void): () => void; HasStateTag(tag: string): boolean; GoToState(name: string): void; IsCurrentState(name: string): boolean;
+const pickupDoer: PickupDoer & WortoxDoer & { sg: NonNullable<PickupDoer['sg']> & { beginPortalJump(pos: import('three').Vector3, fromMap?: boolean): boolean }; ListenForEvent(name: string, listener: (data: unknown) => void): () => void; HasStateTag(tag: string): boolean; GoToState(name: string): void; IsCurrentState(name: string): boolean;
   components: PickupDoer['components'] & { health: typeof playerStats.health; hunger: typeof playerStats.hunger; sanity?: Sanity } } = {
   components: { inventory, health: playerStats.health, hunger: playerStats.hunger },
   ListenForEvent(name, listener) {
@@ -142,7 +142,11 @@ const pickupDoer: PickupDoer & { ListenForEvent(name: string, listener: (data: u
   GetPosition: () => player.position,
   getPosition: () => player.position,
   position: player.position,
-  sg: { HasStateTag: tag => playerAnimation?.stategraph.hasStateTag(tag) ?? false },
+  sg: {
+    HasStateTag: tag => playerAnimation?.stategraph.hasStateTag(tag) ?? false,
+    // SGwilson portal_jumpin_pre for ACTIONS.BLINK / BLINK_MAP.
+    beginPortalJump: (pos, fromMap) => playerAnimation?.stategraph.beginPortalJump(pos, fromMap) ?? false,
+  },
   HasStateTag: tag => playerAnimation?.stategraph.hasStateTag(tag) ?? false,
   GoToState: name => playerAnimation?.stategraph.goToState(name as WilsonStateName),
   IsCurrentState: name => playerAnimation?.stategraph.stateName === name,
@@ -202,6 +206,9 @@ const handEquipmentBinding = await bindPlayerHandEquipment({
     map: spellCastMap,
     spawnWaterspout: position => worldFx.spawn('crab_king_waterspout', position),
   },
+  // pitchfork.lua terraformer / farm_hoe.lua farmtiller work TheWorld.Map.
+  terraformMap: turfMap,
+  farmTillMap: { canTill: point => sceneResources.farmPlow.canTill(point), till: point => sceneResources.farmPlow.till(point) },
   reskinEffects: { prepare: toolSkinId => sceneResources.reskinEffects.prepare(toolSkinId) },
   // fishingrod.lua / pond.lua: the held rod fishes on game time and lands its fish as a ground item.
   fishingWorld: {
@@ -314,21 +321,20 @@ disposalEvents.on('dispose', () => {
 });
 const disposalActions = disposalResources.register(disposalEvents, sceneResources);
 const wortox = playerAnimation ? await WortoxPlayer.create({
-  world: view, body: playerBody, physics: playerPhysics, animation: playerAnimation, locomotor, inventory, scheduler, fx: worldFx,
+  world: view, body: playerBody, physics: playerPhysics, animation: playerAnimation, doer: pickupDoer, inventory, scheduler, fx: worldFx,
   isPassableAtPoint: position => turfMap.isPassableAtPoint(position),
-  isManualMovement: () => input.isManualMovement(), saved: initialSave.players.local.wortox,
+  saved: initialSave.players.local.wortox,
   resetMinimapOffset: () => gameUi.minimap.setView({ x: player.position.x, z: player.position.z }),
   snapCamera: () => followCamera.snap(),
 }) : undefined;
 const onMapActionRequest = (event: Event) => {
   const { position } = (event as CustomEvent<MinimapActionRequestDetail>).detail;
-  if (wortox?.requestMapHop(position)) event.preventDefault();
+  if (disposalActions.doMapAction(position)) event.preventDefault();
 };
 gameUi.minimap.addEventListener('game:map-action-request', onMapActionRequest);
-const stopWortoxUpdate = registerFrontTask(() => wortox?.update());
 disposalEvents.on('dispose', () => {
   gameUi.minimap.removeEventListener('game:map-action-request', onMapActionRequest);
-  stopWortoxUpdate(); wortox?.dispose();
+  wortox?.dispose();
 });
 
 

@@ -1,8 +1,24 @@
-import type { FarmHoeTool } from '@dontstarve-web/stategraphs/till';
 import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory } from './equipmentVisual';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 
-export { isFarmHoeTool, type FarmHoeTool } from '@dontstarve-web/stategraphs/till';
+import type { ItemEntity } from '@dontstarve-web/inventory';
+import type { EquipmentLifecycle } from '@dontstarve-web/signals';
+import { FarmTiller, type FarmTillerMap } from '../../componets/src/farmtiller';
+
+export type FarmHoeTool = 'farm_hoe' | 'golden_farm_hoe';
+
+/** farm_hoe.lua: inst:AddComponent("farmtiller"). */
+export function configureFarmHoeEntity(entity: ItemEntity): void {
+  entity.components.farmtiller = entity.component('farmtiller', () => new FarmTiller());
+}
+
+/** While held in a world, the tiller tills that world's farm soil. */
+export function createFarmTillerLifecycle(entity: ItemEntity, map: FarmTillerMap): EquipmentLifecycle {
+  return {
+    onequip() { if (entity.components.farmtiller) entity.components.farmtiller.map = map; },
+    onunequip() { if (entity.components.farmtiller) entity.components.farmtiller.map = undefined; },
+  };
+}
 const SWAPS = {
   farm_hoe: { archive: 'quagmire_hoe.zip', symbol: 'swap_quagmire_hoe' },
   golden_farm_hoe: { archive: 'swap_goldenhoe.zip', symbol: 'swap_goldenhoe' },

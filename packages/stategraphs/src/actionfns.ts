@@ -5,6 +5,8 @@ import type { Combat } from '../../componets/src/combat';
 import type { Weapon } from '../../componets/src/weapon';
 import type { SpellCasterComponent } from '../../componets/src/spellcaster';
 import type { FishingRod } from '../../componets/src/fishingrod';
+import type { Terraformer } from '../../componets/src/terraformer';
+import type { FarmTiller } from '../../componets/src/farmtiller';
 import { preparePickReceiver, type PickableComponent } from './pick.ts';
 import { performPickupAction, type PickupDoer, type PickupTarget } from './pickup.ts';
 import { performRummageAction, type RummageContainer, type RummageTarget } from './rummage.ts';
@@ -78,6 +80,15 @@ type DoerCombat = Pick<Combat, 'DoAttack' | 'CanTarget' | 'CanLightTarget'>;
 const doerCombat = (act: BufferedAction) => (act.doer as { components?: { combat?: DoerCombat } } | undefined)?.components?.combat;
 const invobjectComponents = (act: BufferedAction) =>
   (act.invobject as { components?: { spellcaster?: SpellCasterComponent; weapon?: Weapon; fishingrod?: FishingRod } } | undefined)?.components ?? {};
+
+/** wortox.lua puts CanSoulhop / CanBlinkTo on the inst; SGwilson's portal_jumpin is reached through its sg. */
+type SoulHopper = {
+  CanSoulhop?(): boolean;
+  CanBlinkTo?(pos: Vector3): boolean;
+  CanBlinkFromWithMap?(pos: Vector3): boolean;
+  readonly sg?: { beginPortalJump?(pos: Vector3, fromMap?: boolean): boolean };
+};
+const soulHopper = (act: BufferedAction) => act.doer as SoulHopper | undefined;
 
 export const ACTION_FNS: Readonly<Partial<Record<string, ActionFns>>> = {
   CHOP: toolWork('CHOP'),
@@ -196,6 +207,24 @@ export const ACTION_FNS: Readonly<Partial<Record<string, ActionFns>>> = {
       }
       return true;
     },
+  },
+  TERRAFORM: {
+    fn: act => (act.invobject as { components?: { terraformer?: Terraformer } } | undefined)?.components?.terraformer
+      ?.Terraform(actionPoint(act), playerDoer(act)) ?? false,
+  },
+  TILL: {
+    fn: act => (act.invobject as { components?: { farmtiller?: FarmTiller } } | undefined)?.components?.farmtiller
+      ?.Till(actionPoint(act), playerDoer(act)) ?? false,
+  },
+  // TryToSoulhop: in portal_jumpin_pre the doer's TryToPortalHop spends its souls and the stategraph enters
+  // portal_jumpin; the blinkstaff (invobject) branch is not ported.
+  BLINK: {
+    fn: act => soulHopper(act)?.sg?.beginPortalJump?.(actionPoint(act)) ?? false,
+    validfn: act => !!soulHopper(act)?.CanSoulhop?.() && !!soulHopper(act)?.CanBlinkTo?.(actionPoint(act)),
+  },
+  BLINK_MAP: {
+    fn: act => soulHopper(act)?.sg?.beginPortalJump?.(actionPoint(act), true) ?? false,
+    validfn: act => !!soulHopper(act)?.CanSoulhop?.() && !!soulHopper(act)?.CanBlinkFromWithMap?.(actionPoint(act)),
   },
   HAUNT: {
     fn: act => {

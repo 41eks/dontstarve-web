@@ -18,6 +18,9 @@ import { Vector3 } from 'three';
 type ActionTargetEntity = ComponentActionEntity & {
   getPosition(): import('three').Vector3;
   getPhysicsRadius?(): number;
+  /** PlayerController:GetMapActions' workaround flags, read by pointspecialactionsfn. */
+  checkingmapactions?: boolean;
+  checkingmapactions_pos?: Vector3;
 };
 
 export type PlayerLocomotor = ActionLocomotor & Required<Pick<ActionLocomotor, 'PushAction'>>;
@@ -26,6 +29,9 @@ type PlayerDoer = BufferedActionDoer & SceneActionDoer & {
   readonly components?: { combat?: Combat };
   /** player_common.lua MakeCharacterPhysics(inst, 75, .5). */
   getPhysicsRadius?(): number;
+  /** PlayerController:GetMapActions' workaround flags, read by pointspecialactionsfn. */
+  checkingmapactions?: boolean;
+  checkingmapactions_pos?: Vector3;
 };
 
 /**
@@ -121,8 +127,8 @@ export class PlayerController {
     const target = action.target as Partial<ActionTargetEntity> | undefined;
     if (this.disposed || (target ? !target.getPosition : !action.pos) || stategraph.hasStateTag('busy')
       || isHandActionBusy(stategraph) || !action.isValid()) return false;
-    const { distance, mindistance, instant } = (ACTIONS[action.action as MouseActionId] ?? {}) as
-      { distance?: number; mindistance?: number; instant?: boolean };
+    const { distance, mindistance, instant, arrive_anywhere } = (ACTIONS[action.action as MouseActionId] ?? {}) as
+      { distance?: number; mindistance?: number; instant?: boolean; arrive_anywhere?: boolean };
     // EntityScript:PushBufferedAction for an instant action: face the target and do it now, keeping the
     // buffered action and the state it runs in.
     if (instant) {
@@ -143,6 +149,8 @@ export class PlayerController {
       // locomotor OnUpdate for ATTACK: combat:LocomotorCanAttack, inside the attack range of the target's edge.
       ...(action.action === 'ATTACK' && combat && target ? { arrived: () => this.doer.getPosition!()
         .distanceToSquared(target.getPosition!()) <= combat.CalcAttackRangeSq(target as unknown as CombatInst) } : {}),
+      // customarrivecheck = ArriveAnywhere.
+      ...(arrive_anywhere ? { arrived: () => true } : {}),
       isValid: () => action.isValid(),
     }, () => this.arrive(action), () => {
       if (this.action !== action || !this.walking) return;
@@ -150,6 +158,25 @@ export class PlayerController {
       this.action = undefined;
     });
     return true;
+  }
+
+  /**
+   * PlayerController:OnMapAction for a right click on the map: GetMapActions takes the right-click point special
+   * action at the player with checkingmapactions set, RemapMapAction turns it into its _MAP action at the clicked
+   * position (ACTIONS_MAP_REMAP), and locomotor:PushAction runs it.
+   */
+  OnMapAction(position: Vector3): boolean {
+    const picker = this.world.mouseActions;
+    if (this.disposed || !picker) return false;
+    this.doer.checkingmapactions = true;
+    this.doer.checkingmapactions_pos = position;
+    let rmb: string | undefined;
+    try { rmb = picker.GetPointSpecialActions(this.world.player.position, true)[0]; }
+    finally { this.doer.checkingmapactions = undefined; this.doer.checkingmapactions_pos = undefined; }
+    const mapAction = rmb && `${rmb}_MAP`;
+    if (!mapAction || !(mapAction in ACTIONS)) return false;
+    const action = this.createAction({ action: mapAction as MouseActionId, pos: position.clone() });
+    return !!action && this.DoAction(action);
   }
 
   /** locomotor OnUpdate at the destination: FaceMovePoint, then inst:PushBufferedAction. */

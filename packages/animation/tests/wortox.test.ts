@@ -5,7 +5,14 @@ import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import { BufferedAction } from '../../stategraphs/src/bufferedaction';
 import type { WilsonStateGraphHost } from '../../stategraphs/src/SGwilson';
 import { Object3D, PerspectiveCamera, Scene, Vector3, type WebGLRenderer } from 'three';
-import { BlinkActionController } from '../../stategraphs/src/blink';
+import * as CANNON from 'cannon-es';
+import { PlayerController } from '../../stategraphs/src/playercontroller';
+import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
+import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
+import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
+import { Locomotor } from '../../prefab/src/locomotor';
+import { GetPointSpecialActions, type WortoxDoer } from '../../prefab/src/wortoxPlayer';
+import { createEquipmentExistenceState } from '../../signals/src';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { serializeSave } from '../../../src/save/serialize';
 import { inventoryStateFromSave } from '../../../src/save/inventoryState';
@@ -94,7 +101,7 @@ it('commits BLINK after the pre-animation, teleports after 11 frames and restore
   state.dispose();
 });
 
-it('buffers a free map jump without walking, revalidates before commit and snaps only after teleporting', () => {
+it('runs the map right click as BLINK_MAP without walking, revalidates before commit and snaps only after teleporting', () => {
   vi.stubGlobal('window', new EventTarget());
   const player = new Object3D(), point = new Vector3(1200, 0, -900);
   const tryToPortalHop = vi.fn(() => false), snapCamera = vi.fn(() => player.position.clone());
@@ -105,32 +112,43 @@ it('buffers a free map jump without walking, revalidates before commit and snaps
     soulHop: { tryToPortalHop, facePoint() {}, teleport, snapCamera,
       setPhysicsEnabled() {}, setTint() {}, spawnFx() {}, playSound() {} },
   });
-  const locomotor = { destination: undefined, stop: vi.fn(), goToPoint: vi.fn(() => false) };
+  const world = { player, scene: new Scene(), camera: new PerspectiveCamera(),
+    ground: new Object3D(), renderer: { domElement: new EventTarget() } as unknown as WebGLRenderer } as ActionWorldContext;
+  world.mouseActions = new PlayerActionPicker(new PointerRaycaster(world));
+  const body = { position: player.position, velocity: new Vector3() } as unknown as CANNON.Body;
+  const locomotor = new Locomotor(body, {});
+  const goToPoint = vi.spyOn(locomotor, 'goToPoint');
   let eligible = true, valid = true;
-  const canBlinkTo = vi.fn(() => false);
-  const controller = new BlinkActionController({ player, scene: new Scene(), camera: new PerspectiveCamera(),
-    ground: new Object3D(), renderer: { domElement: new EventTarget() } as unknown as WebGLRenderer },
-  { stategraph: graph }, locomotor, {
-    canSoulHop: () => eligible, canBlinkTo, canMapBlinkTo: () => valid, hasSoulEcho: () => false,
-  });
+  const doer: WortoxDoer & Record<string, unknown> = {
+    components: {}, position: player.position, getPosition: () => player.position,
+    hasTag: (tag: string) => tag === 'player' || tag === 'soulstealer',
+    sg: { HasStateTag: (tag: string) => graph.hasStateTag(tag), beginPortalJump: (pos: Vector3, fromMap?: boolean) => graph.beginPortalJump(pos, fromMap) },
+    CanSoulhop: () => eligible, CanBlinkTo: vi.fn(() => false), CanBlinkFromWithMap: () => valid,
+  };
+  world.mouseActions.pointspecialactionsfn = (_doer, pos, useitem, right) => GetPointSpecialActions(doer, player.position, pos, useitem, right);
+  const controller = new PlayerController(world, { stategraph: graph, cancelEmote() {}, setFacing() {} } as never,
+    locomotor, createEquipmentExistenceState('HANDS'), doer as never);
   try {
     eligible = false;
-    expect(controller.requestMap(point)).toBe(false);
+    expect(controller.OnMapAction(point)).toBe(false);
     eligible = true;
-    expect(controller.requestMap(point)).toBe(true);
+    expect(controller.OnMapAction(point)).toBe(true);
+    locomotor.update(16, 1 / 30);
     expect(graph.getBufferedAction()?.action).toBe('BLINK_MAP');
     valid = false;
     graph.update(.2);
     expect(graph.stateName).toBe('idle');
     expect(teleport).not.toHaveBeenCalled();
     valid = true;
-    expect(controller.requestMap(point)).toBe(true);
-    expect(controller.requestMap(point)).toBe(false);
+    expect(controller.OnMapAction(point)).toBe(true);
+    locomotor.update(16, 1 / 30);
+    expect(controller.OnMapAction(point)).toBe(false);
     graph.update(.2);
     expect(graph.stateName).toBe('portal_jumpin');
     expect(tryToPortalHop).not.toHaveBeenCalled();
-    expect(locomotor.goToPoint).not.toHaveBeenCalled();
-    expect(canBlinkTo).not.toHaveBeenCalled();
+    expect(goToPoint).not.toHaveBeenCalled();
+    expect(doer.CanBlinkTo).not.toHaveBeenCalled();
+    expect(doer.checkingmapactions).toBeUndefined();
     graph.update(11 / 30);
     expect(teleport).toHaveBeenCalledExactlyOnceWith(point);
     expect(snapCamera).toHaveReturnedWith(point);
@@ -139,6 +157,6 @@ it('buffers a free map jump without walking, revalidates before commit and snaps
     graph.update(14 / 30);
     expect(graph.stateName).toBe('idle');
     controller.dispose();
-    expect(controller.requestMap(point)).toBe(false);
-  } finally { controller.dispose(); }
+    expect(controller.OnMapAction(point)).toBe(false);
+  } finally { controller.dispose(); world.mouseActions.dispose(); }
 });

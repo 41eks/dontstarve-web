@@ -8,12 +8,12 @@ import { AXE_USES, configureAxeEntity, getAxeLifecycle, axeVisual } from './axe'
 import { configureBugNetEntity, bugnetVisual } from './bugnet';
 import { configureFishingRodEntity, createFishingRodLifecycle, FISHINGROD_USES, fishingRodVisual } from './fishingrod';
 import { EquipmentAnimState, type EquipmentSprite, type EquipmentVisual, type EquipmentVisualFactory } from './equipmentVisual';
-import { farmHoeVisual } from './farm_hoe';
+import { configureFarmHoeEntity, createFarmTillerLifecycle, farmHoeVisual } from './farm_hoe';
 import { configureHammerEntity, hammerVisual } from './hammer';
 import { configureLanternEntity, createLanternHandLifecycle, LANTERN_FUEL, lanternVisual } from './lantern';
 import { configureNightswordEntity, nightswordVisual } from './nightsword';
 import { configurePickaxeEntity, getPickaxeLifecycle, PICKAXE_USES, pickaxeVisual } from './pickaxe';
-import { pitchforkVisual } from './pitchfork';
+import { configurePitchforkEntity, createTerraformerLifecycle, pitchforkVisual } from './pitchfork';
 import type { WilsonCarryItem } from './player';
 import type { PrefabInstance } from './prefabInstance';
 import { configureReskinToolEntity, createReskinToolLifecycle, reskinToolVisual } from './reskin_tool';
@@ -41,6 +41,9 @@ export interface HandEquipmentContext {
   /** reskin_tool.lua SpawnPrefab(fx_prefab): the scene's reskin fx. */
   reskinEffects?: import('@dontstarve-web/stategraphs/reskin_tool').ReskinEffectPresenter;
   fishingWorld?: import('./fishingrod').FishingRodWorld;
+  /** TheWorld.Map for the pitchfork's terraformer and the farm hoe's farmtiller. */
+  terraformMap?: import('../../componets/src/terraformer').TerraformerMap;
+  farmTillMap?: import('../../componets/src/farmtiller').FarmTillerMap;
 }
 export interface HandEquipmentDefinition {
   readonly maxUses?: number;
@@ -86,10 +89,14 @@ const definitions: Record<WilsonCarryItem, HandEquipmentDefinition> = {
   goldenaxe: { visual: axeVisual, maxUses: AXE_USES, useStep: .25, weapon: { damage: WILSON_ATTACK * .8, attackwear: GOLDEN_ATTACKWEAR }, configureEntity: configureAxeEntity, createLifecycle: getAxeLifecycle },
   // tuning.lua MOONGLASSAXE: DAMAGE = wilson_attack, ATTACKWEAR = 2.
   moonglassaxe: { visual: axeVisual, maxUses: AXE_USES, weapon: { damage: WILSON_ATTACK, attackwear: 2 }, configureEntity: configureAxeEntity, createLifecycle: getAxeLifecycle },
-  pitchfork: { visual: pitchforkVisual, weapon: { damage: WILSON_ATTACK * .5 } },
-  goldenpitchfork: { visual: pitchforkVisual, weapon: { damage: WILSON_ATTACK * .5, attackwear: GOLDEN_ATTACKWEAR } },
-  farm_hoe: { visual: farmHoeVisual, weapon: { damage: WILSON_ATTACK * .5 } },
-  golden_farm_hoe: { visual: farmHoeVisual, weapon: { damage: WILSON_ATTACK * .5, attackwear: GOLDEN_ATTACKWEAR } },
+  pitchfork: { visual: pitchforkVisual, weapon: { damage: WILSON_ATTACK * .5 }, configureEntity: configurePitchforkEntity,
+    createLifecycle: (entity, context) => context.terraformMap ? createTerraformerLifecycle(entity, context.terraformMap) : undefined },
+  goldenpitchfork: { visual: pitchforkVisual, weapon: { damage: WILSON_ATTACK * .5, attackwear: GOLDEN_ATTACKWEAR }, configureEntity: configurePitchforkEntity,
+    createLifecycle: (entity, context) => context.terraformMap ? createTerraformerLifecycle(entity, context.terraformMap) : undefined },
+  farm_hoe: { visual: farmHoeVisual, weapon: { damage: WILSON_ATTACK * .5 }, configureEntity: configureFarmHoeEntity,
+    createLifecycle: (entity, context) => context.farmTillMap ? createFarmTillerLifecycle(entity, context.farmTillMap) : undefined },
+  golden_farm_hoe: { visual: farmHoeVisual, weapon: { damage: WILSON_ATTACK * .5, attackwear: GOLDEN_ATTACKWEAR }, configureEntity: configureFarmHoeEntity,
+    createLifecycle: (entity, context) => context.farmTillMap ? createFarmTillerLifecycle(entity, context.farmTillMap) : undefined },
   shovel: { visual: shovelVisual, maxUses: SHOVEL_USES, weapon: { damage: WILSON_ATTACK * .5 }, configureEntity: configureShovelEntity },
   goldenshovel: { visual: shovelVisual, maxUses: SHOVEL_USES, useStep: .25, weapon: { damage: WILSON_ATTACK * .5, attackwear: GOLDEN_ATTACKWEAR },
     configureEntity: configureShovelEntity },

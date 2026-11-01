@@ -133,7 +133,7 @@ GroundItemManager 每帧在 prefab 更新前后从实体刷新模型，拾取命
 
 清洁扫把的 `CASTSPELL` 目标就是鼠标命中的实体。建筑、墙、栅栏、地面物品、虫洞和可换肤植物在注册 action entity 投影时提供 `reskinTarget`，其中的皮肤、脚点和有效性读取所属实体的当前状态；移除投影时一并清理。法术函数从实体读取该视图，未提供换肤操作的普通实体仍参加标签驱动的 `CASTSPELL` 选择，是否成功由提交帧的 `SpellCaster.CanCast` 决定。绿法杖的分解同理读取所有者注册的 `deconstructionTarget`。
 
-主程序通过 `ActionWorldContext.registerFrameTask` 注入 `registerFrontTask()`，不逐帧遍历所有手部动作控制器。锤子、镐、干草叉、铲子、园艺锄、捕虫网和清洁扫把在内部通过 `bindHandEquipmentUpdate()` 按装备 signal 注册／移除自己的帧任务，只有当前匹配工具的控制器参加物理更新前的逐帧调度。构造时同步当前装备，支持读档后已装备的工具；同一身份重复发布不重复注册。卸装、替换或换肤时先移除旧任务并取消旧动作，再根据最新 signal 注册任务，`dispose()` 同时移除任务和订阅。法杖施法仍由输入事件及状态图时间线驱动，无需独立帧任务。未注入调度服务的独立宿主可显式调用控制器的 `update()`。
+主程序通过 `ActionWorldContext.registerFrameTask` 注入 `registerFrontTask()`。手部工具不再有各自的控制器和帧任务：通用 `PlayerController` 注册一个前置任务（处理按住 F 的重复攻击），手部物品变化时取消它持有的、`invobject` 为旧物品的缓冲动作；`TurfDeployment`、`PlantDeployment` 等仍未迁移的控制器各自注册任务，`dispose()` 同时移除任务和订阅。法杖施法由输入事件及状态图时间线驱动，无需独立帧任务。
 
 前置任务按本帧快照执行。注册函数返回的移除回调会同时停用任务包装函数，确保帧中换装不会执行已缓存的旧任务，也不会因数组变化跳过其他任务；新注册的任务从下一帧开始执行。
 

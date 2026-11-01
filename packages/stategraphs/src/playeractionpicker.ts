@@ -76,13 +76,35 @@ export class PlayerActionPicker {
     });
   }
 
-  /** GetPointActions(position, inventory:GetEquippedItem(HANDS)) on the ground under the pointer, with no entity hit. */
+  /**
+   * playeractionpicker.pointspecialactionsfn: the player prefab's own point actions (wortox.lua GetPointSpecialActions),
+   * offered when the hand item has none there.
+   */
+  pointspecialactionsfn?: (doer: SceneActionDoer & EquippedActionDoer, pos: THREE.Vector3, useitem: undefined, right: boolean) => readonly string[];
+
+  /** PlayerActionPicker:GetPointSpecialActions without an active item. */
+  GetPointSpecialActions(pos: THREE.Vector3, right: boolean): readonly string[] {
+    const doer = this.player?.doer;
+    return doer ? this.pointspecialactionsfn?.(doer, pos, undefined, right) ?? [] : [];
+  }
+
+  /**
+   * GetPointActions(position, inventory:GetEquippedItem(HANDS)) on the ground under the pointer, with no entity hit,
+   * then GetPointSpecialActions.
+   */
   private pointActions(player: NonNullable<PlayerActionPicker['player']>): MouseActionCandidate[] {
-    const item = player.equippedItem(), point = item && this.pointer.groundPoint();
-    if (!item || !point) return [];
-    const pos = point.clone(), doer = player.doer;
-    return ([false, true] as const).flatMap(right => collectPointActions(item, doer, pos, right).map(action => ({
-      action: { action, doer, invobject: item, pos }, button: right ? 'right' as const : 'left' as const, source: 'equipped' as const })));
+    const point = this.pointer.groundPoint();
+    if (!point) return [];
+    const item = player.equippedItem(), pos = point.clone(), doer = player.doer;
+    return ([false, true] as const).flatMap(right => {
+      const button = right ? 'right' as const : 'left' as const;
+      return [
+        ...(item ? collectPointActions(item, doer, pos, right) : []).map(action => ({
+          action: { action, doer, invobject: item, pos }, button, source: 'equipped' as const })),
+        ...(this.pointspecialactionsfn?.(doer, pos, undefined, right) ?? []).map(action => ({
+          action: { action, doer, pos }, button, source: 'special' as const })),
+      ];
+    });
   }
 
   register(provider: (target: THREE.Object3D | undefined) => readonly MouseActionCandidate[]): () => void {

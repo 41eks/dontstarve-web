@@ -6,7 +6,15 @@ import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { farmHoeVisual } from '../../prefab/src/farm_hoe';
 import { declaredSymbol, overrideArchives } from './animStateFixture';
-import { FarmHoeActionController } from '../../stategraphs/src/till';
+import * as CANNON from 'cannon-es';
+import { PlayerController } from '../../stategraphs/src/playercontroller';
+import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
+import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
+import { Locomotor } from '../../prefab/src/locomotor';
+import { WORLD_SCALE } from '../../prefab/src/tile';
+import { getHandEquipmentDefinition } from '../../prefab/src/handEquipment';
+import { actionTool } from './actionFixtures';
+import { playerDoer } from './playerDoer';
 import { createEquipmentExistenceState } from '../../signals/src';
 import { FarmPlowPlacement } from '../../prefab/src/farm_plow';
 import { TurfMap } from '../../prefab/src/turfMap';
@@ -104,27 +112,40 @@ it('retills broken soil at the exact point, preserves blockers and crops, and re
   expect(world.scene.children).toHaveLength(0);
 });
 
-it('approaches the target, creates one hole at till_loop frame 11, and cancels before an unequipped or interrupted hit', async () => {
+it('takes TILL at the point, creates one hole at till_loop frame 11, and drops a cancelled or unequipped hit', async () => {
   const player = await createWilsonPlayer('/dst/data/anim');
   player.position.set(0, 0, 15);
   const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
   await animation.setCarryItem('golden_farm_hoe');
   const { world, farm, turf } = setup(player);
-  const locomotor = { goToPoint: vi.fn(() => true), stop: vi.fn(), destination: undefined };
-  const tool = createEquipmentExistenceState('HANDS');
-  tool.set({ itemId: 'golden_farm_hoe', EQUIPSLOTS: 'HANDS' });
-  const controller = new FarmHoeActionController(world, animation, locomotor, tool, farm);
+  world.mouseActions = new PlayerActionPicker(new PointerRaycaster(world));
+  const body = { position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body;
+  const locomotor = new Locomotor(body, { physicsRadius: .5 * WORLD_SCALE });
+  const hand = createEquipmentExistenceState('HANDS');
+  const tool = actionTool('golden_farm_hoe');
+  const lifecycle = getHandEquipmentDefinition('golden_farm_hoe')!.definition.createLifecycle!(tool.entity, { farmTillMap: farm } as never)!;
+  lifecycle.onequip();
+  const controller = new PlayerController(world, animation, locomotor, hand, playerDoer(player));
   const point = new THREE.Vector3(3, 0, 3);
+  vi.spyOn(PointerRaycaster.prototype, 'trackPointer').mockImplementation(() => {});
+  vi.spyOn(PointerRaycaster.prototype, 'pickMouseTarget').mockReturnValue(undefined as never);
+  vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(point);
+  const rightClick = () => (world.renderer.domElement as EventTarget).dispatchEvent(
+    Object.assign(new Event('pointerdown', { cancelable: true }), { button: 2 }));
+  const walkIn = () => { player.position.set(3, 0, 3.5); locomotor.update(16, 1 / 30); };
   turf.plow(point);
   try {
-    tool.set({ itemId: 'torch', EQUIPSLOTS: 'HANDS' });
-    expect(controller.request(point)).toBe(false);
-    tool.set({ itemId: 'golden_farm_hoe', EQUIPSLOTS: 'HANDS' });
-    expect(controller.request(point)).toBe(true); controller.update();
-    expect(locomotor.goToPoint).toHaveBeenCalled();
+    hand.set({ itemId: 'torch', EQUIPSLOTS: 'HANDS' });
+    expect(world.mouseActions.getMouseActions().right).toBeUndefined();
+    hand.set(tool);
+    const right = world.mouseActions.getMouseActions().right;
+    expect(right?.action).toBe('TILL');
+    expect(right?.invobject).toBe(tool.entity);
+    rightClick();
+    expect(locomotor.bufferedAction).toBeDefined();
     expect(farm.exportDecorRecords()).toEqual([]);
-    player.position.set(3, 0, 6);
-    await vi.waitFor(() => { controller.update(); expect(animation.stategraph.stateName).toBe('till_start'); });
+    walkIn();
+    await vi.waitFor(() => { animation.update(1 / 30); expect(animation.stategraph.stateName).toBe('till_start'); });
     while (animation.stategraph.stateName === 'till_start') animation.update(1 / 30);
     advance(animation, 10);
     expect(farm.exportDecorRecords()).toEqual([]);
@@ -136,13 +157,13 @@ it('approaches the target, creates one hole at till_loop frame 11, and cancels b
     advance(animation, 60);
     expect(farm.exportDecorRecords()).toHaveLength(1);
     const preserved = farm.exportDecorRecords();
-    expect(controller.request(point)).toBe(true);
-    await vi.waitFor(() => { controller.update(); expect(animation.stategraph.isPerformingAction('TILL')).toBe(true); });
-    controller.cancel(); advance(animation, 60);
+    rightClick(); walkIn();
+    await vi.waitFor(() => { animation.update(1 / 30); expect(animation.stategraph.isPerformingAction('TILL')).toBe(true); });
+    window.dispatchEvent(Object.assign(new Event('keydown'), { code: 'Escape' })); advance(animation, 60);
     expect(farm.exportDecorRecords()).toEqual(preserved);
-    expect(controller.request(point)).toBe(true);
-    await vi.waitFor(() => { controller.update(); expect(animation.stategraph.isPerformingAction('TILL')).toBe(true); });
-    tool.set(null); await animation.setCarryItem(null); controller.update(); advance(animation, 60);
+    rightClick(); walkIn();
+    await vi.waitFor(() => { animation.update(1 / 30); expect(animation.stategraph.isPerformingAction('TILL')).toBe(true); });
+    hand.set(null); await animation.setCarryItem(null); advance(animation, 60);
     expect(farm.exportDecorRecords()).toEqual(preserved);
-  } finally { controller.dispose(); farm.dispose(); }
+  } finally { controller.dispose(); world.mouseActions.dispose(); lifecycle.onunequip(); farm.dispose(); }
 });
