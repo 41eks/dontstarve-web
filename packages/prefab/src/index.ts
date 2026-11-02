@@ -78,7 +78,6 @@ export {
 } from './player';
 export {
   AnimatedBuildingPlacement,
-  type AnimatedBuildingBuiltContext,
   type AnimatedBuildingDefinition,
   type AnimatedBuildingEventContext,
   type AnimatedBuildingInteractionChange,
