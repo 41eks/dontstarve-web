@@ -88,6 +88,7 @@ export class ArchiveEngine implements DisplayEngine {
   get instanced(): InstancedSprite | undefined { return this.resident.instanced; }
   get currentAnimation(): string { return this.resident.currentAnimation; }
   get numFrames(): number { return this.resident.frameCount; }
+  getSymbolPosition(symbol: string, x: number, y: number, target: THREE.Vector3): boolean { return this.resident.getSymbolPosition(symbol, x, y, target); }
   get currentAnimationLength(): number { return 0; }
   get pose(): string | undefined { return undefined; }
   setActive(active: boolean): void { this.resident.setActive(active); }

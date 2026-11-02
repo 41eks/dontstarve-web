@@ -85,6 +85,9 @@ export class ResidentSprite implements ArchiveSprite {
   get loaded(): boolean { return this.sprite !== undefined; }
   get currentAnimation(): string { return this.sprite?.currentAnimation ?? this.clip.name; }
   get frameCount(): number { return this.sprite?.frameCount ?? 0; }
+  getSymbolPosition(symbol: string, x: number, y: number, target: THREE.Vector3): boolean {
+    return this.sprite?.getSymbolPosition(symbol, x, y, target) ?? false;
+  }
 
   /** Build the sprite for an active entity; a no-op while loaded or loading. A synchronous factory loads immediately. */
   load(): void {

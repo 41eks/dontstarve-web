@@ -47,6 +47,7 @@ export class Burnable {
   readonly timer;
   readonly phase;
   burntime?: number;
+  flammability = 1;
   private fxdata: BurnFXData[] = [];
   private readonly fxchildren: BurnFX[] = [];
   private fxoffset?: { x: number; y: number; z: number };

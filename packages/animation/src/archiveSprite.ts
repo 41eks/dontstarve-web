@@ -187,6 +187,8 @@ export interface ArchiveSprite {
   setFacing(facing: number): void;
   /** AnimState:SetBuild among the definition's `buildArchives`; the clip and frame are kept. */
   setBuildArchive(archive: string): void;
+  /** Follower:FollowSymbol: where `symbol` plus an offset in animation pixels is on the current frame; false when the frame has no such symbol. */
+  getSymbolPosition(symbol: string, x: number, y: number, target: THREE.Vector3): boolean;
   /** AnimState:OverrideSymbol / ClearOverrideSymbol among the preloaded build archives. */
   setSymbolOverride(symbol: string, archive?: string, sourceSymbol?: string): void;
   /** AnimState:Hide / Show for a named symbol layer, such as MakeSnowCovered's `snow`. */
@@ -470,6 +472,14 @@ function constructArchiveSprite(
       sharedAppearance = '';
       previousFrame = -1;
       update(0);
+    },
+    getSymbolPosition(symbol, x, y, target) {
+      const element = animation.frames[Math.max(0, previousFrame)]?.elements.find(element => element.imageHash === smallHash(symbol));
+      if (!element) return false;
+      const [a, b, c, d, tx, ty] = element.matrix;
+      visual.updateMatrix();
+      target.set(a * x + c * y + tx, b * x + d * y + ty, 0).applyMatrix4(visual.matrix);
+      return true;
     },
     setFacing(value: number) {
       if (disposed || facing === value) return;

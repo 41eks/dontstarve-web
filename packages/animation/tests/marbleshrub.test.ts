@@ -1,4 +1,4 @@
-import { prefabDisplay } from '@dontstarve-web/display';
+import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
@@ -33,8 +33,8 @@ function setup() {
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
   const spawnGroundItem: GroundItemManager['spawnGroundItem'] = (definition, position, options) => ground.spawnGroundItem(definition, position, options);
   const { snowLevel, getWatchWorldContent } = bindTestWorld(scheduler);
-  const shrubs = new MarbleShrubManager(scene, { scheduler, physics, getWatchWorldContent, spawnGroundItem });
-  const saplings = new MarbleBeanSaplingManager(scene, { scheduler, shrubs, spawnGroundItem });
+  const shrubs = new MarbleShrubManager(new PrefabDisplayGroup(scene), { scheduler, physics, getWatchWorldContent, spawnGroundItem });
+  const saplings = new MarbleBeanSaplingManager(new PrefabDisplayGroup(scene), { scheduler, shrubs, spawnGroundItem });
   const registry = new EntityRegistry();
   registry.register(PREFAB_DEFINITIONS.marbleShrubs, {
     restore: (_, record) => shrubs.spawn('marbleshrub', new THREE.Vector3(...record.transform.position),
@@ -56,7 +56,7 @@ function setup() {
   const save = () => serializeSave(template, { entities: { marbleshrub: shrubs.exportRecords(), marblebean_sapling: saplings.exportRecords(), ground_item: ground.exportRecords() },
     inventory: inventory.exportState(), elapsedSeconds: scheduler.now, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
   const advance = (seconds: number) => {
-    scheduler.advance(seconds); shrubs.update(seconds, new THREE.Quaternion()); saplings.update(seconds, new THREE.Quaternion());
+    scheduler.advance(seconds); shrubs.update(seconds); saplings.update(seconds);
   };
   return { snowLevel, inventory, scene, scheduler, ground, shrubs, saplings, registry, save, advance,
     dispose: () => { registry.dispose(); inventory.dispose(); scheduler.dispose(); } };
@@ -76,7 +76,7 @@ it('plants a marblebean, digs it back up, and grows it into a mineable shrub tha
     expect(item.components.deployable!.Deploy(point, { position: point, PushEvent: vi.fn() }, {
       canPlaceTurf: () => false, setTile: vi.fn(), itemPlanted: vi.fn(), canDeployDock: () => false, createDock: vi.fn(), canDeployPlow: () => false, deployPlow: () => false, 
       isPassableAtPoint: () => true, isOceanTileAtPoint: () => false,
-      canDeployPlant: () => true, SpawnPrefab: () => prefabInstance(s.saplings.spawn(point)) as never,
+      canDeployPlant: () => true, SpawnPrefab: () => s.saplings.spawn(point) as never,
     })).toBe(true);
     expect(s.inventory.count('marblebean')).toBe(2);
     // The shovel's DIG finishes the one-work sapling and drops its only loot, then cancels growth.
@@ -85,7 +85,7 @@ it('plants a marblebean, digs it back up, and grows it into a mineable shrub tha
     await vi.waitFor(() => expect(dropped(s)).toEqual(['marblebean']));
     expect(workTargets('DIG', s.scene)).toEqual([]);
 
-    await s.saplings.spawn(point);
+    s.saplings.spawn(point);
     s.advance(224); expect(s.shrubs.exportRecords()).toEqual([]);
     s.advance(1);
     // GetRandomWithVariance at .5 gives 225 s; growfromseed rolls shape 2 and colour .75, and only the shrub remains.
@@ -117,7 +117,7 @@ it('plants a marblebean, digs it back up, and grows it into a mineable shrub tha
     let json = '';
     expect((await executeDebugCommand('c_save()', s.inventory, undefined, () => { json = s.save(); })).ok).toBe(true);
     const saved = deserializeSave(json, SAVE_CATALOG), record = saved.world.entities.marbleshrub[0];
-    await restored.shrubs.spawn('marbleshrub', new THREE.Vector3(...record.transform.position),
+    restored.shrubs.spawn('marbleshrub', new THREE.Vector3(...record.transform.position),
       { id: record.id, transform: record.transform, components: { growable: record.components.growable!, marbleShrub: record.components.marbleShrub! } });
     expect(restored.shrubs.exportRecords()).toEqual([s.shrubs.exportRecords()[0]]);
 
@@ -137,3 +137,17 @@ it('plants a marblebean, digs it back up, and grows it into a mineable shrub tha
     await vi.waitFor(() => expect(dropped(s)).toEqual(['marble', 'marble', 'marblebean']));
   } finally { s.dispose(); restored.dispose(); }
 }, 20000);
+
+it('plays a drawn shrub\'s grow clip and then rests on the new stage\'s idle', async () => {
+  vi.spyOn(Math, 'random').mockReturnValue(.5);
+  const s = setup();
+  try {
+    const shrub = s.shrubs.spawn('marbleshrub_short', new THREE.Vector3(12, 0, 24));
+    await prefabDisplay(workTargets('MINE', s.scene)[0].model).artLoaded();
+    expect(shrub.sprite.currentAnimation).toBe('idle_short');
+    s.scheduler.advance(2700); s.shrubs.update(0);
+    expect(shrub.sprite.currentAnimation).toBe('grow_short_to_normal');
+    for (let i = 0; i < 300; i++) s.shrubs.update(1 / 30);
+    expect(shrub.sprite.currentAnimation).toBe('idle_normal');
+  } finally { s.dispose(); }
+});

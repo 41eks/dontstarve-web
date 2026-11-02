@@ -1,3 +1,4 @@
+import { PrefabDisplayGroup } from '../../display/src';
 import { prefabDisplay } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
@@ -72,13 +73,13 @@ it('restores portal ground layers, its declared shadow and statue work state wit
 
 it('grows an unloaded marble shrub and keeps shape, colour and the scheduled mined-removal deadline', async () => {
   const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), awake = createSignal(false);
-  const manager = new MarbleShrubManager(scene, { scheduler, spawnGroundItem, tickingarea: () => createMemo(() => awake.get()) });
+  const manager = new MarbleShrubManager(new PrefabDisplayGroup(scene), { scheduler, spawnGroundItem, tickingarea: () => createMemo(() => awake.get()) });
   try {
-    const model = await manager.spawn('marbleshrub', new THREE.Vector3(12, 0, 24), {
+    const instance = manager.spawn('marbleshrub', new THREE.Vector3(12, 0, 24), {
       id: 'growing-shrub', transform: { position: [12, 0, 24], rotationY: 0 },
       components: { growable: { stage: 1, time: 1 }, marbleShrub: { shapenumber: 3, color: .7 } },
     });
-    const instance = prefabInstance(model)!;
+    const model = workTargets('MINE')[0].model;
     await settle();
     expect(instance.status.peek()).toBe('asleep');
     scheduler.advance(1); await settle();
