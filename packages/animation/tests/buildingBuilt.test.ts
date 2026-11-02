@@ -124,16 +124,16 @@ it('lets a prefab control built effects and keeps interaction blocked until it c
   context!.onComplete();
   expect(sceneActions(model).filter(action => action === 'RUMMAGE')).toEqual(['RUMMAGE']);
   expect(performRummageAction(chest, world.player)).toBe(true);
-  expect(playOnce).toHaveBeenCalledExactlyOnceWith('open', expect.any(Function));
+  expect(playOnce).toHaveBeenCalledExactlyOnceWith('open');
 });
 
 
 it('gives placed and restored chests a map icon at their foot and releases it with the entity', async () => {
-  const { placement, world, click } = await setup({ ...TREASURE_CHEST_DEFINITION, onbuilt: undefined });
+  const { placement, world, click } = await setup({ ...TREASURE_CHEST_DEFINITION, onbuilt: undefined }, 'treasurechest');
   const icons = () => [...miniMapEntities()].filter(icon => world.scene.children.some(model => model.position === icon.position));
   const settle = () => new Promise(resolve => setTimeout(resolve, 0));
   try {
-    await placement.begin('building');
+    await placement.begin('treasurechest');
     // The placer is not the chest: no icon until the build is committed.
     await settle(); expect(icons()).toHaveLength(0);
     click(); await settle();
@@ -141,7 +141,7 @@ it('gives placed and restored chests a map icon at their foot and releases it wi
     expect(built.icon).toBe('treasurechest.png');
     expect(built.position).toBe(world.scene.children[0].position);
     expect([built.position.x, built.position.z]).toEqual([3, 4]);
-    const restored = await placement.spawnFromSave('building', {
+    const restored = await placement.spawnFromSave('treasurechest', {
       id: 'imported-chest', transform: { position: [-12, 0, 24], rotationY: 0 },
       components: { building: { state: 'closed' }, container: { slotCount: 9, slots: [] } } });
     await settle();

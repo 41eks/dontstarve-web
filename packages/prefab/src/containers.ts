@@ -4,7 +4,7 @@ import { Container } from '../../componets/src/container';
 import { IsCookingIngredient } from '../../componets/src/cooking';
 import { isBookCabinetItem } from './books';
 import { PrefabInstance, setModelTag } from './prefabInstance';
-import { addComponent } from './components';
+import { addComponent, removeComponent } from './components';
 import type { Object3D } from 'three';
 
 export type BuildingContainer = Container<InventoryStack, ItemEntity, ItemSlot>;
@@ -25,6 +25,14 @@ export function createBuildingContainer(prefab: StorageBuildingId, inst: object)
         : new Container<InventoryStack, ItemEntity, ItemSlot>(inst, createSlot, loadItem);
     container.SetNumSlots(definition.slotCount);
     return container;
+}
+
+/** RemoveComponent("container") for a building, together with the slots registered in the world's inventory. */
+export function releaseBuildingContainer(inst: PrefabInstance): void {
+    const container: BuildingContainer | undefined = inst.components.container;
+    if (!container) return;
+    inst.worldServices?.unregisterContainer?.(`world:${inst.prefab}:${String(inst.entityId)}`, container);
+    removeComponent(inst, 'container');
 }
 
 export interface BuildingContainerDefinition {

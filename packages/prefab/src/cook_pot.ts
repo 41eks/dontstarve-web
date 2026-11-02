@@ -146,17 +146,27 @@ function onhammered(inst: PrefabInstance): void {
     inst.remove();
 }
 
+function onopen(inst: PrefabInstance): void {
+    if (inst.hasTag('burnt')) return;
+    inst.sprite.playOnce('cooking_pre_loop');
+}
+
+function onclose(inst: PrefabInstance): void {
+    if (inst.hasTag('burnt')) return;
+    if (!(inst.components.stewer as Stewer).IsCooking()) inst.sprite.start('idle_empty');
+    PlaySound('dontstarve/common/cookingpot_close', inst.position);
+}
+
 export const COOK_POT_DEFINITION: AnimatedBuildingDefinition = {
     ...definitions.animatedBuildings.cookpot,
     burnable: { burnTime: 20, fxLevel: 3, propagator: 'small' },
-    interaction: { ...definitions.animatedBuildings.cookpot.interaction, closeImmediately: true },
     onbuilt,
-    oninit: initializePot,
-    createContainer: inst => createBuildingContainer('cookpot', inst),
-    onclose: ({ model, animation }) => {
-        if (!(prefabInstance(model)!.components.stewer as Stewer).IsCooking()) animation.start('idle_empty');
-        PlaySound('dontstarve/common/cookingpot_close', model.position);
+    oninit: context => {
+        context.instance.components.container!.onopenfn = onopen;
+        context.instance.components.container!.onclosefn = onclose;
+        initializePot(context);
     },
+    createContainer: inst => createBuildingContainer('cookpot', inst),
     onrestore: ({ model }, components) => {
         const state = components.stewer;
         if (state) (prefabInstance(model)!.components.stewer as Stewer).OnLoad({

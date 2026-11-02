@@ -16,7 +16,7 @@ import { createSignal, EventEmitter, type HandEquipment } from '../../signals/sr
 import { ItemEntity } from '../../inventory/src';
 import { TORCH_FUEL, configureTorchEntity } from '../../prefab/src/torch';
 import { actionEntity } from '../../prefab/src/actionEntity';
-import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
+import { type AnimatedBuildingInteractionChange, AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
 import { TREASURE_CHEST_DEFINITION } from '../../prefab/src/treasurechest';
 import { COOK_POT_DEFINITION } from '../../prefab/src/cook_pot';
 import type { WorldContext } from '../../prefab/src/worldContext';
@@ -115,7 +115,7 @@ it('walks to the foot, cancels on unequip and commits LIGHT once at frame 13 wit
   } finally { controller.dispose(); burnable.dispose(); torch.destroy(); }
 });
 
-function structureFixture() {
+function structureFixture(onInteractionChange?: (change: AnimatedBuildingInteractionChange<'treasurechest' | 'cookpot'>) => void) {
   vi.stubGlobal('window', new EventTarget());
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   const inventory = createPickupInventory(), scene = new THREE.Scene(), dropLoot = vi.fn();
@@ -124,7 +124,7 @@ function structureFixture() {
     registerContainer: (id, container, saved) => inventory.registerContainer(id, container, saved),
     unregisterContainer: (id, container) => inventory.unregisterContainer(id, container),
   };
-  const placement = new AnimatedBuildingPlacement(world, { treasurechest: TREASURE_CHEST_DEFINITION, cookpot: COOK_POT_DEFINITION }, () => false);
+  const placement = new AnimatedBuildingPlacement(world, { treasurechest: TREASURE_CHEST_DEFINITION, cookpot: COOK_POT_DEFINITION }, () => false, onInteractionChange);
   return { inventory, scene, placement, dropLoot };
 }
 
@@ -148,4 +148,36 @@ it('burns a cooking pot after 20 seconds, drops the product and disables cooking
     workTargets('HAMMER')[0].work();
     expect(model.parent).toBeNull(); expect(placement.exportRecords()).toEqual([]);
   } finally { placement.dispose(); inventory.dispose(); }
+});
+
+it('burns an open chest through DefaultBurntStructureFn, drops its contents at its foot and reloads burnt', async () => {
+  const changes = vi.fn();
+  const { inventory, placement } = structureFixture(changes);
+  const dropped: ItemEntity[] = [], stop = inventory.subscribeDropped(entity => dropped.push(entity));
+  try {
+    const model = await placement.spawnFromSave('treasurechest', { id: 'open_chest', transform: { position: [3, 0, -6], rotationY: 0 }, components: {
+      building: { state: 'closed' }, container: { slotCount: 9, slots: [{ slotKey: '0', item: { entityId: 'chest_seeds', itemId: 'seeds', count: 3 } }] },
+    } });
+    const instance = prefabInstance(model)!, burntup = vi.fn();
+    instance.ListenForEvent('burntup', burntup);
+    instance.components.container!.Open({});
+    expect(changes).toHaveBeenLastCalledWith({ buildId: 'treasurechest', isOpen: true, model });
+    instance.components.burnable!.Ignite();
+    placement.update(10);
+    expect(instance.hasTag('burnt')).toBe(true);
+    expect(burntup).toHaveBeenCalledOnce();
+    expect(instance.sprite.currentAnimation).toBe('burnt');
+    expect(changes).toHaveBeenLastCalledWith({ buildId: 'treasurechest', isOpen: false, model });
+    expect(instance.components.container).toBeUndefined();
+    expect(instance.components.burnable).toBeUndefined();
+    expect(inventory.getContainer('world:treasurechest:open_chest')).toBeUndefined();
+    expect(dropped.map(item => item.snapshot().entityId)).toEqual(['chest_seeds']);
+    expect(dropped[0].transform.position.toArray()).toEqual([3, 0, -6]);
+    const { record } = placement.exportRecords()[0];
+    expect(record.components.building).toMatchObject({ state: 'closed', burnt: true });
+    const restored = prefabInstance(await structureFixture().placement.spawnFromSave('treasurechest', record))!;
+    expect(restored.hasTag('burnt')).toBe(true);
+    expect(restored.sprite.currentAnimation).toBe('burnt');
+    expect(restored.components.container).toBeUndefined();
+  } finally { stop(); placement.dispose(); }
 });

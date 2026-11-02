@@ -16,6 +16,20 @@ export type TreasureChestId = typeof TREASURE_CHEST_ID;
 export const TREASURE_CHEST_SKIN_ARCHIVES: Readonly<Record<string, string>> =
     definitions.animatedBuildings.treasurechest.skinArchives;
 
+/** treasurechest.lua MakeChest: shared by the chests it builds, each with its own burnt and sound branches here. */
+export function onopen(inst: PrefabInstance): void {
+    if (inst.hasTag('burnt')) return;
+    inst.sprite.playOnce('open');
+    PlaySound('dontstarve/wilson/chest_open', inst.position);
+}
+
+export function onclose(inst: PrefabInstance): void {
+    if (inst.hasTag('burnt')) return;
+    inst.sprite.playOnce('close');
+    inst.sprite.pushAnimation('closed', false);
+    PlaySound('dontstarve/wilson/chest_close', inst.position);
+}
+
 function onworked(inst: PrefabInstance): void {
     if (inst.hasTag('burnt')) return;
     inst.components.container?.DropEverything(inst.position);
@@ -55,10 +69,13 @@ export const TREASURE_CHEST_DEFINITION: AnimatedBuildingDefinition = {
     minimapIcon: 'treasurechest.png',
 
     burnable: { burnTime: 10, fxLevel: 2, propagator: 'medium' },
-    onopen: ({ model }) => { PlaySound('dontstarve/wilson/chest_open', model.position); },
-    onclose: ({ model }) => { PlaySound('dontstarve/wilson/chest_close', model.position); },
     // MakeChest adds the chest tag; initializeWorkable assembles this prefab’s work and loot components.
-    oninit: ({ instance }) => { instance.addTag('chest'); initializeWorkable(instance); },
+    oninit: ({ instance }) => {
+        instance.addTag('chest');
+        instance.components.container!.onopenfn = onopen;
+        instance.components.container!.onclosefn = onclose;
+        initializeWorkable(instance);
+    },
     onbuilt,
 };
 

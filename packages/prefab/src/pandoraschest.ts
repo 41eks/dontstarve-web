@@ -1,7 +1,7 @@
 import definitions from './definitions.json' with { type: 'json' };
 import type { AnimatedBuildingDefinition } from './animatedBuildingPlacement';
 import { actionEntity } from './actionEntity';
-import { PlaySound } from './sound';
+import { onclose, onopen } from './treasurechest';
 import { Hauntable } from '../../componets/src/hauntable';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
 import { LunarHailBuildup, RoseInspectable } from '../../componets/src/pandoraschestSignatures';
@@ -20,10 +20,9 @@ export const PANDORAS_CHEST_DEFINITION: AnimatedBuildingDefinition = {
     // fn: AnimState:PlayAnimation("closed"); onclose: PlayAnimation("close") + PushAnimation("closed", false).
     idleHeld: true,
     minimapIcon: 'pandoraschest.png',
-    // onopen / onclose: SOUNDS.open / SOUNDS.close, with the container's own sounds skipped.
-    onopen: ({ model }) => { PlaySound('dontstarve/wilson/chest_open', model.position); },
-    onclose: ({ model }) => { PlaySound('dontstarve/wilson/chest_close', model.position); },
     oninit: ({ model, instance, world }) => {
+        instance.components.container!.onopenfn = onopen;
+        instance.components.container!.onclosefn = onclose;
         // MakeChest AddTag("structure"), AddTag("chest"); MakeSnowCoveredPristine AddTag("SnowCovered").
         for (const tag of ['structure', 'chest', 'SnowCovered']) instance.addTag(tag);
         const inst = actionEntity(model, PANDORAS_CHEST_ID);

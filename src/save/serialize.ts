@@ -36,8 +36,6 @@ export function serializeSave(
   for (const prefab of STORAGE_BUILDING_IDS) {
     for (const chest of entities[prefab] ?? []) {
       if (chest.components.building?.burnt && !chest.components.container) continue;
-      // Open storage is a session interaction; reload saved storage closed.
-      if (prefab !== 'cookpot' && chest.components.building) chest.components.building.state = 'closed';
       const container = { slotCount: buildingContainerDefinition(prefab).slotCount, slots: [] } satisfies SavedContainer;
       chest.components.container = container;
       containers.set(buildingContainerId(prefab, chest.id), container);

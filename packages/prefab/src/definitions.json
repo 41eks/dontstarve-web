@@ -38,11 +38,6 @@
       "archive": "ice_box.zip",
       "buildLabel": "冰箱",
       "idleAnimation": "closed",
-      "interaction": {
-        "closeAnimation": "close",
-        "closedAnimation": "closed",
-        "openAnimation": "open"
-      },
       "name": "IceBox",
       "scale": 0.02,
       "skinArchives": {
@@ -63,12 +58,6 @@
       "archive": "cook_pot.zip",
       "buildLabel": "烹饪锅",
       "idleAnimation": "idle_empty",
-      "interaction": {
-        "closeAnimation": "idle_empty",
-        "closedAnimation": "idle_empty",
-        "openAnimation": "cooking_pre_loop",
-        "openAnimationLoop": true
-      },
       "name": "CookPot",
       "scale": 0.02,
       "skinArchives": {
@@ -178,11 +167,6 @@
       "archive": "treasure_chest.zip",
       "buildLabel": "箱子",
       "idleAnimation": "closed",
-      "interaction": {
-        "closeAnimation": "close",
-        "closedAnimation": "closed",
-        "openAnimation": "open"
-      },
       "name": "TreasureChest",
       "scale": 0.02,
       "skinArchives": {
@@ -235,11 +219,6 @@
       "archive": "pandoras_chest.zip",
       "buildLabel": "华丽箱子",
       "idleAnimation": "closed",
-      "interaction": {
-        "closeAnimation": "close",
-        "closedAnimation": "closed",
-        "openAnimation": "open"
-      },
       "name": "PandorasChest",
       "scale": 0.02,
       "container": {
@@ -267,11 +246,6 @@
         "dragonflychest_upgraded_fantasy": "dynamic/dragonflychest_fantasy.zip",
         "dragonflychest_upgraded_kraken": "dynamic/dragonflychest_kraken.zip"
       },
-      "interaction": {
-        "closeAnimation": "close",
-        "closedAnimation": "closed",
-        "openAnimation": "open"
-      },
       "container": {
         "slotCount": 12,
         "columns": 3,
@@ -287,13 +261,6 @@
       "scale": 0.02,
       "skinArchives": {
         "bookstation_house": "dynamic/bookstation_house.zip"
-      },
-      "interaction": {
-        "closeAnimation": "hit",
-        "closedAnimation": "idle",
-        "openAnimation": "hit",
-        "closeImmediately": true,
-        "openImmediately": true
       },
       "container": {
         "slotCount": 20,
@@ -330,11 +297,6 @@
         "saltbox_nautical": "dynamic/saltbox_nautical.zip",
         "saltbox_shaker": "dynamic/saltbox_shaker.zip",
         "saltbox_victorian": "dynamic/saltbox_victorian.zip"
-      },
-      "interaction": {
-        "closeAnimation": "close",
-        "closedAnimation": "closed",
-        "openAnimation": "open"
       },
       "container": {
         "slotCount": 9,
@@ -378,12 +340,6 @@
         "mushroom_light_hallowed": "dynamic/mushroom_light_hallowed.zip",
         "mushroom_light_tiffany": "dynamic/mushroom_light_tiffany.zip"
       },
-      "interaction": {
-        "closeAnimation": "idle",
-        "closedAnimation": "idle",
-        "openAnimation": "idle",
-        "openAnimationLoop": true
-      },
       "container": {
         "slotCount": 4,
         "columns": 1,
@@ -403,12 +359,6 @@
         "mushroom_light2_hallowed": "dynamic/mushroom_light2_hallowed.zip",
         "mushroom_light2_lily": "dynamic/mushroom_light2_lily.zip",
         "mushroom_light2_victorian": "dynamic/mushroom_light2_victorian.zip"
-      },
-      "interaction": {
-        "closeAnimation": "idle",
-        "closedAnimation": "idle",
-        "openAnimation": "idle",
-        "openAnimationLoop": true
       },
       "container": {
         "slotCount": 4,

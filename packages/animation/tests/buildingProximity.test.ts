@@ -80,14 +80,15 @@ async function setup(definition = TREASURE_CHEST_DEFINITION, id = 'treasurechest
 }
 
 describe('building RUMMAGE and proximity', () => {
-  it('opens the cook pot immediately, loops its animation and closes on RUMMAGE or leaving', async () => {
-    const { placement, distance, act, finish, changes, model, start, mouseActions } = await setup(COOK_POT_DEFINITION, 'cookpot');
+  it('opens the cook pot and its panel at once, and closes on RUMMAGE or leaving', async () => {
+    const { placement, distance, act, finish, changes, model, playOnce, start, mouseActions } = await setup(COOK_POT_DEFINITION, 'cookpot');
     await distance(0);
     expect(getActionString(mouseActions.getMouseActions().left!)).toBe('打开');
     act();
     expect(changes).toHaveBeenLastCalledWith({ buildId: 'cookpot', isOpen: true, model });
-    expect(start).toHaveBeenLastCalledWith('cooking_pre_loop');
-    expect(placement.exportRecords()[0].record.components.building?.state).toBe('open');
+    expect(playOnce).toHaveBeenLastCalledWith('cooking_pre_loop');
+    // cookpot.lua OnSave has no open state: the pot reloads closed.
+    expect(placement.exportRecords()[0].record.components.building?.state).toBe('closed');
     // actions.lua RUMMAGE.strfn: the doer's open container offers CLOSE.
     expect(getActionString(mouseActions.getMouseActions().left!)).toBe('关闭');
     finish();
@@ -113,13 +114,12 @@ describe('building RUMMAGE and proximity', () => {
     // ARRIVE_STEP plus both physics radii: the chest has none, the player .5.
     await distance(1.5);
     act();
-    expect(playOnce).toHaveBeenCalledWith('open', expect.any(Function));
-    finish();
+    expect(playOnce).toHaveBeenCalledWith('open');
     expect(changes).toHaveBeenLastCalledWith({ buildId: 'treasurechest', isOpen: true, model });
   });
 
   it('keeps an open chest nearby through 9 units, then closes it and its panel', async () => {
-    const { distance, act, playOnce, start, finish, changes, model } = await setup();
+    const { distance, act, playOnce, finish, changes, model } = await setup();
     await distance(0);
     act();
     finish();
@@ -127,24 +127,24 @@ describe('building RUMMAGE and proximity', () => {
     expect(changes).toHaveBeenCalledTimes(1);
     await distance(9.01);
     expect(changes).toHaveBeenLastCalledWith({ buildId: 'treasurechest', isOpen: false, model });
-    expect(playOnce).toHaveBeenLastCalledWith('close', expect.any(Function));
+    expect(playOnce).toHaveBeenLastCalledWith('close');
     finish();
-    expect(start).toHaveBeenLastCalledWith('closed');
+    expect(prefabInstance(model)!.sprite.currentAnimation).toBe('closed');
     await distance(0);
     act();
     finish();
     expect(changes).toHaveBeenLastCalledWith({ buildId: 'treasurechest', isOpen: true, model });
   });
 
-  it('cancels opening when the player leaves before the animation finishes', async () => {
-    const { distance, act, playOnce, start, finish, changes, model } = await setup();
+  it('closes at once when the player leaves before the opening clip finishes', async () => {
+    const { distance, act, playOnce, finish, changes, model } = await setup();
     await distance(0);
     act();
     await distance(11);
     finish();
     expect(playOnce.mock.calls.map(([name]) => name)).toEqual(['open', 'close']);
-    expect(changes.mock.calls).toEqual([[{ buildId: 'treasurechest', isOpen: false, model }]]);
-    expect(start).toHaveBeenLastCalledWith('closed');
+    expect(changes.mock.calls).toEqual([[{ buildId: 'treasurechest', isOpen: true, model }], [{ buildId: 'treasurechest', isOpen: false, model }]]);
+    expect(prefabInstance(model)!.sprite.currentAnimation).toBe('closed');
   });
 
   it('leaves a click to the build placer instead of rummaging under it', async () => {
@@ -156,9 +156,9 @@ describe('building RUMMAGE and proximity', () => {
     placement.begin('treasurechest');
     expect(mouseActions.getMouseActions(Object.assign(new Event('pointerdown'), { button: 0 }) as PointerEvent)).toEqual({});
     act();
-    expect(playOnce).not.toHaveBeenCalledWith('open', expect.any(Function));
+    expect(playOnce).not.toHaveBeenCalledWith('open');
     placement.cancel();
     act();
-    expect(playOnce).toHaveBeenCalledWith('open', expect.any(Function));
+    expect(playOnce).toHaveBeenCalledWith('open');
   });
 });

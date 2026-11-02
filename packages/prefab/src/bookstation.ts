@@ -148,6 +148,8 @@ function onbuilt(context: AnimatedBuildingBuiltContext): void {
 }
 
 function oninit({ model, instance, world, art }: AnimatedBuildingEventContext): void {
+    instance.components.container!.onopenfn = onopen;
+    instance.components.container!.onclosefn = onclose;
     const workable = instance.components.workable = new Workable(instance);
     workable.SetWorkAction('HAMMER');
     workable.SetWorkLeft(4);
@@ -177,8 +179,20 @@ function onturnoff(inst: PrefabInstance): void {
     inst.sprite.start('idle');
 }
 
-function hitThenSettle(context: AnimatedBuildingEventContext): void {
-    context.animation.playOnce('hit', () => settle(context));
+function onopen(inst: PrefabInstance): void {
+    if (inst.hasTag('burnt')) return;
+    const on = inst.components.prototyper?.on === true;
+    inst.sprite.playOnce('hit');
+    inst.sprite.pushAnimation(on ? 'proximity_loop' : 'idle', on);
+    PlaySound('dontstarve/wilson/chest_open', inst.position);
+}
+
+function onclose(inst: PrefabInstance): void {
+    if (inst.hasTag('burnt')) return;
+    const on = inst.components.prototyper?.on === true;
+    inst.sprite.playOnce('hit');
+    inst.sprite.pushAnimation(on ? 'proximity_loop' : 'idle', on);
+    PlaySound('dontstarve/wilson/chest_close', inst.position);
 }
 
 function onworked(inst: PrefabInstance): void {
@@ -203,16 +217,6 @@ export const BOOKSTATION_DEFINITION: AnimatedBuildingDefinition = {
     burnable: { burnTime: 30, fxLevel: 4, propagator: 'large' },
     skinInit: bookstation_init_fn,
     onbuilt, oninit,
-    onopen: (context) => {
-        if (actionEntity(context.model, BOOKSTATION_ID).hasTag('burnt')) return;
-        hitThenSettle(context);
-        PlaySound('dontstarve/wilson/chest_open', context.model.position);
-    },
-    onclose: (context) => {
-        if (actionEntity(context.model, BOOKSTATION_ID).hasTag('burnt')) return;
-        hitThenSettle(context);
-        PlaySound('dontstarve/wilson/chest_close', context.model.position);
-    },
     ondispose: ({ model, instance }) => { instance.components.prototyper?.OnRemoveFromEntity(); bookstationOf(model)?.dispose(); delete (prefabInstance(model)! as BookstationInstance).bookstation; },
 };
 

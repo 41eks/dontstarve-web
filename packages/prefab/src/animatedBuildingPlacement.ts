@@ -18,7 +18,7 @@ import { newEntityId, saveGroundPosition, type PlacementSaveRecord, type PlacedE
 import { reskinTarget } from './reskin_tool';
 import type { ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
 import { isPlayerNearby } from './playerProximity';
-import { createBuildingContainer, isStorageBuildingId } from './containers';
+import { createBuildingContainer, isStorageBuildingId, releaseBuildingContainer } from './containers';
 import { performCookAction } from '../../stategraphs/src/cook';
 import { actionEntity, findActionEntity } from './actionEntity';
 import type { MiniMapState } from '../../map/src/minimapState';
@@ -27,7 +27,7 @@ import { BurnableBinding, FireFxHost } from './treeFire';
 import { removeComponent } from './components';
 import type { TradeItem, Trader } from '../../componets/src/trader';
 import { TILE_SIZE } from './tile';
-import { MakeObstaclePhysics } from './standardcomponents';
+import { DefaultBurntStructureFn, MakeObstaclePhysics } from './standardcomponents';
 import { WorldFx } from './world_fx';
 
 export interface AnimatedBuildingDefinition {
@@ -41,7 +41,6 @@ export interface AnimatedBuildingDefinition {
     /** Source PlayAnimation(idle) / PushAnimation(closed, false): the idle and closed clips play once and rest on their last frame. */
     idleHeld?: boolean;
     previewAnimation?: string;
-    interaction?: AnimatedBuildingToggleInteraction;
     /** standardcomponents.lua's burn time, generic fire level and heat propagator size. */
     burnable?: { burnTime: number; fxLevel: 2 | 3 | 4; propagator: 'small' | 'medium' | 'large' };
     /** Sources of the fx children the prefab spawns (its Lua prefab dependencies), declared on the placement's shared resources. */
@@ -52,10 +51,6 @@ export interface AnimatedBuildingDefinition {
     container?: BuildingContainerDefinition;
     /** Runs only after successful placement; call onComplete when built effects finish. */
     onbuilt?: (context: AnimatedBuildingBuiltContext) => void;
-    /** Runs when the container opens (RUMMAGE) and its opening animation starts. */
-    onopen?: (context: AnimatedBuildingEventContext) => void;
-    /** Runs when the container closes (RUMMAGE, the panel or a proximity exit) and its closing animation starts. */
-    onclose?: (context: AnimatedBuildingEventContext) => void;
     scale: number;
     skinArchives?: Readonly<Record<string, string>>;
     skinInit?: PrefabSkinInitializer;
@@ -105,24 +100,11 @@ export interface AnimatedBuildingBuiltContext extends AnimatedBuildingEventConte
     onComplete: () => void;
 }
 
-/** Animations used by buildings that toggle between closed and open on click. */
-export interface AnimatedBuildingToggleInteraction {
-    closeAnimation: string;
-    closedAnimation: string;
-    openAnimation: string;
-    openAnimationLoop?: boolean;
-    closeImmediately?: boolean;
-    /** Opening plays no clip of its own; onopen drives the animation (bookstation hit). */
-    openImmediately?: boolean;
-}
-
 export interface AnimatedBuildingInteractionChange<BuildId extends string> {
     buildId: BuildId;
     isOpen: boolean;
     model: THREE.Group;
 }
-
-type AnimatedBuildingInteractionState = 'closed' | 'opening' | 'open' | 'closing';
 
 interface AnimatedBuildingInstance<BuildId extends string> {
     buildId: BuildId;
@@ -133,11 +115,11 @@ interface AnimatedBuildingInstance<BuildId extends string> {
     readonly animation: SpriteState;
     /** The entity's own AnimState. */
     readonly animState: AnimState;
-    interactionState?: AnimatedBuildingInteractionState;
     isPlacing: boolean;
     readonly skinId: Signal<string | undefined>;
     stopSkin?: () => void;
     stopActivity?: () => void;
+    stopContainerEvents?: () => void;
     burn?: BurnableBinding;
     minimap?: MiniMapState;
 }
@@ -239,10 +221,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
 
     /** Restores a logical record directly, without crafting or placement callbacks. */
     spawnFromSave(buildId: BuildId, record: PlacementSaveRecord): THREE.Group {
-        const building = this.createInstance(
-            buildId, record.components.building?.skinId, false,
-            record.components.building?.state,
-        );
+        const building = this.createInstance(buildId, record.components.building?.skinId, false);
         building.instance.entityId = record.id;
         building.instance.saveRecord = record;
         const [x, y, z] = record.transform.position;
@@ -253,7 +232,12 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             container?.OnLoad({ items: Object.fromEntries(record.components.container.slots.map(({ slotKey, item }) => [String(Number(slotKey) + 1), item])) });
         }
         this.definitions[buildId].onrestore?.(this.eventContext(building), record.components);
-        if (record.components.building?.burnt) this.burnBuilding(building);
+        // onload: data.burnt runs the burnable's onburnt; a structure whose burnable is not ported runs the same source function.
+        if (record.components.building?.burnt) {
+            const burnable = building.instance.components.burnable;
+            if (burnable) burnable.onburnt?.(building.instance);
+            else DefaultBurntStructureFn(building.instance);
+        }
         this.displays.mount(building.display);
         this.placed.push(building); this.mouseRecords.set(building.model, building);
         return building.model;
@@ -277,10 +261,8 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
                     } } : {}),
                     ...this.definitions[building.buildId].exportComponents?.(this.eventContext(building)),
                     building: {
-                        // Persist the target state of an interaction, not a transient animation frame.
-                        state: building.interactionState === undefined ? 'idle'
-                            : building.interactionState === 'open' || building.interactionState === 'opening'
-                                ? 'open' : 'closed',
+                        // Source OnSave has no open state: a container always reloads closed.
+                        state: this.definitions[building.buildId].container ? 'closed' : 'idle',
                         ...(building.skinId.peek() === undefined ? {} : { skinId: building.skinId.peek() }),
                         // A burning structure saves as burnt; a firepit's own fire is restored from its fuel.
                         ...(building.instance.hasTag('burnt') || (this.definitions[building.buildId].burnable
@@ -313,11 +295,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             container.SetAutoClose(this.worldContext.getWatchWorldContent ?? getBoundWatchWorldContent(), 3 * (TILE_SIZE / 4));
             this.worldContext.registerContainer?.(`world:${buildId}:${String(building.instance.entityId)}`, container,
                 building.instance.saveRecord?.components.container);
-            container.onopenfn = () => this.openInteraction(building);
-            container.onclosefn = () => {
-                if (building.interactionState !== 'open' && building.interactionState !== 'opening') return;
-                this.closeInteraction(building);
-            };
+            this.watchContainer(building);
         }
         this.definitions[buildId].oninit?.(this.eventContext(building));
         const definition = this.definitions[buildId];
@@ -330,8 +308,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         if (workable || definition.burnable) {
             const entity = actionEntity(model, buildId);
             new ToolMouseTarget(entity, building.instance, entity.components.workable, this.worldContext.handEquipment, {
-                canInteractWithoutTool: () => !entity.hasTag('burnt') && !!(definition.interaction
-                    || definition.container || building.instance.components?.container || entity.components.trader || entity.components.fueled
+                canInteractWithoutTool: () => !entity.hasTag('burnt') && !!(definition.container || building.instance.components?.container || entity.components.trader || entity.components.fueled
                     || entity.components.prototyper || entity.components.occupiable),
             });
         }
@@ -344,31 +321,11 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         building.burn = new BurnableBinding(building.instance, {
             ...this.definitions[building.buildId].burnable!,
             onExtinguish: () => { PlaySound('dontstarve/common/fireOut', building.instance.position); },
-            onBurnt: () => this.burnBuilding(building),
+            onBurnt: () => {
+                DefaultBurntStructureFn(building.instance);
+                building.burn?.dispose(); building.burn = undefined;
+            },
         }, { fire: this.fireFx });
-    }
-
-    /** DefaultBurntStructureFn, including the supported container/stewer/workable branches. */
-    private burnBuilding(building: AnimatedBuildingInstance<BuildId>): void {
-        const { model } = building, entity = actionEntity(model, building.buildId);
-        if (building.instance.hasTag('burnt')) return;
-        entity.addTag('burnt');
-        if (entity.components.burnable) entity.components.burnable.canlight = false;
-        entity.PushEvent?.('burntup', undefined);
-        entity.components.prototyper?.OnRemoveFromEntity();
-        delete entity.components.prototyper;
-        entity.components.workable?.SetWorkLeft(1);
-        const container = building.instance.components?.container;
-        container?.DropEverything(entity.getPosition());
-        container?.Close();
-        this.releaseContainer(building);
-        const stewer = building.instance.components.stewer;
-        stewer?.StopCooking('fire');
-        stewer?.OnRemoveFromEntity();
-        delete building.instance.components.stewer;
-        building.burn?.dispose(); building.burn = undefined;
-        building.interactionState = this.definitions[building.buildId].interaction ? 'closed' : undefined;
-        building.animation.start('burnt');
     }
 
     private releaseBurnable(building: AnimatedBuildingInstance<BuildId>): void {
@@ -456,13 +413,21 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         building.stopSkin = undefined;
     }
 
+    /** The application's storage panel follows the container's onopen and onclose events. */
+    private watchContainer(building: AnimatedBuildingInstance<BuildId>): void {
+        const { buildId, model, instance } = building;
+        const stopOpen = instance.ListenForEvent('onopen', () => this.onInteractionChange?.({ buildId, isOpen: true, model }));
+        const stopClose = instance.ListenForEvent('onclose', () => this.onInteractionChange?.({ buildId, isOpen: false, model }));
+        building.stopContainerEvents = () => { stopOpen(); stopClose(); };
+    }
+
     private releaseContainer(building: AnimatedBuildingInstance<BuildId>): void {
+        building.stopContainerEvents?.(); building.stopContainerEvents = undefined;
         const container = building.instance.components?.container;
         if (!container) return;
         container.onclosefn = undefined;
         container.onopenfn = undefined;
-        this.worldContext.unregisterContainer?.(`world:${building.buildId}:${String(building.instance.entityId)}`, container);
-        removeComponent(building.instance, 'container');
+        releaseBuildingContainer(building.instance);
     }
 
     dispose(): void {
@@ -558,57 +523,6 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         });
     }
 
-    /** container.onopenfn: RUMMAGE opened the container, so the building plays its opening (treasurechest onopen). */
-    private openInteraction(building: AnimatedBuildingInstance<BuildId>) {
-        const definition = this.definitions[building.buildId];
-        const interaction = definition.interaction;
-        if (!interaction || actionEntity(building.model, building.buildId).hasTag('burnt')) return;
-        definition.onopen?.(this.eventContext(building));
-        const opened = () => this.onInteractionChange?.({ buildId: building.buildId, isOpen: true, model: building.model });
-        if (interaction.openImmediately) {
-            building.interactionState = 'open';
-            opened();
-            return;
-        }
-        if (interaction.openAnimationLoop) {
-            building.interactionState = 'open';
-            building.animation.start(interaction.openAnimation);
-            opened();
-            return;
-        }
-        building.interactionState = 'opening';
-        building.animation.playOnce(interaction.openAnimation, () => {
-            building.interactionState = 'open';
-            opened();
-        });
-    }
-
-    private closeInteraction(building: AnimatedBuildingInstance<BuildId>) {
-        if (actionEntity(building.model, building.buildId).hasTag('burnt')) return;
-        const definition = this.definitions[building.buildId];
-        const interaction = definition.interaction;
-        if (!interaction || (building.interactionState !== 'open'
-            && building.interactionState !== 'opening')) return;
-
-        building.interactionState = interaction.closeImmediately ? 'closed' : 'closing';
-        definition.onclose?.(this.eventContext(building));
-        this.onInteractionChange?.({
-            buildId: building.buildId,
-            isOpen: false,
-            model: building.model,
-        });
-        if (interaction.closeImmediately) return;
-        if (definition.idleHeld) {
-            building.animation.playOnce(interaction.closeAnimation, () => { building.interactionState = 'closed'; });
-            building.animation.pushAnimation(interaction.closedAnimation, false);
-            return;
-        }
-        building.animation.playOnce(interaction.closeAnimation, () => {
-            building.animation.start(interaction.closedAnimation);
-            building.interactionState = 'closed';
-        });
-    }
-
     private createPlacer(buildId: BuildId, skinId?: string): BuildingPlacer<BuildId> {
         const definition = this.definitions[buildId];
         const art = this.declareArt(this.placerSprites, buildId, skinId);
@@ -655,18 +569,15 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         buildId: BuildId,
         skinId?: string,
         attach = true,
-        state?: 'idle' | 'closed' | 'open',
     ): AnimatedBuildingInstance<BuildId> {
         if (this.disposed) throw new Error('Placement has been disposed');
         const definition = this.definitions[buildId];
         const { source, animState, initialize } = this.declareArt(this.sprites, buildId, skinId);
-        const initialAnimation = state === 'open' && definition.interaction ? definition.interaction.openAnimation : this.idleAnimation(buildId);
-        const held = state === 'open' ? !definition.interaction?.openAnimationLoop : definition.idleHeld === true;
         // The fx it spawns load with the building, so that they are drawn when they are spawned.
         const dependencies = [
             ...definition.burnable ? [this.fireFx.source] : [],
             ...definition.fxSources?.(this.sprites) ?? []];
-        const { instance: entity, display } = createPrefabEntity(buildId, source, { name: initialAnimation, held, billboard: true },
+        const { instance: entity, display } = createPrefabEntity(buildId, source, { name: this.idleAnimation(buildId), held: definition.idleHeld === true, billboard: true },
             definition.name, initialize, undefined, { alignBottom: true, dependencies });
         const { model } = display;
         const instance: AnimatedBuildingInstance<BuildId> = {
@@ -676,13 +587,9 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             display,
             animation: entity.sprite,
             animState,
-            ...(definition.interaction ? { interactionState: state === 'open' ? 'open' as const : 'closed' as const } : {}),
             isPlacing: false,
             skinId: entity.sprite.skinId,
         };
-        if (state === 'open' && definition.interaction?.openAnimationLoop) {
-            instance.animation.start(definition.interaction.openAnimation);
-        }
         if (attach) instance.instance.entityId = newEntityId();
         if (attach) this.displays.mount(display);
         return instance;

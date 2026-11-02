@@ -9,6 +9,7 @@ interface ContainerEntity {
   isValid?(): boolean;
   readonly isRemoved?: boolean;
   readonly removal?: ReadonlySignal<boolean>;
+  PushEvent?(name: string, data?: unknown): void;
 }
 
 /** Detached presentation data; empty slots remain explicit so UI can clear them. */
@@ -44,8 +45,8 @@ export class Container<TRecord, TItem extends ContainerItem<TRecord>, TSlot exte
   }
   canbeopened = true;
   openlimit?: number;
-  onopenfn?: (inst: object, doer?: object) => void;
-  onclosefn?: (inst: object, doer?: object) => void;
+  onopenfn?(inst: object, doer?: object): void;
+  onclosefn?(inst: object, doer?: object): void;
   /** InventoryStore supplies authoritative removal; detached containers supply world dropping. */
   dropItem?: (item: TItem, slot: number, position: { x: number; y: number; z: number }) => void;
   private readonly slotList: TSlot[] = [];
@@ -194,6 +195,7 @@ export class Container<TRecord, TItem extends ContainerItem<TRecord>, TSlot exte
       const removed = watchSignal(removal, stop => this.openerCleanups.set(doer, stop));
       createEffect(() => { if (removed.get()) this.Close(doer); });
     }
+    (this.inst as ContainerEntity).PushEvent?.('onopen', { doer });
     if (!wasOpen) this.onopenfn?.(this.inst, doer);
     this.publishLifecycle();
     if (this.IsOpen()) this.watchOpeners();
@@ -208,6 +210,7 @@ export class Container<TRecord, TItem extends ContainerItem<TRecord>, TSlot exte
     }
     if (!this.IsOpen()) { this.stopPositions?.(); this.stopPositions = undefined; }
     if (wasOpen && !this.IsOpen()) this.onclosefn?.(this.inst, doer);
+    if (wasOpen) (this.inst as ContainerEntity).PushEvent?.('onclose', { doer });
     if (wasOpen) this.publishLifecycle();
   }
 
