@@ -482,6 +482,7 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `ruins_statue_head_nogem` | 可生成 | 不能入栏 | `prefabs/statueruins.lua` |
 | `lichen` | 可生成 | 不能入栏 | `prefabs/lichen.lua` |
 | `chessjunk1`、`chessjunk2`、`chessjunk3` | 可生成 | 不能入栏 | `prefabs/chessjunk.lua` |
+| `chesspiece_malbatross_marble` | 可生成 | 不能入栏 | `prefabs/chesspieces.lua`（存档组名 `chesspiece_malbatross`；其他材质和其他雕像未接入） |
 | `archive_centipede_husk` | 可生成 | 不能入栏 | `prefabs/archive_centipede.lua`（仅残骸；活体 `archive_centipede` 未接入） |
 | `chester` | 可生成 | 不能入栏 | `prefabs/chester.lua` |
 | `hutch` | 可生成 | 不能入栏 | `prefabs/hutch.lua` |

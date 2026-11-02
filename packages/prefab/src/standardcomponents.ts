@@ -61,6 +61,15 @@ export function MakeObstaclePhysics(inst: PhysicsEntity, rad: number, height = 2
   return phys;
 }
 
+/**
+ * standardcomponents.lua MakeHeavyObstaclePhysics(inst, rad, height): the same static capsule as an obstacle, plus the
+ * `blocker` tag. Friction, damping and restitution only matter once the heavyobstaclephysics component turns it into an item.
+ */
+export function MakeHeavyObstaclePhysics(inst: PhysicsEntity & { addTag(tag: string): void }, rad: number, height = 2): PhysicsState {
+  inst.addTag('blocker');
+  return MakeObstaclePhysics(inst, rad, height);
+}
+
 /** standardcomponents.lua MakeSmallObstaclePhysics(inst, rad, height): collides with characters but not giants. */
 export function MakeSmallObstaclePhysics(inst: PhysicsEntity, rad: number, height = 2): PhysicsState {
   const phys = inst.physics;

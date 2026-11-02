@@ -108,7 +108,7 @@ KLEI     1 return {
     encode_user_path=true,
     game_mode="survival",
     max_players=1,
-    name="SAMPLE的复制品",
+    name="lack的世界",
     online_mode=true,
     password="",
     playstyle="endless",

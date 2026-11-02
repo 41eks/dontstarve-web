@@ -1,0 +1,173 @@
+{
+  "player": {
+    "prefab": "wilson",
+    "shardId": "caves",
+    "transform": {
+      "position": [
+        1003.257,
+        0.0,
+        -495.711
+      ],
+      "rotationY": 0
+    },
+    "stats": {
+      "health": 150,
+      "hunger": 150,
+      "sanity": 200
+    },
+    "inventory": {
+      "containers": {
+        "player:inventory": {
+          "slotCount": 15,
+          "slots": [
+            {
+              "slotKey": "0",
+              "item": {
+                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_0",
+                "itemId": "panflute",
+                "count": 1
+              }
+            },
+            {
+              "slotKey": "1",
+              "item": {
+                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_1",
+                "itemId": "flint",
+                "count": 35
+              }
+            },
+            {
+              "slotKey": "2",
+              "item": {
+                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_2",
+                "itemId": "nightmarefuel",
+                "count": 26
+              }
+            },
+            {
+              "slotKey": "3",
+              "item": {
+                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_3",
+                "itemId": "wortox_souljar",
+                "count": 1
+              }
+            },
+            {
+              "slotKey": "4",
+              "item": {
+                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_4",
+                "itemId": "wortox_soul",
+                "count": 10
+              }
+            },
+            {
+              "slotKey": "5",
+              "item": {
+                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_5",
+                "itemId": "voidclothhat",
+                "count": 1
+              }
+            },
+            {
+              "slotKey": "6",
+              "item": {
+                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_6",
+                "itemId": "horrorfuel",
+                "count": 5
+              }
+            },
+            {
+              "slotKey": "7",
+              "item": {
+                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_7",
+                "itemId": "wortox_souljar",
+                "count": 1
+              }
+            },
+            {
+              "slotKey": "8",
+              "item": {
+                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_8",
+                "itemId": "orangestaff",
+                "count": 1
+              }
+            },
+            {
+              "slotKey": "9",
+              "item": {
+                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_9",
+                "itemId": "rocks",
+                "count": 40
+              }
+            },
+            {
+              "slotKey": "10",
+              "item": {
+                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_10",
+                "itemId": "yellowstaff",
+                "count": 1,
+                "skinId": "starstaff_relic",
+                "remainingUses": 12
+              }
+            },
+            {
+              "slotKey": "11",
+              "item": {
+                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_11",
+                "itemId": "rocks",
+                "count": 33
+              }
+            },
+            {
+              "slotKey": "12",
+              "item": {
+                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_12",
+                "itemId": "voidcloth_boomerang",
+                "count": 1
+              }
+            },
+            {
+              "slotKey": "13",
+              "item": {
+                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_13",
+                "itemId": "voidcloth",
+                "count": 10
+              }
+            },
+            {
+              "slotKey": "14",
+              "item": {
+                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_14",
+                "itemId": "nitre",
+                "count": 26
+              }
+            }
+          ]
+        },
+        "player:equipment": {
+          "slotCount": 3,
+          "slots": [
+            {
+              "slotKey": "head",
+              "item": {
+                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_equip_head",
+                "itemId": "molehat",
+                "count": 1
+              }
+            }
+          ]
+        },
+        "player:cursor": {
+          "slotCount": 1,
+          "slots": []
+        }
+      },
+      "bufferedBuilds": []
+    }
+  },
+  "migration": {
+    "portalid": 4,
+    "worldid": "2909482339",
+    "sessionid": "04E26ADB66396E8D"
+  }
+}

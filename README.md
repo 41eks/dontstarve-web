@@ -49,7 +49,7 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 
 玩家美术改用 Wortox 默认外观（`wortox_none`）：本体 `anim/dynamic/wortox.zip` / `.dyn`，幽灵 `anim/dynamic/ghost_wortox_build.zip` / `.dyn`；地图图标和物品栏自检头像同步使用 Wortox。共用 `wilson` 动画 bank、装备符号覆盖、死亡／复活及存档流程沿用现有实现，角色数值和存档角色字段沿用现有实现。资源按原路径和字节镜像，运行 `python3 packages/prefab/scripts/import-player-art.py --check` 校验，去掉 `--check` 可重新导入。调试命令语法、参数和支持的 `c_spawn` / `c_give` ID 不变。
 
-默认按 `public/saves/Cluster_1/session.json` 选择各 Session 的最新快照及唯一未迁移的玩家；当前是位于 Atrium 的 Caves `0000000033`。存档转换方法见 [存档转换](scripts/save-convert.md)。可用 `?save=Cluster_1/Master.json` 显式加载地表，或 `?save=initial-world.json` 加载原地表存档。也可用 `?saveData=<base64url>` 直接传入存档 JSON（UTF-8 后按 base64url 编码，无需对应文件），它优先于 `?save=`，并与文件存档一样经过完整校验；浏览器测试用它从测试内构造的存档启动。`c_save()` 无参数，下载包含 `Cluster_1/` 目录的 `Cluster_1.zip`，新增当前世界快照及对应的 Session 玩家文件，更新索引和当前分片的便捷副本，并保留旧快照。将 ZIP 解压到 `public/saves/`，覆盖 `Cluster_1/` 后重载。
+默认按 `public/saves/Cluster_1/session.json` 选择各 Session 的最新快照及唯一未迁移的玩家；当前是地表 Master `0000000148`。存档转换方法见 [存档转换](scripts/save-convert.md)。可用 `?save=Cluster_1/Master.json` 显式加载地表，或 `?save=initial-world.json` 加载原地表存档。也可用 `?saveData=<base64url>` 直接传入存档 JSON（UTF-8 后按 base64url 编码，无需对应文件），它优先于 `?save=`，并与文件存档一样经过完整校验；浏览器测试用它从测试内构造的存档启动。`c_save()` 无参数，下载包含 `Cluster_1/` 目录的 `Cluster_1.zip`，新增当前世界快照及对应的 Session 玩家文件，更新索引和当前分片的便捷副本，并保留旧快照。将 ZIP 解压到 `public/saves/`，覆盖 `Cluster_1/` 后重载。
 
 已实现树木的导入白名单包含 `evergreen`、`deciduoustree`、`moon_tree`、`mushtree_moon`、`mushtree_medium`、`mushtree_tall`，以及月树幼苗 `moonbutterfly_sapling`。本次重新导入默认存档新增 198 棵月树。常青树、桦树、月树按 Lua 使用原版地图图标、优先级 `-1`，砍倒或烧毁后切换树桩／焦木图标；蘑菇树沿用现有图标。图标属于逻辑树，远处卸载模型时继续显示，永久移除时清理。月树保留大小、生长及 `moonTreeTimer` 腐朽计时器；幼苗保留 `saplingTimer`，按原版不显示地图图标。现有 `c_spawn("evergreen_normal")`、`c_spawn("deciduoustree_normal")`、`c_spawn("moon_tree_normal")` 等命令与支持 ID 不变；`c_save()` 保存树木身份、位置及相应组件状态。
 
@@ -404,6 +404,8 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 ### c_spawn 支持的对象
 
 `c_spawn("chessjunk1")`、`c_spawn("chessjunk2")`、`c_spawn("chessjunk3")` 分别在玩家脚点生成三种棋械残骸；都是世界 prefab，不支持 `c_give`。三者使用 `chessmonster_ruins.zip`，初始声明非循环 `idle1/2/3`；已修复记录按 Lua `OnLoad` 恢复循环 `hit1/2/3`。`c_save()` 保留 ID、位置和已修复记录中的 `repaired`、`repairerid`、`repairerchar`。洞穴导入分别含 23、33、25 个。无皮肤；修复、敲击、战利品及重生行为未接入。
+
+`c_spawn("chesspiece_malbatross_marble")` 在玩家脚点生成大理石邪天翁雕像，无额外参数；按世界 prefab 处理，不支持 `c_give`。使用 `anim/chesspiece.zip` 的 bank `chesspiece` 和 `anim/swap_chesspiece_malbatross_marble.zip` 的 build，按 Lua 声明非循环 `idle`，带 `heavy`、`blocker` 标签，半径 0.45 的障碍碰撞；锤子一击掉落 1 个 `marble` 并播放 `collapse_small` 后移除。无皮肤、无地图图标。原版 `SetPrefabName` 让所有材质都以 `chesspiece_malbatross` 入档，导入器把 `materialid` 为 1 的记录转成本 ID，其他材质尚未移植，遇到时导入报错；默认 `Cluster_1/Master.json` 含 1 座。`c_save()` 保留 ID、位置、`chesspiece.materialid` 和 `submersible.force_no_repositioning`，读档恢复 `idle`。扛起、装备减速、落水打捞、作祟效果尚未接入。
 
 `c_spawn("archive_centipede_husk")` 在玩家脚点生成档案馆蜈蚣残骸，无额外参数；它是世界 prefab，不支持 `c_give`。原版 `archive_centipede.lua` 的 `huskfn` 使用 bank `archive_centipede`、build `archive_centipede_build`（`anim/archive_centipede.zip` + `anim/archive_centipede_build.zip`），构造时声明非循环 `idle_full`，tag 为 `security_powerpoint`、`mech`、`electricdamageimmune`，无小地图图标与碰撞体。生命值 300，每秒回复 1 点；生命百分比跨越 66%／33% 时按源 `OnHealthDelta` 播放 `idle_med`／`idle_low`，或 `low_to_med`、`med_to_full` 后排队对应待机，低于 20% 时移除 `combat` 并保底 15%。每 3～6 秒（之后每 8～18 秒）在待机时按生命区段播放 `idle2_full/med/low` 并排队对应待机，同时播放 `electricity/idle2` 音效。源没有 `OnSave`，`c_save()` 保存 ID、脚点和 `health`（`current`／`maximum`）；按 `health:OnLoad` 读档不切换动画，仍为 `idle_full`。洞穴导入存档包含 2 个（源存档每个洞穴快照 2 个）。无皮肤；活体 `archive_centipede`、`possess` 复活、攻击接线和闹鬼效果尚未接入。
 

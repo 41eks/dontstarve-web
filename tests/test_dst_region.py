@@ -320,6 +320,14 @@ class RegionImportTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 convert(bad, {'skin': None})
 
+    def test_malbatross_sculpture_source_group_imports_as_marble_and_rejects_other_materials(self):
+        convert = PREFAB['ENTITY_WHITELIST']['chesspiece_malbatross']
+        self.assertEqual(convert({'materialid': 1, 'submersible': {'force_no_repositioning': False}}),
+                         {'chesspiece': {'materialid': 1}, 'submersible': {'force_no_repositioning': False}})
+        self.assertEqual(PREFAB['TARGET_PREFABS']['chesspiece_malbatross'], 'chesspiece_malbatross_marble')
+        with self.assertRaises(ValueError):
+            convert({'materialid': 2})
+
     def test_entity_whitelist_imports_all_nodes_and_preserves_source_state_and_identity(self):
         nodes = [0] * 48
         nodes[3 * 8 + 3] = nodes[3 * 8 + 4] = 1

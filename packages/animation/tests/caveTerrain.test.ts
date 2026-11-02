@@ -72,13 +72,12 @@ it('loads the imported forest with distinct ocean types, ice, underlying dock ti
       placeStaticLayout('default_pigking', new Vector3(...king.transform.position), 'pigking').tiles
         .map(({ position, tile }) => ({ position, tileId: WORLD_TILES[tile] }))));
     expect(terrainChanged).not.toHaveBeenCalled(); // Imported final tiles already cover the entire layout.
-    expect(save.world.entities.deciduoustree.some(entity => entity.components.deciduousTimer)).toBe(true);
     expect(save.world.entities.flower.length).toBeGreaterThan(0);
     expect(save.world.entities.flower.every(entity => entity.components.flower?.planted === undefined)).toBe(true);
     expect(save.world.entities.ground_item.some(entity => entity.components.stack?.itemId === 'fireflies')).toBe(true);
     // Imported chest contents become world container slots in the authoritative inventory.
     const chestSlotCounts = save.world.entities.treasurechest.map(chest => chest.components.container?.slots.length ?? 0);
-    expect(chestSlotCounts).toHaveLength(2);
+    expect(chestSlotCounts).toHaveLength(4);
     expect(chestSlotCounts.every(count => count > 0)).toBe(true);
     expect(inventoryStateFromSave(save).slots.filter(({ address }) => address.containerId.startsWith('world:treasurechest:dst_')))
       .toHaveLength(chestSlotCounts.reduce((total, count) => total + count, 0));

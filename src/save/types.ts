@@ -73,6 +73,8 @@ export interface SavedEntity {
     atriumGate?: import('@dontstarve-web/prefab/atrium_gate').AtriumGateRecord['components']['atriumGate'];
     ruinsStatueMage?: import('@dontstarve-web/prefab/ruins_statue_mage').RuinsStatueGemRecord['components']['ruinsStatueMage'];
     chessJunk?: import('@dontstarve-web/prefab/chessjunk').ChessJunkRecord['components']['chessJunk'];
+    chesspiece?: import('@dontstarve-web/prefab/chesspieces').ChesspieceSaveState;
+    submersible?: import('@dontstarve-web/prefab/chesspieces').SubmersibleSaveState;
     charliecutscene?: import('@dontstarve-web/prefab/atrium_gate').AtriumGateRecord['components']['charliecutscene'];
     worldsettingstimer?: import('@dontstarve-web/prefab/atrium_gate').AtriumGateRecord['components']['worldsettingstimer'];
     entitytracker?: import('@dontstarve-web/prefab/atrium_gate').AtriumGateRecord['components']['entitytracker'];

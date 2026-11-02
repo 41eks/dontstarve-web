@@ -22,6 +22,7 @@ import { ATRIUM_GATE_ID, ATRIUM_GATE_TIMER_NAMES } from '@dontstarve-web/prefab/
 import { RUINS_STATUE_MAGE_ID, RUINS_STATUE_MAGE_NOGEM_ID, RUINS_STATUE_HEAD_ID, RUINS_STATUE_HEAD_NOGEM_ID, RUINS_STATUE_GEMS } from '@dontstarve-web/prefab/ruins_statue_mage';
 import { ATRIUM_STATUE_ID } from '@dontstarve-web/prefab/atrium_statue';
 import { CHESSJUNK_IDS } from '@dontstarve-web/prefab/chessjunk';
+import { CHESSPIECE_MALBATROSS_MARBLE_ID, CHESSPIECE_MARBLE_MATERIAL_ID } from '@dontstarve-web/prefab/chesspieces';
 import { ARCHIVE_CENTIPEDE_HUSK_ID } from '@dontstarve-web/prefab/archive_centipede';
 import { parseDragonflyState } from './save/dragonfly';
 import { SKELETON_IDS, SKELETON_ANIMS, SKELETON_PLAYER_ID } from '@dontstarve-web/prefab/skeleton';
@@ -287,6 +288,22 @@ export const PREFAB_DEFINITIONS = {
       ...(state.repairerid === undefined ? {} : { repairerid: state.repairerid as string }),
       ...(state.repairerchar === undefined ? {} : { repairerchar: state.repairerchar as string }) } };
   }, true, ['chessmonster_ruins.zip']),
+  // chesspieces.lua onsave writes materialid and submersible:OnSave its flag; this prefab is only ever marble.
+  chesspieces: definePrefabs([CHESSPIECE_MALBATROSS_MARBLE_ID], (value, path) => {
+    const data = object(value, path, ['chesspiece', 'submersible']);
+    const components: import('./save/types').SavedEntity['components'] = {};
+    if (data.chesspiece !== undefined) {
+      if (object(data.chesspiece, `${path}.chesspiece`, ['materialid']).materialid !== CHESSPIECE_MARBLE_MATERIAL_ID)
+        fail(`${path}.chesspiece.materialid`, 'expected marble');
+      components.chesspiece = { materialid: CHESSPIECE_MARBLE_MATERIAL_ID };
+    }
+    if (data.submersible !== undefined) {
+      const flag = object(data.submersible, `${path}.submersible`, ['force_no_repositioning']).force_no_repositioning;
+      if (typeof flag !== 'boolean') fail(`${path}.submersible.force_no_repositioning`, 'expected boolean');
+      components.submersible = { force_no_repositioning: flag as boolean };
+    }
+    return components;
+  }, true, [{ animation: 'chesspiece.zip', build: 'swap_chesspiece_malbatross_marble.zip' }]),
   // archive_centipede.lua huskfn has no OnSave; health:OnSave writes the current health.
   archiveCentipedeHusks: definePrefabs([ARCHIVE_CENTIPEDE_HUSK_ID], componentParser({ keys: ['health'] }), true,
     [{ animation: 'archive_centipede.zip', build: 'archive_centipede_build.zip' }]),
@@ -363,9 +380,10 @@ export const PREFAB_DEFINITIONS = {
       const timers = object(timer.timers, `${path}.dragonflySpawner.worldsettingstimer.timers`, ['regen_dragonfly']);
       const value = object(timers.regen_dragonfly, `${path}.dragonflySpawner.worldsettingstimer.timers.regen_dragonfly`,
         ['timeleft', 'paused', 'initial_time']);
-      if (typeof value.paused !== 'boolean') fail(`${path}.dragonflySpawner.worldsettingstimer.paused`, 'expected boolean');
+      // worldsettingstimer.lua OnSave writes v.paused, which is nil for a timer that was never paused.
+      if (value.paused !== undefined && typeof value.paused !== 'boolean') fail(`${path}.dragonflySpawner.worldsettingstimer.paused`, 'expected boolean');
       worldsettingstimer = { timers: { regen_dragonfly: { timeleft: number(value.timeleft, `${path}.dragonflySpawner.worldsettingstimer.timeleft`, 0),
-        paused: value.paused, initial_time: number(value.initial_time, `${path}.dragonflySpawner.worldsettingstimer.initial_time`, 0) } } };
+        paused: value.paused === true, initial_time: number(value.initial_time, `${path}.dragonflySpawner.worldsettingstimer.initial_time`, 0) } } };
     }
     return { dragonflySpawner: { childspawner, ...(worldsettingstimer ? { worldsettingstimer } : {}) } };
   }, true),
