@@ -147,7 +147,6 @@ it('renders the source neutral pose for base and skinned stones and resolves the
     const factory = createGroundItemFactory({ assets } as GroundPrefabContext);
     const visual = factory.create({ ...entity.snapshot(), name: '暖石', icon: 'heatrock_fantasy1.tex' }, entity);
     try {
-      visual.bindEntity?.(entity);
       // The prefab only declares what the sprite follows; the display applies it.
       // The ground visual draws the item's own sprite: the range clip and the inventory image are the same declaration.
       const sprite = prefabInstance(visual.model)!.sprite;

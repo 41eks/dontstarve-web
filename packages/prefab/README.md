@@ -158,9 +158,8 @@ sprite 来自按帽子 archive 与皮肤共享的 `createAnimatedSpriteSource()`
 兔子帽按 `rabbit_custom_init` 以 `rabbit_build` 为 build，并以 sprite 来源的 `overrideBuilds: { hat_rabbit: 'hat_rabbit.zip' }` 声明帽子部件，由 display 随来源一起加载。
 
 `@dontstarve-web/prefab/groundItems` 提供 `GROUND_ITEM_DEFINITIONS`、
-`GroundItemAssets` 和 `createResidentGroundItem({ assets, tickingarea? }, { itemId, skinId?, sprite? })`。
-`sprite` 是物品自己的 sprite json（`ItemEntity.sprite`，即 inst.AnimState）：传入时 visual 绘制它并保留其中的皮肤，不传时 visual 使用自己的 sprite 和 `skinId`。
-地面工厂的 `create(definition, entity)` 总是传入 `entity.sprite`，所以物品在地上、背包、装备栏和存档中的皮肤都来自同一份 `sprite.skinId`。
+`GroundItemAssets` 和 `createResidentGroundItem({ assets, tickingarea? }, { itemId, entity?, skinId? })`。
+`entity` 是物品自己的逻辑实例，地面工厂的 `create(definition, entity)` 将它交给 display；未提供时独立创建器构造一个 ItemEntity。地面、背包、装备栏和存档中的皮肤都来自该实例的 `sprite.skinId`，不再用共享 sprite json 连接两个逻辑实体。
 同步返回 `{ visual, instance, display }`，prefab 通过 `instance.sprite` 声明动画与外观，
 由 `PrefabDisplay` 加载美术、创建和释放 sprite（需要等待绘制时用 `display.artLoaded()`）；落地／读档后绑定 tile，休眠时保留稳定模型、身份与组件。
 其他 sprite 来源（如 factory 路径的落地帽子）用 `groundItemLifecycle.ts` 的 `bindResidentGroundItem(context, instance, display)` 获得同一生命周期。
@@ -191,10 +190,9 @@ sprite 来自按帽子 archive 与皮肤共享的 `createAnimatedSpriteSource()`
 
 ```ts
 const assets = new GroundItemAssets();
-const lamp = createLanternGroundSprite({ assets, tickingarea }); // display 随后加载美术
 const item = new ItemEntity({ itemId: 'lantern', count: 1 });
 configureLanternEntity(item);
-lamp.bindEntity!(item);
+const lamp = createLanternGroundSprite({ assets, tickingarea }, item); // display 绑定原实例后加载美术
 scene.add(lamp.model); // 位置由调用方设置，ondropped 开灯
 lamp.instance.PushEvent('ondropped');
 lamp.instance.PushEvent('onputininventory'); // 关闭地面光源
@@ -233,12 +231,7 @@ prefab 的 `dispose()` 调用它清理监听。`ondropped` 在成功从库存移
 资源路径、世界上下文和附近实体查询，不再逐个绑定创建器或管理 prefab 缓存。
 `createBernieGroundSprite`、`createLanternGroundSprite`、`createLightbulbGroundSprite`、
 `createButterflyGroundSprite` 和 `createFirefliesGroundSprite` 的实现及库存事件均在
-对应 prefab TS 中。萤火虫的旧入口 `FirefliesAssets.create(world)` 委托给同文件的
-`createFirefliesGroundSprite(assets, world)`。需要位置的地面 visual 提供
-`bindTransform(entity.transform)`，由 GroundItemManager 在成功交接实体后、
-分发库存事件前调用。蝴蝶和萤火虫在绑定时建立控制器，移动和距离判断直接
-使用实体坐标；准备资源期间不建立另一份实体状态。独立使用这些 visual 时也
-需要先绑定 Transform，再调用 update 或分发 onload/ondropped。
+对应 prefab TS 中。每个工厂接收真实 `ItemEntity`（`PrefabInstance` 子类），返回的 visual.instance 就是它；普通 archive、分离 bank/build、帽子、提灯、蝴蝶和萤火虫均复用这一结构。独立使用的创建器在没有传入物品时创建一个逻辑物品实例。已移除 bindTransform / bindEntity，库存与地面共用身份、组件、标签、事件、皮肤及持久化状态，拾取和落地只改变归属及 display 生命周期。
 
 萤火虫通过 `createSharedArchiveSprite()` 创建：同一个 `FirefliesAssets` 持有一个
 `ArchiveSpriteAssets`，`swarm_loop` 预合成完整帧后实例化，`swarm_pre` / `swarm_pst`
@@ -268,7 +261,7 @@ prefab 的 `dispose()` 调用它清理监听。`ondropped` 在成功从库存移
 当前背包没有逐件燃料状态，因此应用使用满燃料，不自动耗油或保存开关／燃料比例；
 Prefab API 可由后续权威燃料状态驱动。声音、单独的粒子特效和地面开关交互尚未接入。
 
-荧光果由 `@dontstarve-web/prefab/lightbulb` 的 `createLightbulbGroundSprite(assets)`
+荧光果由 `@dontstarve-web/prefab/lightbulb` 的 `createLightbulbGroundSprite({ assets }, { entity })`
 提供。使用 `lightbulb.lua` 指定的 `anim/bulb.zip`、bank/build `bulb` 和 `idle`
 动画，默认放在地上发光。`setLit(false)` 关闭局部光源，`dispose()` 同时移除光源和模型。
 它的原版半径为 0.5，换算为场景的 1.5 世界单位；强度 0.5、Falloff 0.7，

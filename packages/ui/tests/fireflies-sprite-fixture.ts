@@ -22,10 +22,9 @@ export async function checkFirefliesInstances() {
   const net = new ItemEntity({ itemId: 'bugnet', count: 1 }); configureBugNetEntity(net);
   const swarms = await Promise.all(Array.from({ length: 32 }, () => createFirefliesGroundSprite(assets, { getWatchWorldContent, handEquipment })));
   const entities = swarms.map((swarm, index) => {
-    const entity = new ItemEntity({ itemId: 'fireflies', count: 1 });
+    const entity = swarm.instance;
     configureFirefliesEntity(entity);
     entity.transform.position.set(index === 31 ? 8 : -8 + index % 4 * .3, 0, 0);
-    swarm.bindTransform(entity.transform); swarm.bindEntity(entity);
     swarm.model.position.copy(entity.transform.position);
     prefabInstance(swarm.model)!.PushEvent('onload');
     actionEntity(swarm.model, 'fireflies', entity);

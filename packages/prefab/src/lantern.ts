@@ -1,4 +1,3 @@
-import type { SpriteState } from '@dontstarve-web/display';
 import type { AnimState } from '@dontstarve-web/animation/animState';
 import type { ItemEntity, ItemRuntimeComponent } from '@dontstarve-web/inventory';
 import { createEffect, watchSignal, type EquipmentLifecycle, type EquipmentOwner, type ReadonlySignal } from '@dontstarve-web/signals';
@@ -228,17 +227,20 @@ export function createLanternHandLifecycle(entity: ItemEntity, context: LanternH
 }
 
 /** Ground art binds to the inst's lantern lifecycle; it starts unlit until a drop or load event. */
-/** `skin` is the item's own sprite json, whose skin it keeps, or the skin of a sprite of the visual's own. */
-export function createLanternGroundSprite(context: Pick<GroundPrefabContext, 'assets' | 'tickingarea'>, skin?: string | SpriteState): GroundItemVisual & {
+/** Reuse the item's prefab instance; a skin alone constructs a standalone logical item. */
+export function createLanternGroundSprite(context: Pick<GroundPrefabContext, 'assets' | 'tickingarea'>, item?: string | ItemEntity): GroundItemVisual & {
   readonly light: LanternLightController;
 } {
-  const { visual, instance, display } = createResidentGroundItem(context, typeof skin === 'object'
-    ? { itemId: LANTERN_ID, sprite: skin } : { itemId: LANTERN_ID, skinId: skin });
+  const { visual, instance, display } = createResidentGroundItem(context, typeof item === 'object'
+    ? { itemId: LANTERN_ID, entity: item } : { itemId: LANTERN_ID, skinId: item });
   const model = display.model, sprite = instance.sprite;
   instance.addTag('light');
-  let controller: LanternController | undefined;
-  let bound: ItemEntity | undefined;
+  configureLanternEntity(instance);
+  const controller = getLanternController(instance);
+  controller.bindGround(instance);
   let stopState: (() => void) | undefined;
+  const ison = watchSignal(controller.ison, stop => { stopState = stop; });
+  createEffect(() => sprite.playOnce(ison.get() ? 'idle_on' : 'idle_off'));
   let savedOn: boolean | undefined;
   const removeInventoryEvents = listenInventoryEvents(instance, {
     ondropped: () => controller?.OnDropped(),
@@ -251,18 +253,10 @@ export function createLanternGroundSprite(context: Pick<GroundPrefabContext, 'as
     active: undefined,
     model,
     get light() { return controller!.light; },
-    bindEntity(entity) {
-      stopState?.();
-      bound = entity;
-      controller = getLanternController(entity);
-      controller.bindGround(instance);
-      const ison = watchSignal(controller.ison, stop => { stopState = stop; });
-      createEffect(() => sprite.playOnce(ison.get() ? 'idle_on' : 'idle_off'));
-    },
     setDefinition(definition) { savedOn = definition.lanternOn; },
     getDefinition() {
-      bound?.components.fueled?.Settle();
-      return controller ? { lanternOn: controller.isOn } : {};
+      instance.components.fueled?.Settle();
+      return { lanternOn: controller.isOn };
     },
     dispose() { removeInventoryEvents(); stopState?.(); controller?.releaseGround(instance); visual.dispose(); },
   };
@@ -272,7 +266,7 @@ export function createLanternGroundFactory(context: GroundPrefabContext): Ground
   return {
     itemIds: [LANTERN_ID],
     configureEntity: configureLanternEntity,
-    create: (_item, entity) => createLanternGroundSprite(context, entity.sprite),
+    create: (_item, entity) => createLanternGroundSprite(context, entity),
   };
 }
 

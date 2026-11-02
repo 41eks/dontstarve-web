@@ -19,8 +19,7 @@ export function createIceGroundFactory(context: GroundPrefabContext): GroundItem
     itemIds: [ICE_ID],
     configureEntity: configureIceEntity,
     create(item, inst) {
-      const { visual, instance } = createResidentGroundItem(context, { ...item, sprite: inst.sprite });
-      let stop: (() => void) | undefined;
+      const { visual, instance } = createResidentGroundItem(context, { ...item, entity: inst });
       let melting = false;
       const melt = (entity: ItemEntity) => {
         if (melting || entity.isRemoved || entity.components.inventoryitem.owner) return;
@@ -29,13 +28,10 @@ export function createIceGroundFactory(context: GroundPrefabContext): GroundItem
         entity.components.inventoryitem.canbepickedup = false;
         instance.sprite.playOnce('melt', () => entity.remove());
       };
+      const stop = inst.ListenForEvent('perished', () => melt(inst));
+      if (inst.components.perishable.timer.peek().status === 'perished') melt(inst);
       return {
         ...visual,
-        bindEntity(entity) {
-          stop?.();
-          stop = entity.ListenForEvent('perished', () => melt(entity));
-          if (entity.components.perishable.timer.peek().status === 'perished') melt(entity);
-        },
         dispose() { stop?.(); visual.dispose(); },
       };
     },

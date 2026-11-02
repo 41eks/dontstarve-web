@@ -3,12 +3,12 @@ import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabI
 import { createPickupInventory } from './pickupFixture';
 import { createPickupDoer, performPickupAction } from '../../stategraphs/src/pickup';
 import * as THREE from 'three';
-import { createEmptyEntity } from '../../prefab/src/prefabInstance';
+import { createEmptyEntity, PrefabInstance } from '../../prefab/src/prefabInstance';
 import type { GroundItemDefinition, GroundItemVisual } from '../../prefab/src/groundPrefab';
 import type { ItemEntity } from '../../inventory/src';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GroundItemManager } from '../../../src/groundItems';
-const { createTestVisual } = vi.hoisted(() => ({ createTestVisual: vi.fn<(definition: GroundItemDefinition) => GroundItemVisual & { update: ReturnType<typeof vi.fn<(dt: number) => void>> }>() }));
+const { createTestVisual } = vi.hoisted(() => ({ createTestVisual: vi.fn<(definition: GroundItemDefinition, entity: ItemEntity) => GroundItemVisual & { update: ReturnType<typeof vi.fn<(dt: number) => void>> }>() }));
 import { FindEntities } from '../../prefab/src/actionEntity';
 import { EventEmitter } from '@dontstarve-web/signals';
 import type { WorldEvents } from '../../prefab/src/worldContext';
@@ -26,15 +26,15 @@ vi.mock('@dontstarve-web/animation/imageAtlas', () => ({
 // This suite checks save/transfer state; browser tests load the real DST assets.
 vi.mock('@dontstarve-web/prefab/groundItems', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@dontstarve-web/prefab/groundItems')>();
-  createTestVisual.mockImplementation(definition => {
-    const { instance, display } = createEmptyEntity(definition.itemId);
+  createTestVisual.mockImplementation((definition, entity) => {
+    const { instance, display } = createEmptyEntity(definition.itemId, undefined, { instance: entity });
     const model = display.model;
     model.add(new THREE.Group());
     model.userData.events = [];
     for (const type of ['ondropped', 'onputininventory', 'onload'] as const) {
       instance.ListenForEvent(type, () => model.userData.events.push(type));
     }
-    return { model, instance, display, update: vi.fn<(dt: number) => void>(), dispose() { model.userData.events.push('dispose'); instance.remove(); display.dispose(); } };
+    return { model, instance, display, update: vi.fn<(dt: number) => void>(), dispose() { model.userData.events.push('dispose'); display.dispose(); } };
   });
   return {
     ...actual,
@@ -49,18 +49,16 @@ vi.mock('@dontstarve-web/prefab/butterfly', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@dontstarve-web/prefab/butterfly')>();
   class MockButterflyAssets {
     dispose() {}
-    create(prefab: 'butterfly' | 'moonbutterfly', world: import('../../prefab/src/butterfly').ButterflyWorld) {
-      const { instance, display } = createEmptyEntity(prefab);
+    create(prefab: 'butterfly' | 'moonbutterfly', world: import('../../prefab/src/butterfly').ButterflyWorld,
+      _others: unknown, _loot: unknown, entity: ItemEntity) {
+      const { instance, display } = createEmptyEntity(prefab, undefined, { instance: entity });
       const model = display.model;
       model.add(new THREE.Group());
-      let controller: InstanceType<typeof actual.ButterflyController> | undefined;
-      return { model, instance, display, get controller() { return controller; },
-        bindTransform(transform: ItemEntity['transform']) {
-          controller = new actual.ButterflyController(actual.BUTTERFLY_DEFINITIONS[prefab], transform,
-            { start() {}, playOnce() {}, update() {}, currentAnimation: 'idle_flight_loop', currentAnimationLength: 1 }, world, undefined, () => 0);
-        },
-        update: (dt: number) => controller?.update(dt),
-        dispose: () => { instance.remove(); display.dispose(); } };
+      const controller = new actual.ButterflyController(actual.BUTTERFLY_DEFINITIONS[prefab], entity,
+        { start() {}, playOnce() {}, update() {}, currentAnimation: 'idle_flight_loop', currentAnimationLength: 1 }, world, undefined, () => 0);
+      return { model, instance, display, controller, update: (dt: number) => controller.update(dt),
+        dispose: () => { controller.dispose(); display.dispose(); } };
+
     }
   }
   return {
@@ -70,10 +68,10 @@ vi.mock('@dontstarve-web/prefab/butterfly', async (importOriginal) => {
       return {
         itemIds: [actual.BUTTERFLY_ID], capture: 'net',
         configureEntity: actual.configureButterflyEntity,
-        create: () => actual.createButterflyGroundSprite(
+        create: (_definition: GroundItemDefinition, entity: ItemEntity) => actual.createButterflyGroundSprite(
           assets as unknown as InstanceType<typeof actual.ButterflyAssets>,
           context.butterflyWorld,
-          (position, radius, mustTags) => FindEntities(position, radius, mustTags)),
+          (position, radius, mustTags) => FindEntities(position, radius, mustTags), undefined, undefined, entity),
         dispose: () => assets.dispose(),
       };
     },
@@ -281,6 +279,8 @@ describe('ground item save records', () => {
       container: { slotCount: 8, slots: [{ slotKey: '2', item: { itemId: 'log', count: 3 } }] } };
     const model = await manager.spawnFromSave('bag:position', backpack, new THREE.Vector3(2, 0.25, 3));
     const entity = manager.entities.get('bag:position')!;
+    expect(entity).toBeInstanceOf(PrefabInstance);
+    expect(lookupPrefabInstance(model)).toBe(entity);
     const position = model.position;
     expect(lookupPrefabInstance(model)!.position).toBe(position);
     expect(entity.transform.position).toBe(position);
@@ -330,12 +330,16 @@ describe('ground item save records', () => {
     expect(inventory.GetEquippedItem('body')).toBe(entity);
     expect(model.parent).toBeNull();
     expect(manager.exportRecords()).toEqual([]);
+    const dropped = vi.fn();
+    entity.ListenForEvent('ondropped', dropped);
     inventory.DropItem(entity, new THREE.Vector3(40, 0, 41));
+    expect(dropped).toHaveBeenCalledOnce();
     const droppedModel = scene.children[0];
     expect(droppedModel).not.toBe(model);
     expect(droppedModel.position).not.toBe(position);
     expect(entity.transform.position).toBe(droppedModel.position);
     expect(lookupPrefabInstance(droppedModel)!.position).toBe(droppedModel.position);
+    expect(lookupPrefabInstance(droppedModel)).toBe(entity);
     expect(minimap.position).toBe(droppedModel.position);
     expect(marker.position).toBe(droppedModel.position);
     expect(manager.exportRecords()[0].transform.position).toEqual([40, 0, 41]);
@@ -372,7 +376,7 @@ describe('ground item save records', () => {
   });
 
   it('dispatches prefab events only after successful transfers and distinguishes restore from drop', async () => {
-    const { manager, scene, pickup, pick } = setup();
+    const { manager, pickup, pick } = setup();
     const lastModel = async () => (await vi.mocked(createTestVisual).mock.results.at(-1)!.value).model;
     expect(await manager.drop(definition, new THREE.Vector3(), () => false)).toBe(false);
     expect((await lastModel()).userData.events).toEqual(['dispose']);
@@ -384,8 +388,9 @@ describe('ground item save records', () => {
     const model = await lastModel();
     expect(model.userData.events).toEqual(['ondropped']);
     expect(model.position.toArray()).toEqual([3, 0, 4]);
-    let attachedOnPickup = false;
-    lookupPrefabInstance(model)!.ListenForEvent('onputininventory', () => { attachedOnPickup = model.parent === scene; });
+    const original = lookupPrefabInstance<ItemEntity>(model)!;
+    const onPutInInventory = vi.fn();
+    original.ListenForEvent('onputininventory', onPutInInventory);
     const click = () => pick(model);
     pickup.mockReturnValueOnce(false);
     click();
@@ -393,7 +398,9 @@ describe('ground item save records', () => {
     expect(manager.exportRecords()).toHaveLength(1);
     click();
     expect(model.userData.events).toEqual(['ondropped', 'onputininventory', 'dispose']);
-    expect(attachedOnPickup).toBe(true);
+    expect(onPutInInventory).toHaveBeenCalledOnce();
+    expect(original.isRemoved).toBe(false);
+    expect(lookupPrefabInstance(model)).toBe(original);
     expect(manager.exportRecords()).toHaveLength(0);
     const restored = await manager.spawnFromSave('restored-events', definition, new THREE.Vector3(2, 0.25, 3));
     expect(restored.userData.events).toEqual(['onload']);

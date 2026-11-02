@@ -5,7 +5,7 @@ import { PrefabInstance } from './prefabInstance';
 export type PrefabLocalLight = LightJson;
 
 /** Any entity a light can be parented to, whatever its display draws. */
-export type LightParent = PrefabInstance<ArchiveSpriteCommands>;
+export type LightParent = PrefabInstance<ArchiveSpriteCommands, object>;
 
 /** A light-only entity and where it is parented. */
 export interface LightEntity {

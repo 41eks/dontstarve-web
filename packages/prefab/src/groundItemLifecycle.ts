@@ -3,11 +3,10 @@ import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/displ
 import { createMemo } from '@dontstarve-web/signals';
 import type { GroundItemVisual, GroundPrefabContext } from './groundPrefab';
 import { listenInventoryEvents } from './inventoryEvents';
-import type { PrefabInstance } from './prefabInstance';
 import { watchTileActivity } from './tileActivity';
 
 /** The ground lifecycle of an item entity drawn by its display, whichever sprite source the display draws with. */
-export function bindResidentGroundItem(context: Pick<GroundPrefabContext, 'tickingarea'>, instance: PrefabInstance<ArchiveSpriteCommands>,
+export function bindResidentGroundItem(context: Pick<GroundPrefabContext, 'tickingarea'>, instance: ItemEntity,
   display: PrefabDisplay, declare?: (entity: ItemEntity, sprite: ArchiveSpriteCommands) => void): GroundItemVisual {
   const model = display.model, sprite = instance.sprite;
   const active = createMemo(() => instance.status.get() === 'active');
@@ -21,10 +20,10 @@ export function bindResidentGroundItem(context: Pick<GroundPrefabContext, 'ticki
     onload: () => { sprite.setPaused(false); bindTile(); },
     onputininventory: () => { sprite.setPaused(true); stopTile(); stopTile = () => {}; },
   });
+  declare?.(instance, sprite);
   return {
     model, instance, display,
     active,
-    bindEntity: declare && (entity => declare(entity, sprite)),
-    dispose() { removeInventoryEvents(); stopTile(); active.dispose(); instance.remove(); display.dispose(); },
+    dispose() { removeInventoryEvents(); stopTile(); active.dispose(); display.dispose(); },
   };
 }

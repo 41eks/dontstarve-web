@@ -8,8 +8,9 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { GroundItemManager } from '../../../src/groundItems';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { INVENTORY_ITEM_SPECS } from '../../../src/inventoryItems';
-import { inventorySlotAddress } from '../../inventory/src';
+import { ItemEntity, inventorySlotAddress } from '../../inventory/src';
 import { createPickupInventory } from './pickupFixture';
+import type { BurnableItemController } from '../../prefab/src/burnableItems';
 import { performLightAction } from '../../stategraphs/src/componentactions';
 import { createPickupDoer, performPickupAction } from '../../stategraphs/src/pickup';
 import { serializeSave } from '../../../src/save/serialize';
@@ -19,7 +20,7 @@ import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
-import { modelHasTag } from '../../prefab/src/prefabInstance';
+import { modelHasTag, prefabInstance } from '../../prefab/src/prefabInstance';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -45,14 +46,14 @@ it('burns dropped live grass/log stacks to prepared ash, notifies signals and im
     }
     const models = manager.reskinTargets.map(target => target.model);
     const notifications = models.map(model => {
-      const notify = vi.fn(); model.userData.burntSignal.subscribe(notify); return notify;
+      const notify = vi.fn(); prefabInstance<ItemEntity>(model)!.getComponent<BurnableItemController>('burnable_item')!.burnt.subscribe(notify); return notify;
     });
     const torch = inventory.getEntity(inventorySlotAddress(0))!;
     for (const model of models) {
       expect(collectEquippedItemActions(torch, undefined, findActionEntity(model), true)).toEqual(['LIGHT']);
       expect(performLightAction(torch, findActionEntity(model), torch)).toBe(true);
-      expect(model.userData.burningSignal.peek()).toBe(true);
-      expect(model.userData.persistenceSignal.peek()).toBe(false);
+      expect(prefabInstance<ItemEntity>(model)!.components.burnable!.burning.peek()).toBe(true);
+      expect(prefabInstance<ItemEntity>(model)!.persistence.peek()).toBe(false);
       expect(performPickupAction(findActionEntity(model)!.pickupTarget, createPickupDoer(new THREE.Group(), inventory))).toBe(false);
     }
     // The fire is a child of the burning item, as DST's Burnable:SpawnFX adds it, with the source's tags.
@@ -134,15 +135,15 @@ it('supports c_spawn, blocks noncombustible targets and preserves identity/state
     performLightAction(torch, findActionEntity(model), torch); manager.update(5, new THREE.Quaternion());
     entity.components.burnable!.Extinguish(); manager.update(20, new THREE.Quaternion());
     expect(entity.isRemoved).toBe(false); expect(entity.persists).toBe(true); expect(entity.snapshot()).toEqual(before);
-    expect(model.userData.burningSignal.peek()).toBe(false);
-    const burningSignal = model.userData.burningSignal, burntSignal = model.userData.burntSignal;
+    expect(prefabInstance<ItemEntity>(model)!.components.burnable!.burning.peek()).toBe(false);
+    const burningSignal = prefabInstance<ItemEntity>(model)!.components.burnable!.burning, burntSignal = prefabInstance<ItemEntity>(model)!.getComponent<BurnableItemController>('burnable_item')!.burnt;
     player.position.set(3, 0, 6);
     expect(performPickupAction(findActionEntity(model)!.pickupTarget, createPickupDoer(player, inventory))).toBe(true);
     expect(model.parent).toBeNull(); expect(inventory.getEntity(inventorySlotAddress(1))).toBe(entity);
     expect(await manager.drop({ ...SAVE_CATALOG.items.log, ...entity.snapshot(), entity }, new THREE.Vector3(8, 0, -4),
       () => inventory.extract(inventorySlotAddress(1), 1)!)).toBe(true);
     const dropped = manager.reskinTargets.find(target => target.prefabId === 'log')!.model;
-    expect(dropped.userData.burningSignal).toBe(burningSignal); expect(dropped.userData.burntSignal).toBe(burntSignal);
+    expect(prefabInstance<ItemEntity>(dropped)!.components.burnable!.burning).toBe(burningSignal); expect(prefabInstance<ItemEntity>(dropped)!.getComponent<BurnableItemController>('burnable_item')!.burnt).toBe(burntSignal);
     expect(entity.snapshot()).toEqual(before); expect(entity.transform.position.toArray()).toEqual([8, 0, -4]);
     performLightAction(torch, findActionEntity(dropped), torch); manager.update(15, new THREE.Quaternion());
     expect(entity.isRemoved).toBe(true);

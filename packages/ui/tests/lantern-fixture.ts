@@ -77,11 +77,10 @@ export async function checkLanternLighting() {
         if (mesh.material.some((material) => !material.forceSinglePass)) failures.push('split face passes');
       }
     }
-    const ground = createLanternGroundSprite({ assets }, skin);
-    await (prefabDisplay(ground.model) as PrefabDisplay).artLoaded();
     const entity = new ItemEntity({ itemId: 'lantern', count: 1, ...(skin ? { skinId: skin } : {}) });
     entity.configure(lanternSpec);
-    ground.bindEntity!(entity);
+    const ground = createLanternGroundSprite({ assets }, entity);
+    await (prefabDisplay(ground.model) as PrefabDisplay).artLoaded();
     prefabInstance(ground.model)!.PushEvent('ondropped');
     scene.add(ground.model);
     ground.model.position.set(60, 0, 0);

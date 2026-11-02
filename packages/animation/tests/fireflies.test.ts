@@ -14,8 +14,7 @@ import { bindTestWorld } from './worldContentFixture';
 import { configureBugNetEntity } from '../../prefab/src/bugnet';
 import { actionEntity, activePrefabs, disposeActionEntity } from '../../prefab/src/actionEntity';
 import { mouseTargets } from '../../prefab/src/mouseTargets';
-import { bindInstance, PrefabInstance, prefabInstance } from '../../prefab/src/prefabInstance';
-import type { ArchiveSpriteCommands } from '@dontstarve-web/display';
+import { bindInstance, prefabInstance } from '../../prefab/src/prefabInstance';
 import { displayLights } from '../../display/src/displaySprites';
 import { workTargets } from './workTargets';
 
@@ -23,9 +22,6 @@ import { workTargets } from './workTargets';
 const declaredLight = (model: THREE.Object3D) => prefabInstance(model)?.light.peek();
 /** Whether the renderer reads a light at `model`. */
 const listed = (model: THREE.Object3D) => [...displayLights()].some(entry => entry.model === model);
-/** A swarm entity drawing through a mocked sprite. */
-const swarmInstance = (animation: object) => new PrefabInstance('fireflies', animation as unknown as ArchiveSpriteCommands);
-
 useTestTileMap();
 
 const cleanups: (() => void)[] = [];
@@ -44,10 +40,11 @@ function setup(night = true, position = new THREE.Vector3(10, 0, 0), random = ()
   cycle.set(night ? 'night' : 'day');
   playerpositions.set([position.clone()]);
   const model = new THREE.Group();
-  const animation = { start: vi.fn(), playOnce: vi.fn(), update: vi.fn(), clearAnimation: vi.fn(), setLightOverride: vi.fn() };
   const entity = new ItemEntity({ itemId: 'fireflies', count: 1 });
+  const animation = { start: vi.spyOn(entity.sprite, 'start'), playOnce: vi.spyOn(entity.sprite, 'playOnce'),
+    clearAnimation: vi.spyOn(entity.sprite, 'clearAnimation'), setLightOverride: vi.spyOn(entity.sprite, 'setLightOverride') };
   const handEquipment = createSignal<HandEquipment | null>(netEquipment());
-  const instance = swarmInstance(animation);
+  const instance = entity;
   // As the swarm's display does: its model carries the swarm entity.
   bindInstance(model, instance);
   const controller = new FirefliesController(instance, model,
@@ -62,7 +59,7 @@ describe('source fireflies light and proximity', () => {
   it('requires an equipped NET-capable entity for mouse targeting without changing the swarm light or NET work state', async () => {
     const s = setup();
     const settle = () => new Promise(resolve => setTimeout(resolve, 0));
-    configureFirefliesEntity(s.entity); s.controller.bindEntity(s.entity);
+    configureFirefliesEntity(s.entity);
     new THREE.Scene().add(s.model);
     const projected = actionEntity(s.model, 'fireflies', s.entity);
     cleanups.push(() => { disposeActionEntity(s.model); s.entity.destroy(); });
@@ -239,8 +236,9 @@ describe('fireflies tickingarea gate', () => {
     cycle.set('day'); playerpositions.set([new THREE.Vector3(1, 0, 0)]);
     const model = new THREE.Group();
     const entity = new ItemEntity({ itemId: 'fireflies', count: 1 });
-    const animation = { start: vi.fn(), playOnce: vi.fn(), update: vi.fn(), clearAnimation: vi.fn(), setLightOverride: vi.fn() };
-    const instance = swarmInstance(animation);
+    const animation = { start: vi.spyOn(entity.sprite, 'start'), playOnce: vi.spyOn(entity.sprite, 'playOnce'),
+      clearAnimation: vi.spyOn(entity.sprite, 'clearAnimation'), setLightOverride: vi.spyOn(entity.sprite, 'setLightOverride') };
+    const instance = entity;
     const controller = new FirefliesController(instance, model, { getWatchWorldContent,
       handEquipment: createSignal<HandEquipment | null>(netEquipment()) }, entity.transform, () => 0);
     cleanups.push(() => { controller.dispose(); unbind(); scheduler.dispose(); });

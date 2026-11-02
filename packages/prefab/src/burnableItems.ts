@@ -130,7 +130,7 @@ export function createBurnableItemVisual(context: GroundPrefabContext,
   fire.instance.persists = false;
   const presentation = { context };
   const model = display.model;
-  let controller: BurnableItemController | undefined;
+  let controller: BurnableItemController;
   let stopBurning: (() => void) | undefined;
   let stopIgnite: (() => void) | undefined;
   let sound: SoundHandle | undefined;
@@ -156,21 +156,17 @@ export function createBurnableItemVisual(context: GroundPrefabContext,
     }
   };
   displays.add(display);
+  configureBurnableItemEntity(instance);
+  controller = instance.getComponent<BurnableItemController>('burnable_item')!;
+  controller.bind(presentation);
+  instance.sprite.attachFx('fire', { sprite: fire.instance.sprite, display: fire.display, active: controller.burnable.burning, sortLayer: 2 });
+  stopBurning = controller.burnable.burning.subscribe(syncBurning);
+  syncBurning(controller.burnable.IsBurning());
+  // inst:ListenForEvent("onignite", ...) fires only on a new ignition, not when a burning save is restored.
+  if (igniteSound) stopIgnite = instance.ListenForEvent('onignite', () => { PlaySound(igniteSound, model.position); });
+
   return {
     ...visual,
-    bindEntity(entity) {
-      configureBurnableItemEntity(entity);
-      controller = entity.getComponent<BurnableItemController>('burnable_item')!;
-      controller.bind(presentation);
-      model.userData.burningSignal = controller.burnable.burning;
-      model.userData.burntSignal = controller.burnt;
-      model.userData.persistenceSignal = entity.persistence;
-      instance.sprite.attachFx('fire', { sprite: fire.instance.sprite, display: fire.display, active: controller.burnable.burning, sortLayer: 2 });
-      stopBurning = controller.burnable.burning.subscribe(syncBurning);
-      syncBurning(controller.burnable.IsBurning());
-      // inst:ListenForEvent("onignite", ...) fires only on a new ignition, not when a burning save is restored.
-      if (igniteSound) stopIgnite = entity.ListenForEvent('onignite', () => { PlaySound(igniteSound, model.position); });
-    },
     update(dt) { controller?.update(dt); },
     dispose() {
       if (disposed) return;

@@ -47,7 +47,7 @@ export interface FarmSoilSaveState { broken: boolean; plowId?: string }
 export interface FarmDebrisSaveState { animation: 'f1' | 'f2' | 'f3' | 'f4' }
 export type FarmPlowBlocker = PlacementBlocker;
 /** A farm entity drawn by its own display: plows, soil, debris, planted seeds, placers and fx. */
-type FarmEntity = ReturnType<typeof createArchiveEntity>;
+type FarmEntity = ReturnType<typeof createArchiveEntity<PrefabInstance>>;
 type FarmSprite = FarmEntity['instance']['sprite'];
 type ArchiveOptions = Parameters<SpriteResources['archive']>[1];
 const TEMPORARY_TAGS = ['FX', 'NOCLICK'] as const;

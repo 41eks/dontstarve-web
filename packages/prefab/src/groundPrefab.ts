@@ -1,5 +1,4 @@
-import type { PrefabInstance } from './prefabInstance';
-import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
+import type { PrefabDisplay } from '@dontstarve-web/display';
 import type { ItemEntity, InventoryStack } from '@dontstarve-web/inventory';
 import type * as THREE from 'three';
 import type { GroundItemAssets } from './groundItems';
@@ -40,16 +39,13 @@ export interface GroundItemDefinition {
 }
 
 export interface GroundItemVisual {
-  /** The display entity; live inventory state remains on the bound ItemEntity. */
-  readonly instance: PrefabInstance<ArchiveSpriteCommands>;
+  /** The original logical item instance, also held by its inventory owner. */
+  readonly instance: ItemEntity;
   model: THREE.Group;
   /** Owns scene membership and sprite residency; the manager advances it each frame. */
   readonly display: PrefabDisplay;
   /** Resource presence, driven by the prefab's tile activity. Logical items still persist while false. */
   active?: ReadonlySignal<boolean>;
-  /** Bind movement/proximity to the committed inst; the model only projects its position. */
-  bindTransform?(transform: ItemEntity['transform']): void;
-  bindEntity?(entity: ItemEntity): void;
   update?(dt: number): void;
   /**
    * StartUpdatingComponent/StopUpdatingComponent: while false the manager skips frame updates; absent means always

@@ -1,4 +1,3 @@
-import type { SpriteState } from '@dontstarve-web/display';
 import { createResidentGroundItem } from './groundItems';
 import { type PrefabLocalLight } from './localLight';
 import { TILE_SIZE } from './tile';
@@ -29,10 +28,10 @@ export const LIGHTBULB_LIGHT: PrefabLocalLight = {
 };
 
 /** Ground lightbulbs glow until picked up; they use bulb.zip's idle world art. */
-/** `sprite` is the item's own sprite json, whose skin it keeps; without one the visual has a sprite of its own in `skinId`. */
+/** The display uses `options.entity`; without one, create a standalone logical item. */
 export function createLightbulbGroundSprite(context: Pick<GroundPrefabContext, 'assets' | 'tickingarea'>,
-  options: { lit?: boolean; skinId?: string; sprite?: SpriteState } = {}) {
-  const { visual } = createResidentGroundItem(context, { itemId: LIGHTBULB_ID, skinId: options.skinId, sprite: options.sprite });
+  options: { lit?: boolean; skinId?: string; entity?: ItemEntity } = {}) {
+  const { visual } = createResidentGroundItem(context, { itemId: LIGHTBULB_ID, skinId: options.skinId, entity: options.entity });
   const setLit = (lit: boolean) => prefabInstance(visual.model)!.light.set(lit ? LIGHTBULB_LIGHT : null);
   setLit(options.lit ?? true);
   const removeInventoryEvents = listenInventoryEvents(prefabInstance(visual.model)!, {
@@ -51,6 +50,6 @@ export function createLightbulbGroundFactory(context: GroundPrefabContext): Grou
   return {
     itemIds: [LIGHTBULB_ID],
     configureEntity: configureLightbulbEntity,
-    create: (_item, entity) => createLightbulbGroundSprite(context, { sprite: entity.sprite }),
+    create: (_item, entity) => createLightbulbGroundSprite(context, { entity }),
   };
 }

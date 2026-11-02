@@ -30,7 +30,7 @@ function setup(prefab: 'butterfly' | 'moonbutterfly' = 'butterfly', dropLoot = v
     getFlowers: () => flowers,
   };
   const entity = new ItemEntity({ itemId: prefab, count: 1 });
-  const controller = new ButterflyController(BUTTERFLY_DEFINITIONS[prefab], entity.transform, animation, world, () => [], () => 0, dropLoot);
+  const controller = new ButterflyController(BUTTERFLY_DEFINITIONS[prefab], entity, animation, world, () => [], () => 0, dropLoot);
   cleanups.push(() => { controller.dispose(); unbind(); scheduler.dispose(); });
   return {
     cycle, animation, controller, world, entity,

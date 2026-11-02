@@ -7,7 +7,7 @@ import { InventoryItem } from '../../componets/src/inventoryitem';
 import { MiniMapEntity } from '../../componets/src/minimapentity';
 import { Equippable } from '../../componets/src/equippable';
 import { Perishable, type PerishWorld } from '../../componets/src/perishable';
-import { EventEmitter } from '@dontstarve-web/signals';
+import { PrefabInstance } from '../../prefab/src/prefabInstance';
 import { Vector3 } from 'three';
 import type { Fuel } from '../../componets/src/fuel';
 import { Fueled } from '../../componets/src/fueled';
@@ -129,66 +129,67 @@ export class FiniteUsesComponent {
 }
 
 /** Like DST's inst: identity and components survive changes of inventory owner and scene art. */
-export class ItemEntity {
-  readonly id: string;
-  readonly prefab: string;
-  worldServices?: Partial<import('../../prefab/src/worldContext').PrefabWorldContext>;
-  readonly components: {
-    farmplantable?: import('../../componets/src/farmplantable').FarmPlantable;
-    eater?: import('../../componets/src/eater').Eater;
-    edible?: import('../../componets/src/edible').Edible;
-    health?: import('../../componets/src/health').Health;
-    combat?: import('../../componets/src/combat').Combat;
-    bait?: import('../../componets/src/bait').Bait;
-    sleeper?: import('../../componets/src/sleeper').Sleeper;
-    freezable?: import('../../componets/src/freezable').Freezable;
-    stackable: StackableComponent;
-    fueled?: Fueled<ItemEntity>;
-    finiteuses: FiniteUsesComponent;
-    inventoryitem: InventoryItem<ItemEntity, ItemOwner>;
-    perishable: Perishable;
-    equippable?: Equippable;
-    container?: Container<InventoryStack, ItemEntity, StorageSlot>;
-    tool?: import('../../componets/src/tool').Tool;
-    fertilizer?: import('../../componets/src/fertilizer').Fertilizer;
-    bathbomb?: import('../../componets/src/bathbomb').BathBomb;
-    shaver?: import('../../componets/src/shaver').Shaver;
-    deployable?: import('../../componets/src/deployable').Deployable<any>;
-    instrument?: ItemRuntimeComponent & { Play(musician: unknown, listeners: (range: number) => Iterable<never>): boolean };
-    workable?: import('../../componets/src/workable').Workable;
-    spellcaster?: import('../../componets/src/spellcaster').SpellCasterComponent;
-    fishingrod?: import('../../componets/src/fishingrod').FishingRod;
-    terraformer?: import('../../componets/src/terraformer').Terraformer;
-    farmtiller?: import('../../componets/src/farmtiller').FarmTiller;
-    lighter?: import('../../componets/src/lighter').Lighter;
-    burnable?: import('../../componets/src/burnable').Burnable;
-    propagator?: import('../../componets/src/propagator').Propagator;
-    explosive?: import('../../componets/src/explosive').Explosive;
-    book?: import('../../componets/src/book').BookComponent;
-    weapon?: import('../../componets/src/weapon').Weapon;
-    projectile?: import('../../componets/src/projectile').Projectile;
-    repairer?: import('../../componets/src/repairer').Repairer;
-    fuel?: Fuel;
-    tradable?: import('../../componets/src/tradable').Tradable;
-    temperature?: Temperature;
-    heater?: Heater;
-    armor?: import('../../componets/src/armor').Armor;
-    setbonus?: import('../../componets/src/setbonus').SetBonus;
-    hauntable?: import('../../componets/src/hauntable').Hauntable;
-    useableitem?: import('../../componets/src/useableitem').UseableItem;
-    lootdropper?: import('../../componets/src/lootdropper').LootDropper;
-    phonograph?: import('../../prefab/src/phonograph').PhonographController;
-    inventory?: import('./creatureInventory').CreatureInventory;
-    trader?: import('../../componets/src/trader').Trader;
-    machine?: import('../../componets/src/machine').Machine;
-  };
+export interface ItemComponents {
+  locomotor?: import('../../componets/src/locomotor').LocoMotor;
+  knownlocations?: import('../../componets/src/knownlocations').KnownLocations;
+  pollinator?: import('../../componets/src/pollinator').Pollinator<import('../../brains/src/types').BrainEntity>;
+  farmplantable?: import('../../componets/src/farmplantable').FarmPlantable;
+  eater?: import('../../componets/src/eater').Eater;
+  edible?: import('../../componets/src/edible').Edible;
+  health?: import('../../componets/src/health').Health;
+  combat?: import('../../componets/src/combat').Combat;
+  bait?: import('../../componets/src/bait').Bait;
+  sleeper?: import('../../componets/src/sleeper').Sleeper;
+  freezable?: import('../../componets/src/freezable').Freezable;
+  stackable: StackableComponent;
+  fueled?: Fueled<ItemEntity>;
+  finiteuses: FiniteUsesComponent;
+  inventoryitem: InventoryItem<ItemEntity, ItemOwner>;
+  perishable: Perishable;
+  equippable?: Equippable;
+  container?: Container<InventoryStack, ItemEntity, StorageSlot>;
+  tool?: import('../../componets/src/tool').Tool;
+  fertilizer?: import('../../componets/src/fertilizer').Fertilizer;
+  bathbomb?: import('../../componets/src/bathbomb').BathBomb;
+  shaver?: import('../../componets/src/shaver').Shaver;
+  deployable?: import('../../componets/src/deployable').Deployable<any>;
+  instrument?: ItemRuntimeComponent & { Play(musician: unknown, listeners: (range: number) => Iterable<never>): boolean };
+  workable?: import('../../componets/src/workable').Workable;
+  spellcaster?: import('../../componets/src/spellcaster').SpellCasterComponent;
+  fishingrod?: import('../../componets/src/fishingrod').FishingRod;
+  terraformer?: import('../../componets/src/terraformer').Terraformer;
+  farmtiller?: import('../../componets/src/farmtiller').FarmTiller;
+  lighter?: import('../../componets/src/lighter').Lighter;
+  burnable?: import('../../componets/src/burnable').Burnable;
+  propagator?: import('../../componets/src/propagator').Propagator;
+  explosive?: import('../../componets/src/explosive').Explosive;
+  book?: import('../../componets/src/book').BookComponent;
+  weapon?: import('../../componets/src/weapon').Weapon;
+  projectile?: import('../../componets/src/projectile').Projectile;
+  repairer?: import('../../componets/src/repairer').Repairer;
+  fuel?: Fuel;
+  tradable?: import('../../componets/src/tradable').Tradable;
+  temperature?: Temperature;
+  heater?: Heater;
+  armor?: import('../../componets/src/armor').Armor;
+  setbonus?: import('../../componets/src/setbonus').SetBonus;
+  hauntable?: import('../../componets/src/hauntable').Hauntable;
+  useableitem?: import('../../componets/src/useableitem').UseableItem;
+  lootdropper?: import('../../componets/src/lootdropper').LootDropper;
+  phonograph?: import('../../prefab/src/phonograph').PhonographController;
+  inventory?: import('./creatureInventory').CreatureInventory;
+  trader?: import('../../componets/src/trader').Trader;
+  machine?: import('../../componets/src/machine').Machine;
+}
+
+export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
+  get id(): string { return this.entityId!; }
+
   readonly signals: InventoryItemSignals;
   /** Display-only itemtile freshness for items without a perishable timer. */
   private readonly freshnessState = createSignal<number | undefined>(undefined);
   private readonly freshness;
   private readonly wetState = createSignal(false);
-  private readonly persistsState = createSignal(true);
-  readonly persistence = readonlySignal(this.persistsState);
   private readonly durability;
   /** components.armor is attached by prefab configuration, after the durability memo exists. */
   private readonly armorState = createSignal<import('../../componets/src/armor').Armor | undefined>(undefined);
@@ -197,10 +198,7 @@ export class ItemEntity {
   private readonly fueledState = createSignal<Fueled<ItemEntity> | undefined>(undefined);
   /** The saved fuel, loaded once the prefab has added and initialized its fueled. */
   private savedFuel?: number;
-  private transformSource: { readonly position: Vector3 } = { position: new Vector3() };
   readonly transform: { readonly position: Vector3; rotationY: number };
-  /** Read ground coordinates through the attached prefab instance and its model transform. */
-  bindTransform(instance: { readonly position: Vector3 }): void { this.transformSource = instance; }
   private miniMapEntity?: MiniMapEntity;
   get MiniMapEntity(): MiniMapEntity | undefined { return this.miniMapEntity; }
   /** AddMiniMapEntity is owned by the logical inst, independently of its art. */
@@ -214,14 +212,6 @@ export class ItemEntity {
   }
   mole?: InventoryStack['mole'];
   lightflier?: InventoryStack['lightflier'];
-  /**
-   * inst.AnimState: the item's sprite json for its whole life, on the ground, in a container or equipped. A ground
-   * visual draws this declaration; off the ground it plays no clip.
-   */
-  readonly sprite: SpriteState;
-  /** The item's skin is the sprite json's `skinId`; inventory, equipment and saves read it from there. */
-  get skinId(): string | undefined { return this.sprite.skinId.peek(); }
-  set skinId(skinId: string | undefined) { this.sprite.setSkinId(skinId); }
   variant?: string;
   highTemp?: number;
   lowTemp?: number;
@@ -262,24 +252,18 @@ export class ItemEntity {
     return this.components.phonograph ? this.components.phonograph.record : this.savedPhonographRecord;
   }
   private readonly runtime = new Map<string, ItemRuntimeComponent>();
-  private readonly removedState = createSignal(false);
-  readonly removal = readonlySignal(this.removedState);
-  private readonly tags = new Set<string>();
-  private events = new EventEmitter<Record<string, unknown>>();
-
   constructor(state: InventoryStack, perishWorld?: PerishWorld) {
+    super(state.itemId, new SpriteState({ name: state.itemId, none: true }), { position: new Vector3(), scale: new Vector3(1, 1, 1) });
     const item = this;
-    this.transform = { get position() { return item.transformSource.position; }, rotationY: 0 };
-    this.id = state.entityId ?? newItemEntityId();
-    this.prefab = state.itemId;
-    this.sprite = new SpriteState({ name: state.itemId, none: true });
+    this.transform = { get position() { return item.position; }, rotationY: 0 };
+    this.entityId = state.entityId ?? newItemEntityId();
     this.wetState.set(state.wet ?? false);
-    this.components = {
+    Object.assign(this.components, {
       stackable: new StackableComponent(this, state.count),
       finiteuses: new FiniteUsesComponent(this, state.remainingUses),
       inventoryitem: new InventoryItem<ItemEntity, ItemOwner>(this),
       perishable: new Perishable(this, readonlySignal(this.wetState), perishWorld),
-    };
+    });
     this.durability = createMemo(() => this.components.finiteuses.percent.get() ?? this.fueledState.get()?.percent.get()
       ?? this.armorState.get()?.percent.get());
     this.freshness = createMemo(() => this.components.perishable.perishtime.get() === undefined
@@ -300,28 +284,12 @@ export class ItemEntity {
     this.apply(state);
   }
 
-  get isRemoved(): boolean { return this.removedState.peek(); }
-  get persists(): boolean { return this.persistence.peek(); }
-  set persists(value: boolean) { this.persistsState.set(value); }
-  /** The live transform position; callers must not mutate it. */
-  getPosition(): Vector3 { return this.transform.position; }
-  hasTag(tag: string): boolean { return this.components.workable?.HasTag(tag) ?? this.tags.has(tag); }
   GetIsWet(): boolean { return this.wetState.peek(); }
-  addTag(tag: string): void {
-    if (this.tags.has(tag)) return;
-    this.tags.add(tag);
-    this.PushEvent('tagchanged', tag);
-  }
-  removeTag(tag: string): void {
-    if (this.tags.delete(tag)) this.PushEvent('tagchanged', tag);
-  }
-  PushEvent(name: string, data: unknown): void { this.events.emit(name, data); }
-  ListenForEvent(name: string, listener: (data: unknown) => void): () => void { return this.events.on(name, listener); }
   getComponent<T extends ItemRuntimeComponent>(name: string): T | undefined {
     return this.runtime.get(name) as T | undefined;
   }
   snapshot(includeIdentity = true): InventoryStack {
-    const inventory = this.components.inventory?.OnSave() ?? this.savedInventory;
+    const inventory = this.getComponent<import('./creatureInventory').CreatureInventory>('inventory')?.OnSave() ?? this.savedInventory;
     const temperature = this.components.temperature?.OnSave() ?? this.savedTemperature;
     const armor = this.components.armor ? this.components.armor.OnSave() : this.savedArmor;
     const freshness = this.components.perishable.perishtime.peek() === undefined
@@ -465,9 +433,8 @@ export class ItemEntity {
     if (this.isRemoved) return;
     this.flush();
     if (this.isRemoved) return;
-    this.removedState.set(true);
+    super.remove();
     this.PushEvent('onremove', undefined);
-    this.events = new EventEmitter();
     this.components.inventoryitem.owner = null;
     this.miniMapEntity?.dispose();
     for (const component of this.runtime.values()) component.dispose();

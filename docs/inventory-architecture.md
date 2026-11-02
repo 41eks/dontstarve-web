@@ -49,11 +49,11 @@ Lua 使用双向关联：inventory/container 保存物品成员与槽位，物�
 
 保存时，`inventory:OnSave()` 按普通槽、装备槽和 activeitem 嵌套保存各物品的 `GetSaveRecord()`；`container:OnSave()` 按容器槽位保存相同记录。`EntityScript:GetSaveRecord()` 从该 inst 的 Transform 读取位置并保存组件数据。世界保存遍历全局 `Ents`，检查实体有效性、持久化标志、prefab、Transform 和没有父实体等条件；持有物作为 owner 的子实体随其组件嵌套保存，避免再次作为世界顶层实体保存。源码见 `components/inventory.lua:192`、`components/container.lua:979`、`entityscript.lua:248` 和 `mainfunctions.lua:1088`。
 
-对应到本项目，InventoryStore/Container 管理实际槽位成员与转移，ItemEntity 保存持有关系并引用地面实例的 Transform，GroundItemManager 管理地面实体集合与拾取接线，display 管理场景挂载和显示资源。归属变化应通过统一转移流程同时维护槽位与 owner，UI signal 只反映提交后的状态。项目的 `ItemOwner.address` 用于库存事务寻址；它不是 Lua 物品独立保存当前槽号的依据。
+对应到本项目，InventoryStore/Container 管理实际槽位成员与转移，ItemEntity 是 PrefabInstance 子类，持有组件、库存归属与逻辑 Transform，GroundItemManager 管理地面实体集合与拾取接线，display 管理场景挂载和显示资源。归属变化应通过统一转移流程同时维护槽位与 owner，UI signal 只反映提交后的状态。项目的 `ItemOwner.address` 用于库存事务寻址；它不是 Lua 物品独立保存当前槽号的依据。
 
 ### 项目的物品实体
 
-`packages/inventory/src/entity.ts` 的 `ItemEntity` 保存稳定 ID、prefab、skin、transform、stackable/fueled/finiteuses 状态、inventoryitem owner 和运行时组件。各具体槽位直接保存实体引用，`getEntity()` 返回引用，`get()` 返回用于 UI 与领域计算的独立快照。`InventoryStack` 是快照类型，不再是槽位中的另一份可变权威状态。`ItemEntityRegistry` 由库存和 `GroundItemManager` 共用。
+`packages/inventory/src/entity.ts` 的 `ItemEntity` 继承 `PrefabInstance`。身份、标签、事件、皮肤、持久化、status 和 Transform 复用基类；物品组件（stackable、perishable、fueled、finiteuses、inventoryitem）挂在同一个 components 对象上。各具体槽位直接保存实体引用，`getEntity()` 返回引用，`get()` 返回用于 UI 与领域计算的独立快照。`InventoryStack` 是快照类型，不再是槽位中的另一份可变权威状态。`ItemEntityRegistry` 由库存和 `GroundItemManager` 共用。
 
 `InventoryStore.transfer()` 从源实体取得完整状态，验证后原子提交；整件转移使用同一个引用。`extract()` 交出整件原实体或创建部分堆叠的新实体，`receive()` 接收地面的实体并按需合堆。空间不足、目标不接受或源实体已被替换时不改变归属。消耗和移除仍由 store 提交，entity 的 owner 回调检查槽位是否还持有自己，避免旧实体影响替代物。制造仍先使用纯函数计算快照，提交时复用剩余材料的实体并为新产品创建实体。
 
@@ -61,9 +61,9 @@ Lua 使用双向关联：inventory/container 保存物品成员与槽位，物�
 
 ### 地面坐标的权威来源
 
-model 是地面物品 transform 的权威载体，`PrefabInstance` 持有该 model 的引用，`instance.position` 就是 `model.position`。丢弃和恢复时先设置这个位置，再调用 `ItemEntity.bindTransform(instance)`；之后 `entity.transform.position`、绘制排序的 `footPosition` 与实例位置都读取同一个向量。尚未创建地面实例的库存物品使用未绑定的位置，首次绑定后不再保留这份位置。
+地面 model 由 display 创建并通过 `bindInstance(model, item)` 绑定原 `ItemEntity`，`prefabInstance(model) === item`。实例在库存中首次创建时已有逻辑坐标；挂到 display 后，`instance.position`、`entity.transform.position`、绘制排序的 `footPosition` 和 `model.position` 是同一向量。拾取后实例保持存活，重新掉落时将当前 Transform 交给新的 display。
 
-GroundItemVisual 的可选 `bindTransform(entity.transform)` 把已绑定的 Transform 引用交给需要移动或距离判断的 prefab。资产准备阶段还没有完成库存交接，蝴蝶和萤火虫在实际绑定后才建立控制器；失败的准备不会移动物品或启动另一份实体状态。静态与活动物品都直接使用 model 的位置，不做逐帧同步。
+`GroundItemVisual.instance` 直接引用真实物品；已移除 `bindEntity` 和 `bindTransform` 两段绑定，不再创建另一个地面 PrefabInstance 或复制组件／标签。蝴蝶、萤火虫、鼹鼠等专用逻辑读取原实例及其组件，display 的释放不永久移除物品。库存的 DropItem 在地面接线完成后发送一次 ondropped，成功拾取发送一次 onputininventory，不再在两套实例之间重发事件。
 
 GroundItemManager 不在更新、唤醒或鼠标命中前复制位置，也不维护脚点副本。修改 model、实例或已绑定 `entity.transform.position` 中的坐标会立即作用于同一个 transform。拾取距离、虫网／锤击／换肤目标、邻居查询、排序和保存都从它读取；空间索引在活动帧结算后检查自身的 tile key。重新掉落建立新的 display 时，物品与其小地图图标重新读取当前实例的位置。
 

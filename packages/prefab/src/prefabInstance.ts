@@ -43,23 +43,27 @@ export interface PrefabComponents extends ActionComponents {
  * `sprite` and draws them: asleep releases the visual and takes the model out of the scene, removed releases everything.
  * `physics` is declared the same way; a `PhysicsBinding` keeps its body until the entity is removed.
  */
-export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState> {
+export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, Components extends object = PrefabComponents> {
   readonly prefab: string;
   private readonly lifecycle = createSignal<PrefabStatus>('active');
   readonly status: ReadonlySignal<PrefabStatus> = readonlySignal(this.lifecycle);
   /** What the prefab may tell the sprite; an archive entity is narrowed to what an archive can draw. */
   readonly sprite: Sprite;
   private model: Object3D | undefined;
+  private initialTransform?: { position: Vector3; scale: Vector3 };
   entityId?: string;
   saveRecord?: PlacementSaveRecord;
   get skinId(): string | undefined { return this.sprite.sprite.peek().skinId; }
   set skinId(skinId: string | undefined) { this.sprite.setSkinId(skinId); }
   /** inst.persists: false keeps the entity out of the save. */
-  persists = true;
+  private readonly persistsState = createSignal(true);
+  readonly persistence = readonlySignal(this.persistsState);
+  get persists(): boolean { return this.persistence.peek(); }
+  set persists(value: boolean) { this.persistsState.set(value); }
   /** inst.Physics: the collider the entity declares. */
   readonly physics = new PhysicsState();
   /** EntityScript components belong to the logical entity, including while its display sleeps. */
-  readonly components: PrefabComponents = {};
+  readonly components: Components = {} as Components;
   /** World services injected when this prefab joins a world; callbacks use the same host and components. */
   worldServices?: Partial<PrefabWorldContext>;
   private readonly removedState = createSignal(false);
@@ -88,24 +92,35 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState> 
   private readonly events = new EventEmitter<Record<string, unknown>>();
 
   /** `sprite` is the entity's sprite state, typed by what its display can draw. */
-  constructor(prefab: string, sprite: Sprite) {
+  constructor(prefab: string, sprite: Sprite, transform?: { position: Vector3; scale: Vector3 }) {
     this.prefab = prefab;
     this.sprite = sprite;
+    this.initialTransform = transform;
   }
 
   /** The display hands over the model it draws; the instance writes the model's transform directly. */
-  attach(model: Object3D): void { this.model = model; }
+  attach(model: Object3D): void {
+    if (this.model && this.model !== model) {
+      model.position.copy(this.model.position); model.scale.copy(this.model.scale); model.rotation.copy(this.model.rotation);
+    } else if (this.initialTransform) {
+      model.position.copy(this.initialTransform.position); model.scale.copy(this.initialTransform.scale);
+    }
+    this.initialTransform = undefined;
+    this.model = model;
+  }
 
   /** Where the entity stands: the attached model's own position vector. */
   get position(): Vector3 {
-    if (!this.model) throw new Error('The entity has no model attached');
-    return this.model.position;
+    if (this.model) return this.model.position;
+    if (this.initialTransform) return this.initialTransform.position;
+    throw new Error('The entity has no model attached');
   }
 
   /** Transform:SetScale, on the model owned by the display. */
   get scale(): Vector3 {
-    if (!this.model) throw new Error('The entity has no model attached');
-    return this.model.scale;
+    if (this.model) return this.model.scale;
+    if (this.initialTransform) return this.initialTransform.scale;
+    throw new Error('The entity has no model attached');
   }
 
   /**
@@ -180,6 +195,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState> 
   private tagsChanged(tag: string): void {
     this.tagView = undefined;
     for (const listener of this.tagListeners) listener(tag);
+    this.PushEvent('tagchanged', tag);
   }
 
   /** OnEntitySleep / OnEntityWake: follows the entity's tile; a removed entity stays removed. */
@@ -208,17 +224,18 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState> 
 }
 
 /** The display's model can be looked up without storing its logical entity in userData. */
-const instancesByModel = new WeakMap<Object3D, PrefabInstance<ArchiveSpriteCommands>>();
+type AnyPrefabInstance = PrefabInstance<ArchiveSpriteCommands, object>;
+const instancesByModel = new WeakMap<Object3D, AnyPrefabInstance>();
 
 /** Bind the display's model to its logical entity; metadata remains on the instance. */
-export function bindInstance(model: Object3D, instance: PrefabInstance<ArchiveSpriteCommands>): void {
+export function bindInstance(model: Object3D, instance: AnyPrefabInstance): void {
   instancesByModel.set(model, instance);
   instance.attach(model);
   instance.onRemove(watchMiniMapEntity(instance));
 }
 
-export function prefabInstance(model: Object3D | null | undefined): PrefabInstance<ArchiveSpriteCommands> | undefined {
-  return model ? instancesByModel.get(model) : undefined;
+export function prefabInstance<Instance extends AnyPrefabInstance = PrefabInstance<ArchiveSpriteCommands>>(model: Object3D | null | undefined): Instance | undefined {
+  return (model ? instancesByModel.get(model) : undefined) as Instance | undefined;
 }
 
 /** inst:HasTag on a model: its instance owns the tags; a model without one (bare FX) keeps its own `userData.tags`. */
@@ -240,22 +257,26 @@ export function setModelTag(model: Object3D, tag: string, present: boolean): voi
 
 /** A new entity and the display that draws it. The model is the display's; the entity never holds it. */
 /**
- * The first clip of a new entity's sprite. `sprite` is an existing entity's own sprite json, such as an item's
- * inst.AnimState that outlives each of its ground visuals: it is presented anew in this clip, keeping its skin.
+ * The first clip drawn by a display. `instance` reuses a logical entity, including its identity, components, tags,
+ * events and sprite declarations; creating another ground display does not create another logical entity.
  */
-export type EntityClip = ConstructorParameters<typeof SpriteState>[0] & { readonly sprite?: SpriteState };
+export type EntityClip<Instance extends PrefabInstance<SpriteState, object> = PrefabInstance> =
+  ConstructorParameters<typeof SpriteState>[0] & { readonly instance?: Instance };
 
-function entitySprite(clip: EntityClip): SpriteState {
-  if (!clip.sprite) return new SpriteState(clip);
-  clip.sprite.resetPresentation(clip);
-  return clip.sprite;
+function entityInstance<Instance extends PrefabInstance<SpriteState, object>>(prefab: string, clip: EntityClip<Instance>): Instance {
+  if (clip.instance) {
+    if (clip.instance.isRemoved || clip.instance.prefab !== prefab) throw new Error('Cannot display a removed or different prefab instance');
+    clip.instance.sprite.resetPresentation(clip);
+    return clip.instance;
+  }
+  return new PrefabInstance(prefab, new SpriteState(clip)) as Instance;
 }
 
-export function createPrefabEntity(prefab: string, source: SpriteSource | LoadedSpriteSource, clip: EntityClip, name?: string,
+export function createPrefabEntity<Instance extends PrefabInstance<SpriteState, object> = PrefabInstance>(prefab: string, source: SpriteSource | LoadedSpriteSource, clip: EntityClip<Instance>, name?: string,
   /** Sets the entity's appearance before the first sprite is drawn, so it is drawn dressed. */
-  initialize?: (instance: PrefabInstance) => void, parentStatus?: ReadonlySignal<PrefabStatus>, displayOptions?: Pick<PrefabDisplayOptions, 'alignBottom' | 'dependencies'>):
-  { instance: PrefabInstance; display: PrefabDisplay } {
-  const instance = new PrefabInstance(prefab, entitySprite(clip));
+  initialize?: (instance: Instance) => void, parentStatus?: ReadonlySignal<PrefabStatus>, displayOptions?: Pick<PrefabDisplayOptions, 'alignBottom' | 'dependencies'>):
+  { instance: Instance; display: PrefabDisplay } {
+  const instance = entityInstance(prefab, clip);
   initialize?.(instance);
   const display = new PrefabDisplay({ ...displayOptions, name, source, status: instance.status, parentStatus, sprite: instance.sprite, light: instance.light });
   bindInstance(display.model, instance);
@@ -263,12 +284,11 @@ export function createPrefabEntity(prefab: string, source: SpriteSource | Loaded
 }
 
 /** A new entity drawn with a shared archive sprite; `clip.held` is a one-shot clip that rests on its last frame. */
-export function createArchiveEntity(prefab: string, archive: ArchiveSpriteSource, clip: EntityClip, name?: string,
-  initialize?: (instance: PrefabInstance<ArchiveSpriteCommands>) => void, parentStatus?: ReadonlySignal<PrefabStatus>,
+export function createArchiveEntity<Instance extends PrefabInstance<SpriteState, object> = PrefabInstance>(prefab: string, archive: ArchiveSpriteSource, clip: EntityClip<Instance>, name?: string,
+  initialize?: (instance: Instance) => void, parentStatus?: ReadonlySignal<PrefabStatus>,
   displayOptions?: Pick<PrefabDisplayOptions, 'staticTransform'>):
-  { instance: PrefabInstance<ArchiveSpriteCommands>; display: PrefabDisplay } {
-  const state = entitySprite(clip);
-  const instance = new PrefabInstance<ArchiveSpriteCommands>(prefab, state);
+  { instance: Instance; display: PrefabDisplay } {
+  const instance = entityInstance(prefab, clip), state = instance.sprite;
   initialize?.(instance);
   const display = new PrefabDisplay({ ...displayOptions, name, archive, status: instance.status, parentStatus, sprite: state, light: instance.light });
   bindInstance(display.model, instance);
@@ -276,9 +296,10 @@ export function createArchiveEntity(prefab: string, archive: ArchiveSpriteSource
 }
 
 /** Transform-only prefab, with the same display-owned model and lifecycle as drawn entities; a billboard's display turns it to the camera. */
-export function createEmptyEntity(prefab: string, parentStatus?: ReadonlySignal<PrefabStatus>, { billboard = false } = {}):
-  { instance: PrefabInstance; display: PrefabDisplay } {
-  const instance = new PrefabInstance(prefab, new SpriteState({ name: '', billboard }));
+export function createEmptyEntity<Instance extends PrefabInstance<SpriteState, object> = PrefabInstance>(prefab: string, parentStatus?: ReadonlySignal<PrefabStatus>,
+  { billboard = false, instance: original }: { billboard?: boolean; instance?: Instance } = {}):
+  { instance: Instance; display: PrefabDisplay } {
+  const instance = entityInstance(prefab, { name: '', billboard, instance: original });
   const display = new PrefabDisplay({ name: prefab, empty: true, status: instance.status, parentStatus, sprite: instance.sprite, light: instance.light });
   bindInstance(display.model, instance);
   return { instance, display };

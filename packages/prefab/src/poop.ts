@@ -1,5 +1,4 @@
 import { createSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
-import type { ItemEntity } from '@dontstarve-web/inventory';
 import { createEffect, createSignal, readonlySignal } from '@dontstarve-web/signals';
 import { createArchiveEntity } from './prefabInstance';
 import { createResidentGroundItem } from './groundItems';
@@ -21,7 +20,7 @@ export function createPoopGroundFactory(context: GroundPrefabContext): GroundIte
       if (!context.scheduler) throw new Error('Poop requires the ground registry game-time scheduler');
       const createFlies = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(context.assets, { animationArchive: 'flies.zip',
         buildArchives: ['flies.zip'], bank: 'flies', animation: clip.name, loop: clip.loop }, { name: 'flies', dynamicParent: true });
-      const base = createResidentGroundItem(context, { ...item, sprite: inst.sprite });
+      const base = createResidentGroundItem(context, { ...item, entity: inst });
 
       const flies = createArchiveEntity('flies', { create: createFlies }, { name: 'swarm_pre', billboard: true }, 'flies', undefined, base.instance.status);
       flies.instance.persists = false;
@@ -34,7 +33,7 @@ export function createPoopGroundFactory(context: GroundPrefabContext): GroundIte
       const releaseFlies = () => { stopRaycast(); flies.instance.remove(); flies.display.dispose(); };
       const model = base.display.model, sprite = base.instance.sprite;
       const visual = createBurnableItemVisual(context, 'poop', base, displays);
-      let entity: ItemEntity | undefined;
+      const entity = inst;
       let controller: FliesController | undefined;
       let stopIgnite: (() => void) | undefined;
       let disposed = false;
@@ -60,13 +59,9 @@ export function createPoopGroundFactory(context: GroundPrefabContext): GroundIte
       });
       // Fresh prefab appearance uses dump -> idle, as AnimState:PushAnimation in poop.lua.
       sprite.playOnce('dump', () => { if (!disposed) sprite.playOnce('idle'); });
+      stopIgnite = inst.ListenForEvent('onignite', removeFlies);
       const result: GroundItemVisual = {
         ...visual,
-        bindEntity(inst) {
-          entity = inst;
-          visual.bindEntity?.(inst);
-          stopIgnite?.(); stopIgnite = inst.ListenForEvent('onignite', removeFlies);
-        },
         dispose() {
           if (disposed) return;
           disposed = true;

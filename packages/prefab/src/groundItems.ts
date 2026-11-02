@@ -3,15 +3,14 @@ import {
   ArchiveSpriteAssets, createSharedArchiveSprite,
   type ArchiveSpriteDefinition,
 } from '@dontstarve-web/animation/archiveSprite';
-import type { InventoryItemSpec, InventorySkinSpec, ItemEntity } from '@dontstarve-web/inventory';
+import { ItemEntity, type InventoryItemSpec, type InventorySkinSpec } from '@dontstarve-web/inventory';
 import type { GroundTileName } from './groundTiles';
 import catalog from './groundItems.json' with { type: 'json' };
 import type { GroundItemDefinition, GroundItemFactory, GroundItemVisual, GroundPrefabContext } from './groundPrefab';
 import { BURNABLE_ITEM_DEFINITIONS, configureBurnableItemEntity, createBurnableItemVisual } from './burnableItems';
 import { configureBookEntity, isBook } from './books';
 import { configureHeatRockEntity, declareHeatRockSprite, HEATROCK_ID } from './heatrock';
-import type { ArchiveSpriteCommands, PrefabDisplay, SpriteState } from '@dontstarve-web/display';
-import type { PrefabInstance } from './prefabInstance';
+import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
 import { createArchiveEntity } from './prefabInstance';
 import { bindResidentGroundItem } from './groundItemLifecycle';
 import { configureRazorEntity, RAZOR_ID } from './razor';
@@ -80,7 +79,7 @@ export function createGroundItemFactory(context: GroundPrefabContext): GroundIte
       const dropLoot = context.dropLoot;
       entity.worldServices = { fx: context.fx,
         dropLoot: (items, position) => dropLoot?.(items.map(item => ({ ...GROUND_ITEM_DEFINITIONS[item.itemId], ...item })), position) };
-      const base = createResidentGroundItem(context, { ...item, sprite: entity.sprite }, item.itemId === HEATROCK_ID ? declareHeatRockSprite : undefined);
+      const base = createResidentGroundItem(context, { ...item, entity }, item.itemId === HEATROCK_ID ? declareHeatRockSprite : undefined);
       if (!Object.hasOwn(BURNABLE_ITEM_DEFINITIONS, item.itemId)) return base.visual;
       return createBurnableItemVisual(context, item.itemId, base, displays, BURNABLE_ITEM_DEFINITIONS[item.itemId].fxLevel);
     },
@@ -99,15 +98,15 @@ export class GroundItemAssets extends ArchiveSpriteAssets {
  * position is settled (loaded or dropped, including the end of a fling), not while it is still moving.
  */
 /** A ground item's visual with the instance and display behind it, for prefabs that declare more on its sprite. */
-export interface ResidentGroundItem { readonly visual: GroundItemVisual; readonly instance: PrefabInstance<ArchiveSpriteCommands>; readonly display: PrefabDisplay }
+export interface ResidentGroundItem { readonly visual: GroundItemVisual; readonly instance: ItemEntity; readonly display: PrefabDisplay }
 
 export function createResidentGroundItem(context: Pick<GroundPrefabContext, 'assets' | 'tickingarea'>,
-  /** `sprite` is the item's own sprite json, whose skin it keeps; without one the visual has a sprite of its own in `skinId`. */
-  item: Pick<GroundItemDefinition, 'itemId' | 'skinId' | 'variant'> & { readonly sprite?: SpriteState },
+  item: Pick<GroundItemDefinition, 'itemId' | 'skinId' | 'variant'> & { readonly entity?: ItemEntity },
   /** The prefab's declaration of what its sprite follows, made once the item's entity is bound. */
   declare?: (entity: ItemEntity, sprite: ArchiveSpriteCommands) => void): ResidentGroundItem {
-  const { itemId, sprite } = item;
-  const skinId = sprite ? sprite.skinId.peek() : item.skinId;
+  const { itemId } = item;
+  const entity = item.entity ?? new ItemEntity({ itemId, count: 1, skinId: item.skinId, variant: item.variant });
+  const skinId = entity.skinId;
   const base = GROUND_ART_DEFINITIONS[itemId];
   const variant = item.variant === undefined ? undefined : GROUND_ART_VARIANTS[itemId]?.[item.variant];
   if (item.variant !== undefined && !variant) throw new Error(`Unknown ground variant: ${itemId}/${item.variant}`);
@@ -119,9 +118,8 @@ export function createResidentGroundItem(context: Pick<GroundPrefabContext, 'ass
     { ...definition, animation: clip.name, loop: clip.loop }, { name: `GroundItem:${itemId}`, instancedAnimations: 'all' });
   // The display loads the art and draws the item once it is ready; the entity exists from now on.
   const { instance, display } = createArchiveEntity(itemId, { create },
-    { name: definition.animation, held: !definition.loop, billboard: !definition.ground, sprite }, `GroundItem:${itemId}`,
+    { name: definition.animation, held: !definition.loop, billboard: !definition.ground, instance: entity }, `GroundItem:${itemId}`,
     entity => {
-      if (!sprite) entity.skinId = skinId;
       entity.sprite.setSkinSource({ archives: definition.skinArchives, art: context.assets,
         materialOptions: { multColour: definition.multColour, pointFiltering: definition.pointFiltering } });
       for (const tag of definition.tags ?? []) entity.addTag(tag);

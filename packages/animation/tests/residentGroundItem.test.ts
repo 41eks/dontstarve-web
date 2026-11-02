@@ -52,11 +52,11 @@ it('unloads a settled ground item sprite with its tile and rebuilds it when the 
 it('retains a lantern machine, light and fuel while its tile releases and rebuilds the sprite', async () => {
   const { createLanternGroundSprite, configureLanternEntity, getLanternController, LANTERN_FUEL } = await import('../../prefab/src/lantern');
   const tile = createSignal(true), assets = new GroundItemAssets();
-  const visual = await createLanternGroundSprite({ assets, tickingarea: () => Object.assign(tile, { dispose() {} }) as never });
   const item = new ItemEntity({ itemId: 'lantern', count: 1 });
   const world = createPerishWorld();
   item.BindPerishWorld(world);
-  configureLanternEntity(item); visual.bindEntity!(item);
+  configureLanternEntity(item);
+  const visual = await createLanternGroundSprite({ assets, tickingarea: () => Object.assign(tile, { dispose() {} }) as never }, item);
   const scene = new THREE.Scene(), model = visual.model;
   scene.add(model); model.position.set(3, 0, 4);
   lookupPrefabInstance(model)!.PushEvent('ondropped'); await tick();

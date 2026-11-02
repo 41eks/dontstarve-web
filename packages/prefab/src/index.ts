@@ -73,7 +73,6 @@ export {
   type PlayerBody,
   type WilsonAnimationController,
   type WilsonCarryItem,
-  type WilsonFacing,
   type WilsonPlayerPrefab,
   type WilsonPlayerPrefabOptions,
 } from './player';

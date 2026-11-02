@@ -203,8 +203,11 @@ export class InventoryStore {
     const position = dropPosition ?? this.actor.GetPosition();
     entity.transform.position.set(position.x, 0, position.z);
     entity.MiniMapEntity?.tileTracker.sync();
-    entity.PushEvent('ondropped', undefined);
-    for (const listener of this.drops) { if (launch) listener(entity, launch); else listener(entity); }
+    try {
+      for (const listener of this.drops) { if (launch) listener(entity, launch); else listener(entity); }
+    } finally {
+      entity.PushEvent('ondropped', undefined);
+    }
   }
   /**
    * inventory.lua DropEverything(ondeath): the cursor item, every item slot, then every equipped item,

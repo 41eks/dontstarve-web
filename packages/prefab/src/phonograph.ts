@@ -201,31 +201,27 @@ export function createPhonographGroundFactory(context: GroundPrefabContext): Gro
     create(item, inst) {
       configurePhonographEntity(inst, scheduler);
       inst.worldServices = worldServices;
-      const { visual, instance, display } = createResidentGroundItem(context, { ...item, sprite: inst.sprite });
+      const { visual, instance, display } = createResidentGroundItem(context, { ...item, entity: inst });
       const model = display.model;
       const controller = inst.components.phonograph!;
-      instance.components.phonograph = controller;
       const removeEvents = listenInventoryEvents(instance, {
         // Dropping a loaded machine enables it, but does not turn it on.
         ondropped: () => controller.OnDropped(),
         onload: () => { controller.OnDropped(); if (item.playbackRemaining && !controller.isPlaying) controller.resume(item.playbackRemaining); },
       });
+      inst.components.lootdropper ??= createStructureLootDropper(inst);
+      const workable = inst.component('workable', () => {
+        const work = new Workable(inst);
+        work.SetWorkAction('HAMMER'); work.SetWorkLeft(1);
+        return work;
+      });
+      inst.components.workable = workable;
+      workable.SetOnFinishCallback(onhammered);
       return {
         ...visual,
         // The song deadline belongs to the machine, independently of sprite residency.
         active: undefined,
         model,
-        bindEntity(entity: ItemEntity) {
-          entity.components.lootdropper ??= createStructureLootDropper(entity);
-          const workable = entity.component('workable', () => {
-            const work = new Workable(entity);
-            work.SetWorkAction('HAMMER');
-            work.SetWorkLeft(1);
-            return work;
-          });
-          entity.components.workable = workable;
-          workable.SetOnFinishCallback(onhammered);
-        },
         getDefinition: () => controller.snapshot(),
         update(dt: number) { controller.update(dt); },
         dispose() { removeEvents(); visual.dispose(); },

@@ -1,12 +1,12 @@
 import * as THREE from 'three';
 import { createEffect, createMemo, createSignal, readonlySignal, watchSignal, GameTimeScheduler, WorldContentKey, type GetWatchWorldContent, type HandEquipment, type PlayerPositionsSignal, type ReadonlySignal, type Signal, type WorldContentSignal, type WorldPhase } from '@dontstarve-web/signals';
 import { ArchiveSpriteAssets, createSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
-import type { ArchiveSpriteCommands, ArchiveSpriteSource, SpriteState } from '@dontstarve-web/display';
+import type { ArchiveSpriteCommands, ArchiveSpriteSource } from '@dontstarve-web/display';
 import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
 import { TILE_SIZE } from './tile';
 import { listenInventoryEvents } from './inventoryEvents';
 import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
-import type { ItemEntity } from '@dontstarve-web/inventory';
+import { ItemEntity } from '@dontstarve-web/inventory';
 import { Workable } from '../../componets/src/workable';
 import { ComponentTimer } from '../../componets/src/timer';
 import { TileTracker } from '../../componets/src/tileManager';
@@ -45,7 +45,7 @@ export const FIREFLIES_LIGHT = {
 export type FirefliesSprite = Pick<ArchiveSpriteCommands, 'start' | 'playOnce' | 'clearAnimation' | 'setLightOverride'>;
 
 /** The swarm's ground entity: its tags, its sprite and its inst.Light. */
-export type FirefliesInstance = Pick<PrefabInstance<ArchiveSpriteCommands>, 'addTag' | 'removeTag' | 'light'> & { readonly sprite: FirefliesSprite };
+export type FirefliesInstance = Pick<PrefabInstance<ArchiveSpriteCommands>, 'addTag' | 'removeTag' | 'light'> & { readonly sprite: FirefliesSprite; readonly components?: Pick<ItemEntity['components'], 'workable'> };
 
 export interface FirefliesWorld {
   getWatchWorldContent?: GetWatchWorldContent;
@@ -86,7 +86,6 @@ export class FirefliesController {
   private readonly animation: FirefliesSprite;
   private readonly random: () => number;
   private readonly transform: ItemEntity['transform'];
-  private entity?: ItemEntity;
 
   constructor(
     instance: FirefliesInstance,
@@ -186,7 +185,6 @@ export class FirefliesController {
     return !this.disposed && !this.inInventory && this.shown && this.canClick && this.active.peek()
       && !!tool && !tool.isRemoved && tool.hasTag('NET_tool') && tool.components.tool?.CanDoAction('NET') === true;
   }
-  bindEntity(entity: ItemEntity): void { this.entity = entity; this.refresh(); }
 
   /** Called after assigning the source ground origin, for both drops and restores. */
   place(dropped: boolean): void {
@@ -309,16 +307,14 @@ export class FirefliesController {
 
   private refresh(): void {
     this.syncUpdating();
-    this.entity?.components.workable?.SetWorkable(!this.disposed && this.canWork);
+    this.instance.components?.workable?.SetWorkable(!this.disposed && this.canWork);
     this.refreshVisual();
   }
 
   /** NOCLICK follows fireflies.lua fadein/updatefade; the held-net gate only limits mouse ray candidates. */
   private refreshClickability(): void {
     const noclick = this.disposed || !this.canClick;
-    for (const entity of [this.entity, this.instance]) {
-      if (noclick) entity?.addTag('NOCLICK'); else entity?.removeTag('NOCLICK');
-    }
+    if (noclick) this.instance.addTag('NOCLICK'); else this.instance.removeTag('NOCLICK');
     setMouseTargetEnabled(this.model, this.clickable);
   }
 
@@ -346,13 +342,12 @@ export class FirefliesAssets {
   dispose(): void { this.assets.dispose(); }
 }
 
-/** `sprite` is the item's own sprite json; without one the swarm has a sprite of its own. */
-export function createFirefliesGroundSprite(assets: FirefliesAssets, world: FirefliesWorld, sprite?: SpriteState) {
+/** The swarm display draws the original logical item instance. */
+export function createFirefliesGroundSprite(assets: FirefliesAssets, world: FirefliesWorld, entity = new ItemEntity({ itemId: FIREFLIES_ID, count: 1 })) {
   // fireflies.lua gives the AnimState a bank and build but plays nothing until fadein: no sprite is built until a clip
   // plays, and the display releases it when the swarm's tile is found inactive. The display loads the shared archive.
-  const { instance, display } = createArchiveEntity(FIREFLIES_ID, assets.source, { name: 'swarm_pre', none: true, billboard: true, sprite }, `GroundItem:${FIREFLIES_ID}`);
+  const { instance, display } = createArchiveEntity(FIREFLIES_ID, assets.source, { name: 'swarm_pre', none: true, billboard: true, instance: entity }, `GroundItem:${FIREFLIES_ID}`);
   const model = display.model;
-  const active = createSignal(true);
   const cleanups: (() => void)[] = [];
   let controller: FirefliesController | undefined;
   const removeInventoryEvents = listenInventoryEvents(instance, {
@@ -360,18 +355,14 @@ export function createFirefliesGroundSprite(assets: FirefliesAssets, world: Fire
     onputininventory: () => controller?.onPutInInventory(),
     onload: () => controller?.place(false),
   });
-  return { model, instance, display, active: readonlySignal(active), get controller() { return controller; },
-    bindEntity(entity: ItemEntity) { controller?.bindEntity(entity); },
-    bindTransform(transform: ItemEntity['transform']) {
-      controller = new FirefliesController(instance, model, world, transform);
-      const awake = watchSignal(controller.active, stop => cleanups.push(stop));
-      // OnEntitySleep/OnEntityWake: the swarm's frames, instance entry and listed light exist only while its tile is active.
-      createEffect(() => {
-        const value = awake.get();
-        instance.setActive(value);
-        active.set(value);
-      });
-    },
+  controller = new FirefliesController(instance, model, world, instance.transform);
+  const awake = watchSignal(controller.active, stop => cleanups.push(stop));
+  // OnEntitySleep/OnEntityWake: the swarm's frames, instance entry and listed light exist only while its tile is active.
+  createEffect(() => {
+    const value = awake.get();
+    instance.setActive(value);
+  });
+  return { model, instance, display, active: controller.active, get controller() { return controller; },
     get updating() { return controller?.updating; },
     // The ground item manager advances the display; the controller only runs updatefade.
     update: (dt: number) => controller?.update(dt),
@@ -380,7 +371,6 @@ export function createFirefliesGroundSprite(assets: FirefliesAssets, world: Fire
       cleanups.splice(0).forEach(stop => stop());
       removeInventoryEvents();
       controller?.dispose();
-      instance.remove();
       display.dispose();
     } };
 }
@@ -391,7 +381,7 @@ export function createFirefliesGroundFactory(context: GroundPrefabContext): Grou
   return {
     itemIds: [FIREFLIES_ID], capture: 'net',
     configureEntity: configureFirefliesEntity,
-    create: (_item, inst) => createFirefliesGroundSprite(assets, world, inst.sprite),
+    create: (_item, inst) => createFirefliesGroundSprite(assets, world, inst),
     dispose: () => assets.dispose(),
   };
 }

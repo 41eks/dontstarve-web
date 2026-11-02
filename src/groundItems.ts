@@ -10,7 +10,7 @@ import { isHatId, HAT_DEFINITIONS } from '@dontstarve-web/prefab/hats';
 import { reskinTarget } from '@dontstarve-web/prefab/reskin_tool';
 import type { ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
 import { GROUND_ART_DEFINITIONS } from '@dontstarve-web/prefab/groundItems';
-import { createPrefabEntity, modelHasTag } from '@dontstarve-web/prefab/prefabInstance';
+import { createPrefabEntity } from '@dontstarve-web/prefab/prefabInstance';
 import { newEntityId } from '@dontstarve-web/prefab/saveRecord';
 import type { BernieWorld } from '@dontstarve-web/prefab/bernie';
 import type { ButterflyWorld } from '@dontstarve-web/prefab/butterfly';
@@ -32,8 +32,6 @@ const DEFAULT_ATLAS = 'images/inventoryimages.xml';
 const ITEM_HEIGHT = 4;
 
 interface GroundItemRecord extends GroundItemVisual {
-  id: string;
-  entity: ItemEntity;
   definition: GroundItemDefinition;
   readonly footPosition: THREE.Vector3;
   fling?: LootFling;
@@ -107,7 +105,7 @@ export class GroundItemManager {
     this.disposed = true;
     this.stopSpawnAsh?.();
     this.stopDrops();
-    for (const item of [...this.items.values()]) { this.removeVisual(item); this.entities.destroy(item.entity); }
+    for (const item of [...this.items.values()]) { this.removeVisual(item); this.entities.destroy(item.instance); }
     this.displays.dispose();
     for (const stop of this.groundEntityStops.values()) stop();
     this.groundEntityStops.clear();
@@ -265,14 +263,14 @@ export class GroundItemManager {
   }
 
   /** Places the inst with a ground visual created now, which draws the item's own sprite. */
-  private placeEntity(entity: ItemEntity, definition: GroundItemDefinition, position: THREE.Vector3, dropped = false): THREE.Group {
+  private placeEntity(entity: ItemEntity, definition: GroundItemDefinition, position: THREE.Vector3, dropped = false, notifyDrop = true): THREE.Group {
     const visual = this.createVisual(definition, entity);
-    try { this.addVisual(entity, definition, position, visual, dropped); }
+    try { this.addVisual(entity, definition, position, visual, dropped, notifyDrop); }
     catch (error) { visual.dispose(); throw error; }
     return visual.model;
   }
 
-  private addVisual(entity: ItemEntity, definition: GroundItemDefinition, position: THREE.Vector3, visual: GroundItemVisual, dropped = false): void {
+  private addVisual(entity: ItemEntity, definition: GroundItemDefinition, position: THREE.Vector3, visual: GroundItemVisual, dropped = false, notifyDrop = true): void {
     // A tile-bound item follows its tile from ondropped / onload.
     visual.instance.setActive(true);
     this.entities.adopt(entity);
@@ -283,23 +281,18 @@ export class GroundItemManager {
       entity.components.inventoryitem.canbepickedup = false;
     }
     definition = { ...definition, ...entity.snapshot(), entity };
-    const id = entity.id;
     visual.instance.setPosition(position.x, dropped ? 0 : position.y, position.z);
-    entity.bindTransform(visual.instance);
     entity.MiniMapEntity?.tileTracker.sync();
     this.trackGroundEntity(entity);
-    visual.bindTransform?.(entity.transform);
-    visual.instance.entityId = id;
     visual.setDefinition?.(definition);
-    visual.bindEntity?.(entity);
-    const record: GroundItemRecord = { id, entity, definition, stops: [], ...visual, footPosition: visual.instance.position };
+    const record: GroundItemRecord = { definition, stops: [], ...visual, footPosition: entity.position };
     this.items.set(visual.model, record);
     this.bindInventoryEvents(record);
     this.displays.mount(visual.display, record.footPosition);
     this.bindVisualActivity(record);
     this.bindVisualUpdating(record);
     this.bindEntityRemoval(record);
-    visual.instance.PushEvent(dropped ? 'ondropped' : 'onload');
+    if (!dropped || notifyDrop) entity.PushEvent(dropped ? 'ondropped' : 'onload');
   }
 
   private removeVisual(record: GroundItemRecord): void {
@@ -345,16 +338,16 @@ export class GroundItemManager {
 
   /** Entity removal ends the record without waiting for a frame visit. */
   private bindEntityRemoval(record: GroundItemRecord): void {
-    const removal = watchSignal(record.entity.removal, stop => record.stops.push(stop));
+    const removal = watchSignal(record.instance.removal, stop => record.stops.push(stop));
     createEffect(() => {
       if (!removal.get() || this.items.get(record.model) !== record) return;
       this.removeVisual(record);
-      this.entities.destroy(record.entity);
+      this.entities.destroy(record.instance);
     });
   }
 
   private bindInventoryEvents(record: GroundItemRecord): void {
-    const { model, entity } = record;
+    const { model, instance: entity } = record;
     if (!this.inventory.hasItemSpec(entity.prefab)) { record.isClickable = () => false; return; }
     // Domain queries read the authoritative vector; presentation/pickup snapshots own their scratch vector.
     const actions = actionEntity(model, entity.prefab, entity);
@@ -362,20 +355,19 @@ export class GroundItemManager {
     actions.deconstructionTarget = this.createDeconstructionTarget(record);
     actions.pickupTarget = {
       model, entity, get position() { return record.footPosition; },
-      hasTag: (tag: string) => entity.hasTag(tag) || modelHasTag(model, tag),
+      hasTag: (tag: string) => entity.hasTag(tag),
       isValid: () => !this.disposed && this.activeItems.has(record) && !entity.isRemoved
         && !entity.components.inventoryitem.owner && record.isClickable?.() !== false && !record.isRemoved?.(),
     } satisfies PickupTarget;
     const stops = [
       entity.ListenForEvent('onputininventory', () => {
-        record.instance.PushEvent('onputininventory');
         this.removeVisual(record);
       }),
       entity.ListenForEvent('onremove', () => this.removeVisual(record)),
       entity.ListenForEvent('perished', () => this.replacePerished(record)),
       // physics.lua LaunchAt: any inst may be thrown from its own position.
       entity.ListenForEvent('launch', launch => { record.fling = new LootFling(entity.transform, undefined, undefined, launch as LootLaunch); this.refreshUpdating(record); }),
-      entity.ListenForEvent('ondropped', () => { record.fling = undefined; syncPlacementEntity(model); record.instance.PushEvent('ondropped'); }),
+      entity.ListenForEvent('ondropped', () => { record.fling = undefined; syncPlacementEntity(model); }),
     ];
     record.stopInventoryEvents = () => stops.forEach(stop => stop());
     // An inst that perished between holders is replaced once it reaches the ground.
@@ -384,7 +376,7 @@ export class GroundItemManager {
 
   /** perishable.lua onperishreplacement for a world inst: same position and stack size. */
   private replacePerished(record: GroundItemRecord): void {
-    const { entity } = record, prefab = entity.components.perishable.onperishreplacement;
+    const { instance: entity } = record, prefab = entity.components.perishable.onperishreplacement;
     if (prefab === undefined || entity.components.inventoryitem.owner || this.disposed || entity.isRemoved) return;
     if (this.items.get(record.model) !== record) return;
     const count = entity.components.stackable.count;
@@ -404,14 +396,14 @@ export class GroundItemManager {
       this.spawnFromSave(newEntityId(), rest, position);
     }
     const definition = { ...this.inventory.getStackSpec(entity.snapshot()), ...entity.snapshot(), entity };
-    if (launch) this.addFlungVisual(entity, definition, entity.transform.position.clone(), this.createVisual(definition, entity), launch);
-    else this.placeEntity(entity, definition, entity.transform.position.clone(), true);
+    if (launch) this.addFlungVisual(entity, definition, entity.transform.position.clone(), this.createVisual(definition, entity), launch, false);
+    else this.placeEntity(entity, definition, entity.transform.position.clone(), true, false);
   }
 
-  private addFlungVisual(entity: ItemEntity, definition: GroundItemDefinition, origin: THREE.Vector3, visual: GroundItemVisual, launch?: LootLaunch): void {
+  private addFlungVisual(entity: ItemEntity, definition: GroundItemDefinition, origin: THREE.Vector3, visual: GroundItemVisual, launch?: LootLaunch, notifyDrop = true): void {
     entity.transform.position.copy(origin);
     const fling = new LootFling(entity.transform, undefined, undefined, launch);
-    this.addVisual(entity, { ...definition, entity }, fling.position, visual, true);
+    this.addVisual(entity, { ...definition, entity }, fling.position, visual, true, notifyDrop);
     const flung = this.items.get(visual.model)!;
     flung.fling = fling;
     this.refreshUpdating(flung);
@@ -421,13 +413,13 @@ export class GroundItemManager {
 
   exportRecords(): SavedEntity[] {
     return [...[...this.items.values()].flatMap<SavedEntity>((record) => {
-      const { id } = record;
+      const id = record.instance.id;
       const definition = this.currentDefinition(record);
-      if (record.entity.isRemoved || !record.entity.persists || record.isRemoved?.() || record.entity.hasTag('INLIMBO')) return [];
+      if (record.instance.isRemoved || !record.instance.persists || record.isRemoved?.() || record.instance.hasTag('INLIMBO')) return [];
       return [{
         id,
         transform: {
-          position: record.entity.transform.position.toArray(),
+          position: record.instance.transform.position.toArray(),
           rotationY: 0,
         },
         components: {
@@ -458,11 +450,11 @@ export class GroundItemManager {
   }
 
   private currentDefinition(record: GroundItemRecord): GroundItemDefinition {
-    record.entity.flush();
+    record.instance.flush();
     // The skin is read from the inst alone: a snapshot omits an unskinned item's skinId.
     const { skinId: _placed, ...placed } = record.definition;
-    const definition = { ...placed, ...record.entity.snapshot(), ...record.getDefinition?.(), entity: record.entity };
-    if (!record.entity.isRemoved) record.entity.apply(definition);
+    const definition = { ...placed, ...record.instance.snapshot(), ...record.getDefinition?.(), entity: record.instance };
+    if (!record.instance.isRemoved) record.instance.apply(definition);
     return definition;
   }
 
@@ -473,14 +465,14 @@ export class GroundItemManager {
 
   /** The greenstaff's view of a ground stack: it removes one item of the stack at a time. */
   private createDeconstructionTarget(record: GroundItemRecord): DeconstructionTarget {
-    const entity = record.entity;
+    const entity = record.instance;
     const isValid = () => !this.disposed && this.activeItems.has(record) && !entity.isRemoved
       && !entity.components.inventoryitem.owner && record.isClickable?.() !== false && !record.isRemoved?.();
     return {
       prefab: entity.prefab, model: record.model, components: entity.components,
       get position() { return record.footPosition; }, get isRemoved() { return !isValid(); }, isValid,
       isVisible: () => record.model.visible,
-      hasTag: (tag: string) => entity.hasTag(tag) || modelHasTag(record.model, tag), flush: () => entity.flush(),
+      hasTag: (tag: string) => entity.hasTag(tag), flush: () => entity.flush(),
       PushEvent: (name: string, data: unknown) => entity.PushEvent(name, data),
       removeOne: () => {
         if (!isValid()) return false;
@@ -493,12 +485,12 @@ export class GroundItemManager {
     private createReskinTarget(record: GroundItemRecord): ReskinTarget {
         const prefabId = record.definition.itemId;
         const skins = Object.keys((isHatId(prefabId) ? HAT_DEFINITIONS[prefabId] : GROUND_ART_DEFINITIONS[prefabId])?.skinArchives ?? {});
-        const isValid = () => this.activeItems.has(record) && !record.entity.isRemoved && !record.isRemoved?.();
+        const isValid = () => this.activeItems.has(record) && !record.instance.isRemoved && !record.isRemoved?.();
         // The item's sprite json owns its skin; its ground visual, slot and save follow it.
         return reskinTarget({
-            id: record.id, prefabId, model: record.model, sprite: record.entity.sprite, skins, isValid,
-            get position() { return record.footPosition; }, get isRemoved() { return record.entity.isRemoved; },
-            hasTag: tag => record.entity.hasTag(tag) || modelHasTag(record.model, tag), isVisible: () => record.model.visible,
+            id: record.instance.id, prefabId, model: record.model, sprite: record.instance.sprite, skins, isValid,
+            get position() { return record.footPosition; }, get isRemoved() { return record.instance.isRemoved; },
+            hasTag: tag => record.instance.hasTag(tag), isVisible: () => record.model.visible,
         });
     }
 
@@ -534,13 +526,13 @@ export class GroundItemManager {
         item.model.children[0].position.y = item.fling.height;
         if (item.fling.settled) { item.fling = undefined; this.refreshUpdating(item); }
       }
-      if (item.entity.isRemoved || item.isRemoved?.()) {
+      if (item.instance.isRemoved || item.isRemoved?.()) {
         this.removeVisual(item);
-        this.entities.destroy(item.entity);
+        this.entities.destroy(item.instance);
       } else {
         // These indexes retain their own tile keys and read the model's authoritative position.
         syncPlacementEntity(item.model);
-        item.entity.MiniMapEntity?.tileTracker.moved();
+        item.instance.MiniMapEntity?.tileTracker.moved();
       }
     }
   }
@@ -586,11 +578,10 @@ export class GroundItemManager {
     const { instance, display } = createPrefabEntity(definition.itemId, {
       peek: () => { const atlas = this.loadedAtlases.get(atlasPath); return atlas && draw(atlas); },
       load: () => this.loadAtlas(atlasPath).then(draw),
-    }, { name: '', billboard: true, sprite: entity.sprite }, name);
+    }, { name: '', billboard: true, instance: entity }, name);
     return {
       model: display.model, instance, display,
       dispose() {
-        instance.remove();
         display.dispose();
         art?.texture.dispose();
         art?.material.dispose();

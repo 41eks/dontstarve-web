@@ -1,8 +1,9 @@
 import { smallHash, type Animation } from '@dontstarve-web/animation/animationAssets';
 import { SpriteController } from '@dontstarve-web/animation/sprite';
-import { SpriteResources, type SkinJson, type SpriteState } from '@dontstarve-web/display';
+import { SpriteResources, type SkinJson } from '@dontstarve-web/display';
 import { animationTiming } from './animationTimings';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
+import { ItemEntity } from '@dontstarve-web/inventory';
 import { createPrefabEntity } from './prefabInstance';
 import { listenInventoryEvents } from './inventoryEvents';
 import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
@@ -50,9 +51,10 @@ export class BernieAssets {
   dispose(): void { this.resources.dispose(); }
 }
 
-/** `skin` is the item's own sprite json, whose skin it keeps, or the skin of a sprite of the visual's own. */
-export function createBernieGroundSprite(assets: BernieAssets, world: BernieWorld, skin?: string | SpriteState) {
-  const owned = typeof skin === 'object' ? skin : undefined, skinId = owned ? owned.skinId.peek() : skin as string | undefined;
+/** Reuse the item's prefab instance; a skin alone constructs a standalone logical item. */
+export function createBernieGroundSprite(assets: BernieAssets, world: BernieWorld, item?: string | ItemEntity) {
+  const inst = typeof item === 'object' ? item : new ItemEntity({ itemId: BERNIE_ITEM_ID, count: 1, skinId: item });
+  const skinId = inst.skinId;
   const clipOf = (form: BernieAnimationForm, name: string) => animationTiming(form === 'bernie_big' ? 'bernie_big.zip' : 'bernie.zip', name);
   const required = [...(['bernie_active', 'bernie_big'] as const).flatMap(form => ['idle_loop', 'idle_loop_nodir', 'activate'].map(name => [form, name] as const)),
     ['bernie_big', 'deactivate'], ['bernie_big', 'deactivate_pst'], [BERNIE_ITEM_ID, 'inactive']] as const;
@@ -60,8 +62,7 @@ export function createBernieGroundSprite(assets: BernieAssets, world: BernieWorl
   let form: BernieAnimationForm = bernieGroundForm(world.getSanityPercent());
   const spriteName = `GroundItem:${BERNIE_ITEM_ID}`;
   if (skinId !== undefined && !assets.skins.archives[skinId]) throw new Error(`Unknown Bernie skin: ${skinId}`);
-  const { instance, display } = createPrefabEntity(BERNIE_ITEM_ID, assets.source(), { name: `${form}:idle_loop`, billboard: true, sprite: owned }, spriteName, entity => {
-    if (!owned) entity.skinId = skinId;
+  const { instance, display } = createPrefabEntity(BERNIE_ITEM_ID, assets.source(), { name: `${form}:idle_loop`, billboard: true, instance: inst }, spriteName, entity => {
     entity.sprite.setSkinSource(assets.skins);
   });
   const model = display.model, sprite = instance.sprite;
@@ -125,7 +126,6 @@ export function createBernieGroundSprite(assets: BernieAssets, world: BernieWorl
     dispose() {
       removeInventoryEvents();
       inInventory = true;
-      instance.remove();
       display.dispose();
     },
   };
@@ -135,7 +135,7 @@ export function createBernieGroundFactory(context: GroundPrefabContext): GroundI
   const assets = new BernieAssets(context.animationBaseUrl);
   return {
     itemIds: [BERNIE_ITEM_ID],
-    create: (_item, entity) => createBernieGroundSprite(assets, context.bernieWorld, entity.sprite),
+    create: (_item, entity) => createBernieGroundSprite(assets, context.bernieWorld, entity),
     dispose: () => assets.dispose(),
   };
 }
