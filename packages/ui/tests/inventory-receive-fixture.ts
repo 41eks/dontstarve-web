@@ -5,7 +5,8 @@ import { mountGameUi, INVENTORY_RECIPES } from '../src';
 import { createInventoryStore } from '../../../src/inventory';
 import { GroundItemManager } from '../../../src/groundItems';
 import { createWorldState } from '../../../src/worldState';
-import { inventoryReceiveEffect, projectInventorySource } from '../../../src/inventoryReceive';
+import { inventoryReceiveEffect } from '../../../src/inventoryReceive';
+import { ScreenProjection } from '@dontstarve-web/display';
 import { backpackContainerId, inventorySlotAddress, INVENTORY_SLOT_COUNT } from '@dontstarve-web/inventory';
 import initialWorld from '../../../public/saves/initial-world.json';
 
@@ -20,6 +21,7 @@ export async function createReceiveFixture() {
   canvas.width = 640; canvas.height = 480;
   Object.assign(canvas.style, { position: 'fixed', left: '40px', top: '60px', width: '320px', height: '240px' });
   document.body.append(canvas);
+  const screenProjection = new ScreenProjection(camera, canvas);
   const sync = (address: ReturnType<typeof inventorySlotAddress>) => {
     if (!inventoryBar.containers.some(container => container.id === address.containerId)) return;
     const stack = inventory.get(address);
@@ -30,7 +32,10 @@ export async function createReceiveFixture() {
   inventory.addresses().forEach(sync);
   inventory.subscribe((addresses) => addresses.forEach(sync));
   const scene = new THREE.Scene();
-  inventory.subscribeReceived((received, source) => { if (source) inventoryReceiveEffect(ui, camera, canvas, new THREE.Vector3(source.x, source.y, source.z))(received); });
+  inventory.subscribeReceived((received, source) => {
+    if (source) inventoryReceiveEffect(ui,
+      screenProjection.GetScreenPos(new THREE.Vector3(source.x, source.y, source.z)))(received);
+  });
   const worldState = createWorldState({ elapsedSeconds: 450, systems: {}, map: { ...initialWorld.world.map, kind: 'generated' } });
   // Keep the capture scene in tickingarea, with the player outside the swarm's hide radius.
   worldState.playerpositions.set([new THREE.Vector3(20, 0, 3)]);
@@ -59,19 +64,19 @@ export async function createReceiveFixture() {
     },
     add(itemId: string, count: number, x = 0, z = 0, skinId?: string) {
       const position = new THREE.Vector3(x, 0, z);
-      const source = projectInventorySource(position, camera, canvas);
-      const ok = inventory.add(itemId, count, skinId, inventoryReceiveEffect(ui, camera, canvas, position));
+      const source = screenProjection.GetScreenPos(position);
+      const ok = inventory.add(itemId, count, skinId, inventoryReceiveEffect(ui, source));
       return { ok, source };
     },
     craft() {
       return inventory.craft(INVENTORY_RECIPES.rope, undefined,
-        inventoryReceiveEffect(ui, camera, canvas, new THREE.Vector3()));
+        inventoryReceiveEffect(ui, screenProjection.GetScreenPos(new THREE.Vector3())));
     },
     async capture() {
       const position = new THREE.Vector3(4, 0, 3);
       const spec = inventory.getItemSpec('fireflies');
       await ground.spawnFromSave('e_flight_fireflies', { itemId: 'fireflies', count: 1, ...spec }, position);
-      const source = projectInventorySource(position, camera, canvas);
+      const source = screenProjection.GetScreenPos(position);
       const firefly = activePrefabs.find(entity => entity.hasTag('NET_workable'))!;
       const ok = performToolWork('NET', firefly, { components: { inventory } })
         && (!!firefly.components.inventoryitem?.owner || firefly.isRemoved);

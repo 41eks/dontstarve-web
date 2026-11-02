@@ -1,6 +1,7 @@
 import { PlayerActionPicker, PointerRaycaster } from '@dontstarve-web/stategraphs';
 import type { PlayerActionEvents } from '@dontstarve-web/stategraphs';
 import { EventEmitter } from '@dontstarve-web/signals';
+import { ScreenProjection } from '@dontstarve-web/display';
 import type { WorldContext } from '@dontstarve-web/prefab/worldContext';
 
 import { ground } from './building';
@@ -10,6 +11,7 @@ import { cursorUi, renderer, scene } from './universal';
 
 /** The rendering-side singletons prefabs need to place themselves in the game. */
 export const actionEvents = new EventEmitter<PlayerActionEvents>();
+export const screenProjection = new ScreenProjection(camera, renderer.domElement);
 export const view: WorldContext = {
   scene, camera, renderer, ground, player, actionEvents, cameraFacing: followCamera.facing, cameraHeading: followCamera.headingAngle,
   createCursorLabel: (pointer) => cursorUi.createLabel(pointer),

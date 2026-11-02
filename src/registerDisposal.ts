@@ -8,6 +8,7 @@ import {
   type PickupDoer, type PlayerLocomotor, type PlayerActionEvents,
 } from '@dontstarve-web/stategraphs';
 import { ItemEntity } from '@dontstarve-web/inventory';
+import type { ScreenProjection } from '@dontstarve-web/display';
 import { ARMORSNURTLESHELL_ID } from '@dontstarve-web/prefab/armorsnurtleshell';
 import { AMULET_ID } from '@dontstarve-web/prefab/amulet';
 import { Reader } from '../packages/componets/src/reader';
@@ -90,6 +91,7 @@ export function registerDisposal(events: EventEmitter<DisposalEvents>, resources
 interface ApplicationResourcesOptions {
   gameUi: ReturnType<typeof mountGameUi>;
   view: WorldContext;
+  screenProjection: Pick<ScreenProjection, 'GetScreenPos'>;
   inventory: InventoryStore;
   playerAnimation?: WilsonAnimationController;
   locomotor: PlayerLocomotor;
@@ -107,7 +109,7 @@ type SceneResources = Pick<Awaited<ReturnType<typeof startScene>>,
   'registry' | 'moonTrees' | 'evergreenForest' | 'deciduousForest' | 'buildingPlacement' | 'groundItems' | 'farmPlow' | 'rockManager' | 'caveEntrances' | 'grottoPools' | 'mushtrees' | 'mushroomPlants' | 'wormholes' | 'reskinEffects' | 'worldFx' | 'flowerPlanting' | 'marbleShrubs' | 'archiveProps' | 'marbleBeanSaplings' | 'rockAvocadoSaplings' | 'rockAvocadoBushes' | 'berrybushes' | 'monkeytails' | 'grasses' | 'saplings' | 'scheduler' | 'weather' | 'moon' | 'getWatchWorldContent' | 'beefalos' | 'molehills' | 'ponds'>;
 
 /** Create panels before scene loading, then own action setup and its explicit disposal. */
-export function createDisposalResources({ gameUi, view, inventory, playerAnimation, locomotor, pickupDoer,
+export function createDisposalResources({ gameUi, view, screenProjection, inventory, playerAnimation, locomotor, pickupDoer,
   handEquipmentBinding, inventorySlotItem, actionEvents, isActionInterrupting, updateCursor, getWatchWorldContent: watchWorldContent, turfMap }: ApplicationResourcesOptions) {
   const player = view.player;
   const camera = view.camera;
@@ -135,8 +137,8 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
       const frameControllers: FrameController[] = [];
       const actionControllers: Disposable[] = [];
       const stopInventoryReceived = inventory.subscribeReceived((received, source) => {
-        if (source) inventoryReceiveEffect(gameUi, view.camera, view.renderer.domElement,
-          player.position.clone().set(source.x, source.y, source.z))(received);
+        if (source) inventoryReceiveEffect(gameUi,
+          screenProjection.GetScreenPos(new Vector3(source.x, source.y, source.z)))(received);
       });
       if (playerAnimation) {
         const itemUse = new ItemUseActionController(view, playerAnimation.stategraph, locomotor, () => {

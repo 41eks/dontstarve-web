@@ -20,11 +20,11 @@ import type { ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
 import { isPlayerNearby } from './playerProximity';
 import { createBuildingContainer, isStorageBuildingId } from './containers';
 import { performCookAction } from '../../stategraphs/src/cook';
-import { actionEntity, findActionEntity, FindEntities } from './actionEntity';
+import { actionEntity, findActionEntity } from './actionEntity';
 import type { MiniMapState } from '../../map/src/minimapState';
-import { PlaySound, type SoundHandle } from './sound';
-import { Burnable, type BurnableInst } from '../../componets/src/burnable';
-import { Propagator } from '../../componets/src/propagator';
+import { PlaySound } from './sound';
+import { BurnableBinding, FireFxHost } from './treeFire';
+import { removeComponent } from './components';
 import type { TradeItem, Trader } from '../../componets/src/trader';
 import { TILE_SIZE } from './tile';
 import { MakeObstaclePhysics } from './standardcomponents';
@@ -138,14 +138,9 @@ interface AnimatedBuildingInstance<BuildId extends string> {
     readonly skinId: Signal<string | undefined>;
     stopSkin?: () => void;
     stopActivity?: () => void;
-    stopBurning?: () => void;
-    fire?: DrawnEffect;
-    fireSound?: SoundHandle;
+    burn?: BurnableBinding;
     minimap?: MiniMapState;
 }
-
-/** A fire entity drawn by its own display. */
-interface DrawnEffect { readonly instance: PrefabInstance; readonly display: PrefabDisplay }
 
 /**
  * prefabutil.lua MakePlacer: a separate `<name>_placer` entity that only declares its clip, light override, opacity and
@@ -183,9 +178,9 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     private placer?: BuildingPlacer<BuildId>;
     private readonly mouseRecords = new ModelRecords<AnimatedBuildingInstance<BuildId>>();
     private readonly placed: AnimatedBuildingInstance<BuildId>[] = [];
-    private readonly effects = new Set<DrawnEffect>();
     /** Archives, atlas materials and frame geometry shared by every placed building of one build and skin, and by their effects. */
     private readonly sprites = new SpriteResources();
+    private readonly fireFx = FireFxHost.create();
     private readonly skinAssets = this.sprites.archives;
     /** Placers are made translucent through their materials, so they draw from resources apart from the buildings'. */
     private readonly placerSprites = new SpriteResources();
@@ -315,7 +310,6 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         const container = this.definitions[buildId].createContainer?.(building.instance)
             ?? (isStorageBuildingId(buildId) ? createBuildingContainer(buildId, building.instance) : undefined);
         if (container) {
-            Object.assign(building.instance.components, { container });
             container.SetAutoClose(this.worldContext.getWatchWorldContent ?? getBoundWatchWorldContent(), 3 * (TILE_SIZE / 4));
             this.worldContext.registerContainer?.(`world:${buildId}:${String(building.instance.entityId)}`, container,
                 building.instance.saveRecord?.components.container);
@@ -346,26 +340,12 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     }
 
     private initializeBurnable(building: AnimatedBuildingInstance<BuildId>): void {
-        const entity = actionEntity(building.model, building.buildId), spec = this.definitions[building.buildId].burnable!;
-        entity.addTag('structure');
-        const inst: BurnableInst = entity;
-        const burnable = new Burnable(inst);
-        entity.components.burnable = burnable;
-        burnable.SetBurnTime(spec.burnTime);
-        entity.components.propagator = new Propagator(inst, spec.propagator, radius => {
-            return FindEntities(inst.getPosition(), radius).filter(target => target.components.propagator && !target.hasTag('INLIMBO'));
-        }, TILE_SIZE / 4, undefined, getBoundWatchWorldContent());
-        building.stopBurning = burnable.burning.subscribe(burning => {
-            if (!burning) { this.releaseFire(building); return; }
-            const fire = this.createEffect(this.fireSource(building.buildId), 'fire', `level${spec.fxLevel}`, true, ['FX', 'HASHEATER']);
-            fire.instance.position.copy(entity.getPosition());
-            building.fire = fire;
-            this.displays.mount(fire.display); this.effects.add(fire);
-            building.instance.light.set({ colour: [1, 1, 192 / 255], radius: (spec.fxLevel + 1) * (TILE_SIZE / 4), intensity: .8, falloff: .33 });
-            building.fireSound = PlaySound('dontstarve/common/campfire', building.model.position);
-        });
-        burnable.SetOnExtinguishFn(() => { PlaySound('dontstarve/common/fireOut', building.model.position); });
-        burnable.SetOnBurntFn(() => this.burnBuilding(building));
+        building.instance.addTag('structure');
+        building.burn = new BurnableBinding(building.instance, {
+            ...this.definitions[building.buildId].burnable!,
+            onExtinguish: () => { PlaySound('dontstarve/common/fireOut', building.instance.position); },
+            onBurnt: () => this.burnBuilding(building),
+        }, { fire: this.fireFx });
     }
 
     /** DefaultBurntStructureFn, including the supported container/stewer/workable branches. */
@@ -382,55 +362,30 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         container?.DropEverything(entity.getPosition());
         container?.Close();
         this.releaseContainer(building);
-        delete building.instance.components.container;
         const stewer = building.instance.components.stewer;
         stewer?.StopCooking('fire');
         stewer?.OnRemoveFromEntity();
         delete building.instance.components.stewer;
-        entity.components.burnable?.dispose(); delete entity.components.burnable;
-        building.stopBurning?.(); building.stopBurning = undefined;
-        entity.components.propagator?.dispose(); delete entity.components.propagator;
-        this.releaseFire(building);
+        building.burn?.dispose(); building.burn = undefined;
         building.interactionState = this.definitions[building.buildId].interaction ? 'closed' : undefined;
         building.animation.start('burnt');
     }
 
-    private releaseFire(building: AnimatedBuildingInstance<BuildId>): void {
-        if (building.fire) {
-            this.effects.delete(building.fire);
-            this.releaseEffect(building.fire);
-            building.fire = undefined;
-        }
-        building.fireSound?.stop(); building.fireSound = undefined;
-        building.instance.light.set(null);
-    }
-
     private releaseBurnable(building: AnimatedBuildingInstance<BuildId>): void {
         building.stopActivity?.(); building.stopActivity = undefined;
-        building.stopBurning?.(); building.stopBurning = undefined;
-        const burnable = actionEntity(building.model, building.buildId).components.burnable;
-        burnable?.SetOnExtinguishFn(undefined);
-        burnable?.dispose();
-        actionEntity(building.model, building.buildId).components.propagator?.dispose();
-        this.releaseFire(building);
+        building.burn?.dispose(); building.burn = undefined;
     }
 
     /** Whole sprite entities and their ground-contact points for depth sorting. */
     get renderEntities() {
-        const entries = [...this.placed, ...(this.placer ? [{ model: this.placer.display.model }] : []),
-            ...Array.from(this.effects, ({ display }) => ({ model: display.model }))]
-            .filter(({ model }) => !this.placed.some(({ fire }) => fire?.display.model === model))
+        const entries = [...this.placed, ...(this.placer ? [{ model: this.placer.display.model }] : [])]
             .filter(({ model }) => model.visible)
             .map(({ model }) => ({
                 object: model,
                 footPosition: model.position,
                 cameraDepth: 0, sortLayer: 1,
             }));
-        // A burning building's fire and its declared effects share its foot point, so they order with the building.
-        const fires = this.placed.filter(({ fire }) => fire?.display.model.visible).map(({ model, fire }) => ({
-            object: fire!.display.model, footPosition: model.position,
-            cameraDepth: 0, sortLayer: 2 }));
-        return [...this.ownedFx?.renderEntities ?? [], ...entries, ...fires, ...this.placed.flatMap(building => {
+        return [...this.ownedFx?.renderEntities ?? [], ...entries, ...this.placed.flatMap(building => {
             const effects = (this.definitions[building.buildId].renderEffects?.(this.eventContext(building)) ?? []).filter(effect => effect.object.visible);
             if (!effects.length) return [];
             const footPosition = building.instance.position;
@@ -507,7 +462,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         container.onclosefn = undefined;
         container.onopenfn = undefined;
         this.worldContext.unregisterContainer?.(`world:${building.buildId}:${String(building.instance.entityId)}`, container);
-        container.dispose();
+        removeComponent(building.instance, 'container');
     }
 
     dispose(): void {
@@ -520,11 +475,9 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         this.cancel();
         for (const building of [...this.placed]) building.instance.remove();
         this.placed.length = 0;
-        // Factory-owned effects share materials: each entity returns its sprite before the factories go.
-        for (const effect of this.effects) this.releaseEffect(effect);
-        this.effects.clear();
         // Every sprite is released above; only now can the atlases they drew from go.
         this.ownedFx?.dispose();
+        this.fireFx.dispose();
         this.displays.dispose(); this.sprites.dispose(); this.placerSprites.dispose();
     }
 
@@ -549,6 +502,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             const components = actionEntity(building.model, building.buildId).components;
             components.burnable?.Update(dt);
             components.propagator?.Update(dt);
+            building.burn?.update(dt);
         }
     }
 
@@ -710,7 +664,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         const held = state === 'open' ? !definition.interaction?.openAnimationLoop : definition.idleHeld === true;
         // The fx it spawns load with the building, so that they are drawn when they are spawned.
         const dependencies = [
-            ...definition.burnable ? [this.fireSource(buildId)] : [],
+            ...definition.burnable ? [this.fireFx.source] : [],
             ...definition.fxSources?.(this.sprites) ?? []];
         const { instance: entity, display } = createPrefabEntity(buildId, source, { name: initialAnimation, held, billboard: true },
             definition.name, initialize, undefined, { alignBottom: true, dependencies });
@@ -734,16 +688,11 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         return instance;
     }
 
-    private fireSource(buildId: BuildId): LoadedSpriteSource {
-        return this.sprites.animated('fire.zip', {}, { name: 'fire', scale: this.definitions[buildId].scale });
-    }
-
-
     /** Inst removal owns the decision; the manager releases its registrations and shared-resource references. */
     private releaseBuilding(building: AnimatedBuildingInstance<BuildId>): void {
         const index = this.placed.indexOf(building);
         if (index >= 0) this.placed.splice(index, 1);
-        building.instance.components.workable?.dispose();
+        removeComponent(building.instance, 'workable');
         this.releaseBurnable(building);
         this.definitions[building.buildId].ondispose?.(this.eventContext(building));
         this.releaseSkin(building);
@@ -768,13 +717,4 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     private idleAnimation(buildId: BuildId) {
         return this.definitions[buildId].idleAnimation ?? 'idle';
     }
-
-    private createEffect(source: LoadedSpriteSource, prefab: string, animation: string, loop: boolean, tags: readonly string[]): DrawnEffect {
-        const effect = createPrefabEntity(prefab, source, { name: animation, held: !loop, billboard: true }, prefab);
-        effect.instance.persists = false;
-        for (const tag of tags) effect.instance.addTag(tag);
-        return effect;
-    }
-
-    private releaseEffect({ instance, display }: DrawnEffect): void { instance.remove(); display.dispose(); }
 }

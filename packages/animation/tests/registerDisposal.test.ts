@@ -70,9 +70,12 @@ it('creates panels before scene initialization and owns subscriptions until expl
   const stopContextMenu = vi.fn(), subscribeContextMenu = vi.fn(() => stopContextMenu);
   const player = new THREE.Group(), camera = new THREE.PerspectiveCamera();
   const gameUi = { chestPanel: {}, cookPotPanel: {}, iceBoxPanel: {}, emoteWheel: {},
-    inventoryBar: { contextMenu: { subscribe: subscribeContextMenu } },
+    inventoryBar: { contextMenu: { subscribe: subscribeContextMenu },
+      containers: [{ id: 'player:inventory' }], animateReceive: vi.fn() },
     statusHud: { advanceClockAnimation: vi.fn(), dispose: vi.fn() } };
-  const options = { gameUi, inventory, view: { player, camera, renderer: { domElement: {} } },
+  const screenPosition = { x: 200, y: 150 };
+  const screenProjection = { GetScreenPos: vi.fn(() => screenPosition) };
+  const options = { gameUi, inventory, screenProjection, view: { player, camera, renderer: { domElement: {} } },
     actionEvents: new EventEmitter(), inventorySlotItem: vi.fn(), handEquipmentBinding: { flush: vi.fn() },
     isActionInterrupting: () => false, updateCursor: vi.fn(), locomotor: {}, pickupDoer: {}, turfMap: {},
   } as unknown as Parameters<typeof createDisposalResources>[0];
@@ -88,6 +91,10 @@ it('creates panels before scene initialization and owns subscriptions until expl
     const scene = { buildingPlacement: {} } as Parameters<typeof resources.register>[1];
     expect(resources.register(events, scene)).toBeUndefined();
     expect(subscribeReceived).toHaveBeenCalledOnce();
+    const received = [{ slot: { containerId: 'player:inventory', slotKey: '0' }, itemId: 'rocks', delta: 2 }];
+    subscribeReceived.mock.calls[0][0](received, { x: 4, y: 0, z: 3 });
+    expect(screenProjection.GetScreenPos).toHaveBeenCalledExactlyOnceWith(new THREE.Vector3(4, 0, 3));
+    expect(gameUi.inventoryBar.animateReceive).toHaveBeenCalledExactlyOnceWith(received[0].slot, screenPosition, 2);
     expect(subscribeContextMenu).toHaveBeenCalledOnce();
     expect(setupEmoteWheel).toHaveBeenCalledWith(gameUi.emoteWheel, options.view.renderer.domElement,
       undefined, options.actionEvents, options.updateCursor);
