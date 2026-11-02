@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./components": "./src/components.ts",
     "./mouseTargets": "./src/mouseTargets.ts",
     "./prefabInstance": "./src/prefabInstance.ts",
     "./manager": "./src/manager.ts",

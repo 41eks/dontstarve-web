@@ -1,5 +1,5 @@
 import type { PrefabInstance } from './prefabInstance';
-import { Workable } from '../../componets/src/workable';
+import { addComponent } from './components';
 import { createStructureLootDropper } from './structureLoot';
 import definitions from './definitions.json' with { type: 'json' };
 import {
@@ -34,7 +34,7 @@ function onhammered(inst: PrefabInstance): void {
 
 function initializeWorkable(instance: PrefabInstance): void {
     instance.addTag('structure');
-    const workable = instance.components.workable = new Workable(instance);
+    const workable = addComponent(instance, 'workable');
     workable.SetWorkAction('HAMMER');
     workable.SetWorkLeft(2);
     workable.SetOnWorkCallback(onworked);

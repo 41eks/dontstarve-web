@@ -1,4 +1,4 @@
-import { Workable } from '../../componets/src/workable';
+import { addComponent } from './components';
 import { createStructureLootDropper } from './structureLoot';
 import { type SpriteState } from '@dontstarve-web/display';
 import definitions from './definitions.json' with { type: 'json' };
@@ -65,7 +65,7 @@ function continueCooking(model: THREE.Group): void {
 }
 
 function initializePot({ model, instance, animState, world }: AnimatedBuildingEventContext): void {
-    const workable = instance.components.workable = new Workable(instance);
+    const workable = addComponent(instance, 'workable');
     workable.SetWorkAction('HAMMER');
     workable.SetWorkLeft(4);
     workable.SetOnWorkCallback(onworked);

@@ -11,6 +11,8 @@ https://41eks.github.io/dontstarve-web/
 
 ## 调试命令（debugCommand）
 
+建筑容器、燃烧与传热组件，以及箱子、冰箱和烹饪锅的工作组件，使用 `addComponent(inst, name, ...args)` 挂载；重复添加返回已有组件，`removeComponent(inst, name)` 和实体移除负责清理。当前注册 `container`、`burnable`、`propagator`、`workable`。建筑火焰复用 `BurnableBinding`／`FireFxHost`，由 display 绘制并随宿主休眠；烧毁仍保留建筑身份、位置和残骸工作量，容器物品先掉落。`c_spawn`、`c_give`、`c_save()` 的语法、参数、支持 ID 和存档格式不变。
+
 玩家和牛的逻辑朝向通过 sprite signal 声明，display 随朝向与相机旋转变化选择 facing／镜像；stategraph 通过 sprite signal 声明动画和播放速率，animation 独立推进实际播放；animation 在游戏时间中发出 `animover`／`animqueueover` 通知 SG，队列和完成计时不依赖 visual；动作命中仍由 stategraph 的 `TimeEvent`／`FrameEvent` 推进。此调整不改变以下命令的语法、参数、支持 ID 或存档格式。
 
 制作菜单右侧快捷栏按面板高度整体同比缩放，按钮、页码和槽位间距保持比例；窗口变矮时不再溢出面板。大小屏均将面板中心对齐窗口高度的 50%；展开和收起共用垂直定位与缩放原点，仅横向移动。该布局调整不改变调试命令的语法、参数、支持 ID 或存档格式。

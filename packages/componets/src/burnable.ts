@@ -179,6 +179,13 @@ export class Burnable {
     if (next <= 0) this.Ignite();
     else this.smolderTask.start(2);
   }
+  /** EntityScript removal kills the fire without running the prefab's extinguish callback. */
+  OnRemoveEntity(): void {
+    this.setBurning(false);
+    this.KillFX();
+    this.dispose();
+  }
+  OnRemoveFromEntity(): void { this.dispose(); }
   dispose(): void {
     if (this.removed) return;
     this.Extinguish();

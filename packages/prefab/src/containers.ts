@@ -3,7 +3,8 @@ import { ItemEntity, PreparedFoodSlot, StorageSlot, type ItemSlot, type Inventor
 import { Container } from '../../componets/src/container';
 import { IsCookingIngredient } from '../../componets/src/cooking';
 import { isBookCabinetItem } from './books';
-import { setModelTag } from './prefabInstance';
+import { PrefabInstance, setModelTag } from './prefabInstance';
+import { addComponent } from './components';
 import type { Object3D } from 'three';
 
 export type BuildingContainer = Container<InventoryStack, ItemEntity, ItemSlot>;
@@ -16,11 +17,12 @@ export function createBuildingContainer(prefab: StorageBuildingId, inst: object)
         else (holder.tags ??= new Set()).add('fridge');
     }
     const definition = buildingContainerDefinition(prefab);
-    const container = new Container<InventoryStack, ItemEntity, ItemSlot>(inst,
-        () => definition.singleItems ? new PreparedFoodSlot(null, (_spec, itemId) => prefab !== 'cookpot' || (itemId !== undefined && IsCookingIngredient(itemId)))
+    const createSlot = () => definition.singleItems ? new PreparedFoodSlot(null, (_spec, itemId) => prefab !== 'cookpot' || (itemId !== undefined && IsCookingIngredient(itemId)))
             // containers.lua params.bookstation.itemtestfn: item:HasTag("bookcabinet_item").
-            : new StorageSlot(null, prefab === 'bookstation' ? (_spec, itemId) => itemId !== undefined && isBookCabinetItem(itemId) : undefined),
-        record => new ItemEntity(record));
+            : new StorageSlot(null, prefab === 'bookstation' ? (_spec, itemId) => itemId !== undefined && isBookCabinetItem(itemId) : undefined);
+    const loadItem = (record: InventoryStack) => new ItemEntity(record);
+    const container = inst instanceof PrefabInstance ? addComponent(inst, 'container', createSlot, loadItem)
+        : new Container<InventoryStack, ItemEntity, ItemSlot>(inst, createSlot, loadItem);
     container.SetNumSlots(definition.slotCount);
     return container;
 }

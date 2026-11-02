@@ -73,7 +73,6 @@ export {
   type PlayerBody,
   type WilsonAnimationController,
   type WilsonCarryItem,
-  type WilsonFacing,
   type WilsonPlayerPrefab,
   type WilsonPlayerPrefabOptions,
 } from './player';
@@ -206,3 +205,4 @@ export { BANANAJUICE_ID, MUSHROOM_ITEM_IDS, FOOD_EFFECTS, PERISHABLE_FOODS, getF
 export { LightFlierFlowerManager, LightFlierFlower, LIGHTFLIER_FLOWER_ID } from './lightflier_flower';
 export { LightFlier, LightFlierHabitat, LIGHTFLIER_ID, configureLightFlierEntity } from './lightflier';
 export { mouseTargets, setMouseTargetEnabled } from './mouseTargets';
+export { addComponent, removeComponent, type ComponentName } from './components';
