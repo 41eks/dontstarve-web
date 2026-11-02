@@ -217,7 +217,7 @@ describe('DST building skins', () => {
     expect(consume).toHaveBeenCalledWith(prefabId);
     for (let frame = 0; frame < 100; frame++) placement.update(0.1);
     const record = placement.exportRecords()[0].record;
-    expect(record.components.building).toEqual({ state: definition.interaction ? 'closed' : 'idle', skinId });
+    expect(record.components.building).toEqual({ state: definition.container ? 'closed' : 'idle', skinId });
     expect(record.transform.position).toEqual([3, 0, 4]);
     const restored = await placement.spawnFromSave(prefabId, record as PlacementSaveRecord);
     if (skinInit) expect(skinInit).toHaveBeenCalledTimes(2);

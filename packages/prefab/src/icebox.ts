@@ -17,6 +17,16 @@ export type IceBoxId = typeof ICE_BOX_ID;
 export const ICE_BOX_SKIN_ARCHIVES: Readonly<Record<string, string>> =
     definitions.animatedBuildings.icebox.skinArchives;
 
+function onopen(inst: PrefabInstance): void {
+    inst.sprite.playOnce('open');
+    PlaySound('dontstarve/common/icebox_open', inst.position);
+}
+
+function onclose(inst: PrefabInstance): void {
+    inst.sprite.playOnce('close');
+    PlaySound('dontstarve/common/icebox_close', inst.position);
+}
+
 function onworked(inst: PrefabInstance): void {
     if (inst.hasTag('burnt')) return;
     inst.sprite.playOnce('hit');
@@ -52,9 +62,11 @@ function onbuilt({ animation, onComplete }: AnimatedBuildingBuiltContext): void 
 export const ICE_BOX_DEFINITION: AnimatedBuildingDefinition = {
     ...definitions.animatedBuildings.icebox,
     skinInit: icebox_init_fn,
-    onopen: ({ model }) => { PlaySound('dontstarve/common/icebox_open', model.position); },
-    onclose: ({ model }) => { PlaySound('dontstarve/common/icebox_close', model.position); },
-    oninit: ({ instance }) => initializeWorkable(instance),
+    oninit: ({ instance }) => {
+        instance.components.container!.onopenfn = onopen;
+        instance.components.container!.onclosefn = onclose;
+        initializeWorkable(instance);
+    },
     onbuilt,
 };
 

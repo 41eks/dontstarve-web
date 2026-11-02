@@ -74,8 +74,8 @@ it('draws the entity from its status and sprite json: sleeping completes a trans
   const world = { scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(),
     camera: new THREE.PerspectiveCamera(), renderer: { domElement: new EventTarget() },
     tickingarea: () => createMemo(() => awake.get()) } as unknown as WorldContext;
-  const placement = new AnimatedBuildingPlacement(world, { chest: TREASURE_CHEST_DEFINITION }, () => true);
-  await placement.spawn('chest');
+  const placement = new AnimatedBuildingPlacement(world, { treasurechest: TREASURE_CHEST_DEFINITION }, () => true);
+  await placement.spawn('treasurechest');
   const model = world.scene.children[0], instance = prefabInstance(model)!, sprite = instance.sprite;
   const meshes = () => { let count = 0; model.traverse(object => { if (object instanceof THREE.Mesh) count++; }); return count; };
   await tick();
@@ -122,8 +122,8 @@ it('the model stands on the entity\'s own position vector, so moving it never to
   const world = { scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(),
     camera: new THREE.PerspectiveCamera(), renderer: { domElement: new EventTarget() },
     tickingarea: () => createMemo(() => true) } as unknown as WorldContext;
-  const placement = new AnimatedBuildingPlacement(world, { chest: TREASURE_CHEST_DEFINITION }, () => true);
-  await placement.spawn('chest');
+  const placement = new AnimatedBuildingPlacement(world, { treasurechest: TREASURE_CHEST_DEFINITION }, () => true);
+  await placement.spawn('treasurechest');
   const model = world.scene.children[0], instance = prefabInstance(model)!;
   await tick();
   expect(model.position).toBe(instance.position);

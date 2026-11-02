@@ -147,11 +147,11 @@ it('shares FX geometry while keeping playback independent and discarding unused 
   expect(release).toHaveBeenCalledOnce();
 });
 
-it('cycles building skins while preserving the open container root, identity, state and saved foot', async () => {
+it('cycles building skins while preserving the container root, identity, state and saved foot', async () => {
   const world = setupWorld();
   const placement = new AnimatedBuildingPlacement(world, { treasurechest: TREASURE_CHEST_DEFINITION }, () => false);
   const record = { id: 'e_open_chest', transform: { position: [3, 0, 4] as const, rotationY: 0 },
-    components: { building: { state: 'open' as const }, container: { slotCount: 9, slots: [] } } };
+    components: { building: { state: 'closed' as const }, container: { slotCount: 9, slots: [] } } };
   const root = await placement.spawnFromSave('treasurechest', record);
   expect(findActionEntity(root)?.reskinTarget).toBe(placement.reskinTargets[0]);
   const skins = Object.keys(TREASURE_CHEST_DEFINITION.skinArchives!);
@@ -166,7 +166,7 @@ it('cycles building skins while preserving the open container root, identity, st
   expect(world.scene.children).toEqual([root]);
   expect(lookupPrefabInstance(root)?.entityId).toBe(record.id);
   expect(placement.exportRecords()[0].record).toMatchObject({
-    id: record.id, transform: record.transform, components: { building: { state: 'open', skinId: skins[0] } },
+    id: record.id, transform: record.transform, components: { building: { state: 'closed', skinId: skins[0] } },
   });
   expect(lookupPrefabInstance(root)!.saveRecord!.components.container).toEqual(record.components.container);
   // The final skin returns to the base rather than dropping an unsupported skin ID into the save.

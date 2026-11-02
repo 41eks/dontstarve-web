@@ -16,6 +16,10 @@ export type SaltBoxId = typeof SALT_BOX_ID;
 export const SALT_BOX_SKIN_ARCHIVES: Readonly<Record<string, string>> =
     definitions.animatedBuildings.saltbox.skinArchives;
 
+function onopen(inst: PrefabInstance): void { inst.sprite.playOnce('open'); }
+
+function onclose(inst: PrefabInstance): void { inst.sprite.playOnce('close'); }
+
 function onworked(inst: PrefabInstance): void {
     if (inst.hasTag('burnt')) return;
     inst.sprite.playOnce('hit');
@@ -51,7 +55,11 @@ function onbuilt({ animation, onComplete }: AnimatedBuildingBuiltContext): void 
 export const SALT_BOX_DEFINITION: AnimatedBuildingDefinition = {
     ...definitions.animatedBuildings.saltbox,
     skinInit: saltbox_init_fn,
-    oninit: ({ instance }) => initializeWorkable(instance),
+    oninit: ({ instance }) => {
+        instance.components.container!.onopenfn = onopen;
+        instance.components.container!.onclosefn = onclose;
+        initializeWorkable(instance);
+    },
     onbuilt,
 };
 

@@ -10,11 +10,22 @@ import {
     type AnimatedBuildingInteractionChange,
 } from './animatedBuildingPlacement';
 import type { WorldContext } from './worldContext';
+import { PlaySound } from './sound';
 
 export const DRAGONFLY_CHEST_ID = 'dragonflychest' as const;
 export type DragonflyChestId = typeof DRAGONFLY_CHEST_ID;
 export const DRAGONFLY_CHEST_SKIN_ARCHIVES: Readonly<Record<string, string>> =
     definitions.animatedBuildings.dragonflychest.skinArchives;
+
+function onopen(inst: PrefabInstance): void {
+    inst.sprite.playOnce('open');
+    PlaySound('dontstarve/wilson/chest_open', inst.position);
+}
+
+function onclose(inst: PrefabInstance): void {
+    inst.sprite.playOnce('close');
+    PlaySound('dontstarve/wilson/chest_close', inst.position);
+}
 
 function onworked(inst: PrefabInstance): void {
     if (inst.hasTag('burnt')) return;
@@ -51,7 +62,11 @@ function onbuilt({ animation, onComplete }: AnimatedBuildingBuiltContext): void 
 export const DRAGONFLY_CHEST_DEFINITION: AnimatedBuildingDefinition = {
     ...definitions.animatedBuildings.dragonflychest,
     skinInit: dragonflychest_init_fn,
-    oninit: ({ instance }) => initializeWorkable(instance),
+    oninit: ({ instance }) => {
+        instance.components.container!.onopenfn = onopen;
+        instance.components.container!.onclosefn = onclose;
+        initializeWorkable(instance);
+    },
     onbuilt,
 };
 

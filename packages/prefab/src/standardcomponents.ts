@@ -1,4 +1,6 @@
 import { COLLISION, type PhysicsState } from '../../componets/src/physicsState';
+import { releaseBuildingContainer } from './containers';
+import type { PrefabInstance } from './prefabInstance';
 
 /** World units per DST unit. */
 export { WORLD_SCALE } from './tile';
@@ -8,6 +10,32 @@ export { GROUND_COLLISION_GROUP } from '../../componets/src/physicsBinding';
 
 /** An entity with a declared inst.Physics; `PrefabInstance` is one. */
 export interface PhysicsEntity { readonly physics: PhysicsState }
+
+/**
+ * standardcomponents.lua DefaultBurntStructureFn, for the components structures here have. Its last step,
+ * RemoveComponent("burnable"), belongs to the BurnableBinding's owner, which removes the propagator with it.
+ */
+export function DefaultBurntStructureFn(inst: PrefabInstance): void {
+    inst.addTag('burnt');
+    if (inst.components.burnable) inst.components.burnable.canlight = false;
+    inst.sprite.start('burnt');
+    inst.PushEvent('burntup', undefined);
+    inst.components.workable?.SetWorkLeft(1);
+    const container = inst.components.container;
+    if (container) {
+        container.DropEverything(inst.position);
+        container.Close();
+        releaseBuildingContainer(inst);
+    }
+    const stewer = inst.components.stewer;
+    if (stewer) {
+        stewer.StopCooking('fire');
+        stewer.OnRemoveFromEntity();
+        delete inst.components.stewer;
+    }
+    inst.components.prototyper?.OnRemoveFromEntity();
+    delete inst.components.prototyper;
+}
 
 /**
  * standardcomponents.lua MakeObstaclePhysics(inst, rad, height): declares a static capsule; the entity's
