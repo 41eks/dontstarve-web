@@ -1,3 +1,4 @@
+import { PrefabDisplayGroup } from '../../display/src';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
@@ -88,20 +89,21 @@ it('preserves a natural rose, shares its art after wake and burns while dormant'
 
 it('grows a dormant marblebean, restores shrub shape/tint/snow and preserves the mined removal deadline', async () => {
   const env = environment();
-  const shrubs = new MarbleShrubManager(env.scene, { scheduler: env.scheduler, physics: env.physics, tickingarea: env.tickingarea,
+  const shrubs = new MarbleShrubManager(new PrefabDisplayGroup(env.scene), { scheduler: env.scheduler, physics: env.physics, tickingarea: env.tickingarea,
     getWatchWorldContent: env.sources.getWatchWorldContent, spawnGroundItem: env.spawnGroundItem });
-  const saplings = new MarbleBeanSaplingManager(env.scene, { scheduler: env.scheduler, tickingarea: env.tickingarea, shrubs, spawnGroundItem: env.spawnGroundItem });
-  const restored = new MarbleShrubManager(env.scene, { scheduler: env.scheduler, tickingarea: env.tickingarea,
+  const saplings = new MarbleBeanSaplingManager(new PrefabDisplayGroup(env.scene), { scheduler: env.scheduler, tickingarea: env.tickingarea, shrubs, spawnGroundItem: env.spawnGroundItem });
+  const restored = new MarbleShrubManager(new PrefabDisplayGroup(env.scene), { scheduler: env.scheduler, tickingarea: env.tickingarea,
     getWatchWorldContent: env.sources.getWatchWorldContent, spawnGroundItem: env.spawnGroundItem });
   try {
-    const bean = await drawn(saplings.spawn(new THREE.Vector3(12, 0, 24)));
-    const beanSprite = prefabInstance(bean)!.sprite as SpriteState;
+    const bean = saplings.spawn(new THREE.Vector3(12, 0, 24));
+    await drawn(workTargets('DIG')[0].model);
+    const beanSprite = bean.sprite;
     env.awake.set(false); await settle();
     expect(beanSprite.loaded).toBe(false);
     const savedBean = saplings.exportRecords()[0];
     expect(savedBean.components.saplingTimer!.timers.grow.timeleft).toBe(225);
     env.scheduler.advance(225); await settle();
-    expect(saplings.exportRecords()).toEqual([]); expect(bean.userData.removed).toBe(true);
+    expect(saplings.exportRecords()).toEqual([]); expect(bean.isRemoved).toBe(true);
     const shrub = workTargets('MINE')[0].model;
     const sprite = prefabInstance(shrub)!.sprite as SpriteState;
     expect(sprite.loaded).toBe(false);
@@ -109,9 +111,10 @@ it('grows a dormant marblebean, restores shrub shape/tint/snow and preserves the
     expect(env.physics.bodies).toHaveLength(1);
     env.scheduler.advance(2700); await settle();
     expect(shrubs.exportRecords()[0].components.growable.stage).toBe(2);
-    env.sources.snowLevel.set(.02); env.sources.camerarotation.set(env.rotation); shrubs.update(0, env.rotation);
+    env.sources.snowLevel.set(.02); env.sources.camerarotation.set(env.rotation); shrubs.update(0);
     const record = shrubs.exportRecords()[0];
-    const loaded = await drawn(restored.spawn('marbleshrub', new THREE.Vector3(...record.transform.position), record));
+    const restoredShrub = restored.spawn('marbleshrub', new THREE.Vector3(...record.transform.position), record);
+    const loaded = await drawn(workTargets('MINE').find(({ model }) => prefabInstance(model) === restoredShrub)!.model);
     await settle(); expect(restored.exportRecords()).toEqual([record]);
     env.awake.set(true); await settle();
     expect(sprite.currentAnimation).toBe('idle_normal');
