@@ -6,7 +6,6 @@ import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import type { DeployPlacerMap } from './deployMap';
 import { FARM_PLOW_ITEM_ID, FARM_PLOW_PLACER_ART } from './farm_plow';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
-import { PLANTABLES } from './plantables';
 import { createArchiveEntity, createPrefabEntity } from './prefabInstance';
 import type { WorldContext } from './worldContext';
 
@@ -111,7 +110,7 @@ export class DeployPlacer {
   }
 
   private createPlantPlacer(item: ItemEntity): void {
-    const definition = PLANTABLES[item.prefab];
+    const definition = item.components.deployable?.placer;
     if (!definition) return;
     const skinArchive = item.skinId && GROUND_ITEM_DEFINITIONS[item.prefab].skinArchives[item.skinId];
     // The placer's display loads its art; it is hidden until the pointer is over the ground.

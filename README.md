@@ -80,7 +80,7 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 
 采摘产物统一交给 `Inventory.GiveItem()` 处理：先填充可用槽位和堆叠，背包满时把余量掉在玩家脚边，采摘仍然成功；采摘入口不再预加载或手动生成地面产物。地面贴图加载期间，掉落实体的 ID、数量、位置和组件状态仍可由 `c_save()` 保存。调试命令的语法、参数和支持的 prefab/item ID 不变。
 
-草丛 `grass` 和洞穴花 `flower_cave` 的采摘／再生、灰烬 `ash` 的生成／拾取／移除，以及矮星 `stafflight` 的生成／消失／注销如何映射到 signal，见 [DST 事件与 signal 映射](docs/dst-event.md)。矮星已接入：私有 signal 保存寿命与移除标记，`createMemo` 派生 `active → disappearing → removed`，effect 只同步消失表现；计时和永久移除同步执行。远离卸载模型时释放表现绑定，保留逻辑状态与 memo；永久移除直接清理资源并释放 memo。草丛和洞穴花的再生／灯光 timer 已接入 signal：共享游戏时间调度器在设置、暂停、恢复、取消或到期时提交，等待期间不扣减 timer，memo 派生状态。灰烬消散的 timer signal 仍是后续方案。实体表现 effect 用 `get()` 订阅自身状态，用 `peek()` 读取环境，包含同步调用的辅助函数。调试命令语法和参数保持不变；补齐 `c_spawn("stafflight")`／`c_spawn("staffcoldlight")` 的注册入口。
+草丛 `grass` 和洞穴花 `flower_cave` 的采摘／再生、灰烬 `ash` 的生成／拾取／移除，以及矮星 `stafflight` 的生成／消失／注销如何映射到 signal，见 [DST 事件与 signal 映射](docs/dst-event.md)。矮星和极光是按 Lua 组装的 `StaffLightInstance`：寿命在 `timer` 组件的 `extinguish` 任务中，休眠不暂停；读档与 Lua 一样重播 `appear` 和出现声。草丛和洞穴花的再生／灯光 timer 已接入 signal：共享游戏时间调度器在设置、暂停、恢复、取消或到期时提交，等待期间不扣减 timer，memo 派生状态。灰烬消散的 timer signal 仍是后续方案。实体表现 effect 用 `get()` 订阅自身状态，用 `peek()` 读取环境，包含同步调用的辅助函数。调试命令语法和参数保持不变；补齐 `c_spawn("stafflight")`／`c_spawn("staffcoldlight")` 的注册入口。
 
 
 库存实体直接提供数量、耐久、新鲜度和湿润状态的只读 signal，物品栏、装备、背包和容器 UI 订阅同一份组件状态；数值变化无需替换整份 UI item，数量接收动画读取实时 count。新鲜度和湿润显示使用原版 meter，缺少新鲜度状态时隐藏对应显示。可用 `c_give("torch", 2)` 检查燃料百分比，用 `c_save()` 保存并恢复库存组件状态；已提供的新鲜度与潮湿值也随库存／地面物品保存恢复。声明保鲜时长的物品已接入腐败模拟：`Perishable` 每 10 个游戏秒结算一次，内部通过 `watchSignal` 和 `createEffect` 监听潮湿状态，变化时按旧状态提前结算，随后潮湿倍率为 `1.3`；保存先结算不足 10 秒的部分，移除／释放组件时取消任务并清理监听。雨水吸收和干燥模拟尚未接入；命令语法、参数和支持的 prefab/item ID 不变。详见 [容器 DTO 与 UI signal](docs/inventory-architecture.md#容器-dto-与-ui-signal)。
@@ -280,6 +280,8 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 手持地皮或种植物品时的右键按原版 `OnRightClick` 处理：指向可部署的空地才执行 `DEPLOY`（悬停文字取自源字符串，分别为「放置地皮」「栽种」）；位置无效，或鼠标指着不提供动作的实体时，整叠物品放回物品栏（优先来源槽，没有完整空位时仍由鼠标持有）；实体上有其他物品动作时交给该动作。`c_give("dug_grass", 2)` 拿到鼠标后右键空地可种回草丛：第 6 帧消耗 1 个，生成需要施肥的枯萎 `grass`（`OnTransplant`），`c_save()` 保留植株状态和鼠标上剩余的堆叠。命令语法和支持 ID 不变。
 
 码头套装 `c_give("dock_kit", 2)` 走同一条部署路径：点击物品栏拿到鼠标后显示 `gridplacer`（悬停文字「放置地皮」），右键与陆地或码头相邻的 `OCEAN_COASTAL` 格时角色走到岸边（`ExtraDeployDist` 让到达距离增加 3 DST 单位，共 4.1），在 `doshortaction` 第 6 帧消耗 1 个并把该格变为 `MONKEY_DOCK`；位置无效时右键放回物品栏。`c_save()` 保留码头地块、其下的海洋格和鼠标上剩余的堆叠。命令语法和支持 ID 不变。
+
+栽种物品的 `ondeploy` 都写在所属 prefab 模块（`plantables.ts`、`butterfly.ts`、`marblebean_sapling.ts`、`rock_avocado_fruit.ts`），通过注册表的 `SpawnPrefab` 按源 prefab ID 生成植物；调试命令不变。
 
 `c_give("butterfly", 2)` 获取活蝴蝶；点击或右键物品栏中的蝴蝶拿到鼠标后，右键可种植的空地执行 `DEPLOY`。预览使用 `anim/flowers.zip` 的 `flowers` bank/build、`f1`，间距为 LESS（0.75 DST 单位）；角色自动走近，在 `doshortaction` 第 6 帧消耗 1 只并生成原版 `planted_flower`（运行时及存档 prefab 为 `flower`），触发 `growfrombutterfly` 并播放种植声。花型随机为 f1–f10，玫瑰概率 1%；无效地形、阻挡、Esc 或切换动作不会消耗蝴蝶。`c_spawn("planted_flower")` 可直接生成种下的花，不支持 `c_give`；`c_save()` 保存花的 ID、脚点、花型及种植标记，恢复后仍可供蝴蝶授粉。
 

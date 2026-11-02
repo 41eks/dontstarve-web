@@ -34,7 +34,7 @@ export interface PrefabComponents extends ActionComponents {
   sleeper?: import('../../componets/src/sleeper').Sleeper;
   phonograph?: import('./phonograph').PhonographController;
   moonbase?: object;
-  stafflight?: import('./stafflight').StaffLightState;
+  sanityaura?: import('../../componets/src/sanityaura').SanityAura;
 }
 
 /**

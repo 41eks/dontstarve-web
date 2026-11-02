@@ -53,9 +53,9 @@ it('plants one moonbutterfly with original baby-tree art and cycles short/normal
   const inventory = createInventoryStore([]);
   const world = { scene, player: new THREE.Group(), camera: s.camera, ground: new THREE.Group(), renderer: { domElement: canvas } } as unknown as WorldContext;
   const canPlant = vi.fn(() => true);
-  const transplant = vi.fn((position: THREE.Vector3) => s.forest.transplant(position));
+  const spawnPrefab = vi.fn((_prefab: string, position: THREE.Vector3) => prefabInstance(s.forest.spawnSapling(position)) as never);
   const planting = deployActor(world, inventory, createDeployMap({ turf: landTurf({ canDeployPlantAtPoint: canPlant }),
-    blockers: placementEntities(scene), plants: { moonbutterfly_sapling: { transplant } } }));
+    blockers: placementEntities(scene), spawnPrefab }));
   const { graph, locomotor } = planting;
   const point = new THREE.Vector3(6, 0, 0);
   let restored: Awaited<ReturnType<typeof setup>> | undefined;

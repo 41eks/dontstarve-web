@@ -1,6 +1,6 @@
 # DST 事件与 signal：草丛、洞穴花、灰烬和矮星
 
-本文记录 `grass` 的采摘／再生、`flower_cave` 的采摘／再生、`ash` 的生成／拾取／消散，以及矮星 `stafflight` 的生成／到期／移除如何映射到 signal。矮星不涉及库存转移和合堆，可先阅读其生命周期示例。矮星已接入下述 signal／memo／effect 生命周期；草丛和洞穴花已接入组件 timer signal 与阶段 memo，灰烬消散仍是后续实施方案，下文分别说明当前实现。原版名称是 `flower_cave`，每个实体都使用独立 ID，不能用 prefab 名称作为唯一实例键。
+本文记录 `grass` 的采摘／再生、`flower_cave` 的采摘／再生、`ash` 的生成／拾取／消散，以及矮星 `stafflight` 的生成／到期／移除如何映射到 signal。矮星不涉及库存转移和合堆，可先阅读其生命周期示例。矮星的生命周期直接由组件与调度器任务表达，见下文；草丛和洞穴花已接入组件 timer signal 与阶段 memo，灰烬消散仍是后续实施方案，下文分别说明当前实现。原版名称是 `flower_cave`，每个实体都使用独立 ID，不能用 prefab 名称作为唯一实例键。
 
 实体状态统一采用：signal 保存组件权威数据，`createMemo` 始终纯计算派生状态。组件应该使用 `createEffect` 和 `get()` 响应外部状态变化，调用组件方法执行转换；表现 effect 只更新表现，不承担领域动作。计时到期及完成动作仍由游戏时间调度器执行，不能通过观察 timer signal 的 effect 补做。组件拥有写权限，表现层读取只读 signal／memo；产物生成、库存转移和实体移除不能依赖表现 effect 执行。memo 表示当前状态，不对应 Lua 的事件名，也不保存事件次数或事件参数。
 
@@ -336,100 +336,22 @@ ash 已有地面美术、库存、堆叠和保存支持，尚未移植 `disappea
 
 ## stafflight：矮星的简单生命周期
 
-矮星不会拾取、入库存或合堆，只需要一条单向生命周期：
+矮星不会拾取、入库存或合堆，只需要一条单向生命周期。[`StaffLightInstance`](../packages/prefab/src/stafflight.ts) 直接按 `stafflight.lua` 实现，不另建寿命或阶段 signal：
 
-```text
-生成 → active → disappearing → removed
-                  消失动画       永久注销
-```
-
-### 寿命 signal 与派生状态 memo
-
-每颗矮星的生命周期拥有者维护两项权威状态：剩余寿命 `remaining` 和最终移除标记 `removed`，均为私有可写 signal，对外提供只读视图。`phase` 用 `createMemo` 从它们派生，取值为 `'active' | 'disappearing' | 'removed'`，不再维护一份可写阶段状态。
-
-```ts
-import { createSignal, createMemo, readonlySignal } from '@dontstarve-web/signals';
-
-type StarPhase = 'active' | 'disappearing' | 'removed';
-
-// 在这颗矮星的生命周期作用域中创建；读档使用已恢复的剩余时间。
-const remaining = createSignal(initialRemainingSeconds);
-const removed = createSignal(false);
-const phase = createMemo<StarPhase>(() => {
-    if (removed.get()) return 'removed';
-    return remaining.get() > 0 ? 'active' : 'disappearing';
-});
-
-const remainingView = readonlySignal(remaining);
-const removedView = readonlySignal(removed);
-// 对外提供 remainingView、removedView 和 phase；写入由生命周期负责。
-```
-
-消失动画期间 `remaining = 0`、`removed = false`。如果需要 `alive`，从 `!removed` 派生即可，不创建另一份可写存活标记；额外创建的 memo 也随逻辑实体释放。`removed` 是终态，同一实体不重新变成存活状态。
-
-### Lua → signal／memo／行为映射
-
-signal 对应组件的权威数据，memo 对应由数据推导的当前状态，effect／生命周期处理对应状态变化后的行为。`createMemo` 不对应 Lua 的事件名：`timerdone` 表示一次到期事件，可能携带 timer 名称；`phase` 表示现在处于哪个阶段，没有事件次数或事件参数。
-
-| TS 职责 | Lua 中对应的职责 | 约束 |
+| Lua 入口 | TS 中的权威状态 | 行为 |
 | --- | --- | --- |
-| `remaining` signal | `timer` 保存／查询的剩余时间 | signal 自身不会计时，也不包含任务登记、暂停或恢复 |
-| 游戏时间调度／组件结算 | `DoTaskInTime()` 及 timer 的到期处理 | 推进寿命，到期时提交 `remaining = 0`；读环境时间使用 `.peek()`，不让每颗星订阅全局时钟 |
-| `phase = createMemo(...)` | 按组件数据判断当前状态 | 纯计算，不播放动画、不登记任务、不移除实体 |
-| 生命周期方法、表现 effect 和动画回调 | `ontimer()`、`kill_light()`、`kill_sound()` 等转换处理 | 生命周期保证顺序与一次性执行，表现只读取派生状态 |
+| `fn()` | `components.timer` 的 `extinguish` 任务；`heater`、`sanityaura`、`hauntable`、`propagator`（仅矮星）属于实例 | 声明 `appear`，矮星排队 `idle_loop`，极光随 `animover` 随机待机；播放循环声和出现声；读档执行同一构造后调用 `timer.OnLoad()` |
+| `DoPeriodicTask(.1, pulse_light)` | 世界调度器上的 `ComponentTimer` | 写 `instance.light`；第一次脉动才启用灯光，相位取自 `GetTimeAlive()`，读档后重新开始 |
+| `timerdone` → `kill_light()` | `_killed = true`、`persists = false` | 播放 `disappear`，安排 1 秒后 `remove()` |
+| `animover` → `kill_sound()` | 不改状态 | 停止循环声；原版这里不移除实体 |
+| `onhaunt` | `TimerExists` 时 `StopTimer` | 进入同一 `kill_light()`；重复作祟不再登记任务 |
+| `inst:Remove()` | `instance.remove()` | `onRemove` 停止任务和组件，停止音源；display 释放模型 |
 
-| 动作／Lua 入口 | 权威数据变化与派生结果 | 行为与地面表现 |
-| --- | --- | --- |
-| `stafflight` 生成，启动 `extinguish` timer | `remaining > 0`、`removed = false`，memo 得到 `active` | 准备资源后提交实体；首次生成播放 `appear → idle_loop` 和出现声，启动独立循环声与光照 |
-| `timerdone`，且 `data.name == 'extinguish'` → `kill_light()` | 提交 `remaining = 0`，memo 得到 `disappearing`，实体仍存活 | 原版播放 `disappear`、设置 `persists = false`、标记 `_killed`，安排 1 秒后 `Remove()`；保留模型播放动画，不立即注销 |
-| `disappear` 的 `animover` → `kill_sound()` | 不修改寿命或移除标记，memo 仍为 `disappearing` | 只停止 `staff_star_loop`；原版这里没有直接移除实体 |
-| 开始消失后的 1 秒任务 → `inst:Remove()` | 提交 `removed = true`，memo 得到 `removed`，派生 `alive = false` | 同步注销逻辑实体和地面权威索引，停止任务，释放表现、光照、音源、effect 和 memo |
-| 显式移除或场景释放 | 任意未移除状态提交 `removed = true` | 幂等清理；旧动画回调及异步资源请求不能恢复实体 |
+休眠只影响绘制：stafflight.lua 没有 `OnEntitySleep`，任务、timer、声音和组件照常运行，`watchTileActivity` 只切换 `status`，灯光由 display 按 `status` 列出。
 
-Lua 的作祟分支先停止 `extinguish` timer，再调用相同的 `kill_light()`；在映射中由生命周期停止寿命任务、提交 `remaining = 0`，进入同一消失流程。脉动光照按时间推进，不要求每帧发布寿命或阶段。
+没有绘制的 clip 会在 `playOnce()` 内同步完成并发出 `animover`。因此 `kill_light()` 先写 `_killed`、先注册监听再播放；极光的随机待机在 sprite 未加载时改声明循环 clip，等 `sprite.art` 变化后继续，避免同步递归。新星体的 `appear` 通过共享 archive 在美术加载后从第一帧播放。
 
-到期时生命周期方法先提交寿命为零、设置不可保存并直接登记 1 秒后的移除任务；这些领域操作不能由表现 effect 延迟执行。消失过程只启动一次，后续结算或重复通知不重复登记任务。剩余寿命的更新仍遵守组件结算规则，不因采用 signal 就逐帧更新。
-
-### effect 示例与释放
-
-下面演示已经加载、处于活动范围内的矮星的绑定职责。运行时的等价绑定位于 `DwarfStarManager.load()`，传入的 `phase` 是上述 memo 的只读接口。`syncVisual` 由表现层提供，用实体 ID 同步其模型／表现索引；它只在阶段变化时切换姿态，剩余寿命降低但阶段仍为 `active` 时不重新播放待机，重复调用也不重复创建模型或播放消失动画。
-
-```ts
-import { createEffect, type ReadonlySignal } from '@dontstarve-web/signals';
-
-type StarPhase = 'active' | 'disappearing' | 'removed';
-
-function bindDwarfStarAppearance(
-    phase: ReadonlySignal<StarPhase>,
-    syncVisual: (phase: StarPhase) => void,
-    releaseVisual: () => void,
-) {
-    const stop = createEffect(() => {
-        syncVisual(phase.get()); // 只订阅这颗矮星自身状态
-    });
-
-    return () => {
-        stop();
-        releaseVisual(); // 幂等移除模型和表现索引，释放独立光照与音源
-    };
-}
-```
-
-`syncVisual('active')` 保持已有待机表现，`syncVisual('disappearing')` 进入消失动画，`syncVisual('removed')` 清除地面表现。出现动画与出现声由首次生成路径负责，读档或重新加载模型不能重播。同步辅助函数若需读取环境 signal，仍使用 `.peek()`。
-
-生命周期在最终移除时同步注销权威索引、写入 `removed = true`，并调用绑定返回的释放函数。因为 effect 后续运行在微任务中，调用释放函数可能取消尚未执行的最终阶段更新，所以 `releaseVisual()` 必须直接完成清理，不能只等待 effect 删除模型。完成表现释放后再调用 `phase.dispose()`，解除其对寿命与移除标记的依赖。释放函数不在 effect 初始化回调中自调用。
-
-因此“寿命结束”对应 `disappearing`，“可以永久从地面注销”对应 `removed`。若只用 `alive`，应在最终移除时才写 `false`；消失动画仍需单独由生命周期触发。注销索引与释放 effect 是两项操作，前者不会自动完成后者。
-
-### 当前实现、远近加载与保存
-
-[DwarfStarManager](../packages/prefab/src/stafflight.ts) 已用私有 `remaining`／`removed` signal 保存权威状态，用可释放的 `phase` memo 派生阶段，每次加载模型创建自身阶段的表现 effect。`getStaffLightState(model)` 提供只读的 `remaining`、`removed`、`phase`，不暴露 setter 或 memo 的释放权。`removalAtSeconds` 只保存消失后的移除截止时间，不作为第二份阶段状态；计时仍由同一管理器推进。矮星寿命保留项目指定的 24 分钟；本地 Lua 的 `TUNING.YELLOWSTAFF_STAR_DURATION = total_day_time * 3.5`，默认一天 480 秒，即 28 分钟。共享管理器的极光 `staffcoldlight` 同样使用这套生命周期，寿命保留 16 分钟。
-
-自然到期或 `haunt(model)` 同步提交剩余寿命为零、`persists = false` 和移除截止时间；表现 effect 在微任务中播放一次 `disappear`，动画完成只停止本次绑定的循环声。结算越过寿命边界时，截止时间仍为实际到期点加 1 秒，不从结算点重新计时；已越过消失窗口的直接移除。重复作祟不重播动画、不延长截止时间。`haunt(model)` 提供生命周期入口，玩家幽灵的作祟输入尚未接入。`remove(model)` 支持同步显式移除，取消排队表现也会直接释放模型、独立光照与音源；旧模型动画回调校验控制器身份，不会修改替换后的表现。资源准备期间场景释放会拒绝后续生成。
-
-现有管理器在附近每 60 个有效游戏帧按实际累计 `dt` 结算寿命，保存、远离时结算部分批次；远处只保留逻辑状态，重新靠近时先补算游戏时间，已过期的直接移除。远离卸载模型不代表实体已移除，不能写入 `removed = true` 或注销仍存活的逻辑实体；卸载时只释放这次表现绑定，保留寿命／移除标记及阶段 memo，重新加载时建立新表现绑定。更完整的活动区域方案见 [按 tile 管理生命周期](tile-lifecycle.md)。
-
-保存依据组件寿命与生命周期读取权威状态，不等待 effect。`active` 星体保存 ID、脚点及最新剩余时间，读档先恢复 `remaining`，再建立 memo 和表现绑定，恢复待机；`disappearing`／`removed` 不写入存档，memo 与 signal 对象不写入存档。永久移除由管理器注销实体、提交移除标记，直接释放表现 effect 和独立资源，最后释放阶段 memo；远离时只执行 `unload()`，保留逻辑状态与 memo。场景释放前结算尾帧，永久清理所有实体。应用不复制寿命或并列运行第二个计时器。
+保存只读取 `persists` 与 timer 的剩余时间：`persists` 为真的星体保存 ID、脚点和 `components.timer.remainingSeconds`。
 
 ## 保存、释放与验证
 
@@ -442,13 +364,13 @@ function bindDwarfStarAppearance(
 后续实施保持代表性验证：
 
 - 洞穴花的再生／灯光 timer 只在设置、暂停、恢复、取消或到期时发布；等待期间不逐帧扣值。到期派生对应阶段，取消不误触发再生；失败采摘不改状态，读档重建截止时间和任务且不重播过渡声，永久移除取消任务，替换美术保留逻辑 timer 和 memo。
-- 矮星寿命变化只派生阶段，同阶段更新不重播动画；到期先消失再永久注销，最终清理释放 effect 和 memo，即使取消排队 effect 也完整执行；远离卸载保留逻辑状态和 memo，恢复保留身份和寿命。
+- 矮星到期或作祟先消失、1 秒后移除，重复作祟不重复登记；休眠不暂停寿命、灯光声明和声音，唤醒保留身份和组件；读档恢复身份和寿命。
 - 材料烧毁先生成灰烬再移除原物品；灰烬等待期间 timer signal 不变，成功拾取取消任务并派生库存阶段，再丢弃重设截止时间及任务；过期与取消不混淆，永久移除撤销剩余任务并释放 memo，旧 effect 或异步回调不重建模型。
 - 消散开始时同步禁止拾取，动画完成或兜底只清理一次；同批次状态变化不丢失必须执行的领域动作。
 - 修改环境 signal 不单独触发实体表现 effect；自身 signal 变化时读取最新环境值，表现回调中的外部读取也不形成额外依赖。
 - 保存不依赖微任务刷新，恢复保留身份、脚点、数量和组件状态；释放一叠灰烬不影响其他实体的共享资源。
 
-矮星运行时已接入上述生命周期，草丛与洞穴花已接入上述 timer／memo 计时，灰烬消散的映射仍待实施。调试命令语法保持不变；本次补齐 `c_spawn("stafflight")`／`c_spawn("staffcoldlight")` 的注册，新增 `dug_grass` 的生成／给予入口。 `c_spawn("flower_cave")`、`c_spawn("ash")`、`c_spawn("stafflight")`、`c_give("ash", count)`、`c_give("yellowstaff")` 和 `c_save()` 以 [README 调试命令](../README.md#调试命令debugcommand) 为准。
+矮星运行时见其专节，草丛与洞穴花已接入上述 timer／memo 计时，灰烬消散的映射仍待实施。调试命令语法保持不变；本次补齐 `c_spawn("stafflight")`／`c_spawn("staffcoldlight")` 的注册，新增 `dug_grass` 的生成／给予入口。 `c_spawn("flower_cave")`、`c_spawn("ash")`、`c_spawn("stafflight")`、`c_give("ash", count)`、`c_give("yellowstaff")` 和 `c_save()` 以 [README 调试命令](../README.md#调试命令debugcommand) 为准。
 
 ## worldwind：世界风向
 

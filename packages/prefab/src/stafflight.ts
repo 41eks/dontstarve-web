@@ -1,16 +1,21 @@
-import type { PrefabDisplayGroup } from '@dontstarve-web/display';
 import * as THREE from 'three';
-import { createEffect, createMemo, createSignal, readonlySignal, getBoundWatchWorldContent, type Memo, type ReadonlySignal, type Signal } from '@dontstarve-web/signals';
-import { SpriteResources } from '@dontstarve-web/display';
-import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
+import { createEffect, type GetWatchWorldContent, type TileStateQuery } from '@dontstarve-web/signals';
+import { SpriteResources, SpriteState, type PrefabDisplayGroup } from '@dontstarve-web/display';
+import { bindInstance, PrefabInstance } from './prefabInstance';
 import { type PrefabLocalLight } from './localLight';
-import { TILE_SIZE } from './tile';
+import { WORLD_SCALE } from './tile';
 import { OPALSTAFF_COLOUR, YELLOWSTAFF_COLOUR } from './staff';
 import { newEntityId } from './saveRecord';
-import { PlaySound, type SoundHandle } from './sound';
+import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
 import { actionEntity, FindEntities } from './actionEntity';
+import { watchTileActivity } from './tileActivity';
+import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import { ComponentTimer, Timer } from '../../componets/src/timer';
 import { Propagator } from '../../componets/src/propagator';
 import { Heater } from '../../componets/src/heater';
+import { Hauntable, HAUNT_SMALL } from '../../componets/src/hauntable';
+import { SanityAura, SANITYAURA_SMALL } from '../../componets/src/sanityaura';
+import { Inspectable } from '../../componets/src/dragonflySignatures';
 import type { BurnableInst } from '../../componets/src/burnable';
 
 export const DWARF_STAR_ID = 'stafflight';
@@ -19,26 +24,31 @@ export const DWARF_STAR_DURATION = 24 * 60;
 export const POLAR_LIGHT_ID = 'staffcoldlight';
 // tuning.lua: OPALSTAFF_STAR_DURATION = total_day_time * 2 (480 seconds per day).
 export const POLAR_LIGHT_DURATION = 16 * 60;
-/** Match the forest's ten-tile visual loading range, measured on the ground. */
-export const STAFF_LIGHT_ACTIVE_RADIUS = TILE_SIZE * 10;
 export type StaffLightId = typeof DWARF_STAR_ID | typeof POLAR_LIGHT_ID;
-export type StaffLightPhase = 'active' | 'disappearing' | 'removed';
-export interface StaffLightState {
-  readonly remaining: ReadonlySignal<number>;
-  readonly removed: ReadonlySignal<boolean>;
-  readonly phase: ReadonlySignal<StaffLightPhase>;
-}
 
-/** Read-only component state on the star's entity; it survives visual unloading and final removal. */
-export function getStaffLightState(instance: PrefabInstance): StaffLightState | undefined {
-  return instance.components.stafflight;
-}
+const EXTINGUISH = 'extinguish';
+const PULSE_PERIOD = .1;
 
-/** stafflight.lua: abs(sin(pi * timeAlive * .05)), using the scene's world scale. */
+/** stafflight.lua's makestafflight arguments for the two world stars. */
+const STAFF_LIGHTS: Record<StaffLightId, {
+  readonly is_hot: boolean;
+  readonly anim: string;
+  readonly colour: PrefabLocalLight['colour'];
+  readonly idles: readonly string[];
+  readonly duration: number;
+  readonly loopSound: SoundEventPath;
+}> = {
+  [DWARF_STAR_ID]: { is_hot: true, anim: 'star_hot', colour: YELLOWSTAFF_COLOUR, idles: ['idle_loop'],
+    duration: DWARF_STAR_DURATION, loopSound: 'dontstarve/common/staff_star_LP' },
+  [POLAR_LIGHT_ID]: { is_hot: false, anim: 'star_cold', colour: OPALSTAFF_COLOUR, idles: ['idle_loop', 'idle_loop2', 'idle_loop3'],
+    duration: POLAR_LIGHT_DURATION, loopSound: 'dontstarve/common/staff_coldlight_LP' },
+};
+
+/** stafflight.lua pulse_light: abs(sin(pi * timeAlive * .05)), using the scene's world scale. */
 export function dwarfStarLight(ageSeconds: number): PrefabLocalLight {
   const pulse = Math.abs(Math.sin(Math.PI * ageSeconds * 0.05));
   return {
-    radius: (11 + pulse) * (TILE_SIZE / 4),
+    radius: (11 + pulse) * WORLD_SCALE,
     intensity: 0.8 - 0.1 * pulse,
     falloff: 0.8 - 0.1 * pulse,
     colour: YELLOWSTAFF_COLOUR,
@@ -55,294 +65,195 @@ export interface DwarfStarRecord {
   components: { timer: { remainingSeconds: number } };
 }
 
-interface Star {
-  /** The logical entity; its display draws no mesh while the entity is asleep. */
-  instance: PrefabInstance;
-  /** Loaded near the player: art, light and sound are presented. */
-  awake: boolean;
-  /** Each load's presentation; callbacks of an earlier one are stale. */
-  generation: number;
-  remaining: Signal<number>;
-  removed: Signal<boolean>;
-  phase: Memo<StaffLightPhase>;
-  ageSeconds: number;
-  lastSettlementSeconds: number;
-  pendingFrames: number;
-  removalAtSeconds: number | null;
-  creationSound?: SoundHandle;
-  loopSound?: SoundHandle;
-  releaseAppearance?: () => void;
-  propagator?: Propagator;
-  heater?: Heater;
+/** What the scene injects into every star. */
+export interface StaffLightWorld {
+  scheduler: GameTimeScheduler;
+  tickingarea?: TileStateQuery;
+  getWatchWorldContent?: GetWatchWorldContent;
 }
 
-/** Independent summon lifetimes; shared DST textures, separate merged frame meshes. */
+/**
+ * stafflight.lua's fn() for `stafflight` and `staffcoldlight`. Like the source, a load runs the same constructor and
+ * then the timer's OnLoad, and nothing here depends on the entity being awake: sleep only stops the sprite being drawn.
+ */
+export class StaffLightInstance extends PrefabInstance {
+  readonly no_wet_prefix = true;
+  _killed = false;
+  private readonly scheduler: GameTimeScheduler;
+  private readonly settings: typeof STAFF_LIGHTS[StaffLightId];
+  private readonly spawnedAt: number;
+  private readonly pulseTask: ComponentTimer;
+  private cancelRemoval?: () => void;
+  private loopSound?: SoundHandle;
+  private createSound?: SoundHandle;
+  /** A random idle waits here for its art: a clip nothing draws would complete at once. */
+  private idleAwaitsArt = false;
+
+  constructor(prefab: StaffLightId, world: StaffLightWorld) {
+    super(prefab, new SpriteState({ name: 'appear', billboard: true }));
+    const { scheduler } = world, settings = STAFF_LIGHTS[prefab];
+    this.scheduler = scheduler; this.settings = settings; this.spawnedAt = scheduler.now;
+
+    // DoPeriodicTask(.1, pulse_light): the light is first enabled by the first pulse, a period after spawning.
+    this.pulseTask = new ComponentTimer(scheduler, () => { this.pulse_light(); this.pulseTask.start(PULSE_PERIOD); });
+    this.pulseTask.start(PULSE_PERIOD);
+
+    this.sprite.playOnce('appear', () => this.PushEvent('animover'));
+    if (settings.idles.length === 1) this.sprite.pushAnimation(settings.idles[0], true);
+
+    this.addTag('ignorewalkableplatforms');
+    this.physicsRadiusOverride = .5;
+    if (settings.is_hot) for (const tag of ['cooker', 'daylight', 'heatstar']) this.addTag(tag);
+
+    const heater = new Heater(this);
+    heater.SetHeat(settings.is_hot ? 100 : -100);
+    if (!settings.is_hot) heater.SetThermics(false, true);
+
+    const sanityaura = new SanityAura(this);
+    sanityaura.aura = SANITYAURA_SMALL;
+
+    const hauntable = new Hauntable(this, scheduler);
+    hauntable.SetHauntValue(HAUNT_SMALL);
+    hauntable.SetOnHauntFn(() => this.onhaunt());
+
+    const timer = new Timer(scheduler, name => this.PushEvent('timerdone', { name }));
+    timer.StartTimer(EXTINGUISH, settings.duration);
+    this.ListenForEvent('timerdone', data => { if ((data as { name: string }).name === EXTINGUISH) this.kill_light(); });
+
+    Object.assign(this.components, { heater, sanityaura, hauntable, timer, inspectable: new Inspectable(this) });
+    this.addTag('inspectable');
+
+    let propagator: Propagator | undefined;
+    if (settings.is_hot) {
+      propagator = this.components.propagator = new Propagator(this, 'default', radius =>
+        FindEntities(this.position, radius, [], ['INLIMBO']) as BurnableInst[], WORLD_SCALE, scheduler, world.getWatchWorldContent);
+      propagator.heatoutput = 15;
+      propagator.spreading.set(true);
+    }
+
+    let stopIdleResume: (() => void) | undefined;
+    if (settings.idles.length > 1) {
+      this.ListenForEvent('animover', () => this.PlayRandomStarIdle());
+      stopIdleResume = createEffect(() => {
+        this.sprite.art.get();
+        if (!this.idleAwaitsArt || !this.sprite.loaded) return;
+        this.idleAwaitsArt = false;
+        this.PlayRandomStarIdle();
+      });
+    }
+
+    this.onRemove(() => {
+      this.pulseTask.stop();
+      this.cancelRemoval?.();
+      stopIdleResume?.();
+      timer.dispose(); hauntable.dispose(); heater.dispose(); sanityaura.OnRemoveFromEntity(); propagator?.dispose();
+      this.kill_sound();
+      this.createSound?.stop();
+    });
+  }
+
+  /** The SoundEmitter's PlaySound calls in fn(); they follow the transform, which exists once the display is attached. */
+  playSpawnSounds(): void {
+    this.loopSound = PlaySound(this.settings.loopSound, this.position);
+    this.createSound = PlaySound('dontstarve/common/staff_star_create', this.position);
+  }
+
+  private pulse_light(): void {
+    const timealive = this.scheduler.now - this.spawnedAt;
+    this.light.set({ ...dwarfStarLight(timealive), colour: this.settings.colour });
+  }
+
+  private PlayRandomStarIdle(): void {
+    // Don't if we're extinguished
+    if (this._killed) return;
+    const { idles } = this.settings, idle = idles[Math.floor(Math.random() * idles.length)];
+    if (this.sprite.loaded) this.sprite.playOnce(idle, () => this.PushEvent('animover'));
+    else { this.sprite.start(idle); this.idleAwaitsArt = true; }
+  }
+
+  private kill_sound(): void {
+    this.loopSound?.stop();
+    this.loopSound = undefined;
+  }
+
+  private kill_light(): void {
+    // Set first: a clip nothing draws completes, and sends animover, inside playOnce.
+    this._killed = true;
+    this.persists = false;
+    this.ListenForEvent('animover', () => this.kill_sound());
+    this.sprite.playOnce('disappear', () => this.PushEvent('animover'));
+    this.cancelRemoval = this.scheduler.schedule(1, () => this.remove()); // originally 0.6, padded for network
+  }
+
+  private onhaunt(): boolean {
+    const timer = this.components.timer!;
+    if (timer.TimerExists(EXTINGUISH)) {
+      timer.StopTimer(EXTINGUISH);
+      this.kill_light();
+    }
+    return true;
+  }
+}
+
+/** The stars of one prefab: their collection, injected world and shared DST textures. */
 export class DwarfStarManager {
   private readonly resources: SpriteResources;
-  private readonly stars = new Map<PrefabInstance, Star>();
+  private readonly stars = new Set<StaffLightInstance>();
   private disposed = false;
   private readonly displays: PrefabDisplayGroup;
-  private readonly duration: number;
-  private readonly getPlayerPosition?: () => Pick<THREE.Vector3, 'x' | 'z'>;
-  private elapsedSeconds = 0;
+  private readonly world: StaffLightWorld;
   readonly prefabId: StaffLightId;
 
   /** `displays` is the display-layer owner of the stars' scene membership, injected and disposed by the application. */
-  constructor(displays: PrefabDisplayGroup, animationBaseUrl: string, prefabId: StaffLightId = DWARF_STAR_ID,
-    getPlayerPosition?: () => Pick<THREE.Vector3, 'x' | 'z'>) {
+  constructor(displays: PrefabDisplayGroup, animationBaseUrl: string, world: StaffLightWorld, prefabId: StaffLightId = DWARF_STAR_ID) {
     this.displays = displays;
     this.resources = new SpriteResources(animationBaseUrl);
+    this.world = world;
     this.prefabId = prefabId;
-    this.getPlayerPosition = getPlayerPosition;
-    this.duration = prefabId === POLAR_LIGHT_ID ? POLAR_LIGHT_DURATION : DWARF_STAR_DURATION;
   }
 
   /** SpawnPrefab at CASTSPELL's source stategraph frame: the star exists now and its display loads the art. */
-  spawn(position: THREE.Vector3, saved?: { id: string; remainingSeconds: number }): PrefabInstance {
-    const remainingSeconds = saved?.remainingSeconds ?? this.duration;
-    if (![position.x, position.y, position.z].every(Number.isFinite)
-      || !Number.isFinite(remainingSeconds) || remainingSeconds <= 0 || remainingSeconds > this.duration)
-      throw new RangeError(`Invalid ${this.prefabId} position or lifetime`);
+  spawn(position: THREE.Vector3, saved?: { id: string; remainingSeconds: number }): StaffLightInstance {
     if (this.disposed) throw new Error('Dwarf star manager has been disposed');
-    const name = this.prefabId, entityId = saved?.id ?? newEntityId();
-    // A star spawned near the player is drawn once its art is here, so its appear clip plays; a far one starts asleep.
-    const nearby = this.isNearby(position, this.getPlayerPosition?.());
-    const archive = this.prefabId === POLAR_LIGHT_ID ? 'star_cold.zip' : 'star_hot.zip';
-    const { instance, display } = createPrefabEntity(this.prefabId, this.resources.factory({ animationArchive: archive, buildArchive: archive }),
-      { name: 'idle_loop', billboard: true }, name, instance => { if (!nearby) instance.setActive(false); });
+    if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError(`Invalid ${this.prefabId} position`);
+    const instance = new StaffLightInstance(this.prefabId, this.world);
+    const { anim, duration } = STAFF_LIGHTS[this.prefabId], archive = `${anim}.zip`;
+    // A shared archive holds a first one-shot clip while its art loads, so a new star is drawn from its first `appear` frame.
+    const display = this.displays.add({ name: this.prefabId, status: instance.status, sprite: instance.sprite, light: instance.light,
+      archive: this.resources.archive({ animationArchive: archive, buildArchives: [archive], bank: anim }) });
+    bindInstance(display.model, instance);
     instance.position.set(position.x, 0, position.z);
-    instance.entityId = entityId;
-    const remaining = createSignal(remainingSeconds);
-    const removed = createSignal(false);
-    const phase = createMemo<StaffLightPhase>(() => removed.get() ? 'removed'
-      : remaining.get() > 0 ? 'active' : 'disappearing');
-    instance.components.stafflight = Object.freeze({
-      remaining: readonlySignal(remaining), removed: readonlySignal(removed), phase: readonlySignal(phase),
-    } satisfies StaffLightState);
-    const star: Star = { instance, awake: false, generation: 0, remaining, removed, phase,
-      ageSeconds: this.duration - remainingSeconds, lastSettlementSeconds: this.elapsedSeconds,
-      pendingFrames: 0, removalAtSeconds: null };
-    // The action projection is keyed by the display's model; its components are the instance's.
-    const inst = actionEntity(display.model, this.prefabId);
-    // stafflight.lua: both stars use the heater's default distance falloff.
-    inst.components.heater = star.heater = new Heater(inst);
-    star.heater.SetHeat(this.prefabId === DWARF_STAR_ID ? 100 : -100);
-    if (this.prefabId === POLAR_LIGHT_ID) star.heater.SetThermics(false, true);
-    if (this.prefabId === DWARF_STAR_ID) {
-      inst.components.propagator = star.propagator = new Propagator(inst, 'default', radius =>
-        FindEntities(instance.position, radius, [], ['INLIMBO']) as BurnableInst[], TILE_SIZE / 4, undefined, getBoundWatchWorldContent());
-      // stafflight.lua: bare propagator, heatoutput 15, spreading from creation until removal.
-      star.propagator.heatoutput = 15;
-      star.propagator.spreading.set(true);
-    }
-    this.stars.set(instance, star);
-    // The display keeps the model in the scene while the entity is awake and takes it out while asleep.
-    this.displays.mount(display);
-    if (nearby) this.load(star, !saved);
+    instance.entityId = saved?.id ?? newEntityId();
+    if (saved) instance.components.timer!.OnLoad({ timers: { [EXTINGUISH]: { timeleft: saved.remainingSeconds, paused: false, initial_time: duration } } });
+    instance.playSpawnSounds();
+    actionEntity(display.model, this.prefabId);
+    this.stars.add(instance);
+    const stopActivity = watchTileActivity(display.model, this.world.tickingarea, active => instance.setActive(active));
+    instance.onRemove(() => { stopActivity(); this.stars.delete(instance); });
     return instance;
   }
 
   /** The awake stars' displays, as the display group lists those in the scene. */
   get renderEntities() { return this.displays.renderEntities; }
 
-  update(dt: number, _cameraWorldQuaternion: THREE.Quaternion): void {
-    if (this.disposed || !Number.isFinite(dt) || dt <= 0) return;
-    // One game clock advances even when every star is asleep. No wall-clock time
-    // or per-sleeping-star countdown is needed, so paused games consume no life.
-    this.elapsedSeconds += dt;
-    const playerPosition = this.getPlayerPosition?.();
-    for (const star of this.stars.values()) {
-      const awake = this.isNearby(star.instance.position, playerPosition);
-      const changed = awake !== star.awake;
-      if (changed) {
-        // Flush the partial batch on departure; catch up all sleeping time on
-        // return, before enabling art, light or sound for an expired entity.
-        if (!this.settle(star, false)) continue;
-        if (awake) this.load(star, false);
-        else this.unload(star);
-      }
-      if (!changed && star.phase.peek() === 'active' && ++star.pendingFrames === 60
-        && star.awake
-        && !this.settle(star, true)) continue;
-      if (star.removalAtSeconds !== null && this.elapsedSeconds >= star.removalAtSeconds) {
-        this.removeStar(star);
-        continue;
-      }
-      // Visual unloading retains the component. Never spread beyond the logical removal deadline,
-      // even when a sleeping star's lifetime has not yet been settled for presentation/save.
-      const removalAt = star.removalAtSeconds ?? star.lastSettlementSeconds + star.remaining.peek() + 1;
-      star.propagator?.Update(Math.max(0, Math.min(dt, removalAt - (this.elapsedSeconds - dt))));
-      if (!star.awake) continue;
-      const age = star.ageSeconds + this.elapsedSeconds - star.lastSettlementSeconds;
-      star.instance.light.set(this.light(age));
-    }
-    // The display group advances the awake stars' clips.
-    this.displays.update(dt);
+  /** The display group advances the awake stars' clips; timers and tasks run on the world's scheduler. */
+  update(dt: number, cameraQuaternion: THREE.Quaternion): void {
+    if (!this.disposed) this.displays.update(dt, cameraQuaternion);
   }
 
   exportRecords(): DwarfStarRecord[] {
-    for (const star of this.stars.values()) this.settle(star, star.awake);
-    return Array.from(this.stars.values()).filter((star) => star.phase.peek() === 'active').map((star) => ({
-      id: String(star.instance.entityId),
-      transform: { position: [star.instance.position.x, 0, star.instance.position.z], rotationY: 0 },
-      components: { timer: { remainingSeconds: star.remaining.peek() } },
+    return [...this.stars].filter(star => star.persists).map(star => ({
+      id: String(star.entityId),
+      transform: { position: [star.position.x, 0, star.position.z], rotationY: 0 },
+      components: { timer: { remainingSeconds: star.components.timer!.GetTimeLeft(EXTINGUISH)! } },
     }));
   }
 
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
-    for (const star of this.stars.values()) {
-      this.settle(star, false);
-      this.removeStar(star);
-    }
+    for (const star of [...this.stars]) star.remove();
     // Every star's display is released above, before the shared resources.
     this.resources.dispose();
-  }
-
-  /** Explicit entity removal, independent of the queued presentation effect. */
-  remove(instance: PrefabInstance): boolean {
-    const star = this.stars.get(instance);
-    if (!star) return false;
-    this.settle(star, false);
-    this.removeStar(star);
-    return true;
-  }
-
-  /** stafflight.lua onhaunt stops extinguish and enters the same kill_light path. */
-  haunt(instance: PrefabInstance): boolean {
-    const star = this.stars.get(instance);
-    if (!star) return false;
-    if (!this.settle(star, star.awake)) return true;
-    if (star.phase.peek() === 'active') this.beginDisappearance(star, this.elapsedSeconds, star.awake);
-    return true;
-  }
-
-  private get loopEvent() {
-    return this.prefabId === POLAR_LIGHT_ID ? 'dontstarve/common/staff_coldlight_LP' : 'dontstarve/common/staff_star_LP';
-  }
-
-  private light(ageSeconds: number): PrefabLocalLight {
-    return this.prefabId === POLAR_LIGHT_ID ? polarLight(ageSeconds) : dwarfStarLight(ageSeconds);
-  }
-
-  private startIdle(star: Star, generation: number): void {
-    if (this.disposed || star.generation !== generation || star.phase.peek() !== 'active' || !this.has(star)) return;
-    const animation = star.instance.sprite;
-    if (this.prefabId === POLAR_LIGHT_ID) {
-      const clips = ['idle_loop', 'idle_loop2', 'idle_loop3'];
-      animation.playOnce(clips[Math.floor(Math.random() * clips.length)], () => this.startIdle(star, generation));
-    } else animation.start('idle_loop');
-  }
-
-  private load(star: Star, appear: boolean): void {
-    if (this.disposed || !this.has(star) || star.phase.peek() !== 'active' || star.awake) return;
-    star.awake = true;
-    const generation = ++star.generation, animation = star.instance.sprite;
-    if (appear) star.creationSound = PlaySound('dontstarve/common/staff_star_create', star.instance.position);
-    const begin = () => {
-      if (appear) animation.playOnce('appear', () => this.startIdle(star, generation));
-      else this.startIdle(star, generation);
-    };
-    star.loopSound = PlaySound(this.loopEvent, star.instance.position);
-    star.instance.light.set(this.light(star.ageSeconds));
-    star.instance.setActive(true);
-    // OnEntityWake: the idle chain starts once the display has drawn the sprite again.
-    let waiting = !animation.loaded;
-    const stopWaiting = waiting ? createEffect(() => {
-      animation.art.get();
-      if (!waiting || !animation.loaded || star.generation !== generation) return;
-      waiting = false; begin();
-    }) : undefined;
-    if (!waiting) begin();
-    let presentedPhase: StaffLightPhase | undefined;
-    const stop = createEffect(() => {
-      const phase = star.phase.get();
-      if (phase === presentedPhase || star.generation !== generation || !this.has(star)) return;
-      presentedPhase = phase;
-      if (phase === 'disappearing') {
-        const loopSound = star.loopSound;
-        animation.playOnce('disappear', () => {
-          if (star.generation === generation && this.has(star)) loopSound?.stop();
-        });
-      } else if (phase === 'removed') this.releaseVisual(star);
-    });
-    star.releaseAppearance = () => {
-      stop(); stopWaiting?.();
-      if (star.generation === generation) this.releaseVisual(star);
-    };
-  }
-
-  private unload(star: Star): void {
-    const release = star.releaseAppearance;
-    star.releaseAppearance = undefined;
-    if (release) release();
-    else this.releaseVisual(star);
-  }
-
-  private releaseVisual(star: Star): void {
-    star.creationSound?.stop();
-    star.loopSound?.stop();
-    star.creationSound = undefined;
-    star.loopSound = undefined;
-    star.instance.light.set(null);
-    // OnEntitySleep: the display releases the drawn sprite; callbacks of this presentation become stale.
-    star.awake = false;
-    star.generation++;
-    star.instance.setActive(false);
-  }
-
-  private removeStar(star: Star): void {
-    if (!this.has(star)) return;
-    this.stars.delete(star.instance);
-    star.instance.persists = false;
-    star.propagator?.dispose();
-    star.heater?.dispose();
-    if (star.heater) delete star.instance.components.heater;
-    star.removed.set(true);
-    this.unload(star);
-    star.phase.dispose();
-    // The display releases its sprite and model once the entity is removed.
-    star.instance.remove();
-  }
-
-  /** The star is still this entity's live star. */
-  private has(star: Star): boolean { return this.stars.get(star.instance) === star; }
-
-  private isNearby(position: THREE.Vector3, player: Pick<THREE.Vector3, 'x' | 'z'> | undefined): boolean {
-    if (!player) return true;
-    const dx = position.x - player.x, dz = position.z - player.z;
-    return dx * dx + dz * dz <= STAFF_LIGHT_ACTIVE_RADIUS ** 2;
-  }
-
-  /** Settle actual game seconds, including a partial batch or a sleeping interval. */
-  private settle(star: Star, animateExpiry: boolean): boolean {
-    if (!this.has(star)) return false;
-    if (star.phase.peek() === 'disappearing') {
-      if (!animateExpiry || this.elapsedSeconds >= star.removalAtSeconds!) this.removeStar(star);
-      return this.has(star);
-    }
-    const elapsed = this.elapsedSeconds - star.lastSettlementSeconds;
-    star.lastSettlementSeconds = this.elapsedSeconds;
-    star.pendingFrames = 0;
-    star.ageSeconds += elapsed;
-    const remaining = star.remaining.peek() - elapsed;
-    if (remaining > 0) {
-      star.remaining.set(remaining);
-      return true;
-    }
-    return this.beginDisappearance(star, this.elapsedSeconds + remaining, animateExpiry);
-  }
-
-  private beginDisappearance(star: Star, expirySeconds: number, animateExpiry: boolean): boolean {
-    // Commit domain work synchronously; presentation may run later or be cancelled.
-    star.removalAtSeconds = expirySeconds + 1;
-    star.instance.persists = false;
-    star.remaining.set(0);
-    if (!animateExpiry || this.elapsedSeconds >= star.removalAtSeconds) {
-      this.removeStar(star);
-      return false;
-    }
-    return true;
   }
 }

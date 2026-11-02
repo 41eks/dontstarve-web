@@ -14,8 +14,8 @@ export interface DeployMap {
   setTile(col: number, row: number, tileId: number): void;
   /** map.lua CanDeployPlantAtPoint. */
   canDeployPlant(point: Vector3, inst: DeployInst, spacing: number): boolean;
-  /** ondeploy's SpawnPrefab of the planted prefab, with the deployed item's skin. */
-  deployPlant(point: Vector3, inst: DeployInst): boolean;
+  /** SpawnPrefab(prefab, skin) followed by Transform:SetPosition; undefined when the world can no longer spawn. */
+  SpawnPrefab(prefab: string, position: Vector3, skinId?: string): DeploySpawned | undefined;
   /** dock_kit.lua's CLIENT_CanDeployDockKit, reaching Map:CanDeployDockAtPoint. */
   canDeployDock(point: Vector3): boolean;
   /** dock_kit.lua on_deploy: TheWorld.components.dockmanager:CreateDockAtPoint and ResolveDockSafetyAtPoint. */
@@ -31,6 +31,20 @@ export interface DeployMap {
   itemPlanted(doer: unknown, pos: Vector3): void;
 }
 
+/** What the prefabs' ondeploy reach on the inst they spawn. */
+export interface DeploySpawned {
+  readonly components: { pickable?: { OnTransplant(): void } };
+  PushEvent(name: string, data?: unknown): void;
+}
+
+/** MakePlacer(name, bank, build, anim): the art of `${prefab}_placer`, by name; the placer's display loads it. */
+export interface DeployPlacerArt {
+  readonly bank: string;
+  readonly build: string;
+  readonly animation: string;
+  readonly animationArchive?: string;
+}
+
 export interface Deployer {
   readonly position: Vector3;
   PushEvent(name: string, data: unknown): void;
@@ -41,19 +55,21 @@ export class Deployable {
   readonly mode: 'TURF' | 'PLANT' | 'CUSTOM';
   readonly usegridplacer: boolean;
   readonly spacing: number;
+  readonly placer?: DeployPlacerArt;
   private readonly inst: DeployInst;
   /** inst._custom_candeploy_fn. */
   private readonly candeploy?: (point: Vector3, map: DeployMap) => boolean;
   private readonly ondeploy: (point: Vector3, deployer: Deployer, map: DeployMap) => void | boolean;
 
   constructor(inst: DeployInst, ondeploy: (point: Vector3, deployer: Deployer, map: DeployMap) => void | boolean,
-    options?: { mode: 'PLANT'; spacing: number }
+    options?: { mode: 'PLANT'; spacing: number; placer: DeployPlacerArt }
       | { mode: 'CUSTOM'; spacing: number; usegridplacer: boolean; candeploy(point: Vector3, map: DeployMap): boolean }) {
     this.inst = inst;
     this.ondeploy = ondeploy;
     this.mode = options?.mode ?? 'TURF'; this.spacing = options?.spacing ?? 2;
     this.usegridplacer = options?.mode === 'CUSTOM' ? options.usegridplacer : this.mode === 'TURF';
     if (options?.mode === 'CUSTOM') this.candeploy = options.candeploy;
+    if (options?.mode === 'PLANT') this.placer = options.placer;
   }
 
   CanDeploy(point: Vector3, map: DeployMap | undefined): boolean {

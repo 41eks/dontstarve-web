@@ -143,7 +143,7 @@ it('rejects hard terrain and blocking entities without spending an item', async 
 it('picks DEPLOY_TILEARRIVE for the held item, arrives anywhere on the tile and commits one use at frame six', async () => {
   const { plow, turf, world, blockers } = setup();
   const inventory = createInventoryStore([]);
-  const map = createDeployMap({ turf, blockers: blockers as never, plants: {}, farm: plow }), actor = deployActor(world, inventory, map);
+  const map = createDeployMap({ turf, blockers: blockers as never, farm: plow }), actor = deployActor(world, inventory, map);
   const placer = new DeployPlacer(world, map, () => inventory.GetActiveItem());
   const click = new THREE.Vector3(10, 0, 2);
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));

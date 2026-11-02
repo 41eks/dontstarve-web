@@ -499,7 +499,8 @@ export async function createSceneEntities(
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (_, record) => flowerPlanting.spawnFromSave(record.id,
         record.components.flower!.animation, new THREE.Vector3(...record.transform.position), record.components.flower!.planted === true),
-      debugSpawn: async () => { flowerPlanting.transplant(view.player.position); },
+      debugSpawn: async () => { flowerPlanting.spawnPlanted(view.player.position); },
+      spawnPrefab: { planted_flower: position => flowerPlanting.spawnPlanted(position) },
       exportRecords: () => flowerPlanting.exportRecords().map((record) => ({ prefabId: 'flower', record })),
       update: (dt, quaternion) => flowerPlanting.update(quaternion, dt),
       renderEntities: () => flowerPlanting.renderEntities,
@@ -943,6 +944,7 @@ export async function createSceneEntities(
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (_, record) => marbleBeanSaplings.spawn(new THREE.Vector3(...record.transform.position), record),
       debugSpawn: () => marbleBeanSaplings.spawn(player.position.clone()),
+      spawnPrefab: { [MARBLEBEAN_SAPLING_ID]: position => marbleBeanSaplings.spawn(position) },
       exportRecords: () => marbleBeanSaplings.exportRecords().map(record => ({ prefabId: MARBLEBEAN_SAPLING_ID, record })),
       update: (dt, quaternion) => marbleBeanSaplings.update(dt, quaternion),
       renderEntities: () => marbleBeanSaplings.renderEntities,
@@ -961,6 +963,7 @@ export async function createSceneEntities(
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (_, record) => rockAvocadoBushes.spawn(new THREE.Vector3(...record.transform.position), record),
       debugSpawn: () => rockAvocadoBushes.spawn(player.position.clone()),
+      spawnPrefab: { [ROCK_AVOCADO_BUSH_ID]: position => rockAvocadoBushes.spawn(position) },
       exportRecords: () => rockAvocadoBushes.exportRecords().map(record => ({ prefabId: ROCK_AVOCADO_BUSH_ID, record })),
       update: (dt, quaternion) => rockAvocadoBushes.update(dt, quaternion),
       renderEntities: () => rockAvocadoBushes.renderEntities,
@@ -978,6 +981,7 @@ export async function createSceneEntities(
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (_, record) => rockAvocadoSaplings.spawn(new THREE.Vector3(...record.transform.position), record),
       debugSpawn: () => rockAvocadoSaplings.spawn(player.position.clone()),
+      spawnPrefab: { [ROCK_AVOCADO_SAPLING_ID]: position => rockAvocadoSaplings.spawn(position) },
       exportRecords: () => rockAvocadoSaplings.exportRecords().map(record => ({ prefabId: ROCK_AVOCADO_SAPLING_ID, record })),
       update: (dt, quaternion) => rockAvocadoSaplings.update(dt, quaternion),
       renderEntities: () => rockAvocadoSaplings.renderEntities,
@@ -996,6 +1000,7 @@ export async function createSceneEntities(
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (_, record) => berrybushes.spawn(new THREE.Vector3(...record.transform.position), record),
       debugSpawn: () => berrybushes.spawn(player.position.clone()),
+      spawnPrefab: { [BERRYBUSH_ID]: (position, skinId) => berrybushes.spawn(position, undefined, skinId) },
       exportRecords: () => berrybushes.exportRecords().map(record => ({ prefabId: BERRYBUSH_ID, record })),
       update: (dt, quaternion) => berrybushes.update(dt, quaternion),
       renderEntities: () => berrybushes.renderEntities,
@@ -1014,6 +1019,7 @@ export async function createSceneEntities(
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (_, record) => monkeytails.spawn(new THREE.Vector3(...record.transform.position), record),
       debugSpawn: () => monkeytails.spawn(player.position.clone()),
+      spawnPrefab: { [MONKEYTAIL_ID]: position => monkeytails.spawn(position) },
       exportRecords: () => monkeytails.exportRecords().map(record => ({ prefabId: MONKEYTAIL_ID, record })),
       update: (dt, quaternion) => monkeytails.update(dt, quaternion),
       renderEntities: () => monkeytails.renderEntities,
@@ -1032,6 +1038,7 @@ export async function createSceneEntities(
         id: record.id, transform: record.transform, components: { pickable: record.components.pickable },
       }),
       debugSpawn: () => grasses.spawn(player.position.clone()),
+      spawnPrefab: { [GRASS_ID]: position => grasses.spawn(position) },
       exportRecords: () => grasses.exportRecords().map((record) => ({ prefabId: GRASS_ID, record })),
       update: (dt, quaternion) => grasses.update(dt, quaternion),
       renderEntities: () => grasses.renderEntities,
@@ -1050,6 +1057,7 @@ export async function createSceneEntities(
         id: record.id, transform: record.transform, components: { pickable: record.components.pickable },
       }),
       debugSpawn: (id) => saplings.spawn(id, player.position.clone()),
+      spawnPrefab: { sapling: position => saplings.spawn('sapling', position), sapling_moon: position => saplings.spawn('sapling_moon', position) },
       exportRecords: () => saplings.exportRecords(),
       update: (dt, quaternion) => saplings.update(dt, quaternion),
       renderEntities: () => saplings.renderEntities,
@@ -1394,6 +1402,7 @@ export async function createSceneEntities(
       restore: (_, record) => moonTrees.spawnSapling(new THREE.Vector3(...record.transform.position),
         { ...record, components: { saplingTimer: record.components.saplingTimer! } }),
       debugSpawn: async () => { moonTrees.spawnSapling(new THREE.Vector3(player.position.x, 0, player.position.z)); },
+      spawnPrefab: { moonbutterfly_sapling: position => moonTrees.spawnSapling(position) },
       exportRecords: () => moonTrees.exportSaplings().map(record => ({ prefabId: 'moonbutterfly_sapling', record })),
       dispose() {},
     });
@@ -1592,9 +1601,10 @@ export async function createSceneEntities(
     return oceanWaves;
   }
 
-  function registerStaffLights(registry: EntityRegistry, prefabId: typeof DWARF_STAR_ID | typeof POLAR_LIGHT_ID, _worldState: SceneWorldState) {
+  function registerStaffLights(registry: EntityRegistry, prefabId: typeof DWARF_STAR_ID | typeof POLAR_LIGHT_ID, worldState: SceneWorldState) {
     const displays = new PrefabDisplayGroup(scene);
-    const lights = new DwarfStarManager(displays, `${import.meta.env.BASE_URL}dst/data/anim`, prefabId, () => player.position);
+    const lights = new DwarfStarManager(displays, `${import.meta.env.BASE_URL}dst/data/anim`,
+      { scheduler: scheduler ?? worldState.scheduler, tickingarea: worldState.tickingarea, getWatchWorldContent: worldState.getWatchWorldContent }, prefabId);
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (_, record) => lights.spawn(new THREE.Vector3(...record.transform.position), {
         id: record.id, remainingSeconds: record.components.timer!.remainingSeconds,

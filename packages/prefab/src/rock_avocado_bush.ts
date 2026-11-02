@@ -92,10 +92,5 @@ export class RockAvocadoBushManager extends PickablePlantManager {
   spawn(position: THREE.Vector3, saved?: PickablePlantRecord): THREE.Group {
     return this.spawnPlant(ROCK_AVOCADO_BUSH_DEFINITION, position, saved);
   }
-  /** dug_rock_avocado_bush ondeploy: SpawnPrefab, then OnTransplant; the display loads the art. */
-  transplant(position: THREE.Vector3): boolean {
-    this.getInstance(this.spawnPlant(ROCK_AVOCADO_BUSH_DEFINITION, position))!.components.pickable.OnTransplant();
-    return true;
-  }
   exportRecords(): PickablePlantRecord[] { return this.exportPlants().map(({ record }) => record); }
 }

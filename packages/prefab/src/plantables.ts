@@ -1,21 +1,11 @@
 import type { ItemEntity } from '@dontstarve-web/inventory';
-import { Deployable } from '../../componets/src/deployable';
+import { Deployable, type DeployPlacerArt } from '../../componets/src/deployable';
 import { configureBurnableItemEntity } from './burnableItems';
 import { TILE_SIZE } from './tile';
-import { PlaySound, type SoundEventPath } from './sound';
+import { PlaySound } from './sound';
 
-/** plantables.lua: actual inventory prefab, separate grass bank / monkeytail build, medium spacing. */
-export const PLANTABLES: Readonly<Record<string, { prefab: string; bank: string; build: string; animation: string;
-  animationArchive?: string; spacing?: number; plantSound?: SoundEventPath }>> = {
-  butterfly: { prefab: 'planted_flower', bank: 'flowers', build: 'flowers', animation: 'f1', spacing: .75 * (TILE_SIZE / 4) },
-  moonbutterfly: { prefab: 'moonbutterfly_sapling', bank: 'baby_moon_tree', build: 'baby_moon_tree', animation: 'idle',
-    spacing: 3.2 * (TILE_SIZE / 4), plantSound: 'dontstarve/wilson/plant_tree' },
-  rock_avocado_fruit_sprout: { prefab: 'rock_avocado_fruit_sprout_sapling', bank: 'rock_avo_fruit_master',
-    build: 'rock_avocado_fruit_build', animationArchive: 'rock_avocado_fruit.zip', animation: 'idle_buried_seed',
-    spacing: 2 * (TILE_SIZE / 4), plantSound: 'dontstarve/wilson/plant_tree' },
-  // marblebean.lua: MakePlacer("marblebean_placer", "marblebean", "marblebean", "idle_planted"); default deploy spacing.
-  marblebean: { prefab: 'marblebean_sapling', bank: 'marblebean', build: 'marblebean', animationArchive: 'marblebean.zip',
-    animation: 'idle_planted', spacing: 2 * (TILE_SIZE / 4), plantSound: 'dontstarve/wilson/plant_tree' },
+/** plantables.lua's table: the planted prefab, separate grass bank / monkeytail build, and default or medium spacing. */
+const PLANTABLES: Readonly<Record<string, DeployPlacerArt & { prefab: string; spacing?: number }>> = {
   dug_rock_avocado_bush: { prefab: 'rock_avocado_bush', bank: 'rock_avocado', build: 'rock_avocado_build', animation: 'dead1', spacing: 2 * (TILE_SIZE / 4) },
   dug_berrybush: { prefab: 'berrybush', bank: 'berrybush', build: 'berrybush', animation: 'dead', spacing: 2 * (TILE_SIZE / 4) },
   dug_monkeytail: { prefab: 'monkeytail', bank: 'grass', build: 'reeds_monkeytails', animation: 'idle' },
@@ -23,14 +13,20 @@ export const PLANTABLES: Readonly<Record<string, { prefab: string; bank: string;
   dug_sapling: { prefab: 'sapling', bank: 'sapling', build: 'sapling', animation: 'idle' },
   dug_sapling_moon: { prefab: 'sapling_moon', bank: 'sapling_moon', build: 'sapling_moon', animation: 'idle' },
 };
+
+/** plantables.lua make_plantable: deployedplant, deployable(PLANT) and its ondeploy. */
 export function configurePlantableEntity(entity: ItemEntity): void {
-  if (!PLANTABLES[entity.prefab] || entity.components.deployable) return;
-  if (entity.prefab !== 'butterfly' && entity.prefab !== 'moonbutterfly') configureBurnableItemEntity(entity);
+  const data = PLANTABLES[entity.prefab];
+  if (!data || entity.components.deployable) return;
+  configureBurnableItemEntity(entity);
   entity.addTag('deployedplant');
-  entity.components.deployable = entity.component('deployable', () => new Deployable(entity, (point, _deployer, map) => {
-    if (!map.deployPlant(point, entity)) return false;
-    PlaySound(PLANTABLES[entity.prefab].plantSound ?? 'dontstarve/common/plant', point);
+  entity.components.deployable = entity.component('deployable', () => new Deployable(entity, (point, deployer, map) => {
+    // SpawnPrefab(data.name, inst.linked_skinname, inst.skin_id): dug_<skin> links to the plant's <skin>.
+    const tree = map.SpawnPrefab(data.prefab, point, entity.skinId?.replace(/^dug_/, ''));
+    if (!tree) return false;
     entity.remove();
+    tree.components.pickable?.OnTransplant();
+    PlaySound('dontstarve/common/plant', deployer.position);
     return true;
-  }, { mode: 'PLANT', spacing: PLANTABLES[entity.prefab].spacing ?? TILE_SIZE / 4 }));
+  }, { mode: 'PLANT', spacing: data.spacing ?? TILE_SIZE / 4, placer: data }));
 }

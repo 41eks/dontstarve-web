@@ -72,10 +72,11 @@ it('plants a marblebean, digs it back up, and grows it into a mineable shrub tha
     const point = new THREE.Vector3(12, 0, 24);
     const item = s.inventory.extract(inventorySlotAddress(0), 1, s.inventory.getEntity(inventorySlotAddress(0))!)!;
     expect(item.components.deployable!.mode).toBe('PLANT');
+    expect(item.hasTag('deployedplant')).toBe(false); // marblebean.lua, unlike the other deployables here.
     expect(item.components.deployable!.Deploy(point, { position: point, PushEvent: vi.fn() }, {
-      canPlaceTurf: () => false, setTile: vi.fn(), itemPlanted: vi.fn(), canDeployDock: () => false, createDock: vi.fn(), canDeployPlow: () => false, deployPlow: () => false,
+      canPlaceTurf: () => false, setTile: vi.fn(), itemPlanted: vi.fn(), canDeployDock: () => false, createDock: vi.fn(), canDeployPlow: () => false, deployPlow: () => false, 
       isPassableAtPoint: () => true, isOceanTileAtPoint: () => false,
-      canDeployPlant: () => true, deployPlant: () => s.saplings.transplant(point),
+      canDeployPlant: () => true, SpawnPrefab: () => prefabInstance(s.saplings.spawn(point)) as never,
     })).toBe(true);
     expect(s.inventory.count('marblebean')).toBe(2);
     // The shovel's DIG finishes the one-work sapling and drops its only loot, then cancels growth.

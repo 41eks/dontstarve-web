@@ -67,14 +67,8 @@ export const BERRYBUSH_DEFINITION: PickablePlantDefinition = {
 
 /** The normal berrybush branch; berrybush2 and juicy bushes are separate source prefabs. */
 export class BerrybushManager extends PickablePlantManager {
-  spawn(position: THREE.Vector3, saved?: PickablePlantRecord): THREE.Group {
-    return this.spawnPlant(BERRYBUSH_DEFINITION, position, saved);
-  }
-  /** dug_berrybush ondeploy: SpawnPrefab with the dug skin's bush skin, then OnTransplant; the display loads the art. */
-  transplant(position: THREE.Vector3, dugSkinId?: string): boolean {
-    const model = this.spawnPlant(BERRYBUSH_DEFINITION, position, undefined, dugSkinId?.replace(/^dug_/, ''));
-    this.getInstance(model)!.components.pickable.OnTransplant();
-    return true;
+  spawn(position: THREE.Vector3, saved?: PickablePlantRecord, skinId?: string): THREE.Group {
+    return this.spawnPlant(BERRYBUSH_DEFINITION, position, saved, skinId);
   }
   exportRecords(): PickablePlantRecord[] { return this.exportPlants().map(({ record }) => record); }
 }

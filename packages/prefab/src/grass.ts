@@ -35,11 +35,5 @@ export class GrassManager extends PickablePlantManager {
     return this.spawnPlant(GRASS_DEFINITION, position, saved);
   }
 
-  /** dug_grass ondeploy: SpawnPrefab, then OnTransplant; the display loads the art. */
-  transplant(position: THREE.Vector3): boolean {
-    this.getInstance(this.spawnPlant(GRASS_DEFINITION, position))!.components.pickable.OnTransplant();
-    return true;
-  }
-
   exportRecords(): GrassRecord[] { return this.exportPlants().map(({ record }) => record); }
 }

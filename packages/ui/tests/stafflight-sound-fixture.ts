@@ -4,6 +4,7 @@ import { prefabDisplay } from '../../display/src';
 import { prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import * as THREE from 'three';
 import { DwarfStarManager } from '../../prefab/src/stafflight';
+import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
 import { BufferedAction } from '../../stategraphs/src';
 import { DisposeSounds, PrewarmSounds } from '../../prefab/src/sound';
@@ -21,7 +22,8 @@ export async function prepareStarAudioCheck() {
     sources.push(entry);
     return source;
   };
-  const manager = new DwarfStarManager(new PrefabDisplayGroup(new THREE.Scene()), '/dst/data/anim');
+  const scheduler = new GameTimeScheduler();
+  const manager = new DwarfStarManager(new PrefabDisplayGroup(new THREE.Scene()), '/dst/data/anim', { scheduler });
   // As the scene does before it starts, so each star's sounds play when it is spawned.
   await PrewarmSounds();
   await manager.spawn(new THREE.Vector3());
@@ -53,15 +55,15 @@ export async function prepareStarAudioCheck() {
   await animation.setCarryItem(null);
   for (let i = 0; i < 30; i++) advancePlayer(animation, 1 / 30);
   const cancelledBeforeSound = sources.length === afterCastSources && casts === 1;
-  const castBuffer = sources[5].source.buffer!;
+  const castBuffer = sources[6].source.buffer!;
   (window as unknown as { checkStarAudio: (action: string) => unknown }).checkStarAudio = (action) => {
     if (action === 'expire') {
-      for (let i = 0; i < 72; i++) manager.update(1 / 60, new THREE.Quaternion());
+      for (let i = 0; i < 72; i++) { scheduler.advance(1 / 60); manager.update(1 / 60, new THREE.Quaternion()); }
     }
     if (action === 'dispose') { manager.dispose(); DisposeSounds(); }
-    return { state: context.state, restoredRemoved: !restored.parent,
+    return { state: context.state, restoredRemoved: restored.isRemoved,
       stops: sources.map(({ stops }) => stops) };
   };
   return { samples, casting: { beforeSoundFrame, onSoundFrame, afterCastSources, casts, cancelledBeforeSound,
-    duration: castBuffer.length / castBuffer.sampleRate, loop: sources[5].source.loop } };
+    duration: castBuffer.length / castBuffer.sampleRate, loop: sources[6].source.loop } };
 }
