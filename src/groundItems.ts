@@ -301,15 +301,15 @@ export class GroundItemManager {
     }
     definition = { ...definition, ...entity.snapshot(), entity };
     const id = entity.id;
-    entity.transform.position.set(position.x, dropped ? 0 : position.y, position.z);
+    visual.instance.setPosition(position.x, dropped ? 0 : position.y, position.z);
+    entity.bindTransform(visual.instance);
     entity.MiniMapEntity?.tileTracker.sync();
     this.trackGroundEntity(entity);
     visual.bindTransform?.(entity.transform);
-    visual.model.position.copy(entity.transform.position);
     visual.instance.entityId = id;
     visual.setDefinition?.(definition);
     visual.bindEntity?.(entity);
-    const record = this.withFootPosition({ id, entity, definition, stops: [], ...visual });
+    const record: GroundItemRecord = { id, entity, definition, stops: [], ...visual, footPosition: visual.instance.position };
     this.items.set(visual.model, record);
     this.bindInventoryEvents(record);
     this.displays.mount(visual.display, record.footPosition);
@@ -336,7 +336,6 @@ export class GroundItemManager {
       if (active) {
         this.activeItems.add(record);
         this.refreshUpdating(record);
-        record.model.position.copy(record.entity.transform.position);
       } else {
         this.activeItems.delete(record);
         this.updatingItems.delete(record);
@@ -394,7 +393,7 @@ export class GroundItemManager {
       entity.ListenForEvent('perished', () => this.replacePerished(record)),
       // physics.lua LaunchAt: any inst may be thrown from its own position.
       entity.ListenForEvent('launch', launch => { record.fling = new LootFling(entity.transform, undefined, undefined, launch as LootLaunch); this.refreshUpdating(record); }),
-      entity.ListenForEvent('ondropped', () => { record.fling = undefined; model.position.copy(entity.transform.position); syncPlacementEntity(model); record.instance.PushEvent('ondropped'); }),
+      entity.ListenForEvent('ondropped', () => { record.fling = undefined; syncPlacementEntity(model); record.instance.PushEvent('ondropped'); }),
     ];
     record.stopInventoryEvents = () => stops.forEach(stop => stop());
     // An inst that perished between holders is replaced once it reaches the ground.
@@ -425,15 +424,6 @@ export class GroundItemManager {
     const definition = { ...this.inventory.getStackSpec(entity.snapshot()), ...entity.snapshot(), entity };
     if (launch) this.addFlungVisual(entity, definition, entity.transform.position.clone(), this.createVisual(definition, entity), launch);
     else this.placeEntity(entity, definition, entity.transform.position.clone(), true);
-  }
-
-  /** Adapt the authoritative tuple for consumers requiring a live Three.js foot point. */
-  private withFootPosition(record: Omit<GroundItemRecord, 'footPosition'>): GroundItemRecord {
-    const footPosition = new THREE.Vector3();
-    return Object.defineProperty(record, 'footPosition', {
-      enumerable: true,
-      get: () => footPosition.copy(record.entity.transform.position),
-    }) as GroundItemRecord;
   }
 
   private addFlungVisual(entity: ItemEntity, definition: GroundItemDefinition, origin: THREE.Vector3, visual: GroundItemVisual, launch?: LootLaunch): void {
@@ -589,7 +579,6 @@ export class GroundItemManager {
     if (this.mouseActions) root = this.mouseActions.targetModel ?? null;
     else {
       // Standalone managers without a shared picker use their own pointer service.
-      for (const record of this.activeItems) record.model.position.copy(record.entity.transform.position);
       this.pointer.trackPointer(event);
       const hit = this.pointer.raycastPointer([...this.activeItems]
         .filter(record => record.isClickable?.() !== false).map(record => record.model), true);
@@ -630,8 +619,6 @@ export class GroundItemManager {
   update(dt: number, cameraQuaternion: THREE.Quaternion): void {
     this.prefabs.update(dt, cameraQuaternion);
     for (const item of [...this.updatingItems]) {
-      const previousX = item.model.position.x, previousY = item.model.position.y, previousZ = item.model.position.z;
-      item.model.position.copy(item.entity.transform.position);
       // The display advances the declared clips, then the visual's own update runs prefab logic. What that logic
       // declares this frame (a new clip, a set frame) is drawn now, as the engine renders the latest AnimState.
       item.display.update(dt, cameraQuaternion);
@@ -641,14 +628,13 @@ export class GroundItemManager {
         item.model.children[0].position.y = item.fling.height;
         if (item.fling.settled) { item.fling = undefined; this.refreshUpdating(item); }
       }
-      item.model.position.copy(item.entity.transform.position);
       if (item.entity.isRemoved || item.isRemoved?.()) {
         this.removeVisual(item);
         this.entities.destroy(item.entity);
       } else {
-        const moved = item.model.position.x !== previousX || item.model.position.y !== previousY || item.model.position.z !== previousZ;
-        // Placement tracks the logical ground origin; pointer queries update visual matrices on demand.
-        if (moved) { syncPlacementEntity(item.model); item.entity.MiniMapEntity?.tileTracker.moved(); }
+        // These indexes retain their own tile keys and read the model's authoritative position.
+        syncPlacementEntity(item.model);
+        item.entity.MiniMapEntity?.tileTracker.moved();
       }
     }
   }

@@ -7,14 +7,16 @@ import { TileTracker } from './tileManager';
  * rendering. Position is the owner's existing ground-contact transform.
  */
 export class MiniMapEntity extends MiniMapState {
-  readonly position: Vector3;
+  private readonly getPosition: () => Vector3;
+  get position(): Vector3 { return this.getPosition(); }
   readonly tileTracker: TileTracker;
   private readonly stopWatching: () => void;
   get minimap(): MiniMapState { return this; }
 
-  constructor(position: Vector3, tileTracker = new TileTracker(() => position)) {
+  constructor(position: Vector3 | (() => Vector3), tileTracker?: TileTracker) {
     super();
-    this.position = position; this.tileTracker = tileTracker;
+    this.getPosition = typeof position === 'function' ? position : () => position;
+    this.tileTracker = tileTracker ?? new TileTracker(this.getPosition);
     this.stopWatching = watchMiniMapEntity(this);
   }
   dispose(): void { this.SetEnabled(false); this.stopWatching(); }

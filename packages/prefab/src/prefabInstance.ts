@@ -39,8 +39,8 @@ export interface PrefabComponents extends ActionComponents {
 
 /**
  * The logical entity behind a placed prefab: identity, save record, skin, persistence, lifecycle `status` and the
- * `sprite` json. It holds no model. A `PrefabDisplay` subscribes to `status` and `sprite` and draws them, so the
- * prefab only changes data: asleep releases the visual and the model leaves the scene, removed releases everything.
+ * `sprite` json. Its transform is the model attached by its display. A `PrefabDisplay` subscribes to `status` and
+ * `sprite` and draws them: asleep releases the visual and takes the model out of the scene, removed releases everything.
  * `physics` is declared the same way; a `PhysicsBinding` keeps its body until the entity is removed.
  */
 export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState> {

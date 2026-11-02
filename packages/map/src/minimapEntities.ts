@@ -47,7 +47,7 @@ export function watchMiniMapEntity(source: MiniMapSource): () => void {
 
 /** A stable marker identity with lifecycle-managed local copies of the entity's signals. */
 class MiniMapBinding implements MiniMapMarker {
-  readonly position: Vector3;
+  get position(): Vector3 { return this.source.position; }
   private readonly cleanups: (() => void)[] = [];
   private readonly json;
   private readonly status;
@@ -56,7 +56,6 @@ class MiniMapBinding implements MiniMapMarker {
 
   constructor(source: MiniMapSource) {
     this.source = source;
-    this.position = source.position;
     this.json = watchSignal(source.minimap.json, stop => this.cleanups.push(stop));
     this.status = source.status && watchSignal(source.status, stop => this.cleanups.push(stop));
     createEffect(() => {

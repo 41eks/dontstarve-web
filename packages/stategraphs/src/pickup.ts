@@ -58,6 +58,7 @@ export function performPickupAction(target: PickupTarget, doer: PickupDoer): boo
     }
     if (doer.hasTag('player') && (!equip || inventory.GetNumSlots() <= 0)) return inventory.Equip(inst);
   }
-  inventory.GiveItem(inst, target.position);
+  // GetPosition() in PICKUP.fn snapshots the source before OnPutInInventory moves the inst to (0, 0, 0).
+  inventory.GiveItem(inst, target.position.clone());
   return true;
 }

@@ -49,7 +49,7 @@ Lua 使用双向关联：inventory/container 保存物品成员与槽位，物�
 
 保存时，`inventory:OnSave()` 按普通槽、装备槽和 activeitem 嵌套保存各物品的 `GetSaveRecord()`；`container:OnSave()` 按容器槽位保存相同记录。`EntityScript:GetSaveRecord()` 从该 inst 的 Transform 读取位置并保存组件数据。世界保存遍历全局 `Ents`，检查实体有效性、持久化标志、prefab、Transform 和没有父实体等条件；持有物作为 owner 的子实体随其组件嵌套保存，避免再次作为世界顶层实体保存。源码见 `components/inventory.lua:192`、`components/container.lua:979`、`entityscript.lua:248` 和 `mainfunctions.lua:1088`。
 
-对应到本项目，InventoryStore/Container 管理实际槽位成员与转移，ItemEntity 保存持有关系与 Transform，GroundItemManager 管理地面表现、拾取和相关场景行为。归属变化应通过统一转移流程同时维护槽位与 owner，UI signal 只反映提交后的状态。项目的 `ItemOwner.address` 用于库存事务寻址；它不是 Lua 物品独立保存当前槽号的依据。
+对应到本项目，InventoryStore/Container 管理实际槽位成员与转移，ItemEntity 保存持有关系并引用地面实例的 Transform，GroundItemManager 管理地面实体集合与拾取接线，display 管理场景挂载和显示资源。归属变化应通过统一转移流程同时维护槽位与 owner，UI signal 只反映提交后的状态。项目的 `ItemOwner.address` 用于库存事务寻址；它不是 Lua 物品独立保存当前槽号的依据。
 
 ### 项目的物品实体
 
@@ -57,17 +57,17 @@ Lua 使用双向关联：inventory/container 保存物品成员与槽位，物�
 
 `InventoryStore.transfer()` 从源实体取得完整状态，验证后原子提交；整件转移使用同一个引用。`extract()` 交出整件原实体或创建部分堆叠的新实体，`receive()` 接收地面的实体并按需合堆。空间不足、目标不接受或源实体已被替换时不改变归属。消耗和移除仍由 store 提交，entity 的 owner 回调检查槽位是否还持有自己，避免旧实体影响替代物。制造仍先使用纯函数计算快照，提交时复用剩余材料的实体并为新产品创建实体。
 
-地面模型属于实体的表现资源。拾取移除模型，换肤替换模型，但保留实体；火把的运行时组件也保留。其他已有 prefab 的模型专用控制器仍由各自 factory 管理。`exportState()` 在结算组件后导出含 `entityId` 的快照；地面实体继续使用记录的 `id`。旧库存存档缺少 ID 时在加载时分配，后续保存保持稳定；读取拒绝重复物品 ID 以及与世界实体冲突的 ID。
+地面模型由 display 持有和挂载。拾取释放显示资源并移出场景，换肤更新 sprite json，保留实体与 model；火把的运行时组件也保留。其他已有 prefab 的模型专用控制器仍由各自 factory 管理。`exportState()` 在结算组件后导出含 `entityId` 的快照；地面实体继续使用记录的 `id`。旧库存存档缺少 ID 时在加载时分配，后续保存保持稳定；读取拒绝重复物品 ID 以及与世界实体冲突的 ID。
 
 ### 地面坐标的权威来源
 
-`ItemEntity.transform.position` 是地面物品位置的权威来源，对应 Lua 的 `inst.Transform`。丢弃和恢复时先初始化实体坐标，再从实体同步模型；蝴蝶移动、材料抛落和火把熄灭后的弹跳直接更新实体坐标。模型位置与供 Three.js 消费的 `footPosition` 都是显示／查询投影，不能反向覆盖实体。
+model 是地面物品 transform 的权威载体，`PrefabInstance` 持有该 model 的引用，`instance.position` 就是 `model.position`。丢弃和恢复时先设置这个位置，再调用 `ItemEntity.bindTransform(instance)`；之后 `entity.transform.position`、绘制排序的 `footPosition` 与实例位置都读取同一个向量。尚未创建地面实例的库存物品使用未绑定的位置，首次绑定后不再保留这份位置。
 
-GroundItemVisual 的可选 `bindTransform(entity.transform)` 把真实实体的 Transform 注入需要移动或距离判断的 prefab。资产准备阶段还没有完成库存交接，蝴蝶和萤火虫在实际绑定后才建立控制器；失败的准备不会移动物品或启动另一份实体状态。静态物品只由 GroundItemManager 同步模型位置。
+GroundItemVisual 的可选 `bindTransform(entity.transform)` 把已绑定的 Transform 引用交给需要移动或距离判断的 prefab。资产准备阶段还没有完成库存交接，蝴蝶和萤火虫在实际绑定后才建立控制器；失败的准备不会移动物品或启动另一份实体状态。静态与活动物品都直接使用 model 的位置，不做逐帧同步。
 
-GroundItemManager 每帧在 prefab 更新前后从实体刷新模型，拾取命中前也刷新，确保帧间修改实体坐标后输入仍使用新位置。拾取距离、虫网／锤击／换肤目标、邻居查询和绘制排序的脚点从实体读取；footPosition 适配器缓存 Vector3 对象，但每次查询重新读取实体 tuple。临时修改模型或脚点投影不会改变保存位置。
+GroundItemManager 不在更新、唤醒或鼠标命中前复制位置，也不维护脚点副本。修改 model、实例或已绑定 `entity.transform.position` 中的坐标会立即作用于同一个 transform。拾取距离、虫网／锤击／换肤目标、邻居查询、排序和保存都从它读取；空间索引在活动帧结算后检查自身的 tile key。重新掉落建立新的 display 时，物品与其小地图图标重新读取当前实例的位置。
 
-保存直接复制 `entity.transform.position`，不读取模型、图片中心或脚点缓存。换肤提交读取当时的实体坐标，异步加载期间的移动也保留；读档把保存的位置恢复到实体，再同步显示。LootFling 持有实体 Transform，以速度推进其中的水平坐标，外部瞬移会改变后续运动的起点；它的 position getter 只返回独立的 Vector3 投影。抛落／弹跳高度继续作用于视觉子组，不进入地面脚点或保存坐标。拾取成功后沿用 InventoryStore.receive() 的坐标归零行为。
+保存从已绑定 transform 导出坐标，不使用图片中心或脚点缓存。换肤保留同一个 model；读档直接初始化新 model 的位置。LootFling 持有实体 Transform，以速度推进其中的水平坐标，外部瞬移会改变后续运动的起点；它的 position getter 只返回独立的 Vector3 投影。抛落／弹跳高度继续作用于视觉子组，不进入地面脚点或保存坐标。拾取成功后沿用 inventoryitem 的坐标归零行为；PICKUP 提交时按 Lua 的 `GetPosition()` 取得一次来源坐标快照，供归零后的接收动画使用。
 
 ## 每个背包的容器
 

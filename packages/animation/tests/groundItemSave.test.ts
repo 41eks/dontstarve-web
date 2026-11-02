@@ -15,6 +15,7 @@ import type { WorldEvents } from '../../prefab/src/worldContext';
 import { placementEntities } from '../../prefab/src/placementEntities';
 import { reskinEntity } from '../../prefab/src/reskin_tool';
 import { workTargets } from './workTargets';
+import { miniMapEntities } from '../../map/src/minimapEntities';
 
 vi.mock('@dontstarve-web/animation/imageAtlas', () => ({
   loadImageAtlas: async () => ({
@@ -107,18 +108,24 @@ describe('ground item save records', () => {
       const origin = new THREE.Vector3();
       const model = await manager.spawnFromSave('stationary:log', definition, origin);
       const entity = manager.entities.get('stationary:log')!;
+      expect(model.position).toBe(entity.transform.position);
+      expect(lookupPrefabInstance(model)!.position).toBe(model.position);
       const visual = await vi.mocked(createTestVisual).mock.results.at(-1)!.value;
       const update = visual.update;
       const matrices = vi.spyOn(model, 'updateWorldMatrix');
+      const copies = vi.spyOn(model.position, 'copy');
       const query = placementEntities(scene);
       for (let frame = 0; frame < 10; frame++) manager.update(.1, new THREE.Quaternion());
       expect(update).toHaveBeenCalledTimes(10);
       expect(matrices).not.toHaveBeenCalled();
+      expect(copies).not.toHaveBeenCalled();
       expect(query.someNear(origin, 1, blocker => blocker.prefab === 'log')).toBe(true);
 
       entity.transform.position.set(24, 0, 0);
+      expect(model.position.toArray()).toEqual([24, 0, 0]);
       manager.update(.1, new THREE.Quaternion());
       expect(matrices).not.toHaveBeenCalled();
+      expect(copies).not.toHaveBeenCalled();
       expect(FindEntities(origin, 1)).toHaveLength(0);
       expect(FindEntities(entity.transform.position, 1).map(inst => inst.prefab)).toEqual(['log']);
       expect(query.someNear(origin, 1, () => true)).toBe(false);
@@ -268,28 +275,34 @@ describe('ground item save records', () => {
     manager.dispose();
     expect(manager.spawnGroundItem(definition, new THREE.Vector3())).toBeUndefined();
   });
-  it('uses entity coordinates for rendering, reskinning, pickup and saves, ignoring stale model or foot projections', async () => {
-    const { manager, player, inventory, pick } = setup();
+  it('uses the model transform for the instance, rendering, reskinning, pickup and saves', async () => {
+    const { manager, scene, player, inventory, pick } = setup();
     const backpack = { itemId: 'backpack', count: 1, name: 'Backpack', icon: 'backpack.tex',
       container: { slotCount: 8, slots: [{ slotKey: '2', item: { itemId: 'log', count: 3 } }] } };
     const model = await manager.spawnFromSave('bag:position', backpack, new THREE.Vector3(2, 0.25, 3));
     const entity = manager.entities.get('bag:position')!;
-    entity.transform.position.set(12, 0.25, 13);
-    model.position.set(-100, 40, -100);
-    const projection = manager.renderEntities[0].footPosition;
-    projection.set(-10, 50, -10);
+    const position = model.position;
+    expect(lookupPrefabInstance(model)!.position).toBe(position);
+    expect(entity.transform.position).toBe(position);
+    expect(manager.renderEntities[0].footPosition).toBe(position);
+    const minimap = entity.MiniMapEntity!;
+    const marker = [...miniMapEntities()].find(marker => marker.position === position)!;
+    expect(minimap.position).toBe(position);
+    expect(marker).toBeDefined();
+    model.position.set(12, 0.25, 13);
     expect(manager.exportRecords()[0].transform.position).toEqual([12, 0.25, 13]);
     expect(manager.renderEntities[0].footPosition.toArray()).toEqual([12, 0.25, 13]);
     manager.update(0, new THREE.Quaternion());
-    expect(model.position.toArray()).toEqual(entity.transform.position.toArray());
+    expect(entity.transform.position).toBe(position);
 
     entity.transform.position.set(20, 0.5, 21);
     expect(reskinEntity(manager.reskinTargets[0])).toBe(true);
-    // Reskinning writes the item's own sprite json and replaces nothing; the next frame follows the entity.
+    // Reskinning changes the sprite json while the same model keeps the authoritative transform.
     expect(manager.renderEntities[0].object).toBe(model);
     expect(entity.sprite.skinId.peek()).toBeDefined();
     manager.update(0, new THREE.Quaternion());
-    expect(model.position.toArray()).toEqual(entity.transform.position.toArray());
+    expect(model.position).toBe(position);
+    expect(entity.transform.position).toBe(position);
     expect(manager.entities.get(entity.id)).toBe(entity);
     expect([...manager.iteratePrefabPositions('backpack')]).toEqual([entity.transform.position]);
     const saved = manager.exportRecords()[0];
@@ -297,7 +310,8 @@ describe('ground item save records', () => {
     expect(saved.components.stack?.container).toEqual(entity.snapshot().container);
     expect(saved.components.stack?.skinId).toBe(entity.skinId);
     const restored = setup();
-    await restored.manager.spawnFromSave(saved.id, { ...backpack, ...saved.components.stack }, new THREE.Vector3(...saved.transform.position));
+    const restoredModel = await restored.manager.spawnFromSave(saved.id, { ...backpack, ...saved.components.stack }, new THREE.Vector3(...saved.transform.position));
+    expect(restored.manager.entities.get(saved.id)!.transform.position).toBe(restoredModel.position);
     expect(restored.manager.exportRecords()).toEqual([saved]);
     // The restored definition named a skin; once the inst's sprite drops it, the save follows the inst alone.
     expect(saved.components.stack?.skinId).toBeDefined();
@@ -316,6 +330,15 @@ describe('ground item save records', () => {
     expect(inventory.GetEquippedItem('body')).toBe(entity);
     expect(model.parent).toBeNull();
     expect(manager.exportRecords()).toEqual([]);
+    inventory.DropItem(entity, new THREE.Vector3(40, 0, 41));
+    const droppedModel = scene.children[0];
+    expect(droppedModel).not.toBe(model);
+    expect(droppedModel.position).not.toBe(position);
+    expect(entity.transform.position).toBe(droppedModel.position);
+    expect(lookupPrefabInstance(droppedModel)!.position).toBe(droppedModel.position);
+    expect(minimap.position).toBe(droppedModel.position);
+    expect(marker.position).toBe(droppedModel.position);
+    expect(manager.exportRecords()[0].transform.position).toEqual([40, 0, 41]);
     manager.dispose();
   });
 

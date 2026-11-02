@@ -119,6 +119,9 @@ it('reuses ground item resources and activity, and skips sleeping visuals in the
     expect(mesh.geometry).toBe(firstMesh(second).geometry);
     mesh.geometry.addEventListener('dispose', dispose);
     const instance = prefabInstance(first)!;
+    const position = world.manager.entities.get('head:1')!.transform.position;
+    expect(first.position).toBe(position);
+    expect(instance.position).toBe(position);
     expect(instance.listTags()).toEqual(expect.arrayContaining(['heavy', 'irreplaceable', 'nonpotatable']));
     const update = vi.spyOn(instance.sprite, 'update');
     world.manager.update(.1, new THREE.Quaternion());
@@ -136,6 +139,7 @@ it('reuses ground item resources and activity, and skips sleeping visuals in the
     active.set(true); await turn(); await turn();
     expect(world.scene.children).toHaveLength(2);
     expect(added).toHaveBeenCalledOnce();
+    expect(first.position).toBe(position);
     expect(world.manager.exportRecords()).toEqual(before);
     world.manager.dispose();
     expect(dispose).toHaveBeenCalledOnce();

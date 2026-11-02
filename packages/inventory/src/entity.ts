@@ -189,13 +189,16 @@ export class ItemEntity {
   private readonly fueledState = createSignal<Fueled<ItemEntity> | undefined>(undefined);
   /** The saved fuel, loaded once the prefab has added and initialized its fueled. */
   private savedFuel?: number;
-  readonly transform: { readonly position: Vector3; rotationY: number } = { position: new Vector3(), rotationY: 0 };
+  private transformSource: { readonly position: Vector3 } = { position: new Vector3() };
+  readonly transform: { readonly position: Vector3; rotationY: number };
+  /** Read ground coordinates through the attached prefab instance and its model transform. */
+  bindTransform(instance: { readonly position: Vector3 }): void { this.transformSource = instance; }
   private miniMapEntity?: MiniMapEntity;
   get MiniMapEntity(): MiniMapEntity | undefined { return this.miniMapEntity; }
   /** AddMiniMapEntity is owned by the logical inst, independently of its art. */
   AddMiniMapEntity(): MiniMapEntity {
     if (!this.miniMapEntity) {
-      this.miniMapEntity = new MiniMapEntity(this.transform.position);
+      this.miniMapEntity = new MiniMapEntity(() => this.transform.position);
       this.miniMapEntity.SetEnabled(!this.isRemoved && this.components.inventoryitem.owner === null);
       this.PushEvent('minimapentityadded', this.miniMapEntity);
     }
@@ -251,6 +254,8 @@ export class ItemEntity {
   private events = new EventEmitter<Record<string, unknown>>();
 
   constructor(state: InventoryStack, perishWorld?: PerishWorld) {
+    const item = this;
+    this.transform = { get position() { return item.transformSource.position; }, rotationY: 0 };
     this.id = state.entityId ?? newItemEntityId();
     this.prefab = state.itemId;
     this.sprite = new SpriteState({ name: state.itemId, none: true });
