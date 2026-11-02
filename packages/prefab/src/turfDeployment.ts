@@ -6,29 +6,25 @@ import type { WilsonAction } from '../../stategraphs/src/SGwilson';
 import type { ActionLocomotor } from '../../stategraphs/src/actionContext';
 import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
+import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
 import { ArchiveSpriteAssets, createSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { createArchiveEntity, prefabInstance } from './prefabInstance';
 import { turfTileName } from './turfs';
 import { TurfMap } from './turfMap';
 import { TILE_SIZE } from './tile';
+import { allowsPointDeploy, deployRightClick, type DeploySource } from './deployClick';
 import type { WorldContext } from './worldContext';
-
-export interface TurfSource {
-  readonly entity: ItemEntity;
-  isValid(): boolean;
-  take(): ItemEntity | undefined;
-  putBack(item: ItemEntity): void;
-}
 
 /** Cursor-held turfs: gridplacer, locomotion, buffered DEPLOY and frame-six commit. */
 export class TurfDeployment {
+  private readonly picker: PlayerActionPicker;
   private readonly pointer: PointerRaycaster;
   private readonly stopActions: () => void;
   private readonly stopHover: () => void;
   private readonly stopUpdate: () => void;
   private readonly assets: ArchiveSpriteAssets;
   private target?: THREE.Vector3;
-  private source?: TurfSource;
+  private source?: DeploySource;
   private action?: BufferedAction<WilsonAction>;
   private version = 0;
   private disposed = false;
@@ -40,22 +36,23 @@ export class TurfDeployment {
   private readonly turf: TurfMap;
   private readonly stategraph: WilsonStateGraph;
   private readonly locomotor: ActionLocomotor;
-  private readonly getSource: () => TurfSource | undefined;
+  private readonly getSource: () => DeploySource | undefined;
   private readonly isManualMovement: () => boolean;
 
   constructor(world: WorldContext, turf: TurfMap,
     stategraph: WilsonStateGraph, locomotor: ActionLocomotor,
-    getSource: () => TurfSource | undefined, isManualMovement = () => false) {
+    getSource: () => DeploySource | undefined, isManualMovement = () => false) {
     this.world = world; this.turf = turf; this.stategraph = stategraph; this.locomotor = locomotor;
     this.getSource = getSource; this.isManualMovement = isManualMovement;
-    this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
+    this.picker = world.mouseActions ?? new PlayerActionPicker(new PointerRaycaster(world));
+    this.pointer = this.picker.pointer;
     this.assets = new ArchiveSpriteAssets('turf-grid');
     this.stopActions = bindActionCancellation(world, this, () => this.cancel());
-    this.stopHover = world.mouseActions?.register(() => {
-      const source = this.getSource(), point = this.pointer.groundPoint();
+    this.stopHover = this.picker.register(target => {
+      const source = this.getSource(), point = allowsPointDeploy(target) ? this.pointer.groundPoint() : undefined;
       return source?.entity.components.deployable && point && this.turf.canPlaceTurf(point)
-        ? [{ action: { action: 'DEPLOY', invobject: source.entity }, button: 'right' }] : [];
-    }) ?? (() => {});
+        ? [{ action: { action: 'DEPLOY', modifier: 'GROUNDTILE', invobject: source.entity }, button: 'right', source: 'inventory' }] : [];
+    });
     this.stopUpdate = world.registerFrameTask?.(dt => this.update(dt)) ?? (() => {});
     world.renderer.domElement.addEventListener('pointerdown', this.onPointerDown, true);
     window.addEventListener('keydown', this.onKeyDown);
@@ -164,11 +161,9 @@ export class TurfDeployment {
   private readonly onPointerDown = (event: PointerEvent): void => {
     if (event.defaultPrevented) return;
     if (event.button === 0) { this.cancel(); return; }
-    if (event.button !== 2 || !this.getSource()?.entity.components.deployable) return;
-    // Claim invalid turf clicks too: they must preserve the cursor item.
-    event.preventDefault(); event.stopImmediatePropagation(); this.pointer.trackPointer(event);
-    const point = this.pointer.groundPoint();
-    if (!point || !this.request(point)) this.cancel();
+    const source = this.getSource();
+    if (event.button !== 2 || !source?.entity.components.deployable) return;
+    deployRightClick(event, this.picker, source, point => this.request(point), () => this.cancel());
   };
   private readonly onKeyDown = (event: KeyboardEvent): void => { if (event.code === 'Escape') this.cancel(); };
 

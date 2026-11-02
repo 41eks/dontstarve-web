@@ -141,7 +141,8 @@ it('plants cursor-held roots and fertilizes at frame six, preserves cancellation
       if (!entity || entity.prefab !== 'dug_monkeytail') return undefined;
       const isValid = () => s.inventory.getEntity(address) === entity && !entity.isRemoved;
       return { entity, isValid, take: () => isValid() ? s.inventory.extract(address, 1, entity) ?? undefined : undefined,
-        putBack: (item: typeof entity) => { s.inventory.receiveAt(address, item); } };
+        putBack: (item: typeof entity) => { s.inventory.receiveAt(address, item); },
+        returnActiveItem: () => { s.inventory.returnCursor(); } };
     };
     const transplant = vi.fn((position: THREE.Vector3) => s.monkeytails.transplant(position));
     deployment = new PlantDeployment(s.world, a.animation.stategraph, a.locomotor, source, {

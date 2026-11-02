@@ -74,7 +74,8 @@ it('buffers planting at frame six, preserves cancelled butterflies and saves the
       if (!entity) return undefined;
       const isValid = () => s.inventory.getEntity(address) === entity && !entity.isRemoved;
       return { entity, isValid, take: () => isValid() ? s.inventory.extract(address, 1, entity) ?? undefined : undefined,
-        putBack: (item: typeof entity) => { s.inventory.receiveAt(address, item); } };
+        putBack: (item: typeof entity) => { s.inventory.receiveAt(address, item); },
+        returnActiveItem: () => { s.inventory.returnCursor(); } };
     };
     const transplant = vi.fn((position: THREE.Vector3) => s.flowers.transplant(position));
     const point = new THREE.Vector3(2, 0, 0);

@@ -19,6 +19,7 @@ export const PLANTABLES: Readonly<Record<string, { prefab: string; bank: string;
   dug_rock_avocado_bush: { prefab: 'rock_avocado_bush', bank: 'rock_avocado', build: 'rock_avocado_build', animation: 'dead1', spacing: 2 * (TILE_SIZE / 4) },
   dug_berrybush: { prefab: 'berrybush', bank: 'berrybush', build: 'berrybush', animation: 'dead', spacing: 2 * (TILE_SIZE / 4) },
   dug_monkeytail: { prefab: 'monkeytail', bank: 'grass', build: 'reeds_monkeytails', animation: 'idle' },
+  dug_grass: { prefab: 'grass', bank: 'grass', build: 'grass1', animation: 'idle' },
   dug_sapling: { prefab: 'sapling', bank: 'sapling', build: 'sapling', animation: 'idle' },
   dug_sapling_moon: { prefab: 'sapling_moon', bank: 'sapling_moon', build: 'sapling_moon', animation: 'idle' },
 };

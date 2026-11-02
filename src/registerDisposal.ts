@@ -1,7 +1,7 @@
 import { Vector3, type Object3D } from 'three';
 import { clockstate, createMemo, readonlySignal, type EventEmitter, type GetWatchWorldContent } from '@dontstarve-web/signals';
 import { cursorSlotAddress, equipmentSlotAddress, inventorySlotAddress, type InventoryStore, type InventoryStack } from '@dontstarve-web/inventory';
-import { createChestInventoryPanel, type mountGameUi, type SlotAddress, type SlotItem } from '@dontstarve-web/ui';
+import { createChestInventoryPanel, slotTransferController, type mountGameUi, type SlotAddress, type SlotItem } from '@dontstarve-web/ui';
 import {
   PlayerController, FoodActionController,
   ReadActionController, PlayActionController, ItemUseActionController,
@@ -125,7 +125,7 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
         .setOpen(model, isOpen, buildId);
     },
     register(events: EventEmitter<DisposalEvents>, scene: SceneResources) {
-      const { moonTrees, buildingPlacement, groundItems, worldFx, flowerPlanting, marbleBeanSaplings, rockAvocadoSaplings, rockAvocadoBushes, berrybushes, monkeytails, saplings, scheduler, weather, moon, getWatchWorldContent } = scene;
+      const { moonTrees, buildingPlacement, groundItems, worldFx, flowerPlanting, marbleBeanSaplings, rockAvocadoSaplings, rockAvocadoBushes, berrybushes, monkeytails, grasses, saplings, scheduler, weather, moon, getWatchWorldContent } = scene;
       const handEquipment = inventory.handEquipment;
       const handSlotAddress = equipmentSlotAddress('hand');
       const bodySlotAddress = equipmentSlotAddress('body');
@@ -309,7 +309,8 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
           if (!entity || !turfTileName(entity.prefab)) return undefined;
           const isValid = () => !entity.isRemoved && inventory.getEntity(address) === entity;
           return { entity, isValid, take: () => isValid() ? inventory.extract(address, 1, entity) ?? undefined : undefined,
-            putBack: item => { if (!inventory.receiveAt(address, item)) inventory.GiveItem(item); } };
+            putBack: item => { if (!inventory.receiveAt(address, item)) inventory.GiveItem(item); },
+            returnActiveItem: () => slotTransferController.returnHeldItem() };
         }, isActionInterrupting);
         const plantDeployment = new PlantDeployment(view, playerAnimation.stategraph, locomotor, () => {
           const address = cursorSlotAddress(), entity = inventory.getEntity(address);
@@ -317,11 +318,12 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
           const skinId = entity.skinId;
           const isValid = () => !entity.isRemoved && inventory.getEntity(address) === entity && entity.skinId === skinId;
           return { entity, isValid, take: () => isValid() ? inventory.extract(address, 1, entity) ?? undefined : undefined,
-            putBack: item => { if (!inventory.receiveAt(address, item)) inventory.GiveItem(item); } };
+            putBack: item => { if (!inventory.receiveAt(address, item)) inventory.GiveItem(item); },
+            returnActiveItem: () => slotTransferController.returnHeldItem() };
         }, {
           plants: {
             marblebean_sapling: marbleBeanSaplings, rock_avocado_fruit_sprout_sapling: rockAvocadoSaplings,
-            rock_avocado_bush: rockAvocadoBushes, monkeytail: monkeytails, berrybush: berrybushes,
+            rock_avocado_bush: rockAvocadoBushes, monkeytail: monkeytails, berrybush: berrybushes, grass: grasses,
             sapling: { transplant: position => saplings.transplant('sapling', position) },
             sapling_moon: { transplant: position => saplings.transplant('sapling_moon', position) },
             planted_flower: flowerPlanting, moonbutterfly_sapling: moonTrees,

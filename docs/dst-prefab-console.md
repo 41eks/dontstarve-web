@@ -50,7 +50,7 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | prefab ID | c_spawn | c_give | inventoryitem 源码 |
 | --- | --- | --- | --- |
 | `cutgrass` | 可生成 | 可入栏 | `prefabs/cutgrass.lua:33` |
-| `dug_grass` | 可生成 | 可入栏 | `prefabs/plantables.lua` 的共享草簇构造分支 |
+| `dug_grass` | 可生成 | 可入栏 | `prefabs/plantables.lua` 的共享草簇构造分支；可栽种回 `grass` |
 | `dug_sapling` | 可生成 | 可入栏 | `prefabs/plantables.lua:88`（`make_plantable` 共享构造） |
 | `dug_sapling_moon` | 可生成 | 可入栏 | `prefabs/plantables.lua:88`（`make_plantable` 共享构造） |
 | `twigs` | 可生成 | 可入栏 | `prefabs/twigs.lua:41` |

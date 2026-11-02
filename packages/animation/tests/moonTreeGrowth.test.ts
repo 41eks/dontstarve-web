@@ -60,7 +60,8 @@ it('plants one moonbutterfly with original baby-tree art and cycles short/normal
     if (!entity) return undefined;
     const isValid = () => !entity.isRemoved && inventory.getEntity(address) === entity;
     return { entity, isValid, take: () => isValid() ? inventory.extract(address, 1, entity) ?? undefined : undefined,
-      putBack: (item: typeof entity) => { inventory.receiveAt(address, item); } };
+      putBack: (item: typeof entity) => { inventory.receiveAt(address, item); },
+        returnActiveItem: () => { inventory.returnCursor(); } };
   };
   const transplant = vi.fn((position: THREE.Vector3) => s.forest.transplant(position));
   const planting = new PlantDeployment(world, animation.stategraph, locomotor, source,

@@ -7,10 +7,11 @@ import { createPrefabEntity, prefabInstance } from './prefabInstance';
 import { BufferedAction } from '../../stategraphs/src/bufferedaction';
 import { bindActionCancellation } from '../../stategraphs/src/actionEvents';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
+import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
 import type { ActionLocomotor } from '../../stategraphs/src/actionContext';
 import type { PlantDeployMap } from '../../componets/src/deployable';
 import type { WorldContext } from './worldContext';
-import type { TurfSource } from './turfDeployment';
+import { allowsPointDeploy, deployRightClick, type DeploySource } from './deployClick';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { PLANTABLES } from './plantables';
 import { TILE_SIZE } from './tile';
@@ -25,13 +26,14 @@ export interface PlantDeploymentWorld {
 
 /** PLANT deployment: source-owned placer art, locomotion and SGwilson's frame-six commit. */
 export class PlantDeployment {
+  private readonly picker: PlayerActionPicker;
   private readonly pointer: PointerRaycaster;
   private readonly resources = new SpriteResources();
   private readonly cleanups: (() => void)[] = [];
   private readonly reach = 1.1 * TILE_SIZE / 4;
   private version = 0;
   private disposed = false;
-  private pending?: { point: THREE.Vector3; source: TurfSource };
+  private pending?: { point: THREE.Vector3; source: DeploySource };
   private buffered?: BufferedAction<'DEPLOY'>;
   /** The placer entity, drawn by its own display; `visible` is what its sprite json was last told. */
   private preview?: ReturnType<typeof createPrefabEntity> & { model: THREE.Group; visible: boolean };
@@ -42,28 +44,27 @@ export class PlantDeployment {
   private readonly world: WorldContext;
   private readonly stategraph: WilsonStateGraph;
   private readonly locomotor: ActionLocomotor;
-  private readonly getSource: () => TurfSource | undefined;
+  private readonly getSource: () => DeploySource | undefined;
   private readonly planting: PlantDeploymentWorld;
   private readonly blockers: PlacementQuery;
   private readonly interrupted: () => boolean;
 
   constructor(world: WorldContext, stategraph: WilsonStateGraph,
-    locomotor: ActionLocomotor, getSource: () => TurfSource | undefined,
+    locomotor: ActionLocomotor, getSource: () => DeploySource | undefined,
     planting: PlantDeploymentWorld, interrupted = () => false) {
     this.world = world; this.stategraph = stategraph; this.locomotor = locomotor;
     this.getSource = getSource; this.planting = planting; this.interrupted = interrupted;
     this.blockers = planting.blockers ?? placementEntities(world.scene);
-    this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
+    this.picker = world.mouseActions ?? new PlayerActionPicker(new PointerRaycaster(world));
+    this.pointer = this.picker.pointer;
     this.cleanups.push(bindActionCancellation(world, this, () => this.cancel()));
     if (world.registerFrameTask) this.cleanups.push(world.registerFrameTask(dt => this.update(dt)));
-    if (world.mouseActions) {
-      this.cleanups.push(world.mouseActions.registerActiveItemSource(() => !!getSource()));
-      this.cleanups.push(world.mouseActions.register(() => {
-        const source = getSource(), point = this.pointer.groundPoint();
-        return source && point && this.canDeploy(point, source.entity)
-          ? [{ action: { action: 'DEPLOY', modifier: 'PLANT', invobject: source.entity }, button: 'right', source: 'inventory' }] : [];
-      }));
-    }
+    this.cleanups.push(this.picker.registerActiveItemSource(() => !!getSource()));
+    this.cleanups.push(this.picker.register(target => {
+      const source = getSource(), point = allowsPointDeploy(target) ? this.pointer.groundPoint() : undefined;
+      return source && point && this.canDeploy(point, source.entity)
+        ? [{ action: { action: 'DEPLOY', modifier: 'PLANT', invobject: source.entity }, button: 'right', source: 'inventory' }] : [];
+    }));
     world.renderer.domElement.addEventListener('pointerdown', this.pointerDown, true);
     window.addEventListener('keydown', this.keyDown);
   }
@@ -185,10 +186,9 @@ export class PlantDeployment {
   private readonly pointerDown = (event: PointerEvent): void => {
     if (event.defaultPrevented) return;
     if (event.button === 0) { this.cancel(); return; }
-    if (event.button !== 2 || !this.getSource()) return;
-    event.preventDefault(); event.stopImmediatePropagation(); this.pointer.trackPointer(event);
-    const point = this.pointer.groundPoint();
-    if (!point || !this.request(point)) this.cancel();
+    const source = this.getSource();
+    if (event.button !== 2 || !source) return;
+    deployRightClick(event, this.picker, source, point => this.request(point), () => this.cancel());
   };
   private releasePreview(): void {
     if (this.preview) { this.preview.instance.remove(); this.preview.display.dispose(); }

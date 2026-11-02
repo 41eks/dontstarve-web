@@ -139,6 +139,9 @@ export class PlayerActionPicker {
     return () => { this.placerSources.delete(source); };
   }
 
+  /** OnRightClick returns before reading an action while a placer is up or the controller is disabled. */
+  canPickClickAction(): boolean { return this.isEnabled() && ![...this.placerSources].some(source => source()); }
+
   getMouseActions(event?: PointerEvent): MouseActions {
     if (event) {
       const cached = this.eventActions.get(event);
