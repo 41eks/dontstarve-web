@@ -1,6 +1,7 @@
 import type { PrefabDisplay } from '@dontstarve-web/display';
 import type { ItemEntity, InventoryStack } from '@dontstarve-web/inventory';
 import type * as THREE from 'three';
+import type { SpriteResources } from '@dontstarve-web/display';
 import type { GroundItemAssets } from './groundItems';
 import type { BernieWorld } from './bernie';
 import type { ButterflyWorld } from './butterfly';
@@ -97,6 +98,8 @@ export type SpawnGroundItem = (definition: GroundItemDefinition, position: THREE
 
 export interface GroundPrefabContext extends GroundPrefabOptions {
   assets: GroundItemAssets;
+  /** Declares the ground items' sprite sources over `assets`; each display loads what it draws. */
+  sprites: SpriteResources;
 }
 
 /** Each prefab binds its own assets, events and world dependencies. */

@@ -228,7 +228,7 @@ export function createLanternHandLifecycle(entity: ItemEntity, context: LanternH
 
 /** Ground art binds to the inst's lantern lifecycle; it starts unlit until a drop or load event. */
 /** Reuse the item's prefab instance; a skin alone constructs a standalone logical item. */
-export function createLanternGroundSprite(context: Pick<GroundPrefabContext, 'assets' | 'tickingarea'>, item?: string | ItemEntity): GroundItemVisual & {
+export function createLanternGroundSprite(context: Pick<GroundPrefabContext, 'sprites' | 'tickingarea'>, item?: string | ItemEntity): GroundItemVisual & {
   readonly light: LanternLightController;
 } {
   const { visual, instance, display } = createResidentGroundItem(context, typeof item === 'object'

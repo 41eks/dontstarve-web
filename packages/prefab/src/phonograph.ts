@@ -128,10 +128,6 @@ export class PhonographController {
     if (wasPlaying && playEnd) PlaySound(END_SOUND, this.position);
   }
 
-  update(dt: number): void {
-    if (this.ownsScheduler && !this.disposed && Number.isFinite(dt) && dt > 0) this.scheduler.advance(dt);
-  }
-
   snapshot(): Pick<GroundItemDefinition, 'phonographRecord' | 'playbackRemaining'> {
     return { phonographRecord: this.record, playbackRemaining: this.isPlaying ? this.remainingSeconds : undefined };
   }
@@ -201,8 +197,7 @@ export function createPhonographGroundFactory(context: GroundPrefabContext): Gro
     create(item, inst) {
       configurePhonographEntity(inst, scheduler);
       inst.worldServices = worldServices;
-      const { visual, instance, display } = createResidentGroundItem(context, { ...item, entity: inst });
-      const model = display.model;
+      const { visual, instance } = createResidentGroundItem(context, { ...item, entity: inst });
       const controller = inst.components.phonograph!;
       const removeEvents = listenInventoryEvents(instance, {
         // Dropping a loaded machine enables it, but does not turn it on.
@@ -219,11 +214,7 @@ export function createPhonographGroundFactory(context: GroundPrefabContext): Gro
       workable.SetOnFinishCallback(onhammered);
       return {
         ...visual,
-        // The song deadline belongs to the machine, independently of sprite residency.
-        active: undefined,
-        model,
         getDefinition: () => controller.snapshot(),
-        update(dt: number) { controller.update(dt); },
         dispose() { removeEvents(); visual.dispose(); },
       };
     },

@@ -1,7 +1,6 @@
 import { findActionEntity } from './actionEntity';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { createSignal, readonlySignal, getBoundWatchWorldContent } from '@dontstarve-web/signals';
-import { createSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { createArchiveEntity, prefabInstance } from './prefabInstance';
 import { Burnable } from '../../componets/src/burnable';
 import { Propagator } from '../../componets/src/propagator';
@@ -122,10 +121,9 @@ export function createBurnableItemVisual(context: GroundPrefabContext,
   itemId: string, base: ResidentGroundItem, displays: Set<PrefabDisplay>, fxLevel: 2 | 3 = 2): GroundItemVisual {
   const { visual, instance, display } = base;
   const { igniteSound, loopSound } = BURNABLE_ITEM_DEFINITIONS[itemId];
-  const createFire = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(context.assets, { animationArchive: 'fire.zip',
-    buildArchives: ['fire.zip'], bank: 'fire', animation: clip.name, loop: clip.loop }, { name: 'fire', dynamicParent: true });
+  const fireSource = context.sprites.archive({ animationArchive: 'fire.zip', buildArchives: ['fire.zip'], bank: 'fire' }, { dynamicParent: true });
   // fire.lua: the burning fx entity, drawn by its own display as a child of the item; tags FX and HASHEATER.
-  const fire = createArchiveEntity('fire', { create: createFire }, { name: `level${fxLevel}`, billboard: true }, 'fire', undefined, instance.status);
+  const fire = createArchiveEntity('fire', fireSource, { name: `level${fxLevel}`, billboard: true }, 'fire', undefined, instance.status);
   for (const tag of ['FX', 'HASHEATER']) fire.instance.addTag(tag);
   fire.instance.persists = false;
   const presentation = { context };

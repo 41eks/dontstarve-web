@@ -1,3 +1,4 @@
+import { SpriteResources } from '../../display/src';
 import { advancePlayer, facePlayer, registerPlayer } from '../../animation/tests/playerVisual';
 import { prefabDisplay } from '../../display/src';
 import { fixturePickup } from './pickup-fixture';
@@ -79,7 +80,7 @@ export async function checkLanternLighting() {
     }
     const entity = new ItemEntity({ itemId: 'lantern', count: 1, ...(skin ? { skinId: skin } : {}) });
     entity.configure(lanternSpec);
-    const ground = createLanternGroundSprite({ assets }, entity);
+    const ground = createLanternGroundSprite({ sprites: new SpriteResources(undefined, undefined, assets) }, entity);
     await (prefabDisplay(ground.model) as PrefabDisplay).artLoaded();
     prefabInstance(ground.model)!.PushEvent('ondropped');
     scene.add(ground.model);

@@ -1,3 +1,4 @@
+import { SpriteResources } from '../../display/src';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -144,7 +145,7 @@ it('renders the source neutral pose for base and skinned stones and resolves the
     // A cold inst dropped or reskinned receives its own range, rather than the catalog's neutral pose.
     const entity = new ItemEntity({ itemId: 'heatrock', count: 1, skinId: 'heatrock_fantasy', temperature: { current: 0 }, lowTemp: 0 });
     configureHeatRockEntity(entity);
-    const factory = createGroundItemFactory({ assets } as GroundPrefabContext);
+    const factory = createGroundItemFactory({ sprites: new SpriteResources(undefined, undefined, assets) } as GroundPrefabContext);
     const visual = factory.create({ ...entity.snapshot(), name: '暖石', icon: 'heatrock_fantasy1.tex' }, entity);
     try {
       // The prefab only declares what the sprite follows; the display applies it.

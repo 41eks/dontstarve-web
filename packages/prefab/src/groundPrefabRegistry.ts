@@ -1,5 +1,6 @@
 import { createLightFlierGroundFactory } from './lightflier';
 import { createMoleGroundFactory } from './mole';
+import { SpriteResources } from '@dontstarve-web/display';
 import { GroundItemAssets, createGroundItemFactory } from './groundItems';
 import { createHatGroundFactory } from './hats';
 import { createBernieGroundFactory } from './bernie';
@@ -31,15 +32,16 @@ const PREFAB_MODULES = [
 export class GroundPrefabRegistry {
   private readonly factories = new Map<string, GroundItemFactory>();
   private readonly modules: GroundItemFactory[];
-  private readonly assets: GroundItemAssets;
+  private readonly sprites: SpriteResources;
   private readonly scheduler: GameTimeScheduler;
   private readonly ownsScheduler: boolean;
 
   constructor(options: GroundPrefabOptions) {
-    this.assets = new GroundItemAssets();
+    const assets = new GroundItemAssets();
+    this.sprites = new SpriteResources(undefined, undefined, assets);
     this.ownsScheduler = options.scheduler === undefined;
     this.scheduler = options.scheduler ?? new GameTimeScheduler();
-    const context = { ...options, scheduler: this.scheduler, assets: this.assets };
+    const context = { ...options, scheduler: this.scheduler, assets, sprites: this.sprites };
     this.modules = PREFAB_MODULES.map((createFactory) => createFactory(context));
     for (const factory of this.modules) {
       for (const id of factory.itemIds) this.factories.set(id, factory);
@@ -60,7 +62,7 @@ export class GroundPrefabRegistry {
   dispose(): void {
     this.factories.clear();
     for (const factory of [...this.modules].reverse()) factory.dispose?.();
-    this.assets.dispose();
+    this.sprites.dispose();
     if (this.ownsScheduler) this.scheduler.dispose();
   }
 }

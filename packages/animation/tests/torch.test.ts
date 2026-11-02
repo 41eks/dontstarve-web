@@ -1,3 +1,4 @@
+import { SpriteResources } from '../../display/src';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { createPickupDoer, performPickupAction } from '../../stategraphs/src/pickup';
@@ -223,7 +224,7 @@ describe('torch prefab burning lifecycle', () => {
     vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
     const assets = new GroundItemAssets();
     const owner = new THREE.Vector3(12, 0, 0);
-    const factory = createTorchGroundFactory({ scene: new THREE.Scene(), assets, animationBaseUrl: '/dst/data/anim', inventoryOwnerPosition: owner,
+    const factory = createTorchGroundFactory({ scene: new THREE.Scene(), assets, sprites: new SpriteResources(undefined, undefined, assets), animationBaseUrl: '/dst/data/anim', inventoryOwnerPosition: owner,
       bernieWorld: { getSanityPercent: () => 1 }, butterflyWorld: { getThreatPositions: () => [], getFlowers: () => [] },
       firefliesWorld: {} });
     const definition = { ...GROUND_ITEM_DEFINITIONS.torch, itemId: 'torch', count: 1, remainingFuel: 20, torchLit: true };

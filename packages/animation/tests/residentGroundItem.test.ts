@@ -1,3 +1,4 @@
+import { SpriteResources } from '../../display/src';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { displayLights } from '../../display/src/displaySprites';
 import * as THREE from 'three';
@@ -10,7 +11,7 @@ import { createPerishWorld } from './perishWorldFixture';
 const created: ArchiveSprite[] = [];
 vi.mock('@dontstarve-web/animation/archiveSprite', async importOriginal => ({
   ...await importOriginal<typeof import('@dontstarve-web/animation/archiveSprite')>(),
-  createSharedArchiveSprite: vi.fn(async () => {
+  preloadSharedArchiveSprite: vi.fn(async () => () => {
     const model = new THREE.Group();
     model.add(new THREE.Group());
     const sprite = { model, frameCount: 1, currentAnimation: 'idle', dispose: vi.fn(() => model.removeFromParent()), update: vi.fn(),
@@ -28,8 +29,9 @@ const tick = () => new Promise(resolve => setTimeout(resolve, 0));
 it('unloads a settled ground item sprite with its tile and rebuilds it when the tile wakes', async () => {
   const tile = createSignal(true);
   const tickingarea = () => Object.assign(tile, { dispose() {} }) as never;
-  const factory = createGroundItemFactory({ assets: new GroundItemAssets(), tickingarea } as unknown as GroundPrefabContext);
+  const factory = createGroundItemFactory({ sprites: new SpriteResources(undefined, undefined, new GroundItemAssets()), tickingarea } as unknown as GroundPrefabContext);
   const visual = factory.create({ itemId: 'twigs', name: 'twigs', icon: '', count: 1 }, new ItemEntity({ itemId: 'twigs', count: 1 }));
+  await tick(); // The display loads the art, then draws the first sprite.
   expect(created).toHaveLength(1);
   visual.model.position.set(3, 0, 4);
   lookupPrefabInstance(visual.model)!.PushEvent('onload');
@@ -56,7 +58,7 @@ it('retains a lantern machine, light and fuel while its tile releases and rebuil
   const world = createPerishWorld();
   item.BindPerishWorld(world);
   configureLanternEntity(item);
-  const visual = await createLanternGroundSprite({ assets, tickingarea: () => Object.assign(tile, { dispose() {} }) as never }, item);
+  const visual = await createLanternGroundSprite({ sprites: new SpriteResources(undefined, undefined, assets), tickingarea: () => Object.assign(tile, { dispose() {} }) as never }, item);
   const scene = new THREE.Scene(), model = visual.model;
   scene.add(model); model.position.set(3, 0, 4);
   lookupPrefabInstance(model)!.PushEvent('ondropped'); await tick();

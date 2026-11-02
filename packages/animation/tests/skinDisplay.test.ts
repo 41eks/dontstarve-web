@@ -33,7 +33,7 @@ it('uses the latest json skin while paused, reuses loaded art, and ignores a loa
   });
   vi.stubGlobal('fetch', fetch);
   const assets = new GroundItemAssets();
-  const { instance, display } = createResidentGroundItem({ assets }, { itemId: 'greenstaff' });
+  const { instance, display } = createResidentGroundItem({ sprites: new SpriteResources(undefined, undefined, assets) }, { itemId: 'greenstaff' });
   const model = display.model, scene = new THREE.Scene();
   display.mount(scene);
   try {
@@ -116,7 +116,7 @@ it('applies a layered factory skin without resetting the clip, progress, callbac
 
 it('keeps an item\'s skin on its own sprite json across the ground, a container and the next drop', async () => {
   const assets = new GroundItemAssets();
-  const factory = createGroundItemFactory({ assets } as GroundPrefabContext);
+  const factory = createGroundItemFactory({ sprites: new SpriteResources(undefined, undefined, assets) } as GroundPrefabContext);
   const slot = inventorySlotAddress(0);
   const inventory = new InventoryStore([{ address: slot, slot: new InventorySlot() }], INVENTORY_ITEM_SPECS);
   const entity = new ItemEntity({ itemId: 'greenstaff', count: 1 });
