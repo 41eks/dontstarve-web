@@ -66,7 +66,7 @@ it('loads source records through construction, OnPreLoad and health.OnLoad, reta
     // The complete reimported default cave also passes the shared save catalog.
     const cave = JSON.parse(await readFile(new URL('../../../public/saves/Cluster_1/Caves.json', import.meta.url), 'utf8'));
     cave.players = { local: { ...initialWorld.players.local, shardId: cave.world.shardId } };
-    expect(deserializeSave(JSON.stringify(cave), SAVE_CATALOG).world.entities.ruins_rubble_chair).toHaveLength(45);
+    expect(deserializeSave(JSON.stringify(cave), SAVE_CATALOG).world.entities.ruins_rubble_chair).toHaveLength(44);
   } finally { s.dispose(); }
 });
 

@@ -380,9 +380,10 @@ export const PREFAB_DEFINITIONS = {
       const timers = object(timer.timers, `${path}.dragonflySpawner.worldsettingstimer.timers`, ['regen_dragonfly']);
       const value = object(timers.regen_dragonfly, `${path}.dragonflySpawner.worldsettingstimer.timers.regen_dragonfly`,
         ['timeleft', 'paused', 'initial_time']);
-      if (typeof value.paused !== 'boolean') fail(`${path}.dragonflySpawner.worldsettingstimer.paused`, 'expected boolean');
+      // worldsettingstimer.lua OnSave writes v.paused, which is nil for a timer that was never paused.
+      if (value.paused !== undefined && typeof value.paused !== 'boolean') fail(`${path}.dragonflySpawner.worldsettingstimer.paused`, 'expected boolean');
       worldsettingstimer = { timers: { regen_dragonfly: { timeleft: number(value.timeleft, `${path}.dragonflySpawner.worldsettingstimer.timeleft`, 0),
-        paused: value.paused, initial_time: number(value.initial_time, `${path}.dragonflySpawner.worldsettingstimer.initial_time`, 0) } } };
+        paused: value.paused === true, initial_time: number(value.initial_time, `${path}.dragonflySpawner.worldsettingstimer.initial_time`, 0) } } };
     }
     return { dragonflySpawner: { childspawner, ...(worldsettingstimer ? { worldsettingstimer } : {}) } };
   }, true),
