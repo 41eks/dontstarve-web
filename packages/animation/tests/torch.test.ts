@@ -1,3 +1,4 @@
+import { getHandEquipmentDefinition } from '../../prefab/src/handEquipment';
 import { SpriteResources } from '../../display/src';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
@@ -10,10 +11,14 @@ import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { createEquipmentExistenceState } from '@dontstarve-web/signals';
 import { OnItemRanOut } from '../../prefab/src/player_common';
-import { TORCH_FUEL, TURNON_FUELED_CONSUMPTION, TURNON_FULL_FUELED_CONSUMPTION, TorchController, configureTorchEntity,
+import { TORCH_FUEL, TURNON_FUELED_CONSUMPTION, TURNON_FULL_FUELED_CONSUMPTION, configureTorchEntity, onattack,
   getTorchController, createTorchGroundFactory } from '../../prefab/src/torch';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { PlaySound } from '../../prefab/src/sound';
+import { TORCH_FIRE_OFFSET_Y } from '../../prefab/src/torchfire';
+import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import { bindWorldContent, createSignal } from '@dontstarve-web/signals';
+import { createTestWorldSources } from './worldContentFixture';
 import { createEmptyEntity, prefabInstance } from '../../prefab/src/prefabInstance';
 import { createPerishWorld } from './perishWorldFixture';
 import { reskinEntity } from '../../prefab/src/reskin_tool';
@@ -103,6 +108,7 @@ describe('torch prefab burning lifecycle', () => {
     expect(fuel()).toBeCloseTo(60 - FIRST_PERIOD - 10, 9);
     expect(spare.fuel()).toBe(60);
     torch.onunequip();
+    world.advance(0);
     expect(PlaySound).toHaveBeenLastCalledWith('dontstarve/common/fireOut', undefined);
     world.advance(20);
     expect(torch.isBurning).toBe(false);
@@ -183,18 +189,18 @@ describe('torch prefab burning lifecycle', () => {
       })).toBe(true);
       let model = scene.children[0] as THREE.Group;
       expect(lookupPrefabInstance(model)?.entityId).toBe(entity.id);
-      expect(model.userData.torch).toBe(controller);
+      expect(prefabInstance(model)).toBe(entity);
       expect(controller.isBurning).toBe(false);
       expect(entity.components.fueled!.currentfuel).toBeCloseTo(TORCH_FUEL - FULL_FIRST_PERIOD - .75, 9);
       expect(entity.components.inventoryitem.owner).toBeNull();
-      controller.ignite();
+      controller.IgniteTossed();
       expect(controller.isBurning).toBe(true);
       expect(entity.skinId).toBeUndefined();
       world.advance(0.375);
       expect(reskinEntity(manager.reskinTargets[0])).toBe(true);
       model = scene.children[0] as THREE.Group;
       expect(entity.skinId).toBe('torch_barber');
-      expect(model.userData.torch).toBe(controller);
+      expect(prefabInstance(model)).toBe(entity);
       expect(controller.isBurning).toBe(true);
       const [record] = manager.exportRecords();
       expect(record.id).toBe(entity.id);
@@ -241,38 +247,122 @@ describe('torch prefab burning lifecycle', () => {
       // Prepared visual receives the actual state committed after an asynchronous drop.
       visual.setDefinition?.({ ...definition, remainingFuel: 18, entity });
       prefabInstance(visual.model)!.PushEvent('onload');
-      const controller = visual.model.userData.torch as TorchController;
+      const controller = getTorchController(entity);
+      expect(visual.model.userData).not.toHaveProperty('torch');
       expect(controller.isBurning).toBe(true);
       expect(PlaySound).not.toHaveBeenCalled();
       expect(declaredLight(visual.model)).toBeDefined();
+      // IgniteTossed: torchfire follows the inst's own swap_torch.
+      expect([...entity.sprite.sprite.peek().followers!.values()].map(({ symbol, y }) => [symbol, y])).toEqual([['swap_torch', TORCH_FIRE_OFFSET_Y]]);
       // A lit ground torch keeps consuming on its world's game time.
       world.advance(0.5);
       expect(visual.getDefinition?.()).toEqual({ remainingFuel: 18 - FIRST_PERIOD - .5, torchLit: true });
-      prefabInstance(visual.model)!.PushEvent('onextinguish');
+      const launches: unknown[] = [];
+      entity.ListenForEvent('launch', launch => launches.push(launch));
+      entity.components.burnable!.Extinguish();
       expect(controller.isBurning).toBe(false);
       expect(declaredLight(visual.model)).toBeUndefined();
+      expect(entity.sprite.sprite.peek().followers!.size).toBe(0);
       expect(handEquipmentExistenceState.peek()).toBe(held);
       expect(PlaySound).toHaveBeenLastCalledWith('dontstarve/common/fireOut', visual.model.position);
-      const before = visual.model.position.clone();
-      visual.update?.(0.1);
-      expect(entity.transform.position.clone().distanceTo(before)).toBeLessThan(1);
-      visual.model.position.copy(entity.transform.position);
-      expect(visual.model.position.y).toBe(0);
-      expect(visual.model.children[0].position.y).toBeGreaterThan(0);
-      expect(visual.model.position.distanceTo(before)).toBeLessThan(1);
-      controller.ignite();
-      const groundSounds = vi.mocked(PlaySound).mock.results.map(({ value }) => value);
+      // OnExtinguish hops the item: the ground manager flies the launch, keeping its foot on the ground.
+      expect(launches).toEqual([expect.objectContaining({ height: .1, speed: { min: 0, range: 1 }, ySpeed: { min: 8, range: 1 } })]);
+      controller.IgniteTossed();
       prefabInstance(visual.model)!.PushEvent('onputininventory');
+      world.advance(0); // PlayExtinguishSound's DoTaskInTime(0).
       expect(PlaySound).toHaveBeenLastCalledWith('dontstarve/common/fireOut', owner);
       expect(controller.isBurning).toBe(false);
       // Pocketed before the next update, the relit torch's first period is cancelled uncharged.
       expect(visual.getDefinition?.()).toEqual({ remainingFuel: 18 - FIRST_PERIOD - .5, torchLit: false });
       expect(handEquipmentExistenceState.peek()).toBe(held);
-      groundSounds.forEach((sound) => expect(sound.stop).toHaveBeenCalledOnce());
       const calls = vi.mocked(PlaySound).mock.calls.length;
       prefabInstance(visual.model)!.PushEvent('onputininventory');
       controller.OnExtinguish();
+      world.advance(0);
       expect(PlaySound).toHaveBeenCalledTimes(calls);
     } finally { visual.dispose(); entity.destroy(); assets.dispose(); }
+  });
+
+  it('registers the source callbacks on burnable: tags, fuel and hand sounds that cancel each other', () => {
+    const { entity, torch, world } = fixture();
+    expect(entity.components.burnable!.canlight).toBe(false);
+    expect(entity.hasTag('nolight')).toBe(true);
+    torch.onequip();
+    expect(entity.components.burnable!.IsBurning()).toBe(true);
+    expect(entity.hasTag('fire')).toBe(true);
+    vi.mocked(PlaySound).mockClear();
+    // Swapping back in the same step: the pending extinguish is cancelled and the ignite swallowed, so neither plays.
+    torch.onunequip();
+    expect(entity.components.burnable!.IsBurning()).toBe(false);
+    torch.onequip();
+    world.advance(0);
+    expect(PlaySound).not.toHaveBeenCalled();
+    torch.onunequip();
+    world.advance(0);
+    expect(PlaySound).toHaveBeenCalledExactlyOnceWith('dontstarve/common/fireOut', undefined);
+  });
+
+  it('removes a pending sound with the inst', () => {
+    const { entity, torch, world } = fixture();
+    torch.onequip();
+    vi.mocked(PlaySound).mockClear();
+    torch.onunequip();
+    entity.remove();
+    world.advance(0);
+    expect(PlaySound).not.toHaveBeenCalled();
+  });
+
+  it('burns out on the ground through the fires branch: fire out, unsaved, NOCLICK, then removed by depletion', () => {
+    const { entity, torch, world } = fixture();
+    entity.components.burnable!.Ignite();
+    entity.sprite.bind({ createFollower: () => new THREE.Object3D() } as never);
+    const position = new THREE.Vector3(1, 0, 2);
+    vi.spyOn(entity, 'position', 'get').mockReturnValue(position);
+    torch.OnDropped();
+    torch.IgniteTossed();
+    vi.mocked(PlaySound).mockClear();
+    world.advance(TORCH_FUEL + 2);
+    expect(PlaySound).toHaveBeenCalledExactlyOnceWith('dontstarve/common/fireOut', position);
+    expect(entity.persists).toBe(false);
+    expect(entity.hasTag('NOCLICK')).toBe(true);
+    expect(entity.isRemoved).toBe(true);
+  });
+
+  it('consumes faster in rain by the precipitation rate and SetFuelRateMult, and returns to the multiplier when dry', () => {
+    const scheduler = new GameTimeScheduler();
+    const preciptype = createSignal<'none' | 'rain' | 'snow'>('none'), precipitationRate = createSignal(0);
+    const unbind = bindWorldContent({ ...createTestWorldSources(scheduler), preciptype, precipitationRate });
+    try {
+      const { entity, torch } = fixture();
+      torch.onequip();
+      const fueled = entity.components.fueled!;
+      expect(fueled.rate).toBe(1);
+      precipitationRate.set(.5); preciptype.set('rain');
+      expect(fueled.rate).toBe(1 + 1.5 * .5);
+      torch.SetFuelRateMult(2);
+      expect(fueled.rate).toBe((1 + 1.5 * .5) * 2);
+      precipitationRate.set(1);
+      fueled.DoUpdate(0); // fueled's update fn re-reads the rate each period.
+      expect(fueled.rate).toBe((1 + 1.5) * 2);
+      preciptype.set('none');
+      expect(fueled.rate).toBe(2);
+      torch.SetFuelRateMult(1);
+      expect(fueled.rate).toBe(1);
+    } finally { unbind(); }
+  });
+
+  it('ignites what it hits by the target flammability', () => {
+    const attacker = {}, ignite = vi.fn(), target = { isRemoved: false, components: { burnable: { flammability: .5, Ignite: ignite } } };
+    const random = vi.spyOn(Math, 'random').mockReturnValue(.6);
+    onattack({}, attacker, target);
+    expect(ignite).not.toHaveBeenCalled();
+    random.mockReturnValue(.4);
+    onattack({}, attacker, { ...target, isRemoved: true });
+    expect(ignite).not.toHaveBeenCalled();
+    onattack({}, attacker, target);
+    expect(ignite).toHaveBeenCalledExactlyOnceWith(undefined, attacker);
+    onattack({}, attacker, {});
+    random.mockRestore();
+    expect(getHandEquipmentDefinition('torch')!.definition.weapon!.onattack).toBe(onattack);
   });
 });

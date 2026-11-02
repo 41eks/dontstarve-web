@@ -18,7 +18,7 @@ import type { WilsonCarryItem } from './player';
 import type { PrefabInstance } from './prefabInstance';
 import { configureReskinToolEntity, createReskinToolLifecycle, reskinToolVisual } from './reskin_tool';
 import { configureShovelEntity, shovelVisual, SHOVEL_USES } from './shovel';
-import { configureTorchEntity, createTorchHandLifecycle, torchVisual } from './torch';
+import { configureTorchEntity, createTorchHandLifecycle, onattack as torchOnAttack, torchVisual } from './torch';
 import { getTridentController, tridentVisual, TRIDENT_DAMAGE, TRIDENT_USES, type TridentWorld } from './trident';
 import { FIRESTAFF_TAGS, FIRESTAFF_USES, fireStaffVisual, getFireStaffController, getGreenStaffController, getLightStaffController, GREENSTAFF_USES, yellowstaffVisual, type FireStaffWorld, type GreenStaffWorld, type LightStaffWorld } from './staff';
 
@@ -50,7 +50,7 @@ export interface HandEquipmentDefinition {
   readonly useStep?: number;
   readonly maxFuel?: number;
   /** The prefab's weapon component: SetDamage and attackwear. */
-  readonly weapon?: { readonly damage: number; readonly attackwear?: number };
+  readonly weapon?: { readonly damage: number; readonly attackwear?: number; readonly onattack?: Weapon['onattack'] };
   /** Source tags read by SGwilson's attack branches ("light", "nopunch"). */
   readonly tags?: readonly string[];
   configureEntity?(entity: ItemEntity): void;
@@ -62,7 +62,7 @@ export interface HandEquipmentDefinition {
 
 /** Source hand prefabs declare their presentation and equip lifecycle together. */
 const definitions: Record<WilsonCarryItem, HandEquipmentDefinition> = {
-  torch: { visual: torchVisual, weapon: { damage: WILSON_ATTACK * .5 }, configureEntity: configureTorchEntity, createLifecycle: createTorchHandLifecycle },
+  torch: { visual: torchVisual, weapon: { damage: WILSON_ATTACK * .5, onattack: torchOnAttack }, configureEntity: configureTorchEntity, createLifecycle: createTorchHandLifecycle },
   lantern: { visual: lanternVisual, tags: ['light'], maxFuel: LANTERN_FUEL, configureEntity: configureLanternEntity, createLifecycle: createLanternHandLifecycle },
   yellowstaff: { visual: yellowstaffVisual, tags: ['nopunch'], createLifecycle: (entity, context) => context.lightStaffWorld ? getLightStaffController(entity, context.lightStaffWorld) : undefined },
   opalstaff: { visual: yellowstaffVisual, tags: ['nopunch'], createLifecycle: (entity, context) => context.lightStaffWorld ? getLightStaffController(entity, context.lightStaffWorld) : undefined },
@@ -114,6 +114,7 @@ export function configureEquipmentEntity(entity: ItemEntity): void {
     const weapon = new Weapon(entity, () => definition.maxUses === undefined ? undefined : entity.components.finiteuses);
     weapon.SetDamage(definition.weapon.damage);
     if (definition.weapon.attackwear !== undefined) weapon.attackwear = definition.weapon.attackwear;
+    if (definition.weapon.onattack) weapon.SetOnAttack(definition.weapon.onattack);
     entity.components.weapon = weapon;
     entity.addTag('weapon');
   }
