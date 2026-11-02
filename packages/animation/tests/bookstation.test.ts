@@ -111,7 +111,7 @@ it('spawns a skinned bookstation through c_spawn and keeps books with fractional
     const spawn = async (id: string) => {
       if (id !== 'bookstation') return false;
       await placement.spawnFromSave('bookstation', { id: 'library', transform: { position: [3, 0, -6], rotationY: 0 },
-        components: { building: { state: 'idle', skinId: 'bookstation_house' } } });
+        components: { building: { skinId: 'bookstation_house' } } });
       return true;
     };
     expect((await executeDebugCommand('c_spawn("bookstation"); c_give("book_rain"); c_give("papyrus", 3)', inventory, spawn)).ok).toBe(true);

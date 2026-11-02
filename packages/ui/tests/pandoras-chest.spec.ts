@@ -16,7 +16,7 @@ test('inline pandoraschest renders, c_spawn saves, and reload preserves identity
     { slotKey: '4', item: { entityId: 'inline-chest_4', itemId: 'spear', count: 1 } },
   ] };
   save.world.entities = { pandoraschest: [{ id: 'inline-chest', transform: { position: [8, 0, 0], rotationY: 0 },
-    components: { container: contents, building: { state: 'closed' } } }] } as never;
+    components: { container: contents, building: {} } }] } as never;
   const prepare = () => page.evaluate(async ({ mainUrl, sceneUrl }) => {
     const main = await import(mainUrl); await main.gameReady;
     const { scene } = await import(sceneUrl); (window as any).pandorasChestScene = scene;
@@ -39,7 +39,7 @@ test('inline pandoraschest renders, c_spawn saves, and reload preserves identity
   const exported = JSON.parse(await readSaveDownload((await (await download).path())!, 'Master'));
   expect(exported.world.entities.pandoraschest).toHaveLength(2);
   expect(exported.world.entities.pandoraschest[0]).toEqual({ id: 'inline-chest',
-    transform: { position: [8, 0, 0], rotationY: 0 }, components: { container: contents, building: { state: 'closed' } } });
+    transform: { position: [8, 0, 0], rotationY: 0 }, components: { container: contents, building: {} } });
   await page.goto(savePageUrl(exported)); await prepare();
   await expect.poll(async () => (await chests()).filter(chest => chest.loaded).length).toBe(2);
   expect((await chests()).map(chest => [chest.id, chest.clip, chest.loop])).toEqual(expect.arrayContaining(

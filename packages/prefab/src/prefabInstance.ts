@@ -66,6 +66,10 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   readonly components: Components = {} as Components;
   /** World services injected when this prefab joins a world; callbacks use the same host and components. */
   worldServices?: Partial<PrefabWorldContext>;
+  /** inst.OnSave(inst, data): the prefab writes its own state into the record's components. */
+  OnSave?(inst: PrefabInstance, data: PlacementSaveRecord['components']): void;
+  /** inst.OnLoad(inst, data): the prefab restores its own state from the record's components. */
+  OnLoad?(inst: PrefabInstance, data: PlacementSaveRecord['components']): void;
   private readonly removedState = createSignal(false);
   readonly removal: ReadonlySignal<boolean> = readonlySignal(this.removedState);
   /** inst.Light: the light the entity declares; its display lists it while the entity is active. */

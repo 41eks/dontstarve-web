@@ -20,6 +20,10 @@ import { LAVA_POND_ROCK_TYPES } from '@dontstarve-web/prefab/lava_pond';
 import { BASE_COOK_TIME, GetRecipe } from '../../packages/componets/src/cooking';
 import { array, choice, fail, integer, number, object, string } from './validation';
 
+/** Structures with a ported MakeXBurnable(inst, nil, nil, true), whose onsave can write burnt. */
+const BURNABLE_STRUCTURES: ReadonlySet<string> = new Set(['treasurechest', 'cookpot', 'winterometer', 'pighead', 'mermhead',
+  'bookstation', 'researchlab', 'researchlab2', 'researchlab3', 'researchlab4']);
+
 export interface EntitySaveContext {
   readonly prefab: string;
   readonly catalog: SaveCatalog;
@@ -381,14 +385,12 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
     if (keys.includes('building')) {
       if (!building) fail(path, `missing building definition for ${prefab}`);
       const b = object(c.building, `${path}.building`, ['state', 'skinId', 'burnt']);
-      // Older cook pot saves only stored idle; migrate that to the closed state.
-      const state = choice(prefab === 'cookpot' && b.state === 'idle' ? 'closed' : b.state,
-        `${path}.building.state`, isContainer ? ['closed', 'open'] : ['idle']);
+      // Older saves also carry `state`; source OnSave has no open state, so it is ignored.
       const skinId = b.skinId === undefined ? undefined : string(b.skinId, `${path}.building.skinId`);
       if (skinId !== undefined && !Object.hasOwn(building.skinArchives ?? {}, skinId)) fail(`${path}.building.skinId`, 'unsupported building skin');
-      components.building = { state, ...(skinId === undefined ? {} : { skinId }) };
+      components.building = skinId === undefined ? {} : { skinId };
       if (b.burnt !== undefined) {
-        if (b.burnt !== true || (prefab !== 'treasurechest' && prefab !== 'cookpot' && prefab !== 'winterometer' && prefab !== 'pighead' && prefab !== 'mermhead')) fail(`${path}.building.burnt`, 'expected a burnt combustible building');
+        if (b.burnt !== true || !BURNABLE_STRUCTURES.has(prefab)) fail(`${path}.building.burnt`, 'expected a burnt combustible building');
         components.building.burnt = true;
       }
       if (isContainer && (!b.burnt || c.container !== undefined)) {
@@ -482,8 +484,8 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
       if ((phase === 'done' && remainingSeconds !== 0) || (phase === 'cooking' && remainingSeconds === 0)) {
         fail(p, 'cooking needs remaining time; done needs zero remaining time');
       }
-      if (components.building?.state !== 'closed' || components.container?.slots.length) {
-        fail(p, 'cooking and full pots must be closed with no ingredients');
+      if (components.container?.slots.length) {
+        fail(p, 'cooking and full pots must have no ingredients');
       }
       components.stewer = { product, phase, remainingSeconds };
       if (stewer.ingredient_prefabs !== undefined) {

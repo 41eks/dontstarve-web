@@ -16,7 +16,6 @@ import { Trader, type TradeItem } from '../../componets/src/trader';
 import { foods } from '../../componets/src/preparedfoods';
 import { FRAMES } from '../../stategraphs/src/stategraph';
 import type {
-    AnimatedBuildingBuiltContext,
     AnimatedBuildingDefinition,
     AnimatedBuildingEventContext,
 } from './animatedBuildingPlacement';
@@ -538,11 +537,9 @@ function oninit({ instance, world, animStateArt }: AnimatedBuildingEventContext)
     workable.SetOnFinishCallback(onhammered);
     instance.components.lootdropper = createStructureLootDropper(instance);
     new Birdcage(instance, world, animStateArt);
-}
-
-function onbuilt({ instance, onComplete }: AnimatedBuildingBuiltContext): void {
-    cageOf(instance).onBuilt();
-    onComplete();
+    instance.ListenForEvent('onbuilt', () => cageOf(instance).onBuilt());
+    instance.OnSave = (inst, data) => { data.birdcage = cageOf(inst).save(); };
+    instance.OnLoad = (inst, data) => { if (data.birdcage) cageOf(inst).restore(data.birdcage); };
 }
 
 function onworked(inst: PrefabInstance): void {
@@ -561,7 +558,4 @@ export const BIRDCAGE_DEFINITION: AnimatedBuildingDefinition = {
     obstacleRadius: 0.5,
     skinInit: birdcage_init_fn,
     oninit,
-    onbuilt,
-    onrestore: ({ instance }, components) => { if (components.birdcage) cageOf(instance).restore(components.birdcage); },
-    exportComponents: ({ instance }) => ({ birdcage: cageOf(instance).save() }),
 };

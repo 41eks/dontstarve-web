@@ -81,7 +81,7 @@ it('spawns moonbase through the debug command using its source art and restores 
   const [{ prefabId, record }] = placement.exportRecords();
   expect(prefabId).toBe('moonbase');
   expect(record.transform.position).toEqual([30, 0, 30]);
-  expect(record.components).toEqual({ building: { state: 'idle' }, workable: { workleft: 4, maxwork: 6 } });
+  expect(record.components).toEqual({ building: {}, workable: { workleft: 4, maxwork: 6 } });
   // The save parser uses the same building catalog as the application.
   const save = structuredClone(initialWorld) as unknown as SaveDocument;
   save.world.entities = { moonbase: [{

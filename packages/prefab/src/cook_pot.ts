@@ -4,7 +4,6 @@ import { type SpriteState } from '@dontstarve-web/display';
 import definitions from './definitions.json' with { type: 'json' };
 import {
     AnimatedBuildingPlacement,
-    type AnimatedBuildingBuiltContext,
     type AnimatedBuildingDefinition,
     type AnimatedBuildingInteractionChange,
 } from './animatedBuildingPlacement';
@@ -17,6 +16,8 @@ import { Stewer, type StewerSaveData } from '../../componets/src/stewer';
 import { BASE_COOK_TIME, GetRecipe } from '../../componets/src/cooking';
 import type { AnimState } from '@dontstarve-web/animation/animState';
 import { createBuildingContainer } from './containers';
+import type { PlacementSaveRecord } from './saveRecord';
+import { onloadBurnt, onsaveBurnt } from './standardcomponents';
 
 export const BEEFALO_FEED_COOK_TIME = BASE_COOK_TIME * GetRecipe('cookpot', 'beefalofeed')!.cooktime;
 export interface CookPotSaveState {
@@ -47,7 +48,11 @@ function showProduct(model: THREE.Group): void {
 }
 
 export function cookPotState(model: THREE.Group): CookPotSaveState | undefined {
-    const stewer = prefabInstance(model)!.components?.stewer as Stewer | undefined;
+    return stewerState(prefabInstance(model)!);
+}
+
+function stewerState(inst: PrefabInstance): CookPotSaveState | undefined {
+    const stewer = inst.components?.stewer as Stewer | undefined;
     if (!stewer?.product) return undefined;
     const saved = stewer.OnSave();
     return {
@@ -110,11 +115,9 @@ export type CookPotId = typeof COOK_POT_ID;
 export const COOK_POT_SKIN_ARCHIVES: Readonly<Record<string, string>> =
     definitions.animatedBuildings.cookpot.skinArchives;
 
-function onbuilt({ animation, onComplete }: AnimatedBuildingBuiltContext): void {
-    animation.playOnce('place', () => {
-        animation.start('idle_empty');
-        onComplete();
-    });
+function onbuilt(inst: PrefabInstance): void {
+    inst.sprite.playOnce('place');
+    inst.sprite.pushAnimation('idle_empty', false);
 }
 
 function onworked(inst: PrefabInstance): void {
@@ -146,6 +149,22 @@ function onhammered(inst: PrefabInstance): void {
     inst.remove();
 }
 
+function onsave(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
+    onsaveBurnt(inst, data);
+    const state = stewerState(inst);
+    if (state) data.stewer = state;
+}
+
+function onload(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
+    const state = data.stewer;
+    if (state) (inst.components.stewer as Stewer).OnLoad({
+        product: state.product, done: state.phase === 'done',
+        ...(state.phase === 'cooking' ? { remainingtime: state.remainingSeconds } : {}),
+        ingredient_prefabs: state.ingredient_prefabs, chef_id: state.chef_id,
+    } satisfies StewerSaveData);
+    onloadBurnt(inst, data);
+}
+
 function onopen(inst: PrefabInstance): void {
     if (inst.hasTag('burnt')) return;
     inst.sprite.playOnce('cooking_pre_loop');
@@ -160,30 +179,21 @@ function onclose(inst: PrefabInstance): void {
 export const COOK_POT_DEFINITION: AnimatedBuildingDefinition = {
     ...definitions.animatedBuildings.cookpot,
     burnable: { burnTime: 20, fxLevel: 3, propagator: 'small' },
-    onbuilt,
     oninit: context => {
         context.instance.components.container!.onopenfn = onopen;
         context.instance.components.container!.onclosefn = onclose;
         initializePot(context);
+        const { instance } = context;
+        instance.ListenForEvent('onbuilt', () => onbuilt(instance));
+        instance.OnSave = onsave;
+        instance.OnLoad = onload;
     },
     createContainer: inst => createBuildingContainer('cookpot', inst),
-    onrestore: ({ model }, components) => {
-        const state = components.stewer;
-        if (state) (prefabInstance(model)!.components.stewer as Stewer).OnLoad({
-            product: state.product, done: state.phase === 'done',
-            ...(state.phase === 'cooking' ? { remainingtime: state.remainingSeconds } : {}),
-            ingredient_prefabs: state.ingredient_prefabs, chef_id: state.chef_id,
-        } satisfies StewerSaveData);
-    },
     onreskin: ({ model }) => {
         const stewer = prefabInstance(model)!.components.stewer as Stewer;
         if (!stewer) return;
         if (stewer.IsCooking()) (prefabInstance(model)!.sprite as SpriteState).start('cooking_loop');
         else if (stewer.IsDone()) { showProduct(model); (prefabInstance(model)!.sprite as SpriteState).start('idle_full'); }
-    },
-    exportComponents: ({ model }) => {
-        const state = cookPotState(model);
-        return state ? { stewer: state } : {};
     },
     onupdate: ({ model }, dt) => (prefabInstance(model)!.components.stewer as Stewer | undefined)?.LongUpdate(dt),
     ondispose: ({ model }) => {

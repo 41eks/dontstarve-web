@@ -9,7 +9,6 @@ import { SleepingBag } from '../../componets/src/sleepingbag';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { actionEntity } from './actionEntity';
 import type {
-    AnimatedBuildingBuiltContext,
     AnimatedBuildingDefinition,
     AnimatedBuildingEventContext,
 } from './animatedBuildingPlacement';
@@ -30,11 +29,9 @@ export function getTentComponents(model: THREE.Object3D): TentComponents | undef
     return components?.sleepingbag && components.finiteuses ? components as TentComponents : undefined;
 }
 
-function onbuilt({ animation, onComplete }: AnimatedBuildingBuiltContext): void {
-    animation.playOnce('place', () => {
-        animation.start('idle');
-        onComplete();
-    });
+function onbuilt(inst: PrefabInstance): void {
+    inst.sprite.playOnce('place');
+    inst.sprite.pushAnimation('idle', true);
 }
 
 /** inst:DoPeriodicTask(period, fn, initialDelay) on the game-time scheduler. */
@@ -93,6 +90,9 @@ function oninit({ model, instance, world }: AnimatedBuildingEventContext): void 
     };
     Object.assign(prefabInstance(model)!.components, { sleepingbag: bag, finiteuses: uses });
     (instance as TentInstance).stopSleepSound = stopSleepSound;
+    instance.ListenForEvent('onbuilt', () => onbuilt(instance));
+    instance.OnSave = (inst, data) => { data.finiteuses = inst.components.finiteuses!.OnSave(); };
+    instance.OnLoad = (inst, data) => { if (data.finiteuses) inst.components.finiteuses!.OnLoad(data.finiteuses); };
 }
 
 interface TentInstance extends PrefabInstance { stopSleepSound(): void }
@@ -123,9 +123,5 @@ function ondispose({ instance }: AnimatedBuildingEventContext): void {
 export const TENT_DEFINITION: AnimatedBuildingDefinition = {
     ...definitions.animatedBuildings.tent,
     obstacleRadius: 1,
-    onbuilt, oninit, ondispose,
-    exportComponents: ({ model }) => ({ finiteuses: getTentComponents(model)!.finiteuses.OnSave() }),
-    onrestore: ({ model }, components) => {
-        if (components.finiteuses) getTentComponents(model)!.finiteuses.OnLoad(components.finiteuses);
-    },
+    oninit, ondispose,
 };

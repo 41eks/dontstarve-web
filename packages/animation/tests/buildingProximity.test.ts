@@ -88,7 +88,7 @@ describe('building RUMMAGE and proximity', () => {
     expect(changes).toHaveBeenLastCalledWith({ buildId: 'cookpot', isOpen: true, model });
     expect(playOnce).toHaveBeenLastCalledWith('cooking_pre_loop');
     // cookpot.lua OnSave has no open state: the pot reloads closed.
-    expect(placement.exportRecords()[0].record.components.building?.state).toBe('closed');
+    expect(placement.exportRecords()[0].record.components.building).toEqual({});
     // actions.lua RUMMAGE.strfn: the doer's open container offers CLOSE.
     expect(getActionString(mouseActions.getMouseActions().left!)).toBe('关闭');
     finish();

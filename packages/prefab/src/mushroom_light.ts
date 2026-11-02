@@ -5,8 +5,8 @@ import definitions from './definitions.json' with { type: 'json' };
 import { mushroom_light_init_fn, mushroom_light2_init_fn } from '@dontstarve-web/animation/prefabskin';
 import {
     AnimatedBuildingPlacement,
-    type AnimatedBuildingBuiltContext,
     type AnimatedBuildingDefinition,
+    type AnimatedBuildingEventContext,
     type AnimatedBuildingInteractionChange,
 } from './animatedBuildingPlacement';
 import type { WorldContext } from './worldContext';
@@ -46,11 +46,14 @@ function initializeWorkable(instance: PrefabInstance): void {
     instance.components.lootdropper = createStructureLootDropper(instance);
 }
 
-function onbuilt({ animation, onComplete }: AnimatedBuildingBuiltContext): void {
-    animation.playOnce('place', () => {
-        animation.start('idle');
-        onComplete();
-    });
+function onbuilt(inst: PrefabInstance): void {
+    inst.sprite.playOnce('place');
+    inst.sprite.pushAnimation('idle', false);
+}
+
+function oninit({ instance }: AnimatedBuildingEventContext): void {
+    initializeWorkable(instance);
+    instance.ListenForEvent('onbuilt', () => onbuilt(instance));
 }
 
 export const MUSHROOM_LIGHT_DEFINITIONS: Readonly<Record<MushroomLightId, AnimatedBuildingDefinition>> = {
@@ -58,15 +61,13 @@ export const MUSHROOM_LIGHT_DEFINITIONS: Readonly<Record<MushroomLightId, Animat
         ...definitions.animatedBuildings.mushroom_light,
         obstacleRadius: 0.25,
         skinInit: mushroom_light_init_fn,
-        oninit: ({ instance }) => initializeWorkable(instance),
-        onbuilt,
+        oninit,
     },
     mushroom_light2: {
         ...definitions.animatedBuildings.mushroom_light2,
         obstacleRadius: 0.4,
         skinInit: mushroom_light2_init_fn,
-        oninit: ({ instance }) => initializeWorkable(instance),
-        onbuilt,
+        oninit,
     },
 };
 

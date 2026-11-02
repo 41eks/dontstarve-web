@@ -5,7 +5,6 @@ import { prefabInstance, type PrefabInstance } from './prefabInstance';
 import definitions from './definitions.json' with { type: 'json' };
 import {
     AnimatedBuildingPlacement,
-    type AnimatedBuildingBuiltContext,
     type AnimatedBuildingDefinition,
     type AnimatedBuildingEventContext,
 } from './animatedBuildingPlacement';
@@ -15,7 +14,7 @@ import type { Group } from 'three';
 import { actionEntity } from './actionEntity';
 import { Prototyper } from '../../componets/src/prototyper';
 import { CreateTechTree } from '../../componets/src/techtree';
-import { WORLD_SCALE } from './standardcomponents';
+import { onloadBurnt, onsaveBurnt, WORLD_SCALE } from './standardcomponents';
 
 export const RESEARCH_LAB_IDS = [
     'researchlab',
@@ -46,9 +45,9 @@ function stopIdleSound(model: Group): void {
     idleSounds.delete(model);
 }
 
-function onbuilt({ animation, onComplete }: AnimatedBuildingBuiltContext): void {
-    animation.playOnce('place', onComplete);
-    (animation as SpriteState).pushAnimation('idle');
+function onbuilt(inst: PrefabInstance): void {
+    inst.sprite.playOnce('place');
+    inst.sprite.pushAnimation('idle', false);
 }
 
 function onturnon(id: ResearchLabId, { model, animation }: AnimatedBuildingEventContext): void {
@@ -101,7 +100,9 @@ function researchLabDefinition(id: ResearchLabId): AnimatedBuildingDefinition {
         researchlab3: { MAGIC: 3 }, researchlab4: { MAGIC: 2 },
     };
     return {
-        ...definitions.animatedBuildings[id], obstacleRadius: .4, onbuilt,
+        ...definitions.animatedBuildings[id], obstacleRadius: .4,
+        // MakeLargeBurnable(inst, nil, nil, true) and MakeLargePropagator.
+        burnable: { burnTime: 30, fxLevel: 4, propagator: 'large' },
         ...(id === 'researchlab4' ? { skinAnimState: RESEARCHLAB4_SKIN } : {}),
         oninit: (context) => {
             const workable = context.instance.components.workable = new Workable(context.instance);
@@ -121,6 +122,10 @@ function researchLabDefinition(id: ResearchLabId): AnimatedBuildingDefinition {
             prototyper.onturnon = () => onturnon(id, currentContext());
             prototyper.onturnoff = () => onturnoff(id, currentContext());
             inst.components.prototyper = prototyper;
+            const { instance } = context;
+            instance.ListenForEvent('onbuilt', () => onbuilt(instance));
+            instance.OnSave = onsaveBurnt;
+            instance.OnLoad = onloadBurnt;
         },
         ondispose: ({ model }) => {
             const inst = actionEntity(model, id);

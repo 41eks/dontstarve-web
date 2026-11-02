@@ -1,6 +1,7 @@
 import { COLLISION, type PhysicsState } from '../../componets/src/physicsState';
 import { releaseBuildingContainer } from './containers';
 import type { PrefabInstance } from './prefabInstance';
+import type { PlacementSaveRecord } from './saveRecord';
 
 /** World units per DST unit. */
 export { WORLD_SCALE } from './tile';
@@ -17,7 +18,7 @@ export interface PhysicsEntity { readonly physics: PhysicsState }
  */
 export function DefaultBurntStructureFn(inst: PrefabInstance): void {
     inst.addTag('burnt');
-    if (inst.components.burnable) inst.components.burnable.canlight = false;
+    inst.components.burnable!.canlight = false;
     inst.sprite.start('burnt');
     inst.PushEvent('burntup', undefined);
     inst.components.workable?.SetWorkLeft(1);
@@ -35,6 +36,16 @@ export function DefaultBurntStructureFn(inst: PrefabInstance): void {
     }
     inst.components.prototyper?.OnRemoveFromEntity();
     delete inst.components.prototyper;
+}
+
+/** The onsave of a burnable structure's prefab: a burning structure saves as burnt. */
+export function onsaveBurnt(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
+    if (inst.hasTag('burnt') || inst.components.burnable?.IsBurning()) (data.building ??= {}).burnt = true;
+}
+
+/** The onload of a burnable structure's prefab: data.burnt runs the burnable's onburnt. */
+export function onloadBurnt(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
+    if (data.building?.burnt) inst.components.burnable!.onburnt?.(inst);
 }
 
 /**

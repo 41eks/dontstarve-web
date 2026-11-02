@@ -1,12 +1,10 @@
 import { Workable } from '../../componets/src/workable';
 import { createStructureLootDropper } from './structureLoot';
 import { prefabInstance, type PrefabInstance } from './prefabInstance';
-import type * as THREE from 'three';
 import definitions from './definitions.json' with { type: 'json' };
 import { firepit_init_fn } from '@dontstarve-web/animation/prefabskin';
 import {
     AnimatedBuildingPlacement,
-    type AnimatedBuildingBuiltContext,
     type AnimatedBuildingDefinition,
     type AnimatedBuildingEventContext,
 } from './animatedBuildingPlacement';
@@ -19,6 +17,7 @@ import type { WorkInst } from '../../componets/src/workable';
 import { CAMPFIREFIRE_ARCHIVE, CAMPFIREFIRE_ID, CampfireFire } from './campfirefire';
 import { PlaySound } from './sound';
 import type { SpriteResources } from '@dontstarve-web/display';
+import type { PlacementSaveRecord } from './saveRecord';
 
 export const FIRE_PIT_ID = 'firepit' as const;
 export type FirePitId = typeof FIRE_PIT_ID;
@@ -146,14 +145,24 @@ class FirePit {
     }
 }
 
-const firepitOf = (model: THREE.Object3D): FirePit => model.userData.firepit;
+interface FirePitInstance extends PrefabInstance { firepit: FirePit }
+const firepitOf = (inst: PrefabInstance): FirePit => (inst as FirePitInstance).firepit;
 
-function onbuilt({ animation, model, onComplete }: AnimatedBuildingBuiltContext): void {
-    animation.playOnce('place', () => {
-        animation.start('idle');
-        onComplete();
-    });
-    PlaySound(ADD_FUEL_SOUND, model.position);
+function onsave(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
+    const firepit = firepitOf(inst), fueled = firepit.fueled.OnSave();
+    if (fueled || firepit.queued_charcoal) data.firepit = { ...(fueled ? { fueled } : {}), ...(firepit.queued_charcoal ? { queued_charcoal: true as const } : {}) };
+}
+
+function onload(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
+    const saved = data.firepit, firepit = firepitOf(inst);
+    if (saved?.queued_charcoal) firepit.queued_charcoal = true;
+    if (saved?.fueled) firepit.fueled.OnLoad(saved.fueled);
+}
+
+function onbuilt(inst: PrefabInstance): void {
+    inst.sprite.playOnce('place');
+    inst.sprite.pushAnimation('idle', false);
+    PlaySound(ADD_FUEL_SOUND, inst.position);
 }
 
 function onworked(inst: PrefabInstance): void {
@@ -173,29 +182,24 @@ export const FIRE_PIT_DEFINITION: AnimatedBuildingDefinition = {
     obstacleRadius: 0.3,
     fxSources: sprites => [campfireFireSource(sprites)],
     skinInit: firepit_init_fn,
-    oninit: context => { context.model.userData.firepit = new FirePit(context); },
-    onbuilt,
-    onupdate: ({ model }, dt) => {
-        const firepit = firepitOf(model);
+    oninit: context => {
+        const { instance } = context;
+        (instance as FirePitInstance).firepit = new FirePit(context);
+        instance.ListenForEvent('onbuilt', () => onbuilt(instance));
+        instance.OnSave = onsave;
+        instance.OnLoad = onload;
+    },
+    onupdate: ({ instance }, dt) => {
+        const firepit = firepitOf(instance);
         firepit.ownScheduler?.advance(dt);
         firepit.burnable.UpdateFX(dt);
     },
-    onreskin: ({ model, skinId }) => {
-        const firepit = firepitOf(model);
+    onreskin: ({ instance, skinId }) => {
+        const firepit = firepitOf(instance);
         firepit.setSkin(skinId);
         firepit.restart();
     },
-    ondispose: ({ model }) => firepitOf(model).dispose(),
-    onrestore: ({ model }, components) => {
-        const saved = components.firepit, firepit = firepitOf(model);
-        if (saved?.queued_charcoal) firepit.queued_charcoal = true;
-        if (saved?.fueled) firepit.fueled.OnLoad(saved.fueled);
-    },
-    exportComponents: ({ model }) => {
-        const firepit = firepitOf(model), fueled = firepit.fueled.OnSave();
-        return fueled || firepit.queued_charcoal
-            ? { firepit: { ...(fueled ? { fueled } : {}), ...(firepit.queued_charcoal ? { queued_charcoal: true as const } : {}) } } : {};
-    },
+    ondispose: ({ instance }) => firepitOf(instance).dispose(),
 };
 
 export class FirePitPlacement extends AnimatedBuildingPlacement<FirePitId> {

@@ -6,7 +6,6 @@ import { createEffect, createSignal, WorldContentKey, type WorldContentSignal, t
 import { moondial_init_fn } from '@dontstarve-web/animation/prefabskin';
 import definitions from './definitions.json' with { type: 'json' };
 import {
-    type AnimatedBuildingBuiltContext,
     type AnimatedBuildingDefinition,
     type AnimatedBuildingEventContext,
 } from './animatedBuildingPlacement';
@@ -131,9 +130,9 @@ class Moondial {
         this.after(9, () => this.playSound(SOUND.water));
     }
 
-    placed(onComplete: () => void): void {
+    placed(): void {
         this.exit();
-        this.sprite.playOnce(this.phaseAnimation('place'), () => { this.idle(); onComplete(); });
+        this.sprite.playOnce(this.phaseAnimation('place'), () => this.idle());
         this.after(5, () => this.playSound(SOUND.craft));
         this.after(7, () => { if (this.phase !== 'new') this.playSound(SOUND.water); });
     }
@@ -173,8 +172,8 @@ export const MOONDIAL_DEFINITION: AnimatedBuildingDefinition = {
         workable.SetOnWorkCallback(onworked);
         workable.SetOnFinishCallback(onhammered);
         context.instance.components.lootdropper = createStructureLootDropper(context.instance);
-        (context.instance as MoondialInstance).moondial = new Moondial(context);
+        const moondial = (context.instance as MoondialInstance).moondial = new Moondial(context);
+        context.instance.ListenForEvent('onbuilt', () => moondial.placed());
     },
-    onbuilt: (context: AnimatedBuildingBuiltContext) => moondialOf(context.model).placed(context.onComplete),
     ondispose: ({ model }) => moondialOf(model).dispose(),
 };

@@ -140,7 +140,7 @@ describe('DST building skins', () => {
     const placement = new AnimatedBuildingPlacement(world, { researchlab4: RESEARCH_LAB_DEFINITIONS.researchlab4 }, () => true);
     try {
       const model = await placement.spawnFromSave('researchlab4', { id: 'lab:hat', transform: { position: [3, 0, 4], rotationY: 0 },
-        components: { building: { state: 'idle', skinId: 'researchlab4_chef' } } });
+        components: { building: { skinId: 'researchlab4_chef' } } });
       const sprite = prefabInstance(model)!.sprite;
       const hat = () => {
         const declared = sprite.sprite.peek().appearance.get('anim-state');
@@ -217,7 +217,7 @@ describe('DST building skins', () => {
     expect(consume).toHaveBeenCalledWith(prefabId);
     for (let frame = 0; frame < 100; frame++) placement.update(0.1);
     const record = placement.exportRecords()[0].record;
-    expect(record.components.building).toEqual({ state: definition.container ? 'closed' : 'idle', skinId });
+    expect(record.components.building).toEqual({ skinId });
     expect(record.transform.position).toEqual([3, 0, 4]);
     const restored = await placement.spawnFromSave(prefabId, record as PlacementSaveRecord);
     if (skinInit) expect(skinInit).toHaveBeenCalledTimes(2);
@@ -233,7 +233,7 @@ describe('DST building skins', () => {
       camera: new THREE.PerspectiveCamera(), renderer: { domElement: new EventTarget() } } as unknown as WorldContext;
     const placement = new AnimatedBuildingPlacement(world, { researchlab4: RESEARCH_LAB_DEFINITIONS.researchlab4 }, () => true);
     const model = placement.spawnFromSave('researchlab4', { id: 'lab:signal', transform: { position: [3, 0, 4], rotationY: 0 },
-      components: { building: { state: 'idle' } } });
+      components: { building: {} } });
     await prefabDisplay(model)!.artLoaded();
     const signal = prefabInstance(model)!.sprite.skinId;
     const changes: unknown[] = [];
@@ -270,7 +270,7 @@ describe('DST building skins', () => {
       tickingarea: () => createMemo(() => awake.get()) } as unknown as WorldContext;
     const placement = new AnimatedBuildingPlacement(world, { researchlab4: RESEARCH_LAB_DEFINITIONS.researchlab4 }, () => true);
     const model = placement.spawnFromSave('researchlab4', { id: 'lab:resident', transform: { position: [3, 0, 4], rotationY: 0 },
-      components: { building: { state: 'idle' } } });
+      components: { building: {} } });
     const meshes = () => { let count = 0; model.traverse(object => { if (object instanceof THREE.Mesh) count++; }); return count; };
     const tick = () => new Promise(resolve => setTimeout(resolve, 0));
     await prefabDisplay(model)!.artLoaded();

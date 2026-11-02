@@ -9,7 +9,6 @@ import definitions from './definitions.json' with { type: 'json' };
 import { sculptingtable_init_fn } from '@dontstarve-web/animation/prefabskin';
 import type { AnimState } from '@dontstarve-web/animation/animState';
 import {
-    type AnimatedBuildingBuiltContext,
     type AnimatedBuildingDefinition,
     type AnimatedBuildingEventContext,
 } from './animatedBuildingPlacement';
@@ -75,13 +74,24 @@ function giveItem(model: THREE.Group, itemname: SculptableMaterial): void {
     prefabInstance(model)!.components.prototyper!.SetTechLevel('SCULPTING', 2);
 }
 
-function onbuilt({ animation, model, onComplete }: AnimatedBuildingBuiltContext): void {
+function onbuilt(inst: PrefabInstance, model: THREE.Group): void {
     playTableSound(model, PLACE_SOUND);
-    animation.playOnce('place', onComplete);
-    animation.pushAnimation('idle', false);
+    inst.sprite.playOnce('place');
+    inst.sprite.pushAnimation('idle', false);
 }
 
 function oninit({ model, instance, animState }: AnimatedBuildingEventContext): void {
+    instance.ListenForEvent('onbuilt', () => onbuilt(instance, model));
+    // onsave: data.itemname = caninteractwith and product or nil.
+    instance.OnSave = (_inst, data) => {
+        const { pickable } = stateOf(model);
+        if (pickable.canInteractWith && pickable.product) data.sculptingtable = { itemname: pickable.product };
+    };
+    // onload: giveitem restores the held block.
+    instance.OnLoad = (_inst, data) => {
+        const itemname = data.sculptingtable?.itemname;
+        if (itemname !== undefined && isSculptableMaterial(itemname)) giveItem(model, itemname);
+    };
     const workable = instance.components.workable = new Workable(instance);
     workable.SetWorkAction('HAMMER');
     workable.SetWorkLeft(4);
@@ -153,7 +163,6 @@ export const SCULPTING_TABLE_DEFINITION: AnimatedBuildingDefinition = {
     ...definitions.animatedBuildings.sculptingtable,
     obstacleRadius: 0.4,
     skinInit: sculptingtable_init_fn,
-    onbuilt,
     oninit,
     ondispose: ({ model, instance }) => {
         instance.components.prototyper?.OnRemoveFromEntity();
@@ -162,15 +171,5 @@ export const SCULPTING_TABLE_DEFINITION: AnimatedBuildingDefinition = {
         sounds.clear();
         pickable.dispose();
         trader.dispose();
-    },
-    // onload: giveitem restores the held block.
-    onrestore: ({ model }, components) => {
-        const itemname = components.sculptingtable?.itemname;
-        if (itemname !== undefined && isSculptableMaterial(itemname)) giveItem(model, itemname);
-    },
-    // onsave: data.itemname = caninteractwith and product or nil.
-    exportComponents: ({ model }) => {
-        const { pickable } = stateOf(model);
-        return pickable.canInteractWith && pickable.product ? { sculptingtable: { itemname: pickable.product } } : {};
     },
 };

@@ -27,7 +27,7 @@ it('cooks with source food layers, resumes saved progress and preserves the prod
   const changed = vi.fn();
   const placement = new AnimatedBuildingPlacement(world, { cookpot: COOK_POT_DEFINITION }, () => true, changed);
   const model = await placement.spawnFromSave('cookpot', { id: 'pot:feed',
-    transform: { position: [1, 0, 2], rotationY: 0 }, components: { building: { state: 'closed', skinId: 'cookpot_candy' } } });
+    transform: { position: [1, 0, 2], rotationY: 0 }, components: { building: { skinId: 'cookpot_candy' } } });
   const animation = prefabInstance(model)!.sprite as TransientSpriteAnimationController;
   expect(performRummageAction(findActionEntity(model) as unknown as RummageTarget, world.player)).toBe(true);
   expect(changed).toHaveBeenLastCalledWith({ buildId: 'cookpot', model, isOpen: true });
@@ -86,7 +86,7 @@ it('cooks with source food layers, resumes saved progress and preserves the prod
   const full = await restoredPlacement.spawnFromSave('cookpot', fullRecord);
   expect(prefabInstance(full)!.sprite.currentAnimation).toBe('idle_full');
   const high = await restoredPlacement.spawnFromSave('cookpot', { id: 'pot:kabobs',
-    transform: { position: [4, 0, 2], rotationY: 0 }, components: { building: { state: 'closed' },
+    transform: { position: [4, 0, 2], rotationY: 0 }, components: { building: {},
       stewer: { product: 'kabobs', phase: 'done', remainingSeconds: 0 } } });
   const ordinaryFood = await loadBuild('cook_pot_food.zip', '/dst/data/anim');
   expect(findImage(ordinaryFood.build, smallHash('kabobs'), 0)).toBeDefined();
