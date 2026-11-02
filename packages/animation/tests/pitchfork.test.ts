@@ -1,3 +1,4 @@
+import { advancePlayer } from './playerVisual';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -23,7 +24,7 @@ beforeEach(() => {
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 function advance(animation: WilsonAnimationController, frames: number) {
-  for (let i = 0; i < frames; i++) animation.update(1 / 60);
+  for (let i = 0; i < frames; i++) advancePlayer(animation, 1 / 60);
 }
 
 describe('pitchfork source art and TERRAFORM timing', () => {

@@ -12,7 +12,7 @@ import { animStateDeclarations, type AppearanceJson, type ClipJson, type NamedSp
 import { smallHash, type ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
 import type { SpriteArtSource, SpriteSkin } from '@dontstarve-web/animation/sprite';
 import { mergeAnimStates, resolveAnimState, type AnimStateArt, type AnimStateJson } from '@dontstarve-web/animation/animState';
-import { facingFromRotation, selectsFacing } from '@dontstarve-web/animation/facing';
+import { facingFromRotation, fourFacingFromRotation, sixFacingFromRotation, selectsFacing } from '@dontstarve-web/animation/facing';
 
 /** active: drawn and in the scene; asleep: nothing drawn and out of the scene; removed: everything released. */
 export type PrefabStatus = 'active' | 'asleep' | 'removed';
@@ -82,6 +82,8 @@ export class PrefabDisplay {
   /** Archives the AnimState names that this display is loading. */
   private readonly loadingArt = new Set<string>();
   private dressedVersion = -1;
+  private frameSource?: { declaration: NonNullable<SpriteJson['frameSource']>; progress: ReadonlySignal<number | undefined>; stop(): void };
+  private progressFrame?: { clip: ClipJson; frame: number; art: number };
   /** Whether the drawn sprite was given an AnimState, so that removing the last declaration clears it. */
   private animStateDressed = false;
   /** The AnimState declarations this display follows, by appearance key, with the snapshot of each it last drew. */
@@ -106,7 +108,7 @@ export class PrefabDisplay {
   private readonly onAdded = () => { if (this.asleep) this.sleep(); };
   // What the controller has been given, so that each snapshot only sends what changed.
   private applied: { clip: ClipJson | undefined; queue: number; frame?: SpriteJson['frame']; transient?: SpriteJson['transient'];
-    image?: number; facingImages?: SpriteJson['facingImages']; facing?: number; facingRotation?: number; mirrored?: boolean; colour?: readonly number[]; opacity?: number; paused?: boolean; erosion?: number; ground?: SpriteJson['ground']; meshOrder?: number; depthOffset?: boolean;
+    image?: number; facingImages?: SpriteJson['facingImages']; facing?: number; facingRotation?: number; facingMode?: SpriteJson['facingMode']; mirrored?: boolean; colour?: readonly number[]; opacity?: number; paused?: boolean; playbackRate?: number; erosion?: number; ground?: SpriteJson['ground']; meshOrder?: number; depthOffset?: boolean;
     skinId?: string; source?: SpriteJson['source']; tint?: SpriteJson['tint']; appearance: ReadonlyMap<string, AppearanceJson> };
 
   constructor(options: PrefabDisplayOptions) {
@@ -292,15 +294,43 @@ export class PrefabDisplay {
   private applyFacing(json: SpriteJson): void {
     if (json.facingRotation !== undefined && this.facing) {
       const direction = this.cameraDirection.set(0, 0, -1).applyQuaternion(this.facing);
-      const heading = THREE.MathUtils.radToDeg(Math.atan2(-direction.z, -direction.x));
-      const facing = facingFromRotation(json.facingRotation, heading);
+      const character = json.facingMode === 4 || json.facingMode === 6;
+      const heading = THREE.MathUtils.radToDeg(Math.atan2(character ? direction.z : -direction.z, -direction.x));
+      const facing = (json.facingMode === 4 ? fourFacingFromRotation
+        : json.facingMode === 6 ? sixFacingFromRotation : facingFromRotation)(character ? -json.facingRotation : json.facingRotation, heading);
       const source = this.resolveSource(json.source);
       const clips = source?.animations.animations.filter(clip => clip.name === json.clip.name && clip.bankHash === source.bank);
       const clip = clips?.find(clip => clip.facing === facing) ?? clips?.find(clip => selectsFacing(clip.facing, facing).matches);
       const image = json.facingImages && [...json.facingImages].find(([mask]) => (mask & facing) !== 0)?.[1];
       if (image !== undefined) this.engine.showImage(image);
-      this.engine.setFacing(facing, clip ? selectsFacing(clip.facing, facing).flipped : false);
+      this.engine.setFacing(facing, clip ? selectsFacing(clip.facing, facing).flipped : character && (facing === 4 || facing === 32 || facing === 128));
     } else if (json.facing !== undefined) this.engine.setFacing(json.facing, json.mirrored);
+  }
+
+  /** Follow a declared pose input, with subscriptions owned by this display. */
+  private followFrameSource(declaration: SpriteJson['frameSource']): void {
+    if (this.frameSource?.declaration === declaration) return;
+    this.frameSource?.stop(); this.frameSource = undefined;
+    if (!declaration) return;
+    const cleanups: (() => void)[] = [];
+    const active = createMemo(() => this.status.get() === 'active');
+    cleanups.push(() => active.dispose());
+    const progress = watchSignal(declaration.progress, stop => cleanups.push(stop), active);
+    this.frameSource = { declaration, progress, stop: () => cleanups.splice(0).forEach(stop => stop()) };
+    createRenderEffect(() => { progress.get(); this.applyFrameSource(this.json.peek()); });
+  }
+
+  private applyFrameSource(json: SpriteJson, fresh = false): void {
+    const progress = json.frameSource?.name === json.clip.name ? this.frameSource?.progress.peek() : undefined;
+    const paused = json.paused === true || progress !== undefined;
+    if (fresh || paused !== this.applied.paused) { this.applied.paused = paused; this.engine.setPaused?.(paused); }
+    if (progress === undefined || !this.engine.loaded || this.engine.currentAnimation !== json.clip.name) return;
+    const frame = this.frameIndex({ at: THREE.MathUtils.clamp(progress, 0, 1) });
+    if (frame === undefined) return;
+    const art = this.engine.art.peek();
+    if (!fresh && this.progressFrame?.clip === json.clip && this.progressFrame.frame === frame && this.progressFrame.art === art) return;
+    this.progressFrame = { clip: json.clip, frame, art };
+    this.engine.setFrame(frame);
   }
 
   private applyStatus(status: PrefabStatus): void {
@@ -325,11 +355,14 @@ export class PrefabDisplay {
 
   /** Applying a snapshot twice is a no-op, so the effect and the frame can both bring the sprite up to date. */
   private sync(): void {
-    if (!this.disposed) this.applySprite(this.json.peek());
+    if (this.disposed) return;
+    const json = this.json.peek();
+    this.applySprite(json);
   }
 
   private applySprite(json: SpriteJson): void {
     const { engine: controller, applied, state } = this;
+    this.followFrameSource(json.frameSource);
     if (json.visible !== undefined) this.model.visible = json.visible;
     const source = this.resolveSource(json.source);
     if (json.source && !source) return;
@@ -359,15 +392,16 @@ export class PrefabDisplay {
     }
     if (json.transient !== applied.transient) { applied.transient = json.transient; if (json.transient) controller.playTransient(json.transient.name); }
     if (json.image !== applied.image) { applied.image = json.image; if (json.image !== undefined) controller.showImage(json.image); }
-    if (json.facing !== applied.facing || json.mirrored !== applied.mirrored || json.facingRotation !== applied.facingRotation || json.facingImages !== applied.facingImages) {
-      applied.facing = json.facing; applied.mirrored = json.mirrored; applied.facingRotation = json.facingRotation;
+    if (json.facing !== applied.facing || json.mirrored !== applied.mirrored || json.facingRotation !== applied.facingRotation || json.facingMode !== applied.facingMode || json.facingImages !== applied.facingImages) {
+      applied.facing = json.facing; applied.mirrored = json.mirrored; applied.facingRotation = json.facingRotation; applied.facingMode = json.facingMode;
       applied.facingImages = json.facingImages;
       this.applyFacing(json);
     }
     if (json.colour !== applied.colour) { applied.colour = json.colour; if (json.colour) controller.setColour(json.colour); }
     if (json.opacity !== applied.opacity) { applied.opacity = json.opacity; if (json.opacity !== undefined) controller.setOpacity(json.opacity); }
     if (json.tint !== applied.tint) { applied.tint = json.tint; if (json.tint) controller.setTint?.(json.tint); }
-    if (json.paused !== applied.paused) { applied.paused = json.paused; if (json.paused !== undefined) controller.setPaused?.(json.paused); }
+    if (json.playbackRate !== applied.playbackRate) { applied.playbackRate = json.playbackRate; controller.setPlaybackRate?.(json.playbackRate ?? 1); }
+    this.applyFrameSource(json);
     if (json.erosion !== applied.erosion) { applied.erosion = json.erosion; if (json.erosion !== undefined) controller.setErosion?.(json.erosion); }
     if (json.ground !== applied.ground) { applied.ground = json.ground; if (json.ground) controller.setGround?.(json.ground.renderOrder, json.ground.flat); }
     if (json.meshOrder !== applied.meshOrder) { applied.meshOrder = json.meshOrder; if (json.meshOrder !== undefined) controller.setMeshOrder?.(json.meshOrder); }
@@ -413,7 +447,8 @@ export class PrefabDisplay {
     if (json.colour) controller.setColour(json.colour);
     if (json.opacity !== undefined) controller.setOpacity(json.opacity);
     if (json.tint) controller.setTint?.(json.tint);
-    if (json.paused !== undefined) controller.setPaused?.(json.paused);
+    controller.setPlaybackRate?.(json.playbackRate ?? 1);
+    this.applyFrameSource(json, fresh);
     if (json.erosion !== undefined) controller.setErosion?.(json.erosion);
     if (json.ground) controller.setGround?.(json.ground.renderOrder, json.ground.flat);
     if (json.meshOrder !== undefined) controller.setMeshOrder?.(json.meshOrder);
@@ -648,6 +683,7 @@ export class PrefabDisplay {
     this.model.removeEventListener('added', this.onAdded);
     for (const stop of this.cleanups.splice(0)) stop();
     this.stopAnimStates();
+    this.frameSource?.stop(); this.frameSource = undefined;
     this.follower.dispose();
     this.fx.dispose();
     this.state.bind(undefined);

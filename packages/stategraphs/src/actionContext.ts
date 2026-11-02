@@ -46,17 +46,6 @@ export interface ActionLocomotor {
 }
 
 /**
- * The player inst as the action controllers reach it. Like Lua's PlayerController, they push a
- * BufferedAction onto `stategraph` (EntityScript:PushBufferedAction), read it back through
- * `isPerformingAction` and cancel it through `cancelAction`; the stategraph chooses the state.
- */
-export interface ActionPerformer {
-  readonly stategraph: WilsonStateGraph;
-  cancelEmote(): void;
-  setFacing(facing: 'up' | 'down' | 'side', mirrored?: boolean): void;
-}
-
-/**
  * Browser admission for hand-tool requests (PlayerController has no such rule): a spell cast other
  * than reskin_tool's veryquickcast, or a bug-net swing, keeps the hand until it ends.
  */

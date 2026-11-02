@@ -209,3 +209,45 @@ it('draws AnimState slots over the entity\'s own declaration in the order they w
   sprite.declareAnimState('hand', undefined); sprite.declareAnimState('body', undefined);
   expect([hidden('ARM_carry'), hidden('ARM_normal'), swapBody()]).toEqual([true, false, 'base_body.zip']);
 });
+
+it('subscribes to declared direction and pose signals, preserving the clip through camera turns and releasing pose subscriptions', async () => {
+  let name = 'jump';
+  const controller = { get currentAnimation() { return name; }, numFrames: 20,
+    start: vi.fn((value: string) => { name = value; }), update: vi.fn(),
+    setFacing: vi.fn(), setFrame: vi.fn(), setPaused: vi.fn(), setPlaybackRate: vi.fn(),
+  };
+  const { instance, display } = createPrefabEntity('posed', {
+    create: () => { const sprite = new THREE.Group(); sprite.add(new THREE.Group()); sprite.userData.animationController = controller; return sprite; },
+    release: sprite => sprite.removeFromParent(),
+  }, { name: 'jump', billboard: true });
+  const progress = createSignal<number | undefined>(.25);
+  try {
+    instance.sprite.setFacingRotation(0, 4);
+    instance.sprite.setFrameSource({ name: 'jump', progress });
+    await tick();
+    const json = instance.sprite.sprite.peek();
+    display.update(0, new THREE.Quaternion());
+    expect(controller.setFacing).toHaveBeenLastCalledWith(1, false);
+    expect(controller.setFrame).toHaveBeenLastCalledWith(5);
+    expect(controller.setPaused).toHaveBeenLastCalledWith(true);
+    progress.set(.75);
+    expect(controller.setFrame).toHaveBeenLastCalledWith(15);
+    display.update(0, new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI));
+    expect(controller.setFacing).toHaveBeenLastCalledWith(4, true);
+    expect(instance.sprite.sprite.peek()).toBe(json);
+    controller.start.mockClear();
+    instance.sprite.setFacingRotation(90, 6);
+    await tick();
+    expect(controller.setFacing).toHaveBeenLastCalledWith(64, false);
+    expect(controller.start).not.toHaveBeenCalled();
+    instance.sprite.start('walk');
+    await tick();
+    expect(controller.setPaused).toHaveBeenLastCalledWith(false);
+    const frames = controller.setFrame.mock.calls.length;
+    progress.set(.5);
+    expect(controller.setFrame.mock.calls.length).toBe(frames);
+    display.dispose();
+    progress.set(.9);
+    expect(controller.setFrame.mock.calls.length).toBe(frames);
+  } finally { instance.remove(); display.dispose(); }
+});

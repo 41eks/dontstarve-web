@@ -9,9 +9,8 @@ import { CHARACTER_COLLISION_MASK, WORLD_SCALE } from './standardcomponents';
 import { COLLISION, type PhysicsState } from '../../componets/src/physicsState';
 import { Wortox, type WortoxSave } from './wortox';
 import { isGroundTargetBlocked, placementEntities, type PlacementQuery } from './placementEntities';
-import { modelHasTag } from './prefabInstance';
+import { modelHasTag, prefabInstance } from './prefabInstance';
 import { wilsonPlayerInstance } from './player';
-import { facePoint } from '@dontstarve-web/stategraphs';
 
 export interface WortoxPlayerOptions {
   world: WorldContext;
@@ -114,8 +113,8 @@ export class WortoxPlayer {
   }
 
   private facePoint(position: THREE.Vector3): void {
-    const { world, animation } = this.options;
-    facePoint(animation, world.camera, world.player.position, position);
+    const { world } = this.options;
+    prefabInstance(world.player)?.sprite.facePoint(world.player.position, position);
   }
 
   private setPhysicsEnabled(enabled: boolean): void {

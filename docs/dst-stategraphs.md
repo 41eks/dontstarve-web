@@ -32,7 +32,7 @@
 
 `StateGraphInstance` 支持进入参数、每次更新末尾的 `onupdate(inst, dt)`、状态时间线、状态超时和 `onexit(inst, nextState)`。`statemem` 在旧状态退出后、新状态进入前重置。同一时刻先处理超时，再处理时间线；状态切换会丢弃旧状态尚未执行的时间线、超时和更新回调。执行回调发生状态切换后，剩余时间交给新状态。
 
-动画完成由独立的引擎计时任务触发 `animover` / `animqueueover`，不占用状态的 `setTimeout()`。动画时钟不随状态切换清零；替换动画会取消旧任务，保留动画队列则保留其进度。事件处理器保留源 `AnimDone()` 检查，避免提前发送完成事件跳过动画。
+`packages/animation` 的 `AnimationPlayback` 拥有逻辑动画队列，通过注入的游戏时间任务调度发出 `animover` / `animqueueover`，SG 订阅这些事件，不再持有动画完成任务或推进队列。循环每轮发出 `animover`，有限队列结束发出 `animqueueover`；事件回调替换播放时丢弃旧队列，停止或移除会取消待完成事件。完成事件不占用状态的 `setTimeout()`，不依赖 visual 驻留。实际 sprite 由 animation 自行累计播放时间，display 订阅 sprite 信号应用 clip、播放速率和相机相对朝向，不回读 SG 时钟或逐帧回写 frame。逻辑动画时钟不随状态切换清零；替换动画会取消旧任务，保留动画队列则保留其进度。事件处理器保留源 `AnimDone()` 检查，避免提前发送完成事件跳过动画。
 
 `applicationStates` 单独列出浏览器现有的 `walk`、`run`、`jump`、`build`、半速 `pickup`。它们保留浏览器的简化实现；其中 `run` 与源状态同名，但尚未移植 Lua 的 `run_start/run/run_stop` 生命周期。浏览器输入仍记录动作期间请求的移动/制作状态，普通动作完成后恢复请求，保留收尾动画时在收尾结束后恢复。
 

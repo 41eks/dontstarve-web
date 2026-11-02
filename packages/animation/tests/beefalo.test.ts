@@ -24,7 +24,7 @@ const lengths = new Map(Object.entries(CLIP_FRAMES).map(([name, frames]) => [nam
 function setup(random = () => 0) {
   const physics = new CANNON.World();
   // The drawn sprite: it follows the logical AnimState, which owns the queue and the clip timing.
-  const animation = { start: vi.fn(), playOnce: vi.fn(), update: vi.fn(), setFacing: vi.fn(), setBuildArchive: vi.fn(), setAwake: vi.fn() };
+  const animation = { start: vi.fn(), playOnce: vi.fn(), update: vi.fn(), setFacingRotation: vi.fn(), setBuildArchive: vi.fn(), setAwake: vi.fn() };
   const model = new THREE.Group();
   bindInstance(model, new PrefabInstance('beefalo', animation as never));
   let players: THREE.Vector3[] = [];
@@ -57,7 +57,7 @@ function setup(random = () => 0) {
         controller.update(0.1);
         body.position.x += body.velocity.x * 0.1;
         body.position.z += body.velocity.z * 0.1;
-        controller.sync(new THREE.Quaternion());
+        controller.sync();
       }
     },
   };
@@ -301,15 +301,13 @@ describe('wild beefalo behavior', () => {
     expect(s.controller.hairGrowthPending.peek()).toBe(false);
   });
 
-  it('uses six-direction art relative to camera heading while keeping the foot fixed', () => {
+  it('declares a six-faced world heading while keeping the foot fixed', () => {
     const s = setup();
-    s.controller.sync(new THREE.Quaternion());
-    expect(s.animation.setFacing).toHaveBeenLastCalledWith(1, false);
-    s.controller.sync(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI));
-    expect(s.animation.setFacing).toHaveBeenLastCalledWith(4, true);
+    expect(s.animation.setFacingRotation).toHaveBeenLastCalledWith(0, 6);
     s.setPlayers([new THREE.Vector3(1, 0, -10)]); s.tick(1);
-    expect(s.animation.setFacing).toHaveBeenLastCalledWith(16, false);
+    expect(s.animation.setFacingRotation).toHaveBeenCalledWith(expect.any(Number), 6);
     expect(s.model.position.y).toBe(0);
+    s.controller.dispose();
   });
 });
 

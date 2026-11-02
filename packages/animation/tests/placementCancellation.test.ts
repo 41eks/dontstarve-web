@@ -19,7 +19,7 @@ import { actionEntity, disposeActionEntity } from '../../prefab/src/actionEntity
 import { GroundItemAssets } from '../../prefab/src/groundItems';
 import { bindTestWorld } from './worldContentFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { bufferingPerformer } from './bufferingPerformer';
+import { bufferingStategraph } from './bufferingStategraph';
 
 vi.mock('../src/sprite', async importOriginal => ({ ...await importOriginal<typeof import('../src/sprite')>(), createAnimatedSpriteSource: vi.fn() }));
 vi.mock('../src/wallSprite', () => ({ createStaticSpriteFactory: vi.fn() }));
@@ -118,9 +118,9 @@ it('an accepted action cancels a paid preview through events and skips its own c
   const tool = actionTool('reskin_tool');
   const model = new THREE.Group(); world.scene.add(model);
   const target = actionEntity(model, 'icebox');
-  const animation = bufferingPerformer();
+  const animation = bufferingStategraph();
   // The player walks towards the target; the cast is never buffered in this test.
-  const controller = new PlayerController(world, animation.performer,
+  const controller = new PlayerController(world, animation.graph,
     { stop: vi.fn(), goToPoint: () => true, destination: undefined, PushAction: () => {} }, equipped, playerDoer(world.player));
   const cast = () => controller.DoAction(controller.createAction({ action: 'CASTSPELL', target, invobject: tool.entity })!);
   const cancel = vi.spyOn(controller, 'cancel');

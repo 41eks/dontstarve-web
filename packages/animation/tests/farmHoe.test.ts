@@ -1,3 +1,4 @@
+import { advancePlayer, facePlayer } from './playerVisual';
 import { SpatialIndex } from '../../prefab/src/spatialIndex';
 import { AnimState } from '../src/animState';
 import { smallHash } from '../src/animationAssets';
@@ -41,7 +42,7 @@ function setup(player = new THREE.Group()) {
   return { farm, turf, world, blockers };
 }
 function advance(animation: WilsonAnimationController, frames: number) {
-  for (let i = 0; i < frames; i++) animation.update(1 / 30);
+  for (let i = 0; i < frames; i++) advancePlayer(animation, 1 / 30);
 }
 
 it('resolves both source ground builds, the separate golden held build and invisible equipment', async () => {
@@ -125,7 +126,7 @@ it('takes TILL at the point, creates one hole at till_loop frame 11, and drops a
   const tool = actionTool('golden_farm_hoe');
   const lifecycle = getHandEquipmentDefinition('golden_farm_hoe')!.definition.createLifecycle!(tool.entity, { farmTillMap: farm } as never)!;
   lifecycle.onequip();
-  const controller = new PlayerController(world, animation, locomotor, hand, playerDoer(player));
+  const controller = new PlayerController(world, animation.stategraph, locomotor, hand, playerDoer(player));
   const point = new THREE.Vector3(3, 0, 3);
   vi.spyOn(PointerRaycaster.prototype, 'trackPointer').mockImplementation(() => {});
   vi.spyOn(PointerRaycaster.prototype, 'pickMouseTarget').mockReturnValue(undefined as never);
@@ -145,24 +146,24 @@ it('takes TILL at the point, creates one hole at till_loop frame 11, and drops a
     expect(locomotor.bufferedAction).toBeDefined();
     expect(farm.exportDecorRecords()).toEqual([]);
     walkIn();
-    await vi.waitFor(() => { animation.update(1 / 30); expect(animation.stategraph.stateName).toBe('till_start'); });
-    while (animation.stategraph.stateName === 'till_start') animation.update(1 / 30);
+    await vi.waitFor(() => { advancePlayer(animation, 1 / 30); expect(animation.stategraph.stateName).toBe('till_start'); });
+    while (animation.stategraph.stateName === 'till_start') advancePlayer(animation, 1 / 30);
     advance(animation, 10);
     expect(farm.exportDecorRecords()).toEqual([]);
-    animation.setFacing('side', true); animation.update(1 / 30);
+    facePlayer(animation, 'side', true); advancePlayer(animation, 1 / 30);
     expect(farm.exportDecorRecords()).toHaveLength(1);
-    animation.update(1 / 30);
+    advancePlayer(animation, 1 / 30);
     expect(PlaySound).toHaveBeenCalledWith('dontstarve/wilson/dig');
     expect(PlaySound).toHaveBeenCalledWith('dontstarve_DLC001/creatures/mole/emerge');
     advance(animation, 60);
     expect(farm.exportDecorRecords()).toHaveLength(1);
     const preserved = farm.exportDecorRecords();
     rightClick(); walkIn();
-    await vi.waitFor(() => { animation.update(1 / 30); expect(animation.stategraph.isPerformingAction('TILL')).toBe(true); });
+    await vi.waitFor(() => { advancePlayer(animation, 1 / 30); expect(animation.stategraph.isPerformingAction('TILL')).toBe(true); });
     window.dispatchEvent(Object.assign(new Event('keydown'), { code: 'Escape' })); advance(animation, 60);
     expect(farm.exportDecorRecords()).toEqual(preserved);
     rightClick(); walkIn();
-    await vi.waitFor(() => { animation.update(1 / 30); expect(animation.stategraph.isPerformingAction('TILL')).toBe(true); });
+    await vi.waitFor(() => { advancePlayer(animation, 1 / 30); expect(animation.stategraph.isPerformingAction('TILL')).toBe(true); });
     hand.set(null); await animation.setCarryItem(null); advance(animation, 60);
     expect(farm.exportDecorRecords()).toEqual(preserved);
   } finally { controller.dispose(); world.mouseActions.dispose(); lifecycle.onunequip(); farm.dispose(); }

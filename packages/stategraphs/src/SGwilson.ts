@@ -1,3 +1,4 @@
+import { AnimationPlayback } from '@dontstarve-web/animation/animationPlayback';
 import { BufferedAction } from './bufferedaction.ts';
 import type { BufferedActionObject } from './bufferedaction.ts';
 import { ActionHandler as DefineActionHandler, EventHandler, FRAMES, State as DefineState, StateGraphInstance, TimeEvent } from './stategraph.ts';
@@ -1495,20 +1496,27 @@ export class WilsonStateGraph {
   private bufferedAction: BufferedAction<WilsonAction> | null = null;
   private movementState: WilsonMovementState = 'idle';
   private crafting = false;
-  private clips: readonly WilsonAnimationClip[] = [];
-  private clipIndex = 0;
+  private readonly playback: AnimationPlayback<WilsonAnimationClip>;
   private clipStartedAt = 0;
   private emoteClips: readonly WilsonAnimationClip[] = [];
   private foodDrink = false;
   private activeAction: WilsonAction | null = null;
   private activeBufferedAction: BufferedAction<WilsonAction> | undefined;
   private activeInvobject: BufferedActionObject | undefined;
-  private cancelAnimation: (() => void) | undefined;
-  private animationCompleted = false;
 
   constructor(host: WilsonStateGraphHost) {
     this.host = host;
     this.sg = this.createGraph();
+    this.playback = new AnimationPlayback<WilsonAnimationClip>(clip => {
+      this.clipStartedAt = this.sg.elapsedTime;
+      if (this.stateName === 'idle' && clip.key === 'idle' && (this.crafting || this.movementState !== 'idle')) {
+        this.sg.goToState(this.crafting ? 'build' : this.movementState);
+        return 0;
+      }
+      return this.host.playAnimation(clip);
+    }, (seconds, complete) => this.sg.schedule(seconds, complete));
+    this.playback.on('animover', () => this.pushEvent('animover'));
+    this.playback.on('animqueueover', () => this.pushEvent('animqueueover'));
     this.sg.goToState('idle');
   }
 
@@ -1562,7 +1570,7 @@ export class WilsonStateGraph {
   }
 
   get stateName(): WilsonStateName { return this.sg.stateName; }
-  get animationClip(): WilsonAnimationClip { return this.clips[this.clipIndex]; }
+  get animationClip(): WilsonAnimationClip { return this.playback.current!; }
   get animationTime(): number { return Math.max(0, this.sg.elapsedTime - this.clipStartedAt); }
   get isOneShot(): boolean { return !['idle', 'walk', 'run', 'jump', 'build', 'emote'].includes(this.stateName); }
   get isCrafting(): boolean { return this.crafting; }
@@ -1592,12 +1600,12 @@ export class WilsonStateGraph {
 
   /** The entity is removed: no pending animation or buffered action may outlive it. */
   dispose(): void {
-    this.cancelAnimation?.(); this.cancelAnimation = undefined;
+    this.playback.stop();
     this.releaseAction();
     this.sg.dispose();
   }
 
-  get animationDone(): boolean { return this.animationCompleted; }
+  get animationDone(): boolean { return this.playback.done; }
 
   /** Browser action ownership is separate from Lua's state tags. */
   isPerformingAction(action: WilsonAction, invobjectPrefab?: string): boolean {
@@ -1629,48 +1637,15 @@ export class WilsonStateGraph {
     }
     const idle = { ...clip('idle', 'idle_loop'), loop: true };
     if (pushanim) {
-      this.clips = [...this.clips, idle];
+      this.playback.push([idle]);
     } else {
       this.playClips([idle]);
     }
   }
 
-  /** AnimState:PushAnimation: queue behind the clip in progress, or start at once when it has already finished. */
-  pushClips(clips: readonly WilsonAnimationClip[]): void {
-    if (this.animationCompleted) this.playClips(clips);
-    else this.clips = [...this.clips, ...clips];
-  }
-
-  playClips(clips: readonly WilsonAnimationClip[]): void {
-    this.clips = clips;
-    this.clipIndex = 0;
-    this.selectClip();
-  }
-
-  private selectClip(): void {
-    this.cancelAnimation?.();
-    this.animationCompleted = false;
-    this.clipStartedAt = this.sg.elapsedTime;
-    this.cancelAnimation = this.sg.schedule(this.host.playAnimation(this.animationClip), () => this.animationOver());
-  }
-
-  animationOver(): void {
-    this.animationCompleted = true;
-    const revision = this.sg.stateRevision;
-    this.pushEvent('animover');
-    if (this.sg.stateRevision !== revision) return;
-    if (this.clipIndex + 1 < this.clips.length) {
-      this.clipIndex++;
-      if (this.stateName === 'idle' && this.animationClip.key === 'idle'
-        && (this.crafting || this.movementState !== 'idle')) {
-        this.sg.goToState(this.crafting ? 'build' : this.movementState);
-      } else this.selectClip();
-    } else if (this.animationClip.loop) {
-      this.selectClip();
-    } else {
-      this.pushEvent('animqueueover');
-    }
-  }
+  /** AnimState owns the clip queue and publishes completion events to this graph. */
+  pushClips(clips: readonly WilsonAnimationClip[]): void { this.playback.push(clips); }
+  playClips(clips: readonly WilsonAnimationClip[]): void { this.playback.play(clips); }
 
   /**
    * inst:SetStateGraph("SGwilsonghost") from OnMakePlayerGhost. The stategraph is replaced, so pending actions, emotes and
@@ -1679,7 +1654,7 @@ export class WilsonStateGraph {
   becomeGhost(loading = false): void {
     if (this.ghost) return;
     this.ghost = true;
-    this.cancelAnimation?.(); this.cancelAnimation = undefined;
+    this.playback.stop();
     this.releaseAction();
     this.crafting = false;
     this.movementState = 'idle';
@@ -1699,7 +1674,7 @@ export class WilsonStateGraph {
   becomeAlive(state: WilsonStateName): void {
     if (!this.ghost) return;
     this.ghost = false;
-    this.cancelAnimation?.(); this.cancelAnimation = undefined;
+    this.playback.stop();
     this.releaseAction();
     this.crafting = false;
     this.movementState = 'idle';
@@ -1710,7 +1685,7 @@ export class WilsonStateGraph {
 
   /** SGwilsonghost idle/run: `if not inst.AnimState:IsCurrentAnimation("idle") then PlayAnimation("idle", true)`. */
   playGhostIdle(): void {
-    const current = this.clips[this.clipIndex];
+    const current = this.playback.current;
     if (current?.key !== 'ghost' || current.name !== 'idle') this.playClips([ghostClip('idle', true)]);
   }
 

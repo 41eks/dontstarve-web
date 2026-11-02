@@ -1,3 +1,4 @@
+import { advancePlayer } from './playerVisual';
 
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
@@ -27,7 +28,7 @@ import { DisposeSounds } from '../../prefab/src/sound';
 import { displayLightOverride } from '../../display/src/displaySprites';
 import { prefabDisplay } from '../../display/src/prefabDisplay';
 import { BufferedAction } from '../../stategraphs/src/bufferedaction';
-import { bufferingPerformer } from './bufferingPerformer';
+import { bufferingStategraph } from './bufferingStategraph';
 
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
@@ -46,7 +47,7 @@ function setupWorld() {
 }
 
 function advance(animation: WilsonAnimationController, frames: number) {
-  for (let frame = 0; frame < frames; frame++) animation.update(1 / 30);
+  for (let frame = 0; frame < frames; frame++) advancePlayer(animation, 1 / 30);
 }
 
 it('casts at source frame nine once and cancels before commitment on unequip or another action', async () => {
@@ -218,13 +219,13 @@ it('offers CASTSPELL on any entity, honors nomagic and fails an unskinnable or u
   const equipped = createEquipmentExistenceState('HANDS');
   const tool = actionTool('reskin_tool');
   equipped.set(tool);
-  const animation = bufferingPerformer();
+  const animation = bufferingStategraph();
   const fx = { play: vi.fn(), dispose: vi.fn() };
   const effects = { prepare: vi.fn(() => fx) };
   const lifecycle = createReskinToolLifecycle(tool.entity, effects);
   lifecycle.onequip();
   const doer = { hasTag: () => false, position: world.player.position, getPosition: () => world.player.position, components: {} };
-  const controller = new PlayerController(world, animation.performer,
+  const controller = new PlayerController(world, animation.graph,
     { stop: vi.fn(), goToPoint: vi.fn(() => true), destination: undefined, PushAction: (_action, arrive) => arrive() },
     equipped, doer as never, () => false);
   try {

@@ -12,7 +12,6 @@ import { WORLD_SCALE } from '../../prefab/src/tile';
 import * as CANNON from 'cannon-es';
 import { createEquipmentExistenceState } from '../../signals/src';
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
-import type { ActionPerformer } from '../../stategraphs/src/actionContext';
 import { getActionString } from '../../stategraphs/src/actions';
 import { TREASURE_CHEST_DEFINITION } from '../../prefab/src/treasurechest';
 import { COOK_POT_DEFINITION } from '../../prefab/src/cook_pot';
@@ -61,7 +60,7 @@ async function setup(definition = TREASURE_CHEST_DEFINITION, id = 'treasurechest
   // The player inst RUMMAGE opens the container for; SCENE.container needs its inventory.
   const doer = { hasTag: (tag: string) => tag === 'player', PushEvent: vi.fn(), getPosition: () => player.position,
     components: { inventory: { GetNumSlots: () => 15 } } };
-  const rummage = new PlayerController(world, { stategraph, cancelEmote() {}, setFacing() {} } as unknown as ActionPerformer,
+  const rummage = new PlayerController(world, stategraph,
     locomotor, createEquipmentExistenceState('HANDS'), doer as never);
   // The world publishes player snapshots; proximity effects run after the microtask.
   const distance = async (value: number) => {

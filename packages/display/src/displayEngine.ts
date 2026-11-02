@@ -41,6 +41,7 @@ export interface DisplayEngine {
   playTransient(name: string): void;
   setFrame(frame: number): void;
   setPaused?(paused: boolean): void;
+  setPlaybackRate?(rate: number): void;
   setSkin(skin: SpriteSkin | undefined): void;
   setArtSource?(source: SpriteArtSource): void;
   setAnimState?(state: ResolvedAnimState): void;

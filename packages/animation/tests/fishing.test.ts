@@ -1,3 +1,4 @@
+import { advancePlayer } from './playerVisual';
 import { getActionString } from '../../stategraphs/src/actions';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import { readFile } from 'node:fs/promises';
@@ -92,7 +93,7 @@ it('casts at a pond, waits for a bite, hooks, reels and lands a pondfish; a stra
   const doer = { hasTag: (tag: string) => tag === 'player', getPosition: () => player.position,
     PushEvent: (name: string, data: unknown) => animation.stategraph.pushEvent(name, data),
     sg: { HasStateTag: (tag: string) => animation.stategraph.hasStateTag(tag) } };
-  const playerController = new PlayerController(world, animation, locomotor, equipped, doer as never, () => false);
+  const playerController = new PlayerController(world, animation.stategraph, locomotor, equipped, doer as never, () => false);
   const pondEntity = () => findActionEntity(pond)!;
   const controller = {
     // EQUIPPED.fishingrod on the left button: FISH a pond, or REEL the one being fished (an instant action).
@@ -105,8 +106,8 @@ it('casts at a pond, waits for a bite, hooks, reels and lands a pondfish; a stra
     dispose: () => playerController.dispose(),
   };
   const fishable = () => (findActionEntity(pond).components as { fishable: Fishable }).fishable;
-  const advance = (frames: number) => { for (let i = 0; i < frames; i++) animation.update(1 / 30); };
-  const advanceUntil = (done: () => boolean) => { for (let i = 0; i < 300 && !done(); i++) animation.update(1 / 30); expect(done()).toBe(true); };
+  const advance = (frames: number) => { for (let i = 0; i < frames; i++) advancePlayer(animation, 1 / 30); };
+  const advanceUntil = (done: () => boolean) => { for (let i = 0; i < 300 && !done(); i++) advancePlayer(animation, 1 / 30); expect(done()).toBe(true); };
   try {
     expect(inventoryItemEquipmentKind('fishingrod')).toBe('hand');
     expect(inventoryItemMaxStack('fishingrod')).toBe(1);

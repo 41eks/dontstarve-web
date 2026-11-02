@@ -1,5 +1,6 @@
+import type { WilsonStateGraph } from './SGwilson.ts';
 import { bindActionCancellation } from './actionEvents.ts';
-import type { ActionPerformer, ActionLocomotor, ActionWorldContext } from './actionContext.ts';
+import type { ActionLocomotor, ActionWorldContext } from './actionContext.ts';
 import { BufferedAction, type BufferedActionObject } from './bufferedaction.ts';
 
 /** An inventory book: the BufferedAction invobject plus ACTIONS.READ.fn's reader:Read call. */
@@ -15,13 +16,13 @@ export class ReadActionController {
   private version = 0;
   private disposed = false;
   private readonly world: ActionWorldContext;
-  private readonly animation: ActionPerformer;
+  private readonly stategraph: WilsonStateGraph;
   private readonly locomotor: Pick<ActionLocomotor, 'stop'>;
   private readonly isInterrupting: () => boolean;
 
-  constructor(world: ActionWorldContext, animation: ActionPerformer,
+  constructor(world: ActionWorldContext, stategraph: WilsonStateGraph,
     locomotor: Pick<ActionLocomotor, 'stop'>, isInterrupting = () => false) {
-    this.world = world; this.animation = animation; this.locomotor = locomotor; this.isInterrupting = isInterrupting;
+    this.world = world; this.stategraph = stategraph; this.locomotor = locomotor; this.isInterrupting = isInterrupting;
     this.stopActionEvents = bindActionCancellation(world, this, 'read', () => this.cancel());
   }
 
@@ -36,18 +37,18 @@ export class ReadActionController {
     this.world.actionEvents?.emit('action:begin', { owner: this, action: 'READ' });
     const version = this.version;
     this.locomotor.stop();
-    return this.animation.stategraph.pushBufferedAction(new BufferedAction('READ',
+    return this.stategraph.pushBufferedAction(new BufferedAction('READ',
       () => version === this.version && source.isValid() && source.read(), undefined, { invobject: source.book }));
   }
 
   cancel(): void {
     this.version++;
-    this.animation.stategraph.cancelAction('READ');
+    this.stategraph.cancelAction('READ');
   }
 
   /** PlayerController input interrupts the book state only after it drops "busy". */
   update(): void {
-    if (this.animation.stategraph.isPerformingAction('READ') && !this.animation.stategraph.hasStateTag('busy') && this.isInterrupting()) this.cancel();
+    if (this.stategraph.isPerformingAction('READ') && !this.stategraph.hasStateTag('busy') && this.isInterrupting()) this.cancel();
   }
 
   dispose(): void {

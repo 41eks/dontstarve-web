@@ -1,3 +1,4 @@
+import { advancePlayer } from './playerVisual';
 import { playerDoer } from './playerDoer';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
@@ -25,7 +26,7 @@ import { updateMovement } from '../../../src/updatePlayerMovement';
 import { FIXED_TIMESTEP, MAX_SUBSTEPS } from '../../../src/physicsTiming';
 import type { PlayerBody } from '../../../src/types/Player';
 import { actionTool, netEntity } from './actionFixtures';
-import { bufferingPerformer } from './bufferingPerformer';
+import { bufferingStategraph } from './bufferingStategraph';
 import { createPickupInventory } from './pickupFixture';
 import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
 import { workTargets } from './workTargets';
@@ -40,7 +41,9 @@ afterEach(() => { vi.restoreAllMocks(); vi.clearAllMocks(); vi.unstubAllGlobals(
 
 /** A player with a picker, a real locomotor on the player's own position and a buffering stategraph. */
 function setup(tool: Parameters<typeof actionTool>[0]) {
-  const scene = new THREE.Scene(), player = new THREE.Group(), canvas = new EventTarget();
+  const scene = new THREE.Scene(), canvas = new EventTarget();
+  const { instance: playerInstance, display: playerDisplay } = createEmptyEntity('player');
+  const player = playerDisplay.model;
   const actionEvents = new EventEmitter<PlayerActionEvents>();
   const world = { player, scene, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     renderer: { domElement: canvas }, actionEvents } as unknown as ActionWorldContext;
@@ -50,9 +53,9 @@ function setup(tool: Parameters<typeof actionTool>[0]) {
   const hand = createEquipmentExistenceState('HANDS');
   const equipped = actionTool(tool);
   hand.set(equipped);
-  const animation = bufferingPerformer();
+  const animation = bufferingStategraph();
   let manual = false;
-  const controller = new PlayerController(world, animation.performer, locomotor, hand, playerDoer(player), () => manual);
+  const controller = new PlayerController(world, animation.graph, locomotor, hand, playerDoer(player), () => manual);
   vi.spyOn(PointerRaycaster.prototype, 'trackPointer').mockImplementation(() => {});
   const pick = vi.spyOn(PointerRaycaster.prototype, 'pickMouseTarget');
   const created: { remove(): void }[] = [];
@@ -74,9 +77,9 @@ function setup(tool: Parameters<typeof actionTool>[0]) {
     canvas.dispatchEvent(event);
     return event;
   };
-  return { world, player, locomotor, hand, equipped, animation, controller, target, click, actionEvents,
+  return { world, player, playerInstance, locomotor, hand, equipped, animation, controller, target, click, actionEvents,
     moveManually: () => { manual = true; },
-    dispose: () => { controller.dispose(); world.mouseActions!.dispose(); created.forEach(instance => instance.remove()); } };
+    dispose: () => { playerInstance.remove(); playerDisplay.dispose(); controller.dispose(); world.mouseActions!.dispose(); created.forEach(instance => instance.remove()); } };
 }
 
 describe('PlayerController', () => {
@@ -96,7 +99,7 @@ describe('PlayerController', () => {
       expect(s.animation.stategraph.pushBufferedAction).not.toHaveBeenCalled();
       s.player.position.x = 10 - 1.9; s.locomotor.update(16, 1 / 30);
       expect(s.animation.stategraph.pushBufferedAction).toHaveBeenCalledOnce();
-      expect(s.animation.setFacing).toHaveBeenCalled();
+      expect(s.playerInstance.sprite.sprite.peek().facingRotation).toBeCloseTo(0);
       expect(s.locomotor.bufferedAction).toBeUndefined();
       expect(s.equipped.entity.components.finiteuses.remaining).toBeUndefined();
       expect(s.animation.hit()).toBe(true);
@@ -254,12 +257,12 @@ describe('PlayerController with the Wilson stategraph', () => {
     const world = { player, scene, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
       renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
     const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body);
-    const controller = new PlayerController(world, animation, locomotor, inventory.handEquipment, playerDoer(player));
-    const advance = (frames: number) => { for (let i = 0; i < frames; i++) animation.update(1 / 30); };
+    const controller = new PlayerController(world, animation.stategraph, locomotor, inventory.handEquipment, playerDoer(player));
+    const advance = (frames: number) => { for (let i = 0; i < frames; i++) advancePlayer(animation, 1 / 30); };
     const mine = () => controller.createAction({ action: 'MINE', target: workTargets('MINE')[0].entity, invobject: tool })!;
     const begin = () => {
       expect(controller.DoAction(mine())).toBe(true);
-      while (animation.stategraph.stateName === 'mine_start') animation.update(1 / 30);
+      while (animation.stategraph.stateName === 'mine_start') advancePlayer(animation, 1 / 30);
     };
     try {
       await rocks.spawn('rock_flintless_low', new THREE.Vector3(1, 0, 0));
@@ -268,7 +271,7 @@ describe('PlayerController with the Wilson stategraph', () => {
       expect(locomotor.destination).toBeDefined();
       player.position.set(1, 0, 3); locomotor.update(16, 1 / 30);
       expect(animation.stategraph.stateName).toBe('mine_start');
-      while (animation.stategraph.stateName === 'mine_start') animation.update(1 / 30);
+      while (animation.stategraph.stateName === 'mine_start') advancePlayer(animation, 1 / 30);
       advance(6);
       expect(tool.components.finiteuses.remaining).toBeUndefined();
       expect(workTargets('MINE')[0].entity.components.workable!.GetWorkLeft()).toBe(2);
@@ -317,13 +320,13 @@ describe('PlayerController with the Wilson stategraph', () => {
     const hand = createEquipmentExistenceState('HANDS');
     const net = actionTool('bugnet');
     hand.set(net);
-    const controller = new PlayerController(world, animation, locomotor, hand, playerDoer(player));
+    const controller = new PlayerController(world, animation.stategraph, locomotor, hand, playerDoer(player));
     const move = updateMovement(camera, player, body, locomotor);
     try {
       expect(controller.DoAction(controller.createAction({ action: 'NET', target: butterfly, invobject: net.entity })!)).toBe(true);
       for (let frame = 0; frame < 100 && !captured.mock.calls.length; frame++) {
         move(16, 0.5);
-        animation.update(0.5);
+        advancePlayer(animation, 0.5);
         physics.step(FIXED_TIMESTEP, 0.5, MAX_SUBSTEPS);
         butterfly.transform.position.x += 4 * 0.1;
       }

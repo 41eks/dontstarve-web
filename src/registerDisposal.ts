@@ -139,7 +139,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
           player.position.clone().set(source.x, source.y, source.z))(received);
       });
       if (playerAnimation) {
-        const itemUse = new ItemUseActionController(view, playerAnimation, locomotor, () => {
+        const itemUse = new ItemUseActionController(view, playerAnimation.stategraph, locomotor, () => {
           const address = cursorSlotAddress(), entity = inventory.getEntity(address);
           if (!entity) return undefined;
           const skin = entity.skinId;
@@ -196,7 +196,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
           sleeper.dispose(); phase.dispose();
         } });
       }
-      const foodActions = playerAnimation ? new FoodActionController(view, playerAnimation, locomotor,
+      const foodActions = playerAnimation ? new FoodActionController(view, playerAnimation.stategraph, locomotor,
         playerInstance, isActionInterrupting) : undefined;
       if (foodActions) {
         frameControllers.push(foodActions);
@@ -222,10 +222,10 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         },
       };
       const readActions = playerAnimation
-        ? new ReadActionController(view, playerAnimation, locomotor, isActionInterrupting) : undefined;
+        ? new ReadActionController(view, playerAnimation.stategraph, locomotor, isActionInterrupting) : undefined;
       if (readActions) frameControllers.push(readActions);
       const playActions = playerAnimation
-        ? new PlayActionController(view, playerAnimation, locomotor, isActionInterrupting) : undefined;
+        ? new PlayActionController(view, playerAnimation.stategraph, locomotor, isActionInterrupting) : undefined;
       if (playActions) frameControllers.push(playActions);
       const playInventoryInstrument = (slot: SlotAddress, entity: ItemEntity) => {
         const isValid = () => !entity.isRemoved && inventory.getEntity(slot) === entity;
@@ -258,7 +258,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
       if (playerAnimation) {
         view.registerFrameTask = registerFrontTask;
         // playercontroller.lua: the picker's actions on any entity, buffered for the player.
-        const controller = new PlayerController(view, playerAnimation, locomotor, handEquipment, pickupDoer, isActionInterrupting);
+        const controller = new PlayerController(view, playerAnimation.stategraph, locomotor, handEquipment, pickupDoer, isActionInterrupting);
         playerInstance.components.playercontroller = controller;
         actionControllers.push(controller, { dispose() {
           if (playerInstance.components.playercontroller === controller) delete playerInstance.components.playercontroller;
@@ -302,14 +302,14 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
       }
       if (playerAnimation) {
 
-        const turfDeployment = new TurfDeployment(view, turfMap, playerAnimation, locomotor, () => {
+        const turfDeployment = new TurfDeployment(view, turfMap, playerAnimation.stategraph, locomotor, () => {
           const address = cursorSlotAddress(), entity = inventory.getEntity(address);
           if (!entity || !turfTileName(entity.prefab)) return undefined;
           const isValid = () => !entity.isRemoved && inventory.getEntity(address) === entity;
           return { entity, isValid, take: () => isValid() ? inventory.extract(address, 1, entity) ?? undefined : undefined,
             putBack: item => { if (!inventory.receiveAt(address, item)) inventory.GiveItem(item); } };
         }, isActionInterrupting);
-        const plantDeployment = new PlantDeployment(view, playerAnimation, locomotor, () => {
+        const plantDeployment = new PlantDeployment(view, playerAnimation.stategraph, locomotor, () => {
           const address = cursorSlotAddress(), entity = inventory.getEntity(address);
           if (!entity || !PLANTABLES[entity.prefab]) return undefined;
           const skinId = entity.skinId;

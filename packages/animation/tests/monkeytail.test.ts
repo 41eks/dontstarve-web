@@ -11,7 +11,6 @@ import { inventorySlotAddress, cursorSlotAddress } from '../../inventory/src';
 import { createSignal } from '../../signals/src';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
-import type { ActionPerformer } from '../../stategraphs/src/actionContext';
 import { ItemUseActionController, getItemUseActions } from '../../stategraphs/src/itemuse';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { EntityRegistry } from '../../../src/entityRegistry';
@@ -72,7 +71,7 @@ function setup() {
 
 function actor() {
   const graph = new WilsonStateGraph({ playAnimation: () => 1, playSound: () => {}, stopSound: () => {}, setCasting: () => {}, onStateChanged: () => {} });
-  const animation = { stategraph: graph, cancelEmote: vi.fn(), setFacing: vi.fn() } as unknown as ActionPerformer;
+  const animation = { stategraph: graph };
   const locomotor = { destination: undefined, goToPoint: vi.fn(() => true), stop: vi.fn() };
   return { graph, animation, locomotor };
 }
@@ -145,7 +144,7 @@ it('plants cursor-held roots and fertilizes at frame six, preserves cancellation
         putBack: (item: typeof entity) => { s.inventory.receiveAt(address, item); } };
     };
     const transplant = vi.fn((position: THREE.Vector3) => s.monkeytails.transplant(position));
-    deployment = new PlantDeployment(s.world, a.animation, a.locomotor, source, {
+    deployment = new PlantDeployment(s.world, a.animation.stategraph, a.locomotor, source, {
       plants: { monkeytail: { transplant } },
       canPlant: point => point.x >= 0,
     });
@@ -177,7 +176,7 @@ it('plants cursor-held roots and fertilizes at frame six, preserves cancellation
       return { entity, isValid: () => s.inventory.getEntity(cursorSlotAddress()) === entity && !entity.isRemoved,
         take: () => { const item = s.inventory.extract(cursorSlotAddress(), 1, entity); if (!item) return false; item.remove(); return true; } };
     };
-    fertilizing = new ItemUseActionController(s.world, a.animation, a.locomotor, fertilizerSource);
+    fertilizing = new ItemUseActionController(s.world, a.animation.stategraph, a.locomotor, fertilizerSource);
     expect(getItemUseActions(target.model, fertilizerSource()).some(candidate => candidate.action.action === 'FERTILIZE')).toBe(true);
     expect(fertilizing.request('FERTILIZE', target.entity! as never)).toBe(true);
     await new Promise(resolve => setTimeout(resolve, 0));

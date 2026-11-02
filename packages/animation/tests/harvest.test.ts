@@ -8,7 +8,7 @@ import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import { Stewer } from '../../componets/src/stewer';
 import { Locomotor } from '../../prefab/src/locomotor';
 import { WORLD_SCALE } from '../../prefab/src/tile';
-import type { ActionPerformer, ActionWorldContext } from '../../stategraphs/src/actionContext';
+import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
 import { EventEmitter } from '../../signals/src/EventEmitter';
 import { createEquipmentExistenceState } from '../../signals/src';
 import type { PlayerActionEvents } from '../../stategraphs/src/actionEvents';
@@ -30,7 +30,7 @@ it('walks to a finished pot, gives its product to the doer at the hit frame, and
   actionEntity(model, 'cookpot');
   stewer.OnLoad({ product: 'kabobs', done: true });
   const stategraph = new WilsonStateGraph({ playAnimation: () => .2, playSound() {}, setCasting() {}, onStateChanged() {} });
-  const animation = { stategraph, cancelEmote() {}, setFacing: vi.fn() } as unknown as ActionPerformer;
+  const animation = { stategraph };
   const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body,
     { physicsRadius: .5 * WORLD_SCALE });
   const product = { itemId: 'kabobs' };
@@ -39,7 +39,7 @@ it('walks to a finished pot, gives its product to the doer at the hit frame, and
   const world = { scene, player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     renderer: { domElement: new EventTarget() }, actionEvents: new EventEmitter<PlayerActionEvents>() } as unknown as ActionWorldContext;
   let manual = false;
-  const controller = new PlayerController(world, animation, locomotor, createEquipmentExistenceState('HANDS'), doer as never, () => manual);
+  const controller = new PlayerController(world, animation.stategraph, locomotor, createEquipmentExistenceState('HANDS'), doer as never, () => manual);
   const harvest = () => controller.DoAction(controller.createAction({ action: 'HARVEST', target: actionEntity(model, 'cookpot') })!);
   try {
     // componentactions SCENE.stewer: a pot done cooking offers HARVEST on both buttons.

@@ -8,7 +8,6 @@ import { FlowerPlanting } from '../../prefab/src/flower';
 import { PlantDeployment } from '../../prefab/src/plantDeployment';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
-import type { ActionPerformer } from '../../stategraphs/src/actionContext';
 import { createInventoryStore } from '../../../src/inventory';
 import { cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { createSignal, EventEmitter } from '../../signals/src';
@@ -63,7 +62,7 @@ function setup(random = () => .5) {
 it('buffers planting at frame six, preserves cancelled butterflies and saves the flower and cursor stack', async () => {
   const s = setup(), restored = setup();
   const graph = new WilsonStateGraph({ playAnimation: () => 1, playSound() {}, stopSound() {}, setCasting() {}, onStateChanged() {} });
-  const animation = { stategraph: graph, cancelEmote: vi.fn(), setFacing: vi.fn() } as unknown as ActionPerformer;
+  const animation = { stategraph: graph };
   const locomotor = { destination: undefined, goToPoint: vi.fn(() => true), stop: vi.fn() };
   let deployment: PlantDeployment | undefined;
   try {
@@ -80,7 +79,7 @@ it('buffers planting at frame six, preserves cancelled butterflies and saves the
     const transplant = vi.fn((position: THREE.Vector3) => s.flowers.transplant(position));
     const point = new THREE.Vector3(2, 0, 0);
     vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(point);
-    deployment = new PlantDeployment(s.world, animation, locomotor, source, {
+    deployment = new PlantDeployment(s.world, animation.stategraph, locomotor, source, {
       plants: { planted_flower: { transplant } }, canPlant: point => point.x >= 0,
     });
     expect(deployment.request(new THREE.Vector3(-1, 0, 0))).toBe(false);
@@ -120,14 +119,14 @@ it('buffers planting at frame six, preserves cancelled butterflies and saves the
 it('quick-picks petals at frame six, preserves a cancelled flower and reloads the harvested result', async () => {
   const s = setup(), restored = setup();
   const graph = new WilsonStateGraph({ playAnimation: () => 1, playSound() {}, stopSound() {}, setCasting() {}, onStateChanged() {} });
-  const animation = { stategraph: graph, cancelEmote: vi.fn(), setFacing: vi.fn() } as unknown as ActionPerformer;
+  const animation = { stategraph: graph };
   const locomotor = new Locomotor({ position: s.world.player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body,
     { physicsRadius: .5 * WORLD_SCALE });
   const sanity = vi.fn(), killed = vi.fn();
   // The player inst: pickable:Pick(act.doer) spawns the petals into its inventory and its sanity takes the delta.
   const picker = { hasTag: () => false, PushEvent: vi.fn(), getPosition: () => s.world.player.position,
     components: { sanity: { DoDelta: sanity }, inventory: s.inventory } };
-  const controller = new PlayerController(s.world, animation, locomotor, createEquipmentExistenceState('HANDS'), picker as never);
+  const controller = new PlayerController(s.world, animation.stategraph, locomotor, createEquipmentExistenceState('HANDS'), picker as never);
   try {
     const flower = await s.flowers.spawnFromSave('flower:pick', 'f6', new THREE.Vector3(2, 0, 0));
     const component = (findActionEntity(flower)?.components ?? prefabInstance(flower)!.components).pickable;

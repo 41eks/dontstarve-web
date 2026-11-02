@@ -1,3 +1,4 @@
+import { advancePlayer, facePlayer } from './playerVisual';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
@@ -54,9 +55,9 @@ it('uses separate source ground and equipped art and renders a skin while moving
         expect(groundMesh.geometry.drawRange.count).toBeGreaterThan(0);
         expect(groundMesh.material.some(material => material.name === `ground:${skinId ?? 'nightmaresword'}`)).toBe(true);
         animation.setCarryItem('nightsword', skinId);
-        await vi.waitFor(() => { animation.update(0); expect(usedMaterials()).toContain(`ground:${skinId ?? 'swap_nightmaresword'}`); });
+        await vi.waitFor(() => { advancePlayer(animation, 0); expect(usedMaterials()).toContain(`ground:${skinId ?? 'swap_nightmaresword'}`); });
         for (const [facing, mirrored] of [['up', false], ['down', false], ['side', true]] as const) {
-          animation.setFacing(facing, mirrored); animation.start('walk'); animation.update(1 / 30);
+          facePlayer(animation, facing, mirrored); animation.start('walk'); advancePlayer(animation, 1 / 30);
           expect(usedMaterials()).toContain(`ground:${skinId ?? 'swap_nightmaresword'}`);
           expect(Array.from(mesh.geometry.getAttribute('position').array).every(Number.isFinite)).toBe(true);
           expect(mesh.material.every(material => material.forceSinglePass)).toBe(true);

@@ -1,3 +1,4 @@
+import { advancePlayer } from './playerVisual';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -27,7 +28,7 @@ describe('original bugnet assets and Wilson action', () => {
   }
 
   function advance(controller: WilsonAnimationController, frames: number) {
-    for (let i = 0; i < frames; i++) controller.update(1 / 60);
+    for (let i = 0; i < frames; i++) advancePlayer(controller, 1 / 60);
   }
 
   it('uses the source ground pose, hand swap and skin builds', async () => {

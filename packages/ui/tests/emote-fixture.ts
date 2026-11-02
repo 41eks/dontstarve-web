@@ -1,3 +1,4 @@
+import { advancePlayer, facePlayer, registerPlayer } from '../../animation/tests/playerVisual';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { createWilsonPlayerPrefab, type WilsonAnimationController } from '../../prefab/src/player';
@@ -13,6 +14,7 @@ import { bindActionCancellation, type PlayerActionEvents } from '../../stategrap
 export async function createEmoteFixture() {
   const { emoteWheel } = mountGameUi({ assetBaseUrl: '/dst/data/ui/' });
   const { model, body, instance, display } = createWilsonPlayerPrefab('/dst/data/anim', new CANNON.World());
+  registerPlayer(model);
   await display.artLoaded();
   model.position.set(0, 0, 0);
   body.position.set(0, 4.5, 0);
@@ -48,7 +50,7 @@ export async function createEmoteFixture() {
       for (let i = 0; i < count; i++) {
         movement(6, 1 / 30);
         animation.start(Math.hypot(body.velocity.x, body.velocity.z) > 0.01 ? 'walk' : 'idle');
-        animation.update(1 / 30);
+        advancePlayer(animation, 1 / 30);
       }
       draw();
     },
@@ -60,18 +62,18 @@ export async function createEmoteFixture() {
         animation.start('idle');
         for (const facing of ['up', 'down', 'side'] as const) {
           for (const mirrored of [false, true]) {
-            animation.setFacing(facing, mirrored);
+            facePlayer(animation, facing, mirrored);
             if (!await animation.playEmote(id)) failures.push(`start:${id}`);
             const mesh = model.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
             const before = [...mesh.geometry.getAttribute('position').array];
-            for (let f = 0; f < 8; f++) animation.update(1 / 30);
+            for (let f = 0; f < 8; f++) advancePlayer(animation, 1 / 30);
             const after = [...mesh.geometry.getAttribute('position').array];
             if (JSON.stringify(before) !== JSON.stringify(after)) changed++;
             else failures.push(`static:${id}:${facing}:${mirrored}`);
             if (!mesh.geometry.drawRange.count || mesh.material.some((material) => !material.forceSinglePass)) {
               failures.push(`geometry:${id}:${facing}:${mirrored}`);
             }
-            for (let f = 0; f < 360; f++) animation.update(1 / 30);
+            for (let f = 0; f < 360; f++) advancePlayer(animation, 1 / 30);
             if ((animation.currentEmote === id) !== !!definition.loop) failures.push(`end:${id}`);
             if (id === 'toast' && mesh.material.length < 2) {
               failures.push('toast props');
@@ -90,7 +92,7 @@ export async function createEmoteFixture() {
       const torchRendered = withTorch.some((material) => !mesh.material.includes(material));
       animation.playPickup();
       const pickupInterrupts = !animation.isEmoting;
-      for (let i = 0; i < 120; i++) animation.update(1 / 30);
+      for (let i = 0; i < 120; i++) advancePlayer(animation, 1 / 30);
       await animation.playEmote('dance');
       animation.setCrafting(true);
       const craftingInterrupts = !animation.isEmoting && !await animation.playEmote('happy');

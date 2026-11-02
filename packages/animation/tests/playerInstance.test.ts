@@ -1,3 +1,4 @@
+import { advancePlayer, facePlayer } from './playerVisual';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
@@ -48,9 +49,9 @@ it('declares player art and retains its entity, equipment, body and shared asset
   await animation.setCarryItem('pickaxe');
   const hit = vi.fn();
   expect(animation.stategraph.pushBufferedAction(new BufferedAction('MINE', hit))).toBe(true);
-  for (let frame = 0; frame < 5; frame++) animation.update(1 / 30);
-  animation.setFacing('side', true);
-  expect(instance.sprite.sprite.peek()).toMatchObject({ facing: 5, mirrored: true, paused: true });
+  for (let frame = 0; frame < 5; frame++) advancePlayer(animation, 1 / 30);
+  facePlayer(animation, 'side', true);
+  expect(instance.sprite.sprite.peek()).toMatchObject({ facing: 5, mirrored: true });
   instance.setActive(false); await settle();
   expect(model.parent).toBeNull();
   expect(meshes(model)).toHaveLength(0);
@@ -58,9 +59,9 @@ it('declares player art and retains its entity, equipment, body and shared asset
   expect(instance.position).toBe(position);
   expect(position.toArray()).toEqual([12, 0, -6]);
   // The source action timeline remains logical while no visual exists.
-  for (let frame = 0; frame < 30; frame++) animation.update(1 / 30);
+  for (let frame = 0; frame < 30; frame++) advancePlayer(animation, 1 / 30);
   expect(hit).toHaveBeenCalledOnce();
-  instance.setActive(true); await settle(); animation.update(0);
+  instance.setActive(true); await settle(); advancePlayer(animation, 0);
   expect(model.parent).toBe(scene);
   expect(meshes(model)).toHaveLength(1);
   const art = instance.sprite.sprite.peek();
@@ -77,7 +78,7 @@ it('declares player art and retains its entity, equipment, body and shared asset
   expect(meshes(model)).toHaveLength(0);
   for (const dispose of disposals) expect(dispose).toHaveBeenCalledOnce();
   const removed = instance.sprite.sprite.peek();
-  animation.AnimState.Hide('HEAD'); animation.update(1);
+  animation.AnimState.Hide('HEAD'); advancePlayer(animation, 1);
   expect(instance.sprite.sprite.peek()).toBe(removed);
 });
 
@@ -87,9 +88,9 @@ it('declares tagged book FX as child instances and expires them on game timers w
   const read = vi.fn(() => true);
   const push = () => animation.stategraph.pushBufferedAction(new BufferedAction('READ', read, undefined, { invobject: book }));
   expect(push()).toBe(true);
-  for (let frame = 0; frame < 60 && animation.stategraph.stateName !== 'book2'; frame++) animation.update(1 / 30);
+  for (let frame = 0; frame < 60 && animation.stategraph.stateName !== 'book2'; frame++) advancePlayer(animation, 1 / 30);
   expect(animation.stategraph.stateName).toBe('book2');
-  await display.artLoaded(); animation.update(0);
+  await display.artLoaded(); advancePlayer(animation, 0);
   const fx = [...instance.sprite.fx.peek().values()];
   expect(fx).toHaveLength(2);
   const children = fx.map(entry => prefabInstance(entry.display!.model)!);
@@ -97,7 +98,7 @@ it('declares tagged book FX as child instances and expires them on game timers w
   const rootsFx = fx.find(entry => prefabInstance(entry.display!.model)!.prefab === 'fx_roots_under_book')!;
   let roots = rootsFx.display!.resolveFrame();
   for (let frame = 0; roots.length === 0 && frame < 45; frame++) {
-    animation.update(1 / 30);
+    advancePlayer(animation, 1 / 30);
     roots = rootsFx.display!.resolveFrame();
   }
   expect(roots.length).toBeGreaterThan(0);
@@ -106,18 +107,18 @@ it('declares tagged book FX as child instances and expires them on game timers w
   expect(meshes(model)).toHaveLength(1); // FX parts join the one merged character billboard.
   instance.setActive(false); await settle();
   for (const entry of fx) { expect(entry.display!.resolveFrame()).toEqual([]); expect(entry.sprite.loaded).toBe(false); }
-  for (let frame = 0; frame < 240; frame++) animation.update(1 / 30);
+  for (let frame = 0; frame < 240; frame++) advancePlayer(animation, 1 / 30);
   expect(read).toHaveBeenCalledOnce();
   for (const child of children) expect(child.status.peek()).toBe('removed');
   expect(instance.sprite.fx.peek().size).toBe(0);
-  instance.setActive(true); await settle(); animation.update(0);
+  instance.setActive(true); await settle(); advancePlayer(animation, 0);
   expect(meshes(model)).toHaveLength(1);
   // Removing the player during the next read cancels its child timers and buffered action.
   expect(push()).toBe(true);
   await settle();
   const cancelled = [...instance.sprite.fx.peek().values()].map(entry => prefabInstance(entry.display!.model)!);
   expect(cancelled).toHaveLength(1);
-  instance.remove(); await settle(); animation.update(1);
+  instance.remove(); await settle(); advancePlayer(animation, 1);
   expect(instance.sprite.fx.peek().size).toBe(0);
   for (const child of cancelled) expect(child.status.peek()).toBe('removed');
   expect(read).toHaveBeenCalledOnce();

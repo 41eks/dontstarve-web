@@ -47,3 +47,15 @@ export function fourFacingFromRotation(rotation: number, heading: number): numbe
   const steps = Math.round((rotation + heading) / 90);
   return FOUR_FACING_BY_STEP[((steps % 4) + 4) % 4];
 }
+
+/** Transform:SetSixFaced: horizontal sides and the up/down diagonal pairs. */
+export function sixFacingFromRotation(rotation: number, heading: number): number {
+  const angle = (rotation + heading) * Math.PI / 180;
+  const side = -Math.sin(angle), depth = -Math.cos(angle);
+  return Math.abs(depth) < .5 ? (side < 0 ? FACING.LEFT : FACING.RIGHT)
+    : depth > 0 ? (side < 0 ? FACING.UPLEFT : FACING.UPRIGHT)
+      : (side < 0 ? FACING.DOWNLEFT : FACING.DOWNRIGHT);
+}
+
+export type PlayerFacing = 'up' | 'down' | 'side';
+export const PLAYER_FACING_VALUES: Readonly<Record<PlayerFacing, number>> = { down: 8, side: 5, up: 2 };

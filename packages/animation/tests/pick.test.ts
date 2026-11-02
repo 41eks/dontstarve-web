@@ -8,7 +8,7 @@ import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import { Pickable } from '../../prefab/src/components/pickable';
 import { Locomotor } from '../../prefab/src/locomotor';
 import { WORLD_SCALE } from '../../prefab/src/tile';
-import type { ActionPerformer, ActionWorldContext } from '../../stategraphs/src/actionContext';
+import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
 import type { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { EventEmitter } from '../../signals/src/EventEmitter';
 import { createEquipmentExistenceState } from '../../signals/src';
@@ -61,7 +61,7 @@ it('walks to the arrive distance, gives the PICK product to the doer inventory a
   const actionEvents = new EventEmitter<PlayerActionEvents>(), begin = vi.fn();
   const stopEvents = actionEvents.on('action:begin', begin);
   const stategraph = new WilsonStateGraph({ playAnimation: () => .2, playSound() {}, setCasting() {}, onStateChanged() {} });
-  const animation = { stategraph, cancelEmote() {}, setFacing: vi.fn() } as unknown as ActionPerformer;
+  const animation = { stategraph };
   const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body,
     { physicsRadius: .5 * WORLD_SCALE });
   const world = { scene, player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
@@ -73,7 +73,7 @@ it('walks to the arrive distance, gives the PICK product to the doer inventory a
   const doer = { hasTag: (tag: string) => tag === 'player', PushEvent: vi.fn(), GetPosition: () => player.position,
     getPosition: () => player.position, components: { inventory } };
   let manual = false;
-  const controller = new PlayerController(world, animation, locomotor, createEquipmentExistenceState('HANDS'), doer as never, () => manual);
+  const controller = new PlayerController(world, animation.stategraph, locomotor, createEquipmentExistenceState('HANDS'), doer as never, () => manual);
   const click = () => {
     const event = Object.assign(new Event('pointerdown', { cancelable: true }), { button: 0 });
     canvas.dispatchEvent(event);
@@ -86,7 +86,6 @@ it('walks to the arrive distance, gives the PICK product to the doer inventory a
     expect(locomotor.destination).toBeDefined();
     expect(stategraph.stateName).not.toBe('dolongaction');
     player.position.x = 20 - 1.9; locomotor.update(16, 1 / 30);
-    expect(animation.setFacing).toHaveBeenCalled();
     expect(stategraph.stateName).toBe('dolongaction');
     stategraph.update(1);
     expect(inventory.entities.create).toHaveBeenCalledExactlyOnceWith({ itemId: 'log', count: 2 });

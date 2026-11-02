@@ -19,7 +19,6 @@ import * as sound from '../../prefab/src/sound';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { getItemUseActions, ItemUseActionController, type ItemUseTarget } from '../../stategraphs/src/itemuse';
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
-import type { ActionPerformer } from '../../stategraphs/src/actionContext';
 import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
 import type { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { smallHash } from '../src/animationAssets';
@@ -322,7 +321,7 @@ it('walks to repair range, cancels before consumption, and commits REPAIR and GI
   const pointer = { trackPointer() {}, beginFrame() {}, endFrame() {}, raycastPointer: () => ({ object: model }), dispose() {} } as unknown as PointerRaycaster;
   world.mouseActions = new PlayerActionPicker(pointer);
   const graph = new WilsonStateGraph({ playAnimation: () => .8, playSound() {}, stopSound() {}, setCasting() {}, onStateChanged() {} });
-  const animation = { stategraph: graph, cancelEmote() {}, setFacing() {} } as unknown as ActionPerformer;
+  const animation = { stategraph: graph };
   const locomotor = { destination: undefined, goToPoint: vi.fn(() => true), stop: vi.fn() };
   const rock = new ItemEntity({ itemId: 'moonrocknugget', count: 1 }); configureMoonrockNugget(rock);
   const staff = new ItemEntity({ itemId: 'yellowstaff', count: 1 });
@@ -330,7 +329,7 @@ it('walks to repair range, cancels before consumption, and commits REPAIR and GI
   const take = vi.fn(() => true);
   const source = () => { const entity = current; return { entity, isValid: () => current === entity, take }; };
   let manual = false;
-  const controller = new ItemUseActionController(world, animation, locomotor, source, () => manual);
+  const controller = new ItemUseActionController(world, animation.stategraph, locomotor, source, () => manual);
   const target = findActionEntity(model) as ItemUseTarget;
   try {
     expect(getItemUseActions(model, source()).find(action => action.available)?.action.action).toBe('REPAIR');

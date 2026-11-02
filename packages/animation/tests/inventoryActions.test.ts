@@ -37,7 +37,7 @@ function setup() {
   world.mouseActions = new PlayerActionPicker(new PointerRaycaster(world));
   const graph = new WilsonStateGraph({ playAnimation: () => 1, playSound() {}, setCasting() {}, onStateChanged() {} });
   const locomotor = new Locomotor({ position: instance.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body);
-  const controller = new PlayerController(world, { stategraph: graph, cancelEmote() {}, setFacing() {} },
+  const controller = new PlayerController(world, graph,
     locomotor, inventory.handEquipment, Object.assign(instance, { sg: undefined }));
   const use = (target: ReturnType<typeof inventory.getEntity>) => {
     const action = controller.GetItemUseAction(inventory.GetActiveItem()!, target!);

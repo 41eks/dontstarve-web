@@ -1,3 +1,4 @@
+import { advancePlayer, facePlayer, registerPlayer } from '../../animation/tests/playerVisual';
 import { PrefabDisplayGroup } from '../../display/src';
 import { prefabDisplay } from '../../display/src';
 import * as THREE from 'three';
@@ -58,6 +59,7 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   };
   const baseline = sample(30);
   const player = createWilsonPlayer('/dst/data/anim');
+  registerPlayer(player);
   await prefabDisplay(player).artLoaded();
   player.position.set(0, 0, 0);
   scene.add(player);
@@ -70,8 +72,8 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
     const build = skin ? GROUND_ITEM_DEFINITIONS[itemId].skinArchives[skin].split('/').at(-1)!.replace('.zip', '') : 'swap_staffs';
     for (const facing of ['up', 'down', 'side'] as const) {
       for (const mirrored of [false, true]) {
-        animation.setFacing(facing, mirrored);
-        animation.update(0.05);
+        facePlayer(animation, facing, mirrored);
+        advancePlayer(animation, 0.05);
         const mesh = player.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
         if (!mesh.material.some((material) => material.name === `ground:${build}`)) failures.push(`worn:${skin}:${facing}:${mirrored}`);
         if (mesh.material.some((material) => !material.forceSinglePass)) failures.push('face passes');
@@ -97,7 +99,7 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   // The player inst as act.doer: spellcaster.lua reads its position, tags and sanity; the point is in CASTSPELL range.
   const doer = { position: player.position, getPosition: () => player.position, hasTag: () => false, PushEvent() {},
     components: { sanity: { DoDelta: (delta: number) => { sanity = Math.max(0, sanity + delta); } } } };
-  const casting = new PlayerController({ scene, camera, renderer, ground, player }, animation,
+  const casting = new PlayerController({ scene, camera, renderer, ground, player }, animation.stategraph,
     { destination: undefined, stop: () => { stops += 1; }, goToPoint: () => true, PushAction: (_action, arrive) => arrive() },
     inventory.handEquipment, doer as never, () => false);
   const click = (button = 2) => {
@@ -109,7 +111,7 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   };
   const tick = (count: number) => {
     for (let i = 0; i < count; i++) {
-      casting.update(); animation.update(1 / 30);
+      casting.update(); advancePlayer(animation, 1 / 30);
       stars.update(1 / 30, camera.quaternion);
     }
   };

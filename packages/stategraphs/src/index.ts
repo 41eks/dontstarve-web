@@ -8,9 +8,8 @@ export type {
   WilsonOneShotState, WilsonStateGraphHost, WilsonStateName, WilsonFx, WilsonCombat, WilsonSleepHost, WilsonDeathHost, WilsonRebirthHost, WilsonFishingHost,
 } from './SGwilson.ts';
 
-export type { ActionWorldContext, ActionPerformer, ActionLocomotor, CursorLabel } from './actionContext.ts';
+export type { ActionWorldContext, ActionLocomotor, CursorLabel } from './actionContext.ts';
 export { bindActionCancellation } from './actionEvents.ts';
-export { facePoint, faceSpritePoint, facingToward, PLAYER_FACING_VALUES, type PlayerFacing } from './facing.ts';
 export type { PlayerActionEvents, PlayerActionKind, ActionInterruptReason } from './actionEvents.ts';
 export * from './eat.ts';
 export * from './read.ts';

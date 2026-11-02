@@ -1,5 +1,6 @@
+import type { WilsonStateGraph } from './SGwilson.ts';
 import { bindActionCancellation } from './actionEvents.ts';
-import type { ActionWorldContext, ActionPerformer, ActionLocomotor } from './actionContext.ts';
+import type { ActionWorldContext, ActionLocomotor } from './actionContext.ts';
 import { BufferedAction } from './bufferedaction.ts';
 import type { InventoryStore, ItemEntity } from '@dontstarve-web/inventory';
 import type { Eater } from '../../componets/src/eater';
@@ -14,19 +15,19 @@ export class FoodActionController {
   private version = 0;
   private disposed = false;
   private readonly world: ActionWorldContext;
-  private readonly animation: ActionPerformer;
+  private readonly stategraph: WilsonStateGraph;
   private readonly locomotor: ActionLocomotor;
   private readonly actor: FoodActor;
   private readonly isManualMovement: () => boolean;
 
   constructor(
     world: ActionWorldContext,
-    animation: ActionPerformer,
+    stategraph: WilsonStateGraph,
     locomotor: ActionLocomotor,
     actor: FoodActor,
     isManualMovement = () => false,
   ) {
-    this.world = world; this.animation = animation; this.locomotor = locomotor;
+    this.world = world; this.stategraph = stategraph; this.locomotor = locomotor;
     this.actor = actor; this.isManualMovement = isManualMovement;
     this.stopActionEvents = bindActionCancellation(world, this, 'food', () => this.cancel());
     world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown, true);
@@ -39,8 +40,8 @@ export class FoodActionController {
     this.cancel();
     this.world.actionEvents?.emit('action:begin', { owner: this, action: 'EAT' });
     const version = this.version;
-    this.locomotor.stop(); this.animation.cancelEmote();
-    return this.animation.stategraph.pushBufferedAction(new BufferedAction('EAT',
+    this.locomotor.stop(); this.stategraph.cancelEmote();
+    return this.stategraph.pushBufferedAction(new BufferedAction('EAT',
       () => version === this.version && this.isValid(food) && eater.Eat(food), undefined, { invobject: food }),
     food.hasTag('fooddrink'));
   }
@@ -53,7 +54,7 @@ export class FoodActionController {
 
   cancel(): void {
     this.version++;
-    this.animation.stategraph.cancelAction('EAT');
+    this.stategraph.cancelAction('EAT');
   }
 
   update(): void { if (this.isManualMovement()) this.cancel(); }

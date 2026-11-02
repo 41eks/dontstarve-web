@@ -1,3 +1,4 @@
+import { advancePlayer, facePlayer, registerPlayer } from '../../animation/tests/playerVisual';
 import { prefabDisplay } from '../../display/src';
 import { prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import * as THREE from 'three';
@@ -8,6 +9,7 @@ import { DstLocalLighting } from '../../../src/dstLocalLighting';
 
 export async function checkCrown() {
   const player = createWilsonPlayer('/dst/data/anim', { stats: { sanity: 200 } });
+  registerPlayer(player);
   const sanity = wilsonPlayerInstance(player).stats.sanity;
   await prefabDisplay(player).artLoaded();
   player.position.set(0, 0, 0);
@@ -41,9 +43,9 @@ export async function checkCrown() {
   animation.setHat('alterguardianhat');
   // The worn crown names its builds and spawns its layers; their displays load the art.
   await display.artLoaded();
-  animation.update(0.1);
+  advancePlayer(animation, 0.1);
   const rising = capture('Crown: activating');
-  for (let i = 0; i < 9; i++) animation.update(0.1);
+  for (let i = 0; i < 9; i++) advancePlayer(animation, 0.1);
   const orbit = capture('Crown: floating orbit');
   const bloomMaterials = (mesh.material as THREE.Material[]).filter(material => material.name.endsWith(':bloom'));
   const withBloom = renderer.domElement.toDataURL();
@@ -51,25 +53,25 @@ export async function checkCrown() {
   renderer.render(scene, camera);
   const bloomChangesPixels = withBloom !== renderer.domElement.toDataURL();
   bloomMaterials.forEach(material => { material.opacity = 0.6; });
-  for (let i = 0; i < 14; i++) animation.update(0.1);
+  for (let i = 0; i < 14; i++) advancePlayer(animation, 0.1);
   const rotated = capture('Crown: later orbit frame');
   const failures: string[] = [];
   for (const facing of ['down', 'up', 'side'] as const) {
     for (const mirrored of [false, true]) {
-      animation.setFacing(facing, mirrored);
-      animation.update(0.04);
+      facePlayer(animation, facing, mirrored);
+      advancePlayer(animation, 0.04);
       const names = mesh.geometry.groups.map(g => (mesh.material as THREE.Material[])[g.materialIndex!].name);
       if (!names[0].includes('hat_alterguardian_equipped') || !names.at(-1)!.includes('hat_alterguardian_equipped')
         || visual.children.length !== 1) failures.push(`${facing}:${mirrored}`);
     }
   }
-  animation.setFacing('down');
+  facePlayer(animation, 'down');
   animation.setHat('alterguardianhat', 'alterguardianhat_lastprism');
   await display.artLoaded();
-  for (let i = 0; i < 10; i++) animation.update(0.1);
+  for (let i = 0; i < 10; i++) advancePlayer(animation, 0.1);
   capture('Last Prism: floating orbit');
   sanity.SetCurrent(170);
-  for (let i = 0; i < 6; i++) animation.update(0.1);
+  for (let i = 0; i < 6; i++) advancePlayer(animation, 0.1);
   capture('Sanity <= 85%: inactive');
 
   // Exercise the actual world lightmap and read ground pixels in darkness.

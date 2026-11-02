@@ -1,14 +1,15 @@
+import { prefabInstance } from '../../prefab/src/prefabInstance';
+import type { WilsonStateGraph } from './SGwilson.ts';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import { PlaySound, type SoundHandle } from '../../prefab/src/sound.ts';
 import * as THREE from 'three';
 import { BufferedAction } from './bufferedaction.ts';
 import { bindActionCancellation } from './actionEvents.ts';
-import type { ActionPerformer, ActionLocomotor, ActionWorldContext } from './actionContext.ts';
+import type { ActionLocomotor, ActionWorldContext } from './actionContext.ts';
 import type { ComponentActionEntity } from './componentactions.ts';
 import type { MouseActionCandidate } from './playeractionpicker.ts';
 import { PlayerActionPicker } from './playeractionpicker.ts';
 import { PointerRaycaster } from './pointerRaycaster.ts';
-import { facePoint } from './facing.ts';
 import type { TradeItem } from '../../componets/src/trader';
 
 export interface ItemUseSource {
@@ -83,13 +84,13 @@ export class ItemUseActionController {
   private version = 0;
   private sound?: SoundHandle;
   private readonly world: ActionWorldContext;
-  private readonly animation: ActionPerformer;
+  private readonly stategraph: WilsonStateGraph;
   private readonly locomotor: ActionLocomotor;
   private readonly source: () => ItemUseSource | undefined;
   private readonly interrupted: () => boolean;
-  constructor(world: ActionWorldContext, animation: ActionPerformer, locomotor: ActionLocomotor,
+  constructor(world: ActionWorldContext, stategraph: WilsonStateGraph, locomotor: ActionLocomotor,
     source: () => ItemUseSource | undefined, interrupted = () => false) {
-    this.world = world; this.animation = animation; this.locomotor = locomotor;
+    this.world = world; this.stategraph = stategraph; this.locomotor = locomotor;
     this.source = source; this.interrupted = interrupted;
     this.picker = world.mouseActions ?? new PlayerActionPicker(new PointerRaycaster(world));
     this.unregister = this.picker.register(model => getItemUseActions(model, source()));
@@ -100,17 +101,17 @@ export class ItemUseActionController {
   }
   request(action: ItemUseAction, target: ItemUseTarget, source = this.source()): boolean {
     if (this.disposed || !source || !available(action, target, source)
-      || this.animation.stategraph.hasStateTag('busy')) return false;
+      || this.stategraph.hasStateTag('busy')) return false;
     this.cancel();
     this.world.actionEvents?.emit('action:begin', { owner: this, action });
-    this.animation.cancelEmote();
+    this.stategraph.cancelEmote();
     this.pending = { action, target, source };
     return true;
   }
   update(): void {
     if (this.disposed) return;
     if (this.interrupted()) { this.cancel(); return; }
-    if (this.buffered && !this.animation.stategraph.isActionActive(this.buffered)) { this.cancel(); return; }
+    if (this.buffered && !this.stategraph.isActionActive(this.buffered)) { this.cancel(); return; }
     const pending = this.pending;
     if (!pending) return;
     const { action, target, source } = pending;
@@ -125,7 +126,7 @@ export class ItemUseActionController {
       return;
     }
     this.locomotor.stop();
-    facePoint(this.animation, this.world.camera, this.world.player.position, position);
+    prefabInstance(this.world.player)?.sprite.facePoint(this.world.player.position, position);
     const version = this.version;
     const buffered = new BufferedAction(action, () => action === 'FERTILIZE' ? this.fertilize(target, source)
       : action === 'BATHBOMB' ? this.bathbomb(target, source)
@@ -138,7 +139,7 @@ export class ItemUseActionController {
         : target.components.trader!.AcceptGift(source.entity, deleteItem => source.take(deleteItem), this.world.player),
     () => version === this.version && available(action, target, source) && this.inReach(target),
     { target, invobject: source.entity });
-    if (this.animation.stategraph.pushBufferedAction(buffered)) {
+    if (this.stategraph.pushBufferedAction(buffered)) {
       this.buffered = buffered;
       this.pending = undefined;
     }
@@ -164,9 +165,9 @@ export class ItemUseActionController {
   }
   cancel(): void {
     this.version++;
-    if (this.pending || (this.buffered && this.animation.stategraph.isActionActive(this.buffered))) this.locomotor.stop();
+    if (this.pending || (this.buffered && this.stategraph.isActionActive(this.buffered))) this.locomotor.stop();
     this.pending = undefined;
-    if (this.buffered && this.animation.stategraph.isActionActive(this.buffered)) this.animation.stategraph.cancelAction(this.buffered.action);
+    if (this.buffered && this.stategraph.isActionActive(this.buffered)) this.stategraph.cancelAction(this.buffered.action);
     this.buffered = undefined;
   }
   private readonly pointerDown = (event: PointerEvent): void => {

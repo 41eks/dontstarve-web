@@ -11,7 +11,6 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { PlantDeployment } from '../../prefab/src/plantDeployment';
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
-import type { ActionPerformer } from '../../stategraphs/src/actionContext';
 import { createInventoryStore } from '../../../src/inventory';
 import { cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { executeDebugCommand } from '../../../src/debugCommands';
@@ -52,7 +51,7 @@ it('plants one moonbutterfly with original baby-tree art and cycles short/normal
   const s = await setup(), canvas = new EventTarget(), scene = s.scene;
   const inventory = createInventoryStore([]);
   const graph = new WilsonStateGraph({ playAnimation: () => 1, playSound() {}, stopSound() {}, setCasting() {}, onStateChanged() {} });
-  const animation = { stategraph: graph, cancelEmote: vi.fn(), setFacing: vi.fn() } as unknown as ActionPerformer;
+  const animation = { stategraph: graph };
   const locomotor = { destination: undefined, goToPoint: vi.fn(() => true), stop: vi.fn() };
   const world = { scene, player: new THREE.Group(), camera: s.camera, ground: new THREE.Group(), renderer: { domElement: canvas } } as unknown as WorldContext;
   const canPlant = vi.fn(() => true);
@@ -64,7 +63,7 @@ it('plants one moonbutterfly with original baby-tree art and cycles short/normal
       putBack: (item: typeof entity) => { inventory.receiveAt(address, item); } };
   };
   const transplant = vi.fn((position: THREE.Vector3) => s.forest.transplant(position));
-  const planting = new PlantDeployment(world, animation, locomotor, source,
+  const planting = new PlantDeployment(world, animation.stategraph, locomotor, source,
     { plants: { moonbutterfly_sapling: { transplant } }, canPlant });
   const point = new THREE.Vector3(6, 0, 0);
   let restored: Awaited<ReturnType<typeof setup>> | undefined;

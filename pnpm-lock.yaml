@@ -215,6 +215,9 @@ importers:
 
   packages/stategraphs:
     dependencies:
+      '@dontstarve-web/animation':
+        specifier: workspace:*
+        version: link:../animation
       '@dontstarve-web/display':
         specifier: workspace:*
         version: link:../display

@@ -12,7 +12,7 @@ import { Locomotor } from '../../prefab/src/locomotor';
 import { WORLD_SCALE } from '../../prefab/src/tile';
 import * as CANNON from 'cannon-es';
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
-import type { ActionPerformer, ActionWorldContext } from '../../stategraphs/src/actionContext';
+import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
 import { createSignal, EventEmitter, type HandEquipment } from '../../signals/src';
 import { ItemEntity } from '../../inventory/src';
 import { TORCH_FUEL, configureTorchEntity } from '../../prefab/src/torch';
@@ -81,7 +81,7 @@ it('walks to the foot, cancels on unequip and commits LIGHT once at frame 13 wit
   const equipment = { itemId: 'torch', EQUIPSLOTS: 'HANDS' as const, entity: torch };
   const hand = createSignal<HandEquipment | null>(equipment);
   const graph = new WilsonStateGraph({ playAnimation: () => 1, playSound() {}, setCasting() {}, onStateChanged() {} });
-  const animation = { stategraph: graph, cancelEmote() {}, setFacing: vi.fn() } as unknown as ActionPerformer;
+  const animation = { stategraph: graph };
   const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body,
     { physicsRadius: .5 * WORLD_SCALE });
   const world = { scene, player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(), cameraFacing: createSignal(8), cameraHeading: createSignal(45),
@@ -90,7 +90,7 @@ it('walks to the foot, cancels on unequip and commits LIGHT once at frame 13 wit
   const playerEvents = new EventEmitter<Record<string, unknown>>();
   const doer = { hasTag: (tag: string) => tag === 'player', getPosition: () => player.position,
     PushEvent: (name: string, data: unknown) => playerEvents.emit(name, data) };
-  const playerController = new PlayerController(world, animation, locomotor, hand, doer as never, () => false);
+  const playerController = new PlayerController(world, animation.stategraph, locomotor, hand, doer as never, () => false);
   // EQUIPPED.lighter on the right button, then DoAction.
   const controller = {
     request: (inst: typeof target) => collectEquippedItemActions(torch, doer, inst, true).includes('LIGHT')

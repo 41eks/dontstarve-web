@@ -1,3 +1,4 @@
+import { advancePlayer } from './playerVisual';
 import { readFile } from 'node:fs/promises';
 import { World } from 'cannon-es';
 import { expect, it, vi } from 'vitest';
@@ -18,7 +19,7 @@ it('hides the sleeping player through its sprite and display, and shows it on wa
     get hasBed() { return bed !== undefined; },
     wakeBed: nostatechange => bed?.DoWakeUp(nostatechange),
   });
-  const frames = (count: number) => { for (let i = 0; i < count; i++) animation.update(1 / 30); };
+  const frames = (count: number) => { for (let i = 0; i < count; i++) advancePlayer(animation, 1 / 30); };
   const sleepIn = () => {
     const target = { hasTag: () => false };
     const action = new BufferedAction('SLEEPIN', () => {

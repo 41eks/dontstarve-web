@@ -1,3 +1,4 @@
+import { advancePlayer, registerPlayer } from '../../animation/tests/playerVisual';
 import { PrefabDisplayGroup } from '../../display/src';
 import { prefabDisplay } from '../../display/src';
 import { prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
@@ -29,6 +30,7 @@ export async function prepareStarAudioCheck() {
   const samples = sources.map(({ source }) => ({ loop: source.loop, length: source.buffer!.length,
     channels: source.buffer!.numberOfChannels, sampleRate: source.buffer!.sampleRate }));
   const player = createWilsonPlayer('/dst/data/anim');
+  registerPlayer(player);
   await prefabDisplay(player).artLoaded();
   const animation = prefabInstance(player).animationController as WilsonAnimationController;
   await animation.setCarryItem('yellowstaff');
@@ -36,20 +38,20 @@ export async function prepareStarAudioCheck() {
   animation.stategraph.pushBufferedAction(new BufferedAction('CASTSPELL', () => { casts += 1; }, undefined, {
     invobject: { prefab: 'yellowstaff', castsound: 'dontstarve/common/staffteleport', hasTag: () => false },
   }));
-  for (let i = 0; i < 12; i++) animation.update(1 / 30);
+  for (let i = 0; i < 12; i++) advancePlayer(animation, 1 / 30);
   const beforeSoundFrame = sources.length;
-  animation.update(1 / 30);
+  advancePlayer(animation, 1 / 30);
   const onSoundFrame = sources.length;
-  for (let i = 0; i < 50; i++) animation.update(1 / 30);
+  for (let i = 0; i < 50; i++) advancePlayer(animation, 1 / 30);
   const afterCastSources = sources.length;
   await animation.setCarryItem(null);
   await animation.setCarryItem('yellowstaff');
   animation.stategraph.pushBufferedAction(new BufferedAction('CASTSPELL', () => { casts += 1; }, undefined, {
     invobject: { prefab: 'yellowstaff', castsound: 'dontstarve/common/staffteleport', hasTag: () => false },
   }));
-  for (let i = 0; i < 12; i++) animation.update(1 / 30);
+  for (let i = 0; i < 12; i++) advancePlayer(animation, 1 / 30);
   await animation.setCarryItem(null);
-  for (let i = 0; i < 30; i++) animation.update(1 / 30);
+  for (let i = 0; i < 30; i++) advancePlayer(animation, 1 / 30);
   const cancelledBeforeSound = sources.length === afterCastSources && casts === 1;
   const castBuffer = sources[5].source.buffer!;
   (window as unknown as { checkStarAudio: (action: string) => unknown }).checkStarAudio = (action) => {

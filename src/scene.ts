@@ -1,3 +1,4 @@
+import { prefabDisplay } from '@dontstarve-web/display';
 import type { ItemEntityRegistry, InventoryStore } from '@dontstarve-web/inventory';
 import * as CANNON from 'cannon-es';
 import { world, worldState } from './physics';
@@ -81,7 +82,7 @@ export const locomotor = new Locomotor(playerBody, {
   },
 });
 const updatePlayerMovement = updateMovement(camera, player, playerBody, locomotor);
-const updateAnimation = createAnimationUpdater(player, camera);
+const updateAnimation = createAnimationUpdater(player);
 const cameraWorldQuaternion = new THREE.Quaternion();
 const playerRenderEntries = [{ object: player, footPosition: player.position }];
 
@@ -186,6 +187,7 @@ export async function startScene(
     scheduler.advanceTo(clockUpdater.elapsedSeconds);
     worldState.componentUpdates.update(dt);
     publishCameraRotation();
+    prefabDisplay(player)!.update(dt, cameraWorldQuaternion);
     registry.update(dt, cameraWorldQuaternion);
     updateCharacterRenderOrder(registry);
   };

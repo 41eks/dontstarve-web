@@ -1,3 +1,4 @@
+import { advancePlayer, registerPlayer } from './playerVisual';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
@@ -21,6 +22,7 @@ it('creates the logical player and body synchronously and completes actions and 
   const world = new CANNON.World();
   const prefab = createWilsonPlayerPrefab('/dst/data/anim', world);
   const { instance, model, display, body } = prefab;
+  registerPlayer(model);
   const animation = instance.animationController;
   const scene = new THREE.Scene(); display.mount(scene);
   try {
@@ -34,19 +36,19 @@ it('creates the logical player and body synchronously and completes actions and 
     const read = vi.fn(() => true);
     const book = { prefab: 'book_silviculture', def: { fx_under_prefab: 'fx_roots_under_book' }, hasTag: () => false };
     expect(animation.stategraph.pushBufferedAction(new BufferedAction('READ', read, undefined, { invobject: book }))).toBe(true);
-    for (let frame = 0; frame < 60 && animation.stategraph.stateName !== 'book2'; frame++) animation.update(1 / 30);
+    for (let frame = 0; frame < 60 && animation.stategraph.stateName !== 'book2'; frame++) advancePlayer(animation, 1 / 30);
     expect(animation.stategraph.stateName).toBe('book2');
     const fx = [...instance.sprite.fx.peek().values()];
     expect(fx).toHaveLength(2);
     instance.setActive(false); await tick();
-    for (let frame = 0; frame < 240; frame++) animation.update(1 / 30);
+    for (let frame = 0; frame < 240; frame++) advancePlayer(animation, 1 / 30);
     expect(read).toHaveBeenCalledOnce();
     expect(instance.sprite.fx.peek().size).toBe(0);
     for (const child of fx) expect(child.display!.isRemoved).toBe(true);
     animation.makeGhost(true);
     expect(animation.isGhost).toBe(true);
     animation.makeAlive();
-    for (let frame = 0; frame < 120; frame++) animation.update(1 / 30);
+    for (let frame = 0; frame < 120; frame++) advancePlayer(animation, 1 / 30);
     expect(animation.isGhost).toBe(false);
     instance.setActive(true); await tick();
     const latest = instance.sprite.sprite.peek();

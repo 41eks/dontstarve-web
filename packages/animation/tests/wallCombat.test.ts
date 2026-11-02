@@ -1,3 +1,4 @@
+import { advancePlayer } from './playerVisual';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -174,14 +175,14 @@ it('force attacks a wall with Ctrl+F, walks into range, punches on frame 8 and r
   // The player inst: DoAttackButton searches around it and ATTACK runs its combat.
   const doer = { hasTag: (tag: string) => tag === 'player', PushEvent: vi.fn(), getPosition: () => player.position,
     getPhysicsRadius: () => .5 * UNIT, components: { combat } };
-  const controller = new PlayerController(world, animation, locomotor, hand, doer as never, () => false);
+  const controller = new PlayerController(world, animation.stategraph, locomotor, hand, doer as never, () => false);
   const key = (type: string, code: string, ctrlKey: boolean) => {
     const event = Object.assign(new Event(type, { cancelable: true }), { code, ctrlKey, repeat: false });
     window.dispatchEvent(event);
     return event;
   };
   const step = (frames: number) => {
-    for (let frame = 0; frame < frames; frame++) { now += 1 / 30; animation.update(1 / 30); controller.update(); }
+    for (let frame = 0; frame < frames; frame++) { now += 1 / 30; advancePlayer(animation, 1 / 30); controller.update(); }
   };
   try {
     const hay = await placement.spawnFromSave('wall_hay', { id: 'hay', transform: { position: [3, 0, -6], rotationY: 0 }, components: {} });

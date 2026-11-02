@@ -435,6 +435,7 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
   setColour(colour: readonly number[]): void { this.staticController?.setColour(colour); }
   setOpacity(opacity: number): void { this.staticController?.setOpacity(opacity); }
   setPaused(paused: boolean): void { this.controller?.setPaused?.(paused); }
+  setPlaybackRate(rate: number): void { this.controller?.setPlaybackRate?.(rate); }
   setArtSource(source: import('./sprite').SpriteArtSource): void { this.controller?.setArtSource?.(source); }
   setSkin(skin: import('./sprite').SpriteSkin | undefined): void { this.controller?.setSkin?.(skin); }
   setAnimState(state: import('./animState').ResolvedAnimState): void { this.controller?.setAnimState?.(state); }

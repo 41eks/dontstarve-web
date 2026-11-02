@@ -1,10 +1,11 @@
 import { bindActionCancellation, type PlayerActionKind } from './actionEvents.ts';
-import { isHandActionBusy, type ActionLocomotor, type ActionPerformer, type ActionWorldContext } from './actionContext.ts';
+import { isHandActionBusy, type ActionLocomotor, type ActionWorldContext } from './actionContext.ts';
 import { createBufferedAction, hasActionFn } from './actionfns.ts';
 import { ACTIONS, type ActionDescription, type MouseActionId } from './actions.ts';
 import type { BufferedAction, BufferedActionDoer, BufferedActionObject } from './bufferedaction.ts';
 import { equippedActionEntity, type ComponentActionEntity, type SceneActionDoer } from './componentactions.ts';
-import { facePoint } from './facing.ts';
+import type { WilsonStateGraph } from './SGwilson.ts';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { watchHandEquipment, type HandEquipmentSignal } from './handEquipment.ts';
 import { PlayerActionPicker } from './playeractionpicker.ts';
 import { PointerRaycaster } from './pointerRaycaster.ts';
@@ -45,7 +46,7 @@ type PlayerDoer = BufferedActionDoer & SceneActionDoer & {
  */
 export class PlayerController {
   private readonly world: ActionWorldContext;
-  private readonly performer: ActionPerformer;
+  private readonly stategraph: WilsonStateGraph;
   private readonly locomotor: PlayerLocomotor;
   private readonly handEquipment: HandEquipmentSignal;
   private readonly isManualMovement: () => boolean;
@@ -63,7 +64,7 @@ export class PlayerController {
 
   constructor(
     world: ActionWorldContext,
-    performer: ActionPerformer,
+    stategraph: WilsonStateGraph,
     locomotor: PlayerLocomotor,
     handEquipment: HandEquipmentSignal,
     /** The player inst as act.doer: actions reach its tags, events, position, stategraph and components. */
@@ -71,7 +72,7 @@ export class PlayerController {
     isManualMovement = () => false,
   ) {
     this.world = world;
-    this.performer = performer;
+    this.stategraph = stategraph;
     this.locomotor = locomotor;
     this.handEquipment = handEquipment;
     this.isManualMovement = isManualMovement;
@@ -140,7 +141,7 @@ export class PlayerController {
 
   /** PlayerController:DoAction: locomotor:PushAction walks to the target and the inst buffers the action there. */
   DoAction(action: BufferedAction<WilsonAction>): boolean {
-    const { stategraph } = this.performer;
+    const { stategraph } = this;
     const target = action.target as Partial<ActionTargetEntity> | undefined;
     if (this.disposed || (target ? !target.getPosition : !action.pos) || stategraph.hasStateTag('busy')
       || isHandActionBusy(stategraph) || !action.isValid()) return false;
@@ -149,13 +150,13 @@ export class PlayerController {
     // EntityScript:PushBufferedAction for an instant action: face the target and do it now, keeping the
     // buffered action and the state it runs in.
     if (instant) {
-      facePoint(this.performer, this.world.camera, this.world.player.position, this.actionPoint(action));
+      prefabInstance(this.world.player)?.sprite.facePoint(this.world.player.position, this.actionPoint(action));
       return action.do();
     }
     // A repeated attack replaces the last through the stategraph's ATTACK handler; anything else ends it first.
     this.cancel(action.action === 'ATTACK' && this.action?.action === 'ATTACK');
     this.world.actionEvents?.emit('action:begin', { owner: this, action: action.action as PlayerActionKind });
-    this.performer.cancelEmote();
+    this.stategraph.cancelEmote();
     this.action = action;
     this.walking = true;
     const combat = this.doer.components?.combat;
@@ -200,14 +201,14 @@ export class PlayerController {
   private arrive(action: BufferedAction<WilsonAction>): void {
     if (this.action !== action) return;
     this.walking = false;
-    facePoint(this.performer, this.world.camera, this.world.player.position, this.actionPoint(action));
-    if (!this.performer.stategraph.pushBufferedAction(action)) this.action = undefined;
+    prefabInstance(this.world.player)?.sprite.facePoint(this.world.player.position, this.actionPoint(action));
+    if (!this.stategraph.pushBufferedAction(action)) this.action = undefined;
   }
 
   /** playercontroller.lua GetAttackTarget: the nearest valid combat target in reach, none while already attacking. */
   getAttackTarget(forceAttack: boolean): ActionTargetEntity | undefined {
     const combat = this.doer.components?.combat, position = this.doer.getPosition?.();
-    if (!combat || !position || this.performer.stategraph.hasStateTag('attack')) return undefined;
+    if (!combat || !position || this.stategraph.hasStateTag('attack')) return undefined;
     // Autowalking searches 6 extra units; direct (WASD) walking only reaches attack range.
     const rad = this.isManualMovement() ? combat.GetAttackRange() : combat.GetAttackRange() + 6 * WORLD_SCALE;
     const reach = (this.doer.getPhysicsRadius?.() ?? 0) + rad + .1 * WORLD_SCALE;
@@ -249,7 +250,7 @@ export class PlayerController {
     if (!action) return;
     this.action = undefined;
     if (this.walking) { this.walking = false; this.locomotor.stop(); }
-    const { stategraph } = this.performer;
+    const { stategraph } = this;
     if (!keepState && stategraph.isActionActive(action)) stategraph.cancelAction(action.action);
   }
 

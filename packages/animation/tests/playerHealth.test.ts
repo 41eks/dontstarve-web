@@ -1,3 +1,4 @@
+import { advancePlayer } from './playerVisual';
 import { readFile } from 'node:fs/promises';
 import { World } from 'cannon-es';
 import { Group, PerspectiveCamera, Scene, Vector3 } from 'three';
@@ -30,7 +31,7 @@ it('eats eight red caps, dies through component events, becomes a ghost and save
     renderer: { domElement: new EventTarget() } } as unknown as WorldContext;
   instance.components.inventory = inventory;
   const picker = new PlayerActionPicker(new PointerRaycaster(world));
-  const food = new FoodActionController({ ...world, mouseActions: picker }, animation,
+  const food = new FoodActionController({ ...world, mouseActions: picker }, animation.stategraph,
     { stop() {}, goToPoint: () => true, destination: undefined }, instance);
   const ghost = createSignal(false), skeleton = vi.fn(), death = vi.fn();
   const owner: PlayerGhostOwner = {
@@ -44,7 +45,7 @@ it('eats eight red caps, dies through component events, becomes a ghost and save
   const stopMakeGhost = instance.ListenForEvent('makeplayerghost', data => OnMakePlayerGhost(owner, data as { skeleton?: boolean }));
   const stopDeath = instance.ListenForEvent('death', death);
   animation.bindDeath({ dropEverything: vi.fn(), isPassableAtPoint: () => true });
-  const frames = (count: number) => { for (let i = 0; i < count; i++) animation.update(1 / 30); };
+  const frames = (count: number) => { for (let i = 0; i < count; i++) advancePlayer(animation, 1 / 30); };
   try {
     expect(stats.health).toBe(health);
     expect(instance.components.hunger).toBe(stats.hunger);

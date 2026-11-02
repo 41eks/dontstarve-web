@@ -1,3 +1,4 @@
+import type { WilsonStateGraph } from '@dontstarve-web/stategraphs';
 import { placementEntities, ignoresPlacement, type PlacementQuery } from './placementEntities';
 import * as THREE from 'three';
 import type { ItemEntity } from '@dontstarve-web/inventory';
@@ -6,7 +7,7 @@ import { createPrefabEntity, prefabInstance } from './prefabInstance';
 import { BufferedAction } from '../../stategraphs/src/bufferedaction';
 import { bindActionCancellation } from '../../stategraphs/src/actionEvents';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
-import type { ActionPerformer, ActionLocomotor } from '../../stategraphs/src/actionContext';
+import type { ActionLocomotor } from '../../stategraphs/src/actionContext';
 import type { PlantDeployMap } from '../../componets/src/deployable';
 import type { WorldContext } from './worldContext';
 import type { TurfSource } from './turfDeployment';
@@ -14,7 +15,6 @@ import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { PLANTABLES } from './plantables';
 import { TILE_SIZE } from './tile';
 import { PlaySound, type SoundHandle } from './sound';
-import { facePoint } from '@dontstarve-web/stategraphs';
 
 export interface PlantDeploymentWorld {
   canPlant(position: THREE.Vector3): boolean;
@@ -40,17 +40,17 @@ export class PlantDeployment {
   private sound?: SoundHandle;
 
   private readonly world: WorldContext;
-  private readonly animation: ActionPerformer;
+  private readonly stategraph: WilsonStateGraph;
   private readonly locomotor: ActionLocomotor;
   private readonly getSource: () => TurfSource | undefined;
   private readonly planting: PlantDeploymentWorld;
   private readonly blockers: PlacementQuery;
   private readonly interrupted: () => boolean;
 
-  constructor(world: WorldContext, animation: ActionPerformer,
+  constructor(world: WorldContext, stategraph: WilsonStateGraph,
     locomotor: ActionLocomotor, getSource: () => TurfSource | undefined,
     planting: PlantDeploymentWorld, interrupted = () => false) {
-    this.world = world; this.animation = animation; this.locomotor = locomotor;
+    this.world = world; this.stategraph = stategraph; this.locomotor = locomotor;
     this.getSource = getSource; this.planting = planting; this.interrupted = interrupted;
     this.blockers = planting.blockers ?? placementEntities(world.scene);
     this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
@@ -84,10 +84,10 @@ export class PlantDeployment {
   request(point: THREE.Vector3): boolean {
     const source = this.getSource(), definition = source && PLANTABLES[source.entity.prefab];
     if (this.disposed || !source?.isValid() || !definition || !this.canDeploy(point, source.entity)
-      || this.animation.stategraph.hasStateTag('busy')) return false;
+      || this.stategraph.hasStateTag('busy')) return false;
     this.cancel();
     this.world.actionEvents?.emit('action:begin', { owner: this, action: 'DEPLOY' });
-    this.animation.cancelEmote();
+    this.stategraph.cancelEmote();
     this.pending = { point: point.clone(), source };
     return true;
   }
@@ -96,7 +96,7 @@ export class PlantDeployment {
     if (this.disposed) return;
     this.updatePreview(dt);
     if (this.interrupted()) { this.cancel(); return; }
-    if (this.buffered && !this.animation.stategraph.isActionActive(this.buffered)) { this.cancel(); return; }
+    if (this.buffered && !this.stategraph.isActionActive(this.buffered)) { this.cancel(); return; }
     const pending = this.pending;
     if (!pending || this.buffered) return;
     const { source, point } = pending;
@@ -109,7 +109,7 @@ export class PlantDeployment {
       return;
     }
     this.locomotor.stop();
-    facePoint(this.animation, this.world.camera, this.world.player.position, point);
+    prefabInstance(this.world.player)?.sprite.facePoint(this.world.player.position, point);
     const version = this.version;
     const valid = () => !this.disposed && version === this.version && source.isValid() && this.canDeploy(point, source.entity)
       && this.world.player.position.distanceToSquared(point) <= this.reach ** 2;
@@ -132,7 +132,7 @@ export class PlantDeployment {
       this.pending = undefined;
       return success;
     }, valid, { pos: point, invobject: source.entity, distance: this.reach });
-    if (this.animation.stategraph.pushBufferedAction(buffered)) this.buffered = buffered;
+    if (this.stategraph.pushBufferedAction(buffered)) this.buffered = buffered;
   }
 
   private updatePreview(dt: number): void {
@@ -179,7 +179,7 @@ export class PlantDeployment {
     this.version++;
     if (this.pending || this.buffered) this.locomotor.stop();
     this.pending = undefined;
-    if (this.buffered && this.animation.stategraph.isActionActive(this.buffered)) this.animation.stategraph.cancelAction('DEPLOY');
+    if (this.buffered && this.stategraph.isActionActive(this.buffered)) this.stategraph.cancelAction('DEPLOY');
     this.buffered = undefined;
   }
   private readonly pointerDown = (event: PointerEvent): void => {

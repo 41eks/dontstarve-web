@@ -1,3 +1,4 @@
+import { advancePlayer, facePlayer } from './playerVisual';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { unzipSync } from 'fflate';
@@ -44,8 +45,8 @@ it('uses skinned swap_body art in every player facing and hides invisible equipm
     await loadDeclaredArt(declaredAnimState(wilsonPlayerInstance(player).sprite), controller.equipmentAssets);
     let hasSkinnedArt = false;
     for (const facing of ['up', 'down', 'side'] as const) {
-      controller.setFacing(facing);
-      controller.start('walk'); controller.update(1 / 30);
+      facePlayer(controller, facing);
+      controller.start('walk'); advancePlayer(controller, 1 / 30);
       hasSkinnedArt ||= mesh.material.some((material) => material.name.startsWith('ground:backpack_'));
       expect(mesh.material.some((material) => material.name === 'ground:swap_backpack'), skinId).toBe(false);
       expect(Array.from(mesh.geometry.getAttribute('position').array).every(Number.isFinite), skinId).toBe(true);

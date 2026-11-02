@@ -126,7 +126,7 @@ it('runs the map right click as BLINK_MAP without walking, revalidates before co
     CanSoulhop: () => eligible, CanBlinkTo: vi.fn(() => false), CanBlinkFromWithMap: () => valid,
   };
   world.mouseActions.pointspecialactionsfn = (_doer, pos, useitem, right) => GetPointSpecialActions(doer, player.position, pos, useitem, right);
-  const controller = new PlayerController(world, { stategraph: graph, cancelEmote() {}, setFacing() {} } as never,
+  const controller = new PlayerController(world, graph,
     locomotor, createEquipmentExistenceState('HANDS'), doer as never);
   try {
     eligible = false;

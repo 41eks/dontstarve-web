@@ -92,8 +92,6 @@ export class BeefaloController {
   readonly sg: BeefaloStateGraph;
   private readonly home: THREE.Vector3;
   private readonly direction = new THREE.Vector3(1, 0, 0);
-  private readonly right = new THREE.Vector3();
-  private readonly forward = new THREE.Vector3();
   private disposed = false;
   private readonly hairGrowthPendingState = createSignal(false);
   readonly hairGrowthPending = readonlySignal(this.hairGrowthPendingState);
@@ -108,9 +106,6 @@ export class BeefaloController {
   /** The engine's AnimState queue: the stategraph's animover/animqueueover come from game time, not from drawing. */
   readonly animstate: AnimState;
   private stopFollow = () => {};
-  // The facing last written to the sprite json, so an unchanged camera heading writes nothing.
-  private facing?: number;
-  private mirrored?: boolean;
   private readonly world: BeefaloWorld;
   private readonly random: () => number;
 
@@ -193,6 +188,7 @@ export class BeefaloController {
       beefalo: { HasTag: (tag: string) => tag === 'has_beard' ? beard.hairy.peek() : undefined } });
     actionEntity(model, 'beefalo');
     const sprite = this.instance.sprite;
+    sprite.setFacingRotation(saved?.heading ?? 0, 6);
     this.stopAppearance = createRenderEffect(() => sprite.setBuildArchive(beard.hairy.get() ? BEEFALO_BUILD : BEEFALO_SHAVED_BUILD));
     this.animstate = new AnimState(world.scheduler, lengths, event => this.PushEvent(event));
     // The drawn sprite follows the logical clip; a queued clip only ends a loop, which the next clip replaces.
@@ -235,6 +231,7 @@ export class BeefaloController {
   private setRotation(degrees: number): void {
     const heading = THREE.MathUtils.degToRad(degrees);
     this.direction.set(Math.cos(heading), 0, -Math.sin(heading));
+    this.instance.sprite.setFacingRotation(degrees, 6);
   }
 
   private getAngleToPoint(x: number, z: number): number {
@@ -289,7 +286,7 @@ export class BeefaloController {
   }
 
   /** Run after physics. The source origin is the foot point, regardless of pose. */
-  sync(cameraQuaternion: THREE.Quaternion): void {
+  sync(): void {
     this.model.position.set(this.body.position.x, 0, this.body.position.z);
     this.world.constrainPosition(this.model.position);
     if (this.body.position.x !== this.model.position.x || this.body.position.z !== this.model.position.z) {
@@ -298,18 +295,6 @@ export class BeefaloController {
       this.body.aabbNeedsUpdate = true;
     }
     syncPlacementEntity(this.model);
-    this.right.set(1, 0, 0).applyQuaternion(cameraQuaternion).setY(0).normalize();
-    this.forward.set(0, 0, -1).applyQuaternion(cameraQuaternion).setY(0).normalize();
-    const x = this.direction.dot(this.right);
-    const z = this.direction.dot(this.forward);
-    // SixFaced: side (RIGHT/LEFT), up diagonals, down diagonals. Pure up/down
-    // use the corresponding diagonal art; mirrored pairs share the source mask.
-    const facing = Math.abs(z) < 0.5 ? (x < 0 ? 4 : 1)
-      : z > 0 ? (x < 0 ? 32 : 16) : (x < 0 ? 128 : 64);
-    const mirrored = x < 0;
-    if (facing === this.facing && mirrored === this.mirrored) return;
-    this.facing = facing; this.mirrored = mirrored;
-    this.instance.sprite.setFacing(facing, mirrored);
   }
 
   exportState(): BeefaloSaveState {
@@ -455,7 +440,7 @@ export class BeefaloManager implements FrameUpdatedPrefabManager<BeefaloRecord> 
   sync(dt: number, cameraQuaternion: THREE.Quaternion): void {
     const step = Number.isFinite(dt) && dt > 0 ? Math.min(dt, .1) : 0;
     for (const [beefalo, display] of this.beefalos) {
-      beefalo.sync(cameraQuaternion);
+      beefalo.sync();
       display.update(step, cameraQuaternion);
     }
   }

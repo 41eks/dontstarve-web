@@ -139,6 +139,7 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
   private layers: Animation[] = [];
   protected loop = true;
   private paused = false;
+  private playbackRate = 1;
   private onComplete?: () => void;
   private animationQueue: { name: string; loop: boolean }[] = [];
   private queueAfter = 0;
@@ -258,6 +259,11 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
   setDepthOffset(enabled: boolean): void { this.renderer.setDepthOffset(enabled); }
 
   setPaused(paused: boolean): void { this.paused = paused; }
+  /** AnimState:SetDeltaTimeMultiplier, without changing source animation frame rates. */
+  setPlaybackRate(rate: number): void {
+    if (!Number.isFinite(rate) || rate < 0) throw new RangeError('Invalid animation playback rate');
+    this.playbackRate = rate;
+  }
   /** Replace only the skin build and its extra layers; playback and completion remain on this controller. */
   setSkin(skin: SpriteSkin | undefined): void {
     if (skin === this.skin) return;
@@ -474,7 +480,7 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
     if (following) this.animStateElapsed += dt;
     if (animating) this.frameKey = '';
     if (this.paused) { if (animating) this.reshowFrame(); return; }
-    this.elapsed += Math.min(dt, 0.1);
+    this.elapsed += Math.min(dt, 0.1) * this.playbackRate;
     if (this.animationQueue.length > 0 && this.elapsed >= this.queueAfter) {
       const [next, ...remaining] = this.animationQueue;
       const remainder = this.elapsed - this.queueAfter;

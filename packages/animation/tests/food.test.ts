@@ -1,3 +1,4 @@
+import { advancePlayer } from './playerVisual';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -35,7 +36,7 @@ async function fixture(itemId = 'bananajuice') {
     renderer: { domElement: new EventTarget() } } as unknown as WorldContext;
   const slot = inventorySlotAddress(0), store = createPickupInventory();
   playerInstance.components.inventory = store;
-  const actions = new FoodActionController(world, animation, { stop() {}, goToPoint: () => true, destination: undefined },
+  const actions = new FoodActionController(world, animation.stategraph, { stop() {}, goToPoint: () => true, destination: undefined },
     playerInstance);
   store.add(itemId, 2);
   const entity = store.getEntity(slot)!;
@@ -50,14 +51,14 @@ it('eats meatballs through the solid-food action and commits edible stats and on
   try {
     expect(await actions.eat(entity)).toBe(true);
     expect(animation.stategraph.animationClip.key).toBe('quick_eat_pre');
-    for (let frame = 0; frame < 11; frame++) animation.update(1 / 30);
+    for (let frame = 0; frame < 11; frame++) advancePlayer(animation, 1 / 30);
     expect(onEaten).not.toHaveBeenCalled();
     expect(store.get(slot)?.count).toBe(2);
     expect(PlaySound).toHaveBeenCalledWith('dontstarve/wilson/eat');
-    animation.update(1 / 30);
+    advancePlayer(animation, 1 / 30);
     expect(store.get(slot)?.count).toBe(1);
     expect(getPlayerStats()).toEqual({ health: 143, hunger: 112.5, sanity: 40 });
-    for (let frame = 0; frame < 40; frame++) animation.update(1 / 30);
+    for (let frame = 0; frame < 40; frame++) advancePlayer(animation, 1 / 30);
     expect(onEaten).toHaveBeenCalledOnce();
   } finally { actions.dispose(); store.dispose(); }
 });
@@ -76,7 +77,7 @@ it('renders source raw/cooked mushroom poses and applies harmful and restorative
       expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
     }
     await actions.eat(entity);
-    for (let frame = 0; frame < 40; frame++) animation.update(1 / 30);
+    for (let frame = 0; frame < 40; frame++) advancePlayer(animation, 1 / 30);
     expect(store.get(slot)?.count).toBe(1);
     expect(getPlayerStats()).toEqual({ health: 140, hunger: 102.5, sanity: 0, sanitySane: false });
     store.add('blue_cap_cooked', 1);
@@ -98,15 +99,15 @@ it('drinks source bananajuice art, consumes once at frame 12 and restores the re
     expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
     expect(await actions.eat(entity)).toBe(true);
     expect(animation.stategraph.animationClip.key).toBe('quick_drink_pre');
-    for (let frame = 0; frame < 11; frame++) animation.update(1 / 30);
+    for (let frame = 0; frame < 11; frame++) advancePlayer(animation, 1 / 30);
     expect(store.get(slot)?.count).toBe(2);
     expect(onEaten).not.toHaveBeenCalled();
     expect(PlaySound).toHaveBeenCalledWith('dontstarve/wilson/sip');
-    animation.update(1 / 30);
+    advancePlayer(animation, 1 / 30);
     expect(store.getEntity(slot)).toBe(entity);
     expect(store.get(slot)?.count).toBe(1);
     expect(getPlayerStats()).toEqual({ health: 148, hunger: 115, sanity: 68 });
-    for (let frame = 0; frame < 40; frame++) animation.update(1 / 30);
+    for (let frame = 0; frame < 40; frame++) advancePlayer(animation, 1 / 30);
     expect(onEaten).toHaveBeenCalledOnce();
     const saved = store.exportState();
     store.replaceState(saved, {});
@@ -120,24 +121,24 @@ it('preserves food and stats when cancelled or replaced before commit and clamps
   const { animation, actions, store, slot, entity } = await fixture();
   const eat = () => actions.eat(entity);
   try {
-    await eat(); animation.update(0.1);
+    await eat(); advancePlayer(animation, 0.1);
     window.dispatchEvent(Object.assign(new Event('keydown'), { code: 'Escape' }));
-    animation.update(1);
+    advancePlayer(animation, 1);
     expect(store.get(slot)?.count).toBe(2);
     expect(getPlayerStats()).toEqual({ health: 140, hunger: 90, sanity: 35 });
     expect(eat()).toBe(true);
-    actions.cancel(); animation.update(1);
+    actions.cancel(); advancePlayer(animation, 1);
     expect(store.get(slot)?.count).toBe(2);
     await eat();
     const saved = store.exportState();
     store.replaceState(saved, {});
-    for (let frame = 0; frame < 40; frame++) animation.update(1 / 30);
+    for (let frame = 0; frame < 40; frame++) advancePlayer(animation, 1 / 30);
     expect(store.get(slot)?.count).toBe(2);
     expect(playerStats.sanity.current).toBe(35);
     playerStats.sanity.SetCurrent(190);
     const replacement = store.getEntity(slot)!;
     expect(await actions.eat(replacement)).toBe(true);
-    for (let frame = 0; frame < 40; frame++) animation.update(1 / 30);
+    for (let frame = 0; frame < 40; frame++) advancePlayer(animation, 1 / 30);
     expect(store.get(slot)?.count).toBe(1);
     expect(playerStats.sanity.current).toBe(200);
   } finally { actions.dispose(); store.dispose(); }
@@ -153,7 +154,7 @@ it('keeps the buffered food entity when it moves to another inventory slot', asy
   try {
     expect(actions.eat(entity)).toBe(true);
     expect(store.transfer(slot, destination, 2)).toBe(true);
-    for (let frame = 0; frame < 12; frame++) animation.update(1 / 30);
+    for (let frame = 0; frame < 12; frame++) advancePlayer(animation, 1 / 30);
     expect(store.getEntity(slot)).toBeNull();
     expect(store.getEntity(destination)).toBe(entity);
     expect(store.get(destination)?.count).toBe(1);
@@ -171,16 +172,16 @@ it('settles the current perish stage at the eat frame and rejects food replaced 
     expect(actions.eat(entity)).toBe(true);
     world.advance(.5);
     expect(perish.stage.peek()).toBe('fresh');
-    for (let frame = 0; frame < 12; frame++) animation.update(1 / 30);
+    for (let frame = 0; frame < 12; frame++) advancePlayer(animation, 1 / 30);
     expect(perish.stage.peek()).toBe('stale');
     expect(getPlayerStats()).toEqual({ health: 140 + 8 * .333, hunger: 90 + 9.375 * .667, sanity: 35 });
     expect(store.get(slot)?.count).toBe(1);
-    for (let frame = 0; frame < 40; frame++) animation.update(1 / 30);
+    for (let frame = 0; frame < 40; frame++) advancePlayer(animation, 1 / 30);
     perish.SetPercent(.00001);
     expect(actions.eat(entity)).toBe(true);
     const stats = getPlayerStats();
     world.advance(.5);
-    for (let frame = 0; frame < 12; frame++) animation.update(1 / 30);
+    for (let frame = 0; frame < 12; frame++) advancePlayer(animation, 1 / 30);
     expect(entity.isRemoved).toBe(true);
     expect(store.get(slot)).toMatchObject({ itemId: 'spoiled_food', count: 1 });
     expect(getPlayerStats()).toEqual(stats);

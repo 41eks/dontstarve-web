@@ -1,3 +1,4 @@
+import { advancePlayer, facePlayer } from './playerVisual';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { unzipSync } from 'fflate';
@@ -55,13 +56,13 @@ it('renders source ground and held art for the base sweeper and brush skin, then
     expect((ground.model.children[0].children[0].children[0] as THREE.Mesh).geometry.drawRange.count).toBeGreaterThan(0);
     animation.setCarryItem('reskin_tool', skinId);
     await vi.waitFor(() => {
-      animation.update(0);
+      advancePlayer(animation, 0);
       const mesh = player.getObjectByProperty('isMesh', true) as THREE.Mesh;
       expect((mesh.material as THREE.Material[]).some((material) => material.name === `ground:${skinId ?? 'swap_reskin_tool'}`)).toBe(true);
     });
     for (const facing of ['down', 'side', 'up'] as const) {
-      animation.setFacing(facing);
-      animation.update(1 / 30);
+      facePlayer(animation, facing);
+      advancePlayer(animation, 1 / 30);
       const mesh = player.getObjectByProperty('isMesh', true) as THREE.Mesh;
       const build = skinId ?? 'swap_reskin_tool';
       expect((mesh.material as THREE.Material[]).some((material) => material.name === `ground:${build}`)).toBe(true);

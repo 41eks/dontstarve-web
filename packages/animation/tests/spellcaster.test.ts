@@ -47,7 +47,7 @@ function fixture(itemId: LightStaffId, remainingUses?: number) {
   const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body);
   // The player inst as act.doer: spellcaster.lua reads its position, tags and sanity.
   const playerDoer = Object.assign(doer, { getPosition: () => player.position, PushEvent: vi.fn() });
-  const controller = new PlayerController(world, { stategraph: graph, cancelEmote() {}, setFacing() {} } as never, locomotor,
+  const controller = new PlayerController(world, graph, locomotor,
     store.handEquipment, playerDoer as never, () => false);
   const input = {
     // GetPointActions(position, equipitem) on the right button, then DoAction.

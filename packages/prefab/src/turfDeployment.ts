@@ -1,8 +1,9 @@
+import type { WilsonStateGraph } from '@dontstarve-web/stategraphs';
 import * as THREE from 'three';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { BufferedAction } from '../../stategraphs/src/bufferedaction';
 import type { WilsonAction } from '../../stategraphs/src/SGwilson';
-import type { ActionPerformer, ActionLocomotor } from '../../stategraphs/src/actionContext';
+import type { ActionLocomotor } from '../../stategraphs/src/actionContext';
 import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import { ArchiveSpriteAssets, createSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
@@ -11,7 +12,6 @@ import { turfTileName } from './turfs';
 import { TurfMap } from './turfMap';
 import { TILE_SIZE } from './tile';
 import type { WorldContext } from './worldContext';
-import { facePoint } from '@dontstarve-web/stategraphs';
 
 export interface TurfSource {
   readonly entity: ItemEntity;
@@ -38,15 +38,15 @@ export class TurfDeployment {
   private readonly reach = 1.1 * TILE_SIZE / 4;
   private readonly world: WorldContext;
   private readonly turf: TurfMap;
-  private readonly animation: ActionPerformer;
+  private readonly stategraph: WilsonStateGraph;
   private readonly locomotor: ActionLocomotor;
   private readonly getSource: () => TurfSource | undefined;
   private readonly isManualMovement: () => boolean;
 
   constructor(world: WorldContext, turf: TurfMap,
-    animation: ActionPerformer, locomotor: ActionLocomotor,
+    stategraph: WilsonStateGraph, locomotor: ActionLocomotor,
     getSource: () => TurfSource | undefined, isManualMovement = () => false) {
-    this.world = world; this.turf = turf; this.animation = animation; this.locomotor = locomotor;
+    this.world = world; this.turf = turf; this.stategraph = stategraph; this.locomotor = locomotor;
     this.getSource = getSource; this.isManualMovement = isManualMovement;
     this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
     this.assets = new ArchiveSpriteAssets('turf-grid');
@@ -64,10 +64,10 @@ export class TurfDeployment {
   request(point: THREE.Vector3): boolean {
     const source = this.getSource(), name = source && turfTileName(source.entity.prefab);
     if (this.disposed || !source?.isValid() || !name || !this.turf.canPlaceTurf(point)
-      || this.animation.stategraph.hasStateTag('busy')) return false;
+      || this.stategraph.hasStateTag('busy')) return false;
     this.cancel();
     this.world.actionEvents?.emit('action:begin', { owner: this, action: 'DEPLOY' });
-    this.animation.cancelEmote();
+    this.stategraph.cancelEmote();
     const centre = this.turf.tileCenter(point);
     this.target = new THREE.Vector3(centre.x, 0, centre.z);
     this.source = source;
@@ -79,7 +79,7 @@ export class TurfDeployment {
     this.version++;
     if (this.target) this.locomotor.stop();
     this.target = undefined; this.source = undefined;
-    if (this.action && this.animation.stategraph.isPerformingAction('DEPLOY')) this.animation.stategraph.cancelAction();
+    if (this.action && this.stategraph.isPerformingAction('DEPLOY')) this.stategraph.cancelAction();
     this.action = undefined;
   }
 
@@ -99,7 +99,7 @@ export class TurfDeployment {
       return;
     }
     this.locomotor.stop();
-    facePoint(this.animation, this.world.camera, this.world.player.position, point);
+    prefabInstance(this.world.player)?.sprite.facePoint(this.world.player.position, point);
     const version = this.version;
     const valid = () => !this.disposed && version === this.version && source.isValid()
       && this.turf.canPlaceTurf(point) && this.world.player.position.distanceToSquared(point) <= this.reach ** 2;
@@ -115,7 +115,7 @@ export class TurfDeployment {
       this.source = undefined;
       return deployed;
     }, valid, { invobject: source.entity, pos: point, distance: this.reach });
-    if (this.animation.stategraph.pushBufferedAction(action)) { this.action = action; this.target = undefined; }
+    if (this.stategraph.pushBufferedAction(action)) { this.action = action; this.target = undefined; }
   }
 
   private updatePreview(dt: number): void {

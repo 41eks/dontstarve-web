@@ -1,3 +1,4 @@
+import { createSignal, readonlySignal } from '@dontstarve-web/signals';
 // src/animation.ts
 
 
@@ -73,49 +74,30 @@ export default class ModelAnimation {
 
 import * as THREE from 'three';
 import { playerBody } from "./player";
-import type { WilsonFacing } from '@dontstarve-web/prefab/player';
 import { JUMP_VELOCITY } from './updatePlayerMovement';
-export function createAnimationUpdater(model: THREE.Group, camera: THREE.Camera) {
+export function createAnimationUpdater(model: THREE.Group) {
 
     const wilsonAnimation = (prefabInstance(model) as WilsonPlayerInstance | undefined)?.animationController;
 
     if (wilsonAnimation) {
-        let lastFacing: WilsonFacing = 'down';
-        let lastMirrored = false;
+        const sprite = (prefabInstance(model) as WilsonPlayerInstance).sprite;
+        const jumpProgress = createSignal<number | undefined>(undefined);
+        sprite.setFrameSource({ name: 'jump', progress: readonlySignal(jumpProgress) });
         const direction = new THREE.Vector3();
-        const forward = new THREE.Vector3();
-        const right = new THREE.Vector3();
-        const up = new THREE.Vector3(0, 1, 0);
+        const origin = new THREE.Vector3();
 
         return function listener(dt: number) {
             direction.set(playerBody.velocity.x, 0, playerBody.velocity.z);
             const isMoving = direction.lengthSq() > 0.0001;
             const isJumping = input.isPressed('Space') || !playerBody.canJump;
 
-            if (isMoving) {
-                camera.getWorldDirection(forward);
-                forward.y = 0;
-                forward.normalize();
-                right.crossVectors(forward, up).normalize();
-                const forwardAmount = direction.dot(forward);
-                const rightAmount = direction.dot(right);
-                if (Math.abs(forwardAmount) >= Math.abs(rightAmount)) {
-                    lastFacing = forwardAmount > 0 ? 'up' : 'down';
-                    lastMirrored = false;
-                } else {
-                    lastFacing = 'side';
-                    lastMirrored = rightAmount < 0;
-                }
-                wilsonAnimation.setFacing(lastFacing, lastMirrored);
-            }
+            if (isMoving) sprite.facePoint(origin, direction);
 
             wilsonAnimation.start(isJumping ? 'jump' : isMoving
                 ? (input.isPressed('ShiftLeft') ? 'run' : 'walk')
                 : 'idle');
-            const jumpProgress = isJumping
-                ? (JUMP_VELOCITY - playerBody.velocity.y) / (2 * JUMP_VELOCITY)
-                : undefined;
-            wilsonAnimation.update(dt, jumpProgress);
+            jumpProgress.set(isJumping ? (JUMP_VELOCITY - playerBody.velocity.y) / (2 * JUMP_VELOCITY) : undefined);
+            wilsonAnimation.update(dt);
         };
     }
 

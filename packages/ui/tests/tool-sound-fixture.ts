@@ -1,3 +1,4 @@
+import { advancePlayer, registerPlayer } from '../../animation/tests/playerVisual';
 import { prefabDisplay } from '../../display/src';
 import { prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import { createWilsonPlayer, type WilsonAnimationController, type WilsonCarryItem } from '../../prefab/src/player';
@@ -17,6 +18,7 @@ export async function checkToolSounds() {
   };
   try {
     const player = createWilsonPlayer('/dst/data/anim');
+  registerPlayer(player);
     await prefabDisplay(player).artLoaded();
     const animation = prefabInstance(player).animationController as WilsonAnimationController;
     const cases = [];
@@ -27,14 +29,14 @@ export async function checkToolSounds() {
       const start = () => animation.stategraph.pushBufferedAction(new BufferedAction(tool === 'hammer' ? 'HAMMER' : 'MINE', () => { hits++; }));
       const started = start();
       const ignoresBusy = !start();
-      for (let f = 0; f < 15; f++) animation.update(1 / 30);
+      for (let f = 0; f < 15; f++) advancePlayer(animation, 1 / 30);
       const silentBeforeHit = hits === 0 && sources.length === before;
       Math.random = () => random;
-      animation.update(1 / 30);
+      advancePlayer(animation, 1 / 30);
       Math.random = originalRandom;
       const source = sources.at(-1)!;
       const soundAtHit = hits === 1 && sources.length === before + 1;
-      for (let f = 0; f < 90; f++) animation.update(1 / 30);
+      for (let f = 0; f < 90; f++) advancePlayer(animation, 1 / 30);
       cases.push({ tool, started, ignoresBusy, silentBeforeHit, soundAtHit,
         playsOnce: hits === 1 && sources.length === before + 1,
         duration: source.buffer!.length / source.buffer!.sampleRate,
@@ -47,14 +49,14 @@ export async function checkToolSounds() {
       const before = sources.length;
       const start = () => animation.stategraph.pushBufferedAction(new BufferedAction(tool === 'hammer' ? 'HAMMER' : 'MINE', () => { hits++; }));
       start();
-      for (let f = 0; f < 15; f++) animation.update(1 / 30);
+      for (let f = 0; f < 15; f++) advancePlayer(animation, 1 / 30);
       animation.stategraph.cancelAction(tool === 'hammer' ? 'HAMMER' : 'MINE');
-      for (let f = 0; f < 90; f++) animation.update(1 / 30);
+      for (let f = 0; f < 90; f++) advancePlayer(animation, 1 / 30);
       cancellations.push(hits === 0 && sources.length === before);
       start();
-      for (let f = 0; f < 15; f++) animation.update(1 / 30);
+      for (let f = 0; f < 15; f++) advancePlayer(animation, 1 / 30);
       await animation.setCarryItem(null);
-      for (let f = 0; f < 90; f++) animation.update(1 / 30);
+      for (let f = 0; f < 90; f++) advancePlayer(animation, 1 / 30);
       cancellations.push(hits === 0 && sources.length === before);
     }
     (window as unknown as { toolAudio: (dispose: boolean) => string }).toolAudio = (dispose) => {
@@ -80,6 +82,7 @@ export async function checkGatheringSounds() {
   };
   try {
     const player = createWilsonPlayer('/dst/data/anim');
+  registerPlayer(player);
     await prefabDisplay(player).artLoaded();
     const animation = prefabInstance(player).animationController as WilsonAnimationController;
     const target = { hasTag: () => false };
@@ -88,16 +91,16 @@ export async function checkGatheringSounds() {
     const phases: string[] = [];
     for (let frame = 0; frame < 60; frame++) {
       const before = sources.length;
-      animation.update(1 / 60);
+      advancePlayer(animation, 1 / 60);
       if (sources.length > before) phases.push(animation.stategraph.animationClip.key);
     }
     const normal = { phases, layers: sources.length, loops: sources.map(source => source.loop), committed };
-    animation.update(1);
+    advancePlayer(animation, 1);
     animation.stategraph.pushBufferedAction(new BufferedAction('PICK', () => { committed++; }, () => true, { target }));
-    for (let frame = 0; frame < 20; frame++) animation.update(1 / 60);
+    for (let frame = 0; frame < 20; frame++) advancePlayer(animation, 1 / 60);
     const beforeCancel = sources.length;
     animation.stategraph.cancelAction('PICK');
-    for (let frame = 0; frame < 60; frame++) animation.update(1 / 60);
+    for (let frame = 0; frame < 60; frame++) advancePlayer(animation, 1 / 60);
     return { normal, cancelStops: sources.slice(beforeCancel - 2, beforeCancel).every(source => stopped.has(source)),
       noSoundsAfterCancel: sources.length === beforeCancel, cancelPreservesProduct: committed === 1 };
   } finally { DisposeSounds(); AudioContext.prototype.createBufferSource = originalCreate; }

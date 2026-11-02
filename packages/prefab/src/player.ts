@@ -2,8 +2,7 @@ import { smallHash } from '@dontstarve-web/animation/animationAssets';
 import { AnimState } from '@dontstarve-web/animation/animState';
 import { SpriteResources, type NamedSpriteArt, type FollowerFx, type PrefabDisplay } from '@dontstarve-web/display';
 import type { ReadonlySignal } from '@dontstarve-web/signals';
-import { BufferedAction, PLAYER_FACING_VALUES, WilsonStateGraph, type WilsonAction, type WilsonAnimationClip, type WilsonAnimationKey, type WilsonCombat, type WilsonFishingHost, type WilsonMovementState, type WilsonOneShotState, type PlayerFacing, type WilsonSleepHost, type WilsonDeathHost, type WilsonRebirthHost } from '@dontstarve-web/stategraphs';
-import type { ActionPerformer } from '@dontstarve-web/stategraphs/actionContext';
+import { BufferedAction, WilsonStateGraph, type WilsonAction, type WilsonAnimationClip, type WilsonAnimationKey, type WilsonCombat, type WilsonFishingHost, type WilsonMovementState, type WilsonOneShotState, type WilsonSleepHost, type WilsonDeathHost, type WilsonRebirthHost } from '@dontstarve-web/stategraphs';
 import type * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import type { AxeTool } from './axe';
@@ -32,7 +31,6 @@ import { StaffCastingLight } from './staff_castinglight';
 import type { SlipperyFeet } from '../../componets/src/slipperyfeet';
 import type { ComponentUpdates } from '../../componets/src/componentUpdates';
 
-export type WilsonFacing = PlayerFacing;
 /** skinprefabs.lua wortox_none: normal_skin = wortox, ghost_skin = ghost_wortox_build. */
 export const PLAYER_ART_CHARACTER = 'wortox' as const;
 
@@ -113,7 +111,9 @@ const WILSON_ANIMATION_ARCHIVES: WilsonAnimations = {
 /** player_common_extensions.lua AddOverrideBuild, named in the display declaration. */
 const UNIQUE_ITEM_BUILD = 'player_actions_uniqueitem';
 
-export interface WilsonAnimationController extends ActionPerformer {
+export interface WilsonAnimationController {
+  readonly stategraph: WilsonStateGraph;
+  cancelEmote(): void;
   readonly currentEmote: WilsonEmote | null;
   readonly isEmoting: boolean;
   /** The player inst's combat component, read by the attack state. */
@@ -155,7 +155,7 @@ export interface WilsonAnimationController extends ActionPerformer {
   readonly isSleeping: boolean;
   wakeFromBed(): void;
   goToWakeup(): void;
-  update(dt: number, jumpProgress?: number): void;
+  update(dt: number): void;
 }
 
 export type PlayerBody = CANNON.Body & { canJump: boolean };
@@ -223,18 +223,12 @@ class WilsonController implements WilsonAnimationController {
   readonly AnimState: AnimState;
   private handVisual?: ReturnType<typeof wornEquipmentLifecycle>;
   private readonly castingLight: StaffCastingLight;
-  private animation!: ReturnType<typeof animationTiming>;
   private makeSound?: SoundHandle;
   private makeSoundActive = false;
-  private makeSoundCycle = -1;
   private shaveSound?: SoundHandle;
   /** The player inst's combat component, read by the attack state. */
   combat?: WilsonCombat;
-  private frameIndex = -1;
-  private readonly model: PlayerModel;
   private readonly instance: WilsonPlayerInstance;
-  /** The player's display: it advances the declared clip in step with the stategraph. */
-  private readonly display: PrefabDisplay;
   private readonly fxScheduler = new GameTimeScheduler();
   private readonly cleanups: (() => void)[] = [];
   private disposed = false;
@@ -258,14 +252,11 @@ class WilsonController implements WilsonAnimationController {
 
   constructor(
     instance: WilsonPlayerInstance,
-    display: PrefabDisplay,
     assetBaseUrl: string,
     resources: SpriteResources,
     sanityPercent?: ReadonlySignal<number>,
   ) {
     this.instance = instance;
-    this.display = display;
-    this.model = display.model;
     this.resources = resources;
     this.equipmentAssets = new GroundItemAssets();
     // The sprite holds the AnimState's own json signal; the player's display follows it and loads the builds it names from the equipment assets.
@@ -304,7 +295,6 @@ class WilsonController implements WilsonAnimationController {
           this.makeSound?.stop();
           this.makeSound = undefined;
           this.makeSoundActive = true;
-          this.makeSoundCycle = -1;
           return;
         }
         const event = cue === 'useBreak' ? 'dontstarve/wilson/use_break' : cue === 'dig' ? 'dontstarve/wilson/dig' : cue === 'tillEmerge' ? 'dontstarve_DLC001/creatures/mole/emerge'
@@ -333,7 +323,6 @@ class WilsonController implements WilsonAnimationController {
         if (cue === 'shave') { this.shaveSound?.stop(); this.shaveSound = undefined; return; }
         this.makeSound?.stop(); this.makeSound = undefined;
         this.makeSoundActive = false;
-        this.makeSoundCycle = -1;
       },
       setCasting: (casting, colour) => {
         if (casting) this.castingLight.start(colour);
@@ -413,7 +402,7 @@ class WilsonController implements WilsonAnimationController {
       setTint: value => this.setTint(value),
       playSound: (event, volume = 1) => {
         for (const sound of this.portalSounds) if (!sound.isPlaying()) this.portalSounds.delete(sound);
-        const sound = PlaySound(event as SoundEventPath, this.model.position);
+        const sound = PlaySound(event as SoundEventPath, this.instance.position);
         sound.setVolume(volume);
         this.portalSounds.add(sound);
       },
@@ -426,15 +415,11 @@ class WilsonController implements WilsonAnimationController {
     if (this.isGhost) return;
     this.cancelEmote();
     this.stategraph.becomeGhost(loading);
-    this.frameIndex = -1;
-    this.showCurrentFrame();
   }
 
   makeAlive(state: 'portal_rez' | 'amulet_rebirth' = 'portal_rez'): void {
     if (!this.isGhost) return;
     this.stategraph.becomeAlive(state);
-    this.frameIndex = -1;
-    this.showCurrentFrame();
   }
 
   /** Character colour and Wortox's additive portal tint are per-instance appearance declarations. */
@@ -476,10 +461,6 @@ class WilsonController implements WilsonAnimationController {
   playItemTransition(state: 'item_in' | 'item_out') {
     if (this.stategraph.isDead) return;
     this.startOneShot(state);
-    if (state === 'item_in') {
-      this.frameIndex = -1;
-      this.showFrame(0);
-    }
   }
 
   playPickup() {
@@ -491,19 +472,8 @@ class WilsonController implements WilsonAnimationController {
     this.stategraph.requestCrafting(crafting);
   }
 
-  setFacing(facing: WilsonFacing, mirrored = false) {
-    const current = this.instance.sprite.sprite.peek();
-    if (PLAYER_FACING_VALUES[facing] === current.facing && mirrored === (current.mirrored ?? false)) return;
-    this.instance.sprite.setFacing(PLAYER_FACING_VALUES[facing], mirrored);
-    // Facing changes select different art without restarting the state timeline.
-    this.selectAnimation(this.stategraph.animationClip, false);
-    this.showCurrentFrame();
-    this.display.update(0);
-  }
-
   setEquippedCarryItem(): void {
     this.stategraph.pushEvent('unequip');
-    this.refreshFrame();
   }
 
   /** Standalone preview adapter: use the same prefab equip/unequip functions as live inventory. */
@@ -542,46 +512,24 @@ class WilsonController implements WilsonAnimationController {
     return this.instance.sprite.followSymbol(symbol, offsetX, offsetY, fx);
   }
 
-  private refreshFrame(): void { this.display.update(0); }
-
-  update(dt: number, jumpProgress?: number): void {
+  update(dt: number): void {
     if (this.disposed) return;
     const step = Math.max(0, Math.min(dt, 0.1));
     this.fxScheduler.advance(step);
     this.stategraph.update(step);
     this.castingLight.update(step);
-    this.showCurrentFrame(jumpProgress);
-    this.display.update(step);
   }
 
-  private showCurrentFrame(jumpProgress?: number) {
-    if (this.state === 'jump' && jumpProgress !== undefined) {
-      const progress = THREE.MathUtils.clamp(jumpProgress, 0, 1);
-      this.showFrame(Math.min(this.animation.frames - 1, Math.floor(progress * this.animation.frames)));
-      return;
-    }
-    const clip = this.stategraph.animationClip;
-    const speed = (clip.frameRate ?? this.animation.frameRate) * (clip.playbackRate ?? 1);
-    const frame = Math.floor(this.stategraph.animationTime * speed);
-    if (this.makeSoundActive && this.state === 'build_loop' && clip.loop) {
-      const cycle = Math.floor(frame / this.animation.frames);
-      if (cycle !== this.makeSoundCycle) {
-        this.makeSoundCycle = cycle;
-        this.makeSound?.stop();
-        this.makeSound = PlaySound('dontstarve/wilson/make_trap');
-      }
-    }
-    this.showFrame(clip.loop ? frame % this.animation.frames : Math.min(frame, this.animation.frames - 1));
-  }
-
-  private selectAnimation(clip: WilsonAnimationClip, restart = true): number {
+  private selectAnimation(clip: WilsonAnimationClip): number {
     this.state = clip.key;
     const archive = this.state === 'ghost' ? 'player_ghost_withhat.zip' : this.state === 'emote' ? this.emote!.archive
       : this.state === 'amulet_rebirth' ? 'player_amulet_resurrect.zip'
       : this.state === 'action_uniqueitem_pre' || this.state === 'book' || this.state === 'flute' ? `${UNIQUE_ITEM_BUILD}.zip`
         : WILSON_ANIMATION_ARCHIVES[this.state];
     const bank = this.state === 'ghost' ? 'ghost' : 'wilson';
-    this.animation = animationTiming(archive, clip.name, smallHash(bank));
+    const animation = animationTiming(archive, clip.name, smallHash(bank));
+    const playbackRate = (clip.frameRate ?? animation.frameRate) / animation.frameRate * (clip.playbackRate ?? 1);
+    this.instance.sprite.setPlaybackRate(playbackRate);
     const buildArchive = this.state === 'ghost' ? `dynamic/ghost_${PLAYER_ART_CHARACTER}_build.zip` : `dynamic/${PLAYER_ART_CHARACTER}.zip`;
     const fallbackBuilds = [`${UNIQUE_ITEM_BUILD}.zip`, ...(this.emote?.props ? [this.emote.archive] : [])];
     if (!this.artSource || this.artSource.animationArchive !== archive || this.artSource.buildArchive !== buildArchive
@@ -589,23 +537,17 @@ class WilsonController implements WilsonAnimationController {
       this.artSource = { animationArchive: archive, bank, buildArchive, fallbackBuilds, art: this.resources.archives };
       this.instance.sprite.setArtSource(this.artSource);
     }
-    if (restart) {
-      if (clip.loop) this.instance.sprite.start(clip.name); else this.instance.sprite.playOnce(clip.name);
-      this.frameIndex = -1;
-      this.showFrame(0);
+    if (clip.loop) this.instance.sprite.start(clip.name); else this.instance.sprite.playOnce(clip.name);
+    if (this.makeSoundActive && this.state === 'build_loop') {
+      this.makeSound?.stop();
+      this.makeSound = PlaySound('dontstarve/wilson/make_trap');
     }
-    return this.animation.frames / ((clip.frameRate ?? this.animation.frameRate) * (clip.playbackRate ?? 1));
+    return animation.frames / (animation.frameRate * playbackRate);
   }
 
   private startOneShot(state: WilsonOneShotState) {
     this.cancelEmote();
     this.stategraph.requestOneShot(state);
-  }
-
-  private showFrame(index: number): void {
-    if (index === this.frameIndex) return;
-    this.frameIndex = index;
-    this.instance.sprite.setFrame(index);
   }
 
   dispose(): void {
@@ -640,9 +582,7 @@ function createWilsonPlayerEntity(
   }), { name: 'idle_loop', billboard: true }, 'Wortox', instance => {
     instance.sprite.setArtSource({ animationArchive: 'player_idles.zip', bank: 'wilson',
       buildArchive: `dynamic/${PLAYER_ART_CHARACTER}.zip`, fallbackBuilds: [`${UNIQUE_ITEM_BUILD}.zip`], art: resources.archives });
-    instance.sprite.setFacing(8, false);
-    // SGwilson owns playback time and action completion; the display draws the declared frame.
-    instance.sprite.setPaused(true);
+    instance.sprite.setFacingRotation(0, 4);
   });
   const instance = Object.assign(baseInstance, {
     stats: createPlayerStats(baseInstance, options.stats, options.scheduler),
@@ -662,7 +602,7 @@ function createWilsonPlayerEntity(
   player.position.set(0, 30, 0);
   actionEntity(player, PLAYER_ART_CHARACTER);
 
-  const controller = new WilsonController(instance, display, assetBaseUrl, resources,
+  const controller = new WilsonController(instance, assetBaseUrl, resources,
     options.sanityPercent ?? (options.stats ? instance.stats.sanity.percent : undefined));
   const stopDeath = instance.ListenForEvent('death', data => controller.stategraph.pushEvent('death', data));
   instance.onRemove(() => { stopDeath(); controller.dispose(); disposeActionEntity(player); });

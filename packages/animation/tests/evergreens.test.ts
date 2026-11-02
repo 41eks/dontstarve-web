@@ -1,3 +1,4 @@
+import { advancePlayer } from './playerVisual';
 import { playerDoer } from './playerDoer';
 import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
@@ -114,9 +115,9 @@ it('commits source axe work, cancels before impact, preserves logical components
   inventory.transfer(inventorySlotAddress(0), equipmentSlotAddress('hand'), 1);
   const axe = inventory.getEntity(equipmentSlotAddress('hand'))!;
   const world = { player, camera: s.camera, scene: new THREE.Scene(), ground: new THREE.Group(), renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
-  const controller = new PlayerController(world, animation, new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body, { physicsRadius: .5 * WORLD_SCALE }), inventory.handEquipment, playerDoer(player));
+  const controller = new PlayerController(world, animation.stategraph, new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body, { physicsRadius: .5 * WORLD_SCALE }), inventory.handEquipment, playerDoer(player));
   const chop = (target: { entity: object }) => controller.DoAction(controller.createAction({ action: 'CHOP', target: target.entity as never, invobject: axe })!);
-  const advance = (frames: number) => { for (let i = 0; i < frames; i++) animation.update(1 / 30); };
+  const advance = (frames: number) => { for (let i = 0; i < frames; i++) advancePlayer(animation, 1 / 30); };
   try {
     player.position.set(1, 0, 3);
     const tree = s.forest.spawn('evergreen_tall', new THREE.Vector3(1, 0, 0));
@@ -125,7 +126,7 @@ it('commits source axe work, cancels before impact, preserves logical components
     expect(chop(target)).toBe(true); controller.cancel(); advance(60);
     expect(work.GetWorkLeft()).toBe(15); expect(axe.components.finiteuses.remaining).toBeUndefined();
     expect(chop(target)).toBe(true);
-    while (animation.stategraph.stateName === 'chop_start') animation.update(1 / 30);
+    while (animation.stategraph.stateName === 'chop_start') advancePlayer(animation, 1 / 30);
     advance(2); expect(work.GetWorkLeft()).toBe(14); expect(axe.components.finiteuses.remaining).toBe(99);
     expect(s.forest.renderEntities.some(entry => entry.object.name === 'pine_needles_chop')).toBe(true);
     await new Promise(resolve => setTimeout(resolve, 0));

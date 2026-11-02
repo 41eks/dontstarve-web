@@ -1,3 +1,4 @@
+import { advancePlayer, facePlayer } from './playerVisual';
 import { playerDoer } from './playerDoer';
 import { AnimState } from '../src/animState';
 import { readFile } from 'node:fs/promises';
@@ -36,7 +37,7 @@ function setup(player = new THREE.Group(), random = () => 0.9) {
   return { farm, turf, world };
 }
 function advance(animation: WilsonAnimationController, frames: number) {
-  for (let i = 0; i < frames; i++) animation.update(1 / 30);
+  for (let i = 0; i < frames; i++) advancePlayer(animation, 1 / 30);
 }
 
 it('loads original ground and separate equipped art, visible skins and hidden equipped symbols', async () => {
@@ -116,17 +117,17 @@ it('walks into reach, commits DIG at shovel_loop frame 15, and preserves cancell
   equipped.set({ itemId: 'goldenshovel', EQUIPSLOTS: 'HANDS', entity: tool });
   const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body,
     { physicsRadius: .5 * WORLD_SCALE });
-  const controller = new PlayerController(world, animation, locomotor, equipped, playerDoer(player));
+  const controller = new PlayerController(world, animation.stategraph, locomotor, equipped, playerDoer(player));
   const dig = () => controller.DoAction(controller.createAction({ action: 'DIG', target: workTargets('DIG')[0].entity, invobject: tool })!);
   try {
     expect(dig()).toBe(true);
     expect(locomotor.destination).toBeDefined();
     player.position.set(3, 0, 4.5); locomotor.update(16, 1 / 30);
-    while (animation.stategraph.stateName === 'dig_start') animation.update(1 / 30);
+    while (animation.stategraph.stateName === 'dig_start') advancePlayer(animation, 1 / 30);
     advance(animation, 14);
     expect(farm.exportDecorRecords()).toHaveLength(1);
     expect(tool.components.finiteuses.remaining).toBeUndefined();
-    animation.setFacing('side', true); animation.update(1 / 30);
+    facePlayer(animation, 'side', true); advancePlayer(animation, 1 / 30);
     expect(farm.exportDecorRecords()).toEqual([]);
     expect(tool.components.finiteuses.remaining).toBe(24.75);
     expect(PlaySound).toHaveBeenCalledWith('dontstarve/wilson/dig');

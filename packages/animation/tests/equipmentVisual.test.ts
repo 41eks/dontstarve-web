@@ -1,3 +1,4 @@
+import { advancePlayer } from './playerVisual';
 import * as THREE from 'three';
 import { createEmptyEntity } from '../../prefab/src/prefabInstance';
 import { readFile } from 'node:fs/promises';
@@ -114,10 +115,10 @@ it('lets a skin replaced before its load finishes only fill the cache: the playe
   try {
     animation.setCarryItem('hammer', 'hammer_forge');
     animation.setCarryItem('hammer');
-    await vi.waitFor(() => { animation.update(0); expect(drawn()).toContain('ground:swap_hammer'); });
+    await vi.waitFor(() => { advancePlayer(animation, 0); expect(drawn()).toContain('ground:swap_hammer'); });
     await animation.equipmentAssets.loadBuild(GROUND_ITEM_DEFINITIONS.hammer.skinArchives.hammer_forge);
     await new Promise(resolve => setTimeout(resolve, 0));
-    animation.update(0);
+    advancePlayer(animation, 0);
     expect(drawn()).not.toContain('ground:hammer_forge');
     expect(drawn()).toContain('ground:swap_hammer');
   } finally { animation.setCarryItem(null); player.removeFromParent(); }

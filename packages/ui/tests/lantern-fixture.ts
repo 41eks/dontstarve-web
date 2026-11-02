@@ -1,3 +1,4 @@
+import { advancePlayer, facePlayer, registerPlayer } from '../../animation/tests/playerVisual';
 import { prefabDisplay } from '../../display/src';
 import { fixturePickup } from './pickup-fixture';
 import * as THREE from 'three';
@@ -47,6 +48,7 @@ export async function checkLanternLighting() {
   const baseline = await sample(0);
   const player = createWilsonPlayer('/dst/data/anim');
   await prefabDisplay(player).artLoaded();
+  registerPlayer(player);
   player.position.set(0, 0, 0);
   scene.add(player);
   const controller = prefabInstance(player).animationController as WilsonAnimationController;
@@ -67,8 +69,8 @@ export async function checkLanternLighting() {
     await controller.setCarryItem('lantern', skin);
     for (const facing of ['up', 'down', 'side'] as const) {
       for (const mirrored of [false, true]) {
-        controller.setFacing(facing, mirrored);
-        controller.update(0.05);
+        facePlayer(controller, facing, mirrored);
+        advancePlayer(controller, 0.05);
         const mesh = player.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
         if (!mesh.material.some((material) => material.name === `ground:${expectedBuild}`))
           failures.push(`missing worn art ${skin}:${facing}:${mirrored}`);

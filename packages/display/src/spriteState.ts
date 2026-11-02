@@ -96,6 +96,11 @@ export interface SpriteJson {
   readonly facing?: number;
   /** Transform:SetEightFaced with this logical rotation; the display selects the view from its camera input. */
   readonly facingRotation?: number;
+  readonly facingMode?: 4 | 6 | 8;
+  /** AnimState playback speed; animation owns elapsed time. */
+  readonly playbackRate?: number;
+  /** An externally driven pose, such as physical jump progress; only the named clip is held. */
+  readonly frameSource?: { readonly name: string; readonly progress: ReadonlySignal<number | undefined> };
   /** Left-hand facings drawn as their mirrored right-hand art. */
   readonly mirrored?: boolean;
   readonly colour?: readonly number[];
@@ -152,6 +157,7 @@ export interface ArchiveSpriteCommands {
   /** AnimState:SetFrame at `fraction` of the clip's frames, for a frame chosen before the art has loaded. */
   setFrameAt(fraction: number): void;
   setFacing(facing: number): void;
+  facePoint(from: THREE.Vector3, to: THREE.Vector3): void;
   setColour(colour: readonly number[]): void;
   setOpacity(opacity: number): void;
   /** null clears it: the model keeps no minimum light. */
@@ -345,9 +351,20 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
       this.write({ facing, mirrored, facingRotation: undefined });
     }
   }
-  setFacingRotation(rotation: number): void {
-    if (rotation !== this.state.facingRotation) this.write({ facingRotation: rotation, facing: undefined, mirrored: undefined });
+  setFacingRotation(rotation: number, facingMode: 4 | 6 | 8 = 8): void {
+    if (rotation !== this.state.facingRotation || facingMode !== this.state.facingMode) {
+      this.write({ facingRotation: rotation, facingMode, facing: undefined, mirrored: undefined });
+    }
   }
+  /** World-space direction; coincident points preserve the previous logical heading. */
+  facePoint(from: THREE.Vector3, to: THREE.Vector3): void {
+    const x = to.x - from.x, z = to.z - from.z;
+    if (x * x + z * z > 1e-8) this.setFacingRotation(Math.atan2(-z, x) * 180 / Math.PI, this.state.facingMode);
+  }
+  setPlaybackRate(playbackRate: number): void {
+    if (playbackRate !== this.state.playbackRate) this.write({ playbackRate });
+  }
+  setFrameSource(frameSource: SpriteJson['frameSource']): void { this.write({ frameSource }); }
   setColour(colour: readonly number[]): void { this.write({ colour }); }
   setOpacity(opacity: number): void { this.write({ opacity }); }
   setLightOverride(lightOverride: number | null): void { this.write({ lightOverride: lightOverride ?? undefined }); }
