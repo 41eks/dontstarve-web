@@ -19,6 +19,21 @@ def chessjunk_components(data):
     return {'chessJunk': state}
 
 
+def chesspiece_malbatross_marble_components(data):
+    # chesspieces.lua onsave: materialid (onload: `or 1`, marble); submersible.lua OnSave: force_no_repositioning.
+    # Stone and moonglass are other prefabs that this project has not ported, so they must not import as marble.
+    if set(data) - {'materialid', 'submersible'} or data.get('materialid', 1) != 1:
+        raise ValueError('Unsupported chesspiece_malbatross save state')
+    components = {'chesspiece': {'materialid': 1}}
+    if 'submersible' in data:
+        submersible = data['submersible']
+        if not isinstance(submersible, dict) or set(submersible) != {'force_no_repositioning'} \
+                or type(submersible['force_no_repositioning']) is not bool:
+            raise ValueError('Unsupported chesspiece_malbatross submersible state')
+        components['submersible'] = {'force_no_repositioning': submersible['force_no_repositioning']}
+    return components
+
+
 def ruins_statue_gem_components(prefab):
     # statueruins.lua gem(): OnSave writes only gem; workable.savestate remains false.
     gems = {'greengem', 'redgem', 'bluegem', 'yellowgem', 'orangegem', 'purplegem'}

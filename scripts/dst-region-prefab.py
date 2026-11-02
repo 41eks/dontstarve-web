@@ -48,6 +48,9 @@ ENTITY_WHITELIST = {
     'chessjunk1': WORKABLE['chessjunk_components'],
     'chessjunk2': WORKABLE['chessjunk_components'],
     'chessjunk3': WORKABLE['chessjunk_components'],
+    # chesspieces.lua SetPrefabName saves every material under chesspiece_malbatross; materialid selects marble.
+    'chesspiece_malbatross': WORKABLE['chesspiece_malbatross_marble_components'],
+    'chesspiece_malbatross_marble': WORKABLE['chesspiece_malbatross_marble_components'],
     'archive_centipede_husk': CREATURE['archive_centipede_husk_components'],
     'deciduoustree': GROWABLE['deciduoustree_components'],
     'moon_tree': GROWABLE['moon_tree_components'],
@@ -111,6 +114,8 @@ ENTITY_WHITELIST = {
     'dragonfly': CREATURE['dragonfly_components'],
     'dragonfly_spawner': CREATURE['dragonfly_spawner_components'],
 }
+# Source groups saved under another project prefab.
+TARGET_PREFABS = {'chesspiece_malbatross': 'chesspiece_malbatross_marble'}
 # Converters that also receive the record's skin and item converters.
 CONTAINER_PREFABS = {'treasurechest', 'pandoraschest'}
 ITEM_CONTEXT_PREFABS = {*CONTAINER_PREFABS, 'moonbase'}
@@ -200,7 +205,7 @@ def convert_entities(terrain, source_entities, report, session_id, catalog=None)
                             **({'sourceId': source_id} if source_id is not None else {}),
                             'sourcePosition': coordinates, 'sourceNode': names[node - 1] if 0 < node <= len(names) else None})
         if imported:
-            target_prefab = 'ground_item' if static or prefab in ('fireflies', 'butterfly') else prefab
+            target_prefab = 'ground_item' if static or prefab in ('fireflies', 'butterfly') else TARGET_PREFABS.get(prefab, prefab)
             result.setdefault(target_prefab, []).extend(imported)
         counts[prefab] = {'source': len(records), 'imported': len(imported)}
         if static:
