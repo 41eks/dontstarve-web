@@ -129,6 +129,7 @@ it('preserves a reskinned bush through digging, item pickup/drop, transplant, fe
       new THREE.Vector3(60, 0, 36))).toBe(detached);
     expect(s.ground.exportRecords().at(-1)?.components.stack?.skinId).toBe(root.skinId);
     expect(item.components.deployable!.Deploy(position, { position, PushEvent: vi.fn() }, {
+      canPlaceTurf: () => false, setTile: vi.fn(), itemPlanted: vi.fn(),
       canDeployPlant: () => true, deployPlant: (point: THREE.Vector3) => s.bushes.transplant(point, root.skinId),
     })).toBe(true);
     const replanted = await drawn(workTargets('DIG')[0].model), pickable = plantInstance(replanted).components.pickable;

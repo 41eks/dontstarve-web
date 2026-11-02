@@ -15,6 +15,7 @@ import { WORLD_SCALE } from '../../prefab/src/tile';
 import type { Combat, CombatInst } from '../../componets/src/combat';
 import { Vector3 } from 'three';
 import type { ItemEntity } from '../../inventory/src/entity';
+import type { PickupDoer } from './pickup.ts';
 
 /** An entity the picker resolved as an action target: tags and components plus its ground position and radius. */
 type ActionTargetEntity = ComponentActionEntity & {
@@ -278,7 +279,17 @@ export class PlayerController {
     const picked = event.button === 0 ? actions.left : actions.right;
     const action = picked && this.createAction(picked);
     // Another click is another action: WALKTO or one buffered elsewhere replaces this one.
-    if (!action) { this.cancel(); return; }
+    if (!action) {
+      this.cancel();
+      // OnRightClick: no action returns the active item. Only deployable items are ported; other held items' RMB controllers read their own clicks.
+      const inventory = (this.doer as unknown as PickupDoer).components?.inventory;
+      if (event.button === 2 && !picked && this.picker.canPickClickAction() && inventory?.GetActiveItem?.()?.components.deployable) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        inventory.ReturnActiveItem();
+      }
+      return;
+    }
     event.preventDefault();
     event.stopImmediatePropagation();
     this.DoAction(action);

@@ -112,11 +112,13 @@ it('plants one sprout, preserves its named deadline through save/load, and becom
       s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
     const point = new THREE.Vector3(12, 0, 24), item = s.inventory.getEntity(inventorySlotAddress(0))!;
     expect(item.components.deployable!.Deploy(point, { position: point, PushEvent: vi.fn() }, {
+      canPlaceTurf: () => false, setTile: vi.fn(), itemPlanted: vi.fn(),
       canDeployPlant: () => false, deployPlant: () => s.sprouts.transplant(point),
     })).toBe(false);
     expect(s.inventory.count('rock_avocado_fruit_sprout')).toBe(2);
     const root = s.inventory.extract(inventorySlotAddress(0), 1, item)!;
     expect(root.components.deployable!.Deploy(point, { position: point, PushEvent: vi.fn() }, {
+      canPlaceTurf: () => false, setTile: vi.fn(), itemPlanted: vi.fn(),
       canDeployPlant: () => true, deployPlant: () => s.sprouts.transplant(point),
     })).toBe(true);
     expect(root.isRemoved).toBe(true); expect(s.inventory.count('rock_avocado_fruit_sprout')).toBe(1);

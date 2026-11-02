@@ -1,7 +1,7 @@
 import { Vector3, type Object3D } from 'three';
 import { clockstate, createMemo, readonlySignal, type EventEmitter, type GetWatchWorldContent } from '@dontstarve-web/signals';
 import { cursorSlotAddress, equipmentSlotAddress, inventorySlotAddress, type InventoryStore, type InventoryStack } from '@dontstarve-web/inventory';
-import { createChestInventoryPanel, slotTransferController, type mountGameUi, type SlotAddress, type SlotItem } from '@dontstarve-web/ui';
+import { createChestInventoryPanel, type mountGameUi, type SlotAddress, type SlotItem } from '@dontstarve-web/ui';
 import {
   PlayerController, FoodActionController,
   ReadActionController, PlayActionController, ItemUseActionController,
@@ -26,10 +26,10 @@ import type { StorageBuildingId } from '@dontstarve-web/prefab/containers';
 import { bookActionObject, type BookReader, type BookWorld } from '@dontstarve-web/prefab/books';
 import { isWorldFx } from '@dontstarve-web/prefab/world_fx';
 import { registerFrontTask } from './animate';
-import { PlantDeployment } from '../packages/prefab/src/plantDeployment';
+import { createDeployMap } from '../packages/prefab/src/deployMap';
+import { DeployPlacer } from '../packages/prefab/src/deployPlacer';
 import { PLANTABLES } from '@dontstarve-web/prefab/plantables';
-import { TurfDeployment } from '@dontstarve-web/prefab/turfDeployment';
-import { turfTileName } from '@dontstarve-web/prefab/turfs';
+import { placementEntities } from '../packages/prefab/src/placementEntities';
 import type { turfMap } from './building';
 import type { startScene } from './scene';
 import type { bindPlayerHandEquipment } from './playerHandEquipment';
@@ -304,33 +304,18 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
       }
       if (playerAnimation) {
 
-        const turfDeployment = new TurfDeployment(view, turfMap, playerAnimation.stategraph, locomotor, () => {
-          const address = cursorSlotAddress(), entity = inventory.getEntity(address);
-          if (!entity || !turfTileName(entity.prefab)) return undefined;
-          const isValid = () => !entity.isRemoved && inventory.getEntity(address) === entity;
-          return { entity, isValid, take: () => isValid() ? inventory.extract(address, 1, entity) ?? undefined : undefined,
-            putBack: item => { if (!inventory.receiveAt(address, item)) inventory.GiveItem(item); },
-            returnActiveItem: () => slotTransferController.returnHeldItem() };
-        }, isActionInterrupting);
-        const plantDeployment = new PlantDeployment(view, playerAnimation.stategraph, locomotor, () => {
-          const address = cursorSlotAddress(), entity = inventory.getEntity(address);
-          if (!entity || !PLANTABLES[entity.prefab]) return undefined;
-          const skinId = entity.skinId;
-          const isValid = () => !entity.isRemoved && inventory.getEntity(address) === entity && entity.skinId === skinId;
-          return { entity, isValid, take: () => isValid() ? inventory.extract(address, 1, entity) ?? undefined : undefined,
-            putBack: item => { if (!inventory.receiveAt(address, item)) inventory.GiveItem(item); },
-            returnActiveItem: () => slotTransferController.returnHeldItem() };
-        }, {
+        // TheWorld.Map for ACTIONS.DEPLOY and the deployable items' placer.
+        const deployMap = createDeployMap({ turf: turfMap, blockers: placementEntities(view.scene), worldEvents: view.worldEvents,
           plants: {
             marblebean_sapling: marbleBeanSaplings, rock_avocado_fruit_sprout_sapling: rockAvocadoSaplings,
             rock_avocado_bush: rockAvocadoBushes, monkeytail: monkeytails, berrybush: berrybushes, grass: grasses,
             sapling: { transplant: position => saplings.transplant('sapling', position) },
             sapling_moon: { transplant: position => saplings.transplant('sapling_moon', position) },
             planted_flower: flowerPlanting, moonbutterfly_sapling: moonTrees,
-          },
-          canPlant: point => turfMap.canDeployPlantAtPoint(point),
-        }, isActionInterrupting);
-        actionControllers.push(turfDeployment, plantDeployment);
+          } });
+        pickupDoer.Map = deployMap;
+        actionControllers.push(new DeployPlacer(view, deployMap, () => inventory.GetActiveItem()),
+          { dispose() { pickupDoer.Map = undefined; } });
       }
 
       const stopEmoteWheel = setupEmoteWheel(gameUi.emoteWheel, view.renderer.domElement, playerAnimation,

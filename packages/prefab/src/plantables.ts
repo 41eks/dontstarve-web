@@ -1,8 +1,8 @@
 import type { ItemEntity } from '@dontstarve-web/inventory';
-import { Deployable, type PlantDeployMap } from '../../componets/src/deployable';
+import { Deployable } from '../../componets/src/deployable';
 import { configureBurnableItemEntity } from './burnableItems';
 import { TILE_SIZE } from './tile';
-import type { SoundEventPath } from './sound';
+import { PlaySound, type SoundEventPath } from './sound';
 
 /** plantables.lua: actual inventory prefab, separate grass bank / monkeytail build, medium spacing. */
 export const PLANTABLES: Readonly<Record<string, { prefab: string; bank: string; build: string; animation: string;
@@ -27,8 +27,9 @@ export function configurePlantableEntity(entity: ItemEntity): void {
   if (!PLANTABLES[entity.prefab] || entity.components.deployable) return;
   if (entity.prefab !== 'butterfly' && entity.prefab !== 'moonbutterfly') configureBurnableItemEntity(entity);
   entity.addTag('deployedplant');
-  entity.components.deployable = entity.component('deployable', () => new Deployable<PlantDeployMap>(entity, (point, _deployer, map) => {
+  entity.components.deployable = entity.component('deployable', () => new Deployable(entity, (point, _deployer, map) => {
     if (!map.deployPlant(point, entity)) return false;
+    PlaySound(PLANTABLES[entity.prefab].plantSound ?? 'dontstarve/common/plant', point);
     entity.remove();
     return true;
   }, { mode: 'PLANT', spacing: PLANTABLES[entity.prefab].spacing ?? TILE_SIZE / 4 }));

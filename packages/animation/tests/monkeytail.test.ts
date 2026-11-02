@@ -4,7 +4,9 @@ import type { PrefabDisplay } from '@dontstarve-web/display';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { MonkeytailManager, MONKEYTAIL_REGROW_TIME } from '../../prefab/src/monkeytail';
-import { PlantDeployment } from '../../prefab/src/plantDeployment';
+import { createDeployMap } from '../../prefab/src/deployMap';
+import { placementEntities } from '../../prefab/src/placementEntities';
+import { deployActor } from './deployActor';
 import { GroundItemManager } from '../../../src/groundItems';
 import { createInventoryStore } from '../../../src/inventory';
 import { inventorySlotAddress, cursorSlotAddress } from '../../inventory/src';
@@ -121,7 +123,7 @@ it('spawns wild monkeytail, picks reeds, pauses in winter and reloads its discre
 
 it('plants cursor-held roots and fertilizes at frame six, preserves cancellation and saves exhausted transplanted plants', async () => {
   const s = setup(), restored = setup(), a = actor();
-  let deployment: PlantDeployment | undefined, fertilizing: ItemUseActionController | undefined;
+  let deployment: ReturnType<typeof deployActor> | undefined, fertilizing: ItemUseActionController | undefined;
   try {
     // The ground-art fixture must not obstruct the cursor-held plant's deployment point.
     s.player.position.set(30, 0, 30);
@@ -136,30 +138,18 @@ it('plants cursor-held roots and fertilizes at frame six, preserves cancellation
     expect(groundMesh.geometry.drawRange.count).toBeGreaterThan(0);
     s.player.position.set(0, 0, 0);
     expect(s.inventory.transfer(inventorySlotAddress(0), cursorSlotAddress(), 2)).toBe(true);
-    const source = () => {
-      const address = cursorSlotAddress(), entity = s.inventory.getEntity(address);
-      if (!entity || entity.prefab !== 'dug_monkeytail') return undefined;
-      const isValid = () => s.inventory.getEntity(address) === entity && !entity.isRemoved;
-      return { entity, isValid, take: () => isValid() ? s.inventory.extract(address, 1, entity) ?? undefined : undefined,
-        putBack: (item: typeof entity) => { s.inventory.receiveAt(address, item); },
-        returnActiveItem: () => { s.inventory.returnCursor(); } };
-    };
     const transplant = vi.fn((position: THREE.Vector3) => s.monkeytails.transplant(position));
-    deployment = new PlantDeployment(s.world, a.animation.stategraph, a.locomotor, source, {
-      plants: { monkeytail: { transplant } },
-      canPlant: point => point.x >= 0,
-    });
-    expect(deployment.request(new THREE.Vector3(-1, 0, 0))).toBe(false);
-    expect(deployment.request(new THREE.Vector3(2, 0, 0))).toBe(true);
-    await new Promise(resolve => setTimeout(resolve, 0));
-    deployment.update(); a.graph.update(5 / 30); deployment.cancel();
+    deployment = deployActor(s.world as never, s.inventory, createDeployMap({ turf: { canDeployPlantAtPoint: (point: THREE.Vector3) => point.x >= 0 } as never,
+      blockers: placementEntities(s.scene), plants: { monkeytail: { transplant } } }), a.graph);
+    expect(deployment.canDeploy(new THREE.Vector3(-1, 0, 0))).toBe(false);
+    expect(deployment.deploy(new THREE.Vector3(2, 0, 0))).toBe(true);
+    a.graph.update(5 / 30); deployment.controller.cancel();
     a.graph.update(1);
     expect(transplant).not.toHaveBeenCalled();
     expect(s.inventory.get(cursorSlotAddress())?.count).toBe(2);
     expect(s.monkeytails.exportRecords()).toEqual([]);
-    expect(deployment.request(new THREE.Vector3(2, 0, 0))).toBe(true);
-    await new Promise(resolve => setTimeout(resolve, 0));
-    deployment.update(); a.graph.update(5 / 30);
+    expect(deployment.deploy(new THREE.Vector3(2, 0, 0))).toBe(true);
+    a.graph.update(5 / 30);
     expect(s.inventory.get(cursorSlotAddress())?.count).toBe(2);
     a.graph.update(1 / 30);
     expect(s.inventory.get(cursorSlotAddress())?.count).toBe(1);
@@ -167,9 +157,9 @@ it('plants cursor-held roots and fertilizes at frame six, preserves cancellation
     expect(pickable.exportState()).toMatchObject({ picked: true, transplanted: true, cyclesLeft: 0 });
     expect(pickable.state.timer.peek()).toEqual({ status: 'stopped' });
     expect(plantInstance(target.model).sprite.currentAnimation).toBe('idle_dead');
-    expect(deployment.canDeploy(new THREE.Vector3(4, 0, 0), source()!.entity)).toBe(false);
-    expect(deployment.canDeploy(new THREE.Vector3(5, 0, 0), source()!.entity)).toBe(true);
-    a.graph.update(1); deployment.update();
+    expect(deployment.canDeploy(new THREE.Vector3(4, 0, 0))).toBe(false);
+    expect(deployment.canDeploy(new THREE.Vector3(5, 0, 0))).toBe(true);
+    a.graph.update(1);
     expect(s.inventory.transfer(cursorSlotAddress(), inventorySlotAddress(0), 1)).toBe(true);
     expect(s.inventory.transfer(inventorySlotAddress(1), cursorSlotAddress(), 2)).toBe(true);
     const fertilizerSource = () => {
@@ -209,7 +199,7 @@ it('plants cursor-held roots and fertilizes at frame six, preserves cancellation
     expect(restored.inventory.exportState()).toEqual(s.inventory.exportState());
     expect(restored.inventory.get(cursorSlotAddress())?.itemId).toBe('poop');
     expect(plantInstance(workTargets('DIG', restored.scene)[0].model).sprite.currentAnimation).toBe('idle_dead');
-  } finally { deployment?.dispose(); fertilizing?.dispose(); a.graph.cancelAction(); s.dispose(); restored.dispose(); }
+  } finally { deployment?.controller.dispose(); fertilizing?.dispose(); a.graph.cancelAction(); s.dispose(); restored.dispose(); }
 });
 
 it('withers in heat, reloads its recovery delay, regrows after rain and digs the Lua-specific loot', async () => {

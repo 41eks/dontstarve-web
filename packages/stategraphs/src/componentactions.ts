@@ -89,8 +89,10 @@ export interface EquippedActionDoer {
   hasTag(tag: string): boolean;
   readonly sg?: { HasStateTag(tag: string): boolean };
   readonly components?: { combat?: { CanLightTarget(target: never, weapon?: never): boolean } };
+  /** TheWorld.Map, as deployable:CanDeploy reaches it. */
+  readonly Map?: import('../../componets/src/deployable').DeployMap;
 }
-export type EquippedAction = ToolAction | 'CASTSPELL' | 'LIGHT' | 'ATTACK' | 'FISH' | 'REEL' | 'TERRAFORM' | 'TILL';
+export type EquippedAction = ToolAction | 'CASTSPELL' | 'LIGHT' | 'ATTACK' | 'FISH' | 'REEL' | 'TERRAFORM' | 'TILL' | 'DEPLOY';
 export type UseItemAction = 'GIVE' | 'FEED' | 'ADDFUEL' | 'ADDWETFUEL' | 'PLANTSOIL';
 type UseItemFn = (inst: ComponentActionEntity, doer: SceneActionDoer, target: ComponentActionEntity,
   actions: UseItemAction[], right: boolean) => void;
@@ -99,6 +101,7 @@ type EquippedFn = (inst: ComponentActionEntity, doer: EquippedActionDoer | undef
 type PointFn = (inst: ComponentActionEntity, doer: EquippedActionDoer & { readonly position?: Vector3 }, pos: Vector3,
   actions: EquippedAction[], right: boolean) => void;
 type EquippedComponents = {
+  deployable?: import('../../componets/src/deployable').Deployable;
   spellcaster?: SpellCasterComponent;
   terraformer?: { CanTerraformAtPoint(pt: Vector3): boolean };
   farmtiller?: { CanTillSoilAtPoint(pt: Vector3): boolean };
@@ -170,6 +173,9 @@ export const COMPONENT_ACTIONS: {
     worldmigrator: (inst, _doer, actions) => { if (inst.hasTag('migrator')) actions.push('MIGRATE'); },
   },
   POINT: {
+    deployable: (inst, doer, pos, actions, right) => {
+      if (right && inst.components.inventoryitem && (inst.components as EquippedComponents).deployable?.CanDeploy(pos, doer.Map)) actions.push('DEPLOY');
+    },
     farmtiller: (inst, _doer, pos, actions, right) => {
       if (right && (inst.components as EquippedComponents).farmtiller?.CanTillSoilAtPoint(pos)) actions.push('TILL');
     },

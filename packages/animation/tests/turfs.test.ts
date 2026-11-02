@@ -9,6 +9,7 @@ import { createInventoryStore } from '../../../src/inventory';
 import { inventorySlotAddress } from '../../inventory/src';
 import { TurfMap, WORLD_TILES } from '../../prefab/src/turfMap';
 import { turfItemForTile } from '../../prefab/src/turfs';
+import { createDeployMap } from '../../prefab/src/deployMap';
 import { drawGround, layerGeometry, layerMeshes } from './groundDisplayFixture';
 
 vi.mock('../../prefab/src/sound', () => ({ PlaySound: vi.fn(), PreloadSounds: vi.fn(async () => {}) }));
@@ -62,26 +63,27 @@ it('loads the direct-path white road noise and the vault terrain independently o
 it('deploys one CotL turf on dirt, rejects covered ground and restores terrain art and diggability', async () => {
   const inventory = createInventoryStore([{ slot_index: 0, id: 'turf_cotl_brick', num: 2 }]);
   const map = new TurfMap(48);
+  const deployMap = createDeployMap({ turf: map, blockers: { someNear: () => false } as never, plants: {} });
   const point = new THREE.Vector3(6, 0, 6), address = inventorySlotAddress(0);
   const deployer = { position: new THREE.Vector3(), PushEvent: vi.fn() };
   let restored: TurfMap | undefined;
   try {
     const entity = inventory.getEntity(address)!;
     expect(entity.hasTag('groundtile')).toBe(true);
-    expect(entity.components.deployable!.CanDeploy(point, map)).toBe(false);
+    expect(entity.components.deployable!.CanDeploy(point, deployMap)).toBe(false);
     expect(inventory.get(address)!.count).toBe(2);
     expect(map.dig(point)).toBe(true);
     await map.createVisual('/dst/data');
     const display = await drawGround(map);
     const mini = await map.tileLayerImages();
     const item = inventory.extract(address, 1, entity)!;
-    expect(item.components.deployable!.Deploy(point, deployer, map)).toBe(true);
+    expect(item.components.deployable!.Deploy(point, deployer, deployMap)).toBe(true);
     expect(item.isRemoved).toBe(true);
     expect(inventory.get(address)!.count).toBe(1);
     expect(WORLD_TILES.COTL_BRICK).toBe(256); // TileManager's first non-legacy land ID, after ROAD=2.
     expect(map.getTileAtWorld(point)).toBe(WORLD_TILES.COTL_BRICK);
     expect(map.canPlaceTurf(point)).toBe(false);
-    expect(entity.components.deployable!.CanDeploy(point, map)).toBe(false);
+    expect(entity.components.deployable!.CanDeploy(point, deployMap)).toBe(false);
     expect(deployer.PushEvent).toHaveBeenCalledWith('deployitem', { prefab: 'turf_cotl_brick' });
     // The deploy never waits for art: the display loads the newly declared layer, then draws it.
     await vi.waitFor(() => expect(layerMeshes(display, 'COTL_BRICK').length).toBeGreaterThan(0));

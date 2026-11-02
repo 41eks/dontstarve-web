@@ -133,7 +133,7 @@ GroundItemManager 不在更新、唤醒或鼠标命中前复制位置，也不�
 
 清洁扫把的 `CASTSPELL` 目标就是鼠标命中的实体。建筑、墙、栅栏、地面物品、虫洞和可换肤植物在注册 action entity 投影时提供 `reskinTarget`，其中的皮肤、脚点和有效性读取所属实体的当前状态；移除投影时一并清理。法术函数从实体读取该视图，未提供换肤操作的普通实体仍参加标签驱动的 `CASTSPELL` 选择，是否成功由提交帧的 `SpellCaster.CanCast` 决定。绿法杖的分解同理读取所有者注册的 `deconstructionTarget`。
 
-主程序通过 `ActionWorldContext.registerFrameTask` 注入 `registerFrontTask()`。手部工具不再有各自的控制器和帧任务：通用 `PlayerController` 注册一个前置任务（处理按住 F 的重复攻击），手部物品变化时取消它持有的、`invobject` 为旧物品的缓冲动作；`TurfDeployment`、`PlantDeployment` 等仍未迁移的控制器各自注册任务，`dispose()` 同时移除任务和订阅。法杖施法由输入事件及状态图时间线驱动，无需独立帧任务。
+主程序通过 `ActionWorldContext.registerFrameTask` 注入 `registerFrontTask()`。手部工具不再有各自的控制器和帧任务：通用 `PlayerController` 注册一个前置任务（处理按住 F 的重复攻击），手部物品变化时取消它持有的、`invobject` 为旧物品的缓冲动作；`DeployPlacer` 只跟随鼠标更新部署预览，走近、取消和提交都属于 `PlayerController`；仍未迁移的控制器各自注册任务，`dispose()` 同时移除任务和订阅。法杖施法由输入事件及状态图时间线驱动，无需独立帧任务。
 
 前置任务按本帧快照执行。注册函数返回的移除回调会同时停用任务包装函数，确保帧中换装不会执行已缓存的旧任务，也不会因数组变化跳过其他任务；新注册的任务从下一帧开始执行。
 

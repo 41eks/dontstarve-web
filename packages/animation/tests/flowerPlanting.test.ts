@@ -5,7 +5,9 @@ import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { FlowerPlanting } from '../../prefab/src/flower';
-import { PlantDeployment } from '../../prefab/src/plantDeployment';
+import { createDeployMap } from '../../prefab/src/deployMap';
+import { placementEntities } from '../../prefab/src/placementEntities';
+import { deployActor } from './deployActor';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import { createInventoryStore } from '../../../src/inventory';
@@ -61,38 +63,24 @@ function setup(random = () => .5) {
 
 it('buffers planting at frame six, preserves cancelled butterflies and saves the flower and cursor stack', async () => {
   const s = setup(), restored = setup();
-  const graph = new WilsonStateGraph({ playAnimation: () => 1, playSound() {}, stopSound() {}, setCasting() {}, onStateChanged() {} });
-  const animation = { stategraph: graph };
-  const locomotor = { destination: undefined, goToPoint: vi.fn(() => true), stop: vi.fn() };
-  let deployment: PlantDeployment | undefined;
+  let actor: ReturnType<typeof deployActor> | undefined;
   try {
     expect((await executeDebugCommand('c_give("butterfly",2)', s.inventory)).ok).toBe(true);
     s.inventory.getEntity(inventorySlotAddress(0))!.setFreshnessPercent(.6);
     expect(s.inventory.transfer(inventorySlotAddress(0), cursorSlotAddress(), 2)).toBe(true);
-    const source = () => {
-      const address = cursorSlotAddress(), entity = s.inventory.getEntity(address);
-      if (!entity) return undefined;
-      const isValid = () => s.inventory.getEntity(address) === entity && !entity.isRemoved;
-      return { entity, isValid, take: () => isValid() ? s.inventory.extract(address, 1, entity) ?? undefined : undefined,
-        putBack: (item: typeof entity) => { s.inventory.receiveAt(address, item); },
-        returnActiveItem: () => { s.inventory.returnCursor(); } };
-    };
     const transplant = vi.fn((position: THREE.Vector3) => s.flowers.transplant(position));
     const point = new THREE.Vector3(2, 0, 0);
     vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(point);
-    deployment = new PlantDeployment(s.world, animation.stategraph, locomotor, source, {
-      plants: { planted_flower: { transplant } }, canPlant: point => point.x >= 0,
-    });
-    expect(deployment.request(new THREE.Vector3(-1, 0, 0))).toBe(false);
-    expect(deployment.request(point)).toBe(true);
-    await new Promise(resolve => setTimeout(resolve, 0));
-    deployment.update(); graph.update(5 / 30); deployment.cancel(); graph.update(1);
+    actor = deployActor(s.world, s.inventory, createDeployMap({ turf: { canDeployPlantAtPoint: (point: THREE.Vector3) => point.x >= 0 } as never, blockers: placementEntities(s.world.scene), plants: { planted_flower: { transplant } } }));
+    const { graph } = actor;
+    expect(actor.canDeploy(new THREE.Vector3(-1, 0, 0))).toBe(false);
+    expect(actor.deploy(point)).toBe(true);
+    graph.update(5 / 30); actor.controller.cancel(); graph.update(1);
     expect(transplant).not.toHaveBeenCalled();
     expect(s.inventory.get(cursorSlotAddress())?.count).toBe(2);
     expect(s.flowers.exportRecords()).toEqual([]);
-    expect(deployment.request(point)).toBe(true);
-    await new Promise(resolve => setTimeout(resolve, 0));
-    deployment.update(); graph.update(5 / 30);
+    expect(actor.deploy(point)).toBe(true);
+    graph.update(5 / 30);
     expect(s.inventory.get(cursorSlotAddress())?.count).toBe(2);
     graph.update(1 / 30);
     expect(s.inventory.get(cursorSlotAddress())).toMatchObject({ count: 1, freshnessPercent: .6 });
@@ -104,8 +92,8 @@ it('buffers planting at frame six, preserves cancelled butterflies and saves the
     // The planted flower exists at once; its display draws it once the art has loaded.
     await prefabDisplay(flower).artLoaded();
     expect(s.flowers.renderEntities.find(entity => entity.object === flower)?.footPosition).toBe(flower.position);
-    expect(deployment.canDeploy(new THREE.Vector3(4.2, 0, 0), source()!.entity)).toBe(false);
-    expect(deployment.canDeploy(new THREE.Vector3(4.3, 0, 0), source()!.entity)).toBe(true);
+    expect(actor.canDeploy(new THREE.Vector3(4.2, 0, 0))).toBe(false);
+    expect(actor.canDeploy(new THREE.Vector3(4.3, 0, 0))).toBe(true);
     let json = '';
     expect((await executeDebugCommand('c_save()', s.inventory, undefined, () => { json = s.save(); })).ok).toBe(true);
     const saved = deserializeSave(json, SAVE_CATALOG);
@@ -114,7 +102,7 @@ it('buffers planting at frame six, preserves cancelled butterflies and saves the
     expect(restored.flowers.exportRecords()).toEqual(s.flowers.exportRecords());
     expect(restored.inventory.exportState()).toEqual(s.inventory.exportState());
     expect(saved.world.entities.flower).toEqual([record]);
-  } finally { deployment?.dispose(); graph.cancelAction(); s.dispose(); restored.dispose(); }
+  } finally { actor?.controller.dispose(); actor?.graph.cancelAction(); s.dispose(); restored.dispose(); }
 });
 
 it('quick-picks petals at frame six, preserves a cancelled flower and reloads the harvested result', async () => {

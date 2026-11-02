@@ -74,7 +74,7 @@ export class SlotTransferController {
     this.updateCursorTarget(event.clientX, event.clientY);
   };
   private readonly handleEscape = (event: KeyboardEvent) => {
-    if (event.key === 'Escape') this.returnHeldItem();
+    if (event.key === 'Escape') { this.returnCursor?.(this.cursorOrigin); this.clearSelection(); }
   };
   private readonly followSelection = (event: PointerEvent) => this.movePreview(event.clientX, event.clientY);
 
@@ -142,9 +142,6 @@ export class SlotTransferController {
     };
     return true;
   }
-
-  /** inventory.lua ReturnActiveItem: request the held stack's return, preferring the slot it came from. */
-  returnHeldItem(): void { this.returnCursor?.(this.cursorOrigin); this.clearSelection(); }
 
   /** The UI reads the authoritative cursor projection and only requests domain transfers. */
   bindCursor(slot: SlotModel, onReturn: (origin?: SlotAddress) => void): () => void {

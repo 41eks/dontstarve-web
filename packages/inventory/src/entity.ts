@@ -152,7 +152,7 @@ export interface ItemComponents {
   fertilizer?: import('../../componets/src/fertilizer').Fertilizer;
   bathbomb?: import('../../componets/src/bathbomb').BathBomb;
   shaver?: import('../../componets/src/shaver').Shaver;
-  deployable?: import('../../componets/src/deployable').Deployable<any>;
+  deployable?: import('../../componets/src/deployable').Deployable;
   instrument?: ItemRuntimeComponent & { Play(musician: unknown, listeners: (range: number) => Iterable<never>): boolean };
   workable?: import('../../componets/src/workable').Workable;
   spellcaster?: import('../../componets/src/spellcaster').SpellCasterComponent;

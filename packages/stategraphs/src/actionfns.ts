@@ -114,6 +114,18 @@ export const ACTION_FNS: Readonly<Partial<Record<string, ActionFns>>> = {
   },
   ADDFUEL: { fn: addFuel },
   ADDWETFUEL: { fn: addFuel },
+  DEPLOY: {
+    fn: act => {
+      const item = act.invobject as ItemEntity | undefined, doer = playerDoer(act), map = doer.Map;
+      const point = actionPoint(act);
+      if (!item || !map || !item.components.deployable?.CanDeploy(point, map)) return false;
+      const inventory = doer.components.inventory, obj = inventory.RemoveItem(item);
+      if (!obj) return false;
+      if (obj.components.deployable!.Deploy(point, doer, map)) return true;
+      inventory.GiveItem(obj);
+      return false;
+    },
+  },
   PLANTSOIL: {
     fn: act => {
       const inventory = playerDoer(act).components.inventory;

@@ -85,6 +85,7 @@ function randomDropLaunch(heavy: boolean, random = Math.random): DropLaunch {
 }
 
 export class InventoryStore {
+  private activeItemPrevSlot?: SlotAddress;
   private actor: import('../../componets/src/inventoryitem').InventoryActor = {
     hasTag: tag => tag === 'player', GetPosition: () => ({ x: 0, y: 0, z: 0 }), PushEvent() {},
   };
@@ -491,6 +492,9 @@ export class InventoryStore {
     return this.getEntity(address)?.signals ?? null;
   }
 
+  /** inventory.lua ReturnActiveItem: GiveItem prefers the slot the item was taken from (inst.prevslot). */
+  ReturnActiveItem(): boolean { return this.returnCursor(this.activeItemPrevSlot); }
+
   /** Return the whole held stack; a rejected destination never consumes the cursor item. */
   returnCursor(preferred?: SlotAddress): boolean {
     const cursor = cursorSlotAddress();
@@ -545,10 +549,12 @@ export class InventoryStore {
     if (!entity || entity.isRemoved || (expected && (!isSameStack(entity.snapshot(), expected.itemId, expected.skinId)
       || (expected.entityId !== undefined && expected.entityId !== entity.id)))) return false;
     const state = entity.snapshot();
-    return this.applySlotChanges([
+    const moved = this.applySlotChanges([
       { slot: from, entityId: entity.id, itemId: state.itemId, skinId: state.skinId, delta: -count },
       { slot: to, ...state, entityId: count === state.count ? entity.id : undefined, delta: count },
     ]);
+    if (moved && addressKey(to) === addressKey(cursorSlotAddress())) this.activeItemPrevSlot = from;
+    return moved;
   }
 
   /** Exchange whole entities in one transaction, validating both receiving slots. */

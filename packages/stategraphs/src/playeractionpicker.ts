@@ -65,11 +65,14 @@ export class PlayerActionPicker {
     const player = this.player, entity = findActionEntity(target);
     if (!player) return [];
     const activeItem = player.doer.components?.inventory?.GetActiveItem?.();
-    if (!entity || !target) return activeItem ? [] : this.pointActions(player);
+    if (!entity || !target) return activeItem ? this.activeItemPointActions(player, activeItem) : this.pointActions(player);
     if (activeItem) {
+      // GetRightClickActions: only an entity that does not catch the mouse leaves the active item's point actions.
+      if (entity.hasTag('walkableplatform') || entity.hasTag('ignoremouseover')) return this.activeItemPointActions(player, activeItem);
       const inst = actionInstance(target) ?? entity;
-      return ([false, true] as const).flatMap(right => this.GetUseItemActions(inst, activeItem, right).map(action => ({
+      const uses = ([false, true] as const).flatMap(right => this.GetUseItemActions(inst, activeItem, right).map(action => ({
         action, button: right ? 'right' as const : 'left' as const, model: target, source: 'inventory' as const })));
+      return entity.hasTag('walkableperipheral') ? [...uses, ...this.activeItemPointActions(player, activeItem)] : uses;
     }
     const item = player.equippedItem(), doer = player.doer;
     return ([false, true] as const).flatMap(right => {
@@ -102,6 +105,14 @@ export class PlayerActionPicker {
   GetPointSpecialActions(pos: THREE.Vector3, right: boolean): readonly string[] {
     const doer = this.player?.doer;
     return doer ? this.pointspecialactionsfn?.(doer, pos, undefined, right) ?? [] : [];
+  }
+
+  /** GetPointActions(position, useitem, true) for the active item; of its POINT entries only deployable is ported. */
+  private activeItemPointActions(player: NonNullable<PlayerActionPicker['player']>, item: ComponentActionEntity): MouseActionCandidate[] {
+    const point = this.pointer.groundPoint();
+    if (!point) return [];
+    return collectPointActions(item, player.doer, point, true).filter(action => action === 'DEPLOY').map(action => ({
+      action: { action, doer: player.doer, invobject: item, pos: point }, button: 'right' as const, source: 'inventory' as const }));
   }
 
   /**
