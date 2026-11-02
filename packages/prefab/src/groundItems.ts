@@ -1,6 +1,6 @@
 import { configureRuinsRelicItem, isRelicItem } from './ruinsrelic';
 import {
-  ArchiveSpriteAssets, createSharedArchiveSprite,
+  ArchiveSpriteAssets,
   type ArchiveSpriteDefinition,
 } from '@dontstarve-web/animation/archiveSprite';
 import { ItemEntity, type InventoryItemSpec, type InventorySkinSpec } from '@dontstarve-web/inventory';
@@ -103,7 +103,7 @@ export class GroundItemAssets extends ArchiveSpriteAssets {
 /** A ground item's visual with the instance and display behind it, for prefabs that declare more on its sprite. */
 export interface ResidentGroundItem { readonly visual: GroundItemVisual; readonly instance: ItemEntity; readonly display: PrefabDisplay }
 
-export function createResidentGroundItem(context: Pick<GroundPrefabContext, 'assets' | 'tickingarea'>,
+export function createResidentGroundItem(context: Pick<GroundPrefabContext, 'sprites' | 'tickingarea'>,
   item: Pick<GroundItemDefinition, 'itemId' | 'skinId' | 'variant'> & { readonly entity?: ItemEntity },
   /** The prefab's declaration of what its sprite follows, made once the item's entity is bound. */
   declare?: (entity: ItemEntity, sprite: ArchiveSpriteCommands) => void): ResidentGroundItem {
@@ -117,13 +117,12 @@ export function createResidentGroundItem(context: Pick<GroundPrefabContext, 'ass
   if (!definition) throw new Error(`Unknown ground item: ${itemId}`);
   const skinArchive = skinId === undefined ? undefined : definition.skinArchives[skinId];
   if (skinId !== undefined && !skinArchive) throw new Error(`Unknown ground skin ${skinId} for ${itemId}`);
-  const create = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(context.assets,
-    { ...definition, animation: clip.name, loop: clip.loop }, { name: `GroundItem:${itemId}`, instancedAnimations: 'all' });
+  const source = context.sprites.archive(definition, { instancedAnimations: 'all' });
   // The display loads the art and draws the item once it is ready; the entity exists from now on.
-  const { instance, display } = createArchiveEntity(itemId, { create },
+  const { instance, display } = createArchiveEntity(itemId, source,
     { name: definition.animation, held: !definition.loop, billboard: !definition.ground, instance: entity }, `GroundItem:${itemId}`,
     entity => {
-      entity.sprite.setSkinSource({ archives: definition.skinArchives, art: context.assets,
+      entity.sprite.setSkinSource({ archives: definition.skinArchives, art: context.sprites.archives,
         materialOptions: { multColour: definition.multColour, pointFiltering: definition.pointFiltering } });
       for (const tag of definition.tags ?? []) entity.addTag(tag);
       for (const [symbol, override] of Object.entries(definition.symbolOverrides)) entity.sprite.setSymbolOverride(symbol, override.archive, override.symbol);

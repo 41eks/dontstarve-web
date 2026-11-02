@@ -29,7 +29,7 @@ export const LIGHTBULB_LIGHT: PrefabLocalLight = {
 
 /** Ground lightbulbs glow until picked up; they use bulb.zip's idle world art. */
 /** The display uses `options.entity`; without one, create a standalone logical item. */
-export function createLightbulbGroundSprite(context: Pick<GroundPrefabContext, 'assets' | 'tickingarea'>,
+export function createLightbulbGroundSprite(context: Pick<GroundPrefabContext, 'sprites' | 'tickingarea'>,
   options: { lit?: boolean; skinId?: string; entity?: ItemEntity } = {}) {
   const { visual } = createResidentGroundItem(context, { itemId: LIGHTBULB_ID, skinId: options.skinId, entity: options.entity });
   const setLit = (lit: boolean) => prefabInstance(visual.model)!.light.set(lit ? LIGHTBULB_LIGHT : null);

@@ -29,9 +29,10 @@ export class SpriteResources {
   private disposed = false;
   private readonly base: string;
 
-  constructor(base = `${import.meta.env.BASE_URL}dst/data/anim`, materialName = 'sprite') {
+  /** `archives` shares an existing archive owner, such as the ground items' with their equipment art; these resources then release it. */
+  constructor(base = `${import.meta.env.BASE_URL}dst/data/anim`, materialName = 'sprite', archives = new ArchiveSpriteAssets(materialName, base)) {
     this.base = base;
-    this.archives = new ArchiveSpriteAssets(materialName, base);
+    this.archives = archives;
   }
 
   archive(definition: ArchiveDefinition, options: ArchiveOptions = {}): ArchiveSpriteSource {

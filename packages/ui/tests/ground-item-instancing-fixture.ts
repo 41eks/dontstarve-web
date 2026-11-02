@@ -1,3 +1,4 @@
+import { SpriteResources } from '../../display/src';
 import * as THREE from 'three';
 import { GroundItemAssets, createResidentGroundItem, type ResidentGroundItem } from '../../prefab/src/groundItems';
 import { renderSceneWithPasses } from '../../animation/src/sceneRenderPass';
@@ -19,7 +20,7 @@ export async function checkGroundItemInstancing() {
   try {
     // Static held poses and split animation/build archives use the same instancing path as loops.
     for (let index = 0; index < 24; index++) {
-      const item = createResidentGroundItem({ assets }, { itemId: 'torch' });
+      const item = createResidentGroundItem({ sprites: new SpriteResources(undefined, undefined, assets) }, { itemId: 'torch' });
       await item.display.artLoaded();
       item.instance.position.set(index % 6 * 3 - 8, Math.floor(index / 6) * 3 - 5, 0);
       scene.add(item.visual.model);

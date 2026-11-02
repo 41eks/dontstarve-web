@@ -1,3 +1,4 @@
+import { SpriteResources } from '../../display/src';
 import * as THREE from 'three';
 import { createTurfGround } from '../../prefab/src/turf';
 import { TILE_SIZE, snapToTileCenter } from '../../prefab/src/tile';
@@ -35,7 +36,7 @@ export async function checkTurfOcclusion() {
   let comparisons = 0;
   try {
     for (const id of ['meatballs', 'log', 'torch', 'wall_stone_item']) {
-      const { visual: sprite, display } = createResidentGroundItem({ assets }, { itemId: id });
+      const { visual: sprite, display } = createResidentGroundItem({ sprites: new SpriteResources(undefined, undefined, assets) }, { itemId: id });
       await display.artLoaded();
       sprite.model.position.copy(feet);
       scene.add(sprite.model);

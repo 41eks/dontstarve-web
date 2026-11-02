@@ -1,3 +1,4 @@
+import { SpriteResources } from '../../display/src';
 import { prefabDisplay } from '../../display/src';
 import { fixturePickup } from './pickup-fixture';
 import * as THREE from 'three';
@@ -40,7 +41,7 @@ export async function checkLightbulbLighting() {
   };
   const baseline = await sample(0);
   const assets = new GroundItemAssets();
-  const bulb = createLightbulbGroundSprite({ assets });
+  const bulb = createLightbulbGroundSprite({ sprites: new SpriteResources(undefined, undefined, assets) });
   await (prefabDisplay(bulb.model) as PrefabDisplay).artLoaded();
   scene.add(bulb.model);
   bulb.model.quaternion.copy(camera.quaternion);

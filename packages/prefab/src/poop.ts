@@ -1,4 +1,3 @@
-import { createSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { createEffect, createSignal, readonlySignal } from '@dontstarve-web/signals';
 import { createArchiveEntity } from './prefabInstance';
 import { createResidentGroundItem } from './groundItems';
@@ -18,11 +17,10 @@ export function createPoopGroundFactory(context: GroundPrefabContext): GroundIte
     configureEntity: entity => { configureBurnableItemEntity(entity); configureFertilizerEntity(entity); },
     create(item, inst) {
       if (!context.scheduler) throw new Error('Poop requires the ground registry game-time scheduler');
-      const createFlies = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(context.assets, { animationArchive: 'flies.zip',
-        buildArchives: ['flies.zip'], bank: 'flies', animation: clip.name, loop: clip.loop }, { name: 'flies', dynamicParent: true });
+      const fliesSource = context.sprites.archive({ animationArchive: 'flies.zip', buildArchives: ['flies.zip'], bank: 'flies' }, { dynamicParent: true });
       const base = createResidentGroundItem(context, { ...item, entity: inst });
 
-      const flies = createArchiveEntity('flies', { create: createFlies }, { name: 'swarm_pre', billboard: true }, 'flies', undefined, base.instance.status);
+      const flies = createArchiveEntity('flies', fliesSource, { name: 'swarm_pre', billboard: true }, 'flies', undefined, base.instance.status);
       flies.instance.persists = false;
       flies.instance.sprite.setVisible(false);
       // The decorative child must not enlarge the manure's pickup target, whenever its sprite is drawn again.
