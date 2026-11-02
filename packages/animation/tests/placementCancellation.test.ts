@@ -88,12 +88,13 @@ function setup(kind: 'animated' | 'wall') {
   };
   expect(store.craft(recipe, kind === 'animated' ? 'selected_skin' : undefined)).toBe(true);
   const consume = vi.fn(() => store.takeBuffered('building') || store.takeItem('building'));
-  const onbuilt = vi.fn(({ onComplete }: { onComplete: () => void }) => onComplete());
+  const onbuilt = vi.fn();
   const placement = kind === 'animated'
     ? new AnimatedBuildingPlacement(world, {
       building: {
         archive: 'building.zip', name: 'Building', buildLabel: 'building',
-        scale: 1, skinArchives: { selected_skin: 'dynamic/selected_skin.zip' }, onbuilt,
+        scale: 1, skinArchives: { selected_skin: 'dynamic/selected_skin.zip' },
+        oninit: ({ instance }) => { instance.ListenForEvent('onbuilt', onbuilt); },
       },
     }, consume)
     : new WallPlacement(world, {

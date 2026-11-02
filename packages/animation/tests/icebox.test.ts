@@ -172,7 +172,7 @@ it('saves a spawned fridge with skinned cold stones and food through c_save and 
     const spawn = async (id: string) => {
       if (id !== 'icebox') return false;
       await placement.spawnFromSave('icebox', { id: 'fridge', transform: { position: [3, 0, -6], rotationY: 0 },
-        components: { building: { state: 'closed', skinId: 'icebox_crystal' } } });
+        components: { building: { skinId: 'icebox_crystal' } } });
       return true;
     };
     expect((await executeDebugCommand('c_spawn("icebox"); c_give("heatrock"); c_give("red_cap", 2)', inventory, spawn)).ok).toBe(true);

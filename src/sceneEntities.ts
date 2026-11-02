@@ -1619,16 +1619,18 @@ export async function createSceneEntities(
   }
 
   function registerPonds(registry: EntityRegistry, prefabId: 'pond', worldState: SceneWorldState) {
-    const ponds = new PondManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, scheduler ?? worldState.scheduler, worldState.getWatchWorldContent);
+    const displays = new PrefabDisplayGroup(scene);
+    const ponds = new PondManager(displays, `${import.meta.env.BASE_URL}dst/data/anim`,
+      { scheduler: scheduler ?? worldState.scheduler, tickingarea: worldState.tickingarea, getWatchWorldContent: worldState.getWatchWorldContent });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (_, record) => ponds.spawn(new THREE.Vector3(...record.transform.position), {
         id: record.id, transform: record.transform, components: record.components.fishable ? { fishable: record.components.fishable } : {},
       }),
       debugSpawn: () => ponds.spawn(player.position.clone()),
       exportRecords: () => ponds.exportRecords().map((record) => ({ prefabId: POND_ID, record })),
-      update: (dt) => ponds.update(dt),
+      update: (dt, quaternion) => ponds.update(dt, quaternion),
       // Ponds are ground layers, below the foot-sorted billboards.
-      dispose: () => ponds.dispose(),
+      dispose: () => { ponds.dispose(); displays.dispose(); },
     });
     return ponds;
   }

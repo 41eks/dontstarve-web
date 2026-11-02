@@ -27,7 +27,7 @@ it('restores container contents, drops their live entities at the building foot 
   const placement = new AnimatedBuildingPlacement(world, { icebox: ICE_BOX_DEFINITION }, () => false);
   try {
     const model = await placement.spawnFromSave('icebox', { id: 'icebox', transform: { position: [3, 0, -6], rotationY: 0 },
-      components: { building: { state: 'closed' }, container: { slotCount: 9,
+      components: { building: {}, container: { slotCount: 9,
         slots: [{ slotKey: '0', item: { entityId: 'stored_food', itemId: 'seeds', count: 3, freshnessPercent: .6 } }] } } });
     const target = workTargets('HAMMER')[0], address = { containerId: 'world:icebox:icebox', slotKey: '0' };
     const item = inventory.getEntity(address)!;
@@ -67,7 +67,7 @@ it('burns a chest through shared components, drops its live contents and restore
   let restored: AnimatedBuildingPlacement<'treasurechest'> | undefined;
   try {
     const model = placement.spawnFromSave('treasurechest', { id: 'burning-chest', transform: { position: [3, 0, -6], rotationY: 0 },
-      components: { building: { state: 'closed' }, container: { slotCount: 9,
+      components: { building: {}, container: { slotCount: 9,
         slots: [{ slotKey: '0', item: { entityId: 'stored-seeds', itemId: 'seeds', count: 3, freshnessPercent: .6 } }] } } });
     const inst = prefabInstance(model)!;
     const item = inventory.getEntity({ containerId: 'world:treasurechest:burning-chest', slotKey: '0' })!;

@@ -144,7 +144,7 @@ test('shows native charge layers, resumes after a downloaded save, and returns t
     const response = await route.fetch(), save = await response.json();
     save.world.elapsedSeconds = 10 * 480 + 420; // Day 11, beginning of the full-moon night.
     save.world.entities = { moonbase: [{ id: 'browser_charge_base', transform: { position: [0, 0, -10], rotationY: 0 },
-      components: { building: { state: 'idle' }, workable: { workleft: 6, maxwork: 6 }, moonbase: {
+      components: { building: {}, workable: { workleft: 6, maxwork: 6 }, moonbase: {
         staff: { entityId: 'browser_charge_yellow', itemId: 'yellowstaff', count: 1, skinId: 'starstaff_crystal', remainingUses: 7 },
       } } }] };
     save.players.local.transform.position = [0, 0, 0];

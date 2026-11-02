@@ -37,7 +37,7 @@ export async function checkResearchLabDestruction() {
       const position = player.position.clone().setY(0);
       const model = await entities.buildingPlacement.spawnFromSave(id, {
         id: `destroy_${id}`, transform: { position: position.toArray(), rotationY: 0 },
-        components: { building: { state: 'idle', skinId: skins[index] } },
+        components: { building: { skinId: skins[index] } },
       });
       const target = findActionEntity(model)!;
       const beforeCount = entities.groundItems.exportRecords().length;

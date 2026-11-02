@@ -174,7 +174,7 @@ alpha = first + second + third
 
 ## 池塘结冰
 
-`PondManager` 接收 `Weather.snowLevel` 只读信号，对应 `pond.lua` 的 `WatchWorldState("snowlevel", OnSnowLevel)`。原版按**积雪量**而非直接按温度结冰，温度只通过天气的降雪和融雪间接起作用：`snowlevel > 0.02` 播放 `frozen`，不高于该值恢复循环 `idle`。管理器用 `createEffect` 读取信号并更新所有池塘的 `userData.frozen`，之后生成或读档的池塘按当前状态初始化。`frozen` 不保存，由读档后的积雪量重新推导。冻结时池塘添加 `SlipperyFeetTarget` 组件（标签 `slipperyfeettarget`，半径 `1.95 × WORLD_SCALE`，`SlipperyRate`：玩家速度大于 `WILSON_RUN_SPEED` 为 50，否则为 5），解冻时移除组件和标签。尚未实现冻结时的碰撞组、`watersource`、`fishable`、`childspawner`、水草和冰冻音效 `pondfreeze`；扩展时读取 `pond.lua` 并在所属组件内实现。
+每个 `PondInstance` 通过注入的 `getWatchWorldContent` 监听 `Weather.snowLevel`，对应 `pond.lua` 的 `WatchWorldState("snowlevel", OnSnowLevel)`。原版按**积雪量**而非直接按温度结冰，温度只通过天气的降雪和融雪间接起作用：`snowlevel > 0.02` 播放 `frozen`，不高于该值恢复循环 `idle`。实例用 `createEffect` 读取信号并更新自己的 `frozen`，之后生成或读档的池塘按当前状态初始化。`frozen` 不保存，由读档后的积雪量重新推导。冻结时池塘添加 `SlipperyFeetTarget` 组件（标签 `slipperyfeettarget`，半径 `1.95 × WORLD_SCALE`，`SlipperyRate`：玩家速度大于 `WILSON_RUN_SPEED` 为 50，否则为 5），解冻时移除组件和标签。冻结时 `fishable` 同步 `Freeze()`／`Unfreeze()`。尚未实现冻结时的碰撞组、`watersource` 组件、`childspawner`、水草和冰冻音效 `pondfreeze`；扩展时读取 `pond.lua` 并在所属组件内实现。
 
 ### 玩家在冰面滑倒
 

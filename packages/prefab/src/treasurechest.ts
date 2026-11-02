@@ -4,11 +4,11 @@ import { createStructureLootDropper } from './structureLoot';
 import definitions from './definitions.json' with { type: 'json' };
 import {
     AnimatedBuildingPlacement,
-    type AnimatedBuildingBuiltContext,
     type AnimatedBuildingDefinition,
 } from './animatedBuildingPlacement';
 import type { WorldContext } from './worldContext';
 import { PlaySound } from './sound';
+import { onloadBurnt, onsaveBurnt } from './standardcomponents';
 
 export const TREASURE_CHEST_ID = 'treasurechest' as const;
 export type TreasureChestId = typeof TREASURE_CHEST_ID;
@@ -56,11 +56,9 @@ function initializeWorkable(instance: PrefabInstance): void {
     instance.components.lootdropper = createStructureLootDropper(instance);
 }
 
-function onbuilt({ animation, onComplete }: AnimatedBuildingBuiltContext): void {
-    animation.playOnce('place', () => {
-        animation.start('closed');
-        onComplete();
-    });
+function onbuilt(inst: PrefabInstance): void {
+    inst.sprite.playOnce('place');
+    inst.sprite.pushAnimation('closed', false);
 }
 
 export const TREASURE_CHEST_DEFINITION: AnimatedBuildingDefinition = {
@@ -75,8 +73,10 @@ export const TREASURE_CHEST_DEFINITION: AnimatedBuildingDefinition = {
         instance.components.container!.onopenfn = onopen;
         instance.components.container!.onclosefn = onclose;
         initializeWorkable(instance);
+        instance.ListenForEvent('onbuilt', () => onbuilt(instance));
+        instance.OnSave = onsaveBurnt;
+        instance.OnLoad = onloadBurnt;
     },
-    onbuilt,
 };
 
 const TREASURE_CHEST_DEFINITIONS: Readonly<Record<TreasureChestId, AnimatedBuildingDefinition>> = {

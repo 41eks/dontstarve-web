@@ -5,7 +5,6 @@ import definitions from './definitions.json' with { type: 'json' };
 import { pighouse_init_fn } from '@dontstarve-web/animation/prefabskin';
 import {
     AnimatedBuildingPlacement,
-    type AnimatedBuildingBuiltContext,
     type AnimatedBuildingDefinition,
 } from './animatedBuildingPlacement';
 import type { WorldContext } from './worldContext';
@@ -38,19 +37,19 @@ function initializeWorkable(instance: PrefabInstance): void {
     instance.components.lootdropper = createStructureLootDropper(instance);
 }
 
-function onbuilt({ animation, onComplete }: AnimatedBuildingBuiltContext): void {
-    animation.playOnce('place', () => {
-        animation.start('idle');
-        onComplete();
-    });
+function onbuilt(inst: PrefabInstance): void {
+    inst.sprite.playOnce('place');
+    inst.sprite.pushAnimation('idle', true);
 }
 
 export const PIG_HOUSE_DEFINITION: AnimatedBuildingDefinition = {
     ...definitions.animatedBuildings.pighouse,
     obstacleRadius: 1,
     skinInit: pighouse_init_fn,
-    oninit: ({ instance }) => initializeWorkable(instance),
-    onbuilt,
+    oninit: ({ instance }) => {
+        initializeWorkable(instance);
+        instance.ListenForEvent('onbuilt', () => onbuilt(instance));
+    },
 };
 
 export class PigHousePlacement extends AnimatedBuildingPlacement<PigHouseId> {
