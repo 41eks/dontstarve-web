@@ -284,17 +284,17 @@ RGB `(237,237,209)/255`。范围不随掉落堆叠数量增加，也没有火把
 
 `getLightStaffController(entity, world)` 在真实物品实体上配置 `SpellCaster`，按法杖自身 ID 选择 `stafflight` / `staffcoldlight`，黄／蓝法杖分别为 20／50 次。`onequip(slotSignal)` 绑定装备生命周期，卸下只解除绑定，耗尽通过实体的库存 owner 移除。`SpellCastActionController` 读取组件和能力标签、共享鼠标动作选择器及真实 `BufferedAction.invobject`，不包含法杖 ID、星体 Manager 或法术函数；异步准备完成后进入状态图，过远先接近，尚未提交的装备替换使旧动作失效。第 53 帧释放临时光效的取消所有权，剩余光效自然结束；第 69 帧解除 busy 并恢复世界输入。
 
-`@dontstarve-web/prefab/stafflight` 的 `DwarfStarManager` 管理独立的矮星
-（源 prefab ID `stafflight`）。`star_hot.zip` 播放 `appear → idle_loop → disappear`，
-局部光源每 20 秒脉动一次，半径为 33～36 世界单位。矮星固定在右键 raycaster
-命中的地面点，持续 24 分钟（1440 秒），到期播放
-消失动画并在 1 秒后移除；存档保存各自的落点和剩余寿命，恢复时继续计时。
-`spawn(position, saved?)` 同步创建矮星，施法提交帧与读档都用它，美术由 display 通过 `SpriteResources` 加载；`update(dt, cameraQuaternion)`
-更新动画与光照，`exportRecords()` 返回可保存记录，`dispose()` 释放共享精灵资源并停止所属声音。
+`@dontstarve-web/prefab/stafflight` 的 `StaffLightInstance` 按 `stafflight.lua` 的 `fn()` 组装矮星（`stafflight`）和极光（`staffcoldlight`）：
+标签、`heater`、`sanityaura`、`hauntable`、`timer`，矮星另有 `propagator`。`DwarfStarManager` 只管理集合、注入的世界和共享 archive。
+`star_hot.zip` 播放 `appear → idle_loop`，`star_cold.zip` 在 `appear` 后随 `animover` 随机切换三个待机；到期或作祟时走 `kill_light`：
+播放 `disappear`、`persists = false`，1 秒后移除。局部光源由 0.1 秒周期任务脉动，半径 33～36 世界单位。
+寿命（矮星 1440 秒）在世界 `GameTimeScheduler` 上的 `extinguish` timer 中计时，休眠不暂停；存档保存落点和剩余寿命。
+`spawn(position, saved?)` 同步创建星体，施法提交帧与读档都用它，美术由 display 加载；`update(dt, cameraQuaternion)` 只推进显示，
+`exportRecords()` 返回可保存记录，`dispose()` 移除所有星体并释放共享资源。
 
 矮星音频随场景启动时的 `PrewarmSounds()` 一起解码：出现时播放 `dontstarve/common/staff_star_create`，
 每颗矮星独立循环 `dontstarve/common/staff_star_LP`，消失动画结束时停止；
-移除及 `dispose()` 会停止并断开所属矮星的音源。恢复存档时只接续循环声。
+移除及 `dispose()` 会停止并断开所属矮星的音源。休眠不停声，由距离衰减静音；读档与 Lua 一样重新执行 `fn()`，出现声和 `appear` 也会重播。
 音频由 vgmstream 从 `sound/common.fsb` 的流 273（`staff_star_create`）和
 274（`staff_star_fireLP`）提取，保留源 bank 的目录，导出为 `sound/common.fsb-273.wav`、
 `sound/common.fsb-274.wav`；声音在用户交互后启用。提取方法见根目录 `AGENTS.md`。

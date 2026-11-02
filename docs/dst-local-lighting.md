@@ -256,7 +256,7 @@ Falloff `0.9 - 0.4k`；颜色为 `(223,208,69)/255`，半径乘场景单位比�
 [`packages/prefab/src/stafflight.ts`](../packages/prefab/src/stafflight.ts) 使用
 `star_hot.zip` 的 bank/build `star_hot`，播放 `appear → idle_loop → disappear`。
 保留源原点为地面脚点，将矮星作为独立实体参与相机深度排序。
-按源 Lua 的 `s = abs(sin(PI * ageSeconds * 0.05))` 更新照明：
+按源 Lua 的 0.1 秒周期任务和 `s = abs(sin(PI * timeAlive * 0.05))` 更新照明：
 
 | 参数 | 原版值 | 当前场景值 |
 |---|---|---|
@@ -271,8 +271,8 @@ Falloff `0.9 - 0.4k`；颜色为 `(223,208,69)/255`，半径乘场景单位比�
 每颗矮星固定在右键 raycaster 命中的地面点，鼠标移动、角色移动和卸下魔杖
 不改变已经召唤的矮星位置。矮星独立计时 24 分钟，到期播放消失动画，
 1 秒后移除模型及光源。保存记录使用
-`world.entities.stafflight[].components.timer.remainingSeconds`；恢复时由剩余寿命
-推算脉动相位并继续计时，已经进入消失阶段的矮星不再保存。
+`world.entities.stafflight[].components.timer.remainingSeconds`；恢复时继续计时，
+脉动相位与 Lua 的 `GetTimeAlive()` 一样从恢复时重新开始，已经进入消失阶段的矮星不再保存。
 
 应用中执行 `c_give("yellowstaff")`，装备到手部后右键地面。当前不消耗耐久和理智，
 矮星的加热、烹饪、引燃、声音、独立施法特效与 Bloom 尚未接入。

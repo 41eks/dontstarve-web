@@ -1592,9 +1592,10 @@ export async function createSceneEntities(
     return oceanWaves;
   }
 
-  function registerStaffLights(registry: EntityRegistry, prefabId: typeof DWARF_STAR_ID | typeof POLAR_LIGHT_ID, _worldState: SceneWorldState) {
+  function registerStaffLights(registry: EntityRegistry, prefabId: typeof DWARF_STAR_ID | typeof POLAR_LIGHT_ID, worldState: SceneWorldState) {
     const displays = new PrefabDisplayGroup(scene);
-    const lights = new DwarfStarManager(displays, `${import.meta.env.BASE_URL}dst/data/anim`, prefabId, () => player.position);
+    const lights = new DwarfStarManager(displays, `${import.meta.env.BASE_URL}dst/data/anim`,
+      { scheduler: scheduler ?? worldState.scheduler, tickingarea: worldState.tickingarea, getWatchWorldContent: worldState.getWatchWorldContent }, prefabId);
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (_, record) => lights.spawn(new THREE.Vector3(...record.transform.position), {
         id: record.id, remainingSeconds: record.components.timer!.remainingSeconds,

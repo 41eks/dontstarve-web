@@ -80,7 +80,7 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 
 采摘产物统一交给 `Inventory.GiveItem()` 处理：先填充可用槽位和堆叠，背包满时把余量掉在玩家脚边，采摘仍然成功；采摘入口不再预加载或手动生成地面产物。地面贴图加载期间，掉落实体的 ID、数量、位置和组件状态仍可由 `c_save()` 保存。调试命令的语法、参数和支持的 prefab/item ID 不变。
 
-草丛 `grass` 和洞穴花 `flower_cave` 的采摘／再生、灰烬 `ash` 的生成／拾取／移除，以及矮星 `stafflight` 的生成／消失／注销如何映射到 signal，见 [DST 事件与 signal 映射](docs/dst-event.md)。矮星已接入：私有 signal 保存寿命与移除标记，`createMemo` 派生 `active → disappearing → removed`，effect 只同步消失表现；计时和永久移除同步执行。远离卸载模型时释放表现绑定，保留逻辑状态与 memo；永久移除直接清理资源并释放 memo。草丛和洞穴花的再生／灯光 timer 已接入 signal：共享游戏时间调度器在设置、暂停、恢复、取消或到期时提交，等待期间不扣减 timer，memo 派生状态。灰烬消散的 timer signal 仍是后续方案。实体表现 effect 用 `get()` 订阅自身状态，用 `peek()` 读取环境，包含同步调用的辅助函数。调试命令语法和参数保持不变；补齐 `c_spawn("stafflight")`／`c_spawn("staffcoldlight")` 的注册入口。
+草丛 `grass` 和洞穴花 `flower_cave` 的采摘／再生、灰烬 `ash` 的生成／拾取／移除，以及矮星 `stafflight` 的生成／消失／注销如何映射到 signal，见 [DST 事件与 signal 映射](docs/dst-event.md)。矮星和极光是按 Lua 组装的 `StaffLightInstance`：寿命在 `timer` 组件的 `extinguish` 任务中，休眠不暂停；读档与 Lua 一样重播 `appear` 和出现声。草丛和洞穴花的再生／灯光 timer 已接入 signal：共享游戏时间调度器在设置、暂停、恢复、取消或到期时提交，等待期间不扣减 timer，memo 派生状态。灰烬消散的 timer signal 仍是后续方案。实体表现 effect 用 `get()` 订阅自身状态，用 `peek()` 读取环境，包含同步调用的辅助函数。调试命令语法和参数保持不变；补齐 `c_spawn("stafflight")`／`c_spawn("staffcoldlight")` 的注册入口。
 
 
 库存实体直接提供数量、耐久、新鲜度和湿润状态的只读 signal，物品栏、装备、背包和容器 UI 订阅同一份组件状态；数值变化无需替换整份 UI item，数量接收动画读取实时 count。新鲜度和湿润显示使用原版 meter，缺少新鲜度状态时隐藏对应显示。可用 `c_give("torch", 2)` 检查燃料百分比，用 `c_save()` 保存并恢复库存组件状态；已提供的新鲜度与潮湿值也随库存／地面物品保存恢复。声明保鲜时长的物品已接入腐败模拟：`Perishable` 每 10 个游戏秒结算一次，内部通过 `watchSignal` 和 `createEffect` 监听潮湿状态，变化时按旧状态提前结算，随后潮湿倍率为 `1.3`；保存先结算不足 10 秒的部分，移除／释放组件时取消任务并清理监听。雨水吸收和干燥模拟尚未接入；命令语法、参数和支持的 prefab/item ID 不变。详见 [容器 DTO 与 UI signal](docs/inventory-architecture.md#容器-dto-与-ui-signal)。

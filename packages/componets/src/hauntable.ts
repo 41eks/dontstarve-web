@@ -2,8 +2,9 @@ import type { GameTimeScheduler } from './gameTimeScheduler';
 import { ComponentTimer } from './timer';
 import { createMemo } from '../../signals/src';
 
-/** tuning.lua HAUNT_INSTANT_REZ / HAUNT_COOLDOWN_SMALL / HAUNT_COOLDOWN_MEDIUM. */
+/** tuning.lua HAUNT_INSTANT_REZ / HAUNT_SMALL / HAUNT_COOLDOWN_SMALL / HAUNT_COOLDOWN_MEDIUM. */
 export const HAUNT_INSTANT_REZ = 9999;
+export const HAUNT_SMALL = 3;
 export const HAUNT_COOLDOWN_SMALL = 3;
 export const HAUNT_COOLDOWN_MEDIUM = 5;
 

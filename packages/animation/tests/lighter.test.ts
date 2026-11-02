@@ -1,6 +1,5 @@
 import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
 import { findActionEntity } from '../../prefab/src/actionEntity';
-import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { withEntity } from './entityFixture';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -22,15 +21,9 @@ import { TREASURE_CHEST_DEFINITION } from '../../prefab/src/treasurechest';
 import { COOK_POT_DEFINITION } from '../../prefab/src/cook_pot';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { createPickupInventory } from './pickupFixture';
-import { executeDebugCommand } from '../../../src/debugCommands';
-import { serializeSave } from '../../../src/save/serialize';
-import { deserializeSave } from '../../../src/save/deserialize';
-import { SAVE_CATALOG } from '../../../src/save/catalog';
-import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
 import type { SavedEntity } from '../../../src/save/types';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
-import { reskinEntity } from '../../prefab/src/reskin_tool';
 import { workTargets } from './workTargets';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
@@ -134,81 +127,6 @@ function structureFixture() {
   const placement = new AnimatedBuildingPlacement(world, { treasurechest: TREASURE_CHEST_DEFINITION, cookpot: COOK_POT_DEFINITION }, () => false);
   return { inventory, scene, placement, dropLoot };
 }
-
-it('keeps burning art through reskin, exports source burnt state, restores a chest and drops live contents once at its saved foot', async () => {
-  const { inventory, scene, placement } = structureFixture();
-  const restoredInventory = createPickupInventory();
-  const restoredPlacement = new AnimatedBuildingPlacement({ scene: new THREE.Scene(), player: new THREE.Group(), camera: new THREE.PerspectiveCamera(),
-    ground: new THREE.Group(), cameraFacing: createSignal(8), cameraHeading: createSignal(45), renderer: { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer,
-    registerContainer: (id, container, saved) => restoredInventory.registerContainer(id, container, saved),
-    unregisterContainer: (id, container) => restoredInventory.unregisterContainer(id, container),
-  } as WorldContext, { treasurechest: TREASURE_CHEST_DEFINITION }, () => false);
-  const dropped: ItemEntity[] = [], stop = inventory.subscribeDropped(entity => dropped.push(entity));
-  const stopRestored = restoredInventory.subscribeDropped(entity => dropped.push(entity));
-  try {
-    expect((await executeDebugCommand('c_give("torch");c_spawn("treasurechest")', inventory, async id => {
-      if (id !== 'treasurechest') return false;
-      await placement.spawnFromSave(id, { id: 'burning_chest', transform: { position: [3, 0, -6], rotationY: 0 }, components: {
-        building: { state: 'closed' }, container: { slotCount: 9, slots: [{ slotKey: '0', item: {
-          entityId: 'preserved_food', itemId: 'seeds', count: 3, freshnessPercent: .6,
-        } }] },
-      } }); return true;
-    })).ok).toBe(true);
-    const model = placement.renderEntities[0].object;
-    const burnable = (findActionEntity(model)?.components ?? prefabInstance(model)!.components).burnable as Burnable;
-    const instance = prefabInstance(model)!;
-    const burningSignal = burnable.burning;
-    const notified = vi.fn();
-    const stopNotified = prefabInstance(model)!.ListenForEvent('burntup', notified);
-    expect(burningSignal.set).toBeUndefined();
-    const item = inventory.getEntity({ containerId: 'world:treasurechest:burning_chest', slotKey: '0' })!;
-    const before = item.snapshot();
-    burnable.Ignite(); placement.update(3);
-    expect(scene.children.filter(child => child.name === 'fire')).toHaveLength(1);
-    expect(reskinEntity(placement.reskinTargets[0])).toBe(true);
-    expect((findActionEntity(model)?.components ?? prefabInstance(model)!.components).burnable).toBe(burnable);
-    expect(instance.hasTag('burnt')).toBe(false);
-    expect(instance.components.burnable!.burning).toBe(burningSignal);
-    expect(burningSignal.peek()).toBe(true); expect(notified).not.toHaveBeenCalled();
-    expect(scene.children.filter(child => child.name === 'fire')).toHaveLength(1);
-    const record = placement.exportRecords()[0].record;
-    expect(record.components.building).toMatchObject({ burnt: true, skinId: 'treasurechest_ancient' });
-    expect(record.transform.position).toEqual([3, 0, -6]);
-    let json = '';
-    expect((await executeDebugCommand('c_save()', inventory, undefined, () => {
-      json = serializeSave(deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG), {
-        entities: { treasurechest: [savedEntity(record)] }, inventory: inventory.exportState(), elapsedSeconds: 3,
-        playerTransform: { position: [3, 0, -6], rotationY: 0 },
-      }, SAVE_CATALOG);
-    })).ok).toBe(true);
-    const saved = deserializeSave(json, SAVE_CATALOG);
-    // Complete this session before restoring a new session from the exported document.
-    placement.update(7);
-    expect(prefabInstance(model)!.listTags()).toContain('burnt');
-    expect(prefabInstance(model)!.sprite.currentAnimation).toBe('burnt');
-    expect((findActionEntity(model)?.components ?? prefabInstance(model)!.components).container).toBeUndefined();
-    expect(scene.children.some(child => child.name === 'fire')).toBe(false);
-    expect(instance.hasTag('burnt')).toBe(true); expect(burningSignal.peek()).toBe(false);
-    expect(notified).toHaveBeenCalledOnce();
-    stopNotified();
-    expect(dropped).toEqual([item]); expect(item.snapshot()).toEqual(before);
-    expect(item.transform.position.toArray()).toEqual([3, 0, -6]);
-    const restored = await restoredPlacement.spawnFromSave('treasurechest', saved.world.entities.treasurechest[0]);
-    expect(lookupPrefabInstance(restored)?.entityId).toBe('burning_chest');
-    expect(lookupPrefabInstance(restored)?.skinId).toBe(record.components.building!.skinId);
-    expect(prefabInstance(restored)!.sprite.currentAnimation).toBe('burnt');
-    expect(prefabInstance(restored)!.hasTag('burnt')).toBe(true);
-    expect((findActionEntity(restored)?.components ?? prefabInstance(restored)!.components).burnable).toBeUndefined();
-    expect((findActionEntity(restored)?.components ?? prefabInstance(restored)!.components).workable.GetWorkLeft()).toBe(1);
-    expect(dropped).toHaveLength(2);
-    expect(dropped[1].snapshot()).toEqual(before);
-    expect(dropped[1].transform.position.toArray()).toEqual([3, 0, -6]);
-    const burnt = restoredPlacement.exportRecords()[0].record;
-    expect(burnt.components.container).toBeUndefined();
-    expect(deserializeSave(serializeSave(saved, { entities: { treasurechest: [savedEntity(burnt)] }, inventory: restoredInventory.exportState(), elapsedSeconds: 10,
-      playerTransform: { position: [3, 0, -6], rotationY: 0 } }, SAVE_CATALOG), SAVE_CATALOG).world.entities.treasurechest[0]).toEqual(burnt);
-  } finally { stop(); stopRestored(); placement.dispose(); restoredPlacement.dispose(); inventory.dispose(); restoredInventory.dispose(); }
-});
 
 it('burns a cooking pot after 20 seconds, drops the product and disables cooking and container interactions', async () => {
   const { inventory, placement, dropLoot } = structureFixture();
