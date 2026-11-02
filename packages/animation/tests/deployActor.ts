@@ -5,7 +5,12 @@ import type { InventoryStore } from '../../inventory/src';
 import { createSignal } from '../../signals/src';
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
+import { WORLD_TILES, type TurfMap } from '../../prefab/src/turfMap';
 import type { WorldContext } from '../../prefab/src/worldContext';
+
+/** A TurfMap stub that is all walkable land except for the overridden rules. */
+export const landTurf = (rules: Partial<Record<keyof TurfMap, unknown>>) =>
+  ({ getTileAtWorld: () => WORLD_TILES.DIRT, isOceanAtWorld: () => false, ...rules }) as unknown as TurfMap;
 
 /** A player whose controller buffers DEPLOY through a locomotor that arrives when told. */
 export function deployActor(world: WorldContext, inventory: InventoryStore, map: DeployMap,

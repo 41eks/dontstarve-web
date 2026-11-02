@@ -7,7 +7,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { FlowerPlanting } from '../../prefab/src/flower';
 import { createDeployMap } from '../../prefab/src/deployMap';
 import { placementEntities } from '../../prefab/src/placementEntities';
-import { deployActor } from './deployActor';
+import { deployActor, landTurf } from './deployActor';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import { createInventoryStore } from '../../../src/inventory';
@@ -71,7 +71,7 @@ it('buffers planting at frame six, preserves cancelled butterflies and saves the
     const transplant = vi.fn((position: THREE.Vector3) => s.flowers.transplant(position));
     const point = new THREE.Vector3(2, 0, 0);
     vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(point);
-    actor = deployActor(s.world, s.inventory, createDeployMap({ turf: { canDeployPlantAtPoint: (point: THREE.Vector3) => point.x >= 0 } as never, blockers: placementEntities(s.world.scene), plants: { planted_flower: { transplant } } }));
+    actor = deployActor(s.world, s.inventory, createDeployMap({ turf: landTurf({ canDeployPlantAtPoint: (point: THREE.Vector3) => point.x >= 0 }), blockers: placementEntities(s.world.scene), plants: { planted_flower: { transplant } } }));
     const { graph } = actor;
     expect(actor.canDeploy(new THREE.Vector3(-1, 0, 0))).toBe(false);
     expect(actor.deploy(point)).toBe(true);

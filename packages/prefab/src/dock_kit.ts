@@ -1,20 +1,11 @@
-import { placementEntities, ignoresPlacement, hasPlacementTag, type PlacementQuery, type PlacementBlocker } from './placementEntities';
+import { ignoresPlacement, hasPlacementTag, type PlacementQuery, type PlacementBlocker } from './placementEntities';
 import * as THREE from 'three';
 import type { ItemEntity } from '@dontstarve-web/inventory';
-import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
-import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
-import { SpriteResources } from '@dontstarve-web/display';
-import { createArchiveEntity } from './prefabInstance';
-
-// The placer tints: valid and blocked cells.
-const VALID_TINT = new THREE.Color(0x66ff66).toArray() as [number, number, number];
-const BLOCKED_TINT = new THREE.Color(0xff5555).toArray() as [number, number, number];
-import { BuildCursor, declarePlacer, entityPlacer } from './buildCursor';
+import { Deployable } from '../../componets/src/deployable';
+import { DockManager, type DockMap } from '../../componets/src/dockmanager';
 import { PlaySound } from './sound';
 import { snapToTileCenter, TILE_SIZE } from './tile';
 import { TurfMap, WORLD_TILES, isLandTile } from './turfMap';
-import type { WorldContext } from './worldContext';
-import { DockManager, type DockMap } from '../../componets/src/dockmanager';
 
 export const DOCK_KIT_ID = 'dock_kit';
 /** TUNING.STACK_SIZE_MEDITEM, the stackable default dock_kit.lua sets. */
@@ -37,144 +28,59 @@ export const dockMapOf = (turf: TurfMap): DockMap => ({
   isTemporaryTile: tile => tile === WORLD_TILES.FARMING_SOIL || tile === WORLD_TILES.MONKEY_DOCK,
 });
 
-/** dock_kit.lua: CLIENT_CanDeployDockKit, deployable on_deploy and the gridplacer. */
-export class DockKitPlacement {
-  readonly dockmanager: DockManager;
-  private readonly stopActionEvents: () => void;
-  /** The gridplacer's shared archive; declaring it performs no IO, the outline's display loads it. */
-  private readonly sprites = new SpriteResources(undefined, 'dock-kit');
-  private readonly pointer: PointerRaycaster;
-  private readonly cursor: BuildCursor;
-  private readonly world: WorldContext;
-  private readonly turf: TurfMap;
-  private readonly blockers: PlacementQuery;
-  /** The gridplacer entity; `valid` is the tint its sprite json was last told. The cursor moves and shows it. */
-  private outline?: ReturnType<typeof createArchiveEntity> & { valid?: boolean };
-  private takeItem?: () => ItemEntity | undefined;
-  private disposed = false;
+const cellOf = (point: Pick<THREE.Vector3, 'x' | 'z'>): [number, number] =>
+  [Math.floor(point.x / TILE_SIZE), Math.floor(point.z / TILE_SIZE)];
 
-  constructor(world: WorldContext, turf: TurfMap, blockers: PlacementQuery = placementEntities(world.scene)) {
-    this.world = world; this.turf = turf; this.blockers = blockers;
-    this.dockmanager = new DockManager(dockMapOf(turf), { dock: WORLD_TILES.MONKEY_DOCK, farmingSoil: WORLD_TILES.FARMING_SOIL });
-    this.stopActionEvents = bindActionCancellation(world, this, () => this.cancel());
-    this.pointer = new PointerRaycaster(world);
-    this.cursor = new BuildCursor(world, this.pointer);
-    world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown, true);
-    window.addEventListener('keydown', this.handleKeyDown);
-  }
-
-  /** The gridplacer snapped to tile centres; `takeItem` detaches one kit when the deploy commits. */
-  begin(takeItem: () => ItemEntity | undefined): void {
-    if (this.disposed) throw new Error('Dock kit placement has been disposed');
-    this.cancel();
-    this.world.actionEvents?.emit('action:begin', { owner: this, action: 'DEPLOY' });
-    this.takeItem = takeItem;
-    this.cursor.show('鼠标右键：布署', 'right');
-    // Private colour and opacity copies: the placer tints only itself.
-    const entity = createArchiveEntity('gridplacer', this.sprites.archive({ animationArchive: 'gridplacer.zip',
-      buildArchives: ['gridplacer.zip'], bank: 'gridplacer' }, { opacity: .65, colour: [1, 1, 1] }), { name: 'anim' }, 'DockKitGridPlacer');
-    // gridplacer.lua: PlayAnimation("anim", true) with the shared placer tags, persists and light override.
-    const model = entity.display.model;
-    declarePlacer(entity.instance);
-    model.userData.billboard = false;
-    model.rotation.x = -Math.PI / 2;
-    this.outline = entity;
-    entity.display.mount(this.world.scene);
-    // The outline is lifted off the ground it marks.
-    this.cursor.setPreview(entityPlacer(entity.instance), .05, point => this.center(point));
-    this.cursor.update();
-  }
-
-  cancel(): void {
-    this.takeItem = undefined;
-    this.cursor.hide();
-    if (this.outline) { this.outline.instance.remove(); this.outline.display.dispose(); }
-    this.outline = undefined;
-  }
-
-  private center(point: Pick<THREE.Vector3, 'x' | 'z'>): THREE.Vector3 {
-    const center = snapToTileCenter(point);
-    return new THREE.Vector3(center.x, 0, center.z);
-  }
-
-  private cell(point: Pick<THREE.Vector3, 'x' | 'z'>): [number, number] {
-    return [Math.floor(point.x / TILE_SIZE), Math.floor(point.z / TILE_SIZE)];
-  }
-
-  /**
-   * CLIENT_CanDeployDockKit followed by Map:CanDeployDockAtPoint: an ocean tile touching permanent land or a dock,
-   * with no dockjammer on it and nothing standing in the water within the dock's footprint.
-   */
-  canDeploy(point: THREE.Vector3): boolean {
-    const [col, row] = this.cell(point), center = this.center(point);
-    if (this.turf.tileIdAtCell(col, row) !== WORLD_TILES.OCEAN_COASTAL) return false;
-    const map = dockMapOf(this.turf);
-    let adjacent = false;
-    for (let dx = -1; dx <= 1 && !adjacent; dx++) for (let dz = -1; dz <= 1; dz++) {
-      if ((dx !== 0 || dz !== 0) && map.isLandTile(map.getTile(col + dx, row + dz))) { adjacent = true; break; }
-    }
-    if (!adjacent) return false;
-    if (this.blockers.someOnTile(center, blocker => hasPlacementTag(blocker, 'dockjammer'))) return false;
-    return !this.blockers.someNear(center, MIN_DISTANCE_FROM_ENTITIES, blocker => {
-      if (blocker.visible === false || ignoresPlacement(blocker, DEPLOY_IGNORE_TAGS)) return false;
-      // IsDockNearOtherOnOcean only considers entities standing on ocean tiles.
-      const [bc, br] = this.cell(blocker.position);
-      if (map.isLandTile(map.getTile(bc, br))) return false;
-      return isNearOther(blocker, center, MIN_DISTANCE_FROM_ENTITIES);
-    });
-  }
-
-  /** deployable:Deploy → on_deploy. The kit is consumed only when the dock is created. */
-  deploy(point: THREE.Vector3, takeItem: () => ItemEntity | undefined): boolean {
-    if (this.disposed || !this.canDeploy(point)) return false;
-    const [col, row] = this.cell(point);
-    const item = takeItem();
-    if (!item) return false;
-    if (item.prefab !== DOCK_KIT_ID || item.isRemoved || item.components.inventoryitem.owner || item.components.stackable.count !== 1) {
-      throw new Error('Deployment requires one detached dock_kit');
-    }
-    // PlaySoundWithParams("turnoftides/common/together/boat/damage", { intensity = 0.8 }) on the deployer.
-    PlaySound(DOCK_DEPLOY_SOUND, this.world.player.position).setParameter?.('intensity', .8);
-    this.dockmanager.CreateDockAtTile(col, row);
-    // A dock that cannot reach land would break; deployable tiles always touch land or a connected dock.
-    this.dockmanager.ResolveDockSafetyAtTile(col, row);
-    item.remove();
-    return true;
-  }
-
-  update(): void {
-    if (this.disposed) return;
-    this.cursor.update();
-    const outline = this.outline;
-    if (!outline) return;
-    const valid = this.cursor.previewVisible && this.canDeploy(outline.instance.position);
-    if (valid !== outline.valid) outline.instance.sprite.setColour((outline.valid = valid) ? VALID_TINT : BLOCKED_TINT);
-  }
-
-  get renderEntities() {
-    const outline = this.outline;
-    return outline && this.cursor.previewVisible ? [{ object: outline.display.model, footPosition: outline.instance.position.clone().setY(0), cameraDepth: 0 }] : [];
-  }
-
-  dispose(): void {
-    this.stopActionEvents();
-    if (this.disposed) return;
-    this.disposed = true; this.cancel(); this.pointer.dispose();
-    this.world.renderer.domElement.removeEventListener('pointerdown', this.handlePointerDown, true);
-    window.removeEventListener('keydown', this.handleKeyDown);
-    this.sprites.dispose();
-  }
-
-  private readonly handlePointerDown = (event: PointerEvent): void => {
-    if (!this.takeItem || event.defaultPrevented) return;
-    if (event.button === 0) { event.preventDefault(); this.cancel(); return; }
-    if (event.button !== 2) return;
-    event.preventDefault(); event.stopImmediatePropagation(); this.pointer.trackPointer(event);
-    const point = this.pointer.groundPoint(), takeItem = this.takeItem;
-    if (!point || !this.outline) return;
-    if (this.deploy(point, takeItem)) this.cancel();
+/** TheWorld.Map:CanDeployDockAtPoint and TheWorld.components.dockmanager, as dock_kit.lua reaches them. */
+export function createDockWorld(turf: TurfMap, blockers: PlacementQuery) {
+  const map = dockMapOf(turf);
+  // Built on first use: its roots come from the tiles, which a save restores after the map is wired.
+  let manager: DockManager | undefined;
+  return {
+    get dockmanager(): DockManager {
+      return manager ??= new DockManager(map, { dock: WORLD_TILES.MONKEY_DOCK, farmingSoil: WORLD_TILES.FARMING_SOIL });
+    },
+    /**
+     * CLIENT_CanDeployDockKit followed by Map:CanDeployDockAtPoint: an ocean tile touching permanent land or a dock,
+     * with no dockjammer on it and nothing standing in the water within the dock's footprint.
+     */
+    canDeployDock(point: THREE.Vector3): boolean {
+      const [col, row] = cellOf(point), snapped = snapToTileCenter(point);
+      const center = new THREE.Vector3(snapped.x, 0, snapped.z);
+      if (turf.tileIdAtCell(col, row) !== WORLD_TILES.OCEAN_COASTAL) return false;
+      let adjacent = false;
+      for (let dx = -1; dx <= 1 && !adjacent; dx++) for (let dz = -1; dz <= 1; dz++) {
+        if ((dx !== 0 || dz !== 0) && map.isLandTile(map.getTile(col + dx, row + dz))) { adjacent = true; break; }
+      }
+      if (!adjacent) return false;
+      if (blockers.someOnTile(center, blocker => hasPlacementTag(blocker, 'dockjammer'))) return false;
+      return !blockers.someNear(center, MIN_DISTANCE_FROM_ENTITIES, blocker => {
+        if (blocker.visible === false || ignoresPlacement(blocker, DEPLOY_IGNORE_TAGS)) return false;
+        // IsDockNearOtherOnOcean only considers entities standing on ocean tiles.
+        const [bc, br] = cellOf(blocker.position);
+        if (map.isLandTile(map.getTile(bc, br))) return false;
+        return isNearOther(blocker, center, MIN_DISTANCE_FROM_ENTITIES);
+      });
+    },
+    /** on_deploy: CreateDockAtPoint, then ResolveDockSafetyAtPoint; deployable tiles always touch land or a connected dock. */
+    createDock(point: THREE.Vector3): void {
+      const [col, row] = cellOf(point);
+      this.dockmanager.CreateDockAtTile(col, row);
+      this.dockmanager.ResolveDockSafetyAtTile(col, row);
+    },
   };
-  private readonly handleKeyDown = (event: KeyboardEvent): void => { if (event.code === 'Escape') this.cancel(); };
+}
+
+/** dock_kit.lua: tags, deployable(CUSTOM) with its gridplacer, and on_deploy consuming one kit. */
+export function configureDockKitEntity(entity: ItemEntity): void {
+  if (entity.prefab !== DOCK_KIT_ID || entity.components.deployable) return;
+  for (const tag of ['groundtile', 'deploykititem', 'usedeployspacingasoffset', 'deployable']) entity.addTag(tag);
+  entity.components.deployable = entity.component('deployable', () => new Deployable(entity, (point, deployer, map) => {
+    // PlaySoundWithParams("turnoftides/common/together/boat/damage", { intensity = 0.8 }) on the deployer.
+    PlaySound(DOCK_DEPLOY_SOUND, deployer.position).setParameter?.('intensity', .8);
+    map.createDock(point);
+    entity.remove();
+  }, { mode: 'CUSTOM', spacing: 2 * SCALE, usegridplacer: true, candeploy: (point, map) => map.canDeployDock(point) }));
 }
 
 /** map.lua IsNearOther (min_spacing form) with deploy_smart_radius and inventoryitem physics radius. */

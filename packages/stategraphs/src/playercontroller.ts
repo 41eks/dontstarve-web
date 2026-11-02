@@ -1,6 +1,6 @@
 import { bindActionCancellation, type PlayerActionKind } from './actionEvents.ts';
 import { isHandActionBusy, type ActionLocomotor, type ActionWorldContext } from './actionContext.ts';
-import { createBufferedAction, hasActionFn } from './actionfns.ts';
+import { createBufferedAction, extraArriveDist, hasActionFn } from './actionfns.ts';
 import { ACTIONS, type ActionDescription, type MouseActionId } from './actions.ts';
 import type { BufferedAction, BufferedActionDoer, BufferedActionObject } from './bufferedaction.ts';
 import { equippedActionEntity, type ComponentActionEntity, type SceneActionDoer } from './componentactions.ts';
@@ -163,7 +163,7 @@ export class PlayerController {
     const combat = this.doer.components?.combat;
     this.locomotor.PushAction({
       target: { getPosition: () => this.actionPoint(action), getPhysicsRadius: () => target?.getPhysicsRadius?.() ?? 0 },
-      ...(distance === undefined ? {} : { distance: distance * WORLD_SCALE }),
+      ...(distance === undefined ? {} : { distance: distance * WORLD_SCALE + extraArriveDist(action) }),
       ...(mindistance === undefined ? {} : { minDistance: mindistance * WORLD_SCALE }),
       // locomotor OnUpdate for ATTACK: combat:LocomotorCanAttack, inside the attack range of the target's edge.
       ...(action.action === 'ATTACK' && combat && target ? { arrived: () => this.doer.getPosition!()

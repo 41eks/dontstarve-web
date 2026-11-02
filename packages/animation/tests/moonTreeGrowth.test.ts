@@ -11,7 +11,7 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { createDeployMap } from '../../prefab/src/deployMap';
 import { placementEntities } from '../../prefab/src/placementEntities';
-import { deployActor } from './deployActor';
+import { deployActor, landTurf } from './deployActor';
 import { createInventoryStore } from '../../../src/inventory';
 import { cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { executeDebugCommand } from '../../../src/debugCommands';
@@ -54,7 +54,7 @@ it('plants one moonbutterfly with original baby-tree art and cycles short/normal
   const world = { scene, player: new THREE.Group(), camera: s.camera, ground: new THREE.Group(), renderer: { domElement: canvas } } as unknown as WorldContext;
   const canPlant = vi.fn(() => true);
   const transplant = vi.fn((position: THREE.Vector3) => s.forest.transplant(position));
-  const planting = deployActor(world, inventory, createDeployMap({ turf: { canDeployPlantAtPoint: canPlant } as never,
+  const planting = deployActor(world, inventory, createDeployMap({ turf: landTurf({ canDeployPlantAtPoint: canPlant }),
     blockers: placementEntities(scene), plants: { moonbutterfly_sapling: { transplant } } }));
   const { graph, locomotor } = planting;
   const point = new THREE.Vector3(6, 0, 0);

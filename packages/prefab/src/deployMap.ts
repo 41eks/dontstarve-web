@@ -1,9 +1,10 @@
 import type * as THREE from 'three';
 import type { DeployInst, DeployMap } from '../../componets/src/deployable';
+import { createDockWorld } from './dock_kit';
 import { ignoresPlacement, type PlacementQuery } from './placementEntities';
 import { PLANTABLES } from './plantables';
 import { TILE_SIZE } from './tile';
-import type { TurfMap } from './turfMap';
+import { isLandTile, type TurfMap } from './turfMap';
 import type { WorldContext } from './worldContext';
 
 export interface DeployPlacerMap extends DeployMap {
@@ -13,12 +14,17 @@ export interface DeployPlacerMap extends DeployMap {
 
 /** The Map:CanPlaceTurfAtPoint / CanDeployPlantAtPoint rules and SpawnPrefab targets deployable items use. */
 export function createDeployMap({ turf, blockers, plants, worldEvents }: {
-  turf: Pick<TurfMap, 'canPlaceTurf' | 'setTile' | 'tileCenter' | 'canDeployPlantAtPoint'>;
+  turf: TurfMap;
   blockers: PlacementQuery;
   plants: Readonly<Record<string, { transplant(position: THREE.Vector3, skinId?: string): boolean }>>;
   worldEvents?: WorldContext['worldEvents'];
 }): DeployPlacerMap {
+  const docks = createDockWorld(turf, blockers);
   return {
+    canDeployDock: point => docks.canDeployDock(point),
+    createDock: point => docks.createDock(point),
+    isPassableAtPoint: point => isLandTile(turf.getTileAtWorld(point)),
+    isOceanTileAtPoint: point => turf.isOceanAtWorld(point),
     canPlaceTurf: point => turf.canPlaceTurf(point),
     setTile: (col, row, tileId) => turf.setTile(col, row, tileId as Parameters<TurfMap['setTile']>[2]),
     tileCenter: point => turf.tileCenter(point),

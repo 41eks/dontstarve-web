@@ -109,7 +109,8 @@ it('digs three separate fruits and a root, transplants, fertilizes and stops aft
     const item = s.inventory.entities.create({ itemId: 'dug_rock_avocado_bush', count: 2 }); s.inventory.GiveItem(item);
     const root = s.inventory.extract(inventorySlotAddress(0), 1, item)!;
     expect(root.components.deployable!.Deploy(position, { position, PushEvent: vi.fn() }, {
-      canPlaceTurf: () => false, setTile: vi.fn(), itemPlanted: vi.fn(),
+      canPlaceTurf: () => false, setTile: vi.fn(), itemPlanted: vi.fn(), canDeployDock: () => false, createDock: vi.fn(),
+      isPassableAtPoint: () => true, isOceanTileAtPoint: () => false,
       canDeployPlant: () => true, deployPlant: (point: THREE.Vector3) => s.bushes.transplant(point),
     })).toBe(true);
     expect(s.inventory.count('dug_rock_avocado_bush')).toBe(1);

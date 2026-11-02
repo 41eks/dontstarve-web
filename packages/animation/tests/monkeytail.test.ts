@@ -6,7 +6,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { MonkeytailManager, MONKEYTAIL_REGROW_TIME } from '../../prefab/src/monkeytail';
 import { createDeployMap } from '../../prefab/src/deployMap';
 import { placementEntities } from '../../prefab/src/placementEntities';
-import { deployActor } from './deployActor';
+import { deployActor, landTurf } from './deployActor';
 import { GroundItemManager } from '../../../src/groundItems';
 import { createInventoryStore } from '../../../src/inventory';
 import { inventorySlotAddress, cursorSlotAddress } from '../../inventory/src';
@@ -139,7 +139,7 @@ it('plants cursor-held roots and fertilizes at frame six, preserves cancellation
     s.player.position.set(0, 0, 0);
     expect(s.inventory.transfer(inventorySlotAddress(0), cursorSlotAddress(), 2)).toBe(true);
     const transplant = vi.fn((position: THREE.Vector3) => s.monkeytails.transplant(position));
-    deployment = deployActor(s.world as never, s.inventory, createDeployMap({ turf: { canDeployPlantAtPoint: (point: THREE.Vector3) => point.x >= 0 } as never,
+    deployment = deployActor(s.world as never, s.inventory, createDeployMap({ turf: landTurf({ canDeployPlantAtPoint: (point: THREE.Vector3) => point.x >= 0 }),
       blockers: placementEntities(s.scene), plants: { monkeytail: { transplant } } }), a.graph);
     expect(deployment.canDeploy(new THREE.Vector3(-1, 0, 0))).toBe(false);
     expect(deployment.deploy(new THREE.Vector3(2, 0, 0))).toBe(true);

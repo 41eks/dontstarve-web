@@ -26,7 +26,6 @@ import { camera, followCamera } from './camera';
 import { GroundItemManager } from './groundItems';
 import { turfItemForTile } from '@dontstarve-web/prefab/turfs';
 import { GROUND_ART_DEFINITIONS, GROUND_ITEM_DISPLAY_SPECS } from '@dontstarve-web/prefab/groundItems';
-import { DockKitPlacement } from '@dontstarve-web/prefab/dock_kit';
 import { FarmPlowPlacement, FARM_PLOW_ID } from '@dontstarve-web/prefab/farm_plow';
 import { playerStats } from './playerStats';
 import { PrefabDisplayGroup } from '@dontstarve-web/display';
@@ -148,7 +147,6 @@ const MANAGER_DEFINITIONS = {
   'evergreen': PREFAB_DEFINITIONS.evergreens,
   'deciduoustree': PREFAB_DEFINITIONS.deciduousTrees,
   'farm_plow': PREFAB_DEFINITIONS.farmPlow,
-  'dock_kit': PREFAB_DEFINITIONS.dockKit,
   'moon_tree': PREFAB_DEFINITIONS.moonTrees,
   'pigking': PREFAB_DEFINITIONS.pigKings,
   'statueglommer': PREFAB_DEFINITIONS.glommerStatues,
@@ -172,7 +170,6 @@ const MANAGER_DEFINITIONS = {
 
 // Keep frame callbacks and reverse disposal in their existing order, independently of construction dependencies.
 const SCENE_LIFECYCLE_ORDER = [
-  PREFAB_DEFINITIONS.dockKit,
   PREFAB_DEFINITIONS.farmPlow,
   PREFAB_DEFINITIONS.farmDecor,
   PREFAB_DEFINITIONS.plantedSeeds,
@@ -292,7 +289,6 @@ export async function createSceneEntities(
     'evergreen': Awaited<ReturnType<typeof registerEvergreens>>;
     'deciduoustree': Awaited<ReturnType<typeof registerDeciduousTrees>>;
     'farm_plow': ReturnType<typeof registerFarmPlow>;
-    'dock_kit': ReturnType<typeof registerDockKit>;
     'moon_tree': Awaited<ReturnType<typeof registerMoonTrees>>;
     'pigking': ReturnType<typeof registerPigKings>;
     'statueglommer': ReturnType<typeof registerStatueGlommer>;
@@ -380,7 +376,6 @@ export async function createSceneEntities(
   Managers['evergreen'] = await registerEvergreens(registry, 'evergreen', worldState);
   Managers['deciduoustree'] = await registerDeciduousTrees(registry, 'deciduoustree', worldState);
   Managers['farm_plow'] = registerFarmPlow(registry, 'farm_plow', worldState);
-  Managers['dock_kit'] = registerDockKit(registry, 'dock_kit', worldState);
   Managers['moon_tree'] = await registerMoonTrees(registry, 'moon_tree', worldState);
   Managers['pigking'] = registerPigKings(registry, 'pigking', worldState);
   Managers['statueglommer'] = registerStatueGlommer(registry, 'statueglommer', worldState);
@@ -457,7 +452,6 @@ export async function createSceneEntities(
     worldFx: Managers['world_fx'],
     staffProjectiles: Managers['staff_projectile'],
     farmPlow: Managers['farm_plow'],
-    dockKit: Managers['dock_kit'],
   };
 
   function registerBuildings(registry: EntityRegistry, prefabId: 'buildings', worldState: SceneWorldState) {
@@ -1368,18 +1362,6 @@ export async function createSceneEntities(
       exportRecords: () => farmPlow.exportPlantedSeedRecords(), dispose: () => {},
     });
     return farmPlow;
-  }
-
-  function registerDockKit(registry: EntityRegistry, prefabId: 'dock_kit', _worldState: SceneWorldState) {
-    // Docks stand in the water: any registered entity there blocks, trees and grass included.
-    const dockKit = new DockKitPlacement(view, turfMap);
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
-      exportRecords: () => [],
-      update: () => dockKit.update(),
-      renderEntities: () => dockKit.renderEntities,
-      dispose: () => dockKit.dispose(),
-    });
-    return dockKit;
   }
 
   async function registerMoonTrees(registry: EntityRegistry, prefabId: 'moon_tree', worldState: SceneWorldState) {

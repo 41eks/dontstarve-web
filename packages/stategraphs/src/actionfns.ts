@@ -1,5 +1,6 @@
 import { BufferedAction, type BufferedActionDoer, type BufferedActionObject } from './bufferedaction.ts';
 import { Vector3 } from 'three';
+import { WORLD_SCALE } from '../../prefab/src/tile';
 import { performLightAction, performToolWork, type ComponentActionEntity, type ToolAction } from './componentactions.ts';
 import type { Combat } from '../../componets/src/combat';
 import type { Weapon } from '../../componets/src/weapon';
@@ -21,6 +22,8 @@ import type { FarmSoil } from '../../componets/src/farmplantable';
 interface ActionFns {
   fn(act: BufferedAction): boolean;
   validfn?(act: BufferedAction): boolean;
+  /** actions.lua Action({ extra_arrive_dist }), added to the arrive distance when the walk starts. */
+  extra_arrive_dist?(act: BufferedAction): number;
 }
 
 /** The picker hands components' entities to the action; actions.lua reaches their components. */
@@ -115,6 +118,14 @@ export const ACTION_FNS: Readonly<Partial<Record<string, ActionFns>>> = {
   ADDFUEL: { fn: addFuel },
   ADDWETFUEL: { fn: addFuel },
   DEPLOY: {
+    // actions.lua ExtraDeployDist: a doer on land reaches a target it cannot walk onto. The projectile and
+    // void branches and inst.extra_deploy_distance have no ported user.
+    extra_arrive_dist: act => {
+      const map = playerDoer(act).Map, item = act.invobject as ItemEntity | undefined, target = actionPoint(act);
+      if (!map || !item || !map.isPassableAtPoint(playerDoer(act).position)) return 0;
+      if (!map.isOceanTileAtPoint(target) || map.isPassableAtPoint(target)) return 0;
+      return (item.hasTag('usedeployspacingasoffset') ? item.components.deployable?.spacing ?? 0 : 0) + WORLD_SCALE;
+    },
     fn: act => {
       const item = act.invobject as ItemEntity | undefined, doer = playerDoer(act), map = doer.Map;
       const point = actionPoint(act);
@@ -301,6 +312,9 @@ function addFuel(act: BufferedAction): boolean {
 }
 
 export function hasActionFn(action: string): boolean { return ACTION_FNS[action] !== undefined; }
+
+/** locomotor.lua: action.extra_arrive_dist(doer, dest, bufferedaction). */
+export function extraArriveDist(act: BufferedAction): number { return ACTION_FNS[act.action]?.extra_arrive_dist?.(act) ?? 0; }
 
 /**
  * bufferedaction.lua BufferedAction(doer, target, action, invobject): Do runs ACTIONS[action].fn, and IsValid

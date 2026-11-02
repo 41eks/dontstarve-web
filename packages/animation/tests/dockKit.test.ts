@@ -1,15 +1,20 @@
 import { SpatialIndex } from '../../prefab/src/spatialIndex';
 import type { PlacementBlocker } from '../../prefab/src/placementEntities';
-import { ItemEntity } from '@dontstarve-web/inventory';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { DockKitPlacement } from '../../prefab/src/dock_kit';
+import { createDockWorld } from '../../prefab/src/dock_kit';
+import { createDeployMap } from '../../prefab/src/deployMap';
+import { DeployPlacer } from '../../prefab/src/deployPlacer';
+import { deployActor } from './deployActor';
+import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
+import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
+import { createInventoryStore } from '../../../src/inventory';
+import { cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { prefabDisplay } from '@dontstarve-web/display';
 import { TurfMap, WORLD_TILES, type TurfTileSave } from '../../prefab/src/turfMap';
 import { DockManager, type DockMap } from '../../componets/src/dockmanager';
-import { PlaySound } from '../../prefab/src/sound';
 import { INVENTORY_ITEM_SPECS } from '../../../src/inventoryItems';
 import { deserializeSave } from '../../../src/save/deserialize';
 import type { SaveDocument } from '../../../src/save/types';
@@ -20,7 +25,7 @@ import type { WorldContext } from '../../prefab/src/worldContext';
 const setParameter = vi.hoisted(() => vi.fn());
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn(), setParameter })) }));
 beforeEach(() => vi.stubGlobal('window', new EventTarget()));
-afterEach(() => { vi.clearAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => { vi.restoreAllMocks(); vi.clearAllMocks(); vi.unstubAllGlobals(); });
 
 /** A 96-unit world: land for cols -4..-1, an ocean field for cols 0..3 (rows -4..3). */
 const oceanTiles = (): TurfTileSave[] => Array.from({ length: 32 }, (_, i) => ({
@@ -28,66 +33,52 @@ const oceanTiles = (): TurfTileSave[] => Array.from({ length: 32 }, (_, i) => ({
 const centre = (col: number, row: number) => new THREE.Vector3(col * 12 + 6, 0, row * 12 + 6);
 
 function setup(tiles = oceanTiles(), blockers = new SpatialIndex<PlacementBlocker>(blocker => blocker.position, blocker => blocker.smartRadius ?? 0)) {
-  const turf = new TurfMap(96, tiles);
-  const world = { scene: new THREE.Scene(), player: new THREE.Group(), camera: new THREE.PerspectiveCamera(),
-    ground: new THREE.Group(), renderer: { domElement: new EventTarget() },
-    createCursorLabel: () => ({ show() {}, hide() {}, update() {} }) } as unknown as WorldContext;
-  return { turf, world, placement: new DockKitPlacement(world, turf, blockers) };
+  const turf = new TurfMap(96, tiles), renderer = { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer;
+  const camera = new THREE.PerspectiveCamera();
+  const world = { scene: new THREE.Scene(), player: new THREE.Group(), camera, ground: new THREE.Group(), renderer,
+    mouseActions: new PlayerActionPicker(new PointerRaycaster({ camera, renderer })) } as unknown as WorldContext;
+  return { turf, world, blockers, docks: createDockWorld(turf, blockers as never) };
 }
-const kit = () => new ItemEntity({ itemId: 'dock_kit', count: 1 });
 
 it('is a 20-stack inventory item with its own ground art and icon', () => {
   expect(INVENTORY_ITEM_SPECS.dock_kit).toMatchObject({ maxStack: 20, icon: 'dock_kit.tex' });
 });
 
 it('deploys only on ocean touching land or a dock, covers the ocean tile and survives a save round trip', () => {
-  const { turf, placement } = setup();
-  try {
-    expect(placement.canDeploy(centre(-1, 0))).toBe(false); // land
-    expect(placement.canDeploy(centre(2, 0))).toBe(false); // open water, no adjacent land or dock
-    expect(placement.canDeploy(centre(0, 0))).toBe(true); // shore
-    const first = kit();
-    expect(placement.deploy(centre(0, 0), () => first)).toBe(true);
-    expect(first.isRemoved).toBe(true);
-    expect(setParameter).toHaveBeenCalledWith('intensity', .8);
-    expect(PlaySound).toHaveBeenCalledWith('dontstarve/common/together/boat/damage', expect.any(THREE.Vector3));
-    expect(turf.tileIdAtCell(0, 0)).toBe(WORLD_TILES.MONKEY_DOCK);
-    expect(turf.underTileAtCell(0, 0)).toBe(WORLD_TILES.OCEAN_COASTAL);
-    expect(turf.isOceanAtWorld({ x: 6, z: 6 })).toBe(false);
-    expect(placement.dockmanager.IsRoot(0, 0)).toBe(true);
+  const { turf, docks } = setup();
+  expect(docks.canDeployDock(centre(-1, 0))).toBe(false); // land
+  expect(docks.canDeployDock(centre(2, 0))).toBe(false); // open water, no adjacent land or dock
+  expect(docks.canDeployDock(centre(0, 0))).toBe(true); // shore
+  docks.createDock(centre(0, 0));
+  expect(turf.tileIdAtCell(0, 0)).toBe(WORLD_TILES.MONKEY_DOCK);
+  expect(turf.underTileAtCell(0, 0)).toBe(WORLD_TILES.OCEAN_COASTAL);
+  expect(turf.isOceanAtWorld({ x: 6, z: 6 })).toBe(false);
+  expect(docks.dockmanager.IsRoot(0, 0)).toBe(true);
 
-    // The new dock extends the reach one tile at a time; a refused deploy keeps the kit.
-    expect(placement.canDeploy(centre(1, 0))).toBe(true);
-    const refused = kit();
-    expect(placement.deploy(centre(2, 0), () => refused)).toBe(false);
-    expect(refused.isRemoved).toBe(false);
-    expect(placement.deploy(centre(1, 0), kit)).toBe(true);
-    expect(placement.dockmanager.IsRoot(1, 0)).toBe(false); // touches only the dock at (0, 0)
+  // The new dock extends the reach one tile at a time.
+  expect(docks.canDeployDock(centre(1, 0))).toBe(true);
+  docks.createDock(centre(1, 0));
+  expect(docks.dockmanager.IsRoot(1, 0)).toBe(false); // touches only the dock at (0, 0)
 
-    const restored = setup(turf.exportTiles());
-    try {
-      expect(restored.turf.tileIdAtCell(1, 0)).toBe(WORLD_TILES.MONKEY_DOCK);
-      expect(restored.placement.dockmanager.IsRoot(0, 0)).toBe(true);
-      expect(restored.placement.dockmanager.IsRoot(1, 0)).toBe(false);
-      expect(restored.placement.canDeploy(centre(2, 0))).toBe(true);
-    } finally { restored.placement.dispose(); }
-  } finally { placement.dispose(); }
+  const restored = setup(turf.exportTiles());
+  expect(restored.turf.tileIdAtCell(1, 0)).toBe(WORLD_TILES.MONKEY_DOCK);
+  expect(restored.docks.dockmanager.IsRoot(0, 0)).toBe(true);
+  expect(restored.docks.dockmanager.IsRoot(1, 0)).toBe(false);
+  expect(restored.docks.canDeployDock(centre(2, 0))).toBe(true);
 });
 
 it('refuses a tile with an unrelated entity standing in the water or a dockjammer, ignores ones on land and the player', () => {
   const blockers = new SpatialIndex<PlacementBlocker>(blocker => blocker.position);
   blockers.add({ position: centre(0, 1), tags: ['player'] });
-  const { placement } = setup(oceanTiles(), blockers);
-  try {
-    expect(placement.canDeploy(centre(0, 0))).toBe(true);
-    blockers.add({ position: centre(-1, 0), tags: [] }); // on land: IsDockNearOtherOnOcean ignores it
-    expect(placement.canDeploy(centre(0, 0))).toBe(true);
-    const obstacle = { position: new THREE.Vector3(8, 0, 8), tags: [] };
-    blockers.add(obstacle);
-    expect(placement.canDeploy(centre(0, 0))).toBe(false);
-    blockers.delete(obstacle); blockers.add({ position: centre(0, 0), tags: ['dockjammer'] });
-    expect(placement.canDeploy(centre(0, 0))).toBe(false);
-  } finally { placement.dispose(); }
+  const { docks } = setup(oceanTiles(), blockers);
+  expect(docks.canDeployDock(centre(0, 0))).toBe(true);
+  blockers.add({ position: centre(-1, 0), tags: [] }); // on land: IsDockNearOtherOnOcean ignores it
+  expect(docks.canDeployDock(centre(0, 0))).toBe(true);
+  const obstacle = { position: new THREE.Vector3(8, 0, 8), tags: [] };
+  blockers.add(obstacle);
+  expect(docks.canDeployDock(centre(0, 0))).toBe(false);
+  blockers.delete(obstacle); blockers.add({ position: centre(0, 0), tags: ['dockjammer'] });
+  expect(docks.canDeployDock(centre(0, 0))).toBe(false);
 });
 
 it('dockmanager breaks only docks with no path to a permanent root', () => {
@@ -121,25 +112,49 @@ it('saves a dock as a MONKEY_DOCK tile over its ocean undertile and rejects one 
   expect(() => parse([ocean, { ...dock, underTileId: WORLD_TILES.DIRT }])).toThrow(/dock covers an ocean tile/);
 });
 
-it('shows the looping gridplacer at once, lets its display load the art, and releases it on cancel and disposal', async () => {
+it('walks to the shore through DEPLOY, reaches over the water, consumes one kit at frame six and shows the gridplacer', async () => {
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
-  const { placement, world } = setup();
+  const { turf, world, blockers } = setup();
+  const inventory = createInventoryStore([{ slot_index: 0, id: 'dock_kit', num: 2 }]);
+  const map = createDeployMap({ turf, blockers, plants: {} }), actor = deployActor(world, inventory, map);
+  const placer = new DeployPlacer(world, map, () => inventory.GetActiveItem());
+  vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(centre(0, 0));
+  vi.spyOn(PointerRaycaster.prototype, 'pickMouseTarget').mockReturnValue(undefined as never);
   try {
-    // begin declares the placer synchronously; nothing waits for its art.
-    expect(placement.begin(() => kit())).toBeUndefined();
-    const [outline] = world.scene.children;
-    const instance = prefabInstance(outline)!;
-    // gridplacer.lua: AddTag("CLASSIFIED"), AddTag("NOCLICK"), AddTag("placer").
-    expect(instance.listTags()).toEqual(expect.arrayContaining(['CLASSIFIED', 'NOCLICK', 'placer']));
+    // Selecting the kit picks it up like any other item; no placement mode claims the slot click.
+    expect(inventory.transfer(inventorySlotAddress(0), cursorSlotAddress(), 2)).toBe(true);
+    const entity = inventory.GetActiveItem()!;
+    expect(entity.components.deployable).toMatchObject({ mode: 'CUSTOM', usegridplacer: true });
+    for (const tag of ['groundtile', 'deploykititem', 'usedeployspacingasoffset']) expect(entity.hasTag(tag)).toBe(true);
+
+    placer.update();
+    await vi.waitFor(() => expect(world.scene.children).toHaveLength(1));
+    const [outline] = world.scene.children, instance = prefabInstance(outline)!;
+    placer.update();
     await prefabDisplay(outline)!.artLoaded();
-    expect(instance.sprite.loaded).toBe(true);
     expect(instance.sprite.currentAnimation).toBe('anim');
-    placement.cancel();
+    expect(instance.position.x).toBe(6);
+
+    world.player.position.set(-6, 0, 6);
+    const action = actor.controller.createAction({ action: 'DEPLOY', invobject: entity as never, pos: centre(0, 0) })!;
+    expect(actor.controller.DoAction(action)).toBe(true);
+    // actions.lua ExtraDeployDist: 1.1 + DEPLOYSPACING.DEFAULT (2) + 1 DST units, from land to an ocean point.
+    expect(actor.locomotor.PushAction.mock.calls[0][0]).toMatchObject({ distance: expect.closeTo(4.1 * 3) });
+    actor.locomotor.PushAction.mock.calls[0][1]();
+    actor.graph.update(5 / 30);
+    expect(turf.tileIdAtCell(0, 0)).toBe(WORLD_TILES.OCEAN_COASTAL);
+    actor.graph.update(1 / 30);
+    expect(turf.tileIdAtCell(0, 0)).toBe(WORLD_TILES.MONKEY_DOCK);
+    expect(setParameter).toHaveBeenCalledWith('intensity', .8);
+    expect(inventory.get(cursorSlotAddress())?.count).toBe(1);
+
+    // Not ocean any more: no action at the pointer, and the rest of the stack returns on a right click.
+    expect(world.mouseActions!.getMouseActions().right).toBeUndefined();
+    const event = Object.assign(new Event('pointerdown', { cancelable: true }), { button: 2, clientX: 0, clientY: 0 });
+    world.renderer.domElement.dispatchEvent(event);
+    expect(inventory.GetActiveItem()).toBeNull();
+    placer.update();
     expect(instance.isRemoved).toBe(true);
     expect(world.scene.children).toEqual([]);
-    placement.begin(() => kit());
-    placement.dispose();
-    expect(world.scene.children).toEqual([]);
-    expect(() => placement.begin(() => kit())).toThrow('disposed');
-  } finally { placement.dispose(); }
+  } finally { placer.dispose(); actor.controller.dispose(); inventory.dispose(); }
 });

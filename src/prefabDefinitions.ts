@@ -402,7 +402,6 @@ export const PREFAB_DEFINITIONS = {
   worldFx: definePrefabs([], empty, ['wortox_portal_jumpin_fx', 'wortox_portal_jumpout_fx', 'halloween_moonpuff']),
   staffProjectiles: definePrefabs([], empty),
   oceanWaves: definePrefabs([], empty),
-  dockKit: definePrefabs([], empty),
 } as const;
 
 export function prefabSaveParsers(definitions: readonly PrefabDefinition[]): ReadonlyMap<string, PrefabComponentParser> {

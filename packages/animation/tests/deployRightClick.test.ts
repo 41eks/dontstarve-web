@@ -17,7 +17,7 @@ import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { bindTestWorld, drawn, plantInstance } from './worldContentFixture';
-import { deployActor } from './deployActor';
+import { deployActor, landTurf } from './deployActor';
 import { workTargets } from './workTargets';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import type { WorldContext } from '../../prefab/src/worldContext';
@@ -56,7 +56,7 @@ async function setup(item: string, ground: THREE.Vector3) {
 
 function grassActor(s: Awaited<ReturnType<typeof setup>>) {
   const grasses = new GrassManager(s.scene, '/dst/data/anim', { spawnGroundItem: vi.fn() as never });
-  const map = createDeployMap({ turf: { canDeployPlantAtPoint: (point: THREE.Vector3) => point.x >= 0 } as never,
+  const map = createDeployMap({ turf: landTurf({ canDeployPlantAtPoint: (point: THREE.Vector3) => point.x >= 0 }),
     blockers: placementEntities(s.scene), plants: { grass: grasses } });
   return { grasses, actor: deployActor(s.world, s.inventory, map) };
 }
@@ -139,7 +139,7 @@ it('turfs share the DEPLOY path: the raw click is walked to, and a tile lost on 
   let dirt = true;
   const setTile = vi.fn();
   const map = createDeployMap({ blockers: placementEntities(s.scene), plants: {},
-    turf: { canPlaceTurf: () => dirt, setTile, tileCenter: () => ({ x: 6, z: 6 }) } as never });
+    turf: landTurf({ canPlaceTurf: () => dirt, setTile, tileCenter: () => ({ x: 6, z: 6 }) }) });
   const actor = deployActor(s.world, s.inventory, map);
   try {
     expect(getActionString(s.world.mouseActions!.getMouseActions().right!)).toBe('放置地皮');
