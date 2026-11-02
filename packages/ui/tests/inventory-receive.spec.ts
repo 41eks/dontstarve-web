@@ -128,8 +128,7 @@ test(`the production crafting event keeps the flying icon in its slot size at ${
   const result = await page.evaluate(async (urls) => {
     const { inventory } = await import(urls.main);
     const { player } = await import(urls.player);
-    const { view } = await import(urls.view);
-    const { projectInventorySource } = await import(urls.receive);
+    const { screenProjection } = await import(urls.view);
     const changes = inventory.addresses().filter((slot: any) => slot.containerId === 'player:inventory')
       .flatMap((slot: any) => {
         const stack = inventory.get(slot);
@@ -137,13 +136,13 @@ test(`the production crafting event keeps the flying icon in its slot size at ${
       });
     inventory.applySlotChanges(changes);
     if (!inventory.add('cutgrass', 3)) throw new Error('No room for ingredients');
-    const source = projectInventorySource(player.position, view.camera, view.renderer.domElement);
+    const source = screenProjection.GetScreenPos(player.position);
     document.querySelector('dst-crafting-ui')!.dispatchEvent(new CustomEvent('game:craft-request', {
       detail: { recipeId: 'rope' }, bubbles: true, composed: true,
     }));
     return { source, count: inventory.count('rope') };
   }, { main: moduleUrl('../../../src/main.ts'), player: moduleUrl('../../../src/player.ts'),
-    view: moduleUrl('../../../src/view.ts'), receive: moduleUrl('../../../src/inventoryReceive.ts') });
+    view: moduleUrl('../../../src/view.ts') });
   expect(result.count).toBe(1);
   const flight = page.locator('.inventory-receive-flight');
   await expect(flight).toBeVisible();

@@ -29,7 +29,7 @@ import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
 import { SetAutopaused } from './autopause';
 import { registerFrontTask } from './animate';
 import { input } from './InputManager';
-import { view, actionEvents } from './view';
+import { view, actionEvents, screenProjection } from './view';
 import { followCamera } from './camera';
 import type { SpellCastMap } from '@dontstarve-web/stategraphs/castspell';
 import { WORLD_TILES } from '@dontstarve-web/prefab/turfMap';
@@ -283,7 +283,7 @@ inventory.subscribe((changedSlots) => {
 });
 
 const disposalResources = createDisposalResources({
-  gameUi, view, inventory, playerAnimation, locomotor, pickupDoer, handEquipmentBinding,
+  gameUi, view, screenProjection, inventory, playerAnimation, locomotor, pickupDoer, handEquipmentBinding,
   inventorySlotItem, actionEvents, isActionInterrupting: input.isActionInterrupting,
   updateCursor: () => cursorUi.update(), getWatchWorldContent: worldState.getWatchWorldContent, turfMap,
 });
@@ -504,7 +504,7 @@ gameUi.crafting.addEventListener('game:craft-request', (event) => {
   if (!recipe) return;
 
   inventory.craft(recipe, skinId,
-    inventoryReceiveEffect(gameUi, view.camera, view.renderer.domElement, player.position));
+    inventoryReceiveEffect(gameUi, screenProjection.GetScreenPos(player.position)));
   // Buffered builds place as soon as they are crafted. Walls are not buffered:
   // crafting only fills the inventory, and placing starts from the slot click.
   if (isPlaceableBuildingId(recipeId) && inventory.isBuffered(recipeId)) {
