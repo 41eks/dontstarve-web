@@ -154,7 +154,9 @@ def convert_entities(terrain, source_entities, report, session_id, catalog=None)
                 raise ValueError('Grid references an unknown topology node')
             skinned = record.get('skinname') or record.get('skin_id')
             settling_boulder = prefab == 'cavein_boulder' and abs(y) <= .5
-            if (not static and ((y != 0 and not settling_boulder) or (skinned and prefab not in RECORD_CONTEXT_PREFABS))) \
+            # Insects are ground items, whose height is preserved like static ground art's.
+            ground_height = prefab in ('fireflies', 'butterfly')
+            if (not static and ((y != 0 and not settling_boulder and not ground_height) or (skinned and prefab not in RECORD_CONTEXT_PREFABS))) \
                     or (y < 0 and not settling_boulder) or record.get('puid'):
                 raise ValueError(f'Unsupported {prefab} height, skin or platform at source index {index}')
             data = record.get('data') or {}

@@ -1,0 +1,129 @@
+{
+  "player": {
+    "prefab": "wilson",
+    "shardId": "master",
+    "transform": {
+      "position": [
+        1187.244,
+        0.0,
+        1012.662
+      ],
+      "rotationY": 0
+    },
+    "stats": {
+      "health": 150,
+      "hunger": 150,
+      "sanity": 200
+    },
+    "inventory": {
+      "containers": {
+        "player:inventory": {
+          "slotCount": 15,
+          "slots": [
+            {
+              "slotKey": "0",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_0",
+                "itemId": "panflute",
+                "count": 1,
+                "remainingUses": 7
+              }
+            },
+            {
+              "slotKey": "1",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_1",
+                "itemId": "voidclothhat",
+                "count": 1
+              }
+            },
+            {
+              "slotKey": "2",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_2",
+                "itemId": "orangestaff",
+                "count": 1
+              }
+            },
+            {
+              "slotKey": "3",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_3",
+                "itemId": "wortox_souljar",
+                "count": 1
+              }
+            },
+            {
+              "slotKey": "4",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_4",
+                "itemId": "voidcloth_boomerang",
+                "count": 1
+              }
+            },
+            {
+              "slotKey": "5",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_5",
+                "itemId": "voidcloth_kit",
+                "count": 3
+              }
+            },
+            {
+              "slotKey": "7",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_7",
+                "itemId": "wortox_souljar",
+                "count": 1
+              }
+            },
+            {
+              "slotKey": "8",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_8",
+                "itemId": "voidcloth_scythe",
+                "count": 1
+              }
+            },
+            {
+              "slotKey": "9",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_9",
+                "itemId": "wortox_soul",
+                "count": 12
+              }
+            },
+            {
+              "slotKey": "10",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_10",
+                "itemId": "marble",
+                "count": 18
+              }
+            }
+          ]
+        },
+        "player:equipment": {
+          "slotCount": 3,
+          "slots": [
+            {
+              "slotKey": "head",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_equip_head",
+                "itemId": "eyebrellahat",
+                "count": 1,
+                "skinId": "eyebrellahat_fantasy"
+              }
+            }
+          ]
+        },
+        "player:cursor": {
+          "slotCount": 1,
+          "slots": []
+        }
+      },
+      "bufferedBuilds": []
+    }
+  },
+  "migration": null
+}

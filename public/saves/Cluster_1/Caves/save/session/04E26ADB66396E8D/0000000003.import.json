@@ -466,6 +466,8 @@
     "chessjunk1",
     "chessjunk2",
     "chessjunk3",
+    "chesspiece_malbatross",
+    "chesspiece_malbatross_marble",
     "archive_centipede_husk",
     "deciduoustree",
     "moon_tree",
@@ -672,6 +674,14 @@
     "chessjunk3": {
       "source": 25,
       "imported": 25
+    },
+    "chesspiece_malbatross": {
+      "source": 0,
+      "imported": 0
+    },
+    "chesspiece_malbatross_marble": {
+      "source": 0,
+      "imported": 0
     },
     "archive_centipede_husk": {
       "source": 2,

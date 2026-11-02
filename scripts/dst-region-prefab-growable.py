@@ -6,8 +6,12 @@ import math
 def mushtree_components(data, medium):
     # mushtree.lua / mushtree_moon.lua OnSave plus growable/plantregrowth. plantregrowth (offspring regrowth) is not
     # ported, so its timer is not carried over; a stump's decay timer is rebuilt when the stump is made.
+    # Acid rain is not ported either: its onsave fields and acidvisualsupdate timer are visual state, also not carried over.
     allowed = {'plantregrowth', 'stump', 'burnt', 'treestate', 'growable'} if medium else {'plantregrowth', 'stump', 'burnt'}
-    if set(data) - allowed or data.get('timer') is not None:
+    timer = data.get('timer')
+    if set(data) - allowed - {'time_since_acid_infusion', 'acidrecoveryremaining', 'timer'} \
+            or (timer is not None and (not isinstance(timer, dict) or set(timer) != {'timers'}
+                                       or set(timer['timers']) != {'acidvisualsupdate'})):
         raise ValueError('Unsupported mushtree save state')
     for flag in ('stump', 'burnt'):
         if flag in data and data[flag] is not True:
