@@ -1,6 +1,6 @@
 import { bindActionCancellation, type PlayerActionKind } from './actionEvents.ts';
 import { isHandActionBusy, type ActionLocomotor, type ActionWorldContext } from './actionContext.ts';
-import { createBufferedAction, extraArriveDist, hasActionFn } from './actionfns.ts';
+import { createBufferedAction, customArriveCheck, extraArriveDist, hasActionFn } from './actionfns.ts';
 import { ACTIONS, type ActionDescription, type MouseActionId } from './actions.ts';
 import type { BufferedAction, BufferedActionDoer, BufferedActionObject } from './bufferedaction.ts';
 import { equippedActionEntity, type ComponentActionEntity, type SceneActionDoer } from './componentactions.ts';
@@ -160,7 +160,7 @@ export class PlayerController {
     this.stategraph.cancelEmote();
     this.action = action;
     this.walking = true;
-    const combat = this.doer.components?.combat;
+    const combat = this.doer.components?.combat, customarrive = customArriveCheck(action);
     this.locomotor.PushAction({
       target: { getPosition: () => this.actionPoint(action), getPhysicsRadius: () => target?.getPhysicsRadius?.() ?? 0 },
       ...(distance === undefined ? {} : { distance: distance * WORLD_SCALE + extraArriveDist(action) }),
@@ -170,6 +170,7 @@ export class PlayerController {
         .distanceToSquared(target.getPosition!()) <= combat.CalcAttackRangeSq(target as unknown as CombatInst) } : {}),
       // customarrivecheck = ArriveAnywhere.
       ...(arrive_anywhere ? { arrived: () => true } : {}),
+      ...(customarrive ? { arrived: customarrive } : {}),
       isValid: () => action.isValid(),
     }, () => this.arrive(action), () => {
       if (this.action !== action || !this.walking) return;

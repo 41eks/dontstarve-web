@@ -73,7 +73,7 @@ it('plants a marblebean, digs it back up, and grows it into a mineable shrub tha
     const item = s.inventory.extract(inventorySlotAddress(0), 1, s.inventory.getEntity(inventorySlotAddress(0))!)!;
     expect(item.components.deployable!.mode).toBe('PLANT');
     expect(item.components.deployable!.Deploy(point, { position: point, PushEvent: vi.fn() }, {
-      canPlaceTurf: () => false, setTile: vi.fn(), itemPlanted: vi.fn(), canDeployDock: () => false, createDock: vi.fn(),
+      canPlaceTurf: () => false, setTile: vi.fn(), itemPlanted: vi.fn(), canDeployDock: () => false, createDock: vi.fn(), canDeployPlow: () => false, deployPlow: () => false,
       isPassableAtPoint: () => true, isOceanTileAtPoint: () => false,
       canDeployPlant: () => true, deployPlant: () => s.saplings.transplant(point),
     })).toBe(true);

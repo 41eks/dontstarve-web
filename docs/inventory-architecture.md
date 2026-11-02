@@ -151,7 +151,7 @@ torch 的专用 ground factory 注册 `onputininventory` 和 `onextinguish`。�
 
 `ItemEntity.components.finiteuses` 由 `FiniteUsesComponent` 实现，库存从物品规格配置最大次数。`use(amount)` 在组件内扣减，剩余次数改变时通知当前 owner；耗尽通过 `entity.remove()` 交由库存 owner 原子移除，不发布零耐久库存快照，已移除实体不能消耗替代物品的耐久。
 
-耕地机遵循 `prefabs/farm_plow.lua:item_ondeploy`：准备模型并检查落点后，应用通过 `InventoryStore.extract()` 交出原物品；prefab 调用 `finiteuses.use(1)`，保存仍有效物品的完整 `snapshot()`，再移除原物品实体。工作实体保存 `components.farmPlow.deployItem`，值为包含 `entityId/itemId/count` 与全部已支持组件状态的物品快照；最后一次使用耗尽或直接 `c_spawn("farm_plow")` 时为 `null`。
+耕地机遵循 `prefabs/farm_plow.lua:item_ondeploy`：`ACTIONS.DEPLOY_TILEARRIVE` 在提交帧校验落点并通过 `InventoryStore.RemoveItem()` 取出原物品；`deployable` 的 `ondeploy` 调用 `finiteuses.use(1)`，保存仍有效物品的完整 `snapshot()`，再移除原物品实体。工作实体保存 `components.farmPlow.deployItem`，值为包含 `entityId/itemId/count` 与全部已支持组件状态的物品快照；最后一次使用耗尽或直接 `c_spawn("farm_plow")` 时为 `null`。
 
 完成或被锤毁时，地面管理器从部署快照恢复新的运行时物品，沿用快照 ID 和剩余次数。返还模型异步准备期间，工作实体保留快照和可恢复的 `collapse` 阶段，成功加入地面后才移除工作实体，避免保存遗漏正在返还的物品。导出快照与运行时记录分离。读取旧存档的 `returnUses` 时转换为不带历史 ID 的物品快照；新存档只写 `deployItem`，读取器校验物品类型、数量、已消耗的耐久和身份唯一性。
 

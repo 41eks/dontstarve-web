@@ -1,4 +1,5 @@
 import type * as THREE from 'three';
+import type { ItemEntity } from '@dontstarve-web/inventory';
 import type { DeployInst, DeployMap } from '../../componets/src/deployable';
 import { createDockWorld } from './dock_kit';
 import { ignoresPlacement, type PlacementQuery } from './placementEntities';
@@ -13,14 +14,17 @@ export interface DeployPlacerMap extends DeployMap {
 }
 
 /** The Map:CanPlaceTurfAtPoint / CanDeployPlantAtPoint rules and SpawnPrefab targets deployable items use. */
-export function createDeployMap({ turf, blockers, plants, worldEvents }: {
+export function createDeployMap({ turf, blockers, plants, farm, worldEvents }: {
   turf: TurfMap;
   blockers: PlacementQuery;
   plants: Readonly<Record<string, { transplant(position: THREE.Vector3, skinId?: string): boolean }>>;
+  farm?: { canDeploy(point: THREE.Vector3): boolean; deploy(point: THREE.Vector3, item: ItemEntity): boolean };
   worldEvents?: WorldContext['worldEvents'];
 }): DeployPlacerMap {
   const docks = createDockWorld(turf, blockers);
   return {
+    canDeployPlow: point => farm?.canDeploy(point) ?? false,
+    deployPlow: (point, inst) => farm?.deploy(point, inst as ItemEntity) ?? false,
     canDeployDock: point => docks.canDeployDock(point),
     createDock: point => docks.createDock(point),
     isPassableAtPoint: point => isLandTile(turf.getTileAtWorld(point)),

@@ -305,7 +305,7 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
       if (playerAnimation) {
 
         // TheWorld.Map for ACTIONS.DEPLOY and the deployable items' placer.
-        const deployMap = createDeployMap({ turf: turfMap, blockers: placementEntities(view.scene), worldEvents: view.worldEvents,
+        const deployMap = createDeployMap({ turf: turfMap, blockers: placementEntities(view.scene), worldEvents: view.worldEvents, farm: scene.farmPlow,
           plants: {
             marblebean_sapling: marbleBeanSaplings, rock_avocado_fruit_sprout_sapling: rockAvocadoSaplings,
             rock_avocado_bush: rockAvocadoBushes, monkeytail: monkeytails, berrybush: berrybushes, grass: grasses,

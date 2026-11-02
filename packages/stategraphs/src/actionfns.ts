@@ -1,6 +1,6 @@
 import { BufferedAction, type BufferedActionDoer, type BufferedActionObject } from './bufferedaction.ts';
 import { Vector3 } from 'three';
-import { WORLD_SCALE } from '../../prefab/src/tile';
+import { snapToTileCenter, TILE_SIZE, WORLD_SCALE } from '../../prefab/src/tile';
 import { performLightAction, performToolWork, type ComponentActionEntity, type ToolAction } from './componentactions.ts';
 import type { Combat } from '../../componets/src/combat';
 import type { Weapon } from '../../componets/src/weapon';
@@ -24,6 +24,8 @@ interface ActionFns {
   validfn?(act: BufferedAction): boolean;
   /** actions.lua Action({ extra_arrive_dist }), added to the arrive distance when the walk starts. */
   extra_arrive_dist?(act: BufferedAction): number;
+  /** actions.lua Action({ customarrivecheck }), replacing the locomotor's arrive distance. */
+  customarrivecheck?(act: BufferedAction): boolean;
 }
 
 /** The picker hands components' entities to the action; actions.lua reaches their components. */
@@ -95,6 +97,18 @@ type SoulHopper = {
 };
 const soulHopper = (act: BufferedAction) => act.doer as SoulHopper | undefined;
 
+/** actions.lua ACTIONS.DEPLOY.fn, which DEPLOY_TILEARRIVE shares. */
+function deploy(act: BufferedAction): boolean {
+    const item = act.invobject as ItemEntity | undefined, doer = playerDoer(act), map = doer.Map;
+    const point = actionPoint(act);
+    if (!item || !map || !item.components.deployable?.CanDeploy(point, map)) return false;
+    const inventory = doer.components.inventory, obj = inventory.RemoveItem(item);
+    if (!obj) return false;
+    if (obj.components.deployable!.Deploy(point, doer, map)) return true;
+    inventory.GiveItem(obj);
+    return false;
+}
+
 export const ACTION_FNS: Readonly<Partial<Record<string, ActionFns>>> = {
   GIVE: {
     fn: act => {
@@ -126,15 +140,14 @@ export const ACTION_FNS: Readonly<Partial<Record<string, ActionFns>>> = {
       if (!map.isOceanTileAtPoint(target) || map.isPassableAtPoint(target)) return 0;
       return (item.hasTag('usedeployspacingasoffset') ? item.components.deployable?.spacing ?? 0 : 0) + WORLD_SCALE;
     },
-    fn: act => {
-      const item = act.invobject as ItemEntity | undefined, doer = playerDoer(act), map = doer.Map;
-      const point = actionPoint(act);
-      if (!item || !map || !item.components.deployable?.CanDeploy(point, map)) return false;
-      const inventory = doer.components.inventory, obj = inventory.RemoveItem(item);
-      if (!obj) return false;
-      if (obj.components.deployable!.Deploy(point, doer, map)) return true;
-      inventory.GiveItem(obj);
-      return false;
+    fn: deploy,
+  },
+  DEPLOY_TILEARRIVE: {
+    fn: deploy,
+    // actions.lua CheckTileWithinRange: anywhere on the target's tile.
+    customarrivecheck: act => {
+      const center = snapToTileCenter(actionPoint(act)), doer = playerDoer(act).position;
+      return Math.abs(center.x - doer.x) <= TILE_SIZE / 2 && Math.abs(center.z - doer.z) <= TILE_SIZE / 2;
     },
   },
   PLANTSOIL: {
@@ -314,6 +327,12 @@ function addFuel(act: BufferedAction): boolean {
 export function hasActionFn(action: string): boolean { return ACTION_FNS[action] !== undefined; }
 
 /** locomotor.lua: action.extra_arrive_dist(doer, dest, bufferedaction). */
+/** locomotor.lua OnUpdate: action.customarrivecheck(doer, dest, bufferedaction), when the action has one. */
+export function customArriveCheck(act: BufferedAction): (() => boolean) | undefined {
+  const check = ACTION_FNS[act.action]?.customarrivecheck;
+  return check && (() => check(act));
+}
+
 export function extraArriveDist(act: BufferedAction): number { return ACTION_FNS[act.action]?.extra_arrive_dist?.(act) ?? 0; }
 
 /**

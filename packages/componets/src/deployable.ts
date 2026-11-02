@@ -20,6 +20,10 @@ export interface DeployMap {
   canDeployDock(point: Vector3): boolean;
   /** dock_kit.lua on_deploy: TheWorld.components.dockmanager:CreateDockAtPoint and ResolveDockSafetyAtPoint. */
   createDock(point: Vector3): void;
+  /** farm_plow.lua can_plow_tile. */
+  canDeployPlow(point: Vector3): boolean;
+  /** farm_plow.lua item_ondeploy; the item is `inst`. */
+  deployPlow(point: Vector3, inst: DeployInst): boolean;
   /** Map:IsPassableAtPoint and IsOceanTileAtPoint, for actions.lua ExtraDeployDist. */
   isPassableAtPoint(point: Vector3): boolean;
   isOceanTileAtPoint(point: Vector3): boolean;
