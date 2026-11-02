@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createSignal, type HandEquipment } from '@dontstarve-web/signals';
 import { WallsPlacement } from '../../prefab/src/walls';
-import { WALL_PHYSICS_RADIUS } from '../../prefab/src/wallPlacement';
+import { WALL_PHYSICS_RADIUS } from '../../prefab/src/walls';
 import { TILE_SIZE } from '../../prefab/src/tile';
 import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
 import { configureEquipmentEntity } from '../../prefab/src/handEquipment';
@@ -32,11 +32,11 @@ afterEach(() => { vi.clearAllMocks(); vi.unstubAllGlobals(); });
 
 const UNIT = TILE_SIZE / 4;
 
-function setup() {
+function setup(dropLoot?: WorldContext['dropLoot']) {
   const camera = new THREE.PerspectiveCamera();
   camera.position.set(0, 12, 40); camera.lookAt(0, 0, 0); camera.updateMatrixWorld();
   const world = { scene: new THREE.Scene(), camera, cameraFacing: createSignal(8), cameraHeading: createSignal(45), ground: new THREE.Group(), player: new THREE.Group(),
-    renderer: { domElement: new EventTarget() }, createCursorLabel: () => ({ show() {}, hide() {}, update() {} }),
+    renderer: { domElement: new EventTarget() }, createCursorLabel: () => ({ show() {}, hide() {}, update() {} }), dropLoot,
   } as unknown as WorldContext;
   return { world, placement: new WallsPlacement(world, () => false) };
 }
@@ -56,13 +56,15 @@ function attacker(position: THREE.Vector3, now: () => number, weapon?: ItemEntit
 const combatTargets = () => activePrefabs.filter(entity => (entity.components as { combat?: unknown }).combat)
   .map(entity => ({ inst: prefabInstance(entity.model)! as unknown as CombatInst & { components: { health?: Health } },
     isValid: () => !entity.isRemoved && !prefabInstance(entity.model)!.components.health!.IsDead() }));
-const pose = (model: THREE.Group) => prefabInstance(model)!.sprite.sprite.peek().clip.pose?.name;
+const pose = (model: THREE.Group) => {
+  const json = prefabInstance(model)!.sprite.sprite.peek();
+  return json.queue.at(-1)?.name ?? json.clip.name;
+};
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 
 it('hammers out a middle wall once, invalidates stale targets and preserves the other walls and their export order', async () => {
-  const { world, placement } = setup();
   const dropLoot = vi.fn();
-  world.dropLoot = dropLoot;
+  const { placement } = setup(dropLoot);
   try {
     for (const [id, x] of [['first', 3], ['middle', 7], ['last', 11]] as const) {
       await placement.spawnFromSave('wall_stone', { id, transform: { position: [x, 0, -6], rotationY: 0 },
@@ -80,6 +82,7 @@ it('hammers out a middle wall once, invalidates stale targets and preserves the 
     expect(target.isValid()).toBe(false);
     expect(combatTarget.isValid()).toBe(false);
     expect(skinTarget.isValid()).toBe(false);
+    await settle(); // PrefabDisplay observes the logical removal and releases its model.
     expect(target.model.parent).toBeNull();
     expect(release).toHaveBeenCalledOnce();
     expect(reskinEntity(skinTarget)).toBe(false);
@@ -105,7 +108,7 @@ it('gives walls source health, player damage reduction, health poses, weapon wea
     await workTargets('HAMMER')[0].display!.artLoaded();
     // walls.lua: SetMaxHealth(maxhealth) then SetCurrentHealth(maxhealth * .5); half is the static build image.
     expect(stoneTarget.inst.components.health!.OnSave()).toEqual({ health: 200, maxhealth: 400 });
-    expect(pose(stone)).toBeUndefined();
+    expect(pose(stone)).toBe('half');
     expect(stoneTarget.inst.getPhysicsRadius()).toBe(WALL_PHYSICS_RADIUS);
 
     const hammer = new ItemEntity({ itemId: 'hammer', count: 1 });
@@ -118,6 +121,8 @@ it('gives walls source health, player damage reduction, health poses, weapon wea
     expect(hammer.components.finiteuses.remaining).toBe(74);
     expect(PlaySound).toHaveBeenCalledWith('dontstarve/common/destroy_stone', stone.position);
     expect(prefabInstance(stone)!.sprite.currentAnimation).toBe('half_hit');
+    expect(prefabInstance(stone)!.sprite.sprite.peek().clip).toMatchObject({ name: 'half_hit', loop: false });
+    expect(prefabInstance(stone)!.sprite.sprite.peek().queue).toEqual([{ name: 'half', loop: false }]);
 
     // Moonrock walls absorb 25% of player damage; out-of-range attacks miss.
     expect(player.combat.DoAttack(moonrockTarget.inst)).toBe(true);
@@ -125,8 +130,8 @@ it('gives walls source health, player damage reduction, health poses, weapon wea
     const far = attacker(new THREE.Vector3(40, 0, 40), () => 0);
     expect(far.combat.DoAttack(stoneTarget.inst)).toBe(false);
 
-    // Below 40% the held pose follows the health signal; at zero the wall is broken and no longer a target.
-    stoneTarget.inst.components.health!.SetVal(150);
+    // Below 40% the queued pose follows the health change; at zero the wall is broken and no longer a target.
+    stoneTarget.inst.components.health!.DoDelta(150 - stoneTarget.inst.components.health!.currenthealth);
     await settle();
     for (let frame = 0; frame < 30; frame++) placement.update(1 / 30);
     expect(pose(stone)).toBe('onequarter');

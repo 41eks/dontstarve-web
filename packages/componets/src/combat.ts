@@ -26,7 +26,8 @@ export class Combat {
   attackrange = 3;
   hitrange = 3;
   damagemultiplier = 1;
-  onhitfn?: (inst: CombatActor, attacker: CombatActor, damage: number) => void;
+  // Registration retains the prefab host signature after the component registry erases it.
+  onhitfn?: { call(inst: CombatActor, attacker: CombatActor, damage: number): void }['call'];
   keeptargetfn?: () => boolean;
   /** Projectiles hit from wherever they are: the weapon's range was checked at launch. */
   ignorehitrange = false;

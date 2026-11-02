@@ -45,6 +45,8 @@ export interface StaticSpriteOptions {
 }
 
 export interface StaticSpriteController extends TransientSpriteAnimationController {
+  pushAnimation(name: string, loop?: boolean): void;
+  holdLastFrame(name: string): void;
   setSkin(skin: SymbolBuild | undefined): void;
   /** Switches to another of the sprite's `imageIndices` frames. */
   showImage(imageIndex: number): void;
@@ -76,6 +78,10 @@ class StaticSprite implements StaticSpriteController {
   private clip?: Animation;
   private poseName?: string;
   private elapsed = 0;
+  private loop = false;
+  private finished = false;
+  private queue: { name: string; loop: boolean }[] = [];
+  private queueAfter = 0;
   private builds: readonly SymbolBuild[];
   private readonly animations?: ParsedAnim;
   private readonly restAnimation?: string;
@@ -102,7 +108,7 @@ class StaticSprite implements StaticSpriteController {
     this.showImage(imageIndex);
   }
 
-  start() {}
+  start(name: string): void { this.selectAnimation(name, true); }
   get currentAnimation(): string { return this.clip?.name ?? this.poseName ?? this.restAnimation ?? ''; }
   get pose(): string | undefined { return this.poseName; }
 
@@ -125,16 +131,48 @@ class StaticSprite implements StaticSpriteController {
     if (!this.clip) this.showRest();
   }
 
-  playOnce(name: string, onComplete?: () => void) {
-    if (this.animations) {
-      this.clip = this.findAnimation(name);
-      this.elapsed = 0;
-      this.showAnimationFrame(0);
-    }
+  playOnce(name: string, onComplete?: () => void): void { this.selectAnimation(name, false, onComplete); }
+
+  private selectAnimation(name: string, loop: boolean, onComplete?: () => void): void {
+    this.clip = this.findAnimation(name);
+    this.elapsed = 0;
+    this.loop = loop;
+    this.finished = false;
+    this.queue = [];
     this.onComplete = onComplete;
+    this.showAnimationFrame(0);
   }
 
-  playTransient(name: string) { this.playOnce(name); }
+  pushAnimation(name: string, loop = false): void {
+    this.findAnimation(name);
+    if (this.queue.length === 0 && this.clip) {
+      const duration = this.clip.frames.length / this.clip.frameRate;
+      this.queueAfter = this.loop ? (Math.floor(this.elapsed / duration) + 1) * duration : duration;
+    }
+    this.queue.push({ name, loop });
+  }
+
+  holdLastFrame(name: string): void {
+    this.selectAnimation(name, false);
+    this.finished = true;
+    this.elapsed = this.clip!.frames.length / this.clip!.frameRate;
+    this.showAnimationFrame(this.clip!.frames.length - 1);
+  }
+
+  playTransient(name: string): void {
+    const { clip, elapsed, loop, finished, onComplete, queue, queueAfter } = this;
+    this.playOnce(name, () => {
+      this.clip = clip;
+      this.elapsed = elapsed;
+      this.loop = loop;
+      this.finished = finished;
+      this.onComplete = onComplete;
+      this.queue = queue;
+      this.queueAfter = queueAfter;
+      if (clip) this.showAnimationFrame(Math.min(clip.frames.length - 1, Math.floor(elapsed * clip.frameRate)));
+      else this.showRest();
+    });
+  }
 
   copyPlaybackFrom(source: StaticSpriteController) {
     if (!(source instanceof StaticSprite)) throw new Error('Incompatible static sprite controller');
@@ -143,6 +181,10 @@ class StaticSprite implements StaticSpriteController {
     this.showImage(source.imageIndex!);
     if (!source.clip) this.showRest();
     this.onComplete = source.onComplete;
+    this.loop = source.loop;
+    this.finished = source.finished;
+    this.queue = source.queue.map(entry => ({ ...entry }));
+    this.queueAfter = source.queueAfter;
     if (source.clip) {
       this.clip = this.findAnimation(source.clip.name);
       this.elapsed = source.elapsed;
@@ -159,18 +201,28 @@ class StaticSprite implements StaticSpriteController {
     } else if (this.poseName) this.showRest();
   }
 
-  update(dt: number) {
-    if (this.clip) {
-      this.elapsed += Math.min(dt, 0.1);
-      const frame = Math.floor(this.elapsed * this.clip.frameRate);
-      if (frame < this.clip.frames.length) { this.showAnimationFrame(frame); return; }
-      this.clip = undefined;
-      this.showRest();
+  update(dt: number): void {
+    if (!this.clip || this.finished && this.queue.length === 0) return;
+    this.elapsed += Math.min(dt, 0.1);
+    if (this.queue.length > 0 && this.elapsed >= this.queueAfter) {
+      const [next, ...remaining] = this.queue;
+      const remainder = this.elapsed - this.queueAfter;
+      const completion = this.onComplete;
+      this.onComplete = undefined;
+      completion?.();
+      this.selectAnimation(next.name, next.loop);
+      this.queue = remaining;
+      this.queueAfter = this.clip.frames.length / this.clip.frameRate;
+      this.elapsed = remainder;
     }
-    if (!this.onComplete) return;
-    const onComplete = this.onComplete;
-    this.onComplete = undefined;
-    onComplete();
+    const frame = Math.floor(this.elapsed * this.clip.frameRate);
+    if (!this.loop && frame >= this.clip.frames.length) {
+      this.finished = true;
+      this.showAnimationFrame(this.clip.frames.length - 1);
+      const completion = this.onComplete;
+      this.onComplete = undefined;
+      completion?.();
+    } else this.showAnimationFrame(this.loop ? frame % this.clip.frames.length : frame);
   }
 
   showImage(imageIndex: number) {

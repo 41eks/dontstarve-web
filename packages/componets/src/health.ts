@@ -59,7 +59,8 @@ export class Health {
   /** Healing action capability; Lua still allows repair and other direct DoDelta calls when false. */
   canheal = true;
   nofadeout = false;
-  ondelta?: (inst: HealthInst, oldPercent: number, newPercent: number, overtime?: boolean, cause?: string, afflicter?: HealthAfflicter, amount?: number) => void;
+  // Registration retains the prefab host signature after the component registry erases it.
+  ondelta?: { call(inst: HealthInst, oldPercent: number, newPercent: number, overtime?: boolean, cause?: string, afflicter?: HealthAfflicter, amount?: number): void }['call'];
   readonly inst: HealthInst;
   /** inst:DoPeriodicTask for StartRegen; absent for health that never regenerates. */
   private readonly scheduler?: GameTimeScheduler;

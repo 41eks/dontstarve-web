@@ -1,3 +1,5 @@
+import { RuinsRelicInstance } from '../../prefab/src/ruinsrelic';
+import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { afterEach, expect, it, vi } from 'vitest';
 import { Group, Quaternion, Scene, Vector3 } from 'three';
 import { SpriteState } from '../../display/src/spriteState';
@@ -104,4 +106,26 @@ it('lets collapse effects finish independently and reuses their art after a prev
     expect(second.isRemoved).toBe(true);
     expect(scene.children).toEqual([]);
   } finally { fx.dispose(); }
+});
+
+it('hammers a replica decor through its real instance, declaring material FX before component salvage and removal', () => {
+  const scheduler = new GameTimeScheduler(), calls: string[] = [];
+  const collapse = vi.fn(() => { calls.push('collapse'); });
+  const dropLoot = vi.fn(() => { calls.push('loot'); });
+  const inst = new RuinsRelicInstance('ruinsrelic_plate', { scheduler, trackDisplay() {},
+    fx: { spawn: vi.fn(), collapse }, dropLoot });
+  inst.attach(new Group()); inst.position.set(4, 0, -3);
+  inst.onRemove(() => { calls.push('remove'); });
+  const worked = vi.fn(); inst.ListenForEvent('worked', worked);
+  const worker = {};
+  try {
+    expect(inst.sprite.loaded).toBe(false);
+    expect(inst.components.workable!.WorkedBy(worker)).toBe(true);
+    expect(worked).toHaveBeenCalledWith({ worker, workleft: 0 });
+    expect(collapse).toHaveBeenCalledExactlyOnceWith('small', inst.position, 'pot');
+    expect(dropLoot).toHaveBeenCalled();
+    expect(calls[0]).toBe('collapse'); expect(calls.at(-1)).toBe('remove');
+    expect(inst.isRemoved).toBe(true);
+    expect(inst.components.workable!.WorkedBy(worker)).toBe(false);
+  } finally { inst.remove(); scheduler.dispose(); }
 });

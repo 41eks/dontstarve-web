@@ -3,7 +3,6 @@ import { createStructureLootDropper } from './structureLoot';
 import type * as THREE from 'three';
 import definitions from './definitions.json' with { type: 'json' };
 import { lightning_rod_init_fn } from '@dontstarve-web/animation/prefabskin';
-import type { SpriteAnimationController } from '@dontstarve-web/animation/sprite';
 import { Battery } from '../../componets/src/battery';
 import { ComponentTimer } from '../../componets/src/timer';
 import {
@@ -39,10 +38,10 @@ class LightningRod {
     private readonly dayTimer?: ComponentTimer;
     readonly battery: Battery<LightningRod>;
 
-    private readonly context: AnimatedBuildingEventContext;
+    private readonly inst: PrefabInstance;
 
     constructor(context: AnimatedBuildingEventContext) {
-        this.context = context;
+        this.inst = context.instance;
         const scheduler = context.world?.scheduler;
         if (scheduler) {
             this.zapTimer = new ComponentTimer(scheduler, () => this.dozap());
@@ -83,10 +82,10 @@ class LightningRod {
         return this.chargeleft === undefined ? undefined : this.chargeleft - (Math.ceil(this.chargeleft) - 1);
     }
 
-    private get removed(): boolean { return this.context.model.userData.removed === true; }
+    private get removed(): boolean { return this.inst.isRemoved; }
 
     private armDay(): void {
-        const world = this.context.world;
+        const world = this.inst.worldServices;
         if (!this.charged || !world?.scheduler || !world.secondsUntilNextDay) return;
         this.dayTimer?.start(world.secondsUntilNextDay(world.scheduler.now));
     }
@@ -94,10 +93,8 @@ class LightningRod {
     /** dozap: the sound and fx at the rod, then the next zap in 10–40 seconds. */
     dozap(): void {
         if (this.removed) return;
-        const { model, world } = this.context;
-        PlaySound(ZAP_SOUND, model.position);
-        const position = actionEntity(model, LIGHTNING_ROD_ID).getPosition();
-        world?.fx?.spawn('lightning_rod_fx', position);
+        PlaySound(ZAP_SOUND, this.inst.position);
+        this.inst.worldServices?.fx?.spawn('lightning_rod_fx', this.inst.position);
         this.zapTimer?.start(10 + Math.floor(Math.random() * 31));
     }
 
@@ -107,7 +104,7 @@ class LightningRod {
         // AnimState:ClearBloomEffectHandle has no renderer here; the light is the visible charge.
         this.charged = false;
         this.chargeleft = undefined;
-        prefabInstance(this.context.model)!.light.set(null);
+        this.inst.light.set(null);
         this.zapTimer?.stop();
     }
 
@@ -119,7 +116,7 @@ class LightningRod {
 
     setcharged(charges: number): void {
         if (!this.charged) {
-            prefabInstance(this.context.model)!.light.set(LIGHT);
+            this.inst.light.set(LIGHT);
             this.charged = true;
             this.armDay();
         }
@@ -127,25 +124,26 @@ class LightningRod {
         this.dozap();
     }
 
-    /** onlightning: onhit, then a full three-day charge. */
-    onlightning(): void {
-        playHit(this.context.model);
-        this.setcharged(3);
-    }
-
     dispose(): void {
         this.zapTimer?.stop();
         this.dayTimer?.stop();
-        prefabInstance(this.context.model)!.light.set(null);
+        this.inst.light.set(null);
     }
 }
 
-const rodOf = (model: THREE.Object3D): LightningRod => model.userData.lightningrod;
+export interface LightningRodInstance extends PrefabInstance {
+    lightningRod: LightningRod;
+    readonly components: PrefabInstance['components'] & {
+        battery: Battery<LightningRod>;
+        inspectable: { getstatus(): 'CHARGED' | undefined };
+    };
+}
+const rodOf = (model: THREE.Object3D): LightningRod => (prefabInstance(model) as LightningRodInstance).lightningRod;
 
-/** onhit: AnimState:PlayAnimation("hit"), PushAnimation("idle", false). */
-function playHit(model: THREE.Object3D): void {
-    const animation = prefabInstance(model)!.sprite as SpriteAnimationController;
-    animation.playOnce('hit', () => (prefabInstance(model)!.sprite as SpriteAnimationController).start('idle'));
+/** onlightning: the same source onhit declaration, then a full three-day charge. */
+function onlightning(inst: LightningRodInstance): void {
+    onworked(inst);
+    inst.lightningRod.setcharged(3);
 }
 
 function oninit(context: AnimatedBuildingEventContext): void {
@@ -159,14 +157,14 @@ function oninit(context: AnimatedBuildingEventContext): void {
 
     const entity = actionEntity(model, LIGHTNING_ROD_ID);
     const rod = new LightningRod(context);
-    model.userData.lightningrod = rod;
+    (instance as LightningRodInstance).lightningRod = rod;
     entity.addTag('lightningrod');
     Object.assign(prefabInstance(model)!.components, {
         battery: rod.battery,
         // getstatus: inst.charged and "CHARGED" or nil
         inspectable: { getstatus: () => rod.charged ? 'CHARGED' : undefined },
     });
-    prefabInstance(model)!.ListenForEvent('lightningstrike', () => rod.onlightning());
+    instance.ListenForEvent('lightningstrike', () => onlightning(instance as LightningRodInstance));
 }
 
 function onbuilt({ animation, model, onComplete }: AnimatedBuildingBuiltContext): void {

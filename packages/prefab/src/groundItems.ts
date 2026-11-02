@@ -77,6 +77,9 @@ export function createGroundItemFactory(context: GroundPrefabContext): GroundIte
       : isBook(entity.prefab) ? configureBookEntity(entity) : configureBurnableItemEntity(entity);
     },
     create(item, entity) {
+      const dropLoot = context.dropLoot;
+      entity.worldServices = { fx: context.fx,
+        dropLoot: (items, position) => dropLoot?.(items.map(item => ({ ...GROUND_ITEM_DEFINITIONS[item.itemId], ...item })), position) };
       const base = createResidentGroundItem(context, { ...item, sprite: entity.sprite }, item.itemId === HEATROCK_ID ? declareHeatRockSprite : undefined);
       if (!Object.hasOwn(BURNABLE_ITEM_DEFINITIONS, item.itemId)) return base.visual;
       return createBurnableItemVisual(context, item.itemId, base, displays, BURNABLE_ITEM_DEFINITIONS[item.itemId].fxLevel);

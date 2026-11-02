@@ -61,7 +61,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState> 
   /** EntityScript components belong to the logical entity, including while its display sleeps. */
   readonly components: PrefabComponents = {};
   /** World services injected when this prefab joins a world; callbacks use the same host and components. */
-  worldServices?: PrefabWorldContext;
+  worldServices?: Partial<PrefabWorldContext>;
   private readonly removedState = createSignal(false);
   readonly removal: ReadonlySignal<boolean> = readonlySignal(this.removedState);
   /** inst.Light: the light the entity declares; its display lists it while the entity is active. */

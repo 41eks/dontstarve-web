@@ -7,7 +7,6 @@ import { Health } from '../../componets/src/health';
 import { Combat } from '../../componets/src/combat';
 import { Workable } from '../../componets/src/workable';
 import { Repairable } from '../../componets/src/repairable';
-import { LootDropper } from '../../componets/src/lootdropper';
 import { InventoryItem } from '../../componets/src/inventoryitem';
 import { Hauntable } from '../../componets/src/hauntable';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
@@ -20,6 +19,8 @@ import { watchTileActivity } from './tileActivity';
 import { newEntityId } from './saveRecord';
 import type { DisplayDrivenPrefabManager, DisplayManagerWorld } from './manager';
 import { actionEntity } from './actionEntity';
+import type { WorldContext } from './worldContext';
+import { createStructureLootDropper } from './structureLoot';
 import { reskinTarget } from './reskin_tool';
 
 export const RELIC_NAMES = ['table', 'chair', 'vase', 'chipbowl', 'bowl', 'plate'] as const;
@@ -50,10 +51,20 @@ export interface RuinsRelicWorld extends DisplayManagerWorld {
   scheduler: GameTimeScheduler;
   tickingarea?: TileStateQuery;
   physics?: World;
+  fx?: WorldContext['fx'];
+  dropLoot?: WorldContext['dropLoot'];
 }
 export function relicName(id: RuinsRelicId): RelicName { return id.split('_').at(-1) as RelicName; }
 export function isRelicItem(id: string): id is typeof RUINS_RELIC_ITEM_IDS[number] {
   return (RUINS_RELIC_ITEM_IDS as readonly string[]).includes(id);
+}
+
+/** ruinsrelic.lua item.OnHammered: collapse material, then recipe salvage and Remove. */
+function onhammered(inst: RuinsRelicInstance | ItemEntity): void {
+  const material = inst.prefab === 'ruinsrelic_table' || inst.prefab === 'ruinsrelic_chair' ? 'rock' : 'pot';
+  inst.worldServices?.fx?.collapse?.('small', inst.getPosition(), material);
+  inst.components.lootdropper!.DropLoot();
+  inst.remove();
 }
 
 /** The replica decor's inventory path shares the same constructor-only dependencies. */
@@ -68,10 +79,10 @@ export function configureRuinsRelicItem(inst: ItemEntity): void {
   Object.assign(inst.components, { furnituredecor: new FurnitureDecor(inst), floater: new Floater(inst),
     inventoryitemmoisture: new InventoryItemMoisture(inst),
     inspectable: Object.assign(new Inspectable(inst), { nameoverride: 'relic' }),
-    lootdropper: new LootDropper({ prefab: inst.prefab, getPosition: () => inst.getPosition() }, () => undefined) });
+    lootdropper: createStructureLootDropper(inst) });
   const workable = inst.component('workable', () => {
     const component = new Workable(inst); component.SetWorkAction('HAMMER'); component.SetWorkLeft(1);
-    component.SetOnFinishCallback(() => inst.remove());
+    component.SetOnFinishCallback(onhammered);
     return component;
   });
   Object.assign(inst.components, { workable });
@@ -90,6 +101,7 @@ export class RuinsRelicInstance extends PrefabInstance<SpriteState> {
   constructor(prefabId: RuinsRelicId, world: RuinsRelicWorld, saved?: RuinsRelicRecord) {
     const initialRubble = prefabId.startsWith('ruins_rubble_');
     super(prefabId, new SpriteState({ name: initialRubble ? 'broken' : 'idle', held: true, billboard: true }));
+    this.worldServices = world;
     this.prefabId = prefabId;
     this.name = relicName(prefabId); this.replica = prefabId.startsWith('ruinsrelic_');
     this.animated = ['table', 'chair', 'vase'].includes(this.name);
@@ -97,7 +109,7 @@ export class RuinsRelicInstance extends PrefabInstance<SpriteState> {
     this.sprite.playOnce(initialRubble ? 'broken' : 'idle');
     this.addTag('inspectable');
     Object.assign(this.components, { inspectable: Object.assign(new Inspectable(this), { nameoverride: 'relic' }),
-      lootdropper: new LootDropper(this, () => undefined) });
+      lootdropper: createStructureLootDropper(this) });
     const hauntable = new Hauntable(this, world.scheduler);
     // standardcomponents.lua MakeHauntableWork's work callback is commented out; it returns false.
     hauntable.SetOnHauntFn(() => false); this.components.hauntable = hauntable;
@@ -110,7 +122,7 @@ export class RuinsRelicInstance extends PrefabInstance<SpriteState> {
 
   private constructReplica(): void {
     const workable = new Workable(this); workable.SetWorkAction('HAMMER'); workable.SetWorkLeft(1);
-    workable.SetOnFinishCallback(() => { this.components.lootdropper!.DropLoot(); this.remove(); });
+    workable.SetOnFinishCallback(onhammered);
     this.components.workable = workable; this.onRemove(() => workable.dispose());
     if (isRelicItem(this.prefabId)) {
       this.addTag('furnituredecor');

@@ -467,7 +467,8 @@ export async function createSceneEntities(
         cycle: worldState.cycle, getWatchWorldContent: worldState.getWatchWorldContent, tickingarea: worldState.tickingarea, isNight: worldState.isNight, perishClock: worldState.perishClock,
         secondsUntilNextDay: now => TUNING.TOTAL_DAY_TIME - now % TUNING.TOTAL_DAY_TIME,
         // world_fx registers after the buildings; the manager is read when an fx is played.
-        fx: { spawn: (prefab, position) => { Managers['world_fx'].spawn(prefab, position); } },
+        fx: { spawn: (prefab, position) => { Managers['world_fx'].spawn(prefab, position); },
+          collapse: (size, position, material) => Managers['world_fx'].collapse(size, position, material) },
         spawnItem: state => { const entity = sceneInventory.entities.create(state); sceneInventory.configureItem(entity); return entity; },
         dropItem: (entity, position) => { sceneInventory.DropItem(entity, position); },
         registerContainer: (id, container, saved) => sceneInventory.registerContainer(id, container, saved),
@@ -850,6 +851,7 @@ export async function createSceneEntities(
 
   function registerHoundbones(registry: EntityRegistry, prefabId: 'houndbone', worldState: SceneWorldState) {
     const houndbones = new HoundboneManager(scene, {
+      fx: Managers['world_fx'],
       handEquipment: sceneInventory.handEquipment,
       tickingarea: worldState.tickingarea,
       spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
@@ -919,6 +921,7 @@ export async function createSceneEntities(
 
   function registerSkeletons(registry: EntityRegistry, prefabId: 'skeleton', worldState: SceneWorldState) {
     const skeletons = new SkeletonManager(scene, {
+      fx: Managers['world_fx'],
       handEquipment: sceneInventory.handEquipment,
       tickingarea: worldState.tickingarea,
       physics: world,
@@ -1335,7 +1338,7 @@ export async function createSceneEntities(
   }
 
   function registerFarmPlow(registry: EntityRegistry, prefabId: 'farm_plow', _worldState: SceneWorldState) {
-    const farmPlow = new FarmPlowPlacement({ ...view, physics: world, handEquipment: sceneInventory.handEquipment }, turfMap,
+    const farmPlow = new FarmPlowPlacement({ ...view, fx: Managers['world_fx'], physics: world, handEquipment: sceneInventory.handEquipment }, turfMap,
       (position, item) => { Managers['ground_item'].spawnFromSave(item.entityId ?? newEntityId(), {
         ...SAVE_CATALOG.items[item.itemId], ...item,
       }, position); },
@@ -1489,7 +1492,9 @@ export async function createSceneEntities(
   }
 
   function registerRuinsRelics(registry: EntityRegistry, worldState: SceneWorldState) {
-    const relics = new RuinsRelicManager(scene, { scheduler: worldState.scheduler, tickingarea: worldState.tickingarea,
+    const relics = new RuinsRelicManager(scene, { fx: Managers['world_fx'],
+      dropLoot: (items, position) => Managers['ground_item'].flingLoot(items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position),
+      scheduler: worldState.scheduler, tickingarea: worldState.tickingarea,
       physics: world, trackDisplay: display => registry.trackDisplay(display) });
     registry.registerDisplayManager(PREFAB_DEFINITIONS.ruinsRelics, relics, {
       restore: (id, record) => relics.spawn(id, new THREE.Vector3(...record.transform.position), record as RuinsRelicRecord),

@@ -1,14 +1,12 @@
-import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
+import { PrefabDisplayGroup, PrefabDisplay, SpriteState } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import type { World } from 'cannon-es';
 import { ArchiveSpriteAssets, createSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
-import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
 import type { TileStateQuery } from '@dontstarve-web/signals';
 import { Workable } from '../../componets/src/workable';
 import { ComponentTimer, Timer, type NamedTimerSave } from '../../componets/src/timer';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import type { MiniMapState } from '../../map/src/minimapState';
-import { createArchiveEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
+import { PrefabInstance, bindInstance } from './prefabInstance';
 import { actionEntity } from './actionEntity';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { watchTileActivity } from './tileActivity';
@@ -32,14 +30,86 @@ export interface BeeQueenHiveWorld extends ToolMouseTargetWorld {
 }
 
 interface Hive {
-  instance: PrefabInstance<ArchiveSpriteCommands>;
+  instance: BeeQueenHiveInstance;
   display: PrefabDisplay;
-  workable: Workable;
-  timer: Timer;
-  honeyTimer: ComponentTimer;
-  pendingHoney?: number;
-  minimap: MiniMapState;
   stopActivity?: () => void;
+}
+
+/** The hive owns saved work, regeneration and its delayed honey appearance. */
+class BeeQueenHiveInstance extends PrefabInstance {
+  readonly honeyTimer: ComponentTimer;
+  pendingHoney?: number;
+  declare readonly components: PrefabInstance['components'] & { workable: Workable<BeeQueenHiveInstance>; timer: Timer };
+
+  constructor(world: BeeQueenHiveWorld, saved?: BeeQueenHiveRecord) {
+    super(BEEQUEENHIVEGROWN_ID, new SpriteState({ name: 'large', held: true, billboard: true }));
+    this.entityId = saved?.id ?? newEntityId();
+    for (const tag of ['event_trigger', 'antlion_sinkhole_blocker']) this.addTag(tag);
+    MakeObstaclePhysics(this, 1.9);
+    this.sprite.playOnce('large');
+    for (let level = 0; level < 3; level++) this.sprite.setSymbolHidden(`honey${level}`, true);
+    this.minimap.SetIcon('beequeenhivegrown.png');
+    const workable = this.components.workable = new Workable(this);
+    workable.SetWorkAction('HAMMER');
+    workable.SetMaxWork(BEEQUEEN_HIVE_MAX_WORK);
+    workable.SetWorkLeft(BEEQUEEN_HIVE_MAX_WORK);
+    workable.savestate = true;
+    const timer = this.components.timer = new Timer(world.scheduler, name => onTimer(this, name), ['hiveregen']);
+    this.honeyTimer = new ComponentTimer(world.scheduler, () => {
+      if (this.pendingHoney !== undefined) showHoneyLevel(this, this.pendingHoney);
+      this.pendingHoney = undefined;
+    });
+    if (saved?.components.workable) workable.OnLoad(saved.components.workable);
+    setHoneyLevel(this, honeyLevel(workable.GetWorkLeft()));
+    timer.OnLoad(saved?.components.beeQueenHiveTimer);
+    workable.SetOnWorkCallback(onWorked);
+    this.onRemove(() => { timer.dispose(); this.honeyTimer.stop(); workable.dispose(); });
+  }
+}
+
+function honeyLevel(workleft: number): number {
+  return Math.max(0, Math.min(3, 3 + Math.ceil((workleft - BEEQUEEN_HIVE_MAX_WORK) * .5)));
+}
+
+function showHoneyLevel(inst: BeeQueenHiveInstance, level: number): void {
+  for (let i = 0; i <= 3; i++) inst.sprite.setSymbolHidden(`honey${i}`, i !== level);
+}
+
+function setHoneyLevel(inst: BeeQueenHiveInstance, level: number, delay?: number): void {
+  inst.honeyTimer.stop(); inst.pendingHoney = undefined;
+  if (delay === undefined) showHoneyLevel(inst, level);
+  else {
+    showHoneyLevel(inst, level - 1);
+    inst.pendingHoney = level;
+    inst.honeyTimer.start(delay);
+  }
+}
+
+function onWorked(inst: BeeQueenHiveInstance): void {
+  const { workable, timer } = inst.components;
+  if (!workable.enabled.peek()) return;
+  timer.StopTimer('hiveregen');
+  if (workable.GetWorkLeft() < 1) workable.SetWorkLeft(1);
+  // OnWorked: large_hit, then a nonlooping large pose. No animover callback is attached here in Lua.
+  inst.sprite.playOnce('large_hit');
+  inst.sprite.pushAnimation('large', false);
+  setHoneyLevel(inst, honeyLevel(workable.GetWorkLeft()));
+  timer.StartTimer('hiveregen', 4 * SEG_TIME);
+}
+
+function onTimer(inst: BeeQueenHiveInstance, name: string): void {
+  if (name !== 'hiveregen' || !inst.components.workable.CanBeWorked() || inst.components.workable.GetWorkLeft() >= BEEQUEEN_HIVE_MAX_WORK) return;
+  const old = honeyLevel(inst.components.workable.GetWorkLeft());
+  inst.components.workable.SetWorkLeft(inst.components.workable.GetWorkLeft() + 1);
+  const next = honeyLevel(inst.components.workable.GetWorkLeft());
+  if (inst.components.workable.GetWorkLeft() < BEEQUEEN_HIVE_MAX_WORK) inst.components.timer.StartTimer('hiveregen', SEG_TIME);
+  if (old !== next && inst.status.peek() === 'active') {
+    inst.sprite.playOnce('transition');
+    inst.sprite.pushAnimation('large', false);
+    setHoneyLevel(inst, next, 10 / 30);
+  } else {
+    setHoneyLevel(inst, next);
+  }
 }
 
 /** beequeenhive.lua `fn`: the grown hive's saved work and regeneration state. */
@@ -59,87 +129,22 @@ export class BeeQueenHiveManager {
       animationArchive: 'bee_queen_hive.zip', buildArchives: ['bee_queen_hive.zip'], bank: 'bee_queen_hive',
       animation: clip.name, loop: clip.loop,
     }, { instancedAnimations: 'all', name: BEEQUEENHIVEGROWN_ID });
-    const entity = createArchiveEntity(BEEQUEENHIVEGROWN_ID, { create: build },
-      { name: 'large', held: true, billboard: true }, BEEQUEENHIVEGROWN_ID);
-    const { instance, display } = entity, model = display.model;
-    instance.entityId = saved?.id ?? newEntityId();
+    const instance = new BeeQueenHiveInstance(this.world, saved);
+    const display = new PrefabDisplay({ name: BEEQUEENHIVEGROWN_ID, status: instance.status, sprite: instance.sprite, archive: { create: build } });
+    const model = display.model;
+    bindInstance(model, instance);
     instance.position.set(position.x, 0, position.z);
     instance.scale.setScalar(1.4);
-    for (const tag of ['event_trigger', 'antlion_sinkhole_blocker']) instance.addTag(tag);
-    MakeObstaclePhysics(instance, 1.9);
     if (this.world.physics) instance.bindPhysics(this.world.physics);
-    // `fn` plays large without a loop argument, then hides honey0..2. The held pose is its last frame.
-    instance.sprite.playOnce('large');
-    for (let level = 0; level < 3; level++) instance.sprite.setSymbolHidden(`honey${level}`, true);
     const inst = actionEntity(model, BEEQUEENHIVEGROWN_ID);
-    const workable = new Workable(inst);
-    workable.SetWorkAction('HAMMER');
-    workable.SetMaxWork(BEEQUEEN_HIVE_MAX_WORK);
-    workable.SetWorkLeft(BEEQUEEN_HIVE_MAX_WORK);
-    workable.savestate = true;
-    const hive: Hive = { instance, display, workable, timer: new Timer(this.world.scheduler, name => this.onTimer(hive, name), ['hiveregen']),
-      honeyTimer: new ComponentTimer(this.world.scheduler, () => {
-        if (hive.pendingHoney !== undefined) this.showHoneyLevel(hive, hive.pendingHoney);
-        hive.pendingHoney = undefined;
-      }), minimap: instance.minimap };
-    hive.minimap.SetIcon('beequeenhivegrown.png');
-    if (saved?.components.workable) workable.OnLoad(saved.components.workable);
-    this.setHoneyLevel(hive, this.honeyLevel(workable.GetWorkLeft()));
-    hive.timer.OnLoad(saved?.components.beeQueenHiveTimer);
-    workable.SetOnWorkCallback(() => this.onWorked(hive));
-    Object.assign(prefabInstance(model)!.components, { workable, timer: hive.timer });
-    new ToolMouseTarget(inst, instance, workable, this.world.handEquipment);
+    const hive: Hive = { instance, display };
+    new ToolMouseTarget(inst, instance, instance.components.workable, this.world.handEquipment);
+    instance.onRemove(() => { this.hives.delete(model); hive.stopActivity?.(); });
     this.hives.set(model, hive);
-    this.displays.mount(prefabDisplay(model)!);
+    this.displays.mount(display);
     hive.stopActivity = watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active));
     return model;
   }
-
-  private honeyLevel(workleft: number): number {
-    return Math.max(0, Math.min(3, 3 + Math.ceil((workleft - BEEQUEEN_HIVE_MAX_WORK) * .5)));
-  }
-
-  private showHoneyLevel(hive: Hive, level: number): void {
-    for (let i = 0; i <= 3; i++) hive.instance.sprite.setSymbolHidden(`honey${i}`, i !== level);
-  }
-
-  private setHoneyLevel(hive: Hive, level: number, delay?: number): void {
-    hive.honeyTimer.stop(); hive.pendingHoney = undefined;
-    if (delay === undefined) this.showHoneyLevel(hive, level);
-    else {
-      this.showHoneyLevel(hive, level - 1);
-      hive.pendingHoney = level;
-      hive.honeyTimer.start(delay);
-    }
-  }
-
-  private onWorked(hive: Hive): void {
-    const { workable, timer, instance } = hive;
-    if (!workable.enabled.peek()) return;
-    timer.StopTimer('hiveregen');
-    if (workable.GetWorkLeft() < 1) workable.SetWorkLeft(1);
-    // OnWorked: large_hit, then a nonlooping large pose. No animover callback is attached here in Lua.
-    instance.sprite.playOnce('large_hit');
-    instance.sprite.pushAnimation('large', false);
-    this.setHoneyLevel(hive, this.honeyLevel(workable.GetWorkLeft()));
-    timer.StartTimer('hiveregen', 4 * SEG_TIME);
-  }
-
-  private onTimer(hive: Hive, name: string): void {
-    if (name !== 'hiveregen' || !hive.workable.CanBeWorked() || hive.workable.GetWorkLeft() >= BEEQUEEN_HIVE_MAX_WORK) return;
-    const old = this.honeyLevel(hive.workable.GetWorkLeft());
-    hive.workable.SetWorkLeft(hive.workable.GetWorkLeft() + 1);
-    const next = this.honeyLevel(hive.workable.GetWorkLeft());
-    if (hive.workable.GetWorkLeft() < BEEQUEEN_HIVE_MAX_WORK) hive.timer.StartTimer('hiveregen', SEG_TIME);
-    if (old !== next && hive.instance.status.peek() === 'active') {
-      hive.instance.sprite.playOnce('transition');
-      hive.instance.sprite.pushAnimation('large', false);
-      this.setHoneyLevel(hive, next, 10 / 30);
-    } else {
-      this.setHoneyLevel(hive, next);
-    }
-  }
-
 
   // The display group advances each entity's declared clip; sleeping and removed entities are skipped.
   update(dt: number): void { this.displays.update(dt); }
@@ -148,15 +153,13 @@ export class BeeQueenHiveManager {
   exportRecords(): { prefabId: typeof BEEQUEENHIVEGROWN_ID; record: BeeQueenHiveRecord }[] {
     return [...this.hives].map(([model, hive]) => ({ prefabId: BEEQUEENHIVEGROWN_ID, record: {
       id: String(hive.instance.entityId), transform: { position: [model.position.x, 0, model.position.z], rotationY: model.rotation.y },
-      components: { workable: { maxwork: BEEQUEEN_HIVE_MAX_WORK, workleft: hive.workable.GetWorkLeft() },
-        ...(hive.timer.OnSave() ? { beeQueenHiveTimer: hive.timer.OnSave() } : {}) },
+      components: { workable: { maxwork: BEEQUEEN_HIVE_MAX_WORK, workleft: hive.instance.components.workable.GetWorkLeft() },
+        ...(hive.instance.components.timer.OnSave() ? { beeQueenHiveTimer: hive.instance.components.timer.OnSave() } : {}) },
     } }));
   }
   private remove(model: THREE.Group): void {
     const hive = this.hives.get(model); if (!hive) return;
-    this.hives.delete(model);
-    model.userData.removed = true;
-    hive.stopActivity?.(); hive.timer.dispose(); hive.honeyTimer.stop(); hive.workable.dispose(); hive.instance.remove();
+    hive.instance.remove();
   }
   dispose(): void {
     if (this.disposed) return;

@@ -1,13 +1,11 @@
-import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
-import { LIGHTNING_ROD_DEFINITION, LIGHTNING_ROD_ID } from '../../prefab/src/lightning_rod';
+import { LIGHTNING_ROD_DEFINITION, LIGHTNING_ROD_ID, type LightningRodInstance } from '../../prefab/src/lightning_rod';
 import { SendLightningStrike } from '../../prefab/src/lightning';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import type { SpriteController } from '../src/sprite';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import * as sound from '../../prefab/src/sound';
 import { deserializeSave } from '../../../src/save/deserialize';
@@ -50,7 +48,7 @@ it('is charged by a strike for three days: zaps on the 10–40 s task, loses a d
     // The hit clip plays out only once the display has drawn the rod.
     await vi.waitFor(() => expect(prefabInstance(model)!.sprite.loaded).toBe(true));
     scene.add(model);
-    const components = (findActionEntity(model)?.components ?? prefabInstance(model)!.components);
+    const components = (lookupPrefabInstance(model) as LightningRodInstance).components;
     expect(components.inspectable.getstatus()).toBeUndefined();
     expect(declaredLight(model)).toBeUndefined();
 
@@ -60,7 +58,7 @@ it('is charged by a strike for three days: zaps on the 10–40 s task, loses a d
     expect(fx.spawn).toHaveBeenCalledWith('lightning', expect.any(THREE.Vector3));
     expect(components.inspectable.getstatus()).toBe('CHARGED');
     expect(declaredLight(model)).toMatchObject({ intensity: .5, falloff: 1 });
-    expect((prefabInstance(model)!.sprite as SpriteController).currentAnimation).toBe('hit');
+    expect(prefabInstance(model)!.sprite.currentAnimation).toBe('hit');
     expect(fx.spawn).toHaveBeenCalledWith('lightning_rod_fx', expect.any(THREE.Vector3));
     expect(play).toHaveBeenCalledWith('dontstarve/common/lightningrod', model.position);
 
@@ -92,16 +90,16 @@ it('draws a battery charge as one decaying point, not three', async () => {
     const [{ display }] = workTargets('HAMMER');
     const model = display.model;
     scene.add(model);
-    const battery = (findActionEntity(model)?.components ?? prefabInstance(model)!.components).battery;
+    const battery = (lookupPrefabInstance(model) as LightningRodInstance).components.battery;
     expect(battery.CanBeUsed()).toEqual([false, 'NOT_ENOUGH_CHARGE']);
     await strikeAt(scene, fx, model.position);
     expect(battery.CanBeUsed()).toEqual([true]);
     // chargeleft 3 holds one full point: 0.4 is drawn without discharging, 1 empties it.
     battery.OnUsed(undefined, .4);
-    expect(model.userData.lightningrod.chargeleft).toBeCloseTo(2.6);
+    expect((lookupPrefabInstance(model) as LightningRodInstance).lightningRod.chargeleft).toBeCloseTo(2.6);
     expect(battery.ResolvePartialChargeMult(undefined, 2)).toBeCloseTo(.6);
     battery.OnUsed(undefined, 1);
-    expect(model.userData.lightningrod.charged).toBe(false);
+    expect((lookupPrefabInstance(model) as LightningRodInstance).lightningRod.charged).toBe(false);
     expect(battery.CanBeUsed(undefined, .1)).toEqual([false, 'NOT_ENOUGH_CHARGE']);
   } finally { placement.dispose(); }
 });
@@ -128,9 +126,9 @@ it('keeps its charge and skin through c_save, and re-arms its day timer from the
       buildings: definitions.animatedBuildings, walls: Object.keys(definitions.walls) }).world.entities.lightning_rod[0];
     const restored = await placement.spawnFromSave(LIGHTNING_ROD_ID, record);
     expect(lookupPrefabInstance(restored)?.skinId).toBe('lightning_rod_adventure');
-    expect(restored.userData.lightningrod.chargeleft).toBe(2);
+    expect((lookupPrefabInstance(restored) as LightningRodInstance).lightningRod.chargeleft).toBe(2);
     expect(declaredLight(restored)).toBeDefined();
     scheduler.advance(DAY);
-    expect(restored.userData.lightningrod.chargeleft).toBe(1);
+    expect((lookupPrefabInstance(restored) as LightningRodInstance).lightningRod.chargeleft).toBe(1);
   } finally { placement.dispose(); }
 });

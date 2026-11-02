@@ -44,7 +44,7 @@ export interface WorldContext extends ActionWorldContext, Partial<WorldContentCo
     /** inventoryitem:OnDropped for an existing inst, placed on the ground at the position. */
     dropItem?: (entity: import('@dontstarve-web/inventory').ItemEntity, position: THREE.Vector3) => void;
     /** Place destruction loot in the application's authoritative ground-item store. */
-    dropLoot?: (items: readonly { itemId: string; count: number }[], position: THREE.Vector3,
+    dropLoot?: (items: readonly { itemId: string; count: number; skinId?: string }[], position: THREE.Vector3,
         launch?: () => import('./lootFling').LootLaunch) => void;
 }
 

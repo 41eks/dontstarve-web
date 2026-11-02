@@ -8,15 +8,17 @@ import { watchSignal, type Signal } from '@dontstarve-web/signals';
 import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import type { ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
-import { Combat, type CombatInst } from '../../componets/src/combat';
+import { Combat, type CombatActor } from '../../componets/src/combat';
 import { Health } from '../../componets/src/health';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { Workable } from '../../componets/src/workable';
+import { Workable, type Worker } from '../../componets/src/workable';
 import { actionEntity, FindEntities } from './actionEntity';
 import { BuildCursor, declarePlacer, entityPlacer } from './buildCursor';
 import { reskinTarget } from './reskin_tool';
 import { newEntityId, saveGroundPosition, type PlacedEntitySaveRecord, type PlacementSaveRecord } from './saveRecord';
 import { PlaySound } from './sound';
+import { WorldFx } from './world_fx';
+import { createStructureLootDropper } from './structureLoot';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { BurnableBinding, FireFxHost } from './treeFire';
 import { snapToWallSlotCenter, TILE_SIZE } from './tile';
@@ -30,7 +32,6 @@ const UNIT = TILE_SIZE / 4;
 /** fence.lua MakeObstaclePhysics(inst, .5). */
 export const FENCE_PHYSICS_RADIUS = .5 * UNIT;
 const ROT_SIDES = 8;
-const FENCE_LOOT = [{ itemId: 'twigs', count: 1 }] as const;
 const FENCE_TAGS = ['wall', 'fence', 'alignwall', 'noauradamage', 'electricdamageimmune', 'rotatableobject'] as const;
 /** MakeMediumBurnable(inst): burn time 20, fx level 3; MakeMediumPropagator. */
 const FENCE_BURN_TIME = 20;
@@ -93,6 +94,44 @@ export class FencePrefabInstance extends PrefabInstance {
     }
 }
 
+/** fence.lua callbacks receive the same inst/attacker that the components use. */
+function onworked(inst: FencePrefabInstance): void {
+    inst.sprite.playOnce('hit');
+    inst.sprite.pushAnimation('idle', false);
+}
+
+function onhammered(inst: FencePrefabInstance): void {
+    if (inst.isRemoved) return;
+    inst.components.lootdropper!.DropLoot();
+    inst.worldServices?.fx?.collapse?.('small', inst.position, 'wood');
+    inst.remove();
+}
+
+function onhit(inst: FencePrefabInstance, attacker: CombatActor): void {
+    inst.components.workable!.WorkedBy(attacker as unknown as Worker);
+}
+
+function initializeFence(inst: FencePrefabInstance): void {
+    for (const tag of FENCE_TAGS) inst.addTag(tag);
+    const health = inst.components.health = new Health(1, inst);
+    health.absorb = 1; health.canheal = false; health.nofadeout = true;
+    const combat = inst.components.combat = new Combat(inst, () => inst.worldServices?.scheduler?.now ?? 0);
+    combat.SetKeepTargetFunction(() => false);
+    combat.onhitfn = onhit;
+    const lootdropper = inst.components.lootdropper = createStructureLootDropper(inst);
+    lootdropper.SetLoot(['twigs']);
+    lootdropper.droprecipeloot = false;
+    const workable = inst.components.workable = new Workable(inst);
+    workable.SetWorkAction('HAMMER');
+    workable.SetWorkLeft(3);
+    workable.SetOnWorkCallback(onworked);
+    workable.SetOnFinishCallback(onhammered);
+    inst.ListenForEvent('death', () => onhammered(inst));
+    MakeObstaclePhysics(inst, .5).SetDontRemoveOnSleep(true);
+    if (inst.worldServices?.physics) inst.bindPhysics(inst.worldServices.physics);
+    inst.onRemove(() => { workable.dispose(); health.dispose(); combat.onhitfn = undefined; });
+}
+
 interface FenceInstance {
     readonly buildId: FenceId;
     /** One logical fence and the display that draws its declared sprite. */
@@ -131,7 +170,7 @@ export class FencePlacement {
     private readonly cleanups: (() => void)[] = [];
     private readonly mouseRecords = new ModelRecords<FenceInstance>();
     private readonly placed = new Set<FenceInstance>();
-    private readonly effects = new Set<PrefabInstance>();
+    private readonly localFx?: WorldFx;
     /** The `fence_item_placer` entity; committing spawns a new fence, never this one. */
     private placer?: FenceInstance;
     private lastPreviewKey = '';
@@ -139,7 +178,8 @@ export class FencePlacement {
 
     constructor(world: WorldContext, consumeBufferedBuild: (buildId: FenceId, skinId?: string) => boolean) {
         const { scene, ...services } = world;
-        this.world = services;
+        this.localFx = world.fx?.collapse ? undefined : new WorldFx(scene);
+        this.world = { ...services, fx: this.localFx ?? world.fx };
         this.camera = world.camera;
         this.canvas = world.renderer.domElement;
         this.player = world.player;
@@ -195,7 +235,7 @@ export class FencePlacement {
     }
 
     get renderEntities() {
-        return this.displays.renderEntities;
+        return [...this.displays.renderEntities, ...(this.localFx?.renderEntities ?? [])];
     }
 
 
@@ -233,6 +273,7 @@ export class FencePlacement {
     update(dt = 0): void {
         if (this.ownsScheduler) this.scheduler.advance(dt);
         this.displays.update(dt);
+        this.localFx?.update(dt, this.camera.quaternion);
         for (const fence of this.placed) fence.burn?.update(dt);
         this.cursor.update();
         if (this.placer) this.updatePreview(this.placer);
@@ -255,8 +296,7 @@ export class FencePlacement {
         this.cancel();
         for (const fence of [...this.placed]) this.disposeFence(fence);
         this.placed.clear();
-        for (const effect of this.effects) effect.remove();
-        this.effects.clear();
+        this.localFx?.dispose();
         this.displays.dispose();
         this.fireFx?.dispose();
         this.resources.dispose();
@@ -320,6 +360,7 @@ export class FencePlacement {
     private createInstance(buildId: FenceId, rotation: number, requestedSkin?: string, opacity = 1, prefab: string = FENCE_ID): FenceInstance {
         if (this.disposed) throw new Error('Placement has been disposed');
         const instance = new FencePrefabInstance(rotation, fenceWorldSkin(buildId, requestedSkin), this.resources.archives, opacity, prefab);
+        instance.worldServices = this.world;
         const display = this.displays.add({ name: FENCE_ID, status: instance.status, sprite: instance.sprite, light: instance.light,
             source: this.resources.factory({ animationArchive: 'fence.zip', extraAnimationArchives: ['fence_thin.zip'], buildArchive: 'fence.zip' }) });
         const root = display.model;
@@ -334,55 +375,12 @@ export class FencePlacement {
         const entity = actionEntity(root, FENCE_ID, fence.instance);
         entity.reskinTarget = this.createReskinTarget(fence);
         fence.entity = entity;
-        for (const tag of FENCE_TAGS) entity.addTag(tag);
-        const combatInst: CombatInst = fence.instance;
-        // SetMaxHealth(1), SetAbsorptionAmount(1), canheal = false, nofadeout = true.
-        const health = new Health(1, combatInst);
-        health.absorb = 1; health.canheal = false; health.nofadeout = true;
-        const combat = new Combat(combatInst, () => 0);
-        combat.SetKeepTargetFunction(() => false);
-        Object.assign(entity.components, { health, combat });
-        const workable = new Workable(entity);
-        entity.components.workable = workable;
-        workable.SetWorkAction('HAMMER');
-        workable.SetWorkLeft(3);
-        // onworked: hit, then idle.
-        workable.SetOnWorkCallback(() => this.playHit(fence));
-        workable.SetOnFinishCallback(() => this.hammered(fence));
-        combat.onhitfn = (_inst, attacker) => {
-            workable.WorkedBy({ PushEvent: (name, data) => attacker.PushEvent?.(name, data) });
-        };
-        fence.instance.ListenForEvent('death', () => this.hammered(fence));
+        initializeFence(fence.instance);
         this.initializeBurnable(fence);
-        new ToolMouseTarget(entity, fence.instance, workable, this.world.handEquipment);
-    }
-
-    private playHit(fence: FenceInstance): void {
-        const { sprite } = fence.instance;
-        sprite.playOnce('hit', () => sprite.playOnce('idle'));
-    }
-
-    /** onhammered: loot, collapse_small and Remove. */
-    private hammered(fence: FenceInstance): void {
-        if (!this.placed.has(fence)) return;
-        const position = fence.root.position.clone();
-        this.world.dropLoot?.(FENCE_LOOT, position);
-        this.spawnCollapse(position);
-        PlaySound('dontstarve/common/destroy_smoke', position);
-        PlaySound('dontstarve/common/destroy_wood', position);
-        this.removeFence(fence);
-    }
-
-    private spawnCollapse(position: THREE.Vector3): void {
-        const instance = new PrefabInstance('collapse_small', new SpriteState({ name: 'collapse_small', billboard: true }));
-        for (const tag of ['NOCLICK', 'FX']) instance.addTag(tag);
-        instance.persists = false;
-        instance.sprite.playOnce('collapse_small', () => { instance.remove(); this.effects.delete(instance); });
-        const display = this.displays.add({ name: 'collapse_small', status: instance.status, sprite: instance.sprite,
-            archive: this.resources.archive({ animationArchive: 'structure_collapse_fx.zip', buildArchives: ['structure_collapse_fx.zip'], bank: 'collapse' }) });
-        bindInstance(display.model, instance);
-        instance.position.copy(position);
-        this.effects.add(instance);
+        new ToolMouseTarget(entity, fence.instance, fence.instance.components.workable!, this.world.handEquipment);
+        fence.instance.onRemove(() => {
+            this.placed.delete(fence); fence.stopActivity?.(); fence.burn?.dispose();
+        });
     }
 
     private removeFence(fence: FenceInstance): void {
@@ -410,9 +408,6 @@ export class FencePlacement {
     private place(fence: FenceInstance): void {
         this.placed.add(fence); this.mouseRecords.set(fence.root, fence);
         this.initializeEntity(fence);
-        // fence.lua: MakeObstaclePhysics(inst, .5); Physics:SetDontRemoveOnSleep(true), so pens hold outside the ticking area.
-        MakeObstaclePhysics(fence.instance, .5).SetDontRemoveOnSleep(true);
-        if (this.world.physics) fence.instance.bindPhysics(this.world.physics);
         fence.stopActivity = watchTileActivity(fence.root, this.world.tickingarea, active => {
             fence.instance.setActive(active);
         });
@@ -422,10 +417,6 @@ export class FencePlacement {
         fence.instance.remove();
         fence.stopActivity?.();
         fence.burn?.dispose();
-        const components = fence.instance.components;
-        components?.workable?.dispose();
-        components.health?.dispose();
-        if (components.combat) components.combat.onhitfn = undefined;
         fence.display.dispose();
     }
 

@@ -4,9 +4,9 @@ import { ComponentTimer } from '../../componets/src/timer';
 import { createMemo } from '@dontstarve-web/signals';
 import { createResidentGroundItem, GROUND_ITEM_DEFINITIONS } from './groundItems';
 import type { GroundItemFactory, GroundPrefabContext, GroundItemDefinition } from './groundPrefab';
-import { createSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import type { ArchiveSpriteCommands } from '@dontstarve-web/display';
-import { createArchiveEntity } from './prefabInstance';
+import { WorldFx } from './world_fx';
+import { createStructureLootDropper } from './structureLoot';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Workable } from '../../componets/src/workable';
 import { Machine } from '../../componets/src/machine';
@@ -145,15 +145,28 @@ export class PhonographController {
   }
 }
 
+/** phonograph.lua OnHammered, registered on the actual inventory/ground inst. */
+function onhammered(inst: ItemEntity): void {
+  const controller = inst.components.phonograph!;
+  const loaded = controller.record;
+  controller.DropRecord();
+  if (loaded) inst.components.lootdropper!.SpawnLootPrefab(RECORD_ID, inst.getPosition(), loaded === RECORD_ID ? undefined : loaded);
+  inst.components.lootdropper!.DropLoot();
+  inst.worldServices?.fx?.collapse?.('small', inst.getPosition(), 'wood');
+  inst.remove();
+}
+
 export function createPhonographGroundFactory(context: GroundPrefabContext): GroundItemFactory {
-  const effects = new Set<ReturnType<typeof createArchiveEntity>>();
-  const release = (effect: ReturnType<typeof createArchiveEntity>) => { effect.instance.remove(); effect.display.dispose(); };
-  let disposed = false;
+  const localFx = context.fx?.collapse ? undefined : new WorldFx(context.scene);
+  const fx = localFx ?? context.fx;
+  const dropLoot = context.dropLoot;
+  const worldServices = { fx, dropLoot: (items: readonly { itemId: string; count: number; skinId?: string }[], position: THREE.Vector3) =>
+    dropLoot?.(items.map(item => ({ ...GROUND_ITEM_DEFINITIONS[item.itemId], ...item })), position) };
   return {
     itemIds: [PHONOGRAPH_ID],
-    update(dt) { for (const effect of effects) effect.display.update(dt); },
-    renderEntities: () => [...effects].map(({ display: { model } }) => ({ object: model, footPosition: model.position, cameraDepth: 0 })),
-    dispose() { disposed = true; for (const effect of effects) release(effect); effects.clear(); },
+    update(dt, quaternion) { localFx?.update(dt, quaternion); },
+    renderEntities: () => localFx?.renderEntities ?? [],
+    dispose() { localFx?.dispose(); },
     create(item, inst) {
 
       const { visual, instance, display } = createResidentGroundItem(context, { ...item, sprite: inst.sprite });
@@ -174,6 +187,9 @@ export function createPhonographGroundFactory(context: GroundPrefabContext): Gro
         model,
         bindEntity(entity: ItemEntity) {
           controller.bindEntity(entity);
+          entity.components.phonograph = controller;
+          entity.worldServices = worldServices;
+          entity.components.lootdropper ??= createStructureLootDropper(entity);
           const workable = entity.component('workable', () => {
             const work = new Workable(entity);
             work.SetWorkAction('HAMMER');
@@ -181,29 +197,7 @@ export function createPhonographGroundFactory(context: GroundPrefabContext): Gro
             return work;
           });
           entity.components.workable = workable;
-          workable.SetOnFinishCallback(() => {
-            const position = model.position.clone();
-            const loaded = controller.record;
-            controller.DropRecord();
-            if (loaded) {
-              const skinId = loaded === RECORD_ID ? undefined : loaded;
-              context.dropLoot?.([{ ...GROUND_ITEM_DEFINITIONS.record, itemId: RECORD_ID, count: 1, skinId }], position);
-            }
-            PlaySound('dontstarve/common/destroy_smoke', position);
-            PlaySound('dontstarve/common/destroy_wood', position);
-            const create = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(context.assets, {
-              animationArchive: 'structure_collapse_fx.zip', buildArchives: ['structure_collapse_fx.zip'],
-              bank: 'collapse', animation: clip.name, loop: clip.loop,
-            });
-            if (!disposed) {
-              const effect = createArchiveEntity('collapse_small', { create }, { name: 'collapse_small', billboard: true }, 'collapse_small');
-              for (const tag of ['FX', 'NOCLICK']) effect.instance.addTag(tag);
-              effect.instance.persists = false;
-              effect.instance.position.copy(position); context.scene.add(effect.display.model); effects.add(effect);
-              effect.instance.sprite.playOnce('collapse_small', () => { release(effect); effects.delete(effect); });
-            }
-            entity.remove();
-          });
+          workable.SetOnFinishCallback(onhammered);
         },
         getDefinition: () => controller.snapshot(),
         update(dt: number) { controller.update(dt); },

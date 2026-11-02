@@ -266,6 +266,8 @@ const sounds = {
   'dontstarve/music/music_epicfight_moonbase_b': { bank: 'music', streams: [26], loop: true },
   // dontstarve.fev sounddefs 264 / 265: zero-based file_index 59 / 60.
   'dontstarve/common/destroy_metal': { bank: 'common', streams: [60], loop: false },
+  // structure_collapse_fx.lua pot → dontstarve.fev sounddef 927, common file_index 266–270.
+  'dontstarve/common/destroy_pot': { bank: 'common', streams: [267, 268, 269, 270, 271], loop: false, volume: .5623413324356079 },
   'dontstarve/common/destroy_stone': { bank: 'common', streams: [61], loop: false },
   'dontstarve/common/destroy_straw': { bank: 'common', streams: [63], loop: false },
   // butterfly.lua OnWorked → FEV sounddef 183 → zero-based file_index 21–23.

@@ -1,13 +1,49 @@
 import definitions from './definitions.json' with { type: 'json' };
-import { WallPlacement, type WallDefinition, type WallHammerContext } from './wallPlacement';
+import { WallPlacement, type WallDefinition } from './wallPlacement';
 import type { WorldContext } from './worldContext';
 import { WALL_SKIN_ARCHIVES, wallWorldPrefab } from './wallSkins';
 import { PlaySound } from './sound';
+import { PrefabInstance } from './prefabInstance';
+import type { SpriteState } from '@dontstarve-web/display';
+import { Health } from '../../componets/src/health';
+import { Combat } from '../../componets/src/combat';
+import { Workable } from '../../componets/src/workable';
+import { MakeObstaclePhysics } from './standardcomponents';
+import { createStructureLootDropper } from './structureLoot';
+import { TILE_SIZE } from './tile';
+import type { Vector3 } from 'three';
 import {
     wall_stone_init_fn, wall_ruins_init_fn, wall_moonrock_init_fn,
     wall_dreadstone_init_fn, wall_hay_init_fn, wall_wood_init_fn,
     type PrefabSkinInitializer,
 } from '@dontstarve-web/animation/prefabskin';
+
+/** DST distance unit in world units. */
+const UNIT = TILE_SIZE / 4;
+/** walls.lua: MakeObstaclePhysics(inst, .5). */
+export const WALL_PHYSICS_RADIUS = .5 * UNIT;
+
+/** walls.lua anims: thresholds on health percent, low to high. */
+const WALL_HEALTH_ANIMS: readonly { threshold: number; anim: string | readonly string[] }[] = [
+    { threshold: 0, anim: 'broken' },
+    { threshold: 0.4, anim: 'onequarter' },
+    { threshold: 0.5, anim: 'half' },
+    { threshold: 0.99, anim: 'threequarter' },
+    { threshold: 1, anim: ['fullA', 'fullB', 'fullC'] },
+];
+
+/** walls.lua resolveanimtoplay; the full variant is stable for a world position in DST units. */
+export function resolveWallAnim(percent: number, position: Vector3): string {
+    for (const { threshold, anim } of WALL_HEALTH_ANIMS) {
+        if (percent > threshold) continue;
+        if (typeof anim === 'string') return anim;
+        const x = Math.floor(position.x / UNIT), z = Math.floor(position.z / UNIT);
+        const q1 = anim.length + 1, q2 = anim.length + 4;
+        const mod = (value: number, divisor: number) => value - Math.floor(value / divisor) * divisor;
+        return anim[mod(mod(mod(x, q1) * (x + 3), q2) + mod(mod(z, q1) * (z + 3), q2), anim.length)];
+    }
+    return 'half';
+}
 
 /**
  * `wall_*` is the placed world prefab, `wall_*_item` the deployable stack.
@@ -45,7 +81,7 @@ const WALL_SKIN_INITIALIZERS: Readonly<Record<string, PrefabSkinInitializer>> = 
     wall_wood: wall_wood_init_fn,
 };
 
-const BASE_WALL_DEFINITIONS: Readonly<Record<WallId, WallDefinition>> = {
+const BASE_WALL_DEFINITIONS: Readonly<Record<WallId, Omit<WallDefinition, 'createPrefab' | 'onplaced'>>> = {
     wall_stone: definitions.walls.wall_stone,
     wall_stone_item: definitions.walls.wall_stone,
     wall_stone_2: definitions.walls.wall_stone_2,
@@ -82,23 +118,80 @@ const WALL_WORK_DEFINITIONS: Readonly<Record<string, Pick<WallDefinition, 'tags'
         maxhealth: 600, playerdamagemod: .25 },
 };
 
-/** walls.lua MakeWallType.onhammered: condition-scaled loot, collapse_small, then inst:Remove(). */
-function onhammered({ definition, health, position, dropLoot, spawnEffect, remove }: WallHammerContext): void {
-    if (definition.hammerLoot) {
-        const num_loots = Math.max(1, Math.floor(definition.hammerLoot.maxCount * health.GetPercent()));
-        dropLoot([{ itemId: definition.hammerLoot.itemId, count: num_loots }]);
+class WallPrefabInstance extends PrefabInstance {
+    readonly wallData: WallDefinition;
+    constructor(prefab: string, sprite: SpriteState, data: WallDefinition) { super(prefab, sprite); this.wallData = data; }
+}
+
+function onhit(inst: WallPrefabInstance): void {
+    const { hammerMaterial } = inst.wallData;
+    if (hammerMaterial) PlaySound(`dontstarve/common/destroy_${hammerMaterial}`, inst.position);
+    if (inst.components.health!.GetPercent() > 0) {
+        const anim = resolveWallAnim(inst.components.health!.GetPercent(), inst.position);
+        inst.sprite.playOnce(`${anim}_hit`);
+        inst.sprite.pushAnimation(anim, false);
     }
-    spawnEffect();
-    PlaySound('dontstarve/common/destroy_smoke', position);
-    if (definition.hammerMaterial) PlaySound(`dontstarve/common/destroy_${definition.hammerMaterial}`, position);
-    remove();
+}
+
+function onhealthchange(inst: WallPrefabInstance, oldPercent: number, newPercent: number): void {
+    const anim = resolveWallAnim(newPercent, inst.position);
+    inst.sprite.setPose(anim === 'half' ? undefined : anim);
+    if (newPercent > 0) {
+        if (oldPercent <= 0) inst.physics.SetActive(true);
+        inst.sprite.playOnce(`${anim}_hit`);
+        inst.sprite.pushAnimation(anim, false);
+    } else {
+        if (oldPercent > 0) inst.physics.SetActive(false);
+        inst.sprite.playOnce(anim);
+    }
+}
+
+/** MakeWallType.onhammered: condition-scaled loot, collapse_small, then Remove. */
+function onhammered(inst: WallPrefabInstance): void {
+    const { hammerLoot, hammerMaterial } = inst.wallData;
+    if (hammerLoot) {
+        const count = Math.max(1, Math.floor(hammerLoot.maxCount * inst.components.health!.GetPercent()));
+        for (let i = 0; i < count; i++) inst.components.lootdropper!.SpawnLootPrefab(hammerLoot.itemId);
+    }
+    inst.worldServices?.fx?.collapse?.('small', inst.position, hammerMaterial);
+    inst.remove();
+}
+
+function initializeWall(instance: PrefabInstance, saved?: { current: number; maximum: number }): void {
+    const inst = instance as WallPrefabInstance;
+    const data = inst.wallData;
+    for (const tag of ['wall', 'noauradamage', 'electricdamageimmune', ...(data.tags ?? [])]) inst.addTag(tag);
+    const health = inst.components.health = new Health(data.maxhealth ?? 100, inst);
+    health.SetCurrentHealth(health.maxhealth * .5);
+    health.canheal = false; health.nofadeout = true;
+    if (data.playerdamagemod !== undefined) health.SetAbsorptionAmountFromPlayer(data.playerdamagemod);
+    if (saved) health.OnLoad({ health: saved.current, maxhealth: saved.maximum });
+    const anim = resolveWallAnim(health.GetPercent(), inst.position);
+    inst.sprite.setPose(anim === 'half' ? undefined : anim);
+    inst.sprite.playOnce(anim);
+    health.ondelta = onhealthchange;
+    const combat = inst.components.combat = new Combat(inst, () => inst.worldServices?.scheduler?.now ?? 0);
+    combat.SetKeepTargetFunction(() => false);
+    combat.onhitfn = onhit;
+    inst.components.lootdropper = createStructureLootDropper(inst);
+    const workable = inst.components.workable = new Workable(inst);
+    workable.SetWorkAction('HAMMER');
+    workable.SetWorkLeft(data.hammerWorkLeft ?? 3);
+    workable.SetOnWorkCallback(onhit);
+    workable.SetOnFinishCallback(onhammered);
+    MakeObstaclePhysics(inst, .5).SetDontRemoveOnSleep(true);
+    inst.physics.SetActive(!health.IsDead());
+    if (inst.worldServices?.physics) inst.bindPhysics(inst.worldServices.physics);
+    inst.onRemove(() => { workable.dispose(); health.dispose(); combat.onhitfn = undefined; });
 }
 
 export const WALL_DEFINITIONS: Readonly<Record<WallId, WallDefinition>> = Object.fromEntries(
-    WALL_IDS.map((id) => [id, {
+    WALL_IDS.map((id): [WallId, WallDefinition] => [id, {
         ...BASE_WALL_DEFINITIONS[id], skinArchives: WALL_SKIN_ARCHIVES[wallWorldPrefab(id)],
         skinInit: WALL_SKIN_INITIALIZERS[wallWorldPrefab(id)],
-        ...WALL_WORK_DEFINITIONS[wallWorldPrefab(id)], onhammered,
+        ...WALL_WORK_DEFINITIONS[wallWorldPrefab(id)],
+        createPrefab: (prefab, sprite) => new WallPrefabInstance(prefab, sprite, WALL_DEFINITIONS[id]),
+        onplaced: initializeWall,
     }]),
 ) as Record<WallId, WallDefinition>;
 

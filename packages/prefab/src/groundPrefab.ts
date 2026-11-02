@@ -66,6 +66,7 @@ export interface GroundItemVisual {
 
 /** The transient fx spawner shared with the rest of the scene. */
 export interface GroundFx {
+  collapse?: import('./world_fx').WorldFx['collapse'];
   prepare(prefab: import('./world_fx').WorldFxPrefab): Promise<void>;
   spawn(prefab: import('./world_fx').WorldFxPrefab, position: THREE.Vector3): void;
 }

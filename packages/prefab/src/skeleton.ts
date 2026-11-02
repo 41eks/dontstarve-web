@@ -3,7 +3,7 @@ import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
 import { SpriteResources, type ArchiveSpriteCommands, type PrefabDisplay } from '@dontstarve-web/display';
-import { createArchiveEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
+import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
 import type { TileStateQuery } from '@dontstarve-web/signals';
 import { watchTileActivity } from './tileActivity';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
@@ -12,7 +12,8 @@ import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
 import { MakeSmallObstaclePhysics } from './standardcomponents';
 import type { SpawnGroundItem } from './groundPrefab';
-import { PlaySound } from './sound';
+import { WorldFx } from './world_fx';
+import type { WorldContext } from './worldContext';
 import catalog from './groundItems.json' with { type: 'json' };
 
 export const SKELETON_PLAYER_ID = 'skeleton_player' as const;
@@ -43,6 +44,7 @@ export interface SkeletonRecord {
 
 export interface SkeletonWorld extends ToolMouseTargetWorld {
   tickingarea?: TileStateQuery;
+  fx?: WorldContext['fx'];
   physics?: CANNON.World;
   /** lootdropper:SpawnLootPrefab when the skeleton is hammered; the loot's display loads its art. */
   spawnGroundItem: SpawnGroundItem;
@@ -69,17 +71,24 @@ export function isSkeletonId(value: string): value is SkeletonId {
   return (SKELETON_IDS as readonly string[]).includes(value);
 }
 
+function onhammered(inst: PrefabInstance<ArchiveSpriteCommands>): void {
+  inst.components.lootdropper!.DropLoot();
+  inst.worldServices?.fx?.collapse?.('small', inst.position, 'rock');
+  inst.remove();
+}
+
 /** prefabs/skeleton.lua: `skeleton`, `skeleton_player` and the `skeleton_notplayer*` creature bones, hammered into boneshards. */
 export class SkeletonManager {
   private readonly displays: PrefabDisplayGroup;
   private readonly world: SkeletonWorld;
   private readonly resources = new SpriteResources();
   private readonly skeletons = new Map<THREE.Group, Skeleton>();
-  private readonly effects = new Set<ReturnType<typeof createArchiveEntity>>();
+  private readonly localFx?: WorldFx;
   private disposed = false;
 
   constructor(scene: THREE.Scene, world: SkeletonWorld) {
     this.displays = new PrefabDisplayGroup(scene); this.world = world;
+    this.localFx = world.fx?.collapse ? undefined : new WorldFx(scene);
   }
 
   spawn(prefab: SkeletonId, position: THREE.Vector3, saved?: SkeletonRecord): THREE.Group {
@@ -105,20 +114,22 @@ export class SkeletonManager {
     for (const tag of skeletonTags(prefab)) instance.addTag(tag);
     const inst = actionEntity(model, prefab);
     // workable: HAMMER, SKELETON_WORK; OnHammered drops the table, plays collapse_small with the rock material and removes it.
-    const workable = new Workable(inst);
+    const workable = new Workable(instance);
     workable.SetWorkAction('HAMMER');
     workable.SetWorkLeft(SKELETON_WORK);
     const skeleton: Skeleton = { model, instance, display, sprite, workable, prefab, anim,
       description: prefab === SKELETON_PLAYER_ID && state?.char ? { char: state.char, playername: state.playername, cause: state.cause, pkname: state.pkname, userid: state.userid } : undefined };
-    const lootdropper = new LootDropper(inst, (itemId, point) => this.world.spawnGroundItem(
+    const lootdropper = new LootDropper(instance, (itemId, point) => this.world.spawnGroundItem(
       { ...catalog.items[itemId as keyof typeof catalog.items], itemId, count: 1 }, new THREE.Vector3(point.x, point.y, point.z), { fling: true }));
     lootdropper.SetChanceLootTable(prefab === SKELETON_PLAYER_ID ? 'skeleton_player' : 'skeleton');
-    workable.SetOnFinishCallback(() => {
-      lootdropper.DropLoot();
-      this.playCollapse(model.position);
-      this.remove(model);
+    instance.worldServices = { fx: this.localFx ?? this.world.fx };
+    workable.SetOnFinishCallback(onhammered);
+    Object.assign(instance.components, { workable, lootdropper });
+    instance.onRemove(() => {
+      this.skeletons.delete(model);
+      skeleton.stopActivity?.();
+      workable.dispose();
     });
-    Object.assign(prefabInstance(model)!.components, { workable, lootdropper });
     new ToolMouseTarget(inst, instance, workable, this.world.handEquipment);
     MakeSmallObstaclePhysics(instance, PHYSICS_RADIUS);
     if (this.world.physics) instance.bindPhysics(this.world.physics);
@@ -137,28 +148,15 @@ export class SkeletonManager {
     model.userData.skeleton = skeleton.description;
   }
 
-  /** structure_collapse_fx.lua: smoke plus the `rock` material sound over the collapse_small animation. */
-  private playCollapse(position: THREE.Vector3): void {
-    const at = position.clone();
-    PlaySound('dontstarve/common/destroy_smoke', at);
-    PlaySound('dontstarve/wilson/rock_break', at);
-    const entity = createArchiveEntity('collapse_small', this.resources.archive({ animationArchive: 'structure_collapse_fx.zip',
-      buildArchives: ['structure_collapse_fx.zip'], bank: 'collapse' }), { name: 'collapse_small', billboard: true }, 'collapse_small',
-    instance => instance.sprite.playOnce('collapse_small', () => { instance.remove(); this.effects.delete(entity); }));
-    entity.instance.position.copy(at); entity.instance.persists = false;
-    for (const tag of ['FX', 'NOCLICK']) entity.instance.addTag(tag);
-    this.displays.mount(entity.display); this.effects.add(entity);
-  }
-
   update(dt: number, _quaternion: THREE.Quaternion): void {
     if (this.disposed) return;
-    // The display group advances the skeletons and their collapse effects.
+    // Each shared display owner advances its declared clips.
     this.displays.update(dt);
+    this.localFx?.update(dt, _quaternion);
   }
 
   get renderEntities() {
-    return [...[...this.skeletons].filter(([, { sprite }]) => sprite.loaded).map(([model]) => model), ...[...this.effects].map(({ display }) => display.model)]
-      .map(object => ({ object, footPosition: object.position, cameraDepth: 0 }));
+    return [...this.displays.renderEntities, ...(this.localFx?.renderEntities ?? [])];
   }
 
 
@@ -177,7 +175,6 @@ export class SkeletonManager {
 
   private remove(model: THREE.Group): void {
     const skeleton = this.skeletons.get(model); if (!skeleton) return;
-    this.skeletons.delete(model); model.userData.removed = true;
     skeleton.stopActivity?.();
     skeleton.workable.dispose();
     skeleton.instance.remove();
@@ -187,8 +184,7 @@ export class SkeletonManager {
     if (this.disposed) return;
     this.disposed = true;
     for (const model of [...this.skeletons.keys()]) this.remove(model);
-    for (const { instance } of this.effects) instance.remove();
-    this.effects.clear();
+    this.localFx?.dispose();
     this.displays.dispose();
     this.resources.dispose();
   }

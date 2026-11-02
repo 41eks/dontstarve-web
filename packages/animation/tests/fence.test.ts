@@ -1,4 +1,6 @@
-import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
+import { SpriteState } from '../../display/src';
+import { ItemEntity } from '../../inventory/src';
+import { PrefabInstance, prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
@@ -35,7 +37,7 @@ function setup(consume: (id: string, skinId?: string) => boolean = () => true) {
   const canvas = new EventTarget();
   const heading = createSignal(45);
   const dropLoot = vi.fn(), dropItem = vi.fn();
-  const spawnItem = vi.fn((state: { itemId: string; count: number }) => ({ ...state }) as never);
+  const spawnItem = vi.fn((state: { itemId: string; count: number }) => new ItemEntity(state));
   const world = { scene: new THREE.Scene(), camera, cameraFacing: createSignal(8), cameraHeading: heading, ground: new THREE.Group(),
     player: new THREE.Group(), physics: new CANNON.World(), renderer: { domElement: canvas },
     createCursorLabel: () => ({ show() {}, hide() {}, update() {} }), dropLoot, dropItem, spawnItem,
@@ -152,7 +154,7 @@ it('previews against the camera, swaps banks as it rotates, places on click and 
 }, 20000);
 
 it('is hammered in three hits for a twig, can be reskinned, and burns into ash without being saved', async () => {
-  const { world, placement, dropLoot, dropItem, spawnItem } = setup();
+  const { world, placement, dropItem, spawnItem } = setup();
   try {
     const model = await placement.spawnFromSave('fence', { id: 'fence:1', transform: { position: [6, 0, 6], rotationY: 0 }, components: { fence: { rot: 2 } } });
     const reskin = placement.reskinTargets[0];
@@ -192,9 +194,23 @@ it('is hammered in three hits for a twig, can be reskinned, and burns into ash w
     expect(workTargets('HAMMER')).toEqual([]);
     const second = await placement.spawnFromSave('fence', { id: 'fence:2', transform: { position: [9, 0, 6], rotationY: 0 }, components: {} });
     const target = workTargets('HAMMER')[0];
-    for (let hit = 0; hit < 3; hit++) { expect(workTargets('HAMMER')).toHaveLength(1); target.work(); }
-    expect(dropLoot).toHaveBeenCalledWith([{ itemId: 'twigs', count: 1 }], expect.any(THREE.Vector3));
+    const instance = lookupPrefabInstance(second)!;
+    await target.display!.artLoaded();
+    const attacker = new PrefabInstance('wilson', new SpriteState({ name: 'idle', held: true }));
+    attacker.attach(new THREE.Group());
+    const worked = vi.fn(); instance.ListenForEvent('worked', worked);
+    const working = vi.fn(); attacker.ListenForEvent('working', working);
+    instance.components.combat!.GetAttacked(attacker, 1);
+    expect(worked).toHaveBeenCalledWith({ worker: attacker, workleft: 2 });
+    expect(working).toHaveBeenCalledWith({ target: instance });
+    expect(instance.sprite.sprite.peek().clip).toMatchObject({ name: 'hit', loop: false });
+    expect(instance.sprite.sprite.peek().queue).toEqual([{ name: 'idle', loop: false }]);
+    for (let hit = 0; hit < 2; hit++) { expect(workTargets('HAMMER')).toHaveLength(1); target.work(); }
+    attacker.remove();
+    expect(spawnItem).toHaveBeenCalledWith({ itemId: 'twigs', count: 1 });
+    expect(dropItem).toHaveBeenCalledWith(expect.objectContaining({ prefab: 'twigs' }), expect.any(THREE.Vector3));
     expect(workTargets('HAMMER')).toEqual([]);
+    await settle();
     expect(second.parent).toBeNull();
     expect(world.physics!.bodies).toHaveLength(0);
   } finally { placement.dispose(); }

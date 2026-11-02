@@ -426,6 +426,8 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 
 墙体与栅栏的 display 使用动画包的 `ResidentSpriteController` 与共享精灵工厂；离开活动区只释放 visual，唤醒后恢复当前朝向、皮肤和姿态，实体 ID、脚点、健康／工作组件、物理登记和存档状态继续保留。栅栏燃烧计时在休眠时继续，到期仍移除实体。调试命令语法、参数与支持的 `c_spawn` / `c_give` ID 不变，`c_save()` 可继续保存休眠实体。
 
+墙、栅栏、骨骸、遗迹复制品、留声机与耕地机的 `HAMMER` 回调在各自 prefab 模块注册到真实实例；组件负责工作量和掉落，拆毁效果交给共享 FX 入口。受击动画按 Lua 声明非循环 `hit → idle`（墙回到当前健康姿态），休眠重建仍保留声明。蜂后巢的工作与再生回调读取实例的组件和计时状态。`c_spawn`、`c_give`、`c_save()` 的语法、支持 ID 和存档字段保持不变。
+
 墙体同样以 `PrefabInstance` 持有皮肤、外观、组件、物理和移除状态，prefab 不再读写模型 `userData`、等待资源或监听相机。`SpriteResources` 缓存静态工厂，`PrefabDisplay` 根据已有的世界相机输入选择正面／斜面图及对应受击动画，并保留绝望石叠层；墙体模型位置直接作为脚点，显示层负责贴图底部对齐。换肤、休眠和唤醒均保留原实例，`c_spawn("wall_stone")`、`c_give("wall_stone_item", 10)`、`c_save()` 的语法、参数、支持 ID 和既有存档字段不变。
 
 墙按 `prefabs/walls.lua` 拥有 `health` 与 `combat` 组件：最大生命为草墙 100、木墙 200、石墙与档案馆石墙 400、铥矿墙 800、月岩墙 600、绝望石墙 800、废料墙 600，新建成的墙以一半生命开始；月岩墙、绝望石墙和废料墙按 `SetAbsorptionAmountFromPlayer(.25)` 减免 25% 玩家伤害。外观由生命 signal 派生：≤0 `broken`、≤40% `onequarter`、≤50% `half`（原有静态图）、<99% `threequarter`、满血按世界坐标稳定选择 `fullA` / `fullB` / `fullC`；受击播放对应的 `*_hit` 再停在该姿态，同时播放材质的 `destroy_*` 音效。生命为 0 的墙显示破损外观，不再是攻击目标，但仍可锤毁（按 0 生命掉落 1 份材料）。墙的当前生命随换肤保留，并以 `health: { current, maximum }` 随 `c_save()` 保存恢复；旧存档缺少该字段时按一半生命加载。

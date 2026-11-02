@@ -87,7 +87,6 @@ export {
 export {
   WallPlacement,
   type WallDefinition,
-  type WallHammerContext,
 } from './wallPlacement';
 export {
   TileMap,

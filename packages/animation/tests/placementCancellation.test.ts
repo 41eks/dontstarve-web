@@ -6,6 +6,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createAnimatedSpriteSource } from '../src/sprite';
 import { createStaticSpriteFactory } from '../src/wallSprite';
 import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
+import { WALL_DEFINITIONS } from '../../prefab/src/walls';
 import { WallPlacement } from '../../prefab/src/wallPlacement';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import type { WorldContext } from '../../prefab/src/worldContext';
@@ -27,7 +28,7 @@ function model() {
   const result = new THREE.Group();
   result.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial()));
   result.userData.animationController = {
-    update: vi.fn(), start: vi.fn(), showImage: vi.fn(), setFacing: vi.fn(), setPose: vi.fn(), setColour: vi.fn(), setOpacity: vi.fn(),
+    update: vi.fn(), start: vi.fn(), holdLastFrame: vi.fn(), pushAnimation: vi.fn(), showImage: vi.fn(), setFacing: vi.fn(), setPose: vi.fn(), setColour: vi.fn(), setOpacity: vi.fn(),
     playOnce: vi.fn((_name: string, complete: () => void) => complete()),
   };
   return result;
@@ -96,7 +97,7 @@ function setup(kind: 'animated' | 'wall') {
       },
     }, consume)
     : new WallPlacement(world, {
-      building: { archive: 'wall.zip', name: 'Wall', buildLabel: 'wall', scale: 1, frontImageIndex: 14, sideImageIndex: 4 },
+      building: { ...WALL_DEFINITIONS.wall_stone, archive: 'wall.zip', name: 'Wall', buildLabel: 'wall', scale: 1, frontImageIndex: 14, sideImageIndex: 4 },
     }, consume);
   const begin = () => placement.begin('building', store.bufferedSkin('building'));
   const click = (button: number) => canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button }));

@@ -73,7 +73,7 @@ export class WorldFx {
   }
 
   /** structure_collapse_fx.lua: shared art, material sounds and an independent animover lifetime. */
-  collapse(size: 'small' | 'big', position: THREE.Vector3, material: 'wood' | 'metal' | 'stone'): void {
+  collapse(size: 'small' | 'big', position: THREE.Vector3, material?: 'wood' | 'metal' | 'stone' | 'rock' | 'straw' | 'pot'): void {
     if (this.disposed) return;
     const animation = size === 'big' ? 'collapse_large' : 'collapse_small';
     const source = this.collapseSprites.archive({ animationArchive: 'structure_collapse_fx.zip',
@@ -90,7 +90,7 @@ export class WorldFx {
     instance.onRemove(() => this.collapses.delete(effect));
     this.displays.mount(display);
     PlaySound('dontstarve/common/destroy_smoke', position);
-    PlaySound(`dontstarve/common/destroy_${material}`, position);
+    if (material) PlaySound(material === 'rock' ? 'dontstarve/wilson/rock_break' : `dontstarve/common/destroy_${material}`, position);
   }
 
   /** Load art ahead of a spawn, so its first frame is drawn at once. */

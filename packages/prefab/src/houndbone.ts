@@ -2,7 +2,7 @@ import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import * as THREE from 'three';
 import { SpriteResources, type ArchiveSpriteCommands, type PrefabDisplay } from '@dontstarve-web/display';
-import { createArchiveEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
+import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
 import type { TileStateQuery } from '@dontstarve-web/signals';
 import { watchTileActivity } from './tileActivity';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
@@ -10,7 +10,8 @@ import { Workable } from '../../componets/src/workable';
 import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
 import type { SpawnGroundItem } from './groundPrefab';
-import { PlaySound } from './sound';
+import { WorldFx } from './world_fx';
+import type { WorldContext } from './worldContext';
 import catalog from './groundItems.json' with { type: 'json' };
 
 export const HOUNDBONE_ID = 'houndbone' as const;
@@ -31,6 +32,7 @@ export interface HoundboneRecord {
 
 export interface HoundboneWorld extends ToolMouseTargetWorld {
   tickingarea?: TileStateQuery;
+  fx?: WorldContext['fx'];
   /** lootdropper:SpawnLootPrefab when the bone is hammered; the loot's display loads its art. */
   spawnGroundItem: SpawnGroundItem;
 }
@@ -45,17 +47,24 @@ interface Houndbone {
   bonetype: number;
 }
 
+function onhammered(inst: PrefabInstance<ArchiveSpriteCommands>): void {
+  inst.components.lootdropper!.DropLoot();
+  inst.worldServices?.fx?.collapse?.('small', inst.position, 'rock');
+  inst.remove();
+}
+
 /** prefabs/houndbone.lua: a piece of hound remains, hammered once into boneshards (and, for piece3, maybe a houndstooth). */
 export class HoundboneManager {
   private readonly displays: PrefabDisplayGroup;
   private readonly world: HoundboneWorld;
   private readonly resources = new SpriteResources(undefined, 'houndbone');
   private readonly bones = new Map<THREE.Group, Houndbone>();
-  private readonly effects = new Set<ReturnType<typeof createArchiveEntity>>();
+  private readonly localFx?: WorldFx;
   private disposed = false;
 
   constructor(scene: THREE.Scene, world: HoundboneWorld) {
     this.displays = new PrefabDisplayGroup(scene); this.world = world;
+    this.localFx = world.fx?.collapse ? undefined : new WorldFx(scene);
   }
 
   spawn(position: THREE.Vector3, saved?: HoundboneRecord): THREE.Group {
@@ -80,22 +89,24 @@ export class HoundboneManager {
     const inst = actionEntity(model, HOUNDBONE_ID);
     inst.addTag('bone');
     // workable: HAMMER, 1 work; onhammered drops the loot, plays collapse_small with the rock material and removes it.
-    const workable = new Workable(inst);
+    const workable = new Workable(instance);
     workable.SetWorkAction('HAMMER');
     workable.SetWorkLeft(1);
     const bone: Houndbone = { model, instance, display, sprite, workable, bonetype };
-    const lootdropper = new LootDropper(inst, (itemId, point) => this.world.spawnGroundItem(
+    const lootdropper = new LootDropper(instance, (itemId, point) => this.world.spawnGroundItem(
       { ...catalog.items[itemId as keyof typeof catalog.items], itemId, count: 1 }, new THREE.Vector3(point.x, point.y, point.z), { fling: true }));
     lootdropper.SetChanceLootTable('houndbone');
     // SetBoneType: the chance loot is rebuilt for each bonetype.
     lootdropper.ClearChanceLoot();
     if (bonetype === TOOTH_BONETYPE) lootdropper.AddChanceLoot('houndstooth', .5);
-    workable.SetOnFinishCallback(() => {
-      lootdropper.DropLoot();
-      this.playCollapse(model.position);
-      this.remove(model);
+    instance.worldServices = { fx: this.localFx ?? this.world.fx };
+    workable.SetOnFinishCallback(onhammered);
+    Object.assign(instance.components, { workable, lootdropper });
+    instance.onRemove(() => {
+      this.bones.delete(model);
+      bone.stopActivity?.();
+      workable.dispose();
     });
-    Object.assign(prefabInstance(model)!.components, { workable, lootdropper });
     new ToolMouseTarget(inst, instance, workable, this.world.handEquipment);
     this.bones.set(model, bone);
     this.displays.mount(prefabDisplay(model)!);
@@ -103,28 +114,15 @@ export class HoundboneManager {
     return model;
   }
 
-  /** structure_collapse_fx.lua: smoke plus the `rock` material sound over the collapse_small animation. */
-  private playCollapse(position: THREE.Vector3): void {
-    const at = position.clone();
-    PlaySound('dontstarve/common/destroy_smoke', at);
-    PlaySound('dontstarve/wilson/rock_break', at);
-    const entity = createArchiveEntity('collapse_small', this.resources.archive({ animationArchive: 'structure_collapse_fx.zip',
-      buildArchives: ['structure_collapse_fx.zip'], bank: 'collapse' }), { name: 'collapse_small', billboard: true }, 'collapse_small',
-    instance => instance.sprite.playOnce('collapse_small', () => { instance.remove(); this.effects.delete(entity); }));
-    entity.instance.position.copy(at); entity.instance.persists = false;
-    for (const tag of ['FX', 'NOCLICK']) entity.instance.addTag(tag);
-    this.displays.mount(entity.display); this.effects.add(entity);
-  }
-
   update(dt: number, _quaternion: THREE.Quaternion): void {
     if (this.disposed) return;
-    // The display group advances the bones and their collapse effects.
+    // Each shared display owner advances its declared clips.
     this.displays.update(dt);
+    this.localFx?.update(dt, _quaternion);
   }
 
   get renderEntities() {
-    return [...[...this.bones].filter(([, { sprite }]) => sprite.loaded).map(([model]) => model), ...[...this.effects].map(({ display }) => display.model)]
-      .map(object => ({ object, footPosition: object.position, cameraDepth: 0 }));
+    return [...this.displays.renderEntities, ...(this.localFx?.renderEntities ?? [])];
   }
 
 
@@ -143,7 +141,6 @@ export class HoundboneManager {
 
   private remove(model: THREE.Group): void {
     const bone = this.bones.get(model); if (!bone) return;
-    this.bones.delete(model); model.userData.removed = true;
     bone.stopActivity?.();
     bone.workable.dispose();
     bone.instance.remove();
@@ -153,8 +150,7 @@ export class HoundboneManager {
     if (this.disposed) return;
     this.disposed = true;
     for (const model of [...this.bones.keys()]) this.remove(model);
-    for (const { instance } of this.effects) instance.remove();
-    this.effects.clear();
+    this.localFx?.dispose();
     this.displays.dispose();
     this.resources.dispose();
   }

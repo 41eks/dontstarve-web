@@ -83,6 +83,7 @@ export class FiniteUsesComponent {
     this.state = createSignal(remaining);
     this.uses = readonlySignal(this.state);
   }
+  GetPercent(): number { return this.percent.peek() ?? 1; }
   get remaining(): number | undefined { return this.state.peek(); }
   set remaining(value: number | undefined) { this.state.set(value); }
   private get maximum(): number | undefined { return this.maximumState.peek(); }
@@ -129,6 +130,7 @@ export class FiniteUsesComponent {
 export class ItemEntity {
   readonly id: string;
   readonly prefab: string;
+  worldServices?: Partial<import('../../prefab/src/worldContext').PrefabWorldContext>;
   readonly components: {
     farmplantable?: import('../../componets/src/farmplantable').FarmPlantable;
     eater?: import('../../componets/src/eater').Eater;
@@ -172,6 +174,8 @@ export class ItemEntity {
     setbonus?: import('../../componets/src/setbonus').SetBonus;
     hauntable?: import('../../componets/src/hauntable').Hauntable;
     useableitem?: import('../../componets/src/useableitem').UseableItem;
+    lootdropper?: import('../../componets/src/lootdropper').LootDropper;
+    phonograph?: import('../../prefab/src/phonograph').PhonographController;
     machine?: import('../../componets/src/machine').Machine;
   };
   readonly signals: InventoryItemSignals;

@@ -1,6 +1,6 @@
 import recipeData from '@dontstarve-web/animation/recipes.json';
-import { LootDropper, type LootRecipe } from '../../componets/src/lootdropper';
-import type { PrefabInstance } from './prefabInstance';
+import { LootDropper, type LootRecipe, type LootInst } from '../../componets/src/lootdropper';
+import type { PrefabWorldContext } from './worldContext';
 
 /** AllRecipes includes both crafting recipes and DeconstructRecipe returnIngredients. */
 const recipes = new Map<string, LootRecipe>([
@@ -11,7 +11,7 @@ const recipes = new Map<string, LootRecipe>([
 ]);
 
 /** Bind lootdropper to the world's item spawning services; loot rules stay in the component. */
-export function createStructureLootDropper(inst: PrefabInstance): LootDropper {
+export function createStructureLootDropper(inst: LootInst & { worldServices?: Partial<PrefabWorldContext> }): LootDropper {
   return new LootDropper(inst, (prefab, position, skinId) => {
     const world = inst.worldServices;
     if (world?.spawnItem && world.dropItem) {
@@ -19,7 +19,7 @@ export function createStructureLootDropper(inst: PrefabInstance): LootDropper {
       world.dropItem(item, position);
       return item;
     }
-    world?.dropLoot?.([{ itemId: prefab, count: 1 }], position);
+    world?.dropLoot?.([{ itemId: prefab, count: 1, ...(skinId ? { skinId } : {}) }], position);
     return undefined;
   }, recipes);
 }

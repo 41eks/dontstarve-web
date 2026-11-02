@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { WallsPlacement } from '../../prefab/src/walls';
-import { WALL_PHYSICS_RADIUS } from '../../prefab/src/wallPlacement';
+import { WALL_PHYSICS_RADIUS } from '../../prefab/src/walls';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import type { Health } from '../../componets/src/health';
 import { workTargets } from './workTargets';
