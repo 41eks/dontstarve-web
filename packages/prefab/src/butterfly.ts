@@ -4,7 +4,7 @@ import { SpriteResources } from '@dontstarve-web/display';
 import type { GroundItemDefinition, GroundItemFactory, GroundPrefabContext } from './groundPrefab';
 import { ItemEntity } from '@dontstarve-web/inventory';
 import { TOTAL_DAY_TIME } from '../../componets/src/perishable';
-import { configurePlantableEntity } from './plantables';
+import { Deployable } from '../../componets/src/deployable';
 import { BufferedAction } from '../../stategraphs/src/bufferedaction';
 import { ButterflyStateGraph, type ButterflyStateInst, type ButterflyStateName } from '../../stategraphs/src/SGbutterfly';
 import { LocoMotor, type LocoMotorInst, type LocoMotorPoint } from '../../componets/src/locomotor';
@@ -37,7 +37,26 @@ export function configureButterflyEntity(entity: ItemEntity): void {
   entity.components.inventoryitem.canbepickedupalive = true;
   entity.addTag('butterfly');
   entity.addTag('catchable');
-  configurePlantableEntity(entity);
+  if (!entity.components.deployable) {
+    entity.addTag('deployedplant');
+    entity.components.deployable = entity.component('deployable', () => entity.prefab === MOONBUTTERFLY_ID
+      ? new Deployable(entity, (point, _deployer, map) => {
+        // moonbutterfly.lua OnDeploy.
+        if (!map.SpawnPrefab('moonbutterfly_sapling', point)) return false;
+        PlaySound('dontstarve/wilson/plant_tree', point);
+        entity.remove();
+        return true;
+      }, { mode: 'PLANT', spacing: 3.2 * (TILE_SIZE / 4), placer: { bank: 'baby_moon_tree', build: 'baby_moon_tree', animation: 'idle' } })
+      : new Deployable(entity, (point, deployer, map) => {
+        // butterfly.lua OnDeploy.
+        const flower = map.SpawnPrefab('planted_flower', point);
+        if (!flower) return false;
+        flower.PushEvent('growfrombutterfly');
+        entity.remove();
+        PlaySound('dontstarve/common/plant', deployer.position);
+        return true;
+      }, { mode: 'PLANT', spacing: .75 * (TILE_SIZE / 4), placer: { bank: 'flowers', build: 'flowers', animation: 'f1' } }));
+  }
   if (entity.prefab === BUTTERFLY_ID) {
     entity.addTag('small_livestock');
     entity.addTag('show_spoilage');

@@ -6,6 +6,7 @@ import { configureRockAvocadoFruitEntity } from '../packages/prefab/src/rock_avo
 import { configureButterflyEntity, configureMoonButterflyEntity } from '../packages/prefab/src/butterfly';
 import { configurePlantableEntity } from '@dontstarve-web/prefab/plantables';
 import { configureDockKitEntity } from '@dontstarve-web/prefab/dock_kit';
+import { configureMarbleBeanEntity } from '@dontstarve-web/prefab/marblebean_sapling';
 import { configureFarmPlowItemEntity } from '@dontstarve-web/prefab/farm_plow';
 import { BATHBOMB_ID, configureBathbombEntity } from '../packages/prefab/src/bathbomb';
 import { configureFertilizerEntity, FERTILIZER_CYCLES } from '../packages/prefab/src/fertilizers';
@@ -47,7 +48,7 @@ export interface InventoryItemDefinition {
 
 function withTradable(itemId: string, configure: ((entity: ItemEntity) => void) | undefined): ((entity: ItemEntity) => void) | undefined {
   return entity => {
-    configure?.(entity); configureFoodEntity(entity); configureMoleBaitEntity(entity); configurePlantableEntity(entity); configureRockAvocadoFruitEntity(entity); configureDockKitEntity(entity); configureFarmPlowItemEntity(entity);
+    configure?.(entity); configureFoodEntity(entity); configureMoleBaitEntity(entity); configurePlantableEntity(entity); configureRockAvocadoFruitEntity(entity); configureDockKitEntity(entity); configureFarmPlowItemEntity(entity); configureMarbleBeanEntity(entity);
     if (Object.hasOwn(FERTILIZER_CYCLES, itemId)) configureFertilizerEntity(entity);
     if (itemId === BATHBOMB_ID) configureBathbombEntity(entity);
     if (hasTradableGoldValue(itemId)) configureTradableEntity(entity);

@@ -8,6 +8,11 @@ import { watchTileActivity } from './tileActivity';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Timer, type NamedTimerSave } from '../../componets/src/timer';
 import { Workable } from '../../componets/src/workable';
+import { Deployable } from '../../componets/src/deployable';
+import type { ItemEntity } from '@dontstarve-web/inventory';
+import { configureBurnableItemEntity } from './burnableItems';
+import { PlaySound } from './sound';
+import { TILE_SIZE } from './tile';
 import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
 import type { SpawnGroundItem } from './groundPrefab';
@@ -39,6 +44,19 @@ export interface MarbleBeanSaplingWorld extends ToolMouseTargetWorld {
   spawnGroundItem: SpawnGroundItem;
 }
 
+/** marblebean.lua: deployable(PLANT) with default spacing and its ondeploy; the sapling starts growing as it spawns. */
+export function configureMarbleBeanEntity(entity: ItemEntity): void {
+  if (entity.prefab !== 'marblebean' || entity.components.deployable) return;
+  configureBurnableItemEntity(entity);
+  entity.components.deployable = entity.component('deployable', () => new Deployable(entity, (point, _deployer, map) => {
+    if (!map.SpawnPrefab(MARBLEBEAN_SAPLING_ID, point)) return false;
+    PlaySound('dontstarve/wilson/plant_tree', point);
+    entity.remove();
+    return true;
+    // MakePlacer("marblebean_placer", "marblebean", "marblebean", "idle_planted").
+  }, { mode: 'PLANT', spacing: 2 * (TILE_SIZE / 4), placer: { bank: 'marblebean', build: 'marblebean', animationArchive: 'marblebean.zip', animation: 'idle_planted' } }));
+}
+
 /** planted_tree.lua sapling_fn("marblebean", ...): a fireproof sapling with a `grow` timer and a DIG workable. */
 export class MarbleBeanSaplingManager {
   private readonly displays: PrefabDisplayGroup;
@@ -53,12 +71,6 @@ export class MarbleBeanSaplingManager {
     this.displays = new PrefabDisplayGroup(scene); this.world = world;
     this.scheduler = world.scheduler ?? new GameTimeScheduler();
     this.ownsScheduler = !world.scheduler;
-  }
-
-  /** marblebean.lua ondeploy: spawn the sapling and StartGrowing at the planted point; the display loads the art. */
-  transplant(position: THREE.Vector3): boolean {
-    this.spawn(position);
-    return true;
   }
 
   spawn(position: THREE.Vector3, saved?: MarbleBeanSaplingRecord): THREE.Group {

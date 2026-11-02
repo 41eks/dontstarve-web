@@ -3,7 +3,7 @@ import type { ResidentEntity } from '@dontstarve-web/animation/residentSprite';
 import type { SavedEntity } from './save/types';
 import type { PrefabDefinition } from './prefabDefinitions';
 import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
-import type { PrefabInstance } from '@dontstarve-web/prefab/prefabInstance';
+import { prefabInstance, type PrefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import type { DisplayDrivenPrefabManager } from '@dontstarve-web/prefab/manager';
 
 /** What a restore handler hands back for the saved id: the logical entity, or for older managers its model. */
@@ -32,6 +32,8 @@ export interface EntityRegistration<PrefabId extends string> {
   restore?: (prefabId: PrefabId, record: SavedEntity) => Promise<RestoredEntity> | RestoredEntity;
   /** Only these IDs are exposed through c_spawn, including any aliases. */
   debugSpawn?: (prefabId: PrefabId) => unknown;
+  /** SpawnPrefab(id, skin) then Transform:SetPosition for the source prefabs this family owns, synchronously. */
+  spawnPrefab?: Readonly<Record<string, (position: THREE.Vector3, skinId?: string) => THREE.Object3D | undefined>>;
   exportRecords: () => readonly EntityRecord[];
   beforePhysics?: (dt: number) => void;
   update?: (dt: number, cameraQuaternion: THREE.Quaternion) => void;
@@ -49,6 +51,7 @@ export class EntityRegistry {
   readonly byEntityId = new Map<string, RestoredEntity>();
   private readonly restorers = new Map<string, (record: SavedEntity) => ReturnType<NonNullable<EntityRegistration<string>['restore']>>>();
   private readonly creators = new Map<string, () => unknown>();
+  private readonly spawners = new Map<string, NonNullable<EntityRegistration<string>['spawnPrefab']>[string]>();
   private readonly registrations: (EntityRegistration<string> & { definition: PrefabDefinition })[] = [];
   private readonly displays = new Set<PrefabDisplay>();
   private readonly lifecycleOrder: ReadonlyMap<PrefabDefinition, number>;
@@ -74,6 +77,10 @@ export class EntityRegistry {
     }
     for (const id of savedIds) this.restorers.set(id, (record) => registration.restore!(id, record));
     for (const id of debugIds) this.creators.set(id, () => registration.debugSpawn!(id));
+    for (const [id, spawn] of Object.entries(registration.spawnPrefab ?? {})) {
+      if (this.spawners.has(id)) throw new Error('Duplicate entity registration');
+      this.spawners.set(id, spawn);
+    }
     // Prefab IDs have been bound above; lifecycle callbacks no longer accept IDs.
     this.registrations.push({ ...registration, definition, restore: undefined, debugSpawn: undefined });
     this.registrations.sort((a, b) =>
@@ -102,6 +109,14 @@ export class EntityRegistry {
     for (const definition of definitions) {
       if (!bound.has(definition)) throw new Error(`Unbound prefab definition: ${definition.prefabIds.join(', ') || 'transient effects'}`);
     }
+  }
+
+  /** SpawnPrefab for game code: the logical inst exists now and its display loads the art. */
+  SpawnPrefab(prefabId: string, position: THREE.Vector3, skinId?: string): PrefabInstance | undefined {
+    const spawn = this.spawners.get(prefabId);
+    if (!spawn) throw new Error(`No SpawnPrefab registered for ${prefabId}`);
+    const model = spawn(position, skinId);
+    return model && prefabInstance(model);
   }
 
   async spawn(prefabId: string): Promise<boolean> {

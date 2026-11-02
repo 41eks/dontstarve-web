@@ -4,7 +4,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { GrassManager } from '../../prefab/src/grass';
 import { createDeployMap } from '../../prefab/src/deployMap';
 import { placementEntities } from '../../prefab/src/placementEntities';
-import { setModelTag } from '../../prefab/src/prefabInstance';
+import { prefabInstance, setModelTag } from '../../prefab/src/prefabInstance';
 import { createInventoryStore } from '../../../src/inventory';
 import { cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { createSignal } from '../../signals/src';
@@ -18,6 +18,8 @@ import { deserializeSave } from '../../../src/save/deserialize';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { bindTestWorld, drawn, plantInstance } from './worldContentFixture';
 import { deployActor, landTurf } from './deployActor';
+import { EntityRegistry } from '../../../src/entityRegistry';
+import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { workTargets } from './workTargets';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import type { WorldContext } from '../../prefab/src/worldContext';
@@ -57,7 +59,7 @@ async function setup(item: string, ground: THREE.Vector3) {
 function grassActor(s: Awaited<ReturnType<typeof setup>>) {
   const grasses = new GrassManager(s.scene, '/dst/data/anim', { spawnGroundItem: vi.fn() as never });
   const map = createDeployMap({ turf: landTurf({ canDeployPlantAtPoint: (point: THREE.Vector3) => point.x >= 0 }),
-    blockers: placementEntities(s.scene), plants: { grass: grasses } });
+    blockers: placementEntities(s.scene), spawnPrefab: (_prefab, position) => prefabInstance(grasses.spawn(position)) as never });
   return { grasses, actor: deployActor(s.world, s.inventory, map) };
 }
 
@@ -125,6 +127,20 @@ it('an entity under the mouse replaces the point deploy unless it does not catch
   } finally { actor.controller.dispose(); grasses.dispose(); s.dispose(); }
 });
 
+it('the registry spawns source prefab IDs for ondeploy and rejects unregistered ones', async () => {
+  const s = await setup('dug_grass', new THREE.Vector3(2, 0, 0));
+  const grasses = new GrassManager(s.scene, '/dst/data/anim', { spawnGroundItem: vi.fn() as never });
+  const registry = new EntityRegistry();
+  registry.register(PREFAB_DEFINITIONS.grasses, { restore: () => new THREE.Group(), debugSpawn: () => {}, exportRecords: () => [], dispose: () => {},
+    spawnPrefab: { grass: position => grasses.spawn(position) } });
+  try {
+    const inst = registry.SpawnPrefab('grass', new THREE.Vector3(6, 0, 6))!;
+    expect(inst.prefab).toBe('grass');
+    expect(inst.position.toArray()).toEqual([6, 0, 6]);
+    expect(() => registry.SpawnPrefab('marsh_bush', new THREE.Vector3())).toThrow('marsh_bush');
+  } finally { grasses.dispose(); s.dispose(); }
+});
+
 it('an active build placer keeps the right click and the held item', async () => {
   const s = await setup('dug_grass', new THREE.Vector3(-1, 0, 0)), { grasses, actor } = grassActor(s);
   try {
@@ -138,7 +154,7 @@ it('turfs share the DEPLOY path: the raw click is walked to, and a tile lost on 
   const s = await setup('turf_road', new THREE.Vector3(7, 0, 8));
   let dirt = true;
   const setTile = vi.fn();
-  const map = createDeployMap({ blockers: placementEntities(s.scene), plants: {},
+  const map = createDeployMap({ blockers: placementEntities(s.scene),
     turf: landTurf({ canPlaceTurf: () => dirt, setTile, tileCenter: () => ({ x: 6, z: 6 }) }) });
   const actor = deployActor(s.world, s.inventory, map);
   try {

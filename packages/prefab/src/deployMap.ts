@@ -1,9 +1,8 @@
 import type * as THREE from 'three';
 import type { ItemEntity } from '@dontstarve-web/inventory';
-import type { DeployInst, DeployMap } from '../../componets/src/deployable';
+import type { DeployMap } from '../../componets/src/deployable';
 import { createDockWorld } from './dock_kit';
 import { ignoresPlacement, type PlacementQuery } from './placementEntities';
-import { PLANTABLES } from './plantables';
 import { TILE_SIZE } from './tile';
 import { isLandTile, type TurfMap } from './turfMap';
 import type { WorldContext } from './worldContext';
@@ -13,11 +12,11 @@ export interface DeployPlacerMap extends DeployMap {
   tileCenter(point: THREE.Vector3): { x: number; z: number };
 }
 
-/** The Map:CanPlaceTurfAtPoint / CanDeployPlantAtPoint rules and SpawnPrefab targets deployable items use. */
-export function createDeployMap({ turf, blockers, plants, farm, worldEvents }: {
+/** The Map:CanPlaceTurfAtPoint / CanDeployPlantAtPoint rules and the SpawnPrefab deployable items use. */
+export function createDeployMap({ turf, blockers, spawnPrefab, farm, worldEvents }: {
   turf: TurfMap;
   blockers: PlacementQuery;
-  plants: Readonly<Record<string, { transplant(position: THREE.Vector3, skinId?: string): boolean }>>;
+  spawnPrefab?: DeployMap['SpawnPrefab'];
   farm?: { canDeploy(point: THREE.Vector3): boolean; deploy(point: THREE.Vector3, item: ItemEntity): boolean };
   worldEvents?: WorldContext['worldEvents'];
 }): DeployPlacerMap {
@@ -39,7 +38,7 @@ export function createDeployMap({ turf, blockers, plants, farm, worldEvents }: {
         : inventoryRadius !== undefined ? Math.min(spacing, inventoryRadius + spacing / 2) : spacing;
       return blocker.position.distanceToSquared(point) < radius ** 2;
     }),
-    deployPlant: (point, inst: DeployInst & { skinId?: string }) => plants[PLANTABLES[inst.prefab].prefab].transplant(point, inst.skinId),
+    SpawnPrefab: (prefab, position, skinId) => spawnPrefab?.(prefab, position, skinId),
     itemPlanted: (doer, pos) => worldEvents?.emit('itemplanted', { doer, pos }),
   };
 }

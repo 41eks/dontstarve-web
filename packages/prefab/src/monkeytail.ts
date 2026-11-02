@@ -1,5 +1,3 @@
-import { prefabInstance } from './prefabInstance';
-import { Pickable } from './components/pickable';
 import type * as THREE from 'three';
 import { PickablePlantManager, type PickablePlantDefinition, type PickablePlantRecord } from './pickablePlant';
 
@@ -20,11 +18,6 @@ export const MONKEYTAIL_DEFINITION: PickablePlantDefinition = {
 export class MonkeytailManager extends PickablePlantManager {
   spawn(position: THREE.Vector3, saved?: PickablePlantRecord): THREE.Group {
     return this.spawnPlant(MONKEYTAIL_DEFINITION, position, saved);
-  }
-  /** dug_monkeytail ondeploy: SpawnPrefab, then OnTransplant; the display loads the art. */
-  transplant(position: THREE.Vector3): boolean {
-    (prefabInstance(this.spawnPlant(MONKEYTAIL_DEFINITION, position))!.components.pickable as Pickable).OnTransplant();
-    return true;
   }
   exportRecords(): PickablePlantRecord[] { return this.exportPlants().map(({ record }) => record); }
 }

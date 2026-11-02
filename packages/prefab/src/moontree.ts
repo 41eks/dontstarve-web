@@ -543,12 +543,6 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
       transform: { position: entity.position.toArray(), rotationY: 0 }, components: exportState(entity) })),
     spawn,
     spawnSapling,
-    /** moonbutterfly ondeploy: SpawnPrefab("moonbutterfly_sapling"); its display loads the art. */
-    transplant(position: THREE.Vector3) {
-      if (disposed) return false;
-      spawnSapling(position);
-      return true;
-    },
     exportSaplings: () => [...saplings].map(([model, { timer, entity }]) => ({
       id: String(entity.instance.entityId), transform: { position: model.position.toArray(), rotationY: 0 },
       components: { saplingTimer: timer.OnSave()! },

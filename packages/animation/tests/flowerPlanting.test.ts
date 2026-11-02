@@ -51,7 +51,7 @@ function setup(random = () => .5) {
   const inventory = createInventoryStore([]), registry = new EntityRegistry();
   registry.register(PREFAB_DEFINITIONS.flowers, {
     restore: (_, record) => flowers.spawnFromSave(record.id, record.components.flower!.animation, new THREE.Vector3(...record.transform.position), record.components.flower!.planted === true),
-    debugSpawn: async () => { flowers.transplant(player.position); },
+    debugSpawn: async () => { flowers.spawnPlanted(player.position); },
     exportRecords: () => flowers.exportRecords().map(record => ({ prefabId: 'flower', record })),
     dispose: () => flowers.dispose(),
   });
@@ -68,15 +68,15 @@ it('buffers planting at frame six, preserves cancelled butterflies and saves the
     expect((await executeDebugCommand('c_give("butterfly",2)', s.inventory)).ok).toBe(true);
     s.inventory.getEntity(inventorySlotAddress(0))!.setFreshnessPercent(.6);
     expect(s.inventory.transfer(inventorySlotAddress(0), cursorSlotAddress(), 2)).toBe(true);
-    const transplant = vi.fn((position: THREE.Vector3) => s.flowers.transplant(position));
+    const spawnPrefab = vi.fn((_prefab: string, position: THREE.Vector3) => prefabInstance(s.flowers.spawnPlanted(position)!) as never);
     const point = new THREE.Vector3(2, 0, 0);
     vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(point);
-    actor = deployActor(s.world, s.inventory, createDeployMap({ turf: landTurf({ canDeployPlantAtPoint: (point: THREE.Vector3) => point.x >= 0 }), blockers: placementEntities(s.world.scene), plants: { planted_flower: { transplant } } }));
+    actor = deployActor(s.world, s.inventory, createDeployMap({ turf: landTurf({ canDeployPlantAtPoint: (point: THREE.Vector3) => point.x >= 0 }), blockers: placementEntities(s.world.scene), spawnPrefab }));
     const { graph } = actor;
     expect(actor.canDeploy(new THREE.Vector3(-1, 0, 0))).toBe(false);
     expect(actor.deploy(point)).toBe(true);
     graph.update(5 / 30); actor.controller.cancel(); graph.update(1);
-    expect(transplant).not.toHaveBeenCalled();
+    expect(spawnPrefab).not.toHaveBeenCalled();
     expect(s.inventory.get(cursorSlotAddress())?.count).toBe(2);
     expect(s.flowers.exportRecords()).toEqual([]);
     expect(actor.deploy(point)).toBe(true);
