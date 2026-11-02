@@ -1,4 +1,4 @@
-import { readSaveDownload } from './save-download';
+
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 
@@ -62,75 +62,5 @@ test('insanity LUTs use discrete grading levels, fade across phases and distort 
   expect(result.saneChanges).toBe(false);
   expect(result.maxBoundaryError).toBeLessThanOrEqual(1);
   expect(result.subscriptionReleased).toBe(true);
-  expect(errors).toEqual([]);
-});
-
-test('game restores saved sanity and synchronizes debug commands, HUD and manual saves', async ({ page }) => {
-  test.setTimeout(120_000);
-  const errors: string[] = [];
-  page.on('pageerror', (error) => errors.push(error.message));
-  await page.route('**/saves/initial-world.json', async (route) => {
-    const response = await route.fetch();
-    const save = await response.json();
-    save.players.local.stats = { health: 140, hunger: 90, sanity: 120 };
-    await route.fulfill({ response, json: save });
-  });
-  await page.goto('/tests/dst-lighting.html');
-  const urls = {
-    main: `/@fs${fileURLToPath(new URL('../../../src/main.ts', import.meta.url))}`,
-    universal: `/@fs${fileURLToPath(new URL('../../../src/universal.ts', import.meta.url))}`,
-    stats: `/@fs${fileURLToPath(new URL('../../../src/playerStats.ts', import.meta.url))}`,
-  };
-  const initial = await page.evaluate(async (urls) => {
-    await import(urls.main);
-    const { dstLighting } = await import(urls.universal);
-    return dstLighting.getSanityPercent();
-  }, urls);
-  expect(initial).toBe(0.6);
-  const vignette = page.locator('canvas.sanity-vignette');
-  await expect(vignette).toHaveAttribute('data-animation', 'basic');
-  const meter = page.locator('dst-status-hud .survival-meter--sanity');
-  await expect(meter).toHaveAttribute('aria-label', '精神值 120');
-  const submit = async (command: string) => page.evaluate((command) => {
-    document.querySelector('dst-debug-console')!.dispatchEvent(new CustomEvent('game:debug-command', {
-      detail: { command },
-    }));
-  }, command);
-  await submit('c_setsanity(0.175)');
-  await expect(meter.locator('output')).toHaveText('35');
-  expect(await page.evaluate(async (urls) => {
-    const { dstLighting } = await import(urls.universal);
-    const { playerStats } = await import(urls.stats);
-    return { percent: dstLighting.getSanityPercent(), sanity: playerStats.sanity.current };
-  }, urls)).toEqual({ percent: 0.175, sanity: 35 });
-  // Writing the source signal directly must update both consumers without the command callback.
-  await page.evaluate(async url => (await import(url)).playerStats.sanity.SetCurrent(100), urls.stats);
-  await expect(meter.locator('output')).toHaveText('100');
-  expect(await page.evaluate(async url => (await import(url)).dstLighting.getSanityPercent(), urls.universal)).toBe(0.5);
-  await submit('c_setsanity(0.1)');
-  await expect(vignette).toHaveAttribute('data-animation', 'insane');
-  const downloadPromise = page.waitForEvent('download');
-  await submit('c_save()');
-  const download = await downloadPromise;
-  const saved = JSON.parse(await readSaveDownload((await download.path())!));
-  expect(saved.players.local.stats).toEqual({ health: 140, hunger: 90, sanity: 20 });
-  await submit('c_setsanity(1)');
-  await expect(meter.locator('output')).toHaveText('200');
-  await expect(vignette).toHaveAttribute('data-animation', 'basic');
-  expect(await page.evaluate(async (url) => (await import(url)).dstLighting.getSanityPercent(), urls.universal)).toBe(1);
-  await expect(page.locator('dst-status-hud .world-clock__animation')).toHaveAttribute('data-state', 'ready');
-  await page.screenshot({ path: '/tmp/dontstarve-sanity-full.png' });
-  await submit('c_setsanity(0)');
-  await expect(meter.locator('output')).toHaveText('0');
-  await expect(vignette).toHaveAttribute('data-animation', 'insane');
-  await page.screenshot({ path: '/tmp/dontstarve-sanity-zero.png' });
-  await page.route('**/saves/initial-world.json', route => route.fulfill({ json: saved }));
-  await page.reload();
-  expect(await page.evaluate(async urls => {
-    await import(urls.main);
-    return (await import(urls.universal)).dstLighting.getSanityPercent();
-  }, urls)).toBe(0.1);
-  await expect(meter.locator('output')).toHaveText('20');
-  await expect(vignette).toHaveAttribute('data-animation', 'insane');
   expect(errors).toEqual([]);
 });

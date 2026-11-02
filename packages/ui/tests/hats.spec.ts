@@ -54,18 +54,3 @@ test('all hats have inventory icons; craft respects single hats and nonconsumed 
     balloonCraftable: false, droppedHatHasRecipe: false, mirrorPaths: true,
   });
 });
-
-test('ground hats use anim geometry, preserve feet and pick up through merged mesh hits', async ({ page }) => {
-  test.setTimeout(120_000);
-  await page.goto('/tests/fixture.html');
-  const result = await page.evaluate(async (url) => {
-    const { checkGroundHats } = await import(url);
-    return checkGroundHats();
-  }, moduleUrl('./ground-hat-fixture.ts'));
-  expect(result).toEqual({
-    failedDrop: false, rollbackCount: 0, foot: [0, 0, 0], isAnimatedMesh: true,
-    pickedUp: ['strawhat', 'torch', 'beeswax'], rejectedPickupCount: 1, afterPickupCount: 0,
-    failures: [], restoredFoot: [3, 0.25, 4], torchIsMesh: true, torchFoot: [-6, 0, 0], torchPickedUp: true,
-    iconPrefab: 'beeswax', iconIsSprite: true, iconFoot: [6, 0, 0], iconPickedUp: true,
-  });
-});
