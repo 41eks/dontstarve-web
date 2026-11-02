@@ -11,6 +11,7 @@ import { HAT_ITEM_SPECS } from '@dontstarve-web/prefab/hats';
 import { TURF_ITEM_SPECS } from '@dontstarve-web/prefab/groundItems';
 import { configureLightbulbEntity, LIGHTBULB_ID } from '@dontstarve-web/prefab/lightbulb';
 import { RECORD_ITEM_SPECS } from '@dontstarve-web/prefab/records';
+import { PHONOGRAPH_ID, configurePhonographEntity } from '@dontstarve-web/prefab/phonograph';
 import { BOOK_ITEM_SPECS } from '@dontstarve-web/prefab/books';
 import { BURNABLE_ITEM_DEFINITIONS, configureBurnableItemEntity } from '@dontstarve-web/prefab/burnableItems';
 import { TORCH_FUEL } from '@dontstarve-web/prefab/torch';
@@ -70,6 +71,7 @@ export const INVENTORY_ITEM_SPECS: Readonly<Record<string, InventoryItemSpec>> =
         : itemId === HEATROCK_ID ? configureHeatRockEntity
         : itemId === RAZOR_ID ? configureRazorEntity
         : itemId === PANFLUTE_ID ? configurePanfluteEntity
+        : itemId === PHONOGRAPH_ID ? configurePhonographEntity
         : itemId === 'moonrocknugget' ? configureMoonrockNugget
         : itemId === ICE_ID ? configureIceEntity
         : Object.hasOwn(BURNABLE_ITEM_DEFINITIONS, itemId) ? configureBurnableItemEntity

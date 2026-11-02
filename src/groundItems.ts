@@ -9,19 +9,15 @@ import { isSpriteEntityRendered } from '@dontstarve-web/animation/renderOrder';
 import { isHatId, HAT_DEFINITIONS } from '@dontstarve-web/prefab/hats';
 import { reskinTarget } from '@dontstarve-web/prefab/reskin_tool';
 import type { ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
-import { GROUND_ART_DEFINITIONS, GROUND_ITEM_DEFINITIONS } from '@dontstarve-web/prefab/groundItems';
-import { createPrefabEntity, modelHasTag, prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
+import { GROUND_ART_DEFINITIONS } from '@dontstarve-web/prefab/groundItems';
+import { createPrefabEntity, modelHasTag } from '@dontstarve-web/prefab/prefabInstance';
 import { newEntityId } from '@dontstarve-web/prefab/saveRecord';
 import type { BernieWorld } from '@dontstarve-web/prefab/bernie';
 import type { ButterflyWorld } from '@dontstarve-web/prefab/butterfly';
 import { GroundPrefabRegistry } from '@dontstarve-web/prefab/groundPrefabRegistry';
 import type { GroundItemDefinition, GroundItemVisual, GroundPrefabOptions, GroundSpawnOptions } from '@dontstarve-web/prefab/groundPrefab';
 import type { FirefliesWorld } from '@dontstarve-web/prefab/fireflies';
-import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
-import { isPlayerNearby } from '@dontstarve-web/prefab/playerProximity';
 import { LootFling, type LootLaunch } from '@dontstarve-web/prefab/lootFling';
-import { PHONOGRAPH_ID } from '@dontstarve-web/prefab/phonograph';
-import { RECORD_ID, RECORD_SONGS, isPhonographRecord } from '@dontstarve-web/prefab/records';
 import type { SavedEntity } from './save/types';
 import { actionEntity, disposeActionEntity, findActionEntity } from '../packages/prefab/src/actionEntity';
 import type { GameTimeScheduler } from '../packages/componets/src/gameTimeScheduler';
@@ -65,19 +61,13 @@ export class GroundItemManager {
   private readonly inventory: InventoryStore;
   private readonly stopDrops: () => void;
   private readonly stopSpawnAsh?: () => void;
-  private readonly pointer: PointerRaycaster;
-  private readonly mouseActions?: PlayerActionPicker;
-  private readonly renderer: THREE.WebGLRenderer;
   private readonly displays: PrefabDisplayGroup;
-  private readonly player: THREE.Object3D;
   private disposed = false;
-  private readonly inserting = new Set<GroundItemRecord>();
-  private recordSource?: () => { entity: ItemEntity; take(): boolean } | undefined;
 
   constructor(
     scene: THREE.Scene,
-    camera: THREE.Camera,
-    renderer: THREE.WebGLRenderer,
+    _camera: THREE.Camera,
+    _renderer: THREE.WebGLRenderer,
     archiveUrl: string,
     inventory: InventoryStore,
     animationBaseUrl: string,
@@ -90,26 +80,21 @@ export class GroundItemManager {
     fx?: GroundPrefabOptions['fx'],
     moleWorld?: GroundPrefabOptions['moleWorld'],
     worldEvents?: WorldEventEmitter,
-    mouseActions?: PlayerActionPicker,
+    _mouseActions?: PlayerActionPicker,
     lightflierWorld?: GroundPrefabOptions['lightflierWorld'],
     tickingarea?: GroundPrefabOptions['tickingarea'],
     physics?: GroundPrefabOptions['physics'],
   ) {
-    this.mouseActions = mouseActions;
     this.entities = entities;
     this.displays = new PrefabDisplayGroup(scene);
-    this.renderer = renderer;
-    this.pointer = new PointerRaycaster({ camera, renderer });
     this.archiveUrl = archiveUrl;
     this.inventory = inventory;
-    this.player = player;
     this.prefabs = new GroundPrefabRegistry({
       scene, animationBaseUrl, scheduler, fx, moleWorld, lightflierWorld, tickingarea, physics, butterflyWorld, firefliesWorld, bernieWorld, inventoryOwnerPosition: player.position,
       handEquipment: inventory.handEquipment,
       dropLoot: (items, position) => this.flingLoot(items, position),
       spawnGroundItem: (definition, position, options) => this.spawnGroundItem(definition, position, options),
     });
-    this.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown);
     this.stopDrops = inventory.subscribeDropped((entity, launch) => this.onInventoryDrop(entity, launch));
     // DefaultBurntFn requests one ash at the burnt inst's ground position.
     this.stopSpawnAsh = worldEvents?.on('spawnAsh', position => {
@@ -121,8 +106,6 @@ export class GroundItemManager {
     if (this.disposed) return;
     this.disposed = true;
     this.stopSpawnAsh?.();
-    this.renderer.domElement.removeEventListener('pointerdown', this.handlePointerDown);
-    this.pointer.dispose();
     this.stopDrops();
     for (const item of [...this.items.values()]) { this.removeVisual(item); this.entities.destroy(item.entity); }
     this.displays.dispose();
@@ -381,8 +364,7 @@ export class GroundItemManager {
       model, entity, get position() { return record.footPosition; },
       hasTag: (tag: string) => entity.hasTag(tag) || modelHasTag(model, tag),
       isValid: () => !this.disposed && this.activeItems.has(record) && !entity.isRemoved
-        && !entity.components.inventoryitem.owner && record.isClickable?.() !== false && !record.isRemoved?.()
-        && !this.inserting.has(record),
+        && !entity.components.inventoryitem.owner && record.isClickable?.() !== false && !record.isRemoved?.(),
     } satisfies PickupTarget;
     const stops = [
       entity.ListenForEvent('onputininventory', () => {
@@ -465,6 +447,7 @@ export class GroundItemManager {
             ...(definition.wet === undefined ? {} : { wet: definition.wet }),
             ...(definition.skinId === undefined ? {} : { skinId: definition.skinId }),
             ...(definition.phonographRecord === undefined ? {} : { phonographRecord: definition.phonographRecord }),
+            ...(definition.inventory === undefined ? {} : { inventory: definition.inventory }),
           },
           ...(definition.playbackRemaining === undefined ? {} : { phonograph: { remainingSeconds: definition.playbackRemaining } }),
           ...(definition.torchLit ? { torch: { lit: true as const } } : {}),
@@ -472,20 +455,6 @@ export class GroundItemManager {
         },
       }];
     })];
-  }
-
-  /** Slot selection supplies one record; the take callback validates and consumes it atomically. */
-  setPhonographRecordSource(source: () => { entity: ItemEntity; take(): boolean } | undefined): void {
-    this.recordSource = source;
-  }
-
-  /** Shared hover selection uses the same insertion availability as the click path. */
-  get phonographTargets(): readonly { model: THREE.Group; canInsert: boolean }[] {
-    return [...this.activeItems].filter(record => record.definition.itemId === PHONOGRAPH_ID
-      && !record.entity.isRemoved && !record.isRemoved?.()).map(record => ({
-      model: record.model,
-      canInsert: !this.inserting.has(record) && isPlayerNearby(this.player.position, record.footPosition, false),
-    }));
   }
 
   private currentDefinition(record: GroundItemRecord): GroundItemDefinition {
@@ -496,40 +465,6 @@ export class GroundItemManager {
     if (!record.entity.isRemoved) record.entity.apply(definition);
     return definition;
   }
-
-  async insertPhonographRecord(model: THREE.Group, source: { entity: ItemEntity; take(): boolean }): Promise<boolean> {
-    const record = this.items.get(model);
-    const controller = prefabInstance(model)?.components.phonograph;
-    if (!record || !controller || this.inserting.has(record) || source.entity.isRemoved || !isPhonographRecord(source.entity)
-      || !Object.hasOwn(RECORD_SONGS, source.entity.skinId ?? RECORD_ID)
-      || !isPlayerNearby(this.player.position, record.footPosition, false)) return false;
-    this.inserting.add(record);
-    const insertedRecord = source.entity.skinId ?? RECORD_ID;
-    let ejected: { entity: ItemEntity; visual: GroundItemVisual } | undefined;
-    try {
-      const oldRecord = controller.record;
-      const skinId = oldRecord === RECORD_ID ? undefined : oldRecord;
-      const spec = GROUND_ITEM_DEFINITIONS.record;
-      const definition = { itemId: RECORD_ID, count: 1, name: spec.name, icon: spec.icon, atlas: spec.atlas,
-        ...(skinId ? { skinId } : {}) };
-      if (oldRecord) ejected = this.withGroundEntity(definition, newEntityId(), entity => ({ entity, visual: this.createVisual(definition, entity) }));
-      if (this.disposed || this.items.get(model) !== record || controller.record !== oldRecord
-        || source.entity.isRemoved || !isPhonographRecord(source.entity) || (source.entity.skinId ?? RECORD_ID) !== insertedRecord
-        || !isPlayerNearby(this.player.position, record.footPosition, false) || !source.take()) return false;
-      controller.insert(insertedRecord);
-      if (ejected) {
-        this.addFlungVisual(ejected.entity, definition, record.footPosition, ejected.visual);
-        ejected = undefined;
-      }
-      return true;
-    } finally {
-      if (ejected) { ejected.visual.dispose(); this.entities.destroy(ejected.entity); }
-      this.inserting.delete(record);
-    }
-  }
-
-
-
 
     get reskinTargets(): readonly ReskinTarget[] {
         return Array.from(this.activeItems, record => findActionEntity(record.model)?.reskinTarget)
@@ -569,35 +504,6 @@ export class GroundItemManager {
 
     private isNetCreature(itemId: string): boolean { return this.prefabs.get(itemId)?.capture === 'net'; }
 
-
-  private readonly handlePointerDown = (event: PointerEvent) => {
-    if ((event.button !== 0 && event.button !== 2) || event.defaultPrevented || this.activeItems.size === 0) return;
-
-    // The shared picker resolves this event's target model.
-    this.mouseActions?.getMouseActions(event);
-    let root: THREE.Object3D | null;
-    if (this.mouseActions) root = this.mouseActions.targetModel ?? null;
-    else {
-      // Standalone managers without a shared picker use their own pointer service.
-      this.pointer.trackPointer(event);
-      const hit = this.pointer.raycastPointer([...this.activeItems]
-        .filter(record => record.isClickable?.() !== false).map(record => record.model), true);
-      root = hit?.object ?? null;
-      while (root && !this.items.has(root as THREE.Group)) root = root.parent;
-    }
-    const record = root ? this.items.get(root as THREE.Group) : undefined;
-    if (!record) return;
-    const machine = record.instance.components.phonograph;
-    // RMB switches a phonograph through its machine component's TURNON / TURNOFF.
-    if (event.button === 2) return;
-    const source = this.recordSource?.();
-    if (machine && source) {
-      event.preventDefault();
-      void this.insertPhonographRecord(record.model, source)
-        .catch((error: unknown) => console.error('Unable to insert record', error));
-      return;
-    }
-  };
 
   get renderEntities(): readonly { object: THREE.Group; footPosition: THREE.Vector3; cameraDepth: number }[] {
     const entries: { readonly object: THREE.Group; readonly footPosition: THREE.Vector3; cameraDepth: number }[] = [];

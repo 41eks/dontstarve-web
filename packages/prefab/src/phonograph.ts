@@ -4,15 +4,15 @@ import { ComponentTimer } from '../../componets/src/timer';
 import { createMemo } from '@dontstarve-web/signals';
 import { createResidentGroundItem, GROUND_ITEM_DEFINITIONS } from './groundItems';
 import type { GroundItemFactory, GroundPrefabContext, GroundItemDefinition } from './groundPrefab';
-import type { ArchiveSpriteCommands } from '@dontstarve-web/display';
-import { WorldFx } from './world_fx';
 import { createStructureLootDropper } from './structureLoot';
-import type { ItemEntity } from '@dontstarve-web/inventory';
+import { ItemEntity } from '@dontstarve-web/inventory';
+import { Inventory } from '../../componets/src/inventory';
+import { Trader } from '../../componets/src/trader';
 import { Workable } from '../../componets/src/workable';
 import { Machine } from '../../componets/src/machine';
 import { listenInventoryEvents } from './inventoryEvents';
 import { PlaySound, type SoundHandle } from './sound';
-import { RECORD_ID, RECORD_SONGS } from './records';
+import { RECORD_ID, RECORD_SONGS, configureRecordEntity, isPhonographRecord } from './records';
 
 export const PHONOGRAPH_ID = 'phonograph';
 export const PHONOGRAPH_PLAY_TIME = 64;
@@ -23,70 +23,68 @@ const END_SOUND = 'dontstarve/music/gramaphone_end';
  * stops it (StopPlayingRecord). The record survives stopping, inventory transfers and reskins.
  */
 export class PhonographController {
-  private unboundRecord?: string;
-  private entity?: ItemEntity;
-  get record(): string | undefined { return this.entity ? this.entity.phonographRecord : this.unboundRecord; }
-  set record(record: string | undefined) {
-    if (this.entity) this.entity.phonographRecord = record;
-    else this.unboundRecord = record;
+  private readonly entity: ItemEntity;
+  get record(): string | undefined {
+    const item = this.entity.components.inventory?.GetItems().find(isPhonographRecord);
+    return item ? item.skinId ?? RECORD_ID : undefined;
   }
-  private readonly scheduler: GameTimeScheduler;
-  private readonly ownsScheduler: boolean;
+  private scheduler: GameTimeScheduler;
+  private ownsScheduler: boolean;
   private readonly playback: ComponentTimer;
   readonly timer;
   private readonly playing;
   get remainingSeconds(): number { return this.playback.remainingSeconds ?? 0; }
   private sound?: SoundHandle;
   private disposed = false;
-  private readonly sprite: Pick<ArchiveSpriteCommands, 'start' | 'playOnce'>;
-  private readonly position: THREE.Vector3;
+  private get sprite() { return this.entity.sprite; }
+  private get position(): THREE.Vector3 { return this.entity.getPosition(); }
+  private readonly stopEvents: () => void;
 
-  constructor(sprite: Pick<ArchiveSpriteCommands, 'start' | 'playOnce'>,
-    position: THREE.Vector3, record?: string, scheduler?: GameTimeScheduler) {
-    this.sprite = sprite; this.position = position; this.record = record;
+  constructor(entity: ItemEntity, scheduler?: GameTimeScheduler) {
+    this.entity = entity;
+    scheduler ??= entity.components.perishable.scheduler;
     this.ownsScheduler = scheduler === undefined;
     this.scheduler = scheduler ?? new GameTimeScheduler();
     // play_song's DoTaskInTime(PHONOGRAPH_PLAY_TIME, TurnOffMachine).
     this.playback = new ComponentTimer(this.scheduler, () => { if (this.machine) this.machine.TurnOff(); else this.stop(); });
     this.timer = this.playback.snapshot;
     this.playing = createMemo(() => this.timer.get().status === 'scheduled');
+    const machine = entity.components.machine = new Machine(entity, () => entity.components.perishable.scheduler ?? this.scheduler);
+    machine.SetGroundOnlyMachine(true);
+    machine.enabled = false;
+    machine.turnonfn = () => this.TryToPlayRecord();
+    machine.turnofffn = () => this.stop();
+    this.stopEvents = listenInventoryEvents(entity, {
+      onputininventory: () => this.OnPutInInventory(), ondropped: () => this.OnDropped(),
+    });
   }
 
   get isPlaying(): boolean { return this.playing.peek(); }
 
-  /** The inst's machine; a reskin's new art takes over its turnon/turnoff. */
-  get machine(): Machine | undefined { return this.entity?.components.machine; }
-
-  bindEntity(entity: ItemEntity): void {
-    this.entity = entity;
-    let machine = entity.components.machine;
-    if (!machine) {
-      const scheduler = this.scheduler;
-      machine = entity.components.machine = new Machine(entity, () => entity.components.perishable.scheduler ?? scheduler);
-      machine.SetGroundOnlyMachine(true);
-      machine.enabled = false;
-    }
-    machine.turnonfn = () => this.TryToPlayRecord();
-    machine.turnofffn = () => this.stop();
+  BindScheduler(scheduler: GameTimeScheduler): void {
+    if (scheduler === this.scheduler) return;
+    this.playback.BindScheduler(scheduler);
+    if (this.ownsScheduler) this.scheduler.dispose();
+    this.scheduler = scheduler; this.ownsScheduler = false;
   }
 
-  /** OnGetItemFromPlayer: DropRecord, keep the new record, play "open", then turn the machine on. */
-  insert(record: string): void {
-    const machine = this.machine;
-    if (!machine) throw new Error('A phonograph needs its inst to take a record');
-    this.DropRecord();
-    this.record = record;
+  get machine(): Machine | undefined { return this.entity.components.machine; }
+
+  /** OnGetItemFromPlayer turns on the machine after its inventory has received the record. */
+  OnRecordInserted(): void {
+    const machine = this.machine!;
     this.opening = true;
     if (!machine.IsOn()) machine.TurnOn();
     this.opening = false;
   }
 
-  /** DropRecord: turn off and disable; the caller ejects the record itself. */
+  /** DropRecord: turn off, disable and drop the actual inventory contents. */
   DropRecord(): void {
     const machine = this.machine;
     if (!machine) return;
     if (machine.IsOn()) machine.TurnOff();
     machine.enabled = false;
+    this.entity.components.inventory!.DropEverything();
   }
 
   /** OnPutInInventory: a pocketed phonograph stops. */
@@ -141,44 +139,76 @@ export class PhonographController {
   dispose(): void {
     if (this.disposed) return;
     this.stop(false); this.disposed = true; this.playing.dispose();
+    this.stopEvents(); this.machine?.dispose();
     if (this.ownsScheduler) this.scheduler.dispose();
   }
+}
+
+/** phonograph.lua OnGetItemFromPlayer: the trader has already transferred the incoming inst. */
+function onGetItemFromPlayer(inst: ItemEntity, item: ItemEntity): void {
+  const controller = inst.components.phonograph!;
+  controller.DropRecord();
+  inst.components.inventory!.GiveItem(item);
+  controller.OnRecordInserted();
+}
+
+/** Register the source inventory, accept test and onaccept callback on the logical inst. */
+export function configurePhonographEntity(entity: ItemEntity, scheduler?: GameTimeScheduler): void {
+  for (const tag of ['structure', 'recordplayer', 'furnituredecor', 'groundonlymachine']) entity.addTag(tag);
+  entity.components.inventory = entity.component('inventory', () => {
+    const saved = entity.snapshot();
+    const inventory = new Inventory(entity, 15, (item, position) => {
+      const drop = entity.worldServices?.dropItem;
+      if (drop) drop(item, position);
+      else entity.components.inventoryitem.owner?.DropItem?.(item, position);
+    });
+    // Old saves only named the song. New saves retain each stored inst's identity and state.
+    const items = saved.inventory ?? (saved.phonographRecord ? [{ itemId: RECORD_ID, count: 1,
+      ...(saved.phonographRecord === RECORD_ID ? {} : { skinId: saved.phonographRecord }) }] : []);
+    inventory.OnLoad(items, state => { const item = new ItemEntity(state); configureRecordEntity(item); return item; });
+    return inventory;
+  });
+  entity.components.phonograph = entity.component('phonograph', () => new PhonographController(entity, scheduler));
+  entity.components.trader = entity.component('trader', () => {
+    const trader = new Trader(entity);
+    trader.deleteitemonaccept = false;
+    trader.SetAcceptTest(isPhonographRecord);
+    trader.SetOnAccept((_giver, item) => onGetItemFromPlayer(entity, item as ItemEntity));
+    return trader;
+  });
 }
 
 /** phonograph.lua OnHammered, registered on the actual inventory/ground inst. */
 function onhammered(inst: ItemEntity): void {
   const controller = inst.components.phonograph!;
-  const loaded = controller.record;
   controller.DropRecord();
-  if (loaded) inst.components.lootdropper!.SpawnLootPrefab(RECORD_ID, inst.getPosition(), loaded === RECORD_ID ? undefined : loaded);
   inst.components.lootdropper!.DropLoot();
   inst.worldServices?.fx?.collapse?.('small', inst.getPosition(), 'wood');
   inst.remove();
 }
 
 export function createPhonographGroundFactory(context: GroundPrefabContext): GroundItemFactory {
-  const localFx = context.fx?.collapse ? undefined : new WorldFx(context.scene);
-  const fx = localFx ?? context.fx;
-  const dropLoot = context.dropLoot;
+  const { fx, dropLoot, spawnGroundItem, scheduler } = context;
   const worldServices = { fx, dropLoot: (items: readonly { itemId: string; count: number; skinId?: string }[], position: THREE.Vector3) =>
-    dropLoot?.(items.map(item => ({ ...GROUND_ITEM_DEFINITIONS[item.itemId], ...item })), position) };
+    dropLoot?.(items.map(item => ({ ...GROUND_ITEM_DEFINITIONS[item.itemId], ...item })), position),
+    dropItem: (entity: ItemEntity, position: THREE.Vector3) => {
+      spawnGroundItem?.({ ...GROUND_ITEM_DEFINITIONS[entity.prefab], ...entity.snapshot(), entity }, position, { fling: true });
+    },
+  };
   return {
     itemIds: [PHONOGRAPH_ID],
-    update(dt, quaternion) { localFx?.update(dt, quaternion); },
-    renderEntities: () => localFx?.renderEntities ?? [],
-    dispose() { localFx?.dispose(); },
+    configureEntity: entity => configurePhonographEntity(entity, scheduler),
     create(item, inst) {
-
+      configurePhonographEntity(inst, scheduler);
+      inst.worldServices = worldServices;
       const { visual, instance, display } = createResidentGroundItem(context, { ...item, sprite: inst.sprite });
-      const model = display.model, sprite = instance.sprite;
-      for (const tag of ['structure', 'trader', 'recordplayer', 'furnituredecor', 'groundonlymachine']) instance.addTag(tag);
-      const controller = new PhonographController(sprite, model.position, item.phonographRecord, context.scheduler);
+      const model = display.model;
+      const controller = inst.components.phonograph!;
       instance.components.phonograph = controller;
       const removeEvents = listenInventoryEvents(instance, {
-        onputininventory: () => controller.OnPutInInventory(),
         // Dropping a loaded machine enables it, but does not turn it on.
         ondropped: () => controller.OnDropped(),
-        onload: () => { controller.OnDropped(); if (item.playbackRemaining) controller.resume(item.playbackRemaining); },
+        onload: () => { controller.OnDropped(); if (item.playbackRemaining && !controller.isPlaying) controller.resume(item.playbackRemaining); },
       });
       return {
         ...visual,
@@ -186,9 +216,6 @@ export function createPhonographGroundFactory(context: GroundPrefabContext): Gro
         active: undefined,
         model,
         bindEntity(entity: ItemEntity) {
-          controller.bindEntity(entity);
-          entity.components.phonograph = controller;
-          entity.worldServices = worldServices;
           entity.components.lootdropper ??= createStructureLootDropper(entity);
           const workable = entity.component('workable', () => {
             const work = new Workable(entity);
@@ -201,7 +228,7 @@ export function createPhonographGroundFactory(context: GroundPrefabContext): Gro
         },
         getDefinition: () => controller.snapshot(),
         update(dt: number) { controller.update(dt); },
-        dispose() { removeEvents(); controller.dispose(); visual.dispose(); },
+        dispose() { removeEvents(); visual.dispose(); },
       };
     },
   };

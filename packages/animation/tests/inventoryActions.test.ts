@@ -14,6 +14,7 @@ import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { createPickupInventory } from './pickupFixture';
+import { Trader } from '../../componets/src/trader';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
 beforeEach(() => {
@@ -48,6 +49,30 @@ function setup() {
   return { inventory, instance, world, graph, controller, use, canvas,
     dispose() { controller.dispose(); graph.dispose(); world.mouseActions!.dispose(); display.dispose(); inventory.dispose(); } };
 }
+
+it('gives one item from a stack through the shared action and passes the detached inst to the trader', () => {
+  const s = setup(), target = createEmptyEntity('trader');
+  const trader = new Trader(target.instance), accepted = vi.fn();
+  target.instance.components.trader = trader;
+  target.instance.position.copy(s.instance.position);
+  trader.SetOnAccept((_giver, item) => accepted(item));
+  try {
+    s.inventory.add('twigs', 2);
+    s.inventory.transfer(inventorySlotAddress(0), cursorSlotAddress(), 2);
+    const source = s.inventory.GetActiveItem()!;
+    const description = s.world.mouseActions!.GetUseItemActions(target.instance, source, false)[0];
+    const action = s.controller.createAction(description)!;
+    expect(action.invobject).toBe(source); expect(action.target).toBe(target.instance);
+    expect(s.controller.DoAction(action)).toBe(true);
+    s.graph.update(13 / 30);
+    expect(source.components.stackable.count).toBe(1);
+    expect(accepted).toHaveBeenCalledOnce();
+    const taken = accepted.mock.calls[0][0];
+    expect(taken).not.toBe(source);
+    expect(taken.components.stackable.count).toBe(1);
+    expect(taken.isRemoved).toBe(true);
+  } finally { trader.dispose(); target.instance.remove(); target.display.dispose(); s.dispose(); }
+});
 
 it('feeds the original held animal at the Lua long-action timeout, preserving identity across slot moves and cancellation', () => {
   const s = setup(), cursor = cursorSlotAddress();

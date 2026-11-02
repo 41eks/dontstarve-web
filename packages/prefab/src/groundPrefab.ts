@@ -35,6 +35,7 @@ export interface GroundItemDefinition {
   /** machine.ison of a ground lantern. */
   lanternOn?: boolean;
   phonographRecord?: string;
+  inventory?: InventoryStack[];
   playbackRemaining?: number;
 }
 

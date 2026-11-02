@@ -4,6 +4,8 @@ export interface TraderInst {
   hasTag(tag: string): boolean;
   addTag(tag: string): void;
   removeTag(tag: string): void;
+  readonly components?: object;
+  PushEvent?(name: string, data: unknown): void;
 }
 
 export interface TradeItem {
@@ -60,14 +62,19 @@ export class Trader<Item extends TradeItem = TradeItem, Giver = unknown> {
   }
 
   /** `take` removes one item from its owner; it runs only after both tests pass. */
-  AcceptGift(item: Item, take: (deleteItem: boolean) => boolean, giver?: Giver): boolean {
+  AcceptGift(item: Item, take: (deleteItem: boolean) => boolean | Item, giver?: Giver): boolean {
     if (!this.AbleToAccept(item, giver).ok) return false;
     if (!this.WantsToAccept(item, giver)) {
       this.onrefuse?.(giver, item);
       return false;
     }
-    if (!take(this.deleteitemonaccept)) return false;
+    const taken = take(this.deleteitemonaccept);
+    if (!taken) return false;
+    if (typeof taken === 'object') item = taken;
+    const inventory = (this.inst.components as { inventory?: { GiveItem(item: Item): boolean } } | undefined)?.inventory;
+    if (!this.deleteitemonaccept) inventory?.GiveItem(item);
     this.onaccept?.(giver, item);
+    this.inst.PushEvent?.('trade', { giver, item });
     return true;
   }
 

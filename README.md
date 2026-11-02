@@ -133,11 +133,14 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 玩家动作由 `@dontstarve-web/stategraphs` 的 `PlayerController`（`packages/stategraphs/src/playercontroller.ts`，对应 `playercontroller.lua`）统一处理：`PlayerActionPicker` 按 `componentactions.lua` 从命中实体的组件（SCENE）、手持物品的组件（EQUIPPED：`tool`、`spellcaster`、`lighter`、`weapon` 的 RANGEDLIGHT、`fishingrod`）以及没有命中实体时的地面点（POINT：法杖的 `castonpoint`）收集动作，再按 `componentactions.lua` 的规则过滤和排序。`PlayerController` 把选中的动作包装为 `BufferedAction`，由 `locomotor:PushAction` 走到到达距离内（CASTSPELL 至少 20、HAUNT 至少 2，ATTACK 按 `combat:LocomotorCanAttack` 进入攻击距离）后交给 SGwilson，命中帧执行 `actionfns.ts` 中对应 `ACTIONS.<动作>.fn`；`REEL` 等 instant 动作立即执行且不打断当前状态。`F` 执行 `DoAttackButton`，按住会在每次攻击结束后继续，`Ctrl+F` 强制攻击非敌对目标；攻击目标由 `FindEntities` 在玩家周围查找，不再汇总各 manager 的目标列表。手持物品的世界服务在装备时注入：法杖的地图与生成、清洁扫把的 `explode_reskin` 特效、鱼竿的游戏时间、组件更新和落鱼。换肤在命中帧按 `reskin_tool.lua` 的 `spellCB` 选择皮肤并写入 sprite json，施法前不等待皮肤资源，display 在资源加载完后换上。`c_give`、`c_spawn` 和 `c_save` 的语法与参数保持不变；当前支持 ID 见下方对象表。
 
 
-悬停文字按 Lua 的动作选择与 `hoverer` 分工统一显示：共享鼠标命中，按源优先级分别选择左右键动作，文字取自源简体中文字符串；控制器只注册动作候选。左键显示原版左键图标及动作文字，右键显示原版右键图标及 `: 动作文字`，可以同时显示两条；建造预览提示优先，鼠标位于 UI 上时隐藏世界提示，文字限制在屏幕边界内。用 `c_give("bugnet")`、`c_give("hammer")`、`c_give("reskin_tool")` 获取并装备相应工具后，目标上分别显示“捕捉”“敲”“打扫”；播种提示为“栽种”，铲子/干草叉为“挖”。选中唱片后，仅在靠近且可插片的留声机上显示“放置唱片”。地面的提灯（`c_spawn("lantern")`）和装有唱片的留声机（`c_spawn("phonograph")`）由 `machine` 组件按 `componentactions.lua` 提供右键“打开”／“关闭”（TURNON／TURNOFF）；留声机每次切换后有 3 秒冷却，提灯没有。箱子、冰箱、烹饪锅等场景容器由 `container` 组件按 `componentactions.lua` 提供左键“打开”，玩家已打开时显示“关闭”（RUMMAGE）；建造预览显示时点击只放置或取消预览，不选取场景动作。卸装或目标失效后提示自动清除。详见 [鼠标悬停动作文字](docs/dst-hover-text.md)。这些命令的参数和支持 prefab/item ID 保持不变。
+悬停文字按 Lua 的动作选择与 `hoverer` 分工统一显示：共享鼠标命中，按源优先级分别选择左右键动作，文字取自源简体中文字符串；控制器只注册动作候选。左键显示原版左键图标及动作文字，右键显示原版右键图标及 `: 动作文字`，可以同时显示两条；建造预览提示优先，鼠标位于 UI 上时隐藏世界提示，文字限制在屏幕边界内。用 `c_give("bugnet")`、`c_give("hammer")`、`c_give("reskin_tool")` 获取并装备相应工具后，目标上分别显示“捕捉”“敲”“打扫”；播种提示为“栽种”，铲子/干草叉为“挖”。鼠标持有唱片时，通过通用 GIVE 动作向留声机“给予”：距离较远时先走近，SGwilson 的 give 状态第 13 帧经 trader 接收真实唱片实体；提交前取消或物品失效不换片。地面的提灯（`c_spawn("lantern")`）和装有唱片的留声机（`c_spawn("phonograph")`）由 `machine` 组件按 `componentactions.lua` 提供右键“打开”／“关闭”（TURNON／TURNOFF）；留声机每次切换后有 3 秒冷却，提灯没有。箱子、冰箱、烹饪锅等场景容器由 `container` 组件按 `componentactions.lua` 提供左键“打开”，玩家已打开时显示“关闭”（RUMMAGE）；建造预览显示时点击只放置或取消预览，不选取场景动作。卸装或目标失效后提示自动清除。详见 [鼠标悬停动作文字](docs/dst-hover-text.md)。这些命令的参数和支持 prefab/item ID 保持不变。
+
+留声机用法：`c_spawn("phonograph"); c_give("record")`，将唱片拿到鼠标槽后点击留声机。换片和敲毁会掉出原唱片实体，保留身份、皮肤与受潮状态；`c_save()` 在物品快照的 `inventory` 字段保存装载的唱片，`phonographRecord` 保留为曲目的兼容投影，旧存档仍可读取。
+
 
 未显示的建造提示不触发全局悬停刷新，重复隐藏也不重新收集动作。没有鼠标位置或鼠标被其他 DOM UI 遮挡时，在动作收集前直接隐藏提示，避免空闲的各建造控制器重复遍历地面物品和捕虫候选。回到场景后照常查询当前装备、目标和左右键动作；上述命令与交互规则不变。
 
-射线检测统一通过 `PointerRaycaster` 封装，生产代码只在该封装内部创建 `THREE.Raycaster`。地面物品交互也使用 `trackPointer()` / `raycastPointer()`，保留普通精灵几何命中、群体包围盒命中及原有事件优先级；销毁时释放鼠标监听。只检测对象时可不提供地面，地面查询返回空结果；提供地面时 `groundPoint()` 统一返回 `y = 0`。调试命令语法、参数和支持 ID 保持不变。
+射线检测统一通过 `PointerRaycaster` 封装，生产代码只在该封装内部创建 `THREE.Raycaster`。地面物品由共享 `PlayerActionPicker` 命中并选取动作，保留普通精灵几何命中、群体包围盒命中及原有事件优先级；销毁控制器时释放输入监听。只检测对象时可不提供地面，地面查询返回空结果；提供地面时 `groundPoint()` 统一返回 `y = 0`。调试命令语法、参数和支持 ID 保持不变。
 
 鼠标拾取从 `activePrefabs` 读取活动实体，筛选仍有模型父节点、未移除且可见／不带 `NOCLICK` 的 visual，再进行精确射线检测。命中子节点沿父链找到实体根节点，由 ActionPicker 生成左右键动作；无法执行动作的可见前景仍遮挡后方。同一点击事件共享一次命中结果。耕地／农场杂物也通过 `actionEntity` 接入相同登记，移除时释放投影。
 

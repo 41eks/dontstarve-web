@@ -114,7 +114,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
   };
   const ids = new Set<string>();
   const stack = (value: unknown, path: string): InventoryStack => {
-    const o = object(value, path, ['entityId', 'itemId', 'skinId', 'variant', 'count', 'remainingUses', 'remainingFuel', 'freshnessPercent', 'wet', 'phonographRecord', 'mole', 'lightflier', 'container', 'temperature', 'highTemp', 'lowTemp', 'armor']);
+    const o = object(value, path, ['entityId', 'itemId', 'skinId', 'variant', 'count', 'remainingUses', 'remainingFuel', 'freshnessPercent', 'wet', 'phonographRecord', 'inventory', 'mole', 'lightflier', 'container', 'temperature', 'highTemp', 'lowTemp', 'armor']);
     const entityId = o.entityId === undefined ? undefined : string(o.entityId, `${path}.entityId`);
     if (entityId !== undefined) {
       if (!/^[a-zA-Z0-9_:.-]+$/.test(entityId)) fail(`${path}.entityId`, 'invalid item entity ID');
@@ -186,8 +186,17 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
       if (itemId !== 'backpack') fail(`${path}.container`, 'item has no container');
       return container(o.container, `${path}.container`, numericKeys(8));
     })();
+    const inventory = o.inventory === undefined ? undefined : (() => {
+      if (itemId !== 'phonograph') fail(`${path}.inventory`, 'item has no inventory component');
+      const items = array(o.inventory, `${path}.inventory`, 1).map((item, i) => stack(item, `${path}.inventory[${i}]`));
+      if (items.some(item => item.itemId !== 'record' || item.count !== 1)) fail(`${path}.inventory`, 'invalid phonograph contents');
+      const song = items[0] ? items[0].skinId ?? 'record' : undefined;
+      if (song !== phonographRecord) fail(`${path}.phonographRecord`, 'record does not match inventory contents');
+      return items;
+    })();
     return { ...(lightflier === undefined ? {} : { lightflier }), ...(mole === undefined ? {} : { mole }), ...(itemContainer === undefined ? {} : { container: itemContainer }), ...(entityId === undefined ? {} : { entityId }), itemId, count: integer(o.count, `${path}.count`, 1, spec.maxStack), ...(skinId === undefined ? {} : { skinId }), ...(variant === undefined ? {} : { variant }),
       ...(phonographRecord === undefined ? {} : { phonographRecord }),
+      ...(inventory === undefined ? {} : { inventory }),
       ...(temperature === undefined ? {} : { temperature }),
       ...(armor === undefined ? {} : { armor }),
       ...(highTemp === undefined ? {} : { highTemp }),

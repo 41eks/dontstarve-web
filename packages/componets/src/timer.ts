@@ -13,7 +13,7 @@ export class ComponentTimer {
   readonly snapshot = readonlySignal(this.state);
   private cancelTask?: () => void;
 
-  private readonly scheduler: GameTimeScheduler;
+  private scheduler: GameTimeScheduler;
   private readonly onDone: () => void;
 
   constructor(scheduler: GameTimeScheduler, onDone: () => void) {
@@ -24,6 +24,15 @@ export class ComponentTimer {
     const timer = this.state.peek();
     return timer.status === 'scheduled' ? Math.max(0, timer.endTime - this.scheduler.now)
       : timer.status === 'paused' ? timer.remainingSeconds : undefined;
+  }
+
+  /** Moving an inst to a world preserves its remaining task time. */
+  BindScheduler(scheduler: GameTimeScheduler): void {
+    if (scheduler === this.scheduler) return;
+    const running = this.state.peek().status === 'scheduled', remaining = this.remainingSeconds;
+    this.cancelTask?.(); this.cancelTask = undefined;
+    this.scheduler = scheduler;
+    if (running) this.start(remaining!);
   }
 
   start(seconds: number): void {

@@ -81,6 +81,8 @@ export interface InventoryStack {
   wet?: boolean;
   /** Loaded record: `record` means the base track; other values are record skin IDs. */
   phonographRecord?: string;
+  /** inventory.lua contents, retaining the stored insts and their component state. */
+  inventory?: InventoryStack[];
 }
 
 export type InventoryItems = readonly (InventoryStack | null)[];

@@ -3,8 +3,6 @@
 import './style.css';
 import { prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import { tilePerfMark } from '../packages/componets/src/tilePerf';
-import { INVENTORY_ITEM_SPECS } from './inventoryItems';
-import { isPhonographRecord } from '@dontstarve-web/prefab/records';
 import {
   INVENTORY_RECIPES,
   equipmentSlotAddress,
@@ -472,30 +470,6 @@ window.addEventListener('game:slot-transfer-request', (event) => {
 window.addEventListener('game:cursor-return-request', event => {
   const { origin } = (event as CustomEvent<{ origin?: SlotAddress }>).detail;
   inventory.returnCursor(origin);
-});
-view.mouseActions?.register(() => {
-  const entity = inventory.getEntity(cursorAddress);
-  if (!entity || !isPhonographRecord(entity)) return [];
-  return groundItems.phonographTargets.map(target => ({
-    action: { action: 'GIVE' as const, modifier: 'PLACE_ITEM', invobject: {
-      prefab: entity.prefab, hasTag: (tag: string) => entity.hasTag(tag),
-      getDisplayName: () => INVENTORY_ITEM_SPECS[entity.prefab].name,
-    } },
-    button: 'left' as const, model: target.model, available: target.canInsert,
-  }));
-});
-groundItems.setPhonographRecordSource(() => {
-  const entity = inventory.getEntity(cursorAddress);
-  const stack = inventory.get(cursorAddress);
-  if (!entity || !stack || !isPhonographRecord(entity)) return undefined;
-  return { entity, take: () => {
-    if (inventory.getEntity(cursorAddress) !== entity) return false;
-    const current = inventory.get(cursorAddress);
-    if (!isPhonographRecord(entity) || current?.itemId !== stack.itemId || current.skinId !== stack.skinId) return false;
-    if (!inventory.applySlotChanges([{ slot: cursorAddress, entityId: entity.id, itemId: stack.itemId, skinId: stack.skinId, delta: -1 }])) return false;
-    playerAnimation?.playPickup();
-    return true;
-  } };
 });
 window.addEventListener('game:slot-select', (event) => {
   const { slot } = (event as CustomEvent<SlotSelectDetail>).detail;

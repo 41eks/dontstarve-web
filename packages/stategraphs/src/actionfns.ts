@@ -93,6 +93,19 @@ type SoulHopper = {
 const soulHopper = (act: BufferedAction) => act.doer as SoulHopper | undefined;
 
 export const ACTION_FNS: Readonly<Partial<Record<string, ActionFns>>> = {
+  GIVE: {
+    fn: act => {
+      const item = act.invobject as ItemEntity | undefined, trader = entity(act.target)?.components.trader;
+      if (!item || !trader) return false;
+      const inventory = playerDoer(act).components.inventory;
+      return trader.AcceptGift(item, deleteItem => {
+        const taken = inventory.RemoveItem(item);
+        if (!taken) return false;
+        if (deleteItem) taken.remove();
+        return taken;
+      }, act.doer);
+    },
+  },
   FEED: {
     fn: act => {
       const item = act.invobject as ItemEntity | undefined, eater = entity(act.target)?.components.eater;

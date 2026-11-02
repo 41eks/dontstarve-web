@@ -2,6 +2,7 @@ import type { ItemEntity, InventoryItemSpec } from '@dontstarve-web/inventory';
 import { createResidentGroundItem, GROUND_ITEM_DISPLAY_SPECS } from './groundItems';
 import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
 import type { SoundEventPath } from './sound';
+import { Tradable } from '../../componets/src/tradable';
 
 export const RECORD_ID = 'record';
 
@@ -15,6 +16,7 @@ export const RECORD_SONGS: Readonly<Record<string, SoundEventPath>> = {
 };
 
 export function configureRecordEntity(entity: ItemEntity): void {
+  entity.components.tradable ??= new Tradable();
   entity.addTag('cattoy');
   entity.addTag('phonograph_record');
 }

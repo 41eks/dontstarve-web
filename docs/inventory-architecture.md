@@ -165,7 +165,7 @@ torch 的专用 ground factory 注册 `onputininventory` 和 `onextinguish`。�
 
 鼠标槽使用 `cursorSlotAddress()` 的稳定地址 `{ containerId: "player:cursor", slotKey: "0" }`，由应用注册一个 `InventorySlot`，权威实体仍归 `InventoryStore` 管理。左键拿起立即执行原槽到鼠标槽的整叠转移，UI 只订阅投影并绘制鼠标图标。点击空槽放下；点击占用槽使用 `InventoryStore.swap()` 原子交换鼠标与目标，目标原物品继续由鼠标持有。`completeTransfer()` 仅确认成功后记录来源地址并刷新投影；失败不清空鼠标槽。Esc 通过冒泡的 `game:cursor-return-request` 请求 `InventoryStore.returnCursor()`，优先完整放回来源槽，其次普通物品栏；没有可接受的完整空位时保持持有。鼠标槽不参与自动接收、制造产物分配或自动材料消耗，拖放继续使用直接移动和合堆。未持有物品时，可取消的 `game:slot-select` 仍先于转移请求执行，建造和播种可认领点击进入自己的动作预览。
 
-唱片插入直接读取鼠标槽，移除专用 `selectedRecordSlot` 和唱片右键选择分支。插入前捕获实际实体与皮肤，提交前核对鼠标槽仍持有同一实体，并由库存事务扣除一张；异步加载或目标校验失败不会消耗物品。
+唱片使用通用 USEITEM.tradable → GIVE → BufferedAction → SGwilson give 第 13 帧 → trader.AcceptGift；动作保存真实 doer、target、invobject，走近和提交前验证由共享入口负责。留声机在 `phonograph.ts` 注册 `ShouldAcceptItem` 和 `OnGetItemFromPlayer`，`deleteitemonaccept = false`，接收后通过 inventory 的 DropEverything / GiveItem 完成退片和保留新唱片，再启动 machine。应用层不枚举留声机目标、不拦截专用点击，也不注入扣物品回调。唱片身份、皮肤与组件状态随真实库存实体转移；物品快照的 `inventory` 保存内部唱片，旧 `phonographRecord` 字段只作兼容曲目投影。
 
 `game:cursor-return-request` 携带可选的来源地址，请求归还鼠标槽内物品；这些事件均穿过 inventory bar 的 shadow root 冒泡。`game:slot-select` 可取消，使点击建筑物品时先启动放置，而不会先把整叠物品拿起来拖放。
 

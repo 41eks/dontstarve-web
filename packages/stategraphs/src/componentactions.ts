@@ -91,7 +91,7 @@ export interface EquippedActionDoer {
   readonly components?: { combat?: { CanLightTarget(target: never, weapon?: never): boolean } };
 }
 export type EquippedAction = ToolAction | 'CASTSPELL' | 'LIGHT' | 'ATTACK' | 'FISH' | 'REEL' | 'TERRAFORM' | 'TILL';
-export type UseItemAction = 'FEED' | 'ADDFUEL' | 'ADDWETFUEL' | 'PLANTSOIL';
+export type UseItemAction = 'GIVE' | 'FEED' | 'ADDFUEL' | 'ADDWETFUEL' | 'PLANTSOIL';
 type UseItemFn = (inst: ComponentActionEntity, doer: SceneActionDoer, target: ComponentActionEntity,
   actions: UseItemAction[], right: boolean) => void;
 type EquippedFn = (inst: ComponentActionEntity, doer: EquippedActionDoer | undefined, target: ComponentActionTarget,
@@ -114,6 +114,9 @@ export const COMPONENT_ACTIONS: {
   readonly USEITEM: Readonly<Record<string, UseItemFn>>;
 } = {
   USEITEM: {
+    tradable: (_inst, _doer, target, actions) => {
+      if (target.hasTag('trader') && !['player', 'ghost', 'possessedbody'].some(tag => target.hasTag(tag))) actions.push('GIVE');
+    },
     edible: (inst, _doer, target, actions) => {
       // componentactions.lua edible: the held small-livestock branch (pets and riders are not ported).
       if ((target.hasTag('small_livestock') || target.hasTag('handfed')) && target.components.inventoryitem?.owner

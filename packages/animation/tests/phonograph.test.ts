@@ -6,10 +6,16 @@ import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { afterEach, expect, it, vi } from 'vitest';
-import { PhonographController } from '../../prefab/src/phonograph';
+import { configurePhonographEntity } from '../../prefab/src/phonograph';
+import { PlayerController } from '../../stategraphs/src/playercontroller';
+import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
+import { Locomotor } from '../../prefab/src/locomotor';
+import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
+import type * as CANNON from 'cannon-es';
+import { playerDoer } from './playerDoer';
 import { PlaySound } from '../../prefab/src/sound';
 import { GroundItemManager } from '../../../src/groundItems';
-import { InventoryStore, InventorySlot, ItemEntity, inventorySlotAddress } from '../../inventory/src';
+import { InventoryStore, InventorySlot, ItemEntity, inventorySlotAddress, cursorSlotAddress } from '../../inventory/src';
 import { INVENTORY_ITEM_SPECS } from '../../../src/inventoryItems';
 import { INVENTORY_SKIN_SPECS, INVENTORY_RECIPES, INVENTORY_RECIPE_SKINS } from '../../ui/src/categories/shared';
 import definitions from '../../prefab/src/definitions.json' with { type: 'json' };
@@ -28,18 +34,19 @@ vi.mock('../../prefab/src/sound', () => ({
 afterEach(() => { vi.clearAllMocks(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 it('runs a ground-only record for 64 seconds through its machine and releases each machine sound independently', () => {
-  const sprite = { start: vi.fn(), playOnce: vi.fn() };
   const scheduler = new GameTimeScheduler();
-  const first = new PhonographController(sprite, new THREE.Vector3(), undefined, scheduler);
-  const second = new PhonographController(sprite, new THREE.Vector3(12, 0, 0), 'record_efs');
   const firstInst = new ItemEntity({ itemId: 'phonograph', count: 1 }), secondInst = new ItemEntity({ itemId: 'phonograph', count: 1, phonographRecord: 'record_efs' });
-  first.bindEntity(firstInst); second.bindEntity(secondInst);
+  configurePhonographEntity(firstInst, scheduler); configurePhonographEntity(secondInst);
+  const first = firstInst.components.phonograph!, second = secondInst.components.phonograph!;
+  const sprite = { start: vi.spyOn(firstInst.sprite, 'start'), playOnce: vi.spyOn(firstInst.sprite, 'playOnce') };
+  const incoming = new ItemEntity({ itemId: 'record', count: 1 }); incoming.configure(INVENTORY_ITEM_SPECS.record);
   const machine = firstInst.components.machine!;
   // phonograph.lua: an empty phonograph's machine is disabled, so componentactions offers no TURNON.
   expect(machine.enabled).toBe(false);
   expect(firstInst.hasTag('groundonlymachine')).toBe(true);
   expect(first.play()).toBe(false);
-  first.insert('record'); secondInst.components.machine!.TurnOn();
+  expect(firstInst.components.trader!.AcceptGift(incoming, () => incoming)).toBe(true);
+  second.OnDropped(); secondInst.components.machine!.TurnOn();
   expect(machine.IsOn()).toBe(true);
   expect(firstInst.hasTag('turnedon')).toBe(true);
   expect(firstInst.hasTag('enabled')).toBe(true);
@@ -72,6 +79,14 @@ it('runs a ground-only record for 64 seconds through its machine and releases ea
   expect(first.isPlaying).toBe(false);
   expect(firstInst.hasTag('cooldown')).toBe(true);
   scheduler.advance(3); expect(firstInst.hasTag('cooldown')).toBe(false);
+  // An inst created before the world's scheduler is bound keeps the song's remaining time.
+  machine.TurnOn(); scheduler.advance(10);
+  const worldScheduler = new GameTimeScheduler(1000);
+  first.BindScheduler(worldScheduler);
+  expect(first.remainingSeconds).toBe(54);
+  scheduler.advance(64); expect(first.isPlaying).toBe(true);
+  worldScheduler.advance(54); expect(first.isPlaying).toBe(false);
+  worldScheduler.dispose();
   first.dispose(); scheduler.dispose(); firstInst.destroy(); secondInst.destroy();
 });
 
@@ -80,30 +95,51 @@ it('preserves a loaded skinned record across reskin, pickup, inventory transfer,
     new URL(`../../../public/dst/data/${url.slice('/dst/data/'.length)}`, import.meta.url))));
   const scene = new THREE.Scene(), player = new THREE.Group();
   const canvas = Object.assign(new EventTarget(), { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) });
-  const from = inventorySlotAddress(0), to = inventorySlotAddress(1);
+  vi.stubGlobal('window', new EventTarget());
+  const from = inventorySlotAddress(0), to = inventorySlotAddress(1), cursor = cursorSlotAddress();
   const inventory = new InventoryStore([{ address: from, slot: new InventorySlot() },
-    { address: to, slot: new InventorySlot() }], INVENTORY_ITEM_SPECS, INVENTORY_SKIN_SPECS);
+    { address: to, slot: new InventorySlot() }, { address: cursor, slot: new InventorySlot() }], INVENTORY_ITEM_SPECS, INVENTORY_SKIN_SPECS);
   const manager = new GroundItemManager(scene, new THREE.PerspectiveCamera(),
     { domElement: canvas } as unknown as THREE.WebGLRenderer, '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
   const spec = INVENTORY_ITEM_SPECS.phonograph;
+  const graph = new WilsonStateGraph({ playAnimation: () => 1, playSound() {}, setCasting() {}, onStateChanged() {} });
+  const world = { player, scene, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(), renderer: { domElement: canvas } } as unknown as ActionWorldContext;
+  const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body);
+  const controller = new PlayerController(world, graph, locomotor, inventory.handEquipment, playerDoer(player, { inventory }));
+  const give = (model: THREE.Group, item: ItemEntity, cancel = false) => {
+    const active = inventory.GetActiveItem();
+    if (active) inventory.extract(cursor, 1, active);
+    expect(inventory.receiveAt(cursor, item)).toBe(true);
+    const target = manager.entities.get(lookupPrefabInstance(model)!.entityId!)!;
+    const action = controller.GetItemUseAction(item, target)!;
+    expect(action).toMatchObject({ action: 'GIVE' });
+    expect(action.invobject).toBe(item); expect(action.target).toBe(target);
+    const perform = vi.spyOn(action, 'do');
+    expect(controller.DoAction(action)).toBe(true);
+    graph.update(12 / 30);
+    expect(inventory.GetActiveItem()).toBe(item);
+    if (cancel) controller.cancel();
+    graph.update(1 / 30);
+    return perform.mock.results.at(-1)?.value ?? false;
+  };
   try {
     const position = new THREE.Vector3(3, 0, 4);
     player.position.copy(position);
     let model = await manager.spawnFromSave('phonograph:test', { ...spec, itemId: 'phonograph', count: 1 }, position);
-    const take = vi.fn(() => false);
-    const plain = new ItemEntity({ itemId: 'record', count: 1 });
+    let plain = new ItemEntity({ itemId: 'record', count: 1 });
     plain.configure(INVENTORY_ITEM_SPECS.record);
-    const skinned = new ItemEntity({ itemId: 'record', count: 1, skinId: 'record_creepyforest' });
+    let skinned = new ItemEntity({ itemId: 'record', count: 1, skinId: 'record_creepyforest' });
     skinned.configure(INVENTORY_ITEM_SPECS.record);
     expect(plain.hasTag('cattoy')).toBe(true);
     const invalid = new ItemEntity({ itemId: 'twigs', count: 1 });
-    expect(await manager.insertPhonographRecord(model, { entity: invalid, take })).toBe(false);
-    expect(take).not.toHaveBeenCalled();
-    invalid.destroy();
-    expect(await manager.insertPhonographRecord(model, { entity: plain, take })).toBe(false);
+    expect(give(model, invalid)).toBe(false);
+    expect(inventory.GetActiveItem()).toBe(invalid);
+    inventory.extract(cursor, 1, invalid); invalid.destroy();
+    expect(give(model, plain, true)).toBe(false);
     expect(prefabInstance(model)!.components.phonograph.record).toBeUndefined();
-    take.mockReturnValue(true);
-    expect(await manager.insertPhonographRecord(model, { entity: skinned, take })).toBe(true);
+    skinned.setWet(true);
+    expect(give(model, skinned)).toBe(true);
+    expect(manager.entities.get('phonograph:test')!.components.inventory!.GetItems()).toEqual([skinned]);
     // Inventory transfers must see the loaded record immediately, before any save projection.
     expect(manager.entities.get('phonograph:test')!.phonographRecord).toBe('record_creepyforest');
     manager.update(8, new THREE.Quaternion());
@@ -125,14 +161,20 @@ it('preserves a loaded skinned record across reskin, pickup, inventory transfer,
     data.world.entities.ground_item[0].components.phonograph.remainingSeconds = 65;
     expect(() => deserializeSave(JSON.stringify(data), SAVE_CATALOG)).toThrow('remainingSeconds');
     const saved = manager.exportRecords();
-    const restored = await manager.spawnFromSave('restored', {
-      ...spec, ...saved[0].components.stack!, playbackRemaining: saved[0].components.phonograph!.remainingSeconds,
-    }, position.clone().setX(6));
-    expect(prefabInstance(restored)!.components.phonograph.remainingSeconds).toBe(54);
-    // A full inventory or canceled trade never ejects the old record or stops music.
+    const restoredInventory = new InventoryStore([], INVENTORY_ITEM_SPECS, INVENTORY_SKIN_SPECS);
+    const restoredManager = new GroundItemManager(new THREE.Scene(), world.camera,
+      { domElement: canvas } as unknown as THREE.WebGLRenderer, '/dst/data/databundles/images.zip', restoredInventory, '/dst/data/anim', player);
+    try {
+      const restored = await restoredManager.spawnFromSave(saved[0].id, {
+        ...spec, ...saved[0].components.stack!, playbackRemaining: saved[0].components.phonograph!.remainingSeconds,
+      }, position);
+      const restoredEntity = restoredManager.entities.get(saved[0].id)!;
+      expect(prefabInstance(restored)!.components.phonograph.remainingSeconds).toBe(54);
+      expect(restoredEntity.components.inventory!.GetItems()[0].snapshot()).toEqual(skinned.snapshot());
+    } finally { restoredManager.dispose(); restoredInventory.dispose(); }
+    // Cancelling before frame 13 never ejects the old record or stops music.
     const before = manager.exportRecords();
-    take.mockReturnValue(false);
-    expect(await manager.insertPhonographRecord(model, { entity: plain, take })).toBe(false);
+    expect(give(model, plain, true)).toBe(false);
     expect(manager.exportRecords()).toEqual(before);
     vi.spyOn(THREE.Raycaster.prototype, 'intersectObjects').mockReturnValue([{ object: model } as unknown as THREE.Intersection]);
     performPickupAction(findActionEntity(model)!.pickupTarget, createPickupDoer(player, inventory));
@@ -142,25 +184,29 @@ it('preserves a loaded skinned record across reskin, pickup, inventory transfer,
     expect(item.skinId).toBe('decor_phonograph_cawnival');
     expect(inventory.applySlotChanges([{ slot: from, itemId: item.itemId, skinId: item.skinId, delta: -1 },
       { slot: to, itemId: item.itemId, skinId: item.skinId, phonographRecord: item.phonographRecord, delta: 1 }])).toBe(true);
+    const contents = skinned.snapshot();
     const state = inventory.exportState(); inventory.replaceState(state, {});
     expect(inventory.get(to)).toEqual(item);
-    expect(await manager.drop({ ...spec, ...item }, position, () => inventory.applySlotChanges([
-      { slot: to, itemId: item.itemId, skinId: item.skinId, delta: -1 },
-    ]))).toBe(true);
+    plain = inventory.GetActiveItem()!;
+    const loaded = inventory.getEntity(to)!;
+    skinned = loaded.components.inventory!.GetItems()[0];
+    expect(skinned.snapshot()).toEqual(contents);
+    expect(await manager.drop({ ...spec, ...item, entity: loaded }, position, () => inventory.extract(to, 1, loaded) ?? false)).toBe(true);
     const dropped = manager.reskinTargets.find(({ model }) => lookupPrefabInstance(model)?.entityId !== 'restored')!.model as THREE.Group;
     expect(prefabInstance(dropped)!.components.phonograph.record).toBe('record_creepyforest');
     expect(prefabInstance(dropped)!.components.phonograph.isPlaying).toBe(false);
     const droppedRecord = manager.exportRecords().find(({ id }) => id !== 'restored')!;
     expect(droppedRecord.components.phonograph).toBeUndefined();
     // Replacing the record ejects its original skin; one hammer hit ejects the new record.
-    take.mockReturnValue(true);
-    expect(await manager.insertPhonographRecord(dropped, { entity: plain, take })).toBe(true);
+    expect(give(dropped, plain)).toBe(true);
     expect(manager.exportRecords().some(({ components }) => components.stack?.skinId === 'record_creepyforest')).toBe(true);
     const ejected = manager.reskinTargets.find(({ prefabId }) => prefabId === 'record')!.model;
     expect(manager.reskinTargets.find(target => target.model === ejected)!.hasTag('phonograph_record')).toBe(true);
+    expect(manager.entities.get(skinned.id)).toBe(skinned);
+    expect(skinned.GetIsWet()).toBe(true);
     workTargets('HAMMER').find(({ model }) => model === dropped)!.work();
     await vi.waitFor(() => expect(manager.exportRecords().filter(({ components }) => components.stack?.itemId === 'record')).toHaveLength(2));
     expect(manager.exportRecords().some(({ id }) => id === droppedRecord.id)).toBe(false);
     plain.destroy(); skinned.destroy();
-  } finally { manager.dispose(); }
+  } finally { controller.dispose(); graph.dispose(); manager.dispose(); inventory.dispose(); }
 }, 30_000);

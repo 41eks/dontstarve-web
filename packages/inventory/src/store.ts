@@ -845,6 +845,8 @@ export class InventoryStore {
         ...((change.wet ?? current?.wet ?? source?.wet ?? incoming?.wet) === undefined ? {}
           : { wet: change.wet ?? current?.wet ?? source?.wet ?? incoming?.wet }),
         ...((current?.container ?? source?.container) === undefined ? {} : { container: current?.container ?? source?.container }),
+        ...((current?.inventory ?? source?.inventory ?? incoming?.inventory) === undefined ? {}
+          : { inventory: current?.inventory ?? source?.inventory ?? incoming?.inventory }),
         ...((change.phonographRecord ?? current?.phonographRecord ?? source?.phonographRecord) === undefined ? {}
           : { phonographRecord: change.phonographRecord ?? current?.phonographRecord ?? source?.phonographRecord }),
         ...((change.remainingUses ?? current?.remainingUses ?? source?.remainingUses) === undefined ? {}
@@ -997,6 +999,7 @@ export class InventoryStore {
       if (!entity) continue;
       const ownerPosition = new Vector3();
       entity.components.inventoryitem.owner = {
+        DropItem: (item, position) => this.DropItem(item, position),
         address: cloneAddress(address),
         hasTag: tag => this.worldContainers.get(address.containerId)?.hasTag(tag) ?? false,
         getPosition: () => {

@@ -26,6 +26,7 @@ export function newItemEntityId(): string {
 
 export interface ItemRuntimeComponent {
   flush?(): void;
+  BindScheduler?(scheduler: import('../../componets/src/gameTimeScheduler').GameTimeScheduler): void;
   dispose(): void;
 }
 export interface ItemOwner {
@@ -38,6 +39,7 @@ export interface ItemOwner {
   replace(prefab: string): boolean;
   /** Livestock onperish removes the original stack, then gives its generated loot to the holder. */
   GiveItem?(item: ItemEntity): boolean;
+  DropItem?(item: ItemEntity, position?: Vector3): void;
   /** Lua owner:PushEvent: the player's inventory forwards to the player; other containers ignore it. */
   PushEvent(name: string, data: unknown): void;
 }
@@ -176,6 +178,8 @@ export class ItemEntity {
     useableitem?: import('../../componets/src/useableitem').UseableItem;
     lootdropper?: import('../../componets/src/lootdropper').LootDropper;
     phonograph?: import('../../prefab/src/phonograph').PhonographController;
+    inventory?: import('./creatureInventory').CreatureInventory;
+    trader?: import('../../componets/src/trader').Trader;
     machine?: import('../../componets/src/machine').Machine;
   };
   readonly signals: InventoryItemSignals;
@@ -240,6 +244,7 @@ export class ItemEntity {
   BindPerishWorld(world: PerishWorld): void {
     this.components.perishable.BindWorld(world);
     this.components.fueled?.BindScheduler(this.components.perishable.scheduler);
+    for (const component of this.runtime.values()) component.BindScheduler?.(world.scheduler);
   }
   BindTemperatureWorld(world: TemperatureWorld): void {
     this.temperatureWorld = world;
@@ -250,7 +255,12 @@ export class ItemEntity {
   castsound?: string;
   projectiledelay?: number;
   fxcolour?: readonly [number, number, number];
-  phonographRecord?: string;
+  private savedPhonographRecord?: string;
+  private savedInventory?: InventoryStack[];
+  /** Compatibility projection; the prefab's inventory owns the live record. */
+  get phonographRecord(): string | undefined {
+    return this.components.phonograph ? this.components.phonograph.record : this.savedPhonographRecord;
+  }
   private readonly runtime = new Map<string, ItemRuntimeComponent>();
   private readonly removedState = createSignal(false);
   readonly removal = readonlySignal(this.removedState);
@@ -311,6 +321,7 @@ export class ItemEntity {
     return this.runtime.get(name) as T | undefined;
   }
   snapshot(includeIdentity = true): InventoryStack {
+    const inventory = this.components.inventory?.OnSave() ?? this.savedInventory;
     const temperature = this.components.temperature?.OnSave() ?? this.savedTemperature;
     const armor = this.components.armor ? this.components.armor.OnSave() : this.savedArmor;
     const freshness = this.components.perishable.perishtime.peek() === undefined
@@ -333,6 +344,7 @@ export class ItemEntity {
       ...(freshness === undefined ? {} : { freshnessPercent: freshness }),
       ...(this.wetState.peek() ? { wet: true } : {}),
       ...(this.phonographRecord === undefined ? {} : { phonographRecord: this.phonographRecord }),
+      ...(inventory?.length ? { inventory } : {}),
       ...(this.components.container === undefined ? {} : { container: {
         slotCount: this.components.container.GetNumSlots(),
         slots: Object.entries(this.components.container.OnSave().items)
@@ -354,7 +366,8 @@ export class ItemEntity {
     if (state.temperature && this.components.temperature?.GetCurrent() !== state.temperature.current) {
       this.components.temperature?.OnLoad(state.temperature);
     }
-    this.phonographRecord = state.phonographRecord;
+    this.savedPhonographRecord = state.phonographRecord;
+    this.savedInventory = state.inventory;
     this.savedArmor = state.armor;
     const armor = this.components.armor;
     if (armor && state.armor && state.armor.condition !== armor.condition.peek()) armor.OnLoad(state.armor);
@@ -548,6 +561,7 @@ export class ItemEntityRegistry {
       const child = slot.getEntity();
       if (child) this.adopt(child);
     }
+    for (const child of entity.components.inventory?.GetItems() ?? []) this.adopt(child);
   }
   destroy(entity: ItemEntity): void {
     entity.destroy();
