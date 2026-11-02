@@ -3,7 +3,10 @@ import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Workable, type Worker } from '../../componets/src/workable';
 import { createResidentGroundItem } from './groundItems';
 import { configureTradableEntity } from './tradable';
-import { createBurnableItemVisual } from './burnableItems';
+import { configureBurnableItemEntity, createBurnableItemVisual } from './burnableItems';
+import { Deployable } from '../../componets/src/deployable';
+import { PlaySound } from './sound';
+import { TILE_SIZE } from './tile';
 import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
 import type { GroundItemFactory, GroundPrefabContext, SpawnGroundItem } from './groundPrefab';
 import type { LootLaunch } from './lootFling';
@@ -78,6 +81,18 @@ export class RockAvocadoFruit {
 export function configureRockAvocadoFruitEntity(entity: ItemEntity): void {
   if (!(ROCK_AVOCADO_ITEM_IDS as readonly string[]).includes(entity.prefab)) return;
   configureTradableEntity(entity);
+  if (entity.prefab === 'rock_avocado_fruit_sprout' && !entity.components.deployable) {
+    configureBurnableItemEntity(entity);
+    entity.addTag('deployedplant');
+    entity.components.deployable = entity.component('deployable', () => new Deployable(entity, (point, _deployer, map) => {
+      // rock_avocado_fruit.lua on_deploy_fn.
+      if (!map.SpawnPrefab('rock_avocado_fruit_sprout_sapling', point)) return false;
+      entity.remove();
+      PlaySound('dontstarve/wilson/plant_tree', point);
+      return true;
+    }, { mode: 'PLANT', spacing: 2 * (TILE_SIZE / 4), placer: { bank: 'rock_avo_fruit_master', build: 'rock_avocado_fruit_build',
+      animationArchive: 'rock_avocado_fruit.zip', animation: 'idle_buried_seed' } }));
+  }
   if (entity.prefab === 'rock_avocado_fruit') entity.component('rock_avocado_fruit', () => new RockAvocadoFruit(entity));
   else if (entity.prefab === 'rock_avocado_fruit_ripe') { entity.addTag('molebait'); entity.addTag('cookable'); }
 }

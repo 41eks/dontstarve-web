@@ -35,7 +35,8 @@ export const ACTIONS = {
   LIGHT: { priority: -4, strings: { GENERIC: '点燃' } },
   PLAY: { priority: 0, strings: { GENERIC: '演奏' } },
   READ: { priority: 0, strings: { GENERIC: '阅读' } },
-  DEPLOY: { priority: 0, distance: 1.1, strings: { GENERIC: '栽种', GROUNDTILE: '放置地皮' } },
+  DEPLOY: { priority: 0, distance: 1.1, strings: { GENERIC: '栽种', GROUNDTILE: '放置地皮', DEPLOY: '部署' } },
+  DEPLOY_TILEARRIVE: { priority: 0, strings: { GENERIC: '栽种', GROUNDTILE: '放置地皮', DEPLOY: '部署' } },
   SHAVE: { priority: 0, strings: { GENERIC: '刮', SELF: '给自己刮胡子' } },
   SLEEPIN: { priority: 0, strings: { GENERIC: '睡觉' } },
   MIGRATE: { priority: 0, rmb: false, ghost_valid: true, strings: { GENERIC: '进入' } },
@@ -85,7 +86,9 @@ function strfn(act: ActionDescription): string | undefined {
   const target = act.target as (BufferedActionObject & { components?: { container?: { IsOpenedBy(doer: object): boolean } } }) | undefined;
   switch (act.action) {
     case 'CASTSPELL': return act.invobject?.spelltype;
-    case 'DEPLOY': return act.invobject?.hasTag('groundtile') ? 'GROUNDTILE' : undefined;
+    case 'DEPLOY':
+    case 'DEPLOY_TILEARRIVE':
+      return act.invobject?.hasTag('usedeploystring') ? 'DEPLOY' : act.invobject?.hasTag('groundtile') ? 'GROUNDTILE' : undefined;
     case 'EAT': return act.invobject?.hasTag('fooddrink') ? 'DRINK' : undefined;
     case 'RUMMAGE': return act.doer && target?.components?.container?.IsOpenedBy(act.doer) ? 'CLOSE' : undefined;
     case 'HARVEST': return target?.prefab === 'birdcage' ? 'FREE' : undefined;

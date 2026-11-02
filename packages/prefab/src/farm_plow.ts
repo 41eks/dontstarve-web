@@ -5,12 +5,9 @@ import { placementEntities, registerPlacementEntity, ignoresPlacement, hasPlacem
 import { ModelRecords } from './modelRecords';
 import type { ItemEntity, InventoryStack } from '@dontstarve-web/inventory';
 import type { FarmActionWorld } from '@dontstarve-web/stategraphs/farmActions';
-import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
 import * as THREE from 'three';
 import { PrefabDisplayGroup, SpriteResources, PrefabDisplay, SpriteState, type ArchiveSpriteSource } from '@dontstarve-web/display';
 import { createArchiveEntity, PrefabInstance, bindInstance } from './prefabInstance';
-import { BuildCursor, entityPlacer } from './buildCursor';
-import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import { newEntityId } from './saveRecord';
 import { snapToTileCenter, TILE_SIZE } from './tile';
 import { TurfMap, WORLD_TILES } from './turfMap';
@@ -20,6 +17,7 @@ import { FARM_PLANT_ART } from './veggies';
 import { actionEntity, disposeActionEntity, findActionEntity } from './actionEntity';
 import { WorldFx } from './world_fx';
 import { Workable } from '../../componets/src/workable';
+import { Deployable } from '../../componets/src/deployable';
 
 export const FARM_PLOW_ITEM_ID = 'farm_plow_item';
 export const FARM_PLOW_ID = 'farm_plow';
@@ -51,8 +49,6 @@ type FarmEntity = ReturnType<typeof createArchiveEntity<PrefabInstance>>;
 type FarmSprite = FarmEntity['instance']['sprite'];
 type ArchiveOptions = Parameters<SpriteResources['archive']>[1];
 const TEMPORARY_TAGS = ['FX', 'NOCLICK'] as const;
-// The placer tints: blocked cells.
-const BLOCKED_TINT = new THREE.Color(0xff5555).toArray() as [number, number, number];
 interface Plow {
   id: string; entity: { instance: FarmPlowInstance; display: PrefabDisplay }; loopSound?: SoundHandle;
   dirtTasks: { quad: number; remaining: number }[];
@@ -97,13 +93,23 @@ function onhammered(inst: FarmPlowInstance): void {
   inst.remove();
 }
 
-/** farm_plow.lua's deployment, timer, terraform and fold-up lifecycle; displays load the declared art. */
+/** The farm_plow_item_placer's art: farm_plow's idle_place with its soil symbol. */
+export const FARM_PLOW_PLACER_ART = { animationArchive: 'farm_plow.zip', buildArchives: ['farm_plow.zip', 'farm_soil.zip'], bank: 'farm_plow',
+  symbolOverrides: soilOverride, animation: 'idle_place' };
+
+/** farm_plow.lua item_fn: tile_deploy with the deploy string, deployable(CUSTOM) on can_plow_tile, item_ondeploy. */
+export function configureFarmPlowItemEntity(entity: ItemEntity): void {
+  if (entity.prefab !== FARM_PLOW_ITEM_ID || entity.components.deployable) return;
+  for (const tag of ['usedeploystring', 'tile_deploy', 'deployable']) entity.addTag(tag);
+  entity.components.deployable = entity.component('deployable', () => new Deployable(entity,
+    (point, _deployer, map) => map.deployPlow(point, entity),
+    { mode: 'CUSTOM', spacing: 2 * SCALE, usegridplacer: false, candeploy: (point, map) => map.canDeployPlow(point) }));
+}
+
+/** farm_plow.lua's timer, terraform and fold-up lifecycle, and the world's till rules; displays load the declared art. */
 export class FarmPlowPlacement implements FarmActionWorld {
-  private readonly stopActionEvents: () => void;
   private readonly resources: SpriteResources;
   private readonly displays: PrefabDisplayGroup;
-  private readonly pointer: PointerRaycaster;
-  private readonly cursor: BuildCursor;
   private readonly mousePlows = new ModelRecords<Plow>();
   private readonly plows = new Map<string, Plow>();
   private readonly plowPositions = new SpatialIndex<Plow>(plow => plow.entity.instance.position);
@@ -115,12 +121,6 @@ export class FarmPlowPlacement implements FarmActionWorld {
   private readonly plantedSeeds = new Map<string, FarmEntity>();
   private debrisLoot?: (itemId: string, position: THREE.Vector3) => void;
   private readonly effects = new Set<FarmEntity>();
-  private preview?: FarmEntity;
-  private previewOutline?: FarmEntity;
-  /** What the placers' sprite json was last told. */
-  private previewVisible?: boolean;
-  private previewValid?: boolean;
-  private takeItem?: () => ItemEntity | undefined;
   private disposed = false;
   private readonly removeDigListener: () => void;
   private readonly world: PrefabWorldContext;
@@ -143,47 +143,13 @@ export class FarmPlowPlacement implements FarmActionWorld {
       PlaySound('dontstarve/common/plant', position);
       return plant.instance;
     } };
-    this.stopActionEvents = bindActionCancellation(world, this, () => this.cancel());
     this.resources = new SpriteResources(undefined, 'farm');
     this.displays = new PrefabDisplayGroup(world.scene);
-    this.pointer = new PointerRaycaster(world);
-    this.cursor = new BuildCursor(world, this.pointer);
     this.removeDigListener = turf.onDig((point) => {
       for (const soil of [...this.decor.values()]) {
         if (soil.prefabId === 'farm_soil' && this.tileKey(soil.entity.instance.position) === this.tileKey(point)) this.removeSoil(soil);
       }
     });
-    world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown, true);
-    window.addEventListener('keydown', this.handleKeyDown);
-  }
-
-  begin(takeItem: () => ItemEntity | undefined): void {
-    if (this.disposed) throw new Error('Farm plow has been disposed');
-    this.cancel();
-    this.world.actionEvents?.emit('action:begin', { owner: this, action: 'DEPLOY' });
-    this.takeItem = takeItem;
-    this.cursor.show('鼠标右键：布署', 'right');
-    // Placers own private translucent material copies, tinted only for themselves.
-    const appearance = { opacity: .65, colour: [1, 1, 1] as [number, number, number] };
-    const preview = this.create('FarmPlowPlacer', this.archive('farm_plow.zip', 'farm_plow', appearance), 'idle_place', TEMPORARY_TAGS);
-    const outline = this.create('FarmPlowTileOutline', this.archive('gridplacer.zip', 'gridplacer', appearance), 'anim', TEMPORARY_TAGS,
-      undefined, false);
-    this.previewVisible = undefined; this.previewValid = undefined;
-    this.preview = preview;
-    this.previewOutline = outline;
-    outline.display.model.rotation.x = -Math.PI / 2;
-    outline.display.model.userData.billboard = false;
-    // MakePlacer: AnimState:SetLightOverride(1) on each placer entity.
-    for (const placer of [preview, outline]) placer.instance.sprite.setLightOverride(1);
-    this.cursor.setPreview(entityPlacer(preview.instance), 0, (point) => this.center(point));
-    this.cursor.update();
-  }
-
-  cancel(): void {
-    this.takeItem = undefined;
-    this.cursor.hide();
-    this.preview?.instance.remove(); this.preview = undefined;
-    this.previewOutline?.instance.remove(); this.previewOutline = undefined;
   }
 
   canDeploy(point: THREE.Vector3): boolean {
@@ -194,19 +160,16 @@ export class FarmPlowPlacement implements FarmActionWorld {
       && !this.decorPositions.someOnTile(center, item => !item.broken);
   }
 
-  deploy(point: THREE.Vector3, takeItem: () => ItemEntity | undefined): boolean {
+  /** item_ondeploy: spawn at the tile centre, finiteuses:Use(1), keep the item's save record and remove it. */
+  deploy(point: THREE.Vector3, item: ItemEntity): boolean {
     if (this.disposed || !this.canDeploy(point)) return false;
-    const center = this.center(point);
-    const item = takeItem();
-    if (!item) return false;
     if (item.prefab !== FARM_PLOW_ITEM_ID || item.isRemoved || item.components.inventoryitem.owner
       || item.components.stackable.count !== 1) throw new Error('Deployment requires one detached farm_plow_item');
     item.components.finiteuses.setMaxUses(FARM_PLOW_USES);
     if (!item.components.finiteuses.use(1)) return false;
     const deployItem = item.isRemoved ? null : item.snapshot();
     if (!item.isRemoved) item.remove();
-    this.addPlow(newEntityId(), center, { phase: 'drill_pre', remainingSeconds: FARM_PLOW_DRILLING_DURATION, deployItem });
-    this.cancel();
+    this.addPlow(newEntityId(), this.center(point), { phase: 'drill_pre', remainingSeconds: FARM_PLOW_DRILLING_DURATION, deployItem });
     return true;
   }
 
@@ -260,20 +223,6 @@ export class FarmPlowPlacement implements FarmActionWorld {
   update(dt: number, _cameraQuaternion: THREE.Quaternion): void {
     if (this.disposed) return;
     const step = Math.max(0, Math.min(dt, 0.1));
-    this.cursor.update();
-    // BuildCursor shows and hides the plow placer; its tile outline follows it.
-    const previewVisible = this.preview !== undefined && this.cursor.previewVisible;
-    if (this.previewOutline) {
-      if (previewVisible !== this.previewVisible) this.previewOutline.instance.sprite.setVisible(this.previewVisible = previewVisible);
-      if (this.preview) this.previewOutline.instance.position.copy(this.preview.instance.position).setY(0.05);
-    }
-    if (this.preview && previewVisible) {
-      const valid = this.canDeploy(this.preview.instance.position);
-      if (valid !== this.previewValid) {
-        this.previewValid = valid;
-        for (const placer of [this.preview, this.previewOutline]) placer?.instance.sprite.setColour(valid ? [1, 1, 1] : BLOCKED_TINT);
-      }
-    }
     for (const plow of [...this.plows.values()]) {
       if (plow.entity.instance.phase !== 'drill_loop') continue;
       plow.entity.instance.remainingSeconds = Math.max(0, plow.entity.instance.remainingSeconds - step);
@@ -553,11 +502,8 @@ export class FarmPlowPlacement implements FarmActionWorld {
   }
   get renderEntities() { return [...this.displays.renderEntities, ...(this.localFx?.renderEntities ?? [])]; }
   dispose(): void {
-    this.stopActionEvents();
     if (this.disposed) return;
-    this.disposed = true; this.cancel(); this.pointer.dispose(); this.removeDigListener();
-    this.world.renderer.domElement.removeEventListener('pointerdown', this.handlePointerDown, true);
-    window.removeEventListener('keydown', this.handleKeyDown);
+    this.disposed = true; this.removeDigListener();
     for (const plow of [...this.plows.values()]) this.removePlow(plow);
     for (const item of this.decor.values()) { item.stopTracking?.(); item.entity.instance.remove(); }
     for (const effect of this.effects) effect.instance.remove();
@@ -566,14 +512,4 @@ export class FarmPlowPlacement implements FarmActionWorld {
     this.decor.clear(); this.plantedSeeds.clear(); this.effects.clear();
     this.displays.dispose(); this.localFx?.dispose(); this.resources.dispose();
   }
-  private readonly handlePointerDown = (event: PointerEvent): void => {
-    if (!this.takeItem || event.defaultPrevented) return;
-    if (event.button === 0) { event.preventDefault(); this.cancel(); return; }
-    if (event.button !== 2) return;
-    event.preventDefault(); event.stopImmediatePropagation(); this.pointer.trackPointer(event);
-    const point = this.pointer.groundPoint();
-    if (!point || !this.preview) return;
-    this.deploy(point, this.takeItem);
-  };
-  private readonly handleKeyDown = (event: KeyboardEvent): void => { if (event.code === 'Escape') this.cancel(); };
 }

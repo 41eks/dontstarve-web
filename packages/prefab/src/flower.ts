@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { watchTileActivity } from './tileActivity';
 import { newEntityId } from './saveRecord';
 import type { WorldContext, WorldEventEmitter } from './worldContext';
-import { actionEntity, findActionEntity } from './actionEntity';
+import { actionEntity, } from './actionEntity';
 import { BurnableBinding, FireFxHost } from './treeFire';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Pickable } from './components/pickable';
@@ -108,13 +108,12 @@ export class FlowerPlanting {
     return this.addFlower(this.createFlower(id, animation, position, planted));
   }
 
-  /** butterfly.lua OnDeploy: SpawnPrefab("flower") with its random f1–f10/rose, then growfrombutterfly; the display loads the art. */
-  transplant(position: THREE.Vector3): boolean {
-    if (this.disposed) return false;
+  /** SpawnPrefab("planted_flower"): flower.lua's random f1–f10/rose; the display loads the art. */
+  spawnPlanted(position: THREE.Vector3): THREE.Group | undefined {
+    if (this.disposed) return undefined;
     const animation = this.random() < .01 ? 'rose' : FLOWER_ANIMATIONS[Math.floor(this.random() * 10)];
     const flower = this.createFlower(newEntityId(), animation, position);
-    findActionEntity(this.addFlower(flower))!.PushEvent?.('growfrombutterfly', undefined);
-    return true;
+    return this.addFlower(flower);
   }
 
   private addFlower(flower: PlantedFlower): THREE.Group {

@@ -4,6 +4,14 @@ import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { FarmPlowPlacement, FARM_PLOW_DRILLING_DURATION } from '../../prefab/src/farm_plow';
+import { createDeployMap } from '../../prefab/src/deployMap';
+import { DeployPlacer } from '../../prefab/src/deployPlacer';
+import { deployActor } from './deployActor';
+import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
+import { collectPointActions } from '../../stategraphs/src/componentactions';
+import { getActionString } from '../../stategraphs/src/actions';
+import { createInventoryStore } from '../../../src/inventory';
+import { cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { TurfMap, WORLD_TILES } from '../../prefab/src/turfMap';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { createGroundItemVisual } from './groundItemVisual';
@@ -59,7 +67,7 @@ it('snaps deployment, drills for 15 seconds, terraforms and returns a folded thr
   try {
     const original = item();
     const use = vi.spyOn(original.components.finiteuses, 'use');
-    expect(plow.deploy(new THREE.Vector3(1, 0, 2), () => original)).toBe(true);
+    expect(plow.deploy(new THREE.Vector3(1, 0, 2), original)).toBe(true);
     expect(use).toHaveBeenCalledExactlyOnceWith(1);
     expect(original.isRemoved).toBe(true);
     const savedItem = original.snapshot();
@@ -94,14 +102,14 @@ it('does not return an exhausted item on its fourth use and one hammer hit recov
   const { plow, turf, returnItem, advance } = setup();
   try {
     const lastUse = item(1);
-    plow.deploy(new THREE.Vector3(1, 0, 1), () => lastUse);
+    plow.deploy(new THREE.Vector3(1, 0, 1), lastUse);
     expect(lastUse.isRemoved).toBe(true);
     expect(plow.exportRecords()[0].components.farmPlow.deployItem).toBeNull();
     await advance(20);
     expect(turf.getTileAtWorld({ x: 6, z: 6 })).toBe(WORLD_TILES.FARMING_SOIL);
     expect(returnItem).not.toHaveBeenCalled();
     const original = item(3);
-    plow.deploy(new THREE.Vector3(-13, 0, -1), () => original);
+    plow.deploy(new THREE.Vector3(-13, 0, -1), original);
     await advance(3);
     const target = workTargets('HAMMER')[0];
     target.work(); target.work();
@@ -113,26 +121,69 @@ it('does not return an exhausted item on its fourth use and one hammer hit recov
   } finally { plow.dispose(); }
 });
 
-it('rejects hard terrain, blocking entities and failed item transfers without spending an item', async () => {
+it('rejects hard terrain and blocking entities without spending an item', async () => {
   const { plow, turf, blockers } = setup();
   const point = new THREE.Vector3(1, 0, 1);
   const original = item();
-  const take = vi.fn(() => original);
   try {
     turf.setOriginalTile(point, WORLD_TILES.WOODFLOOR);
-    expect(plow.deploy(point, take)).toBe(false);
+    expect(plow.deploy(point, original)).toBe(false);
     turf.setOriginalTile(point, WORLD_TILES.DECIDUOUS);
     const blocker = { position: point, tags: [] as string[] };
     blockers.add(blocker);
-    expect(plow.deploy(point, take)).toBe(false);
+    expect(plow.deploy(point, original)).toBe(false);
     blocker.tags = ['FX'];
     expect(plow.canDeploy(point)).toBe(true);
-    expect(take).not.toHaveBeenCalled();
-    expect(plow.deploy(point, () => undefined)).toBe(false);
     expect(plow.exportRecords()).toEqual([]);
     expect(original.isRemoved).toBe(false);
     expect(original.components.finiteuses.remaining).toBeUndefined();
   } finally { plow.dispose(); }
+});
+
+it('picks DEPLOY_TILEARRIVE for the held item, arrives anywhere on the tile and commits one use at frame six', async () => {
+  const { plow, turf, world, blockers } = setup();
+  const inventory = createInventoryStore([]);
+  const map = createDeployMap({ turf, blockers: blockers as never, farm: plow }), actor = deployActor(world, inventory, map);
+  const placer = new DeployPlacer(world, map, () => inventory.GetActiveItem());
+  const click = new THREE.Vector3(10, 0, 2);
+  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockImplementation(() => click.clone());
+  try {
+    expect(inventory.add('farm_plow_item', 1)).toBe(true);
+    expect(inventory.transfer(inventorySlotAddress(0), cursorSlotAddress(), 1)).toBe(true);
+    const entity = inventory.GetActiveItem()!;
+    for (const tag of ['usedeploystring', 'tile_deploy']) expect(entity.hasTag(tag)).toBe(true);
+
+    // Selecting the item shows farm_plow_item_placer and its tile_outline, snapped to the tile centre.
+    placer.update();
+    expect(world.scene.children.map(model => model.name)).toEqual(expect.arrayContaining(['FarmPlowPlacer', 'FarmPlowTileOutline']));
+    const preview = world.scene.children.find(model => model.name === 'FarmPlowPlacer')!;
+    expect(preview.position.toArray()).toEqual([6, 0, 6]);
+
+    const [point] = collectPointActions(entity as never, actor.doer as never, click, true);
+    expect(point).toBe('DEPLOY_TILEARRIVE');
+    expect(getActionString({ action: point, invobject: entity as never })).toBe('部署');
+    world.player.position.set(-30, 0, 2);
+    const action = actor.controller.createAction({ action: point, invobject: entity as never, pos: click })!;
+    expect(actor.controller.DoAction(action)).toBe(true);
+    const [walk, arrive] = actor.locomotor.PushAction.mock.calls[0] as unknown as [{ arrived(): boolean; distance?: number }, () => void];
+    expect(walk.distance).toBeUndefined();
+    expect(walk.arrived()).toBe(false);
+    // CheckTileWithinRange: inside the clicked tile, however far from the click itself.
+    world.player.position.set(.5, 0, 11);
+    expect(walk.arrived()).toBe(true);
+    arrive();
+    expect(actor.graph.stateName).toBe('doshortaction');
+    actor.graph.update(5 / 30);
+    expect(plow.exportRecords()).toEqual([]);
+    actor.graph.update(1 / 30);
+    const [record] = plow.exportRecords();
+    expect(record.transform.position).toEqual([6, 0, 6]);
+    expect(record.components.farmPlow.deployItem).toMatchObject({ itemId: 'farm_plow_item', remainingUses: 3 });
+    expect(inventory.GetActiveItem()).toBeNull();
+    placer.update();
+    expect(world.scene.children.some(model => model.name === 'FarmPlowPlacer')).toBe(false);
+  } finally { placer.dispose(); actor.controller.dispose(); inventory.dispose(); plow.dispose(); }
 });
 
 it('restores drilling progress, attached soil and remaining item uses without restarting the timer', async () => {

@@ -116,7 +116,7 @@ it('walks to the shore through DEPLOY, reaches over the water, consumes one kit 
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   const { turf, world, blockers } = setup();
   const inventory = createInventoryStore([{ slot_index: 0, id: 'dock_kit', num: 2 }]);
-  const map = createDeployMap({ turf, blockers, plants: {} }), actor = deployActor(world, inventory, map);
+  const map = createDeployMap({ turf, blockers }), actor = deployActor(world, inventory, map);
   const placer = new DeployPlacer(world, map, () => inventory.GetActiveItem());
   vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(centre(0, 0));
   vi.spyOn(PointerRaycaster.prototype, 'pickMouseTarget').mockReturnValue(undefined as never);

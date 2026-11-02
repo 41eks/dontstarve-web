@@ -4,14 +4,16 @@ import { SpriteResources } from '@dontstarve-web/display';
 import { ArchiveSpriteAssets, createSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import type { DeployPlacerMap } from './deployMap';
+import { FARM_PLOW_ITEM_ID, FARM_PLOW_PLACER_ART } from './farm_plow';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
-import { PLANTABLES } from './plantables';
 import { createArchiveEntity, createPrefabEntity } from './prefabInstance';
 import type { WorldContext } from './worldContext';
 
 interface Placer {
   readonly instance: ReturnType<typeof createPrefabEntity>['instance'];
   readonly display: ReturnType<typeof createPrefabEntity>['display'];
+  /** placer:LinkEntity: follows the placer's visibility. */
+  readonly linked?: Pick<Placer, 'instance' | 'display'>;
   /** The hidden/shown state its sprite json was last told. */
   visible: boolean;
   place(point: THREE.Vector3, valid: boolean): void;
@@ -46,13 +48,17 @@ export class DeployPlacer {
       this.release();
       // inventoryitem_replica.lua GetDeployPlacerName.
       if (item?.components.deployable?.usegridplacer) this.createGridPlacer(item);
+      else if (item?.prefab === FARM_PLOW_ITEM_ID) this.createPlowPlacer();
       else if (item) this.createPlantPlacer(item);
     }
     const placer = this.placer;
     if (!placer || !item) return;
-    placer.display.update(dt);
+    placer.display.update(dt); placer.linked?.display.update(dt);
     const point = this.pointer.groundPoint();
-    if (!!point !== placer.visible) placer.instance.sprite.setVisible(placer.visible = !!point);
+    if (!!point !== placer.visible) {
+      placer.instance.sprite.setVisible(placer.visible = !!point);
+      placer.linked?.instance.sprite.setVisible(!!point);
+    }
     if (point) placer.place(point, item.components.deployable!.CanDeploy(point, this.map));
   }
 
@@ -80,8 +86,31 @@ export class DeployPlacer {
     }).catch((error: unknown) => console.error('Unable to load turf gridplacer', error));
   }
 
+  /** farm_plow.lua placer_fn: snap_to_tile, with the tile_outline linked. */
+  private createPlowPlacer(): void {
+    const { animation, ...art } = FARM_PLOW_PLACER_ART;
+    // Placers own private translucent material copies, tinted only for themselves.
+    const appearance = { opacity: .65, colour: [1, 1, 1] as [number, number, number] };
+    const entity = createArchiveEntity('FarmPlowPlacer', this.resources.archive(art, appearance), { name: animation, billboard: true }, 'FarmPlowPlacer');
+    const outline = createArchiveEntity('FarmPlowTileOutline', this.resources.archive({ animationArchive: 'gridplacer.zip',
+      buildArchives: ['gridplacer.zip'], bank: 'gridplacer' }, appearance), { name: 'anim', billboard: false }, 'FarmPlowTileOutline');
+    outline.display.model.rotation.x = -Math.PI / 2;
+    outline.display.model.userData.billboard = false;
+    for (const { instance } of [entity, outline]) { this.tagPlacer(instance); instance.sprite.setVisible(false); }
+    let tinted: boolean | undefined;
+    this.placer = { instance: entity.instance, display: entity.display, linked: outline, visible: false, place: (point, valid) => {
+      const centre = this.map.tileCenter(point);
+      entity.instance.position.set(centre.x, 0, centre.z);
+      outline.instance.position.set(centre.x, .05, centre.z);
+      if (valid === tinted) return;
+      tinted = valid;
+      for (const { instance } of [entity, outline]) instance.sprite.setColour(valid ? [1, 1, 1] : [.75, .25, .25]);
+    } };
+    this.world.scene.add(entity.display.model, outline.display.model);
+  }
+
   private createPlantPlacer(item: ItemEntity): void {
-    const definition = PLANTABLES[item.prefab];
+    const definition = item.components.deployable?.placer;
     if (!definition) return;
     const skinArchive = item.skinId && GROUND_ITEM_DEFINITIONS[item.prefab].skinArchives[item.skinId];
     // The placer's display loads its art; it is hidden until the pointer is over the ground.
@@ -113,7 +142,8 @@ export class DeployPlacer {
   }
 
   private release(): void {
-    if (this.placer) { this.placer.instance.remove(); this.placer.display.dispose(); }
+    const placer = this.placer;
+    for (const entity of placer ? [placer, ...placer.linked ? [placer.linked] : []] : []) { entity.instance.remove(); entity.display.dispose(); }
     this.placer = undefined;
   }
 

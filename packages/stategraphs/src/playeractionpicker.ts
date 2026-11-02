@@ -111,7 +111,7 @@ export class PlayerActionPicker {
   private activeItemPointActions(player: NonNullable<PlayerActionPicker['player']>, item: ComponentActionEntity): MouseActionCandidate[] {
     const point = this.pointer.groundPoint();
     if (!point) return [];
-    return collectPointActions(item, player.doer, point, true).filter(action => action === 'DEPLOY').map(action => ({
+    return collectPointActions(item, player.doer, point, true).filter(action => action === 'DEPLOY' || action === 'DEPLOY_TILEARRIVE').map(action => ({
       action: { action, doer: player.doer, invobject: item, pos: point }, button: 'right' as const, source: 'inventory' as const }));
   }
 

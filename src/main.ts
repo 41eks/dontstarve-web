@@ -22,7 +22,6 @@ import {
 } from '@dontstarve-web/ui';
 import { type PickupDoer, PointerRaycaster, type WilsonStateName } from '@dontstarve-web/stategraphs';
 import { PlayerActionFilter } from '@dontstarve-web/stategraphs/actions';
-import { FARM_PLOW_ITEM_ID } from '@dontstarve-web/prefab/farm_plow';
 import { turfMap } from './building';
 import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
 import { SetAutopaused } from './autopause';
@@ -299,7 +298,7 @@ const sceneResources = await startScene(
   inventory.entities,
   inventory,
 );
-const { scheduler, buildingPlacement, groundItems, worldFx, staffProjectiles, skeletons, dwarfStars, polarLights, farmPlow, registry, getSaveState, disposalEvents } = sceneResources;
+const { scheduler, buildingPlacement, groundItems, worldFx, staffProjectiles, skeletons, dwarfStars, polarLights, registry, getSaveState, disposalEvents } = sceneResources;
 gameUi.minimap.bind({ terrain: turfMap, cellSize: TILE_SIZE, getPlayerPosition: () => player.position, cameraHeading: view.cameraHeading });
 const sanityVignette = await SanityVignette.create(playerSanity.sane, animRoot);
 document.body.append(sanityVignette.canvas);
@@ -475,13 +474,6 @@ window.addEventListener('game:slot-select', (event) => {
   if (inventory.GetActiveItem()) return;
   actionEvents.emit('action:interrupt', { reason: 'slot-select' });
   const stack = inventory.get(slot);
-  if (stack?.itemId === FARM_PLOW_ITEM_ID) {
-    event.preventDefault();
-    const entity = inventory.getEntity(slot);
-    if (!entity) return;
-    farmPlow.begin(() => inventory.extract(slot, 1, entity) ?? undefined);
-    return;
-  }
   if (!stack || !isPlaceableBuildingId(stack.itemId)) return;
   // Placement claims the click so the stack is not picked up for a transfer.
   event.preventDefault();

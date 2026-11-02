@@ -28,7 +28,7 @@ import { isWorldFx } from '@dontstarve-web/prefab/world_fx';
 import { registerFrontTask } from './animate';
 import { createDeployMap } from '../packages/prefab/src/deployMap';
 import { DeployPlacer } from '../packages/prefab/src/deployPlacer';
-import { PLANTABLES } from '@dontstarve-web/prefab/plantables';
+import type { DeploySpawned } from '../packages/componets/src/deployable';
 import { placementEntities } from '../packages/prefab/src/placementEntities';
 import type { turfMap } from './building';
 import type { startScene } from './scene';
@@ -125,7 +125,7 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
         .setOpen(model, isOpen, buildId);
     },
     register(events: EventEmitter<DisposalEvents>, scene: SceneResources) {
-      const { moonTrees, buildingPlacement, groundItems, worldFx, flowerPlanting, marbleBeanSaplings, rockAvocadoSaplings, rockAvocadoBushes, berrybushes, monkeytails, grasses, saplings, scheduler, weather, moon, getWatchWorldContent } = scene;
+      const { buildingPlacement, groundItems, worldFx, scheduler, weather, moon, getWatchWorldContent } = scene;
       const handEquipment = inventory.handEquipment;
       const handSlotAddress = equipmentSlotAddress('hand');
       const bodySlotAddress = equipmentSlotAddress('body');
@@ -305,14 +305,8 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
       if (playerAnimation) {
 
         // TheWorld.Map for ACTIONS.DEPLOY and the deployable items' placer.
-        const deployMap = createDeployMap({ turf: turfMap, blockers: placementEntities(view.scene), worldEvents: view.worldEvents,
-          plants: {
-            marblebean_sapling: marbleBeanSaplings, rock_avocado_fruit_sprout_sapling: rockAvocadoSaplings,
-            rock_avocado_bush: rockAvocadoBushes, monkeytail: monkeytails, berrybush: berrybushes, grass: grasses,
-            sapling: { transplant: position => saplings.transplant('sapling', position) },
-            sapling_moon: { transplant: position => saplings.transplant('sapling_moon', position) },
-            planted_flower: flowerPlanting, moonbutterfly_sapling: moonTrees,
-          } });
+        const deployMap = createDeployMap({ turf: turfMap, blockers: placementEntities(view.scene), worldEvents: view.worldEvents, farm: scene.farmPlow,
+          spawnPrefab: (prefab, position, skinId) => scene.registry.SpawnPrefab(prefab, position, skinId) as DeploySpawned | undefined });
         pickupDoer.Map = deployMap;
         actionControllers.push(new DeployPlacer(view, deployMap, () => inventory.GetActiveItem()),
           { dispose() { pickupDoer.Map = undefined; } });
@@ -367,7 +361,7 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
           if (use) controller?.DoAction(use);
           return;
         }
-        if (PLANTABLES[stack.itemId]) {
+        if (inventory.getEntity(slot)?.components.deployable?.mode === 'PLANT') {
           if (!inventory.get(cursorSlotAddress())) inventory.transfer(slot, cursorSlotAddress(), stack.count);
           return;
         }

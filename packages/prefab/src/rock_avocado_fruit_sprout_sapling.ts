@@ -64,11 +64,6 @@ export class RockAvocadoSaplingManager {
     this.displays = new PrefabDisplayGroup(scene); this.world = world; this.scheduler = world.scheduler ?? new GameTimeScheduler();
     this.ownsScheduler = !world.scheduler;
   }
-  /** rock_avocado_fruit_sprout ondeploy: SpawnPrefab of the buried sprout; the display loads the art. */
-  transplant(position: THREE.Vector3): boolean {
-    this.spawn(position);
-    return true;
-  }
   spawn(position: THREE.Vector3, saved?: RockAvocadoSaplingRecord): THREE.Group {
     if (this.disposed) throw new Error('Saplings disposed');
     if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError('Invalid sprout position');

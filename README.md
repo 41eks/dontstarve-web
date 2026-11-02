@@ -281,6 +281,8 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 
 码头套装 `c_give("dock_kit", 2)` 走同一条部署路径：点击物品栏拿到鼠标后显示 `gridplacer`（悬停文字「放置地皮」），右键与陆地或码头相邻的 `OCEAN_COASTAL` 格时角色走到岸边（`ExtraDeployDist` 让到达距离增加 3 DST 单位，共 4.1），在 `doshortaction` 第 6 帧消耗 1 个并把该格变为 `MONKEY_DOCK`；位置无效时右键放回物品栏。`c_save()` 保留码头地块、其下的海洋格和鼠标上剩余的堆叠。命令语法和支持 ID 不变。
 
+栽种物品的 `ondeploy` 都写在所属 prefab 模块（`plantables.ts`、`butterfly.ts`、`marblebean_sapling.ts`、`rock_avocado_fruit.ts`），通过注册表的 `SpawnPrefab` 按源 prefab ID 生成植物；调试命令不变。
+
 `c_give("butterfly", 2)` 获取活蝴蝶；点击或右键物品栏中的蝴蝶拿到鼠标后，右键可种植的空地执行 `DEPLOY`。预览使用 `anim/flowers.zip` 的 `flowers` bank/build、`f1`，间距为 LESS（0.75 DST 单位）；角色自动走近，在 `doshortaction` 第 6 帧消耗 1 只并生成原版 `planted_flower`（运行时及存档 prefab 为 `flower`），触发 `growfrombutterfly` 并播放种植声。花型随机为 f1–f10，玫瑰概率 1%；无效地形、阻挡、Esc 或切换动作不会消耗蝴蝶。`c_spawn("planted_flower")` 可直接生成种下的花，不支持 `c_give`；`c_save()` 保存花的 ID、脚点、花型及种植标记，恢复后仍可供蝴蝶授粉。
 
 花朵（含自然花、种下的花和玫瑰）、大理石豆苗 `marblebean_sapling` 和石果萌芽 `rock_avocado_fruit_sprout_sapling` 通过动画包的 `ResidentSprite` 驻留，并共享 archive sprite 与实例批次；源动画仍按非循环方式播放。活动区休眠只释放 visual，唤醒恢复花型、形状、明度、积雪和相机朝向，保留实体、脚点、组件及已有的物理和小地图。豆苗和石果萌芽在休眠时仍按游戏时间生长／替换，燃烧计时也继续；大理石灌木开采后由调度器在 `mined_*` 动画时长结束时移除，不因卸载 visual 提前结算。调试命令语法、参数和支持的 `c_spawn` / `c_give` ID 不变，`c_save()` 继续保存休眠中的逻辑实体。
@@ -333,7 +335,7 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 
 
 
-`c_give("farm_plow_item")` 获取耕地机，第二个参数可指定数量，每台占一格、初始 4 次使用。左键物品栏中的耕地机进入部署预览，右键可种植的空地部署；预览和落点吸附到整格地皮中心（`TILE_SIZE = 12`），显示原版 `tile_outline` 使用的 `anim/gridplacer.zip`、bank/build `gridplacer`、`anim` 地皮边框。不能部署到已耕地地皮或有阻挡物的格子。成功部署时由物品实体的 `finiteuses.use(1)` 消耗一次使用，保存扣减后的完整物品快照；钻地 15 秒后将该格改为 `WORLD_TILES.FARMING_SOIL`（ID `47`），从快照折回物品，第 4 次用完后不再返还。`c_spawn("farm_plow_item")` 只生成 `idle_packed` 地面物品；`c_spawn("farm_plow")` 直接生成工作中的调试耕地机，完成后不返还物品。`c_save()` 将耕地机进度及完整物品快照保存到 `components.farmPlow.deployItem`，包含物品 ID、数量及组件状态；完成或被锤毁时恢复该快照，保留物品 ID 和剩余使用次数。地面物品加载成功前保留返还快照。旧存档的 `returnUses` 自动迁移；`c_spawn("farm_plow")` 的快照为 `null`。耕地结果及原地皮 ID 保存到 `world.map.tiles`，加载后恢复。
+`c_give("farm_plow_item")` 获取耕地机，第二个参数可指定数量，每台占一格、初始 4 次使用。左键物品栏中的耕地机拿到鼠标后显示预览（悬停文字「部署」），右键可种植的空地时选取 `DEPLOY_TILEARRIVE`：角色走进该格即算到达，在 `doshortaction` 第 6 帧部署；位置无效时右键放回物品栏。预览和落点吸附到整格地皮中心（`TILE_SIZE = 12`），显示原版 `tile_outline` 使用的 `anim/gridplacer.zip`、bank/build `gridplacer`、`anim` 地皮边框。不能部署到已耕地地皮或有阻挡物的格子。成功部署时由物品实体的 `finiteuses.use(1)` 消耗一次使用，保存扣减后的完整物品快照；钻地 15 秒后将该格改为 `WORLD_TILES.FARMING_SOIL`（ID `47`），从快照折回物品，第 4 次用完后不再返还。`c_spawn("farm_plow_item")` 只生成 `idle_packed` 地面物品；`c_spawn("farm_plow")` 直接生成工作中的调试耕地机，完成后不返还物品。`c_save()` 将耕地机进度及完整物品快照保存到 `components.farmPlow.deployItem`，包含物品 ID、数量及组件状态；完成或被锤毁时恢复该快照，保留物品 ID 和剩余使用次数。地面物品加载成功前保留返还快照。旧存档的 `returnUses` 自动迁移；`c_spawn("farm_plow")` 的快照为 `null`。耕地结果及原地皮 ID 保存到 `world.map.tiles`，加载后恢复。
 
 `c_give("farm_hoe")` / `c_give("golden_farm_hoe")` 获取园艺锄 / 黄金园艺锄，数量由第二个参数指定，每把占一格；`c_spawn("farm_hoe")` / `c_spawn("golden_farm_hoe")` 在玩家脚下生成可拾取的地面工具。地面美术分别使用 `anim/quagmire_hoe.zip` / `anim/goldenhoe.zip` 的 `idle`，基础图标均来自 `images/inventoryimages2.xml`；手持符号分别来自 `quagmire_hoe.zip:swap_quagmire_hoe` / `swap_goldenhoe.zip:swap_goldenhoe`。拖到手部装备后，右键耕地机生成的农田 tile，在鼠标落点耕坑，距离较远时自动走近；播放原版 `player_actions_till.zip` 的 `till_pre → till_loop → till_pst`，`till_loop` 第 11 帧生成 `farm_soil` 的 `till_rise → till_idle`。可重新整理破损坑或调整完整坑的位置，附近旧坑按原版坍塌规则移除或变为破损状态；普通地皮、杂物和已播种位置不允许耕坑。移动、跳跃、左键、Esc、卸下工具或切换物品取消未提交的动作。支持 Shift + 右键丢弃、左键拾回、现有清洁扫把换肤，以及皮肤和坑的 ID/位置随存档保存恢复。园艺锄支持 `farm_hoe_invisible`、`farm_hoe_rustic`；黄金园艺锄支持 `golden_farmhoe_garden`、`golden_farmhoe_invisible`，拟真皮肤隐藏手持工具。本次仅接入地面与手持美术和农田耕坑，不处理耐久或战斗。
 

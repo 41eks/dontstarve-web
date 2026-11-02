@@ -92,7 +92,7 @@ export interface EquippedActionDoer {
   /** TheWorld.Map, as deployable:CanDeploy reaches it. */
   readonly Map?: import('../../componets/src/deployable').DeployMap;
 }
-export type EquippedAction = ToolAction | 'CASTSPELL' | 'LIGHT' | 'ATTACK' | 'FISH' | 'REEL' | 'TERRAFORM' | 'TILL' | 'DEPLOY';
+export type EquippedAction = ToolAction | 'CASTSPELL' | 'LIGHT' | 'ATTACK' | 'FISH' | 'REEL' | 'TERRAFORM' | 'TILL' | 'DEPLOY' | 'DEPLOY_TILEARRIVE';
 export type UseItemAction = 'GIVE' | 'FEED' | 'ADDFUEL' | 'ADDWETFUEL' | 'PLANTSOIL';
 type UseItemFn = (inst: ComponentActionEntity, doer: SceneActionDoer, target: ComponentActionEntity,
   actions: UseItemAction[], right: boolean) => void;
@@ -174,7 +174,9 @@ export const COMPONENT_ACTIONS: {
   },
   POINT: {
     deployable: (inst, doer, pos, actions, right) => {
-      if (right && inst.components.inventoryitem && (inst.components as EquippedComponents).deployable?.CanDeploy(pos, doer.Map)) actions.push('DEPLOY');
+      if (right && inst.components.inventoryitem && (inst.components as EquippedComponents).deployable?.CanDeploy(pos, doer.Map)) {
+        actions.push(inst.hasTag('tile_deploy') ? 'DEPLOY_TILEARRIVE' : 'DEPLOY');
+      }
     },
     farmtiller: (inst, _doer, pos, actions, right) => {
       if (right && (inst.components as EquippedComponents).farmtiller?.CanTillSoilAtPoint(pos)) actions.push('TILL');
