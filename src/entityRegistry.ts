@@ -3,7 +3,7 @@ import type { ResidentEntity } from '@dontstarve-web/animation/residentSprite';
 import type { SavedEntity } from './save/types';
 import type { PrefabDefinition } from './prefabDefinitions';
 import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
-import { prefabInstance, type PrefabInstance } from '@dontstarve-web/prefab/prefabInstance';
+import { PrefabInstance, prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import type { DisplayDrivenPrefabManager } from '@dontstarve-web/prefab/manager';
 
 /** What a restore handler hands back for the saved id: the logical entity, or for older managers its model. */
@@ -33,7 +33,7 @@ export interface EntityRegistration<PrefabId extends string> {
   /** Only these IDs are exposed through c_spawn, including any aliases. */
   debugSpawn?: (prefabId: PrefabId) => unknown;
   /** SpawnPrefab(id, skin) then Transform:SetPosition for the source prefabs this family owns, synchronously. */
-  spawnPrefab?: Readonly<Record<string, (position: THREE.Vector3, skinId?: string) => THREE.Object3D | undefined>>;
+  spawnPrefab?: Readonly<Record<string, (position: THREE.Vector3, skinId?: string) => THREE.Object3D | PrefabInstance | undefined>>;
   exportRecords: () => readonly EntityRecord[];
   beforePhysics?: (dt: number) => void;
   update?: (dt: number, cameraQuaternion: THREE.Quaternion) => void;
@@ -115,8 +115,8 @@ export class EntityRegistry {
   SpawnPrefab(prefabId: string, position: THREE.Vector3, skinId?: string): PrefabInstance | undefined {
     const spawn = this.spawners.get(prefabId);
     if (!spawn) throw new Error(`No SpawnPrefab registered for ${prefabId}`);
-    const model = spawn(position, skinId);
-    return model && prefabInstance(model);
+    const spawned = spawn(position, skinId);
+    return spawned instanceof PrefabInstance ? spawned : spawned && prefabInstance(spawned);
   }
 
   async spawn(prefabId: string): Promise<boolean> {

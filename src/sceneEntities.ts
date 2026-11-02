@@ -806,9 +806,10 @@ export async function createSceneEntities(
   }
 
   function registerMarbleShrubs(registry: EntityRegistry, prefabId: 'marbleshrub', _worldState: SceneWorldState) {
-    const marbleShrubs = new MarbleShrubManager(scene, {
+    const displays = new PrefabDisplayGroup(scene);
+    const marbleShrubs = new MarbleShrubManager(displays, {
       handEquipment: sceneInventory.handEquipment,
-      scheduler, physics: world, getWatchWorldContent: worldState.getWatchWorldContent, tickingarea: worldState.tickingarea,
+      scheduler: scheduler ?? worldState.scheduler, physics: world, getWatchWorldContent: worldState.getWatchWorldContent, tickingarea: worldState.tickingarea,
       spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
@@ -818,9 +819,9 @@ export async function createSceneEntities(
       }),
       debugSpawn: id => marbleShrubs.spawn(id, player.position.clone()),
       exportRecords: () => marbleShrubs.exportRecords().map(record => ({ prefabId: MARBLESHRUB_ID, record })),
-      update: (dt, quaternion) => marbleShrubs.update(dt, quaternion),
+      update: dt => marbleShrubs.update(dt),
       renderEntities: () => marbleShrubs.renderEntities,
-      dispose: () => marbleShrubs.dispose(),
+      dispose: () => { marbleShrubs.dispose(); displays.dispose(); },
     });
     return marbleShrubs;
   }
@@ -936,9 +937,10 @@ export async function createSceneEntities(
   }
 
   function registerMarbleBeanSaplings(registry: EntityRegistry, prefabId: 'marblebean_sapling', _worldState: SceneWorldState) {
-    const marbleBeanSaplings = new MarbleBeanSaplingManager(scene, {
+    const displays = new PrefabDisplayGroup(scene);
+    const marbleBeanSaplings = new MarbleBeanSaplingManager(displays, {
       handEquipment: sceneInventory.handEquipment,
-      scheduler, shrubs: Managers['marbleshrub'], tickingarea: worldState.tickingarea,
+      scheduler: scheduler ?? worldState.scheduler, shrubs: Managers['marbleshrub'], tickingarea: worldState.tickingarea,
       spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
@@ -946,9 +948,9 @@ export async function createSceneEntities(
       debugSpawn: () => marbleBeanSaplings.spawn(player.position.clone()),
       spawnPrefab: { [MARBLEBEAN_SAPLING_ID]: position => marbleBeanSaplings.spawn(position) },
       exportRecords: () => marbleBeanSaplings.exportRecords().map(record => ({ prefabId: MARBLEBEAN_SAPLING_ID, record })),
-      update: (dt, quaternion) => marbleBeanSaplings.update(dt, quaternion),
+      update: dt => marbleBeanSaplings.update(dt),
       renderEntities: () => marbleBeanSaplings.renderEntities,
-      dispose: () => marbleBeanSaplings.dispose(),
+      dispose: () => { marbleBeanSaplings.dispose(); displays.dispose(); },
     });
     return marbleBeanSaplings;
   }
