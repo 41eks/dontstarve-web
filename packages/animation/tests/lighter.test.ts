@@ -132,7 +132,7 @@ it('burns a cooking pot after 20 seconds, drops the product and disables cooking
   const { inventory, placement, dropLoot } = structureFixture();
   try {
     const model = await placement.spawnFromSave('cookpot', { id: 'burning_pot', transform: { position: [30, 0, 8], rotationY: 0 },
-      components: { building: { state: 'closed', skinId: 'cookpot_cauldron' }, stewer: { product: 'meatballs', phase: 'cooking', remainingSeconds: 15 } } });
+      components: { building: { skinId: 'cookpot_cauldron' }, stewer: { product: 'meatballs', phase: 'cooking', remainingSeconds: 15 } } });
     (findActionEntity(model)?.components ?? prefabInstance(model)!.components).burnable.Ignite();
     placement.update(19.9);
     expect(prefabInstance(model)!.listTags()).not.toContain('burnt'); expect(dropLoot).not.toHaveBeenCalled();
@@ -156,7 +156,7 @@ it('burns an open chest through DefaultBurntStructureFn, drops its contents at i
   const dropped: ItemEntity[] = [], stop = inventory.subscribeDropped(entity => dropped.push(entity));
   try {
     const model = await placement.spawnFromSave('treasurechest', { id: 'open_chest', transform: { position: [3, 0, -6], rotationY: 0 }, components: {
-      building: { state: 'closed' }, container: { slotCount: 9, slots: [{ slotKey: '0', item: { entityId: 'chest_seeds', itemId: 'seeds', count: 3 } }] },
+      building: {}, container: { slotCount: 9, slots: [{ slotKey: '0', item: { entityId: 'chest_seeds', itemId: 'seeds', count: 3 } }] },
     } });
     const instance = prefabInstance(model)!, burntup = vi.fn();
     instance.ListenForEvent('burntup', burntup);
@@ -174,7 +174,7 @@ it('burns an open chest through DefaultBurntStructureFn, drops its contents at i
     expect(dropped.map(item => item.snapshot().entityId)).toEqual(['chest_seeds']);
     expect(dropped[0].transform.position.toArray()).toEqual([3, 0, -6]);
     const { record } = placement.exportRecords()[0];
-    expect(record.components.building).toMatchObject({ state: 'closed', burnt: true });
+    expect(record.components.building).toMatchObject({ burnt: true });
     const restored = prefabInstance(await structureFixture().placement.spawnFromSave('treasurechest', record))!;
     expect(restored.hasTag('burnt')).toBe(true);
     expect(restored.sprite.currentAnimation).toBe('burnt');

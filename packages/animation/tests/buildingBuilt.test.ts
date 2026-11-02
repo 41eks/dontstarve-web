@@ -7,7 +7,7 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import {
   AnimatedBuildingPlacement,
-  type AnimatedBuildingBuiltContext,
+  type AnimatedBuildingEventContext,
   type AnimatedBuildingDefinition,
 } from '../../prefab/src/animatedBuildingPlacement';
 import { COOK_POT_DEFINITION } from '../../prefab/src/cook_pot';
@@ -58,11 +58,14 @@ const buildings = [
 
 it.each(buildings)('%s runs its built animation only after a successful placement', async (_id, definition, idle) => {
   let playOnce: ReturnType<typeof vi.spyOn> | undefined;
-  const onbuilt = vi.fn((context: AnimatedBuildingBuiltContext) => {
+  // inst:ListenForEvent("onbuilt"): the event reaches the prefab's listener, registered at construction.
+  const onbuilt = vi.fn(), contexts: AnimatedBuildingEventContext[] = [];
+  const { placement, world, consume, isOverGround, click } = await setup({ ...definition, oninit: context => {
+    definition.oninit!(context);
+    contexts.push(context);
     playOnce = vi.spyOn(context.animation as SpriteAnimationController, 'playOnce');
-    definition.onbuilt!(context);
-  });
-  const { placement, world, consume, isOverGround, click } = await setup({ ...definition, onbuilt });
+    context.instance.ListenForEvent('onbuilt', onbuilt);
+  } });
   await placement.spawn('building');
   expect(onbuilt).not.toHaveBeenCalled();
   await placement.begin('building');
@@ -88,16 +91,16 @@ it.each(buildings)('%s runs its built animation only after a successful placemen
   click();
   expect(onbuilt).toHaveBeenCalledTimes(1);
   // The build spawns the building itself and releases the placer.
-  const { model, animation } = onbuilt.mock.calls[0][0];
+  const { model, animation } = contexts.at(-1)!;
   expect(model).not.toBe(placerModel);
   expect(placer.status.peek()).toBe('removed');
   expect(placerModel.parent).toBeNull();
   expect(prefabInstance(model)!.prefab).toBe('building');
-  expect(playOnce).toHaveBeenCalledExactlyOnceWith('place', expect.any(Function));
+  expect(playOnce).toHaveBeenCalledExactlyOnceWith('place');
   expect(prefabInstance(model)!.sprite.sprite.peek().lightOverride).toBeUndefined();
   expect(placement.exportRecords()[1].record.transform.position).toEqual([3, 0, 4]);
   for (let frame = 0; frame < 100; frame++) placement.update(0.1);
-  expect(animation.sprite.peek().clip).toMatchObject({ name: idle, loop: true });
+  expect(animation.sprite.peek().clip).toMatchObject({ name: idle, loop: false });
 
   await placement.spawnFromSave('building', placement.exportRecords()[1].record);
   await placement.begin('building');
@@ -105,25 +108,15 @@ it.each(buildings)('%s runs its built animation only after a successful placemen
   expect(onbuilt).toHaveBeenCalledTimes(1);
 });
 
-it('lets a prefab control built effects and keeps interaction blocked until it completes', async () => {
-  let context: AnimatedBuildingBuiltContext;
-  const onbuilt = vi.fn((built: AnimatedBuildingBuiltContext) => { context = built; });
+it('opens a chest during its place clip, as source onbuilt does not lock the container', async () => {
   // A storage building's real ID gives it its container.
-  const { placement, world, click } = await setup({ ...TREASURE_CHEST_DEFINITION, onbuilt }, 'treasurechest');
+  const { placement, world, click } = await setup(TREASURE_CHEST_DEFINITION, 'treasurechest');
   await placement.begin('treasurechest');
   click();
-  const playOnce = vi.spyOn(context!.animation as SpriteAnimationController, 'playOnce');
-  const { model } = context!, chest = findActionEntity(model) as unknown as RummageTarget;
-  // While the place clip runs, its container cannot be opened, so RUMMAGE is neither offered nor performed.
-  expect(sceneActions(model)).not.toContain('RUMMAGE');
-  expect(performRummageAction(chest, world.player)).toBe(false);
-  placement.update(0.1);
-  expect(onbuilt).toHaveBeenCalledTimes(1);
-  expect(playOnce).not.toHaveBeenCalled();
-
-  context!.onComplete();
+  const model = world.scene.children[0], instance = prefabInstance(model)!;
+  const playOnce = vi.spyOn(instance.sprite as SpriteAnimationController, 'playOnce');
   expect(sceneActions(model).filter(action => action === 'RUMMAGE')).toEqual(['RUMMAGE']);
-  expect(performRummageAction(chest, world.player)).toBe(true);
+  expect(performRummageAction(findActionEntity(model) as unknown as RummageTarget, world.player)).toBe(true);
   expect(playOnce).toHaveBeenCalledExactlyOnceWith('open');
 });
 
@@ -143,7 +136,7 @@ it('gives placed and restored chests a map icon at their foot and releases it wi
     expect([built.position.x, built.position.z]).toEqual([3, 4]);
     const restored = await placement.spawnFromSave('treasurechest', {
       id: 'imported-chest', transform: { position: [-12, 0, 24], rotationY: 0 },
-      components: { building: { state: 'closed' }, container: { slotCount: 9, slots: [] } } });
+      components: { building: {}, container: { slotCount: 9, slots: [] } } });
     await settle();
     expect(icons().map(({ position }) => [position.x, position.z])).toEqual([[3, 4], [-12, 24]]);
     expect(modelHasTag(restored, 'chest')).toBe(true);

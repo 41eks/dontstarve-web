@@ -49,8 +49,6 @@ export interface AnimatedBuildingDefinition {
     /** Source AddMiniMapEntity() + MiniMapEntity:SetIcon(); omitted buildings have no map icon. */
     minimapIcon?: string;
     container?: BuildingContainerDefinition;
-    /** Runs only after successful placement; call onComplete when built effects finish. */
-    onbuilt?: (context: AnimatedBuildingBuiltContext) => void;
     scale: number;
     skinArchives?: Readonly<Record<string, string>>;
     skinInit?: PrefabSkinInitializer;
@@ -64,9 +62,7 @@ export interface AnimatedBuildingDefinition {
     skinAnimationBanks?: Readonly<Record<string, readonly string[]>>;
     symbolOverrides?: Readonly<Record<string, { archive: string; symbol: string }>>;
     hiddenLayers?: readonly string[];
-    onrestore?: (context: AnimatedBuildingEventContext, components: PlacementSaveRecord['components']) => void;
     onupdate?: (context: AnimatedBuildingEventContext, dt: number) => void;
-    exportComponents?: (context: AnimatedBuildingEventContext) => PlacementSaveRecord['components'];
     onreskin?: (context: AnimatedBuildingEventContext) => void;
     ondispose?: (context: AnimatedBuildingEventContext) => void;
     oninit?: (context: AnimatedBuildingEventContext) => void;
@@ -96,10 +92,6 @@ export interface AnimatedBuildingEventContext {
     displays?: PrefabDisplayGroup;
 }
 
-export interface AnimatedBuildingBuiltContext extends AnimatedBuildingEventContext {
-    onComplete: () => void;
-}
-
 export interface AnimatedBuildingInteractionChange<BuildId extends string> {
     buildId: BuildId;
     isOpen: boolean;
@@ -115,7 +107,6 @@ interface AnimatedBuildingInstance<BuildId extends string> {
     readonly animation: SpriteState;
     /** The entity's own AnimState. */
     readonly animState: AnimState;
-    isPlacing: boolean;
     readonly skinId: Signal<string | undefined>;
     stopSkin?: () => void;
     stopActivity?: () => void;
@@ -231,13 +222,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         if (!this.worldContext.registerContainer && record.components.container) {
             container?.OnLoad({ items: Object.fromEntries(record.components.container.slots.map(({ slotKey, item }) => [String(Number(slotKey) + 1), item])) });
         }
-        this.definitions[buildId].onrestore?.(this.eventContext(building), record.components);
-        // onload: data.burnt runs the burnable's onburnt; a structure whose burnable is not ported runs the same source function.
-        if (record.components.building?.burnt) {
-            const burnable = building.instance.components.burnable;
-            if (burnable) burnable.onburnt?.(building.instance);
-            else DefaultBurntStructureFn(building.instance);
-        }
+        building.instance.OnLoad?.(building.instance, record.components);
         this.displays.mount(building.display);
         this.placed.push(building); this.mouseRecords.set(building.model, building);
         return building.model;
@@ -245,37 +230,31 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
 
     exportRecords(): PlacedEntitySaveRecord[] {
         // inst.persists = false: buildings that are being destroyed are not saved.
-        return this.placed.filter(building => building.instance.persists).map((building) => ({
-            prefabId: building.buildId,
-            record: {
-                id: building.instance.entityId as string,
-                transform: {
-                    position: saveGroundPosition(building.instance.position, 0),
-                    rotationY: 0,
+        return this.placed.filter(building => building.instance.persists).map((building) => {
+            const { instance } = building, skinId = building.skinId.peek();
+            const components: PlacementSaveRecord['components'] = {
+                ...(instance.components?.container ? { container: {
+                    slotCount: instance.components.container.GetNumSlots(),
+                    slots: Object.entries(instance.components.container.OnSave().items)
+                        .map(([slot, item]) => ({ slotKey: String(Number(slot) - 1), item: item as import('@dontstarve-web/inventory').InventoryStack })),
+                } } : {}),
+                building: skinId === undefined ? {} : { skinId },
+            };
+            instance.OnSave?.(instance, components);
+            return {
+                prefabId: building.buildId,
+                record: {
+                    id: instance.entityId as string,
+                    transform: { position: saveGroundPosition(instance.position, 0), rotationY: 0 },
+                    components,
                 },
-                components: {
-                    ...(building.instance.components?.container ? { container: {
-                        slotCount: building.instance.components.container.GetNumSlots(),
-                        slots: Object.entries(building.instance.components.container.OnSave().items)
-                            .map(([slot, item]) => ({ slotKey: String(Number(slot) - 1), item: item as import('@dontstarve-web/inventory').InventoryStack })),
-                    } } : {}),
-                    ...this.definitions[building.buildId].exportComponents?.(this.eventContext(building)),
-                    building: {
-                        // Source OnSave has no open state: a container always reloads closed.
-                        state: this.definitions[building.buildId].container ? 'closed' : 'idle',
-                        ...(building.skinId.peek() === undefined ? {} : { skinId: building.skinId.peek() }),
-                        // A burning structure saves as burnt; a firepit's own fire is restored from its fuel.
-                        ...(building.instance.hasTag('burnt') || (this.definitions[building.buildId].burnable
-                            && building.instance.components?.burnable?.IsBurning()) ? { burnt: true as const } : {}),
-                    },
-                },
-            },
-        }));
+            };
+        });
     }
 
     performContainerAction(model: THREE.Object3D, action: 'COOK', doer: object): boolean {
         const building = this.placed.find(instance => instance.model === model);
-        if (!building || this.disposed || building.isPlacing || !model.visible || !model.parent) return false;
+        if (!building || this.disposed || !model.visible || !model.parent) return false;
         return action === 'COOK' && performCookAction(building.instance, doer);
     }
 
@@ -358,7 +337,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     /** The greenstaff's view of a placed building: deconstruction removes the building. */
     private createDeconstructionTarget(building: AnimatedBuildingInstance<BuildId>): import('./staff').DeconstructionTarget {
         const entity = actionEntity(building.model, building.buildId);
-        const isValid = () => !this.disposed && this.placed.includes(building) && !building.isPlacing;
+        const isValid = () => !this.disposed && this.placed.includes(building);
         return {
             prefab: building.buildId, instance: building.instance, display: building.display,
             components: building.instance.components as import('./staff').DeconstructionTarget['components'],
@@ -372,7 +351,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     }
 
     private createReskinTarget(building: AnimatedBuildingInstance<BuildId>): ReskinTarget {
-        const isValid = () => !this.disposed && this.placed.includes(building) && !building.isPlacing && building.model.visible;
+        const isValid = () => !this.disposed && this.placed.includes(building) && building.model.visible;
         return reskinTarget({
             get id() { return String(building.instance.entityId); }, prefabId: building.buildId,
             instance: building.instance, display: building.display, sprite: building.animation,
@@ -491,7 +470,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
 
     private canGive(building: AnimatedBuildingInstance<BuildId>, item: TradeItem): boolean {
         const trader: Trader<TradeItem> | undefined = building.instance.components?.trader;
-        return !this.disposed && this.placed.includes(building) && !building.isPlacing && trader !== undefined
+        return !this.disposed && this.placed.includes(building) && trader !== undefined
             && !actionEntity(building.model, building.buildId).hasTag('burnt')
             && isPlayerNearby(this.player.position, building.model.position, false) && trader.AbleToAccept(item).ok;
     }
@@ -507,20 +486,9 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         const building = this.createInstance(placer.buildId, placer.skinId);
         building.instance.position.copy(placer.instance.position);
         this.releasePlacer();
-        const onbuilt = this.definitions[building.buildId].onbuilt;
-        building.isPlacing = onbuilt !== undefined;
         this.placed.push(building); this.mouseRecords.set(building.model, building);
         this.initializeComponents(building);
-        // An opening clip would replace the place clip and drop its completion, so RUMMAGE waits for it.
-        const container = building.instance.components?.container;
-        if (container && building.isPlacing) container.canbeopened = false;
-        onbuilt?.({
-            ...this.eventContext(building),
-            onComplete: () => {
-                building.isPlacing = false;
-                if (container) container.canbeopened = true;
-            },
-        });
+        building.instance.PushEvent('onbuilt', undefined);
     }
 
     private createPlacer(buildId: BuildId, skinId?: string): BuildingPlacer<BuildId> {
@@ -587,7 +555,6 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             display,
             animation: entity.sprite,
             animState,
-            isPlacing: false,
             skinId: entity.sprite.skinId,
         };
         if (attach) instance.instance.entityId = newEntityId();

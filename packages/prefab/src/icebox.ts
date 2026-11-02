@@ -5,7 +5,6 @@ import definitions from './definitions.json' with { type: 'json' };
 import { icebox_init_fn } from '@dontstarve-web/animation/prefabskin';
 import {
     AnimatedBuildingPlacement,
-    type AnimatedBuildingBuiltContext,
     type AnimatedBuildingDefinition,
     type AnimatedBuildingInteractionChange,
 } from './animatedBuildingPlacement';
@@ -52,11 +51,9 @@ function initializeWorkable(instance: PrefabInstance): void {
     instance.components.lootdropper = createStructureLootDropper(instance);
 }
 
-function onbuilt({ animation, onComplete }: AnimatedBuildingBuiltContext): void {
-    animation.playOnce('place', () => {
-        animation.start('closed');
-        onComplete();
-    });
+function onbuilt(inst: PrefabInstance): void {
+    inst.sprite.playOnce('place');
+    inst.sprite.pushAnimation('closed', false);
 }
 
 export const ICE_BOX_DEFINITION: AnimatedBuildingDefinition = {
@@ -66,8 +63,8 @@ export const ICE_BOX_DEFINITION: AnimatedBuildingDefinition = {
         instance.components.container!.onopenfn = onopen;
         instance.components.container!.onclosefn = onclose;
         initializeWorkable(instance);
+        instance.ListenForEvent('onbuilt', () => onbuilt(instance));
     },
-    onbuilt,
 };
 
 export class IceBoxPlacement extends AnimatedBuildingPlacement<IceBoxId> {

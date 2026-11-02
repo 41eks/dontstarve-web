@@ -6,7 +6,6 @@ import { lightning_rod_init_fn } from '@dontstarve-web/animation/prefabskin';
 import { Battery } from '../../componets/src/battery';
 import { ComponentTimer } from '../../componets/src/timer';
 import {
-    type AnimatedBuildingBuiltContext,
     type AnimatedBuildingDefinition,
     type AnimatedBuildingEventContext,
 } from './animatedBuildingPlacement';
@@ -14,6 +13,7 @@ import { actionEntity } from './actionEntity';
 import { PlaySound } from './sound';
 import { TILE_SIZE } from './tile';
 import { prefabInstance, type PrefabInstance } from './prefabInstance';
+import type { PlacementSaveRecord } from './saveRecord';
 
 export const LIGHTNING_ROD_ID = 'lightning_rod' as const;
 export type LightningRodId = typeof LIGHTNING_ROD_ID;
@@ -146,6 +146,17 @@ function onlightning(inst: LightningRodInstance): void {
     inst.lightningRod.setcharged(3);
 }
 
+function onsave(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
+    const rod = (inst as LightningRodInstance).lightningRod;
+    if (rod.charged) data.lightningrod = { charged: true, chargeleft: rod.chargeleft! };
+}
+
+/** A charged save restores its remaining charge (and zaps once, as setcharged does). */
+function onload(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
+    const saved = data.lightningrod;
+    if (saved?.charged && saved.chargeleft > 0) (inst as LightningRodInstance).lightningRod.setcharged(saved.chargeleft);
+}
+
 function oninit(context: AnimatedBuildingEventContext): void {
     const { model, instance } = context;
     const workable = instance.components.workable = new Workable(instance);
@@ -165,14 +176,15 @@ function oninit(context: AnimatedBuildingEventContext): void {
         inspectable: { getstatus: () => rod.charged ? 'CHARGED' : undefined },
     });
     instance.ListenForEvent('lightningstrike', () => onlightning(instance as LightningRodInstance));
+    instance.ListenForEvent('onbuilt', () => onbuilt(instance));
+    instance.OnSave = onsave;
+    instance.OnLoad = onload;
 }
 
-function onbuilt({ animation, model, onComplete }: AnimatedBuildingBuiltContext): void {
-    animation.playOnce('place', () => {
-        animation.start('idle');
-        onComplete();
-    });
-    PlaySound(CRAFT_SOUND, model.position);
+function onbuilt(inst: PrefabInstance): void {
+    inst.sprite.playOnce('place');
+    inst.sprite.pushAnimation('idle', true);
+    PlaySound(CRAFT_SOUND, inst.position);
 }
 
 function onworked(inst: PrefabInstance): void {
@@ -190,15 +202,5 @@ export const LIGHTNING_ROD_DEFINITION: AnimatedBuildingDefinition = {
     ...definitions.animatedBuildings.lightning_rod,
     skinInit: lightning_rod_init_fn,
     oninit,
-    onbuilt,
     ondispose: ({ model }) => rodOf(model).dispose(),
-    // onload: a charged save restores its remaining charge (and zaps once, as setcharged does).
-    onrestore: ({ model }, components) => {
-        const saved = components.lightningrod;
-        if (saved?.charged && saved.chargeleft > 0) rodOf(model).setcharged(saved.chargeleft);
-    },
-    exportComponents: ({ model }) => {
-        const rod = rodOf(model);
-        return rod.charged ? { lightningrod: { charged: true, chargeleft: rod.chargeleft! } } : {};
-    },
 };

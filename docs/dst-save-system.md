@@ -666,9 +666,7 @@ three-roaming-save-v1.json
             "rotationY": 0
           },
           "components": {
-            "building": {
-              "state": "idle"
-            }
+            "building": {}
           }
         }
       ],
@@ -681,8 +679,7 @@ three-roaming-save-v1.json
           },
           "components": {
             "building": {
-              "skinId": "treasurechest_ancient",
-              "state": "closed"
+              "skinId": "treasurechest_ancient"
             },
             "container": {
               "slotCount": 9,
@@ -871,9 +868,9 @@ three-roaming-save-v1.json
 
 左键采摘成熟灯草后，荧光果（`lightbulb`）进入背包，单头/双头/三头分别产出 1/2/3 个；背包空间不足时保留成熟灯草。成功采摘播放 `picking`、`picked` 和玩家拾取动画，立即关闭灯草光源并清除亮起/充能计时。原版基础再生时间分别为 1440/2160/2880 秒，再生后播放 `grow`、`idle` 并重新充能。已采摘灯草的 `bulbPlant` 额外保存 `picked: true` 和 `regrowSeconds`，读档恢复空株外观与剩余再生时间。
 
-`building.state` 写入时固定为 `idle`（无容器的建筑）或 `closed`（容器建筑），源 `OnSave` 不保存打开状态，容器读档后总是关闭。校验仍接受旧存档中的 `open`，加载时不读取该字段，也不重放一次性动画。
+`building` 只保存实体的皮肤 `skinId` 和 prefab 的 `OnSave` 写入的 `burnt`。源 `OnSave` 不保存打开状态，容器读档后总是关闭。旧存档中的 `building.state` 仍可读取，但会被忽略，加载时也不重放一次性动画。
 
-`c_save()` 保留皮肤和槽位内容，当前场景中容器的开关状态不受影响；初始存档中的箱子也使用 `closed`。
+`c_save()` 保留皮肤和槽位内容，当前场景中容器的开关状态不受影响。
 
 #### 实体引用与父子关系
 

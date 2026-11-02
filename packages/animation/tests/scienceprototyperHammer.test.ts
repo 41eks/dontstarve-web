@@ -34,7 +34,7 @@ async function setup(id: typeof RESEARCH_LAB_IDS[number], skinId?: string) {
   const placement = new ResearchLabPlacement(world, () => true);
   const model = placement.spawnFromSave(id, {
     id: `test_${id}`, transform: { position: [3, 0, 4], rotationY: 0 },
-    components: { building: { state: 'idle', ...(skinId ? { skinId } : {}) } },
+    components: { building: { ...(skinId ? { skinId } : {}) } },
   });
   const builder = new Builder(actionEntity(withEntity(world.player as THREE.Group, 'waxwell'), 'waxwell'), {
     findEntities: (...args) => FindEntities(...args), researchMachineDistance: 4 * WORLD_SCALE,

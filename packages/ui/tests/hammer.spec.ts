@@ -35,7 +35,7 @@ test('game UI equips, drops and picks up hammer, then right-click hammers a buil
   await page.route('**/saves/initial-world.json', async route => {
     const response = await route.fetch(), save = await response.json();
     save.world.entities = { treasurechest: [{ id: 'hammer-chest', transform: { position: [0, 0, -6], rotationY: 0 },
-      components: { building: { state: 'closed' }, container: { slotCount: 9, slots: [] } } }] };
+      components: { building: {}, container: { slotCount: 9, slots: [] } } }] };
     save.players.local.transform.position = [0, 0, 0];
     for (const container of Object.values(save.players.local.inventory.containers) as any[]) container.slots = [];
     save.players.local.inventory.bufferedBuilds = [];

@@ -11,7 +11,6 @@ import { ComponentTimer } from '../../componets/src/timer';
 import { actionEntity } from './actionEntity';
 import {
     AnimatedBuildingPlacement,
-    type AnimatedBuildingBuiltContext,
     type AnimatedBuildingDefinition,
     type AnimatedBuildingEventContext,
     type AnimatedBuildingInteractionChange,
@@ -23,6 +22,7 @@ import { TILE_SIZE } from './tile';
 import type { BuildingContainer } from './containers';
 import type { WorldContext, PrefabWorldContext } from './worldContext';
 import { modelHasTag, prefabInstance } from './prefabInstance';
+import { onloadBurnt, onsaveBurnt } from './standardcomponents';
 
 export const BOOKSTATION_ID = 'bookstation' as const;
 export type BookstationId = typeof BOOKSTATION_ID;
@@ -134,20 +134,16 @@ function bookstationOf(model: THREE.Group): Bookstation | undefined {
     return (prefabInstance(model)! as BookstationInstance).bookstation;
 }
 
-/** The animation that follows a one-shot clip: proximity_loop while prototyper.on, else idle. */
-function settle({ model, animation }: Pick<AnimatedBuildingEventContext, 'model' | 'animation'>): void {
-    animation.start(prefabInstance(model)!.components.prototyper?.on ? 'proximity_loop' : 'idle');
-}
-
-function onbuilt(context: AnimatedBuildingBuiltContext): void {
-    PlaySound('wickerbottom_rework/bookstation/place', context.model.position);
-    context.animation.playOnce('place', () => {
-        settle(context);
-        context.onComplete();
-    });
+function onbuilt(inst: PrefabInstance): void {
+    inst.sprite.playOnce('place');
+    inst.sprite.pushAnimation('idle', false);
+    PlaySound('wickerbottom_rework/bookstation/place', inst.position);
 }
 
 function oninit({ model, instance, world, art }: AnimatedBuildingEventContext): void {
+    instance.ListenForEvent('onbuilt', () => onbuilt(instance));
+    instance.OnSave = onsaveBurnt;
+    instance.OnLoad = onloadBurnt;
     instance.components.container!.onopenfn = onopen;
     instance.components.container!.onclosefn = onclose;
     const workable = instance.components.workable = new Workable(instance);
@@ -169,9 +165,8 @@ function oninit({ model, instance, world, art }: AnimatedBuildingEventContext): 
 
 function onturnon(inst: PrefabInstance): void {
     if (inst.hasTag('burnt')) return;
-    // onbuilt's place clip hands over to proximity_loop when it finishes.
-    if (inst.sprite.currentAnimation === 'place') return;
-    inst.sprite.start('proximity_loop');
+    if (inst.sprite.currentAnimation === 'place') inst.sprite.pushAnimation('proximity_loop', true);
+    else inst.sprite.start('proximity_loop');
 }
 
 function onturnoff(inst: PrefabInstance): void {
@@ -216,7 +211,7 @@ export const BOOKSTATION_DEFINITION: AnimatedBuildingDefinition = {
     // MakeLargeBurnable(inst, nil, nil, true) and MakeLargePropagator.
     burnable: { burnTime: 30, fxLevel: 4, propagator: 'large' },
     skinInit: bookstation_init_fn,
-    onbuilt, oninit,
+    oninit,
     ondispose: ({ model, instance }) => { instance.components.prototyper?.OnRemoveFromEntity(); bookstationOf(model)?.dispose(); delete (prefabInstance(model)! as BookstationInstance).bookstation; },
 };
 

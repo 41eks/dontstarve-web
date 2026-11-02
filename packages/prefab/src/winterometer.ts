@@ -8,12 +8,12 @@ import { winterometer_init_fn } from '@dontstarve-web/animation/prefabskin';
 import { ComponentTimer } from '../../componets/src/timer';
 import { OVERHEAT_TEMP } from '../../componets/src/temperatureoverrider';
 import {
-    type AnimatedBuildingBuiltContext,
     type AnimatedBuildingDefinition,
     type AnimatedBuildingEventContext,
 } from './animatedBuildingPlacement';
 import { actionEntity } from './actionEntity';
 import { PlaySound } from './sound';
+import { onloadBurnt, onsaveBurnt } from './standardcomponents';
 
 export const WINTEROMETER_ID = 'winterometer' as const;
 export type WinterometerId = typeof WINTEROMETER_ID;
@@ -44,7 +44,7 @@ class WinterometerCheck {
     /** DoCheckTemp: the meter reads GetLocalTemperature(inst), clamped to [0, OVERHEAT_TEMP]. */
     check(): void {
         const { model, world } = this.context;
-        if (this.burnt || model.userData.removed || !world?.getLocalTemperature) return;
+        if (this.burnt || this.context.instance.isRemoved || !world?.getLocalTemperature) return;
         const temperature = world.getLocalTemperature(model.position.x, model.position.z);
         // Reskinning replaces the animation controller, so read the current one from the entity.
         (prefabInstance(model)!.sprite as SpriteState)
@@ -53,7 +53,7 @@ class WinterometerCheck {
 
     /** StartCheckTemp: arms at most one task; delay 0 makes the first reading on the next tick. */
     start(): void {
-        if (this.burnt || this.context.model.userData.removed || !this.timer) return;
+        if (this.burnt || this.context.instance.isRemoved || !this.timer) return;
         if (this.timer.snapshot.peek().status === 'scheduled') return;
         this.timer.start(0);
     }
@@ -75,16 +75,18 @@ function oninit(context: AnimatedBuildingEventContext): void {
     (context.instance as WinterometerInstance).temperatureCheck = check;
     check.check();
     check.start();
+    const { instance } = context;
+    instance.ListenForEvent('onbuilt', () => onbuilt(instance));
+    instance.OnSave = onsaveBurnt;
+    instance.OnLoad = onloadBurnt;
 }
 
-function onbuilt(context: AnimatedBuildingBuiltContext): void {
-    const { model, animation, onComplete } = context;
-    checkOf(model).cancel();
-    animation.playOnce('place', () => {
-        checkOf(model).start();
-        onComplete();
-    });
-    PlaySound('dontstarve/common/winter_meter_craft', model.position);
+function onbuilt(inst: PrefabInstance): void {
+    const check = (inst as WinterometerInstance).temperatureCheck;
+    check.cancel();
+    // The global animover handler restarts the check task.
+    inst.sprite.playOnce('place', () => check.start());
+    PlaySound('dontstarve/common/winter_meter_craft', inst.position);
 }
 
 function onworked(inst: PrefabInstance): void {
@@ -107,7 +109,6 @@ export const WINTEROMETER_DEFINITION: AnimatedBuildingDefinition = {
     burnable: { burnTime: 10, fxLevel: 2, propagator: 'small' },
     skinInit: winterometer_init_fn,
     oninit,
-    onbuilt,
     onreskin: ({ model }) => checkOf(model).check(),
     ondispose: ({ model }) => checkOf(model).cancel(),
 };

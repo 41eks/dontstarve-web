@@ -1149,7 +1149,7 @@ export async function createSceneEntities(
 
   function registerTumbleweeds(registry: EntityRegistry, prefabId: 'tumbleweed', worldState: SceneWorldState) {
     const tumbleweeds = new TumbleweedManager(scene, world, {
-      scheduler: worldState.scheduler, wind: worldWind, getWatchWorldContent: worldState.getWatchWorldContent, cameraHeading: view.cameraHeading,
+      scheduler: worldState.scheduler, wind: worldWind, getWatchWorldContent: worldState.getWatchWorldContent, tickingarea: worldState.tickingarea,
       isOnValidGround: position => turfMap.isPassableAtPoint(position),
       constrainPosition: position => {
         const edge = initialSave.world.map.generator.options.size / 2 - WORLD_SCALE;

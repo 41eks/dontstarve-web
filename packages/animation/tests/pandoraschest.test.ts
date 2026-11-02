@@ -19,7 +19,7 @@ const RECORD: PlacementSaveRecord = {
       { slotKey: '0', item: { entityId: 'dst_04E26ADB66396E8D_pandoraschest_id_101861_0', itemId: 'footballhat', count: 1 } },
       { slotKey: '1', item: { entityId: 'dst_04E26ADB66396E8D_pandoraschest_id_101861_1', itemId: 'spear', count: 1 } },
     ] },
-    building: { state: 'closed' },
+    building: {},
   },
 };
 

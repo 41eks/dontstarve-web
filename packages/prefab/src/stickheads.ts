@@ -14,6 +14,7 @@ import type {
     AnimatedBuildingEventContext,
     BuildingRenderEffect,
 } from './animatedBuildingPlacement';
+import { onloadBurnt, onsaveBurnt } from './standardcomponents';
 
 export const PIG_HEAD_ID = 'pighead' as const;
 export type PigHeadId = typeof PIG_HEAD_ID;
@@ -122,6 +123,8 @@ const stickHead = (id: StickHeadId): AnimatedBuildingDefinition => ({
         workable.SetOnFinishCallback(onhammered);
         context.instance.components.lootdropper = createStructureLootDropper(context.instance);
         (context.instance as StickHeadInstance).head = new StickHead(id, context);
+        context.instance.OnSave = onsaveBurnt;
+        context.instance.OnLoad = onloadBurnt;
     },
     onupdate: ({ model }, dt) => headOf(model).update(dt),
     renderEffects: ({ model }) => headOf(model).renderEffects,

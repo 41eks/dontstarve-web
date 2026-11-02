@@ -1,6 +1,6 @@
 import type { PrefabDisplayGroup, SpriteResources } from '@dontstarve-web/display';
 import { type SpriteState } from '@dontstarve-web/display';
-import { prefabInstance } from './prefabInstance';
+import { prefabInstance, type PrefabInstance } from './prefabInstance';
 import * as THREE from 'three';
 import { createEffect, createMemo, createSignal, readonlySignal, WorldContentKey, type WorldContentSignal, type WorldMoonState, type WorldPhase } from '@dontstarve-web/signals';
 import { ItemEntity, type ItemEntityRegistry, type InventoryStack } from '@dontstarve-web/inventory';
@@ -307,9 +307,10 @@ class Moonbase {
   }
 }
 
-const stateOf = (model: THREE.Group): Moonbase => model.userData.moonbase;
+interface MoonbaseInstance extends PrefabInstance { moonbase: Moonbase }
+const stateOf = (inst: PrefabInstance): Moonbase => (inst as MoonbaseInstance).moonbase;
 export function getMoonbaseState(model: THREE.Group) {
-  const state = stateOf(model);
+  const state = stateOf(prefabInstance(model)!);
   return { phase: state.phase, charge: state.charge, staff: state.staff, workleft: state.workable.workleft,
     timers: Object.fromEntries(Object.keys(MOONBASE_TIMER_LIMITS).map(name => [name, state.timer.snapshot(name)])) };
 }
@@ -318,14 +319,14 @@ export const MOONBASE_DEFINITION: AnimatedBuildingDefinition = {
   ...definitions.animatedBuildings.moonbase,
     obstacleRadius: 1,
   fxSources: moonbaseFxSources,
-  oninit: ({ model, animState, sprites, itemEntities, world, displays }) => {
+  oninit: ({ model, instance, animState, sprites, itemEntities, world, displays }) => {
     if (!displays) throw new Error('Moonbase needs its display group');
     if (!sprites) throw new Error('Moonbase needs the placement sprite resources');
-    model.userData.moonbase = new Moonbase(model, animState, sprites, displays, itemEntities, world);
+    (instance as MoonbaseInstance).moonbase = new Moonbase(model, animState, sprites, displays, itemEntities, world);
+    instance.OnSave = (inst, data) => { Object.assign(data, stateOf(inst).exportComponents()); };
+    instance.OnLoad = (inst, data) => stateOf(inst).restore(data);
   },
-  onrestore: ({ model }, components) => stateOf(model).restore(components),
-  exportComponents: ({ model }) => stateOf(model).exportComponents(),
-  ondispose: ({ model }) => stateOf(model).dispose(),
-  onupdate: ({ model }, dt) => stateOf(model).update(dt),
-  renderEffects: ({ model }) => stateOf(model).renderEffects,
+  ondispose: ({ instance }) => stateOf(instance).dispose(),
+  onupdate: ({ instance }, dt) => stateOf(instance).update(dt),
+  renderEffects: ({ instance }) => stateOf(instance).renderEffects,
 };
