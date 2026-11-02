@@ -35,7 +35,8 @@ export async function createEmoteFixture() {
   const requests: string[] = [];
   let worldClicks = 0;
   const actionEvents = new EventEmitter<PlayerActionEvents>();
-  bindActionCancellation({ actionEvents }, locomotor, 'movement', () => locomotor.stop());
+  bindActionCancellation({ actionEvents }, locomotor, () => locomotor.stop(),
+    reason => reason === 'crafting' || reason === 'emote');
   setupEmoteWheel(emoteWheel, renderer.domElement, animation, actionEvents, () => {});
   emoteWheel.addEventListener('game:emote-request', (event) => requests.push((event as CustomEvent<{ emote: string }>).detail.emote));
   renderer.domElement.addEventListener('pointerdown', () => worldClicks++);

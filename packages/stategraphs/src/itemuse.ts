@@ -95,7 +95,7 @@ export class ItemUseActionController {
     this.picker = world.mouseActions ?? new PlayerActionPicker(new PointerRaycaster(world));
     this.unregister = this.picker.register(model => getItemUseActions(model, source()));
     this.stopActiveItem = this.picker.registerActiveItemSource(() => source() !== undefined);
-    this.stopEvents = bindActionCancellation(world, this, 'itemuse', () => this.cancel());
+    this.stopEvents = bindActionCancellation(world, this, () => this.cancel(), () => true);
     world.renderer.domElement.addEventListener('pointerdown', this.pointerDown, true);
     window.addEventListener('keydown', this.keyDown);
   }

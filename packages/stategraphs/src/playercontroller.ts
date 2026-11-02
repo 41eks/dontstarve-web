@@ -80,7 +80,7 @@ export class PlayerController {
     this.picker = world.mouseActions ?? new PlayerActionPicker(new PointerRaycaster(world));
     this.doer = doer;
     this.cleanups.push(this.picker.bindPlayer(this.doer, () => this.equippedItem()));
-    this.cleanups.push(bindActionCancellation(world, this, 'player', () => this.cancel()));
+    this.cleanups.push(bindActionCancellation(world, this, () => this.cancel()));
     // An action keeps the hand item it was picked with; equipping another drops it.
     this.cleanups.push(watchHandEquipment(handEquipment, equipment => {
       const invobject = this.action?.invobject;

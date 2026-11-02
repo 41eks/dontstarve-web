@@ -205,7 +205,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         }
         this.worldContext = services;
         this.actionEvents = world.actionEvents;
-        this.stopActionEvents = bindActionCancellation(world, this, 'building', () => this.cancel());
+        this.stopActionEvents = bindActionCancellation(world, this, () => this.cancel(), reason => reason === 'emote');
         this.canvas = world.renderer.domElement;
         this.displays = new PrefabDisplayGroup(scene);
         this.camera = world.camera;

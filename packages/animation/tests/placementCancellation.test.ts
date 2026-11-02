@@ -129,6 +129,10 @@ it('an accepted action cancels a paid preview through events and skips its own c
     expect(cast()).toBe(false);
     expect(world.scene.children).toEqual([existing, preview, model]);
     expect(cancel).not.toHaveBeenCalled();
+    world.actionEvents!.emit('action:interrupt', { reason: 'slot-select' });
+    expect(world.scene.children).toEqual([existing, preview, model]);
+    expect(store.exportState()).toEqual(paidState);
+    cancel.mockClear();
     equipped.set(tool);
     expect(cast()).toBe(true);
     expect(cancel).toHaveBeenCalledOnce(); // The owner resets itself once; its event skips itself.
@@ -137,6 +141,8 @@ it('an accepted action cancels a paid preview through events and skips its own c
     expect(cursor.hidden).toBe(true);
     expect(store.exportState()).toEqual(paidState);
     expect(consume).not.toHaveBeenCalled();
+    world.actionEvents!.emit('action:interrupt', { reason: 'drop' });
+    expect(controller.bufferedAction).toBeDefined();
     world.actionEvents!.emit('action:interrupt', { reason: 'slot-select' });
     expect(controller.bufferedAction).toBeUndefined();
     expect(animation.stategraph.pushBufferedAction).not.toHaveBeenCalled();

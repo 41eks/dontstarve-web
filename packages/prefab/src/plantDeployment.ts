@@ -54,7 +54,7 @@ export class PlantDeployment {
     this.getSource = getSource; this.planting = planting; this.interrupted = interrupted;
     this.blockers = planting.blockers ?? placementEntities(world.scene);
     this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
-    this.cleanups.push(bindActionCancellation(world, this, 'deploy', () => this.cancel()));
+    this.cleanups.push(bindActionCancellation(world, this, () => this.cancel()));
     if (world.registerFrameTask) this.cleanups.push(world.registerFrameTask(dt => this.update(dt)));
     if (world.mouseActions) {
       this.cleanups.push(world.mouseActions.registerActiveItemSource(() => !!getSource()));

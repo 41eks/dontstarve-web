@@ -23,7 +23,7 @@ export class ReadActionController {
   constructor(world: ActionWorldContext, stategraph: WilsonStateGraph,
     locomotor: Pick<ActionLocomotor, 'stop'>, isInterrupting = () => false) {
     this.world = world; this.stategraph = stategraph; this.locomotor = locomotor; this.isInterrupting = isInterrupting;
-    this.stopActionEvents = bindActionCancellation(world, this, 'read', () => this.cancel());
+    this.stopActionEvents = bindActionCancellation(world, this, () => this.cancel());
   }
 
   /** INVENTORY book action: any item with a book component, for doers tagged by reader. */

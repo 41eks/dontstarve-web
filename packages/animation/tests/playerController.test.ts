@@ -136,7 +136,7 @@ describe('PlayerController', () => {
         expect(s.locomotor.bufferedAction).toBeDefined();
         if (reason === 'manual movement') { s.moveManually(); s.controller.update(); }
         if (reason === 'Escape') window.dispatchEvent(Object.assign(new Event('keydown'), { code: 'Escape' }));
-        if (reason === 'another action') s.actionEvents.emit('action:begin', { owner: {}, action: 'PICK' });
+        if (reason === 'another action') s.actionEvents.emit('action:begin', { owner: {}, action: 'MIGRATE' });
         if (reason === 'an unequipped tool') s.hand.set(null);
         if (reason === 'an invalid target') { rock.workable.SetWorkable(false); s.locomotor.update(16, 1 / 30); }
         expect(s.controller.bufferedAction).toBeUndefined();

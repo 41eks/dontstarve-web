@@ -56,7 +56,7 @@ export class DockKitPlacement {
   constructor(world: WorldContext, turf: TurfMap, blockers: PlacementQuery = placementEntities(world.scene)) {
     this.world = world; this.turf = turf; this.blockers = blockers;
     this.dockmanager = new DockManager(dockMapOf(turf), { dock: WORLD_TILES.MONKEY_DOCK, farmingSoil: WORLD_TILES.FARMING_SOIL });
-    this.stopActionEvents = bindActionCancellation(world, this, 'deploy', () => this.cancel());
+    this.stopActionEvents = bindActionCancellation(world, this, () => this.cancel());
     this.pointer = new PointerRaycaster(world);
     this.cursor = new BuildCursor(world, this.pointer);
     world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown, true);

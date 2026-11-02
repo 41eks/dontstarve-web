@@ -143,7 +143,7 @@ export class FarmPlowPlacement implements FarmActionWorld {
       PlaySound('dontstarve/common/plant', position);
       return plant.instance;
     } };
-    this.stopActionEvents = bindActionCancellation(world, this, 'deploy', () => this.cancel());
+    this.stopActionEvents = bindActionCancellation(world, this, () => this.cancel());
     this.resources = new SpriteResources(undefined, 'farm');
     this.displays = new PrefabDisplayGroup(world.scene);
     this.pointer = new PointerRaycaster(world);

@@ -50,7 +50,7 @@ export class TurfDeployment {
     this.getSource = getSource; this.isManualMovement = isManualMovement;
     this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
     this.assets = new ArchiveSpriteAssets('turf-grid');
-    this.stopActions = bindActionCancellation(world, this, 'deploy', () => this.cancel());
+    this.stopActions = bindActionCancellation(world, this, () => this.cancel());
     this.stopHover = world.mouseActions?.register(() => {
       const source = this.getSource(), point = this.pointer.groundPoint();
       return source?.entity.components.deployable && point && this.turf.canPlaceTurf(point)

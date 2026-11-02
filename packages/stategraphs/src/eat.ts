@@ -29,7 +29,7 @@ export class FoodActionController {
   ) {
     this.world = world; this.stategraph = stategraph; this.locomotor = locomotor;
     this.actor = actor; this.isManualMovement = isManualMovement;
-    this.stopActionEvents = bindActionCancellation(world, this, 'food', () => this.cancel());
+    this.stopActionEvents = bindActionCancellation(world, this, () => this.cancel());
     world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown, true);
     window.addEventListener('keydown', this.handleKeyDown);
   }

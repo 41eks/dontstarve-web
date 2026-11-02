@@ -188,7 +188,7 @@ export class FencePlacement {
         this.displays = new PrefabDisplayGroup(scene);
         this.scheduler = world.scheduler ?? new GameTimeScheduler();
         this.ownsScheduler = !world.scheduler;
-        this.stopActionEvents = bindActionCancellation(world, this, 'building', () => this.cancel());
+        this.stopActionEvents = bindActionCancellation(world, this, () => this.cancel(), reason => reason === 'emote');
         this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
         this.cursor = new BuildCursor(world, this.pointer);
         this.heading = watchSignal(world.cameraHeading, stop => this.cleanups.push(stop));

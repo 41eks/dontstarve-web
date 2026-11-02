@@ -122,7 +122,7 @@ export class WallPlacement<BuildId extends string> {
         this.localFx = world.fx?.collapse ? undefined : new WorldFx(scene);
         this.world = { ...services, fx: this.localFx ?? world.fx };
         this.actionEvents = world.actionEvents;
-        this.stopActionEvents = bindActionCancellation(world, this, 'building', () => this.cancel());
+        this.stopActionEvents = bindActionCancellation(world, this, () => this.cancel(), reason => reason === 'emote');
         this.canvas = world.renderer.domElement;
         this.displays = new PrefabDisplayGroup(world.scene);
         this.camera = world.camera;

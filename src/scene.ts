@@ -207,7 +207,8 @@ export async function startScene(
     };
   };
   const removeLocomotorInput = setupLocomotorInput(view, locomotor);
-  const stopMovementEvents = bindActionCancellation(view, locomotor, 'movement', () => locomotor.stop());
+  const stopMovementEvents = bindActionCancellation(view, locomotor, () => locomotor.stop(),
+    reason => reason === 'crafting' || reason === 'emote');
   let animation: ReturnType<typeof animate> | undefined;
   let startPromise: Promise<void> | undefined;
   let disposed = false;
