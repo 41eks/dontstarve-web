@@ -62,7 +62,7 @@ export interface DisplayEngine {
   setBuildArchive?(archive: string): void;
   setGround?(renderOrder: number, flat: boolean): void;
   setMeshOrder?(order: number): void;
-  /** Turns only the drawn sprite to the camera. */
+  /** Turns only the drawn sprite, now and whenever one is drawn later; `rotation` is the camera's in the root's space. */
   faceCamera(rotation: THREE.Quaternion): void;
   hideLayer(layer: string): void;
   showLayer(layer: string): void;

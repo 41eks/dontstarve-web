@@ -49,8 +49,8 @@ export class ResidentSprite implements ArchiveSprite {
   private generation = 0;
   private disposed = false;
   private paused = false;
+  /** The camera rotation in the root's space, as the display last gave it; a sprite drawn later is turned to it too. */
   private facing?: THREE.Quaternion;
-  private readonly localFacing = new THREE.Quaternion();
   /** Inactive: the root is held out of the scene and returns to `home` on activation. */
   private asleep = false;
   private home: THREE.Object3D | undefined;
@@ -163,7 +163,7 @@ export class ResidentSprite implements ArchiveSprite {
     sprite.model.position.copy(this.placeholder.position);
     this.model.remove(this.placeholder);
     this.model.add(sprite.model);
-    this.applyFacing();
+    if (this.facing) sprite.faceCamera(this.facing);
     registerSpriteRenderGroup(this.model, sprite.model.children[0] as THREE.Group);
     this.attachHook?.(sprite);
     this.play();
@@ -184,7 +184,7 @@ export class ResidentSprite implements ArchiveSprite {
     if (clip.frame !== undefined) sprite.setFrame(clip.frame);
   }
 
-  update(dt: number): void { this.applyFacing(); this.sprite?.update(dt); }
+  update(dt: number): void { this.sprite?.update(dt); }
   start(name: string): void {
     const resume = this.leavesNoAnimation();
     this.queue = [];
@@ -259,12 +259,7 @@ export class ResidentSprite implements ArchiveSprite {
   setLayerHidden(layer: string, hidden: boolean): void { this.sprite?.setLayerHidden(layer, hidden); }
   faceCamera(rotation: THREE.Quaternion): void {
     (this.facing ??= new THREE.Quaternion()).copy(rotation);
-    this.applyFacing();
-  }
-  private applyFacing(): void {
-    if (!this.facing || !this.sprite) return;
-    this.model.getWorldQuaternion(this.localFacing).invert().multiply(this.facing);
-    this.sprite.faceCamera(this.localFacing);
+    this.sprite?.faceCamera(this.facing);
   }
   /** Erosion is keyed by the drawn sprite model; its owner sets it every update. */
   setErosion(amount: number): void { this.sprite?.setErosion(amount); }
@@ -340,8 +335,8 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
   private disposed = false;
   /** The placeholder holds the transform of a released sprite; before the first sprite it holds none to restore. */
   private released = false;
+  /** The camera rotation in the root's space, as the display last gave it; a sprite drawn later is turned to it too. */
   private facing?: THREE.Quaternion;
-  private readonly localFacing = new THREE.Quaternion();
 
   /** `initial` is the first sprite, already built in `clip`, if its source is ready; `held` marks a clip shown on its last frame. */
   constructor(model: THREE.Group, create: (initialAnimation: string) => THREE.Group | undefined, release: (sprite: THREE.Group) => void,
@@ -533,12 +528,11 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
   private applyFacing(): void {
     if (!this.facing) return;
     const visual = this.sprite ?? this.placeholder;
-    this.model.getWorldQuaternion(this.localFacing).invert().multiply(this.facing);
-    if (visual.quaternion.equals(this.localFacing)) return;
-    visual.quaternion.copy(this.localFacing);
+    if (visual.quaternion.equals(this.facing)) return;
+    visual.quaternion.copy(this.facing);
     this.matrixGate.markDirty();
   }
-  update(dt: number): void { this.applyFacing(); this.controller?.update(dt); }
+  update(dt: number): void { this.controller?.update(dt); }
 
 
   dispose(): void {
