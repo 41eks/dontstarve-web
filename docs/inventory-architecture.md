@@ -16,7 +16,7 @@
 
 `InventorySlot`、`HandSlot`、`BodySlot`、`HeadSlot` 各自实现具体槽位行为，不共享实现父类。`InventorySlot` 提供物品堆叠上限；纯函数 `craft()` 根据配方输入及槽位计算新库存结果，`InventoryStore` 原子提交。
 
-应用中的 `createInventoryStore()` 默认建立空玩家槽位；`src/main.ts` 从 `src/save/initialSave.ts` 读取的存档（默认 `public/saves/Cluster_1/Master.json`）恢复库存，通过 `inventoryStateFromSave()` 和 `replaceState()` 应用。初始物品不再硬编码在 `src/inventoryItems.ts` 中。存档设计见 [存档文档](dst-save-system.md)。
+应用中的 `createInventoryStore()` 默认建立空玩家槽位；`src/main.ts` 从 `src/save/initialSave.ts` 读取的存档（默认 `public/saves/Cluster_1/Master.json`）恢复玩家库存，通过 `inventoryStateFromSave()` 和 `replaceState()` 应用。建筑容器按 Lua 的 `SpawnSaveRecord` 顺序恢复：实体生成时创建 `container`，`spawnFromSave()` 调用 `Container.OnLoad()` 读入 `components.container`，再用 `registerContainer()` 登记地址；`world:<prefab>:<entityId>` 地址只供 UI 和物品转移使用，`exportState()` 与 `replaceState()` 都不处理已登记的世界容器。初始物品不再硬编码在 `src/inventoryItems.ts` 中。存档设计见 [存档文档](dst-save-system.md)。
 
 玩家槽位由 Store 通知驱动 UI 的 `setSlot()` 更新，背包容器通过 DTO signal 驱动相同 UI 槽位模型；这些模型都是显示镜像。槽位地址使用稳定的 `{ containerId, slotKey }`，玩家槽位通过 `inventorySlotAddress()`、`equipmentSlotAddress()` 创建，其他容器使用其对应地址助手。
 
@@ -75,7 +75,7 @@ GroundItemManager 不在更新、唤醒或鼠标命中前复制位置，也不�
 
 `packages/componets/src/container.ts` 的 `Container` 对应 Lua `components/container.lua`，负责 `SetNumSlots`、槽位查询、`Open/Close`、打开者集合和 `OnSave/OnLoad`；保存只包含物品，打开者不持久化。组件通过注入槽位和物品加载函数保持独立，不依赖具体物品或 UI。Lua 方法和 `OnSave().items` 使用一基槽号，`ItemEntity` 在存档边界转换为项目的零基 `slotKey`。
 
-`ItemEntity.components.container` 持有实际 `Container` 实例，`container.slots` 持有该背包的 8 个 `StorageSlot`，Store 将同一批槽位注册到 `backpackSlotAddress(entityId, index)`，容器 ID 为 `item:backpack:<entityId>`。Store 在装备提交后对当前背包调用 `Open(store)`、对旧背包调用 `Close(store)`，只有当前可打开的背包材料可访问；面板根据身体装备 signal 的实体 ID 切换，关闭的背包仍持有内容。整件转移、丢弃、拾取、换肤都保留父子实体。`exportState()` 只导出玩家与建筑的顶层槽，背包内容通过该物品的 `container: { slotCount, slots }` 快照嵌套保存；地面 `components.stack.container` 使用相同结构，避免重复保存子物品。读档验证子槽范围、数量、皮肤、组件状态和全局身份唯一性，再重建容器。旧共享 `player:backpack` 只迁移到已装备的背包或唯一候选；非空且归属不明时拒绝加载。
+`ItemEntity.components.container` 持有实际 `Container` 实例，`container.slots` 持有该背包的 8 个 `StorageSlot`，Store 将同一批槽位注册到 `backpackSlotAddress(entityId, index)`，容器 ID 为 `item:backpack:<entityId>`。Store 在装备提交后对当前背包调用 `Open(store)`、对旧背包调用 `Close(store)`，只有当前可打开的背包材料可访问；面板根据身体装备 signal 的实体 ID 切换，关闭的背包仍持有内容。整件转移、丢弃、拾取、换肤都保留父子实体。`exportState()` 只导出玩家的顶层槽，建筑容器由实体记录保存，背包内容通过该物品的 `container: { slotCount, slots }` 快照嵌套保存；地面 `components.stack.container` 使用相同结构，避免重复保存子物品。读档验证子槽范围、数量、皮肤、组件状态和全局身份唯一性，再重建容器。旧共享 `player:backpack` 只迁移到已装备的背包或唯一候选；非空且归属不明时拒绝加载。
 
 ## 容器 DTO 与 UI signal
 

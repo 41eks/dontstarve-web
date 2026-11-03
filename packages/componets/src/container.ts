@@ -141,13 +141,6 @@ export class Container<TRecord, TItem extends ContainerItem<TRecord>, TSlot exte
     if (added.length) this.publishDTO();
   }
 
-  /** Adopt already registered authoritative slots when attaching a loaded world entity. */
-  BindSlots(slots: readonly TSlot[]): void {
-    if (!this.IsEmpty() || slots.length !== this.numslots) throw new Error('Cannot replace populated container slots');
-    this.slotList.splice(0, this.slotList.length, ...slots);
-    this.publishDTO();
-  }
-
   /** container.lua removes items through their inventory owner before destroying them. */
   DestroyContents(): void {
     for (const slot of this.slotList) {

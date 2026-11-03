@@ -167,6 +167,10 @@ it('saves a spawned fridge with skinned cold stones and food through c_save and 
     unregisterContainer: (...args: Parameters<typeof inventory.unregisterContainer>) => inventory.unregisterContainer(...args),
   } as unknown as WorldContext;
   const placement = new AnimatedBuildingPlacement(world, { icebox: ICE_BOX_DEFINITION }, () => false);
+  const restoredPlacement = new AnimatedBuildingPlacement({ ...world,
+    registerContainer: (...args: Parameters<typeof restored.registerContainer>) => restored.registerContainer(...args),
+    unregisterContainer: (...args: Parameters<typeof restored.unregisterContainer>) => restored.unregisterContainer(...args),
+  } as unknown as WorldContext, { icebox: ICE_BOX_DEFINITION }, () => false);
   let restoredClock: WorldPerishClock | undefined;
   try {
     const spawn = async (id: string) => {
@@ -196,8 +200,8 @@ it('saves a spawned fridge with skinned cold stones and food through c_save and 
     const restoredWorld = createPerishWorld(ambient, save.world.elapsedSeconds);
     restoredClock = restoredWorld.perishClock;
     restored.entities.bindPerishWorld(restoredWorld);
-    restored.registerContainer(chilled.containerId, createBuildingContainer('icebox', {}));
-    restored.replaceState(inventoryStateFromSave(save), SAVE_CATALOG.recipes);
+    expect(inventoryStateFromSave(save).slots.some(({ address }) => address.containerId === chilled.containerId)).toBe(false);
+    restoredPlacement.spawnFromSave('icebox', record);
     const loaded = restored.getEntity(chilled)!;
     expect(loaded.snapshot()).toEqual(stone.snapshot());
     expect(loaded.getComponent<HeatRock>('heatrock')!.range.peek()).toBe(1);
@@ -212,5 +216,5 @@ it('saves a spawned fridge with skinned cold stones and food through c_save and 
     const invalid = JSON.parse(json);
     invalid.world.entities.icebox[0].components.container.slots[0].item.temperature.current = 91;
     expect(() => deserializeSave(JSON.stringify(invalid), SAVE_CATALOG)).toThrow();
-  } finally { placement.dispose(); inventory.dispose(); restored.dispose(); clock.dispose(); restoredClock?.dispose(); }
+  } finally { placement.dispose(); restoredPlacement.dispose(); inventory.dispose(); restored.dispose(); clock.dispose(); restoredClock?.dispose(); }
 });

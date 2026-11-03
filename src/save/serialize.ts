@@ -1,6 +1,5 @@
 import { type InventoryState } from '@dontstarve-web/inventory';
 import { deserializeSave, type SaveCatalog } from './deserialize';
-import { STORAGE_BUILDING_IDS, buildingContainerId, buildingContainerDefinition } from '@dontstarve-web/prefab/containers';
 import type { SaveDocument, SavedContainer, SavedEntity, SavedPlayer, SavedTransform } from './types';
 import type { TurfTileSave } from '@dontstarve-web/prefab/turfMap';
 
@@ -33,17 +32,9 @@ export function serializeSave(
   containers.set('player:equipment', { slotCount: 3, slots: [] });
   containers.set('player:cursor', { slotCount: 1, slots: [] });
   const entities = structuredClone(state.entities);
-  for (const prefab of STORAGE_BUILDING_IDS) {
-    for (const chest of entities[prefab] ?? []) {
-      if (chest.components.building?.burnt && !chest.components.container) continue;
-      const container = { slotCount: buildingContainerDefinition(prefab).slotCount, slots: [] } satisfies SavedContainer;
-      chest.components.container = container;
-      containers.set(buildingContainerId(prefab, chest.id), container);
-    }
-  }
   for (const { address, item } of state.inventory.slots) {
     const container = containers.get(address.containerId);
-    if (!container) throw new Error(`无法保存未关联实体的容器：${address.containerId}`);
+    if (!container) throw new Error(`无法保存未知的玩家容器：${address.containerId}`);
     if (item) container.slots.push({ slotKey: address.slotKey, item: { ...item } });
   }
   const document: SaveDocument = {

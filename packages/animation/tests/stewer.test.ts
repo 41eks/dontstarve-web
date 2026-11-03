@@ -127,21 +127,23 @@ it('harvests a saved finished recipe once, uses its output count and reopens the
   dismantled.stewer.OnRemoveFromEntity(); dismantled.inventory.dispose();
 });
 
-it('attaches a loaded pot to the registered slots without replacing entities, and ignores stale container removal', () => {
+it('keeps world container contents out of the player state, restores around them, and ignores stale container removal', () => {
   const pot = createPot();
   const slot = { containerId: pot.containerId, slotKey: '0' };
   pot.inventory.applySlotChanges([{ slot, itemId: 'twigs', delta: 1 }]);
   const entity = pot.inventory.getEntity(slot);
-  const replacement = createBuildingContainer('cookpot', {});
-  pot.inventory.registerContainer(pot.containerId, replacement);
-  expect(replacement.GetItemInSlot(1)).toBe(entity);
-  expect(replacement.toSignal().peek().slots[0]?.entityId).toBe(entity!.id);
-  pot.inventory.unregisterContainer(pot.containerId, pot.container);
+  expect(pot.inventory.exportState().slots).toEqual([]);
+  pot.inventory.replaceState({ slots: [], bufferedBuilds: [] }, {});
+  expect(pot.inventory.getEntity(slot)).toBe(entity);
+  expect(entity!.components.inventoryitem.owner?.address).toEqual(slot);
+  expect(() => pot.inventory.replaceState({ slots: [{ address: slot, item: null }], bufferedBuilds: [] }, {})).toThrow('Invalid or duplicate saved slot');
+  const other = createBuildingContainer('cookpot', {});
+  expect(() => pot.inventory.registerContainer(pot.containerId, other)).toThrow('Duplicate slot address');
+  pot.inventory.unregisterContainer(pot.containerId, other);
   expect(pot.inventory.getEntity(slot)).toBe(entity);
   expect(entity!.isRemoved).toBe(false);
-  pot.inventory.unregisterContainer(pot.containerId, replacement);
+  pot.inventory.unregisterContainer(pot.containerId, pot.container);
   expect(pot.inventory.getEntity(slot)).toBeNull();
   expect(entity!.isRemoved).toBe(true);
-  expect(pot.inventory.exportState().slots).toEqual([]);
   pot.stewer.OnRemoveFromEntity();
 });

@@ -75,12 +75,11 @@ it('loads the imported forest with distinct ocean types, ice, underlying dock ti
     expect(save.world.entities.flower.length).toBeGreaterThan(0);
     expect(save.world.entities.flower.every(entity => entity.components.flower?.planted === undefined)).toBe(true);
     expect(save.world.entities.ground_item.some(entity => entity.components.stack?.itemId === 'fireflies')).toBe(true);
-    // Imported chest contents become world container slots in the authoritative inventory.
+    // Imported chest contents stay on the chest records; each chest's container loads them when it spawns.
     const chestSlotCounts = save.world.entities.treasurechest.map(chest => chest.components.container?.slots.length ?? 0);
     expect(chestSlotCounts).toHaveLength(4);
     expect(chestSlotCounts.every(count => count > 0)).toBe(true);
-    expect(inventoryStateFromSave(save).slots.filter(({ address }) => address.containerId.startsWith('world:treasurechest:dst_')))
-      .toHaveLength(chestSlotCounts.reduce((total, count) => total + count, 0));
+    expect(inventoryStateFromSave(save).slots.every(({ address }) => address.containerId.startsWith('player:'))).toBe(true);
     const restored = deserializeSave(serializeSave(save, {
       entities: save.world.entities, tiles: map.exportTiles(), playerTransform: save.players.local.transform,
       inventory: inventoryStateFromSave(save), elapsedSeconds: 10,

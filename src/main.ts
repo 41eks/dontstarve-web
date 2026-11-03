@@ -45,7 +45,7 @@ import { AMULET_ID, type AmuletRezSource } from '@dontstarve-web/prefab/amulet';
 import { WORLD_SCALE } from '../packages/prefab/src/standardcomponents';
 import { DstLightingRenderer } from './dstLighting';
 import {
-  STORAGE_BUILDING_IDS, buildingContainerId, createBuildingContainer, isStorageBuildingId,
+  buildingContainerId, isStorageBuildingId,
 } from '@dontstarve-web/prefab/containers';
 import { executeDebugCommand } from './debugCommands';
 import { isPlaceableBuildingId } from './placeableBuilding';
@@ -111,12 +111,6 @@ const cursorAddress = cursorSlotAddress();
 export const handEquipment = inventory.handEquipment;
 export const headEquipment = inventory.headEquipment;
 export const bodyEquipment = inventory.bodyEquipment;
-for (const prefab of STORAGE_BUILDING_IDS) {
-  for (const record of initialSave.world.entities[prefab] ?? []) {
-    if (record.components.building?.burnt && !record.components.container) continue;
-    inventory.registerContainer(buildingContainerId(prefab, record.id), createBuildingContainer(prefab, {}));
-  }
-}
 for (const panel of [gameUi.chestPanel, gameUi.cookPotPanel, gameUi.iceBoxPanel]) {
   panel.addEventListener('game:chest-close', (event) => {
     const { containerId } = (event as CustomEvent<ChestCloseDetail>).detail;

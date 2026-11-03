@@ -107,6 +107,10 @@ it('spawns a skinned bookstation through c_spawn and keeps books with fractional
     unregisterContainer: (...args: Parameters<typeof inventory.unregisterContainer>) => inventory.unregisterContainer(...args),
   } as unknown as WorldContext;
   const placement = new AnimatedBuildingPlacement(world, { bookstation: BOOKSTATION_DEFINITION }, () => false);
+  const restoredPlacement = new AnimatedBuildingPlacement({ ...world,
+    registerContainer: (...args: Parameters<typeof restored.registerContainer>) => restored.registerContainer(...args),
+    unregisterContainer: (...args: Parameters<typeof restored.unregisterContainer>) => restored.unregisterContainer(...args),
+  } as unknown as WorldContext, { bookstation: BOOKSTATION_DEFINITION }, () => false);
   try {
     const spawn = async (id: string) => {
       if (id !== 'bookstation') return false;
@@ -130,12 +134,12 @@ it('spawns a skinned bookstation through c_spawn and keeps books with fractional
     const save = deserializeSave(json, SAVE_CATALOG), record = save.world.entities.bookstation[0];
     expect(record.components.building?.skinId).toBe('bookstation_house');
     expect(record.components.container?.slots).toHaveLength(2);
-    restored.registerContainer(library(0).containerId, createBuildingContainer('bookstation', {}));
-    restored.replaceState(inventoryStateFromSave(save), SAVE_CATALOG.recipes);
+    expect(inventoryStateFromSave(save).slots.some(({ address }) => address.containerId === library(0).containerId)).toBe(false);
+    await restoredPlacement.spawnFromSave('bookstation', record);
     expect(restored.getEntity(library(0))!.snapshot()).toEqual(book.snapshot());
     expect(restored.getEntity(library(0))!.snapshot().remainingUses).toBeCloseTo(3.05);
     expect(restored.getEntity({ ...library(0), slotKey: '1' })).toMatchObject({ prefab: 'papyrus' });
-  } finally { placement.dispose(); inventory.dispose(); restored.dispose(); scheduler.dispose(); }
+  } finally { placement.dispose(); restoredPlacement.dispose(); inventory.dispose(); restored.dispose(); scheduler.dispose(); }
 });
 
 it('moves a partly used 3-use book between slots and restores it in 0.03 steps', () => {

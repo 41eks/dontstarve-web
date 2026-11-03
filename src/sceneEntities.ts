@@ -479,7 +479,7 @@ export async function createSceneEntities(
           collapse: (size, position, material) => Managers['world_fx'].collapse(size, position, material) },
         spawnItem: state => { const entity = sceneInventory.entities.create(state); sceneInventory.configureItem(entity); return entity; },
         dropItem: (entity, position) => { sceneInventory.DropItem(entity, position); },
-        registerContainer: (id, container, saved) => sceneInventory.registerContainer(id, container, saved),
+        registerContainer: (id, container) => sceneInventory.registerContainer(id, container),
         unregisterContainer: (id, container) => sceneInventory.unregisterContainer(id, container), dropLoot: (items, position, launch) => {
         Managers['ground_item'].flingLoot(items.map((item) => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position, launch);
       } },

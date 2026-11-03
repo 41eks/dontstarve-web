@@ -121,7 +121,7 @@ function structureFixture(onInteractionChange?: (change: AnimatedBuildingInterac
   const inventory = createPickupInventory(), scene = new THREE.Scene(), dropLoot = vi.fn();
   const world: WorldContext = { scene, player: new THREE.Group(), camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(), cameraFacing: createSignal(8), cameraHeading: createSignal(45),
     renderer: { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer, dropLoot,
-    registerContainer: (id, container, saved) => inventory.registerContainer(id, container, saved),
+    registerContainer: (id, container) => inventory.registerContainer(id, container),
     unregisterContainer: (id, container) => inventory.unregisterContainer(id, container),
   };
   const placement = new AnimatedBuildingPlacement(world, { treasurechest: TREASURE_CHEST_DEFINITION, cookpot: COOK_POT_DEFINITION }, () => false, onInteractionChange);

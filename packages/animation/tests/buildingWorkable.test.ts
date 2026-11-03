@@ -21,7 +21,7 @@ it('restores container contents, drops their live entities at the building foot 
   const stop = inventory.subscribeDropped(entity => dropped.push(entity));
   const world = { scene, player: new THREE.Group(), camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(), cameraFacing: createSignal(8), cameraHeading: createSignal(45),
     renderer: { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer, dropLoot,
-    registerContainer: (id, container, saved) => inventory.registerContainer(id, container, saved),
+    registerContainer: (id, container) => inventory.registerContainer(id, container),
     unregisterContainer: (id, container) => inventory.unregisterContainer(id, container),
   } as WorldContext;
   const placement = new AnimatedBuildingPlacement(world, { icebox: ICE_BOX_DEFINITION }, () => false);
@@ -59,7 +59,7 @@ it('burns a chest through shared components, drops its live contents and restore
   const world = { scene: new THREE.Scene(), player: new THREE.Group(), camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     cameraFacing: createSignal(8), cameraHeading: createSignal(45),
     renderer: { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer,
-    registerContainer: (id, container, saved) => inventory.registerContainer(id, container, saved),
+    registerContainer: (id, container) => inventory.registerContainer(id, container),
     unregisterContainer: (id, container) => inventory.unregisterContainer(id, container),
   } as WorldContext;
   const definition = { treasurechest: TREASURE_CHEST_DEFINITION };
@@ -99,5 +99,12 @@ it('burns a chest through shared components, drops its live contents and restore
     expect(loaded.components.workable!.GetWorkLeft()).toBe(1);
     expect(loaded.components.container).toBeUndefined();
     expect(restored.exportRecords()[0].record).toEqual(record);
+    // A burnt record that still lists items: Container:OnLoad runs first, so the prefab's onload drops them.
+    const stocked = prefabInstance(restored.spawnFromSave('treasurechest', { id: 'stocked-burnt', transform: { position: [8, 0, 1], rotationY: 0 }, components: {
+      building: { burnt: true }, container: { slotCount: 9, slots: [{ slotKey: '0', item: { entityId: 'saved-log', itemId: 'log', count: 2 } }] } } }))!;
+    expect(stocked.components.container).toBeUndefined();
+    const saved = inventory.entities.get('saved-log')!;
+    expect(saved.components.inventoryitem.owner).toBeNull();
+    expect(saved.transform.position.toArray()).toEqual([8, 0, 1]);
   } finally { stop(); placement.dispose(); restored?.dispose(); inventory.dispose(); }
 });

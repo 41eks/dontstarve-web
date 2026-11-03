@@ -159,6 +159,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         building.instance.setPosition(target.x, target.y, target.z);
         this.placed.push(building); this.mouseRecords.set(building.model, building);
         this.initializeComponents(building);
+        this.registerContainer(building);
     }
 
     /** Restores a logical record directly, without crafting or placement callbacks. */
@@ -169,10 +170,10 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         const [x, y, z] = record.transform.position;
         building.instance.setPosition(x, y, z);
         this.initializeComponents(building);
-        const container = building.instance.components?.container;
-        if (!this.worldContext.registerContainer && record.components.container) {
-            container?.OnLoad({ items: Object.fromEntries(record.components.container.slots.map(({ slotKey, item }) => [String(Number(slotKey) + 1), item])) });
-        }
+        // SetPersistData: Container:OnLoad restores the items, and only then does inst.OnLoad run.
+        const saved = record.components.container;
+        if (saved) building.instance.components?.container?.OnLoad({ items: Object.fromEntries(saved.slots.map(({ slotKey, item }) => [String(Number(slotKey) + 1), item])) });
+        this.registerContainer(building);
         building.instance.OnLoad?.(building.instance, record.components);
         this.displays.mount(building.display);
         this.placed.push(building); this.mouseRecords.set(building.model, building);
@@ -183,6 +184,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         // inst.persists = false: buildings that are being destroyed are not saved.
         return this.placed.filter(building => building.instance.persists).map((building) => {
             const { instance } = building, skinId = building.skinId.peek();
+            instance.components?.container?.flush();
             const components: PlacementSaveRecord['components'] = {
                 ...(instance.components?.container ? { container: {
                     slotCount: instance.components.container.GetNumSlots(),
@@ -223,8 +225,6 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             ?? (isStorageBuildingId(buildId) ? createBuildingContainer(buildId, building.instance) : undefined);
         if (container) {
             container.SetAutoClose(this.worldContext.getWatchWorldContent ?? getBoundWatchWorldContent(), 3 * (TILE_SIZE / 4));
-            this.worldContext.registerContainer?.(`world:${buildId}:${String(building.instance.entityId)}`, container,
-                building.instance.saveRecord?.components.container);
             this.watchContainer(building);
         }
         this.definitions[buildId].oninit?.(this.eventContext(building));
@@ -328,6 +328,12 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     }
 
     /** The application's storage panel follows the container's onopen and onclose events. */
+    /** Gives the UI and item moves an address for the slots the entity's container already owns. */
+    private registerContainer({ buildId, instance }: AnimatedBuildingInstance<BuildId>): void {
+        const container = instance.components?.container;
+        if (container) this.worldContext.registerContainer?.(`world:${buildId}:${String(instance.entityId)}`, container);
+    }
+
     private watchContainer(building: AnimatedBuildingInstance<BuildId>): void {
         const { buildId, model, instance } = building;
         const stopOpen = instance.ListenForEvent('onopen', () => this.onInteractionChange?.({ buildId, isOpen: true, model }));
@@ -391,6 +397,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         building.instance.copyPosition(position);
         this.placed.push(building); this.mouseRecords.set(building.model, building);
         this.initializeComponents(building);
+        this.registerContainer(building);
         building.instance.PushEvent('onbuilt', undefined);
     }
 

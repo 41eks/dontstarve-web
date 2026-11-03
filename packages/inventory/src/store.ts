@@ -340,16 +340,9 @@ export class InventoryStore {
     }
   }
 
-  registerContainer(containerId: string, container: Container<InventoryStack, ItemEntity, ItemSlot>,
-    saved?: { slots: readonly { slotKey: string; item: InventoryStack }[] }): void {
-    const existing = container.slots.map((_, index) => this.registrationByAddress.get(addressKey({ containerId, slotKey: String(index) })));
-    if (existing.some(Boolean)) {
-      if (existing.some(slot => !slot)) throw new Error('Partially registered world container');
-      container.BindSlots(existing.map(slot => slot!.slot));
-    } else {
-      if (saved) container.OnLoad({ items: Object.fromEntries(saved.slots.map(({ slotKey, item }) => [String(Number(slotKey) + 1), item])) });
-      this.registerSlots(container.slots.map((slot, index) => ({ address: { containerId, slotKey: String(index) }, slot })));
-    }
+  /** Addresses a world entity's container for the UI and item moves; the entity saves and loads its contents. */
+  registerContainer(containerId: string, container: Container<InventoryStack, ItemEntity, ItemSlot>): void {
+    this.registerSlots(container.slots.map((slot, index) => ({ address: { containerId, slotKey: String(index) }, slot })));
     this.worldContainers.set(containerId, container);
     container.dropItem = (entity, slot, position) => {
       const address = { containerId, slotKey: String(slot - 1) };
@@ -389,11 +382,11 @@ export class InventoryStore {
     this.entities.dispose();
   }
 
-  /** Exports detached domain data, including inaccessible storage and buffered builds. */
+  /** Exports the player's detached domain data and buffered builds; world containers save with their entities. */
   exportState(): InventoryState {
     for (const { slot } of this.registrations) slot.getEntity()?.flush();
     return {
-      slots: this.registrations.filter(({ address }) => !isBackpackContainerId(address.containerId)).map(({ address, slot }) => {
+      slots: this.registrations.filter(({ address }) => !isBackpackContainerId(address.containerId) && !this.worldContainers.has(address.containerId)).map(({ address, slot }) => {
         return { address: cloneAddress(address), item: slot.getEntity()?.snapshot() ?? null };
       }),
       bufferedBuilds: [...this.bufferedBuilds].map(([recipeId, skinId]) => ({
@@ -408,7 +401,7 @@ export class InventoryStore {
     recipes: Readonly<Record<string, InventoryRecipeDefinition>>,
   ): void {
     const next = new Map<string, InventoryStack | null>(
-      this.registrations.map(({ address }) => [addressKey(address), null]),
+      this.playerRegistrations().map(({ address }) => [addressKey(address), null]),
     );
     const seen = new Set<string>();
     const entityIds = new Set<string>();
@@ -447,7 +440,7 @@ export class InventoryStore {
     for (const { address, item } of state.slots) {
       const key = addressKey(address);
       const registration = this.registrationByAddress.get(key);
-      if (!registration || seen.has(key)) throw new Error(`Invalid or duplicate saved slot: ${key}`);
+      if (!registration || seen.has(key) || this.worldContainers.has(address.containerId)) throw new Error(`Invalid or duplicate saved slot: ${key}`);
       seen.add(key);
       if (item) {
         const spec = this.requireItemSpec(item.itemId);
@@ -1051,15 +1044,21 @@ export class InventoryStore {
     }
   }
 
+  /** Slots a player state restore replaces; world containers keep the items their entities loaded. */
+  private playerRegistrations(): RegisteredItemSlot[] {
+    return this.registrations.filter(({ address }) => !this.worldContainers.has(address.containerId));
+  }
+
   private commit(next: Map<string, InventoryStack | null>, keepDeparted = false, restore = false): void {
     batch(() => {
-      const old = new Set(this.registrations.flatMap(({ slot }) => slot.getEntity() ? [slot.getEntity()!] : []));
+      const registrations = restore ? this.playerRegistrations() : this.registrations;
+      const old = new Set(registrations.flatMap(({ slot }) => slot.getEntity() ? [slot.getEntity()!] : []));
       if (restore) for (const entity of old) {
         entity.components.inventoryitem.owner = null;
         this.entities.destroy(entity);
       }
       const retained = new Set<ItemEntity>();
-      const prepared = this.registrations.map(({ address, slot }) => {
+      const prepared = registrations.map(({ address, slot }) => {
         if (restore && isBackpackContainerId(address.containerId)) return { slot, entity: null };
         const state = next.get(addressKey(address));
         if (!state) return { slot, entity: null };

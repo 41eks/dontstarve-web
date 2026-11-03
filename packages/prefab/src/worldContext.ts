@@ -29,8 +29,7 @@ export interface WorldContext extends ActionWorldContext, Partial<WorldContentCo
     /** GetLocalTemperature at a DST ground position, in scene units. */
     getLocalTemperature?: (x: number, z: number) => number;
     dynamicMusic?: import('../../componets/src/dynamicmusic').DynamicMusic;
-    registerContainer?: (id: string, container: import('./containers').BuildingContainer,
-        saved?: { slots: readonly { slotKey: string; item: import('@dontstarve-web/inventory').InventoryStack }[] }) => void;
+    registerContainer?: (id: string, container: import('./containers').BuildingContainer) => void;
     unregisterContainer?: (id: string, container: import('./containers').BuildingContainer) => void;
     /** Seconds from `now` (scheduler time) to the next day boundary: the delay of a WatchWorldState("cycles") timer. */
     secondsUntilNextDay?: (now: number) => number;
