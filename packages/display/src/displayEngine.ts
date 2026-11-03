@@ -62,6 +62,8 @@ export interface DisplayEngine {
   setBuildArchive?(archive: string): void;
   setGround?(renderOrder: number, flat: boolean): void;
   setMeshOrder?(order: number): void;
+  /** Lifts only the drawn sprite above the entity's foot point, now and whenever one is drawn later. */
+  setVisualHeight(height: number): void;
   /** Turns only the drawn sprite, now and whenever one is drawn later; `rotation` is the camera's in the root's space. */
   faceCamera(rotation: THREE.Quaternion): void;
   hideLayer(layer: string): void;
@@ -111,6 +113,7 @@ export class ArchiveEngine implements DisplayEngine {
   setGround(renderOrder: number, flat: boolean): void { this.resident.setGround(renderOrder, flat); }
   setMeshOrder(order: number): void { this.resident.setMeshOrder(order); }
   setFacing(facing: number): void { this.resident.setFacing(facing); }
+  setVisualHeight(height: number): void { this.resident.setVisualHeight(height); }
   // A static billboard ignores its root's rotation, so the drawn sprite itself is turned.
   faceCamera(rotation: THREE.Quaternion): void { this.resident.faceCamera(rotation); }
   dispose(): void { this.resident.dispose(); }

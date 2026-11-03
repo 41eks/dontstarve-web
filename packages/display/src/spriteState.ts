@@ -117,6 +117,8 @@ export interface SpriteJson {
   readonly meshOrder?: number;
   /** An effect drawn on its owner's plane, a few depth steps towards the camera. */
   readonly depthOffset?: boolean;
+  /** Height of the drawn sprite above the entity's foot point, such as thrown loot in the air. The transform stays on the ground. */
+  readonly visualHeight?: number;
   readonly appearance: ReadonlyMap<string, AppearanceJson>;
 }
 
@@ -373,6 +375,7 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
   setErosion(erosion: number): void { this.write({ erosion }); }
   setGround(renderOrder: number, flat = true): void { this.write({ ground: { renderOrder, flat } }); }
   setMeshOrder(meshOrder: number): void { this.write({ meshOrder }); }
+  setVisualHeight(visualHeight: number): void { if (visualHeight !== (this.state.visualHeight ?? 0)) this.write({ visualHeight }); }
   setDepthOffset(depthOffset: boolean): void { this.write({ depthOffset }); }
   setSymbolOverride(symbol: string, archive?: string, sourceSymbol?: string): void {
     this.withAppearance(`archive-symbol:${symbol}`, { kind: 'archive-symbol', symbol, archive, sourceSymbol });

@@ -357,6 +357,12 @@ describe('ground item save records', () => {
       manager.update(0.1, new THREE.Quaternion());
       expect(models.every((model) => model.children[0].position.y > 0 && model.position.y === 0)).toBe(true);
       expect(manager.exportRecords().every((record) => record.transform.position[1] === 0)).toBe(true);
+      // A drop ends the flight where it is: the item stands on the ground, not at its last height.
+      const dropped = models[2], droppedAt = dropped.position.clone();
+      findActionEntity(dropped)!.pickupTarget!.entity.PushEvent('ondropped');
+      manager.update(0.1, new THREE.Quaternion());
+      expect(dropped.children[0].position.y).toBe(0);
+      expect(dropped.position).toEqual(droppedAt);
       const model = models[0];
       player.position.copy(model.position);
       const entity = findActionEntity(model)!.pickupTarget.entity;
@@ -364,6 +370,8 @@ describe('ground item save records', () => {
       pick(model);
       expect(pickup).toHaveBeenCalledWith(entity, position);
       expect(model.parent).toBeNull();
+      // The entity keeps its sprite json in the inventory: dropped again, it starts on the ground.
+      expect(entity.sprite.sprite.peek().visualHeight ?? 0).toBe(0);
       const pickedUpPosition = model.position.clone();
       manager.update(5, new THREE.Quaternion());
       expect(model.position).toEqual(pickedUpPosition);
