@@ -138,8 +138,6 @@ export interface WilsonRebirthHost {
   hasBodyItem(): boolean;
   /** inst:ShowHUD */
   showHUD(show: boolean): void;
-  /** SpawnPrefab("staff_castinglight") at the player with SetUp(colour, duration, delay). */
-  castLight(colour: readonly [number, number, number], duration: number, delay: number): void;
   /** Every `sleeper` within `radius` of the player GoToSleep(seconds). */
   sleepNearby(radius: number, seconds: number): void;
 }
@@ -191,7 +189,8 @@ export interface WilsonStateGraphHost {
   overrideItemSkinSymbol?(symbol: string, skinBuild: string, skinSymbol: string, build: string, sourceSymbol: string): void;
   showLayer?(layer: string): void;
   hideLayer?(layer: string): void;
-  setCasting(casting: boolean, colour?: readonly [number, number, number]): void;
+  /** SpawnPrefab("staff_castinglight") at the player with SetUp(colour, duration, delay); removing it cancels the light. */
+  castLight?(colour: readonly [number, number, number], duration: number, delay: number): { remove(): void } | undefined;
   setControllerEnabled?(enabled: boolean): void;
   stopMovement?(): void;
   /** inst:PushEvent on the player entity, for events its component listeners handle (makeplayerghost). */
@@ -854,7 +853,7 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
     },
     timeline: [
       TimeEvent(0, inst => {
-        inst.context.host.rebirth?.castLight([150 / 255, 46 / 255, 46 / 255], 1.7, FRAMES);
+        inst.context.host.castLight?.([150 / 255, 46 / 255, 46 / 255], 1.7, 1);
         inst.context.host.playEvent?.('dontstarve/common/rebirth_amulet_raise');
       }),
       TimeEvent(60 * FRAMES, inst => { inst.context.host.playEvent?.('dontstarve/common/rebirth_amulet_poof'); }),
@@ -925,14 +924,13 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
       inst.context.playClips([clip('staff_pre'), clip('staff')]);
       inst.context.host.setControllerEnabled?.(false);
       inst.context.host.stopMovement?.();
-      inst.statemem.committed = false;
       inst.statemem.castsound = inst.context.getBufferedAction()?.invobject?.castsound ?? 'dontstarve/wilson/use_gemstaff';
-      inst.context.host.setCasting(true, inst.context.getBufferedAction()?.invobject?.fxcolour ?? [1, 1, 1]);
+      inst.statemem.stafflight = inst.context.host.castLight?.(inst.context.getBufferedAction()?.invobject?.fxcolour ?? [1, 1, 1], 1.9, .33);
     },
     timeline: [
       TimeEvent(13 * FRAMES, (inst) => inst.context.host.playSound('cast', inst.statemem.castsound as string)),
       TimeEvent(53 * FRAMES, (inst) => {
-        inst.statemem.committed = true; // Lua releases cancellation ownership before PerformBufferedAction.
+        inst.statemem.stafflight = undefined; // Can't be cancelled anymore
         inst.context.performBufferedAction();
       }),
       TimeEvent(69 * FRAMES, (inst) => {
@@ -947,7 +945,7 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
     ],
     onexit: (inst) => {
       inst.context.host.setControllerEnabled?.(true);
-      if (!inst.statemem.committed) inst.context.host.setCasting(false);
+      (inst.statemem.stafflight as { remove(): void } | undefined)?.remove();
     },
   }),
   State({

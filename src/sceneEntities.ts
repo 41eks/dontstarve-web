@@ -29,6 +29,7 @@ import { GROUND_ART_DEFINITIONS, GROUND_ITEM_DISPLAY_SPECS } from '@dontstarve-w
 import { FarmPlowPlacement, FARM_PLOW_ID } from '@dontstarve-web/prefab/farm_plow';
 import { playerStats } from './playerStats';
 import { PrefabDisplayGroup } from '@dontstarve-web/display';
+import { createStaffCastingLightManager, STAFF_CASTINGLIGHT_ID, STAFF_CASTINGLIGHT_SMALL_ID } from '@dontstarve-web/prefab/staff_castinglight';
 import { createStaffLightManager, DWARF_STAR_ID, POLAR_LIGHT_ID } from '@dontstarve-web/prefab/stafflight';
 import { BulbPlantManager } from '@dontstarve-web/prefab/bulb_plant';
 import { RockManager } from '@dontstarve-web/prefab/rocks';
@@ -166,6 +167,7 @@ const MANAGER_DEFINITIONS = {
   'snow': PREFAB_DEFINITIONS.snow,
   'ocean_waves': PREFAB_DEFINITIONS.oceanWaves,
   'stafflight': PREFAB_DEFINITIONS.staffLights,
+  'staff_castinglight': PREFAB_DEFINITIONS.staffCastingLights,
   'pond': PREFAB_DEFINITIONS.ponds,
 } as const;
 
@@ -191,6 +193,7 @@ const SCENE_LIFECYCLE_ORDER = [
   PREFAB_DEFINITIONS.groundItems,
   PREFAB_DEFINITIONS.flowers,
   PREFAB_DEFINITIONS.staffLights,
+  PREFAB_DEFINITIONS.staffCastingLights,
   PREFAB_DEFINITIONS.bulbPlants,
   PREFAB_DEFINITIONS.molehills,
   PREFAB_DEFINITIONS.beefalos,
@@ -307,6 +310,7 @@ export async function createSceneEntities(
     'snow': ReturnType<typeof registerSnow>;
     'ocean_waves': ReturnType<typeof registerOceanWaves>;
     'stafflight': ReturnType<typeof registerStaffLights>;
+    'staff_castinglight': ReturnType<typeof registerStaffCastingLights>;
     'pond': ReturnType<typeof registerPonds>;
   };
   // Filled in dependency order below; deferred callbacks run after scene setup.
@@ -331,6 +335,7 @@ export async function createSceneEntities(
   Managers['ground_item'] = registerGroundItems(registry, 'ground_item', worldState);
 
   Managers['stafflight'] = registerStaffLights(registry, worldState);
+  Managers['staff_castinglight'] = registerStaffCastingLights(registry, worldState);
   Managers['bulb_plant'] = registerBulbPlants(registry, 'bulb_plant', worldState);
   Managers['stalagmite'] = registerStalagmites(registry, worldState);
   Managers['rocks'] = registerRocks(registry, 'rocks', worldState);
@@ -1634,6 +1639,20 @@ export async function createSceneEntities(
       exportRecords: () => lights.exportRecords(),
       update: (dt, quaternion) => lights.update(dt, quaternion),
       renderEntities: () => lights.renderEntities,
+      dispose: () => { lights.dispose(); displays.dispose(); },
+    });
+    return lights;
+  }
+
+  /** No renderEntities: these prefabs have nothing to draw, only a light their displays list. */
+  function registerStaffCastingLights(registry: EntityRegistry, worldState: SceneWorldState) {
+    const displays = new PrefabDisplayGroup(scene);
+    const lights = createStaffCastingLightManager(displays, { scheduler: scheduler ?? worldState.scheduler, tickingarea: worldState.tickingarea });
+    registry.register(MANAGER_DEFINITIONS['staff_castinglight'], {
+      spawnPrefab: { [STAFF_CASTINGLIGHT_ID]: position => lights.spawn(STAFF_CASTINGLIGHT_ID, position),
+        [STAFF_CASTINGLIGHT_SMALL_ID]: position => lights.spawn(STAFF_CASTINGLIGHT_SMALL_ID, position) },
+      exportRecords: () => [],
+      update: (dt, quaternion) => lights.update(dt, quaternion),
       dispose: () => { lights.dispose(); displays.dispose(); },
     });
     return lights;

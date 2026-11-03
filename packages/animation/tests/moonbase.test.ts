@@ -320,7 +320,7 @@ it('walks to repair range, cancels before consumption, and commits REPAIR and GI
   const { placement, world, model } = await createMoonbase();
   const pointer = { trackPointer() {}, beginFrame() {}, endFrame() {}, raycastPointer: () => ({ object: model }), dispose() {} } as unknown as PointerRaycaster;
   world.mouseActions = new PlayerActionPicker(pointer);
-  const graph = new WilsonStateGraph({ playAnimation: () => .8, playSound() {}, stopSound() {}, setCasting() {}, onStateChanged() {} });
+  const graph = new WilsonStateGraph({ playAnimation: () => .8, playSound() {}, stopSound() {}, onStateChanged() {} });
   const animation = { stategraph: graph };
   const locomotor = { destination: undefined, goToPoint: vi.fn(() => true), stop: vi.fn() };
   const rock = new ItemEntity({ itemId: 'moonrocknugget', count: 1 }); configureMoonrockNugget(rock);
