@@ -59,7 +59,7 @@ import { CactusManager } from '@dontstarve-web/prefab/cactus';
 import type { GameTimeScheduler } from '@dontstarve-web/prefab/gameTimeScheduler';
 import { TumbleweedManager, TUMBLEWEED_ID } from '@dontstarve-web/prefab/tumbleweed';
 import { SaplingManager } from '@dontstarve-web/prefab/sapling';
-import { PondManager, POND_ID } from '@dontstarve-web/prefab/pond';
+import { createPondManager } from '@dontstarve-web/prefab/pond';
 import { HotspringManager } from '@dontstarve-web/prefab/hotspring';
 import { LavaPondManager, LAVA_POND_ID } from '@dontstarve-web/prefab/lava_pond';
 import { WormholeManager, WORMHOLE_ID } from '@dontstarve-web/prefab/wormhole';
@@ -1662,14 +1662,12 @@ export async function createSceneEntities(
 
   function registerPonds(registry: EntityRegistry, prefabId: 'pond', worldState: SceneWorldState) {
     const displays = new PrefabDisplayGroup(scene);
-    const ponds = new PondManager(displays, `${import.meta.env.BASE_URL}dst/data/anim`,
-      { scheduler: scheduler ?? worldState.scheduler, tickingarea: worldState.tickingarea, getWatchWorldContent: worldState.getWatchWorldContent });
+    const ponds = createPondManager(displays, `${import.meta.env.BASE_URL}dst/data/anim`,
+      { scheduler: scheduler ?? worldState.scheduler, tickingarea: worldState.tickingarea, getWatchWorldContent: worldState.getWatchWorldContent, physics: world });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
-      restore: (_, record) => ponds.spawn(new THREE.Vector3(...record.transform.position), {
-        id: record.id, transform: record.transform, components: record.components.fishable ? { fishable: record.components.fishable } : {},
-      }),
-      debugSpawn: () => ponds.spawn(player.position.clone()),
-      exportRecords: () => ponds.exportRecords().map((record) => ({ prefabId: POND_ID, record })),
+      restore: (id, record) => ponds.spawn(id, new THREE.Vector3(...record.transform.position), record),
+      debugSpawn: id => ponds.spawn(id, player.position.clone()),
+      exportRecords: () => ponds.exportRecords(),
       update: (dt, quaternion) => ponds.update(dt, quaternion),
       // Ponds are ground layers, below the foot-sorted billboards.
       dispose: () => { ponds.dispose(); displays.dispose(); },

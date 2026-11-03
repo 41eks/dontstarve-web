@@ -838,7 +838,7 @@ three-roaming-save-v1.json
 `world.entities` 按 Prefab ID 分组，避免每条记录重复 `prefab`。记录只包含可持久化逻辑：
 
 - `id`：Session 内永不复用的实体 ID。
-- `transform`：地面接触点位置和必要的逻辑旋转。
+- `transform`：地面接触点位置和必要的逻辑旋转。`rotationY` 以弧度保存，可以是任意有限值；`PrefabEntityManager` 按根节点的旋转导出和恢复。
 - `components`：该 Prefab 已注册的持久化组件数据。
 
 当前项目需要的 Prefab 映射为：
