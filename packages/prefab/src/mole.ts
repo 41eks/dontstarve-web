@@ -245,7 +245,8 @@ export class Mole implements MoleBrainInst, MoleStateInst, LocoMotorInst {
   leaveHome(): void {
     this.occupied = false; this.entity.removeTag('INLIMBO'); const home = this.home!;
     const angle = this.random() * Math.PI * 2;
-    this.getPosition().copy(home.getPosition()).add(new Vector3(Math.cos(angle) * WORLD_SCALE, 0, -Math.sin(angle) * WORLD_SCALE));
+    const position = home.getPosition();
+    this.entity.setPosition(position.x + Math.cos(angle) * WORLD_SCALE, position.y, position.z - Math.sin(angle) * WORLD_SCALE);
     this.entity.physics.Teleport(); this.entity.physics.SetActive(true);
     this.sg.resume(); this.sg.goToState('idle'); this.brain.Start(); this.components.sleeper?.StartTesting();
   }
@@ -286,13 +287,13 @@ export class Mole implements MoleBrainInst, MoleStateInst, LocoMotorInst {
   update(dt: number): void {
     if (!this.isValid() || this.isDead()) return;
     const body = this.entity.physicsBody;
-    if (body) this.getPosition().set(body.position.x, 0, body.position.z);
+    if (body) this.entity.setPosition(body.position.x, 0, body.position.z);
     this.brain.tick(this.getTime()); if (this.locomotor.isUpdating) this.locomotor.update(dt); this.sg.update(dt);
     if (this.speed > 0) {
       const angle = this.heading * Math.PI / 180;
       const p = this.getPosition().clone().add(new Vector3(Math.cos(angle) * this.speed * dt, 0, -Math.sin(angle) * this.speed * dt));
       if (this.worldServices!.isWalkable(p)) {
-        if (body) this.syncMotor(); else this.getPosition().copy(p);
+        if (body) this.syncMotor(); else this.entity.setPosition(p.x, p.y, p.z);
       } else this.locomotor.Stop();
     }
     for (const sound of this.oneShots) if (!sound.isPlaying()) this.oneShots.delete(sound);

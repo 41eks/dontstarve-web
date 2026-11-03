@@ -273,7 +273,7 @@ describe('ground item save records', () => {
     manager.dispose();
     expect(manager.spawnGroundItem(definition, new THREE.Vector3())).toBeUndefined();
   });
-  it('uses the model transform for the instance, rendering, reskinning, pickup and saves', async () => {
+  it('keeps the entity transform and root through rendering, reskinning, pickup, drop and saves', async () => {
     const { manager, scene, player, inventory, pick } = setup();
     const backpack = { itemId: 'backpack', count: 1, name: 'Backpack', icon: 'backpack.tex',
       container: { slotCount: 8, slots: [{ slotKey: '2', item: { itemId: 'log', count: 3 } }] } };
@@ -335,8 +335,8 @@ describe('ground item save records', () => {
     inventory.DropItem(entity, new THREE.Vector3(40, 0, 41));
     expect(dropped).toHaveBeenCalledOnce();
     const droppedModel = scene.children[0];
-    expect(droppedModel).not.toBe(model);
-    expect(droppedModel.position).not.toBe(position);
+    expect(droppedModel).toBe(model);
+    expect(droppedModel.position).toBe(position);
     expect(entity.transform.position).toBe(droppedModel.position);
     expect(lookupPrefabInstance(droppedModel)!.position).toBe(droppedModel.position);
     expect(lookupPrefabInstance(droppedModel)).toBe(entity);

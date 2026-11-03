@@ -1,3 +1,4 @@
+import { withEntity } from './entityFixture';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { readFile } from 'node:fs/promises';
@@ -13,10 +14,10 @@ const declaredLight = (model: THREE.Object3D) => prefabInstance(model)?.light.pe
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 function setup(variant: BulbPlantVariant = 'single', saved?: BulbPlantSaveState) {
-  const model = new THREE.Group();
+  const model = withEntity(new THREE.Group(), 'flower_cave');
   const animation = { update: vi.fn(), playOnce: vi.fn(), start: vi.fn() };
   let light = 1;
-  const controller = new BulbPlantController(model, animation, { getLightLevel: () => light }, variant, saved, () => 0);
+  const controller = new BulbPlantController(model, animation, { getLightLevel: () => light }, variant, saved, () => 0, prefabInstance(model)!);
   return { model, animation, controller, setLight: (value: number) => { light = value; } };
 }
 
@@ -66,7 +67,8 @@ describe('flower_cave harvesting and regrowth', () => {
     s.controller.update(5);
     const full = vi.fn(() => false);
     const before = s.controller.exportState(variant);
-    expect(s.model.userData.tags).toEqual(['plant', 'pickable']);
+    expect(prefabInstance(s.model)!.hasTag('plant')).toBe(true);
+    expect(prefabInstance(s.model)!.hasTag('pickable')).toBe(true);
     expect(s.controller.pickable.pick({ giveItem: full })).toBe(false);
     expect(full).toHaveBeenCalledWith('lightbulb', count, s.model.position);
     expect(s.controller.exportState(variant)).toEqual(before);
@@ -75,7 +77,8 @@ describe('flower_cave harvesting and regrowth', () => {
     const give = vi.fn(() => true);
     expect(s.controller.pickable.pick({ giveItem: give })).toBe(true);
     expect(give).toHaveBeenCalledWith('lightbulb', count, s.model.position);
-    expect(s.model.userData.tags).toEqual(['plant']);
+    expect(prefabInstance(s.model)!.hasTag('plant')).toBe(true);
+    expect(prefabInstance(s.model)!.hasTag('pickable')).toBe(false);
     expect(s.controller.light.peek()).toBeUndefined();
     expect(s.animation.playOnce).toHaveBeenLastCalledWith('picking', expect.any(Function));
     expect(s.controller.pickable.pick({ giveItem: give })).toBe(false);
@@ -88,7 +91,8 @@ describe('flower_cave harvesting and regrowth', () => {
     expect(s.controller.pickable.canBePicked).toBe(false);
     s.controller.update(0.25);
     expect(s.controller.pickable.canBePicked).toBe(true);
-    expect(s.model.userData.tags).toEqual(['plant', 'pickable']);
+    expect(prefabInstance(s.model)!.hasTag('plant')).toBe(true);
+    expect(prefabInstance(s.model)!.hasTag('pickable')).toBe(true);
     expect(s.animation.playOnce).toHaveBeenLastCalledWith('grow', expect.any(Function));
     expect(s.controller.exportState(variant)).toEqual({ variant, lightState: 'RECHARGING', remainingSeconds: 114 });
     expect(s.controller.pickable.pick({ giveItem: give })).toBe(true);
@@ -98,7 +102,8 @@ describe('flower_cave harvesting and regrowth', () => {
   it('restores picked plants without light or picking until the saved regrow timer expires', () => {
     const s = setup('double', { variant: 'double', lightState: 'RECHARGING', picked: true, regrowSeconds: 2 });
     expect(s.controller.pickable.canBePicked).toBe(false);
-    expect(s.model.userData.tags).toEqual(['plant']);
+    expect(prefabInstance(s.model)!.hasTag('plant')).toBe(true);
+    expect(prefabInstance(s.model)!.hasTag('pickable')).toBe(false);
     expect(s.controller.light.peek()).toBeUndefined();
     s.controller.update(1.5);
     expect(s.controller.exportState('double')).toEqual({
@@ -106,7 +111,8 @@ describe('flower_cave harvesting and regrowth', () => {
     });
     s.controller.update(0.5);
     expect(s.controller.pickable.canBePicked).toBe(true);
-    expect(s.model.userData.tags).toEqual(['plant', 'pickable']);
+    expect(prefabInstance(s.model)!.hasTag('plant')).toBe(true);
+    expect(prefabInstance(s.model)!.hasTag('pickable')).toBe(true);
     expect(s.controller.lightState).toBe('RECHARGING');
   });
 });
@@ -194,11 +200,11 @@ describe('flower_cave sprite residency', () => {
 describe('flower_cave tickingarea gate', () => {
   it('stops light watching outside the area and resamples on return; the display advances the clips', async () => {
     const awake = createSignal(false);
-    const model = new THREE.Group();
+    const model = withEntity(new THREE.Group(), 'flower_cave');
     const animation = { update: vi.fn(), playOnce: vi.fn(), start: vi.fn() };
     const getLightLevel = vi.fn(() => 1);
     const controller = new BulbPlantController(model, animation, { getLightLevel, tickingarea: () => createMemo(() => awake.get()) },
-      'single', undefined, () => 0);
+      'single', undefined, () => 0, prefabInstance(model)!);
     await new Promise(resolve => setTimeout(resolve, 0));
     controller.update(5);
     const sampledAsleep = getLightLevel.mock.calls.length;

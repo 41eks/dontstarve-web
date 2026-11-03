@@ -118,7 +118,6 @@ export class RuinsRelicInstance extends PrefabInstance<SpriteState> {
     else this.constructNatural(world, initialRubble);
     if (saved) this.load(saved);
   }
-  get transform() { return { position: this.position }; }
 
   private constructReplica(): void {
     const workable = new Workable(this); workable.SetWorkAction('HAMMER'); workable.SetWorkLeft(1);
@@ -224,7 +223,7 @@ export class RuinsRelicManager implements DisplayDrivenPrefabManager<{ prefabId:
     if (this.disposed) throw new Error('Relics disposed');
     const instance = new RuinsRelicInstance(id, this.world, saved), bank = `ruins_${instance.name}`;
     if (id === 'ruinsrelic_chair') instance.sprite.setSkinSource({ art: this.resources.archives, archives: RUINS_CHAIR_SKINS });
-    const display = new PrefabDisplay({ name: id, status: instance.status, sprite: instance.sprite,
+    const display = new PrefabDisplay({ root: instance.transform.model, name: id, status: instance.status, sprite: instance.sprite,
       archive: this.resources.archive({ bank, animationArchive: `${bank}.zip`, buildArchives: [`${bank}.zip`] },
         { instancedAnimations: 'all' }) });
     const model = display.model; bindInstance(model, instance);

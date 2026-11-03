@@ -283,7 +283,7 @@ export class WallPlacement<BuildId extends string> {
         instance.sprite.setFacingImages(new Map([[FACING_CARDINAL, definition.frontImageIndex], [240, definition.sideImageIndex]]));
         if (definition.multColour) instance.sprite.setColour(definition.multColour);
         instance.sprite.setOpacity(opacity);
-        const display = this.displays.add({ name: definition.name, status: instance.status, sprite: instance.sprite, light: instance.light, alignBottom: true,
+        const display = this.displays.add({ root: instance.transform.model, name: definition.name, status: instance.status, sprite: instance.sprite, light: instance.light, alignBottom: true,
             source: this.resources.staticFactory(definition.archive, {
                 imageIndices: [definition.sideImageIndex, definition.frontImageIndex],
                 name: definition.name, scale: definition.scale, symbol: definition.symbol,

@@ -1,3 +1,4 @@
+import { Transform } from './transform';
 import * as THREE from 'three';
 import { SpriteResources, SpriteState, type PrefabDisplayGroup } from '@dontstarve-web/display';
 import type { TileStateQuery } from '@dontstarve-web/signals';
@@ -59,7 +60,8 @@ export class ChesspieceInstance extends PrefabInstance {
   constructor(position: THREE.Vector3, world: ChesspieceWorld, saved?: ChesspieceRecord) {
     // fn: SetBank("chesspiece"), SetBuild("swap_chesspiece_malbatross_marble"), PlayAnimation("idle") without looping.
     super(CHESSPIECE_MALBATROSS_MARBLE_ID, new SpriteState({ name: 'idle', billboard: true }),
-      { position: new THREE.Vector3(position.x, 0, position.z), scale: new THREE.Vector3(1, 1, 1) });
+      Transform.stationary());
+    this.setPosition(position.x, 0, position.z);
     this.savedSubmersible = saved?.components.submersible ?? { force_no_repositioning: false };
     this.sprite.playOnce('idle');
     MakeHeavyObstaclePhysics(this, PHYSICS_RADIUS);
@@ -89,8 +91,6 @@ export class ChesspieceInstance extends PrefabInstance {
     this.onRemove(() => { workable.dispose(); hauntable.dispose(); });
   }
 
-  /** inventoryitem.lua's view of the entity's position. */
-  get transform(): { readonly position: THREE.Vector3 } { return { position: this.position }; }
   /** equippable.lua's wetness check; this port has no moisture on the piece. */
   GetIsWet(): boolean { return false; }
 
@@ -121,7 +121,7 @@ export class ChesspieceManager {
     if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError('Invalid chess piece position');
     const instance = new ChesspieceInstance(position, this.world, saved);
     instance.entityId = saved?.id ?? newEntityId();
-    const display = this.displays.add({ name: CHESSPIECE_MALBATROSS_MARBLE_ID, status: instance.status, sprite: instance.sprite, light: instance.light, staticTransform: true,
+    const display = this.displays.add({ root: instance.transform.model, name: CHESSPIECE_MALBATROSS_MARBLE_ID, status: instance.status, sprite: instance.sprite, light: instance.light,
       archive: this.resources.archive({ animationArchive: 'chesspiece.zip', buildArchives: ['swap_chesspiece_malbatross_marble.zip'], bank: 'chesspiece' },
         { instancedAnimations: 'all', staticBillboard: true }) });
     bindInstance(display.model, instance);

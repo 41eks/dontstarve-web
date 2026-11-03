@@ -57,7 +57,7 @@ it('rebuilds the declared clip after its tile sleeps and wakes', async () => {
   const { scene, awake, pieces, dispose } = setup();
   try {
     const piece = pieces.spawn(new THREE.Vector3(...sourceRecord.transform.position), sourceRecord);
-    const model = piece.model!;
+    const model = piece.transform.model;
     await prefabDisplay(model)!.artLoaded();
     expect(piece.sprite.loaded).toBe(true);
     awake.set(false); await settle();

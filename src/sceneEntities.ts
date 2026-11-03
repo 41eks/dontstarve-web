@@ -602,6 +602,7 @@ export async function createSceneEntities(
       },
       {
         getWatchWorldContent: worldState.getWatchWorldContent,
+        tickingarea: worldState.tickingarea,
       },
       { getSanityPercent: () => playerStats.sanity.percent.peek() },
       itemEntities ?? sceneInventory.entities,

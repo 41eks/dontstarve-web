@@ -98,7 +98,10 @@ it('creates source rock offsets, keeps each rock foot separate, blocks bodies an
     content.camerarotation.set(camera);
     await new Promise(resolve => setTimeout(resolve, 0));
     restored.update(0, camera);
-    expect(restored.renderEntities.every(entry => entry.object.quaternion.equals(camera))).toBe(true);
+    for (const { object } of restored.renderEntities) {
+      expect(object.children[0].getWorldQuaternion(new THREE.Quaternion()).angleTo(camera)).toBeCloseTo(0);
+      expect(object.rotation.y).toBe(0);
+    }
     expect(reloaded.position.toArray()).toEqual(record.transform.position);
     manager.remove(model);
     expect(FindEntities(model.position, 30, ['HASHEATER']).map(entity => entity === findActionEntity(reloaded))).toEqual([true]);

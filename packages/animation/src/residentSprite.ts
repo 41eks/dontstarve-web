@@ -44,6 +44,8 @@ export class ResidentSprite implements ArchiveSprite {
   private generation = 0;
   private disposed = false;
   private paused = false;
+  private facing?: THREE.Quaternion;
+  private readonly localFacing = new THREE.Quaternion();
   /** Inactive: the root is held out of the scene and returns to `home` on activation. */
   private asleep = false;
   private home: THREE.Object3D | undefined;
@@ -53,15 +55,15 @@ export class ResidentSprite implements ArchiveSprite {
 
   /**
    * `initial` is an already created sprite in `clip`; without it the sprite stays unloaded until `load()`.
-   * `transformRoot`: the root is a `TransformRoot`; its owner marks every write to the entity transform.
+   * `model` is the owning entity's root; its transform survives replacement of this resident display.
    */
-  constructor(create: ResidentSprite['create'], clip: { name: string; loop: boolean; none?: boolean }, initial?: ArchiveSprite,
-    name = 'ResidentSprite', { transformRoot = false }: { transformRoot?: boolean } = {}) {
-    if (transformRoot) {
-      const root = this.model = new TransformRoot();
+  constructor(model: THREE.Group, create: ResidentSprite['create'], clip: { name: string; loop: boolean; none?: boolean }, initial?: ArchiveSprite,
+    name = 'ResidentSprite') {
+    this.model = model;
+    if (model instanceof TransformRoot) {
+      const root = model;
       this.matrixGate = { markDirty: () => root.markTransformDirty(), setRenderEnabled: () => {}, dispose: () => {} };
     } else {
-      this.model = new THREE.Group();
       this.matrixGate = installRootMatrixGate(this.model, this.placeholder);
     }
     this.create = create;
@@ -153,6 +155,7 @@ export class ResidentSprite implements ArchiveSprite {
     sprite.model.position.copy(this.placeholder.position);
     this.model.remove(this.placeholder);
     this.model.add(sprite.model);
+    this.applyFacing();
     registerSpriteRenderGroup(this.model, sprite.model.children[0] as THREE.Group);
     this.attachHook?.(sprite);
     this.play();
@@ -173,7 +176,7 @@ export class ResidentSprite implements ArchiveSprite {
     if (clip.frame !== undefined) sprite.setFrame(clip.frame);
   }
 
-  update(dt: number): void { this.sprite?.update(dt); }
+  update(dt: number): void { this.applyFacing(); this.sprite?.update(dt); }
   start(name: string): void {
     const resume = this.leavesNoAnimation();
     this.queue = [];
@@ -246,7 +249,15 @@ export class ResidentSprite implements ArchiveSprite {
   setSymbolOverride(symbol: string, archive?: string, sourceSymbol?: string): void { this.sprite?.setSymbolOverride(symbol, archive, sourceSymbol); }
   setSymbolHidden(symbol: string, hidden: boolean): void { this.sprite?.setSymbolHidden(symbol, hidden); }
   setLayerHidden(layer: string, hidden: boolean): void { this.sprite?.setLayerHidden(layer, hidden); }
-  faceCamera(rotation: THREE.Quaternion): void { this.sprite?.faceCamera(rotation); }
+  faceCamera(rotation: THREE.Quaternion): void {
+    (this.facing ??= new THREE.Quaternion()).copy(rotation);
+    this.applyFacing();
+  }
+  private applyFacing(): void {
+    if (!this.facing || !this.sprite) return;
+    this.model.getWorldQuaternion(this.localFacing).invert().multiply(this.facing);
+    this.sprite.faceCamera(this.localFacing);
+  }
   /** Erosion is keyed by the drawn sprite model; its owner sets it every update. */
   setErosion(amount: number): void { this.sprite?.setErosion(amount); }
   get instanced(): InstancedSprite | undefined { return this.sprite?.instanced; }
@@ -274,6 +285,7 @@ export class ResidentSprite implements ArchiveSprite {
     this.model.removeEventListener('added', this.onAdded);
     this.stopVisualEffect();
     this.unload();
+    this.placeholder.removeFromParent();
     this.matrixGate.dispose();
     this.model.removeFromParent();
   }
@@ -320,6 +332,8 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
   private disposed = false;
   /** The placeholder holds the transform of a released sprite; before the first sprite it holds none to restore. */
   private released = false;
+  private facing?: THREE.Quaternion;
+  private readonly localFacing = new THREE.Quaternion();
 
   /** `initial` is the first sprite, already built in `clip`, if its source is ready; `held` marks a clip shown on its last frame. */
   constructor(model: THREE.Group, create: (initialAnimation: string) => THREE.Group | undefined, release: (sprite: THREE.Group) => void,
@@ -390,6 +404,7 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
     }
     this.placeholder.removeFromParent();
     this.model.add(sprite);
+    this.applyFacing();
     registerSpriteRenderGroup(this.model, sprite.children[0] as THREE.Group);
     if (replay) this.play();
   }
@@ -500,7 +515,19 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
   overrideSymbol(symbol: string, override: SymbolOverrideValue): void { this.controller?.overrideSymbol(symbol, override); }
   addOverrideBuild(name: string, override: LoadedBuildOverride): void { this.controller?.addOverrideBuild(name, override); }
   clearOverrideBuild(name: string): void { this.controller?.clearOverrideBuild(name); }
-  update(dt: number): void { this.controller?.update(dt); }
+  faceCamera(rotation: THREE.Quaternion): void {
+    (this.facing ??= new THREE.Quaternion()).copy(rotation);
+    this.applyFacing();
+  }
+  private applyFacing(): void {
+    if (!this.facing) return;
+    const visual = this.sprite ?? this.placeholder;
+    this.model.getWorldQuaternion(this.localFacing).invert().multiply(this.facing);
+    if (visual.quaternion.equals(this.localFacing)) return;
+    visual.quaternion.copy(this.localFacing);
+    this.matrixGate.markDirty();
+  }
+  update(dt: number): void { this.applyFacing(); this.controller?.update(dt); }
 
 
   dispose(): void {

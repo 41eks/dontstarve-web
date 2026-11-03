@@ -5,9 +5,8 @@ import type * as CANNON from 'cannon-es';
 import { createSharedArchiveSprite, ArchiveSpriteAssets } from '@dontstarve-web/animation/archiveSprite';
 import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
 import { createArchiveEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
-import { createEffect, createMemo, watchSignal, WorldContentKey, type GetWatchWorldContent, type TileStateQuery } from '@dontstarve-web/signals';
+import { createEffect, createMemo, watchSignal, WorldContentKey, type GetWatchWorldContent, type ReadonlySignal, type TileStateQuery } from '@dontstarve-web/signals';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
-import { TileTracker } from '../../componets/src/tileManager';
 import { Workable } from '../../componets/src/workable';
 import { ComponentTimer } from '../../componets/src/timer';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -133,9 +132,8 @@ interface Grotto {
   owner?: { grotto: Grotto; index: number };
   /** WatchWorldState("iscavefullmoon") bridges while mined out. */
   stopMoonWatch: (() => void)[];
-  /** Private tile key and the cleanup of its tickingarea view; undefined in standalone worlds (distance gating applies). */
-  tracker: TileTracker;
-  awake?: { get(): boolean; peek(): boolean };
+  /** Shared transform activity view; undefined in standalone worlds (distance gating applies). */
+  awake?: ReadonlySignal<boolean>;
   stopArea: (() => void)[];
   stopSound?: () => void;
   removed: boolean;
@@ -190,12 +188,11 @@ export class GrottoPoolManager {
     const id = saved?.id ?? newEntityId();
     instance.entityId = id;
     Object.assign(model.userData, { noWetPrefix: true, remove: () => this.remove(model) });
-    const grotto: Grotto = { prefab, model, instance, display, sprite, mist, visible: true, children: [], savedChildren: [], stopMoonWatch: [], stopArea: [], removed: false,
-      tracker: new TileTracker(() => model.position) };
+    const grotto: Grotto = { prefab, model, instance, display, sprite, mist, visible: true, children: [], savedChildren: [], stopMoonWatch: [], stopArea: [], removed: false };
     const inst = actionEntity(model, prefab);
     if (isPoolId(prefab)) this.createPool(grotto, prefab, inst, saved?.components.grottoPool);
     else this.createChild(grotto, prefab as ChildId, inst, saved?.components.grottoGlass);
-    const area = this.world.tickingarea?.(grotto.tracker.tile);
+    const area = instance.transform.getTileActivity(this.world.tickingarea, stop => grotto.stopArea.push(stop));
     if (area) {
       // The gate is this prop's own memo: leaving the area hides it and stops its animation until it returns.
       const awake = watchSignal(area, stop => grotto.stopArea.push(stop));
@@ -302,8 +299,8 @@ export class GrottoPoolManager {
     actionEntity(model, grotto.prefab).addTag('NOCLICK');
     grotto.sprite.start(`${definition.animation}_mined`);
     grotto.stopMoonWatch.splice(0).forEach(stop => stop());
-    const moon = this.world.getWatchWorldContent?.(WorldContentKey.Moon, stop => grotto.stopMoonWatch.push(stop), { tile: grotto.tracker.tile });
-    const cycle = this.world.getWatchWorldContent?.(WorldContentKey.Cycle, stop => grotto.stopMoonWatch.push(stop), { tile: grotto.tracker.tile });
+    const moon = this.world.getWatchWorldContent?.(WorldContentKey.Moon, stop => grotto.stopMoonWatch.push(stop), grotto.awake ? { active: grotto.awake } : undefined);
+    const cycle = this.world.getWatchWorldContent?.(WorldContentKey.Cycle, stop => grotto.stopMoonWatch.push(stop), grotto.awake ? { active: grotto.awake } : undefined);
     if (!moon || !cycle) return;
     // WatchWorldState("iscavefullmoon"): worldstate.lua's night + full moon, rolled on every change; the cave clock is not separate yet.
     const fullMoon = createMemo(() => moon.get().phase === 'full' && cycle.get() === 'night');

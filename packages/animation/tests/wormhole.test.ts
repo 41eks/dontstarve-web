@@ -58,7 +58,8 @@ it('opens and closes with source distance hysteresis and frame-specific layering
     expect(clip()).toBe('open_loop');
     content.camerarotation.set(quaternion);
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect(model.quaternion.equals(quaternion)).toBe(true);
+    expect(model.children[0].getWorldQuaternion(new THREE.Quaternion()).angleTo(quaternion)).toBeCloseTo(0);
+    expect(model.rotation.y).toBe(0);
     player.x = WORMHOLE_EXIT_DISTANCE;
     step(1);
     expect(clip()).toBe('open_loop');

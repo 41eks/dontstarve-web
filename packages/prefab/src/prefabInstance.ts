@@ -6,14 +6,14 @@ import { createSignal, EventEmitter, readonlySignal, type ReadonlySignal } from 
 import { LightState, PrefabDisplay, SpriteState, type ArchiveSpriteCommands, type ArchiveSpriteSource, type LoadedSpriteSource, type PrefabDisplayOptions, type PrefabStatus, type SpriteSource } from '@dontstarve-web/display';
 import { bindPhysics, type PhysicsBinding } from '../../componets/src/physicsBinding';
 import { PhysicsState } from '../../componets/src/physicsState';
-import { TileTracker } from '../../componets/src/tileManager';
+import type { TileTracker } from '../../componets/src/tileManager';
 import type { Brain } from '../../brains/src/brain';
 import type { StateGraphInstance } from '../../stategraphs/src/stategraph';
 import type { ComponentActionEntity } from '../../stategraphs/src/componentactions';
 import type { PlacementSaveRecord } from './saveRecord';
 import { WORLD_SCALE } from './tile';
 import { refreshMouseTarget } from './mouseTargets';
-import { markTransformDirty } from '@dontstarve-web/animation/transformRoot';
+import { Transform } from './transform';
 import type { PrefabWorldContext } from './worldContext';
 
 type ActionComponents = ComponentActionEntity['components'];
@@ -39,8 +39,8 @@ export interface PrefabComponents extends ActionComponents {
 
 /**
  * The logical entity behind a placed prefab: identity, save record, skin, persistence, lifecycle `status` and the
- * `sprite` json. Its transform is the model attached by its display. A `PrefabDisplay` subscribes to `status` and
- * `sprite` and draws them: asleep releases the visual and takes the model out of the scene, removed releases everything.
+ * `sprite` json. Its Transform owns the stable root borrowed by its display. A `PrefabDisplay` subscribes to `status` and
+ * `sprite` and draws them: asleep releases the visual and takes the model out of the scene, removed releases the display’s resources.
  * `physics` is declared the same way; a `PhysicsBinding` keeps its body until the entity is removed.
  */
 export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, Components extends object = PrefabComponents> {
@@ -49,8 +49,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   readonly status: ReadonlySignal<PrefabStatus> = readonlySignal(this.lifecycle);
   /** What the prefab may tell the sprite; an archive entity is narrowed to what an archive can draw. */
   readonly sprite: Sprite;
-  private model: Object3D | undefined;
-  private initialTransform?: { position: Vector3; scale: Vector3 };
+  readonly transform: Transform;
   entityId?: string;
   saveRecord?: PlacementSaveRecord;
   get skinId(): string | undefined { return this.sprite.sprite.peek().skinId; }
@@ -76,9 +75,8 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   readonly light = new LightState();
   /** inst.MiniMapEntity: map settings stay declared while the world sprite sleeps. */
   readonly minimap = new MiniMapState();
-  private tracker?: TileTracker;
   /** The entity owns its movement notifications; map consumers receive this tracker with its icon declaration. */
-  get tileTracker(): TileTracker { return this.tracker ??= new TileTracker(() => this.position); }
+  get tileTracker(): TileTracker { return this.transform.tileTracker; }
   /** inst.physicsradiusoverride, in DST units. */
   physicsRadiusOverride?: number;
   /** Deployable smart spacing, in world units. */
@@ -96,57 +94,32 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   private readonly events = new EventEmitter<Record<string, unknown>>();
 
   /** `sprite` is the entity's sprite state, typed by what its display can draw. */
-  constructor(prefab: string, sprite: Sprite, transform?: { position: Vector3; scale: Vector3 }) {
+  constructor(prefab: string, sprite: Sprite, transform = new Transform()) {
     this.prefab = prefab;
     this.sprite = sprite;
-    this.initialTransform = transform;
+    this.transform = transform;
   }
 
-  /** The display hands over the model it draws; the instance writes the model's transform directly. */
-  attach(model: Object3D): void {
-    if (this.model && this.model !== model) {
-      model.position.copy(this.model.position); model.scale.copy(this.model.scale); model.rotation.copy(this.model.rotation);
-    } else if (this.initialTransform) {
-      model.position.copy(this.initialTransform.position); model.scale.copy(this.initialTransform.scale);
-    }
-    this.initialTransform = undefined;
-    this.model = model;
-  }
-
-  /** Where the entity stands: the attached model's own position vector. */
-  get position(): Vector3 {
-    if (this.model) return this.model.position;
-    if (this.initialTransform) return this.initialTransform.position;
-    throw new Error('The entity has no model attached');
-  }
-
-  /** Transform:SetScale, on the model owned by the display. */
-  get scale(): Vector3 {
-    if (this.model) return this.model.scale;
-    if (this.initialTransform) return this.initialTransform.scale;
-    throw new Error('The entity has no model attached');
-  }
+  get position(): Vector3 { return this.transform.position; }
+  get scale(): Vector3 { return this.transform.scale; }
+  get rotation(): number { return this.transform.rotation; }
 
   /**
    * Transform:SetPosition. Unlike a write through `position`, it marks the transform, which an entity drawn with
    * `staticTransform` requires: its matrices are recomputed only when marked.
    */
   setPosition(x: number, y: number, z: number): void {
-    this.position.set(x, y, z);
-    markTransformDirty(this.model);
+    this.transform.setPosition(x, y, z);
   }
 
   /** Transform:SetScale, marked as `setPosition()` is. */
   setScale(x: number, y = x, z = x): void {
-    this.scale.set(x, y, z);
-    markTransformDirty(this.model);
+    this.transform.setScale(x, y, z);
   }
 
-  /** Transform:SetRotation: the heading in degrees, counter-clockwise about +Y, on the model owned by the display. */
+  /** Transform:SetRotation: the heading in degrees, counter-clockwise about +Y, on the entity-owned root. */
   setRotation(degrees: number): void {
-    if (!this.model) throw new Error('The entity has no model attached');
-    this.model.rotation.y = degrees * Math.PI / 180;
-    markTransformDirty(this.model);
+    this.transform.setRotation(degrees);
   }
 
   get isRemoved(): boolean { return this.lifecycle.peek() === 'removed'; }
@@ -164,7 +137,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   /** Hands `physics` to the host world; `ground` is the collider's origin when the model is drawn above it. */
   bindPhysics(world: CANNON.World, ground: () => Vector3 = () => this.position): void {
     if (this.physicsBinding || this.lifecycle.peek() === 'removed') return;
-    this.physicsBinding = bindPhysics(world, this.physics, ground);
+    this.physicsBinding = bindPhysics(world, this.physics, ground, this.transform);
   }
 
   /** EntityScript:GetPhysicsRadius(default), in world units. */
@@ -217,6 +190,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
     this.physicsBinding?.dispose();
     for (const remove of this.removalHandlers) remove();
     this.removalHandlers.clear();
+    this.transform.dispose();
   }
 
   /** Entity-owned components and logical controllers stop when the inst is permanently removed. */
@@ -233,8 +207,8 @@ const instancesByModel = new WeakMap<Object3D, AnyPrefabInstance>();
 
 /** Bind the display's model to its logical entity; metadata remains on the instance. */
 export function bindInstance(model: Object3D, instance: AnyPrefabInstance): void {
+  if (model !== instance.transform.model) throw new Error('Display must use the prefab transform root');
   instancesByModel.set(model, instance);
-  instance.attach(model);
   instance.onRemove(watchMiniMapEntity(instance));
 }
 
@@ -259,7 +233,7 @@ export function setModelTag(model: Object3D, tag: string, present: boolean): voi
   refreshMouseTarget(model);
 }
 
-/** A new entity and the display that draws it. The model is the display's; the entity never holds it. */
+/** A new entity and the display that borrows its transform root. */
 /**
  * The first clip drawn by a display. `instance` reuses a logical entity, including its identity, components, tags,
  * events and sprite declarations; creating another ground display does not create another logical entity.
@@ -267,13 +241,13 @@ export function setModelTag(model: Object3D, tag: string, present: boolean): voi
 export type EntityClip<Instance extends PrefabInstance<SpriteState, object> = PrefabInstance> =
   ConstructorParameters<typeof SpriteState>[0] & { readonly instance?: Instance };
 
-function entityInstance<Instance extends PrefabInstance<SpriteState, object>>(prefab: string, clip: EntityClip<Instance>): Instance {
+function entityInstance<Instance extends PrefabInstance<SpriteState, object>>(prefab: string, clip: EntityClip<Instance>, staticTransform = false): Instance {
   if (clip.instance) {
     if (clip.instance.isRemoved || clip.instance.prefab !== prefab) throw new Error('Cannot display a removed or different prefab instance');
     clip.instance.sprite.resetPresentation(clip);
     return clip.instance;
   }
-  return new PrefabInstance(prefab, new SpriteState(clip)) as Instance;
+  return new PrefabInstance(prefab, new SpriteState(clip), staticTransform ? Transform.stationary() : new Transform()) as Instance;
 }
 
 export function createPrefabEntity<Instance extends PrefabInstance<SpriteState, object> = PrefabInstance>(prefab: string, source: SpriteSource | LoadedSpriteSource, clip: EntityClip<Instance>, name?: string,
@@ -282,7 +256,7 @@ export function createPrefabEntity<Instance extends PrefabInstance<SpriteState, 
   { instance: Instance; display: PrefabDisplay } {
   const instance = entityInstance(prefab, clip);
   initialize?.(instance);
-  const display = new PrefabDisplay({ ...displayOptions, name, source, status: instance.status, parentStatus, sprite: instance.sprite, light: instance.light });
+  const display = new PrefabDisplay({ root: instance.transform.model, ...displayOptions, name, source, status: instance.status, parentStatus, sprite: instance.sprite, light: instance.light });
   bindInstance(display.model, instance);
   return { instance, display };
 }
@@ -290,21 +264,21 @@ export function createPrefabEntity<Instance extends PrefabInstance<SpriteState, 
 /** A new entity drawn with a shared archive sprite; `clip.held` is a one-shot clip that rests on its last frame. */
 export function createArchiveEntity<Instance extends PrefabInstance<SpriteState, object> = PrefabInstance>(prefab: string, archive: ArchiveSpriteSource, clip: EntityClip<Instance>, name?: string,
   initialize?: (instance: Instance) => void, parentStatus?: ReadonlySignal<PrefabStatus>,
-  displayOptions?: Pick<PrefabDisplayOptions, 'staticTransform'>):
+  displayOptions?: { readonly staticTransform?: boolean }):
   { instance: Instance; display: PrefabDisplay } {
-  const instance = entityInstance(prefab, clip), state = instance.sprite;
+  const instance = entityInstance(prefab, clip, displayOptions?.staticTransform), state = instance.sprite;
   initialize?.(instance);
-  const display = new PrefabDisplay({ ...displayOptions, name, archive, status: instance.status, parentStatus, sprite: state, light: instance.light });
+  const display = new PrefabDisplay({ root: instance.transform.model, name, archive, status: instance.status, parentStatus, sprite: state, light: instance.light });
   bindInstance(display.model, instance);
   return { instance, display };
 }
 
-/** Transform-only prefab, with the same display-owned model and lifecycle as drawn entities; a billboard's display turns it to the camera. */
+/** Transform-only prefab with the same entity-owned root and display lifecycle; a billboard display turns its visual to the camera. */
 export function createEmptyEntity<Instance extends PrefabInstance<SpriteState, object> = PrefabInstance>(prefab: string, parentStatus?: ReadonlySignal<PrefabStatus>,
   { billboard = false, instance: original }: { billboard?: boolean; instance?: Instance } = {}):
   { instance: Instance; display: PrefabDisplay } {
   const instance = entityInstance(prefab, { name: '', billboard, instance: original });
-  const display = new PrefabDisplay({ name: prefab, empty: true, status: instance.status, parentStatus, sprite: instance.sprite, light: instance.light });
+  const display = new PrefabDisplay({ root: instance.transform.model, name: prefab, empty: true, status: instance.status, parentStatus, sprite: instance.sprite, light: instance.light });
   bindInstance(display.model, instance);
   return { instance, display };
 }

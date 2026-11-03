@@ -285,7 +285,6 @@ it('uses the live instance in source callbacks and declares type changes without
   const worldEvents = new EventEmitter<WorldEvents>(), killed = vi.fn();
   worldEvents.on('plantkilled', killed);
   const flower = new FlowerInstance(scheduler, { worldEvents }, random);
-  flower.attach(new THREE.Group());
   flower.setPosition(3, 0, 6);
   try {
     expect(flower.sprite.loaded).toBe(false);

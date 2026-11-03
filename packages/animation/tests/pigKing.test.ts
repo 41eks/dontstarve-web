@@ -53,7 +53,8 @@ describe('Pig King prefab', () => {
       const rotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), .6);
       world.camerarotation.set(rotation);
       await new Promise(resolve => setTimeout(resolve, 0));
-      expect(standee.quaternion.equals(rotation)).toBe(true);
+      expect(standee.children[0].getWorldQuaternion(new THREE.Quaternion()).angleTo(rotation)).toBeCloseTo(0);
+      expect(standee.rotation.y).toBe(0);
       kings.update(0.1);
 
       const [saved] = kings.exportRecords();

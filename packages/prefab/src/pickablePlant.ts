@@ -1,3 +1,4 @@
+import { Transform } from './transform';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
 import { createEffect, createRenderEffect, createMemo, getBoundWatchWorldContent, WorldContentKey, type Memo, type ReadonlySignal, type WorldContentSignal, type GetWatchWorldContent, type SeasonState, type TileStateQuery } from '@dontstarve-web/signals';
@@ -272,7 +273,7 @@ export class PickablePlantManager {
     const held = initial.initialFrame === 'last';
     const loop = !held && initial.initialAnimation === idleName && definition.idle.loop !== false;
     const animation = new SpriteState({ name: initial.initialAnimation, held, billboard: true });
-    const instance = new PickablePlantInstance(prefab, animation);
+    const instance = new PickablePlantInstance(prefab, animation, Transform.stationary());
     instance.skinId = skinId;
     instance.saveRecord = saved;
     instance.variant = variant;
@@ -280,7 +281,7 @@ export class PickablePlantManager {
     instance.deploySmartRadius = definition.deploySmartRadius;
     if (definition.skins) instance.sprite.setSkinSource({ art: this.resources.archives,
       archives: Object.fromEntries(definition.skins.map(skin => [skin, `dynamic/${skin}.zip`])) });
-    const display = this.displays.add({ name: prefab, archive: this.archiveSource(definition), staticTransform: true,
+    const display = this.displays.add({ root: instance.transform.model, name: prefab, archive: this.archiveSource(definition),
       status: instance.status, sprite: animation, light: instance.light });
     bindInstance(display.model, instance);
     if (!held && !loop) instance.sprite.playOnce(initial.initialAnimation);

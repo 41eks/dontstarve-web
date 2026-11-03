@@ -2,7 +2,6 @@ import { PrefabDisplayGroup, SpriteResources } from '@dontstarve-web/display';
 import type * as THREE from 'three';
 import { createEffect, watchSignal, type TileStateQuery } from '@dontstarve-web/signals';
 import type { ShimmerKind, WaveMap, WaveSpawner } from '../../componets/src/wavemanager';
-import { TileTracker } from '../../componets/src/tileManager';
 import { createArchiveEntity } from './prefabInstance';
 
 // prefabs/wave_shimmer.lua and wave_shore.lua: non-persistent LAYER_BACKGROUND fx removed on animover.
@@ -85,7 +84,7 @@ export class OceanWaves implements WaveSpawner {
     if (flat) wave.instance.setRotation(rotation);
     const cleanups: (() => void)[] = [];
     this.active.set(wave, () => cleanups.forEach(stop => stop()));
-    const tile = this.tickingarea?.(new TileTracker(() => wave.instance.position).tile);
+    const tile = wave.instance.transform.getTileActivity(this.tickingarea, stop => cleanups.push(stop));
     if (tile) {
       const tileActivity = watchSignal(tile, stop => cleanups.push(stop));
       // wave_shimmer.lua / wave_shore.lua: OnEntitySleep = inst.Remove; sleeping FX never resume.

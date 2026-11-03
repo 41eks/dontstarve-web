@@ -60,7 +60,7 @@ export class Molehill implements BrainEntity {
     else if (saved?.child) {
       const entity = world.spawnItem(saved.child); configureMoleEntity(entity);
       const child = entity.getComponent<Mole>('mole')!; child.bindWorld(world);
-      child.getPosition().copy(model.position); world.showMole(entity, model.position);
+      entity.setPosition(model.position.x, model.position.y, model.position.z); world.showMole(entity, model.position);
       spawner.TakeOwnership(child); spawner.GoHome(child);
     } else if (saved?.childid) this.pendingChildId = saved.childid;
     else spawner.SpawnWithDelay(saved?.startdelay ?? 0);

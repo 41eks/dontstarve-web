@@ -4,7 +4,6 @@ import { createStructureLootDropper } from './structureLoot';
 import type * as THREE from 'three';
 import definitions from './definitions.json' with { type: 'json' };
 import { createEffect, createMemo, WorldContentKey, type Memo } from '@dontstarve-web/signals';
-import { TileTracker } from '../../componets/src/tileManager';
 import { FliesController } from './flies';
 import { actionEntity } from './actionEntity';
 import { prefabInstance, createArchiveEntity } from './prefabInstance';
@@ -50,7 +49,8 @@ class StickHead {
         this.cleanups.push(watchTileActivity(model, world?.tickingarea, active => this.flies.instance.setActive(active)));
         if (world?.scheduler) this.fliesController = new FliesController(this.flies.instance, model.position, world.scheduler, world.getWatchWorldContent);
         // The head never moves, so its private tile key gates the moon and phase inputs by tickingarea: outside it they hold their last value.
-        const options = { tile: new TileTracker(() => model.position).tile };
+        const area = context.instance.transform.getTileActivity(world?.tickingarea, stop => this.cleanups.push(stop));
+        const options = area ? { active: area } : undefined;
         const moon = world?.getWatchWorldContent?.(WorldContentKey.Moon, stop => this.cleanups.push(stop), options);
         const cycle = world?.getWatchWorldContent?.(WorldContentKey.Cycle, stop => this.cleanups.push(stop), options);
         if (moon && cycle) {

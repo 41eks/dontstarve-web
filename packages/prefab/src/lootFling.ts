@@ -47,7 +47,7 @@ export class LootFling {
     const dz = -Math.sin(angle);
     // FlingItem starts outside the sum of the item/dropper physics radii.
     const radius = (dropperRadius + LOOT_FLING.inventoryRadius) * WORLD_SCALE;
-    transform.position.set(transform.position.x + dx * radius, 0, transform.position.z + dz * radius);
+    transform.setPosition(transform.position.x + dx * radius, 0, transform.position.z + dz * radius);
     this.velocity = new THREE.Vector3(dx * speed, ySpeed, dz * speed);
   }
 
@@ -57,8 +57,7 @@ export class LootFling {
     while (remaining > 0 && !this.settled) {
       const landingTime = (this.velocity.y + Math.sqrt(this.velocity.y ** 2 + 2 * this.gravity * this.height)) / this.gravity;
       const step = Math.min(remaining, landingTime);
-      this.transform.position.x += this.velocity.x * step;
-      this.transform.position.z += this.velocity.z * step;
+      this.transform.offsetPosition(this.velocity.x * step, 0, this.velocity.z * step);
       this.height = Math.max(0, this.height + this.velocity.y * step - 0.5 * this.gravity * step * step);
       this.velocity.y -= this.gravity * step;
       remaining = Math.max(0, remaining - step);

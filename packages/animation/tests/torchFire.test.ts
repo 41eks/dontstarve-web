@@ -12,7 +12,7 @@ it('lets the holder display load the declared fire VFX, emit fire before delayed
     return new Response(await readFile(new URL(`../../../public${url}`, import.meta.url)));
   }));
   const sprite = new SpriteState({ name: 'idle' });
-  const display = new PrefabDisplay({ sprite, status: createSignal('active'), empty: true });
+  const display = new PrefabDisplay({ root: new THREE.Group(), sprite, status: createSignal('active'), empty: true });
   const follower = sprite.followSymbol('swap_object', 0, -110, TORCH_FIRE_VFX);
   await display.artLoaded();
   expect(vi.mocked(fetch).mock.calls.map(([url]) => url)).toEqual(['/dst/data/fx/smoke.tex', '/dst/data/fx/torchfire.tex']);

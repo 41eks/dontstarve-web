@@ -57,15 +57,15 @@ Lua 使用双向关联：inventory/container 保存物品成员与槽位，物�
 
 `InventoryStore.transfer()` 从源实体取得完整状态，验证后原子提交；整件转移使用同一个引用。`extract()` 交出整件原实体或创建部分堆叠的新实体，`receive()` 接收地面的实体并按需合堆。空间不足、目标不接受或源实体已被替换时不改变归属。消耗和移除仍由 store 提交，entity 的 owner 回调检查槽位是否还持有自己，避免旧实体影响替代物。制造仍先使用纯函数计算快照，提交时复用剩余材料的实体并为新产品创建实体。
 
-地面模型由 display 持有和挂载。拾取释放显示资源并移出场景，换肤更新 sprite json，保留实体与 model；火把的运行时组件也保留。其他已有 prefab 的模型专用控制器仍由各自 factory 管理。`exportState()` 在结算组件后导出含 `entityId` 的快照；地面实体继续使用记录的 `id`。旧库存存档缺少 ID 时在加载时分配，后续保存保持稳定；读取拒绝重复物品 ID 以及与世界实体冲突的 ID。
+地面根节点由实体 transform 持有，display 管理其场景挂载与 visual。拾取释放显示资源并移出场景，换肤更新 sprite json，保留实体与 model；火把的运行时组件也保留。其他已有 prefab 的模型专用控制器仍由各自 factory 管理。`exportState()` 在结算组件后导出含 `entityId` 的快照；地面实体继续使用记录的 `id`。旧库存存档缺少 ID 时在加载时分配，后续保存保持稳定；读取拒绝重复物品 ID 以及与世界实体冲突的 ID。
 
 ### 地面坐标的权威来源
 
-地面 model 由 display 创建并通过 `bindInstance(model, item)` 绑定原 `ItemEntity`，`prefabInstance(model) === item`。实例在库存中首次创建时已有逻辑坐标；挂到 display 后，`instance.position`、`entity.transform.position`、绘制排序的 `footPosition` 和 `model.position` 是同一向量。拾取后实例保持存活，重新掉落时将当前 Transform 交给新的 display。
+实体根节点由 `ItemEntity.transform` 创建并持有，地面 display 复用该节点，通过 `bindInstance(model, item)` 登记原 `ItemEntity`，`prefabInstance(model) === item`。实例在库存中首次创建时已有逻辑坐标；display 创建前后，`instance.position`、`entity.transform.position`、绘制排序的 `footPosition` 和 `model.position` 是同一向量。拾取后实例保持存活，重新掉落时将同一个根节点交给新的 display。
 
 `GroundItemVisual.instance` 直接引用真实物品；已移除 `bindEntity` 和 `bindTransform` 两段绑定，不再创建另一个地面 PrefabInstance 或复制组件／标签。蝴蝶、萤火虫、鼹鼠等专用逻辑读取原实例及其组件，display 的释放不永久移除物品。库存的 DropItem 在地面接线完成后发送一次 ondropped，成功拾取发送一次 onputininventory，不再在两套实例之间重发事件。
 
-GroundItemManager 不在更新、唤醒或鼠标命中前复制位置，也不维护脚点副本。修改 model、实例或已绑定 `entity.transform.position` 中的坐标会立即作用于同一个 transform。拾取距离、虫网／锤击／换肤目标、邻居查询、排序和保存都从它读取；空间索引在活动帧结算后检查自身的 tile key。重新掉落建立新的 display 时，物品与其小地图图标重新读取当前实例的位置。
+GroundItemManager 不在更新、唤醒或鼠标命中前复制位置，也不维护脚点副本。根节点、实例及 `entity.transform.position` 引用同一个位置向量；写入通过实例或 transform 的方法统一标脏及刷新 tile。拾取距离、虫网／锤击／换肤目标、邻居查询、排序和保存都从它读取；`Transform.setPosition()` 刷新共享 tile key，活动区不再通过玩家位置变化扫描实体；重新掉落建立新的 display 时，物品和小地图图标继续使用同一个位置向量。
 
 保存从已绑定 transform 导出坐标，不使用图片中心或脚点缓存。换肤保留同一个 model；读档直接初始化新 model 的位置。LootFling 持有实体 Transform，以速度推进其中的水平坐标，外部瞬移会改变后续运动的起点；它的 position getter 只返回独立的 Vector3 投影。抛落／弹跳高度继续作用于视觉子组，不进入地面脚点或保存坐标。拾取成功后沿用 inventoryitem 的坐标归零行为；PICKUP 提交时按 Lua 的 `GetPosition()` 取得一次来源坐标快照，供归零后的接收动画使用。
 

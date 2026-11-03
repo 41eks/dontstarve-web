@@ -74,7 +74,7 @@ export function configureButterflyEntity(entity: ItemEntity): void {
       owner.PushEvent('murdered', { victim: entity, stackmult: count, negligent: true });
       if (entity.remove()) for (const [itemId, amount] of loot) {
         const item = new ItemEntity({ itemId, count: amount });
-        if (position) item.transform.position.copy(position);
+        if (position) item.setPosition(position.x, position.y, position.z);
         owner.GiveItem?.(item);
       }
     };
@@ -442,7 +442,7 @@ export class ButterflyCreature implements BrainInst, ButterflyStateInst, LocoMot
     position.x += Math.cos(radians) * this.motorSpeed * dt;
     position.z -= Math.sin(radians) * this.motorSpeed * dt;
     this.butterflyWorld.constrainPosition?.(position);
-    this.transform.position.copy(position);
+    this.transform.setPosition(position.x, position.y, position.z);
   }
 
   private createWorld(): BrainWorld {

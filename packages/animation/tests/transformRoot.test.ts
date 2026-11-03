@@ -26,7 +26,7 @@ it('skips a resting root, and updates it after marked writes, facing changes, re
   const scene = new THREE.Scene(), ground = new THREE.Group();
   scene.add(ground);
   const { sprite, leaf } = stationarySprite();
-  const resident = new ResidentSprite(() => sprite, { name: 'idle', loop: true }, sprite, 'plant', { transformRoot: true });
+  const resident = new ResidentSprite(new TransformRoot(), () => sprite, { name: 'idle', loop: true }, sprite, 'plant');
   const root = resident.model as TransformRoot;
   expect(root).toBeInstanceOf(TransformRoot);
   // A position written before the first frame needs no mark: a new root starts dirty.

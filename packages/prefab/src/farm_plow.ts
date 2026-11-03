@@ -186,7 +186,7 @@ export class FarmPlowPlacement implements FarmActionWorld {
     if (state.phase === 'drill_pre') instance.sprite.playOnce('drill_pre', () => this.startDrilling(plow));
     else if (state.phase === 'drill_loop') instance.sprite.start('drill_loop');
     else instance.sprite.playOnce('collapse', () => this.returnSavedItem(plow));
-    const display = new PrefabDisplay({ name: FARM_PLOW_ID, status: instance.status, sprite: instance.sprite,
+    const display = new PrefabDisplay({ root: instance.transform.model, name: FARM_PLOW_ID, status: instance.status, sprite: instance.sprite,
       archive: this.archive('farm_plow.zip', 'farm_plow') });
     bindInstance(display.model, instance);
     this.displays.mount(display);

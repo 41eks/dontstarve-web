@@ -160,6 +160,7 @@ it('creates a spawned item at once and lets its display draw it when the art has
   } finally { world.dispose(); }
 });
 
+// The ZIP preserves the full bundled cluster (about 184 MB), including the inactive shard and snapshots.
 it('uses ground_item for c_spawn, c_save ZIP export and restore of skins, quantities, variants and height', async () => {
   const world = setup(), restored = setup(), registry = new EntityRegistry();
   registry.register(PREFAB_DEFINITIONS.groundItems, {
@@ -217,7 +218,7 @@ it('uses ground_item for c_spawn, c_save ZIP export and restore of skins, quanti
     expect(world.manager.exportRecords().find(record => record.id === 'rocks')?.components.stack)
       .toMatchObject({ itemId: 'rocks', count: 8, variant: 'f2' });
   } finally { registry.dispose(); restored.dispose(); world.dispose(); }
-});
+}, 15_000);
 
 it('loads the regenerated forest and cave ground records through the normal save parser', async () => {
   for (const shard of ['Master', 'Caves'] as const) {

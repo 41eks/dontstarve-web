@@ -85,7 +85,9 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 
 库存实体直接提供数量、耐久、新鲜度和湿润状态的只读 signal，物品栏、装备、背包和容器 UI 订阅同一份组件状态；数值变化无需替换整份 UI item，数量接收动画读取实时 count。新鲜度和湿润显示使用原版 meter，缺少新鲜度状态时隐藏对应显示。可用 `c_give("torch", 2)` 检查燃料百分比，用 `c_save()` 保存并恢复库存组件状态；已提供的新鲜度与潮湿值也随库存／地面物品保存恢复。声明保鲜时长的物品已接入腐败模拟：`Perishable` 每 10 个游戏秒结算一次，内部通过 `watchSignal` 和 `createEffect` 监听潮湿状态，变化时按旧状态提前结算，随后潮湿倍率为 `1.3`；保存先结算不足 10 秒的部分，移除／释放组件时取消任务并清理监听。雨水吸收和干燥模拟尚未接入；命令语法、参数和支持的 prefab/item ID 不变。详见 [容器 DTO 与 UI signal](docs/inventory-architecture.md#容器-dto-与-ui-signal)。
 
-地面物品的位置统一由 `entity.transform.position` 决定：移动与抛落写入实体，模型、脚点、拾取距离、换肤和保存读取实体坐标；修改模型位置不会覆盖实体。声音的位置参数也统一传递现有地面 `Vector3`，声源保留位置引用，监听器复用向量；距离衰减通过 `distanceToSquared()` 计算，不拆分 XZ 坐标或开方。用 `c_spawn("log")`、`c_spawn("butterfly")` 或 Shift + 右键丢弃物品可验证原有交互，`c_save()` 导出当前实体位置，读档恢复；抛落高度仍是视觉偏移。命令语法、参数和支持的 prefab/item ID 不变，详见 [地面坐标的权威来源](docs/inventory-architecture.md#地面坐标的权威来源)。
+实体的 `Transform` 创建并持有根节点，display／resident 复用同一个 `Group`；位置、缩放和朝向在 display 创建前即可设置，拾取再掉落及 display 重建保留根节点和向量引用。写入通过 `setPosition()`／`setRotation()`／`setScale()` 标脏，相机朝向和抛落高度作用于 visual。transform 同时维护一个 tile tracker，并让显示休眠、动作注册、世界输入门控和静态碰撞体复用活动区查询；最后一个使用者退出才释放 memo，移动实体无需等待玩家位置变化。`c_spawn`、`c_give`、`c_save()` 的语法、参数、支持 ID 和存档格式不变。
+
+地面物品的位置统一由 `entity.transform.position` 决定：移动与抛落写入实体，模型、脚点、拾取距离、换肤和保存读取实体坐标；根节点与实体共享坐标，逻辑写入统一走 transform 方法。声音的位置参数也统一传递现有地面 `Vector3`，声源保留位置引用，监听器复用向量；距离衰减通过 `distanceToSquared()` 计算，不拆分 XZ 坐标或开方。用 `c_spawn("log")`、`c_spawn("butterfly")` 或 Shift + 右键丢弃物品可验证原有交互，`c_save()` 导出当前实体位置，读档恢复；抛落高度仍是视觉偏移。命令语法、参数和支持的 prefab/item ID 不变，详见 [地面坐标的权威来源](docs/inventory-architecture.md#地面坐标的权威来源)。
 
 物品栏右键参考 Lua `widgets/invslot.lua:OnControl/DropItem/UseItem` 的分工：UI 将右键输入写入 input signal，读取 slot 的只读 `item` signal，并同步发布 `drop/use` 请求；应用验证物品实体后执行丢弃、进食、种花或背包装卸。连续右键分别处理，槽位投影更新不会重放动作；UI 断开和场景停止时释放对应订阅。`game:slot-context-menu` 仍跨 shadow root 冒泡；Shift + 右键丢弃整堆物品，与 Lua `DropItemFromInvTile` 默认的 `wholestack` 一致（网捕生物按只拆成独立实体）。`c_give`、`c_spawn`、`c_save` 的语法、参数和支持 ID 保持不变。
 

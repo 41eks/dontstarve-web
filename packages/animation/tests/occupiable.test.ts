@@ -1,4 +1,3 @@
-import * as THREE from 'three';
 import { PrefabInstance } from '../../prefab/src/prefabInstance';
 import { SpriteState } from '@dontstarve-web/display';
 import { describe, expect, it, vi } from 'vitest';
@@ -34,7 +33,6 @@ describe('caged birds', () => {
     const scheduler = new GameTimeScheduler();
     const cycle = createSignal<WorldPhase>('day');
     const instance = new PrefabInstance('birdcage', new SpriteState({ name: 'idle_empty' }));
-    instance.attach(new THREE.Group());
     instance.entityId = 'birdcage:test';
     const playOnce = vi.spyOn(instance.sprite, 'playOnce');
     const cage = new Birdcage(instance, { scheduler, cycle } as unknown as WorldContext, undefined, () => .9);

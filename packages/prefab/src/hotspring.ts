@@ -1,3 +1,4 @@
+import { watchTileActivity } from './tileActivity';
 import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
@@ -7,7 +8,6 @@ import { createEffect, watchSignal, type ReadonlySignal, type Signal, type TileS
 import { BathBombable } from '../../componets/src/bathbombable';
 import { Heater } from '../../componets/src/heater';
 import { ComponentTimer } from '../../componets/src/timer';
-import { TileTracker } from '../../componets/src/tileManager';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
@@ -155,6 +155,7 @@ export class HotspringManager {
       const fx: SteamFx = { object, footPosition: object.position, instance, display };
       instance.sprite.playOnce(anim, () => this.removeSteam(fx));
       this.steam.add(fx); this.displays.mount(prefabDisplay(object)!);
+      instance.onRemove(watchTileActivity(object, this.tickingarea, active => instance.setActive(active)));
     });
   }
   private removeSteam(fx: SteamFx): void {
@@ -187,7 +188,7 @@ export class HotspringManager {
     this.springs.set(model, spring); this.entities.set(model, entity);
     entity.instance.bindPhysics(this.physics);
     this.displays.mount(prefabDisplay(model)!);
-    const tileActivity = this.tickingarea?.(new TileTracker(() => model.position).tile);
+    const tileActivity = entity.instance.transform.getTileActivity(this.tickingarea, stop => entity.instance.onRemove(stop));
     if (tileActivity) spring.bindTileActivity(tileActivity, active => this.setActive(model, spring, active));
     else this.setActive(model, spring, true);
     return model;

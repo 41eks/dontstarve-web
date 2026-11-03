@@ -174,7 +174,7 @@ export class NightmareRockManager {
     if (this.disposed) throw new Error('Nightmare rocks have been disposed');
     if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError('Invalid nightmare rock position');
     const instance = new NightmareRockInstance(this.world, id, this.staggerOffset);
-    const display = this.displays.add({ name: id, source: this.resources.factory({ animationArchive: 'blocker_sanity.zip', buildArchive: 'blocker_sanity.zip' }),
+    const display = this.displays.add({ root: instance.transform.model, name: id, source: this.resources.factory({ animationArchive: 'blocker_sanity.zip', buildArchive: 'blocker_sanity.zip' }),
       status: instance.status, sprite: instance.sprite, light: instance.light });
     const model = display.model;
     bindInstance(model, instance);

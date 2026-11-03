@@ -361,7 +361,7 @@ export class FencePlacement {
         if (this.disposed) throw new Error('Placement has been disposed');
         const instance = new FencePrefabInstance(rotation, fenceWorldSkin(buildId, requestedSkin), this.resources.archives, opacity, prefab);
         instance.worldServices = this.world;
-        const display = this.displays.add({ name: FENCE_ID, status: instance.status, sprite: instance.sprite, light: instance.light,
+        const display = this.displays.add({ root: instance.transform.model, name: FENCE_ID, status: instance.status, sprite: instance.sprite, light: instance.light,
             source: this.resources.factory({ animationArchive: 'fence.zip', extraAnimationArchives: ['fence_thin.zip'], buildArchive: 'fence.zip' }) });
         const root = display.model;
         bindInstance(root, instance);

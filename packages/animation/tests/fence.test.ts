@@ -197,7 +197,6 @@ it('is hammered in three hits for a twig, can be reskinned, and burns into ash w
     const instance = lookupPrefabInstance(second)!;
     await target.display!.artLoaded();
     const attacker = new PrefabInstance('wilson', new SpriteState({ name: 'idle', held: true }));
-    attacker.attach(new THREE.Group());
     const worked = vi.fn(); instance.ListenForEvent('worked', worked);
     const working = vi.fn(); attacker.ListenForEvent('working', working);
     instance.components.combat!.GetAttacked(attacker, 1);

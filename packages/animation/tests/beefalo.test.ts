@@ -1,3 +1,4 @@
+import { Transform } from '../../prefab/src/transform';
 
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import { createTestWorldSources } from './worldContentFixture';
@@ -26,7 +27,7 @@ function setup(random = () => 0) {
   // The drawn sprite: it follows the logical AnimState, which owns the queue and the clip timing.
   const animation = { start: vi.fn(), playOnce: vi.fn(), update: vi.fn(), setFacingRotation: vi.fn(), setBuildArchive: vi.fn(), setAwake: vi.fn() };
   const model = new THREE.Group();
-  bindInstance(model, new PrefabInstance('beefalo', animation as never));
+  bindInstance(model, new PrefabInstance('beefalo', animation as never, new Transform(undefined, model)));
   let players: THREE.Vector3[] = [];
   let poop: Iterable<THREE.Vector3> = [];
   const scheduler = new GameTimeScheduler();
@@ -174,7 +175,7 @@ describe('wild beefalo behavior', () => {
     expect(vi.mocked(s.world.spawnPoop).mock.calls[0][0].toArray()).toEqual([s.model.position.x - 3, 0, 0]);
     const saved = s.controller.exportState();
     const restoredScene = setup(); restoredScene.controller.dispose();
-    bindInstance(restoredScene.model, new PrefabInstance('beefalo', restoredScene.animation as never));
+    bindInstance(restoredScene.model, new PrefabInstance('beefalo', restoredScene.animation as never, new Transform(undefined, restoredScene.model)));
     const restored = new BeefaloController(restoredScene.model, restoredScene.physics, restoredScene.lengths, s.world, saved, () => 0);
     expect(restored.exportState()).toEqual(saved);
     restored.dispose(); restored.update(0.1);
@@ -245,7 +246,7 @@ describe('wild beefalo behavior', () => {
     const shavedState = s.controller.exportState();
     expect(shavedState.beard).toMatchObject({ growth: 0, bits: 0 });
     const restoredScene = setup(); restoredScene.controller.dispose();
-    bindInstance(restoredScene.model, new PrefabInstance('beefalo', restoredScene.animation as never));
+    bindInstance(restoredScene.model, new PrefabInstance('beefalo', restoredScene.animation as never, new Transform(undefined, restoredScene.model)));
     const restored = new BeefaloController(restoredScene.model, restoredScene.physics, restoredScene.lengths, s.world, shavedState, () => 0);
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(restoredScene.animation.setBuildArchive).toHaveBeenLastCalledWith(BEEFALO_SHAVED_BUILD);

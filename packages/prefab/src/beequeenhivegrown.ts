@@ -130,7 +130,7 @@ export class BeeQueenHiveManager {
       animation: clip.name, loop: clip.loop,
     }, { instancedAnimations: 'all', name: BEEQUEENHIVEGROWN_ID });
     const instance = new BeeQueenHiveInstance(this.world, saved);
-    const display = new PrefabDisplay({ name: BEEQUEENHIVEGROWN_ID, status: instance.status, sprite: instance.sprite, archive: { create: build } });
+    const display = new PrefabDisplay({ root: instance.transform.model, name: BEEQUEENHIVEGROWN_ID, status: instance.status, sprite: instance.sprite, archive: { create: build } });
     const model = display.model;
     bindInstance(model, instance);
     instance.position.set(position.x, 0, position.z);

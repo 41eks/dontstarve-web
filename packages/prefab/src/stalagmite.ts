@@ -107,7 +107,7 @@ export class StalagmiteManager implements DisplayDrivenPrefabManager<{ prefabId:
   spawn(id: StalagmiteId, position: THREE.Vector3, saved?: StalagmiteRecord): THREE.Group {
     if (this.disposed) throw new Error('Stalagmites disposed');
     const instance = new StalagmiteInstance(id, this.world, saved), bank = stalagmiteBank(id);
-    const display = new PrefabDisplay({ name: id, status: instance.status, sprite: instance.sprite,
+    const display = new PrefabDisplay({ root: instance.transform.model, name: id, status: instance.status, sprite: instance.sprite,
       archive: this.resources.archive({ animationArchive: `${bank}.zip`, buildArchives: [`${bank}.zip`], bank },
         { instancedAnimations: 'all', colour: [1, 1, 1] }) });
     const model = display.model; bindInstance(model, instance);

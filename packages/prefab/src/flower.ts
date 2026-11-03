@@ -1,3 +1,4 @@
+import { Transform } from './transform';
 import type * as THREE from 'three';
 import { PrefabDisplayGroup, SpriteResources, SpriteState, type PrefabDisplay } from '@dontstarve-web/display';
 import type { PickActor } from '@dontstarve-web/stategraphs/pick';
@@ -95,7 +96,7 @@ export class FlowerInstance extends PrefabInstance {
 
   constructor(scheduler: GameTimeScheduler, services: Pick<PrefabWorldContext, 'worldEvents'> = {},
     random = Math.random, animation?: FlowerAnimation) {
-    super('flower', new SpriteState({ name: 'f1', none: true, billboard: true }));
+    super('flower', new SpriteState({ name: 'f1', none: true, billboard: true }), Transform.stationary());
     this.worldServices = services;
     this.random = random;
     this.deploySmartRadius = .375 * (TILE_SIZE / 4);
@@ -225,7 +226,7 @@ export class FlowerPlanting {
     const instance = new FlowerInstance(this.scheduler, this.services, this.random, animation);
     if (prefab === 'flower_rose') rosefn(instance);
     else if (prefab === 'planted_flower') plantedflowerfn(instance);
-    const display = this.displays.add({ name: 'Flower', staticTransform: true,
+    const display = this.displays.add({ root: instance.transform.model, name: 'Flower',
       archive: this.resources.archive({ animationArchive: 'flowers.zip', buildArchives: ['flowers.zip'], bank: 'flowers' },
         { instancedAnimations: 'all', staticBillboard: true }),
       sprite: instance.sprite, status: instance.status, light: instance.light });

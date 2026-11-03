@@ -205,3 +205,5 @@ export { LightFlierFlowerManager, LightFlierFlower, LIGHTFLIER_FLOWER_ID } from 
 export { LightFlier, LightFlierHabitat, LIGHTFLIER_ID, configureLightFlierEntity } from './lightflier';
 export { mouseTargets, setMouseTargetEnabled } from './mouseTargets';
 export { addComponent, removeComponent, type ComponentName } from './components';
+
+export { Transform, type TransformDirtyHandler } from './transform';

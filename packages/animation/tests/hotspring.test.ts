@@ -174,7 +174,7 @@ it('keeps a spring active when the injected tile query returns undefined', async
     const model = await s.springs.spawn(position);
     await new Promise(resolve => setTimeout(resolve, 0));
     const update = vi.spyOn(prefabInstance(model)!.sprite, 'update');
-    expect(query).toHaveBeenCalledTimes(2); // Presentation and physics each own their tile view.
+    expect(query).toHaveBeenCalledOnce(); // Presentation and physics share the transform’s tile query.
     expect(query.mock.calls.every(([tile]) => tile.peek() === GetTileKeyAtPoint(model.position))).toBe(true);
     expect(model.position).toEqual(position);
     expect(model.parent).toBe(s.scene);

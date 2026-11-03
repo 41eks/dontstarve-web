@@ -1,4 +1,3 @@
-import * as THREE from 'three';
 import { expect, it, vi } from 'vitest';
 import { SpriteState } from '@dontstarve-web/display';
 import { addComponent, removeComponent } from '../../prefab/src/components';
@@ -7,7 +6,6 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 
 function entity() {
   const inst = new PrefabInstance('test', new SpriteState({ name: 'idle' }));
-  inst.attach(new THREE.Group());
   return inst;
 }
 

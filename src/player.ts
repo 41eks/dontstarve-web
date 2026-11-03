@@ -8,7 +8,7 @@ const playerPrefab = createWilsonPlayerPrefab(
   { stats: { ...initialSave.players.local.stats }, scheduler: worldState.scheduler, componentUpdates: worldState.componentUpdates },
 );
 await playerPrefab.display.artLoaded();
-playerPrefab.model.position.set(...initialSave.players.local.transform.position);
+playerPrefab.instance.setPosition(...initialSave.players.local.transform.position);
 playerPrefab.instance.tileTracker.sync();
 playerPrefab.physics.Teleport();
 

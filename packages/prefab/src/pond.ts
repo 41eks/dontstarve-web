@@ -45,7 +45,8 @@ export class PondInstance extends PrefabInstance<SpriteState, PondComponents> {
   frozen = false;
 
   constructor(position: THREE.Vector3, { scheduler, getWatchWorldContent }: PondWorld) {
-    super(POND_ID, new SpriteState({ name: 'idle' }), { position: new THREE.Vector3(position.x, 0, position.z), scale: new THREE.Vector3(1, 1, 1) });
+    super(POND_ID, new SpriteState({ name: 'idle' }));
+    this.setPosition(position.x, 0, position.z);
     // OnGround: lift only the artwork above terrain; the entity/save origin stays grounded. Ground layers share
     // group order 0 and use mesh order. A negative group order would draw the pond before transparent turf, which covers it up.
     this.sprite.setGround(0); this.sprite.setMeshOrder(-.5);
@@ -107,7 +108,7 @@ export class PondManager {
     if (this.disposed) throw new Error('Pond manager has been disposed');
     if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError('Invalid pond position');
     const instance = new PondInstance(position, this.world);
-    const display = this.displays.add({ name: POND_ID, status: instance.status, sprite: instance.sprite, light: instance.light,
+    const display = this.displays.add({ root: instance.transform.model, name: POND_ID, status: instance.status, sprite: instance.sprite, light: instance.light,
       archive: this.resources.archive({ animationArchive: 'marsh_tile.zip', buildArchives: ['marsh_tile.zip'], bank: 'marsh_tile' }) });
     bindInstance(display.model, instance);
     instance.entityId = saved?.id ?? newEntityId();

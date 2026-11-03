@@ -4,7 +4,6 @@ import { createEffect, createSignal, readonlySignal, watchSignal, WorldContentKe
 import { fourFacingFromRotation } from '@dontstarve-web/animation/facing';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { ComponentTimer } from '../../componets/src/timer';
-import { TileTracker } from '../../componets/src/tileManager';
 import { FormationFollower } from '../../componets/src/formationfollower';
 import { FormationLeader } from '../../componets/src/formationleader';
 import { Follower } from '../../componets/src/follower';
@@ -81,7 +80,7 @@ export class LightFlierHabitat {
   spawn(position: Vector3): LightFlier {
     if (this.disposed) throw new Error('Lightflier habitat unavailable');
     const entity = this.services.spawnItem({ itemId: LIGHTFLIER_ID, count: 1 }); configureLightFlierEntity(entity);
-    const fly = entity.getComponent<LightFlier>(LIGHTFLIER_ID)!; entity.getPosition().copy(position); this.bind(fly);
+    const fly = entity.getComponent<LightFlier>(LIGHTFLIER_ID)!; entity.setPosition(position.x, position.y, position.z); this.bind(fly);
     this.services.showItem(entity, position.clone()); return fly;
   }
   findFormation(fly: LightFlier): void {
@@ -158,7 +157,6 @@ export class LightFlier implements LightFlierBrainInst, LightFlierStateInst, Loc
   private erosionAmount = 0;
   private readonly activeState = createSignal(true);
   readonly active = readonlySignal(this.activeState);
-  private tracker?: TileTracker;
   private asleepHome?: ComponentTimer;
   private disposed = false;
   private speed = 0;
@@ -271,9 +269,9 @@ export class LightFlier implements LightFlierBrainInst, LightFlierStateInst, Loc
     if (services.getWatchWorldContent) {
       this.components.sleeper = new Sleeper(this, services.getWatchWorldContent); this.components.sleeper.sleeptestfn = () => false;
       this.entity.addTag('sleeper');
-      this.tracker = new TileTracker(() => this.getPosition());
-      const cycle = services.getWatchWorldContent(WorldContentKey.Cycle, stop => this.cleanups.push(stop), { tile: this.tracker.tile });
-      const area = cycle.area ? watchSignal(cycle.area, stop => this.cleanups.push(stop)) : undefined;
+      const activity = this.entity.transform.getTileActivity(services.tickingarea, stop => this.cleanups.push(stop));
+      const cycle = services.getWatchWorldContent(WorldContentKey.Cycle, stop => this.cleanups.push(stop), activity ? { active: activity } : undefined);
+      const area = activity ? watchSignal(activity, stop => this.cleanups.push(stop)) : undefined;
       this.asleepHome = new ComponentTimer(scheduler, () => { if (!this.active.peek() && this.home?.isValid()) this.home.components.childspawner.GoHome(this); });
       createEffect(() => {
         const active = area?.get() ?? true, day = cycle.get() === 'day';
@@ -357,9 +355,9 @@ export class LightFlier implements LightFlierBrainInst, LightFlierStateInst, Loc
   }
   update(dt: number): void {
     if (!this.isValid()) return;
-    this.tracker?.sync(); if (!this.active.peek()) return;
+    if (!this.active.peek()) return;
     const body = this.entity.physicsBody;
-    if (body) this.getPosition().set(body.position.x, 0, body.position.z);
+    if (body) this.entity.setPosition(body.position.x, 0, body.position.z);
     const step = Math.max(0, Math.min(dt, this.habitat?.services.maxMovementStep ?? .1));
     if (!this.isDead()) {
       this.brain.tick(this.getTime());
@@ -377,7 +375,7 @@ export class LightFlier implements LightFlierBrainInst, LightFlierStateInst, Loc
     if (!this.sg.hasStateTag('busy') && this.speed > 0) {
       const angle = this.heading * Math.PI / 180;
       if (body) this.syncMotor();
-      else this.getPosition().add(new Vector3(Math.cos(angle) * this.speed * step, 0, -Math.sin(angle) * this.speed * step));
+      else this.entity.transform.offsetPosition(Math.cos(angle) * this.speed * step, 0, -Math.sin(angle) * this.speed * step);
     }
   }
   OnSave(): NonNullable<InventoryStack['lightflier']> {

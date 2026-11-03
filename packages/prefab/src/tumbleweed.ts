@@ -80,7 +80,6 @@ export class TumbleweedInstance extends PrefabInstance {
   /** MakeLoot: rolled once when the entity is created. */
   readonly loot: readonly string[];
   private angle?: number;
-  private rotation = 0;
   /** OnEntitySleep ran last: tasks are cancelled, and wind changes and pending animover are ignored. */
   private asleep = false;
   private readonly world: TumbleweedWorld;
@@ -136,7 +135,7 @@ export class TumbleweedInstance extends PrefabInstance {
   private get body(): CANNON.Body { return this.physicsBody!; }
 
   private setRotationDegrees(degrees: number): void {
-    this.rotation = degrees;
+    this.setRotation(degrees);
     this.sprite.setFacingRotation(degrees, 4);
   }
 
@@ -228,9 +227,9 @@ export class TumbleweedInstance extends PrefabInstance {
 
   /** After physics: the entity follows its body. */
   sync(): void {
-    this.position.set(this.body.position.x, 0, this.body.position.z);
+    this.setPosition(this.body.position.x, 0, this.body.position.z);
     this.world.constrainPosition(this.position);
-    this.tileTracker.moved();
+    this.tileTracker.sync();
   }
 }
 
@@ -258,15 +257,15 @@ export class TumbleweedManager {
     if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError('Invalid tumbleweed position');
     if (this.disposed) throw new Error('Tumbleweed manager has been disposed');
     const instance = new TumbleweedInstance(this.world, at => this.spawnBreakFx(at));
-    const display = this.displays.add({ name: TUMBLEWEED_ID, archive: this.archive, status: instance.status, sprite: instance.sprite, light: instance.light });
+    const display = this.displays.add({ root: instance.transform.model, name: TUMBLEWEED_ID, archive: this.archive, status: instance.status, sprite: instance.sprite, light: instance.light });
     bindInstance(display.model, instance);
-    instance.position.copy(position).setY(0);
+    instance.setPosition(position.x, 0, position.z);
     this.world.constrainPosition(instance.position);
     instance.entityId = saved?.id ?? newEntityId();
     instance.bindPhysics(this.physics);
     actionEntity(display.model, TUMBLEWEED_ID);
     this.tumbleweeds.add(instance);
-    const stopActivity = watchTileActivity(display.model, this.world.tickingarea, active => instance.setAwake(active), instance.tileTracker.tile);
+    const stopActivity = watchTileActivity(display.model, this.world.tickingarea, active => instance.setAwake(active));
     instance.onRemove(() => { stopActivity(); this.tumbleweeds.delete(instance); });
     return instance;
   }
@@ -281,7 +280,7 @@ export class TumbleweedManager {
       // Declared before the display binds: the one-shot waits for its first drawn frame.
       inst.sprite.playOnce('break', () => inst.remove());
     });
-    instance.position.copy(position);
+    instance.setPosition(position.x, position.y, position.z);
     this.breakFx.add(instance);
     instance.onRemove(() => this.breakFx.delete(instance));
     this.displays.mount(display);

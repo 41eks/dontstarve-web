@@ -7,6 +7,7 @@
     "./components": "./src/components.ts",
     "./mouseTargets": "./src/mouseTargets.ts",
     "./prefabInstance": "./src/prefabInstance.ts",
+    "./transform": "./src/transform.ts",
     "./manager": "./src/manager.ts",
     "./lightflier": "./src/lightflier.ts",
     "./lightflier_flower": "./src/lightflier_flower.ts",

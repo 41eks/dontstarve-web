@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createEffect, createMemo, createSignal, readonlySignal, watchSignal, GameTimeScheduler, WorldContentKey, type GetWatchWorldContent, type HandEquipment, type PlayerPositionsSignal, type ReadonlySignal, type Signal, type WorldContentSignal, type WorldPhase } from '@dontstarve-web/signals';
+import { createEffect, createMemo, createSignal, readonlySignal, watchSignal, GameTimeScheduler, WorldContentKey, type GetWatchWorldContent, type HandEquipment, type PlayerPositionsSignal, type ReadonlySignal, type TileStateQuery, type Signal, type WorldContentSignal, type WorldPhase } from '@dontstarve-web/signals';
 import { ArchiveSpriteAssets, createSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import type { ArchiveSpriteCommands, ArchiveSpriteSource } from '@dontstarve-web/display';
 import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
@@ -9,7 +9,6 @@ import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
 import { ItemEntity } from '@dontstarve-web/inventory';
 import { Workable } from '../../componets/src/workable';
 import { ComponentTimer } from '../../componets/src/timer';
-import { TileTracker } from '../../componets/src/tileManager';
 import { equippedActionEntity } from '../../stategraphs/src/componentactions';
 import { setMouseTargetEnabled } from './mouseTargets';
 
@@ -49,6 +48,7 @@ export type FirefliesInstance = Pick<PrefabInstance<ArchiveSpriteCommands>, 'add
 
 export interface FirefliesWorld {
   getWatchWorldContent?: GetWatchWorldContent;
+  tickingarea?: TileStateQuery;
   handEquipment?: ReadonlySignal<HandEquipment | null>;
 }
 
@@ -71,8 +71,6 @@ export class FirefliesController {
   private readonly cleanups: (() => void)[] = [];
   private readonly checks = createSignal<readonly ComponentTimer[]>([]);
   private readonly placement = createSignal<{ dropped: boolean } | undefined>(undefined);
-  /** Private tile key for the tickingarea gate on the watched world inputs. */
-  private readonly tracker: TileTracker;
   private readonly scheduler: GameTimeScheduler;
   private readonly ownsScheduler: boolean;
   private readonly disableWork: ComponentTimer;
@@ -100,12 +98,11 @@ export class FirefliesController {
     this.transform = transform;
     this.animation = instance.sprite;
     this.random = random;
-    this.tracker = new TileTracker(() => transform.position);
-    const options = { tile: this.tracker.tile };
+    const area = transform.getTileActivity(world.tickingarea, stop => this.cleanups.push(stop));
+    const options = area ? { active: area } : undefined;
+    if (area) this.awake = watchSignal(area, stop => this.cleanups.push(stop));
     this.cycle = world.getWatchWorldContent?.(WorldContentKey.Cycle, stop => this.cleanups.push(stop), options);
     this.playerpositions = world.getWatchWorldContent?.(WorldContentKey.PlayerPositions, stop => this.cleanups.push(stop), options);
-    const area = this.cycle?.area ?? this.playerpositions?.area;
-    if (area) this.awake = watchSignal(area, stop => this.cleanups.push(stop));
     this.activeState = createMemo(() => this.awake?.get() ?? true);
     this.active = readonlySignal(this.activeState);
     if (world.handEquipment) this.handEquipment = watchSignal(world.handEquipment, stop => this.cleanups.push(stop), this.awake);
@@ -190,7 +187,6 @@ export class FirefliesController {
   place(dropped: boolean): void {
     if (this.disposed) return;
     this.animation.setLightOverride(1);
-    this.tracker.sync();
     this.placement.set({ dropped });
     this.syncUpdating();
   }

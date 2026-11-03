@@ -198,7 +198,6 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
   private readonly fueledState = createSignal<Fueled<ItemEntity> | undefined>(undefined);
   /** The saved fuel, loaded once the prefab has added and initialized its fueled. */
   private savedFuel?: number;
-  readonly transform: { readonly position: Vector3; rotationY: number };
   private miniMapEntity?: MiniMapEntity;
   get MiniMapEntity(): MiniMapEntity | undefined { return this.miniMapEntity; }
   /** AddMiniMapEntity is owned by the logical inst, independently of its art. */
@@ -253,9 +252,7 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
   }
   private readonly runtime = new Map<string, ItemRuntimeComponent>();
   constructor(state: InventoryStack, perishWorld?: PerishWorld) {
-    super(state.itemId, new SpriteState({ name: state.itemId, none: true }), { position: new Vector3(), scale: new Vector3(1, 1, 1) });
-    const item = this;
-    this.transform = { get position() { return item.position; }, rotationY: 0 };
+    super(state.itemId, new SpriteState({ name: state.itemId, none: true }));
     this.entityId = state.entityId ?? newItemEntityId();
     this.wetState.set(state.wet ?? false);
     Object.assign(this.components, {

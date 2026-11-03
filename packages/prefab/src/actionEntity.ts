@@ -2,7 +2,7 @@ import type * as THREE from 'three';
 import type { ComponentActionEntity } from '../../stategraphs/src/componentactions';
 import { createEffect, createSignal, readonlySignal, watchSignal, type ReadonlySignal, type TileStateQuery } from '@dontstarve-web/signals';
 import type { WorkableInst } from '../../componets/src/workable';
-import { TileTracker } from '../../componets/src/tileManager';
+import { watchTileActivity } from './tileActivity';
 import { registerPlacementEntity, syncPlacementEntity } from './placementEntities';
 import { activePrefabs, type FoundEntity } from './activePrefabs';
 import { prefabInstance } from './prefabInstance';
@@ -126,9 +126,9 @@ export function actionInstance(model: THREE.Object3D | undefined): ComponentActi
   return model ? actionOwners.get(model) : undefined;
 }
 const disposals = new Map<FoundEntity, () => void>();
-const entityWorlds = new WeakMap<FoundEntity, EntityTickingArea>();
+const entityWorlds = new WeakMap<FoundEntity, ActionEntityWorld>();
 const mouseRegistrations = new WeakMap<FoundEntity, ReturnType<typeof registerMouseTarget>>();
-let currentEntityWorld: EntityTickingArea | undefined;
+let currentEntityWorld: ActionEntityWorld | undefined;
 
 /** Resolve an already registered action entity for the picked model without creating a projection. */
 export function findActionEntity(model: THREE.Object3D | null | undefined): FoundEntity | undefined {
@@ -153,48 +153,24 @@ export function disposeActionEntity(model: THREE.Object3D): void {
   dispose?.();
 }
 
-/** One player-position bridge per world; moving entities refresh on the existing 60-frame snapshots. */
-class EntityTickingArea {
-  private readonly records = new Map<FoundEntity, { tracker: TileTracker; stop(): void }>();
-  private readonly positions;
-  private readonly cleanups: (() => void)[] = [];
+/** Action registration shares the entity transform's activity query with its display. */
+class ActionEntityWorld {
+  private readonly records = new Map<FoundEntity, { stop(): void }>();
   private readonly query: TileStateQuery;
 
-  constructor(query: TileStateQuery, positions: ReadonlySignal<THREE.Vector3[]>) {
+  constructor(query: TileStateQuery) {
     this.query = query;
-    this.positions = watchSignal(positions, stop => this.cleanups.push(stop));
-    createEffect(() => {
-      this.positions.get();
-      for (const { tracker } of this.records.values()) tracker.sync();
-    });
   }
 
   add(entity: FoundEntity): void {
     if (this.records.has(entity)) return;
-    const model = entity.model;
-    const tracker = new TileTracker(() => entity.getPosition());
-    const area = this.query(tracker.tile);
-    const cleanups: (() => void)[] = [];
-    const sync = () => tracker.sync();
-    model.addEventListener('added', sync);
-    this.records.set(entity, { tracker, stop: () => {
-      model.removeEventListener('added', sync);
-      cleanups.splice(0).forEach(stop => stop());
-      area?.dispose();
-    } });
+    const stop = watchTileActivity(entity.model, this.query, awake => {
+      if (awake) entity.addTag('tickingarea');
+      else entity.removeTag('tickingarea');
+      setPrefabActive(entity, awake);
+    });
+    this.records.set(entity, { stop });
     entityWorlds.set(entity, this);
-    if (area) {
-      const active = watchSignal(area, stop => cleanups.push(stop));
-      createEffect(() => {
-        const awake = active.get();
-        if (awake) entity.addTag('tickingarea');
-        else entity.removeTag('tickingarea');
-        setPrefabActive(entity, awake);
-      });
-    } else {
-      entity.addTag('tickingarea');
-      setPrefabActive(entity, true);
-    }
   }
 
   remove(entity: FoundEntity): void {
@@ -205,15 +181,13 @@ class EntityTickingArea {
   }
 
   dispose(): void {
-    this.cleanups.splice(0).forEach(stop => stop());
     for (const entity of [...this.records.keys()]) disposeActionEntity(entity.model);
   }
 }
 
 /** Bind before restoring/spawning world entities; also adopt projections already attached to this root. */
-export function bindActionEntityWorld(root: THREE.Object3D, query: TileStateQuery,
-  positions: ReadonlySignal<THREE.Vector3[]>): () => void {
-  const world = new EntityTickingArea(query, positions);
+export function bindActionEntityWorld(root: THREE.Object3D, query: TileStateQuery): () => void {
+  const world = new ActionEntityWorld(query);
   currentEntityWorld = world;
   for (const entity of liveEntities) {
     const model = entity.model;

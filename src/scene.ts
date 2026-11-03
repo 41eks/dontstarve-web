@@ -123,7 +123,7 @@ export async function startScene(
   view.renderer.domElement.addEventListener('pointerdown', blockDisabledController, true);
   playerInstance.locomotor = locomotor;
   const clockUpdater = createWorldClockUpdater(worldState, initialSave.world.elapsedSeconds, () => [player.position]);
-  const stopEntityWorld = bindActionEntityWorld(scene, worldState.tickingarea, worldState.playerpositions);
+  const stopEntityWorld = bindActionEntityWorld(scene, worldState.tickingarea);
   const scheduler = worldState.scheduler;
   const perishWorld: PerishWorld = { perishClock: worldState.perishClock, scheduler };
   itemEntities?.bindPerishWorld(perishWorld);

@@ -25,7 +25,7 @@ function fake(clip: { name: string; loop: boolean }) {
 it('releases the drawn sprite while unloaded and rebuilds it with the logical clip; owners dress it again from `art`', async () => {
   const created: ReturnType<typeof fake>[] = [];
   const make = (clip: { name: string; loop: boolean }) => { const entry = fake(clip); created.push(entry); return entry.sprite; };
-  const resident = new ResidentSprite(make, { name: 'idle', loop: true }, make({ name: 'idle', loop: true }));
+  const resident = new ResidentSprite(new THREE.Group(), make, { name: 'idle', loop: true }, make({ name: 'idle', loop: true }));
   resident.start('sway');
   const stop = createEffect(() => { resident.art.get(); resident.setBuildArchive('bloom'); });
   await new Promise(resolve => setTimeout(resolve, 0));
@@ -43,7 +43,7 @@ it('releases the drawn sprite while unloaded and rebuilds it with the logical cl
 it('settles a transition requested or interrupted while unloaded instead of replaying it', () => {
   const created: ReturnType<typeof fake>[] = [];
   const make = (clip: { name: string; loop: boolean }) => { const entry = fake(clip); created.push(entry); return entry.sprite; };
-  const resident = new ResidentSprite(make, { name: 'idle', loop: true }, make({ name: 'idle', loop: true }));
+  const resident = new ResidentSprite(new THREE.Group(), make, { name: 'idle', loop: true }, make({ name: 'idle', loop: true }));
   resident.playOnce('grow', () => resident.start('idle'));
   resident.unload();
   resident.playOnce('shrink', () => resident.start('idle'));
@@ -56,7 +56,7 @@ it('settles a transition requested or interrupted while unloaded instead of repl
 it('keeps the last pose of a finished one-shot clip when reloaded', () => {
   const created: ReturnType<typeof fake>[] = [];
   const make = (clip: { name: string; loop: boolean }) => { const entry = fake(clip); created.push(entry); return entry.sprite; };
-  const resident = new ResidentSprite(make, { name: 'off', loop: false }, make({ name: 'off', loop: false }));
+  const resident = new ResidentSprite(new THREE.Group(), make, { name: 'off', loop: false }, make({ name: 'off', loop: false }));
   resident.playOnce('picked');
   created[0].finish();
   resident.unload(); resident.load();
@@ -69,7 +69,7 @@ it('keeps the last pose of a finished one-shot clip when reloaded', () => {
 it('skips empty visuals during rendering, updates explicit queries and refreshes a rebuilt visual', async () => {
   const scene = new THREE.Scene();
   const created: ReturnType<typeof fake>[] = [];
-  const resident = new ResidentSprite(clip => {
+  const resident = new ResidentSprite(new THREE.Group(), clip => {
     const entry = fake(clip); created.push(entry); return entry.sprite;
   }, { name: 'idle', loop: true });
   scene.add(resident.model);
@@ -128,7 +128,7 @@ it('leaves its parent while inactive, returns on activation and stays out when a
   const scene = new THREE.Scene();
   const make = (clip: { name: string; loop: boolean }) => fake(clip).sprite;
   const tick = () => new Promise(resolve => setTimeout(resolve, 0));
-  const resident = new ResidentSprite(make, { name: 'idle', loop: true }, make({ name: 'idle', loop: true }));
+  const resident = new ResidentSprite(new THREE.Group(), make, { name: 'idle', loop: true }, make({ name: 'idle', loop: true }));
   scene.add(resident.model);
   resident.model.position.set(3, 0, 5);
 
@@ -175,7 +175,7 @@ it.each(['archive', 'factory'] as const)('caches a loaded %s resident root while
   };
   const first = make({ name: 'idle', loop: true });
   const resident = kind === 'archive'
-    ? new ResidentSprite(make, { name: 'idle', loop: true }, first)
+    ? new ResidentSprite(new THREE.Group(), make, { name: 'idle', loop: true }, first)
     : new ResidentSpriteController(new THREE.Group(), name => make({ name, loop: true }).model,
       model => { (model.userData.animationController as ArchiveSprite).dispose(); }, first.model, { name: 'idle' });
   parent.add(resident.model);

@@ -1,18 +1,21 @@
 import type * as THREE from 'three';
-import { createEffect, watchSignal, type ReadonlySignal, type TileStateQuery } from '@dontstarve-web/signals';
-import { TileTracker } from '../../componets/src/tileManager';
+import { createEffect, watchSignal, type TileStateQuery } from '@dontstarve-web/signals';
+import { prefabInstance } from './prefabInstance';
 
 /**
- * OnEntitySleep/OnEntityWake for a stationary entity: follows the tickingarea memo of the tile under `model`
- * through a private signal. Without a query the entity is always awake. The returned function releases the view.
- * An entity that moves passes its own tracker's `tile`, which it keeps up to date.
+ * Follow the entity transform's shared tile activity. Without a query the entity stays awake.
+ * Releasing this view retains the query until the transform's final consumer leaves.
  */
-export function watchTileActivity(model: THREE.Object3D, tickingarea: TileStateQuery | undefined, onActive: (active: boolean) => void,
-  tile: ReadonlySignal<number> = new TileTracker(() => model.position).tile): () => void {
-  const area = tickingarea?.(tile);
-  if (!area) { onActive(true); return () => {}; }
-  let stop = () => {};
-  const active = watchSignal(area, cleanup => { stop = cleanup; });
+export function watchTileActivity(model: THREE.Object3D, tickingarea: TileStateQuery | undefined, onActive: (active: boolean) => void): () => void {
+  if (!tickingarea) { onActive(true); return () => {}; }
+  const instance = prefabInstance(model);
+  if (!instance) throw new Error('Tile activity needs an entity-owned transform');
+  instance.tileTracker.sync();
+  const cleanups: (() => void)[] = [];
+  const area = instance.transform.getTileActivity(tickingarea, stop => cleanups.push(stop));
+  const release = () => cleanups.splice(0).reverse().forEach(stop => stop());
+  if (!area) { onActive(true); return release; }
+  const active = watchSignal(area, stop => cleanups.push(stop));
   createEffect(() => onActive(active.get()));
-  return () => { stop(); area.dispose(); };
+  return release;
 }

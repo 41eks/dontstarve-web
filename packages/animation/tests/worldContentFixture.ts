@@ -33,7 +33,7 @@ export function bindTestWorld(scheduler: GameTimeScheduler, tickingarea?: WorldC
   const { season, snowLevel, cycle, moon, playerpositions, camerarotation } = sources;
   const unbind = bindWorldContent(sources);
   const getContent: GetWatchWorldContent = (key, registerCleanup, options) => getWatchWorldContent(key, registerCleanup, sources, options);
-  return { season, snowLevel, cycle, moon, playerpositions, camerarotation, getWatchWorldContent: getContent, unbind };
+  return { season, snowLevel, cycle, moon, playerpositions, camerarotation, getWatchWorldContent: getContent, tickingarea, unbind };
 }
 
 /** The bound world owns game time, so a frame advances the scheduler before the manager samples it. */

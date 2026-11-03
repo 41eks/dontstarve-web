@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { createEffect, createMemo, createRenderEffect, getBoundWatchWorldContent, watchSignal, WorldContentKey, type ReadonlySignal } from '@dontstarve-web/signals';
 import { ResidentSprite, ResidentSpriteController } from '@dontstarve-web/animation/residentSprite';
-import { markTransformDirty } from '@dontstarve-web/animation/transformRoot';
 import { AnimationFollower } from './animationFollower';
 import { FxAttachments, type FxRenderEntry } from './fxAttachments';
 import { FollowerFxSlot } from './followerFx';
@@ -31,6 +30,8 @@ export interface SpriteSource {
 export interface LoadedSpriteSource { peek(): SpriteSource | undefined; load(): Promise<SpriteSource> }
 
 export interface PrefabDisplayOptions {
+  /** Entity-owned root. Display owns scene membership and its visual children. */
+  readonly root: THREE.Group;
   readonly name?: string;
   /** Draw with factory sprites; exactly one of `source` and `archive` is given. */
   readonly source?: SpriteSource | LoadedSpriteSource;
@@ -40,11 +41,6 @@ export interface PrefabDisplayOptions {
   readonly empty?: boolean;
   /** Keep the entity at its foot point, offsetting only its private drawn sprite. */
   readonly alignBottom?: boolean;
-  /**
-   * The model is a `TransformRoot` (archive sprites only): matrix traversals skip the resting entity, so every later
-   * write to its transform goes through `PrefabInstance.setPosition()`/`setScale()`/`setRotation()`, which mark it.
-   */
-  readonly staticTransform?: boolean;
   /**
    * Sources of the fx prefabs this entity spawns, as a Lua prefab's dependency list: they load with the entity's own art,
    * so a transition such as a collapse is drawn when it is spawned rather than settled undrawn.
@@ -66,7 +62,7 @@ const displaysByModel = new WeakMap<THREE.Object3D, PrefabDisplay>();
 export function prefabDisplay(model: THREE.Object3D): PrefabDisplay | undefined { return displaysByModel.get(model); }
 
 /**
- * Draws one entity. It owns the model (the engine's root) and the drawn sprite, subscribes to the entity's `status` and `sprite` signals and
+ * Draws one entity. It borrows the entity's transform root, owns the visual and scene membership, subscribes to `status` and `sprite` and
  * reacts: the prefab only changes data. While asleep the model leaves the scene and returns to the same parent on wake.
  */
 export class PrefabDisplay {
@@ -131,8 +127,7 @@ export class PrefabDisplay {
         const drawn = archive.create(clip);
         return drawn instanceof Promise ? drawn.then(prepare) : prepare(drawn);
       };
-      this.engine = new ArchiveEngine(new ResidentSprite(create, clip, archive.initial && prepare(archive.initial), options.name,
-        { transformRoot: options.staticTransform }));
+      this.engine = new ArchiveEngine(new ResidentSprite(options.root, create, clip, archive.initial && prepare(archive.initial), options.name));
     } else if (source) {
       let ready = 'load' in source ? source.peek() : source;
       // The foot offset is measured once, on the entity's first clip, so that every sprite drawn later, in whatever clip
@@ -158,7 +153,7 @@ export class PrefabDisplay {
         }
         return drawn;
       };
-      this.engine = new ResidentSpriteController(new THREE.Group(), animation => create(animation),
+      this.engine = new ResidentSpriteController(options.root, animation => create(animation),
         drawn => ready!.release(drawn), create(first.clip.name, held ? 'last' : 'first'), { name: first.clip.name, held });
       if (options.name) this.engine.model.name = options.name;
       if (!ready && 'load' in source) this.sourceLoading = source.load().then(loaded => {
@@ -234,7 +229,7 @@ export class PrefabDisplay {
 
   get model(): THREE.Group { return this.engine.model; }
 
-  /** Mount the display-owned model; status changes still remove and restore it at this parent. */
+  /** Mount the borrowed entity root; status changes still remove and restore it at this parent. */
   mount(parent: THREE.Object3D): void {
     if (this.disposed) return;
     parent.add(this.model);
@@ -282,12 +277,11 @@ export class PrefabDisplay {
   get fxRenderEntries(): readonly FxRenderEntry[] { return this.fx.entries(); }
 
 
-  /** A static archive billboard turns its drawn sprite; any other sprite turns with the model. */
+  /** Camera facing belongs to the visual, preserving the entity's logical heading. */
   private faceCamera(rotation: THREE.Quaternion): void {
     if (this.disposed) return;
     (this.facing ??= new THREE.Quaternion()).copy(rotation);
-    if (this.engine.faceCamera) this.engine.faceCamera(this.facing);
-    else { this.model.quaternion.copy(rotation); markTransformDirty(this.model); }
+    this.engine.faceCamera(this.facing);
     this.applyFacing(this.json.peek());
   }
 

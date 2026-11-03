@@ -287,13 +287,14 @@ export class BeefaloController {
 
   /** Run after physics. The source origin is the foot point, regardless of pose. */
   sync(): void {
-    this.model.position.set(this.body.position.x, 0, this.body.position.z);
+    this.instance.setPosition(this.body.position.x, 0, this.body.position.z);
     this.world.constrainPosition(this.model.position);
     if (this.body.position.x !== this.model.position.x || this.body.position.z !== this.model.position.z) {
       this.body.position.x = this.model.position.x;
       this.body.position.z = this.model.position.z;
       this.body.aabbNeedsUpdate = true;
     }
+    this.instance.transform.tileTracker.sync();
     syncPlacementEntity(this.model);
   }
 
@@ -417,7 +418,7 @@ export class BeefaloManager implements FrameUpdatedPrefabManager<BeefaloRecord> 
       release: sprite => factory.disposeSprite(sprite),
     }, { name: 'idle_loop', billboard: true }, 'beefalo');
     const model = display.model;
-    instance.position.copy(position).setY(0);
+    instance.setPosition(position.x, 0, position.z);
     this.world.constrainPosition(instance.position);
     instance.entityId = saved?.id ?? newEntityId();
     const controller = new BeefaloController(model, this.physics, factory.lengths, this.world, saved?.components.beefalo);

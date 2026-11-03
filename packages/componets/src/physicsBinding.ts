@@ -1,7 +1,7 @@
 import * as CANNON from 'cannon-es';
 import { createEffect, watchSignal } from '../../signals/src';
 import { WORLD_SCALE } from '../../prefab/src/tile';
-import { getRegisteredPhysicsBodies, PhysicsWorld } from './physicsWorld';
+import { getRegisteredPhysicsBodies, PhysicsWorld, type BodyTransform } from './physicsWorld';
 import { COLLISION, type PhysicsJson, type PhysicsState } from './physicsState';
 
 /** Cannon collision group of the world's ground body; declared bodies use their source collision group. */
@@ -59,7 +59,7 @@ function collisionBits(bits: number): number {
  * after each step as Physics:SetDamping; its owner still drives velocity and follows the body's position each frame.
  * `ground` is the entity's ground origin, read when the body is placed.
  */
-export function bindPhysics(world: CANNON.World, physics: PhysicsState, ground: () => { x: number; y: number; z: number }): PhysicsBinding {
+export function bindPhysics(world: CANNON.World, physics: PhysicsState, ground: () => { x: number; y: number; z: number }, transform?: BodyTransform): PhysicsBinding {
   const cleanups: (() => void)[] = [];
   const json = watchSignal(physics.json, stop => cleanups.push(stop));
   const moved = watchSignal(physics.moved, stop => cleanups.push(stop));
@@ -83,7 +83,7 @@ export function bindPhysics(world: CANNON.World, physics: PhysicsState, ground: 
   const register = (dontRemoveOnSleep: boolean) => {
     if (!body || registered === dontRemoveOnSleep) return;
     unregister();
-    if (world instanceof PhysicsWorld) world.addBody(body, { dontRemoveOnSleep });
+    if (world instanceof PhysicsWorld) world.addBody(body, { dontRemoveOnSleep, transform });
     else world.addBody(body);
     registered = dontRemoveOnSleep;
     if (body.type === CANNON.Body.DYNAMIC) world.addEventListener('postStep', damp);

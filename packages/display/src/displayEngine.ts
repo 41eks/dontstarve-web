@@ -62,8 +62,8 @@ export interface DisplayEngine {
   setBuildArchive?(archive: string): void;
   setGround?(renderOrder: number, flat: boolean): void;
   setMeshOrder?(order: number): void;
-  /** Turns the drawn sprite to the camera; without it the display turns the model. */
-  faceCamera?(rotation: THREE.Quaternion): void;
+  /** Turns only the drawn sprite to the camera. */
+  faceCamera(rotation: THREE.Quaternion): void;
   hideLayer(layer: string): void;
   showLayer(layer: string): void;
   setSymbolOverrides(overrides: SymbolOverrides, hiddenLayers?: readonly string[]): void;

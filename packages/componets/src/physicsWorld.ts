@@ -1,11 +1,17 @@
 import * as CANNON from 'cannon-es';
 import { Vector3 } from 'three';
-import { createEffect, watchSignal, type TileStateQuery } from '../../signals/src';
+import { createEffect, watchSignal, type Memo, type TileStateQuery } from '../../signals/src';
 import { TileTracker } from './tileManager';
 
 interface BodyRegistration {
   tracker?: TileTracker;
   dispose(): void;
+}
+
+/** Logical transforms provide the same activity query used by their prefab and display. */
+export interface BodyTransform {
+  readonly tileTracker: TileTracker;
+  getTileActivity(query: TileStateQuery | undefined, registerCleanup: (stop: () => void) => void): Memo<boolean> | undefined;
 }
 
 /** Cannon types its World fields as the dense implementation. Adapt its native sparse
@@ -40,7 +46,7 @@ export class PhysicsWorld extends CANNON.World {
   get registeredBodies(): Iterable<CANNON.Body> { return this.registrations.keys(); }
 
   /** `dontRemoveOnSleep` keeps a static body simulated outside the ticking area (Physics:SetDontRemoveOnSleep). */
-  override addBody(body: CANNON.Body, options: { dontRemoveOnSleep?: boolean } = {}): void {
+  override addBody(body: CANNON.Body, options: { dontRemoveOnSleep?: boolean; transform?: BodyTransform } = {}): void {
     if (this.disposed) throw new Error('Physics world is disposed');
     if (this.registrations.has(body)) return;
     const registration: BodyRegistration = { dispose() {} };
@@ -51,12 +57,16 @@ export class PhysicsWorld extends CANNON.World {
       return;
     }
     const position = new Vector3();
-    const tracker = registration.tracker = new TileTracker(() => position.set(body.position.x, body.position.y, body.position.z));
-    const area = this.tickingarea?.(tracker.tile);
-    if (!area) { this.setActive(body, true); return; }
+    const tracker = registration.tracker = options.transform?.tileTracker
+      ?? new TileTracker(() => position.set(body.position.x, body.position.y, body.position.z));
     const cleanups: (() => void)[] = [];
+    registration.dispose = () => { cleanups.splice(0).reverse().forEach(stop => stop()); };
+    const area = options.transform
+      ? options.transform.getTileActivity(this.tickingarea, stop => cleanups.push(stop))
+      : this.tickingarea?.(tracker.tile);
+    if (area && !options.transform) cleanups.push(() => area.dispose());
+    if (!area) { this.setActive(body, true); return; }
     const active = watchSignal(area, stop => cleanups.push(stop));
-    registration.dispose = () => { cleanups.splice(0).forEach(stop => stop()); area.dispose(); };
     createEffect(() => this.setActive(body, active.get()));
   }
 

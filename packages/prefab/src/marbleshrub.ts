@@ -1,3 +1,4 @@
+import { Transform } from './transform';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
 import { SpriteResources, SpriteState, type PrefabDisplayGroup } from '@dontstarve-web/display';
@@ -78,7 +79,8 @@ export class MarbleShrubInstance extends PrefabInstance {
 
   constructor(position: THREE.Vector3, world: MarbleShrubWorld, growthstage: number) {
     super(MARBLESHRUB_ID, new SpriteState({ name: 'idle_short', billboard: true }),
-      { position: new THREE.Vector3(position.x, 0, position.z), scale: new THREE.Vector3(1, 1, 1) });
+      Transform.stationary());
+    this.setPosition(position.x, 0, position.z);
     const { scheduler, getWatchWorldContent, spawnGroundItem } = world;
     this.statedata = STAGES[growthstage - 1];
     this.brokenTask = new ComponentTimer(scheduler, () => this.remove());
@@ -202,7 +204,7 @@ export class MarbleShrubManager {
     instance.entityId = saved?.id ?? newEntityId();
     if (saved) instance.loadComponents(saved.components);
     // Each shrub owns its colour (setColour), so its sprites are created with one.
-    const display = this.displays.add({ name: MARBLESHRUB_ID, status: instance.status, sprite: instance.sprite, light: instance.light, staticTransform: true,
+    const display = this.displays.add({ root: instance.transform.model, name: MARBLESHRUB_ID, status: instance.status, sprite: instance.sprite, light: instance.light,
       archive: this.resources.archive({ animationArchive: 'marbleshrub.zip', buildArchives: ['marbleshrub.zip', 'marbleshrub_build.zip', 'snow.zip'],
         bank: 'marbleshrub', hiddenSymbols: ['snow'] }, { instancedAnimations: 'all', staticBillboard: true, colour: [1, 1, 1] }) });
     bindInstance(display.model, instance);

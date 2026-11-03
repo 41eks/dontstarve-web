@@ -219,7 +219,7 @@ export class DwarfStarManager {
     const instance = new StaffLightInstance(this.prefabId, this.world);
     const { anim, duration } = STAFF_LIGHTS[this.prefabId], archive = `${anim}.zip`;
     // A shared archive holds a first one-shot clip while its art loads, so a new star is drawn from its first `appear` frame.
-    const display = this.displays.add({ name: this.prefabId, status: instance.status, sprite: instance.sprite, light: instance.light,
+    const display = this.displays.add({ root: instance.transform.model, name: this.prefabId, status: instance.status, sprite: instance.sprite, light: instance.light,
       archive: this.resources.archive({ animationArchive: archive, buildArchives: [archive], bank: anim }) });
     bindInstance(display.model, instance);
     instance.position.set(position.x, 0, position.z);

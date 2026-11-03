@@ -6,6 +6,7 @@ import { ItemEntity } from '../../inventory/src';
 import { actionEntity, activePrefabs, bindActionEntityWorld, disposeActionEntity, FindEntities } from '../../prefab/src/actionEntity';
 import { createMemo, createSignal } from '../../signals/src';
 import { DisposeTileStates, GetTileStateAtPoint } from '../../componets/src/tileManager';
+import { bindInstance, prefabInstance } from '../../prefab/src/prefabInstance';
 
 useTestTileMap();
 
@@ -19,14 +20,15 @@ const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 function bindArea(scene: THREE.Scene) {
   const positions = createSignal([new THREE.Vector3()]);
   const player = createMemo(() => positions.get()[0]);
-  const stop = bindActionEntityWorld(scene, GetTileStateAtPoint(player), positions);
+  const stop = bindActionEntityWorld(scene, GetTileStateAtPoint(player));
   cleanups.push(() => { stop(); DisposeTileStates(player); player.dispose(); });
   return { positions, stop };
 }
 
 function spawn(root: THREE.Object3D, x: number, tags: string[] = [], inst?: ItemEntity) {
-  const model = withEntity(new THREE.Group(), 'thing', tags);
-  model.position.set(x, 0, 0);
+  const model = inst ? inst.transform.model : withEntity(new THREE.Group(), 'thing', tags);
+  if (inst) { bindInstance(model, inst); for (const tag of tags) inst.addTag(tag); }
+  prefabInstance(model)!.setPosition(x, 0, 0);
   root.add(model);
   const entity = actionEntity(model, 'thing', inst);
   cleanups.push(() => disposeActionEntity(model));
@@ -118,9 +120,10 @@ describe('FindEntities', () => {
     const item = new ItemEntity({ itemId: 'rocks', count: 1 });
     const moving = spawn(scene, 0, [], item);
     const peer = spawn(scene, 0);
-    item.transform.position.set(240, 0, 0);
-    positions.set([new THREE.Vector3()]); // The next 60-frame position snapshot, even if the player stayed still.
+    const stationaryPlayer = positions.peek();
+    item.setPosition(240, 0, 0);
     await settle();
+    expect(positions.peek()).toBe(stationaryPlayer);
     expect(moving.hasTag('tickingarea')).toBe(false);
     expect(item.hasTag('tickingarea')).toBe(false);
     expect(peer.hasTag('tickingarea')).toBe(true);

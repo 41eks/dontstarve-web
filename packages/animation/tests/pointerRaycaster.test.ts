@@ -147,7 +147,7 @@ it('follows tickingarea and picks tall art away from its logical foot using curr
   back.position.y = 8; back.add(new THREE.Mesh(geometry, material)); scene.add(tall, back);
   const positions = createSignal([new THREE.Vector3()]);
   const player = createMemo(() => positions.get()[0]);
-  const stop = bindActionEntityWorld(scene, GetTileStateAtPoint(player), positions);
+  const stop = bindActionEntityWorld(scene, GetTileStateAtPoint(player));
   actionEntity(withEntity(tall, 'tall'), 'tall').addTag('NOBLOCK'); actionEntity(withEntity(back, 'back'), 'back');
   const camera = new THREE.PerspectiveCamera(60, 1, .1, 100);
   camera.position.set(0, 8, 10); camera.updateMatrixWorld();

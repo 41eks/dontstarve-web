@@ -90,7 +90,7 @@ export function updateMovement(
             playerBody.velocity.y = JUMP_VELOCITY;
             playerBody.canJump = false;
         }
-        player.position.copy(playerBody.position as unknown as THREE.Vector3).sub(positionOffset);
-        instance.tileTracker.moved();
+        instance.setPosition(playerBody.position.x - positionOffset.x,
+            playerBody.position.y - positionOffset.y, playerBody.position.z - positionOffset.z);
     };
 }

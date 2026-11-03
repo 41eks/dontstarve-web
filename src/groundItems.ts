@@ -140,7 +140,11 @@ export class GroundItemManager {
       }
       const taken = takeFromInventory();
       if (!taken) return false;
-      if (taken instanceof ItemEntity) this.placeTaken(taken, definition, pieces, position);
+      if (taken instanceof ItemEntity) {
+        const preparedIndex = prepared.findIndex(entry => entry.entity === taken);
+        this.placeTaken(taken, definition, pieces, position, prepared[preparedIndex]?.visual);
+        if (preparedIndex !== -1) prepared.splice(preparedIndex, 1);
+      }
       else for (const { entity, item, visual } of prepared.splice(0)) this.addVisual(entity, item, position, visual, true);
       return true;
     } finally {
@@ -152,9 +156,11 @@ export class GroundItemManager {
   }
 
   /** The taken inst is placed itself; a stack of live insects becomes one inst per insect, as their OnDropped does. */
-  private placeTaken(taken: ItemEntity, definition: GroundItemDefinition, pieces: number, position: THREE.Vector3): void {
+  private placeTaken(taken: ItemEntity, definition: GroundItemDefinition, pieces: number, position: THREE.Vector3, visual?: GroundItemVisual): void {
     if (pieces > 1) taken.apply({ ...taken.snapshot(), count: 1 });
-    this.placeEntity(taken, { ...definition, ...taken.snapshot(), entity: taken }, position, true);
+    const item = { ...definition, ...taken.snapshot(), entity: taken };
+    if (visual) this.addVisual(taken, item, position, visual, true);
+    else this.placeEntity(taken, item, position, true);
     for (let index = 1; index < pieces; index++) {
       const item = { ...definition, ...taken.snapshot(), entity: undefined, entityId: undefined, count: 1 };
       this.withGroundEntity(item, newEntityId(), entity => this.placeEntity(entity, item, position, true));
@@ -401,7 +407,7 @@ export class GroundItemManager {
   }
 
   private addFlungVisual(entity: ItemEntity, definition: GroundItemDefinition, origin: THREE.Vector3, visual: GroundItemVisual, launch?: LootLaunch, notifyDrop = true): void {
-    entity.transform.position.copy(origin);
+    entity.setPosition(origin.x, origin.y, origin.z);
     const fling = new LootFling(entity.transform, undefined, undefined, launch);
     this.addVisual(entity, { ...definition, entity }, fling.position, visual, true, notifyDrop);
     const flung = this.items.get(visual.model)!;

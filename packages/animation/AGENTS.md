@@ -21,3 +21,7 @@
 - Walls remain at world rotation `0` and switch eight-faced art using the source facing masks and camera heading. Pair equivalent frames from the same animation across facings.
 - List all static sprite facings in `imageIndices` and switch with `showImage()` rather than rebuilding the sprite. Preserve layered wall art through `overlay` with positionally paired `imageIndices`.
 - See [rendering rationale, wall masks, and frame examples](../../docs/dst-billboard-rendering.md).
+
+## Resident transform ownership
+
+- `ResidentSprite` 和 `ResidentSpriteController` 接收并复用调用方提供的根节点；不得另建实体根节点或在卸载时重置其 transform。释放 resident 时移除其 visual、placeholder 与订阅，保留实体 transform。相机朝向只作用在 visual，按根节点世界朝向转换成局部旋转。

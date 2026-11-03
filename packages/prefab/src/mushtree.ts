@@ -1,3 +1,4 @@
+import { Transform } from './transform';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
 import { createEffect, WorldContentKey, type GetWatchWorldContent, type HandEquipment, type ReadonlySignal, type WorldContentSignal, type SeasonState, type TileStateQuery } from '@dontstarve-web/signals';
@@ -141,7 +142,7 @@ export class MushtreeInstance extends PrefabInstance<ArchiveSpriteCommands> {
   get growthTransitionTimer(): ComponentTimer['snapshot'] { return this.growthTransition.snapshot; }
 
   constructor(prefab: MushtreeId, env: MushtreeEnvironment) {
-    super(prefab, new SpriteState({ name: 'idle_loop', billboard: true }));
+    super(prefab, new SpriteState({ name: 'idle_loop', billboard: true }), Transform.stationary());
     this.data = TREES[prefab]; this.env = env;
     this.change = new ComponentTimer(env.scheduler, () => this.changeDone());
     this.growthTransition = new ComponentTimer(env.scheduler, () => {
@@ -391,7 +392,7 @@ export class MushtreeManager {
     const prefab = id.replace(/_stump$/, '') as MushtreeId;
     const instance = new MushtreeInstance(prefab, { scheduler: this.scheduler, fire: this.fire,
       world: this.world, spawnBurntFx: (prefab, state, point) => this.spawnBurntFx(prefab, state, point) });
-    const display = this.displays.add({ name: prefab, archive: this.archive(TREES[prefab]), staticTransform: true,
+    const display = this.displays.add({ root: instance.transform.model, name: prefab, archive: this.archive(TREES[prefab]),
       status: instance.status, sprite: instance.sprite as SpriteState, light: instance.light });
     bindInstance(display.model, instance);
     instance.setPosition(position.x, position.y, position.z); instance.entityId = saved?.id ?? newEntityId();
@@ -417,7 +418,7 @@ export class MushtreeManager {
     if (this.disposed) return;
     const data = TREES[prefab], bloom = treestate === 'bloom' && data.buildArchives.length > 1;
     const instance = new MushtreeBurntFxInstance(`${prefab}${bloom ? '_bloom' : ''}_burntfx`, data, bloom, this.scheduler);
-    const display = this.displays.add({ name: instance.prefab, archive: this.archive(data),
+    const display = this.displays.add({ root: instance.transform.model, name: instance.prefab, archive: this.archive(data),
       status: instance.status, sprite: instance.sprite as SpriteState });
     bindInstance(display.model, instance); instance.position.copy(position);
     this.effects.add(instance);

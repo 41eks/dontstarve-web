@@ -1,3 +1,4 @@
+import { Transform } from '../../prefab/src/transform';
 import * as THREE from 'three';
 import { withEntity } from './entityFixture';
 import { expect, it, vi } from 'vitest';
@@ -22,7 +23,7 @@ function setup(options?: ToolMouseTargetOptions) {
   const geometry = new THREE.PlaneGeometry(2, 2), material = new THREE.MeshBasicMaterial();
   tree.add(new THREE.Mesh(geometry, material)); back.add(new THREE.Mesh(geometry, material));
   tree.position.z = 2; scene.add(tree, back);
-  const instance = new PrefabInstance('evergreen', new SpriteState({ name: 'idle' }));
+  const instance = new PrefabInstance('evergreen', new SpriteState({ name: 'idle' }), new Transform(undefined, tree));
   bindInstance(tree, instance); instance.addTag('tree');
   const target = actionEntity(tree, 'evergreen'); actionEntity(withEntity(back, 'log'), 'log');
   const workable = new Workable(target); target.components.workable = workable;

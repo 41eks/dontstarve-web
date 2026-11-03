@@ -1,8 +1,8 @@
 import { expect, it } from 'vitest';
-import { Vector3 } from 'three';
+import { Transform } from '../../prefab/src/transform';
 import { LootFling } from '../../prefab/src/lootFling';
 
-const transform = (x = 0, z = 0) => ({ position: new Vector3(x, 0, z), rotationY: 0 });
+const transform = (x = 0, z = 0) => { const result = new Transform(); result.setPosition(x, 0, z); return result; };
 
 it('uses Lua random direction, speed, vertical variance and collision-radius offset', () => {
   const samples = [0.25, 0.5, 0.75];

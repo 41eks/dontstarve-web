@@ -370,7 +370,7 @@ const ghostOwner: PlayerGhostOwner | undefined = playerAnimation && {
   // Physics:Teleport
   teleport: position => {
     tilePerfMark(`soulhop teleport to ${position.x.toFixed(1)},${position.z.toFixed(1)}`);
-    player.position.set(position.x, player.position.y, position.z);
+    playerInstance.setPosition(position.x, player.position.y, position.z);
     playerPhysics.Teleport();
     playerBody.velocity.set(0, playerBody.velocity.y, 0);
   },

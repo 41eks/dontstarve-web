@@ -1,3 +1,4 @@
+import { Transform } from './transform';
 import * as THREE from 'three';
 import { SpriteResources, SpriteState, type PrefabDisplayGroup } from '@dontstarve-web/display';
 import type { TileStateQuery } from '@dontstarve-web/signals';
@@ -56,7 +57,8 @@ export class MarbleBeanSaplingInstance extends PrefabInstance {
 
   constructor(position: THREE.Vector3, world: MarbleBeanSaplingWorld) {
     super(MARBLEBEAN_SAPLING_ID, new SpriteState({ name: 'idle_planted', billboard: true }),
-      { position: new THREE.Vector3(position.x, 0, position.z), scale: new THREE.Vector3(1, 1, 1) });
+      Transform.stationary());
+    this.setPosition(position.x, 0, position.z);
     this.world = world;
     this.deploySmartRadius = 1;
     this.sprite.playOnce('idle_planted');
@@ -108,7 +110,7 @@ export class MarbleBeanSaplingManager {
     const instance = new MarbleBeanSaplingInstance(position, this.world);
     instance.entityId = saved?.id ?? newEntityId();
     instance.components.timer!.OnLoad(saved?.components.saplingTimer);
-    const display = this.displays.add({ name: MARBLEBEAN_SAPLING_ID, status: instance.status, sprite: instance.sprite, light: instance.light, staticTransform: true,
+    const display = this.displays.add({ root: instance.transform.model, name: MARBLEBEAN_SAPLING_ID, status: instance.status, sprite: instance.sprite, light: instance.light,
       archive: this.resources.archive({ animationArchive: 'marblebean.zip', buildArchives: ['marblebean.zip'], bank: 'marblebean' }, { instancedAnimations: 'all', staticBillboard: true }) });
     bindInstance(display.model, instance);
     new ToolMouseTarget(actionEntity(display.model, MARBLEBEAN_SAPLING_ID), instance, instance.components.workable, this.world.handEquipment);
