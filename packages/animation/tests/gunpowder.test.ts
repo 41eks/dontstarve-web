@@ -12,7 +12,7 @@ import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
-import { WorldFx } from '../../prefab/src/world_fx';
+import { createTestWorldFx } from './worldFxFixture';
 import { prefabDisplay } from '../../display/src/prefabDisplay';
 import { configureTorchEntity } from '../../prefab/src/torch';
 import { Explosive, EXPLOSIVE_MAX_WORKABLE_INVENTORYITEMS, type ExplosiveInst, type ExplosiveTarget } from '../../componets/src/explosive';
@@ -26,7 +26,7 @@ function setup() {
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   vi.stubGlobal('window', new EventTarget());
   const inventory = createInventoryStore([]), scene = new THREE.Scene(), player = new THREE.Group();
-  const fx = new WorldFx(scene);
+  const fx = createTestWorldFx(scene);
   const ground = new GroundItemManager(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player,
     undefined, undefined, undefined, undefined, undefined, fx);

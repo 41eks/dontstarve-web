@@ -9,7 +9,7 @@ import type { AnimatedBuildingEventContext } from '../../prefab/src/animatedBuil
 import type { PrefabWorldContext } from '../../prefab/src/worldContext';
 import { ICE_BOX_DEFINITION } from '../../prefab/src/icebox';
 import { MUSHROOM_LIGHT_DEFINITIONS } from '../../prefab/src/mushroom_light';
-import { WorldFx } from '../../prefab/src/world_fx';
+import { createTestWorldFx } from './worldFxFixture';
 import { readFile } from 'node:fs/promises';
 import * as sound from '../../prefab/src/sound';
 
@@ -79,7 +79,7 @@ it('lets collapse effects finish independently and reuses their art after a prev
   const fetch = vi.fn(async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   vi.stubGlobal('fetch', fetch);
   vi.spyOn(sound, 'PlaySound').mockReturnValue({ stop: vi.fn(), isPlaying: () => false, setVolume: vi.fn() });
-  const scene = new Scene(), fx = new WorldFx(scene), position = new Vector3(2, 0, -4), rotation = new Quaternion();
+  const scene = new Scene(), fx = createTestWorldFx(scene), position = new Vector3(2, 0, -4), rotation = new Quaternion();
   try {
     fx.collapse('small', position, 'wood');
     const first = prefabInstance(fx.renderEntities[0].object)!;

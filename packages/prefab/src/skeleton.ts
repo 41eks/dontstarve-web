@@ -12,7 +12,6 @@ import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
 import { MakeSmallObstaclePhysics } from './standardcomponents';
 import type { SpawnGroundItem } from './groundPrefab';
-import { WorldFx } from './world_fx';
 import type { WorldContext } from './worldContext';
 import catalog from './groundItems.json' with { type: 'json' };
 
@@ -83,12 +82,10 @@ export class SkeletonManager {
   private readonly world: SkeletonWorld;
   private readonly resources = new SpriteResources();
   private readonly skeletons = new Map<THREE.Group, Skeleton>();
-  private readonly localFx?: WorldFx;
   private disposed = false;
 
   constructor(scene: THREE.Scene, world: SkeletonWorld) {
     this.displays = new PrefabDisplayGroup(scene); this.world = world;
-    this.localFx = world.fx?.collapse ? undefined : new WorldFx(scene);
   }
 
   spawn(prefab: SkeletonId, position: THREE.Vector3, saved?: SkeletonRecord): THREE.Group {
@@ -122,7 +119,7 @@ export class SkeletonManager {
     const lootdropper = new LootDropper(instance, (itemId, point) => this.world.spawnGroundItem(
       { ...catalog.items[itemId as keyof typeof catalog.items], itemId, count: 1 }, new THREE.Vector3(point.x, point.y, point.z), { fling: true }));
     lootdropper.SetChanceLootTable(prefab === SKELETON_PLAYER_ID ? 'skeleton_player' : 'skeleton');
-    instance.worldServices = { fx: this.localFx ?? this.world.fx };
+    instance.worldServices = { fx: this.world.fx };
     workable.SetOnFinishCallback(onhammered);
     Object.assign(instance.components, { workable, lootdropper });
     instance.onRemove(() => {
@@ -152,11 +149,10 @@ export class SkeletonManager {
     if (this.disposed) return;
     // Each shared display owner advances its declared clips.
     this.displays.update(dt);
-    this.localFx?.update(dt, _quaternion);
   }
 
   get renderEntities() {
-    return [...this.displays.renderEntities, ...(this.localFx?.renderEntities ?? [])];
+    return this.displays.renderEntities;
   }
 
 
@@ -184,7 +180,7 @@ export class SkeletonManager {
     if (this.disposed) return;
     this.disposed = true;
     for (const model of [...this.skeletons.keys()]) this.remove(model);
-    this.localFx?.dispose();
+   
     this.displays.dispose();
     this.resources.dispose();
   }

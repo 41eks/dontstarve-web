@@ -28,7 +28,6 @@ import { removeComponent } from './components';
 import type { TradeItem, Trader } from '../../componets/src/trader';
 import { TILE_SIZE } from './tile';
 import { DefaultBurntStructureFn, MakeObstaclePhysics } from './standardcomponents';
-import { WorldFx } from './world_fx';
 
 export interface AnimatedBuildingDefinition {
     /** Source MakeObstaclePhysics radius in DST units; previews never bind a body. */
@@ -139,7 +138,6 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     private readonly camera: THREE.Camera;
     private readonly ground: THREE.Object3D;
     private readonly player: THREE.Object3D;
-    private readonly ownedFx?: WorldFx;
     private readonly definitions: Readonly<Record<BuildId, AnimatedBuildingDefinition>>;
     private readonly consumeBufferedBuild: (buildId: BuildId) => boolean;
     private readonly onInteractionChange?: (
@@ -165,12 +163,6 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         onInteractionChange?: (change: AnimatedBuildingInteractionChange<BuildId>) => void,
     ) {
         const { scene, ...services } = world;
-        if (!services.fx?.collapse) {
-            const sharedFx = services.fx;
-            const fx = this.ownedFx = new WorldFx(scene);
-            services.fx = { spawn: (prefab, position) => (sharedFx ?? fx).spawn(prefab, position),
-                collapse: (size, position, material) => fx.collapse(size, position, material) };
-        }
         this.worldContext = services;
         this.actionEvents = world.actionEvents;
         this.stopActionEvents = bindActionCancellation(world, this, () => this.cancel(), reason => reason === 'emote');
@@ -321,7 +313,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
                 footPosition: model.position,
                 cameraDepth: 0, sortLayer: 1,
             }));
-        return [...this.ownedFx?.renderEntities ?? [], ...entries, ...this.placed.flatMap(building => {
+        return [...entries, ...this.placed.flatMap(building => {
             const effects = (this.definitions[building.buildId].renderEffects?.(this.eventContext(building)) ?? []).filter(effect => effect.object.visible);
             if (!effects.length) return [];
             const footPosition = building.instance.position;
@@ -420,7 +412,6 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         for (const building of [...this.placed]) building.instance.remove();
         this.placed.length = 0;
         // Every sprite is released above; only now can the atlases they drew from go.
-        this.ownedFx?.dispose();
         this.fireFx.dispose();
         this.displays.dispose(); this.sprites.dispose(); this.placerSprites.dispose();
     }
@@ -439,7 +430,6 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     update(dt: number) {
         // Displays advance the declared clips of the placer, the buildings and their fire effects.
         this.displays.update(dt);
-        this.ownedFx?.update(dt, this.camera.quaternion);
         this.cursor.update();
         for (const building of this.placed) {
             this.definitions[building.buildId].onupdate?.(this.eventContext(building), dt);

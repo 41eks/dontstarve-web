@@ -2,13 +2,17 @@ import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { prefabDisplay } from '../../display/src/prefabDisplay';
+import { PrefabDisplayGroup } from '../../display/src/prefabDisplayGroup';
+import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import { FindEntities } from '../../prefab/src/actionEntity';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
-import { WorldFx, type WorldFxPrefab } from '../../prefab/src/world_fx';
+import { createWorldFxManager, worldFxSpawner, type WorldFxPrefab } from '../../prefab/src/world_fx';
+import { createTestWorldFx } from './worldFxFixture';
 
 beforeEach(() => vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url)))));
 afterEach(() => vi.unstubAllGlobals());
 
-async function spawned(fx: WorldFx, prefab: WorldFxPrefab, position = new THREE.Vector3()) {
+async function spawned(fx: ReturnType<typeof createTestWorldFx>, prefab: WorldFxPrefab, position = new THREE.Vector3()) {
   const before = new Set(fx.renderEntities.map(({ object }) => object));
   fx.spawn(prefab, position);
   const model = fx.renderEntities.find(({ object }) => !before.has(object))!.object;
@@ -22,7 +26,7 @@ async function spawned(fx: WorldFx, prefab: WorldFxPrefab, position = new THREE.
 }
 
 it('turns a spawned fx to the camera while it plays, with the entity unturned at its foot point', async () => {
-  const scene = new THREE.Scene(), fx = new WorldFx(scene);
+  const scene = new THREE.Scene(), fx = createTestWorldFx(scene);
   const turned = (radians: number) => new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), radians);
   try {
     const { model, mesh } = await spawned(fx, 'wortox_portal_jumpin_fx', new THREE.Vector3(3, 0, 6));
@@ -43,8 +47,8 @@ it('turns a spawned fx to the camera while it plays, with the entity unturned at
 });
 
 it('removes an fx at animover, or the frames its source waits after it', async () => {
-  const scene = new THREE.Scene(), fx = new WorldFx(scene), rotation = new THREE.Quaternion();
-  const advance = (frames: number) => { for (let frame = 0; frame < frames; frame++) fx.update(1 / 30, rotation); };
+  const scene = new THREE.Scene(), fx = createTestWorldFx(scene), rotation = new THREE.Quaternion();
+  const advance = (frames: number) => { for (let frame = 0; frame < frames; frame++) { fx.scheduler.advance(1 / 30); fx.update(1 / 30, rotation); } };
   try {
     const portal = await spawned(fx, 'wortox_portal_jumpin_fx');
     const frames = portal.instance.sprite.numFrames;
@@ -65,7 +69,7 @@ it('removes an fx at animover, or the frames its source waits after it', async (
 });
 
 it('draws the source tint, alpha, scale and final offset, and is released with the spawner', async () => {
-  const scene = new THREE.Scene(), fx = new WorldFx(scene);
+  const scene = new THREE.Scene(), fx = createTestWorldFx(scene);
   const dressed = async (prefab: WorldFxPrefab) => {
     const { mesh, instance } = await spawned(fx, prefab);
     fx.update(0, new THREE.Quaternion());
@@ -78,7 +82,8 @@ it('draws the source tint, alpha, scale and final offset, and is released with t
     const smoke = await dressed('die_fx');
     expect(smoke.mesh.material[0].color.r).toBeCloseTo(90 / 255);
     const lightning = await dressed('lightning');
-    expect(lightning.mesh.parent!.scale.x).toBeCloseTo(.04);
+    expect(lightning.instance.scale.x).toBe(2);
+    expect(Math.abs(lightning.mesh.getWorldScale(new THREE.Vector3()).x)).toBeCloseTo(.04);
     const portal = await dressed('wortox_portal_jumpout_fx');
     expect(portal.mesh.material[0].polygonOffset).toBe(true);
     expect(portal.instance.persists).toBe(false);
@@ -87,4 +92,22 @@ it('draws the source tint, alpha, scale and final offset, and is released with t
     for (const { instance } of [sanity, smoke, lightning, portal]) expect(instance.isRemoved).toBe(true);
     expect(scene.children).toEqual([]);
   } finally { fx.dispose(); }
+});
+
+it('leaves an fx out of mouse targets, entity queries and saves', async () => {
+  const scene = new THREE.Scene(), displays = new PrefabDisplayGroup(scene), scheduler = new GameTimeScheduler();
+  const manager = createWorldFxManager(displays, { scheduler });
+  const fx = worldFxSpawner(manager);
+  try {
+    fx.spawn('explode_small', new THREE.Vector3(1, 0, 2));
+    fx.collapse('small', new THREE.Vector3(1, 0, 2));
+    await Promise.all(manager.renderEntities.map(({ object }) => prefabDisplay(object)!.artLoaded()));
+    expect(FindEntities(new THREE.Vector3(1, 0, 2), 5)).toEqual([]);
+    const [explosion, collapse] = manager.renderEntities.map(({ object }) => prefabInstance(object)!);
+    expect(explosion.sprite.loaded).toBe(true);
+    expect(explosion.hasTag('NOCLICK')).toBe(false);
+    expect(collapse.hasTag('NOCLICK')).toBe(true);
+    expect(collapse.sprite.currentAnimation).toBe('collapse_small');
+    expect(manager.exportRecords()).toEqual([]);
+  } finally { manager.dispose(); displays.dispose(); }
 });

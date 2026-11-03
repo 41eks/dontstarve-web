@@ -17,7 +17,6 @@ import { BuildCursor, declarePlacer, entityPlacer } from './buildCursor';
 import { reskinTarget } from './reskin_tool';
 import { newEntityId, saveGroundPosition, type PlacedEntitySaveRecord, type PlacementSaveRecord } from './saveRecord';
 import { PlaySound } from './sound';
-import { WorldFx } from './world_fx';
 import { createStructureLootDropper } from './structureLoot';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { BurnableBinding, FireFxHost } from './treeFire';
@@ -170,7 +169,6 @@ export class FencePlacement {
     private readonly cleanups: (() => void)[] = [];
     private readonly mouseRecords = new ModelRecords<FenceInstance>();
     private readonly placed = new Set<FenceInstance>();
-    private readonly localFx?: WorldFx;
     /** The `fence_item_placer` entity; committing spawns a new fence, never this one. */
     private placer?: FenceInstance;
     private lastPreviewKey = '';
@@ -178,8 +176,7 @@ export class FencePlacement {
 
     constructor(world: WorldContext, consumeBufferedBuild: (buildId: FenceId, skinId?: string) => boolean) {
         const { scene, ...services } = world;
-        this.localFx = world.fx?.collapse ? undefined : new WorldFx(scene);
-        this.world = { ...services, fx: this.localFx ?? world.fx };
+        this.world = { ...services, fx: world.fx };
         this.camera = world.camera;
         this.canvas = world.renderer.domElement;
         this.player = world.player;
@@ -235,7 +232,7 @@ export class FencePlacement {
     }
 
     get renderEntities() {
-        return [...this.displays.renderEntities, ...(this.localFx?.renderEntities ?? [])];
+        return this.displays.renderEntities;
     }
 
 
@@ -273,7 +270,6 @@ export class FencePlacement {
     update(dt = 0): void {
         if (this.ownsScheduler) this.scheduler.advance(dt);
         this.displays.update(dt);
-        this.localFx?.update(dt, this.camera.quaternion);
         for (const fence of this.placed) fence.burn?.update(dt);
         this.cursor.update();
         if (this.placer) this.updatePreview(this.placer);
@@ -296,7 +292,7 @@ export class FencePlacement {
         this.cancel();
         for (const fence of [...this.placed]) this.disposeFence(fence);
         this.placed.clear();
-        this.localFx?.dispose();
+       
         this.displays.dispose();
         this.fireFx?.dispose();
         this.resources.dispose();

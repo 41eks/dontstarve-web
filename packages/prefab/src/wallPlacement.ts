@@ -5,7 +5,6 @@ import { BuildCursor, declarePlacer, entityPlacer } from './buildCursor';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import { snapToWallSlotCenter } from './tile';
 import type { WorldContext, PrefabWorldContext } from './worldContext';
-import { WorldFx } from './world_fx';
 import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
 import { newEntityId, saveGroundPosition, type PlacementSaveRecord, type PlacedEntitySaveRecord } from './saveRecord';
 import { type PrefabInstance, bindInstance } from './prefabInstance';
@@ -111,7 +110,6 @@ export class WallPlacement<BuildId extends string> {
     private readonly world: PrefabWorldContext;
     private readonly resources = new SpriteResources();
     private readonly displays: PrefabDisplayGroup;
-    private readonly localFx?: WorldFx;
 
     constructor(
         world: WorldContext,
@@ -119,8 +117,7 @@ export class WallPlacement<BuildId extends string> {
         consumeBufferedBuild: (buildId: BuildId, skinId?: string) => boolean,
     ) {
         const { scene, ...services } = world;
-        this.localFx = world.fx?.collapse ? undefined : new WorldFx(scene);
-        this.world = { ...services, fx: this.localFx ?? world.fx };
+        this.world = { ...services, fx: world.fx };
         this.actionEvents = world.actionEvents;
         this.stopActionEvents = bindActionCancellation(world, this, () => this.cancel(), reason => reason === 'emote');
         this.canvas = world.renderer.domElement;
@@ -170,7 +167,7 @@ export class WallPlacement<BuildId extends string> {
     }
 
     get renderEntities() {
-        return [...this.displays.renderEntities, ...(this.localFx?.renderEntities ?? [])];
+        return this.displays.renderEntities;
     }
 
 
@@ -221,7 +218,7 @@ export class WallPlacement<BuildId extends string> {
         if (this.pointer !== this.world.mouseActions?.pointer) this.pointer.dispose();
         this.cancel();
         for (const wall of this.placed) this.disposeWall(wall);
-        this.localFx?.dispose();
+       
         this.placed.clear();
         this.displays.dispose();
         this.resources.dispose();
@@ -235,7 +232,6 @@ export class WallPlacement<BuildId extends string> {
 
     update(dt = 0) {
         this.displays.update(dt);
-        this.localFx?.update(dt, this.camera.quaternion);
         this.cursor.update();
     }
 

@@ -314,6 +314,8 @@ export interface PrefabEntityDefinition<Instance extends PrefabInstance> {
   assets?: Parameters<SpriteResources['archive']>[0];
   /** How the display builds this art's sprites, such as a plant's instanced batches. */
   assetOptions?: Parameters<SpriteResources['archive']>[1];
+  /** False for what is only ever looked at, such as a transient effect: not a mouse target or an entity that queries find. */
+  targetable?: boolean;
   /** Make*Physics(inst, radius, height) in DST units; the body is bound when the world has physics. */
   physics?: { make(inst: Instance, radius: number, height?: number): unknown; radius: number; height?: number };
   /** MiniMapEntity:SetIcon. */
@@ -349,10 +351,10 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
   }
 
   /** SpawnPrefab, then SpawnSaveRecord's SetPosition and SetPersistData: the entity exists now and its display loads the art. */
-  spawn(prefabId: Id, position: Vector3, saved?: Pick<PlacementSaveRecord, 'id' | 'components'> & Partial<Pick<PlacementSaveRecord, 'transform'>>): Instance {
+  spawn(prefabId: Id, position: ReadonlyVector3, saved?: Pick<PlacementSaveRecord, 'id' | 'components'> & Partial<Pick<PlacementSaveRecord, 'transform'>>): Instance {
     if (this.disposed) throw new Error(`Cannot spawn ${prefabId}: its manager has been disposed`);
     if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError(`Invalid ${prefabId} position`);
-    const { fn, assets, assetOptions, physics, minimapIcon, onSpawned } = this.prefabs[prefabId], instance = fn();
+    const { fn, assets, assetOptions, targetable = true, physics, minimapIcon, onSpawned } = this.prefabs[prefabId], instance = fn();
     physics?.make(instance, physics.radius, physics.height);
     if (minimapIcon) instance.minimap.SetIcon(minimapIcon);
     // A shared archive holds a first one-shot clip while its art loads, so a new entity is drawn from its first frame.
@@ -365,7 +367,7 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     instance.entityId = saved?.id ?? newItemEntityId();
     if (saved) instance.SetPersistData(saved.components);
     onSpawned?.(instance);
-    if (assets) actionEntity(display.model, prefabId);
+    if (assets && targetable) actionEntity(display.model, prefabId);
     this.entities.add(instance);
     const stopActivity = watchTileActivity(display.model, this.tickingarea, active => instance.setActive(active));
     instance.onRemove(() => { stopActivity(); this.entities.delete(instance); });
