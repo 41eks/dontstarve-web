@@ -92,6 +92,7 @@
     "./beefalo": "./src/beefalo.ts",
     "./emotes": "./src/emotes.ts",
     "./buildCursor": "./src/buildCursor.ts",
+    "./buildingPlacer": "./src/buildingPlacer.ts",
     "./staff": "./src/staff.ts",
     "./staff_castinglight": "./src/staff_castinglight.ts",
     "./stafflight": "./src/stafflight.ts",

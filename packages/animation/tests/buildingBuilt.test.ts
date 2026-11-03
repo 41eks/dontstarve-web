@@ -1,7 +1,7 @@
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
-import { WARDROBE_DEFINITION } from '../../prefab/src/wardrobe';
+import definitions from '../../prefab/src/definitions.json';
 import { WORLD_SCALE } from '../../prefab/src/tile';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -152,7 +152,7 @@ it('gives placed and restored chests a map icon at their foot and releases it wi
 });
 
 it('binds a committed building collider at its foot, restores it from saves and removes it with the entity', async () => {
-  const { placement, world, consume, click } = await setup(WARDROBE_DEFINITION);
+  const { placement, world, consume, click } = await setup({ ...definitions.animatedBuildings.wardrobe, obstacleRadius: .75 });
   const physics = world.physics!;
   try {
     await placement.begin('building');

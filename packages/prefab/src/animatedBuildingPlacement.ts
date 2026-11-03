@@ -10,10 +10,7 @@ import type { PrefabDisplay, SpriteState } from '@dontstarve-web/display';
 import { watchTileActivity } from './tileActivity';
 import type { PrefabSkinInitializer } from '@dontstarve-web/animation/prefabskin';
 import type { BuildingContainerDefinition } from './containers';
-import { BuildCursor, declarePlacer, entityPlacer } from './buildCursor';
-import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import type { WorldContext, PrefabWorldContext } from './worldContext';
-import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
 import { newEntityId, saveGroundPosition, type PlacementSaveRecord, type PlacedEntitySaveRecord } from './saveRecord';
 import { reskinTarget } from './reskin_tool';
 import type { ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
@@ -24,10 +21,11 @@ import { actionEntity, findActionEntity } from './actionEntity';
 import type { MiniMapState } from '../../map/src/minimapState';
 import { PlaySound } from './sound';
 import { BurnableBinding, FireFxHost } from './treeFire';
+import { BuildingPlacer } from './buildingPlacer';
 import { removeComponent } from './components';
 import type { TradeItem, Trader } from '../../componets/src/trader';
 import { TILE_SIZE } from './tile';
-import { DefaultBurntStructureFn, MakeObstaclePhysics } from './standardcomponents';
+import { DefaultBurntStructureFn, MakeDeconstructable, MakeObstaclePhysics } from './standardcomponents';
 
 export interface AnimatedBuildingDefinition {
     /** Source MakeObstaclePhysics radius in DST units; previews never bind a body. */
@@ -114,47 +112,23 @@ interface AnimatedBuildingInstance<BuildId extends string> {
     minimap?: MiniMapState;
 }
 
-/**
- * prefabutil.lua MakePlacer: a separate `<name>_placer` entity that only declares its clip, light override, opacity and
- * whether it is shown; its display draws it. Committing a build spawns the building itself, never this entity.
- */
-interface BuildingPlacer<BuildId extends string> {
-    readonly buildId: BuildId;
-    readonly skinId?: string;
-    readonly instance: PrefabInstance;
-    readonly display: PrefabDisplay;
-}
-
-/** This project draws placers translucent; MakePlacer itself only sets SetLightOverride(1). */
-const PLACER_OPACITY = 0.65;
-
 export class AnimatedBuildingPlacement<BuildId extends string> {
-    private readonly actionEvents: WorldContext['actionEvents'];
-    private readonly stopActionEvents: () => void;
     private disposed = false;
     private readonly worldContext: PrefabWorldContext;
-    private readonly canvas: HTMLCanvasElement;
     private readonly displays: PrefabDisplayGroup;
-    private readonly camera: THREE.Camera;
-    private readonly ground: THREE.Object3D;
     private readonly player: THREE.Object3D;
     private readonly definitions: Readonly<Record<BuildId, AnimatedBuildingDefinition>>;
-    private readonly consumeBufferedBuild: (buildId: BuildId) => boolean;
     private readonly onInteractionChange?: (
         change: AnimatedBuildingInteractionChange<BuildId>,
     ) => void;
-    private readonly cursor: BuildCursor;
-    private readonly pointer: PointerRaycaster;
-    private readonly stopPlacerGate?: () => void;
-    private placer?: BuildingPlacer<BuildId>;
+    /** The build flow; committing a build places it here. */
+    private readonly placer: BuildingPlacer<BuildId>;
     private readonly mouseRecords = new ModelRecords<AnimatedBuildingInstance<BuildId>>();
     private readonly placed: AnimatedBuildingInstance<BuildId>[] = [];
     /** Archives, atlas materials and frame geometry shared by every placed building of one build and skin, and by their effects. */
     private readonly sprites = new SpriteResources();
     private readonly fireFx = FireFxHost.create();
     private readonly skinAssets = this.sprites.archives;
-    /** Placers are made translucent through their materials, so they draw from resources apart from the buildings'. */
-    private readonly placerSprites = new SpriteResources();
 
     constructor(
         world: WorldContext,
@@ -164,39 +138,24 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     ) {
         const { scene, ...services } = world;
         this.worldContext = services;
-        this.actionEvents = world.actionEvents;
-        this.stopActionEvents = bindActionCancellation(world, this, () => this.cancel(), reason => reason === 'emote');
-        this.canvas = world.renderer.domElement;
         this.displays = new PrefabDisplayGroup(scene);
-        this.camera = world.camera;
-        this.ground = world.ground;
         this.player = world.player;
         this.definitions = definitions;
-        this.consumeBufferedBuild = consumeBufferedBuild;
         this.onInteractionChange = onInteractionChange;
-        this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
-        this.cursor = new BuildCursor(world, this.pointer);
-        // Action controllers see no mouse action while the placer is shown, so the click reaches the placer.
-        this.stopPlacerGate = world.mouseActions?.registerPlacer(() => this.placer !== undefined);
-        world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown);
+        this.placer = new BuildingPlacer(world, buildId => {
+            const definition = this.definitions[buildId];
+            return { buildLabel: definition.buildLabel, name: definition.name,
+                animation: definition.previewAnimation ?? this.idleAnimation(buildId),
+                art: (resources, skinId) => this.declareArt(resources, buildId, skinId) };
+        }, consumeBufferedBuild, (buildId, position, skinId) => this.placeBuilding(buildId, position, skinId));
     }
 
     /** Shows the placer at once; its display draws the preview when its art has loaded. */
-    begin(buildId: BuildId, skinId?: string): void {
-        if (this.disposed) throw new Error('Placement has been disposed');
-        if (this.placer) return;
-
-        const placer = this.createPlacer(buildId, skinId);
-        this.actionEvents?.emit('action:begin', { owner: this, action: 'BUILD' });
-        this.cursor.show(`: 建造 ${this.definitions[buildId].buildLabel}`, 'left');
-        this.placer = placer;
-        this.cursor.setPreview(entityPlacer(placer.instance), 0);
-        this.cursor.update();
-    }
+    begin(buildId: BuildId, skinId?: string): void { this.placer.begin(buildId, skinId); }
 
     spawn(buildId: BuildId, skinId?: string): void {
         const building = this.createInstance(buildId, skinId);
-        const target = this.playerFrontGroundPosition();
+        const target = this.placer.groundInFrontOfPlayer();
         building.instance.setPosition(target.x, target.y, target.z);
         this.placed.push(building); this.mouseRecords.set(building.model, building);
         this.initializeComponents(building);
@@ -255,7 +214,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         building.instance.worldServices = this.worldContext;
         building.instance.onRemove(() => this.releaseBuilding(building));
         actionEntity(model, buildId).reskinTarget = this.createReskinTarget(building);
-        actionEntity(model, buildId).deconstructionTarget = this.createDeconstructionTarget(building);
+        MakeDeconstructable(building.instance);
         const obstacleRadius = this.definitions[buildId].obstacleRadius;
         if (obstacleRadius !== undefined) MakeObstaclePhysics(building.instance, obstacleRadius);
         if (this.worldContext.physics) building.instance.bindPhysics(this.worldContext.physics);
@@ -306,14 +265,14 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
 
     /** Whole sprite entities and their ground-contact points for depth sorting. */
     get renderEntities() {
-        const entries = [...this.placed, ...(this.placer ? [{ model: this.placer.display.model }] : [])]
+        const entries = this.placed
             .filter(({ model }) => model.visible)
             .map(({ model }) => ({
                 object: model,
                 footPosition: model.position,
                 cameraDepth: 0, sortLayer: 1,
             }));
-        return [...entries, ...this.placed.flatMap(building => {
+        return [...entries, ...this.placer.renderEntities, ...this.placed.flatMap(building => {
             const effects = (this.definitions[building.buildId].renderEffects?.(this.eventContext(building)) ?? []).filter(effect => effect.object.visible);
             if (!effects.length) return [];
             const footPosition = building.instance.position;
@@ -324,22 +283,6 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     get reskinTargets(): readonly ReskinTarget[] {
         return Array.from(this.placed, building => findActionEntity(building.model)?.reskinTarget)
             .filter((target): target is ReskinTarget => target !== undefined);
-    }
-
-    /** The greenstaff's view of a placed building: deconstruction removes the building. */
-    private createDeconstructionTarget(building: AnimatedBuildingInstance<BuildId>): import('./staff').DeconstructionTarget {
-        const entity = actionEntity(building.model, building.buildId);
-        const isValid = () => !this.disposed && this.placed.includes(building);
-        return {
-            prefab: building.buildId, instance: building.instance, display: building.display,
-            components: building.instance.components as import('./staff').DeconstructionTarget['components'],
-            get position() { return building.instance.position; },
-            get isRemoved() { return !isValid(); }, isValid,
-            isVisible: () => building.model.visible,
-            hasTag: (tag: string) => entity.hasTag(tag),
-            PushEvent: (name: string, data: unknown) => entity.PushEvent?.(name, data),
-            removeOne: () => { if (!isValid()) return false; building.instance.remove(); return true; },
-        };
     }
 
     private createReskinTarget(building: AnimatedBuildingInstance<BuildId>): ReskinTarget {
@@ -404,33 +347,20 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     dispose(): void {
         if (this.disposed) return;
         this.disposed = true;
-        this.stopActionEvents();
-        this.canvas.removeEventListener('pointerdown', this.handlePointerDown);
-        this.stopPlacerGate?.();
-        if (this.pointer !== this.worldContext.mouseActions?.pointer) this.pointer.dispose();
-        this.cancel();
+        this.placer.dispose();
         for (const building of [...this.placed]) building.instance.remove();
         this.placed.length = 0;
         // Every sprite is released above; only now can the atlases they drew from go.
         this.fireFx.dispose();
-        this.displays.dispose(); this.sprites.dispose(); this.placerSprites.dispose();
+        this.displays.dispose(); this.sprites.dispose();
     }
 
-    cancel() {
-        // Cancel only the placer; its display stops any load it started. The buffered build stays in inventory.
-        this.releasePlacer();
-    }
-
-    private releasePlacer(): void {
-        if (this.placer) { this.placer.instance.remove(); this.placer.display.dispose(); }
-        this.placer = undefined;
-        this.cursor.hide();
-    }
+    cancel() { this.placer.cancel(); }
 
     update(dt: number) {
-        // Displays advance the declared clips of the placer, the buildings and their fire effects.
+        // Displays advance the declared clips of the buildings and their fire effects.
         this.displays.update(dt);
-        this.cursor.update();
+        this.placer.update(dt);
         for (const building of this.placed) {
             this.definitions[building.buildId].onupdate?.(this.eventContext(building), dt);
             const components = actionEntity(building.model, building.buildId).components;
@@ -439,16 +369,6 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             building.burn?.update(dt);
         }
     }
-
-    private readonly handlePointerDown = (event: PointerEvent) => {
-        if (event.button === 2) {
-            this.cancel();
-            return;
-        }
-        if (event.button !== 0 || event.defaultPrevented || !this.placer) return;
-        event.preventDefault();
-        this.placeBuilding(event);
-    };
 
     /** Hover candidates for the shared GIVE action: every building with a trader. */
     get giveTargets(): readonly { model: THREE.Group; canGive(item: TradeItem): boolean }[] {
@@ -465,34 +385,13 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             && isPlayerNearby(this.player.position, building.model.position, false) && trader.AbleToAccept(item).ok;
     }
 
-    /** Commits the build at the placer's position: the building is spawned afresh and the placer released. */
-    private placeBuilding(event: PointerEvent) {
-        const placer = this.placer;
-        if (!placer) return;
-        this.pointer.trackPointer(event);
-        this.cursor.update();
-        if (!this.pointer.isOverGround || !this.consumeBufferedBuild(placer.buildId)) return;
-
-        const building = this.createInstance(placer.buildId, placer.skinId);
-        building.instance.copyPosition(placer.instance.position);
-        this.releasePlacer();
+    /** The build flow's commit: the building is spawned afresh where its placer stood. */
+    private placeBuilding(buildId: BuildId, position: THREE.Vector3, skinId?: string): void {
+        const building = this.createInstance(buildId, skinId);
+        building.instance.copyPosition(position);
         this.placed.push(building); this.mouseRecords.set(building.model, building);
         this.initializeComponents(building);
         building.instance.PushEvent('onbuilt', undefined);
-    }
-
-    private createPlacer(buildId: BuildId, skinId?: string): BuildingPlacer<BuildId> {
-        const definition = this.definitions[buildId];
-        const art = this.declareArt(this.placerSprites, buildId, skinId);
-        // MakePlacer: PlayAnimation(anim, true) with the shared placer declarations.
-        const { instance, display } = createPrefabEntity(`${buildId}_placer`, art.source,
-            { name: definition.previewAnimation ?? this.idleAnimation(buildId), billboard: true }, `${definition.name}Placer`, entity => {
-                art.initialize(entity);
-                declarePlacer(entity);
-                entity.sprite.setOpacity(PLACER_OPACITY);
-            }, undefined, { alignBottom: true });
-        this.displays.mount(display);
-        return { buildId, skinId, instance, display };
     }
 
     /** The source a building's art is drawn from and the appearance its entity declares before the first draw. */
@@ -562,20 +461,6 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         this.releaseSkin(building);
         this.releaseContainer(building);
         building.display.dispose();
-    }
-
-    private playerFrontGroundPosition(): THREE.Vector3 {
-        const direction = new THREE.Vector3();
-        this.camera.getWorldDirection(direction);
-        direction.y = 0;
-        if (direction.lengthSq() === 0) direction.set(0, 0, 1);
-        else direction.normalize();
-        const target = this.player.position.clone().addScaledVector(direction, 10);
-        const rayOrigin = new THREE.Vector3(target.x, target.y + 1000, target.z);
-        const hit = this.pointer.raycast(rayOrigin, new THREE.Vector3(0, -1, 0), this.ground);
-        if (hit) return hit.point.clone();
-        target.y = 0;
-        return target;
     }
 
     private idleAnimation(buildId: BuildId) {

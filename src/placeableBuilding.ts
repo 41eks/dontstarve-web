@@ -30,7 +30,10 @@ import { TENT_DEFINITION, TENT_ID } from '@dontstarve-web/prefab/tent';
 import { PANDORAS_CHEST_DEFINITION, PANDORAS_CHEST_ID, type PandorasChestId } from '@dontstarve-web/prefab/pandoraschest';
 import { MOONBASE_DEFINITION, MOONBASE_ID } from '@dontstarve-web/prefab/moonbase';
 import { SCULPTING_TABLE_DEFINITION, SCULPTING_TABLE_ID, type SculptingTableId } from '@dontstarve-web/prefab/sculptingtable';
-import { WARDROBE_DEFINITION, WARDROBE_ID } from '@dontstarve-web/prefab/wardrobe';
+import { WARDROBE_ID, WARDROBE_PLACER } from '@dontstarve-web/prefab/wardrobe';
+import { BuildingPlacer } from '@dontstarve-web/prefab/buildingPlacer';
+import type { PrefabEntityManager, PrefabInstance } from '@dontstarve-web/prefab/prefabInstance';
+import { Vector3 } from 'three';
 import { FIRE_PIT_DEFINITION, FIRE_PIT_ID, type FirePitId } from '@dontstarve-web/prefab/firepit';
 import { ICE_BOX_DEFINITION, ICE_BOX_ID, type IceBoxId } from '@dontstarve-web/prefab/icebox';
 import { DRAGONFLY_CHEST_DEFINITION, DRAGONFLY_CHEST_ID, type DragonflyChestId } from '@dontstarve-web/prefab/dragonfly_chest';
@@ -51,8 +54,12 @@ export { TREASURE_CHEST_ID } from '@dontstarve-web/prefab/treasurechest';
 export { TENT_ID } from '@dontstarve-web/prefab/tent';
 
 export type AnimatedBuildingId = CookPotId | FirePitId | IceBoxId | ResearchLabId | TreasureChestId | PandorasChestId | typeof TENT_ID
-    | DragonflyChestId | BookstationId | CampfireId | SaltBoxId | NightLightId | PigHouseId | MushroomLightId | WinterometerId | LightningRodId | PigHeadId | MermHeadId | BirdcageId | SculptingTableId | typeof MOONBASE_ID | typeof MOONDIAL_ID | typeof WARDROBE_ID;
-export type PlaceableBuildingId = AnimatedBuildingId | WallId | FenceId;
+    | DragonflyChestId | BookstationId | CampfireId | SaltBoxId | NightLightId | PigHouseId | MushroomLightId | WinterometerId | LightningRodId | PigHeadId | MermHeadId | BirdcageId | SculptingTableId | typeof MOONBASE_ID | typeof MOONDIAL_ID;
+/** Buildings declared on the shared PrefabEntityManager; the rest move here as they migrate. */
+const MANAGED_BUILDING_PLACERS = { [WARDROBE_ID]: WARDROBE_PLACER } as const;
+export type ManagedBuildingId = keyof typeof MANAGED_BUILDING_PLACERS;
+const isManagedBuildingId = (value: string): value is ManagedBuildingId => Object.hasOwn(MANAGED_BUILDING_PLACERS, value);
+export type PlaceableBuildingId = AnimatedBuildingId | ManagedBuildingId | WallId | FenceId;
 export type PlaceableBuildingInteractionChange = AnimatedBuildingInteractionChange<AnimatedBuildingId>;
 
 const ANIMATED_BUILDING_IDS: readonly AnimatedBuildingId[] = [
@@ -65,7 +72,6 @@ const ANIMATED_BUILDING_IDS: readonly AnimatedBuildingId[] = [
     TENT_ID,
     MOONBASE_ID,
     MOONDIAL_ID,
-    WARDROBE_ID,
     DRAGONFLY_CHEST_ID,
     BOOKSTATION_ID,
     CAMPFIRE_ID,
@@ -91,7 +97,6 @@ const ANIMATED_BUILDING_DEFINITIONS = {
     [TENT_ID]: TENT_DEFINITION,
     [MOONBASE_ID]: MOONBASE_DEFINITION,
     [MOONDIAL_ID]: MOONDIAL_DEFINITION,
-    [WARDROBE_ID]: WARDROBE_DEFINITION,
     [DRAGONFLY_CHEST_ID]: DRAGONFLY_CHEST_DEFINITION,
     [BOOKSTATION_ID]: BOOKSTATION_DEFINITION,
     [CAMPFIRE_ID]: CAMPFIRE_DEFINITION,
@@ -107,7 +112,7 @@ const ANIMATED_BUILDING_DEFINITIONS = {
     ...MUSHROOM_LIGHT_DEFINITIONS,
 } as const;
 
-export const PLACEABLE_BUILDING_IDS: readonly PlaceableBuildingId[] = [...ANIMATED_BUILDING_IDS, ...WALL_IDS, ...FENCE_IDS];
+export const PLACEABLE_BUILDING_IDS: readonly PlaceableBuildingId[] = [...ANIMATED_BUILDING_IDS, WARDROBE_ID, ...WALL_IDS, ...FENCE_IDS];
 
 export function isPlaceableBuildingId(value: string): value is PlaceableBuildingId {
     return PLACEABLE_BUILDING_IDS.some((buildingId) => buildingId === value);
@@ -121,12 +126,16 @@ export class PlaceableBuildingPlacement {
     private readonly animated: AnimatedBuildingPlacement<AnimatedBuildingId>;
     private readonly walls: WallsPlacement;
     private readonly fences: FencePlacement;
+    private readonly managed: BuildingPlacer<ManagedBuildingId>;
+    private readonly prefabs: Pick<PrefabEntityManager<string, PrefabInstance>, 'spawn'>;
 
     constructor(
         world: WorldContext,
         consumeBufferedBuild: (buildId: PlaceableBuildingId, skinId?: string) => boolean,
-        onInteractionChange?: (change: PlaceableBuildingInteractionChange) => void,
+        onInteractionChange: ((change: PlaceableBuildingInteractionChange) => void) | undefined,
+        prefabs: Pick<PrefabEntityManager<string, PrefabInstance>, 'spawn'>,
     ) {
+        this.prefabs = prefabs;
         this.animated = new AnimatedBuildingPlacement<AnimatedBuildingId>(
             world,
             ANIMATED_BUILDING_DEFINITIONS,
@@ -135,10 +144,17 @@ export class PlaceableBuildingPlacement {
         );
         this.walls = new WallsPlacement(world, consumeBufferedBuild);
         this.fences = new FencePlacement(world, consumeBufferedBuild);
+        this.managed = new BuildingPlacer<ManagedBuildingId>(world, buildId => MANAGED_BUILDING_PLACERS[buildId], consumeBufferedBuild,
+            (buildId, position, skinId) => { prefabs.spawn(buildId, position, undefined, skinId).PushEvent('onbuilt', undefined); });
     }
 
     /** Animated buildings draw their placer at once; fences and walls still resolve once their art has loaded. */
     async begin(buildId: PlaceableBuildingId, skinId?: string): Promise<void> {
+        if (isManagedBuildingId(buildId)) {
+            this.animated.cancel(); this.walls.cancel(); this.fences.cancel();
+            return this.managed.begin(buildId, skinId);
+        }
+        this.managed.cancel();
         if (isFenceId(buildId)) {
             this.animated.cancel(); this.walls.cancel();
             return this.fences.begin(buildId, skinId);
@@ -152,12 +168,14 @@ export class PlaceableBuildingPlacement {
     }
 
     async spawn(buildId: PlaceableBuildingId, skinId?: string): Promise<void> {
+        if (isManagedBuildingId(buildId)) { this.prefabs.spawn(buildId, this.managed.groundInFrontOfPlayer(), undefined, skinId); return; }
         return isFenceId(buildId) ? this.fences.spawn(buildId, skinId)
             : isWallId(buildId) ? this.walls.spawn(buildId, skinId)
             : this.animated.spawn(buildId, skinId);
     }
 
     spawnFromSave(buildId: PlaceableBuildingId, record: PlacementSaveRecord) {
+        if (isManagedBuildingId(buildId)) return this.prefabs.spawn(buildId, new Vector3(...record.transform.position), record).transform.model;
         return isFenceId(buildId) ? this.fences.spawnFromSave(buildId, record)
             : isWallId(buildId) ? this.walls.spawnFromSave(buildId, record)
             : this.animated.spawnFromSave(buildId, record);
@@ -175,17 +193,19 @@ export class PlaceableBuildingPlacement {
         this.animated.dispose();
         this.walls.dispose();
         this.fences.dispose();
+        this.managed.dispose();
     }
 
     cancel(): void {
         this.animated.cancel();
         this.walls.cancel();
         this.fences.cancel();
+        this.managed.cancel();
     }
 
 
     get renderEntities() {
-        return [...this.animated.renderEntities, ...this.walls.renderEntities, ...this.fences.renderEntities];
+        return [...this.animated.renderEntities, ...this.walls.renderEntities, ...this.fences.renderEntities, ...this.managed.renderEntities];
     }
 
 
@@ -201,5 +221,6 @@ export class PlaceableBuildingPlacement {
         this.animated.update(dt);
         this.walls.update(dt);
         this.fences.update(dt);
+        this.managed.update(dt);
     }
 }

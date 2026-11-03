@@ -121,7 +121,8 @@ export {
 export { MOONBASE_DEFINITION, MOONBASE_ID } from './moonbase';
 export { MOONDIAL_DEFINITION, MOONDIAL_ID } from './moondial';
 export { SCULPTING_TABLE_DEFINITION, SCULPTING_TABLE_ID, SCULPTABLE_MATERIALS, isSculptableMaterial } from './sculptingtable';
-export { WARDROBE_DEFINITION, WARDROBE_ID } from './wardrobe';
+export { WARDROBE_ID, WARDROBE_PLACER, WardrobeInstance, wardrobePrefabs } from './wardrobe';
+export { BuildingPlacer, type BuildingPlacerSpec } from './buildingPlacer';
 export { reskinToolVisual, ReskinEffects, nextReskin, reskinEffectSound } from './reskin_tool';
 export { FencePlacement, FENCE_ID, FENCE_ITEM_ID, FENCE_IDS, isFenceId, type FenceId } from './fence';
 export {

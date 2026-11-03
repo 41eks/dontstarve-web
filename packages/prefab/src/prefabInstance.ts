@@ -316,6 +316,8 @@ export interface PrefabEntityDefinition<Instance extends PrefabInstance> {
   assets?: Parameters<SpriteResources['archive']>[0];
   /** How the display builds this art's sprites, such as a plant's instanced batches. */
   assetOptions?: Parameters<SpriteResources['archive']>[1];
+  /** Stands the sprite's lowest point on the ground, as this project draws its buildings and their placers. */
+  alignBottom?: boolean;
   /** False for what is only ever looked at, such as a transient effect: not a mouse target or an entity that queries find. */
   targetable?: boolean;
   /** Transient effects which must draw even outside the ticking area. */
@@ -366,14 +368,14 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     if (this.disposed) throw new Error(`Cannot spawn ${prefabId}: its manager has been disposed`);
     if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError(`Invalid ${prefabId} position`);
     if (!this.has(prefabId)) throw new Error(`Unknown prefab: ${prefabId}`);
-    const { fn, assets, assetOptions, targetable = true, physics, minimapIcon, onSpawned, skins, alwaysActive } = this.prefabs[prefabId];
+    const { fn, assets, assetOptions, alignBottom, targetable = true, physics, minimapIcon, onSpawned, skins, alwaysActive } = this.prefabs[prefabId];
     if (skinId !== undefined && !skins?.[skinId]) throw new Error(`Unsupported ${prefabId} skin: ${skinId}`);
     const instance = fn(position);
     if (skins) instance.sprite.setSkinSource({ art: this.resources.archives, archives: skins });
     physics?.make(instance, physics.radius, physics.height);
     if (minimapIcon) instance.minimap.SetIcon(minimapIcon);
     // A shared archive holds a first one-shot clip while its art loads, so a new entity is drawn from its first frame.
-    const display = this.displays.add({ root: instance.transform.model, name: prefabId, status: instance.status, sprite: instance.sprite, light: instance.light,
+    const display = this.displays.add({ root: instance.transform.model, name: prefabId, alignBottom, status: instance.status, sprite: instance.sprite, light: instance.light,
       ...(assets ? { archive: this.resources.archive(assets, assetOptions) } : { empty: true }) });
     bindInstance(display.model, instance);
     instance.setPosition(position.x, 0, position.z);

@@ -57,7 +57,7 @@ it('spawns moonbase through the debug command using its source art and restores 
   } as unknown as WorldContext;
   world.player.position.set(30, 0, 40);
   const consume = vi.fn(() => false);
-  const placement = new PlaceableBuildingPlacement(world, consume);
+  const placement = new PlaceableBuildingPlacement(world, consume, undefined, { spawn: vi.fn() });
   const result = await executeDebugCommand('c_spawn("moonbase")', {} as InventoryStore, async (prefabId) => {
     if (!isPlaceableBuildingId(prefabId)) return false;
     await placement.spawn(prefabId);
@@ -110,7 +110,7 @@ async function createMoonbase(options: Partial<WorldContext> = {}, saved?: Param
   const world = { scene: new THREE.Scene(), player: new THREE.Group(), ground: new THREE.Group(),
     camera: new THREE.PerspectiveCamera(), cameraFacing: createSignal(8), cameraHeading: createSignal(45), renderer: { domElement: new EventTarget() },
     createCursorLabel: () => ({ show() {}, hide() {}, update() {} }), ...options } as unknown as WorldContext;
-  const placement = new PlaceableBuildingPlacement(world, () => false);
+  const placement = new PlaceableBuildingPlacement(world, () => false, undefined, { spawn: vi.fn() });
   if (saved) placement.spawnFromSave('moonbase', saved); else await placement.spawn('moonbase');
   const model = world.scene.children[0] as THREE.Group;
   // One-shot clips such as fix_full play out only once the display has drawn the moonbase.
