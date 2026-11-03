@@ -1,10 +1,11 @@
+import { prefabManager } from './prefabManagerFixture';
 import { PrefabDisplayGroup } from '../../display/src';
 import { prefabDisplay } from '@dontstarve-web/display';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
-import { createStaffLightManager, dwarfStarLight, DWARF_STAR_DURATION, type StaffLightId, type StaffLightInstance } from '../../prefab/src/stafflight';
+import { staffLightPrefabs, dwarfStarLight, DWARF_STAR_DURATION, type StaffLightId, type StaffLightInstance } from '../../prefab/src/stafflight';
 import { PlaySound } from '../../prefab/src/sound';
 import { clockstate, createMemo, createSignal, seasonstate } from '@dontstarve-web/signals';
 import { InventoryStore, ItemEntity } from '../../inventory/src';
@@ -26,7 +27,7 @@ vi.mock('../../prefab/src/sound', () => ({
   PlaySound: vi.fn(() => ({ stop: vi.fn() })),
 }));
 
-const managers: ReturnType<typeof createStaffLightManager>[] = [];
+const managers: import('../../prefab/src/prefabInstance').PrefabEntityManager<StaffLightId, StaffLightInstance>[] = [];
 beforeEach(() => {
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(
     new URL(`../../../public${url}`, import.meta.url))));
@@ -51,8 +52,7 @@ const sounds = (event: string) => vi.mocked(PlaySound).mock.calls.flatMap(([path
 
 function setup(prefab: StaffLightId = 'stafflight') {
   const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), awake = createSignal(true);
-  const manager = createStaffLightManager(new PrefabDisplayGroup(scene), '/dst/data/anim',
-    { scheduler, tickingarea: () => createMemo(() => awake.get()) });
+  const manager = prefabManager(new PrefabDisplayGroup(scene), '/dst/data/anim', { scheduler, tickingarea: () => createMemo(() => awake.get()) }, staffLightPrefabs);
   managers.push(manager);
   const spawn = (position: THREE.Vector3, saved?: { id: string; remainingSeconds: number }) => manager.spawn(prefab, position, saved && {
     id: saved.id, components: { timer: { timers: { extinguish: { timeleft: saved.remainingSeconds, paused: false, initial_time: DWARF_STAR_DURATION } } } },
@@ -345,7 +345,7 @@ it('spawns world lights through console definitions and saves and reloads their 
   const position = new THREE.Vector3(6, 7, 9), scheduler = new GameTimeScheduler();
   const createRegistry = () => {
     const registry = new EntityRegistry();
-    const manager = createStaffLightManager(new PrefabDisplayGroup(new THREE.Scene()), '/dst/data/anim', { scheduler });
+    const manager = prefabManager(new PrefabDisplayGroup(new THREE.Scene()), '/dst/data/anim', { scheduler }, staffLightPrefabs);
     managers.push(manager);
     registry.register(PREFAB_DEFINITIONS.staffLights, {
       restore: (prefabId, record) => manager.spawn(prefabId, new THREE.Vector3(...record.transform.position), record),

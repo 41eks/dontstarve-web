@@ -1,3 +1,4 @@
+import { plantManager } from './plantManagerFixture';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
@@ -6,7 +7,7 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { RockAvocadoSaplingManager } from '../../prefab/src/rock_avocado_fruit_sprout_sapling';
 import { rockAvocadoProduct } from '../../prefab/src/rock_avocado_fruit';
-import { RockAvocadoBushManager } from '../../prefab/src/rock_avocado_bush';
+import { rockAvocadoBushPrefabs } from '../../prefab/src/rock_avocado_bush';
 import { GroundItemManager } from '../../prefab/src/groundItemManager';
 import { createInventoryStore } from '../../../src/inventory';
 import { inventorySlotAddress } from '../../inventory/src';
@@ -35,15 +36,15 @@ function setup() {
   const ground = new GroundItemManager(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
   const { season, snowLevel } = bindTestWorld(scheduler);
-  const bushes = new RockAvocadoBushManager(scene, '/dst/data/anim', { physics,
+  const bushes = plantManager(rockAvocadoBushPrefabs, scene, { physics,
     spawnGroundItem: (definition, position, options) => ground.spawnGroundItem(definition, position, options) });
-  const sprouts = new RockAvocadoSaplingManager(scene, { scheduler, bushes,
+  const sprouts = new RockAvocadoSaplingManager(scene, { scheduler, spawnPrefab: (id, position) => bushes.spawn(id, position),
     spawnGroundItem: (definition, position, options) => ground.spawnGroundItem(definition, position, options) });
   const registry = new EntityRegistry();
   registry.register(PREFAB_DEFINITIONS.rockAvocadoBushes, {
-    restore: (_, record) => bushes.spawn(new THREE.Vector3(...record.transform.position), record),
-    debugSpawn: () => bushes.spawn(player.position),
-    exportRecords: () => bushes.exportRecords().map(record => ({ prefabId: 'rock_avocado_bush', record })), dispose: () => bushes.dispose(),
+    restore: (_, record) => bushes.spawn('rock_avocado_bush', new THREE.Vector3(...record.transform.position), record).transform.model,
+    debugSpawn: () => bushes.spawn('rock_avocado_bush', player.position).transform.model,
+    exportRecords: () => bushes.exportRecords(), dispose: () => bushes.dispose(),
   });
   registry.register(PREFAB_DEFINITIONS.rockAvocadoSaplings, {
     restore: (_, record) => sprouts.spawn(new THREE.Vector3(...record.transform.position), record),
@@ -58,7 +59,7 @@ function setup() {
     exportRecords: () => ground.exportRecords().map(record => ({ prefabId: 'ground_item', record })), dispose: () => ground.dispose(),
   });
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
-  const save = () => serializeSave(template, { entities: { rock_avocado_bush: bushes.exportRecords(), ground_item: ground.exportRecords(), rock_avocado_fruit_sprout_sapling: sprouts.exportRecords() },
+  const save = () => serializeSave(template, { entities: { rock_avocado_bush: bushes.exportRecords().map(({ record }) => record), ground_item: ground.exportRecords(), rock_avocado_fruit_sprout_sapling: sprouts.exportRecords() },
     inventory: inventory.exportState(), elapsedSeconds: scheduler.now, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
   const advance = (seconds: number) => { scheduler.advance(seconds); bushes.update(seconds, new THREE.Quaternion()); sprouts.update(seconds, new THREE.Quaternion()); };
   return { inventory, player, scene, physics, scheduler, season, snowLevel, ground, bushes, sprouts, registry, save, advance,
@@ -141,12 +142,12 @@ it('plants one sprout, preserves its named deadline through save/load, and becom
     expect(restored.ground.exportRecords()).toEqual(s.ground.exportRecords());
     // The scheduler, rather than a presentation update, owns the replacement.
     s.scheduler.advance(900);
-    expect(s.bushes.exportRecords()).toEqual([]);
+    expect(s.bushes.exportRecords().map(({ record }) => record)).toEqual([]);
     expect(model.userData.saplingState.completionTimer.peek().status).toBe('scheduled');
     const completion = model.userData.saplingState.completionTimer.peek();
     s.scheduler.advanceTo(completion.endTime);
     expect(s.sprouts.exportRecords()).toEqual([]);
-    const bush = s.bushes.exportRecords()[0];
+    const bush = s.bushes.exportRecords().map(({ record }) => record)[0];
     expect(bush.transform.position).toEqual(point.toArray()); expect(bush.id).not.toBe(record.id);
     // Pickable:OnSave omits unused cycles.
     expect(bush.components.pickable?.cyclesLeft).toBeUndefined();
@@ -181,7 +182,7 @@ it('cancels and restarts growth on ignition/extinguishing, reloads a stopped sou
     expect(completion.peek().status).toBe('scheduled');
     expect(workTargets('DIG', restored.scene)[0].work()).toBe(true);
     expect(completion.peek().status).toBe('stopped');
-    restored.scheduler.advance(5000); expect(restored.bushes.exportRecords()).toEqual([]);
+    restored.scheduler.advance(5000); expect(restored.bushes.exportRecords().map(({ record }) => record)).toEqual([]);
     expect(restored.ground.exportRecords().at(-1)?.components.stack?.itemId).toBe('rock_avocado_fruit_sprout');
     s.advance(7.5); expect(s.sprouts.exportRecords()).toEqual([]);
     expect(s.ground.exportRecords().at(-1)?.components.stack?.itemId).toBe('ash');

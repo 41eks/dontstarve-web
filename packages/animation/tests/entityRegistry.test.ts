@@ -8,6 +8,8 @@ import { componentParser } from '../../../src/save/prefabComponents';
 import { deserializeSave, type SaveCatalog } from '../../../src/save/deserialize';
 import { serializeSave } from '../../../src/save/serialize';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
+import { PrefabDisplayGroup, SpriteState } from '@dontstarve-web/display';
+import { PrefabEntityManager, PrefabInstance } from '../../prefab/src/prefabInstance';
 
 const health = componentParser({ keys: ['health'] });
 const definition = definePrefabs(['thing'], health, ['thing', 'thing_item']);
@@ -23,6 +25,37 @@ function registration(): EntityRegistration<string> {
 }
 
 describe('entity registry', () => {
+  it('shares one prefab owner across families, advancing and saving it once and restoring both families', async () => {
+    const families = ['first', 'second'].map(id => definePrefabs([id], componentParser({ keys: [] }), true));
+    const createWorld = () => {
+      const scene = new THREE.Scene(), displays = new PrefabDisplayGroup(scene);
+      const manager = new PrefabEntityManager<string, PrefabInstance>(displays, undefined, {});
+      for (const id of ['first', 'second']) manager.register({ [id]: { fn: () => new PrefabInstance(id, new SpriteState({ name: '' })) } });
+      const registry = new EntityRegistry([], manager, () => new THREE.Vector3(3, 0, 6));
+      for (const family of families) registry.registerPrefabs(family);
+      return { scene, manager, registry, dispose: () => { registry.dispose(); displays.dispose(); } };
+    };
+    const world = createWorld(), restored = createWorld();
+    try {
+      expect(await world.registry.spawn('first')).toBe(true);
+      expect(await world.registry.spawn('second')).toBe(true);
+      const update = vi.spyOn(world.manager, 'update'), save = vi.spyOn(world.manager, 'exportRecords');
+      world.registry.update(.1, new THREE.Quaternion());
+      expect(update).toHaveBeenCalledOnce();
+      const records = world.registry.exportRecords();
+      expect(save).toHaveBeenCalledOnce();
+      expect(Object.keys(records)).toEqual(['first', 'second']);
+      expect(records.first).toHaveLength(1); expect(records.second).toHaveLength(1);
+      expect(records.first[0].transform.position).toEqual([3, 0, 6]);
+      await restored.registry.restoreAll(records);
+      expect(restored.registry.exportRecords()).toEqual(records);
+      expect(restored.registry.byEntityId.get(records.first[0].id)).toBeInstanceOf(PrefabInstance);
+      expect(() => world.manager.register({ first: { fn: () => new PrefabInstance('first', new SpriteState({ name: '' })) } })).toThrow('Duplicate prefab');
+    } finally { world.dispose(); restored.dispose(); }
+    expect(world.scene.children).toEqual([]);
+    expect(restored.scene.children).toEqual([]);
+  });
+
   it('preserves explicit lifecycle order when managers are constructed in dependency order', () => {
     const early = definePrefabs([], health), late = definePrefabs([], health);
     const registry = new EntityRegistry([early, late]);

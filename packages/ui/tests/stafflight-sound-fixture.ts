@@ -1,9 +1,10 @@
+import { prefabManager } from '../../animation/tests/prefabManagerFixture';
 import { advancePlayer, registerPlayer } from '../../animation/tests/playerVisual';
 import { PrefabDisplayGroup } from '../../display/src';
 import { prefabDisplay } from '../../display/src';
 import { prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import * as THREE from 'three';
-import { createStaffLightManager, DWARF_STAR_DURATION, DWARF_STAR_ID } from '../../prefab/src/stafflight';
+import { staffLightPrefabs, DWARF_STAR_DURATION, DWARF_STAR_ID } from '../../prefab/src/stafflight';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
 import { BufferedAction } from '../../stategraphs/src';
@@ -23,7 +24,7 @@ export async function prepareStarAudioCheck() {
     return source;
   };
   const scheduler = new GameTimeScheduler();
-  const manager = createStaffLightManager(new PrefabDisplayGroup(new THREE.Scene()), '/dst/data/anim', { scheduler });
+  const manager = prefabManager(new PrefabDisplayGroup(new THREE.Scene()), '/dst/data/anim', { scheduler }, staffLightPrefabs);
   // As the scene does before it starts, so each star's sounds play when it is spawned.
   await PrewarmSounds();
   await manager.spawn(DWARF_STAR_ID, new THREE.Vector3());

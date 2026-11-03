@@ -1,7 +1,7 @@
+import type { PrefabEntityDefinition } from './prefabInstance';
 import { Pickable } from './components/pickable';
 import { DefaultBurnFn, DefaultExtinguishFn, DefaultBurntFn, MakeNoGrowInWinter } from './standardcomponents';
-import type * as THREE from 'three';
-import { PickablePlantManager, PickablePlantInstance, type PickablePlantContext, type PickablePlantDefinition, type PickablePlantRecord, type PickablePlantWorld } from './pickablePlant';
+import { plantEntityDefinition, PickablePlantInstance, type PickablePlantContext, type PickablePlantDefinition, type PickablePlantRecord, type PickablePlantWorld } from './pickablePlant';
 
 export const CAVE_FERN_ID = 'cave_fern' as const;
 export const CAVE_FERN_WITHERED_ID = 'cave_fern_withered' as const;
@@ -48,12 +48,6 @@ export const CAVE_FERN_DEFINITIONS: Readonly<Record<CaveFernId, PickablePlantDef
 };
 
 /** cave_fern.lua / cave_fern_withered.lua: PICK foliage / cutgrass, burning, and a saved pose. */
-export class CaveFernManager extends PickablePlantManager {
-  spawn(prefabId: CaveFernId, position: THREE.Vector3, saved?: CaveFernRecord): THREE.Group {
-    return this.spawnPlant(CAVE_FERN_DEFINITIONS[prefabId], position, saved);
-  }
-
-  exportRecords(): { prefabId: CaveFernId; record: CaveFernRecord }[] {
-    return this.exportPlants().map(({ prefab, record }) => ({ prefabId: prefab as CaveFernId, record }));
-  }
+export function caveFernPrefabs(world: PickablePlantWorld): Readonly<Record<CaveFernId, PrefabEntityDefinition<PickablePlantInstance>>> {
+  return Object.fromEntries(CAVE_FERN_IDS.map(id => [id, plantEntityDefinition(CAVE_FERN_DEFINITIONS[id], world)])) as Record<CaveFernId, PrefabEntityDefinition<PickablePlantInstance>>;
 }

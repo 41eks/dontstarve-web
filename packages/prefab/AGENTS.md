@@ -25,7 +25,7 @@
 
 ## Prefab porting requirements
 
-- 实体管理：移植 prefab（包括把已有 prefab 迁移过来）时，只能用通用的 `PrefabEntityManager`（`packages/prefab/src/prefabInstance.ts`）管理 `PrefabInstance`，prefab 模块用它声明本模块的 prefab 表（如 `createStaffLightManager`）。不新增专用 manager 类，也不通过继承或包装它来添加 prefab 规则；已有的专用 manager 不能作为继续新增的依据。
+- 实体管理：移植 prefab（包括把已有 prefab 迁移过来）时，只能用通用的 `PrefabEntityManager`（`packages/prefab/src/prefabInstance.ts`）管理 `PrefabInstance`。`PrefabEntityManager` 必须是应用层统一创建并持有的全局单例，所有 prefab 共用这一个实例；不得按 prefab、模块或类别分别创建 manager 实例，prefab 模块也不得自行创建 manager。prefab 的实例构造、组件、业务回调和资源声明留在所属 prefab 模块。不新增专用 manager 类，也不通过继承或包装它来添加 prefab 规则；已有的专用 manager 不能作为继续新增的依据。
   - 不得在 `PrefabEntityManager` 中按 `prefabId`／prefab 名称分支，包括 `if`、`switch`、分发表和名单判断。prefab 之间的差异写在 `PrefabEntityDefinition` 的声明或实例、组件上；通用能力不足时，增加对所有 prefab 含义相同的声明字段。
   - 不得把回调写入 `PrefabEntityManager`。Lua 回调（`OnWork`、`OnSave`／`OnLoad`、事件监听等）和 `PrefabEntityDefinition` 中各函数（如 `fn`、`onSpawned`、`update`）的实现都放在所属 prefab 模块；manager 只调用 `PrefabEntityDefinition` 声明的函数和实例的 `GetPersistData()`／`SetPersistData()`。
 - sprite 创建与共享：prefab 声明的动画由 display 的创建回调或资源入口通过 `createSharedArchiveSprite()`（含预载入口 `preloadSharedArchiveSprite()`）或 `createSpriteFactory()` 获取。共享入口不允许 prefab 逻辑自行加载资源或持有实际 sprite。不得在 prefab 中直接调用 `createArchiveSprite()`、自行创建逐实体帧几何，或新增仅包装 prefab 动作名称的动画构造层。动画名称、循环方式、动作选择及后续播放由 prefab 按源 Lua 通过 `instance.sprite` 的 `playOnce()` / `start()` 等接口声明。

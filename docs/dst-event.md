@@ -99,7 +99,7 @@ TAKEITEM → shelf.ontakeitem → 恢复 occupiable → CAGE_STATE = _empty
 
 ## grass：原生草丛采摘、生长、点燃与铲起
 
-[GrassManager](../packages/prefab/src/grass.ts) 使用同一个 `Pickable`，产物为 1 个 `cutgrass`，基础再生时间来自 `TUNING.GRASS_REGROW_TIME = 3 * 480`。保持 `plant`／`renewable`／`silviculture`／`lunarplant_target` 标签，可采摘时由组件添加 `pickable`。通用 `PICK` 输入和 `SGwilson` 负责走近、动作时机与取消；组件负责产物交付和再生，prefab 管理器负责组件接线、草丛动画与音效。
+[GrassInstance](../packages/prefab/src/grass.ts) 使用同一个 `Pickable`，产物为 1 个 `cutgrass`，基础再生时间来自 `TUNING.GRASS_REGROW_TIME = 3 * 480`。保持 `plant`／`renewable`／`silviculture`／`lunarplant_target` 标签，可采摘时由组件添加 `pickable`。通用 `PICK` 输入和 `SGwilson` 负责走近、动作时机与取消；组件负责产物交付和再生，草丛实例负责组件接线、动画与音效，通用 `PrefabEntityManager` 管理集合、显示与存档。
 
 ```text
 成熟 idle → 成功采摘 picking → picked

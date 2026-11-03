@@ -18,7 +18,7 @@ function setup() {
   const spawnGroundItem = vi.fn();
   const context: PickablePlantContext = {
     position: new Vector3(3, 0, 6), scheduler, fire, getWatchWorldContent,
-    world: { spawnGroundItem }, growthDuration: seconds => seconds,
+    world: { scheduler, fire, getWatchWorldContent, spawnGroundItem }, growthDuration: seconds => seconds,
   };
   return { context, scheduler, season, fetch, spawnGroundItem,
     dispose: () => { fire.dispose(); unbind(); scheduler.dispose(); } };

@@ -1,5 +1,5 @@
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
-import { SpriteState, type PrefabDisplayGroup } from '@dontstarve-web/display';
+import { SpriteState } from '@dontstarve-web/display';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { PlaySound, type SoundEventPath } from './sound';
 import { PrefabEntityManager, PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
@@ -86,16 +86,16 @@ function define(prefab: string, definition: FxDefinition, world: WorldFxWorld): 
       return inst;
     },
     assets: { animationArchive: archive, buildArchives: [archive], bank, multColour: [tint[0], tint[1], tint[2], opacity] },
-    targetable: false,
+    targetable: false, alwaysActive: true,
     onSpawned: sound ? inst => { PlaySound(sound, inst.position); } : undefined,
   };
 }
 
 /** The transient effects fx.lua and its siblings return, always awake for the moment they play: they draw wherever they are spawned. */
-export function createWorldFxManager(displays: PrefabDisplayGroup, world: WorldFxWorld) {
+export function worldFxPrefabs(world: WorldFxWorld): Readonly<Record<WorldFxPrefab | CollapsePrefab, PrefabEntityDefinition<PrefabInstance>>> {
   const prefabs = Object.fromEntries(Object.entries<FxDefinition>({ ...FX_PREFABS, ...COLLAPSE_PREFABS })
     .map(([prefab, definition]) => [prefab, define(prefab, definition, world)])) as Record<WorldFxPrefab | CollapsePrefab, PrefabEntityDefinition<PrefabInstance>>;
-  return new PrefabEntityManager<WorldFxPrefab | CollapsePrefab, PrefabInstance>(displays, undefined, {}, prefabs);
+  return prefabs;
 }
 
 /** structure_collapse_fx.lua SetMaterial, which the source's playfx sounds from; rock has its own event. */
@@ -110,7 +110,7 @@ export interface WorldFx {
   collapse(size: 'small' | 'big', position: ReadonlyVector3, material?: CollapseMaterial): void;
 }
 
-export function worldFxSpawner(manager: ReturnType<typeof createWorldFxManager>): WorldFx {
+export function worldFxSpawner(manager: Pick<PrefabEntityManager<string, PrefabInstance>, 'spawn'>): WorldFx {
   return {
     spawn: (prefab, position) => { manager.spawn(prefab, position); },
     collapse: (size, position, material) => SetMaterial(manager.spawn(`collapse_${size}`, position), material),

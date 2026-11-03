@@ -1,8 +1,9 @@
+import { plantManager } from './plantManagerFixture';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
-import { RockAvocadoBushManager } from '../../prefab/src/rock_avocado_bush';
+import { rockAvocadoBushPrefabs } from '../../prefab/src/rock_avocado_bush';
 import { GroundItemManager } from '../../prefab/src/groundItemManager';
 import { createInventoryStore } from '../../../src/inventory';
 import { inventorySlotAddress } from '../../inventory/src';
@@ -32,13 +33,13 @@ function setup() {
   const ground = new GroundItemManager(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
   const { season, snowLevel } = bindTestWorld(scheduler);
-  const bushes = new RockAvocadoBushManager(scene, '/dst/data/anim', { physics,
+  const bushes = plantManager(rockAvocadoBushPrefabs, scene, { physics,
     spawnGroundItem: (definition, position, options) => ground.spawnGroundItem(definition, position, options) });
   const registry = new EntityRegistry();
   registry.register(PREFAB_DEFINITIONS.rockAvocadoBushes, {
-    restore: (_, record) => drawn(bushes.spawn(new THREE.Vector3(...record.transform.position), record)),
-    debugSpawn: () => drawn(bushes.spawn(player.position)),
-    exportRecords: () => bushes.exportRecords().map(record => ({ prefabId: 'rock_avocado_bush', record })), dispose: () => bushes.dispose(),
+    restore: (_, record) => drawn(bushes.spawn('rock_avocado_bush', new THREE.Vector3(...record.transform.position), record).transform.model),
+    debugSpawn: () => drawn(bushes.spawn('rock_avocado_bush', player.position).transform.model),
+    exportRecords: () => bushes.exportRecords(), dispose: () => bushes.dispose(),
   });
   registry.register(PREFAB_DEFINITIONS.groundItems, {
     restore: (_, record) => ground.spawnFromSave(record.id,
@@ -47,7 +48,7 @@ function setup() {
     exportRecords: () => ground.exportRecords().map(record => ({ prefabId: 'ground_item', record })), dispose: () => ground.dispose(),
   });
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
-  const save = () => serializeSave(template, { entities: { rock_avocado_bush: bushes.exportRecords(), ground_item: ground.exportRecords() },
+  const save = () => serializeSave(template, { entities: { rock_avocado_bush: bushes.exportRecords().map(({ record }) => record), ground_item: ground.exportRecords() },
     inventory: inventory.exportState(), elapsedSeconds: scheduler.now, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
   const advance = (seconds: number) => { scheduler.advance(seconds); bushes.update(seconds, new THREE.Quaternion()); };
   return { inventory, scene, physics, scheduler, season, snowLevel, ground, bushes, registry, save, advance,
@@ -59,7 +60,7 @@ it('cycles all four stages through winter, picks three fruits or clears nil prod
   vi.spyOn(Math, 'random').mockReturnValue(.5);
   const s = setup();
   try {
-    const model = await drawn(s.bushes.spawn(new THREE.Vector3(12, 0, 24)));
+    const model = await drawn(s.bushes.spawn('rock_avocado_bush', new THREE.Vector3(12, 0, 24)).transform.model);
     const { pickable, growable } = plantInstance(model).components;
     expect(growable.GetStage()).toBe(3);
     const timer = growable.state.timer.peek();
@@ -99,7 +100,7 @@ it('digs three separate fruits and a root, transplants, fertilizes and stops aft
   const s = setup(), restored = setup();
   try {
     const position = new THREE.Vector3(24, 0, 36);
-    await drawn(s.bushes.spawn(position));
+    await drawn(s.bushes.spawn('rock_avocado_bush', position).transform.model);
     expect(performToolWork('DIG', workTargets('DIG')[0].entity!, {})).toBe(true);
     const loot = s.ground.exportRecords();
     expect(loot.map(record => record.components.stack?.itemId)).toEqual([
@@ -111,7 +112,7 @@ it('digs three separate fruits and a root, transplants, fertilizes and stops aft
     expect(root.components.deployable!.Deploy(position, { position, PushEvent: vi.fn() }, {
       canPlaceTurf: () => false, setTile: vi.fn(), itemPlanted: vi.fn(), canDeployDock: () => false, createDock: vi.fn(), canDeployPlow: () => false, deployPlow: () => false, 
       isPassableAtPoint: () => true, isOceanTileAtPoint: () => false,
-      canDeployPlant: () => true, SpawnPrefab: (_prefab: string, point: THREE.Vector3) => prefabInstance(s.bushes.spawn(point)) as never,
+      canDeployPlant: () => true, SpawnPrefab: (_prefab: string, point: THREE.Vector3) => prefabInstance(s.bushes.spawn('rock_avocado_bush', point).transform.model) as never,
     })).toBe(true);
     expect(s.inventory.count('dug_rock_avocado_bush')).toBe(1);
     const model = workTargets('DIG')[0].model, { pickable, growable, witherable } = plantInstance(model).components;
@@ -126,8 +127,8 @@ it('digs three separate fruits and a root, transplants, fertilizes and stops aft
       expect(pickable.pick(s.picker)).toBe(true); expect(pickable.cyclesLeft).toBe(cycle - 1);
       if (cycle === 3) {
         const saved = deserializeSave(s.save(), SAVE_CATALOG), record = saved.world.entities.rock_avocado_bush[0];
-        await drawn(restored.bushes.spawn(new THREE.Vector3(...record.transform.position), record));
-        expect(restored.bushes.exportRecords()).toEqual([record]);
+        await drawn(restored.bushes.spawn('rock_avocado_bush', new THREE.Vector3(...record.transform.position), record).transform.model);
+        expect(restored.bushes.exportRecords().map(({ record }) => record)).toEqual([record]);
       }
     }
     expect(s.inventory.count('rock_avocado_fruit')).toBe(9);
@@ -142,7 +143,7 @@ it('digs three separate fruits and a root, transplants, fertilizes and stops aft
     witherable.ForceWither();
     expect(performToolWork('DIG', workTargets('DIG')[0].entity!, {})).toBe(true);
     expect(s.ground.exportRecords().slice(-2).map(record => record.components.stack?.itemId)).toEqual(['twigs', 'twigs']);
-    s.advance(10000); expect(s.bushes.exportRecords()).toEqual([]); expect(s.physics.bodies).toHaveLength(0);
+    s.advance(10000); expect(s.bushes.exportRecords().map(({ record }) => record)).toEqual([]); expect(s.physics.bodies).toHaveLength(0);
   } finally { s.dispose(); restored.dispose(); }
 });
 
@@ -155,7 +156,7 @@ it('exports and reloads debug commands, roots and fruit; a saved burning mature 
     expect(s.inventory.getItemSpec('dug_rock_avocado_bush').maxStack).toBe(10);
     expect(s.inventory.getItemSpec('rock_avocado_fruit').maxStack).toBe(40);
     const model = workTargets('DIG')[0].model;
-    const beforeBurn = s.bushes.exportRecords()[0];
+    const beforeBurn = s.bushes.exportRecords().map(({ record }) => record)[0];
     plantInstance(model).components.burnable.Ignite();
     let json = '';
     expect((await executeDebugCommand('c_save()', s.inventory, undefined, () => { json = s.save(); })).ok).toBe(true);
@@ -167,11 +168,11 @@ it('exports and reloads debug commands, roots and fruit; a saved burning mature 
       { ...SAVE_CATALOG.items[item.components.stack!.itemId], ...item.components.stack! }, new THREE.Vector3(...item.transform.position));
     expect(restored.ground.exportRecords()).toEqual(s.ground.exportRecords());
     expect(restored.inventory.exportState()).toEqual(s.inventory.exportState());
-    await drawn(restored.bushes.spawn(new THREE.Vector3(...record.transform.position), record));
-    expect(restored.bushes.exportRecords()).toEqual([]);
+    await drawn(restored.bushes.spawn('rock_avocado_bush', new THREE.Vector3(...record.transform.position), record).transform.model);
+    expect(restored.bushes.exportRecords().map(({ record }) => record)).toEqual([]);
     expect(restored.ground.exportRecords().slice(-4).map(item => item.components.stack?.itemId)).toEqual([
       'rock_avocado_fruit', 'rock_avocado_fruit', 'rock_avocado_fruit', 'ash']);
-    s.advance(20); expect(s.bushes.exportRecords()).toEqual([]);
+    s.advance(20); expect(s.bushes.exportRecords().map(({ record }) => record)).toEqual([]);
     expect(s.ground.exportRecords().slice(-4).map(item => item.components.stack?.itemId)).toEqual([
       'rock_avocado_fruit', 'rock_avocado_fruit', 'rock_avocado_fruit', 'ash']);
   } finally { s.dispose(); restored.dispose(); }

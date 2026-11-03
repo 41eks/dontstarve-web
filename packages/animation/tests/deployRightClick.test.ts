@@ -1,7 +1,8 @@
+import { plantManager } from './plantManagerFixture';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
-import { GrassManager } from '../../prefab/src/grass';
+import { grassPrefabs } from '../../prefab/src/grass';
 import { createDeployMap } from '../../prefab/src/deployMap';
 import { placementEntities } from '../../prefab/src/placementEntities';
 import { prefabInstance, setModelTag } from '../../prefab/src/prefabInstance';
@@ -57,9 +58,9 @@ async function setup(item: string, ground: THREE.Vector3) {
 }
 
 function grassActor(s: Awaited<ReturnType<typeof setup>>) {
-  const grasses = new GrassManager(s.scene, '/dst/data/anim', { spawnGroundItem: vi.fn() as never });
+  const grasses = plantManager(grassPrefabs, s.scene, { spawnGroundItem: vi.fn() as never });
   const map = createDeployMap({ turf: landTurf({ canDeployPlantAtPoint: (point: THREE.Vector3) => point.x >= 0 }),
-    blockers: placementEntities(s.scene), spawnPrefab: (_prefab, position) => prefabInstance(grasses.spawn(position)) as never });
+    blockers: placementEntities(s.scene), spawnPrefab: (_prefab, position) => prefabInstance(grasses.spawn('grass', position).transform.model) as never });
   return { grasses, actor: deployActor(s.world, s.inventory, map) };
 }
 
@@ -71,10 +72,10 @@ it('a right click walks, plants dug_grass barren at frame six, keeps the stack h
     expect(walk[0].target.getPosition().toArray()).toEqual([2, 0, 0]);
     walk[1]();
     actor.graph.update(5 / 30);
-    expect(grasses.exportRecords()).toEqual([]);
+    expect(grasses.exportRecords().map(({ record }) => record)).toEqual([]);
     actor.graph.update(1 / 30);
     expect(s.held()).toBe(1);
-    const [record] = grasses.exportRecords();
+    const [record] = grasses.exportRecords().map(({ record }) => record);
     expect(record.transform.position).toEqual([2, 0, 0]);
     expect(record.components.pickable).toMatchObject({ transplanted: true });
     expect(plantInstance(workTargets('DIG', s.scene)[0].model).components.pickable.IsBarren()).toBe(true);
@@ -83,11 +84,11 @@ it('a right click walks, plants dug_grass barren at frame six, keeps the stack h
     let json = '';
     const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
     expect((await executeDebugCommand('c_save()', s.inventory, undefined, () => {
-      json = serializeSave(template, { entities: { grass: grasses.exportRecords() }, inventory: s.inventory.exportState(),
+      json = serializeSave(template, { entities: { grass: grasses.exportRecords().map(({ record }) => record) }, inventory: s.inventory.exportState(),
         elapsedSeconds: 0, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
     })).ok).toBe(true);
-    const reloaded = new GrassManager(s.scene, '/dst/data/anim', { spawnGroundItem: vi.fn() as never });
-    const model = await drawn(reloaded.spawn(new THREE.Vector3(2, 0, 0), deserializeSave(json, SAVE_CATALOG).world.entities.grass[0]));
+    const reloaded = plantManager(grassPrefabs, s.scene, { spawnGroundItem: vi.fn() as never });
+    const model = await drawn(reloaded.spawn('grass', new THREE.Vector3(2, 0, 0), deserializeSave(json, SAVE_CATALOG).world.entities.grass[0]).transform.model);
     expect(plantInstance(model).components.pickable.IsBarren()).toBe(true);
     reloaded.dispose();
   } finally { actor.controller.dispose(); grasses.dispose(); s.dispose(); }
@@ -107,7 +108,7 @@ it('an entity under the mouse replaces the point deploy unless it does not catch
   const s = await setup('dug_grass', new THREE.Vector3(2, 0, 0)), { grasses, actor } = grassActor(s);
   try {
     // The tuft is far from the ground point the pointer ray lands on, so spacing alone would allow planting there.
-    const model = s.pointer.model = await drawn(grasses.spawn(new THREE.Vector3(60, 0, 60)));
+    const model = s.pointer.model = await drawn(grasses.spawn('grass', new THREE.Vector3(60, 0, 60)).transform.model);
     // Another controller's action on the entity stays with that controller and keeps the item.
     const stopRepair = s.world.mouseActions!.register(() => [{ action: { action: 'REPAIR' }, button: 'right', model, source: 'inventory' }]);
     expect(s.rightClick().defaultPrevented).toBe(false);
@@ -129,10 +130,10 @@ it('an entity under the mouse replaces the point deploy unless it does not catch
 
 it('the registry spawns source prefab IDs for ondeploy and rejects unregistered ones', async () => {
   const s = await setup('dug_grass', new THREE.Vector3(2, 0, 0));
-  const grasses = new GrassManager(s.scene, '/dst/data/anim', { spawnGroundItem: vi.fn() as never });
+  const grasses = plantManager(grassPrefabs, s.scene, { spawnGroundItem: vi.fn() as never });
   const registry = new EntityRegistry();
   registry.register(PREFAB_DEFINITIONS.grasses, { restore: () => new THREE.Group(), debugSpawn: () => {}, exportRecords: () => [], dispose: () => {},
-    spawnPrefab: { grass: position => grasses.spawn(position) } });
+    spawnPrefab: { grass: position => grasses.spawn('grass', position).transform.model } });
   try {
     const inst = registry.SpawnPrefab('grass', new THREE.Vector3(6, 0, 6))!;
     expect(inst.prefab).toBe('grass');

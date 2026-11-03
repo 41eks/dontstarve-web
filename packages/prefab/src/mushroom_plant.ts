@@ -1,11 +1,11 @@
+import type { PrefabEntityDefinition } from './prefabInstance';
 import { Pickable } from './components/pickable';
 import { Workable } from '../../componets/src/workable';
 import { DefaultBurnFn, DefaultExtinguishFn, DefaultBurntFn } from './standardcomponents';
-import type * as THREE from 'three';
 import { createEffect, watchSignal, WorldContentKey, type WorldPhase } from '@dontstarve-web/signals';
 import { PlaySound } from './sound';
-import { PickablePlantManager, PickablePlantInstance, type PickablePlantContext,
-  type PickablePlantDefinition, type PickablePlantRecord } from './pickablePlant';
+import { plantEntityDefinition, PickablePlantInstance, type PickablePlantContext,
+  type PickablePlantWorld, type PickablePlantDefinition, type PickablePlantRecord } from './pickablePlant';
 
 export const BLUE_MUSHROOM_ID = 'blue_mushroom' as const;
 export const RED_MUSHROOM_ID = 'red_mushroom' as const;
@@ -77,7 +77,7 @@ export class MushroomPlantInstance extends PickablePlantInstance {
   }
 
   override initialize(): void {
-    const saved = this.context.saved, { pickable } = this.components;
+    const saved = this.saveRecord as PickablePlantRecord | undefined, { pickable } = this.components;
     // Construction picks the pose for the current phase; OnLoad then only sets rain and, when picked, the empty pose.
     if (this.isOpenPhase()) { pickable.canInteractWith = true; this.play([this.data.animname]); }
     else { pickable.canInteractWith = false; this.play(['inground']); }
@@ -161,12 +161,6 @@ export function isMushroomPlantPrefab(value: string): value is MushroomPlantId {
 }
 
 /** mushrooms.lua: red (day), green (dusk) and blue (night) mushrooms share one prefab function. */
-export class MushroomPlantManager extends PickablePlantManager {
-  spawn(position: THREE.Vector3, saved?: PickablePlantRecord, prefab: MushroomPlantId = BLUE_MUSHROOM_ID): THREE.Group {
-    return this.spawnPlant(MUSHROOM_DEFINITIONS[prefab], position, saved);
-  }
-
-  exportRecords(): { prefabId: MushroomPlantId; record: PickablePlantRecord }[] {
-    return this.exportPlants().map(({ prefab, record }) => ({ prefabId: prefab as MushroomPlantId, record }));
-  }
+export function mushroomPlantPrefabs(world: PickablePlantWorld): Readonly<Record<MushroomPlantId, PrefabEntityDefinition<PickablePlantInstance>>> {
+  return Object.fromEntries(MUSHROOM_PLANT_IDS.map(id => [id, plantEntityDefinition(MUSHROOM_DEFINITIONS[id], world)])) as Record<MushroomPlantId, PrefabEntityDefinition<PickablePlantInstance>>;
 }

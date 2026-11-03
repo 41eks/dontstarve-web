@@ -1,6 +1,6 @@
 import { createEffect, type GetWatchWorldContent, type TileStateQuery } from '@dontstarve-web/signals';
-import { SpriteState, type PrefabDisplayGroup } from '@dontstarve-web/display';
-import { PrefabEntityManager, PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
+import { SpriteState } from '@dontstarve-web/display';
+import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { type PrefabLocalLight } from './localLight';
 import { WORLD_SCALE } from './tile';
 import { OPALSTAFF_COLOUR, YELLOWSTAFF_COLOUR } from './staff';
@@ -187,7 +187,7 @@ export class StaffLightInstance extends PrefabInstance {
 }
 
 /** The Prefab table stafflight.lua returns for the two world stars. */
-export function createStaffLightManager(displays: PrefabDisplayGroup, animationBaseUrl: string, world: StaffLightWorld) {
+export function staffLightPrefabs(world: StaffLightWorld): Readonly<Record<StaffLightId, PrefabEntityDefinition<StaffLightInstance>>> {
   const define = (prefabId: StaffLightId): PrefabEntityDefinition<StaffLightInstance> => {
     const { anim } = STAFF_LIGHTS[prefabId], archive = `${anim}.zip`;
     return {
@@ -196,6 +196,5 @@ export function createStaffLightManager(displays: PrefabDisplayGroup, animationB
       onSpawned: star => star.playSpawnSounds(),
     };
   };
-  return new PrefabEntityManager<StaffLightId, StaffLightInstance>(displays, animationBaseUrl, world,
-    { [DWARF_STAR_ID]: define(DWARF_STAR_ID), [POLAR_LIGHT_ID]: define(POLAR_LIGHT_ID) });
+  return { [DWARF_STAR_ID]: define(DWARF_STAR_ID), [POLAR_LIGHT_ID]: define(POLAR_LIGHT_ID) };
 }

@@ -1,3 +1,4 @@
+import { prefabManager } from './prefabManagerFixture';
 import { advancePlayer } from './playerVisual';
 import { getActionString } from '../../stategraphs/src/actions';
 import { findActionEntity } from '../../prefab/src/actionEntity';
@@ -17,7 +18,7 @@ import { WORLD_SCALE } from '../../prefab/src/tile';
 import * as CANNON from 'cannon-es';
 import { GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
-import { createPondManager, POND_ID } from '../../prefab/src/pond';
+import { pondPrefabs, POND_ID } from '../../prefab/src/pond';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { PrefabDisplayGroup } from '../../display/src';
 import { createEquipmentExistenceState, GameTimeScheduler } from '../../signals/src';
@@ -71,7 +72,7 @@ it('casts at a pond, waits for a bite, hooks, reels and lands a pondfish; a stra
   await animation.setCarryItem('fishingrod');
   const world = { scene: new THREE.Scene(), player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
-  const ponds = createPondManager(new PrefabDisplayGroup(world.scene), '/dst/data/anim', { scheduler });
+  const ponds = prefabManager(new PrefabDisplayGroup(world.scene), '/dst/data/anim', { scheduler }, pondPrefabs);
   const spawned = ponds.spawn(POND_ID, new THREE.Vector3());
   const pond = world.scene.children.find(child => prefabInstance(child) === spawned)!;
   const landed: { prefab: string; position: THREE.Vector3 }[] = [];
@@ -184,7 +185,7 @@ it('gives a fishing rod with c_give and saves worn rods and pond fish through c_
   const scheduler = new GameTimeScheduler(), scene = new THREE.Scene();
   const inventory = createPickupInventory(), restoredInventory = createPickupInventory();
   const displays = new PrefabDisplayGroup(scene);
-  const ponds = createPondManager(displays, '/dst/data/anim', { scheduler }), restored = createPondManager(displays, '/dst/data/anim', { scheduler });
+  const ponds = prefabManager(displays, '/dst/data/anim', { scheduler }, pondPrefabs), restored = prefabManager(displays, '/dst/data/anim', { scheduler }, pondPrefabs);
   try {
     expect((await executeDebugCommand('c_give("fishingrod")', inventory)).ok).toBe(true);
     const rod = inventory.getEntity(inventorySlotAddress(0))!;

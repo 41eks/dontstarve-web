@@ -1,11 +1,12 @@
+import { prefabManager } from './prefabManagerFixture';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { prefabDisplay, PrefabDisplayGroup } from '../../display/src';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { InventoryStore } from '../../inventory/src';
-import { createMarshPlantManager, MARSH_PLANT_ID, type MarshPlantInstance } from '../../prefab/src/marsh_plant';
-import { createPondManager, POND_ID, type PondInstance } from '../../prefab/src/pond';
+import { marshPlantPrefabs, MARSH_PLANT_ID, type MarshPlantInstance } from '../../prefab/src/marsh_plant';
+import { pondPrefabs, POND_ID, type PondInstance } from '../../prefab/src/pond';
 import { WORLD_SCALE } from '../../prefab/src/tile';
 import { FireFxHost } from '../../prefab/src/treeFire';
 import { executeDebugCommand } from '../../../src/debugCommands';
@@ -29,11 +30,11 @@ function setup() {
   const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), fire = FireFxHost.create('/dst/data/anim');
   const snow = createSignal(0), spawnGroundItem = vi.fn();
   const plantDisplays = new PrefabDisplayGroup(scene), pondDisplays = new PrefabDisplayGroup(scene);
-  const plants = createMarshPlantManager(plantDisplays, '/dst/data/anim', { scheduler, fire, spawnGroundItem: spawnGroundItem as never });
+  const plants = prefabManager(plantDisplays, '/dst/data/anim', { scheduler, fire, spawnGroundItem: spawnGroundItem as never }, marshPlantPrefabs);
   const spawned: MarshPlantInstance[] = [];
   const world = { scheduler, getWatchWorldContent: (() => snow) as never,
     spawnPrefab: (_: string, position: THREE.Vector3) => { const plant = plants.spawn(MARSH_PLANT_ID, position); spawned.push(plant); return plant; } };
-  const ponds = createPondManager(pondDisplays, '/dst/data/anim', world);
+  const ponds = prefabManager(pondDisplays, '/dst/data/anim', world, pondPrefabs);
   cleanups.push(() => { ponds.dispose(); plants.dispose(); pondDisplays.dispose(); plantDisplays.dispose(); fire.dispose(); });
   return { scene, scheduler, snow, plants, ponds, spawned, spawnGroundItem, world };
 }
@@ -103,7 +104,7 @@ it('haunting fails with the source cooldown, and c_spawn plants save and reload 
   const scheduler = new GameTimeScheduler(), position = new THREE.Vector3(6, 0, 9), fire = FireFxHost.create('/dst/data/anim');
   const createRegistry = () => {
     const registry = new EntityRegistry(), displays = new PrefabDisplayGroup(new THREE.Scene());
-    const plants = createMarshPlantManager(displays, '/dst/data/anim', { scheduler, fire, spawnGroundItem: vi.fn() as never });
+    const plants = prefabManager(displays, '/dst/data/anim', { scheduler, fire, spawnGroundItem: vi.fn() as never }, marshPlantPrefabs);
     registry.register(PREFAB_DEFINITIONS.marshPlants, {
       restore: (id, record) => plants.spawn(id, new THREE.Vector3(...record.transform.position), record),
       debugSpawn: id => plants.spawn(id, position.clone()),

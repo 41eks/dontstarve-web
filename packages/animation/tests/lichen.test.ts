@@ -1,3 +1,4 @@
+import { plantManager } from './plantManagerFixture';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -11,7 +12,7 @@ import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
-import { LichenManager, LICHEN_ID, type LichenRecord } from '../../prefab/src/lichen';
+import { lichenPrefabs, LICHEN_ID, type LichenRecord } from '../../prefab/src/lichen';
 import { bindTestWorld, tickWorld, plantInstance } from './worldContentFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 
@@ -24,14 +25,13 @@ function setup(player = new THREE.Vector3()) {
   const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), awake = createSignal(true);
   const world = bindTestWorld(scheduler);
   const loot: string[] = [];
-  const lichens = new LichenManager(scene, '/dst/data/anim', { tickingarea: () => createMemo(() => awake.get()),
+  const lichens = plantManager(lichenPrefabs, scene, { tickingarea: () => createMemo(() => awake.get()),
     spawnGroundItem: definition => { loot.push(definition.itemId); return undefined; } });
   const registry = new EntityRegistry(), inventory = createInventoryStore([]);
   registry.register(PREFAB_DEFINITIONS.lichens, {
-    restore: (_, record) => lichens.spawn(new THREE.Vector3(...record.transform.position),
-      { id: record.id, transform: record.transform, components: { pickable: record.components.pickable } }),
-    debugSpawn: () => lichens.spawn(player.clone()),
-    exportRecords: () => lichens.exportRecords().map(record => ({ prefabId: LICHEN_ID, record })),
+    restore: (_, record) => lichens.spawn('lichen', new THREE.Vector3(...record.transform.position), { id: record.id, transform: record.transform, components: { pickable: record.components.pickable } }).transform.model,
+    debugSpawn: () => lichens.spawn('lichen', player.clone()).transform.model,
+    exportRecords: () => lichens.exportRecords(),
     update: (dt, quaternion) => tickWorld(scheduler, lichens, dt, quaternion),
     renderEntities: () => lichens.renderEntities,
     dispose: () => lichens.dispose(),
@@ -51,7 +51,7 @@ const PICKED: LichenRecord = { id: 'picked-lichen', transform: { position: [450,
 it('loads ready and picked lichen with the lichen.lua clips, tag and tint, and picks cutlichen', async () => {
   const s = setup();
   try {
-    const ready = s.lichens.spawn(new THREE.Vector3(...READY.transform.position), READY);
+    const ready = s.lichens.spawn('lichen', new THREE.Vector3(...READY.transform.position), READY).transform.model;
     const inst = plantInstance(ready);
     // fn: PlayAnimation("idle", true) on a random frame, SetMultColour(c, c, c, 1) with c in [.75, 1].
     expect(inst.sprite.sprite.peek().clip).toMatchObject({ name: 'idle', loop: true });
@@ -65,7 +65,7 @@ it('loads ready and picked lichen with the lichen.lua clips, tag and tint, and p
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/dst/data/anim/algae_bush.zip'));
 
     // Pickable:OnLoad -> makeemptyfn: PlayAnimation("picked"), resting on its last frame, with the saved regrow time.
-    const picked = plantInstance(s.lichens.spawn(new THREE.Vector3(...PICKED.transform.position), PICKED));
+    const picked = plantInstance(s.lichens.spawn('lichen', new THREE.Vector3(...PICKED.transform.position), PICKED).transform.model);
     expect(picked.sprite.currentAnimation).toBe('picked');
     expect(picked.components.pickable.state.phase.peek()).toBe('picked');
     expect(picked.components.pickable.remainingSeconds).toBeCloseTo(600);
@@ -73,7 +73,7 @@ it('loads ready and picked lichen with the lichen.lua clips, tag and tint, and p
     // onpickedfn: picking -> picked; the product is cutlichen.
     expect(inst.components.pickable.pick({ giveItem: (id: string, count: number) => id === 'cutlichen' && count === 1 })).toBe(true);
     expect(inst.sprite.currentAnimation).toBe('picking');
-    expect(s.lichens.exportRecords().map(record => record.components)).toEqual([
+    expect(s.lichens.exportRecords().map(({ record }) => record).map(record => record.components)).toEqual([
       { pickable: { picked: true, regrowSeconds: expect.any(Number) } }, { pickable: { picked: true, regrowSeconds: expect.any(Number) } }]);
     expect(PREFAB_DEFINITIONS.lichens.parseComponents(PICKED.components, 'lichen', { grounded: true } as never)).toEqual(PICKED.components);
   } finally { s.dispose(); }
@@ -82,7 +82,7 @@ it('loads ready and picked lichen with the lichen.lua clips, tag and tint, and p
 it('releases a lichen while its tile sleeps and redraws the declared idle with its tint when it wakes', async () => {
   const s = setup();
   try {
-    const model = s.lichens.spawn(new THREE.Vector3(...READY.transform.position), READY);
+    const model = s.lichens.spawn('lichen', new THREE.Vector3(...READY.transform.position), READY).transform.model;
     const inst = plantInstance(model);
     await prefabDisplay(model)!.artLoaded();
     const declared = inst.sprite.sprite.peek();

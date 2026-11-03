@@ -9,6 +9,10 @@ export interface PlacementSaveRecord {
     pickable?: import('./components/pickable').PickableSaveState;
     witherable?: import('../../componets/src/witherable').WitherableSave;
     growable?: import('../../componets/src/growable').GrowableSave;
+    plant?: import('./pickablePlant').PickablePlantRecord['components']['plant'];
+    mushroom?: import('./pickablePlant').PickablePlantRecord['components']['mushroom'];
+    variant?: import('./pickablePlant').PickablePlantRecord['components']['variant'];
+    burning?: true;
     building?: { skinId?: string; burnt?: true };
     stewer?: import('./cook_pot').CookPotSaveState;
     container?: { slotCount: number; slots: { slotKey: string; item: import('@dontstarve-web/inventory').InventoryStack }[] };
@@ -27,6 +31,11 @@ export interface PlacementSaveRecord {
     lightningrod?: import('./lightning_rod').LightningRodSaveState;
     firepit?: import('./firepit').FirePitSaveState;
   };
+}
+
+/** A detached entity snapshot produced by the generic save loop. */
+export interface PrefabSaveRecord extends PlacementSaveRecord {
+  transform: { position: [number, number, number]; rotationY: number };
 }
 
 export interface PlacedEntitySaveRecord {

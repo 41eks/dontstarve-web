@@ -10,7 +10,7 @@ import type { TileTracker } from '../../componets/src/tileManager';
 import type { Brain } from '../../brains/src/brain';
 import type { StateGraphInstance } from '../../stategraphs/src/stategraph';
 import type { ComponentActionEntity } from '../../stategraphs/src/componentactions';
-import type { PlacementSaveRecord } from './saveRecord';
+import type { PlacementSaveRecord, PrefabSaveRecord } from './saveRecord';
 import { newItemEntityId } from '../../inventory/src/entityId';
 import { actionEntity } from './actionEntity';
 import { watchTileActivity } from './tileActivity';
@@ -309,13 +309,17 @@ export function createEmptyEntity<Instance extends PrefabInstance<SpriteState, o
 
 /** Prefab(name, fn, assets): how one source prefab is built and which art its display declares. */
 export interface PrefabEntityDefinition<Instance extends PrefabInstance> {
-  fn(): Instance;
+  fn(position: ReadonlyVector3): Instance;
+  /** Source skin names and their shared build archives; the display loads the selected one. */
+  skins?: Readonly<Record<string, string>>;
   /** A prefab without assets has only a transform and what it declares on it, as FX lights do: nothing to draw or click. */
   assets?: Parameters<SpriteResources['archive']>[0];
   /** How the display builds this art's sprites, such as a plant's instanced batches. */
   assetOptions?: Parameters<SpriteResources['archive']>[1];
   /** False for what is only ever looked at, such as a transient effect: not a mouse target or an entity that queries find. */
   targetable?: boolean;
+  /** Transient effects which must draw even outside the ticking area. */
+  alwaysActive?: boolean;
   /** Make*Physics(inst, radius, height) in DST units; the body is bound when the world has physics. */
   physics?: { make(inst: Instance, radius: number, height?: number): unknown; radius: number; height?: number };
   /** MiniMapEntity:SetIcon. */
@@ -327,7 +331,7 @@ export interface PrefabEntityDefinition<Instance extends PrefabInstance> {
 }
 
 /**
- * SpawnPrefab and the save loop's walk over Ents for the prefabs one module returns: the collection, the shared textures
+ * The application's shared SpawnPrefab owner and save loop over Ents: one collection and shared texture cache
  * and each entity's display, tile activity and save record. What a prefab is stays in its `fn` and its components.
  * The entities stand on the ground: a position's height is dropped.
  */
@@ -338,23 +342,36 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
   private readonly displays: PrefabDisplayGroup;
   private readonly tickingarea?: TileStateQuery;
   private readonly physicsWorld?: CANNON.World;
-  private readonly prefabs: Readonly<Record<Id, PrefabEntityDefinition<Instance>>>;
+  private readonly prefabs: Record<Id, PrefabEntityDefinition<Instance>>;
 
   /** `displays` is the display-layer owner of the entities' scene membership, injected and disposed by the application. */
   constructor(displays: PrefabDisplayGroup, animationBaseUrl: string | undefined, world: { readonly tickingarea?: TileStateQuery; readonly physics?: CANNON.World },
-    prefabs: Readonly<Record<Id, PrefabEntityDefinition<Instance>>>) {
+    prefabs: Readonly<Record<Id, PrefabEntityDefinition<Instance>>> = {} as Record<Id, PrefabEntityDefinition<Instance>>) {
     this.displays = displays;
     this.resources = new SpriteResources(animationBaseUrl);
     this.tickingarea = world.tickingarea;
     this.physicsWorld = world.physics;
-    this.prefabs = prefabs;
+    this.prefabs = { ...prefabs };
   }
 
+  /** Register source prefab declarations in this world's one collection and resource cache. */
+  register(prefabs: Readonly<Record<Id, PrefabEntityDefinition<Instance>>>): void {
+    if (this.disposed) throw new Error('Cannot register prefabs after disposal');
+    for (const id of Object.keys(prefabs)) if (Object.hasOwn(this.prefabs, id)) throw new Error(`Duplicate prefab: ${id}`);
+    Object.assign(this.prefabs, prefabs);
+  }
+
+  has(prefabId: string): boolean { return Object.hasOwn(this.prefabs, prefabId); }
+
   /** SpawnPrefab, then SpawnSaveRecord's SetPosition and SetPersistData: the entity exists now and its display loads the art. */
-  spawn(prefabId: Id, position: ReadonlyVector3, saved?: Pick<PlacementSaveRecord, 'id' | 'components'> & Partial<Pick<PlacementSaveRecord, 'transform'>>): Instance {
+  spawn(prefabId: Id, position: ReadonlyVector3, saved?: Pick<PlacementSaveRecord, 'id' | 'components'> & Partial<Pick<PlacementSaveRecord, 'transform'>>, skinId?: string): Instance {
     if (this.disposed) throw new Error(`Cannot spawn ${prefabId}: its manager has been disposed`);
     if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError(`Invalid ${prefabId} position`);
-    const { fn, assets, assetOptions, targetable = true, physics, minimapIcon, onSpawned } = this.prefabs[prefabId], instance = fn();
+    if (!this.has(prefabId)) throw new Error(`Unknown prefab: ${prefabId}`);
+    const { fn, assets, assetOptions, targetable = true, physics, minimapIcon, onSpawned, skins, alwaysActive } = this.prefabs[prefabId];
+    if (skinId !== undefined && !skins?.[skinId]) throw new Error(`Unsupported ${prefabId} skin: ${skinId}`);
+    const instance = fn(position);
+    if (skins) instance.sprite.setSkinSource({ art: this.resources.archives, archives: skins });
     physics?.make(instance, physics.radius, physics.height);
     if (minimapIcon) instance.minimap.SetIcon(minimapIcon);
     // A shared archive holds a first one-shot clip while its art loads, so a new entity is drawn from its first frame.
@@ -365,11 +382,15 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     if (saved?.transform?.rotationY) instance.setRotation(MathUtils.radToDeg(saved.transform.rotationY));
     if (physics && this.physicsWorld) instance.bindPhysics(this.physicsWorld);
     instance.entityId = saved?.id ?? newItemEntityId();
-    if (saved) instance.SetPersistData(saved.components);
+    if (saved) {
+      instance.saveRecord = { ...saved, transform: { position: [position.x, 0, position.z], rotationY: saved.transform?.rotationY ?? 0 } };
+      instance.SetPersistData(saved.components);
+    }
+    if (skinId !== undefined) instance.skinId = skinId;
     onSpawned?.(instance);
     if (assets && targetable) actionEntity(display.model, prefabId);
     this.entities.add(instance);
-    const stopActivity = watchTileActivity(display.model, this.tickingarea, active => instance.setActive(active));
+    const stopActivity = watchTileActivity(display.model, alwaysActive ? undefined : this.tickingarea, active => instance.setActive(active));
     instance.onRemove(() => { stopActivity(); this.entities.delete(instance); });
     return instance;
   }
@@ -385,7 +406,7 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
   }
 
   /** The save loop's `persists` and GetParent checks, and GetSaveRecord. */
-  exportRecords(): { prefabId: Id; record: PlacementSaveRecord }[] {
+  exportRecords(): { prefabId: Id; record: PrefabSaveRecord }[] {
     return [...this.entities].filter(entity => entity.persists && !entity.entityParent).map(entity => ({ prefabId: entity.prefab as Id, record: {
       id: String(entity.entityId),
       transform: { position: [entity.position.x, 0, entity.position.z], rotationY: entity.transform.model.rotation.y },

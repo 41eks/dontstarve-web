@@ -1,3 +1,4 @@
+import { plantManager } from './plantManagerFixture';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
@@ -6,7 +7,7 @@ import { executeDebugCommand } from '../../../src/debugCommands';
 import type { InventoryStore } from '../../../src/inventory';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
-import { GrassManager, GRASS_ID } from '../../prefab/src/grass';
+import { grassPrefabs, GRASS_ID } from '../../prefab/src/grass';
 import { bindTestWorld, tickWorld, drawn, plantInstance } from './worldContentFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 
@@ -27,16 +28,16 @@ it('spawns grass through the debug command using its source bank and build, then
   const scene = new THREE.Scene();
   const scheduler = new GameTimeScheduler();
   const { season } = bindTestWorld(scheduler);
-  const grasses = new GrassManager(scene, '/dst/data/anim', {
+  const grasses = plantManager(grassPrefabs, scene, {
     spawnGroundItem: () => undefined,
   });
   const registry = new EntityRegistry();
   registry.register(PREFAB_DEFINITIONS.grasses, {
-    restore: (_, record) => drawn(grasses.spawn(new THREE.Vector3(...record.transform.position), {
+    restore: (_, record) => drawn(grasses.spawn('grass', new THREE.Vector3(...record.transform.position), {
       id: record.id, transform: record.transform, components: {},
-    })),
-    debugSpawn: () => drawn(grasses.spawn(new THREE.Vector3(4, 0, -6))),
-    exportRecords: () => grasses.exportRecords().map((record) => ({ prefabId: GRASS_ID, record })),
+    }).transform.model),
+    debugSpawn: () => drawn(grasses.spawn('grass', new THREE.Vector3(4, 0, -6)).transform.model),
+    exportRecords: () => grasses.exportRecords(),
     update: (dt, quaternion) => tickWorld(scheduler, grasses, dt, quaternion),
     renderEntities: () => grasses.renderEntities,
     dispose: () => grasses.dispose(),
@@ -64,7 +65,7 @@ it('spawns grass through the debug command using its source bank and build, then
   expect(model.quaternion.x).toBe(0);
   expect([...grasses.renderEntities]).toEqual([{ object: model, footPosition: model.position, cameraDepth: 0 }]);
 
-  const [{ prefabId, record }] = grasses.exportRecords().map((value) => ({ prefabId: GRASS_ID, record: value }));
+  const [{ prefabId, record }] = grasses.exportRecords();
   expect(prefabId).toBe(GRASS_ID);
   expect(record.transform).toEqual({ position: [4, 0, -6], rotationY: 0 });
   expect(record.components).toEqual({ pickable: {}, witherable: { taskSeconds: expect.any(Number) } });
@@ -74,10 +75,10 @@ it('spawns grass through the debug command using its source bank and build, then
   expect(controller.currentAnimation).toBe('picking');
   for (let i = 0; i < 60; i++) tickWorld(scheduler, grasses, 1 / 30, new THREE.Quaternion());
   expect(controller.currentAnimation).toBe('picked');
-  const pickedRecord = grasses.exportRecords()[0];
+  const pickedRecord = grasses.exportRecords().map(({ record }) => record)[0];
   expect(pickedRecord.components.pickable?.picked).toBe(true);
   expect(pickedRecord.components.pickable?.regrowSeconds).toBeCloseTo(1438);
-  const pickedRestored = await drawn(grasses.spawn(new THREE.Vector3(...pickedRecord.transform.position), pickedRecord));
+  const pickedRestored = await drawn(grasses.spawn('grass', new THREE.Vector3(...pickedRecord.transform.position), pickedRecord).transform.model);
   expect(plantInstance(pickedRestored).sprite.currentAnimation).toBe('picked');
   expect(plantInstance(pickedRestored).components.pickable.state.phase.peek()).toBe('picked');
   expect(plantInstance(pickedRestored).components.pickable.remainingSeconds).toBeCloseTo(1438);
@@ -87,9 +88,9 @@ it('spawns grass through the debug command using its source bank and build, then
   for (let i = 0; i < 60; i++) tickWorld(scheduler, grasses, 1 / 30, new THREE.Quaternion());
   expect(controller.currentAnimation).toBe('idle');
 
-  const restored = await drawn(grasses.spawn(new THREE.Vector3(...record.transform.position), {
+  const restored = await drawn(grasses.spawn('grass', new THREE.Vector3(...record.transform.position), {
     id: record.id, transform: record.transform, components: {},
-  }));
+  }).transform.model);
   expect(restored.position.toArray()).toEqual([4, 0, -6]);
   expect(lookupPrefabInstance(restored)?.entityId).toBe(record.id);
 
@@ -102,7 +103,7 @@ it('spawns grass through the debug command using its source bank and build, then
   season.set({ season: 'spring', progress: 0 });
   expect(pickable.remainingSeconds).toBe(1080);
 
-  grasses.remove(model as THREE.Group);
+  plantInstance(model as THREE.Group).remove();
   expect(pickable.state.phase.peek()).toBe('removed');
   await new Promise(resolve => setTimeout(resolve, 0));
   expect(model.parent).toBeNull();

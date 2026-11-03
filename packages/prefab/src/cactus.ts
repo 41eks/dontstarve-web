@@ -1,11 +1,12 @@
+import type { PrefabEntityDefinition } from './prefabInstance';
 import { Pickable } from './components/pickable';
 import { DefaultBurnFn, DefaultExtinguishFn, DefaultBurntFn } from './standardcomponents';
-import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import type * as THREE from 'three';
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { WorldContentKey, type SeasonState, type WorldContentSignal } from '@dontstarve-web/signals';
 import type { PickDoer } from '@dontstarve-web/stategraphs/pick';
-import { PickablePlantManager, PickablePlantInstance, type PickablePlantContext,
-  type PickablePlantDefinition, type PickablePlantRecord } from './pickablePlant';
+import { plantEntityDefinition, PickablePlantInstance, type PickablePlantContext,
+  type PickablePlantWorld, type PickablePlantDefinition, type PickablePlantRecord } from './pickablePlant';
 
 export const CACTUS_ID = 'cactus' as const;
 export const OASIS_CACTUS_ID = 'oasis_cactus' as const;
@@ -117,12 +118,6 @@ export const CACTUS_DEFINITIONS: Readonly<Record<CactusId, PickablePlantDefiniti
 };
 
 /** cactus.lua: PICK cactus_meat (and a summer flower) at the cost of thorns, burning and regrowth. */
-export class CactusManager extends PickablePlantManager {
-  spawn(prefabId: CactusId, position: ReadonlyVector3, saved?: CactusRecord): THREE.Group {
-    return this.spawnPlant(CACTUS_DEFINITIONS[prefabId], position, saved);
-  }
-
-  exportRecords(): { prefabId: CactusId; record: CactusRecord }[] {
-    return this.exportPlants().map(({ prefab, record }) => ({ prefabId: prefab as CactusId, record }));
-  }
+export function cactusPrefabs(world: PickablePlantWorld): Readonly<Record<CactusId, PrefabEntityDefinition<PickablePlantInstance>>> {
+  return Object.fromEntries(CACTUS_IDS.map(id => [id, plantEntityDefinition(CACTUS_DEFINITIONS[id], world)])) as Record<CactusId, PrefabEntityDefinition<PickablePlantInstance>>;
 }

@@ -29,7 +29,7 @@ export class PrefabDisplayGroup {
 
   get renderEntities() {
     return [...this.entries].filter(([display]) => !display.isRemoved && display.model.visible && display.model.parent === this.scene)
-      .flatMap(([display, footPosition]) => [{ object: display.model, footPosition, cameraDepth: 0 }, ...display.fxRenderEntries]);
+      .flatMap(([display, footPosition]) => [...display.hasGroundOrder ? [] : [{ object: display.model, footPosition, cameraDepth: 0 }], ...display.fxRenderEntries]);
   }
 
   update(dt: number, cameraRotation?: THREE.Quaternion): void {

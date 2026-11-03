@@ -1,11 +1,11 @@
+import type { PrefabEntityDefinition } from './prefabInstance';
 import { Pickable } from './components/pickable';
 import { Workable } from '../../componets/src/workable';
 import { DefaultExtinguishFn, DefaultBurntFn } from './standardcomponents';
-import type * as THREE from 'three';
 import { Growable } from '../../componets/src/growable';
 import { SimpleMagicGrower } from '../../componets/src/simplemagicgrower';
-import { PickablePlantManager, PickablePlantInstance, type PickablePlantContext,
-  type PickablePlantDefinition, type PickablePlantRecord } from './pickablePlant';
+import { plantEntityDefinition, PickablePlantInstance, type PickablePlantContext,
+  type PickablePlantWorld, type PickablePlantDefinition, type PickablePlantRecord } from './pickablePlant';
 
 export const ROCK_AVOCADO_BUSH_ID = 'rock_avocado_bush' as const;
 export const ROCK_AVOCADO_FRUIT_ID = 'rock_avocado_fruit' as const;
@@ -42,8 +42,8 @@ export class RockAvocadoBushInstance extends PickablePlantInstance {
     this.bindWitherable();
   }
   override initialize(): void {
-    const saved = this.context.saved;
-    if (saved?.components.growable) this.growable.OnLoad(saved.components.growable);
+    const saved = this.saveRecord as PickablePlantRecord | undefined;
+    if (saved?.components.growable) { if (this.context.saved) this.growable.OnLoad(saved.components.growable); }
     else { this.growable.SetStage(1 + Math.floor(Math.random() * 4)); this.growable.StartGrowing(); }
     if (this.components.pickable.IsBarren() || this.hasTag('withered')) this.barren();
     if (saved?.components.burning) this.onBushBurnt();
@@ -105,11 +105,6 @@ export const ROCK_AVOCADO_BUSH_DEFINITION: PickablePlantDefinition = {
   createInstance: context => new RockAvocadoBushInstance(context),
 };
 
-export class RockAvocadoBushManager extends PickablePlantManager {
-  /** A sprout's growtree: SpawnPrefab of a natural bush at `position`; the display loads the art. */
-  spawnNatural(position: THREE.Vector3): THREE.Group { return this.spawnPlant(ROCK_AVOCADO_BUSH_DEFINITION, position); }
-  spawn(position: THREE.Vector3, saved?: PickablePlantRecord): THREE.Group {
-    return this.spawnPlant(ROCK_AVOCADO_BUSH_DEFINITION, position, saved);
-  }
-  exportRecords(): PickablePlantRecord[] { return this.exportPlants().map(({ record }) => record); }
+export function rockAvocadoBushPrefabs(world: PickablePlantWorld): Readonly<Record<typeof ROCK_AVOCADO_BUSH_ID, PrefabEntityDefinition<PickablePlantInstance>>> {
+  return { [ROCK_AVOCADO_BUSH_ID]: plantEntityDefinition(ROCK_AVOCADO_BUSH_DEFINITION, world) };
 }

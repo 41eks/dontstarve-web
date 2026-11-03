@@ -1,8 +1,8 @@
+import type { PrefabEntityDefinition } from './prefabInstance';
 import { Pickable } from './components/pickable';
 import { Workable } from '../../componets/src/workable';
 import { DefaultBurnFn, DefaultExtinguishFn, DefaultBurntFn, MakeNoGrowInWinter } from './standardcomponents';
-import type * as THREE from 'three';
-import { PickablePlantManager, PickablePlantInstance, type PickablePlantContext, type PickablePlantDefinition, type PickablePlantRecord } from './pickablePlant';
+import { plantEntityDefinition, PickablePlantInstance, type PickablePlantContext, type PickablePlantWorld, type PickablePlantDefinition } from './pickablePlant';
 
 export const MONKEYTAIL_ID = 'monkeytail' as const;
 export const MONKEYTAIL_REGROW_TIME = 3 * 480;
@@ -53,9 +53,6 @@ export const MONKEYTAIL_DEFINITION: PickablePlantDefinition = {
 };
 
 /** monkeytail.lua: wild reeds regrow indefinitely; transplanted plants require fertilizer. */
-export class MonkeytailManager extends PickablePlantManager {
-  spawn(position: THREE.Vector3, saved?: PickablePlantRecord): THREE.Group {
-    return this.spawnPlant(MONKEYTAIL_DEFINITION, position, saved);
-  }
-  exportRecords(): PickablePlantRecord[] { return this.exportPlants().map(({ record }) => record); }
+export function monkeytailPrefabs(world: PickablePlantWorld): Readonly<Record<typeof MONKEYTAIL_ID, PrefabEntityDefinition<PickablePlantInstance>>> {
+  return { [MONKEYTAIL_ID]: plantEntityDefinition(MONKEYTAIL_DEFINITION, world) };
 }

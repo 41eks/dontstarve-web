@@ -111,6 +111,9 @@ export class PrefabDisplay {
     image?: number; facingImages?: SpriteJson['facingImages']; facing?: number; facingRotation?: number; facingMode?: SpriteJson['facingMode']; mirrored?: boolean; colour?: readonly number[]; opacity?: number; paused?: boolean; playbackRate?: number; erosion?: number; ground?: SpriteJson['ground']; meshOrder?: number; depthOffset?: boolean; visualHeight?: number;
     skinId?: string; source?: SpriteJson['source']; tint?: SpriteJson['tint']; appearance: ReadonlyMap<string, AppearanceJson> };
 
+  /** Ground declarations keep their explicit group order and do not join billboard foot sorting. */
+  get hasGroundOrder(): boolean { return this.state.sprite.peek().ground !== undefined; }
+
   constructor(options: PrefabDisplayOptions) {
     const { archive, sprite: state } = options;
     const source = options.source ?? (options.empty ? { create: () => new THREE.Group(), release: (model: THREE.Group) => model.removeFromParent() } : undefined);

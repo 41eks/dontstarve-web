@@ -156,10 +156,10 @@ export { GroundPrefabRegistry } from './groundPrefabRegistry';
 export type { GroundItemDefinition, GroundItemVisual, GroundItemFactory, GroundPrefabContext, GroundPrefabOptions } from './groundPrefab';
 export { YELLOWSTAFF_ID, YELLOWSTAFF_COLOUR, YELLOWSTAFF_CAST_TIME, OPALSTAFF_ID, OPALSTAFF_COLOUR, isLightStaff, staffVisual, yellowstaffVisual, getLightStaffController, LIGHT_STAFF_USES, LIGHT_STAFF_SANITY_COST, type LightStaffWorld, type LightStaffId,
   GREENSTAFF_USES, GREENSTAFF_COLOUR, GreenStaffController, getGreenStaffController, deconstructionLoot, type GreenStaffWorld, type DeconstructionTarget } from './staff';
-export { createStaffCastingLightManager, StaffCastingLightInstance, STAFF_CASTINGLIGHT_ID, STAFF_CASTINGLIGHT_SMALL_ID, type StaffCastingLightId } from './staff_castinglight';
+export { staffCastingLightPrefabs, StaffCastingLightInstance, STAFF_CASTINGLIGHT_ID, STAFF_CASTINGLIGHT_SMALL_ID, type StaffCastingLightId } from './staff_castinglight';
 export { TRIDENT_ID, TRIDENT_DAMAGE, TRIDENT_USES, TRIDENT_STRUM_SOUND, TridentController, getTridentController, tridentVisual, type TridentWorld } from './trident';
 export { DWARF_STAR_ID, DWARF_STAR_DURATION, POLAR_LIGHT_ID, POLAR_LIGHT_DURATION,
-  dwarfStarLight, polarLight, createStaffLightManager, StaffLightInstance, type StaffLightId, type StaffLightWorld } from './stafflight';
+  dwarfStarLight, polarLight, staffLightPrefabs, StaffLightInstance, type StaffLightId, type StaffLightWorld } from './stafflight';
 export { PlaySound, PreloadSounds, DisposeSounds, UpdateSoundListener, inverseSquareAttenuation, SOUND_MAX_DISTANCE,
   type SoundEventPath, type SoundHandle } from './sound';
 export { FIREFLIES_ID, FIREFLIES_LIGHT, FirefliesAssets, FirefliesController, createFirefliesGroundSprite, type FirefliesWorld } from './fireflies';

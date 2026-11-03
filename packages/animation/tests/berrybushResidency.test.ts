@@ -1,8 +1,9 @@
+import { plantManager } from './plantManagerFixture';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
-import { BerrybushManager } from '../../prefab/src/berrybush';
+import { berrybushPrefabs } from '../../prefab/src/berrybush';
 import { GroundItemManager } from '../../prefab/src/groundItemManager';
 import { createInventoryStore } from '../../../src/inventory';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -22,11 +23,11 @@ it('restores a sleeping plant with its identity and skin, and finishes burning w
   const player = new THREE.Group(), inventory = createInventoryStore([]);
   const ground = new GroundItemManager(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
-  const bushes = new BerrybushManager(scene, '/dst/data/anim', { tickingarea: () => createMemo(() => awake.get()),
+  const bushes = plantManager(berrybushPrefabs, scene, { tickingarea: () => createMemo(() => awake.get()),
     spawnGroundItem: (definition, position, options) => ground.spawnGroundItem(definition, position, options) });
   try {
-    await drawn(bushes.spawn(new THREE.Vector3(4, 0, 6), { id: 'bush:resident', transform: { position: [4, 0, 6], rotationY: 0 },
-      components: { plant: { skinId: 'berrybush_cawnival' } } }));
+    await drawn(bushes.spawn('berrybush', new THREE.Vector3(4, 0, 6), { id: 'bush:resident', transform: { position: [4, 0, 6], rotationY: 0 },
+      components: { plant: { skinId: 'berrybush_cawnival' } } }).transform.model);
     await tick();
     const model = workTargets('DIG')[0].model;
     const instance = plantInstance(model), components = instance.components;
@@ -38,7 +39,7 @@ it('restores a sleeping plant with its identity and skin, and finishes burning w
     expect(model.parent).toBeNull();
     expect(meshes()).toBe(0);
     expect(lookupPrefabInstance(model)?.entityId).toBe('bush:resident');
-    expect(bushes.exportRecords()[0].id).toBe('bush:resident');
+    expect(bushes.exportRecords().map(({ record }) => record)[0].id).toBe('bush:resident');
     expect(instance.components).toBe(components);
     expect(instance.skinId).toBe('berrybush_cawnival');
 
@@ -62,8 +63,8 @@ it('restores a sleeping plant with its identity and skin, and finishes burning w
     expect(lookupPrefabInstance(fire.display!.model)?.status.peek()).toBe('removed');
     expect(burnable.timer.peek()).toEqual({ status: 'stopped' });
     expect(ground.exportRecords().map(record => record.components.stack?.itemId)).toEqual(['ash']);
-    bushes.remove(model);
+    plantInstance(model).remove();
     expect(model.parent).toBeNull();
-    expect(bushes.exportRecords()).toHaveLength(0);
+    expect(bushes.exportRecords().map(({ record }) => record)).toHaveLength(0);
   } finally { bushes.dispose(); ground.dispose(); inventory.dispose(); scheduler.dispose(); }
 });

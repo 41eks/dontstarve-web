@@ -1,10 +1,10 @@
-import { SpriteState, type PrefabDisplayGroup } from '@dontstarve-web/display';
+import { SpriteState } from '@dontstarve-web/display';
 import type { TileStateQuery } from '@dontstarve-web/signals';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Hauntable, HAUNT_COOLDOWN_MEDIUM } from '../../componets/src/hauntable';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
 import type { SpawnGroundItem } from './groundPrefab';
-import { PrefabEntityManager, PrefabInstance } from './prefabInstance';
+import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { DefaultBurnFn, DefaultBurntFn, DefaultExtinguishFn } from './standardcomponents';
 import { Transform } from './transform';
 import { BurnableBinding, type FireFxHost } from './treeFire';
@@ -44,13 +44,13 @@ export class MarshPlantInstance extends PrefabInstance {
 }
 
 /** The Prefab table marsh_plant.lua returns, as far as it is ported: pond_algae belongs to the unported pond_cave. */
-export function createMarshPlantManager(displays: PrefabDisplayGroup, animationBaseUrl: string, world: MarshPlantWorld) {
-  return new PrefabEntityManager<typeof MARSH_PLANT_ID, MarshPlantInstance>(displays, animationBaseUrl, world, {
+export function marshPlantPrefabs(world: MarshPlantWorld): Readonly<Record<typeof MARSH_PLANT_ID, PrefabEntityDefinition<MarshPlantInstance>>> {
+  return {
     [MARSH_PLANT_ID]: {
       fn: () => new MarshPlantInstance(world),
       assets: { animationArchive: 'marsh_plant.zip', buildArchives: ['marsh_plant.zip'], bank: 'marsh_plant' },
       assetOptions: { instancedAnimations: 'all', staticBillboard: true },
       update: (plant, dt) => plant.burn.update(dt),
     },
-  });
+  };
 }

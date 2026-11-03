@@ -1,4 +1,4 @@
-import { SpriteState, type PrefabDisplayGroup } from '@dontstarve-web/display';
+import { SpriteState } from '@dontstarve-web/display';
 import { WorldContentKey, type GetWatchWorldContent, type TileStateQuery } from '@dontstarve-web/signals';
 import { Vector3 } from 'three';
 import type * as CANNON from 'cannon-es';
@@ -8,7 +8,7 @@ import { SlipperyFeetTarget } from '../../componets/src/slipperyfeettarget';
 import { WILSON_RUN_SPEED } from '../../componets/src/slipperyfeet';
 import { COLLISION } from '../../componets/src/physicsState';
 import { MARSH_PLANT_ID } from './marsh_plant';
-import { PrefabEntityManager, PrefabInstance, type PrefabComponents } from './prefabInstance';
+import { PrefabInstance, type PrefabComponents , type PrefabEntityDefinition } from './prefabInstance';
 import type { PlacementSaveRecord } from './saveRecord';
 import { WORLD_SCALE } from './tile';
 import { MakePondPhysics } from './standardcomponents';
@@ -145,8 +145,8 @@ export class PondInstance extends PrefabInstance<SpriteState, PondComponents> {
 }
 
 /** The Prefab table pond.lua returns, as far as it is ported. */
-export function createPondManager(displays: PrefabDisplayGroup, animationBaseUrl: string, world: PondWorld) {
-  return new PrefabEntityManager<typeof POND_ID, PondInstance>(displays, animationBaseUrl, world, {
+export function pondPrefabs(world: PondWorld): Readonly<Record<typeof POND_ID, PrefabEntityDefinition<PondInstance>>> {
+  return {
     [POND_ID]: {
       fn: () => new PondInstance(world),
       assets: { animationArchive: 'marsh_tile.zip', buildArchives: ['marsh_tile.zip'], bank: 'marsh_tile' },
@@ -154,5 +154,5 @@ export function createPondManager(displays: PrefabDisplayGroup, animationBaseUrl
       minimapIcon: 'pond.png',
       onSpawned: pond => pond.OnInit(),
     },
-  });
+  };
 }

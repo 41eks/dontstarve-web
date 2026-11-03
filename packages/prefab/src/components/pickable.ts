@@ -247,6 +247,31 @@ export class Pickable implements PickableComponent {
   /** Standalone components own a local clock; scene components use the shared scheduler. */
   update(dt: number): void { if (this.ownsScheduler && !this.removed.peek()) this.scheduler.advance(dt); }
 
+  OnSave(): PickableSaveState { return this.exportState(); }
+
+  /** pickable.lua OnLoad: restore data and timers through this component's own state. */
+  OnLoad(saved: PickableSaveState): void {
+    if (!saved || this.removed.peek()) return;
+    batch(() => {
+      this.timer.stop();
+      this.maxCycles = saved.maxCycles ?? this.maxCycles;
+      this.cycles.set(saved.cyclesLeft ?? this.maxCycles);
+      this.transplanted.set(saved.transplanted ?? false);
+      this.protection.set(saved.protectedCycles);
+      if (saved.picked || saved.regrowSeconds !== undefined) {
+        if (this.IsBarren()) this.callbacks?.onBarren?.(true); else this.callbacks?.onEmpty?.();
+        this.ready.set(false);
+      } else this.ready.set(true);
+      this.paused.set(saved.paused ?? false);
+      if (saved.caninteractwith) this.interactable.set(true);
+      if (saved.regrowSeconds !== undefined) {
+        if (saved.paused) this.timer.restorePaused(saved.regrowSeconds); else this.timer.start(saved.regrowSeconds);
+      }
+      this.inst.components.witherable?.Enable(!(saved.protectedCycles && saved.protectedCycles > 0));
+      this.refreshTag();
+    });
+  }
+
   exportState(): PickableSaveState {
     return { ...(!this.ready.peek() ? { picked: true } : {}),
       ...(this.timer.remainingSeconds !== undefined ? { regrowSeconds: this.timer.remainingSeconds } : {}),

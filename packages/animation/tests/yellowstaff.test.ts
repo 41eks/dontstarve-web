@@ -1,7 +1,8 @@
+import { prefabManager } from './prefabManagerFixture';
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it, vi } from 'vitest';
 import { dwarfStarLight } from '../../prefab/src/stafflight';
-import { createStaffCastingLightManager, StaffCastingLightInstance, type StaffCastingLightId } from '../../prefab/src/staff_castinglight';
+import { staffCastingLightPrefabs, StaffCastingLightInstance, type StaffCastingLightId } from '../../prefab/src/staff_castinglight';
 import { BufferedAction } from '../../stategraphs/src/bufferedaction';
 import { createWilsonPlayer, wilsonPlayerInstance, type WilsonAnimationController } from './playerVisual';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src/slots';
@@ -23,7 +24,7 @@ describe('yellowstaff source lighting', () => {
 
   const setupLights = () => {
     const scene = new THREE.Scene(), scheduler = new GameTimeScheduler();
-    const displays = new PrefabDisplayGroup(scene), lights = createStaffCastingLightManager(displays, { scheduler });
+    const displays = new PrefabDisplayGroup(scene), lights = prefabManager(displays, undefined, { scheduler }, staffCastingLightPrefabs);
     const advanceFrames = (count: number) => { for (let i = 0; i < count; i++) scheduler.advance(FRAME); };
     return { lights, displays, scheduler, advanceFrames };
   };

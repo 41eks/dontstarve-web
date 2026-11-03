@@ -1,3 +1,4 @@
+import { prefabManager } from '../../animation/tests/prefabManagerFixture';
 import { advancePlayer, facePlayer, registerPlayer } from '../../animation/tests/playerVisual';
 import { PrefabDisplayGroup } from '../../display/src';
 import { prefabDisplay } from '../../display/src';
@@ -8,7 +9,7 @@ import type { PrefabDisplay } from '../../display/src';
 import { GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { getLightStaffController, type LightStaffId } from '../../prefab/src/staff';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
-import { createStaffLightManager, DWARF_STAR_DURATION, POLAR_LIGHT_DURATION } from '../../prefab/src/stafflight';
+import { staffLightPrefabs, DWARF_STAR_DURATION, POLAR_LIGHT_DURATION } from '../../prefab/src/stafflight';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { PrewarmSounds } from '../../prefab/src/sound';
@@ -87,7 +88,7 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   const starDisplays = new PrefabDisplayGroup(scene);
   const starScheduler = new GameTimeScheduler();
   const prefabId = itemId === 'opalstaff' ? 'staffcoldlight' : 'stafflight';
-  const stars = createStaffLightManager(starDisplays, '/dst/data/anim', { scheduler: starScheduler });
+  const stars = prefabManager(starDisplays, '/dst/data/anim', { scheduler: starScheduler }, staffLightPrefabs);
   const advanceStars = (dt: number) => { starScheduler.advance(dt); stars.update(dt, camera.quaternion); };
   const equipped = inventory.handEquipmentExistenceState;
   const entity = inventory.getEntity(equipmentSlotAddress('hand'))!;
@@ -159,7 +160,7 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
     addresses.some(address => address.containerId === savedAddress.containerId && address.slotKey === savedAddress.slotKey)) }, SAVE_CATALOG.recipes);
   const savedStaff = entity.snapshot();
   const restoredStaff = restoredInventory.getEntity(equipmentSlotAddress('hand'))!.snapshot();
-  const restoredStars = createStaffLightManager(new PrefabDisplayGroup(new THREE.Scene()), '/dst/data/anim', { scheduler: new GameTimeScheduler() });
+  const restoredStars = prefabManager(new PrefabDisplayGroup(new THREE.Scene()), '/dst/data/anim', { scheduler: new GameTimeScheduler() }, staffLightPrefabs);
   const starSave = saved.world.entities[prefabId][0];
   restoredStars.spawn(prefabId, new THREE.Vector3(...starSave.transform.position), starSave);
   const restoredStar = restoredStars.exportRecords()[0].record;

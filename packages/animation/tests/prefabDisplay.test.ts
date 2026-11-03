@@ -18,6 +18,17 @@ import type { WorldContext } from '../../prefab/src/worldContext';
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
 
+it('preserves ground ordering when ground art and billboards share one display group', () => {
+  const scene = new THREE.Scene(), group = new PrefabDisplayGroup(scene);
+  const ground = createEmptyEntity('ground'), billboard = createEmptyEntity('billboard');
+  ground.instance.sprite.setGround(0);
+  try {
+    group.mount(ground.display); group.mount(billboard.display);
+    expect(ground.display.model.parent).toBe(scene);
+    expect(group.renderEntities.map(entry => entry.object)).toEqual([billboard.display.model]);
+  } finally { ground.instance.remove(); billboard.instance.remove(); group.dispose(); }
+});
+
 it('lets the display group own an adopted display across sleep, wake and scene teardown', async () => {
   const scene = new THREE.Scene(), group = new PrefabDisplayGroup(scene);
   const { instance, display } = createEmptyEntity('adopted');

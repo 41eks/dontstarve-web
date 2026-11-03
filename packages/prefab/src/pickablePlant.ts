@@ -1,8 +1,7 @@
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { Transform } from './transform';
-import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
-import { createRenderEffect, createMemo, getBoundWatchWorldContent, WorldContentKey, type Memo, type ReadonlySignal, type WorldContentSignal, type GetWatchWorldContent, type SeasonState, type TileStateQuery } from '@dontstarve-web/signals';
+import { createRenderEffect, createMemo, WorldContentKey, type Memo, type ReadonlySignal, type GetWatchWorldContent, type TileStateQuery } from '@dontstarve-web/signals';
 import { Witherable, type WitherableSave } from '../../componets/src/witherable';
 import { newEntityId } from './saveRecord';
 import type { Pickable, PickableSaveState } from './components/pickable';
@@ -17,10 +16,8 @@ import catalog from './groundItems.json' with { type: 'json' };
 import { MakeObstaclePhysics, MakeSmallObstaclePhysics } from './standardcomponents';
 import type { ItemEntity, InventoryStack } from '@dontstarve-web/inventory';
 import { reskinTarget } from './reskin_tool';
-import type { ReskinTarget } from '../../stategraphs/src/reskin_tool';
-import { watchTileActivity } from './tileActivity';
-import { bindInstance, PrefabInstance } from './prefabInstance';
-import { PrefabDisplayGroup, SpriteResources, SpriteState, type ArchiveSpriteSource, type PrefabDisplay } from '@dontstarve-web/display';
+import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
+import { SpriteState, prefabDisplay } from '@dontstarve-web/display';
 import type { GrowableSave } from '../../componets/src/growable';
 import type { Growable } from '../../componets/src/growable';
 import type { SimpleMagicGrower } from '../../componets/src/simplemagicgrower';
@@ -38,7 +35,10 @@ export interface PickablePlantRecord {
 }
 
 export interface PickablePlantWorld {
-  /** Season, snow level and the scheduler come from the bound world content. */
+  readonly scheduler: GameTimeScheduler;
+  readonly fire: FireFxHost;
+  readonly getWatchWorldContent?: GetWatchWorldContent;
+  /** Rain belongs to the injected world. */
   rain?: ReadonlySignal<'none' | 'rain' | 'snow'>;
   /** Without it every plant is active. */
   tickingarea?: TileStateQuery;
@@ -109,10 +109,9 @@ export abstract class PickablePlantInstance extends PrefabInstance {
     growable?: Growable;
     simplemagicgrower?: SimpleMagicGrower;
   };
-  readonly variant?: string;
+  variant?: string;
   readonly definition: PickablePlantDefinition;
   readonly context: PickablePlantContext;
-  transitionAt: number;
   private animationVersion = 0;
   private pickSound?: SoundHandle;
   private phaseMemo?: Memo<string>;
@@ -130,7 +129,14 @@ export abstract class PickablePlantInstance extends PrefabInstance {
     const animation = new SpriteState({ ...initial, billboard: true });
     super(prefab, animation, Transform.stationary());
     this.definition = definition; this.context = context; this.variant = variant;
-    this.transitionAt = context.scheduler.now;
+    if (definition.snowCovered) {
+      this.sprite.setSymbolOverride('snow', 'snow.zip', 'snow');
+      const snow = context.getWatchWorldContent?.(WorldContentKey.SnowLevel, stop => this.onRemove(stop));
+      const stopEffect = createRenderEffect(() => {
+        if ((snow?.get() ?? 0) >= .015) this.sprite.showLayer('snow'); else this.sprite.hideLayer('snow');
+      });
+      this.onRemove(stopEffect);
+    }
     this.skinId = context.skinId; this.saveRecord = saved;
     this.entityId = saved?.id ?? newEntityId();
     this.setPosition(position.x, position.y, position.z);
@@ -158,7 +164,6 @@ export abstract class PickablePlantInstance extends PrefabInstance {
   /** Generic clip playback; each prefab supplies its own clips and callbacks. */
   play(clips: readonly string[], loopLast = false, onFirstOver?: () => void): void {
     const version = ++this.animationVersion;
-    this.transitionAt = this.context.scheduler.now;
     const play = (index: number) => {
       if (this.isRemoved || this.animationVersion !== version) return;
       if (index === clips.length - 1 && loopLast) this.sprite.start(clips[index]);
@@ -186,6 +191,45 @@ export abstract class PickablePlantInstance extends PrefabInstance {
       saved?.components.witherable, saved?.components.pickable?.protectedCycles);
   }
 
+  /** The common normalized plant record; component state is supplied by its owner. */
+  OnSave(_inst: unknown, data: PickablePlantRecord['components']): void {
+    data.pickable = this.components.pickable.OnSave();
+    if (this.components.witherable) data.witherable = this.components.witherable.OnSave();
+    if (this.definition.skins) data.plant = this.skinId ? { skinId: this.skinId } : {};
+    if (this.variant) data.variant = { anim: this.variant };
+    if (this.components.burnable.IsBurning()) data.burning = true;
+    Object.assign(data, this.exportState());
+  }
+
+  OnLoad(_inst: unknown, data: PickablePlantRecord['components']): void {
+    const skinId = data.plant?.skinId;
+    if (skinId !== undefined && !this.definition.skins?.includes(skinId)) throw new Error(`Unsupported ${this.prefab} skin: ${skinId}`);
+    this.skinId = skinId;
+    if (data.variant) {
+      if (!this.definition.variants?.includes(data.variant.anim)) throw new Error(`Unsupported ${this.prefab} variant: ${data.variant.anim}`);
+      this.variant = data.variant.anim; this.sprite.playOnce(this.variant);
+    }
+    // Loading restores the settled pose instead of replaying a pick or a wither transition.
+    if (data.pickable?.cyclesLeft === 0 && this.definition.barren) { this.sprite.playOnce(this.definition.barren); this.sprite.setFrameAt(1); }
+    else if (data.pickable?.picked && this.definition.empty) {
+      this.sprite.playOnce(this.definition.empty.name);
+      if (this.definition.empty.frame === 'last') this.sprite.setFrameAt(1);
+    }
+  }
+
+  /** Bind an optional reskin operation on the real entity once its display exists. */
+  onSpawned(): void {
+    const { skins } = this.definition;
+    if (skins) {
+      const display = prefabDisplay(this.transform.model)!;
+      actionEntity(this.transform.model, this.prefab).reskinTarget = reskinTarget({
+        id: String(this.entityId), prefabId: this.prefab, instance: this, display, sprite: this.sprite,
+        position: this.position, skins, isValid: () => !this.isRemoved, hasTag: tag => this.hasTag(tag),
+      });
+    }
+    this.initialize();
+  }
+
   /** Prefab-owned initialization/restoration after the world's activity and physics bindings exist. */
   initialize(): void {}
   exportState(): PickablePlantRecord['components'] { return {}; }
@@ -200,172 +244,26 @@ export abstract class PickablePlantInstance extends PrefabInstance {
   }
 }
 
-interface Plant {
-  readonly definition: PickablePlantDefinition;
-  readonly instance: PickablePlantInstance;
-  readonly display: PrefabDisplay;
-  readonly entity: ReturnType<typeof actionEntity>;
-  stopActivity?: () => void;
-}
-
-/** Tracks prefab-owned plants and their shared display resources. */
-export class PickablePlantManager {
-  private readonly resources: SpriteResources;
-  private readonly displays: PrefabDisplayGroup;
-  private readonly fire: FireFxHost;
-  private readonly plants = new Map<THREE.Object3D, Plant>();
-  private readonly scheduler: GameTimeScheduler;
-  private readonly ownsScheduler: boolean;
-  private readonly cleanups: (() => void)[] = [];
-  private readonly season?: WorldContentSignal<SeasonState>;
-  private snowLevel?: WorldContentSignal<number>;
-  private readonly getWatchWorldContent?: GetWatchWorldContent;
-  private disposed = false;
-
-  private readonly world: PickablePlantWorld;
-
-  constructor(scene: THREE.Scene, assetBaseUrl: string, world: PickablePlantWorld) {
-    this.world = world;
-    this.displays = new PrefabDisplayGroup(scene);
-    this.fire = FireFxHost.create(assetBaseUrl);
-    this.resources = new SpriteResources(assetBaseUrl, 'pickable_plant');
-    this.getWatchWorldContent = getBoundWatchWorldContent();
-    if (this.getWatchWorldContent) {
-      this.season = this.getWatchWorldContent(WorldContentKey.Season, cleanup => this.cleanups.push(cleanup));
-    }
-    this.scheduler = this.season?.scheduler ?? new GameTimeScheduler();
-    this.ownsScheduler = !this.season;
-  }
-
-  /** SpawnPrefab: the plant, its components and its display exist now; the display loads and draws the art. */
-  protected spawnPlant(definition: PickablePlantDefinition, position: ReadonlyVector3, saved?: PickablePlantRecord,
-    skinId = saved?.components.plant?.skinId): THREE.Group {
-    const { prefab } = definition;
-    if (this.disposed) throw new Error(`${prefab} manager has been disposed`);
-    if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError(`Invalid ${prefab} position`);
-    if (skinId !== undefined && !definition.skins?.includes(skinId)) throw new Error(`Unsupported ${prefab} skin: ${skinId}`);
-    if (definition.snowCovered && !this.snowLevel && this.getWatchWorldContent) {
-      const snowLevel = this.snowLevel = this.getWatchWorldContent(WorldContentKey.SnowLevel, stop => this.cleanups.push(stop));
-      const covered = createMemo(() => snowLevel.get() >= .015);
-      createRenderEffect(() => {
-        const hidden = !covered.get();
-        for (const plant of this.plants.values()) if (plant.definition.snowCovered) {
-          if (hidden) plant.instance.sprite.hideLayer('snow'); else plant.instance.sprite.showLayer('snow');
-        }
-      });
-    }
-    const season = this.season;
-    const instance = definition.createInstance({ position, saved, skinId, world: this.world, scheduler: this.scheduler,
-      fire: this.fire, getWatchWorldContent: this.getWatchWorldContent,
-      growthDuration: seconds => season?.peek().season === 'spring' ? seconds * .75 : seconds });
-    if (definition.skins) instance.sprite.setSkinSource({ art: this.resources.archives,
-      archives: Object.fromEntries(definition.skins.map(skin => [skin, `dynamic/${skin}.zip`])) });
-    const display = this.displays.add({ root: instance.transform.model, name: prefab, archive: this.archiveSource(definition),
-      status: instance.status, sprite: instance.sprite, light: instance.light });
-    bindInstance(display.model, instance);
-    const model = display.model;
-    if (definition.snowCovered) {
-      instance.sprite.setSymbolOverride('snow', 'snow.zip', 'snow');
-      if ((this.snowLevel?.peek() ?? 0) >= .015) instance.sprite.showLayer('snow'); else instance.sprite.hideLayer('snow');
-    }
-    const entity = actionEntity(model, prefab, instance);
-    const plant: Plant = { definition, instance, display, entity };
-    this.plants.set(model, plant);
-    instance.onRemove(() => this.releasePlant(plant));
-    entity.reskinTarget = this.createReskinTarget(plant);
-    plant.stopActivity = watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active));
-    if (definition.minimapIcon) {
-      instance.minimap.SetIcon(definition.minimapIcon);
-    }
-    if (definition.physicsRadius !== undefined) {
-      (definition.obstaclePhysics ? MakeObstaclePhysics : MakeSmallObstaclePhysics)(instance, definition.physicsRadius);
-      if (this.world.physics) instance.bindPhysics(this.world.physics);
-    }
-    instance.initialize();
-    return model;
-  }
-
-  update(dt: number, cameraQuaternion: THREE.Quaternion): void {
-    if (this.disposed) return;
-    if (this.ownsScheduler) this.scheduler.advance(dt);
-    const now = this.scheduler.now;
-    for (const { display, instance } of this.plants.values()) {
-      display.update(Math.min(dt, now - instance.transitionAt), cameraQuaternion);
-      instance.components.burnable.UpdateFX(dt);
-    }
-  }
-
-  /** A sleeping plant draws nothing, so it has no order to resolve. */
-  get renderEntities() {
-    return this.displays.renderEntities;
-  }
-
-  /** The logical plant behind this manager's display, including while it sleeps. */
-  getInstance(model: THREE.Object3D): PickablePlantInstance | undefined {
-    return this.plants.get(model)?.instance;
-  }
-  get reskinTargets(): readonly ReskinTarget[] {
-    return Array.from(this.plants.values(), plant => plant.entity.reskinTarget)
-      .filter((target): target is ReskinTarget => target !== undefined);
-  }
-
-  private createReskinTarget(plant: Plant): ReskinTarget | undefined {
-    const { definition, display, instance } = plant;
-    if (!definition.skins) return undefined;
-    const isValid = () => !this.disposed && !instance.isRemoved && this.plants.get(display.model) === plant;
-    return reskinTarget({
-      get id() { return String(instance.entityId); }, prefabId: definition.prefab, instance, display, sprite: instance.sprite as SpriteState,
-      position: instance.position, skins: definition.skins, isValid, hasTag: (tag: string) => instance.hasTag(tag),
-    });
-  }
-
-  /** The plant's shared archive art for a skin; its displays load it. */
-  private archiveSource(definition: PickablePlantDefinition): ArchiveSpriteSource {
-    return this.resources.archive({ animationArchive: definition.animArchive,
-      buildArchives: [definition.buildArchive, ...definition.snowCovered ? ['snow.zip'] : []], bank: definition.archiveSprite.bank,
-      hiddenLayers: definition.snowCovered ? ['snow'] : [] },
-    // A per-plant SetMultColour needs sprites that own their colour.
-    { instancedAnimations: definition.archiveSprite.instancedAnimations, staticBillboard: true,
-      ...definition.multColour ? { colour: [1, 1, 1] as [number, number, number] } : {} });
-  }
-
-  protected exportPlants(): { prefab: string; record: PickablePlantRecord }[] {
-    this.scheduler.advanceTo(this.scheduler.now);
-    return [...this.plants.values()].filter(({ instance }) => instance.persists).map(({ definition, instance }) => {
-      const { pickable, witherable, burnable } = instance.components;
-      return {
-        prefab: definition.prefab,
-        record: {
-          id: String(instance.entityId),
-          transform: { position: instance.position.toArray() as [number, number, number], rotationY: 0 },
-          components: { ...(definition.skins ? { plant: instance.skinId ? { skinId: instance.skinId } : {} } : {}), pickable: pickable.exportState(), ...(witherable ? { witherable: witherable.exportState() } : {}),
-            ...instance.exportState(), ...(instance.variant ? { variant: { anim: instance.variant } } : {}), ...(burnable.IsBurning() ? { burning: true as const } : {}) },
-        },
-      };
-    });
-  }
-
-  remove(model: THREE.Object3D): void {
-    const plant = this.plants.get(model);
-    if (!plant) return;
-    plant.instance.remove();
-  }
-
-  private releasePlant(plant: Plant): void {
-    const { display } = plant;
-    this.plants.delete(display.model);
-    plant.stopActivity?.();
-    display.dispose();
-  }
-
-  dispose(): void {
-    if (this.disposed) return;
-    this.disposed = true;
-    this.cleanups.splice(0).forEach(cleanup => cleanup());
-    for (const model of this.plants.keys()) this.remove(model);
-    this.displays.dispose();
-    this.fire.dispose();
-    this.resources.dispose();
-    if (this.ownsScheduler) this.scheduler.dispose();
-  }
+/** Art and component-update declarations handed to the generic SpawnPrefab manager. */
+export function plantEntityDefinition(definition: PickablePlantDefinition, world: PickablePlantWorld): PrefabEntityDefinition<PickablePlantInstance> {
+  return {
+    fn: position => {
+      let stopSeason: (() => void) | undefined;
+      const season = world.getWatchWorldContent?.(WorldContentKey.Season, stop => { stopSeason = stop; });
+      const instance = definition.createInstance({ position, world, scheduler: world.scheduler, fire: world.fire,
+        getWatchWorldContent: world.getWatchWorldContent, growthDuration: seconds => season?.peek().season === 'spring' ? seconds * .75 : seconds });
+      if (stopSeason) instance.onRemove(stopSeason);
+      return instance;
+    },
+    assets: { animationArchive: definition.animArchive, buildArchives: [definition.buildArchive, ...definition.snowCovered ? ['snow.zip'] : []],
+      bank: definition.archiveSprite.bank, hiddenLayers: definition.snowCovered ? ['snow'] : [] },
+    assetOptions: { instancedAnimations: definition.archiveSprite.instancedAnimations, staticBillboard: true,
+      ...definition.multColour ? { colour: [1, 1, 1] as [number, number, number] } : {} },
+    skins: definition.skins && Object.fromEntries(definition.skins.map(skin => [skin, `dynamic/${skin}.zip`])),
+    physics: definition.physicsRadius === undefined ? undefined : {
+      make: definition.obstaclePhysics ? MakeObstaclePhysics : MakeSmallObstaclePhysics, radius: definition.physicsRadius },
+    minimapIcon: definition.minimapIcon,
+    onSpawned: plant => plant.onSpawned(),
+    update: (plant, dt) => plant.components.burnable.UpdateFX(dt),
+  };
 }

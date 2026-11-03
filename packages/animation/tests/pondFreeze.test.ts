@@ -1,3 +1,4 @@
+import { prefabManager } from './prefabManagerFixture';
 import { createSignal, createMemo } from '@dontstarve-web/signals';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { prefabDisplay } from '@dontstarve-web/display';
@@ -6,7 +7,7 @@ import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { PrefabDisplayGroup } from '../../display/src';
-import { createPondManager, POND_ID } from '../../prefab/src/pond';
+import { pondPrefabs, POND_ID } from '../../prefab/src/pond';
 import { COLLISION } from '../../componets/src/physicsState';
 import * as CANNON from 'cannon-es';
 import { GameTimeScheduler } from '../../signals/src';
@@ -22,7 +23,7 @@ it('freezes above snowlevel 0.02, thaws below it, applies to later ponds and sto
   const tick = () => new Promise(resolve => setTimeout(resolve, 0));
   const world = createWorldState({ map: testMap(), elapsedSeconds: 0, systems: {} }), scene = new THREE.Scene();
   const snow = { set: (snowlevel: number) => world.weather.OnLoad({ ...world.weather.OnSave(), snowlevel }) };
-  const ponds = createPondManager(new PrefabDisplayGroup(scene), '/dst/data/anim', { scheduler: new GameTimeScheduler(), getWatchWorldContent: world.getWatchWorldContent });
+  const ponds = prefabManager(new PrefabDisplayGroup(scene), '/dst/data/anim', { scheduler: new GameTimeScheduler(), getWatchWorldContent: world.getWatchWorldContent }, pondPrefabs);
   try {
     const first = ponds.spawn(POND_ID, new THREE.Vector3());
     expect(first.frozen).toBe(false);
@@ -51,7 +52,7 @@ it('sleeps with its tile, keeps freezing while asleep and is drawn at its spawn 
   const snow = { set: (snowlevel: number) => world.weather.OnLoad({ ...world.weather.OnSave(), snowlevel }) };
   const awake = createSignal(true);
   const tickingarea = (() => { const memo = createMemo(() => awake.get()); return Object.assign(memo, { dispose() {} }); }) as never;
-  const ponds = createPondManager(new PrefabDisplayGroup(scene), '/dst/data/anim', { scheduler: new GameTimeScheduler(), tickingarea, getWatchWorldContent: world.getWatchWorldContent });
+  const ponds = prefabManager(new PrefabDisplayGroup(scene), '/dst/data/anim', { scheduler: new GameTimeScheduler(), tickingarea, getWatchWorldContent: world.getWatchWorldContent }, pondPrefabs);
   try {
     const pond = ponds.spawn(POND_ID, new THREE.Vector3(12, 3, -4));
     const model = scene.children.find(child => prefabInstance(child) === pond)!;
@@ -77,7 +78,7 @@ it('declares its obstacle physics and map icon, and frozen ice stops blocking ch
   const tick = () => new Promise(resolve => setTimeout(resolve, 0));
   const world = createWorldState({ map: testMap(), elapsedSeconds: 0, systems: {} }), physics = new CANNON.World();
   const snow = { set: (snowlevel: number) => world.weather.OnLoad({ ...world.weather.OnSave(), snowlevel }) };
-  const ponds = createPondManager(new PrefabDisplayGroup(new THREE.Scene()), '/dst/data/anim', { scheduler: new GameTimeScheduler(), physics, getWatchWorldContent: world.getWatchWorldContent });
+  const ponds = prefabManager(new PrefabDisplayGroup(new THREE.Scene()), '/dst/data/anim', { scheduler: new GameTimeScheduler(), physics, getWatchWorldContent: world.getWatchWorldContent }, pondPrefabs);
   try {
     const pond = ponds.spawn(POND_ID, new THREE.Vector3(30, 0, 6));
     expect(pond.hasTag('blocker')).toBe(true);

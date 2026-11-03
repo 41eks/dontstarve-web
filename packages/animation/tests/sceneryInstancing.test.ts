@@ -1,3 +1,4 @@
+import { plantManager } from './plantManagerFixture';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -5,7 +6,7 @@ import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { prefabDisplay, type PrefabDisplay } from '@dontstarve-web/display';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { StalagmiteManager } from '../../prefab/src/stalagmite';
-import { LichenManager } from '../../prefab/src/lichen';
+import { lichenPrefabs } from '../../prefab/src/lichen';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { prewarmScenePasses, renderScenePasses } from '../src/sceneRenderPass';
 import { bindTestWorld } from './worldContentFixture';
@@ -31,7 +32,7 @@ it('batches both stalagmite banks and the lichen idle loop, retaining instance t
   const tickingarea = () => createMemo(() => awake.get());
   const rocks = new StalagmiteManager(scene, { scheduler, tickingarea, spawnLoot: () => undefined,
     trackDisplay: display => displays.add(display) });
-  const lichens = new LichenManager(scene, '/dst/data/anim', { tickingarea, spawnGroundItem: () => undefined });
+  const lichens = plantManager(lichenPrefabs, scene, { tickingarea, spawnGroundItem: () => undefined });
   const camera = new THREE.OrthographicCamera(-20, 20, 20, -20, .1, 1000);
   camera.position.set(0, 30, 30); camera.lookAt(0, 0, 0);
   const renderer = { domElement: new EventTarget(), capabilities: { maxTextureSize: 4096 }, extensions: { has: () => false },
@@ -50,7 +51,7 @@ it('batches both stalagmite banks and the lichen idle loop, retaining instance t
     const models = [
       rocks.spawn('stalagmite', new THREE.Vector3(-6, 0, 0)), rocks.spawn('stalagmite_full', new THREE.Vector3(-4, 0, 0)),
       rocks.spawn('stalagmite_tall', new THREE.Vector3(-1, 0, 0)), rocks.spawn('stalagmite_tall_full', new THREE.Vector3(1, 0, 0)),
-      lichens.spawn(new THREE.Vector3(5, 0, 0)), lichens.spawn(new THREE.Vector3(7, 0, 0)),
+      lichens.spawn('lichen', new THREE.Vector3(5, 0, 0)).transform.model, lichens.spawn('lichen', new THREE.Vector3(7, 0, 0)).transform.model,
     ];
     const instances = models.map(model => prefabInstance(model)!);
     // Compare two copies of one tall pose; the source's random handedness is otherwise independent per entity.
@@ -80,7 +81,7 @@ it('batches both stalagmite banks and the lichen idle loop, retaining instance t
     expect(Array.from(uv.array)).not.toEqual(before); // Looping idle advances inside the same mesh.
     expect(batches()).toEqual(initial);
 
-    const saved = [rocks.exportRecords(), lichens.exportRecords()], requests = vi.mocked(fetch).mock.calls.length;
+    const saved = [rocks.exportRecords(), lichens.exportRecords().map(({ record }) => record)], requests = vi.mocked(fetch).mock.calls.length;
     awake.set(false); await new Promise(resolve => setTimeout(resolve, 0));
     renderScenePasses(renderer, scene, camera);
     expect(batches()).toHaveLength(0);
@@ -90,7 +91,7 @@ it('batches both stalagmite banks and the lichen idle loop, retaining instance t
     expect(batches().map(mesh => mesh.count).sort()).toEqual([2, 2, 2]);
     expect(batches().every(mesh => initial.includes(mesh))).toBe(true);
     expect(vi.mocked(fetch).mock.calls).toHaveLength(requests);
-    expect([rocks.exportRecords(), lichens.exportRecords()]).toEqual(saved);
+    expect([rocks.exportRecords(), lichens.exportRecords().map(({ record }) => record)]).toEqual(saved);
     expect(instances.map(inst => inst.sprite.sprite.peek().colour![0])).toEqual(greys);
   } finally { rocks.dispose(); lichens.dispose(); world.unbind(); scheduler.dispose(); }
 });

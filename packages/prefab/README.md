@@ -285,7 +285,7 @@ RGB `(237,237,209)/255`。范围不随掉落堆叠数量增加，也没有火把
 `getLightStaffController(entity, world)` 在真实物品实体上配置 `SpellCaster`，按法杖自身 ID 选择 `stafflight` / `staffcoldlight`，黄／蓝法杖分别为 20／50 次。`onequip(slotSignal)` 绑定装备生命周期，卸下只解除绑定，耗尽通过实体的库存 owner 移除。`SpellCastActionController` 读取组件和能力标签、共享鼠标动作选择器及真实 `BufferedAction.invobject`，不包含法杖 ID、星体 Manager 或法术函数；异步准备完成后进入状态图，过远先接近，尚未提交的装备替换使旧动作失效。第 53 帧释放临时光效的取消所有权，剩余光效自然结束；第 69 帧解除 busy 并恢复世界输入。
 
 `@dontstarve-web/prefab/stafflight` 的 `StaffLightInstance` 按 `stafflight.lua` 的 `fn()` 组装矮星（`stafflight`）和极光（`staffcoldlight`）：
-标签、`heater`、`sanityaura`、`hauntable`、`timer`，矮星另有 `propagator`。`createStaffLightManager` 把两颗星声明给通用的 `PrefabEntityManager`（`prefabInstance.ts`），后者只管理集合、注入的世界和共享 archive；存档按组件写入（`components.timer` 即 `timer.lua` 的 `OnSave`）。`PrefabEntityDefinition` 还可以声明 `physics`（`Make*Physics` 与半径）和 `minimapIcon`，`pond` 用它们声明障碍物碰撞和地图图标。
+标签、`heater`、`sanityaura`、`hauntable`、`timer`，矮星另有 `propagator`。`staffLightPrefabs` 提供两颗星的构造与资源声明，由应用注册到全局唯一的 `PrefabEntityManager`（`prefabInstance.ts`）；所有已迁移的 prefab 共用其实体集合、显示生命周期与共享 archive 缓存；存档按组件写入（`components.timer` 即 `timer.lua` 的 `OnSave`）。`PrefabEntityDefinition` 还可以声明 `physics`（`Make*Physics` 与半径）和 `minimapIcon`，`pond` 用它们声明障碍物碰撞和地图图标。
 `star_hot.zip` 播放 `appear → idle_loop`，`star_cold.zip` 在 `appear` 后随 `animover` 随机切换三个待机；到期或作祟时走 `kill_light`：
 播放 `disappear`、`persists = false`，1 秒后移除。局部光源由 0.1 秒周期任务脉动，半径 33～36 世界单位。
 寿命（矮星 1440 秒）在世界 `GameTimeScheduler` 上的 `extinguish` timer 中计时，休眠不暂停；存档保存落点和剩余寿命。

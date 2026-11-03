@@ -1,10 +1,11 @@
 import type { ReadonlyVector3 } from '@dontstarve-web/animation/transformRoot';
 import type * as THREE from 'three';
+import { Vector3 } from 'three';
 import type { ResidentEntity } from '@dontstarve-web/animation/residentSprite';
 import type { SavedEntity } from './save/types';
 import type { PrefabDefinition } from './prefabDefinitions';
 import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
-import { PrefabInstance, prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
+import { PrefabInstance, PrefabEntityManager, prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import type { DisplayDrivenPrefabManager } from '@dontstarve-web/prefab/manager';
 
 /** What a restore handler hands back for the saved id: the logical entity, or for older managers its model. */
@@ -60,8 +61,12 @@ export class EntityRegistry {
   /** Reused each frame: render ordering reads the list before the next frame refills it. */
   private readonly renderEntries: EntityRenderEntry[] = [];
 
+  private readonly prefabs?: PrefabEntityManager<string, PrefabInstance>;
+  private readonly spawnPosition?: () => THREE.Vector3;
+
   /** Construction dependencies may differ from the required frame/update and disposal order. */
-  constructor(lifecycleOrder: readonly PrefabDefinition[] = []) {
+  constructor(lifecycleOrder: readonly PrefabDefinition[] = [], prefabs?: PrefabEntityManager<string, PrefabInstance>, spawnPosition?: () => THREE.Vector3) {
+    this.prefabs = prefabs; this.spawnPosition = spawnPosition;
     this.lifecycleOrder = new Map(lifecycleOrder.map((definition, index) => [definition, index]));
   }
 
@@ -86,6 +91,18 @@ export class EntityRegistry {
     this.registrations.push({ ...registration, definition, restore: undefined, debugSpawn: undefined });
     this.registrations.sort((a, b) =>
       (this.lifecycleOrder.get(a.definition) ?? this.lifecycleOrder.size) - (this.lifecycleOrder.get(b.definition) ?? this.lifecycleOrder.size));
+  }
+
+  /** Expose a registered prefab family through commands/restoration; its shared owner is advanced and saved once. */
+  registerPrefabs<PrefabId extends string>(definition: PrefabDefinition<PrefabId>): void {
+    if (!this.prefabs) throw new Error('No shared prefab manager');
+    if (definition.debugSpawnIds.length && !this.spawnPosition) throw new Error('No debug spawn position');
+    for (const id of new Set([...definition.prefabIds, ...definition.debugSpawnIds])) if (!this.prefabs.has(id)) throw new Error(`Missing prefab declaration: ${id}`);
+    this.register(definition, {
+      restore: (id, record) => this.prefabs!.spawn(id, new Vector3(...record.transform.position), record),
+      debugSpawn: definition.debugSpawnIds.length ? id => this.prefabs!.spawn(id, this.spawnPosition!()) : undefined,
+      exportRecords: () => [], dispose: () => {},
+    });
   }
 
   /** Bind a display-driven manager without exposing an update callback at the scene registration site. */
@@ -114,6 +131,7 @@ export class EntityRegistry {
 
   /** SpawnPrefab for game code: the logical inst exists now and its display loads the art. */
   SpawnPrefab(prefabId: string, position: THREE.Vector3, skinId?: string): PrefabInstance | undefined {
+    if (this.prefabs?.has(prefabId)) return this.prefabs.spawn(prefabId, position, undefined, skinId);
     const spawn = this.spawners.get(prefabId);
     if (!spawn) throw new Error(`No SpawnPrefab registered for ${prefabId}`);
     const spawned = spawn(position, skinId);
@@ -163,6 +181,12 @@ export class EntityRegistry {
         }) as SavedEntity);
       }
     }
+    for (const { prefabId, record } of this.prefabs?.exportRecords() ?? []) {
+      if (!this.restorers.has(prefabId)) throw new Error(`Unregistered exported prefab: ${prefabId}`);
+      if (ids.has(record.id)) throw new Error(`Duplicate entity ID: ${record.id}`);
+      ids.add(record.id);
+      (entities[prefabId] ??= []).push(structuredClone(record) as SavedEntity);
+    }
     return entities;
   }
 
@@ -180,6 +204,7 @@ export class EntityRegistry {
   update(dt: number, cameraQuaternion: THREE.Quaternion): void {
     if (this.disposed) return;
     for (const registration of this.registrations) registration.update?.(dt, cameraQuaternion);
+    this.prefabs?.update(dt, cameraQuaternion);
     for (const display of this.displays) display.update(dt, cameraQuaternion);
   }
 
@@ -192,6 +217,7 @@ export class EntityRegistry {
       const provided = registration.renderEntities?.();
       if (provided) for (let i = 0; i < provided.length; i++) entries.push(provided[i]);
     }
+    if (this.prefabs) for (const entry of this.prefabs.renderEntities) entries.push(entry);
     return entries;
   }
 
@@ -203,6 +229,7 @@ export class EntityRegistry {
     for (const registration of [...this.registrations].reverse()) {
       try { registration.dispose(); } catch (error) { errors.push(error); }
     }
+    try { this.prefabs?.dispose(); } catch (error) { errors.push(error); }
     this.displays.clear();
     if (errors.length) throw new AggregateError(errors, 'Unable to dispose scene entities');
   }

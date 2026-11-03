@@ -1,7 +1,8 @@
+import { plantManager } from './plantManagerFixture';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
-import { CactusManager, CACTUS_DAMAGE, CACTUS_REGROW_TIME } from '../../prefab/src/cactus';
+import { cactusPrefabs, CACTUS_DAMAGE, CACTUS_REGROW_TIME } from '../../prefab/src/cactus';
 import { ARMOR_DREADSTONEHAT, DREADSTONEHAT_ID } from '../../prefab/src/dreadstonehat';
 import { Combat, type CombatActor } from '../../componets/src/combat';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -28,7 +29,7 @@ async function setup() {
   const scheduler = new GameTimeScheduler();
   const world = bindTestWorld(scheduler);
   const inventory = createPickupInventory();
-  const cacti = new CactusManager(new THREE.Scene(), '/dst/data/anim', {
+  const cacti = plantManager(cactusPrefabs, new THREE.Scene(), {
     spawnGroundItem: () => undefined,
     spawnItem: state => { const entity = inventory.entities.create(state); inventory.configureItem(entity); return entity; },
   });
@@ -50,7 +51,7 @@ async function setup() {
 it('pricks the picker through worn armor, empties and regrows, giving a flower only in summer', async () => {
   const test = await setup();
   try {
-    const cactus = await test.cacti.spawn('cactus', new THREE.Vector3(1, 0, 1));
+    const cactus = await test.cacti.spawn('cactus', new THREE.Vector3(1, 0, 1)).transform.model;
     expect(plantInstance(cactus).sprite.currentAnimation).toBe('idle');
     expect(prefabInstance(cactus)!.minimap.icon).toBe('cactus.png');
     const physics = () => prefabInstance(cactus)!.physics.json.peek()!.active;
@@ -81,7 +82,7 @@ it('pricks the picker through worn armor, empties and regrows, giving a flower o
 it('spares bramble_resistant pickers and restores a picked cactus empty', async () => {
   const test = await setup();
   try {
-    const oasis = await test.cacti.spawn('oasis_cactus', new THREE.Vector3(2, 0, 2));
+    const oasis = await test.cacti.spawn('oasis_cactus', new THREE.Vector3(2, 0, 2)).transform.model;
     const attacked = vi.spyOn(test.picker.components.combat, 'GetAttacked');
     const resistant = { ...test.picker, components: { ...test.picker.components,
       inventory: Object.assign(Object.create(test.inventory) as typeof test.inventory, { EquipHasTag: (tag: string) => tag === 'bramble_resistant' }) } };
@@ -91,7 +92,7 @@ it('spares bramble_resistant pickers and restores a picked cactus empty', async 
     expect(prefabId).toBe('oasis_cactus');
     expect(record.components.pickable).toMatchObject({ picked: true, regrowSeconds: CACTUS_REGROW_TIME });
     expect(PREFAB_DEFINITIONS.cacti.parseComponents(record.components, 'oasis_cactus', { grounded: true } as never)).toEqual(record.components);
-    const restored = await test.cacti.spawn('oasis_cactus', new THREE.Vector3(3, 0, 3), { ...record, id: 'restored' });
+    const restored = await test.cacti.spawn('oasis_cactus', new THREE.Vector3(3, 0, 3), { ...record, id: 'restored' }).transform.model;
     expect(plantInstance(restored).components.pickable.canBePicked).toBe(false);
     expect(plantInstance(restored).sprite.currentAnimation).toBe('empty');
   } finally { test.dispose(); }

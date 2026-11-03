@@ -1,8 +1,8 @@
+import type { PrefabEntityDefinition } from './prefabInstance';
 import { Workable } from '../../componets/src/workable';
 import { DefaultBurnFn, DefaultExtinguishFn, DefaultBurntFn, MakeNoGrowInWinter } from './standardcomponents';
-import type * as THREE from 'three';
 import { Pickable } from './components/pickable';
-import { PickablePlantManager, PickablePlantInstance, type PickablePlantContext, type PickablePlantDefinition, type PickablePlantRecord } from './pickablePlant';
+import { plantEntityDefinition, PickablePlantInstance, type PickablePlantContext, type PickablePlantWorld, type PickablePlantDefinition } from './pickablePlant';
 
 export const BERRYBUSH_ID = 'berrybush' as const;
 export const BERRYBUSH_REGROW_TIME = 3 * 480;
@@ -89,9 +89,6 @@ export const BERRYBUSH_DEFINITION: PickablePlantDefinition = {
 };
 
 /** The normal berrybush branch; berrybush2 and juicy bushes are separate source prefabs. */
-export class BerrybushManager extends PickablePlantManager {
-  spawn(position: THREE.Vector3, saved?: PickablePlantRecord, skinId?: string): THREE.Group {
-    return this.spawnPlant(BERRYBUSH_DEFINITION, position, saved, skinId);
-  }
-  exportRecords(): PickablePlantRecord[] { return this.exportPlants().map(({ record }) => record); }
+export function berrybushPrefabs(world: PickablePlantWorld): Readonly<Record<typeof BERRYBUSH_ID, PrefabEntityDefinition<PickablePlantInstance>>> {
+  return { [BERRYBUSH_ID]: plantEntityDefinition(BERRYBUSH_DEFINITION, world) };
 }

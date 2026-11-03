@@ -145,8 +145,8 @@ it('grows a dormant marblebean, restores shrub shape/tint/snow and preserves the
 it('keeps a sprout completion task alive without visual reload and cancels a second dormant sprout when dug', async () => {
   const env = environment();
   const spawnBush = vi.fn();
-  const bushes = { spawnNatural: (position: THREE.Vector3) => { spawnBush(position.clone()); return new THREE.Group(); } };
-  const sprouts = new RockAvocadoSaplingManager(env.scene, { scheduler: env.scheduler, tickingarea: env.tickingarea, bushes, spawnGroundItem: env.spawnGroundItem });
+  const bushes = { spawn: (_prefab: string, position: THREE.Vector3) => { spawnBush(position.clone()); return new THREE.Group(); } };
+  const sprouts = new RockAvocadoSaplingManager(env.scene, { scheduler: env.scheduler, tickingarea: env.tickingarea, spawnPrefab: (id, position) => bushes.spawn(id, position), spawnGroundItem: env.spawnGroundItem });
   try {
     const model = await drawn(sprouts.spawn(new THREE.Vector3(12, 0, 24)));
     const sprite = prefabInstance(model)!.sprite as SpriteState;

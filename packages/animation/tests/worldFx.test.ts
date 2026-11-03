@@ -1,3 +1,4 @@
+import { prefabManager } from './prefabManagerFixture';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -6,7 +7,7 @@ import { PrefabDisplayGroup } from '../../display/src/prefabDisplayGroup';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { FindEntities } from '../../prefab/src/actionEntity';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
-import { createWorldFxManager, worldFxSpawner, type WorldFxPrefab } from '../../prefab/src/world_fx';
+import { worldFxPrefabs, worldFxSpawner, type WorldFxPrefab } from '../../prefab/src/world_fx';
 import { createTestWorldFx } from './worldFxFixture';
 
 beforeEach(() => vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url)))));
@@ -96,7 +97,7 @@ it('draws the source tint, alpha, scale and final offset, and is released with t
 
 it('leaves an fx out of mouse targets, entity queries and saves', async () => {
   const scene = new THREE.Scene(), displays = new PrefabDisplayGroup(scene), scheduler = new GameTimeScheduler();
-  const manager = createWorldFxManager(displays, { scheduler });
+  const manager = prefabManager(displays, undefined, { scheduler }, worldFxPrefabs);
   const fx = worldFxSpawner(manager);
   try {
     fx.spawn('explode_small', new THREE.Vector3(1, 0, 2));

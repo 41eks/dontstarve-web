@@ -1,8 +1,8 @@
+import type { PrefabEntityDefinition } from './prefabInstance';
 import { Pickable } from './components/pickable';
 import { Workable } from '../../componets/src/workable';
 import { DefaultBurnFn, DefaultExtinguishFn, DefaultBurntFn, MakeNoGrowInWinter } from './standardcomponents';
-import type * as THREE from 'three';
-import { PickablePlantManager, PickablePlantInstance, type PickablePlantContext, type PickablePlantDefinition, type PickablePlantRecord, type PickablePlantWorld } from './pickablePlant';
+import { plantEntityDefinition, PickablePlantInstance, type PickablePlantContext, type PickablePlantDefinition, type PickablePlantRecord, type PickablePlantWorld } from './pickablePlant';
 
 export const GRASS_ID = 'grass' as const;
 export const GRASS_REGROW_TIME = 3 * 480;
@@ -64,10 +64,6 @@ export const GRASS_DEFINITION: PickablePlantDefinition = {
 };
 
 /** grass.lua's native grass, with source component ownership for PICK, DIG and burning. */
-export class GrassManager extends PickablePlantManager {
-  spawn(position: THREE.Vector3, saved?: GrassRecord): THREE.Group {
-    return this.spawnPlant(GRASS_DEFINITION, position, saved);
-  }
-
-  exportRecords(): GrassRecord[] { return this.exportPlants().map(({ record }) => record); }
+export function grassPrefabs(world: PickablePlantWorld): Readonly<Record<typeof GRASS_ID, PrefabEntityDefinition<PickablePlantInstance>>> {
+  return { [GRASS_ID]: plantEntityDefinition(GRASS_DEFINITION, world) };
 }

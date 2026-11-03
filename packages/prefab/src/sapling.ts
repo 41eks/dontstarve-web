@@ -1,9 +1,9 @@
+import type { PrefabEntityDefinition } from './prefabInstance';
 import { Pickable } from './components/pickable';
 import { Workable } from '../../componets/src/workable';
 import { DefaultBurnFn, DefaultExtinguishFn, DefaultBurntFn, MakeNoGrowInWinter } from './standardcomponents';
-import type * as THREE from 'three';
 import { TILE_SIZE } from './tile';
-import { PickablePlantManager, PickablePlantInstance, type PickablePlantContext, type PickablePlantDefinition, type PickablePlantRecord, type PickablePlantWorld } from './pickablePlant';
+import { plantEntityDefinition, PickablePlantInstance, type PickablePlantContext, type PickablePlantDefinition, type PickablePlantRecord, type PickablePlantWorld } from './pickablePlant';
 
 export const SAPLING_PREFABS = ['sapling', 'sapling_moon'] as const;
 export type SaplingPrefabId = typeof SAPLING_PREFABS[number];
@@ -71,12 +71,6 @@ export const SAPLING_DEFINITIONS: Readonly<Record<SaplingPrefabId, PickablePlant
 };
 
 /** sapling.lua: PICK twigs, DIG, burning and winter-paused regrowth. */
-export class SaplingManager extends PickablePlantManager {
-  spawn(prefabId: SaplingPrefabId, position: THREE.Vector3, saved?: SaplingRecord): THREE.Group {
-    return this.spawnPlant(SAPLING_DEFINITIONS[prefabId], position, saved);
-  }
-
-  exportRecords(): { prefabId: SaplingPrefabId; record: SaplingRecord }[] {
-    return this.exportPlants().map(({ prefab, record }) => ({ prefabId: prefab as SaplingPrefabId, record }));
-  }
+export function saplingPrefabs(world: PickablePlantWorld): Readonly<Record<SaplingPrefabId, PrefabEntityDefinition<PickablePlantInstance>>> {
+  return Object.fromEntries(SAPLING_PREFABS.map(id => [id, plantEntityDefinition(SAPLING_DEFINITIONS[id], world)])) as Record<SaplingPrefabId, PrefabEntityDefinition<PickablePlantInstance>>;
 }

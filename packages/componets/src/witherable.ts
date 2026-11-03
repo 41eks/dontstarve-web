@@ -122,6 +122,23 @@ export class Witherable {
     });
     if (this.enabled) this.delay.start(15);
   }
+  OnSave(): WitherableSave { return this.exportState(); }
+
+  /** witherable.lua OnLoad: restore the saved checks without recreating this component. */
+  OnLoad(saved: WitherableSave): void {
+    if (!saved || this.removed) return;
+    this.Stop(); this.protection.stop();
+    this.restoreCycles = saved.restoreCycles;
+    this.withered.set(saved.withered ?? false);
+    if (saved.withered) this.inst.addTag('withered'); else this.inst.removeTag('withered');
+    if (this.enabled) {
+      if (saved.delaySeconds !== undefined) this.delay.start(saved.delaySeconds);
+      else if (saved.taskSeconds !== undefined) this.task.start(saved.taskSeconds);
+      else this.Start();
+    }
+    if (saved.protectSeconds !== undefined) this.Protect(saved.protectSeconds);
+  }
+
   exportState(): WitherableSave {
     return { ...(this.IsWithered() ? { withered: true, ...(this.restoreCycles === undefined ? {} : { restoreCycles: this.restoreCycles }) } : {}),
       ...(this.delay.remainingSeconds === undefined ? {} : { delaySeconds: this.delay.remainingSeconds }),

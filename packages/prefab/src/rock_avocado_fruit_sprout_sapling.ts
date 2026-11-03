@@ -13,7 +13,7 @@ import { Propagator } from '../../componets/src/propagator';
 import { actionEntity, FindEntities } from './actionEntity';
 import { newEntityId } from './saveRecord';
 import type { SpawnGroundItem } from './groundPrefab';
-import type { RockAvocadoBushManager } from './rock_avocado_bush';
+import { ROCK_AVOCADO_BUSH_ID } from './rock_avocado_bush';
 import { PlaySound, type SoundHandle } from './sound';
 import catalog from './groundItems.json' with { type: 'json' };
 
@@ -45,7 +45,7 @@ export interface RockAvocadoSaplingWorld extends ToolMouseTargetWorld {
   scheduler?: GameTimeScheduler;
   tickingarea?: TileStateQuery;
   /** growtree's natural bush. */
-  bushes: Pick<RockAvocadoBushManager, 'spawnNatural'>;
+  spawnPrefab(prefab: typeof ROCK_AVOCADO_BUSH_ID, position: THREE.Vector3): unknown;
   /** DIG's sprout and DefaultBurntFn's ash; their displays load the art. */
   spawnGroundItem: SpawnGroundItem;
 }
@@ -90,7 +90,7 @@ export class RockAvocadoSaplingManager {
       if (this.saplings.get(model) !== sapling) return;
       const point = model.position.clone();
       this.sounds.add(PlaySound('dontstarve/forest/treeGrow', point));
-      this.remove(model); this.world.bushes.spawnNatural(point);
+      this.remove(model); this.world.spawnPrefab(ROCK_AVOCADO_BUSH_ID, point);
     });
     const timer = new Timer(this.scheduler, name => {
       if (name !== 'grow') return;

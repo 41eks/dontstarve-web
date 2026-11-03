@@ -1,10 +1,11 @@
+import { plantManager } from './plantManagerFixture';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
-import { BerrybushManager, BERRYBUSH_MAX_REGROW_TIME } from '../../prefab/src/berrybush';
+import { berrybushPrefabs, BERRYBUSH_MAX_REGROW_TIME } from '../../prefab/src/berrybush';
 import { GroundItemManager } from '../../prefab/src/groundItemManager';
 import { createInventoryStore } from '../../../src/inventory';
 import { inventorySlotAddress } from '../../inventory/src';
@@ -34,13 +35,13 @@ function setup() {
   const ground = new GroundItemManager(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
   const { season, snowLevel } = bindTestWorld(scheduler);
-  const bushes = new BerrybushManager(scene, '/dst/data/anim', { physics,
+  const bushes = plantManager(berrybushPrefabs, scene, { physics,
     spawnGroundItem: (definition, position, options) => ground.spawnGroundItem(definition, position, options) });
   const registry = new EntityRegistry();
   registry.register(PREFAB_DEFINITIONS.berrybushes, {
-    restore: (_, record) => drawn(bushes.spawn(new THREE.Vector3(...record.transform.position), record)),
-    debugSpawn: () => drawn(bushes.spawn(player.position)),
-    exportRecords: () => bushes.exportRecords().map(record => ({ prefabId: 'berrybush', record })), dispose: () => bushes.dispose(),
+    restore: (_, record) => drawn(bushes.spawn('berrybush', new THREE.Vector3(...record.transform.position), record).transform.model),
+    debugSpawn: () => drawn(bushes.spawn('berrybush', player.position).transform.model),
+    exportRecords: () => bushes.exportRecords(), dispose: () => bushes.dispose(),
   });
   registry.register(PREFAB_DEFINITIONS.groundItems, {
     restore: (_, record) => ground.spawnFromSave(record.id,
@@ -49,7 +50,7 @@ function setup() {
     exportRecords: () => ground.exportRecords().map(record => ({ prefabId: 'ground_item', record })), dispose: () => ground.dispose(),
   });
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
-  const save = () => serializeSave(template, { entities: { berrybush: bushes.exportRecords(), ground_item: ground.exportRecords() },
+  const save = () => serializeSave(template, { entities: { berrybush: bushes.exportRecords().map(({ record }) => record), ground_item: ground.exportRecords() },
     inventory: inventory.exportState(), elapsedSeconds: scheduler.now, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
   const advance = (seconds: number) => { scheduler.advance(seconds); bushes.update(seconds, new THREE.Quaternion()); };
   return { inventory, scene, physics, scheduler, season, snowLevel, ground, bushes, registry, save, advance,
@@ -83,11 +84,11 @@ it('picks native berries without consuming cycles, pauses in winter and reloads 
     expect((await executeDebugCommand('c_save()', s.inventory, undefined, () => { json = s.save(); })).ok).toBe(true);
     const saved = deserializeSave(json, SAVE_CATALOG), record = saved.world.entities.berrybush[0];
     restored.season.set({ season: 'winter', progress: 0 }); await settleEffects();
-    await drawn(restored.bushes.spawn(new THREE.Vector3(...record.transform.position), record));
+    await drawn(restored.bushes.spawn('berrybush', new THREE.Vector3(...record.transform.position), record).transform.model);
     restored.inventory.replaceState(inventoryStateFromSave(saved), SAVE_CATALOG.recipes);
     for (const ground of saved.world.entities.ground_item) await restored.ground.spawnFromSave(ground.id,
       { ...SAVE_CATALOG.items[ground.components.stack!.itemId], ...ground.components.stack! }, new THREE.Vector3(...ground.transform.position));
-    expect(restored.bushes.exportRecords()).toEqual([record]);
+    expect(restored.bushes.exportRecords().map(({ record }) => record)).toEqual([record]);
     expect(restored.ground.exportRecords()).toEqual(s.ground.exportRecords());
     expect(restored.inventory.exportState()).toEqual(s.inventory.exportState());
     const remaining = pickable.remainingSeconds;
@@ -110,11 +111,11 @@ it('preserves a reskinned bush through digging, item pickup/drop, transplant, fe
   const s = setup(), restored = setup();
   try {
     const position = new THREE.Vector3(24, 0, 36);
-    const model = await drawn(s.bushes.spawn(position)), originalId = lookupPrefabInstance(model)?.entityId;
-    expect(reskinEntity(s.bushes.reskinTargets[0])).toBe(true);
+    const model = await drawn(s.bushes.spawn('berrybush', position).transform.model), originalId = lookupPrefabInstance(model)?.entityId;
+    expect(reskinEntity(workTargets('DIG')[0].entity!.reskinTarget!)).toBe(true);
     expect(lookupPrefabInstance(model)?.skinId).toBe('berrybush_cawnival');
     expect(lookupPrefabInstance(model)?.entityId).toBe(originalId); expect(model.position.equals(position)).toBe(true);
-    const original = s.bushes.exportRecords()[0];
+    const original = s.bushes.exportRecords().map(({ record }) => record)[0];
     expect(performToolWork('DIG', workTargets('DIG')[0].entity!, {})).toBe(true);
     expect(s.physics.bodies).toHaveLength(0);
     const loot = s.ground.exportRecords();
@@ -132,17 +133,17 @@ it('preserves a reskinned bush through digging, item pickup/drop, transplant, fe
     expect(item.components.deployable!.Deploy(position, { position, PushEvent: vi.fn() }, {
       canPlaceTurf: () => false, setTile: vi.fn(), itemPlanted: vi.fn(), canDeployDock: () => false, createDock: vi.fn(), canDeployPlow: () => false, deployPlow: () => false, 
       isPassableAtPoint: () => true, isOceanTileAtPoint: () => false,
-      canDeployPlant: () => true, SpawnPrefab: (_prefab: string, point: THREE.Vector3, skinId?: string) => prefabInstance(s.bushes.spawn(point, undefined, skinId)) as never,
+      canDeployPlant: () => true, SpawnPrefab: (_prefab: string, point: THREE.Vector3, skinId?: string) => prefabInstance(s.bushes.spawn('berrybush', point, undefined, skinId).transform.model) as never,
     })).toBe(true);
     const replanted = await drawn(workTargets('DIG')[0].model), pickable = plantInstance(replanted).components.pickable;
     expect(lookupPrefabInstance(replanted)?.skinId).toBe('berrybush_cawnival');
     expect(pickable.exportState()).toMatchObject({ picked: true, transplanted: true, cyclesLeft: 0 });
     expect(plantInstance(replanted).sprite.currentAnimation).toBe('dead');
     s.snowLevel.set(.5); await settleEffects();
-    const beforeFertilize = s.bushes.exportRecords()[0];
-    expect(reskinEntity(s.bushes.reskinTargets[0])).toBe(true);
+    const beforeFertilize = s.bushes.exportRecords().map(({ record }) => record)[0];
+    expect(reskinEntity(workTargets('DIG')[0].entity!.reskinTarget!)).toBe(true);
     expect(lookupPrefabInstance(replanted)?.skinId).toBe('berrybush_mystical');
-    expect(s.bushes.exportRecords()[0].components.pickable).toEqual(beforeFertilize.components.pickable);
+    expect(s.bushes.exportRecords().map(({ record }) => record)[0].components.pickable).toEqual(beforeFertilize.components.pickable);
     expect(pickable.remainingSeconds).toBeUndefined();
     const fertilizer = s.inventory.entities.create({ itemId: 'poop', count: 1 }); s.inventory.configureItem(fertilizer);
     expect(pickable.Fertilize(fertilizer)).toBe(true);
@@ -156,8 +157,8 @@ it('preserves a reskinned bush through digging, item pickup/drop, transplant, fe
     const saved = deserializeSave(json, SAVE_CATALOG), record = saved.world.entities.berrybush[0];
     expect(record.id).not.toBe(original.id);
     expect(record.components.plant?.skinId).toBe('berrybush_mystical');
-    await drawn(restored.bushes.spawn(new THREE.Vector3(...record.transform.position), record));
-    expect(restored.bushes.exportRecords()).toEqual([record]);
+    await drawn(restored.bushes.spawn('berrybush', new THREE.Vector3(...record.transform.position), record).transform.model);
+    expect(restored.bushes.exportRecords().map(({ record }) => record)).toEqual([record]);
     for (let remaining = 4; remaining > 0; remaining--) {
       s.advance(pickable.remainingSeconds); expect(pickable.pick(s.picker)).toBe(true);
     }
@@ -166,7 +167,7 @@ it('preserves a reskinned bush through digging, item pickup/drop, transplant, fe
     expect(performToolWork('DIG', workTargets('DIG')[0].entity!, {})).toBe(true);
     expect(s.ground.exportRecords().slice(-2).map(record => record.components.stack?.itemId)).toEqual(['twigs', 'twigs']);
     expect(s.ground.exportRecords().slice(-2).map(record => record.components.stack?.count)).toEqual([1, 1]);
-    s.advance(10000); expect(s.bushes.exportRecords()).toEqual([]);
+    s.advance(10000); expect(s.bushes.exportRecords().map(({ record }) => record)).toEqual([]);
     expect(s.physics.bodies).toHaveLength(0);
   } finally { s.dispose(); restored.dispose(); }
 });
@@ -180,7 +181,7 @@ it('updates snow art after spawning and reskinning and cleans up each removed pl
   };
   try {
     s.snowLevel.set(.5);
-    const first = await drawn(s.bushes.spawn(new THREE.Vector3())), second = await drawn(s.bushes.spawn(new THREE.Vector3(20, 0, 0)));
+    const first = await drawn(s.bushes.spawn('berrybush', new THREE.Vector3()).transform.model), second = await drawn(s.bushes.spawn('berrybush', new THREE.Vector3(20, 0, 0)).transform.model);
     const initialSnow = drawnIndices(first), secondSnow = drawnIndices(second);
     s.snowLevel.set(.014); await settleEffects();
     expect(drawnIndices(first)).toBeLessThan(initialSnow);
@@ -189,7 +190,7 @@ it('updates snow art after spawning and reskinning and cleans up each removed pl
     // Reskin declares appearance on the same plant, without replacing its resident sprite.
     const controller = plantInstance(first).sprite, oldSprite = first.children[0];
     const oldMesh = oldSprite.getObjectByProperty('isMesh', true) as THREE.Mesh;
-    expect(reskinEntity(s.bushes.reskinTargets[0])).toBe(true);
+    expect(reskinEntity(workTargets('DIG')[0].entity!.reskinTarget!)).toBe(true);
     await drawn(first);
     await settleEffects();
     expect(plantInstance(first).sprite).toBe(controller);
@@ -203,7 +204,7 @@ it('updates snow art after spawning and reskinning and cleans up each removed pl
     expect(oldSprite.getObjectByProperty('isMesh', true)).toBe(oldMesh);
     // The next appearance also reads the latest snow declaration.
     s.snowLevel.set(0);
-    expect(reskinEntity(s.bushes.reskinTargets[0])).toBe(true);
+    expect(reskinEntity(workTargets('DIG')[0].entity!.reskinTarget!)).toBe(true);
     await drawn(first);
     await settleEffects();
     const bareReplacement = drawnIndices(first);
@@ -215,7 +216,7 @@ it('updates snow art after spawning and reskinning and cleans up each removed pl
     s.snowLevel.set(0);
     expect(hide).toHaveBeenCalledExactlyOnceWith('snow');
     hide.mockClear();
-    s.bushes.remove(first);
+    plantInstance(first).remove();
     s.snowLevel.set(.5);
     s.snowLevel.set(0);
     await settleEffects();

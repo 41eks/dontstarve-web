@@ -1,7 +1,7 @@
+import type { PrefabEntityDefinition } from './prefabInstance';
 import { Pickable } from './components/pickable';
 import { DefaultBurnFn, DefaultExtinguishFn, DefaultBurntFn, MakeNoGrowInWinter } from './standardcomponents';
-import type * as THREE from 'three';
-import { PickablePlantManager, PickablePlantInstance, type PickablePlantContext, type PickablePlantDefinition, type PickablePlantRecord, type PickablePlantWorld } from './pickablePlant';
+import { plantEntityDefinition, PickablePlantInstance, type PickablePlantContext, type PickablePlantDefinition, type PickablePlantRecord, type PickablePlantWorld } from './pickablePlant';
 
 export const LICHEN_ID = 'lichen' as const;
 /** TUNING.LICHEN_REGROW_TIME: total_day_time * 5. */
@@ -47,10 +47,6 @@ export const LICHEN_DEFINITION: PickablePlantDefinition = {
 };
 
 /** lichen.lua's cave lichen, with source component ownership for PICK and burning. */
-export class LichenManager extends PickablePlantManager {
-  spawn(position: THREE.Vector3, saved?: LichenRecord): THREE.Group {
-    return this.spawnPlant(LICHEN_DEFINITION, position, saved);
-  }
-
-  exportRecords(): LichenRecord[] { return this.exportPlants().map(({ record }) => record); }
+export function lichenPrefabs(world: PickablePlantWorld): Readonly<Record<typeof LICHEN_ID, PrefabEntityDefinition<PickablePlantInstance>>> {
+  return { [LICHEN_ID]: plantEntityDefinition(LICHEN_DEFINITION, world) };
 }

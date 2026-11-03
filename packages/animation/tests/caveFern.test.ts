@@ -1,7 +1,8 @@
+import { plantManager } from './plantManagerFixture';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
-import { CaveFernManager } from '../../prefab/src/cave_fern';
+import { caveFernPrefabs } from '../../prefab/src/cave_fern';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { bindTestWorld, tickWorld, plantInstance } from './worldContentFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -28,13 +29,13 @@ it('preserves cave fern poses and components across residency, then picks foliag
   const { camerarotation } = bindTestWorld(scheduler);
   const rotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), .8);
   camerarotation.set(rotation);
-  const ferns = new CaveFernManager(scene, '/dst/data/anim', {
+  const ferns = plantManager(caveFernPrefabs, scene, {
     tickingarea: () => createMemo(() => awake.get()),
     spawnGroundItem: () => undefined,
   });
 
-  const fern = await ferns.spawn('cave_fern', new THREE.Vector3(2, 0, 3));
-  const withered = await ferns.spawn('cave_fern_withered', new THREE.Vector3(-2, 0, 3));
+  const fern = await ferns.spawn('cave_fern', new THREE.Vector3(2, 0, 3)).transform.model;
+  const withered = await ferns.spawn('cave_fern_withered', new THREE.Vector3(-2, 0, 3)).transform.model;
   // cave_fern.lua: a random f1..f10 pose, saved as data.anim; the plant has no workable, so DIG cannot target it.
   const pose = (model: THREE.Group) => plantInstance(model).sprite.currentAnimation as string;
   expect(pose(fern)).toMatch(/^f([1-9]|10)$/);
@@ -46,7 +47,7 @@ it('preserves cave fern poses and components across residency, then picks foliag
   expect(() => PREFAB_DEFINITIONS.caveFerns.parseComponents(
     { variant: { anim: 'f11' } }, 'x', { grounded: true } as never)).toThrow();
 
-  const restored = await ferns.spawn('cave_fern', new THREE.Vector3(5, 0, 5), { ...records[0].record, id: 'restored' });
+  const restored = await ferns.spawn('cave_fern', new THREE.Vector3(5, 0, 5), { ...records[0].record, id: 'restored' }).transform.model;
   expect(pose(restored)).toBe(pose(fern));
 
   const plants = [fern, withered];

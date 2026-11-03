@@ -1,8 +1,8 @@
-import { SpriteState, type PrefabDisplayGroup } from '@dontstarve-web/display';
+import { SpriteState } from '@dontstarve-web/display';
 import type { TileStateQuery } from '@dontstarve-web/signals';
 import { ComponentTimer } from '../../componets/src/timer';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { PrefabEntityManager, PrefabInstance } from './prefabInstance';
+import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { WORLD_SCALE } from './tile';
 
 export const STAFF_CASTINGLIGHT_ID = 'staff_castinglight';
@@ -58,10 +58,9 @@ export class StaffCastingLightInstance extends PrefabInstance {
 }
 
 /** The Prefab table staff_castinglight.lua returns; neither prefab has assets. */
-export function createStaffCastingLightManager(displays: PrefabDisplayGroup,
-  world: { readonly scheduler: GameTimeScheduler; readonly tickingarea?: TileStateQuery }) {
-  return new PrefabEntityManager<StaffCastingLightId, StaffCastingLightInstance>(displays, undefined, world, {
+export function staffCastingLightPrefabs(world: { readonly scheduler: GameTimeScheduler; readonly tickingarea?: TileStateQuery }): Readonly<Record<StaffCastingLightId, PrefabEntityDefinition<StaffCastingLightInstance>>> {
+  return {
     [STAFF_CASTINGLIGHT_ID]: { fn: () => new StaffCastingLightInstance(STAFF_CASTINGLIGHT_ID, false, world.scheduler) },
     [STAFF_CASTINGLIGHT_SMALL_ID]: { fn: () => new StaffCastingLightInstance(STAFF_CASTINGLIGHT_SMALL_ID, true, world.scheduler) },
-  });
+  };
 }

@@ -1,8 +1,11 @@
+import { PrefabEntityManager, PrefabInstance, prefabInstance } from '../../prefab/src/prefabInstance';
+import { PrefabDisplayGroup } from '@dontstarve-web/display';
+import { FireFxHost } from '../../prefab/src/treeFire';
 import * as THREE from 'three';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
-import { BerrybushManager } from '../../prefab/src/berrybush';
-import { MonkeytailManager } from '../../prefab/src/monkeytail';
-import { RockAvocadoBushManager } from '../../prefab/src/rock_avocado_bush';
+import { berrybushPrefabs } from '../../prefab/src/berrybush';
+import { monkeytailPrefabs } from '../../prefab/src/monkeytail';
+import { rockAvocadoBushPrefabs } from '../../prefab/src/rock_avocado_bush';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { bindTestWorld, drawn } from '../../animation/tests/worldContentFixture';
 import { prewarmScenePasses, renderSceneWithPasses } from '../../animation/src/sceneRenderPass';
@@ -15,17 +18,21 @@ export async function checkPickablePlantInstancing() {
   const scheduler = new GameTimeScheduler(), world = bindTestWorld(scheduler), awake = createSignal(true);
   const options = { tickingarea: () => createMemo(() => awake.get()),
     spawnGroundItem: () => undefined };
+  const displays = new PrefabDisplayGroup(scene), fire = FireFxHost.create('/dst/data/anim');
+  const environment = { ...options, fire, scheduler, getWatchWorldContent: world.getWatchWorldContent };
+  const manager = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', environment, {
+    ...berrybushPrefabs(environment), ...monkeytailPrefabs(environment), ...rockAvocadoBushPrefabs(environment),
+  });
   const tick = () => new Promise(resolve => setTimeout(resolve, 0));
   const result = [];
   try {
-    for (const Manager of [BerrybushManager, MonkeytailManager, RockAvocadoBushManager]) {
-      const manager = new Manager(scene, '/dst/data/anim', options);
+    for (const prefab of ['berrybush', 'monkeytail', 'rock_avocado_bush']) {
       try {
         const models: THREE.Group[] = [];
         for (let index = 0; index < 12; index++) {
           const position = new THREE.Vector3(index * 3 - 17, 0, 0);
-          models.push(manager.spawn(position, { id: `plant:${index}`, transform: { position: position.toArray(), rotationY: 0 },
-            components: { growable: { stage: 3, time: 900 } } }));
+          models.push(manager.spawn(prefab, position, { id: `plant:${index}`, transform: { position: position.toArray(), rotationY: 0 },
+            components: { growable: { stage: 3, time: 900 } } }).transform.model);
         }
         // The plants exist at once; their displays load the shared art before the batches are sampled.
         await Promise.all(models.map(drawn));
@@ -45,11 +52,11 @@ export async function checkPickablePlantInstancing() {
         awake.set(true); await tick();
         const restored = await sample();
         const shared = scene.getObjectByName('ArchiveSpriteInstances:colour') === batch;
-        manager.remove(models[0]);
+        prefabInstance(models[0])!.remove();
         const removed = await sample();
         result.push({ ready, asleep, restored, shared, preserved, removed });
-      } finally { manager.dispose(); }
+      } finally { for (const model of [...scene.children]) prefabInstance(model)?.remove(); }
     }
     return result;
-  } finally { world.unbind(); scheduler.dispose(); renderer.dispose(); }
+  } finally { manager.dispose(); displays.dispose(); fire.dispose(); world.unbind(); scheduler.dispose(); renderer.dispose(); }
 }
