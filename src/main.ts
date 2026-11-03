@@ -381,6 +381,7 @@ const ghostOwner: PlayerGhostOwner | undefined = playerAnimation && {
   },
 };
 // SGwilson.lua amulet_rebirth: consume the worn amulet, hide the HUD and put the sleepers nearby to sleep.
+playerAnimation?.bindSpawnPrefab((prefab, position) => registry.SpawnPrefab(prefab, position));
 playerAnimation?.bindRebirth({
   consumeEquippedAmulet: () => {
     const item = inventory.GetEquippedItem('body');
@@ -420,6 +421,7 @@ disposalEvents.on('dispose', () => {
   stopRecordDeathCause();
   playerAnimation?.bindDeath(undefined);
   playerAnimation?.bindRebirth(undefined);
+  playerAnimation?.bindSpawnPrefab(undefined);
 });
 
 let lastSavedSnapshotId = initialSave.snapshot.id;

@@ -73,7 +73,7 @@ function setup(tickingarea?: TileStateQuery, random?: () => number) {
 
 it('lights and heats a spring only after a cursor-held bath bomb is tossed in, then saves and reloads the state', async () => {
   const s = setup(), restored = setup();
-  const graph = new WilsonStateGraph({ playAnimation: () => 1, playSound: () => {}, stopSound: () => {}, setCasting: () => {}, onStateChanged: () => {} });
+  const graph = new WilsonStateGraph({ playAnimation: () => 1, playSound: () => {}, stopSound: () => {}, onStateChanged: () => {} });
   const animation = { stategraph: graph };
   const locomotor = { destination: undefined, goToPoint: vi.fn(() => true), stop: vi.fn() };
   const source = () => {

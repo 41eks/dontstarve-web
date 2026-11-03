@@ -59,7 +59,7 @@ function actor() {
     },
     playSound: (cue) => sounds.push(cue),
     stopSound: (cue) => stopped.push(cue),
-    setCasting: (value) => casting.push(value),
+    castLight: () => { casting.push(true); return { remove: () => casting.push(false) }; },
     onStateChanged() {},
   });
   return { graph, played, sounds, casting, stopped };
@@ -467,7 +467,6 @@ function readingActor() {
       return inst;
     },
     overrideSymbol: (symbol, build, source) => log.push(`symbol:${symbol}=${build}.${source}`),
-    setCasting() {},
     onStateChanged() {},
   });
   const book = {
@@ -552,7 +551,6 @@ function shellActor() {
     playAnimation: (clip) => { log.push(`anim:${clip.name}`); return 30 * FRAMES; },
     playSound() {},
     playEvent: (event) => log.push(`event:${event}`),
-    setCasting() {},
     onStateChanged: (name) => log.push(`state:${name}`),
   });
   return { graph, log };
@@ -604,7 +602,6 @@ test('death drops everything, plays the clip and holds the dead state against ev
     playEvent: (event) => log.push(`event:${event}`),
     setControllerEnabled: (enabled) => { controller = enabled; },
     pushPlayerEvent: (name, data) => log.push(`player:${name}:${JSON.stringify(data)}`),
-    setCasting() {},
     onStateChanged: (name) => log.push(`state:${name}`),
   });
   graph.pushEvent('death', { cause: 'unknown' });
@@ -632,7 +629,6 @@ test('a ghost idles, runs, howls on appear and hit, refuses actions and never ju
     playAnimation: (clip) => { log.push(`anim:${clip.key}:${clip.name}`); return 30 * FRAMES; },
     playSound() {},
     playEvent: (event) => log.push(`event:${event}`),
-    setCasting() {},
     onStateChanged: (name) => log.push(`state:${name}`),
   });
   graph.pushEvent('death');
@@ -665,7 +661,7 @@ test('a ghost idles, runs, howls on appear and hit, refuses actions and never ju
   graph.update(40 * FRAMES);
   assert.equal(graph.stateName, 'walk', 'idle resumes the requested movement');
 
-  const loaded = new WilsonStateGraph({ playAnimation: () => 1, playSound() {}, setCasting() {}, onStateChanged() {} });
+  const loaded = new WilsonStateGraph({ playAnimation: () => 1, playSound() {}, onStateChanged() {} });
   loaded.becomeGhost(true);
   assert.equal(loaded.stateName, 'idle', 'a saved ghost skips appear');
 });

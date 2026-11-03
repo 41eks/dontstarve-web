@@ -102,7 +102,7 @@ it('preserves a loaded skinned record across reskin, pickup, inventory transfer,
   const manager = new GroundItemManager(scene, new THREE.PerspectiveCamera(),
     { domElement: canvas } as unknown as THREE.WebGLRenderer, '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
   const spec = INVENTORY_ITEM_SPECS.phonograph;
-  const graph = new WilsonStateGraph({ playAnimation: () => 1, playSound() {}, setCasting() {}, onStateChanged() {} });
+  const graph = new WilsonStateGraph({ playAnimation: () => 1, playSound() {}, onStateChanged() {} });
   const world = { player, scene, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(), renderer: { domElement: canvas } } as unknown as ActionWorldContext;
   const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body);
   const controller = new PlayerController(world, graph, locomotor, inventory.handEquipment, playerDoer(player, { inventory }));

@@ -68,7 +68,7 @@ it('commits BLINK after the pre-animation, teleports after 11 frames and restore
   let invincible = false, collisions = true, tint = 0;
   const host: WilsonStateGraphHost = {
     playAnimation: clip => clip.name === 'wortox_portal_jumpin_pre' ? .2 : 1,
-    playSound() {}, setCasting() {}, onStateChanged() {},
+    playSound() {}, onStateChanged() {},
     rez: { isHidden: false, setHidden() {}, setMultColour() {}, setInvincible: value => { invincible = value; } },
     soulHop: { tryToPortalHop: () => state.TryToPortalHop(), facePoint() {}, teleport: target => position.copy(target),
       setPhysicsEnabled: enabled => { collisions = enabled; }, setTint: value => { tint = value; }, spawnFx: vi.fn(), playSound() {} },
@@ -108,7 +108,7 @@ it('runs the map right click as BLINK_MAP without walking, revalidates before co
   const teleport = vi.fn((position: Vector3) => player.position.copy(position));
   const graph = new WilsonStateGraph({
     playAnimation: clip => clip.name === 'wortox_portal_jumpin_pre' ? .2 : 1,
-    playSound() {}, setCasting() {}, onStateChanged() {},
+    playSound() {}, onStateChanged() {},
     soulHop: { tryToPortalHop, facePoint() {}, teleport, snapCamera,
       setPhysicsEnabled() {}, setTint() {}, spawnFx() {}, playSound() {} },
   });

@@ -33,10 +33,10 @@ function fixture(itemId: LightStaffId, remainingUses?: number) {
   const spawn = vi.fn(), worldServices = { map, spawnPrefab: spawn };
   const staff = getLightStaffController(entity, worldServices);
   staff.onequip();
-  const sound = vi.fn(), casting = vi.fn();
+  const sound = vi.fn(), castingLight = { remove: vi.fn() }, casting = vi.fn(() => castingLight);
   const graph = new WilsonStateGraph({
     playAnimation: clip => (clip.key === 'staff_pre' ? 15 : clip.key === 'staff' ? 65 : 30) / 30,
-    playSound: sound, setCasting: casting, onStateChanged() {},
+    playSound: sound, castLight: casting, onStateChanged() {},
   });
   const player = new THREE.Group();
   const world = { scene: new THREE.Scene(), player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
@@ -55,7 +55,7 @@ function fixture(itemId: LightStaffId, remainingUses?: number) {
       && controller.DoAction(controller.createAction({ action: 'CASTSPELL', invobject: entity, pos: point.clone() })!),
     dispose: () => controller.dispose(),
   };
-  return { store, hand, entity, staff, world, worldServices, graph, input, spawn, doDelta, sound, casting, locomotor, player,
+  return { store, hand, entity, staff, world, worldServices, graph, input, spawn, doDelta, sound, casting, castingLight, locomotor, player,
     setBlocked: (value: boolean) => { blocked = value; },
     dispose: () => { input.dispose(); store.dispose(); } };
 }
@@ -104,6 +104,7 @@ it('consumes the last yellow use through the store, clears only its equipment an
     expect(s.entity.isRemoved).toBe(true);
     expect(PlaySound).toHaveBeenCalledWith('dontstarve/common/gem_shatter', s.player.position);
     expect(s.doDelta).toHaveBeenCalledExactlyOnceWith(-20);
-    expect(s.casting).toHaveBeenCalledTimes(1); // Source releases FX ownership before the final-use unequip.
+    expect(s.casting).toHaveBeenCalledTimes(1);
+    expect(s.castingLight.remove).not.toHaveBeenCalled(); // Source releases FX ownership before the final-use unequip.
   } finally { s.dispose(); }
 });

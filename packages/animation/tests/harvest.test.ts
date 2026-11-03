@@ -29,7 +29,7 @@ it('walks to a finished pot, gives its product to the doer at the hit frame, and
   instance.components.stewer = stewer;
   actionEntity(model, 'cookpot');
   stewer.OnLoad({ product: 'kabobs', done: true });
-  const stategraph = new WilsonStateGraph({ playAnimation: () => .2, playSound() {}, setCasting() {}, onStateChanged() {} });
+  const stategraph = new WilsonStateGraph({ playAnimation: () => .2, playSound() {}, onStateChanged() {} });
   const animation = { stategraph };
   const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body,
     { physicsRadius: .5 * WORLD_SCALE });

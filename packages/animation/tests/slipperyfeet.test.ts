@@ -11,7 +11,7 @@ function setup(options: { speed?: number; pond?: boolean } = {}) {
   const scheduler = new GameTimeScheduler();
   const log = { motor: [] as (number | undefined)[], sounds: [] as string[], resets: 0, wants: false };
   const graph = new WilsonStateGraph({
-    playAnimation: () => 14 * FRAME, playSound() {}, setCasting() {}, onStateChanged() {}, stopMovement() {},
+    playAnimation: () => 14 * FRAME, playSound() {}, onStateChanged() {}, stopMovement() {},
     slip: {
       runSpeed: () => 6, setMotorSpeed: speed => log.motor.push(speed), resetSlipperiness: () => { log.resets++; feet.SetCurrent(0); },
       wantsToMoveForward: () => log.wants, playSound: event => log.sounds.push(event),
