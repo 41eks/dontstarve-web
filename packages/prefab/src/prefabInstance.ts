@@ -1,7 +1,7 @@
 import { MiniMapState } from '../../map/src/minimapState';
 import { watchMiniMapEntity } from '../../map/src/minimapEntities';
 import type * as CANNON from 'cannon-es';
-import type { Object3D, Quaternion, Vector3, Vector3Like } from 'three';
+import { MathUtils, type Object3D, type Quaternion, type Vector3, type Vector3Like } from 'three';
 import { createSignal, EventEmitter, readonlySignal, type ReadonlySignal, type TileStateQuery } from '@dontstarve-web/signals';
 import { LightState, PrefabDisplay, SpriteResources, SpriteState, type ArchiveSpriteCommands, type PrefabDisplayGroup, type ArchiveSpriteSource, type LoadedSpriteSource, type PrefabDisplayOptions, type PrefabStatus, type SpriteSource } from '@dontstarve-web/display';
 import { bindPhysics, type PhysicsBinding } from '../../componets/src/physicsBinding';
@@ -310,6 +310,10 @@ export interface PrefabEntityDefinition<Instance extends PrefabInstance> {
   fn(): Instance;
   /** A prefab without assets has only a transform and what it declares on it, as FX lights do: nothing to draw or click. */
   assets?: Parameters<SpriteResources['archive']>[0];
+  /** Make*Physics(inst, radius, height) in DST units; the body is bound when the world has physics. */
+  physics?: { make(inst: Instance, radius: number, height?: number): unknown; radius: number; height?: number };
+  /** MiniMapEntity:SetIcon. */
+  minimapIcon?: string;
   /** Runs once the entity has its position and saved state, for what the source starts from there. */
   onSpawned?(instance: Instance): void;
 }
@@ -317,7 +321,7 @@ export interface PrefabEntityDefinition<Instance extends PrefabInstance> {
 /**
  * SpawnPrefab and the save loop's walk over Ents for the prefabs one module returns: the collection, the shared textures
  * and each entity's display, tile activity and save record. What a prefab is stays in its `fn` and its components.
- * The entities stand on the ground: a position's height is dropped and rotation is not saved.
+ * The entities stand on the ground: a position's height is dropped.
  */
 export class PrefabEntityManager<Id extends string, Instance extends PrefabInstance> {
   private readonly resources: SpriteResources;
@@ -325,27 +329,33 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
   private disposed = false;
   private readonly displays: PrefabDisplayGroup;
   private readonly tickingarea?: TileStateQuery;
+  private readonly physicsWorld?: CANNON.World;
   private readonly prefabs: Readonly<Record<Id, PrefabEntityDefinition<Instance>>>;
 
   /** `displays` is the display-layer owner of the entities' scene membership, injected and disposed by the application. */
-  constructor(displays: PrefabDisplayGroup, animationBaseUrl: string | undefined, world: { readonly tickingarea?: TileStateQuery },
+  constructor(displays: PrefabDisplayGroup, animationBaseUrl: string | undefined, world: { readonly tickingarea?: TileStateQuery; readonly physics?: CANNON.World },
     prefabs: Readonly<Record<Id, PrefabEntityDefinition<Instance>>>) {
     this.displays = displays;
     this.resources = new SpriteResources(animationBaseUrl);
     this.tickingarea = world.tickingarea;
+    this.physicsWorld = world.physics;
     this.prefabs = prefabs;
   }
 
   /** SpawnPrefab, then SpawnSaveRecord's SetPosition and SetPersistData: the entity exists now and its display loads the art. */
-  spawn(prefabId: Id, position: Vector3, saved?: Pick<PlacementSaveRecord, 'id' | 'components'>): Instance {
+  spawn(prefabId: Id, position: Vector3, saved?: Pick<PlacementSaveRecord, 'id' | 'components'> & Partial<Pick<PlacementSaveRecord, 'transform'>>): Instance {
     if (this.disposed) throw new Error(`Cannot spawn ${prefabId}: its manager has been disposed`);
     if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError(`Invalid ${prefabId} position`);
-    const { fn, assets, onSpawned } = this.prefabs[prefabId], instance = fn();
+    const { fn, assets, physics, minimapIcon, onSpawned } = this.prefabs[prefabId], instance = fn();
+    physics?.make(instance, physics.radius, physics.height);
+    if (minimapIcon) instance.minimap.SetIcon(minimapIcon);
     // A shared archive holds a first one-shot clip while its art loads, so a new entity is drawn from its first frame.
     const display = this.displays.add({ root: instance.transform.model, name: prefabId, status: instance.status, sprite: instance.sprite, light: instance.light,
       ...(assets ? { archive: this.resources.archive(assets) } : { empty: true }) });
     bindInstance(display.model, instance);
     instance.setPosition(position.x, 0, position.z);
+    if (saved?.transform?.rotationY) instance.setRotation(MathUtils.radToDeg(saved.transform.rotationY));
+    if (physics && this.physicsWorld) instance.bindPhysics(this.physicsWorld);
     instance.entityId = saved?.id ?? newItemEntityId();
     if (saved) instance.SetPersistData(saved.components);
     onSpawned?.(instance);
@@ -368,7 +378,7 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
   exportRecords(): { prefabId: Id; record: PlacementSaveRecord }[] {
     return [...this.entities].filter(entity => entity.persists).map(entity => ({ prefabId: entity.prefab as Id, record: {
       id: String(entity.entityId),
-      transform: { position: [entity.position.x, 0, entity.position.z], rotationY: 0 },
+      transform: { position: [entity.position.x, 0, entity.position.z], rotationY: entity.transform.model.rotation.y },
       components: entity.GetPersistData(),
     } }));
   }

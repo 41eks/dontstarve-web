@@ -165,7 +165,8 @@ export function MakeGhostPhysics(inst: PhysicsEntity, mass: number, rad: number)
 }
 
 /** standardcomponents.lua MakePondPhysics(inst, rad, height). */
-export function MakePondPhysics(inst: PhysicsEntity, rad: number, height = 2): PhysicsState {
+export function MakePondPhysics(inst: PhysicsEntity & { addTag(tag: string): void }, rad: number, height = 2): PhysicsState {
+  inst.addTag('blocker');
   return MakeObstaclePhysics(inst, rad, height);
 }
 

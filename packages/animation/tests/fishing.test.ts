@@ -17,7 +17,7 @@ import { WORLD_SCALE } from '../../prefab/src/tile';
 import * as CANNON from 'cannon-es';
 import { GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
-import { PondManager } from '../../prefab/src/pond';
+import { createPondManager, POND_ID } from '../../prefab/src/pond';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { PrefabDisplayGroup } from '../../display/src';
 import { createEquipmentExistenceState, GameTimeScheduler } from '../../signals/src';
@@ -71,8 +71,8 @@ it('casts at a pond, waits for a bite, hooks, reels and lands a pondfish; a stra
   await animation.setCarryItem('fishingrod');
   const world = { scene: new THREE.Scene(), player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
-  const ponds = new PondManager(new PrefabDisplayGroup(world.scene), '/dst/data/anim', { scheduler });
-  const spawned = ponds.spawn(new THREE.Vector3());
+  const ponds = createPondManager(new PrefabDisplayGroup(world.scene), '/dst/data/anim', { scheduler });
+  const spawned = ponds.spawn(POND_ID, new THREE.Vector3());
   const pond = world.scene.children.find(child => prefabInstance(child) === spawned)!;
   const landed: { prefab: string; position: THREE.Vector3 }[] = [];
   const equipped = createEquipmentExistenceState('HANDS');
@@ -184,7 +184,7 @@ it('gives a fishing rod with c_give and saves worn rods and pond fish through c_
   const scheduler = new GameTimeScheduler(), scene = new THREE.Scene();
   const inventory = createPickupInventory(), restoredInventory = createPickupInventory();
   const displays = new PrefabDisplayGroup(scene);
-  const ponds = new PondManager(displays, '/dst/data/anim', { scheduler }), restored = new PondManager(displays, '/dst/data/anim', { scheduler });
+  const ponds = createPondManager(displays, '/dst/data/anim', { scheduler }), restored = createPondManager(displays, '/dst/data/anim', { scheduler });
   try {
     expect((await executeDebugCommand('c_give("fishingrod")', inventory)).ok).toBe(true);
     const rod = inventory.getEntity(inventorySlotAddress(0))!;
@@ -192,13 +192,13 @@ it('gives a fishing rod with c_give and saves worn rods and pond fish through c_
     expect(rod.components.finiteuses.remaining).toBeUndefined();
     rod.PushEvent('fishingcollect', undefined);
     expect(rod.components.finiteuses.remaining).toBe(8);
-    const pond = ponds.spawn(new THREE.Vector3(30, 0, 0), { id: 'pond-1', transform: { position: [30, 0, 0], rotationY: 0 }, components: { fishable: { fish: 7 } } });
+    const pond = ponds.spawn(POND_ID, new THREE.Vector3(30, 0, 0), { id: 'pond-1', transform: { position: [30, 0, 0], rotationY: 1.25 }, components: { fishable: { fish: 7 } } });
     expect(pond.components.fishable!.fishleft).toBe(7);
     const before = inventory.exportState();
     let json = '';
     const save = () => {
       json = serializeSave(deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG), {
-        entities: { pond: ponds.exportRecords() }, inventory: before, elapsedSeconds: 1, playerTransform: { position: [0, 0, 0], rotationY: 0 },
+        entities: { pond: ponds.exportRecords().map(({ record }) => record) as never }, inventory: before, elapsedSeconds: 1, playerTransform: { position: [0, 0, 0], rotationY: 0 },
       }, SAVE_CATALOG);
     };
     expect((await executeDebugCommand('c_save()', inventory, undefined, save)).ok).toBe(true);
@@ -208,8 +208,10 @@ it('gives a fishing rod with c_give and saves worn rods and pond fish through c_
     expect(restoredInventory.getEntity(inventorySlotAddress(0))!.components.finiteuses.remaining).toBe(8);
     const record = saved.world.entities.pond.find(({ id }) => id === 'pond-1')!;
     expect(record.components.fishable).toEqual({ fish: 7 });
-    const again = restored.spawn(new THREE.Vector3(...record.transform.position), record as never);
+    expect(record.transform.rotationY).toBeCloseTo(1.25);
+    const again = restored.spawn(POND_ID, new THREE.Vector3(...record.transform.position), record);
     expect(again.components.fishable!.fishleft).toBe(7);
+    expect(restored.exportRecords()[0].record.transform.rotationY).toBeCloseTo(1.25);
     scheduler.advance(160);
     expect(again.components.fishable!.fishleft).toBe(8);
   } finally { ponds.dispose(); restored.dispose(); inventory.dispose(); restoredInventory.dispose(); scheduler.dispose(); }

@@ -19,6 +19,7 @@ export interface PlacementSaveRecord {
     birdcage?: import('./birdcage').BirdcageSaveStateData;
     workable?: { workleft: number; maxwork: number };
     timer?: import('../../componets/src/timer').NamedTimerSave;
+    fishable?: import('../../componets/src/fishable').FishableSave;
     finiteuses?: { uses: number };
     moonbase?: import('./moonbase').MoonbaseSaveState;
     lightningrod?: import('./lightning_rod').LightningRodSaveState;

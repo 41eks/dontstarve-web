@@ -109,8 +109,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
       number(p[1], `${path}.position[1]`, 0, grounded ? 0 : 1000),
       number(p[2], `${path}.position[2]`, -size / 2, size / 2),
     ];
-    // Current prefabs use camera-facing art and have no persistent world yaw.
-    return { position, rotationY: number(o.rotationY, `${path}.rotationY`, 0, 0) };
+    return { position, rotationY: number(o.rotationY, `${path}.rotationY`, -Number.MAX_VALUE) };
   };
   const ids = new Set<string>();
   const stack = (value: unknown, path: string): InventoryStack => {
