@@ -60,5 +60,7 @@ export class SaltBoxInstance extends PrefabInstance {
 }
 
 export function saltBoxPrefabs(world: PrefabWorldContext) {
-  return { [SALT_BOX_ID]: buildingPrefab(declaration, 'saltbox', undefined, () => new SaltBoxInstance(world), world) };
+  return { [SALT_BOX_ID]: { ...buildingPrefab(declaration, 'saltbox', undefined, () => new SaltBoxInstance(world), world),
+    // fn: MiniMapEntity:SetIcon("saltbox.png").
+    minimapIcon: 'saltbox.png' } };
 }

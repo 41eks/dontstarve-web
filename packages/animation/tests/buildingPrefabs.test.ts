@@ -112,6 +112,8 @@ it('draws each container prefab from its source bank and skin build, and keeps i
     expect(inst.sprite.loaded, id).toBe(true);
     expect(model.getObjectsByProperty('isMesh', true).length, id).toBeGreaterThan(0);
     expect(inst.sprite.currentAnimation).toBe(declaration.idleAnimation);
+    // fn: MiniMapEntity:SetIcon, declared as the definition's minimapIcon.
+    if (id === 'icebox' || id === 'saltbox') expect(inst.minimap.icon).toBe(`${id}.png`);
     if (skinId !== undefined) expect(fetched.some(url => url.endsWith(declaration.skinArchives![skinId]))).toBe(true);
     expect(buildings.exportRecords().find(({ record: saved }) => saved.id === record.id)?.record).toEqual(record);
   }

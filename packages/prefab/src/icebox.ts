@@ -67,5 +67,7 @@ export class IceBoxInstance extends PrefabInstance {
 }
 
 export function iceBoxPrefabs(world: PrefabWorldContext) {
-  return { [ICE_BOX_ID]: buildingPrefab(declaration, 'icebox', undefined, () => new IceBoxInstance(world), world) };
+  return { [ICE_BOX_ID]: { ...buildingPrefab(declaration, 'icebox', undefined, () => new IceBoxInstance(world), world),
+    // fn: MiniMapEntity:SetIcon("icebox.png").
+    minimapIcon: 'icebox.png' } };
 }
