@@ -1,4 +1,5 @@
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
+import { createTestWorldFx } from './worldFxFixture';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -24,6 +25,7 @@ it('hammers a hound bone once into boneshards, adds a houndstooth chance for pie
   const dropped: string[] = [];
   const scene = new THREE.Scene();
   const bones = new HoundboneManager(scene, {
+    fx: createTestWorldFx(scene),
     spawnGroundItem: (definition: GroundItemDefinition) => { dropped.push(definition.itemId); return undefined; },
   });
 

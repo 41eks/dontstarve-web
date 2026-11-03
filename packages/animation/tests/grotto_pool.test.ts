@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { createMemo, createSignal, type TileStateQuery } from '../../signals/src';
 import { GrottoPoolManager } from '../../prefab/src/grotto_pool';
-import { WorldFx } from '../../prefab/src/world_fx';
+import { createTestWorldFx } from './worldFxFixture';
 import { GroundItemManager } from '../../prefab/src/groundItemManager';
 import { createInventoryStore } from '../../../src/inventory';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -29,7 +29,7 @@ function setup(playerAt = new THREE.Vector3(), tickingarea?: TileStateQuery) {
   vi.stubGlobal('window', new EventTarget());
   const inventory = createInventoryStore([]), scene = new THREE.Scene(), player = new THREE.Group(), physics = new CANNON.World();
   player.position.copy(playerAt);
-  const scheduler = new GameTimeScheduler(), fx = new WorldFx(scene);
+  const scheduler = new GameTimeScheduler(), fx = createTestWorldFx(scene);
   const waterfalls = new Map<THREE.Vector3, { radius: number; large: boolean }>();
   const ground = new GroundItemManager(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);

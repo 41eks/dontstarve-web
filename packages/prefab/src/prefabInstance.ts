@@ -310,6 +310,8 @@ export interface PrefabEntityDefinition<Instance extends PrefabInstance> {
   fn(): Instance;
   /** A prefab without assets has only a transform and what it declares on it, as FX lights do: nothing to draw or click. */
   assets?: Parameters<SpriteResources['archive']>[0];
+  /** False for what is only ever looked at, such as a transient effect: not a mouse target or an entity that queries find. */
+  targetable?: boolean;
   /** Runs once the entity has its position and saved state, for what the source starts from there. */
   onSpawned?(instance: Instance): void;
 }
@@ -337,10 +339,10 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
   }
 
   /** SpawnPrefab, then SpawnSaveRecord's SetPosition and SetPersistData: the entity exists now and its display loads the art. */
-  spawn(prefabId: Id, position: Vector3, saved?: Pick<PlacementSaveRecord, 'id' | 'components'>): Instance {
+  spawn(prefabId: Id, position: ReadonlyVector3, saved?: Pick<PlacementSaveRecord, 'id' | 'components'>): Instance {
     if (this.disposed) throw new Error(`Cannot spawn ${prefabId}: its manager has been disposed`);
     if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError(`Invalid ${prefabId} position`);
-    const { fn, assets, onSpawned } = this.prefabs[prefabId], instance = fn();
+    const { fn, assets, targetable = true, onSpawned } = this.prefabs[prefabId], instance = fn();
     // A shared archive holds a first one-shot clip while its art loads, so a new entity is drawn from its first frame.
     const display = this.displays.add({ root: instance.transform.model, name: prefabId, status: instance.status, sprite: instance.sprite, light: instance.light,
       ...(assets ? { archive: this.resources.archive(assets) } : { empty: true }) });
@@ -349,7 +351,7 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     instance.entityId = saved?.id ?? newItemEntityId();
     if (saved) instance.SetPersistData(saved.components);
     onSpawned?.(instance);
-    if (assets) actionEntity(display.model, prefabId);
+    if (assets && targetable) actionEntity(display.model, prefabId);
     this.entities.add(instance);
     const stopActivity = watchTileActivity(display.model, this.tickingarea, active => instance.setActive(active));
     instance.onRemove(() => { stopActivity(); this.entities.delete(instance); });

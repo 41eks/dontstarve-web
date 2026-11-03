@@ -16,7 +16,6 @@ import { PlaySound, type SoundHandle } from './sound';
 import type { WorldContext, PrefabWorldContext } from './worldContext';
 import { FARM_PLANT_ART } from './veggies';
 import { actionEntity, disposeActionEntity, findActionEntity } from './actionEntity';
-import { WorldFx } from './world_fx';
 import { Workable } from '../../componets/src/workable';
 import { Deployable } from '../../componets/src/deployable';
 
@@ -125,7 +124,6 @@ export class FarmPlowPlacement implements FarmActionWorld {
   private disposed = false;
   private readonly removeDigListener: () => void;
   private readonly world: PrefabWorldContext;
-  private readonly localFx?: WorldFx;
   private readonly plantWorld: PrefabWorldContext;
   private readonly turf: TurfMap;
   private readonly returnItem: (position: ReadonlyVector3, item: InventoryStack) => void;
@@ -137,8 +135,7 @@ export class FarmPlowPlacement implements FarmActionWorld {
     blockers: PlacementQuery = placementEntities(world.scene), random = Math.random) {
     this.turf = turf; this.returnItem = returnItem; this.blockers = blockers; this.random = random;
     const { scene, ...services } = world;
-    this.localFx = world.fx?.collapse ? undefined : new WorldFx(scene);
-    this.world = { ...services, fx: this.localFx ?? services.fx };
+    this.world = { ...services, fx: services.fx };
     this.plantWorld = { ...this.world, spawnFarmPlant: (prefab, position) => {
       const plant = this.addPlantedSeed(prefab, newEntityId(), position, true);
       PlaySound('dontstarve/common/plant', position);
@@ -238,7 +235,6 @@ export class FarmPlowPlacement implements FarmActionWorld {
     }
     for (const item of [...this.decor.values()]) if (item.plowId && !this.plows.has(item.plowId)) this.removeSoil(item);
     this.displays.update(step);
-    this.localFx?.update(step, _cameraQuaternion);
   }
 
   setDebrisLootHandler(handler: (itemId: string, position: ReadonlyVector3) => void): void {
@@ -501,7 +497,7 @@ export class FarmPlowPlacement implements FarmActionWorld {
       components: prefabId === 'farm_soil' ? { farmSoil: { broken, ...(plowId ? { plowId } : {}) } } : { farmDebris: { animation } },
     } }));
   }
-  get renderEntities() { return [...this.displays.renderEntities, ...(this.localFx?.renderEntities ?? [])]; }
+  get renderEntities() { return this.displays.renderEntities; }
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true; this.removeDigListener();
@@ -511,6 +507,6 @@ export class FarmPlowPlacement implements FarmActionWorld {
     for (const seed of this.plantedSeeds.values()) { this.stopSeeds.get(seed)?.(); seed.instance.remove(); }
     this.stopSeeds.clear(); this.seedPositions.clear();
     this.decor.clear(); this.plantedSeeds.clear(); this.effects.clear();
-    this.displays.dispose(); this.localFx?.dispose(); this.resources.dispose();
+    this.displays.dispose(); this.resources.dispose();
   }
 }

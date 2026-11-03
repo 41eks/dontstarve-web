@@ -1,8 +1,8 @@
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
-import { PrefabDisplayGroup, SpriteResources, type ArchiveSpriteSource } from '@dontstarve-web/display';
-import type * as THREE from 'three';
+import { SpriteState, type PrefabDisplayGroup } from '@dontstarve-web/display';
+import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { PlaySound, type SoundEventPath } from './sound';
-import { createArchiveEntity } from './prefabInstance';
+import { PrefabEntityManager, PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 
 interface FxDefinition {
   readonly archive: string;
@@ -16,6 +16,7 @@ interface FxDefinition {
   readonly finalOffset?: number;
   /** Frames between animover and Remove, as wortox_portal_fx.lua's DoTaskInTime(2 * FRAMES). */
   readonly lingerFrames?: number;
+  readonly tags?: readonly string[];
 }
 
 /**
@@ -51,89 +52,67 @@ const FX_PREFABS = {
 } as const satisfies Record<string, FxDefinition>;
 export type WorldFxPrefab = keyof typeof FX_PREFABS;
 
+/** structure_collapse_fx.lua: its sounds come from the material the spawner then sets. */
+const COLLAPSE = { archive: 'structure_collapse_fx.zip', bank: 'collapse', finalOffset: 3, tags: ['NOCLICK'] };
+const COLLAPSE_PREFABS = {
+  collapse_small: { ...COLLAPSE, anim: 'collapse_small' },
+  collapse_big: { ...COLLAPSE, anim: 'collapse_large' },
+} as const satisfies Record<string, FxDefinition>;
+type CollapsePrefab = keyof typeof COLLAPSE_PREFABS;
+export type CollapseMaterial = 'wood' | 'metal' | 'stone' | 'rock' | 'straw' | 'pot';
+
+
 const FRAMES = 1 / 30;
 
 export function isWorldFx(prefab: string): prefab is WorldFxPrefab { return Object.hasOwn(FX_PREFABS, prefab); }
 
-type Effect = ReturnType<typeof createArchiveEntity>;
+/** What these prefabs share with the rest of the scene. */
+export interface WorldFxWorld { readonly scheduler: GameTimeScheduler }
 
-/** Transient fx.lua prefabs spawned by components, such as the effect components/book.lua puts at the reader. */
-export class WorldFx {
-  private readonly displays: PrefabDisplayGroup;
-  private readonly sprites = new SpriteResources();
-  private readonly effects = new Set<Effect>();
-  /** Effects past their animover, waiting out the source's delay before Remove, with the seconds left. */
-  private readonly lingering = new Map<Effect, number>();
-  private disposed = false;
-
-  constructor(scene: THREE.Scene) {
-    this.displays = new PrefabDisplayGroup(scene);
-  }
-
-  /** An entity that plays one clip from its first drawn frame; its display loads the art, then it ends itself. */
-  private play(prefab: string, source: ArchiveSpriteSource, animation: string, lingerFrames: number, initialize: (inst: Effect['instance']) => void): Effect {
-    const effect: Effect = createArchiveEntity(prefab, source, { name: animation, held: true, billboard: true }, prefab, inst => {
+function define(prefab: string, definition: FxDefinition, world: WorldFxWorld): PrefabEntityDefinition<PrefabInstance> {
+  const { archive, bank, anim, sound, opacity = 1, scale, tint = [1, 1, 1], finalOffset, lingerFrames, tags } = definition;
+  return {
+    fn: () => {
+      const inst = new PrefabInstance(prefab, new SpriteState({ name: anim, billboard: true }));
       inst.persists = false;
-      initialize(inst);
-      // Declare before the display binds: the one-shot must wait for its first drawn frame.
-      inst.sprite.playOnce(animation, () => {
-        if (lingerFrames > 0) this.lingering.set(effect, lingerFrames * FRAMES);
-        else inst.remove();
-      });
-    });
-    this.effects.add(effect);
-    effect.instance.onRemove(() => { this.effects.delete(effect); this.lingering.delete(effect); });
-    this.displays.mount(effect.display);
-    return effect;
-  }
-
-  /** structure_collapse_fx.lua: shared art, material sounds and an independent animover lifetime. */
-  collapse(size: 'small' | 'big', position: ReadonlyVector3, material?: 'wood' | 'metal' | 'stone' | 'rock' | 'straw' | 'pot'): void {
-    if (this.disposed) return;
-    const source = this.sprites.archive({ animationArchive: 'structure_collapse_fx.zip',
-      buildArchives: ['structure_collapse_fx.zip'], bank: 'collapse' }, { scale: .02 });
-    const { instance } = this.play(`collapse_${size}`, source, size === 'big' ? 'collapse_large' : 'collapse_small', 0, inst => {
-      inst.addTag('NOCLICK'); inst.addTag('FX');
-    });
-    instance.copyPosition(position);
-    PlaySound('dontstarve/common/destroy_smoke', position);
-    if (material) PlaySound(material === 'rock' ? 'dontstarve/wilson/rock_break' : `dontstarve/common/destroy_${material}`, position);
-  }
-
-  spawn(prefab: WorldFxPrefab, position: ReadonlyVector3): void {
-    if (this.disposed) throw new Error('World fx have been disposed');
-    const definition: FxDefinition = FX_PREFABS[prefab];
-    const [red, green, blue] = definition.tint ?? [1, 1, 1];
-    const source = this.sprites.archive({ animationArchive: definition.archive, buildArchives: [definition.archive], bank: definition.bank,
-      multColour: [red, green, blue, definition.opacity ?? 1] }, { scale: .02 * (definition.scale ?? 1) });
-    const { instance } = this.play(prefab, source, definition.anim, definition.lingerFrames ?? 0, inst => {
       inst.addTag('FX');
-      if (definition.finalOffset) inst.sprite.setDepthOffset(true);
-    });
-    instance.setPosition(position.x, 0, position.z);
-    if (definition.sound) PlaySound(definition.sound, instance.position);
-  }
+      for (const tag of tags ?? []) inst.addTag(tag);
+      if (scale !== undefined) inst.setScale(scale);
+      if (finalOffset) inst.sprite.setDepthOffset(true);
+      inst.sprite.playOnce(anim, () => {
+        if (!lingerFrames) { inst.remove(); return; }
+        inst.onRemove(world.scheduler.schedule(lingerFrames * FRAMES, () => inst.remove()));
+      });
+      return inst;
+    },
+    assets: { animationArchive: archive, buildArchives: [archive], bank, multColour: [tint[0], tint[1], tint[2], opacity] },
+    targetable: false,
+    onSpawned: sound ? inst => { PlaySound(sound, inst.position); } : undefined,
+  };
+}
 
-  get renderEntities() {
-    return [...this.effects].map(({ display, instance }) => ({ object: display.model, footPosition: instance.position, cameraDepth: 0 }));
-  }
+/** The transient effects fx.lua and its siblings return, always awake for the moment they play: they draw wherever they are spawned. */
+export function createWorldFxManager(displays: PrefabDisplayGroup, world: WorldFxWorld) {
+  const prefabs = Object.fromEntries(Object.entries<FxDefinition>({ ...FX_PREFABS, ...COLLAPSE_PREFABS })
+    .map(([prefab, definition]) => [prefab, define(prefab, definition, world)])) as Record<WorldFxPrefab | CollapsePrefab, PrefabEntityDefinition<PrefabInstance>>;
+  return new PrefabEntityManager<WorldFxPrefab | CollapsePrefab, PrefabInstance>(displays, undefined, {}, prefabs);
+}
 
-  update(dt: number, cameraQuaternion: THREE.Quaternion): void {
-    // The removal is taken up by the displays' update below.
-    for (const [effect, seconds] of [...this.lingering]) {
-      if (seconds <= dt) effect.instance.remove();
-      else this.lingering.set(effect, seconds - dt);
-    }
-    this.displays.update(dt, cameraQuaternion);
-  }
+/** structure_collapse_fx.lua SetMaterial, which the source's playfx sounds from; rock has its own event. */
+function SetMaterial(inst: PrefabInstance, material?: CollapseMaterial): void {
+  PlaySound('dontstarve/common/destroy_smoke', inst.position);
+  if (material) PlaySound(material === 'rock' ? 'dontstarve/wilson/rock_break' : `dontstarve/common/destroy_${material}`, inst.position);
+}
 
-  dispose(): void {
-    if (this.disposed) return;
-    this.disposed = true;
-    for (const { instance, display } of [...this.effects]) { instance.remove(); display.dispose(); }
-    this.effects.clear();
-    this.lingering.clear();
-    this.displays.dispose();
-    this.sprites.dispose();
-  }
+/** SpawnPrefab for the prefabs that spawn these effects; a collapse is spawned and given its material, as the sources do. */
+export interface WorldFx {
+  spawn(prefab: WorldFxPrefab, position: ReadonlyVector3): void;
+  collapse(size: 'small' | 'big', position: ReadonlyVector3, material?: CollapseMaterial): void;
+}
+
+export function worldFxSpawner(manager: ReturnType<typeof createWorldFxManager>): WorldFx {
+  return {
+    spawn: (prefab, position) => { manager.spawn(prefab, position); },
+    collapse: (size, position, material) => SetMaterial(manager.spawn(`collapse_${size}`, position), material),
+  };
 }

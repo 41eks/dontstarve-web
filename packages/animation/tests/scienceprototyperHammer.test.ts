@@ -1,4 +1,5 @@
 import { prefabDisplay } from '@dontstarve-web/display';
+import { createTestWorldFx } from './worldFxFixture';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
@@ -28,7 +29,8 @@ afterEach(() => { vi.restoreAllMocks(); vi.clearAllMocks(); vi.unstubAllGlobals(
 
 async function setup(id: typeof RESEARCH_LAB_IDS[number], skinId?: string) {
   const dropLoot = vi.fn();
-  const world = { scene: new THREE.Scene(), player: new THREE.Object3D(), camera: new THREE.PerspectiveCamera(),
+  const scene = new THREE.Scene(), fx = createTestWorldFx(scene);
+  const world = { scene, fx, player: new THREE.Object3D(), camera: new THREE.PerspectiveCamera(),
     ground: new THREE.Group(), renderer: { domElement: new EventTarget() }, dropLoot } as unknown as WorldContext;
   world.player.position.set(100, 0, 100);
   const placement = new ResearchLabPlacement(world, () => true);
@@ -40,14 +42,14 @@ async function setup(id: typeof RESEARCH_LAB_IDS[number], skinId?: string) {
     findEntities: (...args) => FindEntities(...args), researchMachineDistance: 4 * WORLD_SCALE,
   });
   const animation = () => prefabInstance(model)!.sprite as TransientSpriteAnimationController;
-  const finish = () => { for (let i = 0; i < 80; i++) placement.update(1 / 30); };
+  const finish = () => { for (let i = 0; i < 80; i++) { placement.update(1 / 30); fx.update(1 / 30, world.camera.quaternion); } };
   // The display loads the lab art; standalone collapse effects load from their own shared owner.
   await vi.waitFor(() => expect(animation().loaded).toBe(true));
-  return { placement, model, world, animation, finish, dropLoot, builder };
+  return { placement, model, world, fx, animation, finish, dropLoot, builder };
 }
 
 it.each(['researchlab'] as const)('%s fires hit/finish callbacks once and removes its record on hit four', async (id) => {
-  const { placement, model, world, animation, finish, dropLoot, builder } = await setup(id);
+  const { placement, model, world, fx, animation, finish, dropLoot, builder } = await setup(id);
   try {
     const target = workTargets('HAMMER')[0];
     const before = placement.exportRecords();
@@ -77,19 +79,19 @@ it.each(['researchlab'] as const)('%s fires hit/finish callbacks once and remove
     expect(prefabInstance(effect)!.persists).toBe(false);
     expect([...prefabInstance(effect)!.listTags()].sort()).toEqual(['FX', 'NOCLICK']);
     expect(effect.position.toArray()).toEqual([3, 0, 4]);
-    expect(placement.renderEntities.map(({ object }) => object)).toEqual([effect]);
+    expect(fx.renderEntities.map(({ object }) => object)).toEqual([effect]);
     dropLoot.mockClear();
     target.work();
     expect(dropLoot).not.toHaveBeenCalled();
     await prefabDisplay(effect)!.artLoaded();
     finish();
     expect(effect.parent).toBeNull();
-    expect(placement.renderEntities).toEqual([]);
-  } finally { builder.dispose(); placement.dispose(); }
+    expect(fx.renderEntities).toEqual([]);
+  } finally { builder.dispose(); placement.dispose(); fx.dispose(); }
 });
 
 it('preserves work through reskinning and restores proximity after hits', async () => {
-  const { placement, model, world, animation, finish, dropLoot, builder } = await setup('researchlab2', 'researchlab2_pod');
+  const { placement, model, world, fx, animation, finish, dropLoot, builder } = await setup('researchlab2', 'researchlab2_pod');
   try {
     world.player.position.copy(model.position);
     builder.EvaluateTechTrees();
@@ -112,11 +114,11 @@ it('preserves work through reskinning and restores proximity after hits', async 
     let effectMesh!: THREE.Mesh;
     effect.traverse(object => { if (object instanceof THREE.Mesh) effectMesh ??= object; });
     const disposeMaterial = vi.spyOn((effectMesh.material as THREE.Material[])[0], 'dispose');
-    placement.dispose();
+    fx.dispose();
     await Promise.resolve();
     expect(effect.parent).toBeNull();
     expect(disposeMaterial).toHaveBeenCalledOnce();
-  } finally { builder.dispose(); placement.dispose(); }
+  } finally { builder.dispose(); placement.dispose(); fx.dispose(); }
 });
 
 it('queues magic station transitions across reskinning, then rebuilds transient use state on load', async () => {

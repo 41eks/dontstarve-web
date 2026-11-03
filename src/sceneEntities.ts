@@ -89,7 +89,7 @@ import { initialSave, shardSaveSearch } from './save/initialSave';
 import { ReskinEffects } from '@dontstarve-web/prefab/reskin_tool';
 import { RainEffect } from '@dontstarve-web/prefab/rain';
 import { SnowEffect } from '@dontstarve-web/prefab/snow';
-import { WorldFx } from '@dontstarve-web/prefab/world_fx';
+import { createWorldFxManager, worldFxSpawner } from '@dontstarve-web/prefab/world_fx';
 import { OceanWaves } from '@dontstarve-web/prefab/ocean_waves';
 import { WaveManager, type WaveMap } from '../packages/componets/src/wavemanager';
 import { WORLD_SCALE } from '../packages/prefab/src/standardcomponents';
@@ -512,14 +512,16 @@ export async function createSceneEntities(
     return flowerPlanting;
   }
 
-  function registerWorldFx(registry: EntityRegistry, prefabId: 'world_fx', _worldState: SceneWorldState) {
-    const worldFx = new WorldFx(scene);
+  function registerWorldFx(registry: EntityRegistry, prefabId: 'world_fx', worldState: SceneWorldState) {
+    const displays = new PrefabDisplayGroup(scene);
+    const manager = createWorldFxManager(displays, { scheduler: scheduler ?? worldState.scheduler });
+    const worldFx = worldFxSpawner(manager);
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       debugSpawn: prefab => worldFx.spawn(prefab, player.position),
       exportRecords: () => [],
-      update: (dt, quaternion) => worldFx.update(dt, quaternion),
-      renderEntities: () => worldFx.renderEntities,
-      dispose: () => worldFx.dispose(),
+      update: (dt, quaternion) => manager.update(dt, quaternion),
+      renderEntities: () => manager.renderEntities,
+      dispose: () => { manager.dispose(); displays.dispose(); },
     });
     return worldFx;
   }
