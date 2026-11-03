@@ -108,7 +108,7 @@ export class PrefabDisplay {
   private readonly onAdded = () => { if (this.asleep) this.sleep(); };
   // What the controller has been given, so that each snapshot only sends what changed.
   private applied: { clip: ClipJson | undefined; queue: number; frame?: SpriteJson['frame']; transient?: SpriteJson['transient'];
-    image?: number; facingImages?: SpriteJson['facingImages']; facing?: number; facingRotation?: number; facingMode?: SpriteJson['facingMode']; mirrored?: boolean; colour?: readonly number[]; opacity?: number; paused?: boolean; playbackRate?: number; erosion?: number; ground?: SpriteJson['ground']; meshOrder?: number; depthOffset?: boolean;
+    image?: number; facingImages?: SpriteJson['facingImages']; facing?: number; facingRotation?: number; facingMode?: SpriteJson['facingMode']; mirrored?: boolean; colour?: readonly number[]; opacity?: number; paused?: boolean; playbackRate?: number; erosion?: number; ground?: SpriteJson['ground']; meshOrder?: number; depthOffset?: boolean; visualHeight?: number;
     skinId?: string; source?: SpriteJson['source']; tint?: SpriteJson['tint']; appearance: ReadonlyMap<string, AppearanceJson> };
 
   constructor(options: PrefabDisplayOptions) {
@@ -417,6 +417,7 @@ export class PrefabDisplay {
     if (json.ground !== applied.ground) { applied.ground = json.ground; if (json.ground) controller.setGround?.(json.ground.renderOrder, json.ground.flat); }
     if (json.meshOrder !== applied.meshOrder) { applied.meshOrder = json.meshOrder; if (json.meshOrder !== undefined) controller.setMeshOrder?.(json.meshOrder); }
     if (json.depthOffset !== applied.depthOffset) { applied.depthOffset = json.depthOffset; controller.setDepthOffset?.(json.depthOffset ?? false); }
+    if (json.visualHeight !== applied.visualHeight) { applied.visualHeight = json.visualHeight; controller.setVisualHeight(json.visualHeight ?? 0); }
     if (json.skinId !== applied.skinId || json.appearance.get('skin') !== applied.appearance.get('skin')) {
       applied.skinId = json.skinId;
       this.dress(json);

@@ -147,6 +147,49 @@ it('keeps a symbol follower on a camera-facing archive sprite, whatever the came
   } finally { follower.remove(); display.dispose(); instance.remove(); assets.dispose(); vi.unstubAllGlobals(); }
 });
 
+it.each(['archive', 'factory'] as const)('lifts the drawn %s sprite off a grounded entity, across deferred art and reloading', async kind => {
+  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  const assets = new ArchiveSpriteAssets();
+  const settle = async (display: PrefabDisplay) => { await new Promise(resolve => setTimeout(resolve, 0)); await display.artLoaded(); display.update(0); };
+  // A fresh resource owner each time: the sprite is drawn only after its source has loaded.
+  const draw = (name: string) => {
+    const instance = new PrefabInstance(name, new SpriteState({ name: kind === 'archive' ? 'idle_loop' : 'idle', billboard: true }));
+    const display = new PrefabDisplay({ root: instance.transform.model, name, sprite: instance.sprite, status: instance.status, alignBottom: true, ...kind === 'archive'
+      ? { archive: { create: () => createSharedArchiveSprite(assets, { animationArchive: 'mushroom_tree_tall.zip', buildArchives: ['mushroom_tree_tall.zip'], bank: 'mushroom_tree', animation: 'idle_loop', loop: true }) } }
+      : { source: new SpriteResources().factory({ buildArchive: 'berrybush.zip', animationArchive: 'berrybush.zip' }) } });
+    return { instance, display };
+  };
+  const resting = draw('resting'), { instance, display } = draw('lifted');
+  const root = instance.transform.model, fx = new Group();
+  const drawnHeight = () => root.children.find(child => child !== fx)!.position.y;
+  try {
+    // An attached child comes before a sprite that is drawn later.
+    root.add(fx);
+    instance.sprite.setVisualHeight(5);
+    await settle(resting.display);
+    const rest = resting.instance.transform.model.children[0].position.y;
+    await settle(display);
+    expect(root.children[0]).toBe(fx);
+    expect(drawnHeight()).toBeCloseTo(rest + 5);
+    expect(fx.position.y).toBe(0);
+    expect(instance.position.y).toBe(0);
+
+    instance.setActive(false);
+    await settle(display);
+    instance.setActive(true);
+    await settle(display);
+    expect(drawnHeight()).toBeCloseTo(rest + 5);
+
+    instance.sprite.setVisualHeight(0);
+    display.update(0);
+    expect(drawnHeight()).toBeCloseTo(rest);
+    instance.sprite.setVisualHeight(7);
+    display.update(0);
+    expect(drawnHeight()).toBeCloseTo(rest + 7);
+    expect(instance.position.y).toBe(0);
+  } finally { display.dispose(); instance.remove(); resting.display.dispose(); resting.instance.remove(); assets.dispose(); vi.unstubAllGlobals(); }
+});
+
 it('shares one activity query and tracker, retaining the result until the final consumer leaves', () => {
   const transform = new Transform(), playerActive = createSignal(true);
   const origin = GetTileKeyAtPoint(new Vector3());

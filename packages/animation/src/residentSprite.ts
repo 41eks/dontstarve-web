@@ -262,6 +262,12 @@ export class ResidentSprite implements ArchiveSprite {
     (this.facing ??= new THREE.Quaternion()).copy(rotation);
     this.sprite?.faceCamera(this.facing);
   }
+  /** Lifts the drawn sprite off the entity's foot point; a placeholder carries it across unloading. */
+  setVisualHeight(height: number): void {
+    (this.sprite?.model ?? this.placeholder).position.y = height;
+    this.sprite?.refreshTransform();
+    this.matrixGate.markDirty();
+  }
   /** Erosion is keyed by the drawn sprite model; its owner sets it every update. */
   setErosion(amount: number): void { this.sprite?.setErosion(amount); }
   get instanced(): InstancedSprite | undefined { return this.sprite?.instanced; }
@@ -338,6 +344,7 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
   private released = false;
   /** The camera rotation in the root's space, as the display last gave it; a sprite drawn later is turned to it too. */
   private facing?: THREE.Quaternion;
+  private visualHeight = 0;
 
   /** `initial` is the first sprite, already built in `clip`, if its source is ready; `held` marks a clip shown on its last frame. */
   constructor(model: THREE.Group, create: (initialAnimation: string) => THREE.Group | undefined, release: (sprite: THREE.Group) => void,
@@ -405,6 +412,7 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
       sprite.visible = this.placeholder.visible;
       // A sprite rebuilt on wake stands where the released one stood; a deferred first sprite keeps its own offset.
       if (this.released) sprite.position.copy(this.placeholder.position);
+      else sprite.position.y += this.visualHeight;
     }
     this.placeholder.removeFromParent();
     this.model.add(sprite);
@@ -531,6 +539,12 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
     const visual = this.sprite ?? this.placeholder;
     if (visual.quaternion.equals(this.facing)) return;
     visual.quaternion.copy(this.facing);
+    this.matrixGate.markDirty();
+  }
+  /** Lifts the drawn sprite off the entity's foot point, on top of the foot offset the sprite was built with. */
+  setVisualHeight(height: number): void {
+    (this.sprite ?? this.placeholder).position.y += height - this.visualHeight;
+    this.visualHeight = height;
     this.matrixGate.markDirty();
   }
   update(dt: number): void { this.controller?.update(dt); }

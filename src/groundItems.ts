@@ -305,6 +305,7 @@ export class GroundItemManager {
   private removeVisual(record: GroundItemRecord): void {
     if (this.items.get(record.model) !== record) return;
     this.items.delete(record.model);
+    this.endFling(record);
     this.activeItems.delete(record);
     this.updatingItems.delete(record);
     record.stops.splice(0).forEach(stop => stop());
@@ -312,6 +313,12 @@ export class GroundItemManager {
     record.stopInventoryEvents?.();
     record.dispose();
     disposeActionEntity(record.model);
+  }
+
+  /** Loot in flight comes to rest: the entity keeps its sprite json, so a later visual starts on the ground. */
+  private endFling(record: GroundItemRecord): void {
+    record.fling = undefined;
+    record.instance.sprite.setVisualHeight(0);
   }
 
   private bindVisualActivity(record: GroundItemRecord): void {
@@ -374,7 +381,7 @@ export class GroundItemManager {
       entity.ListenForEvent('perished', () => this.replacePerished(record)),
       // physics.lua LaunchAt: any inst may be thrown from its own position.
       entity.ListenForEvent('launch', launch => { record.fling = new LootFling(entity.transform, undefined, undefined, launch as LootLaunch); this.refreshUpdating(record); }),
-      entity.ListenForEvent('ondropped', () => { record.fling = undefined; syncPlacementEntity(model); }),
+      entity.ListenForEvent('ondropped', () => { this.endFling(record); this.refreshUpdating(record); syncPlacementEntity(model); }),
     ];
     record.stopInventoryEvents = () => stops.forEach(stop => stop());
     // An inst that perished between holders is replaced once it reaches the ground.
@@ -524,15 +531,16 @@ export class GroundItemManager {
   update(dt: number, cameraQuaternion: THREE.Quaternion): void {
     this.prefabs.update(dt, cameraQuaternion);
     for (const item of [...this.updatingItems]) {
+      // Declared before the display draws, so the sprite stands at this frame's height.
+      if (item.fling) {
+        item.fling.update(dt);
+        item.instance.sprite.setVisualHeight(item.fling.height);
+        if (item.fling.settled) { this.endFling(item); this.refreshUpdating(item); }
+      }
       // The display advances the declared clips, then the visual's own update runs prefab logic. What that logic
       // declares this frame (a new clip, a set frame) is drawn now, as the engine renders the latest AnimState.
       item.display.update(dt, cameraQuaternion);
       if (item.update) { item.update(dt); item.display.update(0, cameraQuaternion); }
-      if (item.fling) {
-        item.fling.update(dt);
-        item.model.children[0].position.y = item.fling.height;
-        if (item.fling.settled) { item.fling = undefined; this.refreshUpdating(item); }
-      }
       if (item.instance.isRemoved || item.isRemoved?.()) {
         this.removeVisual(item);
         this.entities.destroy(item.instance);
