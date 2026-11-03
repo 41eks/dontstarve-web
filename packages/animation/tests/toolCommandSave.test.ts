@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
-import { GroundItemManager } from '../../../src/groundItems';
+import { GroundItemManager } from '../../prefab/src/groundItemManager';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { executeDebugCommand } from '../../../src/debugCommands';

@@ -3,7 +3,7 @@ import { activePrefabs } from '../../prefab/src/activePrefabs';
 import * as THREE from 'three';
 import { mountGameUi, INVENTORY_RECIPES } from '../src';
 import { createInventoryStore } from '../../../src/inventory';
-import { GroundItemManager } from '../../../src/groundItems';
+import { GroundItemManager } from '../../prefab/src/groundItemManager';
 import { createWorldState } from '../../../src/worldState';
 import { inventoryReceiveEffect } from '../../../src/inventoryReceive';
 import { ScreenProjection } from '@dontstarve-web/display';

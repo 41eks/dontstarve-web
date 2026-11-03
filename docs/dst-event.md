@@ -330,7 +330,7 @@ function bindAshGroundAppearance(
 
 ### 当前实现
 
-[BurnableItemController](../packages/prefab/src/burnableItems.ts) 已在烧毁回调中同步提交预备好的灰烬、复制脚点与数量，再移除原材料；`burning`、`burnt` 和 `persistence` 已使用 signal。[GroundItemManager](../src/groundItems.ts) 通过实体 `onputininventory`／`onremove` 清理地面表现。[ItemEntity](../packages/inventory/src/entity.ts) 的 `isRemoved` 目前是普通字段，没有接入本文的消散 timer／归属／移除标记 signal 或阶段 memo。
+[BurnableItemController](../packages/prefab/src/burnableItems.ts) 已在烧毁回调中同步提交预备好的灰烬、复制脚点与数量，再移除原材料；`burning`、`burnt` 和 `persistence` 已使用 signal。[GroundItemManager](../packages/prefab/src/groundItemManager.ts) 通过实体 `onputininventory`／`onremove` 清理地面表现。[ItemEntity](../packages/inventory/src/entity.ts) 的 `isRemoved` 目前是普通字段，没有接入本文的消散 timer／归属／移除标记 signal 或阶段 memo。
 
 ash 已有地面美术、库存、堆叠和保存支持，尚未移植 `disappears` 的消散计时／动画及遗骸名字分支。映射表中的这些 Lua 行为是后续实现要求，不能当作当前已支持的功能。
 

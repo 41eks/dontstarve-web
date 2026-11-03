@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { BerrybushManager } from '../../prefab/src/berrybush';
-import { GroundItemManager } from '../../../src/groundItems';
+import { GroundItemManager } from '../../prefab/src/groundItemManager';
 import { createInventoryStore } from '../../../src/inventory';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { createMemo, createSignal } from '@dontstarve-web/signals';

@@ -1,35 +1,41 @@
-import { syncPlacementEntity } from '../packages/prefab/src/placementEntities';
-import { ItemEntity, ItemEntityRegistry, type InventoryStore } from '@dontstarve-web/inventory';
+import { syncPlacementEntity } from './placementEntities';
+import { ItemEntity, ItemEntityRegistry, type InventoryStack, type InventoryStore } from '@dontstarve-web/inventory';
 import type { PickupTarget } from '@dontstarve-web/stategraphs';
 import type { PlayerActionPicker } from '@dontstarve-web/stategraphs';
-import { loadImageAtlas, type ImageAtlas } from '@dontstarve-web/animation/imageAtlas';
-import { PrefabDisplayGroup } from '@dontstarve-web/display';
+import { IconSpriteAtlases, PrefabDisplayGroup } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import { isSpriteEntityRendered } from '@dontstarve-web/animation/renderOrder';
-import { isHatId, HAT_DEFINITIONS } from '@dontstarve-web/prefab/hats';
-import { reskinTarget } from '@dontstarve-web/prefab/reskin_tool';
+import { isHatId, HAT_DEFINITIONS } from './hats';
+import { reskinTarget } from './reskin_tool';
 import type { ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
-import { GROUND_ART_DEFINITIONS } from '@dontstarve-web/prefab/groundItems';
-import { createPrefabEntity } from '@dontstarve-web/prefab/prefabInstance';
-import { newEntityId } from '@dontstarve-web/prefab/saveRecord';
-import type { BernieWorld } from '@dontstarve-web/prefab/bernie';
-import type { ButterflyWorld } from '@dontstarve-web/prefab/butterfly';
-import { GroundPrefabRegistry } from '@dontstarve-web/prefab/groundPrefabRegistry';
-import type { GroundItemDefinition, GroundItemVisual, GroundPrefabOptions, GroundSpawnOptions } from '@dontstarve-web/prefab/groundPrefab';
-import type { FirefliesWorld } from '@dontstarve-web/prefab/fireflies';
-import { LootFling, type LootLaunch } from '@dontstarve-web/prefab/lootFling';
-import type { SavedEntity } from './save/types';
-import { actionEntity, disposeActionEntity, findActionEntity } from '../packages/prefab/src/actionEntity';
-import type { GameTimeScheduler } from '../packages/componets/src/gameTimeScheduler';
-import type { DeconstructionTarget } from '@dontstarve-web/prefab/staff';
-import type { WorldEventEmitter } from '../packages/prefab/src/worldContext';
+import { GROUND_ART_DEFINITIONS } from './groundItems';
+import { createPrefabEntity } from './prefabInstance';
+import { newEntityId } from './saveRecord';
+import type { BernieWorld } from './bernie';
+import type { ButterflyWorld } from './butterfly';
+import { GroundPrefabRegistry } from './groundPrefabRegistry';
+import type { GroundItemDefinition, GroundItemVisual, GroundPrefabOptions, GroundSpawnOptions } from './groundPrefab';
+import type { FirefliesWorld } from './fireflies';
+import { LootFling, type LootLaunch } from './lootFling';
+import { actionEntity, disposeActionEntity, findActionEntity } from './actionEntity';
+import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import type { DeconstructionTarget } from './staff';
+import type { WorldEventEmitter } from './worldContext';
 import { createEffect, watchSignal } from '@dontstarve-web/signals';
 
-
-export type { GroundItemDefinition } from '@dontstarve-web/prefab/groundPrefab';
-
 const DEFAULT_ATLAS = 'images/inventoryimages.xml';
-const ITEM_HEIGHT = 4;
+
+/** A ground stack as the save holds it; the entity's other saved state lives in its stack. */
+export interface GroundItemSaveRecord {
+  id: string;
+  transform: { position: [number, number, number]; rotationY: number };
+  components: {
+    stack: InventoryStack;
+    phonograph?: { remainingSeconds: number };
+    torch?: { lit: true };
+    lantern?: { ison: boolean };
+  };
+}
 
 interface GroundItemRecord extends GroundItemVisual {
   definition: GroundItemDefinition;
@@ -43,9 +49,7 @@ interface GroundItemRecord extends GroundItemVisual {
 
 export class GroundItemManager {
   readonly entities: ItemEntityRegistry;
-  private readonly atlasRequests = new Map<string, Promise<ImageAtlas>>();
-  private readonly loadedAtlases = new Map<string, ImageAtlas>();
-  private readonly archiveUrl: string;
+  private readonly icons: IconSpriteAtlases;
   private readonly prefabs: GroundPrefabRegistry;
   private readonly items = new Map<THREE.Group, GroundItemRecord>();
   private readonly groundEntitiesByPrefab = new Map<string, Set<ItemEntity>>();
@@ -85,7 +89,7 @@ export class GroundItemManager {
   ) {
     this.entities = entities;
     this.displays = new PrefabDisplayGroup(scene);
-    this.archiveUrl = archiveUrl;
+    this.icons = new IconSpriteAtlases(archiveUrl);
     this.inventory = inventory;
     this.prefabs = new GroundPrefabRegistry({
       scene, animationBaseUrl, scheduler, fx, moleWorld, lightflierWorld, tickingarea, physics, butterflyWorld, firefliesWorld, bernieWorld, inventoryOwnerPosition: player.position,
@@ -113,7 +117,7 @@ export class GroundItemManager {
     this.items.clear();
     this.activeItems.clear();
     this.updatingItems.clear();
-    this.atlasRequests.clear(); this.loadedAtlases.clear();
+    this.icons.dispose();
     this.prefabs.dispose();
   }
 
@@ -424,8 +428,8 @@ export class GroundItemManager {
 
 
 
-  exportRecords(): SavedEntity[] {
-    return [...[...this.items.values()].flatMap<SavedEntity>((record) => {
+  exportRecords(): GroundItemSaveRecord[] {
+    return [...[...this.items.values()].flatMap<GroundItemSaveRecord>((record) => {
       const id = record.instance.id;
       const definition = this.currentDefinition(record);
       if (record.instance.isRemoved || !record.instance.persists || record.isRemoved?.() || record.instance.hasTag('INLIMBO')) return [];
@@ -557,72 +561,18 @@ export class GroundItemManager {
     return factory ? factory.create(definition, entity) : this.createIconVisual(definition, entity);
   }
 
-  private loadAtlas(atlasPath: string): Promise<ImageAtlas> {
-    let atlasRequest = this.atlasRequests.get(atlasPath);
-    if (!atlasRequest) {
-      atlasRequest = loadImageAtlas(this.archiveUrl, atlasPath);
-      void atlasRequest.then(atlas => this.loadedAtlases.set(atlasPath, atlas), () => this.atlasRequests.delete(atlasPath));
-      this.atlasRequests.set(atlasPath, atlasRequest);
-    }
-    return atlasRequest;
-  }
-
-  /** An inventory icon billboard for items outside the ground catalog; its display loads the atlas. */
+  /** An inventory icon billboard for items outside the ground catalog; the display side loads the atlas. */
   private createIconVisual(definition: GroundItemDefinition, entity: ItemEntity): GroundItemVisual {
-    const atlasPath = definition.atlas ?? DEFAULT_ATLAS;
     const name = `GroundItem:${definition.itemId}`;
-    let art: { texture: THREE.DataTexture; material: THREE.SpriteMaterial; aspect: number } | undefined;
-    const draw = (atlas: ImageAtlas) => {
-      art ??= iconArt(atlas, definition.icon);
-      const { material, aspect } = art;
-      return {
-        create: () => {
-          const sprite = new THREE.Sprite(material);
-          sprite.name = name;
-          sprite.scale.set(ITEM_HEIGHT * aspect, ITEM_HEIGHT, 1);
-          sprite.position.y = ITEM_HEIGHT / 2;
-          const visual = new THREE.Group();
-          visual.add(sprite);
-          return new THREE.Group().add(visual);
-        },
-        release: (drawn: THREE.Group) => drawn.removeFromParent(),
-      };
-    };
+    const icon = this.icons.source(definition.atlas ?? DEFAULT_ATLAS, definition.icon, name);
     // The entity is drawn by its display like any other item; the source only builds the icon billboard.
-    const { instance, display } = createPrefabEntity(definition.itemId, {
-      peek: () => { const atlas = this.loadedAtlases.get(atlasPath); return atlas && draw(atlas); },
-      load: () => this.loadAtlas(atlasPath).then(draw),
-    }, { name: '', billboard: true, instance: entity }, name);
+    const { instance, display } = createPrefabEntity(definition.itemId, icon, { name: '', billboard: true, instance: entity }, name);
     return {
       model: display.model, instance, display,
       dispose() {
         display.dispose();
-        art?.texture.dispose();
-        art?.material.dispose();
+        icon.dispose();
       },
     };
   }
-}
-
-function iconArt(atlas: ImageAtlas, icon: string): { texture: THREE.DataTexture; material: THREE.SpriteMaterial; aspect: number } {
-  const image = atlas.require(icon);
-  const texture = new THREE.DataTexture(
-    Uint8Array.from(image.pixels),
-    image.width,
-    image.height,
-    THREE.RGBAFormat,
-    THREE.UnsignedByteType,
-  );
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.flipY = true;
-  texture.magFilter = THREE.NearestFilter;
-  texture.needsUpdate = true;
-
-  const material = new THREE.SpriteMaterial({
-    map: texture,
-    transparent: true,
-    alphaTest: 0.01,
-    toneMapped: false,
-  });
-  return { texture, material, aspect: image.width / image.height };
 }

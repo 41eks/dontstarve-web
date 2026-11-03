@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { MushroomPlantManager } from '../../prefab/src/mushroom_plant';
-import { GroundItemManager } from '../../../src/groundItems';
+import { GroundItemManager } from '../../prefab/src/groundItemManager';
 import { createInventoryStore } from '../../../src/inventory';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { performToolWork } from '../../stategraphs/src/componentactions';

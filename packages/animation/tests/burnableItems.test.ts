@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import type { PrefabDisplay } from '@dontstarve-web/display';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
-import { GroundItemManager } from '../../../src/groundItems';
+import { GroundItemManager } from '../../prefab/src/groundItemManager';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { INVENTORY_ITEM_SPECS } from '../../../src/inventoryItems';
 import { ItemEntity, inventorySlotAddress } from '../../inventory/src';

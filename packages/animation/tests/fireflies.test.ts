@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { ItemEntity } from '../../inventory/src';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FirefliesController, FIREFLIES_LIGHT, configureFirefliesEntity } from '../../prefab/src/fireflies';
-import { GroundItemManager } from '../../../src/groundItems';
+import { GroundItemManager } from '../../prefab/src/groundItemManager';
 
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { createMemo, createSignal, type HandEquipment, type ReadonlySignal } from '../../signals/src';

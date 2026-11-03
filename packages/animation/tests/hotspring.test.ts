@@ -7,7 +7,7 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { HotspringManager, HOTSPRING_LIGHT } from '../../prefab/src/hotspring.ts';
 import { FindEntities } from '../../prefab/src/actionEntity';
-import { GroundItemManager } from '../../../src/groundItems';
+import { GroundItemManager } from '../../prefab/src/groundItemManager';
 import { createInventoryStore } from '../../../src/inventory';
 import { cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';

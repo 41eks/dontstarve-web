@@ -215,7 +215,7 @@ await player.userData.animationController.setCarryItem(null); // 收回背包并
 prefab 的 `dispose()` 调用它清理监听。`ondropped` 在成功从库存移到地面后触发，
 `onputininventory` 在成功拾取或虫网捕获后、移除地面模型前触发；失败的库存操作
 不触发这两个事件。`onload` 用于存档恢复或换肤后的地面初始化，不重放掉落效果。
-应用的 `GroundItemManager` 负责按创建器注册表创建实例、设置落点和分发事件；
+`GroundItemManager`（`src/groundItemManager.ts`）负责按创建器注册表创建实例、设置落点和分发事件；
 灯光、活动、动画和 Bernie 形态的处理保留在各 prefab 中。
 
 `GroundItemManager` 在 `animationBaseUrl` 后接收必填的 `player: THREE.Object3D`。

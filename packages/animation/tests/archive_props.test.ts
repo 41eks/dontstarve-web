@@ -5,7 +5,7 @@ import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { ArchivePropsManager } from '../../prefab/src/archive_props';
-import { GroundItemManager } from '../../../src/groundItems';
+import { GroundItemManager } from '../../prefab/src/groundItemManager';
 import { createInventoryStore } from '../../../src/inventory';
 import { createSignal } from '../../signals/src';
 import { performToolWork } from '../../stategraphs/src/componentactions';

@@ -7,7 +7,7 @@ import { MonkeytailManager, MONKEYTAIL_REGROW_TIME } from '../../prefab/src/monk
 import { createDeployMap } from '../../prefab/src/deployMap';
 import { placementEntities } from '../../prefab/src/placementEntities';
 import { deployActor, landTurf } from './deployActor';
-import { GroundItemManager } from '../../../src/groundItems';
+import { GroundItemManager } from '../../prefab/src/groundItemManager';
 import { createInventoryStore } from '../../../src/inventory';
 import { inventorySlotAddress, cursorSlotAddress } from '../../inventory/src';
 import { createSignal } from '../../signals/src';

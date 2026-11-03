@@ -6,7 +6,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { MarbleShrubManager } from '../../prefab/src/marbleshrub';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { MarbleBeanSaplingManager } from '../../prefab/src/marblebean_sapling';
-import { GroundItemManager } from '../../../src/groundItems';
+import { GroundItemManager } from '../../prefab/src/groundItemManager';
 import { createInventoryStore } from '../../../src/inventory';
 import { inventorySlotAddress } from '../../inventory/src';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';

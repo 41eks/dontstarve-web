@@ -2,7 +2,7 @@ import { prefabDisplay } from '../../display/src';
 import { fixturePickup } from './pickup-fixture';
 import * as THREE from 'three';
 import type { PrefabDisplay } from '@dontstarve-web/display';
-import { GroundItemManager } from '../../../src/groundItems';
+import { GroundItemManager } from '../../prefab/src/groundItemManager';
 import { prewarmScenePasses, renderSceneWithPasses } from '../../animation/src/sceneRenderPass';
 
 export async function checkGroundItemPickup() {

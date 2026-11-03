@@ -7,7 +7,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { RockAvocadoSaplingManager } from '../../prefab/src/rock_avocado_fruit_sprout_sapling';
 import { rockAvocadoProduct } from '../../prefab/src/rock_avocado_fruit';
 import { RockAvocadoBushManager } from '../../prefab/src/rock_avocado_bush';
-import { GroundItemManager } from '../../../src/groundItems';
+import { GroundItemManager } from '../../prefab/src/groundItemManager';
 import { createInventoryStore } from '../../../src/inventory';
 import { inventorySlotAddress } from '../../inventory/src';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';

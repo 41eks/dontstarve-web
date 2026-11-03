@@ -14,7 +14,7 @@ import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
 import type * as CANNON from 'cannon-es';
 import { playerDoer } from './playerDoer';
 import { PlaySound } from '../../prefab/src/sound';
-import { GroundItemManager } from '../../../src/groundItems';
+import { GroundItemManager } from '../../prefab/src/groundItemManager';
 import { InventoryStore, InventorySlot, ItemEntity, inventorySlotAddress, cursorSlotAddress } from '../../inventory/src';
 import { INVENTORY_ITEM_SPECS } from '../../../src/inventoryItems';
 import { INVENTORY_SKIN_SPECS, INVENTORY_RECIPES, INVENTORY_RECIPE_SKINS } from '../../ui/src/categories/shared';

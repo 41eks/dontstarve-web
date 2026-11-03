@@ -54,7 +54,7 @@ NPC 专用的 `shadow_thrall_parasitehat` 不属于玩家帽子目录，不导�
 
 ## 当前加载流程
 
-`src/groundItems.ts` 的 `GroundItemManager` 通过 `packages/prefab/src/groundPrefabRegistry.ts` 中的 `GroundPrefabRegistry` 查找物品工厂。注册表首先加载共享目录工厂，再由专用 prefab 工厂覆盖同名 ID。
+`packages/prefab/src/groundItemManager.ts` 的 `GroundItemManager` 通过 `packages/prefab/src/groundPrefabRegistry.ts` 中的 `GroundPrefabRegistry` 查找物品工厂。注册表首先加载共享目录工厂，再由专用 prefab 工厂覆盖同名 ID。
 
 `ArchiveSpriteAssets` 和 `GroundItemAssets` 不接收动画目录参数，统一从 `${import.meta.env.BASE_URL}dst/data/anim` 加载，支持子路径部署。使用 `new ArchiveSpriteAssets()` 或 `new GroundItemAssets()`；`ArchiveSpriteAssets` 的可选构造参数仅指定材质名称前缀，例如 `new ArchiveSpriteAssets('farm')`。仅转发动画目录的 prefab／特效构造参数一并移除，材质缓存和释放仍由原有资源对象管理。
 

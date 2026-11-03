@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { SaplingManager } from '../../prefab/src/sapling';
-import { GroundItemManager } from '../../../src/groundItems';
+import { GroundItemManager } from '../../prefab/src/groundItemManager';
 import { createPickupInventory } from './pickupFixture';
 import { createPickupDoer } from '../../stategraphs/src/pickup';
 import { performToolWork } from '../../stategraphs/src/componentactions';

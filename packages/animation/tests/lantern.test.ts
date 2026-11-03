@@ -5,7 +5,7 @@ import initialWorld from '../../../public/saves/initial-world.json' with { type:
 import { LANTERN_FUEL, LanternLightController, createLanternHandLifecycle, getLanternController } from '../../prefab/src/lantern';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src/slots';
 import { equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
-import { GroundItemManager } from '../../../src/groundItems';
+import { GroundItemManager } from '../../prefab/src/groundItemManager';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { executeDebugCommand } from '../../../src/debugCommands';

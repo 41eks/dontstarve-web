@@ -6,7 +6,7 @@ import { FliesController } from '../../prefab/src/flies';
 import { PrefabInstance, prefabInstance } from '../../prefab/src/prefabInstance';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import * as sound from '../../prefab/src/sound';
-import { GroundItemManager } from '../../../src/groundItems';
+import { GroundItemManager } from '../../prefab/src/groundItemManager';
 import { createPickupInventory } from './pickupFixture';
 import { setSpriteEntityRenderOrder } from '../src/renderOrder';
 import { bindTestWorld } from './worldContentFixture';

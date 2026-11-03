@@ -23,7 +23,7 @@ import { createMoonTreeManager } from '@dontstarve-web/prefab/moontree';
 import { WORLD_TILES, isLandTile } from '@dontstarve-web/prefab/turfMap';
 import { placeStaticLayout } from '@dontstarve-web/prefab/staticLayout';
 import { camera, followCamera } from './camera';
-import { GroundItemManager } from './groundItems';
+import { GroundItemManager } from '@dontstarve-web/prefab/groundItemManager';
 import { turfItemForTile } from '@dontstarve-web/prefab/turfs';
 import { GROUND_ART_DEFINITIONS, GROUND_ITEM_DISPLAY_SPECS } from '@dontstarve-web/prefab/groundItems';
 import { FarmPlowPlacement, FARM_PLOW_ID } from '@dontstarve-web/prefab/farm_plow';

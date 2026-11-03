@@ -7,7 +7,7 @@ import { createEmptyEntity, PrefabInstance } from '../../prefab/src/prefabInstan
 import type { GroundItemDefinition, GroundItemVisual } from '../../prefab/src/groundPrefab';
 import type { ItemEntity } from '../../inventory/src';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { GroundItemManager } from '../../../src/groundItems';
+import { GroundItemManager } from '../../prefab/src/groundItemManager';
 const { createTestVisual } = vi.hoisted(() => ({ createTestVisual: vi.fn<(definition: GroundItemDefinition, entity: ItemEntity) => GroundItemVisual & { update: ReturnType<typeof vi.fn<(dt: number) => void>> }>() }));
 import { FindEntities } from '../../prefab/src/actionEntity';
 import { EventEmitter } from '@dontstarve-web/signals';

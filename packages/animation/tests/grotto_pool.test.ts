@@ -6,7 +6,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { createMemo, createSignal, type TileStateQuery } from '../../signals/src';
 import { GrottoPoolManager } from '../../prefab/src/grotto_pool';
 import { WorldFx } from '../../prefab/src/world_fx';
-import { GroundItemManager } from '../../../src/groundItems';
+import { GroundItemManager } from '../../prefab/src/groundItemManager';
 import { createInventoryStore } from '../../../src/inventory';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { performToolWork } from '../../stategraphs/src/componentactions';

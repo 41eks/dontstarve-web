@@ -163,6 +163,7 @@
     "./locomotor": "./src/locomotor.ts",
     "./hats": "./src/hats.ts",
     "./groundItems": "./src/groundItems.ts",
+    "./groundItemManager": "./src/groundItemManager.ts",
     "./lootFling": "./src/lootFling.ts",
     "./groundPrefab": "./src/groundPrefab.ts",
     "./groundPrefabRegistry": "./src/groundPrefabRegistry.ts",

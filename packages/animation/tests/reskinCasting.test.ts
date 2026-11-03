@@ -21,7 +21,7 @@ import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { createEquipmentExistenceState } from '../../signals/src';
 import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
 import { TREASURE_CHEST_DEFINITION } from '../../prefab/src/treasurechest';
-import { GroundItemManager } from '../../../src/groundItems';
+import { GroundItemManager } from '../../prefab/src/groundItemManager';
 import { equipmentSlotAddress } from '../../inventory/src';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { DisposeSounds } from '../../prefab/src/sound';

@@ -26,7 +26,7 @@ import { Health } from '../../componets/src/health';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { createPerishWorld } from './perishWorldFixture';
 import { PERISH_FAST } from '../../componets/src/perishable';
-import { GroundItemManager } from '../../../src/groundItems';
+import { GroundItemManager } from '../../prefab/src/groundItemManager';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';

@@ -4,7 +4,7 @@ import { fixturePickup } from './pickup-fixture';
 import * as THREE from 'three';
 import type { PrefabDisplay } from '@dontstarve-web/display';
 import { DstLightingRenderer } from '../../../src/dstLighting';
-import { GroundItemManager } from '../../../src/groundItems';
+import { GroundItemManager } from '../../prefab/src/groundItemManager';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { createLightbulbGroundSprite } from '../../prefab/src/lightbulb';
 import { prefabInstance } from '../../prefab/src/prefabInstance';

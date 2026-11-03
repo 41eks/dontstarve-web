@@ -4,7 +4,7 @@ import type { PrefabDisplay } from '@dontstarve-web/display';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { strFromU8, unzipSync } from 'fflate';
-import { GroundItemManager } from '../../../src/groundItems';
+import { GroundItemManager } from '../../prefab/src/groundItemManager';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { GROUND_ART_DEFINITIONS } from '../../prefab/src/groundItems';
 import { createSignal } from '../../signals/src';

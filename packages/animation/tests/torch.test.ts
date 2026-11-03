@@ -5,7 +5,7 @@ import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabI
 import { createPickupDoer, performPickupAction } from '../../stategraphs/src/pickup';
 import { bindPlayerHandEquipment } from '../../../src/playerHandEquipment';
 import { ItemEntity, InventoryStore, InventorySlot, HandSlot, inventorySlotAddress, equipmentSlotAddress } from '@dontstarve-web/inventory';
-import { GroundItemManager } from '../../../src/groundItems';
+import { GroundItemManager } from '../../prefab/src/groundItemManager';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
