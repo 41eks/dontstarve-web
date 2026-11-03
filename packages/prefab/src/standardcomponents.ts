@@ -2,6 +2,11 @@ import { COLLISION, type PhysicsState } from '../../componets/src/physicsState';
 import { releaseBuildingContainer } from './containers';
 import type { PrefabInstance } from './prefabInstance';
 import type { PlacementSaveRecord } from './saveRecord';
+import type { SpawnGroundItem } from './groundPrefab';
+import type { ReadonlyVector3 } from './transform';
+import catalog from './groundItems.json' with { type: 'json' };
+import { getBoundWatchWorldContent, WorldContentKey, type GetWatchWorldContent } from '@dontstarve-web/signals';
+import type { Pickable } from './components/pickable';
 
 /** World units per DST unit. */
 export { WORLD_SCALE } from './tile';
@@ -11,6 +16,39 @@ export { GROUND_COLLISION_GROUP } from '../../componets/src/physicsBinding';
 
 /** An entity with a declared inst.Physics; `PrefabInstance` is one. */
 export interface PhysicsEntity { readonly physics: PhysicsState }
+
+/** standardcomponents.lua defaults used by the non-structure burnable prefabs. */
+export function DefaultBurnFn(inst: PrefabInstance): void {
+    if (!inst.hasTag('tree') && !inst.hasTag('structure')) inst.persists = false;
+}
+
+export function DefaultExtinguishFn(inst: PrefabInstance): void {
+    if (!inst.hasTag('tree') && !inst.hasTag('structure')) inst.persists = true;
+}
+
+export function DefaultBurntFn(inst: PrefabInstance, world: {
+    spawnGroundItem: SpawnGroundItem;
+    isOcean?(position: ReadonlyVector3): boolean;
+}): void {
+    inst.components.growable?.StopGrowing();
+    if (inst.components.workable?.GetWorkAction() !== 'HAMMER') inst.components.workable?.SetWorkLeft(0);
+    if (!world.isOcean?.(inst.position)) world.spawnGroundItem({ ...catalog.items.ash, itemId: 'ash', count: 1 }, inst.position);
+    inst.remove();
+}
+
+/** standardcomponents.lua MakeNoGrowInWinter: the instance owns the world-state binding. */
+export function MakeNoGrowInWinter(inst: PrefabInstance & { components: { pickable: Pickable } },
+    watch: GetWatchWorldContent | undefined = getBoundWatchWorldContent()): void {
+    const season = watch?.(WorldContentKey.Season, stop => inst.onRemove(stop));
+    if (!season) return;
+    const toggle = (winter: boolean) => {
+        if (winter) inst.components.pickable.pause(); else inst.components.pickable.resume();
+    };
+    season.subscribe((current, previous) => {
+        if ((current.season === 'winter') !== (previous.season === 'winter')) toggle(current.season === 'winter');
+    });
+    toggle(season.peek().season === 'winter');
+}
 
 /**
  * standardcomponents.lua DefaultBurntStructureFn, for the components structures here have. Its last step,
