@@ -56,7 +56,7 @@ export class ChessJunkManager implements DisplayDrivenPrefabManager<{ prefabId: 
     }, { instancedAnimations: 'all', name: id }) }, { name: `idle${style}`, billboard: true }, id);
     const { instance, display } = entity, model = display.model;
     instance.entityId = saved?.id ?? newEntityId();
-    instance.position.copy(position); model.rotation.y = saved?.transform.rotationY ?? 0;
+    instance.copyPosition(position); model.rotation.y = saved?.transform.rotationY ?? 0;
     instance.addTag('chess'); instance.addTag('mech');
     MakeObstaclePhysics(instance, 1.2);
     if (this.world.physics) instance.bindPhysics(this.world.physics);

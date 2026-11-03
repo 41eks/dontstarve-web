@@ -1,5 +1,8 @@
-import { Group, Matrix4, type Object3D } from 'three';
+import { Group, Matrix4, type Object3D, type Vector3 } from 'three';
 import { invalidateMatrixUpdates, retainWorldMatrixVersion } from './matrixUpdates';
+
+/** A position to read. Its writers are the entity Transform's methods, which keep the tile tracker and matrices in step. */
+export type ReadonlyVector3 = Readonly<Pick<Vector3, 'x' | 'y' | 'z' | 'isVector3' | 'clone' | 'toArray' | 'distanceTo' | 'distanceToSquared' | 'equals' | 'length' | 'lengthSq' | 'dot' | 'manhattanDistanceTo'>>;
 
 /** Set while a root invalidates its own descendants: their marks belong to the update already running. */
 let settling = 0;

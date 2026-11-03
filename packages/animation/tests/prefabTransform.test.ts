@@ -45,6 +45,24 @@ it('owns position, scale and degree heading before display and preserves them ac
   } finally { second.display.dispose(); instance.remove(); }
 });
 
+it('only writes a position through the transform, which keeps the tile tracker and the stationary root in step', () => {
+  const transform = Transform.stationary(), root = transform.model as TransformRoot;
+  const tile = transform.tileTracker.tile, origin = tile.peek();
+  updateSceneMatrices(root);
+  const typeChecked = () => {
+    // @ts-expect-error A position is read-only; a direct write would miss the tracker and the dirty mark.
+    transform.position.set(24, 0, 0);
+    // @ts-expect-error As above.
+    transform.position.x = 24;
+  };
+  expect(typeChecked).toBeTypeOf('function');
+  transform.copyPosition(new Vector3(24, 0, 0));
+  expect(transform.position.x).toBe(24);
+  expect(tile.peek()).not.toBe(origin);
+  expect(root.transformDirty).toBe(true);
+  transform.dispose();
+});
+
 it('retains the stationary root and marks it after logical writes and a display-local change', () => {
   const transform = Transform.stationary(), root = transform.model as TransformRoot;
   const point = new Group(); root.add(point);

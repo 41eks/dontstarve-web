@@ -205,7 +205,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     spawn(buildId: BuildId, skinId?: string): void {
         const building = this.createInstance(buildId, skinId);
         const target = this.playerFrontGroundPosition();
-        building.instance.position.set(target.x, target.y, target.z);
+        building.instance.setPosition(target.x, target.y, target.z);
         this.placed.push(building); this.mouseRecords.set(building.model, building);
         this.initializeComponents(building);
     }
@@ -216,7 +216,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         building.instance.entityId = record.id;
         building.instance.saveRecord = record;
         const [x, y, z] = record.transform.position;
-        building.instance.position.set(x, y, z);
+        building.instance.setPosition(x, y, z);
         this.initializeComponents(building);
         const container = building.instance.components?.container;
         if (!this.worldContext.registerContainer && record.components.container) {
@@ -484,7 +484,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         if (!this.pointer.isOverGround || !this.consumeBufferedBuild(placer.buildId)) return;
 
         const building = this.createInstance(placer.buildId, placer.skinId);
-        building.instance.position.copy(placer.instance.position);
+        building.instance.copyPosition(placer.instance.position);
         this.releasePlacer();
         this.placed.push(building); this.mouseRecords.set(building.model, building);
         this.initializeComponents(building);

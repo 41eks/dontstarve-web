@@ -1,3 +1,4 @@
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
 import { PrefabDisplayGroup, SpriteResources, SpriteState } from '@dontstarve-web/display';
@@ -62,10 +63,10 @@ export interface TumbleweedWorld {
   scheduler: GameTimeScheduler;
   /** `TheWorld.components.worldwind`. */
   wind?: WorldWind;
-  isOnValidGround(position: THREE.Vector3): boolean;
+  isOnValidGround(position: ReadonlyVector3): boolean;
   constrainPosition(position: THREE.Vector3): void;
   /** Spawn the rolled loot items at the tumbleweed's position. Items the world cannot spawn are the caller's concern. */
-  dropLoot(items: readonly string[], position: THREE.Vector3): void;
+  dropLoot(items: readonly string[], position: ReadonlyVector3): void;
   random?: () => number;
 }
 
@@ -84,12 +85,12 @@ export class TumbleweedInstance extends PrefabInstance {
   private asleep = false;
   private readonly world: TumbleweedWorld;
   private readonly random: () => number;
-  private readonly spawnBreakFx: (position: THREE.Vector3) => void;
+  private readonly spawnBreakFx: (position: ReadonlyVector3) => void;
   private readonly groundCheck: ComponentTimer;
   private groundCheckArmed = false;
   private readonly restartMovement: ComponentTimer;
 
-  constructor(world: TumbleweedWorld, spawnBreakFx: (position: THREE.Vector3) => void) {
+  constructor(world: TumbleweedWorld, spawnBreakFx: (position: ReadonlyVector3) => void) {
     super(TUMBLEWEED_ID, new SpriteState({ name: 'move_loop', billboard: true }));
     this.world = world; this.spawnBreakFx = spawnBreakFx;
     const random = this.random = world.random ?? Math.random;
@@ -227,9 +228,9 @@ export class TumbleweedInstance extends PrefabInstance {
 
   /** After physics: the entity follows its body. */
   sync(): void {
-    this.setPosition(this.body.position.x, 0, this.body.position.z);
-    this.world.constrainPosition(this.position);
-    this.tileTracker.sync();
+    const position = new THREE.Vector3(this.body.position.x, 0, this.body.position.z);
+    this.world.constrainPosition(position);
+    this.copyPosition(position);
   }
 }
 
@@ -253,14 +254,15 @@ export class TumbleweedManager {
       hiddenSymbols: ['swap_fire'] });
   }
 
-  spawn(position: THREE.Vector3, saved?: TumbleweedRecord): TumbleweedInstance {
+  spawn(position: ReadonlyVector3, saved?: TumbleweedRecord): TumbleweedInstance {
     if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError('Invalid tumbleweed position');
     if (this.disposed) throw new Error('Tumbleweed manager has been disposed');
     const instance = new TumbleweedInstance(this.world, at => this.spawnBreakFx(at));
     const display = this.displays.add({ root: instance.transform.model, name: TUMBLEWEED_ID, archive: this.archive, status: instance.status, sprite: instance.sprite, light: instance.light });
     bindInstance(display.model, instance);
-    instance.setPosition(position.x, 0, position.z);
-    this.world.constrainPosition(instance.position);
+    const placed = new THREE.Vector3(position.x, 0, position.z);
+    this.world.constrainPosition(placed);
+    instance.copyPosition(placed);
     instance.entityId = saved?.id ?? newEntityId();
     instance.bindPhysics(this.physics);
     actionEntity(display.model, TUMBLEWEED_ID);
@@ -271,7 +273,7 @@ export class TumbleweedManager {
   }
 
   /** tumbleweedbreakfx: FX, not persistent, removed by its own animover. */
-  private spawnBreakFx(position: THREE.Vector3): void {
+  private spawnBreakFx(position: ReadonlyVector3): void {
     if (this.disposed) return;
     const { instance, display } = createArchiveEntity('tumbleweedbreakfx', this.archive, { name: 'break', held: true, billboard: true }, 'tumbleweedbreakfx', inst => {
       inst.addTag('FX');

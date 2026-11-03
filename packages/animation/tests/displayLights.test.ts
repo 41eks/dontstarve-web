@@ -11,11 +11,11 @@ it('renders and samples only the lights displays list for active entities in the
   const lighting = new DstLocalLighting(), scene = new THREE.Scene();
   const red = { radius: 4, intensity: .2, falloff: 1, colour: [1, 0, 0] as const };
   const lit = createEmptyEntity('lit'), asleep = createEmptyEntity('asleep'), held = createEmptyEntity('held');
-  lit.instance.position.x = 130; asleep.instance.position.x = 131;
+  lit.instance.setPosition(130, 0, 0); asleep.instance.setPosition(131, 0, 0);
   scene.add(lit.display.model, asleep.display.model);
   for (const { instance } of [lit, asleep, held]) instance.light.set(red);
   // A light entity parented to `owner` has no display of its own: the owner's display lists it at the owner.
-  const owner = createEmptyEntity('owner'); owner.instance.position.x = 132; scene.add(owner.display.model);
+  const owner = createEmptyEntity('owner'); owner.instance.setPosition(132, 0, 0); scene.add(owner.display.model);
   const child = spawnLightEntity('lanternlight', owner.instance); child.instance.light.set({ ...red, colour: [0, 1, 0] });
   const listedModels = () => [...displayLights()].map(light => light.model);
   let sources = 0;

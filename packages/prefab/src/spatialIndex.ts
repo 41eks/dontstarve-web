@@ -1,9 +1,9 @@
-import type { Vector3 } from 'three';
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { TILE_SIZE } from './tile';
 
 export interface SpatialQuery<T> {
-  someNear(position: Vector3, radius: number, predicate: (value: T) => boolean): boolean;
-  someOnTile(position: Vector3, predicate: (value: T) => boolean): boolean;
+  someNear(position: ReadonlyVector3, radius: number, predicate: (value: T) => boolean): boolean;
+  someOnTile(position: ReadonlyVector3, predicate: (value: T) => boolean): boolean;
 }
 
 interface Entry<T> { value: T; extent: number; left: number; right: number; top: number; bottom: number }
@@ -12,9 +12,9 @@ interface Entry<T> { value: T; extent: number; left: number; right: number; top:
 export class SpatialIndex<T> implements SpatialQuery<T> {
   private readonly cells = new Map<string, Set<Entry<T>>>();
   private readonly entries = new Map<T, Entry<T>>();
-  private readonly positionOf: (value: T) => Vector3;
+  private readonly positionOf: (value: T) => ReadonlyVector3;
   private readonly extentOf: (value: T) => number;
-  constructor(positionOf: (value: T) => Vector3, extentOf: (value: T) => number = () => 0) {
+  constructor(positionOf: (value: T) => ReadonlyVector3, extentOf: (value: T) => number = () => 0) {
     this.positionOf = positionOf; this.extentOf = extentOf;
   }
 
@@ -62,7 +62,7 @@ export class SpatialIndex<T> implements SpatialQuery<T> {
 
   clear(): void { this.cells.clear(); this.entries.clear(); }
 
-  someNear(position: Vector3, radius: number, predicate: (value: T) => boolean): boolean {
+  someNear(position: ReadonlyVector3, radius: number, predicate: (value: T) => boolean): boolean {
     if (!Number.isFinite(radius) || radius < 0) throw new RangeError('Invalid spatial query radius');
     if (![position.x, position.y, position.z].every(Number.isFinite)) return false;
     return this.someInCells(Math.floor((position.x - radius) / TILE_SIZE), Math.floor((position.x + radius) / TILE_SIZE),
@@ -70,7 +70,7 @@ export class SpatialIndex<T> implements SpatialQuery<T> {
       entry => this.positionOf(entry.value).distanceToSquared(position) <= (radius + entry.extent) ** 2 && predicate(entry.value));
   }
 
-  someOnTile(position: Vector3, predicate: (value: T) => boolean): boolean {
+  someOnTile(position: ReadonlyVector3, predicate: (value: T) => boolean): boolean {
     if (![position.x, position.y, position.z].every(Number.isFinite)) return false;
     const x = Math.floor(position.x / TILE_SIZE), z = Math.floor(position.z / TILE_SIZE);
     return this.someInCells(x, x, z, z, entry => {

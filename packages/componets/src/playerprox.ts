@@ -1,9 +1,9 @@
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { createSignal, readonlySignal, createEffect, createMemo, watchSignal, WorldContentKey, getBoundWatchWorldContent, type GetWatchWorldContent, type Memo, type PlayerPositionsSignal } from '../../signals/src';
 import { GetTileCoordsAtPoint, TileTracker } from './tileManager';
 import { TILE_SIZE } from '../../prefab/src/tile';
-import type { Vector3 } from 'three';
 
-export interface PlayerProxInst { isValid(): boolean; getPosition(): Vector3 }
+export interface PlayerProxInst { isValid(): boolean; getPosition(): ReadonlyVector3 }
 
 // Unordered tile pairs share their grid distance across entities and position
 // snapshots. Signed X/Z indices also distinguish tiles outside the bounded grid.

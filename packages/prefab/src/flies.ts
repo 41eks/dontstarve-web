@@ -1,4 +1,4 @@
-import type { Vector3 } from 'three';
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import type { ArchiveSpriteCommands } from '@dontstarve-web/display';
 import type { PrefabInstance } from './prefabInstance';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -18,13 +18,13 @@ export class FliesController {
   readonly playerprox: PlayerProx;
   private readonly init: ComponentTimer;
   private readonly sprite: ArchiveSpriteCommands;
-  private readonly position: Vector3;
+  private readonly position: ReadonlyVector3;
   private sound?: SoundHandle;
   private asleep = false;
   private disposed = false;
   private animationRevision = 0;
 
-  constructor(instance: PrefabInstance<ArchiveSpriteCommands>, position: Vector3, scheduler: GameTimeScheduler,
+  constructor(instance: PrefabInstance<ArchiveSpriteCommands>, position: ReadonlyVector3, scheduler: GameTimeScheduler,
     getWatchWorldContent?: GetWatchWorldContent) {
     const sprite = this.sprite = instance.sprite; this.position = position;
     sprite.setVisible(true);

@@ -50,7 +50,7 @@ export class AtriumStatueManager implements DisplayDrivenPrefabManager<{ prefabI
     }, { instancedAnimations: 'all', name: ATRIUM_STATUE_ID }) }, { name: 'idle_full', held: true, billboard: true }, ATRIUM_STATUE_ID);
     const { instance, display } = entity, model = display.model;
     instance.entityId = saved?.id ?? newEntityId();
-    instance.position.copy(position); model.rotation.y = saved?.transform.rotationY ?? 0;
+    instance.copyPosition(position); model.rotation.y = saved?.transform.rotationY ?? 0;
     MakeObstaclePhysics(instance, .45);
     if (this.world.physics) instance.bindPhysics(this.world.physics);
     const minimap = instance.minimap; minimap.SetIcon('atrium_statue.png');

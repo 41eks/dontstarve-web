@@ -227,7 +227,7 @@ export class RuinsRelicManager implements DisplayDrivenPrefabManager<{ prefabId:
       archive: this.resources.archive({ bank, animationArchive: `${bank}.zip`, buildArchives: [`${bank}.zip`] },
         { instancedAnimations: 'all' }) });
     const model = display.model; bindInstance(model, instance);
-    instance.position.copy(position); model.rotation.y = saved?.transform.rotationY ?? 0;
+    instance.copyPosition(position); model.rotation.y = saved?.transform.rotationY ?? 0;
     if (this.world.physics) instance.bindPhysics(this.world.physics);
     const stop = watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active));
     instance.onRemove(stop);

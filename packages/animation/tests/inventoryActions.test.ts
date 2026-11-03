@@ -28,7 +28,7 @@ function setup() {
   inventory.registerSlots([{ address: cursorSlotAddress(), slot: new InventorySlot() }]);
   const scene = new THREE.Scene();
   display.mount(scene);
-  instance.position.set(100, 0, 100);
+  instance.setPosition(100, 0, 100);
   instance.components.inventory = inventory;
   inventory.bindActor({ hasTag: tag => instance.hasTag(tag), GetPosition: () => instance.position,
     PushEvent: (name, data) => instance.PushEvent(name, data) });
@@ -54,7 +54,7 @@ it('gives one item from a stack through the shared action and passes the detache
   const s = setup(), target = createEmptyEntity('trader');
   const trader = new Trader(target.instance), accepted = vi.fn();
   target.instance.components.trader = trader;
-  target.instance.position.copy(s.instance.position);
+  target.instance.copyPosition(s.instance.position);
   trader.SetOnAccept((_giver, item) => accepted(item));
   try {
     s.inventory.add('twigs', 2);
@@ -126,7 +126,7 @@ it('uses active seeds on the real soil instance through PLANTSOIL and the Lua lo
   const farm = new FarmPlowPlacement(s.world as WorldContext, turf, () => {});
   const position = new THREE.Vector3(3, 0, 3);
   try {
-    s.instance.position.copy(position);
+    s.instance.copyPosition(position);
     turf.plow(position);
     const model = farm.spawnDecor('farm_soil', position, { broken: false }, 'soil');
     const soil = prefabInstance(model)!;

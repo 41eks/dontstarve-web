@@ -186,7 +186,7 @@ export class ArchivePropsManager {
     saved: ArchivePropRecord | undefined): THREE.Group {
     const model = display.model;
     const sprite = instance.sprite;
-    instance.position.set(position.x, 0, position.z);
+    instance.setPosition(position.x, 0, position.z);
     instance.entityId = saved?.id ?? newEntityId();
     for (const tag of definition.tags) instance.addTag(tag);
     const inst = actionEntity(model, prefab);
@@ -273,7 +273,7 @@ export class ArchivePropsManager {
       const entity = createArchiveEntity('collapse_small', { initial: effect, create: clip => createSharedArchiveSprite(this.assets, {
         animationArchive: 'structure_collapse_fx.zip', buildArchives: ['structure_collapse_fx.zip'], bank: 'collapse', animation: clip.name, loop: clip.loop,
       }) }, { name: 'collapse_small', billboard: true });
-      entity.instance.position.copy(at); entity.instance.persists = false;
+      entity.instance.copyPosition(at); entity.instance.persists = false;
       for (const tag of ['FX', 'NOCLICK']) entity.instance.addTag(tag);
       this.displays.mount(entity.display); this.effects.add(entity);
       entity.instance.sprite.playOnce('collapse_small', () => { entity.instance.remove(); this.effects.delete(entity); });
@@ -306,7 +306,7 @@ export class ArchivePropsManager {
   private createAmbient(position: THREE.Vector3, saved?: ArchivePropRecord): THREE.Group {
     const { instance, display } = createEmptyEntity(ARCHIVE_AMBIENT_SFX_ID);
     const model = display.model;
-    instance.position.set(position.x, 0, position.z);
+    instance.setPosition(position.x, 0, position.z);
     instance.entityId = saved?.id ?? newEntityId();
     for (const tag of ['NOBLOCK', 'NOCLICK']) instance.addTag(tag);
     actionEntity(model, ARCHIVE_AMBIENT_SFX_ID);

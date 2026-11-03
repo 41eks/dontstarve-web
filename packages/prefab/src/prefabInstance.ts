@@ -1,7 +1,7 @@
 import { MiniMapState } from '../../map/src/minimapState';
 import { watchMiniMapEntity } from '../../map/src/minimapEntities';
 import type * as CANNON from 'cannon-es';
-import type { Object3D, Vector3 } from 'three';
+import type { Object3D, Vector3, Vector3Like } from 'three';
 import { createSignal, EventEmitter, readonlySignal, type ReadonlySignal } from '@dontstarve-web/signals';
 import { LightState, PrefabDisplay, SpriteState, type ArchiveSpriteCommands, type ArchiveSpriteSource, type LoadedSpriteSource, type PrefabDisplayOptions, type PrefabStatus, type SpriteSource } from '@dontstarve-web/display';
 import { bindPhysics, type PhysicsBinding } from '../../componets/src/physicsBinding';
@@ -13,7 +13,7 @@ import type { ComponentActionEntity } from '../../stategraphs/src/componentactio
 import type { PlacementSaveRecord } from './saveRecord';
 import { WORLD_SCALE } from './tile';
 import { refreshMouseTarget } from './mouseTargets';
-import { Transform } from './transform';
+import { Transform, type ReadonlyVector3 } from './transform';
 import type { PrefabWorldContext } from './worldContext';
 
 type ActionComponents = ComponentActionEntity['components'];
@@ -100,7 +100,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
     this.transform = transform;
   }
 
-  get position(): Vector3 { return this.transform.position; }
+  get position(): ReadonlyVector3 { return this.transform.position; }
   get scale(): Vector3 { return this.transform.scale; }
   get rotation(): number { return this.transform.rotation; }
 
@@ -111,6 +111,9 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   setPosition(x: number, y: number, z: number): void {
     this.transform.setPosition(x, y, z);
   }
+
+  /** Transform:SetPosition(pt:Get()). */
+  copyPosition(point: Vector3Like): void { this.transform.copyPosition(point); }
 
   /** Transform:SetScale, marked as `setPosition()` is. */
   setScale(x: number, y = x, z = x): void {
@@ -123,7 +126,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   }
 
   get isRemoved(): boolean { return this.lifecycle.peek() === 'removed'; }
-  getPosition(): Vector3 { return this.position; }
+  getPosition(): Vector3 { return this.transform.model.position; }
   /** inst:PushEvent: listeners run synchronously with `data`, whether or not a display draws the entity. */
   PushEvent(name: string, data?: unknown): void { this.events.emit(name, data); }
   /** inst:ListenForEvent on the entity itself; the returned function removes the listener. */
@@ -135,7 +138,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   get physicsBody(): CANNON.Body | undefined { return this.physicsBinding?.body; }
 
   /** Hands `physics` to the host world; `ground` is the collider's origin when the model is drawn above it. */
-  bindPhysics(world: CANNON.World, ground: () => Vector3 = () => this.position): void {
+  bindPhysics(world: CANNON.World, ground: () => Vector3Like = () => this.position): void {
     if (this.physicsBinding || this.lifecycle.peek() === 'removed') return;
     this.physicsBinding = bindPhysics(world, this.physics, ground, this.transform);
   }

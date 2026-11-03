@@ -133,7 +133,7 @@ export class BeeQueenHiveManager {
     const display = new PrefabDisplay({ root: instance.transform.model, name: BEEQUEENHIVEGROWN_ID, status: instance.status, sprite: instance.sprite, archive: { create: build } });
     const model = display.model;
     bindInstance(model, instance);
-    instance.position.set(position.x, 0, position.z);
+    instance.setPosition(position.x, 0, position.z);
     instance.scale.setScalar(1.4);
     if (this.world.physics) instance.bindPhysics(this.world.physics);
     const inst = actionEntity(model, BEEQUEENHIVEGROWN_ID);

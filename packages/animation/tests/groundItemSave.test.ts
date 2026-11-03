@@ -119,7 +119,7 @@ describe('ground item save records', () => {
       expect(copies).not.toHaveBeenCalled();
       expect(query.someNear(origin, 1, blocker => blocker.prefab === 'log')).toBe(true);
 
-      entity.transform.position.set(24, 0, 0);
+      entity.transform.setPosition(24, 0, 0);
       expect(model.position.toArray()).toEqual([24, 0, 0]);
       manager.update(.1, new THREE.Quaternion());
       expect(matrices).not.toHaveBeenCalled();
@@ -177,7 +177,7 @@ describe('ground item save records', () => {
       const unrelatedEntity = findActionEntity(unrelated)!.pickupTarget.entity as ItemEntity;
       const unrelatedSnapshot = vi.spyOn(unrelatedEntity, 'snapshot');
       const unrelatedTags = vi.spyOn(unrelatedEntity, 'hasTag');
-      entity.transform.position.set(20, 0, -30);
+      entity.transform.setPosition(20, 0, -30);
       entity.persists = false; // Lua spatial queries include live, non-persistent entities too.
       expect([...manager.iteratePrefabPositions('log')]).toEqual([entity.transform.position]);
       expect([...manager.iteratePrefabPositions('log')][0]).toBe(entity.transform.position);
@@ -295,7 +295,7 @@ describe('ground item save records', () => {
     manager.update(0, new THREE.Quaternion());
     expect(entity.transform.position).toBe(position);
 
-    entity.transform.position.set(20, 0.5, 21);
+    entity.transform.setPosition(20, 0.5, 21);
     expect(reskinEntity(manager.reskinTargets[0])).toBe(true);
     // Reskinning changes the sprite json while the same model keeps the authoritative transform.
     expect(manager.renderEntities[0].object).toBe(model);
@@ -320,7 +320,7 @@ describe('ground item save records', () => {
     restored.manager.dispose();
 
     // Input checks current entity coordinates before the next active frame.
-    entity.transform.position.set(30, 0, 31);
+    entity.transform.setPosition(30, 0, 31);
     player.position.set(30, 0, 31);
     const equip = vi.spyOn(inventory, 'Equip');
     equip.mockReturnValueOnce(false);

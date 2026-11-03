@@ -1,3 +1,4 @@
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import type { PrefabDisplay } from '@dontstarve-web/display';
 import type { ItemEntity, InventoryStack } from '@dontstarve-web/inventory';
 import type * as THREE from 'three';
@@ -66,7 +67,7 @@ export interface GroundItemVisual {
 export interface GroundFx {
   collapse?: import('./world_fx').WorldFx['collapse'];
   prepare(prefab: import('./world_fx').WorldFxPrefab): Promise<void>;
-  spawn(prefab: import('./world_fx').WorldFxPrefab, position: THREE.Vector3): void;
+  spawn(prefab: import('./world_fx').WorldFxPrefab, position: ReadonlyVector3): void;
 }
 
 export interface GroundPrefabOptions {
@@ -85,7 +86,7 @@ export interface GroundPrefabOptions {
   butterflyWorld: ButterflyWorld;
   firefliesWorld: FirefliesWorld;
   /** lootdropper.lua DropLoot: each piece is spawned now and flung; the displays load the art. */
-  dropLoot?(items: readonly GroundItemDefinition[], position: THREE.Vector3): void;
+  dropLoot?(items: readonly GroundItemDefinition[], position: ReadonlyVector3): void;
   /** SpawnPrefab of a ground stack at `position`, synchronously; its display loads the art. */
   spawnGroundItem?: SpawnGroundItem;
 }
@@ -94,7 +95,7 @@ export interface GroundPrefabOptions {
 export interface GroundSpawnOptions { fling?: boolean; launch?: import('./lootFling').LootLaunch }
 
 /** Creates the inst and its display now; returns undefined when the world can no longer spawn. */
-export type SpawnGroundItem = (definition: GroundItemDefinition, position: THREE.Vector3, options?: GroundSpawnOptions) => ItemEntity | undefined;
+export type SpawnGroundItem = (definition: GroundItemDefinition, position: ReadonlyVector3, options?: GroundSpawnOptions) => ItemEntity | undefined;
 
 export interface GroundPrefabContext extends GroundPrefabOptions {
   assets: GroundItemAssets;
@@ -113,6 +114,6 @@ export interface GroundItemFactory {
   capture?: 'net';
   configureEntity?(entity: ItemEntity): void;
   update?(dt: number, cameraQuaternion: THREE.Quaternion): void;
-  renderEntities?(): readonly { object: THREE.Group; footPosition: THREE.Vector3; cameraDepth: number }[];
+  renderEntities?(): readonly { object: THREE.Group; footPosition: ReadonlyVector3; cameraDepth: number }[];
   dispose?(): void;
 }

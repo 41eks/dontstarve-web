@@ -1,3 +1,4 @@
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import type * as THREE from 'three';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { ComponentTimer } from '../../componets/src/timer';
@@ -185,9 +186,9 @@ function onhammered(inst: ItemEntity): void {
 
 export function createPhonographGroundFactory(context: GroundPrefabContext): GroundItemFactory {
   const { fx, dropLoot, spawnGroundItem, scheduler } = context;
-  const worldServices = { fx, dropLoot: (items: readonly { itemId: string; count: number; skinId?: string }[], position: THREE.Vector3) =>
+  const worldServices = { fx, dropLoot: (items: readonly { itemId: string; count: number; skinId?: string }[], position: ReadonlyVector3) =>
     dropLoot?.(items.map(item => ({ ...GROUND_ITEM_DEFINITIONS[item.itemId], ...item })), position),
-    dropItem: (entity: ItemEntity, position: THREE.Vector3) => {
+    dropItem: (entity: ItemEntity, position: ReadonlyVector3) => {
       spawnGroundItem?.({ ...GROUND_ITEM_DEFINITIONS[entity.prefab], ...entity.snapshot(), entity }, position, { fling: true });
     },
   };

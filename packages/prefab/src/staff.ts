@@ -1,4 +1,4 @@
-import type * as THREE from 'three';
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import type { EquipmentLifecycle, ReadonlySignal } from '@dontstarve-web/signals';
 import { WILSON_ACTION_TIMES } from '@dontstarve-web/stategraphs/SGwilson';
@@ -30,7 +30,7 @@ export const LIGHT_STAFF_CAST_SOUND = 'dontstarve/common/staffteleport';
 export interface LightStaffWorld {
   readonly map: SpellCastMap;
   /** SpawnPrefab at the cast's commit; the product's display loads its art. */
-  spawnPrefab(prefab: 'stafflight' | 'staffcoldlight', position: THREE.Vector3): void;
+  spawnPrefab(prefab: 'stafflight' | 'staffcoldlight', position: ReadonlyVector3): void;
 }
 
 /** staff.lua yellow/opal: configure one spellcaster on the actual inventory entity. */
@@ -58,7 +58,7 @@ export class LightStaffController implements EquipmentLifecycle {
   onequip(): void {}
   onunequip(): void {}
   dispose(): void {}
-  private createLight(position: THREE.Vector3, doer: SpellCastDoer): boolean {
+  private createLight(position: ReadonlyVector3, doer: SpellCastDoer): boolean {
     if (this.entity.isRemoved) return false;
     this.world.spawnPrefab(this.product, position);
     const depleted = (this.entity.components.finiteuses.remaining ?? LIGHT_STAFF_USES[this.entity.prefab as LightStaffId]) === 1;
@@ -193,7 +193,7 @@ export type DeconstructionTarget = SpellCastTarget & {
     fueled?: { readonly percent: ReadonlySignal<number | undefined> };
     armor?: { GetPercent(): number };
     inventoryitem?: object;
-    container?: { DropEverything(position: THREE.Vector3): void };
+    container?: { DropEverything(position: ReadonlyVector3): void };
     stewer?: { Harvest(): unknown };
   };
   flush?(): void;
@@ -203,7 +203,7 @@ export type DeconstructionTarget = SpellCastTarget & {
 export interface DeconstructionLoot { readonly itemId: string; readonly count: number; }
 export interface GreenStaffWorld {
   /** lootdropper:SpawnLootPrefab for each piece, flung from `position`; created synchronously. */
-  spawnLoot(items: readonly DeconstructionLoot[], position: THREE.Vector3): void;
+  spawnLoot(items: readonly DeconstructionLoot[], position: ReadonlyVector3): void;
 }
 
 /** staff.lua destroystructure: one recipe product, scaled by its current condition. */

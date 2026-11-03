@@ -70,7 +70,7 @@ it('coalesces entity and view updates, retains sampled positions while closed an
   display.set(entity, icon); display.update(view); display.start();
   display.update(view); display.set(entity, icon);
   expect(frames.size).toBe(1); flush(); expect(frames.size).toBe(0);
-  entity.position.set(20, 0, 30);
+  (entity.position as Vector3).set(20, 0, 30);
   // Moving the source vector alone does not bypass TileTracker notifications.
   display.update(view); flush();
   expect(context.drawImage.mock.lastCall?.slice(5)).toEqual([384, 268, 32, 64]);

@@ -1,3 +1,4 @@
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { MakeObstaclePhysics, RemovePhysicsColliders } from './standardcomponents';
 import { ModelRecords } from './modelRecords';
 import * as THREE from 'three';
@@ -65,7 +66,7 @@ export interface MoonTreeWorld {
   /** DefaultBurntFn: one ash at the burnt inst's position. */
   worldEvents: WorldEventEmitter;
   growthDuration?(seconds: number): number;
-  dropLoot(items: readonly { itemId: string; count: number }[], position: THREE.Vector3): void;
+  dropLoot(items: readonly { itemId: string; count: number }[], position: ReadonlyVector3): void;
 }
 
 /** moontree.lua OnSave keeps the stump flag; workable progress is not saved. */
@@ -126,7 +127,7 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
   const effects = new Set<ReturnType<typeof createPrefabEntity>>();
   const saplings = new Map<THREE.Group, { entity: ReturnType<typeof createArchiveEntity>; timer: Timer; workable: Workable; stopActivity(): void; stopPlacement(): void }>();
   const sounds = new Set<SoundHandle>();
-  const sound = (path: Parameters<typeof PlaySound>[0], position: THREE.Vector3) => {
+  const sound = (path: Parameters<typeof PlaySound>[0], position: ReadonlyVector3) => {
     for (const handle of sounds) if (!handle.isPlaying?.()) sounds.delete(handle);
     sounds.add(PlaySound(path, position));
   };
@@ -306,7 +307,7 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
     bindFire(controller);
   };
 
-  const spawnChopFx = (position: THREE.Vector3, size: MoonTreeSize) => {
+  const spawnChopFx = (position: ReadonlyVector3, size: MoonTreeSize) => {
     const drawn = createPrefabEntity('tree_petal_fx_chop', { create: animation => fxFactory.create({ initialAnimation: animation, name: 'tree_petal_fx_chop' }),
       release: sprite => fxFactory.disposeSprite(sprite) }, { name: 'chop', billboard: true }, 'tree_petal_fx_chop');
     const fx = drawn.display.model; drawn.instance.persists = false;
@@ -388,7 +389,7 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
     });
   };
 
-  const createEntity = (position: THREE.Vector3, saveId?: string): ResidentEntity => {
+  const createEntity = (position: ReadonlyVector3, saveId?: string): ResidentEntity => {
     if (disposed) throw new Error('Moon tree manager has been disposed');
     if (saveId && entities.some(entity => entity.saveId === saveId)) throw new Error(`Duplicate entity ID: ${saveId}`);
     const id = nextId++;
@@ -444,7 +445,7 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
     saplings.delete(model); sapling.stopActivity(); sapling.stopPlacement(); sapling.entity.instance.remove();
   };
 
-  const spawn = (prefab: typeof MOON_TREE_SPAWN_IDS[number], position: THREE.Vector3,
+  const spawn = (prefab: typeof MOON_TREE_SPAWN_IDS[number], position: ReadonlyVector3,
     saved?: MoonTreeRecord, fromSeed = false): ResidentEntity => {
     const stage = saved ? saved.components.growable?.stage ?? MOON_TREE_SIZES.indexOf(saved.components.moonTree?.size ?? 'tall') + 1
       : prefab === 'moon_tree' ? Math.min(3, Math.floor(random() * 3) + 1) : MOON_TREE_SPAWN_IDS.indexOf(prefab);
@@ -456,7 +457,7 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
     return entity;
   };
 
-  const spawnSapling = (position: THREE.Vector3, saved?: MoonTreeSaplingRecord): THREE.Group => {
+  const spawnSapling = (position: ReadonlyVector3, saved?: MoonTreeSaplingRecord): THREE.Group => {
     const create = (clip: { name: string; loop: boolean }) => createSapling(clip.name, clip.loop, 'moonbutterfly_sapling');
     const entity = createArchiveEntity('moonbutterfly_sapling', { create }, { name: 'idle', billboard: true }, 'moonbutterfly_sapling', instance => instance.setActive(false), undefined, { staticTransform: true });
     const model = entity.display.model;

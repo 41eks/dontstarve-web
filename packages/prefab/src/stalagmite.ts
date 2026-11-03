@@ -1,3 +1,4 @@
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import * as THREE from 'three';
 import type { World } from 'cannon-es';
 import type { TileStateQuery } from '@dontstarve-web/signals';
@@ -104,14 +105,14 @@ export class StalagmiteManager implements DisplayDrivenPrefabManager<{ prefabId:
   private disposed = false;
   constructor(scene: THREE.Scene, world: StalagmiteWorld) { this.displays = new PrefabDisplayGroup(scene); this.world = world; }
 
-  spawn(id: StalagmiteId, position: THREE.Vector3, saved?: StalagmiteRecord): THREE.Group {
+  spawn(id: StalagmiteId, position: ReadonlyVector3, saved?: StalagmiteRecord): THREE.Group {
     if (this.disposed) throw new Error('Stalagmites disposed');
     const instance = new StalagmiteInstance(id, this.world, saved), bank = stalagmiteBank(id);
     const display = new PrefabDisplay({ root: instance.transform.model, name: id, status: instance.status, sprite: instance.sprite,
       archive: this.resources.archive({ animationArchive: `${bank}.zip`, buildArchives: [`${bank}.zip`], bank },
         { instancedAnimations: 'all', colour: [1, 1, 1] }) });
     const model = display.model; bindInstance(model, instance);
-    instance.position.copy(position); model.rotation.y = saved?.transform.rotationY ?? 0;
+    instance.copyPosition(position); model.rotation.y = saved?.transform.rotationY ?? 0;
     if (this.world.physics) instance.bindPhysics(this.world.physics);
     const stop = watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active));
     instance.onRemove(() => { stop(); this.instances.delete(model); });

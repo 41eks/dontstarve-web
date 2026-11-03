@@ -1,3 +1,4 @@
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import type * as THREE from 'three';
 import { createEffect, watchSignal, type ReadonlySignal } from '@dontstarve-web/signals';
 import type { ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
@@ -16,7 +17,7 @@ interface FxOptions {
   /** Merge the child's frame into the owner's billboard, preserving a followed symbol's layer position. */
   readonly composite?: {
     readonly symbol?: string;
-    readonly detached?: { readonly position: THREE.Vector3; readonly mirrored: boolean };
+    readonly detached?: { readonly position: ReadonlyVector3; readonly mirrored: boolean };
     /** AnimState:SetFinalOffset of a symbol follower: drawn behind (< 0) or in front of (> 0) the whole owner. */
     readonly finalOffset?: number;
     /** Transform:SetNoFaced: the follower keeps its single facing whatever the owner's. */
@@ -38,7 +39,7 @@ const fxModel = (fx: FxJson): THREE.Group => fx.display ? fx.display.model : (fx
 
 export interface FxRenderEntry {
   readonly object: THREE.Group;
-  readonly footPosition: THREE.Vector3;
+  readonly footPosition: ReadonlyVector3;
   readonly cameraDepth: number;
   readonly sortLayer: number;
 }

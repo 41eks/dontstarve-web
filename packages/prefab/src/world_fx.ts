@@ -1,3 +1,4 @@
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { PrefabDisplayGroup, SpriteResources, prefabDisplay } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import { findImage, smallHash, SpriteFrameRenderer, type Animation, type ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
@@ -45,7 +46,7 @@ interface FxInstance {
   /** The fx entity; it draws its frames itself under the display's model. */
   entity: ReturnType<typeof createEmptyEntity>;
   model: THREE.Group;
-  footPosition: THREE.Vector3;
+  footPosition: ReadonlyVector3;
   renderer: SpriteFrameRenderer;
   /** Undefined while the art loads: the entity exists and plays from its first frame once drawn. */
   assets?: FxAssets;
@@ -73,7 +74,7 @@ export class WorldFx {
   }
 
   /** structure_collapse_fx.lua: shared art, material sounds and an independent animover lifetime. */
-  collapse(size: 'small' | 'big', position: THREE.Vector3, material?: 'wood' | 'metal' | 'stone' | 'rock' | 'straw' | 'pot'): void {
+  collapse(size: 'small' | 'big', position: ReadonlyVector3, material?: 'wood' | 'metal' | 'stone' | 'rock' | 'straw' | 'pot'): void {
     if (this.disposed) return;
     const animation = size === 'big' ? 'collapse_large' : 'collapse_small';
     const source = this.collapseSprites.archive({ animationArchive: 'structure_collapse_fx.zip',
@@ -85,7 +86,7 @@ export class WorldFx {
       inst.sprite.playOnce(animation, () => inst.remove());
     });
     const { instance, display } = effect;
-    instance.position.copy(position);
+    instance.copyPosition(position);
     this.collapses.add(effect);
     instance.onRemove(() => this.collapses.delete(effect));
     this.displays.mount(display);
@@ -118,14 +119,14 @@ export class WorldFx {
     if (!this.disposed) this.ready.set(prefab, resources);
   }
 
-  spawn(prefab: WorldFxPrefab, position: THREE.Vector3): void {
+  spawn(prefab: WorldFxPrefab, position: ReadonlyVector3): void {
     if (this.disposed) throw new Error('World fx have been disposed');
     const assets = this.ready.get(prefab);
     const entity = createEmptyEntity(prefab, undefined, { billboard: true }), model = entity.display.model;
     model.userData.billboard = true;
     entity.instance.persists = false;
     entity.instance.addTag('FX');
-    entity.instance.position.set(position.x, 0, position.z);
+    entity.instance.setPosition(position.x, 0, position.z);
     const visual = new THREE.Group();
     const definition = FX_PREFABS[prefab];
     const scale = 'scale' in definition ? definition.scale : 1;

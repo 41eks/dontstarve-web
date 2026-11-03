@@ -1,3 +1,4 @@
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import type * as THREE from 'three';
 import type { ComponentActionEntity } from '../../stategraphs/src/componentactions';
 import { createEffect, createSignal, readonlySignal, watchSignal, type ReadonlySignal, type TileStateQuery } from '@dontstarve-web/signals';
@@ -205,7 +206,7 @@ function isUnder(model: THREE.Object3D, root: THREE.Object3D): boolean {
 }
 
 /** Query tickingarea-registered prefabs by their logical position and tags, independently of their visual. */
-export function FindEntities(position: THREE.Vector3, radius: number,
+export function FindEntities(position: ReadonlyVector3, radius: number,
   mustTags: readonly string[] = [], cantTags: readonly string[] = [], oneOfTags: readonly string[] = []): FoundEntity[] {
   if (!Number.isFinite(radius) || radius < 0) throw new RangeError('Invalid entity query radius');
   if (!Number.isFinite(position.x) || !Number.isFinite(position.y) || !Number.isFinite(position.z)) return [];

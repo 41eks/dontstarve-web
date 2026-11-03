@@ -129,7 +129,7 @@ describe('moonbutterfly', () => {
     s.tick(10);
     expect(s.controller.state).not.toBe('land');
     // Carried 30 units from home (beyond MAX_WANDER_DIST 20): Wander heads back.
-    s.entity.transform.position.set(30, 0, 0);
+    s.entity.transform.setPosition(30, 0, 0);
     s.tick(8);
     expect(s.position().x).toBeLessThan(30);
   });

@@ -19,7 +19,7 @@ it('uses Lua random direction, speed, vertical variance and collision-radius off
   expect(fling.position.y).toBe(0);
   // A teleport changes the integration origin; no private trajectory position
   // can overwrite the entity on the next step.
-  entityTransform.position.set(50, 0, 60);
+  entityTransform.setPosition(50, 0, 60);
   fling.update(0.1);
   expect(entityTransform.position.x).toBeCloseTo(50);
   expect(entityTransform.position.z).toBeCloseTo(59.7);

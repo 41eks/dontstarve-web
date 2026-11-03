@@ -222,7 +222,7 @@ export class DwarfStarManager {
     const display = this.displays.add({ root: instance.transform.model, name: this.prefabId, status: instance.status, sprite: instance.sprite, light: instance.light,
       archive: this.resources.archive({ animationArchive: archive, buildArchives: [archive], bank: anim }) });
     bindInstance(display.model, instance);
-    instance.position.set(position.x, 0, position.z);
+    instance.setPosition(position.x, 0, position.z);
     instance.entityId = saved?.id ?? newEntityId();
     if (saved) instance.components.timer!.OnLoad({ timers: { [EXTINGUISH]: { timeleft: saved.remainingSeconds, paused: false, initial_time: duration } } });
     instance.playSpawnSounds();

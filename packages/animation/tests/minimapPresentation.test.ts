@@ -53,7 +53,7 @@ it('reconciles declarations after prewarm and reopening, and stops draws on remo
     entity.SetIcon('missing.png'); await settle();
     expect([...renderer.dom.entities()]).toHaveLength(0);
     renderer.stop(); expect(frames.size).toBe(0);
-    entity.SetIcon('backpack.png'); entity.position.set(24, 0, -36); entity.tileTracker.sync(); await settle();
+    entity.SetIcon('backpack.png'); (entity.position as Vector3).set(24, 0, -36); entity.tileTracker.sync(); await settle();
     expect([...renderer.dom.entities()]).toHaveLength(0);
     renderer.start();
     expect([...renderer.dom.entities()]).toEqual([identity]);

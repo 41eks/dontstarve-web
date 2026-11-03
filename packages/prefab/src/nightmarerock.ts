@@ -1,3 +1,4 @@
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { PrefabDisplayGroup } from '@dontstarve-web/display';
 import type * as CANNON from 'cannon-es';
 import * as THREE from 'three';
@@ -26,7 +27,7 @@ export interface NightmareRockRecord {
 
 /** What nightmarerock.lua reads from AllPlayers. */
 export interface NightmareRockPlayer {
-  readonly position: THREE.Vector3;
+  readonly position: ReadonlyVector3;
   readonly sanity: { IsSane(): boolean; IsInsane(): boolean };
 }
 
@@ -35,7 +36,7 @@ export interface NightmareRockWorld {
   scheduler?: GameTimeScheduler;
   physics: CANNON.World;
   getPlayers(): readonly NightmareRockPlayer[];
-  fx: { spawn(prefab: WorldFxPrefab, position: THREE.Vector3): void };
+  fx: { spawn(prefab: WorldFxPrefab, position: ReadonlyVector3): void };
 }
 
 // nightmarerock.lua constants, DST units converted to scene units.
@@ -170,7 +171,7 @@ export class NightmareRockManager {
     this.displays = new PrefabDisplayGroup(scene); this.resources = new SpriteResources(assetBaseUrl); this.world = world;
   }
 
-  spawn(id: NightmareRockId, position: THREE.Vector3, saved?: NightmareRockRecord): THREE.Group {
+  spawn(id: NightmareRockId, position: ReadonlyVector3, saved?: NightmareRockRecord): THREE.Group {
     if (this.disposed) throw new Error('Nightmare rocks have been disposed');
     if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError('Invalid nightmare rock position');
     const instance = new NightmareRockInstance(this.world, id, this.staggerOffset);
@@ -178,7 +179,7 @@ export class NightmareRockManager {
       status: instance.status, sprite: instance.sprite, light: instance.light });
     const model = display.model;
     bindInstance(model, instance);
-    instance.position.set(position.x, 0, position.z);
+    instance.setPosition(position.x, 0, position.z);
     instance.entityId = saved?.id ?? newEntityId();
     instance.saveRecord = saved;
     instance.bindPhysics(this.world.physics);

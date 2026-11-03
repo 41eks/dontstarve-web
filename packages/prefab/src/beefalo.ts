@@ -1,3 +1,4 @@
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import { syncPlacementEntity } from './placementEntities';
 import * as CANNON from 'cannon-es';
@@ -54,7 +55,7 @@ export interface BeefaloWorld extends Pick<WorldContentContext, 'getWatchWorldCo
   findPath: NonNullable<LocomotorOptions['findPath']>;
   constrainPosition(position: THREE.Vector3): void;
   /** Logical ground/pending manure positions for periodicspawner's density and spacing rules. */
-  getPoopPositions(): Iterable<THREE.Vector3>;
+  getPoopPositions(): Iterable<ReadonlyVector3>;
   spawnPoop(position: THREE.Vector3): void;
 }
 
@@ -418,8 +419,9 @@ export class BeefaloManager implements FrameUpdatedPrefabManager<BeefaloRecord> 
       release: sprite => factory.disposeSprite(sprite),
     }, { name: 'idle_loop', billboard: true }, 'beefalo');
     const model = display.model;
-    instance.setPosition(position.x, 0, position.z);
-    this.world.constrainPosition(instance.position);
+    const placed = new THREE.Vector3(position.x, 0, position.z);
+    this.world.constrainPosition(placed);
+    instance.copyPosition(placed);
     instance.entityId = saved?.id ?? newEntityId();
     const controller = new BeefaloController(model, this.physics, factory.lengths, this.world, saved?.components.beefalo);
     this.beefalos.set(controller, display);

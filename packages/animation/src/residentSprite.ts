@@ -1,3 +1,4 @@
+import type { ReadonlyVector3 } from './transformRoot';
 import * as THREE from 'three';
 import { createEffect, createSignal, readonlySignal } from '@dontstarve-web/signals';
 import type { StaticSpriteController } from './wallSprite';
@@ -15,7 +16,7 @@ interface Clip { name: string; loop: boolean; complete?: () => void; finished: b
 export interface ResidentEntity {
   readonly id: number;
   readonly saveId?: string;
-  readonly position: THREE.Vector3;
+  readonly position: ReadonlyVector3;
   readonly model: THREE.Group;
 }
 

@@ -51,7 +51,7 @@ it('walks to the arrive distance, gives the PICK product to the doer inventory a
   vi.stubGlobal('window', new EventTarget());
   const scene = new THREE.Scene(), player = new THREE.Group();
   const { instance, display } = createEmptyEntity('grass');
-  const model = display.model; instance.position.set(20, 0, 0);
+  const model = display.model; instance.setPosition(20, 0, 0);
   scene.add(model); scene.add(player); instance.addTag('plant');
   const component = new Pickable(instance, 'log', 10, 2);
   actionEntity(model, 'grass');

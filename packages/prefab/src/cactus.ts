@@ -1,3 +1,4 @@
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import type * as THREE from 'three';
 import { WorldContentKey, type SeasonState, type WorldContentSignal } from '@dontstarve-web/signals';
 import type { PickDoer } from '@dontstarve-web/stategraphs/pick';
@@ -63,7 +64,7 @@ class Cactus implements PickablePlantBehavior {
   }
 
   private giveFlower(give: ((item: import('@dontstarve-web/inventory').ItemEntity, source?: THREE.Vector3) => boolean) | undefined,
-    position: THREE.Vector3): void {
+    position: ReadonlyVector3): void {
     const loot = this.context.spawnItem?.({ itemId: CACTUS_FLOWER_ID, count: 1 });
     if (!loot) return;
     if (give) give(loot, position.clone());
@@ -124,7 +125,7 @@ export const CACTUS_DEFINITIONS: Readonly<Record<CactusId, PickablePlantDefiniti
 
 /** cactus.lua: PICK cactus_meat (and a summer flower) at the cost of thorns, burning and regrowth. */
 export class CactusManager extends PickablePlantManager {
-  spawn(prefabId: CactusId, position: THREE.Vector3, saved?: CactusRecord): THREE.Group {
+  spawn(prefabId: CactusId, position: ReadonlyVector3, saved?: CactusRecord): THREE.Group {
     return this.spawnPlant(CACTUS_DEFINITIONS[prefabId], position, saved);
   }
 

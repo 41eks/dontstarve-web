@@ -53,7 +53,7 @@ export class MoonbaseEffects {
     const source = cold ? coldSource(this.sprites, prefab) : beamSource(this.sprites, prefab);
     const { instance, display } = createPrefabEntity(prefab, source, { name: clip, billboard: true }, prefab);
     const object = display.model;
-    instance.position.copy(this.foot());
+    instance.copyPosition(this.foot());
     instance.persists = false;
     instance.addTag(cold ? 'HASHEATER' : 'FX');
     instance.sprite.setLightOverride(1);
@@ -142,7 +142,7 @@ export class MoonbaseEffects {
   update(dt: number): void {
     const foot = this.foot();
     for (const fx of this.effects) {
-      fx.instance.position.copy(foot); fx.display.update(dt);
+      fx.instance.copyPosition(foot); fx.display.update(dt);
     }
     if (this.cold) prefabInstance(this.cold.object)!.light.set(polarLight(this.scheduler.now - this.cold.createdAt));
   }

@@ -72,7 +72,7 @@ it('tracks tags, movement, attachment, replacement and permanent removal without
     expect(placementEntities(other).someNear(position, 1, () => true)).toBe(false);
     item.addTag('NOCLICK');
     expect(query.someNear(position, 1, () => true)).toBe(true); // PLANT does not ignore NOCLICK.
-    item.transform.position.set(24, 0, 0); syncPlacementEntity(model);
+    item.transform.setPosition(24, 0, 0); syncPlacementEntity(model);
     expect(query.someNear(position, 1, () => true)).toBe(false);
     expect(query.someOnTile(item.transform.position, () => true)).toBe(true);
     model.removeFromParent();

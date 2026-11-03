@@ -63,7 +63,7 @@ function setup(tool: Parameters<typeof actionTool>[0]) {
     const { instance, display } = createEmptyEntity(prefab);
     created.push(instance);
     display.mount(scene);
-    instance.position.copy(position);
+    instance.copyPosition(position);
     const workable = new Workable(instance);
     workable.SetWorkAction(action);
     workable.SetWorkLeft(3);
@@ -155,7 +155,7 @@ describe('PlayerController scene actions', () => {
       s.hand.set(null);
       const { instance, display } = createEmptyEntity('pighouse');
       display.mount(s.world.scene);
-      instance.position.set(10, 0, 0);
+      instance.setPosition(10, 0, 0);
       const hauntable = new Hauntable(instance, scheduler);
       const haunted = vi.fn(() => true);
       hauntable.SetOnHauntFn(haunted);
@@ -316,7 +316,7 @@ describe('PlayerController with the Wilson stategraph', () => {
     const world = { player, camera, ground: new THREE.Group(), renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
     const captured = vi.fn();
     const butterfly = netEntity(captured);
-    butterfly.transform.position.set(8, 0, 0);
+    butterfly.transform.setPosition(8, 0, 0);
     const hand = createEquipmentExistenceState('HANDS');
     const net = actionTool('bugnet');
     hand.set(net);
@@ -328,7 +328,7 @@ describe('PlayerController with the Wilson stategraph', () => {
         move(16, 0.5);
         advancePlayer(animation, 0.5);
         physics.step(FIXED_TIMESTEP, 0.5, MAX_SUBSTEPS);
-        butterfly.transform.position.x += 4 * 0.1;
+        butterfly.transform.offsetPosition(4 * 0.1, 0, 0);
       }
       expect(captured).toHaveBeenCalledOnce();
       expect(body.position.x).toBeGreaterThan(8);

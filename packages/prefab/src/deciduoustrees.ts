@@ -1,3 +1,4 @@
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { ModelRecords } from './modelRecords';
 import type { MiniMapState } from '../../map/src/minimapState';
 import * as THREE from 'three';
@@ -54,7 +55,7 @@ export interface DeciduousWorld {
   secondsUntilNextDay: LeafWorld['secondsUntilNextDay'];
   seasonCalendar?: LeafWorld['seasonCalendar'];
   growthDuration?(seconds: number): number;
-  dropLoot(items: readonly { itemId: string; count: number }[], position: THREE.Vector3): void;
+  dropLoot(items: readonly { itemId: string; count: number }[], position: ReadonlyVector3): void;
 }
 interface Tree {
   logical: ResidentEntity;
@@ -85,8 +86,8 @@ interface Tree {
 export interface DeciduousForest {
   group: THREE.Group;
   readonly entities: readonly ResidentEntity[];
-  readonly renderEntities: readonly { object: THREE.Group; footPosition: THREE.Vector3; cameraDepth: number }[];
-  spawn(prefab: DeciduousSpawnId, position: THREE.Vector3, saved?: DeciduousRecord): ResidentEntity;
+  readonly renderEntities: readonly { object: THREE.Group; footPosition: ReadonlyVector3; cameraDepth: number }[];
+  spawn(prefab: DeciduousSpawnId, position: ReadonlyVector3, saved?: DeciduousRecord): ResidentEntity;
   update(dt: number, quaternion: THREE.Quaternion): void;
   exportRecords(): DeciduousRecord[];
   dispose(): void;
@@ -119,7 +120,7 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
   let nextId = 0;
   const trees = new Map<ResidentEntity, Tree>();
   const mouseRecords = new ModelRecords<ResidentEntity>();
-  const effects = new Map<THREE.Group, { position: THREE.Vector3; entity: ReturnType<typeof createPrefabEntity> }>();
+  const effects = new Map<THREE.Group, { position: ReadonlyVector3; entity: ReturnType<typeof createPrefabEntity> }>();
   let disposed = false;
   const stageOf = (tree: Tree) => tree.growable.GetStage() - 1;
   const rest = (tree: Tree) => tree.stump.peek() ? `stump_${DECIDUOUS_STAGES[stageOf(tree)]}`

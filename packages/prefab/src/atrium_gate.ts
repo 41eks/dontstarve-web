@@ -85,7 +85,7 @@ export class AtriumGateManager implements DisplayDrivenPrefabManager<{ prefabId:
     { name: 'idle', held: true, billboard: true }, ATRIUM_GATE_ID);
     const { instance, display } = main, model = display.model;
     instance.entityId = saved?.id ?? newEntityId();
-    instance.position.copy(position);
+    instance.copyPosition(position);
     model.rotation.y = saved?.transform.rotationY ?? 0;
     for (const tag of ['gemsocket', 'stargate', 'give_dolongaction']) instance.addTag(tag);
     MakeObstaclePhysics(instance, 1);
@@ -111,7 +111,7 @@ export class AtriumGateManager implements DisplayDrivenPrefabManager<{ prefabId:
         for (const [x, z] of [[row, col], [col, row]]) {
           const child = createEmptyEntity('atrium_gate_terraform_blocker', instance.status);
           child.instance.addTag('FX'); child.instance.persists = false;
-          child.instance.position.set(x * WORLD_SCALE, 0, z * WORLD_SCALE);
+          child.instance.setPosition(x * WORLD_SCALE, 0, z * WORLD_SCALE);
           child.display.mount(model); blockers.push(child);
         }
       }
@@ -122,7 +122,7 @@ export class AtriumGateManager implements DisplayDrivenPrefabManager<{ prefabId:
       { picked: !save.pickable || save.pickable.picked === true, paused: save.pickable?.paused === true }, { scheduler: this.world.scheduler });
     pickable.canInteractWith = save.pickable?.caninteractwith === true;
     const trader = new Trader(inst);
-    const playerprox = new PlayerProx({ isValid: () => instance.status.peek() !== 'removed', getPosition: () => instance.position });
+    const playerprox = new PlayerProx({ isValid: () => instance.status.peek() !== 'removed', getPosition: () => instance.getPosition() });
     playerprox.SetDist(14.55 * WORLD_SCALE, Math.ceil(14.55 + 4) * WORLD_SCALE);
     const hauntable = new Hauntable({ addTag: tag => inst.addTag(tag), removeTag: tag => inst.removeTag(tag),
       PushEvent: (name, data) => inst.PushEvent?.(name, data) }, this.world.scheduler);

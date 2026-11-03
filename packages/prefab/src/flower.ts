@@ -1,3 +1,4 @@
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { Transform } from './transform';
 import type * as THREE from 'three';
 import { PrefabDisplayGroup, SpriteResources, SpriteState, type PrefabDisplay } from '@dontstarve-web/display';
@@ -149,7 +150,7 @@ interface DrawnFlower {
 export class FlowerPlanting {
   private readonly random: () => number;
   private readonly flowers = new Map<string, DrawnFlower>();
-  private flowerList?: readonly { readonly id: string; readonly position: THREE.Vector3 }[];
+  private flowerList?: readonly { readonly id: string; readonly position: ReadonlyVector3 }[];
   private readonly displays: PrefabDisplayGroup;
   private readonly resources = new SpriteResources();
   private readonly tickingarea: WorldContext['tickingarea'];
@@ -185,7 +186,7 @@ export class FlowerPlanting {
   }
 
   /** Flower-tagged logical entities for butterflybrain, including natural flowers. */
-  get plantedFlowers(): readonly { readonly id: string; readonly position: THREE.Vector3 }[] {
+  get plantedFlowers(): readonly { readonly id: string; readonly position: ReadonlyVector3 }[] {
     return this.flowerList ??= [...this.flowers.values()].map(({ instance }) => ({
       id: instance.entityId!, position: instance.position,
     }));
@@ -207,21 +208,21 @@ export class FlowerPlanting {
     });
   }
 
-  spawnFromSave(id: string, animation: FlowerAnimation, position: THREE.Vector3, planted = false): THREE.Group {
+  spawnFromSave(id: string, animation: FlowerAnimation, position: ReadonlyVector3, planted = false): THREE.Group {
     const flower = this.createFlower(id, position, animation);
     flower.instance.OnLoad!(flower.instance, { flower: { animation, ...(planted ? { planted: true } : {}) } });
     return flower.display.model;
   }
 
-  spawn(prefab: FlowerSpawnId, position: THREE.Vector3): THREE.Group | undefined {
+  spawn(prefab: FlowerSpawnId, position: ReadonlyVector3): THREE.Group | undefined {
     if (this.disposed) return undefined;
     return this.createFlower(newEntityId(), position, undefined, prefab).display.model;
   }
 
   /** SpawnPrefab("planted_flower"): the logical flower exists before any artwork is loaded. */
-  spawnPlanted(position: THREE.Vector3): THREE.Group | undefined { return this.spawn('planted_flower', position); }
+  spawnPlanted(position: ReadonlyVector3): THREE.Group | undefined { return this.spawn('planted_flower', position); }
 
-  private createFlower(id: string, position: THREE.Vector3, animation?: FlowerAnimation, prefab: FlowerSpawnId = 'flower'): DrawnFlower {
+  private createFlower(id: string, position: ReadonlyVector3, animation?: FlowerAnimation, prefab: FlowerSpawnId = 'flower'): DrawnFlower {
     if (this.disposed) throw new Error('Flower planting has been disposed');
     const instance = new FlowerInstance(this.scheduler, this.services, this.random, animation);
     if (prefab === 'flower_rose') rosefn(instance);

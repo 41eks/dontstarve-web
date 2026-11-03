@@ -1,3 +1,4 @@
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { Transform } from './transform';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
@@ -48,14 +49,14 @@ export interface PickablePlantWorld {
   /** Without it every plant is active. */
   tickingarea?: TileStateQuery;
   physics?: CANNON.World;
-  getLocalTemperature?(position: THREE.Vector3): number;
+  getLocalTemperature?(position: ReadonlyVector3): number;
   /** Loot, ash and dug plants are spawned when they are produced; their displays load the art. */
   spawnGroundItem: SpawnGroundItem;
-  isOcean?(position: THREE.Vector3): boolean;
+  isOcean?(position: ReadonlyVector3): boolean;
   /** SpawnPrefab for an inventory item a behavior hands to its picker. */
   spawnItem?(state: InventoryStack): ItemEntity;
   /** inventoryitem:DoDropPhysics at the plant, for pickers without an inventory. */
-  dropItem?(entity: ItemEntity, position: THREE.Vector3): void;
+  dropItem?(entity: ItemEntity, position: ReadonlyVector3): void;
 }
 
 export interface PickablePlantAppearanceContext<T extends PlantAnimation = PlantAnimation> {
@@ -92,7 +93,7 @@ export interface PickablePlantBehaviorContext extends PickablePlantAppearanceCon
   /** The plant's Physics, for Physics:SetActive. */
   readonly physics: PhysicsState;
   spawnItem?(state: InventoryStack): ItemEntity;
-  dropItem?(entity: ItemEntity, position: THREE.Vector3): void;
+  dropItem?(entity: ItemEntity, position: ReadonlyVector3): void;
   /** Local bridges to world content, for behaviors watching phases or weather; each cleanup is the behavior's to run. */
   readonly getWatchWorldContent?: GetWatchWorldContent;
   readonly rain?: ReadonlySignal<'none' | 'rain' | 'snow'>;
@@ -241,7 +242,7 @@ export class PickablePlantManager {
   }
 
   /** SpawnPrefab: the plant, its components and its display exist now; the display loads and draws the art. */
-  protected spawnPlant(definition: PickablePlantDefinition, position: THREE.Vector3, saved?: PickablePlantRecord,
+  protected spawnPlant(definition: PickablePlantDefinition, position: ReadonlyVector3, saved?: PickablePlantRecord,
     skinId = saved?.components.plant?.skinId): THREE.Group {
     const { prefab } = definition;
     if (this.disposed) throw new Error(`${prefab} manager has been disposed`);

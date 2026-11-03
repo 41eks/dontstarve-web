@@ -54,14 +54,14 @@ it('validates reskin spells and advances each tool cache only after a successful
   try {
     expect(collectEquippedItemActions(first, undefined, target, true)).toEqual(['CASTSPELL']);
     // CanCast only asks; the tool's cache advances with a cast.
-    expect(first.components.spellcaster!.canCast(doer, target, target.position)).toBe(true);
+    expect(first.components.spellcaster!.canCast(doer, target, target.position.clone())).toBe(true);
     expect(first._cached_reskinname!.size).toBe(0);
     visible = false;
-    expect(first.components.spellcaster!.canCast(doer, target, target.position)).toBe(false);
+    expect(first.components.spellcaster!.canCast(doer, target, target.position.clone())).toBe(false);
     visible = true; blocked = true;
     expect(collectEquippedItemActions(first, undefined, target, true)).toEqual([]);
     blocked = false;
-    expect(first.components.spellcaster!.castSpell(target, target.position, doer)).toBe(true);
+    expect(first.components.spellcaster!.castSpell(target, target.position.clone(), doer)).toBe(true);
     expect(sprite.skinId.peek()).toBe('skin_a');
     expect(target.skinId).toBe('skin_a');
     expect(nextReskin(target.skins, target.skinId, first._cached_reskinname, target.prefabId)).toBe('skin_b');

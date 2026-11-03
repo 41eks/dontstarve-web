@@ -1,3 +1,4 @@
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import * as THREE from 'three';
 import { WorldContentKey, type GetWatchWorldContent, type WorldContentSignal, type WorldPhase } from '@dontstarve-web/signals';
 import { SpriteResources } from '@dontstarve-web/display';
@@ -112,7 +113,7 @@ export function configureMoonButterflyEntity(entity: ItemEntity): void {
 
 export interface ButterflyFlower {
   readonly id: string;
-  readonly position: THREE.Vector3;
+  readonly position: ReadonlyVector3;
 }
 
 export interface ButterflyWorld {
@@ -174,8 +175,8 @@ class SimpleEntity implements BrainEntity {
   valid = true;
   readonly prefab: string;
   readonly tags: ReadonlySet<string>;
-  readonly position: () => THREE.Vector3;
-  constructor(prefab: string, tags: readonly string[], position: () => THREE.Vector3) {
+  readonly position: () => ReadonlyVector3;
+  constructor(prefab: string, tags: readonly string[], position: () => ReadonlyVector3) {
     this.prefab = prefab;
     this.tags = new Set(tags);
     this.position = position;
@@ -189,7 +190,7 @@ class SimpleEntity implements BrainEntity {
 /** Flower and threat entities shared by every butterfly of one world, so identity comparisons hold. */
 class ButterflyEntities {
   private readonly flowers = new Map<string, SimpleEntity>();
-  private readonly flowerPositions = new Map<string, THREE.Vector3>();
+  private readonly flowerPositions = new Map<string, ReadonlyVector3>();
   private readonly ids = new Map<BrainEntity, string>();
   private readonly threats: SimpleEntity[] = [];
   private threatPositions: readonly THREE.Vector3[] = [];
@@ -247,7 +248,7 @@ export class ButterflyCreature implements BrainInst, ButterflyStateInst, LocoMot
   private readonly entity: ItemEntity;
   get components(): BrainComponents { return this.entity.components; }
   get prefab(): string { return this.entity.prefab; }
-  getPosition(): THREE.Vector3 { return this.entity.position; }
+  getPosition(): THREE.Vector3 { return this.entity.getPosition(); }
   getPhysicsRadius(): number { return this.entity.getPhysicsRadius(); }
   private readonly transform: ItemEntity['transform'];
   private readonly animation: ButterflyAnimation;

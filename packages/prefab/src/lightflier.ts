@@ -1,3 +1,4 @@
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { Vector3 } from 'three';
 import { ItemEntity, type InventoryStack } from '@dontstarve-web/inventory';
 import { createEffect, createSignal, readonlySignal, watchSignal, WorldContentKey, type GetWatchWorldContent, type TileStateQuery, type ReadonlySignal } from '@dontstarve-web/signals';
@@ -40,7 +41,7 @@ export const LIGHTFLIER_TAGS = ['lightflier', 'cavedweller', 'flying', 'ignorewa
   'smallcreature', 'lightbattery', 'lunar_aligned', 'show_spoilage', 'small_livestock', 'formation_lightflier'] as const;
 export const LIGHTFLIER_SOUNDS = ['grotto/creatures/light_bug/fly_LP', 'grotto/creatures/light_bug/hit', 'grotto/creatures/light_bug/death'] as const;
 export interface LightFlierPlayer {
-  readonly position: Vector3;
+  readonly position: ReadonlyVector3;
   isValid(): boolean;
   hasLightFlier(): boolean;
   getFacing(): number;

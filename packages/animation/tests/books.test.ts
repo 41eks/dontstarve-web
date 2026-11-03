@@ -27,7 +27,7 @@ const newWeather = () => new Weather({ totalDayTime: 480, temperature: () => 20,
 
 function pickedGrass(scene: THREE.Scene, scheduler: GameTimeScheduler, x: number) {
   const { instance, display } = createEmptyEntity('grass');
-  const model = display.model; instance.position.set(x, 0, 0);
+  const model = display.model; instance.setPosition(x, 0, 0);
   for (const tag of ['plant', 'renewable', 'silviculture']) instance.addTag(tag);
   cleanups.push(() => { instance.remove(); display.dispose(); });
   const pickable = new Pickable(instance, 'cutgrass', 1440, 1, undefined, undefined,

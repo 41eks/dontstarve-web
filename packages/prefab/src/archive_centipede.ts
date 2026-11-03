@@ -67,7 +67,7 @@ export class ArchiveCentipedeHuskManager implements DisplayDrivenPrefabManager<{
     }, { instancedAnimations: 'all', name: ARCHIVE_CENTIPEDE_HUSK_ID }) }, { name: 'idle_full', billboard: true }, ARCHIVE_CENTIPEDE_HUSK_ID);
     const { instance, display } = entity, model = display.model, sprite = instance.sprite;
     instance.entityId = saved?.id ?? newEntityId();
-    instance.position.copy(position); model.rotation.y = saved?.transform.rotationY ?? 0;
+    instance.copyPosition(position); model.rotation.y = saved?.transform.rotationY ?? 0;
     // PlayAnimation("idle_full") without a loop argument.
     sprite.playOnce('idle_full');
     instance.addTag('security_powerpoint'); instance.addTag('mech'); instance.addTag('electricdamageimmune');

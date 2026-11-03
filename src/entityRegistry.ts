@@ -1,3 +1,4 @@
+import type { ReadonlyVector3 } from '@dontstarve-web/animation/transformRoot';
 import type * as THREE from 'three';
 import type { ResidentEntity } from '@dontstarve-web/animation/residentSprite';
 import type { SavedEntity } from './save/types';
@@ -11,7 +12,7 @@ export type RestoredEntity = THREE.Object3D | ResidentEntity | PrefabInstance<Ar
 
 export interface EntityRenderEntry {
   object: THREE.Object3D;
-  footPosition: THREE.Vector3;
+  footPosition: ReadonlyVector3;
   cameraDepth: number;
   /** Drawing layer before depth sorting: background < 0, ordinary world entities default to 0. */
   renderLayer?: number;

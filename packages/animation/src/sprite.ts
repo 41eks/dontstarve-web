@@ -1,3 +1,4 @@
+import type { ReadonlyVector3 } from './transformRoot';
 import * as THREE from 'three';
 import { createEffect, WorldContentKey, type GetWatchWorldContent, type WorldContentSignal } from '@dontstarve-web/signals';
 import {
@@ -114,7 +115,7 @@ export interface SpriteArtSource {
 export interface CompositeSpriteFrame {
   readonly sprites: readonly ResolvedSprite[];
   readonly symbol?: number;
-  readonly detached?: { readonly position: THREE.Vector3; readonly mirrored: boolean };
+  readonly detached?: { readonly position: ReadonlyVector3; readonly mirrored: boolean };
   /** AnimState:SetFinalOffset of a follower: negative draws it behind the whole owner, positive in front, 0 at the symbol's layer. */
   readonly finalOffset?: number;
   /** Transform:SetNoFaced: the follower keeps its own orientation, unmirrored by the owner's facing. */
