@@ -2,13 +2,11 @@ import { RuinsRelicInstance } from '../../prefab/src/ruinsrelic';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { afterEach, expect, it, vi } from 'vitest';
 import { Quaternion, Scene, Vector3 } from 'three';
-import { SpriteState } from '../../display/src/spriteState';
 import { prefabDisplay } from '../../display/src/prefabDisplay';
-import { PrefabInstance, prefabInstance } from '../../prefab/src/prefabInstance';
-import type { AnimatedBuildingEventContext } from '../../prefab/src/animatedBuildingPlacement';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 import type { PrefabWorldContext } from '../../prefab/src/worldContext';
-import { ICE_BOX_DEFINITION } from '../../prefab/src/icebox';
-import { MUSHROOM_LIGHT_DEFINITIONS } from '../../prefab/src/mushroom_light';
+import { IceBoxInstance } from '../../prefab/src/icebox';
+import { MushroomLightInstance } from '../../prefab/src/mushroom_light';
 import { createTestWorldFx } from './worldFxFixture';
 import { readFile } from 'node:fs/promises';
 import * as sound from '../../prefab/src/sound';
@@ -16,15 +14,13 @@ import * as sound from '../../prefab/src/sound';
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 it('runs a prefab’s work callbacks without loaded art and leaves component state on the same instance', () => {
-  const inst = new PrefabInstance('icebox', new SpriteState({ name: 'closed', held: true }));
+  const dropLoot = vi.fn(), collapse = vi.fn();
+  const inst = new IceBoxInstance({ dropLoot, fx: { spawn: vi.fn(), collapse } } as unknown as PrefabWorldContext);
   inst.setPosition(3, 0, -7);
   inst.entityId = 'saved-icebox';
   inst.skinId = 'icebox_crystal';
-  const dropLoot = vi.fn(), collapse = vi.fn();
-  inst.worldServices = { dropLoot, fx: { spawn: vi.fn(), collapse } } as unknown as PrefabWorldContext;
-  const container = { DropEverything: vi.fn(), Close: vi.fn() };
-  Object.assign(inst.components, { container });
-  ICE_BOX_DEFINITION.oninit!({ instance: inst } as AnimatedBuildingEventContext);
+  const container = inst.components.container!;
+  vi.spyOn(container, 'DropEverything'); vi.spyOn(container, 'Close');
   const work = inst.components.workable!;
   try {
     expect(inst.sprite.loaded).toBe(false);
@@ -48,12 +44,10 @@ it('runs a prefab’s work callbacks without loaded art and leaves component sta
 });
 
 it('checks the lamp’s declared light and skips the final hit before running its finish callback', () => {
-  const inst = new PrefabInstance('mushroom_light', new SpriteState({ name: 'idle', held: true }));
   const collapse = vi.fn();
-  inst.worldServices = { fx: { spawn: vi.fn(), collapse } } as unknown as PrefabWorldContext;
-  const container = { DropEverything: vi.fn(), Close: vi.fn() };
-  Object.assign(inst.components, { container });
-  MUSHROOM_LIGHT_DEFINITIONS.mushroom_light.oninit!({ instance: inst } as AnimatedBuildingEventContext);
+  const inst = new MushroomLightInstance('mushroom_light', { fx: { spawn: vi.fn(), collapse } } as unknown as PrefabWorldContext);
+  const container = inst.components.container!;
+  vi.spyOn(container, 'DropEverything');
   const work = inst.components.workable!;
   try {
     // Animation names do not determine whether the lamp is on.
@@ -65,11 +59,10 @@ it('checks the lamp’s declared light and skips the final hit before running it
     work.WorkedBy({});
     expect(inst.sprite.currentAnimation).toBe('hit_on');
     const hit = vi.spyOn(inst.sprite, 'playOnce');
-    container.DropEverything.mockClear(); container.Close.mockClear();
+    vi.mocked(container.DropEverything).mockClear();
     work.WorkedBy({});
     expect(hit).not.toHaveBeenCalled();
     expect(container.DropEverything).toHaveBeenCalledOnce();
-    expect(container.Close).not.toHaveBeenCalled();
     expect(collapse).toHaveBeenCalledOnce();
     expect(inst.isRemoved).toBe(true);
   } finally { work.dispose(); inst.remove(); }

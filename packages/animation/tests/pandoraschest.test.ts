@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { PANDORAS_CHEST_DEFINITION, PANDORAS_CHEST_ID } from '../../prefab/src/pandoraschest';
-import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
+import { PANDORAS_CHEST_ID } from '../../prefab/src/pandoraschest';
+import { managedBuildings } from './managedBuildings';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
 import type { WorldContext } from '../../prefab/src/worldContext';
@@ -40,7 +40,7 @@ function createPlacement(awake = createSignal(true)) {
   const world = { scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(), scheduler,
     camera: new THREE.PerspectiveCamera(), renderer: { domElement: new EventTarget() },
     tickingarea: () => createMemo(() => awake.get()) } as unknown as WorldContext;
-  const placement = new AnimatedBuildingPlacement(world, { [PANDORAS_CHEST_ID]: PANDORAS_CHEST_DEFINITION }, () => true);
+  const placement = managedBuildings(world);
   return { world, placement, awake, dispose: () => { placement.dispose(); scheduler.dispose(); } };
 }
 

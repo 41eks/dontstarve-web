@@ -5,7 +5,7 @@ import { spawnLightEntity } from '../../prefab/src/localLight';
 import { createEmptyEntity } from '../../prefab/src/prefabInstance';
 import { displayLightOverride } from '../../display/src/displaySprites';
 import { TORCH_LIGHT } from '../../prefab/src/torch';
-import { TreasureChestPlacement } from '../../prefab/src/treasurechest';
+import { managedBuildings } from '../../animation/tests/managedBuildings';
 import { WallsPlacement } from '../../prefab/src/walls';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { clockstate, createSignal, seasonstate } from '@dontstarve-web/signals';
@@ -86,7 +86,7 @@ export async function checkCursorPreview() {
   const player = new THREE.Object3D();
   const world: WorldContext = { scene, camera, cameraFacing: createSignal(8), cameraHeading: createSignal(45), renderer, ground, player,
     createCursorLabel: (value) => ui.createLabel(value) };
-  const chest = new TreasureChestPlacement(world, () => true);
+  const chest = managedBuildings(world);
   const wall = new WallsPlacement(world, () => true);
   window.dispatchEvent(new PointerEvent('pointermove', { clientX: 200, clientY: 220 }));
   await chest.begin('treasurechest');

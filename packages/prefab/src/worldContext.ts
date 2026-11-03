@@ -31,6 +31,10 @@ export interface WorldContext extends ActionWorldContext, Partial<WorldContentCo
     dynamicMusic?: import('../../componets/src/dynamicmusic').DynamicMusic;
     registerContainer?: (id: string, container: import('./containers').BuildingContainer) => void;
     unregisterContainer?: (id: string, container: import('./containers').BuildingContainer) => void;
+    /** The application's storage panel follows a building's onopen and onclose. */
+    onContainerInteraction?: (change: { buildId: string; isOpen: boolean; model: import('three').Group }) => void;
+    /** SpawnPrefab("fire") for what burns; the world's shared fire art and firefx updates. */
+    fire?: import('./treeFire').FireFxHost;
     /** Seconds from `now` (scheduler time) to the next day boundary: the delay of a WatchWorldState("cycles") timer. */
     secondsUntilNextDay?: (now: number) => number;
     /** SpawnPrefab for transient fx.lua prefabs; their display loads the art. */

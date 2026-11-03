@@ -2,9 +2,7 @@ import { createSignal } from '../../signals/src';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
-import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
-import { ICE_BOX_DEFINITION } from '../../prefab/src/icebox';
-import { TREASURE_CHEST_DEFINITION } from '../../prefab/src/treasurechest';
+import { managedBuildings } from './managedBuildings';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { createPickupInventory } from './pickupFixture';
@@ -24,7 +22,7 @@ it('restores container contents, drops their live entities at the building foot 
     registerContainer: (id, container) => inventory.registerContainer(id, container),
     unregisterContainer: (id, container) => inventory.unregisterContainer(id, container),
   } as WorldContext;
-  const placement = new AnimatedBuildingPlacement(world, { icebox: ICE_BOX_DEFINITION }, () => false);
+  const placement = managedBuildings(world, { consume: () => false });
   try {
     const model = await placement.spawnFromSave('icebox', { id: 'icebox', transform: { position: [3, 0, -6], rotationY: 0 },
       components: { building: {}, container: { slotCount: 9,
@@ -42,7 +40,7 @@ it('restores container contents, drops their live entities at the building foot 
     expect(dropLoot).not.toHaveBeenCalled();
     target.work(); target.work();
     expect(target.entity.hasTag('HAMMER_workable')).toBe(false);
-    expect(model.parent).toBeNull(); expect(placement.exportRecords()).toEqual([]);
+    await vi.waitFor(() => expect(model.parent).toBeNull()); expect(placement.exportRecords()).toEqual([]);
     expect(dropLoot.mock.calls.flatMap(([items]) => items)).toEqual([
       { itemId: 'goldnugget', count: 1 }, { itemId: 'gears', count: 1 }, { itemId: 'cutstone', count: 1 },
     ]);
@@ -62,9 +60,8 @@ it('burns a chest through shared components, drops its live contents and restore
     registerContainer: (id, container) => inventory.registerContainer(id, container),
     unregisterContainer: (id, container) => inventory.unregisterContainer(id, container),
   } as WorldContext;
-  const definition = { treasurechest: TREASURE_CHEST_DEFINITION };
-  const placement = new AnimatedBuildingPlacement(world, definition, () => false);
-  let restored: AnimatedBuildingPlacement<'treasurechest'> | undefined;
+  const placement = managedBuildings(world, { consume: () => false });
+  let restored: ReturnType<typeof managedBuildings> | undefined;
   try {
     const model = placement.spawnFromSave('treasurechest', { id: 'burning-chest', transform: { position: [3, 0, -6], rotationY: 0 },
       components: { building: {}, container: { slotCount: 9,
@@ -91,8 +88,8 @@ it('burns a chest through shared components, drops its live contents and restore
     placement.dispose();
     expect(dispose).toHaveBeenCalledOnce();
 
-    restored = new AnimatedBuildingPlacement(world, definition, () => false);
-    const loaded = prefabInstance(restored.spawnFromSave('treasurechest', record))!;
+    restored = managedBuildings(world, { consume: () => false });
+    const loaded = prefabInstance(restored.spawnFromSave('treasurechest', record) as THREE.Group)!;
     expect(loaded.entityId).toBe(inst.entityId);
     expect(loaded.position.toArray()).toEqual([3, 0, -6]);
     expect(loaded.hasTag('burnt')).toBe(true);

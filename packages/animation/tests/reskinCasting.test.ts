@@ -19,8 +19,8 @@ import { actionEntity, disposeActionEntity } from '../../prefab/src/actionEntity
 import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { createEquipmentExistenceState } from '../../signals/src';
-import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
-import { TREASURE_CHEST_DEFINITION } from '../../prefab/src/treasurechest';
+import definitions from '../../prefab/src/definitions.json';
+import { managedBuildings } from './managedBuildings';
 import { GroundItemManager } from '../../prefab/src/groundItemManager';
 import { equipmentSlotAddress } from '../../inventory/src';
 import type { WorldContext } from '../../prefab/src/worldContext';
@@ -149,12 +149,12 @@ it('shares FX geometry while keeping playback independent and discarding unused 
 
 it('cycles building skins while preserving the container root, identity, state and saved foot', async () => {
   const world = setupWorld();
-  const placement = new AnimatedBuildingPlacement(world, { treasurechest: TREASURE_CHEST_DEFINITION }, () => false);
+  const placement = managedBuildings(world, { consume: () => false });
   const record = { id: 'e_open_chest', transform: { position: [3, 0, 4] as const, rotationY: 0 },
     components: { building: {}, container: { slotCount: 9, slots: [] } } };
-  const root = await placement.spawnFromSave('treasurechest', record);
-  expect(findActionEntity(root)?.reskinTarget).toBe(placement.reskinTargets[0]);
-  const skins = Object.keys(TREASURE_CHEST_DEFINITION.skinArchives!);
+  const root = await placement.spawnFromSave('treasurechest', record) as THREE.Group;
+  const target = findActionEntity(root)!.reskinTarget!;
+  const skins = Object.keys(definitions.animatedBuildings.treasurechest.skinArchives);
   expect(placement.exportRecords()[0].record.components.building?.skinId).toBeUndefined();
   const fx = { play: vi.fn(), dispose: vi.fn() };
   const tool = actionTool('reskin_tool');
@@ -173,7 +173,7 @@ it('cycles building skins while preserving the container root, identity, state a
   expect(nextReskin(skins, skins.at(-1))).toBeUndefined();
   expect(nextReskin(skins)).toBe(skins[0]);
   // GetNextSkin runs at each cast, from the skin the entity has then.
-  expect(reskinEntity(placement.reskinTargets[0])).toBe(true);
+  expect(reskinEntity(target)).toBe(true);
   expect(placement.exportRecords()[0].record.components.building?.skinId).toBe(skins[1]);
 });
 

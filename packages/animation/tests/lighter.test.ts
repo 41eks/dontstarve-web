@@ -16,9 +16,8 @@ import { createSignal, EventEmitter, type HandEquipment } from '../../signals/sr
 import { ItemEntity } from '../../inventory/src';
 import { TORCH_FUEL, configureTorchEntity } from '../../prefab/src/torch';
 import { actionEntity } from '../../prefab/src/actionEntity';
-import { type AnimatedBuildingInteractionChange, AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
-import { TREASURE_CHEST_DEFINITION } from '../../prefab/src/treasurechest';
-import { COOK_POT_DEFINITION } from '../../prefab/src/cook_pot';
+import { managedBuildings } from './managedBuildings';
+import type { PlaceableBuildingInteractionChange } from '../../../src/placeableBuilding';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { createPickupInventory } from './pickupFixture';
 import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
@@ -115,7 +114,7 @@ it('walks to the foot, cancels on unequip and commits LIGHT once at frame 13 wit
   } finally { controller.dispose(); burnable.dispose(); torch.destroy(); }
 });
 
-function structureFixture(onInteractionChange?: (change: AnimatedBuildingInteractionChange<'treasurechest' | 'cookpot'>) => void) {
+function structureFixture(onInteraction?: (change: PlaceableBuildingInteractionChange) => void) {
   vi.stubGlobal('window', new EventTarget());
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   const inventory = createPickupInventory(), scene = new THREE.Scene(), dropLoot = vi.fn();
@@ -124,7 +123,7 @@ function structureFixture(onInteractionChange?: (change: AnimatedBuildingInterac
     registerContainer: (id, container) => inventory.registerContainer(id, container),
     unregisterContainer: (id, container) => inventory.unregisterContainer(id, container),
   };
-  const placement = new AnimatedBuildingPlacement(world, { treasurechest: TREASURE_CHEST_DEFINITION, cookpot: COOK_POT_DEFINITION }, () => false, onInteractionChange);
+  const placement = managedBuildings(world, { consume: () => false, onInteraction });
   return { inventory, scene, placement, dropLoot };
 }
 

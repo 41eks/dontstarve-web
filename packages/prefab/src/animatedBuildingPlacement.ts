@@ -172,7 +172,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         this.initializeComponents(building);
         // SetPersistData: Container:OnLoad restores the items, and only then does inst.OnLoad run.
         const saved = record.components.container;
-        if (saved) building.instance.components?.container?.OnLoad({ items: Object.fromEntries(saved.slots.map(({ slotKey, item }) => [String(Number(slotKey) + 1), item])) });
+        if (saved) building.instance.components?.container?.OnLoad(saved);
         this.registerContainer(building);
         building.instance.OnLoad?.(building.instance, record.components);
         this.displays.mount(building.display);
@@ -184,13 +184,8 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         // inst.persists = false: buildings that are being destroyed are not saved.
         return this.placed.filter(building => building.instance.persists).map((building) => {
             const { instance } = building, skinId = building.skinId.peek();
-            instance.components?.container?.flush();
             const components: PlacementSaveRecord['components'] = {
-                ...(instance.components?.container ? { container: {
-                    slotCount: instance.components.container.GetNumSlots(),
-                    slots: Object.entries(instance.components.container.OnSave().items)
-                        .map(([slot, item]) => ({ slotKey: String(Number(slot) - 1), item: item as import('@dontstarve-web/inventory').InventoryStack })),
-                } } : {}),
+                ...(instance.components?.container ? { container: instance.components.container.OnSave() } : {}),
                 building: skinId === undefined ? {} : { skinId },
             };
             instance.OnSave?.(instance, components);

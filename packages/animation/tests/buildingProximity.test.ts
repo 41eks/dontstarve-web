@@ -3,7 +3,6 @@ import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SpriteAnimationController } from '../src/sprite';
-import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
@@ -13,7 +12,8 @@ import * as CANNON from 'cannon-es';
 import { createEquipmentExistenceState } from '../../signals/src';
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import { getActionString } from '../../stategraphs/src/actions';
-import { TREASURE_CHEST_DEFINITION } from '../../prefab/src/treasurechest';
+import definitions from '../../prefab/src/definitions.json';
+import { managedBuildings } from './managedBuildings';
 import { COOK_POT_DEFINITION } from '../../prefab/src/cook_pot';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -27,7 +27,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-async function setup(definition = TREASURE_CHEST_DEFINITION, id = 'treasurechest') {
+async function setup(definition: { archive: string } = definitions.animatedBuildings.treasurechest, id: 'treasurechest' | 'cookpot' = 'treasurechest') {
   const bytes = await readFile(new URL(`../../../public/dst/data/anim/${definition.archive}`, import.meta.url));
   vi.stubGlobal('fetch', vi.fn(async () => new Response(bytes)));
   vi.stubGlobal('window', new EventTarget());
@@ -44,8 +44,8 @@ async function setup(definition = TREASURE_CHEST_DEFINITION, id = 'treasurechest
   const mouseActions = new PlayerActionPicker(new PointerRaycaster(base as never));
   const world = { ...base, mouseActions } as unknown as WorldContext;
   const changes = vi.fn();
-  const placement = new AnimatedBuildingPlacement(world, { [id]: definition }, () => true, changes);
-  placement.spawn(id);
+  const placement = managedBuildings(world, { onInteraction: changes });
+  void placement.spawn(id);
   const model = scene.children[0];
   const animation = prefabInstance(model)!.sprite as SpriteAnimationController;
   // Opening and closing clips play out only once the display has drawn the building.

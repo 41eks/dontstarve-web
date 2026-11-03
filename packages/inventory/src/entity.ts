@@ -268,8 +268,7 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
     if (this.prefab === 'backpack') {
       const container = new Container(this, () => new StorageSlot(), (item: InventoryStack) => new ItemEntity(item, perishWorld));
       container.SetNumSlots(BACKPACK_SLOT_COUNT);
-      container.OnLoad({ items: Object.fromEntries((state.container?.slots ?? [])
-        .map(({ slotKey, item }) => [String(Number(slotKey) + 1), item])) });
+      container.OnLoad(state.container ?? {});
       this.components.container = container;
     }
     this.apply(state);
@@ -304,11 +303,7 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
       ...(this.wetState.peek() ? { wet: true } : {}),
       ...(this.phonographRecord === undefined ? {} : { phonographRecord: this.phonographRecord }),
       ...(inventory?.length ? { inventory } : {}),
-      ...(this.components.container === undefined ? {} : { container: {
-        slotCount: this.components.container.GetNumSlots(),
-        slots: Object.entries(this.components.container.OnSave().items)
-          .map(([key, item]) => ({ slotKey: String(Number(key) - 1), item })),
-      } }),
+      ...(this.components.container === undefined ? {} : { container: this.components.container.GetSaveData() }),
     };
   }
 

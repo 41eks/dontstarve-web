@@ -35,8 +35,8 @@ it('cooks with source food layers, resumes saved progress and preserves the prod
   expect(placement.performContainerAction(model, 'COOK', world.player)).toBe(false);
   expect(cookPotState(model)).toBeUndefined();
   expect(animation.currentAnimation).toBe('cooking_pre_loop');
-  container.OnLoad({ items: Object.fromEntries(['twigs', 'red_cap', 'red_cap', 'red_cap']
-    .map((itemId, index) => [String(index + 1), { itemId, count: 1 }])) });
+  container.OnLoad({ slots: ['twigs', 'red_cap', 'red_cap', 'red_cap']
+    .map((itemId, index) => ({ slotKey: String(index), item: { itemId, count: 1 } })) });
   expect(placement.performContainerAction(model, 'COOK', world.player)).toBe(true);
   expect(container.IsEmpty()).toBe(true);
   expect(changed).toHaveBeenLastCalledWith({ buildId: 'cookpot', model, isOpen: false });

@@ -14,10 +14,6 @@ import { AnimatedBuildingPlacement, type AnimatedBuildingDefinition } from '../.
 import { COOK_POT_DEFINITION } from '../../prefab/src/cook_pot';
 import { RESEARCH_LAB_DEFINITIONS } from '../../prefab/src/scienceprototyper';
 import { FIRE_PIT_DEFINITION } from '../../prefab/src/firepit';
-import { ICE_BOX_DEFINITION } from '../../prefab/src/icebox';
-import { DRAGONFLY_CHEST_DEFINITION } from '../../prefab/src/dragonfly_chest';
-import { SALT_BOX_DEFINITION } from '../../prefab/src/saltbox';
-import { MUSHROOM_LIGHT_DEFINITIONS } from '../../prefab/src/mushroom_light';
 import { createMemo, createSignal } from '../../signals/src';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
@@ -29,10 +25,8 @@ const prefabIds = [
   'cookpot', 'researchlab2', 'researchlab4',
 ] as const;
 const buildingDefinitions = {
-  cookpot: COOK_POT_DEFINITION, firepit: FIRE_PIT_DEFINITION, icebox: ICE_BOX_DEFINITION,
+  cookpot: COOK_POT_DEFINITION, firepit: FIRE_PIT_DEFINITION,
   ...RESEARCH_LAB_DEFINITIONS,
-  dragonflychest: DRAGONFLY_CHEST_DEFINITION, saltbox: SALT_BOX_DEFINITION,
-  ...MUSHROOM_LIGHT_DEFINITIONS,
 };
 // One plain build; the tests below exercise symbol-only and layered skins.
 const cases = [{ prefabId: 'cookpot', skinId: 'cookpot_candy', archive: 'dynamic/cookpot_candy.zip' }] as const;

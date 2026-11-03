@@ -10,8 +10,7 @@ import { ComponentUpdates } from '../../componets/src/componentUpdates';
 import { Temperature } from '../../componets/src/temperature';
 import { Heater } from '../../componets/src/heater';
 import { createBuildingContainer } from '../../prefab/src/containers';
-import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
-import { ICE_BOX_DEFINITION } from '../../prefab/src/icebox';
+import { managedBuildings } from './managedBuildings';
 import { HeatRock } from '../../prefab/src/heatrock';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { createPickupInventory } from './pickupFixture';
@@ -166,11 +165,11 @@ it('saves a spawned fridge with skinned cold stones and food through c_save and 
     registerContainer: (...args: Parameters<typeof inventory.registerContainer>) => inventory.registerContainer(...args),
     unregisterContainer: (...args: Parameters<typeof inventory.unregisterContainer>) => inventory.unregisterContainer(...args),
   } as unknown as WorldContext;
-  const placement = new AnimatedBuildingPlacement(world, { icebox: ICE_BOX_DEFINITION }, () => false);
-  const restoredPlacement = new AnimatedBuildingPlacement({ ...world,
+  const placement = managedBuildings(world, { consume: () => false });
+  const restoredPlacement = managedBuildings({ ...world,
     registerContainer: (...args: Parameters<typeof restored.registerContainer>) => restored.registerContainer(...args),
     unregisterContainer: (...args: Parameters<typeof restored.unregisterContainer>) => restored.unregisterContainer(...args),
-  } as unknown as WorldContext, { icebox: ICE_BOX_DEFINITION }, () => false);
+  } as unknown as WorldContext, { consume: () => false });
   let restoredClock: WorldPerishClock | undefined;
   try {
     const spawn = async (id: string) => {

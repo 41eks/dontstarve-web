@@ -64,7 +64,7 @@ it('accepts only bookcabinet items, declares shelf layers synchronously by fill 
     // The period repeats and survives the saved fractional uses.
     scheduler.advance(30 * 39);
     expect(uses(0).remaining).toBe(5);
-    expect(container.OnSave().items['1'].remainingUses).toBe(5);
+    expect(container.OnSave().slots[0].item.remainingUses).toBe(5);
 
     expect(inventory.transfer(shelf(0), second, 1)).toBe(true);
     expect(station.restore.peek().status).toBe('stopped');

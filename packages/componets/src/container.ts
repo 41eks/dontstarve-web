@@ -18,9 +18,10 @@ export interface ContainerDTO<TRecord> {
   readonly slots: readonly (Readonly<TRecord> | null)[];
 }
 
+/** container.lua's data.items in the save document's shape: occupied slots under zero-based keys. */
 export interface ContainerSaveData<TRecord> {
-  /** Lua container.lua saves occupied slots using one-based keys. */
-  items: Record<string, TRecord>;
+  slotCount: number;
+  slots: { slotKey: string; item: TRecord }[];
 }
 
 export interface ContainerItem<TRecord> {
@@ -219,31 +220,38 @@ export class Container<TRecord, TItem extends ContainerItem<TRecord>, TSlot exte
   CanOpen(): boolean { return this.openlimit === undefined || this.opencount < this.openlimit; }
   GetOpeners(): object[] { return [...this.openlist]; }
 
-  OnSave(): ContainerSaveData<TRecord> {
-    const items: Record<string, TRecord> = {};
+  /** The occupied slots' records as they stand, for a holder snapshotted outside a save. */
+  GetSaveData(): ContainerSaveData<TRecord> {
+    const slots: ContainerSaveData<TRecord>['slots'] = [];
     this.slotList.forEach((slot, index) => {
       const item = slot.getEntity();
-      if (item && !item.isRemoved) items[String(index + 1)] = item.snapshot();
+      if (item && !item.isRemoved) slots.push({ slotKey: String(index), item: item.snapshot() });
     });
-    return { items };
+    return { slotCount: this.numslots, slots };
+  }
+
+  /** Items settle their components before a save reads them. */
+  OnSave(): ContainerSaveData<TRecord> {
+    this.flush();
+    return this.GetSaveData();
   }
 
   /** SpawnSaveRecord is injected; loading never stores the serialized records as live items. */
-  OnLoad(data: { items?: Readonly<Record<string, TRecord>> }): void {
-    const entries = Object.entries(data.items ?? {});
-    for (const [key] of entries) {
-      const slot = Number(key);
-      if (!Number.isSafeInteger(slot) || slot < 1 || slot > this.numslots || String(slot) !== key
-        || this.GetItemInSlot(slot)) throw new RangeError(`Invalid or occupied container slot: ${key}`);
+  OnLoad(data: { slots?: readonly { slotKey: string; item: TRecord }[] }): void {
+    const entries = data.slots ?? [];
+    for (const { slotKey } of entries) {
+      const slot = Number(slotKey) + 1;
+      if (!Number.isSafeInteger(slot) || slot < 1 || slot > this.numslots || String(slot - 1) !== slotKey
+        || this.GetItemInSlot(slot)) throw new RangeError(`Invalid or occupied container slot: ${slotKey}`);
     }
     const pending: { slot: TSlot; item: TItem }[] = [];
     const seen = new Set(this.GetAllItems());
     try {
-      for (const [key, record] of entries) {
+      for (const { slotKey, item: record } of entries) {
         const item = this.loadItem(record);
         if (item.isRemoved || seen.has(item)) throw new Error('Invalid or duplicate loaded container item');
         seen.add(item);
-        pending.push({ slot: this.slotList[Number(key) - 1], item });
+        pending.push({ slot: this.slotList[Number(slotKey)], item });
       }
     } catch (error) {
       for (const { item } of pending) item.destroy();

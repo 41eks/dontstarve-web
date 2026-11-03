@@ -26,21 +26,8 @@ export function firepit_init_fn(skinId: string): PrefabSkinInitialization {
   return basic_init_fn(buildName, 'firepit');
 }
 
-export function icebox_init_fn(skinId: string): PrefabSkinInitialization {
-  return basic_init_fn(skinId, 'ice_box');
-}
-
-export function dragonflychest_init_fn(skinId: string): PrefabSkinInitialization {
-  // DST builds a normal chest even when an upgraded edition is selected in the placer.
-  return basic_init_fn(skinId.replace('dragonflychest_upgraded_', 'dragonflychest_'), 'dragonfly_chest');
-}
-
 export function bookstation_init_fn(skinId: string): PrefabSkinInitialization {
   return basic_init_fn(skinId, 'bookstation');
-}
-
-export function saltbox_init_fn(skinId: string): PrefabSkinInitialization {
-  return basic_init_fn(skinId, 'saltbox');
 }
 
 export function sculptingtable_init_fn(skinId: string): PrefabSkinInitialization {
@@ -58,14 +45,6 @@ export function winterometer_init_fn(skinId: string): PrefabSkinInitialization {
 
 export function lightning_rod_init_fn(skinId: string): PrefabSkinInitialization {
   return basic_init_fn(skinId, 'lightning_rod');
-}
-
-export function mushroom_light_init_fn(skinId: string): PrefabSkinInitialization {
-  return basic_init_fn(skinId, 'mushroom_light');
-}
-
-export function mushroom_light2_init_fn(skinId: string): PrefabSkinInitialization {
-  return basic_init_fn(skinId, 'mushroom_light2');
 }
 
 /** prefabskin.lua wall_*_init_fn: retain the wall's bank and change its skin build. */

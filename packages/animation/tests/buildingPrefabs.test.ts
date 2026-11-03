@@ -14,6 +14,7 @@ import { createSignal } from '../../signals/src';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { PlaceableBuildingPlacement } from '../../../src/placeableBuilding';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
+import { managedBuildings } from './managedBuildings';
 import definitions from '../../prefab/src/definitions.json';
 
 const cleanups: (() => void)[] = [];
@@ -91,4 +92,27 @@ it('reskins through its target, draws the skin build and keeps it through the bu
   await prefabDisplay(restored.transform.model)!.artLoaded();
   displays.update(1 / 30);
   expect(fetched.some(url => url.endsWith(definitions.animatedBuildings.pighouse.skinArchives[skinId as keyof typeof definitions.animatedBuildings.pighouse.skinArchives]))).toBe(true);
+});
+
+it('draws each container prefab from its source bank and skin build, and keeps its save shape', async () => {
+  const world = { scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(), camera: new THREE.PerspectiveCamera(),
+    renderer: { domElement: new EventTarget() } } as unknown as WorldContext;
+  const buildings = managedBuildings(world);
+  cleanups.push(() => buildings.dispose());
+  const ids = ['treasurechest', 'pandoraschest', 'icebox', 'dragonflychest', 'saltbox', 'mushroom_light', 'mushroom_light2'] as const;
+  for (const id of ids) {
+    const declaration = definitions.animatedBuildings[id] as { container: { slotCount: number }; idleAnimation: string; skinArchives?: Record<string, string> };
+    const [skinId] = Object.keys(declaration.skinArchives ?? {});
+    expect(PREFAB_DEFINITIONS.buildings.prefabIds).toContain(id);
+    const record = { id: `saved-${id}`, transform: { position: [1, 0, 2] as [number, number, number], rotationY: 0 },
+      components: { building: skinId === undefined ? {} : { skinId }, container: { slotCount: declaration.container.slotCount, slots: [] } } };
+    const model = buildings.spawnFromSave(id, record) as THREE.Group, inst = prefabInstance(model)!;
+    await prefabDisplay(model)!.artLoaded();
+    buildings.displays.update(1 / 30);
+    expect(inst.sprite.loaded, id).toBe(true);
+    expect(model.getObjectsByProperty('isMesh', true).length, id).toBeGreaterThan(0);
+    expect(inst.sprite.currentAnimation).toBe(declaration.idleAnimation);
+    if (skinId !== undefined) expect(fetched.some(url => url.endsWith(declaration.skinArchives![skinId]))).toBe(true);
+    expect(buildings.exportRecords().find(({ record: saved }) => saved.id === record.id)?.record).toEqual(record);
+  }
 });

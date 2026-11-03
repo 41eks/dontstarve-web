@@ -17,7 +17,7 @@ test('renders container DTO signals through shared slots and releases replaced p
     container.SetNumSlots(2);
     panel.open({ containerId: 'container:first', slotCount: 2 });
     const stop = panel.bindContainer(container.toSignal(), toItem);
-    container.OnLoad({ items: { '2': { itemId: 'log', count: 3 } } });
+    container.OnLoad({ slots: [{ slotKey: '1', item: { itemId: 'log', count: 3 } }] });
     (window as any).containerBinding = { panel, container, create, toItem, stop };
   }, {
     container: `/@fs${fileURLToPath(new URL('../../componets/src/container.ts', import.meta.url))}`,
@@ -46,7 +46,7 @@ test('renders container DTO signals through shared slots and releases replaced p
     state.stop();
     state.container.GetItemInSlot(2).components.stackable.count = 9;
     state.container.publishDTO();
-    next.OnLoad({ items: { '1': { itemId: 'cutgrass', count: 4 } } });
+    next.OnLoad({ slots: [{ slotKey: '0', item: { itemId: 'cutgrass', count: 4 } }] });
     state.next = next;
   });
   await expect(panel.locator('[data-slot-key="0"]')).toHaveAttribute('data-item-id', 'cutgrass');

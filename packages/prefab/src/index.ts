@@ -7,8 +7,7 @@ export {
   createMoonTreeManager,
 } from './moontree';
 export {
-  DRAGONFLY_CHEST_DEFINITION, DRAGONFLY_CHEST_ID, DRAGONFLY_CHEST_SKIN_ARCHIVES,
-  DragonflyChestPlacement, type DragonflyChestId,
+  DRAGONFLY_CHEST_ID, DRAGONFLY_CHEST_PLACER, DragonflyChestInstance, dragonflyChestPrefabs, type DragonflyChestId,
 } from './dragonfly_chest';
 export {
   BOOKSTATION_DEFINITION, BOOKSTATION_ID, BOOKSTATION_SKIN_ARCHIVES, Bookstation,
@@ -18,8 +17,7 @@ export {
   CAMPFIRE_ID, CAMPFIRE_PLACER, CampfireInstance, campfirePrefabs, type CampfireId,
 } from './campfire';
 export {
-  SALT_BOX_DEFINITION, SALT_BOX_ID, SALT_BOX_SKIN_ARCHIVES,
-  SaltBoxPlacement, type SaltBoxId,
+  SALT_BOX_ID, SALT_BOX_PLACER, SaltBoxInstance, saltBoxPrefabs, type SaltBoxId,
 } from './saltbox';
 export {
   NIGHT_LIGHT_ID, NIGHT_LIGHT_PLACER, NightLightInstance, nightLightPrefabs, type NightLightId,
@@ -34,8 +32,7 @@ export {
   PIG_HOUSE_ID, PIG_HOUSE_PLACER, PigHouseInstance, pigHousePrefabs, type PigHouseId,
 } from './pighouse';
 export {
-  MUSHROOM_LIGHT_DEFINITIONS, MUSHROOM_LIGHT_IDS, MUSHROOM_LIGHT_SKIN_ARCHIVES,
-  MushroomLightPlacement, type MushroomLightId,
+  MUSHROOM_LIGHT_IDS, MUSHROOM_LIGHT_PLACERS, MushroomLightInstance, mushroomLightPrefabs, type MushroomLightId,
 } from './mushroom_light';
 export {
   STORAGE_BUILDING_IDS, isStorageBuildingId, buildingContainerId, buildingContainerDefinition,
@@ -48,8 +45,7 @@ export {
   FirePitPlacement, type FirePitId,
 } from './firepit';
 export {
-  ICE_BOX_DEFINITION, ICE_BOX_ID, ICE_BOX_SKIN_ARCHIVES,
-  IceBoxPlacement, type IceBoxId,
+  ICE_BOX_ID, ICE_BOX_PLACER, IceBoxInstance, iceBoxPrefabs, type IceBoxId,
 } from './icebox';
 export {
   COOK_POT_DEFINITION,
@@ -105,10 +101,10 @@ export {
   type ResearchLabId,
 } from './scienceprototyper';
 export {
-  TREASURE_CHEST_DEFINITION,
   TREASURE_CHEST_ID,
-  TREASURE_CHEST_SKIN_ARCHIVES,
-  TreasureChestPlacement,
+  TREASURE_CHEST_PLACER,
+  TreasureChestInstance,
+  treasureChestPrefabs,
   type TreasureChestId,
 } from './treasurechest';
 export {

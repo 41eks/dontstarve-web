@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
-import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
 import { createArchiveEntity, createEmptyEntity, createPrefabEntity, prefabInstance } from '../../prefab/src/prefabInstance';
 import { actionEntity, findActionEntity } from '../../prefab/src/actionEntity';
 import { PrefabDisplayGroup, prefabDisplay, SpriteResources, SpriteState } from '@dontstarve-web/display';
@@ -12,7 +11,8 @@ import { smallHash } from '../src/animationAssets';
 import { ArchiveSpriteAssets, preloadSharedArchiveSprite } from '../src/archiveSprite';
 import { ResidentSprite } from '../src/residentSprite';
 import { displayLightOverride } from '../../display/src/displaySprites';
-import { TREASURE_CHEST_DEFINITION } from '../../prefab/src/treasurechest';
+import definitions from '../../prefab/src/definitions.json';
+import { managedBuildings } from './managedBuildings';
 import type { WorldContext } from '../../prefab/src/worldContext';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -77,7 +77,7 @@ it('keeps shared creation and action binding free of model metadata throughout t
 });
 
 it('draws the entity from its status and sprite json: sleeping completes a transition, waking restores the clip, removal releases the model', async () => {
-  const bytes = await readFile(new URL(`../../../public/dst/data/anim/${TREASURE_CHEST_DEFINITION.archive}`, import.meta.url));
+  const bytes = await readFile(new URL(`../../../public/dst/data/anim/${definitions.animatedBuildings.treasurechest.archive}`, import.meta.url));
   vi.stubGlobal('fetch', vi.fn(async () => new Response(bytes)));
   vi.stubGlobal('window', new EventTarget());
   vi.stubGlobal('document', { createElement: () => ({ setAttribute: vi.fn(), style: {} }), body: { appendChild: vi.fn() } });
@@ -85,7 +85,7 @@ it('draws the entity from its status and sprite json: sleeping completes a trans
   const world = { scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(),
     camera: new THREE.PerspectiveCamera(), renderer: { domElement: new EventTarget() },
     tickingarea: () => createMemo(() => awake.get()) } as unknown as WorldContext;
-  const placement = new AnimatedBuildingPlacement(world, { treasurechest: TREASURE_CHEST_DEFINITION }, () => true);
+  const placement = managedBuildings(world);
   await placement.spawn('treasurechest');
   const model = world.scene.children[0], instance = prefabInstance(model)!, sprite = instance.sprite;
   const meshes = () => { let count = 0; model.traverse(object => { if (object instanceof THREE.Mesh) count++; }); return count; };
@@ -126,14 +126,14 @@ it('draws the entity from its status and sprite json: sleeping completes a trans
 });
 
 it('the model stands on the entity\'s own position vector, so moving it never touches the sprite json', async () => {
-  const bytes = await readFile(new URL(`../../../public/dst/data/anim/${TREASURE_CHEST_DEFINITION.archive}`, import.meta.url));
+  const bytes = await readFile(new URL(`../../../public/dst/data/anim/${definitions.animatedBuildings.treasurechest.archive}`, import.meta.url));
   vi.stubGlobal('fetch', vi.fn(async () => new Response(bytes)));
   vi.stubGlobal('window', new EventTarget());
   vi.stubGlobal('document', { createElement: () => ({ setAttribute: vi.fn(), style: {} }), body: { appendChild: vi.fn() } });
   const world = { scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(),
     camera: new THREE.PerspectiveCamera(), renderer: { domElement: new EventTarget() },
     tickingarea: () => createMemo(() => true) } as unknown as WorldContext;
-  const placement = new AnimatedBuildingPlacement(world, { treasurechest: TREASURE_CHEST_DEFINITION }, () => true);
+  const placement = managedBuildings(world);
   await placement.spawn('treasurechest');
   const model = world.scene.children[0], instance = prefabInstance(model)!;
   await tick();

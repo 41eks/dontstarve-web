@@ -45,16 +45,16 @@ describe('Lua container component', () => {
     expect(signal.peek()).toEqual({ slotCount: 2, slots: [null, null] });
     const observed: unknown[] = [];
     const stop = signal.subscribe(dto => observed.push(dto));
-    container.OnLoad({ items: {
-      '1': { entityId: 'dto_log', itemId: 'log', count: 3 },
-      '2': { entityId: 'dto_torch', itemId: 'torch', count: 1, remainingFuel: 12.5 },
-    } });
+    container.OnLoad({ slots: [
+      { slotKey: '0', item: { entityId: 'dto_log', itemId: 'log', count: 3 } },
+      { slotKey: '1', item: { entityId: 'dto_torch', itemId: 'torch', count: 1, remainingFuel: 12.5 } },
+    ] });
     expect(observed).toHaveLength(1);
     expect(signal.peek().slots.map(item => item?.entityId)).toEqual(['dto_log', 'dto_torch']);
     expect(Object.isFrozen(signal.peek().slots)).toBe(true);
     expect(signal.peek().slots[0]).not.toBe(container.GetItemInSlot(1));
     const before = signal.peek();
-    expect(() => container.OnLoad({ items: { '3': { itemId: 'log', count: 1 } } })).toThrow();
+    expect(() => container.OnLoad({ slots: [{ slotKey: '2', item: { itemId: 'log', count: 1 } }] })).toThrow();
     expect(signal.peek()).toBe(before);
     expect(observed).toHaveLength(1);
     container.SetNumSlots(3);
@@ -103,19 +103,18 @@ describe('Lua container component', () => {
     const torch = new ItemEntity({ entityId: 'saved_torch', itemId: 'torch', count: 1, remainingFuel: 12.5 });
     container.slots[7].setEntity(torch);
     container.Open({});
+    const flush = vi.spyOn(torch, 'flush');
     const saved = container.OnSave();
-    expect(saved).toEqual({ items: { '8': torch.snapshot() } });
+    expect(flush).toHaveBeenCalledOnce();
+    expect(saved).toEqual({ slotCount: 8, slots: [{ slotKey: '7', item: torch.snapshot() }] });
     const restored = createContainer();
     restored.SetNumSlots(8);
     restored.OnLoad(JSON.parse(JSON.stringify(saved)));
     expect(restored.GetItemInSlot(8)).not.toBe(torch);
     expect(restored.OnSave()).toEqual(saved);
     expect(restored.GetOpeners()).toEqual([]);
-    saved.items['8'].remainingFuel = 1;
+    saved.slots[0].item.remainingFuel = 1;
     expect(container.GetItemInSlot(8)!.snapshot().remainingFuel).toBe(12.5);
-    const flush = vi.spyOn(torch, 'flush');
-    container.flush();
-    expect(flush).toHaveBeenCalledOnce();
     container.dispose(); restored.dispose();
   });
 
@@ -127,11 +126,11 @@ describe('Lua container component', () => {
     });
     const container = createContainer(loadItem);
     container.SetNumSlots(2);
-    expect(() => container.OnLoad({ items: { '3': { itemId: 'log', count: 1 } } })).toThrow(RangeError);
+    expect(() => container.OnLoad({ slots: [{ slotKey: '2', item: { itemId: 'log', count: 1 } }] })).toThrow(RangeError);
     expect(loadItem).not.toHaveBeenCalled();
-    expect(() => container.OnLoad({ items: {
-      '1': { itemId: 'log', count: 1 }, '2': { itemId: 'missing', count: 1 },
-    } })).toThrow('Missing prefab');
+    expect(() => container.OnLoad({ slots: [
+      { slotKey: '0', item: { itemId: 'log', count: 1 } }, { slotKey: '1', item: { itemId: 'missing', count: 1 } },
+    ] })).toThrow('Missing prefab');
     expect(container.IsEmpty()).toBe(true);
     expect(prepared.isRemoved).toBe(true);
     container.dispose();

@@ -11,7 +11,7 @@ import {
   type AnimatedBuildingDefinition,
 } from '../../prefab/src/animatedBuildingPlacement';
 import { COOK_POT_DEFINITION } from '../../prefab/src/cook_pot';
-import { TREASURE_CHEST_DEFINITION } from '../../prefab/src/treasurechest';
+import { managedBuildings } from './managedBuildings';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { modelHasTag } from '../../prefab/src/prefabInstance';
 import { findActionEntity } from '../../prefab/src/actionEntity';
@@ -110,7 +110,8 @@ it.each(buildings)('%s runs its built animation only after a successful placemen
 
 it('opens a chest during its place clip, as source onbuilt does not lock the container', async () => {
   // A storage building's real ID gives it its container.
-  const { placement, world, click } = await setup(TREASURE_CHEST_DEFINITION, 'treasurechest');
+  const { world, click } = await setup(definitions.animatedBuildings.treasurechest as AnimatedBuildingDefinition, 'treasurechest');
+  const placement = managedBuildings(world);
   await placement.begin('treasurechest');
   click();
   const model = world.scene.children[0], instance = prefabInstance(model)!;
@@ -122,7 +123,8 @@ it('opens a chest during its place clip, as source onbuilt does not lock the con
 
 
 it('gives placed and restored chests a map icon at their foot and releases it with the entity', async () => {
-  const { placement, world, click } = await setup({ ...TREASURE_CHEST_DEFINITION, onbuilt: undefined }, 'treasurechest');
+  const { world, click } = await setup(definitions.animatedBuildings.treasurechest as AnimatedBuildingDefinition, 'treasurechest');
+  const placement = managedBuildings(world);
   const icons = () => [...miniMapEntities()].filter(icon => world.scene.children.some(model => model.position === icon.position));
   const settle = () => new Promise(resolve => setTimeout(resolve, 0));
   try {
