@@ -351,7 +351,7 @@ ash 已有地面美术、库存、堆叠和保存支持，尚未移植 `disappea
 
 没有绘制的 clip 会在 `playOnce()` 内同步完成并发出 `animover`。因此 `kill_light()` 先写 `_killed`、先注册监听再播放；极光的随机待机在 sprite 未加载时改声明循环 clip，等 `sprite.art` 变化后继续，避免同步递归。新星体的 `appear` 通过共享 archive 在美术加载后从第一帧播放。
 
-保存只读取 `persists` 与 timer 的剩余时间：`persists` 为真的星体保存 ID、脚点和 `components.timer.remainingSeconds`。
+保存只读取 `persists` 与 timer 的剩余时间：`persists` 为真的星体保存 ID、脚点和 `components.timer`（`timer.lua` 的 `OnSave`：`timers.extinguish` 的 `timeleft`、`paused`、`initial_time`）。
 
 ## 保存、释放与验证
 

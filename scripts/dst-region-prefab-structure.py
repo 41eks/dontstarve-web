@@ -209,6 +209,23 @@ def link_grotto_pools(result, imported_ids):
                 del entity['components']['grottoPool']
 
 
+def staff_light_components(limit):
+    # stafflight.lua has no OnSave: only timer.lua's extinguish task is saved. limit is its tuning.lua duration.
+    def convert(data):
+        timer = data.get('timer')
+        if set(data) != {'timer'} or not isinstance(timer, dict) or set(timer) != {'timers'} \
+                or not isinstance(timer['timers'], dict) or set(timer['timers']) != {'extinguish'}:
+            raise ValueError('Unsupported staff light save state')
+        entry = timer['timers']['extinguish']
+        if not isinstance(entry, dict) or set(entry) != {'timeleft', 'paused', 'initial_time'} \
+                or type(entry['paused']) is not bool \
+                or any(type(entry[key]) not in (int, float) or not math.isfinite(entry[key]) for key in ('timeleft', 'initial_time')) \
+                or not 0 <= entry['timeleft'] <= entry['initial_time'] <= limit:
+            raise ValueError('Unsupported staff light extinguish timer')
+        return {'timer': {'timers': {'extinguish': entry}}}
+    return convert
+
+
 def pond_components(data):
     # pond.lua OnSave: plants + childspawner/worldsettingstimer (frog spawner, not ported).
     # Only fishable is ported, and a full pond saves nothing, so the frog and plant state is validated and dropped.

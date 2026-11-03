@@ -36,7 +36,7 @@ export interface SavedEntity {
     torch?: { lit: true };
     lantern?: { ison: boolean };
     health?: { current: number; maximum: number };
-    timer?: { remainingSeconds: number };
+    timer?: import('../../packages/componets/src/timer').NamedTimerSave;
     flower?: { animation: FlowerAnimation; planted?: true };
     bulbPlant?: BulbPlantSaveState;
     witherable?: import('../../packages/componets/src/witherable').WitherableSave;

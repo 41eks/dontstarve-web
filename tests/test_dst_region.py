@@ -13,6 +13,17 @@ TILE, PREFAB, PLAYER = IMPORTER['TILE'], IMPORTER['PREFAB'], IMPORTER['PLAYER']
 
 
 class RegionImportTest(unittest.TestCase):
+    def test_staff_lights_keep_the_source_extinguish_timer_and_reject_unknown_state(self):
+        encode = lambda values: base64.b64encode(b'VRSN\0\x01\0\0\0' + struct.pack(f'<{len(values)}H', *values)).decode()
+        terrain = {'width': 3, 'height': 3, 'topology': {'ids': ['Forest']}, 'nodeidtilemap': encode([1] * 9)}
+        timer = {'timers': {'extinguish': {'timeleft': 485.5, 'initial_time': 960, 'paused': False}}}
+        source = {'staffcoldlight': [{'id': 7, 'x': 4, 'z': 8, 'data': {'timer': timer}}]}
+        entities, _ = PREFAB['convert_entities'](terrain, source, {'translation': [0, 0, 0]}, 'ART')
+        self.assertEqual(entities['staffcoldlight'][0]['components'], {'timer': timer})
+        too_long = {'timers': {'extinguish': {'timeleft': 1000, 'initial_time': 1000, 'paused': False}}}
+        with self.assertRaisesRegex(ValueError, 'extinguish timer'):
+            PREFAB['convert_entities'](terrain, {'staffcoldlight': [{'id': 8, 'data': {'timer': too_long}}]}, {'translation': [0, 0, 0]}, 'ART')
+
     def test_loose_ground_art_preserves_visuals_quantity_skin_and_height_without_inventory_components(self):
         encode = lambda values: base64.b64encode(b'VRSN\0\x01\0\0\0' + struct.pack(f'<{len(values)}H', *values)).decode()
         terrain = {'width': 3, 'height': 3, 'topology': {'ids': ['Forest']}, 'nodeidtilemap': encode([1] * 9)}

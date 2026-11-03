@@ -2,7 +2,7 @@ import { PrefabDisplayGroup } from '../../display/src';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { DwarfStarManager } from '../../prefab/src/stafflight';
+import { createStaffLightManager, DWARF_STAR_ID } from '../../prefab/src/stafflight';
 import { DisposeSounds, PlaySound, PreloadSounds, PrewarmSounds, UpdateSoundListener, inverseSquareAttenuation, SOUND_MAX_DISTANCE } from '../../prefab/src/sound';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { DynamicMusic } from '../../componets/src/dynamicmusic';
@@ -110,12 +110,12 @@ describe('dwarf star source sounds', () => {
 
   it('attenuates independent stars as the player moves and releases their gains', async () => {
     const s = await setup();
-    const manager = new DwarfStarManager(new PrefabDisplayGroup(new THREE.Scene()), '/dst/data/anim', { scheduler: new GameTimeScheduler() });
+    const manager = createStaffLightManager(new PrefabDisplayGroup(new THREE.Scene()), '/dst/data/anim', { scheduler: new GameTimeScheduler() });
     // The scene decodes every event before it starts, so a star's loop begins when it is spawned.
     await PrewarmSounds();
     UpdateSoundListener(new THREE.Vector3());
-    const near = await manager.spawn(new THREE.Vector3());
-    const far = await manager.spawn(new THREE.Vector3(24, 0, 0));
+    const near = await manager.spawn(DWARF_STAR_ID, new THREE.Vector3());
+    const far = await manager.spawn(DWARF_STAR_ID, new THREE.Vector3(24, 0, 0));
     expect(s.gains.map(({ gain }) => gain.value)).toEqual([1, 1, 0.25, 0.25].map(volume => volume * .7));
     expect(s.sources.map((source) => source.connect.mock.calls[0][0])).toEqual(s.gains);
     UpdateSoundListener(new THREE.Vector3(48, 0, 0));

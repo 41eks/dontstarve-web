@@ -523,6 +523,8 @@
     "grotto_waterfall_small1",
     "grotto_waterfall_small2",
     "pond",
+    "stafflight",
+    "staffcoldlight",
     "lava_pond",
     "treasurechest",
     "pandoraschest",
@@ -902,6 +904,14 @@
     "pond": {
       "source": 4,
       "imported": 4
+    },
+    "stafflight": {
+      "source": 0,
+      "imported": 0
+    },
+    "staffcoldlight": {
+      "source": 0,
+      "imported": 0
     },
     "lava_pond": {
       "source": 0,

@@ -333922,6 +333922,52 @@
           "components": {}
         }
       ],
+      "staffcoldlight": [
+        {
+          "id": "dst_04E26ADB66396E8D_staffcoldlight_id_130198",
+          "transform": {
+            "position": [
+              1234.839,
+              0.0,
+              -1569.318
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "timer": {
+              "timers": {
+                "extinguish": {
+                  "timeleft": 767.39998995513,
+                  "initial_time": 960,
+                  "paused": false
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_staffcoldlight_id_126537",
+          "transform": {
+            "position": [
+              881.028,
+              0.0,
+              -1388.478
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "timer": {
+              "timers": {
+                "extinguish": {
+                  "timeleft": 654.19998405129,
+                  "initial_time": 960,
+                  "paused": false
+                }
+              }
+            }
+          }
+        }
+      ],
       "treasurechest": [
         {
           "id": "dst_04E26ADB66396E8D_treasurechest_id_102396",

@@ -441,6 +441,8 @@
     "grotto_waterfall_small1",
     "grotto_waterfall_small2",
     "pond",
+    "stafflight",
+    "staffcoldlight",
     "lava_pond",
     "treasurechest",
     "pandoraschest",
@@ -958,6 +960,14 @@
     "pond": {
       "source": 27,
       "imported": 27
+    },
+    "stafflight": {
+      "source": 0,
+      "imported": 0
+    },
+    "staffcoldlight": {
+      "source": 1,
+      "imported": 1
     },
     "lava_pond": {
       "source": 6,
@@ -66551,6 +66561,18 @@
         -7.88
       ],
       "sourceNode": "Magic meadow:3:Clearing"
+    },
+    {
+      "id": "dst_03741E1B78B29575_staffcoldlight_id_197769",
+      "prefab": "staffcoldlight",
+      "sourceIndex": 1,
+      "sourceId": 197769,
+      "sourcePosition": [
+        280.727,
+        0,
+        -657.507
+      ],
+      "sourceNode": null
     },
     {
       "id": "dst_03741E1B78B29575_lava_pond_id_110029",

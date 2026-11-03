@@ -185,7 +185,7 @@ const handEquipmentBinding = await bindPlayerHandEquipment({
   setHandAction: action => cursorUi.setHandAction(action, handPointer),
   lightStaffWorld: {
     map: spellCastMap,
-    spawnPrefab: (prefab, position) => (prefab === 'staffcoldlight' ? polarLights : dwarfStars).spawn(position.clone()),
+    spawnPrefab: (prefab, position) => { registry.SpawnPrefab(prefab, position.clone()); },
   },
   greenStaffWorld: {
     spawnLoot: (items, position) => groundItems.flingLoot(items.map(({ itemId, count }) => ({ ...inventory.getItemSpec(itemId), itemId, count })), position),
@@ -298,7 +298,7 @@ const sceneResources = await startScene(
   inventory.entities,
   inventory,
 );
-const { scheduler, buildingPlacement, groundItems, worldFx, staffProjectiles, skeletons, dwarfStars, polarLights, registry, getSaveState, disposalEvents } = sceneResources;
+const { scheduler, buildingPlacement, groundItems, worldFx, staffProjectiles, skeletons, registry, getSaveState, disposalEvents } = sceneResources;
 gameUi.minimap.bind({ terrain: turfMap, cellSize: TILE_SIZE, getPlayerPosition: () => player.position, cameraHeading: view.cameraHeading });
 const sanityVignette = await SanityVignette.create(playerSanity.sane, animRoot);
 document.body.append(sanityVignette.canvas);

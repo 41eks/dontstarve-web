@@ -1,14 +1,11 @@
-import * as THREE from 'three';
 import { createEffect, type GetWatchWorldContent, type TileStateQuery } from '@dontstarve-web/signals';
-import { SpriteResources, SpriteState, type PrefabDisplayGroup } from '@dontstarve-web/display';
-import { bindInstance, PrefabInstance } from './prefabInstance';
+import { SpriteState, type PrefabDisplayGroup } from '@dontstarve-web/display';
+import { PrefabEntityManager, PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { type PrefabLocalLight } from './localLight';
 import { WORLD_SCALE } from './tile';
 import { OPALSTAFF_COLOUR, YELLOWSTAFF_COLOUR } from './staff';
-import { newEntityId } from './saveRecord';
 import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
-import { actionEntity, FindEntities } from './actionEntity';
-import { watchTileActivity } from './tileActivity';
+import { FindEntities } from './actionEntity';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { ComponentTimer, Timer } from '../../componets/src/timer';
 import { Propagator } from '../../componets/src/propagator';
@@ -57,12 +54,6 @@ export function dwarfStarLight(ageSeconds: number): PrefabLocalLight {
 
 export function polarLight(ageSeconds: number): PrefabLocalLight {
   return { ...dwarfStarLight(ageSeconds), colour: OPALSTAFF_COLOUR };
-}
-
-export interface DwarfStarRecord {
-  id: string;
-  transform: { position: [number, number, number]; rotationY: number };
-  components: { timer: { remainingSeconds: number } };
 }
 
 /** What the scene injects into every star. */
@@ -195,65 +186,16 @@ export class StaffLightInstance extends PrefabInstance {
   }
 }
 
-/** The stars of one prefab: their collection, injected world and shared DST textures. */
-export class DwarfStarManager {
-  private readonly resources: SpriteResources;
-  private readonly stars = new Set<StaffLightInstance>();
-  private disposed = false;
-  private readonly displays: PrefabDisplayGroup;
-  private readonly world: StaffLightWorld;
-  readonly prefabId: StaffLightId;
-
-  /** `displays` is the display-layer owner of the stars' scene membership, injected and disposed by the application. */
-  constructor(displays: PrefabDisplayGroup, animationBaseUrl: string, world: StaffLightWorld, prefabId: StaffLightId = DWARF_STAR_ID) {
-    this.displays = displays;
-    this.resources = new SpriteResources(animationBaseUrl);
-    this.world = world;
-    this.prefabId = prefabId;
-  }
-
-  /** SpawnPrefab at CASTSPELL's source stategraph frame: the star exists now and its display loads the art. */
-  spawn(position: THREE.Vector3, saved?: { id: string; remainingSeconds: number }): StaffLightInstance {
-    if (this.disposed) throw new Error('Dwarf star manager has been disposed');
-    if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError(`Invalid ${this.prefabId} position`);
-    const instance = new StaffLightInstance(this.prefabId, this.world);
-    const { anim, duration } = STAFF_LIGHTS[this.prefabId], archive = `${anim}.zip`;
-    // A shared archive holds a first one-shot clip while its art loads, so a new star is drawn from its first `appear` frame.
-    const display = this.displays.add({ root: instance.transform.model, name: this.prefabId, status: instance.status, sprite: instance.sprite, light: instance.light,
-      archive: this.resources.archive({ animationArchive: archive, buildArchives: [archive], bank: anim }) });
-    bindInstance(display.model, instance);
-    instance.setPosition(position.x, 0, position.z);
-    instance.entityId = saved?.id ?? newEntityId();
-    if (saved) instance.components.timer!.OnLoad({ timers: { [EXTINGUISH]: { timeleft: saved.remainingSeconds, paused: false, initial_time: duration } } });
-    instance.playSpawnSounds();
-    actionEntity(display.model, this.prefabId);
-    this.stars.add(instance);
-    const stopActivity = watchTileActivity(display.model, this.world.tickingarea, active => instance.setActive(active));
-    instance.onRemove(() => { stopActivity(); this.stars.delete(instance); });
-    return instance;
-  }
-
-  /** The awake stars' displays, as the display group lists those in the scene. */
-  get renderEntities() { return this.displays.renderEntities; }
-
-  /** The display group advances the awake stars' clips; timers and tasks run on the world's scheduler. */
-  update(dt: number, cameraQuaternion: THREE.Quaternion): void {
-    if (!this.disposed) this.displays.update(dt, cameraQuaternion);
-  }
-
-  exportRecords(): DwarfStarRecord[] {
-    return [...this.stars].filter(star => star.persists).map(star => ({
-      id: String(star.entityId),
-      transform: { position: [star.position.x, 0, star.position.z], rotationY: 0 },
-      components: { timer: { remainingSeconds: star.components.timer!.GetTimeLeft(EXTINGUISH)! } },
-    }));
-  }
-
-  dispose(): void {
-    if (this.disposed) return;
-    this.disposed = true;
-    for (const star of [...this.stars]) star.remove();
-    // Every star's display is released above, before the shared resources.
-    this.resources.dispose();
-  }
+/** The Prefab table stafflight.lua returns for the two world stars. */
+export function createStaffLightManager(displays: PrefabDisplayGroup, animationBaseUrl: string, world: StaffLightWorld) {
+  const define = (prefabId: StaffLightId): PrefabEntityDefinition<StaffLightInstance> => {
+    const { anim } = STAFF_LIGHTS[prefabId], archive = `${anim}.zip`;
+    return {
+      fn: () => new StaffLightInstance(prefabId, world),
+      assets: { animationArchive: archive, buildArchives: [archive], bank: anim },
+      onSpawned: star => star.playSpawnSounds(),
+    };
+  };
+  return new PrefabEntityManager<StaffLightId, StaffLightInstance>(displays, animationBaseUrl, world,
+    { [DWARF_STAR_ID]: define(DWARF_STAR_ID), [POLAR_LIGHT_ID]: define(POLAR_LIGHT_ID) });
 }
