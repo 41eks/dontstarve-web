@@ -4,7 +4,7 @@ import { Vector3 } from 'three';
 import type { ResidentEntity } from '@dontstarve-web/animation/residentSprite';
 import type { SavedEntity } from './save/types';
 import type { PrefabDefinition } from './prefabDefinitions';
-import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
+import type { ArchiveSpriteCommands, PrefabDisplay, PrefabDisplayGroup } from '@dontstarve-web/display';
 import { PrefabInstance, PrefabEntityManager, prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import type { DisplayDrivenPrefabManager } from '@dontstarve-web/prefab/manager';
 
@@ -63,10 +63,13 @@ export class EntityRegistry {
 
   private readonly prefabs?: PrefabEntityManager<string, PrefabInstance>;
   private readonly spawnPosition?: () => THREE.Vector3;
+  private readonly prefabDisplays?: PrefabDisplayGroup;
 
   /** Construction dependencies may differ from the required frame/update and disposal order. */
-  constructor(lifecycleOrder: readonly PrefabDefinition[] = [], prefabs?: PrefabEntityManager<string, PrefabInstance>, spawnPosition?: () => THREE.Vector3) {
+  constructor(lifecycleOrder: readonly PrefabDefinition[] = [], prefabs?: PrefabEntityManager<string, PrefabInstance>, spawnPosition?: () => THREE.Vector3,
+    prefabDisplays?: PrefabDisplayGroup) {
     this.prefabs = prefabs; this.spawnPosition = spawnPosition;
+    this.prefabDisplays = prefabDisplays;
     this.lifecycleOrder = new Map(lifecycleOrder.map((definition, index) => [definition, index]));
   }
 
@@ -204,7 +207,7 @@ export class EntityRegistry {
   update(dt: number, cameraQuaternion: THREE.Quaternion): void {
     if (this.disposed) return;
     for (const registration of this.registrations) registration.update?.(dt, cameraQuaternion);
-    this.prefabs?.update(dt, cameraQuaternion);
+    this.prefabDisplays?.update(dt, cameraQuaternion);
     for (const display of this.displays) display.update(dt, cameraQuaternion);
   }
 

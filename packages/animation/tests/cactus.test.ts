@@ -1,3 +1,4 @@
+import { prefabDisplays } from './prefabManagerFixture';
 import { plantManager } from './plantManagerFixture';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
@@ -68,10 +69,10 @@ it('pricks the picker through worn armor, empties and regrows, giving a flower o
     expect(physics()).toBe(false);
     expect(test.inventory.count('cactus_flower')).toBe(0);
 
-    tickWorld(test.scheduler, test.cacti, CACTUS_REGROW_TIME - 1, new THREE.Quaternion());
+    tickWorld(test.scheduler, prefabDisplays(test.cacti), CACTUS_REGROW_TIME - 1, new THREE.Quaternion());
     expect(plantInstance(cactus).components.pickable.canBePicked).toBe(false);
     test.world.season.set({ season: 'summer', progress: 0 });
-    tickWorld(test.scheduler, test.cacti, 1, new THREE.Quaternion());
+    tickWorld(test.scheduler, prefabDisplays(test.cacti), 1, new THREE.Quaternion());
     expect(plantInstance(cactus).components.pickable.canBePicked).toBe(true);
     expect(physics()).toBe(true);
     expect(test.pick(cactus)).toBe(true);

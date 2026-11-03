@@ -24,7 +24,7 @@ export async function prepareStarAudioCheck() {
     return source;
   };
   const scheduler = new GameTimeScheduler();
-  const manager = prefabManager(new PrefabDisplayGroup(new THREE.Scene()), '/dst/data/anim', { scheduler }, staffLightPrefabs);
+  const displays = new PrefabDisplayGroup(new THREE.Scene()), manager = prefabManager(displays, '/dst/data/anim', { scheduler }, staffLightPrefabs);
   // As the scene does before it starts, so each star's sounds play when it is spawned.
   await PrewarmSounds();
   await manager.spawn(DWARF_STAR_ID, new THREE.Vector3());
@@ -59,7 +59,7 @@ export async function prepareStarAudioCheck() {
   const castBuffer = sources[6].source.buffer!;
   (window as unknown as { checkStarAudio: (action: string) => unknown }).checkStarAudio = (action) => {
     if (action === 'expire') {
-      for (let i = 0; i < 72; i++) { scheduler.advance(1 / 60); manager.update(1 / 60, new THREE.Quaternion()); }
+      for (let i = 0; i < 72; i++) { scheduler.advance(1 / 60); displays.update(1 / 60, new THREE.Quaternion()); }
     }
     if (action === 'dispose') { manager.dispose(); DisposeSounds(); }
     return { state: context.state, restoredRemoved: restored.isRemoved,

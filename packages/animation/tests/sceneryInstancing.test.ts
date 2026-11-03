@@ -1,3 +1,4 @@
+import { prefabDisplays } from './prefabManagerFixture';
 import { plantManager } from './plantManagerFixture';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
@@ -45,7 +46,7 @@ it('batches both stalagmite banks and the lichen idle loop, retaining instance t
   const update = (dt: number) => {
     scheduler.advance(dt);
     for (const display of displays) display.update(dt);
-    lichens.update(dt, new THREE.Quaternion());
+    prefabDisplays(lichens).update(dt, new THREE.Quaternion());
   };
   try {
     const models = [

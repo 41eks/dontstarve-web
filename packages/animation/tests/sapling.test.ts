@@ -1,3 +1,4 @@
+import { prefabDisplays } from './prefabManagerFixture';
 import { plantManager } from './plantManagerFixture';
 import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
 import { findActionEntity } from '../../prefab/src/actionEntity';
@@ -75,7 +76,7 @@ it('picks twigs, regrows after four days through grow → sway, and saves/restor
     expect(s.inventory.count('twigs')).toBe(1);
     expect(animation.currentAnimation).toBe('picked');
     expect(prefabInstance(model)!.listTags()).not.toContain('pickable');
-    tickWorld(s.scheduler, s.saplings, 1000, new THREE.Quaternion());
+    tickWorld(s.scheduler, prefabDisplays(s.saplings), 1000, new THREE.Quaternion());
 
     const saved = deserializeSave(s.save(), SAVE_CATALOG);
     const [record] = saved.world.entities.sapling;
@@ -85,10 +86,10 @@ it('picks twigs, regrows after four days through grow → sway, and saves/restor
     expect(plantInstance(copy).sprite.currentAnimation).toBe('empty');
     expect(lookupPrefabInstance(copy)?.entityId).toBe(lookupPrefabInstance(model)?.entityId);
 
-    tickWorld(s.scheduler, s.saplings, 920, new THREE.Quaternion());
+    tickWorld(s.scheduler, prefabDisplays(s.saplings), 920, new THREE.Quaternion());
     expect(plantInstance(model).phase.peek()).toBe('ready');
     expect(animation.currentAnimation).toBe('grow');
-    for (let frame = 0; frame < 45; frame++) tickWorld(s.scheduler, s.saplings, 1 / 30, new THREE.Quaternion());
+    for (let frame = 0; frame < 45; frame++) tickWorld(s.scheduler, prefabDisplays(s.saplings), 1 / 30, new THREE.Quaternion());
     expect(animation.currentAnimation).toBe('sway');
     // Regrowth tasks may not exceed TUNING.SAPLING_REGROW_TIME.
     const invalid = JSON.parse(s.save());
@@ -116,7 +117,7 @@ it('digs sapling_moon into dug_sapling_moon plus ready twigs, and burns a picked
     expect(collectEquippedItemActions(torch, undefined, findActionEntity(model), true)).toContain('LIGHT');
     plantInstance(model).components.burnable.Ignite();
     expect(s.saplings.exportRecords()).toEqual([]);
-    tickWorld(s.scheduler, s.saplings, 20, new THREE.Quaternion());
+    tickWorld(s.scheduler, prefabDisplays(s.saplings), 20, new THREE.Quaternion());
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(model.parent).toBeNull();
     expect(s.ground.exportRecords().at(-1)?.components.stack).toMatchObject({ itemId: 'ash', count: 1 });
@@ -131,21 +132,21 @@ it('restores an imported wither check through save/load, reschedules on expiry a
       components: { witherable: { taskSeconds: 2.5 } },
     }).transform.model);
     expect(prefabInstance(model)!.listTags()).toContain('witherable');
-    tickWorld(s.scheduler, s.saplings, 1, new THREE.Quaternion());
+    tickWorld(s.scheduler, prefabDisplays(s.saplings), 1, new THREE.Quaternion());
     const saved = deserializeSave(s.save(), SAVE_CATALOG), record = saved.world.entities.sapling[0];
     expect(record.components.witherable).toEqual({ taskSeconds: 1.5 });
     const copy = await drawn(restored.saplings.spawn('sapling', new THREE.Vector3(...record.transform.position), record).transform.model);
     const witherable = plantInstance(copy).components.witherable;
     const timer = witherable.state.timer.peek();
-    tickWorld(restored.scheduler, restored.saplings, 1, new THREE.Quaternion());
+    tickWorld(restored.scheduler, prefabDisplays(restored.saplings), 1, new THREE.Quaternion());
     expect(witherable.state.timer.peek()).toBe(timer);
-    tickWorld(restored.scheduler, restored.saplings, .5, new THREE.Quaternion());
+    tickWorld(restored.scheduler, prefabDisplays(restored.saplings), .5, new THREE.Quaternion());
     expect(witherable.state.timer.peek()).not.toBe(timer);
     expect(witherable.state.timer.peek().status).toBe('scheduled');
     expect(plantInstance(copy).components.pickable.canBePicked).toBe(true);
     plantInstance(copy).remove();
     expect(witherable.state.timer.peek()).toEqual({ status: 'stopped' });
-    tickWorld(restored.scheduler, restored.saplings, 60, new THREE.Quaternion());
+    tickWorld(restored.scheduler, prefabDisplays(restored.saplings), 60, new THREE.Quaternion());
     expect(restored.saplings.exportRecords()).toEqual([]);
   } finally { s.dispose(); restored.dispose(); }
 });

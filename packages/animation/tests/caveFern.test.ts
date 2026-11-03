@@ -1,3 +1,4 @@
+import { prefabDisplays } from './prefabManagerFixture';
 import { plantManager } from './plantManagerFixture';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
@@ -86,7 +87,7 @@ it('preserves cave fern poses and components across residency, then picks foliag
   expect(plantInstance(fern).components.pickable.pick({ giveItem: (id: string) => { given.push(id); return true; } })).toBe(true);
   expect(plantInstance(withered).components.pickable.pick({ giveItem: (id: string) => { given.push(id); return true; } })).toBe(true);
   expect(given).toEqual(['foliage', 'cutgrass']);
-  tickWorld(scheduler, ferns, 1 / 30, new THREE.Quaternion());
+  tickWorld(scheduler, prefabDisplays(ferns), 1 / 30, new THREE.Quaternion());
   // remove_when_picked: nothing remains to save or render but the restored fern.
   expect(ferns.exportRecords().map(({ record }) => record.id)).toEqual(['restored']);
   // The display leaves the scene in its effect.

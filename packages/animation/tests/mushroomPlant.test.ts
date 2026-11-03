@@ -1,3 +1,4 @@
+import { prefabDisplays } from './prefabManagerFixture';
 import { plantManager } from './plantManagerFixture';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
@@ -23,7 +24,7 @@ function setup() {
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', new THREE.Group());
   const world = bindTestWorld(scheduler), rain = createSignal<'none' | 'rain' | 'snow'>('none');
   const mushrooms = plantManager(mushroomPlantPrefabs, scene, { rain, spawnGroundItem: (definition, position, options) => ground.spawnGroundItem(definition, position, options) });
-  const advance = (seconds: number) => { scheduler.advance(seconds); mushrooms.update(seconds, new THREE.Quaternion()); };
+  const advance = (seconds: number) => { scheduler.advance(seconds); prefabDisplays(mushrooms).update(seconds, new THREE.Quaternion()); };
   return { inventory, scene, scheduler, world, rain, ground, mushrooms, advance,
     dispose: () => { mushrooms.dispose(); ground.dispose(); inventory.dispose(); world.unbind(); scheduler.dispose(); } };
 }
@@ -121,7 +122,7 @@ it('turns static billboards only when the camera rotation signal changes and lea
     expect(sprite.matrixWorld.elements[2]).toBeCloseTo(-Math.sin(Math.PI / 4));
 
     // The same rotation again, as the host update passes it every frame, does not wake the subtree.
-    s.mushrooms.update(0, turned); scene.updateMatrixWorld();
+    prefabDisplays(s.mushrooms).update(0, turned); scene.updateMatrixWorld();
     expect(visits).toBe(1);
   } finally { s.dispose(); }
 });

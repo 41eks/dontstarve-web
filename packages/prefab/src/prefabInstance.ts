@@ -1,7 +1,7 @@
 import { MiniMapState } from '../../map/src/minimapState';
 import { watchMiniMapEntity } from '../../map/src/minimapEntities';
 import type * as CANNON from 'cannon-es';
-import { MathUtils, type Object3D, type Quaternion, type Vector3, type Vector3Like } from 'three';
+import { MathUtils, type Object3D, type Vector3, type Vector3Like } from 'three';
 import { createSignal, EventEmitter, readonlySignal, type ReadonlySignal, type TileStateQuery } from '@dontstarve-web/signals';
 import { LightState, PrefabDisplay, SpriteResources, SpriteState, type ArchiveSpriteCommands, type PrefabDisplayGroup, type ArchiveSpriteSource, type LoadedSpriteSource, type PrefabDisplayOptions, type PrefabStatus, type SpriteSource } from '@dontstarve-web/display';
 import { bindPhysics, type PhysicsBinding } from '../../componets/src/physicsBinding';
@@ -395,12 +395,6 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
 
   /** The awake entities' displays, as the display group lists those in the scene. */
   get renderEntities() { return this.displays.renderEntities; }
-
-  /** The display group advances the awake entities' clips; timers and tasks run on the world's scheduler. */
-  update(dt: number, cameraQuaternion: Quaternion): void {
-    if (this.disposed) return;
-    this.displays.update(dt, cameraQuaternion);
-  }
 
   /** The save loop's `persists` and GetParent checks, and GetSaveRecord. */
   exportRecords(): { prefabId: Id; record: PrefabSaveRecord }[] {

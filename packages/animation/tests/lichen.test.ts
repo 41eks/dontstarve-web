@@ -1,3 +1,4 @@
+import { prefabDisplays } from './prefabManagerFixture';
 import { plantManager } from './plantManagerFixture';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
@@ -32,7 +33,7 @@ function setup(player = new THREE.Vector3()) {
     restore: (_, record) => lichens.spawn('lichen', new THREE.Vector3(...record.transform.position), { id: record.id, transform: record.transform, components: { pickable: record.components.pickable } }).transform.model,
     debugSpawn: () => lichens.spawn('lichen', player.clone()).transform.model,
     exportRecords: () => lichens.exportRecords(),
-    update: (dt, quaternion) => tickWorld(scheduler, lichens, dt, quaternion),
+    update: (dt, quaternion) => tickWorld(scheduler, prefabDisplays(lichens), dt, quaternion),
     renderEntities: () => lichens.renderEntities,
     dispose: () => lichens.dispose(),
   });

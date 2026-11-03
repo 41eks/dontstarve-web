@@ -1,3 +1,4 @@
+import { prefabDisplays } from './prefabManagerFixture';
 import { plantManager } from './plantManagerFixture';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
@@ -38,7 +39,7 @@ it('spawns grass through the debug command using its source bank and build, then
     }).transform.model),
     debugSpawn: () => drawn(grasses.spawn('grass', new THREE.Vector3(4, 0, -6)).transform.model),
     exportRecords: () => grasses.exportRecords(),
-    update: (dt, quaternion) => tickWorld(scheduler, grasses, dt, quaternion),
+    update: (dt, quaternion) => tickWorld(scheduler, prefabDisplays(grasses), dt, quaternion),
     renderEntities: () => grasses.renderEntities,
     dispose: () => grasses.dispose(),
   });
@@ -61,7 +62,7 @@ it('spawns grass through the debug command using its source bank and build, then
   expect(mesh).toBeDefined();
   expect(mesh!.geometry.getAttribute('position').count).toBeGreaterThan(4);
 
-  tickWorld(scheduler, grasses, 1 / 30, new THREE.Quaternion());
+  tickWorld(scheduler, prefabDisplays(grasses), 1 / 30, new THREE.Quaternion());
   expect(model.quaternion.x).toBe(0);
   expect([...grasses.renderEntities]).toEqual([{ object: model, footPosition: model.position, cameraDepth: 0 }]);
 
@@ -73,7 +74,7 @@ it('spawns grass through the debug command using its source bank and build, then
   const pickable = plantInstance(model).components.pickable;
   expect(pickable.pick({ giveItem: (id: string, count: number) => id === 'cutgrass' && count === 1 })).toBe(true);
   expect(controller.currentAnimation).toBe('picking');
-  for (let i = 0; i < 60; i++) tickWorld(scheduler, grasses, 1 / 30, new THREE.Quaternion());
+  for (let i = 0; i < 60; i++) tickWorld(scheduler, prefabDisplays(grasses), 1 / 30, new THREE.Quaternion());
   expect(controller.currentAnimation).toBe('picked');
   const pickedRecord = grasses.exportRecords().map(({ record }) => record)[0];
   expect(pickedRecord.components.pickable?.picked).toBe(true);
@@ -82,10 +83,10 @@ it('spawns grass through the debug command using its source bank and build, then
   expect(plantInstance(pickedRestored).sprite.currentAnimation).toBe('picked');
   expect(plantInstance(pickedRestored).components.pickable.state.phase.peek()).toBe('picked');
   expect(plantInstance(pickedRestored).components.pickable.remainingSeconds).toBeCloseTo(1438);
-  tickWorld(scheduler, grasses, pickable.remainingSeconds, new THREE.Quaternion());
+  tickWorld(scheduler, prefabDisplays(grasses), pickable.remainingSeconds, new THREE.Quaternion());
   expect(controller.currentAnimation).toBe('grow');
   expect(pickable.state.phase.peek()).toBe('ready');
-  for (let i = 0; i < 60; i++) tickWorld(scheduler, grasses, 1 / 30, new THREE.Quaternion());
+  for (let i = 0; i < 60; i++) tickWorld(scheduler, prefabDisplays(grasses), 1 / 30, new THREE.Quaternion());
   expect(controller.currentAnimation).toBe('idle');
 
   const restored = await drawn(grasses.spawn('grass', new THREE.Vector3(...record.transform.position), {
@@ -98,7 +99,7 @@ it('spawns grass through the debug command using its source bank and build, then
   expect(pickable.pick({ giveItem: () => true })).toBe(true);
   expect(pickable.exportState()).toEqual({ picked: true, paused: true });
   expect(pickable.state.timer.peek()).toEqual({ status: 'stopped' });
-  tickWorld(scheduler, grasses, 500, new THREE.Quaternion());
+  tickWorld(scheduler, prefabDisplays(grasses), 500, new THREE.Quaternion());
   expect(pickable.canBePicked).toBe(false);
   season.set({ season: 'spring', progress: 0 });
   expect(pickable.remainingSeconds).toBe(1080);
@@ -108,7 +109,7 @@ it('spawns grass through the debug command using its source bank and build, then
   await new Promise(resolve => setTimeout(resolve, 0));
   expect(model.parent).toBeNull();
   season.set({ season: 'winter', progress: 0 });
-  tickWorld(scheduler, grasses, 1080, new THREE.Quaternion());
+  tickWorld(scheduler, prefabDisplays(grasses), 1080, new THREE.Quaternion());
   expect(pickable.state.phase.peek()).toBe('removed');
 
   registry.dispose();

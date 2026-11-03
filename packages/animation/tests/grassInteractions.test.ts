@@ -1,3 +1,4 @@
+import { prefabDisplays } from './prefabManagerFixture';
 import { plantManager } from './plantManagerFixture';
 import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
 import { findActionEntity } from '../../prefab/src/actionEntity';
@@ -108,7 +109,7 @@ it('digs mature/picked grass through workable, preserves dug-item commands and r
     expect(s.inventory.GetEquippedItem('hand')).toBeNull();
     expect(s.inventory.handEquipment.peek()).toBeNull();
     expect(s.ground.exportRecords().at(-1)?.components.stack?.itemId).toBe('dug_grass');
-    tickWorld(s.scheduler, s.grass, 2000, new THREE.Quaternion());
+    tickWorld(s.scheduler, prefabDisplays(s.grass), 2000, new THREE.Quaternion());
     expect(s.grass.exportRecords().map(({ record }) => record)).toEqual([]);
     expect(s.ground.exportRecords()).toHaveLength(4);
   } finally { registry.dispose(); s.dispose(); restored.dispose(); }
@@ -127,7 +128,7 @@ it('retains regrowth on extinguish, then burns to exactly one saved ash and rele
     expect(s.grass.exportRecords().map(({ record }) => record)).toEqual([]);
     expect(canDoSceneAction('PICK', model)).toBe(false);
     expect(workTargets('DIG')[0].isValid()).toBe(true);
-    tickWorld(s.scheduler, s.grass, 10, new THREE.Quaternion());
+    tickWorld(s.scheduler, prefabDisplays(s.grass), 10, new THREE.Quaternion());
     expect(burnable.timer.peek()).toBe(timer);
     burnable.Extinguish();
     const record = s.grass.exportRecords().map(({ record }) => record)[0];
@@ -139,7 +140,7 @@ it('retains regrowth on extinguish, then burns to exactly one saved ash and rele
     s.inventory.configureItem(torch);
     expect(collectEquippedItemActions(torch, undefined, findActionEntity(model), true)).toContain('LIGHT');
     burnable.Ignite();
-    tickWorld(s.scheduler, s.grass, 20, new THREE.Quaternion());
+    tickWorld(s.scheduler, prefabDisplays(s.grass), 20, new THREE.Quaternion());
     expect(state.phase.peek()).toBe('removed');
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(model.parent).toBeNull();
@@ -151,7 +152,7 @@ it('retains regrowth on extinguish, then burns to exactly one saved ash and rele
     const saved = deserializeSave(s.save(), SAVE_CATALOG);
     expect(saved.world.entities.grass).toEqual([]);
     expect(saved.world.entities.ground_item).toEqual(s.ground.exportRecords());
-    tickWorld(s.scheduler, s.grass, 1440, new THREE.Quaternion());
+    tickWorld(s.scheduler, prefabDisplays(s.grass), 1440, new THREE.Quaternion());
     expect(s.ground.exportRecords()).toHaveLength(1);
   } finally { s.dispose(); }
 });

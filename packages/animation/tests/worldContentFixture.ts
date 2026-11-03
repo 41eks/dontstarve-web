@@ -37,9 +37,9 @@ export function bindTestWorld(scheduler: GameTimeScheduler, tickingarea?: WorldC
 }
 
 /** The bound world owns game time, so a frame advances the scheduler before the manager samples it. */
-export function tickWorld(scheduler: GameTimeScheduler, manager: { update(dt: number, quaternion: import('three').Quaternion): void },
+export function tickWorld(scheduler: GameTimeScheduler, displays: { update(dt: number, quaternion: import('three').Quaternion): void },
   dt: number, quaternion: import('three').Quaternion): void {
-  scheduler.advance(dt); manager.update(dt, quaternion);
+  scheduler.advance(dt); displays.update(dt, quaternion);
 }
 
 /** A spawned entity exists at once; a test that inspects its drawn clips first lets its display load the art. */
