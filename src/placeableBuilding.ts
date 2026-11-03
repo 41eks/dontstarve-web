@@ -30,7 +30,7 @@ import { TENT_DEFINITION, TENT_ID } from '@dontstarve-web/prefab/tent';
 import { PANDORAS_CHEST_DEFINITION, PANDORAS_CHEST_ID, type PandorasChestId } from '@dontstarve-web/prefab/pandoraschest';
 import { MOONBASE_DEFINITION, MOONBASE_ID } from '@dontstarve-web/prefab/moonbase';
 import { SCULPTING_TABLE_DEFINITION, SCULPTING_TABLE_ID, type SculptingTableId } from '@dontstarve-web/prefab/sculptingtable';
-import { WARDROBE_ID, WARDROBE_PLACER } from '@dontstarve-web/prefab/wardrobe';
+import { WARDROBE_ID, WARDROBE_PLACER, wardrobePrefabs } from '@dontstarve-web/prefab/wardrobe';
 import { BuildingPlacer } from '@dontstarve-web/prefab/buildingPlacer';
 import type { PrefabEntityManager, PrefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import { Vector3 } from 'three';
@@ -38,10 +38,10 @@ import { FIRE_PIT_DEFINITION, FIRE_PIT_ID, type FirePitId } from '@dontstarve-we
 import { ICE_BOX_DEFINITION, ICE_BOX_ID, type IceBoxId } from '@dontstarve-web/prefab/icebox';
 import { DRAGONFLY_CHEST_DEFINITION, DRAGONFLY_CHEST_ID, type DragonflyChestId } from '@dontstarve-web/prefab/dragonfly_chest';
 import { BOOKSTATION_DEFINITION, BOOKSTATION_ID, type BookstationId } from '@dontstarve-web/prefab/bookstation';
-import { CAMPFIRE_DEFINITION, CAMPFIRE_ID, type CampfireId } from '@dontstarve-web/prefab/campfire';
+import { CAMPFIRE_ID, CAMPFIRE_PLACER, campfirePrefabs } from '@dontstarve-web/prefab/campfire';
 import { SALT_BOX_DEFINITION, SALT_BOX_ID, type SaltBoxId } from '@dontstarve-web/prefab/saltbox';
-import { NIGHT_LIGHT_DEFINITION, NIGHT_LIGHT_ID, type NightLightId } from '@dontstarve-web/prefab/nightlight';
-import { PIG_HOUSE_DEFINITION, PIG_HOUSE_ID, type PigHouseId } from '@dontstarve-web/prefab/pighouse';
+import { NIGHT_LIGHT_ID, NIGHT_LIGHT_PLACER, nightLightPrefabs } from '@dontstarve-web/prefab/nightlight';
+import { PIG_HOUSE_ID, PIG_HOUSE_PLACER, pigHousePrefabs } from '@dontstarve-web/prefab/pighouse';
 import { BIRDCAGE_DEFINITION, BIRDCAGE_ID, type BirdcageId } from '@dontstarve-web/prefab/birdcage';
 import { MOONDIAL_DEFINITION, MOONDIAL_ID } from '@dontstarve-web/prefab/moondial';
 import { PIG_HEAD_DEFINITION, PIG_HEAD_ID, MERM_HEAD_DEFINITION, MERM_HEAD_ID, type PigHeadId, type MermHeadId } from '@dontstarve-web/prefab/stickheads';
@@ -54,9 +54,9 @@ export { TREASURE_CHEST_ID } from '@dontstarve-web/prefab/treasurechest';
 export { TENT_ID } from '@dontstarve-web/prefab/tent';
 
 export type AnimatedBuildingId = CookPotId | FirePitId | IceBoxId | ResearchLabId | TreasureChestId | PandorasChestId | typeof TENT_ID
-    | DragonflyChestId | BookstationId | CampfireId | SaltBoxId | NightLightId | PigHouseId | MushroomLightId | WinterometerId | LightningRodId | PigHeadId | MermHeadId | BirdcageId | SculptingTableId | typeof MOONBASE_ID | typeof MOONDIAL_ID;
+    | DragonflyChestId | BookstationId | SaltBoxId | MushroomLightId | WinterometerId | LightningRodId | PigHeadId | MermHeadId | BirdcageId | SculptingTableId | typeof MOONBASE_ID | typeof MOONDIAL_ID;
 /** Buildings declared on the shared PrefabEntityManager; the rest move here as they migrate. */
-const MANAGED_BUILDING_PLACERS = { [WARDROBE_ID]: WARDROBE_PLACER } as const;
+const MANAGED_BUILDING_PLACERS = { [WARDROBE_ID]: WARDROBE_PLACER, [CAMPFIRE_ID]: CAMPFIRE_PLACER, [NIGHT_LIGHT_ID]: NIGHT_LIGHT_PLACER, [PIG_HOUSE_ID]: PIG_HOUSE_PLACER } as const;
 export type ManagedBuildingId = keyof typeof MANAGED_BUILDING_PLACERS;
 const isManagedBuildingId = (value: string): value is ManagedBuildingId => Object.hasOwn(MANAGED_BUILDING_PLACERS, value);
 export type PlaceableBuildingId = AnimatedBuildingId | ManagedBuildingId | WallId | FenceId;
@@ -74,10 +74,7 @@ const ANIMATED_BUILDING_IDS: readonly AnimatedBuildingId[] = [
     MOONDIAL_ID,
     DRAGONFLY_CHEST_ID,
     BOOKSTATION_ID,
-    CAMPFIRE_ID,
     SALT_BOX_ID,
-    NIGHT_LIGHT_ID,
-    PIG_HOUSE_ID,
     SCULPTING_TABLE_ID,
     WINTEROMETER_ID,
     LIGHTNING_ROD_ID,
@@ -99,10 +96,7 @@ const ANIMATED_BUILDING_DEFINITIONS = {
     [MOONDIAL_ID]: MOONDIAL_DEFINITION,
     [DRAGONFLY_CHEST_ID]: DRAGONFLY_CHEST_DEFINITION,
     [BOOKSTATION_ID]: BOOKSTATION_DEFINITION,
-    [CAMPFIRE_ID]: CAMPFIRE_DEFINITION,
     [SALT_BOX_ID]: SALT_BOX_DEFINITION,
-    [NIGHT_LIGHT_ID]: NIGHT_LIGHT_DEFINITION,
-    [PIG_HOUSE_ID]: PIG_HOUSE_DEFINITION,
     [SCULPTING_TABLE_ID]: SCULPTING_TABLE_DEFINITION,
     [WINTEROMETER_ID]: WINTEROMETER_DEFINITION,
     [LIGHTNING_ROD_ID]: LIGHTNING_ROD_DEFINITION,
@@ -112,7 +106,7 @@ const ANIMATED_BUILDING_DEFINITIONS = {
     ...MUSHROOM_LIGHT_DEFINITIONS,
 } as const;
 
-export const PLACEABLE_BUILDING_IDS: readonly PlaceableBuildingId[] = [...ANIMATED_BUILDING_IDS, WARDROBE_ID, ...WALL_IDS, ...FENCE_IDS];
+export const PLACEABLE_BUILDING_IDS: readonly PlaceableBuildingId[] = [...ANIMATED_BUILDING_IDS, ...Object.keys(MANAGED_BUILDING_PLACERS) as ManagedBuildingId[], ...WALL_IDS, ...FENCE_IDS];
 
 export function isPlaceableBuildingId(value: string): value is PlaceableBuildingId {
     return PLACEABLE_BUILDING_IDS.some((buildingId) => buildingId === value);
@@ -127,15 +121,17 @@ export class PlaceableBuildingPlacement {
     private readonly walls: WallsPlacement;
     private readonly fences: FencePlacement;
     private readonly managed: BuildingPlacer<ManagedBuildingId>;
-    private readonly prefabs: Pick<PrefabEntityManager<string, PrefabInstance>, 'spawn'>;
+    private readonly prefabs: Pick<PrefabEntityManager<string, PrefabInstance>, 'spawn' | 'register'>;
 
     constructor(
         world: WorldContext,
         consumeBufferedBuild: (buildId: PlaceableBuildingId, skinId?: string) => boolean,
         onInteractionChange: ((change: PlaceableBuildingInteractionChange) => void) | undefined,
-        prefabs: Pick<PrefabEntityManager<string, PrefabInstance>, 'spawn'>,
+        prefabs: Pick<PrefabEntityManager<string, PrefabInstance>, 'spawn' | 'register'>,
     ) {
         this.prefabs = prefabs;
+        const { scene: _scene, ...services } = world;
+        prefabs.register({ ...wardrobePrefabs(services), ...campfirePrefabs(services), ...nightLightPrefabs(services), ...pigHousePrefabs(services) });
         this.animated = new AnimatedBuildingPlacement<AnimatedBuildingId>(
             world,
             ANIMATED_BUILDING_DEFINITIONS,

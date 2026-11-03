@@ -15,16 +15,14 @@ export {
   BookstationPlacement, type BookstationId,
 } from './bookstation';
 export {
-  CAMPFIRE_DEFINITION, CAMPFIRE_ID, CAMPFIRE_SKIN_ARCHIVES,
-  CampfirePlacement, type CampfireId,
+  CAMPFIRE_ID, CAMPFIRE_PLACER, CampfireInstance, campfirePrefabs, type CampfireId,
 } from './campfire';
 export {
   SALT_BOX_DEFINITION, SALT_BOX_ID, SALT_BOX_SKIN_ARCHIVES,
   SaltBoxPlacement, type SaltBoxId,
 } from './saltbox';
 export {
-  NIGHT_LIGHT_DEFINITION, NIGHT_LIGHT_ID, NIGHT_LIGHT_SKIN_ARCHIVES,
-  NightLightPlacement, type NightLightId,
+  NIGHT_LIGHT_ID, NIGHT_LIGHT_PLACER, NightLightInstance, nightLightPrefabs, type NightLightId,
 } from './nightlight';
 export { PIG_HEAD_DEFINITION, PIG_HEAD_ID, MERM_HEAD_DEFINITION, MERM_HEAD_ID, type PigHeadId, type MermHeadId } from './stickheads';
 export { LIGHTNING_ROD_DEFINITION, LIGHTNING_ROD_ID, LIGHTNING_ROD_SKIN_ARCHIVES, type LightningRodId } from './lightning_rod';
@@ -33,8 +31,7 @@ export { WINTEROMETER_DEFINITION, WINTEROMETER_ID, WINTEROMETER_SKIN_ARCHIVES, t
 export { BIRDCAGE_DEFINITION, BIRDCAGE_ID, type BirdcageId } from './birdcage';
 export { BIRD_IDS, BIRD_PERISH_TIME, configureBirdEntity, isBirdId, type BirdId } from './birds';
 export {
-  PIG_HOUSE_DEFINITION, PIG_HOUSE_ID, PIG_HOUSE_SKIN_ARCHIVES,
-  PigHousePlacement, type PigHouseId,
+  PIG_HOUSE_ID, PIG_HOUSE_PLACER, PigHouseInstance, pigHousePrefabs, type PigHouseId,
 } from './pighouse';
 export {
   MUSHROOM_LIGHT_DEFINITIONS, MUSHROOM_LIGHT_IDS, MUSHROOM_LIGHT_SKIN_ARCHIVES,
@@ -123,6 +120,7 @@ export { MOONDIAL_DEFINITION, MOONDIAL_ID } from './moondial';
 export { SCULPTING_TABLE_DEFINITION, SCULPTING_TABLE_ID, SCULPTABLE_MATERIALS, isSculptableMaterial } from './sculptingtable';
 export { WARDROBE_ID, WARDROBE_PLACER, WardrobeInstance, wardrobePrefabs } from './wardrobe';
 export { BuildingPlacer, type BuildingPlacerSpec } from './buildingPlacer';
+export { buildingPlacer, buildingPrefab, MakeBuildingPersist, type BuildingDeclaration } from './building';
 export { reskinToolVisual, ReskinEffects, nextReskin, reskinEffectSound } from './reskin_tool';
 export { FencePlacement, FENCE_ID, FENCE_ITEM_ID, FENCE_IDS, isFenceId, type FenceId } from './fence';
 export {

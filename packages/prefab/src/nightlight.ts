@@ -1,62 +1,53 @@
-import type { PrefabInstance } from './prefabInstance';
+import { SpriteState } from '@dontstarve-web/display';
 import { Workable } from '../../componets/src/workable';
-import { createStructureLootDropper } from './structureLoot';
 import definitions from './definitions.json' with { type: 'json' };
-import { nightlight_init_fn } from '@dontstarve-web/animation/prefabskin';
-import {
-    AnimatedBuildingPlacement,
-    type AnimatedBuildingDefinition,
-} from './animatedBuildingPlacement';
-import type { WorldContext } from './worldContext';
+import { buildingPlacer, buildingPrefab, MakeBuildingPersist } from './building';
+import { PrefabInstance } from './prefabInstance';
+import { createStructureLootDropper } from './structureLoot';
+import type { PrefabWorldContext } from './worldContext';
 
 export const NIGHT_LIGHT_ID = 'nightlight' as const;
 export type NightLightId = typeof NIGHT_LIGHT_ID;
-export const NIGHT_LIGHT_SKIN_ARCHIVES: Readonly<Record<string, string>> =
-    definitions.animatedBuildings.nightlight.skinArchives;
+
+const declaration = definitions.animatedBuildings.nightlight;
+
+/** nightlight.lua MakePlacer("nightlight_placer", "nightmare_torch", "nightmare_torch", "idle"). */
+export const NIGHT_LIGHT_PLACER = buildingPlacer(declaration);
 
 function onworked(inst: PrefabInstance): void {
-    if (inst.hasTag('burnt')) return;
-    inst.sprite.playOnce('hit');
-    inst.sprite.pushAnimation('idle', false);
+  if (inst.hasTag('burnt')) return;
+  inst.sprite.playOnce('hit');
+  inst.sprite.pushAnimation('idle', false);
 }
 
 function onhammered(inst: PrefabInstance): void {
-    inst.components.lootdropper!.DropLoot();
-    inst.worldServices?.fx?.collapse?.('small', inst.position, 'stone');
-    inst.remove();
+  inst.components.lootdropper!.DropLoot();
+  inst.worldServices?.fx?.collapse?.('small', inst.position, 'stone');
+  inst.remove();
 }
 
-function initializeWorkable(instance: PrefabInstance): void {
-    instance.addTag('structure');
-    const workable = instance.components.workable = new Workable(instance);
+function onbuilt(inst: PrefabInstance): void {
+  inst.sprite.playOnce('place');
+  inst.sprite.pushAnimation('idle', false);
+}
+
+/** nightlight.lua fn(), as far as it is ported: PlayAnimation("idle", false), the hammer workable and onbuilt. */
+export class NightLightInstance extends PrefabInstance {
+  constructor(world: PrefabWorldContext) {
+    super(NIGHT_LIGHT_ID, new SpriteState({ name: 'idle', held: true, billboard: true }));
+    this.worldServices = world;
+    MakeBuildingPersist(this);
+    this.addTag('structure');
+    const workable = this.components.workable = new Workable(this);
     workable.SetWorkAction('HAMMER');
     workable.SetWorkLeft(4);
     workable.SetOnWorkCallback(onworked);
     workable.SetOnFinishCallback(onhammered);
-    instance.components.lootdropper = createStructureLootDropper(instance);
+    this.components.lootdropper = createStructureLootDropper(this);
+    this.ListenForEvent('onbuilt', () => onbuilt(this));
+  }
 }
 
-function onbuilt(inst: PrefabInstance): void {
-    inst.sprite.playOnce('place');
-    inst.sprite.pushAnimation('idle', false);
+export function nightLightPrefabs(world: PrefabWorldContext) {
+  return { [NIGHT_LIGHT_ID]: buildingPrefab(declaration, 'nightmare_torch', .1, () => new NightLightInstance(world), world) };
 }
-
-export const NIGHT_LIGHT_DEFINITION: AnimatedBuildingDefinition = {
-    ...definitions.animatedBuildings.nightlight,
-    obstacleRadius: 0.1,
-    skinInit: nightlight_init_fn,
-    oninit: ({ instance }) => {
-        initializeWorkable(instance);
-        instance.ListenForEvent('onbuilt', () => onbuilt(instance));
-    },
-};
-
-export class NightLightPlacement extends AnimatedBuildingPlacement<NightLightId> {
-    constructor(
-        world: WorldContext,
-        consumeBufferedBuild: (buildId: NightLightId) => boolean,
-    ) {
-        super(world, { [NIGHT_LIGHT_ID]: NIGHT_LIGHT_DEFINITION }, consumeBufferedBuild);
-    }
-}
-

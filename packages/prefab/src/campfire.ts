@@ -1,37 +1,33 @@
+import { SpriteState } from '@dontstarve-web/display';
 import definitions from './definitions.json' with { type: 'json' };
-import { campfire_init_fn } from '@dontstarve-web/animation/prefabskin';
-import {
-    AnimatedBuildingPlacement,
-    type AnimatedBuildingDefinition,
-} from './animatedBuildingPlacement';
-import type { WorldContext } from './worldContext';
-import type { PrefabInstance } from './prefabInstance';
+import { buildingPlacer, buildingPrefab, MakeBuildingPersist } from './building';
+import { PrefabInstance } from './prefabInstance';
 import { PlaySound } from './sound';
+import type { PrefabWorldContext } from './worldContext';
 
 export const CAMPFIRE_ID = 'campfire' as const;
 export type CampfireId = typeof CAMPFIRE_ID;
-export const CAMPFIRE_SKIN_ARCHIVES: Readonly<Record<string, string>> =
-    definitions.animatedBuildings.campfire.skinArchives;
+
+const declaration = definitions.animatedBuildings.campfire;
+
+/** campfire.lua MakePlacer("campfire_placer", "campfire", "campfire", "preview"). */
+export const CAMPFIRE_PLACER = buildingPlacer(declaration);
 
 function onbuilt(inst: PrefabInstance): void {
-    inst.sprite.playOnce('place');
-    inst.sprite.pushAnimation('idle', false);
-    PlaySound('dontstarve/common/fireAddFuel', inst.position);
+  inst.sprite.playOnce('place');
+  inst.sprite.pushAnimation('idle', false);
+  PlaySound('dontstarve/common/fireAddFuel', inst.position);
 }
 
-export const CAMPFIRE_DEFINITION: AnimatedBuildingDefinition = {
-    ...definitions.animatedBuildings.campfire,
-    obstacleRadius: 0.2,
-    skinInit: campfire_init_fn,
-    oninit: ({ instance }) => { instance.ListenForEvent('onbuilt', () => onbuilt(instance)); },
-};
-
-export class CampfirePlacement extends AnimatedBuildingPlacement<CampfireId> {
-    constructor(
-        world: WorldContext,
-        consumeBufferedBuild: (buildId: CampfireId) => boolean,
-    ) {
-        super(world, { [CAMPFIRE_ID]: CAMPFIRE_DEFINITION }, consumeBufferedBuild);
-    }
+/** campfire.lua fn(), as far as it is ported: PlayAnimation("idle", false), the obstacle and onbuilt. */
+export class CampfireInstance extends PrefabInstance {
+  constructor() {
+    super(CAMPFIRE_ID, new SpriteState({ name: 'idle', held: true, billboard: true }));
+    MakeBuildingPersist(this);
+    this.ListenForEvent('onbuilt', () => onbuilt(this));
+  }
 }
 
+export function campfirePrefabs(world: PrefabWorldContext) {
+  return { [CAMPFIRE_ID]: buildingPrefab(declaration, 'campfire', .2, () => new CampfireInstance(), world) };
+}

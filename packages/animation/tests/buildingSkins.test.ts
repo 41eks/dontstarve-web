@@ -16,10 +16,7 @@ import { RESEARCH_LAB_DEFINITIONS } from '../../prefab/src/scienceprototyper';
 import { FIRE_PIT_DEFINITION } from '../../prefab/src/firepit';
 import { ICE_BOX_DEFINITION } from '../../prefab/src/icebox';
 import { DRAGONFLY_CHEST_DEFINITION } from '../../prefab/src/dragonfly_chest';
-import { CAMPFIRE_DEFINITION } from '../../prefab/src/campfire';
 import { SALT_BOX_DEFINITION } from '../../prefab/src/saltbox';
-import { NIGHT_LIGHT_DEFINITION } from '../../prefab/src/nightlight';
-import { PIG_HOUSE_DEFINITION } from '../../prefab/src/pighouse';
 import { MUSHROOM_LIGHT_DEFINITIONS } from '../../prefab/src/mushroom_light';
 import { createMemo, createSignal } from '../../signals/src';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
@@ -34,8 +31,7 @@ const prefabIds = [
 const buildingDefinitions = {
   cookpot: COOK_POT_DEFINITION, firepit: FIRE_PIT_DEFINITION, icebox: ICE_BOX_DEFINITION,
   ...RESEARCH_LAB_DEFINITIONS,
-  dragonflychest: DRAGONFLY_CHEST_DEFINITION, campfire: CAMPFIRE_DEFINITION,
-  saltbox: SALT_BOX_DEFINITION, nightlight: NIGHT_LIGHT_DEFINITION, pighouse: PIG_HOUSE_DEFINITION,
+  dragonflychest: DRAGONFLY_CHEST_DEFINITION, saltbox: SALT_BOX_DEFINITION,
   ...MUSHROOM_LIGHT_DEFINITIONS,
 };
 // One plain build; the tests below exercise symbol-only and layered skins.

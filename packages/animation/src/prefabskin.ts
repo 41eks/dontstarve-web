@@ -39,21 +39,8 @@ export function bookstation_init_fn(skinId: string): PrefabSkinInitialization {
   return basic_init_fn(skinId, 'bookstation');
 }
 
-export function campfire_init_fn(skinId: string): PrefabSkinInitialization {
-  return basic_init_fn(skinId, 'campfire');
-}
-
 export function saltbox_init_fn(skinId: string): PrefabSkinInitialization {
   return basic_init_fn(skinId, 'saltbox');
-}
-
-export function nightlight_init_fn(skinId: string): PrefabSkinInitialization {
-  // The prefab ID is nightlight; its base and skin builds use nightmare_torch.
-  return basic_init_fn(skinId, 'nightmare_torch');
-}
-
-export function pighouse_init_fn(skinId: string): PrefabSkinInitialization {
-  return basic_init_fn(skinId, 'pig_house');
 }
 
 export function sculptingtable_init_fn(skinId: string): PrefabSkinInitialization {

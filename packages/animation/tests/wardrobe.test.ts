@@ -8,7 +8,7 @@ import { createSignal } from '../../signals/src';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import { PrefabEntityManager, PrefabInstance } from '../../prefab/src/prefabInstance';
 import { WORLD_SCALE } from '../../prefab/src/tile';
-import { WARDROBE_ID, wardrobePrefabs } from '../../prefab/src/wardrobe';
+import { WARDROBE_ID } from '../../prefab/src/wardrobe';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { executeDebugCommand } from '../../../src/debugCommands';
@@ -38,7 +38,7 @@ function setup() {
   const world = { physics, scene, player: new THREE.Object3D(), ground: new THREE.Group(), camera: new THREE.PerspectiveCamera(),
     cameraFacing: createSignal(8), cameraHeading: createSignal(45), renderer: { domElement: canvas },
     createCursorLabel: () => ({ show() {}, hide() {}, update() {} }) } as unknown as WorldContext;
-  const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { physics }, wardrobePrefabs());
+  const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { physics });
   const consume = vi.fn(() => true), placement = new PlaceableBuildingPlacement(world, consume, undefined, prefabs);
   const registry = new EntityRegistry([], prefabs);
   registry.register(PREFAB_DEFINITIONS.buildings, {

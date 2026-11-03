@@ -62,7 +62,6 @@ import { TumbleweedManager, TUMBLEWEED_ID } from '@dontstarve-web/prefab/tumblew
 import { saplingPrefabs } from '@dontstarve-web/prefab/sapling';
 import { pondPrefabs } from '@dontstarve-web/prefab/pond';
 import { marshPlantPrefabs } from '@dontstarve-web/prefab/marsh_plant';
-import { wardrobePrefabs } from '@dontstarve-web/prefab/wardrobe';
 import { FireFxHost } from '@dontstarve-web/prefab/treeFire';
 import { HotspringManager } from '@dontstarve-web/prefab/hotspring';
 import { LavaPondManager, LAVA_POND_ID } from '@dontstarve-web/prefab/lava_pond';
@@ -488,7 +487,6 @@ export async function createSceneEntities(
       onBuildingInteraction,
       prefabs,
     );
-    prefabs.register(wardrobePrefabs());
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (id, record) => buildingPlacement.spawnFromSave(id, record),
       debugSpawn: (id) => buildingPlacement.spawn(id),
