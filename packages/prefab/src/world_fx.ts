@@ -2,10 +2,9 @@ import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { PrefabDisplayGroup, SpriteResources, prefabDisplay } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import { findImage, smallHash, SpriteFrameRenderer, type Animation, type ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
-import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
 import { GroundItemAssets } from './groundItems';
 import { PlaySound, type SoundEventPath } from './sound';
-import { createEmptyEntity, createArchiveEntity } from './prefabInstance';
+import { createPrefabEntity, createArchiveEntity } from './prefabInstance';
 
 /**
  * prefabs/fx.lua entries that play one animation at a world position, optionally play a sound and remove
@@ -44,7 +43,7 @@ type FxBuild = Awaited<ReturnType<GroundItemAssets['loadBuild']>>;
 interface FxAssets { animation: Animation; build: FxBuild }
 interface FxInstance {
   /** The fx entity; it draws its frames itself under the display's model. */
-  entity: ReturnType<typeof createEmptyEntity>;
+  entity: ReturnType<typeof createPrefabEntity>;
   model: THREE.Group;
   footPosition: ReadonlyVector3;
   renderer: SpriteFrameRenderer;
@@ -122,17 +121,17 @@ export class WorldFx {
   spawn(prefab: WorldFxPrefab, position: ReadonlyVector3): void {
     if (this.disposed) throw new Error('World fx have been disposed');
     const assets = this.ready.get(prefab);
-    const entity = createEmptyEntity(prefab, undefined, { billboard: true }), model = entity.display.model;
-    model.userData.billboard = true;
+    const visual = new THREE.Group();
+    // The display turns what its source draws to the camera; the entity's root keeps its logical heading.
+    const drawn = new THREE.Group().add(visual);
+    const entity = createPrefabEntity(prefab, { create: () => drawn, release: sprite => sprite.removeFromParent() }, { name: '', billboard: true }, prefab);
+    const model = entity.display.model;
     entity.instance.persists = false;
     entity.instance.addTag('FX');
     entity.instance.setPosition(position.x, 0, position.z);
-    const visual = new THREE.Group();
     const definition = FX_PREFABS[prefab];
     const scale = 'scale' in definition ? definition.scale : 1;
     visual.scale.set(0.02 * scale, -0.02 * scale, 0.02 * scale);
-    model.add(visual);
-    registerSpriteRenderGroup(model, visual);
     if ('finalOffset' in definition) visual.position.z = definition.finalOffset * .001;
     const effect: FxInstance = { entity, model, footPosition: model.position.clone(), renderer: new SpriteFrameRenderer(visual),
       assets, elapsed: 0, frame: -1, lingerFrames: 'lingerFrames' in definition ? definition.lingerFrames : 0 };
