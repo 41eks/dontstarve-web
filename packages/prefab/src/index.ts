@@ -142,7 +142,7 @@ export {
 } from './lantern';
 export { spawnLightEntity, type PrefabLocalLight } from './localLight';
 export { LIGHTBULB_ID, LIGHTBULB_LIGHT, createLightbulbGroundSprite } from './lightbulb';
-export { FlowerPlanting, FLOWER_ANIMATIONS, type FlowerAnimation, type FlowerSaveRecord } from './flower';
+export { FlowerInstance, FlowerPlanting, FLOWER_ANIMATIONS, FLOWER_SPAWN_IDS, type FlowerAnimation, type FlowerSaveRecord } from './flower';
 export { BUGNET_ID, bugnetVisual } from './bugnet';
 export {
   ButterflyAssets, ButterflyController, ButterflyCreature,

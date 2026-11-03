@@ -8,7 +8,7 @@ import { createMemo, createSignal, EventEmitter } from '@dontstarve-web/signals'
 import { SpriteState } from '@dontstarve-web/display';
 import { loadAnim } from '../src/animationAssets';
 import { ItemEntity } from '../../inventory/src';
-import { FlowerPlanting } from '../../prefab/src/flower';
+import { FlowerInstance, FlowerPlanting } from '../../prefab/src/flower';
 import { MarbleShrubManager } from '../../prefab/src/marbleshrub';
 import { MarbleBeanSaplingManager } from '../../prefab/src/marblebean_sapling';
 import { RockAvocadoSaplingManager } from '../../prefab/src/rock_avocado_fruit_sprout_sapling';
@@ -74,7 +74,7 @@ it('preserves a natural rose, shares its art after wake and burns while dormant'
     expect(model.children[0].quaternion.equals(env.rotation)).toBe(true);
     expect((findActionEntity(model)?.components ?? prefabInstance(model)!.components).pickable).toBe(pickable);
     expect(prefabInstance(model)!.listTags()).toContain('thorny');
-    expect(model.userData.planted).toBe(false);
+    expect(prefabInstance<FlowerInstance>(model)!.planted).toBeUndefined();
     (findActionEntity(model)?.components ?? prefabInstance(model)!.components).burnable.Ignite(); await settle();
     expect(flowers.renderEntities.some(({ object }) => object.name === 'fire')).toBe(true);
     env.awake.set(false); await settle();

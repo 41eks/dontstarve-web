@@ -291,6 +291,8 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 
 花朵支持玩家左键通用 `PICK`：例如 `c_spawn("planted_flower")` 后点击花朵，角色走近并通过快速 `doshortaction` 在第 6 帧获得 1 个 `petals`，恢复 5 点理智；`plantkin` 不获得这次理智恢复。玫瑰会通过玩家 `combat:GetAttacked` 造成 1 点伤害并发送 `thorns`，已装备 `bramble_resistant` 标签物品或带 `shadowminion` 标签时免疫刺伤；只放在物品栏里的装备不生效。成功后依次发送世界 `plantkilled`、实体 `picked` 并移除花朵，取消或产物准备失败时保留花和属性，燃烧／`intense` 状态不能采摘。库存满时沿用 `GiveItem` 将花瓣掉到玩家脚点；采花后 `c_save()` 不再导出该花，花瓣身份、数量、位置及玩家理智／生命保存恢复，读档不会重新出现已采的花。花的 `picksound` 保留原版字段，普通玩家快速采摘状态不额外播放该元数据的声音。
 
+`c_spawn("flower")` 生成未种植的随机花，`c_spawn("flower_rose")` 强制生成未种植的玫瑰，`c_spawn("planted_flower")` 生成带 `planted=true` 的随机花；三者都保存为 `flower`，不能 `c_give`。花型 `animname`、种植标记、`OnSave`／`OnLoad` 和 `onpickedfn` 属于 `FlowerInstance`，存档继续使用 `flower.animation`／`flower.planted`；`setflowertype` 仅在花型变化时声明非循环动画，并更新 `thorny` 和检查状态 `ROSE`。显式 `flower_rose` 按 Lua 注册 `DoRoseBounceAnim`，声明 `rose_bounce → rose`，不依赖显示资源完成业务逻辑。燃烧回调直接修改 `instance.persists`：点燃后不导出、扑灭后恢复导出，烧完生成灰烬并移除实例；移除会取消采摘与燃烧任务。manager 不再通过 `model.userData` 保存花型、种植标记或移除状态。洞穴黑暗枯萎、自然花再生管理器、作祟换花、万圣节变异和 Charlie 残留系统仍未移植。
+
 采花得到的 `petals` 和 `c_give("petals", count)` / `c_spawn("petals")` 生成的花瓣均接入原版 `PERISH_FAST`：基础保鲜期 6 游戏日（2880 秒），每 10 游戏秒结算，完全腐败后整叠替换为同数量 `spoiled_food`。地面、冰箱、受潮和温度倍率沿用通用 perishable 组件；转移和 `c_save()` 前结清不足 10 秒的时间，鼠标持有与读档保留身份、数量和新鲜度。
 
 普通蝴蝶按 `BUTTERFLY_PERISH_TIME` 在持有者中饥饿腐败，基础寿命为 3 游戏日（1440 秒），每 10 游戏秒结算，丢弃时结清并暂停、捕获后继续；地面自由飞行期间不腐败。转移、保存和种植前结清未满周期的时间，`c_save()` 保留物品栏／鼠标堆叠的身份、数量和新鲜度。寿命耗尽时先移除整叠蝴蝶，再对每只按原版权重独立生成 `butter`（0.1 / 5.1）或 `butterflywings`（5 / 5.1），放回持有者，装不下则掉落。`c_give("butter", count)` / `c_spawn("butter")` 支持黄油，地面使用 `anim/butter.zip` 的 `butter/idle`，库存图标为 `images/inventoryimages.xml` 的 `butter.tex`；黄油与翅膀分别在 40 / 6 游戏日后腐败为 `spoiled_food`，可食用，均无装备外观或源皮肤。
@@ -552,7 +554,7 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 | 石材地面物品 | `cutstone`、`marble`、`moonrocknugget` |
 | 月树花 | `moon_tree_blossom` |
 | 花瓣 | `petals`（可采花获取，`c_spawn` / `c_give` 均支持，腐败为 `spoiled_food`） |
-| 蝴蝶种花及掉落 | `planted_flower`（运行时为 `flower`）、`butterfly`、`butterflywings`、`butter` |
+| 花朵、蝴蝶种花及掉落 | `flower`、`flower_rose`、`planted_flower`（后两者运行时及存档均为 `flower`）、`butterfly`、`butterflywings`、`butter` |
 | 常青树 | `evergreen`、`evergreen_short`、`evergreen_normal`、`evergreen_tall`（地图显示常态／树桩／烧毁图标） |
 | 松果地面物品 | `pinecone` |
 | 桦树 | `deciduoustree`、`deciduoustree_short`、`deciduoustree_normal`、`deciduoustree_tall`（循环摇摆与烧毁姿态使用 `InstancedMesh` 合批；地图显示常态／树桩／烧毁图标；树叶缺失子图保持隐藏） |

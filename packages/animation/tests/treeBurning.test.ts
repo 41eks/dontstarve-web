@@ -210,8 +210,19 @@ it('burns a planted flower to ash, leaving it out of the save while it burns', a
   try {
     const model = await flowers.spawnFromSave('flower-1', 'f1', new THREE.Vector3(3, 0, 4));
     const target = findActionEntity(model) as ComponentActionEntity;
+    const instance = prefabInstance(model)!;
+    const saved = flowers.exportRecords();
+    expect(instance.persists).toBe(true);
     expect(light(target)).toBe(true); await flush();
+    expect(instance.persists).toBe(false);
     expect(fires(scene)).toBe(1); expect(flowers.exportRecords()).toEqual([]);
+    target.components.burnable!.Extinguish();
+    expect(instance.persists).toBe(true);
+    expect(flowers.exportRecords()).toEqual(saved);
+    scheduler.advance(10);
+    expect(ashSpawned).not.toHaveBeenCalled();
+    expect(light(target)).toBe(true);
+    expect(instance.persists).toBe(false);
     scheduler.advance(10); await flush();
     expect(ashSpawned).toHaveBeenCalledWith(new THREE.Vector3(3, 0, 4));
     expect(fires(scene)).toBe(0); expect(model.parent).toBeNull(); expect(target.isRemoved).toBe(true);

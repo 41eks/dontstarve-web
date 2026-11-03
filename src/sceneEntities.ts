@@ -82,7 +82,7 @@ import {
   type PlaceableBuildingId,
 } from './placeableBuilding';
 import { dstLighting, renderer, scene } from './universal';
-import { FlowerPlanting } from '@dontstarve-web/prefab/flower';
+import { FlowerPlanting, FLOWER_SPAWN_IDS } from '@dontstarve-web/prefab/flower';
 import { view } from './view';
 import { initialSave, shardSaveSearch } from './save/initialSave';
 import { ReskinEffects } from '@dontstarve-web/prefab/reskin_tool';
@@ -503,8 +503,8 @@ export async function createSceneEntities(
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (_, record) => flowerPlanting.spawnFromSave(record.id,
         record.components.flower!.animation, new THREE.Vector3(...record.transform.position), record.components.flower!.planted === true),
-      debugSpawn: async () => { flowerPlanting.spawnPlanted(view.player.position); },
-      spawnPrefab: { planted_flower: position => flowerPlanting.spawnPlanted(position) },
+      debugSpawn: id => flowerPlanting.spawn(id, view.player.position),
+      spawnPrefab: Object.fromEntries(FLOWER_SPAWN_IDS.map(id => [id, position => flowerPlanting.spawn(id, position)])),
       exportRecords: () => flowerPlanting.exportRecords().map((record) => ({ prefabId: 'flower', record })),
       update: (dt, quaternion) => flowerPlanting.update(quaternion, dt),
       renderEntities: () => flowerPlanting.renderEntities,

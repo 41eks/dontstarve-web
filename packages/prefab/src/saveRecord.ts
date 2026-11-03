@@ -3,6 +3,7 @@ export interface PlacementSaveRecord {
   id: string;
   transform: { position: readonly [number, number, number]; rotationY: number };
   components: {
+    flower?: import('./flower').FlowerSaveState;
     ruinsRelic?: import('./ruinsrelic').RuinsRelicSaveState;
     inventoryitemmoisture?: import('./ruinsrelic').RelicMoistureSave;
     pickable?: import('./components/pickable').PickableSaveState;

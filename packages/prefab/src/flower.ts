@@ -1,189 +1,251 @@
-import * as THREE from 'three';
-import { watchTileActivity } from './tileActivity';
-import { newEntityId } from './saveRecord';
-import type { WorldContext, WorldEventEmitter } from './worldContext';
-import { actionEntity, } from './actionEntity';
-import { BurnableBinding, FireFxHost } from './treeFire';
+import type * as THREE from 'three';
+import { PrefabDisplayGroup, SpriteResources, SpriteState, type PrefabDisplay } from '@dontstarve-web/display';
+import type { PickActor } from '@dontstarve-web/stategraphs/pick';
+import type { ReadonlySignal, SeasonState } from '@dontstarve-web/signals';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Pickable } from './components/pickable';
+import { actionEntity } from './actionEntity';
+import { bindInstance, PrefabInstance } from './prefabInstance';
+import { newEntityId, type PlacementSaveRecord } from './saveRecord';
 import { TILE_SIZE } from './tile';
-import type { ReadonlySignal, SeasonState } from '@dontstarve-web/signals';
-import { SpriteResources, type ArchiveSpriteCommands, type PrefabDisplay } from '@dontstarve-web/display';
-import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
+import { watchTileActivity } from './tileActivity';
+import { BurnableBinding, FireFxHost } from './treeFire';
+import type { PrefabWorldContext, WorldContext, WorldEventEmitter } from './worldContext';
 
 /** flower.lua MakeSmallBurnable + MakeSmallPropagator; the scene's game-time scheduler drives them. */
 export interface FlowerBurningWorld {
   scheduler: GameTimeScheduler;
   season?: ReadonlySignal<SeasonState>;
-  /** DefaultBurntFn: one ash at the burnt flower's position. */
   worldEvents: WorldEventEmitter;
 }
 
-// flower.lua chooses f1–f10, with a 1% chance of rose. butterfly.lua's placer
-// uses f1; OnDeploy consumes one butterfly and spawns a planted flower.
 export const FLOWER_ANIMATIONS = ['f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'rose'] as const;
 export type FlowerAnimation = typeof FLOWER_ANIMATIONS[number];
+export const FLOWER_SPAWN_IDS = ['flower', 'flower_rose', 'planted_flower'] as const;
+export type FlowerSpawnId = typeof FLOWER_SPAWN_IDS[number];
 export const FLOWER_PICK_SANITY = 5;
 export const ROSE_DAMAGE = 1;
+export interface FlowerSaveState { animation: FlowerAnimation; planted?: true }
 export interface FlowerSaveRecord {
   id: string;
   transform: { position: [number, number, number]; rotationY: number };
-  components: { flower: { animation: FlowerAnimation; planted?: true } };
+  components: { flower: FlowerSaveState };
 }
 
-interface PlantedFlower {
-  id: string;
-  model: THREE.Group;
-  instance: PrefabInstance<ArchiveSpriteCommands>;
+/** flower.lua setflowertype: an unspecified type does not reroll an existing flower. */
+function setflowertype(inst: FlowerInstance, name?: FlowerAnimation): void {
+  if (inst.animname !== undefined && (name === undefined || inst.animname === name)) return;
+  if (inst.animname === 'rose') inst.removeTag('thorny');
+  inst.animname = name ?? (inst.random() < .01 ? 'rose' : FLOWER_ANIMATIONS[Math.floor(inst.random() * 10)]);
+  // PlayAnimation(animname), without looping, even for a single-frame rest pose.
+  inst.sprite.playOnce(inst.animname);
+  if (inst.animname === 'rose') inst.addTag('thorny');
+  OnIsRoseDirty(inst);
+}
+
+function OnIsRoseDirty(inst: FlowerInstance): void {
+  inst.scrapbook_proxy = inst.animname === 'rose' ? 'flower_rose' : undefined;
+}
+
+function onsave(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
+  const flower = inst as FlowerInstance;
+  data.flower = { animation: flower.animname!, ...(flower.planted ? { planted: true } : {}) };
+}
+
+function onload(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
+  const flower = inst as FlowerInstance;
+  setflowertype(flower, data.flower?.animation);
+  flower.planted = data.flower?.planted || undefined;
+}
+
+function onpickedfn(inst: FlowerInstance, picker?: PickActor): void {
+  const pos = inst.position.clone();
+  if (picker) {
+    if (!picker.hasTag('plantkin')) picker.components.sanity?.DoDelta(FLOWER_PICK_SANITY);
+    if (inst.animname === 'rose' && picker.components.combat
+      && !picker.components.inventory?.EquipHasTag('bramble_resistant') && !picker.hasTag('shadowminion')) {
+      picker.components.combat.GetAttacked(inst, ROSE_DAMAGE);
+      picker.PushEvent?.('thorns');
+    }
+  }
+  inst.worldServices?.worldEvents?.emit('plantkilled', { doer: picker, pos });
+}
+
+function GetStatus(inst: FlowerInstance): 'ROSE' | undefined {
+  return inst.animname === 'rose' ? 'ROSE' : undefined;
+}
+
+function DoRoseBounceAnim(inst: FlowerInstance): void {
+  inst.sprite.playOnce('rose_bounce');
+  inst.sprite.pushAnimation(inst.animname!, false);
+}
+
+/** The flower owns its source fields, components and callbacks while its art loads or sleeps. */
+export class FlowerInstance extends PrefabInstance {
+  declare readonly components: PrefabInstance['components'] & {
+    pickable: Pickable;
+    inspectable: { getstatus(): 'ROSE' | undefined };
+  };
+  animname?: FlowerAnimation;
+  planted?: true;
+  scrapbook_proxy?: 'flower_rose';
+  /** Only rosefn installs this callback; a randomly selected rose still uses commonfn. */
+  DoRoseBounceAnim?: () => void;
+  readonly random: () => number;
+
+  constructor(scheduler: GameTimeScheduler, services: Pick<PrefabWorldContext, 'worldEvents'> = {},
+    random = Math.random, animation?: FlowerAnimation) {
+    super('flower', new SpriteState({ name: 'f1', none: true, billboard: true }));
+    this.worldServices = services;
+    this.random = random;
+    this.deploySmartRadius = .375 * (TILE_SIZE / 4);
+    this.addTag('flower');
+    this.addTag('cattoy');
+    this.components.inspectable = { getstatus: () => GetStatus(this) };
+    const pickable = this.components.pickable = new Pickable(this, 'petals', 10, 1,
+      doer => onpickedfn(this, doer?.picker), undefined, undefined, { scheduler, onRemove: () => this.remove() });
+    pickable.picksound = 'dontstarve/wilson/pickup_plants';
+    pickable.remove_when_picked = true;
+    pickable.quickpick = true;
+    pickable.wildfirestarter = true;
+    this.onRemove(() => pickable.dispose());
+    this.OnSave = onsave;
+    this.OnLoad = onload;
+    setflowertype(this, animation);
+  }
+}
+
+function rosefn(inst: FlowerInstance): void {
+  setflowertype(inst, 'rose');
+  inst.DoRoseBounceAnim = () => DoRoseBounceAnim(inst);
+}
+
+function plantedflowerfn(inst: FlowerInstance): void { inst.planted = true; }
+
+/** The supported flower branch of MakeSmallBurnable's default callbacks. */
+function makeburnable(inst: FlowerInstance, scheduler: GameTimeScheduler, fire: FireFxHost): BurnableBinding {
+  const binding = new BurnableBinding(inst, {
+    propagator: 'small', burnTime: 10, fxLevel: 2,
+    // standardcomponents.lua DefaultBurnFn / DefaultExtinguishFn / DefaultBurntFn.
+    onIgnite: () => { inst.persists = false; },
+    onExtinguish: () => { inst.persists = true; },
+    onBurnt: () => {
+      inst.worldServices?.worldEvents?.emit('spawnAsh', inst.position.clone());
+      inst.remove();
+    },
+  }, { scheduler, fire });
+  inst.onRemove(() => binding.dispose());
+  return binding;
+}
+
+interface DrawnFlower {
+  instance: FlowerInstance;
   display: PrefabDisplay;
-  stopActivity?: () => void;
-  animation: FlowerAnimation;
-  pickable: Pickable;
-  burn?: BurnableBinding;
-  /** DefaultBurnFn clears persists while burning; DefaultExtinguishFn restores it. */
-  persists: boolean;
+  burn: BurnableBinding;
 }
 
-/** Persistent flowers prepared for the shared DEPLOY action. */
+/** Owns the flower collection and shared art; source callbacks operate on FlowerInstance. */
 export class FlowerPlanting {
-  private readonly world: WorldContext;
   private readonly random: () => number;
-  private readonly flowers = new Map<string, PlantedFlower>();
+  private readonly flowers = new Map<string, DrawnFlower>();
   private flowerList?: readonly { readonly id: string; readonly position: THREE.Vector3 }[];
+  private readonly displays: PrefabDisplayGroup;
   private readonly resources = new SpriteResources();
+  private readonly tickingarea: WorldContext['tickingarea'];
+  private readonly services: Pick<PrefabWorldContext, 'worldEvents'>;
   private fireFx?: FireFxHost;
-  private readonly burning?: FlowerBurningWorld;
   private readonly scheduler: GameTimeScheduler;
   private readonly ownsScheduler: boolean;
   private disposed = false;
 
-  constructor(world: WorldContext, random = Math.random,
-    burning?: FlowerBurningWorld) {
-    this.burning = burning;
+  constructor(world: WorldContext, random = Math.random, burning?: FlowerBurningWorld) {
+    this.displays = new PrefabDisplayGroup(world.scene);
+    this.tickingarea = world.tickingarea;
+    this.services = { worldEvents: world.worldEvents ?? burning?.worldEvents };
     this.ownsScheduler = !burning?.scheduler && !world.scheduler;
     this.scheduler = burning?.scheduler ?? world.scheduler ?? new GameTimeScheduler();
-    this.world = world;
     this.random = random;
   }
 
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
-    for (const flower of [...this.flowers.values()]) this.removeFlower(flower);
+    for (const { instance } of [...this.flowers.values()]) instance.remove();
     if (this.ownsScheduler) this.scheduler.dispose();
+    this.displays.dispose();
     this.fireFx?.dispose();
     this.resources.dispose();
   }
 
-  update(_cameraQuaternion: THREE.Quaternion, dt = 0): void {
+  update(cameraQuaternion: THREE.Quaternion, dt = 0): void {
     if (this.ownsScheduler) this.scheduler.advance(dt);
-    // Each display advances its flower's declared clip; the fire binding then runs its burnable's FX.
-    for (const { display, burn } of this.flowers.values()) {
-      display.update(dt);
-      burn?.update(dt);
-    }
+    this.displays.update(dt, cameraQuaternion);
+    for (const { burn } of this.flowers.values()) burn.update(dt);
   }
 
-  /** The planted `flower`-tagged entities (butterflybrain FLOWER_TAGS), rebuilt only when one is planted or removed. */
+  /** Flower-tagged logical entities for butterflybrain, including natural flowers. */
   get plantedFlowers(): readonly { readonly id: string; readonly position: THREE.Vector3 }[] {
-    // Planted models are direct scene children, so their position is the world position.
-    return this.flowerList ??= [...this.flowers.values()].map(({ id, model }) => ({ id, position: model.position }));
-  }
-
-  get renderEntities() {
-    const models = [...this.flowers.values()].filter(({ instance }) => instance.sprite.loaded).map(({ model }) => model);
-    return [...models.map((object) => ({ object, footPosition: object.position, cameraDepth: 0 })),
-      ...[...this.flowers.values()].flatMap(({ display }) => display.fxRenderEntries)];
-  }
-
-  exportRecords(): FlowerSaveRecord[] {
-    return [...this.flowers.values()].filter(({ persists }) => persists).map(({ id, model, animation }) => ({
-      id, transform: { position: [model.position.x, 0, model.position.z], rotationY: 0 },
-      components: { flower: { animation, ...(model.userData.planted ? { planted: true as const } : {}) } },
+    return this.flowerList ??= [...this.flowers.values()].map(({ instance }) => ({
+      id: instance.entityId!, position: instance.position,
     }));
   }
 
-  spawnFromSave(id: string, animation: FlowerAnimation, position: THREE.Vector3, planted = true): THREE.Group {
-    if (this.disposed) throw new Error('Flower planting has been disposed');
-    return this.addFlower(this.createFlower(id, animation, position, planted));
+  get renderEntities() {
+    return [...this.flowers.values()].filter(({ instance }) => instance.sprite.loaded)
+      .flatMap(({ instance, display }) => [{ object: display.model, footPosition: instance.position, cameraDepth: 0 },
+        ...display.fxRenderEntries]);
   }
 
-  /** SpawnPrefab("planted_flower"): flower.lua's random f1–f10/rose; the display loads the art. */
-  spawnPlanted(position: THREE.Vector3): THREE.Group | undefined {
-    if (this.disposed) return undefined;
-    const animation = this.random() < .01 ? 'rose' : FLOWER_ANIMATIONS[Math.floor(this.random() * 10)];
-    const flower = this.createFlower(newEntityId(), animation, position);
-    return this.addFlower(flower);
-  }
-
-  private addFlower(flower: PlantedFlower): THREE.Group {
-    this.flowers.set(flower.id, flower);
-    this.flowerList = undefined;
-    this.world.scene.add(flower.model);
-    this.bindActivity(flower);
-    return flower.model;
-  }
-
-  private createFlower(id: string, animation: FlowerAnimation, position: THREE.Vector3, planted = true): PlantedFlower {
-    const { instance, display } = createArchiveEntity('flower', this.resources.archive({ animationArchive: 'flowers.zip',
-      buildArchives: ['flowers.zip'], bank: 'flowers' }, { instancedAnimations: 'all', staticBillboard: true }),
-      { name: animation, billboard: true }, 'Flower', undefined, undefined, { staticTransform: true });
-    // PlayAnimation(animname) without loop.
-    instance.sprite.playOnce(animation);
-    const model = display.model;
-    instance.setPosition(position.x, 0, position.z);
-    instance.entityId = id;
-    Object.assign(model.userData, {
-      rayTestOnBB: true, planted, flowerAnimation: animation,
-      deploySmartRadius: .375 * (TILE_SIZE / 4),
+  exportRecords(): FlowerSaveRecord[] {
+    return [...this.flowers.values()].filter(({ instance }) => instance.persists).map(({ instance }) => {
+      const components: PlacementSaveRecord['components'] = {};
+      instance.OnSave!(instance, components);
+      return { id: instance.entityId!,
+        transform: { position: instance.position.toArray(), rotationY: 0 },
+        components: components as FlowerSaveRecord['components'] };
     });
-    for (const tag of ['flower', 'cattoy', ...(animation === 'rose' ? ['thorny'] : [])]) instance.addTag(tag);
-    const pickable: Pickable = new Pickable(model, 'petals', 10, 1, doer => {
-      const picker = doer?.picker;
-      if (picker && !picker.hasTag('plantkin')) picker.components.sanity?.DoDelta(FLOWER_PICK_SANITY);
-      if (animation === 'rose' && picker?.components.combat
-        && !picker.components.inventory?.EquipHasTag('bramble_resistant') && !picker.hasTag('shadowminion')) {
-        picker.components.combat.GetAttacked(entity, ROSE_DAMAGE);
-        picker.PushEvent?.('thorns');
-      }
-      (this.world.worldEvents ?? this.burning?.worldEvents)?.emit('plantkilled', { doer: picker, pos: model.position.clone() });
-    }, undefined, undefined, { scheduler: this.scheduler, onRemove: () => this.removeFlower(flower) });
-    pickable.quickpick = true;
-    pickable.picksound = 'dontstarve/wilson/pickup_plants';
-    pickable.wildfirestarter = true;
-    pickable.remove_when_picked = true;
-    const flower: PlantedFlower = { id, model, instance, display, animation, pickable, persists: true };
-    const entity = actionEntity(model, 'flower');
-    if (this.burning) {
-      this.fireFx ??= FireFxHost.create(`${import.meta.env.BASE_URL}dst/data/anim`);
-      flower.burn = new BurnableBinding(actionEntity(model, 'flower'), {
-        propagator: 'small', burnTime: 10, fxLevel: 2,
-        onIgnite: () => { flower.persists = false; },
-        onExtinguish: () => { flower.persists = true; },
-        onBurnt: () => {
-          this.burning!.worldEvents.emit('spawnAsh', model.position.clone());
-          this.removeFlower(flower);
-        },
-      }, { scheduler: this.burning.scheduler, fire: this.fireFx });
-    }
+  }
+
+  spawnFromSave(id: string, animation: FlowerAnimation, position: THREE.Vector3, planted = false): THREE.Group {
+    const flower = this.createFlower(id, position, animation);
+    flower.instance.OnLoad!(flower.instance, { flower: { animation, ...(planted ? { planted: true } : {}) } });
+    return flower.display.model;
+  }
+
+  spawn(prefab: FlowerSpawnId, position: THREE.Vector3): THREE.Group | undefined {
+    if (this.disposed) return undefined;
+    return this.createFlower(newEntityId(), position, undefined, prefab).display.model;
+  }
+
+  /** SpawnPrefab("planted_flower"): the logical flower exists before any artwork is loaded. */
+  spawnPlanted(position: THREE.Vector3): THREE.Group | undefined { return this.spawn('planted_flower', position); }
+
+  private createFlower(id: string, position: THREE.Vector3, animation?: FlowerAnimation, prefab: FlowerSpawnId = 'flower'): DrawnFlower {
+    if (this.disposed) throw new Error('Flower planting has been disposed');
+    const instance = new FlowerInstance(this.scheduler, this.services, this.random, animation);
+    if (prefab === 'flower_rose') rosefn(instance);
+    else if (prefab === 'planted_flower') plantedflowerfn(instance);
+    const display = this.displays.add({ name: 'Flower', staticTransform: true,
+      archive: this.resources.archive({ animationArchive: 'flowers.zip', buildArchives: ['flowers.zip'], bank: 'flowers' },
+        { instancedAnimations: 'all', staticBillboard: true }),
+      sprite: instance.sprite, status: instance.status, light: instance.light });
+    bindInstance(display.model, instance);
+    instance.setPosition(position.x, position.y, position.z);
+    instance.entityId = id;
+    // Raycast shape is presentation metadata; prefab state and spacing belong to the instance.
+    display.model.userData.rayTestOnBB = true;
+    actionEntity(display.model, 'flower');
+    this.fireFx ??= FireFxHost.create(`${import.meta.env.BASE_URL}dst/data/anim`);
+    const flower: DrawnFlower = { instance, display, burn: makeburnable(instance, this.scheduler, this.fireFx) };
+    this.flowers.set(id, flower);
+    this.flowerList = undefined;
+    const stopActivity = watchTileActivity(display.model, this.tickingarea, active => instance.setActive(active));
+    instance.onRemove(() => {
+      stopActivity();
+      this.flowers.delete(id);
+      this.flowerList = undefined;
+      display.dispose();
+    });
     return flower;
   }
-
-  private bindActivity(flower: PlantedFlower): void {
-    flower.stopActivity = watchTileActivity(flower.model, this.world.tickingarea, active => {
-      flower.instance.setActive(active);
-    });
-  }
-
-  private removeFlower(flower: PlantedFlower): void {
-    if (this.flowers.get(flower.id) !== flower) return;
-    this.flowers.delete(flower.id);
-    this.flowerList = undefined;
-    flower.stopActivity?.();
-    flower.pickable.dispose();
-    flower.burn?.dispose();
-    flower.model.userData.removed = true;
-    flower.instance.remove(); flower.display.dispose();
-  }
-
 }

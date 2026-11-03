@@ -487,12 +487,12 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `chester` | 可生成 | 不能入栏 | `prefabs/chester.lua` |
 | `hutch` | 可生成 | 不能入栏 | `prefabs/hutch.lua` |
 | `wormhole` | 可生成 | 不能入栏 | `prefabs/wormhole.lua` |
-| `flower` | 可生成 | 不能入栏 | `prefabs/flower.lua` |
+| `flower` | 可生成 | 不能入栏 | `prefabs/flower.lua:plainfn`：随机 f1–f10／1% rose，无 planted 标记；已接入调试生成及保存恢复 |
 | `evergreen`、`evergreen_short`、`evergreen_normal`、`evergreen_tall` | 可生成 | 不能入栏 | `prefabs/evergreens.lua` normal build：保存名统一为 `evergreen`，四阶段生长，`CHOP` 砍伐、`DIG` 铲树桩；松果为单独库存物品 |
 | `deciduoustree`、`deciduoustree_short`、`deciduoustree_normal`、`deciduoustree_tall` | 可生成 | 不能入栏 | `prefabs/deciduoustrees.lua` normal build：统一保存为 `deciduoustree`，三阶段循环生长，`CHOP` 砍伐、`DIG` 铲树桩；季节树叶与 `acorn` 掉落沿用正常树分支，无 `inventoryitem` |
 | `moon_tree`、`moon_tree_short`、`moon_tree_normal`、`moon_tree_tall` | 可生成 | 不能入栏 | `prefabs/moontree.lua`：世界实体，支持三阶段循环生长；各构造的保存名统一为 `moon_tree` |
 | `moonbutterfly_sapling` | 可生成 | 不能入栏 | `prefabs/planted_tree.lua`：`baby_moon_tree`，`timer` 到期生成 `moon_tree_short`；`moonbutterfly.lua:OnDeploy` 种下此实体并消耗一只月蛾 |
-| `flower_rose` | 可生成 | 不能入栏 | `prefabs/flower.lua` |
+| `flower_rose` | 可生成 | 不能入栏 | `prefabs/flower.lua:rosefn`：强制 rose、注册 DoRoseBounceAnim，运行时及保存名为 flower；已接入调试生成及保存恢复 |
 | `flower_cave` | 可生成 | 不能入栏 | `prefabs/flower_cave.lua` |
 | `flower_cave_double` | 可生成 | 不能入栏 | `prefabs/flower_cave.lua` |
 | `flower_cave_triple` | 可生成 | 不能入栏 | `prefabs/flower_cave.lua` |
