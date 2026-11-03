@@ -525,7 +525,7 @@ export async function createSceneEntities(
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       debugSpawn: prefab => worldFx.spawn(prefab, player.position),
       exportRecords: () => [],
-      update: (dt, quaternion) => manager.update(dt, quaternion),
+      update: (dt, quaternion) => displays.update(dt, quaternion),
       renderEntities: () => manager.renderEntities,
       dispose: () => { manager.dispose(); displays.dispose(); },
     });
@@ -1645,7 +1645,7 @@ export async function createSceneEntities(
       debugSpawn: prefabId => lights.spawn(prefabId, player.position.clone()),
       spawnPrefab: { [DWARF_STAR_ID]: position => lights.spawn(DWARF_STAR_ID, position), [POLAR_LIGHT_ID]: position => lights.spawn(POLAR_LIGHT_ID, position) },
       exportRecords: () => lights.exportRecords(),
-      update: (dt, quaternion) => lights.update(dt, quaternion),
+      update: (dt, quaternion) => displays.update(dt, quaternion),
       renderEntities: () => lights.renderEntities,
       dispose: () => { lights.dispose(); displays.dispose(); },
     });
@@ -1660,7 +1660,7 @@ export async function createSceneEntities(
       spawnPrefab: { [STAFF_CASTINGLIGHT_ID]: position => lights.spawn(STAFF_CASTINGLIGHT_ID, position),
         [STAFF_CASTINGLIGHT_SMALL_ID]: position => lights.spawn(STAFF_CASTINGLIGHT_SMALL_ID, position) },
       exportRecords: () => [],
-      update: (dt, quaternion) => lights.update(dt, quaternion),
+      update: (dt, quaternion) => displays.update(dt, quaternion),
       dispose: () => { lights.dispose(); displays.dispose(); },
     });
     return lights;
@@ -1675,7 +1675,7 @@ export async function createSceneEntities(
       debugSpawn: id => plants.spawn(id, player.position.clone()),
       spawnPrefab: { [MARSH_PLANT_ID]: position => plants.spawn(MARSH_PLANT_ID, position) },
       exportRecords: () => plants.exportRecords(),
-      update: (dt, quaternion) => plants.update(dt, quaternion),
+      update: (dt, quaternion) => displays.update(dt, quaternion),
       renderEntities: () => plants.renderEntities,
       dispose: () => { plants.dispose(); displays.dispose(); fire.dispose(); },
     });
@@ -1691,7 +1691,7 @@ export async function createSceneEntities(
       restore: (id, record) => ponds.spawn(id, new THREE.Vector3(...record.transform.position), record),
       debugSpawn: id => ponds.spawn(id, player.position.clone()),
       exportRecords: () => ponds.exportRecords(),
-      update: (dt, quaternion) => ponds.update(dt, quaternion),
+      update: (dt, quaternion) => displays.update(dt, quaternion),
       // Ponds are ground layers, below the foot-sorted billboards.
       dispose: () => { ponds.dispose(); displays.dispose(); },
     });

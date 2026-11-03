@@ -51,14 +51,14 @@ const sounds = (event: string) => vi.mocked(PlaySound).mock.calls.flatMap(([path
 
 function setup(prefab: StaffLightId = 'stafflight') {
   const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), awake = createSignal(true);
-  const manager = createStaffLightManager(new PrefabDisplayGroup(scene), '/dst/data/anim',
+  const displays = new PrefabDisplayGroup(scene), manager = createStaffLightManager(displays, '/dst/data/anim',
     { scheduler, tickingarea: () => createMemo(() => awake.get()) });
   managers.push(manager);
   const spawn = (position: THREE.Vector3, saved?: { id: string; remainingSeconds: number }) => manager.spawn(prefab, position, saved && {
     id: saved.id, components: { timer: { timers: { extinguish: { timeleft: saved.remainingSeconds, paused: false, initial_time: DWARF_STAR_DURATION } } } },
   });
   /** As the scene does: the world's scheduler advances, then the displays. */
-  const update = (dt: number) => { scheduler.advance(dt); manager.update(dt, new THREE.Quaternion()); };
+  const update = (dt: number) => { scheduler.advance(dt); displays.update(dt, new THREE.Quaternion()); };
   return { manager, spawn, scene, scheduler, awake, update };
 }
 
@@ -345,13 +345,13 @@ it('spawns world lights through console definitions and saves and reloads their 
   const position = new THREE.Vector3(6, 7, 9), scheduler = new GameTimeScheduler();
   const createRegistry = () => {
     const registry = new EntityRegistry();
-    const manager = createStaffLightManager(new PrefabDisplayGroup(new THREE.Scene()), '/dst/data/anim', { scheduler });
+    const displays = new PrefabDisplayGroup(new THREE.Scene()), manager = createStaffLightManager(displays, '/dst/data/anim', { scheduler });
     managers.push(manager);
     registry.register(PREFAB_DEFINITIONS.staffLights, {
       restore: (prefabId, record) => manager.spawn(prefabId, new THREE.Vector3(...record.transform.position), record),
       debugSpawn: prefabId => manager.spawn(prefabId, position.clone()),
       exportRecords: () => manager.exportRecords(),
-      update: (dt, quaternion) => { manager.update(dt, quaternion); },
+      update: (dt, quaternion) => { displays.update(dt, quaternion); },
       dispose: () => manager.dispose(),
     });
     return registry;

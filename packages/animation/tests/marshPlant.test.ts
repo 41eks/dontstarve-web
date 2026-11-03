@@ -37,7 +37,7 @@ function setup() {
     spawnPrefab: (_: string, position: THREE.Vector3) => { const plant = plants.spawn(MARSH_PLANT_ID, position); spawned.push(plant); return plant; } };
   const ponds = createPondManager(pondDisplays, '/dst/data/anim', world);
   cleanups.push(() => { ponds.dispose(); plants.dispose(); pondDisplays.dispose(); plantDisplays.dispose(); fire.dispose(); });
-  return { updates, scene, scheduler, snow, plants, ponds, spawned, spawnGroundItem, world };
+  return { updates, plantDisplays, scene, scheduler, snow, plants, ponds, spawned, spawnGroundItem, world };
 }
 const offsets = (pond: PondInstance) => pond.GetPersistData().plants;
 
@@ -103,7 +103,7 @@ it('flickers only while its fire exists, on the world component updates', () => 
 });
 
 it('burns to ash where it stands; a burnt plant stays gone from the world but not from the pond', async () => {
-  const { ponds, plants, scene, scheduler, spawned, spawnGroundItem } = setup();
+  const { ponds, plants, plantDisplays, scene, scheduler, spawned, spawnGroundItem } = setup();
   const pond = ponds.spawn(POND_ID, new THREE.Vector3(), { id: 'pond', components: { plants: [{ offset: [1, 0, 0] }, { offset: [-1, 0, 0] }] } });
   const [burnt, extinguished] = spawned;
   // The source's instanced art path: the display loads the mirrored archive.
@@ -116,7 +116,7 @@ it('burns to ash where it stands; a burnt plant stays gone from the world but no
   // DefaultExtinguishFn sets persists; the save loop still skips a child.
   expect(extinguished.persists).toBe(true);
   expect(plants.exportRecords()).toEqual([]);
-  plants.update(1 / 30, new THREE.Quaternion());
+  plantDisplays.update(1 / 30, new THREE.Quaternion());
   scheduler.advance(20);
   expect(burnt.isRemoved).toBe(true);
   expect(spawnGroundItem).toHaveBeenCalledOnce();

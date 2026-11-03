@@ -9,7 +9,7 @@ export function createTestWorldFx(scene: THREE.Scene, scheduler = new GameTimeSc
   return {
     ...worldFxSpawner(manager), scheduler,
     get renderEntities() { return manager.renderEntities; },
-    update: (dt: number, rotation: THREE.Quaternion) => { manager.update(dt, rotation); },
+    update: (dt: number, rotation: THREE.Quaternion) => { displays.update(dt, rotation); },
     dispose: () => { manager.dispose(); displays.dispose(); },
   };
 }

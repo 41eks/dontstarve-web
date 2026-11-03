@@ -88,7 +88,7 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   const starScheduler = new GameTimeScheduler();
   const prefabId = itemId === 'opalstaff' ? 'staffcoldlight' : 'stafflight';
   const stars = createStaffLightManager(starDisplays, '/dst/data/anim', { scheduler: starScheduler });
-  const advanceStars = (dt: number) => { starScheduler.advance(dt); stars.update(dt, camera.quaternion); };
+  const advanceStars = (dt: number) => { starScheduler.advance(dt); starDisplays.update(dt, camera.quaternion); };
   const equipped = inventory.handEquipmentExistenceState;
   const entity = inventory.getEntity(equipmentSlotAddress('hand'))!;
   // The cast's SpawnPrefab creates the star at once; its display loads the art after the commit.
