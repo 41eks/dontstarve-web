@@ -13,6 +13,7 @@ import { deserializeSave } from '../../../src/save/deserialize';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { WorldFx } from '../../prefab/src/world_fx';
+import { prefabDisplay } from '../../display/src/prefabDisplay';
 import { configureTorchEntity } from '../../prefab/src/torch';
 import { Explosive, EXPLOSIVE_MAX_WORKABLE_INVENTORYITEMS, type ExplosiveInst, type ExplosiveTarget } from '../../componets/src/explosive';
 import { Workable } from '../../componets/src/workable';
@@ -75,7 +76,7 @@ it('lights gunpowder with a torch, explodes its stack, works nearby stone fruit 
     expect(records.some(record => record.id === far.id)).toBe(true);
     expect(s.fx.renderEntities).toHaveLength(1);
     // explode_small plays from its first frame once its art has loaded.
-    await s.fx.prepare('explode_small');
+    await prefabDisplay(s.fx.renderEntities[0].object)!.artLoaded();
     s.advance(1.5); expect(s.fx.renderEntities).toHaveLength(0);
   } finally { s.dispose(); }
 }, 20000);

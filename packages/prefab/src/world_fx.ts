@@ -1,10 +1,22 @@
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
-import { PrefabDisplayGroup, SpriteResources, prefabDisplay } from '@dontstarve-web/display';
-import * as THREE from 'three';
-import { findImage, smallHash, SpriteFrameRenderer, type Animation, type ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
-import { GroundItemAssets } from './groundItems';
+import { PrefabDisplayGroup, SpriteResources, type ArchiveSpriteSource } from '@dontstarve-web/display';
+import type * as THREE from 'three';
 import { PlaySound, type SoundEventPath } from './sound';
-import { createPrefabEntity, createArchiveEntity } from './prefabInstance';
+import { createArchiveEntity } from './prefabInstance';
+
+interface FxDefinition {
+  readonly archive: string;
+  readonly bank: string;
+  readonly anim: string;
+  readonly sound?: SoundEventPath;
+  readonly opacity?: number;
+  readonly scale?: number;
+  readonly tint?: readonly [number, number, number];
+  /** AnimState:SetFinalOffset above the entity's layer: drawn a few depth steps towards the camera. */
+  readonly finalOffset?: number;
+  /** Frames between animover and Remove, as wortox_portal_fx.lua's DoTaskInTime(2 * FRAMES). */
+  readonly lingerFrames?: number;
+}
 
 /**
  * prefabs/fx.lua entries that play one animation at a world position, optionally play a sound and remove
@@ -36,173 +48,92 @@ const FX_PREFABS = {
   halloween_moonpuff: { archive: 'moon_tea_fx.zip', bank: 'fx_moon_tea', anim: 'puff', sound: 'dontstarve/common/fireAddFuel', finalOffset: 3 },
   sanity_raise: { archive: 'blocker_sanity_fx.zip', bank: 'blocker_sanity_fx', anim: 'raise', opacity: .5 },
   sanity_lower: { archive: 'blocker_sanity_fx.zip', bank: 'blocker_sanity_fx', anim: 'lower', opacity: .5 },
-} as const satisfies Record<string, { archive: string; bank: string; anim: string; sound?: SoundEventPath; opacity?: number; scale?: number; tint?: readonly [number, number, number]; finalOffset?: number; lingerFrames?: number }>;
+} as const satisfies Record<string, FxDefinition>;
 export type WorldFxPrefab = keyof typeof FX_PREFABS;
 
-type FxBuild = Awaited<ReturnType<GroundItemAssets['loadBuild']>>;
-interface FxAssets { animation: Animation; build: FxBuild }
-interface FxInstance {
-  /** The fx entity; it draws its frames itself under the display's model. */
-  entity: ReturnType<typeof createPrefabEntity>;
-  model: THREE.Group;
-  footPosition: ReadonlyVector3;
-  renderer: SpriteFrameRenderer;
-  /** Undefined while the art loads: the entity exists and plays from its first frame once drawn. */
-  assets?: FxAssets;
-  elapsed: number;
-  frame: number;
-  lingerFrames: number;
-}
+const FRAMES = 1 / 30;
 
 export function isWorldFx(prefab: string): prefab is WorldFxPrefab { return Object.hasOwn(FX_PREFABS, prefab); }
+
+type Effect = ReturnType<typeof createArchiveEntity>;
 
 /** Transient fx.lua prefabs spawned by components, such as the effect components/book.lua puts at the reader. */
 export class WorldFx {
   private readonly displays: PrefabDisplayGroup;
-  private readonly assets: GroundItemAssets;
-  private readonly prepared = new Map<WorldFxPrefab, Promise<FxAssets>>();
-  private readonly ready = new Map<WorldFxPrefab, FxAssets>();
-  private readonly active = new Set<FxInstance>();
-  private readonly collapseSprites = new SpriteResources();
-  private readonly collapses = new Set<ReturnType<typeof createArchiveEntity>>();
+  private readonly sprites = new SpriteResources();
+  private readonly effects = new Set<Effect>();
+  /** Effects past their animover, waiting out the source's delay before Remove, with the seconds left. */
+  private readonly lingering = new Map<Effect, number>();
   private disposed = false;
 
   constructor(scene: THREE.Scene) {
     this.displays = new PrefabDisplayGroup(scene);
-    this.assets = new GroundItemAssets();
+  }
+
+  /** An entity that plays one clip from its first drawn frame; its display loads the art, then it ends itself. */
+  private play(prefab: string, source: ArchiveSpriteSource, animation: string, lingerFrames: number, initialize: (inst: Effect['instance']) => void): Effect {
+    const effect: Effect = createArchiveEntity(prefab, source, { name: animation, held: true, billboard: true }, prefab, inst => {
+      inst.persists = false;
+      initialize(inst);
+      // Declare before the display binds: the one-shot must wait for its first drawn frame.
+      inst.sprite.playOnce(animation, () => {
+        if (lingerFrames > 0) this.lingering.set(effect, lingerFrames * FRAMES);
+        else inst.remove();
+      });
+    });
+    this.effects.add(effect);
+    effect.instance.onRemove(() => { this.effects.delete(effect); this.lingering.delete(effect); });
+    this.displays.mount(effect.display);
+    return effect;
   }
 
   /** structure_collapse_fx.lua: shared art, material sounds and an independent animover lifetime. */
   collapse(size: 'small' | 'big', position: ReadonlyVector3, material?: 'wood' | 'metal' | 'stone' | 'rock' | 'straw' | 'pot'): void {
     if (this.disposed) return;
-    const animation = size === 'big' ? 'collapse_large' : 'collapse_small';
-    const source = this.collapseSprites.archive({ animationArchive: 'structure_collapse_fx.zip',
+    const source = this.sprites.archive({ animationArchive: 'structure_collapse_fx.zip',
       buildArchives: ['structure_collapse_fx.zip'], bank: 'collapse' }, { scale: .02 });
-    const effect = createArchiveEntity(`collapse_${size}`, source, { name: animation, held: true, billboard: true }, `collapse_${size}`, inst => {
-      inst.persists = false;
+    const { instance } = this.play(`collapse_${size}`, source, size === 'big' ? 'collapse_large' : 'collapse_small', 0, inst => {
       inst.addTag('NOCLICK'); inst.addTag('FX');
-      // Declare before the display binds: the one-shot must wait for its first drawn frame.
-      inst.sprite.playOnce(animation, () => inst.remove());
     });
-    const { instance, display } = effect;
     instance.copyPosition(position);
-    this.collapses.add(effect);
-    instance.onRemove(() => this.collapses.delete(effect));
-    this.displays.mount(display);
     PlaySound('dontstarve/common/destroy_smoke', position);
     if (material) PlaySound(material === 'rock' ? 'dontstarve/wilson/rock_break' : `dontstarve/common/destroy_${material}`, position);
   }
 
-  /** Load art ahead of a spawn, so its first frame is drawn at once. */
-  async prepare(prefab: WorldFxPrefab): Promise<void> {
-    if (this.disposed) throw new Error('World fx have been disposed');
-    let request = this.prepared.get(prefab);
-    if (!request) {
-      const definition = FX_PREFABS[prefab];
-      request = (async () => {
-        const [parsed, build] = await Promise.all([
-          this.assets.loadAnimation(definition.archive), this.assets.loadBuild(definition.archive),
-        ]);
-        if ('opacity' in definition) for (const material of build.materials) {
-          material.transparent = true; material.opacity = definition.opacity;
-        }
-        if ('tint' in definition) for (const material of build.materials) material.color.setRGB(...definition.tint);
-        const animation = parsed.animations.find((clip) => clip.name === definition.anim && clip.bankHash === smallHash(definition.bank));
-        if (!animation?.frames.length) throw new Error(`Missing FX animation ${definition.bank}:${definition.anim}`);
-        return { animation, build };
-      })();
-      this.prepared.set(prefab, request);
-      void request.catch(() => this.prepared.delete(prefab));
-    }
-    const resources = await request;
-    if (!this.disposed) this.ready.set(prefab, resources);
-  }
-
   spawn(prefab: WorldFxPrefab, position: ReadonlyVector3): void {
     if (this.disposed) throw new Error('World fx have been disposed');
-    const assets = this.ready.get(prefab);
-    const visual = new THREE.Group();
-    // The display turns what its source draws to the camera; the entity's root keeps its logical heading.
-    const drawn = new THREE.Group().add(visual);
-    const entity = createPrefabEntity(prefab, { create: () => drawn, release: sprite => sprite.removeFromParent() }, { name: '', billboard: true }, prefab);
-    const model = entity.display.model;
-    entity.instance.persists = false;
-    entity.instance.addTag('FX');
-    entity.instance.setPosition(position.x, 0, position.z);
-    const definition = FX_PREFABS[prefab];
-    const scale = 'scale' in definition ? definition.scale : 1;
-    visual.scale.set(0.02 * scale, -0.02 * scale, 0.02 * scale);
-    if ('finalOffset' in definition) visual.position.z = definition.finalOffset * .001;
-    const effect: FxInstance = { entity, model, footPosition: model.position.clone(), renderer: new SpriteFrameRenderer(visual),
-      assets, elapsed: 0, frame: -1, lingerFrames: 'lingerFrames' in definition ? definition.lingerFrames : 0 };
-    if (assets) this.showFrame(effect, 0);
-    else void this.prepare(prefab).then(() => {
-      if (!this.active.has(effect)) return;
-      effect.assets = this.ready.get(prefab);
-      this.showFrame(effect, 0);
-    }, (error: unknown) => {
-      if (this.active.has(effect)) this.remove(effect);
-      if (!this.disposed) console.error(`Unable to load FX ${prefab}`, error);
+    const definition: FxDefinition = FX_PREFABS[prefab];
+    const [red, green, blue] = definition.tint ?? [1, 1, 1];
+    const source = this.sprites.archive({ animationArchive: definition.archive, buildArchives: [definition.archive], bank: definition.bank,
+      multColour: [red, green, blue, definition.opacity ?? 1] }, { scale: .02 * (definition.scale ?? 1) });
+    const { instance } = this.play(prefab, source, definition.anim, definition.lingerFrames ?? 0, inst => {
+      inst.addTag('FX');
+      if (definition.finalOffset) inst.sprite.setDepthOffset(true);
     });
-    this.active.add(effect);
-    this.displays.mount(prefabDisplay(model)!);
-    if ('sound' in definition) PlaySound(definition.sound, effect.footPosition);
+    instance.setPosition(position.x, 0, position.z);
+    if (definition.sound) PlaySound(definition.sound, instance.position);
   }
 
   get renderEntities() {
-    return [...this.active].map(({ model, footPosition }) => ({ object: model, footPosition, cameraDepth: 0 }))
-      .concat([...this.collapses].map(({ display, instance }) => ({ object: display.model, footPosition: instance.position, cameraDepth: 0 })));
+    return [...this.effects].map(({ display, instance }) => ({ object: display.model, footPosition: instance.position, cameraDepth: 0 }));
   }
 
-  update(dt: number, _cameraQuaternion: THREE.Quaternion): void {
-    this.displays.update(dt, _cameraQuaternion);
-    for (const effect of this.active) {
-      const { assets } = effect;
-      if (!assets) continue;
-      effect.elapsed += Math.min(dt, 0.1);
-      const frame = Math.floor(effect.elapsed * assets.animation.frameRate + 1e-8);
-      if (frame >= assets.animation.frames.length + effect.lingerFrames) {
-        this.remove(effect);
-        continue;
-      }
-      this.showFrame(effect, Math.min(frame, assets.animation.frames.length - 1));
+  update(dt: number, cameraQuaternion: THREE.Quaternion): void {
+    // The removal is taken up by the displays' update below.
+    for (const [effect, seconds] of [...this.lingering]) {
+      if (seconds <= dt) effect.instance.remove();
+      else this.lingering.set(effect, seconds - dt);
     }
+    this.displays.update(dt, cameraQuaternion);
   }
 
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
-    for (const effect of [...this.active]) this.remove(effect);
-    for (const { instance, display } of this.collapses) { instance.remove(); display.dispose(); }
-    this.collapses.clear();
-    const released = new Set<THREE.Material>();
-    for (const request of this.prepared.values()) void request.then(({ build }) => {
-      for (const material of build.materials) {
-        if (released.has(material)) continue;
-        released.add(material);
-        material.map?.dispose(); material.dispose();
-      }
-    }, () => {});
-    this.prepared.clear(); this.ready.clear();
+    for (const { instance, display } of [...this.effects]) { instance.remove(); display.dispose(); }
+    this.effects.clear();
+    this.lingering.clear();
     this.displays.dispose();
-    this.collapseSprites.dispose();
-  }
-
-  private remove(effect: FxInstance): void {
-    effect.model.traverse((object) => { if (object instanceof THREE.Mesh) object.geometry.dispose(); });
-    effect.entity.instance.remove(); effect.entity.display.dispose();
-    this.active.delete(effect);
-  }
-
-  private showFrame(effect: FxInstance, index: number): void {
-    const { assets } = effect;
-    if (effect.frame === index || !assets) return;
-    const sprites: ResolvedSprite[] = [];
-    for (const element of [...assets.animation.frames[index].elements].sort((a, b) => b.z - a.z)) {
-      const image = findImage(assets.build.build, element.imageHash, element.imageIndex);
-      if (image) sprites.push({ element, image, materials: assets.build.materials });
-    }
-    effect.renderer.show(sprites);
-    effect.frame = index;
+    this.sprites.dispose();
   }
 }

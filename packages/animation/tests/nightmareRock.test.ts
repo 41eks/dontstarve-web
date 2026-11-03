@@ -26,7 +26,7 @@ async function setup() {
   const sanity = new Sanity({ components: { inventory: { GetEquippedItem: () => null } }, hasTag: () => false } as never, 200);
   const current = sanity;
   const player = { position: new THREE.Vector3(100, 0, 0), sanity };
-  const fx = { prepare: vi.fn(async () => undefined), spawn: vi.fn() };
+  const fx = { spawn: vi.fn() };
   const manager = new NightmareRockManager(new THREE.Scene(), '/dst/data/anim', { scheduler, physics, fx, getPlayers: () => [player] });
   const run = (seconds: number) => {
     for (let elapsed = 0; elapsed < seconds; elapsed += 1 / 30) { scheduler.advance(1 / 30); manager.update(1 / 30, new THREE.Quaternion()); }

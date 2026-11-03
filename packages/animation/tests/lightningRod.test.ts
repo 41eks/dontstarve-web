@@ -27,7 +27,7 @@ async function createPlacement() {
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   const play = vi.spyOn(sound, 'PlaySound').mockReturnValue({ stop: vi.fn(), isPlaying: () => true, setVolume: vi.fn() });
   const scheduler = new GameTimeScheduler();
-  const fx = { prepare: vi.fn(async () => undefined), spawn: vi.fn() };
+  const fx = { spawn: vi.fn() };
   const scene = new THREE.Scene();
   const world = { scene, player: new THREE.Group(), camera: new THREE.PerspectiveCamera(),
     ground: new THREE.Group(), renderer: { domElement: new EventTarget() }, scheduler, fx,

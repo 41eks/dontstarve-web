@@ -15,7 +15,7 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 function setup() {
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   const inventory = createInventoryStore([{ slot_index: 0, id: 'firestaff', num: 1 }]), scene = new THREE.Scene();
-  const fx = { prepare: vi.fn(async () => {}), spawn: vi.fn() };
+  const fx = { spawn: vi.fn() };
   const projectiles = new StaffProjectileManager(scene, { fx });
   const staff = inventory.getEntity(inventorySlotAddress(0))!;
   const sanity = vi.fn();
