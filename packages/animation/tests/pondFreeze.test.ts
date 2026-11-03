@@ -39,7 +39,7 @@ it('freezes above snowlevel 0.02, thaws below it, applies to later ponds and sto
     snow.set(0); await tick(); expect([first, later].map(pond => pond.frozen)).toEqual([false, false]);
     expect(first.sprite.sprite.peek().clip).toMatchObject({ name: 'idle', loop: true });
     expect([first, later].map(pond => pond.hasTag('slipperyfeettarget'))).toEqual([false, false]);
-    snow.set(1); ponds.dispose(); await tick();
+    ponds.dispose(); snow.set(1); await tick();
     expect(first.frozen).toBe(false);
     expect(world.weather.snowLevel.peek()).toBe(1);
   } finally { ponds.dispose(); world.dispose(); }

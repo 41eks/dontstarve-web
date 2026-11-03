@@ -1,12 +1,16 @@
 import { SpriteState, type PrefabDisplayGroup } from '@dontstarve-web/display';
-import { createEffect, WorldContentKey, type GetWatchWorldContent, type TileStateQuery } from '@dontstarve-web/signals';
+import { WorldContentKey, type GetWatchWorldContent, type TileStateQuery } from '@dontstarve-web/signals';
+import { Vector3 } from 'three';
 import type * as CANNON from 'cannon-es';
 import { Fishable } from '../../componets/src/fishable';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { SlipperyFeetTarget } from '../../componets/src/slipperyfeettarget';
 import { WILSON_RUN_SPEED } from '../../componets/src/slipperyfeet';
 import { COLLISION } from '../../componets/src/physicsState';
+import { MARSH_PLANT_ID } from './marsh_plant';
 import { PrefabEntityManager, PrefabInstance, type PrefabComponents } from './prefabInstance';
+import type { PlacementSaveRecord } from './saveRecord';
+import { WORLD_SCALE } from './tile';
 import { MakePondPhysics } from './standardcomponents';
 
 export const POND_ID = 'pond' as const;
@@ -27,6 +31,8 @@ export interface PondWorld {
   tickingarea?: TileStateQuery;
   getWatchWorldContent?: GetWatchWorldContent;
   physics?: CANNON.World;
+  /** SpawnPrefab for the plants around the pond. */
+  spawnPrefab?: (prefab: string, position: Vector3) => PrefabInstance | undefined;
 }
 
 interface PondComponents extends PrefabComponents {
@@ -36,13 +42,20 @@ interface PondComponents extends PrefabComponents {
 
 /** pond.lua's commonfn("") and pondfrog(): marsh_tile art, fishable pondfish, and frozen following snowlevel. */
 export class PondInstance extends PrefabInstance<SpriteState, PondComponents> {
-  frozen = false;
+  /** Undefined until the first OnSnowLevel, as in the source. */
+  frozen?: boolean;
+  /** inst.plants: where the plants stand, in DST units from the pond; they outlive a burnt plant, not a freeze. */
+  private plants?: NonNullable<PlacementSaveRecord['components']['plants']>;
+  private plant_ents?: PrefabInstance<SpriteState, object>[];
+  private readonly spawnPrefab: PondWorld['spawnPrefab'];
   private readonly getWatchWorldContent?: GetWatchWorldContent;
   private stopWatching?: () => void;
+  private stopSnowLevel?: () => void;
 
-  constructor({ scheduler, getWatchWorldContent }: PondWorld) {
+  constructor({ scheduler, getWatchWorldContent, spawnPrefab }: PondWorld) {
     super(POND_ID, new SpriteState({ name: 'idle' }));
     this.getWatchWorldContent = getWatchWorldContent;
+    this.spawnPrefab = spawnPrefab;
     // OnGround: lift only the artwork above terrain; the entity/save origin stays grounded. Ground layers share
     // group order 0 and use mesh order. A negative group order would draw the pond before transparent turf, which covers it up.
     this.sprite.setGround(0); this.sprite.setMeshOrder(-.5);
@@ -53,15 +66,55 @@ export class PondInstance extends PrefabInstance<SpriteState, PondComponents> {
     fishable.SetRespawnTime(FISH_RESPAWN_TIME);
 
     this.onRemove(() => {
+      this.stopSnowLevel?.();
       this.stopWatching?.();
+      // Removing an entity removes its children.
+      for (const plant of this.plant_ents ?? []) plant.remove();
       fishable.OnRemoveFromEntity();
     });
   }
 
-  /** pond.lua OnInit: WatchWorldState("snowlevel", OnSnowLevel) once the pond is in the world, through its own watched signal. */
+  /** pond.lua OnInit: WatchWorldState("snowlevel", OnSnowLevel) and a first OnSnowLevel, through its own watched signal. */
   OnInit(): void {
     const snowLevel = this.getWatchWorldContent?.(WorldContentKey.SnowLevel, stop => { this.stopWatching = stop; });
-    if (snowLevel) createEffect(() => this.OnSnowLevel(snowLevel.get()));
+    if (snowLevel) this.stopSnowLevel = snowLevel.subscribe(level => this.OnSnowLevel(level));
+    this.OnSnowLevel(snowLevel?.peek() ?? 0);
+  }
+
+  OnSave(_inst: unknown, data: PlacementSaveRecord['components']): void {
+    if (this.plants) data.plants = this.plants;
+  }
+
+  /** Always before OnInit here, while the source's inst.task is still pending. */
+  OnLoad(_inst: unknown, data: PlacementSaveRecord['components']): void {
+    this.plants ??= data.plants;
+  }
+
+  private SpawnPlants(): void {
+    if (this.plant_ents) return;
+    if (!this.plants) {
+      this.plants = [];
+      const count = 2 + Math.floor(Math.random() * 3);
+      for (let i = 0; i < count; i++) {
+        const theta = Math.random() * 2 * Math.PI;
+        this.plants.push({ offset: [Math.sin(theta) * 1.9 + Math.random() * .3, 0, Math.cos(theta) * 2.1 + Math.random() * .3] });
+      }
+    }
+    this.plant_ents = [];
+    for (const { offset } of this.plants) {
+      const position = new Vector3(this.position.x + offset[0] * WORLD_SCALE, 0, this.position.z + offset[2] * WORLD_SCALE);
+      const plant = this.spawnPrefab?.(MARSH_PLANT_ID, position);
+      if (!plant) continue;
+      plant.entityParent = this as PrefabInstance<SpriteState, object>;
+      plant.persists = false;
+      this.plant_ents.push(plant);
+    }
+  }
+
+  private DespawnPlants(): void {
+    for (const plant of this.plant_ents ?? []) plant.remove();
+    this.plant_ents = undefined;
+    this.plants = undefined;
   }
 
   private OnSnowLevel(snowlevel: number): void {
@@ -72,6 +125,7 @@ export class PondInstance extends PrefabInstance<SpriteState, PondComponents> {
       this.components.fishable!.Freeze();
       this.physics.SetCollisionGroup(COLLISION.LAND_OCEAN_LIMITS);
       this.physics.SetCollisionMask(COLLISION.WORLD, COLLISION.ITEMS);
+      this.DespawnPlants();
       const slipperyfeettarget = this.components.slipperyfeettarget = new SlipperyFeetTarget(this);
       slipperyfeettarget.SetSlipperyRate(slipperyRate);
     } else if (this.frozen) {
@@ -80,8 +134,12 @@ export class PondInstance extends PrefabInstance<SpriteState, PondComponents> {
       this.components.fishable!.Unfreeze();
       this.physics.SetCollisionGroup(COLLISION.OBSTACLES);
       this.physics.SetCollisionMask(COLLISION.ITEMS, COLLISION.CHARACTERS, COLLISION.GIANTS);
+      this.SpawnPlants();
       this.components.slipperyfeettarget!.OnRemoveFromEntity();
       delete this.components.slipperyfeettarget;
+    } else if (this.frozen === undefined) {
+      this.frozen = false;
+      this.SpawnPlants();
     }
   }
 }

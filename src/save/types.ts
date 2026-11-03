@@ -48,6 +48,7 @@ export interface SavedEntity {
     beefalo?: BeefaloSaveState;
     nightmareGrowth?: NightmareGrowthSaveState;
     fishable?: import('../../packages/componets/src/fishable').FishableSave;
+    plants?: { offset: [number, number, number] }[];
     lavaPond?: import('@dontstarve-web/prefab/lava_pond').LavaPondSaveState;
     hotspring?: import('@dontstarve-web/prefab/hotspring').HotspringSaveState;
     wormhole?: WormholeSaveState;

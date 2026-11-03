@@ -227,8 +227,8 @@ def staff_light_components(limit):
 
 
 def pond_components(data):
-    # pond.lua OnSave: plants + childspawner/worldsettingstimer (frog spawner, not ported).
-    # Only fishable is ported, and a full pond saves nothing, so the frog and plant state is validated and dropped.
+    # pond.lua OnSave: plants + childspawner/worldsettingstimer (frog spawner, not ported, validated and dropped).
+    # A full pond's fishable saves nothing. A frozen pond has no plants.
     if set(data) - {'plants', 'childspawner', 'worldsettingstimer'}:
         raise ValueError('Unsupported pond save state')
     plants = data.get('plants', [])
@@ -237,7 +237,8 @@ def pond_components(data):
                                            or any(type(v) not in (int, float) or not math.isfinite(v) for v in plant['offset'])
                                            for plant in plants):
         raise ValueError('Unsupported pond plants')
-    return {}
+    # Offsets turn with the world, as project_position does: X is kept and Z negated.
+    return {'plants': [{'offset': [plant['offset'][0], plant['offset'][1], 0 - plant['offset'][2]]} for plant in plants]} if plants else {}
 
 
 def lava_pond_components(data):

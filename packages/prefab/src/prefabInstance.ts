@@ -62,6 +62,8 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   readonly persistence = readonlySignal(this.persistsState);
   get persists(): boolean { return this.persistence.peek(); }
   set persists(value: boolean) { this.persistsState.set(value); }
+  /** inst.entity:GetParent: the save loop skips a child, whose parent recreates it. */
+  entityParent?: PrefabInstance<SpriteState, object>;
   /** inst.Physics: the collider the entity declares. */
   readonly physics = new PhysicsState();
   /** EntityScript components belong to the logical entity, including while its display sleeps. */
@@ -310,12 +312,16 @@ export interface PrefabEntityDefinition<Instance extends PrefabInstance> {
   fn(): Instance;
   /** A prefab without assets has only a transform and what it declares on it, as FX lights do: nothing to draw or click. */
   assets?: Parameters<SpriteResources['archive']>[0];
+  /** How the display builds this art's sprites, such as a plant's instanced batches. */
+  assetOptions?: Parameters<SpriteResources['archive']>[1];
   /** Make*Physics(inst, radius, height) in DST units; the body is bound when the world has physics. */
   physics?: { make(inst: Instance, radius: number, height?: number): unknown; radius: number; height?: number };
   /** MiniMapEntity:SetIcon. */
   minimapIcon?: string;
   /** Runs once the entity has its position and saved state, for what the source starts from there. */
   onSpawned?(instance: Instance): void;
+  /** StartUpdatingComponent: per-frame work the entity has, such as its fire's flicker. */
+  update?(instance: Instance, dt: number): void;
 }
 
 /**
@@ -346,12 +352,12 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
   spawn(prefabId: Id, position: Vector3, saved?: Pick<PlacementSaveRecord, 'id' | 'components'> & Partial<Pick<PlacementSaveRecord, 'transform'>>): Instance {
     if (this.disposed) throw new Error(`Cannot spawn ${prefabId}: its manager has been disposed`);
     if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError(`Invalid ${prefabId} position`);
-    const { fn, assets, physics, minimapIcon, onSpawned } = this.prefabs[prefabId], instance = fn();
+    const { fn, assets, assetOptions, physics, minimapIcon, onSpawned } = this.prefabs[prefabId], instance = fn();
     physics?.make(instance, physics.radius, physics.height);
     if (minimapIcon) instance.minimap.SetIcon(minimapIcon);
     // A shared archive holds a first one-shot clip while its art loads, so a new entity is drawn from its first frame.
     const display = this.displays.add({ root: instance.transform.model, name: prefabId, status: instance.status, sprite: instance.sprite, light: instance.light,
-      ...(assets ? { archive: this.resources.archive(assets) } : { empty: true }) });
+      ...(assets ? { archive: this.resources.archive(assets, assetOptions) } : { empty: true }) });
     bindInstance(display.model, instance);
     instance.setPosition(position.x, 0, position.z);
     if (saved?.transform?.rotationY) instance.setRotation(MathUtils.radToDeg(saved.transform.rotationY));
@@ -371,12 +377,14 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
 
   /** The display group advances the awake entities' clips; timers and tasks run on the world's scheduler. */
   update(dt: number, cameraQuaternion: Quaternion): void {
-    if (!this.disposed) this.displays.update(dt, cameraQuaternion);
+    if (this.disposed) return;
+    for (const entity of this.entities) this.prefabs[entity.prefab as Id].update?.(entity, dt);
+    this.displays.update(dt, cameraQuaternion);
   }
 
-  /** The save loop's `persists` check and GetSaveRecord. */
+  /** The save loop's `persists` and GetParent checks, and GetSaveRecord. */
   exportRecords(): { prefabId: Id; record: PlacementSaveRecord }[] {
-    return [...this.entities].filter(entity => entity.persists).map(entity => ({ prefabId: entity.prefab as Id, record: {
+    return [...this.entities].filter(entity => entity.persists && !entity.entityParent).map(entity => ({ prefabId: entity.prefab as Id, record: {
       id: String(entity.entityId),
       transform: { position: [entity.position.x, 0, entity.position.z], rotationY: entity.transform.model.rotation.y },
       components: entity.GetPersistData(),

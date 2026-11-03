@@ -270,6 +270,15 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
       const p = `${path}.mushroom`, mushroom = object(c.mushroom, p, ['rain']);
       components.mushroom = { rain: integer(mushroom.rain, `${p}.rain`, 1, 20) };
     }
+    if (keys.includes('plants') && c.plants !== undefined) {
+      // pond.lua OnSave: data.plants, the offsets its plants stand at.
+      components.plants = array(c.plants, `${path}.plants`, 16).map((plant, index) => {
+        const p = `${path}.plants[${index}]`, offset = array(object(plant, p, ['offset']).offset, `${p}.offset`, 3);
+        if (offset.length !== 3) fail(`${p}.offset`, 'expected three coordinates');
+        const [x, y, z] = offset.map((value, axis) => number(value, `${p}.offset[${axis}]`, -16, 16));
+        return { offset: [x, y, z] };
+      });
+    }
     if (keys.includes('fishable') && c.fishable !== undefined) {
       // fishable.lua OnSave: only a pond with fish taken out saves its remaining count.
       const p = `${path}.fishable`, fishable = object(c.fishable, p, ['fish']);

@@ -13,6 +13,13 @@ TILE, PREFAB, PLAYER = IMPORTER['TILE'], IMPORTER['PREFAB'], IMPORTER['PLAYER']
 
 
 class RegionImportTest(unittest.TestCase):
+    def test_pond_plants_keep_their_offsets_in_the_project_handedness(self):
+        convert = PREFAB['ENTITY_WHITELIST']['pond']
+        self.assertEqual(convert({'plants': [{'offset': [-1.5, 0, 0.25]}], 'childspawner': {}}), {'plants': [{'offset': [-1.5, 0, -0.25]}]})
+        self.assertEqual(convert({}), {})
+        with self.assertRaisesRegex(ValueError, 'plants'):
+            convert({'plants': [{'offset': [1, 0]}]})
+
     def test_staff_lights_keep_the_source_extinguish_timer_and_reject_unknown_state(self):
         encode = lambda values: base64.b64encode(b'VRSN\0\x01\0\0\0' + struct.pack(f'<{len(values)}H', *values)).decode()
         terrain = {'width': 3, 'height': 3, 'topology': {'ids': ['Forest']}, 'nodeidtilemap': encode([1] * 9)}

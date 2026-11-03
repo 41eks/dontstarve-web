@@ -60,6 +60,8 @@ import type { GameTimeScheduler } from '@dontstarve-web/prefab/gameTimeScheduler
 import { TumbleweedManager, TUMBLEWEED_ID } from '@dontstarve-web/prefab/tumbleweed';
 import { SaplingManager } from '@dontstarve-web/prefab/sapling';
 import { createPondManager } from '@dontstarve-web/prefab/pond';
+import { createMarshPlantManager, MARSH_PLANT_ID } from '@dontstarve-web/prefab/marsh_plant';
+import { FireFxHost } from '@dontstarve-web/prefab/treeFire';
 import { HotspringManager } from '@dontstarve-web/prefab/hotspring';
 import { LavaPondManager, LAVA_POND_ID } from '@dontstarve-web/prefab/lava_pond';
 import { WormholeManager, WORMHOLE_ID } from '@dontstarve-web/prefab/wormhole';
@@ -169,6 +171,7 @@ const MANAGER_DEFINITIONS = {
   'stafflight': PREFAB_DEFINITIONS.staffLights,
   'staff_castinglight': PREFAB_DEFINITIONS.staffCastingLights,
   'pond': PREFAB_DEFINITIONS.ponds,
+  'marsh_plant': PREFAB_DEFINITIONS.marshPlants,
 } as const;
 
 // Keep frame callbacks and reverse disposal in their existing order, independently of construction dependencies.
@@ -221,6 +224,7 @@ const SCENE_LIFECYCLE_ORDER = [
   PREFAB_DEFINITIONS.caveFerns,
   PREFAB_DEFINITIONS.lichens,
   PREFAB_DEFINITIONS.ponds,
+  PREFAB_DEFINITIONS.marshPlants,
   PREFAB_DEFINITIONS.lavaPonds,
   PREFAB_DEFINITIONS.lavaPondRocks,
   PREFAB_DEFINITIONS.tumbleweeds,
@@ -312,6 +316,7 @@ export async function createSceneEntities(
     'stafflight': ReturnType<typeof registerStaffLights>;
     'staff_castinglight': ReturnType<typeof registerStaffCastingLights>;
     'pond': ReturnType<typeof registerPonds>;
+    'marsh_plant': ReturnType<typeof registerMarshPlants>;
   };
   // Filled in dependency order below; deferred callbacks run after scene setup.
   const Managers = {} as SceneManagers;
@@ -393,6 +398,7 @@ export async function createSceneEntities(
   Managers['chessjunk'] = registerChessJunk(registry, 'chessjunk', worldState);
   Managers['chesspiece_malbatross_marble'] = registerChesspieces(registry, 'chesspiece_malbatross_marble', worldState);
   Managers['archive_centipede_husk'] = registerArchiveCentipedeHusks(registry, 'archive_centipede_husk', worldState);
+  Managers['marsh_plant'] = registerMarshPlants(registry, worldState);
   Managers['pond'] = registerPonds(registry, 'pond', worldState);
   Managers['sanityrock'] = registerNightmareRocks(registry, 'sanityrock', worldState);
   Managers['rain'] = registerRain(registry, 'rain', worldState);
@@ -1658,10 +1664,27 @@ export async function createSceneEntities(
     return lights;
   }
 
+  function registerMarshPlants(registry: EntityRegistry, worldState: SceneWorldState) {
+    const displays = new PrefabDisplayGroup(scene), baseUrl = `${import.meta.env.BASE_URL}dst/data/anim`, fire = FireFxHost.create(baseUrl);
+    const plants = createMarshPlantManager(displays, baseUrl, { scheduler: scheduler ?? worldState.scheduler, tickingarea: worldState.tickingarea, fire,
+      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options) });
+    registry.register(MANAGER_DEFINITIONS['marsh_plant'], {
+      restore: (id, record) => plants.spawn(id, new THREE.Vector3(...record.transform.position), record),
+      debugSpawn: id => plants.spawn(id, player.position.clone()),
+      spawnPrefab: { [MARSH_PLANT_ID]: position => plants.spawn(MARSH_PLANT_ID, position) },
+      exportRecords: () => plants.exportRecords(),
+      update: (dt, quaternion) => plants.update(dt, quaternion),
+      renderEntities: () => plants.renderEntities,
+      dispose: () => { plants.dispose(); displays.dispose(); fire.dispose(); },
+    });
+    return plants;
+  }
+
   function registerPonds(registry: EntityRegistry, prefabId: 'pond', worldState: SceneWorldState) {
     const displays = new PrefabDisplayGroup(scene);
     const ponds = createPondManager(displays, `${import.meta.env.BASE_URL}dst/data/anim`,
-      { scheduler: scheduler ?? worldState.scheduler, tickingarea: worldState.tickingarea, getWatchWorldContent: worldState.getWatchWorldContent, physics: world });
+      { scheduler: scheduler ?? worldState.scheduler, tickingarea: worldState.tickingarea, getWatchWorldContent: worldState.getWatchWorldContent, physics: world,
+        spawnPrefab: (prefab, position) => registry.SpawnPrefab(prefab, position) });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (id, record) => ponds.spawn(id, new THREE.Vector3(...record.transform.position), record),
       debugSpawn: id => ponds.spawn(id, player.position.clone()),

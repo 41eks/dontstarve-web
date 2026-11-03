@@ -112,7 +112,7 @@ python3 scripts/import-dst-region.py \
 - `treasurechest`：源 `container.items`（一基槽位，表或带空洞的字典）→ `container`（9 格），物品经与玩家背包相同的转换，ID 为 `<箱子 ID>_<槽位>`；未知物品、不能放入容器的物品及无对应字段的组件记入来源报告 `containerItems`。`skinname` → `building.skinId`（拒绝运行时派生的 `treasurechest_upgraded_*`），`burnt` → `building.burnt`，烧毁箱子不得带内容物。只接受未升级的 `upgradeable`（`numupgrades = 0`）与已运行的 `scenariorunner`；`smart_minisign` 晚于本地源 Lua，附带的 `minisign` 未移植，校验后丢弃。箱子按 `MakeChest` 带 `chest` 标签和 `treasurechest.png` 小地图图标。当前地表快照导入 2 个箱子。
 - `beefalo`：`knownlocations`（源坐标按同一平移／Z 轴映射转换，`herd` 同时作为 `home`）、`periodicspawner.time` → `poopRemainingSeconds`、`beard` → `beefalo.beard`；源不保存朝向，`heading` 取 0。只接受野生默认状态：`tendency` 为 `DEFAULT`、无胡萝卜鼠、未驯化、无服装、满血、饥饿 0、未命名，这些及 `leader`（追随者为未移植的 `babybeefalo`）、`uniqueid`、`brushable` 校验后丢弃。`babybeefalo`、`beefaloherd` 不在白名单中。当前地表快照导入 37 头。
 - `stafflight`、`staffcoldlight`：`timer` 的 `extinguish` 任务原样保留，`initial_time` 不超过 `tuning.lua` 的时长。
-- `pond`：`plants`、`childspawner`、`worldsettingstimer`（青蛙生成器，未移植）校验后丢弃，鱼数量取默认；小地图图标 `pond.png`。`lava_pond`：`rocks`（`rocktype`、`offset`）→ `lavaPond.rocks`；小地图图标 `lava_pond.png`。`pond_mos`、`pond_cave` 不在白名单内。
+- `pond`：`plants` 的偏移保留（X 不变、Z 取反，与世界坐标一致），`childspawner`、`worldsettingstimer`（青蛙生成器，未移植）校验后丢弃，鱼数量取默认；小地图图标 `pond.png`。`lava_pond`：`rocks`（`rocktype`、`offset`）→ `lavaPond.rocks`；小地图图标 `lava_pond.png`。`pond_mos`、`pond_cave` 不在白名单内。
 
 实体 ID 包含源 Session、prefab 和源 `id`；无 `id` 时使用原分组序号，同一快照重复导入保持稳定。`Master.import.json` / `Caves.import.json` 的 `scope: "full-map"` 标记完整转换，记录全部节点、地皮数量、各白名单 prefab 的源数量和导入数量，以及每个实体的源序号、源 ID、源位置和所属节点。无节点或源坐标越界时 `sourceNode` 为 `null`。源文件路径、SHA-256、尺寸、原点和平移同样保留。
 

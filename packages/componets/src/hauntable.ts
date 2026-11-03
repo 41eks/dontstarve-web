@@ -34,6 +34,8 @@ export class Hauntable {
   get panic(): boolean { return this.panicking.peek(); }
   private onhaunt: (inst: HauntableInst, haunter: Haunter) => boolean = () => true;
   private hauntvalue: number | undefined;
+  /** self.cooldown: replaces both defaults of DoHaunt. */
+  private cooldownSeconds: number | undefined;
   private hauntedValue = false;
   private disposed = false;
 
@@ -49,6 +51,7 @@ export class Hauntable {
   Panic(seconds: number): void { this.panicTask.start(seconds); }
   IsHaunted(): boolean { return this.hauntedValue; }
   SetOnHauntFn(fn: Hauntable['onhaunt']): void { this.onhaunt = fn; }
+  SetCooldown(seconds: number): void { this.cooldownSeconds = seconds; }
   SetHauntValue(value: number | undefined): void { if (value) this.hauntvalue = value; }
 
   DoHaunt(doer: Haunter): void {
@@ -58,7 +61,7 @@ export class Hauntable {
       if (this.hauntvalue === HAUNT_INSTANT_REZ && doer.hasTag('playerghost')) doer.PushEvent('respawnfromghost', { source: this.inst });
     }
     this.setHaunted(true);
-    this.cooldown.start(success ? HAUNT_COOLDOWN_MEDIUM : HAUNT_COOLDOWN_SMALL);
+    this.cooldown.start(this.cooldownSeconds ?? (success ? HAUNT_COOLDOWN_MEDIUM : HAUNT_COOLDOWN_SMALL));
     this.inst.PushEvent('haunted');
   }
 

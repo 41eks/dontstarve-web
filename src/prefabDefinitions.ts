@@ -35,6 +35,7 @@ import { GRASS_CYCLES, GRASS_DEFINITION, GRASS_ID, GRASS_REGROW_TIME } from '@do
 import { LICHEN_DEFINITION, LICHEN_ID, LICHEN_REGROW_TIME } from '@dontstarve-web/prefab/lichen';
 import { SAPLING_PREFABS, SAPLING_REGROW_TIME } from '@dontstarve-web/prefab/sapling';
 import { POND_ID } from '@dontstarve-web/prefab/pond';
+import { MARSH_PLANT_ID } from '@dontstarve-web/prefab/marsh_plant';
 import { TRINKET_IDS } from '@dontstarve-web/prefab/trinkets';
 import { TUMBLEWEED_ID } from '@dontstarve-web/prefab/tumbleweed';
 import { HOTSPRING_ID } from '@dontstarve-web/prefab/hotspring';
@@ -404,7 +405,8 @@ export const PREFAB_DEFINITIONS = {
   cacti: definePrefabs(CACTUS_IDS, componentParser({ keys: ['pickable'], regrowTime: CACTUS_REGROW_TIME }), true,
     prefab => [{ animation: CACTUS_DEFINITIONS[prefab].animArchive, build: CACTUS_DEFINITIONS[prefab].buildArchive }]),
   saplings: definePrefabs(SAPLING_PREFABS, componentParser({ keys: ['pickable', 'witherable'], regrowTime: SAPLING_REGROW_TIME }), true),
-  ponds: definePrefabs([POND_ID], componentParser({ keys: ['fishable'] }), true, ['marsh_tile.zip']),
+  ponds: definePrefabs([POND_ID], componentParser({ keys: ['fishable', 'plants'] }), true, ['marsh_tile.zip']),
+  marshPlants: definePrefabs([MARSH_PLANT_ID], empty, true, ['marsh_plant.zip']),
   lavaPonds: definePrefabs([LAVA_POND_ID], componentParser({ keys: ['lavaPond'] }), true, ['lava_tile.zip', 'scorched_rock.zip']),
   lavaPondRocks: definePrefabs(LAVA_POND_ROCK_IDS, empty, true, ['scorched_rock.zip']),
   tumbleweeds: definePrefabs([TUMBLEWEED_ID], empty, true),
