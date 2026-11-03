@@ -34,7 +34,9 @@ it('subscribes to prefab map declarations, preserves marker identity and foot po
     stop();
     instance.tileTracker.sync(); await settle();
     expect(notified).not.toHaveBeenCalled(); // Moving inside the tile never reaches DOM consumers.
-    // Crossing a tile through the transform refreshes the tracker at once.
+    // Continuous movement refreshes the tile on the sixtieth write.
+    for (let i = 0; i < 59; i++) instance.setPosition(12, 0, 24);
+    await settle(); expect(notified).not.toHaveBeenCalled();
     instance.setPosition(12, 0, 24); await settle();
     expect(notified).toHaveBeenCalledExactlyOnceWith(true);
     stopNotifications(); notified.mockClear();

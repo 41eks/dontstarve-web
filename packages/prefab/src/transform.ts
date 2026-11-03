@@ -34,7 +34,8 @@ export class Transform {
 
   setPosition(x: number, y: number, z: number): void {
     this.#model.position.set(x, y, z);
-    this.#tracker?.sync();
+    // TileTracker.moved: the key refreshes once per interval, so a jump settles within the writes that follow it.
+    this.#tracker?.moved();
     this.markDirty();
   }
 

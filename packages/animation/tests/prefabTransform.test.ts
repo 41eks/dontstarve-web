@@ -61,8 +61,14 @@ it('only writes a position through the transform, which keeps the tile tracker a
   expect(typeChecked).toBeTypeOf('function');
   transform.copyPosition(new Vector3(24, 0, 0));
   expect(transform.position.x).toBe(24);
-  expect(tile.peek()).not.toBe(origin);
   expect(root.transformDirty).toBe(true);
+  // Writes refresh the tile once per interval, not on each write.
+  for (let write = 1; write < 60; write++) { expect(tile.peek()).toBe(origin); transform.copyPosition(new Vector3(24, 0, 0)); }
+  expect(tile.peek()).not.toBe(origin);
+  transform.setPosition(0, 0, 0);
+  expect(tile.peek()).not.toBe(origin);
+  transform.tileTracker.sync();
+  expect(tile.peek()).toBe(origin);
   transform.dispose();
 });
 
@@ -155,8 +161,10 @@ it('shares one activity query and tracker, retaining the result until the final 
   firstCleanup.forEach(stop => stop());
   expect(dispose).not.toHaveBeenCalled();
   transform.setPosition(24, 0, 0);
+  transform.tileTracker.sync();
   expect(second.peek()).toBe(false);
   transform.setPosition(0, 0, 0);
+  transform.tileTracker.sync();
   expect(second.peek()).toBe(true);
   playerActive.set(false);
   expect(second.peek()).toBe(false);

@@ -122,6 +122,7 @@ describe('FindEntities', () => {
     const peer = spawn(scene, 0);
     const stationaryPlayer = positions.peek();
     item.setPosition(240, 0, 0);
+    item.tileTracker.sync();
     await settle();
     expect(positions.peek()).toBe(stationaryPlayer);
     expect(moving.hasTag('tickingarea')).toBe(false);

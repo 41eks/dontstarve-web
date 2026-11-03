@@ -295,7 +295,6 @@ export class BeefaloController {
       this.body.position.z = this.model.position.z;
       this.body.aabbNeedsUpdate = true;
     }
-    this.instance.transform.tileTracker.sync();
     syncPlacementEntity(this.model);
   }
 
