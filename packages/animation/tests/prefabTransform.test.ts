@@ -81,3 +81,35 @@ it('shares one activity query and tracker, retaining the result until the final 
   transform.dispose();
   expect(dispose).toHaveBeenCalledOnce();
 });
+
+it('turns the visual only when the camera, the root or an ancestor turned', () => {
+  const instance = new PrefabInstance('turning', new SpriteState({ name: '', none: true }), new Transform());
+  const { display } = createEmptyEntity(instance.prefab, undefined, { instance, billboard: true });
+  const parent = new Group();
+  display.mount(parent);
+  const faceCamera = vi.spyOn((display as unknown as { engine: { faceCamera(rotation: Quaternion): void } }).engine, 'faceCamera');
+  const worldQuery = vi.spyOn(display.model, 'getWorldQuaternion');
+  const camera = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), -.3);
+  const facesCamera = () => display.model.children[0].getWorldQuaternion(new Quaternion()).angleTo(camera);
+  try {
+    display.update(0, camera);
+    expect(facesCamera()).toBeCloseTo(0);
+    worldQuery.mockClear();
+    faceCamera.mockClear();
+    instance.sprite.update(0);
+    instance.sprite.update(0);
+    expect(faceCamera).not.toHaveBeenCalled();
+    expect(worldQuery).not.toHaveBeenCalled();
+
+    instance.setRotation(90);
+    instance.sprite.update(0);
+    expect(faceCamera).toHaveBeenCalledTimes(1);
+    expect(facesCamera()).toBeCloseTo(0);
+
+    parent.rotation.y = 1;
+    instance.sprite.update(0);
+    expect(faceCamera).toHaveBeenCalledTimes(2);
+    expect(facesCamera()).toBeCloseTo(0);
+    expect(instance.rotation).toBeCloseTo(90);
+  } finally { display.dispose(); instance.remove(); }
+});

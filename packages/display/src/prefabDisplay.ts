@@ -57,6 +57,8 @@ export interface PrefabDisplayOptions {
 }
 
 const displaysByModel = new WeakMap<THREE.Object3D, PrefabDisplay>();
+const rootRotation = new THREE.Quaternion();
+const localFacing = new THREE.Quaternion();
 
 /** Look up display-owned resources without writing references onto the model. */
 export function prefabDisplay(model: THREE.Object3D): PrefabDisplay | undefined { return displaysByModel.get(model); }
@@ -96,6 +98,8 @@ export class PrefabDisplay {
   private disposed = false;
   // The camera rotation the drawn sprite was turned to; a sprite drawn later is turned to it too.
   private facing: THREE.Quaternion | undefined;
+  /** The root's world rotation that the visual was last turned against. */
+  private readonly alignedRoot = new THREE.Quaternion();
   private readonly followsWorldCamera: boolean;
   private readonly cameraDirection = new THREE.Vector3();
   private asleep = false;
@@ -180,7 +184,7 @@ export class PrefabDisplay {
       get pose() { sync(); return controller.pose; },
       get loaded() { return controller.loaded; },
       update: dt => {
-        sync(); controller.update(dt);
+        sync(); this.alignVisual(false); controller.update(dt);
         this.fx.update(dt, this.json.peek(), this.facing);
         if (this.fx.hasComposites) controller.setComposites?.(this.fx.compositeFrames());
         this.updateSymbolFollowers(this.json.peek());
@@ -281,8 +285,21 @@ export class PrefabDisplay {
   private faceCamera(rotation: THREE.Quaternion): void {
     if (this.disposed) return;
     (this.facing ??= new THREE.Quaternion()).copy(rotation);
-    this.engine.faceCamera(this.facing);
+    this.alignVisual(true);
     this.applyFacing(this.json.peek());
+  }
+
+  /**
+   * Holds the visual at the camera rotation against the root's. A frame only compares the root's rotation: the visual is
+   * touched when the camera or the root or one of its ancestors turned, and no matrix is updated or decomposed to find out.
+   */
+  private alignVisual(cameraTurned: boolean): void {
+    if (!this.facing) return;
+    rootRotation.copy(this.model.quaternion);
+    for (let parent = this.model.parent; parent; parent = parent.parent) rootRotation.premultiply(parent.quaternion);
+    if (!cameraTurned && rootRotation.equals(this.alignedRoot)) return;
+    this.alignedRoot.copy(rootRotation);
+    this.engine.faceCamera(localFacing.copy(rootRotation).invert().multiply(this.facing));
   }
 
   private applyFacing(json: SpriteJson): void {
@@ -431,7 +448,6 @@ export class PrefabDisplay {
     const skin = json.appearance.get('skin');
     if (skin?.kind === 'skin') this.dressSkin(skin.skin, json.skinId);
     if (source) controller.setArtSource?.(source);
-    if (this.facing) controller.faceCamera?.(this.facing);
     if (json.image !== undefined) controller.showImage(json.image);
     this.applyFacing(json);
     const frame = this.frameIndex(json.frame);
