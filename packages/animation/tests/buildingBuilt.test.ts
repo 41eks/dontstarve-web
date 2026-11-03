@@ -1,3 +1,4 @@
+import { GameTimeScheduler } from '../../signals/src';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
@@ -37,7 +38,7 @@ async function setup(definition: AnimatedBuildingDefinition, id = 'building') {
   const canvas = new EventTarget();
   const world = {
     physics: new CANNON.World(), scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(),
-    camera: new THREE.PerspectiveCamera(), renderer: { domElement: canvas },
+    camera: new THREE.PerspectiveCamera(), renderer: { domElement: canvas }, scheduler: new GameTimeScheduler(),
   } as unknown as WorldContext;
   world.player.position.set(100, 0, 100);
   const consume = vi.fn(() => true);

@@ -79,11 +79,12 @@ function initializePot({ model, instance, animState, world }: AnimatedBuildingEv
     const presentation: PotPresentation = { animState };
     presentations.set(model, presentation);
     const components = instance.components;
+    if (!world?.scheduler) throw new Error('A cookpot needs the world\'s scheduler');
     const stewer = new Stewer({ prefab: 'cookpot', components: { container: components.container! },
         getPosition: () => instance.position,
         addTag: tag => instance.addTag(tag),
         removeTag: tag => instance.removeTag(tag),
-        }, (prefab, count = 1) => world?.dropLoot?.([{ itemId: prefab, count }], instance.position));
+        }, world.scheduler, (prefab, count = 1) => world.dropLoot?.([{ itemId: prefab, count }], instance.position));
     components.stewer = stewer;
     stewer.onstartcooking = () => continueCooking(model);
     stewer.oncontinuecooking = () => continueCooking(model);
@@ -195,7 +196,6 @@ export const COOK_POT_DEFINITION: AnimatedBuildingDefinition = {
         if (stewer.IsCooking()) (prefabInstance(model)!.sprite as SpriteState).start('cooking_loop');
         else if (stewer.IsDone()) { showProduct(model); (prefabInstance(model)!.sprite as SpriteState).start('idle_full'); }
     },
-    onupdate: ({ model }, dt) => (prefabInstance(model)!.components.stewer as Stewer | undefined)?.LongUpdate(dt),
     ondispose: ({ model }) => {
         presentations.get(model)?.sound?.stop();
         (prefabInstance(model)!.components.stewer as Stewer | undefined)?.OnRemoveFromEntity();

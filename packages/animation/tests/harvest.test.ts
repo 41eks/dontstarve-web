@@ -5,6 +5,7 @@ import * as CANNON from 'cannon-es';
 import { afterEach, expect, it, vi } from 'vitest';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
+import { GameTimeScheduler } from '../../signals/src';
 import { Stewer } from '../../componets/src/stewer';
 import { Locomotor } from '../../prefab/src/locomotor';
 import { WORLD_SCALE } from '../../prefab/src/tile';
@@ -25,7 +26,7 @@ it('walks to a finished pot, gives its product to the doer at the hit frame, and
   const container = { canbeopened: true, IsFull: () => false, IsOpen: () => false,
     GetAllItems: () => [], Close() {}, DestroyContents() {}, subscribeLifecycle: () => () => {} };
   const stewer = new Stewer({ prefab: 'cookpot', components: { container },
-    getPosition: () => instance.position, addTag: tag => instance.addTag(tag), removeTag: tag => instance.removeTag(tag) });
+    getPosition: () => instance.position, addTag: tag => instance.addTag(tag), removeTag: tag => instance.removeTag(tag) }, new GameTimeScheduler());
   instance.components.stewer = stewer;
   actionEntity(model, 'cookpot');
   stewer.OnLoad({ product: 'kabobs', done: true });

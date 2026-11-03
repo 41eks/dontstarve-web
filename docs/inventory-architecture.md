@@ -199,6 +199,6 @@ Shift + 右键已占用的库存或装备槽，在玩家当前地面位置丢弃
 
 Lua 链路是 containers.lua:buttoninfo.fn → ACTIONS.COOK.fn → stewer:StartCooking()。UI 只提交请求，按钮按容器满格状态启用；动作检查其他开启者与可烹饪状态，已在烹饪的重复请求不重新计时。stewer 从自己的 container 读取原料实体，经 cooking.CalculateRecipe() 得到产物和时间，在开始回调后关闭容器、销毁内容并禁止打开。DestroyContents() 通过实体的库存 owner 移除材料，UI 投影不参与权威消耗。
 
-components/stewer.ts 管理烹饪任务、readytocook/donecooking 标签、原料与厨师记录及保存恢复；prefab/cook_pot.ts 将开始、继续、完成回调接到动画和声音，并按配方的 build、symbol 和 potlevel 显示锅中产物。外部存档仍保留 product/phase/remainingSeconds 的已有格式，新增可选 ingredient_prefabs 与 chef_id，旧存档可继续读取。目前的分支覆盖开始、完成和恢复，收获及锅内腐败另行实现。
+components/stewer.ts 用注入的游戏时间调度器管理烹饪任务（对应 Lua 的 `DoTaskInTime(cooktime, dostew)`，不逐帧更新）、readytocook/donecooking 标签、原料与厨师记录及保存恢复；prefab/cook_pot.ts 将开始、继续、完成回调接到动画和声音，并按配方的 build、symbol 和 potlevel 显示锅中产物。外部存档仍保留 product/phase/remainingSeconds 的已有格式，新增可选 ingredient_prefabs 与 chef_id，旧存档可继续读取。目前的分支覆盖开始、完成和恢复，收获及锅内腐败另行实现。
 
 换肤的逻辑状态是实体 sprite json 的 skinId（建筑、墙、栅栏、植物、虫洞为 `PrefabInstance.sprite`，物品为 `ItemEntity.sprite`）。任何带 sprite 的实体经 `reskinTarget(view)` 成为 reskin 目标；施法前不等待皮肤资源，命中帧由 `reskinEntity()` 按 `reskin_tool.lua` 的 `spellCB` 重新计算 `GetNextSkin`、记入工具缓存并写入 sprite json。display 按声明加载并换上皮肤，保留实体根、组件、脚点和动画进度；实体自己的换肤后处理订阅该 skinId，保存读取 skinId.peek()。

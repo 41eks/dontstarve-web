@@ -2,8 +2,8 @@ import { findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
-import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
-import { BEEFALO_FEED_COOK_TIME, COOK_POT_DEFINITION, cookPotState } from '../../prefab/src/cook_pot';
+import { BEEFALO_FEED_COOK_TIME, cookPotState } from '../../prefab/src/cook_pot';
+import { managedBuildings } from './managedBuildings';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { findImage, loadBuild, smallHash } from '../src/animationAssets';
 import type { TransientSpriteAnimationController } from '../src/sprite';
@@ -25,7 +25,7 @@ it('cooks with source food layers, resumes saved progress and preserves the prod
   const world = { scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(),
     camera: new THREE.PerspectiveCamera(), renderer: { domElement: canvas } } as unknown as WorldContext;
   const changed = vi.fn();
-  const placement = new AnimatedBuildingPlacement(world, { cookpot: COOK_POT_DEFINITION }, () => true, changed);
+  const placement = managedBuildings(world, { onInteraction: changed });
   const model = await placement.spawnFromSave('cookpot', { id: 'pot:feed',
     transform: { position: [1, 0, 2], rotationY: 0 }, components: { building: { skinId: 'cookpot_candy' } } });
   const animation = prefabInstance(model)!.sprite as TransientSpriteAnimationController;
@@ -48,7 +48,7 @@ it('cooks with source food layers, resumes saved progress and preserves the prod
     ingredient_prefabs: ['twigs', 'red_cap', 'red_cap', 'red_cap'] });
   placement.dispose();
 
-  const restoredPlacement = new AnimatedBuildingPlacement(world, { cookpot: COOK_POT_DEFINITION }, () => true, changed);
+  const restoredPlacement = managedBuildings(world, { onInteraction: changed });
   const restored = await restoredPlacement.spawnFromSave('cookpot', saved);
   const restoredAnimation = prefabInstance(restored)!.sprite as TransientSpriteAnimationController;
   const restoredStewer = (findActionEntity(restored)?.components ?? prefabInstance(restored)!.components).stewer;
@@ -57,7 +57,7 @@ it('cooks with source food layers, resumes saved progress and preserves the prod
   // The display loads the pot's art; one-shot clips play out once it is drawn.
   await vi.waitFor(() => expect(prefabInstance(restored)!.sprite.loaded).toBe(true));
   restoredPlacement.update(1);
-  expect(reskinEntity(restoredPlacement.reskinTargets[0])).toBe(true);
+  expect(reskinEntity(restoredPlacement.placement.reskinTargets[0])).toBe(true);
   expect(skinSignal.peek()).toBe('cookpot_cauldron');
   expect((findActionEntity(restored)?.components ?? prefabInstance(restored)!.components).stewer).toBe(restoredStewer);
   expect(cookPotState(restored)?.remainingSeconds).toBeCloseTo(BEEFALO_FEED_COOK_TIME - 4);

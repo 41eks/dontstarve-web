@@ -1,5 +1,6 @@
-import { createSignal, readonlySignal } from '@dontstarve-web/signals';
+import { createSignal, readonlySignal, type GameTimeScheduler } from '@dontstarve-web/signals';
 import { BASE_COOK_TIME, CalculateRecipe, GetRecipe } from './cooking';
+import { ComponentTimer } from './timer';
 
 export interface StewerContainer {
   canbeopened: boolean;
@@ -50,13 +51,17 @@ export class Stewer {
   oncontinuecooking?: (inst: StewerInstance) => void;
   oncontinuedone?: (inst: StewerInstance) => void;
   onharvest?: (inst: StewerInstance) => void;
-  private remainingtime?: number;
+  /** self.task: DoTaskInTime(cooktime, dostew). Running means self.targettime is set. */
+  private readonly cookTask: ComponentTimer;
+  /** The task's whole duration: `end - now` can round above it, and a save rejects a time longer than its recipe's. */
+  private cooktime = 0;
   private readonly stopContainer: () => void;
   private removed = false;
   private readonly dropProduct?: (prefab: string, count?: number) => void;
 
-  constructor(inst: StewerInstance, dropProduct?: (prefab: string, count?: number) => void) {
+  constructor(inst: StewerInstance, scheduler: GameTimeScheduler, dropProduct?: (prefab: string, count?: number) => void) {
     this.inst = inst;
+    this.cookTask = new ComponentTimer(scheduler, () => this.dostew());
     this.dropProduct = dropProduct;
     inst.addTag('stewer');
     this.stopContainer = inst.components.container.subscribeLifecycle(() => this.refreshReady());
@@ -70,9 +75,9 @@ export class Stewer {
   }
 
   CanCook(): boolean { return !this.removed && this.inst.components.container.IsFull(); }
-  IsCooking(): boolean { return !this.done && this.remainingtime !== undefined; }
+  IsCooking(): boolean { return !this.done && this.cookTask.remainingSeconds !== undefined; }
   IsDone(): boolean { return this.done; }
-  GetTimeToCook(): number { return this.IsCooking() ? this.remainingtime! : 0; }
+  GetTimeToCook(): number { return this.IsCooking() ? Math.min(this.cookTask.remainingSeconds!, this.cooktime) : 0; }
   GetRecipeForProduct() { return this.product === undefined ? undefined : GetRecipe(this.inst.prefab, this.product); }
 
   /** stewer.lua:Harvest; the receiver gives the product to inventory or drops it. */
@@ -87,7 +92,7 @@ export class Stewer {
     }
     this.onharvest?.(this.inst);
     this.product = undefined;
-    this.remainingtime = undefined;
+    this.cookTask.stop();
     this.done = false;
     this.inst.removeTag('donecooking');
     this.inst.components.container.canbeopened = true;
@@ -95,7 +100,7 @@ export class Stewer {
   }
 
   StartCooking(doer?: { userid?: string }): boolean {
-    if (this.removed || this.remainingtime !== undefined) return false;
+    if (this.removed || this.cookTask.remainingSeconds !== undefined) return false;
     const container = this.inst.components.container;
     const names = container.GetAllItems().map(item => item.prefab);
     const recipe = CalculateRecipe(this.inst.prefab, names);
@@ -106,28 +111,38 @@ export class Stewer {
     this.inst.removeTag('donecooking');
     this.onstartcooking?.(this.inst);
     this.product = recipe[0];
-    this.remainingtime = BASE_COOK_TIME * recipe[1] * this.cooktimemult;
+    this.startCookTask(BASE_COOK_TIME * recipe[1] * this.cooktimemult);
     container.Close();
     container.DestroyContents();
     container.canbeopened = false;
     return true;
   }
 
-  LongUpdate(dt: number): void {
-    if (this.removed || !this.IsCooking() || !Number.isFinite(dt) || dt <= 0) return;
-    this.remainingtime = Math.max(0, this.remainingtime! - dt);
-    if (this.remainingtime > 0) return;
-    this.remainingtime = undefined;
+  private startCookTask(seconds: number): void {
+    this.cooktime = seconds;
+    this.cookTask.start(seconds);
+  }
+
+  private dostew(): void {
     this.ondonecooking?.(this.inst);
     this.done = true;
     this.inst.addTag('donecooking');
+  }
+
+  /** stewer.lua LongUpdate: time that passed outside the scheduler, such as a skipped stretch of the world. */
+  LongUpdate(dt: number): void {
+    if (this.removed || !this.IsCooking() || !Number.isFinite(dt) || dt <= 0) return;
+    const remaining = this.GetTimeToCook() - dt;
+    if (remaining > 0) { this.startCookTask(remaining); return; }
+    this.cookTask.stop();
+    this.dostew();
   }
 
   OnSave(): StewerSaveData {
     return {
       ...(this.product === undefined ? {} : { product: this.product }),
       ...(this.done ? { done: true } : {}),
-      ...(this.remainingtime === undefined ? {} : { remainingtime: this.remainingtime }),
+      ...(this.IsCooking() ? { remainingtime: this.GetTimeToCook() } : {}),
       ...(this.ingredient_prefabs === undefined ? {} : { ingredient_prefabs: [...this.ingredient_prefabs] }),
       ...(this.chef_id === undefined ? {} : { chef_id: this.chef_id }),
     };
@@ -139,7 +154,8 @@ export class Stewer {
     this.done = data.done ?? false;
     this.ingredient_prefabs = data.ingredient_prefabs ? [...data.ingredient_prefabs] : undefined;
     this.chef_id = data.chef_id;
-    this.remainingtime = this.done ? undefined : Math.max(0, data.remainingtime ?? 0);
+    if (this.done) this.cookTask.stop();
+    else this.startCookTask(Math.max(0, data.remainingtime ?? 0));
     this.inst.components.container.canbeopened = false;
     if (this.done) { this.inst.addTag('donecooking'); this.oncontinuedone?.(this.inst); }
     else this.oncontinuecooking?.(this.inst);
@@ -148,14 +164,14 @@ export class Stewer {
   OnRemoveFromEntity(): void {
     if (this.removed) return;
     this.removed = true;
-    this.remainingtime = undefined;
+    this.cookTask.stop();
     this.stopContainer();
     for (const tag of ['stewer', 'donecooking', 'readytocook']) this.inst.removeTag(tag);
   }
 
   /** stewer.lua StopCooking("fire") drops its product even if cooking is unfinished. */
   StopCooking(reason?: string): void {
-    this.remainingtime = undefined;
+    this.cookTask.stop();
     if (this.product && reason === 'fire') this.dropProduct?.(this.product);
     this.product = undefined;
     this.done = false;

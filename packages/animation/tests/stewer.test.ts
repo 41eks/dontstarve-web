@@ -1,11 +1,12 @@
 import { expect, it, vi } from 'vitest';
 import { InventoryStore, type InventoryItemSpec } from '../../inventory/src';
+import { GameTimeScheduler } from '../../signals/src';
 import { createBuildingContainer } from '../../prefab/src/containers';
 import { Stewer } from '../../componets/src/stewer';
 import { BASE_COOK_TIME } from '../../componets/src/cooking';
 import { performCookAction } from '../../stategraphs/src/cook';
 
-function createPot(dropProduct?: (prefab: string, count?: number) => void) {
+function createPot(dropProduct?: (prefab: string, count?: number) => void, startTime = 0) {
   const specs = Object.fromEntries(['twigs', 'red_cap', 'monstermeat', 'log'].map(id =>
     [id, { name: id, icon: `${id}.tex`, maxStack: 40 } satisfies InventoryItemSpec]));
   const inventory = new InventoryStore([], specs);
@@ -14,11 +15,12 @@ function createPot(dropProduct?: (prefab: string, count?: number) => void) {
   inventory.registerContainer(containerId, container);
   const tags = new Set<string>();
   const components = { container, stewer: undefined as Stewer | undefined };
+  const scheduler = new GameTimeScheduler(startTime);
   const stewer = new Stewer({ prefab: 'cookpot', components,
     getPosition: () => ({ x: 1, y: 0, z: 2 }),
-    addTag: tag => tags.add(tag), removeTag: tag => tags.delete(tag) }, dropProduct);
+    addTag: tag => tags.add(tag), removeTag: tag => tags.delete(tag) }, scheduler, dropProduct);
   components.stewer = stewer;
-  return { inventory, container, containerId, components, stewer, tags };
+  return { inventory, container, containerId, components, stewer, tags, scheduler };
 }
 
 it('COOK consumes the pot entities and derives another recipe, resuming the task without recreating ingredients', () => {
@@ -146,4 +148,50 @@ it('keeps world container contents out of the player state, restores around them
   expect(pot.inventory.getEntity(slot)).toBeNull();
   expect(entity!.isRemoved).toBe(true);
   pot.stewer.OnRemoveFromEntity();
+});
+
+it('finishes on the scheduler at its deadline, with no update between, and cancels the task when stopped or removed', () => {
+  const fill = (pot: ReturnType<typeof createPot>) => {
+    pot.inventory.applySlotChanges(Array.from({ length: 4 }, (_, index) => ({
+      slot: { containerId: pot.containerId, slotKey: String(index) }, itemId: 'twigs', delta: 1 })));
+    expect(pot.stewer.StartCooking()).toBe(true);
+    return pot.stewer.GetTimeToCook();
+  };
+  const pot = createPot(), done = vi.fn(), cooktime = fill(pot);
+  pot.stewer.ondonecooking = done;
+  pot.scheduler.advance(cooktime - 1);
+  expect(pot.stewer.GetTimeToCook()).toBeCloseTo(1);
+  expect(pot.stewer.IsCooking()).toBe(true);
+  expect(done).not.toHaveBeenCalled();
+  // One long frame crosses the deadline once.
+  pot.scheduler.advance(100);
+  expect(done).toHaveBeenCalledOnce();
+  expect(pot.stewer.IsDone()).toBe(true);
+  expect(pot.stewer.GetTimeToCook()).toBe(0);
+  expect(pot.tags.has('donecooking')).toBe(true);
+
+  const burnt = createPot(), burntDone = vi.fn();
+  fill(burnt);
+  burnt.stewer.ondonecooking = burntDone;
+  burnt.stewer.StopCooking('fire');
+  expect(burnt.stewer.IsCooking()).toBe(false);
+  burnt.scheduler.advance(100);
+  expect(burntDone).not.toHaveBeenCalled();
+
+  const removed = createPot(), removedDone = vi.fn();
+  fill(removed);
+  removed.stewer.ondonecooking = removedDone;
+  removed.stewer.OnRemoveFromEntity();
+  removed.scheduler.advance(100);
+  expect(removedDone).not.toHaveBeenCalled();
+});
+
+it('never reports more cook time than the recipe has, late in the world', () => {
+  // 0.1 + 20 - 0.1 rounds above 20 at these times; a save would reject that remaining time.
+  const startTime = [...Array(100000).keys()].map(i => i + .1).find(now => now + BASE_COOK_TIME * 2 - now > BASE_COOK_TIME * 2)!;
+  expect(startTime).toBeDefined();
+  const pot = createPot(undefined, startTime);
+  pot.stewer.OnLoad({ product: 'kabobs', remainingtime: BASE_COOK_TIME * 2 });
+  expect(pot.stewer.GetTimeToCook()).toBe(BASE_COOK_TIME * 2);
+  expect(pot.stewer.OnSave().remainingtime).toBe(BASE_COOK_TIME * 2);
 });

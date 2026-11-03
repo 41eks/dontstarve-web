@@ -1,3 +1,4 @@
+import { GameTimeScheduler } from '../../signals/src';
 import { prefabDisplay } from '@dontstarve-web/display';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
@@ -189,7 +190,7 @@ describe('DST building skins', () => {
     const canvas = new EventTarget();
     const world = {
       scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(),
-      camera: new THREE.PerspectiveCamera(), renderer: { domElement: canvas },
+      camera: new THREE.PerspectiveCamera(), renderer: { domElement: canvas }, scheduler: new GameTimeScheduler(),
     } as unknown as WorldContext;
     const skinId = recipeSkins[prefabId][0].id;
     const consume = vi.fn(() => true);
