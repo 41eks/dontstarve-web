@@ -14,7 +14,7 @@ export const landTurf = (rules: Partial<Record<keyof TurfMap, unknown>>) =>
 
 /** A player whose controller buffers DEPLOY through a locomotor that arrives when told. */
 export function deployActor(world: WorldContext, inventory: InventoryStore, map: DeployMap,
-  graph = new WilsonStateGraph({ playAnimation: () => 1, playSound() {}, stopSound() {}, setCasting() {}, onStateChanged() {} })) {
+  graph = new WilsonStateGraph({ playAnimation: () => 1, playSound() {}, stopSound() {}, onStateChanged() {} })) {
   let arrive = () => {};
   const locomotor = { destination: undefined, goToPoint: vi.fn(() => true), stop: vi.fn(),
     PushAction: vi.fn((_action: { target: { getPosition(): THREE.Vector3 } }, arrived: () => void) => { arrive = arrived; }) };

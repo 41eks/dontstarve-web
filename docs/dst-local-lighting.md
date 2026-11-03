@@ -249,9 +249,9 @@ LightWatcher 的 CPU 采样读取同一列表。提灯同样暂用 `K0 = log(fal
 资源解析和右键地面施法绑定。玩家控制器播放 `player_staff.zip` 的
 `staff_pre → staff`，按 `SGwilson.lua` 的第 53 帧提交召唤；施法期间停止移动，
 卸下或其他动作取消尚未提交的召唤，已经生成的矮星独立存在。
-临时施法光源（[`packages/prefab/src/staff_castinglight.ts`](../packages/prefab/src/staff_castinglight.ts)）按 `staff_castinglight.lua` 更新：延迟 0.33 秒，随后 1.9 秒内
-使用 `k = progress^5`，半径 `0.3 + 10k`、强度 `0.8 - 0.6k`、
-Falloff `0.9 - 0.4k`；颜色为 `(223,208,69)/255`，半径乘场景单位比例 3。
+临时施法光源（[`packages/prefab/src/staff_castinglight.ts`](../packages/prefab/src/staff_castinglight.ts)）按 `staff_castinglight.lua` 为每次施法生成一个不存档的 `FX` 实体，留在施法时玩家的位置、不跟随玩家。
+它按游戏时间逐帧更新：延迟 0.33 秒后，在 1.9 秒（57 帧）内使用 `k = (帧数 / 57)^5`，半径 `0.3 + 10k`、强度 `0.8 - 0.6k`、
+Falloff `0.9 - 0.4k`；颜色取法杖的 `fxcolour`，半径乘场景单位比例 3。结束时熄灭，2 帧后移除；第 53 帧前取消施法会立即移除。
 
 [`packages/prefab/src/stafflight.ts`](../packages/prefab/src/stafflight.ts) 使用
 `star_hot.zip` 的 bank/build `star_hot`，播放 `appear → idle_loop → disappear`。

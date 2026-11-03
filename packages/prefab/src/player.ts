@@ -27,7 +27,7 @@ import { actionEntity, disposeActionEntity } from './actionEntity';
 import { createPrefabEntity, prefabInstance, type PrefabInstance } from './prefabInstance';
 import { Builder, type BuilderWorld } from '../../componets/src/builder';
 import type { WilsonSoulHopHost } from '../../stategraphs/src/SGwilson';
-import { StaffCastingLight } from './staff_castinglight';
+import { STAFF_CASTINGLIGHT_ID, type StaffCastingLightInstance } from './staff_castinglight';
 import type { SlipperyFeet } from '../../componets/src/slipperyfeet';
 import type { ComponentUpdates } from '../../componets/src/componentUpdates';
 
@@ -145,7 +145,8 @@ export interface WilsonAnimationController {
   /** The equipped rod's component for SGwilson's fishing states. */
   bindFishing(fishing: WilsonFishingHost | undefined): void;
   /** SGwilson's amulet_rebirth state: the inventory, HUD and sleepers it reaches (its light is the controller's). */
-  bindRebirth(rebirth: Omit<WilsonRebirthHost, 'castLight'> | undefined): void;
+  bindRebirth(rebirth: WilsonRebirthHost | undefined): void;
+  bindSpawnPrefab(spawn: ((prefab: string, position: THREE.Vector3) => PrefabInstance | undefined) | undefined): void;
   /** AnimState:SetBank("ghost") + skinner ghost_skin + SetStateGraph("SGwilsonghost"); `loading` is inst.loading_ghost. */
   makeGhost(loading?: boolean): void;
   /** player_common_extensions.lua DoActualRez: the living bank and skin, SetStateGraph("SGwilson") and the source's rebirth state (portal_rez, or amulet_rebirth for an amulet). */
@@ -222,7 +223,8 @@ class WilsonController implements WilsonAnimationController {
   /** inst.AnimState: the player's own declaration, beneath the slots its equipped items declare. */
   readonly AnimState: AnimState;
   private handVisual?: ReturnType<typeof wornEquipmentLifecycle>;
-  private readonly castingLight: StaffCastingLight;
+  /** SpawnPrefab: the scene's registry, for what the player's states spawn. */
+  private spawnPrefab?: (prefab: string, position: THREE.Vector3) => PrefabInstance | undefined;
   private makeSound?: SoundHandle;
   private makeSoundActive = false;
   private shaveSound?: SoundHandle;
@@ -263,7 +265,6 @@ class WilsonController implements WilsonAnimationController {
     this.AnimState = new AnimState();
     instance.sprite.setAnimState(this.AnimState.json, this.equipmentAssets);
     for (const layer of ['ARM_carry', 'LANTERN_OVERLAY', 'HAT', 'HAIR_HAT', 'HEAD_HAT', 'HEAD_HAT_NOHELM', 'HEAD_HAT_HELM']) this.AnimState.Hide(layer);
-    this.castingLight = new StaffCastingLight(instance);
     this.hatAssets = new HatEquipmentAssets(assetBaseUrl);
 
     this.equipmentContext = { owner: instance, sprite: { sprite: instance.sprite, art: this.equipmentAssets }, assets: this.equipmentAssets, hats: this.hatAssets, lightParent: instance, sanityPercent };
@@ -324,9 +325,10 @@ class WilsonController implements WilsonAnimationController {
         this.makeSound?.stop(); this.makeSound = undefined;
         this.makeSoundActive = false;
       },
-      setCasting: (casting, colour) => {
-        if (casting) this.castingLight.start(colour);
-        else this.castingLight.stop();
+      castLight: (colour, duration, delay) => {
+        const light = this.spawnPrefab?.(STAFF_CASTINGLIGHT_ID, instance.position.clone()) as StaffCastingLightInstance | undefined;
+        light?.SetUp(colour, duration, delay);
+        return light;
       },
       setControllerEnabled: enabled => { instance.controllerEnabled = enabled; },
       stopMovement: () => instance.locomotor?.stop(),
@@ -385,9 +387,8 @@ class WilsonController implements WilsonAnimationController {
       { setHidden: (hidden: boolean) => sprite.setVisible(!hidden) });
   }
   bindDeath(death: WilsonDeathHost | undefined): void { this.deathHost = death; }
-  bindRebirth(rebirth: Omit<WilsonRebirthHost, 'castLight'> | undefined): void {
-    this.rebirthHost = rebirth && { ...rebirth, castLight: (colour, duration, delay) => this.castingLight.start(colour, duration, delay) };
-  }
+  bindRebirth(rebirth: WilsonRebirthHost | undefined): void { this.rebirthHost = rebirth; }
+  bindSpawnPrefab(spawn: ((prefab: string, position: THREE.Vector3) => PrefabInstance | undefined) | undefined): void { this.spawnPrefab = spawn; }
 
   bindSoulHop(host: Omit<WilsonSoulHopHost, 'setTint' | 'playSound'> | undefined): void {
     if (!host) {
@@ -517,7 +518,6 @@ class WilsonController implements WilsonAnimationController {
     const step = Math.max(0, Math.min(dt, 0.1));
     this.fxScheduler.advance(step);
     this.stategraph.update(step);
-    this.castingLight.update(step);
   }
 
   private selectAnimation(clip: WilsonAnimationClip): number {
@@ -556,7 +556,7 @@ class WilsonController implements WilsonAnimationController {
     this.stategraph.dispose();
     this.handVisual?.onunequip(); this.headVisual?.onunequip(); this.bodyVisual?.onunequip();
     this.cleanups.splice(0).forEach(stop => stop());
-    this.bookFx.dispose(); this.fxScheduler.dispose(); this.castingLight.dispose();
+    this.bookFx.dispose(); this.fxScheduler.dispose();
     this.makeSound?.stop(); this.shaveSound?.stop();
     for (const sound of this.namedSounds.values()) sound.stop();
     for (const sound of this.portalSounds) sound.stop();

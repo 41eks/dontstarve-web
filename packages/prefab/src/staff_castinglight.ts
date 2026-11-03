@@ -1,58 +1,67 @@
-import { spawnLightEntity } from './localLight';
-import type { PrefabInstance } from './prefabInstance';
-import { YELLOWSTAFF_COLOUR } from './staff';
-import { TILE_SIZE } from './tile';
+import { SpriteState, type PrefabDisplayGroup } from '@dontstarve-web/display';
+import type { TileStateQuery } from '@dontstarve-web/signals';
+import { ComponentTimer } from '../../componets/src/timer';
+import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import { PrefabEntityManager, PrefabInstance } from './prefabInstance';
+import { WORLD_SCALE } from './tile';
 
-/** staff_castinglight.lua's expanding light: a non-persistent FX light entity parented to the caster. */
-export class StaffCastingLight {
-  private readonly entity: ReturnType<typeof spawnLightEntity>;
-  private elapsed = 0;
-  private active = false;
-  private duration = 1.9;
-  private delay = 0.33;
-  private colour: readonly [number, number, number] = YELLOWSTAFF_COLOUR;
+export const STAFF_CASTINGLIGHT_ID = 'staff_castinglight';
+export const STAFF_CASTINGLIGHT_SMALL_ID = 'staff_castinglight_small';
+export type StaffCastingLightId = typeof STAFF_CASTINGLIGHT_ID | typeof STAFF_CASTINGLIGHT_SMALL_ID;
 
-  constructor(owner: PrefabInstance) {
-    this.entity = spawnLightEntity('staff_castinglight', owner);
+const FRAMES = 1 / 30;
+
+/** staff_castinglight.lua common_fn: a non-persistent FX entity with only a transform and a light; its caster does not carry it. */
+export class StaffCastingLightInstance extends PrefabInstance {
+  readonly is_small: boolean;
+  private readonly scheduler: GameTimeScheduler;
+  private readonly task: ComponentTimer;
+  private colour: readonly [number, number, number] = [1, 1, 1];
+  private _duration = 0;
+  private _value = 0;
+  private cancelRemoval?: () => void;
+
+  constructor(prefab: StaffCastingLightId, is_small: boolean, scheduler: GameTimeScheduler) {
+    super(prefab, new SpriteState({ name: '' }));
+    this.is_small = is_small;
+    this.scheduler = scheduler;
+    this.addTag('FX');
+    this.persists = false;
+    this.task = new ComponentTimer(scheduler, () => this.OnUpdate());
+    this.onRemove(() => { this.task.stop(); this.cancelRemoval?.(); });
   }
 
-  get instance(): PrefabInstance { return this.entity.instance; }
-
-  /** staff_castinglight.lua SetUp(colour, duration, delay); the staff's own cast waits .33 seconds for 1.9. */
-  start(colour: readonly [number, number, number] = YELLOWSTAFF_COLOUR, duration = 1.9, delay = 0.33): void {
+  /** SetUp(colour, duration, delay): DoPeriodicTask(FRAMES, OnUpdate, delay or 0), lit from now at its initial settings. */
+  SetUp(colour: readonly [number, number, number], duration: number, delay = 0): void {
     this.colour = colour;
-    this.duration = duration;
-    this.delay = delay;
-    this.elapsed = 0;
-    this.active = true;
-    this.refresh(0);
+    this._duration = Math.floor(duration / FRAMES + .5);
+    this.setLight(.3, .8, .9);
+    this.task.start(delay);
   }
 
-  update(dt: number): void {
-    if (!this.active) return;
-    this.elapsed += dt;
-    if (this.elapsed >= this.delay + this.duration) this.stop();
-    else this.refresh(Math.max(0, (this.elapsed - this.delay) / this.duration));
+  private OnUpdate(): void {
+    this._value += 1;
+    if (this._value < this._duration) {
+      const k = (this._value / this._duration) ** 5;
+      if (this.is_small) this.setLight(.3 + 4 * k, .8 - .7 * k, 1.1 + .3 * k);
+      else this.setLight(.3 + 10 * k, .8 - .6 * k, .9 - .4 * k);
+      this.task.start(FRAMES);
+    } else {
+      this.light.set(null);
+      this.cancelRemoval = this.scheduler.schedule(2 * FRAMES, () => this.remove());
+    }
   }
 
-  stop(): void {
-    this.active = false;
-    this.entity.instance.light.set(null);
+  private setLight(radius: number, intensity: number, falloff: number): void {
+    this.light.set({ radius: radius * WORLD_SCALE, intensity, falloff, colour: this.colour });
   }
+}
 
-  /** The caster is removed: the light entity goes with it. */
-  dispose(): void {
-    this.stop();
-    this.entity.remove();
-  }
-
-  private refresh(progress: number): void {
-    const k = progress ** 5;
-    this.entity.instance.light.set({
-      radius: (0.3 + 10 * k) * (TILE_SIZE / 4),
-      intensity: 0.8 - 0.6 * k,
-      falloff: 0.9 - 0.4 * k,
-      colour: this.colour,
-    });
-  }
+/** The Prefab table staff_castinglight.lua returns; neither prefab has assets. */
+export function createStaffCastingLightManager(displays: PrefabDisplayGroup,
+  world: { readonly scheduler: GameTimeScheduler; readonly tickingarea?: TileStateQuery }) {
+  return new PrefabEntityManager<StaffCastingLightId, StaffCastingLightInstance>(displays, undefined, world, {
+    [STAFF_CASTINGLIGHT_ID]: { fn: () => new StaffCastingLightInstance(STAFF_CASTINGLIGHT_ID, false, world.scheduler) },
+    [STAFF_CASTINGLIGHT_SMALL_ID]: { fn: () => new StaffCastingLightInstance(STAFF_CASTINGLIGHT_SMALL_ID, true, world.scheduler) },
+  });
 }

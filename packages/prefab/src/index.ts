@@ -156,7 +156,7 @@ export { GroundPrefabRegistry } from './groundPrefabRegistry';
 export type { GroundItemDefinition, GroundItemVisual, GroundItemFactory, GroundPrefabContext, GroundPrefabOptions } from './groundPrefab';
 export { YELLOWSTAFF_ID, YELLOWSTAFF_COLOUR, YELLOWSTAFF_CAST_TIME, OPALSTAFF_ID, OPALSTAFF_COLOUR, isLightStaff, staffVisual, yellowstaffVisual, getLightStaffController, LIGHT_STAFF_USES, LIGHT_STAFF_SANITY_COST, type LightStaffWorld, type LightStaffId,
   GREENSTAFF_USES, GREENSTAFF_COLOUR, GreenStaffController, getGreenStaffController, deconstructionLoot, type GreenStaffWorld, type DeconstructionTarget } from './staff';
-export { StaffCastingLight } from './staff_castinglight';
+export { createStaffCastingLightManager, StaffCastingLightInstance, STAFF_CASTINGLIGHT_ID, STAFF_CASTINGLIGHT_SMALL_ID, type StaffCastingLightId } from './staff_castinglight';
 export { TRIDENT_ID, TRIDENT_DAMAGE, TRIDENT_USES, TRIDENT_STRUM_SOUND, TridentController, getTridentController, tridentVisual, type TridentWorld } from './trident';
 export { DWARF_STAR_ID, DWARF_STAR_DURATION, POLAR_LIGHT_ID, POLAR_LIGHT_DURATION,
   dwarfStarLight, polarLight, createStaffLightManager, StaffLightInstance, type StaffLightId, type StaffLightWorld } from './stafflight';

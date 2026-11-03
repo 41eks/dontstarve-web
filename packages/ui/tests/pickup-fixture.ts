@@ -8,7 +8,7 @@ import { createEquipmentExistenceState } from '../../signals/src';
 /** Standalone art fixtures share the production input path with a deterministic animation clock. */
 export function fixturePickup(scene: THREE.Scene, camera: THREE.Camera, renderer: THREE.WebGLRenderer,
   player = new THREE.Group(), inventory = createInventoryStore()) {
-  const graph = new WilsonStateGraph({ playAnimation: () => .25, playSound() {}, setCasting() {}, onStateChanged() {} });
+  const graph = new WilsonStateGraph({ playAnimation: () => .25, playSound() {}, onStateChanged() {} });
   const animation = { stategraph: graph };
   // The player steps straight onto the target, so locomotor:PushAction buffers at once.
   const locomotor: PlayerLocomotor = { destination: undefined, stop() {}, goToPoint(point) { player.position.copy(point); return true; },

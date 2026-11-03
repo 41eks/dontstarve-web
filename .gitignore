@@ -26,3 +26,5 @@ dist-ssr
 Trace-*.json.gz
 trace_with_heap_dump.json.gz
 TODO.md
+__pycache__/
+*.pyc

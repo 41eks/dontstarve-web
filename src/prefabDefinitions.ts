@@ -418,6 +418,7 @@ export const PREFAB_DEFINITIONS = {
   snow: definePrefabs([], empty),
   worldFx: definePrefabs([], empty, ['wortox_portal_jumpin_fx', 'wortox_portal_jumpout_fx', 'halloween_moonpuff']),
   staffProjectiles: definePrefabs([], empty),
+  staffCastingLights: definePrefabs([], empty),
   oceanWaves: definePrefabs([], empty),
 } as const;
 
