@@ -1,5 +1,6 @@
 import type { InventoryItemSignals, InventoryItemSpec, InventoryStack, SlotAddress } from './types';
 import { batch, createMemo, createSignal, readonlySignal } from '@dontstarve-web/signals';
+import { newItemEntityId } from './entityId';
 import { StorageSlot } from './slots';
 import { Container } from '../../componets/src/container';
 import { BACKPACK_SLOT_COUNT } from './addresses';
@@ -15,14 +16,7 @@ import { Temperature, type TemperatureWorld, type TemperatureSaveData } from '..
 import type { Heater } from '../../componets/src/heater';
 import { SpriteState } from '@dontstarve-web/display/spriteState';
 
-let sequence = 0;
-export function newItemEntityId(): string {
-  if (typeof globalThis.crypto?.getRandomValues === 'function') {
-    const bytes = globalThis.crypto.getRandomValues(new Uint8Array(16));
-    return `e_${Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('')}`;
-  }
-  return `e_${Date.now().toString(36)}_${++sequence}_${Math.random().toString(36).slice(2)}`;
-}
+export { newItemEntityId };
 
 export interface ItemRuntimeComponent {
   flush?(): void;

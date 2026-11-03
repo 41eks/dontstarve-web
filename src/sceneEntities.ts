@@ -29,7 +29,7 @@ import { GROUND_ART_DEFINITIONS, GROUND_ITEM_DISPLAY_SPECS } from '@dontstarve-w
 import { FarmPlowPlacement, FARM_PLOW_ID } from '@dontstarve-web/prefab/farm_plow';
 import { playerStats } from './playerStats';
 import { PrefabDisplayGroup } from '@dontstarve-web/display';
-import { DwarfStarManager, DWARF_STAR_ID, POLAR_LIGHT_ID } from '@dontstarve-web/prefab/stafflight';
+import { createStaffLightManager, DWARF_STAR_ID, POLAR_LIGHT_ID } from '@dontstarve-web/prefab/stafflight';
 import { BulbPlantManager } from '@dontstarve-web/prefab/bulb_plant';
 import { RockManager } from '@dontstarve-web/prefab/rocks';
 import { StaffProjectileManager } from '@dontstarve-web/prefab/staff_projectile';
@@ -165,8 +165,7 @@ const MANAGER_DEFINITIONS = {
   'rain': PREFAB_DEFINITIONS.rain,
   'snow': PREFAB_DEFINITIONS.snow,
   'ocean_waves': PREFAB_DEFINITIONS.oceanWaves,
-  'stafflight': PREFAB_DEFINITIONS.dwarfStars,
-  'staffcoldlight': PREFAB_DEFINITIONS.polarLights,
+  'stafflight': PREFAB_DEFINITIONS.staffLights,
   'pond': PREFAB_DEFINITIONS.ponds,
 } as const;
 
@@ -191,8 +190,7 @@ const SCENE_LIFECYCLE_ORDER = [
   PREFAB_DEFINITIONS.lightflierFlowers,
   PREFAB_DEFINITIONS.groundItems,
   PREFAB_DEFINITIONS.flowers,
-  PREFAB_DEFINITIONS.dwarfStars,
-  PREFAB_DEFINITIONS.polarLights,
+  PREFAB_DEFINITIONS.staffLights,
   PREFAB_DEFINITIONS.bulbPlants,
   PREFAB_DEFINITIONS.molehills,
   PREFAB_DEFINITIONS.beefalos,
@@ -309,7 +307,6 @@ export async function createSceneEntities(
     'snow': ReturnType<typeof registerSnow>;
     'ocean_waves': ReturnType<typeof registerOceanWaves>;
     'stafflight': ReturnType<typeof registerStaffLights>;
-    'staffcoldlight': ReturnType<typeof registerStaffLights>;
     'pond': ReturnType<typeof registerPonds>;
   };
   // Filled in dependency order below; deferred callbacks run after scene setup.
@@ -333,8 +330,7 @@ export async function createSceneEntities(
   Managers['lightflier_flower'] = registerLightFlierFlowers(registry, 'lightflier_flower', worldState);
   Managers['ground_item'] = registerGroundItems(registry, 'ground_item', worldState);
 
-  Managers['stafflight'] = registerStaffLights(registry, 'stafflight', worldState);
-  Managers['staffcoldlight'] = registerStaffLights(registry, 'staffcoldlight', worldState);
+  Managers['stafflight'] = registerStaffLights(registry, worldState);
   Managers['bulb_plant'] = registerBulbPlants(registry, 'bulb_plant', worldState);
   Managers['stalagmite'] = registerStalagmites(registry, worldState);
   Managers['rocks'] = registerRocks(registry, 'rocks', worldState);
@@ -420,8 +416,6 @@ export async function createSceneEntities(
     deciduousForest: Managers['deciduoustree'],
     buildingPlacement: Managers['buildings'],
     groundItems: Managers['ground_item'],
-    dwarfStars: Managers['stafflight'],
-    polarLights: Managers['staffcoldlight'],
     flowerPlanting: Managers['flower'],
     bulbPlants: Managers['bulb_plant'],
     beefalos: Managers['beefalo'],
@@ -1629,16 +1623,15 @@ export async function createSceneEntities(
     return oceanWaves;
   }
 
-  function registerStaffLights(registry: EntityRegistry, prefabId: typeof DWARF_STAR_ID | typeof POLAR_LIGHT_ID, worldState: SceneWorldState) {
+  function registerStaffLights(registry: EntityRegistry, worldState: SceneWorldState) {
     const displays = new PrefabDisplayGroup(scene);
-    const lights = new DwarfStarManager(displays, `${import.meta.env.BASE_URL}dst/data/anim`,
-      { scheduler: scheduler ?? worldState.scheduler, tickingarea: worldState.tickingarea, getWatchWorldContent: worldState.getWatchWorldContent }, prefabId);
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
-      restore: (_, record) => lights.spawn(new THREE.Vector3(...record.transform.position), {
-        id: record.id, remainingSeconds: record.components.timer!.remainingSeconds,
-      }),
-      debugSpawn: () => lights.spawn(player.position.clone()),
-      exportRecords: () => lights.exportRecords().map((record) => ({ prefabId, record })),
+    const lights = createStaffLightManager(displays, `${import.meta.env.BASE_URL}dst/data/anim`,
+      { scheduler: scheduler ?? worldState.scheduler, tickingarea: worldState.tickingarea, getWatchWorldContent: worldState.getWatchWorldContent });
+    registry.register(MANAGER_DEFINITIONS['stafflight'], {
+      restore: (prefabId, record) => lights.spawn(prefabId, new THREE.Vector3(...record.transform.position), record),
+      debugSpawn: prefabId => lights.spawn(prefabId, player.position.clone()),
+      spawnPrefab: { [DWARF_STAR_ID]: position => lights.spawn(DWARF_STAR_ID, position), [POLAR_LIGHT_ID]: position => lights.spawn(POLAR_LIGHT_ID, position) },
+      exportRecords: () => lights.exportRecords(),
       update: (dt, quaternion) => lights.update(dt, quaternion),
       renderEntities: () => lights.renderEntities,
       dispose: () => { lights.dispose(); displays.dispose(); },

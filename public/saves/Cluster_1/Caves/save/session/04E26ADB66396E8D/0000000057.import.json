@@ -523,6 +523,8 @@
     "grotto_waterfall_small1",
     "grotto_waterfall_small2",
     "pond",
+    "stafflight",
+    "staffcoldlight",
     "lava_pond",
     "treasurechest",
     "pandoraschest",
@@ -941,6 +943,14 @@
     "pond": {
       "source": 4,
       "imported": 4
+    },
+    "stafflight": {
+      "source": 0,
+      "imported": 0
+    },
+    "staffcoldlight": {
+      "source": 6,
+      "imported": 6
     },
     "lava_pond": {
       "source": 0,
@@ -71804,6 +71814,78 @@
         -469.22
       ],
       "sourceNode": "GreenForest:5:GreenMushPonds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_staffcoldlight_id_135659",
+      "prefab": "staffcoldlight",
+      "sourceIndex": 1,
+      "sourceId": 135659,
+      "sourcePosition": [
+        419.805,
+        0,
+        544.307
+      ],
+      "sourceNode": "CentipedeCaveTask:4:RockTreeRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_staffcoldlight_id_135749",
+      "prefab": "staffcoldlight",
+      "sourceIndex": 2,
+      "sourceId": 135749,
+      "sourcePosition": [
+        422.228,
+        0,
+        557.598
+      ],
+      "sourceNode": "CentipedeCaveTask:4:RockTreeRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_staffcoldlight_id_130198",
+      "prefab": "staffcoldlight",
+      "sourceIndex": 3,
+      "sourceId": 130198,
+      "sourcePosition": [
+        395.613,
+        0,
+        503.106
+      ],
+      "sourceNode": "CentipedeCaveTask:5:RockTreeRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_staffcoldlight_id_126537",
+      "prefab": "staffcoldlight",
+      "sourceIndex": 4,
+      "sourceId": 126537,
+      "sourcePosition": [
+        277.676,
+        0,
+        442.826
+      ],
+      "sourceNode": "CentipedeCaveTask:8:VentsRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_staffcoldlight_id_137844",
+      "prefab": "staffcoldlight",
+      "sourceIndex": 5,
+      "sourceId": 137844,
+      "sourcePosition": [
+        440.915,
+        0,
+        545.233
+      ],
+      "sourceNode": "CentipedeCaveTask:4:RockTreeRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_staffcoldlight_id_134712",
+      "prefab": "staffcoldlight",
+      "sourceIndex": 6,
+      "sourceId": 134712,
+      "sourcePosition": [
+        425.671,
+        0,
+        549.868
+      ],
+      "sourceNode": "CentipedeCaveTask:4:RockTreeRoom"
     },
     {
       "id": "dst_04E26ADB66396E8D_treasurechest_id_102396",

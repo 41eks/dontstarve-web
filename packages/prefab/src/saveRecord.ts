@@ -18,6 +18,7 @@ export interface PlacementSaveRecord {
     sculptingtable?: { itemname: string };
     birdcage?: import('./birdcage').BirdcageSaveStateData;
     workable?: { workleft: number; maxwork: number };
+    timer?: import('../../componets/src/timer').NamedTimerSave;
     finiteuses?: { uses: number };
     moonbase?: import('./moonbase').MoonbaseSaveState;
     lightningrod?: import('./lightning_rod').LightningRodSaveState;

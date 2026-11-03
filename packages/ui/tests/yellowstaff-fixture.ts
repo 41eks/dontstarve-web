@@ -8,7 +8,7 @@ import type { PrefabDisplay } from '../../display/src';
 import { GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { getLightStaffController, type LightStaffId } from '../../prefab/src/staff';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
-import { DwarfStarManager, DWARF_STAR_DURATION, POLAR_LIGHT_DURATION } from '../../prefab/src/stafflight';
+import { createStaffLightManager, DWARF_STAR_DURATION, POLAR_LIGHT_DURATION } from '../../prefab/src/stafflight';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { PrewarmSounds } from '../../prefab/src/sound';
@@ -86,7 +86,8 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   // As the scene wires it: the display group is the application's, released after its manager.
   const starDisplays = new PrefabDisplayGroup(scene);
   const starScheduler = new GameTimeScheduler();
-  const stars = new DwarfStarManager(starDisplays, '/dst/data/anim', { scheduler: starScheduler }, itemId === 'opalstaff' ? 'staffcoldlight' : 'stafflight');
+  const prefabId = itemId === 'opalstaff' ? 'staffcoldlight' : 'stafflight';
+  const stars = createStaffLightManager(starDisplays, '/dst/data/anim', { scheduler: starScheduler });
   const advanceStars = (dt: number) => { starScheduler.advance(dt); stars.update(dt, camera.quaternion); };
   const equipped = inventory.handEquipmentExistenceState;
   const entity = inventory.getEntity(equipmentSlotAddress('hand'))!;
@@ -95,7 +96,7 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   const staff = getLightStaffController(entity, {
     map: { isAboveGroundAtPoint: point => Math.abs(point.x) <= 130 && Math.abs(point.z) <= 130,
       isOceanAtPoint: () => false, isGroundTargetBlocked: () => false },
-    spawnPrefab: (_prefab, point) => { summoned.push(stars.spawn(point)); },
+    spawnPrefab: (_prefab, point) => { summoned.push(stars.spawn(prefabId, point)); },
   });
   staff.onequip();
   let stops = 0, sanity = 100;
@@ -136,13 +137,13 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   await Promise.all(scene.children.filter(child => summoned.includes(prefabInstance(child) as PrefabInstance))
     .map(model => (prefabDisplay(model) as PrefabDisplay).artLoaded()));
   await settle();
-  const record = stars.exportRecords()[0];
+  const { record } = stars.exportRecords()[0];
   const afterCommit = stars.exportRecords().length;
   const template = deserializeSave(await (await fetch('/saves/initial-world.json')).text(), SAVE_CATALOG);
   let saveJson = '';
   const savedCommand = await executeDebugCommand('c_save()', inventory, undefined, () => {
     saveJson = serializeSave(template, {
-      entities: { ...template.world.entities, [stars.prefabId]: stars.exportRecords() },
+      entities: { ...template.world.entities, [prefabId]: stars.exportRecords().map(entry => entry.record) },
       playerTransform: { position: [0, 0, 0], rotationY: 0 }, elapsedSeconds: 0,
       inventory: inventory.exportState(), playerStats: { health: 150, hunger: 105, sanity },
     }, SAVE_CATALOG);
@@ -158,12 +159,10 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
     addresses.some(address => address.containerId === savedAddress.containerId && address.slotKey === savedAddress.slotKey)) }, SAVE_CATALOG.recipes);
   const savedStaff = entity.snapshot();
   const restoredStaff = restoredInventory.getEntity(equipmentSlotAddress('hand'))!.snapshot();
-  const restoredStars = new DwarfStarManager(new PrefabDisplayGroup(new THREE.Scene()), '/dst/data/anim', { scheduler: new GameTimeScheduler() }, stars.prefabId);
-  const starSave = saved.world.entities[stars.prefabId][0];
-  await restoredStars.spawn(new THREE.Vector3(...starSave.transform.position), {
-    id: starSave.id, remainingSeconds: starSave.components.timer!.remainingSeconds,
-  });
-  const restoredStar = restoredStars.exportRecords()[0];
+  const restoredStars = createStaffLightManager(new PrefabDisplayGroup(new THREE.Scene()), '/dst/data/anim', { scheduler: new GameTimeScheduler() });
+  const starSave = saved.world.entities[prefabId][0];
+  restoredStars.spawn(prefabId, new THREE.Vector3(...starSave.transform.position), starSave);
+  const restoredStar = restoredStars.exportRecords()[0].record;
   restoredStars.dispose(); restoredInventory.dispose();
   tick(60);
   // The render entry is the star's own model; its display holds the drawn sprite's merged mesh.
@@ -192,21 +191,21 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   advanceStars(0.05);
   const fixedPosition = star.position.distanceTo(new THREE.Vector3(...record.transform.position)) < 0.000001;
 
-  const restored = stars.spawn(new THREE.Vector3(-40, 0, 0), { id: 'e_restored_star', remainingSeconds: 0.5 });
+  const restored = stars.spawn(prefabId, new THREE.Vector3(-40, 0, 0), { id: 'e_restored_star', components: { timer: { timers: { extinguish: { timeleft: 0.5, paused: false, initial_time: duration } } } } });
   advanceStars(0.1);
   const restoredLit = !!restored.light.peek();
   advanceStars(0.5);
-  const expiredNotSaved = !stars.exportRecords().some((entry) => entry.id === 'e_restored_star');
+  const expiredNotSaved = !stars.exportRecords().some(({ record: entry }) => entry.id === 'e_restored_star');
   advanceStars(1);
   const expiredRemoved = restored.isRemoved;
   const survivor = stars.exportRecords().length;
-  const lifetimeStar = stars.spawn(new THREE.Vector3(-70, 0, 0));
+  const lifetimeStar = stars.spawn(prefabId, new THREE.Vector3(-70, 0, 0));
   advanceStars(duration - 1);
   const survivesUntilExpiry = lifetimeStar.status.peek() === 'active' && !!lifetimeStar.light.peek()
-    && stars.exportRecords().some((entry) => entry.id === lifetimeStar.entityId
-      && Math.abs(entry.components.timer.remainingSeconds - 1) < 0.000001);
+    && stars.exportRecords().some(({ record: entry }) => entry.id === lifetimeStar.entityId
+      && Math.abs(entry.components.timer!.timers.extinguish.timeleft - 1) < 0.000001);
   advanceStars(1);
-  const expiresAtLifetime = !stars.exportRecords().some((entry) => entry.id === lifetimeStar.entityId);
+  const expiresAtLifetime = !stars.exportRecords().some(({ record: entry }) => entry.id === lifetimeStar.entityId);
   advanceStars(1);
   const lifetimeRemoved = lifetimeStar.isRemoved;
   casting.dispose();
@@ -217,7 +216,7 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   return { failures, given, transferred, prefabId: star.name, colour: source.colour,
     savedCommand, savedStaff, restoredStaff, starSave, restoredStar, savedSanity: saved.players.local.stats!.sanity,
     skins: skins.length - 1, unlitHand, ignoredLeft, busy, beforeCommit, afterCommit,
-    position: record.transform.position, remainingSeconds: record.components.timer.remainingSeconds,
+    position: record.transform.position, remainingSeconds: record.components.timer!.timers.extinguish.timeleft,
     fixedPosition, survivesUntilExpiry, expiresAtLifetime, lifetimeRemoved,
     stops, sanity, remainingUses: entity.components.finiteuses.remaining, appeared, baseline, bright, far,
     radius: source.radius, cancelled, noCastingLight, ignoredUnequipped, restoredLit,

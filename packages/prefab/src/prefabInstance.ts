@@ -1,9 +1,9 @@
 import { MiniMapState } from '../../map/src/minimapState';
 import { watchMiniMapEntity } from '../../map/src/minimapEntities';
 import type * as CANNON from 'cannon-es';
-import type { Object3D, Vector3, Vector3Like } from 'three';
-import { createSignal, EventEmitter, readonlySignal, type ReadonlySignal } from '@dontstarve-web/signals';
-import { LightState, PrefabDisplay, SpriteState, type ArchiveSpriteCommands, type ArchiveSpriteSource, type LoadedSpriteSource, type PrefabDisplayOptions, type PrefabStatus, type SpriteSource } from '@dontstarve-web/display';
+import type { Object3D, Quaternion, Vector3, Vector3Like } from 'three';
+import { createSignal, EventEmitter, readonlySignal, type ReadonlySignal, type TileStateQuery } from '@dontstarve-web/signals';
+import { LightState, PrefabDisplay, SpriteResources, SpriteState, type ArchiveSpriteCommands, type PrefabDisplayGroup, type ArchiveSpriteSource, type LoadedSpriteSource, type PrefabDisplayOptions, type PrefabStatus, type SpriteSource } from '@dontstarve-web/display';
 import { bindPhysics, type PhysicsBinding } from '../../componets/src/physicsBinding';
 import { PhysicsState } from '../../componets/src/physicsState';
 import type { TileTracker } from '../../componets/src/tileManager';
@@ -11,6 +11,9 @@ import type { Brain } from '../../brains/src/brain';
 import type { StateGraphInstance } from '../../stategraphs/src/stategraph';
 import type { ComponentActionEntity } from '../../stategraphs/src/componentactions';
 import type { PlacementSaveRecord } from './saveRecord';
+import { newItemEntityId } from '../../inventory/src/entityId';
+import { actionEntity } from './actionEntity';
+import { watchTileActivity } from './tileActivity';
 import { WORLD_SCALE } from './tile';
 import { refreshMouseTarget } from './mouseTargets';
 import { Transform, type ReadonlyVector3 } from './transform';
@@ -69,6 +72,22 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   OnSave?(inst: PrefabInstance, data: PlacementSaveRecord['components']): void;
   /** inst.OnLoad(inst, data): the prefab restores its own state from the record's components. */
   OnLoad?(inst: PrefabInstance, data: PlacementSaveRecord['components']): void;
+  /** EntityScript:GetPersistData: each component's OnSave under its name, then inst.OnSave. */
+  GetPersistData(): PlacementSaveRecord['components'] {
+    const data: Record<string, unknown> = {};
+    for (const [name, component] of Object.entries(this.components) as [string, { OnSave?(): unknown } | undefined][]) {
+      const saved = component?.OnSave?.();
+      if (saved && typeof saved === 'object' && Object.keys(saved).length) data[name] = saved;
+    }
+    this.OnSave?.(this as unknown as PrefabInstance, data);
+    return data;
+  }
+  /** EntityScript:SetPersistData: each saved component's OnLoad, then inst.OnLoad. */
+  SetPersistData(data: PlacementSaveRecord['components']): void {
+    const components = this.components as Record<string, { OnLoad?(saved: unknown): void } | undefined>;
+    for (const [name, saved] of Object.entries(data)) components[name]?.OnLoad?.(saved);
+    this.OnLoad?.(this as unknown as PrefabInstance, data);
+  }
   private readonly removedState = createSignal(false);
   readonly removal: ReadonlySignal<boolean> = readonlySignal(this.removedState);
   /** inst.Light: the light the entity declares; its display lists it while the entity is active. */
@@ -284,4 +303,80 @@ export function createEmptyEntity<Instance extends PrefabInstance<SpriteState, o
   const display = new PrefabDisplay({ root: instance.transform.model, name: prefab, empty: true, status: instance.status, parentStatus, sprite: instance.sprite, light: instance.light });
   bindInstance(display.model, instance);
   return { instance, display };
+}
+
+/** Prefab(name, fn, assets): how one source prefab is built and which art its display declares. */
+export interface PrefabEntityDefinition<Instance extends PrefabInstance> {
+  fn(): Instance;
+  assets: Parameters<SpriteResources['archive']>[0];
+  /** Runs once the entity has its position and saved state, for what the source starts from there. */
+  onSpawned?(instance: Instance): void;
+}
+
+/**
+ * SpawnPrefab and the save loop's walk over Ents for the prefabs one module returns: the collection, the shared textures
+ * and each entity's display, tile activity and save record. What a prefab is stays in its `fn` and its components.
+ * The entities stand on the ground: a position's height is dropped and rotation is not saved.
+ */
+export class PrefabEntityManager<Id extends string, Instance extends PrefabInstance> {
+  private readonly resources: SpriteResources;
+  private readonly entities = new Set<Instance>();
+  private disposed = false;
+  private readonly displays: PrefabDisplayGroup;
+  private readonly tickingarea?: TileStateQuery;
+  private readonly prefabs: Readonly<Record<Id, PrefabEntityDefinition<Instance>>>;
+
+  /** `displays` is the display-layer owner of the entities' scene membership, injected and disposed by the application. */
+  constructor(displays: PrefabDisplayGroup, animationBaseUrl: string, world: { readonly tickingarea?: TileStateQuery },
+    prefabs: Readonly<Record<Id, PrefabEntityDefinition<Instance>>>) {
+    this.displays = displays;
+    this.resources = new SpriteResources(animationBaseUrl);
+    this.tickingarea = world.tickingarea;
+    this.prefabs = prefabs;
+  }
+
+  /** SpawnPrefab, then SpawnSaveRecord's SetPosition and SetPersistData: the entity exists now and its display loads the art. */
+  spawn(prefabId: Id, position: Vector3, saved?: Pick<PlacementSaveRecord, 'id' | 'components'>): Instance {
+    if (this.disposed) throw new Error(`Cannot spawn ${prefabId}: its manager has been disposed`);
+    if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError(`Invalid ${prefabId} position`);
+    const { fn, assets, onSpawned } = this.prefabs[prefabId], instance = fn();
+    // A shared archive holds a first one-shot clip while its art loads, so a new entity is drawn from its first frame.
+    const display = this.displays.add({ root: instance.transform.model, name: prefabId, status: instance.status, sprite: instance.sprite, light: instance.light,
+      archive: this.resources.archive(assets) });
+    bindInstance(display.model, instance);
+    instance.setPosition(position.x, 0, position.z);
+    instance.entityId = saved?.id ?? newItemEntityId();
+    if (saved) instance.SetPersistData(saved.components);
+    onSpawned?.(instance);
+    actionEntity(display.model, prefabId);
+    this.entities.add(instance);
+    const stopActivity = watchTileActivity(display.model, this.tickingarea, active => instance.setActive(active));
+    instance.onRemove(() => { stopActivity(); this.entities.delete(instance); });
+    return instance;
+  }
+
+  /** The awake entities' displays, as the display group lists those in the scene. */
+  get renderEntities() { return this.displays.renderEntities; }
+
+  /** The display group advances the awake entities' clips; timers and tasks run on the world's scheduler. */
+  update(dt: number, cameraQuaternion: Quaternion): void {
+    if (!this.disposed) this.displays.update(dt, cameraQuaternion);
+  }
+
+  /** The save loop's `persists` check and GetSaveRecord. */
+  exportRecords(): { prefabId: Id; record: PlacementSaveRecord }[] {
+    return [...this.entities].filter(entity => entity.persists).map(entity => ({ prefabId: entity.prefab as Id, record: {
+      id: String(entity.entityId),
+      transform: { position: [entity.position.x, 0, entity.position.z], rotationY: 0 },
+      components: entity.GetPersistData(),
+    } }));
+  }
+
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    for (const entity of [...this.entities]) entity.remove();
+    // Every entity's display is released above, before the shared resources.
+    this.resources.dispose();
+  }
 }

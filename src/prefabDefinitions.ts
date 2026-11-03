@@ -8,7 +8,7 @@ import { BANANAJUICE_ID, MUSHROOM_ITEM_IDS } from '@dontstarve-web/prefab/food';
 import { BIRD_IDS } from '@dontstarve-web/prefab/birds';
 import { VEGGIE_ITEM_IDS } from '@dontstarve-web/prefab/veggies';
 import { FARM_PLOW_ID, FARM_PLOW_ITEM_ID, FARM_DECOR_IDS, PLANTED_SEED_IDS } from '@dontstarve-web/prefab/farm_plow';
-import { DWARF_STAR_DURATION, POLAR_LIGHT_DURATION, POLAR_LIGHT_ID } from '@dontstarve-web/prefab/stafflight';
+import { DWARF_STAR_ID, POLAR_LIGHT_ID } from '@dontstarve-web/prefab/stafflight';
 import { BULB_PLANT_PREFABS, BULB_PLANT_VARIANTS } from '@dontstarve-web/prefab/bulb_plant';
 import { ROCK_ENTITY_IDS, rockArchives } from '@dontstarve-web/prefab/rocks';
 import { MARBLESHRUB_ID, MARBLESHRUB_SPAWN_IDS, MARBLESHRUB_MAX_GROW_TIME } from '@dontstarve-web/prefab/marbleshrub';
@@ -321,8 +321,7 @@ export const PREFAB_DEFINITIONS = {
   groundItems: definePrefabs(['ground_item'], componentParser({ keys: ['stack', 'phonograph', 'torch', 'lantern'] }),
     [...new Set([...GROUND_ART_SPAWN_IDS, ROCK_AVOCADO_FRUIT_ID, ...TURF_ITEM_IDS, 'backpack', 'armorsnurtleshell', 'amulet', 'fireflies', 'lightflier', ...BIRD_IDS, 'bird_egg', 'rottenegg', 'smallmeat', 'pondfish', HEATROCK_ID, BERNIE_ITEM_ID, FARM_PLOW_ITEM_ID, 'torch', 'lantern', 'lightbulb', 'phonograph', 'record', 'seeds', ...VEGGIE_ITEM_IDS, 'meatballs', BANANAJUICE_ID, 'bananapop', ...MUSHROOM_ITEM_IDS, 'spoiled_food', 'farm_hoe', 'golden_farm_hoe', 'shovel', 'goldenshovel', 'pickaxe', 'goldenpickaxe', 'nightsword', 'dreadstone', 'wagpunk_bits', 'cutstone', 'marble', 'marblebean', 'moonrocknugget', 'moonglass', 'hammer', 'axe', 'goldenaxe', 'moonglassaxe', 'fishingrod', 'moon_tree_blossom', 'cactus_flower', 'foliage', 'beardhair', 'cookingrecipecard', 'scrapbook_page', 'blueprint', ...TRINKET_IDS, 'pinecone', 'acorn', 'mole', 'butterfly', 'butterflywings', 'butter', 'petals', 'moonbutterfly', 'moonbutterflywings', 'bugnet', 'razor', 'panflute', 'reskin_tool', 'greenstaff', 'firestaff', 'trident', 'opalstaff', 'opalpreciousgem', ...Object.keys(BURNABLE_ITEM_DEFINITIONS), 'ash'])], groundItemArchives),
   flowers: definePrefabs(['flower'], componentParser({ keys: ['flower'] }), ['flower', 'flower_rose', 'planted_flower'], ['flowers.zip']),
-  dwarfStars: definePrefabs(['stafflight'], componentParser({ keys: ['timer'], timerDuration: DWARF_STAR_DURATION }), true),
-  polarLights: definePrefabs([POLAR_LIGHT_ID], componentParser({ keys: ['timer'], timerDuration: POLAR_LIGHT_DURATION }), true),
+  staffLights: definePrefabs([DWARF_STAR_ID, POLAR_LIGHT_ID], componentParser({ keys: ['timer'] }), true),
   bulbPlants: definePrefabs(BULB_PLANT_PREFABS, (value, path, context) =>
     (context.prefab === 'flower_cave' ? bulbSingle : context.prefab === 'flower_cave_double' ? bulbDouble : bulbTriple)(value, path, context), true,
     BULB_PLANT_VARIANTS.map(variant => `bulb_plant_${variant}.zip`)),

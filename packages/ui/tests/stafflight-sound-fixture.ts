@@ -3,7 +3,7 @@ import { PrefabDisplayGroup } from '../../display/src';
 import { prefabDisplay } from '../../display/src';
 import { prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import * as THREE from 'three';
-import { DwarfStarManager } from '../../prefab/src/stafflight';
+import { createStaffLightManager, DWARF_STAR_DURATION, DWARF_STAR_ID } from '../../prefab/src/stafflight';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
 import { BufferedAction } from '../../stategraphs/src';
@@ -23,12 +23,12 @@ export async function prepareStarAudioCheck() {
     return source;
   };
   const scheduler = new GameTimeScheduler();
-  const manager = new DwarfStarManager(new PrefabDisplayGroup(new THREE.Scene()), '/dst/data/anim', { scheduler });
+  const manager = createStaffLightManager(new PrefabDisplayGroup(new THREE.Scene()), '/dst/data/anim', { scheduler });
   // As the scene does before it starts, so each star's sounds play when it is spawned.
   await PrewarmSounds();
-  await manager.spawn(new THREE.Vector3());
-  await manager.spawn(new THREE.Vector3(2, 0, 3));
-  const restored = await manager.spawn(new THREE.Vector3(4, 0, 5), { id: 'e_saved', remainingSeconds: 0.1 });
+  await manager.spawn(DWARF_STAR_ID, new THREE.Vector3());
+  await manager.spawn(DWARF_STAR_ID, new THREE.Vector3(2, 0, 3));
+  const restored = await manager.spawn(DWARF_STAR_ID, new THREE.Vector3(4, 0, 5), { id: 'e_saved', components: { timer: { timers: { extinguish: { timeleft: 0.1, paused: false, initial_time: DWARF_STAR_DURATION } } } } });
   const samples = sources.map(({ source }) => ({ loop: source.loop, length: source.buffer!.length,
     channels: source.buffer!.numberOfChannels, sampleRate: source.buffer!.sampleRate }));
   const player = createWilsonPlayer('/dst/data/anim');

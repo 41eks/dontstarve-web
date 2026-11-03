@@ -800456,6 +800456,52 @@
           "components": {}
         }
       ],
+      "staffcoldlight": [
+        {
+          "id": "dst_03741E1B78B29575_staffcoldlight_id_135377",
+          "transform": {
+            "position": [
+              1214.091,
+              0.0,
+              -466.401
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "timer": {
+              "timers": {
+                "extinguish": {
+                  "timeleft": 422.53330530226,
+                  "initial_time": 960,
+                  "paused": false
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_staffcoldlight_id_135428",
+          "transform": {
+            "position": [
+              1151.913,
+              0.0,
+              -497.622
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "timer": {
+              "timers": {
+                "extinguish": {
+                  "timeleft": 426.99997220188,
+                  "initial_time": 960,
+                  "paused": false
+                }
+              }
+            }
+          }
+        }
+      ],
       "lava_pond": [
         {
           "id": "dst_03741E1B78B29575_lava_pond_id_113577",

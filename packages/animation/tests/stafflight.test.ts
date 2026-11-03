@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
-import { DwarfStarManager, dwarfStarLight, DWARF_STAR_DURATION, type StaffLightId, type StaffLightInstance } from '../../prefab/src/stafflight';
+import { createStaffLightManager, dwarfStarLight, DWARF_STAR_DURATION, type StaffLightId, type StaffLightInstance } from '../../prefab/src/stafflight';
 import { PlaySound } from '../../prefab/src/sound';
 import { clockstate, createMemo, createSignal, seasonstate } from '@dontstarve-web/signals';
 import { InventoryStore, ItemEntity } from '../../inventory/src';
@@ -26,7 +26,7 @@ vi.mock('../../prefab/src/sound', () => ({
   PlaySound: vi.fn(() => ({ stop: vi.fn() })),
 }));
 
-const managers: DwarfStarManager[] = [];
+const managers: ReturnType<typeof createStaffLightManager>[] = [];
 beforeEach(() => {
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(
     new URL(`../../../public${url}`, import.meta.url))));
@@ -51,29 +51,32 @@ const sounds = (event: string) => vi.mocked(PlaySound).mock.calls.flatMap(([path
 
 function setup(prefab: StaffLightId = 'stafflight') {
   const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), awake = createSignal(true);
-  const manager = new DwarfStarManager(new PrefabDisplayGroup(scene), '/dst/data/anim',
-    { scheduler, tickingarea: () => createMemo(() => awake.get()) }, prefab);
+  const manager = createStaffLightManager(new PrefabDisplayGroup(scene), '/dst/data/anim',
+    { scheduler, tickingarea: () => createMemo(() => awake.get()) });
   managers.push(manager);
+  const spawn = (position: THREE.Vector3, saved?: { id: string; remainingSeconds: number }) => manager.spawn(prefab, position, saved && {
+    id: saved.id, components: { timer: { timers: { extinguish: { timeleft: saved.remainingSeconds, paused: false, initial_time: DWARF_STAR_DURATION } } } },
+  });
   /** As the scene does: the world's scheduler advances, then the displays. */
   const update = (dt: number) => { scheduler.advance(dt); manager.update(dt, new THREE.Quaternion()); };
-  return { manager, scene, scheduler, awake, update };
+  return { manager, spawn, scene, scheduler, awake, update };
 }
 
 it('declares the source tags and components of each star', () => {
-  const hot = setup().manager.spawn(new THREE.Vector3());
+  const hot = setup().spawn(new THREE.Vector3());
   for (const tag of ['HASHEATER', 'sanityaura', 'inspectable', 'ignorewalkableplatforms', 'cooker', 'daylight', 'heatstar']) expect(hot.hasTag(tag)).toBe(true);
   expect(hot.physicsRadiusOverride).toBe(.5);
   expect(hot.components.propagator!.heatoutput).toBe(15);
   expect(hot.components.propagator!.spreading.peek()).toBe(true);
   expect(hot.components.sanityaura!.GetBaseAura()).toBeCloseTo(100 / 240);
-  const cold = setup('staffcoldlight').manager.spawn(new THREE.Vector3());
+  const cold = setup('staffcoldlight').spawn(new THREE.Vector3());
   for (const tag of ['cooker', 'daylight', 'heatstar']) expect(cold.hasTag(tag)).toBe(false);
   expect(cold.components.propagator).toBeUndefined();
 });
 
 it('pulses the light from .1s after spawning, as the periodic task enables it', () => {
-  const { manager, update } = setup();
-  const star = manager.spawn(new THREE.Vector3());
+  const { spawn, update } = setup();
+  const star = spawn(new THREE.Vector3());
   expect(star.light.peek()).toBeUndefined();
   update(.1);
   expect(star.light.peek()!.radius).toBeCloseTo(dwarfStarLight(.1).radius);
@@ -82,16 +85,16 @@ it('pulses the light from .1s after spawning, as the periodic task enables it', 
 });
 
 it('draws a new star from appear, then settles into its idle', async () => {
-  const { manager, scene, update } = setup();
-  const star = await artLoaded(scene, manager.spawn(new THREE.Vector3()));
+  const { spawn, scene, update } = setup();
+  const star = await artLoaded(scene, spawn(new THREE.Vector3()));
   expect(star.sprite.currentAnimation).toBe('appear');
   for (let frame = 0; frame < 150; frame++) update(1 / 30);
   expect(star.sprite.currentAnimation).toBe('idle_loop');
 });
 
 it('expires on the extinguish timer: disappear, animover kills the loop, Remove a second later', async () => {
-  const { manager, scene, update } = setup();
-  const star = await artLoaded(scene, manager.spawn(new THREE.Vector3(), { id: 'e_star', remainingSeconds: 0.8 }));
+  const { manager, spawn, scene, update } = setup();
+  const star = await artLoaded(scene, spawn(new THREE.Vector3(), { id: 'e_star', remainingSeconds: 0.8 }));
   const model = modelIn(scene, star)!;
   const play = vi.spyOn(star.sprite, 'playOnce');
   const loop = sounds('dontstarve/common/staff_star_LP')[0];
@@ -118,8 +121,8 @@ it('expires on the extinguish timer: disappear, animover kills the loop, Remove 
 });
 
 it('haunting stops the timer and kills the light once; a repeat succeeds without another removal', async () => {
-  const { manager, scene, update } = setup();
-  const star = await artLoaded(scene, manager.spawn(new THREE.Vector3(), { id: 'e_haunted', remainingSeconds: 100 }));
+  const { spawn, scene, update } = setup();
+  const star = await artLoaded(scene, spawn(new THREE.Vector3(), { id: 'e_haunted', remainingSeconds: 100 }));
   const play = vi.spyOn(star.sprite, 'playOnce');
   const hauntable = star.components.hauntable!;
   hauntable.DoHaunt(haunter);
@@ -134,8 +137,8 @@ it('haunting stops the timer and kills the light once; a repeat succeeds without
 });
 
 it('sleeps without touching lifetime, light or sound, and wakes on the same entity', async () => {
-  const { manager, scene, awake, update } = setup();
-  const star = await artLoaded(scene, manager.spawn(new THREE.Vector3(4, 0, 6)));
+  const { manager, spawn, scene, awake, update } = setup();
+  const star = await artLoaded(scene, spawn(new THREE.Vector3(4, 0, 6)));
   const model = modelIn(scene, star)!, heater = star.components.heater;
   const loop = sounds('dontstarve/common/staff_star_LP')[0];
   update(.2);
@@ -149,7 +152,7 @@ it('sleeps without touching lifetime, light or sound, and wakes on the same enti
   // The periodic task and timer are not gated by sleep, and the emitter keeps its loop.
   expect(star.light.peek()!.radius).toBeCloseTo(dwarfStarLight(10.2).radius);
   expect(loop.stop).not.toHaveBeenCalled();
-  expect(manager.exportRecords()[0].components.timer.remainingSeconds).toBeCloseTo(DWARF_STAR_DURATION - 10.2);
+  expect(manager.exportRecords()[0].record.components.timer!.timers.extinguish.timeleft).toBeCloseTo(DWARF_STAR_DURATION - 10.2);
   const plays = vi.mocked(PlaySound).mock.calls.length;
   awake.set(true);
   await settle();
@@ -163,9 +166,9 @@ it('sleeps without touching lifetime, light or sound, and wakes on the same enti
 });
 
 it('expires and is removed while asleep, without drawing anything', async () => {
-  const { manager, awake, update } = setup();
+  const { spawn, awake, update } = setup();
   awake.set(false);
-  const star = manager.spawn(new THREE.Vector3(), { id: 'e_far', remainingSeconds: .5 });
+  const star = spawn(new THREE.Vector3(), { id: 'e_far', remainingSeconds: .5 });
   await settle();
   expect(star.status.peek()).toBe('asleep');
   expect(star.sprite.loaded).toBe(false);
@@ -180,9 +183,9 @@ it('expires and is removed while asleep, without drawing anything', async () => 
 });
 
 it('chains random polar idles on animover, resuming after a sleep and stopping once killed', async () => {
-  const { manager, scene, awake, update } = setup('staffcoldlight');
+  const { spawn, scene, awake, update } = setup('staffcoldlight');
   const random = vi.spyOn(Math, 'random').mockReturnValue(.5);
-  const star = await artLoaded(scene, manager.spawn(new THREE.Vector3()));
+  const star = await artLoaded(scene, spawn(new THREE.Vector3()));
   const clip = () => star.sprite.sprite.peek().clip;
   expect(clip().name).toBe('appear');
   for (let frame = 0; frame < 150 && clip().name === 'appear'; frame++) update(1 / 30);
@@ -206,7 +209,7 @@ it('chains random polar idles on animover, resuming after a sleep and stopping o
 });
 
 it('removes a star disposed while its art is loading and draws nothing when the art arrives', async () => {
-  const { manager, scene } = setup();
+  const { manager, spawn, scene } = setup();
   const fetchAsset = globalThis.fetch;
   let finishLoading!: () => void;
   const loading = new Promise<void>(resolve => { finishLoading = resolve; });
@@ -215,7 +218,7 @@ it('removes a star disposed while its art is loading and draws nothing when the 
     return fetchAsset(...args);
   });
   // SpawnPrefab is synchronous: the star and its loop exist before the art.
-  const star = manager.spawn(new THREE.Vector3());
+  const star = spawn(new THREE.Vector3());
   const model = modelIn(scene, star)!;
   expect(model.parent).toBe(scene);
   expect(star.sprite.loaded).toBe(false);
@@ -231,8 +234,8 @@ it('removes a star disposed while its art is loading and draws nothing when the 
 });
 
 it('world clock and season changes do not restart the idle', async () => {
-  const { manager, scene } = setup();
-  const star = await artLoaded(scene, manager.spawn(new THREE.Vector3()));
+  const { spawn, scene } = setup();
+  const star = await artLoaded(scene, spawn(new THREE.Vector3()));
   const play = vi.spyOn(star.sprite, 'playOnce'), idle = vi.spyOn(star.sprite, 'start');
   clockstate.set({ phase: 'dusk', timeinphase: 0.5 });
   seasonstate.set({ season: 'winter', progress: 0.5 });
@@ -242,8 +245,8 @@ it('world clock and season changes do not restart the idle', async () => {
 });
 
 it('heats nearby thermal stones with distance falloff until permanent removal', async () => {
-  const { manager, update } = setup();
-  const star = manager.spawn(new THREE.Vector3());
+  const { spawn, update } = setup();
+  const star = spawn(new THREE.Vector3());
   const source = FindEntities(star.position, 1, ['HASHEATER'])[0];
   expect(source.prefab).toBe('stafflight');
   expect(source.components.heater!.GetHeat()).toBe(100);
@@ -287,8 +290,8 @@ it('heats nearby thermal stones with distance falloff until permanent removal', 
 });
 
 it('cools nearby thermal stones with endothermic falloff until permanent removal', async () => {
-  const { manager, update, awake } = setup('staffcoldlight');
-  const star = manager.spawn(new THREE.Vector3());
+  const { spawn, update, awake } = setup('staffcoldlight');
+  const star = spawn(new THREE.Vector3());
   const source = FindEntities(star.position, 1, ['HASHEATER'])[0];
   const heater = source.components.heater!;
   expect(source.prefab).toBe('staffcoldlight');
@@ -342,19 +345,15 @@ it('spawns world lights through console definitions and saves and reloads their 
   const position = new THREE.Vector3(6, 7, 9), scheduler = new GameTimeScheduler();
   const createRegistry = () => {
     const registry = new EntityRegistry();
-    for (const definition of [PREFAB_DEFINITIONS.dwarfStars, PREFAB_DEFINITIONS.polarLights]) {
-      const manager = new DwarfStarManager(new PrefabDisplayGroup(new THREE.Scene()), '/dst/data/anim', { scheduler }, definition.prefabIds[0]);
-      managers.push(manager);
-      registry.register(definition, {
-        restore: (_, record) => manager.spawn(new THREE.Vector3(...record.transform.position), {
-          id: record.id, remainingSeconds: record.components.timer!.remainingSeconds,
-        }),
-        debugSpawn: () => manager.spawn(position.clone()),
-        exportRecords: () => manager.exportRecords().map(record => ({ prefabId: manager.prefabId, record })),
-        update: (dt, quaternion) => { manager.update(dt, quaternion); },
-        dispose: () => manager.dispose(),
-      });
-    }
+    const manager = createStaffLightManager(new PrefabDisplayGroup(new THREE.Scene()), '/dst/data/anim', { scheduler });
+    managers.push(manager);
+    registry.register(PREFAB_DEFINITIONS.staffLights, {
+      restore: (prefabId, record) => manager.spawn(prefabId, new THREE.Vector3(...record.transform.position), record),
+      debugSpawn: prefabId => manager.spawn(prefabId, position.clone()),
+      exportRecords: () => manager.exportRecords(),
+      update: (dt, quaternion) => { manager.update(dt, quaternion); },
+      dispose: () => manager.dispose(),
+    });
     return registry;
   };
   const registry = createRegistry();
@@ -375,9 +374,19 @@ it('spawns world lights through console definitions and saves and reloads their 
   const saved = deserializeSave(exported, SAVE_CATALOG);
   const records = { stafflight: saved.world.entities.stafflight, staffcoldlight: saved.world.entities.staffcoldlight };
   expect(records.stafflight[0].transform.position).toEqual([6, 0, 9]);
-  expect(records.stafflight[0].components.timer!.remainingSeconds).toBe(DWARF_STAR_DURATION - 0.25);
-  expect(records.staffcoldlight[0].components.timer!.remainingSeconds).toBe(960 - 0.25);
+  expect(records.stafflight[0].components.timer!.timers.extinguish).toEqual({ timeleft: DWARF_STAR_DURATION - 0.25, paused: false, initial_time: DWARF_STAR_DURATION });
+  expect(records.staffcoldlight[0].components.timer!.timers.extinguish.timeleft).toBe(960 - 0.25);
   expect(exported).not.toContain('staffLightState');
+  // A source star's own duration is longer than a new one's; the old record shape is no longer read.
+  const withTimer = (timer: unknown) => {
+    const save = JSON.parse(exported);
+    save.world.entities.stafflight[0].components.timer = timer;
+    return JSON.stringify(save);
+  };
+  const source = { timeleft: 1500, paused: false, initial_time: 1680 };
+  expect(deserializeSave(withTimer({ timers: { extinguish: source } }), SAVE_CATALOG).world.entities.stafflight[0].components.timer!.timers.extinguish).toEqual(source);
+  expect(() => deserializeSave(withTimer({ remainingSeconds: 100 }), SAVE_CATALOG)).toThrow();
+  expect(() => deserializeSave(withTimer({ timers: {} }), SAVE_CATALOG)).toThrow();
   const soundsBeforeRestore = vi.mocked(PlaySound).mock.calls.length;
   const restored = createRegistry();
   await restored.restoreAll(records);

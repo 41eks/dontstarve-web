@@ -334822,6 +334822,140 @@
           "components": {}
         }
       ],
+      "staffcoldlight": [
+        {
+          "id": "dst_04E26ADB66396E8D_staffcoldlight_id_135659",
+          "transform": {
+            "position": [
+              1307.415,
+              0.0,
+              -1692.921
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "timer": {
+              "timers": {
+                "extinguish": {
+                  "timeleft": 599.16664784774,
+                  "initial_time": 960,
+                  "paused": false
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_staffcoldlight_id_135749",
+          "transform": {
+            "position": [
+              1314.684,
+              0.0,
+              -1732.794
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "timer": {
+              "timers": {
+                "extinguish": {
+                  "timeleft": 607.66664829105,
+                  "initial_time": 960,
+                  "paused": false
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_staffcoldlight_id_130198",
+          "transform": {
+            "position": [
+              1234.839,
+              0.0,
+              -1569.318
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "timer": {
+              "timers": {
+                "extinguish": {
+                  "timeleft": 287.43329825625,
+                  "initial_time": 960,
+                  "paused": false
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_staffcoldlight_id_126537",
+          "transform": {
+            "position": [
+              881.028,
+              0.0,
+              -1388.478
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "timer": {
+              "timers": {
+                "extinguish": {
+                  "timeleft": 174.23329235241,
+                  "initial_time": 960,
+                  "paused": false
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_staffcoldlight_id_137844",
+          "transform": {
+            "position": [
+              1370.745,
+              0.0,
+              -1695.699
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "timer": {
+              "timers": {
+                "extinguish": {
+                  "timeleft": 729.26665463299,
+                  "initial_time": 960,
+                  "paused": false
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_staffcoldlight_id_134712",
+          "transform": {
+            "position": [
+              1325.013,
+              0.0,
+              -1709.604
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "timer": {
+              "timers": {
+                "extinguish": {
+                  "timeleft": 497.06664252281,
+                  "initial_time": 960,
+                  "paused": false
+                }
+              }
+            }
+          }
+        }
+      ],
       "treasurechest": [
         {
           "id": "dst_04E26ADB66396E8D_treasurechest_id_102396",

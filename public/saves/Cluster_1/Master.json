@@ -801167,6 +801167,30 @@
           "components": {}
         }
       ],
+      "staffcoldlight": [
+        {
+          "id": "dst_03741E1B78B29575_staffcoldlight_id_197769",
+          "transform": {
+            "position": [
+              884.181,
+              0.0,
+              2026.521
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "timer": {
+              "timers": {
+                "extinguish": {
+                  "timeleft": 673.566651728,
+                  "initial_time": 960,
+                  "paused": false
+                }
+              }
+            }
+          }
+        }
+      ],
       "lava_pond": [
         {
           "id": "dst_03741E1B78B29575_lava_pond_id_110029",

@@ -565,10 +565,15 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
         ...(flower.planted === true ? { planted: true as const } : {}) };
     }
     if (keys.includes('timer')) {
-      const t = object(c.timer, `${path}.timer`, ['remainingSeconds']);
-      components.timer = { remainingSeconds: number(t.remainingSeconds,
-        `${path}.timer.remainingSeconds`, Number.MIN_VALUE,
-        schema.timerDuration!) };
+      // timer.lua OnSave. The source's durations differ from a new star's, so the record's own initial_time is the limit.
+      const p = `${path}.timer`, timer = object(c.timer, p, ['timers']);
+      const timers = object(timer.timers, `${p}.timers`, ['extinguish']);
+      const extinguish = object(timers.extinguish, `${p}.timers.extinguish`, ['timeleft', 'paused', 'initial_time']);
+      if (typeof extinguish.paused !== 'boolean') fail(`${p}.timers.extinguish.paused`, 'expected a boolean');
+      const initial_time = number(extinguish.initial_time, `${p}.timers.extinguish.initial_time`, Number.MIN_VALUE);
+      components.timer = { timers: { extinguish: {
+        timeleft: number(extinguish.timeleft, `${p}.timers.extinguish.timeleft`, 0, initial_time), paused: extinguish.paused, initial_time,
+      } } };
     }
     if (c.health !== undefined) {
       const h = object(c.health, `${path}.health`, ['current', 'maximum']);

@@ -441,6 +441,8 @@
     "grotto_waterfall_small1",
     "grotto_waterfall_small2",
     "pond",
+    "stafflight",
+    "staffcoldlight",
     "lava_pond",
     "treasurechest",
     "pandoraschest",
@@ -955,6 +957,14 @@
     "pond": {
       "source": 27,
       "imported": 27
+    },
+    "stafflight": {
+      "source": 0,
+      "imported": 0
+    },
+    "staffcoldlight": {
+      "source": 3,
+      "imported": 3
     },
     "lava_pond": {
       "source": 6,
@@ -66552,6 +66562,42 @@
         -7.88
       ],
       "sourceNode": "Magic meadow:3:Clearing"
+    },
+    {
+      "id": "dst_03741E1B78B29575_staffcoldlight_id_106924",
+      "prefab": "staffcoldlight",
+      "sourceIndex": 1,
+      "sourceId": 106924,
+      "sourcePosition": [
+        390.697,
+        0,
+        173.467
+      ],
+      "sourceNode": "Badlands:BG_36:BGBadlands"
+    },
+    {
+      "id": "dst_03741E1B78B29575_staffcoldlight_id_106925",
+      "prefab": "staffcoldlight",
+      "sourceIndex": 2,
+      "sourceId": 106925,
+      "sourcePosition": [
+        369.971,
+        0,
+        183.874
+      ],
+      "sourceNode": "Badlands:BG_36:BGBadlands"
+    },
+    {
+      "id": "dst_03741E1B78B29575_staffcoldlight_id_132560",
+      "prefab": "staffcoldlight",
+      "sourceIndex": 3,
+      "sourceId": 132560,
+      "sourcePosition": [
+        409.012,
+        0,
+        -306.299
+      ],
+      "sourceNode": "MoonIsland_Beach:1:MoonIsland_Beach"
     },
     {
       "id": "dst_03741E1B78B29575_lava_pond_id_110029",
