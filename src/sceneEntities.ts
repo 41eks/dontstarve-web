@@ -470,7 +470,7 @@ export async function createSceneEntities(
 
   function registerBuildings(registry: EntityRegistry, prefabId: 'buildings', worldState: SceneWorldState) {
     const buildingPlacement = new PlaceableBuildingPlacement(
-      { ...view, physics: world, scheduler: scheduler ?? worldState.scheduler, fire: prefabFire, dynamicMusic, handEquipment: sceneInventory.handEquipment,
+      { ...view, physics: world, scheduler: scheduler ?? worldState.scheduler, fire: prefabFire, weather: worldState.weather, dynamicMusic, handEquipment: sceneInventory.handEquipment,
         getLocalTemperature: (x, z) => GetTemperatureAtXZ(() => worldState.temperature.peek(), x, z), itemEntities: sceneInventory.entities,
         cycle: worldState.cycle, getWatchWorldContent: worldState.getWatchWorldContent, tickingarea: worldState.tickingarea, isNight: worldState.isNight, perishClock: worldState.perishClock,
         secondsUntilNextDay: now => TUNING.TOTAL_DAY_TIME - now % TUNING.TOTAL_DAY_TIME,

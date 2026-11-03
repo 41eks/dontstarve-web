@@ -4,20 +4,22 @@ import { getBoundWatchWorldContent } from '@dontstarve-web/signals';
 import { prefabInstance, PrefabInstance } from './prefabInstance';
 import { SpriteResources, type LoadedSpriteSource } from '@dontstarve-web/display';
 import { addComponent, removeComponent } from './components';
-import type { Burnable, BurnableInst } from '../../componets/src/burnable';
+import type { Burnable, BurnableInst, BurnFXData } from '../../componets/src/burnable';
 import type { Propagator } from '../../componets/src/propagator';
 import type { ComponentUpdates } from '../../componets/src/componentUpdates';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import { CAMPFIREFIRE_ARCHIVE, CAMPFIREFIRE_ID, CampfireFire } from './campfirefire';
 import { Fire, FIRE_ARCHIVE, FIRE_ID } from './fire';
 import { TILE_SIZE } from './tile';
 
 /** tuning.lua TREE_BURN_TIME. */
 export const TREE_BURN_TIME = 45;
 
-/** Owner of fire.lua's shared art; the managers whose burnables add the fire hold one. */
+/** Owner of fire.lua's and campfirefire.lua's shared art; the world injects one to whatever burns. */
 export class FireFxHost {
   readonly source: LoadedSpriteSource;
-  private readonly fires = new Set<Fire>();
+  private readonly campfireSource: LoadedSpriteSource;
+  private readonly fires = new Set<Fire | CampfireFire>();
   private readonly resources: SpriteResources;
   private disposed = false;
   private readonly updates?: ComponentUpdates;
@@ -25,6 +27,7 @@ export class FireFxHost {
     this.updates = updates;
     this.resources = new SpriteResources(assetBaseUrl);
     this.source = this.resources.factory({ animationArchive: FIRE_ARCHIVE, buildArchive: FIRE_ARCHIVE });
+    this.campfireSource = this.resources.animated(CAMPFIREFIRE_ARCHIVE, {}, { name: CAMPFIREFIRE_ID });
   }
 
   /** Each fire is spawned at once; its display draws it when the shared art has loaded. */
@@ -33,8 +36,17 @@ export class FireFxHost {
   /** SpawnPrefab("fire") for a Burnable:SpawnFX on `owner`. */
   spawn(owner: PrefabInstance): Fire {
     if (this.disposed) throw new Error('Fire effects have been disposed');
-    for (const fire of this.fires) if (fire.instance.status.peek() === 'removed') this.fires.delete(fire);
-    const fire = new Fire(this.source, owner, this.updates);
+    return this.add(new Fire(this.source, owner, this.updates));
+  }
+
+  /** SpawnPrefab("campfirefire") for a Burnable:SpawnFX on `owner`. */
+  spawnCampfire(owner: PrefabInstance, data: BurnFXData): CampfireFire {
+    if (this.disposed) throw new Error('Fire effects have been disposed');
+    return this.add(new CampfireFire(this.campfireSource, owner, data, this.updates));
+  }
+
+  private add<Effect extends Fire | CampfireFire>(fire: Effect): Effect {
+    for (const other of this.fires) if (other.instance.status.peek() === 'removed') this.fires.delete(other);
     this.fires.add(fire);
     return fire;
   }

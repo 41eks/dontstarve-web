@@ -37,7 +37,6 @@ export {
 } from './archiveSprite';
 export {
   basic_init_fn,
-  firepit_init_fn,
   bookstation_init_fn,
   moondial_init_fn,
   winterometer_init_fn,

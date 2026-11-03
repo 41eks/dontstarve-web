@@ -1,41 +1,36 @@
-import { Workable } from '../../componets/src/workable';
-import { createStructureLootDropper } from './structureLoot';
-import { prefabInstance, type PrefabInstance } from './prefabInstance';
-import definitions from './definitions.json' with { type: 'json' };
-import { firepit_init_fn } from '@dontstarve-web/animation/prefabskin';
-import {
-    AnimatedBuildingPlacement,
-    type AnimatedBuildingDefinition,
-    type AnimatedBuildingEventContext,
-} from './animatedBuildingPlacement';
-import type { WorldContext } from './worldContext';
-import { actionEntity } from './actionEntity';
-import { Burnable } from '../../componets/src/burnable';
+import { SpriteState } from '@dontstarve-web/display';
+import { createEffect, watchSignal } from '@dontstarve-web/signals';
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { Fueled, type FueledSave } from '../../componets/src/fueled';
-import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import type { WorkInst } from '../../componets/src/workable';
-import { CAMPFIREFIRE_ARCHIVE, CAMPFIREFIRE_ID, CampfireFire } from './campfirefire';
-import { PlaySound } from './sound';
-import type { SpriteResources } from '@dontstarve-web/display';
+import { Workable, type WorkInst } from '../../componets/src/workable';
+import definitions from './definitions.json' with { type: 'json' };
+import { buildingPlacer, buildingPrefab, MakeBuildingPersist } from './building';
+import { CAMPFIREFIRE_ID } from './campfirefire';
+import { addComponent } from './components';
+import { PrefabInstance } from './prefabInstance';
 import type { PlacementSaveRecord } from './saveRecord';
+import { PlaySound } from './sound';
+import { createStructureLootDropper } from './structureLoot';
+import type { PrefabWorldContext } from './worldContext';
 
 export const FIRE_PIT_ID = 'firepit' as const;
 export type FirePitId = typeof FIRE_PIT_ID;
-export const FIRE_PIT_SKIN_ARCHIVES: Readonly<Record<string, string>> =
-    definitions.animatedBuildings.firepit.skinArchives;
 
-/** firepit.lua OnSave plus its fueled component's OnSave. */
+const declaration = definitions.animatedBuildings.firepit;
+
+/** firepit.lua MakePlacer("firepit_placer", "firepit", "firepit", "preview"). */
+export const FIRE_PIT_PLACER = buildingPlacer(declaration);
+
+/** firepit.lua OnSave plus its fueled component's OnSave, nested as this project's saves hold them. */
 export interface FirePitSaveState { fueled?: FueledSave; queued_charcoal?: true }
 
 // tuning.lua with the default 30 s segments: night_time = 60, dusk_time = 120.
 const FIREPIT_FUEL_MAX = (60 + 120) * 2;
 const FIREPIT_FUEL_START = 60 + 120;
 const FIREPIT_BONUS_MULT = 2;
+const FIREPIT_RAIN_RATE = 2;
 const ADD_FUEL_SOUND = 'dontstarve/common/fireAddFuel';
 const SECTION_STATUS = ['OUT', 'EMBERS', 'LOW', 'NORMAL', 'HIGH'] as const;
-
-/** SpawnPrefab("campfirefire") draws from the placement's shared campfire_fire archive. */
-const campfireFireSource = (sprites: SpriteResources) => sprites.animated(CAMPFIREFIRE_ARCHIVE, {}, { name: CAMPFIREFIRE_ID });
 
 /** skinprefabs.lua: each skin's firepit_init_fn fxoffset. */
 const SKIN_FX_OFFSET: Readonly<Record<string, number>> = {
@@ -43,120 +38,126 @@ const SKIN_FX_OFFSET: Readonly<Record<string, number>> = {
     firepit_kiln: -36, firepit_kiln_alt: -36, firepit_lava: 0, firepit_stonehenge: -28, firepit_victorian: 10,
 };
 
-type FirePitInst = ReturnType<typeof actionEntity>;
-
-/** firepit.lua's burnable/fueled pair: fuel sections set the campfirefire level, an empty pit goes out. */
-class FirePit {
-    readonly burnable: Burnable;
-    readonly fueled: Fueled<FirePitInst>;
+/** firepit.lua fn(), as far as it is ported: fuel sections set the campfirefire level, and an empty pit goes out. */
+export class FirePitInstance extends PrefabInstance {
     queued_charcoal = false;
     disable_charcoal = false;
-    /** Only when the world supplies no game-time scheduler; advanced by the building's update. */
-    readonly ownScheduler?: GameTimeScheduler;
-    private readonly context: AnimatedBuildingEventContext;
+    /** components.fueled, with its whole interface. */
+    private readonly fueled: Fueled<FirePitInstance>;
 
-    constructor(context: AnimatedBuildingEventContext) {
-        const { model, instance } = context;
-        this.context = context;
-    const workable = instance.components.workable = new Workable(instance);
-    workable.SetWorkAction('HAMMER');
-    workable.SetWorkLeft(4);
-    workable.SetOnWorkCallback(onworked);
-    workable.SetOnFinishCallback(onhammered);
-    instance.components.lootdropper = createStructureLootDropper(instance);
-        const inst = actionEntity(model, FIRE_PIT_ID);
-        for (const tag of ['campfire', 'structure', 'wildfireprotected', 'cooker', 'storytellingprop']) inst.addTag(tag);
-        const scheduler = context.world?.scheduler ?? (this.ownScheduler = new GameTimeScheduler());
-        if (!context.sprites) throw new Error('firepit requires the placement sprite resources');
-        const source = campfireFireSource(context.sprites);
+    constructor(world: PrefabWorldContext, position: ReadonlyVector3) {
+        super(FIRE_PIT_ID, new SpriteState({ name: 'idle', held: true, billboard: true }));
+        const { fire, scheduler } = world;
+        if (!fire || !scheduler) throw new Error('A firepit needs the world\'s fire effects and scheduler');
+        this.worldServices = world;
+        // The pit lights in fn, and its fire's sounds start where the pit stands.
+        this.setPosition(position.x, 0, position.z);
+        MakeBuildingPersist(this);
+        const { OnSave: saveBuilding, OnLoad: loadBuilding } = this;
+        this.OnSave = (inst, data) => { saveBuilding!(inst, data); onsave(this, data); };
+        this.OnLoad = (inst, data) => { loadBuilding!(inst, data); onload(this, data); };
+        for (const tag of ['campfire', 'structure', 'wildfireprotected', 'cooker', 'storytellingprop']) this.addTag(tag);
+        const workable = this.components.workable = new Workable(this);
+        workable.SetWorkAction('HAMMER');
+        workable.SetWorkLeft(4);
+        workable.SetOnWorkCallback(onworked);
+        workable.SetOnFinishCallback(onhammered);
+        this.components.lootdropper = createStructureLootDropper(this);
 
-        const burnable = this.burnable = new Burnable(inst, scheduler);
-        inst.components.burnable = burnable;
-        burnable.SetFXSpawner(data => data.prefab === CAMPFIREFIRE_ID ? new CampfireFire(source, instance, model, data) : undefined);
+        // Settled before the burnable goes: its last update can still reach the fire level.
+        const fueled = this.components.fueled = this.fueled = new Fueled<FirePitInstance>(this, scheduler);
+        this.onRemove(() => fueled.dispose());
+        const burnable = addComponent(this, 'burnable', scheduler);
+        burnable.SetFXSpawner(data => data.prefab === CAMPFIREFIRE_ID ? fire.spawnCampfire(this, data) : undefined);
         burnable.AddBurnFX(CAMPFIREFIRE_ID, { x: 0, y: 25, z: 0 }, 'firefx', true, undefined, true);
         // ListenForEvent("onextinguish", onextinguish)
-        burnable.SetOnExtinguishFn(() => this.fueled.InitializeFuelLevel(0));
+        burnable.SetOnExtinguishFn(() => fueled.InitializeFuelLevel(0));
 
-        const fueled = this.fueled = new Fueled(inst, scheduler);
-        inst.components.fueled = fueled;
         fueled.maxfuel = FIREPIT_FUEL_MAX;
         fueled.accepting = true;
         fueled.SetSections(4);
         fueled.bonusmult = FIREPIT_BONUS_MULT;
-        fueled.SetTakeFuelFn(() => { PlaySound(ADD_FUEL_SOUND, model.position); });
+        fueled.SetTakeFuelFn(() => { PlaySound(ADD_FUEL_SOUND, this.position); });
         fueled.SetUpdateFn(() => this.onupdatefueled());
         fueled.SetSectionCallback((newsection, _oldsection, _inst, doer) => this.onfuelchange(newsection, doer as WorkInst | undefined));
         fueled.InitializeFuelLevel(FIREPIT_FUEL_START);
+        Object.assign(this.components, { inspectable: { getstatus: () => SECTION_STATUS[fueled.GetCurrentSection()] } });
 
-        Object.assign(prefabInstance(model)!.components, {
-            inspectable: { getstatus: () => SECTION_STATUS[fueled.GetCurrentSection()] },
-        });
-        // A skinned pit runs its firepit_init_fn after the prefab fn.
-        if (context.skinId !== undefined) {
-            this.setSkin(context.skinId);
+        this.ListenForEvent('onbuilt', () => onbuilt(this));
+        // A skin's firepit_init_fn / firepit_clear_fn runs when the skin is set, after fn.
+        const skin = watchSignal(this.sprite.skinId, stop => this.onRemove(stop));
+        let previous = skin.peek();
+        createEffect(() => {
+            const skinId = skin.get();
+            if (skinId === previous) return;
+            previous = skinId;
+            this.setSkin(skinId);
             this.restart();
-        }
+        });
     }
 
+    loadFuel(saved: FueledSave): void { this.fueled.OnLoad(saved); }
+
     /** firepit_init_fn / firepit_clear_fn: the skin's fx offset, then restart_firepit to move the fire. */
-    setSkin(skinId: string | undefined): void {
+    private setSkin(skinId: string | undefined): void {
         const offset = skinId === undefined ? undefined : SKIN_FX_OFFSET[skinId];
-        this.burnable.SetFXOffset(offset === undefined ? undefined : { x: 0, y: offset, z: 0 });
+        this.components.burnable!.SetFXOffset(offset === undefined ? undefined : { x: 0, y: offset, z: 0 });
     }
 
     /** restart_firepit: empty and refill the fuel, keeping a queued charcoal. */
-    restart(): void {
+    private restart(): void {
+        const { fueled } = this;
         const queued = this.queued_charcoal;
         this.queued_charcoal = false;
-        const percent = this.fueled.GetPercent();
-        this.fueled.MakeEmpty();
-        this.fueled.SetPercent(percent);
+        const percent = fueled.GetPercent();
+        fueled.MakeEmpty();
+        fueled.SetPercent(percent);
         this.queued_charcoal = queued;
     }
 
-    /** updatefuelrate: rain speeds consumption, but the world's precipitation is not available here. */
-    private updatefuelrate(): void { this.fueled.rate = 1; }
+    /** updatefuelrate: TheWorld.state.israining and no rainimmunity burns the fuel faster. */
+    private updatefuelrate(): void {
+        const weather = this.worldServices?.weather;
+        const raining = weather?.preciptype.peek() === 'rain' && (this.components as { rainimmunity?: object }).rainimmunity === undefined;
+        this.fueled.rate = raining ? 1 + FIREPIT_RAIN_RATE * weather!.precipitationRate.peek() : 1;
+    }
 
     private onupdatefueled(): void {
+        const { fueled } = this;
         this.updatefuelrate();
-        this.burnable.SetFXLevel(this.fueled.GetCurrentSection(), this.fueled.GetSectionPercent());
+        this.components.burnable!.SetFXLevel(fueled.GetCurrentSection(), fueled.GetSectionPercent());
     }
 
     private onfuelchange(newsection: number, doer: WorkInst | undefined): void {
+        const burnable = this.components.burnable!, { fueled } = this;
         if (newsection <= 0) {
-            this.burnable.Extinguish();
+            burnable.Extinguish();
             if (this.queued_charcoal) {
-                this.context.world?.dropLoot?.([{ itemId: 'charcoal', count: 1 }], this.context.instance.position);
+                this.worldServices?.dropLoot?.([{ itemId: 'charcoal', count: 1 }], this.position);
                 this.queued_charcoal = false;
             }
             return;
         }
-        if (!this.burnable.IsBurning()) {
+        if (!burnable.IsBurning()) {
             this.updatefuelrate();
-            this.burnable.Ignite(false, undefined, doer);
+            burnable.Ignite(false, undefined, doer);
         }
-        this.burnable.SetFXLevel(newsection, this.fueled.GetSectionPercent());
-        if (newsection === this.fueled.sections) this.queued_charcoal = !this.disable_charcoal;
-    }
-
-    dispose(): void {
-        this.fueled.dispose();
-        this.ownScheduler?.dispose();
+        burnable.SetFXLevel(newsection, fueled.GetSectionPercent());
+        if (newsection === fueled.sections) this.queued_charcoal = !this.disable_charcoal;
     }
 }
 
-interface FirePitInstance extends PrefabInstance { firepit: FirePit }
-const firepitOf = (inst: PrefabInstance): FirePit => (inst as FirePitInstance).firepit;
-
-function onsave(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
-    const firepit = firepitOf(inst), fueled = firepit.fueled.OnSave();
-    if (fueled || firepit.queued_charcoal) data.firepit = { ...(fueled ? { fueled } : {}), ...(firepit.queued_charcoal ? { queued_charcoal: true as const } : {}) };
+/** The fueled component's record stays nested under `firepit`, the shape existing saves hold. */
+function onsave(inst: FirePitInstance, data: PlacementSaveRecord['components']): void {
+    const components = data as { fueled?: FueledSave }, { fueled } = components;
+    delete components.fueled;
+    if (fueled || inst.queued_charcoal) data.firepit = { ...(fueled ? { fueled } : {}), ...(inst.queued_charcoal ? { queued_charcoal: true as const } : {}) };
 }
 
-function onload(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
-    const saved = data.firepit, firepit = firepitOf(inst);
-    if (saved?.queued_charcoal) firepit.queued_charcoal = true;
-    if (saved?.fueled) firepit.fueled.OnLoad(saved.fueled);
+function onload(inst: FirePitInstance, data: PlacementSaveRecord['components']): void {
+    const saved = data.firepit;
+    if (saved?.queued_charcoal) inst.queued_charcoal = true;
+    if (saved?.fueled) inst.loadFuel(saved.fueled);
 }
 
 function onbuilt(inst: PrefabInstance): void {
@@ -177,33 +178,8 @@ function onhammered(inst: PrefabInstance): void {
     inst.remove();
 }
 
-export const FIRE_PIT_DEFINITION: AnimatedBuildingDefinition = {
-    ...definitions.animatedBuildings.firepit,
-    obstacleRadius: 0.3,
-    fxSources: sprites => [campfireFireSource(sprites)],
-    skinInit: firepit_init_fn,
-    oninit: context => {
-        const { instance } = context;
-        (instance as FirePitInstance).firepit = new FirePit(context);
-        instance.ListenForEvent('onbuilt', () => onbuilt(instance));
-        instance.OnSave = onsave;
-        instance.OnLoad = onload;
-    },
-    onupdate: ({ instance }, dt) => {
-        const firepit = firepitOf(instance);
-        firepit.ownScheduler?.advance(dt);
-        firepit.burnable.UpdateFX(dt);
-    },
-    onreskin: ({ instance, skinId }) => {
-        const firepit = firepitOf(instance);
-        firepit.setSkin(skinId);
-        firepit.restart();
-    },
-    ondispose: ({ instance }) => firepitOf(instance).dispose(),
-};
-
-export class FirePitPlacement extends AnimatedBuildingPlacement<FirePitId> {
-    constructor(world: WorldContext, consumeBufferedBuild: (buildId: FirePitId) => boolean) {
-        super(world, { [FIRE_PIT_ID]: FIRE_PIT_DEFINITION }, consumeBufferedBuild);
-    }
+export function firePitPrefabs(world: PrefabWorldContext) {
+    return { [FIRE_PIT_ID]: { ...buildingPrefab(declaration, 'firepit', .3, position => new FirePitInstance(world, position), world),
+        // fn: MiniMapEntity:SetIcon("firepit.png").
+        minimapIcon: 'firepit.png' } };
 }

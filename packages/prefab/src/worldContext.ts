@@ -33,6 +33,8 @@ export interface WorldContext extends ActionWorldContext, Partial<WorldContentCo
     unregisterContainer?: (id: string, container: import('./containers').BuildingContainer) => void;
     /** The application's storage panel follows a building's onopen and onclose. */
     onContainerInteraction?: (change: { buildId: string; isOpen: boolean; model: import('three').Group }) => void;
+    /** TheWorld.state.israining / precipitationrate. */
+    weather?: { readonly preciptype: import('@dontstarve-web/signals').ReadonlySignal<'none' | 'rain' | 'snow'>; readonly precipitationRate: import('@dontstarve-web/signals').ReadonlySignal<number> };
     /** SpawnPrefab("fire") for what burns; the world's shared fire art and firefx updates. */
     fire?: import('./treeFire').FireFxHost;
     /** Seconds from `now` (scheduler time) to the next day boundary: the delay of a WatchWorldState("cycles") timer. */

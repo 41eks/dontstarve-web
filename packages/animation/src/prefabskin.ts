@@ -16,16 +16,6 @@ export function basic_init_fn(buildName: string, defaultBuild: string): PrefabSk
   };
 }
 
-export function firepit_init_fn(skinId: string): PrefabSkinInitialization {
-  // The woven and alternate editions use the same build as their original skin.
-  const buildName = {
-    firepit_fangedp: 'firepit_fanged',
-    firepit_hole_alt: 'firepit_hole',
-    firepit_kiln_alt: 'firepit_kiln',
-  }[skinId] ?? skinId;
-  return basic_init_fn(buildName, 'firepit');
-}
-
 export function bookstation_init_fn(skinId: string): PrefabSkinInitialization {
   return basic_init_fn(skinId, 'bookstation');
 }

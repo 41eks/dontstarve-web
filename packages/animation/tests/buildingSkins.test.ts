@@ -14,7 +14,6 @@ import definitions from '../../prefab/src/definitions.json' with { type: 'json' 
 import { AnimatedBuildingPlacement, type AnimatedBuildingDefinition } from '../../prefab/src/animatedBuildingPlacement';
 import { COOK_POT_DEFINITION } from '../../prefab/src/cook_pot';
 import { RESEARCH_LAB_DEFINITIONS } from '../../prefab/src/scienceprototyper';
-import { FIRE_PIT_DEFINITION } from '../../prefab/src/firepit';
 import { createMemo, createSignal } from '../../signals/src';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
@@ -26,7 +25,7 @@ const prefabIds = [
   'cookpot', 'researchlab2', 'researchlab4',
 ] as const;
 const buildingDefinitions = {
-  cookpot: COOK_POT_DEFINITION, firepit: FIRE_PIT_DEFINITION,
+  cookpot: COOK_POT_DEFINITION,
   ...RESEARCH_LAB_DEFINITIONS,
 };
 // One plain build; the tests below exercise symbol-only and layered skins.

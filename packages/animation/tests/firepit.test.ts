@@ -3,8 +3,11 @@ import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabI
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
-import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
-import { FIRE_PIT_DEFINITION, FIRE_PIT_ID } from '../../prefab/src/firepit';
+import { FIRE_PIT_ID } from '../../prefab/src/firepit';
+import { ComponentUpdates } from '../../componets/src/componentUpdates';
+import { FireFxHost } from '../../prefab/src/treeFire';
+import { createSignal } from '../../signals/src';
+import { managedBuildings } from './managedBuildings';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Fuel } from '../../componets/src/fuel';
 import type { WorldContext } from '../../prefab/src/worldContext';
@@ -16,15 +19,15 @@ import { workTargets } from './workTargets';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
-function createPlacement() {
+function createPlacement(overrides: Partial<WorldContext> = {}) {
   vi.stubGlobal('window', new EventTarget());
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   const play = vi.spyOn(sound, 'PlaySound').mockReturnValue({ stop: vi.fn(), isPlaying: () => true, setVolume: vi.fn() });
   const scheduler = new GameTimeScheduler();
   const dropLoot = vi.fn();
   const world = { scene: new THREE.Scene(), player: new THREE.Group(), camera: new THREE.PerspectiveCamera(),
-    ground: new THREE.Group(), renderer: { domElement: new EventTarget() }, scheduler, dropLoot } as unknown as WorldContext;
-  const placement = new AnimatedBuildingPlacement(world, { [FIRE_PIT_ID]: FIRE_PIT_DEFINITION }, () => false);
+    ground: new THREE.Group(), renderer: { domElement: new EventTarget() }, scheduler, dropLoot, ...overrides } as unknown as WorldContext;
+  const placement = managedBuildings(world, { consume: () => false });
   return { placement, scheduler, play, dropLoot };
 }
 
@@ -107,4 +110,70 @@ it('saves its fuel and queued charcoal, then drops the charcoal when the restore
     expect(second.dropLoot).toHaveBeenCalledWith([{ itemId: 'charcoal', count: 1 }], expect.any(THREE.Vector3));
     expect(second.placement.exportRecords()[0].record.components.firepit).toEqual({ fueled: { fuel: 0 } });
   } finally { second.placement.dispose(); }
+});
+
+it('burns faster in rain by its precipitation rate, and at the base rate in snow or under rainimmunity', async () => {
+  const preciptype = createSignal<'none' | 'rain' | 'snow'>('none'), precipitationRate = createSignal(0);
+  const { placement, scheduler } = createPlacement({ weather: { preciptype, precipitationRate } });
+  try {
+    await placement.spawn(FIRE_PIT_ID);
+    const [{ display: { model } }] = workTargets('HAMMER');
+    const { components } = prefabInstance(model)!, { fueled } = components;
+    const burnt = (seconds: number) => {
+      const before = fueled.currentfuel;
+      scheduler.advance(seconds);
+      return before - fueled.currentfuel;
+    };
+    expect(burnt(10)).toBeCloseTo(10);
+    // The rate is read at each update, so the change applies from the next one.
+    preciptype.set('rain'); precipitationRate.set(.5);
+    burnt(1);
+    expect(burnt(10)).toBeCloseTo(20);
+    preciptype.set('snow');
+    burnt(1);
+    expect(burnt(10)).toBeCloseTo(10);
+    preciptype.set('rain');
+    Object.assign(components, { rainimmunity: {} });
+    burnt(1);
+    expect(burnt(10)).toBeCloseTo(10);
+  } finally { placement.dispose(); }
+});
+
+it('flickers through the world\'s component updates, and a removed pit stops its fire, sound and fuel', async () => {
+  const updates = new ComponentUpdates(), fx = FireFxHost.create(undefined, updates);
+  const { placement, scheduler, play } = createPlacement({ fire: fx });
+  const stop = vi.fn();
+  play.mockReturnValue({ stop, isPlaying: () => true, setVolume: vi.fn() });
+  try {
+    await placement.spawn(FIRE_PIT_ID);
+    const [target] = workTargets('HAMMER'), model = target.display.model, pit = prefabInstance(model)!;
+    const { fueled } = pit.components;
+    const radius = () => fire(model).light!.radius;
+    const before = radius();
+    updates.update(.1);
+    expect(radius()).not.toBe(before);
+    expect(pit.position).toBe(model.position);
+
+    pit.remove();
+    expect(pit.components.burnable).toBeUndefined();
+    expect(stop).toHaveBeenCalled();
+    const left = fueled.currentfuel;
+    scheduler.advance(30);
+    expect(fueled.currentfuel).toBe(left);
+    // Nothing is left to flicker.
+    expect(() => updates.update(.1)).not.toThrow();
+  } finally { placement.dispose(); fx.dispose(); }
+});
+
+it('keeps a selected skin and its fire offset through the building save shape', async () => {
+  const { placement } = createPlacement();
+  try {
+    const model = placement.spawnFromSave(FIRE_PIT_ID, { id: 'skinned', transform: { position: [1, 0, 2], rotationY: 0 },
+      components: { building: { skinId: 'firepit_hole' }, firepit: { fueled: { fuel: 200 } } } }) as THREE.Group;
+    await vi.waitFor(() => expect(fire(model).fx).toMatchObject({ composite: { offset: [0, 25 + 26] } }));
+    const { record } = placement.exportRecords()[0];
+    expect(record.components.building).toEqual({ skinId: 'firepit_hole' });
+    expect(record.components.firepit).toEqual({ fueled: { fuel: 200 } });
+    expect(record.components).not.toHaveProperty('fueled');
+  } finally { placement.dispose(); }
 });

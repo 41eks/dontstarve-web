@@ -92,7 +92,7 @@ function MakeBuildingTargets(inst: PrefabInstance, skins: readonly string[], wor
 
 /** Prefab(name, fn, assets) for a building drawn from its definitions.json entry; `radius` is its source MakeObstaclePhysics, if it has one. */
 export function buildingPrefab<Instance extends PrefabInstance>(declaration: BuildingDeclaration, bank: string, radius: number | undefined,
-  fn: () => Instance, world: Pick<PrefabWorldContext, 'handEquipment'>): PrefabEntityDefinition<Instance> {
+  fn: PrefabEntityDefinition<Instance>['fn'], world: Pick<PrefabWorldContext, 'handEquipment'>): PrefabEntityDefinition<Instance> {
   const { archive, skinArchives } = declaration, skins = Object.keys(skinArchives ?? {});
   return {
     fn,

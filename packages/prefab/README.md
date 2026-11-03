@@ -131,13 +131,13 @@ W.A.R.B.I.S. 头戴装备、检查镜和兔子帽的主体跟随部件直接合�
 调度器上每秒一次的周期任务）。燃料段变化时 `onfuelchange` 点燃或熄灭，并以
 `Burnable:SetFXLevel(段, 段内比例)` 设置火焰等级；熄灭把燃料归零，燃到最高段后熄灭掉落 1 个木炭。
 `Burnable:AddBurnFX("campfirefire", (0, 25, 0), "firefx", true, nil, true)` 由 `SpawnFX` / `KillFX`
-生成和移除 `campfirefire`（`campfirefire.ts`，`FX`、`HASHEATER`、`persists = false`，
+通过世界注入的 `FireFxHost.spawnCampfire` 生成和移除 `campfirefire`（`campfirefire.ts`，闪烁注册在 `ComponentUpdates` 上，`FX`、`HASHEATER`、`persists = false`，
 `anim/campfire_fire.zip`）：它以 `attachFx` 的 `composite` 跟随火坑的 `firefx` 符号，偏移在符号空间内，
 帧合入火坑同一 `BufferGeometry` 的该符号层。`firefx` 组件（`packages/componets/src/firefx.ts`）按
 等级播放 `level1`–`level4`、调整 `firefx_light` 子实体的半径／亮度并按 `OnUpdate` 闪烁，管理
 `campfire` 循环声与 `fireBurstSmall/Large`、`fireOut`；光源挂在火坑上。各皮肤的 `SetFXOffset`
 与换肤后的 `restart_firepit` 已接入。保存 `firepit.fueled.fuel`（满燃料时按 Lua 省略）与
-`queued_charcoal`；燃烧中的火坑不按结构燃烧存为 `burnt`。可燃物品的 `fuel` 组件、雨天加速消耗、
+`queued_charcoal`；燃烧中的火坑不按结构燃烧存为 `burnt`。下雨时燃料消耗倍率为 `1 + FIREPIT_RAIN_RATE × 降水率`。可燃物品的 `fuel` 组件、
 `heater` 供热、烹饪、作祟和火鸟皮肤加燃料特效尚未移植。
 
 `HAT_CRAFTING_DEFINITIONS` 保留 52 条原始配方及科技、角色、技能、制作站
@@ -287,7 +287,7 @@ RGB `(237,237,209)/255`。范围不随掉落堆叠数量增加，也没有火把
 `@dontstarve-web/prefab/stafflight` 的 `StaffLightInstance` 按 `stafflight.lua` 的 `fn()` 组装矮星（`stafflight`）和极光（`staffcoldlight`）：
 标签、`heater`、`sanityaura`、`hauntable`、`timer`，矮星另有 `propagator`。`staffLightPrefabs` 提供两颗星的构造与资源声明，由应用注册到全局唯一的 `PrefabEntityManager`（`prefabInstance.ts`）；所有已迁移的 prefab 共用其实体集合、显示生命周期与共享 archive 缓存；存档按组件写入（`components.timer` 即 `timer.lua` 的 `OnSave`）。`PrefabEntityDefinition` 还可以声明 `physics`（`Make*Physics` 与半径）和 `minimapIcon`，`pond` 用它们声明障碍物碰撞和地图图标。
 
-建造流程在 `BuildingPlacer`（`buildingPlacer.ts`）：placer 实体、光标、指针事件和 `consumeBufferedBuild`，提交时只把位置交给调用方生成建筑。`AnimatedBuildingPlacement` 和 `src/placeableBuilding.ts` 的 `MANAGED_BUILDING_PLACERS` 各用一个；已迁到 `PrefabEntityManager` 的建筑（目前是 `wardrobe`、`campfire`、`nightlight`、`pighouse`，以及容器建筑 `treasurechest`、`pandoraschest`、`icebox`、`dragonflychest`、`saltbox`、`mushroom_light`、`mushroom_light2`）登记在后者，由 `building.ts` 的 `buildingPrefab`／`buildingPlacer` 从 `definitions.json` 声明，存档仍写 `components.building`。容器建筑在 `fn` 中调用 `MakeBuildingContainer`：`SetPersistData` 先由 `Container.OnLoad` 读入 `components.container`，再在 `inst.OnLoad` 之前登记 `world:<prefab>:<entityId>` 地址，新建的建筑则在 `onSpawned` 登记。
+建造流程在 `BuildingPlacer`（`buildingPlacer.ts`）：placer 实体、光标、指针事件和 `consumeBufferedBuild`，提交时只把位置交给调用方生成建筑。`AnimatedBuildingPlacement` 和 `src/placeableBuilding.ts` 的 `MANAGED_BUILDING_PLACERS` 各用一个；已迁到 `PrefabEntityManager` 的建筑（目前是 `wardrobe`、`campfire`、`nightlight`、`pighouse`，`firepit`，以及容器建筑 `treasurechest`、`pandoraschest`、`icebox`、`dragonflychest`、`saltbox`、`mushroom_light`、`mushroom_light2`）登记在后者，由 `building.ts` 的 `buildingPrefab`／`buildingPlacer` 从 `definitions.json` 声明，存档仍写 `components.building`。容器建筑在 `fn` 中调用 `MakeBuildingContainer`：`SetPersistData` 先由 `Container.OnLoad` 读入 `components.container`，再在 `inst.OnLoad` 之前登记 `world:<prefab>:<entityId>` 地址，新建的建筑则在 `onSpawned` 登记。
 `star_hot.zip` 播放 `appear → idle_loop`，`star_cold.zip` 在 `appear` 后随 `animover` 随机切换三个待机；到期或作祟时走 `kill_light`：
 播放 `disappear`、`persists = false`，1 秒后移除。局部光源由 0.1 秒周期任务脉动，半径 33～36 世界单位。
 寿命（矮星 1440 秒）在世界 `GameTimeScheduler` 上的 `extinguish` timer 中计时，休眠不暂停；存档保存落点和剩余寿命。

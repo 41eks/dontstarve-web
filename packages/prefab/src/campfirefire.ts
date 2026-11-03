@@ -1,9 +1,9 @@
-import type * as THREE from 'three';
 import { createEffect, createSignal, watchSignal } from '@dontstarve-web/signals';
 import type { LoadedSpriteSource } from '@dontstarve-web/display';
 import type { BurnFX, BurnFXData } from '../../componets/src/burnable';
 import { FireFX, type FireFXInst, type FireFXLevel, type FireFXLight } from '../../componets/src/firefx';
 import { spawnLightEntity } from './localLight';
+import type { ComponentUpdates } from '../../componets/src/componentUpdates';
 import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
 import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
 import { TILE_SIZE } from './tile';
@@ -33,15 +33,14 @@ export class CampfireFire implements BurnFX, FireFXInst {
   readonly instance: PrefabInstance;
   readonly components: { firefx: FireFX };
   private readonly owner: PrefabInstance;
-  private readonly ownerModel: THREE.Object3D;
   private readonly key = `${CAMPFIREFIRE_ID}:${nextId++}`;
   private readonly sounds = new Map<string, SoundHandle>();
   private readonly cleanups: (() => void)[] = [];
   private onAnimOver?: () => void;
 
-  constructor(source: LoadedSpriteSource, owner: PrefabInstance, ownerModel: THREE.Object3D, data: BurnFXData) {
+  /** `updates` is firefx.lua's StartUpdatingComponent, as for fire.lua. */
+  constructor(source: LoadedSpriteSource, owner: PrefabInstance, data: BurnFXData, updates?: ComponentUpdates) {
     this.owner = owner;
-    this.ownerModel = ownerModel;
     const { instance, display } = createPrefabEntity(CAMPFIREFIRE_ID, source, { name: FIRE_LEVELS[0].anim }, CAMPFIREFIRE_ID, instance => {
       instance.addTag('FX');
       instance.addTag('HASHEATER');
@@ -53,6 +52,7 @@ export class CampfireFire implements BurnFX, FireFXInst {
     const firefx = new FireFX(this);
     firefx.levels = FIRE_LEVELS;
     this.components = { firefx };
+    if (updates) this.cleanups.push(updates.register(firefx));
     firefx.SetLevel(1);
     // OnEntitySleep / OnEntityWake follow the owner's tile with the fx entity.
     const status = watchSignal(instance.status, stop => this.cleanups.push(stop));
@@ -83,7 +83,7 @@ export class CampfireFire implements BurnFX, FireFXInst {
   PushAnimation(name: string, loop = false): void { this.instance.sprite.pushAnimation(name, loop); }
 
   PlaySound(path: string, name?: string): void {
-    const sound = PlaySound(path as SoundEventPath, this.ownerModel.position);
+    const sound = PlaySound(path as SoundEventPath, this.owner.position);
     if (name === undefined) return;
     this.sounds.get(name)?.stop();
     this.sounds.set(name, sound);

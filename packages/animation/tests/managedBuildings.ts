@@ -9,7 +9,7 @@ import { PlaceableBuildingPlacement, type PlaceableBuildingInteractionChange } f
 export function managedBuildings(world: WorldContext, { consume = () => true, onInteraction }: {
   consume?: () => boolean; onInteraction?: (change: PlaceableBuildingInteractionChange) => void;
 } = {}) {
-  const scheduler = world.scheduler ?? new GameTimeScheduler(), fire = FireFxHost.create();
+  const scheduler = world.scheduler ?? new GameTimeScheduler(), fire = world.fire ?? FireFxHost.create();
   const displays = new PrefabDisplayGroup(world.scene);
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { tickingarea: world.tickingarea, physics: world.physics });
   const placement = new PlaceableBuildingPlacement({ cameraFacing: createSignal(8), cameraHeading: createSignal(45), ...world, scheduler, fire }, consume, onInteraction, prefabs);
