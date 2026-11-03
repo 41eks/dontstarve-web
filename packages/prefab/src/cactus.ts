@@ -1,8 +1,10 @@
+import { Pickable } from './components/pickable';
+import { DefaultBurnFn, DefaultExtinguishFn, DefaultBurntFn } from './standardcomponents';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import type * as THREE from 'three';
 import { WorldContentKey, type SeasonState, type WorldContentSignal } from '@dontstarve-web/signals';
 import type { PickDoer } from '@dontstarve-web/stategraphs/pick';
-import { PickablePlantManager, type PickablePlantBehavior, type PickablePlantBehaviorContext,
+import { PickablePlantManager, PickablePlantInstance, type PickablePlantContext,
   type PickablePlantDefinition, type PickablePlantRecord } from './pickablePlant';
 
 export const CACTUS_ID = 'cactus' as const;
@@ -21,26 +23,32 @@ export type CactusRecord = PickablePlantRecord;
  * cactus.lua: picking hurts a picker without bramble_resistant equipment, and a summer cactus also gives its flower.
  * has_flower is not saved; on load it follows the season, as OnEntityWake does.
  */
-class Cactus implements PickablePlantBehavior {
-  private readonly context: PickablePlantBehaviorContext;
+export class CactusInstance extends PickablePlantInstance {
   private readonly season?: WorldContentSignal<SeasonState>;
   private readonly cleanups: (() => void)[] = [];
   private has_flower = false;
 
-  constructor(context: PickablePlantBehaviorContext) {
-    this.context = context;
+  constructor(prefab: CactusId, context: PickablePlantContext) {
+    super(CACTUS_DEFINITIONS[prefab], context);
+    new Pickable(this, 'cactus_meat', CACTUS_REGROW_TIME, 1, doer => this.picked(doer), () => this.regen(), context.saved?.components.pickable, {
+      scheduler: context.scheduler, growthDuration: context.growthDuration,
+      onTransplant: () => this.components.pickable.MakeEmpty(), onEmpty: () => this.empty(),
+    });
+    this.bindBurnable({ propagator: 'medium', burnTime: 30, fxLevel: 4,
+      onIgnite: () => DefaultBurnFn(this), onExtinguish: () => DefaultExtinguishFn(this), onBurnt: () => DefaultBurntFn(this, context.world) });
+    this.onRemove(() => { for (const cleanup of this.cleanups.splice(0)) cleanup(); });
     this.season = context.getWatchWorldContent?.(WorldContentKey.Season, cleanup => this.cleanups.push(cleanup));
   }
 
   /** TheWorld.state.issummer, read when a callback runs. */
   private get issummer(): boolean { return this.season?.peek().season === 'summer'; }
 
-  initialize(): void {
-    const { pickable, animation, play } = this.context;
+  override initialize(): void {
+    const { pickable } = this.components; const animation = this.sprite;
     if (pickable.canBePicked) {
       this.has_flower = this.issummer;
       if (this.has_flower) {
-        play(['idle_flower'], true);
+        this.play(['idle_flower'], true);
         animation.setFrame(Math.floor(Math.random() * animation.numFrames));
       }
     } else this.empty();
@@ -48,9 +56,9 @@ class Cactus implements PickablePlantBehavior {
 
   /** onpickedfn */
   picked(doer?: PickDoer): void {
-    const { physics, play, instance } = this.context;
+    const { physics } = this; const instance = this;
     physics.SetActive(false);
-    play([this.has_flower ? 'picked_flower' : 'picked', 'empty'], true);
+    this.play([this.has_flower ? 'picked_flower' : 'picked', 'empty'], true);
     const picker = doer?.picker;
     if (picker) {
       const { combat, inventory } = picker.components;
@@ -65,31 +73,26 @@ class Cactus implements PickablePlantBehavior {
 
   private giveFlower(give: ((item: import('@dontstarve-web/inventory').ItemEntity, source?: THREE.Vector3) => boolean) | undefined,
     position: ReadonlyVector3): void {
-    const loot = this.context.spawnItem?.({ itemId: CACTUS_FLOWER_ID, count: 1 });
+    const loot = this.context.world.spawnItem?.({ itemId: CACTUS_FLOWER_ID, count: 1 });
     if (!loot) return;
     if (give) give(loot, position.clone());
-    else this.context.dropItem?.(loot, position.clone());
+    else this.context.world.dropItem?.(loot, position.clone());
   }
 
   /** onregenfn */
   regen(): void {
-    const { physics, play } = this.context;
+    const { physics } = this;
     this.has_flower = this.issummer;
-    play(this.has_flower ? ['grow_flower', 'idle_flower'] : ['grow', 'idle'], true);
+    this.play(this.has_flower ? ['grow_flower', 'idle_flower'] : ['grow', 'idle'], true);
     physics.SetActive(true);
   }
 
   /** makeemptyfn */
   empty(): void {
-    this.context.physics.SetActive(false);
-    this.context.play(['empty'], true);
+    this.physics.SetActive(false);
+    this.play(['empty'], true);
     this.has_flower = false;
   }
-
-  barren(): void {}
-  burnt(): void {}
-  exportState(): PickablePlantRecord['components'] { return {}; }
-  dispose(): void { for (const cleanup of this.cleanups.splice(0)) cleanup(); }
 }
 
 /** cactus.lua MakeCactus(name): bank/build share the name; MakeLargeBurnable, MakeMediumPropagator, MakeObstaclePhysics(.3). */
@@ -100,22 +103,12 @@ function cactusDefinition(prefab: CactusId): PickablePlantDefinition {
     buildArchive: `${prefab}.zip`,
     archiveSprite: { bank: prefab, instancedAnimations: 'all' },
     tags: ['plant', 'thorny'],
-    product: 'cactus_meat',
-    regrowTime: CACTUS_REGROW_TIME,
-    // No MakeNoGrowInWinter; pickable.picksound is read by WX-78's stategraph, not the player's.
-    noGrowInWinter: false,
     idle: { name: 'idle', randomFrame: true },
-    picked: { clips: ['picked', 'empty'] },
     empty: { name: 'empty', frame: 'first' },
-    grow: 'grow',
-    burnTime: 30,
-    burnFxLevel: 4,
-    propagatorSize: 'medium',
     physicsRadius: .3,
     obstaclePhysics: true,
     minimapIcon: `${prefab}.png`,
-    onTransplant: pickable => pickable.MakeEmpty(),
-    createBehavior: context => new Cactus(context),
+    createInstance: context => new CactusInstance(prefab, context),
   };
 }
 export const CACTUS_DEFINITIONS: Readonly<Record<CactusId, PickablePlantDefinition>> = {
