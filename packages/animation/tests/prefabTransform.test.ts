@@ -8,6 +8,10 @@ import { TransformRoot } from '../src/transformRoot';
 import { updateSceneMatrices } from '../src/matrixUpdates';
 import { GetTileKeyAtPoint } from '../../componets/src/tileManager';
 import { useTestTileMap } from './tileMapFixture';
+import { readFile } from 'node:fs/promises';
+import { PrefabDisplay } from '../../display/src/prefabDisplay';
+import { SpriteResources } from '../../display/src/spriteResources';
+import { SpriteController } from '../src/sprite';
 
 useTestTileMap();
 
@@ -55,6 +59,29 @@ it('retains the stationary root and marks it after logical writes and a display-
   updateSceneMatrices(root);
   expect(point.matrixWorld.elements[13]).toBe(4);
   transform.dispose();
+});
+
+it('keeps a symbol follower on the camera-facing sprite, whatever the camera and the entity heading', async () => {
+  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  // One unit along the sprite's own x.
+  const symbol = vi.spyOn(SpriteController.prototype, 'getSymbolPosition').mockImplementation((_symbol, _x, _y, target) => { target.set(1, 0, 0); return true; });
+  const camera = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI / 2);
+  const instance = new PrefabInstance('follower-host', new SpriteState({ name: 'idle', billboard: true }));
+  const display = new PrefabDisplay({ root: instance.transform.model, name: 'host', sprite: instance.sprite, status: instance.status,
+    source: new SpriteResources().factory({ buildArchive: 'berrybush.zip', animationArchive: 'berrybush.zip' }) });
+  const follower = instance.sprite.followSymbol('swap_object', 0, 0);
+  try {
+    await display.artLoaded();
+    const worldPoint = () => {
+      for (let frame = 0; frame < 2; frame++) { display.update(1 / 30, camera); instance.sprite.update(1 / 30); }
+      return follower.node.getWorldPosition(new Vector3());
+    };
+    const facing = new Vector3(1, 0, 0).applyQuaternion(camera);
+    expect(worldPoint().distanceTo(facing)).toBeCloseTo(0);
+    instance.setRotation(45);
+    expect(worldPoint().distanceTo(facing)).toBeCloseTo(0);
+    expect(follower.node.parent).toBe(display.model);
+  } finally { follower.remove(); display.dispose(); instance.remove(); symbol.mockRestore(); vi.unstubAllGlobals(); }
 });
 
 it('shares one activity query and tracker, retaining the result until the final consumer leaves', () => {

@@ -50,7 +50,9 @@ it('follows moving target signals across tiles and releases their bridges on dis
   const active = query(source, 0)!;
   const wider = query(source, 1)!;
   try {
-    expect(query(source, 0)).toBe(active);
+    const sameOwner = query(source, 0)!;
+    expect(sameOwner).toBe(active);
+    sameOwner.dispose();
     expect(source.get).toHaveBeenCalledOnce();
     expect([active(), wider()]).toEqual([true, true]);
     move(new Vector3(12, 0, 0));
@@ -134,6 +136,26 @@ it('releases the player bridge on disposal while other consumers remain active',
     expect(removed()).toBe(true);
     expect(retained()).toBe(false);
   } finally { removed.dispose(); retained.dispose(); }
+});
+
+it('keeps a shared tile memo until its last owner disposes it', async () => {
+  const player = createSignal(new Vector3()), query = GetTileStateAtPoint(player), tile = tileAt(new Vector3());
+  const first = query(tile)!, second = query(tile)!;
+  try {
+    expect(second).toBe(first);
+    first.dispose();
+    player.set(new Vector3(600, 0, 0));
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(second()).toBe(false);
+    second.dispose();
+    player.set(new Vector3());
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(second()).toBe(false);
+    const next = query(tile)!;
+    expect(next).not.toBe(first);
+    expect(next()).toBe(true);
+    next.dispose();
+  } finally { DisposeTileStates(player); }
 });
 
 it('reuses tile signal memos and a single player bridge while keeping radius and source caches separate', async () => {

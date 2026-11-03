@@ -19,6 +19,11 @@ export interface ResidentEntity {
   readonly model: THREE.Group;
 }
 
+/** Move a point from `visual`'s own frame into its parent's: the drawn sprite carries the camera facing and foot offset. */
+function toParentFrame(visual: THREE.Object3D, point: THREE.Vector3): void {
+  point.multiply(visual.scale).applyQuaternion(visual.quaternion).add(visual.position);
+}
+
 /**
  * An `ArchiveSprite` whose frames, materials and instance entries exist only while the entity is active.
  * The stable root keeps the entity origin, identity and render-order slot; inactive entities hold an empty
@@ -87,8 +92,11 @@ export class ResidentSprite implements ArchiveSprite {
   get loaded(): boolean { return this.sprite !== undefined; }
   get currentAnimation(): string { return this.sprite?.currentAnimation ?? this.clip.name; }
   get frameCount(): number { return this.sprite?.frameCount ?? 0; }
+  /** The symbol's point in the entity root's frame, as a follower parented to the root reads it. */
   getSymbolPosition(symbol: string, x: number, y: number, target: THREE.Vector3): boolean {
-    return this.sprite?.getSymbolPosition(symbol, x, y, target) ?? false;
+    if (!this.sprite?.getSymbolPosition(symbol, x, y, target)) return false;
+    toParentFrame(this.sprite.model, target);
+    return true;
   }
 
   /** Build the sprite for an active entity; a no-op while loaded or loading. A synchronous factory loads immediately. */
@@ -460,8 +468,11 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
   setTint(tint: import('./sprite').SpriteTint): void { this.controller?.setTint?.(tint); }
   setComposites(frames: readonly import('./sprite').CompositeSpriteFrame[]): void { this.controller?.setComposites?.(frames); }
   getResolvedFrame(): readonly import('./animationAssets').ResolvedSprite[] { return this.controller?.getResolvedFrame?.() ?? []; }
+  /** The symbol's point in the entity root's frame, as a follower parented to the root reads it. */
   getSymbolPosition(symbol: string, x: number, y: number, target: THREE.Vector3): boolean {
-    return this.controller?.getSymbolPosition?.(symbol, x, y, target) ?? false;
+    if (!this.sprite || !this.controller?.getSymbolPosition?.(symbol, x, y, target)) return false;
+    toParentFrame(this.sprite, target);
+    return true;
   }
   setDepthOffset(enabled: boolean): void {
     (this.sprite?.userData.animationController as { setDepthOffset?(enabled: boolean): void } | undefined)?.setDepthOffset?.(enabled);

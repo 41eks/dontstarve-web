@@ -100,7 +100,7 @@ export interface MushtreeWorld {
   scheduler?: GameTimeScheduler;
   /** Searched for propagator neighbours; receives fire effects. */
   scene: THREE.Object3D;
-  /** Season is watched per tree through its own tile key, so trees outside the tickingarea stop following it. */
+  /** Season is watched per tree through its transform's activity, so trees outside the tickingarea stop following it. */
   getWatchWorldContent?: GetWatchWorldContent;
   /** Trees outside it release their sprite; without it they stay loaded. */
   tickingarea?: TileStateQuery;
@@ -191,8 +191,12 @@ export class MushtreeInstance extends PrefabInstance<ArchiveSpriteCommands> {
   private watchSeason(): void {
     const { data, env } = this;
     if (!data.season || !env.world.getWatchWorldContent) return;
+    const cleanups: (() => void)[] = [];
+    this.stopSeason = () => cleanups.splice(0).reverse().forEach(stop => stop());
+    // The transform's shared activity: a stump stops following the season, not its own ticking area.
+    const area = this.transform.getTileActivity(env.world.tickingarea, stop => cleanups.push(stop));
     const season = this.season = env.world.getWatchWorldContent(WorldContentKey.Season,
-      cleanup => { this.stopSeason = cleanup; }, { tile: this.tileTracker.tile });
+      stop => cleanups.push(stop), area ? { active: area } : undefined);
     let previous = season.peek().season;
     createEffect(() => {
       const current = season.get().season;

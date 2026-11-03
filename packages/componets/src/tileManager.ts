@@ -134,7 +134,8 @@ interface TileStateCache {
 interface TileStateTarget {
   tile: Signal<number>;
   stop: () => void;
-  memos: Map<number, Memo<boolean>>;
+  /** One memo per radius, shared by every owner of the tile signal; the last owner's dispose releases it. */
+  memos: Map<number, { memo: Memo<boolean>; owners: number }>;
 }
 
 const caches = new WeakMap<ReadonlySignal<Vector3 | undefined>, TileStateCache>();
@@ -164,7 +165,7 @@ function createTileStateCache(source: ReadonlySignal<Vector3 | undefined>, mapGr
     get(tile, radius) {
       let target = targets.get(tile);
       const cached = target?.memos.get(radius);
-      if (cached) return cached;
+      if (cached) { cached.owners++; return cached.memo; }
       if (!target) {
         let stop!: () => void;
         const local = watchSignal(tile, cleanup => { stop = cleanup; });
@@ -195,9 +196,10 @@ function createTileStateCache(source: ReadonlySignal<Vector3 | undefined>, mapGr
       });
       grid.memoCount++;
       const disposeMemo = active.dispose;
+      const entry = { memo: active, owners: 1 };
       let removed = false;
       active.dispose = () => {
-        if (removed) return;
+        if (removed || --entry.owners > 0) return;
         removed = true;
         ownedTarget.memos.delete(radius);
         if (ownedTarget.memos.size === 0) {
@@ -209,7 +211,7 @@ function createTileStateCache(source: ReadonlySignal<Vector3 | undefined>, mapGr
           if (targets.size === 0) cache.dispose();
         }
       };
-      target.memos.set(radius, active);
+      target.memos.set(radius, entry);
       return active;
     },
     dispose() {
@@ -218,7 +220,7 @@ function createTileStateCache(source: ReadonlySignal<Vector3 | undefined>, mapGr
       caches.delete(source);
       try {
         for (const target of [...targets.values()]) {
-          for (const memo of [...target.memos.values()]) memo.dispose();
+          for (const entry of [...target.memos.values()]) { entry.owners = 1; entry.memo.dispose(); }
         }
       } finally {
         stopWatching();

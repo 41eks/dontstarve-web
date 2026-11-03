@@ -1,8 +1,9 @@
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
+import { BindTileMapSize, DisposeTileStates, GetTileStateAtPoint } from '../../componets/src/tileManager';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
-import { createMemo, createSignal } from '../../signals/src';
+import { createMemo, createSignal, type TileStateQuery } from '../../signals/src';
 import { bindTestWorld, drawn } from './worldContentFixture';
 import { MushtreeManager, type MushtreeWorld } from '../../prefab/src/mushtree';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -42,8 +43,8 @@ it('loads a burnt tree as ash and releases its independent burnt FX on game time
   } finally { trees.dispose(); scheduler.dispose(); }
 });
 
-function world(season: 'summer' | 'autumn' | 'winter' = 'autumn') {
-  const scheduler = new GameTimeScheduler(), bound = bindTestWorld(scheduler), seasonSignal = bound.season;
+function world(season: 'summer' | 'autumn' | 'winter' = 'autumn', tickingarea?: TileStateQuery) {
+  const scheduler = new GameTimeScheduler(), bound = bindTestWorld(scheduler, tickingarea), seasonSignal = bound.season;
   seasonSignal.set({ season, progress: 0 });
   const ash: THREE.Vector3[] = [], drops: { itemId: string; count: number }[] = [];
   const mushWorld = { scheduler, scene: new THREE.Scene(), getWatchWorldContent: bound.getWatchWorldContent, worldEvents: { emit: (_name: string, position: THREE.Vector3) => ash.push(position) },
@@ -131,6 +132,33 @@ it('blooms a tall mushtree in winter only and carries webbable', async () => {
     expect(prefabInstance(model)!.hasTag('webbable')).toBe(true);
   } finally { trees.dispose(); }
 }, 20000);
+
+it('a chopped tree stops following the season but its stump keeps following the ticking area', async () => {
+  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  vi.stubGlobal('window', new EventTarget());
+  const player = createSignal<THREE.Vector3 | undefined>(new THREE.Vector3());
+  const stopGrid = BindTileMapSize(960);
+  // One query for the season gate and the entity's activity, as worldState binds it.
+  const tickingarea = GetTileStateAtPoint(player as never);
+  const { mushWorld, scheduler } = world('autumn', tickingarea), inventory = createInventoryStore([]);
+  const trees = new MushtreeManager(new THREE.Scene(), { ...mushWorld, tickingarea });
+  const settle = () => new Promise(resolve => setTimeout(resolve, 0));
+  try {
+    // A seasonal tree watches the season and its own activity at once: chopping it ends only the former.
+    const model = await drawn(trees.spawn('mushtree_medium', new THREE.Vector3(5, 0, 7)));
+    const axe = inventory.entities.create({ itemId: 'axe', count: 1 });
+    const [chop] = workTargets('CHOP');
+    while (performToolWork('CHOP', chop.entity, {}, axe));
+    expect(trees.exportRecords()[0].record.components.mushtree?.stump).toBe(true);
+    const instance = lookupPrefabInstance(model)!;
+    player.set(new THREE.Vector3(400, 0, 0));
+    await settle();
+    expect(instance.status.peek()).toBe('asleep');
+    player.set(new THREE.Vector3());
+    await settle();
+    expect(instance.status.peek()).toBe('active');
+  } finally { trees.dispose(); inventory.dispose(); scheduler.dispose(); DisposeTileStates(player as never); stopGrid(); }
+});
 
 it('releases the mushtree sprite outside the tickingarea and settles a transition that ran while unloaded', async () => {
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
