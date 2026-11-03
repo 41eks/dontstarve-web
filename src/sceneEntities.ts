@@ -1667,7 +1667,7 @@ export async function createSceneEntities(
   }
 
   function registerMarshPlants(registry: EntityRegistry, worldState: SceneWorldState) {
-    const displays = new PrefabDisplayGroup(scene), baseUrl = `${import.meta.env.BASE_URL}dst/data/anim`, fire = FireFxHost.create(baseUrl);
+    const displays = new PrefabDisplayGroup(scene), baseUrl = `${import.meta.env.BASE_URL}dst/data/anim`, fire = FireFxHost.create(baseUrl, worldState.componentUpdates);
     const plants = createMarshPlantManager(displays, baseUrl, { scheduler: scheduler ?? worldState.scheduler, tickingarea: worldState.tickingarea, fire,
       spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options) });
     registry.register(MANAGER_DEFINITIONS['marsh_plant'], {

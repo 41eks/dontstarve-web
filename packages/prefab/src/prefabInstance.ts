@@ -322,8 +322,6 @@ export interface PrefabEntityDefinition<Instance extends PrefabInstance> {
   minimapIcon?: string;
   /** Runs once the entity has its position and saved state, for what the source starts from there. */
   onSpawned?(instance: Instance): void;
-  /** StartUpdatingComponent: per-frame work the entity has, such as its fire's flicker. */
-  update?(instance: Instance, dt: number): void;
 }
 
 /**
@@ -380,7 +378,6 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
   /** The display group advances the awake entities' clips; timers and tasks run on the world's scheduler. */
   update(dt: number, cameraQuaternion: Quaternion): void {
     if (this.disposed) return;
-    for (const entity of this.entities) this.prefabs[entity.prefab as Id].update?.(entity, dt);
     this.displays.update(dt, cameraQuaternion);
   }
 

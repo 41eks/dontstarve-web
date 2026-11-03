@@ -2,6 +2,8 @@ import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { prefabDisplay, PrefabDisplayGroup } from '../../display/src';
+import { ComponentUpdates } from '../../componets/src/componentUpdates';
+import { FireFX } from '../../componets/src/firefx';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { InventoryStore } from '../../inventory/src';
 import { createMarshPlantManager, MARSH_PLANT_ID, type MarshPlantInstance } from '../../prefab/src/marsh_plant';
@@ -26,7 +28,7 @@ afterEach(() => {
 });
 
 function setup() {
-  const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), fire = FireFxHost.create('/dst/data/anim');
+  const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), updates = new ComponentUpdates(), fire = FireFxHost.create('/dst/data/anim', updates);
   const snow = createSignal(0), spawnGroundItem = vi.fn();
   const plantDisplays = new PrefabDisplayGroup(scene), pondDisplays = new PrefabDisplayGroup(scene);
   const plants = createMarshPlantManager(plantDisplays, '/dst/data/anim', { scheduler, fire, spawnGroundItem: spawnGroundItem as never });
@@ -35,7 +37,7 @@ function setup() {
     spawnPrefab: (_: string, position: THREE.Vector3) => { const plant = plants.spawn(MARSH_PLANT_ID, position); spawned.push(plant); return plant; } };
   const ponds = createPondManager(pondDisplays, '/dst/data/anim', world);
   cleanups.push(() => { ponds.dispose(); plants.dispose(); pondDisplays.dispose(); plantDisplays.dispose(); fire.dispose(); });
-  return { scene, scheduler, snow, plants, ponds, spawned, spawnGroundItem, world };
+  return { updates, scene, scheduler, snow, plants, ponds, spawned, spawnGroundItem, world };
 }
 const offsets = (pond: PondInstance) => pond.GetPersistData().plants;
 
@@ -75,6 +77,29 @@ it('restores saved offsets, loses them to a freeze and thaws with new ones, as t
   const frozen = ponds.spawn(POND_ID, new THREE.Vector3(90, 0, 0), { id: 'frozen', components: { plants: saved } });
   expect(spawned).toHaveLength(count);
   expect(offsets(frozen)).toBeUndefined();
+});
+
+it('flickers only while its fire exists, on the world component updates', () => {
+  const { plants, updates, scheduler } = setup();
+  // Far apart: a burning plant's propagator would relight a neighbour.
+  const burnt = plants.spawn(MARSH_PLANT_ID, new THREE.Vector3()), extinguished = plants.spawn(MARSH_PLANT_ID, new THREE.Vector3(1000, 0, 0));
+  const onUpdate = vi.spyOn(FireFX.prototype, 'OnUpdate');
+  updates.update(1 / 30);
+  expect(onUpdate).not.toHaveBeenCalled();
+  burnt.components.burnable!.Ignite();
+  extinguished.components.burnable!.Ignite();
+  updates.update(1 / 30);
+  expect(onUpdate).toHaveBeenCalledTimes(2);
+  extinguished.components.burnable!.Extinguish();
+  onUpdate.mockClear();
+  updates.update(1 / 30);
+  expect(onUpdate).toHaveBeenCalledOnce();
+  // Burning out removes the plant with its fire.
+  scheduler.advance(20);
+  expect(burnt.isRemoved).toBe(true);
+  onUpdate.mockClear();
+  updates.update(1 / 30);
+  expect(onUpdate).not.toHaveBeenCalled();
 });
 
 it('burns to ash where it stands; a burnt plant stays gone from the world but not from the pond', async () => {
