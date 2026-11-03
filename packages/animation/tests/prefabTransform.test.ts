@@ -48,6 +48,30 @@ it('owns position, scale and degree heading before display and preserves them ac
   } finally { second.display.dispose(); instance.remove(); }
 });
 
+it('only writes a position through the transform, which keeps the tile tracker and the stationary root in step', () => {
+  const transform = Transform.stationary(), root = transform.model as TransformRoot;
+  const tile = transform.tileTracker.tile, origin = tile.peek();
+  updateSceneMatrices(root);
+  const typeChecked = () => {
+    // @ts-expect-error A position is read-only; a direct write would miss the tracker and the dirty mark.
+    transform.position.set(24, 0, 0);
+    // @ts-expect-error As above.
+    transform.position.x = 24;
+  };
+  expect(typeChecked).toBeTypeOf('function');
+  transform.copyPosition(new Vector3(24, 0, 0));
+  expect(transform.position.x).toBe(24);
+  expect(root.transformDirty).toBe(true);
+  // Writes refresh the tile once per interval, not on each write.
+  for (let write = 1; write < 60; write++) { expect(tile.peek()).toBe(origin); transform.copyPosition(new Vector3(24, 0, 0)); }
+  expect(tile.peek()).not.toBe(origin);
+  transform.setPosition(0, 0, 0);
+  expect(tile.peek()).not.toBe(origin);
+  transform.tileTracker.sync();
+  expect(tile.peek()).toBe(origin);
+  transform.dispose();
+});
+
 it('retains the stationary root and marks it after logical writes and a display-local change', () => {
   const transform = Transform.stationary(), root = transform.model as TransformRoot;
   const point = new Group(); root.add(point);
@@ -180,8 +204,10 @@ it('shares one activity query and tracker, retaining the result until the final 
   firstCleanup.forEach(stop => stop());
   expect(dispose).not.toHaveBeenCalled();
   transform.setPosition(24, 0, 0);
+  transform.tileTracker.sync();
   expect(second.peek()).toBe(false);
   transform.setPosition(0, 0, 0);
+  transform.tileTracker.sync();
   expect(second.peek()).toBe(true);
   playerActive.set(false);
   expect(second.peek()).toBe(false);

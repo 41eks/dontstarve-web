@@ -1,15 +1,16 @@
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import type * as THREE from 'three';
 import { PrefabDisplay, type PrefabDisplayOptions } from './prefabDisplay';
 
 /** Scene ownership, frame updates and foot-point sorting for independently declared prefab displays. */
 export class PrefabDisplayGroup {
-  private readonly entries = new Map<PrefabDisplay, THREE.Vector3>();
+  private readonly entries = new Map<PrefabDisplay, ReadonlyVector3>();
   private disposed = false;
   private readonly scene: THREE.Scene;
 
   constructor(scene: THREE.Scene) { this.scene = scene; }
 
-  add(options: PrefabDisplayOptions, footPosition?: THREE.Vector3): PrefabDisplay {
+  add(options: PrefabDisplayOptions, footPosition?: ReadonlyVector3): PrefabDisplay {
     if (this.disposed) throw new Error('Prefab displays have been disposed');
     const display = new PrefabDisplay(options);
     this.mount(display, footPosition);
@@ -17,7 +18,7 @@ export class PrefabDisplayGroup {
   }
 
   /** Adopt an existing display; the group owns its scene membership and final display cleanup. */
-  mount(display: PrefabDisplay, footPosition?: THREE.Vector3): void {
+  mount(display: PrefabDisplay, footPosition?: ReadonlyVector3): void {
     if (this.disposed) throw new Error('Prefab displays have been disposed');
     if (display.isRemoved) return;
     if (this.entries.has(display)) { display.mount(this.scene); return; }

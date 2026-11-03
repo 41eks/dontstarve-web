@@ -1,4 +1,4 @@
-import type { Vector3 } from 'three';
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 
 export interface LootRecipe { ingredients: readonly { type: string; amount: number; deconstruct?: boolean }[] }
 
@@ -6,7 +6,7 @@ export interface LootInst {
   readonly prefab?: string;
   hasTag?(tag: string): boolean;
   readonly components?: { finiteuses?: { GetUses?(): number; GetPercent?(): number } };
-  getPosition(): Vector3;
+  getPosition(): ReadonlyVector3;
   PushEvent?(name: string, data: unknown): void;
 }
 export interface LootEntity { PushEvent(name: string, data: unknown): void; }

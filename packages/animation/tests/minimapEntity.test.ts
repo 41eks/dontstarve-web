@@ -56,7 +56,7 @@ it('keeps a backpack icon on the logical item through equip, drop, reskin and lo
   const backpack = new ItemEntity({ itemId: 'backpack', count: 1, entityId: 'map-backpack' });
   store.configureItem(backpack);
   const icon = backpack.MiniMapEntity!;
-  backpack.transform.position.set(24, 0, -36);
+  backpack.transform.setPosition(24, 0, -36);
   expect(icon.position).toBe(backpack.transform.position);
   expect(icon.icon).toBe('backpack.png');
   expect(store.Equip(backpack)).toBe(true);

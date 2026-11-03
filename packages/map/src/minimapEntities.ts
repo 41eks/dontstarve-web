@@ -1,16 +1,16 @@
-import type { Vector3 } from 'three';
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { createEffect, watchSignal, type ReadonlySignal } from '@dontstarve-web/signals';
 import type { MiniMapJson, MiniMapState } from './minimapState';
 import type { TileTracker } from '../../componets/src/tileManager';
 
 /** Live map input shared by prefab declarations and inventory item icons. */
 export interface MiniMapMarker extends MiniMapJson {
-  readonly position: Vector3;
+  readonly position: ReadonlyVector3;
 }
 
 /** The logical entity supplies declarations and its existing foot-position vector. */
 interface MiniMapSource {
-  readonly position: Vector3;
+  readonly position: ReadonlyVector3;
   readonly status?: ReadonlySignal<'active' | 'asleep' | 'removed'>;
   readonly minimap: MiniMapState;
   readonly tileTracker: TileTracker;
@@ -47,7 +47,7 @@ export function watchMiniMapEntity(source: MiniMapSource): () => void {
 
 /** A stable marker identity with lifecycle-managed local copies of the entity's signals. */
 class MiniMapBinding implements MiniMapMarker {
-  get position(): Vector3 { return this.source.position; }
+  get position(): ReadonlyVector3 { return this.source.position; }
   private readonly cleanups: (() => void)[] = [];
   private readonly json;
   private readonly status;

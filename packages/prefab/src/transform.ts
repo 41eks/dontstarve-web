@@ -1,7 +1,9 @@
-import { Group, MathUtils, type Vector3 } from 'three';
-import { markTransformDirty, TransformRoot } from '@dontstarve-web/animation/transformRoot';
+import { Group, MathUtils, type Vector3, type Vector3Like } from 'three';
+import { markTransformDirty, TransformRoot, type ReadonlyVector3 } from '@dontstarve-web/animation/transformRoot';
 import type { Memo, TileStateQuery } from '@dontstarve-web/signals';
 import { TileTracker } from '../../componets/src/tileManager';
+
+export type { ReadonlyVector3 };
 
 export type TransformDirtyHandler = (model: Group) => void;
 
@@ -24,7 +26,7 @@ export class Transform {
 
   /** Root passed to display; logical code uses the transform methods. */
   get model(): Group { return this.#model; }
-  get position(): Vector3 { return this.#model.position; }
+  get position(): ReadonlyVector3 { return this.#model.position; }
   get scale(): Vector3 { return this.#model.scale; }
   get tileTracker(): TileTracker { return this.#tracker ??= new TileTracker(() => this.position); }
   /** Lua Transform rotation is a heading in degrees. */
@@ -32,9 +34,13 @@ export class Transform {
 
   setPosition(x: number, y: number, z: number): void {
     this.#model.position.set(x, y, z);
-    this.#tracker?.sync();
+    // TileTracker.moved: the key refreshes once per interval, so a jump settles within the writes that follow it.
+    this.#tracker?.moved();
     this.markDirty();
   }
+
+  /** Transform:SetPosition(pt:Get()). */
+  copyPosition(point: Vector3Like): void { this.setPosition(point.x, point.y, point.z); }
 
   offsetPosition(dx: number, dy: number, dz: number): void {
     const position = this.position;

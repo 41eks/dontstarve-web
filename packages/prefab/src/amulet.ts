@@ -1,4 +1,4 @@
-import type { Vector3 } from 'three';
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import type { EquipmentLifecycle, EquipmentOwner } from '@dontstarve-web/signals';
 import { Equippable } from '../../componets/src/equippable';
@@ -22,7 +22,7 @@ export interface AmuletRezSource extends HauntableInst {
   readonly prefab: typeof AMULET_ID;
   readonly entity: ItemEntity;
   isValid(): boolean;
-  readonly position: Vector3;
+  readonly position: ReadonlyVector3;
   hasTag(tag: string): boolean;
 }
 

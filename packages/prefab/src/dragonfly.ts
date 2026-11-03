@@ -85,7 +85,7 @@ export class DragonflyManager implements DisplayDrivenPrefabManager<{ prefabId: 
       { name: 'idle', billboard: true }, DRAGONFLY_ID);
     const model = display.model;
     instance.entityId = saved?.id ?? newEntityId();
-    instance.position.set(position.x, 0, position.z);
+    instance.setPosition(position.x, 0, position.z);
     model.rotation.y = saved?.transform.rotationY ?? 0;
     instance.scale.setScalar(1.3);
     MakeFlyingGiantCharacterPhysics(instance, 500, 1.4);

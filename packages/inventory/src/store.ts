@@ -202,7 +202,7 @@ export class InventoryStore {
     const owner = entity.components.inventoryitem.owner;
     if (owner && this.extract(owner.address, entity.components.stackable.count, entity) !== entity) return;
     const position = dropPosition ?? this.actor.GetPosition();
-    entity.transform.position.set(position.x, 0, position.z);
+    entity.transform.setPosition(position.x, 0, position.z);
     entity.MiniMapEntity?.tileTracker.sync();
     try {
       for (const listener of this.drops) { if (launch) listener(entity, launch); else listener(entity); }
@@ -355,7 +355,7 @@ export class InventoryStore {
       const address = { containerId, slotKey: String(slot - 1) };
       const item = this.extract(address, entity.components.stackable.count, entity);
       if (!item) return;
-      item.transform.position.set(position.x, position.y, position.z);
+      item.transform.setPosition(position.x, position.y, position.z);
       this.DropItem(item, position);
     };
     this.bindOwners();

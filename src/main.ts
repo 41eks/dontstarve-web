@@ -185,7 +185,7 @@ const handEquipmentBinding = await bindPlayerHandEquipment({
   setHandAction: action => cursorUi.setHandAction(action, handPointer),
   lightStaffWorld: {
     map: spellCastMap,
-    spawnPrefab: (prefab, position) => (prefab === 'staffcoldlight' ? polarLights : dwarfStars).spawn(position),
+    spawnPrefab: (prefab, position) => (prefab === 'staffcoldlight' ? polarLights : dwarfStars).spawn(position.clone()),
   },
   greenStaffWorld: {
     spawnLoot: (items, position) => groundItems.flingLoot(items.map(({ itemId, count }) => ({ ...inventory.getItemSpec(itemId), itemId, count })), position),
@@ -350,7 +350,7 @@ const ghostOwner: PlayerGhostOwner | undefined = playerAnimation && {
   actionPicker: view.mouseActions!,
   // SpawnDeathProduct: skeleton_player at the death point, described with the character, name and cause.
   spawnDeathProduct: position => {
-    const skeleton = skeletons.spawn(SKELETON_PLAYER_ID, position);
+    const skeleton = skeletons.spawn(SKELETON_PLAYER_ID, position.clone());
     skeletons.setSkeletonDescription(skeleton, playerInstance.prefab, player.name, deathCause);
   },
   spawnDieFx: position => {

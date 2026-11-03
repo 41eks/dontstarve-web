@@ -1,3 +1,4 @@
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import type * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import type { ActionWorldContext } from '@dontstarve-web/stategraphs/actionContext';
@@ -42,9 +43,9 @@ export interface WorldContext extends ActionWorldContext, Partial<WorldContentCo
     /** SpawnPrefab for a planted crop; the farm prefab owner creates its logical instance and display. */
     spawnFarmPlant?: import('../../componets/src/farmplantable').FarmPlantWorld['spawnFarmPlant'];
     /** inventoryitem:OnDropped for an existing inst, placed on the ground at the position. */
-    dropItem?: (entity: import('@dontstarve-web/inventory').ItemEntity, position: THREE.Vector3) => void;
+    dropItem?: (entity: import('@dontstarve-web/inventory').ItemEntity, position: ReadonlyVector3) => void;
     /** Place destruction loot in the application's authoritative ground-item store. */
-    dropLoot?: (items: readonly { itemId: string; count: number; skinId?: string }[], position: THREE.Vector3,
+    dropLoot?: (items: readonly { itemId: string; count: number; skinId?: string }[], position: ReadonlyVector3,
         launch?: () => import('./lootFling').LootLaunch) => void;
 }
 

@@ -1,6 +1,7 @@
 import { PrefabDisplayGroup } from '../../display/src';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
+import type { ReadonlyVector3 } from '../src/transformRoot';
 import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -40,9 +41,9 @@ function environment() {
   const tickingarea = () => createMemo(() => awake.get());
   const sources = bindTestWorld(scheduler, tickingarea);
   const spawned = vi.fn();
-  const spawnGroundItem = (definition: GroundItemDefinition, point: THREE.Vector3) => {
+  const spawnGroundItem = (definition: GroundItemDefinition, point: ReadonlyVector3) => {
     const entity = new ItemEntity({ itemId: definition.itemId, count: definition.count });
-    entity.transform.position.copy(point); spawned(definition.itemId, point.clone());
+    entity.transform.copyPosition(point); spawned(definition.itemId, point.clone());
     return entity;
   };
   const rotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), .6);

@@ -1,3 +1,4 @@
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { Transform } from './transform';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
@@ -105,12 +106,12 @@ export interface MushtreeWorld {
   /** Trees outside it release their sprite; without it they stay loaded. */
   tickingarea?: TileStateQuery;
   worldEvents: WorldEventEmitter;
-  dropLoot(items: readonly { itemId: string; count: number }[], position: THREE.Vector3): void;
+  dropLoot(items: readonly { itemId: string; count: number }[], position: ReadonlyVector3): void;
 }
 
 interface MushtreeEnvironment extends BurnEnvironment {
   readonly world: Omit<MushtreeWorld, 'scene'>;
-  spawnBurntFx(prefab: MushtreeId, treestate: MushtreeState, position: THREE.Vector3): void;
+  spawnBurntFx(prefab: MushtreeId, treestate: MushtreeState, position: ReadonlyVector3): void;
 }
 
 /** mushtree.lua's logical inst; source tasks, components and build declarations survive visual unloading. */
@@ -269,7 +270,7 @@ export class MushtreeInstance extends PrefabInstance<ArchiveSpriteCommands> {
     });
   }
 
-  private dropCatalogLoot(loot: readonly string[], position: THREE.Vector3): void {
+  private dropCatalogLoot(loot: readonly string[], position: ReadonlyVector3): void {
     const counts = new Map<string, number>();
     for (const itemId of loot) if (Object.hasOwn(catalog.items, itemId)) counts.set(itemId, (counts.get(itemId) ?? 0) + 1);
     this.env.world.dropLoot([...counts].map(([itemId, count]) => ({ itemId, count })), position);
@@ -390,7 +391,7 @@ export class MushtreeManager {
     this.fire = FireFxHost.create(`${import.meta.env.BASE_URL}dst/data/anim`);
   }
 
-  spawn(id: MushtreeSpawnId, position: THREE.Vector3, saved?: MushtreeRecord): THREE.Group {
+  spawn(id: MushtreeSpawnId, position: ReadonlyVector3, saved?: MushtreeRecord): THREE.Group {
     if (this.disposed) throw new Error('Mushtrees have been disposed');
     if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError('Invalid mushtree position');
     const prefab = id.replace(/_stump$/, '') as MushtreeId;
@@ -418,13 +419,13 @@ export class MushtreeManager {
     { colour: [1, 1, 1], instancedAnimations: ['idle_loop'], staticBillboard: true });
   }
 
-  private spawnBurntFx(prefab: MushtreeId, treestate: MushtreeState, position: THREE.Vector3): void {
+  private spawnBurntFx(prefab: MushtreeId, treestate: MushtreeState, position: ReadonlyVector3): void {
     if (this.disposed) return;
     const data = TREES[prefab], bloom = treestate === 'bloom' && data.buildArchives.length > 1;
     const instance = new MushtreeBurntFxInstance(`${prefab}${bloom ? '_bloom' : ''}_burntfx`, data, bloom, this.scheduler);
     const display = this.displays.add({ root: instance.transform.model, name: instance.prefab, archive: this.archive(data),
       status: instance.status, sprite: instance.sprite as SpriteState });
-    bindInstance(display.model, instance); instance.position.copy(position);
+    bindInstance(display.model, instance); instance.copyPosition(position);
     this.effects.add(instance);
     const stopTile = watchTileActivity(display.model, this.world.tickingarea, active => instance.setActive(active));
     instance.onRemove(() => { stopTile(); this.effects.delete(instance); display.dispose(); });

@@ -78,7 +78,7 @@ export class DeployPlacer {
       let tinted: boolean | undefined;
       this.placer = { instance, display: entity.display, visible: false, place: (point, valid) => {
         const centre = this.map.tileCenter(point);
-        instance.position.set(centre.x, .05, centre.z);
+        instance.setPosition(centre.x, .05, centre.z);
         // gridplacer.lua OnCanBuild / OnCannotBuild.
         if (valid !== tinted) sprite.setColour((tinted = valid) ? [1, 1, 1] : [.75, .25, .25]);
       } };
@@ -100,8 +100,8 @@ export class DeployPlacer {
     let tinted: boolean | undefined;
     this.placer = { instance: entity.instance, display: entity.display, linked: outline, visible: false, place: (point, valid) => {
       const centre = this.map.tileCenter(point);
-      entity.instance.position.set(centre.x, 0, centre.z);
-      outline.instance.position.set(centre.x, .05, centre.z);
+      entity.instance.setPosition(centre.x, 0, centre.z);
+      outline.instance.setPosition(centre.x, .05, centre.z);
       if (valid === tinted) return;
       tinted = valid;
       for (const { instance } of [entity, outline]) instance.sprite.setColour(valid ? [1, 1, 1] : [.75, .25, .25]);
@@ -122,7 +122,7 @@ export class DeployPlacer {
     model.userData.placer = true;
     instance.sprite.setVisible(false);
     this.placer = { instance, display: entity.display, visible: false, place: (point, valid) => {
-      instance.position.copy(point);
+      instance.copyPosition(point);
       model.traverse(object => {
         if (!(object instanceof THREE.Mesh)) return;
         for (const material of Array.isArray(object.material) ? object.material : [object.material]) {

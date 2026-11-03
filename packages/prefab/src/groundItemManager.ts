@@ -1,3 +1,4 @@
+import type { ReadonlyVector3 } from '@dontstarve-web/animation/transformRoot';
 import { syncPlacementEntity } from './placementEntities';
 import { ItemEntity, ItemEntityRegistry, type InventoryStack, type InventoryStore } from '@dontstarve-web/inventory';
 import type { PickupTarget } from '@dontstarve-web/stategraphs';
@@ -39,7 +40,7 @@ export interface GroundItemSaveRecord {
 
 interface GroundItemRecord extends GroundItemVisual {
   definition: GroundItemDefinition;
-  readonly footPosition: THREE.Vector3;
+  readonly footPosition: ReadonlyVector3;
   fling?: LootFling;
   stopInventoryEvents?: () => void;
   stopActivity?: () => void;
@@ -57,7 +58,7 @@ export class GroundItemManager {
   /** Reservations exist only while spawn art loads; committed entities replace them synchronously. */
   private readonly activeItems = new Set<GroundItemRecord>();
   /** Billboard sort entries reused across frames; the scene rewrites each entry's depth every frame. */
-  private readonly renderEntryByRecord = new WeakMap<GroundItemRecord, { readonly object: THREE.Group; readonly footPosition: THREE.Vector3; cameraDepth: number }>();
+  private readonly renderEntryByRecord = new WeakMap<GroundItemRecord, { readonly object: THREE.Group; readonly footPosition: ReadonlyVector3; cameraDepth: number }>();
   /** StartUpdatingComponent/StopUpdatingComponent: only these records are visited each frame. */
   private readonly updatingItems = new Set<GroundItemRecord>();
   private readonly inventory: InventoryStore;
@@ -127,7 +128,7 @@ export class GroundItemManager {
    * only then is shown on the ground. A drop described by its definition alone becomes new insts whose visuals are created
    * before anything is taken, so art that cannot be created takes nothing.
    */
-  drop(definition: GroundItemDefinition, position: THREE.Vector3, takeFromInventory: () => boolean | ItemEntity): boolean {
+  drop(definition: GroundItemDefinition, position: ReadonlyVector3, takeFromInventory: () => boolean | ItemEntity): boolean {
     const pieces = this.dropPieces(definition);
     const prepared: { entity: ItemEntity; created: boolean; item: GroundItemDefinition; visual: GroundItemVisual }[] = [];
     try {
@@ -160,7 +161,7 @@ export class GroundItemManager {
   }
 
   /** The taken inst is placed itself; a stack of live insects becomes one inst per insect, as their OnDropped does. */
-  private placeTaken(taken: ItemEntity, definition: GroundItemDefinition, pieces: number, position: THREE.Vector3, visual?: GroundItemVisual): void {
+  private placeTaken(taken: ItemEntity, definition: GroundItemDefinition, pieces: number, position: ReadonlyVector3, visual?: GroundItemVisual): void {
     if (pieces > 1) taken.apply({ ...taken.snapshot(), count: 1 });
     const item = { ...definition, ...taken.snapshot(), entity: taken };
     if (visual) this.addVisual(taken, item, position, visual, true);
@@ -172,7 +173,7 @@ export class GroundItemManager {
   }
 
   /** Restore identity and components immediately, without playing the drop animation. */
-  spawnFromSave(id: string, definition: GroundItemDefinition, position: THREE.Vector3): THREE.Group {
+  spawnFromSave(id: string, definition: GroundItemDefinition, position: ReadonlyVector3): THREE.Group {
     const pieces = this.dropPieces(definition);
     let first: THREE.Group | undefined;
     for (let index = 0; index < pieces; index++) {
@@ -200,7 +201,7 @@ export class GroundItemManager {
   }
 
   /** Logical ground positions; no snapshots, art queries or unrelated prefabs. */
-  *iteratePrefabPositions(prefab: string): IterableIterator<THREE.Vector3> {
+  *iteratePrefabPositions(prefab: string): IterableIterator<ReadonlyVector3> {
     if (this.disposed) return;
     for (const entity of this.groundEntitiesByPrefab.get(prefab) ?? []) {
       if (!entity.isRemoved && !entity.components.inventoryitem.owner && !entity.hasTag('INLIMBO')) {
@@ -214,7 +215,7 @@ export class GroundItemManager {
   }
 
   /** Places an inst that already exists, such as a lightflier the habitat spawned, with a visual created now. */
-  spawnEntity(entity: ItemEntity, position: THREE.Vector3): void {
+  spawnEntity(entity: ItemEntity, position: ReadonlyVector3): void {
     if (this.disposed || entity.isRemoved) throw new Error('Cannot place removed ground entity');
     const definition = { ...this.inventory.getItemSpec(entity.prefab), ...entity.snapshot(), entity };
     this.placeEntity(entity, definition, position);
@@ -225,7 +226,7 @@ export class GroundItemManager {
    * `fling` scatters it as lootdropper.lua's FlingItem, `launch` gives its exact flight; otherwise it is placed as dropped.
    * A stack of live insects becomes one inst per insect, as their OnDropped does; the first is returned.
    */
-  spawnGroundItem(definition: GroundItemDefinition, position: THREE.Vector3, { fling = false, launch }: GroundSpawnOptions = {}): ItemEntity | undefined {
+  spawnGroundItem(definition: GroundItemDefinition, position: ReadonlyVector3, { fling = false, launch }: GroundSpawnOptions = {}): ItemEntity | undefined {
     if (this.disposed) return undefined;
     if (!Number.isSafeInteger(definition.count) || definition.count < 1) throw new RangeError('Invalid ground item count');
     const pieces = this.isNetCreature(definition.itemId) ? definition.count : 1;
@@ -243,7 +244,7 @@ export class GroundItemManager {
   }
 
   /** DropLoot spawns each recipe ingredient separately, then FlingItem launches it. */
-  flingLoot(definitions: readonly GroundItemDefinition[], position: THREE.Vector3, launch?: () => LootLaunch): void {
+  flingLoot(definitions: readonly GroundItemDefinition[], position: ReadonlyVector3, launch?: () => LootLaunch): void {
     if (this.disposed) return;
     const origin = position.clone();
     for (const definition of definitions) {
@@ -273,14 +274,14 @@ export class GroundItemManager {
   }
 
   /** Places the inst with a ground visual created now, which draws the item's own sprite. */
-  private placeEntity(entity: ItemEntity, definition: GroundItemDefinition, position: THREE.Vector3, dropped = false, notifyDrop = true): THREE.Group {
+  private placeEntity(entity: ItemEntity, definition: GroundItemDefinition, position: ReadonlyVector3, dropped = false, notifyDrop = true): THREE.Group {
     const visual = this.createVisual(definition, entity);
     try { this.addVisual(entity, definition, position, visual, dropped, notifyDrop); }
     catch (error) { visual.dispose(); throw error; }
     return visual.model;
   }
 
-  private addVisual(entity: ItemEntity, definition: GroundItemDefinition, position: THREE.Vector3, visual: GroundItemVisual, dropped = false, notifyDrop = true): void {
+  private addVisual(entity: ItemEntity, definition: GroundItemDefinition, position: ReadonlyVector3, visual: GroundItemVisual, dropped = false, notifyDrop = true): void {
     // A tile-bound item follows its tile from ondropped / onload.
     visual.instance.setActive(true);
     this.entities.adopt(entity);
@@ -417,7 +418,7 @@ export class GroundItemManager {
     else this.placeEntity(entity, definition, entity.transform.position.clone(), true, false);
   }
 
-  private addFlungVisual(entity: ItemEntity, definition: GroundItemDefinition, origin: THREE.Vector3, visual: GroundItemVisual, launch?: LootLaunch, notifyDrop = true): void {
+  private addFlungVisual(entity: ItemEntity, definition: GroundItemDefinition, origin: ReadonlyVector3, visual: GroundItemVisual, launch?: LootLaunch, notifyDrop = true): void {
     entity.setPosition(origin.x, origin.y, origin.z);
     const fling = new LootFling(entity.transform, undefined, undefined, launch);
     this.addVisual(entity, { ...definition, entity }, fling.position, visual, true, notifyDrop);
@@ -514,8 +515,8 @@ export class GroundItemManager {
     private isNetCreature(itemId: string): boolean { return this.prefabs.get(itemId)?.capture === 'net'; }
 
 
-  get renderEntities(): readonly { object: THREE.Group; footPosition: THREE.Vector3; cameraDepth: number }[] {
-    const entries: { readonly object: THREE.Group; readonly footPosition: THREE.Vector3; cameraDepth: number }[] = [];
+  get renderEntities(): readonly { object: THREE.Group; footPosition: ReadonlyVector3; cameraDepth: number }[] {
+    const entries: { readonly object: THREE.Group; readonly footPosition: ReadonlyVector3; cameraDepth: number }[] = [];
     // Items drawing nothing (no sprite built, as daytime fireflies playing no animation) take no part in depth sorting;
     // entries are reused across frames.
     for (const record of this.activeItems) {

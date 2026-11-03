@@ -21,7 +21,7 @@ it('walks to a finished pot, gives its product to the doer at the hit frame, and
   const scene = new THREE.Scene(), player = new THREE.Group();
   const { instance, display } = createEmptyEntity('cookpot');
   const model = display.model;
-  instance.position.set(20, 0, 0); scene.add(model);
+  instance.setPosition(20, 0, 0); scene.add(model);
   const container = { canbeopened: true, IsFull: () => false, IsOpen: () => false,
     GetAllItems: () => [], Close() {}, DestroyContents() {}, subscribeLifecycle: () => () => {} };
   const stewer = new Stewer({ prefab: 'cookpot', components: { container },

@@ -53,7 +53,7 @@ export class StaffProjectileManager {
       { name: 'fire_spin_loop', billboard: true }, FIRE_PROJECTILE_ID);
     entity.instance.persists = false;
     entity.instance.addTag('projectile');
-    entity.instance.position.copy(entry.component.position);
+    entity.instance.copyPosition(entry.component.position);
     entity.display.model.visible = entry.component.visible;
     this.displays.mount(entity.display);
   }
@@ -82,7 +82,7 @@ export class StaffProjectileManager {
       entry.component.Update(dt);
       if (entry.removed || !entry.entity) continue;
       const { instance, display } = entry.entity;
-      instance.position.copy(entry.component.position);
+      instance.copyPosition(entry.component.position);
       display.model.visible = entry.component.visible;
       display.update(dt);
     }

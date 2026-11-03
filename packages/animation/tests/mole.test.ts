@@ -33,7 +33,7 @@ async function fixture(daytime = false) {
   };
   const manager: MolehillManager = new MolehillManager(new THREE.Scene(), '/dst/data/anim', {
     getWatchWorldContent: watch, cameraHeading: heading, isWalkable: () => true, tickingarea: () => createMemo(() => awake.get()),
-    spawnItem, dropItem: (entity, position) => { entity.transform.position.copy(position); entity.PushEvent('ondropped', undefined); drops.push({ entity, prefab: entity.prefab, position: position.clone() }); },
+    spawnItem, dropItem: (entity, position) => { entity.transform.copyPosition(position); entity.PushEvent('ondropped', undefined); drops.push({ entity, prefab: entity.prefab, position: position.clone() }); },
     showMole: () => undefined, dropLoot: (prefab, position) => drops.push({ prefab, position }),
     getEntities: () => [...baits, ...manager.habitat.getMoles()],
   });

@@ -77,7 +77,7 @@ function fixture() {
   const world: TumbleweedWorld = { scheduler, wind, tickingarea: () => createMemo(() => awake.get()),
     getWatchWorldContent: (key, register) => getWatchWorldContent(key, register, sources), random: () => .5,
     isOnValidGround: () => state.ground, constrainPosition: () => undefined,
-    dropLoot: (items, position) => drops.push({ items, position }) };
+    dropLoot: (items, position) => drops.push({ items, position: position.clone() }) };
   const manager = new TumbleweedManager(scene, physics, world);
   const step = (seconds: number) => {
     for (let i = 0; i < Math.round(seconds * 30); i++) {

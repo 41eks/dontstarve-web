@@ -1,10 +1,10 @@
-import type * as THREE from 'three';
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import type { Signal } from '@dontstarve-web/signals';
 import type { SpellTarget } from '../../componets/src/spellcaster';
 import type { ActionTargetView } from './actionTargetView.ts';
 /** Prepared logical FX message. The target places and starts it only after committing its skin. */
 export interface ReskinFxMessage {
-  play(position: THREE.Vector3, prefabId: string): void;
+  play(position: ReadonlyVector3, prefabId: string): void;
   /** Discard an unused message; a started FX keeps its own animation lifecycle. */
   dispose(): void;
 }
@@ -15,7 +15,7 @@ export interface SkinnedSprite { readonly skinId: Signal<string | undefined> }
 type ReskinActionTarget = SpellTarget & ActionTargetView & {
   readonly id: string;
   readonly prefabId: string;
-  readonly position: THREE.Vector3;
+  readonly position: ReadonlyVector3;
   readonly skinId?: string;
   readonly skins: readonly string[];
   readonly reskinToolCannotTargetThis?: boolean;

@@ -127,7 +127,7 @@ export class RockAvocadoSaplingManager {
       const visible = burnable.burning.get() && sprite.loaded;
       fire.instance.setActive(visible);
       if (visible) {
-        fire.instance.position.copy(model.position);
+        fire.instance.copyPosition(model.position);
         if (!fireModel.parent) this.displays.mount(prefabDisplay(fireModel)!);
         sapling.sound ??= PlaySound('dontstarve/common/campfire', model.position);
         prefabInstance(model)!.light.set({ colour: [1, 1, 192 / 255], radius: 9, intensity: .8, falloff: .33 });
@@ -147,7 +147,7 @@ export class RockAvocadoSaplingManager {
     for (const { entity, fire, transitionAt } of this.saplings.values()) {
       // A clip that started this frame advances only by the game time since its transition.
       entity.display.update(Math.min(dt, this.scheduler.now - transitionAt));
-      fire.instance.position.copy(entity.instance.position);
+      fire.instance.copyPosition(entity.instance.position);
       fire.display.update(dt);
     }
   }

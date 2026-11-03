@@ -80,7 +80,7 @@ export class OceanWaves implements WaveSpawner {
       instance.sprite.setMeshOrder(BACKGROUND_RENDER_ORDER);
       instance.sprite.playOnce(animation, () => this.remove(wave));
     });
-    wave.instance.position.set(x, 0, z);
+    wave.instance.setPosition(x, 0, z);
     if (flat) wave.instance.setRotation(rotation);
     const cleanups: (() => void)[] = [];
     this.active.set(wave, () => cleanups.forEach(stop => stop()));

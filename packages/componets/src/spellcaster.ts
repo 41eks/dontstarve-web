@@ -1,7 +1,8 @@
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import type * as THREE from 'three';
 import { getDeconstructionRecipe } from './recipes.ts';
 export interface SpellCastDoer {
-  readonly position: THREE.Vector3;
+  readonly position: ReadonlyVector3;
   hasTag(tag: string): boolean;
   readonly components: {
     sanity?: { DoDelta(delta: number): void };

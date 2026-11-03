@@ -10,13 +10,13 @@ export type BuildCursorSnap = (point: THREE.Vector3) => THREE.Vector3;
 
 /** What the cursor moves: a placer's transform, and whether it is shown. */
 export interface BuildCursorPlacer {
-    readonly position: THREE.Vector3;
+    setPosition(x: number, y: number, z: number): void;
     show(shown: boolean): void;
 }
 
 /** A placer entity: its owner declares its art (MakePlacer's clip and SetLightOverride(1)); the cursor declares only whether it is shown. */
-export function entityPlacer(entity: { readonly position: THREE.Vector3; readonly sprite: { setVisible(visible: boolean): void } }): BuildCursorPlacer {
-    return { position: entity.position, show: shown => entity.sprite.setVisible(shown) };
+export function entityPlacer(entity: { setPosition(x: number, y: number, z: number): void; readonly sprite: { setVisible(visible: boolean): void } }): BuildCursorPlacer {
+    return { setPosition: (x, y, z) => entity.setPosition(x, y, z), show: shown => entity.sprite.setVisible(shown) };
 }
 
 /** prefabutil.lua MakePlacer / gridplacer.lua: AddTag("CLASSIFIED"), AddTag("NOCLICK"), AddTag("placer"). */
@@ -77,6 +77,6 @@ export class BuildCursor {
         if (shown !== this.shown) this.preview.show(this.shown = shown);
         if (!point) return;
         const target = this.snap ? this.snap(point) : point;
-        this.preview.position.set(target.x, target.y + this.previewGroundOffset, target.z);
+        this.preview.setPosition(target.x, target.y + this.previewGroundOffset, target.z);
     }
 }

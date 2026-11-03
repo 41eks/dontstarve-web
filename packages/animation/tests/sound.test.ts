@@ -120,7 +120,7 @@ describe('dwarf star source sounds', () => {
     expect(s.sources.map((source) => source.connect.mock.calls[0][0])).toEqual(s.gains);
     UpdateSoundListener(new THREE.Vector3(48, 0, 0));
     expect(s.gains.map(({ gain }) => gain.value)).toEqual([1 / 16, 1 / 16, 0.25, 0.25].map(volume => volume * .7));
-    far.position.x = 48;
+    far.setPosition(48, far.position.y, far.position.z);
     UpdateSoundListener(new THREE.Vector3(48, 0, 0));
     expect(s.gains.map(({ gain }) => gain.value)).toEqual([1 / 16, 1 / 16, 1, 1].map(volume => volume * .7));
     UpdateSoundListener(new THREE.Vector3(144, 0, 0));

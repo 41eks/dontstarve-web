@@ -54,7 +54,7 @@ export class DragonflySpawnerManager {
     const model = display.model;
     instance.entityId = saved?.id ?? newEntityId();
     instance.addTag('CLASSIFIED');
-    instance.position.copy(position);
+    instance.copyPosition(position);
     model.rotation.y = saved?.transform.rotationY ?? 0;
     const spawner = {} as Spawner;
     spawner.instance = instance; spawner.display = display;

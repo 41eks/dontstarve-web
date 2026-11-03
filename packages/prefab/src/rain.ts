@@ -197,7 +197,7 @@ export class RainEffect {
       instance.addTag('FX');
       splash = { instance, display, model: display.model, animation: instance.sprite, active: false };
     }
-    splash.instance.position.set(x, 0, z);
+    splash.instance.setPosition(x, 0, z);
     if (!splash.model.parent) this.options.scene.add(splash.model);
     splash.active = true;
     this.splashes.push(splash);

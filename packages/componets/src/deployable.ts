@@ -1,3 +1,4 @@
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import type { Vector3 } from 'three';
 
 /** The inst a Deployable belongs to. */
@@ -25,7 +26,7 @@ export interface DeployMap {
   /** farm_plow.lua item_ondeploy; the item is `inst`. */
   deployPlow(point: Vector3, inst: DeployInst): boolean;
   /** Map:IsPassableAtPoint and IsOceanTileAtPoint, for actions.lua ExtraDeployDist. */
-  isPassableAtPoint(point: Vector3): boolean;
+  isPassableAtPoint(point: ReadonlyVector3): boolean;
   isOceanTileAtPoint(point: Vector3): boolean;
   /** TheWorld:PushEvent("itemplanted", { doer, pos }). */
   itemPlanted(doer: unknown, pos: Vector3): void;
@@ -46,7 +47,7 @@ export interface DeployPlacerArt {
 }
 
 export interface Deployer {
-  readonly position: Vector3;
+  readonly position: ReadonlyVector3;
   PushEvent(name: string, data: unknown): void;
 }
 

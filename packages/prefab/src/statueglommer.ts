@@ -71,7 +71,7 @@ export class StatueGlommerManager {
     { name: 'full', held: true, billboard: true }, STATUEGLOMMER_ID);
     const { instance, display } = entity, model = display.model;
     instance.entityId = saved?.id ?? newEntityId();
-    instance.position.copy(position);
+    instance.copyPosition(position);
     model.rotation.y = saved?.transform.rotationY ?? 0;
     instance.addTag('statue');
     MakeObstaclePhysics(instance, .75);

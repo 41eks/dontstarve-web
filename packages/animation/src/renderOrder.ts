@@ -1,3 +1,4 @@
+import type { ReadonlyVector3 } from './transformRoot';
 import type * as THREE from 'three';
 
 const spriteRenderGroups = new WeakMap<THREE.Object3D, THREE.Group>();
@@ -72,14 +73,14 @@ const FRACTION = LATERAL_BUCKETS * SORT_LAYERS;
 
 export interface RenderOrderEntry {
   object: THREE.Object3D;
-  footPosition: THREE.Vector3;
+  footPosition: ReadonlyVector3;
   renderLayer?: number;
   sortLayer?: number;
 }
 
 const bucket = (value: number, buckets: number) => Math.min(buckets - 1, Math.max(0, Math.round(value / QUANTUM) + buckets / 2));
 
-export function spriteRenderOrderKey(foot: THREE.Vector3, view: THREE.Matrix4, renderLayer = 0, sortLayer = 1): number {
+export function spriteRenderOrderKey(foot: ReadonlyVector3, view: THREE.Matrix4, renderLayer = 0, sortLayer = 1): number {
   const layer = renderLayer - MIN_RENDER_LAYER;
   if (!Number.isInteger(layer) || layer < 0 || layer >= RENDER_LAYERS) throw new Error(`Unsupported render layer ${renderLayer}`);
   if (!Number.isInteger(sortLayer) || sortLayer < 0 || sortLayer >= SORT_LAYERS) throw new Error(`Unsupported sort layer ${sortLayer}`);

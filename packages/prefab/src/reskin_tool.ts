@@ -1,3 +1,4 @@
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { PrefabDisplayGroup, SpriteResources, SpriteState } from '@dontstarve-web/display';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { nextReskin, type ReskinEffectPresenter, type ReskinFxMessage, type ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
@@ -115,13 +116,12 @@ class ReskinFx implements ReskinFxMessage {
 
   constructor(instance: PrefabInstance, toolSkinId?: string) { this.instance = instance; this.toolSkinId = toolSkinId; }
 
-  play(position: THREE.Vector3, prefabId: string): void {
+  play(position: ReadonlyVector3, prefabId: string): void {
     if (this.played || this.instance.status.peek() === 'removed') return;
     this.played = true;
     const info = fxInfo[prefabId];
     this.footPosition.copy(position);
-    this.instance.position.copy(position);
-    this.instance.position.y += (info?.offset ?? 0) * (TILE_SIZE / 4);
+    this.instance.setPosition(position.x, position.y + (info?.offset ?? 0) * (TILE_SIZE / 4), position.z);
     this.instance.scale.setScalar(info?.scale ?? 1);
     this.instance.sprite.setVisible(true);
     this.instance.sprite.playOnce('puff', () => this.instance.remove());

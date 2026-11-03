@@ -1,4 +1,4 @@
-import type { Vector3 } from 'three';
+import type { Vector3, Vector3Like } from 'three';
 import { batch, createEffect, createMemo, createSignal, readonlySignal, watchSignal, type Memo, type ReadonlySignal, type Signal } from '../../signals/src/signal';
 import { TILE_SIZE } from '../../prefab/src/tile';
 import type { TileStateQuery } from '../../signals/src/worldContent';
@@ -85,7 +85,7 @@ export function GetTileKeyAtPoint(position: Vector3): number {
   return tileKeyAtPoint(position, currentGrid);
 }
 
-function tileKeyAtPoint(position: Vector3, grid: TileGrid | undefined): number {
+function tileKeyAtPoint(position: Vector3Like, grid: TileGrid | undefined): number {
   if (!grid || !Number.isFinite(position.x) || !Number.isFinite(position.z)
     || position.x < -grid.size / 2 || position.x >= grid.size / 2
     || position.z < -grid.size / 2 || position.z >= grid.size / 2) return INVALID_TILE_KEY;
@@ -104,11 +104,11 @@ function tileKeyAtPoint(position: Vector3, grid: TileGrid | undefined): number {
 export class TileTracker {
   private readonly state: Signal<number>;
   readonly tile: ReadonlySignal<number>;
-  private readonly getPosition: () => Vector3;
+  private readonly getPosition: () => Vector3Like;
   private readonly interval: number;
   private readonly grid = currentGrid;
   private writes = 0;
-  constructor(getPosition: () => Vector3, interval = 60) {
+  constructor(getPosition: () => Vector3Like, interval = 60) {
     if (!Number.isInteger(interval) || interval < 1) throw new RangeError('Tile tracker interval must be a positive integer');
     this.getPosition = getPosition; this.interval = interval;
     this.state = createSignal(tileKeyAtPoint(getPosition(), this.grid));
@@ -121,7 +121,7 @@ export class TileTracker {
 }
 
 /** 返回世界坐标所在的有符号地皮索引 [x, z]；负坐标向下取整。 */
-export function GetTileCoordsAtPoint(position: Vector3): [x: number, z: number] {
+export function GetTileCoordsAtPoint(position: Vector3Like): [x: number, z: number] {
   return [Math.floor(position.x / TILE_SIZE), Math.floor(position.z / TILE_SIZE)];
 }
 

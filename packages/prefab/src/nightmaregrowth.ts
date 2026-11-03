@@ -66,10 +66,10 @@ export class NightmareGrowthManager {
     for (const tag of ['FX', 'NOCLICK', 'DECOR']) crack.instance.addTag(tag);
     crack.instance.persists = false;
     const model = growth.display.model, crackModel = crack.display.model;
-    growth.instance.position.set(position.x, 0, position.z);
+    growth.instance.setPosition(position.x, 0, position.z);
     MakeObstaclePhysics(growth.instance, 1.1);
     if (this.physics) growth.instance.bindPhysics(this.physics);
-    crack.instance.position.copy(model.position);
+    crack.instance.copyPosition(model.position);
     crackModel.rotation.set(-Math.PI / 2, 0, THREE.MathUtils.degToRad(crackRotation));
     crackModel.userData.billboard = false;
     growth.instance.entityId = saved?.id ?? newEntityId();

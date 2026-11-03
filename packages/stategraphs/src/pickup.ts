@@ -1,3 +1,4 @@
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import * as THREE from 'three';
 import type { ItemEntity, InventoryStore } from '../../inventory/src/index.ts';
 import type { InventoryActor } from '../../componets/src/inventoryitem.ts';
@@ -10,7 +11,7 @@ import { modelHasTag, prefabInstance } from '../../prefab/src/prefabInstance';
 export interface PickupDoer extends InventoryActor {
   getPosition(): THREE.Vector3;
   /** spellcaster.lua reads the caster's position. */
-  readonly position: THREE.Vector3;
+  readonly position: ReadonlyVector3;
   readonly sg?: { HasStateTag(tag: string): boolean };
   /** TheWorld.Map, as ACTIONS.DEPLOY reaches it. */
   Map?: import('../../componets/src/deployable').DeployMap;
@@ -35,7 +36,7 @@ export function createPickupDoer(player: THREE.Object3D, inventory: InventorySto
 export interface PickupTarget {
   readonly model: THREE.Object3D;
   readonly entity: ItemEntity;
-  readonly position: THREE.Vector3;
+  readonly position: ReadonlyVector3;
   isValid(): boolean;
   hasTag(tag: string): boolean;
 }

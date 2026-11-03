@@ -154,7 +154,7 @@ export class WallPlacement<BuildId extends string> {
     async spawn(buildId: BuildId, skinId?: string): Promise<void> {
         const wall = this.createInstance(buildId, skinId);
         const target = this.playerFrontGroundPosition();
-        wall.instance.position.copy(target);
+        wall.instance.copyPosition(target);
         wall.instance.entityId = newEntityId();
         this.place(wall);
     }
@@ -164,7 +164,7 @@ export class WallPlacement<BuildId extends string> {
         wall.instance.entityId = record.id;
         wall.instance.saveRecord = record;
         const [x, y, z] = record.transform.position;
-        wall.instance.position.set(x, y, z);
+        wall.instance.setPosition(x, y, z);
         this.place(wall, record.components.health);
         return wall.model;
     }
@@ -254,7 +254,7 @@ export class WallPlacement<BuildId extends string> {
 
         // The build spawns the wall itself at the placer's slot; the placer is released.
         const wall = this.createInstance(placer.buildId, placer.inventorySkinId);
-        wall.instance.position.copy(placer.instance.position);
+        wall.instance.copyPosition(placer.instance.position);
         wall.instance.entityId = newEntityId();
         this.cancel();
         this.place(wall);

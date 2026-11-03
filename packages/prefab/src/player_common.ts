@@ -1,3 +1,4 @@
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import * as THREE from 'three';
 import type { PhysicsState } from '../../componets/src/physicsState';
 import type { GameTimeScheduler, Signal } from '@dontstarve-web/signals';
@@ -83,9 +84,9 @@ export interface PlayerGhostOwner {
   /** player_classified isghostmode (SetGhostMode): playervision's ghost colour cube, and the ghost's save flag. */
   readonly ghostMode: Signal<boolean>;
   /** SpawnDeathProduct: the skeleton (or corpse) at the death point. */
-  spawnDeathProduct(position: THREE.Vector3): void;
+  spawnDeathProduct(position: ReadonlyVector3): void;
   /** SpawnPrefab("die_fx") at the death point. */
-  spawnDieFx(position: THREE.Vector3): void;
+  spawnDieFx(position: ReadonlyVector3): void;
   /** inst:DoTaskInTime on the game-time scheduler; returns the cancel. */
   schedule(seconds: number, fn: () => void): () => void;
   /** inst:AddComponent("slipperyfeet") */
@@ -97,7 +98,7 @@ export interface PlayerGhostOwner {
   /** inst.Light:Enable(enabled): the ghost's own light. */
   setGhostLight(enabled: boolean): void;
   /** inst.Physics:Teleport(x, y, z) */
-  teleport(position: THREE.Vector3): void;
+  teleport(position: ReadonlyVector3): void;
   /** inst.components.playercontroller:Enable(enabled) */
   setControllerEnabled(enabled: boolean): void;
   /** inst:ShowHUD(show) */
@@ -166,7 +167,7 @@ export interface RezSource {
   readonly prefab?: string;
   isValid(): boolean;
   /** The source's ground position. */
-  readonly position: THREE.Vector3;
+  readonly position: ReadonlyVector3;
   hasTag(tag: string): boolean;
   PushEvent(name: string, data?: unknown): void;
 }
@@ -236,7 +237,7 @@ function doActualRez(owner: PlayerGhostOwner, source: RezSource): void {
   }).catch((error: unknown) => console.error('Unable to resurrect from the amulet', error));
 }
 
-function finishRez(owner: PlayerGhostOwner, source: RezSource, position: THREE.Vector3): void {
+function finishRez(owner: PlayerGhostOwner, source: RezSource, position: ReadonlyVector3): void {
   const entity = actionEntity(owner.model, prefabInstance(owner.model)!.prefab);
   const amulet = source.prefab === 'amulet';
   owner.spawnDieFx(position);

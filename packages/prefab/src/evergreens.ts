@@ -1,3 +1,4 @@
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { ModelRecords } from './modelRecords';
 import type { MiniMapState } from '../../map/src/minimapState';
 import * as THREE from 'three';
@@ -57,7 +58,7 @@ export interface EvergreenWorld {
   tickingarea: TileStateQuery;
   physics?: CANNON.World;
   growthDuration?(seconds: number): number;
-  dropLoot(items: readonly { itemId: string; count: number }[], position: THREE.Vector3): void;
+  dropLoot(items: readonly { itemId: string; count: number }[], position: ReadonlyVector3): void;
 }
 interface Tree {
   logical: ResidentEntity;
@@ -84,8 +85,8 @@ interface Tree {
 export interface EvergreenForest {
   group: THREE.Group;
   readonly entities: readonly ResidentEntity[];
-  readonly renderEntities: readonly { object: THREE.Group; footPosition: THREE.Vector3; cameraDepth: number }[];
-  spawn(prefab: EvergreenSpawnId, position: THREE.Vector3, saved?: EvergreenRecord): ResidentEntity;
+  readonly renderEntities: readonly { object: THREE.Group; footPosition: ReadonlyVector3; cameraDepth: number }[];
+  spawn(prefab: EvergreenSpawnId, position: ReadonlyVector3, saved?: EvergreenRecord): ResidentEntity;
   update(dt: number, quaternion: THREE.Quaternion): void;
   exportRecords(): EvergreenRecord[];
   dispose(): void;
@@ -111,7 +112,7 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
   let nextId = 0;
   const trees = new Map<ResidentEntity, Tree>();
   const mouseRecords = new ModelRecords<ResidentEntity>();
-  const effects = new Map<THREE.Group, { entity: ReturnType<typeof createPrefabEntity>; position: THREE.Vector3 }>();
+  const effects = new Map<THREE.Group, { entity: ReturnType<typeof createPrefabEntity>; position: ReadonlyVector3 }>();
   let disposed = false;
   const stageOf = (tree: Tree) => tree.growable.GetStage() - 1;
   // evergreens.lua old_anims: burnt/chop_burnt reuse the tall clips.

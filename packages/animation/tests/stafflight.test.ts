@@ -311,11 +311,11 @@ it('cools nearby thermal stones with endothermic falloff until permanent removal
     expect(temperature.GetCurrent()).toBe(5);
     expect(rock.range.peek()).toBe(1);
     // Cold-source falloff is relative to overheattemp 70: (-100 - 70) * .75 + 70 = -57.5.
-    stone.transform.position.set(5 * TILE_SIZE / 4, 0, 0);
+    stone.transform.setPosition(5 * TILE_SIZE / 4, 0, 0);
     temperature.SetTemperature(-11.25); // Equilibrium between ambient 35 and cooling target -57.5.
     updates.update(1);
     expect(temperature.GetCurrent()).toBe(-11.25);
-    stone.transform.position.set(10 * TILE_SIZE / 4, 0, 0);
+    stone.transform.setPosition(10 * TILE_SIZE / 4, 0, 0);
     updates.update(1);
     expect(temperature.GetCurrent()).toBeCloseTo(-11.05);
     awake.set(false);
@@ -325,7 +325,7 @@ it('cools nearby thermal stones with endothermic falloff until permanent removal
     awake.set(true);
     await settle();
     expect(FindEntities(star.position, 1, ['HASHEATER'])[0].components.heater).toBe(heater);
-    stone.transform.position.set(0, 0, 0);
+    stone.transform.setPosition(0, 0, 0);
     temperature.SetTemperature(5);
     star.components.hauntable!.DoHaunt(haunter);
     updates.update(1);

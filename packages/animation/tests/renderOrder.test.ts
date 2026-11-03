@@ -83,11 +83,11 @@ describe('updateSpriteRenderOrders', () => {
     expect(item.outer.renderOrder).toBe(0);
     expect(item.object.renderOrder).toBe(0);
     // An effect attached while nothing moves orders itself after its owner, and keeps that when written alone.
-    const fire = makeEntry(item.footPosition, { sortLayer: 2 });
+    const fire = makeEntry(item.footPosition as THREE.Vector3, { sortLayer: 2 });
     updateSpriteRenderOrders([fire], view);
     expect(drawn([far, fire, item])).toEqual([far, item, fire]);
     // An entity walking past reorders without the others being rewritten.
-    far.footPosition.z = 5;
+    (far.footPosition as THREE.Vector3).z = 5;
     updateSpriteRenderOrders([far], view);
     expect(drawn([far, fire, item])).toEqual([item, fire, far]);
   });

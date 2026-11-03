@@ -17,7 +17,7 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 it('runs a prefab’s work callbacks without loaded art and leaves component state on the same instance', () => {
   const inst = new PrefabInstance('icebox', new SpriteState({ name: 'closed', held: true }));
-  inst.position.set(3, 0, -7);
+  inst.setPosition(3, 0, -7);
   inst.entityId = 'saved-icebox';
   inst.skinId = 'icebox_crystal';
   const dropLoot = vi.fn(), collapse = vi.fn();
@@ -112,7 +112,7 @@ it('hammers a replica decor through its real instance, declaring material FX bef
   const dropLoot = vi.fn(() => { calls.push('loot'); });
   const inst = new RuinsRelicInstance('ruinsrelic_plate', { scheduler, trackDisplay() {},
     fx: { spawn: vi.fn(), collapse }, dropLoot });
-  inst.position.set(4, 0, -3);
+  inst.setPosition(4, 0, -3);
   inst.onRemove(() => { calls.push('remove'); });
   const worked = vi.fn(); inst.ListenForEvent('worked', worked);
   const worker = {};

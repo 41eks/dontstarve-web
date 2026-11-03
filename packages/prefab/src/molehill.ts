@@ -143,7 +143,7 @@ export class MolehillManager {
     const entity = createPrefabEntity(MOLEHILL_ID, this.resources.factory({ animationArchive: 'mole_basic.zip', buildArchive: 'mole_build.zip' }),
       { name: 'mound_idle', billboard: true }, MOLEHILL_ID);
     entity.instance.sprite.setGround(-.5, false);
-    const model = entity.display.model; entity.instance.position.copy(position);
+    const model = entity.display.model; entity.instance.copyPosition(position);
     const hill = new Molehill(saved?.id ?? newEntityId(), entity, this.habitat, saved?.components.molehill, adopt);
     this.hills.set(hill.id, hill); this.mouseRecords.set(hill.model, hill); this.displays.mount(prefabDisplay(model)!);
     return hill;
@@ -153,7 +153,7 @@ export class MolehillManager {
     if (this.disposed) return;
     const entity = createPrefabEntity('mole_move_fx', this.resources.factory({ animationArchive: 'mole_move_fx.zip', buildArchive: 'mole_move_fx.zip' }),
       { name: 'move', billboard: true }, 'mole_move_fx');
-    entity.instance.position.copy(position); entity.instance.persists = false;
+    entity.instance.copyPosition(position); entity.instance.persists = false;
     entity.instance.addTag('FX');
     this.displays.mount(entity.display); this.fx.add(entity);
     entity.instance.sprite.playOnce('move', () => { this.fx.delete(entity); entity.instance.remove(); });

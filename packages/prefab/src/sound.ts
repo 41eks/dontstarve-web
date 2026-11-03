@@ -1,3 +1,4 @@
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { Vector3 } from 'three';
 import { TILE_SIZE } from './tile';
 
@@ -360,7 +361,7 @@ const SOUND_VOLUME = 0.7;
 
 /** Full volume within one tile, inverse-square falloff, then silence at the cutoff. */
 export function inverseSquareAttenuation(
-  position: Vector3, listenerPosition: Vector3, referenceDistance = TILE_SIZE, maxDistance = SOUND_MAX_DISTANCE,
+  position: ReadonlyVector3, listenerPosition: Vector3, referenceDistance = TILE_SIZE, maxDistance = SOUND_MAX_DISTANCE,
 ): number {
   const distanceSquared = position.distanceToSquared(listenerPosition);
   if (distanceSquared >= maxDistance * maxDistance) return 0;
@@ -372,15 +373,15 @@ let context: AudioContext | undefined;
 const buffers = new Map<string, AudioBuffer>();
 const requests = new Map<string, Promise<AudioBuffer>>();
 const playing = new Set<SoundHandle>();
-const soundGains = new Map<SoundHandle, { position?: Vector3; gain: GainNode; volume: number }>();
+const soundGains = new Map<SoundHandle, { position?: ReadonlyVector3; gain: GainNode; volume: number }>();
 const listener = new Vector3();
 
-function updateGain({ position, gain, volume }: { position?: Vector3; gain: GainNode; volume: number }): void {
+function updateGain({ position, gain, volume }: { position?: ReadonlyVector3; gain: GainNode; volume: number }): void {
   gain.gain.value = SOUND_VOLUME * volume * (position ? inverseSquareAttenuation(position, listener) : 1);
 }
 
 /** Low-level listener update; the scene sound scheduler subscribes to player position. */
-export function UpdateSoundListener(position: Vector3): void {
+export function UpdateSoundListener(position: ReadonlyVector3): void {
   listener.copy(position);
   for (const sound of soundGains.values()) updateGain(sound);
 }
@@ -454,7 +455,7 @@ export function PrewarmSounds(): Promise<void> {
 }
 
 /** Optional ground position enables distance attenuation; all sounds use the overall volume multiplier. */
-export function PlaySound(path: SoundEventPath, position?: Vector3, offsetSeconds = 0): SoundHandle {
+export function PlaySound(path: SoundEventPath, position?: ReadonlyVector3, offsetSeconds = 0): SoundHandle {
   const audio = getContext();
   const filenames = soundLayers(path).map((files) => files.length === 1 ? files[0] : files[Math.floor(Math.random() * files.length)]);
   const sources = new Set<AudioBufferSourceNode>();

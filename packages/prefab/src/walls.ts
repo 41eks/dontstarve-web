@@ -1,3 +1,4 @@
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import definitions from './definitions.json' with { type: 'json' };
 import { WallPlacement, type WallDefinition } from './wallPlacement';
 import type { WorldContext } from './worldContext';
@@ -11,7 +12,6 @@ import { Workable } from '../../componets/src/workable';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { createStructureLootDropper } from './structureLoot';
 import { TILE_SIZE } from './tile';
-import type { Vector3 } from 'three';
 import {
     wall_stone_init_fn, wall_ruins_init_fn, wall_moonrock_init_fn,
     wall_dreadstone_init_fn, wall_hay_init_fn, wall_wood_init_fn,
@@ -33,7 +33,7 @@ const WALL_HEALTH_ANIMS: readonly { threshold: number; anim: string | readonly s
 ];
 
 /** walls.lua resolveanimtoplay; the full variant is stable for a world position in DST units. */
-export function resolveWallAnim(percent: number, position: Vector3): string {
+export function resolveWallAnim(percent: number, position: ReadonlyVector3): string {
     for (const { threshold, anim } of WALL_HEALTH_ANIMS) {
         if (percent > threshold) continue;
         if (typeof anim === 'string') return anim;

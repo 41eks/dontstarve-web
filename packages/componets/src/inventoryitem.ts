@@ -1,4 +1,4 @@
-import type { Vector3 } from 'three';
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import type { MiniMapEntity } from './minimapentity';
 import { createSignal, readonlySignal } from '../../signals/src';
 
@@ -11,7 +11,7 @@ export interface InventoryActor {
 export interface InventoryItemInstance {
   hasTag(tag: string): boolean;
   PushEvent(name: string, data: unknown): void;
-  readonly transform: { readonly position: Vector3 };
+  readonly transform: { readonly position: ReadonlyVector3; setPosition(x: number, y: number, z: number): void };
   readonly MiniMapEntity?: MiniMapEntity;
   readonly isRemoved?: boolean;
 }
@@ -52,7 +52,7 @@ export class InventoryItem<Instance extends InventoryItemInstance, Owner> {
     return this.onpickupfn?.(this.inst, doer, source) === true;
   }
   OnPutInInventory(doer: InventoryActor): void {
-    this.inst.transform.position.set(0, 0, 0);
+    this.inst.transform.setPosition(0, 0, 0);
     this.onputininventoryfn?.(this.inst, doer);
     this.inst.PushEvent('onputininventory', doer);
   }

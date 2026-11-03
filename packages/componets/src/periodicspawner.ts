@@ -1,3 +1,4 @@
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import type { GameTimeScheduler } from './gameTimeScheduler';
 import { ComponentTimer } from './timer';
 import type { Vector3 } from 'three';
@@ -5,7 +6,7 @@ import type { Vector3 } from 'three';
 export interface PeriodicSpawnerSpatial {
   getPosition(): Vector3;
   /** The host resolves the configured prefab and excludes INLIMBO entities. */
-  getPrefabPositions(): Iterable<Vector3>;
+  getPrefabPositions(): Iterable<ReadonlyVector3>;
 }
 
 /** periodicspawner.lua's scheduled spawn/retry and persistence; host supplies prefab/map validation. */

@@ -1,3 +1,4 @@
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { watchTileActivity } from './tileActivity';
 import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import * as THREE from 'three';
@@ -106,7 +107,7 @@ class Hotspring {
   }
 }
 
-interface SteamFx { object: THREE.Group; footPosition: THREE.Vector3; instance: PrefabInstance; display: PrefabDisplay; }
+interface SteamFx { object: THREE.Group; footPosition: ReadonlyVector3; instance: PrefabInstance; display: PrefabDisplay; }
 
 /** Source heat, light, bath bomb and steam interaction: the glass and bathing pool branches are not ported. */
 export class HotspringManager {

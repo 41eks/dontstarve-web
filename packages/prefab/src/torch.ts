@@ -1,3 +1,4 @@
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { ItemEntity } from '@dontstarve-web/inventory';
 import { getBoundWatchWorldContent, WorldContentKey, type EquipmentLifecycle, type EquipmentOwner, type HandEquipment, type ReadonlySignal } from '@dontstarve-web/signals';
 import type * as THREE from 'three';
@@ -48,7 +49,7 @@ export const TORCH_LIGHT: PrefabLocalLight = {
 };
 export const TORCH_SOUNDS = ['dontstarve/wilson/torch_swing', 'dontstarve/common/fireOut'] as const;
 
-export interface TorchLifecycleOptions { soundPosition?: THREE.Vector3 }
+export interface TorchLifecycleOptions { soundPosition?: ReadonlyVector3 }
 
 /** torch.lua's onattack. TryLuckRoll is the plain chance: this project has no luck stat. */
 export function onattack(_weapon: object, attacker: object, target: object): void {
@@ -94,7 +95,7 @@ export class TorchController implements HandEquipment {
   OnDropped(): void { this.held = false; }
 
   /** A held torch sounds from its holder, one on the ground from its own transform. */
-  private soundPosition(ownerPosition?: THREE.Vector3): THREE.Vector3 | undefined {
+  private soundPosition(ownerPosition?: ReadonlyVector3): ReadonlyVector3 | undefined {
     return ownerPosition ?? this.options.soundPosition ?? (this.held ? undefined : this.entity.position);
   }
   /** inst:DoTaskInTime(0, ...): the next game-time step, or at once for an inst outside a world. */
@@ -105,15 +106,15 @@ export class TorchController implements HandEquipment {
     return undefined;
   }
 
-  private DoIgniteSound(position?: THREE.Vector3): void {
+  private DoIgniteSound(position?: ReadonlyVector3): void {
     this.cancelIgniteSound = undefined;
     PlaySound('dontstarve/wilson/torch_swing', position);
   }
-  private DoExtinguishSound(position?: THREE.Vector3): void {
+  private DoExtinguishSound(position?: ReadonlyVector3): void {
     this.cancelExtinguishSound = undefined;
     PlaySound('dontstarve/common/fireOut', position);
   }
-  private PlayIgniteSound(position: THREE.Vector3 | undefined, instant: boolean, force: boolean): void {
+  private PlayIgniteSound(position: ReadonlyVector3 | undefined, instant: boolean, force: boolean): void {
     if (this.cancelExtinguishSound) {
       this.cancelExtinguishSound();
       this.cancelExtinguishSound = undefined;
@@ -124,7 +125,7 @@ export class TorchController implements HandEquipment {
       this.DoIgniteSound(position);
     } else this.cancelIgniteSound ??= this.inNextStep(() => this.DoIgniteSound(position));
   }
-  private PlayExtinguishSound(position: THREE.Vector3 | undefined, instant: boolean, force: boolean): void {
+  private PlayExtinguishSound(position: ReadonlyVector3 | undefined, instant: boolean, force: boolean): void {
     if (this.cancelIgniteSound) {
       this.cancelIgniteSound();
       this.cancelIgniteSound = undefined;
@@ -213,7 +214,7 @@ export class TorchController implements HandEquipment {
   extinguish(): void { this.burnable.Extinguish(); }
 
   /** OnPutInInventory: back to idle, the fire goes and fuel stops without emptying it. */
-  OnPutInInventory(ownerPosition?: THREE.Vector3): void {
+  OnPutInInventory(ownerPosition?: ReadonlyVector3): void {
     if (this.disposed) return;
     this.held = true;
     this.entity.sprite.playOnce('idle');
@@ -289,7 +290,7 @@ export function getTorchController(entity: ItemEntity): TorchController {
 export function createTorchHandLifecycle(
   entity: ItemEntity,
   options: {
-    soundPosition?: THREE.Vector3;
+    soundPosition?: ReadonlyVector3;
     lightParent: PrefabInstance;
     followSymbol?(symbol: string, offsetX: number, offsetY: number, fx?: FollowerFx): { node: THREE.Object3D; remove(): void };
   },

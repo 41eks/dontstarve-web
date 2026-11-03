@@ -90,7 +90,7 @@ export class RuinsStatueManager<Id extends RuinsStatueId> implements DisplayDriv
     { name: 'idle_full', billboard: true }, id);
     const { instance, display } = entity, model = display.model;
     instance.entityId = saved?.id ?? newEntityId();
-    instance.position.copy(position); model.rotation.y = saved?.transform.rotationY ?? 0;
+    instance.copyPosition(position); model.rotation.y = saved?.transform.rotationY ?? 0;
     for (const tag of ['cavedweller', 'structure', 'statue']) instance.addTag(tag);
     MakeObstaclePhysics(instance, .66);
     if (this.world.physics) instance.bindPhysics(this.world.physics);

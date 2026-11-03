@@ -1,11 +1,12 @@
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { findActionEntity } from './actionEntity';
-import type { Object3D, Vector3 } from 'three';
+import type { Object3D } from 'three';
 import { isSpriteEntityVisible } from '@dontstarve-web/animation/renderOrder';
 import { SpatialIndex, type SpatialQuery } from './spatialIndex';
 import { modelHasTag, prefabInstance } from './prefabInstance';
 
 export interface PlacementBlocker {
-  readonly position: Vector3;
+  readonly position: ReadonlyVector3;
   readonly prefab?: string;
   readonly tags?: readonly string[];
   readonly smartRadius?: number;
@@ -33,7 +34,7 @@ export function ignoresPlacement(blocker: PlacementBlocker, tags: Iterable<strin
 }
 
 /** One engine entity entry, independent of rendering lists, selected action and mouse visibility. */
-export function registerPlacementEntity(model: Object3D, position: () => Vector3): () => void {
+export function registerPlacementEntity(model: Object3D, position: () => ReadonlyVector3): () => void {
   const instance = prefabInstance(model);
   const entry: WorldBlocker = {
     root: model,
@@ -66,7 +67,7 @@ export function registerPlacementEntity(model: Object3D, position: () => Vector3
 }
 
 /** map.lua IsGroundTargetBlocked: only groundtargetblocker/groundhole tags block BLINK, not ordinary obstacles. */
-export function isGroundTargetBlocked(query: PlacementQuery, position: Vector3, range: number): boolean {
+export function isGroundTargetBlocked(query: PlacementQuery, position: ReadonlyVector3, range: number): boolean {
   return query.someNear(position, range, blocker => {
     if (!hasPlacementTag(blocker, 'groundtargetblocker') && !hasPlacementTag(blocker, 'groundhole')) return false;
     const radius = (blocker.groundTargetRadius ?? 0) + (blocker.groundHoleRangeOverride ?? range);
@@ -80,7 +81,7 @@ export function isGroundTargetBlocked(query: PlacementQuery, position: Vector3, 
 export function syncPlacementEntity(model: Object3D): void { models.get(model)?.sync(); }
 
 /** Logical trees keep their index entry when only their nearby visual is unloaded. */
-export function registerPlacementTree(root: Object3D, tree: { position: Vector3; model?: Object3D },
+export function registerPlacementTree(root: Object3D, tree: { position: ReadonlyVector3; model?: Object3D },
   prefab: string, smartRadius: number): () => void {
   const entry: WorldBlocker = {
     root, position: tree.position, prefab, smartRadius, logicalTree: true,
