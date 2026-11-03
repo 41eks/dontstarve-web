@@ -142,7 +142,7 @@ const rodOf = (model: THREE.Object3D): LightningRod => (prefabInstance(model) as
 
 /** onlightning: the same source onhit declaration, then a full three-day charge. */
 function onlightning(inst: LightningRodInstance): void {
-    onworked(inst);
+    onhit(inst);
     inst.lightningRod.setcharged(3);
 }
 
@@ -162,7 +162,7 @@ function oninit(context: AnimatedBuildingEventContext): void {
     const workable = instance.components.workable = new Workable(instance);
     workable.SetWorkAction('HAMMER');
     workable.SetWorkLeft(4);
-    workable.SetOnWorkCallback(onworked);
+    workable.SetOnWorkCallback(onhit);
     workable.SetOnFinishCallback(onhammered);
     instance.components.lootdropper = createStructureLootDropper(instance);
 
@@ -187,7 +187,7 @@ function onbuilt(inst: PrefabInstance): void {
     PlaySound(CRAFT_SOUND, inst.position);
 }
 
-function onworked(inst: PrefabInstance): void {
+function onhit(inst: PrefabInstance): void {
     inst.sprite.playOnce('hit');
     inst.sprite.pushAnimation('idle', false);
 }
