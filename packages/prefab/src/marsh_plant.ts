@@ -25,13 +25,11 @@ export interface MarshPlantWorld {
 
 /** marsh_plant.lua fn("marsh_plant", "marsh_plant"). */
 export class MarshPlantInstance extends PrefabInstance {
-  readonly burn: BurnableBinding;
-
   constructor(world: MarshPlantWorld) {
     super(MARSH_PLANT_ID, new SpriteState({ name: 'idle', billboard: true }), Transform.stationary());
     this.addTag('plant');
     // MakeMediumBurnable(inst) + MakeSmallPropagator(inst).
-    this.burn = new BurnableBinding(this, { propagator: 'small', burnTime: BURN_TIME, fxLevel: BURN_FX_LEVEL,
+    const burn = new BurnableBinding(this, { propagator: 'small', burnTime: BURN_TIME, fxLevel: BURN_FX_LEVEL,
       onIgnite: () => DefaultBurnFn(this), onExtinguish: () => DefaultExtinguishFn(this), onBurnt: () => DefaultBurntFn(this, world) }, world);
     // MakeHauntableIgnite: the source's #HAUNTFIX comments out igniting, so a haunt only fails.
     const hauntable = new Hauntable(this, world.scheduler);
@@ -39,7 +37,7 @@ export class MarshPlantInstance extends PrefabInstance {
     hauntable.SetOnHauntFn(() => false);
     Object.assign(this.components, { hauntable, inspectable: new Inspectable(this) });
     this.addTag('inspectable');
-    this.onRemove(() => { this.burn.dispose(); hauntable.dispose(); });
+    this.onRemove(() => { burn.dispose(); hauntable.dispose(); });
   }
 }
 
@@ -50,7 +48,6 @@ export function marshPlantPrefabs(world: MarshPlantWorld): Readonly<Record<typeo
       fn: () => new MarshPlantInstance(world),
       assets: { animationArchive: 'marsh_plant.zip', buildArchives: ['marsh_plant.zip'], bank: 'marsh_plant' },
       assetOptions: { instancedAnimations: 'all', staticBillboard: true },
-      update: (plant, dt) => plant.burn.update(dt),
     },
   };
 }

@@ -264,6 +264,5 @@ export function plantEntityDefinition(definition: PickablePlantDefinition, world
       make: definition.obstaclePhysics ? MakeObstaclePhysics : MakeSmallObstaclePhysics, radius: definition.physicsRadius },
     minimapIcon: definition.minimapIcon,
     onSpawned: plant => plant.onSpawned(),
-    update: (plant, dt) => plant.components.burnable.UpdateFX(dt),
   };
 }

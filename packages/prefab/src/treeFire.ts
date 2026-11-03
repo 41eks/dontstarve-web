@@ -6,6 +6,7 @@ import { SpriteResources, type LoadedSpriteSource } from '@dontstarve-web/displa
 import { addComponent, removeComponent } from './components';
 import type { Burnable, BurnableInst } from '../../componets/src/burnable';
 import type { Propagator } from '../../componets/src/propagator';
+import type { ComponentUpdates } from '../../componets/src/componentUpdates';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Fire, FIRE_ARCHIVE, FIRE_ID } from './fire';
 import { TILE_SIZE } from './tile';
@@ -19,19 +20,21 @@ export class FireFxHost {
   private readonly fires = new Set<Fire>();
   private readonly resources: SpriteResources;
   private disposed = false;
-  private constructor(assetBaseUrl?: string) {
+  private readonly updates?: ComponentUpdates;
+  private constructor(assetBaseUrl?: string, updates?: ComponentUpdates) {
+    this.updates = updates;
     this.resources = new SpriteResources(assetBaseUrl);
     this.source = this.resources.factory({ animationArchive: FIRE_ARCHIVE, buildArchive: FIRE_ARCHIVE });
   }
 
   /** Each fire is spawned at once; its display draws it when the shared art has loaded. */
-  static create(assetBaseUrl?: string): FireFxHost { return new FireFxHost(assetBaseUrl); }
+  static create(assetBaseUrl?: string, updates?: ComponentUpdates): FireFxHost { return new FireFxHost(assetBaseUrl, updates); }
 
   /** SpawnPrefab("fire") for a Burnable:SpawnFX on `owner`. */
   spawn(owner: PrefabInstance): Fire {
     if (this.disposed) throw new Error('Fire effects have been disposed');
     for (const fire of this.fires) if (fire.instance.status.peek() === 'removed') this.fires.delete(fire);
-    const fire = new Fire(this.source, owner);
+    const fire = new Fire(this.source, owner, this.updates);
     this.fires.add(fire);
     return fire;
   }

@@ -1,6 +1,7 @@
 import { createEffect, createSignal, watchSignal } from '@dontstarve-web/signals';
 import type { LoadedSpriteSource } from '@dontstarve-web/display';
 import type { BurnFX } from '../../componets/src/burnable';
+import type { ComponentUpdates } from '../../componets/src/componentUpdates';
 import { FireFX, type FireFXInst, type FireFXLevel, type FireFXLight } from '../../componets/src/firefx';
 import { spawnLightEntity } from './localLight';
 import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
@@ -36,7 +37,8 @@ export class Fire implements BurnFX, FireFXInst {
   private readonly sounds = new Map<string, SoundHandle>();
   private readonly cleanups: (() => void)[] = [];
 
-  constructor(source: LoadedSpriteSource, owner: PrefabInstance) {
+  /** `updates` is firefx.lua's StartUpdatingComponent; without it the owner's Burnable:UpdateFX drives the flicker. */
+  constructor(source: LoadedSpriteSource, owner: PrefabInstance, updates?: ComponentUpdates) {
     this.owner = owner;
     const { instance, display } = createPrefabEntity(FIRE_ID, source, { name: FIRE_LEVELS[0].anim, billboard: true }, FIRE_ID,
       instance => {
@@ -49,6 +51,7 @@ export class Fire implements BurnFX, FireFXInst {
     const firefx = new FireFX(this);
     firefx.levels = FIRE_LEVELS;
     this.components = { firefx };
+    if (updates) this.cleanups.push(updates.register(firefx));
     // OnEntitySleep / OnEntityWake follow the owner's tile with the child.
     const status = watchSignal(owner.status, stop => this.cleanups.push(stop));
     createEffect(() => {

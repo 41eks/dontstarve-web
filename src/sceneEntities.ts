@@ -252,7 +252,7 @@ export async function createSceneEntities(
   scheduler?: GameTimeScheduler,
 ) {
   const prefabDisplays = new PrefabDisplayGroup(scene), prefabBaseUrl = `${import.meta.env.BASE_URL}dst/data/anim`;
-  const prefabFire = FireFxHost.create(prefabBaseUrl);
+  const prefabFire = FireFxHost.create(prefabBaseUrl, worldState.componentUpdates);
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(prefabDisplays, prefabBaseUrl,
     { tickingarea: worldState.tickingarea, physics: world });
   const registry = new EntityRegistry(SCENE_LIFECYCLE_ORDER, prefabs, () => player.position);
