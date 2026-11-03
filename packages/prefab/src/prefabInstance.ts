@@ -375,11 +375,11 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
   /** The awake entities' displays, as the display group lists those in the scene. */
   get renderEntities() { return this.displays.renderEntities; }
 
-  /** The display group advances the awake entities' clips; timers and tasks run on the world's scheduler. */
-  update(dt: number, cameraQuaternion: Quaternion): void {
-    if (this.disposed) return;
-    this.displays.update(dt, cameraQuaternion);
-  }
+  // /** The display group advances the awake entities' clips; timers and tasks run on the world's scheduler. */
+  // update(dt: number, cameraQuaternion: Quaternion): void {
+  //   if (this.disposed) return;
+  //   this.displays.update(dt, cameraQuaternion);
+  // }
 
   /** The save loop's `persists` and GetParent checks, and GetSaveRecord. */
   exportRecords(): { prefabId: Id; record: PlacementSaveRecord }[] {
