@@ -17,10 +17,16 @@ export interface PhysicsBinding {
 
 /**
  * The declared capsule as Cannon shapes. A static capsule stands on its ground origin with end caps that let
- * planners read the footprint; a moving one is a circle on the ground plane, so it is one sphere.
+ * planners read the footprint; a moving one is a circle on the ground plane, so it is one sphere. A static triangle
+ * mesh stands on the same origin, and its faces block spheres from either side.
  */
-function shapeBody(body: CANNON.Body, { capsule, mass }: PhysicsJson): void {
+function shapeBody(body: CANNON.Body, { capsule, mass, triangleMesh }: PhysicsJson): void {
   while (body.shapes.length) body.removeShape(body.shapes[0]);
+  if (triangleMesh && mass === 0) {
+    const vertices = triangleMesh.map(coordinate => coordinate * WORLD_SCALE);
+    body.addShape(new CANNON.Trimesh(vertices, Array.from({ length: vertices.length / 3 }, (_, index) => index)));
+    return;
+  }
   const radius = capsule.radius * WORLD_SCALE;
   if (mass > 0) { body.addShape(new CANNON.Sphere(radius)); return; }
   const length = capsule.height * WORLD_SCALE;
@@ -107,7 +113,7 @@ export function bindPhysics(world: CANNON.World, physics: PhysicsState, ground: 
     const kind = moving ? CANNON.Body.DYNAMIC : CANNON.Body.STATIC;
     // PhysicsWorld gates static and moving bodies differently, so a body changing kind registers again.
     if (body.type !== kind) unregister();
-    if (!previous || previous.capsule !== next.capsule || previous.mass !== next.mass) {
+    if (!previous || previous.capsule !== next.capsule || previous.triangleMesh !== next.triangleMesh || previous.mass !== next.mass) {
       body.type = kind;
       body.mass = next.mass;
       body.fixedRotation = moving;

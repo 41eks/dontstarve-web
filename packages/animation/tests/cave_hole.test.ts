@@ -1,3 +1,4 @@
+import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { unzipSync, strFromU8 } from 'fflate';
@@ -6,6 +7,13 @@ import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { FACING } from '../src/facing';
 import { CAVE_HOLE_ID, caveHolePrefabs, type CaveHoleInstance } from '../../prefab/src/cave_hole';
+import { bindPhysics } from '../../componets/src/physicsBinding';
+import { PhysicsState } from '../../componets/src/physicsState';
+import { staticObstacleTest } from '../../prefab/src/locomotor';
+import { isGroundTargetBlocked, placementEntities } from '../../prefab/src/placementEntities';
+import { MakeCharacterPhysics } from '../../prefab/src/standardcomponents';
+import { setMouseTargetEnabled } from '../../prefab/src/mouseTargets';
+import { isMouseTarget } from '../../stategraphs/src/mouseTargets';
 import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
@@ -20,11 +28,11 @@ import initialWorld from '../../../public/saves/initial-world.json' with { type:
 const turn = () => new Promise(resolve => setTimeout(resolve, 0));
 const record = { id: 'saved-hole', transform: { position: [3, 0, 6] as [number, number, number], rotationY: 0 }, components: { allowspawn: false } };
 
-function setup() {
+function setup(physics?: CANNON.World) {
   const scene = new THREE.Scene(), awake = createSignal(true);
   const tickingarea = () => createMemo(() => awake.get());
   const displays = new PrefabDisplayGroup(scene);
-  const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { tickingarea });
+  const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { tickingarea, physics });
   prefabs.register(caveHolePrefabs({ spawnPrefab: (id, position) => prefabs.spawn(id, position) }) as never);
   const registry = new EntityRegistry([], prefabs, () => new THREE.Vector3(12, 0, -6)), inventory = createInventoryStore([]);
   registry.registerPrefabs(PREFAB_DEFINITIONS.caveHoles);
@@ -64,13 +72,51 @@ it('restores a saved hole with its Lua clips, tags, layers and surface child', a
       expect(json.appearance.get(`layer:${hidden}`)).toMatchObject({ layer: hidden, hidden: true });
     }
     expect(hole.sprite.sprite.peek().meshOrder!).toBeGreaterThan(surface.sprite.sprite.peek().meshOrder!);
-    expect(hole.getPhysicsRadius()).toBe(2.75 * 3);
     await Promise.all([artLoaded(hole), artLoaded(surface)]);
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/dst/data/anim/cave_hole.zip'));
     expect(hole.sprite.currentAnimation).toBe('idle');
     expect(s.registry.exportRecords().cave_hole).toEqual([record]);
     hole.remove();
     expect(surface.isRemoved).toBe(true);
+  } finally { s.dispose(); }
+});
+
+it('blocks spheres at both walls, leaves the centre hollow and lets a soul hop land there', () => {
+  const world = new CANNON.World(), s = setup(world);
+  try {
+    const hole = s.prefabs.spawn(CAVE_HOLE_ID, new THREE.Vector3(0, 0, 0)) as CaveHoleInstance;
+    expect(hole.physicsBody!.shapes).toEqual([expect.any(CANNON.Trimesh)]);
+    // The planners read the mesh as one obstacle; a walk target at the centre is never offered.
+    expect(staticObstacleTest([hole.physicsBody!], 0)(new THREE.Vector3(0, 0, 0))).toBe(true);
+    expect(staticObstacleTest([hole.physicsBody!], 0)(new THREE.Vector3(9, 0, 0))).toBe(false);
+
+    // wortox.lua CanBlinkTo at world scale 3: the centre and beyond the outer wall are open, the ring between is not.
+    const blockers = placementEntities(s.scene), blocked = (x: number) => isGroundTargetBlocked(blockers, new THREE.Vector3(x, 0, 0), 1.5);
+    expect([0, 4.4, 4.5, 8.2, 8.25].map(blocked)).toEqual([false, false, true, true, false]);
+    // A hit on the hole would leave no ground point for BLINK; the same model is a target whenever it is enabled.
+    const { model } = hole.transform;
+    expect(isMouseTarget(model)).toBe(false);
+    setMouseTargetEnabled(model, true);
+    expect(isMouseTarget(model)).toBe(true);
+    setMouseTargetEnabled(model, false);
+
+    const player = { physics: new PhysicsState() }, position = new THREE.Vector3(-15, 0, 0), radius = 1.5;
+    MakeCharacterPhysics(player, 75, .5);
+    const binding = bindPhysics(world, player.physics, () => position), body = binding.body!;
+    const runX = (speed: number, steps = 120) => {
+      for (let step = 0; step < steps; step++) { body.velocity.set(speed, 0, 0); world.step(1 / 60); }
+      return body.position.x;
+    };
+    const teleport = (x: number) => { position.x = x; player.physics.Teleport(); body.velocity.set(0, 0, 0); };
+    // Along +x each wall presents the middle of a face: 16 segments around the outer radius, 8 around the inner.
+    const outerFace = 8.25 * Math.cos(Math.PI / 16), innerFace = 4.5 * Math.cos(Math.PI / 8);
+    expect(runX(18)).toBeLessThanOrEqual(-outerFace - radius + .15); // Stopped outside the outer wall.
+    teleport(0);
+    expect(runX(0, 30)).toBeCloseTo(0); // Landing at the centre touches nothing.
+    expect(runX(18)).toBeLessThanOrEqual(innerFace - radius + .15); // Walled in from inside.
+    teleport(4);
+    expect(runX(0)).toBeLessThanOrEqual(innerFace - radius + .15); // A landing against the inner wall is pushed inwards, not through it.
+    binding.dispose();
   } finally { s.dispose(); }
 });
 

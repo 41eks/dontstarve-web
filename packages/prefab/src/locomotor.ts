@@ -20,7 +20,7 @@ export function staticObstacleTest(bodies: Iterable<CANNON.Body>, margin: number
     const boxes: CANNON.AABB[] = [];
     for (const body of bodies) {
         if (body.type !== CANNON.Body.STATIC || !body.collisionResponse
-            || !body.shapes.some((shape) => shape instanceof CANNON.Box || shape instanceof CANNON.Sphere)) continue;
+            || !body.shapes.some((shape) => shape instanceof CANNON.Box || shape instanceof CANNON.Sphere || shape instanceof CANNON.Trimesh)) continue;
         if (body.aabbNeedsUpdate) body.updateAABB();
         boxes.push(body.aabb);
     }

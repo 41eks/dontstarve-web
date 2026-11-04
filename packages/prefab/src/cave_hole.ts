@@ -3,9 +3,10 @@ import { facingFromHeading } from '@dontstarve-web/animation/facing';
 import type { GetWatchWorldContent } from '@dontstarve-web/signals';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { ObjectSpawner } from '../../componets/src/objectspawner';
+import { COLLISION } from '../../componets/src/physicsState';
 import { PlayerProx } from '../../componets/src/playerprox';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
-import { MakeObstaclePhysics } from './standardcomponents';
+import { setMouseTargetEnabled } from './mouseTargets';
 import { TILE_SIZE } from './tile';
 import { Transform } from './transform';
 
@@ -28,6 +29,26 @@ export interface CaveHoleWorld {
   getWatchWorldContent?: GetWatchWorldContent;
   /** SpawnPrefab for the surface child, whose display loads its art. */
   spawnPrefab(prefab: typeof CAVE_HOLE_SURFACE_ID, position: ReadonlyVector3): PrefabInstance;
+}
+
+/** build_hole_collision_mesh's walls around the origin, each segment two triangles; both loops run to `segments` inclusive. */
+function ringWall(radius: number, segments: number, height: number): number[] {
+  const triangles: number[] = [], span = Math.PI * 2 / segments;
+  for (let index = 0; index <= segments; index++) {
+    const angle0 = index * span - span / 2, angle1 = index * span + span / 2;
+    const x0 = Math.cos(angle0) * radius, z0 = Math.sin(angle0) * radius;
+    const x1 = Math.cos(angle1) * radius, z1 = Math.sin(angle1) * radius;
+    triangles.push(x0, 0, z0, x0, height, z0, x1, 0, z1, x1, 0, z1, x0, height, z0, x1, height, z1);
+  }
+  return triangles;
+}
+
+/** cave_hole.lua's physics: an outer and an inner wall, hollow between and inside them, so a soul hop can land at the centre. */
+function makeHolePhysics(inst: CaveHoleInstance, radius: number, height = 6): void {
+  inst.physics.SetMass(0);
+  inst.physics.SetCollisionGroup(COLLISION.OBSTACLES);
+  inst.physics.SetCollisionMask(COLLISION.ITEMS, COLLISION.CHARACTERS, COLLISION.GIANTS);
+  inst.physics.SetTriangleMesh([...ringWall(radius, 16, height), ...ringWall(INNER_RADIUS, 8, height)]);
 }
 
 function declareGroundArt(inst: PrefabInstance, hiddenLayer: string, meshOrder: number): void {
@@ -84,9 +105,10 @@ export function caveHolePrefabs(world: CaveHoleWorld): Readonly<Record<typeof CA
     [CAVE_HOLE_ID]: {
       fn: position => new CaveHoleInstance(world, position),
       assets: ASSETS,
-      // The source's triangle-mesh doughnut, outer radius 2.75 and height 6, as a solid capsule: its centre cannot be reached from outside.
-      physics: { make: MakeObstaclePhysics, radius: OUTER_RADIUS, height: 6 },
+      physics: { make: makeHolePhysics, radius: OUTER_RADIUS, height: 6 },
       minimapIcon: 'cave_hole.png',
+      // Nothing here has a scene action, and a hit on the hole would hide the ground point that BLINK needs (GetRightClickActions).
+      onSpawned: inst => setMouseTargetEnabled(inst.transform.model, false),
     },
     [CAVE_HOLE_SURFACE_ID]: { fn: createSurfaceAnim, assets: ASSETS, targetable: false },
   };

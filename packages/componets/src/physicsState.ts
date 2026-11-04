@@ -20,6 +20,8 @@ export const COLLISION = {
 export interface PhysicsJson {
   /** Physics:SetCapsule(rad, height). */
   readonly capsule: { readonly radius: number; readonly height: number };
+  /** Physics:SetTriangleMesh: flat x, y, z triangles relative to the ground origin, in place of the capsule. Static bodies only. */
+  readonly triangleMesh?: readonly number[];
   /** Physics:SetMass; 0 is static. */
   readonly mass: number;
   /** Physics:SetFriction; undefined keeps the world's default contact. */
@@ -53,6 +55,7 @@ export class PhysicsState {
   }
 
   SetCapsule(radius: number, height = 2): void { this.write({ capsule: { radius, height } }); }
+  SetTriangleMesh(triangleMesh: readonly number[]): void { this.write({ triangleMesh }); }
   SetMass(mass: number): void { this.write({ mass }); }
   SetFriction(friction: number): void { this.write({ friction }); }
   SetDamping(damping: number): void { this.write({ damping }); }

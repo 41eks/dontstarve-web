@@ -556,7 +556,7 @@ export async function createSceneEntities(
       const edge = initialSave.world.map.generator.options.size / 2 - radius;
       return turfMap.isPassableAtPoint(point) && Math.abs(point.x) <= edge && Math.abs(point.z) <= edge
         && !getRegisteredPhysicsBodies(world).some(body => body.type === CANNON.Body.STATIC && body.collisionResponse &&
-          body.shapes.some(shape => shape instanceof CANNON.Box || shape instanceof CANNON.Sphere) && (() => {
+          body.shapes.some(shape => shape instanceof CANNON.Box || shape instanceof CANNON.Sphere || shape instanceof CANNON.Trimesh) && (() => {
             body.updateAABB(); const b = body.aabb;
             return point.x >= b.lowerBound.x - radius && point.x <= b.upperBound.x + radius && point.z >= b.lowerBound.z - radius && point.z <= b.upperBound.z + radius;
           })());
