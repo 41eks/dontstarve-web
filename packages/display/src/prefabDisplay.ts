@@ -73,7 +73,7 @@ export class PrefabDisplay {
   private readonly listed: DisplaySprite;
   private readonly state: SpriteState;
   private readonly json: ReturnType<typeof watchSignal<SpriteJson>>;
-  private readonly status: ReadonlySignal<PrefabStatus>;
+  readonly status: ReadonlySignal<PrefabStatus>;
   private readonly cleanups: (() => void)[] = [];
   private readonly disposalHandlers = new Set<() => void>();
   private readonly symbolNodes = new Map<THREE.Object3D, FollowerFxSlot | undefined>();
@@ -276,8 +276,6 @@ export class PrefabDisplay {
   /** Advance a display; the frame's camera rotation is a fallback for worlds without a bound camera signal. */
   update(dt: number, cameraRotation?: THREE.Quaternion): void {
     if (this.disposed) return;
-    // Most of a world's entities sleep: nothing to do for them each frame.
-    if (this.asleep && this.status.peek() === 'asleep') return;
     this.applyStatus(this.status.peek());
     if (this.isRemoved || this.asleep) return;
     if (cameraRotation && !this.followsWorldCamera && this.json.peek().billboard) this.faceCamera(cameraRotation);

@@ -18,6 +18,29 @@ import type { WorldContext } from '../../prefab/src/worldContext';
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
 
+it('takes a sleeping display out of the group\'s frame updates and render list until it wakes, and still releases it', async () => {
+  const scene = new THREE.Scene(), group = new PrefabDisplayGroup(scene);
+  const entity = createEmptyEntity('tree'), { instance, display } = entity;
+  const update = vi.spyOn(display, 'update');
+  group.mount(display);
+  group.update(1 / 30);
+  expect(update).toHaveBeenCalledOnce();
+  expect(group.renderEntities.map(entry => entry.object)).toEqual([display.model]);
+  instance.setActive(false); await tick();
+  group.update(1 / 30);
+  expect(update).toHaveBeenCalledOnce();
+  expect(group.renderEntities).toEqual([]);
+  instance.setActive(true); await tick();
+  group.update(1 / 30);
+  expect(update).toHaveBeenCalledTimes(2);
+  expect(group.renderEntities.map(entry => entry.object)).toEqual([display.model]);
+  instance.setActive(false); await tick();
+  const released = vi.fn(); display.onDispose(released);
+  group.dispose();
+  expect(released).toHaveBeenCalledOnce();
+  instance.remove();
+});
+
 it('preserves ground ordering when ground art and billboards share one display group', () => {
   const scene = new THREE.Scene(), group = new PrefabDisplayGroup(scene);
   const ground = createEmptyEntity('ground'), billboard = createEmptyEntity('billboard');
