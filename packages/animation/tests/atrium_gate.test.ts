@@ -8,6 +8,7 @@ import { AtriumGateManager } from '../../prefab/src/atrium_gate';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { EntityRegistry } from '../../../src/entityRegistry';
+import { Pathfinder } from '../../prefab/src/pathfinder';
 
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 function setup() {
@@ -92,4 +93,16 @@ it('rebuilds the declared idle clip and child floor after tile sleep', async () 
     for (let node = meshes[0].parent; node && node !== floor; node = node.parent) expect(node.renderOrder).toBe(0);
     expect(gates.exportRecords()[0].record.components.pickable).toEqual({ picked: true });
   } finally { gates.dispose(); scheduler.dispose(); }
+});
+
+it('walls off its 2×2 path tiles until it is removed', () => {
+  const { scene, scheduler } = setup();
+  const pathfinder = new Pathfinder({ isPassableAtPoint: () => true, isOceanAtWorld: () => false });
+  const gates = new AtriumGateManager(scene, { scheduler, pathfinder, trackDisplay: () => {} });
+  const clear = (z: number) => pathfinder.IsClear({ x: 0, y: 0, z }, { x: 12, y: 0, z });
+  gates.spawn(new THREE.Vector3(6, 0, 6));
+  // Each of the four corners stands .5 DST units (1.5 here) from the centre.
+  expect([clear(4.5), clear(7.5), clear(0), clear(12)]).toEqual([false, false, true, true]);
+  gates.dispose();
+  expect([clear(4.5), clear(7.5)]).toEqual([true, true]);
 });

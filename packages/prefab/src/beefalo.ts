@@ -12,7 +12,7 @@ import { Beard, type BeardSave } from '../../componets/src/beard';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Sleeper } from '../../componets/src/sleeper';
 import { actionEntity, findActionEntity } from './actionEntity';
-import type { LocomotorOptions } from './locomotor';
+import type { LocoMotorPathfinder } from '../../componets/src/locomotor';
 import { LocoMotor, type LocoMotorInst } from '../../componets/src/locomotor';
 import { KnownLocations } from '../../componets/src/knownlocations';
 import { PeriodicSpawner } from '../../componets/src/periodicspawner';
@@ -52,7 +52,10 @@ export interface BeefaloWorld extends Pick<WorldContentContext, 'getWatchWorldCo
   /** beard.lua SpawnPrefab(prize) launched from the beefalo's position. */
   spawnPrize(prefab: string, count: number, position: THREE.Vector3): void;
   getPlayerPositions(): readonly THREE.Vector3[];
-  findPath: NonNullable<LocomotorOptions['findPath']>;
+  /** TheWorld.Pathfinder. */
+  pathfinder: LocoMotorPathfinder;
+  /** Whether a beefalo can stand here: on land and clear of colliders. */
+  isWalkable(point: THREE.Vector3): boolean;
   constrainPosition(position: THREE.Vector3): void;
   /** Logical ground/pending manure positions for periodicspawner's density and spacing rules. */
   getPoopPositions(): Iterable<ReadonlyVector3>;
@@ -145,8 +148,7 @@ export class BeefaloController {
     };
     this.locomotor = new LocoMotor(motorInst, {
       arriveDistance: .15 * WORLD_SCALE,
-      findPath: (start, target) => world.findPath(new THREE.Vector3(start.x, start.y, start.z),
-        new THREE.Vector3(target.x, target.y, target.z)),
+      pathfinder: world.pathfinder,
     });
     this.locomotor.walkspeed = BEEFALO_BEHAVIOR.walkSpeed;
     this.locomotor.runspeed = 7 * WORLD_SCALE;
@@ -267,7 +269,7 @@ export class BeefaloController {
       isAboveGroundAtPoint: (x, y, z) => {
         const point = new THREE.Vector3(x, y, z);
         this.world.constrainPosition(point);
-        return point.x === x && point.z === z && this.world.findPath(point, point) !== null;
+        return point.x === x && point.z === z && this.world.isWalkable(point);
       },
     };
     return {
@@ -394,7 +396,7 @@ export class BeefaloManager implements FrameUpdatedPrefabManager<BeefaloRecord> 
             < shape.radius + BEEFALO_BEHAVIOR.radius + 1));
         if (!occupied && !Array.from(this.pendingSpawns).some((point) =>
           point.distanceToSquared(target) < (BEEFALO_BEHAVIOR.radius * 2 + 1) ** 2)
-          && this.world.findPath(target, target)) {
+          && this.world.isWalkable(target)) {
           this.pendingSpawns.add(target);
           try { return await this.spawn(target); }
           finally { this.pendingSpawns.delete(target); }

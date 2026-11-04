@@ -9,7 +9,7 @@ import { Combat } from '../../componets/src/combat';
 import { Inventory } from '../../componets/src/inventory';
 import { HomeSeeker } from '../../componets/src/homeseeker';
 import { KnownLocations } from '../../componets/src/knownlocations';
-import { LocoMotor, type LocoMotorInst, type LocoMotorOptions } from '../../componets/src/locomotor';
+import { LocoMotor, type LocoMotorInst, type LocoMotorPathfinder } from '../../componets/src/locomotor';
 import { AnimState } from '../../componets/src/animstate';
 import { ComponentTimer } from '../../componets/src/timer';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -39,7 +39,8 @@ export interface MoleWorld extends Pick<WorldContentContext, 'getWatchWorldConte
   getEntities(): readonly BrainEntity[];
   getMoles(): readonly Mole[];
   isWalkable(position: Vector3): boolean;
-  findPath?: LocoMotorOptions['findPath'];
+  /** TheWorld.Pathfinder. */
+  pathfinder?: LocoMotorPathfinder;
   spawnItem(state: InventoryStack): ItemEntity;
   dropItem(item: ItemEntity, position: Vector3): void;
   dropLoot(prefab: string, position: Vector3): void;
@@ -174,7 +175,7 @@ export class Mole implements MoleBrainInst, MoleStateInst, LocoMotorInst {
     };
     this.components.inventory = new Inventory(this, 3, services.dropItem, services.itemSpecs);
     this.components.inventory.OnLoad(this.saved?.items ?? [], services.spawnItem);
-    this.locomotor = new LocoMotor(this, { arriveDistance: .15 * WORLD_SCALE, findPath: services.findPath });
+    this.locomotor = new LocoMotor(this, { arriveDistance: .15 * WORLD_SCALE, pathfinder: services.pathfinder, pathcaps: { ignorecreep: true, ignorebridges: true } });
     this.locomotor.walkspeed = 2.75 * WORLD_SCALE; this.locomotor.runspeed = 6 * WORLD_SCALE;
     this.components.locomotor = this.locomotor;
     this.animstate = new AnimState(scheduler, lengths, event => this.sg.pushEvent(event));

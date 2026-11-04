@@ -9,7 +9,7 @@ import { EventEmitter } from '@dontstarve-web/signals';
 
 import { animate, backTasks, middleTasks } from './animate';
 import { createAnimationUpdater } from './animation';
-import { ground, groundDisplay, turfGround, turfMap } from './building';
+import { ground, groundDisplay, turfGround, turfMap, pathfinder } from './building';
 import { camera } from './camera';
 import { createSceneEntities } from './sceneEntities';
 import type { EntityRegistry } from './entityRegistry';
@@ -26,7 +26,7 @@ import { initialSave } from './save/initialSave';
 import type { RuntimeSaveState } from './save/serialize';
 import { createWorldClockUpdater } from './worldState';
 import type { PerishWorld } from '../packages/componets/src/perishable';
-import { Locomotor, findGroundPath, setupLocomotorInput } from '@dontstarve-web/prefab/locomotor';
+import { Locomotor, setupLocomotorInput } from '@dontstarve-web/prefab/locomotor';
 import { SlipperyFeet } from '../packages/componets/src/slipperyfeet';
 import { actionEntitiesChanged, bindActionEntityWorld, FindEntities } from '../packages/prefab/src/actionEntity';
 import { bindPlayerBuilder } from '@dontstarve-web/prefab/player';
@@ -57,29 +57,9 @@ const playerRadius = (playerBody.shapes[0] as CANNON.Sphere).radius;
 export const locomotor = new Locomotor(playerBody, {
   footprintRadius: playerRadius,
   isPassable: (x, z) => turfMap.isPassableAtPoint({ x, z }),
-  findPath(start, target) {
-    const mapEdge = initialSave.world.map.generator.options.size / 2 - playerRadius;
-    // Colliders outside the ticking area have left the simulation, so the player cannot collide with them either.
-    const obstacles = world.bodies.filter((body) => body.type === CANNON.Body.STATIC
-      && body.collisionResponse
-      && (body.collisionFilterMask & playerBody.collisionFilterGroup) !== 0
-      && (playerBody.collisionFilterMask & body.collisionFilterGroup) !== 0
-      && body.shapes.some((shape) => shape instanceof CANNON.Box || shape instanceof CANNON.Sphere))
-      .map((body) => {
-        body.updateAABB();
-        return {
-          minX: body.aabb.lowerBound.x - playerRadius, maxX: body.aabb.upperBound.x + playerRadius,
-          minZ: body.aabb.lowerBound.z - playerRadius, maxZ: body.aabb.upperBound.z + playerRadius,
-        };
-      });
-    return findGroundPath(start, target, {
-      cellSize: Math.max(1, playerRadius / 2),
-      isWalkable: (point) => Math.abs(point.x) <= mapEdge && Math.abs(point.z) <= mapEdge
-        && turfMap.isPassableAtPoint(point)
-        && !obstacles.some((box) => point.x >= box.minX && point.x <= box.maxX
-          && point.z >= box.minZ && point.z <= box.maxZ),
-    });
-  },
+  pathfinder,
+  // player_common_extensions.lua.
+  pathcaps: { player: true, ignorecreep: true },
 });
 const updatePlayerMovement = updateMovement(camera, player, playerBody, locomotor);
 const updateAnimation = createAnimationUpdater(player);
@@ -98,6 +78,7 @@ function getVelocity(): number {
 }
 
 middleTasks.push((dt: number) => {
+  pathfinder.update();
   updatePlayerMovement(getVelocity(), dt);
 });
 middleTasks.push(updateAnimation);

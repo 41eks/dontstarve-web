@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { expect, it } from 'vitest';
-import { findGroundPath } from '../../prefab/src/locomotor';
-import { Pathfinder, STATUS_CALCULATING, STATUS_FOUNDPATH, STATUS_NOPATH } from '../../prefab/src/pathfinder';
+import { GroundPathSearch, Pathfinder, PathfindingWall, STATUS_CALCULATING, STATUS_FOUNDPATH, STATUS_NOPATH } from '../../prefab/src/pathfinder';
 
 const point = (x: number, z = 0) => new THREE.Vector3(x, 0, z);
 /** Land within 60 of the origin along z, ocean for x beyond 30. */
@@ -84,8 +83,22 @@ it('finds the same path in slices as all at once', () => {
   const walls = new Pathfinder(map);
   walled(walls);
   const isWalkable = (position: THREE.Vector3) => walls.IsClear(position, position);
-  const whole = findGroundPath(point(0), point(20), { cellSize: 3, isWalkable })!;
+  const search = new GroundPathSearch(point(0), point(20), { cellSize: 3, isWalkable });
+  search.advance(Infinity);
+  const whole = search.result!;
   const handle = walls.SubmitSearch(point(0), point(20));
   while (walls.GetSearchStatus(handle) === STATUS_CALCULATING) walls.update(7);
   expect(walls.GetSearchResult(handle)!.steps.slice(1).map(step => step.toArray())).toEqual(whole.map(step => step.toArray()));
+});
+
+it('stops a search at its limit, and a wall leaves the grid only when it stops being an obstacle', () => {
+  const isWalkable = (position: THREE.Vector3) => Math.abs(position.x) < 10 && Math.abs(position.z) < 10 && !(position.x >= 3 && position.x <= 5);
+  const limited = new GroundPathSearch(point(0), point(8), { isWalkable, maxVisited: 100 });
+  limited.advance(Infinity);
+  expect(limited.result).toBeNull();
+  const pathfinder = new Pathfinder(map), wall = new PathfindingWall(pathfinder, () => point(10.5));
+  wall.set(true); wall.set(true);
+  expect(pathfinder.IsClear(point(0), point(20))).toBe(false);
+  wall.set(false); wall.set(false);
+  expect(pathfinder.IsClear(point(0), point(20))).toBe(true);
 });

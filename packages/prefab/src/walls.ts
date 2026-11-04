@@ -9,6 +9,7 @@ import type { SpriteState } from '@dontstarve-web/display';
 import { Health } from '../../componets/src/health';
 import { Combat } from '../../componets/src/combat';
 import { Workable } from '../../componets/src/workable';
+import { PathfindingWall } from './pathfinder';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { createStructureLootDropper } from './structureLoot';
 import { TILE_SIZE } from './tile';
@@ -120,6 +121,8 @@ const WALL_WORK_DEFINITIONS: Readonly<Record<string, Pick<WallDefinition, 'tags'
 
 class WallPrefabInstance extends PrefabInstance {
     readonly wallData: WallDefinition;
+    /** makeobstacle and clearobstacle's inst._ispathfinding. */
+    pathfinding?: PathfindingWall;
     constructor(prefab: string, sprite: SpriteState, data: WallDefinition) { super(prefab, sprite); this.wallData = data; }
 }
 
@@ -137,11 +140,11 @@ function onhealthchange(inst: WallPrefabInstance, oldPercent: number, newPercent
     const anim = resolveWallAnim(newPercent, inst.position);
     inst.sprite.setPose(anim === 'half' ? undefined : anim);
     if (newPercent > 0) {
-        if (oldPercent <= 0) inst.physics.SetActive(true);
+        if (oldPercent <= 0) { inst.physics.SetActive(true); inst.pathfinding?.set(true); }
         inst.sprite.playOnce(`${anim}_hit`);
         inst.sprite.pushAnimation(anim, false);
     } else {
-        if (oldPercent > 0) inst.physics.SetActive(false);
+        if (oldPercent > 0) { inst.physics.SetActive(false); inst.pathfinding?.set(false); }
         inst.sprite.playOnce(anim);
     }
 }
@@ -182,7 +185,9 @@ function initializeWall(instance: PrefabInstance, saved?: { current: number; max
     MakeObstaclePhysics(inst, .5).SetDontRemoveOnSleep(true);
     inst.physics.SetActive(!health.IsDead());
     if (inst.worldServices?.physics) inst.bindPhysics(inst.worldServices.physics);
-    inst.onRemove(() => { workable.dispose(); health.dispose(); combat.onhitfn = undefined; });
+    const pathfinding = inst.pathfinding = new PathfindingWall(inst.worldServices?.pathfinder, () => inst.position);
+    pathfinding.set(!health.IsDead());
+    inst.onRemove(() => { pathfinding.set(false); workable.dispose(); health.dispose(); combat.onhitfn = undefined; });
 }
 
 export const WALL_DEFINITIONS: Readonly<Record<WallId, WallDefinition>> = Object.fromEntries(

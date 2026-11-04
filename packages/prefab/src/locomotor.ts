@@ -2,23 +2,9 @@ import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import type { LocomotorAction } from '@dontstarve-web/stategraphs/actionContext';
+import { LocoMotorPath, type LocoMotorPathfinder, type PathCaps } from '../../componets/src/locomotor';
 import type { WorldContext } from './worldContext';
 import { WORLD_SCALE } from './tile';
-
-export interface GroundPathOptions {
-    isWalkable: (point: THREE.Vector3) => boolean;
-    cellSize?: number;
-    maxVisited?: number;
-}
-
-interface PathNode {
-    x: number;
-    z: number;
-    cost: number;
-    score: number;
-    order: number;
-    parent?: PathNode;
-}
 
 const OBSTACLE_CELL = 4;
 const obstacleCell = (x: number, z: number) => Math.floor(x / OBSTACLE_CELL) * 0x10000 + Math.floor(z / OBSTACLE_CELL);
@@ -63,153 +49,11 @@ export function staticObstacleTest(bodies: Iterable<CANNON.Body>, margin: number
     };
 }
 
-/** Open-set order: lowest score first, earlier insertion among equal scores. */
-const before = (a: PathNode, b: PathNode) => a.score < b.score || (a.score === b.score && a.order < b.order);
-
-function pushNode(heap: PathNode[], node: PathNode): void {
-    let index = heap.push(node) - 1;
-    while (index > 0) {
-        const parent = (index - 1) >> 1;
-        if (!before(heap[index], heap[parent])) break;
-        [heap[index], heap[parent]] = [heap[parent], heap[index]];
-        index = parent;
-    }
-}
-
-function popNode(heap: PathNode[]): PathNode {
-    const top = heap[0];
-    const last = heap.pop()!;
-    if (heap.length > 0) {
-        heap[0] = last;
-        for (let index = 0; ;) {
-            const left = index * 2 + 1, right = left + 1;
-            let next = index;
-            if (left < heap.length && before(heap[left], heap[next])) next = left;
-            if (right < heap.length && before(heap[right], heap[next])) next = right;
-            if (next === index) break;
-            [heap[index], heap[next]] = [heap[next], heap[index]];
-            index = next;
-        }
-    }
-    return top;
-}
-
-/** A search over the XZ plane that runs a few nodes at a time; the host supplies map boundaries and obstacles. */
-export class GroundPathSearch {
-    /** Undefined while calculating; null when the destination cannot be reached within the search's limit. */
-    result: readonly THREE.Vector3[] | null | undefined;
-    private readonly start: THREE.Vector3;
-    private readonly target: THREE.Vector3;
-    private readonly isWalkable: GroundPathOptions['isWalkable'];
-    private readonly cellSize: number;
-    private readonly maxVisited: number;
-    private readonly sample = new THREE.Vector3();
-    private readonly open: PathNode[] = [];
-    private readonly costs = new Map<number, number>();
-    private visited = 0;
-    private order = 0;
-    private started = false;
-
-    constructor(start: THREE.Vector3, target: THREE.Vector3, { isWalkable, cellSize = 2, maxVisited = 4096 }: GroundPathOptions) {
-        if (!Number.isFinite(cellSize) || cellSize <= 0 || !Number.isSafeInteger(maxVisited) || maxVisited <= 0) {
-            throw new RangeError('Invalid ground path search limits');
-        }
-        this.start = start.clone(); this.target = target.clone();
-        this.isWalkable = isWalkable; this.cellSize = cellSize; this.maxVisited = maxVisited;
-    }
-
-    /** Visits up to `budget` nodes and returns how many it used; the search has finished once `result` is set. */
-    advance(budget: number): number {
-        if (this.result !== undefined) return 0;
-        if (!this.started && !this.begin()) return 0;
-        const { open, costs, cellSize, target } = this;
-        let used = 0;
-        while (used < budget) {
-            if (open.length === 0 || this.visited >= this.maxVisited) { this.result = null; break; }
-            const current = popNode(open);
-            if (current.cost !== costs.get(nodeKey(current.x, current.z))) continue;
-            this.visited += 1;
-            used += 1;
-            const currentPoint = this.point(current);
-            if (this.heuristic(current.x, current.z) <= cellSize * 1.5 && this.clearSegment(currentPoint, target)) {
-                const path = [target.clone()];
-                for (let node: PathNode | undefined = current; node?.parent; node = node.parent) path.push(this.point(node));
-                this.result = path.reverse();
-                break;
-            }
-            this.expand(current, currentPoint);
-        }
-        return used;
-    }
-
-    /** The checks that need no search. */
-    private begin(): boolean {
-        this.started = true;
-        if (!this.isWalkable(this.target)) { this.result = null; return false; }
-        if (this.clearSegment(this.start, this.target)) { this.result = [this.target.clone()]; return false; }
-        this.open.push({ x: 0, z: 0, cost: 0, score: this.heuristic(0, 0), order: this.order++ });
-        this.costs.set(nodeKey(0, 0), 0);
-        return true;
-    }
-
-    private expand(current: PathNode, currentPoint: THREE.Vector3): void {
-        for (let dx = -1; dx <= 1; dx++) {
-            for (let dz = -1; dz <= 1; dz++) {
-                if (dx === 0 && dz === 0) continue;
-                const x = current.x + dx;
-                const z = current.z + dz;
-                const cost = current.cost + Math.hypot(dx, dz) * this.cellSize;
-                const key = nodeKey(x, z);
-                if (cost >= (this.costs.get(key) ?? Infinity)) continue;
-                const next = { x, z, cost, score: cost + this.heuristic(x, z), order: this.order++, parent: current };
-                const nextPoint = this.point(next);
-                if (!this.isWalkable(nextPoint) || !this.clearSegment(currentPoint, nextPoint)) continue;
-                // Do not cut diagonally through blocked corners.
-                if (dx !== 0 && dz !== 0 && (
-                    !this.isWalkable(this.point({ ...current, x })) || !this.isWalkable(this.point({ ...current, z }))
-                )) continue;
-                this.costs.set(key, cost);
-                pushNode(this.open, next);
-            }
-        }
-    }
-
-    private point(node: PathNode): THREE.Vector3 {
-        return new THREE.Vector3(this.start.x + node.x * this.cellSize, this.target.y, this.start.z + node.z * this.cellSize);
-    }
-
-    private heuristic(x: number, z: number): number {
-        return Math.hypot(this.start.x + x * this.cellSize - this.target.x, this.start.z + z * this.cellSize - this.target.z);
-    }
-
-    private clearSegment(from: THREE.Vector3, to: THREE.Vector3): boolean {
-        return isClearSegment(from, to, this.cellSize / 2, this.isWalkable, this.sample);
-    }
-}
-
-// Grid offsets stay within ±maxVisited of the start, far inside the key's 2^20 stride.
-const nodeKey = (x: number, z: number) => x * 0x100000 + z;
-
-/** Whether every point sampled along a segment, each `spacing` apart at most, is walkable. */
-export function isClearSegment(from: THREE.Vector3, to: THREE.Vector3, spacing: number, isWalkable: GroundPathOptions['isWalkable'], sample = new THREE.Vector3()): boolean {
-    const steps = Math.max(1, Math.ceil(Math.hypot(to.x - from.x, to.z - from.z) / spacing));
-    for (let i = 1; i <= steps; i++) {
-        sample.lerpVectors(from, to, i / steps);
-        if (!isWalkable(sample)) return false;
-    }
-    return true;
-}
-
-/** The whole search at once. */
-export function findGroundPath(start: THREE.Vector3, target: THREE.Vector3, options: GroundPathOptions): readonly THREE.Vector3[] | null {
-    const search = new GroundPathSearch(start, target, options);
-    while (search.result === undefined) search.advance(Infinity);
-    return search.result;
-}
-
 export interface LocomotorOptions {
     arriveDistance?: number;
-    findPath?: (start: THREE.Vector3, target: THREE.Vector3) => readonly THREE.Vector3[] | null;
+    /** TheWorld.Pathfinder and locomotor.pathcaps; without one the body heads straight for its destination. */
+    pathfinder?: LocoMotorPathfinder;
+    pathcaps?: PathCaps;
     /** Ground-contact passability (land vs. ocean); blocked motion slides along the shore. */
     isPassable?: (x: number, z: number) => boolean;
     /** Leading-edge distance ahead of the body centre that must stay passable. */
@@ -226,30 +70,26 @@ interface PendingAction {
     readonly arriveDistance: number;
     readonly arrive: () => void;
     readonly fail: () => void;
-    readonly pathTarget: THREE.Vector3;
 }
-
-/** A target moving farther than this from where the path led re-paths, as Dest(target) follows the entity. */
-const REPATH_DISTANCE = 0.5;
 
 /** Owns movement destinations and horizontal physics velocity, like DST's locomotor. */
 export class Locomotor {
     private readonly body: CANNON.Body;
     private readonly arriveDistance: number;
-    private readonly findPath?: LocomotorOptions['findPath'];
+    private readonly pathing?: LocoMotorPath;
     private readonly isPassable?: LocomotorOptions['isPassable'];
     private readonly footprintRadius: number;
     private readonly physicsRadius: number;
     private pending?: PendingAction;
-    private path: readonly THREE.Vector3[] = [];
-    private pathIndex = 0;
+    /** Dest(pt); a walked-to action's Dest(target) follows its target instead. */
+    private point?: THREE.Vector3;
     private readonly direction = new THREE.Vector3();
 
     constructor(body: CANNON.Body, options: LocomotorOptions = {}) {
         this.body = body;
         this.arriveDistance = options.arriveDistance ?? 0.25;
         if (!Number.isFinite(this.arriveDistance) || this.arriveDistance <= 0) throw new RangeError('Invalid arrival distance');
-        this.findPath = options.findPath;
+        this.pathing = options.pathfinder && new LocoMotorPath(options.pathfinder, options.pathcaps, ARRIVE_STEP);
         this.isPassable = options.isPassable;
         this.footprintRadius = options.footprintRadius ?? 0;
         this.physicsRadius = options.physicsRadius ?? this.footprintRadius;
@@ -269,11 +109,11 @@ export class Locomotor {
         const physical = ARRIVE_STEP + (action.target.getPhysicsRadius?.() ?? 0) + this.physicsRadius;
         const arriveDistance = action.distance !== undefined ? Math.max(physical, action.distance)
             : Math.max(physical, action.minDistance ?? 0);
-        const pending: PendingAction = { action, arriveDistance, arrive, fail, pathTarget: action.target.getPosition().clone() };
+        const pending: PendingAction = { action, arriveDistance, arrive, fail };
         this.pending = pending;
         if (!action.isValid()) { this.stop(); return; }
         if (this.hasArrived(pending)) { this.arrive(pending); return; }
-        this.pathTowards(pending);
+        this.pathing?.FindPath(this.body.position, action.target.getPosition());
     }
 
     /** locomotor:Clear: drop the destination and fail the walked-to action. */
@@ -293,39 +133,22 @@ export class Locomotor {
         pending.arrive();
     }
 
-    /**
-     * Path to the target itself, as Dest(target) does; an obstacle's centre is not walkable, so its path ends short of
-     * the centre, inside the arrive distance.
-     */
-    private pathTowards(pending: PendingAction): void {
-        const target = pending.action.target.getPosition();
-        pending.pathTarget.copy(target);
-        if (this.setPath(target)) return;
-        this.direction.set(this.body.position.x - target.x, 0, this.body.position.z - target.z).normalize();
-        const destination = new THREE.Vector3(target.x, target.y, target.z).addScaledVector(this.direction, pending.arriveDistance * 0.8);
-        if (!this.setPath(destination)) this.stop();
-    }
-
     get destination(): THREE.Vector3 | undefined {
-        return this.path[this.path.length - 1]?.clone();
+        return this.point?.clone() ?? this.pending?.action.target.getPosition().clone();
     }
 
-    /** GoToPoint replaces any walked-to action. */
+    /**
+     * GoToPoint replaces any walked-to action. A point off the ground is refused: walking towards it would only
+     * stop at the shore. FindPath's result arrives on a later update, and the body heads for the point until then.
+     */
     goToPoint(target: THREE.Vector3): boolean {
         this.failPending();
-        return this.setPath(target);
-    }
-
-    private setPath(target: THREE.Vector3): boolean {
-        if (![target.x, target.y, target.z].every(Number.isFinite)) return false;
-        const start = new THREE.Vector3(this.body.position.x, target.y, this.body.position.z);
-        const path = this.findPath ? this.findPath(start, target.clone()) : [target];
-        if (!path?.length) {
+        if (![target.x, target.y, target.z].every(Number.isFinite) || this.isPassable?.(target.x, target.z) === false) {
             this.halt();
             return false;
         }
-        this.path = path.map((point) => point.clone());
-        this.pathIndex = 0;
+        this.point = target.clone();
+        this.pathing?.FindPath(this.body.position, target);
         return true;
     }
 
@@ -334,10 +157,10 @@ export class Locomotor {
         this.halt();
     }
 
-    /** Drop the path and horizontal velocity, keeping any walked-to action. */
+    /** LocoMotor:Stop keeps any walked-to action here for the caller to fail. */
     private halt(): void {
-        this.path = [];
-        this.pathIndex = 0;
+        this.point = undefined;
+        this.pathing?.Stop();
         this.body.velocity.x = 0;
         this.body.velocity.z = 0;
     }
@@ -358,41 +181,29 @@ export class Locomotor {
         if (pending && !manualDirection) {
             if (!pending.action.isValid()) { this.stop(); return; }
             if (this.hasArrived(pending, speed * dt)) { this.arrive(pending); return; }
-            if (pending.pathTarget.distanceToSquared(pending.action.target.getPosition()) > REPATH_DISTANCE ** 2) {
-                this.pathTowards(pending);
-                if (this.pending !== pending) return;
-            }
         }
         this.direction.set(0, 0, 0);
         if (manualDirection) {
             this.failPending();
-            this.path = [];
-            this.pathIndex = 0;
+            this.point = undefined;
+            this.pathing?.Stop();
             this.direction.set(manualDirection.x, 0, manualDirection.z).normalize();
         } else {
-            // Dest(target) follows the entity: a path ending short of a moving target leads on towards it once.
-            for (let attempt = 0; ; attempt++) {
-                while (this.pathIndex < this.path.length) {
-                    const point = this.path[this.pathIndex];
-                    this.direction.set(point.x - this.body.position.x, 0, point.z - this.body.position.z);
-                    const distance = this.direction.length();
-                    if (distance <= this.arriveDistance) {
-                        this.pathIndex += 1;
-                        continue;
-                    }
-                    // Slow the last step so it cannot overshoot the waypoint.
-                    speed = Math.min(speed, distance / Math.max(dt, 1 / 60));
-                    this.direction.divideScalar(distance);
-                    break;
-                }
-                if (this.pathIndex < this.path.length) break;
-                const pending = this.pending;
-                if (!pending) { this.stop(); return; }
-                if (this.hasArrived(pending, speed * dt)) { this.arrive(pending); return; }
-                if (attempt > 0) { this.body.velocity.x = 0; this.body.velocity.z = 0; return; }
-                this.pathTowards(pending);
-                if (this.pending !== pending) return;
+            const destination = this.destination;
+            if (!destination) { this.stop(); return; }
+            const position = this.body.position;
+            if (!pending && (destination.x - position.x) ** 2 + (destination.z - position.z) ** 2 <= this.arriveDistance ** 2) {
+                this.stop();
+                return;
             }
+            this.pathing?.UpdateSearch();
+            const step = this.pathing?.GetMoveStep(position, destination, this.physicsRadius) ?? destination;
+            this.direction.set(step.x - position.x, 0, step.z - position.z);
+            const distance = this.direction.length();
+            if (distance === 0) { this.body.velocity.x = 0; this.body.velocity.z = 0; return; }
+            // Slow the last step so it cannot overshoot the point.
+            speed = Math.min(speed, distance / Math.max(dt, 1 / 60));
+            this.direction.divideScalar(distance);
         }
         let vx = this.direction.x * speed;
         let vz = this.direction.z * speed;
@@ -409,7 +220,7 @@ export class Locomotor {
                 if (slideX && !slideZ) vz = 0;
                 else if (slideZ && !slideX) vx = 0;
                 else { vx = 0; vz = 0; }
-                if (vx === 0 && vz === 0) { this.path = []; this.pathIndex = 0; }
+                if (vx === 0 && vz === 0 && !manualDirection) { this.stop(); return; }
             }
         }
         this.body.velocity.x = vx;

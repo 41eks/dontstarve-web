@@ -7,6 +7,7 @@ import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { Pathfinder } from '../../prefab/src/pathfinder';
 import { WallsPlacement } from '../../prefab/src/walls';
 import { WALL_PHYSICS_RADIUS } from '../../prefab/src/walls';
 import type { WorldContext } from '../../prefab/src/worldContext';
@@ -28,10 +29,11 @@ afterEach(() => { vi.clearAllMocks(); vi.unstubAllGlobals(); });
 function setup(physics: CANNON.World = new CANNON.World()) {
   const camera = new THREE.PerspectiveCamera();
   camera.position.set(0, 12, 40); camera.lookAt(0, 0, 0); camera.updateMatrixWorld();
-  const world = { physics, scene: new THREE.Scene(), camera, cameraFacing: createSignal(8), cameraHeading: createSignal(45), ground: new THREE.Group(), player: new THREE.Group(),
+  const pathfinder = new Pathfinder({ isPassableAtPoint: () => true, isOceanAtWorld: () => false });
+  const world = { physics, pathfinder, scene: new THREE.Scene(), camera, cameraFacing: createSignal(8), cameraHeading: createSignal(45), ground: new THREE.Group(), player: new THREE.Group(),
     renderer: { domElement: new EventTarget() }, createCursorLabel: () => ({ show() {}, hide() {}, update() {} }),
   } as unknown as WorldContext;
-  return { physics, placement: new WallsPlacement(world, () => false) };
+  return { physics, pathfinder, placement: new WallsPlacement(world, () => false) };
 }
 
 /** The placed walls' health, in placement order (their combat entities, as FindEntities lists them). */
@@ -40,7 +42,8 @@ const healthOf = (_placement: WallsPlacement, index: number) =>
 const wallBodies = (physics: CANNON.World) => physics.bodies.filter(body => body.type === CANNON.Body.STATIC);
 
 it('blocks with a static obstacle at the foot point only while the wall has health', async () => {
-  const { physics, placement } = setup();
+  const { physics, placement, pathfinder } = setup();
+  const pathBlocked = () => !pathfinder.IsClear({ x: 0, y: 0, z: -6 }, { x: 6, y: 0, z: -6 });
   try {
     await placement.spawnFromSave('wall_stone', { id: 'wall', transform: { position: [3, 0, -6], rotationY: 0 },
       components: { health: { current: 100, maximum: 400 } } });
@@ -50,18 +53,22 @@ it('blocks with a static obstacle at the foot point only while the wall has heal
     expect(body.position.x).toBe(3);
     expect(body.position.z).toBe(-6);
     expect(body.shapes.some(shape => shape instanceof CANNON.Sphere && shape.radius === WALL_PHYSICS_RADIUS)).toBe(true);
+    expect(pathBlocked()).toBe(true);
 
     healthOf(placement, 0).DoDelta(-100); // to zero: clearobstacle
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(wallBodies(physics)).toHaveLength(0);
+    expect(pathBlocked()).toBe(false);
     healthOf(placement, 0).DoDelta(-1); // already broken stays clear
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(wallBodies(physics)).toHaveLength(0);
     healthOf(placement, 0).DoDelta(50); // repaired: makeobstacle again
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(wallBodies(physics)).toEqual([body]);
+    expect(pathBlocked()).toBe(true);
   } finally { placement.dispose(); }
   expect(wallBodies(physics)).toHaveLength(0);
+  expect(pathBlocked()).toBe(false);
 });
 
 it('restores a saved broken wall without an obstacle and releases the obstacle when hammered out', async () => {

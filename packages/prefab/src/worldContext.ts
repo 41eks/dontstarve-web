@@ -23,6 +23,8 @@ export interface WorldContext extends ActionWorldContext, Partial<WorldContentCo
     cameraFacing: import('@dontstarve-web/signals').ReadonlySignal<number>;
     /** TheCamera:GetHeading() in degrees. */
     cameraHeading: import('@dontstarve-web/signals').ReadonlySignal<number>;
+    /** TheWorld.Pathfinder. */
+    pathfinder?: import('./pathfinder').Pathfinder;
     /** The host's physics world, for prefabs that own static obstacle bodies. */
     physics?: CANNON.World;
     itemEntities?: import('@dontstarve-web/inventory').ItemEntityRegistry;

@@ -3,7 +3,8 @@ import { Vector3 } from 'three';
 import * as CANNON from 'cannon-es';
 import { afterEach, expect, it, vi } from 'vitest';
 import { TurfMap, WORLD_TILES } from '../../prefab/src/turfMap';
-import { Locomotor, findGroundPath } from '../../prefab/src/locomotor';
+import { Locomotor } from '../../prefab/src/locomotor';
+import { Pathfinder } from '../../prefab/src/pathfinder';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { serializeSave } from '../../../src/save/serialize';
 import { inventoryStateFromSave } from '../../../src/save/inventoryState';
@@ -35,13 +36,19 @@ it('draws cave land only and blocks keyboard velocity and paths across void or f
     expect(map.canTerraform(new Vector3(18, 0, 6))).toBe(false);
     const body = new CANNON.Body({ mass: 1, shape: new CANNON.Sphere(1) });
     body.position.set(10.9, 1, 6);
+    const pathfinder = new Pathfinder(map);
     const locomotor = new Locomotor(body, {
       footprintRadius: 1, isPassable: (x, z) => map.isPassableAtPoint({ x, z }),
-      findPath: (start, target) => findGroundPath(start, target, { isWalkable: point => map.isPassableAtPoint(point) }),
+      pathfinder,
     });
     locomotor.update(16, .1, new Vector3(1, 0, 0));
     expect(body.velocity.x).toBe(0);
-    expect(locomotor.goToPoint(new Vector3(30, 0, 6))).toBe(false);
+    // Across the void there is no path, so the body heads straight for it and stops at the edge.
+    expect(locomotor.goToPoint(new Vector3(30, 0, 6))).toBe(true);
+    pathfinder.update(Infinity);
+    locomotor.update(16, .1);
+    expect(body.velocity.x).toBe(0);
+    expect(locomotor.destination).toBeUndefined();
     expect(locomotor.goToPoint(new Vector3(6, 0, 6))).toBe(true);
     display.dispose();
   } finally { map.dispose(); }

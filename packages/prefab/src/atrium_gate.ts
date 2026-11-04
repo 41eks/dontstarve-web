@@ -14,6 +14,7 @@ import { Hauntable } from '../../componets/src/hauntable';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { MiniMapState } from '../../map/src/minimapState';
 import { createArchiveEntity, createEmptyEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
+import type { Pathfinder } from './pathfinder';
 import { MakeObstaclePhysics, WORLD_SCALE } from './standardcomponents';
 import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
@@ -40,7 +41,7 @@ export interface AtriumGateRecord {
     entitytracker?: { entities: { name: string; GUID: number }[] };
   };
 }
-export interface AtriumGateWorld extends DisplayManagerWorld { tickingarea?: TileStateQuery; physics?: World; scheduler: GameTimeScheduler }
+export interface AtriumGateWorld extends DisplayManagerWorld { tickingarea?: TileStateQuery; physics?: World; scheduler: GameTimeScheduler; pathfinder?: Pathfinder }
 
 interface Gate {
   instance: PrefabInstance<ArchiveSpriteCommands>;
@@ -90,6 +91,7 @@ export class AtriumGateManager implements DisplayDrivenPrefabManager<{ prefabId:
     for (const tag of ['gemsocket', 'stargate', 'give_dolongaction']) instance.addTag(tag);
     MakeObstaclePhysics(instance, 1);
     if (this.world.physics) instance.bindPhysics(this.world.physics);
+    InitializePathFinding(instance, this.world.pathfinder);
     instance.sprite.playOnce('idle');
     instance.sprite.hideLayer('KEY');
     const save: AtriumGateRecord['components'] = structuredClone(saved?.components ?? { pickable: { picked: true } });
@@ -192,4 +194,14 @@ export class AtriumGateManager implements DisplayDrivenPrefabManager<{ prefabId:
     this.gates.clear(); this.displays.dispose(); this.assets.dispose();
 
   }
+}
+
+/** atrium_gate.lua InitializePathFinding and OnRemove: the 2×2 path tiles around the gate's centre. */
+function InitializePathFinding(inst: PrefabInstance, pathfinder: Pathfinder | undefined): void {
+  if (!pathfinder) return;
+  const { x, y, z } = inst.position;
+  const offset = .5 * WORLD_SCALE;
+  const walls = [[-offset, -offset], [-offset, offset], [offset, -offset], [offset, offset]].map(([dx, dz]) => ({ x: x + dx, y, z: z + dz }));
+  for (const wall of walls) pathfinder.AddWall(wall);
+  inst.onRemove(() => { for (const wall of walls) pathfinder.RemoveWall(wall); });
 }

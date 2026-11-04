@@ -44,9 +44,108 @@ class Dest {
 
 const distanceSquared = (a: LocoMotorPoint, b: LocoMotorPoint) => (a.x - b.x) ** 2 + (a.z - b.z) ** 2;
 
+/** locomotor.pathcaps. `ignorecreep`, `ignorebridges` and `player` have nothing to change here yet. */
+export interface PathCaps {
+  readonly ignorewalls?: boolean;
+  readonly ignorecreep?: boolean;
+  readonly ignorebridges?: boolean;
+  readonly allowocean?: boolean;
+  readonly ignoreLand?: boolean;
+  readonly player?: boolean;
+}
+
+/** What locomotor.lua calls on TheWorld.Pathfinder. */
+export interface LocoMotorPathfinder {
+  GetPathTileIndexFromPoint(point: LocoMotorPoint): [x: number, z: number];
+  IsClear(from: LocoMotorPoint, to: LocoMotorPoint, caps?: PathCaps): boolean;
+  SubmitSearch(from: LocoMotorPoint, to: LocoMotorPoint, caps?: PathCaps): number;
+  GetSearchStatus(handle: number): number | undefined;
+  GetSearchResult(handle: number): { readonly steps: readonly LocoMotorPoint[] } | undefined;
+  KillSearch(handle: number): void;
+}
+
 export interface LocoMotorOptions {
   arriveDistance?: number;
-  findPath?: (start: LocoMotorPoint, target: LocoMotorPoint) => readonly LocoMotorPoint[] | null;
+  /** TheWorld.Pathfinder and locomotor.pathcaps; without one a creature approaches directly. */
+  pathfinder?: LocoMotorPathfinder;
+  pathcaps?: PathCaps;
+}
+
+const STATUS_CALCULATING = 0;
+const STATUS_FOUNDPATH = 1;
+
+/** locomotor.lua's self.path and lastdesttile, with FindPath and the parts of OnUpdate that read them. */
+export class LocoMotorPath {
+  private readonly pathfinder: LocoMotorPathfinder;
+  private readonly pathcaps?: PathCaps;
+  private handle?: number;
+  private steps?: readonly LocoMotorPoint[];
+  private currentstep = 0;
+  private lastdesttile?: [x: number, z: number];
+  private readonly arriveStep: number;
+
+  /** `arriveStep` is arrive_step_dist in the caller's units. */
+  constructor(pathfinder: LocoMotorPathfinder, pathcaps: PathCaps | undefined, arriveStep: number) {
+    this.pathfinder = pathfinder; this.pathcaps = pathcaps; this.arriveStep = arriveStep;
+  }
+
+  WaitingForPathSearch(): boolean { return this.handle !== undefined; }
+
+  ResetPath(): void {
+    if (this.handle !== undefined) this.pathfinder.KillSearch(this.handle);
+    this.handle = undefined;
+    this.steps = undefined;
+  }
+
+  /** LocoMotor:Stop's part: the next destination searches even within the same path tile. */
+  Stop(): void {
+    this.ResetPath();
+    this.lastdesttile = undefined;
+  }
+
+  FindPath(from: LocoMotorPoint, to: LocoMotorPoint): void {
+    const desttile = this.pathfinder.GetPathTileIndexFromPoint(to);
+    if (this.lastdesttile && desttile[0] === this.lastdesttile[0] && desttile[1] === this.lastdesttile[1]) return;
+    this.lastdesttile = desttile;
+    if (this.pathfinder.IsClear(from, to, this.pathcaps)) { this.ResetPath(); return; }
+    // While chasing, keep any path until the new one arrives, and let a first search finish.
+    if (this.steps || !this.WaitingForPathSearch()) {
+      if (this.handle !== undefined) this.pathfinder.KillSearch(this.handle);
+      this.handle = this.pathfinder.SubmitSearch(from, to, this.pathcaps);
+    }
+  }
+
+  /** OnUpdate: take a finished search's path. A straight line of two steps is discarded, and with no path the old one stands. */
+  UpdateSearch(): void {
+    if (this.handle === undefined) return;
+    const status = this.pathfinder.GetSearchStatus(this.handle);
+    if (status === STATUS_CALCULATING) return;
+    if (status === STATUS_FOUNDPATH) {
+      const steps = this.pathfinder.GetSearchResult(this.handle)?.steps;
+      if (steps) {
+        this.steps = steps.length > 2 ? steps : undefined;
+        this.currentstep = 1;
+      }
+    }
+    this.pathfinder.KillSearch(this.handle);
+    this.handle = undefined;
+  }
+
+  /** OnUpdate's FOLLOW PATH: where to head now. The last step is the destination itself, wherever it has moved. */
+  GetMoveStep(position: LocoMotorPoint, destination: LocoMotorPoint, physicsRadius: number): LocoMotorPoint {
+    const { steps } = this;
+    if (!steps || this.currentstep >= steps.length - 1) return destination;
+    const step = steps[this.currentstep];
+    // Add tolerance to step points that aren't the final destination.
+    if (distanceSquared(position, step) - (physicsRadius * 2) ** 2 > this.arriveStep ** 2) return step;
+    this.currentstep += 1;
+    return this.currentstep < steps.length - 1 ? steps[this.currentstep] : destination;
+  }
+
+  /** The engine's physics keeps a creature on the ground; here its next stretch has to stay on ground it can path on. */
+  IsGroundAhead(position: LocoMotorPoint, ahead: LocoMotorPoint): boolean {
+    return this.pathfinder.IsClear(position, ahead, { ...this.pathcaps, ignorewalls: true });
+  }
 }
 
 /**
@@ -68,18 +167,20 @@ export class LocoMotor {
   private updating = false;
   private readonly inst: LocoMotorInst;
   private readonly options: LocoMotorOptions;
-  private path: readonly LocoMotorPoint[] = [];
-  private pathIndex = 0;
+  private readonly pathing?: LocoMotorPath;
+  /** Where the motor is heading this update. */
+  private movePoint?: LocoMotorPoint;
 
   constructor(inst: LocoMotorInst, options: LocoMotorOptions = {}) {
     this.inst = inst; this.options = options;
     this.arrive_dist = options.arriveDistance ?? ARRIVE_STEP;
+    this.pathing = options.pathfinder && new LocoMotorPath(options.pathfinder, options.pathcaps, this.arrive_dist);
   }
 
   get isUpdating(): boolean { return this.updating; }
   GetWalkSpeed(): number { return this.walkspeed; }
   GetRunSpeed(): number { return this.runspeed; }
-  /** Pathfinding is not ported: creatures here are terrestrial/flying and never pathfind on water. */
+  /** Creatures here are terrestrial or flying and never pathfind on water. */
   IsAquatic(): boolean { return false; }
   CanPathfindOnWater(): boolean { return false; }
   SetReachDestinationCallback(fn: ((inst: LocoMotorInst) => void) | undefined): void { this.atdestfn = fn; }
@@ -109,8 +210,7 @@ export class LocoMotor {
 
   Clear(): void {
     this.dest = undefined;
-    this.path = [];
-    this.pathIndex = 0;
+    this.pathing?.ResetPath();
     this.atdestfn = undefined;
     this.wantstomoveforward = false;
     this.wantstorun = false;
@@ -151,8 +251,6 @@ export class LocoMotor {
   }
 
   GoToEntity(target: LocoMotorTarget, action?: BufferedAction, run = false): void {
-    this.path = [];
-    this.pathIndex = 0;
     this.dest = new Dest(target);
     this.SetBufferedAction(action);
     this.wantstomoveforward = true;
@@ -164,6 +262,7 @@ export class LocoMotor {
     this.wantstorun = run;
     this.updating = true;
     if (this.directdrive) { if (run) this.RunForward(); else this.WalkForward(); }
+    else this.pathing?.FindPath(this.inst.getPosition(), target.getPosition());
     // Try an instant arrive check if we're not moving.
     if (!this.inst.sg?.hasStateTag('moving')) this.update(0, true);
   }
@@ -171,10 +270,6 @@ export class LocoMotor {
   GoToPoint(point?: LocoMotorPoint, action?: BufferedAction, run = false): void {
     const destination = point ?? action?.pos;
     if (!destination) throw new Error('GoToPoint requires a point or an action position');
-    const path = this.directdrive ? undefined : this.options.findPath?.(this.inst.getPosition(), destination);
-    if (!this.directdrive && this.options.findPath && !path?.length) { this.Stop(); return; }
-    this.path = path ?? [];
-    this.pathIndex = 0;
     this.dest = new Dest(undefined, { ...destination });
     const arriveDistance = this.options.arriveDistance ?? ARRIVE_STEP;
     this.arrive_dist = action ? action.arrivedist ?? action.distance ?? arriveDistance : arriveDistance;
@@ -183,14 +278,14 @@ export class LocoMotor {
     this.SetBufferedAction(action);
     this.updating = true;
     if (this.directdrive) { if (run) this.RunForward(); else this.WalkForward(); }
+    else this.pathing?.FindPath(this.inst.getPosition(), destination);
     if (!this.inst.sg?.hasStateTag('moving')) this.update(0, true);
   }
 
   Stop(): void {
     this.isrunning = false;
     this.dest = undefined;
-    this.path = [];
-    this.pathIndex = 0;
+    this.pathing?.Stop();
     this.wantstomoveforward = false;
     this.wantstorun = false;
     this.inst.setMotorSpeed(0);
@@ -201,8 +296,7 @@ export class LocoMotor {
   WalkInDirection(direction: number, shouldRun = false): void {
     this.SetBufferedAction(undefined);
     this.dest = undefined;
-    this.path = [];
-    this.pathIndex = 0;
+    this.pathing?.Stop();
     if (!this.inst.sg || this.inst.sg.hasStateTag('canrotate')) this.SetMoveDir(direction);
     this.wantstomoveforward = true;
     this.wantstorun = shouldRun;
@@ -216,6 +310,7 @@ export class LocoMotor {
   /** LocoMotor:OnUpdate; `arriveCheckOnly` is the instant check made when a destination is set. */
   update(dt: number, arriveCheckOnly = false): void {
     if (!this.inst.isValid()) {
+      this.pathing?.ResetPath();
       this.updating = false;
       return;
     }
@@ -253,11 +348,11 @@ export class LocoMotor {
         return;
       }
       if (!arriveCheckOnly) {
+        this.pathing?.UpdateSearch();
         const canrotate = !sg || sg.hasStateTag('canrotate');
         if (canrotate && !(sg?.hasStateTag('busy'))) {
-          while (this.pathIndex < this.path.length - 1
-            && distanceSquared(position, this.path[this.pathIndex]) <= arriveDistanceSquared) this.pathIndex++;
-          const point = this.path[this.pathIndex] ?? destination;
+          const point = this.pathing?.GetMoveStep(position, destination, this.inst.getPhysicsRadius(0)) ?? destination;
+          this.movePoint = point;
           this.SetMoveDir(this.inst.getAngleToPoint(point.x, point.y, point.z));
         }
         this.wantstomoveforward = true;
@@ -277,8 +372,19 @@ export class LocoMotor {
       if (this.dest?.isValid()) {
         const distanceToDestination = distanceSquared(this.dest.getPoint(), this.inst.getPosition());
         if (distanceToDestination <= .25) speed *= Math.max(.33, Math.sqrt(distanceToDestination));
+        if (!this.isGroundAhead(speed * dt)) speed = 0;
       }
       this.inst.setMotorSpeed(speed);
     }
+  }
+
+  private isGroundAhead(distance: number): boolean {
+    const point = this.movePoint;
+    if (!this.pathing || !point) return true;
+    const position = this.inst.getPosition();
+    const length = Math.hypot(point.x - position.x, point.z - position.z);
+    if (length === 0) return true;
+    const reach = (distance + this.inst.getPhysicsRadius(0)) / length;
+    return this.pathing.IsGroundAhead(position, { x: position.x + (point.x - position.x) * reach, y: position.y, z: position.z + (point.z - position.z) * reach });
   }
 }

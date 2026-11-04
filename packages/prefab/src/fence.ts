@@ -18,6 +18,7 @@ import { reskinTarget } from './reskin_tool';
 import { newEntityId, saveGroundPosition, type PlacedEntitySaveRecord, type PlacementSaveRecord } from './saveRecord';
 import { PlaySound } from './sound';
 import { createStructureLootDropper } from './structureLoot';
+import { PathfindingWall } from './pathfinder';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { BurnableBinding, FireFxHost } from './treeFire';
 import { snapToWallSlotCenter, TILE_SIZE } from './tile';
@@ -128,7 +129,9 @@ function initializeFence(inst: FencePrefabInstance): void {
     inst.ListenForEvent('death', () => onhammered(inst));
     MakeObstaclePhysics(inst, .5).SetDontRemoveOnSleep(true);
     if (inst.worldServices?.physics) inst.bindPhysics(inst.worldServices.physics);
-    inst.onRemove(() => { workable.dispose(); health.dispose(); combat.onhitfn = undefined; });
+    const pathfinding = new PathfindingWall(inst.worldServices?.pathfinder, () => inst.position);
+    pathfinding.set(true);
+    inst.onRemove(() => { pathfinding.set(false); workable.dispose(); health.dispose(); combat.onhitfn = undefined; });
 }
 
 interface FenceInstance {

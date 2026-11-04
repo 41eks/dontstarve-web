@@ -14,6 +14,9 @@ import { COLLISION } from '../../componets/src/physicsState';
 import { bindInstance, PrefabInstance } from '../../prefab/src/prefabInstance';
 import { setSpriteEntityRenderOrder } from '../src/renderOrder';
 import type { SpriteController } from '../src/sprite';
+import { Pathfinder } from '../../prefab/src/pathfinder';
+
+const OPEN_GROUND = { isPassableAtPoint: () => true, isOceanAtWorld: () => false };
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -36,7 +39,7 @@ function setup(random = () => 0) {
   const world: BeefaloWorld = { phase: 'day', getWatchWorldContent: (key, register) => getWatchWorldContent(key, register, sources), season: 'spring', scheduler,
     secondsUntilNextDay: now => DAY - now % DAY,
     spawnPrize: vi.fn(),
-    getPlayerPositions: () => players, findPath: vi.fn((_start, target) => [target]),
+    getPlayerPositions: () => players, pathfinder: new Pathfinder(OPEN_GROUND), isWalkable: () => true,
     constrainPosition: vi.fn(), getPoopPositions: () => poop, spawnPoop: vi.fn() };
   const controller = new BeefaloController(model, physics, lengths, world, undefined, random);
   const body = controller.body;
@@ -339,7 +342,7 @@ describe('original beefalo assets', () => {
     });
     const physics = new CANNON.World();
     const manager = new BeefaloManager(new THREE.Scene(), physics, '/dst/data/anim', {
-      scheduler: sources.scheduler, clock, getWatchWorldContent: (key, register) => getWatchWorldContent(key, register, sources), season, getPlayerPositions: () => [], findPath: (_start, target) => [target],
+      scheduler: sources.scheduler, clock, getWatchWorldContent: (key, register) => getWatchWorldContent(key, register, sources), season, getPlayerPositions: () => [], pathfinder: new Pathfinder(OPEN_GROUND), isWalkable: () => true,
       constrainPosition() {}, getPoopPositions: () => [], spawnPoop() {}, spawnPrize() {}, secondsUntilNextDay: now => DAY - now % DAY,
     });
     try {
@@ -419,7 +422,7 @@ describe('original beefalo assets', () => {
     const sources: WorldContentEnvironment = { ...createTestWorldSources(new GameTimeScheduler()), playerpositions: createSignal<import('three').Vector3[]>([]), snowLevel: createSignal(0), wind: createSignal({ angle: 0, velocity: 1 }), perishTick: createSignal({ time: 0, total: 0 }),  temperature: createSignal(30), cycle: createSignal<WorldPhase>('day'), season: createSignal({ season: 'spring', progress: .5 }) };
     const world: BeefaloManagerWorld = {
       scheduler: sources.scheduler, clock: createSignal({ phase: 'day' }), getWatchWorldContent: (key, register) => getWatchWorldContent(key, register, sources), season: createSignal({ season: 'spring' }), getPlayerPositions: () => [],
-      findPath: (_start, target) => [target], constrainPosition() {}, getPoopPositions: () => [], spawnPoop() {}, spawnPrize() {},
+      pathfinder: new Pathfinder(OPEN_GROUND), isWalkable: () => true, constrainPosition() {}, getPoopPositions: () => [], spawnPoop() {}, spawnPrize() {},
       secondsUntilNextDay: now => DAY - now % DAY };
     const manager = new BeefaloManager(scene, physics, '/dst/data/anim', world);
     const model = await manager.spawn(new THREE.Vector3());
@@ -446,7 +449,7 @@ describe('original beefalo assets', () => {
     const sources: WorldContentEnvironment = { ...createTestWorldSources(new GameTimeScheduler()), playerpositions: createSignal<import('three').Vector3[]>([]), snowLevel: createSignal(0), wind: createSignal({ angle: 0, velocity: 1 }), perishTick: createSignal({ time: 0, total: 0 }),  temperature: createSignal(30), cycle: createSignal<WorldPhase>('day'), season: createSignal({ season: 'spring', progress: .5 }) };
     const world: BeefaloManagerWorld = {
       scheduler: sources.scheduler, clock: createSignal({ phase: 'day' }), getWatchWorldContent: (key, register) => getWatchWorldContent(key, register, sources), season: createSignal({ season: 'spring' }), getPlayerPositions: () => [],
-      findPath: (_start, target) => [target], constrainPosition() {}, getPoopPositions: () => [], spawnPoop() {}, spawnPrize() {},
+      pathfinder: new Pathfinder(OPEN_GROUND), isWalkable: () => true, constrainPosition() {}, getPoopPositions: () => [], spawnPoop() {}, spawnPrize() {},
       secondsUntilNextDay: now => DAY - now % DAY };
     const manager = new BeefaloManager(new THREE.Scene(), physics, '/dst/data/anim', world);
     const model = await manager.spawn(new THREE.Vector3());

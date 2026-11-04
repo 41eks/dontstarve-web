@@ -18,7 +18,7 @@ import * as THREE from 'three';
 import { EventEmitter } from '@dontstarve-web/signals';
 import type { WorldEvents } from '../packages/prefab/src/worldContext';
 
-import { groundDisplay, turfMap } from './building';
+import { groundDisplay, pathfinder, turfMap } from './building';
 import { moonTreePrefabs } from '@dontstarve-web/prefab/moontree';
 import { WORLD_TILES, isLandTile } from '@dontstarve-web/prefab/turfMap';
 import { placeStaticLayout } from '@dontstarve-web/prefab/staticLayout';
@@ -98,7 +98,7 @@ import { WaveManager, type WaveMap } from '../packages/componets/src/wavemanager
 import { WORLD_SCALE } from '../packages/prefab/src/standardcomponents';
 import { TILE_SIZE } from '../packages/prefab/src/tile';
 import { SAVE_CATALOG } from './save/catalog';
-import { findGroundPath, staticObstacleTest } from '@dontstarve-web/prefab/locomotor';
+import { staticObstacleTest } from '@dontstarve-web/prefab/locomotor';
 import { deciduousPrefabs } from '@dontstarve-web/prefab/deciduoustrees';
 import { evergreenPrefabs } from '@dontstarve-web/prefab/evergreens';
 
@@ -468,7 +468,7 @@ export async function createSceneEntities(
 
   function registerBuildings(registry: EntityRegistry, prefabId: 'buildings', worldState: SceneWorldState) {
     const buildingPlacement = new PlaceableBuildingPlacement(
-      { ...view, physics: world, scheduler: scheduler ?? worldState.scheduler, fire: prefabFire, weather: worldState.weather, dynamicMusic, handEquipment: sceneInventory.handEquipment,
+      { ...view, physics: world, pathfinder, scheduler: scheduler ?? worldState.scheduler, fire: prefabFire, weather: worldState.weather, dynamicMusic, handEquipment: sceneInventory.handEquipment,
         getLocalTemperature: (x, z) => GetTemperatureAtXZ(() => worldState.temperature.peek(), x, z), itemEntities: sceneInventory.entities,
         cycle: worldState.cycle, getWatchWorldContent: worldState.getWatchWorldContent, tickingarea: worldState.tickingarea, isNight: worldState.isNight, perishClock: worldState.perishClock,
         secondsUntilNextDay: now => TUNING.TOTAL_DAY_TIME - now % TUNING.TOTAL_DAY_TIME,
@@ -556,8 +556,7 @@ export async function createSceneEntities(
       handEquipment: sceneInventory.handEquipment,
       itemSpecs: SAVE_CATALOG.items, getWatchWorldContent: worldState.getWatchWorldContent, cameraHeading: view.cameraHeading, tickingarea: worldState.tickingarea,
       isWalkable: moleWalkable,
-      findPath: (start, target) => findGroundPath(new THREE.Vector3(start.x, start.y, start.z),
-        new THREE.Vector3(target.x, target.y, target.z), { cellSize: 1.5, isWalkable: moleWalkable }),
+      pathfinder,
       spawnItem: state => { const entity = sceneInventory.entities.create(state); sceneInventory.configureItem(entity); return entity; },
       dropItem: (entity, position) => sceneInventory.DropItem(entity, position),
       showMole: (entity, position) => { Managers['ground_item'].spawnFromSave(entity.id, {
@@ -1182,15 +1181,13 @@ export async function createSceneEntities(
       getWatchWorldContent: worldState.getWatchWorldContent,
       season: worldState.season,
       getPlayerPositions: () => [player.position],
-      findPath(start, target) {
+      pathfinder,
+      isWalkable(point) {
         const radius = BEEFALO_BEHAVIOR.radius;
         const edge = initialSave.world.map.generator.options.size / 2 - radius;
         const blocked = planningObstacles ?? staticObstacleTest(getRegisteredPhysicsBodies(world), radius);
         if (planning) planningObstacles = blocked;
-        return findGroundPath(start, target, { cellSize: radius,
-          isWalkable: (point) => Math.abs(point.x) <= edge && Math.abs(point.z) <= edge
-            && turfMap.isPassableAtPoint(point) && !blocked(point),
-        });
+        return Math.abs(point.x) <= edge && Math.abs(point.z) <= edge && turfMap.isPassableAtPoint(point) && !blocked(point);
       },
       constrainPosition(position) {
         const edge = initialSave.world.map.generator.options.size / 2 - BEEFALO_BEHAVIOR.radius;
@@ -1349,7 +1346,7 @@ export async function createSceneEntities(
   }
 
   function registerAtriumGate(registry: EntityRegistry, prefabId: 'atrium_gate', worldState: SceneWorldState) {
-    const gates = new AtriumGateManager(scene, { tickingarea: worldState.tickingarea, scheduler: worldState.scheduler, physics: world,
+    const gates = new AtriumGateManager(scene, { tickingarea: worldState.tickingarea, scheduler: worldState.scheduler, physics: world, pathfinder,
       trackDisplay: display => registry.trackDisplay(display) });
     registry.registerDisplayManager(MANAGER_DEFINITIONS[prefabId], gates, {
       restore: (_, record) => gates.spawn(new THREE.Vector3(...record.transform.position), {
