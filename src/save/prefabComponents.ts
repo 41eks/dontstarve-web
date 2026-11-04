@@ -78,6 +78,9 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
       if (state.raised && state.formed) fail(p, 'raised boulders do not save formed');
       components.caveinBoulder = state;
     }
+    if (keys.includes('rock_type') && c.rock_type !== undefined) {
+      components.rock_type = integer(c.rock_type, `${path}.rock_type`, 1, 4) as NonNullable<SavedEntity['components']['rock_type']>;
+    }
     if (keys.includes('lightflierFlower')) {
       const p = `${path}.lightflierFlower`, data = object(c.lightflierFlower, p,
         ['variant', 'lightState', 'rechargeSeconds', 'turnoffSeconds', 'picked', 'paused', 'regrowSeconds', 'childspawner']);

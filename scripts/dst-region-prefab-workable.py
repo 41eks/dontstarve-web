@@ -122,6 +122,18 @@ def rock_components(data):
     return {}
 
 
+def moonglass_rock_components(data):
+    # rocks.lua on_save_moonglass: data.rock_type (1..4); workable.savestate defaults false.
+    if set(data) - {'rock_type', 'workable'} or data.get('workable'):
+        raise ValueError('Unsupported moonglass_rock save state')
+    rock_type = data.get('rock_type')
+    if rock_type is None:
+        return {}
+    if type(rock_type) is not int or not 1 <= rock_type <= 4:
+        raise ValueError('Unsupported moonglass_rock rock_type')
+    return {'rock_type': rock_type}
+
+
 def cavein_boulder_components(data):
     # cavein_boulder.lua OnSave: the default swap_boulder symbol omits variation (1).
     # Ground art and the raised/formed state are ported; entitytracker's propped link is not simulated.

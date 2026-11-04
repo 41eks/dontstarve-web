@@ -33,7 +33,7 @@ import { PrefabEntityManager, PrefabInstance } from '@dontstarve-web/prefab/pref
 import { staffCastingLightPrefabs } from '@dontstarve-web/prefab/staff_castinglight';
 import { staffLightPrefabs } from '@dontstarve-web/prefab/stafflight';
 import { BulbPlantManager } from '@dontstarve-web/prefab/bulb_plant';
-import { RockManager } from '@dontstarve-web/prefab/rocks';
+import { RockManager, moonglassRockPrefabs } from '@dontstarve-web/prefab/rocks';
 import { StaffProjectileManager } from '@dontstarve-web/prefab/staff_projectile';
 import { CaveEntranceManager, CAVES_SHARD } from '@dontstarve-web/prefab/cave_entrance';
 import { CaveExitManager, MASTER_SHARD } from '@dontstarve-web/prefab/cave_exit';
@@ -120,6 +120,7 @@ const MANAGER_DEFINITIONS = {
   'bulb_plant': PREFAB_DEFINITIONS.bulbPlants,
   'stalagmite': PREFAB_DEFINITIONS.stalagmites,
   'rocks': PREFAB_DEFINITIONS.rocks,
+  'moonglass_rock': PREFAB_DEFINITIONS.moonglassRocks,
   'cave_entrance': PREFAB_DEFINITIONS.caveEntrances,
   'cave_exit': PREFAB_DEFINITIONS.caveExits,
   'grotto_pool': PREFAB_DEFINITIONS.grottoPools,
@@ -203,6 +204,7 @@ const SCENE_LIFECYCLE_ORDER = [
   PREFAB_DEFINITIONS.beefalos,
   PREFAB_DEFINITIONS.stalagmites,
   PREFAB_DEFINITIONS.rocks,
+  PREFAB_DEFINITIONS.moonglassRocks,
   PREFAB_DEFINITIONS.caveEntrances,
   PREFAB_DEFINITIONS.caveExits,
   PREFAB_DEFINITIONS.grottoPools,
@@ -269,6 +271,7 @@ export async function createSceneEntities(
     'bulb_plant': ReturnType<typeof registerBulbPlants>;
     'stalagmite': ReturnType<typeof registerStalagmites>;
     'rocks': ReturnType<typeof registerRocks>;
+    'moonglass_rock': ReturnType<typeof registerMoonglassRocks>;
     'cave_entrance': ReturnType<typeof registerCaveEntrances>;
     'cave_exit': ReturnType<typeof registerCaveExits>;
     'grotto_pool': ReturnType<typeof registerGrottoPools>;
@@ -349,6 +352,7 @@ export async function createSceneEntities(
   Managers['bulb_plant'] = registerBulbPlants(registry, 'bulb_plant', worldState);
   Managers['stalagmite'] = registerStalagmites(registry, worldState);
   Managers['rocks'] = registerRocks(registry, 'rocks', worldState);
+  Managers['moonglass_rock'] = registerMoonglassRocks(registry, 'moonglass_rock', worldState);
   /** ms_playerdespawnandmigrate: the destination shard is the cluster's other save, loaded by reloading the page. */
   const shardLink: WorldMigratorShard = {
     isWorldAvailable: shard => shard === CAVES_SHARD || shard === MASTER_SHARD,
@@ -715,6 +719,16 @@ export async function createSceneEntities(
       dispose: () => rockManager.dispose(),
     });
     return rockManager;
+  }
+
+  function registerMoonglassRocks(registry: EntityRegistry, prefabId: 'moonglass_rock', worldState: SceneWorldState) {
+    prefabs.register(moonglassRockPrefabs({
+      handEquipment: sceneInventory.handEquipment,
+      scheduler: scheduler ?? worldState.scheduler, getWatchWorldContent: worldState.getWatchWorldContent,
+      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
+    }));
+    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+    return prefabs;
   }
 
   function registerCaveEntrances(registry: EntityRegistry, prefabId: 'cave_entrance', worldState: SceneWorldState) {

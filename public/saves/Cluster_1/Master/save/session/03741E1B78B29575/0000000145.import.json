@@ -432,6 +432,7 @@
     "rock_flintless_med",
     "rock_flintless_low",
     "rock_moon",
+    "moonglass_rock",
     "grotto_pool_big",
     "grotto_pool_small",
     "grotto_moonglass_1",
@@ -921,6 +922,10 @@
     "rock_moon": {
       "source": 11,
       "imported": 11
+    },
+    "moonglass_rock": {
+      "source": 17,
+      "imported": 17
     },
     "grotto_pool_big": {
       "source": 0,
@@ -66262,6 +66267,210 @@
         -359.21
       ],
       "sourceNode": "MoonIsland_Mine:0:MoonIsland_Mine"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moonglass_rock_id_110099",
+      "prefab": "moonglass_rock",
+      "sourceIndex": 1,
+      "sourceId": 110099,
+      "sourcePosition": [
+        535.95,
+        0,
+        -279.58
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moonglass_rock_id_110100",
+      "prefab": "moonglass_rock",
+      "sourceIndex": 2,
+      "sourceId": 110100,
+      "sourcePosition": [
+        520.36,
+        0,
+        -252.98
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moonglass_rock_id_110101",
+      "prefab": "moonglass_rock",
+      "sourceIndex": 3,
+      "sourceId": 110101,
+      "sourcePosition": [
+        328.02,
+        0,
+        -559.94
+      ],
+      "sourceNode": "MoonIsland_IslandShards:4:MoonIsland_IslandShard"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moonglass_rock_id_110102",
+      "prefab": "moonglass_rock",
+      "sourceIndex": 4,
+      "sourceId": 110102,
+      "sourcePosition": [
+        636.46,
+        0,
+        -411.37
+      ],
+      "sourceNode": "MoonIsland_Mine:2:MoonIsland_Mine"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moonglass_rock_id_110103",
+      "prefab": "moonglass_rock",
+      "sourceIndex": 5,
+      "sourceId": 110103,
+      "sourcePosition": [
+        576.64,
+        0,
+        -420.15
+      ],
+      "sourceNode": "MoonIsland_Mine:2:MoonIsland_Mine"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moonglass_rock_id_110104",
+      "prefab": "moonglass_rock",
+      "sourceIndex": 6,
+      "sourceId": 110104,
+      "sourcePosition": [
+        464.1,
+        0,
+        -260.57
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moonglass_rock_id_110105",
+      "prefab": "moonglass_rock",
+      "sourceIndex": 7,
+      "sourceId": 110105,
+      "sourcePosition": [
+        495.63,
+        0,
+        -268.82
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moonglass_rock_id_110106",
+      "prefab": "moonglass_rock",
+      "sourceIndex": 8,
+      "sourceId": 110106,
+      "sourcePosition": [
+        488.58,
+        0,
+        -288.32
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moonglass_rock_id_110107",
+      "prefab": "moonglass_rock",
+      "sourceIndex": 9,
+      "sourceId": 110107,
+      "sourcePosition": [
+        508.94,
+        0,
+        -299.73
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moonglass_rock_id_110108",
+      "prefab": "moonglass_rock",
+      "sourceIndex": 10,
+      "sourceId": 110108,
+      "sourcePosition": [
+        492.4,
+        0,
+        -391.7
+      ],
+      "sourceNode": "MoonIsland_Baths:3:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moonglass_rock_id_110109",
+      "prefab": "moonglass_rock",
+      "sourceIndex": 11,
+      "sourceId": 110109,
+      "sourcePosition": [
+        598.75,
+        0,
+        484.87
+      ],
+      "sourceNode": "StaticLayoutIsland:HermitcrabIsland"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moonglass_rock_id_110110",
+      "prefab": "moonglass_rock",
+      "sourceIndex": 12,
+      "sourceId": 110110,
+      "sourcePosition": [
+        576.31,
+        0,
+        460.75
+      ],
+      "sourceNode": "StaticLayoutIsland:HermitcrabIsland"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moonglass_rock_id_110111",
+      "prefab": "moonglass_rock",
+      "sourceIndex": 13,
+      "sourceId": 110111,
+      "sourcePosition": [
+        580.06,
+        0,
+        459.68
+      ],
+      "sourceNode": "StaticLayoutIsland:HermitcrabIsland"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moonglass_rock_id_110112",
+      "prefab": "moonglass_rock",
+      "sourceIndex": 14,
+      "sourceId": 110112,
+      "sourcePosition": [
+        459.97,
+        0,
+        -256.58
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moonglass_rock_id_110113",
+      "prefab": "moonglass_rock",
+      "sourceIndex": 15,
+      "sourceId": 110113,
+      "sourcePosition": [
+        643.74,
+        0,
+        -364.95
+      ],
+      "sourceNode": "MoonIsland_Mine:1:MoonIsland_Mine"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moonglass_rock_id_110114",
+      "prefab": "moonglass_rock",
+      "sourceIndex": 16,
+      "sourceId": 110114,
+      "sourcePosition": [
+        487.07,
+        0,
+        -279.26
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moonglass_rock_id_110115",
+      "prefab": "moonglass_rock",
+      "sourceIndex": 17,
+      "sourceId": 110115,
+      "sourcePosition": [
+        592.65,
+        0,
+        -236.59
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
     },
     {
       "id": "dst_03741E1B78B29575_pond_id_100441",

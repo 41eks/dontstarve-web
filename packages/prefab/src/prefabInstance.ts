@@ -316,6 +316,8 @@ export interface PrefabEntityDefinition<Instance extends PrefabInstance> {
   skins?: Readonly<Record<string, string>>;
   /** A prefab without assets has only a transform and what it declares on it, as FX lights do: nothing to draw or click. */
   assets?: Parameters<SpriteResources['archive']>[0];
+  /** In place of `assets`: an instance's own SetBank / SetBuild, which its OnLoad may still change as it spawns. */
+  instanceAssets?(instance: Instance): Parameters<SpriteResources['archive']>[0];
   /** How the display builds this art's sprites, such as a plant's instanced batches. */
   assetOptions?: Parameters<SpriteResources['archive']>[1];
   /** Stands the sprite's lowest point on the ground, as this project draws its buildings and their placers. */
@@ -370,7 +372,7 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     if (this.disposed) throw new Error(`Cannot spawn ${prefabId}: its manager has been disposed`);
     if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError(`Invalid ${prefabId} position`);
     if (!this.has(prefabId)) throw new Error(`Unknown prefab: ${prefabId}`);
-    const { fn, assets, assetOptions, alignBottom, targetable = true, physics, minimapIcon, onSpawned, skins, alwaysActive } = this.prefabs[prefabId];
+    const { fn, assets, instanceAssets, assetOptions, alignBottom, targetable = true, physics, minimapIcon, onSpawned, skins, alwaysActive } = this.prefabs[prefabId];
     if (skinId !== undefined && !skins?.[skinId]) throw new Error(`Unsupported ${prefabId} skin: ${skinId}`);
     const instance = fn(position);
     if (skins) instance.sprite.setSkinSource({ art: this.resources.archives, archives: skins });
@@ -378,7 +380,9 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     if (minimapIcon) instance.minimap.SetIcon(minimapIcon);
     // A shared archive holds a first one-shot clip while its art loads, so a new entity is drawn from its first frame.
     const display = this.displays.add({ root: instance.transform.model, name: prefabId, alignBottom, status: instance.status, sprite: instance.sprite, light: instance.light,
-      ...(assets ? { archive: this.resources.archive(assets, assetOptions) } : { empty: true }) });
+      // Spawning is synchronous, so instanceAssets runs after the SetPersistData below however early the display starts its sprite.
+      ...(instanceAssets ? { archive: { create: clip => Promise.resolve().then(() => this.resources.archive(instanceAssets(instance), assetOptions).create(clip)) } }
+        : assets ? { archive: this.resources.archive(assets, assetOptions) } : { empty: true }) });
     bindInstance(display.model, instance);
     instance.setPosition(position.x, 0, position.z);
     if (saved?.transform?.rotationY) instance.setRotation(MathUtils.radToDeg(saved.transform.rotationY));
@@ -390,7 +394,7 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     }
     if (skinId !== undefined) instance.skinId = skinId;
     onSpawned?.(instance);
-    if (assets && targetable) actionEntity(display.model, prefabId);
+    if ((assets || instanceAssets) && targetable) actionEntity(display.model, prefabId);
     this.entities.add(instance);
     const stopActivity = watchTileActivity(display.model, alwaysActive ? undefined : this.tickingarea, active => instance.setActive(active));
     instance.onRemove(() => { stopActivity(); this.entities.delete(instance); });

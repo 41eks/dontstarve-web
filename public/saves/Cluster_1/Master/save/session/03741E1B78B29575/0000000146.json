@@ -800589,6 +800589,246 @@
           "components": {}
         }
       ],
+      "moonglass_rock": [
+        {
+          "id": "dst_03741E1B78B29575_moonglass_rock_id_110099",
+          "transform": {
+            "position": [
+              1649.85,
+              0.0,
+              892.74
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "rock_type": 1
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_moonglass_rock_id_110100",
+          "transform": {
+            "position": [
+              1603.08,
+              0.0,
+              812.94
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "rock_type": 3
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_moonglass_rock_id_110101",
+          "transform": {
+            "position": [
+              1026.06,
+              0.0,
+              1733.82
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "rock_type": 1
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_moonglass_rock_id_110102",
+          "transform": {
+            "position": [
+              1951.38,
+              0.0,
+              1288.11
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "rock_type": 3
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_moonglass_rock_id_110103",
+          "transform": {
+            "position": [
+              1771.92,
+              0.0,
+              1314.45
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "rock_type": 4
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_moonglass_rock_id_110104",
+          "transform": {
+            "position": [
+              1434.3,
+              0.0,
+              835.71
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "rock_type": 3
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_moonglass_rock_id_110105",
+          "transform": {
+            "position": [
+              1528.89,
+              0.0,
+              860.46
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "rock_type": 3
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_moonglass_rock_id_110106",
+          "transform": {
+            "position": [
+              1507.74,
+              0.0,
+              918.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "rock_type": 1
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_moonglass_rock_id_110107",
+          "transform": {
+            "position": [
+              1568.82,
+              0.0,
+              953.19
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "rock_type": 4
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_moonglass_rock_id_110108",
+          "transform": {
+            "position": [
+              1519.2,
+              0.0,
+              1229.1
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "rock_type": 1
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_moonglass_rock_id_110109",
+          "transform": {
+            "position": [
+              1838.25,
+              0.0,
+              -1400.61
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "rock_type": 1
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_moonglass_rock_id_110110",
+          "transform": {
+            "position": [
+              1770.93,
+              0.0,
+              -1328.25
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "rock_type": 2
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_moonglass_rock_id_110111",
+          "transform": {
+            "position": [
+              1782.18,
+              0.0,
+              -1325.04
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "rock_type": 4
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_moonglass_rock_id_110112",
+          "transform": {
+            "position": [
+              1421.91,
+              0.0,
+              823.74
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "rock_type": 4
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_moonglass_rock_id_110113",
+          "transform": {
+            "position": [
+              1973.22,
+              0.0,
+              1148.85
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "rock_type": 2
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_moonglass_rock_id_110114",
+          "transform": {
+            "position": [
+              1503.21,
+              0.0,
+              891.78
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "rock_type": 1
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_moonglass_rock_id_110115",
+          "transform": {
+            "position": [
+              1819.95,
+              0.0,
+              763.77
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "rock_type": 1
+          }
+        }
+      ],
       "pond": [
         {
           "id": "dst_03741E1B78B29575_pond_id_100441",

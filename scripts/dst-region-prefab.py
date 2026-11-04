@@ -98,6 +98,7 @@ ENTITY_WHITELIST = {
     'rock_flintless_med': WORKABLE['rock_components'],
     'rock_flintless_low': WORKABLE['rock_components'],
     'rock_moon': WORKABLE['rock_components'],
+    'moonglass_rock': WORKABLE['moonglass_rock_components'],
     'grotto_pool_big': lambda data: STRUCTURE['grotto_pool_components'](data, True),
     'grotto_pool_small': lambda data: STRUCTURE['grotto_pool_components'](data, False),
     'grotto_moonglass_1': WORKABLE['grotto_glass_components'],

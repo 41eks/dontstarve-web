@@ -1,5 +1,7 @@
 # DST Lua prefab 的 c_spawn / c_give 静态核对
 
+2026-11-04 补充 `moonglass_rock`：`prefabs/rocks.lua` 注册 `Prefab("moonglass_rock", rock_moon_glass, ...)`，`baserock_fn` 没有 `inventoryitem`，原版可 `c_spawn("moonglass_rock")`，不能放入物品栏。项目接入该世界实体的 `c_spawn`、`c_save()` 与读档，`rock_type` 随存档保留；`Cluster_62` 最新地表快照有 17 个，导入 17 个。
+
 2026-10-28 补充 `dragonfly_spawner`：`prefabs/dragonfly_spawner.lua` 注册无美术、无库存组件的世界实体，可用 `c_spawn("dragonfly_spawner")`，不能 `c_give` 入栏。`Cluster_62` 最新地表快照有 1 个生成器，保存 `childreninside=1`、`queued_spawn=true`；现导入并在活动区唤醒后按 `components/childspawner.lua` 的排队分支生成 `dragonfly`。`c_save()` 保留生成器、子代引用和再生计时器；代表性单测覆盖休眠唤醒、保存重载及子代移除后的再生。
 
 2026-10-27 补充 `dragonfly`：`prefabs/dragonfly.lua` 注册 `Prefab("dragonfly", fn, assets, prefabs)`，`fn` 没有 `inventoryitem`，原版可 `c_spawn("dragonfly")`，不能放入物品栏。项目接入该世界实体的 `c_spawn`、`c_save()` 与读档；浏览器测试从 `?saveData=` 装入一只龙蝇，再生成一只、导出 ZIP 并重载，核对 ID、位置和组件字段。当前 `Cluster_62` 最新快照只在 `dragonfly_spawner.childspawner.childreninside` 记录待生成子代，没有独立 `dragonfly` 实体，导入保持 0→0。
@@ -517,6 +519,7 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `rock_flintless` | 可生成 | 不能入栏 | `prefabs/rocks.lua` |
 | `rock_flintless_med` | 可生成 | 不能入栏 | `prefabs/rocks.lua` |
 | `rock_flintless_low` | 可生成 | 不能入栏 | `prefabs/rocks.lua` |
+| `moonglass_rock` | 可生成 | 不能入栏 | `prefabs/rocks.lua` |
 | `farm_plow` | 可生成 | 不能入栏 | `prefabs/farm_plow.lua` |
 | `farm_soil` | 可生成 | 不能入栏 | `prefabs/farm_soil.lua` |
 | `farm_soil_debris` | 可生成 | 不能入栏 | `prefabs/farm_soil_debris.lua` |

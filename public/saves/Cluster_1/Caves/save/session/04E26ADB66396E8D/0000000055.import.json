@@ -514,6 +514,7 @@
     "rock_flintless_med",
     "rock_flintless_low",
     "rock_moon",
+    "moonglass_rock",
     "grotto_pool_big",
     "grotto_pool_small",
     "grotto_moonglass_1",
@@ -900,6 +901,10 @@
       "imported": 16
     },
     "rock_moon": {
+      "source": 0,
+      "imported": 0
+    },
+    "moonglass_rock": {
       "source": 0,
       "imported": 0
     },

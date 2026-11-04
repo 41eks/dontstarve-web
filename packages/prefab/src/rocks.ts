@@ -1,19 +1,24 @@
-import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
+import { PrefabDisplayGroup, SpriteState, prefabDisplay } from '@dontstarve-web/display';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import { MakeObstaclePhysics, RemovePhysicsColliders } from './standardcomponents';
 import { ModelRecords } from './modelRecords';
 import * as THREE from 'three';
 import { ArchiveSpriteAssets, preloadSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
-import { createArchiveEntity, prefabInstance, type PrefabInstance } from './prefabInstance';
-import type { TileStateQuery } from '@dontstarve-web/signals';
+import { PrefabInstance, createArchiveEntity, prefabInstance, type PrefabEntityDefinition } from './prefabInstance';
+import { createRenderEffect, WorldContentKey, type GetWatchWorldContent, type TileStateQuery } from '@dontstarve-web/signals';
 import { watchTileActivity } from './tileActivity';
 import { newEntityId } from './saveRecord';
 import { Workable } from '../../componets/src/workable';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { ErodeAway } from '../../componets/src/erodeaway';
 import { LootDropper, SetSharedLootTable, type ChanceLootTable } from '../../componets/src/lootdropper';
+import { Hauntable } from '../../componets/src/hauntable';
+import { Inspectable } from '../../componets/src/dragonflySignatures';
+import { LunarHailBuildup } from '../../componets/src/pandoraschestSignatures';
 import { actionEntity } from './actionEntity';
+import { addComponent } from './components';
+import { Transform } from './transform';
 import type { SpawnGroundItem } from './groundPrefab';
 import catalog from './groundItems.json' with { type: 'json' };
 import { PlaySound } from './sound';
@@ -326,4 +331,99 @@ export class RockManager {
     rock.controller?.dispose();
     rock.instance.remove();
   }
+}
+
+export const MOONGLASS_ROCK_ID = 'moonglass_rock' as const;
+/** rocks.lua set_moonglass_type: math.random(4) picks the bank and build, and OnSave keeps the pick. */
+export type MoonglassRockType = 1 | 2 | 3 | 4;
+/** tuning.lua ROCKS_MINE. */
+const ROCKS_MINE = 6;
+
+SetSharedLootTable('rock_moon_glass', [['moonglass', 1], ['moonglass', 1], ['moonglass', .25]]);
+
+const moonglassRockBank = (type: MoonglassRockType): string => type === 1 ? 'moonglass_rock' : `moonglass_rock${type}`;
+
+/** The saved rocks' banks, so a scan of the save warms their decoders; an unsaved type is only rolled at spawn. */
+export function moonglassRockArchives(records: readonly unknown[]) {
+  const types = new Set((records as { components?: { rock_type?: MoonglassRockType } }[]).flatMap(record => record.components?.rock_type ?? []));
+  return [...types].map(type => ({ animation: `${moonglassRockBank(type)}.zip`, build: `${moonglassRockBank(type)}.zip` }));
+}
+
+export interface MoonglassRockWorld extends ToolMouseTargetWorld {
+  scheduler: GameTimeScheduler;
+  getWatchWorldContent?: GetWatchWorldContent;
+  /** lootdropper:SpawnLootPrefab when the rock is mined out; the loot's display loads its art. */
+  spawnGroundItem: SpawnGroundItem;
+}
+
+/** rocks.lua baserock_fn + rock_moon_glass: multcolour 1.0 leaves the rock untinted. No skin, and SetPrefabName keeps its own name. */
+export class MoonglassRockInstance extends PrefabInstance {
+  declare readonly components: PrefabInstance['components'] & { lootdropper: LootDropper; hauntable: Hauntable };
+  rock_type!: MoonglassRockType;
+
+  constructor(world: MoonglassRockWorld) {
+    super(MOONGLASS_ROCK_ID, new SpriteState({ name: 'full', billboard: true }), Transform.stationary());
+    this.sprite.playOnce('full'); // PlayAnimation("full"), never looping.
+    this.addTag('boulder');
+    this.addTag('moonglass');
+    // MakeSnowCovered, with weather.lua's SNOW_COVERED_THRESHOLD.
+    this.addTag('SnowCovered');
+    let stopWatchingSnow: (() => void) | undefined;
+    const snowLevel = world.getWatchWorldContent?.(WorldContentKey.SnowLevel, stop => { stopWatchingSnow = stop; });
+    this.sprite.setSymbolOverride('snow', 'snow.zip', 'snow');
+    const stopSnow = createRenderEffect(() => this.sprite.setSymbolHidden('snow', (snowLevel?.get() ?? 0) < .015));
+
+    const lootdropper = new LootDropper(this, (prefab, position) => world.spawnGroundItem(
+      { ...catalog.items[prefab as keyof typeof catalog.items], itemId: prefab, count: 1 },
+      new THREE.Vector3(position.x, position.y, position.z), { fling: true }));
+    lootdropper.SetChanceLootTable('rock_moon_glass');
+    const workable = addComponent(this as MoonglassRockInstance, 'workable');
+    workable.SetWorkAction('MINE'); workable.SetWorkLeft(ROCKS_MINE);
+    workable.SetOnWorkCallback(OnWork);
+    const hauntable = new Hauntable(this, world.scheduler);
+    hauntable.SetOnHauntFn(() => false); // MakeHauntableWork's work code is commented out in source.
+    // Constructor-only dependencies: inspectable's tag is its source constructor's, and nameoverride and
+    // SetLunarHailBuildupAmountSmall configure behavior these classes do not have yet.
+    this.addTag('inspectable');
+    Object.assign(this.components, { lootdropper, hauntable, inspectable: new Inspectable(this), lunarhailbuildup: new LunarHailBuildup(this) });
+    this.onRemove(() => { stopSnow(); stopWatchingSnow?.(); hauntable.dispose(); });
+
+    set_moonglass_type(this, 1 + Math.floor(Math.random() * 4) as MoonglassRockType);
+    this.OnSave = (_inst, data) => { data.rock_type = this.rock_type; };
+    this.OnLoad = (_inst, data) => { if (data.rock_type) set_moonglass_type(this, data.rock_type); };
+  }
+}
+
+/** The display builds its sprite from this choice: SetBuild and SetBank are the `instanceAssets` declaration below. */
+function set_moonglass_type(inst: MoonglassRockInstance, new_type: MoonglassRockType): void {
+  inst.rock_type = new_type;
+}
+
+/** rocks.lua OnWork; worker.components.spooked is skipped because no worker has that component yet. */
+function OnWork(inst: MoonglassRockInstance, _worker: unknown, workleft: number): void {
+  if (workleft <= 0) {
+    // rock_break_fx.lua has no art: its local proxy only plays this sound.
+    PlaySound('dontstarve/wilson/rock_break', inst.position);
+    inst.components.lootdropper.DropLoot(inst.position);
+    inst.remove();
+  } else {
+    inst.sprite.playOnce(workleft < ROCKS_MINE / 3 ? 'low' : workleft < ROCKS_MINE * 2 / 3 ? 'med' : 'full');
+  }
+}
+
+/** The moon glass rock's entry in the Prefab table rocks.lua returns; the other rocks are still on RockManager. */
+export function moonglassRockPrefabs(world: MoonglassRockWorld): Readonly<Record<typeof MOONGLASS_ROCK_ID, PrefabEntityDefinition<MoonglassRockInstance>>> {
+  return {
+    [MOONGLASS_ROCK_ID]: {
+      fn: () => new MoonglassRockInstance(world),
+      instanceAssets: inst => {
+        const bank = moonglassRockBank(inst.rock_type);
+        return { animationArchive: `${bank}.zip`, buildArchives: [`${bank}.zip`, 'snow.zip'], bank, hiddenSymbols: ['snow'] };
+      },
+      assetOptions: { instancedAnimations: 'all', staticBillboard: true },
+      physics: { make: MakeObstaclePhysics, radius: 1 },
+      minimapIcon: 'rock_moonglass.png',
+      onSpawned: inst => { new ToolMouseTarget(actionEntity(inst.transform.model, MOONGLASS_ROCK_ID), inst, inst.components.workable!, world.handEquipment); },
+    },
+  };
 }
