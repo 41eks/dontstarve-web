@@ -30,6 +30,13 @@ export interface PlacementSaveRecord {
     moonbase?: import('./moonbase').MoonbaseSaveState;
     lightningrod?: import('./lightning_rod').LightningRodSaveState;
     firepit?: import('./firepit').FirePitSaveState;
+    evergreen?: import('./evergreens').EvergreenSaveState;
+    evergreenTimer?: import('../../componets/src/timer').NamedTimerSave;
+    deciduoustree?: import('./deciduousTreeLeaves').DeciduousTreeSave;
+    deciduousTimer?: import('../../componets/src/timer').NamedTimerSave;
+    moonTree?: import('./moontree').MoonTreeSaveState;
+    moonTreeTimer?: import('../../componets/src/timer').NamedTimerSave;
+    saplingTimer?: import('../../componets/src/timer').NamedTimerSave;
   };
 }
 

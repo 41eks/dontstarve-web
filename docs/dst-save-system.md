@@ -807,7 +807,7 @@ three-roaming-save-v1.json
 
 #### 地图与月树实体
 
-地图保存地皮与初始数据集信息；月树从当前选定存档的 `world.entities.moon_tree` 逐条恢复。`createMoonTreeManager()` 与其他 prefab manager 一样在实体注册阶段创建，直接持有所属世界服务；不再预建森林、接收随机生成参数或以坐标数组创建集合后再绑定世界。历史生成器的元数据继续兼容读取，实际树木的位置与数量以实体记录为准。
+地图保存地皮与初始数据集信息；月树从当前选定存档的 `world.entities.moon_tree` 逐条恢复。`moonTreePrefabs()` 与其他 prefab 声明一样在实体注册阶段注册到 `PrefabEntityManager`，实例持有所属世界服务；不再预建森林、接收随机生成参数或以坐标数组创建集合后再绑定世界。历史生成器的元数据继续兼容读取，实际树木的位置与数量以实体记录为准。
 
 `ResidentEntity` 保留每棵月树的运行时 `id`、持久化 `saveId`、脚点 `position` 和稳定的 `model` 根节点。`bindWorld()` 注入世界的 `tickingarea`，`watchTileActivity()` 更新活动集合并调用 `ResidentSprite.setActive()`；inactive 只释放 visual，保留交互投影、Workable、生长／腐烂计时器和小地图实体。返回时重建共享 archive sprite 并恢复当前 clip、积雪和外观，不重建整棵树（见 [tile 生命周期](tile-lifecycle.md)）。未绑定世界时 visual 保持未加载；绑定后未提供活动查询或查询返回 `undefined` 时保持 active。
 

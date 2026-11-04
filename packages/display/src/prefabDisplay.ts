@@ -239,8 +239,12 @@ export class PrefabDisplay {
   /** Mount the borrowed entity root; status changes still remove and restore it at this parent. */
   mount(parent: THREE.Object3D): void {
     if (this.disposed) return;
-    parent.add(this.model);
+    if (this.status.peek() === 'asleep') this.home = parent;
+    else parent.add(this.model);
   }
+
+  /** The parent an asleep model returns to on wake. */
+  get wakeParent(): THREE.Object3D | undefined { return this.home; }
 
   get isRemoved(): boolean { return this.disposed || this.status.peek() === 'removed'; }
 
@@ -272,6 +276,8 @@ export class PrefabDisplay {
   /** Advance a display; the frame's camera rotation is a fallback for worlds without a bound camera signal. */
   update(dt: number, cameraRotation?: THREE.Quaternion): void {
     if (this.disposed) return;
+    // Most of a world's entities sleep: nothing to do for them each frame.
+    if (this.asleep && this.status.peek() === 'asleep') return;
     this.applyStatus(this.status.peek());
     if (this.isRemoved || this.asleep) return;
     if (cameraRotation && !this.followsWorldCamera && this.json.peek().billboard) this.faceCamera(cameraRotation);

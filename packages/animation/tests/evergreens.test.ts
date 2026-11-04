@@ -1,18 +1,17 @@
+import type { Growable } from '../../componets/src/growable';
 import { advancePlayer } from './playerVisual';
 import { playerDoer } from './playerDoer';
 import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
-import { EventEmitter } from '@dontstarve-web/signals';
-import type { WorldEvents } from '../../prefab/src/worldContext';
 import * as THREE from 'three';
 import { createTestArea, useTestTileMap } from './tileMapFixture';
-import * as CANNON from 'cannon-es';
+import type * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { createEvergreenForest } from '../../prefab/src/evergreens';
-import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import { evergreenPrefabs } from '../../prefab/src/evergreens';
+import { treeWorld } from './treeManagerFixture';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { PlaySound } from '../../prefab/src/sound';
 import { createPickupInventory } from './pickupFixture';
@@ -20,6 +19,7 @@ import { equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src'
 import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
 import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
 import { workTargets } from './workTargets';
+import { drawn } from './worldContentFixture';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
 import { Locomotor } from '../../prefab/src/locomotor';
 import { WORLD_SCALE } from '../../prefab/src/tile';
@@ -37,28 +37,26 @@ beforeEach(() => {
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 async function setup() {
-  const scheduler = new GameTimeScheduler(), camera = new THREE.PerspectiveCamera(), physics = new CANNON.World();
-  const dropLoot = vi.fn(); let spring = false;
-  const forest = await createEvergreenForest('/dst/data/anim', { camera, scene: new THREE.Scene(), physics, scheduler, dropLoot, worldEvents: new EventEmitter<WorldEvents>(), tickingarea: area.query,
-    growthDuration: seconds => seconds * (spring ? .75 : 1) }, () => .5);
+  let spring = false;
+  const world = treeWorld(area.query, world => evergreenPrefabs(world, () => .5), { growthDuration: (seconds: number) => seconds * (spring ? .75 : 1) });
   await area.visit(new THREE.Vector3());
-  return { forest, scheduler, camera, physics, dropLoot, spring: () => { spring = true; } };
+  return { ...world, spring: () => { spring = true; } };
 }
 
 it('cycles all four source stages and split archives, resets chop work, removes old-tree shelter, and accelerates new spring timers', async () => {
   const s = await setup();
   try {
-    const tree = s.forest.spawn('evergreen_tall', new THREE.Vector3(3, 0, 0));
-    const model = tree.model!, work = workTargets('CHOP')[0].entity.components.workable!;
-    const growable = (findActionEntity(model)?.components ?? prefabInstance(model)!.components).growable;
-    await new Promise(resolve => setTimeout(resolve, 0));
+    const tree = s.prefabs.spawn('evergreen_tall', new THREE.Vector3(3, 0, 0));
+    const model = tree.transform.model, work = workTargets('CHOP')[0].entity.components.workable!;
+    const growable = (prefabInstance(model)!.components as { growable: Growable }).growable;
+    await drawn(model);
     expect((model.children[0].children[0].children[0] as THREE.Mesh).geometry.drawRange.count).toBeGreaterThan(0);
     expect(work.GetWorkLeft()).toBe(15);
     expect(work.WorkedBy({})).toBe(true);
     const timer = growable.state.timer.peek(); s.scheduler.advance(100);
     expect(growable.state.timer.peek()).toBe(timer);
     s.spring(); s.scheduler.advance(1400);
-    expect(s.forest.exportRecords()[0].components.growable).toEqual({ stage: 4, time: 225 });
+    expect(s.records()[0].components.growable).toEqual({ stage: 4, time: 225 });
     expect(work.GetWorkLeft()).toBe(1);
     expect(workTargets('CHOP')[0].entity.hasTag('shelter')).toBe(false);
     expect(prefabInstance(model)!.sprite.currentAnimation).toBe('grow_tall_to_old');
@@ -78,34 +76,34 @@ it('cycles all four source stages and split archives, resets chop work, removes 
     expect(performToolWork('CHOP', workTargets('CHOP')[0].entity, {})).toBe(true);
     expect(s.dropLoot.mock.calls.at(-1)![0]).toEqual([{ itemId: 'pinecone', count: 1 }]);
     expect(prefabInstance(model)!.sprite.currentAnimation).toBe('chop_old');
-    expect(s.forest.exportRecords()[0].components).toEqual({ evergreen: { stump: true }, growable: { stage: 4 } });
+    expect(s.records()[0].components).toEqual({ evergreen: { stump: true }, growable: { stage: 4 } });
     await new Promise(resolve => setTimeout(resolve, 0)); expect(s.physics.bodies).toEqual([]);
     expect(workTargets('DIG')[0].work()).toBe(true);
     expect(s.dropLoot).toHaveBeenLastCalledWith([{ itemId: 'log', count: 1 }], tree.position);
-  } finally { s.forest.dispose(); }
+  } finally { s.dispose(); }
 });
 
 it('shows growth settled while unloaded as its final stage without the transition animation', async () => {
   const s = await setup();
   try {
-    const tree = s.forest.spawn('evergreen_short', new THREE.Vector3(3, 0, 0));
-    const root = tree.model, controller = prefabInstance(root)!.sprite, components = (findActionEntity(root)?.components ?? prefabInstance(root)!.components);
+    const tree = s.prefabs.spawn('evergreen_short', new THREE.Vector3(3, 0, 0));
+    const root = tree.transform.model, controller = prefabInstance(root)!.sprite, components = (findActionEntity(root)?.components ?? prefabInstance(root)!.components);
     await area.visit(new THREE.Vector3(1000, 0, 1000));
     // A sleeping tree keeps its root and state but leaves the scene graph until its tile wakes.
-    expect(tree.model).toBe(root); expect(root.parent).toBeNull();
+    expect(tree.transform.model).toBe(root); expect(root.parent).toBeNull();
     expect(lookupPrefabInstance(root)!.status.peek()).toBe('asleep');
     expect((findActionEntity(root)?.components ?? prefabInstance(root)!.components)).toBe(components); expect(controller.loaded).toBe(false);
-    expect(root.userData.removed).not.toBe(true);
     s.scheduler.advance(5000);
     await area.visit(new THREE.Vector3(3, 0, 0));
-    expect(root.parent).toBe(s.forest.group);
+    await drawn(root);
+    expect(root.parent).toBe(s.scene);
     expect(lookupPrefabInstance(root)!.status.peek()).toBe('active');
     expect(lookupPrefabInstance(root)!.position).toBe(root.position);
-    expect(tree.model).toBe(root); expect(prefabInstance(root)!.sprite).toBe(controller);
+    expect(tree.transform.model).toBe(root); expect(prefabInstance(root)!.sprite).toBe(controller);
     expect((findActionEntity(root)?.components ?? prefabInstance(root)!.components)).toBe(components); expect(controller.loaded).toBe(true);
-    expect((findActionEntity(tree.model!)?.components ?? prefabInstance(tree.model!)!.components).growable.GetStage()).toBeGreaterThan(1);
-    expect(prefabInstance(tree.model!)!.sprite.currentAnimation).not.toMatch(/^grow_/);
-  } finally { s.forest.dispose(); }
+    expect((prefabInstance(tree.transform.model)!.components as { growable: Growable }).growable.GetStage()).toBeGreaterThan(1);
+    expect(prefabInstance(tree.transform.model)!.sprite.currentAnimation).not.toMatch(/^grow_/);
+  } finally { s.dispose(); }
 });
 it('commits source axe work, cancels before impact, preserves logical components while unloaded, and fells and digs a tall tree permanently', async () => {
   const s = await setup(), inventory = createPickupInventory();
@@ -120,7 +118,7 @@ it('commits source axe work, cancels before impact, preserves logical components
   const advance = (frames: number) => { for (let i = 0; i < frames; i++) advancePlayer(animation, 1 / 30); };
   try {
     player.position.set(1, 0, 3);
-    const tree = s.forest.spawn('evergreen_tall', new THREE.Vector3(1, 0, 0));
+    const tree = s.prefabs.spawn('evergreen_tall', new THREE.Vector3(1, 0, 0));
     const target = workTargets('CHOP')[0], work = target.entity.components.workable!;
     expect(collectEquippedItemActions(axe, undefined, target.entity, true)).toEqual(['CHOP']);
     expect(chop(target)).toBe(true); controller.cancel(); advance(60);
@@ -128,9 +126,9 @@ it('commits source axe work, cancels before impact, preserves logical components
     expect(chop(target)).toBe(true);
     while (animation.stategraph.stateName === 'chop_start') advancePlayer(animation, 1 / 30);
     advance(2); expect(work.GetWorkLeft()).toBe(14); expect(axe.components.finiteuses.remaining).toBe(99);
-    expect(s.forest.renderEntities.some(entry => entry.object.name === 'pine_needles_chop')).toBe(true);
-    await new Promise(resolve => setTimeout(resolve, 0));
-    const geometry = (tree.model!.children[0].children[0].children[0] as THREE.Mesh).geometry;
+    expect(s.displays.renderEntities.some(entry => entry.object.name === 'pine_needles_chop')).toBe(true);
+    await drawn(tree.transform.model);
+    const geometry = (tree.transform.model.children[0].children[0].children[0] as THREE.Mesh).geometry;
     const geometryDispose = vi.spyOn(geometry, 'dispose');
     await area.visit(new THREE.Vector3(500, 0, 0));
     expect(prefabInstance(target.model)!.status.peek()).toBe('asleep'); expect(geometryDispose).toHaveBeenCalledOnce();
@@ -144,43 +142,42 @@ it('commits source axe work, cancels before impact, preserves logical components
     expect(current.entity.hasTag('DIG_workable')).toBe(true);
     expect(s.dropLoot.mock.calls[0][0]).toEqual([{ itemId: 'log', count: 3 }, { itemId: 'pinecone', count: 2 }]);
     await new Promise(resolve => setTimeout(resolve, 0)); expect(s.physics.bodies).toEqual([]);
-    const record = s.forest.exportRecords()[0];
+    const record = s.records()[0];
     const restored = await setup();
     try {
-      const reloaded = restored.forest.spawn('evergreen', new THREE.Vector3(...record.transform.position), record);
-      expect(restored.forest.exportRecords()[0]).toEqual(record);
-      expect(prefabInstance(reloaded.model!)!.sprite.currentAnimation).toBe('stump_tall');
-      const stump = workTargets('DIG', reloaded.model!)[0];
+      const reloaded = restored.prefabs.spawn('evergreen', new THREE.Vector3(...record.transform.position), record);
+      expect(restored.records()[0]).toEqual(record);
+      expect(prefabInstance(reloaded.transform.model)!.sprite.currentAnimation).toBe('stump_tall');
+      const stump = workTargets('DIG', reloaded.transform.model)[0];
       expect(stump.work()).toBe(true); expect(stump.work()).toBe(false);
       restored.scheduler.advance(5000); await area.visit(player.position);
-      expect(restored.forest.entities).toEqual([]); expect(stump.entity!.isRemoved).toBe(true);
-      expect(restored.forest.exportRecords()).toEqual([]);
-    } finally { restored.forest.dispose(); }
-  } finally { controller.dispose(); s.forest.dispose(); inventory.dispose(); }
+      expect(stump.entity!.isRemoved).toBe(true);
+      expect(restored.records()).toEqual([]);
+    } finally { restored.dispose(); }
+  } finally { controller.dispose(); s.dispose(); inventory.dispose(); }
 });
 
 it('preserves an imported decay timer across visual unloading and save/load, then removes the tree at its deadline', async () => {
   const s = await setup();
   try {
-    s.forest.spawn('evergreen', new THREE.Vector3(), { id: 'imported-burnt',
+    s.prefabs.spawn('evergreen', new THREE.Vector3(), { id: 'imported-burnt',
       transform: { position: [0, 0, 0], rotationY: 0 }, components: { evergreen: { burnt: true },
         evergreenTimer: { timers: { decay: { timeleft: 100, initial_time: 200, paused: false } } } } });
     s.scheduler.advance(25);
     await area.visit(new THREE.Vector3(1000, 0, 1000));
-    const [saved] = s.forest.exportRecords();
+    const [saved] = s.records();
     expect(saved.components.evergreenTimer?.timers.decay.timeleft).toBe(75);
     expect(saved.components.growable).toEqual({ stage: 2 });
     const restored = await setup();
     try {
-      restored.forest.spawn('evergreen', new THREE.Vector3(), saved);
+      restored.prefabs.spawn('evergreen', new THREE.Vector3(), saved);
       restored.scheduler.advance(74);
-      expect(restored.forest.entities).toHaveLength(1);
+      expect(restored.records()).toHaveLength(1);
       restored.scheduler.advance(1);
-      expect(restored.forest.entities).toHaveLength(0);
-      expect(restored.forest.exportRecords()).toEqual([]);
-    } finally { restored.forest.dispose(); restored.scheduler.dispose(); }
-    s.forest.dispose();
+            expect(restored.records()).toEqual([]);
+    } finally { restored.dispose(); restored.scheduler.dispose(); }
+    s.dispose();
     s.scheduler.advance(100);
-    expect(s.forest.entities).toHaveLength(0);
-  } finally { s.forest.dispose(); s.scheduler.dispose(); }
+    expect(s.records()).toHaveLength(0);
+  } finally { s.dispose(); s.scheduler.dispose(); }
 });

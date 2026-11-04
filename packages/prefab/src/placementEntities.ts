@@ -3,6 +3,7 @@ import { findActionEntity } from './actionEntity';
 import type { Object3D } from 'three';
 import { isSpriteEntityVisible } from '@dontstarve-web/animation/renderOrder';
 import { SpatialIndex, type SpatialQuery } from './spatialIndex';
+import { prefabDisplay } from '@dontstarve-web/display';
 import { modelHasTag, prefabInstance } from './prefabInstance';
 
 export interface PlacementBlocker {
@@ -20,7 +21,7 @@ export interface PlacementBlocker {
   getInventoryRadius?(fallback: number): number | undefined;
 }
 export type PlacementQuery = SpatialQuery<PlacementBlocker>;
-interface WorldBlocker extends PlacementBlocker { readonly root: Object3D; valid(): boolean }
+interface WorldBlocker extends PlacementBlocker { readonly root: Object3D | null; valid(): boolean }
 const index = new SpatialIndex<WorldBlocker>(entry => entry.position, entry => Math.max(entry.smartRadius ?? 0,
   (entry.groundTargetRadius ?? 0) + (entry.groundHoleRangeOverride ?? 0)));
 const models = new WeakMap<Object3D, { sync(): void }>();
@@ -37,7 +38,9 @@ export function ignoresPlacement(blocker: PlacementBlocker, tags: Iterable<strin
 export function registerPlacementEntity(model: Object3D, position: () => ReadonlyVector3): () => void {
   const instance = prefabInstance(model);
   const entry: WorldBlocker = {
-    root: model,
+    // An asleep model has left the scene; its display still knows the parent it returns to.
+    get root() { return model.parent ? model : prefabDisplay(model)?.wakeParent ?? null; },
+    get logicalTree() { return instance?.logicalPlacement; },
     get position() { return position(); },
     get prefab() { return findActionEntity(model)?.prefab ?? instance?.prefab; },
     get smartRadius() { return instance?.deploySmartRadius ?? model.userData.deploySmartRadius; },
@@ -51,7 +54,7 @@ export function registerPlacementEntity(model: Object3D, position: () => Readonl
     getInventoryRadius: fallback => findActionEntity(model)?.components.inventoryitem ? instance?.getPhysicsRadius(fallback) ?? fallback : undefined,
     get visible() { return isSpriteEntityVisible(model); },
     hasTag: tag => findActionEntity(model)?.hasTag(tag) ?? modelHasTag(model, tag),
-    valid: () => !!model.parent && !model.userData.placementLogical && !findActionEntity(model)?.isRemoved
+    valid: () => (!!model.parent || !!instance?.logicalPlacement) && !findActionEntity(model)?.isRemoved
       && !model.userData.removed && !model.userData.placer
       && (hasPlacementTag(entry, 'dockjammer') || !ignoresPlacement(entry, ['NOBLOCK', 'FX', 'DECOR', 'player'])),
   };
@@ -79,19 +82,6 @@ export function isGroundTargetBlocked(query: PlacementQuery, position: ReadonlyV
 
 /** Called by moving entities after their authoritative transform is settled, never by a query. */
 export function syncPlacementEntity(model: Object3D): void { models.get(model)?.sync(); }
-
-/** Logical trees keep their index entry when only their nearby visual is unloaded. */
-export function registerPlacementTree(root: Object3D, tree: { position: ReadonlyVector3; model?: Object3D },
-  prefab: string, smartRadius: number): () => void {
-  const entry: WorldBlocker = {
-    root, position: tree.position, prefab, smartRadius, logicalTree: true,
-    get visible() { return !!tree.model?.parent && isSpriteEntityVisible(tree.model); },
-    hasTag: tag => findActionEntity(tree.model)?.hasTag(tag) ?? (tree.model ? modelHasTag(tree.model, tag) : false),
-    valid: () => true,
-  };
-  index.add(entry);
-  return () => index.delete(entry);
-}
 
 export function placementEntities(root: Object3D): PlacementQuery {
   const includes = (entry: WorldBlocker) => {

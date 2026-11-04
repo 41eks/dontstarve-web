@@ -4,7 +4,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { createEmptyEntity } from '../../prefab/src/prefabInstance';
 import { WORLD_SCALE } from '../../prefab/src/tile';
 import { SpatialIndex } from '../../prefab/src/spatialIndex';
-import { placementEntities, syncPlacementEntity, isGroundTargetBlocked, registerPlacementTree } from '../../prefab/src/placementEntities';
+import { placementEntities, syncPlacementEntity, isGroundTargetBlocked } from '../../prefab/src/placementEntities';
 import { actionEntity, disposeActionEntity } from '../../prefab/src/actionEntity';
 import { FarmPlowPlacement } from '../../prefab/src/farm_plow';
 import { TurfMap } from '../../prefab/src/turfMap';
@@ -95,34 +95,31 @@ it('tracks tags, movement, attachment, replacement and permanent removal without
   }
 });
 
-it('keeps logical trees blocking their tile while only the visual is unloaded and releases permanent removals', () => {
+it('keeps logical trees blocking their tile while their visual sleeps out of the scene and releases permanent removals', async () => {
   vi.stubGlobal('window', new EventTarget());
-  const scene = new THREE.Scene(), root = new THREE.Group(), model = withEntity(new THREE.Group(), 'evergreen'), visual = new THREE.Group();
-  const point = new THREE.Vector3(11.99, 0, 11.99);
-  model.position.copy(point); model.userData.placementLogical = true;
-  const tree = { position: model.position, model };
-  actionEntity(model, 'evergreen'); scene.add(root); root.add(model);
-  let stop = registerPlacementTree(root, tree, 'evergreen', 1);
+  const scene = new THREE.Scene(), { instance, display } = createEmptyEntity('evergreen'), model = display.model;
+  instance.setPosition(11.99, 0, 11.99);
+  instance.deploySmartRadius = 1; instance.logicalPlacement = true;
+  display.mount(scene);
+  actionEntity(model, 'evergreen');
   const world = { scene, player: new THREE.Group(), camera: new THREE.PerspectiveCamera(),
     renderer: { domElement: new EventTarget() }, createCursorLabel: () => ({ show() {}, hide() {}, update() {} }) } as unknown as WorldContext;
   const farm = new FarmPlowPlacement(world, new TurfMap(96), () => {});
   const query = placementEntities(scene), origin = new THREE.Vector3();
   try {
     expect(farm.canDeploy(origin)).toBe(false);
-    model.add(visual);
+    instance.setActive(false);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(model.parent).toBeNull();
     let count = 0;
     query.someOnTile(origin, () => { count++; return false; });
     expect(count).toBe(1);
-    visual.removeFromParent();
-    expect(model.parent).toBe(root);
     expect(farm.canDeploy(origin)).toBe(false);
-    stop();
+    // Another world's query does not see it.
+    expect(placementEntities(new THREE.Scene()).someOnTile(origin, () => true)).toBe(false);
+    instance.remove();
     expect(farm.canDeploy(origin)).toBe(true);
-    stop = registerPlacementTree(root, tree, 'evergreen', 1);
-    expect(farm.canDeploy(origin)).toBe(false);
-    stop();
-    expect(farm.canDeploy(origin)).toBe(true);
-  } finally { stop(); disposeActionEntity(model); root.removeFromParent(); farm.dispose(); }
+  } finally { instance.remove(); farm.dispose(); }
 });
 
 

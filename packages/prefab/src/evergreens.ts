@@ -1,30 +1,24 @@
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
-import { ModelRecords } from './modelRecords';
-import type { MiniMapState } from '../../map/src/minimapState';
 import * as THREE from 'three';
-import type * as CANNON from 'cannon-es';
-import { createSignal, readonlySignal, type HandEquipment, type ReadonlySignal, type Signal, type TileStateQuery } from '@dontstarve-web/signals';
-import { ArchiveSpriteAssets, preloadSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
-import { createAnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
-import { Workable, type Worker } from '../../componets/src/workable';
-import { Growable, type GrowableSave } from '../../componets/src/growable';
+import { SpriteState } from '@dontstarve-web/display';
+import { Growable } from '../../componets/src/growable';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
-import { Timer, type NamedTimerSave } from '../../componets/src/timer';
-import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import type { ResidentEntity } from '@dontstarve-web/animation/residentSprite';
-import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
-import { createArchiveEntity, createPrefabEntity, type PrefabInstance } from './prefabInstance';
-import { watchTileActivity } from './tileActivity';
-import { registerPlacementTree } from './placementEntities';
+import { Timer } from '../../componets/src/timer';
+import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import type { Worker } from '../../componets/src/workable';
 import { actionEntity } from './actionEntity';
-import { ToolMouseTarget } from './toolMouseTarget';
-import { MakeObstaclePhysics, RemovePhysicsColliders, WORLD_SCALE } from './standardcomponents';
-import { newEntityId } from './saveRecord';
+import { addComponent, removeComponent } from './components';
+import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
+import type { PlacementSaveRecord } from './saveRecord';
 import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
-import { BurnableBinding, FireFxHost, TREE_BURN_TIME, type BurnEnvironment } from './treeFire';
+import { MakeObstaclePhysics, RemovePhysicsColliders, WORLD_SCALE } from './standardcomponents';
+import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
+import { Transform } from './transform';
+import { BurnableBinding, TREE_BURN_TIME, type FireFxHost } from './treeFire';
 import type { WorldEventEmitter } from './worldContext';
 
-export const EVERGREEN_SPAWN_IDS = ['evergreen', 'evergreen_short', 'evergreen_normal', 'evergreen_tall'] as const;
+export const EVERGREEN_ID = 'evergreen' as const;
+export const EVERGREEN_SPAWN_IDS = [EVERGREEN_ID, 'evergreen_short', 'evergreen_normal', 'evergreen_tall'] as const;
 export type EvergreenSpawnId = typeof EVERGREEN_SPAWN_IDS[number];
 export const EVERGREEN_STAGES = ['short', 'normal', 'tall', 'old'] as const;
 export const EVERGREEN_CHOPS = [5, 10, 15, 1] as const;
@@ -41,354 +35,284 @@ const LOOT = [
 // evergreens.lua OnBurnt: GetBuild(inst).drop_pinecones adds a 10% pinecone to the burnt tree's loot.
 SetSharedLootTable('evergreen_burnt', [['pinecone', .1]]);
 
-export interface EvergreenRecord {
-  id: string;
-  transform: { position: [number, number, number]; rotationY: number };
-  components: { evergreen?: { stump?: true; burnt?: true; burntcone?: true }; growable?: GrowableSave; evergreenTimer?: NamedTimerSave };
-}
-export interface EvergreenWorld {
-  handEquipment?: ReadonlySignal<HandEquipment | null>;
-  camera: THREE.Camera;
-  /** Searched for propagator neighbours; receives fire effects. */
-  scene: THREE.Object3D;
+export interface EvergreenSaveState { stump?: true; burnt?: true; burntcone?: true }
+
+export interface EvergreenWorld extends ToolMouseTargetWorld {
+  readonly scheduler: GameTimeScheduler;
+  readonly fire: FireFxHost;
+  readonly camera: THREE.Camera;
   /** DefaultBurntFn: one ash at the burnt inst's position. */
-  worldEvents: WorldEventEmitter;
-  scheduler?: GameTimeScheduler;
-  /** Only visuals are resident while the entity's tile is active. */
-  tickingarea: TileStateQuery;
-  physics?: CANNON.World;
+  readonly worldEvents: WorldEventEmitter;
+  /** SpawnPrefab for the needles a chop throws off. */
+  spawnPrefab(prefab: string, position: ReadonlyVector3): PrefabInstance;
   growthDuration?(seconds: number): number;
   dropLoot(items: readonly { itemId: string; count: number }[], position: ReadonlyVector3): void;
 }
-interface Tree {
-  logical: ResidentEntity;
-  instance: PrefabInstance<ArchiveSpriteCommands>;
-  display: PrefabDisplay;
-  sprite: ArchiveSpriteCommands;
-  stopActivity(): void;
-  stopPlacement(): void;
-  minimap: MiniMapState;
-  stump: Signal<boolean>;
-  growable: Growable;
-  timer: Timer;
-  workable: Workable;
+
+/** evergreens.lua's normal build. Growth and work belong to the logical tree, independently of loaded art. */
+export class EvergreenInstance extends PrefabInstance {
+  declare readonly components: PrefabInstance['components'] & { growable: Growable; lootdropper: LootDropper; timer: Timer };
+  readonly world: EvergreenWorld;
+  readonly random: () => number;
+  readonly sounds = new Set<SoundHandle>();
   mouseTarget?: ToolMouseTarget;
-  lootdropper: LootDropper;
-  sounds: Set<SoundHandle>;
   /** MakeLargeBurnable/MakeMediumPropagator (or the stump's small pair) while the tree is awake. */
   fire?: BurnableBinding;
-  burntcone: boolean;
+  burntcone = false;
   changesTask?: () => void;
   pineconeTask?: () => void;
   removeTask?: () => void;
-}
-export interface EvergreenForest {
-  group: THREE.Group;
-  readonly entities: readonly ResidentEntity[];
-  readonly renderEntities: readonly { object: THREE.Group; footPosition: ReadonlyVector3; cameraDepth: number }[];
-  spawn(prefab: EvergreenSpawnId, position: ReadonlyVector3, saved?: EvergreenRecord): ResidentEntity;
-  update(dt: number, quaternion: THREE.Quaternion): void;
-  exportRecords(): EvergreenRecord[];
-  dispose(): void;
-}
-
-/** evergreens.lua's normal build. Growth/work belong to logical trees, independently of loaded art. */
-export async function createEvergreenForest(assetBaseUrl: string, world: EvergreenWorld,
-  random = Math.random): Promise<EvergreenForest> {
-  const assets = new ArchiveSpriteAssets('evergreen', assetBaseUrl);
-  const [createTree, needles] = await Promise.all([
-    // evergreens.lua builds.normal: one bank for every stage; clips are split across two anim archives.
-    preloadSharedArchiveSprite(assets, { animationArchive: 'evergreen_short_normal.zip', extraAnimationArchives: ['evergreen_tall_old.zip'],
-      buildArchives: ['evergreen_new.zip'], bank: 'evergreen_short' },
-    { scale: .02, staticBillboard: true, instancedAnimations: EVERGREEN_STAGES.flatMap(stage =>
-      [`sway1_loop_${stage}`, `stump_${stage}`, `burnt_${stage}`, 'idle_old']) }),
-    createAnimatedSpriteFactory(assetBaseUrl, 'pine_needles.zip'),
-  ]);
-  const fireFx = FireFxHost.create(assetBaseUrl);
-  const scheduler = world.scheduler ?? new GameTimeScheduler();
-  const group = new THREE.Group(); group.name = 'EvergreenForest';
-  const entities: ResidentEntity[] = [];
-  const active = new Set<ResidentEntity>();
-  let nextId = 0;
-  const trees = new Map<ResidentEntity, Tree>();
-  const mouseRecords = new ModelRecords<ResidentEntity>();
-  const effects = new Map<THREE.Group, { entity: ReturnType<typeof createPrefabEntity>; position: ReadonlyVector3 }>();
-  let disposed = false;
-  const stageOf = (tree: Tree) => tree.growable.GetStage() - 1;
-  // evergreens.lua old_anims: burnt/chop_burnt reuse the tall clips.
-  const burntStage = (tree: Tree) => EVERGREEN_STAGES[Math.min(stageOf(tree), 2)];
-  const rest = (tree: Tree) => tree.stump.peek() ? `stump_${EVERGREEN_STAGES[stageOf(tree)]}`
-    : tree.instance.hasTag('burnt') ? `burnt_${burntStage(tree)}`
-    : stageOf(tree) === 3 ? 'idle_old' : `sway1_loop_${EVERGREEN_STAGES[stageOf(tree)]}`;
-  const env: BurnEnvironment = { scheduler, fire: fireFx };
-  const animationOf = (tree: Tree) => tree.sprite;
-  const playSound = (tree: Tree, path: SoundEventPath) => {
-    for (const sound of tree.sounds) if (sound.isPlaying?.() === false) tree.sounds.delete(sound);
-    tree.sounds.add(PlaySound(path, tree.logical.position));
-  };
-  const setStage = (tree: Tree) => {
-    tree.workable.SetWorkLeft(EVERGREEN_CHOPS[stageOf(tree)]);
-    tree.lootdropper.SetLoot(LOOT[stageOf(tree)].flatMap(({ itemId, count }) => Array.from({ length: count }, () => itemId)));
-    if (stageOf(tree) === 3) tree.instance.removeTag('shelter'); else tree.instance.addTag('shelter');
-    animationOf(tree)?.start(rest(tree));
-  };
   /** Growth settled while the visual was unloaded is shown as its final stage, without the transition animation. */
-  let catchingUp = false;
-  const wakeGrowable = (tree: Tree) => {
-    catchingUp = true;
-    try { tree.growable.OnEntityWake(); } finally { catchingUp = false; }
-  };
-  const grow = (tree: Tree) => {
-    if (!active.has(tree.logical) || catchingUp) return;
-    const stage = stageOf(tree);
-    playSound(tree, stage === 3 ? 'dontstarve/forest/treeWilt'
-      : stage === 0 ? 'dontstarve/forest/treeGrowFromWilt' : 'dontstarve/forest/treeGrow');
-    animationOf(tree)!.playOnce(['grow_old_to_short', 'grow_short_to_normal', 'grow_normal_to_tall', 'grow_tall_to_old'][stage],
-      () => animationOf(tree)?.start(rest(tree)));
-  };
-  const unbindFire = (tree: Tree) => { tree.fire?.dispose(); tree.fire = undefined; };
-  /** OnEntityWake: MakeLargeBurnable + MakeMediumPropagator, or the stump's small pair, unless burnt. */
-  const bindFire = (tree: Tree) => {
-    if (disposed || !active.has(tree.logical) || tree.fire || tree.instance.hasTag('burnt') || tree.instance.isRemoved) return;
-    tree.fire = new BurnableBinding(tree.instance, tree.stump.peek()
-      ? { propagator: 'small', burnTime: 10, fxLevel: 2, onBurnt: () => burnStump(tree) }
-      : { propagator: 'medium', burnTime: TREE_BURN_TIME, fxLevel: 5, onBurnt: () => treeBurnt(tree) }, env);
-  };
-  /** DefaultBurntFn on a stump: one ash, then the inst is removed. */
-  const burnStump = (tree: Tree) => {
-    world.worldEvents.emit('spawnAsh', tree.logical.position.clone());
-    remove(tree);
-  };
-  const burntChanges = (tree: Tree) => {
-    unbindFire(tree);
-    tree.growable.StopGrowing();
-    tree.instance.removeTag('shelter'); tree.instance.removeTag('petrifiable');
-    tree.lootdropper.SetLoot([]); tree.lootdropper.SetChanceLootTable('evergreen_burnt');
-    if (tree.instance.components.workable === tree.workable) {
-      tree.workable.SetWorkLeft(1);
-      tree.workable.SetOnWorkCallback(() => {});
-      tree.workable.SetOnFinishCallback(() => chopDownBurnt(tree));
-    }
-  };
-  /** OnBurnt: the burnt pose and tag at once; the component changes follow after .5 seconds. */
-  const burn = (tree: Tree, immediate: boolean) => {
-    if (tree.instance.hasTag('burnt')) return;
-    tree.instance.addTag('burnt');
-    tree.minimap.SetIcon('evergreen_burnt.png');
-    animationOf(tree)?.start(rest(tree));
-    if (immediate) burntChanges(tree);
-    else tree.changesTask = scheduler.schedule(.5, () => { tree.changesTask = undefined; burntChanges(tree); });
-  };
-  /** onpineconetask: the 10% pinecone lands one unit away from the burnt tree, once. */
-  const startPineconeTask = (tree: Tree) => {
-    if (tree.burntcone || tree.pineconeTask) return;
-    tree.pineconeTask = scheduler.schedule(10, () => {
-      tree.pineconeTask = undefined;
-      const angle = random() * Math.PI * 2;
-      const position = tree.logical.position.clone().add(new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle)).multiplyScalar(WORLD_SCALE));
-      const loot = new Map<string, number>();
-      for (const itemId of tree.lootdropper.GenerateLoot(random)) loot.set(itemId, (loot.get(itemId) ?? 0) + 1);
-      if (loot.size) world.dropLoot([...loot].map(([itemId, count]) => ({ itemId, count })), position);
-      tree.burntcone = true;
-    });
-  };
-  const treeBurnt = (tree: Tree) => {
-    burn(tree, false);
-    startPineconeTask(tree);
-  };
-  /** chop_down_burnt_tree: charcoal and the chance loot, then removal when the clip ends. */
-  const chopDownBurnt = (tree: Tree) => {
-    tree.workable.dispose(); delete tree.instance.components.workable;
-    playSound(tree, 'dontstarve/forest/treeCrumble');
-    playSound(tree, 'dontstarve/wilson/use_axe_tree');
-    RemovePhysicsColliders(tree.instance);
-    tree.lootdropper.SpawnLootPrefab('charcoal');
-    tree.lootdropper.DropLoot();
-    tree.pineconeTask?.(); tree.pineconeTask = undefined;
-    tree.sprite.playOnce(`chop_burnt_${burntStage(tree)}`, () => remove(tree));
-  };
-  const remove = (tree: Tree) => {
-    if (!trees.delete(tree.logical)) return;
-    active.delete(tree.logical);
-    entities.splice(entities.indexOf(tree.logical), 1);
-    tree.stopActivity(); tree.stopPlacement();
-    tree.logical.model.userData.removed = true;
-    tree.changesTask?.(); tree.pineconeTask?.(); tree.removeTask?.();
-    unbindFire(tree);
+  catchingUp = false;
+  private awake = false;
 
-    tree.workable.dispose(); tree.growable.dispose(); tree.timer.dispose();
-    for (const sound of tree.sounds) sound.stop(); tree.sounds.clear();
-    tree.instance.remove();
-  };
-  const makeStump = (tree: Tree) => {
-    unbindFire(tree);
-    tree.minimap.SetIcon('evergreen_stump.png');
-    tree.stump.set(true); tree.growable.StopGrowing();
-    tree.instance.removeTag('shelter'); tree.instance.addTag('stump');
-    RemovePhysicsColliders(tree.instance);
-    tree.workable.dispose();
-    tree.workable = new Workable(tree.instance);
-    tree.instance.components.workable = tree.workable;
-    tree.workable.SetWorkAction('DIG'); tree.workable.SetWorkLeft(1);
-    tree.mouseTarget?.setWorkable(tree.workable);
-    tree.workable.SetOnFinishCallback(() => {
-      tree.lootdropper.SpawnLootPrefab('log');
-      remove(tree);
+  constructor(world: EvergreenWorld, position: ReadonlyVector3, stage: number, random: () => number) {
+    super(EVERGREEN_ID, new SpriteState({ name: 'sway1_loop_short', billboard: true }), Transform.stationary());
+    this.world = world; this.random = random;
+    this.setActive(false);
+    this.setPosition(position.x, 0, position.z);
+    this.deploySmartRadius = 1; this.logicalPlacement = true;
+    this.minimap.SetPriority(-1);
+    for (const tag of ['plant', 'tree', 'evergreens', 'evergreen', 'petrifiable', 'SnowCovered']) this.addTag(tag);
+    const workable = addComponent(this as EvergreenInstance, 'workable');
+    workable.SetWorkAction('CHOP');
+    workable.SetOnWorkCallback(chop_tree);
+    workable.SetOnFinishCallback(chop_down_tree);
+    this.components.lootdropper = new LootDropper({ getPosition: () => this.getPosition(), PushEvent: (name, data) => this.PushEvent(name, data) }, prefab => {
+      world.dropLoot([{ itemId: prefab, count: 1 }], this.position); return undefined;
     });
-    if (active.has(tree.logical)) bindFire(tree);
-  };
-  const spawnNeedles = (tree: Tree) => {
-    const entity = createPrefabEntity('pine_needles_chop', { create: animation => needles.create({ initialAnimation: animation, name: 'pine_needles_chop' }),
-      release: drawn => needles.disposeSprite(drawn) }, { name: 'chop', billboard: true }, 'pine_needles_chop');
-    const fx = entity.display.model; entity.instance.persists = false;
-    fx.position.copy(tree.logical.position); fx.position.y += random() * 2 * WORLD_SCALE;
-    entity.instance.addTag('FX'); effects.set(fx, { entity, position: tree.logical.position }); group.add(fx);
-    entity.instance.sprite.playOnce('chop', () => {
-      effects.delete(fx); entity.instance.remove();
+    const growable = this.components.growable = new Growable(world.scheduler, EVERGREEN_GROW_TIME.map(time => ({
+      time: () => time.base + (random() * 2 - 1) * time.random,
+      fn: () => setStage(this), growfn: () => grow(this),
+    })), seconds => world.growthDuration?.(seconds) ?? seconds);
+    growable.loopstages = true; growable.springgrowth = true;
+    const timer = this.components.timer = new Timer(world.scheduler, name => { if (name === 'decay') this.remove(); }, ['decay']);
+    this.OnSave = (_inst, data) => onsave(this, data);
+    this.OnLoad = (_inst, data) => onload(this, data);
+    this.onRemove(() => {
+      this.changesTask?.(); this.pineconeTask?.(); this.removeTask?.();
+      unbindFire(this);
+      growable.dispose(); timer.dispose();
+      for (const sound of this.sounds) sound.stop();
+      this.sounds.clear();
     });
-  };
-  const chopDown = (tree: Tree, worker: Worker) => {
-    playSound(tree, 'dontstarve/forest/treeFall');
-    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(world.camera.getWorldQuaternion(new THREE.Quaternion()));
-    const workerPosition = worker.getPosition?.();
-    const onRight = workerPosition ? workerPosition.clone().sub(tree.logical.position).dot(right) > 0 : random() <= .5;
-    const loot = new Map<string, number>();
-    for (const itemId of tree.lootdropper.GenerateLoot()) loot.set(itemId, (loot.get(itemId) ?? 0) + 1);
-    world.dropLoot([...loot].map(([itemId, count]) => ({ itemId, count })),
-      tree.logical.position.clone().addScaledVector(right, onRight ? -WORLD_SCALE : WORLD_SCALE));
-    const clip = stageOf(tree) === 3 ? 'chop_old' : `${onRight ? 'fallleft' : 'fallright'}_${EVERGREEN_STAGES[stageOf(tree)]}`;
-    makeStump(tree);
-    animationOf(tree)?.playOnce(clip, () => animationOf(tree)?.start(rest(tree)));
-  };
-  const initializeModel = (tree: Tree) => {
-    const model = tree.logical.model;
+    growable.SetStage(stage); growable.StartGrowing();
+  }
 
-    Object.assign(model.userData, { deploySmartRadius: 1,
-      components: tree.instance.components,
-      evergreenState: { stump: readonlySignal(tree.stump), growth: tree.growable.state } });
-    model.userData.placementLogical = true;
-    const entity = actionEntity(model, 'evergreen');
-    tree.mouseTarget = new ToolMouseTarget(entity, tree.instance, tree.workable, world.handEquipment);
-    mouseRecords.set(model, tree.logical);
-  };
-  const setActive = (tree: Tree, awake: boolean) => {
-    const { logical, instance } = tree;
-    if (!trees.has(logical)) return;
-    if (active.has(logical) === awake) { instance.setActive(awake); return; }
-    if (awake) {
-      active.add(logical);
-      wakeGrowable(tree);
-      bindFire(tree);
-      if (tree.instance.hasTag('burnt')) startPineconeTask(tree);
-      instance.setActive(true);
-    } else {
-      active.delete(logical);
-      tree.growable.OnEntitySleep();
-      if (tree.fire?.burnable.IsBurning()) {
-        if (tree.stump.peek()) tree.removeTask = scheduler.schedule(0, () => { tree.removeTask = undefined; burnStump(tree); });
-        else burn(tree, true);
-      }
-      unbindFire(tree);
-      instance.setActive(false);
+  /** OnEntitySleep / OnEntityWake follow the entity's tile. */
+  setActive(active: boolean): void {
+    if (active !== this.awake && !this.isRemoved) {
+      this.awake = active;
+      if (active) OnEntityWake(this); else OnEntitySleep(this);
     }
-  };
-  return {
-    group,
-    get entities() { return entities; },
-    spawn(prefab, position, saved) {
-      if (disposed) throw new Error('Evergreen forest has been disposed');
-      const saveId = saved?.id ?? newEntityId();
-      if (entities.some(entity => entity.saveId === saveId)) throw new Error(`Duplicate entity ID: ${saveId}`);
-      const { instance, display } = createArchiveEntity('evergreen', { create: clip => createTree(clip.name, clip.loop, `Evergreen-${saveId}`) },
-        { name: 'sway1_loop_short', billboard: true }, `Evergreen-${saveId}`, instance => instance.setActive(false), undefined, { staticTransform: true });
-      instance.entityId = saveId;
-      const sprite = instance.sprite, model = display.model;
-      instance.setPosition(position.x, position.y, position.z);
-      const logical: ResidentEntity = { id: nextId++, saveId, model, position: model.position };
-      entities.push(logical);
-      const minimap = instance.minimap;
-      minimap.SetIcon('evergreen.png'); minimap.SetPriority(-1);
-      for (const tag of ['plant', 'tree', 'evergreens', 'evergreen', 'petrifiable', 'SnowCovered']) instance.addTag(tag);
-      // The tree's components are its entity's: hasTag asks them first, as workable reports CHOP_workable.
-      const components = instance.components;
-      const workable = new Workable(instance); components.workable = workable;
-      const lootdropper = new LootDropper({ getPosition: () => logical.position, PushEvent: (name, data) => instance.PushEvent(name, data) }, prefab => {
-        world.dropLoot([{ itemId: prefab, count: 1 }], logical.position); return undefined;
-      });
-      components.lootdropper = lootdropper;
-      workable.SetWorkAction('CHOP');
-      const growable = new Growable(scheduler, EVERGREEN_GROW_TIME.map(time => ({
-        time: () => time.base + (random() * 2 - 1) * time.random,
-        fn: () => setStage(trees.get(logical)!), growfn: () => grow(trees.get(logical)!),
-      })), seconds => world.growthDuration?.(seconds) ?? seconds);
-      components.growable = growable;
-      const tree: Tree = { logical, instance, display, sprite, stopActivity() {}, stopPlacement() {}, minimap, stump: createSignal(false),
-        growable, workable, lootdropper, sounds: new Set(), burntcone: false,
-        timer: new Timer(scheduler, name => { if (name === 'decay') remove(tree); }, ['decay']) };
-      components.timer = tree.timer;
-      trees.set(logical, tree);
-      initializeModel(tree);
-      tree.stopPlacement = registerPlacementTree(group, logical, 'evergreen', 1);
-      group.add(model);
-      growable.loopstages = true; growable.springgrowth = true;
-      const stage = prefab === 'evergreen' ? Math.min(3, Math.floor(random() * 3) + 1) : EVERGREEN_SPAWN_IDS.indexOf(prefab);
-      growable.SetStage(stage); growable.StartGrowing();
-      if (saved?.components.growable) growable.OnLoad(saved.components.growable);
-      tree.timer.OnLoad(saved?.components.evergreenTimer);
-      MakeObstaclePhysics(instance, .25);
-      if (world.physics) instance.bindPhysics(world.physics);
-      workable.SetOnWorkCallback(() => {
-        if (!active.has(logical)) return;
-        playSound(tree, 'dontstarve/wilson/use_axe_tree');
-        if (stageOf(tree) === 3) return;
-        animationOf(tree)!.playOnce(`chop_${EVERGREEN_STAGES[stageOf(tree)]}`, () => animationOf(tree)?.start(rest(tree)));
-        spawnNeedles(tree);
-      });
-      workable.SetOnFinishCallback((_inst, worker) => chopDown(tree, worker));
-      if (saved?.components.evergreen?.stump) makeStump(tree);
-      else if (saved?.components.evergreen?.burnt) {
-        tree.burntcone = saved.components.evergreen.burntcone === true;
-        burn(tree, true);
-      }
-      sprite.start(rest(tree));
-      growable.OnEntitySleep();
-      tree.stopActivity = watchTileActivity(model, world.tickingarea, awake => setActive(tree, awake));
-      return logical;
-    },
-    update(dt, _quaternion) {
-      if (!world.scheduler) scheduler.advance(dt);
-      // Each display advances its entity's declared clip; the fire binding then runs its burnable's FX.
-      for (const logical of active) {
-        const { display, fire } = trees.get(logical)!;
-        display.update(dt);
-        fire?.update(dt);
-      }
-      for (const { entity } of [...effects.values()]) entity.display.update(dt);
-    },
-    get renderEntities() {
-      return [...Array.from(active, logical => ({ object: logical.model, footPosition: logical.position, cameraDepth: 0 })),
-        ...Array.from(effects, ([object, { position }]) => ({ object, footPosition: position, cameraDepth: 0 })),
-        ...Array.from(active, logical => trees.get(logical)!.display.fxRenderEntries).flat()];
-    },
-    exportRecords: () => [...trees.values()].map(tree => {
-      // onsave: a burning tree is saved as burnt; a burning stump is still a stump.
-      const timer = tree.timer.OnSave();
-      const burnt = !tree.stump.peek() && (tree.instance.hasTag('burnt') || tree.fire?.burnable.IsBurning() === true);
-      return { id: tree.logical.saveId!,
-        transform: { position: tree.logical.position.toArray(), rotationY: 0 }, components: {
-          ...(tree.stump.peek() ? { evergreen: { stump: true as const } }
-            : burnt ? { evergreen: { burnt: true as const, ...(tree.burntcone ? { burntcone: true as const } : {}) } } : {}),
-          ...(timer ? { evergreenTimer: timer } : {}),
-          growable: burnt ? { stage: tree.growable.GetStage() } : tree.growable.OnSave(),
-        } };
-    }),
-    dispose() {
-      if (disposed) return;
-      disposed = true;
-      for (const tree of [...trees.values()]) remove(tree);
-      for (const { entity } of effects.values()) entity.instance.remove();
-      effects.clear(); group.removeFromParent(); assets.dispose(); needles.dispose(); fireFx.dispose();
-      if (!world.scheduler) scheduler.dispose();
-    },
-  };
+    super.setActive(active);
+  }
+
+  get isAwake(): boolean { return this.awake; }
+}
+
+const stageOf = (inst: EvergreenInstance) => inst.components.growable.GetStage() - 1;
+// evergreens.lua old_anims: burnt/chop_burnt reuse the tall clips.
+const burntStage = (inst: EvergreenInstance) => EVERGREEN_STAGES[Math.min(stageOf(inst), 2)];
+const rest = (inst: EvergreenInstance) => inst.hasTag('stump') ? `stump_${EVERGREEN_STAGES[stageOf(inst)]}`
+  : inst.hasTag('burnt') ? `burnt_${burntStage(inst)}`
+  : stageOf(inst) === 3 ? 'idle_old' : `sway1_loop_${EVERGREEN_STAGES[stageOf(inst)]}`;
+
+function playSound(inst: EvergreenInstance, path: SoundEventPath): void {
+  for (const sound of inst.sounds) if (sound.isPlaying?.() === false) inst.sounds.delete(sound);
+  inst.sounds.add(PlaySound(path, inst.position));
+}
+
+/** Set*: the stage's work, loot and shelter, then its resting clip. */
+function setStage(inst: EvergreenInstance): void {
+  inst.components.workable!.SetWorkLeft(EVERGREEN_CHOPS[stageOf(inst)]);
+  inst.components.lootdropper.SetLoot(LOOT[stageOf(inst)].flatMap(({ itemId, count }) => Array.from({ length: count }, () => itemId)));
+  if (stageOf(inst) === 3) inst.removeTag('shelter'); else inst.addTag('shelter');
+  inst.sprite.start(rest(inst));
+}
+
+/** Grow*: the transition into the stage just set. */
+function grow(inst: EvergreenInstance): void {
+  if (!inst.isAwake || inst.catchingUp) return;
+  const stage = stageOf(inst);
+  playSound(inst, stage === 3 ? 'dontstarve/forest/treeWilt'
+    : stage === 0 ? 'dontstarve/forest/treeGrowFromWilt' : 'dontstarve/forest/treeGrow');
+  inst.sprite.playOnce(['grow_old_to_short', 'grow_short_to_normal', 'grow_normal_to_tall', 'grow_tall_to_old'][stage],
+    () => inst.sprite.start(rest(inst)));
+}
+
+function unbindFire(inst: EvergreenInstance): void { inst.fire?.dispose(); inst.fire = undefined; }
+
+/** OnEntityWake: MakeLargeBurnable + MakeMediumPropagator, or the stump's small pair, unless burnt. */
+function bindFire(inst: EvergreenInstance): void {
+  if (!inst.isAwake || inst.fire || inst.hasTag('burnt') || inst.isRemoved) return;
+  inst.fire = new BurnableBinding(inst, inst.hasTag('stump')
+    ? { propagator: 'small', burnTime: 10, fxLevel: 2, onBurnt: () => burnStump(inst) }
+    : { propagator: 'medium', burnTime: TREE_BURN_TIME, fxLevel: 5, onBurnt: () => tree_burnt(inst) }, inst.world);
+}
+
+/** DefaultBurntFn on a stump: one ash, then the inst is removed. */
+function burnStump(inst: EvergreenInstance): void {
+  inst.world.worldEvents.emit('spawnAsh', inst.getPosition().clone());
+  inst.remove();
+}
+
+function burntChanges(inst: EvergreenInstance): void {
+  unbindFire(inst);
+  inst.components.growable.StopGrowing();
+  inst.removeTag('shelter'); inst.removeTag('petrifiable');
+  inst.components.lootdropper.SetLoot([]); inst.components.lootdropper.SetChanceLootTable('evergreen_burnt');
+  const workable = inst.components.workable;
+  if (workable) {
+    workable.SetWorkLeft(1);
+    workable.SetOnWorkCallback(() => {});
+    workable.SetOnFinishCallback(() => chop_down_burnt_tree(inst));
+  }
+}
+
+/** OnBurnt: the burnt pose and tag at once; the component changes follow after .5 seconds. */
+function OnBurnt(inst: EvergreenInstance, immediate: boolean): void {
+  if (inst.hasTag('burnt')) return;
+  inst.addTag('burnt');
+  inst.minimap.SetIcon('evergreen_burnt.png');
+  inst.sprite.start(rest(inst));
+  if (immediate) burntChanges(inst);
+  else inst.changesTask = inst.world.scheduler.schedule(.5, () => { inst.changesTask = undefined; burntChanges(inst); });
+}
+
+function dropGrouped(inst: EvergreenInstance, items: readonly string[], position: ReadonlyVector3): void {
+  const loot = new Map<string, number>();
+  for (const itemId of items) loot.set(itemId, (loot.get(itemId) ?? 0) + 1);
+  if (loot.size) inst.world.dropLoot([...loot].map(([itemId, count]) => ({ itemId, count })), position);
+}
+
+/** onpineconetask: the 10% pinecone lands one unit away from the burnt tree, once. */
+function startPineconeTask(inst: EvergreenInstance): void {
+  if (inst.burntcone || inst.pineconeTask) return;
+  inst.pineconeTask = inst.world.scheduler.schedule(10, () => {
+    inst.pineconeTask = undefined;
+    const angle = inst.random() * Math.PI * 2;
+    const position = inst.getPosition().clone().add(new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle)).multiplyScalar(WORLD_SCALE));
+    dropGrouped(inst, inst.components.lootdropper.GenerateLoot(inst.random), position);
+    inst.burntcone = true;
+  });
+}
+
+function tree_burnt(inst: EvergreenInstance): void {
+  OnBurnt(inst, false);
+  startPineconeTask(inst);
+}
+
+/** chop_down_burnt_tree: charcoal and the chance loot, then removal when the clip ends. */
+function chop_down_burnt_tree(inst: EvergreenInstance): void {
+  removeComponent(inst, 'workable');
+  playSound(inst, 'dontstarve/forest/treeCrumble');
+  playSound(inst, 'dontstarve/wilson/use_axe_tree');
+  RemovePhysicsColliders(inst);
+  inst.components.lootdropper.SpawnLootPrefab('charcoal');
+  inst.components.lootdropper.DropLoot();
+  inst.pineconeTask?.(); inst.pineconeTask = undefined;
+  inst.sprite.playOnce(`chop_burnt_${burntStage(inst)}`, () => inst.remove());
+}
+
+/** dig_up_stump. */
+function dig_up_stump(inst: EvergreenInstance): void {
+  inst.components.lootdropper.SpawnLootPrefab('log');
+  inst.remove();
+}
+
+/** make_stump: replace CHOP work with one DIG, removing shelter. */
+function make_stump(inst: EvergreenInstance): void {
+  unbindFire(inst);
+  inst.minimap.SetIcon('evergreen_stump.png');
+  inst.addTag('stump'); inst.components.growable.StopGrowing();
+  inst.removeTag('shelter');
+  RemovePhysicsColliders(inst);
+  removeComponent(inst, 'workable');
+  const workable = addComponent(inst, 'workable');
+  workable.SetWorkAction('DIG'); workable.SetWorkLeft(1);
+  inst.mouseTarget?.setWorkable(inst.components.workable);
+  workable.SetOnFinishCallback(dig_up_stump);
+  bindFire(inst);
+}
+
+/** chop_tree: the sound always; an old tree shows nothing else. */
+function chop_tree(inst: EvergreenInstance): void {
+  if (!inst.isAwake) return;
+  playSound(inst, 'dontstarve/wilson/use_axe_tree');
+  if (stageOf(inst) === 3) return;
+  inst.sprite.playOnce(`chop_${EVERGREEN_STAGES[stageOf(inst)]}`, () => inst.sprite.start(rest(inst)));
+  const { x, z } = inst.position;
+  inst.world.spawnPrefab('pine_needles_chop', inst.position).setPosition(x, inst.random() * 2 * WORLD_SCALE, z);
+}
+
+/** chop_down_tree: falls away from the chopper and scatters loot on the fall side. */
+function chop_down_tree(inst: EvergreenInstance, worker: Worker): void {
+  playSound(inst, 'dontstarve/forest/treeFall');
+  const right = new THREE.Vector3(1, 0, 0).applyQuaternion(inst.world.camera.getWorldQuaternion(new THREE.Quaternion()));
+  const workerPosition = worker.getPosition?.();
+  const onRight = workerPosition ? workerPosition.clone().sub(inst.position).dot(right) > 0 : inst.random() <= .5;
+  dropGrouped(inst, inst.components.lootdropper.GenerateLoot(),
+    inst.getPosition().clone().addScaledVector(right, onRight ? -WORLD_SCALE : WORLD_SCALE));
+  const clip = stageOf(inst) === 3 ? 'chop_old' : `${onRight ? 'fallleft' : 'fallright'}_${EVERGREEN_STAGES[stageOf(inst)]}`;
+  make_stump(inst);
+  inst.sprite.playOnce(clip, () => inst.sprite.start(rest(inst)));
+}
+
+function OnEntityWake(inst: EvergreenInstance): void {
+  inst.catchingUp = true;
+  try { inst.components.growable.OnEntityWake(); } finally { inst.catchingUp = false; }
+  bindFire(inst);
+  if (inst.hasTag('burnt')) startPineconeTask(inst);
+}
+
+function OnEntitySleep(inst: EvergreenInstance): void {
+  inst.components.growable.OnEntitySleep();
+  if (inst.fire?.burnable.IsBurning()) {
+    if (inst.hasTag('stump')) inst.removeTask = inst.world.scheduler.schedule(0, () => { inst.removeTask = undefined; burnStump(inst); });
+    else OnBurnt(inst, true);
+  }
+  unbindFire(inst);
+}
+
+/** onsave: a burning tree is saved as burnt; a burning stump is still a stump. */
+function onsave(inst: EvergreenInstance, data: PlacementSaveRecord['components']): void {
+  const stump = inst.hasTag('stump');
+  const burnt = !stump && (inst.hasTag('burnt') || inst.fire?.burnable.IsBurning() === true);
+  if (stump) data.evergreen = { stump: true };
+  else if (burnt) data.evergreen = { burnt: true, ...(inst.burntcone ? { burntcone: true as const } : {}) };
+  if (burnt) data.growable = { stage: inst.components.growable.GetStage() };
+  // The timer's record keeps the name existing saves hold.
+  if (data.timer) data.evergreenTimer = data.timer;
+  delete data.timer;
+}
+
+function onload(inst: EvergreenInstance, data: PlacementSaveRecord['components']): void {
+  inst.components.timer.OnLoad(data.evergreenTimer);
+  if (data.evergreen?.stump) make_stump(inst);
+  else if (data.evergreen?.burnt) {
+    inst.burntcone = data.evergreen.burntcone === true;
+    OnBurnt(inst, true);
+  }
+}
+
+function onSpawned(inst: EvergreenInstance): void {
+  inst.sprite.start(rest(inst));
+  inst.components.growable.OnEntitySleep();
+  inst.mouseTarget = new ToolMouseTarget(actionEntity(inst.transform.model, EVERGREEN_ID), inst, inst.components.workable, inst.world.handEquipment);
+}
+
+/** evergreens.lua normal build: one bank for every stage; its clips are split across two anim archives. */
+export function evergreenPrefabs(world: EvergreenWorld, random: () => number = Math.random): Readonly<Record<EvergreenSpawnId, PrefabEntityDefinition<EvergreenInstance>>> {
+  const definition = (id: EvergreenSpawnId): PrefabEntityDefinition<EvergreenInstance> => ({
+    fn: position => new EvergreenInstance(world, position, id === EVERGREEN_ID ? Math.min(3, Math.floor(random() * 3) + 1) : EVERGREEN_SPAWN_IDS.indexOf(id), random),
+    assets: { animationArchive: 'evergreen_short_normal.zip', extraAnimationArchives: ['evergreen_tall_old.zip'],
+      buildArchives: ['evergreen_new.zip'], bank: 'evergreen_short' },
+    assetOptions: { scale: .02, staticBillboard: true, instancedAnimations: EVERGREEN_STAGES.flatMap(stage =>
+      [`sway1_loop_${stage}`, `stump_${stage}`, `burnt_${stage}`, 'idle_old']) },
+    physics: { make: MakeObstaclePhysics, radius: .25 },
+    minimapIcon: 'evergreen.png',
+    onSpawned,
+  });
+  return Object.fromEntries(EVERGREEN_SPAWN_IDS.map(id => [id, definition(id)])) as Record<EvergreenSpawnId, PrefabEntityDefinition<EvergreenInstance>>;
 }

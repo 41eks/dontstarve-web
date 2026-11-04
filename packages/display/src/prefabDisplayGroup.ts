@@ -1,6 +1,7 @@
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import type * as THREE from 'three';
 import { PrefabDisplay, type PrefabDisplayOptions } from './prefabDisplay';
+import type { FxRenderEntry } from './fxAttachments';
 
 /** Scene ownership, frame updates and foot-point sorting for independently declared prefab displays. */
 export class PrefabDisplayGroup {
@@ -28,8 +29,14 @@ export class PrefabDisplayGroup {
   }
 
   get renderEntities() {
-    return [...this.entries].filter(([display]) => !display.isRemoved && display.model.visible && display.model.parent === this.scene)
-      .flatMap(([display, footPosition]) => [...display.hasGroundOrder ? [] : [{ object: display.model, footPosition, cameraDepth: 0 }], ...display.fxRenderEntries]);
+    const entries: ({ object: THREE.Group; footPosition: ReadonlyVector3; cameraDepth: number } | FxRenderEntry)[] = [];
+    for (const [display, footPosition] of this.entries) {
+      const { model } = display;
+      if (model.parent !== this.scene || !model.visible || display.isRemoved) continue;
+      if (!display.hasGroundOrder) entries.push({ object: model, footPosition, cameraDepth: 0 });
+      for (const entry of display.fxRenderEntries) entries.push(entry);
+    }
+    return entries;
   }
 
   update(dt: number, cameraRotation?: THREE.Quaternion): void {

@@ -102,6 +102,8 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   physicsRadiusOverride?: number;
   /** Deployable smart spacing, in world units. */
   deploySmartRadius?: number;
+  /** A tree blocks placement as a logical entity, including while its visual sleeps out of the scene. */
+  logicalPlacement?: boolean;
   private physicsBinding?: PhysicsBinding;
   /** inst.sg: SetStateGraph's instance, as other code reads and drives it; cleared by ClearStateGraph. */
   sg?: Pick<StateGraphInstance<unknown, string>, 'stateName' | 'hasStateTag' | 'goToState' | 'pushEvent' | 'listenForEvent'>;

@@ -19,7 +19,7 @@ import { EventEmitter } from '@dontstarve-web/signals';
 import type { WorldEvents } from '../packages/prefab/src/worldContext';
 
 import { groundDisplay, turfMap } from './building';
-import { createMoonTreeManager } from '@dontstarve-web/prefab/moontree';
+import { moonTreePrefabs } from '@dontstarve-web/prefab/moontree';
 import { WORLD_TILES, isLandTile } from '@dontstarve-web/prefab/turfMap';
 import { placeStaticLayout } from '@dontstarve-web/prefab/staticLayout';
 import { camera, followCamera } from './camera';
@@ -99,8 +99,8 @@ import { WORLD_SCALE } from '../packages/prefab/src/standardcomponents';
 import { TILE_SIZE } from '../packages/prefab/src/tile';
 import { SAVE_CATALOG } from './save/catalog';
 import { findGroundPath, staticObstacleTest } from '@dontstarve-web/prefab/locomotor';
-import { createDeciduousForest, type DeciduousSpawnId } from '@dontstarve-web/prefab/deciduoustrees';
-import { createEvergreenForest, type EvergreenSpawnId } from '@dontstarve-web/prefab/evergreens';
+import { deciduousPrefabs } from '@dontstarve-web/prefab/deciduoustrees';
+import { evergreenPrefabs } from '@dontstarve-web/prefab/evergreens';
 
 import { EntityRegistry } from './entityRegistry';
 import { PREFAB_DEFINITIONS } from './prefabDefinitions';
@@ -298,10 +298,10 @@ export async function createSceneEntities(
     'multiplayer_portal_moonrock': ReturnType<typeof registerPortals>;
     'nightmaregrowth': ReturnType<typeof registerNightmareGrowths>;
     'beefalo': ReturnType<typeof registerBeefalos>;
-    'evergreen': Awaited<ReturnType<typeof registerEvergreens>>;
-    'deciduoustree': Awaited<ReturnType<typeof registerDeciduousTrees>>;
+    'evergreen': ReturnType<typeof registerEvergreens>;
+    'deciduoustree': ReturnType<typeof registerDeciduousTrees>;
     'farm_plow': ReturnType<typeof registerFarmPlow>;
-    'moon_tree': Awaited<ReturnType<typeof registerMoonTrees>>;
+    'moon_tree': ReturnType<typeof registerMoonTrees>;
     'pigking': ReturnType<typeof registerPigKings>;
     'statueglommer': ReturnType<typeof registerStatueGlommer>;
     'atrium_gate': ReturnType<typeof registerAtriumGate>;
@@ -387,10 +387,10 @@ export async function createSceneEntities(
   Managers['multiplayer_portal_moonrock'] = registerPortals(registry, 'multiplayer_portal_moonrock', worldState);
   Managers['nightmaregrowth'] = registerNightmareGrowths(registry, 'nightmaregrowth', worldState);
   Managers['beefalo'] = registerBeefalos(registry, 'beefalo', worldState);
-  Managers['evergreen'] = await registerEvergreens(registry, 'evergreen', worldState);
-  Managers['deciduoustree'] = await registerDeciduousTrees(registry, 'deciduoustree', worldState);
+  Managers['evergreen'] = registerEvergreens(registry, 'evergreen', worldState);
+  Managers['deciduoustree'] = registerDeciduousTrees(registry, 'deciduoustree', worldState);
   Managers['farm_plow'] = registerFarmPlow(registry, 'farm_plow', worldState);
-  Managers['moon_tree'] = await registerMoonTrees(registry, 'moon_tree', worldState);
+  Managers['moon_tree'] = registerMoonTrees(registry, 'moon_tree', worldState);
   Managers['pigking'] = registerPigKings(registry, 'pigking', worldState);
   Managers['statueglommer'] = registerStatueGlommer(registry, 'statueglommer', worldState);
   Managers['atrium_gate'] = registerAtriumGate(registry, 'atrium_gate', worldState);
@@ -427,9 +427,7 @@ export async function createSceneEntities(
   };
 
   return {
-    Managers, registry, prefabs, worldEvents, dispose, moonTrees: Managers['moon_tree'], worldWind,
-    evergreenForest: Managers['evergreen'],
-    deciduousForest: Managers['deciduoustree'],
+    Managers, registry, prefabs, worldEvents, dispose, worldWind,
     buildingPlacement: Managers['buildings'],
     groundItems: Managers['ground_item'],
     flowerPlanting: Managers['flower'],
@@ -1235,49 +1233,34 @@ export async function createSceneEntities(
     return beefalos;
   }
 
-  async function registerEvergreens(registry: EntityRegistry, prefabId: 'evergreen', worldState: SceneWorldState) {
-    const evergreenForest = await createEvergreenForest(`${import.meta.env.BASE_URL}dst/data/anim`, {
-      handEquipment: sceneInventory.handEquipment,
-      camera, scene, scheduler, physics: world, worldEvents, tickingarea: worldState.tickingarea,
+  function registerEvergreens(registry: EntityRegistry, prefabId: 'evergreen', worldState: SceneWorldState) {
+    prefabs.register(evergreenPrefabs({
+      handEquipment: sceneInventory.handEquipment, camera, worldEvents,
+      scheduler: scheduler ?? worldState.scheduler, fire: prefabFire,
+      spawnPrefab: (id, position) => prefabs.spawn(id, position),
       growthDuration: seconds => seconds * (worldState.season.peek().season === 'spring' ? .75 : 1),
       dropLoot: (items, position) => {
         Managers['ground_item'].flingLoot(items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position);
       },
-    });
-    scene.add(evergreenForest.group);
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
-      restore: (_, record) => evergreenForest.spawn('evergreen', new THREE.Vector3(...record.transform.position),
-        { ...record, components: { ...record.components, growable: record.components.growable! } }),
-      debugSpawn: async prefab => { evergreenForest.spawn(prefab as EvergreenSpawnId, new THREE.Vector3(player.position.x, 0, player.position.z)); },
-      exportRecords: () => evergreenForest.exportRecords().map(record => ({ prefabId: 'evergreen', record })),
-      update: (dt, quaternion) => { evergreenForest.update(dt, quaternion); },
-      renderEntities: () => evergreenForest.renderEntities,
-      dispose: () => evergreenForest.dispose(),
-    });
-    return evergreenForest;
+    }));
+    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+    return prefabs;
   }
 
-  async function registerDeciduousTrees(registry: EntityRegistry, prefabId: 'deciduoustree', worldState: SceneWorldState) {
-    const deciduousForest = await createDeciduousForest(`${import.meta.env.BASE_URL}dst/data/anim`, {
-      handEquipment: sceneInventory.handEquipment,
-      camera, scene, scheduler, physics: world, season: worldState.season, worldEvents, tickingarea: worldState.tickingarea,
-      secondsUntilNextDay: now => TUNING.TOTAL_DAY_TIME - now % TUNING.TOTAL_DAY_TIME,
+  function registerDeciduousTrees(registry: EntityRegistry, prefabId: 'deciduoustree', worldState: SceneWorldState) {
+    prefabs.register(deciduousPrefabs({
+      handEquipment: sceneInventory.handEquipment, camera, worldEvents,
+      scheduler: scheduler ?? worldState.scheduler, fire: prefabFire,
+      spawnPrefab: (id, position) => prefabs.spawn(id, position),
       growthDuration: seconds => seconds * (worldState.season.peek().season === 'spring' ? .75 : 1),
       dropLoot: (items, position) => {
         Managers['ground_item'].flingLoot(items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position);
       },
-    });
-    scene.add(deciduousForest.group);
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
-      restore: (_, record) => deciduousForest.spawn('deciduoustree', new THREE.Vector3(...record.transform.position),
-        { ...record, components: { ...record.components, deciduoustree: record.components.deciduoustree! } }),
-      debugSpawn: async prefab => { deciduousForest.spawn(prefab as DeciduousSpawnId, new THREE.Vector3(player.position.x, 0, player.position.z)); },
-      exportRecords: () => deciduousForest.exportRecords().map(record => ({ prefabId: 'deciduoustree', record })),
-      update: (dt, quaternion) => { deciduousForest.update(dt, quaternion); },
-      renderEntities: () => deciduousForest.renderEntities,
-      dispose: () => deciduousForest.dispose(),
-    });
-    return deciduousForest;
+      season: worldState.season, getWatchWorldContent: worldState.getWatchWorldContent,
+      secondsUntilNextDay: now => TUNING.TOTAL_DAY_TIME - now % TUNING.TOTAL_DAY_TIME,
+    }));
+    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+    return prefabs;
   }
 
   function registerFarmPlow(registry: EntityRegistry, prefabId: 'farm_plow', _worldState: SceneWorldState) {
@@ -1313,41 +1296,20 @@ export async function createSceneEntities(
     return farmPlow;
   }
 
-  async function registerMoonTrees(registry: EntityRegistry, prefabId: 'moon_tree', worldState: SceneWorldState) {
-    const moonTrees = await createMoonTreeManager(`${import.meta.env.BASE_URL}dst/data/anim`, {
-      handEquipment: sceneInventory.handEquipment,
-      physics: world,
-      camera,
-      scene,
-      scheduler,
-      tickingarea: worldState.tickingarea,
-      getWatchWorldContent: worldState.getWatchWorldContent,
-      worldEvents,
+  function registerMoonTrees(registry: EntityRegistry, prefabId: 'moon_tree', worldState: SceneWorldState) {
+    prefabs.register(moonTreePrefabs({
+      handEquipment: sceneInventory.handEquipment, camera, worldEvents,
+      scheduler: scheduler ?? worldState.scheduler, fire: prefabFire,
+      spawnPrefab: (id, position) => prefabs.spawn(id, position),
       growthDuration: seconds => seconds * (worldState.season.peek().season === 'spring' ? .75 : 1),
       dropLoot: (items, position) => {
-        Managers['ground_item'].flingLoot(items.map((item) => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position);
+        Managers['ground_item'].flingLoot(items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position);
       },
-    });
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
-      restore: (_, record) => moonTrees.spawn('moon_tree', new THREE.Vector3(...record.transform.position), {
-        id: record.id, transform: record.transform,
-        components: { moonTree: record.components.moonTree, growable: record.components.growable, moonTreeTimer: record.components.moonTreeTimer },
-      }),
-      debugSpawn: async id => { moonTrees.spawn(id, new THREE.Vector3(player.position.x, 0, player.position.z)); },
-      exportRecords: () => moonTrees.exportRecords().map(record => ({ prefabId: 'moon_tree', record })),
-      update: dt => moonTrees.update(dt),
-      renderEntities: () => moonTrees.renderEntities,
-      dispose: () => moonTrees.dispose(),
-    });
-    registry.register(PREFAB_DEFINITIONS.moonTreeSaplings, {
-      restore: (_, record) => moonTrees.spawnSapling(new THREE.Vector3(...record.transform.position),
-        { ...record, components: { saplingTimer: record.components.saplingTimer! } }),
-      debugSpawn: async () => { moonTrees.spawnSapling(new THREE.Vector3(player.position.x, 0, player.position.z)); },
-      spawnPrefab: { moonbutterfly_sapling: position => moonTrees.spawnSapling(position) },
-      exportRecords: () => moonTrees.exportSaplings().map(record => ({ prefabId: 'moonbutterfly_sapling', record })),
-      dispose() {},
-    });
-    return moonTrees;
+      getWatchWorldContent: worldState.getWatchWorldContent,
+    }));
+    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+    registry.registerPrefabs(PREFAB_DEFINITIONS.moonTreeSaplings);
+    return prefabs;
   }
 
   function registerPigKings(registry: EntityRegistry, prefabId: 'pigking', worldState: SceneWorldState) {

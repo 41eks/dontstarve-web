@@ -47,6 +47,17 @@ const FX_PREFABS = {
   lightning: { archive: 'lightning.zip', bank: 'lightning', anim: 'anim', sound: 'dontstarve/rain/thunder_close', scale: 2 },
   // fx.lua halloween_moonpuff: bank fx_moon_tea, build moon_tea_fx, clip puff, FinalOffset3, fireAddFuel (bloom is not rendered).
   halloween_moonpuff: { archive: 'moon_tea_fx.zip', bank: 'fx_moon_tea', anim: 'puff', sound: 'dontstarve/common/fireAddFuel', finalOffset: 3 },
+  // fx.lua: what chopping a tree throws off.
+  pine_needles_chop: { archive: 'pine_needles.zip', bank: 'pine_needles', anim: 'chop' },
+  tree_petal_fx_chop: { archive: 'tree_petal_fx.zip', bank: 'tree_petal_fx', anim: 'chop' },
+  green_leaves: { archive: 'tree_leaf_fx_green.zip', bank: 'tree_leaf_fx', anim: 'fall', sound: 'dontstarve_DLC001/fall/leaf_rustle' },
+  green_leaves_chop: { archive: 'tree_leaf_fx_green.zip', bank: 'tree_leaf_fx', anim: 'chop', sound: 'dontstarve_DLC001/fall/leaf_rustle' },
+  red_leaves: { archive: 'tree_leaf_fx_red.zip', bank: 'tree_leaf_fx', anim: 'fall', sound: 'dontstarve_DLC001/fall/leaf_rustle' },
+  red_leaves_chop: { archive: 'tree_leaf_fx_red.zip', bank: 'tree_leaf_fx', anim: 'chop', sound: 'dontstarve_DLC001/fall/leaf_rustle' },
+  orange_leaves: { archive: 'tree_leaf_fx_orange.zip', bank: 'tree_leaf_fx', anim: 'fall', sound: 'dontstarve_DLC001/fall/leaf_rustle' },
+  orange_leaves_chop: { archive: 'tree_leaf_fx_orange.zip', bank: 'tree_leaf_fx', anim: 'chop', sound: 'dontstarve_DLC001/fall/leaf_rustle' },
+  yellow_leaves: { archive: 'tree_leaf_fx_yellow.zip', bank: 'tree_leaf_fx', anim: 'fall', sound: 'dontstarve_DLC001/fall/leaf_rustle' },
+  yellow_leaves_chop: { archive: 'tree_leaf_fx_yellow.zip', bank: 'tree_leaf_fx', anim: 'chop', sound: 'dontstarve_DLC001/fall/leaf_rustle' },
   sanity_raise: { archive: 'blocker_sanity_fx.zip', bank: 'blocker_sanity_fx', anim: 'raise', opacity: .5 },
   sanity_lower: { archive: 'blocker_sanity_fx.zip', bank: 'blocker_sanity_fx', anim: 'lower', opacity: .5 },
 } as const satisfies Record<string, FxDefinition>;
