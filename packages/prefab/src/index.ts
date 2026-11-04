@@ -39,7 +39,8 @@ export {
   type StorageBuildingId, type BuildingContainerDefinition,
 } from './containers';
 export { isPlayerNearby, PLAYER_PROXIMITY_ENTER_DISTANCE, PLAYER_PROXIMITY_EXIT_DISTANCE } from './playerProximity';
-export { Locomotor, findGroundPath, setupLocomotorInput, type LocomotorOptions, type GroundPathOptions } from './locomotor';
+export { Locomotor, findGroundPath, GroundPathSearch, setupLocomotorInput, type LocomotorOptions, type GroundPathOptions } from './locomotor';
+export { Pathfinder, STATUS_CALCULATING, STATUS_FOUNDPATH, STATUS_NOPATH, type FoundPath, type PathCaps, type PathfinderMap, type SearchStatus } from './pathfinder';
 export {
   FIRE_PIT_ID, FIRE_PIT_PLACER, FirePitInstance, firePitPrefabs, type FirePitId,
 } from './firepit';

@@ -94,66 +94,117 @@ function popNode(heap: PathNode[]): PathNode {
     return top;
 }
 
-/** Searches the XZ plane; the host supplies map boundaries and physical obstacles. */
-export function findGroundPath(
-    start: THREE.Vector3,
-    target: THREE.Vector3,
-    { isWalkable, cellSize = 2, maxVisited = 4096 }: GroundPathOptions,
-): readonly THREE.Vector3[] | null {
-    if (!Number.isFinite(cellSize) || cellSize <= 0 || !Number.isSafeInteger(maxVisited) || maxVisited <= 0) {
-        throw new RangeError('Invalid ground path search limits');
-    }
-    const sample = new THREE.Vector3();
-    const clearSegment = (from: THREE.Vector3, to: THREE.Vector3) => {
-        const steps = Math.max(1, Math.ceil(Math.hypot(to.x - from.x, to.z - from.z) / (cellSize / 2)));
-        for (let i = 1; i <= steps; i++) {
-            sample.lerpVectors(from, to, i / steps);
-            if (!isWalkable(sample)) return false;
-        }
-        return true;
-    };
-    if (!isWalkable(target)) return null;
-    if (clearSegment(start, target)) return [target.clone()];
+/** A search over the XZ plane that runs a few nodes at a time; the host supplies map boundaries and obstacles. */
+export class GroundPathSearch {
+    /** Undefined while calculating; null when the destination cannot be reached within the search's limit. */
+    result: readonly THREE.Vector3[] | null | undefined;
+    private readonly start: THREE.Vector3;
+    private readonly target: THREE.Vector3;
+    private readonly isWalkable: GroundPathOptions['isWalkable'];
+    private readonly cellSize: number;
+    private readonly maxVisited: number;
+    private readonly sample = new THREE.Vector3();
+    private readonly open: PathNode[] = [];
+    private readonly costs = new Map<number, number>();
+    private visited = 0;
+    private order = 0;
+    private started = false;
 
-    const point = (node: PathNode) => new THREE.Vector3(start.x + node.x * cellSize, target.y, start.z + node.z * cellSize);
-    const heuristic = (x: number, z: number) => Math.hypot(start.x + x * cellSize - target.x, start.z + z * cellSize - target.z);
-    // Grid offsets stay within ±maxVisited of the start, far inside the key's 2^20 stride.
-    const nodeKey = (x: number, z: number) => x * 0x100000 + z;
-    let order = 0;
-    const open: PathNode[] = [{ x: 0, z: 0, cost: 0, score: heuristic(0, 0), order: order++ }];
-    const costs = new Map<number, number>([[nodeKey(0, 0), 0]]);
-    let visited = 0;
-    while (open.length > 0 && visited < maxVisited) {
-        const current = popNode(open);
-        if (current.cost !== costs.get(nodeKey(current.x, current.z))) continue;
-        visited += 1;
-        const currentPoint = point(current);
-        if (heuristic(current.x, current.z) <= cellSize * 1.5 && clearSegment(currentPoint, target)) {
-            const path = [target.clone()];
-            for (let node: PathNode | undefined = current; node?.parent; node = node.parent) path.push(point(node));
-            return path.reverse();
+    constructor(start: THREE.Vector3, target: THREE.Vector3, { isWalkable, cellSize = 2, maxVisited = 4096 }: GroundPathOptions) {
+        if (!Number.isFinite(cellSize) || cellSize <= 0 || !Number.isSafeInteger(maxVisited) || maxVisited <= 0) {
+            throw new RangeError('Invalid ground path search limits');
         }
+        this.start = start.clone(); this.target = target.clone();
+        this.isWalkable = isWalkable; this.cellSize = cellSize; this.maxVisited = maxVisited;
+    }
+
+    /** Visits up to `budget` nodes and returns how many it used; the search has finished once `result` is set. */
+    advance(budget: number): number {
+        if (this.result !== undefined) return 0;
+        if (!this.started && !this.begin()) return 0;
+        const { open, costs, cellSize, target } = this;
+        let used = 0;
+        while (used < budget) {
+            if (open.length === 0 || this.visited >= this.maxVisited) { this.result = null; break; }
+            const current = popNode(open);
+            if (current.cost !== costs.get(nodeKey(current.x, current.z))) continue;
+            this.visited += 1;
+            used += 1;
+            const currentPoint = this.point(current);
+            if (this.heuristic(current.x, current.z) <= cellSize * 1.5 && this.clearSegment(currentPoint, target)) {
+                const path = [target.clone()];
+                for (let node: PathNode | undefined = current; node?.parent; node = node.parent) path.push(this.point(node));
+                this.result = path.reverse();
+                break;
+            }
+            this.expand(current, currentPoint);
+        }
+        return used;
+    }
+
+    /** The checks that need no search. */
+    private begin(): boolean {
+        this.started = true;
+        if (!this.isWalkable(this.target)) { this.result = null; return false; }
+        if (this.clearSegment(this.start, this.target)) { this.result = [this.target.clone()]; return false; }
+        this.open.push({ x: 0, z: 0, cost: 0, score: this.heuristic(0, 0), order: this.order++ });
+        this.costs.set(nodeKey(0, 0), 0);
+        return true;
+    }
+
+    private expand(current: PathNode, currentPoint: THREE.Vector3): void {
         for (let dx = -1; dx <= 1; dx++) {
             for (let dz = -1; dz <= 1; dz++) {
                 if (dx === 0 && dz === 0) continue;
                 const x = current.x + dx;
                 const z = current.z + dz;
-                const cost = current.cost + Math.hypot(dx, dz) * cellSize;
+                const cost = current.cost + Math.hypot(dx, dz) * this.cellSize;
                 const key = nodeKey(x, z);
-                if (cost >= (costs.get(key) ?? Infinity)) continue;
-                const next = { x, z, cost, score: cost + heuristic(x, z), order: order++, parent: current };
-                const nextPoint = point(next);
-                if (!isWalkable(nextPoint) || !clearSegment(currentPoint, nextPoint)) continue;
+                if (cost >= (this.costs.get(key) ?? Infinity)) continue;
+                const next = { x, z, cost, score: cost + this.heuristic(x, z), order: this.order++, parent: current };
+                const nextPoint = this.point(next);
+                if (!this.isWalkable(nextPoint) || !this.clearSegment(currentPoint, nextPoint)) continue;
                 // Do not cut diagonally through blocked corners.
                 if (dx !== 0 && dz !== 0 && (
-                    !isWalkable(point({ ...current, x })) || !isWalkable(point({ ...current, z }))
+                    !this.isWalkable(this.point({ ...current, x })) || !this.isWalkable(this.point({ ...current, z }))
                 )) continue;
-                costs.set(key, cost);
-                pushNode(open, next);
+                this.costs.set(key, cost);
+                pushNode(this.open, next);
             }
         }
     }
-    return null;
+
+    private point(node: PathNode): THREE.Vector3 {
+        return new THREE.Vector3(this.start.x + node.x * this.cellSize, this.target.y, this.start.z + node.z * this.cellSize);
+    }
+
+    private heuristic(x: number, z: number): number {
+        return Math.hypot(this.start.x + x * this.cellSize - this.target.x, this.start.z + z * this.cellSize - this.target.z);
+    }
+
+    private clearSegment(from: THREE.Vector3, to: THREE.Vector3): boolean {
+        return isClearSegment(from, to, this.cellSize / 2, this.isWalkable, this.sample);
+    }
+}
+
+// Grid offsets stay within ±maxVisited of the start, far inside the key's 2^20 stride.
+const nodeKey = (x: number, z: number) => x * 0x100000 + z;
+
+/** Whether every point sampled along a segment, each `spacing` apart at most, is walkable. */
+export function isClearSegment(from: THREE.Vector3, to: THREE.Vector3, spacing: number, isWalkable: GroundPathOptions['isWalkable'], sample = new THREE.Vector3()): boolean {
+    const steps = Math.max(1, Math.ceil(Math.hypot(to.x - from.x, to.z - from.z) / spacing));
+    for (let i = 1; i <= steps; i++) {
+        sample.lerpVectors(from, to, i / steps);
+        if (!isWalkable(sample)) return false;
+    }
+    return true;
+}
+
+/** The whole search at once. */
+export function findGroundPath(start: THREE.Vector3, target: THREE.Vector3, options: GroundPathOptions): readonly THREE.Vector3[] | null {
+    const search = new GroundPathSearch(start, target, options);
+    while (search.result === undefined) search.advance(Infinity);
+    return search.result;
 }
 
 export interface LocomotorOptions {
