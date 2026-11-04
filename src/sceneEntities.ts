@@ -49,7 +49,7 @@ import { DragonflyManager } from '@dontstarve-web/prefab/dragonfly';
 import { DragonflySpawnerManager } from '@dontstarve-web/prefab/dragonfly_spawner';
 import { SkeletonManager, type SkeletonId } from '@dontstarve-web/prefab/skeleton';
 import { MarbleBeanSaplingManager, MARBLEBEAN_SAPLING_ID } from '@dontstarve-web/prefab/marblebean_sapling';
-import { RockAvocadoSaplingManager, ROCK_AVOCADO_SAPLING_ID } from '@dontstarve-web/prefab/rock_avocado_fruit_sprout_sapling';
+import { rockAvocadoSaplingPrefabs } from '@dontstarve-web/prefab/rock_avocado_fruit_sprout_sapling';
 import { rockAvocadoBushPrefabs } from '@dontstarve-web/prefab/rock_avocado_bush';
 import { berrybushPrefabs } from '@dontstarve-web/prefab/berrybush';
 import { monkeytailPrefabs } from '@dontstarve-web/prefab/monkeytail';
@@ -967,22 +967,15 @@ export async function createSceneEntities(
     return prefabs;
   }
 
-  function registerRockAvocadoSaplings(registry: EntityRegistry, prefabId: 'rock_avocado_fruit_sprout_sapling', _worldState: SceneWorldState) {
-    const rockAvocadoSaplings = new RockAvocadoSaplingManager(scene, {
+  function registerRockAvocadoSaplings(registry: EntityRegistry, prefabId: 'rock_avocado_fruit_sprout_sapling', worldState: SceneWorldState) {
+    prefabs.register(rockAvocadoSaplingPrefabs({
       handEquipment: sceneInventory.handEquipment,
-      scheduler, spawnPrefab: (id, position) => prefabs.spawn(id, position), tickingarea: worldState.tickingarea,
+      scheduler: scheduler ?? worldState.scheduler, fire: prefabFire,
+      spawnPrefab: (id, position) => prefabs.spawn(id, position),
       spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
-    });
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
-      restore: (_, record) => rockAvocadoSaplings.spawn(new THREE.Vector3(...record.transform.position), record),
-      debugSpawn: () => rockAvocadoSaplings.spawn(player.position.clone()),
-      spawnPrefab: { [ROCK_AVOCADO_SAPLING_ID]: position => rockAvocadoSaplings.spawn(position) },
-      exportRecords: () => rockAvocadoSaplings.exportRecords().map(record => ({ prefabId: ROCK_AVOCADO_SAPLING_ID, record })),
-      update: (dt, quaternion) => rockAvocadoSaplings.update(dt, quaternion),
-      renderEntities: () => rockAvocadoSaplings.renderEntities,
-      dispose: () => rockAvocadoSaplings.dispose(),
-    });
-    return rockAvocadoSaplings;
+    }));
+    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+    return prefabs;
   }
 
   function registerBerrybushes(registry: EntityRegistry, prefabId: 'berrybush', worldState: SceneWorldState) {

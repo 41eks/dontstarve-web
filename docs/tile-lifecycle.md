@@ -27,7 +27,7 @@
 
 visual 由驻留对象的私有 signal 持有，普通 `createEffect` 在加载、卸载和换肤后切换矩阵更新入口，沿用现有异步调度。空 visual 的根节点不参与每帧渲染矩阵计算或缓存比较，世界坐标需要通过显式 `updateWorldMatrix()` 查询刷新；唤醒后强制刷新矩阵。实体脚点、组件和逻辑计时器独立保留，附加 FX 子节点仍按常规更新。永久移除清理 effect 和矩阵入口。
 
-花朵、`marbleshrub`、`marblebean_sapling` 和 `rock_avocado_fruit_sprout_sapling` 也使用 `ResidentSprite`，场景将所属世界的 `tickingarea` 注入各 manager。每个 manager 只拥有一份 `ArchiveSpriteAssets` 和预载入口，植物使用 `instancedAnimations: 'all'`，非循环动画仍保持原有完成／末帧语义。旧路径通过 `art` effect 恢复相机朝向；大理石灌木现由 display 从 sprite json 恢复形状、明度与雪层声明。休眠保留 Pickable、Workable、Growable、命名 timer、碰撞登记和小地图；生长、破土完成及开采后移除通过游戏时间调度器执行。火焰 visual 和声音按活动状态释放，燃烧 timer 继续。花朵列表和存档由逻辑记录提供，渲染条目只包含已加载 visual。
+花朵、`marbleshrub` 和 `marblebean_sapling` 也使用 `ResidentSprite`；`rock_avocado_fruit_sprout_sapling` 已由 `PrefabEntityManager` 管理，活动区、显示和存档按实体统一处理，场景将所属世界的 `tickingarea` 注入各 manager。每个 manager 只拥有一份 `ArchiveSpriteAssets` 和预载入口，植物使用 `instancedAnimations: 'all'`，非循环动画仍保持原有完成／末帧语义。旧路径通过 `art` effect 恢复相机朝向；大理石灌木现由 display 从 sprite json 恢复形状、明度与雪层声明。休眠保留 Pickable、Workable、Growable、命名 timer、碰撞登记和小地图；生长、破土完成及开采后移除通过游戏时间调度器执行。火焰 visual 和声音按活动状态释放，燃烧 timer 继续。花朵列表和存档由逻辑记录提供，渲染条目只包含已加载 visual。
 
 墙体通过 `createStaticSpriteFactory()` 按基础 build 和控制器配置共享 atlas 与帧几何，皮肤 build 由 display 从共享资产所有者加载，`ResidentSpriteController` 保留实体根节点和健康值决定的静态姿态。`showImage()` / `setFacing()`、草墙颜色和预览透明度由 prefab 的 `art` effect 重新应用；预览的私有材质不影响已建墙。栅栏通过 `createSharedArchiveSprite()` 和 `ResidentSprite` 驻留，保留宽／窄 bank、旋转、皮肤、实体和组件；预览仍在两个 bank 间切换；逻辑栅栏把皮肤声明同步给子 sprite，display 应用 build，保留动画与回调。两者只在放置或读档定位后用 `watchTileActivity()` 绑定活动区，休眠不注销物理或清除组件。栅栏燃烧计时和热传播继续由组件更新，火焰 visual、声音和光照随活动区释放／恢复，燃烧完成仍可在休眠时移除实体。所有实体与预览先释放，manager 再统一释放共享 source。
 

@@ -7,6 +7,7 @@ DST 场景预制体。该包基于 `@dontstarve-web/animation` 组合具体资�
 - `createWilsonPlayer` / `createWilsonPlayerPrefab`
 - `PigKingManager`（`pigking`）
 - `placeStaticLayout`（`staticLayout`）：`default_pigking` 静态布局的地皮与岩石坐标，由地图生成层登记；`NightmareRockManager`（`nightmarerock`）对应 `sanityrock` / `insanityrock`。
+- `rockAvocadoSaplingPrefabs`：石果萌芽的 `PrefabEntityDefinition`，由应用层的 `PrefabEntityManager` 注册。
 - `moonTreePrefabs`、`evergreenPrefabs`、`deciduousPrefabs`：月树与幼苗、常青树、桦树的 `PrefabEntityDefinition`，由应用层的 `PrefabEntityManager` 注册；不生成森林
 - `TorchController`：`torch.lua` 的装备点燃、卸下熄灭、燃料消耗及耗尽移除；燃料通过调用方的权威状态读写接口保存，独立的只读 `burning` signal 发布燃烧状态，照明通过同步订阅更新。signal 原语来自公共包 `@dontstarve-web/signals`。
 - `@dontstarve-web/animation/residentSprite` 的 `ResidentSprite` / `ResidentSpriteController`：固定实体的 visual 驻留封装，保留根节点与动画请求；`ResidentEntity` 记录稳定的身份和脚点。常青树、桦树、月树和蘑菇树通过 `PrefabInstance` + `PrefabDisplay` 与 `watchTileActivity()` 加载／释放 visual，不重建实体或 Workable。

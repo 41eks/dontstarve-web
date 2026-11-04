@@ -12,7 +12,9 @@ import { ItemEntity } from '../../inventory/src';
 import { FlowerInstance, FlowerPlanting } from '../../prefab/src/flower';
 import { MarbleShrubManager } from '../../prefab/src/marbleshrub';
 import { MarbleBeanSaplingManager } from '../../prefab/src/marblebean_sapling';
-import { RockAvocadoSaplingManager } from '../../prefab/src/rock_avocado_fruit_sprout_sapling';
+import { rockAvocadoSaplingPrefabs, ROCK_AVOCADO_SAPLING_ID } from '../../prefab/src/rock_avocado_fruit_sprout_sapling';
+import { FireFxHost } from '../../prefab/src/treeFire';
+import { prefabManager } from './prefabManagerFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import type { WorldContext, WorldEvents } from '../../prefab/src/worldContext';
@@ -146,28 +148,30 @@ it('keeps a sprout completion task alive without visual reload and cancels a sec
   const env = environment();
   const spawnBush = vi.fn();
   const bushes = { spawn: (_prefab: string, position: THREE.Vector3) => { spawnBush(position.clone()); return new THREE.Group(); } };
-  const sprouts = new RockAvocadoSaplingManager(env.scene, { scheduler: env.scheduler, tickingarea: env.tickingarea, spawnPrefab: (id, position) => bushes.spawn(id, position), spawnGroundItem: env.spawnGroundItem });
+  const displays = new PrefabDisplayGroup(env.scene), fire = FireFxHost.create('/dst/data/anim');
+  const sprouts = prefabManager(displays, '/dst/data/anim', { scheduler: env.scheduler, tickingarea: env.tickingarea, fire,
+    spawnPrefab: (id: string, position: ReadonlyVector3) => bushes.spawn(id, position as THREE.Vector3), spawnGroundItem: env.spawnGroundItem }, rockAvocadoSaplingPrefabs);
   try {
-    const model = await drawn(sprouts.spawn(new THREE.Vector3(12, 0, 24)));
-    const sprite = prefabInstance(model)!.sprite as SpriteState;
-    const timer = (findActionEntity(model)?.components ?? prefabInstance(model)!.components).timer;
+    const sprout = sprouts.spawn(ROCK_AVOCADO_SAPLING_ID, new THREE.Vector3(12, 0, 24));
+    await drawn(sprout.transform.model);
+    const sprite = sprout.sprite, timer = sprout.components.timer;
     env.awake.set(false); await settle();
     expect(sprite.loaded).toBe(false);
     env.scheduler.advance(400);
-    expect(sprouts.exportRecords()[0].components.saplingTimer!.timers.grow.timeleft).toBe(1100);
+    expect(sprouts.exportRecords()[0].record.components.saplingTimer!.timers.grow.timeleft).toBe(1100);
     env.scheduler.advance(1100);
-    const completion = model.userData.saplingState.completionTimer;
-    const snapshot = completion.peek();
+    const completion = sprout.seedGrowth.snapshot;
+    const snapshot = completion.peek() as { status: string; endTime: number };
     expect(snapshot.status).toBe('scheduled'); expect(spawnBush).not.toHaveBeenCalled();
     env.scheduler.advanceTo(snapshot.endTime);
     expect(spawnBush).toHaveBeenCalledExactlyOnceWith(new THREE.Vector3(12, 0, 24));
     expect(sprouts.exportRecords()).toEqual([]); expect(completion.peek().status).toBe('stopped');
     expect(timer.snapshot('grow').peek().status).toBe('expired');
-    const second = await drawn(sprouts.spawn(new THREE.Vector3(24, 0, 24))); await settle();
-    expect((prefabInstance(second)!.sprite as SpriteState).loaded).toBe(false);
+    const second = sprouts.spawn(ROCK_AVOCADO_SAPLING_ID, new THREE.Vector3(24, 0, 24)); await settle();
+    expect(second.sprite.loaded).toBe(false);
     expect(workTargets('DIG')[0].work()).toBe(true);
     env.awake.set(true); env.scheduler.advance(2000); await settle();
-    expect(spawnBush).toHaveBeenCalledOnce(); expect(meshes(second)).toEqual([]);
+    expect(spawnBush).toHaveBeenCalledOnce(); expect(meshes(second.transform.model)).toEqual([]);
     expect(env.spawned).toHaveBeenCalledWith('rock_avocado_fruit_sprout', new THREE.Vector3(24, 0, 24));
-  } finally { sprouts.dispose(); env.dispose(); }
+  } finally { sprouts.dispose(); displays.dispose(); fire.dispose(); env.dispose(); }
 });
