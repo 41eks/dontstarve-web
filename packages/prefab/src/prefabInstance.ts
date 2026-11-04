@@ -102,6 +102,10 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   physicsRadiusOverride?: number;
   /** Deployable smart spacing, in world units. */
   deploySmartRadius?: number;
+  /** inst._groundhole_*: the ring map.lua's IsGroundTargetBlocked refuses, in world units. */
+  _groundhole_innerradius?: number;
+  _groundhole_outerradius?: number;
+  _groundhole_rangeoverride?: number;
   /** A tree blocks placement as a logical entity, including while its visual sleeps out of the scene. */
   logicalPlacement?: boolean;
   private physicsBinding?: PhysicsBinding;

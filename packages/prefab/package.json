@@ -66,6 +66,7 @@
     "./marbleshrub": "./src/marbleshrub.ts",
     "./archive_props": "./src/archive_props.ts",
     "./cave_entrance": "./src/cave_entrance.ts",
+    "./cave_hole": "./src/cave_hole.ts",
     "./cave_exit": "./src/cave_exit.ts",
     "./grotto_pool": "./src/grotto_pool.ts",
     "./mushtree": "./src/mushtree.ts",

@@ -475,6 +475,7 @@
     "pighead",
     "archive_moon_statue",
     "cave_exit",
+    "cave_hole",
     "cave_entrance",
     "cave_entrance_open",
     "mushtree_moon",
@@ -715,6 +716,10 @@
     "cave_exit": {
       "source": 10,
       "imported": 10
+    },
+    "cave_hole": {
+      "source": 15,
+      "imported": 15
     },
     "cave_entrance": {
       "source": 0,
@@ -3724,6 +3729,171 @@
         531.68
       ],
       "sourceNode": "CaveExitTask7:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_cave_hole_index_000001",
+      "prefab": "cave_hole",
+      "sourceIndex": 1,
+      "sourcePosition": [
+        162.37,
+        0,
+        -506.44
+      ],
+      "sourceNode": "AtriumMaze:4:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_cave_hole_index_000002",
+      "prefab": "cave_hole",
+      "sourceIndex": 2,
+      "sourcePosition": [
+        261.56,
+        0,
+        -418.38
+      ],
+      "sourceNode": "AtriumMaze:BG_32:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_cave_hole_index_000003",
+      "prefab": "cave_hole",
+      "sourceIndex": 3,
+      "sourcePosition": [
+        188.5,
+        0,
+        -379.32
+      ],
+      "sourceNode": "AtriumMaze:7:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_cave_hole_index_000004",
+      "prefab": "cave_hole",
+      "sourceIndex": 4,
+      "sourcePosition": [
+        -230.15,
+        0,
+        234.93
+      ],
+      "sourceNode": "Military:5:MilitaryEntrance"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_cave_hole_index_000005",
+      "prefab": "cave_hole",
+      "sourceIndex": 5,
+      "sourcePosition": [
+        368,
+        0,
+        -329
+      ],
+      "sourceNode": "Sacred:7:Spiral"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_cave_hole_index_000006",
+      "prefab": "cave_hole",
+      "sourceIndex": 6,
+      "sourcePosition": [
+        65.73,
+        0,
+        -297.2
+      ],
+      "sourceNode": "Residential2:0:RuinedCity"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_cave_hole_index_000007",
+      "prefab": "cave_hole",
+      "sourceIndex": 7,
+      "sourcePosition": [
+        197.31,
+        0,
+        -286.77
+      ],
+      "sourceNode": "AtriumMaze:8:AtriumMazeEntrance"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_cave_hole_index_000008",
+      "prefab": "cave_hole",
+      "sourceIndex": 8,
+      "sourcePosition": [
+        438.33,
+        0,
+        -582.07
+      ],
+      "sourceNode": "SacredDanger:BG_51:BGSacred"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_cave_hole_index_000009",
+      "prefab": "cave_hole",
+      "sourceIndex": 9,
+      "sourcePosition": [
+        -194.4,
+        0,
+        74.44
+      ],
+      "sourceNode": "CaveJungle:BG_52:BGWildsRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_cave_hole_index_000010",
+      "prefab": "cave_hole",
+      "sourceIndex": 10,
+      "sourcePosition": [
+        -114.47,
+        0,
+        169.98
+      ],
+      "sourceNode": "CaveJungle:BG_53:BGWildsRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_cave_hole_index_000011",
+      "prefab": "cave_hole",
+      "sourceIndex": 11,
+      "sourcePosition": [
+        -222.83,
+        0,
+        90.48
+      ],
+      "sourceNode": "CaveJungle:BG_54:BGWildsRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_cave_hole_index_000012",
+      "prefab": "cave_hole",
+      "sourceIndex": 12,
+      "sourcePosition": [
+        -233.28,
+        0,
+        178.78
+      ],
+      "sourceNode": "CaveJungle:BG_56:BGWildsRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_cave_hole_index_000013",
+      "prefab": "cave_hole",
+      "sourceIndex": 13,
+      "sourcePosition": [
+        209.73,
+        0,
+        -113.21
+      ],
+      "sourceNode": "LichenLand:BG_84:BGWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_cave_hole_index_000014",
+      "prefab": "cave_hole",
+      "sourceIndex": 14,
+      "sourcePosition": [
+        94.18,
+        0,
+        -110.67
+      ],
+      "sourceNode": "LichenLand:BG_80:BGWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_cave_hole_index_000015",
+      "prefab": "cave_hole",
+      "sourceIndex": 15,
+      "sourcePosition": [
+        129.71,
+        0,
+        1.02
+      ],
+      "sourceNode": "LichenLand:BG_82:BGWilds"
     },
     {
       "id": "dst_04E26ADB66396E8D_mushtree_moon_index_000001",

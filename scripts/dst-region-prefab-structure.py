@@ -148,6 +148,23 @@ def atrium_gate_components(data):
     return result
 
 
+def cave_hole_components(data):
+    # cave_hole.lua OnSave: allowspawn. objectspawner.lua's object GUIDs have no project owner yet, so the links are not kept.
+    if set(data) - {'allowspawn', 'objectspawner'}:
+        raise ValueError('Unsupported cave_hole save state')
+    spawner = data.get('objectspawner')
+    if spawner is not None and (not isinstance(spawner, dict) or set(spawner) != {'objects'}
+                                or not isinstance(spawner['objects'], list)
+                                or any(type(guid) is not int for guid in spawner['objects'])):
+        raise ValueError('Unsupported cave_hole objectspawner state')
+    allowspawn = data.get('allowspawn')
+    if allowspawn is None:
+        return {}
+    if type(allowspawn) is not bool:
+        raise ValueError('Unsupported cave_hole allowspawn')
+    return {'allowspawn': allowspawn}
+
+
 def cave_exit_components(data):
     # worldmigrator.lua OnSave (id/auto/linkedWorld/receivedPortal) belongs to the shard link, which is not connected yet.
     if not data:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mirror source rock world art, retaining split animation/build archives and original bytes."""
+"""Mirror source rock and cave hole world art, retaining split animation/build archives and original bytes."""
 import argparse
 import runpy
 from pathlib import Path
@@ -8,6 +8,7 @@ from pathlib import Path
 ASSETS = {
     'rocks': ['rock.zip', 'rock2.zip', 'rock_flintless.zip', 'rock7.zip', 'moonrock_shell.zip',
               'moonglass_rock.zip', 'moonglass_rock2.zip', 'moonglass_rock3.zip', 'moonglass_rock4.zip'],
+    'cave_hole': ['cave_hole.zip'],
     'cavein_boulder': ['cavein_boulder.zip', 'swap_cavein_boulder.zip'],
     'moonrockseed': ['moonrock_seed.zip'],
     'stalagmite': ['rock_stalagmite.zip'],
@@ -38,14 +39,14 @@ def main():
     # Audit every source stalagmite and moon glass bank/pose without rendering every prefab ID and rock_type.
     check_clips = runpy.run_path(str(Path(__file__).with_name('static-ground-items.py')))['check_animation_clips']
     art = {f'{bank}/{clip}': {'animationArchive': f'{bank}.zip', 'bank': bank, 'animation': clip}
-           for bank, clips in [('rock_stalagmite', ['full', 'med', 'low']),
+           for bank, clips in [('cave_hole', ['idle']), ('rock_stalagmite', ['full', 'med', 'low']),
                                *((bank, ['full', 'med', 'low']) for bank in
                                  ('moonglass_rock', 'moonglass_rock2', 'moonglass_rock3', 'moonglass_rock4')),
                                ('rock_stalagmite_tall', [stage + suffix for stage in ['full', 'med', 'low']
                                                        for suffix in ['_1', '_2']])]
            for clip in clips}
     check_clips(art, {}, args.source)
-    print(f'{"Checked" if args.check else "Imported"} {sum(map(len, ASSETS.values()))} rock animation/build archives')
+    print(f'{"Checked" if args.check else "Imported"} {sum(map(len, ASSETS.values()))} animation/build archives')
 
 
 if __name__ == '__main__':

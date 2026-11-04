@@ -46,10 +46,10 @@ export function registerPlacementEntity(model: Object3D, position: () => Readonl
     get smartRadius() { return instance?.deploySmartRadius ?? model.userData.deploySmartRadius; },
     get groundTargetRadius() {
       return hasPlacementTag(entry, 'groundtargetblocker') || hasPlacementTag(entry, 'groundhole')
-        ? model.userData.ground_target_blocker_radius ?? model.userData._groundhole_outerradius ?? instance?.getPhysicsRadius(0) ?? 0 : undefined;
+        ? model.userData.ground_target_blocker_radius ?? instance?._groundhole_outerradius ?? model.userData._groundhole_outerradius ?? instance?.getPhysicsRadius(0) ?? 0 : undefined;
     },
-    get groundHoleInnerRadius() { return model.userData._groundhole_innerradius; },
-    get groundHoleRangeOverride() { return model.userData._groundhole_rangeoverride; },
+    get groundHoleInnerRadius() { return instance?._groundhole_innerradius ?? model.userData._groundhole_innerradius; },
+    get groundHoleRangeOverride() { return instance?._groundhole_rangeoverride ?? model.userData._groundhole_rangeoverride; },
     get inventoryRadius() { return findActionEntity(model)?.components.inventoryitem ? instance?.getPhysicsRadius(.5) ?? .5 : undefined; },
     getInventoryRadius: fallback => findActionEntity(model)?.components.inventoryitem ? instance?.getPhysicsRadius(fallback) ?? fallback : undefined,
     get visible() { return isSpriteEntityVisible(model); },

@@ -10,6 +10,7 @@ import { VEGGIE_ITEM_IDS } from '@dontstarve-web/prefab/veggies';
 import { FARM_PLOW_ID, FARM_PLOW_ITEM_ID, FARM_DECOR_IDS, PLANTED_SEED_IDS } from '@dontstarve-web/prefab/farm_plow';
 import { DWARF_STAR_ID, POLAR_LIGHT_ID } from '@dontstarve-web/prefab/stafflight';
 import { BULB_PLANT_PREFABS, BULB_PLANT_VARIANTS } from '@dontstarve-web/prefab/bulb_plant';
+import { CAVE_HOLE_ID } from '@dontstarve-web/prefab/cave_hole';
 import { MOONGLASS_ROCK_ID, ROCK_ENTITY_IDS, moonglassRockArchives, rockArchives } from '@dontstarve-web/prefab/rocks';
 import { MARBLESHRUB_ID, MARBLESHRUB_SPAWN_IDS, MARBLESHRUB_MAX_GROW_TIME } from '@dontstarve-web/prefab/marbleshrub';
 import { ARCHIVE_PROP_IDS, ARCHIVE_PROP_SPAWN_IDS, ARCHIVE_MOON_STATUE_ID, ARCHIVE_RUNE_STATUE_ID } from '@dontstarve-web/prefab/archive_props';
@@ -334,6 +335,7 @@ export const PREFAB_DEFINITIONS = {
     (context.prefab === 'cavein_boulder' ? caveinBoulder : empty)(value, path, context), true,
     prefab => rockArchives(prefab)),
   moonglassRocks: definePrefabs([MOONGLASS_ROCK_ID], componentParser({ keys: ['rock_type'] }), true, (_prefab, records) => moonglassRockArchives(records)),
+  caveHoles: definePrefabs([CAVE_HOLE_ID], componentParser({ keys: ['allowspawn'] }), true, ['cave_hole.zip']),
   caveEntrances: definePrefabs(CAVE_ENTRANCE_IDS, empty, true, ['cave_entrance.zip']),
   mushroomPlants: definePrefabs(MUSHROOM_PLANT_IDS, componentParser({ keys: ['pickable', 'mushroom'] }), true, ['mushrooms.zip', 'fire.zip']),
   mushtrees: definePrefabs(MUSHTREE_IDS, componentParser({ keys: ['mushtree', 'growable'], growthStages: MUSHTREE_GROWTH_STAGES,

@@ -60,6 +60,8 @@ export interface SavedEntity {
     /** cave_fern.lua OnSave: data.anim. */
     variant?: { anim: string };
     caveinBoulder?: import('@dontstarve-web/prefab/rocks').CaveinBoulderSave;
+    /** cave_hole.lua OnSave: data.allowspawn. */
+    allowspawn?: boolean;
     /** rocks.lua on_save_moonglass: data.rock_type. */
     rock_type?: import('@dontstarve-web/prefab/rocks').MoonglassRockType;
     grottoPool?: import('@dontstarve-web/prefab/grotto_pool').GrottoPoolSaveState;

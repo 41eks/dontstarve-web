@@ -246847,6 +246847,218 @@
           "components": {}
         }
       ],
+      "cave_hole": [
+        {
+          "id": "dst_04E26ADB66396E8D_cave_hole_id_102122",
+          "transform": {
+            "position": [
+              535.11,
+              0.0,
+              1459.32
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "allowspawn": false
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_cave_hole_id_102124",
+          "transform": {
+            "position": [
+              832.68,
+              0.0,
+              1195.14
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "allowspawn": false
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_cave_hole_id_102126",
+          "transform": {
+            "position": [
+              613.5,
+              0.0,
+              1077.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "allowspawn": false
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_cave_hole_id_102128",
+          "transform": {
+            "position": [
+              -642.45,
+              0.0,
+              -764.79
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "allowspawn": false
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_cave_hole_id_102130",
+          "transform": {
+            "position": [
+              1152.0,
+              0.0,
+              927.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "allowspawn": false
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_cave_hole_id_102132",
+          "transform": {
+            "position": [
+              245.19,
+              0.0,
+              831.6
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "allowspawn": false
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_cave_hole_id_102134",
+          "transform": {
+            "position": [
+              639.93,
+              0.0,
+              800.31
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "allowspawn": false
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_cave_hole_id_102136",
+          "transform": {
+            "position": [
+              1362.99,
+              0.0,
+              1686.21
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "allowspawn": false
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_cave_hole_id_102138",
+          "transform": {
+            "position": [
+              -535.2,
+              0.0,
+              -283.32
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "allowspawn": false
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_cave_hole_id_102140",
+          "transform": {
+            "position": [
+              -295.41,
+              0.0,
+              -569.94
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "allowspawn": false
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_cave_hole_id_102142",
+          "transform": {
+            "position": [
+              -620.49,
+              0.0,
+              -331.44
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "allowspawn": false
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_cave_hole_id_102144",
+          "transform": {
+            "position": [
+              -651.84,
+              0.0,
+              -596.34
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "allowspawn": false
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_cave_hole_id_102146",
+          "transform": {
+            "position": [
+              677.19,
+              0.0,
+              279.63
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "allowspawn": false
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_cave_hole_id_102148",
+          "transform": {
+            "position": [
+              330.54,
+              0.0,
+              272.01
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "allowspawn": false
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_cave_hole_id_102150",
+          "transform": {
+            "position": [
+              437.13,
+              0.0,
+              -63.06
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "allowspawn": false
+          }
+        }
+      ],
       "mushtree_moon": [
         {
           "id": "dst_04E26ADB66396E8D_mushtree_moon_id_111220",

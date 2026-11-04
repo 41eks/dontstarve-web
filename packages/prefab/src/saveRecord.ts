@@ -37,6 +37,8 @@ export interface PlacementSaveRecord {
     moonTree?: import('./moontree').MoonTreeSaveState;
     moonTreeTimer?: import('../../componets/src/timer').NamedTimerSave;
     saplingTimer?: import('../../componets/src/timer').NamedTimerSave;
+    /** cave_hole.lua OnSave: data.allowspawn. */
+    allowspawn?: boolean;
     /** rocks.lua on_save_moonglass: data.rock_type. */
     rock_type?: import('./rocks').MoonglassRockType;
   };
