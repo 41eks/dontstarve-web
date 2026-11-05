@@ -479,6 +479,7 @@
     "archive_moon_statue",
     "cave_exit",
     "cave_hole",
+    "pillar_ruins",
     "cave_entrance",
     "cave_entrance_open",
     "mushtree_moon",
@@ -764,6 +765,10 @@
     "cave_hole": {
       "source": 15,
       "imported": 15
+    },
+    "pillar_ruins": {
+      "source": 36,
+      "imported": 36
     },
     "cave_entrance": {
       "source": 0,
@@ -5541,6 +5546,402 @@
         1.02
       ],
       "sourceNode": "LichenLand:BG_82:BGWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000001",
+      "prefab": "pillar_ruins",
+      "sourceIndex": 1,
+      "sourcePosition": [
+        406,
+        0,
+        -466
+      ],
+      "sourceNode": "Sacred:BG_10:Blank"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000002",
+      "prefab": "pillar_ruins",
+      "sourceIndex": 2,
+      "sourcePosition": [
+        442.12,
+        0,
+        -466
+      ],
+      "sourceNode": "Sacred:4:SacredBarracks"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000003",
+      "prefab": "pillar_ruins",
+      "sourceIndex": 3,
+      "sourcePosition": [
+        402.65,
+        0,
+        -597.26
+      ],
+      "sourceNode": "SacredDanger:BG_51:BGSacred"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000004",
+      "prefab": "pillar_ruins",
+      "sourceIndex": 4,
+      "sourcePosition": [
+        454,
+        0,
+        -422
+      ],
+      "sourceNode": "Sacred:3:SacredBarracks"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000005",
+      "prefab": "pillar_ruins",
+      "sourceIndex": 5,
+      "sourcePosition": [
+        490,
+        0,
+        -422
+      ],
+      "sourceNode": "MoreAltars:0:BrokenAltar"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000006",
+      "prefab": "pillar_ruins",
+      "sourceIndex": 6,
+      "sourcePosition": [
+        490,
+        0,
+        -458
+      ],
+      "sourceNode": "MoreAltars:BG_49:Blank"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000007",
+      "prefab": "pillar_ruins",
+      "sourceIndex": 7,
+      "sourcePosition": [
+        446,
+        0,
+        -538
+      ],
+      "sourceNode": "SacredDanger:1:Barracks"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000008",
+      "prefab": "pillar_ruins",
+      "sourceIndex": 8,
+      "sourcePosition": [
+        446,
+        0,
+        -574
+      ],
+      "sourceNode": "SacredDanger:0:SacredBarracks"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000009",
+      "prefab": "pillar_ruins",
+      "sourceIndex": 9,
+      "sourcePosition": [
+        410,
+        0,
+        -574
+      ],
+      "sourceNode": "SacredDanger:0:SacredBarracks"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000010",
+      "prefab": "pillar_ruins",
+      "sourceIndex": 10,
+      "sourcePosition": [
+        410,
+        0,
+        -537.88
+      ],
+      "sourceNode": "SacredDanger:0:SacredBarracks"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000011",
+      "prefab": "pillar_ruins",
+      "sourceIndex": 11,
+      "sourcePosition": [
+        668.06,
+        0,
+        -380.07
+      ],
+      "sourceNode": "TheLabyrinth:0:RuinedGuarden"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000012",
+      "prefab": "pillar_ruins",
+      "sourceIndex": 12,
+      "sourcePosition": [
+        644.06,
+        0,
+        -380
+      ],
+      "sourceNode": "TheLabyrinth:0:RuinedGuarden"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000013",
+      "prefab": "pillar_ruins",
+      "sourceIndex": 13,
+      "sourcePosition": [
+        644.06,
+        0,
+        -404.07
+      ],
+      "sourceNode": "TheLabyrinth:0:RuinedGuarden"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000014",
+      "prefab": "pillar_ruins",
+      "sourceIndex": 14,
+      "sourcePosition": [
+        668.06,
+        0,
+        -404.07
+      ],
+      "sourceNode": "TheLabyrinth:0:RuinedGuarden"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000015",
+      "prefab": "pillar_ruins",
+      "sourceIndex": 15,
+      "sourcePosition": [
+        -242,
+        0,
+        258
+      ],
+      "sourceNode": "Military:5:MilitaryEntrance"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000016",
+      "prefab": "pillar_ruins",
+      "sourceIndex": 16,
+      "sourcePosition": [
+        -242,
+        0,
+        222
+      ],
+      "sourceNode": "Military:5:MilitaryEntrance:BLOCKER_BLANK_1"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000017",
+      "prefab": "pillar_ruins",
+      "sourceIndex": 17,
+      "sourcePosition": [
+        -206,
+        0,
+        222
+      ],
+      "sourceNode": "Military:5:MilitaryEntrance"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000018",
+      "prefab": "pillar_ruins",
+      "sourceIndex": 18,
+      "sourcePosition": [
+        -206,
+        0,
+        258
+      ],
+      "sourceNode": "Military:5:MilitaryEntrance:BLOCKER_BLANK_2"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000019",
+      "prefab": "pillar_ruins",
+      "sourceIndex": 19,
+      "sourcePosition": [
+        -323.94,
+        0,
+        460.06
+      ],
+      "sourceNode": "SacredAltar:0:PitRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000020",
+      "prefab": "pillar_ruins",
+      "sourceIndex": 20,
+      "sourcePosition": [
+        -324,
+        0,
+        420.06
+      ],
+      "sourceNode": "SacredAltar:3:BridgeEntrance:BLOCKER_BLANK_1"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000021",
+      "prefab": "pillar_ruins",
+      "sourceIndex": 21,
+      "sourcePosition": [
+        -284,
+        0,
+        419.93
+      ],
+      "sourceNode": "SacredAltar:3:BridgeEntrance:BLOCKER_BLANK_2"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000022",
+      "prefab": "pillar_ruins",
+      "sourceIndex": 22,
+      "sourcePosition": [
+        -283.94,
+        0,
+        460.06
+      ],
+      "sourceNode": "SacredAltar:1:PitRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000023",
+      "prefab": "pillar_ruins",
+      "sourceIndex": 23,
+      "sourcePosition": [
+        -296,
+        0,
+        448.06
+      ],
+      "sourceNode": "SacredAltar:2:Altar"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000024",
+      "prefab": "pillar_ruins",
+      "sourceIndex": 24,
+      "sourcePosition": [
+        -312.07,
+        0,
+        448.06
+      ],
+      "sourceNode": "SacredAltar:2:Altar"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000025",
+      "prefab": "pillar_ruins",
+      "sourceIndex": 25,
+      "sourcePosition": [
+        -312.07,
+        0,
+        432.06
+      ],
+      "sourceNode": "SacredAltar:2:Altar"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000026",
+      "prefab": "pillar_ruins",
+      "sourceIndex": 26,
+      "sourcePosition": [
+        -296,
+        0,
+        432.12
+      ],
+      "sourceNode": "SacredAltar:2:Altar"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000027",
+      "prefab": "pillar_ruins",
+      "sourceIndex": 27,
+      "sourcePosition": [
+        542,
+        0,
+        -270
+      ],
+      "sourceNode": "MuddySacred:2:MonkeyMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000028",
+      "prefab": "pillar_ruins",
+      "sourceIndex": 28,
+      "sourcePosition": [
+        578,
+        0,
+        -270
+      ],
+      "sourceNode": "MuddySacred:1:BrokenAltar"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000029",
+      "prefab": "pillar_ruins",
+      "sourceIndex": 29,
+      "sourcePosition": [
+        578,
+        0,
+        -234
+      ],
+      "sourceNode": "MuddySacred:3:SacredBarracks"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000030",
+      "prefab": "pillar_ruins",
+      "sourceIndex": 30,
+      "sourcePosition": [
+        376,
+        0,
+        -312
+      ],
+      "sourceNode": "Sacred:7:Spiral"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000031",
+      "prefab": "pillar_ruins",
+      "sourceIndex": 31,
+      "sourcePosition": [
+        391.93,
+        0,
+        -296.13
+      ],
+      "sourceNode": "Sacred:7:Spiral"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000032",
+      "prefab": "pillar_ruins",
+      "sourceIndex": 32,
+      "sourcePosition": [
+        392.12,
+        0,
+        -328
+      ],
+      "sourceNode": "Sacred:7:Spiral"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000033",
+      "prefab": "pillar_ruins",
+      "sourceIndex": 33,
+      "sourcePosition": [
+        360.12,
+        0,
+        -328.07
+      ],
+      "sourceNode": "Sacred:7:Spiral"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000034",
+      "prefab": "pillar_ruins",
+      "sourceIndex": 34,
+      "sourcePosition": [
+        360,
+        0,
+        -296
+      ],
+      "sourceNode": "Sacred:7:Spiral"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000035",
+      "prefab": "pillar_ruins",
+      "sourceIndex": 35,
+      "sourcePosition": [
+        442,
+        0,
+        -430
+      ],
+      "sourceNode": "Sacred:4:SacredBarracks"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000036",
+      "prefab": "pillar_ruins",
+      "sourceIndex": 36,
+      "sourcePosition": [
+        406,
+        0,
+        -430
+      ],
+      "sourceNode": "Sacred:BG_6:Blank"
     },
     {
       "id": "dst_04E26ADB66396E8D_mushtree_moon_id_112684",

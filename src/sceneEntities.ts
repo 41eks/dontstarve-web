@@ -35,6 +35,7 @@ import { staffLightPrefabs } from '@dontstarve-web/prefab/stafflight';
 import { BulbPlantManager } from '@dontstarve-web/prefab/bulb_plant';
 import { RockManager, moonglassRockPrefabs } from '@dontstarve-web/prefab/rocks';
 import { caveHolePrefabs } from '@dontstarve-web/prefab/cave_hole';
+import { pillarPrefabs } from '@dontstarve-web/prefab/pillar';
 import { StaffProjectileManager } from '@dontstarve-web/prefab/staff_projectile';
 import { CaveEntranceManager, CAVES_SHARD } from '@dontstarve-web/prefab/cave_entrance';
 import { CaveExitManager, MASTER_SHARD } from '@dontstarve-web/prefab/cave_exit';
@@ -123,6 +124,7 @@ const MANAGER_DEFINITIONS = {
   'rocks': PREFAB_DEFINITIONS.rocks,
   'moonglass_rock': PREFAB_DEFINITIONS.moonglassRocks,
   'cave_hole': PREFAB_DEFINITIONS.caveHoles,
+  'pillar_ruins': PREFAB_DEFINITIONS.pillarRuins,
   'cave_entrance': PREFAB_DEFINITIONS.caveEntrances,
   'cave_exit': PREFAB_DEFINITIONS.caveExits,
   'grotto_pool': PREFAB_DEFINITIONS.grottoPools,
@@ -208,6 +210,7 @@ const SCENE_LIFECYCLE_ORDER = [
   PREFAB_DEFINITIONS.rocks,
   PREFAB_DEFINITIONS.moonglassRocks,
   PREFAB_DEFINITIONS.caveHoles,
+  PREFAB_DEFINITIONS.pillarRuins,
   PREFAB_DEFINITIONS.caveEntrances,
   PREFAB_DEFINITIONS.caveExits,
   PREFAB_DEFINITIONS.grottoPools,
@@ -276,6 +279,7 @@ export async function createSceneEntities(
     'rocks': ReturnType<typeof registerRocks>;
     'moonglass_rock': ReturnType<typeof registerMoonglassRocks>;
     'cave_hole': ReturnType<typeof registerCaveHoles>;
+    'pillar_ruins': ReturnType<typeof registerPillarRuins>;
     'cave_entrance': ReturnType<typeof registerCaveEntrances>;
     'cave_exit': ReturnType<typeof registerCaveExits>;
     'grotto_pool': ReturnType<typeof registerGrottoPools>;
@@ -358,6 +362,7 @@ export async function createSceneEntities(
   Managers['rocks'] = registerRocks(registry, 'rocks', worldState);
   Managers['moonglass_rock'] = registerMoonglassRocks(registry, 'moonglass_rock', worldState);
   Managers['cave_hole'] = registerCaveHoles(registry, 'cave_hole', worldState);
+  Managers['pillar_ruins'] = registerPillarRuins(registry, 'pillar_ruins');
   /** ms_playerdespawnandmigrate: the destination shard is the cluster's other save, loaded by reloading the page. */
   const shardLink: WorldMigratorShard = {
     isWorldAvailable: shard => shard === CAVES_SHARD || shard === MASTER_SHARD,
@@ -741,6 +746,12 @@ export async function createSceneEntities(
       getWatchWorldContent: worldState.getWatchWorldContent,
       spawnPrefab: (id, position) => prefabs.spawn(id, position),
     }));
+    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+    return prefabs;
+  }
+
+  function registerPillarRuins(registry: EntityRegistry, prefabId: 'pillar_ruins') {
+    prefabs.register(pillarPrefabs());
     registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
     return prefabs;
   }

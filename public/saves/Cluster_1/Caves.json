@@ -247059,6 +247059,440 @@
           }
         }
       ],
+      "pillar_ruins": [
+        {
+          "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000001",
+          "transform": {
+            "position": [
+              1266.0,
+              0.0,
+              1338.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000002",
+          "transform": {
+            "position": [
+              1374.36,
+              0.0,
+              1338.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000003",
+          "transform": {
+            "position": [
+              1255.95,
+              0.0,
+              1731.78
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000004",
+          "transform": {
+            "position": [
+              1410.0,
+              0.0,
+              1206.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000005",
+          "transform": {
+            "position": [
+              1518.0,
+              0.0,
+              1206.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000006",
+          "transform": {
+            "position": [
+              1518.0,
+              0.0,
+              1314.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000007",
+          "transform": {
+            "position": [
+              1386.0,
+              0.0,
+              1554.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000008",
+          "transform": {
+            "position": [
+              1386.0,
+              0.0,
+              1662.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000009",
+          "transform": {
+            "position": [
+              1278.0,
+              0.0,
+              1662.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000010",
+          "transform": {
+            "position": [
+              1278.0,
+              0.0,
+              1553.64
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000011",
+          "transform": {
+            "position": [
+              2052.18,
+              0.0,
+              1080.21
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000012",
+          "transform": {
+            "position": [
+              1980.18,
+              0.0,
+              1080.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000013",
+          "transform": {
+            "position": [
+              1980.18,
+              0.0,
+              1152.21
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000014",
+          "transform": {
+            "position": [
+              2052.18,
+              0.0,
+              1152.21
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000015",
+          "transform": {
+            "position": [
+              -678.0,
+              0.0,
+              -834.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000016",
+          "transform": {
+            "position": [
+              -678.0,
+              0.0,
+              -726.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000017",
+          "transform": {
+            "position": [
+              -570.0,
+              0.0,
+              -726.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000018",
+          "transform": {
+            "position": [
+              -570.0,
+              0.0,
+              -834.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000019",
+          "transform": {
+            "position": [
+              -923.82,
+              0.0,
+              -1440.18
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000020",
+          "transform": {
+            "position": [
+              -924.0,
+              0.0,
+              -1320.18
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000021",
+          "transform": {
+            "position": [
+              -804.0,
+              0.0,
+              -1319.79
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000022",
+          "transform": {
+            "position": [
+              -803.82,
+              0.0,
+              -1440.18
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000023",
+          "transform": {
+            "position": [
+              -840.0,
+              0.0,
+              -1404.18
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000024",
+          "transform": {
+            "position": [
+              -888.21,
+              0.0,
+              -1404.18
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000025",
+          "transform": {
+            "position": [
+              -888.21,
+              0.0,
+              -1356.18
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000026",
+          "transform": {
+            "position": [
+              -840.0,
+              0.0,
+              -1356.36
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000027",
+          "transform": {
+            "position": [
+              1674.0,
+              0.0,
+              750.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000028",
+          "transform": {
+            "position": [
+              1782.0,
+              0.0,
+              750.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000029",
+          "transform": {
+            "position": [
+              1782.0,
+              0.0,
+              642.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000030",
+          "transform": {
+            "position": [
+              1176.0,
+              0.0,
+              876.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000031",
+          "transform": {
+            "position": [
+              1223.79,
+              0.0,
+              828.39
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000032",
+          "transform": {
+            "position": [
+              1224.36,
+              0.0,
+              924.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000033",
+          "transform": {
+            "position": [
+              1128.36,
+              0.0,
+              924.21
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000034",
+          "transform": {
+            "position": [
+              1128.0,
+              0.0,
+              828.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000035",
+          "transform": {
+            "position": [
+              1374.0,
+              0.0,
+              1230.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_pillar_ruins_index_000036",
+          "transform": {
+            "position": [
+              1266.0,
+              0.0,
+              1230.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        }
+      ],
       "mushtree_moon": [
         {
           "id": "dst_04E26ADB66396E8D_mushtree_moon_id_113196",

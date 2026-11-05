@@ -62,6 +62,7 @@ ENTITY_WHITELIST = {
     'archive_moon_statue': WORKABLE['archive_moon_statue_components'],
     'cave_exit': STRUCTURE['cave_exit_components'],
     'cave_hole': STRUCTURE['cave_hole_components'],
+    'pillar_ruins': STRUCTURE['pillar_ruins_components'],
     'cave_entrance': STRUCTURE['cave_entrance_components']({'worldmigrator'}),
     'cave_entrance_open': STRUCTURE['cave_entrance_components']({'worldmigrator', 'worldsettingstimer', 'childspawner'}),
     'mushtree_moon': lambda data: GROWABLE['mushtree_components'](data, False),

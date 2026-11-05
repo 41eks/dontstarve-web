@@ -165,6 +165,13 @@ def cave_hole_components(data):
     return {'allowspawn': allowspawn}
 
 
+def pillar_ruins_components(data):
+    # pillar.lua has no OnSave and adds no component that saves anything.
+    if data:
+        raise ValueError('Unsupported pillar_ruins save state')
+    return {}
+
+
 def cave_exit_components(data):
     # worldmigrator.lua OnSave (id/auto/linkedWorld/receivedPortal) belongs to the shard link, which is not connected yet.
     if not data:

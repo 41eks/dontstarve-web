@@ -397,6 +397,7 @@
     "archive_moon_statue",
     "cave_exit",
     "cave_hole",
+    "pillar_ruins",
     "cave_entrance",
     "cave_entrance_open",
     "mushtree_moon",
@@ -780,6 +781,10 @@
       "imported": 0
     },
     "cave_hole": {
+      "source": 0,
+      "imported": 0
+    },
+    "pillar_ruins": {
       "source": 0,
       "imported": 0
     },
