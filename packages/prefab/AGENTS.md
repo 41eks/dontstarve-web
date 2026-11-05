@@ -8,6 +8,7 @@
 
 | 任务涉及 | 读 | 其中最常用的规则 |
 | --- | --- | --- |
+| 查某句 Lua 对应的 TS 写法和示例，或它是否未实现 | [lua-api-map](docs/lua-api-map.md) | 先查表，再看示例；新增写法时更新表 |
 | 声明 sprite、动画、外观、皮肤、FX、transform，资源加载，活动区 | [display-declarations](docs/display-declarations.md) | prefab 只声明，不做 IO、不创建 sprite；循环动画走 `instancedAnimations`；循环方式按 Lua |
 | 实例、scene、实体事件、鼠标命中、`model.userData` | [instance-ownership](docs/instance-ownership.md) | prefab 和 manager 不持有 `scene`；事件走 `instance`；`userData` 不是数据总线 |
 | 物品、地面美术、物品栏图标、皮肤工作流 | [item-art](docs/item-art.md) | 三种美术分别按源解析；有源皮肤才支持 `reskin_tool` |
