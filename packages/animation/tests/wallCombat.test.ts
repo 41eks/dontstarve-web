@@ -21,7 +21,7 @@ import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { reskinEntity } from '../../prefab/src/reskin_tool';
 import { workTargets } from './workTargets';
 
-vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
+vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {}, isPlaying: () => true })) }));
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
   vi.stubGlobal('fetch', async (url: string) => {
@@ -197,7 +197,7 @@ it('force attacks a wall with Ctrl+F, walks into range, punches on frame 8 and r
     player.position.x = 3 + 2 * UNIT; locomotor.update(16, 1 / 30);
     expect(animation.stategraph.stateName).toBe('attack');
     expect(animation.stategraph.animationClip.key).toBe('punch');
-    expect(PlaySound).toHaveBeenCalledWith('dontstarve/wilson/attack_whoosh');
+    expect(PlaySound).toHaveBeenCalledWith('dontstarve/wilson/attack_whoosh', undefined);
     step(7);
     expect(health.currenthealth).toBe(50);
     step(1);

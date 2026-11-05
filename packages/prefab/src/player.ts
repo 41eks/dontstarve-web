@@ -19,7 +19,8 @@ import type { PickaxeTool } from './pickaxe';
 import type { PitchforkTool } from './pitchfork';
 import { createPlayerStats, equipSamePrefab, type PlayerStats, type PlayerStatsSave } from './player_common';
 import type { ShovelTool } from './shovel';
-import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
+import type { SoundEventPath } from './sound';
+import type { SoundEmitter } from './soundEmitter';
 import { MakeCharacterPhysics, WORLD_SCALE } from './standardcomponents';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { PhysicsState } from '../../componets/src/physicsState';
@@ -225,9 +226,7 @@ class WilsonController implements WilsonAnimationController {
   private handVisual?: ReturnType<typeof wornEquipmentLifecycle>;
   /** SpawnPrefab: the scene's registry, for what the player's states spawn. */
   private spawnPrefab?: (prefab: string, position: THREE.Vector3) => PrefabInstance | undefined;
-  private makeSound?: SoundHandle;
   private makeSoundActive = false;
-  private shaveSound?: SoundHandle;
   /** The player inst's combat component, read by the attack state. */
   combat?: WilsonCombat;
   private readonly instance: WilsonPlayerInstance;
@@ -237,7 +236,6 @@ class WilsonController implements WilsonAnimationController {
   private artSource?: NamedSpriteArt;
   private readonly resources: SpriteResources;
   private soulHopHost?: WilsonSoulHopHost;
-  private readonly portalSounds = new Set<SoundHandle>();
   private readonly hatAssets: HatEquipmentAssets;
   private headVisual?: ReturnType<typeof wornEquipmentLifecycle>;
   private hatKey = '';
@@ -249,7 +247,7 @@ class WilsonController implements WilsonAnimationController {
   private deathHost?: WilsonDeathHost;
   private rebirthHost?: WilsonRebirthHost;
   private fishingHost?: WilsonFishingHost;
-  private readonly namedSounds = new Map<string, SoundHandle>();
+  private readonly SoundEmitter: SoundEmitter;
   private inventory?: Parameters<typeof equipSamePrefab>[0];
 
   constructor(
@@ -259,6 +257,7 @@ class WilsonController implements WilsonAnimationController {
     sanityPercent?: ReadonlySignal<number>,
   ) {
     this.instance = instance;
+    this.SoundEmitter = instance.AddSoundEmitter({ atListener: true });
     this.resources = resources;
     this.equipmentAssets = new GroundItemAssets();
     // The sprite holds the AnimState's own json signal; the player's display follows it and loads the builds it names from the equipment assets.
@@ -282,19 +281,17 @@ class WilsonController implements WilsonAnimationController {
         setInvincible: invincible => { instance.components.health!.SetInvincible(invincible); },
       },
       get fishing() { return controller.fishingHost; },
-      playEvent: event => { PlaySound(event as SoundEventPath); },
+      playEvent: event => { this.SoundEmitter.PlaySound(event as SoundEventPath); },
       playAnimation: (clip) => this.selectAnimation(clip),
       getCombat: () => this.combat,
       playSound: (cue, castsound) => {
-        if (cue === 'attack') { PlaySound(castsound as SoundEventPath); return; }
+        if (cue === 'attack') { this.SoundEmitter.PlaySound(castsound as SoundEventPath); return; }
         if (cue === 'shave') {
-          this.shaveSound?.stop();
-          this.shaveSound = PlaySound('dontstarve/wilson/shave_LP');
+          this.SoundEmitter.PlaySound('dontstarve/wilson/shave_LP', 'shave');
           return;
         }
         if (cue === 'make') {
-          this.makeSound?.stop();
-          this.makeSound = undefined;
+          this.SoundEmitter.KillSound('make');
           this.makeSoundActive = true;
           return;
         }
@@ -303,15 +300,12 @@ class WilsonController implements WilsonAnimationController {
           : cue === 'cast' ? (castsound as SoundEventPath ?? 'dontstarve/wilson/use_gemstaff')
             : cue === 'bookLight' ? 'dontstarve/common/use_book_light' : cue === 'bookClose' ? 'dontstarve/common/use_book_close'
               : cue === 'hammer' ? 'dontstarve/wilson/hit' : 'dontstarve/wilson/use_pick_rock';
-        PlaySound(event);
+        this.SoundEmitter.PlaySound(event);
       },
-      playNamedSound: (name, event) => {
-        this.namedSounds.get(name)?.stop();
-        this.namedSounds.set(name, PlaySound(event as SoundEventPath));
-      },
-      stopNamedSound: name => { this.namedSounds.get(name)?.stop(); this.namedSounds.delete(name); },
-      isPlayingNamedSound: name => this.namedSounds.get(name)?.isPlaying() ?? false,
-      setNamedSoundVolume: (name, volume) => this.namedSounds.get(name)?.setVolume(volume),
+      playNamedSound: (name, event) => { this.SoundEmitter.PlaySound(event as SoundEventPath, name); },
+      stopNamedSound: name => { this.SoundEmitter.KillSound(name); },
+      isPlayingNamedSound: name => this.SoundEmitter.PlayingSound(name),
+      setNamedSoundVolume: (name, volume) => { this.SoundEmitter.SetVolume(name, volume); },
       showLayer: layer => this.AnimState.Show(layer),
       hideLayer: layer => this.AnimState.Hide(layer),
       clearOverrideSymbol: symbol => this.AnimState.ClearOverrideSymbol(symbol),
@@ -321,8 +315,8 @@ class WilsonController implements WilsonAnimationController {
       overrideItemSkinSymbol: (symbol, skinBuild, skinSymbol, build, sourceSymbol) =>
         this.AnimState.OverrideItemSkinSymbol(symbol, `dynamic/${skinBuild}.zip`, skinSymbol, 'player', build, sourceSymbol),
       stopSound: cue => {
-        if (cue === 'shave') { this.shaveSound?.stop(); this.shaveSound = undefined; return; }
-        this.makeSound?.stop(); this.makeSound = undefined;
+        if (cue === 'shave') { this.SoundEmitter.KillSound('shave'); return; }
+        this.SoundEmitter.KillSound('make');
         this.makeSoundActive = false;
       },
       castLight: (colour, duration, delay) => {
@@ -339,8 +333,7 @@ class WilsonController implements WilsonAnimationController {
         resetSlipperiness: () => instance.slipperyfeet?.SetCurrent(0),
         wantsToMoveForward: () => instance.wantsToMoveForward,
         playSound: (event, volume) => {
-          const handle = PlaySound(event === 'hurt' ? 'dontstarve/characters/wilson/hurt' : `dontstarve/movement/${event}`);
-          if (volume !== undefined) handle.setVolume(volume);
+          this.SoundEmitter.PlaySound(event === 'hurt' ? 'dontstarve/characters/wilson/hurt' : `dontstarve/movement/${event}`, undefined, volume);
         },
       },
       equipSamePrefab: (prefab) => this.inventory !== undefined && equipSamePrefab(this.inventory, prefab),
@@ -394,18 +387,13 @@ class WilsonController implements WilsonAnimationController {
     if (!host) {
       this.stategraph.cancelAction('BLINK');
       this.stategraph.cancelAction('BLINK_MAP');
-      for (const sound of this.portalSounds) sound.stop();
-      this.portalSounds.clear();
       this.setTint(0);
     }
     this.soulHopHost = host && {
       ...host,
       setTint: value => this.setTint(value),
       playSound: (event, volume = 1) => {
-        for (const sound of this.portalSounds) if (!sound.isPlaying()) this.portalSounds.delete(sound);
-        const sound = PlaySound(event as SoundEventPath, this.instance.position);
-        sound.setVolume(volume);
-        this.portalSounds.add(sound);
+        this.SoundEmitter.PlaySound(event as SoundEventPath, undefined, volume);
       },
     };
   }
@@ -539,8 +527,7 @@ class WilsonController implements WilsonAnimationController {
     }
     if (clip.loop) this.instance.sprite.start(clip.name); else this.instance.sprite.playOnce(clip.name);
     if (this.makeSoundActive && this.state === 'build_loop') {
-      this.makeSound?.stop();
-      this.makeSound = PlaySound('dontstarve/wilson/make_trap');
+      this.SoundEmitter.PlaySound('dontstarve/wilson/make_trap', 'make');
     }
     return animation.frames / (animation.frameRate * playbackRate);
   }
@@ -557,10 +544,7 @@ class WilsonController implements WilsonAnimationController {
     this.handVisual?.onunequip(); this.headVisual?.onunequip(); this.bodyVisual?.onunequip();
     this.cleanups.splice(0).forEach(stop => stop());
     this.bookFx.dispose(); this.fxScheduler.dispose();
-    this.makeSound?.stop(); this.shaveSound?.stop();
-    for (const sound of this.namedSounds.values()) sound.stop();
-    for (const sound of this.portalSounds) sound.stop();
-    this.namedSounds.clear(); this.portalSounds.clear();
+    this.SoundEmitter.KillAllSounds();
   }
 
   releaseAssets(): void {

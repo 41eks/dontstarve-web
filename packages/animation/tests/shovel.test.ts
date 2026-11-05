@@ -22,7 +22,7 @@ import { PlaySound } from '../../prefab/src/sound';
 import { createEquipmentExistenceState } from '../../signals/src';
 import { ItemEntity } from '../../inventory/src/entity';
 
-vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
+vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {}, isPlaying: () => true })) }));
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
@@ -130,7 +130,7 @@ it('walks into reach, commits DIG at shovel_loop frame 15, and preserves cancell
     facePlayer(animation, 'side', true); advancePlayer(animation, 1 / 30);
     expect(farm.exportDecorRecords()).toEqual([]);
     expect(tool.components.finiteuses.remaining).toBe(24.75);
-    expect(PlaySound).toHaveBeenCalledWith('dontstarve/wilson/dig');
+    expect(PlaySound).toHaveBeenCalledWith('dontstarve/wilson/dig', undefined);
     advance(animation, 60);
     farm.spawnDecor('farm_soil_debris', point, { animation: 'f3' }, 'preserved');
     const preserved = farm.exportDecorRecords();

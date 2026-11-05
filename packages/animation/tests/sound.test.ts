@@ -365,6 +365,17 @@ describe('SoundEmitter', () => {
     inst.remove();
   });
 
+  it('an emitter at the listener ignores distance, as the player does while the published listener lags behind it', async () => {
+    const s = await setup();
+    await PreloadSounds(SHOT);
+    const inst = new PrefabInstance('wilson'), emitter = inst.AddSoundEmitter({ atListener: true });
+    UpdateSoundListener(new THREE.Vector3());
+    inst.transform.setPosition(SOUND_MAX_DISTANCE * 2, 0, 0);
+    emitter.PlaySound(SHOT);
+    expect(s.gains.at(-1)!.gain.value).toBeGreaterThan(0);
+    inst.remove();
+  });
+
   it('passes parameters to the sound, by slot or as PlaySoundWithParams', async () => {
     const { s, inst, emitter } = await emitterSetup();
     emitter.PlaySoundWithParams('dontstarve/common/together/boat/damage', { intensity: .8 });

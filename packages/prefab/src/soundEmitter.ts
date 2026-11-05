@@ -8,12 +8,13 @@ import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
  * (yoth_knightwarningsound.lua, wormwarning.lua) show that an unnamed one-shot outlives its entity.
  */
 export class SoundEmitter {
-  private readonly position: ReadonlyVector3;
+  /** Unset for an emitter at the listener, which no distance attenuates. */
+  private readonly position?: ReadonlyVector3;
   private readonly named = new Map<string, SoundHandle>();
   private readonly unnamed = new Set<SoundHandle>();
   private volumeMultiplier = 1;
 
-  constructor(position: ReadonlyVector3) { this.position = position; }
+  constructor(position?: ReadonlyVector3) { this.position = position; }
 
   /** PlaySound(path, name, volume, ispredicted): `ispredicted` only concerns a network client, which the port has none of. */
   PlaySound(path: SoundEventPath, name?: string | null, volume?: number | null): void {

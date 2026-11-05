@@ -26,7 +26,7 @@ import type { WorldContext } from '../../prefab/src/worldContext';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src/slots';
 import { PlaySound } from '../../prefab/src/sound';
 
-vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
+vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {}, isPlaying: () => true })) }));
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
@@ -153,8 +153,8 @@ it('takes TILL at the point, creates one hole at till_loop frame 11, and drops a
     facePlayer(animation, 'side', true); advancePlayer(animation, 1 / 30);
     expect(farm.exportDecorRecords()).toHaveLength(1);
     advancePlayer(animation, 1 / 30);
-    expect(PlaySound).toHaveBeenCalledWith('dontstarve/wilson/dig');
-    expect(PlaySound).toHaveBeenCalledWith('dontstarve_DLC001/creatures/mole/emerge');
+    expect(PlaySound).toHaveBeenCalledWith('dontstarve/wilson/dig', undefined);
+    expect(PlaySound).toHaveBeenCalledWith('dontstarve_DLC001/creatures/mole/emerge', undefined);
     advance(animation, 60);
     expect(farm.exportDecorRecords()).toHaveLength(1);
     const preserved = farm.exportDecorRecords();

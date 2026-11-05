@@ -19,7 +19,7 @@ import { createPickupDoer } from '../../stategraphs/src/pickup';
 import { collectUseItemActions } from '../../stategraphs/src/componentactions';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}),
-  PlaySound: vi.fn(() => ({ stop() {} })) }));
+  PlaySound: vi.fn(() => ({ stop() {}, isPlaying: () => true })) }));
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
@@ -55,7 +55,7 @@ it('renders the original ground seed pose and commits quick eating once at frame
     expect(await seeds.eat(source)).toBe(true);
     for (let frame = 0; frame < 11; frame++) advancePlayer(animation, 1 / 30);
     expect(store.get(slot)?.count).toBe(2);
-    expect(PlaySound).toHaveBeenCalledWith('dontstarve/wilson/eat');
+    expect(PlaySound).toHaveBeenCalledWith('dontstarve/wilson/eat', undefined);
     advancePlayer(animation, 1 / 30);
     expect(store.get(slot)?.count).toBe(1);
     expect(stats()).toEqual({ hunger: 109.6875, health: 150, sanity: 35 });

@@ -97,10 +97,13 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   readonly light = new LightState();
   /** inst.SoundEmitter, once AddSoundEmitter made it. */
   SoundEmitter?: SoundEmitter;
-  /** inst.entity:AddSoundEmitter(): sounds keep following the transform while the display sleeps. */
-  AddSoundEmitter(): SoundEmitter {
+  /**
+   * inst.entity:AddSoundEmitter(): sounds keep following the transform while the display sleeps. The player passes
+   * `atListener`: the listener is at the player in the source, while here it is published once per 60 frames.
+   */
+  AddSoundEmitter({ atListener = false }: { atListener?: boolean } = {}): SoundEmitter {
     if (this.SoundEmitter) return this.SoundEmitter;
-    const emitter = this.SoundEmitter = new SoundEmitter(this.position);
+    const emitter = this.SoundEmitter = new SoundEmitter(atListener ? undefined : this.position);
     this.onRemove(() => emitter.OnRemoveEntity());
     return emitter;
   }

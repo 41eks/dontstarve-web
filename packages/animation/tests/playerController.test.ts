@@ -33,7 +33,7 @@ import { workTargets } from './workTargets';
 import { TurfMap, WORLD_TILES } from '../../prefab/src/turfMap';
 import { getHandEquipmentDefinition } from '../../prefab/src/handEquipment';
 
-vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {}, setVolume() {} })) }));
+vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {}, setVolume() {}, isPlaying: () => true })) }));
 vi.mock('../../../src/InputManager', () => ({ input: { isPressed: () => false, isManualMovement: () => false, isActionInterrupting: () => false } }));
 
 beforeEach(() => vi.stubGlobal('window', new EventTarget()));
@@ -278,7 +278,7 @@ describe('PlayerController with the Wilson stategraph', () => {
       advance(1);
       expect(tool.components.finiteuses.remaining).toBe(32.75);
       expect(workTargets('MINE')[0].entity.components.workable!.GetWorkLeft()).toBe(1);
-      expect(PlaySound).toHaveBeenCalledWith('dontstarve/wilson/use_pick_rock');
+      expect(PlaySound).toHaveBeenCalledWith('dontstarve/wilson/use_pick_rock', undefined);
       advance(60);
       begin(); advance(6); controller.cancel(); advance(60);
       expect(tool.components.finiteuses.remaining).toBe(32.75);

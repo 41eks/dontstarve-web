@@ -21,7 +21,7 @@ vi.mock('../../../src/player', async () => {
   const { playerStatsFixture } = await import('./playerStatsFixture');
   return { playerInstance: playerStatsFixture(initialSave.players.local.stats!) };
 });
-vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
+vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {}, isPlaying: () => true })) }));
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
@@ -54,7 +54,7 @@ it('eats meatballs through the solid-food action and commits edible stats and on
     for (let frame = 0; frame < 11; frame++) advancePlayer(animation, 1 / 30);
     expect(onEaten).not.toHaveBeenCalled();
     expect(store.get(slot)?.count).toBe(2);
-    expect(PlaySound).toHaveBeenCalledWith('dontstarve/wilson/eat');
+    expect(PlaySound).toHaveBeenCalledWith('dontstarve/wilson/eat', undefined);
     advancePlayer(animation, 1 / 30);
     expect(store.get(slot)?.count).toBe(1);
     expect(getPlayerStats()).toEqual({ health: 143, hunger: 112.5, sanity: 40 });
@@ -102,7 +102,7 @@ it('drinks source bananajuice art, consumes once at frame 12 and restores the re
     for (let frame = 0; frame < 11; frame++) advancePlayer(animation, 1 / 30);
     expect(store.get(slot)?.count).toBe(2);
     expect(onEaten).not.toHaveBeenCalled();
-    expect(PlaySound).toHaveBeenCalledWith('dontstarve/wilson/sip');
+    expect(PlaySound).toHaveBeenCalledWith('dontstarve/wilson/sip', undefined);
     advancePlayer(animation, 1 / 30);
     expect(store.getEntity(slot)).toBe(entity);
     expect(store.get(slot)?.count).toBe(1);
