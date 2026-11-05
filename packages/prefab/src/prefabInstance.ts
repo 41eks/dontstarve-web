@@ -18,6 +18,7 @@ import { WORLD_SCALE } from './tile';
 import { refreshMouseTarget } from './mouseTargets';
 import { Transform, type ReadonlyVector3 } from './transform';
 import type { PrefabWorldContext } from './worldContext';
+import { SoundEmitter } from './soundEmitter';
 
 type ActionComponents = ComponentActionEntity['components'];
 
@@ -94,6 +95,15 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   readonly removal: ReadonlySignal<boolean> = readonlySignal(this.removedState);
   /** inst.Light: the light the entity declares; its display lists it while the entity is active. */
   readonly light = new LightState();
+  /** inst.SoundEmitter, once AddSoundEmitter made it. */
+  SoundEmitter?: SoundEmitter;
+  /** inst.entity:AddSoundEmitter(): sounds keep following the transform while the display sleeps. */
+  AddSoundEmitter(): SoundEmitter {
+    if (this.SoundEmitter) return this.SoundEmitter;
+    const emitter = this.SoundEmitter = new SoundEmitter(this.position);
+    this.onRemove(() => emitter.OnRemoveEntity());
+    return emitter;
+  }
   /** inst.MiniMapEntity: map settings stay declared while the world sprite sleeps. */
   readonly minimap = new MiniMapState();
   /** The entity owns its movement notifications; map consumers receive this tracker with its icon declaration. */

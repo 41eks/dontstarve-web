@@ -355,6 +355,8 @@ export interface SoundHandle {
   /** SoundEmitter:SetVolume, multiplied with overall volume and distance attenuation. */
   setVolume(volume: number): void;
   setParameter?(name: string, value: number): void;
+  /** The event's loop flag: nothing ends a looping sound but stop(). */
+  readonly looping?: boolean;
 }
 export const SOUND_MAX_DISTANCE = TILE_SIZE * 8;
 const SOUND_VOLUME = 0.7;
@@ -468,6 +470,7 @@ export function PlaySound(path: SoundEventPath, position?: ReadonlyVector3, offs
   const eventVolume = 'volume' in definition ? definition.volume : 1;
   const sound = gain ? { position, gain, volume: eventVolume } : undefined;
   const handle: SoundHandle = {
+    looping: sounds[path].loop,
     isPlaying: () => !stopped && audio !== undefined,
     setVolume(volume) {
       if (!Number.isFinite(volume) || volume < 0) throw new RangeError('Invalid sound volume');

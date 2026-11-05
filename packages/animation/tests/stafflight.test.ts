@@ -24,7 +24,7 @@ import { deserializeSave } from '../../../src/save/deserialize';
 
 vi.mock('../../prefab/src/sound', () => ({
   PreloadSounds: vi.fn(async () => {}),
-  PlaySound: vi.fn(() => ({ stop: vi.fn() })),
+  PlaySound: vi.fn(() => ({ stop: vi.fn(), isPlaying: () => true, setVolume: vi.fn() })),
 }));
 
 const managers: import('../../prefab/src/prefabInstance').PrefabEntityManager<StaffLightId, StaffLightInstance>[] = [];

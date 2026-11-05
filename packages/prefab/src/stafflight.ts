@@ -4,7 +4,8 @@ import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { type PrefabLocalLight } from './localLight';
 import { WORLD_SCALE } from './tile';
 import { OPALSTAFF_COLOUR, YELLOWSTAFF_COLOUR } from './staff';
-import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
+import type { SoundEventPath } from './sound';
+import type { SoundEmitter } from './soundEmitter';
 import { FindEntities } from './actionEntity';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { ComponentTimer, Timer } from '../../componets/src/timer';
@@ -75,8 +76,7 @@ export class StaffLightInstance extends PrefabInstance {
   private readonly spawnedAt: number;
   private readonly pulseTask: ComponentTimer;
   private cancelRemoval?: () => void;
-  private loopSound?: SoundHandle;
-  private createSound?: SoundHandle;
+  private readonly soundEmitter: SoundEmitter = this.AddSoundEmitter();
   /** A random idle waits here for its art: a clip nothing draws would complete at once. */
   private idleAwaitsArt = false;
 
@@ -138,15 +138,13 @@ export class StaffLightInstance extends PrefabInstance {
       this.cancelRemoval?.();
       stopIdleResume?.();
       timer.dispose(); hauntable.dispose(); heater.dispose(); sanityaura.OnRemoveFromEntity(); propagator?.dispose();
-      this.kill_sound();
-      this.createSound?.stop();
     });
   }
 
   /** The SoundEmitter's PlaySound calls in fn(); they follow the transform, which exists once the display is attached. */
   playSpawnSounds(): void {
-    this.loopSound = PlaySound(this.settings.loopSound, this.position);
-    this.createSound = PlaySound('dontstarve/common/staff_star_create', this.position);
+    this.soundEmitter.PlaySound(this.settings.loopSound, 'staff_star_loop');
+    this.soundEmitter.PlaySound('dontstarve/common/staff_star_create');
   }
 
   private pulse_light(): void {
@@ -163,8 +161,7 @@ export class StaffLightInstance extends PrefabInstance {
   }
 
   private kill_sound(): void {
-    this.loopSound?.stop();
-    this.loopSound = undefined;
+    this.soundEmitter.KillSound('staff_star_loop');
   }
 
   private kill_light(): void {

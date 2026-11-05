@@ -9,6 +9,7 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { DynamicMusic } from '../../componets/src/dynamicmusic';
 import { createSignal } from '../../signals/src/signal';
 import { SoundPresentationScheduler } from '../../sound/src';
+import { PrefabInstance } from '../../prefab/src/prefabInstance';
 
 afterEach(() => { DisposeSounds(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -145,6 +146,11 @@ describe('dwarf star source sounds', () => {
     UpdateSoundListener(new THREE.Vector3(48, 0, 0));
     s.sources[0].onended!();
     manager.dispose();
+    // Removal stops the loops; each staff_star_create is an unnamed one-shot, released when it ends.
+    expect(s.gains[1].disconnect).not.toHaveBeenCalled();
+    expect(s.gains[3].disconnect).not.toHaveBeenCalled();
+    s.sources[1].onended!();
+    s.sources[3].onended!();
     expect(s.gains.every((gain) => gain.disconnect.mock.calls.length === 1)).toBe(true);
     UpdateSoundListener(new THREE.Vector3());
     expect(s.gains.map(({ gain }) => gain.value)).toEqual([1 / 16, 1 / 16, 1, 1, .5].map(volume => volume * .7));
@@ -313,4 +319,85 @@ it('mole sleep uses one short lowered sample rather than a raw sniff loop', asyn
   sniff.stop(); expect(s.sources[0].stop).toHaveBeenCalledTimes(1);
   expect(s.sources[1].stop).not.toHaveBeenCalled();
   s.sources[1].onended!(); expect(sleep.isPlaying()).toBe(false);
+});
+
+describe('SoundEmitter', () => {
+  const LOOP = 'dontstarve/common/staff_coldlight_LP', SHOT = 'dontstarve/wilson/hit';
+  async function emitterSetup() {
+    const s = await setup();
+    await PreloadSounds(LOOP, SHOT, 'dontstarve/common/together/boat/damage');
+    const inst = new PrefabInstance('test');
+    return { s, inst, emitter: inst.AddSoundEmitter() };
+  }
+
+  it('is added once and keeps one sound per name', async () => {
+    const { s, inst, emitter } = await emitterSetup();
+    expect(inst.AddSoundEmitter()).toBe(emitter);
+    expect(emitter.PlayingSound('loop')).toBe(false);
+    emitter.PlaySound(LOOP, 'loop');
+    expect(emitter.PlayingSound('loop')).toBe(true);
+    const layers = s.sources.length, first = s.sources[0];
+    emitter.PlaySound(LOOP, 'loop');
+    expect(first.stop).toHaveBeenCalledOnce();
+    expect(s.sources).toHaveLength(layers * 2);
+    expect(s.sources[layers].stop).not.toHaveBeenCalled();
+    emitter.KillSound('loop');
+    expect(s.sources[layers].stop).toHaveBeenCalledOnce();
+    expect(emitter.PlayingSound('loop')).toBe(false);
+    emitter.KillSound('never played');
+    inst.remove();
+  });
+
+  it('applies volume to a slot, follows the transform and scales later sounds by the override', async () => {
+    const { s, inst, emitter } = await emitterSetup();
+    UpdateSoundListener(new THREE.Vector3());
+    emitter.PlaySound(LOOP, 'loop', .5);
+    const gain = s.gains.at(-1)!, half = gain.gain.value;
+    emitter.SetVolume('loop', 1);
+    expect(gain.gain.value).toBeCloseTo(half * 2);
+    inst.transform.setPosition(SOUND_MAX_DISTANCE + 1, 0, 0);
+    UpdateSoundListener(new THREE.Vector3());
+    expect(gain.gain.value).toBe(0);
+    inst.transform.setPosition(0, 0, 0);
+    emitter.OverrideVolumeMultiplier(.5);
+    emitter.PlaySound(LOOP, 'quiet');
+    expect(s.gains.at(-1)!.gain.value).toBeCloseTo(half);
+    inst.remove();
+  });
+
+  it('passes parameters to the sound, by slot or as PlaySoundWithParams', async () => {
+    const { s, inst, emitter } = await emitterSetup();
+    emitter.PlaySoundWithParams('dontstarve/common/together/boat/damage', { intensity: .8 });
+    const atEight = s.gains.map(gain => gain.gain.value);
+    emitter.PlaySound('dontstarve/common/together/boat/damage', 'named');
+    const named = s.gains.slice(atEight.length).map(gain => gain.gain.value);
+    emitter.SetParameter('named', 'intensity', .8);
+    expect(s.gains.slice(atEight.length).map(gain => gain.gain.value)).toEqual(atEight);
+    expect(named).not.toEqual(atEight);
+    inst.remove();
+  });
+
+  it('on removal stops named and looping sounds and lets an unnamed one-shot finish', async () => {
+    const { s, inst, emitter } = await emitterSetup();
+    emitter.PlaySound(LOOP, 'loop');
+    const named = s.sources.at(-1)!;
+    emitter.PlaySound(LOOP);
+    const unnamedLoop = s.sources.at(-1)!;
+    emitter.PlaySound(SHOT);
+    const shot = s.sources.at(-1)!;
+    inst.remove();
+    expect(named.stop).toHaveBeenCalledOnce();
+    expect(unnamedLoop.stop).toHaveBeenCalledOnce();
+    expect(shot.stop).not.toHaveBeenCalled();
+  });
+
+  it('KillAllSounds stops everything, one-shots included', async () => {
+    const { s, inst, emitter } = await emitterSetup();
+    emitter.PlaySound(LOOP, 'loop');
+    emitter.PlaySound(SHOT);
+    emitter.KillAllSounds();
+    for (const source of s.sources) expect(source.stop).toHaveBeenCalledOnce();
+    expect(emitter.PlayingSound('loop')).toBe(false);
+    inst.remove();
+  });
 });
