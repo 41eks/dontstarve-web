@@ -15,7 +15,7 @@ petals petals_evil ash beefalowool boneshard butterflywings butter honey honeyco
 thulecite thulecite_pieces guano tentaclespots spidergland slurtleslime
 slurtle_shellpieces walrus_tusk deerclops_eyeball bearger_fur dragon_scales
 glommerfuel acorn marblebean dreadstone wagpunk_bits moonrocknugget moonglass dock_kit papyrus featherpencil
-foliage cutlichen beardhair cookingrecipecard scrapbook_page blueprint'''.split()
+foliage cutlichen beardhair cookingrecipecard scrapbook_page blueprint nightmare_timepiece'''.split()
 
 
 def main():
@@ -103,6 +103,11 @@ def main():
         point_filtering = re.search(r'UsePointFiltering\((true|false)\)', constructor)
         if point_filtering:
             items[item]['pointFiltering'] = point_filtering[1] == 'true'
+
+    # nightmare_timepiece.lua STATES: one inventory image per nightmare phase.
+    items['nightmare_timepiece']['inventoryImageVariants'] = {
+        icon: {'icon': icon, 'atlas': icons[icon]} for icon in (
+            'nightmare_timepiece.tex', 'nightmare_timepiece_warn.tex', 'nightmare_timepiece_nightmare.tex')}
 
     # Shared constructors use arguments or select an idle pose after SetPristine.
     add('rocks', 'rocks', 'rocks', 'f1', 'inv_rocks')

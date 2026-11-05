@@ -82,7 +82,7 @@ export function createWorldState(world: Pick<SaveDocument['world'], 'elapsedSeco
   // init: inject the component's existing signal; world content only resolves keys and watches it.
   const worldContent: WorldContentEnvironment = Object.freeze({
     scheduler, temperature, cycle: readonlySignal(cycle), nightmarephase, moon: readonlySignal(moon), season: readonlySignal(seasonstate),
-    wind: worldwind.windchange, perishTick: perishClock.snapshot, perishClock,
+    wind: worldwind.windchange, perishTick: perishClock.snapshot, perishClock, nightmareclock,
     snowLevel: weather.snowLevel,
     moisture: weather.moisture, moistureceil: weather.moistureceil, moisturefloor: weather.moisturefloor, preciptype: weather.preciptype,
     peakprecipitationrate: weather.peakprecipitationrate, precipitationRate: readonlySignal(weather.precipitationRate),

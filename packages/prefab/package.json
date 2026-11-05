@@ -21,6 +21,7 @@
     "./trinkets": "./src/trinkets.ts",
     "./heater": "./src/components/heater.ts",
     "./heatrock": "./src/heatrock.ts",
+    "./nightmare_timepiece": "./src/nightmare_timepiece.ts",
     "./gameTimeScheduler": "./src/components/gameTimeScheduler.ts",
     "./reskin_tool": "./src/reskin_tool.ts",
     "./sound": "./src/sound.ts",

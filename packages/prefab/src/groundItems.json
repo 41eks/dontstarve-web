@@ -1787,6 +1787,35 @@
         "_named"
       ]
     },
+    "nightmare_timepiece": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/nightmare_timepiece.lua",
+      "name": "铥矿徽章",
+      "icon": "nightmare_timepiece.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "nightmare_timepiece.zip",
+      "buildArchives": [
+        "nightmare_timepiece.zip"
+      ],
+      "bank": "nightmare_watch",
+      "animation": "idle_1",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "inventoryImageVariants": {
+        "nightmare_timepiece.tex": {
+          "icon": "nightmare_timepiece.tex",
+          "atlas": "images/inventoryimages.xml"
+        },
+        "nightmare_timepiece_warn.tex": {
+          "icon": "nightmare_timepiece_warn.tex",
+          "atlas": "images/inventoryimages.xml"
+        },
+        "nightmare_timepiece_nightmare.tex": {
+          "icon": "nightmare_timepiece_nightmare.tex",
+          "atlas": "images/inventoryimages.xml"
+        }
+      }
+    },
     "rocks": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/inv_rocks.lua",
       "name": "石头",

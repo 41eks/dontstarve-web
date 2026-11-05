@@ -26,6 +26,7 @@ const ITEM_MAX_STACKS: Readonly<Record<string, number>> = {
   lantern: 1,
   mole: 1, // mole.lua: a live animal has no stackable component.
   heatrock: 1, // heatrock.lua has inventoryitem but no stackable or equippable.
+  nightmare_timepiece: 1, // nightmare_timepiece.lua has inventoryitem but no stackable.
   yellowstaff: 1,
   opalstaff: 1,
   greenstaff: 1,

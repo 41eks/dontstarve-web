@@ -5,6 +5,8 @@ import { createSignal, readonlySignal } from '../../signals/src';
 export interface ItemPosition { readonly x: number; readonly y: number; readonly z: number; }
 export interface InventoryActor {
   hasTag(tag: string): boolean;
+  addTag?(tag: string): void;
+  removeTag?(tag: string): void;
   GetPosition(): ItemPosition;
   PushEvent(name: string, data: unknown): void;
 }

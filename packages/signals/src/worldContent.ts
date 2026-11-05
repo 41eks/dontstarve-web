@@ -73,6 +73,8 @@ export type WorldContentEnvironment = WorldContentSources & {
   readonly scheduler: GameTimeScheduler;
   /** Standalone contexts may omit the world prefix service. */
   readonly perishClock?: PerishClock;
+  /** Only a cave world has one. worldstate.lua nightmaretimeinphase, sampled on demand. */
+  readonly nightmareclock?: { GetTimeInPhase(): number };
   /** Standalone contexts may omit tile activity. The world owns its cache and cleanup. */
   readonly tickingarea?: TileStateQuery;
 };
@@ -81,6 +83,7 @@ export type WorldContentEnvironment = WorldContentSources & {
 export interface WorldContentSignal<T> extends Signal<T> {
   readonly scheduler: GameTimeScheduler;
   readonly perishClock?: PerishClock;
+  readonly nightmareclock?: { GetTimeInPhase(): number };
   /** The tickingarea memo that gates this signal (see WatchWorldContentOptions.tracker); the consumer's own to watch. */
   readonly area?: ReadonlySignal<boolean>;
 }
@@ -156,6 +159,7 @@ export function getWatchWorldContent<K extends WorldContentKey>(
   return Object.defineProperties(local, {
     scheduler: { value: world.scheduler, enumerable: true },
     perishClock: { value: world.perishClock, enumerable: true },
+    nightmareclock: { value: world.nightmareclock, enumerable: true },
     ...(area ? { area: { value: area, enumerable: true } } : {}),
   }) as WorldContentSignal<WorldContentValues[K]>;
 }

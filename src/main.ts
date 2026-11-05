@@ -67,7 +67,7 @@ import { createEffect, watchSignal } from '@dontstarve-web/signals';
 import type { Sanity } from '../packages/componets/src/sanity';
 import { OnMakePlayerGhost, OnRespawnFromGhost, setGhostLight, type PlayerGhostOwner, type RezSource } from '@dontstarve-web/prefab/player_common';
 import { SKELETON_PLAYER_ID } from '@dontstarve-web/prefab/skeleton';
-import { modelHasTag } from '@dontstarve-web/prefab/prefabInstance';
+import { modelHasTag, setModelTag } from '@dontstarve-web/prefab/prefabInstance';
 
 // Independent startup loads begin together; each is awaited where it is first needed.
 const animRoot = `${import.meta.env.BASE_URL}dst/data/anim`;
@@ -125,6 +125,8 @@ const pickupDoer: PickupDoer & WortoxDoer & { sg: NonNullable<PickupDoer['sg']> 
   components: { inventory, health: playerStats.health, hunger: playerStats.hunger },
   ListenForEvent: (name, listener) => playerInstance.ListenForEvent(name, listener),
   hasTag: tag => tag === 'player' || modelHasTag(player, tag),
+  addTag: tag => setModelTag(player, tag, true),
+  removeTag: tag => setModelTag(player, tag, false),
   GetPosition: () => player.position,
   getPosition: () => player.position,
   position: player.position,

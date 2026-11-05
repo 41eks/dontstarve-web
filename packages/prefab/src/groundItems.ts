@@ -10,6 +10,7 @@ import type { GroundItemDefinition, GroundItemFactory, GroundItemVisual, GroundP
 import { BURNABLE_ITEM_DEFINITIONS, configureBurnableItemEntity, createBurnableItemVisual } from './burnableItems';
 import { configureBookEntity, isBook } from './books';
 import { configureHeatRockEntity, declareHeatRockSprite, HEATROCK_ID } from './heatrock';
+import { configureNightmareTimepieceEntity, declareNightmareTimepieceSprite, NIGHTMARE_TIMEPIECE_ID } from './nightmare_timepiece';
 import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
 import { createArchiveEntity } from './prefabInstance';
 import { bindResidentGroundItem } from './groundItemLifecycle';
@@ -74,6 +75,7 @@ export function createGroundItemFactory(context: GroundPrefabContext): GroundIte
       : entity.prefab === ARMORSNURTLESHELL_ID ? configureArmorSnurtleshellEntity(entity)
       : entity.prefab === AMULET_ID ? configureAmuletEntity(entity)
       : entity.prefab === HEATROCK_ID ? configureHeatRockEntity(entity)
+      : entity.prefab === NIGHTMARE_TIMEPIECE_ID ? configureNightmareTimepieceEntity(entity)
       : entity.prefab === RAZOR_ID ? configureRazorEntity(entity)
       : entity.prefab === PANFLUTE_ID ? configurePanfluteEntity(entity)
       : isBook(entity.prefab) ? configureBookEntity(entity) : configureBurnableItemEntity(entity);
@@ -82,7 +84,8 @@ export function createGroundItemFactory(context: GroundPrefabContext): GroundIte
       const dropLoot = context.dropLoot;
       entity.worldServices = { fx: context.fx,
         dropLoot: (items, position) => dropLoot?.(items.map(item => ({ ...GROUND_ITEM_DEFINITIONS[item.itemId], ...item })), position) };
-      const base = createResidentGroundItem(context, { ...item, entity }, item.itemId === HEATROCK_ID ? declareHeatRockSprite : undefined);
+      const base = createResidentGroundItem(context, { ...item, entity }, item.itemId === HEATROCK_ID ? declareHeatRockSprite
+        : item.itemId === NIGHTMARE_TIMEPIECE_ID ? declareNightmareTimepieceSprite : undefined);
       if (!Object.hasOwn(BURNABLE_ITEM_DEFINITIONS, item.itemId)) return base.visual;
       return createBurnableItemVisual(context, item.itemId, base, displays, BURNABLE_ITEM_DEFINITIONS[item.itemId].fxLevel);
     },

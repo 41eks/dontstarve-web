@@ -22,6 +22,7 @@ import { LIGHT_STAFF_USES, isLightStaff } from '@dontstarve-web/prefab/staff';
 import { configureTradableEntity, hasTradableGoldValue } from '@dontstarve-web/prefab/tradable';
 import { configureMoonrockNugget } from '../packages/prefab/src/moonrocknugget';
 import { configureHeatRockEntity, HEATROCK_FUEL, HEATROCK_ID } from '@dontstarve-web/prefab/heatrock';
+import { configureNightmareTimepieceEntity, NIGHTMARE_TIMEPIECE_ID } from '@dontstarve-web/prefab/nightmare_timepiece';
 import { configureRazorEntity, RAZOR_ID } from '@dontstarve-web/prefab/razor';
 import { configurePanfluteEntity, PANFLUTE_ID, PANFLUTE_USES } from '@dontstarve-web/prefab/panflute';
 import { configureEquipmentEntity, getHandEquipmentDefinition } from '@dontstarve-web/prefab/handEquipment';
@@ -72,6 +73,7 @@ export const INVENTORY_ITEM_SPECS: Readonly<Record<string, InventoryItemSpec>> =
         : itemId === AMULET_ID ? configureAmuletEntity
         : itemId === LIGHTBULB_ID ? configureLightbulbEntity
         : itemId === HEATROCK_ID ? configureHeatRockEntity
+        : itemId === NIGHTMARE_TIMEPIECE_ID ? configureNightmareTimepieceEntity
         : itemId === RAZOR_ID ? configureRazorEntity
         : itemId === PANFLUTE_ID ? configurePanfluteEntity
         : itemId === PHONOGRAPH_ID ? configurePhonographEntity

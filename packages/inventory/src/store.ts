@@ -145,6 +145,12 @@ export class InventoryStore {
     return damage - absorbed;
   }
 
+  /** GetGrandOwner is the actor: a main slot, the active item, an equipped slot or the equipped overflow container. */
+  isHeldByActor(address: SlotAddress): boolean {
+    const { containerId } = address, backpack = this.GetEquippedItem('body');
+    return containerId === PLAYER_INVENTORY_CONTAINER_ID || containerId === PLAYER_CURSOR_CONTAINER_ID || containerId === PLAYER_EQUIPMENT_CONTAINER_ID
+      || (!!backpack?.components.container && containerId === backpackContainerId(backpack.id));
+  }
   /** inventory.lua EquipHasTag checks only equipped items. */
   EquipHasTag(tag: string): boolean { return EQUIPMENT_KINDS.some(kind => this.GetEquippedItem(kind)?.hasTag(tag)); }
   /** inventory.lua Has: main slots, active item and the equipped overflow container. */
@@ -467,6 +473,10 @@ export class InventoryStore {
       buffered.set(build.recipeId, build.skinId);
     }
     this.commit(next, false, true);
+    // inventory.lua OnLoad: GiveItem puts each saved item back through OnPutInInventory.
+    for (const { address, slot } of this.playerRegistrations()) {
+      if (address.containerId !== PLAYER_EQUIPMENT_CONTAINER_ID) slot.getEntity()?.components.inventoryitem.OnPutInInventory(this.actor);
+    }
     this.bufferedBuilds.clear();
     for (const [id, skin] of buffered) this.bufferedBuilds.set(id, skin);
     this.notify(this.addresses(), EQUIPMENT_KINDS);

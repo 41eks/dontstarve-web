@@ -92,6 +92,7 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `papyrus` | 可生成 | 可入栏 | `prefabs/papyrus.lua:46` |
 | `featherpencil` | 可生成 | 可入栏 | `prefabs/featherpencil.lua:34` |
 | `nightmarefuel` | 可生成 | 可入栏 | `prefabs/nightmarefuel.lua:93` |
+| `nightmare_timepiece` | 可生成 | 可入栏 | `prefabs/nightmare_timepiece.lua:115` |
 | `petals` | 可生成 | 可入栏 | `prefabs/petals.lua:99`：inventoryitem、PERISH_FAST（6 游戏日），腐败为同数量 spoiled_food；当前项目接入库存／地面 perish 与存读档 |
 | `cactus_flower` | 可生成 | 可入栏 | `prefabs/cactus.lua:118`：inventoryitem、edible（HEALING_MEDSMALL / CALORIES_SMALL / SANITY_TINY，VEGGIE）、PERISH_SUPERFAST（3 游戏日）腐败为 spoiled_food、STACK_SIZE_SMALLITEM；当前项目接入库存／地面 perish、食用与存读档 |
 | `petals_evil` | 可生成 | 可入栏 | `prefabs/petals_evil.lua:56` |
