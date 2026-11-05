@@ -304,7 +304,7 @@ RGB `(237,237,209)/255`。范围不随掉落堆叠数量增加，也没有火把
 移除及 `dispose()` 会停止并断开所属矮星的音源。休眠不停声，由距离衰减静音；读档与 Lua 一样重新执行 `fn()`，出现声和 `appear` 也会重播。
 音频由 vgmstream 从 `sound/common.fsb` 的流 273（`staff_star_create`）和
 274（`staff_star_fireLP`）提取，保留源 bank 的目录，导出为 `sound/common.fsb-273.wav`、
-`sound/common.fsb-274.wav`；声音在用户交互后启用。提取方法见根目录 `AGENTS.md`。
+`sound/common.fsb-274.wav`；声音在用户交互后启用。提取方法见 [sound](docs/sound.md)。
 
 通用音频 API 由 `@dontstarve-web/prefab/sound` 提供，直接调用 `PlaySound('事件路径')`；场景声音调度器由 `@dontstarve-web/sound` 提供。
 位置参数统一使用现有地面 `THREE.Vector3`：`PlaySound(path, position?, offsetSeconds?)` 和 `inverseSquareAttenuation(position, listenerPosition, referenceDistance?, maxDistance?)`。场景持有 `SoundPresentationScheduler`，直接订阅已有的 `playerpositions` signal，统一更新监听器；瀑布 prefab 只注册池的位置、半径和大小，调度器按源 Lua 每 5 帧选择最近的 3 个池并处理音量过渡。声源保留位置引用；衰减通过 `distanceToSquared()` 计算平方距离，避免开方、拆分 XZ 坐标和每次更新创建临时向量。距离计算不修改传入的向量；省略声源位置仍以完整音量播放。

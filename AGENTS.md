@@ -30,7 +30,7 @@
 | `packages/inventory` | 库存权威状态与领域类型、槽位与堆叠限制、纯 `craft()` 计算及原子应用 | UI 渲染；应用物品元数据（在 `src/inventoryItems.ts`） | [inventory](packages/inventory/AGENTS.md) |
 | `packages/ui` | DOM UI：物品栏、制作栏、容器面板等，镜像应用状态并发出 UI 事件 | 持有权威库存或游戏状态 | [ui](packages/ui/AGENTS.md) |
 | `packages/map` | 地图视图：地皮整图、小地图图标与 DOM 呈现 | 世界地皮或实体的权威数据 | — |
-| `packages/sound` | 声音呈现调度 | Lua 事件到 FEV 的映射与播放入口（在 `packages/prefab/src/sound.ts`） | [prefab](packages/prefab/AGENTS.md) |
+| `packages/sound` | 声音呈现调度 | Lua 事件到 FEV 的映射与播放入口（在 `packages/prefab/src/sound.ts`） | [prefab sound](packages/prefab/docs/sound.md) |
 
 ## Lua parity and missing implementations
 

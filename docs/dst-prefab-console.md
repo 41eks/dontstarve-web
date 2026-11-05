@@ -578,7 +578,7 @@ spider.lua 还有其他共享构造的蜘蛛，但本表只单列已查看的 `s
 | `backpack` | 有 inventoryitem，但 cangoincontainer=false；不能放普通格，GiveItem 可能放鼠标持有位置，取决于库存状态。 | `prefabs/backpack.lua:268`、`:269`；`components/inventory.lua:1177` |
 | `phonograph` 与 `record` | 留声机虽然外观类似建筑，实际有 inventoryitem；两者均支持生成与入栏。record 的源文件名是 records.lua。 | `prefabs/phonograph.lua:190`；`prefabs/records.lua:98`、`:114` |
 | `lantern` | 提灯实际 prefab ID 是 lantern，源文件名是 mininglantern.lua。 | `prefabs/mininglantern.lua:259`、`:302` |
-| `shadow_thrall_parasitehat` | NPC 专用实体，有共用帽子组件不等于可作为普通玩家帽子导入；保留项目排除规则。 | `prefabs/hats.lua:5786`；[AGENTS.md](../AGENTS.md) |
+| `shadow_thrall_parasitehat` | NPC 专用实体，有共用帽子组件不等于可作为普通玩家帽子导入；保留项目排除规则。 | `prefabs/hats.lua:5786`；[item-art](../packages/prefab/docs/item-art.md) |
 
 ## 原版 Lua 与当前项目
 

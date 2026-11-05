@@ -18,4 +18,10 @@ python3 scripts/import-dst-region.py --cluster public/saves/Cluster_62 --output 
 
 玩家当前在地表：最新地表快照 `0000000148` 的玩家文件转换后位于项目脚点 `[1187.244, 0, 1012.662]`。最新地表快照有 6,848 个实体（含 1 座已修复 `moonbase`、1 个 `researchlab2`、1 个带 `researchlab3_nature` 皮肤的 `researchlab3` 和 1 座大理石邪天翁雕像）；最新洞穴快照 `0000000060` 有 6,571 个实体；见 [遗迹家具移植](../docs/dst-ruinsrelic.md) 与 [石笋移植](../docs/dst-stalagmite.md)。早期快照没有玩家文件或组件表时，仍保留世界实体，游戏只从各 Session 的最新快照选择玩家。导入保留地表各海洋类型、海冰、码头／农田底层地皮。
 
+重新导入后、提交前，用 `scripts/dst-save-diff.py` 确认只有预期的实体组变化。它按实体组和导入报告汇总相对 git 版本的差异，并列出最新快照的 source／imported 数量；`--base` 指定比较的版本（默认 `HEAD`），有 `--expect` 时出现其他变更或预期 ID 未变化都以退出码 1 结束：
+
+```bash
+python3 scripts/dst-save-diff.py --expect pillar_cave monkeypillar
+```
+
 单分片导入、其他参数和源快照限制见 [地表与洞穴地图导入](../docs/dst-static-layouts.md#从完整存档导入地表与洞穴地图)。
