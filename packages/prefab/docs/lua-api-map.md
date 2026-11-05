@@ -47,7 +47,7 @@
 | Lua | TS | 示例 | 差异 |
 | --- | --- | --- | --- |
 | `OverrideSymbol`（prefab 自身） | `sprite.setSymbolOverride(symbol, archive, source)` | `monkeypillar.ts` | 写入 sprite json，跨休眠保留 |
-| `OverrideSymbol`、`Show`、`Hide` 等（共用 `AnimState`） | `AnimState` 同名方法 + `sprite.setAnimState(anim.json, art)` | `equipmentVisual.ts` | 只声明一次，不回写快照 |
+| `OverrideSymbol`、`Show`、`Hide` 等（共用 `AnimState`） | `AnimState` 同名方法 + `sprite.setAnimState(anim.json, art)` | `player.ts` | 只声明一次，不回写快照 |
 | 装备改写 `owner.AnimState` | `EquipmentAnimState` 插槽（`declareAnimState`） | `equipmentVisual.ts` | 分层，不是后写者生效 |
 | `HideSymbol`、`ShowSymbol` | `sprite.setSymbolHidden(symbol, hidden)` | `monkeypillar.ts` | |
 | `Hide(layer)`、`Show(layer)` | `sprite.hideLayer`、`sprite.showLayer` | `display/src/spriteState.ts` | |
