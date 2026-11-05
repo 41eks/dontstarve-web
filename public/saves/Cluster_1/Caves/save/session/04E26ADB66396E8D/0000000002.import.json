@@ -477,6 +477,14 @@
     "cave_exit",
     "cave_hole",
     "pillar_ruins",
+    "pillar_cave",
+    "pillar_cave_flintless",
+    "pillar_cave_rock",
+    "pillar_algae",
+    "pillar_atrium",
+    "archive_pillar",
+    "vault_pillar",
+    "monkeypillar",
     "cave_entrance",
     "cave_entrance_open",
     "mushtree_moon",
@@ -725,6 +733,38 @@
     "pillar_ruins": {
       "source": 36,
       "imported": 36
+    },
+    "pillar_cave": {
+      "source": 59,
+      "imported": 59
+    },
+    "pillar_cave_flintless": {
+      "source": 7,
+      "imported": 7
+    },
+    "pillar_cave_rock": {
+      "source": 22,
+      "imported": 22
+    },
+    "pillar_algae": {
+      "source": 33,
+      "imported": 33
+    },
+    "pillar_atrium": {
+      "source": 3,
+      "imported": 3
+    },
+    "archive_pillar": {
+      "source": 22,
+      "imported": 22
+    },
+    "vault_pillar": {
+      "source": 0,
+      "imported": 0
+    },
+    "monkeypillar": {
+      "source": 0,
+      "imported": 0
     },
     "cave_entrance": {
       "source": 0,
@@ -4295,6 +4335,1612 @@
         -597.26
       ],
       "sourceNode": "SacredDanger:BG_51:BGSacred"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000001",
+      "prefab": "pillar_cave",
+      "sourceIndex": 1,
+      "sourcePosition": [
+        -73.81,
+        0,
+        193.9
+      ],
+      "sourceNode": "RedForest:5:RedMushForest"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000002",
+      "prefab": "pillar_cave",
+      "sourceIndex": 2,
+      "sourcePosition": [
+        -38.8,
+        0,
+        237.73
+      ],
+      "sourceNode": "RedForest:5:RedMushForest"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000003",
+      "prefab": "pillar_cave",
+      "sourceIndex": 3,
+      "sourcePosition": [
+        -66.17,
+        0,
+        86.22
+      ],
+      "sourceNode": "RedForest:BG_23:BGRedMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000004",
+      "prefab": "pillar_cave",
+      "sourceIndex": 4,
+      "sourcePosition": [
+        -50.15,
+        0,
+        70.1
+      ],
+      "sourceNode": "RedForest:2:StalagmiteForest"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000005",
+      "prefab": "pillar_cave",
+      "sourceIndex": 5,
+      "sourcePosition": [
+        -34.23,
+        0,
+        89.99
+      ],
+      "sourceNode": "RedForest:2:StalagmiteForest"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000006",
+      "prefab": "pillar_cave",
+      "sourceIndex": 6,
+      "sourcePosition": [
+        -105.19,
+        0,
+        126.1
+      ],
+      "sourceNode": "RedForest:BG_21:BGRedMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000007",
+      "prefab": "pillar_cave",
+      "sourceIndex": 7,
+      "sourcePosition": [
+        338.95,
+        0,
+        290.78
+      ],
+      "sourceNode": "FungalNoiseMeadow:1:SpillagmiteMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000008",
+      "prefab": "pillar_cave",
+      "sourceIndex": 8,
+      "sourcePosition": [
+        373.7,
+        0,
+        262.45
+      ],
+      "sourceNode": "FungalNoiseMeadow:1:SpillagmiteMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000009",
+      "prefab": "pillar_cave",
+      "sourceIndex": 9,
+      "sourcePosition": [
+        42.06,
+        0,
+        -370.31
+      ],
+      "sourceNode": "SpillagmiteCaverns:0:SpidersAndBats"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000010",
+      "prefab": "pillar_cave",
+      "sourceIndex": 10,
+      "sourcePosition": [
+        6.15,
+        0,
+        -346.85
+      ],
+      "sourceNode": "SpillagmiteCaverns:0:SpidersAndBats"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000011",
+      "prefab": "pillar_cave",
+      "sourceIndex": 11,
+      "sourcePosition": [
+        41.57,
+        0,
+        -346.27
+      ],
+      "sourceNode": "SpillagmiteCaverns:0:SpidersAndBats"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000012",
+      "prefab": "pillar_cave",
+      "sourceIndex": 12,
+      "sourcePosition": [
+        21.42,
+        0,
+        -366
+      ],
+      "sourceNode": "SpillagmiteCaverns:0:SpidersAndBats"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000013",
+      "prefab": "pillar_cave",
+      "sourceIndex": 13,
+      "sourcePosition": [
+        45.44,
+        0,
+        -353.73
+      ],
+      "sourceNode": "SpillagmiteCaverns:0:SpidersAndBats"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000014",
+      "prefab": "pillar_cave",
+      "sourceIndex": 14,
+      "sourcePosition": [
+        -90.04,
+        0,
+        -369.08
+      ],
+      "sourceNode": "SpillagmiteCaverns:BG_74:BGSpillagmiteRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000015",
+      "prefab": "pillar_cave",
+      "sourceIndex": 15,
+      "sourcePosition": [
+        -5.85,
+        0,
+        -342.13
+      ],
+      "sourceNode": "SpillagmiteCaverns:1:DropperCanyon"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000016",
+      "prefab": "pillar_cave",
+      "sourceIndex": 16,
+      "sourcePosition": [
+        -37.45,
+        0,
+        -314.7
+      ],
+      "sourceNode": "SpillagmiteCaverns:BG_72:BGSpillagmiteRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000017",
+      "prefab": "pillar_cave",
+      "sourceIndex": 17,
+      "sourcePosition": [
+        -17.41,
+        0,
+        -290.13
+      ],
+      "sourceNode": "SpillagmiteCaverns:BG_72:BGSpillagmiteRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000018",
+      "prefab": "pillar_cave",
+      "sourceIndex": 18,
+      "sourcePosition": [
+        -1.35,
+        0,
+        -290.78
+      ],
+      "sourceNode": "SpillagmiteCaverns:BG_72:BGSpillagmiteRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000019",
+      "prefab": "pillar_cave",
+      "sourceIndex": 19,
+      "sourcePosition": [
+        -29.19,
+        0,
+        -286.99
+      ],
+      "sourceNode": "SpillagmiteCaverns:BG_72:BGSpillagmiteRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000020",
+      "prefab": "pillar_cave",
+      "sourceIndex": 20,
+      "sourcePosition": [
+        14.31,
+        0,
+        -301.36
+      ],
+      "sourceNode": "SpillagmiteCaverns:BG_72:BGSpillagmiteRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000021",
+      "prefab": "pillar_cave",
+      "sourceIndex": 21,
+      "sourcePosition": [
+        -30.75,
+        0,
+        -305.39
+      ],
+      "sourceNode": "SpillagmiteCaverns:BG_72:BGSpillagmiteRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000022",
+      "prefab": "pillar_cave",
+      "sourceIndex": 22,
+      "sourcePosition": [
+        -14.83,
+        0,
+        -294.45
+      ],
+      "sourceNode": "SpillagmiteCaverns:BG_72:BGSpillagmiteRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000023",
+      "prefab": "pillar_cave",
+      "sourceIndex": 23,
+      "sourcePosition": [
+        10.26,
+        0,
+        -297.99
+      ],
+      "sourceNode": "SpillagmiteCaverns:BG_72:BGSpillagmiteRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000024",
+      "prefab": "pillar_cave",
+      "sourceIndex": 24,
+      "sourcePosition": [
+        -9.92,
+        0,
+        -286.33
+      ],
+      "sourceNode": "SpillagmiteCaverns:BG_72:BGSpillagmiteRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000025",
+      "prefab": "pillar_cave",
+      "sourceIndex": 25,
+      "sourcePosition": [
+        -30.12,
+        0,
+        -297.25
+      ],
+      "sourceNode": "SpillagmiteCaverns:BG_72:BGSpillagmiteRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000026",
+      "prefab": "pillar_cave",
+      "sourceIndex": 26,
+      "sourcePosition": [
+        -1.16,
+        0,
+        -273.08
+      ],
+      "sourceNode": "SpillagmiteCaverns:BG_72:BGSpillagmiteRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000027",
+      "prefab": "pillar_cave",
+      "sourceIndex": 27,
+      "sourcePosition": [
+        2.52,
+        0,
+        -285.58
+      ],
+      "sourceNode": "SpillagmiteCaverns:BG_72:BGSpillagmiteRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000028",
+      "prefab": "pillar_cave",
+      "sourceIndex": 28,
+      "sourcePosition": [
+        -1.81,
+        0,
+        -453.35
+      ],
+      "sourceNode": "SpillagmiteCaverns:BG_75:BGSpillagmiteRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000029",
+      "prefab": "pillar_cave",
+      "sourceIndex": 29,
+      "sourcePosition": [
+        -22.54,
+        0,
+        -418.09
+      ],
+      "sourceNode": "SpillagmiteCaverns:BG_75:BGSpillagmiteRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000030",
+      "prefab": "pillar_cave",
+      "sourceIndex": 30,
+      "sourcePosition": [
+        -5.49,
+        0,
+        -434.21
+      ],
+      "sourceNode": "SpillagmiteCaverns:BG_75:BGSpillagmiteRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000031",
+      "prefab": "pillar_cave",
+      "sourceIndex": 31,
+      "sourcePosition": [
+        -6,
+        0,
+        -417.48
+      ],
+      "sourceNode": "SpillagmiteCaverns:BG_75:BGSpillagmiteRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000032",
+      "prefab": "pillar_cave",
+      "sourceIndex": 32,
+      "sourcePosition": [
+        -9.55,
+        0,
+        -434.23
+      ],
+      "sourceNode": "SpillagmiteCaverns:BG_75:BGSpillagmiteRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000033",
+      "prefab": "pillar_cave",
+      "sourceIndex": 33,
+      "sourcePosition": [
+        77.84,
+        0,
+        -457.91
+      ],
+      "sourceNode": "SpillagmiteCaverns:BG_73:BGSpillagmiteRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000034",
+      "prefab": "pillar_cave",
+      "sourceIndex": 34,
+      "sourcePosition": [
+        38.77,
+        0,
+        -417.68
+      ],
+      "sourceNode": "SpillagmiteCaverns:BG_73:BGSpillagmiteRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000035",
+      "prefab": "pillar_cave",
+      "sourceIndex": 35,
+      "sourcePosition": [
+        53.66,
+        0,
+        -414.97
+      ],
+      "sourceNode": "SpillagmiteCaverns:BG_73:BGSpillagmiteRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000036",
+      "prefab": "pillar_cave",
+      "sourceIndex": 36,
+      "sourcePosition": [
+        58.68,
+        0,
+        -446.71
+      ],
+      "sourceNode": "SpillagmiteCaverns:BG_73:BGSpillagmiteRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000037",
+      "prefab": "pillar_cave",
+      "sourceIndex": 37,
+      "sourcePosition": [
+        61.7,
+        0,
+        -434.81
+      ],
+      "sourceNode": "SpillagmiteCaverns:BG_73:BGSpillagmiteRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000038",
+      "prefab": "pillar_cave",
+      "sourceIndex": 38,
+      "sourcePosition": [
+        70.82,
+        0,
+        -469.57
+      ],
+      "sourceNode": "SpillagmiteCaverns:BG_73:BGSpillagmiteRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000039",
+      "prefab": "pillar_cave",
+      "sourceIndex": 39,
+      "sourcePosition": [
+        70.83,
+        0,
+        -410.54
+      ],
+      "sourceNode": "SpillagmiteCaverns:BG_73:BGSpillagmiteRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000040",
+      "prefab": "pillar_cave",
+      "sourceIndex": 40,
+      "sourcePosition": [
+        33.91,
+        0,
+        -434.05
+      ],
+      "sourceNode": "SpillagmiteCaverns:BG_73:BGSpillagmiteRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000041",
+      "prefab": "pillar_cave",
+      "sourceIndex": 41,
+      "sourcePosition": [
+        41.66,
+        0,
+        -474.48
+      ],
+      "sourceNode": "SpillagmiteCaverns:BG_73:BGSpillagmiteRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000042",
+      "prefab": "pillar_cave",
+      "sourceIndex": 42,
+      "sourcePosition": [
+        22.95,
+        0,
+        -430.76
+      ],
+      "sourceNode": "SpillagmiteCaverns:BG_73:BGSpillagmiteRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000043",
+      "prefab": "pillar_cave",
+      "sourceIndex": 43,
+      "sourcePosition": [
+        62.2,
+        0,
+        -466.63
+      ],
+      "sourceNode": "SpillagmiteCaverns:BG_73:BGSpillagmiteRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000044",
+      "prefab": "pillar_cave",
+      "sourceIndex": 44,
+      "sourcePosition": [
+        69.42,
+        0,
+        -405.6
+      ],
+      "sourceNode": "SpillagmiteCaverns:BG_73:BGSpillagmiteRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000045",
+      "prefab": "pillar_cave",
+      "sourceIndex": 45,
+      "sourcePosition": [
+        34.14,
+        0,
+        -429.77
+      ],
+      "sourceNode": "SpillagmiteCaverns:BG_73:BGSpillagmiteRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000046",
+      "prefab": "pillar_cave",
+      "sourceIndex": 46,
+      "sourcePosition": [
+        -141.68,
+        0,
+        -361.14
+      ],
+      "sourceNode": "SpillagmiteCaverns:6:StalagmitesAndLights"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000047",
+      "prefab": "pillar_cave",
+      "sourceIndex": 47,
+      "sourcePosition": [
+        -138.93,
+        0,
+        -349.92
+      ],
+      "sourceNode": "SpillagmiteCaverns:6:StalagmitesAndLights"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000048",
+      "prefab": "pillar_cave",
+      "sourceIndex": 48,
+      "sourcePosition": [
+        -125.11,
+        0,
+        -365.23
+      ],
+      "sourceNode": "SpillagmiteCaverns:6:StalagmitesAndLights"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000049",
+      "prefab": "pillar_cave",
+      "sourceIndex": 49,
+      "sourcePosition": [
+        -162.53,
+        0,
+        -377.61
+      ],
+      "sourceNode": "SpillagmiteCaverns:6:StalagmitesAndLights"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000050",
+      "prefab": "pillar_cave",
+      "sourceIndex": 50,
+      "sourcePosition": [
+        -134.53,
+        0,
+        -402.24
+      ],
+      "sourceNode": "SpillagmiteCaverns:6:StalagmitesAndLights"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000051",
+      "prefab": "pillar_cave",
+      "sourceIndex": 51,
+      "sourcePosition": [
+        -165.25,
+        0,
+        -318.46
+      ],
+      "sourceNode": "SpillagmiteCaverns:6:StalagmitesAndLights"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000052",
+      "prefab": "pillar_cave",
+      "sourceIndex": 52,
+      "sourcePosition": [
+        -165.72,
+        0,
+        -330.93
+      ],
+      "sourceNode": "SpillagmiteCaverns:6:StalagmitesAndLights"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000053",
+      "prefab": "pillar_cave",
+      "sourceIndex": 53,
+      "sourcePosition": [
+        -165.2,
+        0,
+        -361.83
+      ],
+      "sourceNode": "SpillagmiteCaverns:6:StalagmitesAndLights"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000054",
+      "prefab": "pillar_cave",
+      "sourceIndex": 54,
+      "sourcePosition": [
+        -174.59,
+        0,
+        -353.24
+      ],
+      "sourceNode": "SpillagmiteCaverns:6:StalagmitesAndLights"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000055",
+      "prefab": "pillar_cave",
+      "sourceIndex": 55,
+      "sourcePosition": [
+        -22.62,
+        0,
+        -386.43
+      ],
+      "sourceNode": "SpillagmiteCaverns:2:SpillagmiteForest"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000056",
+      "prefab": "pillar_cave",
+      "sourceIndex": 56,
+      "sourcePosition": [
+        -21.54,
+        0,
+        -394.06
+      ],
+      "sourceNode": "SpillagmiteCaverns:2:SpillagmiteForest"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000057",
+      "prefab": "pillar_cave",
+      "sourceIndex": 57,
+      "sourcePosition": [
+        -30.4,
+        0,
+        -393.61
+      ],
+      "sourceNode": "SpillagmiteCaverns:2:SpillagmiteForest"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000058",
+      "prefab": "pillar_cave",
+      "sourceIndex": 58,
+      "sourcePosition": [
+        -33.5,
+        0,
+        -373.01
+      ],
+      "sourceNode": "SpillagmiteCaverns:2:SpillagmiteForest"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_index_000059",
+      "prefab": "pillar_cave",
+      "sourceIndex": 59,
+      "sourcePosition": [
+        -30.55,
+        0,
+        -374.1
+      ],
+      "sourceNode": "SpillagmiteCaverns:2:SpillagmiteForest"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_flintless_index_000001",
+      "prefab": "pillar_cave_flintless",
+      "sourceIndex": 1,
+      "sourcePosition": [
+        -542,
+        0,
+        -301.71
+      ],
+      "sourceNode": "RockyLand:0:RockyHatchingGrounds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_flintless_index_000002",
+      "prefab": "pillar_cave_flintless",
+      "sourceIndex": 2,
+      "sourcePosition": [
+        -365.05,
+        0,
+        -238.08
+      ],
+      "sourceNode": "RockyLand:7:BatsAndRocky"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_flintless_index_000003",
+      "prefab": "pillar_cave_flintless",
+      "sourceIndex": 3,
+      "sourcePosition": [
+        -342.04,
+        0,
+        -214.32
+      ],
+      "sourceNode": "RockyLand:7:BatsAndRocky"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_flintless_index_000004",
+      "prefab": "pillar_cave_flintless",
+      "sourceIndex": 4,
+      "sourcePosition": [
+        -393.7,
+        0,
+        -282.14
+      ],
+      "sourceNode": "RockyLand:3:SlurtleCanyon"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_flintless_index_000005",
+      "prefab": "pillar_cave_flintless",
+      "sourceIndex": 5,
+      "sourcePosition": [
+        -366.01,
+        0,
+        -245.37
+      ],
+      "sourceNode": "RockyLand:3:SlurtleCanyon"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_flintless_index_000006",
+      "prefab": "pillar_cave_flintless",
+      "sourceIndex": 6,
+      "sourcePosition": [
+        -457.6,
+        0,
+        -254.45
+      ],
+      "sourceNode": "RockyLand:1:RockyPlains"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_flintless_index_000007",
+      "prefab": "pillar_cave_flintless",
+      "sourceIndex": 7,
+      "sourcePosition": [
+        -458.19,
+        0,
+        -257.02
+      ],
+      "sourceNode": "RockyLand:1:RockyPlains"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_rock_index_000001",
+      "prefab": "pillar_cave_rock",
+      "sourceIndex": 1,
+      "sourcePosition": [
+        -73.97,
+        0,
+        -426.93
+      ],
+      "sourceNode": "ToadStoolTask3:1:ToadstoolArenaBGMud"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_rock_index_000002",
+      "prefab": "pillar_cave_rock",
+      "sourceIndex": 2,
+      "sourcePosition": [
+        -193.18,
+        0,
+        -266.41
+      ],
+      "sourceNode": "MudLights:BG_18:WormPlantField"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_rock_index_000003",
+      "prefab": "pillar_cave_rock",
+      "sourceIndex": 3,
+      "sourcePosition": [
+        -229.31,
+        0,
+        -282.55
+      ],
+      "sourceNode": "MudLights:BG_18:WormPlantField"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_rock_index_000004",
+      "prefab": "pillar_cave_rock",
+      "sourceIndex": 4,
+      "sourcePosition": [
+        -125.96,
+        0,
+        -18.1
+      ],
+      "sourceNode": "ToadStoolTask1:1:ToadstoolArenaBGMud"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_rock_index_000005",
+      "prefab": "pillar_cave_rock",
+      "sourceIndex": 5,
+      "sourcePosition": [
+        -342.19,
+        0,
+        -254.67
+      ],
+      "sourceNode": "RockyLand:7:BatsAndRocky"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_rock_index_000006",
+      "prefab": "pillar_cave_rock",
+      "sourceIndex": 6,
+      "sourcePosition": [
+        -269.14,
+        0,
+        -86.92
+      ],
+      "sourceNode": "MudWorld:BG_76:BGMud"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_rock_index_000007",
+      "prefab": "pillar_cave_rock",
+      "sourceIndex": 7,
+      "sourcePosition": [
+        -238.44,
+        0,
+        -58.61
+      ],
+      "sourceNode": "MudWorld:BG_76:BGMud"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_rock_index_000008",
+      "prefab": "pillar_cave_rock",
+      "sourceIndex": 8,
+      "sourcePosition": [
+        -306.34,
+        0,
+        -34.66
+      ],
+      "sourceNode": "MudWorld:BG_76:BGMud"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_rock_index_000009",
+      "prefab": "pillar_cave_rock",
+      "sourceIndex": 9,
+      "sourcePosition": [
+        -137.89,
+        0,
+        -109.94
+      ],
+      "sourceNode": "MudWorld:3:LightPlantField"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_rock_index_000010",
+      "prefab": "pillar_cave_rock",
+      "sourceIndex": 10,
+      "sourcePosition": [
+        -205.06,
+        0,
+        -194.56
+      ],
+      "sourceNode": "MudWorld:1:FernGully"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_rock_index_000011",
+      "prefab": "pillar_cave_rock",
+      "sourceIndex": 11,
+      "sourcePosition": [
+        -21.53,
+        0,
+        -117.57
+      ],
+      "sourceNode": "MudWorld:BG_79:BGMud"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_rock_index_000012",
+      "prefab": "pillar_cave_rock",
+      "sourceIndex": 12,
+      "sourcePosition": [
+        -70.54,
+        0,
+        -129.05
+      ],
+      "sourceNode": "MudWorld:BG_77:BGMud"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_rock_index_000013",
+      "prefab": "pillar_cave_rock",
+      "sourceIndex": 13,
+      "sourcePosition": [
+        22.11,
+        0,
+        185.9
+      ],
+      "sourceNode": "BigBatCave:9:FernyBatCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_rock_index_000014",
+      "prefab": "pillar_cave_rock",
+      "sourceIndex": 14,
+      "sourcePosition": [
+        137.33,
+        0,
+        177.73
+      ],
+      "sourceNode": "BigBatCave:5:BatCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_rock_index_000015",
+      "prefab": "pillar_cave_rock",
+      "sourceIndex": 15,
+      "sourcePosition": [
+        -2.26,
+        0,
+        330.03
+      ],
+      "sourceNode": "BigBatCave:0:BattyCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_rock_index_000016",
+      "prefab": "pillar_cave_rock",
+      "sourceIndex": 16,
+      "sourcePosition": [
+        10.8,
+        0,
+        373.56
+      ],
+      "sourceNode": "BigBatCave:0:BattyCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_rock_index_000017",
+      "prefab": "pillar_cave_rock",
+      "sourceIndex": 17,
+      "sourcePosition": [
+        37.14,
+        0,
+        382.49
+      ],
+      "sourceNode": "BigBatCave:0:BattyCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_rock_index_000018",
+      "prefab": "pillar_cave_rock",
+      "sourceIndex": 18,
+      "sourcePosition": [
+        1.18,
+        0,
+        346.56
+      ],
+      "sourceNode": "BigBatCave:0:BattyCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_rock_index_000019",
+      "prefab": "pillar_cave_rock",
+      "sourceIndex": 19,
+      "sourcePosition": [
+        37.21,
+        0,
+        126.68
+      ],
+      "sourceNode": "BigBatCave:8:FernyBatCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_rock_index_000020",
+      "prefab": "pillar_cave_rock",
+      "sourceIndex": 20,
+      "sourcePosition": [
+        2.61,
+        0,
+        226.77
+      ],
+      "sourceNode": "BigBatCave:BG_109:BGBatCaveRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_rock_index_000021",
+      "prefab": "pillar_cave_rock",
+      "sourceIndex": 21,
+      "sourcePosition": [
+        -18.08,
+        0,
+        434.06
+      ],
+      "sourceNode": "BigBatCave:BG_110:BGBatCaveRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_cave_rock_index_000022",
+      "prefab": "pillar_cave_rock",
+      "sourceIndex": 22,
+      "sourcePosition": [
+        74.18,
+        0,
+        109.39
+      ],
+      "sourceNode": "BigBatCave:7:BatCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_algae_index_000001",
+      "prefab": "pillar_algae",
+      "sourceIndex": 1,
+      "sourcePosition": [
+        194.14,
+        0,
+        -321.85
+      ],
+      "sourceNode": "AtriumMaze:8:AtriumMazeEntrance"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_algae_index_000002",
+      "prefab": "pillar_algae",
+      "sourceIndex": 2,
+      "sourcePosition": [
+        -94.95,
+        0,
+        85.54
+      ],
+      "sourceNode": "CaveJungle:4:LichenMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_algae_index_000003",
+      "prefab": "pillar_algae",
+      "sourceIndex": 3,
+      "sourcePosition": [
+        -270.72,
+        0,
+        101.41
+      ],
+      "sourceNode": "CaveJungle:BG_54:BGWildsRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_algae_index_000004",
+      "prefab": "pillar_algae",
+      "sourceIndex": 4,
+      "sourcePosition": [
+        646.48,
+        0,
+        -269.99
+      ],
+      "sourceNode": "MuddySacred:0:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_algae_index_000005",
+      "prefab": "pillar_algae",
+      "sourceIndex": 5,
+      "sourcePosition": [
+        642.54,
+        0,
+        -254.19
+      ],
+      "sourceNode": "MuddySacred:0:WetWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_algae_index_000006",
+      "prefab": "pillar_algae",
+      "sourceIndex": 6,
+      "sourcePosition": [
+        518.65,
+        0,
+        -274.23
+      ],
+      "sourceNode": "MuddySacred:2:MonkeyMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_algae_index_000007",
+      "prefab": "pillar_algae",
+      "sourceIndex": 7,
+      "sourcePosition": [
+        126.34,
+        0,
+        -197.34
+      ],
+      "sourceNode": "Residential:4:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_algae_index_000008",
+      "prefab": "pillar_algae",
+      "sourceIndex": 8,
+      "sourcePosition": [
+        190.16,
+        0,
+        -250.69
+      ],
+      "sourceNode": "Residential:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_algae_index_000009",
+      "prefab": "pillar_algae",
+      "sourceIndex": 9,
+      "sourcePosition": [
+        233.74,
+        0,
+        -194.94
+      ],
+      "sourceNode": "Residential:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_algae_index_000010",
+      "prefab": "pillar_algae",
+      "sourceIndex": 10,
+      "sourcePosition": [
+        233.54,
+        0,
+        -210.07
+      ],
+      "sourceNode": "Residential:BG_62:RuinedCity"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_algae_index_000011",
+      "prefab": "pillar_algae",
+      "sourceIndex": 11,
+      "sourcePosition": [
+        258.37,
+        0,
+        -205.65
+      ],
+      "sourceNode": "Residential:BG_62:RuinedCity"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_algae_index_000012",
+      "prefab": "pillar_algae",
+      "sourceIndex": 12,
+      "sourcePosition": [
+        114.32,
+        0,
+        -101.67
+      ],
+      "sourceNode": "LichenLand:6:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_algae_index_000013",
+      "prefab": "pillar_algae",
+      "sourceIndex": 13,
+      "sourcePosition": [
+        134.52,
+        0,
+        -105.06
+      ],
+      "sourceNode": "LichenLand:6:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_algae_index_000014",
+      "prefab": "pillar_algae",
+      "sourceIndex": 14,
+      "sourcePosition": [
+        133.13,
+        0,
+        -77.8
+      ],
+      "sourceNode": "LichenLand:6:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_algae_index_000015",
+      "prefab": "pillar_algae",
+      "sourceIndex": 15,
+      "sourcePosition": [
+        133.31,
+        0,
+        -89.64
+      ],
+      "sourceNode": "LichenLand:6:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_algae_index_000016",
+      "prefab": "pillar_algae",
+      "sourceIndex": 16,
+      "sourcePosition": [
+        122.09,
+        0,
+        -106.01
+      ],
+      "sourceNode": "LichenLand:6:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_algae_index_000017",
+      "prefab": "pillar_algae",
+      "sourceIndex": 17,
+      "sourcePosition": [
+        125.72,
+        0,
+        -106.15
+      ],
+      "sourceNode": "LichenLand:6:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_algae_index_000018",
+      "prefab": "pillar_algae",
+      "sourceIndex": 18,
+      "sourcePosition": [
+        149.64,
+        0,
+        -54.96
+      ],
+      "sourceNode": "LichenLand:5:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_algae_index_000019",
+      "prefab": "pillar_algae",
+      "sourceIndex": 19,
+      "sourcePosition": [
+        130.09,
+        0,
+        -50.1
+      ],
+      "sourceNode": "LichenLand:5:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_algae_index_000020",
+      "prefab": "pillar_algae",
+      "sourceIndex": 20,
+      "sourcePosition": [
+        177.86,
+        0,
+        -54.31
+      ],
+      "sourceNode": "LichenLand:5:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_algae_index_000021",
+      "prefab": "pillar_algae",
+      "sourceIndex": 21,
+      "sourcePosition": [
+        173.09,
+        0,
+        -54.95
+      ],
+      "sourceNode": "LichenLand:5:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_algae_index_000022",
+      "prefab": "pillar_algae",
+      "sourceIndex": 22,
+      "sourcePosition": [
+        118.18,
+        0,
+        -53.3
+      ],
+      "sourceNode": "LichenLand:5:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_algae_index_000023",
+      "prefab": "pillar_algae",
+      "sourceIndex": 23,
+      "sourcePosition": [
+        161.31,
+        0,
+        -45.43
+      ],
+      "sourceNode": "LichenLand:5:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_algae_index_000024",
+      "prefab": "pillar_algae",
+      "sourceIndex": 24,
+      "sourcePosition": [
+        122.43,
+        0,
+        -69.47
+      ],
+      "sourceNode": "LichenLand:5:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_algae_index_000025",
+      "prefab": "pillar_algae",
+      "sourceIndex": 25,
+      "sourcePosition": [
+        114.9,
+        0,
+        -53.78
+      ],
+      "sourceNode": "LichenLand:5:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_algae_index_000026",
+      "prefab": "pillar_algae",
+      "sourceIndex": 26,
+      "sourcePosition": [
+        158.12,
+        0,
+        -37.3
+      ],
+      "sourceNode": "LichenLand:5:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_algae_index_000027",
+      "prefab": "pillar_algae",
+      "sourceIndex": 27,
+      "sourcePosition": [
+        126.6,
+        0,
+        10.96
+      ],
+      "sourceNode": "LichenLand:BG_82:BGWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_algae_index_000028",
+      "prefab": "pillar_algae",
+      "sourceIndex": 28,
+      "sourcePosition": [
+        118.52,
+        0,
+        -5.02
+      ],
+      "sourceNode": "LichenLand:4:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_algae_index_000029",
+      "prefab": "pillar_algae",
+      "sourceIndex": 29,
+      "sourcePosition": [
+        121.24,
+        0,
+        -2.61
+      ],
+      "sourceNode": "LichenLand:4:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_algae_index_000030",
+      "prefab": "pillar_algae",
+      "sourceIndex": 30,
+      "sourcePosition": [
+        138.84,
+        0,
+        -21.47
+      ],
+      "sourceNode": "LichenLand:4:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_algae_index_000031",
+      "prefab": "pillar_algae",
+      "sourceIndex": 31,
+      "sourcePosition": [
+        117.02,
+        0,
+        -18.44
+      ],
+      "sourceNode": "LichenLand:4:LichenLand"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_algae_index_000032",
+      "prefab": "pillar_algae",
+      "sourceIndex": 32,
+      "sourcePosition": [
+        29.91,
+        0,
+        -126.58
+      ],
+      "sourceNode": "LichenLand:1:LichenMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_algae_index_000033",
+      "prefab": "pillar_algae",
+      "sourceIndex": 33,
+      "sourcePosition": [
+        534.25,
+        0,
+        -357.64
+      ],
+      "sourceNode": "TheLabyrinth:7:LabyrinthEntrance"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_atrium_index_000001",
+      "prefab": "pillar_atrium",
+      "sourceIndex": 1,
+      "sourcePosition": [
+        149,
+        0,
+        -562
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_atrium_index_000002",
+      "prefab": "pillar_atrium",
+      "sourceIndex": 2,
+      "sourcePosition": [
+        149,
+        0,
+        -586
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pillar_atrium_index_000003",
+      "prefab": "pillar_atrium",
+      "sourceIndex": 3,
+      "sourcePosition": [
+        174,
+        0,
+        -586
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_archive_pillar_index_000001",
+      "prefab": "archive_pillar",
+      "sourceIndex": 1,
+      "sourcePosition": [
+        -742.07,
+        0,
+        -82
+      ],
+      "sourceNode": "ArchiveMaze:1:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_archive_pillar_index_000002",
+      "prefab": "archive_pillar",
+      "sourceIndex": 2,
+      "sourcePosition": [
+        -762,
+        0,
+        -81.94
+      ],
+      "sourceNode": "ArchiveMaze:1:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_archive_pillar_index_000003",
+      "prefab": "archive_pillar",
+      "sourceIndex": 3,
+      "sourcePosition": [
+        -762,
+        0,
+        -102
+      ],
+      "sourceNode": "ArchiveMaze:0:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_archive_pillar_index_000004",
+      "prefab": "archive_pillar",
+      "sourceIndex": 4,
+      "sourcePosition": [
+        -742,
+        0,
+        -102
+      ],
+      "sourceNode": "ArchiveMaze:0:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_archive_pillar_index_000005",
+      "prefab": "archive_pillar",
+      "sourceIndex": 5,
+      "sourcePosition": [
+        -794,
+        0,
+        -50
+      ],
+      "sourceNode": "ArchiveMaze:BG_96:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_archive_pillar_index_000006",
+      "prefab": "archive_pillar",
+      "sourceIndex": 6,
+      "sourcePosition": [
+        -794,
+        0,
+        -70
+      ],
+      "sourceNode": "ArchiveMaze:BG_96:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_archive_pillar_index_000007",
+      "prefab": "archive_pillar",
+      "sourceIndex": 7,
+      "sourcePosition": [
+        -762,
+        0,
+        -146
+      ],
+      "sourceNode": "ArchiveMaze:BG_95:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_archive_pillar_index_000008",
+      "prefab": "archive_pillar",
+      "sourceIndex": 8,
+      "sourcePosition": [
+        -742.07,
+        0,
+        -146
+      ],
+      "sourceNode": "ArchiveMaze:BG_95:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_archive_pillar_index_000009",
+      "prefab": "archive_pillar",
+      "sourceIndex": 9,
+      "sourcePosition": [
+        -714.07,
+        0,
+        -82
+      ],
+      "sourceNode": "ArchiveMaze:3:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_archive_pillar_index_000010",
+      "prefab": "archive_pillar",
+      "sourceIndex": 10,
+      "sourcePosition": [
+        -730.13,
+        0,
+        -102
+      ],
+      "sourceNode": "ArchiveMaze:0:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_archive_pillar_index_000011",
+      "prefab": "archive_pillar",
+      "sourceIndex": 11,
+      "sourcePosition": [
+        -758.07,
+        0,
+        -34
+      ],
+      "sourceNode": "ArchiveMaze:2:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_archive_pillar_index_000012",
+      "prefab": "archive_pillar",
+      "sourceIndex": 12,
+      "sourcePosition": [
+        -730,
+        0,
+        -38
+      ],
+      "sourceNode": "ArchiveMaze:2:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_archive_pillar_index_000013",
+      "prefab": "archive_pillar",
+      "sourceIndex": 13,
+      "sourcePosition": [
+        -730,
+        0,
+        -18.07
+      ],
+      "sourceNode": "ArchiveMaze:2:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_archive_pillar_index_000014",
+      "prefab": "archive_pillar",
+      "sourceIndex": 14,
+      "sourcePosition": [
+        -722,
+        0,
+        -130
+      ],
+      "sourceNode": "ArchiveMaze:BG_95:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_archive_pillar_index_000015",
+      "prefab": "archive_pillar",
+      "sourceIndex": 15,
+      "sourcePosition": [
+        -714,
+        0,
+        -62
+      ],
+      "sourceNode": "ArchiveMaze:2:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_archive_pillar_index_000016",
+      "prefab": "archive_pillar",
+      "sourceIndex": 16,
+      "sourcePosition": [
+        -752,
+        0,
+        -117.94
+      ],
+      "sourceNode": "ArchiveMaze:0:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_archive_pillar_index_000017",
+      "prefab": "archive_pillar",
+      "sourceIndex": 17,
+      "sourcePosition": [
+        -746.07,
+        0,
+        -54
+      ],
+      "sourceNode": "ArchiveMaze:1:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_archive_pillar_index_000018",
+      "prefab": "archive_pillar",
+      "sourceIndex": 18,
+      "sourcePosition": [
+        -758.07,
+        0,
+        -66
+      ],
+      "sourceNode": "ArchiveMaze:1:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_archive_pillar_index_000019",
+      "prefab": "archive_pillar",
+      "sourceIndex": 19,
+      "sourcePosition": [
+        -770.07,
+        0,
+        -106
+      ],
+      "sourceNode": "ArchiveMaze:0:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_archive_pillar_index_000020",
+      "prefab": "archive_pillar",
+      "sourceIndex": 20,
+      "sourcePosition": [
+        -770,
+        0,
+        -78
+      ],
+      "sourceNode": "ArchiveMaze:BG_96:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_archive_pillar_index_000021",
+      "prefab": "archive_pillar",
+      "sourceIndex": 21,
+      "sourcePosition": [
+        -798.07,
+        0,
+        -77.94
+      ],
+      "sourceNode": "ArchiveMaze:BG_96:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_archive_pillar_index_000022",
+      "prefab": "archive_pillar",
+      "sourceIndex": 22,
+      "sourcePosition": [
+        -798,
+        0,
+        -106
+      ],
+      "sourceNode": "ArchiveMaze:BG_96:ArchiveMazeRooms"
     },
     {
       "id": "dst_04E26ADB66396E8D_mushtree_moon_index_000001",

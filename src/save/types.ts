@@ -63,6 +63,14 @@ export interface SavedEntity {
     caveinBoulder?: import('@dontstarve-web/prefab/rocks').CaveinBoulderSave;
     /** cave_hole.lua OnSave: data.allowspawn. */
     allowspawn?: boolean;
+    /** archive_pillar.lua OnSave: data.broken (a boolean); vault_pillar.lua OnSave: data.broken (1). */
+    broken?: boolean | 1;
+    /** vault_pillar.lua OnSave: data.capped. */
+    capped?: 1 | 2;
+    /** vault_pillar.lua OnLoad: world generation's data.random, never saved back. */
+    random?: true;
+    /** monkeypillar.lua OnSave: data.pillar_id, a number from a world save or the string math.random made. */
+    pillar_id?: import('@dontstarve-web/prefab/monkeypillar').MonkeyPillarId;
     /** rocks.lua on_save_moonglass: data.rock_type. */
     rock_type?: import('@dontstarve-web/prefab/rocks').MoonglassRockType;
     grottoPool?: import('@dontstarve-web/prefab/grotto_pool').GrottoPoolSaveState;

@@ -36,6 +36,10 @@ import { BulbPlantManager } from '@dontstarve-web/prefab/bulb_plant';
 import { RockManager, moonglassRockPrefabs } from '@dontstarve-web/prefab/rocks';
 import { caveHolePrefabs } from '@dontstarve-web/prefab/cave_hole';
 import { pillarPrefabs } from '@dontstarve-web/prefab/pillar';
+import { atriumPillarPrefabs } from '@dontstarve-web/prefab/atrium_pillar';
+import { archivePillarPrefabs } from '@dontstarve-web/prefab/archive_pillar';
+import { vaultPillarPrefabs } from '@dontstarve-web/prefab/vault_pillar';
+import { monkeyPillarPrefabs } from '@dontstarve-web/prefab/monkeypillar';
 import { StaffProjectileManager } from '@dontstarve-web/prefab/staff_projectile';
 import { CaveEntranceManager, CAVES_SHARD } from '@dontstarve-web/prefab/cave_entrance';
 import { CaveExitManager, MASTER_SHARD } from '@dontstarve-web/prefab/cave_exit';
@@ -125,6 +129,11 @@ const MANAGER_DEFINITIONS = {
   'moonglass_rock': PREFAB_DEFINITIONS.moonglassRocks,
   'cave_hole': PREFAB_DEFINITIONS.caveHoles,
   'pillar_ruins': PREFAB_DEFINITIONS.pillarRuins,
+  'cave_pillar': PREFAB_DEFINITIONS.cavePillars,
+  'pillar_atrium': PREFAB_DEFINITIONS.atriumPillars,
+  'archive_pillar': PREFAB_DEFINITIONS.archivePillars,
+  'vault_pillar': PREFAB_DEFINITIONS.vaultPillars,
+  'monkeypillar': PREFAB_DEFINITIONS.monkeyPillars,
   'cave_entrance': PREFAB_DEFINITIONS.caveEntrances,
   'cave_exit': PREFAB_DEFINITIONS.caveExits,
   'grotto_pool': PREFAB_DEFINITIONS.grottoPools,
@@ -211,6 +220,11 @@ const SCENE_LIFECYCLE_ORDER = [
   PREFAB_DEFINITIONS.moonglassRocks,
   PREFAB_DEFINITIONS.caveHoles,
   PREFAB_DEFINITIONS.pillarRuins,
+  PREFAB_DEFINITIONS.cavePillars,
+  PREFAB_DEFINITIONS.atriumPillars,
+  PREFAB_DEFINITIONS.archivePillars,
+  PREFAB_DEFINITIONS.vaultPillars,
+  PREFAB_DEFINITIONS.monkeyPillars,
   PREFAB_DEFINITIONS.caveEntrances,
   PREFAB_DEFINITIONS.caveExits,
   PREFAB_DEFINITIONS.grottoPools,
@@ -280,6 +294,11 @@ export async function createSceneEntities(
     'moonglass_rock': ReturnType<typeof registerMoonglassRocks>;
     'cave_hole': ReturnType<typeof registerCaveHoles>;
     'pillar_ruins': ReturnType<typeof registerPillarRuins>;
+    'cave_pillar': typeof prefabs;
+    'pillar_atrium': ReturnType<typeof registerAtriumPillars>;
+    'archive_pillar': ReturnType<typeof registerArchivePillars>;
+    'vault_pillar': ReturnType<typeof registerVaultPillars>;
+    'monkeypillar': ReturnType<typeof registerMonkeyPillars>;
     'cave_entrance': ReturnType<typeof registerCaveEntrances>;
     'cave_exit': ReturnType<typeof registerCaveExits>;
     'grotto_pool': ReturnType<typeof registerGrottoPools>;
@@ -363,6 +382,13 @@ export async function createSceneEntities(
   Managers['moonglass_rock'] = registerMoonglassRocks(registry, 'moonglass_rock', worldState);
   Managers['cave_hole'] = registerCaveHoles(registry, 'cave_hole', worldState);
   Managers['pillar_ruins'] = registerPillarRuins(registry, 'pillar_ruins');
+  // pillarPrefabs above declares these too: they share pillar.lua's one definition.
+  registry.registerPrefabs(MANAGER_DEFINITIONS['cave_pillar']);
+  Managers['cave_pillar'] = prefabs;
+  Managers['pillar_atrium'] = registerAtriumPillars(registry, 'pillar_atrium');
+  Managers['archive_pillar'] = registerArchivePillars(registry, 'archive_pillar');
+  Managers['vault_pillar'] = registerVaultPillars(registry, 'vault_pillar');
+  Managers['monkeypillar'] = registerMonkeyPillars(registry, 'monkeypillar', worldState);
   /** ms_playerdespawnandmigrate: the destination shard is the cluster's other save, loaded by reloading the page. */
   const shardLink: WorldMigratorShard = {
     isWorldAvailable: shard => shard === CAVES_SHARD || shard === MASTER_SHARD,
@@ -752,6 +778,30 @@ export async function createSceneEntities(
 
   function registerPillarRuins(registry: EntityRegistry, prefabId: 'pillar_ruins') {
     prefabs.register(pillarPrefabs());
+    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+    return prefabs;
+  }
+
+  function registerAtriumPillars(registry: EntityRegistry, prefabId: 'pillar_atrium') {
+    prefabs.register(atriumPillarPrefabs());
+    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+    return prefabs;
+  }
+
+  function registerArchivePillars(registry: EntityRegistry, prefabId: 'archive_pillar') {
+    prefabs.register(archivePillarPrefabs());
+    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+    return prefabs;
+  }
+
+  function registerVaultPillars(registry: EntityRegistry, prefabId: 'vault_pillar') {
+    prefabs.register(vaultPillarPrefabs({ spawnPrefab: (id, position) => prefabs.spawn(id, position) }));
+    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+    return prefabs;
+  }
+
+  function registerMonkeyPillars(registry: EntityRegistry, prefabId: 'monkeypillar', worldState: SceneWorldState) {
+    prefabs.register(monkeyPillarPrefabs({ scheduler: worldState.scheduler, getWatchWorldContent: worldState.getWatchWorldContent }));
     registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
     return prefabs;
   }

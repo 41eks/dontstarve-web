@@ -738920,6 +738920,64 @@
           }
         }
       ],
+      "monkeypillar": [
+        {
+          "id": "dst_03741E1B78B29575_monkeypillar_id_108756",
+          "transform": {
+            "position": [
+              295.2,
+              0.0,
+              -1586.13
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "pillar_id": 1
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_monkeypillar_id_108757",
+          "transform": {
+            "position": [
+              313.2,
+              0.0,
+              -1628.13
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "pillar_id": 2
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_monkeypillar_id_108758",
+          "transform": {
+            "position": [
+              283.2,
+              0.0,
+              -1616.13
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "pillar_id": 4
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_monkeypillar_id_108759",
+          "transform": {
+            "position": [
+              325.2,
+              0.0,
+              -1598.13
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "pillar_id": 3
+          }
+        }
+      ],
       "cave_entrance": [
         {
           "id": "dst_03741E1B78B29575_cave_entrance_id_108760",

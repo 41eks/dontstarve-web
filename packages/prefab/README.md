@@ -9,7 +9,7 @@ DST 场景预制体。该包基于 `@dontstarve-web/animation` 组合具体资�
 - `placeStaticLayout`（`staticLayout`）：`default_pigking` 静态布局的地皮与岩石坐标，由地图生成层登记；`NightmareRockManager`（`nightmarerock`）对应 `sanityrock` / `insanityrock`。
 - `Pathfinder`（`pathfinder.ts`）：`TheWorld.Pathfinder` 的 Lua 接口（`SubmitSearch`、`GetSearchStatus`、`GetSearchResult`、`KillSearch`、`IsClear`、`AddWall`、`RemoveWall`、`GetPathTileIndexFromPoint`），位置用世界单位的向量，搜索由 `update()` 分帧推进。只考虑地皮和 `AddWall` 登记的墙；引擎算法不可见，路径可能与原版不同。应用层 `src/building.ts` 持有唯一实例，每帧 `update()`；玩家的 `Locomotor` 和 `componets` 的 `LocoMotor` 共用 `LocoMotorPath` 走 Lua 的 `FindPath` 流程，墙、栅栏和 `atrium_gate` 用 `AddWall` 登记。树、石头等其他障碍交给物理碰撞。
 - `rockAvocadoSaplingPrefabs`：石果萌芽的 `PrefabEntityDefinition`，由应用层的 `PrefabEntityManager` 注册。
-- `pillarPrefabs`：遗迹石柱 `pillar_ruins` 的 `PrefabEntityDefinition`，由应用层的 `PrefabEntityManager` 注册。
+- `pillarPrefabs`：`pillar.lua` 的遗迹和洞穴石柱（`pillar_ruins`、`pillar_cave`、`pillar_cave_flintless`、`pillar_cave_rock`、`pillar_algae`）的 `PrefabEntityDefinition`，由应用层的 `PrefabEntityManager` 注册。`atriumPillarPrefabs`、`archivePillarPrefabs`、`vaultPillarPrefabs`、`monkeyPillarPrefabs` 同样注册 `pillar_atrium`、`archive_pillar`、`vault_pillar`（含不入档的下半部分子实体）和 `monkeypillar`；`archive_pillar` 的 bank 和 build 按实例由 `instanceAssets` 声明。这些 ID 都可 `c_spawn`，都没有 `c_give`。
 - `caveHolePrefabs`：洞穴破洞及其 `cave_hole_surface` 子实体的 `PrefabEntityDefinition`，由应用层的 `PrefabEntityManager` 注册。
 - `moonglassRockPrefabs`（`rocks.ts`）：月亮玻璃岩的 `PrefabEntityDefinition`，由应用层的 `PrefabEntityManager` 注册；`instanceAssets` 按 `rock_type` 声明四套 bank 与 build。其余岩石仍在 `RockManager`。
 - `moonTreePrefabs`、`evergreenPrefabs`、`deciduousPrefabs`：月树与幼苗、常青树、桦树的 `PrefabEntityDefinition`，由应用层的 `PrefabEntityManager` 注册；不生成森林

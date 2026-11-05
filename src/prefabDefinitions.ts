@@ -12,7 +12,11 @@ import { FARM_PLOW_ID, FARM_PLOW_ITEM_ID, FARM_DECOR_IDS, PLANTED_SEED_IDS } fro
 import { DWARF_STAR_ID, POLAR_LIGHT_ID } from '@dontstarve-web/prefab/stafflight';
 import { BULB_PLANT_PREFABS, BULB_PLANT_VARIANTS } from '@dontstarve-web/prefab/bulb_plant';
 import { CAVE_HOLE_ID } from '@dontstarve-web/prefab/cave_hole';
-import { PILLAR_RUINS_ID } from '@dontstarve-web/prefab/pillar';
+import { CAVE_PILLAR_IDS, PILLAR_RUINS_ID } from '@dontstarve-web/prefab/pillar';
+import { PILLAR_ATRIUM_ID } from '@dontstarve-web/prefab/atrium_pillar';
+import { ARCHIVE_PILLAR_ARCHIVES, ARCHIVE_PILLAR_ID } from '@dontstarve-web/prefab/archive_pillar';
+import { VAULT_PILLAR_ID } from '@dontstarve-web/prefab/vault_pillar';
+import { MONKEY_PILLAR_IDS, MONKEYPILLAR_ID, type MonkeyPillarId } from '@dontstarve-web/prefab/monkeypillar';
 import { MOONGLASS_ROCK_ID, ROCK_ENTITY_IDS, moonglassRockArchives, rockArchives } from '@dontstarve-web/prefab/rocks';
 import { MARBLESHRUB_ID, MARBLESHRUB_SPAWN_IDS, MARBLESHRUB_MAX_GROW_TIME } from '@dontstarve-web/prefab/marbleshrub';
 import { ARCHIVE_PROP_IDS, ARCHIVE_PROP_SPAWN_IDS, ARCHIVE_MOON_STATUE_ID, ARCHIVE_RUNE_STATUE_ID } from '@dontstarve-web/prefab/archive_props';
@@ -118,6 +122,26 @@ const ruinsStatueGem: PrefabComponentParser = (value, path) => {
   if (!RUINS_STATUE_GEMS.includes(state.gem as typeof RUINS_STATUE_GEMS[number]))
     fail(`${path}.ruinsStatueMage.gem`, 'unsupported ruins statue gem');
   return { ruinsStatueMage: { gem: state.gem as typeof RUINS_STATUE_GEMS[number] } };
+};
+/** archive_pillar.lua OnSave: data.broken. */
+const archivePillar: PrefabComponentParser = (value, path) => {
+  const { broken } = object(value, path, ['broken']);
+  if (broken !== undefined && typeof broken !== 'boolean') fail(`${path}.broken`, 'expected boolean');
+  return broken === undefined ? {} : { broken };
+};
+/** vault_pillar.lua OnSave: data.capped or data.broken, and world generation's data.random. */
+const vaultPillar: PrefabComponentParser = (value, path) => {
+  const { capped, broken, random } = object(value, path, ['capped', 'broken', 'random']);
+  if (capped !== undefined && capped !== 1 && capped !== 2) fail(`${path}.capped`, 'expected 1 or 2');
+  if (broken !== undefined && broken !== 1) fail(`${path}.broken`, 'expected 1');
+  if (random !== undefined && random !== true) fail(`${path}.random`, 'expected true');
+  return { ...capped ? { capped: capped as 1 | 2 } : {}, ...broken ? { broken: 1 as const } : {}, ...random ? { random: true as const } : {} };
+};
+/** monkeypillar.lua OnSave: data.pillar_id. */
+const monkeyPillar: PrefabComponentParser = (value, path) => {
+  const { pillar_id } = object(value, path, ['pillar_id']);
+  if (pillar_id !== undefined && !MONKEY_PILLAR_IDS.includes(pillar_id as MonkeyPillarId)) fail(`${path}.pillar_id`, 'unsupported monkey pillar');
+  return pillar_id === undefined ? {} : { pillar_id: pillar_id as MonkeyPillarId };
 };
 const archiveStatue = componentParser({ keys: ['archiveProp'], archivePropVariants: 4 });
 const archiveRune = componentParser({ keys: ['archiveProp'], archivePropVariants: 3, archiveStoryLines: 5 });
@@ -339,6 +363,11 @@ export const PREFAB_DEFINITIONS = {
   moonglassRocks: definePrefabs([MOONGLASS_ROCK_ID], componentParser({ keys: ['rock_type'] }), true, (_prefab, records) => moonglassRockArchives(records)),
   caveHoles: definePrefabs([CAVE_HOLE_ID], componentParser({ keys: ['allowspawn'] }), true, ['cave_hole.zip']),
   pillarRuins: definePrefabs([PILLAR_RUINS_ID], empty, true, ['pillar_ruins.zip']),
+  cavePillars: definePrefabs(CAVE_PILLAR_IDS, empty, true, prefab => [`${prefab}.zip`]),
+  atriumPillars: definePrefabs([PILLAR_ATRIUM_ID], empty, true, ['pillar_atrium.zip']),
+  archivePillars: definePrefabs([ARCHIVE_PILLAR_ID], archivePillar, true, ARCHIVE_PILLAR_ARCHIVES),
+  vaultPillars: definePrefabs([VAULT_PILLAR_ID], vaultPillar, true, ['pillar_vault_deep.zip']),
+  monkeyPillars: definePrefabs([MONKEYPILLAR_ID], monkeyPillar, true, ['pillar_monkey.zip', 'snow.zip']),
   caveEntrances: definePrefabs(CAVE_ENTRANCE_IDS, empty, true, ['cave_entrance.zip']),
   mushroomPlants: definePrefabs(MUSHROOM_PLANT_IDS, componentParser({ keys: ['pickable', 'mushroom'] }), true, ['mushrooms.zip', 'fire.zip']),
   mushtrees: definePrefabs(MUSHTREE_IDS, componentParser({ keys: ['mushtree', 'growable'], growthStages: MUSHTREE_GROWTH_STAGES,

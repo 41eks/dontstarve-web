@@ -172,6 +172,41 @@ def pillar_ruins_components(data):
     return {}
 
 
+def stateless_pillar_components(prefab):
+    # pillar.lua and atrium_pillar.lua have no OnSave and add no component that saves anything.
+    def convert(data):
+        if data:
+            raise ValueError(f'Unsupported {prefab} save state')
+        return {}
+    return convert
+
+
+def archive_pillar_components(data):
+    # archive_pillar.lua OnSave: data.broken, a boolean. Without it the constructor rolls one.
+    if set(data) - {'broken'} or ('broken' in data and type(data['broken']) is not bool):
+        raise ValueError('Unsupported archive_pillar save state')
+    return {'broken': data['broken']} if 'broken' in data else {}
+
+
+def vault_pillar_components(data):
+    # vault_pillar.lua OnSave: data.capped (MakeCapped: 1 or 2) or data.broken (MakeBroken: 1); world generation's data.random.
+    if (set(data) - {'capped', 'broken', 'random'}
+            or ('capped' in data and (type(data['capped']) is not int or data['capped'] not in (1, 2)))
+            or ('broken' in data and (type(data['broken']) is not int or data['broken'] != 1))
+            or ('random' in data and data['random'] is not True)):
+        raise ValueError('Unsupported vault_pillar save state')
+    return dict(data)
+
+
+def monkeypillar_components(data):
+    # monkeypillar.lua OnSave: data.pillar_id, tostring(math.random(1, 4)) or the number a world save holds.
+    pillar_id = data.get('pillar_id')
+    if set(data) - {'pillar_id'} or ('pillar_id' in data and (
+            type(pillar_id) not in (int, str) or str(pillar_id) not in ('1', '2', '3', '4'))):
+        raise ValueError('Unsupported monkeypillar save state')
+    return {'pillar_id': pillar_id} if 'pillar_id' in data else {}
+
+
 def cave_exit_components(data):
     # worldmigrator.lua OnSave (id/auto/linkedWorld/receivedPortal) belongs to the shard link, which is not connected yet.
     if not data:

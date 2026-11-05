@@ -398,6 +398,14 @@
     "cave_exit",
     "cave_hole",
     "pillar_ruins",
+    "pillar_cave",
+    "pillar_cave_flintless",
+    "pillar_cave_rock",
+    "pillar_algae",
+    "pillar_atrium",
+    "archive_pillar",
+    "vault_pillar",
+    "monkeypillar",
     "cave_entrance",
     "cave_entrance_open",
     "mushtree_moon",
@@ -788,6 +796,38 @@
     "pillar_ruins": {
       "source": 0,
       "imported": 0
+    },
+    "pillar_cave": {
+      "source": 0,
+      "imported": 0
+    },
+    "pillar_cave_flintless": {
+      "source": 0,
+      "imported": 0
+    },
+    "pillar_cave_rock": {
+      "source": 0,
+      "imported": 0
+    },
+    "pillar_algae": {
+      "source": 0,
+      "imported": 0
+    },
+    "pillar_atrium": {
+      "source": 0,
+      "imported": 0
+    },
+    "archive_pillar": {
+      "source": 0,
+      "imported": 0
+    },
+    "vault_pillar": {
+      "source": 0,
+      "imported": 0
+    },
+    "monkeypillar": {
+      "source": 4,
+      "imported": 4
     },
     "cave_entrance": {
       "source": 5,
@@ -20276,6 +20316,54 @@
         -152.45
       ],
       "sourceNode": "Squeltch:0:SlightlyMermySwamp"
+    },
+    {
+      "id": "dst_03741E1B78B29575_monkeypillar_id_108756",
+      "prefab": "monkeypillar",
+      "sourceIndex": 1,
+      "sourceId": 108756,
+      "sourcePosition": [
+        84.4,
+        0,
+        546.71
+      ],
+      "sourceNode": "StaticLayoutIsland:MonkeyIsland"
+    },
+    {
+      "id": "dst_03741E1B78B29575_monkeypillar_id_108757",
+      "prefab": "monkeypillar",
+      "sourceIndex": 2,
+      "sourceId": 108757,
+      "sourcePosition": [
+        90.4,
+        0,
+        560.71
+      ],
+      "sourceNode": "StaticLayoutIsland:MonkeyIsland"
+    },
+    {
+      "id": "dst_03741E1B78B29575_monkeypillar_id_108758",
+      "prefab": "monkeypillar",
+      "sourceIndex": 3,
+      "sourceId": 108758,
+      "sourcePosition": [
+        80.4,
+        0,
+        556.71
+      ],
+      "sourceNode": "StaticLayoutIsland:MonkeyIsland"
+    },
+    {
+      "id": "dst_03741E1B78B29575_monkeypillar_id_108759",
+      "prefab": "monkeypillar",
+      "sourceIndex": 4,
+      "sourceId": 108759,
+      "sourcePosition": [
+        94.4,
+        0,
+        550.71
+      ],
+      "sourceNode": "StaticLayoutIsland:MonkeyIsland"
     },
     {
       "id": "dst_03741E1B78B29575_cave_entrance_id_108760",

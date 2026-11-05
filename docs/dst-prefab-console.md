@@ -1,5 +1,7 @@
 # DST Lua prefab 的 c_spawn / c_give 静态核对
 
+2026-11-05 补充其余石柱：`prefabs/pillar.lua` 的 `pillar_cave`、`pillar_cave_flintless`、`pillar_cave_rock`、`pillar_algae`，`atrium_pillar.lua` 的 `pillar_atrium`，`archive_pillar.lua` 的 `archive_pillar`，`vault_pillar.lua` 的 `vault_pillar`，`monkeypillar.lua` 的 `monkeypillar` 都没有 `inventoryitem`，原版可 `c_spawn`，不能放入物品栏。项目接入这些世界实体的 `c_spawn`、`c_save()` 与读档；`archive_pillar` 保留 `broken`，`vault_pillar` 保留 `capped`／`broken`，`monkeypillar` 保留 `pillar_id`。
+
 2026-11-05 补充 `pillar_ruins`：`prefabs/pillar.lua` 注册 `Prefab("pillar_ruins", makefn("pillar_ruins", true), ...)`，`makefn` 没有 `inventoryitem`，原版可 `c_spawn("pillar_ruins")`，不能放入物品栏。项目接入该世界实体的 `c_spawn`、`c_save()` 与读档，没有组件字段；`Cluster_62` 最新洞穴快照有 36 个，导入 36 个。
 
 2026-11-04 补充 `cave_hole`：`prefabs/cave_hole.lua` 注册 `Prefab("cave_hole", fn, assets, prefabs)`，`fn` 没有 `inventoryitem`，原版可 `c_spawn("cave_hole")`，不能放入物品栏。项目接入该世界实体的 `c_spawn`、`c_save()` 与读档，`allowspawn` 随存档保留；`cave_hole_surface` 是不入档的子实体，不能 `c_spawn`。`Cluster_62` 最新洞穴快照有 15 个，导入 15 个。
@@ -525,6 +527,14 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `rock_flintless_med` | 可生成 | 不能入栏 | `prefabs/rocks.lua` |
 | `cave_hole` | 可生成 | 不能入栏 | `prefabs/cave_hole.lua` |
 | `pillar_ruins` | 可生成 | 不能入栏 | `prefabs/pillar.lua` |
+| `pillar_cave` | 可生成 | 不能入栏 | `prefabs/pillar.lua` |
+| `pillar_cave_flintless` | 可生成 | 不能入栏 | `prefabs/pillar.lua` |
+| `pillar_cave_rock` | 可生成 | 不能入栏 | `prefabs/pillar.lua` |
+| `pillar_algae` | 可生成 | 不能入栏 | `prefabs/pillar.lua` |
+| `pillar_atrium` | 可生成 | 不能入栏 | `prefabs/atrium_pillar.lua` |
+| `archive_pillar` | 可生成 | 不能入栏 | `prefabs/archive_pillar.lua` |
+| `vault_pillar` | 可生成 | 不能入栏 | `prefabs/vault_pillar.lua` |
+| `monkeypillar` | 可生成 | 不能入栏 | `prefabs/monkeypillar.lua` |
 | `rock_flintless_low` | 可生成 | 不能入栏 | `prefabs/rocks.lua` |
 | `moonglass_rock` | 可生成 | 不能入栏 | `prefabs/rocks.lua` |
 | `farm_plow` | 可生成 | 不能入栏 | `prefabs/farm_plow.lua` |

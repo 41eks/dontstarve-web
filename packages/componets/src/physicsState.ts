@@ -55,6 +55,8 @@ export class PhysicsState {
   }
 
   SetCapsule(radius: number, height = 2): void { this.write({ capsule: { radius, height } }); }
+  /** Physics:SetCylinder(rad, height): `PhysicsBinding` already builds a static capsule on a cylinder of this size. */
+  SetCylinder(radius: number, height: number): void { this.write({ capsule: { radius, height } }); }
   SetTriangleMesh(triangleMesh: readonly number[]): void { this.write({ triangleMesh }); }
   SetMass(mass: number): void { this.write({ mass }); }
   SetFriction(friction: number): void { this.write({ friction }); }
