@@ -3,10 +3,6 @@
 https://41eks.github.io/dontstarve-web/
 
 
-仅 `pnpm build` 的产物启用缓存，开发服务器不注册 Worker。首次安装接管之前的请求仍走网络；后续请求和再次访问会使用缓存。可在开发者工具 Application → Cache Storage 查看 `dontstarve-assets:` 缓存；清理站点数据会删除缓存。HTML、应用 JS/CSS 和存档不在该缓存范围内，因此尚不提供整个应用的离线启动。运行 `pnpm test:asset-cache` 验证构建版本更新、实际浏览器缓存命中、离线资源读取、音频范围请求及更新生命周期。
-
-场景实体的活动区域与资源管理方案见 [按 tile 管理生命周期](docs/tile-lifecycle.md)：每个 tile 持有活动 signal，玩家跨 tile 时更新区域差集，prefab 用 `createMemo` 派生活动状态。活动网格已接入运行时；萤火虫按活动区域加载／释放动画资源，温泉控制显隐，海浪休眠移除。
-
 
 
 ## 调试命令（debugCommand）
@@ -52,7 +48,6 @@ prefab 包内原先直接持有 `scene` 的 38 个类改由 `PrefabDisplayGroup`
 
 `c_give("dreadstone", 3)` / `c_give("wagpunk_bits", 3)` 获取墙体拆除材料，`c_spawn("dreadstone")` / `c_spawn("wagpunk_bits")` 在玩家位置生成一份。库存图标使用各自真实 atlas，地面使用源动画的 `idle`；数量、实体 ID 和落点随 `c_save()` 保存恢复。
 
-蝴蝶 `butterfly` 与月蛾 `moonbutterfly` 现在按 Lua 的实体结构运行：行为树在 `packages/brains/src`（`behaviourtree.ts` 对应 `behaviourtree.lua`，`behaviours/{runaway,wander,doaction,findflower,panic,avoidelectricfence}.ts`、`braincommon.ts`、`butterflybrain.ts`、`moonbutterflybrain.ts` 逐一对应同名 Lua），状态图在 `packages/stategraphs/src/SGbutterfly.ts`，`locomotor`、`pollinator`、`knownlocations` 组件在 `packages/componets/src`，`packages/prefab/src/butterfly.ts` 只负责实体、世界适配和美术。蝴蝶的优先级为 恐慌 → 电栅栏 → `RunAway`（`scarytoprey`，5 单位内逃离、10 单位外停止）→ 夜晚回家 → 采满花粉回家 → `FindFlower` → `Wander`；因 `PriorityNode` 的评估周期散布和 `Wander` 的初始等待，生成后约 2–4 秒才开始飞行（`random` 固定为 0 的测试可复现），`idle` 状态只在 `idle_flight_loop` 播完一轮后才转入 `moving`。到花朵的到达距离按 `locomotor.lua` 的 `ARRIVE_STEP + 物理半径` 计算，而不再直接贴到花心；`POLLINATE` 落地后授粉 2 秒（`GetRandomWithVariance(3, 1)`）再起飞，访问过的花不会再访问，`GOHOME` 落地播放完后移除。月蛾使用 `anim/butterfly_basic.zip` 的 `butterfly` bank 与 `butterfly_moon` build，移动速度 `MOONBUTTERFLY_SPEED = 2.5`，没有授粉组件，行为树是 恐慌 → 电栅栏 → `RunAway` → 围绕 `knownlocations` 的 `home`（掉落时位置）`Wander`（最大 20 单位）；带半径 0.5、强度 0.5 并随 `OnUpdateFlicker` 闪烁的月光（颜色 0.3/0.55/0.45）和 0.15 的光照覆盖。月蛾寿命 `TOTAL_DAY_TIME / 2`，在物品栏里按 0.25 倍速腐败，在物品栏里腐败直接消失，在地面腐败则关闭光、禁用捕虫网并进入 `death`（掉落 `moonbutterflywings`），3 秒后移除。月树砍倒时的 `moonbutterfly` 掉落（100% 一只，50% 第二只）现在是真实的月蛾。`c_spawn("butterfly")`、`c_spawn("moonbutterfly")`、`c_spawn("moonbutterflywings")` 和对应的 `c_give` 都可用；月蛾翅膀可食用并会腐败。尚未接入：冻结/电击状态（`CommonStates.AddFrozenStates` / `AddElectrocuteStates`）、`Pollinator:CreateFlower`、蝴蝶生成器、`MakeFeedableSmallLivestock` 喂食、燃烧与万圣节月亮变异、墙体视线检查（`FindWalkableOffset` 的 `check_los`）和 `RunAway` 的 `safe_point_fn` / 回家分支。
 
 手持地皮或种植物品时的右键按原版 `OnRightClick` 处理：指向可部署的空地才执行 `DEPLOY`（悬停文字取自源字符串，分别为「放置地皮」「栽种」）；位置无效，或鼠标指着不提供动作的实体时，整叠物品放回物品栏（优先来源槽，没有完整空位时仍由鼠标持有）；实体上有其他物品动作时交给该动作。`c_give("dug_grass", 2)` 拿到鼠标后右键空地可种回草丛：第 6 帧消耗 1 个，生成需要施肥的枯萎 `grass`（`OnTransplant`），`c_save()` 保留植株状态和鼠标上剩余的堆叠。命令语法和支持 ID 不变。
 
@@ -140,7 +135,6 @@ prefab 包内原先直接持有 `scene` 的 38 个类改由 `PrefabDisplayGroup`
 | `blue_cap`（生蓝蘑菇） | +20 | +12.5 | -15 |
 | `blue_cap_cooked`（熟蓝蘑菇） | -3 | 0 | +10 |
 
-蘑菇数值来自 `prefabs/mushrooms.lua` 的生／熟数据。`c_give("red_cap", 2)` 等命令获取蘑菇，数量可省略，默认一份；`c_spawn("blue_cap_cooked")` 等命令在玩家脚下生成地面物品，支持表中六个 `*_cap` / `*_cap_cooked` ID。库存图标均来自 `images/inventoryimages.xml`，地面使用原版 `anim/mushrooms.zip` 的 `mushrooms` bank/build 和与物品 ID 同名的静态姿态，无原版皮肤。右键进食使用 `quick_eat_pre → quick_eat`，第 12 帧扣除一份后结算属性，结果限制在玩家属性范围；取消时不消耗、不结算。现有物品栏转移、丢弃、拾取和 `c_save()` 继续适用，保留实体身份、位置、数量及食用后的属性；暂不实现蘑菇采集、烹饪、种植或其他专属交互。
 
 
 通用 `Perishable` 通过游戏时间调度器每 10 个游戏秒结算新鲜度，`updateTimer` 提供周期任务的只读状态，等待期间不逐帧改写；长帧跨过多个周期时依次处理各个到期点，停止腐烂或永久释放时取消任务，恢复时从当前游戏时间重新计时：世界 `WorldPerishClock` 按实际 `dt × 温度倍率` 记录累计刻度，组件 `Update({ time, total })` 扣除前后累计量之差，再应用持有者、湿润和本地倍率。世界私有 `watchSignal` 同步温度，纯 memo 推导冷热倍率；温度变化本身不扣减新鲜度。重设保鲜时长／百分比、改变湿润状态或切换世界前先结清尾帧，若已腐烂并被替换则停止修改旧实体；总时长和满新鲜度原子提交。示例：`c_give("red_cap", 2); c_spawn("red_cap"); c_save()`，保存和读档保留身份、数量、位置与新鲜度，读档在当前游戏时间建立新的累计基准。累计刻度是本项目为休眠补算引入的方案，Lua 原版每次 `Update(inst, dt)` 使用当时温度处理整段 `dt`。命令语法、参数和支持的 prefab/item ID 不变；早晨统一结算与 tile 管理器仍待接入，见 [tile 生命周期](docs/tile-lifecycle.md#腐烂累计刻度与早晨快照)。
@@ -154,10 +148,7 @@ prefab 包内原先直接持有 `scene` 的 38 个类改由 `PrefabDisplayGroup`
 负的生命值不受腐烂影响。`bananapop`（香蕉冻）按 `prefabs/preparedfoods.lua` 使用配方的 `perishtime = PERISH_SUPERFAST`（3 天，1440 秒），其余规则与 `red_cap` 相同，腐烂后同样替换为 `spoiled_food`；`c_give("bananapop", count)` 放入物品栏，`c_spawn("bananapop")` 在玩家脚下生成，烹饪锅采收的产物也以满新鲜度开始。香蕉冻可食用（生命 +20、饥饿 +12.5、理智 +33，随腐烂阶段折算；`temperature` 降温效果尚未实现），锅内成品腐烂和食材新鲜度传递仍待实现。新鲜度以 `freshnessPercent` 随库存和地面存档保存，读档后从中恢复剩余时间并继续腐烂。`c_spawn("spoiled_food")` 在玩家脚下生成腐烂物，`c_give("spoiled_food", count)` 放入物品栏。
 
 
-`veggies.lua` 的静态内容：`c_give("<id>", n)` / `c_spawn("<id>")` 支持 20 种蔬菜的生/熟形态（`carrot`、`corn`、`pumpkin`、`eggplant`、`durian`、`pomegranate`、`dragonfruit`、`watermelon`、`tomato`、`potato`、`asparagus`、`onion`、`garlic`、`pepper`、`cave_banana`、`berries`、`berries_juicy`、`fig`、`cactus_meat`、`kelp`，熟食加 `_cooked`）、`kelp_dried`，以及 14 种 `<name>_seeds`（`carrot_seeds`、`corn_seeds`、`pumpkin_seeds`、`eggplant_seeds`、`durian_seeds`、`pomegranate_seeds`、`dragonfruit_seeds`、`watermelon_seeds`、`tomato_seeds`、`potato_seeds`、`asparagus_seeds`、`onion_seeds`、`garlic_seeds`、`pepper_seeds`）。地面美术、图标、饥饿/生命/理智、腐败时间和堆叠上限均按 `veggies.lua` 与 `tuning.lua`；`pumpkin`、`eggplant`、`durian`、`watermelon` 生品堆叠 20，其余 40；万圣节的南瓜保鲜加成不启用。种子用 `farm_plant_seeds` 的同名 clip，左键选中后点击完整的耕地坑，行为与普通种子相同：第 6 帧消耗一粒，替换为 `farm_plant_<name>` 的种子阶段（`grow_seed → crop_seed`，底部覆盖 `farm_soil` 的 `soil01`），`c_spawn("farm_plant_<name>")` 可直接生成，随 `c_save()` 保存恢复。**未实现**：植物生长、巨型作物（`*_oversized*`，需重物携带）、胡萝卜旋转、晾晒/烹饪、海钓饵、月亮变异、西瓜降温、胡萝卜/海带修补。
 
-
-火魔杖 `firestaff` 装备到手部后，右键点击可燃物（`canlight`，如树、草、营火残骸等带 `burnable` 的实体）执行远程点燃：走进 `weapon:SetRange(8, 10)` 的攻击距离后挥杖，约 7 帧后发射 `fire_projectile`（`staff_projectile.zip` 的 `fire_spin_loop`，速度 50，追踪目标），命中时 `onattack_red` 点燃目标、唤醒睡眠者、解冻并扣 1 点精神，杖耐久 -1；目标已在燃烧时不可选；目标在飞行中消失则落空，不耗耐久也不扣精神。未点燃的命中会留下 `fire_fail_fx`。投射物的追踪、命中与落空由 `packages/componets/src/projectile.ts` 实现，`Weapon.LaunchProjectile` 与 `Combat.DoAttack(target, weapon, projectile)` 按源码分支处理远程武器。带 `lighter` 的火把仍使用原有右键 `LIGHT` 近战点燃。
 
 
 
