@@ -1,11 +1,11 @@
 import { createSignal, readonlySignal, watchSignal, type Memo, type ReadonlySignal, type Signal } from './signal';
-import type { SeasonState, WorldPhase, WorldMoonPhase } from './world';
+import type { SeasonState, WorldPhase, WorldMoonPhase, WorldNightmarePhase } from './world';
 import type { GameTimeScheduler } from './gameTimeScheduler';
 import type { Quaternion, Vector3 } from 'three';
 
 /** Named world inputs; compatible with erasableSyntaxOnly. */
 export const WorldContentKey = {
-  Cycle: 'cycle', Moon: 'moon', Season: 'season', Temperature: 'temperature', Wind: 'wind', PerishClock: 'perishTick', SnowLevel: 'snowLevel',
+  Cycle: 'cycle', NightmarePhase: 'nightmarephase', Moon: 'moon', Season: 'season', Temperature: 'temperature', Wind: 'wind', PerishClock: 'perishTick', SnowLevel: 'snowLevel',
   PlayerPositions: 'playerpositions', CameraRotation: 'camerarotation',
   Moisture: 'moisture', MoistureCeil: 'moistureceil', MoistureFloor: 'moisturefloor', PrecipType: 'preciptype',
   PeakPrecipitationRate: 'peakprecipitationrate', PrecipitationRate: 'precipitationRate', RainRate: 'rainRate', SnowRate: 'snowRate', SnowCover: 'snowCover',
@@ -14,6 +14,7 @@ export type WorldContentKey = typeof WorldContentKey[keyof typeof WorldContentKe
 
 export interface WorldContentValues {
   cycle: WorldPhase;
+  nightmarephase: WorldNightmarePhase;
   moon: WorldMoonState;
   season: SeasonState;
   temperature: number;

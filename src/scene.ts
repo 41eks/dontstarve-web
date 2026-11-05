@@ -182,6 +182,7 @@ export async function startScene(
       entities: registry.exportRecords(), elapsedSeconds: clockUpdater.elapsedSeconds, tiles: turfMap.exportTiles(),
       worldtemperature: worldState.worldtemperature.OnSave(),
       weather: worldState.weather.OnSave(),
+      nightmareclock: worldState.nightmareclock?.OnSave(),
       moon: { mooomphasecycle: worldState.moonPhaseCycle() },
       // Physics may place the foot a fraction below the ground while settling.
       playerTransform: { position: [player.position.x, Math.max(0, player.position.y), player.position.z], rotationY: 0 },

@@ -294,7 +294,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
       ...o.sanitySane === undefined ? {} : { sanitySane: o.sanitySane as boolean },
       ...o.sanityMode === undefined ? {} : { sanityMode: integer(o.sanityMode, 'players.local.stats.sanityMode', 0, 1) as 0 | 1 } };
   }
-  const systemsData = object(world.systems, 'world.systems', ['clock', 'season', 'worldtemperature', 'weather', 'moon', 'random']);
+  const systemsData = object(world.systems, 'world.systems', ['clock', 'season', 'worldtemperature', 'weather', 'nightmareclock', 'moon', 'random']);
   const systems: SaveDocument['world']['systems'] = {};
   if (systemsData.clock !== undefined) {
     const o = object(systemsData.clock, 'world.systems.clock', ['day', 'phase', 'phaseProgress']);
@@ -326,6 +326,23 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
       preciptype: choice(o.preciptype, `${path}.preciptype`, ['none', 'rain', 'snow']),
       peakprecipitationrate: number(o.peakprecipitationrate, `${path}.peakprecipitationrate`, 0, 1),
       ...(o.snowlevel === undefined ? {} : { snowlevel: number(o.snowlevel, `${path}.snowlevel`, 0, 1) }),
+    };
+  }
+  if (systemsData.nightmareclock !== undefined) {
+    const path = 'world.systems.nightmareclock';
+    const phases = ['calm', 'warn', 'wild', 'dawn'] as const;
+    const o = object(systemsData.nightmareclock, path, ['lengths', 'phase', 'totaltimeinphase', 'remainingtimeinphase', 'lockedphase']);
+    const lengths = object(o.lengths, `${path}.lengths`, phases);
+    systems.nightmareclock = {
+      // net_smallbyte, in segs.
+      lengths: {
+        calm: integer(lengths.calm, `${path}.lengths.calm`, 0, 63), warn: integer(lengths.warn, `${path}.lengths.warn`, 0, 63),
+        wild: integer(lengths.wild, `${path}.lengths.wild`, 0, 63), dawn: integer(lengths.dawn, `${path}.lengths.dawn`, 0, 63),
+      },
+      phase: choice(o.phase, `${path}.phase`, phases),
+      totaltimeinphase: number(o.totaltimeinphase, `${path}.totaltimeinphase`),
+      remainingtimeinphase: number(o.remainingtimeinphase, `${path}.remainingtimeinphase`),
+      ...(o.lockedphase === undefined ? {} : { lockedphase: choice(o.lockedphase, `${path}.lockedphase`, phases) }),
     };
   }
   if (systemsData.moon !== undefined) {

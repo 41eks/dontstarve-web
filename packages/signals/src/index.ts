@@ -7,4 +7,4 @@ export type { Signal, ReadonlySignal, SignalListener, Memo } from './signal';
 export { bindEquipmentLifecycle, createEquipmentExistenceState } from './equipment';
 export type { Equipment, EquipmentEntity, EquipmentLifecycle, EquipmentOwner, EquipmentSanity, EquipmentSlot, HandEquipment, HeadEquipment, BodyEquipment } from './equipment';
 export { clockstate, seasonstate, moonphasestate } from './world';
-export type { WorldSeason, WorldPhase, WorldMoonPhase, SeasonTick, ClockTick, ClockCalendar, SeasonState, ClockState } from './world';
+export type { WorldSeason, WorldPhase, WorldMoonPhase, WorldNightmarePhase, SeasonTick, ClockTick, ClockCalendar, SeasonState, ClockState } from './world';

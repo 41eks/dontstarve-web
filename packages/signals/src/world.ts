@@ -2,6 +2,8 @@ import { createSignal, type Signal } from './signal';
 
 export type WorldSeason = 'autumn' | 'winter' | 'spring' | 'summer';
 export type WorldPhase = 'day' | 'dusk' | 'night';
+/** worldstate.lua nightmarephase: `none` in a world without a nightmare clock. */
+export type WorldNightmarePhase = 'none' | 'calm' | 'warn' | 'wild' | 'dawn';
 export type WorldMoonPhase = 'new' | 'quarter' | 'half' | 'threequarter' | 'full';
 
 export interface SeasonTick {

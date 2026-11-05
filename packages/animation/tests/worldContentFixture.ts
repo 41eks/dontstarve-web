@@ -1,5 +1,5 @@
 import { Quaternion } from 'three';
-import { bindWorldContent, createIdleWeatherSources, createSignal, getWatchWorldContent, type GetWatchWorldContent, type WorldContentEnvironment, type SeasonState, type WorldPhase, type WorldMoonState } from '../../signals/src';
+import { bindWorldContent, createIdleWeatherSources, createSignal, getWatchWorldContent, type GetWatchWorldContent, type WorldContentEnvironment, type SeasonState, type WorldPhase, type WorldNightmarePhase, type WorldMoonState } from '../../signals/src';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { Object3D } from 'three';
 import { prefabDisplay } from '../../display/src/prefabDisplay';
@@ -21,7 +21,7 @@ export function createTestWorldSources(scheduler: GameTimeScheduler) {
   const playerpositions = createSignal<import('three').Vector3[]>([]);
   const camerarotation = createSignal(new Quaternion());
   return {
-    scheduler, season, snowLevel, cycle, moon, playerpositions, camerarotation, temperature: createSignal(20),
+    scheduler, season, snowLevel, cycle, nightmarephase: createSignal<WorldNightmarePhase>('none'), moon, playerpositions, camerarotation, temperature: createSignal(20),
     wind: createSignal({ angle: 0, velocity: 0 }), perishTick: createSignal({ time: 0, total: 0 }),
     ...createIdleWeatherSources(),
   } satisfies WorldContentEnvironment;

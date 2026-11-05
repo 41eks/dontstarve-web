@@ -1,10 +1,11 @@
-import { batch, GameTimeScheduler, createMemo, createSignal, readonlySignal, bindWorldContent, getWatchWorldContent, clockstate, seasonstate, moonphasestate, type ReadonlySignal, type Signal, type ClockState, type SeasonState, type WorldMoonPhase, type WorldContentContext, type WorldContentEnvironment } from '@dontstarve-web/signals';
+import { batch, GameTimeScheduler, createMemo, createSignal, readonlySignal, bindWorldContent, getWatchWorldContent, clockstate, seasonstate, moonphasestate, type ReadonlySignal, type Signal, type ClockState, type SeasonState, type WorldMoonPhase, type WorldNightmarePhase, type WorldContentContext, type WorldContentEnvironment } from '@dontstarve-web/signals';
 import { Quaternion, type Vector3 } from 'three';
 import { SoundPresentationScheduler } from '@dontstarve-web/sound';
 import { WorldTemperature } from '../packages/componets/src/worldtemperature';
 import { Weather } from '../packages/componets/src/weather';
 import { WorldPerishClock } from '../packages/componets/src/worldperishclock';
 import { WorldWind } from '../packages/componets/src/worldwind';
+import { NightmareClock } from '../packages/componets/src/nightmareclock';
 import { ComponentUpdates } from '../packages/componets/src/componentUpdates';
 import { BindTileMapSize, GetTileStateAtPoint as bindTileStateQuery, DisposeTileStates } from '../packages/componets/src/tileManager';
 import type { SaveDocument } from './save/types';
@@ -29,13 +30,15 @@ export interface WorldState extends WorldContentContext {
   readonly weather: Weather;
   readonly perishClock: WorldPerishClock;
   readonly worldwind: WorldWind;
+  /** cave_network.lua adds the component; a forest world has none and its phase stays `none`. */
+  readonly nightmareclock?: NightmareClock;
   readonly componentUpdates: ComponentUpdates;
   /** gamemodes.lua GetPortalRez (worldsettings portalresurection → ms_onportalrez). The port enables it by default. */
   readonly portalRez: Signal<boolean>;
 }
 
 /** Session temperature derived from the shared clock/season singleton signals. */
-export function createWorldState(world: Pick<SaveDocument['world'], 'elapsedSeconds' | 'systems' | 'map'>): WorldState {
+export function createWorldState(world: Pick<SaveDocument['world'], 'elapsedSeconds' | 'systems' | 'map'> & Partial<Pick<SaveDocument['world'], 'prefab'>>): WorldState {
   const unbindTileMapSize = BindTileMapSize(world.map.generator.options.size);
   const scheduler = new GameTimeScheduler(world.elapsedSeconds);
   const componentUpdates = new ComponentUpdates();
@@ -63,6 +66,11 @@ export function createWorldState(world: Pick<SaveDocument['world'], 'elapsedSeco
   const temperature = readonlySignal(worldtemperature.temperature);
   const perishClock = new WorldPerishClock(temperature, world.elapsedSeconds);
   const worldwind = new WorldWind(scheduler);
+  const nightmareclock = world.prefab === 'cave' ? new NightmareClock(scheduler, {
+    segs: TUNING.NIGHTMARE_SEGS, segTime: TUNING.SEG_TIME, segVariation: TUNING.NIGHTMARE_SEG_VARIATION,
+  }) : undefined;
+  if (world.systems.nightmareclock) nightmareclock?.OnLoad(world.systems.nightmareclock);
+  const nightmarephase: ReadonlySignal<WorldNightmarePhase> = nightmareclock?.phase ?? readonlySignal(createSignal<WorldNightmarePhase>('none'));
   const moon = createMemo(() => ({ phase: moonphasestate.get(), waxing: clockstate.get().waxing ?? true }));
   const cycle = createMemo(() => clockstate.get().phase);
   const portalRez = createSignal(true);
@@ -73,7 +81,7 @@ export function createWorldState(world: Pick<SaveDocument['world'], 'elapsedSeco
   const tickingarea = bindTileStateQuery(playerPosition);
   // init: inject the component's existing signal; world content only resolves keys and watches it.
   const worldContent: WorldContentEnvironment = Object.freeze({
-    scheduler, temperature, cycle: readonlySignal(cycle), moon: readonlySignal(moon), season: readonlySignal(seasonstate),
+    scheduler, temperature, cycle: readonlySignal(cycle), nightmarephase, moon: readonlySignal(moon), season: readonlySignal(seasonstate),
     wind: worldwind.windchange, perishTick: perishClock.snapshot, perishClock,
     snowLevel: weather.snowLevel,
     moisture: weather.moisture, moistureceil: weather.moistureceil, moisturefloor: weather.moisturefloor, preciptype: weather.preciptype,
@@ -85,7 +93,7 @@ export function createWorldState(world: Pick<SaveDocument['world'], 'elapsedSeco
   });
   const unbindWorldContent = bindWorldContent(worldContent);
   const isNight = createMemo(() => cycle.get() === 'night');
-  return { scheduler, componentUpdates, temperature: worldContent.temperature, clock: clockstate, cycle: worldContent.cycle,
+  return { scheduler, componentUpdates, temperature: worldContent.temperature, clock: clockstate, cycle: worldContent.cycle, nightmarephase, nightmareclock,
     wind: worldContent.wind, perishTick: worldContent.perishTick, snowLevel: worldContent.snowLevel, worldwind,
     moisture: worldContent.moisture, moistureceil: worldContent.moistureceil, moisturefloor: worldContent.moisturefloor,
     preciptype: worldContent.preciptype, peakprecipitationrate: worldContent.peakprecipitationrate, precipitationRate: worldContent.precipitationRate,
@@ -109,7 +117,7 @@ export function createWorldState(world: Pick<SaveDocument['world'], 'elapsedSeco
     moonPhaseCycle: () => ((clockstate.peek().cycles ?? 0) + moonCycleOffset) % MOON_PHASE_CYCLES.length + 1,
     clockAt,
     season: seasonstate, moonPhase: moonphasestate, moon: worldContent.moon, isNight: readonlySignal(isNight), worldtemperature, weather, perishClock,
-    dispose() { soundPresentation.dispose(); unbindWorldContent(); DisposeTileStates(playerPosition); unbindTileMapSize(); playerPosition.dispose(); componentUpdates.dispose(); worldwind.dispose(); scheduler.dispose(); moon.dispose(); isNight.dispose(); cycle.dispose(); weather.dispose(); perishClock.dispose(); worldtemperature.dispose(); } };
+    dispose() { soundPresentation.dispose(); unbindWorldContent(); DisposeTileStates(playerPosition); unbindTileMapSize(); playerPosition.dispose(); componentUpdates.dispose(); nightmareclock?.dispose(); worldwind.dispose(); scheduler.dispose(); moon.dispose(); isNight.dispose(); cycle.dispose(); weather.dispose(); perishClock.dispose(); worldtemperature.dispose(); } };
 }
 
 /** Accumulate active frame time without writing clock/temperature signals between settlements. */

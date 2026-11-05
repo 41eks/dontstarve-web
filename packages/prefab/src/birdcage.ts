@@ -6,7 +6,7 @@ import definitions from './definitions.json' with { type: 'json' };
 import catalog from './groundItems.json' with { type: 'json' };
 import { birdcage_init_fn } from '@dontstarve-web/animation/prefabskin';
 import { AnimState, type AnimStateArt } from '@dontstarve-web/animation/animState';
-import { batch, createMemo, createSignal, readonlySignal, getWatchWorldContent, createIdleWeatherSources, type ReadonlySignal, type GetWatchWorldContent, type WorldContentEnvironment, type WorldPhase } from '@dontstarve-web/signals';
+import { batch, createMemo, createSignal, readonlySignal, getWatchWorldContent, createIdleWeatherSources, type ReadonlySignal, type GetWatchWorldContent, type WorldContentEnvironment, type WorldNightmarePhase, type WorldPhase } from '@dontstarve-web/signals';
 import type { InventoryStack, ItemEntity, ItemOwner } from '@dontstarve-web/inventory';
 import { Occupiable } from '../../componets/src/occupiable';
 import { Shelf, type ShelfHolder, type ShelfTaker } from '../../componets/src/shelf';
@@ -125,6 +125,7 @@ export class Birdcage {
                 moon: world?.moon ?? readonlySignal(createSignal({ phase: 'new', waxing: true })),
                 scheduler, temperature: world?.temperature ?? readonlySignal(createSignal(30)),
                 cycle: world?.cycle ?? readonlySignal(createSignal<WorldPhase>('day')),
+                nightmarephase: world?.nightmarephase ?? readonlySignal(createSignal<WorldNightmarePhase>('none')),
                 season: world?.season ?? readonlySignal(createSignal({ season: 'spring', progress: .5 })),
             };
             this.getWatchWorldContent = (key, registerCleanup, options) => getWatchWorldContent(key, registerCleanup, sources, options);

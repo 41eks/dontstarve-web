@@ -14,6 +14,7 @@ export interface RuntimeSaveState {
   tiles?: TurfTileSave[];
   worldtemperature?: SaveDocument['world']['systems']['worldtemperature'];
   weather?: SaveDocument['world']['systems']['weather'];
+  nightmareclock?: SaveDocument['world']['systems']['nightmareclock'];
   moon?: SaveDocument['world']['systems']['moon'];
 }
 
@@ -46,6 +47,7 @@ export function serializeSave(
         ...structuredClone(template.world.systems),
         ...(state.worldtemperature === undefined ? {} : { worldtemperature: { ...state.worldtemperature } }),
         ...(state.weather === undefined ? {} : { weather: { ...state.weather } }),
+        ...(state.nightmareclock === undefined ? {} : { nightmareclock: structuredClone(state.nightmareclock) }),
         ...(state.moon === undefined ? {} : { moon: { ...state.moon } }),
       },
       map: {

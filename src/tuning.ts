@@ -13,6 +13,8 @@ export const TUNING = {
   DAY_TIME_DEFAULT: SEG_TIME * DAY_SEGS_DEFAULT,
   DUSK_TIME_DEFAULT: SEG_TIME * DUSK_SEGS_DEFAULT,
   NIGHT_TIME_DEFAULT: SEG_TIME * NIGHT_SEGS_DEFAULT,
+  NIGHTMARE_SEGS: { calm: 12, warn: 3, wild: 5, dawn: 2 },
+  NIGHTMARE_SEG_VARIATION: 3,
 } as const;
 
 export type DstCyclePhase = 'day' | 'dusk' | 'night';

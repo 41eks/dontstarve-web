@@ -11,6 +11,7 @@ import type { WallSaveState } from '@dontstarve-web/prefab/wallSkins';
 import type { FarmPlowSaveState, FarmSoilSaveState, FarmDebrisSaveState } from '@dontstarve-web/prefab/farm_plow';
 import type { WorldTemperatureSaveData } from '../../packages/componets/src/worldtemperature';
 import type { WeatherSaveData } from '../../packages/componets/src/weather';
+import type { NightmareClockSaveData } from '../../packages/componets/src/nightmareclock';
 
 export interface SavedTransform {
   position: [number, number, number];
@@ -141,6 +142,7 @@ export interface SaveDocument {
       season?: { name: 'autumn' | 'winter' | 'spring' | 'summer'; daysRemaining: number };
       worldtemperature?: WorldTemperatureSaveData;
       weather?: WeatherSaveData;
+      nightmareclock?: NightmareClockSaveData;
       /** clock.lua OnSave mooomphasecycle: one-based index into the 20-step moon cycle. */
       moon?: { mooomphasecycle: number };
       random?: { algorithm: 'xoshiro128ss'; state: number[] };
