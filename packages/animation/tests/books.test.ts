@@ -6,7 +6,7 @@ import { ItemEntity } from '../../inventory/src/entity';
 import { GameTimeScheduler } from '../../prefab/src/components/gameTimeScheduler';
 import { Pickable } from '../../prefab/src/components/pickable';
 import { actionEntity } from '../../prefab/src/actionEntity';
-import { BOOK_ITEM_SPECS, bookActionObject, type BookWorld } from '../../prefab/src/books';
+import { BOOK_ITEM_SPECS, type BookWorld } from '../../prefab/src/books';
 import { TILE_SIZE } from '../../prefab/src/tile';
 import { Reader } from '../../componets/src/reader';
 import { Weather } from '../../componets/src/weather';
@@ -37,14 +37,14 @@ function pickedGrass(scene: THREE.Scene, scheduler: GameTimeScheduler, x: number
   return pickable;
 }
 
-function readerFor(position: THREE.Vector3) {
+function readerFor(position: THREE.Vector3, world: BookWorld) {
   const tags: string[] = [];
   const doDelta = vi.fn();
   const inst = {
     addTag: (tag: string) => tags.push(tag), removeTag: (tag: string) => tags.splice(tags.indexOf(tag), 1),
     getPosition: () => position, components: { sanity: { DoDelta: doDelta } },
   };
-  return { reader: new Reader<typeof inst, BookWorld>(inst), tags, doDelta };
+  return { reader: new Reader<typeof inst, BookWorld>(inst, world), tags, doDelta };
 }
 
 it('reads book_silviculture: regrows picked plants in range, spends a use and charges large sanity', () => {
@@ -53,12 +53,14 @@ it('reads book_silviculture: regrows picked plants in range, spends a use and ch
   const far = pickedGrass(scene, scheduler, 31 * TILE_SIZE / 4); // Source range is 30 units.
   const book = new ItemEntity({ itemId: 'book_silviculture', count: 1 });
   book.configure(BOOK_ITEM_SPECS.book_silviculture);
-  const { reader, tags, doDelta } = readerFor(new THREE.Vector3());
+  const { reader, tags, doDelta } = readerFor(new THREE.Vector3(), bookWorld(scene, scheduler, newWeather()));
   expect(tags).toEqual(['reader']);
-  expect(bookActionObject(book)).toMatchObject({ swap_build: 'swap_books', swap_prefix: 'book_silviculture',
+  // The inst fields SGwilson's book state reads off the book itself.
+  expect(book).toMatchObject({ swap_build: 'swap_books', swap_prefix: 'book_silviculture',
     def: { fx_under_prefab: 'fx_roots_under_book', layer_sound: { frame: 17 } } });
+  expect(book.GetSkinBuild?.()).toBeUndefined();
 
-  expect(reader.Read(book, bookWorld(scene, scheduler, newWeather()))).toEqual([true]);
+  expect(reader.Read(book)).toEqual([true]);
   // One target grows now; the rest wait up to 1 - 1 / (#remaining + 1) seconds.
   expect([near, alsoNear].filter(plant => plant.canBePicked)).toHaveLength(1);
   scheduler.advance(.5);
@@ -74,8 +76,8 @@ it('fails with NOSILVICULTURE without spending a use or sanity when only ready p
   ready.regen();
   const book = new ItemEntity({ itemId: 'book_silviculture', count: 1, remainingUses: 2 });
   book.configure(BOOK_ITEM_SPECS.book_silviculture);
-  const { reader, doDelta } = readerFor(new THREE.Vector3());
-  expect(reader.Read(book, bookWorld(scene, scheduler, newWeather()))).toEqual([false, 'NOSILVICULTURE']);
+  const { reader, doDelta } = readerFor(new THREE.Vector3(), bookWorld(scene, scheduler, newWeather()));
+  expect(reader.Read(book)).toEqual([false, 'NOSILVICULTURE']);
   expect(book.components.finiteuses.uses.peek()).toBe(2);
   expect(doDelta).not.toHaveBeenCalled();
   reader.OnRemoveFromEntity();
@@ -86,12 +88,12 @@ it('reads book_rain: toggles precipitation through moisture, spawns its fx and c
   const spawnFx = vi.fn();
   const book = new ItemEntity({ itemId: 'book_rain', count: 1 });
   book.configure(BOOK_ITEM_SPECS.book_rain);
-  const { reader, doDelta } = readerFor(new THREE.Vector3());
   const world: BookWorld = { ...bookWorld(scene, scheduler, weather), spawnFx };
-  expect(bookActionObject(book).def?.fx).toBe('fx_book_rain');
+  const { reader, doDelta } = readerFor(new THREE.Vector3(), world);
+  expect(book.def?.fx).toBe('fx_book_rain');
 
   // ms_forceprecipitation true: moisture jumps to the ceiling and the next update starts the rain.
-  expect(reader.Read(book, world)).toEqual([true]);
+  expect(reader.Read(book)).toEqual([true]);
   expect(weather.moisture.peek()).toBe(weather.moistureceil.peek());
   expect(weather.rainRate.peek()).toBe(0);
   weather.OnUpdate(1);
@@ -103,7 +105,7 @@ it('reads book_rain: toggles precipitation through moisture, spawns its fx and c
   expect(weather.rainRate.peek()).toBeLessThanOrEqual(weather.peakprecipitationrate.peek());
 
   // Reading while it rains forces the floor, which stops the rain.
-  expect(reader.Read(book, world)).toEqual([true]);
+  expect(reader.Read(book)).toEqual([true]);
   weather.OnUpdate(1);
   expect(weather.preciptype.peek()).toBe('none');
   expect(weather.rainRate.peek()).toBe(0);
@@ -141,12 +143,12 @@ it('reads book_moon: forces a full moon through the world clock, refuses when al
   const updater = createWorldClockUpdater(state, 480 * 3 + 10);
   const book = new ItemEntity({ itemId: 'book_moon', count: 1 });
   book.configure(BOOK_ITEM_SPECS.book_moon);
-  const { reader, doDelta } = readerFor(new THREE.Vector3());
   const world = { root: new THREE.Scene(), scheduler: new GameTimeScheduler(), weather: newWeather(),
     getWatchWorldContent: state.getWatchWorldContent, moon: { SetMoonPhase: state.SetMoonPhase } } as BookWorld;
+  const { reader, doDelta } = readerFor(new THREE.Vector3(), world);
   try {
     expect(state.moonPhase.peek()).toBe('quarter');
-    expect(reader.Read(book, world)).toEqual([true]);
+    expect(reader.Read(book)).toEqual([true]);
     expect(state.moonPhase.peek()).toBe('full');
     expect(state.clock.peek().waxing).toBe(false); // clock.lua GetMoonPhase for cycle step 11.
     expect(book.components.finiteuses.uses.peek()).toBe(2);
@@ -163,7 +165,7 @@ it('reads book_moon: forces a full moon through the world clock, refuses when al
     restored.dispose();
 
     state.SetMoonPhase('full');
-    expect(reader.Read(book, world)).toEqual([false, 'ALREADYFULLMOON']);
+    expect(reader.Read(book)).toEqual([false, 'ALREADYFULLMOON']);
     expect(book.components.finiteuses.uses.peek()).toBe(2);
     expect(doDelta).toHaveBeenCalledTimes(1);
   } finally { state.dispose(); }

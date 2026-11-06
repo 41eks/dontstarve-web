@@ -69,6 +69,8 @@ it('creates panels before scene initialization and owns subscriptions until expl
   const subscribeReceived = vi.spyOn(inventory, 'subscribeReceived').mockReturnValue(stopReceived);
   const stopContextMenu = vi.fn(), subscribeContextMenu = vi.fn(() => stopContextMenu);
   const player = new THREE.Group(), camera = new THREE.PerspectiveCamera();
+  const doerTags = new Set<string>();
+  const pickupDoer = { components: {} as Record<string, unknown>, addTag: (tag: string) => doerTags.add(tag), removeTag: (tag: string) => doerTags.delete(tag) };
   const gameUi = { chestPanel: {}, cookPotPanel: {}, iceBoxPanel: {}, emoteWheel: {},
     inventoryBar: { contextMenu: { subscribe: subscribeContextMenu },
       containers: [{ id: 'player:inventory' }], animateReceive: vi.fn() },
@@ -77,7 +79,7 @@ it('creates panels before scene initialization and owns subscriptions until expl
   const screenProjection = { GetScreenPos: vi.fn(() => screenPosition) };
   const options = { gameUi, inventory, screenProjection, view: { player, camera, renderer: { domElement: {} } },
     actionEvents: new EventEmitter(), inventorySlotItem: vi.fn(), handEquipmentBinding: { flush: vi.fn() },
-    isActionInterrupting: () => false, updateCursor: vi.fn(), locomotor: {}, pickupDoer: {}, turfMap: {},
+    isActionInterrupting: () => false, updateCursor: vi.fn(), locomotor: {}, pickupDoer, turfMap: {},
   } as unknown as Parameters<typeof createDisposalResources>[0];
   const startIndex = vi.mocked(createChestInventoryPanel).mock.results.length;
   const resources = createDisposalResources(options);
@@ -91,6 +93,9 @@ it('creates panels before scene initialization and owns subscriptions until expl
     const scene = { buildingPlacement: {} } as Parameters<typeof resources.register>[1];
     expect(resources.register(events, scene)).toBeUndefined();
     expect(subscribeReceived).toHaveBeenCalledOnce();
+    // The player's reader.lua component, which ACTIONS.READ reaches on act.doer.
+    expect(pickupDoer.components.reader).toBeDefined();
+    expect(doerTags.has('reader')).toBe(true);
     const received = [{ slot: { containerId: 'player:inventory', slotKey: '0' }, itemId: 'rocks', delta: 2 }];
     subscribeReceived.mock.calls[0][0](received, { x: 4, y: 0, z: 3 });
     expect(screenProjection.GetScreenPos).toHaveBeenCalledExactlyOnceWith(new THREE.Vector3(4, 0, 3));
@@ -105,6 +110,8 @@ it('creates panels before scene initialization and owns subscriptions until expl
     events.emit('dispose', undefined);
     expect(tasks.size).toBe(0);
     expect(panelTasks).toEqual([]);
+    expect(pickupDoer.components.reader).toBeUndefined();
+    expect(doerTags.has('reader')).toBe(false);
     for (const panel of panels) expect(panel.dispose).toHaveBeenCalledOnce();
     expect(stopReceived).toHaveBeenCalledOnce();
     expect(stopContextMenu).toHaveBeenCalledOnce();

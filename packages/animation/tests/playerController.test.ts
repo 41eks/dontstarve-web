@@ -32,6 +32,10 @@ import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationControlle
 import { workTargets } from './workTargets';
 import { TurfMap, WORLD_TILES } from '../../prefab/src/turfMap';
 import { getHandEquipmentDefinition } from '../../prefab/src/handEquipment';
+import { Reader } from '../../componets/src/reader';
+import { createSignal } from '../../signals/src';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
+import type { BookWorld } from '../../prefab/src/books';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {}, setVolume() {}, isPlaying: () => true })) }));
 vi.mock('../../../src/InputManager', () => ({ input: { isPressed: () => false, isManualMovement: () => false, isActionInterrupting: () => false } }));
@@ -333,5 +337,48 @@ describe('PlayerController with the Wilson stategraph', () => {
       expect(captured).toHaveBeenCalledOnce();
       expect(body.position.x).toBeGreaterThan(8);
     } finally { controller.dispose(); }
+  });
+  it('uses a book and the pan flute from their slots: GetInventoryActions, the stategraph frame and ACTIONS.READ / PLAY', async () => {
+    const player = await createWilsonPlayer('/dst/data/anim');
+    const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
+    const inventory = createPickupInventory();
+    inventory.add('book_rain', 1); inventory.add('panflute', 1);
+    const book = inventory.getEntity(inventorySlotAddress(0))!, flute = inventory.getEntity(inventorySlotAddress(1))!;
+    const sanity = { DoDelta: vi.fn() };
+    const doer = Object.assign(playerDoer(player, { inventory, sanity }), {
+      addTag: (tag: string) => prefabInstance(player)!.addTag(tag), removeTag: (tag: string) => prefabInstance(player)!.removeTag(tag) });
+    const world = { player, scene: new THREE.Scene(), camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
+      renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
+    const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body);
+    const controller = new PlayerController(world, animation.stategraph, locomotor, inventory.handEquipment, doer);
+    const ForcePrecipitation = vi.fn();
+    const bookWorld = { root: world.scene, scheduler: new GameTimeScheduler(), getWatchWorldContent: () => { throw new Error('unused'); },
+      weather: { preciptype: createSignal('none'), ForcePrecipitation }, moon: { SetMoonPhase: vi.fn() } } as unknown as BookWorld;
+    const finish = () => { for (let i = 0; i < 300 && animation.stategraph.stateName !== 'idle'; i++) advancePlayer(animation, 1 / 30); };
+    try {
+      // componentactions.lua book INVENTORY: only a reader is offered READ.
+      expect(controller.GetInventoryItemAction(book)).toBeUndefined();
+      const reader = new Reader(doer, bookWorld);
+      (doer.components as Record<string, unknown>).reader = reader;
+      const read = controller.GetInventoryItemAction(book)!;
+      expect([read.action, read.invobject, read.target]).toEqual(['READ', book, undefined]);
+      expect(controller.DoAction(read)).toBe(true);
+      expect(animation.stategraph.stateName).toBe('book');
+      expect(ForcePrecipitation).not.toHaveBeenCalled(); // The book's fn waits for the state's action frame.
+      finish();
+      expect(ForcePrecipitation).toHaveBeenCalledExactlyOnceWith(true);
+      expect(sanity.DoDelta).toHaveBeenCalledExactlyOnceWith(-33);
+      expect(book.components.finiteuses.uses.peek()).toBe(4);
+
+      const play = controller.GetInventoryItemAction(flute)!;
+      expect(play.action).toBe('PLAY');
+      expect(controller.DoAction(play)).toBe(true);
+      expect(animation.stategraph.stateName).toBe('play_flute');
+      expect(flute.components.finiteuses.uses.peek()).toBeUndefined();
+      finish();
+      // ACTIONS.PLAY.fn, then BufferedAction:Do's finiteuses:OnUsedAsItem("PLAY").
+      expect(flute.components.finiteuses.uses.peek()).toBe(9);
+      reader.OnRemoveFromEntity();
+    } finally { controller.dispose(); inventory.dispose(); }
   });
 });

@@ -3,11 +3,9 @@ import { clockstate, createMemo, readonlySignal, type EventEmitter, type GetWatc
 import { cursorSlotAddress, equipmentSlotAddress, inventorySlotAddress, type InventoryStore, type InventoryStack } from '@dontstarve-web/inventory';
 import { createChestInventoryPanel, type mountGameUi, type SlotAddress, type SlotItem } from '@dontstarve-web/ui';
 import {
-  PlayerController, FoodActionController,
-  ReadActionController, PlayActionController, ItemUseActionController,
+  PlayerController, FoodActionController, ItemUseActionController,
   type PickupDoer, type PlayerLocomotor, type PlayerActionEvents,
 } from '@dontstarve-web/stategraphs';
-import { ItemEntity } from '@dontstarve-web/inventory';
 import type { ScreenProjection } from '@dontstarve-web/display';
 import { ARMORSNURTLESHELL_ID } from '@dontstarve-web/prefab/armorsnurtleshell';
 import { AMULET_ID } from '@dontstarve-web/prefab/amulet';
@@ -15,15 +13,13 @@ import { Reader } from '../packages/componets/src/reader';
 import { SleepingBagUser } from '../packages/componets/src/sleepingbaguser';
 import { Combat, type CombatActor } from '../packages/componets/src/combat';
 import { equippedActionEntity } from '../packages/stategraphs/src/componentactions';
-import { FindEntities } from '../packages/prefab/src/actionEntity';
-import { modelHasTag, prefabInstance, setModelTag } from '../packages/prefab/src/prefabInstance';
+import { modelHasTag, prefabInstance } from '../packages/prefab/src/prefabInstance';
 import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
 import type { WilsonAnimationController } from '@dontstarve-web/prefab/player';
-import { GROUND_ITEM_DEFINITIONS } from '@dontstarve-web/prefab/groundItems';
 import type { WorldContext } from '@dontstarve-web/prefab/worldContext';
 import type { GroundItemDefinition } from '@dontstarve-web/prefab/groundPrefab';
 import type { StorageBuildingId } from '@dontstarve-web/prefab/containers';
-import { bookActionObject, type BookReader, type BookWorld } from '@dontstarve-web/prefab/books';
+import type { BookWorld } from '@dontstarve-web/prefab/books';
 import { isWorldFx } from '@dontstarve-web/prefab/world_fx';
 import { registerFrontTask } from './animate';
 import { createDeployMap } from '../packages/prefab/src/deployMap';
@@ -39,13 +35,6 @@ import { playerStats } from './playerStats';
 import { playerInstance } from './player';
 
 export type DisposalEvents = { dispose: void };
-
-interface PlayerReaderInst extends BookReader {
-  hasTag(tag: string): boolean;
-  addTag(tag: string): void;
-  removeTag(tag: string): void;
-  readonly components: { sanity: { DoDelta(delta: number): void }; reader?: Reader<PlayerReaderInst, BookWorld> };
-}
 
 export interface Disposable {
   dispose(): void;
@@ -204,18 +193,7 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
         frameControllers.push(foodActions);
       }
 
-      // The player inst carries reader.lua's component and tag, plus the sanity it charges.
-      const readerInst: PlayerReaderInst = {
-        hasTag: (tag: string) => modelHasTag(player, tag),
-        addTag: (tag: string) => setModelTag(player, tag, true),
-        removeTag: (tag: string) => setModelTag(player, tag, false),
-        getPosition: () => player.position,
-        components: {
-          sanity: playerStats.sanity,
-        },
-      };
-      const reader = new Reader<PlayerReaderInst, BookWorld>(readerInst);
-      readerInst.components.reader = reader;
+      // The player inst carries reader.lua's component and tag, with the world services the books' callbacks reach.
       const bookWorld: BookWorld = {
         root: view.scene, scheduler, weather, moon, getWatchWorldContent,
         spawnFx(prefab, { getPosition }) {
@@ -223,39 +201,13 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
           if (isWorldFx(prefab)) worldFx.spawn(prefab, new Vector3(x, 0, z));
         },
       };
-      const readActions = playerAnimation
-        ? new ReadActionController(view, playerAnimation.stategraph, locomotor, isActionInterrupting) : undefined;
-      if (readActions) frameControllers.push(readActions);
-      const playActions = playerAnimation
-        ? new PlayActionController(view, playerAnimation.stategraph, locomotor, isActionInterrupting) : undefined;
-      if (playActions) frameControllers.push(playActions);
-      const playInventoryInstrument = (slot: SlotAddress, entity: ItemEntity) => {
-        const isValid = () => !entity.isRemoved && inventory.getEntity(slot) === entity;
-        const skinArchive = entity.skinId === undefined ? undefined : GROUND_ITEM_DEFINITIONS[entity.prefab]?.skinArchives[entity.skinId];
-        return playActions!.play({
-          instrument: {
-            prefab: entity.prefab, hasTag: tag => entity.hasTag(tag),
-            ...(skinArchive ? { skinBuild: skinArchive.replace(/^dynamic\/|\.zip$/g, '') } : {}),
-          },
-          isValid,
-          // ACTIONS.PLAY.fn, then BufferedAction:Do's finiteuses:OnUsedAsItem.
-          play: () => {
-            if (!isValid()) return false;
-            const played = entity.components.instrument!.Play(readerInst,
-              range => FindEntities(player.position, range * TILE_SIZE / 4, undefined, ['FX', 'DECOR', 'INLIMBO']) as never[]);
-            if (played) entity.components.finiteuses.useForAction('PLAY');
-            return played;
-          },
-        });
-      };
-      const readInventoryBook = (slot: SlotAddress, entity: ItemEntity) => {
-        const isValid = () => !entity.isRemoved && inventory.getEntity(slot) === entity;
-        const book = bookActionObject(entity);
-        return readActions!.read({
-          book, isValid,
-          read: () => isValid() && (reader.Read(entity, bookWorld)?.[0] ?? false),
-        });
-      };
+      const reader = new Reader<PickupDoer, BookWorld>(pickupDoer, bookWorld);
+      pickupDoer.components.reader = reader;
+      actionControllers.push({ dispose() {
+        if (pickupDoer.components.reader !== reader) return;
+        reader.OnRemoveFromEntity();
+        delete pickupDoer.components.reader;
+      } });
 
       if (playerAnimation) {
         view.registerFrameTask = registerFrontTask;
@@ -366,12 +318,11 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
           return;
         }
         const entity = inventory.getEntity(slot);
-        if (playActions && entity && PlayActionController.canPlay(entity)) {
-          playInventoryInstrument(slot, entity);
-          return;
-        }
-        if (readActions && entity && ReadActionController.canRead(readerInst, entity)) {
-          readInventoryBook(slot, entity);
+        // inventory.lua UseItemFromInvTile: GetInventoryActions(item)[1], pushed to the locomotor.
+        const controller = playerInstance.components.playercontroller;
+        const use = entity && controller?.GetInventoryItemAction(entity);
+        if (use) {
+          controller!.DoAction(use);
           return;
         }
         if (foodActions && entity && playerInstance.components.eater?.CanEat(entity)) {

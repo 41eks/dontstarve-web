@@ -97,6 +97,22 @@ type SoulHopper = {
 };
 const soulHopper = (act: BufferedAction) => act.doer as SoulHopper | undefined;
 
+/** The doer's reader.lua component, which reads a book with the world it was given. */
+type DoerReader = { Read(book: BufferedActionObject): readonly [boolean, string?] | undefined };
+const doerReader = (act: BufferedAction) => (act.doer as { components?: { reader?: DoerReader } } | undefined)?.components?.reader;
+type InventoryUseComponents = {
+  instrument?: { Play(musician: unknown): boolean };
+  book?: object;
+  finiteuses?: { useForAction?(action: string): boolean };
+};
+const inventoryComponents = (object: BufferedActionObject | undefined) =>
+  (object as { components?: InventoryUseComponents } | undefined)?.components ?? {};
+
+/** BufferedAction:Do after a successful fn: invobject:OnUsedAsItem → finiteuses:OnUsedAsItem(action). */
+function onUsedAsItem(act: BufferedAction): void {
+  inventoryComponents(act.invobject).finiteuses?.useForAction?.(act.action);
+}
+
 /** actions.lua ACTIONS.DEPLOY.fn, which DEPLOY_TILEARRIVE shares. */
 function deploy(act: BufferedAction): boolean {
     const item = act.invobject as ItemEntity | undefined, doer = playerDoer(act), map = doer.Map;
@@ -295,6 +311,21 @@ export const ACTION_FNS: Readonly<Partial<Record<string, ActionFns>>> = {
   BLINK_MAP: {
     fn: act => soulHopper(act)?.sg?.beginPortalJump?.(actionPoint(act), true) ?? false,
     validfn: act => !!soulHopper(act)?.CanSoulhop?.() && !!soulHopper(act)?.CanBlinkFromWithMap?.(actionPoint(act)),
+  },
+  PLAY: {
+    fn: act => {
+      const instrument = inventoryComponents(act.invobject).instrument;
+      if (!instrument?.Play(act.doer)) return false;
+      onUsedAsItem(act);
+      return true;
+    },
+  },
+  // The simplebook branch is not ported.
+  READ: {
+    fn: act => {
+      const targ = act.target ?? act.invobject, reader = doerReader(act);
+      return !!targ && !!act.doer && !!inventoryComponents(targ).book && !!reader && (reader.Read(targ)?.[0] ?? false);
+    },
   },
   HAUNT: {
     fn: act => {
