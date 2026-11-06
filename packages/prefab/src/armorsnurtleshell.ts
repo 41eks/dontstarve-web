@@ -1,5 +1,5 @@
-import { PLAYER_EQUIPMENT_CONTAINER_ID, type ItemEntity, type ItemRuntimeComponent } from '@dontstarve-web/inventory';
-import type { EquipmentLifecycle, EquipmentOwner } from '@dontstarve-web/signals';
+import type { ItemEntity, ItemRuntimeComponent } from '@dontstarve-web/inventory';
+import type { EquipmentOwner } from '@dontstarve-web/signals';
 import { Armor } from '../../componets/src/armor';
 import type { Combat } from '../../componets/src/combat';
 import { Equippable } from '../../componets/src/equippable';
@@ -22,7 +22,7 @@ const TARGET_CANT_TAGS = ['INLIMBO'];
 
 /**
  * armor_snurtleshell.lua's local functions and `inst.task`, kept on the inst. `owner` is
- * inst.components.inventoryitem.owner while worn: the inventory injects it through onequip and takes it back on onunequip.
+ * inst.components.inventoryitem.owner while worn: equippable:Equip passes it to onequip, and onunequip releases it.
  */
 class ArmorSnurtleshell implements ItemRuntimeComponent {
   private readonly inst: ItemEntity;
@@ -92,7 +92,7 @@ class ArmorSnurtleshell implements ItemRuntimeComponent {
   dispose(): void { this.onunequip(); }
 }
 
-/** armor_snurtleshell.lua fn: tags, armor, a body equippable and the useableitem's onuse/onstopuse. */
+/** armor_snurtleshell.lua fn: tags, armor, a body equippable with onequip/onunequip and the useableitem's onuse/onstopuse. */
 export function configureArmorSnurtleshellEntity(inst: ItemEntity): void {
   inst.addTag('shell');
   inst.addTag('hardarmor');
@@ -100,23 +100,16 @@ export function configureArmorSnurtleshellEntity(inst: ItemEntity): void {
   if (inst.getComponent('armorsnurtleshell')) return;
   const shell = inst.component('armorsnurtleshell', () => new ArmorSnurtleshell(inst));
   (inst.components.armor = new Armor(inst)).InitCondition(ARMORSNURTLESHELL, ARMORSNURTLESHELL_ABSORPTION);
-  inst.components.equippable ??= new Equippable(inst, 'body');
+  const equippable = inst.components.equippable ??= new Equippable<ItemEntity>(inst, 'body');
+  equippable.SetOnEquip((_inst, owner) => shell.onequip(owner));
+  equippable.SetOnUnequip(() => shell.onunequip());
   const useableitem = inst.components.useableitem = new UseableItem({
     addTag: tag => inst.addTag(tag),
     removeTag: tag => inst.removeTag(tag),
-    isEquipped: () => inst.components.inventoryitem.owner?.address.containerId === PLAYER_EQUIPMENT_CONTAINER_ID,
+    isEquipped: () => equippable.IsEquipped(),
   });
   useableitem.SetOnUseFn(() => shell.onuse());
   useableitem.SetOnStopUseFn(() => shell.onstopuse());
-}
-
-/** armor_snurtleshell.lua onequip/onunequip, except the symbol override, which the worn art applies. */
-export function createArmorSnurtleshellLifecycle(inst: ItemEntity): EquipmentLifecycle {
-  const shell = () => inst.getComponent<ArmorSnurtleshell>('armorsnurtleshell');
-  return {
-    onequip(owner) { if (owner) shell()?.onequip(owner); },
-    onunequip() { shell()?.onunequip(); },
-  };
 }
 
 /** armor_snurtleshell.lua onequip/onunequip: swap_body_tall comes from the item's own build. */

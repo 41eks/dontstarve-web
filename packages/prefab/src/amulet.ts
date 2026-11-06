@@ -1,5 +1,5 @@
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
-import type { ItemEntity } from '@dontstarve-web/inventory';
+import type { ItemEntity, ItemRuntimeComponent } from '@dontstarve-web/inventory';
 import type { EquipmentLifecycle, EquipmentOwner } from '@dontstarve-web/signals';
 import { Equippable } from '../../componets/src/equippable';
 import { Hauntable, HAUNT_INSTANT_REZ, type HauntableInst } from '../../componets/src/hauntable';
@@ -44,9 +44,12 @@ function createRezSource(entity: ItemEntity): AmuletRezSource {
 export function configureAmuletEntity(entity: ItemEntity): void {
   entity.addTag('shadowlevel');
   entity.addTag('resurrector');
-  const equippable = entity.components.equippable ??= new Equippable(entity, 'body');
+  const equippable = entity.components.equippable ??= new Equippable<ItemEntity>(entity, 'body');
   equippable.dapperness = AMULET_DAPPERNESS;
   equippable.is_magic_dapperness = true;
+  const red = entity.component('redamulet', () => new RedAmulet(entity));
+  equippable.SetOnEquip((_inst, owner) => red.onequip(owner));
+  equippable.SetOnUnequip(() => red.onunequip());
   // The timer belongs to the world the item is bound to; a world-less entity is configured again once adopted.
   const scheduler = entity.components.perishable.scheduler;
   if (!scheduler || entity.components.hauntable) return;
@@ -67,28 +70,46 @@ function healowner(entity: ItemEntity, owner: EquipmentOwner): void {
 }
 
 /**
- * amulet.lua onequip_red / onunequip_red / onequiptomodel_red: while worn, a periodic task heals the owner. The task is a
- * game-time timer re-armed after each run; it is not saved, and equipping on load starts it again. The worn art keeps
- * `swap_body` while the owner is in amulet_rebirth, whose state clears it on exit: the art's slot goes as the owner leaves it.
+ * amulet.lua onequip_red / onunequip_red's `inst.task`: while worn, a periodic task heals the owner. It is a game-time
+ * timer re-armed after each run; it is not saved, and equipping on load starts it again.
  */
-export function createAmuletEquipmentLifecycle(entity: ItemEntity, art: Pick<EquipmentLifecycle, 'onequip' | 'onunequip'>): EquipmentLifecycle {
-  let task: ComponentTimer | undefined;
+class RedAmulet implements ItemRuntimeComponent {
+  private readonly inst: ItemEntity;
+  private task?: ComponentTimer;
+  constructor(inst: ItemEntity) { this.inst = inst; }
+
+  onequip(owner: EquipmentOwner): void {
+    this.task?.stop();
+    const scheduler = this.inst.components.perishable.scheduler;
+    if (!scheduler) return;
+    // inst:DoPeriodicTask(TUNING.REDAMULET_CONVERSION_TIME, healowner, nil, owner)
+    const task: ComponentTimer = this.task = new ComponentTimer(scheduler, () => {
+      healowner(this.inst, owner);
+      if (this.task === task && !this.inst.isRemoved) task.start(REDAMULET_CONVERSION_TIME);
+    });
+    task.start(REDAMULET_CONVERSION_TIME);
+  }
+
+  onunequip(): void {
+    this.task?.stop();
+    this.task = undefined;
+  }
+
+  dispose(): void { this.onunequip(); }
+}
+
+/**
+ * The red amulet's worn art: onunequip_red keeps `swap_body` while the owner is in amulet_rebirth, whose state clears it
+ * on exit, so the art's slot goes as the owner leaves that state.
+ */
+export function createAmuletArtLifecycle(art: Pick<EquipmentLifecycle, 'onequip' | 'onunequip'>): EquipmentLifecycle {
   let owner: EquipmentOwner | undefined;
   return {
     onequip(equipper) {
       owner = equipper;
       art.onequip(equipper);
-      const scheduler = entity.components.perishable.scheduler;
-      if (!equipper || !scheduler) return;
-      const current: ComponentTimer = task = new ComponentTimer(scheduler, () => {
-        healowner(entity, equipper);
-        if (task === current && !entity.isRemoved) current.start(REDAMULET_CONVERSION_TIME);
-      });
-      current.start(REDAMULET_CONVERSION_TIME);
     },
     onunequip() {
-      task?.stop();
-      task = undefined;
       const reviving = owner?.IsCurrentState?.('amulet_rebirth') ? owner : undefined;
       owner = undefined;
       const stop = reviving?.ListenForEvent?.('newstate', data => {

@@ -114,7 +114,7 @@ for (const panel of [gameUi.chestPanel, gameUi.cookPotPanel, gameUi.iceBoxPanel]
 }
 const playerAnimation = playerInstance.animationController;
 /** inst:PushEvent reaches SGwilson's handlers; these are the ones the player's own components and actions push. */
-const STATEGRAPH_EVENTS = new Set(['toolbroke', 'fishingnibble', 'fishingloserod', 'fishingstrain', 'fishingcatch', 'fishingcancel']);
+const STATEGRAPH_EVENTS = new Set(['equip', 'unequip', 'toolbroke', 'fishingnibble', 'fishingloserod', 'fishingstrain', 'fishingcatch', 'fishingcancel']);
 const pickupDoer: PickupDoer & WortoxDoer & { sg: NonNullable<PickupDoer['sg']> & { beginPortalJump(pos: import('three').Vector3, fromMap?: boolean): boolean }; ListenForEvent(name: string, listener: (data: unknown) => void): () => void; HasStateTag(tag: string): boolean; GoToState(name: string): void; IsCurrentState(name: string): boolean;
   components: PickupDoer['components'] & { health: typeof playerStats.health; hunger: typeof playerStats.hunger; sanity?: Sanity } } = {
   // The player's own eater.lua component, which ACTIONS.EAT reaches on act.doer.

@@ -3,7 +3,7 @@ import { Vector3 } from 'three';
 import { ItemEntityRegistry } from '@dontstarve-web/inventory';
 import {
   ARMORSNURTLESHELL, ARMORSNURTLESHELL_ABSORPTION, FULL_ABSORPTION,
-  configureArmorSnurtleshellEntity, createArmorSnurtleshellLifecycle,
+  configureArmorSnurtleshellEntity,
 } from '../../prefab/src/armorsnurtleshell';
 import { activePrefabs, type FoundEntity } from '../../prefab/src/activePrefabs';
 import { createPerishWorld } from './perishWorldFixture';
@@ -27,8 +27,9 @@ function wornShell() {
     HasStateTag: (tag: string) => shell && tag === 'shell',
     GoToState: (name: string) => { states.push(name); shell = true; listeners.get('newstate')?.({ statename: name }); },
   };
-  const lifecycle = createArmorSnurtleshellLifecycle(entity);
-  lifecycle.onequip(owner);
+  // inventory:Equip calls equippable:Equip(owner); Unequip mirrors it.
+  const lifecycle = { onunequip: () => entity.components.equippable!.Unequip(owner) };
+  entity.components.equippable!.Equip(owner);
   return { world, entity, owner, lifecycle, listeners, states, leaveShell: () => { shell = false; listeners.get('newstate')?.({ statename: 'idle' }); } };
 }
 
@@ -47,7 +48,9 @@ describe('armorsnurtleshell', () => {
     expect(entity.components.armor!.maxcondition).toBe(ARMORSNURTLESHELL);
     expect(entity.components.armor!.GetAbsorption()).toBe(ARMORSNURTLESHELL_ABSORPTION);
     expect(entity.components.equippable!.equipslot).toBe('body');
-    expect(entity.components.useableitem!.CanInteract()).toBe(false); // not in the equipment slot
+    expect(entity.components.useableitem!.CanInteract()).toBe(true); // replica.equippable:IsEquipped()
+    entity.components.equippable!.Unequip(wornShell().owner);
+    expect(entity.components.useableitem!.CanInteract()).toBe(false);
   });
 
   it('hides on use, absorbs everything while in the shell, and relaxes when the state ends', () => {
