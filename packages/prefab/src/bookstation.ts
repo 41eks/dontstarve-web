@@ -61,7 +61,8 @@ export class Bookstation {
         const scheduler = host.world.scheduler;
         if (!scheduler) throw new Error('A bookstation needs the world scheduler');
         this.restoreTimer = new ComponentTimer(scheduler, () => this.RestoreBooks());
-        this.stopLifecycle = host.container.subscribeLifecycle(() => this.refresh());
+        // ItemGet / ItemLose.
+        this.stopLifecycle = createRenderEffect(() => { host.container.TrackContents(); this.refresh(); });
         const onBurnt = () => this.stopTimer();
         this.stopWatching = prefabInstance(host.model)!.ListenForEvent('burntup', onBurnt);
         // UpdateBookAesthetics: Show/Hide the book layers by fullness, also on every rebuilt sprite and reskin.
@@ -114,8 +115,8 @@ export class Bookstation {
             if (percent === undefined || percent >= 1) continue;
             book.components.finiteuses.setPercent(percent + BOOKSTATION_RESTORE_AMOUNT * bonus, BOOK_USE_STEP);
         }
-        // DoPeriodicTask: publishing refreshes the UI and re-arms the next period while books remain.
-        container.publishDTO();
+        // DoPeriodicTask: re-arm the next period while books remain.
+        this.refresh();
     }
 
     dispose(): void {

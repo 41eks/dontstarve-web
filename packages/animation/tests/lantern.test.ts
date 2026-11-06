@@ -107,7 +107,7 @@ describe('lantern fuel', () => {
       expect(controller.isOn).toBe(false);
       expect(owner.PushEvent).toHaveBeenCalledExactlyOnceWith('torchranout', { prefab: 'lantern', equipslot: 'HANDS' });
       expect(light).toHaveBeenLastCalledWith(false);
-      expect(entity.signals.durabilityPercent.peek()).toBe(0);
+      expect(entity.tile.peek().durabilityPercent).toBe(0);
       expect(inventory.transfer(inventorySlotAddress(0), hand, 1)).toBe(true);
       lifecycle.onunequip();
       lifecycle.onequip(owner);

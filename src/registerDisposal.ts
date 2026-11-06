@@ -1,6 +1,6 @@
 import { Vector3, type Object3D } from 'three';
 import { clockstate, createMemo, readonlySignal, type EventEmitter, type GetWatchWorldContent } from '@dontstarve-web/signals';
-import { cursorSlotAddress, equipmentSlotAddress, inventorySlotAddress, type InventoryStore, type InventoryStack } from '@dontstarve-web/inventory';
+import { cursorSlotAddress, equipmentSlotAddress, inventorySlotAddress, type InventoryStore, type ItemEntity } from '@dontstarve-web/inventory';
 import { createChestInventoryPanel, type mountGameUi, type SlotAddress, type SlotItem } from '@dontstarve-web/ui';
 import {
   PlayerController,
@@ -86,7 +86,7 @@ interface ApplicationResourcesOptions {
   locomotor: PlayerLocomotor;
   pickupDoer: PickupDoer;
   handEquipmentBinding: Pick<Awaited<ReturnType<typeof bindPlayerHandEquipment>>, 'flush'>;
-  inventorySlotItem: (stack: Readonly<InventoryStack>, maxStack?: number) => SlotItem;
+  inventorySlotItem: (entity: ItemEntity) => SlotItem;
   actionEvents: EventEmitter<PlayerActionEvents>;
   isActionInterrupting: () => boolean;
   updateCursor: () => void;

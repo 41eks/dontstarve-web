@@ -4,7 +4,7 @@ import type { DstChestPanelElement } from './chest-panel';
 import { buildingContainerId, buildingContainerDefinition, type StorageBuildingId } from '@dontstarve-web/prefab/containers';
 import { PLAYER_COLLIDER_RADIUS } from '@dontstarve-web/prefab/player';
 import definitions from '@dontstarve-web/prefab/definitions.json' with { type: 'json' };
-import type { InventoryStack } from '@dontstarve-web/inventory';
+import type { ItemEntity } from '@dontstarve-web/inventory';
 import type { SlotItem } from './slot/slot-model';
 import type { CookRequestDetail } from './cook-pot-panel';
 import { createEffect, WorldContentKey, type GetWatchWorldContent } from '@dontstarve-web/signals';
@@ -28,7 +28,7 @@ export interface ChestInventoryPanelOptions {
   player: THREE.Object3D;
   /** The anchor follows the world's player positions, which are published once per 60 active frames. */
   getWatchWorldContent: GetWatchWorldContent;
-  toItem?: (record: Readonly<InventoryStack>) => SlotItem;
+  toItem?: (item: ItemEntity) => SlotItem;
 }
 
 export function createChestInventoryPanel(
@@ -154,7 +154,7 @@ export function createChestInventoryPanel(
           title: definitions.animatedBuildings[buildingPrefab].buildLabel,
         });
         const component = prefabInstance(model)?.components.container;
-        if (component && toItem) element.bindContainer(component.toSignal(), toItem);
+        if (component && toItem) element.bindContainer(component, toItem);
         const onBurnt = () => element.close();
         stopBurnt = prefabInstance(model)?.ListenForEvent('burntup', onBurnt);
       } else if (openModel === model) {

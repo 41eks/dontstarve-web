@@ -1,4 +1,4 @@
-import { createSignal, readonlySignal, type GameTimeScheduler } from '@dontstarve-web/signals';
+import { createRenderEffect, createSignal, readonlySignal, type GameTimeScheduler, type ReadonlySignal } from '@dontstarve-web/signals';
 import { BASE_COOK_TIME, CalculateRecipe, GetRecipe } from './cooking';
 import { ComponentTimer } from './timer';
 
@@ -9,7 +9,8 @@ export interface StewerContainer {
   GetAllItems(): readonly { prefab: string }[];
   Close(): void;
   DestroyContents(): void;
-  subscribeLifecycle(listener: () => void): () => void;
+  TrackContents(): void;
+  readonly openCount: ReadonlySignal<number>;
 }
 
 export interface StewerInstance {
@@ -64,8 +65,12 @@ export class Stewer {
     this.cookTask = new ComponentTimer(scheduler, () => this.dostew());
     this.dropProduct = dropProduct;
     inst.addTag('stewer');
-    this.stopContainer = inst.components.container.subscribeLifecycle(() => this.refreshReady());
-    this.refreshReady();
+    // ItemGet / ItemLose / onopen / onclose: readytocook follows the container's contents and opening.
+    this.stopContainer = createRenderEffect(() => {
+      inst.components.container.TrackContents();
+      inst.components.container.openCount.get();
+      this.refreshReady();
+    });
   }
 
   private refreshReady(): void {

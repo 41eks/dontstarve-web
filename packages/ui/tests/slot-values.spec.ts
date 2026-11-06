@@ -88,7 +88,7 @@ test('subscribes to individual slot indicators, draws native meters and releases
 });
 
 
-test('renders inventory-owned signals without replacing the UI item and unbinds replaced entities', async ({ page }) => {
+test('renders the inst\'s tile declaration without replacing the UI item and unbinds replaced entities', async ({ page }) => {
   await page.goto('/tests/fixture.html');
   await page.evaluate(async url => {
     const { InventoryStore, InventorySlot, inventorySlotAddress } = await import(url);
@@ -107,10 +107,10 @@ test('renders inventory-owned signals without replacing the UI item and unbinds 
       const current = store.getEntity(address);
       const snapshot = current.snapshot();
       bar.setSlot(address, { id: snapshot.itemId, entityId: current.id, count: snapshot.count,
-        ...store.getStackSpec(snapshot), signals: store.getItemSignals(address) });
+        ...store.getStackSpec(snapshot), tile: current.tile });
     };
     show();
-    // Deliberately no store.subscribe -> setSlot bridge: component signals must suffice.
+    // Deliberately no store.subscribe -> setSlot bridge: the inst's tile must suffice.
     const slot = bar.containers[0].getSlot('0');
     (window as any).inventoryValueFixture = { store, entity, bar, slot, item: slot.item.peek(), show, address };
   }, `/@fs${fileURLToPath(new URL('../../inventory/src/index.ts', import.meta.url))}`);

@@ -1,7 +1,10 @@
 import { AssetElement } from './assets';
 import { AnimatedBackground } from './animated-background';
 import { createSignal, type ReadonlySignal } from '@dontstarve-web/signals';
-import type { ContainerDTO } from '../../componets/src/container';
+/** A slot's inst, as container.lua's slot holds it. */
+export interface ContainerSlotSignal<TItem> { readonly entity: ReadonlySignal<TItem | null> }
+/** What a panel subscribes to: the container's slot list, replaced when slots are added. */
+export interface BindableContainer<TItem> { readonly slotList: ReadonlySignal<readonly ContainerSlotSignal<TItem>[]> }
 import type { BuildingContainerDefinition } from '../../prefab/src/containers';
 import { createSlotContainer, type SlotContainer, type SlotContainerKind } from './slot/slot-container';
 import type { SlotAddress, SlotItem, SlotModel, SlotSelectDetail } from './slot/slot-model';
@@ -150,31 +153,43 @@ export class DstChestPanelElement extends AssetElement {
       && button.dataset.slotKey === address.slotKey)?.animateReceive(source, amount);
   }
 
-  /** Application metadata maps the component DTO to UI items; UI only subscribes. */
-  bindContainer<TRecord>(signal: ReadonlySignal<ContainerDTO<TRecord>>, toItem: (record: Readonly<TRecord>) => SlotItem): () => void {
+  /**
+   * Subscribes to the container's slots and the inst in each; `toItem` maps an inst to a UI item, whose tile
+   * declaration carries its live values. The UI keeps no copy of the container's contents.
+   */
+  bindContainer<TItem>(container: BindableContainer<TItem>, toItem: (item: TItem) => SlotItem): () => void {
     const containerId = this.container?.id;
-    if (!containerId) throw new Error('Open a container panel before binding its signal');
+    if (!containerId) throw new Error('Open a container panel before binding its slots');
     this.stopContainerSignal?.();
-    const update = (dto: ContainerDTO<TRecord>) => {
+    let stopSlots: (() => void)[] = [];
+    const bindSlots = (slots: readonly ContainerSlotSignal<TItem>[]) => {
+      stopSlots.forEach(stop => stop());
+      stopSlots = [];
       if (this.container?.id !== containerId) return;
-      if (!Number.isInteger(dto.slotCount) || dto.slotCount <= 0 || dto.slots.length !== dto.slotCount) {
-        throw new RangeError('Invalid container DTO slot count');
-      }
-      const items = dto.slots.map(record => record === null ? null : toItem(record));
-      if (this.container.slots.length !== dto.slotCount) {
+      if (slots.length <= 0) throw new RangeError('Invalid container slot count');
+      if (this.container.slots.length !== slots.length) {
         this.container = createSlotContainer({
           id: containerId, kind: this.container.kind,
-          slotKeys: Array.from({ length: dto.slotCount }, (_, index) => String(index)),
+          slotKeys: Array.from({ length: slots.length }, (_, index) => String(index)),
         });
         this.selectedSlot.set(null);
         if (this.isConnected) this.render();
       }
-      items.forEach((item, index) => this.setSlot({ containerId, slotKey: String(index) }, item));
+      slots.forEach((slot, index) => {
+        const address = { containerId, slotKey: String(index) };
+        const show = (item: TItem | null) => {
+          if (this.container?.id === containerId) this.setSlot(address, item === null ? null : toItem(item));
+        };
+        show(slot.entity.peek());
+        stopSlots.push(slot.entity.subscribe(show));
+      });
     };
-    update(signal.peek());
-    const stop = signal.subscribe(update);
+    bindSlots(container.slotList.peek());
+    const stopList = container.slotList.subscribe(bindSlots);
     const dispose = () => {
-      stop();
+      stopList();
+      stopSlots.forEach(stop => stop());
+      stopSlots = [];
       if (this.stopContainerSignal === dispose) this.stopContainerSignal = undefined;
     };
     this.stopContainerSignal = dispose;

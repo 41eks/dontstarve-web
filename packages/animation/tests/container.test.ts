@@ -36,35 +36,32 @@ describe('Lua container component', () => {
       expect(check).not.toHaveBeenCalled();
     } finally { container.dispose(); world.unbind(); scheduler.dispose(); }
   });
-  it('provides a stable read-only DTO signal and publishes complete loads and cleared slots', () => {
+  it('publishes its slot list and each slot\'s inst as read-only signals, through loads and clearing', () => {
     const container = createContainer();
     container.SetNumSlots(2);
-    const signal = container.toSignal();
-    expect(container.toSignal()).toBe(signal);
-    expect('set' in signal).toBe(false);
-    expect(signal.peek()).toEqual({ slotCount: 2, slots: [null, null] });
-    const observed: unknown[] = [];
-    const stop = signal.subscribe(dto => observed.push(dto));
+    const list = container.slotList, slots = list.peek();
+    expect('set' in list).toBe(false);
+    expect('set' in slots[0].entity).toBe(false);
+    expect(slots.map(slot => slot.entity.peek())).toEqual([null, null]);
+    const observed = vi.fn();
+    const stops = slots.map(slot => slot.entity.subscribe(observed));
     container.OnLoad({ slots: [
-      { slotKey: '0', item: { entityId: 'dto_log', itemId: 'log', count: 3 } },
-      { slotKey: '1', item: { entityId: 'dto_torch', itemId: 'torch', count: 1, remainingFuel: 12.5 } },
+      { slotKey: '0', item: { entityId: 'slot_log', itemId: 'log', count: 3 } },
+      { slotKey: '1', item: { entityId: 'slot_torch', itemId: 'torch', count: 1, remainingFuel: 12.5 } },
     ] });
-    expect(observed).toHaveLength(1);
-    expect(signal.peek().slots.map(item => item?.entityId)).toEqual(['dto_log', 'dto_torch']);
-    expect(Object.isFrozen(signal.peek().slots)).toBe(true);
-    expect(signal.peek().slots[0]).not.toBe(container.GetItemInSlot(1));
-    const before = signal.peek();
+    expect(observed).toHaveBeenCalledTimes(2);
+    // The slots hold the insts themselves, not copies of their records.
+    expect(slots[0].entity.peek()).toBe(container.GetItemInSlot(1));
+    expect(slots.map(slot => slot.entity.peek()?.id)).toEqual(['slot_log', 'slot_torch']);
     expect(() => container.OnLoad({ slots: [{ slotKey: '2', item: { itemId: 'log', count: 1 } }] })).toThrow();
-    expect(signal.peek()).toBe(before);
-    expect(observed).toHaveLength(1);
+    expect(observed).toHaveBeenCalledTimes(2);
     container.SetNumSlots(3);
-    expect(signal.peek().slots[2]).toBeNull();
+    expect(container.slotList.peek()).not.toBe(slots);
+    expect(container.slotList.peek().slice(0, 2)).toEqual(slots);
+    expect(container.slotList.peek()[2].entity.peek()).toBeNull();
     container.dispose();
-    expect(signal.peek()).toEqual({ slotCount: 3, slots: [null, null, null] });
-    stop();
-    const count = observed.length;
-    container.publishDTO();
-    expect(observed).toHaveLength(count);
+    expect(container.slotList.peek().map(slot => slot.entity.peek())).toEqual([null, null, null]);
+    stops.forEach(stop => stop());
   });
 
   it('uses one-based slots and independent openers, preserving contents when closed', () => {

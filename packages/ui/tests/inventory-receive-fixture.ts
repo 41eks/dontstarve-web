@@ -6,6 +6,7 @@ import { createInventoryStore } from '../../../src/inventory';
 import { GroundItemManager } from '../../prefab/src/groundItemManager';
 import { createWorldState } from '../../../src/worldState';
 import { inventoryReceiveEffect } from '../../../src/inventoryReceive';
+import { createInventorySlotItem } from '../../../src/inventorySlotItem';
 import { ScreenProjection } from '@dontstarve-web/display';
 import { backpackContainerId, inventorySlotAddress, INVENTORY_SLOT_COUNT } from '@dontstarve-web/inventory';
 import initialWorld from '../../../public/saves/initial-world.json';
@@ -50,9 +51,7 @@ export async function createReceiveFixture() {
       const containerId = backpackContainerId(backpack.id);
       const container = backpack.components.container!;
       backpackPanel.open({ containerId, slotCount: container.numslots, title: '背包' });
-      backpackPanel.bindContainer(container.toSignal(), stack => ({
-        ...inventory.getStackSpec(stack), id: stack.itemId, count: stack.count, entityId: stack.entityId,
-      }));
+      backpackPanel.bindContainer(container, createInventorySlotItem(inventory));
       const maxStack = inventory.getItemSpec('rocks').maxStack;
       if (!inventory.add('rocks', INVENTORY_SLOT_COUNT * maxStack)) throw new Error('Could not fill inventory');
       // Leave capacity for one item so one receipt spans the main inventory and backpack.

@@ -9,10 +9,10 @@ import { PLAYER_INVENTORY_CONTAINER_ID, EQUIPMENT_KINDS, equipmentSlotAddress, c
 import { InventorySlot, StorageSlot, type ItemSlot } from './slots';
 import { PreparedFoodSlot } from './preparedFoodSlot';
 import type { Container } from '../../componets/src/container';
+import type { InventoryAppearance } from '../../componets/src/inventoryitem';
 import type {
   EquipmentKind,
   InventoryItemSpec,
-  InventoryItemSignals,
   InventoryListener,
   InventoryReceiveListener,
   InventoryMaterialSummary,
@@ -93,7 +93,23 @@ export class InventoryStore {
   private readonly drops = new Set<(entity: ItemEntity, launch?: DropLaunch) => void>();
 
   bindActor(actor: import('../../componets/src/inventoryitem').InventoryActor): void { this.actor = actor; }
-  configureItem(entity: ItemEntity): void { entity.configure(this.requireItemSpec(entity.prefab)); }
+  configureItem(entity: ItemEntity): void {
+    entity.configure(this.requireItemSpec(entity.prefab));
+    entity.components.inventoryitem.SetDefaultAppearance(this.defaultAppearance(entity.prefab));
+  }
+  private readonly appearances = new Map<string, (skinId: string | undefined) => InventoryAppearance>();
+  /** One stable resolver per prefab, so reconfiguring an item does not change its tile. */
+  private defaultAppearance(itemId: string): (skinId: string | undefined) => InventoryAppearance {
+    let resolve = this.appearances.get(itemId);
+    if (!resolve) {
+      resolve = (skinId) => {
+        const { name, icon, atlas } = this.getItemSpec(itemId, skinId);
+        return Object.freeze({ name, icon, atlas: atlas ?? 'images/inventoryimages.xml' });
+      };
+      this.appearances.set(itemId, resolve);
+    }
+    return resolve;
+  }
   subscribeReceived(listener: (received: readonly InventorySlotDelta[], source?: import('../../componets/src/inventoryitem').ItemPosition) => void): () => void {
     this.receipts.add(listener); return () => { this.receipts.delete(listener); };
   }
@@ -332,8 +348,7 @@ export class InventoryStore {
     for (const registration of pending) {
       const entity = registration.slot.getEntity();
       if (entity) {
-        const spec = this.requireItemSpec(entity.prefab);
-        entity.configure(spec);
+        this.configureItem(entity);
         this.entities.adopt(entity);
       }
       this.registrations.push(registration);
@@ -490,11 +505,6 @@ export class InventoryStore {
     return this.registrationByAddress.get(addressKey(address))?.slot.getEntity() ?? null;
   }
 
-  /** The same read-only component signals follow an item through transfers and drops. */
-  getItemSignals(address: SlotAddress): InventoryItemSignals | null {
-    return this.getEntity(address)?.signals ?? null;
-  }
-
   /** inventory.lua ReturnActiveItem: GiveItem prefers the slot the item was taken from (inst.prevslot). */
   ReturnActiveItem(): boolean { return this.returnCursor(this.activeItemPrevSlot); }
 
@@ -610,15 +620,16 @@ export class InventoryStore {
 
   hasItemSpec(itemId: string): boolean { return this.itemSpecs.has(itemId); }
 
-  getItemSpec(itemId: string): InventoryItemSpec {
-    return this.requireItemSpec(itemId);
+  /** The prefab's spec; with a skin, its name and default inventory image. */
+  getItemSpec(itemId: string, skinId?: string): InventoryItemSpec {
+    const item = this.requireItemSpec(itemId);
+    const skin = skinId ? this.skinSpecs[skinId] : undefined;
+    return skin ? { ...item, name: skin.name, icon: skin.icon, atlas: skin.atlas } : item;
   }
 
   getStackSpec(stack: InventoryStack): InventoryItemSpec {
-    const item = this.requireItemSpec(stack.itemId);
-    const skin = stack.skinId ? this.skinSpecs[stack.skinId] : undefined;
     const appearance = stack.entityId ? this.entities.get(stack.entityId)?.components.inventoryitem.image.peek() : undefined;
-    return { ...item, ...(skin ? { name: skin.name, icon: skin.icon, atlas: skin.atlas } : {}), ...appearance };
+    return { ...this.getItemSpec(stack.itemId, stack.skinId), ...appearance };
   }
 
   count(itemId: string): number {
@@ -991,8 +1002,7 @@ export class InventoryStore {
         this.registrationByAddress.set(addressKey(address), registration);
         const child = slot.getEntity();
         if (child) {
-          const spec = this.requireItemSpec(child.prefab);
-          child.configure(spec);
+          this.configureItem(child);
         }
       });
     }
@@ -1075,8 +1085,7 @@ export class InventoryStore {
         let entity = state.entityId ? this.entities.get(state.entityId) : undefined;
         entity ??= this.entities.create(state);
         entity.apply(state);
-        const spec = this.requireItemSpec(entity.prefab);
-        entity.configure(spec);
+        this.configureItem(entity);
         retained.add(entity);
         return { slot, entity };
       });
@@ -1105,12 +1114,6 @@ export class InventoryStore {
   }
 
   private notify(changedSlots: readonly SlotAddress[], replacedEquipment: readonly EquipmentKind[] = []): void {
-    for (const id of new Set(changedSlots.map(address => address.containerId))) this.worldContainers.get(id)?.publishDTO();
-    // One complete DTO per changed container, including in-place quantity/fuel updates.
-    const containerIds = new Set(changedSlots.map(address => address.containerId).filter(isBackpackContainerId));
-    for (const id of containerIds) {
-      this.entities.get(id.slice('item:backpack:'.length))?.components.container?.publishDTO();
-    }
     // Component or unrelated inventory updates must not restart equipment lifecycles.
     for (const kind of replacedEquipment) this.publishEquipmentExistenceState(kind);
     this.listeners.forEach((listener) => listener(changedSlots));

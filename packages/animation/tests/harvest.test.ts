@@ -24,7 +24,7 @@ it('walks to a finished pot, gives its product to the doer at the hit frame, and
   const model = display.model;
   instance.setPosition(20, 0, 0); scene.add(model);
   const container = { canbeopened: true, IsFull: () => false, IsOpen: () => false,
-    GetAllItems: () => [], Close() {}, DestroyContents() {}, subscribeLifecycle: () => () => {} };
+    GetAllItems: () => [], Close() {}, DestroyContents() {}, TrackContents() {}, openCount: { get: () => 0, peek: () => 0, subscribe: () => () => {} } };
   const stewer = new Stewer({ prefab: 'cookpot', components: { container },
     getPosition: () => instance.position, addTag: tag => instance.addTag(tag), removeTag: tag => instance.removeTag(tag) }, new GameTimeScheduler());
   instance.components.stewer = stewer;

@@ -64,7 +64,6 @@ class NightmareTimepiece implements ItemRuntimeComponent {
     const { anim, inventory } = this.stateOf(phase);
     this.entity.sprite.playOnce(anim);
     this.entity.components.inventoryitem.ChangeImageName(inventory.icon, inventory.atlas);
-    this.entity.components.inventoryitem.owner?.changed();
   }
 
   /** A new ground visual starts from the catalog's clip; the watch keeps showing its phase. */

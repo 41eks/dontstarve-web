@@ -48,7 +48,7 @@ it('derives fresh, stale and spoiled from the settled red_cap timer and eats sou
   store.add('red_cap', 3);
   const entity = store.getEntity(a)!, perishable = entity.components.perishable;
   expect(perishable.timer.peek()).toEqual({ status: 'perishing', remainingSeconds: PERISH_MED });
-  expect(entity.signals.freshnessPercent.peek()).toBe(1);
+  expect(entity.tile.peek().freshnessPercent).toBe(1);
   expect(perishable.stage.peek()).toBe('fresh');
   expect(getFoodEffects(entity)).toEqual({ health: -20, hunger: 12.5, sanity: 0 });
 
@@ -164,18 +164,18 @@ it('dilutes freshness when stacks merge and preserves it through transfer flush,
   store.add('red_cap', 1);
   expect(store.getEntity(a)).toBe(entity);
   expect(store.get(a)?.count).toBe(2);
-  expect(entity.signals.freshnessPercent.peek()).toBeCloseTo(.625, 9);
+  expect(entity.tile.peek().freshnessPercent).toBeCloseTo(.625, 9);
   // A partial 10-second period stays pending until the transfer settles it.
   store.perishWorld.advance(3);
-  expect(entity.signals.freshnessPercent.peek()).toBeCloseTo(.625, 9);
+  expect(entity.tile.peek().freshnessPercent).toBeCloseTo(.625, 9);
   expect(store.transfer(a, b, 2)).toBe(true);
   expect(store.getEntity(b)).toBe(entity);
-  expect(entity.signals.freshnessPercent.peek()).toBeCloseTo(.625 - 3 / PERISH_MED, 9);
+  expect(entity.tile.peek().freshnessPercent).toBeCloseTo(.625 - 3 / PERISH_MED, 9);
   const restored = setup();
   restored.replaceState(store.exportState(), {});
   const loaded = restored.getEntity(b)!;
   expect(loaded.id).toBe(entity.id);
-  expect(loaded.signals.freshnessPercent.peek()).toBeCloseTo(.625 - 3 / PERISH_MED, 9);
+  expect(loaded.tile.peek().freshnessPercent).toBeCloseTo(.625 - 3 / PERISH_MED, 9);
   expect(loaded.components.perishable.timer.peek()).toMatchObject({ status: 'perishing' });
   store.dispose(); restored.dispose();
 });
@@ -392,7 +392,7 @@ it('spawns/gives red_cap, bananapop and spoiled_food, replaces a perished ground
     pop.components.perishable.SetPercent(.15);
     inventory.getEntity(inventorySlotAddress(2))!.components.perishable.SetPercent(.8);
     const ground = manager.entities.get('spawn:red_cap')!;
-    expect(ground.signals.freshnessPercent.peek()).toBeCloseTo(1 - 45 / PERISH_MED);
+    expect(ground.tile.peek().freshnessPercent).toBeCloseTo(1 - 45 / PERISH_MED);
     ground.components.perishable.SetPercent(.3);
     inventory.getEntity(inventorySlotAddress(0))!.components.perishable.SetPercent(.6);
 
@@ -413,7 +413,7 @@ it('spawns/gives red_cap, bananapop and spoiled_food, replaces a perished ground
     for (const record of saved.world.entities.ground_item) await restoreGround(restored, record);
     expect(restored.exportRecords()).toEqual(before.ground_item);
     const loadedGround = restored.entities.get('spawn:red_cap')!;
-    expect(loadedGround.signals.freshnessPercent.peek()).toBeCloseTo(.3, 9);
+    expect(loadedGround.tile.peek().freshnessPercent).toBeCloseTo(.3, 9);
     expect(loadedGround.components.perishable.stage.peek()).toBe('stale');
     expect(restoredInventory.getEntity(inventorySlotAddress(0))!.snapshot())
       .toEqual(inventory.getEntity(inventorySlotAddress(0))!.snapshot());
@@ -421,9 +421,9 @@ it('spawns/gives red_cap, bananapop and spoiled_food, replaces a perished ground
     expect(restored.entities.get('spawn:bananapop')!.components.perishable.stage.peek()).toBe('spoiled');
     expect(restoredInventory.getEntity(inventorySlotAddress(2))!.snapshot())
       .toEqual(inventory.getEntity(inventorySlotAddress(2))!.snapshot());
-    expect(restoredInventory.getEntity(inventorySlotAddress(2))!.signals.freshnessPercent.peek()).toBeCloseTo(.8, 9);
+    expect(restoredInventory.getEntity(inventorySlotAddress(2))!.tile.peek().freshnessPercent).toBeCloseTo(.8, 9);
     loadedGround.components.perishable.flush();
-    expect(loadedGround.signals.freshnessPercent.peek()).toBeCloseTo(.3, 9);
+    expect(loadedGround.tile.peek().freshnessPercent).toBeCloseTo(.3, 9);
 
     // Ground perishing spends PERISH_GROUND_MULT and replaces the cap at its foot point.
     for (let frame = 0; frame < 60; frame++) {

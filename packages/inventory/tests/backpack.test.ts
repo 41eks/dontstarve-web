@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { Container } from '../../componets/src/container';
 import { ItemEntity, InventoryStore, InventorySlot, BodySlot, StorageSlot, backpackSlotAddress, equipmentSlotAddress, inventorySlotAddress } from '../src';
 import { addFueled } from './fueled';
@@ -20,42 +20,42 @@ function store() {
 }
 
 describe('entity-owned backpack containers', () => {
-  it('publishes one container DTO after transfers, including in-place stack and fuel changes', () => {
+  it('publishes slot insts after transfers, while in-place stack and fuel changes stay on the inst\'s tile', () => {
     const inventory = store();
     inventory.add('backpack', 1);
     const bag = inventory.getEntity(a)!;
     inventory.transfer(a, body, 1);
-    const container = bag.components.container!, signal = container.toSignal();
+    const container = bag.components.container!, slots = container.slotList.peek();
     const first = backpackSlotAddress(bag.id, 0), last = backpackSlotAddress(bag.id, 7);
     inventory.add('log', 3);
     expect(inventory.transfer(a, first, 3)).toBe(true);
-    const logId = signal.peek().slots[0]!.entityId;
+    const log = slots[0].entity.peek()!;
     const observed: unknown[] = [];
-    const stop = signal.subscribe(dto => {
-      observed.push(dto);
-      expect(dto.slots[0]?.count ?? 0).toBe(inventory.get(first)?.count ?? 0);
-      expect(dto.slots[7]?.count ?? 0).toBe(inventory.get(last)?.count ?? 0);
-    });
+    const stops = [slots[0], slots[7]].map(slot => slot.entity.subscribe(item => {
+      observed.push(item);
+      // A transaction commits every slot before any subscriber runs.
+      expect(slots[0].entity.peek()?.components.stackable.count ?? 0).toBe(inventory.get(first)?.count ?? 0);
+      expect(slots[7].entity.peek()?.components.stackable.count ?? 0).toBe(inventory.get(last)?.count ?? 0);
+    }));
+    // Splitting keeps the source inst in place: only the receiving slot changes.
     expect(inventory.transfer(first, last, 1)).toBe(true);
     expect(observed).toHaveLength(1);
-    expect(signal.peek().slots[0]).toMatchObject({ entityId: logId, count: 2 });
-    expect(signal.peek().slots[7]!.count).toBe(1);
+    expect(slots[0].entity.peek()).toBe(log);
+    expect(log.tile.peek().count).toBe(2);
+    expect(slots[7].entity.peek()!.tile.peek().count).toBe(1);
     expect(inventory.transfer(first, last, 99)).toBe(false);
     expect(observed).toHaveLength(1);
     expect(inventory.transfer(last, a, 1)).toBe(true);
-    expect(signal.peek().slots[7]).toBeNull();
+    expect(slots[7].entity.peek()).toBeNull();
     expect(inventory.add('torch', 1, undefined, undefined, undefined, undefined, 12)).toBe(true);
     expect(inventory.transfer(b, last, 1)).toBe(true);
-    const torchId = signal.peek().slots[7]!.entityId;
+    const torch = slots[7].entity.peek()!, tile = vi.fn();
     const beforeFuel = observed.length;
+    const stopTile = torch.tile.subscribe(tile);
     expect(inventory.setRemainingFuel(last, 8)).toBe(true);
-    expect(observed).toHaveLength(beforeFuel + 1);
-    expect(signal.peek().slots[7]).toMatchObject({ entityId: torchId, remainingFuel: 8 });
-    const beforeStop = observed.length;
-    stop();
-    inventory.setRemainingFuel(last, 7);
-    expect(observed).toHaveLength(beforeStop);
-    expect(signal.peek().slots[7]!.remainingFuel).toBe(7);
+    expect(observed).toHaveLength(beforeFuel);
+    expect(tile).toHaveBeenCalledOnce();
+    stopTile(); stops.forEach(stop => stop());
     inventory.dispose();
   });
 

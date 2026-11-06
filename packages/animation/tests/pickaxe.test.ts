@@ -26,10 +26,10 @@ it('uses 33 ordinary or 132 golden mining hits and removes depleted equipment th
       const lifecycle = getPickaxeLifecycle(entity);
       lifecycle.onequip();
       expect(entity.hasTag('MINE_tool')).toBe(true);
-      expect(entity.signals.durabilityPercent.peek()).toBe(1);
+      expect(entity.tile.peek().durabilityPercent).toBe(1);
       entity.components.finiteuses.useForAction('MINE');
       expect(entity.components.finiteuses.remaining).toBe(33 - step);
-      expect(entity.signals.durabilityPercent.peek()).toBe((33 - step) / 33);
+      expect(entity.tile.peek().durabilityPercent).toBe((33 - step) / 33);
       for (let i = 1; i < hits - 1; i++) expect(entity.components.finiteuses.useForAction('MINE')).toBe(true);
       expect(entity.isRemoved).toBe(false);
       expect(entity.components.finiteuses.remaining).toBe(step);

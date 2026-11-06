@@ -43,21 +43,23 @@ describe('DST item identity and ownership', () => {
     } finally { readItems.mockRestore(); readInsectIcon.mockRestore(); entities.dispose(); adopted.dispose(); }
   });
 
-  it('owns independent item signals and preserves their state through transfers, extraction and load', () => {
+  it('derives one item tile and preserves its state through transfers, extraction and load', () => {
     const store = setup();
     store.add('log', 8);
     const entity = store.getEntity(a)!;
-    const signals = store.getItemSignals(a)!;
-    expect(signals).toBe(entity.signals);
-    expect('set' in signals.count).toBe(false);
+    const tile = entity.tile;
+    expect('set' in tile).toBe(false);
+    expect(tile.peek()).toMatchObject({ name: store.getItemSpec('log').name, count: 8, wet: false });
+    expect(tile.peek().image?.icon).toBe(store.getItemSpec('log').icon);
     const changes: string[] = [];
-    const stops = (['count', 'durabilityPercent', 'freshnessPercent', 'wet'] as const)
-      .map(key => signals[key].subscribe(() => changes.push(key)));
+    const stops = [tile.subscribe((next, previous) => {
+      for (const key of ['count', 'durabilityPercent', 'freshnessPercent', 'wet'] as const) if (next[key] !== previous[key]) changes.push(key);
+    })];
     entity.setFreshnessPercent(.75);
     entity.setWet(true);
     expect(changes).toEqual(['freshnessPercent', 'wet']);
     changes.length = 0;
-    signals.count.subscribe(() => {
+    entity.components.stackable.size.subscribe(() => {
       // Raw field subscriptions also see the complete committed split.
       expect(store.get(a)?.count).toBe(5);
       expect(store.get(b)?.count).toBe(3);
@@ -65,22 +67,21 @@ describe('DST item identity and ownership', () => {
     expect(store.transfer(a, b, 3)).toBe(true);
     expect(changes).toEqual(['count']);
     const split = store.getEntity(b)!;
-    expect(split.signals.freshnessPercent.peek()).toBe(.75);
-    expect(split.signals.wet.peek()).toBe(true);
+    expect(split.tile.peek().freshnessPercent).toBe(.75);
+    expect(split.tile.peek().wet).toBe(true);
     expect(store.transfer(a, b, 100)).toBe(false);
     expect(changes).toEqual(['count']);
     expect(store.extract(b, 3)).toBe(split);
     store.entities.destroy(split);
     expect(store.extract(a, 5)).toBe(entity);
-    expect(store.getItemSignals(a)).toBeNull();
+    expect(store.getEntity(a)).toBeNull();
     expect(store.receive(entity)).toBe(true);
-    expect(store.getItemSignals(a)).toBe(signals);
+    expect(store.getEntity(a)?.tile).toBe(tile);
     const saved = store.exportState();
     const restored = setup();
     restored.replaceState(saved, {});
     expect(restored.getEntity(a)?.snapshot()).toEqual(entity.snapshot());
-    expect(restored.getItemSignals(a)?.freshnessPercent.peek()).toBe(.75);
-    expect(restored.getItemSignals(a)?.wet.peek()).toBe(true);
+    expect(restored.getEntity(a)?.tile.peek()).toMatchObject({ freshnessPercent: .75, wet: true });
     stops.forEach(stop => stop());
     store.dispose(); restored.dispose();
   });
@@ -91,17 +92,17 @@ describe('DST item identity and ownership', () => {
     store.add('farm_plow_item', 1);
     const torch = store.getEntity(a)!, plow = store.getEntity(b)!;
     const count = vi.fn(), durability = vi.fn();
-    torch.signals.count.subscribe(count);
-    torch.signals.durabilityPercent.subscribe(durability);
-    expect(torch.signals.durabilityPercent.peek()).toBe(1);
+    torch.components.stackable.size.subscribe(count);
+    torch.tile.subscribe((next, previous) => { if (next.durabilityPercent !== previous.durabilityPercent) durability(next.durabilityPercent, previous.durabilityPercent); });
+    expect(torch.tile.peek().durabilityPercent).toBe(1);
     expect(store.setRemainingFuel(a, 37.5)).toBe(true);
     expect(durability).toHaveBeenCalledExactlyOnceWith(.5, 1);
     expect(count).not.toHaveBeenCalled();
     expect(plow.components.finiteuses.use()).toBe(true);
-    expect(plow.signals.durabilityPercent.peek()).toBe(.75);
+    expect(plow.tile.peek().durabilityPercent).toBe(.75);
     expect(plow.components.finiteuses.uses.peek()).toBe(3);
     expect(torch.setFreshnessPercent(NaN)).toBe(false);
-    expect(torch.signals.freshnessPercent.peek()).toBeUndefined();
+    expect(torch.tile.peek().freshnessPercent).toBeUndefined();
     store.dispose();
   });
 

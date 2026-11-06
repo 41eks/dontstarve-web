@@ -19,6 +19,7 @@ import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { serializeSave } from '../../../src/save/serialize';
 import { inventoryStateFromSave } from '../../../src/save/inventoryState';
+import { createInventorySlotItem } from '../../../src/inventorySlotItem';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 const held = inventorySlotAddress(0), chilled = { containerId: 'world:icebox:fridge', slotKey: '0' };
@@ -91,11 +92,16 @@ it('cools stones to the source floor, resumes ambient changes outside the fridge
     const item = inventory.getEntity(held)!, temp = item.components.temperature!, rock = item.getComponent<HeatRock>('heatrock')!;
     expect(temp.GetCurrent()).toBe(35);
     inventory.transfer(held, chilled, 1);
+    // The container panel's item follows the inst's tile; the slot keeps the same inst.
+    const slot = inventory.getContainer(chilled.containerId)!.slotList.peek()[0], slotItem = createInventorySlotItem(inventory)(slot.entity.peek()!);
+    const slotChanged = vi.fn(), stopSlot = slot.entity.subscribe(slotChanged);
     temp.OnUpdate(15);
     expect(temp.GetCurrent()).toBe(20);
     expect(rock.range.peek()).toBe(2);
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect(inventory.getStackSpec(item.snapshot()).icon).toBe('heat_rock2.tex');
+    expect(slotItem.tile!.peek().image?.icon).toBe('heat_rock2.tex');
+    expect(slotChanged).not.toHaveBeenCalled();
+    stopSlot();
     temp.OnUpdate(60);
     expect(temp.GetCurrent()).toBe(0);
     expect(rock.range.peek()).toBe(1);

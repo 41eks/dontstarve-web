@@ -39,7 +39,7 @@ it('regenerates once per second after damage, faster at lower sanity, draining s
     expect(hat.armor.maxcondition).toBe(ARMOR_DREADSTONEHAT);
     expect(hat.sanity.GetRate()).toBe(0);
     hat.armor.TakeDamage(10);
-    expect(hat.entity.signals.durabilityPercent.peek()).toBeCloseTo((ARMOR_DREADSTONEHAT - 10) / ARMOR_DREADSTONEHAT);
+    expect(hat.entity.tile.peek().durabilityPercent).toBeCloseTo((ARMOR_DREADSTONEHAT - 10) / ARMOR_DREADSTONEHAT);
     // dreadstone_calcdapperness: CRAZINESS_MED while the regen task runs.
     expect(hat.sanity.GetRate()).toBeCloseTo(CRAZINESS_MED);
     hat.world.advance(0.5);

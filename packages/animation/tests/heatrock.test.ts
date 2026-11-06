@@ -33,12 +33,12 @@ it('creates individual unequippable stones with source tags and preserves their 
     expect(inventory.get(inventorySlotAddress(1))).toMatchObject({ itemId: 'heatrock', count: 1 });
     expect(first.hasTag('heatrock')).toBe(true);
     expect(first.hasTag('icebox_valid')).toBe(true);
-    expect(first.signals.durabilityPercent.peek()).toBe(1);
+    expect(first.tile.peek().durabilityPercent).toBe(1);
     expect(inventory.transfer(inventorySlotAddress(0), equipmentSlotAddress('hand'), 1)).toBe(false);
     expect(inventory.getEntity(inventorySlotAddress(0))).toBe(first);
     saved.configure(heatrockSpec); saved.configure(heatrockSpec);
     expect(saved.snapshot().remainingFuel).toBe(62.5);
-    expect(saved.signals.durabilityPercent.peek()).toBe(.625);
+    expect(saved.tile.peek().durabilityPercent).toBe(.625);
   } finally { inventory.dispose(); saved.destroy(); }
 });
 
@@ -114,13 +114,19 @@ it('derives range from temperature signals, updates icons in effects and preserv
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(image()).toBe('heatrock_fantasy4.tex');
     expect(entity.snapshot()).toMatchObject({ temperature: { current: 44 }, remainingFuel: 62.5, skinId: 'heatrock_fantasy' });
-    const changeImage = vi.spyOn(entity.components.inventoryitem, 'ChangeImageName');
+    // The item tile derives the image from the sprite json; sprite writes that keep the image do not reach it.
+    const tile = entity.tile, published = vi.fn();
+    expect(tile.peek().image?.icon).toBe('heatrock_fantasy4.tex');
+    const stopTile = tile.subscribe(published);
+    entity.sprite.setFrame(3);
+    expect(published).not.toHaveBeenCalled();
+    stopTile();
     temperature.SetTemperature(80);
-    rock.dispose(); // Cancels pending art changes and releases the temperature bridge/memo.
+    rock.dispose(); // Cancels pending art changes and releases the temperature bridge/memo and the image derivation.
     temperature.SetTemperature(0);
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect(changeImage).not.toHaveBeenCalled();
     expect(rock.range.peek()).toBe(5);
+    expect(tile.peek().image).toBeUndefined();
   } finally { entity.destroy(); updates.dispose(); }
 });
 

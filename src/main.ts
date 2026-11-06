@@ -14,7 +14,6 @@ import {
   type MinimapStateDetail,
   type MinimapActionRequestDetail,
   type SlotAddress,
-  type SlotItem,
   type SlotSelectDetail,
   type SlotTransferRequest,
   slotTransferController,
@@ -31,7 +30,7 @@ import { followCamera } from './camera';
 import type { SpellCastMap } from '@dontstarve-web/stategraphs/castspell';
 import { WORLD_TILES } from '@dontstarve-web/prefab/turfMap';
 import { isGroundTargetBlocked, placementEntities } from '../packages/prefab/src/placementEntities';
-import { backpackContainerId, inventorySlotAddress, cursorSlotAddress, type InventoryStack } from '@dontstarve-web/inventory';
+import { backpackContainerId, inventorySlotAddress, cursorSlotAddress } from '@dontstarve-web/inventory';
 import { player, playerBody, playerInstance, playerPhysics } from './player';
 import { OnItemRanOut } from '@dontstarve-web/prefab/player_common';
 import { bindPlayerHandEquipment } from './playerHandEquipment';
@@ -60,6 +59,7 @@ import { SAVE_CATALOG } from './save/catalog';
 import { serializeSave } from './save/serialize';
 import { downloadClusterSave } from './save/download';
 import { inventoryReceiveEffect } from './inventoryReceive';
+import { createInventorySlotItem } from './inventorySlotItem';
 import { playerStats, playerGhostMode, getPlayerStats, setPlayerSanityPercent } from './playerStats';
 import { loadAnimationArchive } from '@dontstarve-web/animation/animationAssets';
 import { createEffect, watchSignal } from '@dontstarve-web/signals';
@@ -104,6 +104,7 @@ const stopStatsUpdates = [playerStats.health.current, playerStats.hunger.value, 
   .map(stat => stat.subscribe(syncPlayerStats));
 syncPlayerStats();
 export const inventory = createInventoryStore();
+const inventorySlotItem = createInventorySlotItem(inventory);
 const cursorAddress = cursorSlotAddress();
 export const handEquipment = inventory.handEquipment;
 export const headEquipment = inventory.headEquipment;
@@ -222,9 +223,8 @@ const bodyEquipmentBinding = bindPlayerBodyEquipment({
     if (containerId && !gameUi.backpackPanel.slotContainer) {
       const container = inventory.getEntity(bodySlotAddress)?.components.container;
       if (!container) return;
-      const state = container.toSignal();
-      gameUi.backpackPanel.open({ containerId, slotCount: state.peek().slotCount, title: '背包' });
-      gameUi.backpackPanel.bindContainer(state, inventorySlotItem);
+      gameUi.backpackPanel.open({ containerId, slotCount: container.numslots, title: '背包' });
+      gameUi.backpackPanel.bindContainer(container, inventorySlotItem);
     }
   },
 });
@@ -237,30 +237,8 @@ function syncInventorySlot(address: SlotAddress): void {
   if (address.containerId !== inventorySlotAddress(0).containerId
     && address.containerId !== handSlotAddress.containerId
     && address.containerId !== cursorAddress.containerId) return;
-  const inventoryBar = gameUi.inventoryBar;
-  const stack = inventory.getEntity(address)?.snapshot();
-  if (!stack) {
-    inventoryBar.setSlot(address, null);
-    return;
-  }
-
-  inventoryBar.setSlot(address, inventorySlotItem(stack));
-}
-
-function inventorySlotItem(stack: Readonly<InventoryStack>, maxStack?: number): SlotItem {
-  const spec = inventory.getStackSpec(stack);
-  return {
-    ...(stack.entityId === undefined ? {} : { entityId: stack.entityId }),
-    id: stack.itemId,
-    ...(stack.skinId === undefined ? {} : { skinId: stack.skinId }),
-    name: spec.name,
-    count: stack.count,
-    ...(stack.entityId === undefined ? {} : { signals: inventory.entities.get(stack.entityId)?.signals }),
-    maxStack: maxStack ?? spec.maxStack,
-    icon: spec.icon,
-    ...(spec.atlas ? { atlas: spec.atlas } : {}),
-    ...(spec.equippable ? { equippable: spec.equippable } : {}),
-  };
+  const entity = inventory.getEntity(address);
+  gameUi.inventoryBar.setSlot(address, entity ? inventorySlotItem(entity) : null);
 }
 
 function syncCraftingInventory(): void {

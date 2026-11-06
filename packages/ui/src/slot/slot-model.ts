@@ -1,5 +1,5 @@
 import { createSignal, readonlySignal, type ReadonlySignal } from '@dontstarve-web/signals';
-import type { InventoryItemSignals, SlotAddress } from '@dontstarve-web/inventory';
+import type { ItemTileJson, SlotAddress } from '@dontstarve-web/inventory';
 
 export type { SlotAddress } from '@dontstarve-web/inventory';
 
@@ -28,23 +28,30 @@ export interface SlotItem {
   freshnessPercent?: number;
   /** inventoryitem's wetnesschange/GetIsWet is a boolean UI state. */
   wet?: boolean;
-  /** Injected by inventory; the UI subscribes to the item's authoritative component state. */
-  signals?: InventoryItemSignals;
+  /**
+   * The inst's item tile declaration (name, image, count, durability, freshness, wetness). Its values override the
+   * static fields above, which only describe detached previews.
+   */
+  tile?: ReadonlySignal<ItemTileJson>;
+}
+
+/** Applies a tile declaration over the item's static fields. */
+export function slotItemWithTile(item: SlotItem, tile: ItemTileJson): SlotItem {
+  return { ...item,
+    ...(tile.name === undefined ? {} : { name: tile.name }),
+    ...(tile.image ? { icon: tile.image.icon, atlas: tile.image.atlas } : {}),
+    count: tile.count, durabilityPercent: tile.durabilityPercent, freshnessPercent: tile.freshnessPercent, wet: tile.wet };
 }
 
 /** Sample live values for input/transfer requests; never retain a second mutable count. */
 export function currentSlotItem(item: SlotItem | null): SlotItem | null {
-  if (!item?.signals) return item;
-  return { ...item, count: item.signals.count.get(),
-    durabilityPercent: item.signals.durabilityPercent.get(),
-    freshnessPercent: item.signals.freshnessPercent.get(), wet: item.signals.wet.get() };
+  return item?.tile ? slotItemWithTile(item, item.tile.get()) : item;
 }
 
-/** Live value changes are published by inventory; only identity/metadata replace the UI item. */
+/** A live item's values are published by its tile; only identity/static metadata replace the UI item. */
 export function sameSlotPresentation(left: SlotItem | null, right: SlotItem | null): boolean {
-  return left === right || !!left?.signals && left.signals === right?.signals
+  return left === right || !!left?.tile && left.tile === right?.tile
     && left.entityId === right.entityId && left.id === right.id && left.skinId === right.skinId
-    && left.name === right.name && left.icon === right.icon && left.atlas === right.atlas
     && left.maxStack === right.maxStack && left.equippable === right.equippable;
 }
 

@@ -1,5 +1,5 @@
-import type { InventoryItemSignals, InventoryItemSpec, InventoryStack, SlotAddress } from './types';
-import { batch, createMemo, createSignal, readonlySignal } from '@dontstarve-web/signals';
+import type { ItemTileJson, InventoryItemSpec, InventoryStack, SlotAddress } from './types';
+import { batch, createMemo, createSignal, readonlySignal, type Memo, type ReadonlySignal } from '@dontstarve-web/signals';
 import { newItemEntityId } from './entityId';
 import { StorageSlot } from './slots';
 import { Container } from '../../componets/src/container';
@@ -180,7 +180,22 @@ export interface ItemComponents {
 export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
   get id(): string { return this.entityId!; }
 
-  readonly signals: InventoryItemSignals;
+  private tileMemo?: Memo<ItemTileJson>;
+  /** The item tile's declaration, derived on first use; UI subscribes to it as display does to the sprite json. */
+  get tile(): ReadonlySignal<ItemTileJson> {
+    return this.tileMemo ??= createMemo((): ItemTileJson => {
+      const { inventoryitem, stackable } = this.components;
+      const appearance = inventoryitem.appearance.get(), image = inventoryitem.image.get();
+      const durabilityPercent = this.durability.get(), freshnessPercent = this.freshness.get();
+      return Object.freeze({
+        ...(appearance ? { name: appearance.name } : {}), ...(image ? { image } : {}),
+        count: stackable.size.get(),
+        ...(durabilityPercent === undefined ? {} : { durabilityPercent }),
+        ...(freshnessPercent === undefined ? {} : { freshnessPercent }),
+        wet: this.wetState.get(),
+      });
+    });
+  }
   /** Display-only itemtile freshness for items without a perishable timer. */
   private readonly freshnessState = createSignal<number | undefined>(undefined);
   private readonly freshness;
@@ -266,12 +281,6 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
       ?? this.armorState.get()?.percent.get());
     this.freshness = createMemo(() => this.components.perishable.perishtime.get() === undefined
       ? this.freshnessState.get() : this.components.perishable.percent.get());
-    this.signals = Object.freeze({
-      count: this.components.stackable.size,
-      durabilityPercent: readonlySignal(this.durability),
-      freshnessPercent: readonlySignal(this.freshness),
-      wet: readonlySignal(this.wetState),
-    });
     if (this.prefab === 'backpack') {
       const container = new Container(this, () => new StorageSlot(), (item: InventoryStack) => new ItemEntity(item, perishWorld));
       container.SetNumSlots(BACKPACK_SLOT_COUNT);
@@ -436,6 +445,8 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
     this.components.armor?.dispose();
     this.components.useableitem?.dispose();
     this.components.container?.dispose();
+    this.tileMemo?.dispose();
+    this.components.inventoryitem.dispose();
     this.durability.dispose();
     this.freshness.dispose();
     this.components.perishable.dispose();

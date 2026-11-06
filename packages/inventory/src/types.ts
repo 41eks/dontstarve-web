@@ -1,13 +1,18 @@
-import type { ReadonlySignal } from '@dontstarve-web/signals';
 
 export type EquipmentKind = 'hand' | 'body' | 'head';
 
-/** Live component state owned by an inventory entity, shared with every presentation. */
-export interface InventoryItemSignals {
-  readonly count: ReadonlySignal<number>;
-  readonly durabilityPercent: ReadonlySignal<number | undefined>;
-  readonly freshnessPercent: ReadonlySignal<number | undefined>;
-  readonly wet: ReadonlySignal<boolean>;
+/**
+ * widgets/itemtile.lua's view of the inst, beside its sprite json: a pure derivation of inventoryitem (name and
+ * image, from the skin or the sprite), stackable, finiteuses/fueled/armor, perishable and wetness.
+ */
+export interface ItemTileJson {
+  /** Absent until the inventory injects the prefab's default appearance. */
+  readonly name?: string;
+  readonly image?: { readonly icon: string; readonly atlas: string };
+  readonly count: number;
+  readonly durabilityPercent?: number;
+  readonly freshnessPercent?: number;
+  readonly wet: boolean;
 }
 
 export type { HandEquipment, HeadEquipment, BodyEquipment } from '@dontstarve-web/signals';

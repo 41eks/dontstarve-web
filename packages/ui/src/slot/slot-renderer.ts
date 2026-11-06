@@ -1,9 +1,9 @@
 import { createAtlasImage } from '@dontstarve-web/animation/atlasImage';
 import { SlotReceiveAnimation, type InventoryReceiveSource } from './slot-receive-animation';
-import { createEffect, createSignal, type ReadonlySignal } from '@dontstarve-web/signals';
+import { createEffect, createSignal } from '@dontstarve-web/signals';
 import { AnimatedBackground } from '../animated-background';
 import { bindSlotContextMenuInput, type SlotContextMenuRequest, type SlotSecondaryInput } from './slot-input';
-import { sameSlotAddress, type SlotAddress, type SlotItem, type SlotModel } from './slot-model';
+import { sameSlotAddress, slotItemWithTile, type SlotAddress, type SlotItem, type SlotModel } from './slot-model';
 import { slotTransferController, type SlotTransferRequest } from './slot-transfer';
 
 export interface CreateSlotRendererOptions {
@@ -62,7 +62,7 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
   let suppressNextClick = false;
   const receiveAnimation = new SlotReceiveAnimation(button, () => options.slot.item.peek(), () => {
     const item = options.slot.item.peek();
-    return item?.signals?.count.peek() ?? item?.count ?? 0;
+    return item?.tile?.peek().count ?? item?.count ?? 0;
   });
 
   const content = button.querySelector<HTMLElement>('.inventory-slot__content')!;
@@ -72,7 +72,10 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
   const percentText = (value: number | undefined) => value === undefined ? ''
     : `${value > 0 ? Math.max(1, Math.round(value * 100)) : 0}%`;
 
-  const updateItem = (item: SlotItem | null) => {
+  /** A live item's tile declaration over its static fields, as it is now. */
+  const shown = (item: SlotItem | null) => item?.tile ? slotItemWithTile(item, item.tile.peek()) : item;
+  const updateItem = (slotItem: SlotItem | null) => {
+    const item = shown(slotItem);
     button.classList.toggle('is-empty', item === null);
     button.dataset.itemId = item?.id ?? '';
     button.dataset.skinId = item?.skinId ?? '';
@@ -138,41 +141,36 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
       : options.label);
   };
   const renderAll = () => {
-    const item = options.slot.item.peek();
+    const item = shown(options.slot.item.peek());
     updateItem(item);
     updateQuantity();
-    updateDurability(item?.signals ? item.signals.durabilityPercent.peek() : item?.durabilityPercent);
-    updateFreshness(item?.signals ? item.signals.freshnessPercent.peek() : item?.freshnessPercent);
-    updateWetness(item?.signals ? item.signals.wet.peek() : item?.wet ?? false);
+    updateDurability(item?.durabilityPercent);
+    updateFreshness(item?.freshnessPercent);
+    updateWetness(item?.wet ?? false);
     updateSelection();
     updateLabel();
   };
 
   const bindItem = (item: SlotItem | null, previous: SlotItem | null) => {
     if (!sameAppearance(item, previous)) updateItem(item);
-    if (item?.signals && item.signals === previous?.signals) return;
+    if (item?.tile && item.tile === previous?.tile) return;
     stopItemValues.forEach(stop => stop());
     stopItemValues = [];
-    if (item?.signals) {
-      const observe = <T>(signal: ReadonlySignal<T>, update: (value: T) => void) => {
-        stopItemValues.push(signal.subscribe(update));
-      };
-      // These are inventory's signals; the UI creates no value state or DTO-derived memos.
-      observe(item.signals.count, updateQuantity);
-      observe(item.signals.durabilityPercent, updateDurability);
-      observe(item.signals.freshnessPercent, updateFreshness);
-      observe(item.signals.wet, updateWetness);
-      updateQuantity();
-      updateDurability(item.signals.durabilityPercent.peek());
-      updateFreshness(item.signals.freshnessPercent.peek());
-      updateWetness(item.signals.wet.peek());
-    } else {
-      // Detached presentation inputs (e.g. UI previews) are snapshots, not live inventory.
-      if (item?.count !== previous?.count || previous?.signals) updateQuantity();
-      if (item?.durabilityPercent !== previous?.durabilityPercent || previous?.signals) updateDurability(item?.durabilityPercent);
-      if (item?.freshnessPercent !== previous?.freshnessPercent || previous?.signals) updateFreshness(item?.freshnessPercent);
-      if (item?.wet !== previous?.wet || previous?.signals) updateWetness(item?.wet ?? false);
-    }
+    // A live item's tile declaration is the inst's own; the UI creates no value state of its own.
+    const present = (next: SlotItem | null, last: SlotItem | null) => {
+      if (next?.icon !== last?.icon || next?.atlas !== last?.atlas) updateItem(next);
+      if (next?.count !== last?.count || !last) updateQuantity();
+      if (next?.durabilityPercent !== last?.durabilityPercent || !last) updateDurability(next?.durabilityPercent);
+      if (next?.freshnessPercent !== last?.freshnessPercent || !last) updateFreshness(next?.freshnessPercent);
+      if (next?.wet !== last?.wet || !last) updateWetness(next?.wet ?? false);
+    };
+    const tile = item?.tile;
+    if (item && tile) {
+      let last: SlotItem | null = null;
+      const update = () => { const next = slotItemWithTile(item, tile.peek()); present(next, last); last = next; };
+      stopItemValues.push(tile.subscribe(update));
+      update();
+    } else present(item, previous?.tile ? null : previous);
   };
 
   button.addEventListener('click', (event) => {

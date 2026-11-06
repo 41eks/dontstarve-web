@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
 
-test('renders container DTO signals through shared slots and releases replaced panel bindings', async ({ page }) => {
+test('renders container slot insts through shared slots and releases replaced panel bindings', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto('/tests/fixture.html');
@@ -10,13 +10,13 @@ test('renders container DTO signals through shared slots and releases replaced p
     const { ItemEntity, StorageSlot } = await import(urls.inventory);
     const panel = document.querySelector('dst-chest-panel')!;
     const create = () => new Container({}, () => new StorageSlot(), (record: any) => new ItemEntity(record));
-    const toItem = (record: any) => ({
-      id: record.itemId, name: record.itemId, icon: `${record.itemId}.tex`, count: record.count, maxStack: 20,
+    const toItem = (item: any) => ({
+      id: item.prefab, name: item.prefab, icon: `${item.prefab}.tex`, count: 0, maxStack: 20, tile: item.tile,
     });
     const container = create();
     container.SetNumSlots(2);
     panel.open({ containerId: 'container:first', slotCount: 2 });
-    const stop = panel.bindContainer(container.toSignal(), toItem);
+    const stop = panel.bindContainer(container, toItem);
     container.OnLoad({ slots: [{ slotKey: '1', item: { itemId: 'log', count: 3 } }] });
     (window as any).containerBinding = { panel, container, create, toItem, stop };
   }, {
@@ -30,7 +30,6 @@ test('renders container DTO signals through shared slots and releases replaced p
   await page.evaluate(() => {
     const { container } = (window as any).containerBinding;
     container.GetItemInSlot(2).components.stackable.count = 2;
-    container.publishDTO();
     container.SetNumSlots(3);
   });
   await expect(panel.locator('.inventory-slot')).toHaveCount(3);
@@ -42,10 +41,9 @@ test('renders container DTO signals through shared slots and releases replaced p
     const next = state.create();
     next.SetNumSlots(2);
     state.panel.open({ containerId: 'container:second', slotCount: 2 });
-    state.panel.bindContainer(next.toSignal(), state.toItem);
+    state.panel.bindContainer(next, state.toItem);
     state.stop();
     state.container.GetItemInSlot(2).components.stackable.count = 9;
-    state.container.publishDTO();
     next.OnLoad({ slots: [{ slotKey: '0', item: { itemId: 'cutgrass', count: 4 } }] });
     state.next = next;
   });
@@ -54,7 +52,6 @@ test('renders container DTO signals through shared slots and releases replaced p
   await page.evaluate(() => {
     const state = (window as any).containerBinding;
     state.panel.remove();
-    state.next.publishDTO();
     state.next.dispose(); state.container.dispose();
   });
   expect(errors).toEqual([]);

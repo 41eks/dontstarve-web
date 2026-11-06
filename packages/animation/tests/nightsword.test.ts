@@ -107,7 +107,7 @@ it('spawns/gives individual swords, preserves failed drops and reskin/pickup ide
     const beforeSkin = manager.exportRecords().find(record => record.id === entity.id)!;
     expect(reskinEntity(manager.reskinTargets.find(target => target.id === entity.id)!)).toBe(true);
     expect(entity.skinId).toBe('nightsword_cotl');
-    expect(entity.signals.wet.peek()).toBe(true);
+    expect(entity.tile.peek().wet).toBe(true);
     const groundRecord = manager.exportRecords().find(record => record.id === entity.id)!;
     expect(groundRecord.transform).toEqual(beforeSkin.transform);
     const model = manager.reskinTargets.find(target => target.id === entity.id)!.model;

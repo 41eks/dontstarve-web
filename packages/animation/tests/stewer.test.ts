@@ -85,7 +85,6 @@ it('rejects incomplete containers, non-ingredients and another opener without co
   pot.stewer.OnRemoveFromEntity();
   pot.stewer.OnRemoveFromEntity();
   pot.container.Close();
-  pot.container.publishDTO();
   expect(pot.tags.size).toBe(0);
   expect(pot.inventory.exportState()).toEqual(before);
 });

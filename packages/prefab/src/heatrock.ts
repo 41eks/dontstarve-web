@@ -27,7 +27,6 @@ export class HeatRock {
   private readonly cleanups: (() => void)[] = [];
   private readonly stopTemperature: () => void;
   private readonly stopAnimation: () => void;
-  private readonly stopImage: () => void;
   private readonly temperature;
   private readonly heater;
   private readonly entity: ItemEntity;
@@ -53,17 +52,13 @@ export class HeatRock {
     this.TemperatureChange(false);
     // UpdateImages: PlayAnimation(range, true) on the inst's own AnimState, on the ground, in a container or equipped.
     this.stopAnimation = createEffect(() => { entity.sprite.start(String(this.rangeMemo.get())); });
-    // ChangeImageName(skinname..range): the inventory image follows the item's sprite json, its skin and its range clip.
-    let imageName: string | undefined;
-    this.stopImage = createEffect(() => {
-      const { skinId, clip } = entity.sprite.sprite.get();
+    // ChangeImageName(skinname..range): the inventory image is a pure function of the sprite json's skin and range
+    // clip. Catalog entries are constant, so sprite writes that keep the image do not reach the item tile.
+    entity.components.inventoryitem.SetImageFromSprite(({ skinId, clip }) => {
       const name = `${skinId ?? 'heat_rock'}${clip.name}.tex`;
-      if (name === imageName) return;
       const image = HEATROCK_IMAGES[name as keyof typeof HEATROCK_IMAGES];
       if (!image) throw new Error(`Missing thermal stone image: ${name}`);
-      imageName = name;
-      entity.components.inventoryitem.ChangeImageName(image.icon, image.atlas);
-      entity.components.inventoryitem.owner?.changed();
+      return image;
     });
   }
   private TemperatureChange(hasrate: boolean): void {
@@ -92,7 +87,7 @@ export class HeatRock {
   dispose(): void {
     this.stopTemperature();
     this.stopAnimation();
-    this.stopImage();
+    this.entity.components.inventoryitem.SetImageFromSprite(undefined);
     this.cleanups.splice(0).forEach(stop => stop());
   }
 }

@@ -32,7 +32,7 @@ export type {
   HeadEquipment,
   BodyEquipment,
   InventoryItemSpec,
-  InventoryItemSignals,
+  ItemTileJson,
   InventoryItems,
   InventoryListener,
   InventoryReceiveListener,
