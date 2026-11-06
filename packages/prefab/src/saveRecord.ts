@@ -56,6 +56,10 @@ export interface PlacementSaveRecord {
     rock_type?: import('./rocks').MoonglassRockType;
     /** archive_props.lua OnSave: the statues' data.anim and the rune statues' data.storyprogress. */
     archiveProp?: import('./archive_props').ArchivePropSaveState;
+    /** grotto_pool_big.lua / grotto_pool_small.lua on_save. */
+    grottoPool?: import('./grotto_pool').GrottoPoolSaveState;
+    /** The grotto props' workable.savestate. */
+    grottoGlass?: import('./grotto_pool').GrottoGlassSaveState;
   };
 }
 
