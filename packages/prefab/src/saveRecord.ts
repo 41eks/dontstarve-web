@@ -78,6 +78,8 @@ export interface PlacementSaveRecord {
     skeleton?: import('./skeleton').SkeletonSaveState;
     /** hotspring.lua OnSave. */
     hotspring?: import('./hotspring').HotspringSaveState;
+    /** lava_pond.lua OnSave. */
+    lavaPond?: import('./lava_pond').LavaPondSaveState;
   };
 }
 

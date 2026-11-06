@@ -70,7 +70,7 @@ import { pondPrefabs } from '@dontstarve-web/prefab/pond';
 import { marshPlantPrefabs } from '@dontstarve-web/prefab/marsh_plant';
 import { FireFxHost } from '@dontstarve-web/prefab/treeFire';
 import { hotspringPrefabs } from '@dontstarve-web/prefab/hotspring';
-import { LavaPondManager, LAVA_POND_ID } from '@dontstarve-web/prefab/lava_pond';
+import { lavaPondPrefabs } from '@dontstarve-web/prefab/lava_pond';
 import { WormholeManager, WORMHOLE_ID } from '@dontstarve-web/prefab/wormhole';
 import { portalPrefabs } from '@dontstarve-web/prefab/portal';
 import { NightmareGrowthManager, NIGHTMAREGROWTH_ID } from '@dontstarve-web/prefab/nightmaregrowth';
@@ -311,7 +311,6 @@ export async function createSceneEntities(
     'grass': ReturnType<typeof registerGrasses>;
     'sapling': ReturnType<typeof registerSaplings>;
     'cave_fern': ReturnType<typeof registerCaveFerns>;
-    'lava_pond': ReturnType<typeof registerLavaPonds>;
     'tumbleweed': ReturnType<typeof registerTumbleweeds>;
     'wormhole': ReturnType<typeof registerWormholes>;
     'multiplayer_portal_moonrock': ReturnType<typeof registerPortals>;
@@ -405,7 +404,7 @@ export async function createSceneEntities(
   Managers['cave_fern'] = registerCaveFerns(registry, 'cave_fern', worldState);
   registerLichens(registry, 'lichen', worldState);
   registerCacti(registry, 'cactus', worldState);
-  Managers['lava_pond'] = registerLavaPonds(registry, 'lava_pond', worldState);
+  registerLavaPonds(registry, 'lava_pond', worldState);
 
   const worldWind = worldState.worldwind;
   Managers['tumbleweed'] = registerTumbleweeds(registry, 'tumbleweed', worldState);
@@ -469,7 +468,6 @@ export async function createSceneEntities(
     grasses: Managers['grass'],
     saplings: Managers['sapling'],
     ponds: Managers['pond'],
-    lavaPonds: Managers['lava_pond'],
     tumbleweeds: Managers['tumbleweed'],
     wormholes: Managers['wormhole'],
     nightmareGrowths: Managers['nightmaregrowth'],
@@ -1007,28 +1005,13 @@ export async function createSceneEntities(
     registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
   }
 
-  function registerLavaPonds(registry: EntityRegistry, prefabId: 'lava_pond', _worldState: SceneWorldState) {
-    const lavaPonds = new LavaPondManager(scene, world, `${import.meta.env.BASE_URL}dst/data/anim`, { scheduler });
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
-      restore: (_, record) => lavaPonds.spawn(new THREE.Vector3(...record.transform.position), {
-        id: record.id, transform: record.transform, components: { lavaPond: record.components.lavaPond },
-      }),
-      debugSpawn: () => lavaPonds.spawn(player.position.clone().setY(0)),
-      exportRecords: () => lavaPonds.exportRecords().filter(record => record.prefabId === LAVA_POND_ID),
-      update: (dt, quaternion) => lavaPonds.update(dt, quaternion),
-      renderEntities: () => lavaPonds.renderEntities,
-      dispose: () => lavaPonds.dispose(),
-    });
-    registry.register(PREFAB_DEFINITIONS.lavaPondRocks, {
-      restore: (id, record) => lavaPonds.spawnRock(id, new THREE.Vector3(...record.transform.position), {
-        id: record.id, transform: record.transform, components: {},
-      }),
-      debugSpawn: (id) => lavaPonds.spawnRock(id, player.position.clone().setY(0)),
-      exportRecords: () => lavaPonds.exportRecords().filter(record => record.prefabId !== LAVA_POND_ID),
-      // The pool family owns the shared manager's update, rendering and disposal.
-      dispose: () => {},
-    });
-    return lavaPonds;
+  function registerLavaPonds(registry: EntityRegistry, prefabId: 'lava_pond', worldState: SceneWorldState) {
+    prefabs.register(lavaPondPrefabs({
+      scheduler: scheduler ?? worldState.scheduler,
+      spawnPrefab: (prefab, position) => prefabs.spawn(prefab, position),
+    }));
+    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+    registry.registerPrefabs(PREFAB_DEFINITIONS.lavaPondRocks);
   }
 
   function registerTumbleweeds(registry: EntityRegistry, prefabId: 'tumbleweed', worldState: SceneWorldState) {

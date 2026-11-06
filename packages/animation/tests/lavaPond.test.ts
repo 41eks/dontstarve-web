@@ -1,29 +1,44 @@
-import { findActionEntity } from '../../prefab/src/actionEntity';
-import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { COLLISION } from '../../componets/src/physicsState';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { PrefabDisplayGroup } from '@dontstarve-web/display';
 import { Heater } from '../../componets/src/heater';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { LavaPondManager, LAVA_POND_RADIUS } from '../../prefab/src/lava_pond';
+import { lavaPondPrefabs, LAVA_POND_RADIUS, type LavaPondInstance } from '../../prefab/src/lava_pond';
 import { FindEntities } from '../../prefab/src/actionEntity';
+import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
+import { createInventoryStore } from '../../../src/inventory';
+import { EntityRegistry } from '../../../src/entityRegistry';
+import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
+import { executeDebugCommand } from '../../../src/debugCommands';
+import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import type { SaveDocument } from '../../../src/save/types';
-import { bindTestWorld } from './worldContentFixture';
-import { prefabInstance } from '../../prefab/src/prefabInstance';
-
-/** The inst.Light an entity's model declares. */
-const declaredLight = (model: THREE.Object3D) => prefabInstance(model)?.light.peek();
 
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
 });
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+
+function setup(random: () => number, scheduler = new GameTimeScheduler()) {
+  const scene = new THREE.Scene(), physics = new CANNON.World(), player = new THREE.Group(), inventory = createInventoryStore([]);
+  const displays = new PrefabDisplayGroup(scene);
+  const ponds = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { physics });
+  ponds.register(lavaPondPrefabs({ scheduler, random, spawnPrefab: (prefab, position) => ponds.spawn(prefab, position) }) as never);
+  const registry = new EntityRegistry([], ponds, () => player.position);
+  registry.registerPrefabs(PREFAB_DEFINITIONS.lavaPonds);
+  registry.registerPrefabs(PREFAB_DEFINITIONS.lavaPondRocks);
+  const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
+  const save = () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(), elapsedSeconds: 0,
+    playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
+  return { scene, physics, player, inventory, displays, ponds, registry, scheduler, save,
+    dispose: () => { registry.dispose(); ponds.dispose(); displays.dispose(); inventory.dispose(); scheduler.dispose(); } };
+}
 
 it('queries fixed or observer-aware output, preserves Lua zero/fallback behavior and removes the heater tag', () => {
   const tags = new Set<string>(), inst = { addTag: (tag: string) => tags.add(tag), removeTag: (tag: string) => tags.delete(tag) };
@@ -41,90 +56,71 @@ it('queries fixed or observer-aware output, preserves Lua zero/fallback behavior
   heater.dispose(); heater.dispose(); expect(tags.has('HASHEATER')).toBe(false);
 });
 
-it('creates source rock offsets, keeps each rock foot separate, blocks bodies and restores the saved layout without rerandomizing', async () => {
-  const scene = new THREE.Scene(), physics = new CANNON.World(), scheduler = new GameTimeScheduler();
+it('creates source rock offsets as nonpersistent children, blocks bodies and keeps the layout through c_save without rerandomizing', async () => {
   const sequence = [0, 0, 0, 0, 0, .5, .9, .2, .2];
-  const random = vi.fn(() => sequence.shift() ?? .5);
-  const manager = new LavaPondManager(scene, physics, '/dst/data/anim', { scheduler, random });
-  const restoredPhysics = new CANNON.World(), restoredScheduler = new GameTimeScheduler(100);
-  const restoredRandom = vi.fn(() => .5);
-  const restored = new LavaPondManager(new THREE.Scene(), restoredPhysics, '/dst/data/anim', { scheduler: restoredScheduler, random: restoredRandom });
-  // The rocks' displays turn themselves to the world's camera rotation.
-  const content = bindTestWorld(restoredScheduler);
+  const random = vi.fn(() => sequence.shift() ?? .5), restoredRandom = vi.fn(() => .5);
+  const s = setup(random), restored = setup(restoredRandom, new GameTimeScheduler(100));
   try {
-    const model = await manager.spawn(new THREE.Vector3(12, 0, -8));
-    const state = model.userData.lavaPond;
-    expect(state.timer.peek()).toEqual({ status: 'scheduled', endTime: 0 });
-    expect(manager.renderEntities).toEqual([]);
-    scheduler.advance(0);
-    expect(state.timer.peek().status).toBe('expired');
-    expect(state.rocks.peek()).toHaveLength(2);
-    expect(state.rocks.peek().map((rock: any) => rock.rocktype)).toEqual(['', '7']);
-    const entries = manager.renderEntities;
-    expect(entries.map(entry => lookupPrefabInstance(entry.object)?.prefab)).toEqual(['lava_pond_rock', 'lava_pond_rock7']);
-    expect(entries[0].footPosition.x).toBe(12);
-    expect(entries[0].footPosition.z).toBeCloseTo(-1.7);
-    expect(FindEntities(entries[0].footPosition, .01).map(inst => inst.prefab))
-      .toEqual(['lava_pond_rock']);
-    expect(entries.every(entry => lookupPrefabInstance(entry.object)?.persists === false)).toBe(true);
-    const source = FindEntities(model.position, 30, ['HASHEATER'], ['INLIMBO']);
+    s.player.position.set(12, 0, -8);
+    expect((await executeDebugCommand('c_spawn("lava_pond")', s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
+    const [{ record: { id } }] = s.ponds.exportRecords();
+    const pond = s.ponds.get(id) as LavaPondInstance;
+    expect(pond.timer.peek()).toEqual({ status: 'scheduled', endTime: 0 });
+    expect(pond.light.peek()).toMatchObject({ radius: 1.5 * 3, falloff: .66, intensity: .66 });
+    expect(pond.minimap.icon).toBe('lava_pond.png');
+    s.scheduler.advance(0);
+    expect(pond.timer.peek().status).toBe('expired');
+    expect(pond.rocks.peek()!.map(rock => rock.rocktype)).toEqual(['', '7']);
+    const rocks = FindEntities(pond.position, 30).filter(inst => inst.prefab.startsWith('lava_pond_rock'));
+    expect(rocks.map(rock => rock.prefab).sort()).toEqual(['lava_pond_rock', 'lava_pond_rock7']);
+    const first = FindEntities(new THREE.Vector3(12, 0, -1.7), .01);
+    expect(first.map(inst => inst.prefab)).toEqual(['lava_pond_rock']);
+    const source = FindEntities(pond.position, 30, ['HASHEATER'], ['INLIMBO']);
     expect(source).toHaveLength(1); expect(source[0].components.heater!.GetHeat()).toBe(500);
 
-    await new Promise(resolve => setTimeout(resolve, 0));
-    const body = prefabInstance(model)!.physicsBody!;
-    const moving = new CANNON.Body({ mass: 5, fixedRotation: true, shape: new CANNON.Sphere(4.5),
-      position: new CANNON.Vec3(12 + 18, 4.5, -8) });
+    const body = pond.physicsBody!;
+    const moving = new CANNON.Body({ mass: 5, fixedRotation: true, shape: new CANNON.Sphere(4.5), position: new CANNON.Vec3(12 + 18, 4.5, -8) });
     moving.collisionFilterGroup = COLLISION.CHARACTERS;
-    physics.addBody(moving);
-    for (let frame = 0; frame < 180; frame++) { moving.velocity.set(-8, 0, 0); physics.step(1 / 60); }
-    expect(moving.position.x - model.position.x).toBeGreaterThan(LAVA_POND_RADIUS + 4.5 - .2);
+    s.physics.addBody(moving);
+    for (let frame = 0; frame < 180; frame++) { moving.velocity.set(-8, 0, 0); s.physics.step(1 / 60); }
+    expect(moving.position.x - pond.position.x).toBeGreaterThan(LAVA_POND_RADIUS + 4.5 - .2);
     expect(body.type).toBe(CANNON.Body.STATIC);
-    physics.removeBody(moving);
+    s.physics.removeBody(moving);
 
-    const records = manager.exportRecords();
-    expect(records).toHaveLength(1); // Nonpersistent child rocks stay inside the pool layout.
-    const save = structuredClone(initialWorld) as unknown as SaveDocument;
-    save.world.entities = { lava_pond: [records[0].record] };
-    const loaded = deserializeSave(JSON.stringify(save), SAVE_CATALOG);
-    const record = loaded.world.entities.lava_pond[0];
-    const reloaded = await restored.spawn(new THREE.Vector3(...record.transform.position), {
-      ...record, components: { lavaPond: record.components.lavaPond },
-    });
+    // Nonpersistent child rocks stay inside the pond's layout.
+    let json = '';
+    expect((await executeDebugCommand('c_save()', s.inventory, undefined, () => { json = s.save(); })).ok).toBe(true);
+    const { entities } = deserializeSave(json, SAVE_CATALOG).world;
+    expect(entities.lava_pond).toHaveLength(1); expect(entities.lava_pond_rock).toEqual([]);
+    await restored.registry.restoreAll({ lava_pond: entities.lava_pond });
     expect(restoredRandom).not.toHaveBeenCalled();
-    expect(restored.renderEntities).toHaveLength(2);
-    restoredScheduler.advance(0); expect(restored.renderEntities).toHaveLength(2);
-    expect(restored.exportRecords()).toEqual(records);
-    const camera = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), .6);
-    content.camerarotation.set(camera);
-    await new Promise(resolve => setTimeout(resolve, 0));
-    restored.update(0, camera);
-    for (const { object } of restored.renderEntities) {
-      expect(object.children[0].getWorldQuaternion(new THREE.Quaternion()).angleTo(camera)).toBeCloseTo(0);
-      expect(object.rotation.y).toBe(0);
-    }
-    expect(reloaded.position.toArray()).toEqual(record.transform.position);
-    manager.remove(model);
-    expect(FindEntities(model.position, 30, ['HASHEATER']).map(entity => entity === findActionEntity(reloaded))).toEqual([true]);
-    expect(physics.bodies).toEqual([]); expect(declaredLight(model)).toBeUndefined();
-    expect(manager.renderEntities).toEqual([]); expect(manager.exportRecords()).toEqual([]);
-  } finally { manager.dispose(); restored.dispose(); content.unbind(); scheduler.dispose(); restoredScheduler.dispose(); }
+    const reloaded = restored.ponds.get(id) as LavaPondInstance;
+    expect(FindEntities(reloaded.position, 30).filter(inst => inst.prefab.startsWith('lava_pond_rock') && inst !== rocks[0] && inst !== rocks[1])).toHaveLength(2);
+    restored.scheduler.advance(0);
+    expect(restored.ponds.exportRecords()).toEqual(s.ponds.exportRecords());
+
+    pond.remove();
+    expect(FindEntities(pond.position, 30, ['HASHEATER'])).toHaveLength(1);
+    expect(s.physics.bodies).toEqual([]);
+    expect(s.ponds.exportRecords()).toEqual([]);
+    expect(FindEntities(pond.position, 30).filter(inst => rocks.includes(inst))).toEqual([]);
+  } finally { s.dispose(); restored.dispose(); }
 });
 
 it('cancels pending child creation on removal and rejects malformed saved rock layouts before restoration', async () => {
-  const scheduler = new GameTimeScheduler(), random = vi.fn(() => .5), scene = new THREE.Scene(), physics = new CANNON.World();
-  const manager = new LavaPondManager(scene, physics, '/dst/data/anim', { scheduler, random });
+  const random = vi.fn(() => .5);
+  const s = setup(random);
   try {
-    const model = await manager.spawn(new THREE.Vector3());
-    const timer = model.userData.lavaPond.timer;
-    const record = manager.exportRecords()[0].record;
+    const pond = s.ponds.spawn('lava_pond', new THREE.Vector3()) as LavaPondInstance;
+    const [{ record }] = s.ponds.exportRecords();
     expect(record.components.lavaPond).toEqual({});
-    manager.remove(model); scheduler.advance(100);
-    expect(timer.peek().status).toBe('stopped'); expect(random).not.toHaveBeenCalled();
-    expect(manager.renderEntities).toEqual([]); expect(scene.children).toEqual([]); expect(physics.bodies).toEqual([]);
+    pond.remove(); s.scheduler.advance(100);
+    expect(pond.timer.peek().status).toBe('stopped'); expect(random).not.toHaveBeenCalled();
+    expect(s.ponds.exportRecords()).toEqual([]); expect(s.physics.bodies).toEqual([]);
     const save = structuredClone(initialWorld) as unknown as SaveDocument;
     save.world.entities = { lava_pond: [{ ...record, components: { lavaPond: { rocks: [{ rocktype: '2', offset: [1, 0, 2] }] } } }] };
     expect(deserializeSave(JSON.stringify(save), SAVE_CATALOG).world.entities.lava_pond[0].components.lavaPond?.rocks).toHaveLength(1);
     (save.world.entities.lava_pond[0].components.lavaPond!.rocks![0] as any).rocktype = '1';
     expect(() => deserializeSave(JSON.stringify(save), SAVE_CATALOG)).toThrow('unknown lava pond rock type');
-  } finally { manager.dispose(); scheduler.dispose(); }
+  } finally { s.dispose(); }
 });

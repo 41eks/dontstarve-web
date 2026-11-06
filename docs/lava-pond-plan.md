@@ -28,7 +28,7 @@
 
 1. **实现通用 Heater。** 在 `packages/componets/src/heater.ts` 保留源职责，提供 `GetHeat(observer)`、供热／制冷属性和距离衰减／半径截断查询。权威可变数据使用私有 signal，外部只能读取；不为固定热源增加计时器或世界温度订阅。释放组件时移除 `HASHEATER`。
 2. **导入资源。** 将 `anim/lava_tile.zip`、`anim/scorched_rock.zip` 按原相对路径镜像到 `public/dst/data`。在现有资产导入脚本记录并用 `--check` 验证源字节与路径。运行时统一使用 `${import.meta.env.BASE_URL}dst/data/anim/`。Lua 没有常驻 lava 音效播放，不根据 SoundEmitter 的存在自行补声音。
-3. **接入 prefab。** 在 `packages/prefab/src/lava_pond.ts` 管理熔岩池、焦岩和组件生命周期；复用现有动画工厂、局部光照及物理接口。池面贴地绘制，保留源背景顺序；焦岩为独立完整 billboard，以各自脚点参加现有深度排序。不得把焦岩揉成一个与池面共用脚点的可见实体。
+3. **接入 prefab。** `packages/prefab/src/lava_pond.ts` 的 `lavaPondPrefabs` 声明熔岩池与七种焦岩，由应用层的 `PrefabEntityManager` 注册；`LavaPondInstance` 持有组件、光照与 `SpawnRocks` 任务，经注入的 `spawnPrefab` 生成 `entityParent` 指向池、`persists = false` 的焦岩，移除池时一并移除。池面贴地绘制，保留源背景顺序；焦岩为独立完整 billboard，以各自脚点参加现有深度排序。不得把焦岩揉成一个与池面共用脚点的可见实体。
 4. **建立供热实例。** 池实例挂 `Heater`，配置 heat=500，保留 `lava`、`antlion_sinkhole_blocker`、`birdblocker`、`blocker` 与组件拥有的 `HASHEATER` 标签。暂未实现的 cooker 分支不提供虚假的 COOK 动作。使用现有实体注册路径暴露位置、标签和组件，供以后通用温度组件查询；不新增熔岩池专用的升温控制器。
 5. **恢复焦岩布局。** 用共享游戏调度器和私有 `ComponentTimer` 对齐源 0 延迟初始化，位置确定后再创建子焦岩。读档先恢复布局，再执行初始化，避免随机生成后叠加。永久移除取消尚未执行的任务；只替换美术时保留布局与逻辑实例。
 6. **接入存档和命令。** 在 `src/prefabDefinitions.ts`、`src/sceneEntities.ts` 及现有存档类型／校验中注册池与独立焦岩。新增 `c_spawn("lava_pond")`、`c_spawn("lava_pond_rock")`、`c_spawn("lava_pond_rock2")`～`c_spawn("lava_pond_rock7")`；它们没有 inventoryitem，不支持 `c_give`。池保存 ID、transform 和 rocks 布局；子焦岩、常量 500、瞬时初始化任务不重复入档。独立生成的焦岩按自己的 prefab ID 保存。
