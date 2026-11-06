@@ -82,6 +82,8 @@ export interface PlacementSaveRecord {
     hotspring?: import('./hotspring').HotspringSaveState;
     /** lava_pond.lua OnSave. */
     lavaPond?: import('./lava_pond').LavaPondSaveState;
+    /** nightmaregrowth.lua OnSave's crack_rotation. */
+    nightmareGrowth?: import('./nightmaregrowth').NightmareGrowthSaveState;
     /** molehill.lua's inventory and spawner saves. */
     molehill?: import('./molehill').MolehillSave;
     caveinBoulder?: import('./cavein_boulder').CaveinBoulderSave;
