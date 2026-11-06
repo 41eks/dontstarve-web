@@ -359,6 +359,7 @@ export interface PrefabEntityDefinition<Instance extends PrefabInstance> {
 export class PrefabEntityManager<Id extends string, Instance extends PrefabInstance> {
   private readonly resources: SpriteResources;
   private readonly entities = new Set<Instance>();
+  private readonly byEntityId = new Map<string, Instance>();
   private disposed = false;
   private readonly displays: PrefabDisplayGroup;
   private readonly tickingarea?: TileStateQuery;
@@ -383,6 +384,9 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
   }
 
   has(prefabId: string): boolean { return Object.hasOwn(this.prefabs, prefabId); }
+
+  /** OnLoadPostPass's `newents`: a live entity by its saved entity ID. */
+  get(entityId: string): Instance | undefined { return this.byEntityId.get(entityId); }
 
   /** SpawnPrefab, then SpawnSaveRecord's SetPosition and SetPersistData: the entity exists now and its display loads the art. */
   spawn(prefabId: Id, position: ReadonlyVector3, saved?: Pick<PlacementSaveRecord, 'id' | 'components'> & Partial<Pick<PlacementSaveRecord, 'transform'>>, skinId?: string): Instance {
@@ -413,8 +417,13 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     onSpawned?.(instance);
     if ((assets || instanceAssets) && targetable) actionEntity(display.model, prefabId);
     this.entities.add(instance);
+    const entityId = String(instance.entityId);
+    this.byEntityId.set(entityId, instance);
     const stopActivity = watchTileActivity(display.model, alwaysActive ? undefined : this.tickingarea, active => instance.setActive(active));
-    instance.onRemove(() => { stopActivity(); this.entities.delete(instance); });
+    instance.onRemove(() => {
+      stopActivity(); this.entities.delete(instance);
+      if (this.byEntityId.get(entityId) === instance) this.byEntityId.delete(entityId);
+    });
     return instance;
   }
 

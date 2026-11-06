@@ -75,6 +75,7 @@
 | `inst:DoPeriodicTask(t, fn)` | 回调里再次 `schedule` | `monkeypillar.ts` | |
 | `inst.OnSave`、`inst.OnLoad` | `this.OnSave = (_inst, data) => …`，同名 `OnLoad` | `archive_pillar.ts` | 还要加：`saveRecord.ts`、`src/save/types.ts`、`src/prefabDefinitions.ts` 的解析和导入转换器 |
 | `inst.OnLoadPostPass` | 见示例 | `atrium_gate.ts` | |
+| `OnLoadPostPass(inst, newents, data)` 的 `newents[GUID]` | 注入的 `world.getEntity(id)`（应用层接 `PrefabEntityManager.get`），在 `DoTaskInTime(0)` 里解析 | `grotto_pool.ts` | 存档 ID 即项目实体 ID |
 | `onSpawned`（`POPULATING` 之外的初始化） | 定义的 `onSpawned(inst)` | `monkeypillar.ts` | 位置和存档都就绪后运行 |
 
 ## 物理、光、声音、小地图

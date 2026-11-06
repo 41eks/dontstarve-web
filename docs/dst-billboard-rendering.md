@@ -14,7 +14,7 @@
 
 桦树通过同一 `ArchiveSpriteAssets` 和 `preloadSharedArchiveSprite()` 复用三个大小的动画 bank、树干 build、四种叶色及雪层。`sway1_loop_*`、`sway2_loop_*` 和 `burnt_*` 参与实例化，砍树、生长、落叶、倒下及非循环树桩姿态使用共享的普通帧几何，循环状态恢复时自动回到批次。`ArchiveSprite.setSymbolOverride()` 在预载 build 之间切换／清除 `swap_leaves`，`setColour()` 同步实体私有材质和实例颜色，均保留当前动画进度与完成回调。外观与帧决定合成图集，树的颜色不参与缓存键；同外观 1 棵与 21 棵的浏览器验证均为深度、颜色各一次绘制，跨叶色或图集页会增加批次。积雪按原版 0.015 阈值切换，休眠时清理私有世界监听并通过 `ResidentSprite` 只卸载 visual，保留同一根节点、组件和逻辑树，整个森林销毁时再释放共享资源。调试命令、参数、支持 ID 和树木存档字段不变。
 
-`GrottoPoolManager` 通过通用入口 `createSharedArchiveSprite(assets, definition, options?)` 将池面、雾气、瀑布和月亮玻璃接入同一缓存机制，prefab 不再维护要共享的 clip 清单，运行时切换的动画也自动按帧缓存。每种 clip 及其 `*_mined` 状态分别缓存；池面的 OnGround 旋转、背景顺序、雾气 billboard 和独立实体的随机播放进度仍由原有节点维持。共享几何不合并 draw call，单池移除及其子物件清理不会销毁其他实体借用的帧。
+月亮洞穴水池（`grotto_pool.ts`）已由全局 `PrefabEntityManager` 管理：瀑布、月亮玻璃和雾气声明 `instancedAnimations: 'all'` 与 `staticBillboard`，由 display 的共享资源路径合批并保留各实体的随机播放进度；池面是 OnGround／`LAYER_BACKGROUND` 地面图，不进入直立实例批次。
 
 `packages/animation/src/renderOrder.ts` 登记每个动画 sprite 最内层的 `visual` group，`setSpriteEntityRenderOrder()` 将实体顺序写到该 group。每帧按实际脚点的相机空间深度由远到近排序；若改用 sprite 中心或包围盒中心，高个实体会过早或过晚改变遮挡关系。
 
