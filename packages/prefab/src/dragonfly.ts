@@ -1,9 +1,7 @@
-import { PrefabDisplayGroup } from '@dontstarve-web/display';
+import { SpriteState } from '@dontstarve-web/display';
 import * as THREE from 'three';
-import type { World } from 'cannon-es';
-import { ArchiveSpriteAssets, createSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
-import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
-import type { GetWatchWorldContent, TileStateQuery } from '@dontstarve-web/signals';
+import type { GetWatchWorldContent } from '@dontstarve-web/signals';
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { Combat, type CombatActor } from '../../componets/src/combat';
 import { Health } from '../../componets/src/health';
 import { KnownLocations } from '../../componets/src/knownlocations';
@@ -19,12 +17,9 @@ import { DamageTracker, ExplosiveResist, GroundPounder, GroupTargeter, HealthTri
   Inspectable, Moisture, RampingSpawner, StuckDetection, Stunnable } from '../../componets/src/dragonflySignatures';
 import { DragonflyBrain } from '../../brains/src/dragonflybrain';
 import { DragonflyStateGraph } from '../../stategraphs/src/SGdragonfly';
-import { createArchiveEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
-import { actionEntity } from './actionEntity';
+import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { MakeFlyingGiantCharacterPhysics, WORLD_SCALE } from './standardcomponents';
-import { watchTileActivity } from './tileActivity';
-import { newEntityId } from './saveRecord';
-import type { DisplayDrivenPrefabManager, DisplayManagerWorld } from './manager';
+import { Transform } from './transform';
 
 export const DRAGONFLY_ID = 'dragonfly' as const;
 export interface DragonflySaveState {
@@ -39,83 +34,58 @@ export interface DragonflySaveState {
   freezable?: { extraresist: number };
   explosiveresist?: { resistance: number };
 }
-export interface DragonflyRecord {
-  id: string;
-  transform: { position: [number, number, number]; rotationY: number };
-  components: { dragonfly: DragonflySaveState };
-}
-interface Dragonfly {
-  instance: PrefabInstance<ArchiveSpriteCommands>;
-  display: PrefabDisplay;
-  health: Health;
-  knownlocations: KnownLocations;
-  timer: Timer;
-  inventory: Inventory;
-  sleeper: Sleeper;
-  freezable: Freezable;
-  propagator: Propagator;
-  save: DragonflySaveState;
-  stopActivity?: () => void;
-}
-export interface DragonflyWorld extends DisplayManagerWorld {
-  tickingarea?: TileStateQuery;
-  physics?: World;
+export interface DragonflyWorld {
   scheduler: GameTimeScheduler;
   getWatchWorldContent: GetWatchWorldContent;
 }
 
-/** dragonfly.lua fn / OnLoad: saved combat state has no load-time animation transition. */
-export class DragonflyManager implements DisplayDrivenPrefabManager<{ prefabId: typeof DRAGONFLY_ID; record: DragonflyRecord }> {
-  private readonly assets = new ArchiveSpriteAssets(DRAGONFLY_ID);
-  private readonly entities = new Map<THREE.Group, Dragonfly>();
-  private disposed = false;
-  private readonly displays: PrefabDisplayGroup;
-  private readonly world: DragonflyWorld;
-  constructor(scene: THREE.Scene, world: DragonflyWorld) { this.displays = new PrefabDisplayGroup(scene); this.world = world; }
+/** A dragonfly never saved: fn's component defaults. */
+const NEW_DRAGONFLY: DragonflySaveState = {
+  health: { health: 27500 }, inventory: { items: {}, equip: {} }, moisture: { moisture: 0 },
+  rampingspawner: { current_wave: 0, wave_num: 0, spawning_on: false },
+};
 
-  spawn(position: THREE.Vector3, saved?: DragonflyRecord): THREE.Group {
-    if (this.disposed) throw new Error('Dragonflies have been disposed');
-    // PrefabDisplay calls this shared loader after the tile becomes active.
-    const build = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(this.assets, {
-      animationArchive: 'dragonfly_basic.zip', extraAnimationArchives: ['dragonfly_actions.zip'],
-      buildArchives: ['dragonfly_build.zip', 'dragonfly_fire_build.zip', 'dragonfly_yule_build.zip', 'dragonfly_fire_yule_build.zip'],
-      bank: 'dragonfly', animation: clip.name, loop: clip.loop,
-    }, { name: DRAGONFLY_ID, instancedAnimations: 'all' });
-    const { instance, display } = createArchiveEntity(DRAGONFLY_ID, { create: build },
-      { name: 'idle', billboard: true }, DRAGONFLY_ID);
-    const model = display.model;
-    instance.entityId = saved?.id ?? newEntityId();
-    instance.setPosition(position.x, 0, position.z);
-    model.rotation.y = saved?.transform.rotationY ?? 0;
-    instance.scale.setScalar(1.3);
-    MakeFlyingGiantCharacterPhysics(instance, 500, 1.4);
-    if (this.world.physics) instance.bindPhysics(this.world.physics);
+/**
+ * dragonfly.lua fn and OnLoad: saved combat state has no load-time animation transition. Its brain, stategraph and
+ * fight are outside this saved-display port, so the records of components without behaviour here are kept as loaded.
+ */
+export class DragonflyInstance extends PrefabInstance {
+  declare readonly components: PrefabInstance['components'] & { health: Health; knownlocations: KnownLocations; timer: Timer };
+  /** The loaded record; health, knownlocations and timer are saved from their components. */
+  private saved: DragonflySaveState = structuredClone(NEW_DRAGONFLY);
+
+  constructor(world: DragonflyWorld, position: ReadonlyVector3) {
+    super(DRAGONFLY_ID, new SpriteState({ name: 'idle', billboard: true }), new Transform());
+    this.setPosition(position.x, 0, position.z);
+    this.scale.setScalar(1.3);
     for (const tag of ['epic', 'noepicmusic', 'monster', 'hostile', 'dragonfly', 'scarytoprey',
-      'largecreature', 'flying', 'ignorewalkableplatformdrowning']) instance.addTag(tag);
-    instance.sprite.start('idle'); // AnimState:PlayAnimation('idle', true) in fn.
-    const health = new Health(27500, instance);
+      'largecreature', 'flying', 'ignorewalkableplatformdrowning']) this.addTag(tag);
+    this.sprite.start('idle'); // AnimState:PlayAnimation('idle', true) in fn.
+    const model = this.transform.model, components = this.components;
+    const pushEvent = (name: string, data?: unknown) => this.PushEvent(name, data);
+    const isValid = () => !this.isRemoved;
+    const health = new Health(27500, this);
     const knownlocations = new KnownLocations();
-    const timer = new Timer(this.world.scheduler, () => undefined, ['groundpound_cd']);
-    const components = prefabInstance(model)!.components;
-    const inst = actionEntity(model, DRAGONFLY_ID);
-    const pushEvent = (name: string, data?: unknown) => inst.PushEvent?.(name, data);
+    const timer = new Timer(world.scheduler, () => undefined, ['groundpound_cd']);
     const combatActor: CombatActor = {
-      getPosition: () => model.position, getPhysicsRadius: () => instance.getPhysicsRadius(0),
-      hasTag: tag => instance.hasTag(tag), get components() { return components; }, PushEvent: pushEvent,
+      getPosition: () => model.position, getPhysicsRadius: () => this.getPhysicsRadius(0),
+      hasTag: tag => this.hasTag(tag), get components() { return components; }, PushEvent: pushEvent,
     };
-    const combat = new Combat(combatActor, () => this.world.scheduler.now);
+    const combat = new Combat(combatActor, () => world.scheduler.now);
     combat.SetDefaultDamage(150); combat.SetAttackPeriod(4); combat.SetRange(4 * WORLD_SCALE, 5 * WORLD_SCALE);
-    const inventory = new Inventory({ id: String(instance.entityId), getPosition: () => model.position }, 15,
+    const self = this;
+    // The entity's id is assigned once fn returns.
+    const inventory = new Inventory({ get id() { return String(self.entityId); }, getPosition: () => model.position }, 15,
       () => { throw new Error('Dragonfly inventory drops are outside the saved-display scope'); });
-    const lootdropper = new LootDropper(inst, () => undefined);
+    const lootdropper = new LootDropper(this, () => undefined);
     lootdropper.SetChanceLootTable('dragonfly');
     const motorInst: LocoMotorInst = {
-      isValid: () => instance.status.peek() !== 'removed', getPosition: () => model.position,
-      getPhysicsRadius: () => instance.getPhysicsRadius(0),
+      isValid, getPosition: () => model.position,
+      getPhysicsRadius: () => this.getPhysicsRadius(0),
       setRotation: degrees => { model.rotation.y = THREE.MathUtils.degToRad(degrees); },
       getAngleToPoint: (x, _y, z) => THREE.MathUtils.radToDeg(Math.atan2(model.position.z - z, x - model.position.x)),
       setMotorSpeed: speed => {
-        const body = instance.physicsBody;
+        const body = this.physicsBody;
         if (body) { body.velocity.x = Math.cos(model.rotation.y) * speed; body.velocity.z = -Math.sin(model.rotation.y) * speed; }
       },
       components, PushEvent: pushEvent,
@@ -123,75 +93,59 @@ export class DragonflyManager implements DisplayDrivenPrefabManager<{ prefabId: 
     };
     const locomotor = new LocoMotor(motorInst);
     locomotor.walkspeed = 5 * WORLD_SCALE;
-    const sleeper = new Sleeper({
-      isValid: () => instance.status.peek() !== 'removed', PushEvent: pushEvent,
-      get components() { return components; },
-    }, this.world.getWatchWorldContent);
+    const sleeper = new Sleeper({ isValid, PushEvent: pushEvent, get components() { return components; } }, world.getWatchWorldContent);
     sleeper.SetResistance(4); sleeper.sleeptestfn = () => false; sleeper.waketestfn = () => true;
     const freezable = new Freezable({
-      isValid: () => instance.status.peek() !== 'removed', isDead: () => health.IsDead(),
-      addTag: tag => instance.addTag(tag), removeTag: tag => instance.removeTag(tag), PushEvent: pushEvent,
-      ListenForEvent: (name, fn) => instance.ListenForEvent(name, fn),
+      isValid, isDead: () => health.IsDead(),
+      addTag: tag => this.addTag(tag), removeTag: tag => this.removeTag(tag), PushEvent: pushEvent,
+      ListenForEvent: (name, fn) => this.ListenForEvent(name, fn),
       stopBrain: () => undefined, restartBrain: () => undefined,
       get components() { return components; },
-    }, this.world.scheduler);
+    }, world.scheduler);
     freezable.resistance = 8;
-    const propagator = new Propagator(inst, 'large', () => [], WORLD_SCALE, this.world.scheduler, this.world.getWatchWorldContent);
+    const propagator = new Propagator(this, 'large', () => [], WORLD_SCALE, world.scheduler, world.getWatchWorldContent);
     propagator.decayrate = 0;
     Object.assign(components, { health, knownlocations, timer,
       combat, inventory, lootdropper, locomotor, sleeper, freezable, propagator,
-      damagetracker: new DamageTracker(instance), explosiveresist: new ExplosiveResist(instance),
-      groundpounder: new GroundPounder(instance), grouptargeter: new GroupTargeter(instance),
-      healthtrigger: new HealthTrigger(instance), inspectable: new Inspectable(instance),
-      moisture: new Moisture(instance), rampingspawner: new RampingSpawner(instance),
-      stuckdetection: new StuckDetection(instance), stunnable: new Stunnable(instance),
-      stategraph: new DragonflyStateGraph(instance), brain: new DragonflyBrain(instance) });
-    const save = structuredClone(saved?.components.dragonfly ?? {
-      health: { health: 27500 }, inventory: { items: {}, equip: {} }, moisture: { moisture: 0 },
-      rampingspawner: { current_wave: 0, wave_num: 0, spawning_on: false },
-    });
-    // OnLoad restores component fields and playercombat; the source does not change idle's clip here.
-    health.OnLoad(save.health);
-    knownlocations.OnLoad(save.knownlocations);
-    timer.OnLoad(save.timer);
-    const entity: Dragonfly = { instance, display, health, knownlocations, timer, inventory,
-      sleeper, freezable, propagator, save };
-    this.entities.set(model, entity);
-    this.displays.mount(display);
-    this.world.trackDisplay(display);
-    entity.stopActivity = watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active));
-    instance.onRemove(() => {
-      this.entities.delete(model);
-      entity.stopActivity?.(); timer.dispose(); inventory.dispose(); sleeper.dispose();
-      freezable.dispose(); propagator.dispose();
-    });
-    return model;
-  }
+      damagetracker: new DamageTracker(this), explosiveresist: new ExplosiveResist(this),
+      groundpounder: new GroundPounder(this), grouptargeter: new GroupTargeter(this),
+      healthtrigger: new HealthTrigger(this), inspectable: new Inspectable(this),
+      moisture: new Moisture(this), rampingspawner: new RampingSpawner(this),
+      stuckdetection: new StuckDetection(this), stunnable: new Stunnable(this),
+      stategraph: new DragonflyStateGraph(this), brain: new DragonflyBrain(this) });
 
-  getById(id: string): THREE.Group | undefined {
-    return [...this.entities].find(([, entity]) => entity.instance.entityId === id)?.[0];
+    // This project's record nests every component record under data.dragonfly; the components' own top-level
+    // records are folded into it.
+    this.OnSave = (_inst, data) => {
+      const { timer: _timer, knownlocations: _locations, ...saved } = this.saved;
+      const locations = knownlocations.OnSave(), cooldown = timer.OnSave()?.timers.groundpound_cd;
+      for (const key of Object.keys(data)) delete (data as Record<string, unknown>)[key];
+      data.dragonfly = { ...structuredClone(saved), health: { ...this.saved.health, health: health.currenthealth },
+        ...locations ? { knownlocations: locations } : {},
+        ...cooldown ? { timer: { timers: { groundpound_cd: cooldown } } } : {} };
+    };
+    this.OnLoad = (_inst, data) => {
+      if (!data.dragonfly) return;
+      this.saved = structuredClone(data.dragonfly);
+      health.OnLoad(this.saved.health);
+      knownlocations.OnLoad(this.saved.knownlocations);
+      timer.OnLoad(this.saved.timer);
+    };
+    this.onRemove(() => { timer.dispose(); inventory.dispose(); sleeper.dispose(); freezable.dispose(); propagator.dispose(); });
   }
-  get renderEntities() { return [...this.entities].filter(([, entity]) => entity.instance.sprite.loaded)
-    .map(([object]) => ({ object, footPosition: object.position, cameraDepth: 0 })); }
-  exportRecords(): { prefabId: typeof DRAGONFLY_ID; record: DragonflyRecord }[] {
-    return [...this.entities].map(([model, entity]) => {
-      const { timer: _oldTimer, knownlocations: _oldLocations, ...saved } = entity.save;
-      const cooldown = entity.timer.OnSave()?.timers.groundpound_cd;
-      return { prefabId: DRAGONFLY_ID, record: {
-      id: String(entity.instance.entityId),
-      transform: { position: [model.position.x, model.position.y, model.position.z], rotationY: model.rotation.y },
-      components: { dragonfly: { ...structuredClone(saved), health: {
-        ...entity.save.health, health: entity.health.currenthealth,
-      }, ...(entity.knownlocations.OnSave() ? { knownlocations: entity.knownlocations.OnSave() } : {}),
-      ...(cooldown ? { timer: { timers: { groundpound_cd: cooldown } } } : {}) } },
-    } };
-    });
-  }
-  dispose(): void {
-    if (this.disposed) return;
-    this.disposed = true;
-    for (const entity of this.entities.values()) { entity.instance.remove(); entity.display.dispose(); }
-    this.displays.dispose();
-    this.assets.dispose();
-  }
+}
+
+/** The Prefab dragonfly.lua returns. */
+export function dragonflyPrefabs(world: DragonflyWorld): Readonly<Record<typeof DRAGONFLY_ID, PrefabEntityDefinition<DragonflyInstance>>> {
+  return {
+    [DRAGONFLY_ID]: {
+      fn: position => new DragonflyInstance(world, position),
+      assets: { animationArchive: 'dragonfly_basic.zip', extraAnimationArchives: ['dragonfly_actions.zip'],
+        buildArchives: ['dragonfly_build.zip', 'dragonfly_fire_build.zip', 'dragonfly_yule_build.zip', 'dragonfly_fire_yule_build.zip'],
+        bank: 'dragonfly' },
+      assetOptions: { instancedAnimations: 'all' },
+      // MakeFlyingGiantCharacterPhysics(inst, 500, 1.4).
+      physics: { make: (inst, radius) => MakeFlyingGiantCharacterPhysics(inst, 500, radius), radius: 1.4 },
+    },
+  };
 }
