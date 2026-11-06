@@ -1,6 +1,6 @@
 import { createBackpackEquipmentLifecycle } from '@dontstarve-web/prefab/backpack';
-import { ARMORSNURTLESHELL_ID, armorSnurtleshellVisual, createArmorSnurtleshellLifecycle } from '@dontstarve-web/prefab/armorsnurtleshell';
-import { AMULET_ID, amuletVisual, createAmuletEquipmentLifecycle } from '@dontstarve-web/prefab/amulet';
+import { ARMORSNURTLESHELL_ID, armorSnurtleshellVisual } from '@dontstarve-web/prefab/armorsnurtleshell';
+import { AMULET_ID, amuletVisual, createAmuletArtLifecycle } from '@dontstarve-web/prefab/amulet';
 import { wornEquipmentLifecycle } from '@dontstarve-web/prefab/equipmentVisual';
 import { ItemEntity } from '@dontstarve-web/inventory';
 import { bindEquipmentLifecycle, type BodyEquipment, type EquipmentOwner, type Signal } from '@dontstarve-web/signals';
@@ -21,22 +21,14 @@ export function bindPlayerBodyEquipment(options: PlayerBodyEquipmentOptions) {
       const context = options.animation?.equipmentContext;
       if (!context) return;
       if (equipment.itemId === ARMORSNURTLESHELL_ID && equipment.entity instanceof ItemEntity && !equipment.entity.isRemoved) {
+        // The worn art; equippable onequip/onunequip run from the inventory's Equip/Unequip.
         const entity = equipment.entity;
-        const art = wornEquipmentLifecycle(armorSnurtleshellVisual({ id: entity.id, prefab: entity.prefab, skinId: equipment.skinId }), context);
-        const domain = createArmorSnurtleshellLifecycle(entity);
-        return {
-          onequip(owner) { domain.onequip(owner); art.onequip(owner); },
-          onunequip() {
-            domain.onunequip(); art.onunequip();
-            // The global unequip handler leaves the shell states.
-            if (options.animation?.stategraph.hasStateTag('shell')) options.animation.stategraph.pushEvent('unequip');
-          },
-        };
+        return wornEquipmentLifecycle(armorSnurtleshellVisual({ id: entity.id, prefab: entity.prefab, skinId: equipment.skinId }), context);
       }
       if (equipment.itemId === AMULET_ID && equipment.entity instanceof ItemEntity && !equipment.entity.isRemoved) {
         const entity = equipment.entity;
         const art = wornEquipmentLifecycle(amuletVisual({ id: entity.id, prefab: entity.prefab, skinId: equipment.skinId }), context);
-        return createAmuletEquipmentLifecycle(entity, art);
+        return createAmuletArtLifecycle(art);
       }
       if (equipment.itemId !== 'backpack') return;
       return createBackpackEquipmentLifecycle({ id: equipment.entity?.id ?? 'body', prefab: equipment.itemId, skinId: equipment.skinId }, context);

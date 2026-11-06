@@ -1,3 +1,4 @@
+import type { Vector3 } from 'three';
 import { createSignal, type Signal } from './signal';
 
 export type EquipmentSlot = 'HANDS' | 'HEAD' | 'BODY';
@@ -37,11 +38,25 @@ export interface EquipmentOwner {
   GoToState?(name: string): void;
   /** owner.sg.currentstate.name == name */
   IsCurrentState?(name: string): boolean;
+  /** owner.Transform:GetWorldPosition(), as the ground-plane foot point. */
+  getPosition?(): Vector3;
+  /** owner.SoundEmitter */
+  readonly SoundEmitter?: { PlaySound(path: string): unknown };
   /** owner.components: the stats equipment reads and changes. */
   readonly components?: {
     readonly health?: { IsHurt(): boolean; DoDelta(amount: number, overtime?: boolean, cause?: string): number };
     readonly hunger?: { readonly current: number; DoDelta(delta: number): void };
     readonly sanity?: EquipmentSanity;
+    /** inventory:GetEquippedItem(eslot): the worn inst, with the components equipment callbacks reach. */
+    readonly inventory?: { GetEquippedItem(kind: 'hand' | 'body' | 'head'): EquippedItem | null };
+  };
+}
+
+/** An equipped inst as another equipment callback sees it through the owner's inventory. */
+export interface EquippedItem {
+  readonly components: {
+    readonly armor?: { SetAbsorption(absorbPercent: number): void };
+    readonly useableitem?: { StopUsingItem(): void };
   };
 }
 

@@ -1116,10 +1116,21 @@ export class InventoryStore {
     });
   }
 
+  /** The insts the equip slots held at their last commit: inventory.lua's equipslots, as Equip/Unequip left them. */
+  private readonly equipped = new Map<EquipmentKind, ItemEntity>();
+
   private publishEquipmentExistenceState(kind: EquipmentKind): void {
     const address = equipmentSlotAddress(kind);
     if (!this.registrationByAddress.has(addressKey(address))) return;
     const entity = this.getEntity(address);
+    const eslot = kind === 'hand' ? 'HANDS' : kind === 'head' ? 'HEAD' : 'BODY';
+    const previous = this.equipped.get(kind);
+    // inventory.lua Unequip: equippable:Unequip(owner), then "unequip" to the owner, also for a removed inst.
+    if (previous && previous !== entity) {
+      this.equipped.delete(kind);
+      previous.components.equippable?.Unequip(this.actor);
+      this.actor.PushEvent('unequip', { item: previous, eslot });
+    }
     const publish = <S extends EquipmentSlot>(state: Signal<Equipment<S> | null>, EQUIPSLOTS: S) => {
       state.set(entity ? Object.freeze({
         itemId: entity.prefab, EQUIPSLOTS, entity,
@@ -1129,7 +1140,12 @@ export class InventoryStore {
     if (kind === 'hand') publish(this.handEquipmentExistenceState, 'HANDS');
     else if (kind === 'head') publish(this.headEquipmentExistenceState, 'HEAD');
     else publish(this.bodyEquipmentExistenceState, 'BODY');
-    if (entity) this.actor.PushEvent('equip', { item: entity, eslot: kind === 'hand' ? 'HANDS' : kind === 'head' ? 'HEAD' : 'BODY' });
+    // inventory.lua Equip: equippable:Equip(owner), then "equip" to the owner.
+    if (entity && entity !== previous) {
+      this.equipped.set(kind, entity);
+      entity.components.equippable?.Equip(this.actor);
+      this.actor.PushEvent('equip', { item: entity, eslot });
+    }
   }
 
   private notify(changedSlots: readonly SlotAddress[], replacedEquipment: readonly EquipmentKind[] = []): void {

@@ -136,7 +136,7 @@ export interface ItemComponents {
   finiteuses: FiniteUsesComponent;
   inventoryitem: InventoryItem<ItemEntity, ItemOwner>;
   perishable: Perishable;
-  equippable?: Equippable;
+  equippable?: Equippable<ItemEntity>;
   container?: Container<InventoryStack, ItemEntity, StorageSlot>;
   tool?: import('../../componets/src/tool').Tool;
   fertilizer?: import('../../componets/src/fertilizer').Fertilizer;
@@ -350,7 +350,7 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
 
   configure(spec: Pick<InventoryItemSpec, 'maxUses' | 'maxFuel' | 'perishTime' | 'perishReplacement' | 'equippable' | 'canGoInContainer' | 'configureEntity'>): void {
     if (spec.equippable) {
-      this.components.equippable ??= new Equippable(this, spec.equippable);
+      this.components.equippable ??= new Equippable<ItemEntity>(this, spec.equippable);
       this.components.equippable.equipslot = spec.equippable;
     }
     this.components.inventoryitem.cangoincontainer = spec.canGoInContainer !== false;

@@ -71,3 +71,38 @@ it('publishes late head/body registrations once', () => {
     expect(store.bodyEquipment.peek()?.entity).toBe(store.getEntity(body));
   } finally { store.dispose(); }
 });
+
+it('runs equippable Equip/Unequip with the actor in inventory.lua order, once per inst', () => {
+  const store = new InventoryStore([
+    { address: a, slot: new InventorySlot() }, { address: b, slot: new InventorySlot() },
+    { address: head, slot: new HeadSlot() },
+  ], { ...specs, flowerhat: { name: 'garland', icon: 'flowerhat.tex', maxStack: 1, equippable: 'head' as const } });
+  const calls: string[] = [];
+  const actor = { hasTag: () => false, GetPosition: () => ({ x: 0, y: 0, z: 0 }),
+    PushEvent: (name: string, data: unknown) => calls.push(`${name}:${(data as { item?: { prefab: string } }).item?.prefab}`) };
+  store.bindActor(actor);
+  const watch = (prefab: string) => {
+    store.add(prefab, 1);
+    const item = store.FindItem(entity => entity.prefab === prefab)!;
+    item.components.equippable!.SetOnEquip((_inst, owner) => { expect(owner).toBe(actor); calls.push(`onequip:${prefab}`); });
+    item.components.equippable!.SetOnUnequip(() => calls.push(`onunequip:${prefab}`));
+    return item;
+  };
+  const straw = watch('strawhat'), flower = watch('flowerhat');
+  expect(store.EquipFromInventory(straw)).toBe(true);
+  expect(straw.components.equippable!.IsEquipped()).toBe(true);
+  expect(calls).toEqual(['onequip:strawhat', 'equip:strawhat']);
+  calls.length = 0;
+  // Replacing the hat unequips the old inst before equipping the new one.
+  expect(store.swap(flower.components.inventoryitem.owner!.address, head)).toBe(true);
+  expect(store.getEntity(head)).toBe(flower);
+  expect(calls).toEqual(['onunequip:strawhat', 'unequip:strawhat', 'onequip:flowerhat', 'equip:flowerhat']);
+  expect(straw.components.equippable!.IsEquipped()).toBe(false);
+  calls.length = 0;
+  // A component update notifies the slot without equipping again; removing the worn inst unequips it.
+  flower.components.inventoryitem.owner!.changed();
+  expect(calls).toEqual([]);
+  expect(flower.remove()).toBe(true);
+  expect(calls).toEqual(['onunequip:flowerhat', 'unequip:flowerhat']);
+  store.dispose();
+});

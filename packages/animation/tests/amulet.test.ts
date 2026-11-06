@@ -2,7 +2,7 @@ import { expect, it, vi } from 'vitest';
 import { Hunger } from '../../componets/src/hunger';
 import { Health } from '../../componets/src/health';
 import { equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
-import { AMULET_ID, REDAMULET_CONVERSION, REDAMULET_CONVERSION_TIME, REDAMULET_USES, createAmuletEquipmentLifecycle } from '../../prefab/src/amulet';
+import { AMULET_ID, REDAMULET_CONVERSION, REDAMULET_CONVERSION_TIME, REDAMULET_USES, createAmuletArtLifecycle } from '../../prefab/src/amulet';
 import { HAUNT_COOLDOWN_MEDIUM } from '../../componets/src/hauntable';
 import { createPickupInventory } from './pickupFixture';
 import { createPerishWorld } from './perishWorldFixture';
@@ -10,9 +10,6 @@ import { createPerishWorld } from './perishWorldFixture';
 function wornAmulet(health: number, hunger: number) {
   const inventory = createPickupInventory(), world = createPerishWorld();
   inventory.entities.bindPerishWorld(world);
-  inventory.add(AMULET_ID, 1);
-  const entity = inventory.getEntity(inventorySlotAddress(0))!;
-  expect(inventory.EquipFromInventory(entity)).toBe(true);
   const stats = { health: new Health(150), hunger: new Hunger({ components: {} }, 150) };
   stats.health.SetCurrentHealth(health);
   stats.hunger.SetCurrent(hunger);
@@ -20,15 +17,22 @@ function wornAmulet(health: number, hunger: number) {
   const state = { name: 'idle' };
   const listeners = new Set<(data: unknown) => void>();
   const owner = { PushEvent: vi.fn(), components: stats, IsCurrentState: (name: string) => name === state.name,
+    hasTag: () => false, GetPosition: () => ({ x: 0, y: 0, z: 0 }),
     ListenForEvent: (name: string, listener: (data: unknown) => void) => {
       if (name !== 'newstate') return () => {};
       listeners.add(listener);
       return () => { listeners.delete(listener); };
     } };
   const enter = (name: string) => { state.name = name; for (const listener of [...listeners]) listener({ statename: name }); };
-  const lifecycle = createAmuletEquipmentLifecycle(entity, art);
-  lifecycle.onequip(owner);
-  return { inventory, world, entity, stats, art, lifecycle, state, enter };
+  // inventory:Equip runs equippable:Equip(owner): the owner is the inventory's actor.
+  inventory.bindActor(owner);
+  inventory.add(AMULET_ID, 1);
+  const entity = inventory.getEntity(inventorySlotAddress(0))!;
+  expect(inventory.EquipFromInventory(entity)).toBe(true);
+  const worn = createAmuletArtLifecycle(art);
+  worn.onequip(owner);
+  const lifecycle = { onunequip: () => { inventory.Unequip('body'); worn.onunequip(); } };
+  return { inventory, world, entity, stats, art, lifecycle, state, enter, owner };
 }
 
 it('is a body resurrector with source uses and a hauntable that resurrects', () => {
