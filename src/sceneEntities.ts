@@ -486,7 +486,6 @@ export async function createSceneEntities(
     dragonflies: Managers['dragonfly'],
     dragonflySpawners: Managers['dragonfly_spawner'],
     marbleBeanSaplings: Managers['marblebean_sapling'],
-    rockAvocadoSaplings: Managers['rock_avocado_fruit_sprout_sapling'],
     rockAvocadoBushes: Managers['rock_avocado_bush'],
     berrybushes: Managers['berrybush'],
     monkeytails: Managers['monkeytail'],

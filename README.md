@@ -59,7 +59,7 @@ prefab 包内原先直接持有 `scene` 的 38 个类改由 `PrefabDisplayGroup`
 
 `c_give("butterfly", 2)` 获取活蝴蝶；点击或右键物品栏中的蝴蝶拿到鼠标后，右键可种植的空地执行 `DEPLOY`。预览使用 `anim/flowers.zip` 的 `flowers` bank/build、`f1`，间距为 LESS（0.75 DST 单位）；角色自动走近，在 `doshortaction` 第 6 帧消耗 1 只并生成原版 `planted_flower`（运行时及存档 prefab 为 `flower`），触发 `growfrombutterfly` 并播放种植声。花型随机为 f1–f10，玫瑰概率 1%；无效地形、阻挡、Esc 或切换动作不会消耗蝴蝶。`c_spawn("planted_flower")` 可直接生成种下的花，不支持 `c_give`；`c_save()` 保存花的 ID、脚点、花型及种植标记，恢复后仍可供蝴蝶授粉。
 
-花朵（含自然花、种下的花和玫瑰）、大理石豆苗 `marblebean_sapling` 和石果萌芽 `rock_avocado_fruit_sprout_sapling` 通过动画包的 `ResidentSprite` 驻留，并共享 archive sprite 与实例批次；源动画仍按非循环方式播放。活动区休眠只释放 visual，唤醒恢复花型、形状、明度、积雪和相机朝向，保留实体、脚点、组件及已有的物理和小地图。豆苗和石果萌芽在休眠时仍按游戏时间生长／替换，燃烧计时也继续；大理石灌木开采后由调度器在 `mined_*` 动画时长结束时移除，不因卸载 visual 提前结算。调试命令语法、参数和支持的 `c_spawn` / `c_give` ID 不变，`c_save()` 继续保存休眠中的逻辑实体。
+花朵（含自然花、种下的花和玫瑰）和大理石豆苗 `marblebean_sapling` 通过动画包的 `ResidentSprite` 驻留，石果萌芽 `rock_avocado_fruit_sprout_sapling` 由全局 `PrefabEntityManager` 管理，均共享 archive sprite 与实例批次；源动画仍按非循环方式播放。活动区休眠只释放 visual，唤醒恢复花型、形状、明度、积雪和相机朝向，保留实体、脚点、组件及已有的物理和小地图。豆苗和石果萌芽在休眠时仍按游戏时间生长／替换，燃烧计时也继续；大理石灌木开采后由调度器在 `mined_*` 动画时长结束时移除，不因卸载 visual 提前结算。调试命令语法、参数和支持的 `c_spawn` / `c_give` ID 不变，`c_save()` 继续保存休眠中的逻辑实体。
 
 花朵支持玩家左键通用 `PICK`：例如 `c_spawn("planted_flower")` 后点击花朵，角色走近并通过快速 `doshortaction` 在第 6 帧获得 1 个 `petals`，恢复 5 点理智；`plantkin` 不获得这次理智恢复。玫瑰会通过玩家 `combat:GetAttacked` 造成 1 点伤害并发送 `thorns`，已装备 `bramble_resistant` 标签物品或带 `shadowminion` 标签时免疫刺伤；只放在物品栏里的装备不生效。成功后依次发送世界 `plantkilled`、实体 `picked` 并移除花朵，取消或产物准备失败时保留花和属性，燃烧／`intense` 状态不能采摘。库存满时沿用 `GiveItem` 将花瓣掉到玩家脚点；采花后 `c_save()` 不再导出该花，花瓣身份、数量、位置及玩家理智／生命保存恢复，读档不会重新出现已采的花。花的 `picksound` 保留原版字段，普通玩家快速采摘状态不额外播放该元数据的声音。
 
