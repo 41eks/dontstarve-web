@@ -48,7 +48,7 @@ import { GrottoPoolManager } from '@dontstarve-web/prefab/grotto_pool';
 import { mushroomPlantPrefabs } from '@dontstarve-web/prefab/mushroom_plant';
 import { MushtreeManager } from '@dontstarve-web/prefab/mushtree';
 import { MarbleShrubManager, MARBLESHRUB_ID } from '@dontstarve-web/prefab/marbleshrub';
-import { ArchivePropsManager, type ArchivePropId } from '@dontstarve-web/prefab/archive_props';
+import { archivePropsPrefabs } from '@dontstarve-web/prefab/archive_props';
 import { HoundboneManager } from '@dontstarve-web/prefab/houndbone';
 import { BeeQueenHiveManager } from '@dontstarve-web/prefab/beequeenhivegrown';
 import { DragonflyManager } from '@dontstarve-web/prefab/dragonfly';
@@ -72,7 +72,7 @@ import { FireFxHost } from '@dontstarve-web/prefab/treeFire';
 import { HotspringManager } from '@dontstarve-web/prefab/hotspring';
 import { LavaPondManager, LAVA_POND_ID } from '@dontstarve-web/prefab/lava_pond';
 import { WormholeManager, WORMHOLE_ID } from '@dontstarve-web/prefab/wormhole';
-import { PortalManager, PORTAL_ID } from '@dontstarve-web/prefab/portal';
+import { portalPrefabs } from '@dontstarve-web/prefab/portal';
 import { NightmareGrowthManager, NIGHTMAREGROWTH_ID } from '@dontstarve-web/prefab/nightmaregrowth';
 import { NightmareRockManager } from '@dontstarve-web/prefab/nightmarerock';
 import { PigKingManager } from '@dontstarve-web/prefab/pigking';
@@ -480,7 +480,6 @@ export async function createSceneEntities(
     mushroomPlants: Managers['mushroom_plant'],
     grottoPools: Managers['grotto_pool'],
     marbleShrubs: Managers['marbleshrub'],
-    archiveProps: Managers['archive_props'],
     skeletons: Managers['skeleton'],
     houndbones: Managers['houndbone'],
     beeQueenHives: Managers['beequeenhivegrown'],
@@ -498,7 +497,6 @@ export async function createSceneEntities(
     hotsprings: Managers['hotspring'],
     tumbleweeds: Managers['tumbleweed'],
     wormholes: Managers['wormhole'],
-    portals: Managers['multiplayer_portal_moonrock'],
     nightmareGrowths: Managers['nightmaregrowth'],
     reskinEffects: Managers['reskinEffects'],
     worldFx: Managers['world_fx'],
@@ -915,22 +913,14 @@ export async function createSceneEntities(
   }
 
   function registerArchiveProps(registry: EntityRegistry, prefabId: 'archive_props', worldState: SceneWorldState) {
-    const archiveProps = new ArchivePropsManager(scene, {
-      handEquipment: sceneInventory.handEquipment,
-      physics: world, cameraFacing: view.cameraFacing, tickingarea: worldState.tickingarea,
+    prefabs.register(archivePropsPrefabs({
+      handEquipment: sceneInventory.handEquipment, scheduler: worldState.scheduler, cameraFacing: view.cameraFacing,
       spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
-    });
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
-      restore: (id, record) => archiveProps.spawn(id, new THREE.Vector3(...record.transform.position), {
-        id: record.id, transform: record.transform, components: { archiveProp: record.components.archiveProp },
-      }).then(model => model!),
-      debugSpawn: id => archiveProps.spawn(id, player.position.clone()),
-      exportRecords: () => archiveProps.exportRecords() as { prefabId: ArchivePropId; record: ReturnType<typeof archiveProps.exportRecords>[number]['record'] }[],
-      update: (dt, quaternion) => archiveProps.update(dt, quaternion),
-      renderEntities: () => archiveProps.renderEntities,
-      dispose: () => archiveProps.dispose(),
-    });
-    return archiveProps;
+      fx: Managers['world_fx'],
+      spawnPrefab: (id, position) => prefabs.spawn(id, position),
+    }));
+    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+    return prefabs;
   }
 
   function registerHoundbones(registry: EntityRegistry, prefabId: 'houndbone', worldState: SceneWorldState) {
@@ -1229,19 +1219,12 @@ export async function createSceneEntities(
   }
 
   function registerPortals(registry: EntityRegistry, prefabId: 'multiplayer_portal_moonrock', worldState: SceneWorldState) {
-    const portals = new PortalManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`,
-      { scheduler: worldState.scheduler, portalRez: worldState.portalRez });
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
-      restore: (_, record) => portals.spawn(new THREE.Vector3(...record.transform.position), {
-        id: record.id, transform: record.transform, components: {},
-      }),
-      debugSpawn: () => portals.spawn(player.position.clone()),
-      exportRecords: () => portals.exportRecords().map((record) => ({ prefabId: PORTAL_ID, record })),
-      update: (dt, quaternion) => portals.update(dt, quaternion),
-      renderEntities: () => portals.renderEntities,
-      dispose: () => portals.dispose(),
-    });
-    return portals;
+    prefabs.register(portalPrefabs({
+      scheduler: worldState.scheduler, portalRez: worldState.portalRez,
+      spawnPrefab: (id, position) => prefabs.spawn(id, position),
+    }));
+    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+    return prefabs;
   }
 
   function registerNightmareGrowths(registry: EntityRegistry, prefabId: 'nightmaregrowth', _worldState: SceneWorldState) {

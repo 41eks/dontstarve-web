@@ -37,6 +37,7 @@
 | `SetFrame(n)` | `sprite.setFrame(n)`；随机帧用 `sprite.setFrameAt(fraction)` | `monkeypillar.ts` | `setFrameAt` 取 0–1 比例，未加载时也能声明 |
 | `SetDeltaTimeMultiplier` | `sprite.setPlaybackRate(rate)` | `player.ts` | |
 | `GetCurrentAnimationLength`、`GetCurrentAnimationNumFrames` | `sprite.currentAnimationLength`、`sprite.numFrames` | `moonbaseFx.ts`、`cactus.ts` | **未绘制时为 0**，业务计时不能依赖 |
+| `inst:SetStateGraph("SGx")` | `packages/stategraphs/src/SGx.ts` 的 `StateGraphInstance`（传入 scheduler，timeline 走游戏时间），实例实现状态图读取的方法；`animover` 由 `playOnce` 的 `complete` 推给 `sg.pushEvent` | `portal.ts`、`nightmarerock.ts` | 未绘制时暂停 animover 链，见 `portal.ts` |
 | `ListenForEvent("animover", fn)` | `playOnce` 的 `complete` | `monkeypillar.ts` | 未绘制时结算，见上；需要等重新绘制时跟 `sprite.art` |
 | 循环动画批量绘制 | `assetOptions.instancedAnimations`、`staticBillboard` | `pillar.ts` | 只是绘制方式，非 Lua 调用 |
 

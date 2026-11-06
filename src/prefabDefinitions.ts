@@ -449,7 +449,7 @@ export const PREFAB_DEFINITIONS = {
   nightmareGrowths: definePrefabs([NIGHTMAREGROWTH_ID], componentParser({ keys: ['nightmareGrowth'] }), true, ['nightmaregrowth.zip']),
   nightmareRocks: definePrefabs(NIGHTMAREROCK_IDS, empty, true),
   wormholes: definePrefabs([WORMHOLE_ID], componentParser({ keys: ['wormhole'] }), true),
-  portals: definePrefabs([PORTAL_ID], empty, true),
+  portals: definePrefabs([PORTAL_ID], empty, true, ['portal_moonrock.zip', 'portal_stone.zip']),
   reskinEffects: definePrefabs([], empty),
   rain: definePrefabs([], empty),
   snow: definePrefabs([], empty),
