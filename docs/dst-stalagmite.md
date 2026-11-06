@@ -38,7 +38,7 @@
 
 `prefabs/skinprefabs.lua` 没有这八个 ID 的皮肤定义；不添加 skin、皮肤资源或 reskin 目标。
 
-`StalagmiteInstance` 只同步声明标签、组件、逻辑状态、clip 和颜色，不执行资源 IO、await 或创建显示对象。`StalagmiteManager` 共享一个 `SpriteResources`，为两个 bank 声明 archive source；`PrefabDisplay` 在资源路径中调用共享预载/创建入口。`instancedAnimations: 'all'` 合批非循环姿态，`colour: [1,1,1]` 为每个实例启用独立明暗，不修改共享帧数据。
+`StalagmiteInstance` 只同步声明标签、组件、逻辑状态、clip 和颜色，不执行资源 IO、await 或创建显示对象。`stalagmitePrefabs()` 为每个 prefab 声明所属 bank 的 archive 与 `MakeObstaclePhysics`，由全局 `PrefabEntityManager` 共用一个 `SpriteResources` 加载；`PrefabDisplay` 在资源路径中调用共享预载/创建入口。`instancedAnimations: 'all'` 合批非循环姿态，`colour: [1,1,1]` 为每个实例启用独立明暗，不修改共享帧数据。
 
 tile 活动只通过 `watchTileActivity` 设置实例状态；休眠释放 visual，身份、组件、declared clip 和颜色继续保留；唤醒重建 visual 时不重跑随机构造。没有新增可见性、距离隐藏或裁剪逻辑。
 

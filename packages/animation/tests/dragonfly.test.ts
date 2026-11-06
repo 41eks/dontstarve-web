@@ -39,10 +39,7 @@ it('loads the saved dragonfly through fn then OnLoad and keeps the Lua looping i
     expect(instance.sprite.sprite.peek()).toMatchObject({ clip: { name: 'idle', loop: true }, queue: [] });
     expect(instance.listTags()).toEqual(expect.arrayContaining(['epic', 'noepicmusic', 'monster', 'hostile', 'dragonfly',
       'scarytoprey', 'largecreature', 'flying', 'ignorewalkableplatformdrowning']));
-    const [{ record: exported }] = dragonflies.exportRecords();
-    // The shared save loop converts the rotation through degrees.
-    expect(exported.transform.rotationY).toBeCloseTo(record.transform.rotationY);
-    expect({ ...exported, transform: { ...exported.transform, rotationY: record.transform.rotationY } }).toEqual(record);
+    expect(dragonflies.exportRecords()[0].record).toEqual(record);
     expect(PREFAB_DEFINITIONS.dragonflies.parseComponents(record.components, 'dragonfly', { grounded: true } as never))
       .toEqual(record.components);
   } finally { dispose(); }

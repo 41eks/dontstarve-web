@@ -2,11 +2,12 @@ import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { unzipSync, strFromU8 } from 'fflate';
 import { afterEach, expect, it, vi } from 'vitest';
-import { prefabDisplay } from '@dontstarve-web/display';
+import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { StalagmiteInstance, StalagmiteManager, type StalagmiteRecord } from '../../prefab/src/stalagmite';
+import { StalagmiteInstance, stalagmitePrefabs, type StalagmiteId } from '../../prefab/src/stalagmite';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { prefabManager } from './prefabManagerFixture';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { createInventoryStore } from '../../../src/inventory';
@@ -19,32 +20,32 @@ import initialWorld from '../../../public/saves/initial-world.json' with { type:
 import { CLUSTER_SAVE_ZIP_TIMEOUT } from './importedSave';
 
 const turn = () => new Promise(resolve => setTimeout(resolve, 0));
-const record: StalagmiteRecord = { id: 'saved-stalagmite', transform: { position: [2, 0, -3], rotationY: .4 }, components: {} };
+const record = { id: 'saved-stalagmite', transform: { position: [2, 0, -3] as [number, number, number], rotationY: .4 }, components: {} };
 function setup() {
   vi.stubGlobal('window', new EventTarget());
   vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url)))));
   const scene = new THREE.Scene(), awake = createSignal(true), scheduler = new GameTimeScheduler();
-  const registry = new EntityRegistry(), inventory = createInventoryStore([]);
-  const world = { scheduler, tickingarea: () => createMemo(() => awake.get()), spawnLoot: () => undefined,
-    trackDisplay: (display: Parameters<EntityRegistry['trackDisplay']>[0]) => registry.trackDisplay(display) };
-  const manager = new StalagmiteManager(scene, world);
-  registry.registerDisplayManager(PREFAB_DEFINITIONS.stalagmites, manager, {
-    restore: (id, saved) => manager.spawn(id, new THREE.Vector3(...saved.transform.position),
-      { id: saved.id, transform: saved.transform, components: {} }),
-    debugSpawn: id => manager.spawn(id, new THREE.Vector3(12, 0, -6)),
-  });
+  const world = { scheduler, tickingarea: () => createMemo(() => awake.get()), spawnLoot: () => undefined };
+  const displays = new PrefabDisplayGroup(scene);
+  const prefabs = prefabManager(displays, '/dst/data/anim', world, stalagmitePrefabs);
+  const registry = new EntityRegistry([], prefabs as never, () => new THREE.Vector3(12, 0, -6)), inventory = createInventoryStore([]);
+  registry.registerPrefabs(PREFAB_DEFINITIONS.stalagmites);
+  const manager = {
+    spawn: (id: StalagmiteId, position: THREE.Vector3, saved?: typeof record) => prefabs.spawn(id, position, saved).transform.model,
+    exportRecords: () => prefabs.exportRecords(),
+  };
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
   return { scene, awake, registry, inventory, manager, world,
     save: () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(), elapsedSeconds: 0,
       playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG),
-    dispose() { registry.dispose(); inventory.dispose(); scheduler.dispose(); } };
+    dispose() { registry.dispose(); prefabs.dispose(); displays.dispose(); inventory.dispose(); scheduler.dispose(); } };
 }
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 it('constructs saved ordinary and tall rocks with their source poses, colour, tags and unsaved work counts', async () => {
   const s = setup(); vi.spyOn(Math, 'random').mockReturnValue(.75);
   try {
-    const logical = new StalagmiteInstance('stalagmite_tall_low', s.world, record);
+    const logical = new StalagmiteInstance('stalagmite_tall_low', s.world, new THREE.Vector3(...record.transform.position));
     expect(fetch).not.toHaveBeenCalled(); // Source construction declares art without loading it.
     expect(logical.sprite.sprite.peek().clip).toMatchObject({ name: 'low_2', loop: false });
     expect(logical.sprite.sprite.peek().queue).toEqual([]);
@@ -52,12 +53,12 @@ it('constructs saved ordinary and tall rocks with their source poses, colour, ta
     expect(logical.components.workable!.GetWorkLeft()).toBe(2);
     expect(logical.components.workable!.OnSave()).toEqual({});
     for (const tag of ['boulder', 'inspectable', 'MINE_workable']) expect(logical.hasTag(tag)).toBe(true);
-    expect(logical.getPhysicsRadius()).toBe(3); // MakeObstaclePhysics radius 1 DST unit.
     logical.remove();
     const normal = s.manager.spawn('stalagmite_med', new THREE.Vector3(...record.transform.position), record);
     const tall = s.manager.spawn('stalagmite_tall_low', new THREE.Vector3(5, 0, 6), { ...record, id: 'tall-rock' });
     expect(prefabInstance(normal)!.sprite.sprite.peek().clip).toMatchObject({ name: 'med', loop: false });
     expect(prefabInstance(normal)!.components.workable!.GetWorkLeft()).toBe(4);
+    expect(prefabInstance(normal)!.getPhysicsRadius()).toBe(3); // MakeObstaclePhysics radius 1 DST unit.
     await Promise.all([normal, tall].map(model => prefabDisplay(model)!.artLoaded()));
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/dst/data/anim/rock_stalagmite.zip'));
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/dst/data/anim/rock_stalagmite_tall.zip'));
