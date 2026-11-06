@@ -5,14 +5,14 @@ import type { BrainInst } from './types';
  * scripts/brain.lua with BrainWrangler folded in: the owning entity calls `tick(now)` every frame and
  * the brain only updates once the tree's sleep time has elapsed.
  */
-export abstract class Brain {
-  readonly inst: BrainInst;
+export abstract class Brain<Inst extends BehaviourContext = BrainInst> {
+  readonly inst: Inst;
   bt?: BT;
   stopped = true;
   paused = false;
   private wakeAt = 0;
 
-  constructor(inst: BrainInst) { this.inst = inst; }
+  constructor(inst: Inst) { this.inst = inst; }
 
   protected abstract OnStart(): void;
   protected OnInitializationComplete?(): void;

@@ -8,6 +8,7 @@ import { bindPhysics, type PhysicsBinding } from '../../componets/src/physicsBin
 import { PhysicsState } from '../../componets/src/physicsState';
 import type { TileTracker } from '../../componets/src/tileManager';
 import type { Brain } from '../../brains/src/brain';
+import type { BehaviourContext } from '../../brains/src/behaviourtree';
 import type { StateGraphInstance } from '../../stategraphs/src/stategraph';
 import type { ComponentActionEntity } from '../../stategraphs/src/componentactions';
 import type { PlacementSaveRecord, PrefabSaveRecord } from './saveRecord';
@@ -126,7 +127,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   /** inst.sg: SetStateGraph's instance, as other code reads and drives it; cleared by ClearStateGraph. */
   sg?: Pick<StateGraphInstance<unknown, string>, 'stateName' | 'hasStateTag' | 'goToState' | 'pushEvent' | 'listenForEvent'>;
   /** inst.brain: SetBrain's brain, cleared by StopBrain. */
-  brain?: Brain;
+  brain?: Brain<BehaviourContext>;
   private readonly tags = new Set<string>();
   private tagView?: readonly string[];
   private readonly tagListeners = new Set<(tag: string) => void>();

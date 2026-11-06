@@ -1,141 +1,261 @@
-import { smallHash, type Animation } from '@dontstarve-web/animation/animationAssets';
-import { SpriteController } from '@dontstarve-web/animation/sprite';
-import { SpriteResources, type SkinJson } from '@dontstarve-web/display';
+import { SpriteState } from '@dontstarve-web/display';
+import type { ItemEntity } from '@dontstarve-web/inventory';
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
+import { BernieBigBrain, BernieBrain, type BerniePlayer } from '../../brains/src/berniebrain';
+import { AnimState } from '../../componets/src/animstate';
+import { Inspectable } from '../../componets/src/dragonflySignatures';
+import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import { Health } from '../../componets/src/health';
+import { ComponentTimer, Timer } from '../../componets/src/timer';
+import { createBernieStateGraph, type BernieStateInst } from '../../stategraphs/src/SGbernie';
+import { FRAMES } from '../../stategraphs/src/stategraph';
 import { animationTiming } from './animationTimings';
-import { GROUND_ITEM_DEFINITIONS } from './groundItems';
-import { ItemEntity } from '@dontstarve-web/inventory';
-import { createPrefabEntity } from './prefabInstance';
-import { listenInventoryEvents } from './inventoryEvents';
+import { GROUND_ITEM_DEFINITIONS, createResidentGroundItem } from './groundItems';
 import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
+import { listenInventoryEvents } from './inventoryEvents';
+import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
+import type { PlacementSaveRecord } from './saveRecord';
+import { MakeCharacterPhysics, WORLD_SCALE } from './standardcomponents';
+
+export type { BerniePlayer } from '../../brains/src/berniebrain';
 
 export const BERNIE_ITEM_ID = 'bernie_inactive';
-export const BERNIE_BIG_SANITY_PERCENT = 30 / 200;
-export type BernieGroundForm = 'bernie_active' | 'bernie_big';
-type BernieAnimationForm = BernieGroundForm | typeof BERNIE_ITEM_ID;
+export const BERNIE_ACTIVE_ID = 'bernie_active';
+export const BERNIE_BIG_ID = 'bernie_big';
+export type BernieCreatureId = typeof BERNIE_ACTIVE_ID | typeof BERNIE_BIG_ID;
 
+// tuning.lua
+const BERNIE_HEALTH = 1000;
+const BERNIE_BIG_HEALTH = 2000;
+/** bernie_inactive.lua tryreanimate: rangesq = 16 * 16. */
+const REANIMATE_RANGE = 16;
+
+/** AllPlayers and SpawnPrefab, as bernie_inactive.lua, bernie_active.lua and bernie_big.lua reach them. */
 export interface BernieWorld {
-  getSanityPercent(): number;
+  readonly scheduler: GameTimeScheduler;
+  getPlayers(): readonly BerniePlayer[];
+  /** SpawnPrefab("bernie_active" | "bernie_big", skin) on the shared PrefabEntityManager. */
+  spawnPrefab(prefab: BernieCreatureId, position: ReadonlyVector3, skinId?: string): PrefabInstance | undefined;
+  /** SpawnPrefab("bernie_inactive", skin): the item, lying on the ground at `position`. */
+  spawnInactive(position: ReadonlyVector3, skinId?: string): ItemEntity | undefined;
 }
 
-/** The application deliberately allows Wilson to activate Bernie too. */
-export function bernieGroundForm(sanityPercent: number): BernieGroundForm {
-  return sanityPercent < BERNIE_BIG_SANITY_PERCENT ? 'bernie_big' : 'bernie_active';
+/** bernie_common.lua isleadercrazy; the willow_berniesanity skills and hotheaded (willow_bernieai) are not ported. */
+function isleadercrazy(leader: BerniePlayer): boolean {
+  return leader.components.sanity?.IsCrazy() === true;
 }
 
-/** bernie.zip and bernie_big.zip clips named `form:clip`; bernie_big.lua keeps scale 0.7, its growth is baked into the art. */
-class BernieSpriteController extends SpriteController {
-  protected override findAnimation(key: string): Animation {
-    const separator = key.indexOf(':');
-    const form = key.slice(0, separator), name = key.slice(separator + 1);
-    const bank = smallHash(form === 'bernie_big' ? 'bernie_big' : 'bernie');
-    const animation = this.animations.animations.find(clip => clip.name === name && clip.bankHash === bank);
-    if (!animation?.frames.length) throw new Error(`Missing Bernie animation ${key}`);
-    const scale = 0.02 * (form === 'bernie_big' ? 0.7 : 1);
-    this.visual.scale.set(scale, -scale, scale);
-    return animation;
-  }
+/** Each form's skin from another's, as the prefabs gsub the shadow / lunar builds and the form suffix. */
+function formSkin(skinId: string | undefined, from: '' | '_active' | '_big', to: '' | '_active' | '_big'): string | undefined {
+  if (skinId === undefined) return undefined;
+  const base = skinId.replace('_shadow_build', '').replace('_lunar_build', '');
+  return `${from ? base.replace(from, '') : base}${to}`;
 }
 
-/** The display shares both banks and each skin; gameplay uses imported clip timings. */
-export class BernieAssets {
-  private readonly resources: SpriteResources;
-  readonly skins: SkinJson;
-  constructor(assetBaseUrl: string) {
-    this.resources = new SpriteResources(assetBaseUrl);
-    this.skins = { archives: GROUND_ITEM_DEFINITIONS[BERNIE_ITEM_ID].skinArchives, art: this.resources.archives };
-  }
-  source() {
-    return this.resources.factory({ buildArchive: 'bernie_build.zip', animationArchive: 'bernie.zip',
-      extraAnimationArchives: ['bernie_big.zip'] }, BernieSpriteController);
-  }
-  dispose(): void { this.resources.dispose(); }
-}
-
-/** Reuse the item's prefab instance; a skin alone constructs a standalone logical item. */
-export function createBernieGroundSprite(assets: BernieAssets, world: BernieWorld, item?: string | ItemEntity) {
-  const inst = typeof item === 'object' ? item : new ItemEntity({ itemId: BERNIE_ITEM_ID, count: 1, skinId: item });
-  const skinId = inst.skinId;
-  const clipOf = (form: BernieAnimationForm, name: string) => animationTiming(form === 'bernie_big' ? 'bernie_big.zip' : 'bernie.zip', name);
-  const required = [...(['bernie_active', 'bernie_big'] as const).flatMap(form => ['idle_loop', 'idle_loop_nodir', 'activate'].map(name => [form, name] as const)),
-    ['bernie_big', 'deactivate'], ['bernie_big', 'deactivate_pst'], [BERNIE_ITEM_ID, 'inactive']] as const;
-  for (const [form, name] of required) clipOf(form, name);
-  let form: BernieAnimationForm = bernieGroundForm(world.getSanityPercent());
-  const spriteName = `GroundItem:${BERNIE_ITEM_ID}`;
-  if (skinId !== undefined && !assets.skins.archives[skinId]) throw new Error(`Unknown Bernie skin: ${skinId}`);
-  const { instance, display } = createPrefabEntity(BERNIE_ITEM_ID, assets.source(), { name: `${form}:idle_loop`, billboard: true, instance: inst }, spriteName, entity => {
-    entity.sprite.setSkinSource(assets.skins);
+/**
+ * bernie_inactive.lua toground / topocket / OnEntitySleep / OnEntityWake: while the item lies awake on the ground it
+ * runs tryreanimate every second. The fueled durability (and the health it becomes), the decay of a dead Bernie,
+ * the equippable, insulator and the transform_cd timer it carries over are not ported.
+ */
+function bindBernieItem(inst: ItemEntity, world: BernieWorld): () => void {
+  let onGround = !inst.components.inventoryitem.owner;
+  const activatetask = new ComponentTimer(world.scheduler, () => {
+    activatetask.start(1);
+    tryreanimate(inst, world);
   });
-  const model = display.model, sprite = instance.sprite;
-  let clip = clipOf(form, 'idle_loop');
-  let inInventory = false;
-  let elapsed = 0;
-  const play = (next: BernieAnimationForm, name: string, time = 0) => {
-    form = next;
-    clip = clipOf(next, name);
-    elapsed = time;
-    const key = `${next}:${name}`;
-    if (name === 'idle_loop') sprite.start(key); else sprite.playOnce(key);
-    model.name = `GroundItem:${form}`;
-    model.userData.animation = name;
+  const refresh = () => {
+    if (!onGround || inst.isRemoved || inst.status.peek() !== 'active') activatetask.stop();
+    else if (activatetask.snapshot.peek().status !== 'scheduled') activatetask.start(1);
   };
-  const update = (dt: number) => {
-    if (inInventory) return;
-    const desired = bernieGroundForm(world.getSanityPercent());
-    const previous = clip;
-    // Finish busy states before responding to another sanity change, as the
-    // Lua brains do. Re-read sanity on each update rather than queuing stale forms.
-    if (clip.name === 'idle_loop' && desired !== form) {
-      if (desired === 'bernie_big') play('bernie_big', 'activate');
-      else play('bernie_big', 'deactivate');
-    }
-    elapsed += Math.max(0, Math.min(dt, 0.1));
-    while (clip.name !== 'idle_loop') {
-      const duration = clip.name === 'idle_loop_nodir' ? 0.5 : clip.frames / clip.frameRate;
-      if (elapsed + 1e-8 < duration) break;
-      const remaining = Math.max(0, elapsed - duration);
-      switch (clip.name) {
-        case 'deactivate': play('bernie_big', 'deactivate_pst', remaining); break;
-        // SGberniebig goes inactive after the whole queue; the small prefab
-        // reanimates through SGbernie's activate before returning to idle.
-        case 'deactivate_pst': play('bernie_active', 'activate', remaining); break;
-        case 'activate': play(form, 'idle_loop_nodir', remaining); break;
-        // Both stategraphs switch facing at 0.5s and preserve animation time.
-        case 'idle_loop_nodir': play(form, 'idle_loop', elapsed); break;
-        default: throw new Error(`Unexpected Bernie animation ${clip.name}`);
-      }
-    }
-    // A clip started during this update is shown at the time the stategraph has reached in it.
-    if (clip !== previous) {
-      const frame = Math.floor(elapsed * clip.frameRate);
-      if (frame > 0) sprite.setFrame(clip.name === 'idle_loop' ? frame % clip.frames : Math.min(frame, clip.frames - 1));
-    }
-  };
-  const onGround = () => {
-    inInventory = false;
-    play(bernieGroundForm(world.getSanityPercent()), 'idle_loop');
-  };
-  const removeInventoryEvents = listenInventoryEvents(instance, {
-    ondropped: onGround,
-    onload: onGround,
-    onputininventory: () => { inInventory = true; play(BERNIE_ITEM_ID, 'inactive'); },
+  const removeInventoryEvents = listenInventoryEvents(inst, {
+    ondropped: () => { onGround = true; refresh(); },
+    onload: () => { onGround = !inst.components.inventoryitem.owner; refresh(); },
+    onputininventory: () => { onGround = false; refresh(); },
   });
-  model.userData.animation = 'idle_loop';
-  model.name = `GroundItem:${form}`;
+  const stopStatus = inst.status.subscribe(refresh);
+  refresh();
+  return () => { removeInventoryEvents(); stopStatus(); activatetask.stop(); };
+}
+
+/** bernie_inactive.lua tryreanimate: the nearest crazy, visible player within 16 units wakes Bernie up. */
+function tryreanimate(inst: ItemEntity, world: BernieWorld): void {
+  let target: BerniePlayer | undefined, rangesq = (REANIMATE_RANGE * WORLD_SCALE) ** 2;
+  const position = inst.position;
+  for (const v of world.getPlayers()) {
+    if (!isleadercrazy(v) || !v.IsVisible()) continue;
+    const distsq = v.position.distanceToSquared(position);
+    if (distsq < rangesq) { rangesq = distsq; target = v; }
+  }
+  if (!target) return;
+  const active = world.spawnPrefab(BERNIE_ACTIVE_ID, position, formSkin(inst.skinId, '', '_active'));
+  if (active) inst.remove();
+}
+
+/** The inventory item on the ground: the catalog art plays `inactive`, and the item reanimates near a crazy player. */
+export function createBernieGroundFactory(context: GroundPrefabContext): GroundItemFactory {
   return {
-    model, instance, display, update,
-    dispose() {
-      removeInventoryEvents();
-      inInventory = true;
-      display.dispose();
+    itemIds: [BERNIE_ITEM_ID],
+    create: (item, entity) => {
+      const { visual } = createResidentGroundItem(context, { ...item, entity });
+      const stop = context.bernieWorld ? bindBernieItem(entity, context.bernieWorld) : () => {};
+      return { ...visual, dispose() { stop(); visual.dispose(); } };
     },
   };
 }
 
-export function createBernieGroundFactory(context: GroundPrefabContext): GroundItemFactory {
-  const assets = new BernieAssets(context.animationBaseUrl);
+/**
+ * bernie_active.lua and bernie_big.lua: a reanimated Bernie runs its stategraph and brain until it sits back down
+ * as the item. Combat, locomotion, following, the taunt, hauntable, the pickup replacement, sounds, DynamicShadow,
+ * facing modes and bernie_big's allegiance and fire art are not ported.
+ */
+export class BernieInstance extends PrefabInstance implements BernieStateInst {
+  declare readonly components: PrefabInstance['components'] & { health: Health; timer: Timer; inspectable: Inspectable };
+  declare sg: ReturnType<typeof createBernieStateGraph>;
+  readonly big: boolean;
+  /** bernie_big.lua inst.bernieleader */
+  bernieleader?: BerniePlayer;
+  should_shrink?: boolean;
+  private readonly world: BernieWorld;
+  private readonly animstate: AnimState;
+  private readonly bernieBrain: BernieBrain | BernieBigBrain;
+  private readonly spawnedAt: number;
+  private readonly archive: string;
+  private readonly tasks = new Set<() => void>();
+
+  constructor(world: BernieWorld, big: boolean) {
+    super(big ? BERNIE_BIG_ID : BERNIE_ACTIVE_ID, new SpriteState({ name: 'idle_loop', billboard: true }));
+    this.world = world;
+    this.big = big;
+    this.spawnedAt = world.scheduler.now;
+    this.archive = big ? 'bernie_big.zip' : 'bernie.zip';
+    for (const tag of big ? ['largecreature', 'companion', 'soulless', 'crazy', 'bigbernie'] : ['smallcreature', 'companion', 'soulless']) this.addTag(tag);
+    this.addTag('inspectable');
+    if (big) this.setScale(.7);
+    const health = new Health(big ? BERNIE_BIG_HEALTH : BERNIE_HEALTH, this);
+    health.nofadeout = true;
+    const timer = new Timer(world.scheduler, () => {}, ['transform_cd']);
+    Object.assign(this.components, { health, timer, inspectable: new Inspectable(this) });
+
+    const clips = ['idle_loop', 'idle_loop_nodir', 'activate', 'deactivate', ...big ? ['deactivate_pst'] : []];
+    const lengths = new Map(clips.map(name => { const clip = animationTiming(this.archive, name); return [name, clip.frames / clip.frameRate]; }));
+    this.animstate = new AnimState(world.scheduler, lengths, event => this.sg?.pushEvent(event));
+    // The sprite follows the logical AnimState at once, so SetTime right after PlayAnimation lands on the new clip.
+    const stopSprite = this.animstate.animation.subscribe(({ name, loop }) => {
+      if (loop) this.sprite.start(name); else this.sprite.playOnce(name);
+    });
+    this.sg = big ? createBernieStateGraph(this, true, world.scheduler) : createBernieStateGraph(this, false, world.scheduler);
+    this.bernieBrain = big ? new BernieBigBrain(this, WORLD_SCALE) : new BernieBrain(this, WORLD_SCALE);
+    this.brain = this.bernieBrain;
+    this.bernieBrain.Start();
+    this.think();
+    this.onRemove(() => {
+      this.bernieBrain.Stop();
+      for (const cancel of [...this.tasks]) cancel();
+      this.sg.dispose();
+      stopSprite(); this.animstate.dispose();
+      timer.dispose(); health.dispose();
+    });
+  }
+
+  /** BrainManager: an awake Bernie's brain updates again once its tree's sleep time has passed. */
+  private think(): void {
+    if (this.isRemoved) return;
+    if (this.status.peek() === 'active') this.bernieBrain.tick(this.world.scheduler.now);
+    const sleep = this.bernieBrain.GetSleepTime();
+    this.doTaskInTime(Math.max(sleep ?? 1, FRAMES), () => this.think());
+  }
+
+  /** inst:DoTaskInTime, cancelled with the inst. */
+  doTaskInTime(seconds: number, fn: () => void): () => void {
+    const cancel = this.world.scheduler.schedule(seconds, () => { this.tasks.delete(cancel); if (!this.isRemoved) fn(); });
+    this.tasks.add(cancel);
+    return () => { cancel(); this.tasks.delete(cancel); };
+  }
+
+  // --- BernieStateInst ---------------------------------------------------------------------------
+
+  playAnimation(name: string, loop = false): void { this.animstate.PlayAnimation(name, loop); }
+  pushAnimation(name: string, loop = false): void { this.animstate.PushAnimation(name, loop); }
+  isCurrentAnimation(name: string): boolean { return this.animstate.animation.peek().name === name; }
+  getCurrentAnimationLength(): number { return this.animstate.length; }
+  setAnimationTime(seconds: number): void {
+    const clip = animationTiming(this.archive, this.animstate.animation.peek().name);
+    this.sprite.setFrame(Math.floor(seconds * clip.frameRate) % clip.frames);
+  }
+  setInvincible(invincible: boolean): void { this.components.health.SetInvincible(invincible); }
+
+  // --- BernieBrainInst ---------------------------------------------------------------------------
+
+  getTime(): number { return this.world.scheduler.now; }
+  random(): number { return Math.random(); }
+  getPlayers(): readonly BerniePlayer[] { return this.world.getPlayers(); }
+  isleadercrazy(leader: BerniePlayer): boolean { return isleadercrazy(leader); }
+  GetTimeAlive(): number { return this.world.scheduler.now - this.spawnedAt; }
+  /** health.lua OnSave, kept as the record's `{ current, maximum }`. */
+  OnSave(_inst: unknown, data: PlacementSaveRecord['components']): void {
+    const { health } = this.components;
+    data.health = { current: health.currenthealth, maximum: health.maxhealth };
+  }
+
+  /** health.lua OnLoad from the record; bernie_big.lua OnLoad then stands a loaded big Bernie idle instead of activating. */
+  OnLoad(_inst: unknown, data: PlacementSaveRecord['components']): void {
+    if (data.health) {
+      this.components.health.SetMaxHealth(data.health.maximum);
+      this.components.health.OnLoad({ health: data.health.current });
+    }
+    if (this.big) this.sg.goToState('idle');
+  }
+
+  /** bernie_big.lua onLeaderChanged; the skill tree speed, regen, health and allegiance branches are not ported. */
+  onLeaderChanged(leader: BerniePlayer): void { this.bernieleader = leader; }
+
+  /**
+   * bernie_active.lua / bernie_big.lua goinactive: the item takes Bernie's place, its skin without the form suffix.
+   * Health becoming the item's fuel and the transform_cd it carries are not ported, as the item has neither.
+   */
+  GoInactive(): ItemEntity | undefined {
+    const inactive = this.world.spawnInactive(this.position,
+      formSkin(this.skinId, this.big ? '_big' : '_active', ''));
+    if (inactive) this.remove();
+    return inactive;
+  }
+
+  /** bernie_active.lua gobig: a crazy Willow nearby turns Bernie into bernie_big, which records her as its leader. */
+  GoBig(leader: BerniePlayer): BernieInstance | undefined {
+    if (this.big || leader.bigbernies) return undefined;
+    const big = this.world.spawnPrefab(BERNIE_BIG_ID, this.position,
+      formSkin(this.skinId, '_active', '_big')) as BernieInstance | undefined;
+    if (!big) return undefined;
+    (leader.bigbernies = new Set()).add(big);
+    big.components.health.SetPercent(this.components.health.GetPercent());
+    big.onLeaderChanged(leader);
+    this.remove();
+    return big;
+  }
+}
+
+/** skinprefabs.lua: each form's skins share the item skin's build. */
+const formSkins = (suffix: '_active' | '_big') => Object.fromEntries(Object.entries(GROUND_ITEM_DEFINITIONS[BERNIE_ITEM_ID].skinArchives)
+  .map(([skin, archive]) => [`${skin}${suffix}`, archive]));
+
+/** The Prefabs bernie_active.lua and bernie_big.lua return. */
+export function berniePrefabs(world: BernieWorld): Readonly<Record<BernieCreatureId, PrefabEntityDefinition<BernieInstance>>> {
   return {
-    itemIds: [BERNIE_ITEM_ID],
-    create: (_item, entity) => createBernieGroundSprite(assets, context.bernieWorld, entity),
-    dispose: () => assets.dispose(),
+    [BERNIE_ACTIVE_ID]: {
+      fn: () => new BernieInstance(world, false),
+      assets: { animationArchive: 'bernie.zip', buildArchives: ['bernie_build.zip'], bank: 'bernie' },
+      skins: formSkins('_active'),
+      // MakeCharacterPhysics(inst, 50, .25)
+      physics: { make: (inst, rad) => MakeCharacterPhysics(inst, 50, rad), radius: .25 },
+      minimapIcon: 'bernie.png',
+    },
+    [BERNIE_BIG_ID]: {
+      fn: () => new BernieInstance(world, true),
+      assets: { animationArchive: 'bernie_big.zip', buildArchives: ['bernie_build.zip'], bank: 'bernie_big' },
+      skins: formSkins('_big'),
+      // MakeCharacterPhysics(inst, 500, .65)
+      physics: { make: (inst, rad) => MakeCharacterPhysics(inst, 500, rad), radius: .65 },
+      minimapIcon: 'bernie.png',
+    },
   };
 }

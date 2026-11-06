@@ -77,7 +77,7 @@ export class GroundItemManager {
     player: THREE.Object3D,
     butterflyWorld: ButterflyWorld = { getThreatPositions: () => [], getFlowers: () => [] },
     firefliesWorld: FirefliesWorld = {},
-    bernieWorld: BernieWorld = { getSanityPercent: () => 1 },
+    bernieWorld?: BernieWorld,
     entities = new ItemEntityRegistry(),
     scheduler?: GameTimeScheduler,
     fx?: GroundPrefabOptions['fx'],
