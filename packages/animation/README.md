@@ -46,15 +46,14 @@ const sprite = await createSharedArchiveSprite(assets, {
   animationArchive: 'moonglasspool_tile.zip',
   buildArchives: ['moonglasspool_tile.zip'],
   bank: 'moonglasspool_tile', animation: 'idle', loop: true,
-}, { name: 'grotto_pool_big' });
+}, { name: 'moonglasspool' });
 sprite.update(dt);
 sprite.dispose(); // 只释放本实例的资源
 assets.dispose(); // manager 的所有实例移除后，统一释放缓存几何、材质和纹理
 ```
 
 缓存按实际 clip、帧、build、皮肤、符号覆盖和隐藏配置区分；模型位置、播放进度、完成回调和私有颜色／透明度仍独立。
-共享的是不可变几何，调用方不要直接修改其顶点、UV、索引或释放它。`grotto_pool` 已使用此入口；
-仅需部分动画共享时，仍可用 `createArchiveSprite()` 的 `sharedAnimations: ['idle']`。
+共享的是不可变几何，调用方不要直接修改其顶点、UV、索引或释放它。仅需部分动画共享时，仍可用 `createArchiveSprite()` 的 `sharedAnimations: ['idle']`。
 
 ## Sprite 驻留
 

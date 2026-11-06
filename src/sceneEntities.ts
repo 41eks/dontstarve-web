@@ -44,7 +44,7 @@ import { StaffProjectileManager } from '@dontstarve-web/prefab/staff_projectile'
 import { CaveEntranceManager, CAVES_SHARD } from '@dontstarve-web/prefab/cave_entrance';
 import { CaveExitManager, MASTER_SHARD } from '@dontstarve-web/prefab/cave_exit';
 import type { WorldMigratorShard } from '../packages/componets/src/worldmigrator';
-import { GrottoPoolManager } from '@dontstarve-web/prefab/grotto_pool';
+import { grottoPoolPrefabs } from '@dontstarve-web/prefab/grotto_pool';
 import { mushroomPlantPrefabs } from '@dontstarve-web/prefab/mushroom_plant';
 import { MushtreeManager } from '@dontstarve-web/prefab/mushtree';
 import { MarbleShrubManager, MARBLESHRUB_ID } from '@dontstarve-web/prefab/marbleshrub';
@@ -314,7 +314,6 @@ export async function createSceneEntities(
     'marblebean_sapling': ReturnType<typeof registerMarbleBeanSaplings>;
     'rock_avocado_bush': ReturnType<typeof registerRockAvocadoBushes>;
     'rock_avocado_fruit_sprout_sapling': ReturnType<typeof registerRockAvocadoSaplings>;
-    'berrybush': ReturnType<typeof registerBerrybushes>;
     'grass': ReturnType<typeof registerGrasses>;
     'sapling': ReturnType<typeof registerSaplings>;
     'cave_fern': ReturnType<typeof registerCaveFerns>;
@@ -410,7 +409,7 @@ export async function createSceneEntities(
   Managers['marblebean_sapling'] = registerMarbleBeanSaplings(registry, 'marblebean_sapling', worldState);
   Managers['rock_avocado_bush'] = registerRockAvocadoBushes(registry, 'rock_avocado_bush', worldState);
   Managers['rock_avocado_fruit_sprout_sapling'] = registerRockAvocadoSaplings(registry, 'rock_avocado_fruit_sprout_sapling', worldState);
-  Managers['berrybush'] = registerBerrybushes(registry, 'berrybush', worldState);
+  registerBerrybushes(registry, 'berrybush', worldState);
   registerMonkeytails(registry, 'monkeytail', worldState);
   Managers['grass'] = registerGrasses(registry, 'grass', worldState);
   Managers['sapling'] = registerSaplings(registry, 'sapling', worldState);
@@ -479,7 +478,6 @@ export async function createSceneEntities(
     caveEntrances: Managers['cave_entrance'],
     mushtrees: Managers['mushtree'],
     mushroomPlants: Managers['mushroom_plant'],
-    grottoPools: Managers['grotto_pool'],
     marbleShrubs: Managers['marbleshrub'],
     skeletons: Managers['skeleton'],
     houndbones: Managers['houndbone'],
@@ -488,7 +486,6 @@ export async function createSceneEntities(
     dragonflySpawners: Managers['dragonfly_spawner'],
     marbleBeanSaplings: Managers['marblebean_sapling'],
     rockAvocadoBushes: Managers['rock_avocado_bush'],
-    berrybushes: Managers['berrybush'],
     grasses: Managers['grass'],
     saplings: Managers['sapling'],
     ponds: Managers['pond'],
@@ -855,24 +852,18 @@ export async function createSceneEntities(
   }
 
   function registerGrottoPools(registry: EntityRegistry, prefabId: 'grotto_pool', worldState: SceneWorldState) {
-    const grottoPools = new GrottoPoolManager(scene, {
+    prefabs.register(grottoPoolPrefabs({
       handEquipment: sceneInventory.handEquipment,
-      physics: world, scheduler: scheduler ?? worldState.scheduler, playerPosition: () => player.position,
+      scheduler: scheduler ?? worldState.scheduler,
       registerWaterfallPool: (position, radius, large) => worldState.soundPresentation.registerWaterfallPool(position, radius, large),
-      getWatchWorldContent: worldState.getWatchWorldContent, tickingarea: worldState.tickingarea, fx: Managers['world_fx'],
+      getWatchWorldContent: worldState.getWatchWorldContent,
+      fx: { spawn: (prefab, position) => Managers['world_fx'].spawn(prefab, position) },
       spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
-    });
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
-      restore: (id, record) => grottoPools.spawn(id, new THREE.Vector3(...record.transform.position), {
-        id: record.id, transform: record.transform, components: record.components,
-      }),
-      debugSpawn: id => grottoPools.spawn(id, player.position.clone()),
-      exportRecords: () => grottoPools.exportRecords(),
-      update: (dt, quaternion) => grottoPools.update(dt, quaternion),
-      renderEntities: () => grottoPools.renderEntities,
-      dispose: () => grottoPools.dispose(),
-    });
-    return grottoPools;
+      spawnPrefab: (id, position) => prefabs.spawn(id, position),
+      getEntity: entityId => prefabs.get(entityId),
+    }));
+    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+    return prefabs;
   }
 
   function registerCaveExits(registry: EntityRegistry, prefabId: 'cave_exit', worldState: SceneWorldState) {
@@ -1064,7 +1055,6 @@ export async function createSceneEntities(
       spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
     }));
     registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
-    return prefabs;
   }
 
   function registerMonkeytails(registry: EntityRegistry, prefabId: 'monkeytail', worldState: SceneWorldState) {
