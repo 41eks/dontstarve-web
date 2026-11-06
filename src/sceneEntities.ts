@@ -32,7 +32,7 @@ import { PrefabDisplayGroup } from '@dontstarve-web/display';
 import { PrefabEntityManager, PrefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import { staffCastingLightPrefabs } from '@dontstarve-web/prefab/staff_castinglight';
 import { staffLightPrefabs } from '@dontstarve-web/prefab/stafflight';
-import { BulbPlantManager } from '@dontstarve-web/prefab/bulb_plant';
+import { bulbPlantPrefabs } from '@dontstarve-web/prefab/bulb_plant';
 import { RockManager, moonglassRockPrefabs } from '@dontstarve-web/prefab/rocks';
 import { caveHolePrefabs } from '@dontstarve-web/prefab/cave_hole';
 import { pillarPrefabs } from '@dontstarve-web/prefab/pillar';
@@ -467,7 +467,6 @@ export async function createSceneEntities(
     buildingPlacement: Managers['buildings'],
     groundItems: Managers['ground_item'],
     flowerPlanting: Managers['flower'],
-    bulbPlants: Managers['bulb_plant'],
     beefalos: Managers['beefalo'],
     molehills: Managers['molehill'],
     rockManager: Managers['rocks'],
@@ -691,21 +690,12 @@ export async function createSceneEntities(
   }
 
   function registerBulbPlants(registry: EntityRegistry, prefabId: 'bulb_plant', worldState: SceneWorldState) {
-    const bulbPlants = new BulbPlantManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
-      scheduler, tickingarea: worldState.tickingarea, getWatchWorldContent: worldState.getWatchWorldContent,
-      getLightLevel: (model) => dstLighting.sampleLightLevel(model.position, model),
-    });
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
-      restore: (id, record) => bulbPlants.spawn(id, new THREE.Vector3(...record.transform.position), {
-        id: record.id, transform: record.transform, components: { bulbPlant: record.components.bulbPlant! },
-      }),
-      debugSpawn: (id) => bulbPlants.spawn(id, player.position.clone()),
-      exportRecords: () => bulbPlants.exportRecords(),
-      update: (dt, quaternion) => bulbPlants.update(dt, quaternion),
-      renderEntities: () => bulbPlants.renderEntities,
-      dispose: () => bulbPlants.dispose(),
-    });
-    return bulbPlants;
+    prefabs.register(bulbPlantPrefabs({
+      scheduler: scheduler ?? worldState.scheduler,
+      getLightLevel: model => dstLighting.sampleLightLevel(model.position, model),
+    }));
+    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+    return prefabs;
   }
 
   function registerStalagmites(registry: EntityRegistry, worldState: SceneWorldState) {
