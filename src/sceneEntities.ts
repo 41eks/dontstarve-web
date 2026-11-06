@@ -312,7 +312,6 @@ export async function createSceneEntities(
     'grass': ReturnType<typeof registerGrasses>;
     'sapling': ReturnType<typeof registerSaplings>;
     'cave_fern': ReturnType<typeof registerCaveFerns>;
-    'lichen': ReturnType<typeof registerLichens>;
     'cactus': ReturnType<typeof registerCacti>;
     'lava_pond': ReturnType<typeof registerLavaPonds>;
     'tumbleweed': ReturnType<typeof registerTumbleweeds>;
@@ -406,7 +405,7 @@ export async function createSceneEntities(
   Managers['grass'] = registerGrasses(registry, 'grass', worldState);
   Managers['sapling'] = registerSaplings(registry, 'sapling', worldState);
   Managers['cave_fern'] = registerCaveFerns(registry, 'cave_fern', worldState);
-  Managers['lichen'] = registerLichens(registry, 'lichen', worldState);
+  registerLichens(registry, 'lichen', worldState);
   Managers['cactus'] = registerCacti(registry, 'cactus', worldState);
   Managers['lava_pond'] = registerLavaPonds(registry, 'lava_pond', worldState);
 
@@ -1016,7 +1015,6 @@ export async function createSceneEntities(
       spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
     }));
     registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
-    return prefabs;
   }
 
   function registerCacti(registry: EntityRegistry, prefabId: 'cactus', worldState: SceneWorldState) {
