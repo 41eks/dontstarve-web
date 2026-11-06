@@ -69,7 +69,7 @@ import { saplingPrefabs } from '@dontstarve-web/prefab/sapling';
 import { pondPrefabs } from '@dontstarve-web/prefab/pond';
 import { marshPlantPrefabs } from '@dontstarve-web/prefab/marsh_plant';
 import { FireFxHost } from '@dontstarve-web/prefab/treeFire';
-import { HotspringManager } from '@dontstarve-web/prefab/hotspring';
+import { hotspringPrefabs } from '@dontstarve-web/prefab/hotspring';
 import { LavaPondManager, LAVA_POND_ID } from '@dontstarve-web/prefab/lava_pond';
 import { WormholeManager, WORMHOLE_ID } from '@dontstarve-web/prefab/wormhole';
 import { portalPrefabs } from '@dontstarve-web/prefab/portal';
@@ -316,7 +316,6 @@ export async function createSceneEntities(
     'cactus': ReturnType<typeof registerCacti>;
     'lava_pond': ReturnType<typeof registerLavaPonds>;
     'tumbleweed': ReturnType<typeof registerTumbleweeds>;
-    'hotspring': ReturnType<typeof registerHotsprings>;
     'wormhole': ReturnType<typeof registerWormholes>;
     'multiplayer_portal_moonrock': ReturnType<typeof registerPortals>;
     'nightmaregrowth': ReturnType<typeof registerNightmareGrowths>;
@@ -414,7 +413,7 @@ export async function createSceneEntities(
 
   const worldWind = worldState.worldwind;
   Managers['tumbleweed'] = registerTumbleweeds(registry, 'tumbleweed', worldState);
-  Managers['hotspring'] = registerHotsprings(registry, 'hotspring', worldState);
+  registerHotsprings(registry, 'hotspring', worldState);
   Managers['wormhole'] = registerWormholes(registry, 'wormhole', worldState);
   Managers['multiplayer_portal_moonrock'] = registerPortals(registry, 'multiplayer_portal_moonrock', worldState);
   Managers['nightmaregrowth'] = registerNightmareGrowths(registry, 'nightmaregrowth', worldState);
@@ -478,7 +477,6 @@ export async function createSceneEntities(
     saplings: Managers['sapling'],
     ponds: Managers['pond'],
     lavaPonds: Managers['lava_pond'],
-    hotsprings: Managers['hotspring'],
     tumbleweeds: Managers['tumbleweed'],
     wormholes: Managers['wormhole'],
     nightmareGrowths: Managers['nightmaregrowth'],
@@ -1102,19 +1100,13 @@ export async function createSceneEntities(
   }
 
   function registerHotsprings(registry: EntityRegistry, prefabId: 'hotspring', worldState: SceneWorldState) {
-    const hotsprings = new HotspringManager(scene, world, `${import.meta.env.BASE_URL}dst/data/anim`, worldState.tickingarea, { scheduler });
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
-      restore: (_, record) => hotsprings.spawn(new THREE.Vector3(...record.transform.position), {
-        id: record.id, transform: record.transform, components: { hotspring: record.components.hotspring },
-      }),
-      debugSpawn: () => hotsprings.spawn(player.position.clone().setY(0)),
-      exportRecords: () => hotsprings.exportRecords(),
-      update: (dt, quaternion) => hotsprings.update(dt, quaternion),
-      renderEntities: () => hotsprings.renderEntities,
-      dispose: () => hotsprings.dispose(),
-    });
-    return hotsprings;
+    prefabs.register(hotspringPrefabs({
+      scheduler: scheduler ?? worldState.scheduler,
+      fx: { spawn: (prefab, position) => Managers['world_fx'].spawn(prefab, position) },
+    }));
+    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
   }
+
 
   function registerWormholes(registry: EntityRegistry, prefabId: 'wormhole', _worldState: SceneWorldState) {
     const wormholes = new WormholeManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, () => [player.position]);

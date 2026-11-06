@@ -60,6 +60,16 @@ const FX_PREFABS = {
   yellow_leaves_chop: { archive: 'tree_leaf_fx_yellow.zip', bank: 'tree_leaf_fx', anim: 'chop', sound: 'dontstarve_DLC001/fall/leaf_rustle' },
   sanity_raise: { archive: 'blocker_sanity_fx.zip', bank: 'blocker_sanity_fx', anim: 'raise', opacity: .5 },
   sanity_lower: { archive: 'blocker_sanity_fx.zip', bank: 'blocker_sanity_fx', anim: 'lower', opacity: .5 },
+  // fx.lua crater_steam_fx1..4 / slow_steam_fx1..5 (hotspring.lua push_special_idle): bank = build, anim steam<N>, FinalOffset1.
+  crater_steam_fx1: { archive: 'crater_steam.zip', bank: 'crater_steam', anim: 'steam1', finalOffset: 1 },
+  crater_steam_fx2: { archive: 'crater_steam.zip', bank: 'crater_steam', anim: 'steam2', finalOffset: 1 },
+  crater_steam_fx3: { archive: 'crater_steam.zip', bank: 'crater_steam', anim: 'steam3', finalOffset: 1 },
+  crater_steam_fx4: { archive: 'crater_steam.zip', bank: 'crater_steam', anim: 'steam4', finalOffset: 1 },
+  slow_steam_fx1: { archive: 'slow_steam.zip', bank: 'slow_steam', anim: 'steam1', finalOffset: 1 },
+  slow_steam_fx2: { archive: 'slow_steam.zip', bank: 'slow_steam', anim: 'steam2', finalOffset: 1 },
+  slow_steam_fx3: { archive: 'slow_steam.zip', bank: 'slow_steam', anim: 'steam3', finalOffset: 1 },
+  slow_steam_fx4: { archive: 'slow_steam.zip', bank: 'slow_steam', anim: 'steam4', finalOffset: 1 },
+  slow_steam_fx5: { archive: 'slow_steam.zip', bank: 'slow_steam', anim: 'steam5', finalOffset: 1 },
 } as const satisfies Record<string, FxDefinition>;
 export type WorldFxPrefab = keyof typeof FX_PREFABS;
 
