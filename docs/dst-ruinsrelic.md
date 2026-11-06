@@ -23,10 +23,10 @@
 - 复制品 fn：`PlayAnimation("idle")`，非循环。没有 prefab OnSave、OnLoad、OnLoadPostPass 或 animover 监听。table/chair 的 onbuilt 回调在源码中为 `hit → PushAnimation("idle", false)`；四种装饰不注册该回调。
 - 天然完整版本 fn：先 `PlayAnimation("idle")`；table/chair/vase 的 `MakeRelic` 再 `PushAnimation("idle", false)`，其余三种再次 `PlayAnimation("idle")`。
 - 天然碎石版本 fn：先 `PlayAnimation("broken")`；`MakeRubble` 再 `PushAnimation("broken", false)`。仅 table/chair/vase 有碎石 prefab ID。
-- 天然版本没有 OnLoad / OnLoadPostPass。`OnPreLoad` 先恢复 `maxhealth`，再比较保存的 `rubble` 与构造值；发生切换时，`MakeRubble` / `MakeRelic` 按上述方式追加 `broken` / `idle`。随后 health 组件 OnLoad 恢复当前生命，不重新推断 rubble。构造时的动画声明不会被抹掉：完整 chair 加载 rubble 状态时声明 `idle → idle → broken`，碎石 vase 加载修复状态时声明 `broken → broken → idle`。
+- 天然版本没有 OnLoad / OnLoadPostPass。`OnPreLoad` 先恢复 `maxhealth`，再比较保存的 `rubble` 与构造值；发生切换时，`MakeRubble` / `MakeRelic` 按上述方式追加 `broken` / `idle`。随后 health 组件 OnLoad 恢复当前生命，不重新推断 rubble。构造时的动画声明按源追加：完整 chair 加载 rubble 状态时声明 `idle → idle → broken`，碎石 vase 加载修复状态时声明 `broken → broken → idle`；读档时美术尚未绘制，这段过渡按驻留规则直接结算到 `broken` / `idle`。
 - 源 `OnHit` 为 rubble 时 `repair → PushAnimation("broken", false)`，否则 `hit → PushAnimation("idle", false)`；动画版血量跌破一半时先 `repair` 再 `MakeRubble`；完全修复时先 `hit` 再 `MakeRelic`。这两个文件都没有 animover 删除或动画结束业务回调，所有上述 clip 均为非循环。
 
-动画、字段、tag 由 `RuinsRelicInstance` 同步声明。manager 仅共享一个 `SpriteResources`，将资源声明交给 `PrefabDisplay`，由其内部 `preloadSharedArchiveSprite()` / shared archive 路径执行加载。所有姿态和过渡使用 `instancedAnimations: 'all'`，没有改成循环。tile 休眠只释放 visual，唤醒重建并应用当前声明及皮肤，没有新增裁剪或可见性判断。未加载或休眠时的过渡按项目通用驻留规则结算，不保证精确帧进度。
+动画、字段、tag 由 `RuinsRelicInstance` 同步声明；`ruinsRelicPrefabs` 为 15 个 ID 声明 bank/build、`MakeObstaclePhysics` 半径和 `ruinsrelic_chair` 的两个皮肤，由应用层的 `PrefabEntityManager` 注册并交给其 display 加载。椅子的源 `SetFinalOffset(-1)` 声明为 `sprite.setBehindFoot(true)`，同一脚点上排在其他实体之前。所有姿态和过渡使用 `instancedAnimations: 'all'`，没有改成循环。tile 休眠只释放 visual，唤醒重建并应用当前声明及皮肤，没有新增裁剪或可见性判断。未加载或休眠时的过渡按项目通用驻留规则结算，不保证精确帧进度。
 
 ## Tags、组件和持久化
 

@@ -1,8 +1,5 @@
-import * as THREE from 'three';
-import type { World } from 'cannon-es';
-import { PrefabDisplay, PrefabDisplayGroup, SpriteResources, SpriteState } from '@dontstarve-web/display';
+import { prefabDisplay, SpriteState } from '@dontstarve-web/display';
 import type { ItemEntity } from '@dontstarve-web/inventory';
-import type { TileStateQuery } from '@dontstarve-web/signals';
 import { Health } from '../../componets/src/health';
 import { Combat } from '../../componets/src/combat';
 import { Workable } from '../../componets/src/workable';
@@ -13,11 +10,10 @@ import { Inspectable } from '../../componets/src/dragonflySignatures';
 import { RoseInspectable } from '../../componets/src/pandoraschestSignatures';
 import { Floater, FurnitureDecor, InventoryItemMoisture, Sittable } from '../../componets/src/ruinsrelicSignatures';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { PrefabInstance, bindInstance, type PrefabComponents } from './prefabInstance';
+import { PrefabInstance, type PrefabComponents, type PrefabEntityDefinition } from './prefabInstance';
 import { MakeObstaclePhysics } from './standardcomponents';
-import { watchTileActivity } from './tileActivity';
-import { newEntityId } from './saveRecord';
-import type { DisplayDrivenPrefabManager, DisplayManagerWorld } from './manager';
+import type { PlacementSaveRecord } from './saveRecord';
+import type { ReadonlyVector3 } from './transform';
 import { actionEntity } from './actionEntity';
 import type { WorldContext } from './worldContext';
 import { createStructureLootDropper } from './structureLoot';
@@ -38,19 +34,8 @@ export const RUINS_CHAIR_SKINS = {
 } as const;
 export interface RuinsRelicSaveState { rubble?: true; skinId?: keyof typeof RUINS_CHAIR_SKINS }
 export interface RelicMoistureSave { moisture?: number; wet?: true }
-export interface RuinsRelicRecord {
-  id: string;
-  transform: { position: [number, number, number]; rotationY: number };
-  components: {
-    ruinsRelic?: RuinsRelicSaveState;
-    health?: { current: number; maximum: number };
-    inventoryitemmoisture?: RelicMoistureSave;
-  };
-}
-export interface RuinsRelicWorld extends DisplayManagerWorld {
+export interface RuinsRelicWorld {
   scheduler: GameTimeScheduler;
-  tickingarea?: TileStateQuery;
-  physics?: World;
   fx?: WorldContext['fx'];
   dropLoot?: WorldContext['dropLoot'];
 }
@@ -96,17 +81,17 @@ export class RuinsRelicInstance extends PrefabInstance<SpriteState> {
   readonly name: RelicName;
   readonly animated: boolean;
   private rubble = false;
-  // Unimplemented moisture behaviour retains its source payload in the instance's save record.
-  declare saveRecord: RuinsRelicRecord | undefined;
-  constructor(prefabId: RuinsRelicId, world: RuinsRelicWorld, saved?: RuinsRelicRecord) {
+  constructor(prefabId: RuinsRelicId, world: RuinsRelicWorld, position: ReadonlyVector3) {
     const initialRubble = prefabId.startsWith('ruins_rubble_');
     super(prefabId, new SpriteState({ name: initialRubble ? 'broken' : 'idle', held: true, billboard: true }));
     this.worldServices = world;
     this.prefabId = prefabId;
     this.name = relicName(prefabId); this.replica = prefabId.startsWith('ruinsrelic_');
     this.animated = ['table', 'chair', 'vase'].includes(this.name);
-    this.entityId = saved?.id ?? newEntityId(); this.saveRecord = saved;
+    this.setPosition(position.x, 0, position.z);
     this.sprite.playOnce(initialRubble ? 'broken' : 'idle');
+    // ruinsrelic.lua and smashables.lua: a chair's AnimState:SetFinalOffset(-1).
+    if (this.name === 'chair') this.sprite.setBehindFoot(true);
     this.addTag('inspectable');
     Object.assign(this.components, { inspectable: Object.assign(new Inspectable(this), { nameoverride: 'relic' }),
       lootdropper: createStructureLootDropper(this) });
@@ -116,7 +101,6 @@ export class RuinsRelicInstance extends PrefabInstance<SpriteState> {
     this.onRemove(() => hauntable.dispose());
     if (this.replica) this.constructReplica();
     else this.constructNatural(world, initialRubble);
-    if (saved) this.load(saved);
   }
 
   private constructReplica(): void {
@@ -128,7 +112,6 @@ export class RuinsRelicInstance extends PrefabInstance<SpriteState> {
       Object.assign(this.components, { inventoryitem: new InventoryItem(this), floater: new Floater(this),
         furnituredecor: new FurnitureDecor(this), inventoryitemmoisture: new InventoryItemMoisture(this) });
     } else {
-      MakeObstaclePhysics(this, this.name === 'chair' ? .25 : .5);
       this.deploySmartRadius = this.name === 'chair' ? 1 : 1.6;
       if (this.name === 'chair') this.makeChair();
     }
@@ -136,7 +119,7 @@ export class RuinsRelicInstance extends PrefabInstance<SpriteState> {
   private constructNatural(world: RuinsRelicWorld, rubble: boolean): void {
     for (const tag of ['cavedweller', 'smashable', 'object', this.name === 'table' || this.name === 'chair' ? 'stone' : 'clay',
       'noauradamage', 'electricdamageimmune']) this.addTag(tag);
-    MakeObstaclePhysics(this, .25); this.minimap.SetIcon('relic.png');
+    this.minimap.SetIcon('relic.png');
     this.deploySmartRadius = this.name === 'table' ? 1.6 : ['chair', 'vase', 'bowl'].includes(this.name) ? 1 : .25;
     const health = new Health(90 + (Math.random() * 2 - 1) * 20, this);
     health.nofadeout = true; health.canheal = false;
@@ -190,63 +173,55 @@ export class RuinsRelicInstance extends PrefabInstance<SpriteState> {
     this.sprite.playOnce(this.rubble ? 'repair' : 'hit');
     this.sprite.pushAnimation(this.rubble ? 'broken' : 'idle', false);
   }
-  /** Source OnPreLoad applies maxhealth and switches rubble before health.OnLoad runs. */
-  private load(saved: RuinsRelicRecord): void {
-    if (this.replica) { this.skinId = saved.components.ruinsRelic?.skinId; return; }
-    const health = this.components.health!;
-    if (saved.components.health) health.SetMaxHealth(saved.components.health.maximum);
-    const rubble = saved.components.ruinsRelic?.rubble === true;
+  /**
+   * Source OnPreLoad applies maxhealth and switches rubble before health.OnLoad runs. The record keeps health as
+   * `{ current, maximum }`, which the component's own OnLoad leaves alone, so all three steps run here.
+   */
+  OnLoad(_inst: unknown, data: PlacementSaveRecord['components']): void {
+    if (this.replica) { this.skinId = data.ruinsRelic?.skinId; return; }
+    const health = this.components.health!, saved = data.health as { current: number; maximum: number } | undefined;
+    if (saved) health.SetMaxHealth(saved.maximum);
+    const rubble = data.ruinsRelic?.rubble === true;
     if (rubble !== this.rubble) this.setRubble(rubble);
-    if (saved.components.health) health.OnLoad({ health: saved.components.health.current });
+    if (saved) health.OnLoad({ health: saved.current });
   }
-  exportRecord(rotationY: number): RuinsRelicRecord {
+  /** ruinsrelic.lua has no OnSave; the skin and an unported moisture payload keep their record fields. smashables.lua saves rubble and health. */
+  OnSave(_inst: unknown, data: PlacementSaveRecord['components']): void {
     const health = this.components.health;
-    return { id: String(this.entityId), transform: { position: this.position.toArray(), rotationY }, components: {
-      ...this.replica ? {
-        ...this.skinId ? { ruinsRelic: { skinId: this.skinId as keyof typeof RUINS_CHAIR_SKINS } } : {},
-        ...this.saveRecord?.components.inventoryitemmoisture
-          ? { inventoryitemmoisture: { ...this.saveRecord.components.inventoryitemmoisture } } : {},
-      } : { ...this.rubble ? { ruinsRelic: { rubble: true as const } } : {},
-        health: { current: health!.currenthealth, maximum: health!.maxhealth } },
-    } };
+    for (const key of Object.keys(data)) delete (data as Record<string, unknown>)[key];
+    Object.assign(data, this.replica ? {
+      ...this.skinId ? { ruinsRelic: { skinId: this.skinId as keyof typeof RUINS_CHAIR_SKINS } } : {},
+      ...this.saveRecord?.components.inventoryitemmoisture
+        ? { inventoryitemmoisture: { ...this.saveRecord.components.inventoryitemmoisture } } : {},
+    } : { ...this.rubble ? { ruinsRelic: { rubble: true as const } } : {},
+      health: { current: health!.currenthealth, maximum: health!.maxhealth } });
   }
 }
 
-export class RuinsRelicManager implements DisplayDrivenPrefabManager<{ prefabId: RuinsRelicId; record: RuinsRelicRecord }> {
-  private readonly resources = new SpriteResources(undefined, 'ruinsrelic');
-  private readonly displays: PrefabDisplayGroup;
-  private readonly relics = new Map<THREE.Group, RuinsRelicInstance>();
-  private disposed = false;
-  private readonly world: RuinsRelicWorld;
-  constructor(scene: THREE.Scene, world: RuinsRelicWorld) { this.displays = new PrefabDisplayGroup(scene); this.world = world; }
-  spawn(id: RuinsRelicId, position: THREE.Vector3, saved?: RuinsRelicRecord): THREE.Group {
-    if (this.disposed) throw new Error('Relics disposed');
-    const instance = new RuinsRelicInstance(id, this.world, saved), bank = `ruins_${instance.name}`;
-    if (id === 'ruinsrelic_chair') instance.sprite.setSkinSource({ art: this.resources.archives, archives: RUINS_CHAIR_SKINS });
-    const display = new PrefabDisplay({ root: instance.transform.model, name: id, status: instance.status, sprite: instance.sprite,
-      archive: this.resources.archive({ bank, animationArchive: `${bank}.zip`, buildArchives: [`${bank}.zip`] },
-        { instancedAnimations: 'all' }) });
-    const model = display.model; bindInstance(model, instance);
-    instance.copyPosition(position); model.rotation.y = saved?.transform.rotationY ?? 0;
-    if (this.world.physics) instance.bindPhysics(this.world.physics);
-    const stop = watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active));
-    instance.onRemove(stop);
-    const entity = actionEntity(model, id);
-    if (id === 'ruinsrelic_chair') entity.reskinTarget = reskinTarget({
-      id: String(instance.entityId), prefabId: id, instance, display, sprite: instance.sprite,
-      skins: Object.keys(RUINS_CHAIR_SKINS), position: instance.position,
-      hasTag: tag => instance.hasTag(tag), isValid: () => !instance.isRemoved,
-    });
-    this.relics.set(model, instance); this.displays.mount(display); this.world.trackDisplay(display);
-    return model;
-  }
-  get renderEntities() { return [...this.relics].filter(([, inst]) => inst.sprite.loaded).map(([object, inst]) =>
-    ({ object, footPosition: inst.position, cameraDepth: 0, sortLayer: inst.name === 'chair' ? 0 : 1 })); }
-  exportRecords() { return [...this.relics].filter(([, inst]) => inst.persists && !inst.isRemoved)
-    .map(([model, inst]) => ({ prefabId: inst.prefabId, record: inst.exportRecord(model.rotation.y) })); }
-  dispose(): void {
-    if (this.disposed) return; this.disposed = true;
-    for (const inst of this.relics.values()) inst.remove();
-    this.relics.clear(); this.displays.dispose(); this.resources.dispose();
-  }
+/** The Prefabs ruinsrelic.lua and smashables.lua return: six replicas, six natural relics and three rubble pieces. */
+export function ruinsRelicPrefabs(world: RuinsRelicWorld): Readonly<Record<RuinsRelicId, PrefabEntityDefinition<RuinsRelicInstance>>> {
+  const define = (id: RuinsRelicId): PrefabEntityDefinition<RuinsRelicInstance> => {
+    const name = relicName(id), bank = `ruins_${name}`, replica = id.startsWith('ruinsrelic_');
+    // MakeObstaclePhysics: replica chair .25 and table .5; every natural relic .25; replica decor has inventory physics.
+    const radius = replica ? name === 'chair' ? .25 : name === 'table' ? .5 : undefined : .25;
+    const skins = id === 'ruinsrelic_chair' ? RUINS_CHAIR_SKINS : undefined;
+    return {
+      fn: position => new RuinsRelicInstance(id, world, position),
+      assets: { bank, animationArchive: `${bank}.zip`, buildArchives: [`${bank}.zip`] },
+      assetOptions: { instancedAnimations: 'all' },
+      ...radius === undefined ? {} : { physics: { make: MakeObstaclePhysics, radius } },
+      ...skins ? {
+        skins,
+        onSpawned: (inst: RuinsRelicInstance) => {
+          const model = inst.transform.model;
+          actionEntity(model, id).reskinTarget = reskinTarget({
+            get id() { return String(inst.entityId); }, prefabId: id, instance: inst, display: prefabDisplay(model)!,
+            sprite: inst.sprite, skins: Object.keys(RUINS_CHAIR_SKINS), get position() { return inst.position; },
+            hasTag: tag => inst.hasTag(tag), isValid: () => !inst.isRemoved,
+          });
+        },
+      } : {},
+    };
+  };
+  return Object.fromEntries(RUINS_RELIC_IDS.map(id => [id, define(id)])) as Record<RuinsRelicId, PrefabEntityDefinition<RuinsRelicInstance>>;
 }

@@ -117,6 +117,8 @@ export interface SpriteJson {
   readonly meshOrder?: number;
   /** An effect drawn on its owner's plane, a few depth steps towards the camera. */
   readonly depthOffset?: boolean;
+  /** AnimState:SetFinalOffset(-1) on a standalone entity: it sorts before what shares its foot point, such as a sitter. */
+  readonly behindFoot?: boolean;
   /** Height of the drawn sprite above the entity's foot point, such as thrown loot in the air. The transform stays on the ground. */
   readonly visualHeight?: number;
   readonly appearance: ReadonlyMap<string, AppearanceJson>;
@@ -175,6 +177,7 @@ export interface ArchiveSpriteCommands {
   setGround(renderOrder: number, flat?: boolean): void;
   setMeshOrder(order: number): void;
   setDepthOffset(enabled: boolean): void;
+  setBehindFoot(enabled: boolean): void;
   attachFx(key: string, fx: FxJson): void;
   detachFx(key: string): void;
   followAnimation(source: ReadonlySignal<string | number> | undefined): void;
@@ -377,6 +380,7 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
   setMeshOrder(meshOrder: number): void { this.write({ meshOrder }); }
   setVisualHeight(visualHeight: number): void { if (visualHeight !== (this.state.visualHeight ?? 0)) this.write({ visualHeight }); }
   setDepthOffset(depthOffset: boolean): void { this.write({ depthOffset }); }
+  setBehindFoot(behindFoot: boolean): void { if (behindFoot !== (this.state.behindFoot ?? false)) this.write({ behindFoot }); }
   setSymbolOverride(symbol: string, archive?: string, sourceSymbol?: string): void {
     this.withAppearance(`archive-symbol:${symbol}`, { kind: 'archive-symbol', symbol, archive, sourceSymbol });
   }

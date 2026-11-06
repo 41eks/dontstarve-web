@@ -113,6 +113,8 @@ export class PrefabDisplay {
 
   /** Ground declarations keep their explicit group order and do not join billboard foot sorting. */
   get hasGroundOrder(): boolean { return this.state.sprite.peek().ground !== undefined; }
+  /** The foot-point sort layer: 0 for a negative SetFinalOffset, otherwise the default. */
+  get sortLayer(): number | undefined { return this.state.sprite.peek().behindFoot ? 0 : undefined; }
 
   constructor(options: PrefabDisplayOptions) {
     const { archive, sprite: state } = options;

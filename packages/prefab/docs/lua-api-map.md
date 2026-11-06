@@ -59,6 +59,7 @@
 | `SetLayer(LAYER_BACKGROUND)` + `SetSortOrder` | `sprite.setGround(order, false)`、`setMeshOrder` | `molehill.ts`、`atrium_gate.ts` | order 是项目的渲染顺序，不是 Lua 的值 |
 | `SetFinalOffset`（正值） | `sprite.setDepthOffset(true)` | `world_fx.ts` | 不区分具体数值 |
 | `SetFinalOffset`（符号跟随者） | `attachFx` 的 `finalOffset` | `display/src/fxAttachments.ts` | 负值在宿主后，正值在宿主前 |
+| 独立实体的 `SetFinalOffset`（负值） | `sprite.setBehindFoot(true)` | `ruinsrelic.ts` | 同一脚点上排在其他实体之前（排序层 0），不区分具体数值 |
 | `Follower:FollowSymbol` | `sprite.followSymbol`、`attachFx` | `display/src/spriteState.ts` | |
 | `SetFourFaced`、`SetEightFaced` | `sprite.setFacing`、`setFacingRotation` | `lightflier.ts` | |
 | `SetSkin`、皮肤 | `sprite.setSkinSource`，换肤写 `inst.skinId` | `wormhole.ts` | 没有源皮肤就不做 |
@@ -98,4 +99,3 @@
 | `SetAddColour` | 没有对应声明 |
 | 整个实体的 `SetBloomEffectHandle` | 没有渲染路径，只有按符号的 `SetSymbolBloom` 近似 |
 | `SetLayer(LAYER_BELOW_GROUND)` | 没有对应声明；`setGround` 只覆盖背景层 |
-| 独立实体的 `SetFinalOffset`（负值） | 没有对应声明；只有跟随者支持 |

@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
-import { prefabDisplay } from '@dontstarve-web/display';
+import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { RuinsRelicManager, type RuinsRelicInstance, type RuinsRelicRecord } from '../../prefab/src/ruinsrelic';
-import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { ruinsRelicPrefabs, type RuinsRelicId, type RuinsRelicInstance } from '../../prefab/src/ruinsrelic';
+import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
+import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
 import { actionEntity } from '../../prefab/src/actionEntity';
 import { reskinEntity } from '../../prefab/src/reskin_tool';
 import { EntityRegistry } from '../../../src/entityRegistry';
@@ -19,24 +20,23 @@ import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
-const record = (components: RuinsRelicRecord['components']): RuinsRelicRecord => ({ id: 'saved-relic',
+const record = (components: PlacementSaveRecord['components']): PlacementSaveRecord => ({ id: 'saved-relic',
   transform: { position: [2, 0, -3], rotationY: .4 }, components });
 function setup() {
   vi.stubGlobal('window', new EventTarget());
   vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url)))));
   const scene = new THREE.Scene(), awake = createSignal(true), scheduler = new GameTimeScheduler();
-  const registry = new EntityRegistry(), inventory = createInventoryStore([]);
-  const manager = new RuinsRelicManager(scene, { scheduler, tickingarea: () => createMemo(() => awake.get()),
-    trackDisplay: display => registry.trackDisplay(display) });
-  registry.registerDisplayManager(PREFAB_DEFINITIONS.ruinsRelics, manager, {
-    restore: (id, saved) => manager.spawn(id, new THREE.Vector3(...saved.transform.position), saved),
-    debugSpawn: id => manager.spawn(id, new THREE.Vector3(12, 0, -6)),
-  });
+  const displays = new PrefabDisplayGroup(scene), inventory = createInventoryStore([]);
+  const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { tickingarea: () => createMemo(() => awake.get()) });
+  prefabs.register(ruinsRelicPrefabs({ scheduler }) as never);
+  const registry = new EntityRegistry([], prefabs, () => new THREE.Vector3(12, 0, -6), displays);
+  registry.registerPrefabs(PREFAB_DEFINITIONS.ruinsRelics);
+  const spawn = (id: RuinsRelicId, position: THREE.Vector3, saved?: PlacementSaveRecord) => prefabs.spawn(id, position, saved).transform.model;
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
-  return { scene, awake, registry, inventory, manager,
+  return { scene, awake, registry, inventory, prefabs, displays, spawn,
     save: () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(), elapsedSeconds: 0,
       playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG),
-    dispose() { registry.dispose(); inventory.dispose(); scheduler.dispose(); } };
+    dispose() { registry.dispose(); prefabs.dispose(); displays.dispose(); inventory.dispose(); scheduler.dispose(); } };
 }
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -44,19 +44,20 @@ it('loads source records through construction, OnPreLoad and health.OnLoad, reta
   const s = setup();
   try {
     // A naturally intact chair saved as rubble, and an originally rubble vase saved after repair.
-    const chair = s.manager.spawn('ruins_chair', new THREE.Vector3(2, 0, -3),
+    const chair = s.spawn('ruins_chair', new THREE.Vector3(2, 0, -3),
       record({ ruinsRelic: { rubble: true }, health: { current: 18, maximum: 90 } }));
-    const vase = s.manager.spawn('ruins_rubble_vase', new THREE.Vector3(2, 0, -3),
+    const vase = s.spawn('ruins_rubble_vase', new THREE.Vector3(2, 0, -3),
       { ...record({ health: { current: 95, maximum: 95 } }), id: 'repaired-vase' });
     const inst = prefabInstance(chair)!;
-    expect(inst.sprite.sprite.peek().clip).toMatchObject({ name: 'idle', loop: false });
-    expect(inst.sprite.sprite.peek().queue).toEqual([{ name: 'idle', loop: false }, { name: 'broken', loop: false }]);
+    // The load's idle -> broken transition settles while the art is not drawn yet.
+    expect(inst.sprite.sprite.peek().clip).toMatchObject({ name: 'broken', loop: false });
+    expect(inst.sprite.sprite.peek().queue).toEqual([]);
     expect(inst.components.health!.OnSave()).toMatchObject({ health: 18, maxhealth: 90 });
     for (const tag of ['cavedweller', 'smashable', 'object', 'stone', 'noauradamage', 'electricdamageimmune',
       'inspectable', 'repairable_stone', 'healthrepairable']) expect(inst.hasTag(tag)).toBe(true);
     expect(inst.hasTag('cansit')).toBe(false);
-    expect(prefabInstance(vase)!.sprite.sprite.peek().clip).toMatchObject({ name: 'broken', loop: false });
-    expect(prefabInstance(vase)!.sprite.sprite.peek().queue).toEqual([{ name: 'broken', loop: false }, { name: 'idle', loop: false }]);
+    expect(prefabInstance(vase)!.sprite.sprite.peek().clip).toMatchObject({ name: 'idle', loop: false });
+    expect(prefabInstance(vase)!.sprite.sprite.peek().queue).toEqual([]);
     await Promise.all([chair, vase].map(model => prefabDisplay(model)!.artLoaded()));
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/dst/data/anim/ruins_chair.zip'));
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/dst/data/anim/ruins_vase.zip'));
@@ -73,18 +74,20 @@ it('loads source records through construction, OnPreLoad and health.OnLoad, reta
 it('rebuilds a sleeping chair with its declared clip and skin using the shared display resources', async () => {
   const s = setup();
   try {
-    const model = s.manager.spawn('ruinsrelic_chair', new THREE.Vector3(2, 0, -3),
+    const model = s.spawn('ruinsrelic_chair', new THREE.Vector3(2, 0, -3),
       record({ ruinsRelic: { skinId: 'ruinsrelic_chair_tesla' } }));
     const inst = prefabInstance(model)!;
     await prefabDisplay(model)!.artLoaded();
-    const saved = s.manager.exportRecords(), clip = inst.sprite.sprite.peek().clip;
+    const saved = s.prefabs.exportRecords(), clip = inst.sprite.sprite.peek().clip;
     s.awake.set(false); await settle();
     expect(inst.sprite.loaded).toBe(false); expect(model.parent).toBeNull();
     s.awake.set(true); await settle(); await prefabDisplay(model)!.artLoaded();
     expect(model.parent).toBe(s.scene); expect(inst.sprite.loaded).toBe(true);
     expect(inst.sprite.sprite.peek().clip).toEqual(clip);
     expect(inst.skinId).toBe('ruinsrelic_chair_tesla');
-    expect(s.manager.exportRecords()).toEqual(saved);
+    // SetFinalOffset(-1): the chair sorts before what shares its foot point.
+    expect(s.displays.renderEntities.find(entry => entry.object === model)).toMatchObject({ sortLayer: 0 });
+    expect(s.prefabs.exportRecords()).toEqual(saved);
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/dst/data/anim/dynamic/ruinsrelic_chair_tesla.zip'));
   } finally { s.dispose(); }
 });

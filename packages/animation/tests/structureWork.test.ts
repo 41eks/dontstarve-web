@@ -103,9 +103,8 @@ it('hammers a replica decor through its real instance, declaring material FX bef
   const scheduler = new GameTimeScheduler(), calls: string[] = [];
   const collapse = vi.fn(() => { calls.push('collapse'); });
   const dropLoot = vi.fn(() => { calls.push('loot'); });
-  const inst = new RuinsRelicInstance('ruinsrelic_plate', { scheduler, trackDisplay() {},
-    fx: { spawn: vi.fn(), collapse }, dropLoot });
-  inst.setPosition(4, 0, -3);
+  const inst = new RuinsRelicInstance('ruinsrelic_plate', { scheduler, fx: { spawn: vi.fn(), collapse }, dropLoot },
+    new Vector3(4, 0, -3));
   inst.onRemove(() => { calls.push('remove'); });
   const worked = vi.fn(); inst.ListenForEvent('worked', worked);
   const worker = {};

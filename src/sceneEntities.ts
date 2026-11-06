@@ -1,5 +1,5 @@
 import { stalagmitePrefabs } from '@dontstarve-web/prefab/stalagmite';
-import { RuinsRelicManager, type RuinsRelicRecord } from '@dontstarve-web/prefab/ruinsrelic';
+import { ruinsRelicPrefabs } from '@dontstarve-web/prefab/ruinsrelic';
 import { LightFlierFlowerManager, type LightFlierFlowerRecord } from '../packages/prefab/src/lightflier_flower';
 import { MAX_PHYSICS_FRAME_TIME } from './physicsTiming';
 import { createMoleHabitat, molehillPrefabs, type MolehillInstance } from '../packages/prefab/src/molehill';
@@ -324,7 +324,6 @@ export async function createSceneEntities(
     'ruins_statue_mage_nogem': typeof prefabs;
     'ruins_statue_head': typeof prefabs;
     'ruins_statue_head_nogem': typeof prefabs;
-    'ruinsrelic': ReturnType<typeof registerRuinsRelics>;
     'atrium_statue': ReturnType<typeof registerAtriumStatue>;
     'chessjunk': ReturnType<typeof registerChessJunk>;
     'chesspiece_malbatross_marble': ReturnType<typeof registerChesspieces>;
@@ -424,7 +423,7 @@ export async function createSceneEntities(
   Managers['ruins_statue_mage_nogem'] = registerRuinsStatue(registry, 'ruins_statue_mage_nogem');
   Managers['ruins_statue_head'] = registerRuinsStatue(registry, 'ruins_statue_head');
   Managers['ruins_statue_head_nogem'] = registerRuinsStatue(registry, 'ruins_statue_head_nogem');
-  Managers['ruinsrelic'] = registerRuinsRelics(registry, worldState);
+  registerRuinsRelics(registry, worldState);
   Managers['atrium_statue'] = registerAtriumStatue(registry, 'atrium_statue', worldState);
   Managers['chessjunk'] = registerChessJunk(registry, 'chessjunk', worldState);
   Managers['chesspiece_malbatross_marble'] = registerChesspieces(registry, 'chesspiece_malbatross_marble', worldState);
@@ -1212,15 +1211,10 @@ export async function createSceneEntities(
   }
 
   function registerRuinsRelics(registry: EntityRegistry, worldState: SceneWorldState) {
-    const relics = new RuinsRelicManager(scene, { fx: Managers['world_fx'],
+    prefabs.register(ruinsRelicPrefabs({ fx: Managers['world_fx'],
       dropLoot: (items, position) => Managers['ground_item'].flingLoot(items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position),
-      scheduler: worldState.scheduler, tickingarea: worldState.tickingarea,
-      physics: world, trackDisplay: display => registry.trackDisplay(display) });
-    registry.registerDisplayManager(PREFAB_DEFINITIONS.ruinsRelics, relics, {
-      restore: (id, record) => relics.spawn(id, new THREE.Vector3(...record.transform.position), record as RuinsRelicRecord),
-      debugSpawn: id => relics.spawn(id, new THREE.Vector3(player.position.x, 0, player.position.z)),
-    });
-    return relics;
+      scheduler: worldState.scheduler }));
+    registry.registerPrefabs(PREFAB_DEFINITIONS.ruinsRelics);
   }
 
   function registerAtriumStatue(registry: EntityRegistry, prefabId: 'atrium_statue', worldState: SceneWorldState) {

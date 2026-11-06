@@ -38,11 +38,14 @@ export class PrefabDisplayGroup {
   }
 
   get renderEntities() {
-    const entries: ({ object: THREE.Group; footPosition: ReadonlyVector3; cameraDepth: number } | FxRenderEntry)[] = [];
+    const entries: ({ object: THREE.Group; footPosition: ReadonlyVector3; cameraDepth: number; sortLayer?: number } | FxRenderEntry)[] = [];
     for (const [display, footPosition] of this.awake) {
       const { model } = display;
       if (model.parent !== this.scene || !model.visible || display.isRemoved) continue;
-      if (!display.hasGroundOrder) entries.push({ object: model, footPosition, cameraDepth: 0 });
+      if (!display.hasGroundOrder) {
+        const sortLayer = display.sortLayer;
+        entries.push(sortLayer === undefined ? { object: model, footPosition, cameraDepth: 0 } : { object: model, footPosition, cameraDepth: 0, sortLayer });
+      }
       for (const entry of display.fxRenderEntries) entries.push(entry);
     }
     return entries;
