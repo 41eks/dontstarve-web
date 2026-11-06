@@ -18,6 +18,8 @@ export interface PickupDoer extends InventoryActor {
   readonly sg?: { HasStateTag(tag: string): boolean };
   /** TheWorld.Map, as ACTIONS.DEPLOY reaches it. */
   Map?: import('../../componets/src/deployable').DeployMap;
+  /** inst.SoundEmitter, as components play sounds on the doer (pickable:Fertilize). */
+  readonly SoundEmitter?: { PlaySound(path: import('../../prefab/src/sound').SoundEventPath): void };
   components: {
     inventory: InventoryStore;
     sanity?: { DoDelta(delta: number): void };

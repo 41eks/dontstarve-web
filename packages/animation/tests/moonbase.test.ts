@@ -17,10 +17,10 @@ import { configureMoonrockNugget } from '../../prefab/src/moonrocknugget';
 import { getMoonbaseState, MOONBASE_CHARGE_DURATION } from '../../prefab/src/moonbase';
 import * as sound from '../../prefab/src/sound';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
-import { getItemUseActions, ItemUseActionController, type ItemUseTarget } from '../../stategraphs/src/itemuse';
+import { activeItemUse } from './inventoryUseFixture';
+import { createInventoryStore } from '../../../src/inventory';
+import { cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
-import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
-import type { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { smallHash } from '../src/animationAssets';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Timer } from '../../componets/src/timer';
@@ -152,18 +152,17 @@ it('repairs with one moonrock and preserves a skinned, partly used staff through
     expect(trader.AcceptGift(staff, () => true)).toBe(false);
     const repairable = (findActionEntity(model)?.components ?? prefabInstance(model)!.components).repairable;
     expect(findActionEntity(model).hasTag('workrepairable')).toBe(true);
-    expect(repairable.Repair(staff, () => true)).toBe(false);
-    const consume = vi.fn(() => { rock.components.stackable.count--; return true; });
-    expect(repairable.Repair(rock, consume)).toBe(true);
-    expect(consume).toHaveBeenCalledOnce();
+    expect(repairable.Repair(undefined, staff)).toBe(false);
+    // repairable.lua removes one of the repair item's stack.
+    expect(repairable.Repair(undefined, rock)).toBe(true);
     expect(rock.components.stackable.count).toBe(1);
     expect(workable.workleft.peek()).toBe(6);
     expect(getMoonbaseState(model).phase.peek()).toBe('full');
     expect((findActionEntity(model)?.components ?? prefabInstance(model)!.components).repairable).toBeUndefined();
     expect(prefabInstance(model)!.sprite.currentAnimation).toBe('fix_full');
     expect(play).toHaveBeenLastCalledWith('dontstarve/common/together/moonbase/repair', model.position);
-    expect(repairable.Repair(rock, consume)).toBe(false);
-    expect(consume).toHaveBeenCalledOnce();
+    expect(repairable.Repair(undefined, rock)).toBe(false);
+    expect(rock.components.stackable.count).toBe(1);
 
     const take = vi.fn(() => true);
     expect(trader.AcceptGift(staff, take)).toBe(true);
@@ -209,7 +208,7 @@ it('charges through three source stages, restores the remaining timers and morph
   const { moon, getWatchWorldContent } = moonWorld(scheduler, false);
   const { placement, model } = await createMoonbase({ getWatchWorldContent, scheduler });
   const rock = new ItemEntity({ itemId: 'moonrocknugget', count: 1 }); configureMoonrockNugget(rock);
-  (findActionEntity(model)?.components ?? prefabInstance(model)!.components).repairable.Repair(rock, () => true);
+  (findActionEntity(model)?.components ?? prefabInstance(model)!.components).repairable.Repair(undefined, rock);
   scheduler.advance(0);
   const original = new ItemEntity({ entityId: 'charging_staff', itemId: 'yellowstaff', count: 1, skinId: 'starstaff_crystal', remainingUses: 7 });
   (findActionEntity(model)?.components ?? prefabInstance(model)!.components).trader.AcceptGift(original, () => true);
@@ -271,7 +270,7 @@ it('cancels charge on early retrieval or moonset, then starts fresh and releases
   const { cycle, getWatchWorldContent } = moonWorld(scheduler, true);
   const { placement, model } = await createMoonbase({ getWatchWorldContent, scheduler });
   const rock = new ItemEntity({ itemId: 'moonrocknugget', count: 1 }); configureMoonrockNugget(rock);
-  (findActionEntity(model)?.components ?? prefabInstance(model)!.components).repairable.Repair(rock, () => true);
+  (findActionEntity(model)?.components ?? prefabInstance(model)!.components).repairable.Repair(undefined, rock);
   scheduler.advance(0);
   const staff = new ItemEntity({ itemId: 'yellowstaff', count: 1 });
   const { trader, pickable } = (findActionEntity(model)?.components ?? prefabInstance(model)!.components);
@@ -316,38 +315,35 @@ it('persists paused named timers without ticking their snapshots and keeps expir
   timer.dispose(); restored.dispose(); scheduler.dispose();
 });
 
-it('walks to repair range, cancels before consumption, and commits REPAIR and GIVE at their source times', async () => {
+it('walks to the moonbase through the player controller, cancels before consumption, and commits REPAIR and GIVE at their source times', async () => {
   const { placement, world, model } = await createMoonbase();
-  const pointer = { trackPointer() {}, beginFrame() {}, endFrame() {}, raycastPointer: () => ({ object: model }), dispose() {} } as unknown as PointerRaycaster;
-  world.mouseActions = new PlayerActionPicker(pointer);
   const graph = new WilsonStateGraph({ playAnimation: () => .8, playSound() {}, stopSound() {}, onStateChanged() {} });
-  const animation = { stategraph: graph };
-  const locomotor = { destination: undefined, goToPoint: vi.fn(() => true), stop: vi.fn() };
-  const rock = new ItemEntity({ itemId: 'moonrocknugget', count: 1 }); configureMoonrockNugget(rock);
-  const staff = new ItemEntity({ itemId: 'yellowstaff', count: 1 });
-  let current = rock;
-  const take = vi.fn(() => true);
-  const source = () => { const entity = current; return { entity, isValid: () => current === entity, take }; };
+  const inventory = createInventoryStore([]);
+  inventory.add('moonrocknugget', 1); inventory.add('yellowstaff', 1);
   let manual = false;
-  const controller = new ItemUseActionController(world, animation.stategraph, locomotor, source, () => manual);
-  const target = findActionEntity(model) as ItemUseTarget;
+  const use = activeItemUse(world, graph, inventory, () => manual);
+  const target = findActionEntity(model)!, workable = (target.components ?? prefabInstance(model)!.components).workable!;
   try {
-    expect(getItemUseActions(model, source()).find(action => action.available)?.action.action).toBe('REPAIR');
-    expect(controller.request('REPAIR', target)).toBe(true);
-    controller.update(); expect(locomotor.goToPoint).toHaveBeenCalled();
-    expect(take).not.toHaveBeenCalled();
-    world.player.position.copy(model.position);
-    controller.update(); expect(graph.stateName).toBe('dolongaction');
-    graph.update(.5); manual = true; controller.update(); graph.update(1);
-    expect(take).not.toHaveBeenCalled(); expect((findActionEntity(model)?.components ?? prefabInstance(model)!.components).workable.GetWorkLeft()).toBe(4);
-    manual = false; expect(controller.request('REPAIR', target)).toBe(true); controller.update();
-    graph.update(.99); expect(take).not.toHaveBeenCalled();
-    graph.update(.01); expect(take).toHaveBeenCalledWith(true);
-    graph.finish(); controller.update(); current = staff;
-    expect(controller.request('GIVE', target)).toBe(true); controller.update();
+    expect(inventory.transfer(inventorySlotAddress(0), cursorSlotAddress(), 1)).toBe(true);
+    // componentactions.lua USEITEM.repairer is a right-click action.
+    expect(use.actions(target, true)).toEqual(['REPAIR']);
+    expect(use.actions(target)).not.toContain('REPAIR');
+    expect(use.useOn(target)).toBe(true); expect(use.walking).toBe(true);
+    use.arrive(); expect(graph.stateName).toBe('dolongaction');
+    graph.update(.5); manual = true; use.controller.update(); graph.update(1);
+    expect(inventory.GetActiveItem()?.prefab).toBe('moonrocknugget'); expect(workable.GetWorkLeft()).toBe(4);
+    manual = false; expect(use.useOn(target)).toBe(true); use.arrive();
+    graph.update(.99); expect(inventory.GetActiveItem()).not.toBeNull();
+    graph.update(.01); expect(inventory.GetActiveItem()).toBeNull(); expect(workable.GetWorkLeft()).toBe(6);
+    graph.finish(); use.controller.update();
+    // The trader's tag effect follows its Enable on the repaired moonbase.
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(inventory.transfer(inventorySlotAddress(1), cursorSlotAddress(), 1)).toBe(true);
+    const staff = inventory.GetActiveItem()!;
+    expect(use.useOn(target)).toBe(true); use.arrive();
     expect(graph.stateName).toBe('give'); graph.update(12 / 30);
-    expect(take).toHaveBeenCalledTimes(1);
-    graph.update(1 / 30); expect(take).toHaveBeenLastCalledWith(false);
+    expect(inventory.GetActiveItem()).toBe(staff);
+    graph.update(1 / 30); expect(inventory.GetActiveItem()).toBeNull();
     expect(getMoonbaseState(model).staff.peek()).toBe(staff);
-  } finally { controller.dispose(); world.mouseActions.dispose(); placement.dispose(); rock.destroy(); }
+  } finally { use.dispose(); graph.dispose(); placement.dispose(); inventory.dispose(); }
 });

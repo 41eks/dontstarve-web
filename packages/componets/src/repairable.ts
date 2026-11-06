@@ -3,7 +3,10 @@ import type { WorkInst, Workable } from './workable';
 import type { Repairer } from './repairer';
 import type { Health } from './health';
 
-export interface RepairItem { readonly components?: { repairer?: Repairer }; }
+export interface RepairItem {
+  readonly components?: { repairer?: Repairer; stackable?: { Consume(): boolean } };
+  remove?(): boolean;
+}
 
 /** repairable.lua's work and health branches. The inventory consumes one repair item. */
 export class Repairable {
@@ -37,11 +40,14 @@ export class Repairable {
     return !this.disposed.peek() && !this.inst.isRemoved && repairer?.repairmaterial === this.repairmaterial
       && (this.CanRepairWork() && repairer.workrepairvalue > 0 || !!this.health?.IsHurt() && repairer.healthrepairvalue > 0);
   }
-  Repair(item: RepairItem, consume: () => boolean): boolean {
-    if (!this.CanRepair(item) || !consume()) return false;
+  /** repairable.lua Repair(doer, repair_item): apply the repair, then remove one of the repair item's stack. */
+  Repair(_doer: unknown, item: RepairItem): boolean {
+    if (!this.CanRepair(item)) return false;
     const repairer = item.components!.repairer!;
     if (this.health?.IsHurt() && repairer.healthrepairvalue > 0) this.health.DoDelta(repairer.healthrepairvalue);
     else this.workable!.SetWorkLeft(this.workable!.GetWorkLeft() + repairer.workrepairvalue);
+    if (item.components?.stackable) item.components.stackable.Consume();
+    else item.remove?.();
     this.onrepaired?.();
     return true;
   }

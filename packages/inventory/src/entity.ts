@@ -161,6 +161,7 @@ export interface ItemComponents {
   weapon?: import('../../componets/src/weapon').Weapon;
   projectile?: import('../../componets/src/projectile').Projectile;
   repairer?: import('../../componets/src/repairer').Repairer;
+  occupier?: import('../../componets/src/occupiable').Occupier<ItemEntity>;
   fuel?: Fuel;
   tradable?: import('../../componets/src/tradable').Tradable;
   temperature?: Temperature;

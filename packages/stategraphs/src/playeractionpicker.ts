@@ -29,7 +29,6 @@ export class PlayerActionPicker {
   readonly pointer: PointerRaycaster;
   private readonly providers = new Set<(target: THREE.Object3D | undefined) => readonly MouseActionCandidate[]>();
   private readonly isEnabled: () => boolean;
-  private readonly activeItemSources = new Set<() => boolean>();
   private readonly placerSources = new Set<() => boolean>();
   private readonly eventActions = new WeakMap<PointerEvent, { actions: MouseActions; target?: THREE.Object3D }>();
   private selectedModel?: THREE.Object3D;
@@ -147,12 +146,6 @@ export class PlayerActionPicker {
     this.providers.add(provider);
     return () => { this.providers.delete(provider); };
   }
-  /** GetLeft/RightClickActions use the active inventory item before scene or equipped actions. */
-  registerActiveItemSource(source: () => boolean): () => void {
-    this.activeItemSources.add(source);
-    return () => { this.activeItemSources.delete(source); };
-  }
-
   /** PlayerController's build placer: while one is shown, a click places or cancels it instead of picking an action. */
   registerPlacer(source: () => boolean): () => void {
     this.placerSources.add(source);
@@ -183,8 +176,7 @@ export class PlayerActionPicker {
       this.selectedModel = target ?? undefined;
       const candidates = [...this.componentActions(target ?? undefined), ...[...this.providers].flatMap(provider => provider(target ?? undefined))];
       const filter = this.actionFilter;
-      const activeItem = !!this.player?.doer.components?.inventory?.GetActiveItem?.()
-        || [...this.activeItemSources].some(source => source());
+      const activeItem = !!this.player?.doer.components?.inventory?.GetActiveItem?.();
       const result: MouseActions = {};
       for (const button of ['left', 'right'] as const) {
         const available = candidates.filter(candidate => candidate.button === button && candidate.available !== false
@@ -206,5 +198,5 @@ export class PlayerActionPicker {
     } finally { this.pointer.endFrame(); }
   }
 
-  dispose(): void { this.player = undefined; this.providers.clear(); this.activeItemSources.clear(); this.placerSources.clear(); this.pointer.dispose(); }
+  dispose(): void { this.player = undefined; this.providers.clear(); this.placerSources.clear(); this.pointer.dispose(); }
 }

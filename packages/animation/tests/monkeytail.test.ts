@@ -15,7 +15,7 @@ import { inventorySlotAddress, cursorSlotAddress } from '../../inventory/src';
 import { createSignal } from '../../signals/src';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
-import { ItemUseActionController, getItemUseActions } from '../../stategraphs/src/itemuse';
+import { activeItemUse } from './inventoryUseFixture';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
@@ -125,7 +125,7 @@ it('spawns wild monkeytail, picks reeds, pauses in winter and reloads its discre
 
 it('plants cursor-held roots and fertilizes at frame six, preserves cancellation and saves exhausted transplanted plants', async () => {
   const s = setup(), restored = setup(), a = actor();
-  let deployment: ReturnType<typeof deployActor> | undefined, fertilizing: ItemUseActionController | undefined;
+  let deployment: ReturnType<typeof deployActor> | undefined, fertilizing: ReturnType<typeof activeItemUse> | undefined;
   try {
     // The ground-art fixture must not obstruct the cursor-held plant's deployment point.
     s.player.position.set(30, 0, 30);
@@ -164,20 +164,13 @@ it('plants cursor-held roots and fertilizes at frame six, preserves cancellation
     a.graph.update(1);
     expect(s.inventory.transfer(cursorSlotAddress(), inventorySlotAddress(0), 1)).toBe(true);
     expect(s.inventory.transfer(inventorySlotAddress(1), cursorSlotAddress(), 2)).toBe(true);
-    const fertilizerSource = () => {
-      const entity = s.inventory.getEntity(cursorSlotAddress())!;
-      return { entity, isValid: () => s.inventory.getEntity(cursorSlotAddress()) === entity && !entity.isRemoved,
-        take: () => { const item = s.inventory.extract(cursorSlotAddress(), 1, entity); if (!item) return false; item.remove(); return true; } };
-    };
-    fertilizing = new ItemUseActionController(s.world, a.animation.stategraph, a.locomotor, fertilizerSource);
-    expect(getItemUseActions(target.model, fertilizerSource()).some(candidate => candidate.action.action === 'FERTILIZE')).toBe(true);
-    expect(fertilizing.request('FERTILIZE', target.entity! as never)).toBe(true);
-    await new Promise(resolve => setTimeout(resolve, 0));
-    fertilizing.update(); a.graph.update(5 / 30); fertilizing.cancel(); a.graph.update(1);
+    fertilizing = activeItemUse(s.world, a.animation.stategraph, s.inventory);
+    expect(fertilizing.actions(target.entity!)).toEqual(['FERTILIZE']);
+    expect(fertilizing.useOn(target.entity!)).toBe(true);
+    fertilizing.arrive(); a.graph.update(5 / 30); fertilizing.controller.cancel(); a.graph.update(1);
     expect(pickable.IsBarren()).toBe(true); expect(s.inventory.count('poop')).toBe(2);
-    expect(fertilizing.request('FERTILIZE', target.entity! as never)).toBe(true);
-    await new Promise(resolve => setTimeout(resolve, 0));
-    fertilizing.update(); a.graph.update(6 / 30);
+    expect(fertilizing.useOn(target.entity!)).toBe(true);
+    fertilizing.arrive(); a.graph.update(6 / 30);
     expect(s.inventory.count('poop')).toBe(1);
     expect(pickable.IsBarren()).toBe(false); expect(pickable.remainingSeconds).toBe(MONKEYTAIL_REGROW_TIME);
     s.advance(MONKEYTAIL_REGROW_TIME);

@@ -13,7 +13,7 @@ import { GroundItemManager } from '../../prefab/src/groundItemManager';
 import { createInventoryStore } from '../../../src/inventory';
 import { cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
-import { ItemUseActionController, getItemUseActions } from '../../stategraphs/src/itemuse';
+import { activeItemUse } from './inventoryUseFixture';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { executeDebugCommand } from '../../../src/debugCommands';
@@ -73,14 +73,7 @@ function setup(tickingarea?: TileStateQuery, random?: () => number) {
 it('lights and heats a spring only after a cursor-held bath bomb is tossed in, then saves and reloads the state', async () => {
   const s = setup(), restored = setup();
   const graph = new WilsonStateGraph({ playAnimation: () => 1, playSound: () => {}, stopSound: () => {}, onStateChanged: () => {} });
-  const locomotor = { destination: undefined, goToPoint: vi.fn(() => true), stop: vi.fn() };
-  const source = () => {
-    const entity = s.inventory.getEntity(cursorSlotAddress());
-    if (!entity) return undefined;
-    return { entity, isValid: () => s.inventory.getEntity(cursorSlotAddress()) === entity && !entity.isRemoved,
-      take: () => { const item = s.inventory.extract(cursorSlotAddress(), 1, entity); if (!item) return false; item.remove(); return true; } };
-  };
-  let toss: ItemUseActionController | undefined;
+  let toss: ReturnType<typeof activeItemUse> | undefined;
   try {
     expect((await executeDebugCommand('c_give("bathbomb",2);c_spawn("hotspring")', s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
     expect(s.inventory.getItemSpec('bathbomb').maxStack).toBe(20);
@@ -95,16 +88,16 @@ it('lights and heats a spring only after a cursor-held bath bomb is tossed in, t
     expect(spring.sprite.currentAnimation).toBe('idle');
 
     expect(s.inventory.transfer(inventorySlotAddress(0), cursorSlotAddress(), 2)).toBe(true);
-    toss = new ItemUseActionController(s.world, graph, locomotor, source);
-    expect(getItemUseActions(model, source()).some(candidate => candidate.action.action === 'BATHBOMB')).toBe(true);
-    expect(toss.request('BATHBOMB', inst)).toBe(true);
-    toss.update(); graph.update(5 / 30);
+    toss = activeItemUse(s.world, graph, s.inventory);
+    expect(toss.actions(inst)).toEqual(['BATHBOMB']);
+    expect(toss.useOn(inst)).toBe(true);
+    toss.arrive(); graph.update(5 / 30);
     expect(s.inventory.get(cursorSlotAddress())?.count).toBe(2);
-    toss.cancel(); graph.update(1);
+    toss.controller.cancel(); graph.update(1);
     expect(heater.GetHeat()).toBe(45); expect(spring.hasTag('bathbombable')).toBe(true);
 
-    expect(toss.request('BATHBOMB', inst)).toBe(true);
-    toss.update(); graph.update(6 / 30);
+    expect(toss.useOn(inst)).toBe(true);
+    toss.arrive(); graph.update(6 / 30);
     expect(s.inventory.get(cursorSlotAddress())?.count).toBe(1);
     expect(heater.GetHeat()).toBe(90);
     expect(spring.hasTag('bathbombable')).toBe(false);
@@ -114,7 +107,7 @@ it('lights and heats a spring only after a cursor-held bath bomb is tossed in, t
     await s.tick(18);
     expect(spring.sprite.currentAnimation).toBe('glow_loop');
     // A bombed spring refuses a second bomb.
-    expect(getItemUseActions(model, source()).some(candidate => candidate.action.action === 'BATHBOMB')).toBe(false);
+    expect(toss.actions(inst)).toEqual([]);
 
     let json = '';
     expect(await executeDebugCommand('c_save()', s.inventory, undefined, () => { json = s.save(); })).toMatchObject({ ok: true });

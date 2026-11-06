@@ -45,7 +45,7 @@ export function configureBirdEntity(entity: ItemEntity): void {
   // SGbird's stunned state allows pickup; the stunned ground pose is the only ground form ported.
   entity.components.inventoryitem.canbepickedup = true;
   entity.components.inventoryitem.canbepickedupalive = true;
-  const occupier = entity.component('occupier', () => new Occupier<ItemEntity>());
+  const occupier = entity.components.occupier = entity.component('occupier', () => new Occupier<ItemEntity>());
   const perishable = entity.components.perishable;
   perishable.perishfn = () => onperish(entity);
   // In a holder or a cage the bird starves; MakeSmallPerishableCreature stops it on the ground.

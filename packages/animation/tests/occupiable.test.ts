@@ -12,6 +12,11 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { batch, createSignal, type WorldPhase } from '../../signals/src';
 import { createPerishWorld } from './perishWorldFixture';
+import * as THREE from 'three';
+import { createInventoryStore } from '../../../src/inventory';
+import { cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
+import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
+import { activeItemUse } from './inventoryUseFixture';
 
 function createBird(prefab = 'canary') {
   const perishWorld = createPerishWorld();
@@ -89,6 +94,35 @@ describe('caged birds', () => {
     expect(playOnce).not.toHaveBeenCalled();
     bird.destroy();
     scheduler.dispose();
+  });
+
+  it('stores the cursor-held bird itself through USEITEM.occupier and ACTIONS.STORE at the short-action frame', () => {
+    vi.stubGlobal('window', new EventTarget());
+    const scheduler = new GameTimeScheduler();
+    const instance = new PrefabInstance('birdcage', new SpriteState({ name: 'idle_empty' }));
+    const cage = new Birdcage(instance, { scheduler, cycle: createSignal<WorldPhase>('day') } as unknown as WorldContext, undefined, () => .9);
+    const inventory = createInventoryStore([]);
+    const graph = new WilsonStateGraph({ playAnimation: () => 1, playSound() {}, stopSound() {}, onStateChanged() {} });
+    const world = { scene: new THREE.Scene(), player: new THREE.Object3D(), renderer: { domElement: new EventTarget() } };
+    const use = activeItemUse(world, graph, inventory);
+    try {
+      inventory.add('canary', 1); inventory.add('rocks', 1);
+      expect(inventory.transfer(inventorySlotAddress(1), cursorSlotAddress(), 1)).toBe(true);
+      expect(use.actions(instance)).not.toContain('STORE');
+      expect(inventory.transfer(cursorSlotAddress(), inventorySlotAddress(1), 1)).toBe(true);
+      expect(inventory.transfer(inventorySlotAddress(0), cursorSlotAddress(), 1)).toBe(true);
+      const bird = inventory.GetActiveItem()!;
+      expect(use.actions(instance)).toEqual(['STORE']);
+      expect(use.useOn(instance)).toBe(true);
+      expect(use.controller.bufferedAction?.action).toBe('STORE');
+      use.arrive(); graph.update(5 / 30);
+      expect(inventory.GetActiveItem()).toBe(bird);
+      graph.update(1 / 30);
+      expect(inventory.GetActiveItem()).toBeNull();
+      expect(cage.occupiable!.GetOccupant()).toBe(bird);
+      expect(bird.isRemoved).toBe(false);
+      expect(instance.hasTag('occupied')).toBe(true);
+    } finally { use.dispose(); graph.dispose(); instance.remove(); inventory.dispose(); scheduler.dispose(); vi.unstubAllGlobals(); }
   });
 
   it('starve at the cage rate, not the ground rate, and a ground bird does not starve at all', () => {

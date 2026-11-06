@@ -143,6 +143,48 @@ export const ACTION_FNS: Readonly<Partial<Record<string, ActionFns>>> = {
       }, act.doer);
     },
   },
+  // The crop, grower, quagmire and doer's fertilizable branches are not ported, nor CHEVO_fertilized.
+  FERTILIZE: {
+    fn: act => {
+      const fertilizer = entity(act.invobject)?.components.fertilizer, pickable = entity(act.target)?.components.pickable;
+      if (!fertilizer || !pickable?.CanBeFertilized() || !pickable.Fertilize(act.invobject as ItemEntity, act.doer)) return false;
+      fertilizer.OnApplied(act.doer, act.target);
+      return true;
+    },
+  },
+  BATHBOMB: {
+    fn: act => {
+      const bathbombable = entity(act.target)?.components.bathbombable, bathbomb = entity(act.invobject)?.components.bathbomb;
+      if (!bathbomb || !bathbombable?.can_be_bathbombed) return false;
+      bathbombable.OnBathBombed(act.invobject, act.doer);
+      playerDoer(act).components.inventory.RemoveItem(act.invobject as ItemEntity)?.remove();
+      return true;
+    },
+  },
+  // The heavy-lifting body material and the forgerepairable branch are not ported.
+  REPAIR: {
+    fn: act => {
+      const repairable = entity(act.target)?.components.repairable, material = act.invobject as ItemEntity | undefined;
+      return !!repairable && !!material?.components.repairer && repairable.Repair(act.doer, material);
+    },
+  },
+  // The shaveable branch is not ported.
+  SHAVE: {
+    fn: act => {
+      const shavee = (act.target ?? act.doer) as ComponentActionEntity | undefined;
+      if (!act.invobject || !entity(act.invobject)?.components.shaver || !shavee?.components.beard) return false;
+      return shavee.components.beard.Shave(act.doer).ok;
+    },
+  },
+  // Only the occupier branch is ported; container stores go through the container panels.
+  STORE: {
+    fn: act => {
+      const item = act.invobject as ItemEntity | undefined, occupiable = entity(act.target)?.components.occupiable;
+      if (!item?.components.occupier || !occupiable?.CanOccupy(item)) return false;
+      // inventoryitem:RemoveFromOwner(): the same inst leaves the doer's inventory.
+      return occupiable.Occupy(playerDoer(act).components.inventory.RemoveItem(item));
+    },
+  },
   FEED: {
     fn: act => {
       const item = act.invobject as ItemEntity | undefined, eater = entity(act.target)?.components.eater;

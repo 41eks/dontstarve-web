@@ -7,6 +7,7 @@ import { setModelTag, modelHasTag, prefabInstance } from '../prefabInstance';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import type { Burnable } from '../../../componets/src/burnable';
 import type { Witherable } from '../../../componets/src/witherable';
+import type { SoundEventPath } from '../sound';
 
 /** EntityScript services used by pickable.lua; components and tags stay on the inst. */
 export interface PickableInst {
@@ -167,9 +168,13 @@ export class Pickable implements PickableComponent {
     });
   }
 
-  Fertilize(fertilizer: { components?: { fertilizer?: { withered_cycles: number } } }): boolean {
+  /** pickable.lua Fertilize(fertilizer, doer): the doer's SoundEmitter plays the fertilizer's fertilize_sound. */
+  Fertilize(fertilizer: { components?: { fertilizer?: { withered_cycles: number; readonly fertilize_sound?: SoundEventPath } } },
+    doer?: { readonly SoundEmitter?: { PlaySound(path: SoundEventPath): void } }): boolean {
     if (!this.CanBeFertilized()) return false;
     this.inst.components.burnable?.StopSmoldering();
+    const sound = fertilizer.components?.fertilizer?.fertilize_sound;
+    if (sound !== undefined) doer?.SoundEmitter?.PlaySound(sound);
     batch(() => {
       this.cycles.set(this.maxCycles);
       const witherable = this.inst.components.witherable;

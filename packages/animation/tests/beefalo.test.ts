@@ -15,6 +15,10 @@ import { bindInstance, PrefabInstance } from '../../prefab/src/prefabInstance';
 import { setSpriteEntityRenderOrder } from '../src/renderOrder';
 import type { SpriteController } from '../src/sprite';
 import { Pathfinder } from '../../prefab/src/pathfinder';
+import { createInventoryStore } from '../../../src/inventory';
+import { cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
+import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
+import { activeItemUse } from './inventoryUseFixture';
 
 const OPEN_GROUND = { isPassableAtPoint: () => true, isOceanAtWorld: () => false };
 
@@ -219,7 +223,21 @@ describe('wild beefalo behavior', () => {
     expect(s.controller.sleeper.IsAsleep()).toBe(true);
     s.complete();
     expect(s.controller.beard.bits.peek()).toBe(3);
-    expect(s.controller.beard.Shave(undefined)).toEqual({ ok: true });
+    // A cursor-held razor: USEITEM.shaver offers SHAVE and SGwilson's shave state commits it after one second.
+    vi.stubGlobal('window', new EventTarget());
+    const inventory = createInventoryStore([]);
+    const graph = new WilsonStateGraph({ playAnimation: () => 1, playSound() {}, stopSound() {}, onStateChanged() {} });
+    const use = activeItemUse({ player: new THREE.Object3D(), renderer: { domElement: new EventTarget() } }, graph, inventory);
+    inventory.add('razor', 1);
+    expect(inventory.transfer(inventorySlotAddress(0), cursorSlotAddress(), 1)).toBe(true);
+    const razor = inventory.GetActiveItem();
+    expect(use.actions(findActionEntity(s.model)!)).toEqual(['SHAVE']);
+    expect(use.useOn(findActionEntity(s.model)!)).toBe(true);
+    use.arrive(); expect(graph.stateName).toBe('shave');
+    graph.update(.9); expect(s.controller.beard.bits.peek()).toBe(3);
+    graph.update(.1);
+    expect(inventory.GetActiveItem()).toBe(razor);
+    use.dispose(); graph.dispose(); inventory.dispose(); vi.unstubAllGlobals();
     expect(s.world.spawnPrize).toHaveBeenCalledExactlyOnceWith('beefalowool', 3, expect.objectContaining({ x: s.model.position.x, z: s.model.position.z }));
     expect(s.controller.state).toBe('shaved');
     await new Promise(resolve => setTimeout(resolve, 0));

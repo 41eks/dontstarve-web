@@ -3,7 +3,7 @@ import { clockstate, createMemo, readonlySignal, type EventEmitter, type GetWatc
 import { cursorSlotAddress, equipmentSlotAddress, inventorySlotAddress, type InventoryStore, type InventoryStack } from '@dontstarve-web/inventory';
 import { createChestInventoryPanel, type mountGameUi, type SlotAddress, type SlotItem } from '@dontstarve-web/ui';
 import {
-  PlayerController, ItemUseActionController,
+  PlayerController,
   type PickupDoer, type PlayerLocomotor, type PlayerActionEvents,
 } from '@dontstarve-web/stategraphs';
 import type { ScreenProjection } from '@dontstarve-web/display';
@@ -130,21 +130,6 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
           screenProjection.GetScreenPos(new Vector3(source.x, source.y, source.z)))(received);
       });
       if (playerAnimation) {
-        const itemUse = new ItemUseActionController(view, playerAnimation.stategraph, locomotor, () => {
-          const address = cursorSlotAddress(), entity = inventory.getEntity(address);
-          if (!entity) return undefined;
-          const skin = entity.skinId;
-          const isValid = () => !entity.isRemoved && inventory.getEntity(address) === entity && entity.skinId === skin;
-          return { entity, isValid,
-            take: (deleteItem: boolean) => {
-            if (!isValid()) return false;
-            const item = inventory.extract(address, 1, entity);
-            if (!item) return false;
-            if (deleteItem) inventory.entities.destroy(item);
-            return true;
-          } };
-        }, isActionInterrupting);
-        frameControllers.push(itemUse);
         // sleepingbaguser.lua on the player: per-tick hunger, sanity and health while in a bed.
         const phase = createMemo(() => clockstate.get().phase);
         const sleeper = new SleepingBagUser({

@@ -92,6 +92,8 @@ function strfn(act: ActionDescription): string | undefined {
     case 'EAT': return act.invobject?.hasTag('fooddrink') ? 'DRINK' : undefined;
     case 'RUMMAGE': return act.doer && target?.components?.container?.IsOpenedBy(act.doer) ? 'CLOSE' : undefined;
     case 'HARVEST': return target?.prefab === 'birdcage' ? 'FREE' : undefined;
+    // The stewer COOK / SPICE and decoratable branches are not ported.
+    case 'STORE': return target?.prefab === 'birdcage' ? 'IMPRISON' : undefined;
     case 'TAKEITEM': return target?.prefab === 'birdcage' ? 'BIRDCAGE' : 'GENERIC';
     case 'BLINK': {
       const doer = act.doer as { hasTag?(tag: string): boolean; _freesoulhop_counter?: number } | undefined;

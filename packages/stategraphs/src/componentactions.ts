@@ -27,7 +27,7 @@ export interface ComponentActionEntity extends WorkInst {
     edible?: import('../../componets/src/edible').Edible;
     fuel?: import('../../componets/src/fuel').Fuel;
     farmplantable?: import('../../componets/src/farmplantable').FarmPlantable;
-    pickable?: { CanBeFertilized(): boolean; Fertilize(item: import('../../componets/src/trader').TradeItem): boolean };
+    pickable?: { CanBeFertilized(): boolean; Fertilize(item: import('../../componets/src/trader').TradeItem, doer?: unknown): boolean };
     workable?: Workable;
     tool?: Tool;
     spellcaster?: SpellCasterComponent;
@@ -37,6 +37,10 @@ export interface ComponentActionEntity extends WorkInst {
     burnable?: Burnable;
     propagator?: Propagator;
     bathbombable?: import('../../componets/src/bathbombable').BathBombable;
+    bathbomb?: import('../../componets/src/bathbomb').BathBomb;
+    fertilizer?: import('../../componets/src/fertilizer').Fertilizer;
+    shaver?: import('../../componets/src/shaver').Shaver;
+    occupier?: object;
     heater?: import('../../componets/src/heater').Heater;
     beard?: import('../../componets/src/beard').Beard;
     health?: import('../../componets/src/health').Health;
@@ -49,7 +53,7 @@ export interface ComponentActionEntity extends WorkInst {
       TakeFuelItem(item: import('../../componets/src/fuel').FuelItem, doer?: unknown): boolean;
     };
     trader?: import('../../componets/src/trader').Trader<import('../../componets/src/trader').TradeItem>;
-    occupiable?: { readonly occupanttype: string | undefined; CanOccupy(item: any): boolean; Occupy(item: any): boolean };
+    occupiable?: { CanOccupy(item: any): boolean; Occupy(item: any): boolean };
   };
 }
 
@@ -94,7 +98,13 @@ export interface EquippedActionDoer {
   readonly Map?: import('../../componets/src/deployable').DeployMap;
 }
 export type EquippedAction = ToolAction | 'CASTSPELL' | 'LIGHT' | 'ATTACK' | 'FISH' | 'REEL' | 'TERRAFORM' | 'TILL' | 'DEPLOY' | 'DEPLOY_TILEARRIVE';
-export type UseItemAction = 'GIVE' | 'FEED' | 'ADDFUEL' | 'ADDWETFUEL' | 'PLANTSOIL';
+export type UseItemAction = 'GIVE' | 'FEED' | 'ADDFUEL' | 'ADDWETFUEL' | 'PLANTSOIL' | 'FERTILIZE' | 'BATHBOMB' | 'REPAIR'
+  | 'SHAVE' | 'STORE';
+/** constants.lua MATERIALS: the repairable_<material> tags USEITEM.repairer looks for. */
+const MATERIALS = ['wood', 'stone', 'hay', 'thulecite', 'gem', 'gears', 'moonrock', 'ice', 'carrot', 'sculpture', 'fossil',
+  'moon_altar', 'kelp', 'shell', 'nightmare', 'dreadstone', 'salt', 'vitae'] as const;
+/** constants.lua OCCUPANTTYPE. */
+const OCCUPANTTYPE = ['bird'] as const;
 export type InventoryAction = 'EAT' | 'PLAY' | 'READ';
 type InventoryFn = (inst: ComponentActionEntity, doer: SceneActionDoer, actions: InventoryAction[], right: boolean) => void;
 type UseItemFn = (inst: ComponentActionEntity, doer: SceneActionDoer, target: ComponentActionEntity,
@@ -133,6 +143,35 @@ export const COMPONENT_ACTIONS: {
     instrument: (_inst, _doer, actions) => { actions.push('PLAY'); },
   },
   USEITEM: {
+    // The rider gates of these entries are not ported: no doer has a mount.
+    bathbomb: (inst, _doer, target, actions) => {
+      if (inst.hasTag('bathbomb') && target.hasTag('bathbombable')) actions.push('BATHBOMB');
+    },
+    // The doer's self_fertilizable branch is not ported.
+    fertilizer: (_inst, _doer, target, actions) => {
+      if ((target.hasTag('notreadyforharvest') && !target.hasTag('withered')) || target.hasTag('fertile')
+        || target.hasTag('infertile') || target.hasTag('barren') || target.hasTag('fertilizable')) actions.push('FERTILIZE');
+    },
+    occupier: (inst, _doer, target, actions) => {
+      for (const type of OCCUPANTTYPE) {
+        if (target.hasTag(`${type}_occupiable`) && inst.hasTag(type)) { actions.push('STORE'); return; }
+      }
+    },
+    // The heavy-lifting gate and the freshen_ branch are not ported.
+    repairer: (inst, _doer, target, actions, right) => {
+      if (!right) return;
+      for (const material of MATERIALS) {
+        if (!target.hasTag(`repairable_${material}`)) continue;
+        if ((inst.hasTag(`work_${material}`) && target.hasTag('workrepairable'))
+          || (inst.hasTag(`health_${material}`) && target.hasTag('healthrepairable'))
+          || (inst.hasTag(`finiteuses_${material}`) && target.hasTag('finiteusesrepairable'))) actions.push('REPAIR');
+        return;
+      }
+    },
+    // The unwrappable PEEKBUNDLE branch is not ported.
+    shaver: (_inst, doer, target, actions) => {
+      if (target.hasTag('bearded') && (!target.hasTag('spiderden') || doer.hasTag('spiderwhisperer'))) actions.push('SHAVE');
+    },
     tradable: (_inst, _doer, target, actions) => {
       if (target.hasTag('trader') && !['player', 'ghost', 'possessedbody'].some(tag => target.hasTag(tag))) actions.push('GIVE');
     },

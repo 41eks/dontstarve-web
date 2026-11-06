@@ -12,7 +12,6 @@ export type { ActionWorldContext, ActionLocomotor, CursorLabel } from './actionC
 export { bindActionCancellation } from './actionEvents.ts';
 export type { PlayerActionEvents, PlayerActionKind, ActionInterruptReason } from './actionEvents.ts';
 export * from './pick.ts';
-export * from './itemuse.ts';
 export * from './rummage.ts';
 export * from './pickup.ts';
 export * from './reskin_tool.ts';

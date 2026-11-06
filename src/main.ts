@@ -131,6 +131,7 @@ const pickupDoer: PickupDoer & WortoxDoer & { sg: NonNullable<PickupDoer['sg']> 
   GetPosition: () => player.position,
   getPosition: () => player.position,
   position: player.position,
+  get SoundEmitter() { return playerInstance.SoundEmitter; },
   sg: {
     HasStateTag: tag => playerAnimation?.stategraph.hasStateTag(tag) ?? false,
     // SGwilson portal_jumpin_pre for ACTIONS.BLINK / BLINK_MAP.
