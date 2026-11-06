@@ -60,7 +60,7 @@ export interface SavedEntity {
     mushroom?: { rain: number };
     /** cave_fern.lua OnSave: data.anim. */
     variant?: { anim: string };
-    caveinBoulder?: import('@dontstarve-web/prefab/rocks').CaveinBoulderSave;
+    caveinBoulder?: import('@dontstarve-web/prefab/cavein_boulder').CaveinBoulderSave;
     /** cave_hole.lua OnSave: data.allowspawn. */
     allowspawn?: boolean;
     /** archive_pillar.lua OnSave: data.broken (a boolean); vault_pillar.lua OnSave: data.broken (1). */

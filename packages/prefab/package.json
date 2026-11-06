@@ -48,6 +48,8 @@
     "./equipmentVisual": "./src/equipmentVisual.ts",
     "./stalagmite": "./src/stalagmite.ts",
     "./rocks": "./src/rocks.ts",
+    "./cavein_boulder": "./src/cavein_boulder.ts",
+    "./moonrockseed": "./src/moonrockseed.ts",
     "./cave_fern": "./src/cave_fern.ts",
     "./grass": "./src/grass.ts",
     "./lichen": "./src/lichen.ts",

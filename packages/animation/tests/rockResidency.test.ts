@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { PrefabDisplayGroup } from '@dontstarve-web/display';
-import { RockManager } from '../../prefab/src/rocks';
+import { rockPrefabs } from '../../prefab/src/rocks';
 import { skeletonPrefabs } from '../../prefab/src/skeleton';
 import { houndbonePrefabs, HOUNDBONE_ID } from '../../prefab/src/houndbone';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -29,21 +29,21 @@ it('releases rock, skeleton and houndbone sprites outside the tickingarea and re
   const awake = createSignal(true), scheduler = new GameTimeScheduler();
   const tickingarea = () => createMemo(() => awake.get());
   const scene = new THREE.Scene();
-  const rocks = new RockManager(scene, '/dst/data/anim', { scheduler, tickingarea, spawnGroundItem });
   const displays = new PrefabDisplayGroup(scene);
   const bones = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { tickingarea });
+  bones.register(rockPrefabs({ scheduler, spawnGroundItem, spawnPrefab: (id, position) => bones.spawn(id, position) }) as never);
   bones.register(houndbonePrefabs({ spawnGroundItem }) as never);
   bones.register(skeletonPrefabs({ spawnGroundItem }) as never);
   const rotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), .6);
   // The displays turn themselves to the world's camera rotation.
   const content = bindTestWorld(scheduler);
   try {
-    const rock = await rocks.spawn('rock1', new THREE.Vector3(4, 0, 6));
+    const rock = bones.spawn('rock1', new THREE.Vector3(4, 0, 6)).transform.model;
     const skeleton = bones.spawn('skeleton', new THREE.Vector3(8, 0, 6)).transform.model;
     const bone = bones.spawn(HOUNDBONE_ID, new THREE.Vector3(12, 0, 6)).transform.model;
     const models = [rock, skeleton, bone];
     await Promise.all(models.map(waitForVisual));
-    const records = [rocks.exportRecords(), bones.exportRecords()];
+    const records = bones.exportRecords();
     const colour = (meshes(rock)[0].material as THREE.MeshBasicMaterial[])[0].color.r;
     const hammer = workTargets('HAMMER')[0];
     awake.set(false); await settle();
@@ -53,13 +53,13 @@ it('releases rock, skeleton and houndbone sprites outside the tickingarea and re
       expect(model.parent).toBeNull();
       expect(meshes(model)).toEqual([]);
     }
-    expect([...rocks.renderEntities, ...bones.renderEntities]).toEqual([]);
-    expect([rocks.exportRecords(), bones.exportRecords()]).toEqual(records);
+    expect(bones.renderEntities).toEqual([]);
+    expect(bones.exportRecords()).toEqual(records);
     expect(hammer.isValid()).toBe(true);
     content.camerarotation.set(rotation);
     awake.set(true); await settle();
     await Promise.all(models.map(waitForVisual));
-    rocks.update(0, rotation); displays.update(0);
+    displays.update(0);
     for (const model of models) {
       expect(prefabInstance(model)!.status.peek()).toBe('active');
       expect(prefabInstance(model)!.sprite.loaded).toBe(true);
@@ -71,6 +71,6 @@ it('releases rock, skeleton and houndbone sprites outside the tickingarea and re
     content.camerarotation.set(turned);
     for (const model of models) expect(model.children[0].quaternion.equals(turned)).toBe(true);
     expect((meshes(rock)[0].material as THREE.MeshBasicMaterial[])[0].color.r).toBe(colour);
-    expect(rocks.renderEntities).toHaveLength(1);
-  } finally { rocks.dispose(); bones.dispose(); displays.dispose(); content.unbind(); scheduler.dispose(); }
+    expect(bones.renderEntities).toHaveLength(3);
+  } finally { bones.dispose(); displays.dispose(); content.unbind(); scheduler.dispose(); }
 });
