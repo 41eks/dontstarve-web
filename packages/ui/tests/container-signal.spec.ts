@@ -16,7 +16,7 @@ test('renders container slot insts through shared slots and releases replaced pa
     const container = create();
     container.SetNumSlots(2);
     panel.open({ containerId: 'container:first', slotCount: 2 });
-    const stop = panel.bindContainer(container, toItem);
+    const stop = panel.bindContainer(container.slots, toItem);
     container.OnLoad({ slots: [{ slotKey: '1', item: { itemId: 'log', count: 3 } }] });
     (window as any).containerBinding = { panel, container, create, toItem, stop };
   }, {
@@ -30,18 +30,16 @@ test('renders container slot insts through shared slots and releases replaced pa
   await page.evaluate(() => {
     const { container } = (window as any).containerBinding;
     container.GetItemInSlot(2).components.stackable.count = 2;
-    container.SetNumSlots(3);
   });
-  await expect(panel.locator('.inventory-slot')).toHaveCount(3);
+  // The inst's tile carries the count; the slot keeps the same inst.
   await expect(panel.locator('[data-slot-key="1"] .inventory-slot__count')).toHaveText('2');
-  await expect(panel.locator('[data-slot-key="2"]')).toHaveAttribute('data-item-id', '');
   await page.evaluate(() => {
     const state = (window as any).containerBinding;
     state.panel.close();
     const next = state.create();
     next.SetNumSlots(2);
     state.panel.open({ containerId: 'container:second', slotCount: 2 });
-    state.panel.bindContainer(next, state.toItem);
+    state.panel.bindContainer(next.slots, state.toItem);
     state.stop();
     state.container.GetItemInSlot(2).components.stackable.count = 9;
     next.OnLoad({ slots: [{ slotKey: '0', item: { itemId: 'cutgrass', count: 4 } }] });

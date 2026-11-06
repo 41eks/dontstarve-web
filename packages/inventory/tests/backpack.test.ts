@@ -25,7 +25,7 @@ describe('entity-owned backpack containers', () => {
     inventory.add('backpack', 1);
     const bag = inventory.getEntity(a)!;
     inventory.transfer(a, body, 1);
-    const container = bag.components.container!, slots = container.slotList.peek();
+    const container = bag.components.container!, slots = container.slots;
     const first = backpackSlotAddress(bag.id, 0), last = backpackSlotAddress(bag.id, 7);
     inventory.add('log', 3);
     expect(inventory.transfer(a, first, 3)).toBe(true);

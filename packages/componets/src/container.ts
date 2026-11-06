@@ -46,9 +46,8 @@ export class Container<TRecord, TItem extends ContainerItem<TRecord>, TSlot exte
   onclosefn?(inst: object, doer?: object): void;
   /** InventoryStore supplies authoritative removal; detached containers supply world dropping. */
   dropItem?: (item: TItem, slot: number, position: { x: number; y: number; z: number }) => void;
-  private readonly slotListState = createSignal<readonly TSlot[]>(Object.freeze([]));
-  /** The slots, replaced when SetNumSlots adds some; each slot's `entity` signal holds its inst. */
-  readonly slotList = readonlySignal(this.slotListState);
+  /** Set by the prefab's SetNumSlots; each slot's `entity` signal holds its inst. */
+  private readonly slotList: TSlot[] = [];
   private readonly openlist = new Set<object>();
   private readonly openCountState = createSignal(0);
   /** container.lua's opencount, for components that follow opening and closing. */
@@ -97,19 +96,19 @@ export class Container<TRecord, TItem extends ContainerItem<TRecord>, TSlot exte
   }
 
   /** Existing inventory slots back the component; no second copy of item state. */
-  get slots(): readonly TSlot[] { return this.slotListState.peek(); }
+  get slots(): readonly TSlot[] { return this.slotList; }
   get numslots(): number { return this.slots.length; }
   get opencount(): number { return this.openlist.size; }
 
   /** Reads every slot's inst inside the caller's effect or memo, as container.lua's itemget/itemlose listeners. */
-  TrackContents(): void { for (const slot of this.slotList.get()) slot.entity.get(); }
+  TrackContents(): void { for (const slot of this.slotList) slot.entity.get(); }
 
   SetNumSlots(numslots: number): void {
     if (!Number.isSafeInteger(numslots) || numslots < this.numslots) {
       throw new RangeError('Container slot count must be an integer and cannot shrink');
     }
     const added = Array.from({ length: numslots - this.numslots }, () => this.createSlot());
-    if (added.length) this.slotListState.set(Object.freeze([...this.slots, ...added]));
+    this.slotList.push(...added);
   }
 
   /** container.lua removes items through their inventory owner before destroying them. */

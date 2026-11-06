@@ -1,13 +1,11 @@
 import { AssetElement } from './assets';
 import { AnimatedBackground } from './animated-background';
-import { createSignal, type ReadonlySignal } from '@dontstarve-web/signals';
-/** What a panel subscribes to: the container's slot list, replaced when slots are added. */
-export interface BindableContainer<TItem> { readonly slotList: ReadonlySignal<readonly EntitySlotSignal<TItem>[]> }
+import { createSignal } from '@dontstarve-web/signals';
 import type { BuildingContainerDefinition } from '../../prefab/src/containers';
 import { createSlotContainer, type SlotContainer, type SlotContainerKind } from './slot/slot-container';
 import type { SlotAddress, SlotItem, SlotModel, SlotSelectDetail } from './slot/slot-model';
 import { createSlotRenderer, type SlotRenderer } from './slot/slot-renderer';
-import { bindSlotEntities, type EntitySlotSignal } from './slot/slot-binding';
+import { bindSlotEntities, type EntitySlots } from './slot/slot-binding';
 import type { InventoryReceiveSource } from './slot/slot-receive-animation';
 import type { SlotTransferRequest } from './slot/slot-transfer';
 import slotStyles from './styles/slot.css?inline';
@@ -152,36 +150,13 @@ export class DstChestPanelElement extends AssetElement {
       && button.dataset.slotKey === address.slotKey)?.animateReceive(source, amount);
   }
 
-  /**
-   * Subscribes to the container's slots and the inst in each; `toItem` maps an inst to a UI item, whose tile
-   * declaration carries its live values. The UI keeps no copy of the container's contents.
-   */
-  bindContainer<TItem>(container: BindableContainer<TItem>, toItem: (item: TItem) => SlotItem): () => void {
-    const containerId = this.container?.id;
-    if (!containerId) throw new Error('Open a container panel before binding its slots');
+  /** Binds the open panel's slots to the container's logical slots; closing or rebinding releases them. */
+  bindContainer<TItem>(slots: EntitySlots<TItem>, toItem: (item: TItem) => SlotItem): () => void {
+    if (!this.container) throw new Error('Open a container panel before binding its slots');
     this.stopContainerSignal?.();
-    let stopSlots: (() => void) | undefined;
-    const bindSlots = (slots: readonly EntitySlotSignal<TItem>[]) => {
-      stopSlots?.();
-      stopSlots = undefined;
-      if (this.container?.id !== containerId) return;
-      if (slots.length <= 0) throw new RangeError('Invalid container slot count');
-      if (this.container.slots.length !== slots.length) {
-        this.container = createSlotContainer({
-          id: containerId, kind: this.container.kind,
-          slotKeys: Array.from({ length: slots.length }, (_, index) => String(index)),
-        });
-        this.selectedSlot.set(null);
-        if (this.isConnected) this.render();
-      }
-      stopSlots = bindSlotEntities(this.container, slots.map((slot, index) => [String(index), slot] as const), toItem);
-    };
-    bindSlots(container.slotList.peek());
-    const stopList = container.slotList.subscribe(bindSlots);
+    const stop = bindSlotEntities(this.container, slots, toItem);
     const dispose = () => {
-      stopList();
-      stopSlots?.();
-      stopSlots = undefined;
+      stop();
       if (this.stopContainerSignal === dispose) this.stopContainerSignal = undefined;
     };
     this.stopContainerSignal = dispose;

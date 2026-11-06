@@ -6,16 +6,23 @@ import type { SlotContainer } from './slot-container';
 export interface EntitySlotSignal<TItem> { readonly entity: ReadonlySignal<TItem | null> }
 
 /**
- * itemslot.lua / itemtile.lua: each UI slot follows the inst in its logical slot, and `toItem` maps the inst to a UI
- * item whose tile declaration carries its live values. Shared by the inventory bar and container panels.
+ * Logical slots keyed as their UI slots: an array by index (container slots, itemslots, the active item) or a record
+ * by slot key (equipslots). Missing entries leave their UI slot unbound.
  */
-export function bindSlotEntities<TItem>(target: SlotContainer, slots: readonly (readonly [slotKey: string, slot: EntitySlotSignal<TItem>])[],
-  toItem: (item: TItem) => SlotItem): () => void {
-  const stops = slots.map(([slotKey, slot]) => {
+export type EntitySlots<TItem> = readonly (EntitySlotSignal<TItem> | undefined)[]
+  | Readonly<Partial<Record<string, EntitySlotSignal<TItem>>>>;
+
+/**
+ * itemslot.lua / itemtile.lua: each UI slot subscribes to its own logical slot's inst, and `toItem` maps the inst to a
+ * UI item whose tile declaration carries its live values. The inventory bar and every container panel bind through this.
+ */
+export function bindSlotEntities<TItem>(target: SlotContainer, slots: EntitySlots<TItem>, toItem: (item: TItem) => SlotItem): () => void {
+  const stops = Object.entries(slots).flatMap(([slotKey, slot]) => {
+    if (!slot) return [];
     const model = target.getSlot(slotKey);
     const show = (item: TItem | null) => model.setItem(item === null ? null : toItem(item));
     show(slot.entity.peek());
-    return slot.entity.subscribe(show);
+    return [slot.entity.subscribe(show)];
   });
   return () => stops.splice(0).forEach(stop => stop());
 }
