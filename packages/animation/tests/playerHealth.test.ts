@@ -3,12 +3,10 @@ import { readFile } from 'node:fs/promises';
 import { World } from 'cannon-es';
 import { Group, PerspectiveCamera, Scene, Vector3 } from 'three';
 import { expect, it, vi } from 'vitest';
-import { createSignal } from '@dontstarve-web/signals';
 import { inventorySlotAddress } from '../../inventory/src';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Health } from '../../componets/src/health';
 import { createWilsonPlayerPrefab } from './playerVisual';
-import { OnMakePlayerGhost, OnRespawnFromGhost, type PlayerGhostOwner } from '../../prefab/src/player_common';
 import { inventoryUse } from './inventoryUseFixture';
 import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
@@ -32,16 +30,13 @@ it('eats eight red caps, dies through component events, becomes a ghost and save
   instance.components.inventory = inventory;
   const picker = new PlayerActionPicker(new PointerRaycaster(world));
   const food = inventoryUse({ ...world, mouseActions: picker }, animation.stategraph, instance);
-  const ghost = createSignal(false), skeleton = vi.fn(), death = vi.fn();
-  const owner: PlayerGhostOwner = {
-    model: player, animation, physics, stats, ghostMode: ghost,
-    spawnDeathProduct: skeleton, spawnDieFx() {}, schedule: (seconds, fn) => scheduler.schedule(seconds, fn),
-    addSlipperyFeet() {}, removeSlipperyFeet() {}, setHidden: hidden => instance.sprite.setVisible(!hidden),
-    setGhostLight() {}, teleport: position => { player.position.copy(position); physics.Teleport(); },
-    setControllerEnabled: enabled => { instance.controllerEnabled = enabled; }, showHUD() {}, actionPicker: picker,
-    equipRezSource: async () => false,
-  };
-  const stopMakeGhost = instance.ListenForEvent('makeplayerghost', data => OnMakePlayerGhost(owner, data as { skeleton?: boolean }));
+  // The player prefab's own makeplayerghost / respawnfromghost listeners reach these world services on the inst.
+  const ghost = instance.ghostMode, death = vi.fn(), hud = { Show: vi.fn(), Hide: vi.fn() };
+  const skeleton = { SetSkeletonDescription: vi.fn() };
+  const spawned = vi.fn((prefab: string) => prefab === 'skeleton_player' ? skeleton as never : undefined);
+  instance.SpawnPrefab = spawned;
+  instance.components.playeractionpicker = picker;
+  instance.HUD = hud;
   const stopDeath = instance.ListenForEvent('death', death);
   animation.bindDeath({ dropEverything: vi.fn(), isPassableAtPoint: () => true });
   const frames = (count: number) => { for (let i = 0; i < count; i++) advancePlayer(animation, 1 / 30); };
@@ -66,7 +61,10 @@ it('eats eight red caps, dies through component events, becomes a ghost and save
     expect(death.mock.calls[0][0].cause).toBe('red_cap');
     frames(100);
     expect(ghost.peek()).toBe(true);
-    expect(skeleton).toHaveBeenCalledOnce();
+    expect(spawned.mock.calls.map(([prefab]) => prefab)).toEqual(['skeleton_player', 'die_fx']);
+    expect(skeleton.SetSkeletonDescription).toHaveBeenCalledExactlyOnceWith(instance.prefab, player.name, 'red_cap');
+    expect(physics.json.peek()?.mass).toBe(1);
+    expect(instance.slipperyfeet).toBeUndefined();
     expect(health.currenthealth).toBe(50);
     expect(health.IsInvincible()).toBe(true);
     expect(stats.hunger.IsPaused()).toBe(true);
@@ -77,9 +75,14 @@ it('eats eight red caps, dies through component events, becomes a ghost and save
     expect(health.currenthealth).toBe(50);
     const portal = { prefab: 'multiplayer_portal', position: new Vector3(12, 0, 0),
       isValid: () => true, hasTag: (tag: string) => tag === 'multiplayer_portal', PushEvent: vi.fn() };
-    OnRespawnFromGhost(owner, { source: portal });
+    instance.PushEvent('respawnfromghost', { source: portal });
+    expect(hud.Hide).toHaveBeenCalledOnce(); expect(instance.controllerEnabled).toBe(false);
     scheduler.advance(3);
     expect(ghost.peek()).toBe(false);
+    expect(player.position.x).toBe(12);
+    expect(portal.PushEvent).toHaveBeenCalledWith('rez_player');
+    expect(physics.json.peek()?.mass).toBe(75);
+    expect(instance.slipperyfeet).toBeDefined();
     expect(health.penalty).toBe(.25);
     frames(200);
     expect(health.IsInvincible()).toBe(false);
@@ -102,8 +105,41 @@ it('eats eight red caps, dies through component events, becomes a ghost and save
     expect(saved.players.local.ghost).toBeFalsy();
     restored.dispose();
   } finally {
-    food.dispose(); stopMakeGhost();
+    food.dispose();
     stopDeath(); inventory.dispose(); instance.remove(); display.dispose();
     scheduler.dispose(); vi.restoreAllMocks(); vi.unstubAllGlobals();
+  }
+});
+
+it('resurrects a loaded ghost from a haunted amulet, wearing that inst and returning the worn body item', async () => {
+  vi.stubGlobal('window', new EventTarget());
+  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  const scheduler = new GameTimeScheduler(), inventory = createPickupInventory();
+  const { model: player, instance, display } = await createWilsonPlayerPrefab('/dst/data/anim', new World(), { stats: { health: 50 }, scheduler });
+  instance.components.inventory = inventory;
+  instance.HUD = { Show: vi.fn(), Hide: vi.fn() };
+  try {
+    inventory.add('amulet', 2);
+    expect(inventory.EquipFromInventory(inventory.getEntity(inventorySlotAddress(0))!)).toBe(true);
+    const worn = inventory.GetEquippedItem('body')!;
+    // The other amulet lies on the ground, out of the inventory.
+    const amulet = inventory.extract(inventorySlotAddress(0), 1, inventory.getEntity(inventorySlotAddress(0))!)!;
+    expect(amulet).not.toBe(worn);
+    expect(amulet.components.inventoryitem.owner).toBeNull();
+    instance.PushEvent('makeplayerghost', { loading: true });
+    expect(instance.ghostMode.peek()).toBe(true); expect(instance.hasTag('playerghost')).toBe(true);
+    const source = { prefab: 'amulet', entity: amulet, position: new Vector3(4, 0, 0),
+      isValid: () => true, hasTag: () => false, PushEvent: vi.fn() };
+    instance.PushEvent('respawnfromghost', { source });
+    scheduler.advance(3);
+    expect(inventory.GetEquippedItem('body')).toBe(amulet);
+    expect(inventory.FindItem(item => item === worn)).toBe(worn);
+    expect(source.PushEvent).toHaveBeenCalledWith('activateresurrection', player);
+    expect(source.PushEvent).not.toHaveBeenCalledWith('rez_player');
+    expect(instance.animationController.stategraph.stateName).toBe('amulet_rebirth');
+    expect(instance.ghostMode.peek()).toBe(false); expect(instance.hasTag('playerghost')).toBe(false);
+    expect(instance.stats.health.penalty).toBe(0);
+  } finally {
+    inventory.dispose(); instance.remove(); display.dispose(); scheduler.dispose(); vi.unstubAllGlobals();
   }
 });

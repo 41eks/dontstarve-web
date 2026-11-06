@@ -20,6 +20,7 @@ const REDAMULET_MIN_HUNGER = 5;
 /** What the ghost's OnRespawnFromGhost needs from a resurrector, and the hauntable's own inst. */
 export interface AmuletRezSource extends HauntableInst {
   readonly prefab: typeof AMULET_ID;
+  /** The amulet inst itself, which DoActualRez equips. */
   readonly entity: ItemEntity;
   isValid(): boolean;
   readonly position: ReadonlyVector3;

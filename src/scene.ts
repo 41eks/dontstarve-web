@@ -27,7 +27,7 @@ import type { RuntimeSaveState } from './save/serialize';
 import { createWorldClockUpdater } from './worldState';
 import type { PerishWorld } from '../packages/componets/src/perishable';
 import { Locomotor, setupLocomotorInput } from '@dontstarve-web/prefab/locomotor';
-import { SlipperyFeet } from '../packages/componets/src/slipperyfeet';
+import { AddSlipperyFeet, RemoveSlipperyFeet } from '@dontstarve-web/prefab/player_common';
 import { actionEntitiesChanged, bindActionEntityWorld, FindEntities } from '../packages/prefab/src/actionEntity';
 import { bindPlayerBuilder } from '@dontstarve-web/prefab/player';
 import type { DisposalEvents } from './registerDisposal';
@@ -133,26 +133,8 @@ export async function startScene(
     entitiesChanged: actionEntitiesChanged,
     getWatchWorldContent: worldState.getWatchWorldContent,
   });
-  // player_common.lua AddComponent("slipperyfeet"); frozen ponds are its slipperyfeettarget entities.
-  const stategraph = playerInstance.animationController.stategraph;
-  const removeSlipperyFeet = () => {
-    playerInstance.slipperyfeet?.dispose();
-    delete playerInstance.slipperyfeet;
-  };
-  const addSlipperyFeet = () => {
-    if (playerInstance.slipperyfeet) return;
-    playerInstance.slipperyfeet = new SlipperyFeet({
-      getPosition: () => player.position,
-      getMotorSpeed: () => playerInstance.currentMotorSpeed,
-      PushEvent: (name, data) => stategraph.pushEvent(name, data),
-      sg: stategraph,
-    }, {
-      scheduler,
-      findSlipperyEntities: (position, radius) => FindEntities(position, radius, ['slipperyfeettarget']) as never,
-    });
-  };
-  // CommonPlayerDeath removes it and CommonActualRez adds it back, through the ghost owner.
-  addSlipperyFeet();
+  // player_common.lua AddComponent("slipperyfeet"); CommonPlayerDeath removes it and CommonActualRez adds it back.
+  AddSlipperyFeet(playerInstance);
   const updateSlipperyFeet = (dt: number) => playerInstance.slipperyfeet?.update(dt);
   backTasks.push(updateSlipperyFeet);
   const updateBeforePhysics = (dt: number) => registry.beforePhysics(dt);
@@ -236,7 +218,7 @@ export async function startScene(
     animation?.stop();
     builder.dispose();
     if (playerInstance.components.builder === builder) delete playerInstance.components.builder;
-    removeSlipperyFeet();
+    RemoveSlipperyFeet(playerInstance);
     const slipTask = backTasks.indexOf(updateSlipperyFeet);
     if (slipTask >= 0) backTasks.splice(slipTask, 1);
     clockUpdater.flush();
@@ -268,7 +250,7 @@ export async function startScene(
   return { ...entities, byEntityId: registry.byEntityId, scheduler, weather: worldState.weather,
     getWatchWorldContent: worldState.getWatchWorldContent,
     moon: { SetMoonPhase: worldState.SetMoonPhase },
-    addSlipperyFeet, removeSlipperyFeet, getSaveState, disposalEvents, start, dispose };
+    getSaveState, disposalEvents, start, dispose };
 }
 
 export function scene_add(model:THREE.Object3D){

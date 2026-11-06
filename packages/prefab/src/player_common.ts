@@ -1,20 +1,19 @@
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import * as THREE from 'three';
-import type { PhysicsState } from '../../componets/src/physicsState';
-import type { GameTimeScheduler, Signal } from '@dontstarve-web/signals';
+import type { GameTimeScheduler } from '@dontstarve-web/signals';
 import { Health } from '../../componets/src/health';
 import { Hunger } from '../../componets/src/hunger';
 import { Sanity, type SanityMode } from '../../componets/src/sanity';
 import { Eater } from '../../componets/src/eater';
 import type { PrefabInstance } from './prefabInstance';
-import { actionEntity } from './actionEntity';
-import { prefabInstance } from './prefabInstance';
+import { FindEntities } from './actionEntity';
+import { SlipperyFeet } from '../../componets/src/slipperyfeet';
+import { SKELETON_PLAYER_ID, type SkeletonInstance } from './skeleton';
 import { MakeCharacterPhysics, MakeGhostPhysics, WORLD_SCALE } from './standardcomponents';
 import { FRAMES } from '../../stategraphs/src/stategraph';
 import { isGhostValidAction } from '../../stategraphs/src/actions';
-import type { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
-import type { WilsonAnimationController } from './player';
-import type { EquipmentKind, InventoryStore } from '@dontstarve-web/inventory';
+import type { WilsonPlayerInstance } from './player';
+import type { EquipmentKind, InventoryStore, ItemEntity } from '@dontstarve-web/inventory';
 
 // Existing Wilson stat defaults, from tuning.lua. Older saves may omit all stats.
 export const WILSON_MAX_HEALTH = 150;
@@ -74,39 +73,47 @@ const GHOST_ACTION_FILTER_PRIORITY = 99;
 export const GHOST_LIGHT_OVERRIDE = .5;
 export const RESURRECT_HEALTH = 50;
 
-/** What player_common_extensions.lua OnMakePlayerGhost reaches on the player entity and in the world. */
-export interface PlayerGhostOwner {
-  readonly model: THREE.Group;
-  readonly animation: Pick<WilsonAnimationController, 'makeGhost' | 'makeAlive' | 'stategraph'>;
-  /** inst.Physics */
-  readonly physics: PhysicsState;
-  readonly stats: PlayerStats;
-  /** player_classified isghostmode (SetGhostMode): playervision's ghost colour cube, and the ghost's save flag. */
-  readonly ghostMode: Signal<boolean>;
-  /** SpawnDeathProduct: the skeleton (or corpse) at the death point. */
-  spawnDeathProduct(position: ReadonlyVector3): void;
-  /** SpawnPrefab("die_fx") at the death point. */
-  spawnDieFx(position: ReadonlyVector3): void;
-  /** inst:DoTaskInTime on the game-time scheduler; returns the cancel. */
-  schedule(seconds: number, fn: () => void): () => void;
-  /** inst:AddComponent("slipperyfeet") */
-  addSlipperyFeet(): void;
-  /** inst:RemoveComponent("slipperyfeet") */
-  removeSlipperyFeet(): void;
-  /** inst:Hide() / inst:Show() */
-  setHidden(hidden: boolean): void;
-  /** inst.Light:Enable(enabled): the ghost's own light. */
-  setGhostLight(enabled: boolean): void;
-  /** inst.Physics:Teleport(x, y, z) */
-  teleport(position: ReadonlyVector3): void;
-  /** inst.components.playercontroller:Enable(enabled) */
-  setControllerEnabled(enabled: boolean): void;
-  /** inst:ShowHUD(show) */
-  showHUD(show: boolean): void;
-  /** inst.components.playeractionpicker: the filter stack the ghost pushes and pops. */
-  readonly actionPicker: Pick<PlayerActionPicker, 'PushActionFilter' | 'PopActionFilter'>;
-  /** inst.components.inventory:Equip(source) for an amulet; resolves once the worn art is in place, false if it could not be worn. */
-  equipRezSource(source: RezSource): Promise<boolean>;
+/** inst:DoTaskInTime on the player's game-time scheduler. */
+function DoTaskInTime(inst: WilsonPlayerInstance, seconds: number, fn: () => void): void {
+  if (!inst.scheduler) throw new Error('The player inst has no scheduler for DoTaskInTime');
+  inst.scheduler.schedule(seconds, fn);
+}
+
+/** inst:Hide() / inst:Show() with the DynamicShadow. */
+function setHidden(inst: WilsonPlayerInstance, hidden: boolean): void { inst.sprite.setVisible(!hidden); }
+
+/** inst.Physics:Teleport(x, y, z): the transform moves, the body follows at once and stops. */
+function Teleport(inst: WilsonPlayerInstance, position: ReadonlyVector3): void {
+  inst.setPosition(position.x, inst.position.y, position.z);
+  inst.physics.Teleport();
+  inst.physicsBody?.velocity.set(0, inst.physicsBody.velocity.y, 0);
+}
+
+/** player_common.lua AddComponent("slipperyfeet"): frozen ponds are its slipperyfeettarget entities. */
+export function AddSlipperyFeet(inst: WilsonPlayerInstance): void {
+  if (inst.slipperyfeet || !inst.scheduler) return;
+  const sg = inst.animationController.stategraph;
+  inst.slipperyfeet = new SlipperyFeet({
+    getPosition: () => inst.transform.model.position,
+    getMotorSpeed: () => inst.currentMotorSpeed,
+    PushEvent: (name, data) => sg.pushEvent(name, data),
+    sg,
+  }, {
+    scheduler: inst.scheduler,
+    findSlipperyEntities: (position, radius) => FindEntities(position, radius, ['slipperyfeettarget']) as never,
+  });
+}
+
+/** inst:RemoveComponent("slipperyfeet") */
+export function RemoveSlipperyFeet(inst: WilsonPlayerInstance): void {
+  inst.slipperyfeet?.dispose();
+  delete inst.slipperyfeet;
+}
+
+/** player_common_extensions.lua SpawnDeathProduct: skeleton_player at the death point, described with the character, name and cause. */
+function SpawnDeathProduct(inst: WilsonPlayerInstance, position: THREE.Vector3): void {
+  const skel = inst.SpawnPrefab?.(SKELETON_PLAYER_ID, position) as SkeletonInstance | undefined;
+  skel?.SetSkeletonDescription(inst.prefab, inst.transform.model.name, inst.deathcause);
 }
 
 /**
@@ -116,20 +123,19 @@ export interface PlayerGhostOwner {
  * Not ported: death announcement, morgue record, user session, the playercorpse branch, and components the player lacks
  * here (burnable, freezable, propagator, grogginess, moisture, sheltered, debuffable, age, temperature, frostybreather).
  */
-export function OnMakePlayerGhost(owner: PlayerGhostOwner, data?: { skeleton?: boolean; loading?: boolean }): void {
-  const entity = actionEntity(owner.model, prefabInstance(owner.model)!.prefab);
-  if (entity.hasTag('playerghost')) return;
-  const position = new THREE.Vector3(owner.model.position.x, 0, owner.model.position.z);
+export function OnMakePlayerGhost(inst: WilsonPlayerInstance, data?: { skeleton?: boolean; loading?: boolean }): void {
+  if (inst.hasTag('playerghost')) return;
+  const position = new THREE.Vector3(inst.position.x, 0, inst.position.z);
   const loading = data?.loading === true;
-  if (data?.skeleton) owner.spawnDeathProduct(position);
-  if (!loading) owner.spawnDieFx(position);
+  if (data?.skeleton) SpawnDeathProduct(inst, position);
+  if (!loading) inst.SpawnPrefab?.('die_fx', position);
 
-  owner.animation.makeGhost(loading);
-  prefabInstance(owner.model)!.sprite.setLightOverride(GHOST_LIGHT_OVERRIDE);
-  setGhostLight(owner.model, true);
+  inst.animationController.makeGhost(loading);
+  inst.sprite.setLightOverride(GHOST_LIGHT_OVERRIDE);
+  setGhostLight(inst, true);
 
   // CommonPlayerDeath
-  const { health, hunger, sanity } = owner.stats;
+  const { health, hunger, sanity } = inst.stats;
   health.SetInvincible(true);
   health.canheal = false;
   if (!loading) {
@@ -137,34 +143,36 @@ export function OnMakePlayerGhost(owner: PlayerGhostOwner, data?: { skeleton?: b
     hunger.SetPercent(2 / 3);
   }
   hunger.Pause();
-  owner.stats.sanity.ignore = true;
-  owner.removeSlipperyFeet();
+  sanity.ignore = true;
+  RemoveSlipperyFeet(inst);
 
-  MakeGhostPhysics(owner, 1, .5);
-  owner.actionPicker.PushActionFilter(GhostActionFilter, GHOST_ACTION_FILTER_PRIORITY);
-  entity.addTag('playerghost');
+  MakeGhostPhysics(inst, 1, .5);
+  inst.components.playeractionpicker?.PushActionFilter(GhostActionFilter, GHOST_ACTION_FILTER_PRIORITY);
+  inst.addTag('playerghost');
   if (!loading) health.SetCurrentHealth(RESURRECT_HEALTH);
   // The death state disabled the controller; a ghost can move and act.
-  owner.setControllerEnabled(true);
-  owner.ghostMode.set(true);
-  entity.PushEvent?.('ms_becameghost', undefined);
+  inst.controllerEnabled = true;
+  inst.ghostMode.set(true);
+  inst.PushEvent('ms_becameghost', undefined);
 }
 
 // Light:SetIntensity(.6) SetRadius(.5) SetFalloff(.6) SetColour(180/255, 195/255, 225/255)
 const GHOST_LIGHT = { radius: .5 * WORLD_SCALE, intensity: .6, falloff: .6, colour: [180 / 255, 195 / 255, 225 / 255] } as const;
 
 /** inst.Light:Enable(enabled) for the ghost's light. */
-export function setGhostLight(model: THREE.Object3D, enabled: boolean): void {
-  prefabInstance(model)!.light.set(enabled ? GHOST_LIGHT : null);
+function setGhostLight(inst: PrefabInstance, enabled: boolean): void {
+  inst.light.set(enabled ? GHOST_LIGHT : null);
 }
 
 /** tuning.lua PORTAL_HEALTH_PENALTY */
 export const PORTAL_HEALTH_PENALTY = .25;
 
-/** What a resurrector (the multiplayer portal) offers the ghost. */
+/** What a resurrector (the multiplayer portal or a haunted amulet) offers the ghost. */
 export interface RezSource {
   /** The resurrector's prefab: OnRespawnFromGhost and DoActualRez branch on `amulet`. */
   readonly prefab?: string;
+  /** The amulet inst itself, which DoActualRez equips. */
+  readonly entity?: ItemEntity;
   isValid(): boolean;
   /** The source's ground position. */
   readonly position: ReadonlyVector3;
@@ -173,9 +181,17 @@ export interface RezSource {
 }
 
 /** player_common_extensions.lua revert: OnRespawnFromGhost's changes undone when the source has gone. */
-function revertRespawn(owner: PlayerGhostOwner): void {
-  owner.showHUD(true);
-  owner.setControllerEnabled(true);
+function revertRespawn(inst: WilsonPlayerInstance): void {
+  inst.ShowHUD(true);
+  inst.controllerEnabled = true;
+}
+
+/** Revert DoMoveToRezSource as well, back to the haunting ghost. */
+function revertMove(inst: WilsonPlayerInstance): void {
+  revertRespawn(inst);
+  setHidden(inst, false);
+  setGhostLight(inst, true);
+  inst.animationController.stategraph.goToState('haunt');
 }
 
 /**
@@ -185,82 +201,74 @@ function revertRespawn(owner: PlayerGhostOwner): void {
  * amulet_rebirth state. Other resurrectors (stones, gravestones, wx78 backup body, pocketwatch, telltale heart) and the
  * remote variants are not ported and are ignored.
  */
-export function OnRespawnFromGhost(owner: PlayerGhostOwner, data?: { source?: RezSource }): void {
-  const entity = actionEntity(owner.model, prefabInstance(owner.model)!.prefab);
+export function OnRespawnFromGhost(inst: WilsonPlayerInstance, data?: { source?: RezSource }): void {
   const source = data?.source;
-  if (!entity.hasTag('playerghost') || !(source?.prefab === 'amulet' || source?.hasTag('multiplayer_portal'))) return;
-  entity.addTag('reviving');
-  owner.showHUD(false);
-  owner.setControllerEnabled(false);
-  owner.animation.stategraph.addStateTag('busy');
-  owner.schedule(9 * FRAMES, () => doMoveToRezSource(owner, source, 51 * FRAMES));
+  if (!inst.hasTag('playerghost') || !(source?.prefab === 'amulet' || source?.hasTag('multiplayer_portal'))) return;
+  inst.addTag('reviving');
+  inst.ShowHUD(false);
+  inst.controllerEnabled = false;
+  inst.animationController.stategraph.addStateTag('busy');
+  DoTaskInTime(inst, 9 * FRAMES, () => DoMoveToRezSource(inst, source, 51 * FRAMES));
 }
 
-function doMoveToRezSource(owner: PlayerGhostOwner, source: RezSource, delay: number): void {
-  if (!source.isValid()) { revertRespawn(owner); return; }
-  owner.setHidden(true);
-  owner.setGhostLight(false);
-  owner.teleport(source.position);
-  doRezDelay(owner, source, delay);
+function DoMoveToRezSource(inst: WilsonPlayerInstance, source: RezSource, delay: number): void {
+  if (!source.isValid()) { revertRespawn(inst); return; }
+  setHidden(inst, true);
+  setGhostLight(inst, false);
+  Teleport(inst, source.position);
+  DoRezDelay(inst, source, delay);
 }
 
-function doRezDelay(owner: PlayerGhostOwner, source: RezSource, delay: number): void {
-  if (!source.isValid()) {
-    // Revert DoMoveToRezSource
-    revertRespawn(owner);
-    owner.setHidden(false);
-    owner.setGhostLight(true);
-    owner.animation.stategraph.goToState('haunt');
-  } else if (delay <= 0) {
-    doActualRez(owner, source);
-  } else {
-    owner.schedule(Math.min(delay, .35), () => doRezDelay(owner, source, delay - .35));
-  }
+function DoRezDelay(inst: WilsonPlayerInstance, source: RezSource, delay: number): void {
+  if (!source.isValid()) revertMove(inst);
+  else if (delay <= 0) DoActualRez(inst, source);
+  else DoTaskInTime(inst, Math.min(delay, .35), () => DoRezDelay(inst, source, delay - .35));
 }
 
 /**
- * DoActualRez with the multiplayer_portal source, then CommonActualRez: die_fx at the portal, the living bank and skin,
- * the portal's PORTAL_HEALTH_PENALTY, `rez_player` on the portal and the SGwilson portal_rez state.
+ * inventory.lua Equip(item) into an occupied slot: the worn item goes back into the inventory (dropped when it cannot),
+ * then the source is worn.
+ */
+function EquipRezSource(inst: WilsonPlayerInstance, item: ItemEntity | undefined): boolean {
+  const inventory = inst.components.inventory, slot = item?.components.equippable?.equipslot;
+  if (!inventory || !item || !slot) return false;
+  const worn = inventory.Unequip(slot);
+  if (worn && !inventory.GiveItem(worn)) inventory.DropItem(worn);
+  return inventory.Equip(item);
+}
+
+/**
+ * DoActualRez, then CommonActualRez: die_fx at the source, the living bank and skin, `activateresurrection` on the
+ * source, then the amulet (equipped, amulet_rebirth) or the portal (PORTAL_HEALTH_PENALTY, `rez_player`, portal_rez).
  * Not ported: the player_classified map explorer, age, temperature and moisture pauses a ghost does not have
  * here, burnable/freezable/grogginess/sheltered/debuffable and the rez announcement.
  */
-function doActualRez(owner: PlayerGhostOwner, source: RezSource): void {
+function DoActualRez(inst: WilsonPlayerInstance, source: RezSource): void {
   const position = new THREE.Vector3(source.position.x, 0, source.position.z);
-  if (source.prefab !== 'amulet') { finishRez(owner, source, position); return; }
-  // The amulet is equipped before the state that consumes it, with its worn art already applied.
-  void owner.equipRezSource(source).then(equipped => {
-    if (equipped) { finishRez(owner, source, position); return; }
-    revertRespawn(owner);
-    owner.setHidden(false);
-    owner.setGhostLight(true);
-    owner.animation.stategraph.goToState('haunt');
-  }).catch((error: unknown) => console.error('Unable to resurrect from the amulet', error));
-}
-
-function finishRez(owner: PlayerGhostOwner, source: RezSource, position: ReadonlyVector3): void {
-  const entity = actionEntity(owner.model, prefabInstance(owner.model)!.prefab);
   const amulet = source.prefab === 'amulet';
-  owner.spawnDieFx(position);
-  owner.setHidden(false);
-  owner.teleport(position);
-  owner.ghostMode.set(false);
-  prefabInstance(owner.model)!.sprite.setLightOverride(0);
-  source.PushEvent('activateresurrection', owner.model);
+  // The amulet is worn before the state that consumes it; one that cannot be worn leaves the ghost haunting.
+  if (amulet && !EquipRezSource(inst, source.entity)) { revertMove(inst); return; }
+  inst.SpawnPrefab?.('die_fx', position);
+  setHidden(inst, false);
+  Teleport(inst, position);
+  inst.ghostMode.set(false);
+  inst.sprite.setLightOverride(0);
+  source.PushEvent('activateresurrection', inst.transform.model);
   if (!amulet) {
-    owner.stats.health.DeltaPenalty(PORTAL_HEALTH_PENALTY);
+    inst.stats.health.DeltaPenalty(PORTAL_HEALTH_PENALTY);
     source.PushEvent('rez_player');
   }
-  owner.setGhostLight(false);
-  MakeCharacterPhysics(owner, 75, .5);
-  owner.animation.makeAlive(amulet ? 'amulet_rebirth' : 'portal_rez');
+  setGhostLight(inst, false);
+  MakeCharacterPhysics(inst, 75, .5);
+  inst.animationController.makeAlive(amulet ? 'amulet_rebirth' : 'portal_rez');
 
   // CommonActualRez
-  owner.actionPicker.PopActionFilter(GhostActionFilter);
-  owner.stats.health.canheal = true;
-  owner.stats.hunger.Resume();
-  owner.stats.sanity.ignore = false;
-  owner.addSlipperyFeet();
-  entity.removeTag('playerghost');
-  entity.removeTag('reviving');
-  entity.PushEvent?.('ms_respawnedfromghost', undefined);
+  inst.components.playeractionpicker?.PopActionFilter(GhostActionFilter);
+  inst.stats.health.canheal = true;
+  inst.stats.hunger.Resume();
+  inst.stats.sanity.ignore = false;
+  AddSlipperyFeet(inst);
+  inst.removeTag('playerghost');
+  inst.removeTag('reviving');
+  inst.PushEvent('ms_respawnedfromghost', undefined);
 }

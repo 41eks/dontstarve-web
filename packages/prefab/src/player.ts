@@ -1,7 +1,7 @@
 import { smallHash } from '@dontstarve-web/animation/animationAssets';
 import { AnimState } from '@dontstarve-web/animation/animState';
 import { SpriteResources, type NamedSpriteArt, type FollowerFx, type PrefabDisplay } from '@dontstarve-web/display';
-import type { ReadonlySignal } from '@dontstarve-web/signals';
+import { createSignal, type ReadonlySignal, type Signal } from '@dontstarve-web/signals';
 import { BufferedAction, WilsonStateGraph, type WilsonAction, type WilsonAnimationClip, type WilsonAnimationKey, type WilsonCombat, type WilsonFishingHost, type WilsonMovementState, type WilsonOneShotState, type WilsonSleepHost, type WilsonDeathHost, type WilsonRebirthHost } from '@dontstarve-web/stategraphs';
 import type * as CANNON from 'cannon-es';
 import * as THREE from 'three';
@@ -17,7 +17,7 @@ import { getHandEquipmentDefinition } from './handEquipment';
 import { HatEquipmentAssets, hatVisual } from './hats';
 import type { PickaxeTool } from './pickaxe';
 import type { PitchforkTool } from './pitchfork';
-import { createPlayerStats, equipSamePrefab, type PlayerStats, type PlayerStatsSave } from './player_common';
+import { createPlayerStats, equipSamePrefab, OnMakePlayerGhost, OnRespawnFromGhost, type PlayerStats, type PlayerStatsSave, type RezSource } from './player_common';
 import type { ShovelTool } from './shovel';
 import type { SoundEventPath } from './sound';
 import type { SoundEmitter } from './soundEmitter';
@@ -180,6 +180,8 @@ export interface WilsonPlayerInstance extends PrefabInstance {
   readonly components: PrefabInstance['components'] & {
     inventory?: import('@dontstarve-web/inventory').InventoryStore;
     sanity?: import('../../componets/src/sanity').Sanity;
+    /** The input's action picker: the ghost pushes and pops its action filter on it. */
+    playeractionpicker?: Pick<import('../../stategraphs/src/playeractionpicker').PlayerActionPicker, 'PushActionFilter' | 'PopActionFilter'>;
   };
   animationController: WilsonAnimationController;
   controllerEnabled: boolean;
@@ -191,6 +193,18 @@ export interface WilsonPlayerInstance extends PrefabInstance {
   worldHeading: number;
   slipperyfeet?: SlipperyFeet;
   wortox?: import('./wortox').Wortox;
+  /** The game-time scheduler inst:DoTaskInTime runs on. */
+  readonly scheduler?: GameTimeScheduler;
+  /** player_classified isghostmode (SetGhostMode): playervision's ghost colour cube, and the ghost's save flag. */
+  readonly ghostMode: Signal<boolean>;
+  /** player_common.lua OnPlayerDeath: inst.deathcause, for the skeleton's description. */
+  deathcause: string;
+  /** SpawnPrefab: the scene's registry, for what the player's states and death spawn. */
+  SpawnPrefab?: (prefab: string, position: THREE.Vector3) => PrefabInstance | undefined;
+  /** inst.HUD, set by the front end while the player has one. */
+  HUD?: { Show(): void; Hide(): void };
+  /** inst:ShowHUD(show) */
+  ShowHUD(show: boolean): void;
 }
 
 export function wilsonPlayerInstance(model: THREE.Object3D): WilsonPlayerInstance {
@@ -224,8 +238,6 @@ class WilsonController implements WilsonAnimationController {
   /** inst.AnimState: the player's own declaration, beneath the slots its equipped items declare. */
   readonly AnimState: AnimState;
   private handVisual?: ReturnType<typeof wornEquipmentLifecycle>;
-  /** SpawnPrefab: the scene's registry, for what the player's states spawn. */
-  private spawnPrefab?: (prefab: string, position: THREE.Vector3) => PrefabInstance | undefined;
   private makeSoundActive = false;
   /** The player inst's combat component, read by the attack state. */
   combat?: WilsonCombat;
@@ -320,7 +332,7 @@ class WilsonController implements WilsonAnimationController {
         this.makeSoundActive = false;
       },
       castLight: (colour, duration, delay) => {
-        const light = this.spawnPrefab?.(STAFF_CASTINGLIGHT_ID, instance.position.clone()) as StaffCastingLightInstance | undefined;
+        const light = instance.SpawnPrefab?.(STAFF_CASTINGLIGHT_ID, instance.position.clone()) as StaffCastingLightInstance | undefined;
         light?.SetUp(colour, duration, delay);
         return light;
       },
@@ -381,7 +393,7 @@ class WilsonController implements WilsonAnimationController {
   }
   bindDeath(death: WilsonDeathHost | undefined): void { this.deathHost = death; }
   bindRebirth(rebirth: WilsonRebirthHost | undefined): void { this.rebirthHost = rebirth; }
-  bindSpawnPrefab(spawn: ((prefab: string, position: THREE.Vector3) => PrefabInstance | undefined) | undefined): void { this.spawnPrefab = spawn; }
+  bindSpawnPrefab(spawn: ((prefab: string, position: THREE.Vector3) => PrefabInstance | undefined) | undefined): void { this.instance.SpawnPrefab = spawn; }
 
   bindSoulHop(host: Omit<WilsonSoulHopHost, 'setTint' | 'playSound'> | undefined): void {
     if (!host) {
@@ -568,9 +580,11 @@ function createWilsonPlayerEntity(
       buildArchive: `dynamic/${PLAYER_ART_CHARACTER}.zip`, fallbackBuilds: [`${UNIQUE_ITEM_BUILD}.zip`], art: resources.archives });
     instance.sprite.setFacingRotation(0, 4);
   });
-  const instance = Object.assign(baseInstance, {
+  const instance: WilsonPlayerInstance = Object.assign(baseInstance, {
     stats: createPlayerStats(baseInstance, options.stats, options.scheduler),
     controllerEnabled: true, runSpeed: 0, currentMotorSpeed: 0, wantsToMoveForward: false, worldHeading: 0,
+    scheduler: options.scheduler, ghostMode: createSignal(false), deathcause: 'unknown',
+    ShowHUD(show: boolean) { if (show) instance.HUD?.Show(); else instance.HUD?.Hide(); },
   }) as WilsonPlayerInstance;
   const player = display.model;
   const stopSanity = options.componentUpdates?.register(instance.stats.sanity);
@@ -588,8 +602,17 @@ function createWilsonPlayerEntity(
 
   const controller = new WilsonController(instance, assetBaseUrl, resources,
     options.sanityPercent ?? (options.stats ? instance.stats.sanity.percent : undefined));
-  const stopDeath = instance.ListenForEvent('death', data => controller.stategraph.pushEvent('death', data));
-  instance.onRemove(() => { stopDeath(); controller.dispose(); disposeActionEntity(player); });
+  const stopDeath = instance.ListenForEvent('death', data => {
+    // player_common.lua OnPlayerDeath
+    instance.deathcause = (data as { cause?: string } | undefined)?.cause ?? 'unknown';
+    controller.stategraph.pushEvent('death', data);
+  });
+  // player_common.lua ListenForEvent("makeplayerghost" / "respawnfromghost", ex_fns.OnMakePlayerGhost / OnRespawnFromGhost).
+  const stopMakeGhost = instance.ListenForEvent('makeplayerghost',
+    data => OnMakePlayerGhost(instance, data as { skeleton?: boolean; loading?: boolean } | undefined));
+  const stopRespawn = instance.ListenForEvent('respawnfromghost',
+    data => OnRespawnFromGhost(instance, data as { source?: RezSource } | undefined));
+  instance.onRemove(() => { stopDeath(); stopMakeGhost(); stopRespawn(); controller.dispose(); disposeActionEntity(player); });
   display.onDispose(() => controller.releaseAssets());
   display.update(0);
   instance.animationController = controller;

@@ -1,4 +1,3 @@
-import { createSignal } from '@dontstarve-web/signals';
 import { playerInstance } from './player';
 import type { SavedPlayer } from './save/types';
 
@@ -6,7 +5,7 @@ export { WILSON_MAX_HEALTH, WILSON_MAX_HUNGER, WILSON_MAX_SANITY } from '@dontst
 export const playerStats = playerInstance.stats;
 
 /** player_classified isghostmode: set by OnMakePlayerGhost, read by playervision and the save. */
-export const playerGhostMode = createSignal(false);
+export const playerGhostMode = playerInstance.ghostMode;
 
 /** Persist numerical stats rather than runtime signals and subscriptions. */
 export function getPlayerStats(): NonNullable<SavedPlayer['stats']> {

@@ -2,7 +2,6 @@
 
 import './style.css';
 import { prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
-import { tilePerfMark } from '../packages/componets/src/tilePerf';
 import {
   INVENTORY_RECIPES,
   equipmentSlotAddress,
@@ -41,7 +40,7 @@ import { bindPlayerBodyEquipment } from './playerBodyEquipment';
 import { cursorUi, renderer, scene } from './universal';
 import { FindEntities } from '../packages/prefab/src/actionEntity';
 import { SendLightningStrike } from '@dontstarve-web/prefab/lightning';
-import { AMULET_ID, type AmuletRezSource } from '@dontstarve-web/prefab/amulet';
+import { AMULET_ID } from '@dontstarve-web/prefab/amulet';
 import { WORLD_SCALE } from '../packages/prefab/src/standardcomponents';
 import { DstLightingRenderer } from './dstLighting';
 import {
@@ -65,8 +64,6 @@ import { playerStats, playerGhostMode, getPlayerStats, setPlayerSanityPercent } 
 import { loadAnimationArchive } from '@dontstarve-web/animation/animationAssets';
 import { createEffect, watchSignal } from '@dontstarve-web/signals';
 import type { Sanity } from '../packages/componets/src/sanity';
-import { OnMakePlayerGhost, OnRespawnFromGhost, setGhostLight, type PlayerGhostOwner, type RezSource } from '@dontstarve-web/prefab/player_common';
-import { SKELETON_PLAYER_ID, type SkeletonInstance } from '@dontstarve-web/prefab/skeleton';
 import { modelHasTag, setModelTag } from '@dontstarve-web/prefab/prefabInstance';
 
 // Independent startup loads begin together; each is awaited where it is first needed.
@@ -296,7 +293,7 @@ const sceneResources = await startScene(
   inventory.entities,
   inventory,
 );
-const { scheduler, buildingPlacement, groundItems, worldFx, staffProjectiles, prefabs, registry, getSaveState, disposalEvents } = sceneResources;
+const { scheduler, buildingPlacement, groundItems, worldFx, staffProjectiles, registry, getSaveState, disposalEvents } = sceneResources;
 gameUi.minimap.bind({ terrain: turfMap, cellSize: TILE_SIZE, getPlayerPosition: () => player.position, cameraHeading: view.cameraHeading });
 const sanityVignette = await SanityVignette.create(playerSanity.sane, animRoot);
 document.body.append(sanityVignette.canvas);
@@ -341,42 +338,11 @@ playerAnimation?.bindDeath({
 // player_common.lua OnSetOwner: PlayerActionFilter at the bottom of the stack (ACTION_FILTER_PRIORITIES.default);
 // the ghost's filter is pushed above it while dead.
 view.mouseActions?.PushActionFilter(PlayerActionFilter, -99);
-// player_common.lua ListenForEvent("makeplayerghost", ex_fns.OnMakePlayerGhost), with the ghost art prepared beforehand.
-let deathCause = 'unknown';
-const ghostOwner: PlayerGhostOwner | undefined = playerAnimation && {
-  model: player, animation: playerAnimation, physics: playerPhysics, stats: playerStats, ghostMode: playerGhostMode,
-  actionPicker: view.mouseActions!,
-  // SpawnDeathProduct: skeleton_player at the death point, described with the character, name and cause.
-  spawnDeathProduct: position => {
-    const skeleton = prefabs.spawn(SKELETON_PLAYER_ID, position) as SkeletonInstance;
-    skeleton.SetSkeletonDescription(playerInstance.prefab, player.name, deathCause);
-  },
-  spawnDieFx: position => {
-    worldFx.spawn('die_fx', position);
-  },
-  schedule: (seconds, fn) => scheduler.schedule(seconds, fn),
-  addSlipperyFeet: sceneResources.addSlipperyFeet,
-  removeSlipperyFeet: sceneResources.removeSlipperyFeet,
-  setHidden: hidden => playerAnimation.stategraph.host.rez?.setHidden(hidden),
-  setGhostLight: enabled => setGhostLight(player, enabled),
-  // inventory:Equip(source): whatever the body slot holds goes back into the inventory first, as Equip swaps it out.
-  equipRezSource: async source => {
-    const worn = inventory.Unequip('body');
-    if (worn && !inventory.GiveItem(worn)) inventory.DropItem(worn);
-    return inventory.Equip((source as AmuletRezSource).entity);
-  },
-  // Physics:Teleport
-  teleport: position => {
-    tilePerfMark(`soulhop teleport to ${position.x.toFixed(1)},${position.z.toFixed(1)}`);
-    playerInstance.setPosition(position.x, player.position.y, position.z);
-    playerPhysics.Teleport();
-    playerBody.velocity.set(0, playerBody.velocity.y, 0);
-  },
-  setControllerEnabled: enabled => { playerInstance.controllerEnabled = enabled; },
-  // inst:ShowHUD
-  showHUD: show => {
-    for (const element of [gameUi.statusHud, gameUi.mapControls]) element.style.visibility = show ? '' : 'hidden';
-  },
+// The input's picker is the player's playeractionpicker; inst.HUD is the status and map controls.
+if (view.mouseActions) playerInstance.components.playeractionpicker = view.mouseActions;
+playerInstance.HUD = {
+  Show: () => { for (const element of [gameUi.statusHud, gameUi.mapControls]) element.style.visibility = ''; },
+  Hide: () => { for (const element of [gameUi.statusHud, gameUi.mapControls]) element.style.visibility = 'hidden'; },
 };
 // SGwilson.lua amulet_rebirth: consume the worn amulet, hide the HUD and put the sleepers nearby to sleep.
 playerAnimation?.bindSpawnPrefab((prefab, position) => registry.SpawnPrefab(prefab, position));
@@ -386,40 +352,28 @@ playerAnimation?.bindRebirth({
     return item?.prefab === AMULET_ID && item.remove();
   },
   hasBodyItem: () => inventory.GetEquippedItem('body') !== null,
-  showHUD: show => ghostOwner?.showHUD(show),
+  showHUD: show => playerInstance.ShowHUD(show),
   sleepNearby: (radius, seconds) => {
     for (const inst of FindEntities(player.position, radius * WORLD_SCALE)) {
       (inst.components as { sleeper?: { GoToSleep(seconds: number): void } }).sleeper?.GoToSleep(seconds);
     }
   },
 });
-const makePlayerGhost = (data: unknown) => {
-  if (ghostOwner) OnMakePlayerGhost(ghostOwner, data as { skeleton?: boolean; loading?: boolean } | undefined);
-};
-const stopMakePlayerGhost = playerInstance.ListenForEvent('makeplayerghost', makePlayerGhost);
-// player_common.lua ListenForEvent("respawnfromghost", ex_fns.OnRespawnFromGhost); health:SetInvincible from portal_rez's exit.
-const stopRespawnFromGhost = playerInstance.ListenForEvent('respawnfromghost', data => {
-  if (ghostOwner) OnRespawnFromGhost(ghostOwner, data as { source?: RezSource } | undefined);
-});
 // A saved ghost resumes as a ghost (OnLoad is_ghost → OnMakePlayerGhost({ loading = true })).
-if (initialSave.players.local.ghost) makePlayerGhost({ loading: true });
+if (initialSave.players.local.ghost) playerInstance.PushEvent('makeplayerghost', { loading: true });
 const stopGhostWatch: (() => void)[] = [];
 // A ghost has no inventory: the bar follows the ghost-mode signal, hidden while true and shown again once false.
 const watchedGhostMode = watchSignal(playerGhostMode, stop => stopGhostWatch.push(stop));
 createEffect(() => { gameUi.inventoryBar.style.display = watchedGhostMode.get() ? 'none' : ''; });
-const stopRecordDeathCause = playerInstance.ListenForEvent('death', data => {
-  deathCause = (data as { cause?: string } | undefined)?.cause ?? 'unknown';
-});
 // A saved living player at zero health resumes the death flow after inventory and death handlers are bound.
-if (playerStats.health.IsDead() && !playerGhostMode.peek()) playerInstance.PushEvent('death', { cause: deathCause });
+if (playerStats.health.IsDead() && !playerGhostMode.peek()) playerInstance.PushEvent('death', { cause: playerInstance.deathcause });
 disposalEvents.on('dispose', () => {
   stopGhostWatch.splice(0).forEach(stop => stop());
-  stopMakePlayerGhost();
-  stopRespawnFromGhost();
-  stopRecordDeathCause();
   playerAnimation?.bindDeath(undefined);
   playerAnimation?.bindRebirth(undefined);
   playerAnimation?.bindSpawnPrefab(undefined);
+  delete playerInstance.HUD;
+  if (playerInstance.components.playeractionpicker === view.mouseActions) delete playerInstance.components.playeractionpicker;
 });
 
 let lastSavedSnapshotId = initialSave.snapshot.id;
