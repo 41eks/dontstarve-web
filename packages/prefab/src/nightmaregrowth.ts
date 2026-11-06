@@ -1,104 +1,107 @@
-import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
+import { SpriteState } from '@dontstarve-web/display';
+import { Vector3 } from 'three';
+import { ComponentTimer } from '../../componets/src/timer';
+import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
+import type { PlacementSaveRecord } from './saveRecord';
 import { MakeObstaclePhysics } from './standardcomponents';
-import * as THREE from 'three';
-import type * as CANNON from 'cannon-es';
-import { createAnimatedSpriteFactory, type AnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
-import { newEntityId } from './saveRecord';
-import { createPrefabEntity } from './prefabInstance';
+import { Transform, type ReadonlyVector3 } from './transform';
 
 export const NIGHTMAREGROWTH_ID = 'nightmaregrowth' as const;
+export const NIGHTMAREGROWTH_CRACK_ID = 'nightmaregrowth_crack' as const;
 
+/** nightmaregrowth.lua OnSave's `crack_rotation`, in degrees. */
 export interface NightmareGrowthSaveState {
   crackRotation: number;
 }
 
-export interface NightmareGrowthRecord {
-  id: string;
-  transform: { position: [number, number, number]; rotationY: number };
-  components: { nightmareGrowth: NightmareGrowthSaveState };
+export interface NightmareGrowthWorld {
+  scheduler: GameTimeScheduler;
+  /** SpawnPrefab("nightmaregrowth_crack"). */
+  spawnPrefab(prefab: typeof NIGHTMAREGROWTH_CRACK_ID, position: Vector3): NightmareGrowthCrackInstance;
+  random?: () => number;
 }
 
-interface NightmareGrowth {
-  model: THREE.Group;
-  growth: ReturnType<typeof createPrefabEntity>;
-  crack: ReturnType<typeof createPrefabEntity>;
-  crackRotation: number;
-}
+const ASSETS = { animationArchive: 'nightmaregrowth.zip', buildArchives: ['nightmaregrowth.zip'], bank: 'nightmaregrowth' };
 
-/** nightmaregrowth.lua: upright idle plus its independently rotated OnGround crack. */
-export class NightmareGrowthManager {
-  private factoryRequest?: Promise<AnimatedSpriteFactory>;
-  private readonly growths = new Set<NightmareGrowth>();
-  private readonly displays: PrefabDisplayGroup;
-  private readonly assetBaseUrl: string;
-  private disposed = false;
-  private readonly physics?: CANNON.World;
+/**
+ * nightmaregrowth.lua fn: the upright, non-looping idle and the DoTaskInTime(0, SpawnCrack) crack, removed with it.
+ * SpawnCrack's destruction of nearby workables, the sanity aura, inspectable status and storyprogress are not ported.
+ */
+export class NightmareGrowthInstance extends PrefabInstance {
+  private _crack?: NightmareGrowthCrackInstance;
+  private _crack_rotation?: number;
+  private readonly task: ComponentTimer;
+  private readonly world: NightmareGrowthWorld;
 
-  constructor(scene: THREE.Scene, assetBaseUrl: string, physics?: CANNON.World) {
-    this.displays = new PrefabDisplayGroup(scene);
-    this.physics = physics;
-    this.assetBaseUrl = assetBaseUrl;
-  }
-
-  async spawn(position: THREE.Vector3, saved?: NightmareGrowthRecord): Promise<THREE.Group> {
-    if (this.disposed) throw new Error('Nightmare growth manager has been disposed');
-    if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError('Invalid nightmare growth position');
-    const crackRotation = saved?.components.nightmareGrowth.crackRotation ?? Math.random() * 360;
-    if (!Number.isFinite(crackRotation) || crackRotation < 0 || crackRotation > 360) throw new RangeError('Invalid crack rotation');
-    if (!this.factoryRequest) {
-      this.factoryRequest = createAnimatedSpriteFactory(this.assetBaseUrl, 'nightmaregrowth.zip');
-      void this.factoryRequest.catch(() => { this.factoryRequest = undefined; });
-    }
-    const factory = await this.factoryRequest;
-    if (this.disposed) throw new Error('Nightmare growth manager has been disposed');
-    // Both idle clips are non-looping in Lua. Hold their settled appearance.
-    const growth = createPrefabEntity(NIGHTMAREGROWTH_ID, { create: (animation, frame) => factory.create({ initialAnimation: animation, initialFrame: frame, name: NIGHTMAREGROWTH_ID }),
-      release: sprite => factory.disposeSprite(sprite) }, { name: 'idle', held: true, billboard: true }, NIGHTMAREGROWTH_ID);
-    growth.instance.addTag('ancient_text');
-    // nightmaregrowth_crack: OnGround LAYER_BACKGROUND, FX | NOCLICK | DECOR, not persistent.
-    const crack = createPrefabEntity('nightmaregrowth_crack', { create: (animation, frame) => {
-      const drawn = factory.create({ initialAnimation: animation, initialFrame: frame, name: 'nightmaregrowth_crack' });
-      // Match pond/terrain layering without changing the persistent ground origin.
-      drawn.children[0].position.z = 0.01;
-      drawn.children[0].children[0].renderOrder = -0.5;
-      return drawn;
-    }, release: sprite => factory.disposeSprite(sprite) }, { name: 'crack_idle', held: true }, 'nightmaregrowth_crack');
-    for (const tag of ['FX', 'NOCLICK', 'DECOR']) crack.instance.addTag(tag);
-    crack.instance.persists = false;
-    const model = growth.display.model, crackModel = crack.display.model;
-    growth.instance.setPosition(position.x, 0, position.z);
-    MakeObstaclePhysics(growth.instance, 1.1);
-    if (this.physics) growth.instance.bindPhysics(this.physics);
-    crack.instance.copyPosition(model.position);
-    crackModel.rotation.set(-Math.PI / 2, 0, THREE.MathUtils.degToRad(crackRotation));
-    crackModel.userData.billboard = false;
-    growth.instance.entityId = saved?.id ?? newEntityId();
-    Object.assign(model.userData, {
-      nightmareGrowthCrack: crackModel,
+  constructor(world: NightmareGrowthWorld, position: ReadonlyVector3) {
+    super(NIGHTMAREGROWTH_ID, new SpriteState({ name: 'idle', held: true, billboard: true }), Transform.stationary());
+    this.world = world;
+    this.setPosition(position.x, 0, position.z);
+    this.sprite.playOnce('idle');
+    this.addTag('ancient_text');
+    this.task = new ComponentTimer(world.scheduler, () => this.SpawnCrack());
+    this.task.start(0);
+    this.onRemove(() => {
+      this.task.stop();
+      if (this._crack && !this._crack.isRemoved) this._crack.remove();
     });
-    this.growths.add({ model, growth, crack, crackRotation });
-    this.displays.mount(prefabDisplay(crackModel)!); this.displays.mount(prefabDisplay(model)!);
-    return model;
   }
 
-  get renderEntities() {
-    return [...this.growths].map(({ model }) => ({ object: model, footPosition: model.position, cameraDepth: 0 }));
+  private SpawnCrack(): void {
+    if (this._crack && !this._crack.isRemoved) return;
+    const crack = this._crack = this.world.spawnPrefab(NIGHTMAREGROWTH_CRACK_ID, new Vector3(this.position.x, 0, this.position.z));
+    crack.entityParent = this;
+    if (this._crack_rotation !== undefined) {
+      crack.SetRotation(this._crack_rotation);
+      this._crack_rotation = undefined;
+    }
   }
 
-  exportRecords(): NightmareGrowthRecord[] {
-    return [...this.growths].map(({ model, crackRotation, growth }) => ({
-      id: String(growth.instance.entityId),
-      transform: { position: [model.position.x, 0, model.position.z], rotationY: 0 },
-      components: { nightmareGrowth: { crackRotation } },
-    }));
+  /** The crack's rotation, or the loaded one its pending SpawnCrack has not applied yet. */
+  OnSave(_inst: unknown, data: PlacementSaveRecord['components']): void {
+    const crack = this._crack && !this._crack.isRemoved ? this._crack : undefined;
+    const rotation = crack ? crack.GetRotation() : this._crack_rotation;
+    if (rotation !== undefined) data.nightmareGrowth = { crackRotation: rotation };
   }
 
-  dispose(): void {
-    if (this.disposed) return;
-    this.disposed = true;
-    for (const { growth, crack } of this.growths) for (const { instance, display } of [growth, crack]) { instance.remove(); display.dispose(); }
-    this.growths.clear();
-    void this.factoryRequest?.then((factory) => factory.dispose(), () => undefined);
-    this.displays.dispose();
+  OnLoad(_inst: unknown, data: PlacementSaveRecord['components']): void {
+    if (data.nightmareGrowth?.crackRotation !== undefined) this._crack_rotation = data.nightmareGrowth.crackRotation;
   }
+}
+
+/** nightmaregrowth.lua crackfn: OnGround, LAYER_BACKGROUND and sort order 3, FX/NOCLICK/DECOR, not persistent. */
+export class NightmareGrowthCrackInstance extends PrefabInstance {
+  constructor(position: ReadonlyVector3, random: () => number) {
+    super(NIGHTMAREGROWTH_CRACK_ID, new SpriteState({ name: 'crack_idle', held: true }), Transform.stationary());
+    this.setPosition(position.x, 0, position.z);
+    this.sprite.playOnce('crack_idle');
+    this.sprite.setGround(0); this.sprite.setMeshOrder(-.5);
+    for (const tag of ['FX', 'NOCLICK', 'DECOR']) this.addTag(tag);
+    this.persists = false;
+    this.SetRotation(random() * 360);
+  }
+  private degrees = 0;
+  /** Transform:SetRotation / GetRotation, in degrees as the source keeps them. */
+  SetRotation(degrees: number): void { this.degrees = degrees; this.transform.setRotation(degrees); }
+  GetRotation(): number { return this.degrees; }
+}
+
+/** The nightmaregrowth and nightmaregrowth_crack Prefabs nightmaregrowth.lua returns; the spawners are not ported. */
+export function nightmareGrowthPrefabs(world: NightmareGrowthWorld): Readonly<Record<typeof NIGHTMAREGROWTH_ID, PrefabEntityDefinition<NightmareGrowthInstance>>
+  & Record<typeof NIGHTMAREGROWTH_CRACK_ID, PrefabEntityDefinition<NightmareGrowthCrackInstance>>> {
+  const random = world.random ?? Math.random;
+  return {
+    [NIGHTMAREGROWTH_ID]: {
+      fn: position => new NightmareGrowthInstance(world, position),
+      assets: ASSETS,
+      physics: { make: MakeObstaclePhysics, radius: 1.1 },
+      minimapIcon: 'nightmaregrowth.png',
+    },
+    [NIGHTMAREGROWTH_CRACK_ID]: {
+      fn: position => new NightmareGrowthCrackInstance(position, random),
+      assets: ASSETS,
+      targetable: false,
+    },
+  };
 }
