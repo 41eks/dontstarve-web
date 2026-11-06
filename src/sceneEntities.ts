@@ -315,7 +315,6 @@ export async function createSceneEntities(
     'rock_avocado_bush': ReturnType<typeof registerRockAvocadoBushes>;
     'rock_avocado_fruit_sprout_sapling': ReturnType<typeof registerRockAvocadoSaplings>;
     'berrybush': ReturnType<typeof registerBerrybushes>;
-    'monkeytail': ReturnType<typeof registerMonkeytails>;
     'grass': ReturnType<typeof registerGrasses>;
     'sapling': ReturnType<typeof registerSaplings>;
     'cave_fern': ReturnType<typeof registerCaveFerns>;
@@ -412,7 +411,7 @@ export async function createSceneEntities(
   Managers['rock_avocado_bush'] = registerRockAvocadoBushes(registry, 'rock_avocado_bush', worldState);
   Managers['rock_avocado_fruit_sprout_sapling'] = registerRockAvocadoSaplings(registry, 'rock_avocado_fruit_sprout_sapling', worldState);
   Managers['berrybush'] = registerBerrybushes(registry, 'berrybush', worldState);
-  Managers['monkeytail'] = registerMonkeytails(registry, 'monkeytail', worldState);
+  registerMonkeytails(registry, 'monkeytail', worldState);
   Managers['grass'] = registerGrasses(registry, 'grass', worldState);
   Managers['sapling'] = registerSaplings(registry, 'sapling', worldState);
   Managers['cave_fern'] = registerCaveFerns(registry, 'cave_fern', worldState);
@@ -490,7 +489,6 @@ export async function createSceneEntities(
     marbleBeanSaplings: Managers['marblebean_sapling'],
     rockAvocadoBushes: Managers['rock_avocado_bush'],
     berrybushes: Managers['berrybush'],
-    monkeytails: Managers['monkeytail'],
     grasses: Managers['grass'],
     saplings: Managers['sapling'],
     ponds: Managers['pond'],
@@ -1078,7 +1076,6 @@ export async function createSceneEntities(
       spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
     }));
     registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
-    return prefabs;
   }
 
   function registerGrasses(registry: EntityRegistry, prefabId: 'grass', worldState: SceneWorldState) {
