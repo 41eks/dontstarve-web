@@ -3,7 +3,7 @@ import { clockstate, createMemo, readonlySignal, type EventEmitter, type GetWatc
 import { cursorSlotAddress, equipmentSlotAddress, inventorySlotAddress, type InventoryStore, type InventoryStack } from '@dontstarve-web/inventory';
 import { createChestInventoryPanel, type mountGameUi, type SlotAddress, type SlotItem } from '@dontstarve-web/ui';
 import {
-  PlayerController, FoodActionController, ItemUseActionController,
+  PlayerController, ItemUseActionController,
   type PickupDoer, type PlayerLocomotor, type PlayerActionEvents,
 } from '@dontstarve-web/stategraphs';
 import type { ScreenProjection } from '@dontstarve-web/display';
@@ -187,12 +187,6 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
           sleeper.dispose(); phase.dispose();
         } });
       }
-      const foodActions = playerAnimation ? new FoodActionController(view, playerAnimation.stategraph, locomotor,
-        playerInstance, isActionInterrupting) : undefined;
-      if (foodActions) {
-        frameControllers.push(foodActions);
-      }
-
       // The player inst carries reader.lua's component and tag, with the world services the books' callbacks reach.
       const bookWorld: BookWorld = {
         root: view.scene, scheduler, weather, moon, getWatchWorldContent,
@@ -323,10 +317,6 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
         const use = entity && controller?.GetInventoryItemAction(entity);
         if (use) {
           controller!.DoAction(use);
-          return;
-        }
-        if (foodActions && entity && playerInstance.components.eater?.CanEat(entity)) {
-          foodActions.eat(entity);
           return;
         }
         if (stack.itemId === 'backpack' || stack.itemId === ARMORSNURTLESHELL_ID || stack.itemId === AMULET_ID) {

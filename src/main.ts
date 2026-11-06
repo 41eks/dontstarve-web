@@ -122,7 +122,8 @@ const playerAnimation = playerInstance.animationController;
 const STATEGRAPH_EVENTS = new Set(['toolbroke', 'fishingnibble', 'fishingloserod', 'fishingstrain', 'fishingcatch', 'fishingcancel']);
 const pickupDoer: PickupDoer & WortoxDoer & { sg: NonNullable<PickupDoer['sg']> & { beginPortalJump(pos: import('three').Vector3, fromMap?: boolean): boolean }; ListenForEvent(name: string, listener: (data: unknown) => void): () => void; HasStateTag(tag: string): boolean; GoToState(name: string): void; IsCurrentState(name: string): boolean;
   components: PickupDoer['components'] & { health: typeof playerStats.health; hunger: typeof playerStats.hunger; sanity?: Sanity } } = {
-  components: { inventory, health: playerStats.health, hunger: playerStats.hunger },
+  // The player's own eater.lua component, which ACTIONS.EAT reaches on act.doer.
+  components: { inventory, health: playerStats.health, hunger: playerStats.hunger, eater: playerInstance.components.eater },
   ListenForEvent: (name, listener) => playerInstance.ListenForEvent(name, listener),
   hasTag: tag => tag === 'player' || modelHasTag(player, tag),
   addTag: tag => setModelTag(player, tag, true),

@@ -177,7 +177,7 @@ torch 的专用 ground factory 注册 `onputininventory` 和 `onextinguish`。�
 
 `packages/prefab/src/food.ts` 定义已接入食物的源 Lua 数值：种子为 4.6875 饥饿，香蕉奶昔为 8 生命、25 饥饿、33 理智。`bananajuice` 来自 `preparedfoods.lua:571`，数值分别为 `TUNING.HEALING_MEDSMALL`、`CALORIES_MED`、`SANITY_LARGE`；共享 `prefabs/preparedfoods.lua` 将这些数值装到 edible 组件，`fooddrink` 标签决定喝饮料动画。
 
-`FoodActionController`（`packages/stategraphs/src/eat.ts`）负责库存进食请求及取消。缓冲动作保存原始食物实例，第 12 帧由该实例的 `edible` 和玩家的 `eater` 结算效果并消耗一份；同一实例移动槽位或换皮肤仍有效，替换为同 ID 的另一实例不会误消耗。`meatballs` 与其他固体食物共用这条路径。`SGwilson` 根据 `foodDrink` 选择 `quick_drink_pre → quick_drink` 或 `quick_eat_pre → quick_eat`，第 10 帧分别播放 sip / eat；业务提交不等待美术加载。
+点击库存食物时，`PlayerController.GetInventoryItemAction()` 从 `componentactions.lua` 的 `INVENTORY.edible`（执行者带 `<食物组>_eater` 或 `<食物类型>_eater` 标签、物品带对应 `edible_*` 标签时给出 `EAT`）取得动作，`DoAction()` 直接缓冲到状态图；移动、Esc 和其他点击按 `PlayerController` 的通用规则取消。缓冲动作保存原始食物实例，第 12 帧由共享的 `ACTIONS.EAT.fn` 调用执行者的 `eater:Eat`，按该实例的 `edible` 结算效果并消耗一份；同一实例移动槽位或换皮肤仍有效，替换为同 ID 的另一实例不会误消耗。`meatballs` 与其他固体食物共用这条路径。`SGwilson` 按食物自身的 `fooddrink` 标签选择 `quick_drink_pre → quick_drink` 或 `quick_eat_pre → quick_eat`，第 10 帧分别播放 sip / eat；业务提交不等待美术加载。
 
 持有 active item 时，库存左键继续拿取／交换，右键按 Lua 的 `UseItemFromInvTile` 通过 `PlayerActionPicker.GetUseItemActions` 和 `PlayerController` 提交 `BufferedAction`。`FEED`、`ADDFUEL`、`ADDWETFUEL` 的共享动作函数直接访问原始目标及物品实例的组件；应用层不提供 `useFuel` 回调，也不拼装目标代理。
 

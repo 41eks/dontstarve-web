@@ -100,7 +100,11 @@ const soulHopper = (act: BufferedAction) => act.doer as SoulHopper | undefined;
 /** The doer's reader.lua component, which reads a book with the world it was given. */
 type DoerReader = { Read(book: BufferedActionObject): readonly [boolean, string?] | undefined };
 const doerReader = (act: BufferedAction) => (act.doer as { components?: { reader?: DoerReader } } | undefined)?.components?.reader;
+/** The doer's eater.lua component. */
+type DoerEater = { Eat(food: BufferedActionObject, feeder?: unknown): boolean };
+const doerEater = (act: BufferedAction) => (act.doer as { components?: { eater?: DoerEater } } | undefined)?.components?.eater;
 type InventoryUseComponents = {
+  edible?: object;
   instrument?: { Play(musician: unknown): boolean };
   book?: object;
   finiteuses?: { useForAction?(action: string): boolean };
@@ -311,6 +315,13 @@ export const ACTION_FNS: Readonly<Partial<Record<string, ActionFns>>> = {
   BLINK_MAP: {
     fn: act => soulHopper(act)?.sg?.beginPortalJump?.(actionPoint(act), true) ?? false,
     validfn: act => !!soulHopper(act)?.CanSoulhop?.() && !!soulHopper(act)?.CanBlinkFromWithMap?.(actionPoint(act)),
+  },
+  // The souleater and oceanfishable branches are not ported.
+  EAT: {
+    fn: act => {
+      const obj = act.target ?? act.invobject, eater = doerEater(act);
+      return !!obj && !!inventoryComponents(obj).edible && !!eater && eater.Eat(obj, act.doer);
+    },
   },
   PLAY: {
     fn: act => {

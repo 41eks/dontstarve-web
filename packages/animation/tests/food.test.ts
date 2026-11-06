@@ -2,7 +2,7 @@ import { advancePlayer } from './playerVisual';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { FoodActionController } from '../../stategraphs/src/eat';
+import { inventoryUse } from './inventoryUseFixture';
 import { FOOD_EFFECTS } from '../../prefab/src/food';
 import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
 import { PlaySound } from '../../prefab/src/sound';
@@ -36,8 +36,7 @@ async function fixture(itemId = 'bananajuice') {
     renderer: { domElement: new EventTarget() } } as unknown as WorldContext;
   const slot = inventorySlotAddress(0), store = createPickupInventory();
   playerInstance.components.inventory = store;
-  const actions = new FoodActionController(world, animation.stategraph, { stop() {}, goToPoint: () => true, destination: undefined },
-    playerInstance);
+  const actions = inventoryUse(world, animation.stategraph, playerInstance);
   store.add(itemId, 2);
   const entity = store.getEntity(slot)!;
   return { animation, actions, store, slot, entity };
@@ -49,7 +48,12 @@ it('eats meatballs through the solid-food action and commits edible stats and on
   const onEaten = vi.fn();
   entity.ListenForEvent('oneaten', onEaten);
   try {
-    expect(await actions.eat(entity)).toBe(true);
+    // componentactions.lua edible INVENTORY: EAT for food in the player's OMNI diet, nothing for an item without edible.
+    store.add('log', 1);
+    expect(actions.controller.GetInventoryItemAction(store.getEntity(inventorySlotAddress(1))!)).toBeUndefined();
+    const picked = actions.controller.GetInventoryItemAction(entity)!;
+    expect([picked.action, picked.invobject, picked.target]).toEqual(['EAT', entity, undefined]);
+    expect(await actions.use(entity)).toBe(true);
     expect(animation.stategraph.animationClip.key).toBe('quick_eat_pre');
     for (let frame = 0; frame < 11; frame++) advancePlayer(animation, 1 / 30);
     expect(onEaten).not.toHaveBeenCalled();
@@ -76,7 +80,7 @@ it('renders source raw/cooked mushroom poses and applies harmful and restorative
       const mesh = sprite.model.children[0].children[0].children[0] as THREE.Mesh;
       expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
     }
-    await actions.eat(entity);
+    await actions.use(entity);
     for (let frame = 0; frame < 40; frame++) advancePlayer(animation, 1 / 30);
     expect(store.get(slot)?.count).toBe(1);
     expect(getPlayerStats()).toEqual({ health: 140, hunger: 102.5, sanity: 0, sanitySane: false });
@@ -97,7 +101,7 @@ it('drinks source bananajuice art, consumes once at frame 12 and restores the re
       buildArchives: ['cook_pot_food10.zip'], symbolOverrides: { swap_food: { symbol: 'bananajuice' } }, skinArchives: {} });
     const mesh = ground.model.children[0].children[0].children[0] as THREE.Mesh;
     expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
-    expect(await actions.eat(entity)).toBe(true);
+    expect(await actions.use(entity)).toBe(true);
     expect(animation.stategraph.animationClip.key).toBe('quick_drink_pre');
     for (let frame = 0; frame < 11; frame++) advancePlayer(animation, 1 / 30);
     expect(store.get(slot)?.count).toBe(2);
@@ -119,7 +123,7 @@ it('drinks source bananajuice art, consumes once at frame 12 and restores the re
 
 it('preserves food and stats when cancelled or replaced before commit and clamps a completed drink to the sanity maximum', async () => {
   const { animation, actions, store, slot, entity } = await fixture();
-  const eat = () => actions.eat(entity);
+  const eat = () => actions.use(entity);
   try {
     await eat(); advancePlayer(animation, 0.1);
     window.dispatchEvent(Object.assign(new Event('keydown'), { code: 'Escape' }));
@@ -137,7 +141,7 @@ it('preserves food and stats when cancelled or replaced before commit and clamps
     expect(playerStats.sanity.current).toBe(35);
     playerStats.sanity.SetCurrent(190);
     const replacement = store.getEntity(slot)!;
-    expect(await actions.eat(replacement)).toBe(true);
+    expect(await actions.use(replacement)).toBe(true);
     for (let frame = 0; frame < 40; frame++) advancePlayer(animation, 1 / 30);
     expect(store.get(slot)?.count).toBe(1);
     expect(playerStats.sanity.current).toBe(200);
@@ -152,7 +156,7 @@ it('keeps the buffered food entity when it moves to another inventory slot', asy
   const { animation, actions, store, slot, entity } = await fixture();
   const destination = inventorySlotAddress(1);
   try {
-    expect(actions.eat(entity)).toBe(true);
+    expect(actions.use(entity)).toBe(true);
     expect(store.transfer(slot, destination, 2)).toBe(true);
     for (let frame = 0; frame < 12; frame++) advancePlayer(animation, 1 / 30);
     expect(store.getEntity(slot)).toBeNull();
@@ -169,7 +173,7 @@ it('settles the current perish stage at the eat frame and rejects food replaced 
   const perish = entity.components.perishable;
   try {
     perish.SetPercent(.50001);
-    expect(actions.eat(entity)).toBe(true);
+    expect(actions.use(entity)).toBe(true);
     world.advance(.5);
     expect(perish.stage.peek()).toBe('fresh');
     for (let frame = 0; frame < 12; frame++) advancePlayer(animation, 1 / 30);
@@ -178,7 +182,7 @@ it('settles the current perish stage at the eat frame and rejects food replaced 
     expect(store.get(slot)?.count).toBe(1);
     for (let frame = 0; frame < 40; frame++) advancePlayer(animation, 1 / 30);
     perish.SetPercent(.00001);
-    expect(actions.eat(entity)).toBe(true);
+    expect(actions.use(entity)).toBe(true);
     const stats = getPlayerStats();
     world.advance(.5);
     for (let frame = 0; frame < 12; frame++) advancePlayer(animation, 1 / 30);
