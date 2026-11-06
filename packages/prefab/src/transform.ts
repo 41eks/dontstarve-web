@@ -52,6 +52,12 @@ export class Transform {
     this.markDirty();
   }
 
+  /** A save record's heading, which it holds in radians: no round trip through degrees, so a reload saves it unchanged. */
+  setSavedRotation(radians: number): void {
+    this.#model.rotation.y = radians;
+    this.markDirty();
+  }
+
   setScale(x: number, y = x, z = x): void {
     this.#model.scale.set(x, y, z);
     this.markDirty();

@@ -1,4 +1,4 @@
-import { StalagmiteManager, type StalagmiteRecord } from '@dontstarve-web/prefab/stalagmite';
+import { stalagmitePrefabs } from '@dontstarve-web/prefab/stalagmite';
 import { RuinsRelicManager, type RuinsRelicRecord } from '@dontstarve-web/prefab/ruinsrelic';
 import { LightFlierFlowerManager, type LightFlierFlowerRecord } from '../packages/prefab/src/lightflier_flower';
 import { MAX_PHYSICS_FRAME_TIME } from './physicsTiming';
@@ -289,7 +289,6 @@ export async function createSceneEntities(
     'lightflier_flower': ReturnType<typeof registerLightFlierFlowers>;
     'ground_item': ReturnType<typeof registerGroundItems>;
     'bulb_plant': ReturnType<typeof registerBulbPlants>;
-    'stalagmite': ReturnType<typeof registerStalagmites>;
     'rocks': ReturnType<typeof registerRocks>;
     'moonglass_rock': ReturnType<typeof registerMoonglassRocks>;
     'cave_hole': ReturnType<typeof registerCaveHoles>;
@@ -365,7 +364,7 @@ export async function createSceneEntities(
   registerStaffLights(registry, worldState);
   Managers['staff_castinglight'] = registerStaffCastingLights(registry, worldState);
   Managers['bulb_plant'] = registerBulbPlants(registry, 'bulb_plant', worldState);
-  Managers['stalagmite'] = registerStalagmites(registry, worldState);
+  registerStalagmites(registry, worldState);
   Managers['rocks'] = registerRocks(registry, 'rocks', worldState);
   Managers['moonglass_rock'] = registerMoonglassRocks(registry, 'moonglass_rock', worldState);
   Managers['cave_hole'] = registerCaveHoles(registry, 'cave_hole', worldState);
@@ -689,19 +688,15 @@ export async function createSceneEntities(
   }
 
   function registerStalagmites(registry: EntityRegistry, worldState: SceneWorldState) {
-    const stalagmites = new StalagmiteManager(scene, { scheduler: worldState.scheduler, physics: world,
-      tickingarea: worldState.tickingarea, trackDisplay: display => registry.trackDisplay(display),
+    prefabs.register(stalagmitePrefabs({ scheduler: worldState.scheduler,
       spawnLoot: (id, position) => {
         const definition = GROUND_ART_DEFINITIONS[id];
         return definition ? Managers['ground_item'].spawnGroundItem({ ...definition, icon: definition.icon ?? '',
           itemId: id, count: 1 }, position, { fling: true }) : undefined;
-      } });
-    registry.registerDisplayManager(PREFAB_DEFINITIONS.stalagmites, stalagmites, {
-      restore: (id, record) => stalagmites.spawn(id, new THREE.Vector3(...record.transform.position), record as StalagmiteRecord),
-      debugSpawn: id => stalagmites.spawn(id, player.position.clone()),
-    });
-    return stalagmites;
+      } }));
+    registry.registerPrefabs(PREFAB_DEFINITIONS.stalagmites);
   }
+
 
   function registerRocks(registry: EntityRegistry, prefabId: 'rocks', worldState: SceneWorldState) {
     const rockManager = new RockManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {

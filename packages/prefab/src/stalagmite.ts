@@ -1,20 +1,13 @@
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
-import * as THREE from 'three';
-import type { World } from 'cannon-es';
-import type { TileStateQuery } from '@dontstarve-web/signals';
-import { PrefabDisplay, PrefabDisplayGroup, SpriteResources, SpriteState } from '@dontstarve-web/display';
+import { SpriteState } from '@dontstarve-web/display';
 import { Workable } from '../../componets/src/workable';
 import { LootDropper, SetSharedLootTable, type ChanceLootTable } from '../../componets/src/lootdropper';
 import { Hauntable } from '../../componets/src/hauntable';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { PrefabInstance, bindInstance } from './prefabInstance';
+import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { MakeObstaclePhysics } from './standardcomponents';
-import { watchTileActivity } from './tileActivity';
-import { newEntityId } from './saveRecord';
-import { actionEntity } from './actionEntity';
 import { PlaySound } from './sound';
-import type { DisplayDrivenPrefabManager, DisplayManagerWorld } from './manager';
 
 export const STALAGMITE_IDS = ['stalagmite', 'stalagmite_full', 'stalagmite_med', 'stalagmite_low',
   'stalagmite_tall', 'stalagmite_tall_full', 'stalagmite_tall_med', 'stalagmite_tall_low'] as const;
@@ -37,16 +30,9 @@ const LOOT: Readonly<Record<string, ChanceLootTable>> = {
 };
 for (const [name, entries] of Object.entries(LOOT)) SetSharedLootTable(name, entries);
 
-/** Neither prefab has OnSave / OnLoad; workable.savestate stays false. */
-export interface StalagmiteRecord {
-  id: string;
-  transform: { position: [number, number, number]; rotationY: number };
-  components: Record<string, never>;
-}
-export interface StalagmiteWorld extends DisplayManagerWorld {
+/** Neither prefab has OnSave / OnLoad and workable.savestate stays false: a record holds only identity and transform. */
+export interface StalagmiteWorld {
   scheduler: GameTimeScheduler;
-  tickingarea?: TileStateQuery;
-  physics?: World;
   spawnLoot: ConstructorParameters<typeof LootDropper>[1];
 }
 
@@ -58,16 +44,15 @@ export class StalagmiteInstance extends PrefabInstance<SpriteState> {
   readonly prefabNameOverride: 'stalagmite' | 'stalagmite_tall';
   readonly scrapbookAnimation: 'full' | 'full_1';
 
-  constructor(id: StalagmiteId, world: StalagmiteWorld, saved?: StalagmiteRecord) {
+  constructor(id: StalagmiteId, world: StalagmiteWorld, position: ReadonlyVector3) {
     const tall = id.startsWith('stalagmite_tall'), stage = initialStage(id);
     const type = tall ? Math.random() < .5 ? '_1' : '_2' : '';
     super(id, new SpriteState({ name: stage + type, held: true, billboard: true }));
     this.prefabId = id; this.type = type;
     this.prefabNameOverride = tall ? 'stalagmite_tall' : 'stalagmite';
     this.scrapbookAnimation = tall ? 'full_1' : 'full';
-    this.entityId = saved?.id ?? newEntityId(); this.saveRecord = saved;
+    this.setPosition(position.x, 0, position.z);
     this.minimap.SetIcon(`${this.prefabNameOverride}.png`);
-    MakeObstaclePhysics(this, 1);
     this.addTag('boulder');
     this.sprite.playOnce(stage + type); // PlayAnimation(anim) / PlayAnimation(anim..inst.type), never looping.
     const colour = .5 + Math.random() * .5;
@@ -97,40 +82,18 @@ export class StalagmiteInstance extends PrefabInstance<SpriteState> {
   }
 }
 
-export class StalagmiteManager implements DisplayDrivenPrefabManager<{ prefabId: StalagmiteId; record: StalagmiteRecord }> {
-  private readonly resources = new SpriteResources(undefined, 'stalagmite');
-  private readonly displays: PrefabDisplayGroup;
-  private readonly world: StalagmiteWorld;
-  private readonly instances = new Map<THREE.Group, StalagmiteInstance>();
-  private disposed = false;
-  constructor(scene: THREE.Scene, world: StalagmiteWorld) { this.displays = new PrefabDisplayGroup(scene); this.world = world; }
-
-  spawn(id: StalagmiteId, position: ReadonlyVector3, saved?: StalagmiteRecord): THREE.Group {
-    if (this.disposed) throw new Error('Stalagmites disposed');
-    const instance = new StalagmiteInstance(id, this.world, saved), bank = stalagmiteBank(id);
-    const display = new PrefabDisplay({ root: instance.transform.model, name: id, status: instance.status, sprite: instance.sprite,
-      archive: this.resources.archive({ animationArchive: `${bank}.zip`, buildArchives: [`${bank}.zip`], bank },
-        { instancedAnimations: 'all', colour: [1, 1, 1] }) });
-    const model = display.model; bindInstance(model, instance);
-    instance.copyPosition(position); model.rotation.y = saved?.transform.rotationY ?? 0;
-    if (this.world.physics) instance.bindPhysics(this.world.physics);
-    const stop = watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active));
-    instance.onRemove(() => { stop(); this.instances.delete(model); });
-    actionEntity(model, id);
-    this.instances.set(model, instance); this.displays.mount(display); this.world.trackDisplay(display);
-    return model;
+/** The Prefabs stalagmite.lua and stalagmite_tall.lua return. */
+export function stalagmitePrefabs(world: StalagmiteWorld): Readonly<Record<StalagmiteId, PrefabEntityDefinition<StalagmiteInstance>>> {
+  const prefabs = {} as Record<StalagmiteId, PrefabEntityDefinition<StalagmiteInstance>>;
+  for (const id of STALAGMITE_IDS) {
+    const bank = stalagmiteBank(id);
+    prefabs[id] = {
+      fn: position => new StalagmiteInstance(id, world, position),
+      assets: { animationArchive: `${bank}.zip`, buildArchives: [`${bank}.zip`], bank },
+      // colour: [1,1,1] gives each instance its own tint in the batch, without changing the shared frames.
+      assetOptions: { instancedAnimations: 'all', colour: [1, 1, 1] },
+      physics: { make: MakeObstaclePhysics, radius: 1 },
+    };
   }
-  get renderEntities() { return [...this.instances].filter(([, inst]) => inst.sprite.loaded)
-    .map(([object, inst]) => ({ object, footPosition: inst.position, cameraDepth: 0 })); }
-  exportRecords(): { prefabId: StalagmiteId; record: StalagmiteRecord }[] {
-    return [...this.instances].filter(([, inst]) => inst.persists && !inst.isRemoved).map(([model, inst]) => ({
-      prefabId: inst.prefabId,
-      record: { id: String(inst.entityId), transform: { position: inst.position.toArray(), rotationY: model.rotation.y }, components: {} },
-    }));
-  }
-  dispose(): void {
-    if (this.disposed) return; this.disposed = true;
-    for (const inst of this.instances.values()) inst.remove();
-    this.instances.clear(); this.displays.dispose(); this.resources.dispose();
-  }
+  return prefabs;
 }

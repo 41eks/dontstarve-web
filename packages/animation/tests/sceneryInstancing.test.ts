@@ -1,12 +1,12 @@
-import { prefabDisplays } from './prefabManagerFixture';
+import { prefabDisplays, prefabManager } from './prefabManagerFixture';
 import { plantManager } from './plantManagerFixture';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
-import { prefabDisplay, type PrefabDisplay } from '@dontstarve-web/display';
+import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { StalagmiteManager } from '../../prefab/src/stalagmite';
+import { stalagmitePrefabs } from '../../prefab/src/stalagmite';
 import { lichenPrefabs } from '../../prefab/src/lichen';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { prewarmScenePasses, renderScenePasses } from '../src/sceneRenderPass';
@@ -29,10 +29,9 @@ it('batches both stalagmite banks and the lichen idle loop, retaining instance t
   vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url)))));
   const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), awake = createSignal(true);
   const world = bindTestWorld(scheduler);
-  const displays = new Set<PrefabDisplay>();
   const tickingarea = () => createMemo(() => awake.get());
-  const rocks = new StalagmiteManager(scene, { scheduler, tickingarea, spawnLoot: () => undefined,
-    trackDisplay: display => displays.add(display) });
+  const rockDisplays = new PrefabDisplayGroup(scene);
+  const rocks = prefabManager(rockDisplays, '/dst/data/anim', { scheduler, tickingarea, spawnLoot: () => undefined }, stalagmitePrefabs);
   const lichens = plantManager(lichenPrefabs, scene, { tickingarea, spawnGroundItem: () => undefined });
   const camera = new THREE.OrthographicCamera(-20, 20, 20, -20, .1, 1000);
   camera.position.set(0, 30, 30); camera.lookAt(0, 0, 0);
@@ -45,13 +44,13 @@ it('batches both stalagmite banks and the lichen idle loop, retaining instance t
   };
   const update = (dt: number) => {
     scheduler.advance(dt);
-    for (const display of displays) display.update(dt);
+    rockDisplays.update(dt, new THREE.Quaternion());
     prefabDisplays(lichens).update(dt, new THREE.Quaternion());
   };
   try {
     const models = [
-      rocks.spawn('stalagmite', new THREE.Vector3(-6, 0, 0)), rocks.spawn('stalagmite_full', new THREE.Vector3(-4, 0, 0)),
-      rocks.spawn('stalagmite_tall', new THREE.Vector3(-1, 0, 0)), rocks.spawn('stalagmite_tall_full', new THREE.Vector3(1, 0, 0)),
+      rocks.spawn('stalagmite', new THREE.Vector3(-6, 0, 0)).transform.model, rocks.spawn('stalagmite_full', new THREE.Vector3(-4, 0, 0)).transform.model,
+      rocks.spawn('stalagmite_tall', new THREE.Vector3(-1, 0, 0)).transform.model, rocks.spawn('stalagmite_tall_full', new THREE.Vector3(1, 0, 0)).transform.model,
       lichens.spawn('lichen', new THREE.Vector3(5, 0, 0)).transform.model, lichens.spawn('lichen', new THREE.Vector3(7, 0, 0)).transform.model,
     ];
     const instances = models.map(model => prefabInstance(model)!);
@@ -94,5 +93,5 @@ it('batches both stalagmite banks and the lichen idle loop, retaining instance t
     expect(vi.mocked(fetch).mock.calls).toHaveLength(requests);
     expect([rocks.exportRecords(), lichens.exportRecords().map(({ record }) => record)]).toEqual(saved);
     expect(instances.map(inst => inst.sprite.sprite.peek().colour![0])).toEqual(greys);
-  } finally { rocks.dispose(); lichens.dispose(); world.unbind(); scheduler.dispose(); }
+  } finally { rocks.dispose(); rockDisplays.dispose(); lichens.dispose(); world.unbind(); scheduler.dispose(); }
 });
