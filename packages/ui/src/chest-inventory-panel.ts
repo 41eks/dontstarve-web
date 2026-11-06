@@ -154,7 +154,7 @@ export function createChestInventoryPanel(
           title: definitions.animatedBuildings[buildingPrefab].buildLabel,
         });
         const component = prefabInstance(model)?.components.container;
-        if (component && toItem) element.bindContainer(component, toItem);
+        if (component && toItem) element.bindContainer(component.slots, toItem);
         const onBurnt = () => element.close();
         stopBurnt = prefabInstance(model)?.ListenForEvent('burntup', onBurnt);
       } else if (openModel === model) {

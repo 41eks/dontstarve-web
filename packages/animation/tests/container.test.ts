@@ -36,11 +36,10 @@ describe('Lua container component', () => {
       expect(check).not.toHaveBeenCalled();
     } finally { container.dispose(); world.unbind(); scheduler.dispose(); }
   });
-  it('publishes its slot list and each slot\'s inst as read-only signals, through loads and clearing', () => {
+  it('publishes each slot\'s inst as a read-only signal, through loads and clearing', () => {
     const container = createContainer();
     container.SetNumSlots(2);
-    const list = container.slotList, slots = list.peek();
-    expect('set' in list).toBe(false);
+    const slots = container.slots;
     expect('set' in slots[0].entity).toBe(false);
     expect(slots.map(slot => slot.entity.peek())).toEqual([null, null]);
     const observed = vi.fn();
@@ -55,12 +54,9 @@ describe('Lua container component', () => {
     expect(slots.map(slot => slot.entity.peek()?.id)).toEqual(['slot_log', 'slot_torch']);
     expect(() => container.OnLoad({ slots: [{ slotKey: '2', item: { itemId: 'log', count: 1 } }] })).toThrow();
     expect(observed).toHaveBeenCalledTimes(2);
-    container.SetNumSlots(3);
-    expect(container.slotList.peek()).not.toBe(slots);
-    expect(container.slotList.peek().slice(0, 2)).toEqual(slots);
-    expect(container.slotList.peek()[2].entity.peek()).toBeNull();
     container.dispose();
-    expect(container.slotList.peek().map(slot => slot.entity.peek())).toEqual([null, null, null]);
+    expect(observed).toHaveBeenCalledTimes(4);
+    expect(slots.map(slot => slot.entity.peek())).toEqual([null, null]);
     stops.forEach(stop => stop());
   });
 

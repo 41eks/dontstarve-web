@@ -43,7 +43,7 @@ export async function createReceiveFixture() {
       const containerId = backpackContainerId(backpack.id);
       const container = backpack.components.container!;
       backpackPanel.open({ containerId, slotCount: container.numslots, title: '背包' });
-      backpackPanel.bindContainer(container, createInventorySlotItem(inventory));
+      backpackPanel.bindContainer(container.slots, createInventorySlotItem(inventory));
       const maxStack = inventory.getItemSpec('rocks').maxStack;
       if (!inventory.add('rocks', INVENTORY_SLOT_COUNT * maxStack)) throw new Error('Could not fill inventory');
       // Leave capacity for one item so one receipt spans the main inventory and backpack.

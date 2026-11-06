@@ -109,12 +109,9 @@ export class DstInventoryBarElement extends AssetElement {
   /** inventorybar.lua: the item, equipment and cursor slots follow the inst in each inventory slot. */
   bindInventory<TItem>(inventory: BindableInventory<TItem>, toItem: (item: TItem) => InventoryBarItem): () => void {
     const stops = [
-      bindSlotEntities(this.inventory, inventory.itemslots.map((slot, index) => [String(index), slot] as const), toItem),
-      bindSlotEntities(this.equipment, equipmentSlots.flatMap(({ kind }) => {
-        const slot = inventory.equipslots[kind];
-        return slot ? [[kind, slot] as const] : [];
-      }), toItem),
-      bindSlotEntities(this.cursor, inventory.activeitemslot ? [[cursorSlotAddress().slotKey, inventory.activeitemslot] as const] : [], toItem),
+      bindSlotEntities(this.inventory, inventory.itemslots, toItem),
+      bindSlotEntities(this.equipment, inventory.equipslots, toItem),
+      bindSlotEntities(this.cursor, [inventory.activeitemslot], toItem),
     ];
     return () => stops.forEach(stop => stop());
   }

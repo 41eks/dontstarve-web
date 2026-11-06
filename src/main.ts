@@ -221,7 +221,7 @@ const bodyEquipmentBinding = bindPlayerBodyEquipment({
       const container = inventory.getEntity(bodySlotAddress)?.components.container;
       if (!container) return;
       gameUi.backpackPanel.open({ containerId, slotCount: container.numslots, title: '背包' });
-      gameUi.backpackPanel.bindContainer(container, inventorySlotItem);
+      gameUi.backpackPanel.bindContainer(container.slots, inventorySlotItem);
     }
   },
 });

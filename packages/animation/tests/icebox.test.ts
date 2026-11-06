@@ -93,7 +93,7 @@ it('cools stones to the source floor, resumes ambient changes outside the fridge
     expect(temp.GetCurrent()).toBe(35);
     inventory.transfer(held, chilled, 1);
     // The container panel's item follows the inst's tile; the slot keeps the same inst.
-    const slot = inventory.getContainer(chilled.containerId)!.slotList.peek()[0], slotItem = createInventorySlotItem(inventory)(slot.entity.peek()!);
+    const slot = inventory.getContainer(chilled.containerId)!.slots[0], slotItem = createInventorySlotItem(inventory)(slot.entity.peek()!);
     const slotChanged = vi.fn(), stopSlot = slot.entity.subscribe(slotChanged);
     temp.OnUpdate(15);
     expect(temp.GetCurrent()).toBe(20);
