@@ -247,7 +247,13 @@ export class Pickable implements PickableComponent {
   /** Standalone components own a local clock; scene components use the shared scheduler. */
   update(dt: number): void { if (this.ownsScheduler && !this.removed.peek()) this.scheduler.advance(dt); }
 
-  OnSave(): PickableSaveState { return this.exportState(); }
+  /** Pickable:OnSave writes caninteractwith whenever it is true. Reloading it only matters to a prefab whose
+   * constructor turns interaction off; that prefab sets this, and other pickables' records stay without it. */
+  savesCanInteractWith = false;
+
+  OnSave(): PickableSaveState {
+    return { ...this.exportState(), ...this.savesCanInteractWith && this.canInteractWith ? { caninteractwith: true } : {} };
+  }
 
   /** pickable.lua OnLoad: restore data and timers through this component's own state. */
   OnLoad(saved: PickableSaveState): void {

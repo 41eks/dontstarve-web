@@ -77,7 +77,7 @@ import { NightmareGrowthManager, NIGHTMAREGROWTH_ID } from '@dontstarve-web/pref
 import { NightmareRockManager } from '@dontstarve-web/prefab/nightmarerock';
 import { PigKingManager } from '@dontstarve-web/prefab/pigking';
 import { StatueGlommerManager } from '@dontstarve-web/prefab/statueglommer';
-import { AtriumGateManager } from '@dontstarve-web/prefab/atrium_gate';
+import { atriumGatePrefabs } from '@dontstarve-web/prefab/atrium_gate';
 import { RuinsStatueManager, type RuinsStatueId, type RuinsStatueRecord } from '@dontstarve-web/prefab/ruins_statue_mage';
 import { AtriumStatueManager } from '@dontstarve-web/prefab/atrium_statue';
 import { ChessJunkManager } from '@dontstarve-web/prefab/chessjunk';
@@ -334,7 +334,7 @@ export async function createSceneEntities(
     'moon_tree': ReturnType<typeof registerMoonTrees>;
     'pigking': ReturnType<typeof registerPigKings>;
     'statueglommer': ReturnType<typeof registerStatueGlommer>;
-    'atrium_gate': ReturnType<typeof registerAtriumGate>;
+    'atrium_gate': typeof prefabs;
     'ruins_statue_mage': RuinsStatueManager<'ruins_statue_mage'>;
     'ruins_statue_mage_nogem': RuinsStatueManager<'ruins_statue_mage_nogem'>;
     'ruins_statue_head': RuinsStatueManager<'ruins_statue_head'>;
@@ -1435,21 +1435,9 @@ export async function createSceneEntities(
   }
 
   function registerAtriumGate(registry: EntityRegistry, prefabId: 'atrium_gate', worldState: SceneWorldState) {
-    const gates = new AtriumGateManager(scene, { tickingarea: worldState.tickingarea, scheduler: worldState.scheduler, physics: world, pathfinder,
-      trackDisplay: display => registry.trackDisplay(display) });
-    registry.registerDisplayManager(MANAGER_DEFINITIONS[prefabId], gates, {
-      restore: (_, record) => gates.spawn(new THREE.Vector3(...record.transform.position), {
-        id: record.id, transform: record.transform, components: {
-          atriumGate: record.components.atriumGate,
-          pickable: record.components.pickable,
-          charliecutscene: record.components.charliecutscene,
-          worldsettingstimer: record.components.worldsettingstimer,
-          entitytracker: record.components.entitytracker,
-        },
-      }),
-      debugSpawn: () => gates.spawn(new THREE.Vector3(player.position.x, 0, player.position.z)),
-    });
-    return gates;
+    prefabs.register(atriumGatePrefabs({ scheduler: worldState.scheduler, pathfinder, spawnPrefab: (id, position) => prefabs.spawn(id, position) }));
+    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+    return prefabs;
   }
 
   function registerRuinsStatue<Id extends RuinsStatueId>(registry: EntityRegistry, prefabId: Id, worldState: SceneWorldState) {
