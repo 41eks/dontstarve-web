@@ -7,7 +7,7 @@ import { MoleBait } from '../packages/prefab/src/molebait';
 import { TUNING } from './tuning';
 import { DynamicMusic } from '../packages/componets/src/dynamicmusic';
 import { GetTemperatureAtXZ } from '../packages/componets/src/temperatureoverrider';
-import { FindEntities } from '../packages/prefab/src/actionEntity';
+import { activePrefabs, FindEntities } from '../packages/prefab/src/actionEntity';
 import type { TemperatureSource } from '../packages/componets/src/temperature';
 import { PlaySound } from '@dontstarve-web/prefab/sound';
 import type { ItemEntityRegistry, InventoryStore } from '@dontstarve-web/inventory';
@@ -29,7 +29,7 @@ import { GROUND_ART_DEFINITIONS, GROUND_ITEM_DISPLAY_SPECS } from '@dontstarve-w
 import { FarmPlowPlacement, FARM_PLOW_ID } from '@dontstarve-web/prefab/farm_plow';
 import { playerStats } from './playerStats';
 import { PrefabDisplayGroup } from '@dontstarve-web/display';
-import { PrefabEntityManager, PrefabInstance } from '@dontstarve-web/prefab/prefabInstance';
+import { PrefabEntityManager, PrefabInstance, prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import { staffCastingLightPrefabs } from '@dontstarve-web/prefab/staff_castinglight';
 import { staffLightPrefabs } from '@dontstarve-web/prefab/stafflight';
 import { bulbPlantPrefabs } from '@dontstarve-web/prefab/bulb_plant';
@@ -92,7 +92,7 @@ import {
   type PlaceableBuildingId,
 } from './placeableBuilding';
 import { dstLighting, renderer, scene } from './universal';
-import { FlowerPlanting, FLOWER_SPAWN_IDS } from '@dontstarve-web/prefab/flower';
+import { flowerPrefabs } from '@dontstarve-web/prefab/flower';
 import { view } from './view';
 import { initialSave, shardSaveSearch } from './save/initialSave';
 import { ReskinEffects } from '@dontstarve-web/prefab/reskin_tool';
@@ -282,7 +282,6 @@ export async function createSceneEntities(
   type SceneManagers = {
     'buildings': ReturnType<typeof registerBuildings>;
     'reskinEffects': ReturnType<typeof registerReskinEffects>;
-    'flower': ReturnType<typeof registerFlowers>;
     'world_fx': ReturnType<typeof registerWorldFx>;
     'staff_projectile': ReturnType<typeof registerStaffProjectiles>;
     'molehill': ReturnType<typeof registerMolehills>;
@@ -352,7 +351,7 @@ export async function createSceneEntities(
 
   Managers['buildings'] = registerBuildings(registry, 'buildings', worldState);
   Managers['reskinEffects'] = registerReskinEffects(registry, 'reskinEffects', worldState);
-  Managers['flower'] = registerFlowers(registry, 'flower', worldState);
+  registerFlowers(registry, 'flower', worldState);
   Managers['world_fx'] = registerWorldFx(registry, 'world_fx', worldState);
   Managers['staff_projectile'] = registerStaffProjectiles(registry, 'staff_projectile', worldState);
   Managers['molehill'] = registerMolehills(registry, 'molehill', worldState);
@@ -457,7 +456,6 @@ export async function createSceneEntities(
     Managers, registry, prefabs, worldEvents, dispose, worldWind,
     buildingPlacement: Managers['buildings'],
     groundItems: Managers['ground_item'],
-    flowerPlanting: Managers['flower'],
     beefalos: Managers['beefalo'],
     molehills: Managers['molehill'],
     rockManager: Managers['rocks'],
@@ -517,19 +515,10 @@ export async function createSceneEntities(
     return reskinEffects;
   }
 
-  function registerFlowers(registry: EntityRegistry, prefabId: 'flower', _worldState: SceneWorldState) {
-    const flowerPlanting = new FlowerPlanting({ ...view, tickingarea: worldState.tickingarea }, Math.random, scheduler ? { scheduler, worldEvents } : undefined);
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
-      restore: (_, record) => flowerPlanting.spawnFromSave(record.id,
-        record.components.flower!.animation, new THREE.Vector3(...record.transform.position), record.components.flower!.planted === true),
-      debugSpawn: id => flowerPlanting.spawn(id, view.player.position),
-      spawnPrefab: Object.fromEntries(FLOWER_SPAWN_IDS.map(id => [id, position => flowerPlanting.spawn(id, position)])),
-      exportRecords: () => flowerPlanting.exportRecords().map((record) => ({ prefabId: 'flower', record })),
-      update: (dt, quaternion) => flowerPlanting.update(quaternion, dt),
-      renderEntities: () => flowerPlanting.renderEntities,
-      dispose: () => flowerPlanting.dispose(),
-    });
-    return flowerPlanting;
+  function registerFlowers(registry: EntityRegistry, prefabId: 'flower', worldState: SceneWorldState) {
+    prefabs.register(flowerPrefabs({ scheduler: scheduler ?? worldState.scheduler, fire: prefabFire, worldEvents,
+      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options) }));
+    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
   }
 
   function registerWorldFx(registry: EntityRegistry, prefabId: 'world_fx', worldState: SceneWorldState) {
@@ -605,7 +594,8 @@ export async function createSceneEntities(
       {
         getWatchWorldContent: worldState.getWatchWorldContent,
         getThreatPositions: () => [player.position],
-        getFlowers: () => Managers['flower'].plantedFlowers,
+        // butterflybrain.lua GetClosestInstWithTag({"flower"}): the flower-tagged entities in the ticking area.
+        getFlowers: () => activePrefabs.filter(inst => inst.hasTag('flower')).map(inst => ({ id: String(prefabInstance(inst.model)?.entityId), position: inst.getPosition() })),
         constrainPosition: (position) => {
           const edge = initialSave.world.map.generator.options.size / 2 - 0.5;
           position.x = THREE.MathUtils.clamp(position.x, -edge, edge);

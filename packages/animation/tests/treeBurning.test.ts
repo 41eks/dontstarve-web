@@ -11,12 +11,14 @@ import { evergreenPrefabs } from '../../prefab/src/evergreens';
 import { deciduousPrefabs } from '../../prefab/src/deciduoustrees';
 import { moonTreePrefabs, type MoonTreeInstance } from '../../prefab/src/moontree';
 import { treeWorld } from './treeManagerFixture';
-import { FlowerPlanting } from '../../prefab/src/flower';
+import { flowerPrefabs } from '../../prefab/src/flower';
+import { PrefabDisplayGroup } from '../../display/src';
+import { FireFxHost } from '../../prefab/src/treeFire';
+import { prefabManager } from './prefabManagerFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Lighter } from '../../componets/src/lighter';
 import { performLightAction, performToolWork, type ComponentActionEntity } from '../../stategraphs/src/componentactions';
-import { EventEmitter, createSignal, type SeasonState } from '@dontstarve-web/signals';
-import type { WorldContext, WorldEvents } from '../../prefab/src/worldContext';
+import { createSignal, type SeasonState } from '@dontstarve-web/signals';
 
 useTestTileMap();
 let area: ReturnType<typeof createTestArea>;
@@ -30,13 +32,6 @@ beforeEach(() => {
 });
 const cleanups: (() => void)[] = [];
 afterEach(() => { cleanups.splice(0).forEach(stop => stop()); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
-
-function ashEvents() {
-  const worldEvents = new EventEmitter<WorldEvents>();
-  const ashSpawned = vi.fn();
-  cleanups.push(worldEvents.on('spawnAsh', ashSpawned));
-  return { worldEvents, ashSpawned };
-}
 
 /** A torch-like tool: only its lighter component matters to the LIGHT action. */
 function torch(): ComponentActionEntity {
@@ -199,15 +194,12 @@ it('burns a moon tree for its size-scaled time and keeps burnt state through unl
 });
 
 it('burns a planted flower to ash, leaving it out of the save while it burns', async () => {
-  const scene = new THREE.Scene(), scheduler = new GameTimeScheduler();
-  const { worldEvents, ashSpawned } = ashEvents();
-  const world = { scene, player: new THREE.Group(), ground: new THREE.Group(), camera: new THREE.PerspectiveCamera(),
-    renderer: { domElement: new EventTarget() }, createCursorLabel: () => ({ show() {}, hide() {}, update() {} }) } as unknown as WorldContext;
-  const flowers = new FlowerPlanting(world, Math.random, { scheduler, worldEvents });
+  const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), spawnGroundItem = vi.fn();
+  const displays = new PrefabDisplayGroup(scene), fire = FireFxHost.create('/dst/data/anim');
+  const flowers = prefabManager(displays, '/dst/data/anim', { scheduler, fire, spawnGroundItem }, flowerPrefabs);
   try {
-    const model = await flowers.spawnFromSave('flower-1', 'f1', new THREE.Vector3(3, 0, 4));
-    const target = findActionEntity(model) as ComponentActionEntity;
-    const instance = prefabInstance(model)!;
+    const instance = flowers.spawn('planted_flower', new THREE.Vector3(3, 0, 4));
+    const model = instance.transform.model, target = findActionEntity(model) as ComponentActionEntity;
     const saved = flowers.exportRecords();
     expect(instance.persists).toBe(true);
     expect(light(target)).toBe(true); await flush();
@@ -217,12 +209,12 @@ it('burns a planted flower to ash, leaving it out of the save while it burns', a
     expect(instance.persists).toBe(true);
     expect(flowers.exportRecords()).toEqual(saved);
     scheduler.advance(10);
-    expect(ashSpawned).not.toHaveBeenCalled();
+    expect(spawnGroundItem).not.toHaveBeenCalled();
     expect(light(target)).toBe(true);
     expect(instance.persists).toBe(false);
-    scheduler.advance(10); await flush();
-    expect(ashSpawned).toHaveBeenCalledWith(new THREE.Vector3(3, 0, 4));
+    scheduler.advance(10); await flush(); displays.update(0);
+    expect(spawnGroundItem).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ itemId: 'ash', count: 1 }), instance.position);
     expect(fires(scene)).toBe(0); expect(model.parent).toBeNull(); expect(target.isRemoved).toBe(true);
     expect(flowers.exportRecords()).toEqual([]);
-  } finally { flowers.dispose(); }
+  } finally { flowers.dispose(); displays.dispose(); fire.dispose(); scheduler.dispose(); }
 });
