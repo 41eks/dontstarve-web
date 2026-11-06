@@ -1,4 +1,5 @@
-import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
+import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
+import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import { createTestWorldSources } from './worldContentFixture';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
@@ -9,11 +10,19 @@ import type { InventoryStack } from '../../inventory/src/types';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { loadAnim } from '../src/animationAssets';
 import { Mole, configureMoleEntity } from '../../prefab/src/mole';
-import { MolehillManager } from '../../prefab/src/molehill';
+import { createMoleHabitat, molehillPrefabs, MOLEHILL_ID, type MolehillInstance } from '../../prefab/src/molehill';
 import { configureMoleBaitEntity, MoleBait } from '../../prefab/src/molebait';
 import { createMoleAction } from '../../stategraphs/src/moleactions';
 import { Combat } from '../../componets/src/combat';
 import { Weapon } from '../../componets/src/weapon';
+import { createInventoryStore } from '../../../src/inventory';
+import { EntityRegistry } from '../../../src/entityRegistry';
+import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
+import { executeDebugCommand } from '../../../src/debugCommands';
+import { serializeSave } from '../../../src/save/serialize';
+import { deserializeSave } from '../../../src/save/deserialize';
+import { SAVE_CATALOG } from '../../../src/save/catalog';
+import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
@@ -31,17 +40,24 @@ async function fixture(daytime = false) {
   const watch: GetWatchWorldContent = (key, register) => {
     requests(key); return getWatchWorldContent(key, register, sources);
   };
-  const manager: MolehillManager = new MolehillManager(new THREE.Scene(), '/dst/data/anim', {
-    getWatchWorldContent: watch, cameraHeading: heading, isWalkable: () => true, tickingarea: () => createMemo(() => awake.get()),
+  const displays = new PrefabDisplayGroup(new THREE.Scene());
+  const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { tickingarea: () => createMemo(() => awake.get()) });
+  const fx = vi.fn();
+  const habitat = createMoleHabitat({
+    getWatchWorldContent: watch, cameraHeading: heading, isWalkable: () => true,
+    spawnPrefab: (prefab, position) => prefabs.spawn(prefab, position) as MolehillInstance, fx: { spawn: fx },
     spawnItem, dropItem: (entity, position) => { entity.transform.copyPosition(position); entity.PushEvent('ondropped', undefined); drops.push({ entity, prefab: entity.prefab, position: position.clone() }); },
     showMole: () => undefined, dropLoot: (prefab, position) => drops.push({ prefab, position }),
-    getEntities: () => [...baits, ...manager.habitat.getMoles()],
+    getEntities: () => [...baits, ...habitat.getMoles()],
   });
+  prefabs.register(molehillPrefabs(habitat) as never);
+  const hills = () => prefabs.exportRecords().map(({ record }) => record);
+  const spawnHill = (position: THREE.Vector3, saved?: Parameters<typeof prefabs.spawn>[2]) => prefabs.spawn(MOLEHILL_ID, position, saved) as MolehillInstance;
   const bank = await loadAnim('mole_basic.zip', '/dst/data/anim');
   const lengths = new Map(bank.animations.map(clip => [clip.name, clip.frames.length / clip.frameRate]));
-  const mole = (position = new THREE.Vector3()) => {
-    const entity = spawnItem({ itemId: 'mole', count: 1 }); entity.getPosition().copy(position);
-    const runtime = entity.getComponent<Mole>('mole')!; runtime.bindWorld(manager.habitat, lengths); return runtime;
+  const mole = (position = new THREE.Vector3(), entityId?: string) => {
+    const entity = spawnItem({ itemId: 'mole', count: 1, ...(entityId ? { entityId } : {}) }); entity.getPosition().copy(position);
+    const runtime = entity.getComponent<Mole>('mole')!; runtime.bindWorld(habitat, lengths); return runtime;
   };
   const bait = (id: string, position = new THREE.Vector3(3, 0, 0), count = 1) => {
     const entity = spawnItem({ itemId: id, count }); entity.getPosition().copy(position);
@@ -49,12 +65,12 @@ async function fixture(daytime = false) {
   };
   const advance = async (seconds: number, runBrain = true) => {
     for (let i = 0; i < Math.ceil(seconds * 30); i++) {
-      scheduler.advance(1 / 30); if (runBrain) for (const runtime of manager.habitat.getMoles()) runtime.update(1 / 30);
+      scheduler.advance(1 / 30); if (runBrain) for (const runtime of habitat.getMoles()) runtime.update(1 / 30);
     }
     await settle();
   };
-  const dispose = () => { manager.dispose(); baits.forEach(b => b.dispose()); items.forEach(e => e.destroy()); scheduler.dispose(); };
-  return { scheduler, cycle, awake, watch: requests, manager, lengths, mole, bait, advance, drops, items, dispose };
+  const dispose = () => { prefabs.dispose(); displays.dispose(); baits.forEach(b => b.dispose()); items.forEach(e => e.destroy()); scheduler.dispose(); };
+  return { scheduler, cycle, awake, watch: requests, prefabs, habitat, hills, spawnHill, fx, lengths, mole, bait, advance, drops, items, dispose };
 }
 
 it('uses the Lua brain to steal minerals, build a home and deposit the same item entities', async () => {
@@ -64,17 +80,19 @@ it('uses the Lua brain to steal minerals, build a home and deposit the same item
   expect(mole.components.inventory!.GetItems().map(e => e.id)).toContain(id);
   expect(bait.entity.snapshot().count).toBe(7);
   expect(bait.entity.components.inventoryitem.owner).not.toBeNull();
+  // SGmole's SpawnMoveFx goes through world_fx's mole_move_fx.
+  expect(f.fx).toHaveBeenCalledWith('mole_move_fx', expect.any(THREE.Vector3));
   // The source tests for a missing home after its first delay, then waits another make_home_delay.
   await f.advance(25);
-  expect(f.manager.exportRecords()).toHaveLength(1);
+  expect(f.hills()).toHaveLength(1);
   const hill = mole.home!;
   expect(hill.getPosition().distanceToSquared(mole.getPosition())).toBeLessThan((20 * 3) ** 2);
   f.cycle.set('day'); await settle();
   await f.advance(25);
-  const record = f.manager.exportRecords()[0];
-  expect(record.components.molehill.items.map(e => e.entityId)).toContain(id);
-  expect(record.components.molehill.child?.entityId).toBe(mole.id);
-  expect(record.components.molehill.child?.mole?.health).toBe(30);
+  const record = f.hills()[0];
+  expect(record.components.molehill!.items.map(e => e.entityId)).toContain(id);
+  expect(record.components.molehill!.child?.entityId).toBe(mole.id);
+  expect(record.components.molehill!.child?.mole?.health).toBe(30);
   expect(mole.hasTag('INLIMBO')).toBe(true);
   f.dispose();
 });
@@ -97,8 +115,7 @@ it('hammer attacks stun above ground, drop stolen inventory, allow pickup and de
   const f = await fixture(), mole = f.mole(); mole.brain.Stop();
   const bait = f.bait('nitre', new THREE.Vector3(), 3);
   expect(mole.components.inventory!.GiveItem(bait.entity)).toBe(true);
-  const model = await f.manager.spawn(new THREE.Vector3(15, 0, 0));
-  const hill = model.userData.molehill; hill.components.spawner.TakeOwnership(mole);
+  const hill = f.spawnHill(new THREE.Vector3(15, 0, 0)); hill.components.spawner.TakeOwnership(mole);
   mole.setAbove(); mole.sg.goToState('idle');
   const attacker = { components: {}, getPosition: () => new THREE.Vector3(), getPhysicsRadius: () => 1, hasTag: () => true };
   const hammer = new Weapon({ hasTag: (tag: string) => tag === 'hammer' }); hammer.SetDamage(17);
@@ -130,42 +147,76 @@ it('saves an occupied molehill with its stored items and releases the same child
   const bait = f.bait('goldnugget', new THREE.Vector3(), 4); mole.components.inventory!.GiveItem(bait.entity);
   const extra = f.bait('goldnugget', new THREE.Vector3(), 1); mole.components.inventory!.GiveItem(extra.entity);
   expect(extra.entity.isRemoved).toBe(true); expect(bait.entity.components.stackable.count).toBe(5);
-  const model = await f.manager.spawn(new THREE.Vector3(9, 0, 15)), hill = model.userData.molehill;
+  const hill = f.spawnHill(new THREE.Vector3(9, 0, 15)), model = hill.transform.model;
   hill.components.spawner.TakeOwnership(mole); expect(mole.wentHome(hill)).toBe(true);
-  const record = f.manager.exportRecords()[0], moleId = mole.id, baitId = bait.entity.id;
+  const record = f.hills()[0], moleId = mole.id, baitId = bait.entity.id;
   f.awake.set(false); await settle();
-  expect(lookupPrefabInstance(model)!.status.peek()).toBe('asleep');
-  expect(lookupPrefabInstance(model)!.sprite.loaded).toBe(false);
+  expect(hill.status.peek()).toBe('asleep');
+  expect(hill.sprite.loaded).toBe(false);
   expect(model.parent).toBeNull();
-  expect(f.manager.exportRecords()).toEqual([record]);
+  expect(f.hills()).toEqual([record]);
   f.dispose();
   const restored = await fixture(true);
   restored.awake.set(false);
-  const hillModel = await restored.manager.spawn(new THREE.Vector3(...record.transform.position), record), loaded = hillModel.userData.molehill;
+  const loaded = restored.spawnHill(new THREE.Vector3(...record.transform.position), record), hillModel = loaded.transform.model;
   await settle();
-  expect(loaded.instance.status.peek()).toBe('asleep');
+  expect(loaded.status.peek()).toBe('asleep');
   expect(loaded.components.spawner.IsOccupied()).toBe(true);
-  expect(loaded.components.spawner.child.id).toBe(moleId);
+  expect(loaded.components.spawner.child!.id).toBe(moleId);
   expect(loaded.components.inventory.GetItems()[0].id).toBe(baitId);
   expect(loaded.components.inventory.GetItems()[0].snapshot().count).toBe(5);
   restored.awake.set(true); await settle();
   // Restored asleep, the hill's display loads its art once the tile wakes.
-  await loaded.display.artLoaded();
-  expect(loaded.instance.sprite.loaded).toBe(true);
-  expect(loaded.instance.sprite.currentAnimation).toBe('mound_idle');
-  expect(loaded.instance.position).toBe(hillModel.position);
+  await prefabDisplay(hillModel)!.artLoaded();
+  expect(loaded.sprite.loaded).toBe(true);
+  expect(loaded.sprite.currentAnimation).toBe('mound_idle');
+  expect(loaded.position).toBe(hillModel.position);
   // mound_idle stays upright in LAYER_BACKGROUND, including after reload.
   expect(hillModel.children[0].children[0].rotation.x).toBe(0);
   expect(hillModel.children[0].children[0].renderOrder).toBe(-.5);
   loaded.components.workable.WorkedBy({}, 1);
   expect(loaded.isValid()).toBe(false);
-  expect(loaded.instance.status.peek()).toBe('removed');
-  expect(loaded.components.spawner.child.sg.stateName).toBe('stunned');
+  expect(loaded.status.peek()).toBe('removed');
+  expect(loaded.components.spawner.child!.sg.stateName).toBe('stunned');
   expect(restored.drops.some(d => d.entity?.id === baitId)).toBe(true);
   expect(loaded.components.spawner.timer.peek().status).toBe('stopped');
   restored.dispose();
 });
 
+
+it('c_spawn and c_save keep a hill whose child is outside, which reclaims that mole when it rejoins the world', async () => {
+  const f = await fixture(true), inventory = createInventoryStore([]);
+  const registry = new EntityRegistry([], f.prefabs, () => new THREE.Vector3(6, 0, 3));
+  registry.registerPrefabs(PREFAB_DEFINITIONS.molehills);
+  expect((await executeDebugCommand('c_spawn("molehill")', inventory, id => registry.spawn(id))).ok).toBe(true);
+  const [{ record: { id } }] = f.prefabs.exportRecords();
+  const hill = f.prefabs.get(id) as MolehillInstance, mole = f.mole(new THREE.Vector3(9, 0, 3)); mole.brain.Stop();
+  hill.components.spawner.TakeOwnership(mole);
+  expect(mole.home).toBe(hill);
+  const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
+  let json = '';
+  expect((await executeDebugCommand('c_save()', inventory, undefined, () => {
+    json = serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(), elapsedSeconds: 0,
+      playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
+  })).ok).toBe(true);
+  const { entities } = deserializeSave(json, SAVE_CATALOG).world, moleId = mole.id;
+  expect(entities.molehill).toEqual([expect.objectContaining({ id, components: { molehill: { items: [], childid: moleId } } })]);
+  registry.dispose(); f.dispose(); inventory.dispose();
+
+  const restored = await fixture(true), restoredRegistry = new EntityRegistry([], restored.prefabs, () => new THREE.Vector3());
+  restoredRegistry.registerPrefabs(PREFAB_DEFINITIONS.molehills);
+  await restoredRegistry.restoreAll({ molehill: entities.molehill });
+  const loaded = restored.prefabs.get(id) as MolehillInstance;
+  expect(loaded.position.toArray()).toEqual([6, 0, 3]);
+  expect(loaded.components.spawner.child).toBeUndefined();
+  // The saved childid is kept until the mole joins, as OnLoadPostPass's newents lookup.
+  expect(restored.hills()[0].components.molehill).toEqual({ items: [], childid: moleId });
+  const child = restored.mole(new THREE.Vector3(9, 0, 3), moleId);
+  expect(loaded.components.spawner.child).toBe(child);
+  expect(child.home).toBe(loaded);
+  expect(loaded.components.spawner.timer.peek().status).toBe('stopped');
+  restoredRegistry.dispose(); restored.dispose();
+});
 
 it('day sleep clears sniff at frame 1, plays only the sleep event and keeps captured moles silent', async () => {
   const f = await fixture(true), mole = f.mole(); mole.brain.Stop(); mole.setAbove(); mole.sg.goToState('idle');

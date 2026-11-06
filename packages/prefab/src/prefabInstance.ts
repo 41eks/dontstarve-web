@@ -26,7 +26,8 @@ type ActionComponents = ComponentActionEntity['components'];
 export interface PrefabComponents extends ActionComponents {
   hunger?: import('../../componets/src/hunger').Hunger;
   sanity?: import('../../componets/src/sanity').Sanity;
-  inventory?: import('@dontstarve-web/inventory').InventoryStore;
+  /** The player's store, or a creature's or structure's Lua inventory component. */
+  inventory?: import('@dontstarve-web/inventory').InventoryStore | import('../../componets/src/inventory').Inventory;
   playercontroller?: import('../../stategraphs/src/playercontroller').PlayerController;
   finiteuses?: import('../../componets/src/finiteuses').FiniteUses;
   knownlocations?: import('../../componets/src/knownlocations').KnownLocations;

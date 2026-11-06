@@ -17,7 +17,7 @@ import { MoleBrain, type MoleBrainInst } from '../../brains/src/molebrain';
 import type { BrainEntity, BrainWorld } from '../../brains/src/types';
 import { MoleStateGraph, type MoleStateInst } from '../../stategraphs/src/SGmole';
 import type { BufferedAction } from '../../stategraphs/src/bufferedaction';
-import type { Molehill } from './molehill';
+import type { MolehillInstance } from './molehill';
 import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
 import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
 import { WORLD_SCALE, MakeCharacterPhysics, CHARACTER_COLLISION_MASK } from './standardcomponents';
@@ -44,7 +44,7 @@ export interface MoleWorld extends Pick<WorldContentContext, 'getWatchWorldConte
   spawnItem(state: InventoryStack): ItemEntity;
   dropItem(item: ItemEntity, position: Vector3): void;
   dropLoot(prefab: string, position: Vector3): void;
-  makeHome(mole: Mole): Molehill;
+  makeHome(mole: Mole): MolehillInstance;
   registerMole(mole: Mole): () => void;
   spawnMoveFx(position: Vector3): void;
 }
@@ -53,7 +53,7 @@ export interface MoleWorld extends Pick<WorldContentContext, 'getWatchWorldConte
 export class Mole implements MoleBrainInst, MoleStateInst, LocoMotorInst {
   readonly prefab = MOLE_ID;
   readonly components: {
-    health: Health; combat: Combat; knownlocations: KnownLocations; homeseeker: HomeSeeker<Molehill>;
+    health: Health; combat: Combat; knownlocations: KnownLocations; homeseeker: HomeSeeker<MolehillInstance>;
     inventory?: Inventory; locomotor?: LocoMotor; sleeper?: Sleeper;
   };
   world!: BrainWorld;
@@ -107,7 +107,7 @@ export class Mole implements MoleBrainInst, MoleStateInst, LocoMotorInst {
     this.make_home_delay = 5 + Math.floor(this.random() * 6); this.peek_interval = 15 + Math.floor(this.random() * 11);
     const health = new Health(30, this); health.OnLoad({ health: entity.mole?.health ?? 30 });
     this.saved = entity.mole;
-    const components: Mole['components'] = { health, combat: new Combat(this, () => this.getTime()), knownlocations: new KnownLocations(), homeseeker: new HomeSeeker<Molehill>() };
+    const components: Mole['components'] = { health, combat: new Combat(this, () => this.getTime()), knownlocations: new KnownLocations(), homeseeker: new HomeSeeker<MolehillInstance>() };
     this.components = Object.assign(entity.components, components);
     this.cleanups.push(entity.ListenForEvent('ondropped', () => this.onDropped()),
       entity.ListenForEvent('onputininventory', () => this.onPickup()),
@@ -116,7 +116,7 @@ export class Mole implements MoleBrainInst, MoleStateInst, LocoMotorInst {
       entity.ListenForEvent('death', () => this.sg?.pushEvent('death')));
   }
   get id(): string { return this.entity.id; }
-  get home(): Molehill | undefined { return this.components.homeseeker.home; }
+  get home(): MolehillInstance | undefined { return this.components.homeseeker.home; }
   getPosition(): Vector3 { return this.entity.getPosition(); }
   getPhysicsRadius(): number { return .5 * WORLD_SCALE; }
   getTime(): number { return this.scheduler?.now ?? 0; }
@@ -234,8 +234,8 @@ export class Mole implements MoleBrainInst, MoleStateInst, LocoMotorInst {
   dropDeathLoot(): void { this.entity.persists = false; this.worldServices?.dropLoot('smallmeat', this.getPosition().clone()); }
   spawnMoveFx(): void { this.worldServices?.spawnMoveFx(this.getPosition()); }
   setHome(home: unknown): void {
-    this.components.homeseeker.SetHome(home as Molehill | undefined);
-    if (home) this.components.knownlocations.RememberLocation('home', (home as Molehill).getPosition());
+    this.components.homeseeker.SetHome(home as MolehillInstance | undefined);
+    if (home) this.components.knownlocations.RememberLocation('home', (home as MolehillInstance).getPosition());
   }
   wentHome(target: BrainEntity): boolean {
     const home = this.home; if (target !== home || !home?.isValid()) return false;

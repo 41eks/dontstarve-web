@@ -1,96 +1,130 @@
-import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
-import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
-import { ModelRecords } from './modelRecords';
-import * as THREE from 'three';
-import { createEffect, WorldContentKey, type TileStateQuery } from '@dontstarve-web/signals';
-import type { InventoryStack } from '@dontstarve-web/inventory';
-import { createPrefabEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
-import { SpriteResources, type PrefabDisplay } from '@dontstarve-web/display';
-import { watchTileActivity } from './tileActivity';
+import type * as THREE from 'three';
+import { SpriteState } from '@dontstarve-web/display';
+import { createEffect, WorldContentKey } from '@dontstarve-web/signals';
+import type { InventoryStack, ItemEntity } from '@dontstarve-web/inventory';
 import { Inventory } from '../../componets/src/inventory';
 import { Spawner } from '../../componets/src/spawner';
 import { Workable } from '../../componets/src/workable';
-import type { BrainEntity } from '../../brains/src/types';
 import { actionEntity } from './actionEntity';
-import { newEntityId } from './saveRecord';
+import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
+import type { PlacementSaveRecord } from './saveRecord';
+import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
+import { Transform, type ReadonlyVector3 } from './transform';
+import type { WorldFx } from './world_fx';
 import { Mole, configureMoleEntity, type MoleWorld } from './mole';
 
 export const MOLEHILL_ID = 'molehill' as const;
 // tuning.lua: day_time = 10 * 30; MOLE_RESPAWN_TIME = day_time * 4.
 export const MOLE_RESPAWN_TIME = 1200;
 export interface MolehillSave { items: InventoryStack[]; child?: InventoryStack; childid?: string; startdelay?: number }
-export interface MolehillRecord {
-  id: string; transform: { position: [number, number, number]; rotationY: number }; components: { molehill: MolehillSave };
-}
-export interface MoleHabitat extends MoleWorld, ToolMouseTargetWorld { tickingarea?: TileStateQuery; showMole(entity: import('@dontstarve-web/inventory').ItemEntity, position: THREE.Vector3): void }
 
-/** molehill.lua owns the dig callback, stored minerals and its one persistent child. */
-export class Molehill implements BrainEntity {
-  readonly prefab = MOLEHILL_ID;
-  readonly components: { inventory: Inventory; spawner: Spawner<Mole>; workable: Workable };
-  private removed = false;
-  private readonly events = new Map<string, Set<() => void>>();
-  private readonly cleanups: (() => void)[] = [];
-  pendingChildId?: string;
-  readonly id: string;
-  readonly model: THREE.Group;
-  readonly instance: PrefabInstance;
-  readonly display: PrefabDisplay;
+/** What the scene gives the moles and their hills; hills and move FX are spawned through the shared prefab manager. */
+export interface MoleHabitatServices extends Omit<MoleWorld, 'getMoles' | 'makeHome' | 'registerMole' | 'spawnMoveFx'>, ToolMouseTargetWorld {
+  showMole(entity: ItemEntity, position: THREE.Vector3): void;
+  /** SpawnPrefab("molehill"). */
+  spawnPrefab(prefab: typeof MOLEHILL_ID, position: THREE.Vector3): MolehillInstance;
+  fx: Pick<WorldFx, 'spawn'>;
+}
+
+export interface MoleHabitat extends MoleWorld, ToolMouseTargetWorld {
+  showMole(entity: ItemEntity, position: THREE.Vector3): void;
+  /** OnLoadPostPass's newents lookup: `found` runs once the mole with this entity ID joins the world. */
+  findMole(id: string, found: (mole: Mole) => void): () => void;
+}
+
+/** The world the moles share: TheSim's mole query, MAKEMOLEHILL's SpawnPrefab and SGmole's mole_move_fx. */
+export function createMoleHabitat(services: MoleHabitatServices): MoleHabitat {
+  const { spawnPrefab, fx, ...world } = services;
+  const moles = new Set<Mole>();
+  const waiting = new Map<string, Set<(mole: Mole) => void>>();
+  return {
+    ...world,
+    getMoles: () => [...moles],
+    // actions.lua MAKEMOLEHILL: SpawnPrefab("molehill") at the doer, then molehill:AdoptChild(doer).
+    makeHome: mole => { const hill = spawnPrefab(MOLEHILL_ID, mole.getPosition().clone()); hill.AdoptChild(mole); return hill; },
+    registerMole: mole => {
+      moles.add(mole);
+      const found = waiting.get(mole.id); waiting.delete(mole.id);
+      for (const fn of found ?? []) fn(mole);
+      return () => { moles.delete(mole); };
+    },
+    spawnMoveFx: position => fx.spawn('mole_move_fx', position),
+    findMole: (id, found) => {
+      const mole = [...moles].find(candidate => candidate.id === id);
+      if (mole) { found(mole); return () => {}; }
+      let set = waiting.get(id); if (!set) waiting.set(id, set = new Set());
+      const pending = set; pending.add(found);
+      return () => { pending.delete(found); if (!pending.size && waiting.get(id) === pending) waiting.delete(id); };
+    },
+  };
+}
+
+interface MolehillComponents {
+  inventory: Inventory;
+  spawner: Spawner<Mole>;
+  workable: Workable;
+}
+
+/** molehill.lua fn: the dig callback, stored minerals and its one persistent child. Hauntable and inspectable are not ported. */
+export class MolehillInstance extends PrefabInstance<SpriteState, MolehillComponents> {
+  declare readonly prefab: typeof MOLEHILL_ID;
   private readonly world: MoleHabitat;
-  constructor(id: string, { instance, display }: ReturnType<typeof createPrefabEntity>, world: MoleHabitat, saved?: MolehillSave, adopt?: Mole) {
-    this.id = id; this.model = display.model; this.world = world;
-    this.instance = instance; this.display = display;
-    const model = this.model;
-    this.cycle = world.getWatchWorldContent(WorldContentKey.Cycle, stop => this.cleanups.push(stop));
+  private readonly cycle;
+  /** A saved child outside the hill, until OnLoadPostPass finds it. */
+  private pendingChildId?: string;
+  private stopPending?: () => void;
+
+  constructor(world: MoleHabitat, position: ReadonlyVector3) {
+    super(MOLEHILL_ID, new SpriteState({ name: 'mound_idle', billboard: true }), Transform.stationary());
+    this.world = world;
+    this.setPosition(position.x, 0, position.z);
+    // LAYER_BACKGROUND, sort order 3: the mound stays upright behind what stands on it.
+    this.sprite.setGround(-.5, false);
+    this.cycle = world.getWatchWorldContent(WorldContentKey.Cycle, stop => this.onRemove(stop));
     const inventory = new Inventory(this, 50, world.dropItem, world.itemSpecs);
-    const spawner = new Spawner(this, this.cycle.scheduler, () => {
+    const spawner = new Spawner<Mole>(this, this.cycle.scheduler, () => {
       const entity = world.spawnItem({ itemId: 'mole', count: 1 }); configureMoleEntity(entity);
       const mole = entity.getComponent<Mole>('mole')!; mole.bindWorld(world);
       // Dropping a spawned child does not invoke mole.lua's inventory-drop stun.
       world.showMole(entity, this.getPosition()); return mole;
     }, MOLE_RESPAWN_TIME);
-    const inst = actionEntity(model, MOLEHILL_ID);
-    const workable = new Workable(inst);
-    workable.SetWorkAction('DIG'); workable.SetWorkLeft(1); workable.SetOnFinishCallback(() => this.digUp());
-    this.components = { inventory, spawner, workable };
-    inventory.OnLoad(saved?.items ?? [], world.spawnItem);
-    spawner.onoccupied = () => { if (this.cycle.peek() !== 'day') this.startSpawning(); };
-    spawner.onvacate = () => this.stopSpawning();
-    if (adopt) { spawner.TakeOwnership(adopt); this.stopSpawning(); }
-    else if (saved?.child) {
-      const entity = world.spawnItem(saved.child); configureMoleEntity(entity);
-      const child = entity.getComponent<Mole>('mole')!; child.bindWorld(world);
-      entity.setPosition(model.position.x, model.position.y, model.position.z); world.showMole(entity, model.position);
-      spawner.TakeOwnership(child); spawner.GoHome(child);
-    } else if (saved?.childid) this.pendingChildId = saved.childid;
-    else spawner.SpawnWithDelay(saved?.startdelay ?? 0);
-    createEffect(() => {
-      if (this.cycle.get() !== 'day' && spawner.IsOccupied()) this.startSpawning(); else this.stopSpawning();
+    spawner.onoccupied = () => { if (this.cycle.peek() !== 'day') this.startspawning(); };
+    spawner.onvacate = () => this.stopspawning();
+    // WorldSettings_Spawner_SpawnDelay: a new hill releases its first mole at once.
+    spawner.SpawnWithDelay(0);
+    const workable = new Workable(this);
+    workable.SetWorkAction('DIG'); workable.SetWorkLeft(1); workable.SetOnFinishCallback(() => this.dig_up());
+    Object.assign(this.components, { inventory, spawner, workable });
+    this.onRemove(() => {
+      this.PushEvent('onremove');
+      this.stopPending?.();
+      spawner.dispose(); inventory.dispose(); workable.dispose();
     });
-    Object.assign(prefabInstance(model)!.components, this.components);
-    instance.entityId = id;
-    Object.assign(model.userData, { molehill: this, remove: () => this.remove() });
-    // Workable's source inst owns tags, including DIG_workable.
-    prefabInstance(model)!.components.workable = workable; inst.addTag('DIG_workable');
-    new ToolMouseTarget(inst, instance, workable, world.handEquipment);
-    this.cleanups.push(watchTileActivity(model, world.tickingarea, active => instance.setActive(active)));
   }
-  private readonly cycle;
-  getPosition(): THREE.Vector3 { return this.model.position; }
-  getPhysicsRadius(): number { return 0; }
-  isValid(): boolean { return !this.removed; }
-  hasTag(tag: string): boolean { return this.components?.workable.HasTag(tag) ?? this.instance.hasTag(tag); }
-  ListenForEvent(name: string, fn: () => void): () => void {
-    let set = this.events.get(name); if (!set) this.events.set(name, set = new Set()); set.add(fn); return () => set!.delete(fn);
+
+  get id(): string { return String(this.entityId); }
+  isValid(): boolean { return !this.isRemoved; }
+
+  /** OnInit, DoTaskInTime(0): WatchWorldState("iscaveday", OnIsDay). */
+  OnInit(): void {
+    const spawner = this.components.spawner;
+    createEffect(() => {
+      if (this.cycle.get() !== 'day' && spawner.IsOccupied()) this.startspawning(); else this.stopspawning();
+    });
   }
-  PushEvent(name: string): void { for (const fn of [...this.events.get(name) ?? []]) fn(); }
-  private startSpawning(): void {
+
+  AdoptChild(child: Mole): void {
+    const spawner = this.components.spawner;
+    spawner.CancelSpawning(); spawner.TakeOwnership(child); this.stopspawning();
+  }
+
+  private startspawning(): void {
     const spawner = this.components.spawner; spawner.SetQueueSpawning(false);
     if (!spawner.IsSpawnPending()) spawner.SpawnWithDelay(5 + Math.floor(Math.random() * 16));
   }
-  private stopSpawning(): void { this.components.spawner.SetQueueSpawning(true, 5 + Math.floor(Math.random() * 11)); }
-  digUp(): void {
-    if (this.removed) return;
+  private stopspawning(): void { this.components.spawner.SetQueueSpawning(true, 5 + Math.floor(Math.random() * 11)); }
+
+  private dig_up(): void {
     const spawner = this.components.spawner;
     if (spawner.child) {
       spawner.child.needs_home_time = this.cycle.scheduler.now;
@@ -98,86 +132,57 @@ export class Molehill implements BrainEntity {
         spawner.SetQueueSpawning(false); spawner.onvacate = child => child.onHomeDugUp(); spawner.ReleaseChild();
       }
     }
+    // lootdropper: one random loot by weight.
     let roll = Math.random() * 7.5;
     for (const [prefab, weight] of [['rocks', 4], ['nitre', 1.5], ['goldnugget', .5], ['flint', 1.5]] as const) {
       roll -= weight; if (roll <= 0) { this.world.dropLoot(prefab, this.getPosition().clone()); break; }
     }
     this.components.inventory.DropEverything(); this.remove();
   }
-  OnSave(): MolehillSave {
+
+  /** The record keeps the inventory and spawner saves together under `molehill`. */
+  OnSave(_inst: unknown, data: PlacementSaveRecord['components']): void {
     const { spawner, inventory } = this.components;
-    return { items: inventory.OnSave(),
+    delete (data as { inventory?: unknown }).inventory;
+    data.molehill = { items: inventory.OnSave(),
       ...(spawner.IsOccupied() ? { child: spawner.child!.entity.snapshot() }
         : spawner.child && !spawner.child.isDead() ? { childid: spawner.child.id }
         : this.pendingChildId ? { childid: this.pendingChildId }
         : spawner.remainingSeconds === undefined ? {} : { startdelay: spawner.remainingSeconds }) };
   }
-  remove(): void { if (this.removed) return; this.PushEvent('onremove'); this.dispose(); }
-  dispose(): void {
-    if (this.removed) return; this.removed = true; this.model.userData.removed = true;
-    this.components.spawner.dispose(); this.components.inventory.dispose(); this.components.workable.dispose();
-    this.cleanups.splice(0).forEach(stop => stop()); this.events.clear(); this.instance.remove();
+
+  OnLoad(_inst: unknown, data: PlacementSaveRecord['components']): void {
+    const saved = data.molehill;
+    if (!saved) return;
+    const { spawner, inventory } = this.components, world = this.world;
+    inventory.OnLoad(saved.items, world.spawnItem);
+    if (saved.child) {
+      spawner.CancelSpawning();
+      const entity = world.spawnItem(saved.child); configureMoleEntity(entity);
+      const child = entity.getComponent<Mole>('mole')!; child.bindWorld(world);
+      const position = this.getPosition();
+      entity.setPosition(position.x, position.y, position.z); world.showMole(entity, position);
+      spawner.TakeOwnership(child); spawner.GoHome(child);
+    } else if (saved.childid) {
+      spawner.CancelSpawning();
+      this.pendingChildId = saved.childid;
+      this.stopPending = world.findMole(saved.childid, child => {
+        this.pendingChildId = undefined; this.stopPending = undefined; spawner.TakeOwnership(child);
+      });
+    } else spawner.SpawnWithDelay(saved.startdelay ?? 0);
   }
 }
 
-export class MolehillManager {
-  private readonly mouseRecords = new ModelRecords<Molehill>();
-  private readonly hills = new Map<string, Molehill>();
-  private readonly moles = new Set<Mole>();
-  private readonly resources: SpriteResources;
-  private disposed = false;
-  readonly habitat: MoleHabitat;
-  private readonly displays: PrefabDisplayGroup;
-  constructor(scene: THREE.Scene, base: string,
-    services: Omit<MoleWorld, 'getMoles' | 'makeHome' | 'registerMole' | 'spawnMoveFx'> & ToolMouseTargetWorld & { tickingarea?: TileStateQuery; showMole(entity: import('@dontstarve-web/inventory').ItemEntity, position: THREE.Vector3): void }) {
-    this.displays = new PrefabDisplayGroup(scene); this.resources = new SpriteResources(base);
-    this.habitat = { ...services, showMole: services.showMole,
-      getMoles: () => [...this.moles], makeHome: mole => this.createHill(mole.getPosition().clone(), undefined, mole),
-      registerMole: mole => { this.moles.add(mole); return () => this.moles.delete(mole); },
-      spawnMoveFx: position => this.spawnMoveFx(position) };
-  }
-  spawn(position: THREE.Vector3, saved?: MolehillRecord): THREE.Group { return this.createHill(position, saved).model; }
-  /** SpawnPrefab("molehill"), as mole.lua's MakeNewHome does; the display loads the art. */
-  private createHill(position: THREE.Vector3, saved?: MolehillRecord, adopt?: Mole): Molehill {
-    if (this.disposed) throw new Error('Molehill assets unavailable');
-    const entity = createPrefabEntity(MOLEHILL_ID, this.resources.factory({ animationArchive: 'mole_basic.zip', buildArchive: 'mole_build.zip' }),
-      { name: 'mound_idle', billboard: true }, MOLEHILL_ID);
-    entity.instance.sprite.setGround(-.5, false);
-    const model = entity.display.model; entity.instance.copyPosition(position);
-    const hill = new Molehill(saved?.id ?? newEntityId(), entity, this.habitat, saved?.components.molehill, adopt);
-    this.hills.set(hill.id, hill); this.mouseRecords.set(hill.model, hill); this.displays.mount(prefabDisplay(model)!);
-    return hill;
-  }
-  private readonly fx = new Set<ReturnType<typeof createPrefabEntity>>();
-  private spawnMoveFx(position: THREE.Vector3): void {
-    if (this.disposed) return;
-    const entity = createPrefabEntity('mole_move_fx', this.resources.factory({ animationArchive: 'mole_move_fx.zip', buildArchive: 'mole_move_fx.zip' }),
-      { name: 'move', billboard: true }, 'mole_move_fx');
-    entity.instance.copyPosition(position); entity.instance.persists = false;
-    entity.instance.addTag('FX');
-    this.displays.mount(entity.display); this.fx.add(entity);
-    entity.instance.sprite.playOnce('move', () => { this.fx.delete(entity); entity.instance.remove(); });
-  }
-  update(dt: number, _quaternion: THREE.Quaternion): void {
-    for (const [id, hill] of this.hills) {
-      if (!hill.isValid()) { this.hills.delete(id); continue; }
-      if (hill.pendingChildId) {
-        const child = [...this.moles].find(mole => mole.id === hill.pendingChildId);
-        if (child) { hill.components.spawner.TakeOwnership(child); hill.pendingChildId = undefined; }
-      }
-    }
-    // The display group advances the hills and their move effects.
-    this.displays.update(dt);
-  }
-  get renderEntities() { return [...this.fx].map(({ display }) => display.model)
-    .map(object => ({ object, footPosition: object.position, cameraDepth: 0 })); }
-  exportRecords(): MolehillRecord[] { return [...this.hills.values()].filter(h => h.isValid()).map(h => ({ id: h.id,
-    transform: { position: h.getPosition().toArray(), rotationY: 0 }, components: { molehill: h.OnSave() } })); }
-  dispose(): void {
-    if (this.disposed) return; this.disposed = true;
-    for (const hill of this.hills.values()) hill.dispose();
-    for (const { instance } of this.fx) instance.remove();
-    this.fx.clear(); this.hills.clear(); this.displays.dispose(); this.resources.dispose();
-
-  }
+/** The Prefab molehill.lua returns. */
+export function molehillPrefabs(world: MoleHabitat): Readonly<Record<typeof MOLEHILL_ID, PrefabEntityDefinition<MolehillInstance>>> {
+  return {
+    [MOLEHILL_ID]: {
+      fn: position => new MolehillInstance(world, position),
+      assets: { animationArchive: 'mole_basic.zip', buildArchives: ['mole_build.zip'], bank: 'mole' },
+      onSpawned: inst => {
+        inst.OnInit();
+        new ToolMouseTarget(actionEntity(inst.transform.model, MOLEHILL_ID), inst, inst.components.workable, world.handEquipment);
+      },
+    },
+  };
 }

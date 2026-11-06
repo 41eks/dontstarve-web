@@ -2,7 +2,7 @@ import { stalagmitePrefabs } from '@dontstarve-web/prefab/stalagmite';
 import { RuinsRelicManager, type RuinsRelicRecord } from '@dontstarve-web/prefab/ruinsrelic';
 import { LightFlierFlowerManager, type LightFlierFlowerRecord } from '../packages/prefab/src/lightflier_flower';
 import { MAX_PHYSICS_FRAME_TIME } from './physicsTiming';
-import { MolehillManager, type MolehillRecord } from '../packages/prefab/src/molehill';
+import { createMoleHabitat, molehillPrefabs, type MolehillInstance } from '../packages/prefab/src/molehill';
 import { MoleBait } from '../packages/prefab/src/molebait';
 import { TUNING } from './tuning';
 import { DynamicMusic } from '../packages/componets/src/dynamicmusic';
@@ -450,7 +450,7 @@ export async function createSceneEntities(
   const dispose = () => {
     stopDugTurf();
     try { registry.dispose(); }
-    finally { prefabDisplays.dispose(); prefabFire.dispose(); dynamicMusic?.dispose(); if (!inventory) sceneInventory.dispose(); }
+    finally { Managers['molehill'].disposeBaits(); prefabDisplays.dispose(); prefabFire.dispose(); dynamicMusic?.dispose(); if (!inventory) sceneInventory.dispose(); }
   };
 
   return {
@@ -459,7 +459,6 @@ export async function createSceneEntities(
     groundItems: Managers['ground_item'],
     flowerPlanting: Managers['flower'],
     beefalos: Managers['beefalo'],
-    molehills: Managers['molehill'],
     rockManager: Managers['rocks'],
     mushroomPlants: Managers['mushroom_plant'],
     beeQueenHives: Managers['beequeenhivegrown'],
@@ -562,9 +561,9 @@ export async function createSceneEntities(
             return point.x >= b.lowerBound.x - radius && point.x <= b.upperBound.x + radius && point.z >= b.lowerBound.z - radius && point.z <= b.upperBound.z + radius;
           })());
     };
-    const molehills: MolehillManager = new MolehillManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
+    const habitat = createMoleHabitat({
       handEquipment: sceneInventory.handEquipment,
-      itemSpecs: SAVE_CATALOG.items, getWatchWorldContent: worldState.getWatchWorldContent, cameraHeading: view.cameraHeading, tickingarea: worldState.tickingarea,
+      itemSpecs: SAVE_CATALOG.items, getWatchWorldContent: worldState.getWatchWorldContent, cameraHeading: view.cameraHeading,
       isWalkable: moleWalkable,
       pathfinder,
       spawnItem: state => { const entity = sceneInventory.entities.create(state); sceneInventory.configureItem(entity); return entity; },
@@ -577,20 +576,16 @@ export async function createSceneEntities(
         for (const entity of sceneInventory.entities.values()) if (entity.components.bait && !moleBaits.has(entity.id))
           moleBaits.set(entity.id, new MoleBait(entity, moleScheduler, moleWalkable));
         for (const [id, bait] of moleBaits) if (bait.entity.isRemoved) { bait.dispose(); moleBaits.delete(id); }
-        return [...moleBaits.values(), ...molehills.habitat.getMoles(),
+        return [...moleBaits.values(), ...habitat.getMoles(),
           { prefab: 'wilson', components: {}, isValid: () => true, hasTag: (tag: string) => tag === 'scarytoprey',
             getPosition: () => player.position, getPhysicsRadius: () => .5 * WORLD_SCALE }];
       },
+      spawnPrefab: (prefab, position) => prefabs.spawn(prefab, position) as MolehillInstance,
+      fx: Managers['world_fx'],
     });
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
-      restore: (_, record) => molehills.spawn(new THREE.Vector3(...record.transform.position), record as MolehillRecord),
-      debugSpawn: () => molehills.spawn(player.position.clone().setY(0)),
-      exportRecords: () => molehills.exportRecords().map(record => ({ prefabId: 'molehill', record })),
-      beforePhysics: dt => { if (!scheduler) moleScheduler.advance(dt); },
-      update: (dt, quaternion) => molehills.update(dt, quaternion), renderEntities: () => molehills.renderEntities,
-      dispose: () => { molehills.dispose(); for (const bait of moleBaits.values()) bait.dispose(); moleBaits.clear(); },
-    });
-    return molehills;
+    prefabs.register(molehillPrefabs(habitat));
+    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+    return { habitat, disposeBaits: () => { for (const bait of moleBaits.values()) bait.dispose(); moleBaits.clear(); } };
   }
 
   function registerGroundItems(registry: EntityRegistry, prefabId: 'ground_item', worldState: SceneWorldState) {
