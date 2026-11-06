@@ -56,6 +56,8 @@ export interface PlacementSaveRecord {
     ruinsStatueMage?: import('./ruins_statue_mage').RuinsStatueSaveState;
     /** houndbone.lua onsave: data.bonetype. */
     houndbone?: import('./houndbone').HoundboneSaveState;
+    /** dragonfly_spawner's childspawner and worldsettingstimer records. */
+    dragonflySpawner?: import('./dragonfly_spawner').DragonflySpawnerSaveState;
     /** rocks.lua on_save_moonglass: data.rock_type. */
     rock_type?: import('./rocks').MoonglassRockType;
     /** archive_props.lua OnSave: the statues' data.anim and the rune statues' data.storyprogress. */

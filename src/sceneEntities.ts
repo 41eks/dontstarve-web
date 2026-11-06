@@ -52,7 +52,7 @@ import { archivePropsPrefabs } from '@dontstarve-web/prefab/archive_props';
 import { houndbonePrefabs } from '@dontstarve-web/prefab/houndbone';
 import { BeeQueenHiveManager } from '@dontstarve-web/prefab/beequeenhivegrown';
 import { DragonflyManager } from '@dontstarve-web/prefab/dragonfly';
-import { DragonflySpawnerManager } from '@dontstarve-web/prefab/dragonfly_spawner';
+import { dragonflySpawnerPrefabs } from '@dontstarve-web/prefab/dragonfly_spawner';
 import { SkeletonManager, type SkeletonId } from '@dontstarve-web/prefab/skeleton';
 import { MarbleBeanSaplingManager, MARBLEBEAN_SAPLING_ID } from '@dontstarve-web/prefab/marblebean_sapling';
 import { rockAvocadoSaplingPrefabs } from '@dontstarve-web/prefab/rock_avocado_fruit_sprout_sapling';
@@ -308,7 +308,6 @@ export async function createSceneEntities(
     'skeleton': ReturnType<typeof registerSkeletons>;
     'beequeenhivegrown': ReturnType<typeof registerBeeQueenHives>;
     'dragonfly': ReturnType<typeof registerDragonflies>;
-    'dragonfly_spawner': ReturnType<typeof registerDragonflySpawners>;
     'marblebean_sapling': ReturnType<typeof registerMarbleBeanSaplings>;
     'rock_avocado_bush': ReturnType<typeof registerRockAvocadoBushes>;
     'rock_avocado_fruit_sprout_sapling': ReturnType<typeof registerRockAvocadoSaplings>;
@@ -402,7 +401,7 @@ export async function createSceneEntities(
   registerHoundbones(registry, 'houndbone');
   Managers['beequeenhivegrown'] = registerBeeQueenHives(registry, 'beequeenhivegrown', worldState);
   Managers['dragonfly'] = registerDragonflies(registry, 'dragonfly', worldState);
-  Managers['dragonfly_spawner'] = registerDragonflySpawners(registry, 'dragonfly_spawner', worldState);
+  registerDragonflySpawners(registry, 'dragonfly_spawner', worldState);
   Managers['marblebean_sapling'] = registerMarbleBeanSaplings(registry, 'marblebean_sapling', worldState);
   Managers['rock_avocado_bush'] = registerRockAvocadoBushes(registry, 'rock_avocado_bush', worldState);
   Managers['rock_avocado_fruit_sprout_sapling'] = registerRockAvocadoSaplings(registry, 'rock_avocado_fruit_sprout_sapling', worldState);
@@ -478,7 +477,6 @@ export async function createSceneEntities(
     skeletons: Managers['skeleton'],
     beeQueenHives: Managers['beequeenhivegrown'],
     dragonflies: Managers['dragonfly'],
-    dragonflySpawners: Managers['dragonfly_spawner'],
     marbleBeanSaplings: Managers['marblebean_sapling'],
     rockAvocadoBushes: Managers['rock_avocado_bush'],
     grasses: Managers['grass'],
@@ -935,22 +933,15 @@ export async function createSceneEntities(
   }
 
   function registerDragonflySpawners(registry: EntityRegistry, prefabId: 'dragonfly_spawner', worldState: SceneWorldState) {
-    const spawners = new DragonflySpawnerManager(scene, {
-      scheduler: worldState.scheduler, tickingarea: worldState.tickingarea,
+    prefabs.register(dragonflySpawnerPrefabs({
+      scheduler: worldState.scheduler,
       spawnDragonfly: position => Managers['dragonfly'].spawn(position),
       resolveDragonfly: id => Managers['dragonfly'].getById(id),
       isPassable: position => turfMap.isPassableAtPoint(position),
-    });
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
-      restore: (_, record) => spawners.spawn(new THREE.Vector3(...record.transform.position), {
-        id: record.id, transform: record.transform, components: { dragonflySpawner: record.components.dragonflySpawner! },
-      }),
-      debugSpawn: () => spawners.spawn(player.position.clone().setY(0)),
-      exportRecords: () => spawners.exportRecords(),
-      dispose: () => spawners.dispose(),
-    });
-    return spawners;
+    }));
+    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
   }
+
 
   function registerSkeletons(registry: EntityRegistry, prefabId: 'skeleton', worldState: SceneWorldState) {
     const skeletons = new SkeletonManager(scene, {

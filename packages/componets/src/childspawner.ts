@@ -134,6 +134,18 @@ export class ChildSpawner<Home, Child extends ChildSpawnerChild<Home>> {
     childrenoutside: [...this.childrenoutside].map(child => child.id),
     ...(this.spawnChild ? { spawning: this.spawning, regening: this.regening, queued_spawn: this.queued,
       timetonextspawn: Math.floor(this.nextSpawn), timetonextregen: Math.floor(this.nextRegen), emergencychildreninside: 0 } : {}) }; }
+  /** ChildSpawner:OnLoad, after the prefab's fn: saved flags are or'ed into what fn set; the children outside link in LoadPostPass. */
+  OnLoad(data: ChildSpawnerSave): void {
+    if (data.childreninside !== undefined) { this.childreninside = 0; this.AddChildrenInside(data.childreninside); }
+    this.spawning = data.spawning || this.spawning;
+    this.regening = data.regening || this.regening;
+    this.queued = data.queued_spawn || this.queued;
+    this.nextRegen = data.timetonextregen ?? this.nextRegen;
+    this.nextSpawn = data.timetonextspawn ?? this.nextSpawn;
+    // A loaded entity that is already awake gets no later OnEntityWake to release its queued spawn.
+    if (this.queued) { this.spawnTick.stop(); if (this.awake) this.queuedSpawn.start(0); } else this.startSpawnUpdate();
+    if (this.regening) this.startRegen(); else this.regen.stop();
+  }
   LoadPostPass(resolve: (id: string) => Child | undefined, ids: readonly string[]): string[] {
     const pending: string[] = [];
     for (const id of ids) { const child = resolve(id); if (child) this.TakeOwnership(child); else pending.push(id); }

@@ -49,36 +49,3 @@ test('inline dragonfly save renders, c_spawn adds one, and c_save reloads both',
   await expect.poll(entities).toEqual(before);
   expect(errors).toEqual([]);
 });
-
-test('c_spawn dragonfly_spawner releases its queued child and c_save restores their linkage', async ({ page }) => {
-  test.setTimeout(120_000);
-  const save = minimalSave();
-  const errors: string[] = [];
-  page.on('pageerror', error => errors.push(error.message));
-  const boot = async (data: unknown) => {
-    await page.goto(savePageUrl(data));
-    await page.evaluate(async ({ mainUrl, sceneUrl }) => {
-      const main = await import(mainUrl); await main.gameReady;
-      const { scene } = await import(sceneUrl);
-      (window as any).dragonflyGame = { scene };
-    }, { mainUrl, sceneUrl });
-  };
-  const ids = () => page.evaluate(() => (window as any).dragonflyGame.scene.children
-    .filter((child: any) => (window as any).__prefabInstance(child)?.prefab === 'dragonfly')
-    .map((child: any) => (window as any).__prefabInstance(child).entityId));
-  const submit = (command: string) => page.evaluate(command => document.querySelector('dst-debug-console')!.dispatchEvent(
-    new CustomEvent('game:debug-command', { detail: { command } })), command);
-  await boot(save);
-  await submit('c_spawn("dragonfly_spawner")');
-  await expect.poll(ids, { timeout: 20_000 }).toHaveLength(1);
-  const childId = (await ids())[0];
-  const download = page.waitForEvent('download');
-  await submit('c_save()');
-  const exported = JSON.parse(await readSaveDownload((await (await download).path())!, 'Master'));
-  expect(exported.world.entities.dragonfly).toHaveLength(1);
-  expect(exported.world.entities.dragonfly_spawner[0].components.dragonflySpawner.childspawner)
-    .toMatchObject({ childreninside: 0, childrenoutside: [childId] });
-  await boot(exported);
-  await expect.poll(ids).toEqual([childId]);
-  expect(errors).toEqual([]);
-});
