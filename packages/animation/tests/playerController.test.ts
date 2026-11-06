@@ -1,3 +1,4 @@
+import { createPlayerEquipper } from './playerEquipFixture';
 import { advancePlayer } from './playerVisual';
 import { playerDoer } from './playerDoer';
 import * as THREE from 'three';
@@ -250,7 +251,8 @@ describe('PlayerController with the Wilson stategraph', () => {
   it('commits mining at frame seven and preserves durability when cancelled, finished elsewhere or unequipped', async () => {
     const player = await createWilsonPlayer('/dst/data/anim');
     const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
-    await animation.setCarryItem('goldenpickaxe');
+    const animationEquipper = createPlayerEquipper(animation);
+    await animationEquipper.equip('goldenpickaxe');
     const inventory = createPickupInventory();
     inventory.add('goldenpickaxe', 1);
     inventory.transfer(inventorySlotAddress(0), equipmentSlotAddress('hand'), 1);
@@ -309,7 +311,8 @@ describe('PlayerController with the Wilson stategraph', () => {
     });
     const player = await createWilsonPlayer('/anim');
     const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
-    await animation.setCarryItem('bugnet');
+    const animationEquipper = createPlayerEquipper(animation);
+    await animationEquipper.equip('bugnet');
     const body = new CANNON.Body({ mass: 1, shape: new CANNON.Sphere(0.5), linearDamping: 0 }) as PlayerBody;
     body.position.y = 0.5;
     body.canJump = true;

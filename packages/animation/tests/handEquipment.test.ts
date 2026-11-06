@@ -1,150 +1,113 @@
-import type { WilsonAnimationController } from '../../prefab/src/player';
-import { afterEach, expect, it, vi } from 'vitest';
-import { createEquipmentExistenceState, type HandEquipment } from '@dontstarve-web/signals';
-import { ItemEntity, InventoryStore, InventorySlot, HandSlot, inventorySlotAddress, equipmentSlotAddress } from '@dontstarve-web/inventory';
-import { configureTorchEntity, getTorchController, TORCH_LIGHT } from '../../prefab/src/torch';
+import { readFile } from 'node:fs/promises';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { InventoryStore, InventorySlot, HandSlot, inventorySlotAddress, equipmentSlotAddress } from '@dontstarve-web/inventory';
+import { SpriteState } from '@dontstarve-web/display';
+import type { EquipmentOwner } from '@dontstarve-web/signals';
+import { getTorchController, TORCH_LIGHT } from '../../prefab/src/torch';
+import { configureEquipmentEntity } from '../../prefab/src/handEquipment';
 import { createEmptyEntity, type PrefabInstance } from '../../prefab/src/prefabInstance';
-import { bindPlayerHandEquipment } from '../../../src/playerHandEquipment';
+import { createEquipmentViews } from '../../prefab/src/equipmentVisual';
+import { GroundItemAssets } from '../../prefab/src/groundItems';
+import { HatEquipmentAssets } from '../../prefab/src/hats';
 import { createPerishWorld } from './perishWorldFixture';
+import { createPlayerEquipper } from './playerEquipFixture';
+import { advancePlayer, createWilsonPlayer, wilsonPlayerInstance, type WilsonAnimationController } from './playerVisual';
 
 vi.mock('../../prefab/src/sound', () => ({
   PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })),
 }));
-afterEach(() => { vi.restoreAllMocks(); vi.clearAllMocks(); });
+beforeEach(() => vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url)))));
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 /** The lights other entities parent to `parent`. */
 const parented = (parent: PrefabInstance) => [...parent.light.slots.peek().values()].map(light => light.peek());
 
-function presentation() {
-  return { animation: { setEquippedCarryItem: vi.fn<WilsonAnimationController['setEquippedCarryItem']>(), playItemTransition: vi.fn<WilsonAnimationController['playItemTransition']>() },
-    lightParent: createEmptyEntity('wilson').instance, setHandAction: vi.fn() };
-}
-
-it('equips from the restore signal write, unequips before replacement and releases on shutdown', async () => {
+it('equips restored and committed torches through equippable with the owner, unequipping before replacement', () => {
   const a = inventorySlotAddress(0), b = inventorySlotAddress(1), hand = equipmentSlotAddress('hand');
   const store = new InventoryStore([
     { address: a, slot: new InventorySlot() }, { address: b, slot: new InventorySlot() },
     { address: hand, slot: new HandSlot() },
-  ], { torch: { name: 'torch', icon: 'torch.tex', maxStack: 1, maxFuel: 75, equippable: 'hand', configureEntity: configureTorchEntity } },
+  ], { torch: { name: 'torch', icon: 'torch.tex', maxStack: 1, maxFuel: 75, equippable: 'hand', configureEntity: configureEquipmentEntity } },
   { torch_barber: { itemId: 'torch', name: 'torch', icon: 'torch_barber.tex', atlas: 'images/inventoryimages.xml' } });
   const world = createPerishWorld();
   store.entities.bindPerishWorld(world);
-  const ui = presentation();
-  const binding = await bindPlayerHandEquipment({ ...ui, handEquipmentExistenceState: store.handEquipmentExistenceState });
+  // The inventory's actor is the owner; its view gives each equipped inst a slot and AttachLightTo(owner).
+  const lightParent = createEmptyEntity('wilson').instance, assets = new GroundItemAssets(), hats = new HatEquipmentAssets('/dst/data/anim');
+  const events: string[] = [];
+  const owner = { hasTag: () => false, GetPosition: () => ({ x: 0, y: 0, z: 0 }), PushEvent: (name: string) => { events.push(name); } } as EquipmentOwner & { hasTag(): boolean; GetPosition(): { x: number; y: number; z: number } };
+  owner.OpenEquipmentView = createEquipmentViews(owner, { sprite: { sprite: new SpriteState({ name: 'idle' }), art: assets }, assets, hats, lightParent });
+  store.bindActor(owner);
   try {
-    expect(ui.animation.setEquippedCarryItem).not.toHaveBeenCalled();
-    expect(ui.setHandAction).not.toHaveBeenCalled();
-    binding.withoutTransitions(() => store.replaceState({ slots: [
+    store.replaceState({ slots: [
       { address: a, item: { itemId: 'torch', count: 1, remainingFuel: 20 } },
       { address: hand, item: { entityId: 'saved_torch', itemId: 'torch', count: 1, skinId: 'torch_barber', remainingFuel: 10 } },
-    ], bufferedBuilds: [] }, {}));
-    await Promise.resolve();
-    expect(ui.animation.playItemTransition).not.toHaveBeenCalled();
-    expect(ui.animation.setEquippedCarryItem).toHaveBeenCalledExactlyOnceWith('torch');
+    ], bufferedBuilds: [] }, {});
     const oldEntity = store.getEntity(hand)!, nextEntity = store.getEntity(a)!;
     expect(oldEntity.id).toBe('saved_torch');
     const oldTorch = getTorchController(oldEntity), nextTorch = getTorchController(nextEntity);
-    const events: string[] = [];
-    const oldUnequip = oldTorch.onunequip.bind(oldTorch), nextEquip = nextTorch.onequip.bind(nextTorch);
-    vi.spyOn(oldTorch, 'onunequip').mockImplementation(() => { events.push('unequip'); oldUnequip(); });
-    const equip = vi.spyOn(nextTorch, 'onequip').mockImplementation(slot => { events.push('equip'); nextEquip(slot); });
     expect(oldTorch.isBurning).toBe(true);
-    expect(ui.animation.setEquippedCarryItem).toHaveBeenLastCalledWith('torch');
-    expect(parented(ui.lightParent)).toEqual([TORCH_LIGHT]);
+    expect(parented(lightParent)).toEqual([TORCH_LIGHT]);
+    expect(events.filter(name => name === 'equip' || name === 'unequip')).toEqual(['equip']);
     world.advance(0.25);
+    const order: string[] = [];
+    const oldUnequip = oldTorch.onunequip.bind(oldTorch), nextEquip = nextTorch.onequip.bind(nextTorch);
+    vi.spyOn(oldTorch, 'onunequip').mockImplementation(() => { order.push('unequip'); oldUnequip(); });
+    const equip = vi.spyOn(nextTorch, 'onequip').mockImplementation(slot => { order.push('equip'); nextEquip(slot); });
+    events.length = 0;
     store.applySlotChanges([
       { slot: hand, itemId: 'torch', skinId: 'torch_barber', delta: -1 },
       { slot: b, itemId: 'torch', skinId: 'torch_barber', delta: 1 },
       { slot: a, itemId: 'torch', delta: -1 }, { slot: hand, itemId: 'torch', delta: 1 },
     ]);
-    expect(events).toEqual(['unequip', 'equip']);
-    expect(store.handEquipment.peek()?.entity).toBe(nextEntity);
+    expect(order).toEqual(['unequip', 'equip']);
+    expect(events.filter(name => name === 'equip' || name === 'unequip')).toEqual(['unequip', 'equip']);
     // fueled:SetFirstPeriod charges a partly used torch TURNON_FUELED_CONSUMPTION when it lights.
     expect(oldEntity.components.fueled!.currentfuel).toBe(10 - .5 - .25);
     expect(oldTorch.isBurning).toBe(false);
-    world.advance(0.5); binding.flush();
+    // The held inst settles its consumption when it is flushed.
+    world.advance(0.5); nextEntity.flush();
     expect(nextEntity.components.fueled!.currentfuel).toBe(20 - .5 - .5);
     store.setRemainingFuel(hand, 18);
     expect(equip).toHaveBeenCalledOnce();
-    await Promise.resolve();
-    expect(ui.animation.playItemTransition).toHaveBeenCalledExactlyOnceWith('item_out', 'torch');
-    const stillEquipped = store.handEquipment.peek();
     nextTorch.extinguish();
-    expect(store.handEquipment.peek()).toBe(stillEquipped);
     expect(store.getEntity(hand)).toBe(nextEntity);
-    expect(ui.animation.setEquippedCarryItem).toHaveBeenLastCalledWith('torch');
-    expect(parented(ui.lightParent)).toEqual([]);
-    store.setRemainingFuel(hand, 17);
-    expect(equip).toHaveBeenCalledOnce();
+    expect(parented(lightParent)).toEqual([]);
+    // Depleted, the prefab removes itself; equippable:Unequip runs as its inventory owner clears the slot.
     store.transfer(hand, a, 1); store.transfer(a, hand, 1);
     expect(nextTorch.isBurning).toBe(true);
-    const remove = vi.spyOn(nextEntity, 'remove');
-    await Promise.resolve();
-    const transitions = ui.animation.playItemTransition.mock.calls.length;
-    world.advance(18); binding.flush();
-    await Promise.resolve();
-    expect(ui.animation.playItemTransition).toHaveBeenCalledTimes(transitions);
-    expect(store.handEquipmentExistenceState.peek()).toBeNull();
-    expect(store.getEntity(hand)).toBeNull();
+    world.advance(18); nextEntity.flush();
     expect(nextEntity.isRemoved).toBe(true);
-    expect(remove).toHaveBeenCalledOnce(); // The depleted prefab removes itself; its inventory owner clears the slot.
-    expect(ui.animation.setEquippedCarryItem).toHaveBeenLastCalledWith(null);
-    const saved = store.exportState();
-    store.replaceState(saved, {});
-    expect(store.get(hand)).toBeNull();
-    binding.dispose();
-    const calls = ui.animation.setEquippedCarryItem.mock.calls.length;
-    store.transfer(b, hand, 1);
-    store.getEntity(hand)!.remove();
-    world.advance(10);
-    expect(ui.animation.setEquippedCarryItem).toHaveBeenCalledTimes(calls);
-  } finally { binding.dispose(); store.dispose(); }
+    expect(store.getEntity(hand)).toBeNull();
+    expect(nextEntity.components.equippable!.IsEquipped()).toBe(false);
+    expect(parented(lightParent)).toEqual([]);
+  } finally { store.dispose(); assets.dispose(); hats.dispose(); }
 });
 
-it('preserves the latest equipment when unequip synchronously supersedes a transition', async () => {
-  const entity = new ItemEntity({ itemId: 'torch', count: 1 });
-  const initial: HandEquipment = { itemId: 'torch', EQUIPSLOTS: 'HANDS', entity };
-  const staff: HandEquipment = { itemId: 'yellowstaff', EQUIPSLOTS: 'HANDS' };
-  const hammer: HandEquipment = { itemId: 'hammer', EQUIPSLOTS: 'HANDS' };
-  const slot = createEquipmentExistenceState('HANDS');
-  const ui = presentation();
-  const binding = await bindPlayerHandEquipment({ ...ui, handEquipmentExistenceState: slot });
+it("goes through SGwilson's equip and unequip handlers: item_out, item_in and item_hat from idle, not while busy", async () => {
+  const player = await createWilsonPlayer('/dst/data/anim');
+  const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
+  const equipper = createPlayerEquipper(animation);
+  const settle = () => { for (let frame = 0; frame < 30; frame++) advancePlayer(animation, 1 / 30); };
   try {
-    slot.set(initial);
-    const torch = getTorchController(entity), unequip = torch.onunequip.bind(torch);
-    vi.spyOn(torch, 'onunequip').mockImplementation(() => { unequip(); slot.set(hammer); });
-    slot.set(staff);
-    expect(slot.peek()).toBe(hammer);
-    expect(ui.animation.setEquippedCarryItem).toHaveBeenLastCalledWith('hammer');
-    expect(ui.animation.setEquippedCarryItem.mock.calls.some(([item]) => item === 'yellowstaff')).toBe(false);
-    expect(ui.setHandAction).toHaveBeenLastCalledWith(null);
-    slot.set(staff);
-    // Point CASTSPELL labels come from the shared picker and the real spellcaster capability.
-    expect(ui.setHandAction).toHaveBeenLastCalledWith(null);
-  } finally { binding.dispose(); entity.destroy(); }
-});
-
-it('derives take-out, put-away and replacement animations while preserving same-item skin updates', async () => {
-  const slot = createEquipmentExistenceState('HANDS'), ui = presentation();
-  const binding = await bindPlayerHandEquipment({ ...ui, handEquipmentExistenceState: slot });
-  const first: HandEquipment = { itemId: 'torch', EQUIPSLOTS: 'HANDS',
-    entity: { id: 'first', prefab: 'torch', isRemoved: false } };
-  try {
-    slot.set(first); await Promise.resolve();
-    expect(ui.animation.playItemTransition).toHaveBeenLastCalledWith('item_out', 'torch');
-    slot.set(null); await Promise.resolve();
-    expect(ui.animation.playItemTransition).toHaveBeenLastCalledWith('item_in', 'torch');
-    slot.set(first); await Promise.resolve();
-    const transitions = ui.animation.playItemTransition.mock.calls.length;
-    const skinned = { ...first, skinId: 'torch_barber' };
-    slot.set(skinned); await Promise.resolve();
-    expect(ui.animation.setEquippedCarryItem).toHaveBeenLastCalledWith('torch');
-    expect(ui.animation.playItemTransition).toHaveBeenCalledTimes(transitions);
-    slot.set({ ...skinned }); await Promise.resolve();
-    expect(ui.animation.playItemTransition).toHaveBeenCalledTimes(transitions);
-    slot.set({ ...skinned, entity: { id: 'replacement', prefab: 'torch', isRemoved: false } });
-    await Promise.resolve();
-    expect(ui.animation.playItemTransition).toHaveBeenCalledTimes(transitions + 1);
-    expect(ui.animation.playItemTransition).toHaveBeenLastCalledWith('item_out', 'torch');
-  } finally { binding.dispose(); }
+    expect(animation.stategraph.stateName).toBe('idle');
+    equipper.equip('torch');
+    expect(animation.stategraph.stateName).toBe('item_out');
+    settle();
+    expect(animation.stategraph.stateName).toBe('idle');
+    equipper.equip('strawhat', undefined, 'head');
+    expect(animation.stategraph.stateName).toBe('item_hat');
+    settle();
+    equipper.equip(null);
+    expect(animation.stategraph.stateName).toBe('item_in');
+    settle();
+    // A state with its own unequip handler takes the event instead: shell_enter leaves for GetUnequipState's item_hat.
+    animation.stategraph.goToState('shell_enter');
+    equipper.equip(null, undefined, 'head');
+    expect(animation.stategraph.stateName).toBe('item_hat');
+    settle();
+    // Busy, non-idle states keep running.
+    animation.stategraph.goToState('shell_hit');
+    equipper.equip('torch');
+    expect(animation.stategraph.stateName).toBe('shell_hit');
+  } finally { equipper.dispose(); player.removeFromParent(); }
 });

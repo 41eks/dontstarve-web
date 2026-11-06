@@ -2,8 +2,7 @@ import { PLAYER_EQUIPMENT_CONTAINER_ID, type ItemEntity } from '@dontstarve-web/
 import { FishingRod, type FishingWorld } from '../../componets/src/fishingrod';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { ComponentUpdates } from '../../componets/src/componentUpdates';
-import type { EquipmentLifecycle } from '@dontstarve-web/signals';
-import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory } from './equipmentVisual';
+import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory, type HeldEquipFunctions } from './equipmentVisual';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 
 export const FISHINGROD_ID = 'fishingrod';
@@ -56,7 +55,7 @@ export function getFishingRod(entity: ItemEntity, scheduler: GameTimeScheduler, 
 }
 
 /** Holding the rod in the scene gives it its fishingrod component; the rod stops fishing once it leaves the hand. */
-export function createFishingRodLifecycle(entity: ItemEntity, world: FishingRodWorld): EquipmentLifecycle {
+export function createFishingRodLifecycle(entity: ItemEntity, world: FishingRodWorld): HeldEquipFunctions {
   return {
     onequip() { getFishingRod(entity, world.scheduler, world, world.componentUpdates); },
     onunequip() { entity.components.fishingrod?.StopFishing(); },

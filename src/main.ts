@@ -33,9 +33,8 @@ import { isGroundTargetBlocked, placementEntities } from '../packages/prefab/src
 import { backpackContainerId } from '@dontstarve-web/inventory';
 import { player, playerBody, playerInstance, playerPhysics } from './player';
 import { OnItemRanOut } from '@dontstarve-web/prefab/player_common';
-import { bindPlayerHandEquipment } from './playerHandEquipment';
-import { bindPlayerHeadEquipment } from './playerHeadEquipment';
-import { bindPlayerBodyEquipment } from './playerBodyEquipment';
+import { createEquipmentViews } from '@dontstarve-web/prefab/equipmentVisual';
+import { getHandEquipmentDefinition, type HandEquipmentWorld } from '@dontstarve-web/prefab/handEquipment';
 import { cursorUi, renderer, scene } from './universal';
 import { SendLightningStrike } from '@dontstarve-web/prefab/lightning';
 import { WORLD_SCALE } from '../packages/prefab/src/standardcomponents';
@@ -115,7 +114,7 @@ for (const panel of [gameUi.chestPanel, gameUi.cookPotPanel, gameUi.iceBoxPanel]
 const playerAnimation = playerInstance.animationController;
 /** inst:PushEvent reaches SGwilson's handlers; these are the ones the player's own components and actions push. */
 const STATEGRAPH_EVENTS = new Set(['equip', 'unequip', 'toolbroke', 'fishingnibble', 'fishingloserod', 'fishingstrain', 'fishingcatch', 'fishingcancel']);
-const pickupDoer: PickupDoer & WortoxDoer & { sg: NonNullable<PickupDoer['sg']> & { beginPortalJump(pos: import('three').Vector3, fromMap?: boolean): boolean }; ListenForEvent(name: string, listener: (data: unknown) => void): () => void; HasStateTag(tag: string): boolean; GoToState(name: string): void; IsCurrentState(name: string): boolean;
+const pickupDoer: PickupDoer & WortoxDoer & { sg: NonNullable<PickupDoer['sg']> & { beginPortalJump(pos: import('three').Vector3, fromMap?: boolean): boolean }; ListenForEvent(name: string, listener: (data: unknown) => void): () => void; HasStateTag(tag: string): boolean; GoToState(name: string): void; IsCurrentState(name: string): boolean; OpenEquipmentView?: import('@dontstarve-web/signals').EquipmentOwner['OpenEquipmentView'];
   components: PickupDoer['components'] & { health: typeof playerStats.health; hunger: typeof playerStats.hunger; sanity?: Sanity } } = {
   // The player's own eater.lua component, which ACTIONS.EAT reaches on act.doer.
   components: { inventory, health: playerStats.health, hunger: playerStats.hunger, eater: playerInstance.components.eater },
@@ -147,14 +146,9 @@ const playerSanity = playerStats.sanity;
 pickupDoer.components.sanity = playerSanity;
 playerAnimation?.bindInventory(inventory);
 playerInstance.components.inventory = inventory;
-const handSlotAddress = equipmentSlotAddress('hand');
 const handPointer = view.mouseActions?.pointer ?? new PointerRaycaster(view);
 const bodySlotAddress = equipmentSlotAddress('body');
 
-function isHandSlot(address: SlotAddress): boolean {
-  return address.containerId === handSlotAddress.containerId
-    && address.slotKey === handSlotAddress.slotKey;
-}
 
 window.addEventListener('contextmenu', (event) => {
   event.preventDefault();
@@ -168,14 +162,8 @@ const spellCastMap: SpellCastMap = {
   isGroundTargetBlocked: point => isGroundTargetBlocked(groundTargetBlockers, point, .5 * WORLD_SCALE),
 };
 
-const handEquipmentBinding = await bindPlayerHandEquipment({
-  handEquipmentExistenceState: inventory.handEquipmentExistenceState,
-  owner: pickupDoer,
-  animation: playerAnimation,
-  soundPosition: player.position,
-  lightParent: playerInstance,
-  followSymbol: playerAnimation && ((symbol, x, y, fx) => playerAnimation.followSymbol(symbol, x, y, fx)),
-  setHandAction: action => cursorUi.setHandAction(action, handPointer),
+// TheWorld's services the equipped items' callbacks read: maps, spawns, fx and the fishing world.
+inventory.entities.bindEquipmentWorld({
   lightStaffWorld: {
     map: spellCastMap,
     spawnPrefab: (prefab, position) => { registry.SpawnPrefab(prefab, position.clone()); },
@@ -203,31 +191,26 @@ const handEquipmentBinding = await bindPlayerHandEquipment({
       groundItems.flingLoot([{ ...inventory.getItemSpec(fish.prefab), itemId: fish.prefab, count: 1 }], position);
     },
   },
+} satisfies HandEquipmentWorld);
+// equippable:Equip(owner): each equipped inst draws on its own slot of the player's sprite.
+if (playerAnimation) pickupDoer.OpenEquipmentView = createEquipmentViews(pickupDoer, playerAnimation.equipmentPresentation);
+// The cursor shows the held item's action; the backpack panel follows the worn backpack.
+inventory.handEquipment.subscribe(equipment => {
+  cursorUi.setHandAction((equipment && getHandEquipmentDefinition(equipment.itemId)?.definition.handAction) ?? null, handPointer);
+});
+inventory.bodyEquipment.subscribe(equipment => {
+  const containerId = equipment?.itemId === 'backpack' && equipment.entity ? backpackContainerId(equipment.entity.id) : undefined;
+  if (gameUi.backpackPanel.slotContainer?.id !== containerId) gameUi.backpackPanel.close();
+  if (containerId && !gameUi.backpackPanel.slotContainer) {
+    const container = inventory.getEntity(bodySlotAddress)?.components.container;
+    if (!container) return;
+    gameUi.backpackPanel.open({ containerId, slotCount: container.numslots, title: '背包' });
+    gameUi.backpackPanel.bindContainer(container.slots, inventorySlotItem);
+  }
 });
 
-const headEquipmentBinding = bindPlayerHeadEquipment({
-  owner: pickupDoer,
-  headEquipmentExistenceState: inventory.headEquipmentExistenceState,
-  animation: playerAnimation,
-});
-const bodyEquipmentBinding = bindPlayerBodyEquipment({
-  owner: pickupDoer,
-  bodyEquipmentExistenceState: inventory.bodyEquipmentExistenceState,
-  animation: playerAnimation,
-  setBackpackActive(equipped, entityId) {
-    const containerId = equipped && entityId ? backpackContainerId(entityId) : undefined;
-    if (gameUi.backpackPanel.slotContainer?.id !== containerId) gameUi.backpackPanel.close();
-    if (containerId && !gameUi.backpackPanel.slotContainer) {
-      const container = inventory.getEntity(bodySlotAddress)?.components.container;
-      if (!container) return;
-      gameUi.backpackPanel.open({ containerId, slotCount: container.numslots, title: '背包' });
-      gameUi.backpackPanel.bindContainer(container.slots, inventorySlotItem);
-    }
-  },
-});
-
-// Restore only after subscribing: committed signal writes drive all equipment.
-handEquipmentBinding.withoutTransitions(() => inventory.replaceState(inventoryStateFromSave(initialSave), INVENTORY_RECIPES));
+// Restore only after subscribing: committed slot changes equip the restored items.
+inventory.replaceState(inventoryStateFromSave(initialSave), INVENTORY_RECIPES);
 
 
 function syncCraftingInventory(): void {
@@ -242,7 +225,7 @@ syncCraftingInventory();
 inventory.subscribe(syncCraftingInventory);
 
 const disposalResources = createDisposalResources({
-  gameUi, view, screenProjection, inventory, playerAnimation, locomotor, pickupDoer, handEquipmentBinding,
+  gameUi, view, screenProjection, inventory, playerAnimation, locomotor, pickupDoer,
   inventorySlotItem, actionEvents, isActionInterrupting: input.isActionInterrupting,
   updateCursor: () => cursorUi.update(), getWatchWorldContent: worldState.getWatchWorldContent, turfMap,
 });
@@ -267,8 +250,6 @@ const stopVignetteUpdate = registerFrontTask(dt => sanityVignette.update(dt));
 disposalEvents.on('dispose', () => {
   gameUi.minimap.dispose();
   stopStatsUpdates.forEach(stop => stop());
-  headEquipmentBinding.dispose();
-  bodyEquipmentBinding.dispose();
   stopVignetteUpdate();
   sanityVignette.dispose();
 });
@@ -295,7 +276,6 @@ disposalEvents.on('dispose', () => {
 // health.lua pushes "death" when health reaches 0; SGwilson.lua's death state drops everything and plays the clip.
 playerAnimation?.bindDeath({
   dropEverything: () => {
-    handEquipmentBinding.flush();
     inventory.DropEverything();
   },
   // TheWorld.Map:IsPassableAtPoint: neither open ocean nor the void.
@@ -331,7 +311,6 @@ let lastSavedSnapshotId = initialSave.snapshot.id;
 let pendingSave = Promise.resolve();
 function saveGame(): Promise<void> {
   const save = pendingSave.then(() => gameUi.savingIndicator.whileSaving(async () => {
-    handEquipmentBinding.flush();
     const json = serializeSave(initialSave, {
       ...getSaveState(), playerWortox: wortox?.state.OnSave(), inventory: inventory.exportState(), playerStats: getPlayerStats(), playerGhost: playerGhostMode.peek(),
     }, SAVE_CATALOG, lastSavedSnapshotId);
@@ -359,7 +338,6 @@ window.addEventListener('game:slot-transfer-request', (event) => {
   const detail = (event as CustomEvent<SlotTransferRequest>).detail;
   if (!Number.isSafeInteger(detail.amount) || detail.amount <= 0) return;
 
-  if (isHandSlot(detail.from) || isHandSlot(detail.to)) handEquipmentBinding.flush();
   const transferred = detail.swapWith
     ? inventory.swap(detail.from, detail.to, {
       from: { entityId: detail.entityId, itemId: detail.itemId, skinId: detail.skinId, count: detail.amount },

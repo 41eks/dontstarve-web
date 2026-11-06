@@ -3,7 +3,9 @@ import { HatArtAssets, type HatArtDefinition, type HatEquipMode } from '@dontsta
 import {
   createAnimatedSpriteSource, type AnimatedSpriteFactory, type AnimatedSpriteSourceOptions,
 } from '@dontstarve-web/animation/sprite';
-import type { InventoryItemSpec, InventoryRecipeDefinition, InventorySkinSpec } from '@dontstarve-web/inventory';
+import type { ItemEntity, ItemRuntimeComponent, InventoryItemSpec, InventoryRecipeDefinition, InventorySkinSpec } from '@dontstarve-web/inventory';
+import type { EquipmentOwner } from '@dontstarve-web/signals';
+import { Equippable } from '../../componets/src/equippable';
 import { createMemo, createSignal, readonlySignal, watchSignal, type Memo, type ReadonlySignal } from '@dontstarve-web/signals';
 import * as THREE from 'three';
 import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
@@ -13,7 +15,7 @@ import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
 import { AlterguardianHatEquipped } from './alterguardian_hat_equipped';
 import { spawnLightEntity, type PrefabLocalLight } from './localLight';
 import { TILE_SIZE } from './tile';
-import { ARMOR_DREADSTONEHAT, DREADSTONEHAT_ID, configureDreadstoneHatEntity } from './dreadstonehat';
+import { ARMOR_DREADSTONEHAT, DREADSTONEHAT_ID, configureDreadstoneHatEntity, dreadstone_onequip, dreadstone_onunequip } from './dreadstonehat';
 
 export type { HatEquipMode };
 
@@ -51,7 +53,8 @@ export function isHatId(itemId: string): boolean {
 export const HAT_ITEM_SPECS: Readonly<Record<string, InventoryItemSpec>> = Object.fromEntries(
   Object.entries(HAT_DEFINITIONS).map(([id, hat]) => [id, {
     name: hat.name, icon: hat.icon, atlas: hat.atlas, maxStack: 1, equippable: 'head',
-    ...(id === DREADSTONEHAT_ID ? { maxArmor: ARMOR_DREADSTONEHAT, configureEntity: configureDreadstoneHatEntity } : {}),
+    configureEntity: configureHatEntity,
+    ...(id === DREADSTONEHAT_ID ? { maxArmor: ARMOR_DREADSTONEHAT } : {}),
   }]),
 );
 
@@ -256,10 +259,41 @@ export function createHatGroundFactory(context: GroundPrefabContext): GroundItem
 }
 
 
-import { skinArchive, wornEquipmentLifecycle, type EquipmentVisual, type EquipmentVisualContext, type EquipmentVisualItem, type EquipmentVisualOwner } from './equipmentVisual';
+import { skinArchive, wornOwner, type EquipmentPresentation, type EquipmentVisual, type EquipmentVisualItem, type EquipmentArtOwner } from './equipmentVisual';
+
+/** hats.lua simple(): the head equippable and its onequip/onunequip; dreadstone's wrap them as fns.dreadstone does. */
+export function configureHatEntity(entity: ItemEntity): void {
+  if (entity.prefab === DREADSTONEHAT_ID) configureDreadstoneHatEntity(entity);
+  if (entity.getComponent('hat')) return;
+  const hat = entity.component('hat', () => new WornHat(entity));
+  const equippable = entity.components.equippable ??= new Equippable<ItemEntity>(entity, 'head');
+  equippable.SetOnEquip((_inst, owner) => hat.onequip(owner));
+  equippable.SetOnUnequip(() => hat.onunequip());
+}
+
+/** The hat's equip functions for one equip: its art on the owner's AnimState, then dreadstone's regeneration. */
+class WornHat implements ItemRuntimeComponent {
+  private readonly inst: ItemEntity;
+  private visual?: EquipmentVisual;
+  constructor(inst: ItemEntity) { this.inst = inst; }
+  onequip(owner: EquipmentOwner): void {
+    this.onunequip();
+    const worn = wornOwner(owner);
+    if (worn) {
+      this.visual = hatVisual({ id: this.inst.id, prefab: this.inst.prefab, skinId: this.inst.skinId }, worn.presentation);
+      this.visual.onequip(worn);
+    }
+    if (this.inst.prefab === DREADSTONEHAT_ID) dreadstone_onequip(this.inst, owner);
+  }
+  onunequip(): void {
+    if (this.inst.prefab === DREADSTONEHAT_ID) dreadstone_onunequip(this.inst);
+    this.visual?.onunequip(); this.visual = undefined;
+  }
+  dispose(): void { this.onunequip(); }
+}
 
 /** hats.lua's simple/opentop/fullhelm equip branches and their owned follower FX; builds are named for the owner's display. */
-export function hatVisual(item: EquipmentVisualItem, context: Pick<EquipmentVisualContext, 'assets' | 'hats' | 'lightParent' | 'sanityPercent'>): EquipmentVisual {
+export function hatVisual(item: EquipmentVisualItem, context: Pick<EquipmentPresentation, 'assets' | 'hats' | 'lightParent' | 'sanityPercent'>): EquipmentVisual {
   const definition = Object.hasOwn(HAT_DEFINITIONS, item.prefab) ? HAT_DEFINITIONS[item.prefab] : undefined;
   if (!definition) throw new Error(`Unknown hat: ${item.prefab}`);
   const skin = skinArchive(item.prefab, definition.skinArchives, item.skinId);
@@ -267,7 +301,7 @@ export function hatVisual(item: EquipmentVisualItem, context: Pick<EquipmentVisu
   const symbol = mode === 'fullhelm' ? 'headbase_hat' : 'swap_hat';
   const follow = definition.equip.follow;
   const builds = [...skin ? [skin] : [], definition.archive, ...follow?.extraBuilds ?? []];
-  let owner: EquipmentVisualOwner | undefined;
+  let owner: EquipmentArtOwner | undefined;
   const stops: (() => void)[] = [];
   let activation: HatActivationController | undefined;
   return {
@@ -314,8 +348,4 @@ export function hatVisual(item: EquipmentVisualItem, context: Pick<EquipmentVisu
       owner = undefined;
     },
   };
-}
-
-export function createHatEquipmentLifecycle(item: EquipmentVisualItem, context: EquipmentVisualContext) {
-  return wornEquipmentLifecycle(hatVisual(item, context), context);
 }

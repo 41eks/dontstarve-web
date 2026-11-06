@@ -1,3 +1,4 @@
+import { createPlayerEquipper } from './playerEquipFixture';
 import { advancePlayer } from './playerVisual';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
@@ -45,10 +46,13 @@ describe('pitchfork source art and TERRAFORM timing', () => {
     }
     const player = await createWilsonPlayer('/dst/data/anim');
     const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
+    const animationEquipper = createPlayerEquipper(animation);
     const dig = vi.fn();
     const push = () => animation.stategraph.pushBufferedAction(new BufferedAction('TERRAFORM', dig));
     const digging = () => animation.stategraph.isPerformingAction('TERRAFORM');
-    animation.setCarryItem(tool);
+    animationEquipper.equip(tool);
+    // SGwilson's equip handler plays item_out (16 frames) from idle; the held art shows by its end.
+    advance(animation, 20);
     const held = player.getObjectByProperty('isMesh', true) as THREE.Mesh;
     await vi.waitFor(() => expect((held.material as THREE.Material[]).some((material) => material.name === `ground:swap_${tool}`)).toBe(true));
     expect(push()).toBe(true);
@@ -62,7 +66,7 @@ describe('pitchfork source art and TERRAFORM timing', () => {
     expect(digging()).toBe(false);
     expect(push()).toBe(true);
     advance(animation, 10);
-    await animation.setCarryItem(null);
+    await animationEquipper.equip(null);
     advance(animation, 100);
     expect(dig).toHaveBeenCalledOnce();
     expect(digging()).toBe(false);

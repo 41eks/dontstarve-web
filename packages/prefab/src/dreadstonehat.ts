@@ -1,5 +1,5 @@
 import type { ItemEntity, ItemRuntimeComponent } from '@dontstarve-web/inventory';
-import type { EquipmentLifecycle, EquipmentOwner } from '@dontstarve-web/signals';
+import type { EquipmentOwner } from '@dontstarve-web/signals';
 import { Armor } from '../../componets/src/armor';
 import { Equippable, type EquippableOwner } from '../../componets/src/equippable';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -106,18 +106,15 @@ export function configureDreadstoneHatEntity(entity: ItemEntity): void {
   }
 }
 
-/** dreadstone_onequip / dreadstone_onunequip: regeneration runs only while worn and damaged. */
-export function createDreadstoneHatLifecycle(entity: ItemEntity): EquipmentLifecycle {
-  return {
-    onequip(owner) {
-      if (!owner) return;
-      equippedOwners.set(entity, owner);
-      if (owner.components?.sanity && entity.components.armor?.IsDamaged()) startRegen(entity, owner);
-      else regenOf(entity)?.stop();
-    },
-    onunequip() {
-      equippedOwners.delete(entity);
-      regenOf(entity)?.stop();
-    },
-  };
+/** dreadstone_onequip after the hat's own onequip: regeneration runs only while worn and damaged. */
+export function dreadstone_onequip(entity: ItemEntity, owner: EquipmentOwner): void {
+  equippedOwners.set(entity, owner);
+  if (owner.components?.sanity && entity.components.armor?.IsDamaged()) startRegen(entity, owner);
+  else regenOf(entity)?.stop();
+}
+
+/** dreadstone_onunequip before the hat's own onunequip. */
+export function dreadstone_onunequip(entity: ItemEntity): void {
+  equippedOwners.delete(entity);
+  regenOf(entity)?.stop();
 }

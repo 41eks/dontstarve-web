@@ -1,5 +1,5 @@
 import type { EquipmentKind } from '../../inventory/src/types';
-import type { EquipmentOwner } from '../../signals/src/equipment';
+import type { EquipmentOwner, EquipmentOwnerView } from '../../signals/src/equipment';
 
 export interface EquippableInst {
   GetIsWet(): boolean;
@@ -24,6 +24,8 @@ export class Equippable<Inst extends EquippableInst = EquippableInst> {
   onequipfn?: (inst: Inst, owner: EquipmentOwner) => void;
   onunequipfn?: (inst: Inst, owner: EquipmentOwner) => void;
   private readonly inst: Inst;
+  /** The owner's view for this equip; its AnimState slot is closed after onunequip. */
+  private view?: EquipmentOwnerView;
 
   constructor(inst: Inst, equipslot: EquipmentKind) { this.inst = inst; this.equipslot = equipslot; }
   SetOnEquip(fn: (inst: Inst, owner: EquipmentOwner) => void): void { this.onequipfn = fn; }
@@ -32,12 +34,17 @@ export class Equippable<Inst extends EquippableInst = EquippableInst> {
   Equip(owner: EquipmentOwner): void {
     this.isequipped = true;
     this.inst.components?.burnable?.StopSmoldering();
-    this.onequipfn?.(this.inst, owner);
+    this.view?.close();
+    this.view = owner.OpenEquipmentView?.(this.inst);
+    this.onequipfn?.(this.inst, this.view ?? owner);
     this.inst.PushEvent('equipped', { owner });
   }
   Unequip(owner: EquipmentOwner): void {
     this.isequipped = false;
-    this.onunequipfn?.(this.inst, owner);
+    const view = this.view;
+    this.view = undefined;
+    this.onunequipfn?.(this.inst, view ?? owner);
+    view?.close();
     this.inst.PushEvent('unequipped', { owner });
   }
   IsRestricted(): boolean { return false; }

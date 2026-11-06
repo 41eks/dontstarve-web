@@ -1,3 +1,4 @@
+import { createPlayerEquipper } from '../../animation/tests/playerEquipFixture';
 import { prefabManager } from '../../animation/tests/prefabManagerFixture';
 import { advancePlayer, registerPlayer } from '../../animation/tests/playerVisual';
 import { PrefabDisplayGroup } from '../../display/src';
@@ -36,7 +37,10 @@ export async function prepareStarAudioCheck() {
   registerPlayer(player);
   await prefabDisplay(player).artLoaded();
   const animation = prefabInstance(player).animationController as WilsonAnimationController;
-  await animation.setCarryItem('yellowstaff');
+  const animationEquipper = createPlayerEquipper(animation);
+  // SGwilson's equip/unequip handlers play item_out/item_in from idle; let them finish.
+  const settleEquip = () => { for (let frame = 0; frame < 24; frame++) advancePlayer(animation, 1 / 30); };
+  await animationEquipper.equip('yellowstaff'); settleEquip();
   let casts = 0;
   animation.stategraph.pushBufferedAction(new BufferedAction('CASTSPELL', () => { casts += 1; }, undefined, {
     invobject: { prefab: 'yellowstaff', castsound: 'dontstarve/common/staffteleport', hasTag: () => false },
@@ -47,13 +51,13 @@ export async function prepareStarAudioCheck() {
   const onSoundFrame = sources.length;
   for (let i = 0; i < 50; i++) advancePlayer(animation, 1 / 30);
   const afterCastSources = sources.length;
-  await animation.setCarryItem(null);
-  await animation.setCarryItem('yellowstaff');
+  await animationEquipper.equip(null); settleEquip();
+  await animationEquipper.equip('yellowstaff'); settleEquip();
   animation.stategraph.pushBufferedAction(new BufferedAction('CASTSPELL', () => { casts += 1; }, undefined, {
     invobject: { prefab: 'yellowstaff', castsound: 'dontstarve/common/staffteleport', hasTag: () => false },
   }));
   for (let i = 0; i < 12; i++) advancePlayer(animation, 1 / 30);
-  await animation.setCarryItem(null);
+  await animationEquipper.equip(null); settleEquip();
   for (let i = 0; i < 30; i++) advancePlayer(animation, 1 / 30);
   const cancelledBeforeSound = sources.length === afterCastSources && casts === 1;
   const castBuffer = sources[6].source.buffer!;

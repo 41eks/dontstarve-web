@@ -19,7 +19,7 @@ import { EventEmitter } from '@dontstarve-web/signals';
 import { AnimState, type AnimStateArt } from '../src/animState';
 import { SpriteState } from '@dontstarve-web/display';
 import { declaredAnimState, element } from './animStateFixture';
-import { bindPlayerHandEquipment } from '../../../src/playerHandEquipment';
+import { createEquipmentViews } from '../../prefab/src/equipmentVisual';
 import { createEmptyEntity, prefabInstance } from '../../prefab/src/prefabInstance';
 import type { LightParent } from '../../prefab/src/localLight';
 import { createPerishWorld } from './perishWorldFixture';
@@ -120,7 +120,7 @@ describe('lantern fuel', () => {
     const inventory = createPickupInventory();
     const player = createEmptyEntity('wilson').instance;
     const events = new EventEmitter<Record<string, unknown>>();
-    const owner = {
+    const owner: import('../../signals/src').EquipmentOwner & { hasTag(): boolean; GetPosition(): typeof player.position } = {
       hasTag: () => true, GetPosition: () => player.position,
       PushEvent: (name: string, data?: unknown) => events.emit(name, data),
       ListenForEvent: (name: string, listener: (data: unknown) => void) => events.on(name, listener),
@@ -133,11 +133,9 @@ describe('lantern fuel', () => {
     own.Hide('LANTERN_OVERLAY');
     sprite.setAnimState(own.json);
     const overlay = () => declaredAnimState(sprite).IsVisible(element('lantern_overlay', 'LANTERN_OVERLAY'));
-    const binding = await bindPlayerHandEquipment({
-      handEquipmentExistenceState: inventory.handEquipmentExistenceState,
-      owner, lightParent: player, sprite: { sprite, art: {} as AnimStateArt }, setHandAction() {},
-      // No animation assets or player controller are needed to create the light.
-    });
+    // equippable:Equip opens the owner's view: the lantern's slot of its sprite, and AttachLightTo(owner).
+    // No animation assets or player controller are needed to create the light.
+    owner.OpenEquipmentView = createEquipmentViews(owner, { sprite: { sprite, art: {} as AnimStateArt }, assets: {} as never, hats: {} as never, lightParent: player });
     try {
       inventory.add('lantern', 1);
       const slot = inventorySlotAddress(0), hand = equipmentSlotAddress('hand');
@@ -179,7 +177,7 @@ describe('lantern fuel', () => {
       world.advance(1);
       expect(turnoff).not.toHaveBeenCalled();
       expect(lightAt(player)).toBeUndefined();
-    } finally { binding.dispose(); inventory.dispose(); }
+    } finally { inventory.dispose(); }
   });
 
   it('spawns/gives lanterns, then saves and reloads ground switch state and fuel, including an empty lantern', async () => {

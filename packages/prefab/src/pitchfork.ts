@@ -1,8 +1,7 @@
-import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory } from './equipmentVisual';
+import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory, type HeldEquipFunctions } from './equipmentVisual';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { PlaySound } from './sound';
 import type { ItemEntity } from '@dontstarve-web/inventory';
-import type { EquipmentLifecycle } from '@dontstarve-web/signals';
 import { Terraformer, type TerraformerMap } from '../../componets/src/terraformer';
 
 export type PitchforkTool = 'pitchfork' | 'goldenpitchfork';
@@ -32,7 +31,7 @@ export function configurePitchforkEntity(entity: ItemEntity): void {
 }
 
 /** While held in a world, the terraformer works that world's map. */
-export function createTerraformerLifecycle(entity: ItemEntity, map: TerraformerMap): EquipmentLifecycle {
+export function createTerraformerLifecycle(entity: ItemEntity, map: TerraformerMap): HeldEquipFunctions {
   return {
     onequip() { if (entity.components.terraformer) entity.components.terraformer.map = map; },
     onunequip() { if (entity.components.terraformer) entity.components.terraformer.map = undefined; },

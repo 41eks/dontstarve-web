@@ -1,13 +1,12 @@
 import type { ItemEntity } from '@dontstarve-web/inventory';
-import type { EquipmentLifecycle } from '@dontstarve-web/signals';
 import { Tool } from '../../componets/src/tool';
-import { handEquipmentVisual, skinArchive, type EquipmentVisual, type EquipmentVisualFactory, type EquipmentVisualItem } from './equipmentVisual';
+import { handEquipmentVisual, skinArchive, type EquipmentVisual, type EquipmentVisualFactory, type EquipmentVisualItem, type HeldEquipFunctions } from './equipmentVisual';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 
 export const PICKAXE_USES = 33; // tuning.lua; gold consumes 1 / GOLDENTOOLFACTOR = .25 per MINE.
 
 /** pickaxe.lua / axe.lua: finiteuses removes the inst; an equipped item clears its injected slot. */
-export class FiniteUsesToolLifecycle implements EquipmentLifecycle {
+export class FiniteUsesToolLifecycle implements HeldEquipFunctions {
   constructor(entity: ItemEntity) {
     entity.components.finiteuses.setOnFinished(() => entity.isRemoved || entity.remove());
   }
@@ -16,7 +15,7 @@ export class FiniteUsesToolLifecycle implements EquipmentLifecycle {
   dispose(): void {}
 }
 
-export function getPickaxeLifecycle(entity: ItemEntity): EquipmentLifecycle {
+export function getPickaxeLifecycle(entity: ItemEntity): HeldEquipFunctions {
   return entity.component('pickaxe', () => new FiniteUsesToolLifecycle(entity));
 }
 

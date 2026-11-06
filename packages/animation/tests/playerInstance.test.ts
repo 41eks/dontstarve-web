@@ -1,3 +1,4 @@
+import { createPlayerEquipper } from './playerEquipFixture';
 import { advancePlayer, facePlayer } from './playerVisual';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
@@ -36,6 +37,7 @@ async function createPlayer() {
 
 it('declares player art and retains its entity, equipment, body and shared assets through sleep and wake', async () => {
   const { instance, model, body, world, animation } = await createPlayer();
+  const animationEquipper = createPlayerEquipper(animation);
   const scene = new THREE.Scene(); scene.add(model);
   model.position.set(12, 0, -6);
   const position = instance.position;
@@ -46,7 +48,7 @@ it('declares player art and retains its entity, equipment, body and shared asset
   if (!('art' in source)) throw new Error('Expected named player art');
   const materials = source.art.peekBuild(source.buildArchive)!.materials;
   const disposals = materials.map(material => vi.spyOn(material, 'dispose'));
-  await animation.setCarryItem('pickaxe');
+  await animationEquipper.equip('pickaxe');
   const hit = vi.fn();
   expect(animation.stategraph.pushBufferedAction(new BufferedAction('MINE', hit))).toBe(true);
   for (let frame = 0; frame < 5; frame++) advancePlayer(animation, 1 / 30);

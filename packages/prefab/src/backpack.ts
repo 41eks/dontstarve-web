@@ -1,17 +1,26 @@
 import type { ItemEntity } from '@dontstarve-web/inventory';
-
-/** backpack.lua's common initialization; skins keep the same native map icon. */
-export function configureBackpackEntity(entity: ItemEntity): void {
-  entity.AddMiniMapEntity().SetIcon('backpack.png');
-}
-
-import { skinArchive, wornEquipmentLifecycle, type EquipmentVisualContext, type EquipmentVisualFactory, type EquipmentVisualItem, type EquipmentVisualOwner } from './equipmentVisual';
+import { Equippable } from '../../componets/src/equippable';
+import { skinArchive, wornOwner, type EquipmentVisual, type EquipmentVisualFactory, type EquipmentArtOwner } from './equipmentVisual';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 
-/** backpack.lua onequip/onunequip: the container lifecycle stays with inventory. */
+/** backpack.lua fn: the native map icon and the body equippable's onequip/onunequip; the container belongs to inventory. */
+export function configureBackpackEntity(entity: ItemEntity): void {
+  entity.AddMiniMapEntity().SetIcon('backpack.png');
+  const equippable = entity.components.equippable ??= new Equippable<ItemEntity>(entity, 'body');
+  let visual: EquipmentVisual | undefined;
+  equippable.SetOnEquip((inst, owner) => {
+    visual?.onunequip();
+    const worn = wornOwner(owner);
+    visual = worn && backpackVisual({ id: inst.id, prefab: inst.prefab, skinId: inst.skinId });
+    if (worn) visual?.onequip(worn);
+  });
+  equippable.SetOnUnequip(() => { visual?.onunequip(); visual = undefined; });
+}
+
+/** backpack.lua onequip/onunequip. */
 export const backpackVisual: EquipmentVisualFactory = item => {
   const skin = skinArchive('backpack', GROUND_ITEM_DEFINITIONS.backpack.skinArchives, item.skinId);
-  let owner: EquipmentVisualOwner | undefined;
+  let owner: EquipmentArtOwner | undefined;
   return {
     onequip(equipper) {
       owner = equipper;
@@ -29,7 +38,3 @@ export const backpackVisual: EquipmentVisualFactory = item => {
     },
   };
 };
-
-export function createBackpackEquipmentLifecycle(item: EquipmentVisualItem, context: Pick<EquipmentVisualContext, 'owner' | 'sprite'>) {
-  return wornEquipmentLifecycle(backpackVisual(item), context);
-}

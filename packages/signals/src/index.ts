@@ -4,7 +4,7 @@ export type { WorldContentValues, WorldContentSources, WorldContentEnvironment, 
 export { GameTimeScheduler } from './gameTimeScheduler';
 export { EventEmitter } from './EventEmitter';
 export type { Signal, ReadonlySignal, SignalListener, Memo } from './signal';
-export { bindEquipmentLifecycle, createEquipmentExistenceState } from './equipment';
-export type { Equipment, EquipmentEntity, EquipmentLifecycle, EquipmentOwner, EquipmentSanity, EquipmentSlot, HandEquipment, HeadEquipment, BodyEquipment } from './equipment';
+export { createEquipmentExistenceState } from './equipment';
+export type { Equipment, EquipmentEntity, EquipmentOwner, EquipmentOwnerView, EquippedItem, EquipmentSanity, EquipmentSlot, HandEquipment, HeadEquipment, BodyEquipment } from './equipment';
 export { clockstate, seasonstate, moonphasestate } from './world';
 export type { WorldSeason, WorldPhase, WorldMoonPhase, WorldNightmarePhase, SeasonTick, ClockTick, ClockCalendar, SeasonState, ClockState } from './world';

@@ -1,8 +1,8 @@
 import type { AnimState } from '@dontstarve-web/animation/animState';
 import type { ItemEntity, ItemRuntimeComponent } from '@dontstarve-web/inventory';
-import { createEffect, watchSignal, type EquipmentLifecycle, type EquipmentOwner, type ReadonlySignal } from '@dontstarve-web/signals';
+import { createEffect, watchSignal, type EquipmentOwner, type ReadonlySignal } from '@dontstarve-web/signals';
 import * as THREE from 'three';
-import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory } from './equipmentVisual';
+import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory, type HeldEquipFunctions } from './equipmentVisual';
 import { GROUND_ITEM_DEFINITIONS, createResidentGroundItem } from './groundItems';
 import type { GroundItemFactory, GroundItemVisual, GroundPrefabContext } from './groundPrefab';
 import { listenInventoryEvents } from './inventoryEvents';
@@ -212,12 +212,12 @@ export class LanternLightController {
 }
 
 export interface LanternHandContext {
-  lightParent: LightParent;
+  lightParent?: LightParent;
   AnimState?: Pick<AnimState, 'Show' | 'Hide'>;
 }
 
 /** The item owns the light; equipping only supplies its parent and AnimState overlay interface. */
-export function createLanternHandLifecycle(entity: ItemEntity, context: LanternHandContext): EquipmentLifecycle {
+export function createLanternHandLifecycle(entity: ItemEntity, context: LanternHandContext): HeldEquipFunctions {
   const controller = getLanternController(entity);
   return {
     onequip: owner => controller.onequip(owner, context),

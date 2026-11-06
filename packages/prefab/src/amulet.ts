@@ -1,10 +1,10 @@
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import type { ItemEntity, ItemRuntimeComponent } from '@dontstarve-web/inventory';
-import type { EquipmentLifecycle, EquipmentOwner } from '@dontstarve-web/signals';
+import type { EquipmentOwner } from '@dontstarve-web/signals';
 import { Equippable } from '../../componets/src/equippable';
 import { Hauntable, HAUNT_INSTANT_REZ, type HauntableInst } from '../../componets/src/hauntable';
 import { ComponentTimer } from '../../componets/src/timer';
-import { skinArchive, type EquipmentVisualFactory, type EquipmentVisualOwner } from './equipmentVisual';
+import { skinArchive, wornOwner, type EquipmentVisual, type EquipmentVisualFactory, type EquipmentArtOwner } from './equipmentVisual';
 import catalog from './groundItems.json' with { type: 'json' };
 
 /** amulet.lua registers the red amulet as prefab `amulet`; the other colours are separate prefabs. */
@@ -49,7 +49,7 @@ export function configureAmuletEntity(entity: ItemEntity): void {
   equippable.is_magic_dapperness = true;
   const red = entity.component('redamulet', () => new RedAmulet(entity));
   equippable.SetOnEquip((_inst, owner) => red.onequip(owner));
-  equippable.SetOnUnequip(() => red.onunequip());
+  equippable.SetOnUnequip((_inst, owner) => red.onunequip(owner));
   // The timer belongs to the world the item is bound to; a world-less entity is configured again once adopted.
   const scheduler = entity.components.perishable.scheduler;
   if (!scheduler || entity.components.hauntable) return;
@@ -70,16 +70,23 @@ function healowner(entity: ItemEntity, owner: EquipmentOwner): void {
 }
 
 /**
- * amulet.lua onequip_red / onunequip_red's `inst.task`: while worn, a periodic task heals the owner. It is a game-time
- * timer re-armed after each run; it is not saved, and equipping on load starts it again.
+ * amulet.lua onequip_red / onunequip_red: swap_body on the owner's AnimState, and `inst.task`, a periodic task that heals
+ * the owner while worn. The task is a game-time timer re-armed after each run; it is not saved, and equipping on load
+ * starts it again.
  */
 class RedAmulet implements ItemRuntimeComponent {
   private readonly inst: ItemEntity;
   private task?: ComponentTimer;
+  private visual?: EquipmentVisual;
   constructor(inst: ItemEntity) { this.inst = inst; }
 
   onequip(owner: EquipmentOwner): void {
-    this.task?.stop();
+    this.onunequip(owner);
+    const worn = wornOwner(owner);
+    if (worn) {
+      this.visual = amuletVisual({ id: this.inst.id, prefab: this.inst.prefab, skinId: this.inst.skinId });
+      this.visual.onequip(worn);
+    }
     const scheduler = this.inst.components.perishable.scheduler;
     if (!scheduler) return;
     // inst:DoPeriodicTask(TUNING.REDAMULET_CONVERSION_TIME, healowner, nil, owner)
@@ -90,7 +97,22 @@ class RedAmulet implements ItemRuntimeComponent {
     task.start(REDAMULET_CONVERSION_TIME);
   }
 
-  onunequip(): void {
+  onunequip(owner?: EquipmentOwner): void {
+    const visual = this.visual;
+    this.visual = undefined;
+    // onunequip_red keeps swap_body while the owner is in amulet_rebirth; that state clears it on exit, so the
+    // amulet's slot stays drawn until the owner leaves it.
+    const worn = owner && wornOwner(owner);
+    if (visual && worn?.IsCurrentState?.('amulet_rebirth')) {
+      const release = worn.Retain();
+      const stop = worn.ListenForEvent?.('newstate', data => {
+        if ((data as { statename?: string } | undefined)?.statename === 'amulet_rebirth') return;
+        stop?.();
+        visual.onunequip();
+        release();
+      });
+      if (!stop) { visual.onunequip(); release(); }
+    } else visual?.onunequip();
     this.task?.stop();
     this.task = undefined;
   }
@@ -98,35 +120,10 @@ class RedAmulet implements ItemRuntimeComponent {
   dispose(): void { this.onunequip(); }
 }
 
-/**
- * The red amulet's worn art: onunequip_red keeps `swap_body` while the owner is in amulet_rebirth, whose state clears it
- * on exit, so the art's slot goes as the owner leaves that state.
- */
-export function createAmuletArtLifecycle(art: Pick<EquipmentLifecycle, 'onequip' | 'onunequip'>): EquipmentLifecycle {
-  let owner: EquipmentOwner | undefined;
-  return {
-    onequip(equipper) {
-      owner = equipper;
-      art.onequip(equipper);
-    },
-    onunequip() {
-      const reviving = owner?.IsCurrentState?.('amulet_rebirth') ? owner : undefined;
-      owner = undefined;
-      const stop = reviving?.ListenForEvent?.('newstate', data => {
-        if ((data as { statename?: string } | undefined)?.statename === 'amulet_rebirth') return;
-        stop?.();
-        art.onunequip();
-      });
-      // SGwilson amulet_rebirth onexit leaves a body item equipped meanwhile in place; its slot is drawn over this one.
-      if (!stop) art.onunequip();
-    },
-  };
-}
-
 /** amulet.lua onequip_red: swap_body from torso_amulets' redamulet, or the skin's swap_body. */
 export const amuletVisual: EquipmentVisualFactory = item => {
   const skin = skinArchive('amulet', catalog.items.amulet.skinArchives as Readonly<Record<string, string>>, item.skinId);
-  let owner: EquipmentVisualOwner | undefined;
+  let owner: EquipmentArtOwner | undefined;
   return {
     onequip(equipper) {
       owner = equipper;

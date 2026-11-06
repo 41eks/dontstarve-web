@@ -1,13 +1,14 @@
 import type { FollowerFx } from '@dontstarve-web/display';
-import type { ItemEntity } from '@dontstarve-web/inventory';
-import type { EquipmentLifecycle, EquipmentOwner } from '@dontstarve-web/signals';
+import type { ItemEntity, ItemRuntimeComponent } from '@dontstarve-web/inventory';
+import type { EquipmentOwner } from '@dontstarve-web/signals';
 import type { ActionDescription } from '@dontstarve-web/stategraphs';
 import type * as THREE from 'three';
 import { Weapon } from '../../componets/src/weapon';
 import { AXE_USES, configureAxeEntity, getAxeLifecycle, axeVisual } from './axe';
 import { configureBugNetEntity, bugnetVisual } from './bugnet';
 import { configureFishingRodEntity, createFishingRodLifecycle, FISHINGROD_USES, fishingRodVisual } from './fishingrod';
-import { EquipmentAnimState, type EquipmentSprite, type EquipmentVisual, type EquipmentVisualFactory } from './equipmentVisual';
+import { Equippable } from '../../componets/src/equippable';
+import { wornOwner, type EquipmentAnimState, type EquipmentSprite, type EquipmentVisual, type EquipmentVisualFactory, type HeldEquipFunctions } from './equipmentVisual';
 import { configureFarmHoeEntity, createFarmTillerLifecycle, farmHoeVisual } from './farm_hoe';
 import { configureHammerEntity, hammerVisual } from './hammer';
 import { configureLanternEntity, createLanternHandLifecycle, LANTERN_FUEL, lanternVisual } from './lantern';
@@ -26,14 +27,8 @@ import { FIRESTAFF_TAGS, FIRESTAFF_USES, fireStaffVisual, getFireStaffController
 const WILSON_ATTACK = 34;
 const GOLDEN_ATTACKWEAR = 1 / 4;
 
-export interface HandEquipmentContext {
-  soundPosition?: THREE.Vector3;
-  /** The holder; torchfire's light fx is parented to it while burning. */
-  lightParent: PrefabInstance;
-  /** The holder's FollowSymbol, for fx that follow swap_object; absent when there is no animated holder. */
-  followSymbol?(symbol: string, offsetX: number, offsetY: number, fx?: FollowerFx): { node: THREE.Object3D; remove(): void };
-  /** The holder's sprite: the held item declares its art in a slot of its own there. */
-  sprite?: EquipmentSprite;
+/** TheWorld's services hand items use, bound to their registry (ItemEntityRegistry.bindEquipmentWorld). */
+export interface HandEquipmentWorld {
   lightStaffWorld?: LightStaffWorld;
   greenStaffWorld?: GreenStaffWorld;
   fireStaffWorld?: FireStaffWorld;
@@ -44,6 +39,17 @@ export interface HandEquipmentContext {
   /** TheWorld.Map for the pitchfork's terraformer and the farm hoe's farmtiller. */
   terraformMap?: import('../../componets/src/terraformer').TerraformerMap;
   farmTillMap?: import('../../componets/src/farmtiller').FarmTillerMap;
+}
+
+/** What a hand prefab's equip functions reach: TheWorld's services and the owner's drawing of its equipment. */
+export interface HandEquipmentContext extends HandEquipmentWorld {
+  soundPosition?: import('../../animation/src/transformRoot').ReadonlyVector3;
+  /** The holder; torchfire's light fx is parented to it while burning. */
+  lightParent?: PrefabInstance;
+  /** The holder's FollowSymbol, for fx that follow swap_object; absent when there is no animated holder. */
+  followSymbol?(symbol: string, offsetX: number, offsetY: number, fx?: FollowerFx): { node: THREE.Object3D; remove(): void };
+  /** The holder's sprite: the held item declares its art in a slot of its own there. */
+  sprite?: EquipmentSprite;
 }
 export interface HandEquipmentDefinition {
   readonly maxUses?: number;
@@ -57,7 +63,7 @@ export interface HandEquipmentDefinition {
   readonly handAction?: ActionDescription;
   readonly visual: EquipmentVisualFactory;
   /** `context.AnimState` is the item's own slot on the holder, the owner.AnimState its equip functions write. */
-  createLifecycle?(entity: ItemEntity, context: HandEquipmentContext & { AnimState?: EquipmentAnimState['AnimState'] }): EquipmentLifecycle | undefined;
+  createLifecycle?(entity: ItemEntity, context: HandEquipmentContext & { AnimState?: EquipmentAnimState['AnimState'] }): HeldEquipFunctions | undefined;
 }
 
 /** Source hand prefabs declare their presentation and equip lifecycle together. */
@@ -102,12 +108,18 @@ const definitions: Record<WilsonCarryItem, HandEquipmentDefinition> = {
     configureEntity: configureShovelEntity },
 };
 
-/** Prefab configuration for a hand inst: its own configureEntity, source tags and weapon component. */
+/** Prefab configuration for a hand inst: its own configureEntity, source tags, weapon and equippable onequip/onunequip. */
 export function configureEquipmentEntity(entity: ItemEntity): void {
   const entry = getHandEquipmentDefinition(entity.prefab);
   if (!entry) return;
   const { definition } = entry;
   definition.configureEntity?.(entity);
+  if (!entity.getComponent('handequipment')) {
+    const held = entity.component('handequipment', () => new HeldEquipment(entity, definition));
+    const equippable = entity.components.equippable ??= new Equippable<ItemEntity>(entity, 'hand');
+    equippable.SetOnEquip((_inst, owner) => held.onequip(owner));
+    equippable.SetOnUnequip(() => held.onunequip());
+  }
   for (const tag of definition.tags ?? []) entity.addTag(tag);
   if (definition.weapon && !entity.components.weapon) {
     // weapon.lua adds the "weapon" tag; weapon:OnAttack wears finiteuses only when the inst has them.
@@ -126,22 +138,40 @@ export function getHandEquipmentDefinition(itemId: string): { carryItem: WilsonC
   return { carryItem, definition: definitions[carryItem] };
 }
 
-/** Prefab domain and presentation share the same equip lifetime; the holder's display loads the named art. */
-export function createHandEquipmentLifecycle(entity: ItemEntity, context: HandEquipmentContext): EquipmentLifecycle {
-  const definition = getHandEquipmentDefinition(entity.prefab)?.definition;
-  const slot = context.sprite && new EquipmentAnimState(context.sprite);
-  const domain = definition?.createLifecycle?.(entity, { ...context, AnimState: slot?.AnimState });
-  let visual: EquipmentVisual | undefined;
-  return {
-    onequip(owner?: EquipmentOwner) {
-      slot?.equip();
-      if (definition && slot) {
-        visual = definition.visual({ id: entity.id, prefab: entity.prefab, skinId: entity.skinId });
-        visual.onequip({ AnimState: slot.AnimState, PushEvent: (name, data) => owner?.PushEvent(name, data) });
-      }
-      domain?.onequip(owner);
-    },
-    onunequip() { domain?.onunequip(); visual?.onunequip(); visual = undefined; slot?.unequip(); },
-    flush() { domain?.flush?.(); },
-  };
+/**
+ * A hand prefab's onequip/onunequip: the held art on the owner's AnimState (the inst's own slot), then the prefab's
+ * equip functions with TheWorld's services and the owner's presentation. They last for one equip.
+ */
+class HeldEquipment implements ItemRuntimeComponent {
+  private readonly inst: ItemEntity;
+  private readonly definition: HandEquipmentDefinition;
+  private visual?: EquipmentVisual;
+  private domain?: HeldEquipFunctions;
+  constructor(inst: ItemEntity, definition: HandEquipmentDefinition) { this.inst = inst; this.definition = definition; }
+
+  onequip(owner: EquipmentOwner): void {
+    this.onunequip();
+    const worn = wornOwner(owner), presentation = worn?.presentation;
+    if (worn) {
+      this.visual = this.definition.visual({ id: this.inst.id, prefab: this.inst.prefab, skinId: this.inst.skinId });
+      this.visual.onequip(worn);
+    }
+    const world = this.inst.equipmentWorld as HandEquipmentWorld | undefined;
+    this.domain = this.definition.createLifecycle?.(this.inst, {
+      ...world,
+      ...(presentation ? { lightParent: presentation.lightParent, followSymbol: presentation.followSymbol,
+        soundPosition: presentation.soundPosition, sprite: presentation.sprite } : {}),
+      AnimState: worn?.AnimState,
+    });
+    this.domain?.onequip(owner);
+  }
+
+  onunequip(): void {
+    this.domain?.onunequip(); this.domain = undefined;
+    this.visual?.onunequip(); this.visual = undefined;
+  }
+
+  /** Settles the held item's consumption before a save or transfer reads it. */
+  flush(): void { this.domain?.flush?.(); }
+  dispose(): void { this.onunequip(); }
 }

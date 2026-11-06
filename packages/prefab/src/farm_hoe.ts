@@ -1,8 +1,7 @@
-import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory } from './equipmentVisual';
+import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory, type HeldEquipFunctions } from './equipmentVisual';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 
 import type { ItemEntity } from '@dontstarve-web/inventory';
-import type { EquipmentLifecycle } from '@dontstarve-web/signals';
 import { FarmTiller, type FarmTillerMap } from '../../componets/src/farmtiller';
 
 export type FarmHoeTool = 'farm_hoe' | 'golden_farm_hoe';
@@ -13,7 +12,7 @@ export function configureFarmHoeEntity(entity: ItemEntity): void {
 }
 
 /** While held in a world, the tiller tills that world's farm soil. */
-export function createFarmTillerLifecycle(entity: ItemEntity, map: FarmTillerMap): EquipmentLifecycle {
+export function createFarmTillerLifecycle(entity: ItemEntity, map: FarmTillerMap): HeldEquipFunctions {
   return {
     onequip() { if (entity.components.farmtiller) entity.components.farmtiller.map = map; },
     onunequip() { if (entity.components.farmtiller) entity.components.farmtiller.map = undefined; },

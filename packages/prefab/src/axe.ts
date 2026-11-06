@@ -1,7 +1,6 @@
 import type { ItemEntity } from '@dontstarve-web/inventory';
-import type { EquipmentLifecycle } from '@dontstarve-web/signals';
 import { Tool } from '../../componets/src/tool';
-import type { EquipmentVisualFactory } from './equipmentVisual';
+import type { EquipmentVisualFactory, HeldEquipFunctions } from './equipmentVisual';
 import { FiniteUsesToolLifecycle, heldToolVisual } from './pickaxe';
 
 export const AXE_USES = 100; // tuning.lua AXE_USES.
@@ -21,7 +20,7 @@ const AXE_TUNING: Readonly<Record<AxeTool, { effectiveness: number; consumption:
   moonglassaxe: { effectiveness: 2.5, consumption: 1.25 },
 };
 
-export function getAxeLifecycle(entity: ItemEntity): EquipmentLifecycle {
+export function getAxeLifecycle(entity: ItemEntity): HeldEquipFunctions {
   return entity.component('axe', () => new FiniteUsesToolLifecycle(entity));
 }
 

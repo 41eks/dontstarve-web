@@ -1,3 +1,4 @@
+import { createPlayerEquipper } from './playerEquipFixture';
 import { advancePlayer } from './playerVisual';
 import * as THREE from 'three';
 import { createEmptyEntity } from '../../prefab/src/prefabInstance';
@@ -6,7 +7,8 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { AnimState } from '../src/animState';
 import { ItemEntity } from '../../inventory/src';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
-import { createHandEquipmentLifecycle } from '../../prefab/src/handEquipment';
+import { createEquipmentViews } from '../../prefab/src/equipmentVisual';
+import { INVENTORY_ITEM_SPECS } from '../../../src/inventoryItems';
 import { HatEquipmentAssets, hatVisual } from '../../prefab/src/hats';
 import { backpackVisual } from '../../prefab/src/backpack';
 import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
@@ -25,13 +27,19 @@ it('names skin builds without loading them, replaces an unequipped skin and keep
   own.Hide('ARM_carry');
   sprite.setAnimState(own.json, assets);
   const anim = declaredAnimState(sprite);
-  const owner = { PushEvent: vi.fn() };
-  const context = { sprite: { sprite, art: assets }, lightParent: createEmptyEntity('wilson').instance };
+  const hats = new HatEquipmentAssets('/dst/data/anim');
+  // equippable:Equip(owner) opens the owner's view: the item's own AnimState slot of the holder's sprite.
+  const owner: import('../../signals/src').EquipmentOwner = { PushEvent: vi.fn() };
+  owner.OpenEquipmentView = createEquipmentViews(owner, { sprite: { sprite, art: assets }, assets, hats, lightParent: createEmptyEntity('wilson').instance });
   const item = new ItemEntity({ itemId: 'hammer', count: 1, skinId: 'hammer_invisible' });
   const next = new ItemEntity({ itemId: 'hammer', count: 1 });
+  item.configure(INVENTORY_ITEM_SPECS.hammer); next.configure(INVENTORY_ITEM_SPECS.hammer);
   const archive = GROUND_ITEM_DEFINITIONS.hammer.skinArchives.hammer_invisible;
-  const skinned = createHandEquipmentLifecycle(item, context);
-  const plain = createHandEquipmentLifecycle(next, context);
+  const equipFns = (inst: ItemEntity) => ({
+    onequip: (wearer: typeof owner) => inst.components.equippable!.Equip(wearer),
+    onunequip: () => { if (inst.components.equippable!.IsEquipped()) inst.components.equippable!.Unequip(owner); },
+  });
+  const skinned = equipFns(item), plain = equipFns(next);
   try {
     skinned.onequip(owner);
     // The prefab only names the builds; nothing is loaded until a display draws them.
@@ -57,7 +65,7 @@ it('names skin builds without loading them, replaces an unequipped skin and keep
     expect(anim.IsVisible(element('arm', 'ARM_carry'))).toBe(false);
   } finally {
     skinned.onunequip(); plain.onunequip();
-    item.destroy(); next.destroy(); assets.dispose();
+    item.destroy(); next.destroy(); assets.dispose(); hats.dispose();
   }
 });
 
@@ -110,16 +118,18 @@ it("draws a follow hat's own animation from its bank once the owner's display ha
 it('lets a skin replaced before its load finishes only fill the cache: the player draws the current declaration', async () => {
   const player = await createWilsonPlayer('/dst/data/anim');
   const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
+  const animationEquipper = createPlayerEquipper(animation);
   const mesh = player.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
   const drawn = () => mesh.geometry.groups.map(group => mesh.material[group.materialIndex!].name);
   try {
-    animation.setCarryItem('hammer', 'hammer_forge');
-    animation.setCarryItem('hammer');
-    await vi.waitFor(() => { advancePlayer(animation, 0); expect(drawn()).toContain('ground:swap_hammer'); });
+    animationEquipper.equip('hammer', 'hammer_forge');
+    animationEquipper.equip('hammer');
+    // SGwilson's equip handler plays item_out from idle; the held art shows as it runs.
+    await vi.waitFor(() => { advancePlayer(animation, 1 / 30); expect(drawn()).toContain('ground:swap_hammer'); });
     await animation.equipmentAssets.loadBuild(GROUND_ITEM_DEFINITIONS.hammer.skinArchives.hammer_forge);
     await new Promise(resolve => setTimeout(resolve, 0));
     advancePlayer(animation, 0);
     expect(drawn()).not.toContain('ground:hammer_forge');
     expect(drawn()).toContain('ground:swap_hammer');
-  } finally { animation.setCarryItem(null); player.removeFromParent(); }
+  } finally { animationEquipper.equip(null); player.removeFromParent(); }
 });

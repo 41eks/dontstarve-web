@@ -28,7 +28,6 @@ import type { DeploySpawned } from '../packages/componets/src/deployable';
 import { placementEntities } from '../packages/prefab/src/placementEntities';
 import type { turfMap } from './building';
 import type { startScene } from './scene';
-import type { bindPlayerHandEquipment } from './playerHandEquipment';
 import { setupEmoteWheel } from './emoteWheel';
 import { inventoryReceiveEffect } from './inventoryReceive';
 import { playerStats } from './playerStats';
@@ -85,7 +84,6 @@ interface ApplicationResourcesOptions {
   playerAnimation?: WilsonAnimationController;
   locomotor: PlayerLocomotor;
   pickupDoer: PickupDoer;
-  handEquipmentBinding: Pick<Awaited<ReturnType<typeof bindPlayerHandEquipment>>, 'flush'>;
   inventorySlotItem: (entity: ItemEntity) => SlotItem;
   actionEvents: EventEmitter<PlayerActionEvents>;
   isActionInterrupting: () => boolean;
@@ -99,7 +97,7 @@ type SceneResources = Pick<Awaited<ReturnType<typeof startScene>>,
 
 /** Create panels before scene loading, then own action setup and its explicit disposal. */
 export function createDisposalResources({ gameUi, view, screenProjection, inventory, playerAnimation, locomotor, pickupDoer,
-  handEquipmentBinding, inventorySlotItem, actionEvents, isActionInterrupting, updateCursor, getWatchWorldContent: watchWorldContent, turfMap }: ApplicationResourcesOptions) {
+  inventorySlotItem, actionEvents, isActionInterrupting, updateCursor, getWatchWorldContent: watchWorldContent, turfMap }: ApplicationResourcesOptions) {
   const player = view.player;
   const camera = view.camera;
   const renderer = view.renderer;
@@ -250,7 +248,7 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
         if (!request) return;
         const { slot, action, item } = request;
         actionEvents.emit('action:interrupt', { reason: 'slot-context-menu' });
-        if (isHandSlot(slot)) handEquipmentBinding.flush();
+        if (isHandSlot(slot)) inventory.getEntity(slot)?.flush();
         const stack = inventory.get(slot);
         if (!stack || !item || stack.itemId !== item.id || stack.skinId !== item.skinId
           || (item.entityId !== undefined && inventory.getEntity(slot)?.id !== item.entityId)) return;
@@ -274,7 +272,7 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
             ...(stack.phonographRecord === undefined ? {} : { phonographRecord: stack.phonographRecord }),
           };
           const take = () => {
-            if (isHandSlot(slot)) handEquipmentBinding.flush();
+            if (isHandSlot(slot)) inventory.getEntity(slot)?.flush();
             const current = inventory.get(slot);
             if (current?.itemId !== stack.itemId || current.skinId !== stack.skinId
               || current.count !== stack.count || current.remainingUses !== stack.remainingUses || current.phonographRecord !== stack.phonographRecord) return false;

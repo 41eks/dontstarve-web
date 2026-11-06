@@ -83,9 +83,9 @@ createEffect(() => this.runTest(this.cycle.get()));
 
 每次工厂调用返回独立、初始为 `null` 的 signal。每个 `InventoryStore` 默认创建三种状态，也可通过构造函数第五个参数的对象注入，例如 `{ handEquipmentExistenceState, headEquipmentExistenceState, bodyEquipmentExistenceState }`。对应槽位成功注册后，Store 在发布初始装备状态时写入该状态；构造时和后续 `registerSlots()` 注册都适用。存在状态只由库存发布，不是移除请求：写入 `null` 不会移除任何物品。
 
-存在状态表示当前装备身份，燃烧及燃料由 prefab 与实体管理。共享的 `Equipment`、`EquipmentEntity`、`EquipmentLifecycle`、`EquipmentOwner` 协议以及 `HandEquipment`、`HeadEquipment`、`BodyEquipment` 三种槽位类型都在 `equipment.ts` 定义。库存成功提交装备变化后写入 `{ itemId, EQUIPSLOTS, skinId?, entity }`；`entity` 是已提交的物品实例引用，signals 仅定义其身份结构，不依赖库存类型或 prefab。
+存在状态表示当前装备身份，燃烧及燃料由 prefab 与实体管理。共享的 `Equipment`、`EquipmentEntity`、`EquipmentOwner`、`EquipmentOwnerView` 协议以及 `HandEquipment`、`HeadEquipment`、`BodyEquipment` 三种槽位类型都在 `equipment.ts` 定义。库存成功提交装备变化后写入 `{ itemId, EQUIPSLOTS, skinId?, entity }`；`entity` 是已提交的物品实例引用，signals 仅定义其身份结构，不依赖库存类型或 prefab。
 
-应用通过 `bindPlayerHandEquipment`、`bindPlayerHeadEquipment`、`bindPlayerBodyEquipment` 显式传入所属库存的对应状态和装备者（`owner`），三者使用 `src/playerEquipment.ts` 的同一订阅与生命周期切换逻辑。先注册全部订阅，再调用 `InventoryStore.replaceState()` 恢复库存，由该次 signal 写入触发手持、帽子、背包外观，以及背包面板和材料可访问性。订阅不会回放当前值，也不手动调用回调初始化。手部 prefab 注册表仍提供物品生命周期；`onequip(owner)` 注入装备者，`onunequip()` 释放。头部和身体装备保留现有帽子与背包表现行为。
+存在状态只是只读的装备身份，供鼠标目标、光标和背包面板等观察；它不驱动装备回调。装备回调按 inventory.lua 执行：库存提交使某装备槽的实例变化后，先对离开的实例调用 `equippable:Unequip(owner)` 并向 owner 推送 `unequip`，再对进入的实例调用 `equippable:Equip(owner)` 并推送 `equip`；prefab 在自己的 `fn`（configure）里用 `SetOnEquip`／`SetOnUnequip` 设置回调。owner 是库存的 actor；`EquipmentOwner.OpenEquipmentView(inst)` 为每个装备实例打开一个视图，其 `AnimState` 是该实例在 owner sprite 上的独立插槽，`Equip` 时打开、`Unequip` 执行完 onunequip 后关闭（`Retain()` 可让插槽在关闭后保留，红护符在 amulet_rebirth 中使用）。
 
 装备 prefab 不导入全局玩家装备状态，也不写存在状态。torch 燃尽时先 `entity.remove()`（经 `inventoryitem.owner` 由库存清空槽位，对应 Lua 的 `inst:Remove()`），再向 owner 推送 `itemranout`，使玩家自动换上同 prefab 的下一件装备；普通 `extinguish()` 只更新燃烧状态。`onunequip()` 停止燃烧并释放 owner；未装备的地面火把没有 owner，只移除自己。
 

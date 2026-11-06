@@ -44,7 +44,6 @@ test('a c_spawn wall accepts sweeper right-click, retains identity and saves its
       { slot: inventorySlotAddress(Number(source.address.slotKey)), itemId: 'reskin_tool', delta: -1 },
       { slot: equipmentSlotAddress('hand'), itemId: 'reskin_tool', delta: 1 },
     ])) throw new Error('Unable to equip sweeper');
-    await (window as any).__prefabInstance(game.player).animationController.setCarryItem('reskin_tool');
     game.entityId = (window as any).__prefabInstance(game.target)?.entityId;
     game.position = game.target.position.toArray();
     await new Promise(requestAnimationFrame);

@@ -243,6 +243,8 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
     this.temperatureWorld = world;
     this.components.temperature?.BindWorld(world);
   }
+  /** TheWorld's services the inst's equip callbacks read when they run; bound by its registry. */
+  equipmentWorld?: object;
   spelltype?: string;
   _cached_reskinname?: Map<string, string | undefined>;
   castsound?: string;
@@ -481,6 +483,12 @@ export class ItemEntityRegistry {
   }
   private perishWorld?: PerishWorld;
   private temperatureWorld?: TemperatureWorld;
+  private equipmentWorld?: object;
+  /** TheWorld's map, spawns and fx as equipment uses them; each inst reads it when its callbacks run. */
+  bindEquipmentWorld(world: object): void {
+    this.equipmentWorld = world;
+    for (const entity of this.values()) entity.equipmentWorld = world;
+  }
   bindTemperatureWorld(world: TemperatureWorld): void {
     this.temperatureWorld = world;
     for (const entity of this.values()) entity.BindTemperatureWorld(world);
@@ -500,6 +508,7 @@ export class ItemEntityRegistry {
     if (state.entityId && this.get(state.entityId)) throw new Error(`Duplicate item entity: ${state.entityId}`);
     const entity = new ItemEntity(state, this.perishWorld);
     if (this.temperatureWorld) entity.BindTemperatureWorld(this.temperatureWorld);
+    if (this.equipmentWorld) entity.equipmentWorld = this.equipmentWorld;
     this.register(entity);
     return entity;
   }
@@ -519,6 +528,7 @@ export class ItemEntityRegistry {
     if (entity.isRemoved || (existing && existing !== entity)) throw new Error(`Invalid item entity: ${entity.id}`);
     if (this.perishWorld) entity.BindPerishWorld(this.perishWorld);
     if (this.temperatureWorld) entity.BindTemperatureWorld(this.temperatureWorld);
+    if (this.equipmentWorld) entity.equipmentWorld = this.equipmentWorld;
     this.register(entity);
     for (const slot of entity.components.container?.slots ?? []) {
       const child = slot.getEntity();
@@ -543,5 +553,6 @@ export class ItemEntityRegistry {
     this.miniMapIcons.clear();
     this.perishWorld = undefined;
     this.temperatureWorld = undefined;
+    this.equipmentWorld = undefined;
   }
 }

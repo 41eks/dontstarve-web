@@ -1,3 +1,4 @@
+import { createPlayerEquipper } from './playerEquipFixture';
 import { advancePlayer, facePlayer } from './playerVisual';
 import { playerDoer } from './playerDoer';
 import { AnimState } from '../src/animState';
@@ -105,7 +106,8 @@ it('walks into reach, commits DIG at shovel_loop frame 15, and preserves cancell
   const player = await createWilsonPlayer('/dst/data/anim');
   player.position.set(0, 0, 15);
   const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
-  await animation.setCarryItem('goldenshovel');
+  const animationEquipper = createPlayerEquipper(animation);
+  await animationEquipper.equip('goldenshovel');
   expect(PlaySound).toHaveBeenCalledWith('dontstarve/wilson/equip_item_gold');
   const { world, farm, turf } = setup(player);
   const point = new THREE.Vector3(3, 0, 3);
@@ -139,7 +141,7 @@ it('walks into reach, commits DIG at shovel_loop frame 15, and preserves cancell
     expect(farm.exportDecorRecords()).toEqual(preserved);
     expect(tool.components.finiteuses.remaining).toBe(24.75);
     expect(dig()).toBe(true);
-    equipped.set(null); await animation.setCarryItem(null); advance(animation, 60);
+    equipped.set(null); await animationEquipper.equip(null); advance(animation, 60);
     expect(farm.exportDecorRecords()).toEqual(preserved);
     expect(tool.components.finiteuses.remaining).toBe(24.75);
   } finally { controller.dispose(); farm.dispose(); tool.remove(); }

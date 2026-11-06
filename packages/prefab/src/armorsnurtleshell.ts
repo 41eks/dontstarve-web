@@ -6,7 +6,7 @@ import { Equippable } from '../../componets/src/equippable';
 import { ComponentTimer } from '../../componets/src/timer';
 import { UseableItem } from '../../componets/src/useableitem';
 import { FindEntities } from './actionEntity';
-import type { EquipmentVisualFactory, EquipmentVisualOwner } from './equipmentVisual';
+import { wornOwner, type EquipmentVisualOwner } from './equipmentVisual';
 
 export const ARMORSNURTLESHELL_ID = 'armorsnurtleshell';
 // tuning.lua: ARMORSNURTLESHELL = wilson_health * 7 * multiplayer_armor_durability_modifier,
@@ -27,6 +27,7 @@ const TARGET_CANT_TAGS = ['INLIMBO'];
 class ArmorSnurtleshell implements ItemRuntimeComponent {
   private readonly inst: ItemEntity;
   private owner?: EquipmentOwner;
+  private worn?: EquipmentVisualOwner;
   private task?: ComponentTimer;
   private readonly ownerListeners: (() => void)[] = [];
 
@@ -76,7 +77,11 @@ class ArmorSnurtleshell implements ItemRuntimeComponent {
   }
 
   onequip(owner: EquipmentOwner): void {
+    this.onunequip();
     this.owner = owner;
+    // owner.AnimState:OverrideSymbol("swap_body_tall", "armor_slurtleshell", "swap_body_tall")
+    this.worn = wornOwner(owner);
+    this.worn?.AnimState.OverrideSymbol('swap_body_tall', 'armor_slurtleshell', 'swap_body_tall');
     if (owner.ListenForEvent) {
       this.ownerListeners.push(owner.ListenForEvent('blocked', this.OnBlocked), owner.ListenForEvent('newstate', this.ProtectionLevels));
     }
@@ -84,6 +89,8 @@ class ArmorSnurtleshell implements ItemRuntimeComponent {
   }
 
   onunequip(): void {
+    this.worn?.AnimState.ClearOverrideSymbol('swap_body_tall');
+    this.worn = undefined;
     this.ownerListeners.splice(0).forEach(stop => stop());
     this.onstopuse();
     this.owner = undefined;
@@ -111,18 +118,3 @@ export function configureArmorSnurtleshellEntity(inst: ItemEntity): void {
   useableitem.SetOnUseFn(() => shell.onuse());
   useableitem.SetOnStopUseFn(() => shell.onstopuse());
 }
-
-/** armor_snurtleshell.lua onequip/onunequip: swap_body_tall comes from the item's own build. */
-export const armorSnurtleshellVisual: EquipmentVisualFactory = () => {
-  let owner: EquipmentVisualOwner | undefined;
-  return {
-    onequip(equipper) {
-      owner = equipper;
-      owner.AnimState.OverrideSymbol('swap_body_tall', 'armor_slurtleshell', 'swap_body_tall');
-    },
-    onunequip() {
-      owner?.AnimState.ClearOverrideSymbol('swap_body_tall');
-      owner = undefined;
-    },
-  };
-};

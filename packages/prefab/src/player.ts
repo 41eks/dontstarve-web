@@ -6,15 +6,13 @@ import { BufferedAction, WilsonStateGraph, type WilsonAction, type WilsonAnimati
 import type * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import type { AxeTool } from './axe';
-import { backpackVisual } from './backpack';
 import { BookFxController } from './book_fx';
 import { animationTiming } from './animationTimings';
 import { WILSON_EMOTES, type WilsonEmote, type WilsonEmoteDefinition } from './emotes';
-import { wornEquipmentLifecycle, type EquipmentVisualContext } from './equipmentVisual';
+import type { EquipmentPresentation } from './equipmentVisual';
 import type { FarmHoeTool } from './farm_hoe';
 import { GroundItemAssets } from './groundItems';
-import { getHandEquipmentDefinition } from './handEquipment';
-import { HatEquipmentAssets, hatVisual } from './hats';
+import { HatEquipmentAssets } from './hats';
 import type { PickaxeTool } from './pickaxe';
 import type { PitchforkTool } from './pitchfork';
 import { createPlayerStats, equipSamePrefab, OnMakePlayerGhost, OnRespawnFromGhost, type PlayerStats, type PlayerStatsSave, type RezSource } from './player_common';
@@ -68,6 +66,7 @@ const WILSON_ANIMATION_ARCHIVES: WilsonAnimations = {
   quick_drink: 'player_actions_eat.zip',
   item_in: 'player_actions_item.zip',
   item_out: 'player_actions_item.zip',
+  item_hat: 'player_actions_item.zip',
   pickup: 'player_actions_item.zip',
   pickup_pst: 'player_actions_item.zip',
   give: 'player_actions_item.zip',
@@ -124,21 +123,16 @@ export interface WilsonAnimationController {
   playEat(): void;
   /** Inventory searched when a broken tool is replaced by another of the same prefab. */
   bindInventory(inventory: Parameters<typeof equipSamePrefab>[0]): void;
-  playItemTransition(state: 'item_in' | 'item_out', item?: WilsonCarryItem): void;
   playPickup(): void;
   playDrop(onDrop: () => boolean, onCancel?: () => void): boolean;
   setCrafting(crafting: boolean): void;
-  setCarryItem(item: WilsonCarryItem | null, skinId?: string): void;
   readonly AnimState: AnimState;
   readonly equipmentAssets: GroundItemAssets;
-  readonly equipmentContext: EquipmentVisualContext;
-  /** SGwilson's unequip event on a hand change; actions read the equipped entity itself as their invobject. */
-  setEquippedCarryItem(item: WilsonCarryItem | null): void;
-  setHat(itemId: string | null, skinId?: string): void;
+  /** What the player draws its equipment with; the player's OpenEquipmentView gives each equipped inst a slot of it. */
+  readonly equipmentPresentation: EquipmentPresentation;
   /** Follower:FollowSymbol(owner.GUID, symbol, offsetX, offsetY): a node tracking the symbol, in the player's space. */
   /** `fx` is drawn at the follower by the player's display, which loads its art. */
   followSymbol(symbol: string, offsetX: number, offsetY: number, fx?: FollowerFx): SymbolFollower;
-  setBackpack(equipped: boolean, skinId?: string): void;
   /** The application's sleeper services for SGwilson's tent and wakeup states; inst:Hide() / inst:Show() is the player's own sprite. */
   bindSleep(sleep: Omit<WilsonSleepHost, 'setHidden'> | undefined): void;
   /** SGwilson's death state: DropAllItemsForDeath through the application's inventory. */
@@ -230,12 +224,10 @@ interface ActiveEmote {
 class WilsonController implements WilsonAnimationController {
   readonly stategraph: WilsonStateGraph;
   private state: WilsonAnimationKey = 'idle';
-  private carryKey = '';
   readonly equipmentAssets: GroundItemAssets;
-  readonly equipmentContext: EquipmentVisualContext;
+  readonly equipmentPresentation: EquipmentPresentation;
   /** inst.AnimState: the player's own declaration, beneath the slots its equipped items declare. */
   readonly AnimState: AnimState;
-  private handVisual?: ReturnType<typeof wornEquipmentLifecycle>;
   private makeSoundActive = false;
   /** The player inst's combat component, read by the attack state. */
   combat?: WilsonCombat;
@@ -247,10 +239,6 @@ class WilsonController implements WilsonAnimationController {
   private readonly resources: SpriteResources;
   private soulHopHost?: WilsonSoulHopHost;
   private readonly hatAssets: HatEquipmentAssets;
-  private headVisual?: ReturnType<typeof wornEquipmentLifecycle>;
-  private hatKey = '';
-  private bodyVisual?: ReturnType<typeof wornEquipmentLifecycle>;
-  private backpackKey = '';
   private emote: ActiveEmote | null = null;
   readonly bookFx: BookFxController;
   private sleepHost?: WilsonSleepHost;
@@ -275,7 +263,11 @@ class WilsonController implements WilsonAnimationController {
     for (const layer of ['ARM_carry', 'LANTERN_OVERLAY', 'HAT', 'HAIR_HAT', 'HEAD_HAT', 'HEAD_HAT_NOHELM', 'HEAD_HAT_HELM']) this.AnimState.Hide(layer);
     this.hatAssets = new HatEquipmentAssets(assetBaseUrl);
 
-    this.equipmentContext = { owner: instance, sprite: { sprite: instance.sprite, art: this.equipmentAssets }, assets: this.equipmentAssets, hats: this.hatAssets, lightParent: instance, sanityPercent };
+    this.equipmentPresentation = {
+      sprite: { sprite: instance.sprite, art: this.equipmentAssets }, assets: this.equipmentAssets, hats: this.hatAssets,
+      lightParent: instance, sanityPercent, soundPosition: instance.transform.position,
+      followSymbol: (symbol, x, y, fx) => this.followSymbol(symbol, x, y, fx),
+    };
     this.bookFx = new BookFxController(instance, this.fxScheduler, resources);
     const controller = this;
     this.stategraph = new WilsonStateGraph({
@@ -472,11 +464,6 @@ class WilsonController implements WilsonAnimationController {
     this.emote = null;
   }
 
-  playItemTransition(state: 'item_in' | 'item_out') {
-    if (this.stategraph.isDead) return;
-    this.startOneShot(state);
-  }
-
   playPickup() {
     this.startOneShot('pickup');
   }
@@ -484,42 +471,6 @@ class WilsonController implements WilsonAnimationController {
   setCrafting(crafting: boolean) {
     if (crafting) this.cancelEmote();
     this.stategraph.requestCrafting(crafting);
-  }
-
-  setEquippedCarryItem(): void {
-    this.stategraph.pushEvent('unequip');
-  }
-
-  /** Standalone preview adapter: use the same prefab equip/unequip functions as live inventory. */
-  setCarryItem(item: WilsonCarryItem | null, skinId?: string): void {
-    const key = item === null ? '' : `${item}:${skinId ?? ''}`;
-    if (key === this.carryKey) return;
-    this.carryKey = key;
-    this.handVisual?.onunequip(); this.handVisual = undefined;
-    this.setEquippedCarryItem();
-    if (!item) return;
-    this.handVisual = wornEquipmentLifecycle(getHandEquipmentDefinition(item)!.definition.visual({ id: 'preview:hand', prefab: item, skinId }), this.equipmentContext);
-    this.handVisual.onequip();
-  }
-
-  setHat(itemId: string | null, skinId?: string): void {
-    const key = itemId === null ? '' : `${itemId}:${skinId ?? ''}`;
-    if (key === this.hatKey) return;
-    this.hatKey = key;
-    this.headVisual?.onunequip(); this.headVisual = undefined;
-    if (!itemId) return;
-    this.headVisual = wornEquipmentLifecycle(hatVisual({ id: 'preview:head', prefab: itemId, skinId }, this.equipmentContext), this.equipmentContext);
-    this.headVisual.onequip();
-  }
-
-  setBackpack(equipped: boolean, skinId?: string): void {
-    const key = equipped ? `backpack:${skinId ?? ''}` : '';
-    if (key === this.backpackKey) return;
-    this.backpackKey = key;
-    this.bodyVisual?.onunequip(); this.bodyVisual = undefined;
-    if (!equipped) return;
-    this.bodyVisual = wornEquipmentLifecycle(backpackVisual({ id: 'preview:body', prefab: 'backpack', skinId }), this.equipmentContext);
-    this.bodyVisual.onequip();
   }
 
   followSymbol(symbol: string, offsetX: number, offsetY: number, fx?: FollowerFx): SymbolFollower {
@@ -566,7 +517,6 @@ class WilsonController implements WilsonAnimationController {
     if (this.disposed) return;
     this.disposed = true;
     this.stategraph.dispose();
-    this.handVisual?.onunequip(); this.headVisual?.onunequip(); this.bodyVisual?.onunequip();
     this.cleanups.splice(0).forEach(stop => stop());
     this.bookFx.dispose(); this.fxScheduler.dispose();
     this.SoundEmitter.KillAllSounds();

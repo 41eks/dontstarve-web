@@ -1,3 +1,4 @@
+import { createPlayerEquipper } from './playerEquipFixture';
 import { prefabManager } from './prefabManagerFixture';
 import { advancePlayer } from './playerVisual';
 import { getActionString } from '../../stategraphs/src/actions';
@@ -69,7 +70,8 @@ it('casts at a pond, waits for a bite, hooks, reels and lands a pondfish; a stra
   const player = await createWilsonPlayer('/dst/data/anim');
   player.position.set(0, 0, 20);
   const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
-  await animation.setCarryItem('fishingrod');
+  const animationEquipper = createPlayerEquipper(animation);
+  await animationEquipper.equip('fishingrod');
   const world = { scene: new THREE.Scene(), player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
   const ponds = prefabManager(new PrefabDisplayGroup(world.scene), '/dst/data/anim', { scheduler }, pondPrefabs);

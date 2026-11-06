@@ -1,3 +1,4 @@
+import { createPlayerEquipper } from '../../animation/tests/playerEquipFixture';
 import { advancePlayer, facePlayer, registerPlayer } from '../../animation/tests/playerVisual';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
@@ -20,6 +21,7 @@ export async function createEmoteFixture() {
   body.position.set(0, 4.5, 0);
   body.canJump = true;
   const animation = instance.animationController as WilsonAnimationController;
+  const animationEquipper = createPlayerEquipper(animation);
   const locomotor = new Locomotor(body);
   const renderer = new THREE.WebGLRenderer({ alpha: true, preserveDrawingBuffer: true });
   renderer.setSize(600, 480);
@@ -83,13 +85,13 @@ export async function createEmoteFixture() {
           }
         }
       }
-      await animation.setHat('strawhat');
-      await animation.setCarryItem('torch');
+      await animationEquipper.equip('strawhat', undefined, 'head');
+      await animationEquipper.equip('torch');
       await animation.playEmote('wave');
       const mesh = model.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
       const equipmentMaterials = mesh.material.map((material) => material.name);
       const withTorch = [...mesh.material];
-      await animation.setCarryItem(null);
+      await animationEquipper.equip(null);
       const torchRendered = withTorch.some((material) => !mesh.material.includes(material));
       animation.playPickup();
       const pickupInterrupts = !animation.isEmoting;

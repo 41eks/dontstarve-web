@@ -1,3 +1,4 @@
+import { createPlayerEquipper } from './playerEquipFixture';
 import { advancePlayer, facePlayer } from './playerVisual';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
@@ -38,9 +39,10 @@ it('uses source ground art for base, ordinary, shared-build and invisible backpa
 it('uses skinned swap_body art in every player facing and hides invisible equipment', async () => {
   const player = await createWilsonPlayer('/dst/data/anim');
   const controller = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
+  const controllerEquipper = createPlayerEquipper(controller);
   const mesh = player.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
   for (const skinId of ['backpack_babybeef', 'backpack_invisible']) {
-    controller.setBackpack(true, skinId);
+    controllerEquipper.equip('backpack', skinId, 'body');
     // The player's display loads the named skin build before it is drawn.
     await loadDeclaredArt(declaredAnimState(wilsonPlayerInstance(player).sprite), controller.equipmentAssets);
     let hasSkinnedArt = false;
@@ -53,7 +55,7 @@ it('uses skinned swap_body art in every player facing and hides invisible equipm
     }
     expect(hasSkinnedArt, skinId).toBe(skinId !== 'backpack_invisible');
   }
-  await controller.setBackpack(false);
+  await controllerEquipper.equip(null, undefined, 'body');
   expect(mesh.material.some((material) => material.name.startsWith('ground:backpack_'))).toBe(false);
 });
 

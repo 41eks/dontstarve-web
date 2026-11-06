@@ -1,3 +1,4 @@
+import { createPlayerEquipper } from './playerEquipFixture';
 import { advancePlayer } from './playerVisual';
 import { playerDoer } from './playerDoer';
 import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
@@ -59,7 +60,8 @@ it('wears axes by CHOP consumption, with golden and moonglass variants, and remo
 it('chops a moon tree into a stump with an axe, dropping loot, keeping progress while unloaded and saving the stump', async () => {
   const player = await createWilsonPlayer('/dst/data/anim');
   const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
-  await animation.setCarryItem('axe');
+  const animationEquipper = createPlayerEquipper(animation);
+  await animationEquipper.equip('axe');
   const inventory = createPickupInventory();
   inventory.add('axe', 1);
   inventory.transfer(inventorySlotAddress(0), equipmentSlotAddress('hand'), 1);
@@ -149,7 +151,8 @@ it('chops a moon tree into a stump with an axe, dropping loot, keeping progress 
 it('digs a restored moon tree stump at shovel frame 15 and permanently removes it, preserving other trees and cancelled work', async () => {
   const player = await createWilsonPlayer('/dst/data/anim');
   const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
-  await animation.setCarryItem('shovel');
+  const animationEquipper = createPlayerEquipper(animation);
+  await animationEquipper.equip('shovel');
   const inventory = createPickupInventory();
   inventory.add('shovel', 1);
   inventory.transfer(inventorySlotAddress(0), equipmentSlotAddress('hand'), 1);

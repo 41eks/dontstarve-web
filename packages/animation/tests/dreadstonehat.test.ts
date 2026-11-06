@@ -9,7 +9,6 @@ import { createInventoryStore } from '../../../src/inventory';
 import { Sanity } from '../../componets/src/sanity';
 import {
   ARMOR_DREADSTONEHAT, ARMOR_DREADSTONE_REGEN_MAXRATE, ARMOR_DREADSTONE_REGEN_MINRATE, CRAZINESS_MED, DREADSTONEHAT_ID,
-  createDreadstoneHatLifecycle,
 } from '../../prefab/src/dreadstonehat';
 import { createPickupInventory } from './pickupFixture';
 import { createPerishWorld } from './perishWorldFixture';
@@ -17,15 +16,20 @@ import { createPerishWorld } from './perishWorldFixture';
 function wornHat(sanityPoints: number) {
   const inventory = createPickupInventory(), world = createPerishWorld();
   inventory.entities.bindPerishWorld(world);
-  inventory.add(DREADSTONEHAT_ID, 1);
-  const entity = inventory.getEntity(inventorySlotAddress(0))!;
-  expect(inventory.EquipFromInventory(entity)).toBe(true);
   const components: { inventory: typeof inventory; sanity?: Sanity } = { inventory };
   const sanity = components.sanity = new Sanity({ components, hasTag: () => false }, 200);
   sanity.SetCurrent(sanityPoints);
   const current = sanity;
-  const lifecycle = createDreadstoneHatLifecycle(entity);
-  lifecycle.onequip({ PushEvent: vi.fn(), components: { sanity } });
+  // inventory:Equip calls equippable:Equip(owner) with the wearer.
+  const owner = { PushEvent: vi.fn(), components: { sanity } };
+  inventory.add(DREADSTONEHAT_ID, 1);
+  const entity = inventory.getEntity(inventorySlotAddress(0))!;
+  expect(inventory.EquipFromInventory(entity)).toBe(true);
+  const lifecycle = {
+    onequip: (wearer = owner) => entity.components.equippable!.Equip(wearer),
+    onunequip: () => entity.components.equippable!.Unequip(owner),
+  };
+  lifecycle.onequip();
   const armor = entity.components.armor!;
   return { inventory, world, entity, armor, current, sanity, lifecycle,
     dispose() { lifecycle.onunequip(); sanity.dispose(); inventory.dispose(); } };

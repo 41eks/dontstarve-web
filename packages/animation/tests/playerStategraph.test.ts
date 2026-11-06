@@ -1,3 +1,4 @@
+import { createPlayerEquipper } from './playerEquipFixture';
 import { advancePlayer, facePlayer } from './playerVisual';
 import { prefabDisplay } from '@dontstarve-web/display';
 import { readFile } from 'node:fs/promises';
@@ -19,6 +20,7 @@ afterEach(() => { DisposeSounds(); vi.restoreAllMocks(); vi.unstubAllGlobals(); 
 it('loads the Wortox build with shared player animations and renders every facing with equipment', async () => {
   const player = await createWilsonPlayer('/dst/data/anim');
   const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
+  const animationEquipper = createPlayerEquipper(animation);
   expect(player.name).toBe('Wortox');
   expect(wilsonPlayerInstance(player).prefab).toBe('wortox');
   expect(wilsonPlayerInstance(player).minimap.peek().icon).toBe('wortox.png');
@@ -27,8 +29,8 @@ it('loads the Wortox build with shared player animations and renders every facin
   expect(urls).toContain('/dst/data/anim/dynamic/wortox.zip');
   expect(urls).toContain('/dst/data/anim/dynamic/wortox.dyn');
   expect(urls).not.toContain('/dst/data/anim/wilson.zip');
-  animation.setHat('strawhat');
-  animation.setCarryItem('torch');
+  animationEquipper.equip('strawhat', undefined, 'head');
+  animationEquipper.equip('torch');
   const mesh = player.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
   // The player's display loads the hat and torch builds the prefabs name.
   await vi.waitFor(() => expect(mesh.material.some((material) => material.name === 'ground:hat_straw')).toBe(true));
@@ -45,8 +47,8 @@ it('loads the Wortox build with shared player animations and renders every facin
       expect(visual.children).toHaveLength(1);
     }
   }
-  await animation.setHat(null);
-  await animation.setCarryItem(null);
+  await animationEquipper.equip(null, undefined, 'head');
+  await animationEquipper.equip(null);
   animation.start('idle');
   const livingTexture = mesh.material[0].map;
   expect((livingTexture as THREE.DataTexture).image.width).toBeGreaterThan(0);
@@ -69,7 +71,8 @@ it('loads the Wortox build with shared player animations and renders every facin
 it('keeps the source mining timeline when Wortox changes facing and emits one action notification', async () => {
   const player = await createWilsonPlayer('/dst/data/anim');
   const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
-  await animation.setCarryItem('pickaxe');
+  const animationEquipper = createPlayerEquipper(animation);
+  await animationEquipper.equip('pickaxe');
   const hit = vi.fn(), events: string[] = [];
   animation.stategraph.listenForEvent('performaction', (data) => {
     events.push((data as { action: { action: string } }).action.action);

@@ -1,3 +1,4 @@
+import { createPlayerEquipper } from './playerEquipFixture';
 import { advancePlayer } from './playerVisual';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
@@ -47,7 +48,10 @@ describe('original bugnet assets and Wilson action', () => {
     expect(overrideArchives(anim, 'swap_object')).toEqual([GROUND_ITEM_DEFINITIONS.bugnet.skinArchives.bugnet_frog, 'swap_bugnet.zip']);
     const player = await createWilsonPlayer('/anim');
     const controller = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
-    controller.setCarryItem('bugnet');
+    const controllerEquipper = createPlayerEquipper(controller);
+    controllerEquipper.equip('bugnet');
+    // SGwilson's equip handler plays item_out (16 frames) from idle; the held art shows by its end.
+    advance(controller, 20);
     const mesh = player.getObjectByProperty('isMesh', true) as THREE.Mesh;
     // The player's display loads the named swap build, then draws it.
     await vi.waitFor(() => expect((mesh.material as THREE.MeshBasicMaterial[]).some(material => material.name === 'ground:swap_bugnet')).toBe(true));
@@ -59,11 +63,12 @@ describe('original bugnet assets and Wilson action', () => {
     useRealAssets();
     const player = await createWilsonPlayer('/anim');
     const controller = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
+    const controllerEquipper = createPlayerEquipper(controller);
     const capture = vi.fn();
     const net = { prefab: 'bugnet', hasTag: (tag: string) => tag === 'NET_tool' };
     const swing = () => controller.stategraph.pushBufferedAction(new BufferedAction('NET', capture, undefined, { invobject: net }));
     const netting = () => controller.stategraph.isPerformingAction('NET');
-    await controller.setCarryItem('bugnet');
+    await controllerEquipper.equip('bugnet');
     expect(swing()).toBe(true);
     expect(netting()).toBe(true);
     expect(swing()).toBe(false);
@@ -76,7 +81,7 @@ describe('original bugnet assets and Wilson action', () => {
     expect(netting()).toBe(false);
     expect(swing()).toBe(true);
     advance(controller, 10);
-    await controller.setCarryItem(null);
+    await controllerEquipper.equip(null);
     advance(controller, 100);
     expect(netting()).toBe(false);
     expect(capture).toHaveBeenCalledOnce();

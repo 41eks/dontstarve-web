@@ -1,3 +1,4 @@
+import { createPlayerEquipper } from './playerEquipFixture';
 import type { Growable } from '../../componets/src/growable';
 import { advancePlayer } from './playerVisual';
 import { playerDoer } from './playerDoer';
@@ -109,7 +110,8 @@ it('commits source axe work, cancels before impact, preserves logical components
   const s = await setup(), inventory = createPickupInventory();
   const player = await createWilsonPlayer('/dst/data/anim');
   const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
-  await animation.setCarryItem('axe'); inventory.add('axe', 1);
+  const animationEquipper = createPlayerEquipper(animation);
+  await animationEquipper.equip('axe'); inventory.add('axe', 1);
   inventory.transfer(inventorySlotAddress(0), equipmentSlotAddress('hand'), 1);
   const axe = inventory.getEntity(equipmentSlotAddress('hand'))!;
   const world = { player, camera: s.camera, scene: new THREE.Scene(), ground: new THREE.Group(), renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;

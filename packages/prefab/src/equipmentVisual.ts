@@ -1,10 +1,23 @@
 import { AnimState, type AnimStateArt } from '@dontstarve-web/animation/animState';
 import type { SpriteState } from '@dontstarve-web/display';
-import type { EquipmentOwner } from '@dontstarve-web/signals';
+import type { FollowerFx } from '@dontstarve-web/display';
+import type { EquipmentOwner, EquipmentOwnerView } from '@dontstarve-web/signals';
+import type * as THREE from 'three';
 import type { GroundItemAssets } from './groundItems';
 
-/** owner.AnimState and owner:PushEvent as an equipped item's onequip/onunequip use them. */
-export interface EquipmentVisualOwner extends EquipmentOwner { readonly AnimState: AnimState }
+/**
+ * The owner as an equipped inst's onequip/onunequip see it (equippable:Equip opens the view): owner.AnimState is the
+ * inst's own slot over the owner's sprite, and `presentation` is what the owner draws equipment with.
+ */
+export interface EquipmentVisualOwner extends EquipmentOwnerView {
+  readonly AnimState: AnimState;
+  readonly presentation: EquipmentPresentation;
+}
+
+/** A view opened without a presentation (no drawn holder) has no AnimState. */
+export function wornOwner(owner: EquipmentOwner): EquipmentVisualOwner | undefined {
+  return (owner as Partial<EquipmentVisualOwner>).AnimState ? owner as EquipmentVisualOwner : undefined;
+}
 
 /** The holder's sprite, on which each equipped item declares its own AnimState slot, and the art its display loads them from. */
 export interface EquipmentSprite {
@@ -29,9 +42,18 @@ export class EquipmentAnimState {
   equip(): void { this.holder.sprite.declareAnimState(this.key, this.AnimState.json, this.holder.art); }
   unequip(): void { this.holder.sprite.declareAnimState(this.key, undefined); }
 }
+/** A hand prefab's equip functions for one equip, called from its equippable's onequip/onunequip. */
+export interface HeldEquipFunctions {
+  onequip(owner?: EquipmentOwner): void;
+  onunequip(): void;
+  /** Settles consumption before a save or transfer reads the inst. */
+  flush?(): void;
+}
 export interface EquipmentVisualItem { readonly id: string; readonly prefab: string; readonly skinId?: string }
+/** What an item's worn art writes: owner.AnimState (its slot) and owner:PushEvent for the skin events. */
+export type EquipmentArtOwner = Pick<EquipmentOwner, 'PushEvent'> & { readonly AnimState: AnimState };
 export interface EquipmentVisual {
-  onequip(owner: EquipmentVisualOwner): void;
+  onequip(owner: EquipmentArtOwner): void;
   onunequip(): void;
 }
 /** A prefab's onequip/onunequip art. It names builds on the owner's AnimState; the owner's display loads them. */
@@ -53,7 +75,7 @@ export function handEquipmentVisual(
   extraSymbols: readonly { symbol: string; source: string }[] = [],
   unequipSkinEvent = true,
 ): EquipmentVisual {
-  let owner: EquipmentVisualOwner | undefined;
+  let owner: EquipmentArtOwner | undefined;
   return {
     onequip(equipper) {
       owner = equipper;
@@ -76,27 +98,42 @@ export function handEquipmentVisual(
   };
 }
 
-export interface EquipmentVisualContext {
-  /** Where an item's events go when it is equipped without an inventory owner, as a standalone preview is. */
-  readonly owner: Pick<EquipmentOwner, 'PushEvent'>;
+/** What the owner draws its equipment with: its sprite and art, the light parent and the symbols fx follow. */
+export interface EquipmentPresentation {
   readonly sprite: EquipmentSprite;
   /** The owner's art source: its display loads the builds equipment names. */
   readonly assets: GroundItemAssets;
-  /** The holder: lights the equipment spawns are parented to it. */
+  /** The holder: lights the equipment spawns are parented to it (AttachLightTo(owner)). */
   readonly lightParent: import('./prefabInstance').PrefabInstance;
   readonly hats: import('./hats').HatEquipmentAssets;
   readonly sanityPercent?: import('@dontstarve-web/signals').ReadonlySignal<number>;
+  /** owner's FollowSymbol, for fx that follow swap_object. */
+  followSymbol?(symbol: string, offsetX: number, offsetY: number, fx?: FollowerFx): { node: THREE.Object3D; remove(): void };
+  /** Where the owner's equipment sounds play. */
+  readonly soundPosition?: import('../../animation/src/transformRoot').ReadonlyVector3;
 }
 
-/** An item's equipped art goes on its own slot of the holder's sprite; its events go to the equip owner, or to the context's owner without one. */
-export function wornEquipmentLifecycle(visual: EquipmentVisual, context: Pick<EquipmentVisualContext, 'owner' | 'sprite'>) {
-  const slot = new EquipmentAnimState(context.sprite);
-  return {
-    onequip(owner?: EquipmentOwner) {
-      const events = owner ?? context.owner;
-      slot.equip();
-      visual.onequip({ AnimState: slot.AnimState, PushEvent: (name, data) => events.PushEvent(name, data) });
-    },
-    onunequip() { visual.onunequip(); slot.unequip(); },
+/**
+ * owner.OpenEquipmentView: each equipped inst writes its own AnimState slot of the owner's sprite, declared from equip
+ * until the view closes (or, retained, until the last hold is released), so unequipping leaves what lies beneath.
+ */
+export function createEquipmentViews(owner: EquipmentOwner, presentation: EquipmentPresentation): (inst: object) => EquipmentVisualOwner {
+  return () => {
+    const slot = new EquipmentAnimState(presentation.sprite);
+    slot.equip();
+    let holds = 0, closed = false;
+    const settle = () => { if (closed && holds === 0) slot.unequip(); };
+    const view: EquipmentVisualOwner = Object.assign(Object.create(owner) as EquipmentOwner, {
+      AnimState: slot.AnimState,
+      presentation,
+      OpenEquipmentView: undefined,
+      Retain() {
+        holds++;
+        let released = false;
+        return () => { if (released) return; released = true; holds--; settle(); };
+      },
+      close() { if (closed) return; closed = true; settle(); },
+    });
+    return view;
   };
 }

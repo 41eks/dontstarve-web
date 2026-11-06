@@ -1,3 +1,4 @@
+import { createPlayerEquipper } from './playerEquipFixture';
 import { advancePlayer } from './playerVisual';
 
 import { findActionEntity } from '../../prefab/src/actionEntity';
@@ -53,7 +54,8 @@ function advance(animation: WilsonAnimationController, frames: number) {
 it('casts at source frame nine once and cancels before commitment on unequip or another action', async () => {
   const player = await createWilsonPlayer('/dst/data/anim');
   const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
-  await animation.setCarryItem('reskin_tool');
+  const animationEquipper = createPlayerEquipper(animation);
+  await animationEquipper.equip('reskin_tool');
   const cast = vi.fn();
   const tool = { prefab: 'reskin_tool', spelltype: 'RESKIN', hasTag: (tag: string) => tag === 'veryquickcast' };
   const push = () => animation.stategraph.pushBufferedAction(new BufferedAction('CASTSPELL', cast, undefined, { invobject: tool }));
@@ -68,10 +70,10 @@ it('casts at source frame nine once and cancels before commitment on unequip or 
   expect(animation.stategraph.isPerformingAction('CASTSPELL')).toBe(false);
   push();
   advance(animation, 8);
-  await animation.setCarryItem(null);
+  await animationEquipper.equip(null);
   advance(animation, 30);
   expect(cast).toHaveBeenCalledOnce();
-  await animation.setCarryItem('reskin_tool');
+  await animationEquipper.equip('reskin_tool');
   push();
   advance(animation, 8);
   animation.playPickup();

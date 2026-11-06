@@ -1,3 +1,4 @@
+import { createPlayerEquipper } from '../../animation/tests/playerEquipFixture';
 import { prefabManager } from '../../animation/tests/prefabManagerFixture';
 import { advancePlayer, facePlayer, registerPlayer } from '../../animation/tests/playerVisual';
 import { PrefabDisplayGroup } from '../../display/src';
@@ -66,10 +67,13 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   player.position.set(0, 0, 0);
   scene.add(player);
   const animation = prefabInstance(player).animationController as WilsonAnimationController;
+  const animationEquipper = createPlayerEquipper(animation);
+  // SGwilson's equip/unequip handlers play item_out/item_in from idle; let them finish.
+  const settleEquip = () => { for (let frame = 0; frame < 24; frame++) advancePlayer(animation, 1 / 30); };
   const failures: string[] = [];
   const skins = [undefined, ...Object.keys(GROUND_ITEM_DEFINITIONS[itemId].skinArchives)];
   for (const skin of skins) {
-    animation.setCarryItem(itemId, skin);
+    animationEquipper.equip(itemId, skin); settleEquip();
     await (prefabDisplay(player) as PrefabDisplay).artLoaded();
     const build = skin ? GROUND_ITEM_DEFINITIONS[itemId].skinArchives[skin].split('/').at(-1)!.replace('.zip', '') : 'swap_staffs';
     for (const facing of ['up', 'down', 'side'] as const) {
@@ -82,7 +86,7 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
       }
     }
   }
-  await animation.setCarryItem(itemId);
+  await animationEquipper.equip(itemId); settleEquip();
   const unlitHand = !getDeclaredLight(player);
   // As the scene wires it: the display group is the application's, released after its manager.
   const starDisplays = new PrefabDisplayGroup(scene);
@@ -181,7 +185,7 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   tick(20);
   inventory.transfer(equipmentSlotAddress('hand'), inventorySlotAddress(0), 1);
   staff.onunequip();
-  await animation.setCarryItem(null);
+  await animationEquipper.equip(null); settleEquip();
   tick(90);
   const cancelled = !animation.stategraph.isPerformingAction('CASTSPELL') && stars.exportRecords().length === 1;
   const noCastingLight = player.children.filter((child) => getDeclaredLight(child)).length === 0;

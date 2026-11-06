@@ -1,3 +1,4 @@
+import { createPlayerEquipper } from '../../animation/tests/playerEquipFixture';
 import { prefabDisplay } from '../../display/src';
 import { prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import * as THREE from 'three';
@@ -21,8 +22,9 @@ export async function renderHatCatalog(): Promise<void> {
   gallery.id = 'hat-gallery';
   gallery.style.cssText = 'display:grid;grid-template-columns:repeat(9,144px);width:1296px';
   document.body.append(gallery);
+  const hatEquipper = createPlayerEquipper(prefabInstance(player).animationController as WilsonAnimationController);
   for (const id of [null, ...HAT_IDS]) {
-    (prefabInstance(player).animationController as WilsonAnimationController).setHat(id);
+    hatEquipper.equip(id, undefined, 'head');
     await (prefabDisplay(player) as PrefabDisplay).artLoaded();
     renderer.render(scene, camera);
     const card = document.createElement('div');

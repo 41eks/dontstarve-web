@@ -112,6 +112,8 @@ export class StateGraphInstance<Context, Name extends string> {
   }
 
   get stateName(): Name { return this.current.name; }
+  /** stategraph.lua HandleEvents: a state's own handler takes the event instead of the stategraph's. */
+  handlesEvent(name: string): boolean { return this.current.events?.some(event => event.name === name) ?? false; }
   get elapsedTime(): number { return this.clock; }
   get stateRevision(): number { return this.revision; }
   /** Scheduler-backed graphs publish only setup, cancellation and expiry, never per-frame countdowns. */

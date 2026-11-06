@@ -111,7 +111,7 @@ GroundItemManager 不在更新、唤醒或鼠标命中前复制位置，也不�
 
 转移、提取、消耗或读档成功提交后，仅为被替换的装备槽发布新身份；普通组件变化或其他槽位更新不重新装备。存在状态只是发布结果，写入它不会移除物品；装备耗尽时由 prefab 移除自己的实体，库存 owner 清空槽位。普通卸下使用库存转移保留实体、皮肤和组件状态。
 
-`packages/signals/src/equipment.ts` 的 `bindEquipmentLifecycle()` 统一处理同步订阅、生命周期切换、重入和释放。`src/playerHandEquipment.ts`、`src/playerHeadEquipment.ts`、`src/playerBodyEquipment.ts` 注入各自存在状态并更新玩家表现。`main.ts` 在恢复存档前注册三种绑定，移除了 `syncHeadEquipment()`、`syncBodyEquipment()` 以及库存 UI 通知里的装备轮询；初始外观也由存档提交的 signal 写入驱动。帽子继续使用 `setHat()`，背包继续使用 `setBackpack()`；身体装备绑定同时通知应用打开或关闭背包面板、恢复储物格显示并更新材料可访问性。玩家物品栏槽位同步仍由库存通知驱动，背包内容通过容器 DTO signal 同步。
+装备回调按 inventory.lua 执行：`InventoryStore` 记录每个装备槽上次提交时的实例，提交使其变化后，先对离开的实例（包括被移除的实例）调用 `equippable:Unequip(actor)` 并向 actor 推送 `unequip`，再对进入的实例调用 `equippable:Equip(actor)` 并推送 `equip`；同一实例只装备一次，组件更新不会重新装备。各装备 prefab 在 configure（对应 `fn`）中用 `SetOnEquip`／`SetOnUnequip` 设置回调，状态放在 inst 的运行时组件上（手持物 `HeldEquipment`、帽子 `WornHat`、护甲、红护符、背包）。世界服务（地图、法杖与钓鱼世界、reskin 特效）由 `ItemEntityRegistry.bindEquipmentWorld()` 绑定，回调执行时读取，对应 Lua 读 `TheWorld`。`main.ts` 只给 actor（`pickupDoer`）设置 `OpenEquipmentView`，并订阅只读的装备身份来更新光标动作和背包面板；读档直接调用 `InventoryStore.replaceState()`，由这次提交装备恢复的物品。
 
 ## 火把燃料与百分比
 
@@ -139,7 +139,7 @@ GroundItemManager 不在更新、唤醒或鼠标命中前复制位置，也不�
 
 动作间的打断使用 `packages/signals/src/EventEmitter.ts` 的类型化同步事件。`src/view.ts` 创建玩家场景的 `actionEvents` 并通过 `ActionWorldContext` 注入；动作验证成功后发送 `action:begin`，包含动作类别与发起者 `owner`，其他订阅者先取消自己的工作，随后发起者设置新目标、动画或异步加载。控制器通过 `bindActionCancellation()` 订阅，跳过自己的开始事件，所有新动作都取消其他持有者的旧动作，不再按控制器分组或维护动作白名单。选槽、右键物品、丢弃、制作和表情轮发送带原因的 `action:interrupt`；默认响应丢弃以外的打断，游标物品使用响应全部打断。建筑预览只响应表情打断，移动只响应制作中和表情打断，由调用方传入原因过滤函数。取消逻辑及加载版本校验仍由各模块管理。`main.ts` 不保留 `cancelHandTool`、`cancelNetCapture` 或动作控制器的逐项取消回调；控制器 `dispose()`、施法输入的清理函数与场景显式销毁释放事件订阅、输入监听和帧任务。
 
-torch 的只读 `burning` signal 独立表示燃烧状态，`onequip()` 点燃时设为 `true`，卸下、释放或耗尽后设为 `false`。`onunequip()` 和 `dispose()` 释放 owner，不修改 `handEquipmentExistenceState`。燃尽时停止燃烧，取出 owner，调用 `entity.remove()`（物品有库存 owner 时由库存原子清空槽位并清理实体，对应 Lua 的 `inst:Remove()`），之后才向 owner 推送 `itemranout`，玩家的 `OnItemRanOut` 在槽位已空时装上背包里同 prefab 的下一把。普通 `extinguish()` 不改变装备 signal。未装备的地面火把没有 owner，只移除自己；未耗尽的燃料保留在库存中。`src/playerHandEquipment.ts` 先注册注入手部 signal 的 `subscribe()`，直接使用 signal 中的实体引用；随后 `InventoryStore.replaceState()` 从存档恢复库存并写入 signal，由该次写入触发生命周期和手持动画。订阅不回放当前值，也没有单独的初始同步。`packages/prefab/src/handEquipment.ts` 注册各手部 prefab 的手持外观、光标与生命周期工厂；torch 的装备工厂负责绑定控制器、声音位置及燃烧订阅。`main.ts` 只注入玩家表现接口和 owner、调度统一订阅器的帧更新和结算、初始化时显式抑制转移动画，并保留页面内显式释放接口；卸下不销毁实体上的控制器。同步订阅处理同一任务内的装备变化；生命周期回调导致嵌套转移时，先完成旧生命周期，再处理最新装备，避免重入时旧回调清理或覆盖新实例。UI 的 `createEffect()` 仍在微任务中合并刷新。页面内显式销毁装备绑定或库存时释放对应订阅；`pagehide` 不执行资源清理。正常卸下使用库存转移，保留实体及状态。
+torch 的只读 `burning` signal 独立表示燃烧状态，`onequip()` 点燃时设为 `true`，卸下、释放或耗尽后设为 `false`。燃尽时停止燃烧，调用 `entity.remove()`（物品有库存 owner 时由库存原子清空槽位，并在提交时执行 `equippable:Unequip`，对应 Lua 的 `inst:Remove()`），之后才向 owner 推送 `itemranout`，玩家的 `OnItemRanOut` 在槽位已空时装上背包里同 prefab 的下一把。普通 `extinguish()` 不改变装备。未装备的地面火把没有 owner，只移除自己；未耗尽的燃料保留在库存中。手持物的燃料由 `entity.flush()`（存档、转移前库存会调用）经 `HeldEquipment.flush()` 结算。正常卸下使用库存转移，保留实体及状态；`pagehide` 不执行资源清理。
 
 inventory 负责权威状态和原子写入，`InventoryStore.setRemainingFuel()` 不决定燃烧或耗尽行为，也不写入零燃料的临时库存物品；玩家装备火把的耗尽路径由 prefab 调用 `entity.remove()`，实际清槽由库存 owner 执行。库存实体从剩余燃料 signal 派生只读耐久比例，应用注入 `SlotItem.signals`，共享 slot renderer 直接订阅，在物品、装备和储物槽中显示相同百分比。燃料字段随库存转移、地面掉落、换肤、拾取与存档保存保留；异步加载掉落美术时，原实体继续消耗燃料，实际提交丢弃时先结算再交接引用。
 
@@ -185,9 +185,9 @@ torch 的专用 ground factory 注册 `onputininventory` 和 `onextinguish`。�
 
 种子左键进入光标槽，使用真实种子和土坑实例选取 `PLANTSOIL`。普通角色进入 `dolongaction`，1 秒后由共享动作函数取出一粒种子，交给 `farmplantable:Plant` 替换土坑、生成作物并通知 `on_planted` / `itemplanted`。正在耕地及破损土坑按源 `NOCLICK` 标签拒绝鼠标选取。取消时光标物品保留；没有 `beginFood` 选择回调或独立的种植目标列表。
 
-手部拿出／收起动画集中在 `src/playerHandEquipment.ts`，从装备 signal 的前后状态派生：`null → 装备` 播放新物品的 `item_out`，`装备 → null` 播放旧物品的 `item_in`，更换装备实体播放新物品的 `item_out`。动画使用 `anim/player_actions_item.zip`，具体手持物品由 prefab 的手部定义解析；同一实体换肤或重复发布身份仅同步外观，不重复播放转移动画。
+拿出／收起动画由 SGwilson 的全局 `equip`／`unequip` 事件处理器决定：处于 idle 或 channeling 状态时，装备到手部进入 `item_out`，装备到头部或身体进入 `item_hat`；从手部卸下进入 `item_in`，从其他槽位卸下进入 `item_hat`（`GetUnequipState`）。当前状态自己定义了同名处理器时由状态处理（如 `shell_enter`、`shell_hit`），`acting` 状态忽略这些事件。动画使用 `anim/player_actions_item.zip`。
 
-绑定器等待 `setCarryItem()` 完成美术加载后才播放动画，并核对表现请求版本及当前 signal；被后续换装、耗尽或销毁覆盖的异步完成不会播放旧动画。已移除的旧物品（包括燃料耗尽）不播放 `item_in`。初始化通过 `handEquipmentBinding.withoutTransitions(() => inventory.replaceState(...))` 保持生命周期和外观同步，抑制读档时的拿出／收起动画；失败的库存事务不会改变装备 signal，因此也不会触发动画。`src/main.ts` 只提交转移、报告结果和结算燃料，不再按转移方向选择动画。
+读档恢复装备同样会推送 `equip`，与 Lua 的 `Inventory:OnLoad` → `Equip` 一致；失败的库存事务不会改变装备槽，因此也不会触发事件。
 
 Shift + 右键已占用的库存或装备槽，在玩家当前地面位置丢弃一个物品。帽子及注册的目录物品使用源动画/build，其他未注册物品回退到其库存图标。普通掉落物点击拾取成功后回到物品栏；专用生物 prefab 可定义不同捕获或交互行为。
 

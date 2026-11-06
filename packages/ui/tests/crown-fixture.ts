@@ -1,3 +1,4 @@
+import { createPlayerEquipper } from '../../animation/tests/playerEquipFixture';
 import { advancePlayer, facePlayer, registerPlayer } from '../../animation/tests/playerVisual';
 import { prefabDisplay } from '../../display/src';
 import { prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
@@ -14,6 +15,7 @@ export async function checkCrown() {
   await prefabDisplay(player).artLoaded();
   player.position.set(0, 0, 0);
   const animation = prefabInstance(player).animationController as WilsonAnimationController;
+  const animationEquipper = createPlayerEquipper(animation);
   const scene = new THREE.Scene();
   scene.add(player);
   const camera = new THREE.OrthographicCamera(-7, 7, 14, -1, 0.1, 100);
@@ -40,7 +42,7 @@ export async function checkCrown() {
   };
   capture('Unequipped');
   const display = prefabDisplay(player) as PrefabDisplay;
-  animation.setHat('alterguardianhat');
+  animationEquipper.equip('alterguardianhat', undefined, 'head');
   // The worn crown names its builds and spawns its layers; their displays load the art.
   await display.artLoaded();
   advancePlayer(animation, 0.1);
@@ -66,7 +68,7 @@ export async function checkCrown() {
     }
   }
   facePlayer(animation, 'down');
-  animation.setHat('alterguardianhat', 'alterguardianhat_lastprism');
+  animationEquipper.equip('alterguardianhat', 'alterguardianhat_lastprism', 'head');
   await display.artLoaded();
   for (let i = 0; i < 10; i++) advancePlayer(animation, 0.1);
   capture('Last Prism: floating orbit');
@@ -105,7 +107,7 @@ export async function checkCrown() {
   player.position.x = 20;
   await draw();
   const moved = sample(28, 8);
-  await animation.setHat(null);
+  await animationEquipper.equip(null, undefined, 'head');
   await draw();
   const removed = sample(28, 8);
   const removedLight = ![...prefabInstance(player)!.light.slots.peek().keys()].some(key => key.startsWith('alterguardianhatlight:'));

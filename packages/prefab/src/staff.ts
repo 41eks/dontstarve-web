@@ -1,6 +1,6 @@
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import type { ItemEntity } from '@dontstarve-web/inventory';
-import type { EquipmentLifecycle, ReadonlySignal } from '@dontstarve-web/signals';
+import type { ReadonlySignal } from '@dontstarve-web/signals';
 import { WILSON_ACTION_TIMES } from '@dontstarve-web/stategraphs/SGwilson';
 import type { SpellCastMap, SpellCastTarget } from '@dontstarve-web/stategraphs/castspell';
 import type { CombatActor, CombatInst } from '../../componets/src/combat';
@@ -9,7 +9,7 @@ import type { Burnable } from '../../componets/src/burnable';
 import type { WorkInst } from '../../componets/src/workable';
 import { getDeconstructionRecipe } from '../../componets/src/recipes';
 import { SpellCaster, type SpellCastDoer } from '../../componets/src/spellcaster';
-import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory, type EquipmentVisualItem } from './equipmentVisual';
+import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory, type EquipmentVisualItem, type HeldEquipFunctions } from './equipmentVisual';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { PlaySound, type SoundEventPath } from './sound';
 import { WORLD_SCALE } from './standardcomponents';
@@ -34,7 +34,7 @@ export interface LightStaffWorld {
 }
 
 /** staff.lua yellow/opal: configure one spellcaster on the actual inventory entity. */
-export class LightStaffController implements EquipmentLifecycle {
+export class LightStaffController implements HeldEquipFunctions {
   readonly spellcaster: SpellCaster;
   private readonly entity: ItemEntity;
   private readonly world: LightStaffWorld;
@@ -128,7 +128,7 @@ export interface FireStaffAttacker extends CombatActor {
 }
 
 /** staff.lua red: a ranged lighter whose projectile ignites, unfreezes and wakes its target. */
-export class FireStaffController implements EquipmentLifecycle {
+export class FireStaffController implements HeldEquipFunctions {
   private readonly entity: ItemEntity;
   private readonly world: FireStaffWorld;
   constructor(entity: ItemEntity, world: FireStaffWorld) {
@@ -228,7 +228,7 @@ const ingredientSounds: Readonly<Record<string, SoundEventPath>> = {
   cutgrass: 'dontstarve/common/destroy_straw', cutreeds: 'dontstarve/common/destroy_straw',
 };
 
-export class GreenStaffController implements EquipmentLifecycle {
+export class GreenStaffController implements HeldEquipFunctions {
   readonly spellcaster: SpellCaster;
   private readonly entity: ItemEntity;
   constructor(entity: ItemEntity, world: GreenStaffWorld) {

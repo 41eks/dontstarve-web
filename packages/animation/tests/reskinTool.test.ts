@@ -1,3 +1,4 @@
+import { createPlayerEquipper } from './playerEquipFixture';
 import { advancePlayer, facePlayer } from './playerVisual';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
@@ -50,13 +51,14 @@ it('renders source ground and held art for the base sweeper and brush skin, then
   const assets = new GroundItemAssets();
   const player = await createWilsonPlayer('/dst/data/anim');
   const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
+  const animationEquipper = createPlayerEquipper(animation);
   const skins = ['reskin_tool_brush'];
   for (const skinId of [undefined, ...skins]) {
     const ground = await createGroundItemVisual(assets, 'reskin_tool', skinId);
     expect((ground.model.children[0].children[0].children[0] as THREE.Mesh).geometry.drawRange.count).toBeGreaterThan(0);
-    animation.setCarryItem('reskin_tool', skinId);
+    animationEquipper.equip('reskin_tool', skinId);
     await vi.waitFor(() => {
-      advancePlayer(animation, 0);
+      advancePlayer(animation, 1 / 30);
       const mesh = player.getObjectByProperty('isMesh', true) as THREE.Mesh;
       expect((mesh.material as THREE.Material[]).some((material) => material.name === `ground:${skinId ?? 'swap_reskin_tool'}`)).toBe(true);
     });
@@ -69,7 +71,7 @@ it('renders source ground and held art for the base sweeper and brush skin, then
     }
     ground.dispose();
   }
-  await animation.setCarryItem(null);
+  await animationEquipper.equip(null);
   const mesh = player.getObjectByProperty('isMesh', true) as THREE.Mesh;
   expect((mesh.material as THREE.Material[]).some((material) => material.name.startsWith('ground:'))).toBe(false);
 });

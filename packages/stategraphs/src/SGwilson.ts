@@ -8,7 +8,7 @@ import type { Vector3 } from 'three';
 import { ghostActionHandlers, ghostClip, ghostStates } from './SGwilsonghost.ts';
 
 export type WilsonMovementState = 'idle' | 'walk' | 'run' | 'jump';
-export type WilsonOneShotState = 'eat' | 'item_in' | 'item_out' | 'pickup';
+export type WilsonOneShotState = 'eat' | 'item_in' | 'item_out' | 'item_hat' | 'pickup';
 export type WilsonStateName = WilsonMovementState | WilsonOneShotState | 'build' | 'emote'
   | 'mine_start' | 'mine' | 'chop_start' | 'chop' | 'hammer_start' | 'hammer'
   | 'bugnet_start' | 'bugnet' | 'terraform' | 'castspell' | 'veryquickcastspell'
@@ -222,6 +222,11 @@ function playHitSounds(host: { playEvent?(event: string): void }): void {
 }
 
 const clip = (key: WilsonAnimationKey, name: string = key): WilsonAnimationClip => ({ key, name });
+
+/** SGwilson.lua GetUnequipState: item_hat off a non-hand slot, item_in otherwise (the wereplayer, slip and tool_slip branches are not ported). */
+function GetUnequipState(data: unknown): 'item_hat' | 'item_in' {
+  return (data as { eslot?: string } | undefined)?.eslot === 'HANDS' ? 'item_in' : 'item_hat';
+}
 const fishingClip = (name: string): WilsonAnimationClip => clip('fishing', name);
 
 /**
@@ -753,7 +758,7 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
     timeline: [TimeEvent(6 * FRAMES, inst => inst.context.host.playEvent?.('dontstarve/movement/foley/hideshell'))],
     events: [
       // The default unequip handler is ignored while busy.
-      EventHandler('unequip', inst => inst.goToState('item_out')),
+      EventHandler('unequip', (inst, data) => inst.goToState(GetUnequipState(data))),
     ],
     ontimeout: inst => inst.goToState('shell_idle'),
   }),
@@ -764,10 +769,6 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
       inst.context.host.stopMovement?.();
       inst.context.pushClips([clip('hideshell_idle')]);
     },
-    events: [
-      // The global unequip handler of an idle state.
-      EventHandler('unequip', inst => inst.goToState('item_out')),
-    ],
   }),
   State({
     name: 'shell_hit',
@@ -901,6 +902,19 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
     name: 'item_in',
     tags: ['idle', 'nodangle', 'keepchannelcasting'],
     onenter: (inst) => inst.context.playClips([clip('item_in')]),
+    events: [
+      EventHandler('animover', (inst) => {
+        if (inst.context.animationDone) inst.goToState('idle');
+      }),
+    ],
+  }),
+  State({
+    name: 'item_hat',
+    tags: ['idle', 'keepchannelcasting'],
+    onenter: (inst) => {
+      inst.context.host.stopMovement?.();
+      inst.context.playClips([clip('item_hat')]);
+    },
     events: [
       EventHandler('animover', (inst) => {
         if (inst.context.animationDone) inst.goToState('idle');
@@ -1532,6 +1546,21 @@ export class WilsonStateGraph {
       this.activeBufferedAction = undefined;
       this.activeInvobject = undefined;
       this.sg.goToState('toolbroke', (data as { tool?: WilsonBrokenTool } | undefined)?.tool);
+    });
+    // SGwilson.lua EventHandler("equip"): item_out for a hand item, item_hat otherwise, from an idle or channeling state.
+    // The heavy lifting, catch_equip and wereplayer branches belong to unported components.
+    this.sg.listenForEvent('equip', data => {
+      if (this.sg.handlesEvent('equip') || this.sg.hasStateTag('acting') || this.ghost) return;
+      if (this.sg.hasAnyStateTag('idle', 'channeling')) {
+        this.sg.goToState((data as { eslot?: string } | undefined)?.eslot === 'HANDS' ? 'item_out' : 'item_hat');
+      }
+    });
+    // SGwilson.lua EventHandler("unequip") + GetUnequipState: item_hat off a non-hand slot, item_in otherwise.
+    this.sg.listenForEvent('unequip', data => {
+      if (this.sg.handlesEvent('unequip') || this.sg.hasStateTag('acting') || this.ghost) return;
+      if (this.sg.hasAnyStateTag('idle', 'channeling')) {
+        this.sg.goToState(GetUnequipState(data));
+      }
     });
     // SGwilson.lua EventHandler("death"): every state yields except one that has already died.
     this.sg.listenForEvent('death', () => {

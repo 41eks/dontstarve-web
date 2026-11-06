@@ -1,3 +1,4 @@
+import { createPlayerEquipper } from './playerEquipFixture';
 import { advancePlayer, facePlayer } from './playerVisual';
 import { SpatialIndex } from '../../prefab/src/spatialIndex';
 import { AnimState } from '../src/animState';
@@ -117,7 +118,8 @@ it('takes TILL at the point, creates one hole at till_loop frame 11, and drops a
   const player = await createWilsonPlayer('/dst/data/anim');
   player.position.set(0, 0, 15);
   const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
-  await animation.setCarryItem('golden_farm_hoe');
+  const animationEquipper = createPlayerEquipper(animation);
+  await animationEquipper.equip('golden_farm_hoe');
   const { world, farm, turf } = setup(player);
   world.mouseActions = new PlayerActionPicker(new PointerRaycaster(world));
   const body = { position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body;
@@ -164,7 +166,7 @@ it('takes TILL at the point, creates one hole at till_loop frame 11, and drops a
     expect(farm.exportDecorRecords()).toEqual(preserved);
     rightClick(); walkIn();
     await vi.waitFor(() => { advancePlayer(animation, 1 / 30); expect(animation.stategraph.isPerformingAction('TILL')).toBe(true); });
-    hand.set(null); await animation.setCarryItem(null); advance(animation, 60);
+    hand.set(null); await animationEquipper.equip(null); advance(animation, 60);
     expect(farm.exportDecorRecords()).toEqual(preserved);
   } finally { controller.dispose(); world.mouseActions.dispose(); lifecycle.onunequip(); farm.dispose(); }
 });

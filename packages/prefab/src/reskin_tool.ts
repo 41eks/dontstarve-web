@@ -2,11 +2,10 @@ import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { PrefabDisplayGroup, SpriteResources, SpriteState } from '@dontstarve-web/display';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { nextReskin, type ReskinEffectPresenter, type ReskinFxMessage, type ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
-import type { EquipmentLifecycle } from '@dontstarve-web/signals';
 import type * as THREE from 'three';
 import { Vector3 } from 'three';
 import { SpellCaster } from '../../componets/src/spellcaster';
-import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory } from './equipmentVisual';
+import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory, type HeldEquipFunctions } from './equipmentVisual';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { bindInstance, PrefabInstance } from './prefabInstance';
 import { PlaySound, type SoundEventPath } from './sound';
@@ -51,7 +50,7 @@ export function configureReskinToolEntity(entity: ItemEntity): void {
 }
 
 /** While held, the tool's spell spawns its fx through the scene's presenter. */
-export function createReskinToolLifecycle(entity: ItemEntity, effects: ReskinEffectPresenter | undefined): EquipmentLifecycle {
+export function createReskinToolLifecycle(entity: ItemEntity, effects: ReskinEffectPresenter | undefined): HeldEquipFunctions {
   return {
     onequip() { if (effects) reskinFxPresenters.set(entity, effects); },
     onunequip() { reskinFxPresenters.delete(entity); },

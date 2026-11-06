@@ -1,13 +1,13 @@
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { ItemEntity } from '@dontstarve-web/inventory';
-import { getBoundWatchWorldContent, WorldContentKey, type EquipmentLifecycle, type EquipmentOwner, type HandEquipment, type ReadonlySignal } from '@dontstarve-web/signals';
+import { getBoundWatchWorldContent, WorldContentKey, type EquipmentOwner, type HandEquipment, type ReadonlySignal } from '@dontstarve-web/signals';
 import type * as THREE from 'three';
 import type { FollowerFx } from '@dontstarve-web/display';
 import { Burnable } from '../../componets/src/burnable';
 import { ErodeAway } from '../../componets/src/erodeaway';
 import { Lighter } from '../../componets/src/lighter';
 import type { WorkInst } from '../../componets/src/workable';
-import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory } from './equipmentVisual';
+import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory, type HeldEquipFunctions } from './equipmentVisual';
 import { createResidentGroundItem, GROUND_ITEM_DEFINITIONS } from './groundItems';
 import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
 import { listenInventoryEvents } from './inventoryEvents';
@@ -291,10 +291,10 @@ export function createTorchHandLifecycle(
   entity: ItemEntity,
   options: {
     soundPosition?: ReadonlyVector3;
-    lightParent: PrefabInstance;
+    lightParent?: PrefabInstance;
     followSymbol?(symbol: string, offsetX: number, offsetY: number, fx?: FollowerFx): { node: THREE.Object3D; remove(): void };
   },
-): EquipmentLifecycle {
+): HeldEquipFunctions {
   const controller = getTorchController(entity);
   const presentation = { soundPosition: options.soundPosition };
   let stopBurning: (() => void) | undefined;
@@ -304,10 +304,11 @@ export function createTorchHandLifecycle(
   const syncLight = (burning: boolean) => {
     removeLight?.(); removeLight = undefined;
     removeFire?.(); removeFire = undefined;
-    if (!burning) return;
+    const parent = options.lightParent;
+    if (!burning || !parent) return;
     // torchfire_common.lua CreateLight + AttachLightTo(owner): a player owner's light is also a playerlight.
-    const light = spawnLightEntity('torchfire_light', options.lightParent);
-    if (options.lightParent.hasTag('player')) light.instance.addTag('playerlight');
+    const light = spawnLightEntity('torchfire_light', parent);
+    if (parent.hasTag('player')) light.instance.addTag('playerlight');
     light.instance.light.set(TORCH_LIGHT);
     removeLight = light.remove;
     // The holder's display loads the particle textures, draws the effect and advances it each frame.

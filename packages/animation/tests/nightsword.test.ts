@@ -1,3 +1,4 @@
+import { createPlayerEquipper } from './playerEquipFixture';
 import { advancePlayer, facePlayer } from './playerVisual';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
@@ -35,6 +36,7 @@ it('uses separate source ground and equipped art and renders a skin while moving
   const assets = new GroundItemAssets();
   const player = await createWilsonPlayer('/dst/data/anim');
   const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
+  const animationEquipper = createPlayerEquipper(animation);
   const mesh = player.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
   const usedMaterials = () => mesh.geometry.groups.map(group => mesh.material[group.materialIndex!].name);
   try {
@@ -54,8 +56,9 @@ it('uses separate source ground and equipped art and renders a skin while moving
         const groundMesh = ground.model.children[0].children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
         expect(groundMesh.geometry.drawRange.count).toBeGreaterThan(0);
         expect(groundMesh.material.some(material => material.name === `ground:${skinId ?? 'nightmaresword'}`)).toBe(true);
-        animation.setCarryItem('nightsword', skinId);
-        await vi.waitFor(() => { advancePlayer(animation, 0); expect(usedMaterials()).toContain(`ground:${skinId ?? 'swap_nightmaresword'}`); });
+        animationEquipper.equip('nightsword', skinId);
+        // SGwilson's equip handler plays item_out from idle; the held art shows as it runs.
+        await vi.waitFor(() => { advancePlayer(animation, 1 / 30); expect(usedMaterials()).toContain(`ground:${skinId ?? 'swap_nightmaresword'}`); });
         for (const [facing, mirrored] of [['up', false], ['down', false], ['side', true]] as const) {
           facePlayer(animation, facing, mirrored); animation.start('walk'); advancePlayer(animation, 1 / 30);
           expect(usedMaterials()).toContain(`ground:${skinId ?? 'swap_nightmaresword'}`);
@@ -64,7 +67,7 @@ it('uses separate source ground and equipped art and renders a skin while moving
         }
       } finally { ground.dispose(); }
     }
-    await animation.setCarryItem(null);
+    await animationEquipper.equip(null);
     expect(usedMaterials()).not.toContain('ground:nightsword_cotl');
     expect(usedMaterials()).not.toContain('ground:swap_nightmaresword');
   } finally { assets.dispose(); }

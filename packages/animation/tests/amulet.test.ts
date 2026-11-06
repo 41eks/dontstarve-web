@@ -2,7 +2,9 @@ import { expect, it, vi } from 'vitest';
 import { Hunger } from '../../componets/src/hunger';
 import { Health } from '../../componets/src/health';
 import { equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
-import { AMULET_ID, REDAMULET_CONVERSION, REDAMULET_CONVERSION_TIME, REDAMULET_USES, createAmuletArtLifecycle } from '../../prefab/src/amulet';
+import { AMULET_ID, REDAMULET_CONVERSION, REDAMULET_CONVERSION_TIME, REDAMULET_USES } from '../../prefab/src/amulet';
+import { AnimState } from '../src/animState';
+import { smallHash } from '../src/animationAssets';
 import { HAUNT_COOLDOWN_MEDIUM } from '../../componets/src/hauntable';
 import { createPickupInventory } from './pickupFixture';
 import { createPerishWorld } from './perishWorldFixture';
@@ -13,7 +15,6 @@ function wornAmulet(health: number, hunger: number) {
   const stats = { health: new Health(150), hunger: new Hunger({ components: {} }, 150) };
   stats.health.SetCurrentHealth(health);
   stats.hunger.SetCurrent(hunger);
-  const art = { onequip: vi.fn(), onunequip: vi.fn() };
   const state = { name: 'idle' };
   const listeners = new Set<(data: unknown) => void>();
   const owner = { PushEvent: vi.fn(), components: stats, IsCurrentState: (name: string) => name === state.name,
@@ -22,17 +23,20 @@ function wornAmulet(health: number, hunger: number) {
       if (name !== 'newstate') return () => {};
       listeners.add(listener);
       return () => { listeners.delete(listener); };
-    } };
+    },
+    // owner.OpenEquipmentView: the amulet's own AnimState slot, which stays drawn while retained.
+    OpenEquipmentView: () => view,
+  };
+  const slot = { AnimState: new AnimState(), close: vi.fn(), released: vi.fn(), holds: 0 };
+  const view = Object.assign(Object.create(owner), { AnimState: slot.AnimState, presentation: {}, close: slot.close,
+    Retain: () => { slot.holds++; return () => { slot.holds--; slot.released(); }; } });
   const enter = (name: string) => { state.name = name; for (const listener of [...listeners]) listener({ statename: name }); };
   // inventory:Equip runs equippable:Equip(owner): the owner is the inventory's actor.
   inventory.bindActor(owner);
   inventory.add(AMULET_ID, 1);
   const entity = inventory.getEntity(inventorySlotAddress(0))!;
   expect(inventory.EquipFromInventory(entity)).toBe(true);
-  const worn = createAmuletArtLifecycle(art);
-  worn.onequip(owner);
-  const lifecycle = { onunequip: () => { inventory.Unequip('body'); worn.onunequip(); } };
-  return { inventory, world, entity, stats, art, lifecycle, state, enter, owner };
+  return { inventory, world, entity, stats, slot, state, enter, owner };
 }
 
 it('is a body resurrector with source uses and a hauntable that resurrects', () => {
@@ -69,21 +73,28 @@ it('converts hunger into health every 30 game seconds while hurt, spending one u
 });
 
 it('stops converting once unequipped, and keeps its worn art through amulet_rebirth', () => {
-  const { inventory, world, stats, art, lifecycle, enter } = wornAmulet(100, 100);
+  const { inventory, world, stats, slot, enter } = wornAmulet(100, 100);
+  const swapBody = () => slot.AnimState.json.peek().overrides.has(smallHash('swap_body'));
   try {
+    expect(swapBody()).toBe(true);
     enter('amulet_rebirth');
-    lifecycle.onunequip();
-    expect(art.onunequip).not.toHaveBeenCalled();
+    expect(inventory.Unequip('body')).not.toBeNull();
+    // onunequip_red keeps swap_body; the slot is retained past equippable:Unequip closing the view.
+    expect(swapBody()).toBe(true);
+    expect(slot.close).toHaveBeenCalledOnce();
+    expect(slot.holds).toBe(1);
     world.advance(REDAMULET_CONVERSION_TIME * 2);
     expect(stats.health.currenthealth).toBe(100);
     // SGwilson amulet_rebirth onexit: the art the amulet left goes as the owner leaves the state.
     enter('idle');
-    expect(art.onunequip).toHaveBeenCalledOnce();
+    expect(swapBody()).toBe(false);
+    expect(slot.holds).toBe(0);
     enter('amulet_rebirth');
-    expect(art.onunequip).toHaveBeenCalledOnce();
+    expect(slot.released).toHaveBeenCalledOnce();
     const second = wornAmulet(100, 100);
-    second.lifecycle.onunequip();
-    expect(second.art.onunequip).toHaveBeenCalledOnce();
+    second.inventory.Unequip('body');
+    expect(second.slot.AnimState.json.peek().overrides.has(smallHash('swap_body'))).toBe(false);
+    expect(second.slot.holds).toBe(0);
     second.inventory.dispose();
   } finally { inventory.dispose(); }
 });

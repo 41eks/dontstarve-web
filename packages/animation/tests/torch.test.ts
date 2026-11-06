@@ -3,7 +3,7 @@ import { SpriteResources } from '../../display/src';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { createPickupDoer, performPickupAction } from '../../stategraphs/src/pickup';
-import { bindPlayerHandEquipment } from '../../../src/playerHandEquipment';
+import { configureEquipmentEntity } from '../../prefab/src/handEquipment';
 import { ItemEntity, InventoryStore, InventorySlot, HandSlot, inventorySlotAddress, equipmentSlotAddress } from '@dontstarve-web/inventory';
 import { GroundItemManager } from '../../prefab/src/groundItemManager';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -11,7 +11,7 @@ import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { createEquipmentExistenceState } from '@dontstarve-web/signals';
 import { OnItemRanOut } from '../../prefab/src/player_common';
-import { TORCH_FUEL, TURNON_FUELED_CONSUMPTION, TURNON_FULL_FUELED_CONSUMPTION, configureTorchEntity, onattack,
+import { TORCH_FUEL, TURNON_FUELED_CONSUMPTION, TURNON_FULL_FUELED_CONSUMPTION, onattack,
   getTorchController, createTorchGroundFactory } from '../../prefab/src/torch';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { PlaySound } from '../../prefab/src/sound';
@@ -19,7 +19,7 @@ import { TORCH_FIRE_OFFSET_Y } from '../../prefab/src/torchfire';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { bindWorldContent, createSignal } from '@dontstarve-web/signals';
 import { createTestWorldSources } from './worldContentFixture';
-import { createEmptyEntity, prefabInstance } from '../../prefab/src/prefabInstance';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { createPerishWorld } from './perishWorldFixture';
 import { reskinEntity } from '../../prefab/src/reskin_tool';
 
@@ -35,7 +35,8 @@ beforeEach(() => { handEquipmentExistenceState = createEquipmentExistenceState('
 afterEach(() => { vi.clearAllMocks(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 /** torch.lua's prefab fn adds fueled before the saved fuel loads. */
-const torchSpec = { maxFuel: TORCH_FUEL, configureEntity: configureTorchEntity };
+// torch.lua fn, including the equippable's onequip/onunequip.
+const torchSpec = { maxFuel: TORCH_FUEL, configureEntity: configureEquipmentEntity };
 const specs = { torch: { name: 'torch', icon: 'torch.tex', maxStack: 1, equippable: 'hand' as const, ...torchSpec } };
 /** SetFirstPeriod(TURNON_FUELED_CONSUMPTION, TURNON_FULL_FUELED_CONSUMPTION), charged on the next update. */
 const FULL_FIRST_PERIOD = TURNON_FULL_FUELED_CONSUMPTION, FIRST_PERIOD = TURNON_FUELED_CONSUMPTION;
@@ -146,7 +147,7 @@ describe('torch prefab burning lifecycle', () => {
       pushed.push({ name, slotEmpty: store.getEntity(hand) == null });
       if (name === 'itemranout') OnItemRanOut(store, data);
     } };
-    const binding = await bindPlayerHandEquipment({ handEquipmentExistenceState: store.handEquipmentExistenceState, owner, lightParent: createEmptyEntity('wilson').instance, setHandAction() {} });
+    store.bindActor({ ...owner, hasTag: () => false, GetPosition: () => ({ x: 0, y: 0, z: 0 }) });
     try {
       store.add('torch', 2);
       store.applySlotChanges([{ slot: bag, itemId: 'torch', delta: -1 }, { slot: hand, itemId: 'torch', delta: 1 }]);
@@ -155,10 +156,12 @@ describe('torch prefab burning lifecycle', () => {
       expect(store.setRemainingFuel(hand, 1)).toBe(true);
       world.advance(1);
       expect(first.isRemoved).toBe(true);
-      expect(pushed).toEqual([{ name: 'itemranout', slotEmpty: true }]);
+      // The depleted torch unequips as its owner removes it, then itemranout equips the next one.
+      expect(pushed).toEqual([{ name: 'equip', slotEmpty: false }, { name: 'unequip', slotEmpty: true },
+        { name: 'itemranout', slotEmpty: true }, { name: 'equip', slotEmpty: false }]);
       expect(store.getEntity(hand)).toBe(second);
       expect(getTorchController(second).isBurning).toBe(true);
-    } finally { binding.dispose(); store.entities.dispose(); }
+    } finally { store.entities.dispose(); }
   });
 
   it('keeps one entity and controller through equip, asynchronous drop, reskin, pickup and save restoration', async () => {
@@ -172,7 +175,6 @@ describe('torch prefab burning lifecycle', () => {
     const entity = store.getEntity(slot)!;
     const controller = getTorchController(entity);
     const equip = vi.spyOn(controller, 'onequip');
-    const binding = await bindPlayerHandEquipment({ handEquipmentExistenceState: store.handEquipmentExistenceState, lightParent: createEmptyEntity('wilson').instance, setHandAction() {} });
     const scene = new THREE.Scene(), player = new THREE.Group();
     const canvas = Object.assign(new EventTarget(), { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) });
     const manager = new GroundItemManager(scene, new THREE.PerspectiveCamera(),
@@ -223,7 +225,7 @@ describe('torch prefab burning lifecycle', () => {
       expect(restored.snapshot()).toEqual(entity.snapshot());
       expect(getTorchController(restored)).not.toBe(controller);
       expect(getTorchController(restored).isBurning).toBe(true);
-    } finally { binding.dispose(); manager.dispose(); store.entities.dispose(); }
+    } finally { manager.dispose(); store.entities.dispose(); }
   });
 
   it('restores a lit ground torch silently, extinguishes through its event and picks it up without affecting held equipment', async () => {

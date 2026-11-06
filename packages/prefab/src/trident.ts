@@ -1,9 +1,8 @@
 import type { ItemEntity } from '@dontstarve-web/inventory';
-import type { EquipmentLifecycle } from '@dontstarve-web/signals';
 import type { SpellCastMap } from '@dontstarve-web/stategraphs/castspell';
 import type * as THREE from 'three';
 import { SpellCaster } from '../../componets/src/spellcaster';
-import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory } from './equipmentVisual';
+import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory, type HeldEquipFunctions } from './equipmentVisual';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { TILE_SIZE } from './tile';
 
@@ -25,7 +24,7 @@ export interface TridentWorld {
 }
 
 /** trident.lua: one point spellcaster that works only on water, and its finiteuses cost per explosion. */
-export class TridentController implements EquipmentLifecycle {
+export class TridentController implements HeldEquipFunctions {
   readonly spellcaster: SpellCaster;
   private readonly entity: ItemEntity;
   private readonly world: TridentWorld;
