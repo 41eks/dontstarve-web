@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { FarmPlowPlacement } from '../../prefab/src/farm_plow';
 import { FOOD_EFFECTS, PERISHABLE_FOODS } from '../../prefab/src/food';
-import { FoodActionController } from '../../stategraphs/src/eat';
+import { inventoryUse } from './inventoryUseFixture';
 import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { createGroundItemVisual } from './groundItemVisual';
@@ -47,12 +47,12 @@ it('renders the original ground seed pose and commits quick eating once at frame
   const { farm, world } = farmSetup(player);
   const instance = wilsonPlayerInstance(player), store = createPickupInventory();
   instance.components.inventory = store;
-  const seeds = new FoodActionController(world, animation.stategraph, { stop() {}, goToPoint: () => true, destination: undefined }, instance);
+  const seeds = inventoryUse(world, animation.stategraph, instance);
   store.add('seeds', 2);
   const slot = inventorySlotAddress(0), source = store.getEntity(slot)!;
   const stats = () => ({ hunger: instance.stats.hunger.current, health: instance.stats.health.currenthealth, sanity: instance.stats.sanity.current });
   try {
-    expect(await seeds.eat(source)).toBe(true);
+    expect(await seeds.use(source)).toBe(true);
     for (let frame = 0; frame < 11; frame++) advancePlayer(animation, 1 / 30);
     expect(store.get(slot)?.count).toBe(2);
     expect(PlaySound).toHaveBeenCalledWith('dontstarve/wilson/eat', undefined);
@@ -62,11 +62,11 @@ it('renders the original ground seed pose and commits quick eating once at frame
     for (let frame = 0; frame < 40; frame++) advancePlayer(animation, 1 / 30);
     expect(store.get(slot)?.count).toBe(1);
     expect(animation.stategraph.stateName).toBe('idle');
-    await seeds.eat(source);
+    await seeds.use(source);
     advancePlayer(animation, 0.1); seeds.cancel(); advancePlayer(animation, 1);
     expect(store.get(slot)?.count).toBe(1);
     expect(stats().hunger).toBe(109.6875);
-    expect(seeds.eat(source)).toBe(true);
+    expect(seeds.use(source)).toBe(true);
     seeds.cancel(); advancePlayer(animation, 1);
     expect(store.get(slot)?.count).toBe(1);
   } finally { seeds.dispose(); store.dispose(); farm.dispose(); }

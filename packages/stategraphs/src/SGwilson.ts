@@ -1464,10 +1464,11 @@ const actionHandlers: StateActionHandler<WilsonStateGraph, WilsonStateName>[] = 
   ActionHandler('SLEEPIN', (_inst, action) => action.invobject ? null : 'tent'),
   ActionHandler('TERRAFORM', 'terraform'),
   ActionHandler('FISH', 'fishing_pre'),
-  ActionHandler('EAT', (inst) => {
+  ActionHandler('EAT', (inst, action) => {
     if (inst.hasStateTag('busy')) return null;
-    // FoodActionController validates edible food; only quickeat is connected.
-    // Source food preference, slow/meat eating and floating branches remain unported.
+    const obj = action.target ?? action.invobject;
+    if (!(obj as { components?: { edible?: unknown } } | undefined)?.components?.edible) return null;
+    // eater:PrefersToEat, the soul branch, the slow/meat "eat" state and floating remain unported: only quickeat is connected.
     return 'quickeat';
   }),
   ActionHandler('CASTSPELL', (_inst, action) => {
@@ -1730,7 +1731,7 @@ export class WilsonStateGraph {
    * keeps running and the new one is dropped (false: its callback never runs); otherwise the old one fails,
    * TestForStart validates the new one and sg:StartAction enters its handler's destination state.
    */
-  pushBufferedAction(action: BufferedAction<WilsonAction>, foodDrink = false): boolean {
+  pushBufferedAction(action: BufferedAction<WilsonAction>): boolean {
     const current = this.bufferedAction;
     if (current && current.action === action.action && current.target === action.target
       && current.invobject === action.invobject && !this.hasStateTag('idle')) return false;
@@ -1744,7 +1745,8 @@ export class WilsonStateGraph {
     this.activeAction = action.action;
     this.activeBufferedAction = action;
     this.activeInvobject = action.invobject;
-    this.foodDrink = action.action === 'EAT' && foodDrink;
+    // SGwilson quickeat onenter: the food's own "fooddrink" tag picks the drink clips.
+    this.foodDrink = action.action === 'EAT' && !!(action.target ?? action.invobject)?.hasTag('fooddrink');
     this.sg.goToState(destination);
     return true;
   }

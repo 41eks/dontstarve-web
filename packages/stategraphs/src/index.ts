@@ -11,7 +11,6 @@ export type {
 export type { ActionWorldContext, ActionLocomotor, CursorLabel } from './actionContext.ts';
 export { bindActionCancellation } from './actionEvents.ts';
 export type { PlayerActionEvents, PlayerActionKind, ActionInterruptReason } from './actionEvents.ts';
-export * from './eat.ts';
 export * from './pick.ts';
 export * from './itemuse.ts';
 export * from './rummage.ts';

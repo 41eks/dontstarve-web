@@ -8,6 +8,7 @@ import type { Propagator } from '../../componets/src/propagator';
 import type { Vector3 } from 'three';
 import { getDeconstructionRecipe } from '../../componets/src/recipes.ts';
 import { ACTIONS, type MouseActionId } from './actions.ts';
+import { FOODGROUP, FOODTYPE } from '../../componets/src/eater';
 
 export interface ComponentActionEntity extends WorkInst {
   readonly _cached_reskinname?: Map<string, string | undefined>;
@@ -94,7 +95,7 @@ export interface EquippedActionDoer {
 }
 export type EquippedAction = ToolAction | 'CASTSPELL' | 'LIGHT' | 'ATTACK' | 'FISH' | 'REEL' | 'TERRAFORM' | 'TILL' | 'DEPLOY' | 'DEPLOY_TILEARRIVE';
 export type UseItemAction = 'GIVE' | 'FEED' | 'ADDFUEL' | 'ADDWETFUEL' | 'PLANTSOIL';
-export type InventoryAction = 'PLAY' | 'READ';
+export type InventoryAction = 'EAT' | 'PLAY' | 'READ';
 type InventoryFn = (inst: ComponentActionEntity, doer: SceneActionDoer, actions: InventoryAction[], right: boolean) => void;
 type UseItemFn = (inst: ComponentActionEntity, doer: SceneActionDoer, target: ComponentActionEntity,
   actions: UseItemAction[], right: boolean) => void;
@@ -121,6 +122,14 @@ export const COMPONENT_ACTIONS: {
 } = {
   INVENTORY: {
     book: (_inst, doer, actions) => { if (doer.hasTag('reader')) actions.push('READ'); },
+    // The rider's FEED branches are not ported: no doer has a mount.
+    edible: (inst, doer, actions, right) => {
+      if (!right && inst.components.equippable) return;
+      const eats = Object.values(FOODGROUP).some(group => doer.hasTag(`${group.name}_eater`)
+        && group.types.some(type => inst.hasTag(`edible_${type}`)))
+        || FOODTYPE.some(type => inst.hasTag(`edible_${type}`) && doer.hasTag(`${type}_eater`));
+      if (eats) actions.push('EAT');
+    },
     instrument: (_inst, _doer, actions) => { actions.push('PLAY'); },
   },
   USEITEM: {

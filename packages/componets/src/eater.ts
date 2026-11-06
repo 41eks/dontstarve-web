@@ -3,8 +3,13 @@ import type { Edible } from './edible';
 import type { Hunger } from './hunger';
 import type { Sanity } from './sanity';
 
-// constants.lua FOODGROUP.OMNI
-const OMNI = ['MEAT', 'VEGGIE', 'INSECT', 'SEEDS', 'GENERIC', 'GOODIES'];
+/** constants.lua FOODTYPE. */
+export const FOODTYPE = ['GENERIC', 'MEAT', 'VEGGIE', 'ELEMENTAL', 'GEARS', 'HORRIBLE', 'INSECT', 'SEEDS', 'BERRY', 'RAW', 'BURNT',
+  'NITRE', 'ROUGHAGE', 'WOOD', 'GOODIES', 'MONSTER', 'LUNAR_SHARDS', 'CORPSE', 'MIASMA'] as const;
+/** constants.lua FOODGROUP, for the groups a ported eater's diet uses. */
+export const FOODGROUP: Readonly<Record<string, { readonly name: string; readonly types: readonly string[] }>> = {
+  OMNI: { name: 'OMNI', types: ['MEAT', 'VEGGIE', 'INSECT', 'SEEDS', 'GENERIC', 'GOODIES'] },
+};
 
 interface EaterInstance {
   addTag(tag: string): void;
@@ -34,7 +39,7 @@ export class Eater {
   SetOnEatFn(fn: () => void): void { this.oneat = fn; }
   CanEat(food: EaterFood): boolean {
     return !food.isRemoved && !!food.components?.edible
-      && this.diet.some(type => (type === 'OMNI' ? OMNI : [type]).some(type => food.hasTag(`edible_${type}`)));
+      && this.diet.some(type => (FOODGROUP[type]?.types ?? [type]).some(type => food.hasTag(`edible_${type}`)));
   }
   Eat(food: EaterFood, feeder: unknown = this.inst): boolean {
     food.flush?.();

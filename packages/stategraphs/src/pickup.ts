@@ -24,6 +24,8 @@ export interface PickupDoer extends InventoryActor {
     combat?: import('../../componets/src/combat').Combat;
     sleepingbaguser?: import('../../componets/src/sleepingbag').SleepingBagSleeper;
     staffsanity?: { doCastingDelta(delta: number): void };
+    /** eater.lua, which ACTIONS.EAT reaches on the doer. */
+    eater?: import('../../componets/src/eater').Eater;
     /** reader.lua, which ACTIONS.READ reaches on the doer. */
     reader?: { Read(book: object): readonly [boolean, string?] | undefined; OnRemoveFromEntity(): void };
   };

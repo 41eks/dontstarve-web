@@ -9,7 +9,7 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Health } from '../../componets/src/health';
 import { createWilsonPlayerPrefab } from './playerVisual';
 import { OnMakePlayerGhost, OnRespawnFromGhost, type PlayerGhostOwner } from '../../prefab/src/player_common';
-import { FoodActionController } from '../../stategraphs/src/eat';
+import { inventoryUse } from './inventoryUseFixture';
 import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import type { WorldContext } from '../../prefab/src/worldContext';
@@ -31,8 +31,7 @@ it('eats eight red caps, dies through component events, becomes a ghost and save
     renderer: { domElement: new EventTarget() } } as unknown as WorldContext;
   instance.components.inventory = inventory;
   const picker = new PlayerActionPicker(new PointerRaycaster(world));
-  const food = new FoodActionController({ ...world, mouseActions: picker }, animation.stategraph,
-    { stop() {}, goToPoint: () => true, destination: undefined }, instance);
+  const food = inventoryUse({ ...world, mouseActions: picker }, animation.stategraph, instance);
   const ghost = createSignal(false), skeleton = vi.fn(), death = vi.fn();
   const owner: PlayerGhostOwner = {
     model: player, animation, physics, stats, ghostMode: ghost,
@@ -54,7 +53,7 @@ it('eats eight red caps, dies through component events, becomes a ghost and save
     inventory.add('red_cap', 8);
     const slot = inventorySlotAddress(0), cap = inventory.getEntity(slot)!;
     for (let eaten = 1; eaten <= 8; eaten++) {
-      expect(food.eat(cap)).toBe(true);
+      expect(food.use(cap)).toBe(true);
       frames(11);
       expect(health.currenthealth).toBe(Math.max(0, 150 - 20 * (eaten - 1)));
       frames(1);
