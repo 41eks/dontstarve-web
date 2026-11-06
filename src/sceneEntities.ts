@@ -339,7 +339,6 @@ export async function createSceneEntities(
     'rain': ReturnType<typeof registerRain>;
     'snow': ReturnType<typeof registerSnow>;
     'ocean_waves': ReturnType<typeof registerOceanWaves>;
-    'stafflight': ReturnType<typeof registerStaffLights>;
     'staff_castinglight': ReturnType<typeof registerStaffCastingLights>;
     'pond': ReturnType<typeof registerPonds>;
     'marsh_plant': ReturnType<typeof registerMarshPlants>;
@@ -365,7 +364,7 @@ export async function createSceneEntities(
   Managers['lightflier_flower'] = registerLightFlierFlowers(registry, 'lightflier_flower', worldState);
   Managers['ground_item'] = registerGroundItems(registry, 'ground_item', worldState);
 
-  Managers['stafflight'] = registerStaffLights(registry, worldState);
+  registerStaffLights(registry, worldState);
   Managers['staff_castinglight'] = registerStaffCastingLights(registry, worldState);
   Managers['bulb_plant'] = registerBulbPlants(registry, 'bulb_plant', worldState);
   Managers['stalagmite'] = registerStalagmites(registry, worldState);
@@ -1455,7 +1454,6 @@ export async function createSceneEntities(
   function registerStaffLights(registry: EntityRegistry, worldState: SceneWorldState) {
     prefabs.register(staffLightPrefabs({ scheduler: scheduler ?? worldState.scheduler, tickingarea: worldState.tickingarea, getWatchWorldContent: worldState.getWatchWorldContent }));
     registry.registerPrefabs(MANAGER_DEFINITIONS['stafflight']);
-    return prefabs;
   }
 
   /** No renderEntities: these prefabs have nothing to draw, only a light their displays list. */
