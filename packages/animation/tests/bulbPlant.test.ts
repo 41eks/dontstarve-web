@@ -1,221 +1,162 @@
-import { withEntity } from './entityFixture';
-import { findActionEntity } from '../../prefab/src/actionEntity';
-import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
-import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { BulbPlantController, BulbPlantManager, bulbPlantRegrowTime, BULB_PLANT_LIGHT, type BulbPlantVariant, type BulbPlantSaveState } from '../../prefab/src/bulb_plant';
-import { createSignal, createMemo } from '@dontstarve-web/signals';
-import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { readFile } from 'node:fs/promises';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
+import { createMemo, createSignal } from '@dontstarve-web/signals';
+import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import { bulbPlantPrefabs, bulbPlantRegrowTime, BULB_PLANT_LIGHT, type BulbPlantInstance } from '../../prefab/src/bulb_plant';
+import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
+import { EntityRegistry } from '../../../src/entityRegistry';
+import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
+import { createInventoryStore } from '../../../src/inventory';
+import { executeDebugCommand } from '../../../src/debugCommands';
+import { serializeSave } from '../../../src/save/serialize';
+import { deserializeSave } from '../../../src/save/deserialize';
+import { SAVE_CATALOG } from '../../../src/save/catalog';
+import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 
-/** The inst.Light an entity's model declares. */
-const declaredLight = (model: THREE.Object3D) => prefabInstance(model)?.light.peek();
-
+const turn = () => new Promise(resolve => setTimeout(resolve, 0));
+vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
+beforeEach(() => {
+  vi.stubGlobal('window', new EventTarget());
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url)))));
+  vi.spyOn(Math, 'random').mockReturnValue(0);
+});
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
-function setup(variant: BulbPlantVariant = 'single', saved?: BulbPlantSaveState) {
-  const model = withEntity(new THREE.Group(), 'flower_cave');
-  const animation = { update: vi.fn(), playOnce: vi.fn(), start: vi.fn() };
+function setup() {
+  const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), awake = createSignal(true), inventory = createInventoryStore([]);
   let light = 1;
-  const controller = new BulbPlantController(model, animation, { getLightLevel: () => light }, variant, saved, () => 0, prefabInstance(model)!);
-  return { model, animation, controller, setLight: (value: number) => { light = value; } };
+  const getLightLevel = vi.fn(() => light);
+  const displays = new PrefabDisplayGroup(scene);
+  const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { tickingarea: () => createMemo(() => awake.get()) });
+  prefabs.register(bulbPlantPrefabs({ scheduler, getLightLevel }) as never);
+  const registry = new EntityRegistry([], prefabs, () => new THREE.Vector3(1, 0, 2));
+  registry.registerPrefabs(PREFAB_DEFINITIONS.bulbPlants);
+  const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
+  const save = () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(), elapsedSeconds: 0,
+    playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
+  const spawn = (id: string, saved?: Parameters<typeof prefabs.spawn>[2]) => prefabs.spawn(id, new THREE.Vector3(1, 0, 2), saved) as BulbPlantInstance;
+  return { scene, scheduler, awake, inventory, prefabs, registry, save, spawn, getLightLevel, setLight: (value: number) => { light = value; },
+    clip: (plant: PrefabInstance) => plant.sprite.sprite.peek().clip,
+    plants: () => scene.children.map(model => prefabInstance<BulbPlantInstance>(model)!).filter(plant => plant?.prefab.startsWith('flower_cave')),
+    dispose: () => { registry.dispose(); prefabs.dispose(); displays.dispose(); inventory.dispose(); scheduler.dispose(); } };
 }
 
 describe('flower_cave source light cycle', () => {
-
   it('waits on wake, turns on in light, drains after 94 seconds and recharges after 114', () => {
     const s = setup();
-    s.controller.update(0.9);
-    expect(s.controller.lightState).toBe('CHARGED');
-    s.controller.update(0.2);
-    expect(s.controller.lightState).toBe('ON');
-    expect(s.animation.playOnce).toHaveBeenLastCalledWith('recharge', expect.any(Function));
-    s.controller.update(3.9);
-    expect(s.controller.light.peek()).toEqual(BULB_PLANT_LIGHT);
-    s.controller.update(90);
-    expect(s.controller.lightState).toBe('RECHARGING');
-    expect(s.animation.playOnce).toHaveBeenLastCalledWith('drain', expect.any(Function));
-    s.controller.update(4);
-    expect(s.controller.light.peek()).toBeUndefined();
-    s.setLight(0);
-    s.controller.update(110);
-    expect(s.controller.lightState).toBe('CHARGED');
-    expect(s.animation.playOnce).toHaveBeenLastCalledWith('revive', expect.any(Function));
-    expect(s.controller.exportState('single')).toEqual({ variant: 'single', lightState: 'CHARGED' });
+    try {
+      const plant = s.spawn('flower_cave');
+      s.scheduler.advance(0.9);
+      expect(plant.light_state).toBe('CHARGED');
+      s.scheduler.advance(0.2);
+      expect(plant.light_state).toBe('ON');
+      // recharge, then the idle loop (without art the display finishes the one-shot clip at once).
+      expect(s.clip(plant)).toMatchObject({ name: 'idle', loop: true });
+      // OnLightDirty's periodic task tweens the light to its steady value.
+      s.scheduler.advance(3.9);
+      expect(plant.light.peek()).toEqual(BULB_PLANT_LIGHT);
+      s.scheduler.advance(90);
+      expect(plant.light_state).toBe('RECHARGING');
+      expect(s.clip(plant)).toMatchObject({ name: 'withered', loop: false });
+      s.scheduler.advance(4);
+      expect(plant.light.peek()).toBeUndefined();
+      s.setLight(0);
+      s.scheduler.advance(110);
+      expect(plant.light_state).toBe('CHARGED');
+      expect(s.clip(plant)).toMatchObject({ name: 'off', loop: false });
+      expect(plant.GetPersistData()).toEqual({ bulbPlant: { variant: 'single', lightState: 'CHARGED' } });
+    } finally { s.dispose(); }
   });
 
-  it('observes LightWatcher hysteresis and does not turn off just because ambient becomes dark', () => {
+  it('observes LightWatcher hysteresis, and samples only while the entity is awake', async () => {
     const s = setup();
-    s.setLight(0);
-    s.controller.update(2);
-    s.setLight(0.06);
-    s.controller.update(1);
-    expect(s.controller.lightState).toBe('CHARGED');
-    s.setLight(0.075);
-    s.controller.update(4);
-    expect(s.controller.lightState).toBe('ON');
-    s.setLight(0);
-    s.controller.update(1);
-    expect(s.controller.lightState).toBe('ON');
-    expect(s.controller.light.peek()).toEqual(BULB_PLANT_LIGHT);
+    try {
+      const plant = s.spawn('flower_cave');
+      s.setLight(0); s.scheduler.advance(2);
+      s.setLight(0.06); s.scheduler.advance(1);
+      expect(plant.light_state).toBe('CHARGED');
+      s.setLight(0.075); s.scheduler.advance(4);
+      expect(plant.light_state).toBe('ON');
+      s.setLight(0); s.scheduler.advance(1);
+      expect(plant.light_state).toBe('ON');
+      s.awake.set(false); await turn();
+      const sampled = s.getLightLevel.mock.calls.length;
+      s.scheduler.advance(5);
+      expect(s.getLightLevel.mock.calls.length).toBe(sampled);
+      s.awake.set(true); await turn();
+      expect(s.getLightLevel.mock.calls.length).toBeGreaterThan(sampled);
+    } finally { s.dispose(); }
   });
 });
 
 describe('flower_cave harvesting and regrowth', () => {
-  it.each([['double', 2, 2160]] as const)('picks %s for %i fruit and regrows after %i seconds', (variant, count, seconds) => {
-    const s = setup(variant);
-    s.controller.update(5);
-    const full = vi.fn(() => false);
-    const before = s.controller.exportState(variant);
-    expect(prefabInstance(s.model)!.hasTag('plant')).toBe(true);
-    expect(prefabInstance(s.model)!.hasTag('pickable')).toBe(true);
-    expect(s.controller.pickable.pick({ giveItem: full })).toBe(false);
-    expect(full).toHaveBeenCalledWith('lightbulb', count, s.model.position);
-    expect(s.controller.exportState(variant)).toEqual(before);
-    expect(s.controller.light.peek()).toBeDefined();
+  it('picks a double plant for 2 bulbs and regrows after 2160 seconds', () => {
+    const s = setup();
+    try {
+      const plant = s.spawn('flower_cave_double'), { pickable } = plant.components;
+      s.scheduler.advance(5);
+      expect([plant.hasTag('plant'), plant.hasTag('pickable')]).toEqual([true, true]);
+      const full = vi.fn(() => false);
+      expect(pickable.pick({ giveItem: full })).toBe(false);
+      expect(full).toHaveBeenCalledWith('lightbulb', 2, plant.position);
+      expect(plant.light.peek()).toBeDefined();
 
-    const give = vi.fn(() => true);
-    expect(s.controller.pickable.pick({ giveItem: give })).toBe(true);
-    expect(give).toHaveBeenCalledWith('lightbulb', count, s.model.position);
-    expect(prefabInstance(s.model)!.hasTag('plant')).toBe(true);
-    expect(prefabInstance(s.model)!.hasTag('pickable')).toBe(false);
-    expect(s.controller.light.peek()).toBeUndefined();
-    expect(s.animation.playOnce).toHaveBeenLastCalledWith('picking', expect.any(Function));
-    expect(s.controller.pickable.pick({ giveItem: give })).toBe(false);
-    expect(give).toHaveBeenCalledTimes(1);
-    expect(s.controller.exportState(variant)).toEqual({
-      variant, lightState: 'RECHARGING', picked: true, regrowSeconds: seconds,
-    });
+      const give = vi.fn(() => true);
+      expect(pickable.pick({ giveItem: give })).toBe(true);
+      expect(plant.hasTag('pickable')).toBe(false);
+      expect(plant.light.peek()).toBeUndefined();
+      expect(s.clip(plant)).toMatchObject({ name: 'picked' });
+      expect(plant.GetPersistData()).toEqual({ bulbPlant: { variant: 'double', lightState: 'RECHARGING', picked: true, regrowSeconds: 2160 } });
 
-    s.controller.update(seconds - 0.25);
-    expect(s.controller.pickable.canBePicked).toBe(false);
-    s.controller.update(0.25);
-    expect(s.controller.pickable.canBePicked).toBe(true);
-    expect(prefabInstance(s.model)!.hasTag('plant')).toBe(true);
-    expect(prefabInstance(s.model)!.hasTag('pickable')).toBe(true);
-    expect(s.animation.playOnce).toHaveBeenLastCalledWith('grow', expect.any(Function));
-    expect(s.controller.exportState(variant)).toEqual({ variant, lightState: 'RECHARGING', remainingSeconds: 114 });
-    expect(s.controller.pickable.pick({ giveItem: give })).toBe(true);
-    expect(give).toHaveBeenCalledTimes(2);
-  });
-
-  it('restores picked plants without light or picking until the saved regrow timer expires', () => {
-    const s = setup('double', { variant: 'double', lightState: 'RECHARGING', picked: true, regrowSeconds: 2 });
-    expect(s.controller.pickable.canBePicked).toBe(false);
-    expect(prefabInstance(s.model)!.hasTag('plant')).toBe(true);
-    expect(prefabInstance(s.model)!.hasTag('pickable')).toBe(false);
-    expect(s.controller.light.peek()).toBeUndefined();
-    s.controller.update(1.5);
-    expect(s.controller.exportState('double')).toEqual({
-      variant: 'double', lightState: 'RECHARGING', picked: true, regrowSeconds: 0.5,
-    });
-    s.controller.update(0.5);
-    expect(s.controller.pickable.canBePicked).toBe(true);
-    expect(prefabInstance(s.model)!.hasTag('plant')).toBe(true);
-    expect(prefabInstance(s.model)!.hasTag('pickable')).toBe(true);
-    expect(s.controller.lightState).toBe('RECHARGING');
+      s.scheduler.advance(2160 - 0.25);
+      expect(pickable.canBePicked).toBe(false);
+      s.scheduler.advance(0.25);
+      expect(pickable.canBePicked).toBe(true);
+      expect(s.clip(plant)).toMatchObject({ name: 'idle', loop: true });
+      expect(plant.GetPersistData()).toEqual({ bulbPlant: { variant: 'double', lightState: 'RECHARGING', remainingSeconds: 114 } });
+    } finally { s.dispose(); }
   });
 });
 
-describe('real plant archives, spawning and saving', () => {
-  it('loads each source build and animation, shares atlases and restores prefab sizes and state', async () => {
-    vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(
-      `../../../public/dst/data/anim/${String(url).split('/').at(-1)}`, import.meta.url))));
-    const scene = new THREE.Scene();
-    const manager = new BulbPlantManager(scene, '/anim', { getLightLevel: () => 1 }, () => 0);
-    const single = await manager.spawn('flower_cave', new THREE.Vector3(1, 50, 2));
-    const duplicate = await manager.spawn('flower_cave', new THREE.Vector3(2, 0, 2));
-    const double = await manager.spawn('flower_cave_double', new THREE.Vector3(3, 0, 4));
-    const triple = await manager.spawn('flower_cave_triple', new THREE.Vector3(5, 0, 6));
-    const springy = await manager.spawn('flower_cave', new THREE.Vector3(8, 0, 9), {
-      id: 'e_springy', transform: { position: [8, 0, 9], rotationY: 0 },
-      components: { bulbPlant: { variant: 'springy', lightState: 'ON', remainingSeconds: 50 } },
-    });
-    const mesh = (model: THREE.Group) => model.children[0].children[0].children[0] as THREE.Mesh;
-    const material = (model: THREE.Group) => (mesh(model).material as THREE.MeshBasicMaterial[])[0];
-    expect(single.position.toArray()).toEqual([1, 0, 2]);
-    expect(material(single).map).toBe(material(duplicate).map);
-    expect(material(single).map).not.toBe(material(double).map);
-    for (let i = 0; i < 80; i++) manager.update(0.1, new THREE.Quaternion());
-    for (const model of [single, double, triple, springy]) {
-      expect(model.children[0].children[0].children).toHaveLength(1);
-      expect(mesh(model).geometry.drawRange.count).toBeGreaterThan(0);
-      expect(material(model).forceSinglePass).toBe(true);
-    }
-    expect(declaredLight(single)?.radius).toBe(9);
-    expect(declaredLight(double)?.radius).toBe(13.5);
-    expect(declaredLight(triple)?.radius).toBe(13.5);
-    const records = manager.exportRecords();
-    expect(records.find(p => p.prefabId === 'flower_cave_double')!.record.components.bulbPlant.variant).toBe('double');
-    const saved = records.find(p => p.record.id === 'e_springy')!;
-    const restored = await manager.spawn(saved.prefabId, new THREE.Vector3(...saved.record.transform.position), saved.record);
-    expect(lookupPrefabInstance(restored)?.entityId).toBe(saved.record.id);
-    expect(restored.userData.bulbPlantVariant).toBe('springy');
-    expect(declaredLight(restored)).toEqual(BULB_PLANT_LIGHT);
-    expect(manager.renderEntities.every(p => p.footPosition === p.object.position)).toBe(true);
-    // All four archives must supply picking/picked and grow clips, including springy.
-    for (const model of [single, double, triple, springy]) {
-      expect((findActionEntity(model)?.components ?? prefabInstance(model)!.components).pickable.pick({ giveItem: () => true })).toBe(true);
-    }
-    for (let i = 0; i < 80; i++) manager.update(0.1, new THREE.Quaternion());
-    const pickedRecord = manager.exportRecords().find(p => p.record.id === 'e_springy')!;
-    const pickedRestored = await manager.spawn(pickedRecord.prefabId, new THREE.Vector3(8, 0, 9), pickedRecord.record);
-    expect(pickedRestored.userData.bulbPlantPicked).toBe(true);
-    expect(prefabInstance(pickedRestored)!.listTags()).toContain('plant');
-    expect(declaredLight(pickedRestored)).toBeUndefined();
-    for (const model of [single, double, triple, springy]) {
-      expect(mesh(model).geometry.drawRange.count).toBeGreaterThan(0);
-      model.userData.bulbPlantController.update(bulbPlantRegrowTime(model.userData.bulbPlantVariant));
-      expect((findActionEntity(model)?.components ?? prefabInstance(model)!.components).pickable.canBePicked).toBe(true);
-    }
-    for (let i = 0; i < 80; i++) manager.update(0.1, new THREE.Quaternion());
-    manager.dispose();
-    expect(scene.children).toHaveLength(0);
-    expect(declaredLight(single)).toBeUndefined();
-    expect(prefabInstance(single)!.listTags()).toEqual(['plant']);
-    expect((findActionEntity(single)?.components ?? prefabInstance(single)!.components).pickable).toBeUndefined();
-  });
-});
+describe('flower_cave spawning, art and saving', () => {
+  it('loads each source archive, keeps c_spawn plants through c_save and restores picked and lit plants', async () => {
+    const s = setup(), restored = setup();
+    try {
+      for (const id of ['flower_cave', 'flower_cave_double', 'flower_cave_triple']) {
+        expect((await executeDebugCommand(`c_spawn("${id}")`, s.inventory, prefab => s.registry.spawn(prefab))).ok).toBe(true);
+      }
+      const lit = s.spawn('flower_cave', { id: 'e_springy', components: { bulbPlant: { variant: 'springy', lightState: 'ON', remainingSeconds: 50 } } });
+      const [single, double, triple] = s.plants();
+      expect(s.plants().map(plant => plant.variant)).toEqual(['single', 'double', 'triple', 'springy']);
+      // instanceAssets resolves each plant's SetBank / SetBuild after its SetPersistData, so springy loads its own archive.
+      await vi.waitFor(() => expect(s.plants().map(plant => plant.sprite.loaded)).toEqual([true, true, true, true]));
+      await Promise.all(s.plants().map(plant => prefabDisplay(plant.transform.model)!.artLoaded()));
+      expect(prefabDisplay(lit.transform.model)!.model.getObjectByProperty('isMesh', true)).toBeDefined();
+      // A loaded lit plant loops idle with the steady light; the variant picks the radius.
+      expect(s.clip(lit)).toMatchObject({ name: 'idle', loop: true });
+      expect(lit.light.peek()).toEqual(BULB_PLANT_LIGHT);
+      expect(lit.minimap.icon).toBe('bulb_plant.png');
+      s.scheduler.advance(10);
+      expect([single, double, triple].map(plant => plant.light.peek()?.radius)).toEqual([9, 13.5, 13.5]);
 
-describe('flower_cave sprite residency', () => {
-  it('releases the sprite outside the tickingarea and restores the logical clip on return', async () => {
-    vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(
-      `../../../public/dst/data/anim/${String(url).split('/').at(-1)}`, import.meta.url))));
-    const awake = createSignal(true);
-    const manager = new BulbPlantManager(new THREE.Scene(), '/anim', { getLightLevel: () => 1, tickingarea: () => createMemo(() => awake.get()) }, () => 0);
-    const plant = await manager.spawn('flower_cave', new THREE.Vector3(1, 0, 2));
-    await new Promise(resolve => setTimeout(resolve, 0));
-    const meshes = () => { let count = 0; plant.traverse(object => { if ((object as THREE.Mesh).isMesh) count++; }); return count; };
-    expect(meshes()).toBeGreaterThan(0);
-    awake.set(false);
-    await new Promise(resolve => setTimeout(resolve, 0));
-    expect(meshes()).toBe(0);
-    awake.set(true);
-    await new Promise(resolve => setTimeout(resolve, 0));
-    expect(meshes()).toBeGreaterThan(0);
-    manager.dispose();
-  });
-});
-
-describe('flower_cave tickingarea gate', () => {
-  it('stops light watching outside the area and resamples on return; the display advances the clips', async () => {
-    const awake = createSignal(false);
-    const model = withEntity(new THREE.Group(), 'flower_cave');
-    const animation = { update: vi.fn(), playOnce: vi.fn(), start: vi.fn() };
-    const getLightLevel = vi.fn(() => 1);
-    const controller = new BulbPlantController(model, animation, { getLightLevel, tickingarea: () => createMemo(() => awake.get()) },
-      'single', undefined, () => 0, prefabInstance(model)!);
-    await new Promise(resolve => setTimeout(resolve, 0));
-    controller.update(5);
-    const sampledAsleep = getLightLevel.mock.calls.length;
-    controller.update(5);
-    expect(getLightLevel.mock.calls.length).toBe(sampledAsleep);
-    awake.set(true);
-    await new Promise(resolve => setTimeout(resolve, 0));
-    expect(controller.isActive).toBe(true);
-    controller.update(0.1);
-    expect(getLightLevel.mock.calls.length).toBeGreaterThan(sampledAsleep);
-    expect(animation.update).not.toHaveBeenCalled();
-    controller.dispose();
+      expect(lit.components.pickable.pick({ giveItem: () => true })).toBe(true);
+      let json = '';
+      expect((await executeDebugCommand('c_save()', s.inventory, undefined, () => { json = s.save(); })).ok).toBe(true);
+      const entities = deserializeSave(json, SAVE_CATALOG).world.entities;
+      for (const id of ['flower_cave', 'flower_cave_double', 'flower_cave_triple']) {
+        for (const record of entities[id] ?? []) restored.prefabs.spawn(id, new THREE.Vector3(...record.transform.position), record);
+      }
+      const byId = (records: ReturnType<typeof s.prefabs.exportRecords>) => [...records].sort((a, b) => a.record.id.localeCompare(b.record.id));
+      expect(byId(restored.prefabs.exportRecords())).toEqual(byId(s.prefabs.exportRecords()));
+      const picked = restored.plants().find(plant => plant.entityId === 'e_springy')!;
+      expect([picked.variant, picked.components.pickable.canBePicked, picked.light.peek()]).toEqual(['springy', false, undefined]);
+      expect(s.clip(picked)).toMatchObject({ name: 'picked', finished: true });
+      restored.scheduler.advance(bulbPlantRegrowTime('springy'));
+      expect(picked.components.pickable.canBePicked).toBe(true);
+      picked.remove();
+      expect(picked.light.peek()).toBeUndefined();
+    } finally { s.dispose(); restored.dispose(); }
   });
 });

@@ -160,8 +160,8 @@ export { PlaySound, PreloadSounds, DisposeSounds, UpdateSoundListener, inverseSq
 export { FIREFLIES_ID, FIREFLIES_LIGHT, FirefliesAssets, FirefliesController, createFirefliesGroundSprite, type FirefliesWorld } from './fireflies';
 export {
   BULB_PLANT_ID, BULB_PLANT_PREFABS, BULB_PLANT_VARIANTS, BULB_PLANT_LIGHT_STATES, BULB_PLANT_LIGHT,
-  BulbPlantController, BulbPlantManager, bulbPlantLight, bulbPlantRegrowTime, isBulbPlantPrefab,
-  type BulbPlantPrefabId, type BulbPlantVariant, type BulbPlantLightState, type BulbPlantSaveState, type BulbPlantRecord, type BulbPlantWorld,
+  BulbPlantInstance, bulbPlantPrefabs, bulbPlantLight, bulbPlantRegrowTime, isBulbPlantPrefab,
+  type BulbPlantPrefabId, type BulbPlantVariant, type BulbPlantLightState, type BulbPlantSaveState, type BulbPlantWorld,
 } from './bulb_plant';
 
 export {

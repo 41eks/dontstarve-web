@@ -128,9 +128,9 @@ timer 使用 [共享游戏时间调度器](../packages/componets/src/gameTimeSch
 
 ### 组件数据 signal 与派生状态 memo
 
-`Pickable` 拥有原版 `canbepicked` 对应的可采摘条件 `canBePicked`、交互开关 `canInteractWith` 与再生 timer，`BulbPlantController` 拥有独立灯光模式 `lightState` 和 `recharge`／`turnoff` timer，实体生命周期拥有最终移除标记 `removed`。再生、充能和关闭照明均将 timer 本身保存为私有可写 signal，对外提供只读视图；不在组件里逐帧用 `dt` 扣减这些 timer。
+`Pickable` 拥有原版 `canbepicked` 对应的可采摘条件 `canBePicked`、交互开关 `canInteractWith` 与再生 timer，`BulbPlantInstance`（由全局 `PrefabEntityManager` 生成）拥有独立灯光模式 `light_state` 和 `recharge`／`turnoff` timer，实体生命周期拥有最终移除标记 `removed`。再生、充能和关闭照明均将 timer 本身保存为私有可写 signal，对外提供只读视图；不在组件里逐帧用 `dt` 扣减这些 timer。
 
-`phase` 由可采摘条件和移除标记派生为 `'ready' | 'picked' | 'removed'`，`regrowing` 从再生 timer 是否正在运行派生；`appearance` 将这些派生状态与独立灯光模式组合为表现快照。`picked` 可从 `!canBePicked` 派生，不额外维护可写布尔值；可交互性依据 `!removed && canBePicked && canInteractWith` 派生，组件据此同步维护 `pickable` 标签，保留 `plant` 等其他标签。
+`phase` 由可采摘条件和移除标记派生为 `'ready' | 'picked' | 'removed'`，`regrowing` 从再生 timer 是否正在运行派生；`appearance` 将这些派生状态与独立灯光模式组合为表现快照（下文的 `appearance` 代码是设计示例；`BulbPlantInstance` 直接通过 `instance.sprite` 声明动画，不另建该 memo）。`picked` 可从 `!canBePicked` 派生，不额外维护可写布尔值；可交互性依据 `!removed && canBePicked && canInteractWith` 派生，组件据此同步维护 `pickable` 标签，保留 `plant` 等其他标签。
 
 ```ts
 import { createSignal, createMemo } from '@dontstarve-web/signals';
