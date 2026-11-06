@@ -1,136 +1,126 @@
-import { PrefabDisplayGroup } from '@dontstarve-web/display';
+import { SpriteState } from '@dontstarve-web/display';
 import * as THREE from 'three';
-import type { TileStateQuery } from '@dontstarve-web/signals';
+import { createEffect, watchSignal } from '@dontstarve-web/signals';
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { ChildSpawner, type ChildSpawnerChild, type ChildSpawnerSave } from '../../componets/src/childspawner';
 import { Timer, type NamedTimerSave } from '../../componets/src/timer';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { createEmptyEntity, prefabInstance, type PrefabInstance } from './prefabInstance';
-import { watchTileActivity } from './tileActivity';
-import { newEntityId } from './saveRecord';
+import type { KnownLocations } from '../../componets/src/knownlocations';
+import { PrefabInstance, prefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { WORLD_SCALE } from './tile';
+import { Transform } from './transform';
 
 export const DRAGONFLY_SPAWNER_ID = 'dragonfly_spawner' as const;
+/** TUNING.DRAGONFLY_SPAWN_TIME. */
 const SPAWN_PERIOD = 1;
+/** TUNING.DRAGONFLY_RESPAWN_TIME. */
 const RESPAWN_TIME = 480 * 20;
-const REGEN_TIMER = 'regen_dragonfly';
+const DRAGONFLY_SPAWNTIMER = 'regen_dragonfly';
 
+/** The record keeps childspawner.lua's and worldsettingstimer.lua's OnSave under one field. */
 export interface DragonflySpawnerSaveState {
   childspawner: ChildSpawnerSave;
   worldsettingstimer?: NamedTimerSave;
 }
-export interface DragonflySpawnerRecord {
-  id: string;
-  transform: { position: [number, number, number]; rotationY: number };
-  components: { dragonflySpawner: DragonflySpawnerSaveState };
-}
-interface DragonflyChild extends ChildSpawnerChild<Spawner> { readonly model: THREE.Group }
-interface Spawner {
-  instance: PrefabInstance;
-  display: ReturnType<typeof createEmptyEntity>['display'];
-  childspawner: ChildSpawner<Spawner, DragonflyChild>;
-  timer: Timer;
-  stopActivity: () => void;
-  stopPostPass: () => void;
-}
+interface DragonflyChild extends ChildSpawnerChild<DragonflySpawnerInstance> { readonly model: THREE.Group }
 export interface DragonflySpawnerWorld {
   scheduler: GameTimeScheduler;
-  tickingarea?: TileStateQuery;
   spawnDragonfly(position: THREE.Vector3): THREE.Group;
   resolveDragonfly(id: string): THREE.Group | undefined;
   isPassable(position: THREE.Vector3): boolean;
 }
 
-/** dragonfly_spawner.lua: invisible CLASSIFIED home with one queued child and a world-settings respawn timer. */
-export class DragonflySpawnerManager {
-  private readonly spawners = new Map<THREE.Group, Spawner>();
-  private readonly displays: PrefabDisplayGroup;
-  private readonly world: DragonflySpawnerWorld;
-  private disposed = false;
-  constructor(scene: THREE.Scene, world: DragonflySpawnerWorld) { this.displays = new PrefabDisplayGroup(scene); this.world = world; }
+/** dragonfly_spawner.lua fn: an invisible CLASSIFIED home with one queued child and a world-settings respawn timer.
+ * The lava pond engagement events are not ported. */
+export class DragonflySpawnerInstance extends PrefabInstance {
+  /** inst.components.childspawner and worldsettingstimer: saved together under data.dragonflySpawner. */
+  readonly childspawner: ChildSpawner<DragonflySpawnerInstance, DragonflyChild>;
+  readonly worldsettingstimer: Timer;
+  private childrenToLink: readonly string[] = [];
 
-  spawn(position: THREE.Vector3, saved?: DragonflySpawnerRecord): THREE.Group {
-    if (this.disposed) throw new Error('Dragonfly spawners have been disposed');
-    const { instance, display } = createEmptyEntity(DRAGONFLY_SPAWNER_ID);
-    const model = display.model;
-    instance.entityId = saved?.id ?? newEntityId();
-    instance.addTag('CLASSIFIED');
-    instance.copyPosition(position);
-    model.rotation.y = saved?.transform.rotationY ?? 0;
-    const spawner = {} as Spawner;
-    spawner.instance = instance; spawner.display = display;
-    const timer = new Timer(this.world.scheduler, name => {
-      if (name === REGEN_TIMER) { spawner.childspawner.AddChildrenInside(1); spawner.childspawner.StartSpawning(); }
-    }, [REGEN_TIMER]);
-    spawner.timer = timer;
-    const childspawner = new ChildSpawner<Spawner, DragonflyChild>(spawner, this.world.scheduler, saved?.components.dragonflySpawner.childspawner);
-    spawner.childspawner = childspawner;
-    childspawner.ConfigureSpawning(() => this.spawnChild(spawner), SPAWN_PERIOD, 0);
-    childspawner.onchildkilled = () => { timer.StartTimer(REGEN_TIMER, RESPAWN_TIME); };
+  constructor(world: DragonflySpawnerWorld, position: ReadonlyVector3) {
+    super(DRAGONFLY_SPAWNER_ID, new SpriteState({ name: '', billboard: false }), Transform.stationary());
+    this.setPosition(position.x, 0, position.z);
+    this.addTag('CLASSIFIED');
+
+    const childspawner = this.childspawner = new ChildSpawner<DragonflySpawnerInstance, DragonflyChild>(this, world.scheduler);
+    childspawner.ConfigureSpawning(() => spawnChild(this, world), SPAWN_PERIOD, 0);
+    childspawner.onchildkilled = () => StartSpawning(this);
+    childspawner.StartSpawning();
     childspawner.StopRegen();
-    if (!saved) childspawner.StartSpawning();
-    timer.OnLoad(saved?.components.dragonflySpawner.worldsettingstimer);
-    spawner.stopPostPass = this.world.scheduler.schedule(0, () => {
+    this.worldsettingstimer = new Timer(world.scheduler, name => { if (name === DRAGONFLY_SPAWNTIMER) GenerateNewDragon(this); }, [DRAGONFLY_SPAWNTIMER]);
+
+    this.OnSave = (_inst, data) => {
+      const timer = this.worldsettingstimer.OnSave();
+      data.dragonflySpawner = { childspawner: childspawner.OnSave(), ...timer ? { worldsettingstimer: timer } : {} };
+    };
+    this.OnLoad = (_inst, data) => {
+      const saved = data.dragonflySpawner;
+      if (!saved) return;
+      childspawner.OnLoad(saved.childspawner);
+      this.worldsettingstimer.OnLoad(saved.worldsettingstimer);
+      this.childrenToLink = saved.childspawner.childrenoutside;
+    };
+    // The save loop's LoadPostPass, once the saved dragonflies exist.
+    const stopPostPass = world.scheduler.schedule(0, () => {
       childspawner.LoadPostPass(id => {
-        const child = this.world.resolveDragonfly(id);
-        return child ? this.childFor(child) : undefined;
-      }, saved?.components.dragonflySpawner.childspawner.childrenoutside ?? []);
-      if (childspawner.childreninside + childspawner.numchildrenoutside === 0 && !timer.TimerExists(REGEN_TIMER))
-        timer.StartTimer(REGEN_TIMER, RESPAWN_TIME);
+        const child = world.resolveDragonfly(id);
+        return child ? childFor(child) : undefined;
+      }, this.childrenToLink);
+      OnLoadPostPass(this);
     });
-    this.spawners.set(model, spawner);
-    this.displays.mount(display);
-    spawner.stopActivity = watchTileActivity(model, this.world.tickingarea, active => {
-      instance.setActive(active);
-      if (active) childspawner.OnEntityWake(); else childspawner.OnEntitySleep();
+    // OnEntitySleep / OnEntityWake.
+    let stopStatus: (() => void) | undefined;
+    const status = watchSignal(this.status, stop => { stopStatus = stop; });
+    const stopWake = createEffect(() => {
+      const value = status.get();
+      if (value === 'active') childspawner.OnEntityWake(); else if (value === 'asleep') childspawner.OnEntitySleep();
     });
-    instance.onRemove(() => {
-      this.spawners.delete(model);
-      spawner.stopActivity(); spawner.stopPostPass(); childspawner.dispose(); timer.dispose();
-    });
-    return model;
+    this.onRemove(() => { stopPostPass(); stopWake(); stopStatus?.(); childspawner.dispose(); this.worldsettingstimer.dispose(); });
   }
+}
 
-  private spawnChild(spawner: Spawner): DragonflyChild | undefined {
-    const origin = spawner.instance.position;
-    const start = Math.random() * Math.PI * 2;
-    let point: THREE.Vector3 | undefined;
-    for (let i = 0; i < 8; i++) {
-      const angle = start + i * Math.PI / 4;
-      const candidate = new THREE.Vector3(origin.x + Math.cos(angle) * .5 * WORLD_SCALE, 0,
-        origin.z + Math.sin(angle) * .5 * WORLD_SCALE);
-      if (this.world.isPassable(candidate)) { point = candidate; break; }
-    }
-    if (!point) return;
-    const model = this.world.spawnDragonfly(point);
-    const locations = prefabInstance(model)!.components?.knownlocations as import('../../componets/src/knownlocations').KnownLocations | undefined;
-    locations?.RememberLocation('spawnpoint', point);
-    return this.childFor(model);
-  }
+function StartSpawning(inst: DragonflySpawnerInstance): void { inst.worldsettingstimer.StartTimer(DRAGONFLY_SPAWNTIMER, RESPAWN_TIME); }
 
-  private childFor(model: THREE.Group): DragonflyChild {
-    const instance = prefabInstance(model) as PrefabInstance | undefined;
-    if (!instance?.entityId) throw new Error('Spawned dragonfly has no instance identity');
-    const locations = prefabInstance(model)!.components?.knownlocations as import('../../componets/src/knownlocations').KnownLocations | undefined;
-    return { id: instance.entityId, model,
-      setHome: home => { if (home) locations?.RememberLocation('home', home.instance.position); },
-      ListenForEvent: (name, fn) => {
-        if (name === 'onremove') return instance.onRemove(fn);
-        return instance.ListenForEvent(name, () => fn());
-      },
-      remove: () => instance.remove() };
+function GenerateNewDragon(inst: DragonflySpawnerInstance): void {
+  inst.childspawner.AddChildrenInside(1);
+  inst.childspawner.StartSpawning();
+}
+
+function OnLoadPostPass(inst: DragonflySpawnerInstance): void {
+  if (inst.childspawner.childreninside + inst.childspawner.numchildrenoutside === 0 && !inst.worldsettingstimer.TimerExists(DRAGONFLY_SPAWNTIMER))
+    StartSpawning(inst);
+}
+
+/** childspawner SpawnChild at a free point .5 units out, then onspawned's spawnpoint. */
+function spawnChild(inst: DragonflySpawnerInstance, world: DragonflySpawnerWorld): DragonflyChild | undefined {
+  const origin = inst.position;
+  const start = Math.random() * Math.PI * 2;
+  let point: THREE.Vector3 | undefined;
+  for (let i = 0; i < 8; i++) {
+    const angle = start + i * Math.PI / 4;
+    const candidate = new THREE.Vector3(origin.x + Math.cos(angle) * .5 * WORLD_SCALE, 0, origin.z + Math.sin(angle) * .5 * WORLD_SCALE);
+    if (world.isPassable(candidate)) { point = candidate; break; }
   }
-  exportRecords(): { prefabId: typeof DRAGONFLY_SPAWNER_ID; record: DragonflySpawnerRecord }[] {
-    return [...this.spawners].map(([model, spawner]) => ({ prefabId: DRAGONFLY_SPAWNER_ID, record: {
-      id: String(spawner.instance.entityId),
-      transform: { position: [model.position.x, model.position.y, model.position.z], rotationY: model.rotation.y },
-      components: { dragonflySpawner: { childspawner: spawner.childspawner.OnSave(),
-        ...(spawner.timer.OnSave() ? { worldsettingstimer: spawner.timer.OnSave() } : {}) } },
-    } }));
-  }
-  dispose(): void {
-    if (this.disposed) return;
-    this.disposed = true;
-    for (const spawner of this.spawners.values()) { spawner.instance.remove(); spawner.display.dispose(); }
-    this.displays.dispose();
-  }
+  if (!point) return;
+  const model = world.spawnDragonfly(point);
+  knownLocations(model)?.RememberLocation('spawnpoint', point);
+  return childFor(model);
+}
+
+const knownLocations = (model: THREE.Group) => prefabInstance(model)?.components?.knownlocations as KnownLocations | undefined;
+
+function childFor(model: THREE.Group): DragonflyChild {
+  const instance = prefabInstance(model) as PrefabInstance | undefined;
+  if (!instance?.entityId) throw new Error('Spawned dragonfly has no instance identity');
+  return { id: instance.entityId, model,
+    // DoTakeOwnership: knownlocations remembers home.
+    setHome: home => { if (home) knownLocations(model)?.RememberLocation('home', home.position); },
+    ListenForEvent: (name, fn) => name === 'onremove' ? instance.onRemove(fn) : instance.ListenForEvent(name, () => fn()),
+    remove: () => instance.remove() };
+}
+
+/** The Prefab dragonfly_spawner.lua returns: no assets, a transform only. */
+export function dragonflySpawnerPrefabs(world: DragonflySpawnerWorld): Readonly<Record<typeof DRAGONFLY_SPAWNER_ID, PrefabEntityDefinition<DragonflySpawnerInstance>>> {
+  return { [DRAGONFLY_SPAWNER_ID]: { fn: position => new DragonflySpawnerInstance(world, position), targetable: false } };
 }

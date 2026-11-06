@@ -1,19 +1,12 @@
-import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import * as THREE from 'three';
-import { createMemo, createSignal, readonlySignal } from '@dontstarve-web/signals';
-import { GameTimeScheduler } from './components/gameTimeScheduler';
+import { SpriteState } from '@dontstarve-web/display';
+import type { GameTimeScheduler } from './components/gameTimeScheduler';
 import { ComponentTimer } from './components/timer';
-import { ArchiveSpriteAssets, preloadSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
-import { LightState, type ArchiveSpriteCommands } from '@dontstarve-web/display';
-import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
-import type { SpriteAnimationController } from '@dontstarve-web/animation/sprite';
+import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { type PrefabLocalLight } from './localLight';
-import { newEntityId } from './saveRecord';
 import { TILE_SIZE } from './tile';
 import { Pickable, type PickableSaveState } from './components/pickable';
-import { actionEntity, disposeActionEntity } from './actionEntity';
-import { watchTileActivity } from './tileActivity';
-import type { GetWatchWorldContent, TileStateQuery } from '@dontstarve-web/signals';
+import { Transform } from './transform';
 import { PlaySound, type SoundHandle } from './sound';
 
 export const BULB_PLANT_ID = 'flower_cave';
@@ -30,11 +23,6 @@ export interface BulbPlantSaveState extends PickableSaveState {
   variant: BulbPlantVariant;
   lightState: BulbPlantLightState;
   remainingSeconds?: number;
-}
-export interface BulbPlantRecord {
-  id: string;
-  transform: { position: [number, number, number]; rotationY: number };
-  components: { bulbPlant: BulbPlantSaveState };
 }
 export const BULB_PLANT_LIGHT: PrefabLocalLight = {
   radius: 3 * (TILE_SIZE / 4), intensity: 0.8, falloff: 0.5,
@@ -73,295 +61,215 @@ export function bulbPlantLight(on: boolean, progress: number, variant: BulbPlant
 
 /** LightWatcher sampling period in game seconds; samples are timer-driven rather than per frame. */
 export const BULB_PLANT_LIGHT_SAMPLE_INTERVAL = 0.5;
+const FRAMES = 1 / 30;
 
 export interface BulbPlantWorld {
   /** LightWatcher level at the plant; the host samples ambient and other lights. */
   getLightLevel(model: THREE.Group): number;
-  scheduler?: GameTimeScheduler;
-  /** The world's tickingarea query; plants outside it neither watch light nor animate. */
-  tickingarea?: TileStateQuery;
-  /** Source of the camera rotation; without it the host passes the rotation to every `update`. */
-  getWatchWorldContent?: GetWatchWorldContent;
+  scheduler: Pick<GameTimeScheduler, 'now' | 'schedule'>;
 }
 
-/** flower_cave's light cycle and animation callbacks for its pickable component. */
-export class BulbPlantController {
-  private readonly lightMode;
-  private readonly scheduler: GameTimeScheduler;
-  private readonly ownsScheduler: boolean;
+/** STATE_ANIMS: the first clip plays once, then the second; only `idle` loops. */
+const STATE_ANIMS: Readonly<Record<BulbPlantLightState, readonly [string, string]>> = {
+  ON: ['recharge', 'idle'], CHARGED: ['revive', 'off'], RECHARGING: ['drain', 'withered'],
+};
+
+/**
+ * flower_cave.lua commonfn plus single / double / triple: a pickable whose LightWatcher turns its light on in light,
+ * drains it on the turnoff timer and recharges. The withered variants, burnable, lootdropper, halloweenmoonmutable and
+ * hauntable are not ported. The record keeps the pickable state and the light timer inside `bulbPlant`.
+ */
+export class BulbPlantInstance extends PrefabInstance {
+  declare readonly components: PrefabInstance['components'] & { pickable: Pickable };
+  /** plantname: flower_cave rolls single or springy; double and triple are fixed. SetBank / SetBuild follow it. */
+  variant: BulbPlantVariant;
+  light_state: BulbPlantLightState = 'CHARGED';
+  private readonly world: BulbPlantWorld;
   private readonly rechargeTimer: ComponentTimer;
   private readonly turnoffTimer: ComponentTimer;
   private readonly wakeTimer: ComponentTimer;
   private readonly sampleTimer: ComponentTimer;
-  private readonly appearanceMemo;
-  readonly state;
+  private lightOn = false;
   private tweenStartedAt: number;
   private tweenDuration = 4;
-  private lightOn: boolean;
-  private awake = false;
+  private lightTask?: () => void;
   private inLight = false;
+  private awake = false;
+  private entityAwake = false;
   private animationVersion = 0;
-  private disposed = false;
-  private active = false;
-  private releaseArea: () => void = () => {};
   private pickSound?: SoundHandle;
-  readonly pickable: Pickable;
-  private readonly model: THREE.Group;
-  private readonly animation: SpriteAnimationController;
-  /** The entity whose visual follows OnEntitySleep/OnEntityWake. */
-  private readonly entity?: { setActive(active: boolean): void; addTag(tag: string): void };
-  private readonly world: BulbPlantWorld;
-  private readonly random: () => number;
-  private readonly variant: BulbPlantVariant;
 
-  /** The plant entity's inst.Light, which the LightWatcher cycle turns on and tweens. */
-  readonly light: LightState;
-
-  constructor(model: THREE.Group, animation: SpriteAnimationController, world: BulbPlantWorld, variant: BulbPlantVariant,
-    saved?: BulbPlantSaveState, random = Math.random,
-    entity?: { setActive(active: boolean): void; addTag(tag: string): void; readonly light: LightState }) {
-    this.model = model;
-    this.light = entity?.light ?? new LightState();
-    this.animation = animation;
-    this.entity = entity;
+  constructor(prefab: BulbPlantPrefabId, world: BulbPlantWorld) {
+    // PlayAnimation("off"): shown on its last frame, as a plant that has been off for a while.
+    super(prefab, new SpriteState({ name: 'off', held: true, billboard: true }), Transform.stationary());
     this.world = world;
-    this.random = random;
-    this.variant = variant;
-    this.scheduler = world.scheduler ?? new GameTimeScheduler();
-    this.ownsScheduler = !world.scheduler;
-    this.lightMode = createSignal<BulbPlantLightState>(saved?.lightState ?? 'CHARGED');
-    this.lightOn = this.lightState === 'ON';
-    this.tweenStartedAt = this.scheduler.now - this.tweenDuration;
-    this.rechargeTimer = new ComponentTimer(this.scheduler, () => {
-      this.setState('CHARGED');
-      this.sampleLight();
-      if (this.inLight) this.turnOn();
-    });
-    this.turnoffTimer = new ComponentTimer(this.scheduler, () => this.turnOff());
-    this.wakeTimer = new ComponentTimer(this.scheduler, () => {
+    this.variant = prefab === 'flower_cave_double' ? 'double' : prefab === 'flower_cave_triple' ? 'triple'
+      : BULB_PLANT_VARIANTS[Math.min(1, Math.floor(Math.random() * 2))];
+    this.addTag('plant');
+    const scheduler = world.scheduler;
+    this.tweenStartedAt = scheduler.now - this.tweenDuration;
+    this.rechargeTimer = new ComponentTimer(scheduler as GameTimeScheduler, () => this.Recharge());
+    this.turnoffTimer = new ComponentTimer(scheduler as GameTimeScheduler, () => this.TurnOff());
+    // OnWake: DoTaskInTime(1, TurnOnInLight); the LightWatcher only reports enterlight after it.
+    this.wakeTimer = new ComponentTimer(scheduler as GameTimeScheduler, () => {
       this.awake = true;
       this.sampleLight();
-      if (this.inLight) this.turnOn();
+      if (this.inLight) this.TurnOn();
     });
-    this.sampleTimer = new ComponentTimer(this.scheduler, () => {
+    this.sampleTimer = new ComponentTimer(scheduler as GameTimeScheduler, () => {
       this.checkLight();
       this.sampleTimer.start(BULB_PLANT_LIGHT_SAMPLE_INTERVAL);
     });
-    if (entity) entity.addTag('plant');
-    else model.userData.tags = [...(model.userData.tags ?? []), 'plant'];
-    model.userData.bulbPlantController = this;
-    this.pickable = new Pickable(model, 'lightbulb', bulbPlantRegrowTime(variant),
-      variant === 'double' ? 2 : variant === 'triple' ? 3 : 1,
-      () => this.onPicked(), () => {
-        this.beginRecharge();
-        this.playSequence('grow', 'idle', true);
-      }, saved, { scheduler: this.scheduler });
-    this.appearanceMemo = createMemo(() => ({ phase: this.pickable.state.phase.get(), lightState: this.lightMode.get(),
-      regrowing: this.pickable.state.regrowing.get() }));
-    this.state = Object.freeze({ lightState: readonlySignal(this.lightMode), appearance: readonlySignal(this.appearanceMemo),
-      rechargeTimer: this.rechargeTimer.snapshot, turnoffTimer: this.turnoffTimer.snapshot, wakeTimer: this.wakeTimer.snapshot });
-    if (saved?.remainingSeconds !== undefined) {
-      if (this.lightState === 'ON') this.turnoffTimer.start(saved.remainingSeconds);
-      else if (this.lightState === 'RECHARGING') this.rechargeTimer.start(saved.remainingSeconds);
-    }
+    new Pickable(this, 'lightbulb', bulbPlantRegrowTime(this.variant), this.variant === 'double' ? 2 : this.variant === 'triple' ? 3 : 1,
+      () => this.onpickedfn(), () => this.onregenfn(), undefined, { scheduler: scheduler as GameTimeScheduler });
     this.wakeTimer.start(1);
-    this.refreshLight();
-    this.releaseArea = watchTileActivity(model, world.tickingarea, active => this.setActive(active));
+    this.onRemove(() => {
+      this.animationVersion++;
+      this.wakeTimer.stop(); this.sampleTimer.stop(); this.rechargeTimer.stop(); this.turnoffTimer.stop();
+      this.lightTask?.(); this.lightTask = undefined;
+      this.components.pickable.dispose();
+      this.pickSound?.stop(); this.pickSound = undefined;
+      this.light.set(null);
+    });
+
+    this.OnSave = (_inst, data) => {
+      const remainingSeconds = this.light_state === 'ON' ? this.turnoffTimer.remainingSeconds : this.rechargeTimer.remainingSeconds;
+      data.bulbPlant = { variant: this.variant, lightState: this.light_state,
+        ...(remainingSeconds === undefined ? {} : { remainingSeconds }), ...this.components.pickable.exportState() };
+      delete data.pickable;
+    };
+    this.OnLoad = (_inst, data) => {
+      const saved = data.bulbPlant;
+      if (!saved) return;
+      this.variant = saved.variant;
+      this.light_state = saved.lightState;
+      this.components.pickable.OnLoad(saved);
+      this.lightOn = this.light_state === 'ON' && this.components.pickable.canBePicked;
+      if (saved.remainingSeconds !== undefined) {
+        if (this.light_state === 'ON') this.turnoffTimer.start(saved.remainingSeconds);
+        else if (this.light_state === 'RECHARGING') this.rechargeTimer.start(saved.remainingSeconds);
+      }
+      // ForceOn / ForceOff(on_load): the state's settled clip, without replaying its transition.
+      if (!this.components.pickable.canBePicked) this.sprite.holdLastFrame('picked');
+      else if (this.lightOn) this.sprite.start('idle');
+      else this.sprite.holdLastFrame(STATE_ANIMS[this.light_state][1]);
+      this.refreshLight();
+    };
   }
 
-  get lightState(): BulbPlantLightState { return this.lightMode.peek(); }
-  private onPicked(): void {
-    this.pickSound?.stop();
-    this.pickSound = PlaySound('dontstarve/wilson/pickup_lightbulb', this.model.position);
-    if (this.lightState === 'ON') this.lightMode.set('RECHARGING');
+  /** OnEntitySleep / OnEntityWake: the LightWatcher samples only while the entity is awake; game-time timers keep running. */
+  setActive(active: boolean): void {
+    if (active !== this.entityAwake && !this.isRemoved) {
+      this.entityAwake = active;
+      if (!active) this.sampleTimer.stop();
+      else {
+        this.checkLight();
+        this.sampleTimer.start(BULB_PLANT_LIGHT_SAMPLE_INTERVAL * (0.5 + Math.random() * 0.5));
+        this.refreshLight();
+      }
+    }
+    super.setActive(active);
+  }
+
+  /** TurnOn: only a pickable, CHARGED plant. */
+  TurnOn(): void {
+    if (this.isRemoved || !this.components.pickable.canBePicked || this.light_state !== 'CHARGED') return;
+    this.SetLightState('ON');
+    this.lightOn = true;
+    this.startTween();
+    this.turnoffTimer.start(90 + this.tweenDuration + Math.random() * 10);
+  }
+
+  /** TurnOff: the turnoff timer, or a regrowth, starts recharging. */
+  TurnOff(): void {
+    if (this.isRemoved) return;
+    this.SetLightState('RECHARGING');
+    this.lightOn = false;
+    this.startTween();
+    this.rechargeTimer.start(110 + this.tweenDuration);
+  }
+
+  private Recharge(): void {
+    this.SetLightState('CHARGED');
+    this.sampleLight();
+    if (this.inLight) this.TurnOn();
+  }
+
+  private onpickedfn(): void {
+    // ForceOff, then StopTimer turnoff / recharge.
+    if (this.light_state === 'ON') this.SetLightState('RECHARGING');
+    this.lightOn = false;
+    this.endTween();
     this.turnoffTimer.stop();
     this.rechargeTimer.stop();
-    this.lightOn = false;
-    this.tweenStartedAt = this.scheduler.now - this.tweenDuration;
-    this.playSequence('picking', 'picked');
-    this.refreshLight();
+    this.pickSound?.stop();
+    this.pickSound = PlaySound('dontstarve/wilson/pickup_lightbulb', this.position);
+    this.play('picking', 'picked');
   }
 
-  get isActive(): boolean { return this.active; }
+  private onregenfn(): void {
+    this.TurnOff();
+    this.play('grow', 'idle', true);
+  }
 
-  private setActive(active: boolean): void {
-    if (this.disposed || this.active === active) return;
-    this.active = active;
-    // OnEntitySleep/OnEntityWake: frames and instance entries exist only while the tile is active.
-    this.entity?.setActive(active);
-    if (!active) { this.sampleTimer.stop(); return; }
-    this.checkLight();
-    this.sampleTimer.start(BULB_PLANT_LIGHT_SAMPLE_INTERVAL * (0.5 + this.random() * 0.5));
-    this.refreshLight();
+  private SetLightState(state: BulbPlantLightState): void {
+    this.light_state = state;
+    this.play(STATE_ANIMS[state][0], STATE_ANIMS[state][1], state === 'ON');
+  }
+
+  private play(first: string, next: string, loop = false): void {
+    const version = ++this.animationVersion;
+    this.sprite.playOnce(first, () => {
+      if (this.isRemoved || version !== this.animationVersion) return;
+      if (loop) this.sprite.start(next); else this.sprite.playOnce(next);
+    });
   }
 
   private checkLight(): void {
     const wasInLight = this.inLight;
     this.sampleLight();
-    if (this.awake && !wasInLight && this.inLight) this.turnOn();
+    if (this.awake && !wasInLight && this.inLight) this.TurnOn();
   }
 
+  /** LightWatcher SetLightThresh(.075) / SetDarkThresh(.05). */
   private sampleLight(): void {
-    const level = this.world.getLightLevel(this.model);
+    const level = this.world.getLightLevel(this.transform.model);
     this.inLight = this.inLight ? level > 0.05 : level >= 0.075;
   }
 
-  update(dt: number): void {
-    if (this.disposed || !Number.isFinite(dt) || dt < 0) return;
-    if (this.ownsScheduler) this.scheduler.advance(dt);
-    if (this.active) this.refreshLight();
-  }
-
-  turnOn(): void {
-    if (this.disposed || !this.pickable.canBePicked || this.lightState !== 'CHARGED') return;
-    this.setState('ON');
-    this.lightOn = true;
-    this.tweenStartedAt = this.scheduler.now;
-    this.tweenDuration = this.randomTween();
-    this.turnoffTimer.start(90 + this.tweenDuration + this.random() * 10);
+  /** math.random(LIGHT_MIN_TIME, LIGHT_MAX_TIME), then OnLightDirty from frame 0. */
+  private startTween(): void {
+    this.tweenDuration = 4 + Math.min(4, Math.floor(Math.random() * 5));
+    this.tweenStartedAt = this.world.scheduler.now;
     this.refreshLight();
   }
 
-  turnOff(): void {
-    if (this.disposed || this.lightState !== 'ON') return;
-    this.beginRecharge();
-  }
-
-  private beginRecharge(): void {
-    this.setState('RECHARGING');
-    this.lightOn = false;
-    this.tweenStartedAt = this.scheduler.now;
-    this.tweenDuration = this.randomTween();
-    this.rechargeTimer.start(110 + this.tweenDuration);
+  /** EndLight: the tween jumps to its last frame. */
+  private endTween(): void {
+    this.tweenStartedAt = this.world.scheduler.now - this.tweenDuration;
     this.refreshLight();
   }
 
-  exportState(variant: BulbPlantVariant): BulbPlantSaveState {
-    const remainingSeconds = this.lightState === 'ON' ? this.turnoffTimer.remainingSeconds : this.rechargeTimer.remainingSeconds;
-    return { variant, lightState: this.lightState, ...(remainingSeconds === undefined ? {} : { remainingSeconds }),
-      ...this.pickable.exportState() };
-  }
-
-  dispose(): void {
-    if (this.disposed) return;
-    this.disposed = true;
-    this.animationVersion++;
-    this.releaseArea();
-    this.wakeTimer.stop(); this.sampleTimer.stop(); this.rechargeTimer.stop(); this.turnoffTimer.stop();
-    this.appearanceMemo.dispose();
-    this.pickable.dispose();
-    this.pickSound?.stop(); this.pickSound = undefined;
-    if (this.ownsScheduler) this.scheduler.dispose();
-    this.light.set(null);
-  }
-
-  private randomTween(): number { return 4 + Math.min(4, Math.floor(this.random() * 5)); }
-
-  private setState(state: BulbPlantLightState): void {
-    this.lightMode.set(state);
-    const clips = state === 'ON' ? ['recharge', 'idle'] : state === 'CHARGED' ? ['revive', 'off'] : ['drain', 'withered'];
-    this.playSequence(clips[0], clips[1], state === 'ON');
-  }
-
-  private playSequence(first: string, last: string, loop = false): void {
-    const version = ++this.animationVersion;
-    this.animation.playOnce(first, () => {
-      if (this.disposed || version !== this.animationVersion) return;
-      if (loop) this.animation.start(last);
-      else this.animation.playOnce(last);
-    });
-  }
-
+  /** OnUpdateLight, repeated every FRAMES by OnLightDirty's periodic task until the tween ends. */
   private refreshLight(): void {
-    this.light.set(bulbPlantLight(this.lightOn, (this.scheduler.now - this.tweenStartedAt) / this.tweenDuration, this.variant));
-    this.model.userData.bulbPlantLightState = this.lightState;
-    this.model.userData.bulbPlantPicked = !this.pickable.canBePicked;
+    if (this.isRemoved) return;
+    // The last step lands on the tween's end, as OnUpdateLight clamps _lightframe to _lightmaxframe.
+    const remaining = this.tweenStartedAt + this.tweenDuration - this.world.scheduler.now;
+    const done = remaining <= 1e-9;
+    this.light.set(bulbPlantLight(this.lightOn, done ? 1 : 1 - remaining / this.tweenDuration, this.variant));
+    if (!done && !this.lightTask) {
+      this.lightTask = this.world.scheduler.schedule(Math.min(FRAMES, remaining), () => { this.lightTask = undefined; this.refreshLight(); });
+    }
   }
 }
 
-interface Plant {
-  prefabId: BulbPlantPrefabId;
-  model: THREE.Group;
-  controller: BulbPlantController;
-  variant: BulbPlantVariant;
-  instance: PrefabInstance<ArchiveSpriteCommands>;
-  display: ReturnType<typeof createArchiveEntity>['display'];
-}
-
-/** Shared original single/springy assets, independent world lights and timers. */
-export class BulbPlantManager {
-  private readonly assets: ArchiveSpriteAssets;
-  private readonly factories = new Map<BulbPlantVariant, Promise<Awaited<ReturnType<typeof preloadSharedArchiveSprite>>>>();
-  private readonly plants = new Set<Plant>();
-  private readonly displays: PrefabDisplayGroup;
-  private readonly world: BulbPlantWorld;
-  private readonly random: () => number;
-  private disposed = false;
-
-  constructor(scene: THREE.Scene, assetBaseUrl: string, world: BulbPlantWorld, random = Math.random) {
-    this.displays = new PrefabDisplayGroup(scene);
-    this.world = world;
-    this.random = random;
-    this.assets = new ArchiveSpriteAssets(BULB_PLANT_ID, assetBaseUrl);
-  }
-
-  async spawn(prefabId: BulbPlantPrefabId, position: THREE.Vector3, saved?: BulbPlantRecord): Promise<THREE.Group> {
-    if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError('Invalid bulb plant position');
-    const state = saved?.components.bulbPlant;
-    const variant = state?.variant ?? (prefabId === 'flower_cave_double' ? 'double'
-      : prefabId === 'flower_cave_triple' ? 'triple' : BULB_PLANT_VARIANTS[Math.min(1, Math.floor(this.random() * 2))]);
-    let request = this.factories.get(variant);
-    if (!request) {
-      request = preloadSharedArchiveSprite(this.assets, { animationArchive: `bulb_plant_${variant}.zip`,
-        buildArchives: [`bulb_plant_${variant}.zip`], bank: `bulb_plant_${variant}` }, { instancedAnimations: ['idle'], staticBillboard: true });
-      this.factories.set(variant, request);
-      void request.catch(() => this.factories.delete(variant));
-    }
-    const create = await request;
-    if (this.disposed) throw new Error('Bulb plant manager has been disposed');
-    const initialAnimation = state?.picked ? 'picked' : state?.lightState === 'ON' ? 'idle' : state?.lightState === 'RECHARGING' ? 'withered' : 'off';
-    const loop = initialAnimation === 'idle', created = create(initialAnimation, loop, prefabId);
-    const { instance, display } = createArchiveEntity(prefabId, { create: clip => create(clip.name, clip.loop, prefabId), initial: created },
-      { name: initialAnimation, held: !loop, billboard: true }, prefabId, undefined, undefined, { staticTransform: true });
-    if (!loop) instance.sprite.setFrame(created.frameCount - 1);
-    const model = display.model;
-    instance.setPosition(position.x, 0, position.z);
-    instance.entityId = saved?.id ?? newEntityId();
-    model.userData.bulbPlantVariant = variant;
-    const controller = new BulbPlantController(model, instance.sprite, this.world, variant, state, this.random, instance);
-    actionEntity(model, prefabId);
-    this.plants.add({ prefabId, model, controller, variant, instance, display });
-    this.displays.mount(prefabDisplay(model)!);
-    return model;
-  }
-
-  update(dt: number, _cameraQuaternion: THREE.Quaternion): void {
-    // The display group advances the active plants' clips; sleeping plants are skipped.
-    if (Number.isFinite(dt) && dt >= 0) this.displays.update(dt);
-    for (const plant of this.plants) plant.controller.update(dt);
-  }
-
-  get renderEntities() {
-    return [...this.plants].map(({ model }) => ({ object: model, footPosition: model.position, cameraDepth: 0 }));
-  }
-
-  exportRecords(): { prefabId: BulbPlantPrefabId; record: BulbPlantRecord }[] {
-    return [...this.plants].map(({ prefabId, model, variant, controller, instance }) => ({ prefabId, record: {
-      id: String(instance.entityId), transform: { position: [model.position.x, 0, model.position.z], rotationY: 0 },
-      components: { bulbPlant: controller.exportState(variant) },
-    } }));
-  }
-
-  dispose(): void {
-    if (this.disposed) return;
-    this.disposed = true;
-    for (const { model, controller, instance, display } of this.plants) {
-      controller.dispose();
-      disposeActionEntity(model);
-      instance.remove(); display.dispose();
-    }
-    this.plants.clear();
-    this.displays.dispose();
-    this.assets.dispose();
-  }
+/** The Prefabs flower_cave.lua returns, without the withered ones. */
+export function bulbPlantPrefabs(world: BulbPlantWorld): Readonly<Record<BulbPlantPrefabId, PrefabEntityDefinition<BulbPlantInstance>>> {
+  const define = (prefab: BulbPlantPrefabId): PrefabEntityDefinition<BulbPlantInstance> => ({
+    fn: () => new BulbPlantInstance(prefab, world),
+    instanceAssets: ({ variant }) => ({ animationArchive: `bulb_plant_${variant}.zip`, buildArchives: [`bulb_plant_${variant}.zip`], bank: `bulb_plant_${variant}` }),
+    assetOptions: { instancedAnimations: ['idle'], staticBillboard: true },
+    minimapIcon: 'bulb_plant.png',
+  });
+  return { flower_cave: define('flower_cave'), flower_cave_double: define('flower_cave_double'), flower_cave_triple: define('flower_cave_triple') };
 }
