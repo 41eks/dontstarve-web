@@ -1,22 +1,21 @@
 import { PrefabDisplayGroup } from '../../display/src';
-import { findActionEntity } from '../../prefab/src/actionEntity';
+import { FindEntities } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import type { ReadonlyVector3 } from '../src/transformRoot';
 import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { createMemo, createSignal, EventEmitter } from '@dontstarve-web/signals';
+import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { SpriteState } from '@dontstarve-web/display';
 import { loadAnim } from '../src/animationAssets';
 import { ItemEntity } from '../../inventory/src';
-import { FlowerInstance, FlowerPlanting } from '../../prefab/src/flower';
+import { flowerPrefabs } from '../../prefab/src/flower';
 import { marbleShrubWorld } from './marbleShrubFixture';
 import { rockAvocadoSaplingPrefabs, ROCK_AVOCADO_SAPLING_ID } from '../../prefab/src/rock_avocado_fruit_sprout_sapling';
 import { FireFxHost } from '../../prefab/src/treeFire';
 import { prefabManager } from './prefabManagerFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { performToolWork } from '../../stategraphs/src/componentactions';
-import type { WorldContext, WorldEvents } from '../../prefab/src/worldContext';
 import type { GroundItemDefinition } from '../../prefab/src/groundPrefab';
 import { bindTestWorld, drawn } from './worldContentFixture';
 import { modelHasTag, prefabInstance } from '../../prefab/src/prefabInstance';
@@ -53,40 +52,41 @@ function environment() {
 }
 
 it('preserves a natural rose, shares its art after wake and burns while dormant', async () => {
-  const env = environment(), worldEvents = new EventEmitter<WorldEvents>();
-  const ash = vi.fn(); worldEvents.on('spawnAsh', ash);
-  const world = { scene: env.scene, camera: new THREE.PerspectiveCamera(), scheduler: env.scheduler, tickingarea: env.tickingarea } as unknown as WorldContext;
-  const flowers = new FlowerPlanting(world, Math.random, { scheduler: env.scheduler, worldEvents });
+  const env = environment();
+  const displays = new PrefabDisplayGroup(env.scene), fire = FireFxHost.create('/dst/data/anim');
+  const flowers = prefabManager(displays, '/dst/data/anim', { scheduler: env.scheduler, tickingarea: env.tickingarea, fire,
+    spawnGroundItem: env.spawnGroundItem }, flowerPrefabs);
   try {
-    const model = await drawn(flowers.spawnFromSave('rose', 'rose', new THREE.Vector3(12, 0, 24), false));
+    const rose = flowers.spawn('flower', new THREE.Vector3(12, 0, 24), { id: 'rose', components: { flower: { animation: 'rose' } } });
+    const model = await drawn(rose.transform.model);
     await settle();
-    const sprite = prefabInstance(model)!.sprite as SpriteState;
+    const sprite = rose.sprite as SpriteState;
     expect(sprite).toBeInstanceOf(SpriteState);
-    const pickable = (findActionEntity(model)?.components ?? prefabInstance(model)!.components).pickable;
+    const pickable = rose.components.pickable;
     const before = flowers.exportRecords();
     const geometry = meshes(model)[0].geometry;
     env.awake.set(false); await settle();
-    expect(model.parent).toBeNull(); expect(sprite.loaded).toBe(false); expect(flowers.renderEntities).toEqual([]);
-    expect(flowers.plantedFlowers[0].position).toBe(model.position);
+    expect(model.parent).toBeNull(); expect(sprite.loaded).toBe(false); expect(displays.renderEntities).toEqual([]);
+    expect(FindEntities(rose.position, .01, ['flower'])).toHaveLength(1);
     expect(flowers.exportRecords()).toEqual(before);
     env.sources.camerarotation.set(env.rotation);
     env.awake.set(true); await settle();
     expect(model.parent).toBe(env.scene);
     expect(meshes(model)[0].geometry).toBe(geometry);
     expect(model.children[0].quaternion.equals(env.rotation)).toBe(true);
-    expect((findActionEntity(model)?.components ?? prefabInstance(model)!.components).pickable).toBe(pickable);
-    expect(prefabInstance(model)!.listTags()).toContain('thorny');
-    expect(prefabInstance<FlowerInstance>(model)!.planted).toBeUndefined();
-    (findActionEntity(model)?.components ?? prefabInstance(model)!.components).burnable.Ignite(); await settle();
-    expect(flowers.renderEntities.some(({ object }) => object.name === 'fire')).toBe(true);
+    expect(rose.components.pickable).toBe(pickable);
+    expect(rose.listTags()).toContain('thorny');
+    expect(rose.planted).toBeUndefined();
+    rose.components.burnable!.Ignite(); await settle();
+    expect(displays.renderEntities.some(({ object }) => object.name === 'fire')).toBe(true);
     env.awake.set(false); await settle();
-    expect(flowers.renderEntities).toEqual([]);
+    expect(displays.renderEntities).toEqual([]);
     env.scheduler.advance(10); await settle();
-    expect(ash).toHaveBeenCalledWith(new THREE.Vector3(12, 0, 24));
+    expect(env.spawned).toHaveBeenCalledWith('ash', new THREE.Vector3(12, 0, 24));
     expect(flowers.exportRecords()).toEqual([]);
-    env.awake.set(true); await settle();
+    env.awake.set(true); await settle(); displays.update(0);
     expect(model.parent).toBeNull(); expect(meshes(model)).toEqual([]);
-  } finally { flowers.dispose(); env.dispose(); }
+  } finally { flowers.dispose(); displays.dispose(); fire.dispose(); env.dispose(); }
 });
 
 it('grows a dormant marblebean, restores shrub shape/tint/snow and preserves the mined removal deadline', async () => {

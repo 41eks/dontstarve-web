@@ -340,6 +340,8 @@ export interface PrefabEntityDefinition<Instance extends PrefabInstance> {
   assetOptions?: Parameters<SpriteResources['archive']>[1];
   /** Stands the sprite's lowest point on the ground, as this project draws its buildings and their placers. */
   alignBottom?: boolean;
+  /** AnimState:SetRayTestOnBB: the mouse hits the art's bounding box rather than its opaque pixels. */
+  rayTestOnBB?: boolean;
   /** False for what is only ever looked at, such as a transient effect: not a mouse target or an entity that queries find. */
   targetable?: boolean;
   /** Transient effects which must draw even outside the ticking area. */
@@ -394,7 +396,7 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     if (this.disposed) throw new Error(`Cannot spawn ${prefabId}: its manager has been disposed`);
     if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError(`Invalid ${prefabId} position`);
     if (!this.has(prefabId)) throw new Error(`Unknown prefab: ${prefabId}`);
-    const { fn, assets, instanceAssets, assetOptions, alignBottom, targetable = true, physics, minimapIcon, onSpawned, skins, alwaysActive } = this.prefabs[prefabId];
+    const { fn, assets, instanceAssets, assetOptions, alignBottom, rayTestOnBB, targetable = true, physics, minimapIcon, onSpawned, skins, alwaysActive } = this.prefabs[prefabId];
     if (skinId !== undefined && !skins?.[skinId]) throw new Error(`Unsupported ${prefabId} skin: ${skinId}`);
     const instance = fn(position);
     if (skins) instance.sprite.setSkinSource({ art: this.resources.archives, archives: skins });
@@ -406,6 +408,7 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
       ...(instanceAssets ? { archive: { create: clip => Promise.resolve().then(() => this.resources.archive(instanceAssets(instance), assetOptions).create(clip)) } }
         : assets ? { archive: this.resources.archive(assets, assetOptions) } : { empty: true }) });
     bindInstance(display.model, instance);
+    if (rayTestOnBB) display.model.userData.rayTestOnBB = true;
     instance.setPosition(position.x, 0, position.z);
     if (saved?.transform?.rotationY) instance.transform.setSavedRotation(saved.transform.rotationY);
     if (physics && this.physicsWorld) instance.bindPhysics(this.physicsWorld);

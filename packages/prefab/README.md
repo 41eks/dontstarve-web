@@ -20,7 +20,11 @@ DST 场景预制体。该包基于 `@dontstarve-web/animation` 组合具体资�
 - `hotspringPrefabs`（`hotspring.ts`）：温泉的 `PrefabEntityDefinition`，由应用层的 `PrefabEntityManager` 注册；热源、bathbombable、光照与周期蒸汽任务写在 `HotspringInstance` 上，蒸汽 `crater_steam_fx1`～`4`、`slow_steam_fx1`～`5` 是 `world_fx` 的 fx.lua 条目。`c_spawn("hotspring")`，无 `c_give`；月圆结晶、开采和泡澡分支未移植。
 - `caveEntrancePrefabs`（`cave_entrance.ts`）：`cave_entrance`、`cave_entrance_open` 的 `PrefabEntityDefinition`，由应用层的 `PrefabEntityManager` 注册；`CaveEntranceInstance` 持有封闭入口的 `workable`／`lootdropper` 与开放入口的 `worldmigrator`，开采完成时经注入的 `spawnPrefab` 在原地生成开放入口后移除自身。开放入口以非平铺的背景层 ground order 绘制。均可 `c_spawn`，无 `c_give`；蝙蝠 `childspawner`、`cave_entrance_ruins` 未移植。
 - `lavaPondPrefabs`（`lava_pond.ts`）：`lava_pond` 与 `lava_pond_rock`、`lava_pond_rock2`～`7` 的 `PrefabEntityDefinition`，由应用层的 `PrefabEntityManager` 注册；`LavaPondInstance` 持有 `heater`（500）、光照和 `DoTaskInTime(0, SpawnRocks)`，随池生成的焦岩不入档，布局随 `lavaPond.rocks` 保存。均可 `c_spawn`，无 `c_give`；碰撞点燃、propagator、cooker 与龙蝇音乐未移植。
+<<<<<<< HEAD
 - `molehillPrefabs`（`molehill.ts`）：鼹鼠丘 `molehill` 的 `PrefabEntityDefinition`，由应用层的 `PrefabEntityManager` 注册；`MolehillInstance` 持有 50 格 `inventory`、单子代 `spawner`、1 次 DIG 的 `workable`、`dig_up` 掉落和 `AdoptChild`，存档字段仍为 `molehill`（`items`、`child`／`childid`／`startdelay`）。应用层用 `createMoleHabitat` 构造鼹鼠共享的世界：`MAKEMOLEHILL` 经注入的 `spawnPrefab("molehill")` 建丘，读档时在外的子代按 `childid` 在该鼹鼠加入世界时认领；`mole_move_fx` 是 `world_fx` 的 fx.lua 条目。`c_spawn("molehill")` 无额外参数，没有 `c_give`；hauntable、inspectable 未移植。
+=======
+- `flowerPrefabs`（`flower.ts`）：`flower`、`flower_rose`、`planted_flower` 的 `PrefabEntityDefinition`，由应用层的 `PrefabEntityManager` 注册；`FlowerInstance` 持有 `pickable`、`MakeSmallBurnable`／`MakeSmallPropagator`（烧完经 `DefaultBurntFn` 生成灰烬）与 `SetRayTestOnBB`，三者都以 `flower` 存档。均可 `c_spawn`，无 `c_give`；蝴蝶按 `flower` 标签查找它们。
+>>>>>>> main
 - `moonglassRockPrefabs`（`rocks.ts`）：月亮玻璃岩的 `PrefabEntityDefinition`，由应用层的 `PrefabEntityManager` 注册；`instanceAssets` 按 `rock_type` 声明四套 bank 与 build。其余岩石仍在 `RockManager`。
 - `moonTreePrefabs`、`evergreenPrefabs`、`deciduousPrefabs`、`mushtreePrefabs`：月树与幼苗、常青树、桦树、蘑菇树（含 `_stump` 与烧毁特效）的 `PrefabEntityDefinition`，由应用层的 `PrefabEntityManager` 注册；不生成森林
 - `TorchController`：`torch.lua` 的装备点燃、卸下熄灭、燃料消耗及耗尽移除；燃料通过调用方的权威状态读写接口保存，独立的只读 `burning` signal 发布燃烧状态，照明通过同步订阅更新。signal 原语来自公共包 `@dontstarve-web/signals`。
