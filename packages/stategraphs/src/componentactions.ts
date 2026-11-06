@@ -94,6 +94,8 @@ export interface EquippedActionDoer {
 }
 export type EquippedAction = ToolAction | 'CASTSPELL' | 'LIGHT' | 'ATTACK' | 'FISH' | 'REEL' | 'TERRAFORM' | 'TILL' | 'DEPLOY' | 'DEPLOY_TILEARRIVE';
 export type UseItemAction = 'GIVE' | 'FEED' | 'ADDFUEL' | 'ADDWETFUEL' | 'PLANTSOIL';
+export type InventoryAction = 'PLAY' | 'READ';
+type InventoryFn = (inst: ComponentActionEntity, doer: SceneActionDoer, actions: InventoryAction[], right: boolean) => void;
 type UseItemFn = (inst: ComponentActionEntity, doer: SceneActionDoer, target: ComponentActionEntity,
   actions: UseItemAction[], right: boolean) => void;
 type EquippedFn = (inst: ComponentActionEntity, doer: EquippedActionDoer | undefined, target: ComponentActionTarget,
@@ -115,7 +117,12 @@ export const COMPONENT_ACTIONS: {
   readonly EQUIPPED: Readonly<Record<string, EquippedFn>>;
   readonly ISVALID: Readonly<Record<string, IsValidFn>>;
   readonly USEITEM: Readonly<Record<string, UseItemFn>>;
+  readonly INVENTORY: Readonly<Record<string, InventoryFn>>;
 } = {
+  INVENTORY: {
+    book: (_inst, doer, actions) => { if (doer.hasTag('reader')) actions.push('READ'); },
+    instrument: (_inst, _doer, actions) => { actions.push('PLAY'); },
+  },
   USEITEM: {
     tradable: (_inst, _doer, target, actions) => {
       if (target.hasTag('trader') && !['player', 'ghost', 'possessedbody'].some(tag => target.hasTag(tag))) actions.push('GIVE');
@@ -247,6 +254,14 @@ export function collectUseItemActions(item: ComponentActionEntity, doer: SceneAc
   const actions: UseItemAction[] = [];
   if (item.isRemoved || target.isRemoved) return actions;
   for (const name of Object.keys(item.components)) COMPONENT_ACTIONS.USEITEM[name]?.(item, doer, target, actions, right);
+  return actions;
+}
+
+/** EntityScript:CollectActions("INVENTORY", doer, actions, right): what the item does used from its inventory slot. */
+export function collectInventoryActions(item: ComponentActionEntity, doer: SceneActionDoer, right: boolean): InventoryAction[] {
+  const actions: InventoryAction[] = [];
+  if (item.isRemoved) return actions;
+  for (const name of Object.keys(item.components)) COMPONENT_ACTIONS.INVENTORY[name]?.(item, doer, actions, right);
   return actions;
 }
 

@@ -9,6 +9,9 @@ import { modelHasTag, prefabInstance, setModelTag } from '../../prefab/src/prefa
  * components the application binds to it (inventory, sanity, combat, sleepingbaguser).
  */
 export interface PickupDoer extends InventoryActor {
+  /** The player inst always owns its tags, as reader.lua adds "reader". */
+  addTag(tag: string): void;
+  removeTag(tag: string): void;
   getPosition(): THREE.Vector3;
   /** spellcaster.lua reads the caster's position. */
   readonly position: ReadonlyVector3;
@@ -21,6 +24,8 @@ export interface PickupDoer extends InventoryActor {
     combat?: import('../../componets/src/combat').Combat;
     sleepingbaguser?: import('../../componets/src/sleepingbag').SleepingBagSleeper;
     staffsanity?: { doCastingDelta(delta: number): void };
+    /** reader.lua, which ACTIONS.READ reaches on the doer. */
+    reader?: { Read(book: object): readonly [boolean, string?] | undefined; OnRemoveFromEntity(): void };
   };
 }
 export function createPickupDoer(player: THREE.Object3D, inventory: InventoryStore): PickupDoer {

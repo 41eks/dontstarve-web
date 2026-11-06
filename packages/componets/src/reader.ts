@@ -12,11 +12,14 @@ export interface ReadableBook<Reader, World> {
 /** components/reader.lua for non-bookworm readers; peruse requires the unported aspiring_bookworm branch. */
 export class Reader<Inst extends ReaderInst, World> {
   private readonly inst: Inst;
+  /** The world services the books' Lua callbacks reach through globals, injected with the component. */
+  private readonly world: World;
   private sanityMult?: number;
   private onread?: (inst: Inst, book: ReadableBook<Inst, World>) => void;
 
-  constructor(inst: Inst) {
+  constructor(inst: Inst, world: World) {
     this.inst = inst;
+    this.world = world;
     inst.addTag('reader');
   }
 
@@ -24,9 +27,9 @@ export class Reader<Inst extends ReaderInst, World> {
   getSanityPenaltyMultiplier(): number { return this.sanityMult ?? 1; }
   SetOnReadFn(fn: ((inst: Inst, book: ReadableBook<Inst, World>) => void) | undefined): void { this.onread = fn; }
 
-  Read(book: ReadableBook<Inst, World>, world: World): BookResult | undefined {
+  Read(book: ReadableBook<Inst, World>): BookResult | undefined {
     if (!book.components.book) return undefined;
-    const result = book.components.book.OnRead(this.inst, world);
+    const result = book.components.book.OnRead(this.inst, this.world);
     if (result[0]) this.onread?.(this.inst, book);
     return result;
   }
