@@ -15,7 +15,7 @@ DST 场景预制体。该包基于 `@dontstarve-web/animation` 组合具体资�
 - `bulbPlantPrefabs`（`bulb_plant.ts`）：`flower_cave`、`flower_cave_double`、`flower_cave_triple` 的 `PrefabEntityDefinition`，由应用层的 `PrefabEntityManager` 注册；`BulbPlantInstance` 持有 LightWatcher 灯光循环、`pickable` 回调和存档字段 `bulbPlant`，`flower_cave` 的 single／springy 由 `instanceAssets` 声明。三个 ID 均可 `c_spawn`，没有 `c_give`。
 - `caveHolePrefabs`：洞穴破洞及其 `cave_hole_surface` 子实体的 `PrefabEntityDefinition`，由应用层的 `PrefabEntityManager` 注册。
 - `moonglassRockPrefabs`（`rocks.ts`）：月亮玻璃岩的 `PrefabEntityDefinition`，由应用层的 `PrefabEntityManager` 注册；`instanceAssets` 按 `rock_type` 声明四套 bank 与 build。其余岩石仍在 `RockManager`。
-- `moonTreePrefabs`、`evergreenPrefabs`、`deciduousPrefabs`：月树与幼苗、常青树、桦树的 `PrefabEntityDefinition`，由应用层的 `PrefabEntityManager` 注册；不生成森林
+- `moonTreePrefabs`、`evergreenPrefabs`、`deciduousPrefabs`、`mushtreePrefabs`：月树与幼苗、常青树、桦树、蘑菇树（含 `_stump` 与烧毁特效）的 `PrefabEntityDefinition`，由应用层的 `PrefabEntityManager` 注册；不生成森林
 - `TorchController`：`torch.lua` 的装备点燃、卸下熄灭、燃料消耗及耗尽移除；燃料通过调用方的权威状态读写接口保存，独立的只读 `burning` signal 发布燃烧状态，照明通过同步订阅更新。signal 原语来自公共包 `@dontstarve-web/signals`。
 - `@dontstarve-web/animation/residentSprite` 的 `ResidentSprite` / `ResidentSpriteController`：固定实体的 visual 驻留封装，保留根节点与动画请求；`ResidentEntity` 记录稳定的身份和脚点。常青树、桦树、月树和蘑菇树通过 `PrefabInstance` + `PrefabDisplay` 与 `watchTileActivity()` 加载／释放 visual，不重建实体或 Workable。
 - `AnimatedBuildingPlacement`，以及基于它的 `CookPotPlacement`、`ResearchLabPlacement`、`TreasureChestPlacement`（sprite 通过 `ResidentSpriteController` 驻留，离开 tickingarea 时交还共享 source，见 [tile 生命周期](../../docs/tile-lifecycle.md)）

@@ -1,181 +1,183 @@
-import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
-import { BindTileMapSize, DisposeTileStates, GetTileStateAtPoint } from '../../componets/src/tileManager';
 import { readFile } from 'node:fs/promises';
-import { afterEach, expect, it, vi } from 'vitest';
+import { unzipSync, strFromU8 } from 'fflate';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
+import { BindTileMapSize, DisposeTileStates, GetTileStateAtPoint } from '../../componets/src/tileManager';
 import { createMemo, createSignal, type TileStateQuery } from '../../signals/src';
-import { bindTestWorld, drawn } from './worldContentFixture';
-import { MushtreeManager, type MushtreeWorld } from '../../prefab/src/mushtree';
+import { bindTestWorld } from './worldContentFixture';
+import { mushtreePrefabs, type MushtreeInstance, type MushtreeSpawnId } from '../../prefab/src/mushtree';
+import { FireFxHost } from '../../prefab/src/treeFire';
+import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
+import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { createInventoryStore } from '../../../src/inventory';
 import { performToolWork } from '../../stategraphs/src/componentactions';
-import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { EntityRegistry } from '../../../src/entityRegistry';
+import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
+import { executeDebugCommand } from '../../../src/debugCommands';
+import { serializeSave } from '../../../src/save/serialize';
+import { deserializeSave } from '../../../src/save/deserialize';
+import { createClusterSaveZip } from '../../../src/save/download';
+import { SAVE_CATALOG } from '../../../src/save/catalog';
+import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { workTargets } from './workTargets';
 
-
-
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
-
-it('loads a burnt tree as ash and releases its independent burnt FX on game time without animation updates', async () => {
+beforeEach(() => {
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   vi.stubGlobal('window', new EventTarget());
-  vi.spyOn(Math, 'random').mockReturnValue(.5);
-  const { mushWorld, scheduler, ash } = world(), scene = new THREE.Scene(), awake = createSignal(true);
-  const trees = new MushtreeManager(scene, { ...mushWorld, tickingarea: () => createMemo(() => awake.get()) });
-  try {
-    const model = trees.spawn('mushtree_moon', new THREE.Vector3(5, 0, 7), {
-      id: 'burnt-mushroom', transform: { position: [5, 0, 7], rotationY: 0 }, components: { mushtree: { burnt: true } },
-    });
-    expect(lookupPrefabInstance(model)!.status.peek()).toBe('removed');
-    expect(trees.exportRecords()).toEqual([]);
-    expect(ash).toEqual([new THREE.Vector3(5, 0, 7)]);
-    const fx = scene.children.find(child => lookupPrefabInstance(child)?.prefab === 'mushtree_moon_burntfx')!;
-    expect(prefabInstance(fx)!.listTags()).toEqual(['FX']);
-    expect(lookupPrefabInstance(fx)!.persists).toBe(false);
-    awake.set(false); await new Promise(resolve => setTimeout(resolve, 0));
-    expect(lookupPrefabInstance(fx)!.status.peek()).toBe('asleep');
-    expect(fx.parent).toBeNull();
-    scheduler.advance(10);
-    expect(lookupPrefabInstance(fx)!.status.peek()).toBe('removed');
-    awake.set(true); await new Promise(resolve => setTimeout(resolve, 0));
-    expect(scene.children).toEqual([]);
-  } finally { trees.dispose(); scheduler.dispose(); }
 });
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 
-function world(season: 'summer' | 'autumn' | 'winter' = 'autumn', tickingarea?: TileStateQuery) {
+function setup(season: 'summer' | 'autumn' | 'winter' = 'autumn', tickingarea?: TileStateQuery) {
   const scheduler = new GameTimeScheduler(), bound = bindTestWorld(scheduler, tickingarea), seasonSignal = bound.season;
   seasonSignal.set({ season, progress: 0 });
   const ash: THREE.Vector3[] = [], drops: { itemId: string; count: number }[] = [];
-  const mushWorld = { scheduler, scene: new THREE.Scene(), getWatchWorldContent: bound.getWatchWorldContent, worldEvents: { emit: (_name: string, position: THREE.Vector3) => ash.push(position) },
-    dropLoot: (items: { itemId: string; count: number }[]) => drops.push(...items) } as unknown as MushtreeWorld;
-  return { scheduler, seasonSignal, ash, drops, mushWorld };
+  const scene = new THREE.Scene(), displays = new PrefabDisplayGroup(scene), fire = FireFxHost.create('/dst/data/anim');
+  const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { tickingarea });
+  prefabs.register(mushtreePrefabs({ scheduler, fire, tickingarea, getWatchWorldContent: bound.getWatchWorldContent,
+    worldEvents: { emit: (_name: string, position: THREE.Vector3) => ash.push(position) } as never,
+    dropLoot: items => drops.push(...items), spawnPrefab: (id, position) => prefabs.spawn(id, position) }));
+  const registry = new EntityRegistry([], prefabs, () => new THREE.Vector3(12, 0, -6)), inventory = createInventoryStore([]);
+  registry.registerPrefabs(PREFAB_DEFINITIONS.mushtrees);
+  const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
+  return { scheduler, seasonSignal, ash, drops, scene, prefabs, registry, inventory,
+    spawn: (id: MushtreeSpawnId, position: THREE.Vector3, saved?: Pick<PlacementSaveRecord, 'id' | 'components'>) => prefabs.spawn(id, position, saved) as MushtreeInstance,
+    record: () => prefabs.exportRecords()[0].record,
+    find: (id: string) => scene.children.map(model => prefabInstance<PrefabInstance>(model)!).find(inst => inst?.prefab === id),
+    save: () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(), elapsedSeconds: 0,
+      playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG),
+    dispose() { registry.dispose(); prefabs.dispose(); displays.dispose(); fire.dispose(); inventory.dispose(); bound.unbind(); scheduler.dispose(); } };
 }
 
-it('chops a moon mushtree into a diggable stump, drops catalogued loot, and keeps the stump through save/load', async () => {
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
-  vi.stubGlobal('window', new EventTarget());
-  const { mushWorld, drops, scheduler } = world(), scene = new THREE.Scene(), inventory = createInventoryStore([]);
-  const trees = new MushtreeManager(scene, mushWorld);
+it('loads a burnt tree as ash and releases its independent burnt FX on game time without animation updates', async () => {
+  vi.spyOn(Math, 'random').mockReturnValue(.5);
+  const awake = createSignal(true), s = setup('autumn', () => createMemo(() => awake.get()));
   try {
-    const model = await drawn(trees.spawn('mushtree_moon', new THREE.Vector3(5, 0, 7)));
-    const mesh = model.children[0].children[0].children[0] as THREE.Mesh;
-    expect(mesh.visible).toBe(false); // Idle is drawn by the shared instance batch.
-    expect(prefabInstance(model)!.minimap.icon).toBe('mushtree_moon.png');
-    const axe = inventory.entities.create({ itemId: 'axe', count: 1 });
+    const tree = s.spawn('mushtree_moon', new THREE.Vector3(5, 0, 7), { id: 'burnt-mushroom', components: { mushtree: { burnt: true } } });
+    expect(tree.status.peek()).toBe('removed');
+    expect(s.prefabs.exportRecords()).toEqual([]);
+    expect(s.ash).toEqual([new THREE.Vector3(5, 0, 7)]);
+    const fx = s.find('mushtree_moon_burntfx')!;
+    expect(fx.listTags().filter(tag => tag !== 'tickingarea')).toEqual(['FX']);
+    expect(fx.persists).toBe(false);
+    awake.set(false); await settle();
+    expect(fx.status.peek()).toBe('asleep');
+    s.scheduler.advance(10);
+    expect(fx.status.peek()).toBe('removed');
+    awake.set(true); await settle();
+    expect(s.scene.children).toEqual([]);
+  } finally { s.dispose(); }
+});
+
+it('chops a moon mushtree into a diggable stump, drops catalogued loot, and keeps the stump through c_save and reload', async () => {
+  const s = setup(); let zip!: Uint8Array, records!: ReturnType<EntityRegistry['exportRecords']>;
+  try {
+    expect((await executeDebugCommand('c_spawn("mushtree_moon")', s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
+    const tree = s.find('mushtree_moon') as MushtreeInstance;
+    expect(tree.listTags().filter(tag => tag !== 'tickingarea')).toEqual(['blocker', 'cavedweller', 'mushtree', 'plant', 'shelter', 'tree', 'canlight']);
+    expect(tree.minimap.icon).toBe('mushtree_moon.png');
+    await prefabDisplay(tree.transform.model)!.artLoaded();
+    const axe = s.inventory.entities.create({ itemId: 'axe', count: 1 });
     const [chop] = workTargets('CHOP');
     for (let i = 0; i < 14; i++) expect(performToolWork('CHOP', chop.entity, {}, axe)).toBe(true);
-    await new Promise(resolve => setTimeout(resolve, 0));
-    expect(mesh.visible).toBe(true); // Working uses the ordinary shared-frame mesh.
-    for (let i = 0; i < 100 && mesh.visible; i++) trees.update(.1, new THREE.Quaternion());
-    expect(mesh.visible).toBe(false); // Completing work rejoins idle instancing.
     expect(workTargets('DIG')).toEqual([]);
     expect(performToolWork('CHOP', chop.entity, {}, axe)).toBe(true);
-    await new Promise(resolve => setTimeout(resolve, 0));
-    expect(mesh.visible).toBe(true);
     // moon_cap has no ground item yet, so only the two logs are dropped.
-    expect(drops).toEqual([{ itemId: 'log', count: 2 }]);
-    const [dig] = workTargets('DIG');
-    expect(prefabInstance(model)!.minimap.icon).toBe('mushroom_tree_stump.png');
+    expect(s.drops).toEqual([{ itemId: 'log', count: 2 }]);
+    expect(tree.minimap.icon).toBe('mushroom_tree_stump.png');
+    expect(tree.hasTag('shelter')).toBe(false);
+    expect(workTargets('DIG')).toHaveLength(1);
+    records = s.registry.exportRecords();
+    const [record] = records.mushtree_moon;
+    expect(record.components).toEqual({ mushtree: { stump: true, decay: expect.any(Number) } });
+    expect((await executeDebugCommand('c_save()', s.inventory, undefined, async () => {
+      zip = await createClusterSaveZip(s.save(), 'forest');
+    })).ok).toBe(true);
+    s.drops.length = 0;
+    expect(workTargets('DIG')[0].work()).toBe(true);
+    expect(s.drops).toEqual([{ itemId: 'log', count: 1 }]);
+    expect(s.prefabs.exportRecords()).toEqual([]);
+  } finally { s.dispose(); }
+  const files = unzipSync(zip), text = strFromU8(files['Cluster_1/Master.json']);
+  const exported = JSON.parse(text) as { session: { playerFile: string } };
+  const { player } = JSON.parse(strFromU8(files[`Cluster_1/${exported.session.playerFile}`])) as { player: unknown };
+  const saved = deserializeSave(text, SAVE_CATALOG, player), second = setup();
+  try {
+    expect(saved.world.entities.mushtree_moon).toEqual(records.mushtree_moon);
+    await second.registry.restoreAll({ mushtree_moon: saved.world.entities.mushtree_moon });
+    const tree = second.find('mushtree_moon') as MushtreeInstance;
+    expect(tree.stump).toBe(true);
+    expect(tree.sprite.sprite.peek().clip).toMatchObject({ name: 'idle_stump', loop: true });
+    expect(second.registry.exportRecords()).toEqual(records);
+  } finally { second.dispose(); }
+}, 30000);
 
-    const [{ prefabId, record }] = trees.exportRecords();
-    expect(prefabId).toBe('mushtree_moon');
-    expect(record.components.mushtree?.stump).toBe(true);
-    const restored = new MushtreeManager(new THREE.Scene(), world().mushWorld);
-    try {
-      await restored.spawn('mushtree_moon', new THREE.Vector3(...record.transform.position), record);
-      expect(restored.exportRecords()[0].record.components.mushtree).toEqual({ stump: true, decay: record.components.mushtree!.decay });
-    } finally { restored.dispose(); }
-
-    drops.length = 0;
-    expect(dig.work()).toBe(true);
-    expect(drops).toEqual([{ itemId: 'log', count: 1 }]);
-    expect(trees.exportRecords()).toEqual([]);
-    scheduler.advance(1);
-  } finally { trees.dispose(); inventory.dispose(); }
-}, 20000);
+it('a _stump spawn is a stump from its first frame, with no body', async () => {
+  const s = setup();
+  try {
+    const stump = s.spawn('mushtree_tall_stump', new THREE.Vector3(1, 0, 2));
+    expect(stump.prefab).toBe('mushtree_tall');
+    expect(stump.stump).toBe(true);
+    expect(stump.physicsBody).toBeUndefined();
+    expect(s.record().components.mushtree).toMatchObject({ stump: true });
+    expect(s.record().components.growable?.stage).toBeGreaterThanOrEqual(1);
+  } finally { s.dispose(); }
+});
 
 it('blooms a medium mushtree in summer, grows by stage and restores the saved build and growth', async () => {
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
-  vi.stubGlobal('window', new EventTarget());
-  const { mushWorld, scheduler, seasonSignal } = world('summer');
-  const trees = new MushtreeManager(new THREE.Scene(), mushWorld);
+  const s = setup('summer');
   try {
-    await trees.spawn('mushtree_medium', new THREE.Vector3(1, 0, 2));
-    expect(trees.exportRecords()[0].record.components.mushtree?.treestate).toBe('bloom');
+    s.spawn('mushtree_medium', new THREE.Vector3(1, 0, 2));
+    expect(s.record().components.mushtree?.treestate).toBe('bloom');
     // Leaving summer: the tree returns to normal after a random delay of up to three segments plus the change animation.
-    seasonSignal.set({ season: 'autumn', progress: 0 });
-    await new Promise(resolve => setTimeout(resolve, 0));
-    scheduler.advance(95);
-    expect(trees.exportRecords()[0].record.components.mushtree?.treestate).toBe('normal');
+    s.seasonSignal.set({ season: 'autumn', progress: 0 });
+    await settle();
+    s.scheduler.advance(95);
+    expect(s.record().components.mushtree?.treestate).toBe('normal');
 
-    const { record } = trees.exportRecords()[0];
+    const record = s.record();
     expect(record.components.growable?.stage).toBeGreaterThanOrEqual(1);
-    const restored = new MushtreeManager(new THREE.Scene(), world('summer').mushWorld);
+    const restored = setup('summer');
     try {
-      await restored.spawn('mushtree_medium', new THREE.Vector3(...record.transform.position), record);
-      // OnLoad: saved normal build, then summer blooms it again after the random delay.
-      expect(restored.exportRecords()[0].record.components.growable).toEqual(record.components.growable);
+      restored.spawn('mushtree_medium', new THREE.Vector3(...record.transform.position), record);
+      // OnLoad: the saved normal build, then summer blooms it again after the random delay.
+      expect(restored.record().components.mushtree?.treestate).toBe('normal');
+      expect(restored.record().components.growable).toEqual(record.components.growable);
     } finally { restored.dispose(); }
-  } finally { trees.dispose(); }
+  } finally { s.dispose(); }
 }, 20000);
 
 it('blooms a tall mushtree in winter only and carries webbable', async () => {
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
-  vi.stubGlobal('window', new EventTarget());
-  const { mushWorld } = world('winter');
-  const trees = new MushtreeManager(new THREE.Scene(), mushWorld);
+  const s = setup('winter');
   try {
-    const model = await trees.spawn('mushtree_tall', new THREE.Vector3(1, 0, 2));
-    expect(trees.exportRecords()[0].record.components.mushtree?.treestate).toBe('bloom');
-    expect(prefabInstance(model)!.minimap.icon).toBe('mushroom_tree.png');
-    expect(prefabInstance(model)!.hasTag('webbable')).toBe(true);
-  } finally { trees.dispose(); }
+    const tree = s.spawn('mushtree_tall', new THREE.Vector3(1, 0, 2));
+    expect(s.record().components.mushtree?.treestate).toBe('bloom');
+    expect(tree.minimap.icon).toBe('mushroom_tree.png');
+    expect(tree.hasTag('webbable')).toBe(true);
+  } finally { s.dispose(); }
 }, 20000);
 
 it('a chopped tree stops following the season but its stump keeps following the ticking area', async () => {
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
-  vi.stubGlobal('window', new EventTarget());
   const player = createSignal<THREE.Vector3 | undefined>(new THREE.Vector3());
   const stopGrid = BindTileMapSize(960);
   // One query for the season gate and the entity's activity, as worldState binds it.
   const tickingarea = GetTileStateAtPoint(player as never);
-  const { mushWorld, scheduler } = world('autumn', tickingarea), inventory = createInventoryStore([]);
-  const trees = new MushtreeManager(new THREE.Scene(), { ...mushWorld, tickingarea });
-  const settle = () => new Promise(resolve => setTimeout(resolve, 0));
+  const s = setup('autumn', tickingarea);
   try {
-    // A seasonal tree watches the season and its own activity at once: chopping it ends only the former.
-    const model = await drawn(trees.spawn('mushtree_medium', new THREE.Vector3(5, 0, 7)));
-    const axe = inventory.entities.create({ itemId: 'axe', count: 1 });
+    const tree = s.spawn('mushtree_medium', new THREE.Vector3(5, 0, 7));
+    await prefabDisplay(tree.transform.model)!.artLoaded();
+    const axe = s.inventory.entities.create({ itemId: 'axe', count: 1 });
     const [chop] = workTargets('CHOP');
     while (performToolWork('CHOP', chop.entity, {}, axe));
-    expect(trees.exportRecords()[0].record.components.mushtree?.stump).toBe(true);
-    const instance = lookupPrefabInstance(model)!;
+    expect(s.record().components.mushtree?.stump).toBe(true);
     player.set(new THREE.Vector3(400, 0, 0));
     await settle();
-    expect(instance.status.peek()).toBe('asleep');
+    expect(tree.status.peek()).toBe('asleep');
     player.set(new THREE.Vector3());
     await settle();
-    expect(instance.status.peek()).toBe('active');
-  } finally { trees.dispose(); inventory.dispose(); scheduler.dispose(); DisposeTileStates(player as never); stopGrid(); }
-});
-
-it('releases the mushtree sprite outside the tickingarea and settles a transition that ran while unloaded', async () => {
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
-  vi.stubGlobal('window', new EventTarget());
-  const { mushWorld } = world(), awake = createSignal(true);
-  const trees = new MushtreeManager(new THREE.Scene(), { ...mushWorld, tickingarea: () => createMemo(() => awake.get()) });
-  try {
-    const model = await drawn(trees.spawn('mushtree_moon', new THREE.Vector3(5, 0, 7)));
-    const meshes = () => { let count = 0; model.traverse(object => { if ((object as THREE.Mesh).isMesh) count++; }); return count; };
-    await new Promise(resolve => setTimeout(resolve, 0));
-    expect(meshes()).toBeGreaterThan(0);
-    awake.set(false);
-    await new Promise(resolve => setTimeout(resolve, 0));
-    expect(meshes()).toBe(0);
-    expect(lookupPrefabInstance(model)?.entityId).toBeDefined();
-    awake.set(true);
-    await new Promise(resolve => setTimeout(resolve, 0));
-    expect(meshes()).toBeGreaterThan(0);
-  } finally { trees.dispose(); }
+    expect(tree.status.peek()).toBe('active');
+  } finally { s.dispose(); DisposeTileStates(player as never); stopGrid(); }
 });
