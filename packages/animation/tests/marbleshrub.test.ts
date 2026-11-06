@@ -1,11 +1,10 @@
-import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
+import { prefabDisplay } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { marbleShrubWorld } from './marbleShrubFixture';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
-import { MarbleBeanSaplingManager } from '../../prefab/src/marblebean_sapling';
 import { GroundItemManager } from '../../prefab/src/groundItemManager';
 import { createInventoryStore } from '../../../src/inventory';
 import { inventorySlotAddress } from '../../inventory/src';
@@ -34,7 +33,7 @@ function setup() {
   const spawnGroundItem: GroundItemManager['spawnGroundItem'] = (definition, position, options) => ground.spawnGroundItem(definition, position, options);
   const { snowLevel, getWatchWorldContent } = bindTestWorld(scheduler);
   const shrubs = marbleShrubWorld(scene, { scheduler, getWatchWorldContent, spawnGroundItem }, { physics });
-  const saplings = new MarbleBeanSaplingManager(new PrefabDisplayGroup(scene), { scheduler, spawnGroundItem, spawnPrefab: (id, position) => shrubs.spawn(id, position) });
+  const { saplings } = shrubs;
   const registry = new EntityRegistry();
   registry.register(PREFAB_DEFINITIONS.marbleShrubs, {
     restore: (_, record) => shrubs.spawn('marbleshrub', new THREE.Vector3(...record.transform.position), record),
@@ -44,7 +43,7 @@ function setup() {
   registry.register(PREFAB_DEFINITIONS.marbleBeanSaplings, {
     restore: (_, record) => saplings.spawn(new THREE.Vector3(...record.transform.position), record),
     debugSpawn: () => saplings.spawn(player.position),
-    exportRecords: () => saplings.exportRecords().map(record => ({ prefabId: 'marblebean_sapling', record })), dispose: () => saplings.dispose(),
+    exportRecords: () => saplings.exportRecords().map(record => ({ prefabId: 'marblebean_sapling', record })), dispose: () => {},
   });
   registry.register(PREFAB_DEFINITIONS.groundItems, {
     restore: () => { throw new Error('unused'); },
@@ -55,7 +54,7 @@ function setup() {
   const save = () => serializeSave(template, { entities: { marbleshrub: shrubs.exportRecords(), marblebean_sapling: saplings.exportRecords(), ground_item: ground.exportRecords() },
     inventory: inventory.exportState(), elapsedSeconds: scheduler.now, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
   const advance = (seconds: number) => {
-    scheduler.advance(seconds); shrubs.update(seconds); saplings.update(seconds);
+    scheduler.advance(seconds); shrubs.update(seconds);
   };
   return { snowLevel, inventory, scene, scheduler, ground, shrubs, saplings, registry, save, advance,
     dispose: () => { registry.dispose(); inventory.dispose(); scheduler.dispose(); } };
