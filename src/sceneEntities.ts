@@ -314,7 +314,6 @@ export async function createSceneEntities(
     'marblebean_sapling': ReturnType<typeof registerMarbleBeanSaplings>;
     'rock_avocado_bush': ReturnType<typeof registerRockAvocadoBushes>;
     'rock_avocado_fruit_sprout_sapling': ReturnType<typeof registerRockAvocadoSaplings>;
-    'berrybush': ReturnType<typeof registerBerrybushes>;
     'monkeytail': ReturnType<typeof registerMonkeytails>;
     'grass': ReturnType<typeof registerGrasses>;
     'sapling': ReturnType<typeof registerSaplings>;
@@ -411,7 +410,7 @@ export async function createSceneEntities(
   Managers['marblebean_sapling'] = registerMarbleBeanSaplings(registry, 'marblebean_sapling', worldState);
   Managers['rock_avocado_bush'] = registerRockAvocadoBushes(registry, 'rock_avocado_bush', worldState);
   Managers['rock_avocado_fruit_sprout_sapling'] = registerRockAvocadoSaplings(registry, 'rock_avocado_fruit_sprout_sapling', worldState);
-  Managers['berrybush'] = registerBerrybushes(registry, 'berrybush', worldState);
+  registerBerrybushes(registry, 'berrybush', worldState);
   Managers['monkeytail'] = registerMonkeytails(registry, 'monkeytail', worldState);
   Managers['grass'] = registerGrasses(registry, 'grass', worldState);
   Managers['sapling'] = registerSaplings(registry, 'sapling', worldState);
@@ -489,7 +488,6 @@ export async function createSceneEntities(
     dragonflySpawners: Managers['dragonfly_spawner'],
     marbleBeanSaplings: Managers['marblebean_sapling'],
     rockAvocadoBushes: Managers['rock_avocado_bush'],
-    berrybushes: Managers['berrybush'],
     monkeytails: Managers['monkeytail'],
     grasses: Managers['grass'],
     saplings: Managers['sapling'],
@@ -1066,7 +1064,6 @@ export async function createSceneEntities(
       spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
     }));
     registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
-    return prefabs;
   }
 
   function registerMonkeytails(registry: EntityRegistry, prefabId: 'monkeytail', worldState: SceneWorldState) {
