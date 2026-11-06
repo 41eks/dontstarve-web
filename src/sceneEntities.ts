@@ -42,7 +42,7 @@ import { vaultPillarPrefabs } from '@dontstarve-web/prefab/vault_pillar';
 import { monkeyPillarPrefabs } from '@dontstarve-web/prefab/monkeypillar';
 import { StaffProjectileManager } from '@dontstarve-web/prefab/staff_projectile';
 import { CaveEntranceManager, CAVES_SHARD } from '@dontstarve-web/prefab/cave_entrance';
-import { CaveExitManager, MASTER_SHARD } from '@dontstarve-web/prefab/cave_exit';
+import { caveExitPrefabs, MASTER_SHARD } from '@dontstarve-web/prefab/cave_exit';
 import type { WorldMigratorShard } from '../packages/componets/src/worldmigrator';
 import { GrottoPoolManager } from '@dontstarve-web/prefab/grotto_pool';
 import { mushroomPlantPrefabs } from '@dontstarve-web/prefab/mushroom_plant';
@@ -875,19 +875,10 @@ export async function createSceneEntities(
     return grottoPools;
   }
 
-  function registerCaveExits(registry: EntityRegistry, prefabId: 'cave_exit', worldState: SceneWorldState) {
-    const caveExits = new CaveExitManager(scene, { physics: world, tickingarea: worldState.tickingarea, shard: shardLink });
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
-      restore: (_id, record) => caveExits.spawn(new THREE.Vector3(...record.transform.position), {
-        id: record.id, transform: record.transform, components: {},
-      }),
-      debugSpawn: () => caveExits.spawn(player.position.clone()),
-      exportRecords: () => caveExits.exportRecords(),
-      update: (dt, quaternion) => caveExits.update(dt, quaternion),
-      renderEntities: () => caveExits.renderEntities,
-      dispose: () => caveExits.dispose(),
-    });
-    return caveExits;
+  function registerCaveExits(registry: EntityRegistry, prefabId: 'cave_exit', _worldState: SceneWorldState) {
+    prefabs.register(caveExitPrefabs({ shard: shardLink }));
+    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+    return prefabs;
   }
 
   function registerMarbleShrubs(registry: EntityRegistry, prefabId: 'marbleshrub', _worldState: SceneWorldState) {
