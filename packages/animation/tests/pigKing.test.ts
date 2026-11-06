@@ -1,75 +1,97 @@
-import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
+import { unzipSync, strFromU8 } from 'fflate';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { PigKingManager } from '../../prefab/src/pigking';
+import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
+import { pigKingPrefabs, PIGKING_ID, type PigKingInstance } from '../../prefab/src/pigking';
+import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { bindTestWorld } from './worldContentFixture';
 import { TILE_SIZE, snapToTileCenter } from '../../prefab/src/tile';
 import { placeStaticLayout } from '../../prefab/src/staticLayout';
-import { setSpriteEntityRenderOrder } from '../src/renderOrder';
+import { EntityRegistry } from '../../../src/entityRegistry';
+import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
+import { createInventoryStore } from '../../../src/inventory';
+import { executeDebugCommand } from '../../../src/debugCommands';
+import { serializeSave } from '../../../src/save/serialize';
+import { deserializeSave } from '../../../src/save/deserialize';
+import { createClusterSaveZip } from '../../../src/save/download';
+import { SAVE_CATALOG } from '../../../src/save/catalog';
+import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
+import { CLUSTER_SAVE_ZIP_TIMEOUT } from './importedSave';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 
 beforeEach(() => {
-  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
-    const bytes = await readFile(new URL(`../../../public${url}`, import.meta.url));
-    return new Response(bytes);
-  }));
+  vi.stubGlobal('window', new EventTarget());
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url)))));
 });
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
-afterEach(() => {
-  vi.restoreAllMocks();
-  vi.unstubAllGlobals();
-});
+function setup() {
+  const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), physics = new CANNON.World();
+  const world = bindTestWorld(scheduler), displays = new PrefabDisplayGroup(scene);
+  const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { physics });
+  prefabs.register(pigKingPrefabs({ camera: new THREE.PerspectiveCamera(), scheduler, getWatchWorldContent: world.getWatchWorldContent, dropLoot: vi.fn() }) as never);
+  const registry = new EntityRegistry([], prefabs, () => new THREE.Vector3(12, 0, -6)), inventory = createInventoryStore([]);
+  registry.registerPrefabs(PREFAB_DEFINITIONS.pigKings);
+  const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
+  return { scene, scheduler, physics, world, prefabs, registry, inventory,
+    king: () => scene.children.map(model => prefabInstance<PrefabInstance>(model)!).find(inst => inst?.prefab === PIGKING_ID) as PigKingInstance,
+    save: () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(), elapsedSeconds: 0,
+      playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG),
+    dispose() { registry.dispose(); prefabs.dispose(); displays.dispose(); inventory.dispose(); world.unbind(); scheduler.dispose(); } };
+}
 
 describe('Pig King prefab', () => {
-  it.each([
-    new THREE.Vector3(-13, 2, -25),
-    new THREE.Vector3(12, 0, 0),
-  ])('stands on its feet with obstacle physics, faces the camera and restores its identity at %s', async (feet) => {
-    const scheduler = new GameTimeScheduler(), physics = new CANNON.World();
-    const world = bindTestWorld(scheduler);
-    const kings = new PigKingManager(new THREE.Scene(), '/dst/data/anim', { camera: new THREE.PerspectiveCamera(), scheduler, physics, dropLoot: vi.fn() });
+  it('stands on its feet with obstacle physics, the Lua tags and a camera-facing sprite', async () => {
+    const s = setup();
     try {
-      const standee = await kings.spawn(feet.clone());
-      await new Promise(resolve => setTimeout(resolve, 0));
-      const body = kings.get(standee)!.instance.physicsBody!;
-      expect(standee.position.toArray()).toEqual(feet.toArray());
-      // pigking.lua MakeObstaclePhysics(inst, 2, .5): a static capsule on the feet origin.
-      expect(physics.bodies).toContain(body);
-      expect(body.position.toArray()).toEqual([feet.x, feet.y + 0.75, feet.z]);
-      expect(body.shapes.some(shape => shape instanceof CANNON.Sphere && shape.radius === 6)).toBe(true);
-      expect(lookupPrefabInstance(standee)?.getPhysicsRadius(undefined)).toBe(6);
-      expect(new THREE.Box3().setFromObject(standee).min.y).toBeCloseTo(feet.y);
-      // The prefab owns no terrain: pigking.lua adds no turf, the world layout does.
-      expect(standee.children.every(child => child.name !== 'PigKingFloor')).toBe(true);
+      const king = s.prefabs.spawn(PIGKING_ID, new THREE.Vector3(-13, 2, -25)) as PigKingInstance;
+      expect(king.listTags().filter(tag => tag !== 'tickingarea')).toEqual(['blocker', 'king', 'birdblocker', 'antlion_sinkhole_blocker', 'inspectable', 'trader']);
+      // pigking.lua MakeObstaclePhysics(inst, 2, .5): a static body on the feet origin; the height is dropped.
+      const body = king.physicsBody!;
+      expect(s.physics.bodies).toContain(body);
+      expect(king.position.toArray()).toEqual([-13, 0, -25]);
+      expect(king.getPhysicsRadius(undefined)).toBe(6);
+      expect(king.minimap.peek()).toMatchObject({ icon: 'pigking.png', priority: 1 });
+      expect(king.sprite.sprite.peek()).toMatchObject({ clip: { name: 'idle', loop: true }, billboard: true, depthOffset: true });
+      await prefabDisplay(king.transform.model)!.artLoaded();
       expect(fetch).toHaveBeenCalledTimes(1);
-      setSpriteEntityRenderOrder(standee, 9);
-      // The display root holds the drawn sprite, whose art group is the registered render group.
-      expect(standee.children[0].children[0].renderOrder).toBe(9);
-      // A billboard: the display turns the king to TheCamera itself.
-      const rotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), .6);
-      world.camerarotation.set(rotation);
-      await new Promise(resolve => setTimeout(resolve, 0));
-      expect(standee.children[0].getWorldQuaternion(new THREE.Quaternion()).angleTo(rotation)).toBeCloseTo(0);
-      expect(standee.rotation.y).toBe(0);
-      kings.update(0.1);
-
-      const [saved] = kings.exportRecords();
-      expect(saved).toEqual({ prefabId: 'pigking', record: { id: lookupPrefabInstance(standee)?.entityId,
-        transform: { position: [feet.x, 0, feet.z], rotationY: 0 }, components: {} } });
-      kings.dispose();
-      expect(physics.bodies).not.toContain(body);
-      expect(standee.parent).toBeNull();
-      const restored = new PigKingManager(new THREE.Scene(), '/dst/data/anim', { camera: new THREE.PerspectiveCamera(), scheduler, physics, dropLoot: vi.fn() });
-      const copy = await restored.spawn(new THREE.Vector3(...saved.record.transform.position), saved.record);
-      expect(lookupPrefabInstance(copy)?.entityId).toBe(saved.record.id);
-      expect(restored.exportRecords()).toEqual([saved]);
-      restored.dispose();
-    } finally { kings.dispose(); world.unbind(); scheduler.dispose(); }
+      expect(king.sprite.currentAnimation).toBe('idle');
+      // alignBottom: the art's lowest point is on the feet.
+      expect(new THREE.Box3().setFromObject(king.transform.model).min.y).toBeCloseTo(0);
+      king.remove();
+      expect(s.physics.bodies).not.toContain(body);
+      expect(king.hasTag('trader')).toBe(false);
+      expect(king.minimap.peek().enabled).toBe(false);
+    } finally { s.dispose(); }
   });
+
+  it('c_spawn, c_save and reload keep its identity and position, and c_give is refused', async () => {
+    const first = setup(); let zip!: Uint8Array, records!: ReturnType<EntityRegistry['exportRecords']>;
+    try {
+      expect((await executeDebugCommand(`c_spawn("${PIGKING_ID}")`, first.inventory, id => first.registry.spawn(id))).ok).toBe(true);
+      expect((await executeDebugCommand(`c_give("${PIGKING_ID}")`, first.inventory)).ok).toBe(false);
+      records = first.registry.exportRecords();
+      // pigking.lua has no OnSave.
+      expect(records.pigking).toEqual([{ id: first.king().entityId, transform: { position: [12, 0, -6], rotationY: 0 }, components: {} }]);
+      expect((await executeDebugCommand('c_save()', first.inventory, undefined, async () => {
+        zip = await createClusterSaveZip(first.save(), 'forest');
+      })).ok).toBe(true);
+    } finally { first.dispose(); }
+    const files = unzipSync(zip), text = strFromU8(files['Cluster_1/Master.json']);
+    const exported = JSON.parse(text) as { session: { playerFile: string } };
+    const { player } = JSON.parse(strFromU8(files[`Cluster_1/${exported.session.playerFile}`])) as { player: unknown };
+    const saved = deserializeSave(text, SAVE_CATALOG, player), second = setup();
+    try {
+      expect(saved.world.entities.pigking).toEqual(records.pigking);
+      await second.registry.restoreAll({ pigking: saved.world.entities.pigking });
+      expect(second.king().entityId).toBe(records.pigking[0].id);
+      expect(second.registry.exportRecords()).toEqual(records);
+    } finally { second.dispose(); }
+  }, CLUSTER_SAVE_ZIP_TIMEOUT);
 });
 
 describe('default_pigking static layout', () => {

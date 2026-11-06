@@ -56,8 +56,8 @@ export {
 } from './cook_pot';
 export {
   PIGKING_ID,
-  PigKingManager,
-  type PigKingRecord,
+  PigKingInstance,
+  pigKingPrefabs,
   type PigKingWorld,
 } from './pigking';
 export {

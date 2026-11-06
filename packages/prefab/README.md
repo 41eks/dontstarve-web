@@ -5,7 +5,7 @@ DST 场景预制体。该包基于 `@dontstarve-web/animation` 组合具体资�
 `skinId` 保存在 `SpriteJson.skinId` 中；`PrefabInstance.skinId` 的 getter / setter 读写同一份声明，修改时发布 sprite signal。prefab 用 `sprite.setSkinSource()` 声明源皮肤 ID 到 archive 的映射、共享资源所有者及符号／附加动画 bank 配置。`PrefabDisplay` 在收到声明后查询共享缓存，缺失的 build／animation 由 display 异步加载；完成后按当前 json 应用，过期请求只留下缓存。直接设置 `instance.skinId` 即可换皮，设为 `undefined` 恢复基础外观，保留实体、sprite 控制器、动画进度及完成回调。休眠不为换皮加载资源，唤醒后应用最新声明。
 
 - `createWilsonPlayer` / `createWilsonPlayerPrefab`
-- `PigKingManager`（`pigking`）
+- `pigKingPrefabs`（`pigking`）：猪王的 `PrefabEntityDefinition`，由应用层的 `PrefabEntityManager` 注册
 - `placeStaticLayout`（`staticLayout`）：`default_pigking` 静态布局的地皮与岩石坐标，由地图生成层登记；`NightmareRockManager`（`nightmarerock`）对应 `sanityrock` / `insanityrock`。
 - `Pathfinder`（`pathfinder.ts`）：`TheWorld.Pathfinder` 的 Lua 接口（`SubmitSearch`、`GetSearchStatus`、`GetSearchResult`、`KillSearch`、`IsClear`、`AddWall`、`RemoveWall`、`GetPathTileIndexFromPoint`），位置用世界单位的向量，搜索由 `update()` 分帧推进。只考虑地皮和 `AddWall` 登记的墙；引擎算法不可见，路径可能与原版不同。应用层 `src/building.ts` 持有唯一实例，每帧 `update()`；玩家的 `Locomotor` 和 `componets` 的 `LocoMotor` 共用 `LocoMotorPath` 走 Lua 的 `FindPath` 流程，墙、栅栏和 `atrium_gate` 用 `AddWall` 登记。树、石头等其他障碍交给物理碰撞。
 - `rockAvocadoSaplingPrefabs`：石果萌芽的 `PrefabEntityDefinition`，由应用层的 `PrefabEntityManager` 注册。
@@ -70,7 +70,7 @@ build 从 DST `databundles/anim_dynamic.zip` 提取，`.dyn` 文件原样复制�
 制作时选择的箱子皮肤会映射到 `${import.meta.env.BASE_URL}dst/data/anim/dynamic/`
 下对应的 DST build，并在预览、放置及后续开关动画中保持不变。
 
-`PigKingManager` 对应 `pigking.lua`：每个猪王是 `PrefabInstance` + `PrefabDisplay`（billboard 由 display 订阅相机朝向，visual 随 tile 驻留），附障碍物碰撞体、地图图标、`trader` 组件、`SGpigking` 状态机（经自有 `Cycle` signal 昼夜睡觉、金块交易、拒绝），由场景注册表的 `restore` / `debugSpawn` / `exportRecords` 创建与保存，不创建任何地皮。
+`pigKingPrefabs` 对应 `pigking.lua`：`PigKingInstance` 由全局 `PrefabEntityManager` 生成与保存，声明 billboard、`alignBottom`、`SetFinalOffset(1)`（`setDepthOffset`）、`MakeObstaclePhysics(inst, 2, .5)`、地图图标 `pigking.png`（优先级 1）、`inspectable`、`trader` 组件和 `SGpigking` 状态机（注入的 `WatchWorldState("isnight")` 驱动昼夜睡觉、金块交易、拒绝）；美术未绘制时单次动画立即结算，状态机直接走到下一状态。不创建任何地皮，`default_pigking` 布局由地图生成层登记。小游戏、`hauntable`、`DynamicShadow`、音乐与节日交易未移植。
 猪王周围的地皮和岩石属于地图生成层（原版 `default_pigking.lua` 静态布局），由
 `scripts/import-static-layouts.py` 生成的 `staticLayouts.json` 驱动：`placeStaticLayout('default_pigking', feet, 'pigking')`
 返回 40 块 `GRASS`、12 块 `WOODFLOOR` 的格子中心和 8 块岩石的位置，主场景把所有格子一次登记到 `TurfMap.setOriginalTiles`；存档覆盖的有效地皮未变时不重建。
