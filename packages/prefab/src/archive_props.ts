@@ -1,20 +1,17 @@
-import { PrefabDisplayGroup } from '@dontstarve-web/display';
-import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import * as THREE from 'three';
-import type * as CANNON from 'cannon-es';
-import { createSharedArchiveSprite, preloadSharedArchiveSprite, ArchiveSpriteAssets } from '@dontstarve-web/animation/archiveSprite';
-import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
-import { createArchiveEntity, createEmptyEntity, type PrefabInstance } from './prefabInstance';
-import { watchTileActivity } from './tileActivity';
-import { createRenderEffect, createSignal, watchSignal, type ReadonlySignal, type TileStateQuery } from '@dontstarve-web/signals';
+import { SpriteState } from '@dontstarve-web/display';
+import { createRenderEffect, watchSignal, type ReadonlySignal } from '@dontstarve-web/signals';
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
+import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
-import { Workable } from '../../componets/src/workable';
-import type { MiniMapState } from '../../map/src/minimapState';
-import { actionEntity } from './actionEntity';
-import { newEntityId } from './saveRecord';
+import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
+import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { MakeObstaclePhysics } from './standardcomponents';
+import { actionEntity } from './actionEntity';
+import { addComponent } from './components';
+import { Transform } from './transform';
 import type { SpawnGroundItem } from './groundPrefab';
-import { PlaySound } from './sound';
+import type { WorldFx } from './world_fx';
 import catalog from './groundItems.json' with { type: 'json' };
 
 export const ARCHIVE_MOON_STATUE_ID = 'archive_moon_statue' as const;
@@ -23,12 +20,14 @@ export const ARCHIVE_PORTAL_ID = 'archive_portal' as const;
 export const ARCHIVE_SWITCH_BASE_ID = 'archive_switch_base' as const;
 export const ARCHIVE_SWITCH_PAD_ID = 'archive_switch_pad' as const;
 export const ARCHIVE_AMBIENT_SFX_ID = 'archive_ambient_sfx' as const;
+/** CreateDropShadow's unnamed child of the portal. */
+const ARCHIVE_PORTAL_SHADOW_ID = 'archive_portal_shadow' as const;
 /** Prefabs that persist: archive_switch_pad has `persists = false` and the rubble worldgen items remove themselves. */
 export const ARCHIVE_PROP_IDS = [ARCHIVE_MOON_STATUE_ID, ARCHIVE_RUNE_STATUE_ID, ARCHIVE_PORTAL_ID, ARCHIVE_SWITCH_BASE_ID,
   ARCHIVE_AMBIENT_SFX_ID] as const;
 export const ARCHIVE_PROP_SPAWN_IDS = [...ARCHIVE_PROP_IDS, ARCHIVE_SWITCH_PAD_ID, 'rubble1', 'rubble2'] as const;
 export type ArchivePropId = typeof ARCHIVE_PROP_IDS[number];
-export type ArchivePropSpawnId = typeof ARCHIVE_PROP_SPAWN_IDS[number];
+type ArchivePropPrefabId = typeof ARCHIVE_PROP_SPAWN_IDS[number] | typeof ARCHIVE_PORTAL_SHADOW_ID;
 
 const MOON_STATUE_VARIANTS = 4;
 const RUNE_STATUE_VARIANTS = 3;
@@ -42,321 +41,224 @@ const BACKGROUND_RENDER_ORDER = -.5;
 
 /** archive_props.lua OnSave: statues and rune statues write `anim`; rune statues add `storyprogress` once it is assigned. */
 export interface ArchivePropSaveState { anim?: number; storyprogress?: number; }
-export interface ArchivePropRecord {
-  id: string;
-  transform: { position: [number, number, number]; rotationY: number };
-  components: { archiveProp?: ArchivePropSaveState };
-}
 
 export interface ArchivePropsWorld extends ToolMouseTargetWorld {
-  tickingarea?: TileStateQuery;
-  physics?: CANNON.World;
+  /** worldgenitemfn's DoTaskInTime(0). */
+  scheduler: Pick<GameTimeScheduler, 'schedule'>;
   /** FACING_* bit that the camera heading gives an eight-faced inst with rotation 0. */
   cameraFacing?: ReadonlySignal<number>;
   /** lootdropper:SpawnLootPrefab when a statue is mined out; the loot's display loads its art. */
   spawnGroundItem: SpawnGroundItem;
+  /** SpawnAt("collapse_small") and SetMaterial when a statue is mined out. */
+  fx: Pick<WorldFx, 'collapse'>;
+  /** CreateDropShadow: the portal's child, whose display loads its art. */
+  spawnPrefab(prefab: typeof ARCHIVE_PORTAL_SHADOW_ID, position: ReadonlyVector3): PrefabInstance;
 }
 
-interface PropDefinition {
-  animationArchive: string;
-  buildArchive: string;
-  bank: string;
-  /** Layered background decals (AnimState:SetOrientation(OnGround), LAYER_BACKGROUND) and their sort order. */
-  ground?: { sortOrder: number; finalOffset?: number };
-  eightFaced?: true;
-  /** Animation symbols that the prefab's own build lacks; the engine draws nothing for them. */
-  hiddenSymbols?: readonly string[];
-  /** Only source-looping clips participate in scenery instance batches. */
-  instancedAnimations?: readonly string[];
-  minimap?: string;
-  tags: readonly string[];
+const archive = (name: string, bank: string, hiddenSymbols?: string[]) =>
+  ({ animationArchive: `${name}.zip`, buildArchives: [`${name}.zip`], bank, ...hiddenSymbols ? { hiddenSymbols } : {} });
+
+/**
+ * AnimState:SetOrientation(OnGround) and SetLayer(LAYER_BACKGROUND): flat art drawn under the world. Background decals
+ * share one layer, where the source sort order (and FinalOffset) breaks ties.
+ */
+function layOnGround(inst: PrefabInstance, sortOrder: number, finalOffset = 0): void {
+  inst.sprite.setGround(BACKGROUND_RENDER_ORDER + (sortOrder - 3) * .01 + finalOffset * .001);
 }
 
-const PROPS: Readonly<Record<Exclude<ArchivePropId | typeof ARCHIVE_SWITCH_PAD_ID, typeof ARCHIVE_AMBIENT_SFX_ID>, PropDefinition>> = {
-  [ARCHIVE_MOON_STATUE_ID]: { animationArchive: 'archive_moon_statue.zip', buildArchive: 'archive_moon_statue.zip', bank: 'archive_moon_statue',
-    instancedAnimations: Array.from({ length: MOON_STATUE_VARIANTS }, (_, index) =>
-      ['full', 'med', 'low'].map(state => `idle_${state}_${index + 1}`)).flat(),
-    tags: ['structure', 'statue', 'dustable'] },
-  [ARCHIVE_RUNE_STATUE_ID]: { animationArchive: 'archive_runes.zip', buildArchive: 'archive_runes.zip', bank: 'archive_rune',
-    minimap: 'archive_runes.png', tags: ['structure', 'statue', 'dustable', 'ancient_text'] },
-  [ARCHIVE_PORTAL_ID]: { animationArchive: 'archive_portal.zip', buildArchive: 'archive_portal.zip', bank: 'archive_portal',
-    ground: { sortOrder: 1, finalOffset: 2 }, eightFaced: true, minimap: 'archive_portal.png', tags: ['groundhole', 'blocker'],
-    // The idle clip also lists archive_portal_base_01, which only the archive_portal_base build (the drop shadow child) holds.
-    hiddenSymbols: ['archive_portal_base_01'] },
-  [ARCHIVE_SWITCH_BASE_ID]: { animationArchive: 'archive_switch_ground.zip', buildArchive: 'archive_switch_ground.zip',
-    bank: 'archive_switch_ground', ground: { sortOrder: 1 }, tags: [] },
-  [ARCHIVE_SWITCH_PAD_ID]: { animationArchive: 'archive_switch_ground_small.zip', buildArchive: 'archive_switch_ground_small.zip',
-    bank: 'archive_switch_ground_small', ground: { sortOrder: 2 }, tags: [] },
-};
-/** archive_props.lua CreateDropShadow: the portal's DECOR | NOCLICK child under the portal art. */
-const PORTAL_SHADOW = { animationArchive: 'archive_portal_base.zip', buildArchive: 'archive_portal_base.zip', bank: 'archive_portal_base' } as const;
-
-export function isArchivePropId(value: string): value is ArchivePropId {
-  return (ARCHIVE_PROP_IDS as readonly string[]).includes(value);
+/** Transform:SetEightFaced: a rotation-0 inst shows the facing the camera heading selects. */
+function SetEightFaced(inst: PrefabInstance, cameraFacing: ReadonlySignal<number> | undefined): void {
+  if (!cameraFacing) return;
+  let stopWatching: (() => void) | undefined;
+  const facing = watchSignal(cameraFacing, stop => { stopWatching = stop; });
+  const stopFacing = createRenderEffect(() => inst.sprite.setFacing(facing.get()));
+  inst.onRemove(() => { stopFacing(); stopWatching?.(); });
 }
 
-interface ArchiveProp {
-  prefab: ArchivePropId | typeof ARCHIVE_SWITCH_PAD_ID;
-  model: THREE.Group;
-  instance: PrefabInstance<ArchiveSpriteCommands>;
-  display: PrefabDisplay;
-  sprite?: ArchiveSpriteCommands;
-  shadow?: ReturnType<typeof createArchiveEntity>;
-  stopActivity?: () => void;
-  minimap?: MiniMapState;
-  workable?: Workable;
-  anim?: number;
-  storyprogress?: number;
-  /** Mined: the statue has dropped its loot and is gone this frame. */
-  removed: boolean;
-  stopFacing?: () => void;
+/** ShowWorkState: low under a third of the work, med under two thirds, otherwise full; looping. */
+function ShowWorkState(inst: ArchiveMoonStatueInstance, _worker: unknown, workleft: number): void {
+  inst.sprite.start(`${workleft < MARBLEPILLAR_MINE / 3 ? 'idle_low_' : workleft < MARBLEPILLAR_MINE * 2 / 3 ? 'idle_med_' : 'idle_full_'}${inst.anim}`);
 }
 
-/** archive_props.lua: the static Archive props. The power-driven security desk, switch and pulse prefabs are separate. */
-export class ArchivePropsManager {
-  private readonly displays: PrefabDisplayGroup;
-  private readonly world: ArchivePropsWorld;
-  private readonly assets = new ArchiveSpriteAssets();
-  private readonly props = new Map<THREE.Group, ArchiveProp>();
-  private readonly effects = new Set<ReturnType<typeof createArchiveEntity>>();
-  private readonly sources = new Map<string, ReturnType<typeof preloadSharedArchiveSprite>>();
-  /** Module-level `_storyprogress`: the last story line handed to a rune statue. */
-  private storyprogress = 0;
-  private disposed = false;
+function setminimapiconstatue(inst: ArchiveMoonStatueInstance): void {
+  inst.minimap.SetIcon(`archive_moon_statue${inst.anim}.png`);
+}
 
-  constructor(scene: THREE.Scene, world: ArchivePropsWorld) {
-    this.displays = new PrefabDisplayGroup(scene); this.world = world;
-  }
+/** statuefn. MakeHauntableWork is not wired. */
+export class ArchiveMoonStatueInstance extends PrefabInstance {
+  declare readonly components: PrefabInstance['components'] & { lootdropper: LootDropper };
+  anim: number;
 
-  async spawn(prefab: ArchivePropSpawnId, position: THREE.Vector3, saved?: ArchivePropRecord): Promise<THREE.Group | undefined> {
-    if (this.disposed) throw new Error('Archive props have been disposed');
-    if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError('Invalid archive prop position');
-    // worldgenitemfn: a bare Transform that removes itself at the next tick.
-    if (prefab === 'rubble1' || prefab === 'rubble2') return undefined;
-    if (prefab === ARCHIVE_AMBIENT_SFX_ID) return this.createAmbient(position, saved);
-    const state = saved?.components.archiveProp;
-    const variants = prefab === ARCHIVE_MOON_STATUE_ID ? MOON_STATUE_VARIANTS : RUNE_STATUE_VARIANTS;
-    // statuefn / runefn: anim = math.random(variants); OnLoad restores the saved one.
-    const anim = prefab === ARCHIVE_MOON_STATUE_ID || prefab === ARCHIVE_RUNE_STATUE_ID
-      ? state?.anim ?? 1 + Math.floor(Math.random() * variants) : undefined;
-    const definition = PROPS[prefab];
-    const initial = prefab === ARCHIVE_MOON_STATUE_ID ? `idle_full_${anim}` : prefab === ARCHIVE_RUNE_STATUE_ID
-      ? (anim === 1 ? 'idle' : `idle${anim}`) : 'idle';
-    const resources = await Promise.allSettled([
-      this.getSource(definition),
-      prefab === ARCHIVE_PORTAL_ID ? this.getSource(PORTAL_SHADOW) : undefined,
-      prefab === ARCHIVE_MOON_STATUE_ID ? this.prepareStatue() : undefined,
-    ] as const);
-    const failed = resources.find(result => result.status === 'rejected');
-    const sprite = resources[0].status === 'fulfilled' ? resources[0].value : undefined;
-    const shadow = resources[1].status === 'fulfilled' ? resources[1].value : undefined;
-    if (failed || this.disposed || !sprite) {
-      throw failed?.status === 'rejected' ? failed.reason : new Error('Archive props have been disposed');
-    }
-    const create = (clip: { name: string; loop: boolean }) => sprite(clip.name, clip.loop, prefab);
-    const entity = createArchiveEntity(prefab, { create, initial: create({ name: initial, loop: false }) }, { name: initial, billboard: !definition.ground }, prefab);
-    entity.instance.sprite.playOnce(initial);
-    const childCreate = shadow && ((clip: { name: string; loop: boolean }) => shadow(clip.name, clip.loop, `${prefab}_shadow`));
-    const child = childCreate && createArchiveEntity(`${prefab}_shadow`, { create: childCreate, initial: childCreate({ name: 'idle', loop: false }) }, { name: 'idle' });
-    child?.instance.sprite.playOnce('idle');
-    return this.create(prefab, definition, entity, child, position, anim, state?.storyprogress, saved);
-  }
+  constructor(world: ArchivePropsWorld) {
+    super(ARCHIVE_MOON_STATUE_ID, new SpriteState({ name: 'idle_full_1', billboard: true }), Transform.stationary());
+    for (const tag of ['structure', 'statue', 'dustable']) this.addTag(tag);
+    this.anim = 1 + Math.floor(Math.random() * MOON_STATUE_VARIANTS);
+    this.sprite.playOnce(`idle_full_${this.anim}`); // PlayAnimation, never looping.
 
-  private getSource(definition: Pick<PropDefinition, 'animationArchive' | 'buildArchive' | 'bank' | 'hiddenSymbols' | 'instancedAnimations'>) {
-    const key = definition.animationArchive;
-    let request = this.sources.get(key);
-    if (!request) {
-      request = preloadSharedArchiveSprite(this.assets, { animationArchive: key, buildArchives: [definition.buildArchive],
-        bank: definition.bank, hiddenSymbols: definition.hiddenSymbols }, { instancedAnimations: definition.instancedAnimations })
-        .catch(error => { this.sources.delete(key); throw error; });
-      this.sources.set(key, request);
-    }
-    return request;
-  }
-
-  /** The statue's collapse effect. */
-  private async prepareStatue(): Promise<void> {
-    await Promise.all([
-      this.assets.loadAnimation('structure_collapse_fx.zip'), this.assets.loadBuild('structure_collapse_fx.zip'),
-    ]);
-  }
-
-  private create(prefab: ArchivePropId | typeof ARCHIVE_SWITCH_PAD_ID, definition: PropDefinition, { instance, display }: ReturnType<typeof createArchiveEntity>, shadow: ReturnType<typeof createArchiveEntity> | undefined,
-    position: THREE.Vector3, anim: number | undefined, storyprogress: number | undefined,
-    saved: ArchivePropRecord | undefined): THREE.Group {
-    const model = display.model;
-    const sprite = instance.sprite;
-    instance.setPosition(position.x, 0, position.z);
-    instance.entityId = saved?.id ?? newEntityId();
-    for (const tag of definition.tags) instance.addTag(tag);
-    const inst = actionEntity(model, prefab);
-    const prop: ArchiveProp = { prefab, model, instance, display, sprite, shadow, anim, storyprogress, removed: false };
-    if (definition.ground) this.layOnGround(prop, definition.ground);
-    if (shadow) {
-      // The shadow is a DECOR | NOCLICK child that sorts just under the portal art (SortOrder 1, no FinalOffset).
-      shadow.display.model.userData.billboard = false;
-      for (const tag of ['DECOR', 'NOCLICK']) shadow.instance.addTag(tag);
-      shadow.instance.persists = false;
-      shadow.instance.sprite.setGround(this.groundRenderOrder(1));
-      sprite.attachFx('shadow', { sprite: shadow.instance.sprite, display: shadow.display, active: createSignal(true),
-        sortLayer: 0, background: true });
-    }
-    if (definition.eightFaced && this.world.cameraFacing) {
-      // Transform:SetEightFaced: a rotation-0 inst shows the facing the camera heading selects.
-      const facing = watchSignal(this.world.cameraFacing, stop => { prop.stopFacing = stop; });
-      createRenderEffect(() => { const value = facing.get(); sprite.setFacing(value); shadow?.instance.sprite.setFacing(value); });
-    }
-    if (prefab === ARCHIVE_MOON_STATUE_ID) this.createStatue(prop, inst, anim!, saved !== undefined);
-    else if (prefab === ARCHIVE_RUNE_STATUE_ID) this.createRune(prop, storyprogress);
-    if (definition.minimap || prefab === ARCHIVE_MOON_STATUE_ID) {
-      prop.minimap = prop.instance.minimap;
-      prop.minimap.SetIcon(definition.minimap ?? `archive_moon_statue${anim}.png`);
-    }
-    if (prefab === ARCHIVE_MOON_STATUE_ID || prefab === ARCHIVE_RUNE_STATUE_ID) {
-      MakeObstaclePhysics(prop.instance, PHYSICS_RADIUS);
-      if (this.world.physics) prop.instance.bindPhysics(this.world.physics);
-    }
-    this.props.set(model, prop);
-    this.displays.mount(display);
-    instance.persists = prefab !== ARCHIVE_SWITCH_PAD_ID;
-    prop.stopActivity = watchTileActivity(model, this.world.tickingarea, active => {
-      instance.setActive(active); shadow?.instance.setActive(active);
-    });
-    return model;
-  }
-
-  /** AnimState:SetOrientation(ANIM_ORIENTATION.OnGround) and SetLayer(LAYER_BACKGROUND): flat art drawn under the world. */
-  private layOnGround(prop: ArchiveProp, { sortOrder, finalOffset = 0 }: NonNullable<PropDefinition['ground']>): void {
-    prop.model.userData.billboard = false;
-    prop.sprite!.setGround(this.groundRenderOrder(sortOrder, finalOffset));
-  }
-
-  /** Background decals share one layer: the source sort order (and FinalOffset) breaks ties within it. */
-  private groundRenderOrder(sortOrder: number, finalOffset = 0): number {
-    return BACKGROUND_RENDER_ORDER + (sortOrder - 3) * .01 + finalOffset * .001;
-  }
-
-  /** statuefn: MINE workable (MARBLEPILLAR_MINE), `archive_statues` loot, work-state idle poses and collapse_small on finish. */
-  private createStatue(prop: ArchiveProp, inst: ReturnType<typeof actionEntity>, anim: number, loaded: boolean): void {
-    const { model, sprite } = prop;
-    const workable = new Workable(prop.instance);
-    prop.workable = workable;
+    const workable = addComponent(this as ArchiveMoonStatueInstance, 'workable');
     workable.SetWorkAction('MINE');
     workable.SetWorkLeft(MARBLEPILLAR_MINE);
-    // ShowWorkState: low under a third of the work, med under two thirds, otherwise full; looping.
-    const showWorkState = (workleft: number) => sprite!.start(`${workleft < MARBLEPILLAR_MINE / 3 ? 'idle_low_'
-      : workleft < MARBLEPILLAR_MINE * 2 / 3 ? 'idle_med_' : 'idle_full_'}${anim}`);
-    // OnLoadPostPass shows the work state of a loaded statue; a new one plays idle_full_<anim> once.
-    if (loaded) showWorkState(workable.GetWorkLeft());
-    const lootdropper = new LootDropper(inst, (itemId, point) => this.world.spawnGroundItem(
-      { ...catalog.items[itemId as keyof typeof catalog.items], itemId, count: 1 }, new THREE.Vector3(point.x, point.y, point.z), { fling: true }));
-    lootdropper.SetChanceLootTable('archive_statues');
-    workable.SetOnWorkCallback((_inst, _worker, workleft) => showWorkState(workleft));
+    workable.SetOnWorkCallback(ShowWorkState);
     workable.SetOnFinishCallback(() => {
       // OnWorkFinished: DropLoot at the statue, collapse_small with the rock material, then Remove.
-      lootdropper.DropLoot();
-      this.playCollapse(model.position);
-      this.remove(model);
+      this.components.lootdropper.DropLoot(this.position);
+      world.fx.collapse('small', this.position, 'rock');
+      this.remove();
     });
-    Object.assign(prop.instance.components, { workable, lootdropper });
-    new ToolMouseTarget(inst, prop.instance, workable, this.world.handEquipment);
-  }
+    const lootdropper = new LootDropper(this, (prefab, position) => world.spawnGroundItem(
+      { ...catalog.items[prefab as keyof typeof catalog.items], itemId: prefab, count: 1 },
+      new THREE.Vector3(position.x, position.y, position.z), { fling: true }));
+    lootdropper.SetChanceLootTable('archive_statues');
+    Object.assign(this.components, { lootdropper });
+    setminimapiconstatue(this);
 
-  /** structure_collapse_fx.lua: smoke plus the `rock` material sound over the collapse_small animation. */
-  private playCollapse(position: THREE.Vector3): void {
-    const at = position.clone();
-    PlaySound('dontstarve/common/destroy_smoke', at);
-    PlaySound('dontstarve/wilson/rock_break', at);
-    void createSharedArchiveSprite(this.assets, { animationArchive: 'structure_collapse_fx.zip', buildArchives: ['structure_collapse_fx.zip'],
-      bank: 'collapse', animation: 'collapse_small', loop: false }).then(effect => {
-      if (this.disposed) { effect.dispose(); return; }
-      const entity = createArchiveEntity('collapse_small', { initial: effect, create: clip => createSharedArchiveSprite(this.assets, {
-        animationArchive: 'structure_collapse_fx.zip', buildArchives: ['structure_collapse_fx.zip'], bank: 'collapse', animation: clip.name, loop: clip.loop,
-      }) }, { name: 'collapse_small', billboard: true });
-      entity.instance.copyPosition(at); entity.instance.persists = false;
-      for (const tag of ['FX', 'NOCLICK']) entity.instance.addTag(tag);
-      this.displays.mount(entity.display); this.effects.add(entity);
-      entity.instance.sprite.playOnce('collapse_small', () => { entity.instance.remove(); this.effects.delete(entity); });
-    }).catch((error: unknown) => console.error('Unable to play collapse effect', error));
+    // workable.savestate is false: a surviving statue reloads with its full work count.
+    this.OnSave = (_inst, data) => { data.archiveProp = { anim: this.anim }; };
+    // onloadpostpass: a loaded statue shows its work state, looping.
+    this.OnLoad = (_inst, data) => {
+      if (data.archiveProp?.anim !== undefined) this.anim = data.archiveProp.anim;
+      setminimapiconstatue(this);
+      ShowWorkState(this, undefined, workable.GetWorkLeft());
+    };
   }
+}
 
-  /** runefn: ancient_text statue whose story line is assigned on first inspection and saved. */
-  private createRune(prop: ArchiveProp, storyprogress: number | undefined): void {
-    // onloadRune: the module counter keeps the highest line already handed out.
-    if (storyprogress !== undefined) this.storyprogress = Math.max(this.storyprogress, storyprogress);
+const runeAnimation = (anim: number) => anim === 1 ? 'idle' : `idle${anim}`;
+
+/** runefn: ancient_text statue whose story line is assigned on first inspection and saved. */
+export class ArchiveRuneStatueInstance extends PrefabInstance {
+  anim: number;
+  storyprogress?: number;
+
+  constructor(story: { progress: number }) {
+    super(ARCHIVE_RUNE_STATUE_ID, new SpriteState({ name: 'idle', billboard: true }), Transform.stationary());
+    for (const tag of ['structure', 'statue', 'dustable', 'ancient_text']) this.addTag(tag);
+    this.anim = 1 + Math.floor(Math.random() * RUNE_STATUE_VARIANTS);
+    this.sprite.playOnce(runeAnimation(this.anim));
+
+    // rune_AdvanceStory: `story` is the module-level `_storyprogress`, one per world.
     const advance = () => {
-      if (prop.storyprogress === undefined) {
-        this.storyprogress = this.storyprogress % NUM_STORY_LINES + 1;
-        prop.storyprogress = this.storyprogress;
+      if (this.storyprogress === undefined) {
+        story.progress = story.progress % NUM_STORY_LINES + 1;
+        this.storyprogress = story.progress;
       }
     };
-    Object.assign(prop.instance.components, { inspectable: {
+    Object.assign(this.components, { inspectable: {
       /** getstatus: `LINE_<n>`, advancing the story on first use. */
-      getstatus: () => { advance(); return `LINE_${prop.storyprogress}`; },
+      getstatus: () => { advance(); return `LINE_${this.storyprogress}`; },
       /** rune_getdescription: only a viewer holding an ancient_reader gets the line's text key. */
       descriptionfn: (viewer: { components?: { inventory?: { EquipHasTag(tag: string): boolean } } }) => {
         if (!viewer.components?.inventory?.EquipHasTag('ancient_reader')) return undefined;
         advance();
-        return `LINE_${prop.storyprogress}`;
+        return `LINE_${this.storyprogress}`;
       },
     } });
-  }
 
-  /** ambientfn: NOBLOCK | NOCLICK sound source; the arhivepoweron/off listeners need the archive manager. */
-  private createAmbient(position: THREE.Vector3, saved?: ArchivePropRecord): THREE.Group {
-    const { instance, display } = createEmptyEntity(ARCHIVE_AMBIENT_SFX_ID);
-    const model = display.model;
-    instance.setPosition(position.x, 0, position.z);
-    instance.entityId = saved?.id ?? newEntityId();
-    for (const tag of ['NOBLOCK', 'NOCLICK']) instance.addTag(tag);
-    actionEntity(model, ARCHIVE_AMBIENT_SFX_ID);
-    const prop: ArchiveProp = { prefab: ARCHIVE_AMBIENT_SFX_ID, model, instance, display, removed: false };
-    this.props.set(model, prop);
-    prop.stopActivity = watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active));
-    this.displays.mount(display);
-    return model;
+    this.OnSave = (_inst, data) => {
+      data.archiveProp = { anim: this.anim, ...this.storyprogress === undefined ? {} : { storyprogress: this.storyprogress } };
+    };
+    this.OnLoad = (_inst, data) => {
+      const saved = data.archiveProp;
+      if (!saved) return;
+      if (saved.storyprogress !== undefined) {
+        this.storyprogress = saved.storyprogress;
+        story.progress = Math.max(story.progress, saved.storyprogress);
+      }
+      if (saved.anim !== undefined) {
+        this.anim = saved.anim;
+        const anim = runeAnimation(this.anim);
+        if (this.sprite.currentAnimation !== anim) this.sprite.playOnce(anim);
+      }
+    };
   }
+}
 
-  update(dt: number, _quaternion: THREE.Quaternion): void {
-    if (this.disposed) return;
-    // The display group advances the props and their collapse effects.
-    this.displays.update(dt);
-  }
+/** portalfn. The POWEROFF status and ms_register_vault_lobby_exit_target need the archive manager. */
+function portalfn(world: ArchivePropsWorld, position: ReadonlyVector3): PrefabInstance {
+  const inst = new PrefabInstance(ARCHIVE_PORTAL_ID, new SpriteState({ name: 'idle' }), Transform.stationary());
+  SetEightFaced(inst, world.cameraFacing);
+  inst.sprite.playOnce('idle');
+  layOnGround(inst, 1, 2);
+  inst.addTag('groundhole');
+  inst.addTag('blocker');
+  const shadow = world.spawnPrefab(ARCHIVE_PORTAL_SHADOW_ID, position);
+  shadow.entityParent = inst as PrefabInstance<SpriteState, object>;
+  inst.onRemove(() => shadow.remove());
+  return inst;
+}
 
-  /** Only upright art needs depth sorting; background decals draw first. */
-  get renderEntities() {
-    return [...this.props.values()].filter(({ model, sprite }) => sprite?.loaded && model.userData.billboard !== false)
-      .map(({ model }) => ({ object: model, footPosition: model.position, cameraDepth: 0 }))
-      .concat([...this.effects].map(({ display: { model } }) => ({ object: model, footPosition: model.position, cameraDepth: 0 })));
-  }
+/** CreateDropShadow: a DECOR | NOCLICK child that sorts just under the portal art (SortOrder 1, no FinalOffset). */
+function CreateDropShadow(world: ArchivePropsWorld): PrefabInstance {
+  const inst = new PrefabInstance(ARCHIVE_PORTAL_SHADOW_ID, new SpriteState({ name: 'idle' }), Transform.stationary());
+  inst.sprite.playOnce('idle');
+  layOnGround(inst, 1);
+  SetEightFaced(inst, world.cameraFacing);
+  inst.addTag('DECOR');
+  inst.addTag('NOCLICK');
+  inst.persists = false;
+  return inst;
+}
 
-  /** workable.savestate is false: a surviving statue reloads with its full work count. */
-  exportRecords(): { prefabId: ArchivePropId; record: ArchivePropRecord }[] {
-    return [...this.props].filter(([, prop]) => prop.prefab !== ARCHIVE_SWITCH_PAD_ID).map(([model, prop]) => ({
-      prefabId: prop.prefab as ArchivePropId,
-      record: {
-        id: String(prop.instance.entityId),
-        transform: { position: [model.position.x, 0, model.position.z], rotationY: 0 },
-        components: prop.anim === undefined ? {} : { archiveProp: {
-          anim: prop.anim, ...prop.storyprogress === undefined ? {} : { storyprogress: prop.storyprogress } } },
+/** switchbasefn / switchpadfn: background decals. The base's archive_switch rotation and power listeners are not wired. */
+function groundDecal(prefab: typeof ARCHIVE_SWITCH_BASE_ID | typeof ARCHIVE_SWITCH_PAD_ID, sortOrder: number): PrefabInstance {
+  const inst = new PrefabInstance(prefab, new SpriteState({ name: 'idle' }), Transform.stationary());
+  inst.sprite.playOnce('idle');
+  layOnGround(inst, sortOrder);
+  inst.persists = prefab !== ARCHIVE_SWITCH_PAD_ID;
+  return inst;
+}
+
+/** ambientfn: NOBLOCK | NOCLICK sound source; the arhivepoweron/off listeners need the archive manager. */
+function ambientfn(): PrefabInstance {
+  const inst = new PrefabInstance(ARCHIVE_AMBIENT_SFX_ID, new SpriteState({ name: '' }), Transform.stationary());
+  inst.addTag('NOBLOCK');
+  inst.addTag('NOCLICK');
+  return inst;
+}
+
+/** worldgenitemfn: a bare Transform that removes itself at the next tick. */
+function worldgenitemfn(prefab: 'rubble1' | 'rubble2', scheduler: ArchivePropsWorld['scheduler']): PrefabInstance {
+  const inst = new PrefabInstance(prefab, new SpriteState({ name: '' }), Transform.stationary());
+  inst.persists = false;
+  inst.onRemove(scheduler.schedule(0, () => inst.remove()));
+  return inst;
+}
+
+/**
+ * The Prefabs archive_props.lua returns, without the power-driven security desk, switch and pulse prefabs.
+ * Each call is one world's `_storyprogress`.
+ */
+export function archivePropsPrefabs(world: ArchivePropsWorld): Readonly<Record<ArchivePropPrefabId, PrefabEntityDefinition<PrefabInstance>>> {
+  const story = { progress: 0 };
+  const obstacle = { make: MakeObstaclePhysics, radius: PHYSICS_RADIUS };
+  return {
+    [ARCHIVE_MOON_STATUE_ID]: {
+      fn: () => new ArchiveMoonStatueInstance(world),
+      assets: archive('archive_moon_statue', 'archive_moon_statue'),
+      assetOptions: { instancedAnimations: Array.from({ length: MOON_STATUE_VARIANTS }, (_, index) =>
+        ['full', 'med', 'low'].map(state => `idle_${state}_${index + 1}`)).flat() },
+      physics: obstacle,
+      onSpawned: inst => {
+        new ToolMouseTarget(actionEntity(inst.transform.model, ARCHIVE_MOON_STATUE_ID), inst, inst.components.workable, world.handEquipment);
       },
-    }));
-  }
-
-  private remove(model: THREE.Group): void {
-    const prop = this.props.get(model); if (!prop) return;
-    this.props.delete(model); model.userData.removed = true; prop.removed = true;
-    prop.stopActivity?.(); prop.stopFacing?.(); prop.workable?.dispose();
-    prop.shadow?.instance.remove(); prop.instance.remove();
-  }
-
-  dispose(): void {
-    if (this.disposed) return;
-    this.disposed = true;
-    for (const model of [...this.props.keys()]) this.remove(model);
-    for (const { instance } of this.effects) instance.remove();
-    this.effects.clear();
-    this.displays.dispose();
-    this.assets.dispose();
-  }
+    },
+    [ARCHIVE_RUNE_STATUE_ID]: {
+      fn: () => new ArchiveRuneStatueInstance(story),
+      assets: archive('archive_runes', 'archive_rune'),
+      physics: obstacle,
+      minimapIcon: 'archive_runes.png',
+    },
+    [ARCHIVE_PORTAL_ID]: {
+      fn: position => portalfn(world, position),
+      // The idle clip also lists archive_portal_base_01, which only the archive_portal_base build (the drop shadow child) holds.
+      assets: archive('archive_portal', 'archive_portal', ['archive_portal_base_01']),
+      minimapIcon: 'archive_portal.png',
+    },
+    [ARCHIVE_PORTAL_SHADOW_ID]: { fn: () => CreateDropShadow(world), assets: archive('archive_portal_base', 'archive_portal_base'), targetable: false },
+    [ARCHIVE_SWITCH_BASE_ID]: { fn: () => groundDecal(ARCHIVE_SWITCH_BASE_ID, 1), assets: archive('archive_switch_ground', 'archive_switch_ground') },
+    [ARCHIVE_SWITCH_PAD_ID]: { fn: () => groundDecal(ARCHIVE_SWITCH_PAD_ID, 2), assets: archive('archive_switch_ground_small', 'archive_switch_ground_small') },
+    [ARCHIVE_AMBIENT_SFX_ID]: { fn: ambientfn },
+    rubble1: { fn: () => worldgenitemfn('rubble1', world.scheduler), alwaysActive: true },
+    rubble2: { fn: () => worldgenitemfn('rubble2', world.scheduler), alwaysActive: true },
+  };
 }

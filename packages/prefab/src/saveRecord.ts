@@ -49,6 +49,8 @@ export interface PlacementSaveRecord {
     pillar_id?: import('./monkeypillar').MonkeyPillarId;
     /** rocks.lua on_save_moonglass: data.rock_type. */
     rock_type?: import('./rocks').MoonglassRockType;
+    /** archive_props.lua OnSave: the statues' data.anim and the rune statues' data.storyprogress. */
+    archiveProp?: import('./archive_props').ArchivePropSaveState;
   };
 }
 

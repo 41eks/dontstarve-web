@@ -5,10 +5,10 @@ import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
-import { ArchivePropsManager } from '../../prefab/src/archive_props';
+import { archivePropsPrefabs } from '../../prefab/src/archive_props';
 import { MarbleShrubManager } from '../../prefab/src/marbleshrub';
 import { NightmareRockManager, type NightmareRockInstance } from '../../prefab/src/nightmarerock';
-import { prefabInstance, modelHasTag } from '../../prefab/src/prefabInstance';
+import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { FACING } from '../src/facing';
 import { workTargets } from './workTargets';
@@ -23,22 +23,26 @@ beforeEach(() => {
 });
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
-it('restores portal ground layers, its declared shadow and statue work state without replacing logical entities', async () => {
-  const scene = new THREE.Scene(), awake = createSignal(true), cameraFacing = createSignal<number>(FACING.DOWN);
-  const manager = new ArchivePropsManager(scene, { spawnGroundItem, cameraFacing, tickingarea: () => createMemo(() => awake.get()) });
+it('restores portal ground layers, its shadow child and statue work state without replacing logical entities', async () => {
+  const scene = new THREE.Scene(), awake = createSignal(true), cameraFacing = createSignal<number>(FACING.DOWN), scheduler = new GameTimeScheduler();
+  const displays = new PrefabDisplayGroup(scene);
+  const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { tickingarea: () => createMemo(() => awake.get()) });
+  prefabs.register(archivePropsPrefabs({ scheduler, spawnGroundItem, cameraFacing, fx: { collapse: () => {} },
+    spawnPrefab: (id, position) => prefabs.spawn(id, position) }) as never);
   try {
-    const portal = (await manager.spawn('archive_portal', new THREE.Vector3(3, 0, 6)))!;
-    const statue = (await manager.spawn('archive_moon_statue', new THREE.Vector3(9, 0, 6)))!;
-    const ambient = (await manager.spawn('archive_ambient_sfx', new THREE.Vector3(15, 0, 6)))!;
+    const portal = prefabs.spawn('archive_portal', new THREE.Vector3(3, 0, 6)).transform.model;
+    const statue = prefabs.spawn('archive_moon_statue', new THREE.Vector3(9, 0, 6)).transform.model;
+    const ambient = prefabs.spawn('archive_ambient_sfx', new THREE.Vector3(15, 0, 6)).transform.model;
+    const shadowInstance = scene.children.map(model => prefabInstance(model)!).find(inst => inst.prefab === 'archive_portal_shadow')!;
+    const shadow = shadowInstance.transform.model;
+    await Promise.all([portal, shadow].map(model => prefabDisplay(model)!.artLoaded()));
     const mine = workTargets('MINE')[0];
     mine.entity.components.workable!.WorkedBy({}, 5);
     await settle();
-    const shadow = portal.children.find(child => modelHasTag(child, 'DECOR'))!;
-    const records = manager.exportRecords();
+    const records = prefabs.exportRecords();
     const work = mine.entity.components.workable!.GetWorkLeft();
-    const shadowInstance = prefabInstance(shadow)!;
     expect(shadowInstance.persists).toBe(false);
-    expect(prefabInstance(shadow)!.listTags()).toEqual(['DECOR', 'NOCLICK']);
+    expect(shadowInstance.listTags()).toEqual(expect.arrayContaining(['DECOR', 'NOCLICK']));
     // The archive path is stable root -> drawn sprite -> visual -> merged frame.
     const portalVisual = portal.children[0].children[0];
     expect(portalVisual.rotation.x).toBe(-Math.PI / 2);
@@ -50,25 +54,26 @@ it('restores portal ground layers, its declared shadow and statue work state wit
       expect(model.parent).toBeNull();
       expect(meshes(model)).toHaveLength(0);
     }
-    expect(manager.exportRecords()).toEqual(records);
+    expect(prefabs.exportRecords()).toEqual(records);
     expect(mine.entity.components.workable!.GetWorkLeft()).toBe(work);
     cameraFacing.set(FACING.UPRIGHT); await settle();
     awake.set(true); await settle();
-    expect(portal.parent).toBe(scene); expect(shadow.parent).toBe(portal); expect(ambient.parent).toBe(scene);
+    await Promise.all([portal, shadow].map(model => prefabDisplay(model)!.artLoaded()));
+    expect(portal.parent).toBe(scene); expect(shadow.parent).toBe(scene); expect(ambient.parent).toBe(scene);
     expect(portal.rotation.y).toBe(0);
     expect(portal.children[0].children[0].rotation.x).toBe(-Math.PI / 2);
     expect(portal.children[0].children[0].renderOrder).toBe(portalOrder);
     expect(shadow.children[0].children[0].renderOrder).toBeLessThan(portalOrder);
     expect(shadowInstance.sprite.sprite.peek().facing).toBe(FACING.UPRIGHT);
     expect(prefabInstance(statue)!.sprite.currentAnimation).toMatch(/^idle_med_/);
-    expect(manager.exportRecords()).toEqual(records);
+    expect(prefabs.exportRecords()).toEqual(records);
     awake.set(false); await settle();
     mine.entity.components.workable!.WorkedBy({}, work);
     expect(prefabInstance(statue)!.status.peek()).toBe('removed');
-    manager.dispose(); await settle();
+    prefabs.dispose(); displays.dispose(); await settle();
     awake.set(true); await settle();
     expect(scene.children).toEqual([]);
-  } finally { manager.dispose(); }
+  } finally { prefabs.dispose(); displays.dispose(); scheduler.dispose(); }
 });
 
 it('grows an unloaded marble shrub and keeps shape, colour and the scheduled mined-removal deadline', async () => {
