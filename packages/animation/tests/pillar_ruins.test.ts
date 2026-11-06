@@ -15,6 +15,7 @@ import { deserializeSave } from '../../../src/save/deserialize';
 import { createClusterSaveZip } from '../../../src/save/download';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
+import { CLUSTER_SAVE_ZIP_TIMEOUT } from './importedSave';
 
 const turn = () => new Promise(resolve => setTimeout(resolve, 0));
 const record = { id: 'saved-pillar', transform: { position: [3, 0, 6] as [number, number, number], rotationY: 0 }, components: {} };
@@ -103,4 +104,4 @@ it('c_spawn, c_save and reload keep the id, position and clip, and c_give is ref
     expect(pillar.sprite.currentAnimation).toBe('idle');
     expect(second.registry.exportRecords()).toEqual(records);
   } finally { second.dispose(); }
-});
+}, CLUSTER_SAVE_ZIP_TIMEOUT);

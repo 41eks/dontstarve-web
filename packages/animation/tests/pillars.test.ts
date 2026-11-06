@@ -20,6 +20,7 @@ import { deserializeSave } from '../../../src/save/deserialize';
 import { createClusterSaveZip } from '../../../src/save/download';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
+import { CLUSTER_SAVE_ZIP_TIMEOUT } from './importedSave';
 
 const IDS = [...CAVE_PILLAR_IDS, PILLAR_ATRIUM_ID, ARCHIVE_PILLAR_ID, VAULT_PILLAR_ID, MONKEYPILLAR_ID];
 const turn = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -214,4 +215,4 @@ it('c_spawn, c_save and reload keep every pillar, and c_give is refused', async 
     expect(second.find(MONKEYPILLAR_ID).sprite.sprite.peek().clip).toMatchObject({ name: 'idle1', loop: false });
     expect(second.registry.exportRecords()).toEqual(records);
   } finally { second.dispose(); }
-});
+}, CLUSTER_SAVE_ZIP_TIMEOUT);

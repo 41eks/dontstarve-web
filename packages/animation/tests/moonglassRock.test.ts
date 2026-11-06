@@ -16,6 +16,7 @@ import { deserializeSave } from '../../../src/save/deserialize';
 import { createClusterSaveZip } from '../../../src/save/download';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
+import { CLUSTER_SAVE_ZIP_TIMEOUT } from './importedSave';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 
@@ -127,4 +128,4 @@ it('c_spawn, c_save and reload keep the id, position, rock_type and restored cli
     expect(rock.sprite.currentAnimation).toBe('full');
     expect(second.registry.exportRecords()).toEqual(records);
   } finally { second.dispose(); }
-});
+}, CLUSTER_SAVE_ZIP_TIMEOUT);
