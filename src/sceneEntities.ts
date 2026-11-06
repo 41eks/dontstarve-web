@@ -86,7 +86,7 @@ import { ruinsStatuePrefabs, type RuinsStatueId } from '@dontstarve-web/prefab/r
 import { AtriumStatueManager } from '@dontstarve-web/prefab/atrium_statue';
 import { ChessJunkManager } from '@dontstarve-web/prefab/chessjunk';
 import { chesspiecePrefabs } from '@dontstarve-web/prefab/chesspieces';
-import { ArchiveCentipedeHuskManager } from '@dontstarve-web/prefab/archive_centipede';
+import { archiveCentipedeHuskPrefabs } from '@dontstarve-web/prefab/archive_centipede';
 import { BeefaloManager, BEEFALO_BEHAVIOR } from '@dontstarve-web/prefab/beefalo';
 import { newEntityId } from '@dontstarve-web/prefab/saveRecord';
 import { player, playerInstance } from './player';
@@ -329,7 +329,6 @@ export async function createSceneEntities(
     'ruins_statue_head_nogem': typeof prefabs;
     'atrium_statue': ReturnType<typeof registerAtriumStatue>;
     'chessjunk': ReturnType<typeof registerChessJunk>;
-    'archive_centipede_husk': ReturnType<typeof registerArchiveCentipedeHusks>;
     'sanityrock': ReturnType<typeof registerNightmareRocks>;
     'rain': ReturnType<typeof registerRain>;
     'snow': ReturnType<typeof registerSnow>;
@@ -430,7 +429,7 @@ export async function createSceneEntities(
   Managers['atrium_statue'] = registerAtriumStatue(registry, 'atrium_statue', worldState);
   Managers['chessjunk'] = registerChessJunk(registry, 'chessjunk', worldState);
   registerChesspieces(registry, 'chesspiece_malbatross_marble', worldState);
-  Managers['archive_centipede_husk'] = registerArchiveCentipedeHusks(registry, 'archive_centipede_husk', worldState);
+  registerArchiveCentipedeHusks(registry, 'archive_centipede_husk', worldState);
   Managers['marsh_plant'] = registerMarshPlants(registry, worldState);
   Managers['pond'] = registerPonds(registry, 'pond', worldState);
   Managers['sanityrock'] = registerNightmareRocks(registry, 'sanityrock', worldState);
@@ -1261,15 +1260,8 @@ export async function createSceneEntities(
   }
 
   function registerArchiveCentipedeHusks(registry: EntityRegistry, prefabId: 'archive_centipede_husk', worldState: SceneWorldState) {
-    const husks = new ArchiveCentipedeHuskManager(scene, { tickingarea: worldState.tickingarea, scheduler: worldState.scheduler,
-      trackDisplay: display => registry.trackDisplay(display) });
-    registry.registerDisplayManager(MANAGER_DEFINITIONS[prefabId], husks, {
-      restore: (_, record) => husks.spawn(new THREE.Vector3(...record.transform.position), {
-        id: record.id, transform: record.transform, components: record.components.health ? { health: record.components.health } : {},
-      }),
-      debugSpawn: () => husks.spawn(new THREE.Vector3(player.position.x, 0, player.position.z)),
-    });
-    return husks;
+    prefabs.register(archiveCentipedeHuskPrefabs({ scheduler: worldState.scheduler }));
+    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
   }
 
   function registerNightmareRocks(registry: EntityRegistry, prefabId: 'sanityrock', worldState: SceneWorldState) {
