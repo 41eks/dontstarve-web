@@ -11,7 +11,10 @@ import type { PrefabInstance } from '../../prefab/src/prefabInstance';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { BlowInWind } from '../../componets/src/blowinwind';
 import { WorldWind } from '../../componets/src/worldwind';
-import { TumbleweedManager, rollTumbleweedLoot, type TumbleweedWorld } from '../../prefab/src/tumbleweed';
+import { tumbleweedPrefabs, rollTumbleweedLoot, type TumbleweedInstance, type TumbleweedWorld } from '../../prefab/src/tumbleweed';
+import { ComponentUpdates } from '../../componets/src/componentUpdates';
+import { PrefabDisplayGroup } from '../../display/src';
+import { PrefabEntityManager } from '../../prefab/src/prefabInstance';
 import { canDoSceneAction } from './sceneActions';
 
 beforeEach(() => {
@@ -65,6 +68,22 @@ it('rolls three weighted loot items', () => {
   expect(rollTumbleweedLoot(() => .5)).toEqual(['twigs', 'twigs', 'twigs']);
 });
 
+/** One world's shared prefab manager with the tumbleweed prefabs, its display group and its StartUpdatingComponent list. */
+function tumbleweedManager(scene: THREE.Scene, physics: CANNON.World, world: Omit<TumbleweedWorld, 'componentUpdates' | 'spawnPrefab'>,
+  tickingarea?: () => ReturnType<typeof createMemo<boolean>>) {
+  const displays = new PrefabDisplayGroup(scene), componentUpdates = new ComponentUpdates();
+  const manager: PrefabEntityManager<string, PrefabInstance> = new PrefabEntityManager(displays, '/dst/data/anim', { physics, tickingarea });
+  manager.register(tumbleweedPrefabs({ ...world, componentUpdates, spawnPrefab: (prefab, position) => manager.spawn(prefab, position) }) as never);
+  return {
+    displays, componentUpdates,
+    spawn: (position: THREE.Vector3, saved?: { id: string }) =>
+      manager.spawn('tumbleweed', position, saved && { id: saved.id, components: {} }) as TumbleweedInstance,
+    exportRecords: () => manager.exportRecords().map(({ record }) => record),
+    get renderEntities() { return displays.renderEntities; },
+    dispose: () => { manager.dispose(); displays.dispose(); componentUpdates.dispose(); },
+  };
+}
+
 function fixture() {
   const scene = new THREE.Scene(), physics = new CANNON.World(), scheduler = new GameTimeScheduler();
   const drops: { items: readonly string[]; position: THREE.Vector3 }[] = [], awake = createSignal(true);
@@ -74,30 +93,31 @@ function fixture() {
     temperature: createSignal(30), cycle: createSignal('day'), season: createSignal({ season: 'spring', progress: .5 }),
   };
   const state = { ground: true };
-  const world: TumbleweedWorld = { scheduler, wind, tickingarea: () => createMemo(() => awake.get()),
-    getWatchWorldContent: (key, register) => getWatchWorldContent(key, register, sources), random: () => .5,
+  const world = { scheduler, wind,
+    getWatchWorldContent: ((key, register) => getWatchWorldContent(key, register, sources)) as TumbleweedWorld['getWatchWorldContent'], random: () => .5,
     isOnValidGround: () => state.ground, constrainPosition: () => undefined,
-    dropLoot: (items, position) => drops.push({ items, position: position.clone() }) };
-  const manager = new TumbleweedManager(scene, physics, world);
+    dropLoot: (items: readonly string[], position: THREE.Vector3) => drops.push({ items, position: position.clone() }) };
+  const manager = tumbleweedManager(scene, physics, world, () => createMemo(() => awake.get()));
+  // The scene's frame: scheduler, physics step, then the updating components and the displays.
   const step = (seconds: number) => {
     for (let i = 0; i < Math.round(seconds * 30); i++) {
-      scheduler.advance(1 / 30); manager.beforePhysics(1 / 30); physics.step(1 / 30); manager.sync();
+      scheduler.advance(1 / 30); physics.step(1 / 30); manager.componentUpdates.update(1 / 30); manager.displays.update(1 / 30);
     }
   };
-  const modelOf = (weed: PrefabInstance) => scene.children.find(child => lookupPrefabInstance(child) === weed)!;
+  const modelOf = (weed: PrefabInstance) => weed.transform.model;
   const artLoaded = async (weed: PrefabInstance) => { await prefabDisplay(modelOf(weed))!.artLoaded(); };
   return { scene, scheduler, drops, awake, state, world, manager, step, modelOf, artLoaded, dispose: () => { manager.dispose(); wind.dispose(); } };
 }
 
 it('rolls with the wind, stops for a long action and restarts, is picked for loot and a break fx, and reloads by position', async () => {
   const { scene, drops, state, world, manager, step, modelOf, artLoaded, dispose } = fixture();
-  const restoredManager = new TumbleweedManager(new THREE.Scene(), new CANNON.World(), { ...world, wind: undefined, getWatchWorldContent: undefined, tickingarea: undefined });
+  const restoredManager = tumbleweedManager(new THREE.Scene(), new CANNON.World(), { ...world, wind: undefined, getWatchWorldContent: undefined });
   try {
     // SpawnPrefab is synchronous: the entity rolls and is pickable before its art arrives.
     const weed = manager.spawn(new THREE.Vector3(10, 0, 4));
     const model = modelOf(weed);
     expect(weed.sprite.loaded).toBe(false);
-    expect(findActionEntity(model).hasTag('pickable')).toBe(true);
+    expect(findActionEntity(model)!.hasTag('pickable')).toBe(true);
     await artLoaded(weed);
     // Angle 0 ± 10 variance (random .5 → none) rolls toward +x.
     step(3);
@@ -120,6 +140,7 @@ it('rolls with the wind, stops for a long action and restarts, is picked for loo
     const records = manager.exportRecords();
     expect(records).toHaveLength(1);
     const reloaded = restoredManager.spawn(new THREE.Vector3(...records[0].transform.position), records[0]);
+    expect(records[0]).toEqual({ id: weed.entityId, transform: { position: [weed.position.x, 0, weed.position.z], rotationY: 0 }, components: {} });
     expect(reloaded.entityId).toBe(records[0].id);
     expect(reloaded.position.x).toBeCloseTo(weed.position.x);
 
