@@ -5,10 +5,11 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { MiniMapEntity } from '../../prefab/src/minimapEntity';
 import { loadMinimapIcon } from '../../map/src/minimapIcons';
 import { miniMapEntities } from '../../map/src/minimapEntities';
-import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { ItemEntity, InventoryStore, BodySlot, equipmentSlotAddress } from '../../inventory/src';
 import { configureBackpackEntity } from '../../prefab/src/backpack';
-import { PigKingManager } from '../../prefab/src/pigking';
+import { PrefabDisplayGroup } from '@dontstarve-web/display';
+import { pigKingPrefabs, PIGKING_ID } from '../../prefab/src/pigking';
+import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
@@ -88,15 +89,16 @@ it('keeps a backpack icon on the logical item through equip, drop, reskin and lo
 it('initializes the source pig king icon and priority, and hides it on scene disposal', async () => {
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(
     `../../../public/dst/data/${String(url).slice('/dst/data/'.length)}`, import.meta.url))));
-  const kings = new PigKingManager(new Scene(), '/dst/data/anim', {
-    camera: new PerspectiveCamera(), scheduler: new GameTimeScheduler(), physics: new CANNON.World(), dropLoot: vi.fn() });
-  const model = await kings.spawn(new Vector3(48, 0, 60));
+  const displays = new PrefabDisplayGroup(new Scene());
+  const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { physics: new CANNON.World() });
+  prefabs.register(pigKingPrefabs({ camera: new PerspectiveCamera(), scheduler: new GameTimeScheduler(), dropLoot: vi.fn() }) as never);
+  const king = prefabs.spawn(PIGKING_ID, new Vector3(48, 0, 60));
   await new Promise(resolve => setTimeout(resolve, 0));
-  const minimap = [...miniMapEntities()].find(icon => icon.position === model.position)!;
+  const minimap = [...miniMapEntities()].find(icon => icon.position.x === 48 && icon.position.z === 60)!;
   expect(minimap.icon).toBe('pigking.png');
   expect(minimap.priority).toBe(1);
-  expect(minimap.position).toBe(model.position);
-  kings.dispose();
-  expect(prefabInstance(model)!.minimap.peek().enabled).toBe(false);
+  // Scene teardown removes the king.
+  prefabs.dispose(); displays.dispose();
+  expect(king.minimap.peek().enabled).toBe(false);
   expect(miniMapEntities().has(minimap)).toBe(false);
 });

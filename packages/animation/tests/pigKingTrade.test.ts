@@ -4,10 +4,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ItemEntity } from '@dontstarve-web/inventory';
 import * as CANNON from 'cannon-es';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { PigKingManager } from '../../prefab/src/pigking';
+import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
+import { pigKingPrefabs, PIGKING_ID, type PigKingInstance } from '../../prefab/src/pigking';
 import { configureTradableEntity } from '../../prefab/src/tradable';
 import { bindTestWorld } from './worldContentFixture';
-import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 
@@ -33,17 +34,21 @@ async function setup() {
   const scheduler = new GameTimeScheduler();
   const world = bindTestWorld(scheduler);
   const dropLoot = vi.fn();
-  const kings = new PigKingManager(new THREE.Scene(), '/dst/data/anim', {
-    camera: new THREE.PerspectiveCamera(), scheduler, physics: new CANNON.World(), dropLoot });
-  const model = await kings.spawn(new THREE.Vector3(6, 0, 6));
-  const king = kings.get(model)!;
+  const displays = new PrefabDisplayGroup(new THREE.Scene());
+  const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { physics: new CANNON.World() });
+  prefabs.register(pigKingPrefabs({ camera: new THREE.PerspectiveCamera(), scheduler, getWatchWorldContent: world.getWatchWorldContent, dropLoot }) as never);
+  const instance = prefabs.spawn(PIGKING_ID, new THREE.Vector3(6, 0, 6)) as PigKingInstance;
+  // The stategraph's animover follows the drawn clips; a clip with nothing drawn completes at once.
+  await prefabDisplay(instance.transform.model)!.artLoaded();
+  // The tests read the king's trader and stategraph by their source names.
+  const king = { trader: instance.components.trader, sg: instance.pigking };
   // WatchWorldState("isnight") reads the world's day phase.
   const setNight = (night: boolean) => world.cycle.set(night ? 'night' : 'day');
   const run = (seconds: number) => {
-    for (let elapsed = 0; elapsed < seconds; elapsed += 1 / 30) { scheduler.advance(1 / 30); kings.update(1 / 30); }
+    for (let elapsed = 0; elapsed < seconds; elapsed += 1 / 30) { scheduler.advance(1 / 30); displays.update(1 / 30); }
   };
-  const dispose = () => { kings.dispose(); world.unbind(); scheduler.dispose(); };
-  return { kings, king, model, setNight, scheduler, dropLoot, run, dispose };
+  const dispose = () => { prefabs.dispose(); displays.dispose(); world.unbind(); scheduler.dispose(); };
+  return { king, instance, setNight, scheduler, dropLoot, run, dispose };
 }
 
 const give = (king: { trader: { AcceptGift(item: ItemEntity, take: () => boolean, giver?: unknown): boolean } }, entity: ItemEntity, giver?: unknown) => {
@@ -88,11 +93,11 @@ describe('Pig King trading and sleeping', () => {
   });
 
   it('sleeps at night without trading, then wakes at day and trades again', async () => {
-    const { king, model, setNight, run, dispose } = await setup();
+    const { king, instance, setNight, run, dispose } = await setup();
     setNight(true);
     await Promise.resolve();
     expect(king.sg.stateName).toBe('sleep');
-    expect(prefabInstance(model)!.listTags()).not.toContain('trader');
+    expect(instance.listTags()).not.toContain('trader');
     expect(king.trader.AbleToAccept(item('goldnugget')).ok).toBe(false);
     expect(give(king, item('goldnugget')).accepted).toBe(false);
     run(3);
@@ -100,12 +105,12 @@ describe('Pig King trading and sleeping', () => {
     setNight(false);
     await Promise.resolve();
     expect(king.sg.stateName).toBe('wake');
-    expect(prefabInstance(model)!.listTags()).toContain('trader');
+    expect(instance.listTags()).toContain('trader');
     run(5);
     expect(king.sg.stateName).toBe('idle');
     expect(give(king, item('goldnugget')).accepted).toBe(true);
     dispose();
-    expect(prefabInstance(model)!.listTags()).not.toContain('trader');
+    expect(instance.listTags()).not.toContain('trader');
   });
 
   it('finishes a toss before sleeping when night falls mid-trade', async () => {

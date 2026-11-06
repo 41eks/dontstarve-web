@@ -75,7 +75,7 @@ import { WormholeManager, WORMHOLE_ID } from '@dontstarve-web/prefab/wormhole';
 import { portalPrefabs } from '@dontstarve-web/prefab/portal';
 import { NightmareGrowthManager, NIGHTMAREGROWTH_ID } from '@dontstarve-web/prefab/nightmaregrowth';
 import { NightmareRockManager } from '@dontstarve-web/prefab/nightmarerock';
-import { PigKingManager } from '@dontstarve-web/prefab/pigking';
+import { pigKingPrefabs } from '@dontstarve-web/prefab/pigking';
 import { StatueGlommerManager } from '@dontstarve-web/prefab/statueglommer';
 import { atriumGatePrefabs } from '@dontstarve-web/prefab/atrium_gate';
 import { ruinsStatuePrefabs, type RuinsStatueId } from '@dontstarve-web/prefab/ruins_statue_mage';
@@ -330,7 +330,6 @@ export async function createSceneEntities(
     'deciduoustree': ReturnType<typeof registerDeciduousTrees>;
     'farm_plow': ReturnType<typeof registerFarmPlow>;
     'moon_tree': ReturnType<typeof registerMoonTrees>;
-    'pigking': ReturnType<typeof registerPigKings>;
     'statueglommer': ReturnType<typeof registerStatueGlommer>;
     'atrium_gate': typeof prefabs;
     'ruins_statue_mage': typeof prefabs;
@@ -429,7 +428,7 @@ export async function createSceneEntities(
   Managers['deciduoustree'] = registerDeciduousTrees(registry, 'deciduoustree', worldState);
   Managers['farm_plow'] = registerFarmPlow(registry, 'farm_plow', worldState);
   Managers['moon_tree'] = registerMoonTrees(registry, 'moon_tree', worldState);
-  Managers['pigking'] = registerPigKings(registry, 'pigking', worldState);
+  registerPigKings(registry, 'pigking', worldState);
   Managers['statueglommer'] = registerStatueGlommer(registry, 'statueglommer', worldState);
   Managers['atrium_gate'] = registerAtriumGate(registry, 'atrium_gate', worldState);
   // statueruins.lua returns the four prefabs together.
@@ -1367,23 +1366,13 @@ export async function createSceneEntities(
     turfMap.setOriginalTiles((initialSave.world.entities.pigking ?? []).flatMap(record =>
       placeStaticLayout('default_pigking', new THREE.Vector3(...record.transform.position), 'pigking').tiles.map(({ tile, position }) =>
         ({ position, tileId: WORLD_TILES[tile] }))));
-    const pigKings = new PigKingManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
-      camera, scheduler: worldState.scheduler, physics: world, tickingarea: worldState.tickingarea,
+    prefabs.register(pigKingPrefabs({
+      camera, scheduler: worldState.scheduler, getWatchWorldContent: worldState.getWatchWorldContent,
       dropLoot: (items, position, launch) => {
         Managers['ground_item'].flingLoot(items.map((item) => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position, launch);
       },
-    });
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
-      restore: (_, record) => pigKings.spawn(new THREE.Vector3(...record.transform.position), {
-        id: record.id, transform: record.transform, components: {},
-      }),
-      debugSpawn: () => pigKings.spawn(new THREE.Vector3(player.position.x, 0, player.position.z)),
-      exportRecords: () => pigKings.exportRecords(),
-      beforePhysics: (dt) => pigKings.update(dt),
-      renderEntities: () => pigKings.renderEntities,
-      dispose: () => pigKings.dispose(),
-    });
-    return pigKings;
+    }));
+    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
   }
 
   function registerStatueGlommer(registry: EntityRegistry, prefabId: 'statueglommer', worldState: SceneWorldState) {
