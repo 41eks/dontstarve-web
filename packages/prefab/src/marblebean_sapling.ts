@@ -1,21 +1,19 @@
 import { Transform } from './transform';
 import * as THREE from 'three';
-import { SpriteResources, SpriteState, type PrefabDisplayGroup } from '@dontstarve-web/display';
-import type { TileStateQuery } from '@dontstarve-web/signals';
+import { SpriteState } from '@dontstarve-web/display';
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Deployable } from '../../componets/src/deployable';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { Timer, type NamedTimerSave } from '../../componets/src/timer';
+import { Timer } from '../../componets/src/timer';
 import { Workable } from '../../componets/src/workable';
 import { actionEntity } from './actionEntity';
 import { configureBurnableItemEntity } from './burnableItems';
 import type { SpawnGroundItem } from './groundPrefab';
 import type { MarbleShrubInstance } from './marbleshrub';
-import { bindInstance, PrefabInstance } from './prefabInstance';
-import { newEntityId } from './saveRecord';
+import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { PlaySound } from './sound';
 import { TILE_SIZE } from './tile';
-import { watchTileActivity } from './tileActivity';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import catalog from './groundItems.json' with { type: 'json' };
 
@@ -25,14 +23,8 @@ const DAY_TIME = 300; // tuning.lua day_time.
 export const MARBLEBEAN_GROW_TIME = { base: .75 * DAY_TIME, random: .25 * DAY_TIME } as const;
 const GROW = 'grow';
 
-export interface MarbleBeanSaplingRecord {
-  id: string;
-  transform: { position: [number, number, number]; rotationY: number };
-  components: { saplingTimer?: NamedTimerSave };
-}
 export interface MarbleBeanSaplingWorld extends ToolMouseTargetWorld {
   scheduler: GameTimeScheduler;
-  tickingarea?: TileStateQuery;
   /** growtree's SpawnPrefab(inst.growprefab); the shrub's display loads its art. */
   spawnPrefab(prefab: 'marbleshrub_short', position: THREE.Vector3): MarbleShrubInstance;
   /** digup's marblebean; its display loads the art. */
@@ -56,7 +48,7 @@ export function configureMarbleBeanEntity(entity: ItemEntity): void {
 export class MarbleBeanSaplingInstance extends PrefabInstance {
   private readonly world: MarbleBeanSaplingWorld;
 
-  constructor(position: THREE.Vector3, world: MarbleBeanSaplingWorld) {
+  constructor(position: ReadonlyVector3, world: MarbleBeanSaplingWorld) {
     super(MARBLEBEAN_SAPLING_ID, new SpriteState({ name: 'idle_planted', billboard: true }),
       Transform.stationary());
     this.setPosition(position.x, 0, position.z);
@@ -76,6 +68,10 @@ export class MarbleBeanSaplingInstance extends PrefabInstance {
     timer.StartTimer(GROW, MARBLEBEAN_GROW_TIME.base + (Math.random() * 2 - 1) * MARBLEBEAN_GROW_TIME.random);
 
     this.onRemove(() => { timer.dispose(); workable.dispose(); });
+
+    // The record keeps the timer component's save under saplingTimer, as the rock avocado sprout's does.
+    this.OnSave = (_inst, data) => { data.saplingTimer = data.timer ?? { timers: {} }; delete data.timer; };
+    this.OnLoad = (_inst, data) => { timer.OnLoad(data.saplingTimer); };
   }
 
   /** growtree: SpawnPrefab("marbleshrub_short") at the sapling, tree:growfromseed(), then the sapling is removed. */
@@ -91,55 +87,14 @@ export class MarbleBeanSaplingInstance extends PrefabInstance {
   }
 }
 
-/** The saplings of a world: their collection, injected world and shared marblebean art. */
-export class MarbleBeanSaplingManager {
-  private readonly displays: PrefabDisplayGroup;
-  private readonly world: MarbleBeanSaplingWorld;
-  private readonly resources = new SpriteResources();
-  private readonly saplings = new Set<MarbleBeanSaplingInstance>();
-  private disposed = false;
-
-  /** `displays` is the display-layer owner of the saplings' scene membership, injected and disposed by the application. */
-  constructor(displays: PrefabDisplayGroup, world: MarbleBeanSaplingWorld) {
-    this.displays = displays; this.world = world;
-  }
-
-  /** SpawnPrefab: the sapling exists now and its display loads the art. */
-  spawn(position: THREE.Vector3, saved?: MarbleBeanSaplingRecord): MarbleBeanSaplingInstance {
-    if (this.disposed) throw new Error('Marble bean saplings disposed');
-    if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError('Invalid sapling position');
-    const instance = new MarbleBeanSaplingInstance(position, this.world);
-    instance.entityId = saved?.id ?? newEntityId();
-    instance.components.timer!.OnLoad(saved?.components.saplingTimer);
-    const display = this.displays.add({ root: instance.transform.model, name: MARBLEBEAN_SAPLING_ID, status: instance.status, sprite: instance.sprite, light: instance.light,
-      archive: this.resources.archive({ animationArchive: 'marblebean.zip', buildArchives: ['marblebean.zip'], bank: 'marblebean' }, { instancedAnimations: 'all', staticBillboard: true }) });
-    bindInstance(display.model, instance);
-    new ToolMouseTarget(actionEntity(display.model, MARBLEBEAN_SAPLING_ID), instance, instance.components.workable, this.world.handEquipment);
-    this.saplings.add(instance);
-    const stopActivity = watchTileActivity(display.model, this.world.tickingarea, active => instance.setActive(active));
-    instance.onRemove(() => { stopActivity(); this.saplings.delete(instance); });
-    return instance;
-  }
-
-  /** The display group advances the awake saplings' clips; the grow timer runs on the world's scheduler. */
-  update(dt: number): void {
-    if (!this.disposed) this.displays.update(dt);
-  }
-
-  get renderEntities() { return this.displays.renderEntities; }
-
-  exportRecords(): MarbleBeanSaplingRecord[] {
-    return [...this.saplings].map(sapling => ({ id: String(sapling.entityId),
-      transform: { position: [sapling.position.x, 0, sapling.position.z], rotationY: 0 },
-      components: { saplingTimer: sapling.components.timer!.OnSave() ?? { timers: {} } },
-    }));
-  }
-
-  dispose(): void {
-    if (this.disposed) return;
-    this.disposed = true;
-    for (const sapling of [...this.saplings]) sapling.remove();
-    // Every sapling's display is released above, before the shared resources.
-    this.resources.dispose();
-  }
+/** planted_tree.lua's marblebean_sapling Prefab. */
+export function marbleBeanSaplingPrefabs(world: MarbleBeanSaplingWorld): Readonly<Record<typeof MARBLEBEAN_SAPLING_ID, PrefabEntityDefinition<MarbleBeanSaplingInstance>>> {
+  return {
+    [MARBLEBEAN_SAPLING_ID]: {
+      fn: position => new MarbleBeanSaplingInstance(position, world),
+      assets: { animationArchive: 'marblebean.zip', buildArchives: ['marblebean.zip'], bank: 'marblebean' },
+      assetOptions: { instancedAnimations: 'all', staticBillboard: true },
+      onSpawned: inst => { new ToolMouseTarget(actionEntity(inst.transform.model, MARBLEBEAN_SAPLING_ID), inst, inst.components.workable, world.handEquipment); },
+    },
+  };
 }

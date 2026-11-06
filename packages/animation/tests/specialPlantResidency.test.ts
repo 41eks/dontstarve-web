@@ -11,7 +11,6 @@ import { loadAnim } from '../src/animationAssets';
 import { ItemEntity } from '../../inventory/src';
 import { FlowerInstance, FlowerPlanting } from '../../prefab/src/flower';
 import { marbleShrubWorld } from './marbleShrubFixture';
-import { MarbleBeanSaplingManager } from '../../prefab/src/marblebean_sapling';
 import { rockAvocadoSaplingPrefabs, ROCK_AVOCADO_SAPLING_ID } from '../../prefab/src/rock_avocado_fruit_sprout_sapling';
 import { FireFxHost } from '../../prefab/src/treeFire';
 import { prefabManager } from './prefabManagerFixture';
@@ -94,8 +93,7 @@ it('grows a dormant marblebean, restores shrub shape/tint/snow and preserves the
   const env = environment();
   const shrubWorld = { scheduler: env.scheduler, getWatchWorldContent: env.sources.getWatchWorldContent, spawnGroundItem: env.spawnGroundItem };
   const shrubs = marbleShrubWorld(env.scene, shrubWorld, { physics: env.physics, tickingarea: env.tickingarea });
-  const saplings = new MarbleBeanSaplingManager(new PrefabDisplayGroup(env.scene), { scheduler: env.scheduler, tickingarea: env.tickingarea,
-    spawnPrefab: (id, position) => shrubs.spawn(id, position), spawnGroundItem: env.spawnGroundItem });
+  const { saplings } = shrubs;
   const restored = marbleShrubWorld(env.scene, shrubWorld, { tickingarea: env.tickingarea });
   try {
     const bean = saplings.spawn(new THREE.Vector3(12, 0, 24));
@@ -141,7 +139,7 @@ it('grows a dormant marblebean, restores shrub shape/tint/snow and preserves the
     env.scheduler.advance(.001); expect(prefabInstance(shrub)!.isRemoved).toBe(true);
     expect(shrubs.exportRecords()).toEqual([]);
     expect(env.physics.bodies).toHaveLength(0);
-  } finally { saplings.dispose(); shrubs.dispose(); restored.dispose(); env.dispose(); }
+  } finally { shrubs.dispose(); restored.dispose(); env.dispose(); }
 });
 
 it('keeps a sprout completion task alive without visual reload and cancels a second dormant sprout when dug', async () => {
