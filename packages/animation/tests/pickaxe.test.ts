@@ -6,7 +6,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createPickupInventory } from './pickupFixture';
 import { equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { getPickaxeLifecycle } from '../../prefab/src/pickaxe';
-import { RockManager } from '../../prefab/src/rocks';
+import { rockWorld } from './rockWorldFixture';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
@@ -59,17 +59,16 @@ it('uses 33 ordinary or 132 golden mining hits and removes depleted equipment th
 
 it('changes full/med/low source poses and resets surviving rock work on reload', async () => {
   const scene = new THREE.Scene(), spawn = vi.fn(() => undefined);
-  const world = { spawnGroundItem: spawn };
-  const rocks = new RockManager(scene, '/dst/data/anim', world);
-  const restored = new RockManager(new THREE.Scene(), '/dst/data/anim', world);
+  const rocks = rockWorld(scene, { spawnGroundItem: spawn });
+  const restored = rockWorld(new THREE.Scene(), { spawnGroundItem: spawn });
   try {
-    await rocks.spawn('rock1', new THREE.Vector3(3, 0, 4));
+    rocks.spawn('rock1', new THREE.Vector3(3, 0, 4));
     const target = workTargets('MINE')[0], animation = prefabInstance(target.model)!.sprite;
     for (let i = 0; i < 3; i++) performToolWork('MINE', target.entity, {});
     expect(target.entity.components.workable!.GetWorkLeft()).toBe(3);
     expect(animation.currentAnimation).toBe('med');
     const { prefabId, record } = rocks.exportRecords()[0];
-    await restored.spawn(prefabId, new THREE.Vector3(...record.transform.position), record);
+    restored.spawn(prefabId, new THREE.Vector3(...record.transform.position), record);
     expect(restored.exportRecords()).toEqual(rocks.exportRecords());
     expect(workTargets('MINE').find(({ model }) => model !== target.model)!.entity.components.workable!.GetWorkLeft()).toBe(6);
     for (let i = 0; i < 2; i++) performToolWork('MINE', target.entity, {});

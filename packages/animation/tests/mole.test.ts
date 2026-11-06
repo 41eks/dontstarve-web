@@ -80,12 +80,12 @@ it('uses the Lua brain to steal minerals, build a home and deposit the same item
   expect(mole.components.inventory!.GetItems().map(e => e.id)).toContain(id);
   expect(bait.entity.snapshot().count).toBe(7);
   expect(bait.entity.components.inventoryitem.owner).not.toBeNull();
-  // SGmole's SpawnMoveFx goes through world_fx's mole_move_fx.
-  expect(f.fx).toHaveBeenCalledWith('mole_move_fx', expect.any(THREE.Vector3));
   // The source tests for a missing home after its first delay, then waits another make_home_delay.
   await f.advance(25);
   expect(f.hills()).toHaveLength(1);
   const hill = mole.home!;
+  // Walking under to the new home runs SGmole's SpawnMoveFx through world_fx's mole_move_fx.
+  expect(f.fx).toHaveBeenCalledWith('mole_move_fx', expect.any(THREE.Vector3));
   expect(hill.getPosition().distanceToSquared(mole.getPosition())).toBeLessThan((20 * 3) ** 2);
   f.cycle.set('day'); await settle();
   await f.advance(25);

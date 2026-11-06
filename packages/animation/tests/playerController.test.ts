@@ -9,7 +9,7 @@ import { Workable, type WorkAction } from '../../componets/src/workable';
 import { createEmptyEntity } from '../../prefab/src/prefabInstance';
 import { actionEntity } from '../../prefab/src/actionEntity';
 import { Locomotor } from '../../prefab/src/locomotor';
-import { RockManager } from '../../prefab/src/rocks';
+import { rockWorld } from './rockWorldFixture';
 import { WORLD_SCALE } from '../../prefab/src/tile';
 import { PlaySound } from '../../prefab/src/sound';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
@@ -253,7 +253,7 @@ describe('PlayerController with the Wilson stategraph', () => {
     const tool = inventory.getEntity(equipmentSlotAddress('hand'))!;
     const scene = new THREE.Scene();
     const loot = vi.fn(() => undefined);
-    const rocks = new RockManager(scene, '/dst/data/anim', { spawnGroundItem: loot });
+    const rocks = rockWorld(scene, { spawnGroundItem: loot });
     const world = { player, scene, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
       renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
     const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body);
@@ -265,7 +265,7 @@ describe('PlayerController with the Wilson stategraph', () => {
       while (animation.stategraph.stateName === 'mine_start') advancePlayer(animation, 1 / 30);
     };
     try {
-      await rocks.spawn('rock_flintless_low', new THREE.Vector3(1, 0, 0));
+      rocks.spawn('rock_flintless_low', new THREE.Vector3(1, 0, 0));
       player.position.set(0, 0, 15);
       expect(controller.DoAction(mine())).toBe(true);
       expect(locomotor.destination).toBeDefined();
@@ -291,7 +291,7 @@ describe('PlayerController with the Wilson stategraph', () => {
       expect(workTargets('MINE')).toEqual([]);
       expect(rocks.exportRecords()).toEqual([]);
       expect(loot).toHaveBeenCalledTimes(2);
-      await rocks.spawn('rock1', new THREE.Vector3(1, 0, 0));
+      rocks.spawn('rock1', new THREE.Vector3(1, 0, 0));
       begin(); advance(6); inventory.transfer(equipmentSlotAddress('hand'), inventorySlotAddress(0), 1); advance(60);
       expect(tool.components.finiteuses.remaining).toBe(32.75);
       expect(workTargets('MINE')[0].entity.components.workable!.GetWorkLeft()).toBe(6);

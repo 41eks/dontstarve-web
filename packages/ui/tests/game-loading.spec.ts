@@ -63,7 +63,8 @@ test('keeps world generation visible until the complete game renders and preserv
   await openGame(page);
   const generatingPage = page.getByRole('main', { name: '世界生成中' });
   const canvas = page.locator('canvas[data-game-canvas]');
-  await expect(generatingPage).toBeVisible();
+  // The first visit compiles the bootstrap module graph on the test server, which can outlast the default 5s.
+  await expect(generatingPage).toBeVisible({ timeout: 30_000 });
   await expect.poll(() => waiting, { timeout: 90_000 }).toBe(true);
   await expect(canvas).toHaveAttribute('data-loaded', 'false');
   const clock = await page.evaluate(async ({ sceneUrl, lightingUrl }) => {

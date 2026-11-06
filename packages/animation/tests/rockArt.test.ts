@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { RockManager, type RockRecord } from '../../prefab/src/rocks';
+import { rockWorld } from './rockWorldFixture';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
@@ -13,6 +13,9 @@ vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}),
 beforeEach(() => vi.stubGlobal('fetch', async (url: string) =>
   new Response(await readFile(new URL(`../../../public${url}`, import.meta.url)))));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+async function loaded(...models: THREE.Object3D[]): Promise<void> {
+  for (let attempt = 0; attempt < 30 && !models.every(model => prefabInstance(model)!.sprite.loaded); attempt++) await new Promise(resolve => setTimeout(resolve, 0));
+}
 function firstMesh(model: THREE.Object3D): THREE.Mesh {
   let found: THREE.Mesh | undefined;
   model.traverse(object => { if (!found && object instanceof THREE.Mesh) found = object; });
@@ -20,15 +23,15 @@ function firstMesh(model: THREE.Object3D): THREE.Mesh {
 }
 
 it('shares split-bank cave-in art and preserves its variation, raised pose, identity and resources through reload', async () => {
-  const world = { spawnGroundItem: () => undefined };
-  const manager = new RockManager(new THREE.Scene(), '/dst/data/anim', world);
-  const restored = new RockManager(new THREE.Scene(), '/dst/data/anim', world);
-  const saved: RockRecord = { id: 'raised-boulder', transform: { position: [3, 0, 4], rotationY: 0 },
-    components: { caveinBoulder: { variation: 7, raised: true } } };
+  const manager = rockWorld(new THREE.Scene());
+  const restored = rockWorld(new THREE.Scene());
+  const saved = { id: 'raised-boulder', transform: { position: [3, 0, 4] as [number, number, number], rotationY: 0 },
+    components: { caveinBoulder: { variation: 7, raised: true as const } } };
   try {
-    const first = await manager.spawn('cavein_boulder', new THREE.Vector3(...saved.transform.position), saved);
-    const second = await manager.spawn('cavein_boulder', new THREE.Vector3(10, 0, 4), { ...saved, id: 'neighbour' });
-    const mesh = (model: THREE.Group) => firstMesh(model);
+    const first = manager.spawn('cavein_boulder', new THREE.Vector3(...saved.transform.position), saved);
+    const second = manager.spawn('cavein_boulder', new THREE.Vector3(10, 0, 4), { ...saved, id: 'neighbour' });
+    await loaded(first, second);
+    const mesh = (model: THREE.Object3D) => firstMesh(model);
     expect(mesh(first).geometry).toBe(mesh(second).geometry);
     expect(prefabInstance(first)!.sprite.currentAnimation).toBe('idle_raised');
     expect(prefabInstance(first)!.listTags()).toEqual(expect.arrayContaining(['heavy', 'boulder', 'caveindebris']));
@@ -38,7 +41,7 @@ it('shares split-bank cave-in art and preserves its variation, raised pose, iden
     document.world.entities = { cavein_boulder: manager.exportRecords().map(({ record }) => record) };
     const roundTrip = deserializeSave(JSON.stringify(document), SAVE_CATALOG);
     const [record] = roundTrip.world.entities.cavein_boulder;
-    await restored.spawn('cavein_boulder', new THREE.Vector3(...record.transform.position), record);
+    restored.spawn('cavein_boulder', new THREE.Vector3(...record.transform.position), record);
     expect(restored.exportRecords()[0].record).toEqual(saved);
     manager.dispose();
     expect(disposed).toHaveBeenCalledOnce();
@@ -49,23 +52,15 @@ it('shares split-bank cave-in art and preserves its variation, raised pose, iden
 });
 
 it('keeps the celestial orb as static art without mining or dropping loot', async () => {
-  const manager = new RockManager(new THREE.Scene(), '/dst/data/anim', {
+  const manager = rockWorld(new THREE.Scene(), {
     spawnGroundItem: () => { throw new Error('Static art must not drop loot'); },
   });
   try {
-    const model = await manager.spawn('moonrockseed', new THREE.Vector3());
+    const model = manager.spawn('moonrockseed', new THREE.Vector3());
+    await loaded(model);
     expect(prefabInstance(model)!.sprite.currentAnimation).toBe('idle');
     expect(prefabInstance(model)!.listTags()).toEqual(expect.arrayContaining(['irreplaceable', 'nonpotatable', 'celestial_station']));
     expect(firstMesh(model).geometry.getAttribute('position').count).toBeGreaterThan(0);
     expect(workTargets('MINE')).toEqual([]);
   } finally { manager.dispose(); }
-});
-
-it('cancels a pending spawn on disposal without attaching stale art', async () => {
-  const scene = new THREE.Scene();
-  const manager = new RockManager(scene, '/dst/data/anim', { spawnGroundItem: () => undefined });
-  const pending = manager.spawn('rock1', new THREE.Vector3());
-  manager.dispose();
-  await expect(pending).rejects.toThrow('disposed');
-  expect(scene.children).toEqual([]);
 });

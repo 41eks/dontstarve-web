@@ -82,6 +82,7 @@ export interface PlacementSaveRecord {
     lavaPond?: import('./lava_pond').LavaPondSaveState;
     /** molehill.lua's inventory and spawner saves. */
     molehill?: import('./molehill').MolehillSave;
+    caveinBoulder?: import('./cavein_boulder').CaveinBoulderSave;
   };
 }
 

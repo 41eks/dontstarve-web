@@ -33,7 +33,10 @@ import { PrefabEntityManager, PrefabInstance, prefabInstance } from '@dontstarve
 import { staffCastingLightPrefabs } from '@dontstarve-web/prefab/staff_castinglight';
 import { staffLightPrefabs } from '@dontstarve-web/prefab/stafflight';
 import { bulbPlantPrefabs } from '@dontstarve-web/prefab/bulb_plant';
-import { RockManager, moonglassRockPrefabs } from '@dontstarve-web/prefab/rocks';
+import { moonglassRockPrefabs, rockPrefabs } from '@dontstarve-web/prefab/rocks';
+import { caveinBoulderPrefabs } from '@dontstarve-web/prefab/cavein_boulder';
+import { moonrockseedPrefabs } from '@dontstarve-web/prefab/moonrockseed';
+import type { SpawnGroundItem } from '@dontstarve-web/prefab/groundPrefab';
 import { caveHolePrefabs } from '@dontstarve-web/prefab/cave_hole';
 import { pillarPrefabs } from '@dontstarve-web/prefab/pillar';
 import { atriumPillarPrefabs } from '@dontstarve-web/prefab/atrium_pillar';
@@ -288,7 +291,6 @@ export async function createSceneEntities(
     'lightflier_flower': ReturnType<typeof registerLightFlierFlowers>;
     'ground_item': ReturnType<typeof registerGroundItems>;
     'bulb_plant': ReturnType<typeof registerBulbPlants>;
-    'rocks': ReturnType<typeof registerRocks>;
     'moonglass_rock': ReturnType<typeof registerMoonglassRocks>;
     'cave_hole': ReturnType<typeof registerCaveHoles>;
     'pillar_ruins': ReturnType<typeof registerPillarRuins>;
@@ -362,7 +364,7 @@ export async function createSceneEntities(
   Managers['staff_castinglight'] = registerStaffCastingLights(registry, worldState);
   Managers['bulb_plant'] = registerBulbPlants(registry, 'bulb_plant', worldState);
   registerStalagmites(registry, worldState);
-  Managers['rocks'] = registerRocks(registry, 'rocks', worldState);
+  registerRocks(registry, worldState);
   Managers['moonglass_rock'] = registerMoonglassRocks(registry, 'moonglass_rock', worldState);
   Managers['cave_hole'] = registerCaveHoles(registry, 'cave_hole', worldState);
   Managers['pillar_ruins'] = registerPillarRuins(registry, 'pillar_ruins');
@@ -457,7 +459,6 @@ export async function createSceneEntities(
     buildingPlacement: Managers['buildings'],
     groundItems: Managers['ground_item'],
     beefalos: Managers['beefalo'],
-    rockManager: Managers['rocks'],
     mushroomPlants: Managers['mushroom_plant'],
     beeQueenHives: Managers['beequeenhivegrown'],
     rockAvocadoBushes: Managers['rock_avocado_bush'],
@@ -677,26 +678,13 @@ export async function createSceneEntities(
     registry.registerPrefabs(PREFAB_DEFINITIONS.stalagmites);
   }
 
-
-  function registerRocks(registry: EntityRegistry, prefabId: 'rocks', worldState: SceneWorldState) {
-    const rockManager = new RockManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
-      handEquipment: sceneInventory.handEquipment,
-      physics: world,
-      tickingarea: worldState.tickingarea,
-      scheduler,
-      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
-    });
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
-      restore: (id, record) => rockManager.spawn(id, new THREE.Vector3(...record.transform.position), {
-        id: record.id, transform: record.transform, components: { caveinBoulder: record.components.caveinBoulder },
-      }),
-      debugSpawn: (id) => rockManager.spawn(id, player.position.clone()),
-      exportRecords: () => rockManager.exportRecords(),
-      update: (dt, quaternion) => rockManager.update(dt, quaternion),
-      renderEntities: () => rockManager.renderEntities,
-      dispose: () => rockManager.dispose(),
-    });
-    return rockManager;
+  function registerRocks(registry: EntityRegistry, worldState: SceneWorldState) {
+    const spawnGroundItem: SpawnGroundItem = (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options);
+    prefabs.register(rockPrefabs({ handEquipment: sceneInventory.handEquipment, scheduler: scheduler ?? worldState.scheduler,
+      getWatchWorldContent: worldState.getWatchWorldContent, spawnGroundItem, spawnPrefab: (id, position) => prefabs.spawn(id, position) }));
+    prefabs.register(caveinBoulderPrefabs({ handEquipment: sceneInventory.handEquipment, spawnGroundItem }));
+    prefabs.register(moonrockseedPrefabs());
+    registry.registerPrefabs(PREFAB_DEFINITIONS.rocks);
   }
 
   function registerMoonglassRocks(registry: EntityRegistry, prefabId: 'moonglass_rock', worldState: SceneWorldState) {

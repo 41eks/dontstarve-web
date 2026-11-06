@@ -164,10 +164,9 @@ export {
   type BulbPlantPrefabId, type BulbPlantVariant, type BulbPlantLightState, type BulbPlantSaveState, type BulbPlantWorld,
 } from './bulb_plant';
 
-export {
-  ROCK_PREFABS, ROCK_ENTITY_IDS, RockController, RockManager, isRockPrefab,
-  type RockPrefabId, type RockEntityId, type RockRecord, type CaveinBoulderSave,
-} from './rocks';
+export { ROCK_PREFABS, RockInstance, RockMoonShellInstance, rockPrefabs, isRockPrefab, type RockPrefabId } from './rocks';
+export { CAVEIN_BOULDER_ID, CaveinBoulderInstance, caveinBoulderPrefabs, type CaveinBoulderSave } from './cavein_boulder';
+export { MOONROCKSEED_ID, MoonrockSeedInstance, moonrockseedPrefabs } from './moonrockseed';
 
 export { isAxeTool, axeVisual, type AxeTool } from './axe';
 export { isPickaxeTool, pickaxeVisual, type PickaxeTool } from './pickaxe';
