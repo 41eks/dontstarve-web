@@ -78,7 +78,7 @@ import { NightmareRockManager } from '@dontstarve-web/prefab/nightmarerock';
 import { PigKingManager } from '@dontstarve-web/prefab/pigking';
 import { StatueGlommerManager } from '@dontstarve-web/prefab/statueglommer';
 import { atriumGatePrefabs } from '@dontstarve-web/prefab/atrium_gate';
-import { RuinsStatueManager, type RuinsStatueId, type RuinsStatueRecord } from '@dontstarve-web/prefab/ruins_statue_mage';
+import { ruinsStatuePrefabs, type RuinsStatueId } from '@dontstarve-web/prefab/ruins_statue_mage';
 import { AtriumStatueManager } from '@dontstarve-web/prefab/atrium_statue';
 import { ChessJunkManager } from '@dontstarve-web/prefab/chessjunk';
 import { ChesspieceManager, CHESSPIECE_MALBATROSS_MARBLE_ID } from '@dontstarve-web/prefab/chesspieces';
@@ -335,10 +335,10 @@ export async function createSceneEntities(
     'pigking': ReturnType<typeof registerPigKings>;
     'statueglommer': ReturnType<typeof registerStatueGlommer>;
     'atrium_gate': typeof prefabs;
-    'ruins_statue_mage': RuinsStatueManager<'ruins_statue_mage'>;
-    'ruins_statue_mage_nogem': RuinsStatueManager<'ruins_statue_mage_nogem'>;
-    'ruins_statue_head': RuinsStatueManager<'ruins_statue_head'>;
-    'ruins_statue_head_nogem': RuinsStatueManager<'ruins_statue_head_nogem'>;
+    'ruins_statue_mage': typeof prefabs;
+    'ruins_statue_mage_nogem': typeof prefabs;
+    'ruins_statue_head': typeof prefabs;
+    'ruins_statue_head_nogem': typeof prefabs;
     'ruinsrelic': ReturnType<typeof registerRuinsRelics>;
     'atrium_statue': ReturnType<typeof registerAtriumStatue>;
     'chessjunk': ReturnType<typeof registerChessJunk>;
@@ -434,10 +434,12 @@ export async function createSceneEntities(
   Managers['pigking'] = registerPigKings(registry, 'pigking', worldState);
   Managers['statueglommer'] = registerStatueGlommer(registry, 'statueglommer', worldState);
   Managers['atrium_gate'] = registerAtriumGate(registry, 'atrium_gate', worldState);
-  Managers['ruins_statue_mage'] = registerRuinsStatue(registry, 'ruins_statue_mage', worldState);
-  Managers['ruins_statue_mage_nogem'] = registerRuinsStatue(registry, 'ruins_statue_mage_nogem', worldState);
-  Managers['ruins_statue_head'] = registerRuinsStatue(registry, 'ruins_statue_head', worldState);
-  Managers['ruins_statue_head_nogem'] = registerRuinsStatue(registry, 'ruins_statue_head_nogem', worldState);
+  // statueruins.lua returns the four prefabs together.
+  prefabs.register(ruinsStatuePrefabs({ scheduler: worldState.scheduler }));
+  Managers['ruins_statue_mage'] = registerRuinsStatue(registry, 'ruins_statue_mage');
+  Managers['ruins_statue_mage_nogem'] = registerRuinsStatue(registry, 'ruins_statue_mage_nogem');
+  Managers['ruins_statue_head'] = registerRuinsStatue(registry, 'ruins_statue_head');
+  Managers['ruins_statue_head_nogem'] = registerRuinsStatue(registry, 'ruins_statue_head_nogem');
   Managers['ruinsrelic'] = registerRuinsRelics(registry, worldState);
   Managers['atrium_statue'] = registerAtriumStatue(registry, 'atrium_statue', worldState);
   Managers['chessjunk'] = registerChessJunk(registry, 'chessjunk', worldState);
@@ -1423,16 +1425,9 @@ export async function createSceneEntities(
     return prefabs;
   }
 
-  function registerRuinsStatue<Id extends RuinsStatueId>(registry: EntityRegistry, prefabId: Id, worldState: SceneWorldState) {
-    const statues = new RuinsStatueManager(scene, { tickingarea: worldState.tickingarea, scheduler: worldState.scheduler, physics: world,
-      trackDisplay: display => registry.trackDisplay(display) }, prefabId);
-    registry.registerDisplayManager(MANAGER_DEFINITIONS[prefabId], statues, {
-      // The catalog parser has validated the components for this statue variant.
-      restore: (_, record) => statues.spawn(new THREE.Vector3(...record.transform.position),
-        { id: record.id, transform: record.transform, components: record.components } as RuinsStatueRecord<Id>),
-      debugSpawn: () => statues.spawn(new THREE.Vector3(player.position.x, 0, player.position.z)),
-    });
-    return statues;
+  function registerRuinsStatue(registry: EntityRegistry, prefabId: RuinsStatueId) {
+    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+    return prefabs;
   }
 
   function registerRuinsRelics(registry: EntityRegistry, worldState: SceneWorldState) {

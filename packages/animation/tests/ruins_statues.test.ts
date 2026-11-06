@@ -1,14 +1,15 @@
-import { prefabDisplay } from '@dontstarve-web/display';
+import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import {
-  RuinsStatueManager, RUINS_STATUE_HEAD_ID, RUINS_STATUE_HEAD_NOGEM_ID, RUINS_STATUE_MAGE_ID, RUINS_STATUE_MAGE_NOGEM_ID,
-  type RuinsStatueId, type RuinsStatueRecord,
+  ruinsStatuePrefabs, RUINS_STATUE_HEAD_ID, RUINS_STATUE_HEAD_NOGEM_ID, RUINS_STATUE_MAGE_ID, RUINS_STATUE_MAGE_NOGEM_ID,
+  type RuinsStatueId, type RuinsStatueInstance,
 } from '../../prefab/src/ruins_statue_mage';
-import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
+import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { createInventoryStore } from '../../../src/inventory';
@@ -26,23 +27,21 @@ const DEFINITIONS = {
 } as const;
 
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
-function setup<Id extends RuinsStatueId>(prefabId: Id, player = new THREE.Vector3()) {
+function setup(player = new THREE.Vector3()) {
   vi.stubGlobal('window', new EventTarget());
   vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url)))));
   const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), awake = createSignal(true);
-  const registry = new EntityRegistry(), inventory = createInventoryStore([]);
-  const statues = new RuinsStatueManager(scene, { scheduler, tickingarea: () => createMemo(() => awake.get()),
-    trackDisplay: display => registry.trackDisplay(display) }, prefabId);
-  registry.registerDisplayManager(DEFINITIONS[prefabId], statues, {
-    restore: (_, record) => statues.spawn(new THREE.Vector3(...record.transform.position),
-      { id: record.id, transform: record.transform, components: record.components } as RuinsStatueRecord<Id>),
-    debugSpawn: () => statues.spawn(player.clone()),
-  });
+  const displays = new PrefabDisplayGroup(scene);
+  const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { tickingarea: () => createMemo(() => awake.get()) });
+  prefabs.register(ruinsStatuePrefabs({ scheduler }) as never);
+  const registry = new EntityRegistry([], prefabs, () => player.clone()), inventory = createInventoryStore([]);
+  for (const definition of Object.values(DEFINITIONS)) registry.registerPrefabs(definition);
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
   const save = () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(), elapsedSeconds: 0,
     playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
-  return { scene, awake, statues, registry, inventory, save,
-    dispose: () => { registry.dispose(); inventory.dispose(); scheduler.dispose(); } };
+  return { scene, awake, prefabs, registry, inventory, save,
+    spawn: (id: RuinsStatueId, position: THREE.Vector3, record?: PlacementSaveRecord) => prefabs.spawn(id, position, record) as RuinsStatueInstance,
+    dispose: () => { registry.dispose(); prefabs.dispose(); displays.dispose(); inventory.dispose(); scheduler.dispose(); } };
 }
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -55,12 +54,11 @@ const VARIANTS = [
 ] as const;
 
 it.each(VARIANTS)('$id loads with the commonfn tags, its art and gem state, and the calm idle_full loop', async ({ id, archive, gemArchive, gem }) => {
-  const s = setup(id);
+  const s = setup();
   try {
-    const record = { id: `source-${id}`, transform: { position: [2, 0, 3], rotationY: 0 },
-      components: gem ? { ruinsStatueMage: { gem } } : {} } as RuinsStatueRecord<typeof id>;
-    const model = s.statues.spawn(new THREE.Vector3(2, 0, 3), record);
-    const inst = prefabInstance(model)!;
+    const record = { id: `source-${id}`, transform: { position: [2, 0, 3] as [number, number, number], rotationY: 0 },
+      components: gem ? { ruinsStatueMage: { gem } } : {} };
+    const inst = s.spawn(id, new THREE.Vector3(2, 0, 3), record), model = inst.transform.model;
     expect(inst.listTags()).toEqual(expect.arrayContaining(['cavedweller', 'structure', 'statue']));
     // OnNightmarePhaseChanged(..., true) -> ShowWorkState(MARBLEPILLAR_MINE): idle_full looping, no _night suffix.
     expect(inst.sprite.sprite.peek().clip).toMatchObject({ name: 'idle_full', loop: true });
@@ -79,18 +77,18 @@ it.each(VARIANTS)('$id loads with the commonfn tags, its art and gem state, and 
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining(`/dst/data/anim/${archive}`));
     if (!gem) expect(fetch).not.toHaveBeenCalledWith(expect.stringContaining(gemArchive));
     expect(inst.sprite.currentAnimation).toBe('idle_full');
-    const exported = s.statues.exportRecords();
+    const exported = s.prefabs.exportRecords();
     expect(exported).toEqual([{ prefabId: id, record }]);
     expect(DEFINITIONS[id].parseComponents(exported[0].record.components, 'statue', {} as never)).toEqual(record.components);
   } finally { s.dispose(); }
 });
 
 it('releases a statue while its tile sleeps and redraws the declared idle_full and gem when it wakes', async () => {
-  const s = setup(RUINS_STATUE_HEAD_ID);
+  const s = setup();
   try {
-    const model = s.statues.spawn(new THREE.Vector3(1, 0, 4), {
+    const inst = s.spawn(RUINS_STATUE_HEAD_ID, new THREE.Vector3(1, 0, 4), {
       id: 'head-sleep', transform: { position: [1, 0, 4], rotationY: 0 }, components: { ruinsStatueMage: { gem: 'purplegem' } } });
-    const inst = prefabInstance(model)!;
+    const model = inst.transform.model;
     await prefabDisplay(model)!.artLoaded();
     const declared = inst.sprite.sprite.peek().clip;
     s.awake.set(false); await settle();
@@ -104,7 +102,7 @@ it('releases a statue while its tile sleeps and redraws the declared idle_full a
 });
 
 it('c_spawn then c_save exports a gemmed head, and the exported save restores its ID, position, gem and clip', async () => {
-  const first = setup(RUINS_STATUE_HEAD_ID, new THREE.Vector3(12, 0, -6));
+  const first = setup(new THREE.Vector3(12, 0, -6));
   let json = '';
   try {
     expect((await executeDebugCommand(`c_spawn("${RUINS_STATUE_HEAD_ID}")`, first.inventory, id => first.registry.spawn(id))).ok).toBe(true);
@@ -115,11 +113,10 @@ it('c_spawn then c_save exports a gemmed head, and the exported save restores it
   const gem = records[0].components.ruinsStatueMage?.gem;
   expect(records[0]).toMatchObject({ transform: { position: [12, 0, -6], rotationY: 0 }, components: { ruinsStatueMage: { gem: expect.any(String) } } });
 
-  const second = setup(RUINS_STATUE_HEAD_ID);
+  const second = setup();
   try {
     await second.registry.restoreAll({ [RUINS_STATUE_HEAD_ID]: records });
-    const [model] = second.scene.children as THREE.Group[];
-    const inst = prefabInstance(model)!;
+    const inst = second.scene.children.map(model => prefabInstance(model)!).find(entity => entity.prefab === RUINS_STATUE_HEAD_ID)!;
     expect(inst.entityId).toBe(records[0].id);
     expect(inst.position.toArray()).toEqual([12, 0, -6]);
     expect(inst.sprite.sprite.peek().clip).toMatchObject({ name: 'idle_full', loop: true });

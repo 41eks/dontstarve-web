@@ -52,6 +52,8 @@ export interface PlacementSaveRecord {
     charliecutscene?: import('../../componets/src/atriumGateSignatures').CharlieCutsceneSave;
     worldsettingstimer?: import('../../componets/src/atriumGateSignatures').WorldSettingsTimerSave;
     entitytracker?: import('../../componets/src/atriumGateSignatures').EntityTrackerSave;
+    /** statueruins.lua onsave: data.gem. */
+    ruinsStatueMage?: import('./ruins_statue_mage').RuinsStatueSaveState;
     /** rocks.lua on_save_moonglass: data.rock_type. */
     rock_type?: import('./rocks').MoonglassRockType;
     /** archive_props.lua OnSave: the statues' data.anim and the rune statues' data.storyprogress. */
