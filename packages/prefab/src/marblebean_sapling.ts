@@ -10,7 +10,7 @@ import { Workable } from '../../componets/src/workable';
 import { actionEntity } from './actionEntity';
 import { configureBurnableItemEntity } from './burnableItems';
 import type { SpawnGroundItem } from './groundPrefab';
-import type { MarbleShrubManager } from './marbleshrub';
+import type { MarbleShrubInstance } from './marbleshrub';
 import { bindInstance, PrefabInstance } from './prefabInstance';
 import { newEntityId } from './saveRecord';
 import { PlaySound } from './sound';
@@ -33,7 +33,8 @@ export interface MarbleBeanSaplingRecord {
 export interface MarbleBeanSaplingWorld extends ToolMouseTargetWorld {
   scheduler: GameTimeScheduler;
   tickingarea?: TileStateQuery;
-  shrubs: Pick<MarbleShrubManager, 'growFromSeed'>;
+  /** growtree's SpawnPrefab(inst.growprefab); the shrub's display loads its art. */
+  spawnPrefab(prefab: 'marbleshrub_short', position: THREE.Vector3): MarbleShrubInstance;
   /** digup's marblebean; its display loads the art. */
   spawnGroundItem: SpawnGroundItem;
 }
@@ -77,9 +78,9 @@ export class MarbleBeanSaplingInstance extends PrefabInstance {
     this.onRemove(() => { timer.dispose(); workable.dispose(); });
   }
 
-  /** The shrub replaces the sapling at its position and grows from seed. */
+  /** growtree: SpawnPrefab("marbleshrub_short") at the sapling, tree:growfromseed(), then the sapling is removed. */
   private growtree(): void {
-    this.world.shrubs.growFromSeed(this.position.clone());
+    this.world.spawnPrefab('marbleshrub_short', this.position.clone()).growfromseed();
     this.remove();
   }
 

@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
-import { MarbleShrubManager } from '../../prefab/src/marbleshrub';
+import { marbleShrubWorld } from './marbleShrubFixture';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { MarbleBeanSaplingManager } from '../../prefab/src/marblebean_sapling';
 import { GroundItemManager } from '../../prefab/src/groundItemManager';
@@ -33,12 +33,11 @@ function setup() {
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
   const spawnGroundItem: GroundItemManager['spawnGroundItem'] = (definition, position, options) => ground.spawnGroundItem(definition, position, options);
   const { snowLevel, getWatchWorldContent } = bindTestWorld(scheduler);
-  const shrubs = new MarbleShrubManager(new PrefabDisplayGroup(scene), { scheduler, physics, getWatchWorldContent, spawnGroundItem });
-  const saplings = new MarbleBeanSaplingManager(new PrefabDisplayGroup(scene), { scheduler, shrubs, spawnGroundItem });
+  const shrubs = marbleShrubWorld(scene, { scheduler, getWatchWorldContent, spawnGroundItem }, { physics });
+  const saplings = new MarbleBeanSaplingManager(new PrefabDisplayGroup(scene), { scheduler, spawnGroundItem, spawnPrefab: (id, position) => shrubs.spawn(id, position) });
   const registry = new EntityRegistry();
   registry.register(PREFAB_DEFINITIONS.marbleShrubs, {
-    restore: (_, record) => shrubs.spawn('marbleshrub', new THREE.Vector3(...record.transform.position),
-      { id: record.id, transform: record.transform, components: { growable: record.components.growable!, marbleShrub: record.components.marbleShrub! } }),
+    restore: (_, record) => shrubs.spawn('marbleshrub', new THREE.Vector3(...record.transform.position), record),
     debugSpawn: id => shrubs.spawn(id, player.position),
     exportRecords: () => shrubs.exportRecords().map(record => ({ prefabId: 'marbleshrub', record })), dispose: () => shrubs.dispose(),
   });
@@ -93,7 +92,7 @@ it('plants a marblebean, digs it back up, and grows it into a mineable shrub tha
     const [grown] = s.shrubs.exportRecords();
     expect(grown.components).toEqual({ growable: { stage: 1, time: 2700 }, marbleShrub: { shapenumber: 2, color: .75 } });
     s.advance(2700 * 2);
-    expect(s.shrubs.exportRecords()[0].components.growable.stage).toBe(3);
+    expect(s.shrubs.exportRecords()[0].components.growable!.stage).toBe(3);
 
     // marbleshrub<shape>.png, MiniMapEntity priority -1; the snow layer adds geometry once the level reaches .015.
     const model = workTargets('MINE', s.scene)[0].model;
@@ -117,8 +116,7 @@ it('plants a marblebean, digs it back up, and grows it into a mineable shrub tha
     let json = '';
     expect((await executeDebugCommand('c_save()', s.inventory, undefined, () => { json = s.save(); })).ok).toBe(true);
     const saved = deserializeSave(json, SAVE_CATALOG), record = saved.world.entities.marbleshrub[0];
-    restored.shrubs.spawn('marbleshrub', new THREE.Vector3(...record.transform.position),
-      { id: record.id, transform: record.transform, components: { growable: record.components.growable!, marbleShrub: record.components.marbleShrub! } });
+    restored.shrubs.spawn('marbleshrub', new THREE.Vector3(...record.transform.position), record);
     expect(restored.shrubs.exportRecords()).toEqual([s.shrubs.exportRecords()[0]]);
 
     // Tall shrubs need ten works; the pickaxe MINE roll at exactly .5 keeps the marble branch.

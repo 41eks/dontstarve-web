@@ -62,6 +62,8 @@ export interface PlacementSaveRecord {
     rock_type?: import('./rocks').MoonglassRockType;
     /** archive_props.lua OnSave: the statues' data.anim and the rune statues' data.storyprogress. */
     archiveProp?: import('./archive_props').ArchivePropSaveState;
+    /** marbleshrub.lua onsave: shapenumber (when not 1) and color. */
+    marbleShrub?: import('./marbleshrub').MarbleShrubSaveState;
     /** flower_cave.lua OnSave's light_state and plantname, with the pickable state and the light timer. */
     bulbPlant?: import('./bulb_plant').BulbPlantSaveState;
     /** grotto_pool_big.lua / grotto_pool_small.lua on_save. */

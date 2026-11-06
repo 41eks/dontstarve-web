@@ -1,20 +1,18 @@
 import { Transform } from './transform';
 import * as THREE from 'three';
-import type * as CANNON from 'cannon-es';
-import { SpriteResources, SpriteState, type PrefabDisplayGroup } from '@dontstarve-web/display';
-import { createRenderEffect, WorldContentKey, type GetWatchWorldContent, type TileStateQuery } from '@dontstarve-web/signals';
+import { SpriteState } from '@dontstarve-web/display';
+import { createRenderEffect, WorldContentKey, type GetWatchWorldContent } from '@dontstarve-web/signals';
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { Growable, type GrowableSave } from '../../componets/src/growable';
+import { Growable } from '../../componets/src/growable';
 import { LootDropper } from '../../componets/src/lootdropper';
 import { ComponentTimer } from '../../componets/src/timer';
 import { Workable } from '../../componets/src/workable';
 import { actionEntity } from './actionEntity';
 import type { SpawnGroundItem } from './groundPrefab';
-import { bindInstance, PrefabInstance } from './prefabInstance';
-import { newEntityId } from './saveRecord';
+import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
 import { MakeObstaclePhysics, RemovePhysicsColliders } from './standardcomponents';
-import { watchTileActivity } from './tileActivity';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import catalog from './groundItems.json' with { type: 'json' };
 
@@ -52,23 +50,19 @@ const STAGES: readonly StageData[] = [
 
 /** marbleshrub.lua OnSave: shapenumber is written only when it is not 1; color is always written. */
 export interface MarbleShrubSaveState { shapenumber?: number; color: number; }
-export interface MarbleShrubRecord {
-  id: string;
-  transform: { position: [number, number, number]; rotationY: number };
-  components: { growable: GrowableSave; marbleShrub: MarbleShrubSaveState };
-}
 
 export interface MarbleShrubWorld extends ToolMouseTargetWorld {
   scheduler: GameTimeScheduler;
-  tickingarea?: TileStateQuery;
-  physics?: CANNON.World;
   /** Snow level is read through a lifecycle-managed bridge owned by each shrub. */
   getWatchWorldContent?: GetWatchWorldContent;
   /** lootdropper:SpawnLootPrefab when the shrub is mined; the loot's display loads its art. */
   spawnGroundItem: SpawnGroundItem;
 }
 
-/** marbleshrub.lua MakeShrub's fn(): growable loop, MINE workable, stage-dependent loot and shape/colour persistence. */
+/**
+ * marbleshrub.lua MakeShrub's fn(): growable loop, MINE workable, stage-dependent loot and shape/colour persistence.
+ * SetPrefabName("marbleshrub"): every spawn ID saves as marbleshrub; the ID only chooses the starting stage.
+ */
 export class MarbleShrubInstance extends PrefabInstance {
   shapenumber = 1;
   color = 1;
@@ -77,7 +71,7 @@ export class MarbleShrubInstance extends PrefabInstance {
   /** The `animover` that removes a mined shrub, as a game-time task. */
   private readonly brokenTask: ComponentTimer;
 
-  constructor(position: THREE.Vector3, world: MarbleShrubWorld, growthstage: number) {
+  constructor(position: ReadonlyVector3, world: MarbleShrubWorld, growthstage: number) {
     super(MARBLESHRUB_ID, new SpriteState({ name: 'idle_short', billboard: true }),
       Transform.stationary());
     this.setPosition(position.x, 0, position.z);
@@ -85,7 +79,6 @@ export class MarbleShrubInstance extends PrefabInstance {
     this.statedata = STAGES[growthstage - 1];
     this.brokenTask = new ComponentTimer(scheduler, () => this.remove());
 
-    MakeObstaclePhysics(this, PHYSICS_RADIUS);
     this.deploySmartRadius = 1;
     this.minimap.SetIcon('marbleshrub1.png'); this.minimap.SetPriority(-1);
     for (const tag of ['boulder', 'SnowCovered']) this.addTag(tag);
@@ -120,6 +113,19 @@ export class MarbleShrubInstance extends PrefabInstance {
       growable.dispose(); workable.dispose();
       for (const sound of this.sounds) sound.stop();
     });
+
+    // onsave: shapenumber only when it is not 1, color always; the growable saves itself.
+    this.OnSave = (_inst, data) => {
+      data.marbleShrub = { ...this.shapenumber === 1 ? {} : { shapenumber: this.shapenumber }, color: this.color };
+    };
+    // onload; growable:OnLoad (run first by SetPersistData) re-enters the saved stage, which SetGrowth makes the statedata.
+    this.OnLoad = (_inst, data) => {
+      if (!data.marbleShrub) return;
+      const shapenumber = data.marbleShrub.shapenumber ?? 1;
+      if (!Number.isInteger(shapenumber) || shapenumber < 1 || shapenumber > NUM_BUILDS) throw new RangeError('Invalid marble shrub shape');
+      this.SetupShrubShape(shapenumber);
+      this.SetMultColour(data.marbleShrub.color);
+    };
   }
 
   private SetGrowth(stage: number): void {
@@ -167,83 +173,18 @@ export class MarbleShrubInstance extends PrefabInstance {
     this.brokenTask.start(this.statedata.brokenSeconds);
   }
 
-  /** onsave, with the growable's own save. */
-  saveComponents(): MarbleShrubRecord['components'] {
-    return { growable: this.components.growable!.OnSave(),
-      marbleShrub: { ...this.shapenumber === 1 ? {} : { shapenumber: this.shapenumber }, color: this.color } };
-  }
-
-  /** onload, then growable:OnLoad re-entering the saved stage, which SetGrowth makes the shrub's statedata (onloadpostpass). */
-  loadComponents({ growable, marbleShrub }: MarbleShrubRecord['components']): void {
-    this.SetupShrubShape(marbleShrub.shapenumber ?? 1);
-    this.SetMultColour(marbleShrub.color);
-    this.components.growable!.OnLoad(growable);
-  }
 }
 
-/** The shrubs of a world: their collection, injected world and shared marbleshrub art. */
-export class MarbleShrubManager {
-  private readonly displays: PrefabDisplayGroup;
-  private readonly world: MarbleShrubWorld;
-  private readonly resources = new SpriteResources();
-  private readonly shrubs = new Set<MarbleShrubInstance>();
-  private disposed = false;
-
-  /** `displays` is the display-layer owner of the shrubs' scene membership, injected and disposed by the application. */
-  constructor(displays: PrefabDisplayGroup, world: MarbleShrubWorld) {
-    this.displays = displays; this.world = world;
-  }
-
-  /** `c_spawn("marbleshrub_<stage>")`, or a saved record; the shrub exists now and its display loads the art. */
-  spawn(prefabId: MarbleShrubSpawnId, position: THREE.Vector3, saved?: MarbleShrubRecord): MarbleShrubInstance {
-    if (this.disposed) throw new Error('Marble shrubs disposed');
-    if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError('Invalid marble shrub position');
-    const shapenumber = saved?.components.marbleShrub.shapenumber ?? 1;
-    if (!Number.isInteger(shapenumber) || shapenumber < 1 || shapenumber > NUM_BUILDS) throw new RangeError('Invalid marble shrub shape');
-    const instance = new MarbleShrubInstance(position, this.world, Math.max(1, MARBLESHRUB_SPAWN_IDS.indexOf(prefabId)));
-    instance.entityId = saved?.id ?? newEntityId();
-    if (saved) instance.loadComponents(saved.components);
-    // Each shrub owns its colour (setColour), so its sprites are created with one.
-    const display = this.displays.add({ root: instance.transform.model, name: MARBLESHRUB_ID, status: instance.status, sprite: instance.sprite, light: instance.light,
-      archive: this.resources.archive({ animationArchive: 'marbleshrub.zip', buildArchives: ['marbleshrub.zip', 'marbleshrub_build.zip', 'snow.zip'],
-        bank: 'marbleshrub', hiddenSymbols: ['snow'] }, { instancedAnimations: 'all', staticBillboard: true, colour: [1, 1, 1] }) });
-    bindInstance(display.model, instance);
-    if (this.world.physics) instance.bindPhysics(this.world.physics);
-    new ToolMouseTarget(actionEntity(display.model, MARBLESHRUB_ID), instance, instance.components.workable, this.world.handEquipment);
-    this.shrubs.add(instance);
-    const stopActivity = watchTileActivity(display.model, this.world.tickingarea, active => instance.setActive(active));
-    instance.onRemove(() => { stopActivity(); this.shrubs.delete(instance); });
-    return instance;
-  }
-
-  /** The sapling's growtree: SpawnPrefab("marbleshrub_short") at its position, then tree:growfromseed(). */
-  growFromSeed(position: THREE.Vector3): MarbleShrubInstance {
-    const shrub = this.spawn('marbleshrub_short', position);
-    shrub.growfromseed();
-    return shrub;
-  }
-
-  /** The display group advances the awake shrubs' clips; growth runs on the world's scheduler. */
-  update(dt: number): void {
-    if (!this.disposed) this.displays.update(dt);
-  }
-
-  get renderEntities() { return this.displays.renderEntities; }
-
-  /** persists = false once mined: the breaking shrub is not exported. */
-  exportRecords(): MarbleShrubRecord[] {
-    return [...this.shrubs].filter(shrub => shrub.persists).map(shrub => ({
-      id: String(shrub.entityId),
-      transform: { position: [shrub.position.x, 0, shrub.position.z], rotationY: 0 },
-      components: shrub.saveComponents(),
-    }));
-  }
-
-  dispose(): void {
-    if (this.disposed) return;
-    this.disposed = true;
-    for (const shrub of [...this.shrubs]) shrub.remove();
-    // Every shrub's display is released above, before the shared resources.
-    this.resources.dispose();
-  }
+/** The Prefabs marbleshrub.lua returns: MakeShrub("marbleshrub") and its short / normal / tall stages. */
+export function marbleShrubPrefabs(world: MarbleShrubWorld): Readonly<Record<MarbleShrubSpawnId, PrefabEntityDefinition<MarbleShrubInstance>>> {
+  const define = (prefab: MarbleShrubSpawnId): PrefabEntityDefinition<MarbleShrubInstance> => ({
+    fn: position => new MarbleShrubInstance(position, world, Math.max(1, MARBLESHRUB_SPAWN_IDS.indexOf(prefab))),
+    // Each shrub owns its colour (SetMultColour), so its sprites are created with one.
+    assets: { animationArchive: 'marbleshrub.zip', buildArchives: ['marbleshrub.zip', 'marbleshrub_build.zip', 'snow.zip'],
+      bank: 'marbleshrub', hiddenSymbols: ['snow'] },
+    assetOptions: { instancedAnimations: 'all', staticBillboard: true, colour: [1, 1, 1] },
+    physics: { make: MakeObstaclePhysics, radius: PHYSICS_RADIUS },
+    onSpawned: inst => { new ToolMouseTarget(actionEntity(inst.transform.model, MARBLESHRUB_ID), inst, inst.components.workable, world.handEquipment); },
+  });
+  return Object.fromEntries(MARBLESHRUB_SPAWN_IDS.map(prefab => [prefab, define(prefab)])) as Record<MarbleShrubSpawnId, PrefabEntityDefinition<MarbleShrubInstance>>;
 }

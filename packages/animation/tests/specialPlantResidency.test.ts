@@ -10,7 +10,7 @@ import { SpriteState } from '@dontstarve-web/display';
 import { loadAnim } from '../src/animationAssets';
 import { ItemEntity } from '../../inventory/src';
 import { FlowerInstance, FlowerPlanting } from '../../prefab/src/flower';
-import { MarbleShrubManager } from '../../prefab/src/marbleshrub';
+import { marbleShrubWorld } from './marbleShrubFixture';
 import { MarbleBeanSaplingManager } from '../../prefab/src/marblebean_sapling';
 import { rockAvocadoSaplingPrefabs, ROCK_AVOCADO_SAPLING_ID } from '../../prefab/src/rock_avocado_fruit_sprout_sapling';
 import { FireFxHost } from '../../prefab/src/treeFire';
@@ -92,11 +92,11 @@ it('preserves a natural rose, shares its art after wake and burns while dormant'
 
 it('grows a dormant marblebean, restores shrub shape/tint/snow and preserves the mined removal deadline', async () => {
   const env = environment();
-  const shrubs = new MarbleShrubManager(new PrefabDisplayGroup(env.scene), { scheduler: env.scheduler, physics: env.physics, tickingarea: env.tickingarea,
-    getWatchWorldContent: env.sources.getWatchWorldContent, spawnGroundItem: env.spawnGroundItem });
-  const saplings = new MarbleBeanSaplingManager(new PrefabDisplayGroup(env.scene), { scheduler: env.scheduler, tickingarea: env.tickingarea, shrubs, spawnGroundItem: env.spawnGroundItem });
-  const restored = new MarbleShrubManager(new PrefabDisplayGroup(env.scene), { scheduler: env.scheduler, tickingarea: env.tickingarea,
-    getWatchWorldContent: env.sources.getWatchWorldContent, spawnGroundItem: env.spawnGroundItem });
+  const shrubWorld = { scheduler: env.scheduler, getWatchWorldContent: env.sources.getWatchWorldContent, spawnGroundItem: env.spawnGroundItem };
+  const shrubs = marbleShrubWorld(env.scene, shrubWorld, { physics: env.physics, tickingarea: env.tickingarea });
+  const saplings = new MarbleBeanSaplingManager(new PrefabDisplayGroup(env.scene), { scheduler: env.scheduler, tickingarea: env.tickingarea,
+    spawnPrefab: (id, position) => shrubs.spawn(id, position), spawnGroundItem: env.spawnGroundItem });
+  const restored = marbleShrubWorld(env.scene, shrubWorld, { tickingarea: env.tickingarea });
   try {
     const bean = saplings.spawn(new THREE.Vector3(12, 0, 24));
     await drawn(workTargets('DIG')[0].model);
@@ -113,7 +113,7 @@ it('grows a dormant marblebean, restores shrub shape/tint/snow and preserves the
     expect(shrubs.exportRecords()[0].components.marbleShrub).toEqual({ shapenumber: 2, color: .75 });
     expect(env.physics.bodies).toHaveLength(1);
     env.scheduler.advance(2700); await settle();
-    expect(shrubs.exportRecords()[0].components.growable.stage).toBe(2);
+    expect(shrubs.exportRecords()[0].components.growable!.stage).toBe(2);
     env.sources.snowLevel.set(.02); env.sources.camerarotation.set(env.rotation); shrubs.update(0);
     const record = shrubs.exportRecords()[0];
     const restoredShrub = restored.spawn('marbleshrub', new THREE.Vector3(...record.transform.position), record);

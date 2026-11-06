@@ -6,7 +6,7 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { archivePropsPrefabs } from '../../prefab/src/archive_props';
-import { MarbleShrubManager } from '../../prefab/src/marbleshrub';
+import { marbleShrubWorld } from './marbleShrubFixture';
 import { NightmareRockManager, type NightmareRockInstance } from '../../prefab/src/nightmarerock';
 import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -78,7 +78,7 @@ it('restores portal ground layers, its shadow child and statue work state withou
 
 it('grows an unloaded marble shrub and keeps shape, colour and the scheduled mined-removal deadline', async () => {
   const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), awake = createSignal(false);
-  const manager = new MarbleShrubManager(new PrefabDisplayGroup(scene), { scheduler, spawnGroundItem, tickingarea: () => createMemo(() => awake.get()) });
+  const manager = marbleShrubWorld(scene, { scheduler, spawnGroundItem }, { tickingarea: () => createMemo(() => awake.get()) });
   try {
     const instance = manager.spawn('marbleshrub', new THREE.Vector3(12, 0, 24), {
       id: 'growing-shrub', transform: { position: [12, 0, 24], rotationY: 0 },
@@ -90,7 +90,7 @@ it('grows an unloaded marble shrub and keeps shape, colour and the scheduled min
     scheduler.advance(1); await settle();
     const record = manager.exportRecords()[0];
     expect(record.id).toBe('growing-shrub');
-    expect(record.components.growable.stage).toBe(2);
+    expect(record.components.growable!.stage).toBe(2);
     expect(record.components.marbleShrub).toEqual({ shapenumber: 3, color: .7 });
     expect(instance.sprite.currentAnimation).toBe('idle_normal');
     expect(meshes(model)).toHaveLength(0);

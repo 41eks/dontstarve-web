@@ -47,7 +47,7 @@ import type { WorldMigratorShard } from '../packages/componets/src/worldmigrator
 import { grottoPoolPrefabs } from '@dontstarve-web/prefab/grotto_pool';
 import { mushroomPlantPrefabs } from '@dontstarve-web/prefab/mushroom_plant';
 import { mushtreePrefabs } from '@dontstarve-web/prefab/mushtree';
-import { MarbleShrubManager, MARBLESHRUB_ID } from '@dontstarve-web/prefab/marbleshrub';
+import { marbleShrubPrefabs, type MarbleShrubInstance } from '@dontstarve-web/prefab/marbleshrub';
 import { archivePropsPrefabs } from '@dontstarve-web/prefab/archive_props';
 import { houndbonePrefabs } from '@dontstarve-web/prefab/houndbone';
 import { BeeQueenHiveManager } from '@dontstarve-web/prefab/beequeenhivegrown';
@@ -471,7 +471,6 @@ export async function createSceneEntities(
     rockManager: Managers['rocks'],
     caveEntrances: Managers['cave_entrance'],
     mushroomPlants: Managers['mushroom_plant'],
-    marbleShrubs: Managers['marbleshrub'],
     beeQueenHives: Managers['beequeenhivegrown'],
     dragonflies: Managers['dragonfly'],
     marbleBeanSaplings: Managers['marblebean_sapling'],
@@ -846,25 +845,14 @@ export async function createSceneEntities(
     return prefabs;
   }
 
-  function registerMarbleShrubs(registry: EntityRegistry, prefabId: 'marbleshrub', _worldState: SceneWorldState) {
-    const displays = new PrefabDisplayGroup(scene);
-    const marbleShrubs = new MarbleShrubManager(displays, {
+  function registerMarbleShrubs(registry: EntityRegistry, prefabId: 'marbleshrub', worldState: SceneWorldState) {
+    prefabs.register(marbleShrubPrefabs({
       handEquipment: sceneInventory.handEquipment,
-      scheduler: scheduler ?? worldState.scheduler, physics: world, getWatchWorldContent: worldState.getWatchWorldContent, tickingarea: worldState.tickingarea,
+      scheduler: scheduler ?? worldState.scheduler, getWatchWorldContent: worldState.getWatchWorldContent,
       spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
-    });
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
-      restore: (_, record) => marbleShrubs.spawn(MARBLESHRUB_ID, new THREE.Vector3(...record.transform.position), {
-        id: record.id, transform: record.transform,
-        components: { growable: record.components.growable!, marbleShrub: record.components.marbleShrub! },
-      }),
-      debugSpawn: id => marbleShrubs.spawn(id, player.position.clone()),
-      exportRecords: () => marbleShrubs.exportRecords().map(record => ({ prefabId: MARBLESHRUB_ID, record })),
-      update: dt => marbleShrubs.update(dt),
-      renderEntities: () => marbleShrubs.renderEntities,
-      dispose: () => { marbleShrubs.dispose(); displays.dispose(); },
-    });
-    return marbleShrubs;
+    }));
+    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+    return prefabs;
   }
 
   function registerArchiveProps(registry: EntityRegistry, prefabId: 'archive_props', worldState: SceneWorldState) {
@@ -944,7 +932,8 @@ export async function createSceneEntities(
     const displays = new PrefabDisplayGroup(scene);
     const marbleBeanSaplings = new MarbleBeanSaplingManager(displays, {
       handEquipment: sceneInventory.handEquipment,
-      scheduler: scheduler ?? worldState.scheduler, shrubs: Managers['marbleshrub'], tickingarea: worldState.tickingarea,
+      scheduler: scheduler ?? worldState.scheduler, tickingarea: worldState.tickingarea,
+      spawnPrefab: (id, position) => prefabs.spawn(id, position) as MarbleShrubInstance,
       spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
