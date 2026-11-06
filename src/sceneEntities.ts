@@ -72,7 +72,7 @@ import { FireFxHost } from '@dontstarve-web/prefab/treeFire';
 import { HotspringManager } from '@dontstarve-web/prefab/hotspring';
 import { LavaPondManager, LAVA_POND_ID } from '@dontstarve-web/prefab/lava_pond';
 import { WormholeManager, WORMHOLE_ID } from '@dontstarve-web/prefab/wormhole';
-import { PortalManager, PORTAL_ID } from '@dontstarve-web/prefab/portal';
+import { portalPrefabs } from '@dontstarve-web/prefab/portal';
 import { NightmareGrowthManager, NIGHTMAREGROWTH_ID } from '@dontstarve-web/prefab/nightmaregrowth';
 import { NightmareRockManager } from '@dontstarve-web/prefab/nightmarerock';
 import { PigKingManager } from '@dontstarve-web/prefab/pigking';
@@ -498,7 +498,6 @@ export async function createSceneEntities(
     hotsprings: Managers['hotspring'],
     tumbleweeds: Managers['tumbleweed'],
     wormholes: Managers['wormhole'],
-    portals: Managers['multiplayer_portal_moonrock'],
     nightmareGrowths: Managers['nightmaregrowth'],
     reskinEffects: Managers['reskinEffects'],
     worldFx: Managers['world_fx'],
@@ -1229,19 +1228,12 @@ export async function createSceneEntities(
   }
 
   function registerPortals(registry: EntityRegistry, prefabId: 'multiplayer_portal_moonrock', worldState: SceneWorldState) {
-    const portals = new PortalManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`,
-      { scheduler: worldState.scheduler, portalRez: worldState.portalRez });
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
-      restore: (_, record) => portals.spawn(new THREE.Vector3(...record.transform.position), {
-        id: record.id, transform: record.transform, components: {},
-      }),
-      debugSpawn: () => portals.spawn(player.position.clone()),
-      exportRecords: () => portals.exportRecords().map((record) => ({ prefabId: PORTAL_ID, record })),
-      update: (dt, quaternion) => portals.update(dt, quaternion),
-      renderEntities: () => portals.renderEntities,
-      dispose: () => portals.dispose(),
-    });
-    return portals;
+    prefabs.register(portalPrefabs({
+      scheduler: worldState.scheduler, portalRez: worldState.portalRez,
+      spawnPrefab: (id, position) => prefabs.spawn(id, position),
+    }));
+    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+    return prefabs;
   }
 
   function registerNightmareGrowths(registry: EntityRegistry, prefabId: 'nightmaregrowth', _worldState: SceneWorldState) {

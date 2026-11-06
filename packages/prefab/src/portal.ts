@@ -1,288 +1,154 @@
-import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
-import * as THREE from 'three';
-import { loadAnim, loadBuild, loadSpriteSkinArchive, smallHash } from '@dontstarve-web/animation/animationAssets';
-import {
-  createSpriteFactory,
-  type AnimatedSpriteFactory,
-  SpriteController,
-} from '@dontstarve-web/animation/sprite';
-import type { PrefabDisplay } from '@dontstarve-web/display';
-import type { MiniMapState } from '../../map/src/minimapState';
-import { createEffect, watchSignal, type ReadonlySignal } from '@dontstarve-web/signals';
+import { SpriteState } from '@dontstarve-web/display';
+import { createEffect, watchSignal, type GameTimeScheduler, type ReadonlySignal } from '@dontstarve-web/signals';
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
+import { Inspectable } from '../../componets/src/dragonflySignatures';
 import { Hauntable, HAUNT_INSTANT_REZ } from '../../componets/src/hauntable';
-import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { FRAMES } from '../../stategraphs/src/stategraph';
-import { actionEntity } from './actionEntity';
+import {
+  createMultiplayerPortalStateGraph, type MultiplayerPortalSound, type MultiplayerPortalStateInst,
+} from '../../stategraphs/src/SGmultiplayerportal';
+import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import type { RezSource } from './player_common';
-import { newEntityId } from './saveRecord';
-import { createPrefabEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
-import { PlaySound, type SoundHandle } from './sound';
+import type { SoundEventPath } from './sound';
+import { TILE_SIZE } from './tile';
+import { Transform } from './transform';
 
 export const PORTAL_ID = 'multiplayer_portal_moonrock' as const;
+export const PORTAL_FX_ID = 'multiplayer_portal_moonrock_fx' as const;
 
-const ANIM_ARCHIVE = 'portal_moonrock.zip';
-const BUILD_ARCHIVE = 'portal_moonrock.zip';
-const STONE_BUILD_ARCHIVE = 'portal_stone.zip';
+/** assets_moonrock / assets_fx: the portal_moonrock bank and build, with symbols from portal_stone. */
+const ASSETS = { animationArchive: 'portal_moonrock.zip', buildArchives: ['portal_moonrock.zip', 'portal_stone.zip'], bank: 'portal_moonrock_dst' };
 
-// Symbols overridden from the portal_stone build (moonrock_common_postinit).
-const STONE_SYMBOLS = ['light', 'portalbg', 'spiralfx1'] as const;
+/** multiplayer_portal.lua MOONROCK_SOUNDS; the keys it leaves nil are absent. */
+const MOONROCK_SOUNDS: Partial<Record<MultiplayerPortalSound, SoundEventPath>> = {
+  jacob: 'dontstarve/common/together/spawn_vines/spawnportal_jacob',
+  spawning_loop: 'dontstarve/common/together/spawn_vines/spawnportal_spawning',
+  shake: 'dontstarve/common/together/spawn_vines/spawnportal_shake',
+  open: 'dontstarve/common/together/spawn_vines/spawnportal_open',
+};
 
-const JACOB_SOUND = 'dontstarve/common/together/spawn_vines/spawnportal_jacob' as const;
-// MOONROCK_SOUNDS: the entries SGmultiplayerportal's spawn states play (blink, vines and armswing are nil).
-const SPAWNING_SOUND = 'dontstarve/common/together/spawn_vines/spawnportal_spawning' as const;
-const SHAKE_SOUND = 'dontstarve/common/together/spawn_vines/spawnportal_shake' as const;
-const OPEN_SOUND = 'dontstarve/common/together/spawn_vines/spawnportal_open' as const;
-/** SGmultiplayerportal spawn_loop: `open` at frame 55. */
-const OPEN_TIME = 55 * FRAMES;
-
-// SGmultiplayerportal: Jacob at idle entry and frame 30. The source idle_loop
-// has 60 frames at 30fps, so every two-second animation cycle plays it twice.
-const JACOB_FRAME = 30;
-
-export interface PortalRecord {
-  id: string;
-  transform: { position: [number, number, number]; rotationY: number };
-  components: Record<string, never>;
-}
-
-type SpawnPhase = 'spawn_pre' | 'spawn_loop' | 'spawn_pst';
-
-interface PortalEntity {
-  model: THREE.Group;
-  fxModel: THREE.Group;
-  main: { instance: PrefabInstance; display: PrefabDisplay };
-  fx: { instance: PrefabInstance; display: PrefabDisplay };
-  minimap: MiniMapState;
-  jacobSound?: SoundHandle;
-  hauntable?: Hauntable;
-  playJacob?: () => void;
-  spawning?: { phase: SpawnPhase; elapsed: number; opened: boolean; loopSound?: SoundHandle };
-  stopEvents: (() => void)[];
-}
-
-/** The world services OnGetPortalRez needs: the hauntable's cooldown timer and the portal_rez world setting. */
-export interface PortalRezServices {
+export interface PortalWorld {
   scheduler: GameTimeScheduler;
-  portalRez: ReadonlySignal<boolean>;
+  /** GetPortalRez, which ms_onportalrez announces as it changes. */
+  portalRez?: ReadonlySignal<boolean>;
+  /** SpawnPrefab for the moonrock fx child. */
+  spawnPrefab(prefab: typeof PORTAL_FX_ID, position: ReadonlyVector3): PrefabInstance;
 }
 
-/** Sound events follow the sprite's actual playback, including its delta clamp. */
-class PortalController extends SpriteController {
-  onJacobFrame?: () => void;
+/**
+ * multiplayer_portal.lua MakePortal("multiplayer_portal_moonrock", ...) with moonrock_common_postinit and
+ * moonrock_master_postinit, outside a cave. The moontrader component, its reroll save data and moonportalkey proximity
+ * task, ms_newplayercharacterspawned and the construction portal are not ported.
+ */
+export class PortalInstance extends PrefabInstance implements MultiplayerPortalStateInst, RezSource {
+  readonly fx: PrefabInstance;
+  declare sg: ReturnType<typeof createMultiplayerPortalStateGraph>;
 
-  override update(dt: number): void {
-    const previousFrame = Math.floor(this.elapsed * this.animation.frameRate);
-    super.update(dt);
-    if (this.animationName !== 'idle_loop' || !this.loop) return;
-    const currentFrame = Math.floor(this.elapsed * this.animation.frameRate);
-    for (let frame = previousFrame + 1; frame <= currentFrame; frame++) {
-      const index = frame % this.animation.frames.length;
-      if (index === 0 || index === JACOB_FRAME) this.onJacobFrame?.();
+  constructor(world: PortalWorld, position: ReadonlyVector3) {
+    super(PORTAL_ID, new SpriteState({ name: 'idle_loop', billboard: true }), Transform.stationary());
+    this.setPosition(position.x, 0, position.z);
+    this.AddSoundEmitter();
+    this.addTag('multiplayer_portal');
+    this.addTag('antlion_sinkhole_blocker');
+    this.deploySmartRadius = 2.5 * (TILE_SIZE / 4);
+
+    // moonrock_common_postinit, outside a cave.
+    for (const symbol of ['light', 'portalbg', 'spiralfx1']) this.sprite.setSymbolOverride(symbol, 'portal_stone.zip', symbol);
+    this.sprite.setLightOverride(.04);
+    for (const layer of ['eye', 'eyefx', 'FX_rays']) this.sprite.hideLayer(layer);
+    this.addTag('moonportal');
+    this.addTag('moontrader');
+    // inst.fx = SpawnPrefab("multiplayer_portal_moonrock_fx"); fx.entity:SetParent(inst.entity).
+    this.fx = world.spawnPrefab(PORTAL_FX_ID, position);
+    this.fx.entityParent = this as PrefabInstance<SpriteState, object>;
+    this.onRemove(() => this.fx.remove());
+
+    this.sg = createMultiplayerPortalStateGraph(this, world.scheduler);
+    this.addTag('inspectable');
+    Object.assign(this.components, { inspectable: new Inspectable(this) });
+
+    // OnGetPortalRez(inst, GetPortalRez()) and its ms_onportalrez listener.
+    const cleanups: (() => void)[] = [];
+    if (world.portalRez) {
+      const portalRez = watchSignal(world.portalRez, stop => cleanups.push(stop));
+      cleanups.push(createEffect(() => OnGetPortalRez(this, world.scheduler, portalRez.get())));
     }
-  }
-}
+    cleanups.push(this.ListenForEvent('rez_player', () => OnRezPlayer(this)));
 
-/** Hides the 'portal' layer (DST AnimState:Hide("portal") on the FX entity). */
-class PortalFxController extends SpriteController {
-  protected override isLayerVisible(layerHash: number): boolean {
-    return layerHash !== smallHash('portal');
-  }
-}
-
-export class PortalManager {
-  private mainFactory?: Promise<AnimatedSpriteFactory>;
-  private fxFactory?: Promise<AnimatedSpriteFactory>;
-  private readonly portals = new Set<PortalEntity>();
-  private readonly displays: PrefabDisplayGroup;
-  private readonly assetBaseUrl: string;
-  private readonly services?: PortalRezServices;
-  private disposed = false;
-
-  constructor(scene: THREE.Scene, assetBaseUrl: string, services?: PortalRezServices) {
-    this.displays = new PrefabDisplayGroup(scene);
-    this.assetBaseUrl = assetBaseUrl;
-    this.services = services;
-  }
-
-  async spawn(position: THREE.Vector3, saved?: PortalRecord): Promise<THREE.Group> {
-    if (this.disposed) throw new Error('Portal manager has been disposed');
-    if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError('Invalid portal position');
-
-    const [mainFactory, fxFactory] = await Promise.all([
-      this.getMainFactory(),
-      this.getFxFactory(),
-    ]);
-    if (this.disposed) throw new Error('Portal manager has been disposed');
-
-    const entityId = saved?.id ?? newEntityId();
-
-    // Main portal sprite with symbol overrides from portal_stone. Every drawn controller reports its Jacob frames.
-    const main = createPrefabEntity(PORTAL_ID, { create: animation => {
-      const sprite = mainFactory.create({ initialAnimation: animation, name: PORTAL_ID, skinSymbols: [...STONE_SYMBOLS] });
-      (sprite.userData.animationController as PortalController).onJacobFrame = () => entity.playJacob?.();
-      return sprite;
-    }, release: sprite => mainFactory.disposeSprite(sprite) }, { name: 'idle_loop', billboard: true }, PORTAL_ID);
-    const model = main.display.model;
-    model.position.set(position.x, 0, position.z);
-    main.instance.entityId = entityId;
-
-    // FX child: same animations, hides 'portal' layer, overrides FX_ray1 from portal_stone.
-    const fx = createPrefabEntity(`${PORTAL_ID}_fx`, { create: animation => fxFactory.create({
-      initialAnimation: animation, name: `${PORTAL_ID}_fx`, skinSymbols: ['FX_ray1'],
-    }), release: sprite => fxFactory.disposeSprite(sprite) }, { name: 'idle_loop', billboard: true }, `${PORTAL_ID}_fx`);
-    fx.instance.persists = false;
-    const fxModel = fx.display.model;
-    fxModel.position.copy(model.position);
-    this.displays.mount(prefabDisplay(fxModel)!);
-
-    const minimap = main.instance.minimap;
-    minimap.SetIcon('portal_dst.png');
-    const entity: PortalEntity = { model, fxModel, main, fx, minimap, stopEvents: [] };
-    const playJacob = () => {
-      entity.jacobSound?.stop();
-      entity.jacobSound = PlaySound(JACOB_SOUND, model.position);
-    };
-    playJacob(); // Initial idle entry, after assets and sounds are ready.
-    entity.playJacob = playJacob;
-    this.bindRez(entity);
-    this.portals.add(entity);
-    this.displays.mount(prefabDisplay(model)!);
-    return model;
-  }
-
-  update(dt: number, _cameraQuaternion: THREE.Quaternion): void {
-    for (const entity of this.portals) {
-      const { model, fxModel } = entity;
-      fxModel.position.copy(model.position);
-
-      const spawning = entity.spawning;
-      if (spawning?.phase === 'spawn_loop' && !spawning.opened && Number.isFinite(dt) && dt > 0) {
-        spawning.elapsed += dt;
-        if (spawning.elapsed >= OPEN_TIME) { spawning.opened = true; PlaySound(OPEN_SOUND, model.position); }
-      }
-    }
-    // The display group advances each portal and its fx.
-    if (Number.isFinite(dt) && dt > 0) this.displays.update(dt);
-  }
-
-  get renderEntities() {
-    return [...this.portals].map(({ model }) => ({
-      object: model, footPosition: model.position, cameraDepth: 0,
+    // The stategraph sleeps with the entity. A clip settled while nothing is drawn holds the animover chain, which
+    // resumes once the display has drawn the sprite again.
+    const status = watchSignal(this.status, stop => cleanups.push(stop));
+    cleanups.push(createEffect(() => {
+      const value = status.get();
+      if (value === 'asleep') this.sg.pause();
+      else if (value === 'active') this.sg.resume();
     }));
-  }
-
-
-  exportRecords(): PortalRecord[] {
-    return [...this.portals].map(({ model, main }) => ({
-      id: String(main.instance.entityId),
-      transform: { position: [model.position.x, 0, model.position.z], rotationY: 0 },
-      components: {} as Record<string, never>,
+    cleanups.push(createEffect(() => {
+      this.sprite.art.get();
+      if (this.sprite.loaded && this.sprite.sprite.peek().clip.finished) this.animover();
     }));
-  }
-
-  dispose(): void {
-    if (this.disposed) return;
-    this.disposed = true;
-    for (const entity of this.portals) {
-      entity.stopEvents.splice(0).forEach(stop => stop());
-      entity.hauntable?.dispose();
-      delete prefabInstance(entity.model)!.components?.hauntable;
-      entity.spawning?.loopSound?.stop();
-      entity.playJacob = undefined;
-      entity.jacobSound?.stop();
-
-      for (const { instance, display } of [entity.main, entity.fx]) { instance.remove(); display.dispose(); }
-    }
-    this.portals.clear();
-    void this.mainFactory?.then((f) => f.dispose(), () => undefined);
-    void this.fxFactory?.then((f) => f.dispose(), () => undefined);
-    this.displays.dispose();
-  }
-
-  /** SGmultiplayerportal's `rez_player` states and multiplayer_portal.lua OnGetPortalRez / ms_onportalrez. */
-  private bindRez(entity: PortalEntity): void {
-    const { model } = entity;
-    const inst = actionEntity(model, PORTAL_ID);
-    inst.addTag('multiplayer_portal');
-    const source: RezSource & { addTag(tag: string): void; removeTag(tag: string): void } = {
-      isValid: () => !this.disposed && !inst.isRemoved && this.portals.has(entity),
-      get position() { return model.position; },
-      hasTag: tag => inst.hasTag(tag),
-      PushEvent: (name, data) => inst.PushEvent?.(name, data),
-      addTag: tag => inst.addTag(tag),
-      removeTag: tag => inst.removeTag(tag),
-    };
-    const onRezPlayer = () => this.startSpawn(entity);
-    entity.stopEvents.push(entity.main.instance.ListenForEvent('rez_player', onRezPlayer));
-    const services = this.services;
-    if (!services) return;
-    const portalRez = watchSignal(services.portalRez, stop => entity.stopEvents.push(stop));
-    createEffect(() => {
-      if (portalRez.get()) {
-        if (entity.hauntable) return;
-        entity.hauntable = new Hauntable(source, services.scheduler);
-        entity.hauntable.SetHauntValue(HAUNT_INSTANT_REZ);
-        (prefabInstance(model)!.components).hauntable = entity.hauntable;
-        inst.addTag('resurrector');
-      } else if (entity.hauntable) {
-        entity.hauntable.dispose();
-        entity.hauntable = undefined;
-        delete prefabInstance(model)!.components.hauntable;
-        inst.removeTag('resurrector');
-      }
+    this.onRemove(() => {
+      cleanups.splice(0).forEach(stop => stop());
+      this.sg.dispose();
+      this.components.hauntable?.dispose();
+      delete this.components.hauntable;
     });
   }
 
-  /** SGmultiplayerportal spawn_pre → spawn_loop → spawn_pst, then back to the idle loop. */
-  private startSpawn(entity: PortalEntity): void {
-    if (this.disposed) return;
-    const { model } = entity;
-    const main = entity.main.instance.sprite, fx = entity.fx.instance.sprite;
-    entity.spawning?.loopSound?.stop();
-    const spawning: NonNullable<PortalEntity['spawning']> = { phase: 'spawn_pre', elapsed: 0, opened: false };
-    entity.spawning = spawning;
-    const play = (name: string, done: () => void) => {
-      fx.playOnce(name);
-      main.playOnce(name, () => { if (entity.spawning === spawning && !this.disposed) done(); });
-    };
-    spawning.loopSound = PlaySound(SPAWNING_SOUND, model.position);
-    PlaySound(SHAKE_SOUND, model.position);
-    play('pre_fx', () => {
-      spawning.phase = 'spawn_loop';
-      play('fx', () => {
-        spawning.loopSound?.stop();
-        spawning.phase = 'spawn_pst';
-        play('pst_fx', () => {
-          entity.spawning = undefined;
-          fx.start('idle_loop');
-          main.start('idle_loop');
-          entity.playJacob?.();
-        });
-      });
-    });
+  /** inst:IsValid(). */
+  isValid(): boolean { return !this.isRemoved; }
+
+  playAnimation(name: string): void {
+    this.fx.sprite.playOnce(name);
+    this.sprite.playOnce(name, () => this.animover());
   }
 
-  private getMainFactory(): Promise<AnimatedSpriteFactory> {
-    if (!this.mainFactory) {
-      this.mainFactory = Promise.all([
-        loadBuild(BUILD_ARCHIVE, this.assetBaseUrl),
-        loadAnim(ANIM_ARCHIVE, this.assetBaseUrl),
-        loadSpriteSkinArchive(STONE_BUILD_ARCHIVE, this.assetBaseUrl),
-      ]).then(([build, anim, skin]) => createSpriteFactory(build, anim, PortalController, skin));
-      void this.mainFactory.catch(() => { this.mainFactory = undefined; });
-    }
-    return this.mainFactory;
+  playSound(sound: MultiplayerPortalSound, id?: string): void {
+    const path = MOONROCK_SOUNDS[sound];
+    if (path !== undefined && (id === undefined || !this.SoundEmitter!.PlayingSound(id))) this.SoundEmitter!.PlaySound(path, id);
   }
 
-  private getFxFactory(): Promise<AnimatedSpriteFactory> {
-    if (!this.fxFactory) {
-      this.fxFactory = Promise.all([
-        loadBuild(BUILD_ARCHIVE, this.assetBaseUrl),
-        loadAnim(ANIM_ARCHIVE, this.assetBaseUrl),
-        loadSpriteSkinArchive(STONE_BUILD_ARCHIVE, this.assetBaseUrl),
-      ]).then(([build, anim, skin]) => createSpriteFactory(build, anim, PortalFxController, skin));
-      void this.fxFactory.catch(() => { this.fxFactory = undefined; });
-    }
-    return this.fxFactory;
+  killSound(id: string): void { this.SoundEmitter!.KillSound(id); }
+
+  private animover(): void {
+    if (this.sprite.loaded && !this.isRemoved) this.sg.pushEvent('animover');
   }
+}
+
+function OnRezPlayer(inst: PortalInstance): void {
+  if (!inst.sg.hasStateTag('construction')) inst.sg.goToState('spawn_pre');
+}
+
+function OnGetPortalRez(inst: PortalInstance, scheduler: GameTimeScheduler, portalrez: boolean): void {
+  if (portalrez) {
+    if (inst.components.hauntable) return;
+    const hauntable = new Hauntable(inst, scheduler);
+    hauntable.SetHauntValue(HAUNT_INSTANT_REZ);
+    inst.components.hauntable = hauntable;
+    inst.addTag('resurrector');
+  } else if (inst.components.hauntable) {
+    inst.components.hauntable.dispose();
+    delete inst.components.hauntable;
+    inst.removeTag('resurrector');
+  }
+}
+
+/** moonrockfxfn: the non-networked half drawn over the portal, never saved. */
+function createPortalFx(position: ReadonlyVector3): PrefabInstance {
+  const inst = new PrefabInstance(PORTAL_FX_ID, new SpriteState({ name: 'idle_loop', billboard: true }), Transform.stationary());
+  inst.setPosition(position.x, 0, position.z);
+  inst.sprite.hideLayer('portal');
+  inst.sprite.setSymbolOverride('FX_ray1', 'portal_stone.zip', 'FX_ray1');
+  inst.sprite.setLightOverride(.2);
+  inst.addTag('FX');
+  inst.persists = false;
+  return inst;
+}
+
+/** The moonrock Prefab multiplayer_portal.lua returns, and its fx. */
+export function portalPrefabs(world: PortalWorld): Readonly<Record<typeof PORTAL_ID, PrefabEntityDefinition<PortalInstance>>
+  & Record<typeof PORTAL_FX_ID, PrefabEntityDefinition<PrefabInstance>>> {
+  return {
+    [PORTAL_ID]: { fn: position => new PortalInstance(world, position), assets: ASSETS, minimapIcon: 'portal_dst.png' },
+    [PORTAL_FX_ID]: { fn: createPortalFx, assets: ASSETS, targetable: false },
+  };
 }

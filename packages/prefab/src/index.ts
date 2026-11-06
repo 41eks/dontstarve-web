@@ -186,10 +186,7 @@ export {
   type HatDefinition, type HatEquipMode,
 } from './hats';
 
-export {
-  PORTAL_ID, PortalManager,
-  type PortalRecord,
-} from './portal';
+export { PORTAL_ID, PORTAL_FX_ID, PortalInstance, portalPrefabs, type PortalWorld } from './portal';
 
 export { PHONOGRAPH_ID, PHONOGRAPH_PLAY_TIME, PhonographController } from './phonograph';
 export { RECORD_ID, RECORD_SONGS, RECORD_ITEM_SPECS, configureRecordEntity, isPhonographRecord } from './records';
