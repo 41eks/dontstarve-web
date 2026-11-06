@@ -1,7 +1,7 @@
 import type * as THREE from 'three';
 import { WorldContentKey, type GetWatchWorldContent, type ReadonlySignal, type WorldMoonPhase } from '@dontstarve-web/signals';
 import type { InventoryItemSpec, ItemEntity } from '@dontstarve-web/inventory';
-import type { BookDef, BufferedActionObject } from '@dontstarve-web/stategraphs';
+import type { BookDef } from '@dontstarve-web/stategraphs';
 import { Book, type BookFxWorld, type BookReaderInst, type BookResult } from '../../componets/src/book';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { FindEntities, type FoundEntity } from './actionEntity';
@@ -9,6 +9,7 @@ import { configureBurnableItemEntity } from './burnableItems';
 import type { Pickable } from './components/pickable';
 import catalog from './groundItems.json' with { type: 'json' };
 import { TILE_SIZE } from './tile';
+import { itemSkinBuild } from './itemSkinBuild';
 
 export const BOOK_SILVICULTURE_ID = 'book_silviculture';
 export const BOOK_RAIN_ID = 'book_rain';
@@ -115,25 +116,17 @@ export function isBookCabinetItem(itemId: string): boolean { return isBook(itemI
 export function isBook(itemId: string): itemId is BookId { return Object.hasOwn(BOOK_DEFS, itemId); }
 export function getBookDef(itemId: BookId): BookDef { return BOOK_DEFS[itemId]; }
 
-/** The inst fields SGwilson's book2 reads: def, swap_build, swap_prefix and GetSkinBuild(). */
-export function bookActionObject(entity: ItemEntity): BufferedActionObject {
-  if (!isBook(entity.prefab)) throw new Error(`${entity.prefab} is not a book`);
-  const skinArchive = entity.skinId === undefined ? undefined
-    : (catalog.items[entity.prefab].skinArchives as Readonly<Record<string, string>>)[entity.skinId];
-  if (entity.skinId !== undefined && !skinArchive) throw new Error(`Unknown book skin ${entity.skinId}`);
-  return {
-    prefab: entity.prefab, def: BOOK_DEFS[entity.prefab], swap_build: 'swap_books', swap_prefix: entity.prefab,
-    ...(skinArchive ? { skinBuild: skinArchive.replace(/^dynamic\/|\.zip$/g, '') } : {}),
-    hasTag: tag => entity.hasTag(tag),
-  };
-}
-
 /** books.lua MakeBook: tags, book, finiteuses and MakeSmallBurnable on the inventory inst. */
 export function configureBookEntity(entity: ItemEntity): void {
   if (!isBook(entity.prefab)) return;
   const def = BOOK_DEFS[entity.prefab];
   entity.addTag('book');
   entity.addTag('bookcabinet_item');
+  // The inst fields SGwilson's book state reads: def, swap_build, swap_prefix and GetSkinBuild().
+  entity.def = def;
+  entity.swap_build = 'swap_books';
+  entity.swap_prefix = entity.prefab;
+  entity.GetSkinBuild = () => itemSkinBuild(entity);
   entity.components.finiteuses.setMaxUses(def.uses);
   const book = entity.component('book', () => new Book<ItemEntity, BookReader, BookWorld>(entity));
   entity.components.book = book;

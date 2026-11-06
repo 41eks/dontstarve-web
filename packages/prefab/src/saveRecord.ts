@@ -85,6 +85,9 @@ export interface PlacementSaveRecord {
     /** molehill.lua's inventory and spawner saves. */
     molehill?: import('./molehill').MolehillSave;
     caveinBoulder?: import('./cavein_boulder').CaveinBoulderSave;
+    /** chesspieces.lua onsave and submersible.lua OnSave. */
+    chesspiece?: import('./chesspieces').ChesspieceSaveState;
+    submersible?: import('./chesspieces').SubmersibleSaveState;
   };
 }
 

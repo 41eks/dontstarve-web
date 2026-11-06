@@ -147,7 +147,7 @@ export interface ItemComponents {
   bathbomb?: import('../../componets/src/bathbomb').BathBomb;
   shaver?: import('../../componets/src/shaver').Shaver;
   deployable?: import('../../componets/src/deployable').Deployable;
-  instrument?: ItemRuntimeComponent & { Play(musician: unknown, listeners: (range: number) => Iterable<never>): boolean };
+  instrument?: ItemRuntimeComponent & { Play(musician: unknown): boolean };
   workable?: import('../../componets/src/workable').Workable;
   spellcaster?: import('../../componets/src/spellcaster').SpellCasterComponent;
   fishingrod?: import('../../componets/src/fishingrod').FishingRod;
@@ -238,6 +238,12 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
   castsound?: string;
   projectiledelay?: number;
   fxcolour?: readonly [number, number, number];
+  /** books.lua inst.def, inst.swap_build and inst.swap_prefix, read by SGwilson's book state. */
+  def?: import('../../stategraphs/src/bufferedaction').BookDef;
+  swap_build?: string;
+  swap_prefix?: string;
+  /** AnimState:GetSkinBuild, set by the prefab whose skins a stategraph overrides on the doer. */
+  GetSkinBuild?(): string | undefined;
   private savedPhonographRecord?: string;
   private savedInventory?: InventoryStack[];
   /** Compatibility projection; the prefab's inventory owns the live record. */

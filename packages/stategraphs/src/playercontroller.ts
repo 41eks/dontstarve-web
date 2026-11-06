@@ -108,8 +108,9 @@ export class PlayerController {
   createAction(description: ActionDescription): BufferedAction<WilsonAction> | undefined {
     const target = description.target as (BufferedActionObject & Partial<ActionTargetEntity>) | undefined;
     const pos = description.pos;
-    if (!hasActionFn(description.action) || (target ? !target.getPosition : !pos)) return undefined;
     const invobject = description.invobject as (BufferedActionObject & { isRemoved?: boolean }) | undefined;
+    // An inventory action has neither target nor point: the item is used where the doer stands.
+    if (!hasActionFn(description.action) || (target ? !target.getPosition : !pos && !invobject)) return undefined;
     const inventory = this.doer.components?.inventory;
     const equipped = invobject !== undefined && invobject === this.equippedItem();
     const heldTarget = target !== undefined && inventory?.CanAccessItem?.(target as ItemEntity) === true;
@@ -125,6 +126,12 @@ export class PlayerController {
   GetItemUseAction(item: ItemEntity, target: ItemEntity): BufferedAction<WilsonAction> | undefined {
     const picked = this.picker.GetUseItemActions(target, item, true)[0]
       ?? this.picker.GetUseItemActions(target, item, false)[0];
+    return picked && this.createAction(picked);
+  }
+
+  /** inventory.lua UseItemFromInvTile without an active item: the first of GetInventoryActions(item). */
+  GetInventoryItemAction(item: ItemEntity): BufferedAction<WilsonAction> | undefined {
+    const picked = this.picker.GetInventoryActions(item)[0];
     return picked && this.createAction(picked);
   }
 
@@ -144,7 +151,7 @@ export class PlayerController {
   DoAction(action: BufferedAction<WilsonAction>): boolean {
     const { stategraph } = this;
     const target = action.target as Partial<ActionTargetEntity> | undefined;
-    if (this.disposed || (target ? !target.getPosition : !action.pos) || stategraph.hasStateTag('busy')
+    if (this.disposed || (target ? !target.getPosition : !action.pos && !action.invobject) || stategraph.hasStateTag('busy')
       || isHandActionBusy(stategraph) || !action.isValid()) return false;
     const { distance, mindistance, instant, arrive_anywhere } = (ACTIONS[action.action as MouseActionId] ?? {}) as
       { distance?: number; mindistance?: number; instant?: boolean; arrive_anywhere?: boolean };
@@ -159,6 +166,13 @@ export class PlayerController {
     this.world.actionEvents?.emit('action:begin', { owner: this, action: action.action as PlayerActionKind });
     this.stategraph.cancelEmote();
     this.action = action;
+    // locomotor:PushAction with neither target nor pos buffers the action where the doer stands.
+    if (!target && !action.pos) {
+      this.locomotor.stop();
+      const pushed = stategraph.pushBufferedAction(action);
+      if (!pushed) this.action = undefined;
+      return pushed;
+    }
     this.walking = true;
     const combat = this.doer.components?.combat, customarrive = customArriveCheck(action);
     this.locomotor.PushAction({
@@ -257,7 +271,8 @@ export class PlayerController {
   }
 
   update(): void {
-    if (this.action && this.isManualMovement()) this.cancel();
+    // Movement drops a walk at once; a performed action only once its state lets go of "busy", as SGwilson's locomote handler waits.
+    if (this.action && this.isManualMovement() && (this.walking || !this.stategraph.hasStateTag('busy'))) this.cancel();
     // A held attack key repeats DoAttackButton once the last attack has let go of its target.
     if (this.attackHeld && !this.walking) this.DoAttackButton();
   }

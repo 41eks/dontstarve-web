@@ -1,6 +1,9 @@
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Instrument } from '../../componets/src/instrument';
 import { Tool } from '../../componets/src/tool';
+import { FindEntities } from './actionEntity';
+import { itemSkinBuild } from './itemSkinBuild';
+import { TILE_SIZE } from './tile';
 
 export const PANFLUTE_ID = 'panflute';
 export const PANFLUTE_SLEEPTIME = 20;
@@ -15,7 +18,13 @@ export interface PanfluteListener {
   readonly components: { sleeper?: { AddSleepiness(sleepiness: number, sleeptime: number): void } };
 }
 
-export type PanfluteInstrument = Instrument<unknown, PanfluteListener>;
+/** The player playing the flute: instrument:Play finds the listeners around it. */
+export interface PanfluteMusician { getPosition(): import('three').Vector3 }
+export type PanfluteInstrument = Instrument<PanfluteMusician, PanfluteListener>;
+
+/** instrument.lua Play: TheSim:FindEntities(x, y, z, self.range, nil, {"FX", "DECOR", "INLIMBO"}) at the musician. */
+const findListeners = (musician: PanfluteMusician, range: number) =>
+  FindEntities(musician.getPosition(), range * TILE_SIZE / 4, undefined, ['FX', 'DECOR', 'INLIMBO']) as unknown as PanfluteListener[];
 
 /**
  * panflute.lua HearPanFlute for the ported branches: sleepers that are not players fall asleep.
@@ -29,9 +38,10 @@ function HearPanFlute(listener: PanfluteListener, musician: unknown): void {
 /** panflute.lua: a finite-use `flute` instrument whose PLAY tool action costs one use. */
 export function configurePanfluteEntity(entity: ItemEntity): void {
   entity.addTag('flute');
+  entity.GetSkinBuild = () => itemSkinBuild(entity);
   entity.components.finiteuses.setMaxUses(PANFLUTE_USES);
   entity.components.finiteuses.setConsumption('PLAY', 1);
-  const instrument: PanfluteInstrument = new Instrument(entity);
+  const instrument: PanfluteInstrument = new Instrument(entity, findListeners);
   instrument.SetRange(PANFLUTE_SLEEPRANGE);
   instrument.SetOnHeardFn(HearPanFlute);
   entity.components.instrument = entity.component('instrument', () => instrument);

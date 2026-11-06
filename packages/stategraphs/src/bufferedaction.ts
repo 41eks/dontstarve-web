@@ -21,7 +21,8 @@ export interface BufferedActionObject {
   readonly def?: BookDef;
   readonly swap_build?: string;
   readonly swap_prefix?: string;
-  readonly skinBuild?: string;
+  /** AnimState:GetSkinBuild: the skin build of the item, when it is skinned. */
+  GetSkinBuild?(): string | undefined;
   getDisplayName?(): string;
   /** entityscript.lua PushEvent, for example SGwilson's startlongaction on the target. */
   PushEvent?(name: string, data?: unknown): void;

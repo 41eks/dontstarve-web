@@ -84,7 +84,7 @@ import { atriumGatePrefabs } from '@dontstarve-web/prefab/atrium_gate';
 import { ruinsStatuePrefabs, type RuinsStatueId } from '@dontstarve-web/prefab/ruins_statue_mage';
 import { AtriumStatueManager } from '@dontstarve-web/prefab/atrium_statue';
 import { ChessJunkManager } from '@dontstarve-web/prefab/chessjunk';
-import { ChesspieceManager, CHESSPIECE_MALBATROSS_MARBLE_ID } from '@dontstarve-web/prefab/chesspieces';
+import { chesspiecePrefabs } from '@dontstarve-web/prefab/chesspieces';
 import { ArchiveCentipedeHuskManager } from '@dontstarve-web/prefab/archive_centipede';
 import { BeefaloManager, BEEFALO_BEHAVIOR } from '@dontstarve-web/prefab/beefalo';
 import { newEntityId } from '@dontstarve-web/prefab/saveRecord';
@@ -326,7 +326,6 @@ export async function createSceneEntities(
     'ruins_statue_head_nogem': typeof prefabs;
     'atrium_statue': ReturnType<typeof registerAtriumStatue>;
     'chessjunk': ReturnType<typeof registerChessJunk>;
-    'chesspiece_malbatross_marble': ReturnType<typeof registerChesspieces>;
     'archive_centipede_husk': ReturnType<typeof registerArchiveCentipedeHusks>;
     'sanityrock': ReturnType<typeof registerNightmareRocks>;
     'rain': ReturnType<typeof registerRain>;
@@ -426,7 +425,7 @@ export async function createSceneEntities(
   registerRuinsRelics(registry, worldState);
   Managers['atrium_statue'] = registerAtriumStatue(registry, 'atrium_statue', worldState);
   Managers['chessjunk'] = registerChessJunk(registry, 'chessjunk', worldState);
-  Managers['chesspiece_malbatross_marble'] = registerChesspieces(registry, 'chesspiece_malbatross_marble', worldState);
+  registerChesspieces(registry, 'chesspiece_malbatross_marble', worldState);
   Managers['archive_centipede_husk'] = registerArchiveCentipedeHusks(registry, 'archive_centipede_husk', worldState);
   Managers['marsh_plant'] = registerMarshPlants(registry, worldState);
   Managers['pond'] = registerPonds(registry, 'pond', worldState);
@@ -1241,24 +1240,11 @@ export async function createSceneEntities(
   }
 
   function registerChesspieces(registry: EntityRegistry, prefabId: 'chesspiece_malbatross_marble', worldState: SceneWorldState) {
-    const displays = new PrefabDisplayGroup(scene);
-    const pieces = new ChesspieceManager(displays, {
-      fx: Managers['world_fx'], handEquipment: sceneInventory.handEquipment, physics: world,
-      scheduler: worldState.scheduler, tickingarea: worldState.tickingarea,
+    prefabs.register(chesspiecePrefabs({
+      fx: Managers['world_fx'], handEquipment: sceneInventory.handEquipment, scheduler: worldState.scheduler,
       spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
-    });
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
-      restore: (_, record) => pieces.spawn(new THREE.Vector3(...record.transform.position), {
-        id: record.id, transform: record.transform, components: {
-          ...(record.components.chesspiece ? { chesspiece: record.components.chesspiece } : {}),
-          ...(record.components.submersible ? { submersible: record.components.submersible } : {}) } }),
-      debugSpawn: () => pieces.spawn(player.position.clone()),
-      exportRecords: () => pieces.exportRecords().map(record => ({ prefabId: CHESSPIECE_MALBATROSS_MARBLE_ID, record })),
-      update: dt => pieces.update(dt),
-      renderEntities: () => pieces.renderEntities,
-      dispose: () => { pieces.dispose(); displays.dispose(); },
-    });
-    return pieces;
+    }));
+    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
   }
 
   function registerArchiveCentipedeHusks(registry: EntityRegistry, prefabId: 'archive_centipede_husk', worldState: SceneWorldState) {

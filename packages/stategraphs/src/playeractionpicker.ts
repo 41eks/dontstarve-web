@@ -4,7 +4,7 @@ import { PointerRaycaster } from './pointerRaycaster.ts';
 import { isMouseTarget } from './mouseTargets.ts';
 import { collectEquippedItemActions, collectPointActions, collectSceneActions, type ComponentActionEntity, type EquippedActionDoer, type SceneActionDoer } from './componentactions.ts';
 import { findActionEntity, actionInstance } from '../../prefab/src/actionEntity';
-import { collectUseItemActions } from './componentactions';
+import { collectInventoryActions, collectUseItemActions } from './componentactions';
 
 export interface MouseActionCandidate {
   action: ActionDescription;
@@ -91,6 +91,15 @@ export class PlayerActionPicker {
     const doer = this.player?.doer;
     if (!doer) return [];
     return collectUseItemActions(item, doer, target, right).map(action => ({ action, doer, target, invobject: item }))
+      .filter(action => !this.actionFilter || this.actionFilter(action))
+      .sort((a, b) => getActionPriority(b) - getActionPriority(a));
+  }
+
+  /** playeractionpicker.lua GetInventoryActions without the drop modifier: the item's INVENTORY actions, sorted. */
+  GetInventoryActions(useitem: ComponentActionEntity, right = false): ActionDescription[] {
+    const doer = this.player?.doer;
+    if (!doer) return [];
+    return collectInventoryActions(useitem, doer, right).map(action => ({ action, doer, invobject: useitem }))
       .filter(action => !this.actionFilter || this.actionFilter(action))
       .sort((a, b) => getActionPriority(b) - getActionPriority(a));
   }

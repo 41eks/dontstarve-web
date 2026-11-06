@@ -1171,9 +1171,10 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
           } else host.playNamedSound?.('book_layer_sound', layer.sound);
         }
         const prefix = book.swap_prefix ?? 'book';
-        if (book.skinBuild) {
-          host.overrideItemSkinSymbol?.('book_open', book.skinBuild, 'book_open', book.swap_build ?? 'player_actions_uniqueitem', `${prefix}_open`);
-          host.overrideItemSkinSymbol?.('book_closed', book.skinBuild, 'book_closed', book.swap_build ?? 'player_actions_uniqueitem', `${prefix}_closed`);
+        const skinBuild = book.GetSkinBuild?.();
+        if (skinBuild) {
+          host.overrideItemSkinSymbol?.('book_open', skinBuild, 'book_open', book.swap_build ?? 'player_actions_uniqueitem', `${prefix}_open`);
+          host.overrideItemSkinSymbol?.('book_closed', skinBuild, 'book_closed', book.swap_build ?? 'player_actions_uniqueitem', `${prefix}_closed`);
           inst.statemem.symbolsoverridden = true;
         } else if (book.swap_build) {
           host.overrideSymbol?.('book_open', book.swap_build, `${prefix}_open`);
@@ -1247,7 +1248,7 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
       const { host } = inst.context;
       host.stopMovement?.();
       inst.context.playClips([clip('action_uniqueitem_pre'), clip('flute')]);
-      const skinBuild = inst.context.getBufferedAction()?.invobject?.skinBuild;
+      const skinBuild = inst.context.getBufferedAction()?.invobject?.GetSkinBuild?.();
       if (skinBuild) host.overrideItemSkinSymbol?.('pan_flute01', skinBuild, 'pan_flute01', 'pan_flute', 'pan_flute01');
       else host.overrideSymbol?.('pan_flute01', 'pan_flute', 'pan_flute01');
     },
