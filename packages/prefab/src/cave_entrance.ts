@@ -1,20 +1,17 @@
-import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
-import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
+import { SpriteState } from '@dontstarve-web/display';
 import * as THREE from 'three';
-import type * as CANNON from 'cannon-es';
-import type { TileStateQuery } from '@dontstarve-web/signals';
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
+import { Inspectable } from '../../componets/src/dragonflySignatures';
 import { LootDropper } from '../../componets/src/lootdropper';
 import { Workable } from '../../componets/src/workable';
 import { WorldMigrator, type WorldMigratorShard } from '../../componets/src/worldmigrator';
-import type { MiniMapState } from '../../map/src/minimapState';
 import { actionEntity } from './actionEntity';
-import { newEntityId } from './saveRecord';
-import { MakeObstaclePhysics } from './standardcomponents';
 import type { SpawnGroundItem } from './groundPrefab';
+import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { PlaySound } from './sound';
-import { SpriteResources, type ArchiveSpriteCommands, type PrefabDisplay } from '@dontstarve-web/display';
-import { createArchiveEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
-import { watchTileActivity } from './tileActivity';
+import { MakeObstaclePhysics } from './standardcomponents';
+import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
+import { Transform } from './transform';
 import catalog from './groundItems.json' with { type: 'json' };
 
 export const CAVE_ENTRANCE_ID = 'cave_entrance' as const;
@@ -28,169 +25,93 @@ const ROCKS_MINE = 6;
 const PHYSICS_RADIUS = 1;
 /** cave_entrance.lua closed_fn SetLoot. */
 const CLOSED_LOOT = ['rocks', 'rocks', 'flint', 'flint', 'flint'] as const;
-/** LAYER_BACKGROUND with sort order 3: drawn under the world entities. */
-export const CAVE_ENTRANCE_OPEN_RENDER_LAYER = -1;
+/** LAYER_BACKGROUND with sort order 3: drawn under the world entities, still facing the camera. */
+const BACKGROUND_RENDER_ORDER = -.5;
 
 /** cave_entrance.lua open_fn `worldmigrator.shard_name`. */
 export const CAVES_SHARD = 'Caves';
 
-/** workable.savestate defaults to false and worldmigrator is not connected yet: records carry only identity and position. */
-export interface CaveEntranceRecord {
-  id: string;
-  transform: { position: [number, number, number]; rotationY: number };
-  components: Record<string, never>;
-}
-
 export interface CaveEntranceWorld extends ToolMouseTargetWorld {
-  physics?: CANNON.World;
-  /** Without it every entrance is active. */
-  tickingarea?: TileStateQuery;
   /** The shard link behind `cave_entrance_open`; without it the destination is never available. */
   shard?: WorldMigratorShard;
   /** lootdropper:DropLoot when the closed entrance is mined open; the loot's display loads its art. */
   spawnGroundItem: SpawnGroundItem;
-}
-
-export function isCaveEntranceId(value: string): value is CaveEntranceId {
-  return (CAVE_ENTRANCE_IDS as readonly string[]).includes(value);
+  /** SpawnPrefab("cave_entrance_open") in the closed entrance's place. */
+  spawnPrefab(prefab: typeof CAVE_ENTRANCE_OPEN_ID, position: ReadonlyVector3): unknown;
 }
 
 const NO_SHARD: WorldMigratorShard = { isWorldAvailable: () => false, isWorldFull: () => false, migratePlayer: () => {} };
 
-interface Entrance {
-  prefab: CaveEntranceId;
-  instance: PrefabInstance<ArchiveSpriteCommands>;
-  display: PrefabDisplay;
-  sprite: ArchiveSpriteCommands;
-  minimap: MiniMapState;
-  workable?: Workable;
-  stopActivity: () => void;
-  stopMigration?: () => void;
-  removed: boolean;
+/**
+ * cave_entrance.lua fn / closed_fn / open_fn: a MINE-able sealed entrance that becomes `cave_entrance_open`.
+ * workable.savestate defaults to false and worldmigrator saves are not ported: records carry only identity and position.
+ * The bats' childspawner, pointofinterest and cave_entrance_ruins are not ported.
+ */
+export class CaveEntranceInstance extends PrefabInstance {
+  declare readonly prefab: CaveEntranceId;
+  declare readonly components: PrefabInstance['components'] & { inspectable: Inspectable; workable?: Workable; lootdropper?: LootDropper; worldmigrator?: WorldMigrator };
+
+  constructor(prefab: CaveEntranceId, world: CaveEntranceWorld, position: ReadonlyVector3) {
+    const open = prefab === CAVE_ENTRANCE_OPEN_ID;
+    super(prefab, new SpriteState({ name: open ? 'no_access' : 'idle_closed', held: !open, billboard: true }), Transform.stationary());
+    this.setPosition(position.x, 0, position.z);
+    // PlayAnimation("idle_closed") plays once rather than resting on its last frame.
+    if (!open) this.sprite.playOnce('idle_closed');
+    else this.sprite.setGround(BACKGROUND_RENDER_ORDER, false);
+    this.addTag('antlion_sinkhole_blocker');
+    this.addTag('inspectable');
+    this.components.inspectable = new Inspectable(this);
+    if (open) open_fn(this, world); else closed_fn(this, world);
+  }
 }
 
-/** cave_entrance.lua: a MINE-able sealed entrance that becomes `cave_entrance_open` (worldmigrator and bats are not connected). */
-export class CaveEntranceManager {
-  private readonly displays: PrefabDisplayGroup;
-  private readonly world: CaveEntranceWorld;
-  private readonly resources = new SpriteResources();
-  private readonly entrances = new Map<THREE.Group, Entrance>();
-  private disposed = false;
+/** closed_fn: MINE for ROCKS_MINE work; OnWork shows low/med/idle_closed and finally drops the loot and opens. */
+function closed_fn(inst: CaveEntranceInstance, world: CaveEntranceWorld): void {
+  const workable = new Workable(inst);
+  workable.SetWorkAction('MINE');
+  workable.SetWorkLeft(ROCKS_MINE);
+  const lootdropper = new LootDropper(inst, (itemId, point) => world.spawnGroundItem(
+    { ...catalog.items[itemId as keyof typeof catalog.items], itemId, count: 1 }, new THREE.Vector3(point.x, point.y, point.z), { fling: true }));
+  lootdropper.SetLoot(CLOSED_LOOT);
+  workable.SetOnWorkCallback((_inst, _worker, workleft) => OnWork(inst, world, workleft));
+  Object.assign(inst.components, { workable, lootdropper });
+  inst.onRemove(() => workable.dispose());
+}
 
-  constructor(scene: THREE.Scene, world: CaveEntranceWorld) {
-    this.displays = new PrefabDisplayGroup(scene); this.world = world;
+function OnWork(inst: CaveEntranceInstance, world: CaveEntranceWorld, workleft: number): void {
+  if (workleft > 0) {
+    inst.sprite.playOnce(workleft < ROCKS_MINE / 3 ? 'low' : workleft < ROCKS_MINE * 2 / 3 ? 'med' : 'idle_closed');
+    return;
   }
+  // rock_break_fx, DropLoot, then cave_entrance_open takes the closed entrance's place.
+  const pt = inst.position;
+  PlaySound('dontstarve/wilson/rock_break', pt);
+  inst.components.lootdropper!.DropLoot();
+  world.spawnPrefab(CAVE_ENTRANCE_OPEN_ID, pt);
+  inst.remove();
+}
 
-  spawn(prefab: CaveEntranceId, position: THREE.Vector3, saved?: CaveEntranceRecord): THREE.Group {
-    if (this.disposed) throw new Error('Cave entrances have been disposed');
-    if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError('Invalid cave entrance position');
-    return this.create(prefab, position, saved);
-  }
+/** open_fn: the migration events pick the loop (`open`, `no_access`, `over_capacity`); the destination is the Caves shard. */
+function open_fn(inst: CaveEntranceInstance, world: CaveEntranceWorld): void {
+  const migrator = new WorldMigrator(inst, world.shard ?? NO_SHARD);
+  inst.components.worldmigrator = migrator;
+  inst.ListenForEvent('migration_available', () => inst.sprite.start('open'));
+  inst.ListenForEvent('migration_unavailable', () => inst.sprite.start('no_access'));
+  inst.ListenForEvent('migration_full', () => inst.sprite.start('over_capacity'));
+  migrator.SetDestinationWorld(CAVES_SHARD);
+}
 
-  /** closed: idle_closed; open: `no_access` until its worldmigrator reports an available destination. */
-  private createSprite(prefab: CaveEntranceId): ReturnType<typeof createArchiveEntity> {
-    const open = prefab === CAVE_ENTRANCE_OPEN_ID;
-    const clip = { name: open ? 'no_access' : 'idle_closed', loop: open };
-    const entity = createArchiveEntity(prefab, this.resources.archive({ animationArchive: 'cave_entrance.zip',
-      buildArchives: ['cave_entrance.zip'], bank: 'cave_entrance' }), { name: clip.name, held: !open, billboard: true }, prefab);
-    // PlayAnimation("idle_closed") plays once rather than resting on its last frame.
-    if (!open) entity.instance.sprite.playOnce(clip.name);
-    return entity;
-  }
-
-  private create(prefab: CaveEntranceId, position: THREE.Vector3,
-    saved: CaveEntranceRecord | undefined): THREE.Group {
-    const { instance, display } = this.createSprite(prefab);
-    const model = display.model, sprite = instance.sprite;
-    model.position.set(position.x, 0, position.z);
-    instance.entityId = saved?.id ?? newEntityId();
-    instance.addTag('antlion_sinkhole_blocker');
-    const inst = actionEntity(model, prefab);
-    const entrance: Entrance = { prefab, instance, display, sprite, removed: false, stopActivity: () => {},
-      minimap: instance.minimap };
-    entrance.minimap.SetIcon(prefab === CAVE_ENTRANCE_ID ? 'cave_closed.png' : 'cave_open.png');
-    MakeObstaclePhysics(instance, PHYSICS_RADIUS);
-    if (this.world.physics) instance.bindPhysics(this.world.physics);
-    if (prefab === CAVE_ENTRANCE_ID) this.createWorkable(entrance, inst);
-    else this.createMigrator(entrance, inst);
-    this.entrances.set(model, entrance);
-    this.displays.mount(prefabDisplay(model)!);
-    entrance.stopActivity = watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active));
-    return model;
-  }
-
-  /** open_fn: the migration events pick the loop (`open`, `no_access`, `over_capacity`); the destination is the Caves shard. */
-  private createMigrator(entrance: Entrance, inst: ReturnType<typeof actionEntity>): void {
-    const { sprite } = entrance, model = entrance.display.model;
-    const migrator = new WorldMigrator(inst, this.world.shard ?? NO_SHARD);
-    const listeners = { migration_available: 'open', migration_unavailable: 'no_access', migration_full: 'over_capacity' } as const;
-    const handlers = Object.entries(listeners).map(([event, animation]) => {
-      const handler = () => sprite.start(animation);
-      return prefabInstance(model)!.ListenForEvent(event, handler);
-    });
-    entrance.stopMigration = () => handlers.forEach(stop => stop());
-    prefabInstance(model)!.components.worldmigrator = migrator;
-    migrator.SetDestinationWorld(CAVES_SHARD);
-  }
-
-  /** closed_fn: MINE for ROCKS_MINE work, OnWork shows low/med/idle_closed and finally drops the loot and opens. */
-  private createWorkable(entrance: Entrance, inst: ReturnType<typeof actionEntity>): void {
-    const { sprite } = entrance, model = entrance.display.model;
-    const workable = new Workable(inst);
-    entrance.workable = workable;
-    workable.SetWorkAction('MINE');
-    workable.SetWorkLeft(ROCKS_MINE);
-    const lootdropper = new LootDropper(inst, (itemId, point) => this.world.spawnGroundItem(
-      { ...catalog.items[itemId as keyof typeof catalog.items], itemId, count: 1 }, new THREE.Vector3(point.x, point.y, point.z), { fling: true }));
-    lootdropper.SetLoot(CLOSED_LOOT);
-    workable.SetOnWorkCallback((_inst, _worker, workleft) => {
-      if (workleft > 0) {
-        sprite.playOnce(workleft < ROCKS_MINE / 3 ? 'low' : workleft < ROCKS_MINE * 2 / 3 ? 'med' : 'idle_closed');
-        return;
-      }
-      // rock_break_fx, DropLoot, then cave_entrance_open takes the closed entrance's place.
-      PlaySound('dontstarve/wilson/rock_break', model.position);
-      lootdropper.DropLoot();
-      const record: CaveEntranceRecord = { id: newEntityId(), transform: { position: [model.position.x, 0, model.position.z], rotationY: 0 }, components: {} };
-      this.remove(model);
-      this.create(CAVE_ENTRANCE_OPEN_ID, model.position, record);
-    });
-    Object.assign(prefabInstance(model)!.components, { workable, lootdropper });
-    new ToolMouseTarget(inst, entrance.instance, workable, this.world.handEquipment);
-  }
-
-  update(dt: number, _quaternion: THREE.Quaternion): void {
-    if (this.disposed) return;
-    this.displays.update(dt);
-  }
-
-  get renderEntities() {
-    return [...this.entrances.values()].map(({ prefab, display }) => ({
-      object: display.model, footPosition: display.model.position, cameraDepth: 0,
-      ...prefab === CAVE_ENTRANCE_OPEN_ID ? { renderLayer: CAVE_ENTRANCE_OPEN_RENDER_LAYER } : {},
-    }));
-  }
-
-  exportRecords(): { prefabId: CaveEntranceId; record: CaveEntranceRecord }[] {
-    return [...this.entrances].map(([model, { prefab, instance }]) => ({ prefabId: prefab, record: {
-      id: String(instance.entityId),
-      transform: { position: [model.position.x, 0, model.position.z], rotationY: 0 },
-      components: {},
-    } }));
-  }
-
-  private remove(model: THREE.Group): void {
-    const entrance = this.entrances.get(model); if (!entrance) return;
-    this.entrances.delete(model); model.userData.removed = true; entrance.removed = true;
-    entrance.workable?.dispose();
-    entrance.stopActivity(); entrance.stopMigration?.(); entrance.instance.remove(); entrance.display.dispose();
-  }
-
-  dispose(): void {
-    if (this.disposed) return;
-    this.disposed = true;
-    for (const model of [...this.entrances.keys()]) this.remove(model);
-    this.displays.dispose();
-    this.resources.dispose();
-  }
+/** The two Prefabs cave_entrance.lua returns that are ported. */
+export function caveEntrancePrefabs(world: CaveEntranceWorld): Readonly<Record<CaveEntranceId, PrefabEntityDefinition<CaveEntranceInstance>>> {
+  const definition = (id: CaveEntranceId): PrefabEntityDefinition<CaveEntranceInstance> => ({
+    fn: position => new CaveEntranceInstance(id, world, position),
+    assets: { animationArchive: 'cave_entrance.zip', buildArchives: ['cave_entrance.zip'], bank: 'cave_entrance' },
+    physics: { make: MakeObstaclePhysics, radius: PHYSICS_RADIUS },
+    minimapIcon: id === CAVE_ENTRANCE_ID ? 'cave_closed.png' : 'cave_open.png',
+    onSpawned: inst => {
+      const workable = inst.components.workable;
+      if (workable) new ToolMouseTarget(actionEntity(inst.transform.model, id), inst, workable, world.handEquipment);
+    },
+  });
+  return { cave_entrance: definition(CAVE_ENTRANCE_ID), cave_entrance_open: definition(CAVE_ENTRANCE_OPEN_ID) };
 }
