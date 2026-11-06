@@ -66,7 +66,7 @@ import { loadAnimationArchive } from '@dontstarve-web/animation/animationAssets'
 import { createEffect, watchSignal } from '@dontstarve-web/signals';
 import type { Sanity } from '../packages/componets/src/sanity';
 import { OnMakePlayerGhost, OnRespawnFromGhost, setGhostLight, type PlayerGhostOwner, type RezSource } from '@dontstarve-web/prefab/player_common';
-import { SKELETON_PLAYER_ID } from '@dontstarve-web/prefab/skeleton';
+import { SKELETON_PLAYER_ID, type SkeletonInstance } from '@dontstarve-web/prefab/skeleton';
 import { modelHasTag, setModelTag } from '@dontstarve-web/prefab/prefabInstance';
 
 // Independent startup loads begin together; each is awaited where it is first needed.
@@ -294,7 +294,7 @@ const sceneResources = await startScene(
   inventory.entities,
   inventory,
 );
-const { scheduler, buildingPlacement, groundItems, worldFx, staffProjectiles, skeletons, registry, getSaveState, disposalEvents } = sceneResources;
+const { scheduler, buildingPlacement, groundItems, worldFx, staffProjectiles, prefabs, registry, getSaveState, disposalEvents } = sceneResources;
 gameUi.minimap.bind({ terrain: turfMap, cellSize: TILE_SIZE, getPlayerPosition: () => player.position, cameraHeading: view.cameraHeading });
 const sanityVignette = await SanityVignette.create(playerSanity.sane, animRoot);
 document.body.append(sanityVignette.canvas);
@@ -346,8 +346,8 @@ const ghostOwner: PlayerGhostOwner | undefined = playerAnimation && {
   actionPicker: view.mouseActions!,
   // SpawnDeathProduct: skeleton_player at the death point, described with the character, name and cause.
   spawnDeathProduct: position => {
-    const skeleton = skeletons.spawn(SKELETON_PLAYER_ID, position.clone());
-    skeletons.setSkeletonDescription(skeleton, playerInstance.prefab, player.name, deathCause);
+    const skeleton = prefabs.spawn(SKELETON_PLAYER_ID, position) as SkeletonInstance;
+    skeleton.SetSkeletonDescription(playerInstance.prefab, player.name, deathCause);
   },
   spawnDieFx: position => {
     worldFx.spawn('die_fx', position);

@@ -66,6 +66,8 @@ export interface PlacementSaveRecord {
     grottoGlass?: import('./grotto_pool').GrottoGlassSaveState;
     /** mushtree.lua onsave: stump, burnt, treestate, and the stump's decay timer. */
     mushtree?: import('./mushtree').MushtreeSaveState;
+    /** skeleton.lua OnSave / Player_OnSave. */
+    skeleton?: import('./skeleton').SkeletonSaveState;
   };
 }
 

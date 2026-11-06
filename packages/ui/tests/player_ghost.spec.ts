@@ -35,7 +35,7 @@ test('death leaves a skeleton, becomes a ghost, and a saved ghost resumes withou
       health: stats.playerStats.health.currenthealth, tagged: (window as any).__prefabInstance(player).listTags().includes('playerghost') };
   });
   const skeletons = () => page.evaluate(() => (window as any).ghostGame.scene.children
-    .filter((model: any) => (window as any).__prefabInstance(model)?.prefab === 'skeleton_player').map((model: any) => ({ id: (window as any).__prefabInstance(model)?.entityId, ...model.userData.skeleton })));
+    .filter((model: any) => (window as any).__prefabInstance(model)?.prefab === 'skeleton_player').map((model: any) => ({ id: (window as any).__prefabInstance(model)?.entityId, ...(window as any).__prefabInstance(model)?.description })));
 
   await page.goto('/tests/dst-lighting.html?save=initial-world.json'); await prepare();
   expect(await player()).toMatchObject({ ghost: false, ghostMode: false, tagged: false });

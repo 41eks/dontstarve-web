@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
-import { SkeletonManager } from '../../prefab/src/skeleton';
+import { PrefabDisplayGroup } from '@dontstarve-web/display';
+import { skeletonPrefabs, type SkeletonInstance } from '../../prefab/src/skeleton';
 import { GroundItemManager } from '../../prefab/src/groundItemManager';
 import { createInventoryStore } from '../../../src/inventory';
 import { performToolWork } from '../../stategraphs/src/componentactions';
@@ -13,7 +14,7 @@ import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
-import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { workTargets } from './workTargets';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
@@ -25,14 +26,11 @@ function setup() {
   const inventory = createInventoryStore([]), scene = new THREE.Scene(), player = new THREE.Group(), physics = new CANNON.World();
   const ground = new GroundItemManager(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
-  const skeletons = new SkeletonManager(scene, { physics, spawnGroundItem: (definition, position, options) => ground.spawnGroundItem(definition, position, options) });
-  const registry = new EntityRegistry();
-  registry.register(PREFAB_DEFINITIONS.skeletons, {
-    restore: (id, record) => skeletons.spawn(id, new THREE.Vector3(...record.transform.position),
-      { id: record.id, transform: record.transform, components: { skeleton: record.components.skeleton } }),
-    debugSpawn: id => skeletons.spawn(id, player.position),
-    exportRecords: () => skeletons.exportRecords(), dispose: () => skeletons.dispose(),
-  });
+  const displays = new PrefabDisplayGroup(scene);
+  const skeletons = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { physics });
+  skeletons.register(skeletonPrefabs({ spawnGroundItem: (definition, position, options) => ground.spawnGroundItem(definition, position, options) }) as never);
+  const registry = new EntityRegistry([], skeletons, () => player.position);
+  registry.registerPrefabs(PREFAB_DEFINITIONS.skeletons);
   registry.register(PREFAB_DEFINITIONS.groundItems, {
     restore: () => { throw new Error('unused'); },
     debugSpawn: id => ground.spawnFromSave(`command:${id}`, { ...SAVE_CATALOG.items[id], itemId: id, count: 1 }, player.position),
@@ -42,7 +40,7 @@ function setup() {
   const save = () => serializeSave(template, { entities: { skeleton_player: skeletons.exportRecords().map(entry => entry.record),
     ground_item: ground.exportRecords() },
   inventory: inventory.exportState(), elapsedSeconds: 0, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
-  return { inventory, scene, physics, ground, skeletons, registry, save, player, dispose: () => { registry.dispose(); inventory.dispose(); } };
+  return { inventory, scene, physics, ground, skeletons, registry, save, player, dispose: () => { registry.dispose(); skeletons.dispose(); displays.dispose(); inventory.dispose(); } };
 }
 
 it('hammers a described player skeleton into two boneshards and keeps its pose and description through save/load', async () => {
@@ -52,7 +50,7 @@ it('hammers a described player skeleton into two boneshards and keeps its pose a
     expect((await executeDebugCommand('c_spawn("skeleton_player")', s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
     const [target] = workTargets('HAMMER', s.scene);
     // math.random(1, 6) at .5 → idle4; Player_SetSkeletonDescription lowercases the cause.
-    s.skeletons.setSkeletonDescription(target.model, 'waxwell', 'Maxwell', 'Starvation');
+    prefabInstance<SkeletonInstance>(target.model)!.SetSkeletonDescription('waxwell', 'Maxwell', 'Starvation');
     expect(prefabInstance(target.model)!.listTags()).toEqual(expect.arrayContaining(['skeleton', 'playerskeleton']));
     expect(s.physics.bodies).toHaveLength(1);
 
@@ -60,7 +58,7 @@ it('hammers a described player skeleton into two boneshards and keeps its pose a
     expect((await executeDebugCommand('c_save()', s.inventory, undefined, () => { json = s.save(); })).ok).toBe(true);
     const [record] = deserializeSave(json, SAVE_CATALOG).world.entities.skeleton_player;
     expect(record.components.skeleton).toEqual({ anim: 4, char: 'waxwell', playername: 'Maxwell', cause: 'starvation' });
-    await restored.skeletons.spawn('skeleton_player', new THREE.Vector3(...record.transform.position),
+    restored.skeletons.spawn('skeleton_player', new THREE.Vector3(...record.transform.position),
       { id: record.id, transform: record.transform, components: { skeleton: record.components.skeleton } });
     expect(restored.skeletons.exportRecords()).toEqual(s.skeletons.exportRecords());
 
@@ -89,11 +87,11 @@ it('spawns a creature skeleton with its own pose range and shared table, droppin
     for (const target of targets) {
       expect(prefabInstance(target.model)!.listTags()).toContain('skeleton'); expect(prefabInstance(target.model)!.listTags()).not.toContain('playerskeleton');
     }
-    s.skeletons.setSkeletonDescription(targets[1].model, 'waxwell', 'Maxwell', 'Starvation');
+    prefabInstance<SkeletonInstance>(targets[1].model)!.SetSkeletonDescription('waxwell', 'Maxwell', 'Starvation');
     expect(s.skeletons.exportRecords()[1].record.components.skeleton).toEqual({ anim: 1 });
 
     const [record] = s.skeletons.exportRecords();
-    await restored.skeletons.spawn('skeleton_notplayer_2', new THREE.Vector3(...record.record.transform.position),
+    restored.skeletons.spawn('skeleton_notplayer_2', new THREE.Vector3(...record.record.transform.position),
       { id: record.record.id, transform: record.record.transform, components: { skeleton: record.record.components.skeleton } });
     expect(restored.skeletons.exportRecords()).toEqual([record]);
 

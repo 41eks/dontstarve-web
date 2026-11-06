@@ -53,7 +53,7 @@ import { houndbonePrefabs } from '@dontstarve-web/prefab/houndbone';
 import { BeeQueenHiveManager } from '@dontstarve-web/prefab/beequeenhivegrown';
 import { DragonflyManager } from '@dontstarve-web/prefab/dragonfly';
 import { DragonflySpawnerManager } from '@dontstarve-web/prefab/dragonfly_spawner';
-import { SkeletonManager, type SkeletonId } from '@dontstarve-web/prefab/skeleton';
+import { skeletonPrefabs } from '@dontstarve-web/prefab/skeleton';
 import { MarbleBeanSaplingManager, MARBLEBEAN_SAPLING_ID } from '@dontstarve-web/prefab/marblebean_sapling';
 import { rockAvocadoSaplingPrefabs } from '@dontstarve-web/prefab/rock_avocado_fruit_sprout_sapling';
 import { rockAvocadoBushPrefabs } from '@dontstarve-web/prefab/rock_avocado_bush';
@@ -305,7 +305,6 @@ export async function createSceneEntities(
     'mushroom_plant': ReturnType<typeof registerMushroomPlants>;
     'marbleshrub': ReturnType<typeof registerMarbleShrubs>;
     'archive_props': ReturnType<typeof registerArchiveProps>;
-    'skeleton': ReturnType<typeof registerSkeletons>;
     'beequeenhivegrown': ReturnType<typeof registerBeeQueenHives>;
     'dragonfly': ReturnType<typeof registerDragonflies>;
     'dragonfly_spawner': ReturnType<typeof registerDragonflySpawners>;
@@ -398,7 +397,7 @@ export async function createSceneEntities(
   Managers['mushroom_plant'] = registerMushroomPlants(registry, 'mushroom_plant', worldState);
   Managers['marbleshrub'] = registerMarbleShrubs(registry, 'marbleshrub', worldState);
   Managers['archive_props'] = registerArchiveProps(registry, 'archive_props', worldState);
-  Managers['skeleton'] = registerSkeletons(registry, 'skeleton', worldState);
+  registerSkeletons(registry, 'skeleton');
   registerHoundbones(registry, 'houndbone');
   Managers['beequeenhivegrown'] = registerBeeQueenHives(registry, 'beequeenhivegrown', worldState);
   Managers['dragonfly'] = registerDragonflies(registry, 'dragonfly', worldState);
@@ -475,7 +474,6 @@ export async function createSceneEntities(
     caveEntrances: Managers['cave_entrance'],
     mushroomPlants: Managers['mushroom_plant'],
     marbleShrubs: Managers['marbleshrub'],
-    skeletons: Managers['skeleton'],
     beeQueenHives: Managers['beequeenhivegrown'],
     dragonflies: Managers['dragonfly'],
     dragonflySpawners: Managers['dragonfly_spawner'],
@@ -952,26 +950,15 @@ export async function createSceneEntities(
     return spawners;
   }
 
-  function registerSkeletons(registry: EntityRegistry, prefabId: 'skeleton', worldState: SceneWorldState) {
-    const skeletons = new SkeletonManager(scene, {
-      fx: Managers['world_fx'],
+  function registerSkeletons(registry: EntityRegistry, prefabId: 'skeleton') {
+    prefabs.register(skeletonPrefabs({
+      fx: { collapse: (size, position, material) => Managers['world_fx'].collapse(size, position, material) },
       handEquipment: sceneInventory.handEquipment,
-      tickingarea: worldState.tickingarea,
-      physics: world,
       spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
-    });
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
-      restore: (id, record) => skeletons.spawn(id, new THREE.Vector3(...record.transform.position), {
-        id: record.id, transform: record.transform, components: { skeleton: record.components.skeleton },
-      }),
-      debugSpawn: id => skeletons.spawn(id, player.position.clone()),
-      exportRecords: () => skeletons.exportRecords() as { prefabId: SkeletonId; record: ReturnType<typeof skeletons.exportRecords>[number]['record'] }[],
-      update: (dt, quaternion) => skeletons.update(dt, quaternion),
-      renderEntities: () => skeletons.renderEntities,
-      dispose: () => skeletons.dispose(),
-    });
-    return skeletons;
+    }));
+    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
   }
+
 
   function registerMarbleBeanSaplings(registry: EntityRegistry, prefabId: 'marblebean_sapling', _worldState: SceneWorldState) {
     const displays = new PrefabDisplayGroup(scene);
