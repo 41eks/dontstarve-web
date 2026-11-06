@@ -58,6 +58,8 @@ export interface PlacementSaveRecord {
     houndbone?: import('./houndbone').HoundboneSaveState;
     /** dragonfly_spawner's childspawner and worldsettingstimer records. */
     dragonflySpawner?: import('./dragonfly_spawner').DragonflySpawnerSaveState;
+    /** dragonfly.lua's component records, nested under one field. */
+    dragonfly?: import('./dragonfly').DragonflySaveState;
     /** rocks.lua on_save_moonglass: data.rock_type. */
     rock_type?: import('./rocks').MoonglassRockType;
     /** archive_props.lua OnSave: the statues' data.anim and the rune statues' data.storyprogress. */
@@ -74,6 +76,8 @@ export interface PlacementSaveRecord {
     mushtree?: import('./mushtree').MushtreeSaveState;
     /** skeleton.lua OnSave / Player_OnSave. */
     skeleton?: import('./skeleton').SkeletonSaveState;
+    /** hotspring.lua OnSave. */
+    hotspring?: import('./hotspring').HotspringSaveState;
   };
 }
 
