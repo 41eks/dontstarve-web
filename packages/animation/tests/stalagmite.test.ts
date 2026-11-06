@@ -16,6 +16,7 @@ import { deserializeSave } from '../../../src/save/deserialize';
 import { createClusterSaveZip } from '../../../src/save/download';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
+import { CLUSTER_SAVE_ZIP_TIMEOUT } from './importedSave';
 
 const turn = () => new Promise(resolve => setTimeout(resolve, 0));
 const record: StalagmiteRecord = { id: 'saved-stalagmite', transform: { position: [2, 0, -3], rotationY: .4 }, components: {} };
@@ -109,4 +110,4 @@ it('c_spawn then c_save ZIP export reloads the source ID, position, empty compon
     await prefabDisplay(model)!.artLoaded(); expect(instance.sprite.currentAnimation).toBe('med');
     expect(second.registry.exportRecords()).toEqual(records);
   } finally { second.dispose(); }
-}, 15_000);
+}, CLUSTER_SAVE_ZIP_TIMEOUT);

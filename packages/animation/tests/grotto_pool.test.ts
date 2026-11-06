@@ -16,7 +16,7 @@ import { executeDebugCommand } from '../../../src/debugCommands';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { createClusterSaveZip } from '../../../src/save/download';
-import { importedSave } from './importedSave';
+import { importedSave, CLUSTER_SAVE_ZIP_TIMEOUT } from './importedSave';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { workTargets } from './workTargets';
@@ -150,7 +150,7 @@ it('c_save and reload link a big pool to its saved children by ID instead of spa
     expect(glass.sprite.sprite.peek().clip).toMatchObject({ name: 'moonglass_1_mined', loop: true });
     expect(glass.hasTag('NOCLICK')).toBe(true);
   } finally { second.dispose(); }
-}, 30000);
+}, CLUSTER_SAVE_ZIP_TIMEOUT);
 
 it('accepts the imported Caves save with every grotto prop linked to an imported pool', async () => {
   const { entities } = importedSave('Caves').world;

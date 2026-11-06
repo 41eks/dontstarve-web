@@ -49,7 +49,7 @@ import { mushroomPlantPrefabs } from '@dontstarve-web/prefab/mushroom_plant';
 import { mushtreePrefabs } from '@dontstarve-web/prefab/mushtree';
 import { MarbleShrubManager, MARBLESHRUB_ID } from '@dontstarve-web/prefab/marbleshrub';
 import { archivePropsPrefabs } from '@dontstarve-web/prefab/archive_props';
-import { HoundboneManager } from '@dontstarve-web/prefab/houndbone';
+import { houndbonePrefabs } from '@dontstarve-web/prefab/houndbone';
 import { BeeQueenHiveManager } from '@dontstarve-web/prefab/beequeenhivegrown';
 import { DragonflyManager } from '@dontstarve-web/prefab/dragonfly';
 import { DragonflySpawnerManager } from '@dontstarve-web/prefab/dragonfly_spawner';
@@ -306,7 +306,6 @@ export async function createSceneEntities(
     'marbleshrub': ReturnType<typeof registerMarbleShrubs>;
     'archive_props': ReturnType<typeof registerArchiveProps>;
     'skeleton': ReturnType<typeof registerSkeletons>;
-    'houndbone': ReturnType<typeof registerHoundbones>;
     'beequeenhivegrown': ReturnType<typeof registerBeeQueenHives>;
     'dragonfly': ReturnType<typeof registerDragonflies>;
     'dragonfly_spawner': ReturnType<typeof registerDragonflySpawners>;
@@ -400,7 +399,7 @@ export async function createSceneEntities(
   Managers['marbleshrub'] = registerMarbleShrubs(registry, 'marbleshrub', worldState);
   Managers['archive_props'] = registerArchiveProps(registry, 'archive_props', worldState);
   Managers['skeleton'] = registerSkeletons(registry, 'skeleton', worldState);
-  Managers['houndbone'] = registerHoundbones(registry, 'houndbone', worldState);
+  registerHoundbones(registry, 'houndbone');
   Managers['beequeenhivegrown'] = registerBeeQueenHives(registry, 'beequeenhivegrown', worldState);
   Managers['dragonfly'] = registerDragonflies(registry, 'dragonfly', worldState);
   Managers['dragonfly_spawner'] = registerDragonflySpawners(registry, 'dragonfly_spawner', worldState);
@@ -477,7 +476,6 @@ export async function createSceneEntities(
     mushroomPlants: Managers['mushroom_plant'],
     marbleShrubs: Managers['marbleshrub'],
     skeletons: Managers['skeleton'],
-    houndbones: Managers['houndbone'],
     beeQueenHives: Managers['beequeenhivegrown'],
     dragonflies: Managers['dragonfly'],
     dragonflySpawners: Managers['dragonfly_spawner'],
@@ -894,25 +892,15 @@ export async function createSceneEntities(
     return prefabs;
   }
 
-  function registerHoundbones(registry: EntityRegistry, prefabId: 'houndbone', worldState: SceneWorldState) {
-    const houndbones = new HoundboneManager(scene, {
+  function registerHoundbones(registry: EntityRegistry, prefabId: 'houndbone') {
+    prefabs.register(houndbonePrefabs({
       fx: Managers['world_fx'],
       handEquipment: sceneInventory.handEquipment,
-      tickingarea: worldState.tickingarea,
       spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
-    });
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
-      restore: (_, record) => houndbones.spawn(new THREE.Vector3(...record.transform.position), {
-        id: record.id, transform: record.transform, components: { houndbone: record.components.houndbone },
-      }),
-      debugSpawn: () => houndbones.spawn(player.position.clone()),
-      exportRecords: () => houndbones.exportRecords(),
-      update: (dt, quaternion) => houndbones.update(dt, quaternion),
-      renderEntities: () => houndbones.renderEntities,
-      dispose: () => houndbones.dispose(),
-    });
-    return houndbones;
+    }));
+    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
   }
+
 
   function registerBeeQueenHives(registry: EntityRegistry, prefabId: 'beequeenhivegrown', worldState: SceneWorldState) {
     const hives = new BeeQueenHiveManager(scene, { handEquipment: sceneInventory.handEquipment,

@@ -17,6 +17,7 @@ import { deserializeSave } from '../../../src/save/deserialize';
 import { createClusterSaveZip } from '../../../src/save/download';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
+import { CLUSTER_SAVE_ZIP_TIMEOUT } from './importedSave';
 
 const turn = () => new Promise(resolve => setTimeout(resolve, 0));
 const record = (x: number, components: PlacementSaveRecord['components']) =>
@@ -159,4 +160,4 @@ it('c_spawn, c_save and reload keep the gate records, and c_give is refused', as
     expect(gates.map(gate => [gate.entityId, gate.sprite.sprite.peek().clip.name])).toEqual(records.atrium_gate.map(({ id }) => [id, 'idle']));
     expect(second.registry.exportRecords()).toEqual(records);
   } finally { second.dispose(); }
-});
+}, CLUSTER_SAVE_ZIP_TIMEOUT);

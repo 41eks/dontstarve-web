@@ -10,3 +10,6 @@ export function importedSave(shard: 'Master' | 'Caves') {
   const session = JSON.parse(readFileSync(new URL(world.session.playerFile, root), 'utf8')) as { player: unknown };
   return deserializeSave(text, SAVE_CATALOG, session.player);
 }
+
+/** c_save's cluster ZIP export packs the whole save: a test that writes one needs more than the default 5 s on a loaded machine. */
+export const CLUSTER_SAVE_ZIP_TIMEOUT = 30_000;

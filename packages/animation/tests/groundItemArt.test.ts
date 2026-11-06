@@ -17,7 +17,7 @@ import { createClusterSaveZip } from '../../../src/save/download';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initial from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { createPickupInventory } from './pickupFixture';
-import { importedSave } from './importedSave';
+import { importedSave, CLUSTER_SAVE_ZIP_TIMEOUT } from './importedSave';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { bindTestWorld } from './worldContentFixture';
 
@@ -218,7 +218,7 @@ it('uses ground_item for c_spawn, c_save ZIP export and restore of skins, quanti
     expect(world.manager.exportRecords().find(record => record.id === 'rocks')?.components.stack)
       .toMatchObject({ itemId: 'rocks', count: 8, variant: 'f2' });
   } finally { registry.dispose(); restored.dispose(); world.dispose(); }
-}, 15_000);
+}, CLUSTER_SAVE_ZIP_TIMEOUT);
 
 it('loads the regenerated forest and cave ground records through the normal save parser', async () => {
   for (const shard of ['Master', 'Caves'] as const) {

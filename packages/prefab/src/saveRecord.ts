@@ -54,6 +54,8 @@ export interface PlacementSaveRecord {
     entitytracker?: import('../../componets/src/atriumGateSignatures').EntityTrackerSave;
     /** statueruins.lua onsave: data.gem. */
     ruinsStatueMage?: import('./ruins_statue_mage').RuinsStatueSaveState;
+    /** houndbone.lua onsave: data.bonetype. */
+    houndbone?: import('./houndbone').HoundboneSaveState;
     /** rocks.lua on_save_moonglass: data.rock_type. */
     rock_type?: import('./rocks').MoonglassRockType;
     /** archive_props.lua OnSave: the statues' data.anim and the rune statues' data.storyprogress. */
