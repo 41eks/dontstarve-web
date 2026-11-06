@@ -203,6 +203,11 @@ export interface WilsonPlayerInstance extends PrefabInstance {
   HUD?: { Show(): void; Hide(): void };
   /** inst:ShowHUD(show) */
   ShowHUD(show: boolean): void;
+  /** inst.entity:IsVisible(): false while inst:Hide() holds. */
+  IsVisible(): boolean;
+  /** bernie_active.lua / berniebigbrain.lua: the big Bernies this player leads, and the brief block after one grows. */
+  bigbernies?: Set<object>;
+  blockbigbernies?: () => void;
 }
 
 export function wilsonPlayerInstance(model: THREE.Object3D): WilsonPlayerInstance {
@@ -598,6 +603,7 @@ function createWilsonPlayerEntity(
     controllerEnabled: true, runSpeed: 0, currentMotorSpeed: 0, wantsToMoveForward: false, worldHeading: 0,
     scheduler: options.scheduler, ghostMode: createSignal(false), deathcause: 'unknown',
     ShowHUD(show: boolean) { if (show) instance.HUD?.Show(); else instance.HUD?.Hide(); },
+    IsVisible: () => instance.sprite.sprite.peek().visible !== false,
   }) as WilsonPlayerInstance;
   const player = display.model;
   const stopSanity = options.componentUpdates?.register(instance.stats.sanity);

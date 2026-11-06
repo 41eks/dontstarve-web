@@ -1,6 +1,6 @@
 import { STALAGMITE_IDS, stalagmiteBank } from '@dontstarve-web/prefab/stalagmite';
 import { RUINS_RELIC_IDS, RUINS_CHAIR_SKINS, relicName, isRelicItem } from '@dontstarve-web/prefab/ruinsrelic';
-import { BERNIE_ITEM_ID } from '@dontstarve-web/prefab/bernie';
+import { BERNIE_ACTIVE_ID, BERNIE_BIG_ID, BERNIE_ITEM_ID } from '@dontstarve-web/prefab/bernie';
 import { HEATROCK_ID } from '@dontstarve-web/prefab/heatrock';
 import { NIGHTMARE_TIMEPIECE_ID } from '@dontstarve-web/prefab/nightmare_timepiece';
 import { GROUND_ART_DEFINITIONS, GROUND_ART_VARIANTS, GROUND_ART_SPAWN_IDS, TURF_ITEM_IDS } from '@dontstarve-web/prefab/groundItems';
@@ -210,6 +210,9 @@ export const PREFAB_DEFINITIONS = {
       { animation: 'evergreen_tall_old.zip', build: 'evergreen_new.zip' }, 'pine_needles.zip',
     ]),
   pigKings: definePrefabs(['pigking'], empty, true, [definitions.pigKing.archive]),
+  // bernie_active.lua / bernie_big.lua: the reanimated forms the item becomes near a crazy player.
+  bernies: definePrefabs([BERNIE_ACTIVE_ID, BERNIE_BIG_ID], componentParser({ keys: ['health'] }), true,
+    [{ animation: 'bernie.zip', build: 'bernie_build.zip' }, { animation: 'bernie_big.zip', build: 'bernie_build.zip' }]),
   glommerStatues: definePrefabs([STATUEGLOMMER_ID], (value, path) => {
     const data = object(value, path, ['statueglommer', 'pickable', 'workable']);
     const components: import('./save/types').SavedEntity['components'] = {};

@@ -79,6 +79,7 @@ import { portalPrefabs } from '@dontstarve-web/prefab/portal';
 import { nightmareGrowthPrefabs, type NightmareGrowthCrackInstance } from '@dontstarve-web/prefab/nightmaregrowth';
 import { NightmareRockManager } from '@dontstarve-web/prefab/nightmarerock';
 import { pigKingPrefabs } from '@dontstarve-web/prefab/pigking';
+import { BERNIE_ITEM_ID, berniePrefabs, type BernieWorld } from '@dontstarve-web/prefab/bernie';
 import { StatueGlommerManager } from '@dontstarve-web/prefab/statueglommer';
 import { atriumGatePrefabs } from '@dontstarve-web/prefab/atrium_gate';
 import { ruinsStatuePrefabs, type RuinsStatueId } from '@dontstarve-web/prefab/ruins_statue_mage';
@@ -171,6 +172,7 @@ const MANAGER_DEFINITIONS = {
   'farm_plow': PREFAB_DEFINITIONS.farmPlow,
   'moon_tree': PREFAB_DEFINITIONS.moonTrees,
   'pigking': PREFAB_DEFINITIONS.pigKings,
+  'bernie': PREFAB_DEFINITIONS.bernies,
   'statueglommer': PREFAB_DEFINITIONS.glommerStatues,
   'atrium_gate': PREFAB_DEFINITIONS.atriumGates,
   'ruins_statue_mage': PREFAB_DEFINITIONS.ruinsStatueMages,
@@ -278,6 +280,8 @@ export async function createSceneEntities(
 ) {
   const prefabDisplays = new PrefabDisplayGroup(scene), prefabBaseUrl = `${import.meta.env.BASE_URL}dst/data/anim`;
   const prefabFire = FireFxHost.create(prefabBaseUrl, worldState.componentUpdates);
+  // Shared by the ground Bernie item and the bernie_active / bernie_big prefabs, built on first use.
+  let bernieWorldInstance: BernieWorld | undefined;
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(prefabDisplays, prefabBaseUrl,
     { tickingarea: worldState.tickingarea, physics: world });
   const registry = new EntityRegistry(SCENE_LIFECYCLE_ORDER, prefabs, () => player.position, prefabDisplays);
@@ -413,6 +417,7 @@ export async function createSceneEntities(
   Managers['farm_plow'] = registerFarmPlow(registry, 'farm_plow', worldState);
   Managers['moon_tree'] = registerMoonTrees(registry, 'moon_tree', worldState);
   registerPigKings(registry, 'pigking', worldState);
+  registerBernies(registry, 'bernie', worldState);
   Managers['statueglommer'] = registerStatueGlommer(registry, 'statueglommer', worldState);
   Managers['atrium_gate'] = registerAtriumGate(registry, 'atrium_gate', worldState);
   // statueruins.lua returns the four prefabs together.
@@ -594,7 +599,7 @@ export async function createSceneEntities(
         getWatchWorldContent: worldState.getWatchWorldContent,
         tickingarea: worldState.tickingarea,
       },
-      { getSanityPercent: () => playerStats.sanity.percent.peek() },
+      bernieWorld(worldState),
       itemEntities ?? sceneInventory.entities,
       scheduler,
       Managers['world_fx'],
@@ -1155,6 +1160,22 @@ export async function createSceneEntities(
     registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
     registry.registerPrefabs(PREFAB_DEFINITIONS.moonTreeSaplings);
     return prefabs;
+  }
+
+  /** AllPlayers and SpawnPrefab for bernie_inactive.lua's tryreanimate and the reanimated Bernies. */
+  function bernieWorld(worldState: SceneWorldState): BernieWorld {
+    return bernieWorldInstance ??= {
+      scheduler: worldState.scheduler,
+      getPlayers: () => [playerInstance],
+      spawnPrefab: (prefab, position, skinId) => prefabs.spawn(prefab, new THREE.Vector3(position.x, 0, position.z), undefined, skinId),
+      spawnInactive: (position, skinId) => Managers['ground_item'].spawnGroundItem({ ...SAVE_CATALOG.items[BERNIE_ITEM_ID],
+        itemId: BERNIE_ITEM_ID, count: 1, ...skinId === undefined ? {} : { skinId } }, position),
+    };
+  }
+
+  function registerBernies(registry: EntityRegistry, prefabId: 'bernie', worldState: SceneWorldState) {
+    prefabs.register(berniePrefabs(bernieWorld(worldState)));
+    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
   }
 
   function registerPigKings(registry: EntityRegistry, prefabId: 'pigking', worldState: SceneWorldState) {

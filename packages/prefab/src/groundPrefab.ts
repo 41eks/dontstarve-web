@@ -81,7 +81,8 @@ export interface GroundPrefabOptions {
   animationBaseUrl: string;
   inventoryOwnerPosition?: THREE.Vector3;
   handEquipment?: ReadonlySignal<HandEquipment | null>;
-  bernieWorld: BernieWorld;
+  /** AllPlayers and SpawnPrefab for the Bernie item's tryreanimate; without it the item never reanimates. */
+  bernieWorld?: BernieWorld;
   butterflyWorld: ButterflyWorld;
   firefliesWorld: FirefliesWorld;
   /** lootdropper.lua DropLoot: each piece is spawned now and flung; the displays load the art. */
