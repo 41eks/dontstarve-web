@@ -72,6 +72,8 @@ export interface PlacementSaveRecord {
     mushtree?: import('./mushtree').MushtreeSaveState;
     /** skeleton.lua OnSave / Player_OnSave. */
     skeleton?: import('./skeleton').SkeletonSaveState;
+    /** hotspring.lua OnSave. */
+    hotspring?: import('./hotspring').HotspringSaveState;
   };
 }
 
