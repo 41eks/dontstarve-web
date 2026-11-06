@@ -7,6 +7,8 @@ import { inventorySlotAddress } from '../../inventory/src';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Health } from '../../componets/src/health';
 import { createWilsonPlayerPrefab } from './playerVisual';
+import { createEmptyEntity } from '../../prefab/src/prefabInstance';
+import { actionEntity } from '../../prefab/src/actionEntity';
 import { inventoryUse } from './inventoryUseFixture';
 import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
@@ -116,8 +118,15 @@ it('resurrects a loaded ghost from a haunted amulet, wearing that inst and retur
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   const scheduler = new GameTimeScheduler(), inventory = createPickupInventory();
   const { model: player, instance, display } = await createWilsonPlayerPrefab('/dst/data/anim', new World(), { stats: { health: 50 }, scheduler });
+  player.position.set(0, 0, 0);
   instance.components.inventory = inventory;
-  instance.HUD = { Show: vi.fn(), Hide: vi.fn() };
+  const hud = { Show: vi.fn(), Hide: vi.fn() };
+  instance.HUD = hud;
+  // A sleeper within ten units of where the amulet raises the player.
+  const pig = createEmptyEntity('pigman'), sleeper = { GoToSleep: vi.fn() };
+  pig.instance.components.sleeper = sleeper as never;
+  pig.instance.setPosition(6, 0, 0);
+  actionEntity(pig.display.model, 'pigman');
   try {
     inventory.add('amulet', 2);
     expect(inventory.EquipFromInventory(inventory.getEntity(inventorySlotAddress(0))!)).toBe(true);
@@ -132,14 +141,28 @@ it('resurrects a loaded ghost from a haunted amulet, wearing that inst and retur
       isValid: () => true, hasTag: () => false, PushEvent: vi.fn() };
     instance.PushEvent('respawnfromghost', { source });
     scheduler.advance(3);
-    expect(inventory.GetEquippedItem('body')).toBe(amulet);
+    // DoActualRez wore that amulet inst, returning the worn one; amulet_rebirth consumed it on entering.
     expect(inventory.FindItem(item => item === worn)).toBe(worn);
     expect(source.PushEvent).toHaveBeenCalledWith('activateresurrection', player);
     expect(source.PushEvent).not.toHaveBeenCalledWith('rez_player');
     expect(instance.animationController.stategraph.stateName).toBe('amulet_rebirth');
     expect(instance.ghostMode.peek()).toBe(false); expect(instance.hasTag('playerghost')).toBe(false);
     expect(instance.stats.health.penalty).toBe(0);
+    // SGwilson amulet_rebirth: the worn amulet leaves the inventory and is removed, the HUD is hidden, and at
+    // frame 80 the sleepers nearby go to sleep for 20 seconds.
+    expect(inventory.GetEquippedItem('body')).toBeNull();
+    expect(amulet.isRemoved).toBe(true);
+    expect(hud.Hide).toHaveBeenCalled();
+    const graph = instance.animationController.stategraph;
+    for (let frame = 0; frame < 81; frame++) advancePlayer(instance.animationController, 1 / 30);
+    expect(sleeper.GoToSleep).toHaveBeenCalledExactlyOnceWith(20);
+    hud.Show.mockClear();
+    for (let frame = 0; frame < 300 && graph.stateName === 'amulet_rebirth'; frame++) advancePlayer(instance.animationController, 1 / 30);
+    expect(graph.stateName).toBe('idle');
+    expect(hud.Show).toHaveBeenCalled();
+    expect(instance.controllerEnabled).toBe(true);
   } finally {
+    pig.instance.remove(); pig.display.dispose();
     inventory.dispose(); instance.remove(); display.dispose(); scheduler.dispose(); vi.unstubAllGlobals();
   }
 });

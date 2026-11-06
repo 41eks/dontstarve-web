@@ -2,7 +2,7 @@ import { smallHash } from '@dontstarve-web/animation/animationAssets';
 import { AnimState } from '@dontstarve-web/animation/animState';
 import { SpriteResources, type NamedSpriteArt, type FollowerFx, type PrefabDisplay } from '@dontstarve-web/display';
 import { createSignal, type ReadonlySignal, type Signal } from '@dontstarve-web/signals';
-import { BufferedAction, WilsonStateGraph, type WilsonAction, type WilsonAnimationClip, type WilsonAnimationKey, type WilsonCombat, type WilsonFishingHost, type WilsonMovementState, type WilsonOneShotState, type WilsonSleepHost, type WilsonDeathHost, type WilsonRebirthHost } from '@dontstarve-web/stategraphs';
+import { BufferedAction, WilsonStateGraph, type WilsonAction, type WilsonAnimationClip, type WilsonAnimationKey, type WilsonCombat, type WilsonFishingHost, type WilsonMovementState, type WilsonOneShotState, type WilsonSleepHost, type WilsonDeathHost } from '@dontstarve-web/stategraphs';
 import type * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import type { AxeTool } from './axe';
@@ -24,7 +24,7 @@ import type { SoundEmitter } from './soundEmitter';
 import { MakeCharacterPhysics, WORLD_SCALE } from './standardcomponents';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { PhysicsState } from '../../componets/src/physicsState';
-import { actionEntity, disposeActionEntity } from './actionEntity';
+import { actionEntity, disposeActionEntity, FindEntities } from './actionEntity';
 import { createPrefabEntity, prefabInstance, type PrefabInstance } from './prefabInstance';
 import { Builder, type BuilderWorld } from '../../componets/src/builder';
 import type { WilsonSoulHopHost } from '../../stategraphs/src/SGwilson';
@@ -145,8 +145,6 @@ export interface WilsonAnimationController {
   bindDeath(death: WilsonDeathHost | undefined): void;
   /** The equipped rod's component for SGwilson's fishing states. */
   bindFishing(fishing: WilsonFishingHost | undefined): void;
-  /** SGwilson's amulet_rebirth state: the inventory, HUD and sleepers it reaches (its light is the controller's). */
-  bindRebirth(rebirth: WilsonRebirthHost | undefined): void;
   bindSpawnPrefab(spawn: ((prefab: string, position: THREE.Vector3) => PrefabInstance | undefined) | undefined): void;
   /** AnimState:SetBank("ghost") + skinner ghost_skin + SetStateGraph("SGwilsonghost"); `loading` is inst.loading_ghost. */
   makeGhost(loading?: boolean): void;
@@ -257,7 +255,6 @@ class WilsonController implements WilsonAnimationController {
   readonly bookFx: BookFxController;
   private sleepHost?: WilsonSleepHost;
   private deathHost?: WilsonDeathHost;
-  private rebirthHost?: WilsonRebirthHost;
   private fishingHost?: WilsonFishingHost;
   private readonly SoundEmitter: SoundEmitter;
   private inventory?: Parameters<typeof equipSamePrefab>[0];
@@ -285,7 +282,24 @@ class WilsonController implements WilsonAnimationController {
       get soulHop() { return controller.soulHopHost; },
       get sleep() { return controller.sleepHost; },
       get death() { return controller.deathHost; },
-      get rebirth() { return controller.rebirthHost; },
+      // SGwilson.lua amulet_rebirth on the player inst: its inventory, HUD and the sleepers around it.
+      rebirth: {
+        consumeEquippedAmulet: () => {
+          const inventory = instance.components.inventory, item = inventory?.GetEquippedItem('body');
+          if (!inventory || item?.prefab !== 'amulet') return false;
+          const removed = inventory.RemoveItem(item);
+          if (!removed) return false;
+          removed.remove();
+          return true;
+        },
+        hasBodyItem: () => !!instance.components.inventory?.GetEquippedItem('body'),
+        showHUD: show => instance.ShowHUD(show),
+        sleepNearby: (radius, seconds) => {
+          for (const v of FindEntities(instance.position, radius * WORLD_SCALE)) {
+            if (v.model !== instance.transform.model) (v.components as { sleeper?: { GoToSleep(seconds: number): void } }).sleeper?.GoToSleep(seconds);
+          }
+        },
+      },
       rez: {
         setHidden: hidden => instance.sprite.setVisible(!hidden),
         get isHidden() { return instance.sprite.sprite.peek().visible === false; },
@@ -392,7 +406,6 @@ class WilsonController implements WilsonAnimationController {
       { setHidden: (hidden: boolean) => sprite.setVisible(!hidden) });
   }
   bindDeath(death: WilsonDeathHost | undefined): void { this.deathHost = death; }
-  bindRebirth(rebirth: WilsonRebirthHost | undefined): void { this.rebirthHost = rebirth; }
   bindSpawnPrefab(spawn: ((prefab: string, position: THREE.Vector3) => PrefabInstance | undefined) | undefined): void { this.instance.SpawnPrefab = spawn; }
 
   bindSoulHop(host: Omit<WilsonSoulHopHost, 'setTint' | 'playSound'> | undefined): void {

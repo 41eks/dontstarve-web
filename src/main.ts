@@ -37,9 +37,7 @@ import { bindPlayerHandEquipment } from './playerHandEquipment';
 import { bindPlayerHeadEquipment } from './playerHeadEquipment';
 import { bindPlayerBodyEquipment } from './playerBodyEquipment';
 import { cursorUi, renderer, scene } from './universal';
-import { FindEntities } from '../packages/prefab/src/actionEntity';
 import { SendLightningStrike } from '@dontstarve-web/prefab/lightning';
-import { AMULET_ID } from '@dontstarve-web/prefab/amulet';
 import { WORLD_SCALE } from '../packages/prefab/src/standardcomponents';
 import { DstLightingRenderer } from './dstLighting';
 import {
@@ -312,21 +310,7 @@ playerInstance.HUD = {
   Show: () => { for (const element of [gameUi.statusHud, gameUi.mapControls]) element.style.visibility = ''; },
   Hide: () => { for (const element of [gameUi.statusHud, gameUi.mapControls]) element.style.visibility = 'hidden'; },
 };
-// SGwilson.lua amulet_rebirth: consume the worn amulet, hide the HUD and put the sleepers nearby to sleep.
 playerAnimation?.bindSpawnPrefab((prefab, position) => registry.SpawnPrefab(prefab, position));
-playerAnimation?.bindRebirth({
-  consumeEquippedAmulet: () => {
-    const item = inventory.GetEquippedItem('body');
-    return item?.prefab === AMULET_ID && item.remove();
-  },
-  hasBodyItem: () => inventory.GetEquippedItem('body') !== null,
-  showHUD: show => playerInstance.ShowHUD(show),
-  sleepNearby: (radius, seconds) => {
-    for (const inst of FindEntities(player.position, radius * WORLD_SCALE)) {
-      (inst.components as { sleeper?: { GoToSleep(seconds: number): void } }).sleeper?.GoToSleep(seconds);
-    }
-  },
-});
 // A saved ghost resumes as a ghost (OnLoad is_ghost → OnMakePlayerGhost({ loading = true })).
 if (initialSave.players.local.ghost) playerInstance.PushEvent('makeplayerghost', { loading: true });
 const stopGhostWatch: (() => void)[] = [];
@@ -338,7 +322,6 @@ if (playerStats.health.IsDead() && !playerGhostMode.peek()) playerInstance.PushE
 disposalEvents.on('dispose', () => {
   stopGhostWatch.splice(0).forEach(stop => stop());
   playerAnimation?.bindDeath(undefined);
-  playerAnimation?.bindRebirth(undefined);
   playerAnimation?.bindSpawnPrefab(undefined);
   delete playerInstance.HUD;
   if (playerInstance.components.playeractionpicker === view.mouseActions) delete playerInstance.components.playeractionpicker;
