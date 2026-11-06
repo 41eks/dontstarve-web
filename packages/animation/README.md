@@ -94,11 +94,11 @@ sprite.playOnce('change', () => sprite.start('idle_loop'));
 持有的 `ArchiveSpriteAssets`，每株独立切换动画。`preloadSharedArchiveSprite()` 提供同样的共享与实例化路径，
 预载一次后同步创建各植株，保留原有植物组件、交互和存档生命周期。
 
-`RockManager` 同样使用 `instancedAnimations: 'all'`：`full/med/low`、落石的 `idle/idle_raised`
+岩石的 `PrefabEntityDefinition` 同样声明 `instancedAnimations: 'all'`：`full/med/low`、落石的 `idle/idle_raised`
 按 Lua 保持非循环播放，开采切换姿态后重新选择对应共享图集批次。动画与 build 分离的落石及其
 `swap_boulder2..8` 符号覆盖也按外观合批，实体明暗和拾取代理保持独立。
 月岩壳破碎后在 sprite json 上声明侵蚀量，display 经 `ArchiveSprite.setErosion()` 写入独立的实例侵蚀量，
-深度与颜色 pass 使用同一侵蚀属性；完成移除仍由游戏时间调度器执行，不依赖绘制帧。
+深度与颜色 pass 使用同一侵蚀属性；侵蚀量与完成移除都由游戏时间调度器逐 tick 推进，不依赖绘制帧。
 
 `InstancedArchiveSprites` 只绘制 display 层列出的成员：每个 `PrefabDisplay` 在其绘制的 sprite
 变化时把实例（`ArchiveSprite.instanced`）登记到对应批次的成员列表（`bindMembers()`），

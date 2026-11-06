@@ -2,7 +2,7 @@ import { stalagmitePrefabs } from '@dontstarve-web/prefab/stalagmite';
 import { RuinsRelicManager, type RuinsRelicRecord } from '@dontstarve-web/prefab/ruinsrelic';
 import { LightFlierFlowerManager, type LightFlierFlowerRecord } from '../packages/prefab/src/lightflier_flower';
 import { MAX_PHYSICS_FRAME_TIME } from './physicsTiming';
-import { MolehillManager, type MolehillRecord } from '../packages/prefab/src/molehill';
+import { createMoleHabitat, molehillPrefabs, type MolehillInstance } from '../packages/prefab/src/molehill';
 import { MoleBait } from '../packages/prefab/src/molebait';
 import { TUNING } from './tuning';
 import { DynamicMusic } from '../packages/componets/src/dynamicmusic';
@@ -33,7 +33,10 @@ import { PrefabEntityManager, PrefabInstance, prefabInstance } from '@dontstarve
 import { staffCastingLightPrefabs } from '@dontstarve-web/prefab/staff_castinglight';
 import { staffLightPrefabs } from '@dontstarve-web/prefab/stafflight';
 import { bulbPlantPrefabs } from '@dontstarve-web/prefab/bulb_plant';
-import { RockManager, moonglassRockPrefabs } from '@dontstarve-web/prefab/rocks';
+import { moonglassRockPrefabs, rockPrefabs } from '@dontstarve-web/prefab/rocks';
+import { caveinBoulderPrefabs } from '@dontstarve-web/prefab/cavein_boulder';
+import { moonrockseedPrefabs } from '@dontstarve-web/prefab/moonrockseed';
+import type { SpawnGroundItem } from '@dontstarve-web/prefab/groundPrefab';
 import { caveHolePrefabs } from '@dontstarve-web/prefab/cave_hole';
 import { pillarPrefabs } from '@dontstarve-web/prefab/pillar';
 import { atriumPillarPrefabs } from '@dontstarve-web/prefab/atrium_pillar';
@@ -288,7 +291,6 @@ export async function createSceneEntities(
     'lightflier_flower': ReturnType<typeof registerLightFlierFlowers>;
     'ground_item': ReturnType<typeof registerGroundItems>;
     'bulb_plant': ReturnType<typeof registerBulbPlants>;
-    'rocks': ReturnType<typeof registerRocks>;
     'moonglass_rock': ReturnType<typeof registerMoonglassRocks>;
     'cave_hole': ReturnType<typeof registerCaveHoles>;
     'pillar_ruins': ReturnType<typeof registerPillarRuins>;
@@ -361,7 +363,7 @@ export async function createSceneEntities(
   Managers['staff_castinglight'] = registerStaffCastingLights(registry, worldState);
   Managers['bulb_plant'] = registerBulbPlants(registry, 'bulb_plant', worldState);
   registerStalagmites(registry, worldState);
-  Managers['rocks'] = registerRocks(registry, 'rocks', worldState);
+  registerRocks(registry, worldState);
   Managers['moonglass_rock'] = registerMoonglassRocks(registry, 'moonglass_rock', worldState);
   Managers['cave_hole'] = registerCaveHoles(registry, 'cave_hole', worldState);
   Managers['pillar_ruins'] = registerPillarRuins(registry, 'pillar_ruins');
@@ -448,7 +450,7 @@ export async function createSceneEntities(
   const dispose = () => {
     stopDugTurf();
     try { registry.dispose(); }
-    finally { prefabDisplays.dispose(); prefabFire.dispose(); dynamicMusic?.dispose(); if (!inventory) sceneInventory.dispose(); }
+    finally { Managers['molehill'].disposeBaits(); prefabDisplays.dispose(); prefabFire.dispose(); dynamicMusic?.dispose(); if (!inventory) sceneInventory.dispose(); }
   };
 
   return {
@@ -456,8 +458,6 @@ export async function createSceneEntities(
     buildingPlacement: Managers['buildings'],
     groundItems: Managers['ground_item'],
     beefalos: Managers['beefalo'],
-    molehills: Managers['molehill'],
-    rockManager: Managers['rocks'],
     mushroomPlants: Managers['mushroom_plant'],
     beeQueenHives: Managers['beequeenhivegrown'],
     rockAvocadoBushes: Managers['rock_avocado_bush'],
@@ -549,9 +549,9 @@ export async function createSceneEntities(
             return point.x >= b.lowerBound.x - radius && point.x <= b.upperBound.x + radius && point.z >= b.lowerBound.z - radius && point.z <= b.upperBound.z + radius;
           })());
     };
-    const molehills: MolehillManager = new MolehillManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
+    const habitat = createMoleHabitat({
       handEquipment: sceneInventory.handEquipment,
-      itemSpecs: SAVE_CATALOG.items, getWatchWorldContent: worldState.getWatchWorldContent, cameraHeading: view.cameraHeading, tickingarea: worldState.tickingarea,
+      itemSpecs: SAVE_CATALOG.items, getWatchWorldContent: worldState.getWatchWorldContent, cameraHeading: view.cameraHeading,
       isWalkable: moleWalkable,
       pathfinder,
       spawnItem: state => { const entity = sceneInventory.entities.create(state); sceneInventory.configureItem(entity); return entity; },
@@ -564,20 +564,16 @@ export async function createSceneEntities(
         for (const entity of sceneInventory.entities.values()) if (entity.components.bait && !moleBaits.has(entity.id))
           moleBaits.set(entity.id, new MoleBait(entity, moleScheduler, moleWalkable));
         for (const [id, bait] of moleBaits) if (bait.entity.isRemoved) { bait.dispose(); moleBaits.delete(id); }
-        return [...moleBaits.values(), ...molehills.habitat.getMoles(),
+        return [...moleBaits.values(), ...habitat.getMoles(),
           { prefab: 'wilson', components: {}, isValid: () => true, hasTag: (tag: string) => tag === 'scarytoprey',
             getPosition: () => player.position, getPhysicsRadius: () => .5 * WORLD_SCALE }];
       },
+      spawnPrefab: (prefab, position) => prefabs.spawn(prefab, position) as MolehillInstance,
+      fx: Managers['world_fx'],
     });
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
-      restore: (_, record) => molehills.spawn(new THREE.Vector3(...record.transform.position), record as MolehillRecord),
-      debugSpawn: () => molehills.spawn(player.position.clone().setY(0)),
-      exportRecords: () => molehills.exportRecords().map(record => ({ prefabId: 'molehill', record })),
-      beforePhysics: dt => { if (!scheduler) moleScheduler.advance(dt); },
-      update: (dt, quaternion) => molehills.update(dt, quaternion), renderEntities: () => molehills.renderEntities,
-      dispose: () => { molehills.dispose(); for (const bait of moleBaits.values()) bait.dispose(); moleBaits.clear(); },
-    });
-    return molehills;
+    prefabs.register(molehillPrefabs(habitat));
+    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+    return { habitat, disposeBaits: () => { for (const bait of moleBaits.values()) bait.dispose(); moleBaits.clear(); } };
   }
 
   function registerGroundItems(registry: EntityRegistry, prefabId: 'ground_item', worldState: SceneWorldState) {
@@ -680,26 +676,13 @@ export async function createSceneEntities(
     registry.registerPrefabs(PREFAB_DEFINITIONS.stalagmites);
   }
 
-
-  function registerRocks(registry: EntityRegistry, prefabId: 'rocks', worldState: SceneWorldState) {
-    const rockManager = new RockManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
-      handEquipment: sceneInventory.handEquipment,
-      physics: world,
-      tickingarea: worldState.tickingarea,
-      scheduler,
-      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
-    });
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
-      restore: (id, record) => rockManager.spawn(id, new THREE.Vector3(...record.transform.position), {
-        id: record.id, transform: record.transform, components: { caveinBoulder: record.components.caveinBoulder },
-      }),
-      debugSpawn: (id) => rockManager.spawn(id, player.position.clone()),
-      exportRecords: () => rockManager.exportRecords(),
-      update: (dt, quaternion) => rockManager.update(dt, quaternion),
-      renderEntities: () => rockManager.renderEntities,
-      dispose: () => rockManager.dispose(),
-    });
-    return rockManager;
+  function registerRocks(registry: EntityRegistry, worldState: SceneWorldState) {
+    const spawnGroundItem: SpawnGroundItem = (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options);
+    prefabs.register(rockPrefabs({ handEquipment: sceneInventory.handEquipment, scheduler: scheduler ?? worldState.scheduler,
+      getWatchWorldContent: worldState.getWatchWorldContent, spawnGroundItem, spawnPrefab: (id, position) => prefabs.spawn(id, position) }));
+    prefabs.register(caveinBoulderPrefabs({ handEquipment: sceneInventory.handEquipment, spawnGroundItem }));
+    prefabs.register(moonrockseedPrefabs());
+    registry.registerPrefabs(PREFAB_DEFINITIONS.rocks);
   }
 
   function registerMoonglassRocks(registry: EntityRegistry, prefabId: 'moonglass_rock', worldState: SceneWorldState) {

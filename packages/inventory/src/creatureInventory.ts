@@ -15,6 +15,8 @@ export class CreatureInventory {
   }
   /** inventory.lua ApplyDamage: a creature inventory has no equip slots, so nothing absorbs. */
   ApplyDamage(damage: number): number { return damage; }
+  /** inventory.lua GetEquippedItem: `self.equipslots[eslot]`, which a creature inventory leaves empty. */
+  GetEquippedItem(_eslot: string): null { return null; }
   IsFull(): boolean { return this.slots.every(slot => slot.getEntity() !== null); }
   GetItems(): ItemEntity[] { return this.slots.flatMap(slot => slot.getEntity() ?? []); }
   GiveItem(item: ItemEntity): boolean {

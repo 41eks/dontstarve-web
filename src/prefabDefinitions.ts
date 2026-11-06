@@ -17,7 +17,9 @@ import { PILLAR_ATRIUM_ID } from '@dontstarve-web/prefab/atrium_pillar';
 import { ARCHIVE_PILLAR_ARCHIVES, ARCHIVE_PILLAR_ID } from '@dontstarve-web/prefab/archive_pillar';
 import { VAULT_PILLAR_ID } from '@dontstarve-web/prefab/vault_pillar';
 import { MONKEY_PILLAR_IDS, MONKEYPILLAR_ID, type MonkeyPillarId } from '@dontstarve-web/prefab/monkeypillar';
-import { MOONGLASS_ROCK_ID, ROCK_ENTITY_IDS, moonglassRockArchives, rockArchives } from '@dontstarve-web/prefab/rocks';
+import { MOONGLASS_ROCK_ID, ROCK_PREFABS, isRockPrefab, moonglassRockArchives, rockArchives } from '@dontstarve-web/prefab/rocks';
+import { CAVEIN_BOULDER_ID } from '@dontstarve-web/prefab/cavein_boulder';
+import { MOONROCKSEED_ID } from '@dontstarve-web/prefab/moonrockseed';
 import { MARBLESHRUB_ID, MARBLESHRUB_SPAWN_IDS, MARBLESHRUB_MAX_GROW_TIME } from '@dontstarve-web/prefab/marbleshrub';
 import { ARCHIVE_PROP_IDS, ARCHIVE_PROP_SPAWN_IDS, ARCHIVE_MOON_STATUE_ID, ARCHIVE_RUNE_STATUE_ID } from '@dontstarve-web/prefab/archive_props';
 import { HOUNDBONE_ID } from '@dontstarve-web/prefab/houndbone';
@@ -357,9 +359,11 @@ export const PREFAB_DEFINITIONS = {
   molehills: definePrefabs(['molehill'], componentParser({ keys: ['molehill'] }), true),
   beefalos: definePrefabs(['beefalo'], componentParser({ keys: ['beefalo'] }), true),
   stalagmites: definePrefabs(STALAGMITE_IDS, empty, true, id => [`${stalagmiteBank(id)}.zip`]),
-  rocks: definePrefabs(ROCK_ENTITY_IDS, (value, path, context) =>
-    (context.prefab === 'cavein_boulder' ? caveinBoulder : empty)(value, path, context), true,
-    prefab => rockArchives(prefab)),
+  rocks: definePrefabs([...ROCK_PREFABS, CAVEIN_BOULDER_ID, MOONROCKSEED_ID], (value, path, context) =>
+    (context.prefab === CAVEIN_BOULDER_ID ? caveinBoulder : empty)(value, path, context), true,
+    prefab => isRockPrefab(prefab) ? rockArchives(prefab)
+      : prefab === CAVEIN_BOULDER_ID ? [{ animation: 'cavein_boulder.zip', build: 'swap_cavein_boulder.zip' }]
+      : [{ animation: 'moonrock_seed.zip', build: 'moonrock_seed.zip' }]),
   moonglassRocks: definePrefabs([MOONGLASS_ROCK_ID], componentParser({ keys: ['rock_type'] }), true, (_prefab, records) => moonglassRockArchives(records)),
   caveHoles: definePrefabs([CAVE_HOLE_ID], componentParser({ keys: ['allowspawn'] }), true, ['cave_hole.zip']),
   pillarRuins: definePrefabs([PILLAR_RUINS_ID], empty, true, ['pillar_ruins.zip']),
