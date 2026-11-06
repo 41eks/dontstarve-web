@@ -41,7 +41,7 @@ import { archivePillarPrefabs } from '@dontstarve-web/prefab/archive_pillar';
 import { vaultPillarPrefabs } from '@dontstarve-web/prefab/vault_pillar';
 import { monkeyPillarPrefabs } from '@dontstarve-web/prefab/monkeypillar';
 import { StaffProjectileManager } from '@dontstarve-web/prefab/staff_projectile';
-import { CaveEntranceManager, CAVES_SHARD } from '@dontstarve-web/prefab/cave_entrance';
+import { caveEntrancePrefabs, CAVES_SHARD } from '@dontstarve-web/prefab/cave_entrance';
 import { caveExitPrefabs, MASTER_SHARD } from '@dontstarve-web/prefab/cave_exit';
 import type { WorldMigratorShard } from '../packages/componets/src/worldmigrator';
 import { grottoPoolPrefabs } from '@dontstarve-web/prefab/grotto_pool';
@@ -299,7 +299,6 @@ export async function createSceneEntities(
     'archive_pillar': ReturnType<typeof registerArchivePillars>;
     'vault_pillar': ReturnType<typeof registerVaultPillars>;
     'monkeypillar': ReturnType<typeof registerMonkeyPillars>;
-    'cave_entrance': ReturnType<typeof registerCaveEntrances>;
     'cave_exit': ReturnType<typeof registerCaveExits>;
     'grotto_pool': ReturnType<typeof registerGrottoPools>;
     'mushroom_plant': ReturnType<typeof registerMushroomPlants>;
@@ -384,7 +383,7 @@ export async function createSceneEntities(
     migratePlayer: (_player, _portal, shard) => { window.location.search = shardSaveSearch(window.location.search, shard); },
   };
 
-  Managers['cave_entrance'] = registerCaveEntrances(registry, 'cave_entrance', worldState);
+  registerCaveEntrances(registry, 'cave_entrance');
   Managers['cave_exit'] = registerCaveExits(registry, 'cave_exit', worldState);
   Managers['grotto_pool'] = registerGrottoPools(registry, 'grotto_pool', worldState);
   registerMushtrees(registry, 'mushtree', worldState);
@@ -464,7 +463,6 @@ export async function createSceneEntities(
     beefalos: Managers['beefalo'],
     molehills: Managers['molehill'],
     rockManager: Managers['rocks'],
-    caveEntrances: Managers['cave_entrance'],
     mushroomPlants: Managers['mushroom_plant'],
     beeQueenHives: Managers['beequeenhivegrown'],
     rockAvocadoBushes: Managers['rock_avocado_bush'],
@@ -772,23 +770,14 @@ export async function createSceneEntities(
     return prefabs;
   }
 
-  function registerCaveEntrances(registry: EntityRegistry, prefabId: 'cave_entrance', worldState: SceneWorldState) {
-    const caveEntrances = new CaveEntranceManager(scene, {
+  function registerCaveEntrances(registry: EntityRegistry, prefabId: 'cave_entrance') {
+    prefabs.register(caveEntrancePrefabs({
       handEquipment: sceneInventory.handEquipment,
-      physics: world, tickingarea: worldState.tickingarea, spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
+      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
+      spawnPrefab: (prefab, position) => prefabs.spawn(prefab, position),
       shard: shardLink,
-    });
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
-      restore: (id, record) => caveEntrances.spawn(id, new THREE.Vector3(...record.transform.position), {
-        id: record.id, transform: record.transform, components: {},
-      }),
-      debugSpawn: id => caveEntrances.spawn(id, player.position.clone()),
-      exportRecords: () => caveEntrances.exportRecords(),
-      update: (dt, quaternion) => caveEntrances.update(dt, quaternion),
-      renderEntities: () => caveEntrances.renderEntities,
-      dispose: () => caveEntrances.dispose(),
-    });
-    return caveEntrances;
+    }));
+    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
   }
 
   function registerMushroomPlants(registry: EntityRegistry, prefabId: 'mushroom_plant', worldState: SceneWorldState) {
