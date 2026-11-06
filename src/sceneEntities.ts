@@ -312,7 +312,6 @@ export async function createSceneEntities(
     'grass': ReturnType<typeof registerGrasses>;
     'sapling': ReturnType<typeof registerSaplings>;
     'cave_fern': ReturnType<typeof registerCaveFerns>;
-    'cactus': ReturnType<typeof registerCacti>;
     'lava_pond': ReturnType<typeof registerLavaPonds>;
     'tumbleweed': ReturnType<typeof registerTumbleweeds>;
     'wormhole': ReturnType<typeof registerWormholes>;
@@ -406,7 +405,7 @@ export async function createSceneEntities(
   Managers['sapling'] = registerSaplings(registry, 'sapling', worldState);
   Managers['cave_fern'] = registerCaveFerns(registry, 'cave_fern', worldState);
   registerLichens(registry, 'lichen', worldState);
-  Managers['cactus'] = registerCacti(registry, 'cactus', worldState);
+  registerCacti(registry, 'cactus', worldState);
   Managers['lava_pond'] = registerLavaPonds(registry, 'lava_pond', worldState);
 
   const worldWind = worldState.worldwind;
@@ -1027,7 +1026,6 @@ export async function createSceneEntities(
       dropItem: (entity, position) => { sceneInventory.DropItem(entity, position); },
     }));
     registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
-    return prefabs;
   }
 
   function registerLavaPonds(registry: EntityRegistry, prefabId: 'lava_pond', _worldState: SceneWorldState) {
