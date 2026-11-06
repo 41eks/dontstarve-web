@@ -46,7 +46,7 @@ import { caveExitPrefabs, MASTER_SHARD } from '@dontstarve-web/prefab/cave_exit'
 import type { WorldMigratorShard } from '../packages/componets/src/worldmigrator';
 import { grottoPoolPrefabs } from '@dontstarve-web/prefab/grotto_pool';
 import { mushroomPlantPrefabs } from '@dontstarve-web/prefab/mushroom_plant';
-import { MushtreeManager } from '@dontstarve-web/prefab/mushtree';
+import { mushtreePrefabs } from '@dontstarve-web/prefab/mushtree';
 import { MarbleShrubManager, MARBLESHRUB_ID } from '@dontstarve-web/prefab/marbleshrub';
 import { archivePropsPrefabs } from '@dontstarve-web/prefab/archive_props';
 import { HoundboneManager } from '@dontstarve-web/prefab/houndbone';
@@ -302,7 +302,6 @@ export async function createSceneEntities(
     'cave_entrance': ReturnType<typeof registerCaveEntrances>;
     'cave_exit': ReturnType<typeof registerCaveExits>;
     'grotto_pool': ReturnType<typeof registerGrottoPools>;
-    'mushtree': ReturnType<typeof registerMushtrees>;
     'mushroom_plant': ReturnType<typeof registerMushroomPlants>;
     'marbleshrub': ReturnType<typeof registerMarbleShrubs>;
     'archive_props': ReturnType<typeof registerArchiveProps>;
@@ -396,7 +395,7 @@ export async function createSceneEntities(
   Managers['cave_entrance'] = registerCaveEntrances(registry, 'cave_entrance', worldState);
   Managers['cave_exit'] = registerCaveExits(registry, 'cave_exit', worldState);
   Managers['grotto_pool'] = registerGrottoPools(registry, 'grotto_pool', worldState);
-  Managers['mushtree'] = registerMushtrees(registry, 'mushtree', worldState);
+  registerMushtrees(registry, 'mushtree', worldState);
   Managers['mushroom_plant'] = registerMushroomPlants(registry, 'mushroom_plant', worldState);
   Managers['marbleshrub'] = registerMarbleShrubs(registry, 'marbleshrub', worldState);
   Managers['archive_props'] = registerArchiveProps(registry, 'archive_props', worldState);
@@ -475,7 +474,6 @@ export async function createSceneEntities(
     molehills: Managers['molehill'],
     rockManager: Managers['rocks'],
     caveEntrances: Managers['cave_entrance'],
-    mushtrees: Managers['mushtree'],
     mushroomPlants: Managers['mushroom_plant'],
     marbleShrubs: Managers['marbleshrub'],
     skeletons: Managers['skeleton'],
@@ -830,25 +828,18 @@ export async function createSceneEntities(
   }
 
   function registerMushtrees(registry: EntityRegistry, prefabId: 'mushtree', worldState: SceneWorldState) {
-    const mushtrees = new MushtreeManager(scene, {
+    prefabs.register(mushtreePrefabs({
       handEquipment: sceneInventory.handEquipment,
-      physics: world, scheduler, scene, getWatchWorldContent: worldState.getWatchWorldContent, tickingarea: worldState.tickingarea, worldEvents,
+      scheduler: scheduler ?? worldState.scheduler, fire: prefabFire,
+      getWatchWorldContent: worldState.getWatchWorldContent, tickingarea: worldState.tickingarea, worldEvents,
       dropLoot: (items, position) => {
         Managers['ground_item'].flingLoot(items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position);
       },
-    });
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
-      restore: (id, record) => mushtrees.spawn(id, new THREE.Vector3(...record.transform.position), {
-        id: record.id, transform: record.transform, components: record.components,
-      }),
-      debugSpawn: id => mushtrees.spawn(id, player.position.clone()),
-      exportRecords: () => mushtrees.exportRecords(),
-      update: (dt, quaternion) => mushtrees.update(dt, quaternion),
-      renderEntities: () => mushtrees.renderEntities,
-      dispose: () => mushtrees.dispose(),
-    });
-    return mushtrees;
+      spawnPrefab: (id, position) => prefabs.spawn(id, position),
+    }));
+    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
   }
+
 
   function registerGrottoPools(registry: EntityRegistry, prefabId: 'grotto_pool', worldState: SceneWorldState) {
     prefabs.register(grottoPoolPrefabs({
