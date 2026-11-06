@@ -106,7 +106,7 @@ describe('DST item identity and ownership', () => {
     store.dispose();
   });
 
-  it('lets finiteuses consume durability, notify its owner and remove exhausted inventory items', () => {
+  it('lets finiteuses consume durability on the item tile without a store notification and remove exhausted items', () => {
     const store = setup();
     store.add('farm_plow_item', 1);
     const entity = store.getEntity(a)!;
@@ -114,7 +114,9 @@ describe('DST item identity and ownership', () => {
     store.subscribe(changes);
     expect(entity.components.finiteuses.use()).toBe(true);
     expect(store.get(a)?.remainingUses).toBe(3);
-    expect(changes).toHaveBeenCalledExactlyOnceWith([a]);
+    // The slot keeps the same inst; itemtile follows the inst's tile, so the store has nothing to publish.
+    expect(entity.tile.peek().durabilityPercent).toBe(.75);
+    expect(changes).not.toHaveBeenCalled();
     expect(entity.components.finiteuses.use(-1)).toBe(false);
     expect(store.get(a)?.remainingUses).toBe(3);
     const saved = store.exportState();

@@ -50,7 +50,7 @@ export class StackableComponent {
   }
   get count(): number { return this.state.peek(); }
   set count(value: number) { this.state.set(value); }
-  /** stackable:Get():Remove(), without creating a temporary entity just to destroy it. */
+  /** stackable:Get():Remove(), without creating a temporary entity just to destroy it. The owner recounts materials. */
   Consume(): boolean {
     this.entity.flush();
     if (this.entity.isRemoved || this.count < 1) return false;
@@ -98,10 +98,7 @@ export class FiniteUsesComponent {
       // Inventory removal must commit through the bound owner before publishing zero uses.
       if (!(this.onFinished ? this.onFinished() : this.entity.remove())) return false;
       this.remaining = 0;
-    } else {
-      this.remaining = next;
-      this.entity.components.inventoryitem.owner?.changed();
-    }
+    } else this.remaining = next;
     return true;
   }
   /** finiteuses.lua SetPercent: SetUses(total * percent), keeping the saved step exact. */
@@ -110,7 +107,6 @@ export class FiniteUsesComponent {
     const next = Math.round(Math.min(1, percent) * this.maximum / step) * step;
     this.entity.PushEvent('percentusedchange', { percent: next / this.maximum });
     this.remaining = next;
-    this.entity.components.inventoryitem.owner?.changed();
     return true;
   }
   setConsumption(action: string, amount: number): void {
@@ -234,8 +230,6 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
     let fueled = this.components.fueled;
     if (fueled) return fueled;
     fueled = this.components.fueled = new Fueled<ItemEntity>(this, this.components.perishable.scheduler);
-    // inventoryitem.lua OnPercentUsedChanged: the item tile follows the fuel.
-    this.ListenForEvent('percentusedchange', () => this.components.inventoryitem.owner?.changed());
     this.fueledState.set(fueled);
     return fueled;
   }
@@ -392,13 +386,11 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
     if (this.isRemoved || !Number.isFinite(percent)) return false;
     if (this.components.perishable.perishtime.peek() === undefined) this.freshnessState.set(Math.max(0, Math.min(1, percent)));
     else this.components.perishable.SetPercent(percent);
-    this.components.inventoryitem.owner?.changed();
     return true;
   }
   setWet(wet: boolean): boolean {
     if (this.isRemoved || typeof wet !== 'boolean') return false;
     this.wetState.set(wet);
-    this.components.inventoryitem.owner?.changed();
     return true;
   }
 

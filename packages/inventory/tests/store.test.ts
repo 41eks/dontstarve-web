@@ -120,7 +120,9 @@ describe('inventory state restoration', () => {
     store.subscribe(listener);
     expect(store.setRemainingFuel(hand, 37.875)).toBe(true);
     expect(store.get(hand)).toEqual({ itemId: 'torch', count: 1, remainingFuel: 37.875 });
-    expect(listener).toHaveBeenLastCalledWith([hand]);
+    // Fuel lives on the inst's tile; the store's slots and material counts are unchanged.
+    expect(listener).not.toHaveBeenCalled();
+    expect(store.getEntity(hand)!.tile.peek().durabilityPercent).toBe(37.875 / 75);
     expect(store.get(spare)).toEqual({ itemId: 'torch', count: 1 });
     // Failed transfers leave the burning item's state intact.
     expect(store.applySlotChanges([{ slot: hand, itemId: 'torch', delta: -1 },

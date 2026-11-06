@@ -501,6 +501,11 @@ export class InventoryStore {
     return this.registrationByAddress.get(addressKey(address))?.slot.get() ?? null;
   }
 
+  /** The slot's inst as a read-only signal; UI binds it instead of re-reading slots on every notification. */
+  getSlotEntity(address: SlotAddress): ReadonlySignal<ItemEntity | null> | null {
+    return this.registrationByAddress.get(addressKey(address))?.slot.entity ?? null;
+  }
+
   getEntity(address: SlotAddress): ItemEntity | null {
     return this.registrationByAddress.get(addressKey(address))?.slot.getEntity() ?? null;
   }
