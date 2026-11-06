@@ -53,7 +53,7 @@ import { mushtreePrefabs } from '@dontstarve-web/prefab/mushtree';
 import { marbleShrubPrefabs, type MarbleShrubInstance } from '@dontstarve-web/prefab/marbleshrub';
 import { archivePropsPrefabs } from '@dontstarve-web/prefab/archive_props';
 import { houndbonePrefabs } from '@dontstarve-web/prefab/houndbone';
-import { BeeQueenHiveManager } from '@dontstarve-web/prefab/beequeenhivegrown';
+import { beeQueenHivePrefabs } from '@dontstarve-web/prefab/beequeenhivegrown';
 import { dragonflyPrefabs, DRAGONFLY_ID } from '@dontstarve-web/prefab/dragonfly';
 import { dragonflySpawnerPrefabs } from '@dontstarve-web/prefab/dragonfly_spawner';
 import { skeletonPrefabs } from '@dontstarve-web/prefab/skeleton';
@@ -67,7 +67,7 @@ import { caveFernPrefabs } from '@dontstarve-web/prefab/cave_fern';
 import { lichenPrefabs } from '@dontstarve-web/prefab/lichen';
 import { cactusPrefabs } from '@dontstarve-web/prefab/cactus';
 import type { GameTimeScheduler } from '@dontstarve-web/prefab/gameTimeScheduler';
-import { TumbleweedManager, TUMBLEWEED_ID } from '@dontstarve-web/prefab/tumbleweed';
+import { tumbleweedPrefabs } from '@dontstarve-web/prefab/tumbleweed';
 import { saplingPrefabs } from '@dontstarve-web/prefab/sapling';
 import { pondPrefabs } from '@dontstarve-web/prefab/pond';
 import { marshPlantPrefabs } from '@dontstarve-web/prefab/marsh_plant';
@@ -304,14 +304,12 @@ export async function createSceneEntities(
     'mushroom_plant': ReturnType<typeof registerMushroomPlants>;
     'marbleshrub': ReturnType<typeof registerMarbleShrubs>;
     'archive_props': ReturnType<typeof registerArchiveProps>;
-    'beequeenhivegrown': ReturnType<typeof registerBeeQueenHives>;
     'marblebean_sapling': ReturnType<typeof registerMarbleBeanSaplings>;
     'rock_avocado_bush': ReturnType<typeof registerRockAvocadoBushes>;
     'rock_avocado_fruit_sprout_sapling': ReturnType<typeof registerRockAvocadoSaplings>;
     'grass': ReturnType<typeof registerGrasses>;
     'sapling': ReturnType<typeof registerSaplings>;
     'cave_fern': ReturnType<typeof registerCaveFerns>;
-    'tumbleweed': ReturnType<typeof registerTumbleweeds>;
     'wormhole': ReturnType<typeof registerWormholes>;
     'multiplayer_portal_moonrock': ReturnType<typeof registerPortals>;
     'nightmaregrowth': ReturnType<typeof registerNightmareGrowths>;
@@ -391,7 +389,7 @@ export async function createSceneEntities(
   Managers['archive_props'] = registerArchiveProps(registry, 'archive_props', worldState);
   registerSkeletons(registry, 'skeleton');
   registerHoundbones(registry, 'houndbone');
-  Managers['beequeenhivegrown'] = registerBeeQueenHives(registry, 'beequeenhivegrown', worldState);
+  registerBeeQueenHives(registry, 'beequeenhivegrown', worldState);
   registerDragonflies(registry, 'dragonfly', worldState);
   registerDragonflySpawners(registry, 'dragonfly_spawner', worldState);
   Managers['marblebean_sapling'] = registerMarbleBeanSaplings(registry, 'marblebean_sapling', worldState);
@@ -407,7 +405,7 @@ export async function createSceneEntities(
   registerLavaPonds(registry, 'lava_pond', worldState);
 
   const worldWind = worldState.worldwind;
-  Managers['tumbleweed'] = registerTumbleweeds(registry, 'tumbleweed', worldState);
+  registerTumbleweeds(registry, 'tumbleweed', worldState);
   registerHotsprings(registry, 'hotspring', worldState);
   Managers['wormhole'] = registerWormholes(registry, 'wormhole', worldState);
   Managers['multiplayer_portal_moonrock'] = registerPortals(registry, 'multiplayer_portal_moonrock', worldState);
@@ -460,12 +458,10 @@ export async function createSceneEntities(
     groundItems: Managers['ground_item'],
     beefalos: Managers['beefalo'],
     mushroomPlants: Managers['mushroom_plant'],
-    beeQueenHives: Managers['beequeenhivegrown'],
     rockAvocadoBushes: Managers['rock_avocado_bush'],
     grasses: Managers['grass'],
     saplings: Managers['sapling'],
     ponds: Managers['pond'],
-    tumbleweeds: Managers['tumbleweed'],
     wormholes: Managers['wormhole'],
     nightmareGrowths: Managers['nightmaregrowth'],
     reskinEffects: Managers['reskinEffects'],
@@ -824,20 +820,8 @@ export async function createSceneEntities(
 
 
   function registerBeeQueenHives(registry: EntityRegistry, prefabId: 'beequeenhivegrown', worldState: SceneWorldState) {
-    const hives = new BeeQueenHiveManager(scene, { handEquipment: sceneInventory.handEquipment,
-      tickingarea: worldState.tickingarea, physics: world, scheduler: worldState.scheduler });
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
-      restore: (_, record) => hives.spawn(new THREE.Vector3(...record.transform.position), {
-        id: record.id, transform: record.transform,
-        components: { workable: record.components.workable, beeQueenHiveTimer: record.components.beeQueenHiveTimer },
-      }),
-      debugSpawn: () => hives.spawn(player.position.clone()),
-      exportRecords: () => hives.exportRecords(),
-      update: dt => hives.update(dt),
-      renderEntities: () => hives.renderEntities,
-      dispose: () => hives.dispose(),
-    });
-    return hives;
+    prefabs.register(beeQueenHivePrefabs({ handEquipment: sceneInventory.handEquipment, scheduler: worldState.scheduler }));
+    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
   }
 
   function registerDragonflies(registry: EntityRegistry, prefabId: 'dragonfly', worldState: SceneWorldState) {
@@ -983,8 +967,9 @@ export async function createSceneEntities(
   }
 
   function registerTumbleweeds(registry: EntityRegistry, prefabId: 'tumbleweed', worldState: SceneWorldState) {
-    const tumbleweeds = new TumbleweedManager(scene, world, {
-      scheduler: worldState.scheduler, wind: worldWind, getWatchWorldContent: worldState.getWatchWorldContent, tickingarea: worldState.tickingarea,
+    prefabs.register(tumbleweedPrefabs({
+      scheduler: worldState.scheduler, wind: worldWind, getWatchWorldContent: worldState.getWatchWorldContent,
+      componentUpdates: worldState.componentUpdates, spawnPrefab: (prefab, position) => prefabs.spawn(prefab, position),
       isOnValidGround: position => turfMap.isPassableAtPoint(position),
       constrainPosition: position => {
         const edge = initialSave.world.map.generator.options.size / 2 - WORLD_SCALE;
@@ -998,19 +983,8 @@ export async function createSceneEntities(
         if (counts.size === 0) return;
         Managers['ground_item'].flingLoot([...counts].map(([itemId, count]) => ({ ...SAVE_CATALOG.items[itemId], itemId, count })), position);
       },
-    });
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
-      restore: (_, record) => tumbleweeds.spawn(new THREE.Vector3(...record.transform.position), {
-        id: record.id, transform: record.transform, components: {},
-      }),
-      debugSpawn: () => tumbleweeds.spawn(player.position.clone().setY(0)),
-      exportRecords: () => tumbleweeds.exportRecords().map(record => ({ prefabId: TUMBLEWEED_ID, record })),
-      beforePhysics: dt => tumbleweeds.beforePhysics(dt),
-      update: () => tumbleweeds.sync(),
-      renderEntities: () => tumbleweeds.renderEntities,
-      dispose: () => tumbleweeds.dispose(),
-    });
-    return tumbleweeds;
+    }));
+    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
   }
 
   function registerHotsprings(registry: EntityRegistry, prefabId: 'hotspring', worldState: SceneWorldState) {

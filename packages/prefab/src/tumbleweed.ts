@@ -1,29 +1,23 @@
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
-import { PrefabDisplayGroup, SpriteResources, SpriteState } from '@dontstarve-web/display';
-import { bindInstance, createArchiveEntity, PrefabInstance } from './prefabInstance';
-import { WorldContentKey, watchSignal, type GetWatchWorldContent, type TileStateQuery } from '@dontstarve-web/signals';
+import { SpriteState } from '@dontstarve-web/display';
+import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
+import { WorldContentKey, watchSignal, type GetWatchWorldContent } from '@dontstarve-web/signals';
+import type { ComponentUpdates } from '../../componets/src/componentUpdates';
 import { BlowInWind } from '../../componets/src/blowinwind';
 import { ComponentTimer } from '../../componets/src/timer';
 import { DEFAULT_RUN_SPEED, DEFAULT_WALK_SPEED, LocoMotor, type LocoMotorInst } from '../../componets/src/locomotor';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { WorldWind, WorldWindChange } from '../../componets/src/worldwind';
-import { actionEntity } from './actionEntity';
-import { newEntityId } from './saveRecord';
 import { MakeCharacterPhysics, WORLD_SCALE } from './standardcomponents';
-import { watchTileActivity } from './tileActivity';
 
 export const TUMBLEWEED_ID = 'tumbleweed' as const;
+export const TUMBLEWEED_BREAKFX_ID = 'tumbleweedbreakfx' as const;
+export type TumbleweedPrefabId = typeof TUMBLEWEED_ID | typeof TUMBLEWEED_BREAKFX_ID;
 const FRAMES = 1 / 30;
 const DEGREES = Math.PI / 180;
 const ANGLE_VARIANCE = 10;
-
-export interface TumbleweedRecord {
-  id: string;
-  transform: { position: [number, number, number]; rotationY: number };
-  components: Record<string, never>;
-}
 
 /** tumbleweed.lua MakeLoot: weights as written. Chess sketches need chessunlocks, which is absent here. */
 export const TUMBLEWEED_LOOT: readonly { chance: number; item: string; aggro?: true }[] = [
@@ -59,8 +53,11 @@ export function rollTumbleweedLoot(random: () => number = Math.random): string[]
 
 export interface TumbleweedWorld {
   getWatchWorldContent?: GetWatchWorldContent;
-  tickingarea?: TileStateQuery;
   scheduler: GameTimeScheduler;
+  /** StartUpdatingComponent: blowinwind's OnUpdate and the entity following its body each frame, after the physics step. */
+  componentUpdates: ComponentUpdates;
+  /** SpawnPrefab("tumbleweedbreakfx"). */
+  spawnPrefab(prefab: typeof TUMBLEWEED_BREAKFX_ID, position: ReadonlyVector3): unknown;
   /** `TheWorld.components.worldwind`. */
   wind?: WorldWind;
   isOnValidGround(position: ReadonlyVector3): boolean;
@@ -85,17 +82,15 @@ export class TumbleweedInstance extends PrefabInstance {
   private asleep = false;
   private readonly world: TumbleweedWorld;
   private readonly random: () => number;
-  private readonly spawnBreakFx: (position: ReadonlyVector3) => void;
   private readonly groundCheck: ComponentTimer;
   private groundCheckArmed = false;
   private readonly restartMovement: ComponentTimer;
 
-  constructor(world: TumbleweedWorld, spawnBreakFx: (position: ReadonlyVector3) => void) {
+  constructor(world: TumbleweedWorld) {
     super(TUMBLEWEED_ID, new SpriteState({ name: 'move_loop', billboard: true }));
-    this.world = world; this.spawnBreakFx = spawnBreakFx;
+    this.world = world;
     const random = this.random = world.random ?? Math.random;
     this.sprite.setFacingRotation(0, 4);
-    MakeCharacterPhysics(this, .5, 1);
     this.addTag('pickable');
     const motor: LocoMotorInst = {
       isValid: () => !this.isRemoved, getPosition: () => ({ x: this.body.position.x, y: 0, z: this.body.position.z }),
@@ -114,7 +109,7 @@ export class TumbleweedInstance extends PrefabInstance {
       canBePicked: true, quickpick: false, product: undefined,
       pick: () => this.onpickup(),
     } });
-    const cleanups: (() => void)[] = [];
+    const cleanups: (() => void)[] = [world.componentUpdates.register({ OnUpdate: dt => this.OnUpdate(dt) })];
     // inst:ListenForEvent("startlongaction", OnLongAction) — PICK's long action pushes it on the target.
     cleanups.push(this.ListenForEvent('startlongaction', () => this.OnLongAction()));
     const wind = world.getWatchWorldContent
@@ -134,6 +129,15 @@ export class TumbleweedInstance extends PrefabInstance {
 
   /** MakeCharacterPhysics's body, which the wind drives and the entity follows; the manager binds it at the spawn position. */
   private get body(): CANNON.Body { return this.physicsBody!; }
+
+  /** The spawn point inside the world's edge; the body moves with it. */
+  placeOnSpawn(): void {
+    const placed = this.position.clone();
+    this.world.constrainPosition(placed);
+    if (placed.equals(this.position)) return;
+    this.copyPosition(placed);
+    this.physics.Teleport();
+  }
 
   private setRotationDegrees(degrees: number): void {
     this.setRotation(degrees);
@@ -185,10 +189,11 @@ export class TumbleweedInstance extends PrefabInstance {
   }
 
   /** OnEntitySleep comes first so a clip the sleep settles cannot start moving; OnEntityWake plays once the display is awake. */
-  setAwake(active: boolean): void {
+  override setActive(active: boolean): void {
+    if (this.isRemoved) return;
     if (active) {
       this.asleep = false;
-      this.setActive(true);
+      super.setActive(true);
       this.sprite.start('move_loop');
       this.armGroundCheck();
       this.blowinwind.OnEntityWake();
@@ -196,7 +201,7 @@ export class TumbleweedInstance extends PrefabInstance {
       this.asleep = true;
       this.CancelRunningTasks();
       this.stopPhysics();
-      this.setActive(false);
+      super.setActive(false);
     }
   }
 
@@ -218,100 +223,50 @@ export class TumbleweedInstance extends PrefabInstance {
     if (this.isRemoved) return false;
     const position = this.position.clone();
     this.world.dropLoot(this.loot, position);
-    this.spawnBreakFx(position);
+    this.world.spawnPrefab(TUMBLEWEED_BREAKFX_ID, position);
     this.remove();
     return true;
   }
 
-  /** Before physics: wind integration sets the walk speed, then cannon applies the motor velocity. */
-  update(dt: number): void { this.blowinwind.Update(dt); }
-
-  /** After physics: the entity follows its body. */
-  sync(): void {
-    const position = new THREE.Vector3(this.body.position.x, 0, this.body.position.z);
-    this.world.constrainPosition(position);
-    this.copyPosition(position);
+  /**
+   * After the physics step the entity follows its body; blowinwind's OnUpdate then sets the walk speed and motor
+   * velocity that the next step applies.
+   */
+  private OnUpdate(dt: number): void {
+    if (!Number.isFinite(dt) || dt < 0) return;
+    const body = this.physicsBody;
+    if (body) {
+      const position = new THREE.Vector3(body.position.x, 0, body.position.z);
+      this.world.constrainPosition(position);
+      this.copyPosition(position);
+    }
+    this.blowinwind.Update(Math.min(dt, .1));
   }
 }
 
-/** The tumbleweeds and their break fx: the collection, injected world and shared tumbleweed.zip. */
-export class TumbleweedManager {
-  private readonly resources = new SpriteResources(undefined, TUMBLEWEED_ID);
-  private readonly tumbleweeds = new Set<TumbleweedInstance>();
-  private readonly breakFx = new Set<PrefabInstance>();
-  private readonly displays: PrefabDisplayGroup;
-  private readonly physics: CANNON.World;
-  private readonly world: TumbleweedWorld;
-  private disposed = false;
+/** tumbleweedbreakfx (burntfxfn's sibling fxfn): FX, not persistent, removed by its own animover. */
+function breakfxfn(): PrefabInstance {
+  const inst = new PrefabInstance(TUMBLEWEED_BREAKFX_ID, new SpriteState({ name: 'break', held: true, billboard: true }));
+  inst.addTag('FX');
+  inst.persists = false;
+  inst.sprite.setFacingRotation(0, 4);
+  // Declared before the display binds: the one-shot waits for its first drawn frame.
+  inst.sprite.playOnce('break', () => inst.remove());
+  return inst;
+}
 
-  constructor(scene: THREE.Scene, physics: CANNON.World, world: TumbleweedWorld) {
-    this.displays = new PrefabDisplayGroup(scene); this.physics = physics; this.world = world;
-  }
-
-  private get archive() {
-    return this.resources.archive({ animationArchive: 'tumbleweed.zip', buildArchives: ['tumbleweed.zip'], bank: 'tumbleweed',
-      // swap_fire is the burn fx attach point (AddBurnFX); it has no art in the build.
-      hiddenSymbols: ['swap_fire'] });
-  }
-
-  spawn(position: ReadonlyVector3, saved?: TumbleweedRecord): TumbleweedInstance {
-    if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError('Invalid tumbleweed position');
-    if (this.disposed) throw new Error('Tumbleweed manager has been disposed');
-    const instance = new TumbleweedInstance(this.world, at => this.spawnBreakFx(at));
-    const display = this.displays.add({ root: instance.transform.model, name: TUMBLEWEED_ID, archive: this.archive, status: instance.status, sprite: instance.sprite, light: instance.light });
-    bindInstance(display.model, instance);
-    const placed = new THREE.Vector3(position.x, 0, position.z);
-    this.world.constrainPosition(placed);
-    instance.copyPosition(placed);
-    instance.entityId = saved?.id ?? newEntityId();
-    instance.bindPhysics(this.physics);
-    actionEntity(display.model, TUMBLEWEED_ID);
-    this.tumbleweeds.add(instance);
-    const stopActivity = watchTileActivity(display.model, this.world.tickingarea, active => instance.setAwake(active));
-    instance.onRemove(() => { stopActivity(); this.tumbleweeds.delete(instance); });
-    return instance;
-  }
-
-  /** tumbleweedbreakfx: FX, not persistent, removed by its own animover. */
-  private spawnBreakFx(position: ReadonlyVector3): void {
-    if (this.disposed) return;
-    const { instance, display } = createArchiveEntity('tumbleweedbreakfx', this.archive, { name: 'break', held: true, billboard: true }, 'tumbleweedbreakfx', inst => {
-      inst.addTag('FX');
-      inst.persists = false;
-      inst.sprite.setFacingRotation(0, 4);
-      // Declared before the display binds: the one-shot waits for its first drawn frame.
-      inst.sprite.playOnce('break', () => inst.remove());
-    });
-    instance.setPosition(position.x, position.y, position.z);
-    this.breakFx.add(instance);
-    instance.onRemove(() => this.breakFx.delete(instance));
-    this.displays.mount(display);
-  }
-
-  /** Before physics: wind integration sets each walk speed, then cannon applies the motor velocity. */
-  beforePhysics(dt: number): void {
-    if (this.disposed || !Number.isFinite(dt) || dt < 0) return;
-    for (const tumbleweed of this.tumbleweeds) tumbleweed.update(Math.min(dt, .1));
-    // The display group advances the tumbleweeds and their break effects.
-    this.displays.update(Math.min(dt, .1));
-  }
-  sync(): void {
-    for (const tumbleweed of this.tumbleweeds) tumbleweed.sync();
-  }
-
-  get renderEntities() { return this.displays.renderEntities; }
-
-  exportRecords(): TumbleweedRecord[] {
-    return [...this.tumbleweeds].filter(weed => weed.persists).map(weed => ({ id: String(weed.entityId),
-      transform: { position: [weed.position.x, 0, weed.position.z], rotationY: 0 }, components: {} }));
-  }
-
-  dispose(): void {
-    if (this.disposed) return;
-    this.disposed = true;
-    for (const instance of [...this.tumbleweeds, ...this.breakFx]) instance.remove();
-    // Every display returns its sprite before the shared resources go.
-    this.displays.dispose();
-    this.resources.dispose();
-  }
+/** The Prefab table tumbleweed.lua returns. */
+export function tumbleweedPrefabs(world: TumbleweedWorld): Readonly<Record<TumbleweedPrefabId, PrefabEntityDefinition<PrefabInstance>>> {
+  const assets = { animationArchive: 'tumbleweed.zip', buildArchives: ['tumbleweed.zip'], bank: 'tumbleweed',
+    // swap_fire is the burn fx attach point (AddBurnFX); it has no art in the build.
+    hiddenSymbols: ['swap_fire'] };
+  return {
+    [TUMBLEWEED_ID]: {
+      fn: () => new TumbleweedInstance(world), assets,
+      // MakeCharacterPhysics(inst, .5, 1).
+      physics: { make: (inst, radius) => MakeCharacterPhysics(inst, .5, radius), radius: 1 },
+      onSpawned: inst => (inst as TumbleweedInstance).placeOnSpawn(),
+    },
+    [TUMBLEWEED_BREAKFX_ID]: { fn: breakfxfn, assets, targetable: false },
+  };
 }

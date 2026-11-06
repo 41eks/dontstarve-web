@@ -23,6 +23,8 @@ export interface PlacementSaveRecord {
     birdcage?: import('./birdcage').BirdcageSaveStateData;
     workable?: { workleft: number; maxwork: number };
     timer?: import('../../componets/src/timer').NamedTimerSave;
+    /** beequeenhive.lua's timer component save. */
+    beeQueenHiveTimer?: import('../../componets/src/timer').NamedTimerSave;
     fishable?: import('../../componets/src/fishable').FishableSave;
     /** pond.lua's inst.plants: offsets from the pond, in DST units. */
     plants?: { offset: [number, number, number] }[];
