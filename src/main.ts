@@ -30,7 +30,7 @@ import { followCamera } from './camera';
 import type { SpellCastMap } from '@dontstarve-web/stategraphs/castspell';
 import { WORLD_TILES } from '@dontstarve-web/prefab/turfMap';
 import { isGroundTargetBlocked, placementEntities } from '../packages/prefab/src/placementEntities';
-import { backpackContainerId, inventorySlotAddress, cursorSlotAddress, type ItemEntity } from '@dontstarve-web/inventory';
+import { backpackContainerId } from '@dontstarve-web/inventory';
 import { player, playerBody, playerInstance, playerPhysics } from './player';
 import { OnItemRanOut } from '@dontstarve-web/prefab/player_common';
 import { bindPlayerHandEquipment } from './playerHandEquipment';
@@ -105,7 +105,6 @@ const stopStatsUpdates = [playerStats.health.current, playerStats.hunger.value, 
 syncPlayerStats();
 export const inventory = createInventoryStore();
 const inventorySlotItem = createInventorySlotItem(inventory);
-const cursorAddress = cursorSlotAddress();
 export const handEquipment = inventory.handEquipment;
 export const headEquipment = inventory.headEquipment;
 export const bodyEquipment = inventory.bodyEquipment;
@@ -232,24 +231,14 @@ const bodyEquipmentBinding = bindPlayerBodyEquipment({
 // Restore only after subscribing: committed signal writes drive all equipment.
 handEquipmentBinding.withoutTransitions(() => inventory.replaceState(inventoryStateFromSave(initialSave), INVENTORY_RECIPES));
 
-/** The inventory bar's slots follow the inst each player slot holds; panels bind their containers the same way. */
-function bindInventorySlot(address: SlotAddress): void {
-  if (address.containerId !== inventorySlotAddress(0).containerId
-    && address.containerId !== handSlotAddress.containerId
-    && address.containerId !== cursorAddress.containerId) return;
-  const entity = inventory.getSlotEntity(address);
-  if (!entity) return;
-  const show = (item: ItemEntity | null) => gameUi.inventoryBar.setSlot(address, item ? inventorySlotItem(item) : null);
-  show(entity.peek());
-  entity.subscribe(show);
-}
 
 function syncCraftingInventory(): void {
   gameUi.crafting.setMaterialSummary(inventory.materialSummary());
   gameUi.crafting.setBufferedRecipes(inventory.buffered());
 }
 
-inventory.addresses().forEach(bindInventorySlot);
+// The inventory bar follows inventory.lua's slots as container panels follow their containers.
+gameUi.inventoryBar.bindInventory(inventory, inventorySlotItem);
 syncCraftingInventory();
 // Material counts and buffered builds change with transactions and stack consumption.
 inventory.subscribe(syncCraftingInventory);

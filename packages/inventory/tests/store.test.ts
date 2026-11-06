@@ -354,6 +354,25 @@ describe('InventoryStore', () => {
     ]);
   });
 
+  it('exposes inventory.lua itemslots, equipslots and activeitem as slot signals that follow committed moves', () => {
+    const store = new InventoryStore([
+      inventorySlot(1), inventorySlot(0, { itemId: 'axe', skinId: 'axe_feathered', count: 1 }), equipmentSlot('hand'),
+      { address: cursorSlotAddress(), slot: new InventorySlot() },
+    ], specs);
+    const axe = store.getEntity(inventorySlotAddress(0))!;
+    // itemslots follow slot order, not registration order.
+    expect(store.itemslots.map(slot => slot.entity.peek())).toEqual([axe, null]);
+    expect(Object.keys(store.equipslots)).toEqual(['hand']);
+    expect(store.activeitemslot?.entity.peek()).toBeNull();
+    const first = vi.fn(), cursor = vi.fn();
+    store.itemslots[0].entity.subscribe(first);
+    store.activeitemslot!.entity.subscribe(cursor);
+    expect(store.transfer(inventorySlotAddress(0), cursorSlotAddress(), 1)).toBe(true);
+    expect(first).toHaveBeenCalledExactlyOnceWith(null, axe);
+    expect(cursor).toHaveBeenCalledExactlyOnceWith(axe, null);
+    expect(store.activeitemslot!.entity.peek()).toBe(axe);
+  });
+
   it('limits prepared food slots to one item and rolls back oversized transfers and saves', () => {
     const address = { containerId: 'world:cookpot:pot', slotKey: '0' };
     const slot = new PreparedFoodSlot();

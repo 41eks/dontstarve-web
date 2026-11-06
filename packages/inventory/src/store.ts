@@ -501,9 +501,23 @@ export class InventoryStore {
     return this.registrationByAddress.get(addressKey(address))?.slot.get() ?? null;
   }
 
-  /** The slot's inst as a read-only signal; UI binds it instead of re-reading slots on every notification. */
-  getSlotEntity(address: SlotAddress): ReadonlySignal<ItemEntity | null> | null {
-    return this.registrationByAddress.get(addressKey(address))?.slot.entity ?? null;
+  /** inventory.lua's itemslots in slot order; each slot holds its inst in its `entity` signal. */
+  get itemslots(): readonly ItemSlot[] {
+    return this.registrations.filter(({ address }) => address.containerId === PLAYER_INVENTORY_CONTAINER_ID)
+      .sort((left, right) => Number(left.address.slotKey) - Number(right.address.slotKey)).map(({ slot }) => slot);
+  }
+
+  /** inventory.lua's equipslots, by equip slot. */
+  get equipslots(): Readonly<Partial<Record<EquipmentKind, ItemSlot>>> {
+    return Object.fromEntries(EQUIPMENT_KINDS.flatMap(kind => {
+      const registration = this.registrationByAddress.get(addressKey(equipmentSlotAddress(kind)));
+      return registration ? [[kind, registration.slot]] : [];
+    }));
+  }
+
+  /** The slot that holds inventory.lua's activeitem. */
+  get activeitemslot(): ItemSlot | undefined {
+    return this.registrationByAddress.get(addressKey(cursorSlotAddress()))?.slot;
   }
 
   getEntity(address: SlotAddress): ItemEntity | null {

@@ -23,15 +23,7 @@ export async function createReceiveFixture() {
   Object.assign(canvas.style, { position: 'fixed', left: '40px', top: '60px', width: '320px', height: '240px' });
   document.body.append(canvas);
   const screenProjection = new ScreenProjection(camera, canvas);
-  const sync = (address: ReturnType<typeof inventorySlotAddress>) => {
-    if (!inventoryBar.containers.some(container => container.id === address.containerId)) return;
-    const stack = inventory.get(address);
-    if (!stack) { inventoryBar.setSlot(address, null); return; }
-    inventoryBar.setSlot(address, { ...inventory.getStackSpec(stack), id: stack.itemId, count: stack.count,
-      ...(stack.skinId === undefined ? {} : { skinId: stack.skinId }) });
-  };
-  inventory.addresses().forEach(sync);
-  inventory.subscribe((addresses) => addresses.forEach(sync));
+  inventoryBar.bindInventory(inventory, createInventorySlotItem(inventory));
   const scene = new THREE.Scene();
   inventory.subscribeReceived((received, source) => {
     if (source) inventoryReceiveEffect(ui,

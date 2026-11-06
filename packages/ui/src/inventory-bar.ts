@@ -21,6 +21,7 @@ import type {
   SlotSelectDetail,
 } from './slot/slot-model';
 import { createSlotRenderer, type SlotRenderer } from './slot/slot-renderer';
+import { bindSlotEntities, type EntitySlotSignal } from './slot/slot-binding';
 import type { InventoryReceiveSource } from './slot/slot-receive-animation';
 import { slotTransferController, type SlotTransferRequest } from './slot/slot-transfer';
 import styles from './styles/inventory-bar.css?inline';
@@ -48,6 +49,13 @@ const equipmentSlots = [
   { kind: 'body', label: '身体装备', asset: 'equip_slot_body.tex.png' },
   { kind: 'head', label: '头部装备', asset: 'equip_slot_head.tex.png' },
 ] as const;
+
+/** inventory.lua's slots as the inventory bar follows them: itemslots, equipslots and activeitem. */
+export interface BindableInventory<TItem> {
+  readonly itemslots: readonly EntitySlotSignal<TItem>[];
+  readonly equipslots: Readonly<Partial<Record<(typeof equipmentSlots)[number]['kind'], EntitySlotSignal<TItem>>>>;
+  readonly activeitemslot?: EntitySlotSignal<TItem>;
+}
 
 export class DstInventoryBarElement extends AssetElement {
   static readonly observedAttributes = [...AssetElement.observedAttributes, 'player'];
@@ -96,6 +104,19 @@ export class DstInventoryBarElement extends AssetElement {
 
   get containers(): readonly SlotContainer[] {
     return [this.inventory, this.equipment, this.cursor];
+  }
+
+  /** inventorybar.lua: the item, equipment and cursor slots follow the inst in each inventory slot. */
+  bindInventory<TItem>(inventory: BindableInventory<TItem>, toItem: (item: TItem) => InventoryBarItem): () => void {
+    const stops = [
+      bindSlotEntities(this.inventory, inventory.itemslots.map((slot, index) => [String(index), slot] as const), toItem),
+      bindSlotEntities(this.equipment, equipmentSlots.flatMap(({ kind }) => {
+        const slot = inventory.equipslots[kind];
+        return slot ? [[kind, slot] as const] : [];
+      }), toItem),
+      bindSlotEntities(this.cursor, inventory.activeitemslot ? [[cursorSlotAddress().slotKey, inventory.activeitemslot] as const] : [], toItem),
+    ];
+    return () => stops.forEach(stop => stop());
   }
 
   setSlot(address: SlotAddress, item: InventoryBarItem | null): void {
