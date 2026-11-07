@@ -4,7 +4,7 @@ import { ItemEntity, InventorySlot, InventoryStore, cursorSlotAddress, inventory
 import { INVENTORY_ITEM_SPECS } from '../../../src/inventoryItems';
 import { PERISH_FAST } from '../../componets/src/perishable';
 import { getFoodEffects } from '../../prefab/src/food';
-import { getLanternController, LANTERN_FUEL } from '../../prefab/src/lantern';
+import { LANTERN_FUEL } from '../../prefab/src/lantern';
 import { createBufferedAction } from '../../stategraphs/src/actionfns';
 import { createPickupDoer } from '../../stategraphs/src/pickup';
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
@@ -47,7 +47,7 @@ it('accepts cave fuel, settles pending consumption, applies wet penalties and re
   try {
     inventory.add('lantern', 1);
     const lantern = inventory.getEntity(inventorySlotAddress(0))!, fueled = lantern.components.fueled!;
-    const controller = getLanternController(lantern);
+    const ison = () => lantern.components.machine!.IsOn(), owner = { PushEvent() {} };
     inventory.configureItem(dry); inventory.configureItem(wet);
     const taken = vi.fn(), added = vi.fn();
     dry.ListenForEvent('fueltaken', taken); lantern.ListenForEvent('takefuel', added);
@@ -58,22 +58,23 @@ it('accepts cave fuel, settles pending consumption, applies wet penalties and re
     expect(taken).toHaveBeenCalledExactlyOnceWith({ taker: lantern });
     expect(added).toHaveBeenCalledExactlyOnceWith({ fuelvalue: 90 });
     expect(fueled.currentfuel).toBe(100);
-    expect(controller.isOn).toBe(false);
-    controller.onequip();
+    expect(ison()).toBe(false);
+    lantern.components.equippable!.Equip(owner);
     world.advance(30);
     expect(fueled.TakeFuelItem(wet)).toBe(true);
     expect(fueled.currentfuel).toBeCloseTo(100 - 30 - .5 + 67.5);
-    lantern.setRemainingFuel(0); controller.TurnOff();
+    lantern.setRemainingFuel(0); lantern.components.machine!.TurnOff();
     const relight = new ItemEntity({ itemId: 'lightbulb', count: 1 }); inventory.configureItem(relight);
     fueled.TakeFuelItem(relight);
-    expect(controller.isOn).toBe(true);
-    controller.onunequip();
-    controller.OnPutInInventory();
+    expect(ison()).toBe(true);
+    lantern.components.equippable!.Unequip(owner);
+    // inventoryitem:SetOnPutInInventoryFn(turnoff).
+    lantern.components.inventoryitem.OnPutInInventory({ hasTag: () => true, GetPosition: () => new THREE.Vector3(), PushEvent() {} });
     lantern.setRemainingFuel(LANTERN_FUEL - 1);
     const clamp = new ItemEntity({ itemId: 'lightbulb', count: 1 }); inventory.configureItem(clamp);
     fueled.TakeFuelItem(clamp);
     expect(fueled.currentfuel).toBe(LANTERN_FUEL);
-    expect(controller.isOn).toBe(false);
+    expect(ison()).toBe(false);
   } finally { dry.destroy(); wet.destroy(); inventory.dispose(); }
 });
 

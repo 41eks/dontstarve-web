@@ -1,7 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { HAT_DEFINITIONS, HatActivationController, HatEquipmentAssets } from '../../prefab/src/hats';
-import { LanternLightController } from '../../prefab/src/lantern';
+import { LANTERN_COLOUR } from '../../prefab/src/lantern';
+import { spawnLightEntity } from '../../prefab/src/localLight';
 import { smallHash } from '../src/animationAssets';
 import { Sanity } from '../../componets/src/sanity';
 import { createEmptyEntity, type PrefabInstance } from '../../prefab/src/prefabInstance';
@@ -31,8 +32,9 @@ describe('Enlightened Crown source activation', () => {
     // The FX archive is already cached, as after an earlier activation: its layers are drawn at once.
     await assets.loadFactory(hat.definition.equip.activated!.archive);
     const { instance: owner, display } = createEmptyEntity('wilson');
-    const lantern = new LanternLightController(owner);
-    lantern.setLit(true);
+    // A lit lantern's lanternlight parented to the same owner.
+    const lantern = spawnLightEntity('lanternlight', owner);
+    lantern.instance.light.set({ radius: 5, intensity: .6, falloff: .9, colour: LANTERN_COLOUR });
     const lanternLight = parentedLight(owner, 'lanternlight');
     const crownLight = () => parentedLight(owner, 'alterguardianhatlight');
     const declared = () => [...owner.sprite.fx.peek().values()];
@@ -109,7 +111,7 @@ describe('Enlightened Crown source activation', () => {
     sanity.SetCurrent(0);
     expect(sanityRead).not.toHaveBeenCalled();
     expect(crownLight()).toBeUndefined();
-    lantern.dispose();
+    lantern.remove();
     display.dispose();
   });
 

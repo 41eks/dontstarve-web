@@ -131,7 +131,7 @@ export {
 } from './turf';
 export type { PointerContext, WorldContext } from './worldContext';
 export {
-  LANTERN_ID, LANTERN_COLOUR, LANTERN_FUEL, LanternController, LanternLightController, getLanternController,
+  LANTERN_ID, LANTERN_COLOUR, LANTERN_FUEL, type LanternInst,
   lanternPrefabs, createLanternHandLifecycle, lanternVisual,
 } from './lantern';
 export { spawnLightEntity, type PrefabLocalLight } from './localLight';
