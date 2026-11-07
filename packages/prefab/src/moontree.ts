@@ -385,7 +385,7 @@ export function moonTreePrefabs(world: MoonTreeWorld, random: () => number = Mat
     assets: { animationArchive: definitions.moonTree.archive,
       buildArchives: [definitions.moonTree.archive, 'snow.zip'], bank: 'moon_tree', hiddenSymbols: ['snow'],
       symbolOverrides: { snow: { archive: 'snow.zip', symbol: 'snow' } } },
-    assetOptions: { scale: definitions.moonTree.scale, staticBillboard: true,
+    assetOptions: { staticBillboard: true,
       instancedAnimations: [...new Set([standingAnimation, ...MOON_TREE_SIZES.map(size => `sway1_loop_${size}`)])] },
     alignBottom: true,
     physics: { make: MakeObstaclePhysics, radius: .5 },

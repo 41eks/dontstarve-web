@@ -45,7 +45,6 @@ export interface WallDefinition {
         frontImageIndex: number;
         sideImageIndex: number;
     };
-    scale: number;
     /**
      * Oblique side art for diagonal camera headings (45/135/225/315), where the
      * wall's `facing=240` animations are used, e.g. `4` for `wall_segment-4`.
@@ -282,7 +281,7 @@ export class WallPlacement<BuildId extends string> {
         const display = this.displays.add({ root: instance.transform.model, name: definition.name, status: instance.status, sprite: instance.sprite, light: instance.light, alignBottom: true,
             source: this.resources.staticFactory(definition.archive, {
                 imageIndices: [definition.sideImageIndex, definition.frontImageIndex],
-                name: definition.name, scale: definition.scale, symbol: definition.symbol,
+                name: definition.name, symbol: definition.symbol,
                 ...(definition.overlay ? { overlay: { symbol: definition.overlay.symbol,
                     imageIndices: [definition.overlay.sideImageIndex, definition.overlay.frontImageIndex] } } : {}),
                 animationArchive: definition.animationArchive ?? 'wall.zip', restAnimation: 'half',

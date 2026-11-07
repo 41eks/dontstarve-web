@@ -27,6 +27,7 @@ export type { CompositeSpriteFrame, SpriteTint } from './spriteDressing';
 import { registerSpriteRenderGroup } from './renderOrder';
 import { publishSpriteSpatialBounds, spriteSpatialRadius } from './spatialBounds';
 import { installMatrixGate } from './matrixGate';
+import { SPRITE_SCALE } from './units';
 
 /** Envelope radius of every frame of an animation drawn from the plain build (no skin layers or overrides). */
 const animationEnvelopes = new WeakMap<Animation, number>();
@@ -724,7 +725,7 @@ function createSprite(
   sprite.userData.billboard = true;
 
   const visual = new THREE.Group();
-  const scale = options.scale ?? 0.02;
+  const scale = options.scale ?? SPRITE_SCALE;
   visual.scale.set(scale, -scale, scale);
   sprite.add(visual);
   registerSpriteRenderGroup(sprite, visual);

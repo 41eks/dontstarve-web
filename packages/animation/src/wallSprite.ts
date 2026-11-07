@@ -16,6 +16,7 @@ import {
 import { registerSpriteRenderGroup } from './renderOrder';
 import type { TransientSpriteAnimationController } from './sprite';
 import type { SymbolBuild } from './animState';
+import { SPRITE_SCALE } from './units';
 
 /** Extra symbol drawn over the main one; `imageIndices` pairs positionally with the main list. */
 export interface StaticSpriteOverlay {
@@ -388,7 +389,7 @@ export async function createStaticSpriteFactory(
       sprite.name = options.name ?? build.name;
       sprite.userData.billboard = true;
       const visual = new THREE.Group();
-      const scale = options.scale ?? 0.02;
+      const scale = options.scale ?? SPRITE_SCALE;
       visual.scale.set(scale, -scale, scale);
       sprite.add(visual);
       registerSpriteRenderGroup(sprite, visual);
