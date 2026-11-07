@@ -38,11 +38,6 @@ export {
 export {
   basic_init_fn,
   bookstation_init_fn,
-  moondial_init_fn,
-  winterometer_init_fn,
-  lightning_rod_init_fn,
-  birdcage_init_fn,
-  sculptingtable_init_fn,
   wall_stone_init_fn,
   wall_ruins_init_fn,
   wall_moonrock_init_fn,

@@ -1,24 +1,23 @@
 import { Workable } from '../../componets/src/workable';
 import { createStructureLootDropper } from './structureLoot';
-import type * as THREE from 'three';
+import { SpriteState } from '@dontstarve-web/display';
 import definitions from './definitions.json' with { type: 'json' };
-import { lightning_rod_init_fn } from '@dontstarve-web/animation/prefabskin';
 import { Battery } from '../../componets/src/battery';
 import { ComponentTimer } from '../../componets/src/timer';
-import {
-    type AnimatedBuildingDefinition,
-    type AnimatedBuildingEventContext,
-} from './animatedBuildingPlacement';
-import { actionEntity } from './actionEntity';
+import { buildingPlacer, buildingPrefab, MakeBuildingPersist, type BuildingDeclaration } from './building';
 import { PlaySound } from './sound';
 import { TILE_SIZE } from './tile';
-import { prefabInstance, type PrefabInstance } from './prefabInstance';
+import { PrefabInstance } from './prefabInstance';
 import type { PlacementSaveRecord } from './saveRecord';
+import type { PrefabWorldContext } from './worldContext';
 
 export const LIGHTNING_ROD_ID = 'lightning_rod' as const;
 export type LightningRodId = typeof LIGHTNING_ROD_ID;
-export const LIGHTNING_ROD_SKIN_ARCHIVES: Readonly<Record<string, string>> =
-    definitions.animatedBuildings.lightning_rod.skinArchives;
+const declaration: BuildingDeclaration = definitions.animatedBuildings.lightning_rod;
+export const LIGHTNING_ROD_SKIN_ARCHIVES: Readonly<Record<string, string>> = declaration.skinArchives!;
+
+/** lightningrod.lua MakePlacer("lightning_rod_placer", "lightning_rod", "lightning_rod", "idle"). */
+export const LIGHTNING_ROD_PLACER = buildingPlacer(declaration);
 
 /** lightningrod.lua OnSave: data.charged and data.chargeleft only exist while the rod is charged. */
 export interface LightningRodSaveState { charged: true; chargeleft: number }
@@ -40,9 +39,9 @@ class LightningRod {
 
     private readonly inst: PrefabInstance;
 
-    constructor(context: AnimatedBuildingEventContext) {
-        this.inst = context.instance;
-        const scheduler = context.world?.scheduler;
+    constructor(inst: PrefabInstance) {
+        this.inst = inst;
+        const scheduler = inst.worldServices?.scheduler;
         if (scheduler) {
             this.zapTimer = new ComponentTimer(scheduler, () => this.dozap());
             this.dayTimer = new ComponentTimer(scheduler, () => {
@@ -131,14 +130,6 @@ class LightningRod {
     }
 }
 
-export interface LightningRodInstance extends PrefabInstance {
-    lightningRod: LightningRod;
-    readonly components: PrefabInstance['components'] & {
-        battery: Battery<LightningRod>;
-        inspectable: { getstatus(): 'CHARGED' | undefined };
-    };
-}
-const rodOf = (model: THREE.Object3D): LightningRod => (prefabInstance(model) as LightningRodInstance).lightningRod;
 
 /** onlightning: the same source onhit declaration, then a full three-day charge. */
 function onlightning(inst: LightningRodInstance): void {
@@ -157,28 +148,40 @@ function onload(inst: PrefabInstance, data: PlacementSaveRecord['components']): 
     if (saved?.charged && saved.chargeleft > 0) (inst as LightningRodInstance).lightningRod.setcharged(saved.chargeleft);
 }
 
-function oninit(context: AnimatedBuildingEventContext): void {
-    const { model, instance } = context;
-    const workable = instance.components.workable = new Workable(instance);
-    workable.SetWorkAction('HAMMER');
-    workable.SetWorkLeft(4);
-    workable.SetOnWorkCallback(onhit);
-    workable.SetOnFinishCallback(onhammered);
-    instance.components.lootdropper = createStructureLootDropper(instance);
+/** lightningrod.lua fn(), as far as it is ported: the charge, its battery and the hammer workable. */
+export class LightningRodInstance extends PrefabInstance {
+    readonly lightningRod: LightningRod;
+    declare readonly components: PrefabInstance['components'] & {
+        battery: Battery<LightningRod>;
+        inspectable: { getstatus(): 'CHARGED' | undefined };
+    };
 
-    const entity = actionEntity(model, LIGHTNING_ROD_ID);
-    const rod = new LightningRod(context);
-    (instance as LightningRodInstance).lightningRod = rod;
-    entity.addTag('lightningrod');
-    Object.assign(prefabInstance(model)!.components, {
-        battery: rod.battery,
-        // getstatus: inst.charged and "CHARGED" or nil
-        inspectable: { getstatus: () => rod.charged ? 'CHARGED' : undefined },
-    });
-    instance.ListenForEvent('lightningstrike', () => onlightning(instance as LightningRodInstance));
-    instance.ListenForEvent('onbuilt', () => onbuilt(instance));
-    instance.OnSave = onsave;
-    instance.OnLoad = onload;
+    constructor(world: PrefabWorldContext) {
+        super(LIGHTNING_ROD_ID, new SpriteState({ name: declaration.idleAnimation ?? 'idle', billboard: true }));
+        this.worldServices = world;
+        MakeBuildingPersist(this);
+        const { OnSave: saveBuilding, OnLoad: loadBuilding } = this;
+        this.OnSave = (inst, data) => { saveBuilding!(inst, data); onsave(inst, data); };
+        this.OnLoad = (inst, data) => { loadBuilding!(inst, data); onload(inst, data); };
+        const workable = this.components.workable = new Workable(this);
+        workable.SetWorkAction('HAMMER');
+        workable.SetWorkLeft(4);
+        workable.SetOnWorkCallback(onhit);
+        workable.SetOnFinishCallback(onhammered);
+        this.components.lootdropper = createStructureLootDropper(this);
+
+        const rod = this.lightningRod = new LightningRod(this);
+        this.addTag('structure');
+        this.addTag('lightningrod');
+        Object.assign(this.components, {
+            battery: rod.battery,
+            // getstatus: inst.charged and "CHARGED" or nil
+            inspectable: { getstatus: () => rod.charged ? 'CHARGED' : undefined },
+        });
+        this.ListenForEvent('lightningstrike', () => onlightning(this));
+        this.ListenForEvent('onbuilt', () => onbuilt(this));
+        this.onRemove(() => rod.dispose());
+    }
 }
 
 function onbuilt(inst: PrefabInstance): void {
@@ -198,9 +201,6 @@ function onhammered(inst: PrefabInstance): void {
     inst.remove();
 }
 
-export const LIGHTNING_ROD_DEFINITION: AnimatedBuildingDefinition = {
-    ...definitions.animatedBuildings.lightning_rod,
-    skinInit: lightning_rod_init_fn,
-    oninit,
-    ondispose: ({ model }) => rodOf(model).dispose(),
-};
+export function lightningRodPrefabs(world: PrefabWorldContext) {
+    return { [LIGHTNING_ROD_ID]: buildingPrefab(declaration, 'lightning_rod', undefined, () => new LightningRodInstance(world), world) };
+}

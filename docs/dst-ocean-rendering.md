@@ -1,8 +1,8 @@
 # 海洋颜色纹理与多阶段渲染
 
-`packages/prefab/src/ocean.ts` 对应 Lua `components/oceancolor.lua`，负责昼夜颜色与纹理混合比例的插值。它通过私有 `watchSignal` 读取世界时钟，在显式释放时解除桥接及其 effect。插值和移动噪声使用每帧实际 `dt`，不写世界时钟。
+`packages/display/src/oceanSurface.ts` 对应 Lua `components/oceancolor.lua`，负责昼夜颜色与纹理混合比例的插值。它通过私有 `watchSignal` 读取世界时钟，在显式释放时解除桥接及其 effect。插值和移动噪声使用每帧实际 `dt`，不写世界时钟。
 
-`packages/prefab/src/oceanRenderPipeline.ts` 负责渲染目标、材质和离屏步骤。对应的 shader 来自 `/data/copy/AssetArchive-Dev/data/DST/data/databundles/shaders.zip`；Lua 参数来自 `tiledefs.lua`、`tilemanager.lua`、`tuning.lua` 和 `gamelogic.lua`。
+`packages/display/src/oceanRenderPipeline.ts` 负责渲染目标、材质和离屏步骤。对应的 shader 来自 `/data/copy/AssetArchive-Dev/data/DST/data/databundles/shaders.zip`；Lua 参数来自 `tiledefs.lua`、`tilemanager.lua`、`tuning.lua` 和 `gamelogic.lua`。
 
 海浪生成由 `packages/componets/src/wavemanager.ts` 按 Lua `components/wavemanager.lua` 的相机距离、生成频率和岸线规则选择位置；`packages/prefab/src/ocean_waves.ts` 加载并播放岸浪和波光动画。场景向 `OceanWaves` 注入所属世界的 `tickingarea`，每个 FX 在最终地面位置查询默认 10 格方形活动区域，通过私有 `watchSignal` 和普通 `createEffect` 监听。按 `wave_shimmer.lua` / `wave_shore.lua` 的 `OnEntitySleep = inst.Remove`，tile inactive 时立即移除 FX、释放独立几何及监听，回到范围不恢复旧波浪；动画结束和显式 dispose 走同一清理入口，共享材质留给资源缓存释放。未注入查询或查询返回 `undefined` 时维持原有动画生命周期。海浪不进入存档，不新增调试命令或 prefab ID。
 

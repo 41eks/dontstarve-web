@@ -8,9 +8,19 @@ import type { InstancedSprite } from './instancedArchiveSprites';
 import { installRootMatrixGate } from './matrixGate';
 import { TransformRoot } from './transformRoot';
 import type { LayerAnimationController, LoadedBuildOverride, PercentAnimationController, SpriteController, TransientSpriteAnimationController } from './sprite';
+import type { BuildOverride, CompositeSpriteFrame, SpriteTint, SymbolOverride } from './spriteDressing';
+import type { ResolvedAnimState } from './animState';
+import type { ResolvedSprite } from './animationAssets';
 
-/** `none` is AnimState with no animation playing: nothing is drawn, and no sprite is built until a clip is played. */
-interface Clip { name: string; loop: boolean; complete?: () => void; finished: boolean; frame?: number; none?: boolean }
+/**
+ * `none` is AnimState with no animation playing: nothing is drawn, and no sprite is built until a clip is played.
+ * `percent` is AnimState:SetPercent: the clip is held at that fraction of its length until another clip is played.
+ * `transient` is brief feedback that returns to the clip it interrupted.
+ */
+interface Clip {
+  name: string; loop: boolean; complete?: () => void; finished: boolean; frame?: number; none?: boolean; percent?: number;
+  transient?: () => void;
+}
 
 /** Persistent entity origin; only the sprite under its model may be unloaded. */
 export interface ResidentEntity {
@@ -33,7 +43,7 @@ function toParentFrame(visual: THREE.Object3D, point: THREE.Vector3): void {
  * `setActive(false)` also takes the stable root out of its parent and `setActive(true)` puts it back, so scene
  * traversals (projection, matrix updates) skip inactive entities; the owner keeps the root and its state.
  */
-export class ResidentSprite implements ArchiveSprite {
+export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationController, PercentAnimationController {
   readonly model: THREE.Group;
   private readonly placeholder = new THREE.Group();
   // The current sprite owns its subtree cache; the stable root caches only itself, or is a TransformRoot.
@@ -93,6 +103,8 @@ export class ResidentSprite implements ArchiveSprite {
   get loaded(): boolean { return this.sprite !== undefined; }
   get currentAnimation(): string { return this.sprite?.currentAnimation ?? this.clip.name; }
   get frameCount(): number { return this.sprite?.frameCount ?? 0; }
+  get currentAnimationLength(): number { return this.sprite?.currentAnimationLength ?? 0; }
+  get frame(): number { return this.sprite?.frame ?? 0; }
   /** The symbol's point in the entity root's frame, as a follower parented to the root reads it. */
   getSymbolPosition(symbol: string, x: number, y: number, target: THREE.Vector3): boolean {
     if (!this.sprite?.getSymbolPosition(symbol, x, y, target)) return false;
@@ -168,22 +180,29 @@ export class ResidentSprite implements ArchiveSprite {
     registerSpriteRenderGroup(this.model, sprite.model.children[0] as THREE.Group);
     this.attachHook?.(sprite);
     this.play();
-    sprite.setPaused(this.paused);
   }
 
   private play(): void {
     const clip = this.clip, sprite = this.sprite;
     if (!sprite) return;
-    if (clip.loop) sprite.start(clip.name);
+    if (clip.percent !== undefined) {
+      sprite.playOnce(clip.name);
+      sprite.setFrame(Math.min(Math.floor(clip.percent * sprite.frameCount), sprite.frameCount - 1));
+    } else if (clip.loop) sprite.start(clip.name);
     else if (clip.finished) { sprite.playOnce(clip.name); sprite.setFrame(sprite.frameCount - 1); }
     else sprite.playOnce(clip.name, () => {
       if (this.clip !== clip) return;
       clip.finished = true;
       clip.complete?.();
-      this.advanceQueue();
+      // A callback that moved on to another clip, such as a transient returning, keeps that clip's queue.
+      if (this.clip === clip) this.advanceQueue();
     });
     if (clip.frame !== undefined) sprite.setFrame(clip.frame);
+    this.applyPaused();
   }
+
+  /** A percent pose holds still on its own; the entity's pause holds whatever clip plays. */
+  private applyPaused(): void { this.sprite?.setPaused(this.paused || this.clip.percent !== undefined); }
 
   update(dt: number): void { this.sprite?.update(dt); }
   start(name: string): void {
@@ -219,7 +238,12 @@ export class ResidentSprite implements ArchiveSprite {
   }
   private settle(): void {
     const clip = this.clip;
-    if (!clip.loop && !clip.finished) { clip.finished = true; clip.complete?.(); }
+    if (!clip.loop && !clip.finished) {
+      clip.finished = true;
+      clip.complete?.();
+      // A transient returned to the clip it interrupted, which settles in turn.
+      if (this.clip !== clip) { this.settle(); return; }
+    }
     if (this.queue.length) {
       const last = this.queue[this.queue.length - 1];
       this.queue = [];
@@ -246,7 +270,34 @@ export class ResidentSprite implements ArchiveSprite {
     this.clip.frame = Math.max(0, Math.floor(frame));
     this.sprite?.setFrame(frame);
   }
-  setPaused(paused: boolean): void { this.paused = paused; this.sprite?.setPaused(paused); }
+  setPaused(paused: boolean): void { this.paused = paused; this.applyPaused(); }
+  /** AnimState:SetPercent: the clip held at `percent` of its length, now and whenever the sprite is drawn again. */
+  setPercent(name: string, percent: number): void {
+    if (!Number.isFinite(percent) || percent < 0 || percent > 1) throw new RangeError('Invalid animation percent');
+    const resume = this.leavesNoAnimation();
+    this.queue = [];
+    this.clip = { name, loop: false, finished: true, percent };
+    if (resume) this.load();
+    this.play();
+  }
+  /**
+   * Brief feedback, then the interrupted clip resumes at the frame it was on with its queue and callback. Nothing is drawn
+   * while unloaded, so the feedback settles at once; a transient during another keeps returning to the first one's clip.
+   */
+  playTransient(name: string): void {
+    const interrupted = this.clip;
+    if (interrupted.none) return;
+    const queue = this.queue, frame = this.sprite?.frame;
+    const restore = interrupted.transient ?? (() => {
+      this.clip = interrupted;
+      this.queue = queue;
+      this.play();
+      if (frame !== undefined && !interrupted.finished && interrupted.frame === undefined) this.sprite?.setFrame(frame);
+    });
+    this.queue = [];
+    this.clip = { name, loop: false, finished: false, complete: restore, transient: restore };
+    if (!this.sprite && !this.loading) this.settle(); else this.play();
+  }
   setSkin(skin: import('./sprite').SpriteSkin | undefined): void { this.sprite?.setSkin(skin); }
   setFacing(facing: number): void { this.sprite?.setFacing(facing); }
   // Appearance is not kept here: the owning prefab dresses each drawn sprite from its own state through an
@@ -258,6 +309,18 @@ export class ResidentSprite implements ArchiveSprite {
   setSymbolOverride(symbol: string, archive?: string, sourceSymbol?: string): void { this.sprite?.setSymbolOverride(symbol, archive, sourceSymbol); }
   setSymbolHidden(symbol: string, hidden: boolean): void { this.sprite?.setSymbolHidden(symbol, hidden); }
   setLayerHidden(layer: string, hidden: boolean): void { this.sprite?.setLayerHidden(layer, hidden); }
+  setPlaybackRate(rate: number): void { this.sprite?.setPlaybackRate(rate); }
+  overrideSymbol(symbol: string, override: SymbolOverride | undefined): void { this.sprite?.overrideSymbol(symbol, override); }
+  setSymbolOverrides(overrides: ReadonlyMap<number, SymbolOverride>, hiddenLayers?: readonly string[]): void {
+    this.sprite?.setSymbolOverrides(overrides, hiddenLayers);
+  }
+  addOverrideBuild(name: string, override: BuildOverride): void { this.sprite?.addOverrideBuild(name, override); }
+  clearOverrideBuild(name: string): void { this.sprite?.clearOverrideBuild(name); }
+  setAnimState(state: ResolvedAnimState): void { this.sprite?.setAnimState(state); }
+  setArtSource(source: import('./sprite').SpriteArtSource): void { this.sprite?.setArtSource(source); }
+  setTint(tint: SpriteTint): void { this.sprite?.setTint(tint); }
+  setComposites(frames: readonly CompositeSpriteFrame[]): void { this.sprite?.setComposites(frames); }
+  getResolvedFrame(): readonly ResolvedSprite[] { return this.sprite?.getResolvedFrame() ?? []; }
   faceCamera(rotation: THREE.Quaternion): void {
     (this.facing ??= new THREE.Quaternion()).copy(rotation);
     this.sprite?.faceCamera(this.facing);

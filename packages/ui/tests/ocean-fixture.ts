@@ -14,13 +14,13 @@ export async function checkOceanRendering() {
   const map = new TurfMap(120, tiles);
   const ground = await createTurfGround({ assetBaseUrl: '/dst/data', noiseTexture: 'Ground_noise_deciduous',
     tileAtlas: 'DECIDUOUS', size: 120 });
-  const visual = await map.createVisual('/dst/data');
+  map.bindMinimapArt('/dst/data');
   const display = new GroundDisplay(map, '/dst/data');
   await display.prepare();
   const clock = createSignal<ClockState>({ phase: 'day', timeinphase: 0 });
-  map.bindOceanClock(clock);
+  display.bindOceanClock(clock);
   const scene = new THREE.Scene();
-  scene.add(new THREE.AmbientLight(0xffffff, Math.PI), ground, visual, display.root);
+  scene.add(new THREE.AmbientLight(0xffffff, Math.PI), ground, display.root);
   const renderer = new THREE.WebGLRenderer({ preserveDrawingBuffer: true });
   renderer.setSize(480, 480);
   const camera = new THREE.OrthographicCamera(-24, 24, 24, -24, 0.1, 100);
@@ -45,13 +45,14 @@ export async function checkOceanRendering() {
     return result;
   };
   const pixel = (buffer: Uint8Array, x: number, y: number) => [...buffer.slice((y * 480 + x) * 4, (y * 480 + x) * 4 + 4)];
-  const withoutOcean = (() => { visual.visible = false; const result = pixels(); visual.visible = true; return result; })();
+  const oceanMesh = display.root.getObjectByName('TurfOcean:OCEAN_COASTAL')!;
+  const withoutOcean = (() => { oceanMesh.visible = false; const result = pixels(); oceanMesh.visible = true; return result; })();
   const daytime = pixels();
-  map.update(30);
+  display.update(30);
   const moving = pixels();
   clock.set({ phase: 'dusk', timeinphase: 0 });
   await new Promise(requestAnimationFrame);
-  map.update(10);
+  display.update(10);
   const dusk = pixels();
   const snow = new SnowEffect({ scene, dataBaseUrl: '/dst/data', getFocus: () => new THREE.Vector3(6, 0, 6),
     camera, rate: createSignal(0), cover: createSignal(3), groundSize: 120,

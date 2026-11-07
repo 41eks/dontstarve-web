@@ -53,7 +53,6 @@ function options(prefabId: typeof prefabIds[number], skinId: string) {
   const skin = definition.skinInit?.(skinId);
   return {
     initialAnimation: definition.idleAnimation ?? 'idle',
-    scale: definition.scale,
     skinArchive: skin?.skinArchive ?? definition.skinArchives![skinId],
     skinSymbols: definition.skinSymbols,
     baseSymbols: definition.baseSymbols,

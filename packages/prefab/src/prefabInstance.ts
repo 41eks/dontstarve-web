@@ -359,9 +359,12 @@ export function createEmptyEntity<Instance extends PrefabInstance<SpriteState, o
 
 /** Prefab(name, fn, assets): how one source prefab is built and which art its display declares. */
 export interface PrefabEntityDefinition<Instance extends PrefabInstance<SpriteState, object>> {
-  fn(position: ReadonlyVector3): Instance;
+  /** `sprites` is the world's shared resource cache, for the sources of the fx children the prefab draws; declaring one performs no IO. */
+  fn(position: ReadonlyVector3, sprites: SpriteResources): Instance;
   /** Source skin names and their shared build archives; the display loads the selected one. */
   skins?: Readonly<Record<string, string>>;
+  /** The symbols a skin build replaces, when it replaces only some of the base build's (OverrideItemSkinSymbol). */
+  skinSymbols?: readonly string[];
   /** How the builds' materials are made (multColour, point filtering), with or without skins. */
   materialOptions?: import('@dontstarve-web/animation/animationAssets').SpriteMaterialOptions;
   /** In place of `assets`: the art is the inventory image, drawn as a billboard. */
@@ -442,11 +445,12 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     if (this.disposed) throw new Error(`Cannot spawn ${prefabId}: its manager has been disposed`);
     if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError(`Invalid ${prefabId} position`);
     if (!this.has(prefabId)) throw new Error(`Unknown prefab: ${prefabId}`);
-    const { fn, assets, instanceAssets, assetOptions, alignBottom, rayTestOnBB, targetable = true, physics, minimapIcon, onSpawned, skins, alwaysActive,
-      materialOptions, icon, source } = this.prefabs[prefabId];
+    const { fn, assets, instanceAssets, assetOptions, alignBottom, rayTestOnBB, targetable = true, physics, minimapIcon, onSpawned, skins, skinSymbols,
+      alwaysActive, materialOptions, icon, source } = this.prefabs[prefabId];
     if (skinId !== undefined && !skins?.[skinId]) throw new Error(`Unsupported ${prefabId} skin: ${skinId}`);
-    const instance = fn(position);
-    if (skins || materialOptions) instance.sprite.setSkinSource({ art: this.resources.archives, archives: skins ?? {}, materialOptions });
+    const instance = fn(position, this.resources);
+    if (skins || materialOptions) instance.sprite.setSkinSource({ art: this.resources.archives, archives: skins ?? {}, materialOptions,
+      ...skinSymbols ? { symbols: skinSymbols } : {} });
     const iconSource = icon && this.iconSource(prefabId, icon);
     physics?.make(instance, physics.radius, physics.height);
     if (minimapIcon) instance.minimap.SetIcon(minimapIcon);

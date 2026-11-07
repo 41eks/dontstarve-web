@@ -71,21 +71,31 @@ export interface WilsonFx {
   pushEvent(name: 'fail_fx'): void;
 }
 
-/** What SGwilson.lua's tent and wakeup states reach through the sleeper's components and the HUD. */
+// TUNING.CALORIES_MED
+const CALORIES_MED = 25;
+
+/** The talker strings SGwilson.lua's tent state says through GetString(inst, failreason). */
+export type WilsonSleepAnnounce = 'ANNOUNCE_NODAYSLEEP' | 'ANNOUNCE_NONIGHTSIESTA' | 'ANNOUNCE_NOSLEEPONFIRE' | 'ANNOUNCE_NOHUNGERSLEEP';
+
+/** What SGwilson.lua's tent and wakeup states reach on the sleeper inst and TheWorld. */
 export interface WilsonSleepHost {
-  /** SetSleeperSleepState / SetSleeperAwakeState: player controller, inventory and speech while asleep. */
+  /** TheWorld.state.isday */
+  isDay(): boolean;
+  /** inst.components.hunger.current */
+  hungerCurrent(): number;
+  /** inst.sleepingbag: the bed the sleeper's sleepingbaguser lies in. */
+  readonly sleepingbag: { DoWakeUp(nostatechange?: boolean): void } | undefined;
+  /** SetSleeperSleepState / SetSleeperAwakeState: player controller, inventory and HUD while asleep. */
   setSleeperState(sleeping: boolean): void;
   /** inst:Hide() / inst:Show() with the dynamic shadow. */
   setHidden(hidden: boolean): void;
-  /** The tent state's refusal reason (too bright, burning, too hungry), or undefined when the bed is allowed. */
-  failReason(bed: BufferedActionObject): string | undefined;
-  announce(reason: string): void;
-  /** The ontimeout checks: the bag is still a free tent for the current phase and is not burning. */
-  canCommit(bed: BufferedActionObject): boolean;
-  /** inst.sleepingbag ~= nil */
-  readonly hasBed: boolean;
-  /** inst.sleepingbag.components.sleepingbag:DoWakeUp(nostatechange) */
-  wakeBed(nostatechange: boolean): void;
+  /** inst.components.talker:Say(GetString(inst, failreason)) */
+  say(announce: WilsonSleepAnnounce): void;
+}
+
+/** The SLEEPIN target as the tent state checks it: its tags, sleepingbag and burnable. */
+interface WilsonTentTarget extends BufferedActionObject {
+  readonly components?: { sleepingbag?: unknown; burnable?: { IsBurning(): boolean } };
 }
 
 /** What SGwilson.lua's death state reaches: DropAllItemsForDeath and the controller. */
@@ -275,12 +285,23 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
     onenter: (inst) => {
       const { host } = inst.context, sleep = host.sleep;
       host.stopMovement?.();
-      const action = inst.context.getBufferedAction();
-      const reason = action?.target && sleep?.failReason(action.target);
-      if (!action?.target || !sleep || reason) {
+      const target = inst.context.getBufferedAction()?.target as WilsonTentTarget | undefined;
+      if (!target || !sleep) {
         inst.context.clearBufferedAction();
         inst.goToState('idle');
-        if (reason) sleep?.announce(reason);
+        return;
+      }
+      // Caves and IsNearDanger are not ported.
+      const siesta = target.hasTag('siestahut');
+      const failreason: WilsonSleepAnnounce | undefined =
+        siesta !== sleep.isDay() ? (siesta ? 'ANNOUNCE_NONIGHTSIESTA' : 'ANNOUNCE_NODAYSLEEP')
+          : target.components?.burnable?.IsBurning() ? 'ANNOUNCE_NOSLEEPONFIRE'
+            // You can still sleep if your hunger will bottom out, but not absolutely.
+            : sleep.hungerCurrent() < CALORIES_MED ? 'ANNOUNCE_NOHUNGERSLEEP' : undefined;
+      if (failreason) {
+        inst.context.clearBufferedAction();
+        inst.goToState('idle');
+        sleep.say(failreason);
         return;
       }
       inst.context.playClips([clip('pickup')]);
@@ -288,10 +309,11 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
       sleep.setSleeperState(true);
     },
     ontimeout: (inst) => {
-      const { host } = inst.context, sleep = host.sleep!;
-      const action = inst.context.getBufferedAction();
-      if (!action?.target || !sleep.canCommit(action.target)) {
-        // Edge cases: no failure dialogue.
+      const sleep = inst.context.host.sleep!;
+      const tent = inst.context.getBufferedAction()?.target as WilsonTentTarget | undefined;
+      if (!tent || !tent.components?.sleepingbag || !tent.hasTag('tent') || tent.hasTag('hassleeper')
+        || tent.hasTag('siestahut') !== sleep.isDay() || tent.components.burnable?.IsBurning()) {
+        // Edge cases, don't bother with fail dialogue.
         inst.context.clearBufferedAction();
         inst.context.playClips([clip('pickup_pst')]);
         inst.goToState('idle', true);
@@ -306,15 +328,15 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
       // Movement while asleep wakes the sleeper first (Lua: the locomote handler's bedroll/tent branch).
       EventHandler('locomote', (inst) => {
         const sleep = inst.context.host.sleep;
-        if (sleep?.hasBed && inst.hasStateTag('sleeping')) sleep.wakeBed(false);
+        if (inst.hasStateTag('sleeping')) sleep?.sleepingbag?.DoWakeUp();
       }),
     ],
     onexit: (inst) => {
       const sleep = inst.context.host.sleep!;
       sleep.setHidden(false);
-      if (sleep.hasBed) {
+      if (sleep.sleepingbag) {
         // Interrupted while "sleeping".
-        sleep.wakeBed(true);
+        sleep.sleepingbag.DoWakeUp(true);
         sleep.setSleeperState(false);
       } else if (!inst.statemem.iswaking) {
         // Interrupted before "sleeping", or woken through the wakeup state.
@@ -1573,8 +1595,8 @@ export class WilsonStateGraph {
       if (this.sg.hasStateTag('dead')) return;
       if (this.sg.hasStateTag('sleeping')) {
         playHitSounds(this.host);
-        const sleep = this.host.sleep;
-        if (sleep?.hasBed) sleep.wakeBed(false);
+        const bag = this.host.sleep?.sleepingbag;
+        if (bag) bag.DoWakeUp();
         else { this.sg.statemem.iswaking = true; this.sg.goToState('wakeup'); }
       } else if (this.sg.hasStateTag('nointerrupt')) playHitSounds(this.host);
       else if (this.sg.hasStateTag('shell')) this.sg.goToState('shell_hit');

@@ -134,7 +134,7 @@ it('loads all source minimap masks and noise per terrain layer, and reports chan
   vi.stubGlobal('fetch', async (url: string) => new Response(
     await readFile(new URL(`../../../public/dst/data/${String(url).slice('/dst/data/'.length)}`, import.meta.url))));
   const map = new TurfMap(1000);
-  await map.createVisual('/dst/data');
+  map.bindMinimapArt('/dst/data');
   const { min, max } = map.cellRange();
   expect(max - min).toBe(84);
   expect(map.tileIdAtCell(0, 0)).toBe(WORLD_TILES.DECIDUOUS);

@@ -1,13 +1,10 @@
-import * as THREE from 'three';
-import type { GroundCellBounds, GroundLayerDeclaration, GroundTerrain } from '@dontstarve-web/display';
+import type * as THREE from 'three';
+import { FALLOFF_EDGES, type FalloffEdge, type GroundCellBounds, type GroundLayerDeclaration, type GroundTerrain,
+  type GroundTileArt } from '@dontstarve-web/display';
 import { TILE_SIZE, snapToTileCenter, type Vector2 } from './tile';
-import { GROUND_TILE_DEFINITIONS, FALLOFF_EDGES, groundFalloffGeometry, sortGroundFalloffGeometry, loadGroundFalloffAssets, loadGroundTileMinimapLayer, groundTileVariant, loadGroundTileAssets,
-  groundTileArt, type GroundFalloffAssets, type FalloffEdge, type GroundTileLayerImage, type GroundTileQuad, type GroundTileName } from './groundTiles';
-import { OceanSurface } from './ocean';
-import { mergeCellRectangles, cellRectangleGeometry } from './oceanRenderPipeline';
+import { GROUND_FALLOFF_ART, GROUND_TILE_DEFINITIONS, loadGroundTileMinimapLayer, groundTileVariant,
+  groundTileArt, type GroundTileLayerImage, type GroundTileQuad, type GroundTileName } from './groundTiles';
 import { loadMinimapOcean, type MinimapOceanData } from './minimapOcean';
-import type { ClockState, ReadonlySignal } from '@dontstarve-web/signals';
-import { GroundDepthPrepass } from './groundDepthPrepass';
 import { groundTileLayerQuads, isLandTile, isOceanTile } from './groundTileQuads';
 
 // tiledefs.lua preserves these vanilla GROUND IDs in WORLD_TILES.
@@ -48,7 +45,7 @@ function groundLayerRenderOrder(name: GroundTileName): number {
 export interface TerrainCellBounds { minCol: number; minRow: number; maxCol: number; maxRow: number }
 
 /** Generated terrain plus authoritative saved tile overrides and TERRAFORM changes.
- * Like world.lua, it declares the ground render layers and owns the tiles; GroundDisplay draws them.
+ * Like world.lua, it declares the ground render layers, cliffs and ocean and owns the tiles; GroundDisplay draws them.
  */
 export class TurfMap implements GroundTerrain {
   readonly size: number;
@@ -56,16 +53,9 @@ export class TurfMap implements GroundTerrain {
   readonly defaultTileId: number;
   private readonly originalTiles = new Map<string, number>();
   private readonly dugTiles = new Map<string, TurfTileSave>();
-  private visual?: THREE.Group;
-  private oceanMesh?: THREE.Mesh;
-  /** The ocean art's own material; the ocean pipeline draws the mesh with its combined material. */
-  private oceanMaterial?: THREE.Material;
+  readonly falloffArt = GROUND_FALLOFF_ART;
   private readonly listeners = new Set<(world: Vector2, originalTileId: number) => void>();
   private readonly terrainListeners = new Set<(bounds?: TerrainCellBounds) => void>();
-  private ocean?: OceanSurface;
-  private falloffAssets?: GroundFalloffAssets;
-  private falloffMesh?: THREE.Mesh;
-  private readonly depthPrepass = new GroundDepthPrepass();
   private assetBaseUrl?: string;
   private minimapLayers?: Promise<Map<number, GroundTileLayerImage>>;
   private minimapOceanData?: Promise<MinimapOceanData>;
@@ -180,11 +170,14 @@ export class TurfMap implements GroundTerrain {
     this.rebuildGeometry({ minCol: col, minRow: row, maxCol: col + 1, maxRow: row + 1 });
   }
 
-  /** Minimap render layer images (map_edge masks + mini noise) per tile id. Loaded once from the assets root of createVisual(). */
+  /** The assets root the minimap's layer images and ocean data load from. */
+  bindMinimapArt(assetBaseUrl: string): void { this.assetBaseUrl = assetBaseUrl; }
+
+  /** Minimap render layer images (map_edge masks + mini noise) per tile id. Loaded once from the root of bindMinimapArt(). */
   tileLayerImages(): Promise<Map<number, GroundTileLayerImage>> {
     if (!this.minimapLayers) {
       const root = this.assetBaseUrl;
-      if (root === undefined) return Promise.reject(new Error('Create terrain visuals before reading minimap layers'));
+      if (root === undefined) return Promise.reject(new Error('Bind the minimap art before reading minimap layers'));
       const names = this.terrainNames();
       this.minimapLayers = Promise.all(names.map(async name =>
         [WORLD_TILES[name], await loadGroundTileMinimapLayer(root, name)] as const)).then(entries => new Map(entries));
@@ -202,7 +195,7 @@ export class TurfMap implements GroundTerrain {
 
   /** Data of the separate minimapocean.ksh pass that draws every ocean tile. */
   minimapOcean(): Promise<MinimapOceanData> {
-    if (this.assetBaseUrl === undefined) return Promise.reject(new Error('Create terrain visuals before reading minimap ocean data'));
+    if (this.assetBaseUrl === undefined) return Promise.reject(new Error('Bind the minimap art before reading minimap ocean data'));
     return this.minimapOceanData ??= loadMinimapOcean(this.assetBaseUrl);
   }
 
@@ -212,8 +205,36 @@ export class TurfMap implements GroundTerrain {
 
   isPassableAtPoint(world: Vector2): boolean { return isLandTile(this.getTileAtWorld(world)); }
 
-  bindOceanClock(clock: ReadonlySignal<ClockState>): void { this.ocean?.bindClock(clock); }
-  update(dt: number): void { this.ocean?.update(dt); }
+  /** falloffdefs.lua FALLOFF: a land cell (docks excepted) gets a cliff on each side whose neighbour is void. */
+  falloffEdges(): FalloffEdge[] {
+    const edges: FalloffEdge[] = [];
+    const { min, max } = this.cellRange();
+    for (let row = min; row < max; row++) for (let col = min; col < max; col++) {
+      const tile = this.tileAt(col, row);
+      if (!isLandTile(tile) || tile === WORLD_TILES.MONKEY_DOCK) continue;
+      FALLOFF_EDGES.forEach(({ dx, dz }, edge) => {
+        if (this.isVoidAtCell(col + dx, row + dz)) edges.push({ col, row, edge });
+      });
+    }
+    return edges;
+  }
+
+  /** The ocean pass is drawn when the saved map holds ocean tiles. */
+  oceanArt(): GroundTileArt | undefined {
+    return [...this.dugTiles.values()].some(tile => isOceanTile(tile.tileId)) ? groundTileArt('OCEAN_COASTAL') : undefined;
+  }
+
+  /** The saved ocean tiles inside the world. */
+  *oceanSurfaceCells(): Iterable<readonly [number, number]> {
+    for (const tile of this.dugTiles.values()) {
+      if (isOceanTile(tile.tileId) && this.tileAt(tile.col, tile.row) !== WORLD_TILES.INVALID) yield [tile.col, tile.row];
+    }
+  }
+
+  isOceanTileAt(col: number, row: number): boolean { return isOceanTile(this.tileAt(col, row)); }
+
+  /** tiledefs.lua ocean colours of a cell's tile. */
+  oceanColoursAt(col: number, row: number) { return OCEAN_COLOURS.get(this.tileAt(col, row)); }
 
   /** world.lua: one render layer per land tile type, in source layer order (ocean is its own pass). */
   groundLayers(): readonly GroundLayerDeclaration[] {
@@ -333,44 +354,6 @@ export class TurfMap implements GroundTerrain {
     return [...this.dugTiles.values()].map((tile) => ({ ...tile }));
   }
 
-  /** Cliffs and the ocean surface. Ground layers are declared by groundLayers() and drawn by GroundDisplay. */
-  async createVisual(assetBaseUrl: string): Promise<THREE.Group> {
-    if (this.visual) return this.visual;
-    this.assetBaseUrl = assetBaseUrl;
-    const falloff = await loadGroundFalloffAssets(assetBaseUrl);
-    this.falloffAssets = falloff;
-    this.visual = new THREE.Group();
-    this.visual.name = 'EditableTurf';
-    // Only the falloff writes depth (prepass); turf layers stay depth-free and are ordered by renderOrder.
-    this.falloffMesh = new THREE.Mesh(new THREE.BufferGeometry(), falloff.material);
-    this.falloffMesh.name = 'TurfFalloff';
-    // Above ocean (-1.75) but below every turf layer, dirt included (>= -1): turf is drawn after, so it covers the falloff where they are coplanar.
-    this.falloffMesh.renderOrder = -1.25;
-    const modelView = new THREE.Matrix4();
-    this.falloffMesh.onBeforeRender = (_renderer, _scene, camera, geometry) => {
-      modelView.multiplyMatrices(camera.matrixWorldInverse, this.falloffMesh!.matrixWorld);
-      sortGroundFalloffGeometry(geometry, modelView);
-    };
-    this.depthPrepass.add(this.falloffMesh);
-    this.visual.add(this.falloffMesh);
-    if ([...this.dugTiles.values()].some(tile => isOceanTile(tile.tileId))) {
-      const assets = await loadGroundTileAssets(assetBaseUrl, 'OCEAN_COASTAL');
-      this.ocean = new OceanSurface(assets.material, { size: this.size, tileSize: TILE_SIZE,
-        isOceanTileAt: (col, row) => isOceanTile(this.tileAt(col, row)),
-        oceanColoursAt: (col, row) => OCEAN_COLOURS.get(this.tileAt(col, row)) });
-      this.oceanMaterial = assets.material;
-      this.oceanMesh = new THREE.Mesh(new THREE.BufferGeometry(), assets.material);
-      this.oceanMesh.name = 'TurfOcean:OCEAN_COASTAL';
-      this.oceanMesh.renderOrder = -1.75;
-      this.ocean.attach(this.oceanMesh);
-      this.visual.add(this.oceanMesh);
-    }
-    this.rebuildOcean();
-    this.rebuildFalloff();
-    this.ocean?.rebuildColours();
-    return this.visual;
-  }
-
   private tileAt(col: number, row: number): number {
     const half = this.size / 2;
     if ((col + 1) * TILE_SIZE <= -half || col * TILE_SIZE >= half
@@ -387,30 +370,11 @@ export class TurfMap implements GroundTerrain {
     return groundTileVariant(is(0, 0), cardinal, diagonal);
   }
 
-  /** The ocean pass shades by world position, so the surface only needs the footprint of the saved ocean tiles: merged rectangles. */
-  private rebuildOcean(): void {
-    const mesh = this.oceanMesh;
-    if (!mesh) return;
-    const { min, max } = this.cellRange();
-    const surface = new Set<string>();
-    for (const tile of this.dugTiles.values()) {
-      if (isOceanTile(tile.tileId) && this.tileAt(tile.col, tile.row) !== WORLD_TILES.INVALID) surface.add(`${tile.col},${tile.row}`);
-    }
-    const rects = mergeCellRectangles(max - min, (col, row) => surface.has(`${col + min},${row + min}`));
-    mesh.geometry.dispose();
-    mesh.geometry = cellRectangleGeometry(rects, min, TILE_SIZE, this.size / 2, new THREE.Matrix4());
-    mesh.visible = rects.length > 0;
-  }
-
   private rebuildGeometry(bounds?: TerrainCellBounds): void {
     const names = this.terrainNames();
     this.terrainNamesCache = undefined;
     if (this.terrainNames().some(name => !names.includes(name))) this.declareMinimapLayers();
     for (const listener of this.terrainListeners) listener(bounds);
-    if (!this.visual) return;
-    this.rebuildOcean();
-    this.rebuildFalloff();
-    this.ocean?.rebuildColours();
   }
 
   /** A newly declared layer joins the minimap's loaded layers, then redraws it. */
@@ -423,38 +387,8 @@ export class TurfMap implements GroundTerrain {
       .catch(error => console.error('Unable to load minimap layer art', error));
   }
 
-  /** falloffdefs.lua FALLOFF: a land cell (docks excepted) gets a cliff on each side whose neighbour is void. */
-  private rebuildFalloff(): void {
-    if (!this.falloffAssets || !this.falloffMesh) return;
-    const edges: FalloffEdge[] = [];
-    const { min, max } = this.cellRange();
-    for (let row = min; row < max; row++) for (let col = min; col < max; col++) {
-      const tile = this.tileAt(col, row);
-      if (!isLandTile(tile) || tile === WORLD_TILES.MONKEY_DOCK) continue;
-      FALLOFF_EDGES.forEach(({ dx, dz }, edge) => {
-        if (this.isVoidAtCell(col + dx, row + dz)) edges.push({ col, row, edge });
-      });
-    }
-    this.falloffMesh.geometry.dispose();
-    this.falloffMesh.geometry = groundFalloffGeometry(edges, this.falloffAssets);
-    this.depthPrepass.sync(this.falloffMesh);
-    this.falloffMesh.visible = edges.length > 0;
-  }
-
   dispose(): void {
-    this.depthPrepass.dispose();
-    this.ocean?.dispose();
-    this.ocean = undefined;
-    this.visual?.removeFromParent();
-    this.oceanMesh?.geometry.dispose();
-    this.oceanMaterial?.dispose();
-    this.oceanMesh = undefined; this.oceanMaterial = undefined;
-    this.falloffMesh?.geometry.dispose();
-    this.falloffMesh = undefined;
-    this.falloffAssets?.material.dispose();
-    this.falloffAssets = undefined;
     this.listeners.clear();
     this.terrainListeners.clear();
-    this.visual = undefined;
   }
 }

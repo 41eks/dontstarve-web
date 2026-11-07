@@ -1,8 +1,8 @@
 import { smallHash } from '@dontstarve-web/animation/animationAssets';
 import { AnimState } from '@dontstarve-web/animation/animState';
 import { SpriteResources, type NamedSpriteArt, type FollowerFx, type PrefabDisplay } from '@dontstarve-web/display';
-import { createSignal, type ReadonlySignal, type Signal } from '@dontstarve-web/signals';
-import { BufferedAction, WilsonStateGraph, type WilsonAction, type WilsonAnimationClip, type WilsonAnimationKey, type WilsonCombat, type WilsonFishingHost, type WilsonMovementState, type WilsonOneShotState, type WilsonSleepHost, type WilsonDeathHost } from '@dontstarve-web/stategraphs';
+import { clockstate, createMemo, createSignal, readonlySignal, type ReadonlySignal, type Signal } from '@dontstarve-web/signals';
+import { BufferedAction, WilsonStateGraph, type WilsonAction, type WilsonAnimationClip, type WilsonAnimationKey, type WilsonCombat, type WilsonFishingHost, type WilsonMovementState, type WilsonOneShotState, type WilsonSleepHost, type WilsonSleepAnnounce, type WilsonDeathHost } from '@dontstarve-web/stategraphs';
 import type * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import type { AxeTool } from './axe';
@@ -29,6 +29,7 @@ import type { WilsonSoulHopHost } from '../../stategraphs/src/SGwilson';
 import { STAFF_CASTINGLIGHT_ID, type StaffCastingLightInstance } from './staff_castinglight';
 import type { SlipperyFeet } from '../../componets/src/slipperyfeet';
 import type { ComponentUpdates } from '../../componets/src/componentUpdates';
+import { SleepingBagUser } from '../../componets/src/sleepingbaguser';
 
 /** skinprefabs.lua wortox_none: normal_skin = wortox, ghost_skin = ghost_wortox_build. */
 export const PLAYER_ART_CHARACTER = 'wortox' as const;
@@ -108,6 +109,13 @@ const WILSON_ANIMATION_ARCHIVES: WilsonAnimations = {
   slip_fall_idle: 'player_slip.zip',
   slip_fall_pst: 'player_slip.zip',
 };
+/** STRINGS.CHARACTERS.WORTOX: GetString(inst, failreason) for SGwilson's tent refusals. */
+const WORTOX_SLEEP_SPEECH: Record<WilsonSleepAnnounce, string> = {
+  ANNOUNCE_NODAYSLEEP: '我不要打乱规律的作息时间。',
+  ANNOUNCE_NONIGHTSIESTA: '我这么有荣誉感，怎么会在夜晚小憩呢。',
+  ANNOUNCE_NOSLEEPONFIRE: '莫要烧焦了我的皮草。',
+  ANNOUNCE_NOHUNGERSLEEP: '灵魂过度饥饿，难以入眠。',
+};
 /** player_common_extensions.lua AddOverrideBuild, named in the display declaration. */
 const UNIQUE_ITEM_BUILD = 'player_actions_uniqueitem';
 
@@ -133,8 +141,6 @@ export interface WilsonAnimationController {
   /** Follower:FollowSymbol(owner.GUID, symbol, offsetX, offsetY): a node tracking the symbol, in the player's space. */
   /** `fx` is drawn at the follower by the player's display, which loads its art. */
   followSymbol(symbol: string, offsetX: number, offsetY: number, fx?: FollowerFx): SymbolFollower;
-  /** The application's sleeper services for SGwilson's tent and wakeup states; inst:Hide() / inst:Show() is the player's own sprite. */
-  bindSleep(sleep: Omit<WilsonSleepHost, 'setHidden'> | undefined): void;
   /** SGwilson's death state: DropAllItemsForDeath through the application's inventory. */
   bindDeath(death: WilsonDeathHost | undefined): void;
   /** The equipped rod's component for SGwilson's fishing states. */
@@ -148,7 +154,6 @@ export interface WilsonAnimationController {
   readonly isGhost: boolean;
   readonly isSleeping: boolean;
   wakeFromBed(): void;
-  goToWakeup(): void;
   update(dt: number): void;
 }
 
@@ -174,6 +179,8 @@ export interface WilsonPlayerInstance extends PrefabInstance {
     sanity?: import('../../componets/src/sanity').Sanity;
     /** The input's action picker: the ghost pushes and pops its action filter on it. */
     playeractionpicker?: Pick<import('../../stategraphs/src/playeractionpicker').PlayerActionPicker, 'PushActionFilter' | 'PopActionFilter'>;
+    /** player_common.lua master_postinit AddComponent("sleepingbaguser"), on game time. */
+    sleepingbaguser?: SleepingBagUser;
   };
   animationController: WilsonAnimationController;
   controllerEnabled: boolean;
@@ -194,7 +201,11 @@ export interface WilsonPlayerInstance extends PrefabInstance {
   /** SpawnPrefab: the scene's registry, for what the player's states and death spawn. */
   SpawnPrefab?: (prefab: string, position: THREE.Vector3) => PrefabInstance | undefined;
   /** inst.HUD, set by the front end while the player has one. */
-  HUD?: { Show(): void; Hide(): void };
+  HUD?: {
+    Show(): void; Hide(): void;
+    /** HUD.controls: inventory:Hide() / Show() hide and show crafting and the inventory bar. */
+    controls?: { HideCraftingAndInventory(): void; ShowCraftingAndInventory(): void };
+  };
   /** inst:ShowHUD(show) */
   ShowHUD(show: boolean): void;
   /** inst.entity:IsVisible(): false while inst:Hide() holds. */
@@ -246,7 +257,7 @@ class WilsonController implements WilsonAnimationController {
   private readonly hatAssets: HatEquipmentAssets;
   private emote: ActiveEmote | null = null;
   readonly bookFx: BookFxController;
-  private sleepHost?: WilsonSleepHost;
+  private readonly sleepHost?: WilsonSleepHost;
   private deathHost?: WilsonDeathHost;
   private fishingHost?: WilsonFishingHost;
   private readonly SoundEmitter: SoundEmitter;
@@ -274,6 +285,24 @@ class WilsonController implements WilsonAnimationController {
       followSymbol: (symbol, x, y, fx) => this.followSymbol(symbol, x, y, fx),
     };
     this.bookFx = new BookFxController(instance, this.fxScheduler, resources);
+    const sleeper = instance.components.sleepingbaguser;
+    // SGwilson.lua tent and wakeup on the player inst: its hunger, sleepingbaguser, controller, HUD and talker.
+    this.sleepHost = sleeper && {
+      isDay: () => clockstate.peek().phase === 'day',
+      hungerCurrent: () => instance.stats.hunger.current,
+      get sleepingbag() { return sleeper.bed; },
+      setSleeperState: sleeping => {
+        // SetSleeperSleepState / SetSleeperAwakeState: playercontroller:Enable and inventory:Hide / Show.
+        // OnSleepIn / OnWakeUp's hand and active item stashing is not ported.
+        instance.controllerEnabled = !sleeping;
+        if (sleeping) instance.HUD?.controls?.HideCraftingAndInventory();
+        else instance.HUD?.controls?.ShowCraftingAndInventory();
+      },
+      // inst:Hide() / inst:Show() with the DynamicShadow, declared on the sprite for the player's display.
+      setHidden: hidden => instance.sprite.setVisible(!hidden),
+      // The talker component is not ported: the line is logged.
+      say: announce => console.info(WORTOX_SLEEP_SPEECH[announce]),
+    };
     const controller = this;
     this.stategraph = new WilsonStateGraph({
       get soulHop() { return controller.soulHopHost; },
@@ -393,15 +422,6 @@ class WilsonController implements WilsonAnimationController {
     stop();
     return false;
   }
-  /** The application's sleeper services for SGwilson's tent and wakeup states. */
-  bindSleep(sleep: Omit<WilsonSleepHost, 'setHidden'> | undefined): void {
-    const { sprite } = this.instance;
-    // A sleeper unbound while hidden in its bed (scene teardown) is shown again, as the tent state's onexit would.
-    if (!sleep && this.sleepHost && this.stategraph.hasStateTag('sleeping')) sprite.setVisible(true);
-    // SGwilson.lua tent: inst:Hide() / inst:Show() with the DynamicShadow, declared on the sprite for the player's display.
-    this.sleepHost = sleep && Object.assign(Object.create(sleep) as WilsonSleepHost,
-      { setHidden: (hidden: boolean) => sprite.setVisible(!hidden) });
-  }
   bindDeath(death: WilsonDeathHost | undefined): void { this.deathHost = death; }
   bindSpawnPrefab(spawn: ((prefab: string, position: THREE.Vector3) => PrefabInstance | undefined) | undefined): void { this.instance.SpawnPrefab = spawn; }
 
@@ -442,8 +462,6 @@ class WilsonController implements WilsonAnimationController {
   get isSleeping(): boolean { return this.stategraph.isSleeping; }
   /** Movement input while asleep: the locomote event wakes the sleeper. */
   wakeFromBed(): void { this.stategraph.pushLocomote(); }
-  /** sleepingbaguser:DoWakeUp's `inst.sg:GoToState("wakeup")`. */
-  goToWakeup(): void { this.stategraph.wakeUp(); }
 
   get currentEmote(): WilsonEmote | null { return this.emote?.id ?? null; }
   get isEmoting(): boolean { return this.emote !== null; }
@@ -558,6 +576,17 @@ function createWilsonPlayerEntity(
   const player = display.model;
   const stopSanity = options.componentUpdates?.register(instance.stats.sanity);
   if (stopSanity) instance.onRemove(stopSanity);
+  if (options.scheduler) {
+    // sleepingbaguser.lua: per-tick hunger, sanity and health in a bed; WatchWorldState("phase") wakes at the bed's phase end.
+    const phase = createMemo(() => clockstate.get().phase);
+    const { hunger, sanity, health } = instance.stats;
+    const sleeper = instance.components.sleepingbaguser = new SleepingBagUser({
+      scheduler: options.scheduler, phase: readonlySignal(phase), hunger, sanity, health,
+      goToWakeup: () => instance.animationController.stategraph.wakeUp(),
+    });
+    // player_common.lua OnDespawn: the bed releases its sleeper without a state change.
+    instance.onRemove(() => { sleeper.bed?.DoWakeUp(true); sleeper.dispose(); phase.dispose(); });
+  }
   instance.minimap.SetIcon(`${PLAYER_ART_CHARACTER}.png`);
   instance.minimap.SetPriority(10);
   instance.minimap.SetCanUseCache(false);

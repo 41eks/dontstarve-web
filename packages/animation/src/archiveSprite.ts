@@ -2,12 +2,18 @@ import * as THREE from 'three';
 import { spritePerf, spritePerfAsync } from './spritePerf';
 import {
   createMaterials, findImage, loadAnim, loadBuild, smallHash, SpriteFrameRenderer, FrameGeometryCache,
-  type ParsedAnim, type ParsedBuild, type ResolvedSprite, type SharedFrame, type SpriteMaterialOptions,
+  type AnimElement, type ParsedAnim, type ParsedBuild, type ResolvedSprite, type SharedFrame, type SpriteMaterialOptions,
 } from './animationAssets';
 import { registerSpriteRenderGroup } from './renderOrder';
 import { selectsFacing } from './facing';
 import { InstancedArchiveSprites, type InstancedSprite } from './instancedArchiveSprites';
 import { installMatrixGate } from './matrixGate';
+import type { ResolvedAnimState } from './animState';
+import type { SpriteArtSource } from './sprite';
+import {
+  resolveDressedFrame, resolveOverrideArt, sameComposites, SpriteMaterialDresser,
+  type BuildOverride, type CompositeSpriteFrame, type FrameDressing, type SpriteTint, type SymbolOverride,
+} from './spriteDressing';
 
 /** Animation/build sources supplied by callers; no prefab or inventory metadata. */
 export interface ArchiveSpriteDefinition extends SpriteMaterialOptions {
@@ -53,28 +59,53 @@ export interface ArchiveSpriteBuild {
   readonly materials: THREE.MeshBasicMaterial[];
 }
 
+/** A skin build, as the display resolves the entity's skin; a factory sprite's `SpriteSkin` is one. */
+export interface ArchiveSpriteSkin extends ArchiveSpriteBuild {
+  /** OverrideItemSkinSymbol: only these symbols come from the skin. */
+  readonly symbols?: ReadonlySet<number>;
+  /** Symbols kept from the base build even when skinned. */
+  readonly baseSymbols?: ReadonlySet<number>;
+  /** Skin animation banks drawn over the clip's frame, from `animations`. */
+  readonly animations?: ParsedAnim;
+  readonly animationBanks?: ReadonlySet<number>;
+}
+
 interface SpriteAppearance {
   animation: ParsedAnim['animations'][number];
   builds: readonly ArchiveSpriteBuild[];
-  skin?: ArchiveSpriteBuild;
+  skin?: ArchiveSpriteSkin;
   overrides: ReadonlyMap<number, { hash: number; source: ArchiveSpriteBuild }>;
   hidden: ReadonlySet<number>;
   hiddenLayers: ReadonlySet<number>;
 }
 
-function resolveAppearanceFrame({ animation, builds, skin, overrides, hidden, hiddenLayers }: SpriteAppearance, index: number): ResolvedSprite[] {
-  return [...animation.frames[index].elements]
-    // These banks include bounding-only symbols with no build art.
-    .filter(element => element.imageHash !== smallHash('bounding') && !hidden.has(element.imageHash) && !hiddenLayers.has(element.layerHash))
-    .sort((a, b) => b.z - a.z).flatMap((element): ResolvedSprite[] => {
-      const override = overrides.get(element.imageHash), hash = override?.hash ?? element.imageHash;
-      for (const build of [...(skin ? [skin] : []), ...(override ? [override.source] : builds)]) {
-        const image = findImage(build.build, hash, element.imageIndex);
-        if (image) return [{ element, image, materials: build.materials }];
-      }
-      // Missing source intervals draw nothing (e.g. leaf FX supplied by a separate prefab).
-      return [];
-    });
+const boundingHash = smallHash('bounding');
+
+function animStateDeclaresNothing(state: ResolvedAnimState): boolean {
+  return state.overrides.size === 0 && !state.overrideBuilds?.length && state.hiddenLayers.size === 0 && state.hiddenSymbols.size === 0
+    && state.symbolLightOverrides.size === 0 && state.symbolAnimations.size === 0 && state.blooms.size === 0 && state.attachments.length === 0;
+}
+
+// These banks include bounding-only symbols with no build art.
+function appearanceVisible({ hidden, hiddenLayers }: Pick<SpriteAppearance, 'hidden' | 'hiddenLayers'>, element: AnimElement): boolean {
+  return element.imageHash !== boundingHash && !hidden.has(element.imageHash) && !hiddenLayers.has(element.layerHash);
+}
+
+function resolveAppearanceElement({ builds, skin, overrides }: SpriteAppearance, element: AnimElement): ResolvedSprite | undefined {
+  const override = overrides.get(element.imageHash), hash = override?.hash ?? element.imageHash;
+  const skinned = skin && !skin.baseSymbols?.has(element.imageHash) && (!skin.symbols || skin.symbols.has(element.imageHash));
+  for (const build of [...(skinned ? [skin] : []), ...(override ? [override.source] : builds)]) {
+    const image = findImage(build.build, hash, element.imageIndex);
+    if (image) return { element, image, materials: build.materials };
+  }
+  // Missing source intervals draw nothing (e.g. leaf FX supplied by a separate prefab).
+  return undefined;
+}
+
+function resolveAppearanceFrame(appearance: SpriteAppearance, index: number): ResolvedSprite[] {
+  return [...appearance.animation.frames[index].elements]
+    .filter(element => appearanceVisible(appearance, element))
+    .sort((a, b) => b.z - a.z).flatMap(element => resolveAppearanceElement(appearance, element) ?? []);
 }
 
 /** This closure retains immutable source appearance data, never the sprite that first requested it. */
@@ -163,6 +194,10 @@ export interface ArchiveSprite {
   readonly currentAnimation: string;
   /** AnimState:GetCurrentAnimationNumFrames. */
   readonly frameCount: number;
+  /** AnimState:GetCurrentAnimationLength, in seconds. */
+  readonly currentAnimationLength: number;
+  /** The frame of the current clip being drawn. */
+  readonly frame: number;
   update(dt: number): void;
   /** AnimState:SetFrame within the current clip. */
   setFrame(frame: number): void;
@@ -170,8 +205,10 @@ export interface ArchiveSprite {
   playOnce(name: string, onComplete?: () => void): void;
   setAnimation(name: string): void;
   setPaused(paused: boolean): void;
+  /** AnimState:SetDeltaTimeMultiplier, without changing source frame rates. */
+  setPlaybackRate(rate: number): void;
   /** The display supplies a loaded shared skin build; undefined restores the original build. */
-  setSkin(skin: ArchiveSpriteBuild | undefined): void;
+  setSkin(skin: ArchiveSpriteSkin | undefined): void;
   /** Only for sprites created with `options.opacity`, whose materials are private. */
   setOpacity(opacity: number): void;
   /** Per-entity tint, for sprites created with options.colour; shared atlas pixels stay unchanged. */
@@ -194,6 +231,22 @@ export interface ArchiveSprite {
   /** AnimState:Hide / Show for a named symbol layer, such as MakeSnowCovered's `snow`. */
   setSymbolHidden(symbol: string, hidden: boolean): void;
   setLayerHidden(layer: string, hidden: boolean): void;
+  /** AnimState:OverrideSymbol / ClearOverrideSymbol with a build the caller loaded and owns. */
+  overrideSymbol(symbol: string, override: SymbolOverride | undefined): void;
+  /** Replaces every OverrideSymbol made with `overrideSymbol`, and the layers hidden alongside them. */
+  setSymbolOverrides(overrides: ReadonlyMap<number, SymbolOverride>, hiddenLayers?: readonly string[]): void;
+  /** AnimState:AddOverrideBuild / ClearOverrideBuild with a build the caller loaded and owns. */
+  addOverrideBuild(name: string, override: BuildOverride): void;
+  clearOverrideBuild(name: string): void;
+  /** The entity's merged AnimState declarations (symbol overrides, hidden symbols, light overrides, bloom, symbol animations). */
+  setAnimState(state: ResolvedAnimState): void;
+  /** Bank and builds loaded by the display in place of the definition's; the clip is kept when the bank has it. */
+  setArtSource(source: SpriteArtSource): void;
+  setTint(tint: SpriteTint): void;
+  /** Follower frames merged into this sprite's layer order. */
+  setComposites(frames: readonly CompositeSpriteFrame[]): void;
+  /** The parts of the frame being drawn, for an owner that merges this sprite as a follower. */
+  getResolvedFrame(): readonly ResolvedSprite[];
   /** Turn towards the camera; unchanged transforms reuse their matrices. */
   faceCamera(rotation: THREE.Quaternion): void;
   /** Explicitly invalidate transforms. Required after moving a staticBillboard;
@@ -251,13 +304,13 @@ function constructArchiveSprite(
       if (options.colour) copy.color.multiply(new THREE.Color().setRGB(...options.colour));
       return copy;
     });
-    const result = { build: source.build, materials };
+    const result = { ...source, materials };
     sources.set(result, source);
     return result as T;
   };
   const builds = sharedBuilds.map(own);
   let activeBuilds = builds;
-  let skin = own(sharedSkin);
+  let skin: ArchiveSpriteSkin | undefined = own(sharedSkin);
   const applyOpacity = (opacity: number) => {
     for (const material of ownedMaterials) {
       material.transparent = opacity < 1; material.opacity = opacity; material.needsUpdate = true;
@@ -267,8 +320,10 @@ function constructArchiveSprite(
   const bankHash = smallHash(definition.bank);
   let facing: number | undefined;
   let flipped = false;
+  let artSource: SpriteArtSource | undefined;
   const findClip = (name: string) => {
-    const candidates = parsed.animations.filter(clip => clip.name === name && clip.bankHash === bankHash);
+    const clips = artSource?.animations.animations ?? parsed.animations, bank = artSource?.bank ?? bankHash;
+    const candidates = clips.filter(clip => clip.name === name && clip.bankHash === bank);
     const selected = facing === undefined ? undefined
       : candidates.map(clip => ({ clip, ...selectsFacing(clip.facing, facing!) })).find(({ matches }) => matches);
     flipped = selected?.flipped ?? false;
@@ -311,15 +366,57 @@ function constructArchiveSprite(
   let disposed = false;
   let loop = definition.loop;
   let onComplete: (() => void) | undefined;
+  let playbackRate = 1;
+  // Per-entity dressing. While any of it applies, frames are resolved for this sprite alone, outside shared frames and instances.
+  let animState: ResolvedAnimState | undefined;
+  let animStateElapsed = 0;
+  let composites: readonly CompositeSpriteFrame[] = [];
+  let runtimeOverrides: ReadonlyMap<number, SymbolOverride> = new Map();
+  let runtimeHiddenLayers: ReadonlySet<number> = new Set();
+  const buildOverrides = new Map<string, BuildOverride>();
+  const dresser = new SpriteMaterialDresser();
+  // AnimState:SetSkin with animation banks of its own, drawn over the clip's frame.
+  const skinLayers = () => skin?.animations && skin.animationBanks?.size
+    ? skin.animations.animations.filter(clip => clip.name === animation.name && skin!.animationBanks!.has(clip.bankHash)) : [];
+  const dressed = () => skinLayers().length > 0 || animState !== undefined || composites.length > 0 || runtimeOverrides.size > 0 || runtimeHiddenLayers.size > 0
+    || buildOverrides.size > 0 || !dresser.plain;
+  let resolvedFrame: readonly ResolvedSprite[] | undefined;
+  const ownAppearance = (): SpriteAppearance => ({ animation, builds: activeBuilds, skin, overrides, hidden, hiddenLayers });
+  const dressing: FrameDressing = {
+    get animState() { return animState; },
+    get animStateElapsed() { return animStateElapsed; },
+    get composites() { return composites; },
+    get mirrored() { return flipped; },
+    materials: dresser,
+    visible: element => appearanceVisible({ hidden, hiddenLayers }, element) && !runtimeHiddenLayers.has(element.layerHash),
+    resolveArt: element => {
+      const override = resolveOverrideArt(element, runtimeOverrides, buildOverrides);
+      return override === undefined ? resolveAppearanceElement(ownAppearance(), element) : override ?? undefined;
+    },
+    toVisual: (position, target) => {
+      visual.updateWorldMatrix(true, false);
+      return visual.worldToLocal(target.copy(position));
+    },
+  };
   // Keep only source data in the deferred resolver, without retaining this entity's controller or private materials.
   const snapshotAppearance = (): SpriteAppearance => ({ animation, builds: activeBuilds.map(source), skin: skin && source(skin),
     overrides: new Map([...overrides].map(([hash, override]) => [hash, { hash: override.hash, source: source(override.source) }])),
     hidden: new Set(hidden), hiddenLayers: new Set(hiddenLayers) });
-  const resolveSprites = (index: number, shared: boolean): ResolvedSprite[] => resolveAppearanceFrame(shared ? snapshotAppearance()
-    : { animation, builds: activeBuilds, skin, overrides, hidden, hiddenLayers }, index);
+  const resolveSprites = (index: number, shared: boolean): ResolvedSprite[] => shared ? resolveAppearanceFrame(snapshotAppearance(), index)
+    : dressed() ? resolveDressedFrame([animation.frames[index], ...skinLayers().map(layer => {
+      const frame = Math.floor(elapsed * layer.frameRate);
+      return layer.frames[loop ? frame % layer.frames.length : Math.min(frame, layer.frames.length - 1)];
+    })], dressing) : resolveAppearanceFrame(ownAppearance(), index);
   const update = (dt: number, refresh = false) => {
-    if (paused && !refresh || disposed) return;
-    elapsed += Math.max(0, Math.min(dt, 0.1));
+    if (disposed) return;
+    const attachments = animState?.attachments ?? [];
+    const following = (animState?.symbolAnimations.size ?? 0) > 0;
+    for (const attachment of attachments) attachment.update(dt);
+    if (following) animStateElapsed += dt;
+    // Animated symbols and attachments redraw the frame even while the clip itself holds still.
+    if (following || attachments.some(attachment => attachment.isAnimating)) { previousFrame = -1; refresh = true; }
+    if (paused && !refresh) return;
+    if (!paused) elapsed += Math.max(0, Math.min(dt, 0.1)) * playbackRate;
     const rawFrame = Math.floor(elapsed * animation.frameRate);
     if (!paused && !loop && elapsed * animation.frameRate + 1e-8 >= animation.frames.length && onComplete) {
       const complete = onComplete;
@@ -332,8 +429,11 @@ function constructArchiveSprite(
     const index = loop ? rawFrame % animation.frames.length
       : Math.min(rawFrame, animation.frames.length - 1);
     if (index === previousFrame) return;
+    resolvedFrame = undefined;
+    const ownFrame = dressed();
     // Preserve genuinely empty source frames rather than inventing replacement art.
-    if (sharedAnimations === 'all' || sharedAnimations.has(animation.name)) {
+    if (ownFrame) renderer.show(resolvedFrame = resolveSprites(index, false));
+    else if (sharedAnimations === 'all' || sharedAnimations.has(animation.name)) {
       sharedAppearance ||= appearanceKey();
       const frame = cache.get(`${cache.idOf(animation)}:${sharedAppearance}:${index}`, () => resolveSprites(index, true));
       let tinted = tintedFrames.get(frame);
@@ -350,7 +450,7 @@ function constructArchiveSprite(
       visual.scale.x = scaleX;
       matrixGate?.markDirty();
     }
-    const instanced = !!instances && (options.instancedAnimations === 'all'
+    const instanced = !!instances && !ownFrame && (options.instancedAnimations === 'all'
       || loop && options.instancedAnimations!.includes(animation.name));
     if (instances) renderer.setInstanced(instanced);
     if (instanced) {
@@ -371,6 +471,13 @@ function constructArchiveSprite(
     previousFrame = -1;
     update(0);
   };
+  /** The appearance changed: draw the current frame again, paused or not. */
+  const redraw = () => {
+    if (disposed) return;
+    sharedAppearance = '';
+    previousFrame = -1;
+    update(0, true);
+  };
   try { update(0); } catch (error) {
     matrixGate?.dispose();
     instances?.dispose();
@@ -383,12 +490,58 @@ function constructArchiveSprite(
     model, update, instanced: instances,
     get currentAnimation() { return animation.name; },
     get frameCount() { return animation.frames.length; },
+    get currentAnimationLength() { return animation.frames.length / animation.frameRate; },
+    get frame() { return Math.max(0, previousFrame); },
     setFrame(frame: number) {
       if (disposed) return;
       elapsed = Math.max(0, Math.floor(frame)) / animation.frameRate;
       previousFrame = -1;
-      update(0);
+      // A paused clip shows the frame it is set to.
+      update(0, true);
     },
+    setPlaybackRate(rate: number) {
+      if (!Number.isFinite(rate) || rate < 0) throw new RangeError('Invalid animation playback rate');
+      playbackRate = rate;
+    },
+    overrideSymbol(symbol, override) {
+      const next = new Map(runtimeOverrides), hash = smallHash(symbol);
+      if (override) next.set(hash, override); else if (!next.delete(hash)) return;
+      runtimeOverrides = next;
+      redraw();
+    },
+    setSymbolOverrides(next, hiddenLayers = []) {
+      runtimeOverrides = new Map(next);
+      runtimeHiddenLayers = new Set(hiddenLayers.map(smallHash));
+      redraw();
+    },
+    addOverrideBuild(name, override) {
+      buildOverrides.delete(name);
+      buildOverrides.set(name, override);
+      redraw();
+    },
+    clearOverrideBuild(name) { if (buildOverrides.delete(name)) redraw(); },
+    setAnimState(state) {
+      // Declarations that were all taken away leave the sprite to its shared frames again.
+      const next = animStateDeclaresNothing(state) ? undefined : state;
+      if (next === animState) return;
+      animState = next;
+      redraw();
+    },
+    setArtSource(next) {
+      if (disposed || next === artSource) return;
+      artSource = next;
+      activeBuilds = [next.build, ...next.fallbackBuilds ?? []].map(own);
+      const clip = findClip(animation.name);
+      if (clip?.frames.length) animation = clip;
+      redraw();
+    },
+    setTint(tint) { dresser.setTint(tint); redraw(); },
+    setComposites(frames) {
+      if (sameComposites(frames, composites)) return;
+      composites = frames;
+      redraw();
+    },
+    getResolvedFrame() { return resolvedFrame ??= resolveSprites(Math.max(0, previousFrame), false); },
     start(name: string) {
       if (animation.name !== name || !loop) selectAnimation(name, true);
     },
@@ -444,34 +597,26 @@ function constructArchiveSprite(
         if (previous?.hash === replacement.hash && previous.source === replacement.source) return;
         overrides.set(hash, replacement);
       }
-      sharedAppearance = '';
-      previousFrame = -1;
-      update(0);
+      redraw();
     },
     setBuildArchive(archive: string) {
       const index = definition.buildArchives.indexOf(archive);
       if (index < 0) throw new Error(`Sprite ${model.name} has no build archive ${archive}`);
       if (disposed || activeBuilds.length === 1 && activeBuilds[0] === builds[index]) return;
       activeBuilds = [builds[index]];
-      sharedAppearance = '';
-      previousFrame = -1;
-      update(0);
+      redraw();
     },
     setSymbolHidden(symbol: string, isHidden: boolean) {
       const hash = smallHash(symbol);
       if (disposed || hidden.has(hash) === isHidden) return;
       if (isHidden) hidden.add(hash); else hidden.delete(hash);
-      sharedAppearance = '';
-      previousFrame = -1;
-      update(0);
+      redraw();
     },
     setLayerHidden(layer: string, isHidden: boolean) {
       const hash = smallHash(layer);
       if (disposed || hiddenLayers.has(hash) === isHidden) return;
       if (isHidden) hiddenLayers.add(hash); else hiddenLayers.delete(hash);
-      sharedAppearance = '';
-      previousFrame = -1;
-      update(0);
+      redraw();
     },
     getSymbolPosition(symbol, x, y, target) {
       const element = animation.frames[Math.max(0, previousFrame)]?.elements.find(element => element.imageHash === smallHash(symbol));
@@ -496,6 +641,7 @@ function constructArchiveSprite(
       instances?.dispose();
       matrixGate?.dispose();
       renderer.dispose();
+      dresser.dispose();
       ownedMaterials.forEach(material => material.dispose());
       model.removeFromParent();
       visual.traverse((object) => {

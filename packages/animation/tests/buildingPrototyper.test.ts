@@ -3,15 +3,13 @@ import { Group, PerspectiveCamera, Scene } from 'three';
 import { expect, it, vi } from 'vitest';
 import { Builder } from '../../componets/src/builder';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
-import { BOOKSTATION_DEFINITION } from '../../prefab/src/bookstation';
-import { SCULPTING_TABLE_DEFINITION } from '../../prefab/src/sculptingtable';
 import { actionEntity, actionEntitiesChanged, FindEntities } from '../../prefab/src/actionEntity';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import * as sound from '../../prefab/src/sound';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { withEntity } from './entityFixture';
 import { bindTestWorld } from './worldContentFixture';
+import { managedBuildings } from './managedBuildings';
 
 it('uses real prototypers for book and sculpting stations, retaining their own callbacks and dynamic technology', async () => {
   vi.stubGlobal('window', new EventTarget());
@@ -22,14 +20,13 @@ it('uses real prototypers for book and sculpting stations, retaining their own c
   const player = withEntity(new Group(), 'waxwell');
   const world = { scene: new Scene(), player, camera: new PerspectiveCamera(), ground: new Group(),
     renderer: { domElement: new EventTarget() }, scheduler, getWatchWorldContent: sources.getWatchWorldContent } as unknown as WorldContext;
-  const placement = new AnimatedBuildingPlacement(world,
-    { bookstation: BOOKSTATION_DEFINITION, sculptingtable: SCULPTING_TABLE_DEFINITION }, () => false);
+  const placement = managedBuildings(world, { consume: () => false });
   let builder: Builder | undefined;
   const settle = () => new Promise(resolve => setTimeout(resolve, 0));
   try {
-    const bookModel = placement.spawnFromSave('bookstation', { id: 'books',
+    const bookModel = await placement.spawnFromSave('bookstation', { id: 'books',
       transform: { position: [3, 0, 0], rotationY: 0 }, components: {} });
-    const tableModel = placement.spawnFromSave('sculptingtable', { id: 'table',
+    const tableModel = await placement.spawnFromSave('sculptingtable', { id: 'table',
       transform: { position: [18, 0, 0], rotationY: 0 }, components: {} });
     const book = prefabInstance(bookModel)!, table = prefabInstance(tableModel)!;
     expect(book.components.prototyper!.on).toBe(false);

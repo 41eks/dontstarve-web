@@ -16,6 +16,12 @@ import { PlaceableBuildingPlacement } from '../../../src/placeableBuilding';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { managedBuildings } from './managedBuildings';
 import definitions from '../../prefab/src/definitions.json';
+import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import { deserializeSave } from '../../../src/save/deserialize';
+import { SAVE_CATALOG } from '../../../src/save/catalog';
+import type { SaveDocument } from '../../../src/save/types';
+import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
+import { bindTestWorld } from './worldContentFixture';
 
 const cleanups: (() => void)[] = [];
 let fetched: string[] = [];
@@ -117,4 +123,38 @@ it('draws each container prefab from its source bank and skin build, and keeps i
     if (skinId !== undefined) expect(fetched.some(url => url.endsWith(declaration.skinArchives![skinId]))).toBe(true);
     expect(buildings.exportRecords().find(({ record: saved }) => saved.id === record.id)?.record).toEqual(record);
   }
+});
+
+it('draws the moved animated buildings through their archive or controller art, and keeps their save shape through c_save', async () => {
+  const scheduler = new GameTimeScheduler(), content = bindTestWorld(scheduler);
+  const world = { scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(), camera: new THREE.PerspectiveCamera(),
+    renderer: { domElement: new EventTarget() }, scheduler, getWatchWorldContent: content.getWatchWorldContent,
+    getLocalTemperature: () => 35 } as unknown as WorldContext;
+  const buildings = managedBuildings(world);
+  cleanups.push(() => { buildings.dispose(); content.unbind(); scheduler.dispose(); });
+  // tent, lightning_rod and the heads draw from the shared archive; the rest through a controller for their AnimState.
+  const ids = ['tent', 'lightning_rod', 'pighead', 'mermhead', 'winterometer', 'moondial', 'sculptingtable', 'birdcage', 'moonbase'] as const;
+  for (const [index, id] of ids.entries()) {
+    const declaration: { archive: string; buildArchive?: string; skinArchives?: Record<string, string> } = definitions.animatedBuildings[id];
+    const [skinId] = Object.keys(declaration.skinArchives ?? {});
+    const model = buildings.spawnFromSave(id, { id: `saved-${id}`, transform: { position: [index * 10, 0, 2], rotationY: 0 },
+      components: { building: skinId === undefined ? {} : { skinId } } }) as THREE.Group;
+    await prefabDisplay(model)!.artLoaded();
+    buildings.displays.update(1 / 30);
+    expect(model.getObjectsByProperty('isMesh', true).length, id).toBeGreaterThan(0);
+    expect(fetched.some(url => url.endsWith(`/${declaration.buildArchive ?? declaration.archive}`)), id).toBe(true);
+    if (skinId !== undefined) expect(fetched.some(url => url.endsWith(declaration.skinArchives![skinId])), id).toBe(true);
+  }
+  const records = buildings.exportRecords();
+  expect(records.map(({ prefabId }) => prefabId).sort()).toEqual([...ids].sort());
+  // The save parser accepts what GetPersistData writes, and reloading it exports the same records.
+  const save = structuredClone(initialWorld) as unknown as SaveDocument;
+  save.world.entities = Object.fromEntries(ids.map(id => [id, records.filter(({ prefabId }) => prefabId === id).map(({ record }) => structuredClone(record))]));
+  for (const container of Object.values(save.players.local.inventory.containers)) container.slots = [];
+  save.players.local.inventory.bufferedBuilds = [];
+  const parsed = deserializeSave(JSON.stringify(save), SAVE_CATALOG).world.entities;
+  for (const { record } of records) buildings.prefabs.get(record.id)!.remove();
+  for (const id of ids) for (const record of parsed[id]) buildings.spawnFromSave(id, record);
+  expect(buildings.exportRecords().sort((a, b) => a.record.id.localeCompare(b.record.id)))
+    .toEqual(records.sort((a, b) => a.record.id.localeCompare(b.record.id)));
 });

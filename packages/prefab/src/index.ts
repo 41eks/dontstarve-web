@@ -22,11 +22,11 @@ export {
 export {
   NIGHT_LIGHT_ID, NIGHT_LIGHT_PLACER, NightLightInstance, nightLightPrefabs, type NightLightId,
 } from './nightlight';
-export { PIG_HEAD_DEFINITION, PIG_HEAD_ID, MERM_HEAD_DEFINITION, MERM_HEAD_ID, type PigHeadId, type MermHeadId } from './stickheads';
-export { LIGHTNING_ROD_DEFINITION, LIGHTNING_ROD_ID, LIGHTNING_ROD_SKIN_ARCHIVES, type LightningRodId } from './lightning_rod';
+export { PIG_HEAD_ID, MERM_HEAD_ID, STICK_HEAD_PLACERS, stickHeadPrefabs, StickHeadInstance, type PigHeadId, type MermHeadId } from './stickheads';
+export { LIGHTNING_ROD_ID, LIGHTNING_ROD_PLACER, LIGHTNING_ROD_SKIN_ARCHIVES, lightningRodPrefabs, LightningRodInstance, type LightningRodId } from './lightning_rod';
 export { SendLightningStrike } from './lightning';
-export { WINTEROMETER_DEFINITION, WINTEROMETER_ID, WINTEROMETER_SKIN_ARCHIVES, type WinterometerId } from './winterometer';
-export { BIRDCAGE_DEFINITION, BIRDCAGE_ID, type BirdcageId } from './birdcage';
+export { WINTEROMETER_ID, WINTEROMETER_PLACER, WINTEROMETER_SKIN_ARCHIVES, winterometerPrefabs, WinterometerInstance, type WinterometerId } from './winterometer';
+export { BIRDCAGE_ID, BIRDCAGE_PLACER, birdcagePrefabs, BirdcageInstance, type BirdcageId } from './birdcage';
 export { BIRD_IDS, BIRD_PERISH_TIME, configureBirdEntity, isBirdId, type BirdId } from './birds';
 export {
   PIG_HOUSE_ID, PIG_HOUSE_PLACER, PigHouseInstance, pigHousePrefabs, type PigHouseId,
@@ -108,12 +108,14 @@ export {
   type TreasureChestId,
 } from './treasurechest';
 export {
-  TENT_DEFINITION,
   TENT_ID,
+  TENT_PLACER,
+  tentPrefabs,
+  TentInstance,
 } from './tent';
-export { MOONBASE_DEFINITION, MOONBASE_ID } from './moonbase';
-export { MOONDIAL_DEFINITION, MOONDIAL_ID } from './moondial';
-export { SCULPTING_TABLE_DEFINITION, SCULPTING_TABLE_ID, SCULPTABLE_MATERIALS, isSculptableMaterial } from './sculptingtable';
+export { MOONBASE_ID, MOONBASE_PLACER, moonbasePrefabs, MoonbaseInstance } from './moonbase';
+export { MOONDIAL_ID, MOONDIAL_PLACER, moondialPrefabs, MoondialInstance } from './moondial';
+export { SCULPTING_TABLE_ID, SCULPTING_TABLE_PLACER, sculptingTablePrefabs, SculptingTableInstance, SCULPTABLE_MATERIALS, isSculptableMaterial } from './sculptingtable';
 export { WARDROBE_ID, WARDROBE_PLACER, WardrobeInstance, wardrobePrefabs } from './wardrobe';
 export { BuildingPlacer, type BuildingPlacerSpec } from './buildingPlacer';
 export { buildingPlacer, buildingPrefab, MakeBuildingPersist, type BuildingDeclaration } from './building';

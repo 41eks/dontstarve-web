@@ -1,8 +1,9 @@
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { groundTileVariant, groundTileGeometry, loadGroundTileAssets, loadGroundFalloffAssets, groundFalloffGeometry, sortGroundFalloffGeometry } from '../../prefab/src/groundTiles';
-import { GroundDepthPrepass } from '../../prefab/src/groundDepthPrepass';
+import { groundTileVariant, groundTileGeometry, loadGroundTileAssets, GROUND_FALLOFF_ART } from '../../prefab/src/groundTiles';
+import { loadGroundFalloffAssets, groundFalloffGeometry, sortGroundFalloffGeometry } from '../../display/src/groundFalloff';
+import { GroundDepthPrepass } from '../../display/src/groundDepthPrepass';
 import { TurfMap, WORLD_TILES } from '../../prefab/src/turfMap';
 import { placeStaticLayout } from '../../prefab/src/staticLayout';
 import { createSignal, type ClockState } from '../../signals/src';
@@ -77,7 +78,7 @@ it('commits layout tiles once, preserves saved overrides and retains geometry on
 });
 
 it('sorts merged cliff faces across negative coordinates without replacing vertices', async () => {
-  const assets = await loadGroundFalloffAssets('/dst/data');
+  const assets = await loadGroundFalloffAssets('/dst/data', GROUND_FALLOFF_ART, 12);
   const geometry = groundFalloffGeometry([{ col: 0, row: -2, edge: 0 }, { col: 0, row: -1, edge: 0 }], assets);
   try {
     const vertices = geometry.getAttribute('position');
@@ -153,14 +154,13 @@ it('renders woodfloor above deciduous and dirt, with a concave mask around an ex
   for (let col = 0; col < 3; col++) for (let row = 0; row < 3; row++) {
     map.setOriginalTile({ x: col * 12 + 6, z: row * 12 + 6 }, WORLD_TILES.WOODFLOOR);
   }
-  const visual = await map.createVisual('/dst/data');
   const display = await drawGround(map);
   expect(layerGeometry(display, 'WOODFLOOR').getIndex()!.count).toBe(25 * 6);
   const order = Object.fromEntries(map.groundLayers().map(({ art, renderOrder }) => [art.name, renderOrder]));
   expect(layerMeshes(display, 'WOODFLOOR').every(mesh => mesh.renderOrder === order.WOODFLOOR)).toBe(true);
   expect(order.WOODFLOOR).toBeGreaterThan(order.DECIDUOUS);
   expect(order.DECIDUOUS).toBeGreaterThan(order.DIRT);
-  expect(order.DIRT).toBeGreaterThan((visual.getObjectByName('TurfFalloff') as THREE.Mesh).renderOrder);
+  expect(order.DIRT).toBeGreaterThan((display.root.getObjectByName('TurfFalloff') as THREE.Mesh).renderOrder);
   expect(map.dig({ x: 18, z: 18 })).toBe(true);
   expect(layerMeshes(display, 'DIRT').every(mesh => mesh.renderOrder === order.DIRT)).toBe(true);
   const wood = { geometry: layerGeometry(display, 'WOODFLOOR') };
@@ -189,13 +189,14 @@ it('draws the ocean surface as merged rectangles instead of a quad per cell', as
   const tiles = [];
   for (let row = 0; row < 3; row++) for (let col = -3; col < 0; col++) tiles.push({ col, row, tileId: WORLD_TILES.OCEAN_COASTAL });
   const map = new TurfMap(96, tiles);
-  const visual = await map.createVisual('/dst/data');
-  const ocean = visual.getObjectByName('TurfOcean:OCEAN_COASTAL') as THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
+  const display = await drawGround(map);
+  const ocean = display.root.getObjectByName('TurfOcean:OCEAN_COASTAL') as THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
   expect(ocean.geometry.getIndex()!.count).toBe(6);
   expect(ocean.geometry.getAttribute('position').count).toBe(4);
   const box = new THREE.Box3().setFromBufferAttribute(ocean.geometry.getAttribute('position') as THREE.BufferAttribute);
   expect([box.min.x, box.max.x, box.min.z, box.max.z]).toEqual([-36, 0, 0, 36]);
   expect(map.dig(new THREE.Vector3(-18, 0, 18))).toBe(false);
+  display.dispose();
 });
 
 it('restores ocean terrain, rejects land actions and keeps ground overlays on land', async () => {
@@ -208,14 +209,13 @@ it('restores ocean terrain, rejects land actions and keeps ground overlays on la
   expect(map.plow(oceanPoint)).toBe(false);
   expect(map.canPlant(oceanPoint)).toBe(false);
   expect(map.exportTiles()).toEqual(tiles);
-  const visual = await map.createVisual('/dst/data');
-  const ocean = visual.getObjectByName('TurfOcean:OCEAN_COASTAL') as THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
+  const display = await drawGround(map);
+  const ocean = display.root.getObjectByName('TurfOcean:OCEAN_COASTAL') as THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
   const clock = createSignal<ClockState>({ phase: 'day', timeinphase: 0 });
   vi.spyOn(clock, 'get');
-  map.bindOceanClock(clock);
+  display.bindOceanClock(clock);
   expect(clock.get).toHaveBeenCalledOnce();
   expect(ocean.geometry.getIndex()!.count).toBe(6);
-  const display = await drawGround(map);
   // Snow declares its overlay; the display loads the texture and draws it on land, coastal skirts included.
   const cover = createSignal(3);
   display.declareOverlay('snow', { texture: 'levels/textures/snow.tex', cover, renderOrder: -0.55 });
@@ -253,11 +253,11 @@ it('restores ocean terrain, rejects land actions and keeps ground overlays on la
   expect(atlasDisposed).not.toHaveBeenCalled();
   const disposed = vi.fn();
   ocean.material.addEventListener('dispose', disposed);
+  // The map owns tiles only; the display owns the ocean and the layer art the overlay borrows.
   map.dispose();
-  expect(disposed).toHaveBeenCalledOnce();
-  expect(atlasDisposed).not.toHaveBeenCalled();
-  // The display owns the layer art the overlay borrows.
+  expect(disposed).not.toHaveBeenCalled();
   display.dispose();
+  expect(disposed).toHaveBeenCalledOnce();
   expect(atlasDisposed).toHaveBeenCalledOnce();
   vi.mocked(clock.get).mockClear();
   expect(() => clock.set({ phase: 'dusk', timeinphase: 0 })).not.toThrow();
