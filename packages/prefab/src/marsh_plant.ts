@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import type { TileStateQuery } from '@dontstarve-web/signals';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -32,12 +33,12 @@ export class MarshPlantInstance extends PrefabInstance {
     const burn = new BurnableBinding(this, { propagator: 'small', burnTime: BURN_TIME, fxLevel: BURN_FX_LEVEL,
       onIgnite: () => DefaultBurnFn(this), onExtinguish: () => DefaultExtinguishFn(this), onBurnt: () => DefaultBurntFn(this, world) }, world);
     // MakeHauntableIgnite: the source's #HAUNTFIX comments out igniting, so a haunt only fails.
-    const hauntable = new Hauntable(this, world.scheduler);
+    const hauntable = addComponent(this, 'hauntable', Hauntable, world.scheduler);
     hauntable.SetCooldown(HAUNT_COOLDOWN_MEDIUM);
     hauntable.SetOnHauntFn(() => false);
-    Object.assign(this.components, { hauntable, inspectable: new Inspectable(this) });
+    addComponent(this, 'inspectable', Inspectable);
     this.addTag('inspectable');
-    this.onRemove(() => { burn.dispose(); hauntable.dispose(); });
+    this.onRemove(() => { burn.dispose(); });
   }
 }
 

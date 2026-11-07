@@ -48,7 +48,10 @@ export class DragonflySpawnerInstance extends PrefabInstance {
     childspawner.onchildkilled = () => StartSpawning(this);
     childspawner.StartSpawning();
     childspawner.StopRegen();
-    this.worldsettingstimer = new Timer(world.scheduler, name => { if (name === DRAGONFLY_SPAWNTIMER) GenerateNewDragon(this); }, [DRAGONFLY_SPAWNTIMER]);
+    this.worldsettingstimer = new Timer(this, world.scheduler, [DRAGONFLY_SPAWNTIMER]);
+    const stopTimerDone = this.ListenForEvent('timerdone', data => {
+      if ((data as { name: string }).name === DRAGONFLY_SPAWNTIMER) GenerateNewDragon(this);
+    });
 
     this.OnSave = (_inst, data) => {
       const timer = this.worldsettingstimer.OnSave();
@@ -76,7 +79,7 @@ export class DragonflySpawnerInstance extends PrefabInstance {
       const value = status.get();
       if (value === 'active') childspawner.OnEntityWake(); else if (value === 'asleep') childspawner.OnEntitySleep();
     });
-    this.onRemove(() => { stopPostPass(); stopWake(); stopStatus?.(); childspawner.dispose(); this.worldsettingstimer.dispose(); });
+    this.onRemove(() => { stopPostPass(); stopWake(); stopStatus?.(); childspawner.dispose(); this.worldsettingstimer.dispose(); stopTimerDone(); });
   }
 }
 

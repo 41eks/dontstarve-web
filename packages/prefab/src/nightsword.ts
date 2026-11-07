@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Equippable } from '../../componets/src/equippable';
 import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory } from './equipmentVisual';
@@ -7,7 +8,7 @@ export const NIGHTSWORD_DAPPERNESS = -100 / (30 * 10); // tuning.lua CRAZINESS_M
 
 /** nightsword.lua: magic dapperness affects the wearer through the sanity component. */
 export function configureNightswordEntity(entity: ItemEntity): void {
-  const equippable = entity.components.equippable ??= new Equippable(entity, 'hand');
+  const equippable = addComponent(entity, 'equippable', Equippable<ItemEntity>, 'hand');
   equippable.dapperness = NIGHTSWORD_DAPPERNESS;
   equippable.is_magic_dapperness = true;
 }

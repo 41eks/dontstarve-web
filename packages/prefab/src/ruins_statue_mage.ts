@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { Workable } from '../../componets/src/workable';
@@ -52,13 +53,13 @@ export class RuinsStatueInstance extends PrefabInstance {
     this.setPosition(position.x, 0, position.z);
     for (const tag of ['cavedweller', 'structure', 'statue']) this.addTag(tag);
     this.minimap.SetIcon('statue_ruins.png');
-    const workable = new Workable(this);
+    const workable = addComponent(this, 'workable', Workable);
     workable.SetWorkAction('MINE'); workable.SetWorkLeft(10);
-    const lootdropper = new LootDropper(this, () => undefined);
+    const lootdropper = addComponent(this, 'lootdropper', LootDropper, () => undefined);
     if (variant.chanceLootTable) lootdropper.SetChanceLootTable(variant.chanceLootTable);
-    const hauntable = new Hauntable(this, world.scheduler);
+    const hauntable = addComponent(this, 'hauntable', Hauntable, world.scheduler);
     hauntable.SetOnHauntFn(() => false);
-    Object.assign(this.components, { workable, lootdropper, inspectable: new Inspectable(this), hauntable });
+    addComponent(this, 'inspectable', Inspectable);
     // commonfn immediately invokes OnNightmarePhaseChanged(..., true): ShowWorkState plays idle_full looping, with no
     // `_night` suffix because this world has the calm phase.
     this.sprite.start('idle_full');
@@ -67,7 +68,6 @@ export class RuinsStatueInstance extends PrefabInstance {
 
     this.OnSave = (_inst, data) => { if (this.gemmed !== undefined) data.ruinsStatueMage = { gem: this.gemmed }; };
     this.OnLoad = (_inst, data) => { if (data.ruinsStatueMage?.gem !== undefined) this.SetGemmed(data.ruinsStatueMage.gem); };
-    this.onRemove(() => { workable.dispose(); hauntable.dispose(); });
   }
 
   /** SetGemmed: the swap_gem override from the gem build, SetLoot({ "thulecite", gem }) and AddChanceLoot("thulecite", .05). */

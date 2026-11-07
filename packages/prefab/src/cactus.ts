@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import type { PrefabEntityDefinition } from './prefabInstance';
 import { Pickable } from './components/pickable';
 import { DefaultBurnFn, DefaultExtinguishFn, DefaultBurntFn } from './standardcomponents';
@@ -31,7 +32,7 @@ export class CactusInstance extends PickablePlantInstance {
 
   constructor(prefab: CactusId, context: PickablePlantContext) {
     super(CACTUS_DEFINITIONS[prefab], context);
-    new Pickable(this, 'cactus_meat', CACTUS_REGROW_TIME, 1, doer => this.picked(doer), () => this.regen(), context.saved?.components.pickable, {
+    addComponent(this, 'pickable', Pickable, 'cactus_meat', CACTUS_REGROW_TIME, 1, doer => this.picked(doer), () => this.regen(), context.saved?.components.pickable, {
       scheduler: context.scheduler, growthDuration: context.growthDuration,
       onTransplant: () => this.components.pickable.MakeEmpty(), onEmpty: () => this.empty(),
     });

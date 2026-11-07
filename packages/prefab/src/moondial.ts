@@ -1,5 +1,7 @@
+import { LootDropper } from '../../componets/src/lootdropper';
+import { addComponent } from './components';
 import { Workable } from '../../componets/src/workable';
-import { createStructureLootDropper } from './structureLoot';
+import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
 import { SpriteState, type SpriteResources } from '@dontstarve-web/display';
 import { createEffect, createSignal, WorldContentKey, type WorldContentSignal, type WorldMoonState, type WorldMoonPhase } from '@dontstarve-web/signals';
 import { AnimState } from '@dontstarve-web/animation/animState';
@@ -168,12 +170,12 @@ export class MoondialInstance extends PrefabInstance {
         this.addTag('structure');
         const animState = new AnimState();
         this.sprite.setAnimState(animState.json, sprites.archives);
-        const workable = this.components.workable = new Workable(this);
+        const workable = addComponent(this, 'workable', Workable);
         workable.SetWorkAction('HAMMER');
         workable.SetWorkLeft(4);
         workable.SetOnWorkCallback(onworked);
         workable.SetOnFinishCallback(onhammered);
-        this.components.lootdropper = createStructureLootDropper(this);
+        addComponent(this, 'lootdropper', LootDropper, spawnStructureLoot(this), STRUCTURE_LOOT_RECIPES);
         const moondial = this.moondial = new Moondial(this, animState);
         this.ListenForEvent('onbuilt', () => moondial.placed());
         this.onRemove(() => moondial.dispose());

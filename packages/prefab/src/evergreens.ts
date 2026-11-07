@@ -1,3 +1,4 @@
+import { Workable } from '../../componets/src/workable';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import * as THREE from 'three';
 import { SpriteState } from '@dontstarve-web/display';
@@ -74,25 +75,25 @@ export class EvergreenInstance extends PrefabInstance {
     this.deploySmartRadius = 1; this.logicalPlacement = true;
     this.minimap.SetPriority(-1);
     for (const tag of ['plant', 'tree', 'evergreens', 'evergreen', 'petrifiable', 'SnowCovered']) this.addTag(tag);
-    const workable = addComponent(this as EvergreenInstance, 'workable');
+    const workable = addComponent(this as EvergreenInstance, 'workable', Workable);
     workable.SetWorkAction('CHOP');
     workable.SetOnWorkCallback(chop_tree);
     workable.SetOnFinishCallback(chop_down_tree);
-    this.components.lootdropper = new LootDropper({ getPosition: () => this.getPosition(), PushEvent: (name, data) => this.PushEvent(name, data) }, prefab => {
+    addComponent(this, 'lootdropper', LootDropper, prefab => {
       world.dropLoot([{ itemId: prefab, count: 1 }], this.position); return undefined;
     });
-    const growable = this.components.growable = new Growable(world.scheduler, EVERGREEN_GROW_TIME.map(time => ({
+    const growable = addComponent(this, 'growable', Growable, world.scheduler, EVERGREEN_GROW_TIME.map(time => ({
       time: () => time.base + (random() * 2 - 1) * time.random,
       fn: () => setStage(this), growfn: () => grow(this),
     })), seconds => world.growthDuration?.(seconds) ?? seconds);
     growable.loopstages = true; growable.springgrowth = true;
-    const timer = this.components.timer = new Timer(world.scheduler, name => { if (name === 'decay') this.remove(); }, ['decay']);
+    addComponent(this, 'timer', Timer, world.scheduler, ['decay']);
+    this.ListenForEvent('timerdone', data => { if ((data as { name: string }).name === 'decay') this.remove(); });
     this.OnSave = (_inst, data) => onsave(this, data);
     this.OnLoad = (_inst, data) => onload(this, data);
     this.onRemove(() => {
       this.changesTask?.(); this.pineconeTask?.(); this.removeTask?.();
       unbindFire(this);
-      growable.dispose(); timer.dispose();
       for (const sound of this.sounds) sound.stop();
       this.sounds.clear();
     });
@@ -229,7 +230,7 @@ function make_stump(inst: EvergreenInstance): void {
   inst.removeTag('shelter');
   RemovePhysicsColliders(inst);
   removeComponent(inst, 'workable');
-  const workable = addComponent(inst, 'workable');
+  const workable = addComponent(inst, 'workable', Workable);
   workable.SetWorkAction('DIG'); workable.SetWorkLeft(1);
   inst.mouseTarget?.setWorkable(inst.components.workable);
   workable.SetOnFinishCallback(dig_up_stump);

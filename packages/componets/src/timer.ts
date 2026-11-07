@@ -70,20 +70,24 @@ export class ComponentTimer {
 export interface SavedNamedTimer { timeleft: number; paused: boolean; initial_time: number; }
 export interface NamedTimerSave { timers: Record<string, SavedNamedTimer>; }
 
+export interface TimerInst { PushEvent(name: string, data: unknown): void }
+
 /** timer.lua: named tasks keep distinct stopped/expired snapshots; only live timers persist. */
 export class Timer {
   private readonly timers = new Map<string, { timer: ComponentTimer; initialTime: number }>();
+  private readonly inst: TimerInst;
   private readonly scheduler: GameTimeScheduler;
-  private readonly onDone: (name: string) => void;
   private disposed = false;
-  constructor(scheduler: GameTimeScheduler, onDone: (name: string) => void, names: readonly string[] = []) {
-    this.scheduler = scheduler; this.onDone = onDone;
+  /** `names` are timers whose snapshots are read before they first start. */
+  constructor(inst: TimerInst, scheduler: GameTimeScheduler, names: readonly string[] = []) {
+    this.inst = inst; this.scheduler = scheduler;
     for (const name of names) this.ensure(name);
   }
   private ensure(name: string) {
     let entry = this.timers.get(name);
     if (!entry) {
-      entry = { timer: new ComponentTimer(this.scheduler, () => this.onDone(name)), initialTime: 0 };
+      // OnTimerDone: inst:PushEvent("timerdone", { name = name }).
+      entry = { timer: new ComponentTimer(this.scheduler, () => this.inst.PushEvent('timerdone', { name })), initialTime: 0 };
       this.timers.set(name, entry);
     }
     return entry;

@@ -1,3 +1,4 @@
+import { Workable } from '../../componets/src/workable';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import * as THREE from 'three';
 import { createRenderEffect, WorldContentKey, type GetWatchWorldContent } from '@dontstarve-web/signals';
@@ -91,27 +92,27 @@ export class MoonTreeInstance extends PrefabInstance {
     this.minimap.SetPriority(-1);
     // standardcomponents.lua MakeSnowCoveredPristine applies to trees and stumps, not saplings.
     for (const tag of ['plant', 'tree', 'moon_tree', 'SnowCovered', 'shelter']) this.addTag(tag);
-    const workable = addComponent(this as MoonTreeInstance, 'workable');
+    const workable = addComponent(this as MoonTreeInstance, 'workable', Workable);
     workable.SetWorkAction('CHOP');
     workable.SetOnWorkCallback(on_chop_tree);
     workable.SetOnFinishCallback(on_chop_tree_down);
-    this.components.lootdropper = new LootDropper({ getPosition: () => this.getPosition() }, prefab => {
+    addComponent(this, 'lootdropper', LootDropper, prefab => {
       world.dropLoot([{ itemId: prefab, count: 1 }], this.position); return undefined;
     });
-    const growable = this.components.growable = new Growable(world.scheduler, MOON_TREE_SIZES.map((size, index) => ({
+    const growable = addComponent(this, 'growable', Growable, world.scheduler, MOON_TREE_SIZES.map((size, index) => ({
       time: () => MOON_TREE_GROWTH_TIME[index].base + (random() * 2 - 1) * MOON_TREE_GROWTH_TIME[index].random,
       fn: () => setStage(this, size, index),
       growfn: () => playGrowth(this, ['grow_tall_to_short', 'grow_short_to_normal', 'grow_normal_to_tall'][index], index === 0),
     })), seconds => world.growthDuration?.(seconds) ?? seconds);
     growable.loopstages = true; growable.springgrowth = true;
-    const timer = this.components.timer = new Timer(world.scheduler, name => { if (name === 'decay') this.remove(); }, ['decay']);
+    addComponent(this, 'timer', Timer, world.scheduler, ['decay']);
+    this.ListenForEvent('timerdone', data => { if ((data as { name: string }).name === 'decay') this.remove(); });
     this.OnSave = (_inst, data) => on_save(this, data);
     this.OnLoad = (_inst, data) => on_load(this, data);
     this.onRemove(() => {
       this.changesTask?.(); this.removeTask?.();
       unbindFire(this);
       this.stopSnow?.(); this.stopSnow = undefined;
-      growable.dispose(); timer.dispose();
       for (const sound of this.sounds) sound.stop();
       this.sounds.clear();
     });
@@ -258,7 +259,7 @@ function make_stump(inst: MoonTreeInstance): void {
   inst.minimap.SetIcon('moon_tree_stump.png');
   startDecay(inst);
   removeComponent(inst, 'workable');
-  const workable = addComponent(inst, 'workable');
+  const workable = addComponent(inst, 'workable', Workable);
   inst.removeTag('shelter');
   inst.addTag('stump');
   workable.SetWorkAction('DIG');
@@ -351,11 +352,11 @@ export class MoonButterflySaplingInstance extends PrefabInstance {
     this.setPosition(position.x, 0, position.z);
     this.deploySmartRadius = 1.6 * UNIT; this.logicalPlacement = true;
     for (const tag of ['plant', 'moon_tree']) this.addTag(tag);
-    const workable = addComponent(this as MoonButterflySaplingInstance, 'workable');
+    const workable = addComponent(this as MoonButterflySaplingInstance, 'workable', Workable);
     workable.SetWorkAction('DIG'); workable.SetWorkLeft(1);
     workable.SetOnFinishCallback(dig_up_sapling);
-    const timer = this.components.timer = new Timer(world.scheduler, () => grow_sapling(this), ['grow']);
-    this.onRemove(() => timer.dispose());
+    const timer = addComponent(this, 'timer', Timer, world.scheduler, ['grow']);
+    this.ListenForEvent('timerdone', () => grow_sapling(this));
     timer.StartTimer('grow', MOONBUTTERFLY_SAPLING_GROW_TIME.base + (random() * 2 - 1) * MOONBUTTERFLY_SAPLING_GROW_TIME.random);
     this.OnSave = (_inst, data) => {
       // The timer's record keeps the name existing saves hold.

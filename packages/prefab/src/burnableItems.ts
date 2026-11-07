@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import { FindEntities } from './actionEntity';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { createSignal, readonlySignal, getBoundWatchWorldContent } from '@dontstarve-web/signals';
@@ -57,15 +58,13 @@ export class BurnableItemController {
     for (const tag of BURNABLE_ITEM_DEFINITIONS[entity.prefab].tags) entity.addTag(tag);
     const scheduler = entity.components.perishable.scheduler;
     this.ownsClock = !scheduler;
-    this.burnable = new Burnable(entity, scheduler);
-    entity.components.burnable = this.burnable;
+    this.burnable = addComponent(entity, 'burnable', Burnable, scheduler);
     const { burnTime, burnTimeVariance = 0, explosive } = BURNABLE_ITEM_DEFINITIONS[entity.prefab];
     this.burnable.SetBurnTime(burnTime + Math.random() * burnTimeVariance);
     // MakeSmallPropagator: the neighbours are the propagators FindEntities finds in range.
-    this.propagator = new Propagator(entity, 'small', radius => FindEntities(entity.getPosition(), radius)
+    this.propagator = addComponent(entity, 'propagator', Propagator, 'small', radius => FindEntities(entity.getPosition(), radius)
       .filter(inst => inst.components.propagator && !inst.isRemoved && !inst.hasTag('INLIMBO')) as unknown as BurnableInst[],
     TILE_SIZE / 4, scheduler);
-    entity.components.propagator = this.propagator;
     this.burnable.SetOnIgniteFn(() => { entity.persists = false; }); // DefaultBurnFn
     this.burnable.SetOnExtinguishFn(() => { entity.persists = true; }); // DefaultExtinguishFn
     if (!explosive) this.burnable.SetOnBurntFn(() => {

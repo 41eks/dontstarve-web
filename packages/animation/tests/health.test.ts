@@ -4,7 +4,7 @@ import { Health } from '../../componets/src/health';
 describe('basic health component', () => {
   it('uses the same invincibility, healing and absorption rules for every host, preserving direct assignments', () => {
     const events = vi.fn(), stateTags = new Set<string>();
-    const health = new Health(150, { PushEvent: events, sg: { hasStateTag: tag => stateTags.has(tag) } });
+    const health = new Health({ PushEvent: events, sg: { hasStateTag: tag => stateTags.has(tag) } }, 150);
     health.SetInvincible(true);
     expect(events).toHaveBeenLastCalledWith('invincibletoggle', { invincible: true });
     expect(health.DoDelta(-20)).toBe(0);
@@ -30,7 +30,7 @@ describe('basic health component', () => {
   });
 
   it('caps healing with the resurrection penalty and restores it atomically through component saves', () => {
-    const health = new Health(150);
+    const health = new Health({}, 150);
     health.DeltaPenalty(.25);
     expect(health.currenthealth).toBe(112.5);
     expect(health.IsHurt()).toBe(false);
@@ -38,7 +38,7 @@ describe('basic health component', () => {
     expect(health.currenthealth).toBe(112.5);
     health.SetMaxHealth(200);
     expect(health.currenthealth).toBe(150);
-    const restored = new Health();
+    const restored = new Health({});
     restored.OnLoad(JSON.parse(JSON.stringify(health.OnSave())));
     expect(restored.OnSave()).toEqual(health.OnSave());
     expect(restored.GetPercentWithPenalty()).toBe(1);
@@ -52,7 +52,7 @@ describe('basic health component', () => {
     health.dispose(); restored.dispose();
   });
   it('heals and damages without exceeding the health bounds, including zero health', () => {
-    const health = new Health();
+    const health = new Health({});
     expect(health.currenthealth).toBe(100);
     expect(health.IsHurt()).toBe(false);
     expect(health.DoDelta(-25.5)).toBe(-25.5);
@@ -70,10 +70,10 @@ describe('basic health component', () => {
   });
 
   it.each([83.5])('round-trips current health %s and its maximum through JSON', (current) => {
-    const health = new Health(150);
+    const health = new Health({}, 150);
     health.SetVal(current);
     const saved = health.OnSave();
-    const restored = new Health();
+    const restored = new Health({});
     restored.OnLoad(JSON.parse(JSON.stringify(saved)));
     expect(restored.OnSave()).toEqual({ health: current, maxhealth: 150 });
     saved.health = 1;
@@ -82,7 +82,7 @@ describe('basic health component', () => {
   });
 
   it('loads Lua health and setpiece percentages, preferring health when both are present', () => {
-    const health = new Health(150);
+    const health = new Health({}, 150);
     health.OnLoad({ health: 75 });
     expect(health.GetPercent()).toBe(0.5);
     health.OnLoad({ maxhealth: 200, percent: 0.25 });
@@ -98,7 +98,7 @@ describe('basic health component', () => {
   });
 
   it.each([NaN])('rejects invalid numbers %s without corrupting state', (invalid) => {
-    const health = new Health(150);
+    const health = new Health({}, 150);
     health.SetVal(50);
     const before = health.OnSave();
     expect(() => health.DoDelta(invalid)).toThrow(RangeError);
@@ -110,8 +110,8 @@ describe('basic health component', () => {
   });
 
   it('rejects nonpositive maximum health', () => {
-    expect(() => new Health(0)).toThrow(RangeError);
-    const health = new Health();
+    expect(() => new Health({}, 0)).toThrow(RangeError);
+    const health = new Health({});
     expect(() => health.SetMaxHealth(-1)).toThrow(RangeError);
     expect(() => health.OnLoad({ maxhealth: 0, health: 0 })).toThrow(RangeError);
     expect(health.OnSave()).toEqual({ health: 100, maxhealth: 100 });

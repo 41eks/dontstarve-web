@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import { Workable } from '../../componets/src/workable';
 import { ComponentTimer, Timer } from '../../componets/src/timer';
@@ -30,19 +31,20 @@ export class BeeQueenHiveInstance extends PrefabInstance {
     for (const tag of ['event_trigger', 'antlion_sinkhole_blocker']) this.addTag(tag);
     this.sprite.playOnce('large');
     for (let level = 0; level < 3; level++) this.sprite.setSymbolHidden(`honey${level}`, true);
-    const workable = this.components.workable = new Workable(this);
+    const workable = addComponent(this, 'workable', Workable);
     workable.SetWorkAction('HAMMER');
     workable.SetMaxWork(BEEQUEEN_HIVE_MAX_WORK);
     workable.SetWorkLeft(BEEQUEEN_HIVE_MAX_WORK);
     workable.savestate = true;
-    const timer = this.components.timer = new Timer(world.scheduler, name => onTimer(this, name), ['hiveregen']);
+    addComponent(this, 'timer', Timer, world.scheduler, ['hiveregen']);
+    this.ListenForEvent('timerdone', data => onTimer(this, (data as { name: string }).name));
     this.honeyTimer = new ComponentTimer(world.scheduler, () => {
       if (this.pendingHoney !== undefined) showHoneyLevel(this, this.pendingHoney);
       this.pendingHoney = undefined;
     });
     setHoneyLevel(this, honeyLevel(workable.GetWorkLeft()));
     workable.SetOnWorkCallback(onWorked);
-    this.onRemove(() => { timer.dispose(); this.honeyTimer.stop(); workable.dispose(); });
+    this.onRemove(() => this.honeyTimer.stop());
   }
 
   /** The record keeps the timer component's save under beeQueenHiveTimer. */

@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import type { AnimStateArt } from '@dontstarve-web/animation/animState';
 import { HatArtAssets, type HatArtDefinition, type HatEquipMode } from '@dontstarve-web/animation/hatAssets';
 import {
@@ -255,7 +256,7 @@ export function configureHatEntity(entity: ItemEntity): void {
   if (entity.prefab === DREADSTONEHAT_ID) configureDreadstoneHatEntity(entity);
   if (entity.getComponent('hat')) return;
   const hat = entity.component('hat', () => new WornHat(entity));
-  const equippable = entity.components.equippable ??= new Equippable<ItemEntity>(entity, 'head');
+  const equippable = addComponent(entity, 'equippable', Equippable<ItemEntity>, 'head');
   equippable.SetOnEquip((_inst, owner) => hat.onequip(owner));
   equippable.SetOnUnequip(() => hat.onunequip());
 }

@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
@@ -38,20 +39,19 @@ export class HoundboneInstance extends PrefabInstance {
     this.sprite.playOnce('piece1');
     this.addTag('bone');
 
-    const workable = new Workable(this);
+    const workable = addComponent(this, 'workable', Workable);
     workable.SetWorkAction('HAMMER');
     workable.SetWorkLeft(1);
     workable.SetOnFinishCallback(() => onhammered(this, world));
-    const lootdropper = new LootDropper(this, (itemId, point) => world.spawnGroundItem(
+    const lootdropper = addComponent(this, 'lootdropper', LootDropper, (itemId, point) => world.spawnGroundItem(
       { ...catalog.items[itemId as keyof typeof catalog.items], itemId, count: 1 }, new THREE.Vector3(point.x, point.y, point.z), { fling: true }));
     lootdropper.SetChanceLootTable('houndbone');
-    Object.assign(this.components, { workable, lootdropper });
+
     SetBoneType(this, 1 + Math.floor(Math.random() * HOUNDBONE_PIECES.length));
 
     // workable.savestate is false: a surviving bone reloads with its full work count.
     this.OnSave = (_inst, data) => { data.houndbone = { bonetype: this.bonetype }; };
     this.OnLoad = (_inst, data) => { if (data.houndbone?.bonetype !== undefined) SetBoneType(this, data.houndbone.bonetype); };
-    this.onRemove(() => workable.dispose());
   }
 }
 

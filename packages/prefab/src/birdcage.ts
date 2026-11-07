@@ -1,5 +1,7 @@
+import { LootDropper } from '../../componets/src/lootdropper';
+import { addComponent, removeComponent } from './components';
 import { Workable } from '../../componets/src/workable';
-import { createStructureLootDropper } from './structureLoot';
+import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
 import { PrefabInstance } from './prefabInstance';
 import { SpriteState } from '@dontstarve-web/display';
 import * as THREE from 'three';
@@ -212,19 +214,17 @@ export class Birdcage {
     // --- occupiable ---------------------------------------------------------------------------
 
     private addOccupiable(): void {
-        const occupiable = new Occupiable<ItemEntity, CageEntity>(this.instance);
+        const occupiable = addComponent(this.instance, 'occupiable', Occupiable<ItemEntity, CageEntity>);
         occupiable.occupanttype = 'bird';
         occupiable.onoccupied = (_inst, bird) => this.onOccupied(bird);
         occupiable.onemptied = () => this.onEmptied();
         occupiable.onperishfn = (_inst, bird) => this.onBirdStarve(bird);
         this.occupiable = occupiable;
-        this.instance.components.occupiable = occupiable;
     }
 
     private removeOccupiable(): void {
-        this.occupiable?.dispose();
+        removeComponent(this.instance, 'occupiable');
         this.occupiable = undefined;
-        delete this.instance.components.occupiable;
     }
 
     private onOccupied(bird: ItemEntity): void {
@@ -233,11 +233,10 @@ export class Birdcage {
         this.setCageState(CAGE_STATES.FULL);
         // Only if the bird can actually sleep: every ported bird has a sleeper in birds.lua.
         if (this.getWatchWorldContent && !this.sleeper) {
-            const sleeper = new Sleeper(this.sleeperInst(), this.getWatchWorldContent, this.random);
+            const sleeper = addComponent(this.instance, 'sleeper', Sleeper, this.getWatchWorldContent, this.random);
             sleeper.sleeptestfn = (inst, cycle) => this.shouldSleep(inst, cycle);
             sleeper.waketestfn = (inst, cycle) => this.shouldWake(inst, cycle);
             this.sleeperSignal.set(sleeper);
-            this.instance.components.sleeper = sleeper;
             this.stopSleepAnimation = sleeper.isasleep.subscribe(asleep => {
                 if (!this.occupiable?.IsOccupied()) return;
                 if (asleep) {
@@ -273,9 +272,8 @@ export class Birdcage {
     private removeSleeper(): void {
         this.stopSleepAnimation?.();
         this.stopSleepAnimation = undefined;
-        this.sleeper?.dispose();
+        removeComponent(this.instance, 'sleeper');
         this.sleeperSignal.set(undefined);
-        delete this.instance.components.sleeper;
     }
 
     /** The bird starved: drop its death state and shelve the meat. */
@@ -295,15 +293,6 @@ export class Birdcage {
     }
 
     // --- sleeper -----------------------------------------------------------------------------
-
-    private sleeperInst(): SleeperInst {
-        const cage = this;
-        return {
-            isValid: () => !cage.disposed,
-            PushEvent: (name, data) => cage.instance.PushEvent(name, data),
-            components: {},
-        };
-    }
 
     private shouldSleep(inst: SleeperInst, cycle: WorldPhase): boolean {
         const bird = this.getBird();
@@ -551,12 +540,12 @@ export class BirdcageInstance extends PrefabInstance {
         const { OnSave: saveBuilding, OnLoad: loadBuilding } = this;
         this.OnSave = (inst, data) => { saveBuilding!(inst, data); data.birdcage = cageOf(inst).save(); };
         this.OnLoad = (inst, data) => { loadBuilding!(inst, data); if (data.birdcage) cageOf(inst).restore(data.birdcage); };
-        const workable = this.components.workable = new Workable(this);
+        const workable = addComponent(this, 'workable', Workable);
         workable.SetWorkAction('HAMMER');
         workable.SetWorkLeft(4);
         workable.SetOnWorkCallback(onworked);
         workable.SetOnFinishCallback(onhammered);
-        this.components.lootdropper = createStructureLootDropper(this);
+        addComponent(this, 'lootdropper', LootDropper, spawnStructureLoot(this), STRUCTURE_LOOT_RECIPES);
         new Birdcage(this, world, art);
         this.ListenForEvent('onbuilt', () => cageOf(this).onBuilt());
     }

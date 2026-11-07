@@ -1,3 +1,4 @@
+import { addComponent, removeComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import { createEffect, watchSignal, type GameTimeScheduler, type ReadonlySignal } from '@dontstarve-web/signals';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
@@ -64,7 +65,7 @@ export class PortalInstance extends PrefabInstance implements MultiplayerPortalS
 
     this.sg = createMultiplayerPortalStateGraph(this, world.scheduler);
     this.addTag('inspectable');
-    Object.assign(this.components, { inspectable: new Inspectable(this) });
+    addComponent(this, 'inspectable', Inspectable);
 
     // OnGetPortalRez(inst, GetPortalRez()) and its ms_onportalrez listener.
     const cleanups: (() => void)[] = [];
@@ -89,8 +90,6 @@ export class PortalInstance extends PrefabInstance implements MultiplayerPortalS
     this.onRemove(() => {
       cleanups.splice(0).forEach(stop => stop());
       this.sg.dispose();
-      this.components.hauntable?.dispose();
-      delete this.components.hauntable;
     });
   }
 
@@ -121,13 +120,10 @@ function OnRezPlayer(inst: PortalInstance): void {
 function OnGetPortalRez(inst: PortalInstance, scheduler: GameTimeScheduler, portalrez: boolean): void {
   if (portalrez) {
     if (inst.components.hauntable) return;
-    const hauntable = new Hauntable(inst, scheduler);
-    hauntable.SetHauntValue(HAUNT_INSTANT_REZ);
-    inst.components.hauntable = hauntable;
+    addComponent(inst, 'hauntable', Hauntable, scheduler).SetHauntValue(HAUNT_INSTANT_REZ);
     inst.addTag('resurrector');
   } else if (inst.components.hauntable) {
-    inst.components.hauntable.dispose();
-    delete inst.components.hauntable;
+    removeComponent(inst, 'hauntable');
     inst.removeTag('resurrector');
   }
 }

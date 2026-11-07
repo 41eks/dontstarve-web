@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import type { PrefabEntityDefinition } from './prefabInstance';
 import { Pickable } from './components/pickable';
 import { Workable } from '../../componets/src/workable';
@@ -38,12 +39,12 @@ export class MushroomPlantInstance extends PickablePlantInstance {
   constructor(prefab: MushroomPlantId, context: PickablePlantContext) {
     super(MUSHROOM_DEFINITIONS[prefab], context);
     const data = this.data = MUSHROOM_DATA[prefab];
-    new Pickable(this, data.pickloot, undefined, 1, () => this.picked(), () => this.regen(), context.saved?.components.pickable, {
+    addComponent(this, 'pickable', Pickable, data.pickloot, undefined, 1, () => this.picked(), () => this.regen(), context.saved?.components.pickable, {
       scheduler: context.scheduler, growthDuration: context.growthDuration, onEmpty: () => this.empty(),
     });
     this.bindBurnable({ propagator: 'small', burnTime: 10, fxLevel: 2,
       onIgnite: () => DefaultBurnFn(this), onExtinguish: () => DefaultExtinguishFn(this), onBurnt: () => DefaultBurntFn(this, context.world) });
-    const workable = this.components.workable = new Workable(this);
+    const workable = addComponent(this, 'workable', Workable<MushroomPlantInstance>);
     workable.SetWorkAction('DIG'); workable.SetWorkLeft(1); workable.SetOnFinishCallback(inst => {
       if (inst.components.pickable.canBePicked) inst.components.lootdropper.SpawnLootPrefab(data.pickloot, inst.position);
       inst.components.lootdropper.SpawnLootPrefab(data.pickloot, inst.position); inst.remove();

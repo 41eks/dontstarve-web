@@ -1,3 +1,4 @@
+import { addComponent } from '../../prefab/src/components';
 import { actionEntity, disposeActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
@@ -23,7 +24,7 @@ it('uses component-owned pickable tags and blocks fire/intense without consultin
   const { instance, display } = createEmptyEntity('grass');
   const model = display.model; scene.add(model);
   instance.addTag('plant'); instance.addTag('custom');
-  const component = new Pickable(instance, 'log', 10);
+  const component = addComponent(instance, 'pickable', Pickable, 'log', 10);
   actionEntity(model, 'grass');
   expect(canDoSceneAction('PICK', model)).toBe(true);
   component.canInteractWith = false;
@@ -53,7 +54,7 @@ it('walks to the arrive distance, gives the PICK product to the doer inventory a
   const { instance, display } = createEmptyEntity('grass');
   const model = display.model; instance.setPosition(20, 0, 0);
   scene.add(model); scene.add(player); instance.addTag('plant');
-  const component = new Pickable(instance, 'log', 10, 2);
+  const component = addComponent(instance, 'pickable', Pickable, 'log', 10, 2);
   actionEntity(model, 'grass');
   const pointer = { trackPointer() {}, beginFrame() {}, endFrame() {},
     pickMouseTarget: () => ({ object: model }), dispose: vi.fn() } as unknown as PointerRaycaster;

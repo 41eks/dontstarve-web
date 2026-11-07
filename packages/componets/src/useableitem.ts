@@ -3,8 +3,7 @@ import { createSignal, readonlySignal, type ReadonlySignal } from '../../signals
 export interface UseableItemInst {
   addTag(tag: string): void;
   removeTag(tag: string): void;
-  /** `replica.equippable:IsEquipped()` */
-  isEquipped(): boolean;
+  readonly components: { equippable?: { IsEquipped(): boolean } };
 }
 
 /** useableitem.lua: the "inuse" tag mirrors the flag; the item decides what using it does. */
@@ -19,7 +18,8 @@ export class UseableItem {
 
   SetOnUseFn(fn: (inst: UseableItemInst) => boolean | void): void { this.onusefn = fn; }
   SetOnStopUseFn(fn: (inst: UseableItemInst) => void): void { this.onstopusefn = fn; }
-  CanInteract(): boolean { return !this.inuseState.peek() && this.inst.isEquipped(); }
+  /** `inst.replica.equippable:IsEquipped()`. */
+  CanInteract(): boolean { return !this.inuseState.peek() && !!this.inst.components.equippable?.IsEquipped(); }
 
   private setInUse(inuse: boolean): void {
     this.inuseState.set(inuse);

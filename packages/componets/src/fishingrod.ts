@@ -21,9 +21,7 @@ export interface FishingTarget {
 export interface FishingRodInst {
   addTag(tag: string): void;
   PushEvent(name: string, data?: unknown): void;
-  /** finiteuses:GetPercent(), absent when the rod has no durability. */
-  getDurabilityPercent(): number | undefined;
-  isEquipped(): boolean;
+  readonly components: { finiteuses?: { GetPercent(): number }; equippable?: { IsEquipped(): boolean } };
 }
 
 /** World services a landed fish needs: the fish becomes an ordinary ground item. */
@@ -93,7 +91,7 @@ export class FishingRod {
     if (!this.IsFishing()) return;
     const fisherman = this.fisherman!;
     if (fisherman.IsValid?.() === false || (!fisherman.sg?.HasStateTag('fishing') && !fisherman.sg?.HasStateTag('catchfish'))
-      || !this.inst.isEquipped()) this.StopFishing();
+      || !this.inst.components.equippable?.IsEquipped()) this.StopFishing();
   }
 
   IsFishing(): boolean { return this.target !== undefined && this.fisherman !== undefined; }
@@ -145,7 +143,7 @@ export class FishingRod {
     const fishable = this.target?.components.fishable;
     if (!fishable || !this.fisherman) return;
     this.hookedfish = fishable.HookFish(this.fisherman);
-    const durability = this.inst.getDurabilityPercent();
+    const durability = this.inst.components.finiteuses?.GetPercent();
     if (durability !== undefined) {
       this.startTask('loserod', this.minstraintime + durability * (this.maxstraintime - this.minstraintime));
     }

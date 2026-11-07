@@ -1,3 +1,4 @@
+import { addComponent, removeComponent } from './components';
 import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import type { World } from 'cannon-es';
@@ -83,35 +84,34 @@ export class StatueGlommerManager {
     const minimap = instance.minimap;
     minimap.SetIcon('statueglommer.png');
     minimap.SetPriority(5);
-    const pickable = new Pickable(model, 'glommerflower', undefined, 1, undefined, undefined,
+    const pickable = addComponent(instance, 'pickable', Pickable, 'glommerflower', undefined, 1, undefined, undefined,
       { picked: !saved?.components.pickable || saved.components.pickable.picked === true }, { scheduler: this.world.scheduler });
     // Lua's new Pickable has canbepicked=nil; OnInit/full moon may make it full later.
     if (saved?.components.pickable && !saved.components.pickable.picked) pickable.canBePicked = true;
-    const inspectable = new Inspectable(inst);
-    const leader = new Leader(inst);
-    const pointofinterest = new PointOfInterest(inst);
-    const hauntable = new Hauntable({ addTag: tag => inst.addTag(tag), removeTag: tag => inst.removeTag(tag),
-      PushEvent: (name, data) => inst.PushEvent?.(name, data) }, this.world.scheduler);
+    addComponent(instance, 'inspectable', Inspectable);
+    addComponent(instance, 'leader', Leader);
+    addComponent(instance, 'pointofinterest', PointOfInterest);
+    const hauntable = addComponent(instance, 'hauntable', Hauntable, this.world.scheduler);
     // MakeHauntableWork's active Lua branch returns false (its work attempt is commented out).
     hauntable.SetOnHauntFn(() => false);
-    let workable: Workable | undefined = new Workable(inst);
+    let workable: Workable | undefined = addComponent(instance, 'workable', Workable);
     workable.SetWorkAction('MINE');
     workable.SetWorkLeft(STATUEGLOMMER_WORK);
     workable.savestate = true;
-    let lootdropper: LootDropper | undefined = new LootDropper(inst, () => undefined);
+    let lootdropper: LootDropper | undefined = addComponent(instance, 'lootdropper', LootDropper, () => undefined);
     lootdropper.SetChanceLootTable('statueglommer');
     // Component OnLoad invokes OnLoadWorked before the prefab's OnLoad.
     if (saved?.components.workable) {
       workable.OnLoad(saved.components.workable);
       if (workable.GetWorkLeft() <= 0) {
         instance.sprite.playOnce('low');
-        workable.dispose(); workable = undefined; lootdropper = undefined;
+        removeComponent(instance, 'workable'); removeComponent(instance, 'lootdropper'); workable = undefined; lootdropper = undefined;
       } else instance.sprite.playOnce(workable.GetWorkLeft() < STATUEGLOMMER_WORK * .5 ? 'med' : 'full');
     }
     // prefab OnLoad: a separately saved worked flag also removes the two components.
     if (saved?.components.statueglommer?.worked && workable) {
       instance.sprite.playOnce('low');
-      workable.dispose(); workable = undefined; lootdropper = undefined;
+      removeComponent(instance, 'workable'); removeComponent(instance, 'lootdropper'); workable = undefined; lootdropper = undefined;
     }
     if (pickable.canBePicked) {
       instance.sprite.setSymbolOverride('swap_flower', 'glommer_swap_flower.zip', 'swap_flower');
@@ -123,8 +123,6 @@ export class StatueGlommerManager {
     const statue: Statue = { instance, display, workable, lootdropper, pickable, hauntable, minimap,
       spawned: saved?.components.statueglommer?.spawned === true,
       stopActivity: watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active)) };
-    Object.assign(prefabInstance(model)!.components, { ...(workable ? { workable } : {}), ...(lootdropper ? { lootdropper } : {}),
-      inspectable, leader, pointofinterest, hauntable });
     this.statues.set(model, statue);
     this.displays.mount(prefabDisplay(model)!);
     return model;
@@ -153,7 +151,7 @@ export class StatueGlommerManager {
     if (this.disposed) return;
     this.disposed = true;
     for (const [model, statue] of this.statues) {
-      statue.stopActivity(); statue.pickable.dispose(); statue.workable?.dispose(); statue.hauntable.dispose();
+      statue.stopActivity();
       model.userData.removed = true; statue.instance.remove();
     }
     this.statues.clear(); this.displays.dispose(); this.assets.dispose();

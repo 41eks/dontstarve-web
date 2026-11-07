@@ -12,7 +12,7 @@ import { createPerishWorld } from './perishWorldFixture';
 function wornAmulet(health: number, hunger: number) {
   const inventory = createPickupInventory(), world = createPerishWorld();
   inventory.entities.bindPerishWorld(world);
-  const stats = { health: new Health(150), hunger: new Hunger({ components: {} }, 150) };
+  const stats = { health: new Health({}, 150), hunger: new Hunger({ components: {} }, 150) };
   stats.health.SetCurrentHealth(health);
   stats.hunger.SetCurrent(hunger);
   const state = { name: 'idle' };
@@ -115,7 +115,8 @@ it('asks a haunting ghost to respawn from the amulet, then cools down on the gam
     const hauntable = entity.components.hauntable!;
     const ghost = { hasTag: (tag: string) => tag === 'playerghost', PushEvent: vi.fn() };
     hauntable.DoHaunt(ghost);
-    expect(ghost.PushEvent).toHaveBeenCalledWith('respawnfromghost', { source: expect.objectContaining({ prefab: AMULET_ID, entity }) });
+    // hauntable.lua: the amulet inst itself is the resurrection source.
+    expect(ghost.PushEvent).toHaveBeenCalledWith('respawnfromghost', { source: entity });
     expect(entity.hasTag('haunted')).toBe(true);
     world.advance(HAUNT_COOLDOWN_MEDIUM);
     expect(entity.hasTag('haunted')).toBe(false);

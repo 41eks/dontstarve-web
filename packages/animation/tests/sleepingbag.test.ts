@@ -10,7 +10,7 @@ function setup(hunger = 100) {
   const stats = { hunger, sanity: 50, health: 50 };
   const tags = new Set<string>();
   const goToWakeup = vi.fn();
-  const user = new SleepingBagUser({
+  const user = new SleepingBagUser({}, {
     scheduler, phase,
     hunger: { DoDelta: delta => { stats.hunger = Math.max(0, stats.hunger + delta); }, IsStarving: () => stats.hunger <= 0 },
     sanity: { DoDelta: delta => { stats.sanity += delta; }, GetPercentWithPenalty: () => stats.sanity / 200 },

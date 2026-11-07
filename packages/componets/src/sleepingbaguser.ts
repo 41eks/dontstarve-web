@@ -30,7 +30,7 @@ export class SleepingBagUser implements SleepingBagSleeper {
   private stopWatchingPhase?: () => void;
   private readonly options: SleepingBagUserOptions;
 
-  constructor(options: SleepingBagUserOptions) {
+  constructor(_inst: object, options: SleepingBagUserOptions) {
     this.options = options;
     this.tick = new ComponentTimer(options.scheduler, () => {
       this.SleepTick();

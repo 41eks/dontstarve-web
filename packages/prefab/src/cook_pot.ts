@@ -1,5 +1,7 @@
+import { LootDropper } from '../../componets/src/lootdropper';
+import { Workable } from '../../componets/src/workable';
 import { addComponent } from './components';
-import { createStructureLootDropper } from './structureLoot';
+import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
 import { type SpriteState } from '@dontstarve-web/display';
 import definitions from './definitions.json' with { type: 'json' };
 import {
@@ -70,12 +72,12 @@ function continueCooking(model: THREE.Group): void {
 }
 
 function initializePot({ model, instance, animState, world }: AnimatedBuildingEventContext): void {
-    const workable = addComponent(instance, 'workable');
+    const workable = addComponent(instance, 'workable', Workable);
     workable.SetWorkAction('HAMMER');
     workable.SetWorkLeft(4);
     workable.SetOnWorkCallback(onworked);
     workable.SetOnFinishCallback(onhammered);
-    instance.components.lootdropper = createStructureLootDropper(instance);
+    addComponent(instance, 'lootdropper', LootDropper, spawnStructureLoot(instance), STRUCTURE_LOOT_RECIPES);
     const presentation: PotPresentation = { animState };
     presentations.set(model, presentation);
     const components = instance.components;

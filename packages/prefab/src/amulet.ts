@@ -1,8 +1,8 @@
-import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
+import { addComponent } from './components';
 import type { ItemEntity, ItemRuntimeComponent } from '@dontstarve-web/inventory';
 import type { EquipmentOwner } from '@dontstarve-web/signals';
 import { Equippable } from '../../componets/src/equippable';
-import { Hauntable, HAUNT_INSTANT_REZ, type HauntableInst } from '../../componets/src/hauntable';
+import { Hauntable, HAUNT_INSTANT_REZ } from '../../componets/src/hauntable';
 import { ComponentTimer } from '../../componets/src/timer';
 import { skinArchive, wornOwner, type EquipmentVisual, type EquipmentVisualFactory, type EquipmentArtOwner } from './equipmentVisual';
 import catalog from './groundItems.json' with { type: 'json' };
@@ -17,34 +17,11 @@ export const AMULET_DAPPERNESS = 100 / (300 * 10);
 /** healowner: the hunger the conversion needs to leave behind. */
 const REDAMULET_MIN_HUNGER = 5;
 
-/** What the ghost's OnRespawnFromGhost needs from a resurrector, and the hauntable's own inst. */
-export interface AmuletRezSource extends HauntableInst {
-  readonly prefab: typeof AMULET_ID;
-  /** The amulet inst itself, which DoActualRez equips. */
-  readonly entity: ItemEntity;
-  isValid(): boolean;
-  readonly position: ReadonlyVector3;
-  hasTag(tag: string): boolean;
-}
-
-/** `source:IsValid() and not source:IsInLimbo()`: a held or removed amulet is not on the ground any more. */
-function createRezSource(entity: ItemEntity): AmuletRezSource {
-  return {
-    prefab: AMULET_ID, entity,
-    isValid: () => !entity.isRemoved && entity.components.inventoryitem.owner === null && !entity.hasTag('INLIMBO'),
-    get position() { return entity.transform.position; },
-    hasTag: tag => entity.hasTag(tag),
-    addTag: tag => entity.addTag(tag),
-    removeTag: tag => entity.removeTag(tag),
-    PushEvent: (name, data) => entity.PushEvent(name, data),
-  };
-}
-
 /** amulet.lua commonfn + red: tags, body equippable with magic dapperness, finiteuses and a hauntable that resurrects. */
 export function configureAmuletEntity(entity: ItemEntity): void {
   entity.addTag('shadowlevel');
   entity.addTag('resurrector');
-  const equippable = entity.components.equippable ??= new Equippable<ItemEntity>(entity, 'body');
+  const equippable = addComponent(entity, 'equippable', Equippable<ItemEntity>, 'body');
   equippable.dapperness = AMULET_DAPPERNESS;
   equippable.is_magic_dapperness = true;
   const red = entity.component('redamulet', () => new RedAmulet(entity));
@@ -53,11 +30,7 @@ export function configureAmuletEntity(entity: ItemEntity): void {
   // The timer belongs to the world the item is bound to; a world-less entity is configured again once adopted.
   const scheduler = entity.components.perishable.scheduler;
   if (!scheduler || entity.components.hauntable) return;
-  entity.components.hauntable = entity.component('hauntable', () => {
-    const hauntable = new Hauntable(createRezSource(entity), scheduler);
-    hauntable.SetHauntValue(HAUNT_INSTANT_REZ);
-    return hauntable;
-  });
+  addComponent(entity, 'hauntable', Hauntable, scheduler).SetHauntValue(HAUNT_INSTANT_REZ);
 }
 
 /** amulet.lua healowner: convert hunger into health while hurt, one use per conversion. */

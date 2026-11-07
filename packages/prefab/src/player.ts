@@ -1,3 +1,4 @@
+import { addComponent, removeComponent } from './components';
 import { smallHash } from '@dontstarve-web/animation/animationAssets';
 import { AnimState } from '@dontstarve-web/animation/animState';
 import { SpriteResources, type NamedSpriteArt, type FollowerFx, type PrefabDisplay } from '@dontstarve-web/display';
@@ -36,11 +37,10 @@ export const PLAYER_ART_CHARACTER = 'wortox' as const;
 
 /** player_common.lua AddComponent("builder"); the scene supplies spatial queries. */
 export function bindPlayerBuilder(model: THREE.Group, world: Omit<BuilderWorld, 'researchMachineDistance'>): Builder {
-  const inst = actionEntity(model, PLAYER_ART_CHARACTER);
-  inst.components.builder?.dispose();
-  const builder = new Builder(inst, { ...world, researchMachineDistance: 4 * WORLD_SCALE });
-  inst.components.builder = builder;
-  return builder;
+  const inst = prefabInstance(model)!;
+  actionEntity(model, PLAYER_ART_CHARACTER);
+  removeComponent(inst, 'builder');
+  return addComponent(inst, 'builder', Builder, { ...world, researchMachineDistance: 4 * WORLD_SCALE });
 }
 export interface SymbolFollower {
   readonly node: THREE.Object3D;
@@ -580,12 +580,13 @@ function createWilsonPlayerEntity(
     // sleepingbaguser.lua: per-tick hunger, sanity and health in a bed; WatchWorldState("phase") wakes at the bed's phase end.
     const phase = createMemo(() => clockstate.get().phase);
     const { hunger, sanity, health } = instance.stats;
-    const sleeper = instance.components.sleepingbaguser = new SleepingBagUser({
+    // player_common.lua OnDespawn: the bed releases its sleeper without a state change, before the component's teardown.
+    instance.onRemove(() => { instance.components.sleepingbaguser?.bed?.DoWakeUp(true); });
+    addComponent(instance, 'sleepingbaguser', SleepingBagUser, {
       scheduler: options.scheduler, phase: readonlySignal(phase), hunger, sanity, health,
       goToWakeup: () => instance.animationController.stategraph.wakeUp(),
     });
-    // player_common.lua OnDespawn: the bed releases its sleeper without a state change.
-    instance.onRemove(() => { sleeper.bed?.DoWakeUp(true); sleeper.dispose(); phase.dispose(); });
+    instance.onRemove(() => phase.dispose());
   }
   instance.minimap.SetIcon(`${PLAYER_ART_CHARACTER}.png`);
   instance.minimap.SetPriority(10);

@@ -1,13 +1,14 @@
+import { addComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import type { GetWatchWorldContent } from '@dontstarve-web/signals';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
-import { Combat, type CombatActor } from '../../componets/src/combat';
+import { Combat } from '../../componets/src/combat';
 import { Health } from '../../componets/src/health';
 import { KnownLocations } from '../../componets/src/knownlocations';
 import { Inventory } from '../../componets/src/inventory';
 import { LootDropper } from '../../componets/src/lootdropper';
-import { LocoMotor, type LocoMotorInst } from '../../componets/src/locomotor';
+import { LocoMotor } from '../../componets/src/locomotor';
 import { Sleeper } from '../../componets/src/sleeper';
 import { Freezable } from '../../componets/src/freezable';
 import { Propagator } from '../../componets/src/propagator';
@@ -50,7 +51,26 @@ const NEW_DRAGONFLY: DragonflySaveState = {
  * fight are outside this saved-display port, so the records of components without behaviour here are kept as loaded.
  */
 export class DragonflyInstance extends PrefabInstance {
-  declare readonly components: PrefabInstance['components'] & { health: Health; knownlocations: KnownLocations; timer: Timer };
+  declare readonly components: PrefabInstance['components'] & { health: Health; knownlocations: KnownLocations; timer: Timer;
+    locomotor?: LocoMotor; freezable?: Freezable; damagetracker?: DamageTracker; explosiveresist?: ExplosiveResist;
+    groundpounder?: GroundPounder; grouptargeter?: GroupTargeter; healthtrigger?: HealthTrigger; moisture?: Moisture;
+    rampingspawner?: RampingSpawner; stuckdetection?: StuckDetection; stunnable?: Stunnable };
+  /** The components' inst: inventory owner id, Transform and Physics motor, and brain switches. */
+  get id(): string { return String(this.entityId); }
+  isDead(): boolean { return this.components.health.IsDead(); }
+  getAngleToPoint(x: number, _y: number, z: number): number {
+    const { position } = this;
+    return THREE.MathUtils.radToDeg(Math.atan2(position.z - z, x - position.x));
+  }
+  /** Physics:SetMotorVel along the facing. */
+  setMotorSpeed(speed: number): void {
+    const body = this.physicsBody, angle = this.transform.model.rotation.y;
+    if (body) { body.velocity.x = Math.cos(angle) * speed; body.velocity.z = -Math.sin(angle) * speed; }
+  }
+  PushBufferedAction(): void { throw new Error('Dragonfly stategraph actions are outside the saved-display scope'); }
+  /** EntityScript:StopBrain / RestartBrain: the brain is a constructor signature only. */
+  stopBrain(): void {}
+  restartBrain(): void {}
   /** The loaded record; health, knownlocations and timer are saved from their components. */
   private saved: DragonflySaveState = structuredClone(NEW_DRAGONFLY);
 
@@ -61,58 +81,31 @@ export class DragonflyInstance extends PrefabInstance {
     for (const tag of ['epic', 'noepicmusic', 'monster', 'hostile', 'dragonfly', 'scarytoprey',
       'largecreature', 'flying', 'ignorewalkableplatformdrowning']) this.addTag(tag);
     this.sprite.start('idle'); // AnimState:PlayAnimation('idle', true) in fn.
-    const model = this.transform.model, components = this.components;
-    const pushEvent = (name: string, data?: unknown) => this.PushEvent(name, data);
-    const isValid = () => !this.isRemoved;
-    const health = new Health(27500, this);
-    const knownlocations = new KnownLocations();
-    const timer = new Timer(world.scheduler, () => undefined, ['groundpound_cd']);
-    const combatActor: CombatActor = {
-      getPosition: () => model.position, getPhysicsRadius: () => this.getPhysicsRadius(0),
-      hasTag: tag => this.hasTag(tag), get components() { return components; }, PushEvent: pushEvent,
-    };
-    const combat = new Combat(combatActor, () => world.scheduler.now);
+    const health = addComponent(this, 'health', Health, 27500);
+    const knownlocations = addComponent(this, 'knownlocations', KnownLocations);
+    const timer = addComponent(this, 'timer', Timer, world.scheduler, ['groundpound_cd']);
+    const combat = addComponent(this, 'combat', Combat, () => world.scheduler.now);
     combat.SetDefaultDamage(150); combat.SetAttackPeriod(4); combat.SetRange(4 * WORLD_SCALE, 5 * WORLD_SCALE);
-    const self = this;
-    // The entity's id is assigned once fn returns.
-    const inventory = new Inventory({ get id() { return String(self.entityId); }, getPosition: () => model.position }, 15,
+    addComponent(this, 'inventory', Inventory, 15,
       () => { throw new Error('Dragonfly inventory drops are outside the saved-display scope'); });
-    const lootdropper = new LootDropper(this, () => undefined);
-    lootdropper.SetChanceLootTable('dragonfly');
-    const motorInst: LocoMotorInst = {
-      isValid, getPosition: () => model.position,
-      getPhysicsRadius: () => this.getPhysicsRadius(0),
-      setRotation: degrees => { model.rotation.y = THREE.MathUtils.degToRad(degrees); },
-      getAngleToPoint: (x, _y, z) => THREE.MathUtils.radToDeg(Math.atan2(model.position.z - z, x - model.position.x)),
-      setMotorSpeed: speed => {
-        const body = this.physicsBody;
-        if (body) { body.velocity.x = Math.cos(model.rotation.y) * speed; body.velocity.z = -Math.sin(model.rotation.y) * speed; }
-      },
-      components, PushEvent: pushEvent,
-      PushBufferedAction: () => { throw new Error('Dragonfly stategraph actions are outside the saved-display scope'); },
-    };
-    const locomotor = new LocoMotor(motorInst);
-    locomotor.walkspeed = 5 * WORLD_SCALE;
-    const sleeper = new Sleeper({ isValid, PushEvent: pushEvent, get components() { return components; } }, world.getWatchWorldContent);
+    addComponent(this, 'lootdropper', LootDropper, () => undefined).SetChanceLootTable('dragonfly');
+    addComponent(this, 'locomotor', LocoMotor).walkspeed = 5 * WORLD_SCALE;
+    const sleeper = addComponent(this, 'sleeper', Sleeper, world.getWatchWorldContent);
     sleeper.SetResistance(4); sleeper.sleeptestfn = () => false; sleeper.waketestfn = () => true;
-    const freezable = new Freezable({
-      isValid, isDead: () => health.IsDead(),
-      addTag: tag => this.addTag(tag), removeTag: tag => this.removeTag(tag), PushEvent: pushEvent,
-      ListenForEvent: (name, fn) => this.ListenForEvent(name, fn),
-      stopBrain: () => undefined, restartBrain: () => undefined,
-      get components() { return components; },
-    }, world.scheduler);
-    freezable.resistance = 8;
-    const propagator = new Propagator(this, 'large', () => [], WORLD_SCALE, world.scheduler, world.getWatchWorldContent);
-    propagator.decayrate = 0;
-    Object.assign(components, { health, knownlocations, timer,
-      combat, inventory, lootdropper, locomotor, sleeper, freezable, propagator,
-      damagetracker: new DamageTracker(this), explosiveresist: new ExplosiveResist(this),
-      groundpounder: new GroundPounder(this), grouptargeter: new GroupTargeter(this),
-      healthtrigger: new HealthTrigger(this), inspectable: new Inspectable(this),
-      moisture: new Moisture(this), rampingspawner: new RampingSpawner(this),
-      stuckdetection: new StuckDetection(this), stunnable: new Stunnable(this),
-      stategraph: new DragonflyStateGraph(this), brain: new DragonflyBrain(this) });
+    addComponent(this, 'freezable', Freezable, world.scheduler).resistance = 8;
+    addComponent(this, 'propagator', Propagator, 'large', () => [], WORLD_SCALE, world.scheduler, world.getWatchWorldContent).decayrate = 0;
+    addComponent(this, 'damagetracker', DamageTracker);
+    addComponent(this, 'explosiveresist', ExplosiveResist);
+    addComponent(this, 'groundpounder', GroundPounder);
+    addComponent(this, 'grouptargeter', GroupTargeter);
+    addComponent(this, 'healthtrigger', HealthTrigger);
+    addComponent(this, 'inspectable', Inspectable);
+    addComponent(this, 'moisture', Moisture);
+    addComponent(this, 'rampingspawner', RampingSpawner);
+    addComponent(this, 'stuckdetection', StuckDetection);
+    addComponent(this, 'stunnable', Stunnable);
+    // SetStateGraph("SGdragonfly") and SetBrain(brain): constructor signatures only.
+    new DragonflyStateGraph(this); new DragonflyBrain(this);
 
     // This project's record nests every component record under data.dragonfly; the components' own top-level
     // records are folded into it.
@@ -131,7 +124,6 @@ export class DragonflyInstance extends PrefabInstance {
       knownlocations.OnLoad(this.saved.knownlocations);
       timer.OnLoad(this.saved.timer);
     };
-    this.onRemove(() => { timer.dispose(); inventory.dispose(); sleeper.dispose(); freezable.dispose(); propagator.dispose(); });
   }
 }
 

@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Deployable } from '../../componets/src/deployable';
 import type { GroundTileName } from './groundTiles';
@@ -27,12 +28,12 @@ export function configureTurfEntity(entity: ItemEntity): void {
   entity.addTag('groundtile');
   entity.addTag('molebait');
   entity.addTag('deployable');
-  entity.components.deployable = entity.component('deployable', () => new Deployable(entity, (point, deployer, map) => {
+  addComponent(entity, 'deployable', Deployable, (point, deployer, map) => {
     if (entity.components.inventoryitem.owner || entity.components.stackable.count !== 1) {
       throw new Error('Turf deployment requires one detached item');
     }
     PlaySound('dontstarve/wilson/dig', deployer.position);
     map.setTile(Math.floor(point.x / TILE_SIZE), Math.floor(point.z / TILE_SIZE), WORLD_TILES[name]);
     entity.remove();
-  }));
+  });
 }

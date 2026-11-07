@@ -30,6 +30,7 @@ import { Locomotor, setupLocomotorInput } from '@dontstarve-web/prefab/locomotor
 import { AddSlipperyFeet, RemoveSlipperyFeet } from '@dontstarve-web/prefab/player_common';
 import { actionEntitiesChanged, bindActionEntityWorld, FindEntities } from '../packages/prefab/src/actionEntity';
 import { bindPlayerBuilder } from '@dontstarve-web/prefab/player';
+import { removeComponent } from '../packages/prefab/src/components';
 import type { DisposalEvents } from './registerDisposal';
 import { disposeTextureAssets } from '@dontstarve-web/animation/textureLoader';
 import { preloadAnimationArchives } from '@dontstarve-web/animation/preloadArchives';
@@ -215,8 +216,7 @@ export async function startScene(
     view.renderer.domElement.removeEventListener('pointerdown', blockDisabledController, true);
     if (playerInstance.locomotor === locomotor) delete playerInstance.locomotor;
     animation?.stop();
-    builder.dispose();
-    if (playerInstance.components.builder === builder) delete playerInstance.components.builder;
+    if (playerInstance.components.builder === builder) removeComponent(playerInstance, 'builder');
     RemoveSlipperyFeet(playerInstance);
     const slipTask = backTasks.indexOf(updateSlipperyFeet);
     if (slipTask >= 0) backTasks.splice(slipTask, 1);

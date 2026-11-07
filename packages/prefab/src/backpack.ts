@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Equippable } from '../../componets/src/equippable';
 import { skinArchive, wornOwner, type EquipmentVisual, type EquipmentVisualFactory, type EquipmentArtOwner } from './equipmentVisual';
@@ -6,7 +7,7 @@ import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 /** backpack.lua fn: the native map icon and the body equippable's onequip/onunequip; the container belongs to inventory. */
 export function configureBackpackEntity(entity: ItemEntity): void {
   entity.AddMiniMapEntity().SetIcon('backpack.png');
-  const equippable = entity.components.equippable ??= new Equippable<ItemEntity>(entity, 'body');
+  const equippable = addComponent(entity, 'equippable', Equippable<ItemEntity>, 'body');
   let visual: EquipmentVisual | undefined;
   equippable.SetOnEquip((inst, owner) => {
     visual?.onunequip();

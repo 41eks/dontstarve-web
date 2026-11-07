@@ -1,3 +1,5 @@
+import { LootDropper } from '../../componets/src/lootdropper';
+import { addComponent } from './components';
 import { ToolMouseTarget } from './toolMouseTarget';
 import { ModelRecords } from './modelRecords';
 import * as THREE from 'three';
@@ -17,7 +19,7 @@ import { BuildCursor, declarePlacer, entityPlacer } from './buildCursor';
 import { reskinTarget } from './reskin_tool';
 import { newEntityId, saveGroundPosition, type PlacedEntitySaveRecord, type PlacementSaveRecord } from './saveRecord';
 import { PlaySound } from './sound';
-import { createStructureLootDropper } from './structureLoot';
+import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
 import { PathfindingWall } from './pathfinder';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { BurnableBinding, FireFxHost } from './treeFire';
@@ -113,15 +115,15 @@ function onhit(inst: FencePrefabInstance, attacker: CombatActor): void {
 
 function initializeFence(inst: FencePrefabInstance): void {
     for (const tag of FENCE_TAGS) inst.addTag(tag);
-    const health = inst.components.health = new Health(1, inst);
+    const health = addComponent(inst, 'health', Health, 1);
     health.absorb = 1; health.canheal = false; health.nofadeout = true;
-    const combat = inst.components.combat = new Combat(inst, () => inst.worldServices?.scheduler?.now ?? 0);
+    const combat = addComponent(inst, 'combat', Combat, () => inst.worldServices?.scheduler?.now ?? 0);
     combat.SetKeepTargetFunction(() => false);
     combat.onhitfn = onhit;
-    const lootdropper = inst.components.lootdropper = createStructureLootDropper(inst);
+    const lootdropper = addComponent(inst, 'lootdropper', LootDropper, spawnStructureLoot(inst), STRUCTURE_LOOT_RECIPES);
     lootdropper.SetLoot(['twigs']);
     lootdropper.droprecipeloot = false;
-    const workable = inst.components.workable = new Workable(inst);
+    const workable = addComponent(inst, 'workable', Workable);
     workable.SetWorkAction('HAMMER');
     workable.SetWorkLeft(3);
     workable.SetOnWorkCallback(onworked);

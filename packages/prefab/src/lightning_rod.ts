@@ -1,5 +1,7 @@
+import { LootDropper } from '../../componets/src/lootdropper';
+import { addComponent } from './components';
 import { Workable } from '../../componets/src/workable';
-import { createStructureLootDropper } from './structureLoot';
+import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
 import { SpriteState } from '@dontstarve-web/display';
 import definitions from './definitions.json' with { type: 'json' };
 import { Battery } from '../../componets/src/battery';
@@ -163,12 +165,12 @@ export class LightningRodInstance extends PrefabInstance {
         const { OnSave: saveBuilding, OnLoad: loadBuilding } = this;
         this.OnSave = (inst, data) => { saveBuilding!(inst, data); onsave(inst, data); };
         this.OnLoad = (inst, data) => { loadBuilding!(inst, data); onload(inst, data); };
-        const workable = this.components.workable = new Workable(this);
+        const workable = addComponent(this, 'workable', Workable);
         workable.SetWorkAction('HAMMER');
         workable.SetWorkLeft(4);
         workable.SetOnWorkCallback(onhit);
         workable.SetOnFinishCallback(onhammered);
-        this.components.lootdropper = createStructureLootDropper(this);
+        addComponent(this, 'lootdropper', LootDropper, spawnStructureLoot(this), STRUCTURE_LOOT_RECIPES);
 
         const rod = this.lightningRod = new LightningRod(this);
         this.addTag('structure');

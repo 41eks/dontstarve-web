@@ -1,5 +1,7 @@
+import { LootDropper } from '../../componets/src/lootdropper';
+import { addComponent } from './components';
 import { Workable } from '../../componets/src/workable';
-import { createStructureLootDropper } from './structureLoot';
+import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
 import { SpriteState } from '@dontstarve-web/display';
 import { PrefabInstance } from './prefabInstance';
 import type { ReadonlyVector3 } from './transform';
@@ -92,12 +94,12 @@ export class WinterometerInstance extends PrefabInstance {
         this.OnSave = (inst, data) => { saveBuilding!(inst, data); onsaveBurnt(inst, data); };
         this.OnLoad = (inst, data) => { loadBuilding!(inst, data); onloadBurnt(inst, data); };
         this.addTag('structure');
-        const workable = this.components.workable = new Workable(this);
+        const workable = addComponent(this, 'workable', Workable);
         workable.SetWorkAction('HAMMER');
         workable.SetWorkLeft(4);
         workable.SetOnWorkCallback(onworked);
         workable.SetOnFinishCallback(onhammered);
-        this.components.lootdropper = createStructureLootDropper(this);
+        addComponent(this, 'lootdropper', LootDropper, spawnStructureLoot(this), STRUCTURE_LOOT_RECIPES);
         const check = this.temperatureCheck = new WinterometerCheck(this, { ...world, scheduler });
         this.onRemove(() => check.cancel());
         this.ListenForEvent('onbuilt', () => onbuilt(this));

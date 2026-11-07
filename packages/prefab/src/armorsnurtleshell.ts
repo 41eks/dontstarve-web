@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import type { ItemEntity, ItemRuntimeComponent } from '@dontstarve-web/inventory';
 import type { EquipmentOwner } from '@dontstarve-web/signals';
 import { Armor } from '../../componets/src/armor';
@@ -106,15 +107,11 @@ export function configureArmorSnurtleshellEntity(inst: ItemEntity): void {
   // The inventory configures an inst again on every commit; components are added once, as AddComponent in fn.
   if (inst.getComponent('armorsnurtleshell')) return;
   const shell = inst.component('armorsnurtleshell', () => new ArmorSnurtleshell(inst));
-  (inst.components.armor = new Armor(inst)).InitCondition(ARMORSNURTLESHELL, ARMORSNURTLESHELL_ABSORPTION);
-  const equippable = inst.components.equippable ??= new Equippable<ItemEntity>(inst, 'body');
+  (addComponent(inst, 'armor', Armor)).InitCondition(ARMORSNURTLESHELL, ARMORSNURTLESHELL_ABSORPTION);
+  const equippable = addComponent(inst, 'equippable', Equippable<ItemEntity>, 'body');
   equippable.SetOnEquip((_inst, owner) => shell.onequip(owner));
   equippable.SetOnUnequip(() => shell.onunequip());
-  const useableitem = inst.components.useableitem = new UseableItem({
-    addTag: tag => inst.addTag(tag),
-    removeTag: tag => inst.removeTag(tag),
-    isEquipped: () => equippable.IsEquipped(),
-  });
+  const useableitem = addComponent(inst, 'useableitem', UseableItem);
   useableitem.SetOnUseFn(() => shell.onuse());
   useableitem.SetOnStopUseFn(() => shell.onstopuse());
 }

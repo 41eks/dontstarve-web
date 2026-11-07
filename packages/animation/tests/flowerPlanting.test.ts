@@ -170,7 +170,7 @@ it('applies rose thorns through combat and respects equipped bramble protection 
   const sanity = vi.fn(), pushEvent = vi.fn();
   const inst: CombatInst = { getPosition: () => s.world.player.position, getPhysicsRadius: () => 0,
     hasTag: () => false, components: {} };
-  const health = new Health(150), combat = new Combat(inst, () => 0);
+  const health = new Health({}, 150), combat = new Combat(inst, () => 0);
   inst.components.health = health;
   const picker: PickActor = { hasTag: () => false, PushEvent: pushEvent,
     components: { sanity: { DoDelta: sanity }, combat, inventory: s.inventory } };
@@ -305,7 +305,7 @@ it('uses the live instance in source callbacks and declares type changes without
 
     flower.OnLoad!(flower, { flower: { animation: 'rose', planted: true } });
     expect(flower.hasTag('thorny')).toBe(true);
-    expect(flower.components.inspectable.getstatus()).toBe('ROSE');
+    expect(flower.components.inspectable!.getstatus!()).toBe('ROSE');
     expect(flower.scrapbook_proxy).toBe('flower_rose');
     expect(flower.planted).toBe(true);
     expect(flower.sprite.sprite.peek()).toMatchObject({ clip: { name: 'rose', loop: false }, queue: [] });
@@ -315,7 +315,7 @@ it('uses the live instance in source callbacks and declares type changes without
     expect(flower.planted).toBeUndefined();
     flower.OnLoad!(flower, { flower: { animation: 'f2' } });
     expect(flower.hasTag('thorny')).toBe(false);
-    expect(flower.components.inspectable.getstatus()).toBeUndefined();
+    expect(flower.components.inspectable!.getstatus!()).toBeUndefined();
     expect(flower.scrapbook_proxy).toBeUndefined();
     expect(flower.components.pickable).toBe(pickable);
     expect(flower.sprite.sprite.peek()).toMatchObject({ clip: { name: 'f2', loop: false }, queue: [] });
@@ -350,7 +350,7 @@ it('spawns natural flowers and explicit roses, saves their live fields and resto
     expect((await executeDebugCommand('c_spawn("flower_rose")', s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
     const rose = prefabInstance<FlowerInstance>(s.world.scene.children[1])!;
     expect(rose.prefab).toBe('flower');
-    expect(rose.components.inspectable.getstatus()).toBe('ROSE');
+    expect(rose.components.inspectable!.getstatus!()).toBe('ROSE');
     await prefabDisplay(s.world.scene.children[1]).artLoaded();
     rose.DoRoseBounceAnim!();
     expect(rose.sprite.sprite.peek()).toMatchObject({ clip: { name: 'rose_bounce', loop: false }, queue: [{ name: 'rose', loop: false }] });
@@ -368,7 +368,7 @@ it('spawns natural flowers and explicit roses, saves their live fields and resto
     ]);
     await restored.registry.restoreAll({ flower: save.world.entities.flower });
     expect(restored.flowers.exportRecords()).toEqual(s.flowers.exportRecords());
-    expect(prefabInstance<FlowerInstance>(restored.world.scene.children[1])!.components.inspectable.getstatus()).toBe('ROSE');
+    expect(prefabInstance<FlowerInstance>(restored.world.scene.children[1])!.components.inspectable!.getstatus!()).toBe('ROSE');
     rose.remove();
     expect(s.flowers.exportRecords()).toHaveLength(1);
     expect(FindEntities(rose.position, 1, ['flower']).some(inst => lookupPrefabInstance(inst.model) === rose)).toBe(false);

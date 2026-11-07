@@ -10,7 +10,7 @@ export interface OccupantItem {
   readonly isRemoved: boolean;
   hasTag(tag: string): boolean;
   ListenForEvent(name: string, listener: (data: unknown) => void): () => void;
-  getComponent<T extends { dispose(): void }>(name: string): T | undefined;
+  readonly components: { occupier?: unknown };
   /** Settle against the current holder before the occupier's owner changes. */
   flush(): void;
   /** occupier:Remove(): the occupant is destroyed after it perished. */
@@ -60,12 +60,12 @@ export class Occupiable<Item extends OccupantItem, Inst extends OccupiableInst =
 
   CanOccupy(occupier: Item): boolean {
     return !this.IsOccupied() && this.type !== undefined && occupier.hasTag(this.type)
-      && occupier.getComponent('occupier') !== undefined;
+      && occupier.components.occupier !== undefined;
   }
 
   /** The caller has already removed the item from its previous owner (inventoryitem:RemoveFromOwner). */
   Occupy(occupier: Item | undefined): boolean {
-    const occupierComponent = occupier?.getComponent<Occupier<Inst>>('occupier');
+    const occupierComponent = occupier?.components.occupier as Occupier<Inst> | undefined;
     if (this.IsOccupied() || !occupier || !occupierComponent || occupier.isRemoved) return false;
     occupier.flush();
     if (occupier.isRemoved || this.IsOccupied()) return false;
@@ -99,7 +99,7 @@ export class Occupiable<Item extends OccupantItem, Inst extends OccupiableInst =
     if (!item) return undefined;
     item.flush();
     if (item.isRemoved || this.occupantState.peek() !== item) return undefined;
-    item.getComponent<Occupier<Inst>>('occupier')?.SetOwner(undefined);
+    (item.components.occupier as Occupier<Inst> | undefined)?.SetOwner(undefined);
     this.stopListening?.();
     this.setOccupant(undefined);
     this.onemptied?.(this.inst);

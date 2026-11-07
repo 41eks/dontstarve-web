@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import { Transform } from './transform';
 import * as THREE from 'three';
 import { SpriteState } from '@dontstarve-web/display';
@@ -35,13 +36,13 @@ export interface MarbleBeanSaplingWorld extends ToolMouseTargetWorld {
 export function configureMarbleBeanEntity(entity: ItemEntity): void {
   if (entity.prefab !== 'marblebean' || entity.components.deployable) return;
   configureBurnableItemEntity(entity);
-  entity.components.deployable = entity.component('deployable', () => new Deployable(entity, (point, _deployer, map) => {
+  addComponent(entity, 'deployable', Deployable, (point, _deployer, map) => {
     if (!map.SpawnPrefab(MARBLEBEAN_SAPLING_ID, point)) return false;
     PlaySound('dontstarve/wilson/plant_tree', point);
     entity.remove();
     return true;
     // MakePlacer("marblebean_placer", "marblebean", "marblebean", "idle_planted").
-  }, { mode: 'PLANT', spacing: 2 * (TILE_SIZE / 4), placer: { bank: 'marblebean', build: 'marblebean', animationArchive: 'marblebean.zip', animation: 'idle_planted' } }));
+  }, { mode: 'PLANT', spacing: 2 * (TILE_SIZE / 4), placer: { bank: 'marblebean', build: 'marblebean', animationArchive: 'marblebean.zip', animation: 'idle_planted' } });
 }
 
 /** planted_tree.lua sapling_fn("marblebean", ...): a fireproof sapling with a `grow` timer and a DIG workable. */
@@ -57,17 +58,14 @@ export class MarbleBeanSaplingInstance extends PrefabInstance {
     this.sprite.playOnce('idle_planted');
     this.addTag('marbleshrub');
 
-    const timer = new Timer(world.scheduler, name => this.PushEvent('timerdone', { name }), [GROW]);
+    const timer = addComponent(this, 'timer', Timer, world.scheduler, [GROW]);
     this.ListenForEvent('timerdone', data => { if ((data as { name: string }).name === GROW) this.growtree(); });
-    const workable = new Workable(this);
+    const workable = addComponent(this, 'workable', Workable);
     workable.SetWorkAction('DIG'); workable.SetWorkLeft(1);
     workable.SetOnFinishCallback(() => this.digup());
-    Object.assign(this.components, { timer, workable });
 
     // startgrowing runs on construction and from marblebean's StartGrowing; a saved timer then replaces it.
     timer.StartTimer(GROW, MARBLEBEAN_GROW_TIME.base + (Math.random() * 2 - 1) * MARBLEBEAN_GROW_TIME.random);
-
-    this.onRemove(() => { timer.dispose(); workable.dispose(); });
 
     // The record keeps the timer component's save under saplingTimer, as the rock avocado sprout's does.
     this.OnSave = (_inst, data) => { data.saplingTimer = data.timer ?? { timers: {} }; delete data.timer; };

@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import type { FollowerFx } from '@dontstarve-web/display';
 import type { ItemEntity, ItemRuntimeComponent } from '@dontstarve-web/inventory';
 import type { EquipmentOwner } from '@dontstarve-web/signals';
@@ -114,18 +115,17 @@ export function configureEquipmentEntity(entity: ItemEntity): void {
   definition.configureEntity?.(entity);
   if (!entity.getComponent('handequipment')) {
     const held = entity.component('handequipment', () => new HeldEquipment(entity, definition));
-    const equippable = entity.components.equippable ??= new Equippable<ItemEntity>(entity, 'hand');
+    const equippable = addComponent(entity, 'equippable', Equippable<ItemEntity>, 'hand');
     equippable.SetOnEquip((_inst, owner) => held.onequip(owner));
     equippable.SetOnUnequip(() => held.onunequip());
   }
   for (const tag of definition.tags ?? []) entity.addTag(tag);
   if (definition.weapon && !entity.components.weapon) {
     // weapon.lua adds the "weapon" tag; weapon:OnAttack wears finiteuses only when the inst has them.
-    const weapon = new Weapon(entity, () => definition.maxUses === undefined ? undefined : entity.components.finiteuses);
+    const weapon = addComponent(entity, 'weapon', Weapon, () => definition.maxUses === undefined ? undefined : entity.components.finiteuses);
     weapon.SetDamage(definition.weapon.damage);
     if (definition.weapon.attackwear !== undefined) weapon.attackwear = definition.weapon.attackwear;
     if (definition.weapon.onattack) weapon.SetOnAttack(definition.weapon.onattack);
-    entity.components.weapon = weapon;
     entity.addTag('weapon');
   }
 }

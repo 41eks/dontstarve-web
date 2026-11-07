@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import type { PrefabEntityDefinition } from './prefabInstance';
 import { Pickable } from './components/pickable';
 import { Workable } from '../../componets/src/workable';
@@ -19,15 +20,15 @@ export class RockAvocadoBushInstance extends PickablePlantInstance {
   private readonly magicgrower: SimpleMagicGrower;
   constructor(context: PickablePlantContext) {
     super(ROCK_AVOCADO_BUSH_DEFINITION, context);
-    new Pickable(this, ROCK_AVOCADO_FRUIT_ID, undefined, 3, () => this.picked(), () => this.regen(), context.saved?.components.pickable, {
+    addComponent(this, 'pickable', Pickable, ROCK_AVOCADO_FRUIT_ID, undefined, 3, () => this.picked(), () => this.regen(), context.saved?.components.pickable, {
       scheduler: context.scheduler, growthDuration: context.growthDuration, maxCycles: 3,
       onTransplant: () => this.components.pickable.MakeBarren(), onBarren: () => this.barren(), onEmpty: () => this.empty(),
     });
     this.bindBurnable({ propagator: 'medium', burnTime: 20, fxLevel: 3,
       onIgnite: () => {}, onExtinguish: () => DefaultExtinguishFn(this), onBurnt: () => this.onBushBurnt() });
-    const workable = this.components.workable = new Workable(this);
+    const workable = addComponent(this, 'workable', Workable);
     workable.SetWorkAction('DIG'); workable.SetWorkLeft(1); workable.SetOnFinishCallback(on_dug_up);
-    this.growable = new Growable(context.scheduler, ROCK_AVOCADO_STAGE_TIMES.map((base, index) => ({
+    this.growable = addComponent(this, 'growable', Growable, context.scheduler, ROCK_AVOCADO_STAGE_TIMES.map((base, index) => ({
       time: () => base + (Math.random() * 2 - 1) * 60,
       fn: () => this.setStage(index + 1),
       growfn: () => this.play([GROW_ANIMS[index], `idle${index + 1}`]),
@@ -35,10 +36,8 @@ export class RockAvocadoBushInstance extends PickablePlantInstance {
     this.growable.loopstages = true;
     this.growable.springgrowth = true;
     this.growable.magicgrowable = true;
-    this.components.growable = this.growable;
-    this.magicgrower = new SimpleMagicGrower(this, this.growable, context.scheduler);
+    this.magicgrower = addComponent(this, 'simplemagicgrower', SimpleMagicGrower, this.growable, context.scheduler);
     this.magicgrower.SetLastStage(3);
-    this.components.simplemagicgrower = this.magicgrower;
     this.bindWitherable();
   }
   override initialize(): void {

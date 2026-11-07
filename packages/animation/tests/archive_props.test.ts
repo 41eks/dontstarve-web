@@ -101,7 +101,7 @@ it('hands out rune story lines once, saves static props and ignores the pad, the
     expect(rubble.map(inst => inst.isRemoved)).toEqual([true, true]);
 
     const runes = s.find<ArchiveRuneStatueInstance>('archive_rune_statue');
-    const status = (rune: PrefabInstance) => (rune.components as { inspectable: { getstatus(): string } }).inspectable.getstatus();
+    const status = (rune: PrefabInstance) => rune.components.inspectable!.getstatus!();
     expect([status(runes[0]), status(runes[1]), status(runes[0])]).toEqual(['LINE_1', 'LINE_2', 'LINE_1']);
     // Only a reader holding the ancient_reader tag gets the text.
     const describe = (viewer: object) => (runes[0].components as { inspectable: { descriptionfn(viewer: object): string | undefined } }).inspectable.descriptionfn(viewer);

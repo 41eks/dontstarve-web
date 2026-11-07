@@ -55,7 +55,7 @@ it('burns its fuel down through the fire levels, goes out empty and relights whe
 
     // FIREPIT_FUEL_START is half of the maximum: section 3 of 4, at the bottom of its level.
     expect(components.burnable.IsBurning()).toBe(true);
-    expect(components.inspectable.getstatus()).toBe('NORMAL');
+    expect(components.inspectable!.getstatus!()).toBe('NORMAL');
     let current = fire(model);
     expect(current.fx).toMatchObject({ composite: { symbol: 'firefx', offset: [0, 25] } });
     expect(lookupPrefabInstance(current.fx!.display!.model)!.listTags()).toEqual(expect.arrayContaining(['FX', 'HASHEATER']));
@@ -64,12 +64,12 @@ it('burns its fuel down through the fire levels, goes out empty and relights whe
 
     scheduler.advance(1);
     expect(fire(model).animation).toBe('level2');
-    expect(components.inspectable.getstatus()).toBe('LOW');
+    expect(components.inspectable!.getstatus!()).toBe('LOW');
 
     scheduler.advance(180);
     current = fire(model);
     expect(components.burnable.IsBurning()).toBe(false);
-    expect(components.inspectable.getstatus()).toBe('OUT');
+    expect(components.inspectable!.getstatus!()).toBe('OUT');
     expect(entity.hasTag('fueldepleted')).toBe(true);
     expect(current.fx).toBeUndefined();
     expect(current.light).toBeUndefined();
@@ -155,7 +155,8 @@ it('flickers through the world\'s component updates, and a removed pit stops its
     expect(pit.position).toBe(model.position);
 
     pit.remove();
-    expect(pit.components.burnable).toBeUndefined();
+    // EntityScript:Remove tears the components down and leaves them on inst.components.
+    expect(pit.components.burnable?.IsBurning()).toBe(false);
     expect(stop).toHaveBeenCalled();
     const left = fueled.currentfuel;
     scheduler.advance(30);

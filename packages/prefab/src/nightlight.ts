@@ -1,9 +1,11 @@
+import { LootDropper } from '../../componets/src/lootdropper';
+import { addComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import { Workable } from '../../componets/src/workable';
 import definitions from './definitions.json' with { type: 'json' };
 import { buildingPlacer, buildingPrefab, MakeBuildingPersist } from './building';
 import { PrefabInstance } from './prefabInstance';
-import { createStructureLootDropper } from './structureLoot';
+import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
 import type { PrefabWorldContext } from './worldContext';
 
 export const NIGHT_LIGHT_ID = 'nightlight' as const;
@@ -38,12 +40,12 @@ export class NightLightInstance extends PrefabInstance {
     this.worldServices = world;
     MakeBuildingPersist(this);
     this.addTag('structure');
-    const workable = this.components.workable = new Workable(this);
+    const workable = addComponent(this, 'workable', Workable);
     workable.SetWorkAction('HAMMER');
     workable.SetWorkLeft(4);
     workable.SetOnWorkCallback(onworked);
     workable.SetOnFinishCallback(onhammered);
-    this.components.lootdropper = createStructureLootDropper(this);
+    addComponent(this, 'lootdropper', LootDropper, spawnStructureLoot(this), STRUCTURE_LOOT_RECIPES);
     this.ListenForEvent('onbuilt', () => onbuilt(this));
   }
 }

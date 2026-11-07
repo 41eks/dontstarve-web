@@ -16,6 +16,7 @@ export interface SleeperInst {
     combat?: { target?: unknown };
     burnable?: { IsBurning?(): boolean };
     locomotor?: { Stop(): void };
+    sleeper?: { readonly unitsPerMeter: number };
   };
 }
 
@@ -25,7 +26,8 @@ export type SleeperTest = (inst: SleeperInst, cycle: WorldPhase) => boolean;
 export function StandardSleepChecks(inst: SleeperInst): boolean {
   const { combat, burnable } = inst.components;
   const home = inst.components.homeseeker?.home;
-  return !(home?.isValid() && inst.isNear?.(home, 40)) && !(combat?.target) && !burnable?.IsBurning?.() && !inst.sg?.hasStateTag('busy');
+  const unitsPerMeter = inst.components.sleeper?.unitsPerMeter ?? 1;
+  return !(home?.isValid() && inst.isNear?.(home, 40 * unitsPerMeter)) && !(combat?.target) && !burnable?.IsBurning?.() && !inst.sg?.hasStateTag('busy');
 }
 
 export function StandardWakeChecks(inst: SleeperInst): boolean {
@@ -59,7 +61,10 @@ export class Sleeper {
   private readonly cleanups: (() => void)[] = [];
   private readonly cycle;
 
-  constructor(inst: SleeperInst, getWatchWorldContent: GetWatchWorldContent, random: () => number = Math.random) {
+  /** Scene units per source unit, for the distances StandardSleepChecks compares with inst:IsNear. */
+  readonly unitsPerMeter: number;
+  constructor(inst: SleeperInst, getWatchWorldContent: GetWatchWorldContent, random: () => number = Math.random, unitsPerMeter = 1) {
+    this.unitsPerMeter = unitsPerMeter;
     this.cycle = getWatchWorldContent(WorldContentKey.Cycle, stop => this.cleanups.push(stop));
     const { scheduler } = this.cycle;
     this.inst = inst;

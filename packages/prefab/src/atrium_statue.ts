@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import { PrefabDisplayGroup } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import type { World } from 'cannon-es';
@@ -54,12 +55,10 @@ export class AtriumStatueManager implements DisplayDrivenPrefabManager<{ prefabI
     MakeObstaclePhysics(instance, .45);
     if (this.world.physics) instance.bindPhysics(this.world.physics);
     const minimap = instance.minimap; minimap.SetIcon('atrium_statue.png');
-    const inst = actionEntity(model, ATRIUM_STATUE_ID);
-    Object.assign(instance.components, {
-      inspectable: new Inspectable(inst),
-      // MakeRoseTarget_CreateFuel_IncreasedHorror.
-      roseinspectable: new RoseInspectable(inst),
-    });
+    actionEntity(model, ATRIUM_STATUE_ID);
+    addComponent(instance, 'inspectable', Inspectable);
+    // MakeRoseTarget_CreateFuel_IncreasedHorror.
+    addComponent(instance, 'roseinspectable', RoseInspectable);
     // OnNightmarePhaseChanged(inst, TheWorld.state.nightmarephase, true) -> ShowPhaseState(instant) -> OnWorked with
     // MARBLEPILLAR_MINE: PlayAnimation("idle_full" .. _suffix, true). This world has no nightmare clock, so the phase is
     // never "wild" and the suffix stays "". There is no OnLoad, so a loaded statue declares the same clips.

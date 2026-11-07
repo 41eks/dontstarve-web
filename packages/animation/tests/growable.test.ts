@@ -5,7 +5,7 @@ import { Growable } from '../../componets/src/growable';
 function setup() {
   const scheduler = new GameTimeScheduler();
   const fn = [vi.fn(), vi.fn(), vi.fn()], growfn = [vi.fn(), vi.fn(), vi.fn()];
-  const component = new Growable(scheduler, [10, 20, 30].map((time, i) => ({ time: () => time, fn: fn[i], growfn: growfn[i] })));
+  const component = new Growable({}, scheduler, [10, 20, 30].map((time, i) => ({ time: () => time, fn: fn[i], growfn: growfn[i] })));
   component.loopstages = true; component.StartGrowing();
   return { scheduler, component, fn, growfn };
 }

@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Instrument } from '../../componets/src/instrument';
 import { Tool } from '../../componets/src/tool';
@@ -41,13 +42,9 @@ export function configurePanfluteEntity(entity: ItemEntity): void {
   entity.GetSkinBuild = () => itemSkinBuild(entity);
   entity.components.finiteuses.setMaxUses(PANFLUTE_USES);
   entity.components.finiteuses.setConsumption('PLAY', 1);
-  const instrument: PanfluteInstrument = new Instrument(entity, findListeners);
+  if (entity.components.instrument) return;
+  const instrument: PanfluteInstrument = addComponent(entity, 'instrument', Instrument<PanfluteMusician, PanfluteListener>, findListeners);
   instrument.SetRange(PANFLUTE_SLEEPRANGE);
   instrument.SetOnHeardFn(HearPanFlute);
-  entity.components.instrument = entity.component('instrument', () => instrument);
-  entity.components.tool = entity.component('tool', () => {
-    const tool = new Tool(entity);
-    tool.SetAction('PLAY');
-    return tool;
-  });
+  addComponent(entity, 'tool', Tool).SetAction('PLAY');
 }

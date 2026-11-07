@@ -1,10 +1,12 @@
+import { LootDropper } from '../../componets/src/lootdropper';
+import { addComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import { Workable } from '../../componets/src/workable';
 import definitions from './definitions.json' with { type: 'json' };
 import { buildingPlacer, buildingPrefab, MakeBuildingContainer, MakeBuildingPersist } from './building';
 import { PrefabInstance } from './prefabInstance';
 import { PlaySound } from './sound';
-import { createStructureLootDropper } from './structureLoot';
+import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
 import type { PrefabWorldContext } from './worldContext';
 
 export const ICE_BOX_ID = 'icebox' as const;
@@ -56,12 +58,12 @@ export class IceBoxInstance extends PrefabInstance {
     const container = MakeBuildingContainer(this, ICE_BOX_ID, world);
     container.onopenfn = onopen;
     container.onclosefn = onclose;
-    const workable = this.components.workable = new Workable(this);
+    const workable = addComponent(this, 'workable', Workable);
     workable.SetWorkAction('HAMMER');
     workable.SetWorkLeft(2);
     workable.SetOnWorkCallback(onworked);
     workable.SetOnFinishCallback(onhammered);
-    this.components.lootdropper = createStructureLootDropper(this);
+    addComponent(this, 'lootdropper', LootDropper, spawnStructureLoot(this), STRUCTURE_LOOT_RECIPES);
     this.ListenForEvent('onbuilt', () => onbuilt(this));
   }
 }

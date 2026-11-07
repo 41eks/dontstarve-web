@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import { Transform } from './transform';
 import * as THREE from 'three';
 import { SpriteState } from '@dontstarve-web/display';
@@ -90,19 +91,18 @@ export class MarbleShrubInstance extends PrefabInstance {
     const stopSnow = createRenderEffect(() => this.sprite.setSymbolHidden('snow', (snowLevel?.get() ?? 0) < .015));
 
     const growTime = () => MARBLESHRUB_GROW_TIME.base + (Math.random() * 2 - 1) * MARBLESHRUB_GROW_TIME.random;
-    const growable = new Growable(scheduler, STAGES.map((_, index) => ({
+    const growable = addComponent(this, 'growable', Growable, scheduler, STAGES.map((_, index) => ({
       time: growTime, fn: () => this.SetGrowth(index + 1), growfn: () => this.DoGrow(),
     })));
     growable.loopstages = true;
 
-    const lootdropper = new LootDropper(this, (prefab, point) => spawnGroundItem(
+    addComponent(this, 'lootdropper', LootDropper, (prefab, point) => spawnGroundItem(
       { ...catalog.items[prefab as keyof typeof catalog.items], itemId: prefab, count: 1 }, new THREE.Vector3(point.x, point.y, point.z), { fling: true }));
 
-    const workable = new Workable(this);
+    const workable = addComponent(this, 'workable', Workable);
     workable.SetWorkAction('MINE');
     workable.SetWorkLeft(STAGES[0].workleft);
     workable.SetOnWorkCallback((_inst, _worker, workleft) => this.onworked(workleft));
-    Object.assign(this.components, { growable, lootdropper, workable });
 
     growable.SetStage(growthstage);
     growable.StartGrowing();

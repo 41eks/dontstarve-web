@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import type { ItemEntity, ItemRuntimeComponent } from '@dontstarve-web/inventory';
 import type { EquipmentOwner } from '@dontstarve-web/signals';
 import { Armor } from '../../componets/src/armor';
@@ -89,7 +90,7 @@ export function configureDreadstoneHatEntity(entity: ItemEntity): void {
   for (const tag of ['hat', 'dreadstone', 'hardarmor', 'shadow_item', 'waterproofer', 'shadowlevel']) entity.addTag(tag);
   // Inventory re-configures entities on equip and commits; InitCondition belongs to construction only.
   if (!entity.components.armor) {
-    const armor = entity.components.armor = new Armor(entity);
+    const armor = addComponent(entity, 'armor', Armor);
     armor.InitCondition(ARMOR_DREADSTONEHAT, ARMOR_DREADSTONEHAT_ABSORPTION);
     // dreadstone_ontakedamage
     armor.ontakedamage = () => {
@@ -97,13 +98,10 @@ export function configureDreadstoneHatEntity(entity: ItemEntity): void {
       if (!regenOf(entity)?.running && owner?.components?.sanity) startRegen(entity, owner);
     };
   }
-  const equippable = entity.components.equippable ??= new Equippable(entity, 'head');
+  const equippable = addComponent(entity, 'equippable', Equippable<ItemEntity>, 'head');
   equippable.is_magic_dapperness = true;
   equippable.SetDappernessFn((_inst, owner) => calcdapperness(entity, owner));
-  if (!entity.components.setbonus) {
-    entity.components.setbonus = new SetBonus();
-    entity.components.setbonus.SetSetName(EQUIPMENTSETNAMES.DREADSTONE);
-  }
+  if (!entity.components.setbonus) addComponent(entity, 'setbonus', SetBonus).SetSetName(EQUIPMENTSETNAMES.DREADSTONE);
 }
 
 /** dreadstone_onequip after the hat's own onequip: regeneration runs only while worn and damaged. */

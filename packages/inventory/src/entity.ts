@@ -1,3 +1,4 @@
+import { addComponent } from '../../prefab/src/components';
 import type { ItemTileJson, InventoryItemSpec, InventoryStack, SlotAddress } from './types';
 import { batch, createMemo, createSignal, readonlySignal, type Memo, type ReadonlySignal } from '@dontstarve-web/signals';
 import { newItemEntityId } from './entityId';
@@ -173,6 +174,10 @@ export interface ItemComponents {
   inventory?: import('./creatureInventory').CreatureInventory;
   trader?: import('../../componets/src/trader').Trader;
   machine?: import('../../componets/src/machine').Machine;
+  inspectable?: import('../../componets/src/inspectable').Inspectable;
+  floater?: import('../../componets/src/ruinsrelicSignatures').Floater;
+  furnituredecor?: import('../../componets/src/ruinsrelicSignatures').FurnitureDecor;
+  inventoryitemmoisture?: import('../../componets/src/ruinsrelicSignatures').InventoryItemMoisture;
 }
 
 export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
@@ -225,21 +230,23 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
   private temperatureWorld?: TemperatureWorld;
   private savedTemperature?: TemperatureSaveData;
   AddTemperature(): Temperature {
-    return this.components.temperature ??= this.component('temperature', () => new Temperature(this, this.temperatureWorld, this.savedTemperature));
+    return addComponent(this, 'temperature', Temperature, this.temperatureWorld, this.savedTemperature);
   }
   /** inst:AddComponent("fueled"), consuming on the game time of the item's world. */
   AddFueled(): Fueled<ItemEntity> {
     let fueled = this.components.fueled;
     if (fueled) return fueled;
-    fueled = this.components.fueled = new Fueled<ItemEntity>(this, this.components.perishable.scheduler);
+    fueled = addComponent(this, 'fueled', Fueled<ItemEntity>, this.components.perishable.scheduler);
     this.fueledState.set(fueled);
     return fueled;
   }
   /** perishable.lua's world, whose game-time scheduler also runs this item's fueled task. */
   BindPerishWorld(world: PerishWorld): void {
     this.components.perishable.BindWorld(world);
-    this.components.fueled?.BindScheduler(this.components.perishable.scheduler);
-    for (const component of this.runtime.values()) component.BindScheduler?.(world.scheduler);
+    // The item's components and runtimes keep their game-time tasks on the world it joins.
+    for (const component of [...Object.values(this.components), ...this.runtime.values()]) {
+      (component as Partial<ItemRuntimeComponent> | undefined)?.BindScheduler?.(world.scheduler);
+    }
   }
   BindTemperatureWorld(world: TemperatureWorld): void {
     this.temperatureWorld = world;
@@ -270,26 +277,23 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
     super(state.itemId, new SpriteState({ name: state.itemId, none: true }));
     this.entityId = state.entityId ?? newItemEntityId();
     this.wetState.set(state.wet ?? false);
-    Object.assign(this.components, {
-      stackable: new StackableComponent(this, state.count),
-      finiteuses: new FiniteUsesComponent(this, state.remainingUses),
-      inventoryitem: new InventoryItem<ItemEntity, ItemOwner>(this),
-      perishable: new Perishable(this, readonlySignal(this.wetState), perishWorld),
-    });
+    addComponent(this, 'stackable', StackableComponent, state.count);
+    addComponent(this, 'finiteuses', FiniteUsesComponent, state.remainingUses);
+    addComponent(this, 'inventoryitem', InventoryItem<ItemEntity, ItemOwner>);
+    addComponent(this, 'perishable', Perishable, readonlySignal(this.wetState), perishWorld);
     this.durability = createMemo(() => this.components.finiteuses.percent.get() ?? this.fueledState.get()?.percent.get()
       ?? this.armorState.get()?.percent.get());
     this.freshness = createMemo(() => this.components.perishable.perishtime.get() === undefined
       ? this.freshnessState.get() : this.components.perishable.percent.get());
     if (this.prefab === 'backpack') {
       // container:OnLoad's GiveItem: each loaded inst is SpawnPrefab'd, then OnPutInInventory takes it out of the scene.
-      const container = new Container(this, () => new StorageSlot(), (item: InventoryStack) => {
+      const container = addComponent(this, 'container', Container<InventoryStack, ItemEntity, StorageSlot>, () => new StorageSlot(), (item: InventoryStack) => {
         const child = createItem(item);
         child.RemoveFromScene();
         return child;
       });
       container.SetNumSlots(BACKPACK_SLOT_COUNT);
       container.OnLoad(state.container ?? {});
-      this.components.container = container;
     }
     this.apply(state);
   }
@@ -316,7 +320,7 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
     return this.runtime.get(name) as T | undefined;
   }
   snapshot(includeIdentity = true): InventoryStack {
-    const inventory = this.getComponent<import('./creatureInventory').CreatureInventory>('inventory')?.OnSave() ?? this.savedInventory;
+    const inventory = this.components.inventory?.OnSave() ?? this.savedInventory;
     const temperature = this.components.temperature?.OnSave() ?? this.savedTemperature;
     const armor = this.components.armor ? this.components.armor.OnSave() : this.savedArmor;
     const freshness = this.components.perishable.perishtime.peek() === undefined
@@ -377,8 +381,7 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
 
   configure(spec: Pick<InventoryItemSpec, 'maxUses' | 'maxFuel' | 'perishTime' | 'perishReplacement' | 'equippable' | 'canGoInContainer' | 'configureEntity'>): void {
     if (spec.equippable) {
-      this.components.equippable ??= new Equippable<ItemEntity>(this, spec.equippable);
-      this.components.equippable.equipslot = spec.equippable;
+      addComponent(this, 'equippable', Equippable<ItemEntity>, spec.equippable).equipslot = spec.equippable;
     }
     this.components.inventoryitem.cangoincontainer = spec.canGoInContainer !== false;
     batch(() => {
@@ -460,17 +463,9 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
     this.miniMapEntity?.dispose();
     for (const component of this.runtime.values()) component.dispose();
     this.runtime.clear();
-    this.components.workable?.dispose();
-    this.components.armor?.dispose();
-    this.components.useableitem?.dispose();
-    this.components.container?.dispose();
     this.tileMemo?.dispose();
-    this.components.inventoryitem.dispose();
     this.durability.dispose();
     this.freshness.dispose();
-    this.components.perishable.dispose();
-    this.components.fueled?.dispose();
-    this.components.finiteuses.dispose();
   }
 }
 

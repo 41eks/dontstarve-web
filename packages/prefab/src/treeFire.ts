@@ -4,8 +4,8 @@ import { getBoundWatchWorldContent } from '@dontstarve-web/signals';
 import { prefabInstance, PrefabInstance } from './prefabInstance';
 import { SpriteResources, type LoadedSpriteSource } from '@dontstarve-web/display';
 import { addComponent, removeComponent } from './components';
-import type { Burnable, BurnableInst, BurnFXData } from '../../componets/src/burnable';
-import type { Propagator } from '../../componets/src/propagator';
+import { Burnable, type BurnableInst, type BurnFXData } from '../../componets/src/burnable';
+import { Propagator } from '../../componets/src/propagator';
 import type { ComponentUpdates } from '../../componets/src/componentUpdates';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { CAMPFIREFIRE_ARCHIVE, CAMPFIREFIRE_ID, CampfireFire } from './campfirefire';
@@ -87,7 +87,7 @@ export class BurnableBinding {
     const owner = inst instanceof PrefabInstance ? inst : prefabInstance((inst as { model?: THREE.Object3D }).model);
     if (!owner) throw new Error('Burnable fire effects need a logical prefab owner');
     this.inst = owner;
-    this.burnable = addComponent(owner, 'burnable', env.scheduler);
+    this.burnable = addComponent(owner, 'burnable', Burnable, env.scheduler);
     this.burnable.SetFXLevel(spec.fxLevel);
     this.burnable.SetBurnTime(spec.burnTime);
     this.burnable.SetFXSpawner(data => data.prefab === FIRE_ID ? env.fire.spawn(owner) : undefined);
@@ -95,7 +95,7 @@ export class BurnableBinding {
     this.burnable.SetOnIgniteFn(spec.onIgnite ? () => spec.onIgnite!() : undefined);
     this.burnable.SetOnExtinguishFn(spec.onExtinguish ? () => spec.onExtinguish!() : undefined);
     this.burnable.SetOnBurntFn(() => spec.onBurnt());
-    this.propagator = addComponent(owner, 'propagator', spec.propagator, radius => {
+    this.propagator = addComponent(owner, 'propagator', Propagator, spec.propagator, radius => {
       return FindEntities(owner.getPosition(), radius).filter(other => other.components.propagator && !other.hasTag('INLIMBO'));
     }, TILE_SIZE / 4, env.scheduler, getBoundWatchWorldContent(), spec.propagatorValues);
   }

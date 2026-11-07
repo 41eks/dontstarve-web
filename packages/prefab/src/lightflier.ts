@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { Vector3 } from 'three';
 import type { ItemEntity, InventoryStack } from '@dontstarve-web/inventory';
@@ -130,13 +131,16 @@ export class LightFlierHabitat {
   }
 }
 
+type LightFlierComponents = ItemEntity['components'] & { health: Health; combat: Combat; homeseeker: HomeSeeker<LightFlierFlower>;
+  knownlocations: KnownLocations; formationfollower: FormationFollower<LightFlierPlayer, LightFlier>; follower: Follower<LightFlierPlayer>;
+  locomotor?: LocoMotor; sleeper?: Sleeper; freezable?: Freezable; burnable?: Burnable; propagator?: Propagator; hauntable?: Hauntable };
+
 /** lightflier.lua inst: inventory identity, components and brain survive replacement of the sprite. */
 export class LightFlier implements LightFlierBrainInst, LightFlierStateInst, LocoMotorInst {
   readonly prefab = LIGHTFLIER_ID;
   readonly entity: ItemEntity;
-  readonly components: { health: Health; combat: Combat; homeseeker: HomeSeeker<LightFlierFlower>; knownlocations: KnownLocations;
-    formationfollower: FormationFollower<LightFlierPlayer, LightFlier>; follower: Follower<LightFlierPlayer>; locomotor?: LocoMotor; sleeper?: Sleeper;
-    freezable?: Freezable; burnable?: Burnable; propagator?: Propagator; hauntable?: Hauntable };
+  /** The fly is the Lua inst its components see; they are stored on, and torn down with, the item entity. */
+  get components(): LightFlierComponents { return this.entity.components as LightFlierComponents; }
   locomotor!: LocoMotor;
   sg!: LightFlierStateGraph;
   brain!: LightFlierBrain;
@@ -175,10 +179,12 @@ export class LightFlier implements LightFlierBrainInst, LightFlierStateInst, Loc
   private readonly eventStops = new Map<(data?: unknown) => void, () => void>();
   constructor(entity: ItemEntity) {
     this.entity = entity;
-    const health = new Health(25, entity); health.OnLoad({ health: entity.lightflier?.health ?? 25 });
-    const components: LightFlier['components'] = { health, combat: new Combat(this, () => this.getTime()), homeseeker: new HomeSeeker(),
-      knownlocations: new KnownLocations(), formationfollower: new FormationFollower(this), follower: new Follower(entity) };
-    this.components = Object.assign(entity.components, components);
+    addComponent(this, 'health', Health, 25).OnLoad({ health: entity.lightflier?.health ?? 25 });
+    addComponent(this, 'combat', Combat, () => this.getTime());
+    addComponent(this, 'homeseeker', HomeSeeker<LightFlierFlower>);
+    addComponent(this, 'knownlocations', KnownLocations);
+    addComponent(this, 'formationfollower', FormationFollower<LightFlierPlayer, LightFlier>);
+    addComponent(this, 'follower', Follower<LightFlierPlayer>);
     const saved = entity.lightflier;
     if (saved?.knownHome) this.components.knownlocations.RememberLocation('home', new Vector3(...saved.knownHome));
     const follower = this.components.formationfollower;
@@ -209,6 +215,12 @@ export class LightFlier implements LightFlierBrainInst, LightFlierStateInst, Loc
   get inFormation(): boolean { return this.components.formationfollower.formationleader !== undefined; }
   get facing(): number { return this.heading; }
   get isRemoved(): boolean { return this.disposed || this.entity.isRemoved; }
+  onRemove(remove: () => void): () => void { return this.entity.onRemove(remove); }
+  addTag(tag: string): void { this.entity.addTag(tag); }
+  removeTag(tag: string): void { this.entity.removeTag(tag); }
+  /** EntityScript:StopBrain / RestartBrain. */
+  stopBrain(): void { this.brain.Pause(); }
+  restartBrain(): void { this.brain.Resume(); }
   getTime(): number { return this.habitat?.services.scheduler.now ?? 0; }
   getPosition(): Vector3 { return this.entity.getPosition(); }
   getPhysicsRadius(): number { return .5 * WORLD_SCALE; }
@@ -240,8 +252,8 @@ export class LightFlier implements LightFlierBrainInst, LightFlierStateInst, Loc
         && (from.getPosition() as Vector3).distanceToSquared(e.getPosition()) <= radius ** 2).find(e => !fn || fn(e, from)),
       getClosestInstWithTag: (tags, from, radius) => fly.world.findEntity(from, radius, undefined, tags),
     };
-    this.locomotor = new LocoMotor(this, { arriveDistance: .15 * WORLD_SCALE });
-    this.locomotor.walkspeed = this.locomotor.runspeed = 3.5 * WORLD_SCALE; this.components.locomotor = this.locomotor;
+    this.locomotor = addComponent(this, 'locomotor', LocoMotor, { arriveDistance: .15 * WORLD_SCALE });
+    this.locomotor.walkspeed = this.locomotor.runspeed = 3.5 * WORLD_SCALE;
     this.animstate = new AnimState(scheduler, lengths, event => this.sg?.pushEvent(event));
     this.sg = new LightFlierStateGraph(this, scheduler);
     this.entity.sg = this.sg.sg;
@@ -249,19 +261,14 @@ export class LightFlier implements LightFlierBrainInst, LightFlierStateInst, Loc
     this.entity.brain = this.brain;
     this.targetSearch = new ComponentTimer(scheduler, () => { habitat.findFormation(this); if (this.isValid()) this.targetSearch!.start(1); });
     this.erosion = new ErodeAway(scheduler, amount => { this.erosionAmount = amount; }, () => this.remove());
-    this.components.freezable = new Freezable({
-      isValid: () => this.isValid(), isDead: () => this.isDead(), addTag: tag => this.entity.addTag(tag), removeTag: tag => this.entity.removeTag(tag),
-      PushEvent: name => this.PushEvent(name), ListenForEvent: (name, fn) => this.entity.ListenForEvent(name, fn),
-      stopBrain: () => this.brain.Pause(), restartBrain: () => this.brain.Resume(), components: this.components,
-    }, scheduler);
-    this.components.burnable = new Burnable(this.entity, scheduler);
-    this.components.burnable.canlight = false; this.components.burnable.SetBurnTime(6 * 4 / 3);
-    this.components.propagator = new Propagator(this.entity, 'small', () => [], WORLD_SCALE, scheduler, services.getWatchWorldContent);
-    this.components.propagator.acceptsheat = false;
-    const hauntable = this.components.hauntable = new Hauntable(this.entity, scheduler);
+    addComponent(this, 'freezable', Freezable, scheduler);
+    const burnable = addComponent(this.entity, 'burnable', Burnable, scheduler);
+    burnable.canlight = false; burnable.SetBurnTime(6 * 4 / 3);
+    addComponent(this.entity, 'propagator', Propagator, 'small', () => [], WORLD_SCALE, scheduler, services.getWatchWorldContent).acceptsheat = false;
+    const hauntable = addComponent(this.entity, 'hauntable', Hauntable, scheduler);
     hauntable.panicable = true; hauntable.SetOnHauntFn(() => { this.wakeUp(); hauntable.Panic(3); this.brain.ForceUpdate(); return true; });
     if (services.getWatchWorldContent) {
-      this.components.sleeper = new Sleeper(this, services.getWatchWorldContent); this.components.sleeper.sleeptestfn = () => false;
+      addComponent(this, 'sleeper', Sleeper, services.getWatchWorldContent).sleeptestfn = () => false;
       this.entity.addTag('sleeper');
       const activity = this.entity.transform.getTileActivity(services.tickingarea, stop => this.cleanups.push(stop));
       const cycle = services.getWatchWorldContent(WorldContentKey.Cycle, stop => this.cleanups.push(stop), activity ? { active: activity } : undefined);
@@ -380,12 +387,10 @@ export class LightFlier implements LightFlierBrainInst, LightFlierStateInst, Loc
   remove(): void { this.entity.remove(); }
   dispose(): void {
     if (this.disposed) return; this.disposed = true; this.habitat?.flies.delete(this);
-    this.components.formationfollower.dispose(); this.components.homeseeker.dispose(); this.components.sleeper?.dispose();
-    this.components.follower.dispose();
-    this.brain?.Stop(); this.sg?.dispose(); this.animstate?.dispose(); this.components.health.dispose();
+    // The components were torn down with the item entity.
+    this.brain?.Stop(); this.sg?.dispose(); this.animstate?.dispose();
     this.targetSearch?.stop(); this.erosion?.dispose(); this.loop?.stop(); for (const sound of this.sounds) sound.stop();
     this.asleepHome?.stop();
-    this.components.freezable?.dispose(); this.components.burnable?.dispose(); this.components.propagator?.dispose(); this.components.hauntable?.dispose();
     for (const stop of this.cleanups.splice(0)) stop(); for (const stop of this.eventStops.values()) stop(); this.eventStops.clear();
   }
 }
@@ -395,16 +400,16 @@ export function configureLightFlierEntity(entity: ItemEntity): void {
   for (const tag of LIGHTFLIER_TAGS) entity.addTag(tag);
   entity.components.inventoryitem.canbepickedup = false; entity.components.inventoryitem.canbepickedupalive = true;
   entity.component(LIGHTFLIER_ID, () => new LightFlier(entity));
-  entity.components.workable = entity.component('workable', () => {
-    const workable = new Workable(entity); workable.SetWorkAction('NET'); workable.SetWorkLeft(1);
+  if (!entity.components.workable) {
+    const workable = addComponent(entity, 'workable', Workable); workable.SetWorkAction('NET'); workable.SetWorkLeft(1);
     workable.SetOnFinishCallback((_inst, worker) => {
       const fly = entity.getComponent<LightFlier>(LIGHTFLIER_ID)!;
       fly.home?.components.childspawner.OnChildKilled(fly);
       worker.components?.inventory?.GiveItem(entity, entity.getPosition().clone());
-    }); return workable;
-  });
-  entity.components.eater = entity.component('eater', () => new Eater(entity)); entity.components.eater.SetDiet(['VEGGIE']);
-  entity.components.eater.SetOnEatFn(() => entity.components.perishable.SetPercent(1));
+    });
+  }
+  const eater = addComponent(entity, 'eater', Eater); eater.SetDiet(['VEGGIE']);
+  eater.SetOnEatFn(() => entity.components.perishable.SetPercent(1));
   const perishable = entity.components.perishable;
   if (perishable.perishtime.peek() === undefined) perishable.SetPerishTime(LIGHTFLIER_PERISH_TIME);
   perishable.localMultiplier = () => entity.components.inventoryitem.owner ? 1 : 0;

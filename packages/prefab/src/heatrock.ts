@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import catalog from './groundItems.json' with { type: 'json' };
 import { createEffect, createMemo, createSignal, readonlySignal, watchSignal } from '@dontstarve-web/signals';
@@ -40,7 +41,7 @@ export class HeatRock {
     this.ambientTemperature = createSignal(this.temperature.GetAmbientTemperature());
     this.rangeMemo = createMemo(() => GetHeatRockRange(this.currentTemperature.get(), this.ambientTemperature.get()));
     this.range = readonlySignal(this.rangeMemo);
-    this.heater = entity.components.heater = entity.component('heater', () => new Heater(entity));
+    this.heater = addComponent(entity, 'heater', Heater);
     this.heater.SetThermics(false, false);
     this.heater.SetHeatFn(() => {
       const range = GetHeatRockRange(this.temperature.GetCurrent(), this.temperature.GetAmbientTemperature());

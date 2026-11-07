@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { PrefabDisplayGroup, SpriteResources, SpriteState } from '@dontstarve-web/display';
 import type { ItemEntity } from '@dontstarve-web/inventory';
@@ -40,27 +41,25 @@ export function configureReskinToolEntity(entity: ItemEntity): void {
   entity.addTag('nopunch');
   entity.spelltype = 'RESKIN';
   entity._cached_reskinname ??= new Map();
-  entity.components.spellcaster = entity.component('spellcaster', () => {
-    const caster = new SpellCaster(entity);
-    caster.canUseOnTargets = true;
-    caster.canUseOnDead = true;
-    caster.veryQuickCast = true;
-    // spellCB: the skin is chosen at the hit frame and the explode_reskin fx is spawned with it; the display loads
-    // the chosen skin's art when the sprite json names it.
-    caster.setSpellFn((_tool, target) => {
-      const inst = reskinOperation(target);
-      if (!inst) return false;
-      const fx = reskinFxPresenters.get(entity)?.prepare(entity.skinId);
-      const reskinned = reskinEntity(inst, entity, fx);
-      if (!reskinned) fx?.dispose();
-      return reskinned;
-    });
-    caster.setCanCastFn((_doer, target) => {
-      const inst = reskinOperation(target);
-      return !!inst && !inst.reskinToolCannotTargetThis && inst.isValid()
-        && (nextReskin(inst.skins, inst.skinId, entity._cached_reskinname, inst.prefabId) !== undefined || inst.skinId !== undefined);
-    });
-    return caster;
+  if (entity.components.spellcaster) return;
+  const caster = addComponent(entity, 'spellcaster', SpellCaster);
+  caster.canUseOnTargets = true;
+  caster.canUseOnDead = true;
+  caster.veryQuickCast = true;
+  // spellCB: the skin is chosen at the hit frame and the explode_reskin fx is spawned with it; the display loads
+  // the chosen skin's art when the sprite json names it.
+  caster.setSpellFn((_tool, target) => {
+    const inst = reskinOperation(target);
+    if (!inst) return false;
+    const fx = reskinFxPresenters.get(entity)?.prepare(entity.skinId);
+    const reskinned = reskinEntity(inst, entity, fx);
+    if (!reskinned) fx?.dispose();
+    return reskinned;
+  });
+  caster.setCanCastFn((_doer, target) => {
+    const inst = reskinOperation(target);
+    return !!inst && !inst.reskinToolCannotTargetThis && inst.isValid()
+      && (nextReskin(inst.skins, inst.skinId, entity._cached_reskinname, inst.prefabId) !== undefined || inst.skinId !== undefined);
   });
 }
 

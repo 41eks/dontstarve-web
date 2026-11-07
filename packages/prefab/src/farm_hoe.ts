@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory, type HeldEquipFunctions } from './equipmentVisual';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 
@@ -16,7 +17,7 @@ export type FarmHoeTool = 'farm_hoe' | 'golden_farm_hoe';
 export function configureFarmHoeEntity(inst: ItemEntity): void {
   inst.addTag('sharp');
   const weapon = AddWeapon(inst, FARM_HOE_DAMAGE, false);
-  inst.components.farmtiller = inst.component('farmtiller', () => new FarmTiller());
+  addComponent(inst, 'farmtiller', FarmTiller);
   if (inst.prefab === 'golden_farm_hoe') weapon.attackwear = 1 / GOLDENTOOLFACTOR;
 }
 

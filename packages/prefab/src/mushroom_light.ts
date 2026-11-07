@@ -1,9 +1,11 @@
+import { LootDropper } from '../../componets/src/lootdropper';
+import { addComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import { Workable, type Worker } from '../../componets/src/workable';
 import definitions from './definitions.json' with { type: 'json' };
 import { buildingPlacer, buildingPrefab, MakeBuildingContainer, MakeBuildingPersist } from './building';
 import { PrefabInstance } from './prefabInstance';
-import { createStructureLootDropper } from './structureLoot';
+import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
 import type { PrefabWorldContext } from './worldContext';
 
 /** mushroom_light.lua defines both the white mushroom light and the coloured light. */
@@ -47,12 +49,12 @@ export class MushroomLightInstance extends PrefabInstance {
     this.addTag('structure');
     this.addTag('lamp');
     MakeBuildingContainer(this, id, world);
-    const workable = this.components.workable = new Workable(this);
+    const workable = addComponent(this, 'workable', Workable);
     workable.SetWorkAction('HAMMER');
     workable.SetWorkLeft(3);
     workable.SetOnWorkCallback(onworked);
     workable.SetOnFinishCallback(onhammered);
-    this.components.lootdropper = createStructureLootDropper(this);
+    addComponent(this, 'lootdropper', LootDropper, spawnStructureLoot(this), STRUCTURE_LOOT_RECIPES);
     this.ListenForEvent('onbuilt', () => onbuilt(this));
   }
 }

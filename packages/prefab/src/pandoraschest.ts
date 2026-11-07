@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
 import { Hauntable } from '../../componets/src/hauntable';
@@ -31,17 +32,11 @@ export class PandorasChestInstance extends PrefabInstance {
     const container = MakeBuildingContainer(this, PANDORAS_CHEST_ID, world);
     container.onopenfn = onopen;
     container.onclosefn = onclose;
-    const components: Record<string, unknown> = { inspectable: new Inspectable(this) };
-    if (world.scheduler) {
-      const hauntable = new Hauntable(this, world.scheduler);
-      hauntable.SetHauntValue(HAUNT_TINY);
-      components.hauntable = hauntable;
-      this.onRemove(() => hauntable.dispose());
-    }
+    addComponent(this, 'inspectable', Inspectable);
+    if (world.scheduler) addComponent(this, 'hauntable', Hauntable, world.scheduler).SetHauntValue(HAUNT_TINY);
     // MakeSnowCovered -> MakeLunarHailBuildup; pandora_master_postinit -> MakeRoseTarget_CreateFuel_IncreasedHorror.
-    components.lunarhailbuildup = new LunarHailBuildup(this);
-    components.roseinspectable = new RoseInspectable(this);
-    Object.assign(this.components, components);
+    addComponent(this, 'lunarhailbuildup', LunarHailBuildup);
+    addComponent(this, 'roseinspectable', RoseInspectable);
   }
 }
 

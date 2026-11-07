@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import { createEffect, type GetWatchWorldContent, type TileStateQuery } from '@dontstarve-web/signals';
 import { SpriteState } from '@dontstarve-web/display';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
@@ -96,27 +97,27 @@ export class StaffLightInstance extends PrefabInstance {
     this.physicsRadiusOverride = .5;
     if (settings.is_hot) for (const tag of ['cooker', 'daylight', 'heatstar']) this.addTag(tag);
 
-    const heater = new Heater(this);
+    const heater = addComponent(this, 'heater', Heater);
     heater.SetHeat(settings.is_hot ? 100 : -100);
     if (!settings.is_hot) heater.SetThermics(false, true);
 
-    const sanityaura = new SanityAura(this);
+    const sanityaura = addComponent(this, 'sanityaura', SanityAura);
     sanityaura.aura = SANITYAURA_SMALL;
 
-    const hauntable = new Hauntable(this, scheduler);
+    const hauntable = addComponent(this, 'hauntable', Hauntable, scheduler);
     hauntable.SetHauntValue(HAUNT_SMALL);
     hauntable.SetOnHauntFn(() => this.onhaunt());
 
-    const timer = new Timer(scheduler, name => this.PushEvent('timerdone', { name }));
+    const timer = addComponent(this, 'timer', Timer, scheduler);
     timer.StartTimer(EXTINGUISH, settings.duration);
     this.ListenForEvent('timerdone', data => { if ((data as { name: string }).name === EXTINGUISH) this.kill_light(); });
 
-    Object.assign(this.components, { heater, sanityaura, hauntable, timer, inspectable: new Inspectable(this) });
+    addComponent(this, 'inspectable', Inspectable);
     this.addTag('inspectable');
 
     let propagator: Propagator | undefined;
     if (settings.is_hot) {
-      propagator = this.components.propagator = new Propagator(this, 'default', radius =>
+      propagator = addComponent(this, 'propagator', Propagator, 'default', radius =>
         FindEntities(this.position, radius, [], ['INLIMBO']) as BurnableInst[], WORLD_SCALE, scheduler, world.getWatchWorldContent);
       propagator.heatoutput = 15;
       propagator.spreading.set(true);
@@ -137,7 +138,6 @@ export class StaffLightInstance extends PrefabInstance {
       this.pulseTask.stop();
       this.cancelRemoval?.();
       stopIdleResume?.();
-      timer.dispose(); hauntable.dispose(); heater.dispose(); sanityaura.OnRemoveFromEntity(); propagator?.dispose();
     });
   }
 

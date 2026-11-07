@@ -1,3 +1,6 @@
+import { Inspectable } from '../../componets/src/inspectable';
+import { LootDropper } from '../../componets/src/lootdropper';
+import { Burnable } from '../../componets/src/burnable';
 import { SpriteState } from '@dontstarve-web/display';
 import { createEffect, watchSignal } from '@dontstarve-web/signals';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
@@ -10,7 +13,7 @@ import { addComponent } from './components';
 import { PrefabInstance } from './prefabInstance';
 import type { PlacementSaveRecord } from './saveRecord';
 import { PlaySound } from './sound';
-import { createStructureLootDropper } from './structureLoot';
+import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
 import type { PrefabWorldContext } from './worldContext';
 
 export const FIRE_PIT_ID = 'firepit' as const;
@@ -57,17 +60,16 @@ export class FirePitInstance extends PrefabInstance {
         this.OnSave = (inst, data) => { saveBuilding!(inst, data); onsave(this, data); };
         this.OnLoad = (inst, data) => { loadBuilding!(inst, data); onload(this, data); };
         for (const tag of ['campfire', 'structure', 'wildfireprotected', 'cooker', 'storytellingprop']) this.addTag(tag);
-        const workable = this.components.workable = new Workable(this);
+        const workable = addComponent(this, 'workable', Workable);
         workable.SetWorkAction('HAMMER');
         workable.SetWorkLeft(4);
         workable.SetOnWorkCallback(onworked);
         workable.SetOnFinishCallback(onhammered);
-        this.components.lootdropper = createStructureLootDropper(this);
+        addComponent(this, 'lootdropper', LootDropper, spawnStructureLoot(this), STRUCTURE_LOOT_RECIPES);
 
         // Settled before the burnable goes: its last update can still reach the fire level.
-        const fueled = this.components.fueled = this.fueled = new Fueled<FirePitInstance>(this, scheduler);
-        this.onRemove(() => fueled.dispose());
-        const burnable = addComponent(this, 'burnable', scheduler);
+        const fueled = this.fueled = addComponent(this, 'fueled', Fueled<FirePitInstance>, scheduler);
+        const burnable = addComponent(this, 'burnable', Burnable, scheduler);
         burnable.SetFXSpawner(data => data.prefab === CAMPFIREFIRE_ID ? fire.spawnCampfire(this, data) : undefined);
         burnable.AddBurnFX(CAMPFIREFIRE_ID, { x: 0, y: 25, z: 0 }, 'firefx', true, undefined, true);
         // ListenForEvent("onextinguish", onextinguish)
@@ -81,7 +83,7 @@ export class FirePitInstance extends PrefabInstance {
         fueled.SetUpdateFn(() => this.onupdatefueled());
         fueled.SetSectionCallback((newsection, _oldsection, _inst, doer) => this.onfuelchange(newsection, doer as WorkInst | undefined));
         fueled.InitializeFuelLevel(FIREPIT_FUEL_START);
-        Object.assign(this.components, { inspectable: { getstatus: () => SECTION_STATUS[fueled.GetCurrentSection()] } });
+        addComponent(this, 'inspectable', Inspectable).getstatus = () => SECTION_STATUS[fueled.GetCurrentSection()];
 
         this.ListenForEvent('onbuilt', () => onbuilt(this));
         // A skin's firepit_init_fn / firepit_clear_fn runs when the skin is set, after fn.

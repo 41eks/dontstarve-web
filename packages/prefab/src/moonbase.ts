@@ -12,6 +12,7 @@ import { Workable } from '../../componets/src/workable';
 import { Repairable } from '../../componets/src/repairable';
 import { Trader, type TradeItem } from '../../componets/src/trader';
 import { Pickable } from './components/pickable';
+import { addComponent, removeComponent } from './components';
 import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
 import { ComponentTimer, Timer, type NamedTimerSave } from '../../componets/src/timer';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -74,7 +75,8 @@ class Moonbase {
     this.moon = world.getWatchWorldContent?.(WorldContentKey.Moon, stop => this.cleanups.push(stop));
     this.cycle = world.getWatchWorldContent?.(WorldContentKey.Cycle, stop => this.cleanups.push(stop));
     this.fullMoon = createMemo(() => this.isFullMoon(true));
-    this.timer = new Timer(this.scheduler, name => this.onTimerDone(name), Object.keys(MOONBASE_TIMER_LIMITS));
+    this.timer = addComponent(inst, 'timer', Timer, this.scheduler, Object.keys(MOONBASE_TIMER_LIMITS));
+    this.cleanups.push(inst.ListenForEvent('timerdone', data => this.onTimerDone((data as { name: string }).name)));
     this.effects = new MoonbaseEffects(inst, this.scheduler, sprites);
     this.musicPulse = new ComponentTimer(this.scheduler, () => this.pushMusic());
     this.initializer = new ComponentTimer(this.scheduler, () => {
@@ -90,31 +92,27 @@ class Moonbase {
       this.toggleCharge(true);
     });
     for (const tag of ['moonbase', 'event_trigger', 'antlion_sinkhole_blocker', 'NPC_workable']) inst.addTag(tag);
-    this.workable = new Workable(inst);
+    this.workable = addComponent(inst, 'workable', Workable);
     this.workable.SetWorkAction(undefined); // Lua avoids PICK / MINE priority conflict.
     this.workable.SetMaxWork(MOONBASE_COMPLETE_WORK);
     this.workable.SetWorkLeft(MOONBASE_DAMAGED_WORK);
     this.workable.savestate = true;
     this.workable.SetOnWorkCallback(() => this.updateWorkState());
     this.workable.SetOnLoadFn(() => this.updateWorkState());
-    inst.components.workable = this.workable;
     this.phaseMemo = createMemo(() => animationState(this.workable.workleft.get()));
     this.phase = readonlySignal(this.phaseMemo);
     this.chargeMemo = createMemo(() => this.chargePhase(true));
     this.charge = readonlySignal(this.chargeMemo);
-    this.pickable = new Pickable(inst, '', 1000000, 1, () => this.onStaffTaken());
+    this.pickable = addComponent(inst, 'pickable', Pickable, '', 1000000, 1, () => this.onStaffTaken());
     this.pickable.canInteractWith = false;
     this.pickable.pause();
     this.pickable.getProductEntity = () => this.staffState.peek();
-    this.trader = new Trader(inst);
+    this.trader = addComponent(inst, 'trader', Trader);
     this.trader.deleteitemonaccept = false;
     this.trader.SetAbleToAcceptTest(item => !item.prefab.endsWith('staff') ? { ok: false, reason: 'NOTSTAFF' }
       : { ok: (item.prefab === STAFF || item.prefab === 'opalstaff') && item instanceof ItemEntity });
     this.trader.SetOnAccept((_giver, item) => this.onStaffGiven(item as ItemEntity));
     this.trader.Disable();
-    inst.components.trader = this.trader;
-    inst.components.timer = this.timer;
-    inst.components.moonbase = this;
     this.makeRepairable();
     // OverrideItemSkinSymbol / OverrideSymbol("swap_staffs", ...) follow the held staff; the display dresses every drawn sprite in the AnimState.
     this.cleanups.push(createEffect(() => {
@@ -157,14 +155,12 @@ class Moonbase {
   }
   private makeRepairable(): void {
     if (this.inst.components.repairable) return;
-    const repairable = new Repairable(this.inst, this.workable, 'moonrock');
+    const repairable = addComponent(this.inst, 'repairable', Repairable, this.workable, 'moonrock');
     repairable.noannounce = true;
     repairable.onrepaired = () => this.onRepaired();
-    this.inst.components.repairable = repairable;
   }
   private removeRepairable(): void {
-    this.inst.components.repairable?.dispose();
-    delete this.inst.components.repairable;
+    removeComponent(this.inst, 'repairable');
   }
   private updateTrading(): void {
     if (this.fixed() && !this.pickable.canInteractWith) this.trader.Enable();
@@ -289,14 +285,14 @@ class Moonbase {
     if (this.disposed) return;
     this.disposed = true;
     this.cleanups.splice(0).forEach(stop => stop()); this.fullMoon.dispose();
-    this.initializer.stop(); this.musicPulse.stop(); this.timer.dispose(); this.effects.dispose();
+    this.initializer.stop(); this.musicPulse.stop(); this.effects.dispose();
     for (const sound of this.sounds) sound.stop();
     this.sounds.clear();
     const staff = this.staffState.peek();
     if (staff) { if (this.items) this.items.destroy(staff); else staff.destroy(); }
     this.staffState.set(undefined);
     this.removeRepairable();
-    this.trader.dispose(); this.pickable.dispose(); this.workable.dispose(); this.phaseMemo.dispose(); this.chargeMemo.dispose();
+    this.pickable.dispose(); this.phaseMemo.dispose(); this.chargeMemo.dispose();
   }
 }
 
@@ -332,6 +328,8 @@ export class MoonbaseInstance extends PrefabInstance {
     const moonbase = this.moonbase = new Moonbase(this, animState, sprites, world, scheduler);
     this.onRemove(() => moonbase.dispose());
   }
+  /** `intense` follows the charge stage, as the stage functions' AddTag / RemoveTag("intense"). */
+  override hasTag(tag: string): boolean { return this.moonbase?.HasTag(tag) ?? super.hasTag(tag); }
 }
 
 export function moonbasePrefabs(world: PrefabWorldContext) {

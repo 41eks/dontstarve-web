@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import type * as THREE from 'three';
 import { SpriteState } from '@dontstarve-web/display';
 import { createEffect, WorldContentKey } from '@dontstarve-web/signals';
@@ -81,8 +82,8 @@ export class MolehillInstance extends PrefabInstance<SpriteState, MolehillCompon
     // LAYER_BACKGROUND, sort order 3: the mound stays upright behind what stands on it.
     this.sprite.setGround(-.5, false);
     this.cycle = world.getWatchWorldContent(WorldContentKey.Cycle, stop => this.onRemove(stop));
-    const inventory = new Inventory(this, 50, world.dropItem, world.itemSpecs);
-    const spawner = new Spawner<Mole>(this, this.cycle.scheduler, () => {
+    const inventory = addComponent(this, 'inventory', Inventory, 50, world.dropItem, world.itemSpecs);
+    const spawner = addComponent(this, 'spawner', Spawner<Mole>, this.cycle.scheduler, () => {
       const entity = world.spawnItem({ itemId: 'mole', count: 1 }); configureMoleEntity(entity);
       const mole = entity.getComponent<Mole>('mole')!; mole.bindWorld(world);
       // Dropping a spawned child does not invoke mole.lua's inventory-drop stun.
@@ -92,9 +93,9 @@ export class MolehillInstance extends PrefabInstance<SpriteState, MolehillCompon
     spawner.onvacate = () => this.stopspawning();
     // WorldSettings_Spawner_SpawnDelay: a new hill releases its first mole at once.
     spawner.SpawnWithDelay(0);
-    const workable = new Workable(this);
+    const workable = addComponent(this, 'workable', Workable);
     workable.SetWorkAction('DIG'); workable.SetWorkLeft(1); workable.SetOnFinishCallback(() => this.dig_up());
-    Object.assign(this.components, { inventory, spawner, workable });
+
     this.onRemove(() => {
       this.PushEvent('onremove');
       this.stopPending?.();

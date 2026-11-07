@@ -23,7 +23,7 @@ export function createBuildingContainer(prefab: StorageBuildingId, inst: object)
     // SpawnSaveRecord of each content in the building's world, or alone outside one.
     const loadItem = (record: InventoryStack) => (inst as Partial<Pick<PrefabInstance, 'worldServices'>>).worldServices?.spawnItem?.(record)
         ?? new ItemEntity(record);
-    const container = inst instanceof PrefabInstance ? addComponent(inst, 'container', createSlot, loadItem)
+    const container = inst instanceof PrefabInstance ? addComponent(inst, 'container', Container<InventoryStack, ItemEntity, ItemSlot>, createSlot, loadItem)
         : new Container<InventoryStack, ItemEntity, ItemSlot>(inst, createSlot, loadItem);
     container.SetNumSlots(definition.slotCount);
     return container;

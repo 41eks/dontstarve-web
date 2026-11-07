@@ -1,56 +1,57 @@
-import type { ItemEntity, InventoryStack, ItemSlot } from '@dontstarve-web/inventory';
-import { Burnable } from '../../componets/src/burnable';
-import { Propagator } from '../../componets/src/propagator';
-import { Container } from '../../componets/src/container';
-import { Workable, type WorkableInst } from '../../componets/src/workable';
-import type { PrefabInstance } from './prefabInstance';
+/** EntityScript:AddComponent / RemoveComponent. inst.components is the component registry. */
+type Owner = { readonly components: object; onRemove(remove: () => void): () => void; readonly isRemoved: boolean };
+type Lifecycle = { dispose?(): void; OnRemoveEntity?(): void; OnRemoveFromEntity?(): void };
+export type ComponentName<Inst extends Owner> = keyof Inst['components'] & string;
+type Declared<Inst extends Owner, Name extends ComponentName<Inst>> = NonNullable<Inst['components'][Name]>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ComponentClass<Inst, Instance> = abstract new (inst: Inst, ...args: any[]) => Instance;
+type Args<C> = C extends abstract new (inst: never, ...args: infer Rest) => unknown ? Rest : never;
 
-/** EntityScript:AddComponent: constructors only; prefab settings stay with the prefab. */
-const constructors = {
-  burnable: Burnable,
-  propagator: Propagator,
-  container: Container<InventoryStack, ItemEntity, ItemSlot>,
-  workable: Workable,
-};
+// Only the entity-removal subscription lives here; inst.components holds the components themselves.
+const removals = new WeakMap<Owner, Map<string, () => void>>();
+/** Components the entity's removal already tore down; a later RemoveComponent only unregisters them. */
+const tornDown = new WeakSet<object>();
 
-export type ComponentName = keyof typeof constructors;
-type Owner = Pick<PrefabInstance, 'components' | 'onRemove' | 'isRemoved'>;
-type Args<Name extends ComponentName> = ConstructorParameters<typeof constructors[Name]> extends [unknown, ...infer Rest] ? Rest : never;
-type Host<Name extends ComponentName> = Owner & ConstructorParameters<typeof constructors[Name]>[0];
-type Component<Name extends ComponentName, Inst> = Name extends 'workable'
-  ? Workable<Inst & WorkableInst> : InstanceType<typeof constructors[Name]>;
-type Lifecycle = { dispose(): void; OnRemoveEntity?(): void; OnRemoveFromEntity?(): void };
-
-// Only subscription cancellation lives here; inst.components is the component registry.
-const removals = new WeakMap<Owner, Map<ComponentName, () => void>>();
-
-export function addComponent<Name extends ComponentName, Inst extends Host<Name>>(
-  inst: Inst, name: Name, ...args: Args<Name>
-): Component<Name, Inst> {
+/**
+ * inst:AddComponent(name): `new Component(inst, ...args)` is stored under the name the entity declares for it, as
+ * `require("components/" .. name)` resolves the class in Lua. An existing component is returned unchanged. When the
+ * entity is removed its components get OnRemoveEntity (or their task teardown) and stay on `inst.components`.
+ */
+export function addComponent<Inst extends Owner, Name extends ComponentName<Inst>, C extends ComponentClass<Inst, Declared<Inst, Name>>>(
+  inst: Inst, name: Name, Component: C, ...args: Args<C>
+): InstanceType<C> {
   if (inst.isRemoved) throw new Error(`Cannot add ${name} to a removed entity`);
-  const components = inst.components as Partial<Record<Name, Component<Name, Inst>>>;
+  const components = inst.components as Record<string, unknown>;
   const existing = components[name];
-  if (existing) return existing;
-  // The key keeps constructor arguments and result linked at the public call site.
-  const Constructor = constructors[name] as unknown as new (inst: Inst, ...args: Args<Name>) => Component<Name, Inst>;
-  const component = new Constructor(inst, ...args);
+  if (existing) return existing as InstanceType<C>;
+  const component = new (Component as unknown as new (inst: Inst, ...args: Args<C>) => InstanceType<C>)(inst, ...args);
   components[name] = component;
   let callbacks = removals.get(inst);
   if (!callbacks) removals.set(inst, callbacks = new Map());
-  callbacks.set(name, inst.onRemove(() => removeComponent(inst, name)));
+  const entityCallbacks = callbacks;
+  callbacks.set(name, inst.onRemove(() => {
+    entityCallbacks.delete(name);
+    const removed = component as Lifecycle;
+    tornDown.add(removed);
+    if (removed.OnRemoveEntity) removed.OnRemoveEntity();
+    else if (removed.OnRemoveFromEntity) removed.OnRemoveFromEntity();
+    else removed.dispose?.();
+  }));
   return component;
 }
 
-/** RemoveComponent deletes the registration before invoking the component's teardown. */
-export function removeComponent(inst: Owner, name: ComponentName): void {
-  const component: Lifecycle | undefined = inst.components[name];
+/** RemoveComponent deletes the registration before invoking the component's OnRemoveFromEntity (or its teardown). */
+export function removeComponent<Inst extends Owner>(inst: Inst, name: ComponentName<Inst>): void {
+  const components = inst.components as Record<string, Lifecycle | undefined>;
+  const component = components[name];
   if (!component) return;
-  delete inst.components[name];
+  delete components[name];
   const callbacks = removals.get(inst);
   callbacks?.get(name)?.();
   callbacks?.delete(name);
   if (callbacks?.size === 0) removals.delete(inst);
+  if (tornDown.has(component)) return;
   if (inst.isRemoved && component.OnRemoveEntity) component.OnRemoveEntity();
   else if (component.OnRemoveFromEntity) component.OnRemoveFromEntity();
-  else component.dispose();
+  else component.dispose?.();
 }

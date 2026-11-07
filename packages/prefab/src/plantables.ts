@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Deployable, type DeployPlacerArt } from '../../componets/src/deployable';
 import { configureBurnableItemEntity } from './burnableItems';
@@ -20,7 +21,7 @@ export function configurePlantableEntity(entity: ItemEntity): void {
   if (!data || entity.components.deployable) return;
   configureBurnableItemEntity(entity);
   entity.addTag('deployedplant');
-  entity.components.deployable = entity.component('deployable', () => new Deployable(entity, (point, deployer, map) => {
+  addComponent(entity, 'deployable', Deployable, (point, deployer, map) => {
     // SpawnPrefab(data.name, inst.linked_skinname, inst.skin_id): dug_<skin> links to the plant's <skin>.
     const tree = map.SpawnPrefab(data.prefab, point, entity.skinId?.replace(/^dug_/, ''));
     if (!tree) return false;
@@ -28,5 +29,5 @@ export function configurePlantableEntity(entity: ItemEntity): void {
     tree.components.pickable?.OnTransplant();
     PlaySound('dontstarve/common/plant', deployer.position);
     return true;
-  }, { mode: 'PLANT', spacing: data.spacing ?? TILE_SIZE / 4, placer: data }));
+  }, { mode: 'PLANT', spacing: data.spacing ?? TILE_SIZE / 4, placer: data });
 }

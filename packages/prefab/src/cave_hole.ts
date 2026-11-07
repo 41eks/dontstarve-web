@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import { facingFromHeading } from '@dontstarve-web/animation/facing';
 import type { GetWatchWorldContent } from '@dontstarve-web/signals';
@@ -79,10 +80,10 @@ export class CaveHoleInstance extends PrefabInstance {
     const surface = world.spawnPrefab(CAVE_HOLE_SURFACE_ID, position);
     surface.entityParent = this as PrefabInstance<SpriteState, object>;
 
-    const playerprox = new PlayerProx({ isValid: () => !this.isRemoved, getPosition: () => this.position }, world.getWatchWorldContent);
+    const playerprox = addComponent(this, 'playerprox', PlayerProx, world.getWatchWorldContent);
     playerprox.SetDist(OUTER_RADIUS * WORLD_SCALE, OUTER_RADIUS * WORLD_SCALE);
-    Object.assign(this.components, { objectspawner: new ObjectSpawner(this), playerprox });
-    this.onRemove(() => { playerprox.dispose(); surface.remove(); });
+    addComponent(this, 'objectspawner', ObjectSpawner);
+    this.onRemove(() => surface.remove());
 
     this.OnSave = (_inst, data) => { data.allowspawn = this.allowspawn; };
     this.OnLoad = (_inst, data) => { if (data.allowspawn !== undefined) this.allowspawn = data.allowspawn; };

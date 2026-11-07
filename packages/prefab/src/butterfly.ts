@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import * as THREE from 'three';
 import { WorldContentKey, type GetWatchWorldContent, type WorldContentSignal, type WorldPhase } from '@dontstarve-web/signals';
@@ -40,15 +41,14 @@ export function configureButterflyEntity(entity: ItemEntity): void {
   entity.addTag('catchable');
   if (!entity.components.deployable) {
     entity.addTag('deployedplant');
-    entity.components.deployable = entity.component('deployable', () => entity.prefab === MOONBUTTERFLY_ID
-      ? new Deployable(entity, (point, _deployer, map) => {
+    if (entity.prefab === MOONBUTTERFLY_ID) addComponent(entity, 'deployable', Deployable, (point, _deployer, map) => {
         // moonbutterfly.lua OnDeploy.
         if (!map.SpawnPrefab('moonbutterfly_sapling', point)) return false;
         PlaySound('dontstarve/wilson/plant_tree', point);
         entity.remove();
         return true;
-      }, { mode: 'PLANT', spacing: 3.2 * (TILE_SIZE / 4), placer: { bank: 'baby_moon_tree', build: 'baby_moon_tree', animation: 'idle' } })
-      : new Deployable(entity, (point, deployer, map) => {
+      }, { mode: 'PLANT', spacing: 3.2 * (TILE_SIZE / 4), placer: { bank: 'baby_moon_tree', build: 'baby_moon_tree', animation: 'idle' } });
+    else addComponent(entity, 'deployable', Deployable, (point, deployer, map) => {
         // butterfly.lua OnDeploy.
         const flower = map.SpawnPrefab('planted_flower', point);
         if (!flower) return false;
@@ -56,7 +56,7 @@ export function configureButterflyEntity(entity: ItemEntity): void {
         entity.remove();
         PlaySound('dontstarve/common/plant', deployer.position);
         return true;
-      }, { mode: 'PLANT', spacing: .75 * (TILE_SIZE / 4), placer: { bank: 'flowers', build: 'flowers', animation: 'f1' } }));
+      }, { mode: 'PLANT', spacing: .75 * (TILE_SIZE / 4), placer: { bank: 'flowers', build: 'flowers', animation: 'f1' } });
   }
   if (entity.prefab === BUTTERFLY_ID) {
     entity.addTag('small_livestock');
@@ -88,8 +88,8 @@ export function configureButterflyEntity(entity: ItemEntity): void {
       return { dispose: () => stops.forEach(stop => stop()) };
     });
   }
-  entity.components.workable = entity.component('workable', () => {
-    const workable = new Workable(entity);
+  if (!entity.components.workable) {
+    const workable = addComponent(entity, 'workable', Workable);
     workable.SetWorkAction('NET');
     workable.SetWorkLeft(1);
     workable.SetOnFinishCallback((_inst, worker) => {
@@ -97,8 +97,7 @@ export function configureButterflyEntity(entity: ItemEntity): void {
       if (worker.components?.inventory) PlaySound('dontstarve/common/butterfly_trap', entity.transform.position);
     });
     entity.ListenForEvent('ondropped', () => workable.SetWorkLeft(1));
-    return workable;
-  });
+  }
 }
 
 /** moonbutterfly.lua: it spoils four times slower in an inventory and is simply removed if it perishes there. */
@@ -248,6 +247,9 @@ export class ButterflyCreature implements BrainInst, ButterflyStateInst, LocoMot
   private time = 0;
   private readonly entity: ItemEntity;
   get components(): BrainComponents { return this.entity.components; }
+  /** The creature is the Lua inst its components see; they are stored on, and torn down with, the item entity. */
+  get isRemoved(): boolean { return this.entity.isRemoved; }
+  onRemove(remove: () => void): () => void { return this.entity.onRemove(remove); }
   get prefab(): string { return this.entity.prefab; }
   getPosition(): THREE.Vector3 { return this.entity.getPosition(); }
   getPhysicsRadius(): number { return this.entity.getPhysicsRadius(); }
@@ -284,11 +286,10 @@ export class ButterflyCreature implements BrainInst, ButterflyStateInst, LocoMot
     this.sharedEntities = shared;
     this.world = this.createWorld();
     // locomotor must be constructed before the stategraph.
-    this.locomotor = new LocoMotor(this);
+    this.locomotor = addComponent(this, 'locomotor', LocoMotor);
     if (definition.walkspeed !== undefined) this.locomotor.walkspeed = definition.walkspeed;
-    this.components.locomotor = this.locomotor;
-    this.components.knownlocations = new KnownLocations();
-    if (definition.pollinates) this.components.pollinator = new Pollinator<BrainEntity>(this);
+    addComponent(this, 'knownlocations', KnownLocations);
+    if (definition.pollinates) addComponent(this, 'pollinator', Pollinator<BrainEntity>);
     this.sg = new ButterflyStateGraph(this);
     this.brain = definition.createBrain(this);
     this.brain.inst.brain = this.brain;

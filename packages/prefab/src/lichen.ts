@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import type { PrefabEntityDefinition } from './prefabInstance';
 import { Pickable } from './components/pickable';
 import { DefaultBurnFn, DefaultExtinguishFn, DefaultBurntFn, MakeNoGrowInWinter } from './standardcomponents';
@@ -13,7 +14,7 @@ export type LichenWorld = PickablePlantWorld;
 export class LichenInstance extends PickablePlantInstance {
   constructor(context: PickablePlantContext) {
     super(LICHEN_DEFINITION, context);
-    new Pickable(this, 'cutlichen', LICHEN_REGROW_TIME, 1, () => onpickedfn(this), () => onregenfn(this), context.saved?.components.pickable, {
+    addComponent(this, 'pickable', Pickable, 'cutlichen', LICHEN_REGROW_TIME, 1, () => onpickedfn(this), () => onregenfn(this), context.saved?.components.pickable, {
       scheduler: context.scheduler, growthDuration: context.growthDuration, onEmpty: () => makeemptyfn(this),
     });
     this.bindBurnable({ propagator: 'small', burnTime: 10, fxLevel: 2,

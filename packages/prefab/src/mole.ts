@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import { Vector3 } from 'three';
 import { createEffect, WorldContentKey, watchSignal, type ReadonlySignal, type WorldContentContext } from '@dontstarve-web/signals';
 import type { ItemEntity, InventoryStack } from '@dontstarve-web/inventory';
@@ -48,13 +49,14 @@ export interface MoleWorld extends Pick<WorldContentContext, 'getWatchWorldConte
   spawnMoveFx(position: Vector3): void;
 }
 
+type MoleComponents = ItemEntity['components'] & { health: Health; combat: Combat; knownlocations: KnownLocations;
+  homeseeker: HomeSeeker<MolehillInstance>; inventory?: Inventory; locomotor?: LocoMotor; sleeper?: Sleeper };
+
 /** mole.lua: the logical inst survives pickup, dropping and replacement of its visual. */
 export class Mole implements MoleBrainInst, MoleStateInst, LocoMotorInst {
   readonly prefab = MOLE_ID;
-  readonly components: {
-    health: Health; combat: Combat; knownlocations: KnownLocations; homeseeker: HomeSeeker<MolehillInstance>;
-    inventory?: Inventory; locomotor?: LocoMotor; sleeper?: Sleeper;
-  };
+  /** The mole is the Lua inst its components see; they are stored on, and torn down with, the item entity. */
+  get components(): MoleComponents { return this.entity.components as MoleComponents; }
   world!: BrainWorld;
   locomotor!: LocoMotor;
   sg!: MoleStateGraph;
@@ -104,10 +106,11 @@ export class Mole implements MoleBrainInst, MoleStateInst, LocoMotorInst {
   constructor(entity: ItemEntity, randomSource = Math.random) {
     this.entity = entity; this.randomSource = randomSource;
     this.make_home_delay = 5 + Math.floor(this.random() * 6); this.peek_interval = 15 + Math.floor(this.random() * 11);
-    const health = new Health(30, this); health.OnLoad({ health: entity.mole?.health ?? 30 });
+    addComponent(this, 'health', Health, 30).OnLoad({ health: entity.mole?.health ?? 30 });
     this.saved = entity.mole;
-    const components: Mole['components'] = { health, combat: new Combat(this, () => this.getTime()), knownlocations: new KnownLocations(), homeseeker: new HomeSeeker<MolehillInstance>() };
-    this.components = Object.assign(entity.components, components);
+    addComponent(this, 'combat', Combat, () => this.getTime());
+    addComponent(this, 'knownlocations', KnownLocations);
+    addComponent(this, 'homeseeker', HomeSeeker<MolehillInstance>);
     this.cleanups.push(entity.ListenForEvent('ondropped', () => this.onDropped()),
       entity.ListenForEvent('onputininventory', () => this.onPickup()),
       entity.ListenForEvent('attacked', data => this.sg?.pushEvent('attacked', data)),
@@ -120,6 +123,7 @@ export class Mole implements MoleBrainInst, MoleStateInst, LocoMotorInst {
   getPhysicsRadius(): number { return .5 * WORLD_SCALE; }
   getTime(): number { return this.scheduler?.now ?? 0; }
   get isRemoved(): boolean { return this.entity.isRemoved || this.disposed; }
+  onRemove(remove: () => void): () => void { return this.entity.onRemove(remove); }
   isValid(): boolean { return !this.isRemoved && !this.occupied && !this.entity.components.inventoryitem.owner; }
   hasTag(tag: string): boolean { return this.entity.hasTag(tag); }
   random(): number { return this.randomSource(); }
@@ -172,11 +176,9 @@ export class Mole implements MoleBrainInst, MoleStateInst, LocoMotorInst {
       },
       getClosestInstWithTag: (tags, from, radius) => this.world.findEntity(from, radius, undefined, tags),
     };
-    this.components.inventory = new Inventory(this, 3, services.dropItem, services.itemSpecs);
-    this.components.inventory.OnLoad(this.saved?.items ?? [], services.spawnItem);
-    this.locomotor = new LocoMotor(this, { arriveDistance: .15 * WORLD_SCALE, pathfinder: services.pathfinder, pathcaps: { ignorecreep: true, ignorebridges: true } });
+    addComponent(this, 'inventory', Inventory, 3, services.dropItem, services.itemSpecs).OnLoad(this.saved?.items ?? [], services.spawnItem);
+    this.locomotor = addComponent(this, 'locomotor', LocoMotor, { arriveDistance: .15 * WORLD_SCALE, pathfinder: services.pathfinder, pathcaps: { ignorecreep: true, ignorebridges: true } });
     this.locomotor.walkspeed = 2.75 * WORLD_SCALE; this.locomotor.runspeed = 6 * WORLD_SCALE;
-    this.components.locomotor = this.locomotor;
     this.animstate = new AnimState(scheduler, lengths, event => this.sg.pushEvent(event));
     this.sg = new MoleStateGraph(this, scheduler);
     this.entity.sg = this.sg.sg;
@@ -190,11 +192,8 @@ export class Mole implements MoleBrainInst, MoleStateInst, LocoMotorInst {
     this.saved = undefined;
     this.stunnedPlay = new ComponentTimer(scheduler, () => { this.playSound('sleep', 'stunned'); this.stunnedPlay!.start(23 / 30); });
     this.stunnedKill = new ComponentTimer(scheduler, () => { this.killSound('stunned'); this.stunnedKill!.start(23 / 30); });
-    const mole = this;
-    this.components.sleeper = new Sleeper({ isValid: () => this.isValid(), PushEvent: (name, data) => this.PushEvent(name, data),
-      get sg() { return mole.sg; },
-      get components() { return mole.components; }, isNear: (home, distance) => mole.isNear(home, distance * WORLD_SCALE) }, getWatchWorldContent, this.randomSource);
-    this.components.sleeper.SetNocturnal(true); this.entity.components.sleeper = this.components.sleeper; this.entity.addTag('sleeper');
+    addComponent(this, 'sleeper', Sleeper, getWatchWorldContent, this.randomSource, WORLD_SCALE).SetNocturnal(true);
+    this.entity.addTag('sleeper');
     if (this.isValid()) { this.brain.Start(); if (this.dropPending) this.onDropped(); }
     createEffect(() => { cycle.get(); this.brain.ForceUpdate(); });
   }
@@ -308,9 +307,9 @@ export class Mole implements MoleBrainInst, MoleStateInst, LocoMotorInst {
   remove(): void { this.entity.remove(); }
   dispose(): void {
     if (this.disposed) return; this.disposed = true;
-    this.brain?.Stop(); this.components.sleeper?.dispose(); this.sg?.dispose(); this.animstate?.dispose(); this.stopSounds();
+    // The components were torn down with the item entity.
+    this.brain?.Stop(); this.sg?.dispose(); this.animstate?.dispose(); this.stopSounds();
     this.stopFlee?.stop(); this.homeCheck?.stop(); this.stopStunnedSounds();
-    this.components.homeseeker.dispose(); this.components.inventory?.dispose(); this.components.health.dispose();
     this.cleanups.splice(0).forEach(stop => stop());
     for (const listeners of this.listeners.values()) for (const stop of listeners.values()) stop(); this.listeners.clear();
   }
@@ -320,8 +319,8 @@ export function configureMoleEntity(entity: ItemEntity): void {
   if (entity.getComponent<Mole>('mole')) return;
   entity.components.inventoryitem.canbepickedup = false; entity.components.inventoryitem.canbepickedupalive = true;
   entity.component('mole', () => new Mole(entity));
-  entity.components.eater = entity.component('eater', () => new Eater(entity));
-  entity.components.eater.SetDiet(['ELEMENTAL']); entity.components.eater.SetOnEatFn(() => entity.components.perishable.SetPercent(1));
+  const eater = addComponent(entity, 'eater', Eater);
+  eater.SetDiet(['ELEMENTAL']); eater.SetOnEatFn(() => entity.components.perishable.SetPercent(1));
   const perishable = entity.components.perishable;
   if (perishable.perishtime.peek() === undefined) perishable.SetPerishTime(MOLE_PERISH_TIME);
   perishable.localMultiplier = () => entity.components.inventoryitem.owner ? 1 : 0;

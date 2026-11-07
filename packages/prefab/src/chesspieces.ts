@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import { Transform } from './transform';
 import * as THREE from 'three';
 import { SpriteState } from '@dontstarve-web/display';
@@ -54,26 +55,23 @@ export class ChesspieceInstance extends PrefabInstance {
     this.physicsRadiusOverride = PHYSICS_RADIUS;
     this.addTag('heavy');
 
-    const inventoryitem = new InventoryItem(this);
+    const inventoryitem = addComponent(this, 'inventoryitem', InventoryItem);
     inventoryitem.cangoincontainer = false;
-    const workable = new Workable(this);
+    const workable = addComponent(this, 'workable', Workable);
     workable.SetWorkAction('HAMMER'); workable.SetWorkLeft(1);
     workable.SetOnFinishCallback(() => this.onworkfinished());
     // SetMaterial: MATERIALS[marble].prefab.
-    const lootdropper = new LootDropper(this, (itemId, point) => world.spawnGroundItem(
+    const lootdropper = addComponent(this, 'lootdropper', LootDropper, (itemId, point) => world.spawnGroundItem(
       { ...catalog.items[itemId as keyof typeof catalog.items], itemId, count: 1 }, new THREE.Vector3(point.x, point.y, point.z), { fling: true }));
     lootdropper.SetLoot(['marble']);
-    const hauntable = new Hauntable({ addTag: tag => this.addTag(tag), removeTag: tag => this.removeTag(tag),
-      PushEvent: (name, data) => this.PushEvent(name, data) }, world.scheduler);
+    const hauntable = addComponent(this, 'hauntable', Hauntable, world.scheduler);
     hauntable.SetHauntValue(TUNING_HAUNT_TINY);
-    Object.assign(this.components, { workable, lootdropper, inventoryitem, hauntable,
-      inspectable: new Inspectable(this),
-      equippable: new Equippable(this, 'body'),
-      heavyobstaclephysics: new HeavyObstaclePhysics(this),
-      submersible: new Submersible(this),
-      symbolswapdata: new SymbolSwapData(this) });
+    addComponent(this, 'inspectable', Inspectable);
+    addComponent(this, 'equippable', Equippable, 'body');
+    addComponent(this, 'heavyobstaclephysics', HeavyObstaclePhysics);
+    addComponent(this, 'submersible', Submersible);
+    addComponent(this, 'symbolswapdata', SymbolSwapData);
     this.worldServices = { fx: world.fx };
-    this.onRemove(() => { workable.dispose(); hauntable.dispose(); });
   }
 
   /** onsave: materialid. workable.savestate is false, so the hammer work is not saved. */

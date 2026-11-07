@@ -116,7 +116,6 @@ export class Pickable implements PickableComponent {
       if (saved.paused) this.timer.restorePaused(saved.regrowSeconds);
       else this.timer.start(saved.regrowSeconds);
     }
-    this.inst.components.pickable = this;
     this.refreshTag();
   }
 
@@ -299,7 +298,6 @@ export class Pickable implements PickableComponent {
     this.phaseMemo.dispose(); this.regrowingMemo.dispose();
     this.getProductEntity = undefined;
     if (this.ownsScheduler) this.scheduler.dispose();
-    if (this.inst.components.pickable === this) delete this.inst.components.pickable;
   }
 
   private nextGrowthDuration(): number {

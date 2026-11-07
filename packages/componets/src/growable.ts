@@ -28,7 +28,7 @@ export class Growable {
   readonly stages: readonly GrowthStage[];
   private readonly growthDuration: (seconds: number) => number;
 
-  constructor(scheduler: GameTimeScheduler, stages: readonly GrowthStage[],
+  constructor(_inst: object, scheduler: GameTimeScheduler, stages: readonly GrowthStage[],
     growthDuration: (seconds: number) => number = seconds => seconds) {
     this.scheduler = scheduler; this.stages = stages; this.growthDuration = growthDuration;
     this.timer = new ComponentTimer(scheduler, () => this.grow(false));

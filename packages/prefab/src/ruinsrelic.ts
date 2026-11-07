@@ -1,3 +1,4 @@
+import { addComponent, removeComponent } from './components';
 import { prefabDisplay, SpriteState } from '@dontstarve-web/display';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Health } from '../../componets/src/health';
@@ -16,7 +17,8 @@ import type { PlacementSaveRecord } from './saveRecord';
 import type { ReadonlyVector3 } from './transform';
 import { actionEntity } from './actionEntity';
 import type { WorldContext } from './worldContext';
-import { createStructureLootDropper } from './structureLoot';
+import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
+import { LootDropper } from '../../componets/src/lootdropper';
 import { reskinTarget } from './reskin_tool';
 
 export const RELIC_NAMES = ['table', 'chair', 'vase', 'chipbowl', 'bowl', 'plate'] as const;
@@ -56,26 +58,22 @@ function onhammered(inst: RuinsRelicInstance | ItemEntity): void {
 export function configureRuinsRelicItem(inst: ItemEntity): void {
   if (!isRelicItem(inst.prefab)) return;
   const scheduler = inst.components.perishable.scheduler;
-  if (scheduler && !inst.components.hauntable) inst.components.hauntable = inst.component('hauntable', () => {
-    const component = new Hauntable(inst, scheduler); component.SetOnHauntFn(() => false); return component;
-  });
+  if (scheduler && !inst.components.hauntable) addComponent(inst, 'hauntable', Hauntable, scheduler).SetOnHauntFn(() => false);
   if ('furnituredecor' in inst.components) return;
-  inst.addTag('furnituredecor'); inst.addTag('inspectable');
-  Object.assign(inst.components, { furnituredecor: new FurnitureDecor(inst), floater: new Floater(inst),
-    inventoryitemmoisture: new InventoryItemMoisture(inst),
-    inspectable: Object.assign(new Inspectable(inst), { nameoverride: 'relic' }),
-    lootdropper: createStructureLootDropper(inst) });
-  const workable = inst.component('workable', () => {
-    const component = new Workable(inst); component.SetWorkAction('HAMMER'); component.SetWorkLeft(1);
-    component.SetOnFinishCallback(onhammered);
-    return component;
-  });
-  Object.assign(inst.components, { workable });
+  inst.addTag('furnituredecor');
+  addComponent(inst, 'furnituredecor', FurnitureDecor);
+  addComponent(inst, 'floater', Floater);
+  addComponent(inst, 'inventoryitemmoisture', InventoryItemMoisture);
+  addComponent(inst, 'inspectable', Inspectable).SetNameOverride('relic');
+  addComponent(inst, 'lootdropper', LootDropper, spawnStructureLoot(inst), STRUCTURE_LOOT_RECIPES);
+  const workable = addComponent(inst, 'workable', Workable);
+  workable.SetWorkAction('HAMMER'); workable.SetWorkLeft(1);
+  workable.SetOnFinishCallback(onhammered);
 }
 
 /** ruinsrelic.lua fn, or smashables.lua makefn -> OnPreLoad -> health.OnLoad. No art IO. */
 export class RuinsRelicInstance extends PrefabInstance<SpriteState> {
-  declare readonly components: PrefabComponents & { inspectable?: { nameoverride: string }; sittable?: Sittable };
+  declare readonly components: PrefabComponents & { sittable?: Sittable };
   readonly prefabId: RuinsRelicId;
   readonly replica: boolean;
   readonly name: RelicName;
@@ -92,25 +90,24 @@ export class RuinsRelicInstance extends PrefabInstance<SpriteState> {
     this.sprite.playOnce(initialRubble ? 'broken' : 'idle');
     // ruinsrelic.lua and smashables.lua: a chair's AnimState:SetFinalOffset(-1).
     if (this.name === 'chair') this.sprite.setBehindFoot(true);
-    this.addTag('inspectable');
-    Object.assign(this.components, { inspectable: Object.assign(new Inspectable(this), { nameoverride: 'relic' }),
-      lootdropper: createStructureLootDropper(this) });
-    const hauntable = new Hauntable(this, world.scheduler);
+    addComponent(this, 'inspectable', Inspectable).SetNameOverride('relic');
+    addComponent(this, 'lootdropper', LootDropper, spawnStructureLoot(this), STRUCTURE_LOOT_RECIPES);
+    const hauntable = addComponent(this, 'hauntable', Hauntable, world.scheduler);
     // standardcomponents.lua MakeHauntableWork's work callback is commented out; it returns false.
-    hauntable.SetOnHauntFn(() => false); this.components.hauntable = hauntable;
-    this.onRemove(() => hauntable.dispose());
+    hauntable.SetOnHauntFn(() => false);
     if (this.replica) this.constructReplica();
     else this.constructNatural(world, initialRubble);
   }
 
   private constructReplica(): void {
-    const workable = new Workable(this); workable.SetWorkAction('HAMMER'); workable.SetWorkLeft(1);
+    const workable = addComponent(this, 'workable', Workable); workable.SetWorkAction('HAMMER'); workable.SetWorkLeft(1);
     workable.SetOnFinishCallback(onhammered);
-    this.components.workable = workable; this.onRemove(() => workable.dispose());
     if (isRelicItem(this.prefabId)) {
       this.addTag('furnituredecor');
-      Object.assign(this.components, { inventoryitem: new InventoryItem(this), floater: new Floater(this),
-        furnituredecor: new FurnitureDecor(this), inventoryitemmoisture: new InventoryItemMoisture(this) });
+      addComponent(this, 'inventoryitem', InventoryItem);
+      addComponent(this, 'floater', Floater);
+      addComponent(this, 'furnituredecor', FurnitureDecor);
+      addComponent(this, 'inventoryitemmoisture', InventoryItemMoisture);
     } else {
       this.deploySmartRadius = this.name === 'chair' ? 1 : 1.6;
       if (this.name === 'chair') this.makeChair();
@@ -121,47 +118,44 @@ export class RuinsRelicInstance extends PrefabInstance<SpriteState> {
       'noauradamage', 'electricdamageimmune']) this.addTag(tag);
     this.minimap.SetIcon('relic.png');
     this.deploySmartRadius = this.name === 'table' ? 1.6 : ['chair', 'vase', 'bowl'].includes(this.name) ? 1 : .25;
-    const health = new Health(90 + (Math.random() * 2 - 1) * 20, this);
+    const health = addComponent(this, 'health', Health, 90 + (Math.random() * 2 - 1) * 20);
     health.nofadeout = true; health.canheal = false;
-    const combat = new Combat(this, () => world.scheduler.now);
+    const combat = addComponent(this, 'combat', Combat, () => world.scheduler.now);
     combat.SetKeepTargetFunction(() => false);
     if (this.animated) combat.onhitfn = () => this.onHit();
-    Object.assign(this.components, { health, combat, roseinspectable: new RoseInspectable(this) });
+    addComponent(this, 'roseinspectable', RoseInspectable);
     health.ondelta = (_, old, current) => {
       if (!this.rubble && current < .5 && current < old) {
         if (this.animated) this.sprite.playOnce('repair');
         this.setRubble(true);
       }
     };
-    this.onRemove(() => { health.dispose(); this.components.repairable?.dispose(); });
     this.setRubble(rubble); health.SetPercent(rubble ? .2 : .8);
   }
   private makeChair(): void {
-    Object.assign(this.components, { sittable: new Sittable(this) });
+    addComponent(this, 'sittable', Sittable);
     // The constructor-only Sittable does not add its source tag itself.
     for (const tag of ['cansit', 'structure', 'limited_chair', 'uncomfortable_chair']) this.addTag(tag);
   }
   private setRubble(rubble: boolean): void {
     this.rubble = rubble;
-    const inspectable = this.components.inspectable as { nameoverride: string };
-    inspectable.nameoverride = rubble ? 'ruins_rubble' : 'relic';
+    this.components.inspectable!.SetNameOverride(rubble ? 'ruins_rubble' : 'relic');
     if (rubble) {
       if (!this.components.repairable) {
-        const repairable = new Repairable(this, undefined, 'stone');
+        const repairable = addComponent(this, 'repairable', Repairable, undefined, 'stone');
         repairable.onrepaired = () => {
           if (this.components.health!.GetPercent() >= 1) {
             if (this.animated) this.sprite.playOnce('hit');
             this.setRubble(false);
           } else this.onHit();
         };
-        this.components.repairable = repairable;
       }
       if (this.name === 'chair') {
-        delete this.components.sittable;
+        removeComponent(this, 'sittable');
         for (const tag of ['cansit', 'structure', 'limited_chair']) this.removeTag(tag);
       }
     } else {
-      this.components.repairable?.dispose(); delete this.components.repairable;
+      removeComponent(this, 'repairable');
       if (this.name === 'chair') this.makeChair();
     }
     const clip = rubble ? 'broken' : 'idle';

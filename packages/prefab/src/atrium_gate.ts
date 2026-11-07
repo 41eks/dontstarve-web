@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import { Vector3 } from 'three';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
@@ -101,17 +102,20 @@ export class AtriumGateInstance extends PrefabInstance {
     InitializePathFinding(this, world.pathfinder);
 
     // A new pickable has no product until OnKeyGiven's SetUp: nothing to pick.
-    const pickable = new Pickable(this, 'atrium_key', undefined, 1, undefined, undefined, { picked: true }, { scheduler: world.scheduler });
+    const pickable = addComponent(this, 'pickable', Pickable, 'atrium_key', undefined, 1, undefined, undefined, { picked: true }, { scheduler: world.scheduler });
     pickable.canInteractWith = false;
     pickable.savesCanInteractWith = true;
-    const trader = new Trader(this);
-    const playerprox = new PlayerProx({ isValid: () => !this.isRemoved, getPosition: () => this.getPosition() });
+    addComponent(this, 'trader', Trader);
+    const playerprox = addComponent(this, 'playerprox', PlayerProx);
     playerprox.SetDist(ATRIUM_ARENA_SIZE * WORLD_SCALE, Math.ceil(ATRIUM_ARENA_SIZE + 4) * WORLD_SCALE);
-    const hauntable = new Hauntable(this, world.scheduler);
+    const hauntable = addComponent(this, 'hauntable', Hauntable, world.scheduler);
     hauntable.SetOnHauntFn(() => false);
-    Object.assign(this.components, { charliecutscene: new CharlieCutscene(this), pointofinterest: new PointOfInterest(this),
-      inspectable: new Inspectable(this), pickable, trader, worldsettingstimer: new WorldSettingsTimer(this),
-      entitytracker: new EntityTracker(this), colourtweener: new ColourTweener(this), playerprox, hauntable });
+    addComponent(this, 'charliecutscene', CharlieCutscene);
+    addComponent(this, 'pointofinterest', PointOfInterest);
+    addComponent(this, 'inspectable', Inspectable);
+    addComponent(this, 'worldsettingstimer', WorldSettingsTimer);
+    addComponent(this, 'entitytracker', EntityTracker);
+    addComponent(this, 'colourtweener', ColourTweener);
 
     this.OnSave = (_inst, data) => {
       const own: AtriumGateSaveState = {
@@ -130,7 +134,6 @@ export class AtriumGateInstance extends PrefabInstance {
     this.onRemove(() => {
       for (const child of children) child.remove();
       this._gatefx?.remove();
-      playerprox.dispose(); hauntable.dispose(); pickable.dispose(); trader.dispose();
     });
   }
 

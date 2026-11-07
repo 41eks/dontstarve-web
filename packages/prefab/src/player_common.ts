@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import * as THREE from 'three';
 import type { GameTimeScheduler } from '@dontstarve-web/signals';
@@ -13,7 +14,7 @@ import { MakeCharacterPhysics, MakeGhostPhysics, WORLD_SCALE } from './standardc
 import { FRAMES } from '../../stategraphs/src/stategraph';
 import { isGhostValidAction } from '../../stategraphs/src/actions';
 import type { WilsonPlayerInstance } from './player';
-import type { EquipmentKind, InventoryStore, ItemEntity } from '@dontstarve-web/inventory';
+import { ItemEntity, type EquipmentKind, type InventoryStore } from '@dontstarve-web/inventory';
 
 // Existing Wilson stat defaults, from tuning.lua. Older saves may omit all stats.
 export const WILSON_MAX_HEALTH = 150;
@@ -28,16 +29,16 @@ export interface PlayerStatsSave { health?: number; hunger?: number; sanity?: nu
 
 /** player_common.lua: assemble the player's authoritative stats and eater components. */
 export function createPlayerStats(inst: PrefabInstance, saved: PlayerStatsSave = {}, scheduler?: GameTimeScheduler): PlayerStats {
-  const health = inst.components.health = new Health(WILSON_MAX_HEALTH, inst);
+  const health = addComponent(inst, 'health', Health, WILSON_MAX_HEALTH);
   health.nofadeout = true;
   health.OnLoad({ health: saved.health ?? WILSON_MAX_HEALTH, penalty: saved.penalty ?? 0 });
-  const hunger = inst.components.hunger = new Hunger(inst, WILSON_MAX_HUNGER, scheduler);
+  const hunger = addComponent(inst, 'hunger', Hunger, WILSON_MAX_HUNGER, scheduler);
   hunger.SetRate(75 / 480);
   hunger.SetKillRate(WILSON_MAX_HEALTH / 120);
   hunger.OnLoad({ hunger: saved.hunger ?? 105 });
-  const sanity = inst.components.sanity = new Sanity(inst, WILSON_MAX_SANITY);
+  const sanity = addComponent(inst, 'sanity', Sanity, WILSON_MAX_SANITY);
   sanity.OnLoad({ current: saved.sanity ?? 35, sane: saved.sanitySane, mode: saved.sanityMode });
-  const eater = inst.components.eater = new Eater(inst);
+  const eater = addComponent(inst, 'eater', Eater);
   inst.onRemove(() => { eater.dispose(); health.dispose(); hunger.dispose(); sanity.dispose(); });
   return { health, hunger, sanity };
 }
@@ -171,9 +172,9 @@ export const PORTAL_HEALTH_PENALTY = .25;
 export interface RezSource {
   /** The resurrector's prefab: OnRespawnFromGhost and DoActualRez branch on `amulet`. */
   readonly prefab?: string;
-  /** The amulet inst itself, which DoActualRez equips. */
-  readonly entity?: ItemEntity;
   isValid(): boolean;
+  /** inst:IsInLimbo: a held amulet is no rez source until it is back on the ground. */
+  readonly inlimbo?: boolean;
   /** The source's ground position. */
   readonly position: ReadonlyVector3;
   hasTag(tag: string): boolean;
@@ -212,7 +213,7 @@ export function OnRespawnFromGhost(inst: WilsonPlayerInstance, data?: { source?:
 }
 
 function DoMoveToRezSource(inst: WilsonPlayerInstance, source: RezSource, delay: number): void {
-  if (!source.isValid()) { revertRespawn(inst); return; }
+  if (!source.isValid() || source.inlimbo) { revertRespawn(inst); return; }
   setHidden(inst, true);
   setGhostLight(inst, false);
   Teleport(inst, source.position);
@@ -220,7 +221,7 @@ function DoMoveToRezSource(inst: WilsonPlayerInstance, source: RezSource, delay:
 }
 
 function DoRezDelay(inst: WilsonPlayerInstance, source: RezSource, delay: number): void {
-  if (!source.isValid()) revertMove(inst);
+  if (!source.isValid() || source.inlimbo) revertMove(inst);
   else if (delay <= 0) DoActualRez(inst, source);
   else DoTaskInTime(inst, Math.min(delay, .35), () => DoRezDelay(inst, source, delay - .35));
 }
@@ -247,7 +248,7 @@ function DoActualRez(inst: WilsonPlayerInstance, source: RezSource): void {
   const position = new THREE.Vector3(source.position.x, 0, source.position.z);
   const amulet = source.prefab === 'amulet';
   // The amulet is worn before the state that consumes it; one that cannot be worn leaves the ghost haunting.
-  if (amulet && !EquipRezSource(inst, source.entity)) { revertMove(inst); return; }
+  if (amulet && !EquipRezSource(inst, source instanceof ItemEntity ? source : undefined)) { revertMove(inst); return; }
   inst.SpawnPrefab?.('die_fx', position);
   setHidden(inst, false);
   Teleport(inst, position);

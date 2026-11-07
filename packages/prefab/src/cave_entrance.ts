@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
@@ -60,22 +61,21 @@ export class CaveEntranceInstance extends PrefabInstance {
     else this.sprite.setGround(BACKGROUND_RENDER_ORDER, false);
     this.addTag('antlion_sinkhole_blocker');
     this.addTag('inspectable');
-    this.components.inspectable = new Inspectable(this);
+    addComponent(this, 'inspectable', Inspectable);
     if (open) open_fn(this, world); else closed_fn(this, world);
   }
 }
 
 /** closed_fn: MINE for ROCKS_MINE work; OnWork shows low/med/idle_closed and finally drops the loot and opens. */
 function closed_fn(inst: CaveEntranceInstance, world: CaveEntranceWorld): void {
-  const workable = new Workable(inst);
+  const workable = addComponent(inst, 'workable', Workable);
   workable.SetWorkAction('MINE');
   workable.SetWorkLeft(ROCKS_MINE);
-  const lootdropper = new LootDropper(inst, (itemId, point) => world.spawnGroundItem(
+  const lootdropper = addComponent(inst, 'lootdropper', LootDropper, (itemId, point) => world.spawnGroundItem(
     { ...catalog.items[itemId as keyof typeof catalog.items], itemId, count: 1 }, new THREE.Vector3(point.x, point.y, point.z), { fling: true }));
   lootdropper.SetLoot(CLOSED_LOOT);
   workable.SetOnWorkCallback((_inst, _worker, workleft) => OnWork(inst, world, workleft));
-  Object.assign(inst.components, { workable, lootdropper });
-  inst.onRemove(() => workable.dispose());
+
 }
 
 function OnWork(inst: CaveEntranceInstance, world: CaveEntranceWorld, workleft: number): void {
@@ -93,8 +93,7 @@ function OnWork(inst: CaveEntranceInstance, world: CaveEntranceWorld, workleft: 
 
 /** open_fn: the migration events pick the loop (`open`, `no_access`, `over_capacity`); the destination is the Caves shard. */
 function open_fn(inst: CaveEntranceInstance, world: CaveEntranceWorld): void {
-  const migrator = new WorldMigrator(inst, world.shard ?? NO_SHARD);
-  inst.components.worldmigrator = migrator;
+  const migrator = addComponent(inst, 'worldmigrator', WorldMigrator, world.shard ?? NO_SHARD);
   inst.ListenForEvent('migration_available', () => inst.sprite.start('open'));
   inst.ListenForEvent('migration_unavailable', () => inst.sprite.start('no_access'));
   inst.ListenForEvent('migration_full', () => inst.sprite.start('over_capacity'));

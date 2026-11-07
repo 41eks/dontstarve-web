@@ -1,10 +1,12 @@
+import { LootDropper } from '../../componets/src/lootdropper';
+import { addComponent } from './components';
 import type * as THREE from 'three';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { ComponentTimer } from '../../componets/src/timer';
 import { createMemo } from '@dontstarve-web/signals';
 import { groundItemPrefab, type ItemPrefabDefinition } from './groundItems';
 import type { ItemPrefabWorld, GroundItemDefinition } from './groundPrefab';
-import { createStructureLootDropper } from './structureLoot';
+import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
 import { ItemEntity } from '@dontstarve-web/inventory';
 import { Inventory } from '../../componets/src/inventory';
 import { Trader } from '../../componets/src/trader';
@@ -49,7 +51,7 @@ export class PhonographController {
     this.playback = new ComponentTimer(this.scheduler, () => { if (this.machine) this.machine.TurnOff(); else this.stop(); });
     this.timer = this.playback.snapshot;
     this.playing = createMemo(() => this.timer.get().status === 'scheduled');
-    const machine = entity.components.machine = new Machine(entity, () => entity.components.perishable.scheduler ?? this.scheduler);
+    const machine = addComponent(entity, 'machine', Machine, () => entity.components.perishable.scheduler ?? this.scheduler);
     machine.SetGroundOnlyMachine(true);
     machine.enabled = false;
     machine.turnonfn = () => this.TryToPlayRecord();
@@ -151,9 +153,9 @@ function onGetItemFromPlayer(inst: ItemEntity, item: ItemEntity): void {
 /** Register the source inventory, accept test and onaccept callback on the logical inst. */
 export function configurePhonographEntity(entity: ItemEntity, scheduler?: GameTimeScheduler): void {
   for (const tag of ['structure', 'recordplayer', 'furnituredecor', 'groundonlymachine']) entity.addTag(tag);
-  entity.components.inventory = entity.component('inventory', () => {
+  if (!entity.components.inventory) {
     const saved = entity.snapshot();
-    const inventory = new Inventory(entity, 15, (item, position) => {
+    const inventory = addComponent(entity, 'inventory', Inventory, 15, (item, position) => {
       const drop = entity.worldServices?.dropItem;
       if (drop) drop(item, position);
       else entity.components.inventoryitem.owner?.DropItem?.(item, position);
@@ -166,16 +168,14 @@ export function configurePhonographEntity(entity: ItemEntity, scheduler?: GameTi
       configureRecordEntity(item);
       return item;
     });
-    return inventory;
-  });
-  entity.components.phonograph = entity.component('phonograph', () => new PhonographController(entity, scheduler));
-  entity.components.trader = entity.component('trader', () => {
-    const trader = new Trader(entity);
+  }
+  addComponent(entity, 'phonograph', PhonographController, scheduler);
+  if (!entity.components.trader) {
+    const trader = addComponent(entity, 'trader', Trader);
     trader.deleteitemonaccept = false;
     trader.SetAcceptTest(isPhonographRecord);
     trader.SetOnAccept((_giver, item) => onGetItemFromPlayer(entity, item as ItemEntity));
-    return trader;
-  });
+  }
 }
 
 /** phonograph.lua OnHammered, registered on the actual inventory/ground inst. */
@@ -196,13 +196,9 @@ export function phonographPrefabs(world: ItemPrefabWorld): Record<string, ItemPr
         const controller = inst.components.phonograph!;
         // The item metadata may have made the controller first; the song's DoTaskInTime runs on this world's game time.
         controller.BindScheduler(world.scheduler);
-        inst.components.lootdropper ??= createStructureLootDropper(inst);
-        const workable = inst.component('workable', () => {
-          const work = new Workable(inst);
-          work.SetWorkAction('HAMMER'); work.SetWorkLeft(1);
-          return work;
-        });
-        inst.components.workable = workable;
+        addComponent(inst, 'lootdropper', LootDropper, spawnStructureLoot(inst), STRUCTURE_LOOT_RECIPES);
+        const workable = inst.components.workable ?? addComponent(inst, 'workable', Workable);
+        workable.SetWorkAction('HAMMER'); workable.SetWorkLeft(1);
         workable.SetOnFinishCallback(onhammered);
         inst.OnSave = (_inst, data) => {
           if (controller.isPlaying) data.phonograph = { remainingSeconds: controller.remainingSeconds };

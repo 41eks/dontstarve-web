@@ -1,3 +1,4 @@
+import { addComponent } from '../../prefab/src/components';
 import { createEmptyEntity } from '../../prefab/src/prefabInstance';
 import { testMap } from './tileMapFixture';
 import * as THREE from 'three';
@@ -30,7 +31,7 @@ function pickedGrass(scene: THREE.Scene, scheduler: GameTimeScheduler, x: number
   const model = display.model; instance.setPosition(x, 0, 0);
   for (const tag of ['plant', 'renewable', 'silviculture']) instance.addTag(tag);
   cleanups.push(() => { instance.remove(); display.dispose(); });
-  const pickable = new Pickable(instance, 'cutgrass', 1440, 1, undefined, undefined,
+  const pickable = addComponent(instance, 'pickable', Pickable, 'cutgrass', 1440, 1, undefined, undefined,
     { picked: true, regrowSeconds: 1440 }, { scheduler });
   actionEntity(model, 'grass');
   scene.add(model);

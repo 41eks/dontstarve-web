@@ -39,8 +39,18 @@ export interface PrefabComponents extends ActionComponents {
   shelf?: import('../../componets/src/shelf').Shelf<import('@dontstarve-web/inventory').ItemEntity, PrefabInstance>;
   sleeper?: import('../../componets/src/sleeper').Sleeper;
   phonograph?: import('./phonograph').PhonographController;
-  moonbase?: object;
   sanityaura?: import('../../componets/src/sanityaura').SanityAura;
+  inspectable?: import('../../componets/src/inspectable').Inspectable;
+  playerprox?: import('../../componets/src/playerprox').PlayerProx;
+  objectspawner?: import('../../componets/src/objectspawner').ObjectSpawner;
+  heavyobstaclephysics?: import('../../componets/src/heavyobstaclephysics').HeavyObstaclePhysics;
+  submersible?: import('../../componets/src/submersible').Submersible;
+  symbolswapdata?: import('../../componets/src/symbolswapdata').SymbolSwapData;
+  lunarhailbuildup?: import('../../componets/src/pandoraschestSignatures').LunarHailBuildup;
+  roseinspectable?: import('../../componets/src/pandoraschestSignatures').RoseInspectable;
+  floater?: import('../../componets/src/ruinsrelicSignatures').Floater;
+  furnituredecor?: import('../../componets/src/ruinsrelicSignatures').FurnitureDecor;
+  inventoryitemmoisture?: import('../../componets/src/ruinsrelicSignatures').InventoryItemMoisture;
 }
 
 /**
@@ -167,6 +177,8 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
     this.transform.setRotation(degrees);
   }
 
+  /** EntityScript:IsValid: the entity has not been removed. */
+  isValid(): boolean { return !this.isRemoved; }
   get isRemoved(): boolean { return this.lifecycle.peek() === 'removed'; }
   getPosition(): Vector3 { return this.transform.model.position; }
   /** inst:PushEvent: listeners run synchronously with `data`, whether or not a display draws the entity. */

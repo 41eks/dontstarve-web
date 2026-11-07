@@ -1,3 +1,4 @@
+import { Workable } from '../../componets/src/workable';
 import * as THREE from 'three';
 import { SpriteState } from '@dontstarve-web/display';
 import { createRenderEffect, WorldContentKey, type GetWatchWorldContent } from '@dontstarve-web/signals';
@@ -93,10 +94,10 @@ export class RockInstance extends PrefabInstance {
     this.addTag('boulder');
     if (tag) this.addTag(tag);
 
-    const lootdropper = new LootDropper(this, (loot, position) => world.spawnGroundItem(
+    addComponent(this, 'lootdropper', LootDropper, (loot, position) => world.spawnGroundItem(
       { ...catalog.items[loot as keyof typeof catalog.items], itemId: loot, count: 1 },
       new THREE.Vector3(position.x, position.y, position.z), { fling: true }));
-    const workable = addComponent(this as RockInstance, 'workable');
+    const workable = addComponent(this as RockInstance, 'workable', Workable);
     workable.SetWorkAction('MINE'); workable.SetWorkLeft(ROCKS_MINE);
     workable.SetOnWorkCallback(OnWork);
     if (0 <= multcolour && multcolour < 1) {
@@ -106,13 +107,14 @@ export class RockInstance extends PrefabInstance {
     let stopWatchingSnow: (() => void) | undefined;
     const snowLevel = world.getWatchWorldContent?.(WorldContentKey.SnowLevel, stop => { stopWatchingSnow = stop; });
     const stopSnow = createRenderEffect(() => this.sprite.setSymbolHidden('snow', (snowLevel?.get() ?? 0) < .015));
-    const hauntable = new Hauntable(this, world.scheduler);
+    const hauntable = addComponent(this, 'hauntable', Hauntable, world.scheduler);
     hauntable.SetOnHauntFn(() => false); // MakeHauntableWork's work code is commented out in source.
     // Constructor-only dependencies: inspectable's tag is its source constructor's, and nameoverride and
     // SetLunarHailBuildupAmountSmall configure behavior these classes do not have yet.
     this.addTag('inspectable');
-    Object.assign(this.components, { lootdropper, hauntable, inspectable: new Inspectable(this), lunarhailbuildup: new LunarHailBuildup(this) });
-    this.onRemove(() => { stopSnow(); stopWatchingSnow?.(); hauntable.dispose(); });
+    addComponent(this, 'inspectable', Inspectable);
+    addComponent(this, 'lunarhailbuildup', LunarHailBuildup);
+    this.onRemove(() => { stopSnow(); stopWatchingSnow?.(); });
   }
 }
 

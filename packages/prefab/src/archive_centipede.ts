@@ -1,3 +1,4 @@
+import { addComponent, removeComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import { Health } from '../../componets/src/health';
 import { Combat } from '../../componets/src/combat';
@@ -41,27 +42,26 @@ export class ArchiveCentipedeHuskInstance extends PrefabInstance {
     const { scheduler } = world;
     for (const tag of ['security_powerpoint', 'mech', 'electricdamageimmune']) this.addTag(tag);
 
-    const health = new Health(ARCHIVE_CENTIPEDE_HUSK_HEALTH, this, scheduler);
+    const health = addComponent(this, 'health', Health, ARCHIVE_CENTIPEDE_HUSK_HEALTH, scheduler);
     health.ondelta = (_inst, oldpercent, newpercent) => this.OnHealthDelta(oldpercent, newpercent);
     health.StartRegen(1, 1);
     health.nofadeout = true;
-    const hauntable = new Hauntable({ addTag: tag => this.addTag(tag), removeTag: tag => this.removeTag(tag),
-      PushEvent: (name, data) => this.PushEvent(name, data) }, scheduler);
+    const hauntable = addComponent(this, 'hauntable', Hauntable, scheduler);
     // MakeHauntableWork: its work attempt is commented out (#HAUNTFIX), so a haunt does nothing.
     hauntable.SetOnHauntFn(() => false);
-    Object.assign(this.components, { lootdropper: new LootDropper(this, () => undefined), health,
-      inspectable: new Inspectable(this), combat: this.createCombat(), hauntable });
+    addComponent(this, 'lootdropper', LootDropper, () => undefined);
+    addComponent(this, 'inspectable', Inspectable);
+    this.addCombat();
 
     const stopAttacked = this.ListenForEvent('attacked', () => this.OnAttacked());
     this.idle2task = scheduler.schedule(Math.random() * 3 + 3, () => this.playidle2());
     this.onRemove(() => {
       this.idle2task?.(); this.idle2task = undefined;
       stopAttacked();
-      health.dispose(); hauntable.dispose();
     });
   }
 
-  private createCombat(): Combat { return new Combat(this, () => this.world.scheduler.now); }
+  private addCombat(): void { addComponent(this, 'combat', Combat, () => this.world.scheduler.now); }
 
   /** AnimState:PlayAnimation(first) and PushAnimation of the rest. */
   private play(first: string, ...queued: string[]): void {
@@ -93,9 +93,9 @@ export class ArchiveCentipedeHuskInstance extends PrefabInstance {
     }
     if (newpercent < BOTTOM_THRESHOLD) {
       // inst:RemoveComponent("combat"), then the floor at 15%.
-      delete this.components.combat;
+      removeComponent(this, 'combat');
       if (newpercent < BOTTOM_THRESHOLD - .05) this.components.health.SetPercent(BOTTOM_THRESHOLD - .05);
-    } else this.components.combat ??= this.createCombat();
+    } else this.addCombat();
   }
 
   /** OnAttacked: a hit clip for the current health band, unless a recovery clip is playing. */

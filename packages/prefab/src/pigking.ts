@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import * as THREE from 'three';
 import { SpriteState } from '@dontstarve-web/display';
 import { createEffect, createMemo, WorldContentKey, type GameTimeScheduler, type GetWatchWorldContent } from '@dontstarve-web/signals';
@@ -79,13 +80,13 @@ export class PigKingInstance extends PrefabInstance {
     this.addTag('inspectable');
     this.minimap.SetPriority(1);
 
-    const trader = new Trader<TradeItem>(this);
+    const trader = addComponent(this, 'trader', Trader<TradeItem>);
     // Lua only offers GIVE for items with the tradable component.
     trader.SetAbleToAcceptTest(item => item.components?.tradable ? { ok: true } : { ok: false });
     trader.SetAcceptTest(item => (item.components?.tradable?.goldvalue ?? 0) > 0);
     trader.SetOnAccept((giver, item) => OnGetItemFromPlayer(this, giver, item));
     trader.SetOnRefuse(() => this.pigking.goToState('unimpressed'));
-    Object.assign(this.components, { inspectable: new Inspectable(this), trader });
+    addComponent(this, 'inspectable', Inspectable);
 
     const animation = new PigKingAnimation(this.sprite, () => this.pigking.pushEvent('animover'));
     const inst: PigKingStateInst = {

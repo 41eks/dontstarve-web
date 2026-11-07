@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import { groundItemPrefab, type ItemPrefabDefinition } from './groundItems';
 import { type PrefabLocalLight } from './localLight';
 import { TILE_SIZE } from './tile';
@@ -11,10 +12,10 @@ export const LIGHTBULB_FUEL = 90;
 
 export function configureLightbulbEntity(entity: ItemEntity): void {
   for (const tag of ['lightbattery', 'vasedecoration', 'light']) entity.addTag(tag);
-  const fuel = entity.component('fuel', () => new Fuel(entity));
+  if (entity.components.fuel) return;
+  const fuel = addComponent(entity, 'fuel', Fuel);
   fuel.fueltype = 'CAVE';
   fuel.fuelvalue = LIGHTBULB_FUEL;
-  entity.components.fuel = fuel;
 }
 
 /** lightbulb.lua's Light values, with source radius converted to scene units. */

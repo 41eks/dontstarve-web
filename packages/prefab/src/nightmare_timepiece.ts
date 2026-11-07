@@ -1,3 +1,5 @@
+import { Inspectable } from '../../componets/src/inspectable';
+import { addComponent } from './components';
 import type { InventoryActor } from '../../componets/src/inventoryitem';
 import type { ItemEntity, ItemRuntimeComponent } from '@dontstarve-web/inventory';
 import type { ArchiveSpriteCommands } from '@dontstarve-web/display';
@@ -102,7 +104,7 @@ class NightmareTimepiece implements ItemRuntimeComponent {
 
 export function configureNightmareTimepieceEntity(entity: ItemEntity): void {
   const timepiece = entity.component('nightmare_timepiece', () => new NightmareTimepiece(entity));
-  Object.assign(entity.components, { inspectable: { getstatus: () => timepiece.GetStatus() } });
+  addComponent(entity, 'inspectable', Inspectable).getstatus = () => timepiece.GetStatus();
 }
 
 export function declareNightmareTimepieceSprite(entity: ItemEntity, sprite: ArchiveSpriteCommands): void {

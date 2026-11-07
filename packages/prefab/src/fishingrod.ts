@@ -1,4 +1,5 @@
-import { PLAYER_EQUIPMENT_CONTAINER_ID, type ItemEntity } from '@dontstarve-web/inventory';
+import { addComponent } from './components';
+import type { ItemEntity } from '@dontstarve-web/inventory';
 import { FishingRod, type FishingWorld } from '../../componets/src/fishingrod';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { ComponentUpdates } from '../../componets/src/componentUpdates';
@@ -43,22 +44,13 @@ export interface FishingRodWorld extends FishingWorld {
 
 /** The rod component is attached when the rod is first held in a running scene, which supplies its scheduler and world. */
 export function getFishingRod(entity: ItemEntity, scheduler: GameTimeScheduler, world: FishingWorld, updates?: ComponentUpdates): FishingRod {
-  const rod = entity.component('fishingrod', () => {
-    const rod = new FishingRod({
-      addTag: tag => entity.addTag(tag),
-      PushEvent: (name, data) => entity.PushEvent(name, data),
-      getDurabilityPercent: () => entity.components.finiteuses.percent.peek(),
-      isEquipped: () => {
-        const address = entity.components.inventoryitem.owner?.address;
-        return address?.containerId === PLAYER_EQUIPMENT_CONTAINER_ID && address.slotKey === 'hand';
-      },
-    }, scheduler, world, updates);
+  let rod = entity.components.fishingrod;
+  if (!rod) {
+    rod = addComponent(entity, 'fishingrod', FishingRod, scheduler, world, updates);
     rod.SetWaitTimes(...FISHINGROD_WAIT_TIMES);
     rod.SetStrainTimes(...FISHINGROD_STRAIN_TIMES);
-    return rod;
-  });
+  }
   rod.bind(scheduler, world, updates);
-  entity.components.fishingrod = rod;
   return rod;
 }
 

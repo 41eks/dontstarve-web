@@ -100,7 +100,7 @@ it('eats eight red caps, dies through component events, becomes a ghost and save
       playerStats: { health: health.currenthealth, penalty: health.penalty, hunger: stats.hunger.current, sanity: stats.sanity.current },
       playerGhost: ghost.peek(),
     }, SAVE_CATALOG), SAVE_CATALOG);
-    const restored = new Health(150);
+    const restored = new Health({}, 150);
     restored.OnLoad(saved.players.local.stats!);
     expect(restored.currenthealth).toBe(112.5);
     expect(restored.GetMaxWithPenalty()).toBe(112.5);
@@ -137,8 +137,10 @@ it('resurrects a loaded ghost from a haunted amulet, wearing that inst and retur
     expect(amulet.components.inventoryitem.owner).toBeNull();
     instance.PushEvent('makeplayerghost', { loading: true });
     expect(instance.ghostMode.peek()).toBe(true); expect(instance.hasTag('playerghost')).toBe(true);
-    const source = { prefab: 'amulet', entity: amulet, position: new Vector3(4, 0, 0),
-      isValid: () => true, hasTag: () => false, PushEvent: vi.fn() };
+    // The amulet inst itself is the source, back on the ground.
+    amulet.ReturnToScene(); amulet.setPosition(4, 0, 0);
+    const source = amulet;
+    vi.spyOn(source, 'PushEvent');
     instance.PushEvent('respawnfromghost', { source });
     scheduler.advance(3);
     // DoActualRez wore that amulet inst, returning the worn one; amulet_rebirth consumed it on entering.

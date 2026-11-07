@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import { ignoresPlacement, hasPlacementTag, type PlacementQuery, type PlacementBlocker } from './placementEntities';
 import * as THREE from 'three';
 import type { ItemEntity } from '@dontstarve-web/inventory';
@@ -75,12 +76,12 @@ export function createDockWorld(turf: TurfMap, blockers: PlacementQuery) {
 export function configureDockKitEntity(entity: ItemEntity): void {
   if (entity.prefab !== DOCK_KIT_ID || entity.components.deployable) return;
   for (const tag of ['groundtile', 'deploykititem', 'usedeployspacingasoffset', 'deployable']) entity.addTag(tag);
-  entity.components.deployable = entity.component('deployable', () => new Deployable(entity, (point, deployer, map) => {
+  addComponent(entity, 'deployable', Deployable, (point, deployer, map) => {
     // PlaySoundWithParams("turnoftides/common/together/boat/damage", { intensity = 0.8 }) on the deployer.
     PlaySound(DOCK_DEPLOY_SOUND, deployer.position).setParameter?.('intensity', .8);
     map.createDock(point);
     entity.remove();
-  }, { mode: 'CUSTOM', spacing: 2 * SCALE, usegridplacer: true, candeploy: (point, map) => map.canDeployDock(point) }));
+  }, { mode: 'CUSTOM', spacing: 2 * SCALE, usegridplacer: true, candeploy: (point, map) => map.canDeployDock(point) });
 }
 
 /** map.lua IsNearOther (min_spacing form) with deploy_smart_radius and inventoryitem physics radius. */

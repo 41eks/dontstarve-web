@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { SpriteState } from '@dontstarve-web/display';
 import { Workable } from '../../componets/src/workable';
@@ -57,8 +58,8 @@ export class StalagmiteInstance extends PrefabInstance<SpriteState> {
     this.sprite.playOnce(stage + type); // PlayAnimation(anim) / PlayAnimation(anim..inst.type), never looping.
     const colour = .5 + Math.random() * .5;
     this.sprite.setColour([colour, colour, colour]);
-    const lootdropper = new LootDropper(this, world.spawnLoot);
-    const workable = new Workable(this);
+    const lootdropper = addComponent(this, 'lootdropper', LootDropper, world.spawnLoot);
+    const workable = addComponent(this, 'workable', Workable);
     workable.SetWorkAction('MINE'); workable.SetWorkLeft(WORK.full);
     workable.SetOnWorkCallback((_inst, _worker, workleft) => {
       if (workleft <= 0) {
@@ -70,14 +71,13 @@ export class StalagmiteInstance extends PrefabInstance<SpriteState> {
         this.sprite.playOnce(next + this.type);
       }
     });
-    const hauntable = new Hauntable(this, world.scheduler);
+    const hauntable = addComponent(this, 'hauntable', Hauntable, world.scheduler);
     hauntable.SetOnHauntFn(() => false); // MakeHauntableWork's work code is commented out in source.
-    Object.assign(this.components, { lootdropper, workable, hauntable, inspectable: new Inspectable(this) });
+    addComponent(this, 'inspectable', Inspectable);
     // Inspectable is an existing constructor-only dependency, so retain its source constructor tag here.
     this.addTag('inspectable');
     if (stage !== 'full') workable.SetWorkLeft(WORK[stage]);
     lootdropper.SetChanceLootTable(`${tall ? 'stalagmite_tall_' : ''}${stage}_rock`);
-    this.onRemove(() => { workable.dispose(); hauntable.dispose(); });
     // No prefab OnLoad or workable saved fields override the constructor's stage/work count/type/colour.
   }
 }

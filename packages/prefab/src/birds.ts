@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Occupier } from '../../componets/src/occupiable';
 import { TOTAL_DAY_TIME } from '../../componets/src/perishable';
@@ -45,7 +46,7 @@ export function configureBirdEntity(entity: ItemEntity): void {
   // SGbird's stunned state allows pickup; the stunned ground pose is the only ground form ported.
   entity.components.inventoryitem.canbepickedup = true;
   entity.components.inventoryitem.canbepickedupalive = true;
-  const occupier = entity.components.occupier = entity.component('occupier', () => new Occupier<ItemEntity>());
+  const occupier = addComponent(entity, 'occupier', Occupier<ItemEntity>);
   const perishable = entity.components.perishable;
   perishable.perishfn = () => onperish(entity);
   // In a holder or a cage the bird starves; MakeSmallPerishableCreature stops it on the ground.

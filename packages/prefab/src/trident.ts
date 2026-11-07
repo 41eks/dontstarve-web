@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import type { SpellCastMap } from '@dontstarve-web/stategraphs/castspell';
 import type * as THREE from 'three';
@@ -38,8 +39,7 @@ export class TridentController implements HeldEquipFunctions {
       entity.components.inventoryitem.owner?.PushEvent('toolbroke', { tool: entity });
       return entity.remove();
     });
-    this.spellcaster = entity.component('spellcaster', () => new SpellCaster(entity, world.map));
-    entity.components.spellcaster = this.spellcaster;
+    this.spellcaster = addComponent(entity, 'spellcaster', SpellCaster, world.map);
     this.spellcaster.setSpellFn((_trident, _target, position) => this.createWaterExplosion(position));
     this.spellcaster.canUseOnPointWater = true;
   }

@@ -1,5 +1,7 @@
+import { LootDropper } from '../../componets/src/lootdropper';
+import { addComponent } from './components';
 import { Workable } from '../../componets/src/workable';
-import { createStructureLootDropper } from './structureLoot';
+import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
 import type * as THREE from 'three';
 import { SpriteState } from '@dontstarve-web/display';
 import { prefabInstance, PrefabInstance } from './prefabInstance';
@@ -55,14 +57,14 @@ export class TentInstance extends PrefabInstance {
         this.worldServices = world;
         MakeBuildingPersist(this);
         for (const tag of ['tent', 'structure']) this.addTag(tag);
-        const workable = this.components.workable = new Workable(this);
+        const workable = addComponent(this, 'workable', Workable);
         workable.SetWorkAction('HAMMER');
         workable.SetWorkLeft(4);
         workable.SetOnWorkCallback(onworked);
         workable.SetOnFinishCallback(onhammered);
-        this.components.lootdropper = createStructureLootDropper(this);
+        addComponent(this, 'lootdropper', LootDropper, spawnStructureLoot(this), STRUCTURE_LOOT_RECIPES);
 
-        const uses = new FiniteUses(this);
+        const uses = addComponent(this, 'finiteuses', FiniteUses);
         uses.SetMaxUses(TENT_USES);
         uses.SetUses(TENT_USES);
         uses.SetOnFinished(() => {
@@ -74,7 +76,7 @@ export class TentInstance extends PrefabInstance {
             scheduler.schedule(16 * FRAME, () => PlaySound('dontstarve/common/tent_dis_twirl', this.position));
         });
 
-        const bag = new SleepingBag(this);
+        const bag = addComponent(this, 'sleepingbag', SleepingBag);
         bag.health_tick = TENT_HEALTH_TICK;
         // sleep_anim: tents loop sleep_loop while occupied.
         bag.onsleep = () => {
@@ -86,13 +88,8 @@ export class TentInstance extends PrefabInstance {
             this.sprite.start('idle');
             uses.Use();
         };
-        Object.assign(this.components, { sleepingbag: bag, finiteuses: uses });
         this.ListenForEvent('onbuilt', () => onbuilt(this));
-        this.onRemove(() => {
-            this.stopSleepSound();
-            bag.dispose();
-            uses.dispose();
-        });
+        this.onRemove(() => this.stopSleepSound());
     }
 
     private startSleepSound(scheduler: GameTimeScheduler, length: number): void {

@@ -5,7 +5,7 @@ import { Health } from '../../componets/src/health';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 
 it('settles once per game second, starts starvation before damage, and stops starvation after eating', () => {
-  const scheduler = new GameTimeScheduler(), health = new Health(150), events = vi.fn();
+  const scheduler = new GameTimeScheduler(), health = new Health({}, 150), events = vi.fn();
   const hunger = new Hunger({ components: { health }, PushEvent: events }, 150, scheduler);
   hunger.SetRate(2); hunger.SetKillRate(1.25); hunger.SetCurrent(1);
   try {
@@ -30,7 +30,7 @@ it('settles once per game second, starts starvation before damage, and stops sta
 });
 
 it('honours invincibility, keyed burn modifiers and source removal, while long updates avoid starvation damage', async () => {
-  const scheduler = new GameTimeScheduler(), health = new Health(150), removal = createSignal(false);
+  const scheduler = new GameTimeScheduler(), health = new Health({}, 150), removal = createSignal(false);
   const source = { removal };
   const hunger = new Hunger({ components: { health } }, 150, scheduler);
   hunger.SetRate(2);

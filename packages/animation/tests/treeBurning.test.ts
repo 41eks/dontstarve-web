@@ -186,7 +186,10 @@ it('burns a moon tree for its size-scaled time and keeps burnt state through unl
     expect(lookupPrefabInstance(tree.transform.model)!.minimap.icon).toBe('moon_tree_burnt.png');
     await area.visit(new THREE.Vector3(500, 0, 0)); await area.visit(new THREE.Vector3());
     expect(prefabInstance(tree.transform.model)!.sprite.currentAnimation).toBe('burnt_tall');
+    // lootdropper.lua GenerateLoot: a burnt inst adds charcoal when math.random() < .4.
+    const random = vi.spyOn(Math, 'random').mockReturnValue(.5);
     expect(performToolWork('CHOP', findActionEntity(tree.transform.model)!, {})).toBe(true);
+    random.mockRestore();
     expect(dropLoot).toHaveBeenCalledWith([{ itemId: 'charcoal', count: 1 }], tree.position);
     for (let i = 0; i < 60; i++) s.displays.update(1 / 30);
     expect(s.records()).toEqual([]);

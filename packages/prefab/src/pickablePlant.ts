@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { Transform } from './transform';
 import type * as CANNON from 'cannon-es';
@@ -145,7 +146,7 @@ export abstract class PickablePlantInstance extends PrefabInstance {
     if (initial.held) animation.setFrameAt(1);
     if (!state?.picked && definition.idle.randomFrame) animation.setFrameAt(Math.random());
     if (definition.multColour) { const grey = definition.multColour(); animation.setColour([grey, grey, grey]); }
-    this.components.lootdropper = new LootDropper(this, (prefab, point, skinId) => context.world.spawnGroundItem(
+    addComponent(this, 'lootdropper', LootDropper, (prefab, point, skinId) => context.world.spawnGroundItem(
       { ...catalog.items[prefab as keyof typeof catalog.items], itemId: prefab, count: 1, ...(skinId ? { skinId } : {}) },
       point, { fling: true }));
     this.onRemove(() => {
@@ -181,7 +182,7 @@ export abstract class PickablePlantInstance extends PrefabInstance {
 
   protected bindWitherable(): void {
     const { world, scheduler, saved } = this.context;
-    this.components.witherable = new Witherable(this, this.components.pickable, scheduler,
+    addComponent(this, 'witherable', Witherable, this.components.pickable, scheduler,
       () => world.getLocalTemperature?.(this.position) ?? 20, world.rain,
       saved?.components.witherable, saved?.components.pickable?.protectedCycles);
   }

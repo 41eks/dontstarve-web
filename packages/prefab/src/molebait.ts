@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Edible } from '../../componets/src/edible';
 import { Bait } from '../../componets/src/bait';
@@ -11,12 +12,12 @@ import type { Vector3 } from 'three';
 export function configureMoleBaitEntity(entity: ItemEntity): void {
   const definition = (catalog.items as Record<string, { moleBait?: boolean; elementalFoodHunger?: number }>)[entity.prefab];
   if (definition?.elementalFoodHunger !== undefined && !entity.components.edible) {
-    const edible = new Edible(() => entity.components.perishable.stage.peek(), entity);
-    edible.hungervalue = definition.elementalFoodHunger; entity.components.edible = edible; entity.addTag('edible_ELEMENTAL');
+    const edible = addComponent(entity, 'edible', Edible, () => entity.components.perishable.stage.peek());
+    edible.hungervalue = definition.elementalFoodHunger; entity.addTag('edible_ELEMENTAL');
   }
   if (!definition?.moleBait) return;
   entity.addTag('molebait');
-  entity.components.bait = entity.component('bait', () => new Bait(entity));
+  addComponent(entity, 'bait', Bait);
 }
 /** A shared target wrapper preserves the source's five-second selection lock between moles. */
 export class MoleBait implements MoleBaitTarget {

@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
@@ -71,19 +72,18 @@ export class SkeletonInstance extends PrefabInstance {
     else if (prefab !== 'skeleton') this.prefabNameOverride = 'skeleton_notplayer'; // creature_custominit
     this.addTag('inspectable');
 
-    const lootdropper = new LootDropper(this, (itemId, point) => world.spawnGroundItem(
+    const lootdropper = addComponent(this, 'lootdropper', LootDropper, (itemId, point) => world.spawnGroundItem(
       { ...catalog.items[itemId as keyof typeof catalog.items], itemId, count: 1 }, new THREE.Vector3(point.x, point.y, point.z), { fling: true }));
     lootdropper.SetChanceLootTable(player ? 'skeleton_player' : 'skeleton');
-    const workable = new Workable(this);
+    const workable = addComponent(this, 'workable', Workable);
     workable.SetWorkAction('HAMMER');
     workable.SetWorkLeft(SKELETON_WORK);
     workable.SetOnFinishCallback(() => OnHammered(this, world));
-    Object.assign(this.components, { inspectable: new Inspectable(this), lootdropper, workable });
+    addComponent(this, 'inspectable', Inspectable);
 
     // workable.savestate is false: a surviving skeleton reloads with its full work count.
     this.OnSave = (_inst, data) => { data.skeleton = { anim: this.animnum, ...player ? this.description : {} }; };
     this.OnLoad = (_inst, data) => (player ? Player_OnLoad : OnLoad)(this, data.skeleton);
-    this.onRemove(() => workable.dispose());
   }
 
   /** Player_SetSkeletonDescription. */

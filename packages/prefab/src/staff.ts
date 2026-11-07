@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import type { ReadonlySignal } from '@dontstarve-web/signals';
@@ -49,8 +50,7 @@ export class LightStaffController implements HeldEquipFunctions {
     entity.castsound = LIGHT_STAFF_CAST_SOUND;
     entity.fxcolour = entity.prefab === 'opalstaff' ? OPALSTAFF_COLOUR : YELLOWSTAFF_COLOUR;
     entity.components.finiteuses.setMaxUses(LIGHT_STAFF_USES[entity.prefab]);
-    this.spellcaster = entity.component('spellcaster', () => new SpellCaster(entity, world.map));
-    entity.components.spellcaster = this.spellcaster;
+    this.spellcaster = addComponent(entity, 'spellcaster', SpellCaster, world.map);
     this.spellcaster.setSpellFn((_staff, _target, position, doer) => this.createLight(position, doer));
     this.spellcaster.canUseOnPoint = true;
     this.spellcaster.canUseOnPointWater = true;
@@ -239,8 +239,7 @@ export class GreenStaffController implements HeldEquipFunctions {
     entity.addTag('nopunch'); entity.addTag('shadowlevel');
     entity.fxcolour = GREENSTAFF_COLOUR;
     entity.components.finiteuses.setMaxUses(GREENSTAFF_USES);
-    this.spellcaster = entity.component('spellcaster', () => new SpellCaster(entity));
-    entity.components.spellcaster = this.spellcaster;
+    this.spellcaster = addComponent(entity, 'spellcaster', SpellCaster);
     this.spellcaster.canUseOnTargets = true;
     this.spellcaster.canOnlyUseOnRecipes = true;
     // The entity cast on carries its owner's deconstruction view; tests may hand the view itself.

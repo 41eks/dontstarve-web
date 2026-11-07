@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import type * as THREE from 'three';
 import { WorldContentKey, type GetWatchWorldContent, type ReadonlySignal, type WorldMoonPhase } from '@dontstarve-web/signals';
 import type { InventoryItemSpec, ItemEntity } from '@dontstarve-web/inventory';
@@ -128,8 +129,7 @@ export function configureBookEntity(entity: ItemEntity): void {
   entity.swap_prefix = entity.prefab;
   entity.GetSkinBuild = () => itemSkinBuild(entity);
   entity.components.finiteuses.setMaxUses(def.uses);
-  const book = entity.component('book', () => new Book<ItemEntity, BookReader, BookWorld>(entity));
-  entity.components.book = book;
+  const book = addComponent(entity, 'book', Book<ItemEntity, BookReader, BookWorld>);
   book.SetOnRead(def.fn);
   book.SetReadSanity(def.read_sanity);
   book.SetFx(def.fx);

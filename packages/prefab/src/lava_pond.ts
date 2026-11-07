@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import { Vector3 } from 'three';
 import { createSignal, readonlySignal } from '@dontstarve-web/signals';
@@ -65,9 +66,9 @@ export class LavaPondInstance extends PrefabInstance<SpriteState, LavaPondCompon
     this.light.set({ radius: 1.5 * WORLD_SCALE, falloff: .66, intensity: .66, colour: [235 / 255, 121 / 255, 12 / 255] });
     this.deploySmartRadius = 2 * WORLD_SCALE;
 
-    const heater = new Heater(this);
+    const heater = addComponent(this, 'heater', Heater);
     heater.SetHeat(LAVA_POND_HEAT);
-    Object.assign(this.components, { inspectable: new Inspectable(this), heater });
+    addComponent(this, 'inspectable', Inspectable);
 
     this.task = new ComponentTimer(world.scheduler, () => this.SpawnRocks());
     this.timer = this.task.snapshot;
@@ -134,7 +135,7 @@ export class LavaPondRockInstance extends PrefabInstance {
     this.sprite.playOnce(`idle${rocktype}`);
     if (rocktype.length > 0) this.prefabNameOverride = 'lava_pond_rock';
     this.addTag('inspectable');
-    Object.assign(this.components, { inspectable: new Inspectable(this) });
+    addComponent(this, 'inspectable', Inspectable);
   }
 }
 

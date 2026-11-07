@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { Transform } from './transform';
 import * as THREE from 'three';
@@ -142,7 +143,8 @@ export class MushtreeInstance extends PrefabInstance {
         growable.SetStage(growable.GetNextStage());
       }
     });
-    this.components.timer = new Timer(world.scheduler, name => { if (name === 'decay') this.remove(); }, ['decay']);
+    addComponent(this, 'timer', Timer, world.scheduler, ['decay']);
+    this.ListenForEvent('timerdone', data => { if ((data as { name: string }).name === 'decay') this.remove(); });
     const colour = .5 + Math.random() * .5;
     this.sprite.setColour([colour, colour, colour]);
     this.sprite.setFrameAt(Math.random());
@@ -150,8 +152,8 @@ export class MushtreeInstance extends PrefabInstance {
     // MakeObstaclePhysics adds `blocker`; the body itself is the definition's physics.
     for (const tag of ['blocker', 'cavedweller', 'mushtree', 'plant', 'shelter', 'tree', ...data.webbable ? ['webbable'] : []]) this.addTag(tag);
     this.light.set({ colour: data.lightColour, radius: data.lightRadius * (TILE_SIZE / 4), intensity: .8, falloff: .5 });
-    this.components.workable = new Workable(this);
-    this.components.lootdropper = new LootDropper(this, (prefab, point) => {
+    addComponent(this, 'workable', Workable);
+    addComponent(this, 'lootdropper', LootDropper, (prefab, point) => {
       this.dropCatalogLoot([prefab], new THREE.Vector3(point.x, point.y, point.z));
       return undefined;
     });
@@ -165,7 +167,7 @@ export class MushtreeInstance extends PrefabInstance {
     this.OnSave = (_inst, saved) => onsave(this, saved);
     this.OnLoad = (_inst, saved) => onload(this, saved);
     this.onRemove(() => {
-      this.cancelChange(); this.growthTransition.stop(); this.components.timer.dispose();
+      this.cancelChange(); this.growthTransition.stop();
       this.stopSeason?.(); this.stopSeason = undefined;
       this.burn?.dispose(); this.components.growable?.dispose(); this.components.workable?.dispose();
       this.light.set(null);
@@ -219,7 +221,7 @@ export class MushtreeInstance extends PrefabInstance {
   }
 
   private createGrowable(): void {
-    const growable = this.components.growable = new Growable(this.world.scheduler, STAGE_SCALE.map((scale, index) => ({
+    const growable = addComponent(this, 'growable', Growable, this.world.scheduler, STAGE_SCALE.map((scale, index) => ({
       time: () => MUSHTREE_GROWTH_TIME[index].base + (Math.random() * 2 - 1) * MUSHTREE_GROWTH_TIME[index].random,
       fn: () => this.setScale(scale),
       growfn: () => this.doGrow((index + 1) as 1 | 2 | 3),

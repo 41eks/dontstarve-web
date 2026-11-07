@@ -1,6 +1,8 @@
+import { LootDropper } from '../../componets/src/lootdropper';
+import { addComponent } from './components';
 import { SpriteState, type SpriteResources } from '@dontstarve-web/display';
 import { Workable } from '../../componets/src/workable';
-import { createStructureLootDropper } from './structureLoot';
+import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
 import definitions from './definitions.json' with { type: 'json' };
 import { createEffect, createMemo, createSignal, readonlySignal, watchSignal, WorldContentKey, type Memo } from '@dontstarve-web/signals';
 import { FliesController } from './flies';
@@ -125,12 +127,12 @@ export class StickHeadInstance extends PrefabInstance {
         this.OnLoad = (inst, data) => { loadBuilding!(inst, data); onloadBurnt(inst, data); };
         this.addTag('structure');
         this.addTag('beaverchewable'); // for werebeaver
-        const workable = this.components.workable = new Workable(this);
+        const workable = addComponent(this, 'workable', Workable);
         workable.SetWorkAction('HAMMER');
         workable.SetWorkLeft(3);
         workable.SetOnWorkCallback(onworked);
         workable.SetOnFinishCallback(onhammered);
-        this.components.lootdropper = createStructureLootDropper(this);
+        addComponent(this, 'lootdropper', LootDropper, spawnStructureLoot(this), STRUCTURE_LOOT_RECIPES);
         const head = this.head = new StickHead(this, world, sprites);
         this.onRemove(() => head.dispose());
         // MakeSmallBurnable(inst, nil, nil, true): SMALL_BURNTIME, fire level 2, small propagator, burnt structure.

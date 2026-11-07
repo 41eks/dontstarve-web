@@ -1,3 +1,5 @@
+import { Inspectable } from '../../componets/src/inspectable';
+import { addComponent } from './components';
 import { Transform } from './transform';
 import { SpriteState } from '@dontstarve-web/display';
 import type { PickActor } from '@dontstarve-web/stategraphs/pick';
@@ -81,7 +83,6 @@ function DoRoseBounceAnim(inst: FlowerInstance): void {
 export class FlowerInstance extends PrefabInstance {
   declare readonly components: PrefabInstance['components'] & {
     pickable: Pickable;
-    inspectable: { getstatus(): 'ROSE' | undefined };
   };
   animname?: FlowerAnimation;
   planted?: true;
@@ -98,8 +99,8 @@ export class FlowerInstance extends PrefabInstance {
     this.deploySmartRadius = .375 * (TILE_SIZE / 4);
     this.addTag('flower');
     this.addTag('cattoy');
-    this.components.inspectable = { getstatus: () => GetStatus(this) };
-    const pickable = this.components.pickable = new Pickable(this, 'petals', 10, 1,
+    addComponent(this, 'inspectable', Inspectable).getstatus = () => GetStatus(this);
+    const pickable = addComponent(this, 'pickable', Pickable, 'petals', 10, 1,
       doer => onpickedfn(this, doer?.picker), undefined, undefined, { scheduler, onRemove: () => this.remove() });
     pickable.picksound = 'dontstarve/wilson/pickup_plants';
     pickable.remove_when_picked = true;
@@ -108,7 +109,7 @@ export class FlowerInstance extends PrefabInstance {
     // MakeSmallBurnable(inst) + MakeSmallPropagator(inst).
     const burn = new BurnableBinding(this, { propagator: 'small', burnTime: 10, fxLevel: 2,
       onIgnite: () => DefaultBurnFn(this), onExtinguish: () => DefaultExtinguishFn(this), onBurnt: () => DefaultBurntFn(this, world) }, world);
-    this.onRemove(() => { pickable.dispose(); burn.dispose(); });
+    this.onRemove(() => burn.dispose());
     this.OnSave = onsave;
     this.OnLoad = onload;
     setflowertype(this);

@@ -1,3 +1,5 @@
+import { LootDropper } from '../../componets/src/lootdropper';
+import { addComponent } from './components';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import definitions from './definitions.json' with { type: 'json' };
 import { WallPlacement, type WallDefinition } from './wallPlacement';
@@ -11,7 +13,7 @@ import { Combat } from '../../componets/src/combat';
 import { Workable } from '../../componets/src/workable';
 import { PathfindingWall } from './pathfinder';
 import { MakeObstaclePhysics } from './standardcomponents';
-import { createStructureLootDropper } from './structureLoot';
+import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
 import { TILE_SIZE } from './tile';
 import {
     wall_stone_init_fn, wall_ruins_init_fn, wall_moonrock_init_fn,
@@ -164,7 +166,7 @@ function initializeWall(instance: PrefabInstance, saved?: { current: number; max
     const inst = instance as WallPrefabInstance;
     const data = inst.wallData;
     for (const tag of ['wall', 'noauradamage', 'electricdamageimmune', ...(data.tags ?? [])]) inst.addTag(tag);
-    const health = inst.components.health = new Health(data.maxhealth ?? 100, inst);
+    const health = addComponent(inst, 'health', Health, data.maxhealth ?? 100);
     health.SetCurrentHealth(health.maxhealth * .5);
     health.canheal = false; health.nofadeout = true;
     if (data.playerdamagemod !== undefined) health.SetAbsorptionAmountFromPlayer(data.playerdamagemod);
@@ -173,11 +175,11 @@ function initializeWall(instance: PrefabInstance, saved?: { current: number; max
     inst.sprite.setPose(anim === 'half' ? undefined : anim);
     inst.sprite.playOnce(anim);
     health.ondelta = onhealthchange;
-    const combat = inst.components.combat = new Combat(inst, () => inst.worldServices?.scheduler?.now ?? 0);
+    const combat = addComponent(inst, 'combat', Combat, () => inst.worldServices?.scheduler?.now ?? 0);
     combat.SetKeepTargetFunction(() => false);
     combat.onhitfn = onhit;
-    inst.components.lootdropper = createStructureLootDropper(inst);
-    const workable = inst.components.workable = new Workable(inst);
+    addComponent(inst, 'lootdropper', LootDropper, spawnStructureLoot(inst), STRUCTURE_LOOT_RECIPES);
+    const workable = addComponent(inst, 'workable', Workable);
     workable.SetWorkAction('HAMMER');
     workable.SetWorkLeft(data.hammerWorkLeft ?? 3);
     workable.SetOnWorkCallback(onhit);

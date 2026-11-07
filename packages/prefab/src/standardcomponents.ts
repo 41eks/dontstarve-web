@@ -1,3 +1,4 @@
+import { removeComponent } from './components';
 import { COLLISION, type PhysicsState } from '../../componets/src/physicsState';
 import { releaseBuildingContainer } from './containers';
 import { prefabDisplay } from '@dontstarve-web/display';
@@ -87,11 +88,9 @@ export function DefaultBurntStructureFn(inst: PrefabInstance): void {
     const stewer = inst.components.stewer;
     if (stewer) {
         stewer.StopCooking('fire');
-        stewer.OnRemoveFromEntity();
-        delete inst.components.stewer;
+        removeComponent(inst, 'stewer');
     }
-    inst.components.prototyper?.OnRemoveFromEntity();
-    delete inst.components.prototyper;
+    removeComponent(inst, 'prototyper');
 }
 
 /** The onsave of a burnable structure's prefab: a burning structure saves as burnt. */

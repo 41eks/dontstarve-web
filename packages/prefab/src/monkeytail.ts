@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import type { PrefabEntityDefinition } from './prefabInstance';
 import { Pickable } from './components/pickable';
 import { Workable } from '../../componets/src/workable';
@@ -10,13 +11,13 @@ export const MONKEYTAIL_REGROW_TIME = 3 * 480;
 export class MonkeytailInstance extends PickablePlantInstance {
   constructor(context: PickablePlantContext) {
     super(MONKEYTAIL_DEFINITION, context);
-    new Pickable(this, 'cutreeds', MONKEYTAIL_REGROW_TIME, 1, () => onpickedfn(this), () => onregenfn(this), context.saved?.components.pickable, {
+    addComponent(this, 'pickable', Pickable, 'cutreeds', MONKEYTAIL_REGROW_TIME, 1, () => onpickedfn(this), () => onregenfn(this), context.saved?.components.pickable, {
       scheduler: context.scheduler, growthDuration: context.growthDuration, maxCycles: 5 + Math.floor(Math.random() * 3),
       onTransplant: () => ontransplantfn(this), onBarren: wasEmpty => makebarrenfn(this, wasEmpty), onEmpty: () => makeemptyfn(this),
     });
     this.bindBurnable({ propagator: 'small', burnTime: 15, fxLevel: 2,
       onIgnite: () => DefaultBurnFn(this), onExtinguish: () => DefaultExtinguishFn(this), onBurnt: () => DefaultBurntFn(this, context.world) });
-    const workable = this.components.workable = new Workable(this);
+    const workable = addComponent(this, 'workable', Workable);
     workable.SetWorkAction('DIG'); workable.SetWorkLeft(1); workable.SetOnFinishCallback(dig_up);
     this.bindWitherable();
     MakeNoGrowInWinter(this, context.getWatchWorldContent);

@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Edible } from '../../componets/src/edible';
 import { PERISH_FAST, PERISH_MED, PERISH_SUPERFAST } from '../../componets/src/perishable';
@@ -102,8 +103,8 @@ export function configureFoodEntity(entity: ItemEntity): void {
   if (!values) return;
   if (!entity.components.edible) {
     const perishable = entity.components.perishable;
-    const edible = entity.components.edible = new Edible(
-      () => perishable.perishtime.peek() === undefined ? undefined : perishable.stage.peek(), entity);
+    const edible = addComponent(entity, 'edible', Edible,
+      () => perishable.perishtime.peek() === undefined ? undefined : perishable.stage.peek());
     edible.healthvalue = values.health;
     edible.hungervalue = values.hunger;
     edible.sanityvalue = values.sanity;

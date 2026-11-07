@@ -1,3 +1,4 @@
+import { Workable } from '../../componets/src/workable';
 import { SpriteState } from '@dontstarve-web/display';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { ComponentTimer, Timer } from '../../componets/src/timer';
@@ -49,15 +50,16 @@ export class RockAvocadoSaplingInstance extends PrefabInstance {
     this.sprite.setSymbolHidden('snow', true);
     // DEPLOYSPACING_RADIUS[DEPLOYSPACING.DEFAULT] / 2, in world units.
     this.deploySmartRadius = TILE_SIZE / 4;
-    const workable = addComponent(this as RockAvocadoSaplingInstance, 'workable');
+    const workable = addComponent(this as RockAvocadoSaplingInstance, 'workable', Workable);
     workable.SetWorkAction('DIG'); workable.SetWorkLeft(1);
     workable.SetOnFinishCallback(dig_sprout);
-    const timer = this.components.timer = new Timer(world.scheduler, name => on_grow_timer_done(this, name), ['grow']);
+    const timer = addComponent(this, 'timer', Timer, world.scheduler, ['grow']);
+    this.ListenForEvent('timerdone', data => on_grow_timer_done(this, (data as { name: string }).name));
     this.seedGrowth = new ComponentTimer(world.scheduler, () => grow_anim_over(this));
     // MakeSmallBurnable + MakeSmallPropagator; DefaultBurnFn and DefaultExtinguishFn give way to these callbacks.
     const burn = new BurnableBinding(this, { propagator: 'small', burnTime: BURN_TIME, fxLevel: BURN_FX_LEVEL,
       onIgnite: () => stop_sprout_growing(this), onExtinguish: () => start_sprout_growing(this), onBurnt: () => DefaultBurntFn(this, world) }, world);
-    this.onRemove(() => { burn.dispose(); timer.dispose(); this.seedGrowth.stop(); });
+    this.onRemove(() => { burn.dispose(); this.seedGrowth.stop(); });
     start_sprout_growing(this);
     this.OnSave = (_inst, data) => {
       // The timer's record keeps the name existing saves hold; a stopped timer writes an empty one.

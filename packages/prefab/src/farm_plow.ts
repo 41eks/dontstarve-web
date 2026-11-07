@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { ToolMouseTarget } from './toolMouseTarget';
 import { MakeObstaclePhysics } from './standardcomponents';
@@ -78,7 +79,7 @@ class FarmPlowInstance extends PrefabInstance implements FarmPlowSaveState {
     this.deployItem = state.deployItem ? { ...state.deployItem } : null;
     this.worldServices = world; this.spawnSaveRecord = spawnSaveRecord;
     this.addTag('scarytoprey');
-    const workable = this.components.workable = new Workable(this);
+    const workable = addComponent(this, 'workable', Workable);
     workable.SetWorkAction('HAMMER'); workable.SetWorkLeft(1);
     workable.SetWorkable(state.phase !== 'collapse');
     workable.SetOnFinishCallback(onhammered);
@@ -101,9 +102,9 @@ export const FARM_PLOW_PLACER_ART = { animationArchive: 'farm_plow.zip', buildAr
 export function configureFarmPlowItemEntity(entity: ItemEntity): void {
   if (entity.prefab !== FARM_PLOW_ITEM_ID || entity.components.deployable) return;
   for (const tag of ['usedeploystring', 'tile_deploy', 'deployable']) entity.addTag(tag);
-  entity.components.deployable = entity.component('deployable', () => new Deployable(entity,
+  addComponent(entity, 'deployable', Deployable,
     (point, _deployer, map) => map.deployPlow(point, entity),
-    { mode: 'CUSTOM', spacing: 2 * SCALE, usegridplacer: false, candeploy: (point, map) => map.canDeployPlow(point) }));
+    { mode: 'CUSTOM', spacing: 2 * SCALE, usegridplacer: false, candeploy: (point, map) => map.canDeployPlow(point) });
 }
 
 /** farm_plow.lua's timer, terraform and fold-up lifecycle, and the world's till rules; displays load the declared art. */
@@ -391,12 +392,10 @@ export class FarmPlowPlacement implements FarmActionWorld {
     this.decorPositions.add(item);
     if (prefabId === 'farm_soil_debris') {
       // farm_soil_debris.lua: workable DIG with one work, finished by onfinishcallback.
-      const workable = new Workable(entity.instance);
+      const workable = addComponent(entity.instance, 'workable', Workable);
       workable.SetWorkAction('DIG');
       workable.SetWorkLeft(1);
       workable.SetOnFinishCallback(() => this.digDebris(item));
-      entity.instance.components.workable = workable;
-      entity.instance.onRemove(() => workable.dispose());
     }
     actionEntity(entity.display.model, prefabId);
     item.stopTracking = () => { disposeActionEntity(entity.display.model); this.decorPositions.delete(item); };

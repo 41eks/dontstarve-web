@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import {
   ArchiveSpriteAssets,
   type ArchiveSpriteDefinition,
@@ -126,7 +127,7 @@ export function iconItemPrefab(itemId: string, icon: { readonly atlas: string; r
  * and its placement and tile follow it there.
  */
 export function bindItemWorld(inst: ItemEntity, world: ItemPrefabWorld): void {
-  inst.components.inventoryphysics ??= new InventoryPhysics(inst, world.componentUpdates, TILE_SIZE / 4);
+  addComponent(inst, 'inventoryphysics', InventoryPhysics, world.componentUpdates, TILE_SIZE / 4);
   const dropLoot = world.dropLoot;
   inst.worldServices = { ...inst.worldServices, fx: world.fx, spawnItem: state => world.spawnItem(state), dropItem: world.dropItem,
     dropLoot: (items, position) => dropLoot?.(items.map(item => ({ ...GROUND_ITEM_DEFINITIONS[item.itemId], ...item })), position) };

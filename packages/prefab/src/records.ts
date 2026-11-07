@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import type { ItemEntity, InventoryItemSpec } from '@dontstarve-web/inventory';
 import { GROUND_ITEM_DISPLAY_SPECS } from './groundItems';
 import type { SoundEventPath } from './sound';
@@ -15,7 +16,7 @@ export const RECORD_SONGS: Readonly<Record<string, SoundEventPath>> = {
 };
 
 export function configureRecordEntity(entity: ItemEntity): void {
-  entity.components.tradable ??= new Tradable();
+  addComponent(entity, 'tradable', Tradable);
   entity.addTag('cattoy');
   entity.addTag('phonograph_record');
 }

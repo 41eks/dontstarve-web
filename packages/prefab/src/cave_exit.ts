@@ -1,3 +1,5 @@
+import { Inspectable } from '../../componets/src/inspectable';
+import { addComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import { WorldMigrator, type WorldMigratorShard } from '../../componets/src/worldmigrator';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
@@ -29,11 +31,9 @@ export class CaveExitInstance extends PrefabInstance {
   constructor(world: CaveExitWorld) {
     super(CAVE_EXIT_ID, new SpriteState({ name: 'open', billboard: true }), Transform.stationary());
     this.sprite.playOnce('open'); // PlayAnimation("open"), never looping.
-    const worldmigrator = new WorldMigrator(this, world.shard ?? NO_SHARD);
-    Object.assign(this.components, { worldmigrator, inspectable: {
-      /** GetStatus. */
-      getstatus: () => worldmigrator.IsActive() ? 'OPEN' : worldmigrator.IsFull() ? 'FULL' : undefined,
-    } });
+    const worldmigrator = addComponent(this, 'worldmigrator', WorldMigrator, world.shard ?? NO_SHARD);
+    /** GetStatus. */
+    addComponent(this, 'inspectable', Inspectable).getstatus = () => worldmigrator.IsActive() ? 'OPEN' : worldmigrator.IsFull() ? 'FULL' : undefined;
     const stops = [
       this.ListenForEvent('migration_available', () => open(this)),
       this.ListenForEvent('migration_unavailable', () => close(this)),

@@ -1,3 +1,4 @@
+import { Workable } from '../../componets/src/workable';
 import * as THREE from 'three';
 import { SpriteState } from '@dontstarve-web/display';
 import { createEffect, createMemo, WorldContentKey, type GameTimeScheduler, type GetWatchWorldContent } from '@dontstarve-web/signals';
@@ -115,7 +116,7 @@ export class GrottoPoolInstance extends PrefabInstance {
     for (const tag of ['antlion_sinkhole_blocker', 'birdblocker', 'watersource']) this.addTag(tag);
     this.deploySmartRadius = definition.smartRadius * WORLD_SCALE;
     this.addTag('inspectable');
-    Object.assign(this.components, { inspectable: new Inspectable(this) });
+    addComponent(this, 'inspectable', Inspectable);
 
     let mist: PrefabInstance | undefined, stopSound: (() => void) | undefined;
     // DoTaskInTime(0, makebigmist / makesmallmist), DoTaskInTime(0, register_pool), and after OnLoadPostPass DoTaskInTime(0, setup_children).
@@ -221,16 +222,16 @@ export class GrottoGlassInstance extends PrefabInstance {
     this.physicsRadiusOverride = definition.physicsRadius;
     this.addTag('moonglass');
 
-    const workable = addComponent(this as GrottoGlassInstance, 'workable');
+    const workable = addComponent(this as GrottoGlassInstance, 'workable', Workable);
     workable.savestate = true;
     workable.SetWorkAction('MINE');
     workable.SetWorkLeft(ROCKS_MINE);
     workable.SetOnWorkCallback((_inst, worker, workleft) => on_mined(this, worker, workleft));
     workable.SetOnLoadFn(() => { if (workable.workleft.peek() <= 0) set_mined(this); });
-    const lootdropper = new LootDropper(this, (itemId, point) => world.spawnGroundItem(
+    const lootdropper = addComponent(this, 'lootdropper', LootDropper, (itemId, point) => world.spawnGroundItem(
       { ...catalog.items[itemId as keyof typeof catalog.items], itemId, count: 1 }, new THREE.Vector3(point.x, point.y, point.z), { fling: true }));
     lootdropper.SetChanceLootTable('moonglass_prop');
-    Object.assign(this.components, { lootdropper });
+
     this.sprite.setFrameAt(Math.random());
 
     // The project's save keeps workable's OnSave under `grottoGlass`.

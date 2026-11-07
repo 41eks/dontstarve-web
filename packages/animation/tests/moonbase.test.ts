@@ -310,12 +310,12 @@ it('cancels charge on early retrieval or moonset, then starts fresh and releases
 });
 
 it('persists paused named timers without ticking their snapshots and keeps expiry distinct from cancellation', () => {
-  const scheduler = new GameTimeScheduler(), done = vi.fn();
-  const timer = new Timer(scheduler, done, ['charge']);
+  const scheduler = new GameTimeScheduler(), done = vi.fn(), inst = { PushEvent: (name: string, data: unknown) => { if (name === 'timerdone') done((data as { name: string }).name); } };
+  const timer = new Timer(inst, scheduler, ['charge']);
   timer.StartTimer('charge', 10); scheduler.advance(3); timer.PauseTimer('charge');
   expect(timer.snapshot('charge').peek()).toEqual({ status: 'paused', remainingSeconds: 7 });
   scheduler.advance(100); expect(done).not.toHaveBeenCalled();
-  const restored = new Timer(scheduler, done, ['charge']); restored.OnLoad(timer.OnSave());
+  const restored = new Timer(inst, scheduler, ['charge']); restored.OnLoad(timer.OnSave());
   expect(restored.GetTimeLeft('charge')).toBe(7);
   restored.ResumeTimer('charge'); scheduler.advance(7);
   expect(done).toHaveBeenCalledExactlyOnceWith('charge');

@@ -1,5 +1,7 @@
+import { LootDropper } from '../../componets/src/lootdropper';
+import { addComponent, removeComponent } from './components';
 import { Workable } from '../../componets/src/workable';
-import { createStructureLootDropper } from './structureLoot';
+import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
 import { type SpriteState } from '@dontstarve-web/display';
 import { prefabInstance, type PrefabInstance } from './prefabInstance';
 import definitions from './definitions.json' with { type: 'json' };
@@ -105,32 +107,29 @@ function researchLabDefinition(id: ResearchLabId): AnimatedBuildingDefinition {
         burnable: { burnTime: 30, fxLevel: 4, propagator: 'large' },
         ...(id === 'researchlab4' ? { skinAnimState: RESEARCHLAB4_SKIN } : {}),
         oninit: (context) => {
-            const workable = context.instance.components.workable = new Workable(context.instance);
+            const workable = addComponent(context.instance, 'workable', Workable);
             workable.SetWorkAction('HAMMER');
             workable.SetWorkLeft(4);
             workable.SetOnWorkCallback(onworked);
             workable.SetOnFinishCallback(onhammered);
-            context.instance.components.lootdropper = createStructureLootDropper(context.instance);
+            addComponent(context.instance, 'lootdropper', LootDropper, spawnStructureLoot(context.instance), STRUCTURE_LOOT_RECIPES);
             const inst = actionEntity(context.model, id);
             inst.addTag('structure');
             inst.addTag(`level${RESEARCH_LAB_IDS.indexOf(id) + 1}`);
-            const prototyper = new Prototyper(inst, 4 * WORLD_SCALE);
+            const prototyper = addComponent(context.instance, 'prototyper', Prototyper, 4 * WORLD_SCALE);
             prototyper.trees = CreateTechTree(levels[id]);
             // Skin replacement preserves the component and its users, but replaces the controller.
             const currentContext = () => ({ ...context,
                 animation: (prefabInstance(context.model)!.sprite as SpriteState) });
             prototyper.onturnon = () => onturnon(id, currentContext());
             prototyper.onturnoff = () => onturnoff(id, currentContext());
-            inst.components.prototyper = prototyper;
             const { instance } = context;
             instance.ListenForEvent('onbuilt', () => onbuilt(instance));
             instance.OnSave = onsaveBurnt;
             instance.OnLoad = onloadBurnt;
         },
         ondispose: ({ model }) => {
-            const inst = actionEntity(model, id);
-            inst.components.prototyper?.OnRemoveFromEntity();
-            delete inst.components.prototyper;
+            removeComponent(prefabInstance(model)!, 'prototyper');
             stopIdleSound(model);
         },
     };

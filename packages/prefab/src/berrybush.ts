@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import type { PrefabEntityDefinition } from './prefabInstance';
 import { Workable } from '../../componets/src/workable';
 import { DefaultBurnFn, DefaultExtinguishFn, DefaultBurntFn, MakeNoGrowInWinter } from './standardcomponents';
@@ -21,14 +22,14 @@ export function berrybushRegrowTime(pickable: Pickable): number {
 export class BerrybushInstance extends PickablePlantInstance {
   constructor(context: PickablePlantContext) {
     super(BERRYBUSH_DEFINITION, context);
-    new Pickable(this, 'berries', BERRYBUSH_REGROW_TIME, 1, () => onpickedfn(this), () => makefullfn(this), context.saved?.components.pickable, {
+    addComponent(this, 'pickable', Pickable, 'berries', BERRYBUSH_REGROW_TIME, 1, () => onpickedfn(this), () => makefullfn(this), context.saved?.components.pickable, {
       scheduler: context.scheduler, growthDuration: context.growthDuration, maxCycles: 4 + Math.floor(Math.random() * 2),
       getRegenTime: berrybushRegrowTime, onTransplant: () => ontransplantfn(this),
       onBarren: () => makebarrenfn(this), onEmpty: () => makeemptyfn(this),
     });
     this.bindBurnable({ propagator: 'medium', burnTime: 30, fxLevel: 4,
       onIgnite: () => DefaultBurnFn(this), onExtinguish: () => DefaultExtinguishFn(this), onBurnt: () => DefaultBurntFn(this, context.world) });
-    const workable = this.components.workable = new Workable(this);
+    const workable = addComponent(this, 'workable', Workable);
     workable.SetWorkAction('DIG'); workable.SetWorkLeft(1); workable.SetOnFinishCallback(dig_up_normal);
     this.bindWitherable();
     MakeNoGrowInWinter(this, context.getWatchWorldContent);

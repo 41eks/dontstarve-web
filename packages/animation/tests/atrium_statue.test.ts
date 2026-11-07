@@ -37,8 +37,8 @@ it('loads a saved statue with the source construction, no tags, and the looping 
     await prefabDisplay(model)!.artLoaded();
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/dst/data/anim/atrium_statue.zip'));
     expect(inst.sprite.currentAnimation).toBe('idle_full');
-    // MakeStatue adds no tags; `tickingarea` is this project's activity tag, added by actionEntity().
-    expect(inst.listTags()).toEqual(['tickingarea']);
+    // MakeStatue adds no tags; inspectable.lua adds `inspectable`, and `tickingarea` is this project's activity tag.
+    expect(inst.listTags()).toEqual(['tickingarea', 'inspectable']);
     // The workable and lootdropper are commented out in the source: only inspectable and roseinspectable remain.
     expect(Object.keys(inst.components).sort()).toEqual(['inspectable', 'roseinspectable']);
     expect(inst.minimap.icon).toBe('atrium_statue.png');

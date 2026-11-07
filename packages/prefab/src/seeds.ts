@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { FarmPlantable } from '../../componets/src/farmplantable';
 import { VEGGIE_SEED_IDS } from './veggies';
@@ -9,8 +10,7 @@ export const SEEDS_HUNGER = 4.6875;
 export function configureSeedEntity(inst: ItemEntity): void {
   if (inst.prefab !== 'seeds' && !(VEGGIE_SEED_IDS as readonly string[]).includes(inst.prefab)) return;
   if (!inst.components.farmplantable) {
-    const plantable = new FarmPlantable(inst);
+    const plantable = addComponent(inst, 'farmplantable', FarmPlantable);
     plantable.plant = inst.prefab === 'seeds' ? 'farm_plant_randomseed' : `farm_plant_${inst.prefab.slice(0, -6)}`;
-    inst.components.farmplantable = plantable;
   }
 }

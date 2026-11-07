@@ -1,3 +1,5 @@
+import { Inspectable } from '../../componets/src/inspectable';
+import { Workable } from '../../componets/src/workable';
 import * as THREE from 'three';
 import { SpriteState } from '@dontstarve-web/display';
 import { createRenderEffect, watchSignal, type ReadonlySignal } from '@dontstarve-web/signals';
@@ -95,7 +97,7 @@ export class ArchiveMoonStatueInstance extends PrefabInstance {
     this.anim = 1 + Math.floor(Math.random() * MOON_STATUE_VARIANTS);
     this.sprite.playOnce(`idle_full_${this.anim}`); // PlayAnimation, never looping.
 
-    const workable = addComponent(this as ArchiveMoonStatueInstance, 'workable');
+    const workable = addComponent(this as ArchiveMoonStatueInstance, 'workable', Workable);
     workable.SetWorkAction('MINE');
     workable.SetWorkLeft(MARBLEPILLAR_MINE);
     workable.SetOnWorkCallback(ShowWorkState);
@@ -105,11 +107,10 @@ export class ArchiveMoonStatueInstance extends PrefabInstance {
       world.fx.collapse('small', this.position, 'rock');
       this.remove();
     });
-    const lootdropper = new LootDropper(this, (prefab, position) => world.spawnGroundItem(
+    const lootdropper = addComponent(this, 'lootdropper', LootDropper, (prefab, position) => world.spawnGroundItem(
       { ...catalog.items[prefab as keyof typeof catalog.items], itemId: prefab, count: 1 },
       new THREE.Vector3(position.x, position.y, position.z), { fling: true }));
     lootdropper.SetChanceLootTable('archive_statues');
-    Object.assign(this.components, { lootdropper });
     setminimapiconstatue(this);
 
     // workable.savestate is false: a surviving statue reloads with its full work count.
@@ -143,16 +144,15 @@ export class ArchiveRuneStatueInstance extends PrefabInstance {
         this.storyprogress = story.progress;
       }
     };
-    Object.assign(this.components, { inspectable: {
-      /** getstatus: `LINE_<n>`, advancing the story on first use. */
-      getstatus: () => { advance(); return `LINE_${this.storyprogress}`; },
-      /** rune_getdescription: only a viewer holding an ancient_reader gets the line's text key. */
-      descriptionfn: (viewer: { components?: { inventory?: { EquipHasTag(tag: string): boolean } } }) => {
-        if (!viewer.components?.inventory?.EquipHasTag('ancient_reader')) return undefined;
-        advance();
-        return `LINE_${this.storyprogress}`;
-      },
-    } });
+    const inspectable = addComponent(this, 'inspectable', Inspectable);
+    /** getstatus: `LINE_<n>`, advancing the story on first use. */
+    inspectable.getstatus = () => { advance(); return `LINE_${this.storyprogress}`; };
+    /** rune_getdescription: only a viewer holding an ancient_reader gets the line's text key. */
+    inspectable.descriptionfn = (viewer: { components?: { inventory?: { EquipHasTag(tag: string): boolean } } }) => {
+      if (!viewer.components?.inventory?.EquipHasTag('ancient_reader')) return undefined;
+      advance();
+      return `LINE_${this.storyprogress}`;
+    };
 
     this.OnSave = (_inst, data) => {
       data.archiveProp = { anim: this.anim, ...this.storyprogress === undefined ? {} : { storyprogress: this.storyprogress } };

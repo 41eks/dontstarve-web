@@ -28,7 +28,7 @@ export class Edible {
   private readonly perishStage: () => PerishStage | undefined;
 
   /** The stage reads the inst's perishable component at eating time, if it has one. */
-  constructor(perishStage: () => PerishStage | undefined = () => undefined, inst?: EdibleInstance) {
+  constructor(inst: EdibleInstance | undefined, perishStage: () => PerishStage | undefined = () => undefined) {
     this.perishStage = perishStage;
     this.inst = inst;
   }

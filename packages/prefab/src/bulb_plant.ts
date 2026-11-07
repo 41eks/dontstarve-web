@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import * as THREE from 'three';
 import { SpriteState } from '@dontstarve-web/display';
 import type { GameTimeScheduler } from './components/gameTimeScheduler';
@@ -119,7 +120,7 @@ export class BulbPlantInstance extends PrefabInstance {
       this.checkLight();
       this.sampleTimer.start(BULB_PLANT_LIGHT_SAMPLE_INTERVAL);
     });
-    new Pickable(this, 'lightbulb', bulbPlantRegrowTime(this.variant), this.variant === 'double' ? 2 : this.variant === 'triple' ? 3 : 1,
+    addComponent(this, 'pickable', Pickable, 'lightbulb', bulbPlantRegrowTime(this.variant), this.variant === 'double' ? 2 : this.variant === 'triple' ? 3 : 1,
       () => this.onpickedfn(), () => this.onregenfn(), undefined, { scheduler: scheduler as GameTimeScheduler });
     this.wakeTimer.start(1);
     this.onRemove(() => {

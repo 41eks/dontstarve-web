@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import * as THREE from 'three';
 import { createEffect, createMemo, createSignal, readonlySignal, watchSignal, GameTimeScheduler, WorldContentKey, type GetWatchWorldContent, type HandEquipment, type PlayerPositionsSignal, type ReadonlySignal, type TileStateQuery, type Signal, type WorldContentSignal, type WorldPhase } from '@dontstarve-web/signals';
 import type { ArchiveSpriteCommands } from '@dontstarve-web/display';
@@ -18,8 +19,8 @@ export function configureFirefliesEntity(entity: ItemEntity): void {
   entity.components.inventoryitem.canbepickedupalive = true;
   entity.addTag('catchable');
   for (const tag of [...FIREFLIES_TAGS, 'NOCLICK']) entity.addTag(tag);
-  entity.components.workable = entity.component('workable', () => {
-    const workable = new Workable(entity);
+  if (!entity.components.workable) {
+    const workable = addComponent(entity, 'workable', Workable);
     workable.SetWorkAction('NET');
     workable.SetWorkLeft(1);
     workable.SetWorkable(false);
@@ -27,8 +28,7 @@ export function configureFirefliesEntity(entity: ItemEntity): void {
       worker.components?.inventory?.GiveItem(entity, entity.transform.position.clone());
     });
     entity.ListenForEvent('ondropped', () => workable.SetWorkLeft(1));
-    return workable;
-  });
+  }
 }
 
 export const FIREFLIES_ID = 'fireflies';

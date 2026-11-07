@@ -15,15 +15,18 @@ const sharedLootTables = new Map<string, ChanceLootTable>();
 export function SetSharedLootTable(name: string, entries: ChanceLootTable): void { sharedLootTables.set(name, entries); }
 
 /** lootdropper.lua SpawnLootPrefab: the host prepares/creates and flings the actual loot inst. */
+/** SpawnLootPrefab's world side: spawn the item at the position and return it, if it is an entity. */
+export type LootSpawn = (prefab: string, position: ReturnType<LootInst['getPosition']>, skinId?: string) => LootEntity | undefined;
+
 export class LootDropper {
   droprecipeloot = true;
   private chanceLootTable?: string;
   private loot: readonly string[] = [];
   private chanceLoot: { prefab: string; chance: number }[] = [];
   private readonly inst: LootInst;
-  private readonly spawn: (prefab: string, position: ReturnType<LootInst['getPosition']>, skinId?: string) => LootEntity | undefined;
+  private readonly spawn: LootSpawn;
   private readonly recipes?: ReadonlyMap<string, LootRecipe>;
-  constructor(inst: LootInst, spawn: LootDropper['spawn'], recipes?: ReadonlyMap<string, LootRecipe>) {
+  constructor(inst: LootInst, spawn: LootSpawn, recipes?: ReadonlyMap<string, LootRecipe>) {
     this.inst = inst; this.spawn = spawn; this.recipes = recipes;
   }
   SetChanceLootTable(name: string): void { this.chanceLootTable = name; }

@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import { PrefabDisplayGroup } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import type { World } from 'cannon-es';
@@ -63,15 +64,13 @@ export class ChessJunkManager implements DisplayDrivenPrefabManager<{ prefabId: 
     // BasePile calls PlayAnimation(idleN) with no loop argument.
     instance.sprite.playOnce(`idle${style}`);
     const inst = actionEntity(model, id);
-    const inspectable = new Inspectable(inst);
-    const lootdropper = new LootDropper(inst, () => undefined);
-    const workable = new Workable(inst);
+    addComponent(instance, 'inspectable', Inspectable);
+    const lootdropper = addComponent(instance, 'lootdropper', LootDropper, () => undefined);
+    const workable = addComponent(instance, 'workable', Workable);
     workable.SetWorkAction('HAMMER'); workable.SetWorkLeft(3); workable.SetMaxWork(6);
-    const repairable = new Repairable(inst, workable, 'gears');
-    const hauntable = new Hauntable({ addTag: tag => inst.addTag(tag), removeTag: tag => inst.removeTag(tag),
-      PushEvent: (name, data) => inst.PushEvent?.(name, data) }, this.world.scheduler);
+    const repairable = addComponent(instance, 'repairable', Repairable, workable, 'gears');
+    const hauntable = addComponent(instance, 'hauntable', Hauntable, this.world.scheduler);
     hauntable.SetOnHauntFn(() => false);
-    Object.assign(prefabInstance(model)!.components, { inspectable, lootdropper, workable, repairable, hauntable });
     const state = saved?.components.chessJunk;
     if (state?.repaired) {
       // OnLoad sets six work, then OnRepaired plays hitN loop and marks repaired.
@@ -99,7 +98,7 @@ export class ChessJunkManager implements DisplayDrivenPrefabManager<{ prefabId: 
     if (this.disposed) return;
     this.disposed = true;
     for (const [model, pile] of this.piles) {
-      pile.stopActivity(); pile.workable.dispose(); pile.repairable.dispose(); pile.hauntable.dispose();
+      pile.stopActivity();
       model.userData.removed = true; pile.instance.remove();
     }
     this.piles.clear(); this.displays.dispose(); this.assets.dispose();

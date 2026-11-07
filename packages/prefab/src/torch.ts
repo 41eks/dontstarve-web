@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { ItemEntity } from '@dontstarve-web/inventory';
 import { getBoundWatchWorldContent, WorldContentKey, type EquipmentOwner, type ReadonlySignal } from '@dontstarve-web/signals';
@@ -20,11 +21,11 @@ import type { PrefabInstance } from './prefabInstance';
 
 /** torch.lua fn(): the components the source adds and the callbacks it registers on them, on the item's own instance. */
 export function configureTorchEntity(entity: ItemEntity): void {
-  entity.components.lighter = entity.component('lighter', () => new Lighter(entity));
+  addComponent(entity, 'lighter', Lighter);
   if (entity.components.fueled) return;
   const inst = entity as TorchInst;
   inst.components.inventoryitem.SetOnPutInInventoryFn((_inst, owner) => OnPutInInventory(inst, owner));
-  const burnable = inst.components.burnable = inst.component('burnable', () => new Burnable(inst));
+  const burnable = addComponent(inst, 'burnable', Burnable);
   burnable.canlight = false;
   burnable.SetOnExtinguishFn(() => OnExtinguish(inst));
   const fueled = inst.AddFueled();

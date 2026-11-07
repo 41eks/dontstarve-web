@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Tool, type ToolAction } from '../../componets/src/tool';
 import { Weapon } from '../../componets/src/weapon';
@@ -17,21 +18,16 @@ export const GOLDENTOOLFACTOR = 4;
 /** inst:AddComponent("weapon") and SetDamage; weapon:OnAttack wears finiteuses only when the inst has them. */
 export function AddWeapon(inst: ItemEntity, damage: number, hasFiniteUses: boolean): Weapon {
   inst.addTag('weapon');
-  if (!inst.components.weapon) {
-    const weapon = new Weapon(inst, () => hasFiniteUses ? inst.components.finiteuses : undefined);
-    weapon.SetDamage(damage);
-    inst.components.weapon = weapon;
-  }
-  return inst.components.weapon;
+  if (!inst.components.weapon) addComponent(inst, 'weapon', Weapon, () => hasFiniteUses ? inst.components.finiteuses : undefined).SetDamage(damage);
+  return inst.components.weapon!;
 }
 
 /** inst:AddComponent("tool") and SetAction(action, effectiveness); the component adds the "tool" tag. */
 export function AddTool(inst: ItemEntity, action: ToolAction, effectiveness?: number): Tool {
-  return inst.components.tool = inst.component('tool', () => {
-    const tool = new Tool(inst);
-    tool.SetAction(action, effectiveness);
-    return tool;
-  });
+  if (inst.components.tool) return inst.components.tool;
+  const tool = addComponent(inst, 'tool', Tool);
+  tool.SetAction(action, effectiveness);
+  return tool;
 }
 
 /** inst:AddComponent("finiteuses"): SetMaxUses, SetUses, SetOnFinished(inst.Remove) and SetConsumption(action, consumption). */

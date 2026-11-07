@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import type { AnimState } from '@dontstarve-web/animation/animState';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import type { EquipmentOwner } from '@dontstarve-web/signals';
@@ -149,7 +150,7 @@ export function configureLanternEntity(entity: ItemEntity): void {
   const inst = entity as LanternInst;
   inst.components.inventoryitem.SetOnPutInInventoryFn(() => turnoff(inst));
   inst.ListenForEvent('ondropped', () => ondropped(inst));
-  const machine = inst.components.machine = new Machine(inst, () => inst.components.perishable.scheduler);
+  const machine = addComponent(inst, 'machine', Machine, () => inst.components.perishable.scheduler);
   machine.turnonfn = () => turnon(inst);
   machine.turnofffn = () => turnoff(inst);
   machine.cooldowntime = 0;

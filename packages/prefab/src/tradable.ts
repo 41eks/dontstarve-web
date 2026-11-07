@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Tradable } from '../../componets/src/tradable';
 
@@ -36,8 +37,6 @@ export function hasTradableGoldValue(itemId: string): boolean {
 /** inst:AddComponent("tradable") with the item's goldvalue. */
 export function configureTradableEntity(entity: ItemEntity): void {
   if (entity.components.tradable) return;
-  const tradable = new Tradable();
-  tradable.goldvalue = TRADABLE_GOLD_VALUES[entity.prefab] ?? 0;
-  entity.components.tradable = tradable;
+  addComponent(entity, 'tradable', Tradable).goldvalue = TRADABLE_GOLD_VALUES[entity.prefab] ?? 0;
   entity.addTag('tradable');
 }

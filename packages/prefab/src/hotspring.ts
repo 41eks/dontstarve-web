@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import { createEffect, watchSignal } from '@dontstarve-web/signals';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
@@ -57,11 +58,11 @@ export class HotspringInstance extends PrefabInstance {
     this.deploySmartRadius = 1.5 * WORLD_SCALE;
     this.light.set(null); // Light:Enable(false)
 
-    const heater = new Heater(this);
+    const heater = addComponent(this, 'heater', Heater);
     heater.SetHeatFn(() => GetHeat(this));
-    const bathbombable = new BathBombable(this);
+    const bathbombable = addComponent(this, 'bathbombable', BathBombable);
     bathbombable.SetOnBathBombedFn(() => OnBathBombed(this));
-    Object.assign(this.components, { inspectable: new Inspectable(this), heater, bathbombable });
+    addComponent(this, 'inspectable', Inspectable);
 
     this.fxTask = new ComponentTimer(world.scheduler, () => push_special_idle(this));
     StartFx(this);

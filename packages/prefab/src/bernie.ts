@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
@@ -119,10 +120,10 @@ export class BernieInstance extends PrefabInstance implements BernieStateInst {
     for (const tag of big ? ['largecreature', 'companion', 'soulless', 'crazy', 'bigbernie'] : ['smallcreature', 'companion', 'soulless']) this.addTag(tag);
     this.addTag('inspectable');
     if (big) this.setScale(.7);
-    const health = new Health(big ? BERNIE_BIG_HEALTH : BERNIE_HEALTH, this);
+    const health = addComponent(this, 'health', Health, big ? BERNIE_BIG_HEALTH : BERNIE_HEALTH);
     health.nofadeout = true;
-    const timer = new Timer(world.scheduler, () => {}, ['transform_cd']);
-    Object.assign(this.components, { health, timer, inspectable: new Inspectable(this) });
+    addComponent(this, 'timer', Timer, world.scheduler, ['transform_cd']);
+    addComponent(this, 'inspectable', Inspectable);
 
     const clips = ['idle_loop', 'idle_loop_nodir', 'activate', 'deactivate', ...big ? ['deactivate_pst'] : []];
     const lengths = new Map(clips.map(name => { const clip = animationTiming(this.archive, name); return [name, clip.frames / clip.frameRate]; }));
@@ -141,7 +142,6 @@ export class BernieInstance extends PrefabInstance implements BernieStateInst {
       for (const cancel of [...this.tasks]) cancel();
       this.sg.dispose();
       stopSprite(); this.animstate.dispose();
-      timer.dispose(); health.dispose();
     });
   }
 

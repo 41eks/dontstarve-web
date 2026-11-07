@@ -1,8 +1,10 @@
+import { LootDropper } from '../../componets/src/lootdropper';
+import { addComponent } from './components';
 import { Workable } from '../../componets/src/workable';
 import { Prototyper } from '../../componets/src/prototyper';
 import { CreateTechTree } from '../../componets/src/techtree';
 import { WORLD_SCALE } from './standardcomponents';
-import { createStructureLootDropper } from './structureLoot';
+import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
 import { PrefabInstance } from './prefabInstance';
 import { SpriteState, type SpriteResources } from '@dontstarve-web/display';
 import definitions from './definitions.json' with { type: 'json' };
@@ -110,19 +112,19 @@ export class SculptingTableInstance extends PrefabInstance {
         this.OnSave = (inst, data) => { saveBuilding!(inst, data); onsave(inst, data); };
         this.OnLoad = (inst, data) => { loadBuilding!(inst, data); onload(inst, data); };
         this.ListenForEvent('onbuilt', () => onbuilt(this));
-        const workable = this.components.workable = new Workable(this);
+        const workable = addComponent(this, 'workable', Workable);
         workable.SetWorkAction('HAMMER');
         workable.SetWorkLeft(4);
         workable.SetOnWorkCallback(onworked);
         workable.SetOnFinishCallback(onhammered);
-        this.components.lootdropper = createStructureLootDropper(this);
+        addComponent(this, 'lootdropper', LootDropper, spawnStructureLoot(this), STRUCTURE_LOOT_RECIPES);
         this.addTag('structure');
-        const prototyper = this.components.prototyper = new Prototyper(this, 4 * WORLD_SCALE);
+        const prototyper = addComponent(this, 'prototyper', Prototyper, 4 * WORLD_SCALE);
         prototyper.trees = CreateTechTree({ SCULPTING: 1 });
         prototyper.onturnon = onturnon;
         prototyper.onturnoff = onturnoff;
         // onitemtaken: the pickable stops being interactable and the block disappears.
-        const pickable = this.pickable = new Pickable(this, '', HELD_ITEM_REGEN_TIME, 1, () => {
+        const pickable = this.pickable = addComponent(this, 'pickable', Pickable, '', HELD_ITEM_REGEN_TIME, 1, () => {
             if (pickable.canInteractWith) {
                 pickable.canInteractWith = false;
                 this.playTableSound(ITEM_SOUND);
@@ -132,7 +134,7 @@ export class SculptingTableInstance extends PrefabInstance {
         });
         pickable.canInteractWith = false;
         pickable.pause();
-        const trader = this.trader = new Trader<TradeItem>(this);
+        const trader = this.trader = addComponent(this, 'trader', Trader<TradeItem>);
         trader.acceptsNonTradable = true;
         trader.SetAbleToAcceptTest(item => {
             if (pickable.canInteractWith) return { ok: false, reason: 'SLOTFULL' };
@@ -141,13 +143,9 @@ export class SculptingTableInstance extends PrefabInstance {
         trader.SetOnAccept((_giver, item) => {
             if (isSculptableMaterial(item.prefab)) this.giveItem(item.prefab);
         });
-        this.components.trader = trader;
         this.onRemove(() => {
-            prototyper.OnRemoveFromEntity();
             for (const sound of this.sounds) sound.stop();
             this.sounds.clear();
-            pickable.dispose();
-            trader.dispose();
         });
     }
 

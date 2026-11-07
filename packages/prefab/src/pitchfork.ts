@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory, type HeldEquipFunctions } from './equipmentVisual';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { PlaySound } from './sound';
@@ -35,7 +36,7 @@ export const pitchforkVisual: EquipmentVisualFactory = item => {
 export function configurePitchforkEntity(inst: ItemEntity): void {
   inst.addTag('sharp');
   const weapon = AddWeapon(inst, PITCHFORK_DAMAGE, false);
-  inst.components.terraformer = inst.component('terraformer', () => new Terraformer(inst));
+  addComponent(inst, 'terraformer', Terraformer);
   if (inst.prefab === 'goldenpitchfork') weapon.attackwear = 1 / GOLDENTOOLFACTOR;
 }
 

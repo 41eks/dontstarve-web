@@ -1,3 +1,4 @@
+import { addComponent, removeComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import { WorldContentKey, type GetWatchWorldContent, type TileStateQuery } from '@dontstarve-web/signals';
 import { Vector3 } from 'three';
@@ -61,7 +62,7 @@ export class PondInstance extends PrefabInstance<SpriteState, PondComponents> {
     this.sprite.setGround(0); this.sprite.setMeshOrder(-.5);
     for (const tag of ['watersource', 'pond', 'antlion_sinkhole_blocker', 'birdblocker']) this.addTag(tag);
 
-    const fishable = this.components.fishable = new Fishable(this, scheduler);
+    const fishable = addComponent(this, 'fishable', Fishable, scheduler);
     fishable.AddFish(POND_FISH.prefab, POND_FISH.build);
     fishable.SetRespawnTime(FISH_RESPAWN_TIME);
 
@@ -126,7 +127,7 @@ export class PondInstance extends PrefabInstance<SpriteState, PondComponents> {
       this.physics.SetCollisionGroup(COLLISION.LAND_OCEAN_LIMITS);
       this.physics.SetCollisionMask(COLLISION.WORLD, COLLISION.ITEMS);
       this.DespawnPlants();
-      const slipperyfeettarget = this.components.slipperyfeettarget = new SlipperyFeetTarget(this);
+      const slipperyfeettarget = addComponent(this, 'slipperyfeettarget', SlipperyFeetTarget);
       slipperyfeettarget.SetSlipperyRate(slipperyRate);
     } else if (this.frozen) {
       this.frozen = false;
@@ -135,8 +136,7 @@ export class PondInstance extends PrefabInstance<SpriteState, PondComponents> {
       this.physics.SetCollisionGroup(COLLISION.OBSTACLES);
       this.physics.SetCollisionMask(COLLISION.ITEMS, COLLISION.CHARACTERS, COLLISION.GIANTS);
       this.SpawnPlants();
-      this.components.slipperyfeettarget!.OnRemoveFromEntity();
-      delete this.components.slipperyfeettarget;
+      removeComponent(this, 'slipperyfeettarget');
     } else if (this.frozen === undefined) {
       this.frozen = false;
       this.SpawnPlants();

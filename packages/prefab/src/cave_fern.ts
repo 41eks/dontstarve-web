@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import type { PrefabEntityDefinition } from './prefabInstance';
 import { Pickable } from './components/pickable';
 import { DefaultBurnFn, DefaultExtinguishFn, DefaultBurntFn, MakeNoGrowInWinter } from './standardcomponents';
@@ -19,7 +20,7 @@ export type CaveFernWorld = PickablePlantWorld;
 export class CaveFernInstance extends PickablePlantInstance {
   constructor(prefab: CaveFernId, context: PickablePlantContext) {
     super(CAVE_FERN_DEFINITIONS[prefab], context);
-    const pickable = new Pickable(this, prefab === CAVE_FERN_ID ? 'foliage' : 'cutgrass', CAVE_FERN_REGROW_TIME, 1,
+    const pickable = addComponent(this, 'pickable', Pickable, prefab === CAVE_FERN_ID ? 'foliage' : 'cutgrass', CAVE_FERN_REGROW_TIME, 1,
       () => this.playPickSound('dontstarve/wilson/pickup_plants'), undefined, context.saved?.components.pickable,
       { scheduler: context.scheduler, growthDuration: context.growthDuration, onRemove: () => this.remove() });
     pickable.quickpick = true; pickable.remove_when_picked = true;

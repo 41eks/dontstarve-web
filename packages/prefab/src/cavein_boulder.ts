@@ -1,3 +1,4 @@
+import { Workable } from '../../componets/src/workable';
 import * as THREE from 'three';
 import { SpriteState } from '@dontstarve-web/display';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
@@ -45,12 +46,12 @@ export class CaveinBoulderInstance extends PrefabInstance {
     this.addTag('heavy');
     this.addTag('boulder');
     this.addTag('caveindebris');
-    const lootdropper = new LootDropper(this, (loot, position) => world.spawnGroundItem(
+    const lootdropper = addComponent(this, 'lootdropper', LootDropper, (loot, position) => world.spawnGroundItem(
       { ...catalog.items[loot as keyof typeof catalog.items], itemId: loot, count: 1 },
       new THREE.Vector3(position.x, position.y, position.z), { fling: true }));
     lootdropper.SetChanceLootTable(CAVEIN_BOULDER_ID);
-    Object.assign(this.components, { lootdropper });
-    const workable = addComponent(this as CaveinBoulderInstance, 'workable');
+
+    const workable = addComponent(this as CaveinBoulderInstance, 'workable', Workable);
     workable.SetWorkAction('MINE');
     workable.SetWorkLeft(CAVEIN_BOULDER_MINE);
     workable.SetOnFinishCallback(OnWorked);

@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import { createEffect, createRenderEffect, watchSignal, WorldContentKey, type GameTimeScheduler, type GetWatchWorldContent } from '@dontstarve-web/signals';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
@@ -43,7 +44,8 @@ export class MonkeyPillarInstance extends PrefabInstance {
 
     // Constructor-only dependencies: inspectable's tag is its source constructor's.
     this.addTag('inspectable');
-    Object.assign(this.components, { inspectable: new Inspectable(this), lunarhailbuildup: new LunarHailBuildup(this) });
+    addComponent(this, 'inspectable', Inspectable);
+    addComponent(this, 'lunarhailbuildup', LunarHailBuildup);
 
     queue_moveanim_task(this);
     this.OnSave = (_inst, data) => { if (this.pillar_id !== undefined) data.pillar_id = this.pillar_id; };

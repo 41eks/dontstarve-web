@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { BathBomb } from '../../componets/src/bathbomb';
 import { Fuel } from '../../componets/src/fuel';
@@ -8,10 +9,8 @@ export const BATHBOMB_FUEL = 22.5;
 
 /** bathbomb.lua: bathbomb + fuel components; burnable and stackable come from the shared item tables. */
 export function configureBathbombEntity(entity: ItemEntity): void {
-  entity.components.bathbomb ??= entity.component('bathbomb', () => new BathBomb(entity));
+  addComponent(entity, 'bathbomb', BathBomb);
   if (!entity.components.fuel) {
-    const fuel = entity.component('fuel', () => new Fuel(entity));
-    fuel.fuelvalue = BATHBOMB_FUEL;
-    entity.components.fuel = fuel;
+    addComponent(entity, 'fuel', Fuel).fuelvalue = BATHBOMB_FUEL;
   }
 }

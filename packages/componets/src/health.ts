@@ -67,7 +67,7 @@ export class Health {
   /** health.lua self.regen: the amount, period and periodic task of StartRegen. */
   regen?: { amount: number; period: number; task?: () => void };
 
-  constructor(maxhealth = 100, inst: HealthInst = {}, scheduler?: GameTimeScheduler) {
+  constructor(inst: HealthInst, maxhealth = 100, scheduler?: GameTimeScheduler) {
     this.inst = inst;
     this.scheduler = scheduler;
     this.maximumState = createSignal(maximum(maxhealth));
