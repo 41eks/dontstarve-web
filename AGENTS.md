@@ -44,6 +44,7 @@
 - 状态只有一个权威所有者：工作量在 `workable`，再生任务在 `pickable`／`growable`，燃烧任务在 `burnable`，实体持久化在 `instance.persists`，皮肤在 `instance.skinId`（即 sprite json 的字段）。manager、目标 view、display 和 UI 不另建同名可写副本或靠 effect／回调双向同步。组合状态用纯 `createMemo` 从所属实例和组件派生。
 - prefab 通过 `instance.sprite` 声明 clip、队列、外观和 FX；display 将声明交给 animation 执行。display／animation 可以通知已加载、已绘制和 clip 完成，也可以调用实例已经声明的完成回调；业务规则和实体移除决定仍属于声明该回调的 prefab／组件。游戏时间任务不能改成等待这个完成通知。
 
+- 不得用 `Object.assign` 或对象展开合并的方式写入实体、组件或其他对象的状态（`components`、实例字段、`userData` 等）；必须通过属主提供的接口写入，比如 `addComponent`、setter 或组件方法。只有构造新对象时（`Object.assign({}, ...)`、`{ ...a, ...b }`）可以使用。
 
 ## Spatial queries and distance calculations
 
