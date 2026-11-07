@@ -114,7 +114,5 @@ export class WinterometerInstance extends PrefabInstance {
 }
 
 export function winterometerPrefabs(world: PrefabWorldContext) {
-    return { [WINTEROMETER_ID]: buildingPrefab(declaration, 'winter_meter', .4, position => new WinterometerInstance(world, position), world,
-        // AnimState:SetPercent("meter", ...) holds the needle.
-        { controller: true }) };
+    return { [WINTEROMETER_ID]: buildingPrefab(declaration, 'winter_meter', .4, position => new WinterometerInstance(world, position), world) };
 }

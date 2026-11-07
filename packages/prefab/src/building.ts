@@ -98,17 +98,14 @@ function MakeBuildingTargets(inst: PrefabInstance, skins: readonly string[], wor
 
 /**
  * Prefab(name, fn, assets) for a building drawn from its definitions.json entry; `radius` is its source MakeObstaclePhysics,
- * if it has one. `controller` draws it through a factory animation controller instead of a shared archive sprite.
+ * if it has one.
  */
 export function buildingPrefab<Instance extends PrefabInstance>(declaration: BuildingDeclaration, bank: string, radius: number | undefined,
-  fn: PrefabEntityDefinition<Instance>['fn'], world: Pick<PrefabWorldContext, 'handEquipment'>,
-  { controller = false }: { controller?: boolean } = {}): PrefabEntityDefinition<Instance> {
-  const { archive, buildArchive = archive, name, scale, skinArchives, skinSymbols } = declaration, skins = Object.keys(skinArchives ?? {});
+  fn: PrefabEntityDefinition<Instance>['fn'], world: Pick<PrefabWorldContext, 'handEquipment'>): PrefabEntityDefinition<Instance> {
+  const { archive, buildArchive = archive, skinArchives, skinSymbols } = declaration, skins = Object.keys(skinArchives ?? {});
   return {
     fn,
-    ...controller
-      ? { animatedAssets: [archive, buildArchive === archive ? {} : { buildArchive }, { name, scale, skinSymbols }] }
-      : { assets: { animationArchive: archive, buildArchives: [buildArchive], bank } },
+    assets: { animationArchive: archive, buildArchives: [buildArchive], bank },
     skins: skinArchives,
     ...skinSymbols ? { skinSymbols } : {},
     alignBottom: true,

@@ -335,7 +335,5 @@ export class MoonbaseInstance extends PrefabInstance {
 }
 
 export function moonbasePrefabs(world: PrefabWorldContext) {
-  return { [MOONBASE_ID]: buildingPrefab(declaration, 'moonbase', 1, (_position, sprites) => new MoonbaseInstance(world, sprites), world,
-    // The held staff is an OverrideSymbol on its AnimState.
-    { controller: true }) };
+  return { [MOONBASE_ID]: buildingPrefab(declaration, 'moonbase', 1, (_position, sprites) => new MoonbaseInstance(world, sprites), world) };
 }

@@ -172,7 +172,5 @@ export class SculptingTableInstance extends PrefabInstance {
 }
 
 export function sculptingTablePrefabs(world: PrefabWorldContext) {
-    return { [SCULPTING_TABLE_ID]: buildingPrefab(declaration, 'sculpting_station', .4, (_position, sprites) => new SculptingTableInstance(world, sprites), world,
-        // The held block is an OverrideSymbol on its AnimState.
-        { controller: true }) };
+    return { [SCULPTING_TABLE_ID]: buildingPrefab(declaration, 'sculpting_station', .4, (_position, sprites) => new SculptingTableInstance(world, sprites), world) };
 }
