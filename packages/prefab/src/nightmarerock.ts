@@ -1,16 +1,9 @@
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
-import { PrefabDisplayGroup } from '@dontstarve-web/display';
-import type * as CANNON from 'cannon-es';
-import * as THREE from 'three';
-import type { TileStateQuery } from '@dontstarve-web/signals';
-import { SpriteResources, SpriteState } from '@dontstarve-web/display';
-import { bindInstance, PrefabInstance } from './prefabInstance';
-import { watchTileActivity } from './tileActivity';
+import { SpriteState } from '@dontstarve-web/display';
+import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { ComponentTimer } from '../../componets/src/timer';
 import { NightmareRockStateGraph, type NightmareRockSound, type NightmareRockStateInst } from '../../stategraphs/src/SGnightmarerock';
-import { actionEntity } from './actionEntity';
-import { newEntityId } from './saveRecord';
 import { PlaySound } from './sound';
 import { MakeObstaclePhysics, WORLD_SCALE } from './standardcomponents';
 import type { WorldFxPrefab } from './world_fx';
@@ -19,12 +12,6 @@ import { COLLISION } from '../../componets/src/physicsState';
 export const NIGHTMAREROCK_IDS = ['sanityrock', 'insanityrock'] as const;
 export type NightmareRockId = typeof NIGHTMAREROCK_IDS[number];
 
-export interface NightmareRockRecord {
-  id: string;
-  transform: { position: [number, number, number]; rotationY: number };
-  components: Record<string, never>;
-}
-
 /** What nightmarerock.lua reads from AllPlayers. */
 export interface NightmareRockPlayer {
   readonly position: ReadonlyVector3;
@@ -32,9 +19,8 @@ export interface NightmareRockPlayer {
 }
 
 export interface NightmareRockWorld {
-  tickingarea?: TileStateQuery;
-  scheduler?: GameTimeScheduler;
-  physics: CANNON.World;
+  scheduler: GameTimeScheduler;
+  /** AllPlayers. */
   getPlayers(): readonly NightmareRockPlayer[];
   fx: { spawn(prefab: WorldFxPrefab, position: ReadonlyVector3): void };
 }
@@ -45,6 +31,8 @@ const NEAR_DIST_SQ = (10 * WORLD_SCALE) ** 2;
 const FAR_DIST_SQ = (11 * WORLD_SCALE) ** 2;
 const UPDATE_INTERVAL = .2;
 const FRAMES = 1 / 30;
+/** Used to stagger periodic updates across entities: a file-level local of nightmarerock.lua, advanced by each AddRefreshTask. */
+let UPDATE_OFFSET = 0;
 
 export function isNightmareRockId(value: string): value is NightmareRockId {
   return (NIGHTMAREROCK_IDS as readonly string[]).includes(value);
@@ -58,23 +46,18 @@ export class NightmareRockInstance extends PrefabInstance implements NightmareRo
   conceal_queued = false;
   declare readonly sg: NightmareRockStateGraph['sg'];
   readonly activeonsane: boolean;
-  private readonly refreshTimer?: ComponentTimer;
+  private refreshTimer?: ComponentTimer;
   private cancelTransition?: () => void;
   private readonly world: NightmareRockWorld;
 
-  constructor(world: NightmareRockWorld, id: NightmareRockId, staggerOffset: number) {
+  /** commonfn; MakeObstaclePhysics and updatephysics come from the prefab's `physics`. */
+  constructor(world: NightmareRockWorld, id: NightmareRockId) {
     super(id, new SpriteState({ name: 'idle_inactive', billboard: true }));
     this.world = world;
     this.activeonsane = id === 'sanityrock';
     for (const tag of ['antlion_sinkhole_blocker', id]) this.addTag(tag);
-    MakeObstaclePhysics(this, COLLISION_SIZE);
-    this.updatePhysics();
     this.sg = new NightmareRockStateGraph(this, world.scheduler).sg;
-    if (world.scheduler) {
-      // DoPeriodicTask(UPDATE_INTERVAL, refresh, UPDATE_OFFSET)
-      this.refreshTimer = new ComponentTimer(world.scheduler, () => { this.refresh(); this.refreshTimer!.start(UPDATE_INTERVAL); });
-      this.refreshTimer.start(staggerOffset);
-    }
+    this.AddRefreshTask();
     this.onRemove(() => {
       this.cancelTransition?.();
       this.refreshTimer?.stop();
@@ -102,8 +85,17 @@ export class NightmareRockInstance extends PrefabInstance implements NightmareRo
     this.OnActiveStateChanged();
   }
 
+  /** AddRefreshTask: DoPeriodicTask(UPDATE_INTERVAL, refresh, UPDATE_OFFSET), then stagger the next spawned entity. */
+  private AddRefreshTask(): void {
+    if (this.refreshTimer) return;
+    const timer = this.refreshTimer = new ComponentTimer(this.world.scheduler, () => { this.refresh(); timer.start(UPDATE_INTERVAL); });
+    timer.start(UPDATE_OFFSET);
+    UPDATE_OFFSET += FRAMES;
+    if (UPDATE_OFFSET > UPDATE_INTERVAL) UPDATE_OFFSET = 0;
+  }
+
   /** nightmarerock.lua updatephysics: characters collide only with a raised, revealed rock. */
-  private updatePhysics(): void {
+  updatePhysics(): void {
     this.physics.SetCollisionGroup(COLLISION.OBSTACLES);
     let mask: number = COLLISION.WORLD;
     if (!this.conceal) {
@@ -136,11 +128,7 @@ export class NightmareRockInstance extends PrefabInstance implements NightmareRo
         && player.position.distanceToSquared(this.position) < limit);
     }
     if ((this.conceal !== this.conceal_queued || this.active_queue !== this.active) && !this.cancelTransition) {
-      const scheduler = this.world.scheduler;
-      if (scheduler) {
-        const cancel = scheduler.schedule(Math.random(), () => { this.cancelTransition = undefined; this.doTransition(); });
-        this.cancelTransition = cancel;
-      }
+      this.cancelTransition = this.world.scheduler.schedule(Math.random(), () => { this.cancelTransition = undefined; this.doTransition(); });
     }
   }
 
@@ -159,64 +147,13 @@ export class NightmareRockInstance extends PrefabInstance implements NightmareRo
 }
 
 /** nightmarerock.lua sanityrock / insanityrock: obelisks that rise and lower with the nearby player's sanity. */
-export class NightmareRockManager {
-  private readonly resources: SpriteResources;
-  private readonly rocks = new Map<THREE.Group, NightmareRockInstance>();
-  private readonly displays: PrefabDisplayGroup;
-  private readonly world: NightmareRockWorld;
-  private staggerOffset = 0;
-  private disposed = false;
-
-  constructor(scene: THREE.Scene, assetBaseUrl: string, world: NightmareRockWorld) {
-    this.displays = new PrefabDisplayGroup(scene); this.resources = new SpriteResources(assetBaseUrl); this.world = world;
-  }
-
-  spawn(id: NightmareRockId, position: ReadonlyVector3, saved?: NightmareRockRecord): THREE.Group {
-    if (this.disposed) throw new Error('Nightmare rocks have been disposed');
-    if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError('Invalid nightmare rock position');
-    const instance = new NightmareRockInstance(this.world, id, this.staggerOffset);
-    const display = this.displays.add({ root: instance.transform.model, name: id, source: this.resources.factory({ animationArchive: 'blocker_sanity.zip', buildArchive: 'blocker_sanity.zip' }),
-      status: instance.status, sprite: instance.sprite, light: instance.light });
-    const model = display.model;
-    bindInstance(model, instance);
-    instance.setPosition(position.x, 0, position.z);
-    instance.entityId = saved?.id ?? newEntityId();
-    instance.saveRecord = saved;
-    instance.bindPhysics(this.world.physics);
-    actionEntity(model, id, instance);
-    // UPDATE_OFFSET staggers the periodic refresh of each spawned entity by one frame.
-    this.staggerOffset += FRAMES;
-    if (this.staggerOffset > UPDATE_INTERVAL) this.staggerOffset = 0;
-    this.rocks.set(model, instance);
-    instance.onRemove(() => { this.rocks.delete(model); display.dispose(); });
-    instance.onRemove(watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active)));
-    return model;
-  }
-
-  update(dt: number, cameraQuaternion: THREE.Quaternion): void {
-    for (const instance of this.rocks.values()) instance.sg.update(dt);
-    this.displays.update(dt, cameraQuaternion);
-  }
-
-  get renderEntities() {
-    return this.displays.renderEntities.filter(({ object }) => this.rocks.get(object)?.sprite.loaded);
-  }
-
-  /** The rocks' state is derived from the nearby player on load, so only identity and position are saved. */
-  exportRecords(): { prefabId: NightmareRockId; record: NightmareRockRecord }[] {
-    return [...this.rocks.values()].filter(instance => instance.persists).map(instance => ({ prefabId: instance.prefab as NightmareRockId, record: {
-      id: String(instance.entityId),
-      transform: { position: [instance.position.x, 0, instance.position.z], rotationY: 0 },
-      components: {},
-    } }));
-  }
-
-  dispose(): void {
-    if (this.disposed) return;
-    this.disposed = true;
-    for (const instance of [...this.rocks.values()]) instance.remove();
-    this.rocks.clear();
-    this.displays.dispose();
-    this.resources.dispose();
-  }
+export function nightmareRockPrefabs(world: NightmareRockWorld): Readonly<Record<NightmareRockId, PrefabEntityDefinition<NightmareRockInstance>>> {
+  const prefab = (id: NightmareRockId): PrefabEntityDefinition<NightmareRockInstance> => ({
+    fn: () => new NightmareRockInstance(world, id),
+    assets: { animationArchive: 'blocker_sanity.zip', buildArchives: ['blocker_sanity.zip'], bank: 'blocker_sanity' },
+    // MakeObstaclePhysics(inst, COLLISION_SIZE), then updatephysics for the lowered rock.
+    physics: { make: (inst, radius) => { MakeObstaclePhysics(inst, radius); inst.updatePhysics(); }, radius: COLLISION_SIZE },
+    minimapIcon: 'obelisk.png',
+  });
+  return { sanityrock: prefab('sanityrock'), insanityrock: prefab('insanityrock') };
 }

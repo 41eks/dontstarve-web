@@ -53,7 +53,7 @@ python3 packages/prefab/scripts/import-static-layouts.py --source /path/to/DST/d
 - 对象位置为 `corner + (x, y) × TILE_SIZE`（`y → z`）；与 `anchorPrefab` 同名的对象（猪王）不单独返回，由存档中的猪王记录决定它的位置。
 - 主场景（`src/sceneEntities.ts`）对每个猪王调用它，把所有布局格子一次登记到 `TurfMap.setOriginalTiles`，不覆盖存档里已挖掘的地皮。只有有效地皮发生变化才统一重建一次并发布变更；完整导入存档已有最终地皮时不重建。
 
-岩石是普通实体：`initial-world.json` 与 `initial-world copy.json` 的 `entities.sanityrock` / `entities.insanityrock` 就是按上面的公式从布局算出的位置（猪王在 `(0, 0, 25)`，角点为 `(0, 24)`），由 `NightmareRockManager` 恢复。需要重新生成这些记录时，用同一公式并保持 `e_<prefab>_<6 位序号>` 的 ID 格式。
+岩石是普通实体：`initial-world.json` 与 `initial-world copy.json` 的 `entities.sanityrock` / `entities.insanityrock` 就是按上面的公式从布局算出的位置（猪王在 `(0, 0, 25)`，角点为 `(0, 24)`），由全局 `PrefabEntityManager` 按 `nightmareRockPrefabs` 恢复。需要重新生成这些记录时，用同一公式并保持 `e_<prefab>_<6 位序号>` 的 ID 格式。
 
 ## 与原版 worldgen 的差异
 

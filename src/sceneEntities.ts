@@ -78,7 +78,7 @@ import { lavaPondPrefabs } from '@dontstarve-web/prefab/lava_pond';
 import { WormholeManager, WORMHOLE_ID } from '@dontstarve-web/prefab/wormhole';
 import { portalPrefabs } from '@dontstarve-web/prefab/portal';
 import { nightmareGrowthPrefabs, type NightmareGrowthCrackInstance } from '@dontstarve-web/prefab/nightmaregrowth';
-import { NightmareRockManager } from '@dontstarve-web/prefab/nightmarerock';
+import { nightmareRockPrefabs } from '@dontstarve-web/prefab/nightmarerock';
 import { pigKingPrefabs } from '@dontstarve-web/prefab/pigking';
 import { BERNIE_ITEM_ID, berniePrefabs, type BernieWorld } from '@dontstarve-web/prefab/bernie';
 import { StatueGlommerManager } from '@dontstarve-web/prefab/statueglommer';
@@ -267,7 +267,6 @@ const SCENE_LIFECYCLE_ORDER = [
   PREFAB_DEFINITIONS.reskinEffects,
   PREFAB_DEFINITIONS.worldFx,
   PREFAB_DEFINITIONS.staffProjectiles,
-  PREFAB_DEFINITIONS.nightmareRocks,
   PREFAB_DEFINITIONS.rain,
   PREFAB_DEFINITIONS.snow,
   PREFAB_DEFINITIONS.oceanWaves,
@@ -343,7 +342,6 @@ export async function createSceneEntities(
     'ruins_statue_head_nogem': typeof prefabs;
     'atrium_statue': ReturnType<typeof registerAtriumStatue>;
     'chessjunk': ReturnType<typeof registerChessJunk>;
-    'sanityrock': ReturnType<typeof registerNightmareRocks>;
     'rain': ReturnType<typeof registerRain>;
     'snow': ReturnType<typeof registerSnow>;
     'ocean_waves': ReturnType<typeof registerOceanWaves>;
@@ -446,7 +444,7 @@ export async function createSceneEntities(
   registerArchiveCentipedeHusks(registry, 'archive_centipede_husk', worldState);
   Managers['marsh_plant'] = registerMarshPlants(registry, worldState);
   Managers['pond'] = registerPonds(registry, 'pond', worldState);
-  Managers['sanityrock'] = registerNightmareRocks(registry, 'sanityrock', worldState);
+  registerNightmareRocks(registry, 'sanityrock', worldState);
   Managers['rain'] = registerRain(registry, 'rain', worldState);
   Managers['snow'] = registerSnow(registry, 'snow', worldState);
   Managers['ocean_waves'] = registerOceanWaves(registry, 'ocean_waves', worldState);
@@ -1267,23 +1265,13 @@ export async function createSceneEntities(
   }
 
   function registerNightmareRocks(registry: EntityRegistry, prefabId: 'sanityrock', worldState: SceneWorldState) {
-    const nightmareRocks = new NightmareRockManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
-      scheduler, physics: world, fx: Managers['world_fx'], tickingarea: worldState.tickingarea,
+    prefabs.register(nightmareRockPrefabs({
+      scheduler: scheduler ?? worldState.scheduler, fx: Managers['world_fx'],
       // AllPlayers: the local player, once its sanity component is attached.
       getPlayers: () => playerInstance.components.sanity
         ? [{ position: player.position, sanity: playerInstance.components.sanity }] : [],
-    });
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
-      restore: (id, record) => nightmareRocks.spawn(id, new THREE.Vector3(...record.transform.position), {
-        id: record.id, transform: record.transform, components: {},
-      }),
-      debugSpawn: (id) => nightmareRocks.spawn(id, player.position.clone()),
-      exportRecords: () => nightmareRocks.exportRecords(),
-      update: (dt, quaternion) => nightmareRocks.update(dt, quaternion),
-      renderEntities: () => nightmareRocks.renderEntities,
-      dispose: () => nightmareRocks.dispose(),
-    });
-    return nightmareRocks;
+    }));
+    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
   }
 
   function registerRain(registry: EntityRegistry, prefabId: 'rain', worldState: SceneWorldState) {

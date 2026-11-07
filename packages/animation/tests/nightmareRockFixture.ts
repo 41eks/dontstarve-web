@@ -1,0 +1,21 @@
+import type * as THREE from 'three';
+import type * as CANNON from 'cannon-es';
+import { PrefabDisplayGroup } from '@dontstarve-web/display';
+import type { TileStateQuery } from '@dontstarve-web/signals';
+import { nightmareRockPrefabs, type NightmareRockId, type NightmareRockInstance, type NightmareRockWorld } from '../../prefab/src/nightmarerock';
+import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
+
+/** nightmarerock.lua's sanityrock and insanityrock on one world's PrefabEntityManager. */
+export function nightmareRockWorld(scene: THREE.Scene, world: NightmareRockWorld, options: { physics?: CANNON.World; tickingarea?: TileStateQuery } = {}) {
+  const displays = new PrefabDisplayGroup(scene);
+  const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', options);
+  prefabs.register(nightmareRockPrefabs(world) as never);
+  return {
+    prefabs,
+    spawn: (id: NightmareRockId, position: THREE.Vector3) => prefabs.spawn(id, position) as NightmareRockInstance,
+    exportRecords: () => prefabs.exportRecords(),
+    /** The display group advances the awake rocks' clips. */
+    update: (dt: number) => displays.update(dt),
+    dispose: () => { prefabs.dispose(); displays.dispose(); },
+  };
+}

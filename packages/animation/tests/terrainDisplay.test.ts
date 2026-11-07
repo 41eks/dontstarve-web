@@ -7,7 +7,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { archivePropsPrefabs } from '../../prefab/src/archive_props';
 import { marbleShrubWorld } from './marbleShrubFixture';
-import { NightmareRockManager, type NightmareRockInstance } from '../../prefab/src/nightmarerock';
+import { nightmareRockWorld } from './nightmareRockFixture';
 import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { FACING } from '../src/facing';
@@ -116,11 +116,10 @@ it('settles a sanityrock transition on sleep and restores its stategraph pose an
   vi.spyOn(Math, 'random').mockReturnValue(0);
   const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), awake = createSignal(true), physics = new CANNON.World();
   const player = { position: new THREE.Vector3(12, 0, 6), sanity: { IsSane: () => true, IsInsane: () => false } };
-  const manager = new NightmareRockManager(scene, '/dst/data/anim', { scheduler, physics,
-    tickingarea: () => createMemo(() => awake.get()), getPlayers: () => [player], fx: { spawn: vi.fn() } });
+  const manager = nightmareRockWorld(scene, { scheduler, getPlayers: () => [player], fx: { spawn: vi.fn() } },
+    { physics, tickingarea: () => createMemo(() => awake.get()) });
   try {
-    const model = await manager.spawn('sanityrock', new THREE.Vector3(12, 0, 6));
-    const rock = prefabInstance(model) as NightmareRockInstance;
+    const rock = manager.spawn('sanityrock', new THREE.Vector3(12, 0, 6)), model = rock.transform.model;
     await prefabDisplay(model)!.artLoaded();
     scheduler.advance(0);
     expect(rock.sg.stateName).toBe('raise');

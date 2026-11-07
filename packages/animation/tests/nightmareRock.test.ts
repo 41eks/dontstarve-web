@@ -5,7 +5,16 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Sanity } from '../../componets/src/sanity';
-import { NightmareRockManager, type NightmareRockInstance } from '../../prefab/src/nightmarerock';
+import type { NightmareRockInstance } from '../../prefab/src/nightmarerock';
+import { nightmareRockWorld } from './nightmareRockFixture';
+import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
+import { EntityRegistry } from '../../../src/entityRegistry';
+import { executeDebugCommand } from '../../../src/debugCommands';
+import { createInventoryStore } from '../../../src/inventory';
+import { serializeSave } from '../../../src/save/serialize';
+import { deserializeSave } from '../../../src/save/deserialize';
+import { SAVE_CATALOG } from '../../../src/save/catalog';
+import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { prefabDisplay } from '@dontstarve-web/display';
 
 beforeEach(() => {
@@ -27,12 +36,11 @@ async function setup() {
   const current = sanity;
   const player = { position: new THREE.Vector3(100, 0, 0), sanity };
   const fx = { spawn: vi.fn() };
-  const manager = new NightmareRockManager(new THREE.Scene(), '/dst/data/anim', { scheduler, physics, fx, getPlayers: () => [player] });
+  const manager = nightmareRockWorld(new THREE.Scene(), { scheduler, fx, getPlayers: () => [player] }, { physics });
   const run = (seconds: number) => {
-    for (let elapsed = 0; elapsed < seconds; elapsed += 1 / 30) { scheduler.advance(1 / 30); manager.update(1 / 30, new THREE.Quaternion()); }
+    for (let elapsed = 0; elapsed < seconds; elapsed += 1 / 30) { scheduler.advance(1 / 30); manager.update(1 / 30); }
   };
-  const rock = async (id: 'sanityrock' | 'insanityrock') =>
-    prefabInstance(manager.spawn(id, new THREE.Vector3(0, 0, 0))) as NightmareRockInstance;
+  const rock = async (id: 'sanityrock' | 'insanityrock') => manager.spawn(id, new THREE.Vector3(0, 0, 0));
   return { manager, current, player, fx, run, rock, physics };
 }
 
@@ -42,12 +50,12 @@ describe('nightmare rocks', () => {
     const scheduler = new GameTimeScheduler(), physics = new CANNON.World(), scene = new THREE.Scene();
     const player = { position: new THREE.Vector3(), sanity: { IsSane: () => true, IsInsane: () => false } };
     const fx = { spawn: vi.fn() };
-    const manager = new NightmareRockManager(scene, '/dst/data/anim', { scheduler, physics, fx, getPlayers: () => [player] });
+    const manager = nightmareRockWorld(scene, { scheduler, fx, getPlayers: () => [player] }, { physics });
     try {
-      const first = manager.spawn('sanityrock', new THREE.Vector3());
-      const second = manager.spawn('sanityrock', new THREE.Vector3(6, 0, 0));
-      const instance = prefabInstance(first) as NightmareRockInstance;
-      const neighbour = prefabInstance(second) as NightmareRockInstance;
+      const instance = manager.spawn('sanityrock', new THREE.Vector3());
+      const neighbour = manager.spawn('sanityrock', new THREE.Vector3(6, 0, 0));
+      const first = instance.transform.model, second = neighbour.transform.model;
+      expect(prefabInstance(first)).toBe(instance);
       const neighbourDisplay = prefabDisplay(second)!;
       scheduler.advance(0);
       expect(instance.sg.context).toBe(instance);
@@ -59,6 +67,8 @@ describe('nightmare rocks', () => {
         }
       }
       instance.remove();
+      // The display releases the removed rock's model when its status effect runs.
+      await new Promise(resolve => setTimeout(resolve, 0));
       expect(first.parent).toBeNull();
       expect(physics.bodies).toHaveLength(1);
       expect(manager.exportRecords().map(({ record }) => record.id)).toEqual([neighbour.entityId]);
@@ -132,5 +142,49 @@ describe('nightmare rocks', () => {
     run(3);
     expect(obelisk.active).toBe(false);
     manager.dispose();
+  });
+
+  it('c_spawn then c_save exports both rocks by identity and position, and the reloaded rocks derive their state again', async () => {
+    vi.stubGlobal('window', new EventTarget());
+    const world = (position: THREE.Vector3) => {
+      const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), physics = new CANNON.World(), inventory = createInventoryStore([]);
+      const player = { position, sanity: { IsSane: () => true, IsInsane: () => false } };
+      const rocks = nightmareRockWorld(scene, { scheduler, fx: { spawn: vi.fn() }, getPlayers: () => [player] }, { physics });
+      const registry = new EntityRegistry([], rocks.prefabs, () => position);
+      registry.registerPrefabs(PREFAB_DEFINITIONS.nightmareRocks);
+      const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
+      const save = () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(), elapsedSeconds: 0,
+        playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
+      return { scene, scheduler, physics, inventory, registry, save,
+        dispose: () => { registry.dispose(); rocks.dispose(); inventory.dispose(); scheduler.dispose(); } };
+    };
+    const first = world(new THREE.Vector3(9, 0, -3));
+    let json = '';
+    try {
+      expect((await executeDebugCommand('c_spawn("sanityrock");c_spawn("insanityrock")', first.inventory,
+        prefab => first.registry.spawn(prefab))).ok).toBe(true);
+      expect(first.scene.children).toHaveLength(2);
+      expect((await executeDebugCommand('c_save()', first.inventory, undefined, () => { json = first.save(); })).ok).toBe(true);
+    } finally { first.dispose(); }
+    const entities = deserializeSave(json, SAVE_CATALOG).world.entities;
+    for (const id of ['sanityrock', 'insanityrock'] as const) {
+      expect(entities[id]).toEqual([{ id: expect.any(String), transform: { position: [9, 0, -3], rotationY: 0 }, components: {} }]);
+    }
+
+    // The state is not saved: a sane player standing on the reloaded rocks raises only the sanityrock.
+    const second = world(new THREE.Vector3(9, 0, -3));
+    try {
+      await second.registry.restoreAll({ sanityrock: entities.sanityrock, insanityrock: entities.insanityrock });
+      const [sane, insane] = ['sanityrock', 'insanityrock'].map(id =>
+        second.scene.children.map(model => prefabInstance(model) as NightmareRockInstance).find(rock => rock.prefab === id)!);
+      expect(sane.entityId).toBe(entities.sanityrock![0].id);
+      expect(insane.entityId).toBe(entities.insanityrock![0].id);
+      expect(sane.position.toArray()).toEqual([9, 0, -3]);
+      expect(second.physics.bodies).toHaveLength(2);
+      second.scheduler.advance(2);
+      expect(sane.active).toBe(true);
+      expect(insane.active).toBe(false);
+      expect(second.registry.exportRecords()).toMatchObject({ sanityrock: entities.sanityrock, insanityrock: entities.insanityrock });
+    } finally { second.dispose(); }
   });
 });
