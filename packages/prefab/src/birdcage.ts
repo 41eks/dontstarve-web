@@ -563,7 +563,5 @@ export class BirdcageInstance extends PrefabInstance {
 }
 
 export function birdcagePrefabs(world: PrefabWorldContext) {
-    return { [BIRDCAGE_ID]: buildingPrefab(declaration, 'birdcage', .5, (_position, sprites) => new BirdcageInstance(world, sprites.archives), world,
-        // The caged bird is an AddOverrideBuild on its AnimState slot.
-        { controller: true }) };
+    return { [BIRDCAGE_ID]: buildingPrefab(declaration, 'birdcage', .5, (_position, sprites) => new BirdcageInstance(world, sprites.archives), world) };
 }

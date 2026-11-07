@@ -4,15 +4,13 @@
       "archive": "wardrobe.zip",
       "buildLabel": "衣柜",
       "idleAnimation": "closed",
-      "name": "Wardrobe",
-      "scale": 0.02
+      "name": "Wardrobe"
     },
     "moonbase": {
       "archive": "moonbase.zip",
       "buildLabel": "月亮石",
       "idleAnimation": "med",
-      "name": "MoonBase",
-      "scale": 0.02
+      "name": "MoonBase"
     },
     "firepit": {
       "archive": "firepit.zip",
@@ -20,7 +18,6 @@
       "idleAnimation": "idle",
       "previewAnimation": "preview",
       "name": "FirePit",
-      "scale": 0.02,
       "skinArchives": {
         "firepit_fanged": "dynamic/firepit_fanged.zip",
         "firepit_fangedp": "dynamic/firepit_fanged.zip",
@@ -39,7 +36,6 @@
       "buildLabel": "冰箱",
       "idleAnimation": "closed",
       "name": "IceBox",
-      "scale": 0.02,
       "skinArchives": {
         "icebox_coffin": "dynamic/icebox_coffin.zip",
         "icebox_crystal": "dynamic/icebox_crystal.zip",
@@ -59,7 +55,6 @@
       "buildLabel": "烹饪锅",
       "idleAnimation": "idle_empty",
       "name": "CookPot",
-      "scale": 0.02,
       "skinArchives": {
         "cookpot_candy": "dynamic/cookpot_candy.zip",
         "cookpot_cauldron": "dynamic/cookpot_cauldron.zip",
@@ -80,7 +75,6 @@
       "archive": "researchlab.zip",
       "buildLabel": "科学机器",
       "name": "ResearchLab",
-      "scale": 0.016,
       "skinArchives": {
         "researchlab_gothic": "dynamic/researchlab_gothic.zip",
         "researchlab_green": "dynamic/researchlab_green.zip",
@@ -101,7 +95,6 @@
       "archive": "researchlab2.zip",
       "buildLabel": "炼金引擎",
       "name": "ResearchLab2",
-      "scale": 0.02,
       "skinArchives": {
         "researchlab2_alchemytable": "dynamic/researchlab2_alchemytable.zip",
         "researchlab2_crystal": "dynamic/researchlab2_crystal.zip",
@@ -124,7 +117,6 @@
       "archive": "researchlab3.zip",
       "buildLabel": "暗影操控器",
       "name": "ResearchLab3",
-      "scale": 0.02,
       "skinArchives": {
         "researchlab3_adventure": "dynamic/researchlab3_adventure.zip",
         "researchlab3_ancient": "dynamic/researchlab3_ancient.zip",
@@ -137,7 +129,6 @@
       "archive": "researchlab4.zip",
       "buildLabel": "灵子分解器",
       "name": "ResearchLab4",
-      "scale": 0.02,
       "skinArchives": {
         "researchlab4_catcoon_costume": "dynamic/researchlab4_catcoon_costume.zip",
         "researchlab4_catcoon_costumep": "dynamic/researchlab4_catcoon_costume.zip",
@@ -168,7 +159,6 @@
       "buildLabel": "箱子",
       "idleAnimation": "closed",
       "name": "TreasureChest",
-      "scale": 0.02,
       "skinArchives": {
         "treasurechest_ancient": "dynamic/treasurechest_ancient.zip",
         "treasurechest_upgraded_ancient": "dynamic/treasurechest_ancient.zip",
@@ -220,7 +210,6 @@
       "buildLabel": "华丽箱子",
       "idleAnimation": "closed",
       "name": "PandorasChest",
-      "scale": 0.02,
       "container": {
         "slotCount": 9,
         "columns": 3,
@@ -231,15 +220,13 @@
     "tent": {
       "archive": "tent.zip",
       "buildLabel": "帐篷",
-      "name": "Tent",
-      "scale": 0.02
+      "name": "Tent"
     },
     "dragonflychest": {
       "archive": "dragonfly_chest.zip",
       "buildLabel": "龙鳞宝箱",
       "idleAnimation": "closed",
       "name": "DragonflyChest",
-      "scale": 0.02,
       "skinArchives": {
         "dragonflychest_fantasy": "dynamic/dragonflychest_fantasy.zip",
         "dragonflychest_kraken": "dynamic/dragonflychest_kraken.zip",
@@ -258,7 +245,6 @@
       "buildLabel": "书架",
       "idleAnimation": "idle",
       "name": "Bookstation",
-      "scale": 0.02,
       "skinArchives": {
         "bookstation_house": "dynamic/bookstation_house.zip"
       },
@@ -280,7 +266,6 @@
       "buildLabel": "营火",
       "idleAnimation": "idle",
       "name": "Campfire",
-      "scale": 0.02,
       "skinArchives": {
         "campfire_cabin": "dynamic/campfire_cabin.zip"
       },
@@ -291,7 +276,6 @@
       "buildLabel": "盐盒",
       "idleAnimation": "closed",
       "name": "SaltBox",
-      "scale": 0.02,
       "skinArchives": {
         "saltbox_kitchen": "dynamic/saltbox_kitchen.zip",
         "saltbox_nautical": "dynamic/saltbox_nautical.zip",
@@ -310,7 +294,6 @@
       "buildLabel": "暗夜灯",
       "idleAnimation": "idle",
       "name": "NightLight",
-      "scale": 0.02,
       "skinArchives": {
         "nightmare_torch_relic": "dynamic/nightmare_torch_relic.zip"
       }
@@ -320,7 +303,6 @@
       "buildLabel": "猪屋",
       "idleAnimation": "idle",
       "name": "PigHouse",
-      "scale": 0.02,
       "skinArchives": {
         "pighouse_cabin": "dynamic/pighouse_cabin.zip",
         "pighouse_gothic": "dynamic/pighouse_gothic.zip",
@@ -332,7 +314,6 @@
       "buildLabel": "蘑菇灯",
       "idleAnimation": "idle",
       "name": "MushroomLight",
-      "scale": 0.02,
       "skinArchives": {
         "mushroom_light_an": "dynamic/mushroom_light_an.zip",
         "mushroom_light_cawnival": "dynamic/mushroom_light_cawnival.zip",
@@ -352,7 +333,6 @@
       "buildLabel": "菌伞灯",
       "idleAnimation": "idle",
       "name": "MushroomLight2",
-      "scale": 0.02,
       "skinArchives": {
         "mushroom_light2_an": "dynamic/mushroom_light2_an.zip",
         "mushroom_light2_cawnival": "dynamic/mushroom_light2_cawnival.zip",
@@ -372,7 +352,6 @@
       "buildLabel": "陶轮",
       "idleAnimation": "idle",
       "name": "SculptingTable",
-      "scale": 0.02,
       "skinArchives": {
         "sculptingtable_gothic": "dynamic/sculptingtable_gothic.zip",
         "sculptingtable_swamp": "dynamic/sculptingtable_swamp.zip"
@@ -384,7 +363,6 @@
       "buildLabel": "月晷",
       "idleAnimation": "idle_new",
       "name": "Moondial",
-      "scale": 0.02,
       "skinArchives": {
         "moondial_an": "dynamic/moondial_an.zip"
       },
@@ -395,7 +373,6 @@
       "buildLabel": "避雷针",
       "idleAnimation": "idle",
       "name": "LightningRod",
-      "scale": 0.02,
       "skinArchives": {
         "lightning_rod_adventure": "dynamic/lightning_rod_adventure.zip",
         "lightning_rod_gothic": "dynamic/lightning_rod_gothic.zip",
@@ -409,7 +386,6 @@
       "buildLabel": "温度测量仪",
       "idleAnimation": "idle",
       "name": "Winterometer",
-      "scale": 0.02,
       "skinArchives": {
         "winterometer_circus": "dynamic/winterometer_circus.zip",
         "winterometer_mystical": "dynamic/winterometer_mystical.zip"
@@ -419,22 +395,19 @@
       "archive": "pig_head.zip",
       "buildLabel": "猪头",
       "idleAnimation": "idle_asleep",
-      "name": "PigHead",
-      "scale": 0.02
+      "name": "PigHead"
     },
     "mermhead": {
       "archive": "merm_head.zip",
       "buildLabel": "人鱼头",
       "idleAnimation": "idle_asleep",
-      "name": "MermHead",
-      "scale": 0.02
+      "name": "MermHead"
     },
     "birdcage": {
       "archive": "bird_cage.zip",
       "buildLabel": "鸟笼",
       "idleAnimation": "idle_empty",
       "name": "Birdcage",
-      "scale": 0.02,
       "skinArchives": {
         "birdcage_adventure": "dynamic/birdcage_adventure.zip",
         "birdcage_circus": "dynamic/birdcage_circus.zip",

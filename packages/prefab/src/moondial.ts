@@ -181,7 +181,5 @@ export class MoondialInstance extends PrefabInstance {
 }
 
 export function moondialPrefabs(world: PrefabWorldContext) {
-    return { [MOONDIAL_ID]: buildingPrefab(declaration, 'moondial', .45, (_position, sprites) => new MoondialInstance(world, sprites), world,
-        // The waning reflections are OverrideSymbol on its AnimState.
-        { controller: true }) };
+    return { [MOONDIAL_ID]: buildingPrefab(declaration, 'moondial', .45, (_position, sprites) => new MoondialInstance(world, sprites), world) };
 }
