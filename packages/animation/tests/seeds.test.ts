@@ -36,7 +36,7 @@ function farmSetup(player = new THREE.Group()) {
 
 it('renders the original ground seed pose and commits quick eating once at frame 12, preserving other stats', async () => {
   const assets = new GroundItemAssets();
-  const sprite = await createGroundItemVisual(assets, 'seeds');
+  const sprite = await createGroundItemVisual('seeds');
   expect(GROUND_ITEM_DEFINITIONS.seeds).toMatchObject({ atlas: 'images/inventoryimages.xml', bank: 'seeds',
     animationArchive: 'seeds.zip', animation: 'idle', skinArchives: {} });
   const mesh = sprite.model.children[0].children[0].children[0] as THREE.Mesh;
@@ -93,7 +93,7 @@ it('renders veggie ground art and plants split bank/build veggie seeds, preservi
   expect(GROUND_ITEM_DEFINITIONS.tomato.icon).toBe('quagmire_tomato.tex');
   expect(GROUND_ITEM_DEFINITIONS.kelp_dried).toMatchObject({ bank: 'meat_rack_food_tot', animation: 'dried_kelp' });
   for (const id of ['carrot_seeds', 'kelp_dried', 'tomato_cooked']) {
-    const sprite = await createGroundItemVisual(assets, id);
+    const sprite = await createGroundItemVisual(id);
     expect((sprite.model.children[0].children[0].children[0] as THREE.Mesh).geometry.drawRange.count).toBeGreaterThan(0);
     sprite.dispose();
   }

@@ -1,15 +1,15 @@
 import { createEffect, watchSignal } from '@dontstarve-web/signals';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Workable, type Worker } from '../../componets/src/workable';
-import { createResidentGroundItem } from './groundItems';
+import { groundItemPrefab, type ItemPrefabDefinition } from './groundItems';
 import { configureTradableEntity } from './tradable';
-import { configureBurnableItemEntity, createBurnableItemVisual } from './burnableItems';
+import { bindBurnableItem, configureBurnableItemEntity } from './burnableItems';
 import { Deployable } from '../../componets/src/deployable';
 import { PlaySound } from './sound';
 import { TILE_SIZE } from './tile';
-import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
-import type { GroundItemFactory, GroundPrefabContext, SpawnGroundItem } from './groundPrefab';
-import type { LootLaunch } from './lootFling';
+import type { ArchiveSpriteCommands } from '@dontstarve-web/display';
+import type { ItemPrefabWorld, SpawnGroundItem } from './groundPrefab';
+import type { LootLaunch } from '../../componets/src/inventoryphysics';
 import type { Vector3 } from 'three';
 import catalog from './groundItems.json' with { type: 'json' };
 
@@ -97,28 +97,25 @@ export function configureRockAvocadoFruitEntity(entity: ItemEntity): void {
   else if (entity.prefab === 'rock_avocado_fruit_ripe') { entity.addTag('molebait'); entity.addTag('cookable'); }
 }
 
-/** A stack spawns its products when it is mined; their displays load the art. */
-export function createRockAvocadoGroundFactory(context: GroundPrefabContext): GroundItemFactory {
-  const displays = new Set<PrefabDisplay>();
+/** rock_avocado_fruit.lua: a stack spawns its products when it is mined; the ripe fruit burns and splits open. */
+export function rockAvocadoFruitPrefabs(world: ItemPrefabWorld): Record<string, ItemPrefabDefinition> {
   return {
-    itemIds: ['rock_avocado_fruit', 'rock_avocado_fruit_ripe'], configureEntity: configureRockAvocadoFruitEntity,
-    create(item, inst) {
-      if (item.itemId === 'rock_avocado_fruit_ripe') {
-        const base = createResidentGroundItem(context, { ...item, entity: inst }), sprite = base.instance.sprite;
-        const visual = createBurnableItemVisual(context, item.itemId, base, displays);
-        const stop = inst.ListenForEvent('split_open', () => sprite.playOnce('split_open', () => sprite.playOnce('idle_split_open')));
-        return { ...visual, dispose() { stop(); visual.dispose(); } };
-      }
-      const { visual, instance: { sprite } } = createResidentGroundItem(context, { ...item, entity: inst });
-      const { spawnGroundItem } = context;
-      if (!spawnGroundItem) throw new Error('Stone fruit needs a world to spawn its products');
-      const presentation = { sprite, spawnGroundItem };
-      configureRockAvocadoFruitEntity(inst);
-      const controller = inst.getComponent<RockAvocadoFruit>('rock_avocado_fruit')!;
-      controller.bind(presentation);
-      return { ...visual, dispose() { controller.release(presentation); visual.dispose(); } };
-    },
-    renderEntities: () => [...displays].flatMap(display => display.fxRenderEntries),
-    dispose() { displays.clear(); },
+    rock_avocado_fruit_ripe: groundItemPrefab('rock_avocado_fruit_ripe', world, {
+      configure: inst => {
+        bindBurnableItem(inst, world);
+        inst.ListenForEvent('split_open', () => inst.sprite.playOnce('split_open', () => inst.sprite.playOnce('idle_split_open')));
+      },
+    }),
+    rock_avocado_fruit: groundItemPrefab('rock_avocado_fruit', world, {
+      configure: inst => {
+        const { spawnGroundItem } = world;
+        if (!spawnGroundItem) throw new Error('Stone fruit needs a world to spawn its products');
+        configureRockAvocadoFruitEntity(inst);
+        const controller = inst.getComponent<RockAvocadoFruit>('rock_avocado_fruit')!;
+        const presentation = { sprite: inst.sprite, spawnGroundItem };
+        controller.bind(presentation);
+        inst.onRemove(() => controller.release(presentation));
+      },
+    }),
   };
 }

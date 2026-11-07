@@ -25,7 +25,7 @@ describe('saved prefab archive scan', () => {
   it('resolves ground item art from each record\'s catalog entry, including symbol overrides and skins', () => {
     const stack = (itemId: string, skinId?: string) => ({ components: { stack: { itemId, count: 1, skinId } } });
     const archives = savedPrefabArchives(definitions, {
-      ground_item: [stack('axe', 'axe_heart'), stack('meatballs'), stack('not_an_item')],
+      axe: [stack('axe', 'axe_heart')], meatballs: [stack('meatballs')], not_an_item: [stack('not_an_item')],
     });
     expect(archives).toContainEqual({ animation: 'axe.zip', build: 'axe.zip' });
     expect(archives).toContain('dynamic/axe_heart.zip');

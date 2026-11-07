@@ -3,7 +3,7 @@ import { watchMiniMapEntity } from '../../map/src/minimapEntities';
 import type * as CANNON from 'cannon-es';
 import { type Object3D, type Vector3, type Vector3Like } from 'three';
 import { createSignal, EventEmitter, readonlySignal, type ReadonlySignal, type TileStateQuery } from '@dontstarve-web/signals';
-import { LightState, PrefabDisplay, SpriteResources, SpriteState, type ArchiveSpriteCommands, type PrefabDisplayGroup, type ArchiveSpriteSource, type LoadedSpriteSource, type PrefabDisplayOptions, type PrefabStatus, type SpriteSource } from '@dontstarve-web/display';
+import { IconSpriteAtlases, LightState, PrefabDisplay, SpriteResources, SpriteState, type ArchiveSpriteCommands, type PrefabDisplayGroup, type ArchiveSpriteSource, type LoadedSpriteSource, type PrefabDisplayOptions, type PrefabStatus, type SpriteSource } from '@dontstarve-web/display';
 import { bindPhysics, type PhysicsBinding } from '../../componets/src/physicsBinding';
 import { PhysicsState } from '../../componets/src/physicsState';
 import type { TileTracker } from '../../componets/src/tileManager';
@@ -220,11 +220,40 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
     this.PushEvent('tagchanged', tag);
   }
 
+  /** Whether the entity's tile is in the ticking area; the entity is awake while it is and the entity is not in limbo. */
+  private tileAwake = true;
+  /** inst.inlimbo: set by RemoveFromScene, cleared by ReturnToScene. */
+  get inlimbo(): boolean { return this.hasTag('INLIMBO'); }
+
   /** OnEntitySleep / OnEntityWake: follows the entity's tile; a removed entity stays removed. */
   setActive(active: boolean): void {
+    this.tileAwake = active;
+    this.syncAwake();
+  }
+
+  /** EntityScript:RemoveFromScene: INLIMBO, hidden with its art and minimap icon, then `enterlimbo`. */
+  RemoveFromScene(): void {
+    if (this.isRemoved || this.tags.has('INLIMBO')) return;
+    this.addTag('INLIMBO');
+    this.minimap.SetEnabled(false);
+    this.syncAwake();
+    this.PushEvent('enterlimbo');
+  }
+
+  /** EntityScript:ReturnToScene: shown again where its tile lets it wake, then `exitlimbo`. */
+  ReturnToScene(): void {
+    if (this.isRemoved || !this.tags.has('INLIMBO')) return;
+    this.removeTag('INLIMBO');
+    this.minimap.SetEnabled(true);
+    this.syncAwake();
+    this.PushEvent('exitlimbo');
+  }
+
+  private syncAwake(): void {
     if (this.lifecycle.peek() === 'removed') return;
-    this.sprite.setAwake(active);
-    this.lifecycle.set(active ? 'active' : 'asleep');
+    const awake = this.tileAwake && !this.tags.has('INLIMBO');
+    this.sprite.setAwake(awake);
+    this.lifecycle.set(awake ? 'active' : 'asleep');
   }
 
   remove(): void {
@@ -329,13 +358,19 @@ export function createEmptyEntity<Instance extends PrefabInstance<SpriteState, o
 }
 
 /** Prefab(name, fn, assets): how one source prefab is built and which art its display declares. */
-export interface PrefabEntityDefinition<Instance extends PrefabInstance> {
+export interface PrefabEntityDefinition<Instance extends PrefabInstance<SpriteState, object>> {
   /** `sprites` is the world's shared resource cache, for the sources of the fx children the prefab draws; declaring one performs no IO. */
   fn(position: ReadonlyVector3, sprites: SpriteResources): Instance;
   /** Source skin names and their shared build archives; the display loads the selected one. */
   skins?: Readonly<Record<string, string>>;
   /** The symbols a skin build replaces, when it replaces only some of the base build's (OverrideItemSkinSymbol). */
   skinSymbols?: readonly string[];
+  /** How the builds' materials are made (multColour, point filtering), with or without skins. */
+  materialOptions?: import('@dontstarve-web/animation/animationAssets').SpriteMaterialOptions;
+  /** In place of `assets`: the art is the inventory image, drawn as a billboard. */
+  icon?: { readonly atlas: string; readonly image: string };
+  /** In place of `assets`: the sprite factory the art is drawn with; the manager releases it after every entity's display. */
+  source?: LoadedSpriteSource & { dispose?(): void };
   /** A prefab without assets has only a transform and what it declares on it, as FX lights do: nothing to draw or click. */
   assets?: Parameters<SpriteResources['archive']>[0];
   /** In place of `assets`: an instance's own SetBank / SetBuild, which its OnLoad may still change as it spawns. */
@@ -363,10 +398,13 @@ export interface PrefabEntityDefinition<Instance extends PrefabInstance> {
  * and each entity's display, tile activity and save record. What a prefab is stays in its `fn` and its components.
  * The entities stand on the ground: a position's height is dropped.
  */
-export class PrefabEntityManager<Id extends string, Instance extends PrefabInstance> {
+export class PrefabEntityManager<Id extends string, Instance extends PrefabInstance<SpriteState, object>> {
   private readonly resources: SpriteResources;
   private readonly entities = new Set<Instance>();
   private readonly byEntityId = new Map<string, Instance>();
+  private readonly byPrefab = new Map<string, Set<Instance>>();
+  private icons?: IconSpriteAtlases;
+  private readonly iconArchiveUrl?: string;
   private disposed = false;
   private readonly displays: PrefabDisplayGroup;
   private readonly tickingarea?: TileStateQuery;
@@ -374,9 +412,11 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
   private readonly prefabs: Record<Id, PrefabEntityDefinition<Instance>>;
 
   /** `displays` is the display-layer owner of the entities' scene membership, injected and disposed by the application. */
-  constructor(displays: PrefabDisplayGroup, animationBaseUrl: string | undefined, world: { readonly tickingarea?: TileStateQuery; readonly physics?: CANNON.World },
+  constructor(displays: PrefabDisplayGroup, animationBaseUrl: string | undefined,
+    world: { readonly tickingarea?: TileStateQuery; readonly physics?: CANNON.World; readonly iconArchiveUrl?: string },
     prefabs: Readonly<Record<Id, PrefabEntityDefinition<Instance>>> = {} as Record<Id, PrefabEntityDefinition<Instance>>) {
     this.displays = displays;
+    this.iconArchiveUrl = world.iconArchiveUrl;
     this.resources = new SpriteResources(animationBaseUrl);
     this.tickingarea = world.tickingarea;
     this.physicsWorld = world.physics;
@@ -395,22 +435,31 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
   /** OnLoadPostPass's `newents`: a live entity by its saved entity ID. */
   get(entityId: string): Instance | undefined { return this.byEntityId.get(entityId); }
 
+  /** The live entities of one prefab, as Ents filtered by prefab, without visiting the others. */
+  *instances(prefabId: string): IterableIterator<Instance> {
+    for (const instance of this.byPrefab.get(prefabId) ?? []) if (!instance.isRemoved) yield instance;
+  }
+
   /** SpawnPrefab, then SpawnSaveRecord's SetPosition and SetPersistData: the entity exists now and its display loads the art. */
   spawn(prefabId: Id, position: ReadonlyVector3, saved?: Pick<PlacementSaveRecord, 'id' | 'components'> & Partial<Pick<PlacementSaveRecord, 'transform'>>, skinId?: string): Instance {
     if (this.disposed) throw new Error(`Cannot spawn ${prefabId}: its manager has been disposed`);
     if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError(`Invalid ${prefabId} position`);
     if (!this.has(prefabId)) throw new Error(`Unknown prefab: ${prefabId}`);
-    const { fn, assets, instanceAssets, assetOptions, alignBottom, rayTestOnBB, targetable = true, physics, minimapIcon, onSpawned, skins, skinSymbols, alwaysActive } = this.prefabs[prefabId];
+    const { fn, assets, instanceAssets, assetOptions, alignBottom, rayTestOnBB, targetable = true, physics, minimapIcon, onSpawned, skins, skinSymbols,
+      alwaysActive, materialOptions, icon, source } = this.prefabs[prefabId];
     if (skinId !== undefined && !skins?.[skinId]) throw new Error(`Unsupported ${prefabId} skin: ${skinId}`);
     const instance = fn(position, this.resources);
-    if (skins) instance.sprite.setSkinSource({ art: this.resources.archives, archives: skins, ...skinSymbols ? { symbols: skinSymbols } : {} });
+    if (skins || materialOptions) instance.sprite.setSkinSource({ art: this.resources.archives, archives: skins ?? {}, materialOptions,
+      ...skinSymbols ? { symbols: skinSymbols } : {} });
+    const iconSource = icon && this.iconSource(prefabId, icon);
     physics?.make(instance, physics.radius, physics.height);
     if (minimapIcon) instance.minimap.SetIcon(minimapIcon);
     // A shared archive holds a first one-shot clip while its art loads, so a new entity is drawn from its first frame.
     const display = this.displays.add({ root: instance.transform.model, name: prefabId, alignBottom, status: instance.status, sprite: instance.sprite, light: instance.light,
       // Spawning is synchronous, so instanceAssets runs after the SetPersistData below however early the display starts its sprite.
       ...(instanceAssets ? { archive: { create: clip => Promise.resolve().then(() => this.resources.archive(instanceAssets(instance), assetOptions).create(clip)) } }
-        : assets ? { archive: this.resources.archive(assets, assetOptions) } : { empty: true }) });
+        : assets ? { archive: this.resources.archive(assets, assetOptions) } : iconSource ? { source: iconSource }
+        : source ? { source } : { empty: true }) });
     bindInstance(display.model, instance);
     if (rayTestOnBB) display.model.userData.rayTestOnBB = true;
     instance.setPosition(position.x, 0, position.z);
@@ -423,24 +472,42 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     }
     if (skinId !== undefined) instance.skinId = skinId;
     onSpawned?.(instance);
-    if ((assets || instanceAssets) && targetable) actionEntity(display.model, prefabId);
+    if ((assets || instanceAssets || icon || source) && targetable) actionEntity(display.model, prefabId);
     this.entities.add(instance);
     const entityId = String(instance.entityId);
     this.byEntityId.set(entityId, instance);
+    let ofPrefab = this.byPrefab.get(prefabId);
+    if (!ofPrefab) this.byPrefab.set(prefabId, ofPrefab = new Set());
+    ofPrefab.add(instance);
     const stopActivity = watchTileActivity(display.model, alwaysActive ? undefined : this.tickingarea, active => instance.setActive(active));
     instance.onRemove(() => {
-      stopActivity(); this.entities.delete(instance);
+      stopActivity(); this.entities.delete(instance); ofPrefab.delete(instance);
       if (this.byEntityId.get(entityId) === instance) this.byEntityId.delete(entityId);
     });
     return instance;
   }
 
+  /** One shared icon billboard source per prefab, from the inventory atlases this manager owns. */
+  private readonly iconSources = new Map<string, ReturnType<IconSpriteAtlases['source']>>();
+  private iconSource(prefabId: string, icon: { readonly atlas: string; readonly image: string }) {
+    let source = this.iconSources.get(prefabId);
+    if (!source) {
+      if (!this.iconArchiveUrl) throw new Error(`${prefabId} is drawn as an icon, but no icon archive was given`);
+      this.icons ??= new IconSpriteAtlases(this.iconArchiveUrl);
+      this.iconSources.set(prefabId, source = this.icons.source(icon.atlas, icon.image, prefabId));
+    }
+    return source;
+  }
+
   /** The awake entities' displays, as the display group lists those in the scene. */
   get renderEntities() { return this.displays.renderEntities; }
 
-  /** The save loop's `persists` and GetParent checks, and GetSaveRecord. */
+  /**
+   * The save loop's `persists` and GetParent checks, and GetSaveRecord. A held inst is its holder's child
+   * (OnPutInInventory's AddChild and RemoveFromScene), so its holder saves it.
+   */
   exportRecords(): { prefabId: Id; record: PrefabSaveRecord }[] {
-    return [...this.entities].filter(entity => entity.persists && !entity.entityParent).map(entity => ({ prefabId: entity.prefab as Id, record: {
+    return [...this.entities].filter(entity => entity.persists && !entity.entityParent && !entity.inlimbo).map(entity => ({ prefabId: entity.prefab as Id, record: {
       id: String(entity.entityId),
       transform: { position: [entity.position.x, 0, entity.position.z], rotationY: entity.transform.model.rotation.y },
       components: entity.GetPersistData(),
@@ -453,5 +520,9 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     for (const entity of [...this.entities]) entity.remove();
     // Every entity's display is released above, before the shared resources.
     this.resources.dispose();
+    for (const source of this.iconSources.values()) source.dispose();
+    for (const { source } of Object.values(this.prefabs) as PrefabEntityDefinition<Instance>[]) source?.dispose?.();
+    this.iconSources.clear();
+    this.icons?.dispose();
   }
 }

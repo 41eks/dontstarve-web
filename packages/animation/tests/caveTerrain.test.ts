@@ -81,7 +81,7 @@ it('loads the imported forest with distinct ocean types, ice, underlying dock ti
     expect(terrainChanged).not.toHaveBeenCalled(); // Imported final tiles already cover the entire layout.
     expect(save.world.entities.flower.length).toBeGreaterThan(0);
     expect(save.world.entities.flower.every(entity => entity.components.flower?.planted === undefined)).toBe(true);
-    expect(save.world.entities.ground_item.some(entity => entity.components.stack?.itemId === 'fireflies')).toBe(true);
+    expect(save.world.entities.fireflies?.length).toBeGreaterThan(0);
     // Imported chest contents stay on the chest records; each chest's container loads them when it spawns.
     const chestSlotCounts = save.world.entities.treasurechest.map(chest => chest.components.container?.slots.length ?? 0);
     expect(chestSlotCounts).toHaveLength(4);

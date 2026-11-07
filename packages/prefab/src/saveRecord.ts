@@ -3,6 +3,11 @@ export interface PlacementSaveRecord {
   id: string;
   transform: { position: readonly [number, number, number]; rotationY: number };
   components: {
+    /** An item inst's own state, as the inventory saves its stacks; the prefab's OnSave adds its own records. */
+    stack?: import('@dontstarve-web/inventory').InventoryStack;
+    phonograph?: { remainingSeconds: number };
+    torch?: { lit: true };
+    lantern?: { ison: boolean };
     flower?: import('./flower').FlowerSaveState;
     ruinsRelic?: import('./ruinsrelic').RuinsRelicSaveState;
     inventoryitemmoisture?: import('./ruinsrelic').RelicMoistureSave;

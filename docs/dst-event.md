@@ -14,7 +14,7 @@ prefab 通过 effect 声明 `SpriteState` 外观（符号／build 覆盖、图�
 
 每个场景创建独立的 `EventEmitter<WorldEvents>`。常青树、桦树和月树的树桩，以及种下的花，在原有烧尽回调中同步发出 `worldEvents.emit('spawnAsh', position.clone())`，然后移除原实体；不再注入 `spawnAsh` 函数。事件携带实体地面位置的 `Vector3`，不修改原位置。
 
-`GroundItemManager` 监听该事件，使用应用物品规格及原有 `spawnFromSave` 路径生成一份灰烬；在开始异步加载前复制事件位置，避免后续位置变化影响生成结果。管理器释放时解除监听，其他场景的 emitter 不会触发本场景生成。事件本身不保存，生成后的灰烬继续按原有实体记录保存和恢复。
+应用层监听该事件，经物品注册表 SpawnPrefab 一份 `ash` 并放在复制的事件位置；场景释放时解除监听，其他场景的 emitter 不会触发本场景生成。事件本身不保存，生成后的灰烬继续按原有实体记录保存和恢复。
 
 ## Workable：工作量、动作能力和完成回调
 
@@ -330,7 +330,7 @@ function bindAshGroundAppearance(
 
 ### 当前实现
 
-[BurnableItemController](../packages/prefab/src/burnableItems.ts) 已在烧毁回调中同步提交预备好的灰烬、复制脚点与数量，再移除原材料；`burning`、`burnt` 和 `persistence` 已使用 signal。[GroundItemManager](../packages/prefab/src/groundItemManager.ts) 通过实体 `onputininventory`／`onremove` 清理地面表现。[ItemEntity](../packages/inventory/src/entity.ts) 的 `isRemoved` 目前是普通字段，没有接入本文的消散 timer／归属／移除标记 signal 或阶段 memo。
+[BurnableItemController](../packages/prefab/src/burnableItems.ts) 已在烧毁回调中同步提交预备好的灰烬、复制脚点与数量，再移除原材料；`burning`、`burnt` 和 `persistence` 已使用 signal。物品放进库存时 `inventoryitem` 使实例进入 limbo，display 随实例状态休眠，移除时随实例释放。[ItemEntity](../packages/inventory/src/entity.ts) 的 `isRemoved` 目前是普通字段，没有接入本文的消散 timer／归属／移除标记 signal 或阶段 memo。
 
 ash 已有地面美术、库存、堆叠和保存支持，尚未移植 `disappears` 的消散计时／动画及遗骸名字分支。映射表中的这些 Lua 行为是后续实现要求，不能当作当前已支持的功能。
 

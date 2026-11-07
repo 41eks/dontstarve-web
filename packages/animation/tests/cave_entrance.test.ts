@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { PrefabDisplayGroup } from '@dontstarve-web/display';
 import { caveEntrancePrefabs, type CaveEntranceInstance, type CaveEntranceWorld } from '../../prefab/src/cave_entrance';
-import { GroundItemManager } from '../../prefab/src/groundItemManager';
+import { ItemWorldFixture } from './itemWorldFixture';
 import { createInventoryStore } from '../../../src/inventory';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
@@ -28,7 +28,7 @@ function setup(world: Partial<CaveEntranceWorld> & { tickingarea?: TileStateQuer
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   vi.stubGlobal('window', new EventTarget());
   const inventory = createInventoryStore([]), scene = new THREE.Scene(), player = new THREE.Group(), physics = new CANNON.World();
-  const ground = new GroundItemManager(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
+  const ground = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
   const displays = new PrefabDisplayGroup(scene);
   const caves = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { physics, tickingarea: world.tickingarea });
@@ -51,7 +51,8 @@ it('mines a closed entrance into cave_entrance_open, dropping rocks and flint, a
     expect((await executeDebugCommand('c_spawn("cave_entrance")', s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
     expect(prefabInstance(s.scene.children.find(model => prefabInstance(model)?.prefab === 'cave_entrance'))!.minimap.icon).toBe('cave_closed.png');
     expect(s.physics.bodies).toHaveLength(1);
-    const pickaxe = s.inventory.entities.create({ itemId: 'pickaxe', count: 1 });
+    // The worker holds its tool: SpawnPrefab puts the inst in the world, GiveItem takes it out of the scene.
+    const pickaxe = s.inventory.entities.create({ itemId: 'pickaxe', count: 1 }); s.inventory.GiveItem(pickaxe);
     const [mine] = workTargets('MINE', s.scene);
     for (let i = 0; i < 5; i++) expect(performToolWork('MINE', mine.entity, {}, pickaxe)).toBe(true);
     expect(s.caves.exportRecords().map(({ prefabId }) => prefabId)).toEqual(['cave_entrance']);

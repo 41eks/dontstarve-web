@@ -1,5 +1,5 @@
 import { prefabDisplay } from '@dontstarve-web/display';
-import type { ItemEntityRegistry, InventoryStore } from '@dontstarve-web/inventory';
+import type { InventoryStore } from '@dontstarve-web/inventory';
 import * as CANNON from 'cannon-es';
 import { world, worldState } from './physics';
 import CannonDebugger from 'cannon-es-debugger';
@@ -94,7 +94,6 @@ if (!window.location.hostname.endsWith('github.io') && new URLSearchParams(windo
 export async function startScene(
   consumeBufferedBuild: (buildingId: PlaceableBuildingId, skinId?: string) => boolean,
   onBuildingInteraction?: (change: PlaceableBuildingInteractionChange) => void,
-  itemEntities?: ItemEntityRegistry,
   inventory?: InventoryStore,
 ) {
   const blockDisabledController = (event: PointerEvent) => {
@@ -107,9 +106,9 @@ export async function startScene(
   const stopEntityWorld = bindActionEntityWorld(scene, worldState.tickingarea);
   const scheduler = worldState.scheduler;
   const perishWorld: PerishWorld = { perishClock: worldState.perishClock, scheduler };
-  itemEntities?.bindPerishWorld(perishWorld);
+  inventory?.entities.bindPerishWorld(perishWorld);
   const entities = await createSceneEntities(world, worldState, consumeBufferedBuild,
-    onBuildingInteraction, itemEntities, inventory, scheduler);
+    onBuildingInteraction, inventory, scheduler);
   const { registry } = entities;
   try {
     // Scan the save here; the archive worker decodes the needed art while entities restore and share its cache.

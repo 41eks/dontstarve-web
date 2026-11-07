@@ -7,7 +7,7 @@ import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import { createMemo, createSignal } from '../../signals/src';
 import { grottoPoolPrefabs, GROTTO_POOL_MIST_ID, type GrottoGlassInstance, type GrottoPoolInstance } from '../../prefab/src/grotto_pool';
 import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
-import { GroundItemManager } from '../../prefab/src/groundItemManager';
+import { ItemWorldFixture } from './itemWorldFixture';
 import { createInventoryStore } from '../../../src/inventory';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { EntityRegistry } from '../../../src/entityRegistry';
@@ -35,7 +35,7 @@ function setup() {
   player.position.set(12, 0, -6);
   const scheduler = new GameTimeScheduler(), awake = createSignal(true), fx = { spawn: vi.fn() };
   const waterfalls = new Map<THREE.Vector3, { radius: number; large: boolean }>();
-  const ground = new GroundItemManager(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
+  const ground = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
   const displays = new PrefabDisplayGroup(scene);
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { tickingarea: () => createMemo(() => awake.get()), physics });
@@ -49,11 +49,7 @@ function setup() {
     getEntity: id => prefabs.get(id) }));
   const registry = new EntityRegistry([], prefabs, () => player.position);
   registry.registerPrefabs(PREFAB_DEFINITIONS.grottoPools);
-  registry.register(PREFAB_DEFINITIONS.groundItems, {
-    restore: () => { throw new Error('unused'); },
-    debugSpawn: id => ground.spawnFromSave(`command:${id}`, { ...SAVE_CATALOG.items[id], itemId: id, count: 1 }, player.position),
-    exportRecords: () => ground.exportRecords().map(record => ({ prefabId: 'ground_item', record })), dispose: () => ground.dispose(),
-  });
+  registry.register(PREFAB_DEFINITIONS.groundItems, ground.registration(() => player.position, id => `command:${id}`));
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
   const save = () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(), elapsedSeconds: 0,
     playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
@@ -90,7 +86,8 @@ it('a small pool sets up its mist, waterfall and sound on its first frame; minin
     // on_mined: moonglass_prop loot at the worker, then the mined loop and NOCLICK until a cave full moon.
     const [target] = workTargets('MINE');
     expect(target.entity.prefab).toBe('grotto_waterfall_small2');
-    const pickaxe = s.inventory.entities.create({ itemId: 'pickaxe', count: 1 });
+    // The worker holds its tool: SpawnPrefab puts the inst in the world, GiveItem takes it out of the scene.
+    const pickaxe = s.inventory.entities.create({ itemId: 'pickaxe', count: 1 }); s.inventory.GiveItem(pickaxe);
     for (let i = 0; i < 6; i++) expect(target.work({}, pickaxe)).toBe(true);
     expect(fall.sprite.sprite.peek().clip).toMatchObject({ name: 'water_small2_mined', loop: true });
     expect(fall.hasTag('NOCLICK')).toBe(true);

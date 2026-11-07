@@ -251,6 +251,11 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
   private write(patch: Partial<SpriteJson>): void { this.json.set({ ...this.state, ...patch }); }
   setSkinId(skinId: string | undefined): void { if (skinId !== this.state.skinId) this.write({ skinId }); }
   setSkinSource(skin: SkinJson): void { this.withAppearance('skin', { kind: 'skin', skin }); }
+  /** The skins the declared skin source can draw, in its order: PREFAB_SKINS for this entity. */
+  get skinNames(): readonly string[] {
+    const declared = this.state.appearance.get('skin');
+    return declared?.kind === 'skin' ? Object.keys(declared.skin.archives) : [];
+  }
   private withAppearance(key: string, value: AppearanceJson): void {
     const appearance = new Map(this.state.appearance);
     // A later command for the same target replaces the earlier one and is dressed last.

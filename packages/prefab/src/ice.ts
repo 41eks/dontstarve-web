@@ -1,39 +1,18 @@
 import type { ItemEntity } from '@dontstarve-web/inventory';
-import { createResidentGroundItem } from './groundItems';
-import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
 
 export const ICE_ID = 'ice';
 
 /**
- * inv_rocks_ice.lua: tags, and onperish. A held stack is removed whole; a world stack can no longer be
- * picked up and is removed after `melt` (see createIceGroundFactory).
+ * inv_rocks_ice.lua: tags, and onperish. A held stack is removed whole; a world stack no longer persists or can be
+ * picked up, plays `melt` and is removed on its animover.
  * Not ported: DoDeltaMoistureToEntity on the owner and the farming_manager soil moisture, which need wetness/farming systems.
  */
 export function configureIceEntity(entity: ItemEntity): void {
   for (const tag of ['frozen', 'molebait', 'watersource']) entity.addTag(tag);
-  entity.components.perishable.perishfn = () => { if (entity.components.inventoryitem.owner) entity.remove(); };
-}
-
-export function createIceGroundFactory(context: GroundPrefabContext): GroundItemFactory {
-  return {
-    itemIds: [ICE_ID],
-    configureEntity: configureIceEntity,
-    create(item, inst) {
-      const { visual, instance } = createResidentGroundItem(context, { ...item, entity: inst });
-      let melting = false;
-      const melt = (entity: ItemEntity) => {
-        if (melting || entity.isRemoved || entity.components.inventoryitem.owner) return;
-        melting = true;
-        entity.persists = false;
-        entity.components.inventoryitem.canbepickedup = false;
-        instance.sprite.playOnce('melt', () => entity.remove());
-      };
-      const stop = inst.ListenForEvent('perished', () => melt(inst));
-      if (inst.components.perishable.timer.peek().status === 'perished') melt(inst);
-      return {
-        ...visual,
-        dispose() { stop?.(); visual.dispose(); },
-      };
-    },
+  entity.components.perishable.perishfn = () => {
+    if (entity.components.inventoryitem.owner) { entity.remove(); return; }
+    entity.persists = false;
+    entity.components.inventoryitem.canbepickedup = false;
+    entity.sprite.playOnce('melt', () => entity.remove());
   };
 }

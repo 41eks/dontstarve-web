@@ -16,7 +16,11 @@ it('restores container contents, drops their live entities at the building foot 
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   const inventory = createPickupInventory();
   const scene = new THREE.Scene(), dropLoot = vi.fn(), dropped: unknown[] = [];
-  const stop = inventory.subscribeDropped(entity => dropped.push(entity));
+  const dropItem = inventory.DropItem;
+  // The store's drops, each the inst inventoryitem:OnDropped sets down.
+  vi.spyOn(inventory, 'DropItem').mockImplementation(function (this: typeof inventory, ...args) {
+    dropped.push(args[0]); return dropItem.apply(this, args);
+  });
   const world = { scene, player: new THREE.Group(), camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(), cameraFacing: createSignal(8), cameraHeading: createSignal(45),
     renderer: { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer, dropLoot,
     registerContainer: (id, container) => inventory.registerContainer(id, container),
@@ -46,14 +50,18 @@ it('restores container contents, drops their live entities at the building foot 
     ]);
     expect(dropLoot.mock.calls.every(([, position]) => position.equals(new THREE.Vector3(3, 0, -6)))).toBe(true);
     expect(item.isRemoved).toBe(false);
-  } finally { stop(); placement.dispose(); inventory.dispose(); }
+  } finally { placement.dispose(); inventory.dispose(); }
 });
 
 it('burns a chest through shared components, drops its live contents and restores the burnt instance', () => {
   vi.stubGlobal('window', new EventTarget());
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   const inventory = createPickupInventory(), dropped: unknown[] = [];
-  const stop = inventory.subscribeDropped(entity => dropped.push(entity));
+  const dropItem = inventory.DropItem;
+  // The store's drops, each the inst inventoryitem:OnDropped sets down.
+  vi.spyOn(inventory, 'DropItem').mockImplementation(function (this: typeof inventory, ...args) {
+    dropped.push(args[0]); return dropItem.apply(this, args);
+  });
   const world = { scene: new THREE.Scene(), player: new THREE.Group(), camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     cameraFacing: createSignal(8), cameraHeading: createSignal(45),
     renderer: { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer,
@@ -103,5 +111,5 @@ it('burns a chest through shared components, drops its live contents and restore
     const saved = inventory.entities.get('saved-log')!;
     expect(saved.components.inventoryitem.owner).toBeNull();
     expect(saved.transform.position.toArray()).toEqual([8, 0, 1]);
-  } finally { stop(); placement.dispose(); restored?.dispose(); inventory.dispose(); }
+  } finally { placement.dispose(); restored?.dispose(); inventory.dispose(); }
 });

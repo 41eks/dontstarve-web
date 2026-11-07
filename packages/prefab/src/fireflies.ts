@@ -1,12 +1,11 @@
 import * as THREE from 'three';
 import { createEffect, createMemo, createSignal, readonlySignal, watchSignal, GameTimeScheduler, WorldContentKey, type GetWatchWorldContent, type HandEquipment, type PlayerPositionsSignal, type ReadonlySignal, type TileStateQuery, type Signal, type WorldContentSignal, type WorldPhase } from '@dontstarve-web/signals';
-import { ArchiveSpriteAssets, createSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
-import type { ArchiveSpriteCommands, ArchiveSpriteSource } from '@dontstarve-web/display';
-import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
+import type { ArchiveSpriteCommands } from '@dontstarve-web/display';
+import type { PrefabInstance } from './prefabInstance';
 import { TILE_SIZE } from './tile';
-import { listenInventoryEvents } from './inventoryEvents';
-import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
-import { ItemEntity } from '@dontstarve-web/inventory';
+import type { ItemPrefabWorld } from './groundPrefab';
+import type { ItemEntity } from '@dontstarve-web/inventory';
+import { bindComponentUpdates, bindItemWorld, dropStackIndividually, type ItemPrefabDefinition } from './groundItems';
 import { Workable } from '../../componets/src/workable';
 import { ComponentTimer } from '../../componets/src/timer';
 import { equippedActionEntity } from '../../stategraphs/src/componentactions';
@@ -322,62 +321,35 @@ export class FirefliesController {
 }
 
 /**
- * The shared resource owner of the swarm art. Each swarm's display draws through `source`: the display loads the shared
- * archive when a clip plays, and every swarm_loop joins one instance batch.
+ * fireflies.lua: a bank and build but nothing played until fadein, so no sprite is built until a clip plays; every
+ * swarm_loop joins one instance batch. The controller runs updatefade while a fade or the visible swarm runs.
  */
-export class FirefliesAssets {
-  private readonly assets: ArchiveSpriteAssets;
-  readonly source: ArchiveSpriteSource = {
-    create: clip => createSharedArchiveSprite(this.assets,
-      { animationArchive: 'fireflies.zip', buildArchives: ['fireflies.zip'], bank: 'fireflies', animation: clip.name, loop: clip.loop },
-      { name: `GroundItem:${FIREFLIES_ID}`, instancedAnimations: ['swarm_loop'] }),
-  };
-  constructor(assetBaseUrl: string) { this.assets = new ArchiveSpriteAssets('fireflies', assetBaseUrl); }
-
-  /** After every swarm's display has released its sprite. */
-  dispose(): void { this.assets.dispose(); }
-}
-
-/** The swarm display draws the original logical item instance. */
-export function createFirefliesGroundSprite(assets: FirefliesAssets, world: FirefliesWorld, entity = new ItemEntity({ itemId: FIREFLIES_ID, count: 1 })) {
-  // fireflies.lua gives the AnimState a bank and build but plays nothing until fadein: no sprite is built until a clip
-  // plays, and the display releases it when the swarm's tile is found inactive. The display loads the shared archive.
-  const { instance, display } = createArchiveEntity(FIREFLIES_ID, assets.source, { name: 'swarm_pre', none: true, billboard: true, instance: entity }, `GroundItem:${FIREFLIES_ID}`);
-  const model = display.model;
-  const cleanups: (() => void)[] = [];
-  let controller: FirefliesController | undefined;
-  const removeInventoryEvents = listenInventoryEvents(instance, {
-    ondropped: () => controller?.place(true),
-    onputininventory: () => controller?.onPutInInventory(),
-    onload: () => controller?.place(false),
-  });
-  controller = new FirefliesController(instance, model, world, instance.transform);
-  const awake = watchSignal(controller.active, stop => cleanups.push(stop));
-  // OnEntitySleep/OnEntityWake: the swarm's frames, instance entry and listed light exist only while its tile is active.
-  createEffect(() => {
-    const value = awake.get();
-    instance.setActive(value);
-  });
-  return { model, instance, display, active: controller.active, get controller() { return controller; },
-    get updating() { return controller?.updating; },
-    // The ground item manager advances the display; the controller only runs updatefade.
-    update: (dt: number) => controller?.update(dt),
-    isClickable: () => controller?.clickable ?? false, isWorkable: () => controller?.workable ?? false,
-    dispose() {
-      cleanups.splice(0).forEach(stop => stop());
-      removeInventoryEvents();
-      controller?.dispose();
-      display.dispose();
-    } };
-}
-
-export function createFirefliesGroundFactory(context: GroundPrefabContext): GroundItemFactory {
-  const assets = new FirefliesAssets(context.animationBaseUrl);
-  const world = { ...context.firefliesWorld, handEquipment: context.firefliesWorld.handEquipment ?? context.handEquipment };
+export function firefliesPrefabs(world: ItemPrefabWorld): Record<string, ItemPrefabDefinition> {
+  const firefliesWorld = { ...world.firefliesWorld, handEquipment: world.firefliesWorld.handEquipment ?? world.handEquipment };
   return {
-    itemIds: [FIREFLIES_ID], capture: 'net',
-    configureEntity: configureFirefliesEntity,
-    create: (_item, inst) => createFirefliesGroundSprite(assets, world, inst),
-    dispose: () => assets.dispose(),
+    [FIREFLIES_ID]: {
+      fn: () => {
+        const inst = world.newItem(FIREFLIES_ID);
+        inst.sprite.resetPresentation({ name: 'swarm_pre', none: true, billboard: true });
+        bindItemWorld(inst, world);
+        return inst;
+      },
+      assets: { animationArchive: 'fireflies.zip', buildArchives: ['fireflies.zip'], bank: 'fireflies' },
+      assetOptions: { instancedAnimations: ['swarm_loop'] },
+      onSpawned: inst => {
+        world.configureItem(inst);
+        // fireflies.lua fn: caught only with a net (canbepickedupalive, workable NET), never picked up bare-handed.
+        configureFirefliesEntity(inst);
+        const controller = inst.component('fireflies', () => {
+          const controller = new FirefliesController(inst, inst.transform.model, firefliesWorld, inst.transform);
+          return { controller, dispose: () => controller.dispose() };
+        }).controller;
+        inst.ListenForEvent('ondropped', () => controller.place(true));
+        inst.ListenForEvent('onputininventory', () => controller.onPutInInventory());
+        bindComponentUpdates(inst, controller.updating, dt => controller.update(dt), world.componentUpdates);
+        controller.place(false);
+        inst.ListenForEvent('ondropped', () => dropStackIndividually(inst, world));
+      },
+    },
   };
 }

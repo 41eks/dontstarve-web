@@ -22,7 +22,7 @@ import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { createEquipmentExistenceState } from '../../signals/src';
 import definitions from '../../prefab/src/definitions.json';
 import { managedBuildings } from './managedBuildings';
-import { GroundItemManager } from '../../prefab/src/groundItemManager';
+import { ItemWorldFixture, itemAt } from './itemWorldFixture';
 import { equipmentSlotAddress } from '../../inventory/src';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { DisposeSounds } from '../../prefab/src/sound';
@@ -183,7 +183,7 @@ it('reskins dropped items without changing their count or entity ID and preserve
   const world = setupWorld();
   const inventory = createPickupInventory();
   const picked = vi.spyOn(inventory, 'Equip');
-  const manager = new GroundItemManager(world.scene, world.camera, world.renderer,
+  const manager = new ItemWorldFixture(world.scene, world.camera, world.renderer,
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', world.player);
   await manager.spawnFromSave('e_staff', {
     itemId: 'greenstaff', count: 1, remainingUses: 4, name: '拆解魔杖', icon: 'greenstaff.tex', atlas: 'images/inventoryimages.xml',
@@ -193,7 +193,7 @@ it('reskins dropped items without changing their count or entity ID and preserve
   expect(reskinEntity(first, undefined, fx)).toBe(true);
   expect(fx.play).toHaveBeenCalledExactlyOnceWith(new THREE.Vector3(3, 0, 4), 'greenstaff');
   expect(first.isValid()).toBe(true);
-  expect(manager.reskinTargets[0]).toBe(first);
+  expect(manager.reskinTargets[0]).toMatchObject({ id: first.id, model: first.model });
   expect(manager.exportRecords()[0]).toMatchObject({ id: 'e_staff', transform: { position: [3, 0, 4] },
     components: { stack: { itemId: 'greenstaff', count: 1, remainingUses: 4, skinId: 'greenstaff_an' } } });
   expect(manager.reskinTargets[0].isValid()).toBe(true);
@@ -202,7 +202,7 @@ it('reskins dropped items without changing their count or entity ID and preserve
   vi.spyOn(THREE.Raycaster.prototype, 'intersectObjects').mockReturnValue([
     { object: manager.reskinTargets[0].model.children[0].children[0], point: new THREE.Vector3(), distance: 1 } as THREE.Intersection,
   ]);
-  performPickupAction(findActionEntity(manager.reskinTargets[0].model)!.pickupTarget, createPickupDoer(world.player, inventory));
+  performPickupAction(itemAt(manager.reskinTargets[0].model), createPickupDoer(world.player, inventory));
   expect(picked).toHaveBeenCalledWith(expect.objectContaining({ id: 'e_staff', prefab: 'greenstaff', skinId: 'greenstaff_an' }));
   expect(inventory.getEntity(equipmentSlotAddress('hand'))?.components.finiteuses.remaining).toBe(4);
   expect(manager.exportRecords()).toEqual([]);

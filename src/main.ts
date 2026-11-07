@@ -240,7 +240,6 @@ const sceneResources = await startScene(
     const id = buildingContainerId(buildId, entityId);
     inventory.setStorageAccessible(id, isOpen);
   },
-  inventory.entities,
   inventory,
 );
 const { scheduler, buildingPlacement, groundItems, worldFx, staffProjectiles, registry, getSaveState, disposalEvents } = sceneResources;

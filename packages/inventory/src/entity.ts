@@ -135,6 +135,8 @@ export interface ItemComponents {
   fueled?: Fueled<ItemEntity>;
   finiteuses: FiniteUsesComponent;
   inventoryitem: InventoryItem<ItemEntity, ItemOwner>;
+  /** MakeInventoryPhysics, added by an item prefab in a world that advances its flights. */
+  inventoryphysics?: import('../../componets/src/inventoryphysics').InventoryPhysics;
   perishable: Perishable;
   equippable?: Equippable<ItemEntity>;
   container?: Container<InventoryStack, ItemEntity, StorageSlot>;
@@ -263,7 +265,8 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
     return this.components.phonograph ? this.components.phonograph.record : this.savedPhonographRecord;
   }
   private readonly runtime = new Map<string, ItemRuntimeComponent>();
-  constructor(state: InventoryStack, perishWorld?: PerishWorld) {
+  /** `createItem` makes the insts a backpack loads, through the same SpawnPrefab as this one. */
+  constructor(state: InventoryStack, perishWorld?: PerishWorld, createItem: (state: InventoryStack) => ItemEntity = item => new ItemEntity(item, perishWorld)) {
     super(state.itemId, new SpriteState({ name: state.itemId, none: true }));
     this.entityId = state.entityId ?? newItemEntityId();
     this.wetState.set(state.wet ?? false);
@@ -278,12 +281,34 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
     this.freshness = createMemo(() => this.components.perishable.perishtime.get() === undefined
       ? this.freshnessState.get() : this.components.perishable.percent.get());
     if (this.prefab === 'backpack') {
-      const container = new Container(this, () => new StorageSlot(), (item: InventoryStack) => new ItemEntity(item, perishWorld));
+      // container:OnLoad's GiveItem: each loaded inst is SpawnPrefab'd, then OnPutInInventory takes it out of the scene.
+      const container = new Container(this, () => new StorageSlot(), (item: InventoryStack) => {
+        const child = createItem(item);
+        child.RemoveFromScene();
+        return child;
+      });
       container.SetNumSlots(BACKPACK_SLOT_COUNT);
       container.OnLoad(state.container ?? {});
       this.components.container = container;
     }
     this.apply(state);
+  }
+
+  /** The item's components save as one stack record, as the inventory saves its slots; the prefab's OnSave adds its own. */
+  override GetPersistData(): import('../../prefab/src/saveRecord').PlacementSaveRecord['components'] {
+    this.flush();
+    const { entityId: _id, ...stack } = this.snapshot(false);
+    const data: import('../../prefab/src/saveRecord').PlacementSaveRecord['components'] = { stack };
+    this.OnSave?.(this as unknown as PrefabInstance, data);
+    return data;
+  }
+  /** SpawnSaveRecord: the stack record restores the item's components, then the prefab's OnLoad runs. */
+  override SetPersistData(data: import('../../prefab/src/saveRecord').PlacementSaveRecord['components']): void {
+    if (data.stack) {
+      this.apply({ ...data.stack, itemId: this.prefab, entityId: this.id });
+      if (data.stack.container) this.components.container?.OnLoad(data.stack.container);
+    }
+    this.OnLoad?.(this as unknown as PrefabInstance, data);
   }
 
   GetIsWet(): boolean { return this.wetState.peek(); }
@@ -495,7 +520,9 @@ export class ItemEntityRegistry {
   }
   /** Existing, newly created, adopted and nested entities share the current world's integral. */
   bindPerishWorld(world: PerishWorld): void {
-    this.perishWorld = world;
+    // The perished inst's onperishreplacement is SpawnPrefab'd through this registry, as any other item.
+    this.perishWorld = { ...world, SpawnPrefab: world.SpawnPrefab ?? (prefab => this.create({ itemId: prefab, count: 1 })) };
+    world = this.perishWorld;
     for (const entity of this.values()) {
       entity.BindPerishWorld(world);
       for (const slot of entity.components.container?.slots ?? []) {
@@ -504,11 +531,22 @@ export class ItemEntityRegistry {
       }
     }
   }
-  create(state: InventoryStack): ItemEntity {
-    if (state.entityId && this.get(state.entityId)) throw new Error(`Duplicate item entity: ${state.entityId}`);
-    const entity = new ItemEntity(state, this.perishWorld);
+  private spawner?: (state: InventoryStack) => ItemEntity | undefined;
+  /**
+   * The world's SpawnPrefab: every inst created from now on is spawned through it, so it belongs to that world from its
+   * birth and only leaves and re-enters the scene. An item the world has no prefab for is constructed here alone.
+   */
+  bindSpawner(spawn: ((state: InventoryStack) => ItemEntity | undefined) | undefined): void { this.spawner = spawn; }
+  /** The item prefab's own construction, bound to this registry's worlds but not yet registered. */
+  construct(state: InventoryStack): ItemEntity {
+    const entity = new ItemEntity(state, this.perishWorld, item => this.create(item));
     if (this.temperatureWorld) entity.BindTemperatureWorld(this.temperatureWorld);
     if (this.equipmentWorld) entity.equipmentWorld = this.equipmentWorld;
+    return entity;
+  }
+  create(state: InventoryStack): ItemEntity {
+    if (state.entityId && this.get(state.entityId)) throw new Error(`Duplicate item entity: ${state.entityId}`);
+    const entity = this.spawner?.(state) ?? this.construct(state);
     this.register(entity);
     return entity;
   }

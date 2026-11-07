@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 def insect_components(prefab):
-    # fireflies.lua / butterfly.lua: these inventoryitem prefabs use the existing ground_item owner.
+    # fireflies.lua / butterfly.lua: these inventoryitem prefabs are saved under their own prefab IDs.
     # Stackable:OnSave only writes non-singleton stacks; live butterflies have maximum health 1.
     def convert(data):
         allowed = {'stackable', 'workable', 'inventoryitemmoisture'} | ({'health', 'perishable', 'knownlocations'} if prefab == 'butterfly' else set())

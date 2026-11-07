@@ -62,6 +62,7 @@ import { MUSHROOM_PLANT_IDS } from '@dontstarve-web/prefab/mushroom_plant';
 import { MUSHTREE_IDS, MUSHTREE_SPAWN_IDS, MUSHTREE_GROWTH_STAGES, MUSHTREE_GROWTH_TIME } from '@dontstarve-web/prefab/mushtree';
 import { TENT_ID, TENT_USES } from '@dontstarve-web/prefab/tent';
 import { PLACEABLE_BUILDING_IDS } from './placeableBuilding';
+import { INVENTORY_ITEM_SPECS } from './inventoryItems';
 import { FENCE_ID, FENCE_ITEM_ID } from '@dontstarve-web/prefab/fenceSkins';
 import type { AnimationArchiveSpec } from '@dontstarve-web/animation/preloadArchives';
 import definitions from '@dontstarve-web/prefab/definitions.json' with { type: 'json' };
@@ -99,18 +100,18 @@ function buildingArchives(prefab: string): readonly AnimationArchiveSpec[] {
   return spec ? [{ animation: spec.archive, build: spec.buildArchive ?? spec.archive }] : [];
 }
 
-/** Ground items share one saved prefab; the catalog entry named by each record's stack supplies its art. */
-function groundItemArchives(_prefab: string, records: readonly unknown[]): readonly AnimationArchiveSpec[] {
+/** An item record's art: its prefab's ground art, for the variant and skin its stack names. */
+function groundItemArchives(prefab: string, records: readonly unknown[]): readonly AnimationArchiveSpec[] {
   const specs: AnimationArchiveSpec[] = [];
-  for (const record of records as { components?: { stack?: { itemId?: string; skinId?: string; variant?: string } } }[]) {
+  for (const record of records as { components?: { stack?: { skinId?: string; variant?: string } } }[]) {
     const stack = record.components?.stack;
-    const item = stack?.itemId !== undefined && Object.hasOwn(GROUND_ART_DEFINITIONS, stack.itemId)
-      ? { ...GROUND_ART_DEFINITIONS[stack.itemId], ...GROUND_ART_VARIANTS[stack.itemId]?.[stack.variant ?? ''] } : undefined;
+    const item = Object.hasOwn(GROUND_ART_DEFINITIONS, prefab)
+      ? { ...GROUND_ART_DEFINITIONS[prefab], ...GROUND_ART_VARIANTS[prefab]?.[stack?.variant ?? ''] } : undefined;
     if (!item) continue;
     for (const build of item.buildArchives) specs.push({ animation: item.animationArchive, build });
     for (const { archive } of Object.values(item.symbolOverrides)) specs.push({ animation: item.animationArchive, build: archive });
-    const skin = stack!.skinId !== undefined && Object.hasOwn(item.skinArchives, stack!.skinId)
-      ? item.skinArchives[stack!.skinId] : undefined;
+    const skin = stack?.skinId !== undefined && Object.hasOwn(item.skinArchives, stack.skinId)
+      ? item.skinArchives[stack.skinId] : undefined;
     if (skin) specs.push(skin);
   }
   return specs;
@@ -187,7 +188,7 @@ const beeQueenHiveComponents: PrefabComponentParser = (value, path) => {
 };
 
 /** One declaration supplies saved IDs, debug aliases and component schemas to both consumers. */
-export const PREFAB_DEFINITIONS = {
+const WORLD_PREFAB_DEFINITIONS = {
   farmPlow: definePrefabs([FARM_PLOW_ID], componentParser({ keys: ['farmPlow'] }), true),
   plantedSeeds: definePrefabs(PLANTED_SEED_IDS, empty, true),
   farmDecor: definePrefabs(FARM_DECOR_IDS, (value, path, context) =>
@@ -351,8 +352,6 @@ export const PREFAB_DEFINITIONS = {
     return fail(path, `missing building definition for ${context.prefab}`);
   }, // fence_item is an ordinary ground item (c_spawn) and inventory item (c_give); only `fence` is placed by c_spawn.
     PLACEABLE_BUILDING_IDS.filter((id) => id !== FENCE_ITEM_ID), buildingArchives),
-  groundItems: definePrefabs(['ground_item'], componentParser({ keys: ['stack', 'phonograph', 'torch', 'lantern'] }),
-    [...new Set([...GROUND_ART_SPAWN_IDS, ROCK_AVOCADO_FRUIT_ID, ...TURF_ITEM_IDS, 'backpack', 'armorsnurtleshell', 'amulet', 'fireflies', 'lightflier', ...BIRD_IDS, 'bird_egg', 'rottenegg', 'smallmeat', 'pondfish', HEATROCK_ID, NIGHTMARE_TIMEPIECE_ID, BERNIE_ITEM_ID, FARM_PLOW_ITEM_ID, 'torch', 'lantern', 'lightbulb', 'phonograph', 'record', 'seeds', ...VEGGIE_ITEM_IDS, 'meatballs', BANANAJUICE_ID, 'bananapop', ...MUSHROOM_ITEM_IDS, 'spoiled_food', 'farm_hoe', 'golden_farm_hoe', 'shovel', 'goldenshovel', 'pickaxe', 'goldenpickaxe', 'nightsword', 'dreadstone', 'wagpunk_bits', 'cutstone', 'marble', 'marblebean', 'moonrocknugget', 'moonglass', 'hammer', 'axe', 'goldenaxe', 'moonglassaxe', 'fishingrod', 'moon_tree_blossom', 'cactus_flower', 'foliage', 'beardhair', 'cookingrecipecard', 'scrapbook_page', 'blueprint', ...TRINKET_IDS, 'pinecone', 'acorn', 'mole', 'butterfly', 'butterflywings', 'butter', 'petals', 'moonbutterfly', 'moonbutterflywings', 'bugnet', 'razor', 'panflute', 'reskin_tool', 'greenstaff', 'firestaff', 'trident', 'opalstaff', 'opalpreciousgem', ...Object.keys(BURNABLE_ITEM_DEFINITIONS), 'ash'])], groundItemArchives),
   flowers: definePrefabs(['flower'], componentParser({ keys: ['flower'] }), ['flower', 'flower_rose', 'planted_flower'], ['flowers.zip']),
   staffLights: definePrefabs([DWARF_STAR_ID, POLAR_LIGHT_ID], componentParser({ keys: ['timer'] }), true),
   bulbPlants: definePrefabs(BULB_PLANT_PREFABS, (value, path, context) =>
@@ -464,6 +463,21 @@ export const PREFAB_DEFINITIONS = {
   staffProjectiles: definePrefabs([], empty),
   staffCastingLights: definePrefabs([], empty),
   oceanWaves: definePrefabs([], empty),
+} as const;
+
+/**
+ * The item prefabs, each saved under its own prefab ID as Ents saves it: every inventory item and piece of ground
+ * art that is not also a world prefab of its own. `c_spawn` names the ones listed.
+ */
+export const ITEM_PREFAB_IDS: readonly string[] = (() => {
+  const world = new Set<string>(Object.values(WORLD_PREFAB_DEFINITIONS).flatMap((definition: PrefabDefinition) => definition.prefabIds));
+  return [...new Set([...Object.keys(INVENTORY_ITEM_SPECS), ...Object.keys(GROUND_ART_DEFINITIONS)])].filter(id => !world.has(id));
+})();
+
+export const PREFAB_DEFINITIONS = {
+  ...WORLD_PREFAB_DEFINITIONS,
+  groundItems: definePrefabs(ITEM_PREFAB_IDS, componentParser({ keys: ['stack', 'phonograph', 'torch', 'lantern'] }),
+    [...new Set([...GROUND_ART_SPAWN_IDS, ROCK_AVOCADO_FRUIT_ID, ...TURF_ITEM_IDS, 'backpack', 'armorsnurtleshell', 'amulet', 'fireflies', 'lightflier', ...BIRD_IDS, 'bird_egg', 'rottenegg', 'smallmeat', 'pondfish', HEATROCK_ID, NIGHTMARE_TIMEPIECE_ID, BERNIE_ITEM_ID, FARM_PLOW_ITEM_ID, 'torch', 'lantern', 'lightbulb', 'phonograph', 'record', 'seeds', ...VEGGIE_ITEM_IDS, 'meatballs', BANANAJUICE_ID, 'bananapop', ...MUSHROOM_ITEM_IDS, 'spoiled_food', 'farm_hoe', 'golden_farm_hoe', 'shovel', 'goldenshovel', 'pickaxe', 'goldenpickaxe', 'nightsword', 'dreadstone', 'wagpunk_bits', 'cutstone', 'marble', 'marblebean', 'moonrocknugget', 'moonglass', 'hammer', 'axe', 'goldenaxe', 'moonglassaxe', 'fishingrod', 'moon_tree_blossom', 'cactus_flower', 'foliage', 'beardhair', 'cookingrecipecard', 'scrapbook_page', 'blueprint', ...TRINKET_IDS, 'pinecone', 'acorn', 'mole', 'butterfly', 'butterflywings', 'butter', 'petals', 'moonbutterfly', 'moonbutterflywings', 'bugnet', 'razor', 'panflute', 'reskin_tool', 'greenstaff', 'firestaff', 'trident', 'opalstaff', 'opalpreciousgem', ...Object.keys(BURNABLE_ITEM_DEFINITIONS), 'ash'])], groundItemArchives),
 } as const;
 
 export function prefabSaveParsers(definitions: readonly PrefabDefinition[]): ReadonlyMap<string, PrefabComponentParser> {

@@ -203,7 +203,7 @@ test('feeds, wakes, releases and hammers an occupied cage', async ({ page }) => 
   await slot('smallmeat').click();
   await clickCage('GIVE');
   await expect.poll(async () => (await cage())!.status, { timeout: 30_000 }).toBe('OCCUPIED');
-  await expect.poll(async () => JSON.stringify((await saveGame()).world.entities.ground_item ?? [])).toContain('bird_egg');
+  await expect.poll(async () => JSON.stringify((await saveGame()).world.entities.bird_egg ?? [])).toContain('bird_egg');
   await expect(slot('smallmeat')).toHaveCount(0);
 
   // A sleeping cage refuses gifts; waking returns to the idle loop.
@@ -239,6 +239,6 @@ test('feeds, wakes, releases and hammers an occupied cage', async ({ page }) => 
     for (let hit = 0; hit < 4; hit++) workable.WorkedBy({}, 1);
   });
   await expect.poll(cage).toBeNull();
-  await expect.poll(async () => JSON.stringify((await saveGame()).world.entities.ground_item ?? []), { timeout: 15_000 }).toContain('"itemId":"canary"');
+  await expect.poll(async () => JSON.stringify((await saveGame()).world.entities.canary ?? []), { timeout: 15_000 }).toContain('"itemId":"canary"');
   expect(errors).toEqual([]);
 });

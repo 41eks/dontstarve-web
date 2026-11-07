@@ -1,14 +1,12 @@
-import { findActionEntity } from '../../prefab/src/actionEntity';
+import { readFile } from 'node:fs/promises';
+import { prefabDisplay } from '../../display/src';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { createPickupInventory } from './pickupFixture';
 import { createPickupDoer, performPickupAction } from '../../stategraphs/src/pickup';
 import * as THREE from 'three';
-import { createEmptyEntity, PrefabInstance } from '../../prefab/src/prefabInstance';
-import type { GroundItemDefinition, GroundItemVisual } from '../../prefab/src/groundPrefab';
-import type { ItemEntity } from '../../inventory/src';
+import { PrefabInstance } from '../../prefab/src/prefabInstance';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { GroundItemManager } from '../../prefab/src/groundItemManager';
-const { createTestVisual } = vi.hoisted(() => ({ createTestVisual: vi.fn<(definition: GroundItemDefinition, entity: ItemEntity) => GroundItemVisual & { update: ReturnType<typeof vi.fn<(dt: number) => void>> }>() }));
+import { ItemWorldFixture, itemAt } from './itemWorldFixture';
 import { FindEntities } from '../../prefab/src/actionEntity';
 import { EventEmitter } from '@dontstarve-web/signals';
 import type { WorldEvents } from '../../prefab/src/worldContext';
@@ -23,64 +21,11 @@ vi.mock('@dontstarve-web/animation/imageAtlas', () => ({
   }),
 }));
 
-// This suite checks save/transfer state; browser tests load the real DST assets.
-vi.mock('@dontstarve-web/prefab/groundItems', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@dontstarve-web/prefab/groundItems')>();
-  createTestVisual.mockImplementation((definition, entity) => {
-    const { instance, display } = createEmptyEntity(definition.itemId, undefined, { instance: entity });
-    const model = display.model;
-    model.add(new THREE.Group());
-    model.userData.events = [];
-    for (const type of ['ondropped', 'onputininventory', 'onload'] as const) {
-      instance.ListenForEvent(type, () => model.userData.events.push(type));
-    }
-    return { model, instance, display, update: vi.fn<(dt: number) => void>(), dispose() { model.userData.events.push('dispose'); display.dispose(); } };
-  });
-  return {
-    ...actual,
-    createGroundItemFactory: () => ({
-      itemIds: Object.keys(actual.GROUND_ITEM_DEFINITIONS),
-      create: createTestVisual,
-    }),
-  };
-});
-
-vi.mock('@dontstarve-web/prefab/butterfly', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@dontstarve-web/prefab/butterfly')>();
-  class MockButterflyAssets {
-    dispose() {}
-    create(prefab: 'butterfly' | 'moonbutterfly', world: import('../../prefab/src/butterfly').ButterflyWorld,
-      _others: unknown, _loot: unknown, entity: ItemEntity) {
-      const { instance, display } = createEmptyEntity(prefab, undefined, { instance: entity });
-      const model = display.model;
-      model.add(new THREE.Group());
-      const controller = new actual.ButterflyController(actual.BUTTERFLY_DEFINITIONS[prefab], entity,
-        { start() {}, playOnce() {}, update() {}, currentAnimation: 'idle_flight_loop', currentAnimationLength: 1 }, world, undefined, () => 0);
-      return { model, instance, display, controller, update: (dt: number) => controller.update(dt),
-        dispose: () => { controller.dispose(); display.dispose(); } };
-
-    }
-  }
-  return {
-    ...actual, ButterflyAssets: MockButterflyAssets,
-    createButterflyGroundFactory: (context: import('../../prefab/src/groundPrefab').GroundPrefabContext) => {
-      const assets = new MockButterflyAssets();
-      return {
-        itemIds: [actual.BUTTERFLY_ID], capture: 'net',
-        configureEntity: actual.configureButterflyEntity,
-        create: (_definition: GroundItemDefinition, entity: ItemEntity) => actual.createButterflyGroundSprite(
-          assets as unknown as InstanceType<typeof actual.ButterflyAssets>,
-          context.butterflyWorld,
-          (position, radius, mustTags) => FindEntities(position, radius, mustTags), undefined, undefined, entity),
-        dispose: () => assets.dispose(),
-      };
-    },
-  };
-});
-
-afterEach(() => vi.restoreAllMocks());
+// This suite checks save/transfer state on the item prefabs; the item art is never loaded.
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 function setup() {
+  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   const scene = new THREE.Scene();
   const canvas = Object.assign(new EventTarget(), {
     getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }),
@@ -89,11 +34,11 @@ function setup() {
   const pickup = vi.spyOn(inventory, 'GiveItem');
   const player = new THREE.Group();
   const worldEvents = new EventEmitter<WorldEvents>();
-  const manager = new GroundItemManager(scene, new THREE.PerspectiveCamera(),
-    { domElement: canvas } as unknown as THREE.WebGLRenderer, 'images.zip', inventory, 'anim', player,
+  const manager = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(),
+    { domElement: canvas } as unknown as THREE.WebGLRenderer, '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player,
     undefined, undefined, undefined, undefined, undefined, undefined, undefined, worldEvents);
   const doer = createPickupDoer(player, inventory);
-  const pick = (model: THREE.Object3D) => performPickupAction(findActionEntity(model)!.pickupTarget, doer);
+  const pick = (model: THREE.Object3D) => performPickupAction(itemAt(model), doer);
   return { manager, scene, pickup, pick, player, inventory, canvas, worldEvents };
 }
 
@@ -105,21 +50,21 @@ describe('ground item save records', () => {
     try {
       const origin = new THREE.Vector3();
       const model = await manager.spawnFromSave('stationary:log', definition, origin);
+      await prefabDisplay(model)!.artLoaded();
       const entity = manager.entities.get('stationary:log')!;
       expect(model.position).toBe(entity.transform.position);
       expect(lookupPrefabInstance(model)!.position).toBe(model.position);
-      const visual = await vi.mocked(createTestVisual).mock.results.at(-1)!.value;
-      const update = visual.update;
       const matrices = vi.spyOn(model, 'updateWorldMatrix');
       const copies = vi.spyOn(model.position, 'copy');
       const query = placementEntities(scene);
       for (let frame = 0; frame < 10; frame++) manager.update(.1, new THREE.Quaternion());
-      expect(update).toHaveBeenCalledTimes(10);
       expect(matrices).not.toHaveBeenCalled();
       expect(copies).not.toHaveBeenCalled();
       expect(query.someNear(origin, 1, blocker => blocker.prefab === 'log')).toBe(true);
 
+      // A thrown inst comes down where its flight ends: its placement and tile follow it there (on_landed).
       entity.transform.setPosition(24, 0, 0);
+      entity.PushEvent('on_landed');
       expect(model.position.toArray()).toEqual([24, 0, 0]);
       manager.update(.1, new THREE.Quaternion());
       expect(matrices).not.toHaveBeenCalled();
@@ -174,7 +119,7 @@ describe('ground item save records', () => {
       expect([...manager.iteratePrefabPositions('log')]).toHaveLength(1);
       const exportRecords = vi.spyOn(manager, 'exportRecords');
       const snapshot = vi.spyOn(entity, 'snapshot');
-      const unrelatedEntity = findActionEntity(unrelated)!.pickupTarget.entity as ItemEntity;
+      const unrelatedEntity = itemAt(unrelated);
       const unrelatedSnapshot = vi.spyOn(unrelatedEntity, 'snapshot');
       const unrelatedTags = vi.spyOn(unrelatedEntity, 'hasTag');
       entity.transform.setPosition(20, 0, -30);
@@ -195,12 +140,11 @@ describe('ground item save records', () => {
     } finally { manager.dispose(); inventory.dispose(); }
   });
 
-  it('leaves no queryable inst when its visual cannot be created', async () => {
+  it('spawns no inst of a prefab the world does not have', async () => {
     const { manager, inventory } = setup();
     try {
-      vi.mocked(createTestVisual).mockImplementationOnce(() => { throw new Error('art failed'); });
-      expect(() => manager.spawnFromSave('failed', definition, new THREE.Vector3())).toThrow('art failed');
-      expect([...manager.iteratePrefabPositions('log')]).toEqual([]);
+      expect(() => manager.spawnFromSave('unknown', { ...definition, itemId: 'not_an_item' }, new THREE.Vector3())).toThrow('Unknown prefab');
+      expect(manager.entities.get('unknown')).toBeUndefined();
       expect(manager.exportRecords()).toEqual([]);
     } finally { manager.dispose(); inventory.dispose(); }
   });
@@ -241,6 +185,8 @@ describe('ground item save records', () => {
       player.position.set(4, 0, 5);
       const entity = inventory.entities.create({ itemId: 'log', count: 1 });
       expect(inventory.GiveItem(entity, new THREE.Vector3(8, 0, 9))).toBe(true);
+      // The held stacks' displays leave the scene as their lifecycle effects run; the overflow lies in it.
+      await new Promise(resolve => setTimeout(resolve, 0));
       expect(manager.renderEntities).toHaveLength(1);
       expect([...manager.iteratePrefabPositions('log')]).toEqual([entity.transform.position]);
       const records = manager.exportRecords();
@@ -271,7 +217,7 @@ describe('ground item save records', () => {
     expect(records[0].transform.position).toEqual([4, 0, 5]);
     expect(records[0].components.stack).toMatchObject({ itemId: 'log', count: 2 });
     manager.dispose();
-    expect(manager.spawnGroundItem(definition, new THREE.Vector3())).toBeUndefined();
+    expect(manager.exportRecords()).toEqual([]);
   });
   it('keeps the entity transform and root through rendering, reskinning, pickup, drop and saves', async () => {
     const { manager, scene, player, inventory, pick } = setup();
@@ -290,7 +236,8 @@ describe('ground item save records', () => {
     expect(minimap.position).toBe(position);
     expect(marker).toBeDefined();
     model.position.set(12, 0.25, 13);
-    expect(manager.exportRecords()[0].transform.position).toEqual([12, 0.25, 13]);
+    // The entities stand on the ground: the saved position drops a height.
+    expect(manager.exportRecords()[0].transform.position).toEqual([12, 0, 13]);
     expect(manager.renderEntities[0].footPosition.toArray()).toEqual([12, 0.25, 13]);
     manager.update(0, new THREE.Quaternion());
     expect(entity.transform.position).toBe(position);
@@ -306,7 +253,7 @@ describe('ground item save records', () => {
     expect(manager.entities.get(entity.id)).toBe(entity);
     expect([...manager.iteratePrefabPositions('backpack')]).toEqual([entity.transform.position]);
     const saved = manager.exportRecords()[0];
-    expect(saved.transform.position).toEqual([20, 0.5, 21]);
+    expect(saved.transform.position).toEqual([20, 0, 21]);
     expect(saved.components.stack?.container).toEqual(entity.snapshot().container);
     expect(saved.components.stack?.skinId).toBe(entity.skinId);
     const restored = setup();
@@ -328,12 +275,14 @@ describe('ground item save records', () => {
     expect(manager.exportRecords()[0].transform.position).toEqual([30, 0, 31]);
     pick(model);
     expect(inventory.GetEquippedItem('body')).toBe(entity);
-    expect(model.parent).toBeNull();
+    await vi.waitFor(() => expect(model.parent).toBeNull()); // RemoveFromScene, as the display's lifecycle effect runs.
     expect(manager.exportRecords()).toEqual([]);
     const dropped = vi.fn();
     entity.ListenForEvent('ondropped', dropped);
     inventory.DropItem(entity, new THREE.Vector3(40, 0, 41));
     expect(dropped).toHaveBeenCalledOnce();
+    // ReturnToScene: the display mounts the same root again as its lifecycle effect runs.
+    await vi.waitFor(() => expect(scene.children).toHaveLength(1));
     const droppedModel = scene.children[0];
     expect(droppedModel).toBe(model);
     expect(droppedModel.position).toBe(position);
@@ -357,19 +306,13 @@ describe('ground item save records', () => {
       manager.update(0.1, new THREE.Quaternion());
       expect(models.every((model) => model.children[0].position.y > 0 && model.position.y === 0)).toBe(true);
       expect(manager.exportRecords().every((record) => record.transform.position[1] === 0)).toBe(true);
-      // A drop ends the flight where it is: the item stands on the ground, not at its last height.
-      const dropped = models[2], droppedAt = dropped.position.clone();
-      findActionEntity(dropped)!.pickupTarget!.entity.PushEvent('ondropped');
-      manager.update(0.1, new THREE.Quaternion());
-      expect(dropped.children[0].position.y).toBe(0);
-      expect(dropped.position).toEqual(droppedAt);
       const model = models[0];
       player.position.copy(model.position);
-      const entity = findActionEntity(model)!.pickupTarget.entity;
+      const entity = itemAt(model);
       const position = model.position.clone();
       pick(model);
       expect(pickup).toHaveBeenCalledWith(entity, position);
-      expect(model.parent).toBeNull();
+      await vi.waitFor(() => expect(model.parent).toBeNull());
       // The entity keeps its sprite json in the inventory: dropped again, it starts on the ground.
       expect(entity.sprite.sprite.peek().visualHeight ?? 0).toBe(0);
       const pickedUpPosition = model.position.clone();
@@ -385,46 +328,32 @@ describe('ground item save records', () => {
 
   it('dispatches prefab events only after successful transfers and distinguishes restore from drop', async () => {
     const { manager, pickup, pick } = setup();
-    const lastModel = async () => (await vi.mocked(createTestVisual).mock.results.at(-1)!.value).model;
     expect(await manager.drop(definition, new THREE.Vector3(), () => false)).toBe(false);
-    expect((await lastModel()).userData.events).toEqual(['dispose']);
     expect(() => manager.drop(definition, new THREE.Vector3(), () => { throw new Error('transfer failed'); })).toThrow('transfer failed');
-    expect((await lastModel()).userData.events).toEqual(['dispose']);
-    // The new insts prepared for those refused drops are gone with their visuals.
+    // Refused drops make no inst.
     expect(manager.entities.values()).toEqual([]);
-    await manager.drop(definition, new THREE.Vector3(3, 7, 4), () => true);
-    const model = await lastModel();
-    expect(model.userData.events).toEqual(['ondropped']);
+    const original = manager.entities.create({ itemId: 'log', count: 1 }), events: string[] = [];
+    for (const type of ['ondropped', 'onputininventory'] as const) original.ListenForEvent(type, () => events.push(type));
+    expect(await manager.drop(definition, new THREE.Vector3(3, 7, 4), () => original)).toBe(true);
+    expect(events).toEqual(['ondropped']);
+    const model = original.transform.model;
     expect(model.position.toArray()).toEqual([3, 0, 4]);
-    const original = lookupPrefabInstance<ItemEntity>(model)!;
-    const onPutInInventory = vi.fn();
-    original.ListenForEvent('onputininventory', onPutInInventory);
-    const click = () => pick(model);
     pickup.mockReturnValueOnce(false);
-    click();
-    expect(model.userData.events).toEqual(['ondropped']);
+    pick(model);
+    expect(events).toEqual(['ondropped']);
     expect(manager.exportRecords()).toHaveLength(1);
-    click();
-    expect(model.userData.events).toEqual(['ondropped', 'onputininventory', 'dispose']);
-    expect(onPutInInventory).toHaveBeenCalledOnce();
+    pick(model);
+    expect(events).toEqual(['ondropped', 'onputininventory']);
     expect(original.isRemoved).toBe(false);
     expect(lookupPrefabInstance(model)).toBe(original);
     expect(manager.exportRecords()).toHaveLength(0);
-    const restored = await manager.spawnFromSave('restored-events', definition, new THREE.Vector3(2, 0.25, 3));
-    expect(restored.userData.events).toEqual(['onload']);
-    expect(restored.position.toArray()).toEqual([2, 0.25, 3]);
+    // SpawnSaveRecord restores an inst where it was saved, without dropping it.
+    const pushed = vi.spyOn(PrefabInstance.prototype, 'PushEvent');
+    const restored = manager.spawnFromSave('restored-events', definition, new THREE.Vector3(2, 0.25, 3));
+    expect(pushed.mock.calls.map(([name]) => name)).not.toContain('ondropped');
+    expect(restored.position.toArray()).toEqual([2, 0, 3]);
     manager.update(0, new THREE.Quaternion());
-    expect(manager.exportRecords()[0].transform.position).toEqual([2, 0.25, 3]);
-    manager.dispose();
-  });
-  it('creates the inst before its visual and destroys a new inst again when its visual cannot be created', () => {
-    const { manager } = setup();
-    vi.mocked(createTestVisual).mockImplementationOnce(() => { throw new Error('unknown art'); });
-    expect(() => manager.spawnFromSave('broken-log', definition, new THREE.Vector3())).toThrow('unknown art');
-    expect(manager.entities.get('broken-log')).toBeUndefined();
-    expect(manager.exportRecords()).toEqual([]);
-    expect(manager.spawnFromSave('broken-log', definition, new THREE.Vector3())).toBeDefined();
-    expect(manager.entities.get('broken-log')).toBeDefined();
+    expect(manager.exportRecords()[0].transform.position).toEqual([2, 0, 3]);
     manager.dispose();
   });
   it('saves live drops at their ground position and excludes failed drops and picked-up items', async () => {
@@ -439,11 +368,11 @@ describe('ground item save records', () => {
     expect(record.components.stack).toEqual({ itemId: 'log', count: 1 });
     record.components.stack!.count = 20;
     expect(manager.exportRecords()[0].components.stack?.count).toBe(1);
-    const entity = findActionEntity(scene.children[0])!.pickupTarget.entity;
+    const entity = itemAt(scene.children[0]);
     pick(scene.children[0]);
     expect(pickup).toHaveBeenCalledWith(entity, new THREE.Vector3(8, 0, 9));
     expect(manager.exportRecords()).toEqual([]);
-    expect(scene.children).toHaveLength(0);
+    await vi.waitFor(() => expect(scene.children).toHaveLength(0));
   });
 
   it('splits a dropped butterfly stack into one living entity per butterfly', async () => {
@@ -463,11 +392,13 @@ describe('ground item save records', () => {
   it('requires NET for living butterflies and keeps a failed capture in the world', async () => {
     const { manager, scene, pickup, canvas, inventory } = setup();
     const butterfly = { itemId: 'butterfly', count: 1, name: '蝴蝶', icon: 'butterfly.tex' };
+    vi.spyOn(Math, 'random').mockReturnValue(0);
     await manager.drop(butterfly, new THREE.Vector3(), () => true);
     const entity = manager.entities.get(lookupPrefabInstance(scene.children[0])!.entityId!)!;
+    await prefabDisplay(scene.children[0])!.artLoaded();
     // The brain's priority scatter and Wander's initial wait come first, then the butterfly flies.
     for (let frame = 0; frame < 40; frame++) manager.update(0.1, new THREE.Quaternion());
-    expect(entity.transform.position.x).toBeGreaterThan(0);
+    expect(entity.transform.position.length()).toBeGreaterThan(0);
     expect(scene.children[0].position.toArray()).toEqual(entity.transform.position.toArray());
     vi.spyOn(THREE.Raycaster.prototype, 'intersectObjects').mockReturnValue([
       { object: scene.children[0] } as THREE.Intersection,
@@ -483,7 +414,7 @@ describe('ground item save records', () => {
     expect(target.isValid()).toBe(false);
     expect((target.work({ components: { inventory } }) && (!!target.entity.components.inventoryitem?.owner || target.entity.isRemoved))).toBe(false);
     expect(pickup).toHaveBeenCalledTimes(2);
-    expect(scene.children).toHaveLength(0);
+    await vi.waitFor(() => expect(scene.children).toHaveLength(0));
     expect(manager.exportRecords()).toHaveLength(0);
   });
 });

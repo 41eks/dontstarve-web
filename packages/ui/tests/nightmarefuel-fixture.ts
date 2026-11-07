@@ -1,14 +1,20 @@
-import { SpriteResources } from '../../display/src';
 import * as THREE from 'three';
-import { GroundItemAssets, createResidentGroundItem, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
+import { prefabDisplay } from '../../display/src';
+import { GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
+import { ItemWorldFixture } from '../../animation/tests/itemWorldFixture';
+import { createPickupInventory } from '../../animation/tests/pickupFixture';
 import { createArchiveSprite } from '../../animation/src/archiveSprite';
 import { renderSceneWithPasses } from '../../animation/src/sceneRenderPass';
 
 export async function checkNightmareFuelTransparency() {
-  const assets = new GroundItemAssets();
+  const inventory = createPickupInventory();
+  // The item lies in a world of its own; each sample moves its model into the rendered scene.
+  const world = new ItemWorldFixture(new THREE.Scene(), new THREE.PerspectiveCamera(), undefined, '/dst/data/databundles/images.zip',
+    inventory, '/dst/data/anim', new THREE.Group());
+  const assets = world.archives;
   const source = GROUND_ITEM_DEFINITIONS.nightmarefuel;
-  const { visual: fuel, display } = createResidentGroundItem({ sprites: new SpriteResources(undefined, undefined, assets) }, { itemId: 'nightmarefuel' });
-  await display.artLoaded();
+  const fuel = { model: world.spawnFromSave('fuel', { itemId: 'nightmarefuel', count: 1, name: 'nightmarefuel', icon: '' }, new THREE.Vector3()) };
+  await prefabDisplay(fuel.model)!.artLoaded();
   const opaque = await createArchiveSprite(assets, { ...source, multColour: [1, 1, 1, 1] });
   const renderer = new THREE.WebGLRenderer({ preserveDrawingBuffer: true });
   renderer.setSize(128, 128);
@@ -44,6 +50,6 @@ export async function checkNightmareFuelTransparency() {
       && actual.green[i + 1] > control.green[i + 1] + 50
       && actual.white[i] > actual.green[i] + 50) translucentInterior++;
   }
-  fuel.dispose(); opaque.dispose(); assets.dispose(); renderer.dispose();
+  opaque.dispose(); world.dispose(); inventory.dispose(); renderer.dispose();
   return { opaqueInterior, translucentInterior };
 }

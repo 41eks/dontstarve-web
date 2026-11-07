@@ -7,7 +7,7 @@ import { pitchforkVisual, type PitchforkTool } from '../../prefab/src/pitchfork'
 import { AnimState } from '../src/animState';
 import { overrideArchives } from './animStateFixture';
 import { TurfMap, WORLD_TILES } from '../../prefab/src/turfMap';
-import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
+import { GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { createGroundItemVisual } from './groundItemVisual';
 import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src/slots';
@@ -32,16 +32,15 @@ describe('pitchfork source art and TERRAFORM timing', () => {
   it.each(['pitchfork'] as PitchforkTool[])('loads %s ground, held and skinned art and digs at frame 25 once', async (tool) => {
     expect(inventoryItemEquipmentKind(tool)).toBe('hand');
     expect(inventoryItemMaxStack(tool)).toBe(1);
-    const assets = new GroundItemAssets();
-    const ground = await createGroundItemVisual(assets, tool);
+    const ground = await createGroundItemVisual(tool);
     const mesh = ground.model.children[0].children[0].children[0] as THREE.Mesh;
     expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
-    expect((mesh.material as THREE.Material[]).some((material) => material.name === `ground:${tool}`)).toBe(true);
+    expect((mesh.material as THREE.Material[]).some((material) => material.name === `sprite:${tool}`)).toBe(true);
     for (const skin of Object.keys(GROUND_ITEM_DEFINITIONS[tool].skinArchives)) {
       const anim = new AnimState(() => {});
       pitchforkVisual({ id: tool, prefab: tool, skinId: skin }).onequip({ AnimState: anim, PushEvent() {} });
       expect(overrideArchives(anim, 'swap_object')).toEqual([GROUND_ITEM_DEFINITIONS[tool].skinArchives[skin], `swap_${tool}.zip`]);
-      const skinned = await createGroundItemVisual(assets, tool, skin);
+      const skinned = await createGroundItemVisual(tool, skin);
       skinned.dispose();
     }
     const player = await createWilsonPlayer('/dst/data/anim');

@@ -8,11 +8,10 @@ import { ErodeAway } from '../../componets/src/erodeaway';
 import { Lighter } from '../../componets/src/lighter';
 import type { WorkInst } from '../../componets/src/workable';
 import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory, type HeldEquipFunctions } from './equipmentVisual';
-import { createResidentGroundItem, GROUND_ITEM_DEFINITIONS } from './groundItems';
-import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
-import { listenInventoryEvents } from './inventoryEvents';
+import { GROUND_ITEM_DEFINITIONS, groundItemPrefab, type ItemPrefabDefinition } from './groundItems';
+import type { ItemPrefabWorld } from './groundPrefab';
 import { spawnLightEntity, type PrefabLocalLight } from './localLight';
-import type { LootLaunch } from './lootFling';
+import type { LootLaunch } from '../../componets/src/inventoryphysics';
 import { PlaySound } from './sound';
 import { TILE_SIZE } from './tile';
 import { TORCH_FIRE_OFFSET_Y, TORCH_FIRE_VFX } from './torchfire';
@@ -235,7 +234,7 @@ export class TorchController implements HandEquipment {
     this.PlayExtinguishSound(this.soundPosition(), true, false);
     this.entity.sprite.playOnce('idle');
     // Physics:Teleport(x, max(.1, y), z) and SetVel(speed * cos, 8 + random, -speed * sin) with speed = random.
-    this.entity.PushEvent('launch', { angle: Math.random() * Math.PI * 2, height: .1,
+    this.entity.components.inventoryphysics?.Launch({ angle: Math.random() * Math.PI * 2, height: .1,
       speed: { min: 0, range: 1 }, ySpeed: { min: 8, range: 1 } } satisfies LootLaunch);
   }
 
@@ -331,39 +330,23 @@ export function createTorchHandLifecycle(
   };
 }
 
-/** The ground half of the torch's lifecycle, on the item's own instance; its fuel runs on game time, whatever the tile does. */
-export function createTorchGroundFactory(context: GroundPrefabContext): GroundItemFactory {
+/** torch.lua fn: the ground half of the torch's lifecycle on its own inst, and OnSave / OnLoad of a tossed, burning torch. */
+export function torchPrefabs(world: ItemPrefabWorld): Record<string, ItemPrefabDefinition> {
   return {
-    itemIds: [TORCH_ID],
-    configureEntity: configureTorchEntity,
-    create(item, inst) {
-      const { visual } = createResidentGroundItem(context, { ...item, entity: inst });
-      const controller = getTorchController(inst);
-      let state = item;
-      const removeEvents = listenInventoryEvents(inst, {
-        onputininventory: () => controller.OnPutInInventory(context.inventoryOwnerPosition),
-        ondropped: () => controller.OnDropped(),
-        // OnLoad: PlayAnimation("land"), then IgniteTossed.
-        onload: () => {
-          controller.OnDropped();
-          if (state.torchLit) { inst.sprite.playOnce('land'); controller.IgniteTossed(); }
-        },
-      });
-      return {
-        ...visual,
-        setDefinition: definition => { state = definition; },
-        getDefinition: () => {
-          const fueled = inst.components.fueled;
-          fueled?.Settle();
-          return { remainingFuel: fueled ? fueled.OnSave()?.fuel : state.remainingFuel, torchLit: controller.isBurning };
-        },
-        dispose() {
-          removeEvents();
-          controller.releaseTossedFire();
-          visual.dispose();
-        },
-      };
-    },
+    [TORCH_ID]: groundItemPrefab(TORCH_ID, world, {
+      configure: inst => {
+        const controller = getTorchController(inst);
+        inst.ListenForEvent('onputininventory', () => controller.OnPutInInventory(world.inventoryOwnerPosition));
+        inst.ListenForEvent('ondropped', () => controller.OnDropped());
+        inst.onRemove(() => controller.releaseTossedFire());
+        inst.OnSave = (_inst, data) => { if (controller.isBurning && !inst.inlimbo) data.torch = { lit: true }; };
+        // OnLoad: a torch saved burning on the ground lands and burns again.
+        if (inst.saveRecord?.components.torch?.lit && !inst.inlimbo) {
+          inst.sprite.playOnce('land');
+          controller.IgniteTossed();
+        }
+      },
+    }),
   };
 }
 

@@ -1,10 +1,9 @@
-import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import type * as THREE from 'three';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { ComponentTimer } from '../../componets/src/timer';
 import { createMemo } from '@dontstarve-web/signals';
-import { createResidentGroundItem, GROUND_ITEM_DEFINITIONS } from './groundItems';
-import type { GroundItemFactory, GroundPrefabContext, GroundItemDefinition } from './groundPrefab';
+import { groundItemPrefab, type ItemPrefabDefinition } from './groundItems';
+import type { ItemPrefabWorld, GroundItemDefinition } from './groundPrefab';
 import { createStructureLootDropper } from './structureLoot';
 import { ItemEntity } from '@dontstarve-web/inventory';
 import { Inventory } from '../../componets/src/inventory';
@@ -162,7 +161,11 @@ export function configurePhonographEntity(entity: ItemEntity, scheduler?: GameTi
     // Old saves only named the song. New saves retain each stored inst's identity and state.
     const items = saved.inventory ?? (saved.phonographRecord ? [{ itemId: RECORD_ID, count: 1,
       ...(saved.phonographRecord === RECORD_ID ? {} : { skinId: saved.phonographRecord }) }] : []);
-    inventory.OnLoad(items, state => { const item = new ItemEntity(state); configureRecordEntity(item); return item; });
+    inventory.OnLoad(items, state => {
+      const item = entity.worldServices?.spawnItem?.(state) ?? new ItemEntity(state);
+      configureRecordEntity(item);
+      return item;
+    });
     return inventory;
   });
   entity.components.phonograph = entity.component('phonograph', () => new PhonographController(entity, scheduler));
@@ -184,40 +187,31 @@ function onhammered(inst: ItemEntity): void {
   inst.remove();
 }
 
-export function createPhonographGroundFactory(context: GroundPrefabContext): GroundItemFactory {
-  const { fx, dropLoot, spawnGroundItem, scheduler } = context;
-  const worldServices = { fx, dropLoot: (items: readonly { itemId: string; count: number; skinId?: string }[], position: ReadonlyVector3) =>
-    dropLoot?.(items.map(item => ({ ...GROUND_ITEM_DEFINITIONS[item.itemId], ...item })), position),
-    dropItem: (entity: ItemEntity, position: ReadonlyVector3) => {
-      spawnGroundItem?.({ ...GROUND_ITEM_DEFINITIONS[entity.prefab], ...entity.snapshot(), entity }, position, { fling: true });
-    },
-  };
+/** phonograph.lua fn: hammered into its loot, and OnSave / OnLoad of a song that was playing. */
+export function phonographPrefabs(world: ItemPrefabWorld): Record<string, ItemPrefabDefinition> {
   return {
-    itemIds: [PHONOGRAPH_ID],
-    configureEntity: entity => configurePhonographEntity(entity, scheduler),
-    create(item, inst) {
-      configurePhonographEntity(inst, scheduler);
-      inst.worldServices = worldServices;
-      const { visual, instance } = createResidentGroundItem(context, { ...item, entity: inst });
-      const controller = inst.components.phonograph!;
-      const removeEvents = listenInventoryEvents(instance, {
-        // Dropping a loaded machine enables it, but does not turn it on.
-        ondropped: () => controller.OnDropped(),
-        onload: () => { controller.OnDropped(); if (item.playbackRemaining && !controller.isPlaying) controller.resume(item.playbackRemaining); },
-      });
-      inst.components.lootdropper ??= createStructureLootDropper(inst);
-      const workable = inst.component('workable', () => {
-        const work = new Workable(inst);
-        work.SetWorkAction('HAMMER'); work.SetWorkLeft(1);
-        return work;
-      });
-      inst.components.workable = workable;
-      workable.SetOnFinishCallback(onhammered);
-      return {
-        ...visual,
-        getDefinition: () => controller.snapshot(),
-        dispose() { removeEvents(); visual.dispose(); },
-      };
-    },
+    [PHONOGRAPH_ID]: groundItemPrefab(PHONOGRAPH_ID, world, {
+      configure: inst => {
+        configurePhonographEntity(inst, world.scheduler);
+        const controller = inst.components.phonograph!;
+        // The item metadata may have made the controller first; the song's DoTaskInTime runs on this world's game time.
+        controller.BindScheduler(world.scheduler);
+        inst.components.lootdropper ??= createStructureLootDropper(inst);
+        const workable = inst.component('workable', () => {
+          const work = new Workable(inst);
+          work.SetWorkAction('HAMMER'); work.SetWorkLeft(1);
+          return work;
+        });
+        inst.components.workable = workable;
+        workable.SetOnFinishCallback(onhammered);
+        inst.OnSave = (_inst, data) => {
+          if (controller.isPlaying) data.phonograph = { remainingSeconds: controller.remainingSeconds };
+        };
+        // OnLoad: a loaded machine can be switched again, and a song that was playing plays on.
+        controller.OnDropped();
+        const saved = inst.saveRecord?.components.phonograph;
+        if (saved?.remainingSeconds && !controller.isPlaying) controller.resume(saved.remainingSeconds);
+      },
+    }),
   };
 }

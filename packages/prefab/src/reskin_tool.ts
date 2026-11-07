@@ -7,7 +7,7 @@ import { Vector3 } from 'three';
 import { SpellCaster } from '../../componets/src/spellcaster';
 import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory, type HeldEquipFunctions } from './equipmentVisual';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
-import { bindInstance, PrefabInstance } from './prefabInstance';
+import { bindInstance, PrefabInstance, prefabInstance } from './prefabInstance';
 import { PlaySound, type SoundEventPath } from './sound';
 import { TILE_SIZE } from './tile';
 
@@ -15,7 +15,22 @@ import { TILE_SIZE } from './tile';
 function reskinOperation(target: object | undefined): ReskinTarget | undefined {
   if (!target) return undefined;
   const registered = (target as { reskinTarget?: ReskinTarget }).reskinTarget;
-  return registered ?? ((target as Partial<ReskinTarget>).sprite ? target as ReskinTarget : undefined);
+  if (registered) return registered;
+  if ((target as Partial<ReskinTarget>).sprite) return target as ReskinTarget;
+  const model = (target as { model?: THREE.Object3D }).model;
+  const inst = model && prefabInstance<PrefabInstance>(model);
+  return inst && inst.sprite.skinNames.length ? instanceReskinTarget(inst) : undefined;
+}
+
+/** An inst whose declared skin source has skins: PREFAB_SKINS[inst.prefab], its skin its own sprite json's. */
+export function instanceReskinTarget(inst: PrefabInstance): ReskinTarget {
+  const model = inst.transform.model;
+  return reskinTarget({
+    id: String(inst.entityId), prefabId: inst.prefab, model, sprite: inst.sprite, skins: inst.sprite.skinNames,
+    isValid: () => !inst.isRemoved && !inst.inlimbo,
+    get position() { return inst.position; },
+    hasTag: tag => inst.hasTag(tag), isVisible: () => model.visible,
+  });
 }
 
 /** The scene's explode_reskin presenter for each held tool, bound by its hand lifecycle. */

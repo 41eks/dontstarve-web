@@ -15,9 +15,9 @@ it('handles GiveItem when partially or completely full, notifying only received 
   const source = { x: 8, y: 0, z: 9 }, position = { x: 4, y: 0, z: 5 };
   inventory.bindActor({ hasTag: tag => tag === 'player', GetPosition: () => position, PushEvent() {} });
   inventory.subscribeReceived(receive);
-  inventory.subscribeDropped(drop);
   try {
     const partial = inventory.entities.create({ itemId: 'cutgrass', count: 3, wet: true });
+    partial.ListenForEvent('ondropped', () => drop(partial));
     expect(inventory.GiveItem(partial, source)).toBe(true);
     expect(inventory.count('cutgrass')).toBe(40);
     expect(receive).toHaveBeenCalledExactlyOnceWith([
@@ -29,6 +29,7 @@ it('handles GiveItem when partially or completely full, notifying only received 
     expect(partial.transform.position.toArray()).toEqual([4, 0, 5]);
 
     const full = inventory.entities.create({ itemId: 'cutgrass', count: 3 });
+    full.ListenForEvent('ondropped', () => drop(full));
     expect(inventory.GiveItem(full, source)).toBe(true);
     expect(inventory.count('cutgrass')).toBe(40);
     expect(receive).toHaveBeenCalledOnce();

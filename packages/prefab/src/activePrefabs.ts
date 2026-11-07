@@ -10,8 +10,6 @@ export type FoundEntity = ComponentActionEntity & WorkableInst & {
   reskinTarget?: ReskinTarget;
   /** The owner's greenstaff deconstruction view; loot and removal follow the recipe and the owner. */
   deconstructionTarget?: import('./staff').DeconstructionTarget;
-  /** The ground item's pickup view; inventory state remains on its ItemEntity. */
-  pickupTarget?: import('../../stategraphs/src/pickup').PickupTarget;
 };
 
 /** The logical world's active prefab projections, used by world/radius queries independently of mouse targeting. */

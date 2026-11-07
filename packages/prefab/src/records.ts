@@ -1,6 +1,5 @@
 import type { ItemEntity, InventoryItemSpec } from '@dontstarve-web/inventory';
-import { createResidentGroundItem, GROUND_ITEM_DISPLAY_SPECS } from './groundItems';
-import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
+import { GROUND_ITEM_DISPLAY_SPECS } from './groundItems';
 import type { SoundEventPath } from './sound';
 import { Tradable } from '../../componets/src/tradable';
 
@@ -29,11 +28,3 @@ export function isPhonographRecord(entity: Pick<ItemEntity, 'hasTag'>): boolean 
 export const RECORD_ITEM_SPECS: Readonly<Record<string, InventoryItemSpec>> = {
   [RECORD_ID]: { ...GROUND_ITEM_DISPLAY_SPECS[RECORD_ID], maxStack: 1, configureEntity: configureRecordEntity },
 };
-
-export function createRecordGroundFactory(context: GroundPrefabContext): GroundItemFactory {
-  return {
-    itemIds: [RECORD_ID],
-    configureEntity: configureRecordEntity,
-    create: (item, inst) => createResidentGroundItem(context, { ...item, entity: inst }).visual,
-  };
-}

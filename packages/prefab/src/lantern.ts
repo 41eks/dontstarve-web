@@ -3,9 +3,8 @@ import type { ItemEntity, ItemRuntimeComponent } from '@dontstarve-web/inventory
 import { createEffect, watchSignal, type EquipmentOwner, type ReadonlySignal } from '@dontstarve-web/signals';
 import * as THREE from 'three';
 import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory, type HeldEquipFunctions } from './equipmentVisual';
-import { GROUND_ITEM_DEFINITIONS, createResidentGroundItem } from './groundItems';
-import type { GroundItemFactory, GroundItemVisual, GroundPrefabContext } from './groundPrefab';
-import { listenInventoryEvents } from './inventoryEvents';
+import { GROUND_ITEM_DEFINITIONS, groundItemPrefab, type ItemPrefabDefinition } from './groundItems';
+import type { ItemPrefabWorld } from './groundPrefab';
 import { TILE_SIZE } from './tile';
 import { spawnLightEntity, type LightEntity, type LightParent } from './localLight';
 import { Machine } from '../../componets/src/machine';
@@ -226,47 +225,28 @@ export function createLanternHandLifecycle(entity: ItemEntity, context: LanternH
   };
 }
 
-/** Ground art binds to the inst's lantern lifecycle; it starts unlit until a drop or load event. */
-/** Reuse the item's prefab instance; a skin alone constructs a standalone logical item. */
-export function createLanternGroundSprite(context: Pick<GroundPrefabContext, 'sprites' | 'tickingarea'>, item?: string | ItemEntity): GroundItemVisual & {
-  readonly light: LanternLightController;
-} {
-  const { visual, instance, display } = createResidentGroundItem(context, typeof item === 'object'
-    ? { itemId: LANTERN_ID, entity: item } : { itemId: LANTERN_ID, skinId: item });
-  const model = display.model, sprite = instance.sprite;
-  instance.addTag('light');
-  configureLanternEntity(instance);
-  const controller = getLanternController(instance);
-  controller.bindGround(instance);
-  let stopState: (() => void) | undefined;
-  const ison = watchSignal(controller.ison, stop => { stopState = stop; });
-  createEffect(() => sprite.playOnce(ison.get() ? 'idle_on' : 'idle_off'));
-  let savedOn: boolean | undefined;
-  const removeInventoryEvents = listenInventoryEvents(instance, {
-    ondropped: () => controller?.OnDropped(),
-    // Older saves predate machine.ison; their ground lanterns were dropped, hence on.
-    onload: () => controller?.OnLoad(savedOn ?? true),
-  });
+/**
+ * mininglantern.lua: the light is parented to the lantern while it lies in the world, the art follows machine.ison, and
+ * ondropped turns it off and on again. machine's OnSave / OnLoad keep the switch.
+ */
+export function lanternPrefabs(world: ItemPrefabWorld): Record<string, ItemPrefabDefinition> {
   return {
-    ...visual,
-    // Fuel settlement continues while the display releases its off-tile sprite.
-    active: undefined,
-    model,
-    get light() { return controller!.light; },
-    setDefinition(definition) { savedOn = definition.lanternOn; },
-    getDefinition() {
-      instance.components.fueled?.Settle();
-      return { lanternOn: controller.isOn };
-    },
-    dispose() { removeInventoryEvents(); stopState?.(); controller?.releaseGround(instance); visual.dispose(); },
-  };
-}
-
-export function createLanternGroundFactory(context: GroundPrefabContext): GroundItemFactory {
-  return {
-    itemIds: [LANTERN_ID],
-    configureEntity: configureLanternEntity,
-    create: (_item, entity) => createLanternGroundSprite(context, entity),
+    [LANTERN_ID]: groundItemPrefab(LANTERN_ID, world, {
+      configure: inst => {
+        inst.addTag('light');
+        configureLanternEntity(inst);
+        const controller = getLanternController(inst);
+        controller.bindGround(inst);
+        const ison = watchSignal(controller.ison, stop => inst.onRemove(stop));
+        createEffect(() => inst.sprite.playOnce(ison.get() ? 'idle_on' : 'idle_off'));
+        inst.ListenForEvent('ondropped', () => controller.OnDropped());
+        inst.onRemove(() => controller.releaseGround(inst));
+        inst.OnSave = (_inst, data) => { inst.components.fueled?.Settle(); data.lantern = { ison: controller.isOn }; };
+        // machine:OnLoad.
+        const saved = inst.saveRecord?.components.lantern;
+        if (saved) controller.OnLoad(saved.ison);
+      },
+    }),
   };
 }
 

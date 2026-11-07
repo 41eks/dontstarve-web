@@ -9,7 +9,7 @@ import { monkeytailPrefabs, MONKEYTAIL_REGROW_TIME } from '../../prefab/src/monk
 import { createDeployMap } from '../../prefab/src/deployMap';
 import { placementEntities } from '../../prefab/src/placementEntities';
 import { deployActor, landTurf } from './deployActor';
-import { GroundItemManager } from '../../prefab/src/groundItemManager';
+import { ItemWorldFixture } from './itemWorldFixture';
 import { createInventoryStore } from '../../../src/inventory';
 import { inventorySlotAddress, cursorSlotAddress } from '../../inventory/src';
 import { createSignal } from '../../signals/src';
@@ -38,7 +38,7 @@ function setup() {
   const inventory = createInventoryStore([]), scene = new THREE.Scene(), player = new THREE.Group();
   const camera = new THREE.PerspectiveCamera(), renderer = { domElement: new EventTarget() } as THREE.WebGLRenderer;
   const scheduler = new GameTimeScheduler();
-  const ground = new GroundItemManager(scene, camera, renderer, '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
+  const ground = new ItemWorldFixture(scene, camera, renderer, '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
   const { season } = bindTestWorld(scheduler);
   const rain = createSignal<'none' | 'rain' | 'snow'>('none');
   let temperature = 20;
@@ -53,17 +53,10 @@ function setup() {
     exportRecords: () => monkeytails.exportRecords(),
     dispose: () => monkeytails.dispose(),
   });
-  registry.register(PREFAB_DEFINITIONS.groundItems, {
-    restore: (_, record) => ground.spawnFromSave(record.id, {
-      ...SAVE_CATALOG.items[record.components.stack!.itemId], ...record.components.stack!,
-    }, new THREE.Vector3(...record.transform.position)),
-    debugSpawn: id => ground.spawnFromSave('dug:command', { ...SAVE_CATALOG.items[id], itemId: id, count: 1 }, player.position),
-    exportRecords: () => ground.exportRecords().map(record => ({ prefabId: 'ground_item', record })),
-    dispose: () => ground.dispose(),
-  });
+  registry.register(PREFAB_DEFINITIONS.groundItems, ground.registration(() => player.position, () => 'dug:command'));
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
   const save = () => serializeSave(template, {
-    entities: { monkeytail: monkeytails.exportRecords().map(({ record }) => record), ground_item: ground.exportRecords() }, inventory: inventory.exportState(),
+    entities: { monkeytail: monkeytails.exportRecords().map(({ record }) => record), ...ground.exportEntities() }, inventory: inventory.exportState(),
     elapsedSeconds: scheduler.now, playerTransform: { position: player.position.toArray() as [number, number, number], rotationY: 0 },
   }, SAVE_CATALOG);
   const advance = (seconds: number) => { scheduler.advance(seconds); prefabDisplays(monkeytails).update(seconds, new THREE.Quaternion()); };
@@ -136,7 +129,7 @@ it('plants cursor-held roots and fertilizes at frame six, preserves cancellation
     let groundMesh!: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
     await (prefabDisplay(s.ground.reskinTargets[0].model) as PrefabDisplay).artLoaded();
     s.ground.reskinTargets[0].model.traverse(object => { if (object instanceof THREE.Mesh) groundMesh ??= object as typeof groundMesh; });
-    expect(groundMesh.material.some(material => material.name === 'ground:reeds_monkeytails')).toBe(true);
+    expect(groundMesh.material.some(material => material.name === 'sprite:reeds_monkeytails')).toBe(true);
     expect(groundMesh.geometry.drawRange.count).toBeGreaterThan(0);
     s.player.position.set(0, 0, 0);
     expect(s.inventory.transfer(inventorySlotAddress(0), cursorSlotAddress(), 2)).toBe(true);
@@ -185,12 +178,9 @@ it('plants cursor-held roots and fertilizes at frame six, preserves cancellation
     const saved = deserializeSave(json, SAVE_CATALOG);
     restored.inventory.replaceState(inventoryStateFromSave(saved), SAVE_CATALOG.recipes);
     for (const record of saved.world.entities.monkeytail) await drawn(restored.monkeytails.spawn('monkeytail', new THREE.Vector3(...record.transform.position), record).transform.model);
-    for (const record of saved.world.entities.ground_item) {
-      const item = record.components.stack!;
-      await restored.ground.spawnFromSave(record.id, { ...SAVE_CATALOG.items[item.itemId], ...item }, new THREE.Vector3(...record.transform.position));
-    }
+    restored.ground.restoreEntities(saved.world.entities);
     expect(restored.monkeytails.exportRecords().map(({ record }) => record)).toEqual(s.monkeytails.exportRecords().map(({ record }) => record));
-    expect(restored.ground.exportRecords()).toEqual(s.ground.exportRecords());
+    expect(restored.ground.exportEntities()).toEqual(s.ground.exportEntities());
     expect(restored.inventory.exportState()).toEqual(s.inventory.exportState());
     expect(restored.inventory.get(cursorSlotAddress())?.itemId).toBe('poop');
     expect(plantInstance(workTargets('DIG', restored.scene)[0].model).sprite.currentAnimation).toBe('idle_dead');

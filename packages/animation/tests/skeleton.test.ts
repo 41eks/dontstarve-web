@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { PrefabDisplayGroup } from '@dontstarve-web/display';
 import { skeletonPrefabs, type SkeletonInstance } from '../../prefab/src/skeleton';
-import { GroundItemManager } from '../../prefab/src/groundItemManager';
+import { ItemWorldFixture } from './itemWorldFixture';
 import { createInventoryStore } from '../../../src/inventory';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { EntityRegistry } from '../../../src/entityRegistry';
@@ -24,21 +24,17 @@ function setup() {
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   vi.stubGlobal('window', new EventTarget());
   const inventory = createInventoryStore([]), scene = new THREE.Scene(), player = new THREE.Group(), physics = new CANNON.World();
-  const ground = new GroundItemManager(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
+  const ground = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
   const displays = new PrefabDisplayGroup(scene);
   const skeletons = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { physics });
   skeletons.register(skeletonPrefabs({ spawnGroundItem: (definition, position, options) => ground.spawnGroundItem(definition, position, options) }) as never);
   const registry = new EntityRegistry([], skeletons, () => player.position);
   registry.registerPrefabs(PREFAB_DEFINITIONS.skeletons);
-  registry.register(PREFAB_DEFINITIONS.groundItems, {
-    restore: () => { throw new Error('unused'); },
-    debugSpawn: id => ground.spawnFromSave(`command:${id}`, { ...SAVE_CATALOG.items[id], itemId: id, count: 1 }, player.position),
-    exportRecords: () => ground.exportRecords().map(record => ({ prefabId: 'ground_item', record })), dispose: () => ground.dispose(),
-  });
+  registry.register(PREFAB_DEFINITIONS.groundItems, ground.registration(() => player.position, id => `command:${id}`));
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
   const save = () => serializeSave(template, { entities: { skeleton_player: skeletons.exportRecords().map(entry => entry.record),
-    ground_item: ground.exportRecords() },
+    ...ground.exportEntities() },
   inventory: inventory.exportState(), elapsedSeconds: 0, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
   return { inventory, scene, physics, ground, skeletons, registry, save, player, dispose: () => { registry.dispose(); skeletons.dispose(); displays.dispose(); inventory.dispose(); } };
 }
@@ -63,7 +59,8 @@ it('hammers a described player skeleton into two boneshards and keeps its pose a
     expect(restored.skeletons.exportRecords()).toEqual(s.skeletons.exportRecords());
 
     // SKELETON_WORK = 3 hammer hits; the last drops the `skeleton_player` table (two boneshards), collapses and removes it.
-    const hammer = s.inventory.entities.create({ itemId: 'hammer', count: 1 });
+    // The worker holds its tool: SpawnPrefab puts the inst in the world, GiveItem takes it out of the scene.
+    const hammer = s.inventory.entities.create({ itemId: 'hammer', count: 1 }); s.inventory.GiveItem(hammer);
     for (let i = 0; i < 2; i++) expect(performToolWork('HAMMER', target.entity, {}, hammer)).toBe(true);
     expect(s.skeletons.exportRecords()).toHaveLength(1);
     expect(performToolWork('HAMMER', target.entity, {}, hammer)).toBe(true);
@@ -95,7 +92,8 @@ it('spawns a creature skeleton with its own pose range and shared table, droppin
       { id: record.record.id, transform: record.record.transform, components: { skeleton: record.record.components.skeleton } });
     expect(restored.skeletons.exportRecords()).toEqual([record]);
 
-    const hammer = s.inventory.entities.create({ itemId: 'hammer', count: 1 });
+    // The worker holds its tool: SpawnPrefab puts the inst in the world, GiveItem takes it out of the scene.
+    const hammer = s.inventory.entities.create({ itemId: 'hammer', count: 1 }); s.inventory.GiveItem(hammer);
     for (let i = 0; i < 3; i++) expect(performToolWork('HAMMER', targets[1].entity, {}, hammer)).toBe(true);
     await vi.waitFor(() => expect(s.ground.exportRecords().map(item => item.components.stack?.itemId).sort())
       .toEqual(['boneshard', 'boneshard', 'scrapbook_page']));

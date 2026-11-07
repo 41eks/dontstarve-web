@@ -18,11 +18,10 @@ import type { BrainEntity, BrainWorld } from '../../brains/src/types';
 import { MoleStateGraph, type MoleStateInst } from '../../stategraphs/src/SGmole';
 import type { BufferedAction } from '../../stategraphs/src/bufferedaction';
 import type { MolehillInstance } from './molehill';
-import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
+import type { ItemPrefabWorld } from './groundPrefab';
+import { bindItemWorld, type ItemPrefabDefinition } from './groundItems';
 import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
 import { WORLD_SCALE, MakeCharacterPhysics, CHARACTER_COLLISION_MASK } from './standardcomponents';
-import { createArchiveEntity } from './prefabInstance';
-import { SpriteResources } from '@dontstarve-web/display';
 import { animationLengths } from './animationTimings';
 import { COLLISION } from '../../componets/src/physicsState';
 
@@ -332,37 +331,41 @@ export function configureMoleEntity(entity: ItemEntity): void {
   };
   if (!entity.components.inventoryitem.owner) perishable.StopPerishing();
 }
-export function createMoleGroundFactory(context: GroundPrefabContext): GroundItemFactory {
-  const resources = new SpriteResources(context.animationBaseUrl, 'mole');
-  const source = resources.archive({ animationArchive: 'mole_basic.zip', buildArchives: ['mole_build.zip'], bank: 'mole' });
+/** mole.lua: the mole's stategraph drives its sprite, and its brain and locomotion run while it is awake in the world. */
+export function molePrefabs(world: ItemPrefabWorld): Record<string, ItemPrefabDefinition> {
   return {
-    itemIds: [MOLE_ID], configureEntity: configureMoleEntity,
-    create: (_item, inst) => {
-      if (!context.moleWorld) throw new Error('Mole world is unavailable');
-      const { instance, display } = createArchiveEntity(MOLE_ID, source, { name: 'idle_under', billboard: true, instance: inst }, MOLE_ID);
-      const sprite = instance.sprite, model = display.model;
-      let mole: Mole | undefined;
-      // Visibility and facing change the sprite json only when their value does.
-      let visible: boolean | undefined, facing: number | undefined;
-      const cleanups: (() => void)[] = [];
-      const heading = watchSignal(context.moleWorld.cameraHeading, stop => cleanups.push(stop));
-      configureMoleEntity(inst); mole = inst.getComponent<Mole>('mole')!;
-      mole.bindWorld(context.moleWorld!);
-      const animation = watchSignal(mole.animstate.animation, stop => cleanups.push(stop));
-      createEffect(() => { const { name, loop } = animation.get(); if (loop) sprite.start(name); else sprite.playOnce(name); });
-      mole.bindPhysics(context.physics);
-      return {
-        model, instance, display,
-        update: dt => {
-          mole?.update(dt);
-          const nextVisible = mole?.isValid() ?? true;
-          if (nextVisible !== visible) sprite.setVisible(visible = nextVisible);
-          const nextFacing = fourFacingFromRotation(mole?.facing ?? 0, heading.peek());
-          if (nextFacing !== facing) sprite.setFacing(facing = nextFacing);
-        },
-        isClickable: () => mole?.isValid() ?? true,
-        dispose: () => { cleanups.splice(0).forEach(stop => stop()); display.dispose(); },
-      };
-    }, dispose: () => resources.dispose(),
+    [MOLE_ID]: {
+      fn: () => {
+        const inst = world.newItem(MOLE_ID);
+        inst.sprite.resetPresentation({ name: 'idle_under', billboard: true });
+        bindItemWorld(inst, world);
+        return inst;
+      },
+      assets: { animationArchive: 'mole_basic.zip', buildArchives: ['mole_build.zip'], bank: 'mole' },
+      onSpawned: inst => {
+        const moleWorld = world.moleWorld;
+        if (!moleWorld) throw new Error('Mole world is unavailable');
+        world.configureItem(inst);
+        configureMoleEntity(inst);
+        const mole = inst.getComponent<Mole>('mole')!, sprite = inst.sprite;
+        mole.bindWorld(moleWorld);
+        const animation = watchSignal(mole.animstate.animation, stop => inst.onRemove(stop));
+        createEffect(() => { const { name, loop } = animation.get(); if (loop) sprite.start(name); else sprite.playOnce(name); });
+        mole.bindPhysics(world.physics);
+        const heading = watchSignal(moleWorld.cameraHeading, stop => inst.onRemove(stop));
+        // Visibility and facing change the sprite json only when their value does.
+        let visible: boolean | undefined, facing: number | undefined;
+        inst.onRemove(world.componentUpdates.register({
+          OnUpdate: dt => {
+            if (inst.status.peek() !== 'active') return;
+            mole.update(dt);
+            const nextVisible = mole.isValid();
+            if (nextVisible !== visible) sprite.setVisible(visible = nextVisible);
+            const nextFacing = fourFacingFromRotation(mole.facing, heading.peek());
+            if (nextFacing !== facing) sprite.setFacing(facing = nextFacing);
+          },
+        }));
+      },
+    },
   };
 }

@@ -5,7 +5,8 @@ import { PrefabDisplayGroup } from '@dontstarve-web/display';
 import { ItemEntity } from '../../inventory/src/entity';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { BERNIE_ACTIVE_ID, BERNIE_BIG_ID, BERNIE_ITEM_ID, berniePrefabs, type BernieInstance, type BerniePlayer, type BernieWorld } from '../../prefab/src/bernie';
-import { GroundPrefabRegistry } from '../../prefab/src/groundPrefabRegistry';
+import { itemAt, ItemWorldFixture } from './itemWorldFixture';
+import { createPickupInventory } from './pickupFixture';
 import { GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { WORLD_SCALE } from '../../prefab/src/standardcomponents';
@@ -65,11 +66,11 @@ function setup() {
 
 it('reanimates the item on the ground near a crazy, visible player, carrying its skin to bernie_active', () => {
   const s = setup();
-  const ground = new GroundPrefabRegistry({ scene: new THREE.Scene(), animationBaseUrl: '/dst/data/anim', scheduler: s.scheduler,
-    bernieWorld: s.world, butterflyWorld: { getThreatPositions: () => [], getFlowers: () => [] }, firefliesWorld: {} });
-  const item = new ItemEntity({ itemId: BERNIE_ITEM_ID, count: 1, skinId: 'bernie_cat' });
-  item.setPosition(0, 0, 0);
-  const visual = ground.get(BERNIE_ITEM_ID)!.create({ ...GROUND_ITEM_DEFINITIONS[BERNIE_ITEM_ID], itemId: BERNIE_ITEM_ID, count: 1, skinId: 'bernie_cat' }, item);
+  const inventory = createPickupInventory();
+  const ground = new ItemWorldFixture(new THREE.Scene(), new THREE.PerspectiveCamera(), undefined, '/dst/data/databundles/images.zip',
+    inventory, '/dst/data/anim', new THREE.Group(), undefined, undefined, s.world, undefined, s.scheduler);
+  const item = itemAt(ground.spawnFromSave('bernie', { ...GROUND_ITEM_DEFINITIONS[BERNIE_ITEM_ID], itemId: BERNIE_ITEM_ID, count: 1,
+    skinId: 'bernie_cat' }, new THREE.Vector3()));
   try {
     expect(item.sprite.currentAnimation).toBe('inactive');
     // A sane player, or one beyond 16 units, leaves it lying; tryreanimate runs once a second.
@@ -82,10 +83,10 @@ it('reanimates the item on the ground near a crazy, visible player, carrying its
     expect(s.bernies()).toEqual([]);
     // Held, it stops trying (topocket); dropped, it tries again a second later (toground).
     s.position.set(2, 0, 0);
-    item.PushEvent('onputininventory', undefined);
+    expect(inventory.GiveItem(item)).toBe(true);
     s.scheduler.advance(2);
     expect(s.bernies()).toEqual([]);
-    item.PushEvent('ondropped', undefined);
+    inventory.DropItem(item, new THREE.Vector3());
     s.scheduler.advance(.99);
     expect(s.bernies()).toEqual([]);
     s.scheduler.advance(.01);
@@ -95,7 +96,7 @@ it('reanimates the item on the ground near a crazy, visible player, carrying its
     expect(active.skinId).toBe('bernie_cat_active');
     expect(active.position.toArray()).toEqual([0, 0, 0]);
     expect(['smallcreature', 'companion', 'soulless'].every(tag => active.hasTag(tag))).toBe(true);
-  } finally { visual.dispose(); ground.dispose(); s.dispose(); }
+  } finally { ground.dispose(); inventory.dispose(); s.dispose(); }
 });
 
 it('runs SGbernie: activates, idles, and sits back down as the item once no crazy player is near', () => {

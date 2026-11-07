@@ -10,7 +10,8 @@ import { GetTemperatureAtXZ } from '../packages/componets/src/temperatureoverrid
 import { activePrefabs, FindEntities } from '../packages/prefab/src/actionEntity';
 import type { TemperatureSource } from '../packages/componets/src/temperature';
 import { PlaySound } from '@dontstarve-web/prefab/sound';
-import type { ItemEntityRegistry, InventoryStore } from '@dontstarve-web/inventory';
+import { newItemEntityId, type InventoryStack, type InventoryStore, type ItemEntity } from '@dontstarve-web/inventory';
+import type { ReadonlyVector3 } from '@dontstarve-web/animation/transformRoot';
 import { createInventoryStore } from './inventory';
 import * as CANNON from 'cannon-es';
 import { getRegisteredPhysicsBodies } from '../packages/componets/src/physicsWorld';
@@ -23,12 +24,12 @@ import { moonTreePrefabs } from '@dontstarve-web/prefab/moontree';
 import { WORLD_TILES, isLandTile } from '@dontstarve-web/prefab/turfMap';
 import { placeStaticLayout } from '@dontstarve-web/prefab/staticLayout';
 import { camera, followCamera } from './camera';
-import { GroundItemManager } from '@dontstarve-web/prefab/groundItemManager';
+import { flingLoot, itemPrefabs, spawnGroundStack } from '@dontstarve-web/prefab/itemPrefabs';
 import { turfItemForTile } from '@dontstarve-web/prefab/turfs';
-import { GROUND_ART_DEFINITIONS, GROUND_ITEM_DISPLAY_SPECS } from '@dontstarve-web/prefab/groundItems';
+import { GROUND_ART_DEFINITIONS, GROUND_ITEM_DISPLAY_SPECS, GroundItemAssets } from '@dontstarve-web/prefab/groundItems';
 import { FarmPlowPlacement, FARM_PLOW_ID } from '@dontstarve-web/prefab/farm_plow';
 import { playerStats } from './playerStats';
-import { PrefabDisplayGroup } from '@dontstarve-web/display';
+import { PrefabDisplayGroup, SpriteResources } from '@dontstarve-web/display';
 import { PrefabEntityManager, PrefabInstance, prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import { staffCastingLightPrefabs } from '@dontstarve-web/prefab/staff_castinglight';
 import { staffLightPrefabs } from '@dontstarve-web/prefab/stafflight';
@@ -36,7 +37,7 @@ import { bulbPlantPrefabs } from '@dontstarve-web/prefab/bulb_plant';
 import { moonglassRockPrefabs, rockPrefabs } from '@dontstarve-web/prefab/rocks';
 import { caveinBoulderPrefabs } from '@dontstarve-web/prefab/cavein_boulder';
 import { moonrockseedPrefabs } from '@dontstarve-web/prefab/moonrockseed';
-import type { SpawnGroundItem } from '@dontstarve-web/prefab/groundPrefab';
+import type { GroundItemDefinition, GroundSpawnOptions, ItemPrefabWorld, SpawnGroundItem } from '@dontstarve-web/prefab/groundPrefab';
 import { caveHolePrefabs } from '@dontstarve-web/prefab/cave_hole';
 import { pillarPrefabs } from '@dontstarve-web/prefab/pillar';
 import { atriumPillarPrefabs } from '@dontstarve-web/prefab/atrium_pillar';
@@ -88,14 +89,17 @@ import { ChessJunkManager } from '@dontstarve-web/prefab/chessjunk';
 import { chesspiecePrefabs } from '@dontstarve-web/prefab/chesspieces';
 import { archiveCentipedeHuskPrefabs } from '@dontstarve-web/prefab/archive_centipede';
 import { BeefaloManager, BEEFALO_BEHAVIOR } from '@dontstarve-web/prefab/beefalo';
-import { newEntityId } from '@dontstarve-web/prefab/saveRecord';
+import type { LootLaunch } from '../packages/componets/src/inventoryphysics';
+
+/** Where SpawnPrefab makes an inst before it is set down or given to its holder. */
+const ITEM_ORIGIN = new THREE.Vector3();
 import { player, playerInstance } from './player';
 import {
   PlaceableBuildingPlacement,
   type PlaceableBuildingInteractionChange,
   type PlaceableBuildingId,
 } from './placeableBuilding';
-import { dstLighting, renderer, scene } from './universal';
+import { dstLighting, scene } from './universal';
 import { flowerPrefabs } from '@dontstarve-web/prefab/flower';
 import { view } from './view';
 import { initialSave, shardSaveSearch } from './save/initialSave';
@@ -126,7 +130,7 @@ const MANAGER_DEFINITIONS = {
   'staff_projectile': PREFAB_DEFINITIONS.staffProjectiles,
   'molehill': PREFAB_DEFINITIONS.molehills,
   'lightflier_flower': PREFAB_DEFINITIONS.lightflierFlowers,
-  'ground_item': PREFAB_DEFINITIONS.groundItems,
+  'items': PREFAB_DEFINITIONS.groundItems,
   'bulb_plant': PREFAB_DEFINITIONS.bulbPlants,
   'stalagmite': PREFAB_DEFINITIONS.stalagmites,
   'rocks': PREFAB_DEFINITIONS.rocks,
@@ -274,7 +278,6 @@ export async function createSceneEntities(
   worldState: SceneWorldState,
   consumeBufferedBuild: (buildingId: PlaceableBuildingId, skinId?: string) => boolean,
   onBuildingInteraction?: (change: PlaceableBuildingInteractionChange) => void,
-  itemEntities?: ItemEntityRegistry,
   inventory?: InventoryStore,
   scheduler?: GameTimeScheduler,
 ) {
@@ -282,8 +285,20 @@ export async function createSceneEntities(
   const prefabFire = FireFxHost.create(prefabBaseUrl, worldState.componentUpdates);
   // Shared by the ground Bernie item and the bernie_active / bernie_big prefabs, built on first use.
   let bernieWorldInstance: BernieWorld | undefined;
+  let itemWorldInstance: ItemPrefabWorld | undefined;
+  /** The art of the effects items spawn as their children (fire, flies). */
+  const itemSprites = new SpriteResources(undefined, undefined, new GroundItemAssets());
+  /** SpawnPrefab of a ground stack and lootdropper's DropLoot, in this world. */
+  const itemSpawner = { spawnItem: (state: InventoryStack) => sceneInventory.entities.create(state) };
+  const groundItems = {
+    spawnGroundItem: (definition: GroundItemDefinition, position: ReadonlyVector3, options?: GroundSpawnOptions) =>
+      spawnGroundStack(itemSpawner, definition, position, options),
+    flingLoot: (definitions: readonly GroundItemDefinition[], position: ReadonlyVector3, launch?: () => LootLaunch) =>
+      flingLoot(itemSpawner, definitions, position, launch),
+  };
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(prefabDisplays, prefabBaseUrl,
-    { tickingarea: worldState.tickingarea, physics: world });
+    // Items without ground art are drawn from their inventory image.
+    { tickingarea: worldState.tickingarea, physics: world, iconArchiveUrl: `${import.meta.env.BASE_URL}dst/data/databundles/images.zip` });
   const registry = new EntityRegistry(SCENE_LIFECYCLE_ORDER, prefabs, () => player.position, prefabDisplays);
   const worldEvents = new EventEmitter<WorldEvents>();
   type SceneManagers = {
@@ -293,7 +308,6 @@ export async function createSceneEntities(
     'staff_projectile': ReturnType<typeof registerStaffProjectiles>;
     'molehill': ReturnType<typeof registerMolehills>;
     'lightflier_flower': ReturnType<typeof registerLightFlierFlowers>;
-    'ground_item': ReturnType<typeof registerGroundItems>;
     'bulb_plant': ReturnType<typeof registerBulbPlants>;
     'moonglass_rock': ReturnType<typeof registerMoonglassRocks>;
     'cave_hole': ReturnType<typeof registerCaveHoles>;
@@ -356,7 +370,7 @@ export async function createSceneEntities(
   Managers['staff_projectile'] = registerStaffProjectiles(registry, 'staff_projectile', worldState);
   Managers['molehill'] = registerMolehills(registry, 'molehill', worldState);
   Managers['lightflier_flower'] = registerLightFlierFlowers(registry, 'lightflier_flower', worldState);
-  Managers['ground_item'] = registerGroundItems(registry, 'ground_item', worldState);
+  registerItems(registry, 'items', worldState);
 
   registerStaffLights(registry, worldState);
   Managers['staff_castinglight'] = registerStaffCastingLights(registry, worldState);
@@ -443,20 +457,24 @@ export async function createSceneEntities(
     const itemId = turfItemForTile(tileId);
     if (!itemId) return;
     const spec = GROUND_ITEM_DISPLAY_SPECS[itemId];
-    Managers['ground_item'].flingLoot([{ itemId, count: 1, name: spec.name, icon: spec.icon, atlas: spec.atlas }],
+    groundItems.flingLoot([{ itemId, count: 1, name: spec.name, icon: spec.icon, atlas: spec.atlas }],
       new THREE.Vector3(point.x, 0, point.z));
   });
 
   const dispose = () => {
     stopDugTurf();
     try { registry.dispose(); }
-    finally { Managers['molehill'].disposeBaits(); prefabDisplays.dispose(); prefabFire.dispose(); dynamicMusic?.dispose(); if (!inventory) sceneInventory.dispose(); }
+    finally {
+      sceneInventory.entities.bindSpawner(undefined);
+      Managers['molehill'].disposeBaits(); prefabDisplays.dispose(); prefabFire.dispose(); itemSprites.dispose(); dynamicMusic?.dispose();
+      if (!inventory) sceneInventory.dispose();
+    }
   };
 
   return {
     Managers, registry, prefabs, worldEvents, dispose, worldWind,
     buildingPlacement: Managers['buildings'],
-    groundItems: Managers['ground_item'],
+    groundItems,
     beefalos: Managers['beefalo'],
     mushroomPlants: Managers['mushroom_plant'],
     rockAvocadoBushes: Managers['rock_avocado_bush'],
@@ -483,7 +501,7 @@ export async function createSceneEntities(
         dropItem: (entity, position) => { sceneInventory.DropItem(entity, position); },
         registerContainer: (id, container) => sceneInventory.registerContainer(id, container),
         unregisterContainer: (id, container) => sceneInventory.unregisterContainer(id, container), dropLoot: (items, position, launch) => {
-        Managers['ground_item'].flingLoot(items.map((item) => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position, launch);
+        groundItems.flingLoot(items.map((item) => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position, launch);
       } },
       consumeBufferedBuild,
       onBuildingInteraction,
@@ -513,7 +531,7 @@ export async function createSceneEntities(
 
   function registerFlowers(registry: EntityRegistry, prefabId: 'flower', worldState: SceneWorldState) {
     prefabs.register(flowerPrefabs({ scheduler: scheduler ?? worldState.scheduler, fire: prefabFire, worldEvents,
-      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options) }));
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options) }));
     registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
   }
 
@@ -554,10 +572,9 @@ export async function createSceneEntities(
       pathfinder,
       spawnItem: state => { const entity = sceneInventory.entities.create(state); sceneInventory.configureItem(entity); return entity; },
       dropItem: (entity, position) => sceneInventory.DropItem(entity, position),
-      showMole: (entity, position) => { Managers['ground_item'].spawnFromSave(entity.id, {
-        ...SAVE_CATALOG.items.mole, ...entity.snapshot(), entity,
-      }, position); },
-      dropLoot: (itemId, position) => { Managers['ground_item'].flingLoot([{ ...SAVE_CATALOG.items[itemId], itemId, count: 1 }], position); },
+      // The spawned mole is set down where it comes out, as SpawnPrefab and Transform:SetPosition do.
+      showMole: (entity, position) => { entity.setPosition(position.x, 0, position.z); },
+      dropLoot: (itemId, position) => { groundItems.flingLoot([{ ...SAVE_CATALOG.items[itemId], itemId, count: 1 }], position); },
       getEntities: () => {
         for (const entity of sceneInventory.entities.values()) if (entity.components.bait && !moleBaits.has(entity.id))
           moleBaits.set(entity.id, new MoleBait(entity, moleScheduler, moleWalkable));
@@ -574,16 +591,36 @@ export async function createSceneEntities(
     return { habitat, disposeBaits: () => { for (const bait of moleBaits.values()) bait.dispose(); moleBaits.clear(); } };
   }
 
-  function registerGroundItems(registry: EntityRegistry, prefabId: 'ground_item', worldState: SceneWorldState) {
-    const groundItems = new GroundItemManager(
-      scene,
-      camera,
-      renderer,
-      `${import.meta.env.BASE_URL}dst/data/databundles/images.zip`,
-      sceneInventory,
-      `${import.meta.env.BASE_URL}dst/data/anim`,
-      player,
-      {
+  /**
+   * The item prefabs on the shared manager, and the inventory's item registry spawning through it: every item inst is
+   * SpawnPrefab'd into this world, saved by the world while it lies in the scene and by its holder while held.
+   */
+  function registerItems(registry: EntityRegistry, prefabId: 'items', worldState: SceneWorldState) {
+    const icons = Object.fromEntries(Object.entries(SAVE_CATALOG.items).filter(([id]) => !Object.hasOwn(GROUND_ART_DEFINITIONS, id))
+      .map(([id, spec]) => [id, { atlas: spec.atlas ?? 'images/inventoryimages.xml', image: spec.icon }]));
+    const definitions = itemPrefabs(itemWorld(worldState), icons);
+    const ids = new Set(MANAGER_DEFINITIONS[prefabId].prefabIds);
+    prefabs.register(Object.fromEntries(Object.entries(definitions).filter(([id]) => ids.has(id))) as never);
+    sceneInventory.entities.bindSpawner(state => ids.has(state.itemId)
+      ? prefabs.spawn(state.itemId, ITEM_ORIGIN, { id: state.entityId ?? newItemEntityId(), components: { stack: state } }) as PrefabInstance as unknown as ItemEntity
+      : undefined);
+    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  }
+
+  /** TheWorld as the item prefabs reach it. */
+  function itemWorld(worldState: SceneWorldState): ItemPrefabWorld {
+    if (itemWorldInstance) return itemWorldInstance;
+    const items: ItemPrefabWorld = itemWorldInstance = {
+      newItem: prefab => sceneInventory.entities.construct({ itemId: prefab, count: 1 }),
+      spawnItem: state => sceneInventory.entities.create(state),
+      isInventoryItem: prefab => sceneInventory.hasItemSpec(prefab),
+      configureItem: entity => { sceneInventory.entities.adopt(entity); sceneInventory.configureItem(entity); },
+      dropItem: (entity, position) => sceneInventory.DropItem(entity, position),
+      sprites: itemSprites, animationBaseUrl: prefabBaseUrl,
+      scheduler: worldState.scheduler, componentUpdates: worldState.componentUpdates, physics: world,
+      fx: Managers['world_fx'], moleWorld: Managers['molehill'].habitat, lightflierWorld: Managers['lightflier_flower'].habitat,
+      inventoryOwnerPosition: player.position, handEquipment: sceneInventory.handEquipment, bernieWorld: bernieWorld(worldState),
+      butterflyWorld: {
         getWatchWorldContent: worldState.getWatchWorldContent,
         getThreatPositions: () => [player.position],
         // butterflybrain.lua GetClosestInstWithTag({"flower"}): the flower-tagged entities in the ticking area.
@@ -594,42 +631,11 @@ export async function createSceneEntities(
           position.z = THREE.MathUtils.clamp(position.z, -edge, edge);
         },
       },
-      {
-        getWatchWorldContent: worldState.getWatchWorldContent,
-        tickingarea: worldState.tickingarea,
-      },
-      bernieWorld(worldState),
-      itemEntities ?? sceneInventory.entities,
-      scheduler,
-      Managers['world_fx'],
-      Managers['molehill'].habitat,
-      worldEvents,
-      view.mouseActions,
-      Managers['lightflier_flower'].habitat,
-      worldState.tickingarea,
-      world,
-    );
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
-      restore: (_, record) => {
-        const item = record.components.stack!;
-        const spec = SAVE_CATALOG.items[item.itemId] ?? GROUND_ART_DEFINITIONS[item.itemId];
-        const skin = item.skinId ? SAVE_CATALOG.skins[item.skinId] : undefined;
-        return groundItems.spawnFromSave(record.id, {
-          ...item, name: skin?.name ?? spec.name, icon: skin?.icon ?? spec.icon ?? '', atlas: skin?.atlas ?? spec.atlas,
-          ...(record.components.phonograph ? { playbackRemaining: record.components.phonograph.remainingSeconds } : {}),
-          ...(record.components.torch ? { torchLit: true } : {}),
-          ...(record.components.lantern ? { lanternOn: record.components.lantern.ison } : {}),
-        }, new THREE.Vector3(...record.transform.position));
-      },
-      debugSpawn: (id) => groundItems.spawnFromSave(newEntityId(), {
-        ...GROUND_ART_DEFINITIONS[id], ...SAVE_CATALOG.items[id], icon: SAVE_CATALOG.items[id]?.icon ?? GROUND_ART_DEFINITIONS[id]?.icon ?? '', itemId: id, count: 1,
-      }, player.position.clone().setY(0)),
-      exportRecords: () => groundItems.exportRecords().map((record) => ({ prefabId: 'ground_item', record })),
-      update: (dt, quaternion) => groundItems.update(dt, quaternion),
-      renderEntities: () => groundItems.renderEntities,
-      dispose: () => groundItems.dispose(),
-    });
-    return groundItems;
+      firefliesWorld: { getWatchWorldContent: worldState.getWatchWorldContent, tickingarea: worldState.tickingarea },
+      dropLoot: (items, position) => groundItems.flingLoot(items, position),
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
+    };
+    return items;
   }
 
   function registerLightFlierFlowers(registry: EntityRegistry, prefabId: 'lightflier_flower', worldState: SceneWorldState) {
@@ -642,8 +648,7 @@ export async function createSceneEntities(
       scheduler: scheduler ?? worldState.scheduler, getWatchWorldContent: worldState.getWatchWorldContent, tickingarea: worldState.tickingarea, cameraHeading: view.cameraHeading,
       getPlayers: () => [lightFlierPlayer],
       spawnItem: state => { const entity = sceneInventory.entities.create(state); sceneInventory.configureItem(entity); return entity; },
-      showItem: (entity, position) => Managers['ground_item'].spawnEntity(entity, position),
-      dropLoot: (itemId, count, position) => { Managers['ground_item'].flingLoot([{ ...SAVE_CATALOG.items[itemId], itemId, count }], position); },
+      dropLoot: (itemId, count, position) => { groundItems.flingLoot([{ ...SAVE_CATALOG.items[itemId], itemId, count }], position); },
     }, model => dstLighting.sampleLightLevel(model.position, model));
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (_, record) => flowers.spawn(new THREE.Vector3(...record.transform.position), record as LightFlierFlowerRecord),
@@ -668,14 +673,14 @@ export async function createSceneEntities(
     prefabs.register(stalagmitePrefabs({ scheduler: worldState.scheduler,
       spawnLoot: (id, position) => {
         const definition = GROUND_ART_DEFINITIONS[id];
-        return definition ? Managers['ground_item'].spawnGroundItem({ ...definition, icon: definition.icon ?? '',
+        return definition ? groundItems.spawnGroundItem({ ...definition, icon: definition.icon ?? '',
           itemId: id, count: 1 }, position, { fling: true }) : undefined;
       } }));
     registry.registerPrefabs(PREFAB_DEFINITIONS.stalagmites);
   }
 
   function registerRocks(registry: EntityRegistry, worldState: SceneWorldState) {
-    const spawnGroundItem: SpawnGroundItem = (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options);
+    const spawnGroundItem: SpawnGroundItem = (definition, position, options) => groundItems.spawnGroundItem(definition, position, options);
     prefabs.register(rockPrefabs({ handEquipment: sceneInventory.handEquipment, scheduler: scheduler ?? worldState.scheduler,
       getWatchWorldContent: worldState.getWatchWorldContent, spawnGroundItem, spawnPrefab: (id, position) => prefabs.spawn(id, position) }));
     prefabs.register(caveinBoulderPrefabs({ handEquipment: sceneInventory.handEquipment, spawnGroundItem }));
@@ -687,7 +692,7 @@ export async function createSceneEntities(
     prefabs.register(moonglassRockPrefabs({
       handEquipment: sceneInventory.handEquipment,
       scheduler: scheduler ?? worldState.scheduler, getWatchWorldContent: worldState.getWatchWorldContent,
-      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
     }));
     registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
     return prefabs;
@@ -735,7 +740,7 @@ export async function createSceneEntities(
   function registerCaveEntrances(registry: EntityRegistry, prefabId: 'cave_entrance') {
     prefabs.register(caveEntrancePrefabs({
       handEquipment: sceneInventory.handEquipment,
-      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
       spawnPrefab: (prefab, position) => prefabs.spawn(prefab, position),
       shard: shardLink,
     }));
@@ -745,7 +750,7 @@ export async function createSceneEntities(
   function registerMushroomPlants(registry: EntityRegistry, prefabId: 'mushroom_plant', worldState: SceneWorldState) {
     prefabs.register(mushroomPlantPrefabs({
       scheduler: scheduler ?? worldState.scheduler, fire: prefabFire, getWatchWorldContent: worldState.getWatchWorldContent,
-      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
       rain: worldState.weather.preciptype,
       tickingarea: worldState.tickingarea,
     }));
@@ -759,7 +764,7 @@ export async function createSceneEntities(
       scheduler: scheduler ?? worldState.scheduler, fire: prefabFire,
       getWatchWorldContent: worldState.getWatchWorldContent, tickingarea: worldState.tickingarea, worldEvents,
       dropLoot: (items, position) => {
-        Managers['ground_item'].flingLoot(items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position);
+        groundItems.flingLoot(items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position);
       },
       spawnPrefab: (id, position) => prefabs.spawn(id, position),
     }));
@@ -774,7 +779,7 @@ export async function createSceneEntities(
       registerWaterfallPool: (position, radius, large) => worldState.soundPresentation.registerWaterfallPool(position, radius, large),
       getWatchWorldContent: worldState.getWatchWorldContent,
       fx: { spawn: (prefab, position) => Managers['world_fx'].spawn(prefab, position) },
-      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
       spawnPrefab: (id, position) => prefabs.spawn(id, position),
       getEntity: entityId => prefabs.get(entityId),
     }));
@@ -792,7 +797,7 @@ export async function createSceneEntities(
     prefabs.register(marbleShrubPrefabs({
       handEquipment: sceneInventory.handEquipment,
       scheduler: scheduler ?? worldState.scheduler, getWatchWorldContent: worldState.getWatchWorldContent,
-      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
     }));
     registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
     return prefabs;
@@ -801,7 +806,7 @@ export async function createSceneEntities(
   function registerArchiveProps(registry: EntityRegistry, prefabId: 'archive_props', worldState: SceneWorldState) {
     prefabs.register(archivePropsPrefabs({
       handEquipment: sceneInventory.handEquipment, scheduler: worldState.scheduler, cameraFacing: view.cameraFacing,
-      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
       fx: Managers['world_fx'],
       spawnPrefab: (id, position) => prefabs.spawn(id, position),
     }));
@@ -813,7 +818,7 @@ export async function createSceneEntities(
     prefabs.register(houndbonePrefabs({
       fx: Managers['world_fx'],
       handEquipment: sceneInventory.handEquipment,
-      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
     }));
     registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
   }
@@ -844,7 +849,7 @@ export async function createSceneEntities(
     prefabs.register(skeletonPrefabs({
       fx: { collapse: (size, position, material) => Managers['world_fx'].collapse(size, position, material) },
       handEquipment: sceneInventory.handEquipment,
-      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
     }));
     registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
   }
@@ -855,7 +860,7 @@ export async function createSceneEntities(
       handEquipment: sceneInventory.handEquipment,
       scheduler: scheduler ?? worldState.scheduler,
       spawnPrefab: (id, position) => prefabs.spawn(id, position) as MarbleShrubInstance,
-      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
     }));
     registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
     return prefabs;
@@ -867,7 +872,7 @@ export async function createSceneEntities(
       tickingarea: worldState.tickingarea,
       rain: worldState.weather.preciptype,
       physics: world, getLocalTemperature: position => GetTemperatureAtXZ(() => worldState.temperature.peek(), position.x, position.z),
-      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
     }));
     registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
     return prefabs;
@@ -878,7 +883,7 @@ export async function createSceneEntities(
       handEquipment: sceneInventory.handEquipment,
       scheduler: scheduler ?? worldState.scheduler, fire: prefabFire,
       spawnPrefab: (id, position) => prefabs.spawn(id, position),
-      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
     }));
     registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
     return prefabs;
@@ -890,7 +895,7 @@ export async function createSceneEntities(
       tickingarea: worldState.tickingarea,
       rain: worldState.weather.preciptype,
       physics: world, getLocalTemperature: position => GetTemperatureAtXZ(() => worldState.temperature.peek(), position.x, position.z),
-      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
     }));
     registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
   }
@@ -901,7 +906,7 @@ export async function createSceneEntities(
       tickingarea: worldState.tickingarea,
       rain: worldState.weather.preciptype,
       getLocalTemperature: position => GetTemperatureAtXZ(() => worldState.temperature.peek(), position.x, position.z),
-      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
     }));
     registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
   }
@@ -910,7 +915,7 @@ export async function createSceneEntities(
     prefabs.register(grassPrefabs({
       scheduler: scheduler ?? worldState.scheduler, fire: prefabFire, getWatchWorldContent: worldState.getWatchWorldContent,
       tickingarea: worldState.tickingarea,
-      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
     }));
     registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
     return prefabs;
@@ -920,7 +925,7 @@ export async function createSceneEntities(
     prefabs.register(saplingPrefabs({
       scheduler: scheduler ?? worldState.scheduler, fire: prefabFire, getWatchWorldContent: worldState.getWatchWorldContent,
       tickingarea: worldState.tickingarea,
-      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
     }));
     registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
     return prefabs;
@@ -930,7 +935,7 @@ export async function createSceneEntities(
     prefabs.register(caveFernPrefabs({
       scheduler: scheduler ?? worldState.scheduler, fire: prefabFire, getWatchWorldContent: worldState.getWatchWorldContent,
       tickingarea: worldState.tickingarea,
-      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
     }));
     registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
     return prefabs;
@@ -940,7 +945,7 @@ export async function createSceneEntities(
     prefabs.register(lichenPrefabs({
       scheduler: scheduler ?? worldState.scheduler, fire: prefabFire, getWatchWorldContent: worldState.getWatchWorldContent,
       tickingarea: worldState.tickingarea,
-      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
     }));
     registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
   }
@@ -950,7 +955,7 @@ export async function createSceneEntities(
       scheduler: scheduler ?? worldState.scheduler, fire: prefabFire, getWatchWorldContent: worldState.getWatchWorldContent,
       tickingarea: worldState.tickingarea,
       physics: world,
-      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
       spawnItem: state => { const entity = sceneInventory.entities.create(state); sceneInventory.configureItem(entity); return entity; },
       dropItem: (entity, position) => { sceneInventory.DropItem(entity, position); },
     }));
@@ -981,7 +986,7 @@ export async function createSceneEntities(
         const counts = new Map<string, number>();
         for (const itemId of items) if (Object.hasOwn(SAVE_CATALOG.items, itemId)) counts.set(itemId, (counts.get(itemId) ?? 0) + 1);
         if (counts.size === 0) return;
-        Managers['ground_item'].flingLoot([...counts].map(([itemId, count]) => ({ ...SAVE_CATALOG.items[itemId], itemId, count })), position);
+        groundItems.flingLoot([...counts].map(([itemId, count]) => ({ ...SAVE_CATALOG.items[itemId], itemId, count })), position);
       },
     }));
     registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
@@ -1054,15 +1059,14 @@ export async function createSceneEntities(
         position.z = THREE.MathUtils.clamp(position.z, -edge, edge);
       },
       spawnPrize(prefab, count, position) {
-        Managers['ground_item'].flingLoot([{ ...SAVE_CATALOG.items[prefab], itemId: prefab, count }], position);
+        groundItems.flingLoot([{ ...SAVE_CATALOG.items[prefab], itemId: prefab, count }], position);
       },
-      getPoopPositions() {
-        return Managers['ground_item'].iteratePrefabPositions('poop');
+      *getPoopPositions() {
+        for (const poop of prefabs.instances('poop')) if (!poop.inlimbo) yield poop.position;
       },
+      // SpawnPrefab("poop") and Transform:SetPosition.
       spawnPoop(position) {
-        Managers['ground_item'].spawnFromSave(newEntityId(), {
-          ...SAVE_CATALOG.items.poop, itemId: 'poop', count: 1,
-        }, position);
+        sceneInventory.entities.create({ itemId: 'poop', count: 1 }).setPosition(position.x, 0, position.z);
       },
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
@@ -1089,7 +1093,7 @@ export async function createSceneEntities(
       spawnPrefab: (id, position) => prefabs.spawn(id, position),
       growthDuration: seconds => seconds * (worldState.season.peek().season === 'spring' ? .75 : 1),
       dropLoot: (items, position) => {
-        Managers['ground_item'].flingLoot(items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position);
+        groundItems.flingLoot(items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position);
       },
     }));
     registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
@@ -1103,7 +1107,7 @@ export async function createSceneEntities(
       spawnPrefab: (id, position) => prefabs.spawn(id, position),
       growthDuration: seconds => seconds * (worldState.season.peek().season === 'spring' ? .75 : 1),
       dropLoot: (items, position) => {
-        Managers['ground_item'].flingLoot(items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position);
+        groundItems.flingLoot(items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position);
       },
       season: worldState.season, getWatchWorldContent: worldState.getWatchWorldContent,
       secondsUntilNextDay: now => TUNING.TOTAL_DAY_TIME - now % TUNING.TOTAL_DAY_TIME,
@@ -1114,11 +1118,9 @@ export async function createSceneEntities(
 
   function registerFarmPlow(registry: EntityRegistry, prefabId: 'farm_plow', _worldState: SceneWorldState) {
     const farmPlow = new FarmPlowPlacement({ ...view, fx: Managers['world_fx'], physics: world, handEquipment: sceneInventory.handEquipment }, turfMap,
-      (position, item) => { Managers['ground_item'].spawnFromSave(item.entityId ?? newEntityId(), {
-        ...SAVE_CATALOG.items[item.itemId], ...item,
-      }, position); },
+      (position, item) => { sceneInventory.entities.create(item).setPosition(position.x, 0, position.z); },
     );
-    farmPlow.setDebrisLootHandler((itemId, position) => Managers['ground_item'].flingLoot([
+    farmPlow.setDebrisLootHandler((itemId, position) => groundItems.flingLoot([
       { ...SAVE_CATALOG.items[itemId], itemId, count: 1 },
     ], position));
     registry.register(MANAGER_DEFINITIONS[prefabId], {
@@ -1152,7 +1154,7 @@ export async function createSceneEntities(
       spawnPrefab: (id, position) => prefabs.spawn(id, position),
       growthDuration: seconds => seconds * (worldState.season.peek().season === 'spring' ? .75 : 1),
       dropLoot: (items, position) => {
-        Managers['ground_item'].flingLoot(items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position);
+        groundItems.flingLoot(items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position);
       },
       getWatchWorldContent: worldState.getWatchWorldContent,
     }));
@@ -1167,7 +1169,7 @@ export async function createSceneEntities(
       scheduler: worldState.scheduler,
       getPlayers: () => [playerInstance],
       spawnPrefab: (prefab, position, skinId) => prefabs.spawn(prefab, new THREE.Vector3(position.x, 0, position.z), undefined, skinId),
-      spawnInactive: (position, skinId) => Managers['ground_item'].spawnGroundItem({ ...SAVE_CATALOG.items[BERNIE_ITEM_ID],
+      spawnInactive: (position, skinId) => groundItems.spawnGroundItem({ ...SAVE_CATALOG.items[BERNIE_ITEM_ID],
         itemId: BERNIE_ITEM_ID, count: 1, ...skinId === undefined ? {} : { skinId } }, position),
     };
   }
@@ -1185,7 +1187,7 @@ export async function createSceneEntities(
     prefabs.register(pigKingPrefabs({
       camera, scheduler: worldState.scheduler, getWatchWorldContent: worldState.getWatchWorldContent,
       dropLoot: (items, position, launch) => {
-        Managers['ground_item'].flingLoot(items.map((item) => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position, launch);
+        groundItems.flingLoot(items.map((item) => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position, launch);
       },
     }));
     registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
@@ -1223,7 +1225,7 @@ export async function createSceneEntities(
 
   function registerRuinsRelics(registry: EntityRegistry, worldState: SceneWorldState) {
     prefabs.register(ruinsRelicPrefabs({ fx: Managers['world_fx'],
-      dropLoot: (items, position) => Managers['ground_item'].flingLoot(items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position),
+      dropLoot: (items, position) => groundItems.flingLoot(items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position),
       scheduler: worldState.scheduler }));
     registry.registerPrefabs(PREFAB_DEFINITIONS.ruinsRelics);
   }
@@ -1254,7 +1256,7 @@ export async function createSceneEntities(
   function registerChesspieces(registry: EntityRegistry, prefabId: 'chesspiece_malbatross_marble', worldState: SceneWorldState) {
     prefabs.register(chesspiecePrefabs({
       fx: Managers['world_fx'], handEquipment: sceneInventory.handEquipment, scheduler: worldState.scheduler,
-      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options),
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
     }));
     registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
   }
@@ -1349,7 +1351,7 @@ export async function createSceneEntities(
 
   function registerMarshPlants(registry: EntityRegistry, worldState: SceneWorldState) {
     prefabs.register(marshPlantPrefabs({ scheduler: scheduler ?? worldState.scheduler, tickingarea: worldState.tickingarea, fire: prefabFire,
-      spawnGroundItem: (definition, position, options) => Managers['ground_item'].spawnGroundItem(definition, position, options) }));
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options) }));
     registry.registerPrefabs(MANAGER_DEFINITIONS['marsh_plant']);
     return prefabs;
   }

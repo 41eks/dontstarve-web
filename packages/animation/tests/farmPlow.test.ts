@@ -52,7 +52,7 @@ function item(remainingUses?: number) {
 it('loads original packed ground art and the actual inventory atlas', async () => {
   const assets = new GroundItemAssets();
   try {
-    const item = await createGroundItemVisual(assets, 'farm_plow_item');
+    const item = await createGroundItemVisual('farm_plow_item');
     expect(GROUND_ITEM_DEFINITIONS.farm_plow_item).toMatchObject({
       atlas: 'images/inventoryimages2.xml', animation: 'idle_packed', bank: 'farm_plow', skinArchives: {},
     });

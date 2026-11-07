@@ -100,7 +100,7 @@ python3 scripts/import-dst-region.py \
 - `moon_tree`：迁移 `size`、`growable`、树桩／烧毁标记及 `timer.decay` → `moonTreeTimer`，保留剩余时间和暂停状态；当前快照新增 198 棵。`moonbutterfly_sapling`：`timer.grow` → `saplingTimer`，保留幼苗生长计时器，按原版不创建地图图标。
 - `deciduoustree`：迁移正常桦树的 `growable`、`build`、`leaf_state`、`target_leaf_state`、`leaveschangetime`、树桩／烧毁标记及 `timer.decay` → `deciduousTimer`。树桩可没有 `target_leaf_state`；腐朽任务由逻辑树持有，模型卸载时保留，保存／读档恢复剩余时间，移除时取消。拒绝尚未移植的 `monster` 敌对分支；自然繁殖 `plantregrowth` 沿用其他树木的现有限制，不迁移。
 - `flower`：`anim` → `flower.animation`，支持 `f1`～`f10` 和 `rose`；只在源 `planted = true` 时写入该标记，自然花不改为种植花。只接受未采摘、可交互的持久花。
-- `fireflies`、`butterfly`：源 ID／源序号形成稳定实体 ID，输出为现有 `ground_item.components.stack`，同一记录的 `stack.entityId` 与实体 ID 相同；保留 `stackable.stack`，默认数量 1。蝴蝶只接受存活默认血量、空已知位置和已暂停的地面腐败状态，`perishable.time / 1440` → `freshnessPercent`；未知组件状态继续报错。当前快照导入 350 群萤火虫，蝴蝶源分组为空。
+- `fireflies`、`butterfly`：源 ID／源序号形成稳定实体 ID，输出为各自 prefab ID 下记录的 `components.stack`，同一记录的 `stack.entityId` 与实体 ID 相同；保留 `stackable.stack`，默认数量 1。蝴蝶只接受存活默认血量、空已知位置和已暂停的地面腐败状态，`perishable.time / 1440` → `freshnessPercent`；未知组件状态继续报错。当前快照导入 350 群萤火虫，蝴蝶源分组为空。
 
 - `pighead`：`burnt` → `building.burnt`，正常状态 `idle`；`archive_moon_statue`：`anim`（1～4）→ `archiveProp.anim`。两者的 workable 不保存工作量；醒睡状态由世界重建。`cave_exit` 不迁移尚未接入的分片连接 `worldmigrator` 数据。
 - `cave_entrance`、`cave_entrance_open`：只接受 `worldmigrator`（开放入口另可有 `worldsettingstimer`、`childspawner`），这些分片连接与蝙蝠状态均未接入，故只保留 ID 与位置（组件为空）；封闭入口重载后恢复满工作量。地表共 9 个封闭、1 个开放入口。
@@ -148,6 +148,6 @@ python3 scripts/import-dst-region.py --cluster public/saves/Cluster_62 --output 
 
 地表检测到 144 种、1,027 个散落物品实体（合计 2,371 件），洞穴 20 种、130 个实体（146 件）。每份 `.import.json` 的 `groundItemCounts` 记录 `entities`、`quantity` 和 `sourceComponents`；数量按地面实体的 stackable.stack 计算，不遍历玩家库存、容器或包裹内容。`groundItemScope` 明确记录美术范围。
 
-这些记录存为 `ground_item.components.stack`，保存 `itemId`、`count`、可选 `skinId` 与 `variant`。石头／冰块的 anim、月亮碎片的 glassname、贝壳的 variation、稀有蓝图、包裹大小和扑克牌正面映射为白名单外观变体。保留源高度并按现有坐标比例及 Z 轴映射导入；平台坐标仍拒绝。其余源组件只在报告中记录名称，不因美术导入扩展组件实现；已有 prefab 沿用原工厂、组件及交互，仅有美术的 ID 不增加拾取／使用／装备目标、容器或计时器。
+这些记录按 prefab ID 存为 `world.entities.<prefab>[]` 的 `components.stack`，保存 `itemId`、`count`、可选 `skinId` 与 `variant`。石头／冰块的 anim、月亮碎片的 glassname、贝壳的 variation、稀有蓝图、包裹大小和扑克牌正面映射为白名单外观变体。保留源高度并按现有坐标比例及 Z 轴映射导入；平台坐标仍拒绝。其余源组件只在报告中记录名称，不因美术导入扩展组件实现；已有 prefab 沿用原工厂、组件及交互，仅有美术的 ID 不增加拾取／使用／装备目标、容器或计时器。
 
-所有记录复用原有 `GroundItemManager`、ground prefab 工厂及共享 archive 资源、PrefabInstance/PrefabDisplay 和 tile 活动订阅；仅活跃条目参与更新，休眠释放 visual，保存保留逻辑记录，唤醒恢复外观。新增的 `c_spawn` ID、语法和例子见 [README 调试命令](../README.md)。
+所有记录由 `itemPrefabs` 的物品 prefab 在共享 `PrefabEntityManager` 上生成，复用 PrefabInstance/PrefabDisplay 和 tile 活动订阅；休眠释放 visual，保存保留逻辑记录，唤醒恢复外观。新增的 `c_spawn` ID、语法和例子见 [README 调试命令](../README.md)。

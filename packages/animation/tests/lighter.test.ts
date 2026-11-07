@@ -152,7 +152,11 @@ it('burns a cooking pot after 20 seconds, drops the product and disables cooking
 it('burns an open chest through DefaultBurntStructureFn, drops its contents at its foot and reloads burnt', async () => {
   const changes = vi.fn();
   const { inventory, placement } = structureFixture(changes);
-  const dropped: ItemEntity[] = [], stop = inventory.subscribeDropped(entity => dropped.push(entity));
+  const dropped: ItemEntity[] = [], dropItem = inventory.DropItem;
+  // The store's drops, each the inst inventoryitem:OnDropped sets down.
+  vi.spyOn(inventory, 'DropItem').mockImplementation(function (this: typeof inventory, ...args) {
+    dropped.push(args[0]); return dropItem.apply(this, args);
+  });
   try {
     const model = await placement.spawnFromSave('treasurechest', { id: 'open_chest', transform: { position: [3, 0, -6], rotationY: 0 }, components: {
       building: {}, container: { slotCount: 9, slots: [{ slotKey: '0', item: { entityId: 'chest_seeds', itemId: 'seeds', count: 3 } }] },
@@ -178,5 +182,5 @@ it('burns an open chest through DefaultBurntStructureFn, drops its contents at i
     expect(restored.hasTag('burnt')).toBe(true);
     expect(restored.sprite.currentAnimation).toBe('burnt');
     expect(restored.components.container).toBeUndefined();
-  } finally { stop(); placement.dispose(); }
+  } finally { placement.dispose(); }
 });

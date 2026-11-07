@@ -2,13 +2,13 @@ import * as THREE from 'three';
 import { createMemo, createSignal, GameTimeScheduler, type HandEquipment } from '@dontstarve-web/signals';
 import { ItemEntity } from '@dontstarve-web/inventory';
 import { prewarmScenePasses, renderSceneWithPasses } from '@dontstarve-web/animation/sceneRenderPass';
-import { FirefliesAssets, configureFirefliesEntity, createFirefliesGroundSprite } from '../../prefab/src/fireflies';
 import { configureBugNetEntity } from '../../prefab/src/bugnet';
-import { actionEntity, disposeActionEntity } from '../../prefab/src/actionEntity';
 import { mouseTargets } from '../../prefab/src/mouseTargets';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { prefabDisplay } from '../../display/src';
 import { bindTestWorld } from '../../animation/tests/worldContentFixture';
+import { itemAt, ItemWorldFixture } from '../../animation/tests/itemWorldFixture';
+import { createPickupInventory } from '../../animation/tests/pickupFixture';
 import { DstLocalLighting } from '../../../src/dstLocalLighting';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 
@@ -18,19 +18,15 @@ export async function checkFirefliesInstances() {
   const { cycle, getWatchWorldContent, unbind } = bindTestWorld(scheduler, () => area);
   cycle.set('night');
   const handEquipment = createSignal<HandEquipment | null>(null);
-  const assets = new FirefliesAssets('/dst/data/anim');
   const net = new ItemEntity({ itemId: 'bugnet', count: 1 }); configureBugNetEntity(net);
-  const swarms = await Promise.all(Array.from({ length: 32 }, () => createFirefliesGroundSprite(assets, { getWatchWorldContent, handEquipment })));
-  const entities = swarms.map((swarm, index) => {
-    const entity = swarm.instance;
-    configureFirefliesEntity(entity);
-    entity.transform.position.set(index === 31 ? 8 : -8 + index % 4 * .3, 0, 0);
-    swarm.model.position.copy(entity.transform.position);
-    prefabInstance(swarm.model)!.PushEvent('onload');
-    actionEntity(swarm.model, 'fireflies', entity);
-    return entity;
-  });
-  const scene = new THREE.Scene(); swarms.forEach(swarm => scene.add(swarm.model));
+  // The swarms are SpawnSaveRecord'd into an item world on this scene, its tiles awake while `awake` is.
+  const scene = new THREE.Scene(), inventory = createPickupInventory();
+  const world = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(), undefined, '/dst/data/databundles/images.zip', inventory,
+    '/dst/data/anim', new THREE.Group(), undefined, { getWatchWorldContent, handEquipment }, undefined, undefined, scheduler,
+    undefined, undefined, undefined, undefined, undefined, () => Object.assign(area, { dispose() {} }) as never);
+  const swarms = Array.from({ length: 32 }, (_, index) => ({ model: world.spawnFromSave(`fireflies:${index}`,
+    { itemId: 'fireflies', count: 1, name: 'fireflies', icon: '' }, new THREE.Vector3(index === 31 ? 8 : -8 + index % 4 * .3, 0, 0)) }));
+  const entities = swarms.map(swarm => itemAt(swarm.model));
   const renderer = new THREE.WebGLRenderer(); renderer.setSize(256, 256); renderer.setClearColor(0);
   document.body.append(renderer.domElement);
   const target = new THREE.WebGLRenderTarget(256, 256);
@@ -43,8 +39,7 @@ export async function checkFirefliesInstances() {
   const settle = () => new Promise(resolve => setTimeout(resolve, 0));
   const advance = (seconds: number) => {
     for (let t = 0; t < seconds - .001; t += .1) {
-      // As GroundItemManager does: each display advances, the swarm's logic runs, then its declarations are drawn.
-      scheduler.advance(.1); swarms.forEach(swarm => { swarm.display.update(.1); swarm.update(.1); swarm.display.update(0); });
+      scheduler.advance(.1); world.update(.1);
     }
   };
   const draw = () => {
@@ -66,7 +61,7 @@ export async function checkFirefliesInstances() {
     await Promise.all(swarms.map(swarm => prefabDisplay(swarm.model)!.artLoaded()));
     await settle(); advance(5); await settle();
     // Keep a dark member in the same atlas batch to check independent overrides.
-    swarms[31].instance.sprite.setLightOverride(0);
+    entities[31].sprite.setLightOverride(0);
     await prewarmScenePasses(renderer, scene, camera);
     const calls = [draw()];
     const pixels = new Uint8Array(256 * 256 * 4);
@@ -123,13 +118,14 @@ export async function checkFirefliesInstances() {
     awake.set(true); await settle(); daylight.push(draw());
     advance(5); await settle(); daylight.push(draw());
     registrations.push(mouseTargets.size);
-    for (const swarm of swarms) swarm.dispose(); calls.push(draw());
+    for (const entity of entities) entity.remove();
+    await settle(); calls.push(draw());
     registrations.push(mouseTargets.size);
     return { calls, bright, hiddenSourceCount, retainedOffscreen, mouseTargeting, registrations, preVisible, loopVisible, unloaded, cancelled, daylight };
   } finally {
-    swarms.forEach(swarm => { swarm.dispose(); disposeActionEntity(swarm.model); }); entities.forEach(entity => entity.remove());
+    world.dispose(); inventory.dispose();
     net.destroy(); pointer.dispose(); renderer.domElement.remove();
-    assets.dispose(); unbind(); area.dispose(); scheduler.dispose();
+    unbind(); area.dispose(); scheduler.dispose();
     target.dispose(); lighting.dispose(); renderer.dispose();
     if (mouseTargets.size) throw new Error('Mouse registrations survived fireflies disposal');
   }

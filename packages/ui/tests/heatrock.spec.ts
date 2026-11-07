@@ -78,7 +78,7 @@ test('spawns and gives neutral thermal stones, reskins and transfers one, then s
   await expect(bag.locator('[data-item-id="heatrock"]').first().locator('.inventory-slot__icon')).toHaveAttribute('data-element', 'heat_rock3.tex');
   await expect.poll(async () => (await ground()).length).toBe(1);
   const spawned = (await ground())[0];
-  expect(spawned.vertices).toBeGreaterThan(0); expect(spawned.materials).toContain('ground:heat_rock');
+  expect(spawned.vertices).toBeGreaterThan(0); expect(spawned.materials).toContain('sprite:heat_rock');
   await page.evaluate(id => {
     const game = (window as any).heatRockGame;
     ((window as any).__findActionEntity(game.scene.children.find((model: any) => (window as any).__prefabInstance(model)?.entityId === id))?.components ?? (window as any).__prefabInstance(game.scene.children.find((model: any) => (window as any).__prefabInstance(model)?.entityId === id))!.components).fueled.SetPercent(.75);
@@ -87,9 +87,9 @@ test('spawns and gives neutral thermal stones, reskins and transfers one, then s
   await bag.locator('[data-item-id="reskin_tool"]').dragTo(bar.locator('[data-slot-key="hand"]'));
   await clickStone(spawned.id, 'right');
   await expect.poll(async () => (await ground())[0]?.skin, { timeout: 20_000 }).toBe('heatrock_fantasy');
-  expect((await ground())[0].materials).toContain('ground:heatrock_fantasy');
+  expect((await ground())[0].materials).toContain('sprite:heatrock_fantasy');
   const groundSave = await saveGame();
-  const savedStone = groundSave.world.entities.ground_item.find((record: any) => record.id === spawned.id);
+  const savedStone = groundSave.world.entities.heatrock.find((record: any) => record.id === spawned.id);
   expect(savedStone.components.stack).toMatchObject({ itemId: 'heatrock', count: 1, skinId: 'heatrock_fantasy', remainingFuel: 75 });
   expect(stones(groundSave)).toHaveLength(2);
 
@@ -100,14 +100,14 @@ test('spawns and gives neutral thermal stones, reskins and transfers one, then s
   await page.keyboard.down('Shift'); await skinned.click({ button: 'right' }); await page.keyboard.up('Shift');
   await expect.poll(async () => (await ground()).some(stone => stone.id === spawned.id && stone.skin === 'heatrock_fantasy')).toBe(true);
   const dropped = await saveGame();
-  expectStoneState(dropped.world.entities.ground_item.find((record: any) => record.id === spawned.id).components.stack,
+  expectStoneState(dropped.world.entities.heatrock.find((record: any) => record.id === spawned.id).components.stack,
     savedStone.components.stack, dropped.world.elapsedSeconds - groundSave.world.elapsedSeconds);
   await page.goto(savePageUrl(dropped)); await prepare();
   await expect.poll(async () => (await ground())[0]?.skin).toBe('heatrock_fantasy');
   const restored = await saveGame();
-  expect(restored.world.entities.ground_item).toHaveLength(dropped.world.entities.ground_item.length);
-  restored.world.entities.ground_item.forEach((record: any, index: number) => {
-    const expected = dropped.world.entities.ground_item[index];
+  expect(restored.world.entities.heatrock).toHaveLength(dropped.world.entities.heatrock.length);
+  restored.world.entities.heatrock.forEach((record: any, index: number) => {
+    const expected = dropped.world.entities.heatrock[index];
     expect({ ...record, components: undefined }).toEqual({ ...expected, components: undefined });
     expect({ ...record.components, stack: undefined }).toEqual({ ...expected.components, stack: undefined });
     expectStoneState(record.components.stack, expected.components.stack,
@@ -118,7 +118,7 @@ test('spawns and gives neutral thermal stones, reskins and transfers one, then s
   const taken = await saveGame();
   expectStoneState(stones(taken).find(item => item.entityId === spawned.id), { entityId: spawned.id, ...savedStone.components.stack },
     taken.world.elapsedSeconds - groundSave.world.elapsedSeconds);
-  expect(taken.world.entities.ground_item ?? []).toEqual([]);
+  expect(taken.world.entities.heatrock ?? []).toEqual([]);
   await page.goto(savePageUrl(taken)); await prepare();
   expectInventoryStones(await saveGame(), taken);
   await expect(skinned.locator('.inventory-slot__icon')).toHaveAttribute('data-element', 'heatrock_fantasy3.tex');

@@ -7,7 +7,7 @@ import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { berrybushPrefabs, BERRYBUSH_MAX_REGROW_TIME } from '../../prefab/src/berrybush';
-import { GroundItemManager } from '../../prefab/src/groundItemManager';
+import { ItemWorldFixture } from './itemWorldFixture';
 import { createInventoryStore } from '../../../src/inventory';
 import { inventorySlotAddress } from '../../inventory/src';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -33,7 +33,7 @@ function setup() {
   vi.stubGlobal('window', new EventTarget());
   const inventory = createInventoryStore([]), scene = new THREE.Scene(), player = new THREE.Group(), physics = new CANNON.World();
   const scheduler = new GameTimeScheduler();
-  const ground = new GroundItemManager(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
+  const ground = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
   const { season, snowLevel } = bindTestWorld(scheduler);
   const bushes = plantManager(berrybushPrefabs, scene, { physics,
@@ -44,14 +44,9 @@ function setup() {
     debugSpawn: () => drawn(bushes.spawn('berrybush', player.position).transform.model),
     exportRecords: () => bushes.exportRecords(), dispose: () => bushes.dispose(),
   });
-  registry.register(PREFAB_DEFINITIONS.groundItems, {
-    restore: (_, record) => ground.spawnFromSave(record.id,
-      { ...SAVE_CATALOG.items[record.components.stack!.itemId], ...record.components.stack! }, new THREE.Vector3(...record.transform.position)),
-    debugSpawn: id => ground.spawnFromSave('root:command', { ...SAVE_CATALOG.items[id], itemId: id, count: 1 }, player.position),
-    exportRecords: () => ground.exportRecords().map(record => ({ prefabId: 'ground_item', record })), dispose: () => ground.dispose(),
-  });
+  registry.register(PREFAB_DEFINITIONS.groundItems, ground.registration(() => player.position));
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
-  const save = () => serializeSave(template, { entities: { berrybush: bushes.exportRecords().map(({ record }) => record), ground_item: ground.exportRecords() },
+  const save = () => serializeSave(template, { entities: { berrybush: bushes.exportRecords().map(({ record }) => record), ...ground.exportEntities() },
     inventory: inventory.exportState(), elapsedSeconds: scheduler.now, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
   const advance = (seconds: number) => { scheduler.advance(seconds); prefabDisplays(bushes).update(seconds, new THREE.Quaternion()); };
   return { inventory, scene, physics, scheduler, season, snowLevel, ground, bushes, registry, save, advance,
@@ -87,10 +82,9 @@ it('picks native berries without consuming cycles, pauses in winter and reloads 
     restored.season.set({ season: 'winter', progress: 0 }); await settleEffects();
     await drawn(restored.bushes.spawn('berrybush', new THREE.Vector3(...record.transform.position), record).transform.model);
     restored.inventory.replaceState(inventoryStateFromSave(saved), SAVE_CATALOG.recipes);
-    for (const ground of saved.world.entities.ground_item) await restored.ground.spawnFromSave(ground.id,
-      { ...SAVE_CATALOG.items[ground.components.stack!.itemId], ...ground.components.stack! }, new THREE.Vector3(...ground.transform.position));
+    restored.ground.restoreEntities(saved.world.entities);
     expect(restored.bushes.exportRecords().map(({ record }) => record)).toEqual([record]);
-    expect(restored.ground.exportRecords()).toEqual(s.ground.exportRecords());
+    expect(restored.ground.exportEntities()).toEqual(s.ground.exportEntities());
     expect(restored.inventory.exportState()).toEqual(s.inventory.exportState());
     const remaining = pickable.remainingSeconds;
     s.advance(1000); expect(pickable.remainingSeconds).toBe(remaining);

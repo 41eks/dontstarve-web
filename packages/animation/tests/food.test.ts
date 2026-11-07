@@ -69,8 +69,8 @@ it('eats meatballs through the solid-food action and commits edible stats and on
 
 it('renders source raw/cooked mushroom poses and applies harmful and restorative food values', async () => {
   const assets = new GroundItemAssets();
-  const raw = await createGroundItemVisual(assets, 'green_cap');
-  const cooked = await createGroundItemVisual(assets, 'blue_cap_cooked');
+  const raw = await createGroundItemVisual('green_cap');
+  const cooked = await createGroundItemVisual('blue_cap_cooked');
   const { animation, actions, store, slot, entity } = await fixture('green_cap');
   try {
     expect(GROUND_ITEM_DEFINITIONS.green_cap).toMatchObject({ bank: 'mushrooms', animationArchive: 'mushrooms.zip',
@@ -93,7 +93,7 @@ it('renders source raw/cooked mushroom poses and applies harmful and restorative
 it('drinks source bananajuice art, consumes once at frame 12 and restores the remaining item and numerical stats', async () => {
   const { animation, actions, store, slot, entity } = await fixture();
   const assets = new GroundItemAssets();
-  const ground = await createGroundItemVisual(assets, 'bananajuice');
+  const ground = await createGroundItemVisual('bananajuice');
   const onEaten = vi.fn();
   entity.ListenForEvent('oneaten', onEaten);
   try {

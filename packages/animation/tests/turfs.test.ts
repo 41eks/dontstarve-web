@@ -26,12 +26,12 @@ it('renders shared, renamed and independent turf poses from native builds and re
       ['turf_underrock', 'rock', 'turf'], ['turf_carpetfloor2', 'carpet2', 'turf_drama'],
       ['turf_cotl_brick', 'cotl_brick', 'turf_cotl'], ['turf_beard_rug', 'turf_beard', 'turf_beard'],
     ]) {
-      const sprite = await createGroundItemVisual(assets, id);
+      const sprite = await createGroundItemVisual(id);
       try {
         expect(sprite.currentAnimation).toBe(clip);
         const mesh = sprite.model.children[0].children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
         expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
-        expect(mesh.material.some(material => material.name === `ground:${build}`)).toBe(true);
+        expect(mesh.material.some(material => material.name === `sprite:${build}`)).toBe(true);
         expect(Array.from(mesh.geometry.getAttribute('position').array).every(Number.isFinite)).toBe(true);
         const pose = Array.from(mesh.geometry.getAttribute('position').array);
         sprite.update(10);

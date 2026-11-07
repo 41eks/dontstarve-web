@@ -31384,7 +31384,7 @@
       ],
       "wall_dreadstone": [],
       "wall_scrap": [],
-      "ground_item": [
+      "lightbulb": [
         {
           "id": "e_9026f7ec3f32e8ffa91072a763ea3317",
           "transform": {
@@ -31420,7 +31420,9 @@
               "freshnessPercent": 0.9224006250001102
             }
           }
-        },
+        }
+      ],
+      "poop": [
         {
           "id": "e_7c88adde2e96cf50216c5536d45934fd",
           "transform": {
@@ -31439,6 +31441,25 @@
           }
         },
         {
+          "id": "e_02462944419ec2f83371ad24f6ea25f5",
+          "transform": {
+            "position": [
+              3.718775426467693,
+              0,
+              -11.180857721573076
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "poop",
+              "count": 1
+            }
+          }
+        }
+      ],
+      "wall_moonrock_item": [
+        {
           "id": "e_ec32369c80eec4f59b134d48d347c727",
           "transform": {
             "position": [
@@ -31454,7 +31475,9 @@
               "count": 1
             }
           }
-        },
+        }
+      ],
+      "alterguardianhat": [
         {
           "id": "e_ba6862dac33e15636920d3d9b693f34a",
           "transform": {
@@ -31505,24 +31528,9 @@
               "count": 1
             }
           }
-        },
-        {
-          "id": "e_02462944419ec2f83371ad24f6ea25f5",
-          "transform": {
-            "position": [
-              3.718775426467693,
-              0,
-              -11.180857721573076
-            ],
-            "rotationY": 0
-          },
-          "components": {
-            "stack": {
-              "itemId": "poop",
-              "count": 1
-            }
-          }
-        },
+        }
+      ],
+      "lantern": [
         {
           "id": "e_9e7d3d06c71772990f5c9c7e49c1fa14",
           "transform": {
@@ -31544,7 +31552,9 @@
               "ison": false
             }
           }
-        },
+        }
+      ],
+      "butterfly": [
         {
           "id": "e_21e37cdffd9df98b8f40c7c716d1f2d9",
           "transform": {
@@ -31612,7 +31622,9 @@
               "count": 1
             }
           }
-        },
+        }
+      ],
+      "fireflies": [
         {
           "id": "e_bc82037e0af6ebb29adf332fc52afbbc",
           "transform": {
@@ -31714,7 +31726,9 @@
               "count": 1
             }
           }
-        },
+        }
+      ],
+      "opalstaff": [
         {
           "id": "e_34fd8417ab5d93e3e3a5790ef059f8bc",
           "transform": {
@@ -31732,7 +31746,9 @@
               "skinId": "moonstaff_crystal"
             }
           }
-        },
+        }
+      ],
+      "reskin_tool": [
         {
           "id": "e_b334f24acb83f2eebcc0af2853c292c4",
           "transform": {
@@ -31750,7 +31766,9 @@
               "skinId": "reskin_tool_wand"
             }
           }
-        },
+        }
+      ],
+      "backpack": [
         {
           "id": "e_7c297653ab711cc0da900999597ddece",
           "transform": {
@@ -31772,7 +31790,9 @@
               "skinId": "backpack_carrat"
             }
           }
-        },
+        }
+      ],
+      "farm_plow_item": [
         {
           "id": "e_bc4ba2b98bff1c1ce5de8423a3de5a8e",
           "transform": {
@@ -31790,7 +31810,9 @@
               "remainingUses": 3
             }
           }
-        },
+        }
+      ],
+      "marble": [
         {
           "id": "e_b67314247cd274a5f7d5794ea2afa2b0",
           "transform": {
@@ -31807,7 +31829,9 @@
               "count": 1
             }
           }
-        },
+        }
+      ],
+      "razor": [
         {
           "id": "e_1db0be52dae6b678c3086efd6bbda1ae",
           "transform": {
@@ -31824,7 +31848,9 @@
               "count": 1
             }
           }
-        },
+        }
+      ],
+      "nightmarefuel": [
         {
           "id": "e_83cc3d6b764103181c8b312a3d97027c",
           "transform": {
@@ -31892,7 +31918,9 @@
               "count": 1
             }
           }
-        },
+        }
+      ],
+      "livinglog": [
         {
           "id": "e_2fbf368436f85ab080dd40d3770e9ce1",
           "transform": {
@@ -32241,7 +32269,7 @@
                 "slotKey": "2",
                 "item": {
                   "entityId": "e_de1b2a40e41415328215c58886c176fa",
-                  "itemId": 	"turf_cotl_brick",
+                  "itemId": "turf_cotl_brick",
                   "count": 20
                 }
               },
@@ -32362,9 +32390,10 @@
         "bufferedBuilds": [
           {
             "recipeId": "winterometer"
-          }, {
-          "recipeId": "bookstation"
-        }
+          },
+          {
+            "recipeId": "bookstation"
+          }
         ]
       }
     }

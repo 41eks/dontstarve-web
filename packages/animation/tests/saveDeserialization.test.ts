@@ -31,7 +31,7 @@ function parse(data: unknown = initialWorld) {
 describe('save JSON deserialization', () => {
   it('loads and exports more than 10000 entities in one prefab group while validating the last record', () => {
     const data = structuredClone(initialWorld);
-    data.world.entities.ground_item = Array.from({ length: 10_001 }, (_, i) => ({
+    data.world.entities.fireflies = Array.from({ length: 10_001 }, (_, i) => ({
       id: `large-save-fireflies-${i}`,
       transform: { position: [i % 100 - 50, 0, Math.floor(i / 100) - 50], rotationY: 0 },
       components: { stack: { itemId: 'fireflies', count: 1 } },
@@ -44,7 +44,7 @@ describe('save JSON deserialization', () => {
     }, SAVE_CATALOG), SAVE_CATALOG);
     expect(restored.world.entities).toEqual(template.world.entities);
     expect(restored.world.map.generator.options.moonTreeCount).toBe(10_001);
-    data.world.entities.ground_item[10_000].id = data.world.entities.ground_item[0].id;
+    data.world.entities.fireflies[10_000].id = data.world.entities.fireflies[0].id;
     expect(() => deserializeSave(JSON.stringify(data), SAVE_CATALOG)).toThrow('duplicate entity ID');
   });
 

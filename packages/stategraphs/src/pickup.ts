@@ -44,19 +44,16 @@ export function createPickupDoer(player: THREE.Object3D, inventory: InventorySto
   inventory.bindActor(doer);
   return doer;
 }
-export interface PickupTarget {
-  readonly model: THREE.Object3D;
-  readonly entity: ItemEntity;
-  readonly position: ReadonlyVector3;
-  isValid(): boolean;
-  hasTag(tag: string): boolean;
+/** The inst a PICKUP targets: in the scene, unowned and not flying off as a projectile. */
+export function canPickUp(inst: ItemEntity): boolean {
+  return !inst.isRemoved && !inst.inlimbo && !inst.components.inventoryitem.owner;
 }
 
 /** actions.lua PICKUP.fn: validate, notify the doer, then equip or give the original inst. */
-export function performPickupAction(target: PickupTarget, doer: PickupDoer): boolean {
-  const inst = target.entity, item = inst.components.inventoryitem, inventory = doer.components.inventory;
-  if (!target.isValid() || item.owner || !item.CanBePickedUp(doer)
-    || (target.hasTag('fire') && !target.hasTag('lighter')) || inst.components.projectile?.IsThrown()) return false;
+export function performPickupAction(inst: ItemEntity, doer: PickupDoer): boolean {
+  const item = inst.components.inventoryitem, inventory = doer.components.inventory;
+  if (!canPickUp(inst) || !item.CanBePickedUp(doer)
+    || (inst.hasTag('fire') && !inst.hasTag('lighter')) || inst.components.projectile?.IsThrown()) return false;
   if (inst.components.container?.IsOpenedByOthers(doer)) return false;
   doer.PushEvent('onpickupitem', { item: inst });
   const equippable = inst.components.equippable;
@@ -73,6 +70,6 @@ export function performPickupAction(target: PickupTarget, doer: PickupDoer): boo
     if (doer.hasTag('player') && (!equip || inventory.GetNumSlots() <= 0)) return inventory.Equip(inst);
   }
   // GetPosition() in PICKUP.fn snapshots the source before OnPutInInventory moves the inst to (0, 0, 0).
-  inventory.GiveItem(inst, target.position.clone());
+  inventory.GiveItem(inst, inst.transform.position.clone());
   return true;
 }

@@ -29,7 +29,7 @@ import { Health } from '../../componets/src/health';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { createPerishWorld } from './perishWorldFixture';
 import { PERISH_FAST } from '../../componets/src/perishable';
-import { GroundItemManager } from '../../prefab/src/groundItemManager';
+import { ItemWorldFixture } from './itemWorldFixture';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
@@ -202,9 +202,9 @@ it('applies rose thorns through combat and respects equipped bramble protection 
 it('perishes harvested petals in discrete batches and preserves freshness and quantity through cursor transfer and reload', async () => {
   const s = setup(), restored = setup(), world = createPerishWorld(), restoredWorld = createPerishWorld();
   s.inventory.entities.bindPerishWorld(world); restored.inventory.entities.bindPerishWorld(restoredWorld);
-  const ground = new GroundItemManager(s.world.scene, s.world.camera, s.world.renderer, '/dst/data/databundles/images.zip',
+  const ground = new ItemWorldFixture(s.world.scene, s.world.camera, s.world.renderer, '/dst/data/databundles/images.zip',
     s.inventory, '/dst/data/anim', s.world.player);
-  const restoredGround = new GroundItemManager(restored.world.scene, restored.world.camera, restored.world.renderer, '/dst/data/databundles/images.zip',
+  const restoredGround = new ItemWorldFixture(restored.world.scene, restored.world.camera, restored.world.renderer, '/dst/data/databundles/images.zip',
     restored.inventory, '/dst/data/anim', restored.world.player);
   ground.entities.bindPerishWorld(world); restoredGround.entities.bindPerishWorld(restoredWorld);
   try {
@@ -231,7 +231,7 @@ it('perishes harvested petals in discrete batches and preserves freshness and qu
     let json = '';
     expect((await executeDebugCommand('c_save()', s.inventory, undefined, () => {
       json = serializeSave(deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG), {
-        entities: { flower: s.flowers.exportRecords(), ground_item: ground.exportRecords() }, inventory: s.inventory.exportState(),
+        entities: { flower: s.flowers.exportRecords(), ...ground.exportEntities() }, inventory: s.inventory.exportState(),
         elapsedSeconds: world.scheduler.now, playerTransform: { position: [0, 0, 0], rotationY: 0 },
       }, SAVE_CATALOG);
     })).ok).toBe(true);
@@ -240,8 +240,8 @@ it('perishes harvested petals in discrete batches and preserves freshness and qu
     expect(restored.inventory.exportState()).toEqual(s.inventory.exportState());
     const loaded = restored.inventory.getEntity(cursorSlotAddress())!;
     expect(loaded.components.perishable.GetPercent()).toBeCloseTo((PERISH_FAST - 13) / PERISH_FAST);
-    const record = saved.world.entities.ground_item[0], stack = record.components.stack!;
-    await restoredGround.spawnFromSave(record.id, { ...SAVE_CATALOG.items[stack.itemId], ...stack }, new THREE.Vector3(...record.transform.position));
+    const [record] = ground.exportRecords();
+    restoredGround.restoreEntities(saved.world.entities);
     expect(restoredGround.exportRecords()).toEqual(ground.exportRecords());
     restoredWorld.advance(480);
     await vi.waitFor(() => expect(restoredGround.exportRecords()[0].components.stack?.itemId).toBe('spoiled_food'));

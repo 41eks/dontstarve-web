@@ -3,7 +3,7 @@ import { activePrefabs } from '../../prefab/src/activePrefabs';
 import * as THREE from 'three';
 import { mountGameUi, INVENTORY_RECIPES } from '../src';
 import { createInventoryStore } from '../../../src/inventory';
-import { GroundItemManager } from '../../prefab/src/groundItemManager';
+import { ItemWorldFixture } from '../../animation/tests/itemWorldFixture';
 import { createWorldState } from '../../../src/worldState';
 import { inventoryReceiveEffect } from '../../../src/inventoryReceive';
 import { createInventorySlotItem } from '../../../src/inventorySlotItem';
@@ -32,7 +32,7 @@ export async function createReceiveFixture() {
   const worldState = createWorldState({ elapsedSeconds: 450, systems: {}, map: { ...initialWorld.world.map, kind: 'generated' } });
   // Keep the capture scene in tickingarea, with the player outside the swarm's hide radius.
   worldState.playerpositions.set([new THREE.Vector3(20, 0, 3)]);
-  const ground = new GroundItemManager(scene, camera, { domElement: canvas } as unknown as THREE.WebGLRenderer,
+  const ground = new ItemWorldFixture(scene, camera, { domElement: canvas } as unknown as THREE.WebGLRenderer,
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', new THREE.Group(), undefined,
     { getWatchWorldContent: worldState.getWatchWorldContent });
   return {

@@ -711,7 +711,7 @@ three-roaming-save-v1.json
           }
         }
       ],
-      "ground_item": [
+      "log": [
         {
           "id": "e_01J8Y2QE5N0T16QPFAN4FK2G8X",
           "transform": {
@@ -848,7 +848,7 @@ three-roaming-save-v1.json
 | 研究站、炼金引擎、箱子、帐篷 | 各自的建造 ID | `building`，以及将来的 `container` 等 |
 | 墙 | `wall_stone`、`wall_stone_2`、`wall_wood`、`wall_hay`、`wall_ruins`、`wall_ruins_2`、`wall_moonrock`、`wall_dreadstone`、`wall_scrap` | `health` 等逻辑状态 |
 | 栅栏 | `fence`（`fence_item` 只是地面/库存物品，不是世界实体） | `fence.rot`（`CalcRotationEnum`，0 省略）和 `fence.skinId`；燃烧中的栅栏 `persists = false`，不写入存档 |
-| 地面物品 | `ground_item` | `stack` |
+| 地面物品 | 各自的物品 prefab ID（如 `log`、`torch`、`fireflies`） | `stack`；火把、提灯、留声机另有 `torch`、`lantern`、`phonograph` |
 | 蝴蝶种出的花 | `flower` | `flower.animation`（`f1`–`f10` 或 `rose`）和 `flower.planted` |
 | 单头、双头和三头灯草 | `flower_cave`、`flower_cave_double`、`flower_cave_triple` | `bulbPlant.variant`、`lightState` 和当前亮起/充能计时器的 `remainingSeconds` |
 | 每棵月树 | `moon_tree` | 当前无额外组件；保存所有实体的 ID 和 Transform，包括未加载模型的月树 |
@@ -860,7 +860,7 @@ three-roaming-save-v1.json
 
 将 `bugnet` 装备到手部后，左键点击活蝴蝶会追赶并播放 `player_actions_bugnet.zip` 的 `bugnet_pre`、`bugnet`，在主动画第 10 帧检查 4 单位范围并捕捉。成功后蝴蝶进入背包、地面实体从存档中移除；背包满或目标已离开时保留蝴蝶。活蝴蝶需要捕虫网，其他地面物品继续左键拾取。捕虫网的地面外观使用 `bugnet.zip` 的 `idle` 和 `swap_bugnet.zip` 的 build，装备时替换玩家的 `swap_object`；装备、掉落和皮肤沿用物品存档。
 
-`fireflies` 使用 `anim/fireflies.zip` 的 `swarm_pre`、`swarm_loop`、`swarm_pst` 和原版淡入淡出速率。夜间玩家远离时发光，玩家进入 3 单位范围时淡出，离开到 5 单位时重新淡入；昼夜切换延迟 2–3 秒检查，掉落时短暂亮起。光源采用源半径 1（场景中为 3）、强度 0.5、falloff 1、颜色 `(180,195,150)/255`。萤火虫通过捕虫网进入背包，堆叠掉落会拆成独立虫群；存档使用 `ground_item.stack.itemId = "fireflies"`，恢复后按当前昼夜和玩家距离决定光照，不保存动画或瞬时淡入淡出。可用 `c_spawn("fireflies")` 在玩家脚下生成虫群，或 `c_give("fireflies")` 获取后 Shift 右键释放。
+`fireflies` 使用 `anim/fireflies.zip` 的 `swarm_pre`、`swarm_loop`、`swarm_pst` 和原版淡入淡出速率。夜间玩家远离时发光，玩家进入 3 单位范围时淡出，离开到 5 单位时重新淡入；昼夜切换延迟 2–3 秒检查，掉落时短暂亮起。光源采用源半径 1（场景中为 3）、强度 0.5、falloff 1、颜色 `(180,195,150)/255`。萤火虫通过捕虫网进入背包，堆叠掉落会拆成独立虫群；存档使用 `world.entities.fireflies[]` 记录的 `stack`，恢复后按当前昼夜和玩家距离决定光照，不保存动画或瞬时淡入淡出。可用 `c_spawn("fireflies")` 在玩家脚下生成虫群，或 `c_give("fireflies")` 获取后 Shift 右键释放。
 
 用 `c_spawn("flower_cave")`、`c_spawn("flower_cave_double")`、`c_spawn("flower_cave_triple")` 在玩家脚下生成灯草光源。动画来自对应的 `anim/bulb_plant_*.zip`；单头灯草按源码随机选择 single/springy，双头和三头使用各自的 bank/build。光照曲线取自 `flower_cave.lua`，与 `lightflier_flower.lua` 共用：4–8 秒亮起时先扩大到 1.33 倍半径再稳定，熄灭时半径和强度降到 0。源半径分别为 3、4.5、4.5（场景中为 9、13.5、13.5），强度 0.8、falloff 0.5、颜色 `(237,237,209)/255`。普通灯草亮起计时为 90 秒加过渡时间和 0–10 秒随机量，充能为 110 秒加过渡时间。
 
@@ -886,7 +886,7 @@ three-roaming-save-v1.json
 
 工作中的 `farm_plow` 使用 `components.farmPlow = { phase, remainingSeconds, deployItem }`。`deployItem` 是部署时通过 finiteuses 扣减后保存的完整物品快照，保留 `entityId`、prefab、数量和所有已支持的组件字段；耗尽或直接调试生成的工作实体为 `null`。返还时从快照重建物品，恢复原身份。嵌套快照的身份也参与全局重复 ID 校验。旧 `returnUses` 字段只在读取时迁移为 `{ itemId: "farm_plow_item", count: 1, remainingUses }`，不再写入新存档。
 
-容器中的物品作为 `container.slots[].item` 嵌套保存，不同时出现在 `world.entities.ground_item` 中。运行时库存槽持有 `ItemEntity` 引用，拾取或丢弃只改变归属与场景表现，不销毁并重建物品实体。库存快照用可选 `entityId` 保存稳定身份，地面记录使用同一身份作为 `id`；读取器兼容缺少该字段的旧存档，拒绝重复物品身份以及与世界实体冲突的身份。只有拆堆、制造和读取存档创建新运行时实体，整件移动与换肤保持引用；合堆消耗完全合入的实体。控制器、owner 回调和模型不序列化，读档按组件快照重建。这继承了 DST “有父实体的对象不再作为顶层实体保存”的规则。
+容器中的物品作为 `container.slots[].item` 嵌套保存，不同时出现在 `world.entities` 中；被持有的物品处于 limbo，世界存档循环跳过它们。运行时库存槽持有 `ItemEntity` 引用，拾取或丢弃只改变归属与场景表现，不销毁并重建物品实体。库存快照用可选 `entityId` 保存稳定身份，地面记录使用同一身份作为 `id`；读取器兼容缺少该字段的旧存档，拒绝重复物品身份以及与世界实体冲突的身份。只有拆堆、制造和读取存档创建新运行时实体，整件移动与换肤保持引用；合堆消耗完全合入的实体。控制器、owner 回调和模型不序列化，读档按组件快照重建。这继承了 DST “有父实体的对象不再作为顶层实体保存”的规则。
 
 ### 玩家与物品栏
 
@@ -1023,7 +1023,7 @@ interface SaveParticipant<T> {
 建议的最小改造顺序为：
 
 1. 为 `InventoryStore` 增加纯数据 `exportState()` 和原子 `replaceState()`，覆盖槽位与 `bufferedBuilds`。
-2. 为 `GroundItemManager` 增加稳定实体 ID、`exportRecords()` 和无扣减背包副作用的 `restoreRecords()`。
+2. 物品作为 `PrefabEntityManager` 上的 prefab，按各自 prefab ID 导出和恢复，稳定实体 ID 与库存快照共用。
 3. 为 `AnimatedBuildingPlacement` 与 `WallPlacement` 增加实体 ID、稳定状态导出和 `spawnFromSave()`。
 4. 为月树增加稳定持久化 ID、完整逻辑记录导出和记录恢复入口；保存全部 `entities`，恢复后按玩家位置重建 `activeEntities`，不重新随机生成坐标。
 5. 建立 Prefab 持久化注册表，由注册表负责校验、创建、保存和迁移组件。

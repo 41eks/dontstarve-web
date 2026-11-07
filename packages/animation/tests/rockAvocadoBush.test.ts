@@ -5,7 +5,7 @@ import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { rockAvocadoBushPrefabs } from '../../prefab/src/rock_avocado_bush';
-import { GroundItemManager } from '../../prefab/src/groundItemManager';
+import { ItemWorldFixture } from './itemWorldFixture';
 import { createInventoryStore } from '../../../src/inventory';
 import { inventorySlotAddress } from '../../inventory/src';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -31,7 +31,7 @@ function setup() {
   vi.stubGlobal('window', new EventTarget());
   const inventory = createInventoryStore([]), scene = new THREE.Scene(), player = new THREE.Group(), physics = new CANNON.World();
   const scheduler = new GameTimeScheduler();
-  const ground = new GroundItemManager(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
+  const ground = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
   const { season, snowLevel } = bindTestWorld(scheduler);
   const bushes = plantManager(rockAvocadoBushPrefabs, scene, { physics,
@@ -42,14 +42,9 @@ function setup() {
     debugSpawn: () => drawn(bushes.spawn('rock_avocado_bush', player.position).transform.model),
     exportRecords: () => bushes.exportRecords(), dispose: () => bushes.dispose(),
   });
-  registry.register(PREFAB_DEFINITIONS.groundItems, {
-    restore: (_, record) => ground.spawnFromSave(record.id,
-      { ...SAVE_CATALOG.items[record.components.stack!.itemId], ...record.components.stack! }, new THREE.Vector3(...record.transform.position)),
-    debugSpawn: id => ground.spawnFromSave(`command:${id}`, { ...SAVE_CATALOG.items[id], itemId: id, count: 1 }, player.position),
-    exportRecords: () => ground.exportRecords().map(record => ({ prefabId: 'ground_item', record })), dispose: () => ground.dispose(),
-  });
+  registry.register(PREFAB_DEFINITIONS.groundItems, ground.registration(() => player.position, id => `command:${id}`));
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
-  const save = () => serializeSave(template, { entities: { rock_avocado_bush: bushes.exportRecords().map(({ record }) => record), ground_item: ground.exportRecords() },
+  const save = () => serializeSave(template, { entities: { rock_avocado_bush: bushes.exportRecords().map(({ record }) => record), ...ground.exportEntities() },
     inventory: inventory.exportState(), elapsedSeconds: scheduler.now, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
   const advance = (seconds: number) => { scheduler.advance(seconds); prefabDisplays(bushes).update(seconds, new THREE.Quaternion()); };
   return { inventory, scene, physics, scheduler, season, snowLevel, ground, bushes, registry, save, advance,
@@ -165,9 +160,8 @@ it('exports and reloads debug commands, roots and fruit; a saved burning mature 
     expect(record.id).toBe(beforeBurn.id); expect(record.transform).toEqual(beforeBurn.transform);
     expect(record.components.burning).toBe(true);
     restored.inventory.replaceState(inventoryStateFromSave(saved), SAVE_CATALOG.recipes);
-    for (const item of saved.world.entities.ground_item) await restored.ground.spawnFromSave(item.id,
-      { ...SAVE_CATALOG.items[item.components.stack!.itemId], ...item.components.stack! }, new THREE.Vector3(...item.transform.position));
-    expect(restored.ground.exportRecords()).toEqual(s.ground.exportRecords());
+    restored.ground.restoreEntities(saved.world.entities);
+    expect(restored.ground.exportEntities()).toEqual(s.ground.exportEntities());
     expect(restored.inventory.exportState()).toEqual(s.inventory.exportState());
     await drawn(restored.bushes.spawn('rock_avocado_bush', new THREE.Vector3(...record.transform.position), record).transform.model);
     expect(restored.bushes.exportRecords().map(({ record }) => record)).toEqual([]);

@@ -31,7 +31,9 @@ export function createDeployMap({ turf, blockers, spawnPrefab, farm, worldEvents
     canPlaceTurf: point => turf.canPlaceTurf(point),
     setTile: (col, row, tileId) => turf.setTile(col, row, tileId as Parameters<TurfMap['setTile']>[2]),
     tileCenter: point => turf.tileCenter(point),
-    canDeployPlant: (point, _inst, spacing) => turf.canDeployPlantAtPoint(point) && !blockers.someNear(point, spacing, blocker => {
+    canDeployPlant: (point, inst, spacing) => turf.canDeployPlantAtPoint(point) && !blockers.someNear(point, spacing, blocker => {
+      // IsDeployPointClear's `v ~= inst`: the item being deployed never blocks itself.
+      if (blocker.inst !== undefined && blocker.inst === inst) return false;
       if ((blocker.visible === false && !blocker.logicalTree) || ignoresPlacement(blocker, ['NOBLOCK', 'player', 'FX', 'INLIMBO', 'DECOR', 'walkableplatform', 'walkableperipheral', 'isdead'])) return false;
       const inventoryRadius = blocker.getInventoryRadius?.(.5 * (TILE_SIZE / 4)) ?? blocker.inventoryRadius;
       const radius = blocker.smartRadius !== undefined ? blocker.smartRadius + spacing / 2

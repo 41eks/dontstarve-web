@@ -1,8 +1,9 @@
-import { SpriteResources } from '../../display/src';
 import * as THREE from 'three';
+import { prefabDisplay } from '../../display/src';
 import { createTurfGround } from '../../prefab/src/turf';
 import { TILE_SIZE, snapToTileCenter } from '../../prefab/src/tile';
-import { GroundItemAssets, createResidentGroundItem } from '../../prefab/src/groundItems';
+import { itemAt, ItemWorldFixture } from '../../animation/tests/itemWorldFixture';
+import { createPickupInventory } from '../../animation/tests/pickupFixture';
 import { renderSceneWithPasses } from '../../animation/src/sceneRenderPass';
 
 export async function checkTurfOcclusion() {
@@ -31,23 +32,23 @@ export async function checkTurfOcclusion() {
   const camera = new THREE.OrthographicCamera(-5, 5, 5, -5, 0.1, 200);
   const reference = new Uint8Array(256 * 256 * 4);
   const actual = new Uint8Array(reference.length);
-  const assets = new GroundItemAssets();
+  const inventory = createPickupInventory();
+  const world = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(), undefined, '/dst/data/databundles/images.zip', inventory,
+    '/dst/data/anim', new THREE.Group());
   const failures: string[] = [];
   let comparisons = 0;
   try {
     for (const id of ['meatballs', 'log', 'torch', 'wall_stone_item']) {
-      const { visual: sprite, display } = createResidentGroundItem({ sprites: new SpriteResources(undefined, undefined, assets) }, { itemId: id });
-      await display.artLoaded();
-      sprite.model.position.copy(feet);
-      scene.add(sprite.model);
-      assets.instancedSprites.flush(renderer);
+      const model = world.spawnFromSave(`turf:${id}`, { itemId: id, count: 1, name: id, icon: '' }, feet);
+      await prefabDisplay(model)!.artLoaded();
+      world.archives.instancedSprites.flush(renderer);
       for (const pitch of [30, 60]) for (const heading of [0, 45, 90]) {
         const p = THREE.MathUtils.degToRad(pitch), h = THREE.MathUtils.degToRad(heading);
         camera.position.copy(feet).add(new THREE.Vector3(
           Math.cos(p) * Math.cos(h) * 50, Math.sin(p) * 50, Math.cos(p) * Math.sin(h) * 50,
         ));
         camera.lookAt(feet);
-        sprite.model.quaternion.copy(camera.quaternion);
+        model.quaternion.copy(camera.quaternion);
         ground.visible = overlay.visible = false;
         renderSceneWithPasses(renderer, scene, camera);
         renderer.readRenderTargetPixels(target, 0, 0, 256, 256, reference);
@@ -58,10 +59,10 @@ export async function checkTurfOcclusion() {
         comparisons++;
         if (actual.some((value, i) => value !== reference[i])) failures.push(`${id}:${pitch}:${heading}`);
       }
-      sprite.dispose();
+      itemAt(model).remove();
     }
   } finally {
-    assets.dispose();
+    world.dispose(); inventory.dispose();
     target.dispose();
     renderer.dispose();
   }

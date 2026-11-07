@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { saplingPrefabs } from '../../prefab/src/sapling';
-import { GroundItemManager } from '../../prefab/src/groundItemManager';
+import { ItemWorldFixture } from './itemWorldFixture';
 import { createPickupInventory } from './pickupFixture';
 import { createPickupDoer } from '../../stategraphs/src/pickup';
 import { performToolWork } from '../../stategraphs/src/componentactions';
@@ -33,7 +33,7 @@ function setup(inventory = createPickupInventory()) {
   vi.stubGlobal('window', new EventTarget());
   const scene = new THREE.Scene(), player = new THREE.Group();
   const camera = new THREE.PerspectiveCamera(), renderer = { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer;
-  const ground = new GroundItemManager(scene, camera,
+  const ground = new ItemWorldFixture(scene, camera,
     renderer, '/dst/data/databundles/images.zip',
     inventory, '/dst/data/anim', player);
   const scheduler = new GameTimeScheduler();
@@ -51,7 +51,7 @@ function setup(inventory = createPickupInventory()) {
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
   const save = () => serializeSave(template, {
     entities: { ...Object.fromEntries(['sapling', 'sapling_moon'].map(id => [id, saplings.exportRecords()
-      .filter(({ prefabId }) => prefabId === id).map(({ record }) => record)])), ground_item: ground.exportRecords() },
+      .filter(({ prefabId }) => prefabId === id).map(({ record }) => record)])), ...ground.exportEntities() },
     inventory: inventory.exportState(), elapsedSeconds: 100, playerTransform: { position: [0, 0, 0], rotationY: 0 },
   }, SAVE_CATALOG);
   const dispose = () => { registry.dispose(); ground.dispose(); inventory.dispose(); unbind(); scheduler.dispose(); };
@@ -104,7 +104,8 @@ it('digs sapling_moon into dug_sapling_moon plus ready twigs, and burns a picked
     expect((await executeDebugCommand('c_give("dug_sapling_moon",2);c_give("shovel");c_spawn("sapling_moon")', s.inventory,
       id => s.registry.spawn(id))).ok).toBe(true);
     expect(s.inventory.getItemSpec('dug_sapling_moon').maxStack).toBe(10);
-    const shovel = s.inventory.entities.create({ itemId: 'shovel', count: 1 });
+    // The worker holds its tool: SpawnPrefab puts the inst in the world, GiveItem takes it out of the scene.
+    const shovel = s.inventory.entities.create({ itemId: 'shovel', count: 1 }); s.inventory.GiveItem(shovel);
     s.inventory.configureItem(shovel);
     expect(performToolWork('DIG', workTargets('DIG')[0].entity!, s.worker, shovel)).toBe(true);
     expect(s.ground.exportRecords().map(record => record.components.stack?.itemId)).toEqual(['twigs', 'dug_sapling_moon']);
@@ -112,7 +113,8 @@ it('digs sapling_moon into dug_sapling_moon plus ready twigs, and burns a picked
 
     const model = await drawn(s.saplings.spawn('sapling', new THREE.Vector3(30, 0, 0)).transform.model);
     plantInstance(model).components.pickable.pick({ giveItem: () => true });
-    const torch = s.inventory.entities.create({ itemId: 'torch', count: 1 });
+    // The worker holds its tool: SpawnPrefab puts the inst in the world, GiveItem takes it out of the scene.
+    const torch = s.inventory.entities.create({ itemId: 'torch', count: 1 }); s.inventory.GiveItem(torch);
     s.inventory.configureItem(torch);
     expect(collectEquippedItemActions(torch, undefined, findActionEntity(model), true)).toContain('LIGHT');
     plantInstance(model).components.burnable.Ignite();

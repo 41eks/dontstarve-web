@@ -16,7 +16,6 @@ import { modelHasTag, prefabInstance } from '../packages/prefab/src/prefabInstan
 import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
 import type { WilsonAnimationController } from '@dontstarve-web/prefab/player';
 import type { WorldContext } from '@dontstarve-web/prefab/worldContext';
-import type { GroundItemDefinition } from '@dontstarve-web/prefab/groundPrefab';
 import type { StorageBuildingId } from '@dontstarve-web/prefab/containers';
 import type { BookWorld } from '@dontstarve-web/prefab/books';
 import { isWorldFx } from '@dontstarve-web/prefab/world_fx';
@@ -92,7 +91,7 @@ interface ApplicationResourcesOptions {
 }
 
 type SceneResources = Pick<Awaited<ReturnType<typeof startScene>>,
-  'registry' | 'buildingPlacement' | 'groundItems' | 'farmPlow' | 'mushroomPlants' | 'wormholes' | 'reskinEffects' | 'worldFx' | 'rockAvocadoBushes' | 'grasses' | 'saplings' | 'scheduler' | 'weather' | 'moon' | 'getWatchWorldContent' | 'beefalos' | 'ponds'>;
+  'registry' | 'buildingPlacement' | 'farmPlow' | 'mushroomPlants' | 'wormholes' | 'reskinEffects' | 'worldFx' | 'rockAvocadoBushes' | 'grasses' | 'saplings' | 'scheduler' | 'weather' | 'moon' | 'getWatchWorldContent' | 'beefalos' | 'ponds'>;
 
 /** Create panels before scene loading, then own action setup and its explicit disposal. */
 export function createDisposalResources({ gameUi, view, screenProjection, inventory, playerAnimation, locomotor, pickupDoer,
@@ -111,7 +110,7 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
         .setOpen(model, isOpen, buildId);
     },
     register(events: EventEmitter<DisposalEvents>, scene: SceneResources) {
-      const { buildingPlacement, groundItems, worldFx, scheduler, weather, moon, getWatchWorldContent } = scene;
+      const { buildingPlacement, worldFx, scheduler, weather, moon, getWatchWorldContent } = scene;
       const handEquipment = inventory.handEquipment;
       const handSlotAddress = equipmentSlotAddress('hand');
       const bodySlotAddress = equipmentSlotAddress('body');
@@ -220,32 +219,15 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
           || (item.entityId !== undefined && inventory.getEntity(slot)?.id !== item.entityId)) return;
         if (action === 'drop') {
           actionEvents.emit('action:interrupt', { reason: 'drop' });
-          const spec = inventory.getStackSpec(stack);
           const entity = inventory.getEntity(slot);
           if (!entity) return;
-          // The DROP hands over this inst; its ground visual draws the item's own sprite.
-          const definition: GroundItemDefinition = {
-            entity,
-            itemId: stack.itemId,
-            ...(stack.skinId === undefined ? {} : { skinId: stack.skinId }),
-            name: spec.name,
-            icon: spec.icon,
-            ...(spec.atlas ? { atlas: spec.atlas } : {}),
-            // inventory:DropItemFromInvTile drops the whole stack unless a single drop is forced.
-            count: stack.count,
-            ...(stack.remainingUses === undefined ? {} : { remainingUses: stack.remainingUses }),
-            ...(stack.remainingFuel === undefined ? {} : { remainingFuel: stack.remainingFuel }),
-            ...(stack.phonographRecord === undefined ? {} : { phonographRecord: stack.phonographRecord }),
-          };
-          const take = () => {
+          // DROP's perform frame: inventory:DropItem of the whole stack, if this inst is still the slot's.
+          playerAnimation?.playDrop(() => {
             if (isHandSlot(slot)) inventory.getEntity(slot)?.flush();
-            const current = inventory.get(slot);
-            if (current?.itemId !== stack.itemId || current.skinId !== stack.skinId
-              || current.count !== stack.count || current.remainingUses !== stack.remainingUses || current.phonographRecord !== stack.phonographRecord) return false;
-            return inventory.extract(slot, stack.count, entity) ?? false;
-          };
-          // DROP's perform frame transfers the item immediately; its display loads the art.
-          playerAnimation?.playDrop(() => groundItems.drop(definition, player.position.clone(), take));
+            if (inventory.getEntity(slot) !== entity) return false;
+            inventory.DropItem(entity, player.position.clone());
+            return true;
+          });
           return;
         }
         // inventory.lua UseItemFromInvTile: with an active item, use it on the original inventory target.

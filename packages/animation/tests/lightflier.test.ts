@@ -23,7 +23,7 @@ function setup(players: LightFlierPlayer[] = [], withWorld = false) {
   const awake = createSignal(true), area = createMemo(() => awake.get());
   const world = withWorld ? bindTestWorld(scheduler, () => area) : undefined;
   const manager = new LightFlierFlowerManager(scene, '/dst/data/anim', { scheduler, getWatchWorldContent: world?.getWatchWorldContent, tickingarea: world?.tickingarea, getPlayers: () => players,
-    spawnItem: state => { const entity = new ItemEntity(state); entities.push(entity); return entity; }, showItem() {},
+    spawnItem: state => { const entity = new ItemEntity(state); entities.push(entity); return entity; },
     dropLoot: (id, count) => { for (let i = 0; i < count; i++) loot.push(id); },
   }, () => 1);
   const step = async (dt: number) => { scheduler.advance(dt); for (const fly of manager.habitat.flies) fly.update(dt); manager.update(dt, new THREE.Quaternion()); await task(); };

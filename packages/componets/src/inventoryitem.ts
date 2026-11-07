@@ -16,6 +16,11 @@ export interface InventoryItemInstance {
   readonly transform: { readonly position: ReadonlyVector3; setPosition(x: number, y: number, z: number): void };
   readonly MiniMapEntity?: MiniMapEntity;
   readonly isRemoved?: boolean;
+  /** The inst's components; DoDropPhysics throws its `inventoryphysics` body. */
+  readonly components?: object;
+  /** EntityScript:RemoveFromScene / ReturnToScene, for an inst that has a scene. */
+  RemoveFromScene?(): void;
+  ReturnToScene?(): void;
   /** The inst's sprite json: its skin, and the clip a prefab may derive its inventory image from. */
   readonly sprite: { readonly sprite: ReadonlySignal<InventoryItemSprite> };
 }
@@ -65,10 +70,12 @@ export class InventoryItem<Instance extends InventoryItemInstance, Owner> {
   private ownerValue: Owner | null = null;
   get owner(): Owner | null { return this.ownerValue; }
   set owner(owner: Owner | null) {
+    const previous = this.ownerValue;
     this.ownerValue = owner;
-    // inventoryitem.lua removes owned items from the scene and returns them
-    // when ownership is cleared; this applies to every inventory minimap icon.
+    // OnPutInInventory's RemoveFromScene and OnRemoved's ReturnToScene: a held inst is in limbo, as is its minimap icon.
     this.inst.MiniMapEntity?.SetEnabled(owner === null && !this.inst.isRemoved);
+    if (this.inst.isRemoved || (previous === null) === (owner === null)) return;
+    if (owner === null) this.inst.ReturnToScene?.(); else this.inst.RemoveFromScene?.();
   }
   canbepickedup = true;
   canbepickedupalive = false;
@@ -87,6 +94,19 @@ export class InventoryItem<Instance extends InventoryItemInstance, Owner> {
   OnPickup(doer: InventoryActor, source?: ItemPosition): boolean {
     this.inst.PushEvent('onpickup', { owner: doer });
     return this.onpickupfn?.(this.inst, doer, source) === true;
+  }
+  /**
+   * inventoryitem.lua OnDropped: OnRemoved returns the inst to the scene where it was put down, DoDropPhysics throws a
+   * body in `launch`'s direction, then `ondropped`. An inst without a body lands where it is.
+   */
+  OnDropped(launch?: import('./inventoryphysics').LootLaunch): void {
+    if (this.inst.isRemoved) { this.ownerValue = null; return; }
+    this.owner = null;
+    // OnRemoved's ReturnToScene, also for an inst a holder took out of the scene without a store owner.
+    this.inst.ReturnToScene?.();
+    if (launch) (this.inst.components as { inventoryphysics?: { Launch(launch?: import('./inventoryphysics').LootLaunch): void } } | undefined)
+      ?.inventoryphysics?.Launch(launch);
+    this.inst.PushEvent('ondropped', undefined);
   }
   OnPutInInventory(doer: InventoryActor): void {
     this.inst.transform.setPosition(0, 0, 0);

@@ -14,6 +14,9 @@ import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { PlaySound, type SoundEventPath } from './sound';
 import { WORLD_SCALE } from './standardcomponents';
 import { FIRE_PROJECTILE_ID } from './staff_projectile';
+import { prefabInstance, type PrefabInstance } from './prefabInstance';
+import type { SpriteState } from '@dontstarve-web/display';
+import type * as THREE from 'three';
 
 /** staff.lua: the staffs share swap_staffs and the spellcaster or weapon each colour configures. */
 
@@ -243,7 +246,7 @@ export class GreenStaffController implements HeldEquipFunctions {
     // The entity cast on carries its owner's deconstruction view; tests may hand the view itself.
     this.spellcaster.setSpellFn((_staff, target, _position, doer) =>
       this.destroyStructure((target as { deconstructionTarget?: DeconstructionTarget }).deconstructionTarget
-        ?? target as DeconstructionTarget, doer, world));
+        ?? instanceDeconstruction(target) ?? target as DeconstructionTarget, doer, world));
   }
   onequip(): void {}
   onunequip(): void {}
@@ -271,6 +274,30 @@ export class GreenStaffController implements HeldEquipFunctions {
     return true;
   }
 }
+/**
+ * destroystructure on an inst without a structure view: a stackable inst loses one of its stack
+ * (stackable:Get():Remove()), anything else is removed.
+ */
+function instanceDeconstruction(target: object | undefined): DeconstructionTarget | undefined {
+  const model = (target as { model?: THREE.Object3D } | undefined)?.model;
+  const inst = model && prefabInstance<PrefabInstance<SpriteState, { stackable?: { Consume(): boolean } }>>(model);
+  if (!inst) return undefined;
+  const isValid = () => !inst.isRemoved && !inst.inlimbo;
+  return {
+    prefab: inst.prefab, model: model as THREE.Group, components: inst.components as DeconstructionTarget['components'],
+    get position() { return inst.position; }, get isRemoved() { return !isValid(); }, isValid,
+    isVisible: () => model.visible, hasTag: (tag: string) => inst.hasTag(tag),
+    flush: () => (inst as { flush?(): void }).flush?.(),
+    PushEvent: (name: string, data: unknown) => inst.PushEvent(name, data),
+    removeOne: () => {
+      if (!isValid()) return false;
+      if (inst.components.stackable) return inst.components.stackable.Consume();
+      inst.remove();
+      return true;
+    },
+  };
+}
+
 export function getGreenStaffController(entity: ItemEntity, world: GreenStaffWorld): GreenStaffController {
   return entity.component('greenstaff', () => new GreenStaffController(entity, world));
 }

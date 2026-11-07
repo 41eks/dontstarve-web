@@ -8,10 +8,10 @@ import type { EquipmentOwner } from '@dontstarve-web/signals';
 import { Equippable } from '../../componets/src/equippable';
 import { createMemo, createSignal, readonlySignal, watchSignal, type Memo, type ReadonlySignal } from '@dontstarve-web/signals';
 import * as THREE from 'three';
-import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
+import type { ItemPrefabWorld } from './groundPrefab';
+import { bindItemWorld, type ItemPrefabDefinition } from './groundItems';
 import catalog from './hats.json' with { type: 'json' };
-import { bindResidentGroundItem } from './groundItemLifecycle';
-import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
+import type { PrefabInstance } from './prefabInstance';
 import { AlterguardianHatEquipped } from './alterguardian_hat_equipped';
 import { spawnLightEntity, type PrefabLocalLight } from './localLight';
 import { TILE_SIZE } from './tile';
@@ -211,51 +211,40 @@ const RABBITHAT_GROUND = { build: 'rabbit_build.zip', overrideBuild: 'hat_rabbit
 
 /**
  * hats.lua's simple(): SetBank(name.."hat") / SetBuild("hat_"..name) / PlayAnimation("anim"), independently of
- * swap_hat. Each hat is an item entity drawn by its display; sources are shared per archive and skin.
+ * swap_hat. Each hat is an item entity drawn by its display; each hat's sprite factory is made when one is first drawn.
  */
-export function createHatGroundFactory(context: GroundPrefabContext): GroundItemFactory {
-  const sources = new Map<string, Promise<AnimatedSpriteFactory>>();
-  const loaded = new Map<string, AnimatedSpriteFactory>();
-  const source = (archive: string, options: AnimatedSpriteSourceOptions) => {
-    const key = JSON.stringify([archive, options.buildArchive, options.skinArchive]);
-    let request = sources.get(key);
-    if (!request) {
-      request = createAnimatedSpriteSource(context.animationBaseUrl, archive, options);
-      void request.then(factory => loaded.set(key, factory), () => sources.delete(key));
-      sources.set(key, request);
-    }
-    return { peek: () => loaded.get(key), load: () => request };
-  };
-  return {
-    itemIds: Object.keys(HAT_DEFINITIONS),
-    create({ itemId }, inst) {
-      const hat = HAT_DEFINITIONS[itemId], skinId = inst.skinId;
-      const skinArchive = skinId === undefined ? undefined : hat.skinArchives[skinId];
-      if (skinId !== undefined && !skinArchive) throw new Error(`Unknown skin ${skinId} for ${hat.archive}`);
-      const rabbit = itemId === 'rabbithat';
-      const art = source(hat.archive, rabbit
-        ? { buildArchive: RABBITHAT_GROUND.build, overrideBuilds: { [RABBITHAT_GROUND.overrideBuild]: `${RABBITHAT_GROUND.overrideBuild}.zip` } }
-        : {});
-      const name = `GroundHat:${itemId}`;
-      const draw = (factory: AnimatedSpriteFactory) => ({
-        create: (animation: string, frame?: 'first' | 'last') => factory.create({ initialAnimation: animation, initialFrame: frame, name }),
-        release: (sprite: THREE.Group) => factory.disposeSprite(sprite),
-      });
-      // The rabbit's animqueueover restarts its ground idle; other hats rest on anim's last frame. The display loads the source.
-      const { instance, display } = createPrefabEntity(itemId, {
-        peek: () => { const factory = art.peek(); return factory && draw(factory); },
-        load: () => art.load().then(draw),
-      }, { name: 'anim', held: !rabbit, billboard: true, instance: inst }, name, entity => {
-        entity.sprite.setSkinSource({ archives: hat.skinArchives, art: context.assets });
-      });
-      return bindResidentGroundItem(context, instance, display);
-    },
-    // The manager releases every hat entity first; only then can the atlases they drew from go.
-    dispose() {
-      for (const request of sources.values()) void request.then(factory => factory.dispose(), () => undefined);
-      sources.clear(); loaded.clear();
-    },
-  };
+export function hatPrefabs(world: ItemPrefabWorld): Record<string, ItemPrefabDefinition> {
+  return Object.fromEntries(Object.entries(HAT_DEFINITIONS).map(([id, hat]) => {
+    const rabbit = id === 'rabbithat';
+    const options: AnimatedSpriteSourceOptions = rabbit
+      ? { buildArchive: RABBITHAT_GROUND.build, overrideBuilds: { [RABBITHAT_GROUND.overrideBuild]: `${RABBITHAT_GROUND.overrideBuild}.zip` } }
+      : {};
+    const name = `GroundHat:${id}`;
+    let request: Promise<AnimatedSpriteFactory> | undefined;
+    let loaded: AnimatedSpriteFactory | undefined;
+    const draw = (factory: AnimatedSpriteFactory) => ({
+      create: (animation: string, frame?: 'first' | 'last') => factory.create({ initialAnimation: animation, initialFrame: frame, name }),
+      release: (sprite: THREE.Group) => factory.disposeSprite(sprite),
+    });
+    const definition: ItemPrefabDefinition = {
+      // The rabbit's animqueueover restarts its ground idle; other hats rest on anim's last frame.
+      fn: () => {
+        const inst = world.newItem(id);
+        inst.sprite.resetPresentation({ name: 'anim', held: !rabbit, billboard: true });
+        bindItemWorld(inst, world);
+        return inst;
+      },
+      source: {
+        peek: () => loaded && draw(loaded),
+        load: () => (request ??= createAnimatedSpriteSource(world.animationBaseUrl, hat.archive, options)
+          .then(factory => loaded = factory, error => { request = undefined; throw error; })).then(draw),
+        dispose: () => { void request?.then(factory => factory.dispose(), () => undefined); request = undefined; loaded = undefined; },
+      },
+      ...Object.keys(hat.skinArchives).length ? { skins: hat.skinArchives } : {},
+      onSpawned: inst => world.configureItem(inst),
+    };
+    return [id, definition];
+  }));
 }
 
 

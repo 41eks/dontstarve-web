@@ -1,4 +1,3 @@
-import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { createPickupDoer, performPickupAction } from '../../stategraphs/src/pickup';
@@ -14,7 +13,7 @@ import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
 import type * as CANNON from 'cannon-es';
 import { playerDoer } from './playerDoer';
 import { PlaySound } from '../../prefab/src/sound';
-import { GroundItemManager } from '../../prefab/src/groundItemManager';
+import { ItemWorldFixture, itemAt } from './itemWorldFixture';
 import { InventoryStore, InventorySlot, ItemEntity, inventorySlotAddress, cursorSlotAddress } from '../../inventory/src';
 import { INVENTORY_ITEM_SPECS } from '../../../src/inventoryItems';
 import { INVENTORY_SKIN_SPECS, INVENTORY_RECIPES, INVENTORY_RECIPE_SKINS } from '../../ui/src/categories/shared';
@@ -99,7 +98,7 @@ it('preserves a loaded skinned record across reskin, pickup, inventory transfer,
   const from = inventorySlotAddress(0), to = inventorySlotAddress(1), cursor = cursorSlotAddress();
   const inventory = new InventoryStore([{ address: from, slot: new InventorySlot() },
     { address: to, slot: new InventorySlot() }, { address: cursor, slot: new InventorySlot() }], INVENTORY_ITEM_SPECS, INVENTORY_SKIN_SPECS);
-  const manager = new GroundItemManager(scene, new THREE.PerspectiveCamera(),
+  const manager = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(),
     { domElement: canvas } as unknown as THREE.WebGLRenderer, '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
   const spec = INVENTORY_ITEM_SPECS.phonograph;
   const graph = new WilsonStateGraph({ playAnimation: () => 1, playSound() {}, onStateChanged() {} });
@@ -156,13 +155,13 @@ it('preserves a loaded skinned record across reskin, pickup, inventory transfer,
     expect(playingSound.stop).not.toHaveBeenCalled();
     const data = structuredClone(initialWorld) as any;
     data.players.local.inventory.containers['player:equipment'].slots = [];
-    data.world.entities.ground_item = manager.exportRecords();
-    expect(deserializeSave(JSON.stringify(data), SAVE_CATALOG).world.entities.ground_item).toEqual(manager.exportRecords());
-    data.world.entities.ground_item[0].components.phonograph.remainingSeconds = 65;
+    data.world.entities.phonograph = manager.exportEntities().phonograph;
+    expect(deserializeSave(JSON.stringify(data), SAVE_CATALOG).world.entities.phonograph).toEqual(manager.exportRecords());
+    data.world.entities.phonograph[0].components.phonograph.remainingSeconds = 65;
     expect(() => deserializeSave(JSON.stringify(data), SAVE_CATALOG)).toThrow('remainingSeconds');
     const saved = manager.exportRecords();
     const restoredInventory = new InventoryStore([], INVENTORY_ITEM_SPECS, INVENTORY_SKIN_SPECS);
-    const restoredManager = new GroundItemManager(new THREE.Scene(), world.camera,
+    const restoredManager = new ItemWorldFixture(new THREE.Scene(), world.camera,
       { domElement: canvas } as unknown as THREE.WebGLRenderer, '/dst/data/databundles/images.zip', restoredInventory, '/dst/data/anim', player);
     try {
       const restored = await restoredManager.spawnFromSave(saved[0].id, {
@@ -177,7 +176,7 @@ it('preserves a loaded skinned record across reskin, pickup, inventory transfer,
     expect(give(model, plain, true)).toBe(false);
     expect(manager.exportRecords()).toEqual(before);
     vi.spyOn(THREE.Raycaster.prototype, 'intersectObjects').mockReturnValue([{ object: model } as unknown as THREE.Intersection]);
-    performPickupAction(findActionEntity(model)!.pickupTarget, createPickupDoer(player, inventory));
+    performPickupAction(itemAt(model), createPickupDoer(player, inventory));
     expect(prefabInstance(model)!.components.phonograph.isPlaying).toBe(false);
     const item = inventory.get(from)!;
     expect(item.phonographRecord).toBe('record_creepyforest');

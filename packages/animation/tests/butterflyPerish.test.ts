@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { inventorySlotAddress, cursorSlotAddress } from '../../inventory/src';
 import { createInventoryStore } from '../../../src/inventory';
-import { GroundItemManager } from '../../prefab/src/groundItemManager';
+import { ItemWorldFixture } from './itemWorldFixture';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
@@ -23,10 +23,10 @@ it('settles captured butterflies every ten seconds and preserves freshness throu
   const inventory = createInventoryStore([]), restored = createInventoryStore([]);
   inventory.entities.bindPerishWorld(world); restored.entities.bindPerishWorld(restoredWorld);
   const scene = new THREE.Scene(), player = new THREE.Group();
-  const ground = new GroundItemManager(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer,
+  const ground = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer,
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
   ground.entities.bindPerishWorld(world);
-  const restoredGround = new GroundItemManager(new THREE.Scene(), new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer,
+  const restoredGround = new ItemWorldFixture(new THREE.Scene(), new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer,
     '/dst/data/databundles/images.zip', restored, '/dst/data/anim', player);
   try {
     const address = inventorySlotAddress(0);
@@ -67,21 +67,24 @@ it('settles captured butterflies every ten seconds and preserves freshness throu
     const butter = ground.exportRecords().find(record => record.id === 'butter:command')!;
     expect(butter.components.stack).toMatchObject({ itemId: 'butter', count: 1, freshnessPercent: 1 });
     expect((await executeDebugCommand('c_save()', inventory, undefined, () => {
-      json = serializeSave(template, { entities: { ground_item: [butter] }, inventory: inventory.exportState(), elapsedSeconds: world.scheduler.now,
+      json = serializeSave(template, { entities: { butter: [butter] }, inventory: inventory.exportState(), elapsedSeconds: world.scheduler.now,
         playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
     })).ok).toBe(true);
     const savedButter = deserializeSave(json, SAVE_CATALOG);
     restored.replaceState(inventoryStateFromSave(savedButter), SAVE_CATALOG.recipes);
-    const record = savedButter.world.entities.ground_item[0], stack = record.components.stack!;
-    await restoredGround.spawnFromSave(record.id, { ...SAVE_CATALOG.items[stack.itemId], ...stack }, new THREE.Vector3(...record.transform.position));
+    restoredGround.restoreEntities(savedButter.world.entities);
     expect(restoredGround.exportRecords()).toEqual([butter]);
     expect(restored.exportState()).toEqual(inventory.exportState());
   } finally { ground.dispose(); restoredGround.dispose(); inventory.dispose(); restored.dispose(); }
 });
 
 it('starves an entire stack into independently rolled loot after removing the butterflies', async () => {
+  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   const inventory = createInventoryStore([]), world = createPerishWorld();
   inventory.entities.bindPerishWorld(world);
+  // The world the butterflies are SpawnPrefab'd into, which spawns their loot.
+  const items = new ItemWorldFixture(new THREE.Scene(), new THREE.PerspectiveCamera(), undefined, '/dst/data/databundles/images.zip',
+    inventory, '/dst/data/anim', new THREE.Group());
   try {
     expect((await executeDebugCommand('c_give("butterfly",3)', inventory)).ok).toBe(true);
     const entity = inventory.getEntity(inventorySlotAddress(0))!;
@@ -104,5 +107,5 @@ it('starves an entire stack into independently rolled loot after removing the bu
         playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
     })).ok).toBe(true);
     expect(deserializeSave(saved, SAVE_CATALOG).players.local.inventory.containers['player:inventory'].slots.map(slot => slot.item?.itemId)).toEqual(['butter', 'butterflywings']);
-  } finally { inventory.dispose(); }
+  } finally { items.dispose(); inventory.dispose(); }
 });

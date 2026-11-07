@@ -1,12 +1,11 @@
-import { SpriteResources } from '../../display/src';
 import { prefabDisplay } from '../../display/src';
 import { fixturePickup } from './pickup-fixture';
 import * as THREE from 'three';
 import type { PrefabDisplay } from '@dontstarve-web/display';
 import { DstLightingRenderer } from '../../../src/dstLighting';
-import { GroundItemManager } from '../../prefab/src/groundItemManager';
-import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
-import { createLightbulbGroundSprite } from '../../prefab/src/lightbulb';
+import { itemAt, ItemWorldFixture } from '../../animation/tests/itemWorldFixture';
+import { createPickupInventory } from '../../animation/tests/pickupFixture';
+import { GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 
 /** The inst.Light a model's entity declares. */
@@ -40,22 +39,25 @@ export async function checkLightbulbLighting() {
     return pixel[0] + pixel[1] + pixel[2];
   };
   const baseline = await sample(0);
-  const assets = new GroundItemAssets();
-  const bulb = createLightbulbGroundSprite({ sprites: new SpriteResources(undefined, undefined, assets) });
-  await (prefabDisplay(bulb.model) as PrefabDisplay).artLoaded();
-  scene.add(bulb.model);
-  bulb.model.quaternion.copy(camera.quaternion);
-  const parameters = getDeclaredLight(bulb.model);
+  // A bulb lying in the world lights it; held (RemoveFromScene) it does not.
+  const bulbInventory = createPickupInventory();
+  const bulbs = new ItemWorldFixture(scene, camera, renderer, '/missing-atlas.zip', bulbInventory, '/dst/data/anim', new THREE.Group());
+  const bulbModel = bulbs.spawnFromSave('bulb', { itemId: 'lightbulb', name: '荧光果', icon: 'missing.tex', count: 1 }, new THREE.Vector3());
+  const bulb = itemAt(bulbModel);
+  await (prefabDisplay(bulbModel) as PrefabDisplay).artLoaded();
+  bulbModel.quaternion.copy(camera.quaternion);
+  const parameters = getDeclaredLight(bulbModel);
   const glowing = { near: await sample(0), far: await sample(6) };
-  bulb.setLit(false);
+  bulb.RemoveFromScene();
   const disabled = await sample(0);
-  bulb.setLit(true);
+  bulb.ReturnToScene();
   const reenabled = await sample(0);
-  bulb.dispose();
+  bulb.remove();
   const disposed = await sample(0);
+  bulbs.dispose(); bulbInventory.dispose();
   const pickup = fixturePickup(scene, camera, renderer);
   pickup.setAllowed(false);
-  const manager = new GroundItemManager(scene, camera, renderer, '/missing-atlas.zip', pickup.inventory, '/dst/data/anim', new THREE.Group());
+  const manager = new ItemWorldFixture(scene, camera, renderer, '/missing-atlas.zip', pickup.inventory, '/dst/data/anim', new THREE.Group());
   const definition = { itemId: 'lightbulb', name: '荧光果', icon: 'missing.tex', count: 1 };
   const failedDrop = await manager.drop(definition, new THREE.Vector3(5, 20, 0), () => false);
   const failedDropBrightness = await sample(5);

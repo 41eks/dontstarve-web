@@ -20,7 +20,9 @@ export function createBuildingContainer(prefab: StorageBuildingId, inst: object)
     const createSlot = () => definition.singleItems ? new PreparedFoodSlot(null, (_spec, itemId) => prefab !== 'cookpot' || (itemId !== undefined && IsCookingIngredient(itemId)))
             // containers.lua params.bookstation.itemtestfn: item:HasTag("bookcabinet_item").
             : new StorageSlot(null, prefab === 'bookstation' ? (_spec, itemId) => itemId !== undefined && isBookCabinetItem(itemId) : undefined);
-    const loadItem = (record: InventoryStack) => new ItemEntity(record);
+    // SpawnSaveRecord of each content in the building's world, or alone outside one.
+    const loadItem = (record: InventoryStack) => (inst as Partial<Pick<PrefabInstance, 'worldServices'>>).worldServices?.spawnItem?.(record)
+        ?? new ItemEntity(record);
     const container = inst instanceof PrefabInstance ? addComponent(inst, 'container', createSlot, loadItem)
         : new Container<InventoryStack, ItemEntity, ItemSlot>(inst, createSlot, loadItem);
     container.SetNumSlots(definition.slotCount);
