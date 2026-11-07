@@ -1,11 +1,9 @@
-import { createResidentGroundItem } from './groundItems';
+import { groundItemPrefab, type ItemPrefabDefinition } from './groundItems';
 import { type PrefabLocalLight } from './localLight';
 import { TILE_SIZE } from './tile';
-import { listenInventoryEvents } from './inventoryEvents';
-import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
+import type { ItemPrefabWorld } from './groundPrefab';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Fuel } from '../../componets/src/fuel';
-import { prefabInstance } from './prefabInstance';
 
 export const LIGHTBULB_ID = 'lightbulb';
 /** tuning.lua MED_LARGE_FUEL = seg_time * 3. */
@@ -27,29 +25,7 @@ export const LIGHTBULB_LIGHT: PrefabLocalLight = {
   colour: [237 / 255, 237 / 255, 209 / 255],
 };
 
-/** Ground lightbulbs glow until picked up; they use bulb.zip's idle world art. */
-/** The display uses `options.entity`; without one, create a standalone logical item. */
-export function createLightbulbGroundSprite(context: Pick<GroundPrefabContext, 'sprites' | 'tickingarea'>,
-  options: { lit?: boolean; skinId?: string; entity?: ItemEntity } = {}) {
-  const { visual } = createResidentGroundItem(context, { itemId: LIGHTBULB_ID, skinId: options.skinId, entity: options.entity });
-  const setLit = (lit: boolean) => prefabInstance(visual.model)!.light.set(lit ? LIGHTBULB_LIGHT : null);
-  setLit(options.lit ?? true);
-  const removeInventoryEvents = listenInventoryEvents(prefabInstance(visual.model)!, {
-    ondropped: () => setLit(true),
-    onputininventory: () => setLit(false),
-    onload: () => setLit(options.lit ?? true),
-  });
-  return {
-    ...visual,
-    setLit,
-    dispose() { removeInventoryEvents(); setLit(false); visual.dispose(); },
-  };
-}
-
-export function createLightbulbGroundFactory(context: GroundPrefabContext): GroundItemFactory {
-  return {
-    itemIds: [LIGHTBULB_ID],
-    configureEntity: configureLightbulbEntity,
-    create: (_item, entity) => createLightbulbGroundSprite(context, { entity }),
-  };
+/** lightbulb.lua: its Light is on while it is in the scene; RemoveFromScene turns it off while it is held. */
+export function lightbulbPrefabs(world: ItemPrefabWorld): Record<string, ItemPrefabDefinition> {
+  return { [LIGHTBULB_ID]: groundItemPrefab(LIGHTBULB_ID, world, { configure: inst => inst.light.set(LIGHTBULB_LIGHT) }) };
 }

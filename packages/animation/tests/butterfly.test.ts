@@ -2,12 +2,14 @@ import * as THREE from 'three';
 import { ItemEntity } from '../../inventory/src';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  BUTTERFLY_DEFINITIONS, ButterflyController, createButterflyGroundFactory,
+  BUTTERFLY_DEFINITIONS, ButterflyController,
   type ButterflyFlower, type ButterflyWorld,
 } from '../../prefab/src/butterfly';
 
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { bindTestWorld } from './worldContentFixture';
+import { ItemWorldFixture } from './itemWorldFixture';
+import { createPickupInventory } from './pickupFixture';
 
 const cleanups: (() => void)[] = [];
 afterEach(() => { cleanups.splice(0).forEach(stop => stop()); });
@@ -144,8 +146,11 @@ describe('moonbutterfly', () => {
   });
 });
 
-it('registers both butterflies in the shared ground factory', () => {
-  const factory = createButterflyGroundFactory({ animationBaseUrl: '/dst/data/anim' } as never);
-  expect(factory.itemIds).toEqual(['butterfly', 'moonbutterfly']);
-  factory.dispose?.();
+it('declares both butterflies as item prefabs', () => {
+  const inventory = createPickupInventory();
+  const items = new ItemWorldFixture(new THREE.Scene(), new THREE.PerspectiveCamera(), undefined, '/dst/data/databundles/images.zip',
+    inventory, '/dst/data/anim', new THREE.Group());
+  try {
+    expect(['butterfly', 'moonbutterfly'].every(id => items.prefabs.has(id))).toBe(true);
+  } finally { items.dispose(); inventory.dispose(); }
 });

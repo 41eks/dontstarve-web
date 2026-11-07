@@ -53,7 +53,7 @@ export interface WorldContext extends ActionWorldContext, Partial<WorldContentCo
     dropItem?: (entity: import('@dontstarve-web/inventory').ItemEntity, position: ReadonlyVector3) => void;
     /** Place destruction loot in the application's authoritative ground-item store. */
     dropLoot?: (items: readonly { itemId: string; count: number; skinId?: string }[], position: ReadonlyVector3,
-        launch?: () => import('./lootFling').LootLaunch) => void;
+        launch?: () => import('../../componets/src/inventoryphysics').LootLaunch) => void;
 }
 
 /** The subset a prefab needs to turn raw pointer events into raycasts. */

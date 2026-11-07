@@ -9,7 +9,7 @@ import { hotspringPrefabs, HOTSPRING_ID, HOTSPRING_LIGHT, type HotspringInstance
 import { worldFxPrefabs, worldFxSpawner } from '../../prefab/src/world_fx';
 import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { FindEntities } from '../../prefab/src/actionEntity';
-import { GroundItemManager } from '../../prefab/src/groundItemManager';
+import { ItemWorldFixture } from './itemWorldFixture';
 import { createInventoryStore } from '../../../src/inventory';
 import { cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
@@ -39,7 +39,7 @@ function setup(tickingarea?: TileStateQuery, random?: () => number) {
   vi.stubGlobal('window', new EventTarget());
   const inventory = createInventoryStore([]), scene = new THREE.Scene(), player = new THREE.Group(), scheduler = new GameTimeScheduler();
   const camera = new THREE.PerspectiveCamera(), renderer = { domElement: new EventTarget() } as THREE.WebGLRenderer;
-  const ground = new GroundItemManager(scene, camera, renderer, '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
+  const ground = new ItemWorldFixture(scene, camera, renderer, '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
   const physics = new PhysicsWorld({}, tickingarea);
   const displays = new PrefabDisplayGroup(scene);
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { tickingarea, physics });
@@ -47,13 +47,7 @@ function setup(tickingarea?: TileStateQuery, random?: () => number) {
   prefabs.register(hotspringPrefabs({ scheduler, fx: worldFxSpawner(prefabs), random }) as never);
   const registry = new EntityRegistry([], prefabs, () => player.position);
   registry.registerPrefabs(PREFAB_DEFINITIONS.hotsprings);
-  registry.register(PREFAB_DEFINITIONS.groundItems, {
-    restore: (_, record) => ground.spawnFromSave(record.id, {
-      ...SAVE_CATALOG.items[record.components.stack!.itemId], ...record.components.stack! }, new THREE.Vector3(...record.transform.position)),
-    debugSpawn: id => ground.spawnFromSave('dug:command', { ...SAVE_CATALOG.items[id], itemId: id, count: 1 }, player.position),
-    exportRecords: () => ground.exportRecords().map(record => ({ prefabId: 'ground_item', record })),
-    dispose: () => ground.dispose(),
-  });
+  registry.register(PREFAB_DEFINITIONS.groundItems, ground.registration(() => player.position, () => 'dug:command'));
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
   const save = () => serializeSave(template, {
     entities: registry.exportRecords(), inventory: inventory.exportState(),

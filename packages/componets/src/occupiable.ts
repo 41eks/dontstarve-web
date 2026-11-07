@@ -15,6 +15,9 @@ export interface OccupantItem {
   flush(): void;
   /** occupier:Remove(): the occupant is destroyed after it perished. */
   destroy(): void;
+  /** EntityScript:RemoveFromScene / ReturnToScene, for an occupant that has a scene. */
+  RemoveFromScene?(): void;
+  ReturnToScene?(): void;
 }
 
 /** components/occupier.lua: only remembers the cage that owns the occupant. */
@@ -71,6 +74,8 @@ export class Occupiable<Item extends OccupantItem, Inst extends OccupiableInst =
     occupierComponent.SetOwner(this.inst);
     occupierComponent.onoccupied?.(this.inst);
     this.onoccupied?.(this.inst, occupier);
+    // AddChild(occupier) and RemoveFromScene: the cage holds and saves its occupant.
+    occupier.RemoveFromScene?.();
     const stopPerish = occupier.ListenForEvent('perished', () => {
       stop();
       this.onemptied?.(this.inst);
@@ -98,6 +103,7 @@ export class Occupiable<Item extends OccupantItem, Inst extends OccupiableInst =
     this.stopListening?.();
     this.setOccupant(undefined);
     this.onemptied?.(this.inst);
+    item.ReturnToScene?.();
     return item;
   }
 

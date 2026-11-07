@@ -10,7 +10,7 @@ import { PrefabDisplayGroup } from '@dontstarve-web/display';
 import { FireFxHost } from '../../prefab/src/treeFire';
 import { rockAvocadoProduct } from '../../prefab/src/rock_avocado_fruit';
 import { rockAvocadoBushPrefabs } from '../../prefab/src/rock_avocado_bush';
-import { GroundItemManager } from '../../prefab/src/groundItemManager';
+import { ItemWorldFixture } from './itemWorldFixture';
 import { createInventoryStore } from '../../../src/inventory';
 import { inventorySlotAddress } from '../../inventory/src';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -36,7 +36,7 @@ function setup() {
   vi.stubGlobal('window', new EventTarget());
   const inventory = createInventoryStore([]), scene = new THREE.Scene(), player = new THREE.Group(), physics = new CANNON.World();
   const scheduler = new GameTimeScheduler();
-  const ground = new GroundItemManager(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
+  const ground = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
   const { season, snowLevel } = bindTestWorld(scheduler);
   const bushes = plantManager(rockAvocadoBushPrefabs, scene, { physics,
@@ -56,14 +56,9 @@ function setup() {
     exportRecords: () => sprouts.exportRecords(),
     dispose: () => sprouts.dispose(),
   });
-  registry.register(PREFAB_DEFINITIONS.groundItems, {
-    restore: (_, record) => ground.spawnFromSave(record.id,
-      { ...SAVE_CATALOG.items[record.components.stack!.itemId], ...record.components.stack! }, new THREE.Vector3(...record.transform.position)),
-    debugSpawn: id => ground.spawnFromSave(`command:${id}`, { ...SAVE_CATALOG.items[id], itemId: id, count: 1 }, player.position),
-    exportRecords: () => ground.exportRecords().map(record => ({ prefabId: 'ground_item', record })), dispose: () => ground.dispose(),
-  });
+  registry.register(PREFAB_DEFINITIONS.groundItems, ground.registration(() => player.position, id => `command:${id}`));
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
-  const save = () => serializeSave(template, { entities: { rock_avocado_bush: bushes.exportRecords().map(({ record }) => record), ground_item: ground.exportRecords(), rock_avocado_fruit_sprout_sapling: sprouts.exportRecords().map(({ record }) => record) },
+  const save = () => serializeSave(template, { entities: { rock_avocado_bush: bushes.exportRecords().map(({ record }) => record), ...ground.exportEntities(), rock_avocado_fruit_sprout_sapling: sprouts.exportRecords().map(({ record }) => record) },
     inventory: inventory.exportState(), elapsedSeconds: scheduler.now, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
   const advance = (seconds: number) => { scheduler.advance(seconds); prefabDisplays(bushes).update(seconds, new THREE.Quaternion()); sproutDisplays.update(seconds, new THREE.Quaternion()); };
   return { inventory, player, scene, physics, scheduler, season, snowLevel, ground, bushes, sprouts, registry, save, advance,
@@ -97,8 +92,7 @@ it('mines a stack through the common tool action, rolls each consumed fruit, gro
     expect(s.ground.exportRecords().find(record => record.id === products[0].id)!.transform.position[0]).toBeGreaterThan(point.x);
     const before = s.ground.exportRecords();
     const saved = deserializeSave(s.save(), SAVE_CATALOG);
-    for (const record of saved.world.entities.ground_item) await restored.ground.spawnFromSave(record.id,
-      { ...SAVE_CATALOG.items[record.components.stack!.itemId], ...record.components.stack! }, new THREE.Vector3(...record.transform.position));
+    restored.ground.restoreEntities(saved.world.entities);
     expect(restored.ground.exportRecords()).toEqual(before);
     expect(workTargets('MINE', restored.scene)[0].id).toBe(entity.id);
     random.mockReturnValueOnce(.8);
@@ -139,11 +133,10 @@ it('plants one sprout, preserves its named deadline through save/load, and becom
     expect(record.components.saplingTimer?.timers.grow.timeleft).toBe(900);
     restored.sprouts.spawn(ROCK_AVOCADO_SAPLING_ID, new THREE.Vector3(...record.transform.position), record);
     restored.inventory.replaceState(inventoryStateFromSave(saved), SAVE_CATALOG.recipes);
-    for (const ground of saved.world.entities.ground_item) await restored.ground.spawnFromSave(ground.id,
-      { ...SAVE_CATALOG.items[ground.components.stack!.itemId], ...ground.components.stack! }, new THREE.Vector3(...ground.transform.position));
+    restored.ground.restoreEntities(saved.world.entities);
     expect(restored.sprouts.exportRecords().map(({ record }) => record)).toEqual([record]);
     expect(restored.inventory.exportState()).toEqual(s.inventory.exportState());
-    expect(restored.ground.exportRecords()).toEqual(s.ground.exportRecords());
+    expect(restored.ground.exportEntities()).toEqual(s.ground.exportEntities());
     // The scheduler, rather than a presentation update, owns the replacement.
     s.scheduler.advance(900);
     expect(s.bushes.exportRecords().map(({ record }) => record)).toEqual([]);

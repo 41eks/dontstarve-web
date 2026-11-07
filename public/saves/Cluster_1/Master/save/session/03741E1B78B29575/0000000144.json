@@ -702233,7 +702233,7 @@
           }
         }
       ],
-      "ground_item": [
+      "fireflies": [
         {
           "id": "dst_03741E1B78B29575_fireflies_index_000001",
           "transform": {
@@ -708311,7 +708311,9 @@
               "entityId": "dst_03741E1B78B29575_fireflies_id_101290"
             }
           }
-        },
+        }
+      ],
+      "amulet": [
         {
           "id": "dst_03741E1B78B29575_amulet_index_000001",
           "transform": {
@@ -708347,7 +708349,9 @@
               "entityId": "dst_03741E1B78B29575_amulet_index_000002"
             }
           }
-        },
+        }
+      ],
+      "axe": [
         {
           "id": "dst_03741E1B78B29575_axe_id_104647",
           "transform": {
@@ -708366,7 +708370,9 @@
               "entityId": "dst_03741E1B78B29575_axe_id_104647"
             }
           }
-        },
+        }
+      ],
+      "backpack": [
         {
           "id": "dst_03741E1B78B29575_backpack_id_112782",
           "transform": {
@@ -708403,7 +708409,9 @@
               "entityId": "dst_03741E1B78B29575_backpack_id_112785"
             }
           }
-        },
+        }
+      ],
+      "bathbomb": [
         {
           "id": "dst_03741E1B78B29575_bathbomb_index_000001",
           "transform": {
@@ -708421,7 +708429,9 @@
               "entityId": "dst_03741E1B78B29575_bathbomb_index_000001"
             }
           }
-        },
+        }
+      ],
+      "bearger_fur": [
         {
           "id": "dst_03741E1B78B29575_bearger_fur_id_103878",
           "transform": {
@@ -708439,7 +708449,9 @@
               "entityId": "dst_03741E1B78B29575_bearger_fur_id_103878"
             }
           }
-        },
+        }
+      ],
+      "bedroll_straw": [
         {
           "id": "dst_03741E1B78B29575_bedroll_straw_index_000001",
           "transform": {
@@ -708475,7 +708487,9 @@
               "entityId": "dst_03741E1B78B29575_bedroll_straw_index_000002"
             }
           }
-        },
+        }
+      ],
+      "beef_bell": [
         {
           "id": "dst_03741E1B78B29575_beef_bell_index_000001",
           "transform": {
@@ -708493,7 +708507,9 @@
               "entityId": "dst_03741E1B78B29575_beef_bell_index_000001"
             }
           }
-        },
+        }
+      ],
+      "beefalohat": [
         {
           "id": "dst_03741E1B78B29575_beefalohat_id_105539",
           "transform": {
@@ -708530,7 +708546,9 @@
               "entityId": "dst_03741E1B78B29575_beefalohat_index_000002"
             }
           }
-        },
+        }
+      ],
+      "beefalowool": [
         {
           "id": "dst_03741E1B78B29575_beefalowool_id_107612",
           "transform": {
@@ -708548,7 +708566,9 @@
               "entityId": "dst_03741E1B78B29575_beefalowool_id_107612"
             }
           }
-        },
+        }
+      ],
+      "blowdart_pipe": [
         {
           "id": "dst_03741E1B78B29575_blowdart_pipe_index_000001",
           "transform": {
@@ -708602,7 +708622,9 @@
               "entityId": "dst_03741E1B78B29575_blowdart_pipe_id_102079"
             }
           }
-        },
+        }
+      ],
+      "bluegem": [
         {
           "id": "dst_03741E1B78B29575_bluegem_id_102280",
           "transform": {
@@ -708728,7 +708750,9 @@
               "entityId": "dst_03741E1B78B29575_bluegem_index_000007"
             }
           }
-        },
+        }
+      ],
+      "blueprint": [
         {
           "id": "dst_03741E1B78B29575_blueprint_id_105428",
           "transform": {
@@ -708804,7 +708828,9 @@
               "entityId": "dst_03741E1B78B29575_blueprint_id_105434"
             }
           }
-        },
+        }
+      ],
+      "boards": [
         {
           "id": "dst_03741E1B78B29575_boards_id_103293",
           "transform": {
@@ -708840,7 +708866,9 @@
               "entityId": "dst_03741E1B78B29575_boards_id_103295"
             }
           }
-        },
+        }
+      ],
+      "boneshard": [
         {
           "id": "dst_03741E1B78B29575_boneshard_id_107598",
           "transform": {
@@ -708948,7 +708976,9 @@
               "entityId": "dst_03741E1B78B29575_boneshard_id_107608"
             }
           }
-        },
+        }
+      ],
+      "bullkelp_beachedroot": [
         {
           "id": "dst_03741E1B78B29575_bullkelp_beachedroot_index_000001",
           "transform": {
@@ -709452,7 +709482,9 @@
               "entityId": "dst_03741E1B78B29575_bullkelp_beachedroot_index_000028"
             }
           }
-        },
+        }
+      ],
+      "bundle": [
         {
           "id": "dst_03741E1B78B29575_bundle_id_100479",
           "transform": {
@@ -709471,7 +709503,9 @@
               "entityId": "dst_03741E1B78B29575_bundle_id_100479"
             }
           }
-        },
+        }
+      ],
+      "charcoal": [
         {
           "id": "dst_03741E1B78B29575_charcoal_id_106444",
           "transform": {
@@ -709579,7 +709613,9 @@
               "entityId": "dst_03741E1B78B29575_charcoal_id_106454"
             }
           }
-        },
+        }
+      ],
+      "chum": [
         {
           "id": "dst_03741E1B78B29575_chum_index_000001",
           "transform": {
@@ -709597,7 +709633,9 @@
               "entityId": "dst_03741E1B78B29575_chum_index_000001"
             }
           }
-        },
+        }
+      ],
+      "cookiecutterhat": [
         {
           "id": "dst_03741E1B78B29575_cookiecutterhat_index_000001",
           "transform": {
@@ -709651,7 +709689,9 @@
               "entityId": "dst_03741E1B78B29575_cookiecutterhat_index_000003"
             }
           }
-        },
+        }
+      ],
+      "cookiecuttershell": [
         {
           "id": "dst_03741E1B78B29575_cookiecuttershell_id_104672",
           "transform": {
@@ -709669,7 +709709,9 @@
               "entityId": "dst_03741E1B78B29575_cookiecuttershell_id_104672"
             }
           }
-        },
+        }
+      ],
+      "cookingrecipecard": [
         {
           "id": "dst_03741E1B78B29575_cookingrecipecard_id_109703",
           "transform": {
@@ -709705,7 +709747,9 @@
               "entityId": "dst_03741E1B78B29575_cookingrecipecard_id_109705"
             }
           }
-        },
+        }
+      ],
+      "coontail": [
         {
           "id": "dst_03741E1B78B29575_coontail_id_109033",
           "transform": {
@@ -709777,7 +709821,9 @@
               "entityId": "dst_03741E1B78B29575_coontail_id_109039"
             }
           }
-        },
+        }
+      ],
+      "cutgrass": [
         {
           "id": "dst_03741E1B78B29575_cutgrass_index_000001",
           "transform": {
@@ -711073,7 +711119,9 @@
               "entityId": "dst_03741E1B78B29575_cutgrass_index_000072"
             }
           }
-        },
+        }
+      ],
+      "cutreeds": [
         {
           "id": "dst_03741E1B78B29575_cutreeds_index_000001",
           "transform": {
@@ -711181,7 +711229,9 @@
               "entityId": "dst_03741E1B78B29575_cutreeds_id_104026"
             }
           }
-        },
+        }
+      ],
+      "cutstone": [
         {
           "id": "dst_03741E1B78B29575_cutstone_index_000001",
           "transform": {
@@ -711253,7 +711303,9 @@
               "entityId": "dst_03741E1B78B29575_cutstone_id_106810"
             }
           }
-        },
+        }
+      ],
+      "deer_antler1": [
         {
           "id": "dst_03741E1B78B29575_deer_antler1_id_102044",
           "transform": {
@@ -711271,7 +711323,9 @@
               "entityId": "dst_03741E1B78B29575_deer_antler1_id_102044"
             }
           }
-        },
+        }
+      ],
+      "deer_antler2": [
         {
           "id": "dst_03741E1B78B29575_deer_antler2_id_109707",
           "transform": {
@@ -711307,7 +711361,9 @@
               "entityId": "dst_03741E1B78B29575_deer_antler2_index_000002"
             }
           }
-        },
+        }
+      ],
+      "dragon_scales": [
         {
           "id": "dst_03741E1B78B29575_dragon_scales_id_103147",
           "transform": {
@@ -711325,7 +711381,9 @@
               "entityId": "dst_03741E1B78B29575_dragon_scales_id_103147"
             }
           }
-        },
+        }
+      ],
+      "driftwood_log": [
         {
           "id": "dst_03741E1B78B29575_driftwood_log_index_000001",
           "transform": {
@@ -712711,7 +712769,9 @@
               "entityId": "dst_03741E1B78B29575_driftwood_log_index_000077"
             }
           }
-        },
+        }
+      ],
+      "dug_berrybush_juicy": [
         {
           "id": "dst_03741E1B78B29575_dug_berrybush_juicy_index_000001",
           "transform": {
@@ -712765,7 +712825,9 @@
               "entityId": "dst_03741E1B78B29575_dug_berrybush_juicy_index_000003"
             }
           }
-        },
+        }
+      ],
+      "dug_grass": [
         {
           "id": "dst_03741E1B78B29575_dug_grass_index_000001",
           "transform": {
@@ -712945,7 +713007,9 @@
               "entityId": "dst_03741E1B78B29575_dug_grass_id_113254"
             }
           }
-        },
+        }
+      ],
+      "dug_sapling": [
         {
           "id": "dst_03741E1B78B29575_dug_sapling_id_110259",
           "transform": {
@@ -713071,7 +713135,9 @@
               "entityId": "dst_03741E1B78B29575_dug_sapling_index_000007"
             }
           }
-        },
+        }
+      ],
+      "dug_trap_starfish": [
         {
           "id": "dst_03741E1B78B29575_dug_trap_starfish_id_102362",
           "transform": {
@@ -713143,7 +713209,9 @@
               "entityId": "dst_03741E1B78B29575_dug_trap_starfish_index_000004"
             }
           }
-        },
+        }
+      ],
+      "feather_crow": [
         {
           "id": "dst_03741E1B78B29575_feather_crow_id_109240",
           "transform": {
@@ -713449,7 +713517,9 @@
               "entityId": "dst_03741E1B78B29575_feather_crow_id_109272"
             }
           }
-        },
+        }
+      ],
+      "feather_robin": [
         {
           "id": "dst_03741E1B78B29575_feather_robin_index_000001",
           "transform": {
@@ -713485,7 +713555,9 @@
               "entityId": "dst_03741E1B78B29575_feather_robin_index_000002"
             }
           }
-        },
+        }
+      ],
+      "feather_robin_winter": [
         {
           "id": "dst_03741E1B78B29575_feather_robin_winter_index_000001",
           "transform": {
@@ -713503,7 +713575,9 @@
               "entityId": "dst_03741E1B78B29575_feather_robin_winter_index_000001"
             }
           }
-        },
+        }
+      ],
+      "fishingrod": [
         {
           "id": "dst_03741E1B78B29575_fishingrod_id_108161",
           "transform": {
@@ -713521,7 +713595,9 @@
               "entityId": "dst_03741E1B78B29575_fishingrod_id_108161"
             }
           }
-        },
+        }
+      ],
+      "flint": [
         {
           "id": "dst_03741E1B78B29575_flint_index_000001",
           "transform": {
@@ -715555,7 +715631,9 @@
               "entityId": "dst_03741E1B78B29575_flint_id_109959"
             }
           }
-        },
+        }
+      ],
+      "footballhat": [
         {
           "id": "dst_03741E1B78B29575_footballhat_index_000001",
           "transform": {
@@ -715574,7 +715652,9 @@
               "entityId": "dst_03741E1B78B29575_footballhat_index_000001"
             }
           }
-        },
+        }
+      ],
+      "gears": [
         {
           "id": "dst_03741E1B78B29575_gears_id_103297",
           "transform": {
@@ -715682,7 +715762,9 @@
               "entityId": "dst_03741E1B78B29575_gears_index_000006"
             }
           }
-        },
+        }
+      ],
+      "glasscutter": [
         {
           "id": "dst_03741E1B78B29575_glasscutter_id_109304",
           "transform": {
@@ -715701,7 +715783,9 @@
               "entityId": "dst_03741E1B78B29575_glasscutter_id_109304"
             }
           }
-        },
+        }
+      ],
+      "glommerflower": [
         {
           "id": "dst_03741E1B78B29575_glommerflower_id_109995",
           "transform": {
@@ -715719,7 +715803,9 @@
               "entityId": "dst_03741E1B78B29575_glommerflower_id_109995"
             }
           }
-        },
+        }
+      ],
+      "glommerfuel": [
         {
           "id": "dst_03741E1B78B29575_glommerfuel_id_104649",
           "transform": {
@@ -715755,7 +715841,9 @@
               "entityId": "dst_03741E1B78B29575_glommerfuel_id_104651"
             }
           }
-        },
+        }
+      ],
+      "goldenaxe": [
         {
           "id": "dst_03741E1B78B29575_goldenaxe_id_102274",
           "transform": {
@@ -715811,7 +715899,9 @@
               "entityId": "dst_03741E1B78B29575_goldenaxe_index_000003"
             }
           }
-        },
+        }
+      ],
+      "goldenpickaxe": [
         {
           "id": "dst_03741E1B78B29575_goldenpickaxe_id_106489",
           "transform": {
@@ -715883,7 +715973,9 @@
               "entityId": "dst_03741E1B78B29575_goldenpickaxe_id_106495"
             }
           }
-        },
+        }
+      ],
+      "goldenpitchfork": [
         {
           "id": "dst_03741E1B78B29575_goldenpitchfork_id_100589",
           "transform": {
@@ -715901,7 +715993,9 @@
               "entityId": "dst_03741E1B78B29575_goldenpitchfork_id_100589"
             }
           }
-        },
+        }
+      ],
+      "goldenshovel": [
         {
           "id": "dst_03741E1B78B29575_goldenshovel_id_113143",
           "transform": {
@@ -715937,7 +716031,9 @@
               "entityId": "dst_03741E1B78B29575_goldenshovel_id_113145"
             }
           }
-        },
+        }
+      ],
+      "goldnugget": [
         {
           "id": "dst_03741E1B78B29575_goldnugget_id_109711",
           "transform": {
@@ -716153,7 +716249,9 @@
               "entityId": "dst_03741E1B78B29575_goldnugget_id_109733"
             }
           }
-        },
+        }
+      ],
+      "greenamulet": [
         {
           "id": "dst_03741E1B78B29575_greenamulet_index_000001",
           "transform": {
@@ -716171,7 +716269,9 @@
               "entityId": "dst_03741E1B78B29575_greenamulet_index_000001"
             }
           }
-        },
+        }
+      ],
+      "greenstaff": [
         {
           "id": "dst_03741E1B78B29575_greenstaff_id_103917",
           "transform": {
@@ -716247,7 +716347,9 @@
               "entityId": "dst_03741E1B78B29575_greenstaff_id_103923"
             }
           }
-        },
+        }
+      ],
+      "guano": [
         {
           "id": "dst_03741E1B78B29575_guano_id_107642",
           "transform": {
@@ -716553,7 +716655,9 @@
               "entityId": "dst_03741E1B78B29575_guano_id_107690"
             }
           }
-        },
+        }
+      ],
+      "gunpowder": [
         {
           "id": "dst_03741E1B78B29575_gunpowder_index_000001",
           "transform": {
@@ -716571,7 +716675,9 @@
               "entityId": "dst_03741E1B78B29575_gunpowder_index_000001"
             }
           }
-        },
+        }
+      ],
+      "hammer": [
         {
           "id": "dst_03741E1B78B29575_hammer_id_104001",
           "transform": {
@@ -716589,7 +716695,9 @@
               "entityId": "dst_03741E1B78B29575_hammer_id_104001"
             }
           }
-        },
+        }
+      ],
+      "heatrock": [
         {
           "id": "dst_03741E1B78B29575_heatrock_id_105547",
           "transform": {
@@ -716627,7 +716735,9 @@
               "entityId": "dst_03741E1B78B29575_heatrock_id_105550"
             }
           }
-        },
+        }
+      ],
+      "hermit_bundle": [
         {
           "id": "dst_03741E1B78B29575_hermit_bundle_id_103992",
           "transform": {
@@ -716645,7 +716755,9 @@
               "entityId": "dst_03741E1B78B29575_hermit_bundle_id_103992"
             }
           }
-        },
+        }
+      ],
+      "honey": [
         {
           "id": "dst_03741E1B78B29575_honey_id_103528",
           "transform": {
@@ -716699,7 +716811,9 @@
               "entityId": "dst_03741E1B78B29575_honey_id_103532"
             }
           }
-        },
+        }
+      ],
+      "horrorfuel": [
         {
           "id": "dst_03741E1B78B29575_horrorfuel_id_110797",
           "transform": {
@@ -716735,7 +716849,9 @@
               "entityId": "dst_03741E1B78B29575_horrorfuel_id_110800"
             }
           }
-        },
+        }
+      ],
+      "houndstooth": [
         {
           "id": "dst_03741E1B78B29575_houndstooth_id_110052",
           "transform": {
@@ -716987,7 +717103,9 @@
               "entityId": "dst_03741E1B78B29575_houndstooth_id_110078"
             }
           }
-        },
+        }
+      ],
+      "icestaff": [
         {
           "id": "dst_03741E1B78B29575_icestaff_index_000001",
           "transform": {
@@ -717059,7 +717177,9 @@
               "entityId": "dst_03741E1B78B29575_icestaff_id_111679"
             }
           }
-        },
+        }
+      ],
+      "lantern": [
         {
           "id": "dst_03741E1B78B29575_lantern_id_105383",
           "transform": {
@@ -717097,7 +717217,9 @@
               "entityId": "dst_03741E1B78B29575_lantern_id_105385"
             }
           }
-        },
+        }
+      ],
+      "lavae_egg": [
         {
           "id": "dst_03741E1B78B29575_lavae_egg_id_103367",
           "transform": {
@@ -717115,7 +717237,9 @@
               "entityId": "dst_03741E1B78B29575_lavae_egg_id_103367"
             }
           }
-        },
+        }
+      ],
+      "livinglog": [
         {
           "id": "dst_03741E1B78B29575_livinglog_id_103990",
           "transform": {
@@ -717133,7 +717257,9 @@
               "entityId": "dst_03741E1B78B29575_livinglog_id_103990"
             }
           }
-        },
+        }
+      ],
+      "log": [
         {
           "id": "dst_03741E1B78B29575_log_id_103008",
           "transform": {
@@ -717511,7 +717637,9 @@
               "entityId": "dst_03741E1B78B29575_log_id_103048"
             }
           }
-        },
+        }
+      ],
+      "malbatross_beak": [
         {
           "id": "dst_03741E1B78B29575_malbatross_beak_index_000001",
           "transform": {
@@ -717529,7 +717657,9 @@
               "entityId": "dst_03741E1B78B29575_malbatross_beak_index_000001"
             }
           }
-        },
+        }
+      ],
+      "marble": [
         {
           "id": "dst_03741E1B78B29575_marble_id_103159",
           "transform": {
@@ -717601,7 +717731,9 @@
               "entityId": "dst_03741E1B78B29575_marble_id_103165"
             }
           }
-        },
+        }
+      ],
+      "meat": [
         {
           "id": "dst_03741E1B78B29575_meat_id_109993",
           "transform": {
@@ -717619,7 +717751,9 @@
               "entityId": "dst_03741E1B78B29575_meat_id_109993"
             }
           }
-        },
+        }
+      ],
+      "messagebottle": [
         {
           "id": "dst_03741E1B78B29575_messagebottle_index_000001",
           "transform": {
@@ -717655,7 +717789,9 @@
               "entityId": "dst_03741E1B78B29575_messagebottle_index_000002"
             }
           }
-        },
+        }
+      ],
+      "moon_tree_blossom": [
         {
           "id": "dst_03741E1B78B29575_moon_tree_blossom_id_108101",
           "transform": {
@@ -718051,7 +718187,9 @@
               "entityId": "dst_03741E1B78B29575_moon_tree_blossom_id_108143"
             }
           }
-        },
+        }
+      ],
+      "moonglass": [
         {
           "id": "dst_03741E1B78B29575_moonglass_id_101441",
           "transform": {
@@ -718165,7 +718303,9 @@
               "entityId": "dst_03741E1B78B29575_moonglass_id_101451"
             }
           }
-        },
+        }
+      ],
+      "moonglassaxe": [
         {
           "id": "dst_03741E1B78B29575_moonglassaxe_id_106817",
           "transform": {
@@ -718219,7 +718359,9 @@
               "entityId": "dst_03741E1B78B29575_moonglassaxe_id_106821"
             }
           }
-        },
+        }
+      ],
+      "moonrocknugget": [
         {
           "id": "dst_03741E1B78B29575_moonrocknugget_id_107614",
           "transform": {
@@ -718471,7 +718613,9 @@
               "entityId": "dst_03741E1B78B29575_moonrocknugget_index_000014"
             }
           }
-        },
+        }
+      ],
+      "nightmarefuel": [
         {
           "id": "dst_03741E1B78B29575_nightmarefuel_id_102087",
           "transform": {
@@ -718849,7 +718993,9 @@
               "entityId": "dst_03741E1B78B29575_nightmarefuel_id_102127"
             }
           }
-        },
+        }
+      ],
+      "nightsword": [
         {
           "id": "dst_03741E1B78B29575_nightsword_index_000001",
           "transform": {
@@ -718867,7 +719013,9 @@
               "entityId": "dst_03741E1B78B29575_nightsword_index_000001"
             }
           }
-        },
+        }
+      ],
+      "nitre": [
         {
           "id": "dst_03741E1B78B29575_nitre_id_105499",
           "transform": {
@@ -719011,7 +719159,9 @@
               "entityId": "dst_03741E1B78B29575_nitre_id_105513"
             }
           }
-        },
+        }
+      ],
+      "oar": [
         {
           "id": "dst_03741E1B78B29575_oar_id_113462",
           "transform": {
@@ -719101,7 +719251,9 @@
               "entityId": "dst_03741E1B78B29575_oar_id_113470"
             }
           }
-        },
+        }
+      ],
+      "oar_driftwood": [
         {
           "id": "dst_03741E1B78B29575_oar_driftwood_id_107035",
           "transform": {
@@ -719173,7 +719325,9 @@
               "entityId": "dst_03741E1B78B29575_oar_driftwood_id_107041"
             }
           }
-        },
+        }
+      ],
+      "oceanfishingrod": [
         {
           "id": "dst_03741E1B78B29575_oceanfishingrod_id_102295",
           "transform": {
@@ -719191,7 +719345,9 @@
               "entityId": "dst_03741E1B78B29575_oceanfishingrod_id_102295"
             }
           }
-        },
+        }
+      ],
+      "orangeamulet": [
         {
           "id": "dst_03741E1B78B29575_orangeamulet_index_000001",
           "transform": {
@@ -719209,7 +719365,9 @@
               "entityId": "dst_03741E1B78B29575_orangeamulet_index_000001"
             }
           }
-        },
+        }
+      ],
+      "orangegem": [
         {
           "id": "dst_03741E1B78B29575_orangegem_id_102549",
           "transform": {
@@ -719245,7 +719403,9 @@
               "entityId": "dst_03741E1B78B29575_orangegem_id_102551"
             }
           }
-        },
+        }
+      ],
+      "palmcone_scale": [
         {
           "id": "dst_03741E1B78B29575_palmcone_scale_id_105488",
           "transform": {
@@ -719317,7 +719477,9 @@
               "entityId": "dst_03741E1B78B29575_palmcone_scale_id_105494"
             }
           }
-        },
+        }
+      ],
+      "palmcone_seed": [
         {
           "id": "dst_03741E1B78B29575_palmcone_seed_index_000001",
           "transform": {
@@ -719353,7 +719515,9 @@
               "entityId": "dst_03741E1B78B29575_palmcone_seed_id_104035"
             }
           }
-        },
+        }
+      ],
+      "panflute": [
         {
           "id": "dst_03741E1B78B29575_panflute_index_000001",
           "transform": {
@@ -719443,7 +719607,9 @@
               "entityId": "dst_03741E1B78B29575_panflute_index_000005"
             }
           }
-        },
+        }
+      ],
+      "pickaxe": [
         {
           "id": "dst_03741E1B78B29575_pickaxe_id_106866",
           "transform": {
@@ -719461,7 +719627,9 @@
               "entityId": "dst_03741E1B78B29575_pickaxe_id_106866"
             }
           }
-        },
+        }
+      ],
+      "pig_token": [
         {
           "id": "dst_03741E1B78B29575_pig_token_index_000001",
           "transform": {
@@ -719479,7 +719647,9 @@
               "entityId": "dst_03741E1B78B29575_pig_token_index_000001"
             }
           }
-        },
+        }
+      ],
+      "pigskin": [
         {
           "id": "dst_03741E1B78B29575_pigskin_id_100577",
           "transform": {
@@ -719515,7 +719685,9 @@
               "entityId": "dst_03741E1B78B29575_pigskin_id_100579"
             }
           }
-        },
+        }
+      ],
+      "pinecone": [
         {
           "id": "dst_03741E1B78B29575_pinecone_id_102564",
           "transform": {
@@ -719731,7 +719903,9 @@
               "entityId": "dst_03741E1B78B29575_pinecone_index_000012"
             }
           }
-        },
+        }
+      ],
+      "plantmeat": [
         {
           "id": "dst_03741E1B78B29575_plantmeat_id_131302",
           "transform": {
@@ -719767,7 +719941,9 @@
               "entityId": "dst_03741E1B78B29575_plantmeat_id_130889"
             }
           }
-        },
+        }
+      ],
+      "playbill_the_doll": [
         {
           "id": "dst_03741E1B78B29575_playbill_the_doll_id_103518",
           "transform": {
@@ -719785,7 +719961,9 @@
               "entityId": "dst_03741E1B78B29575_playbill_the_doll_id_103518"
             }
           }
-        },
+        }
+      ],
+      "playing_card": [
         {
           "id": "dst_03741E1B78B29575_playing_card_id_106827",
           "transform": {
@@ -719821,7 +719999,9 @@
               "entityId": "dst_03741E1B78B29575_playing_card_id_106829"
             }
           }
-        },
+        }
+      ],
+      "poop": [
         {
           "id": "dst_03741E1B78B29575_poop_index_000001",
           "transform": {
@@ -720289,7 +720469,9 @@
               "entityId": "dst_03741E1B78B29575_poop_id_103768"
             }
           }
-        },
+        }
+      ],
+      "purplegem": [
         {
           "id": "dst_03741E1B78B29575_purplegem_index_000001",
           "transform": {
@@ -720325,7 +720507,9 @@
               "entityId": "dst_03741E1B78B29575_purplegem_index_000002"
             }
           }
-        },
+        }
+      ],
+      "razor": [
         {
           "id": "dst_03741E1B78B29575_razor_id_105543",
           "transform": {
@@ -720361,7 +720545,9 @@
               "entityId": "dst_03741E1B78B29575_razor_index_000002"
             }
           }
-        },
+        }
+      ],
+      "record": [
         {
           "id": "dst_03741E1B78B29575_record_index_000001",
           "transform": {
@@ -720379,7 +720565,9 @@
               "entityId": "dst_03741E1B78B29575_record_index_000001"
             }
           }
-        },
+        }
+      ],
+      "redgem": [
         {
           "id": "dst_03741E1B78B29575_redgem_id_110116",
           "transform": {
@@ -720469,7 +720657,9 @@
               "entityId": "dst_03741E1B78B29575_redgem_id_110124"
             }
           }
-        },
+        }
+      ],
+      "rock_avocado_fruit": [
         {
           "id": "dst_03741E1B78B29575_rock_avocado_fruit_id_103119",
           "transform": {
@@ -720505,7 +720695,9 @@
               "entityId": "dst_03741E1B78B29575_rock_avocado_fruit_id_103121"
             }
           }
-        },
+        }
+      ],
+      "rock_avocado_fruit_sprout": [
         {
           "id": "dst_03741E1B78B29575_rock_avocado_fruit_sprout_index_000001",
           "transform": {
@@ -720523,7 +720715,9 @@
               "entityId": "dst_03741E1B78B29575_rock_avocado_fruit_sprout_index_000001"
             }
           }
-        },
+        }
+      ],
+      "rocks": [
         {
           "id": "dst_03741E1B78B29575_rocks_id_106634",
           "transform": {
@@ -722119,7 +722313,9 @@
               "entityId": "dst_03741E1B78B29575_rocks_id_106802"
             }
           }
-        },
+        }
+      ],
+      "rope": [
         {
           "id": "dst_03741E1B78B29575_rope_index_000001",
           "transform": {
@@ -722173,7 +722369,9 @@
               "entityId": "dst_03741E1B78B29575_rope_id_111910"
             }
           }
-        },
+        }
+      ],
+      "rottenegg": [
         {
           "id": "dst_03741E1B78B29575_rottenegg_id_103339",
           "transform": {
@@ -722299,7 +722497,9 @@
               "entityId": "dst_03741E1B78B29575_rottenegg_id_103351"
             }
           }
-        },
+        }
+      ],
+      "saltrock": [
         {
           "id": "dst_03741E1B78B29575_saltrock_id_103609",
           "transform": {
@@ -722335,7 +722535,9 @@
               "entityId": "dst_03741E1B78B29575_saltrock_id_103611"
             }
           }
-        },
+        }
+      ],
+      "sculpture_bishophead": [
         {
           "id": "dst_03741E1B78B29575_sculpture_bishophead_id_113472",
           "transform": {
@@ -722353,7 +722555,9 @@
               "entityId": "dst_03741E1B78B29575_sculpture_bishophead_id_113472"
             }
           }
-        },
+        }
+      ],
+      "sculpture_knighthead": [
         {
           "id": "dst_03741E1B78B29575_sculpture_knighthead_id_112806",
           "transform": {
@@ -722389,7 +722593,9 @@
               "entityId": "dst_03741E1B78B29575_sculpture_knighthead_id_112808"
             }
           }
-        },
+        }
+      ],
+      "seeds": [
         {
           "id": "dst_03741E1B78B29575_seeds_id_129794",
           "transform": {
@@ -722695,7 +722901,9 @@
               "entityId": "dst_03741E1B78B29575_seeds_id_111711"
             }
           }
-        },
+        }
+      ],
+      "sewing_kit": [
         {
           "id": "dst_03741E1B78B29575_sewing_kit_id_116749",
           "transform": {
@@ -722713,7 +722921,9 @@
               "entityId": "dst_03741E1B78B29575_sewing_kit_id_116749"
             }
           }
-        },
+        }
+      ],
+      "shovel": [
         {
           "id": "dst_03741E1B78B29575_shovel_id_101411",
           "transform": {
@@ -722770,7 +722980,9 @@
               "entityId": "dst_03741E1B78B29575_shovel_id_101415"
             }
           }
-        },
+        }
+      ],
+      "shroom_skin": [
         {
           "id": "dst_03741E1B78B29575_shroom_skin_index_000001",
           "transform": {
@@ -722788,7 +723000,9 @@
               "entityId": "dst_03741E1B78B29575_shroom_skin_index_000001"
             }
           }
-        },
+        }
+      ],
+      "silk": [
         {
           "id": "dst_03741E1B78B29575_silk_id_109965",
           "transform": {
@@ -723058,7 +723272,9 @@
               "entityId": "dst_03741E1B78B29575_silk_index_000015"
             }
           }
-        },
+        }
+      ],
+      "singingshell_octave3": [
         {
           "id": "dst_03741E1B78B29575_singingshell_octave3_id_104642",
           "transform": {
@@ -723096,7 +723312,9 @@
               "entityId": "dst_03741E1B78B29575_singingshell_octave3_id_104644"
             }
           }
-        },
+        }
+      ],
+      "singingshell_octave4": [
         {
           "id": "dst_03741E1B78B29575_singingshell_octave4_id_103953",
           "transform": {
@@ -723172,7 +723390,9 @@
               "entityId": "dst_03741E1B78B29575_singingshell_octave4_id_103959"
             }
           }
-        },
+        }
+      ],
+      "singingshell_octave5": [
         {
           "id": "dst_03741E1B78B29575_singingshell_octave5_id_113147",
           "transform": {
@@ -723229,7 +723449,9 @@
               "entityId": "dst_03741E1B78B29575_singingshell_octave5_id_113151"
             }
           }
-        },
+        }
+      ],
+      "sketch": [
         {
           "id": "dst_03741E1B78B29575_sketch_id_108042",
           "transform": {
@@ -723463,7 +723685,9 @@
               "entityId": "dst_03741E1B78B29575_sketch_id_108066"
             }
           }
-        },
+        }
+      ],
+      "slurtleslime": [
         {
           "id": "dst_03741E1B78B29575_slurtleslime_id_108087",
           "transform": {
@@ -723481,7 +723705,9 @@
               "entityId": "dst_03741E1B78B29575_slurtleslime_id_108087"
             }
           }
-        },
+        }
+      ],
+      "smallmeat": [
         {
           "id": "dst_03741E1B78B29575_smallmeat_id_130494",
           "transform": {
@@ -723499,7 +723725,9 @@
               "entityId": "dst_03741E1B78B29575_smallmeat_id_130494"
             }
           }
-        },
+        }
+      ],
+      "spidergland": [
         {
           "id": "dst_03741E1B78B29575_spidergland_id_112348",
           "transform": {
@@ -724057,7 +724285,9 @@
               "entityId": "dst_03741E1B78B29575_spidergland_index_000031"
             }
           }
-        },
+        }
+      ],
+      "spoiled_fish_small": [
         {
           "id": "dst_03741E1B78B29575_spoiled_fish_small_index_000001",
           "transform": {
@@ -724147,7 +724377,9 @@
               "entityId": "dst_03741E1B78B29575_spoiled_fish_small_id_112426"
             }
           }
-        },
+        }
+      ],
+      "spoiled_food": [
         {
           "id": "dst_03741E1B78B29575_spoiled_food_index_000001",
           "transform": {
@@ -724219,7 +724451,9 @@
               "entityId": "dst_03741E1B78B29575_spoiled_food_id_112774"
             }
           }
-        },
+        }
+      ],
+      "stinger": [
         {
           "id": "dst_03741E1B78B29575_stinger_id_102847",
           "transform": {
@@ -724669,7 +724903,9 @@
               "entityId": "dst_03741E1B78B29575_stinger_id_102895"
             }
           }
-        },
+        }
+      ],
+      "strawhat": [
         {
           "id": "dst_03741E1B78B29575_strawhat_index_000001",
           "transform": {
@@ -724705,7 +724941,9 @@
               "entityId": "dst_03741E1B78B29575_strawhat_index_000002"
             }
           }
-        },
+        }
+      ],
+      "tacklecontainer": [
         {
           "id": "dst_03741E1B78B29575_tacklecontainer_id_108766",
           "transform": {
@@ -724723,7 +724961,9 @@
               "entityId": "dst_03741E1B78B29575_tacklecontainer_id_108766"
             }
           }
-        },
+        }
+      ],
+      "telestaff": [
         {
           "id": "dst_03741E1B78B29575_telestaff_id_109308",
           "transform": {
@@ -724741,7 +724981,9 @@
               "entityId": "dst_03741E1B78B29575_telestaff_id_109308"
             }
           }
-        },
+        }
+      ],
+      "tentaclespike": [
         {
           "id": "dst_03741E1B78B29575_tentaclespike_index_000001",
           "transform": {
@@ -724759,7 +725001,9 @@
               "entityId": "dst_03741E1B78B29575_tentaclespike_index_000001"
             }
           }
-        },
+        }
+      ],
+      "tentaclespots": [
         {
           "id": "dst_03741E1B78B29575_tentaclespots_id_108293",
           "transform": {
@@ -724795,7 +725039,9 @@
               "entityId": "dst_03741E1B78B29575_tentaclespots_index_000002"
             }
           }
-        },
+        }
+      ],
+      "terrarium": [
         {
           "id": "dst_03741E1B78B29575_terrarium_id_110191",
           "transform": {
@@ -724813,7 +725059,9 @@
               "entityId": "dst_03741E1B78B29575_terrarium_id_110191"
             }
           }
-        },
+        }
+      ],
+      "torch": [
         {
           "id": "dst_03741E1B78B29575_torch_id_102724",
           "transform": {
@@ -724869,7 +725117,9 @@
               "entityId": "dst_03741E1B78B29575_torch_id_102728"
             }
           }
-        },
+        }
+      ],
+      "trap": [
         {
           "id": "dst_03741E1B78B29575_trap_id_113153",
           "transform": {
@@ -724995,7 +725245,9 @@
               "entityId": "dst_03741E1B78B29575_trap_id_113165"
             }
           }
-        },
+        }
+      ],
+      "trinket_1": [
         {
           "id": "dst_03741E1B78B29575_trinket_1_id_111872",
           "transform": {
@@ -725031,7 +725283,9 @@
               "entityId": "dst_03741E1B78B29575_trinket_1_index_000002"
             }
           }
-        },
+        }
+      ],
+      "trinket_26": [
         {
           "id": "dst_03741E1B78B29575_trinket_26_id_102649",
           "transform": {
@@ -725049,7 +725303,9 @@
               "entityId": "dst_03741E1B78B29575_trinket_26_id_102649"
             }
           }
-        },
+        }
+      ],
+      "trinket_32": [
         {
           "id": "dst_03741E1B78B29575_trinket_32_index_000001",
           "transform": {
@@ -725103,7 +725359,9 @@
               "entityId": "dst_03741E1B78B29575_trinket_32_index_000003"
             }
           }
-        },
+        }
+      ],
+      "trinket_33": [
         {
           "id": "dst_03741E1B78B29575_trinket_33_index_000001",
           "transform": {
@@ -725157,7 +725415,9 @@
               "entityId": "dst_03741E1B78B29575_trinket_33_index_000003"
             }
           }
-        },
+        }
+      ],
+      "trinket_34": [
         {
           "id": "dst_03741E1B78B29575_trinket_34_id_111526",
           "transform": {
@@ -725211,7 +725471,9 @@
               "entityId": "dst_03741E1B78B29575_trinket_34_index_000003"
             }
           }
-        },
+        }
+      ],
+      "trinket_35": [
         {
           "id": "dst_03741E1B78B29575_trinket_35_index_000001",
           "transform": {
@@ -725283,7 +725545,9 @@
               "entityId": "dst_03741E1B78B29575_trinket_35_index_000004"
             }
           }
-        },
+        }
+      ],
+      "trinket_36": [
         {
           "id": "dst_03741E1B78B29575_trinket_36_id_106868",
           "transform": {
@@ -725355,7 +725619,9 @@
               "entityId": "dst_03741E1B78B29575_trinket_36_index_000004"
             }
           }
-        },
+        }
+      ],
+      "trinket_37": [
         {
           "id": "dst_03741E1B78B29575_trinket_37_index_000001",
           "transform": {
@@ -725391,7 +725657,9 @@
               "entityId": "dst_03741E1B78B29575_trinket_37_index_000002"
             }
           }
-        },
+        }
+      ],
+      "trinket_38": [
         {
           "id": "dst_03741E1B78B29575_trinket_38_id_103994",
           "transform": {
@@ -725445,7 +725713,9 @@
               "entityId": "dst_03741E1B78B29575_trinket_38_index_000003"
             }
           }
-        },
+        }
+      ],
+      "trinket_39": [
         {
           "id": "dst_03741E1B78B29575_trinket_39_id_102530",
           "transform": {
@@ -725517,7 +725787,9 @@
               "entityId": "dst_03741E1B78B29575_trinket_39_index_000004"
             }
           }
-        },
+        }
+      ],
+      "trinket_40": [
         {
           "id": "dst_03741E1B78B29575_trinket_40_index_000001",
           "transform": {
@@ -725571,7 +725843,9 @@
               "entityId": "dst_03741E1B78B29575_trinket_40_index_000003"
             }
           }
-        },
+        }
+      ],
+      "trinket_41": [
         {
           "id": "dst_03741E1B78B29575_trinket_41_id_112798",
           "transform": {
@@ -725643,7 +725917,9 @@
               "entityId": "dst_03741E1B78B29575_trinket_41_index_000004"
             }
           }
-        },
+        }
+      ],
+      "trinket_42": [
         {
           "id": "dst_03741E1B78B29575_trinket_42_index_000001",
           "transform": {
@@ -725697,7 +725973,9 @@
               "entityId": "dst_03741E1B78B29575_trinket_42_index_000003"
             }
           }
-        },
+        }
+      ],
+      "trinket_43": [
         {
           "id": "dst_03741E1B78B29575_trinket_43_id_100517",
           "transform": {
@@ -725733,7 +726011,9 @@
               "entityId": "dst_03741E1B78B29575_trinket_43_index_000002"
             }
           }
-        },
+        }
+      ],
+      "trinket_44": [
         {
           "id": "dst_03741E1B78B29575_trinket_44_id_112776",
           "transform": {
@@ -725787,7 +726067,9 @@
               "entityId": "dst_03741E1B78B29575_trinket_44_index_000003"
             }
           }
-        },
+        }
+      ],
+      "trinket_45": [
         {
           "id": "dst_03741E1B78B29575_trinket_45_index_000001",
           "transform": {
@@ -725823,7 +726105,9 @@
               "entityId": "dst_03741E1B78B29575_trinket_45_index_000002"
             }
           }
-        },
+        }
+      ],
+      "trinket_46": [
         {
           "id": "dst_03741E1B78B29575_trinket_46_index_000001",
           "transform": {
@@ -725877,7 +726161,9 @@
               "entityId": "dst_03741E1B78B29575_trinket_46_index_000003"
             }
           }
-        },
+        }
+      ],
+      "trinket_6": [
         {
           "id": "dst_03741E1B78B29575_trinket_6_id_103363",
           "transform": {
@@ -725895,7 +726181,9 @@
               "entityId": "dst_03741E1B78B29575_trinket_6_id_103363"
             }
           }
-        },
+        }
+      ],
+      "turf_carpetfloor": [
         {
           "id": "dst_03741E1B78B29575_turf_carpetfloor_id_100468",
           "transform": {
@@ -725913,7 +726201,9 @@
               "entityId": "dst_03741E1B78B29575_turf_carpetfloor_id_100468"
             }
           }
-        },
+        }
+      ],
+      "turf_dragonfly": [
         {
           "id": "dst_03741E1B78B29575_turf_dragonfly_id_100575",
           "transform": {
@@ -725931,7 +726221,9 @@
               "entityId": "dst_03741E1B78B29575_turf_dragonfly_id_100575"
             }
           }
-        },
+        }
+      ],
+      "turf_pebblebeach": [
         {
           "id": "dst_03741E1B78B29575_turf_pebblebeach_id_109573",
           "transform": {
@@ -726039,7 +726331,9 @@
               "entityId": "dst_03741E1B78B29575_turf_pebblebeach_index_000006"
             }
           }
-        },
+        }
+      ],
+      "turf_woodfloor": [
         {
           "id": "dst_03741E1B78B29575_turf_woodfloor_id_109571",
           "transform": {
@@ -726057,7 +726351,9 @@
               "entityId": "dst_03741E1B78B29575_turf_woodfloor_id_109571"
             }
           }
-        },
+        }
+      ],
+      "twiggy_nut": [
         {
           "id": "dst_03741E1B78B29575_twiggy_nut_id_103358",
           "transform": {
@@ -726093,7 +726389,9 @@
               "entityId": "dst_03741E1B78B29575_twiggy_nut_id_103360"
             }
           }
-        },
+        }
+      ],
+      "twigs": [
         {
           "id": "dst_03741E1B78B29575_twigs_index_000001",
           "transform": {
@@ -731619,7 +731917,9 @@
               "entityId": "dst_03741E1B78B29575_twigs_index_000307"
             }
           }
-        },
+        }
+      ],
+      "wagpunk_bits": [
         {
           "id": "dst_03741E1B78B29575_wagpunk_bits_id_106926",
           "transform": {
@@ -731655,7 +731955,9 @@
               "entityId": "dst_03741E1B78B29575_wagpunk_bits_id_106928"
             }
           }
-        },
+        }
+      ],
+      "wall_stone_item": [
         {
           "id": "dst_03741E1B78B29575_wall_stone_item_id_115979",
           "transform": {
@@ -731691,7 +731993,9 @@
               "entityId": "dst_03741E1B78B29575_wall_stone_item_id_115981"
             }
           }
-        },
+        }
+      ],
+      "walrus_tusk": [
         {
           "id": "dst_03741E1B78B29575_walrus_tusk_index_000001",
           "transform": {
@@ -731709,7 +732013,9 @@
               "entityId": "dst_03741E1B78B29575_walrus_tusk_index_000001"
             }
           }
-        },
+        }
+      ],
+      "waxpaper": [
         {
           "id": "dst_03741E1B78B29575_waxpaper_id_108165",
           "transform": {
@@ -731745,7 +732051,9 @@
               "entityId": "dst_03741E1B78B29575_waxpaper_index_000002"
             }
           }
-        },
+        }
+      ],
+      "yellowgem": [
         {
           "id": "dst_03741E1B78B29575_yellowgem_id_102272",
           "transform": {
@@ -731763,7 +732071,9 @@
               "entityId": "dst_03741E1B78B29575_yellowgem_id_102272"
             }
           }
-        },
+        }
+      ],
+      "yellowstaff": [
         {
           "id": "dst_03741E1B78B29575_yellowstaff_id_100051",
           "transform": {

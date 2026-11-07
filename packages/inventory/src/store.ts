@@ -90,7 +90,6 @@ export class InventoryStore {
     hasTag: tag => tag === 'player', GetPosition: () => ({ x: 0, y: 0, z: 0 }), PushEvent() {},
   };
   private readonly receipts = new Set<(received: readonly InventorySlotDelta[], source?: import('../../componets/src/inventoryitem').ItemPosition) => void>();
-  private readonly drops = new Set<(entity: ItemEntity, launch?: DropLaunch) => void>();
 
   bindActor(actor: import('../../componets/src/inventoryitem').InventoryActor): void { this.actor = actor; }
   configureItem(entity: ItemEntity): void {
@@ -112,9 +111,6 @@ export class InventoryStore {
   }
   subscribeReceived(listener: (received: readonly InventorySlotDelta[], source?: import('../../componets/src/inventoryitem').ItemPosition) => void): () => void {
     this.receipts.add(listener); return () => { this.receipts.delete(listener); };
-  }
-  subscribeDropped(listener: (entity: ItemEntity, launch?: DropLaunch) => void): () => void {
-    this.drops.add(listener); return () => { this.drops.delete(listener); };
   }
   GetNumSlots(): number { return this.inventorySlots().length; }
   GetActiveItem(): ItemEntity | null { return this.getEntity(cursorSlotAddress()); }
@@ -226,11 +222,7 @@ export class InventoryStore {
     const position = dropPosition ?? this.actor.GetPosition();
     entity.transform.setPosition(position.x, 0, position.z);
     entity.MiniMapEntity?.tileTracker.sync();
-    try {
-      for (const listener of this.drops) { if (launch) listener(entity, launch); else listener(entity); }
-    } finally {
-      entity.PushEvent('ondropped', undefined);
-    }
+    entity.components.inventoryitem.OnDropped(launch);
   }
   /**
    * inventory.lua DropEverything(ondeath): the cursor item, every item slot, then every equipped item,

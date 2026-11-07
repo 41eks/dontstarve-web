@@ -1,19 +1,18 @@
 import { getHandEquipmentDefinition } from '../../prefab/src/handEquipment';
-import { SpriteResources } from '../../display/src';
-import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { createPickupDoer, performPickupAction } from '../../stategraphs/src/pickup';
 import { configureEquipmentEntity } from '../../prefab/src/handEquipment';
 import { ItemEntity, InventoryStore, InventorySlot, HandSlot, inventorySlotAddress, equipmentSlotAddress } from '@dontstarve-web/inventory';
-import { GroundItemManager } from '../../prefab/src/groundItemManager';
+import { ItemWorldFixture, itemAt } from './itemWorldFixture';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { createEquipmentExistenceState } from '@dontstarve-web/signals';
 import { OnItemRanOut } from '../../prefab/src/player_common';
 import { TORCH_FUEL, TURNON_FUELED_CONSUMPTION, TURNON_FULL_FUELED_CONSUMPTION, onattack,
-  getTorchController, createTorchGroundFactory } from '../../prefab/src/torch';
-import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
+  getTorchController } from '../../prefab/src/torch';
+import { GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
+import { createPickupInventory } from './pickupFixture';
 import { PlaySound } from '../../prefab/src/sound';
 import { TORCH_FIRE_OFFSET_Y } from '../../prefab/src/torchfire';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -171,15 +170,16 @@ describe('torch prefab burning lifecycle', () => {
       { torch_barber: { itemId: 'torch', name: 'torch', icon: 'torch_barber.tex', atlas: 'images/inventoryimages.xml' } });
     const world = createPerishWorld();
     store.entities.bindPerishWorld(world);
+    const scene = new THREE.Scene(), player = new THREE.Group();
+    const canvas = Object.assign(new EventTarget(), { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) });
+    // The world's SpawnPrefab is bound before any item exists, as in the scene.
+    const manager = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(),
+      { domElement: canvas } as unknown as THREE.WebGLRenderer, '', store,
+      '/dst/data/anim', player, undefined, undefined, undefined, store.entities);
     store.add('torch', 1);
     const entity = store.getEntity(slot)!;
     const controller = getTorchController(entity);
     const equip = vi.spyOn(controller, 'onequip');
-    const scene = new THREE.Scene(), player = new THREE.Group();
-    const canvas = Object.assign(new EventTarget(), { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) });
-    const manager = new GroundItemManager(scene, new THREE.PerspectiveCamera(),
-      { domElement: canvas } as unknown as THREE.WebGLRenderer, '', store,
-      '/dst/data/anim', player, undefined, undefined, undefined, store.entities);
     try {
       store.applySlotChanges([{ slot, itemId: 'torch', delta: -1 }, { slot: hand, itemId: 'torch', delta: 1 }]);
       expect(equip).toHaveBeenCalledOnce();
@@ -211,7 +211,7 @@ describe('torch prefab burning lifecycle', () => {
       expect(record.components.torch).toEqual({ lit: true });
       vi.spyOn(THREE.Raycaster.prototype, 'intersectObjects').mockReturnValue([{ object: model } as unknown as THREE.Intersection]);
       world.advance(0.125);
-      performPickupAction(findActionEntity(model)!.pickupTarget, createPickupDoer(player, store));
+      performPickupAction(itemAt(model), createPickupDoer(player, store));
       expect(manager.exportRecords()).toEqual([]);
       expect(store.getEntity(hand)).toBe(entity);
       expect(getTorchController(entity)).toBe(controller);
@@ -230,59 +230,54 @@ describe('torch prefab burning lifecycle', () => {
 
   it('restores a lit ground torch silently, extinguishes through its event and picks it up without affecting held equipment', async () => {
     vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
-    const assets = new GroundItemAssets();
-    const owner = new THREE.Vector3(12, 0, 0);
-    const factory = createTorchGroundFactory({ scene: new THREE.Scene(), assets, sprites: new SpriteResources(undefined, undefined, assets), animationBaseUrl: '/dst/data/anim', inventoryOwnerPosition: owner,
-      butterflyWorld: { getThreatPositions: () => [], getFlowers: () => [] },
-      firefliesWorld: {} });
-    const definition = { ...GROUND_ITEM_DEFINITIONS.torch, itemId: 'torch', count: 1, remainingFuel: 20, torchLit: true };
-    const entity = new ItemEntity({ itemId: 'torch', count: 1, remainingFuel: 18 });
-    entity.configure(torchSpec);
-    const world = createPerishWorld();
-    entity.BindPerishWorld(world);
-    entity.transform.setPosition(4, 0, 6);
-    const visual = factory.create(definition, entity);
+    const inventory = createPickupInventory(), world = createPerishWorld(), player = new THREE.Group();
+    inventory.entities.bindPerishWorld(world);
+    player.position.set(12, 0, 0);
+    const owner = player.position;
+    const items = new ItemWorldFixture(new THREE.Scene(), new THREE.PerspectiveCamera(), undefined, '', inventory, '/dst/data/anim', player);
     try {
       const held = { itemId: 'hammer', EQUIPSLOTS: 'HANDS' as const };
       handEquipmentExistenceState.set(held);
-      visual.model.position.copy(entity.transform.position);
-      // Prepared visual receives the actual state committed after an asynchronous drop.
-      visual.setDefinition?.({ ...definition, remainingFuel: 18, entity });
-      prefabInstance(visual.model)!.PushEvent('onload');
-      const controller = getTorchController(entity);
-      expect(visual.model.userData).not.toHaveProperty('torch');
+      // SpawnSaveRecord of a torch saved burning on the ground: its OnLoad lands it and relights it, silently.
+      const model = items.spawnFromSave('torch-lit', { ...GROUND_ITEM_DEFINITIONS.torch, itemId: 'torch', count: 1, remainingFuel: 18, torchLit: true },
+        new THREE.Vector3(4, 0, 6));
+      const entity = itemAt(model), controller = getTorchController(entity);
+      const saved = () => {
+        const { components } = items.exportRecords().find(record => record.id === 'torch-lit')!;
+        return { remainingFuel: components.stack!.remainingFuel, torchLit: components.torch?.lit ?? false };
+      };
+      expect(model.userData).not.toHaveProperty('torch');
       expect(controller.isBurning).toBe(true);
       expect(PlaySound).not.toHaveBeenCalled();
-      expect(declaredLight(visual.model)).toBeDefined();
+      expect(declaredLight(model)).toBeDefined();
       // IgniteTossed: torchfire follows the inst's own swap_torch.
       expect([...entity.sprite.sprite.peek().followers!.values()].map(({ symbol, y }) => [symbol, y])).toEqual([['swap_torch', TORCH_FIRE_OFFSET_Y]]);
       // A lit ground torch keeps consuming on its world's game time.
       world.advance(0.5);
-      expect(visual.getDefinition?.()).toEqual({ remainingFuel: 18 - FIRST_PERIOD - .5, torchLit: true });
-      const launches: unknown[] = [];
-      entity.ListenForEvent('launch', launch => launches.push(launch));
+      expect(saved()).toEqual({ remainingFuel: 18 - FIRST_PERIOD - .5, torchLit: true });
+      const launch = vi.spyOn(entity.components.inventoryphysics!, 'Launch');
       entity.components.burnable!.Extinguish();
       expect(controller.isBurning).toBe(false);
-      expect(declaredLight(visual.model)).toBeUndefined();
+      expect(declaredLight(model)).toBeUndefined();
       expect(entity.sprite.sprite.peek().followers!.size).toBe(0);
       expect(handEquipmentExistenceState.peek()).toBe(held);
-      expect(PlaySound).toHaveBeenLastCalledWith('dontstarve/common/fireOut', visual.model.position);
-      // OnExtinguish hops the item: the ground manager flies the launch, keeping its foot on the ground.
-      expect(launches).toEqual([expect.objectContaining({ height: .1, speed: { min: 0, range: 1 }, ySpeed: { min: 8, range: 1 } })]);
+      expect(PlaySound).toHaveBeenLastCalledWith('dontstarve/common/fireOut', model.position);
+      // OnExtinguish hops the item: its inventoryphysics flies the launch, keeping its foot on the ground.
+      expect(launch).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ height: .1, speed: { min: 0, range: 1 }, ySpeed: { min: 8, range: 1 } }));
       controller.IgniteTossed();
-      prefabInstance(visual.model)!.PushEvent('onputininventory');
+      entity.PushEvent('onputininventory');
       world.advance(0); // PlayExtinguishSound's DoTaskInTime(0).
       expect(PlaySound).toHaveBeenLastCalledWith('dontstarve/common/fireOut', owner);
       expect(controller.isBurning).toBe(false);
       // Pocketed before the next update, the relit torch's first period is cancelled uncharged.
-      expect(visual.getDefinition?.()).toEqual({ remainingFuel: 18 - FIRST_PERIOD - .5, torchLit: false });
+      expect(saved()).toEqual({ remainingFuel: 18 - FIRST_PERIOD - .5, torchLit: false });
       expect(handEquipmentExistenceState.peek()).toBe(held);
       const calls = vi.mocked(PlaySound).mock.calls.length;
-      prefabInstance(visual.model)!.PushEvent('onputininventory');
+      entity.PushEvent('onputininventory');
       controller.OnExtinguish();
       world.advance(0);
       expect(PlaySound).toHaveBeenCalledTimes(calls);
-    } finally { visual.dispose(); entity.destroy(); assets.dispose(); }
+    } finally { items.dispose(); inventory.dispose(); }
   });
 
   it('registers the source callbacks on burnable: tags, fuel and hand sounds that cancel each other', () => {

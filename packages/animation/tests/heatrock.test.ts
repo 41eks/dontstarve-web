@@ -1,4 +1,3 @@
-import { SpriteResources } from '../../display/src';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -8,9 +7,9 @@ import { HEATROCK_FUEL, configureHeatRockEntity, type HeatRock } from '../../pre
 
 /** heatrock.lua's prefab fn adds fueled before the saved fuel loads. */
 const heatrockSpec = { maxFuel: HEATROCK_FUEL, configureEntity: configureHeatRockEntity };
-import { GroundItemAssets, createGroundItemFactory } from '../../prefab/src/groundItems';
+import { itemAt, ItemWorldFixture } from './itemWorldFixture';
+import { prefabDisplay } from '../../display/src';
 import { createGroundItemVisual } from './groundItemVisual';
-import type { GroundPrefabContext } from '../../prefab/src/groundPrefab';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { createRecipe } from '../../ui/src/categories/shared';
 import { batch, createSignal } from '../../signals/src';
@@ -131,46 +130,46 @@ it('derives range from temperature signals, updates icons in effects and preserv
 });
 
 it('renders the source neutral pose for base and skinned stones and resolves their crafting icons', async () => {
-  const assets = new GroundItemAssets();
-  try {
-    for (const skin of [undefined, 'heatrock_fantasy']) {
-      const sprite = await createGroundItemVisual(assets, 'heatrock', skin);
-      try {
-        expect(sprite.currentAnimation).toBe('3');
-        sprite.update(60);
-        expect(sprite.currentAnimation).toBe('3');
-        const mesh = sprite.model.children[0].children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
-        expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
-        expect(mesh.material.some(material => material.name === `ground:${skin ?? 'heat_rock'}`)).toBe(true);
-        expect(Array.from(mesh.geometry.getAttribute('position').array).every(Number.isFinite)).toBe(true);
-      } finally { sprite.dispose(); }
-    }
-    const recipe = createRecipe('heatrock');
-    expect(recipe.inventoryIcon).toBe('heat_rock3.tex');
-    expect(recipe.skins.find(skin => skin.id === 'heatrock_fantasy')?.inventoryIcon).toBe('heatrock_fantasy3.tex');
-    // A cold inst dropped or reskinned receives its own range, rather than the catalog's neutral pose.
-    const entity = new ItemEntity({ itemId: 'heatrock', count: 1, skinId: 'heatrock_fantasy', temperature: { current: 0 }, lowTemp: 0 });
-    configureHeatRockEntity(entity);
-    const factory = createGroundItemFactory({ sprites: new SpriteResources(undefined, undefined, assets) } as GroundPrefabContext);
-    const visual = factory.create({ ...entity.snapshot(), name: '暖石', icon: 'heatrock_fantasy1.tex' }, entity);
+  for (const skin of [undefined, 'heatrock_fantasy']) {
+    const sprite = await createGroundItemVisual('heatrock', skin);
     try {
-      // The prefab only declares what the sprite follows; the display applies it.
-      // The ground visual draws the item's own sprite: the range clip and the inventory image are the same declaration.
-      const sprite = prefabInstance(visual.model)!.sprite;
-      expect(sprite).toBe(entity.sprite);
-      await new Promise(resolve => setTimeout(resolve, 0));
-      expect(sprite.currentAnimation).toBe('1');
-      expect(entity.components.inventoryitem.image.peek()?.icon).toBe('heatrock_fantasy1.tex');
-      visual.update?.(1);
-      expect(entity.snapshot()).toMatchObject({ skinId: 'heatrock_fantasy', temperature: { current: 0 }, lowTemp: 0 });
-      let mesh!: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
-      visual.model.traverse(object => { if (object instanceof THREE.Mesh) mesh ??= object as typeof mesh; });
+      expect(sprite.currentAnimation).toBe('3');
+      sprite.update(60);
+      expect(sprite.currentAnimation).toBe('3');
+      const mesh = sprite.model.children[0].children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
       expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
-      expect(mesh.material.some(material => material.name === 'ground:heatrock_fantasy')).toBe(true);
-      entity.components.temperature!.SetTemperature(80);
-      await new Promise(resolve => setTimeout(resolve, 0));
-      expect(sprite.currentAnimation).toBe('5');
-      expect(entity.components.inventoryitem.image.peek()?.icon).toBe('heatrock_fantasy5.tex');
-    } finally { visual.dispose(); entity.destroy(); factory.dispose?.(); }
-  } finally { assets.dispose(); }
+      expect(mesh.material.some(material => material.name === `sprite:${skin ?? 'heat_rock'}`)).toBe(true);
+      expect(Array.from(mesh.geometry.getAttribute('position').array).every(Number.isFinite)).toBe(true);
+    } finally { sprite.dispose(); }
+  }
+  const recipe = createRecipe('heatrock');
+  expect(recipe.inventoryIcon).toBe('heat_rock3.tex');
+  expect(recipe.skins.find(skin => skin.id === 'heatrock_fantasy')?.inventoryIcon).toBe('heatrock_fantasy3.tex');
+  // A cold inst dropped or reskinned receives its own range, rather than the catalog's neutral pose.
+  const inventory = createPickupInventory();
+  const items = new ItemWorldFixture(new THREE.Scene(), new THREE.PerspectiveCamera(), undefined, '/dst/data/databundles/images.zip',
+    inventory, '/dst/data/anim', new THREE.Group());
+  const model = items.spawnFromSave('heatrock', { itemId: 'heatrock', count: 1, skinId: 'heatrock_fantasy', temperature: { current: 0 }, lowTemp: 0,
+    name: '暖石', icon: 'heatrock_fantasy1.tex' }, new THREE.Vector3());
+  const entity = itemAt(model);
+  try {
+    // The prefab only declares what the sprite follows; the display applies it.
+    // The ground display draws the item's own sprite: the range clip and the inventory image are the same declaration.
+    const sprite = prefabInstance(model)!.sprite;
+    expect(sprite).toBe(entity.sprite);
+    await prefabDisplay(model)!.artLoaded();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(sprite.currentAnimation).toBe('1');
+    expect(entity.components.inventoryitem.image.peek()?.icon).toBe('heatrock_fantasy1.tex');
+    items.update(1);
+    expect(entity.snapshot()).toMatchObject({ skinId: 'heatrock_fantasy', temperature: { current: 0 }, lowTemp: 0 });
+    let mesh!: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
+    model.traverse(object => { if (object instanceof THREE.Mesh) mesh ??= object as typeof mesh; });
+    expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
+    expect(mesh.material.some(material => material.name === 'sprite:heatrock_fantasy')).toBe(true);
+    entity.components.temperature!.SetTemperature(80);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(sprite.currentAnimation).toBe('5');
+    expect(entity.components.inventoryitem.image.peek()?.icon).toBe('heatrock_fantasy5.tex');
+  } finally { items.dispose(); inventory.dispose(); }
 });

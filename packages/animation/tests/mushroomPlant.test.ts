@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { mushroomPlantPrefabs } from '../../prefab/src/mushroom_plant';
-import { GroundItemManager } from '../../prefab/src/groundItemManager';
+import { ItemWorldFixture } from './itemWorldFixture';
 import { createInventoryStore } from '../../../src/inventory';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { performToolWork } from '../../stategraphs/src/componentactions';
@@ -20,7 +20,7 @@ function setup() {
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   vi.stubGlobal('window', new EventTarget());
   const inventory = createInventoryStore([]), scene = new THREE.Scene(), scheduler = new GameTimeScheduler();
-  const ground = new GroundItemManager(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
+  const ground = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', new THREE.Group());
   const world = bindTestWorld(scheduler), rain = createSignal<'none' | 'rain' | 'snow'>('none');
   const mushrooms = plantManager(mushroomPlantPrefabs, scene, { rain, spawnGroundItem: (definition, position, options) => ground.spawnGroundItem(definition, position, options) });
@@ -132,7 +132,7 @@ it('releases the mushroom sprite outside the tickingarea and keeps its pose and 
   vi.stubGlobal('window', new EventTarget());
   const scheduler = new GameTimeScheduler(), world = bindTestWorld(scheduler), awake = createSignal(true);
   const inventory = createInventoryStore([]);
-  const ground = new GroundItemManager(new THREE.Scene(), new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
+  const ground = new ItemWorldFixture(new THREE.Scene(), new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', new THREE.Group());
   const mushrooms = plantManager(mushroomPlantPrefabs, new THREE.Scene(), { rain: createSignal<'none' | 'rain' | 'snow'>('none'),
     tickingarea: () => createMemo(() => awake.get()), spawnGroundItem: (definition, position, options) => ground.spawnGroundItem(definition, position, options) });

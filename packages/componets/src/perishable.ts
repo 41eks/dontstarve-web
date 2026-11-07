@@ -30,8 +30,17 @@ export type PerishStage = 'fresh' | 'stale' | 'spoiled';
 export interface PerishableInst {
   readonly isRemoved: boolean;
   hasTag?(tag: string): boolean;
-  readonly components: { inventoryitem: { owner: PerishableOwner | null } };
+  readonly components: { inventoryitem: { owner: PerishableOwner | null }; stackable?: { count: number } };
+  readonly transform?: { readonly position: { readonly x: number; readonly y: number; readonly z: number } };
   PushEvent(name: string, data: unknown): void;
+  remove?(): unknown;
+}
+
+/** The replacement SpawnPrefab made: an inst placed where the perished one was. */
+export interface PerishReplacement {
+  readonly components: { stackable?: { count: number } };
+  readonly transform: { setPosition(x: number, y: number, z: number): void };
+  PushEvent(name: string, data?: unknown): void;
 }
 
 export interface PerishableOwner {
@@ -44,6 +53,8 @@ export interface PerishableOwner {
 export interface PerishWorld {
   readonly perishClock: PerishClock;
   readonly scheduler: GameTimeScheduler;
+  /** SpawnPrefab of onperishreplacement; without it a perished inst outside any holder stays where it is. */
+  SpawnPrefab?(prefab: string): PerishReplacement | undefined;
 }
 
 const STOPPED = Object.freeze({ status: 'stopped' as const });
@@ -202,9 +213,18 @@ export class Perishable {
     this.perishfn?.(this.inst);
     if (this.inst.isRemoved) return;
     this.inst.PushEvent('perished', undefined);
-    // Holders replace the inst in its slot; world items are replaced by their ground presentation.
-    const owner = this.inst.components.inventoryitem.owner;
-    if (!this.inst.isRemoved && this.onperishreplacement !== undefined && owner) owner.replace(this.onperishreplacement);
+    const owner = this.inst.components.inventoryitem.owner, replacement = this.onperishreplacement;
+    if (this.inst.isRemoved || replacement === undefined) return;
+    // Holders give the replacement to the perished inst's slot.
+    if (owner) { owner.replace(replacement); return; }
+    // Otherwise SpawnPrefab(onperishreplacement) takes its place with its stack size, and the inst is removed.
+    const goop = this.world?.SpawnPrefab?.(replacement);
+    if (!goop) return;
+    const stackable = this.inst.components.stackable;
+    if (goop.components.stackable && stackable) goop.components.stackable.count = stackable.count;
+    const position = this.inst.transform?.position;
+    if (position) goop.transform.setPosition(position.x, position.y, position.z);
+    this.inst.remove?.();
   }
 
   /** The bound world's game-time scheduler, for components that share the item's world. */

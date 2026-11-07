@@ -8,7 +8,6 @@ import { actionEntity } from '../../prefab/src/actionEntity';
 import { withEntity } from './entityFixture';
 import { ItemEntity } from '../../inventory/src';
 import { configureBurnableItemEntity, type BurnableItemController } from '../../prefab/src/burnableItems';
-import type { GroundPrefabContext } from '../../prefab/src/groundPrefab';
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -68,13 +67,11 @@ it('binds a persistent inventory propagator to world season and releases the pre
   const propagator = controller.propagator;
   const worldA = bindTestWorld(new GameTimeScheduler()), first = worldA.season;
   first.set({ season: 'spring', progress: 0 });
-  const presentation = () => ({ context: {} as unknown as GroundPrefabContext,
-    ash: { spawn: vi.fn(() => true), dispose: vi.fn() } });
-  const firstArt = presentation(), nextArt = presentation();
+  // The worlds DefaultBurntFn spawns ash into.
+  const firstArt = { spawnGroundItem: vi.fn() }, nextArt = { spawnGroundItem: vi.fn() };
   expect(propagator.propagationRange.peek()).toBe(4);
   controller.bind(firstArt);
   expect(propagator.propagationRange.peek()).toBeCloseTo(4 * .67);
-  controller.release(firstArt);
   const worldB = bindTestWorld(new GameTimeScheduler()), next = worldB.season;
   next.set({ season: 'winter', progress: 0 });
   controller.bind(nextArt);

@@ -1,9 +1,8 @@
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
-import type { PrefabDisplay } from '@dontstarve-web/display';
 import type { ItemEntity, InventoryStack } from '@dontstarve-web/inventory';
 import type * as THREE from 'three';
 import type { SpriteResources } from '@dontstarve-web/display';
-import type { GroundItemAssets } from './groundItems';
+import type { ComponentUpdates } from '../../componets/src/componentUpdates';
 import type { BernieWorld } from './bernie';
 import type { ButterflyWorld } from './butterfly';
 import type { FirefliesWorld } from './fireflies';
@@ -40,45 +39,37 @@ export interface GroundItemDefinition {
   playbackRemaining?: number;
 }
 
-export interface GroundItemVisual {
-  /** The original logical item instance, also held by its inventory owner. */
-  readonly instance: ItemEntity;
-  model: THREE.Group;
-  /** Owns scene membership and sprite residency; the manager advances it each frame. */
-  readonly display: PrefabDisplay;
-  /** Resource presence, driven by the prefab's tile activity. Logical items still persist while false. */
-  active?: ReadonlySignal<boolean>;
-  update?(dt: number): void;
-  /**
-   * StartUpdatingComponent/StopUpdatingComponent: while false the manager skips frame updates; absent means always
-   * advancing the display and any update callback.
-   */
-  updating?: ReadonlySignal<boolean>;
-  isRemoved?(): boolean;
-  isClickable?(): boolean;
-  isWorkable?(): boolean;
-  getDefinition?(): Partial<GroundItemDefinition>;
-  /** Rebind a replacement display to the item's current authoritative state. */
-  setDefinition?(definition: GroundItemDefinition): void;
-  dispose(): void;
-}
-
 /** The transient fx spawner shared with the rest of the scene. */
 export interface GroundFx {
   collapse?: import('./world_fx').WorldFx['collapse'];
   spawn(prefab: import('./world_fx').WorldFxPrefab, position: ReadonlyVector3): void;
 }
 
-export interface GroundPrefabOptions {
+/**
+ * TheWorld as the item prefabs reach it: the item registry that constructs an inst, the inventory metadata it is
+ * configured with, the game-time services, and the spawns, fx and habitats its callbacks use.
+ */
+export interface ItemPrefabWorld {
+  /** The item registry's construction of a new inst of `prefab`, bound to its worlds; the item prefab's fn calls it. */
+  newItem(prefab: string): ItemEntity;
+  /** SpawnPrefab of an item from its stack, as a container's SpawnSaveRecord makes its contents. */
+  spawnItem(state: InventoryStack): ItemEntity;
+  /** inventoryitem:OnDropped of an inst a holder lets go of, at `position`. */
+  dropItem?(entity: ItemEntity, position: ReadonlyVector3): void;
+  /** Whether `prefab` is an inventory item; ground art alone is never picked up. */
+  isInventoryItem(prefab: string): boolean;
+  /** The inventory item metadata's components (stack size, perish time, uses, equip slot). */
+  configureItem(entity: ItemEntity): void;
+  /** Sprite sources of the effects an item spawns as its children (fire, flies); the application disposes them. */
+  sprites: SpriteResources;
+  animationBaseUrl: string;
+  scheduler: GameTimeScheduler;
+  /** StartUpdatingComponent / StopUpdatingComponent. */
+  componentUpdates: ComponentUpdates;
   physics?: import('cannon-es').World;
   moleWorld?: import('./molehill').MoleHabitat;
   lightflierWorld?: import('./lightflier').LightFlierHabitat;
   fx?: GroundFx;
-  /** Tile activity query; ground items unload their sprite while the tile under them is inactive. */
-  tickingarea?: import('@dontstarve-web/signals').TileStateQuery;
-  scheduler?: GameTimeScheduler;
-  scene: THREE.Scene;
-  animationBaseUrl: string;
   inventoryOwnerPosition?: THREE.Vector3;
   handEquipment?: ReadonlySignal<HandEquipment | null>;
   /** AllPlayers and SpawnPrefab for the Bernie item's tryreanimate; without it the item never reanimates. */
@@ -92,28 +83,7 @@ export interface GroundPrefabOptions {
 }
 
 /** lootdropper.lua FlingItem scatters the stack (`fling`), or `launch` gives its exact flight; otherwise it is placed. */
-export interface GroundSpawnOptions { fling?: boolean; launch?: import('./lootFling').LootLaunch }
+export interface GroundSpawnOptions { fling?: boolean; launch?: import('../../componets/src/inventoryphysics').LootLaunch }
 
 /** Creates the inst and its display now; returns undefined when the world can no longer spawn. */
 export type SpawnGroundItem = (definition: GroundItemDefinition, position: ReadonlyVector3, options?: GroundSpawnOptions) => ItemEntity | undefined;
-
-export interface GroundPrefabContext extends GroundPrefabOptions {
-  assets: GroundItemAssets;
-  /** Declares the ground items' sprite sources over `assets`; each display loads what it draws. */
-  sprites: SpriteResources;
-}
-
-/** Each prefab binds its own assets, events and world dependencies. */
-export interface GroundItemFactory {
-  itemIds: readonly string[];
-  /**
-   * The inst's ground visual and its display exist synchronously; its display loads the art. The visual draws the
-   * item's own sprite (`entity.sprite`, inst.AnimState), which keeps the item's skin on the ground and off it.
-   */
-  create(definition: GroundItemDefinition, entity: ItemEntity): GroundItemVisual;
-  capture?: 'net';
-  configureEntity?(entity: ItemEntity): void;
-  update?(dt: number, cameraQuaternion: THREE.Quaternion): void;
-  renderEntities?(): readonly { object: THREE.Group; footPosition: ReadonlyVector3; cameraDepth: number }[];
-  dispose?(): void;
-}

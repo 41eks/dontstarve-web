@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { berrybushPrefabs } from '../../prefab/src/berrybush';
-import { GroundItemManager } from '../../prefab/src/groundItemManager';
+import { ItemWorldFixture } from './itemWorldFixture';
 import { createInventoryStore } from '../../../src/inventory';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
@@ -21,7 +21,7 @@ it('restores a sleeping plant with its identity and skin, and finishes burning w
   const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), awake = createSignal(true);
   bindTestWorld(scheduler);
   const player = new THREE.Group(), inventory = createInventoryStore([]);
-  const ground = new GroundItemManager(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
+  const ground = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
   const bushes = plantManager(berrybushPrefabs, scene, { tickingarea: () => createMemo(() => awake.get()),
     spawnGroundItem: (definition, position, options) => ground.spawnGroundItem(definition, position, options) });

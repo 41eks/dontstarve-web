@@ -1,6 +1,6 @@
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { Vector3 } from 'three';
-import { ItemEntity, type InventoryStack } from '@dontstarve-web/inventory';
+import type { ItemEntity, InventoryStack } from '@dontstarve-web/inventory';
 import { createEffect, createSignal, readonlySignal, watchSignal, WorldContentKey, type GetWatchWorldContent, type TileStateQuery, type ReadonlySignal } from '@dontstarve-web/signals';
 import { fourFacingFromRotation } from '@dontstarve-web/animation/facing';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -20,8 +20,6 @@ import { Burnable } from '../../componets/src/burnable';
 import { Propagator } from '../../componets/src/propagator';
 import { Hauntable } from '../../componets/src/hauntable';
 import { ErodeAway } from '../../componets/src/erodeaway';
-import { createArchiveEntity, prefabInstance } from './prefabInstance';
-import { SpriteResources, type ArchiveSpriteSource } from '@dontstarve-web/display';
 import { animationLengths } from './animationTimings';
 import { Workable } from '../../componets/src/workable';
 import { LocoMotor, type LocoMotorInst } from '../../componets/src/locomotor';
@@ -29,7 +27,8 @@ import { LightFlierBrain, type LightFlierBrainInst } from '../../brains/src/ligh
 import { LightFlierStateGraph, type LightFlierStateInst } from '../../stategraphs/src/SGlightflier';
 import type { BufferedAction } from '../../stategraphs/src/bufferedaction';
 import type { BrainEntity, BrainWorld } from '../../brains/src/types';
-import type { GroundItemFactory, GroundItemVisual, GroundPrefabContext } from './groundPrefab';
+import type { ItemPrefabWorld } from './groundPrefab';
+import { bindItemWorld, dropStackIndividually, type ItemPrefabDefinition } from './groundItems';
 import type { LightFlierFlower } from './lightflier_flower';
 import { WORLD_SCALE, MakeGhostPhysics } from './standardcomponents';
 import { PlaySound, type SoundHandle } from './sound';
@@ -57,7 +56,6 @@ export interface LightFlierServices {
   maxMovementStep?: number;
   getPlayers(): readonly LightFlierPlayer[];
   spawnItem(state: InventoryStack): ItemEntity;
-  showItem(entity: ItemEntity, position: Vector3): void;
   dropLoot(prefab: string, count: number, position: Vector3): void;
 }
 type Leader = FormationLeader<LightFlierPlayer, LightFlier>;
@@ -67,22 +65,17 @@ export class LightFlierHabitat {
   readonly flies = new Set<LightFlier>();
   readonly homes = new Map<string, LightFlierFlower>();
   readonly formations = new Set<Leader>();
-  private readonly resources: SpriteResources;
-  readonly source: ArchiveSpriteSource;
   private readonly leaderTimers = new Map<Leader, ComponentTimer>();
   private readonly distributenext = new Set<Leader>();
   private disposed = false;
   readonly services: LightFlierServices;
-  constructor(base: string, services: LightFlierServices) {
-    this.resources = new SpriteResources(base, 'lightflier'); this.services = services;
-    this.source = this.resources.archive({ animationArchive: 'lightflier.zip', buildArchives: ['lightflier.zip'], bank: 'lightflier' });
-  }
+  constructor(services: LightFlierServices) { this.services = services; }
   bind(fly: LightFlier): void { fly.bindWorld(this, LIGHTFLIER_ANIMATION_LENGTHS); }
   spawn(position: Vector3): LightFlier {
     if (this.disposed) throw new Error('Lightflier habitat unavailable');
     const entity = this.services.spawnItem({ itemId: LIGHTFLIER_ID, count: 1 }); configureLightFlierEntity(entity);
     const fly = entity.getComponent<LightFlier>(LIGHTFLIER_ID)!; entity.setPosition(position.x, position.y, position.z); this.bind(fly);
-    this.services.showItem(entity, position.clone()); return fly;
+    return fly;
   }
   findFormation(fly: LightFlier): void {
     if (!fly.isValid() || fly.inFormation || fly.getTime() - fly.lastAttacked < 4) return;
@@ -133,7 +126,7 @@ export class LightFlierHabitat {
     if (this.disposed) return; this.disposed = true;
     for (const leader of this.formations) leader.dispose();
     for (const timer of this.leaderTimers.values()) timer.stop(); this.leaderTimers.clear();
-    this.homes.clear(); this.flies.clear(); this.resources.dispose();
+    this.homes.clear(); this.flies.clear();
   }
 }
 
@@ -424,45 +417,46 @@ export function configureLightFlierEntity(entity: ItemEntity): void {
   if (!entity.components.inventoryitem.owner) perishable.StopPerishing();
 }
 
-export function createLightFlierGroundFactory(context: GroundPrefabContext): GroundItemFactory {
-  const own = !context.lightflierWorld;
-  const habitat = context.lightflierWorld ?? new LightFlierHabitat(context.animationBaseUrl, {
-    scheduler: context.scheduler!, getPlayers: () => [], spawnItem: state => new ItemEntity(state),
-    showItem: () => {}, dropLoot: (itemId, count, position) => {
-      context.dropLoot?.([{ itemId, count, name: itemId, icon: `${itemId}.tex` }], position);
+/**
+ * lightflier.lua: the habitat binds the insect's brain, stategraph and formations; its stategraph drives the sprite, and
+ * it glows while it flies in the world.
+ */
+export function lightflierPrefabs(world: ItemPrefabWorld): Record<string, ItemPrefabDefinition> {
+  return {
+    [LIGHTFLIER_ID]: {
+      fn: () => {
+        const inst = world.newItem(LIGHTFLIER_ID);
+        inst.sprite.resetPresentation({ name: 'walk_loop', billboard: true });
+        bindItemWorld(inst, world);
+        return inst;
+      },
+      assets: { animationArchive: 'lightflier.zip', buildArchives: ['lightflier.zip'], bank: 'lightflier' },
+      onSpawned: inst => {
+        world.configureItem(inst);
+        configureLightFlierEntity(inst);
+        const fly = inst.getComponent<LightFlier>(LIGHTFLIER_ID)!, sprite = inst.sprite;
+        const habitat = world.lightflierWorld;
+        habitat?.bind(fly);
+        const animation = watchSignal(fly.animstate.animation, stop => inst.onRemove(stop));
+        createEffect(() => { const { name, loop } = animation.get(); if (loop) sprite.start(name); else sprite.playOnce(name); });
+        fly.bindPhysics(world.physics);
+        inst.ListenForEvent('ondropped', () => dropStackIndividually(inst, world));
+        sprite.setLightOverride(1);
+        const heading = habitat?.services.cameraHeading ? watchSignal(habitat.services.cameraHeading, stop => inst.onRemove(stop)) : undefined;
+        // Facing and erosion change the sprite json only when their value does.
+        let facing: number | undefined, erosion: number | undefined;
+        inst.onRemove(world.componentUpdates.register({
+          OnUpdate: dt => {
+            if (inst.status.peek() !== 'active' || !fly.active.peek()) return;
+            fly.update(dt);
+            const nextFacing = fourFacingFromRotation(fly.facing, heading?.peek() ?? 0);
+            if (nextFacing !== facing) sprite.setFacing(facing = nextFacing);
+            const nextErosion = fly.erosionValue;
+            if (nextErosion !== erosion) sprite.setErosion(erosion = nextErosion);
+            inst.light.set(fly.isValid() ? { radius: 1.8 * WORLD_SCALE, intensity: .5, falloff: .7, colour: [237 / 255, 237 / 255, 209 / 255] } : null);
+          },
+        }));
+      },
     },
-  });
-  const create = (_item: unknown, inst: ItemEntity): GroundItemVisual => {
-      const { instance, display } = createArchiveEntity(LIGHTFLIER_ID, habitat.source, { name: 'walk_loop', billboard: true, instance: inst }, LIGHTFLIER_ID);
-      const sprite = instance.sprite, model = display.model;
-      const cleanups: (() => void)[] = []; let fly: LightFlier | undefined;
-      // Facing and erosion change the sprite json only when their value does.
-      let facing: number | undefined, erosion: number | undefined;
-      const heading = habitat.services.cameraHeading ? watchSignal(habitat.services.cameraHeading, stop => cleanups.push(stop)) : undefined;
-      configureLightFlierEntity(inst); fly = inst.getComponent<LightFlier>(LIGHTFLIER_ID)!; habitat.bind(fly);
-      const animation = watchSignal(fly.animstate.animation, stop => cleanups.push(stop));
-      const awake = watchSignal(fly.active, stop => cleanups.push(stop));
-      // OnEntitySleep/OnEntityWake: frames and instance entries exist only while the tile is active.
-      createEffect(() => { instance.setActive(awake.get()); if (!awake.get()) prefabInstance(model)!.light.set(null); });
-      createEffect(() => { const { name, loop } = animation.get(); if (loop) sprite.start(name); else sprite.playOnce(name); });
-      // The item inst owns the lightflier's tags.
-      fly.bindPhysics(context.physics);
-      sprite.setLightOverride(1);
-      return { model, instance, display, active: fly.active,
-        update: dt => {
-          fly?.update(dt);
-          const nextFacing = fourFacingFromRotation(fly?.facing ?? 0, heading?.peek() ?? 0);
-          if (nextFacing !== facing) sprite.setFacing(facing = nextFacing);
-          const nextErosion = fly?.erosionValue ?? 0;
-          if (nextErosion !== erosion) sprite.setErosion(erosion = nextErosion);
-          prefabInstance(model)!.light.set(fly?.isValid() ? { radius: 1.8 * WORLD_SCALE, intensity: .5, falloff: .7, colour: [237 / 255, 237 / 255, 209 / 255] } : null);
-        },
-        isClickable: () => fly?.isValid() ?? true,
-        dispose: () => { cleanups.splice(0).forEach(stop => stop()); prefabInstance(model)!.light.set(null); display.dispose(); },
-      };
-    };
-  return { itemIds: [LIGHTFLIER_ID], capture: 'net', configureEntity: configureLightFlierEntity,
-    create,
-    update: dt => { if (own) habitat.update(dt); }, dispose: () => { if (own) habitat.dispose(); },
   };
 }

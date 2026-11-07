@@ -44,8 +44,8 @@ function advance(animation: WilsonAnimationController, frames: number) {
 it('loads original ground and separate equipped art, visible skins and hidden equipped symbols', async () => {
   const assets = new GroundItemAssets();
   try {
-    const regular = await createGroundItemVisual(assets, 'shovel', 'shovel_feathered');
-    const gold = await createGroundItemVisual(assets, 'goldenshovel');
+    const regular = await createGroundItemVisual('shovel', 'shovel_feathered');
+    const gold = await createGroundItemVisual('goldenshovel');
     for (const sprite of [regular, gold]) {
       expect((sprite.model.children[0].children[0].children[0] as THREE.Mesh).geometry.drawRange.count).toBeGreaterThan(0);
       sprite.dispose();

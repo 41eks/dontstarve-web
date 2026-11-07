@@ -232079,7 +232079,7 @@
           "components": {}
         }
       ],
-      "ground_item": [
+      "fireflies": [
         {
           "id": "dst_04E26ADB66396E8D_fireflies_index_000001",
           "transform": {
@@ -232619,7 +232619,9 @@
               "entityId": "dst_04E26ADB66396E8D_fireflies_index_000030"
             }
           }
-        },
+        }
+      ],
+      "boneshard": [
         {
           "id": "dst_04E26ADB66396E8D_boneshard_index_000001",
           "transform": {
@@ -232799,7 +232801,9 @@
               "entityId": "dst_04E26ADB66396E8D_boneshard_index_000010"
             }
           }
-        },
+        }
+      ],
+      "cutgrass": [
         {
           "id": "dst_04E26ADB66396E8D_cutgrass_index_000001",
           "transform": {
@@ -232853,7 +232857,9 @@
               "entityId": "dst_04E26ADB66396E8D_cutgrass_index_000003"
             }
           }
-        },
+        }
+      ],
+      "flint": [
         {
           "id": "dst_04E26ADB66396E8D_flint_index_000001",
           "transform": {
@@ -232943,7 +232949,9 @@
               "entityId": "dst_04E26ADB66396E8D_flint_index_000005"
             }
           }
-        },
+        }
+      ],
+      "goldnugget": [
         {
           "id": "dst_04E26ADB66396E8D_goldnugget_index_000001",
           "transform": {
@@ -233033,7 +233041,9 @@
               "entityId": "dst_04E26ADB66396E8D_goldnugget_index_000005"
             }
           }
-        },
+        }
+      ],
+      "guano": [
         {
           "id": "dst_04E26ADB66396E8D_guano_index_000001",
           "transform": {
@@ -233609,7 +233619,9 @@
               "entityId": "dst_04E26ADB66396E8D_guano_index_000032"
             }
           }
-        },
+        }
+      ],
+      "hutch_fishbowl": [
         {
           "id": "dst_04E26ADB66396E8D_hutch_fishbowl_index_000001",
           "transform": {
@@ -233627,7 +233639,9 @@
               "entityId": "dst_04E26ADB66396E8D_hutch_fishbowl_index_000001"
             }
           }
-        },
+        }
+      ],
+      "pitchfork": [
         {
           "id": "dst_04E26ADB66396E8D_pitchfork_index_000001",
           "transform": {
@@ -233699,7 +233713,9 @@
               "entityId": "dst_04E26ADB66396E8D_pitchfork_index_000004"
             }
           }
-        },
+        }
+      ],
+      "rope": [
         {
           "id": "dst_04E26ADB66396E8D_rope_index_000001",
           "transform": {
@@ -233843,7 +233859,9 @@
               "entityId": "dst_04E26ADB66396E8D_rope_index_000008"
             }
           }
-        },
+        }
+      ],
+      "silk": [
         {
           "id": "dst_04E26ADB66396E8D_silk_index_000001",
           "transform": {
@@ -233897,7 +233915,9 @@
               "entityId": "dst_04E26ADB66396E8D_silk_index_000003"
             }
           }
-        },
+        }
+      ],
+      "thulecite_pieces": [
         {
           "id": "dst_04E26ADB66396E8D_thulecite_pieces_index_000001",
           "transform": {
@@ -234131,7 +234151,9 @@
               "entityId": "dst_04E26ADB66396E8D_thulecite_pieces_index_000013"
             }
           }
-        },
+        }
+      ],
+      "torch": [
         {
           "id": "dst_04E26ADB66396E8D_torch_index_000001",
           "transform": {
@@ -234149,7 +234171,9 @@
               "entityId": "dst_04E26ADB66396E8D_torch_index_000001"
             }
           }
-        },
+        }
+      ],
+      "trap": [
         {
           "id": "dst_04E26ADB66396E8D_trap_index_000001",
           "transform": {
@@ -234185,7 +234209,9 @@
               "entityId": "dst_04E26ADB66396E8D_trap_index_000002"
             }
           }
-        },
+        }
+      ],
+      "twigs": [
         {
           "id": "dst_04E26ADB66396E8D_twigs_index_000001",
           "transform": {

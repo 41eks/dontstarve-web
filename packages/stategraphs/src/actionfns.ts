@@ -9,7 +9,7 @@ import type { FishingRod } from '../../componets/src/fishingrod';
 import type { Terraformer } from '../../componets/src/terraformer';
 import type { FarmTiller } from '../../componets/src/farmtiller';
 import { preparePickReceiver, type PickableComponent } from './pick.ts';
-import { performPickupAction, type PickupDoer, type PickupTarget } from './pickup.ts';
+import { canPickUp, performPickupAction, type PickupDoer } from './pickup.ts';
 import { performRummageAction, type RummageContainer, type RummageTarget } from './rummage.ts';
 import type { Stewer, StewerHarvester } from '../../componets/src/stewer';
 import type { SleepingBag } from '../../componets/src/sleepingbag';
@@ -61,6 +61,8 @@ interface SceneComponents {
 }
 const components = (act: BufferedAction) => (act.target as { components?: SceneComponents } | undefined)?.components ?? {};
 const playerDoer = (act: BufferedAction) => act.doer as PickupDoer;
+/** The item inst the target's inventoryitem belongs to. */
+const pickupInst = (act: BufferedAction) => (components(act) as { inventoryitem?: { inst?: ItemEntity } }).inventoryitem?.inst;
 const targetPosition = (act: BufferedAction) => (act.target as unknown as { getPosition(): Vector3 }).getPosition();
 
 /** stewer.lua / pickable.lua: a spawned product goes to the doer's inventory, dropped at the doer when full. */
@@ -241,11 +243,10 @@ export const ACTION_FNS: Readonly<Partial<Record<string, ActionFns>>> = {
   },
   PICKUP: {
     fn: act => {
-      const target = (act.target as { pickupTarget?: PickupTarget } | undefined)?.pickupTarget;
-      return !!target && performPickupAction(target, playerDoer(act));
+      const inst = pickupInst(act);
+      return !!inst && performPickupAction(inst, playerDoer(act));
     },
-    // The item's owner registers its pickup view while it lies in the world.
-    validfn: act => (act.target as { pickupTarget?: PickupTarget } | undefined)?.pickupTarget?.isValid() === true,
+    validfn: act => { const inst = pickupInst(act); return !!inst && canPickUp(inst); },
   },
   HARVEST: {
     // The crop, harvestable and dryer branches are not ported.

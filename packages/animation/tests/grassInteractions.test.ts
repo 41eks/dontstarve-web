@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { grassPrefabs } from '../../prefab/src/grass';
-import { GroundItemManager } from '../../prefab/src/groundItemManager';
+import { ItemWorldFixture, itemEntities } from './itemWorldFixture';
 import { createPickupInventory } from './pickupFixture';
 import { createPickupDoer } from '../../stategraphs/src/pickup';
 import { performToolWork } from '../../stategraphs/src/componentactions';
@@ -32,7 +32,7 @@ function setup() {
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   vi.stubGlobal('window', new EventTarget());
   const inventory = createPickupInventory(), scene = new THREE.Scene(), player = new THREE.Group();
-  const ground = new GroundItemManager(scene, new THREE.PerspectiveCamera(),
+  const ground = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(),
     { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer, '/dst/data/databundles/images.zip',
     inventory, '/dst/data/anim', player);
   const worker = createPickupDoer(player, inventory);
@@ -43,7 +43,7 @@ function setup() {
   });
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
   const save = () => serializeSave(template, {
-    entities: { grass: grass.exportRecords().map(({ record }) => record), ground_item: ground.exportRecords() }, inventory: inventory.exportState(),
+    entities: { grass: grass.exportRecords().map(({ record }) => record), ...ground.exportEntities() }, inventory: inventory.exportState(),
     elapsedSeconds: 100, playerTransform: { position: [3, 0, 6], rotationY: 0 },
   }, SAVE_CATALOG);
   const dispose = () => { grass.dispose(); ground.dispose(); inventory.dispose(); };
@@ -58,14 +58,7 @@ it('digs mature/picked grass through workable, preserves dug-item commands and r
     exportRecords: () => s.grass.exportRecords(),
     dispose: () => s.grass.dispose(),
   });
-  registry.register(PREFAB_DEFINITIONS.groundItems, {
-    restore: (_prefab, record) => s.ground.spawnFromSave(record.id, {
-      ...SAVE_CATALOG.items[record.components.stack!.itemId], ...record.components.stack!,
-    }, new THREE.Vector3(...record.transform.position)),
-    debugSpawn: id => s.ground.spawnFromSave('dug:command', { ...SAVE_CATALOG.items[id], itemId: id, count: 1 }, s.player.position),
-    exportRecords: () => s.ground.exportRecords().map(record => ({ prefabId: 'ground_item', record })),
-    dispose: () => s.ground.dispose(),
-  });
+  registry.register(PREFAB_DEFINITIONS.groundItems, s.ground.registration(() => s.player.position, () => 'dug:command'));
   try {
     s.player.position.set(160, 0, 6);
     expect((await executeDebugCommand('c_give("dug_grass",2);c_give("goldenshovel");c_spawn("dug_grass")', s.inventory,
@@ -92,11 +85,8 @@ it('digs mature/picked grass through workable, preserves dug-item commands and r
     const saved = deserializeSave(json, SAVE_CATALOG);
     expect(saved.world.entities.grass).toEqual([]);
     restored.inventory.replaceState(inventoryStateFromSave(saved), SAVE_CATALOG.recipes);
-    for (const record of saved.world.entities.ground_item) {
-      const item = record.components.stack!;
-      await restored.ground.spawnFromSave(record.id, { ...SAVE_CATALOG.items[item.itemId], ...item }, new THREE.Vector3(...record.transform.position));
-    }
-    expect(restored.ground.exportRecords()).toEqual(s.ground.exportRecords());
+    restored.ground.restoreEntities(saved.world.entities);
+    expect(restored.ground.exportEntities()).toEqual(s.ground.exportEntities());
     expect(restored.inventory.exportState()).toEqual(s.inventory.exportState());
     expect(restored.inventory.GetEquippedItem('hand')?.id).toBe(shovel.id);
     expect(restored.inventory.GetEquippedItem('hand')?.components.finiteuses.remaining).toBe(24.75);
@@ -136,7 +126,8 @@ it('retains regrowth on extinguish, then burns to exactly one saved ash and rele
     expect(record.components.pickable).toEqual({ picked: true, regrowSeconds: 1430 });
     expect(state.phase.peek()).toBe('picked');
     expect(state.persists).toBe(true);
-    const torch = s.inventory.entities.create({ itemId: 'torch', count: 1 });
+    // The worker holds its tool: SpawnPrefab puts the inst in the world, GiveItem takes it out of the scene.
+    const torch = s.inventory.entities.create({ itemId: 'torch', count: 1 }); s.inventory.GiveItem(torch);
     s.inventory.configureItem(torch);
     expect(collectEquippedItemActions(torch, undefined, findActionEntity(model), true)).toContain('LIGHT');
     burnable.Ignite();
@@ -151,7 +142,7 @@ it('retains regrowth on extinguish, then burns to exactly one saved ash and rele
     expect(s.ground.exportRecords()[0].transform.position).toEqual([3, 0, 6]);
     const saved = deserializeSave(s.save(), SAVE_CATALOG);
     expect(saved.world.entities.grass).toEqual([]);
-    expect(saved.world.entities.ground_item).toEqual(s.ground.exportRecords());
+    expect(itemEntities(saved.world.entities)).toEqual(s.ground.exportEntities());
     tickWorld(s.scheduler, prefabDisplays(s.grass), 1440, new THREE.Quaternion());
     expect(s.ground.exportRecords()).toHaveLength(1);
   } finally { s.dispose(); }

@@ -1,4 +1,4 @@
-import { findActionEntity } from '../../prefab/src/actionEntity';
+import type { PoopFlies } from '../../prefab/src/poop';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -6,7 +6,7 @@ import { FliesController } from '../../prefab/src/flies';
 import { PrefabInstance, prefabInstance } from '../../prefab/src/prefabInstance';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import * as sound from '../../prefab/src/sound';
-import { GroundItemManager } from '../../prefab/src/groundItemManager';
+import { ItemWorldFixture, itemAt } from './itemWorldFixture';
 import { createPickupInventory } from './pickupFixture';
 import { setSpriteEntityRenderOrder } from '../src/renderOrder';
 import { bindTestWorld } from './worldContentFixture';
@@ -91,11 +91,11 @@ it('renders real flies child art, plays looping audio and preserves manure throu
   world.playerpositions.set([player.position.clone()]);
   const canvas = Object.assign(new EventTarget(), { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) });
   const inventory = createPickupInventory();
-  const manager = new GroundItemManager(scene, new THREE.PerspectiveCamera(),
+  const manager = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(),
     { domElement: canvas } as unknown as THREE.WebGLRenderer, 'images.zip', inventory, '/anim', player, undefined,
     { getWatchWorldContent: world.getWatchWorldContent });
   const item = { itemId: 'poop', count: 3, name: '便便', icon: 'poop.tex' };
-  let restoredManager: GroundItemManager | undefined;
+  let restoredManager: ItemWorldFixture | undefined;
   try {
     expect(await manager.drop(item, new THREE.Vector3(), () => false)).toBe(false);
     manager.update(.1, new THREE.Quaternion());
@@ -107,7 +107,10 @@ it('renders real flies child art, plays looping audio and preserves manure throu
     await vi.waitFor(() => expect(sources).toHaveLength(1));
     expect(sources[0].loop).toBe(true);
     expect(context.decodeAudioData).toHaveBeenCalled();
-    const flies = model.userData.flies as THREE.Group;
+    // inst:SpawnChild("flies"): the swarm is drawn as the manure's named child.
+    const fliesOf = (parent: THREE.Object3D) => parent.children.find(child => child.name === 'flies') as THREE.Group | undefined;
+    await vi.waitFor(() => expect(fliesOf(model)).toBeDefined());
+    const flies = fliesOf(model)!;
     await vi.waitFor(() => expect(prefabInstance(flies)!.sprite.loaded).toBe(true));
     const camera = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 3);
     world.camerarotation.set(camera);
@@ -119,17 +122,18 @@ it('renders real flies child art, plays looping audio and preserves manure throu
     flies.traverse(object => { if (object instanceof THREE.Mesh) mesh ??= object; });
     expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
     const entries = manager.renderEntities;
-    expect(entries.map(entry => entry.object)).toEqual([flies]);
+    expect(entries.map(entry => entry.object)).toContain(flies);
     setSpriteEntityRenderOrder(flies, 2);
     expect(mesh.parent!.renderOrder).toBe(2);
     expect(entries.find(entry => entry.object === flies)!.footPosition.toArray()).toEqual([0, 0, 0]);
     const [saved] = JSON.parse(JSON.stringify(manager.exportRecords()));
     expect(saved).toMatchObject({ id: 'poop-identity', transform: { position: [0, 0, 0] }, components: { stack: { itemId: 'poop', count: 3 } } });
-    const entity = findActionEntity(model)!.pickupTarget.entity;
+    const entity = itemAt(model);
     expect(inventory.GiveItem(entity)).toBe(true);
     expect([...manager.iteratePrefabPositions('poop')]).toEqual([]);
     expect(manager.exportRecords()).toEqual([]);
-    expect(manager.renderEntities).toEqual([]);
+    // RemoveFromScene: the held manure's display leaves the scene as its lifecycle effect runs.
+    await vi.waitFor(() => expect(manager.renderEntities).toEqual([]));
     expect(sources[0].stop).toHaveBeenCalledOnce();
     expect(sources[0].disconnect).toHaveBeenCalledOnce();
     inventory.DropItem(entity, new THREE.Vector3(2, 0, 4));
@@ -137,23 +141,24 @@ it('renders real flies child art, plays looping audio and preserves manure throu
     await vi.waitFor(() => expect(scene.children).toHaveLength(1));
     manager.update(.1, new THREE.Quaternion());
     expect(sources).toHaveLength(2);
-    expect(scene.children[0].userData.flies).toBeDefined();
+    await vi.waitFor(() => expect(fliesOf(scene.children[0])).toBeDefined());
     const [dropped] = JSON.parse(JSON.stringify(manager.exportRecords()));
     expect(dropped).toMatchObject({ id: saved.id, transform: { position: [2, 0, 4] }, components: saved.components });
     manager.dispose();
     expect(sources[1].stop).toHaveBeenCalledOnce();
-    restoredManager = new GroundItemManager(new THREE.Scene(), new THREE.PerspectiveCamera(),
+    restoredManager = new ItemWorldFixture(new THREE.Scene(), new THREE.PerspectiveCamera(),
       { domElement: canvas } as unknown as THREE.WebGLRenderer, 'images.zip', createPickupInventory(), '/anim', player, undefined,
       { getWatchWorldContent: world.getWatchWorldContent });
     const restored = await restoredManager.spawnFromSave(dropped.id, item, new THREE.Vector3(...dropped.transform.position));
     restoredManager.update(.1, new THREE.Quaternion());
     expect(restoredManager.exportRecords()).toEqual([dropped]);
-    expect(restored.userData.flies).toBeDefined();
+    const restoredEntity = itemAt(restored);
+    const swarming = () => (restoredEntity.getComponent('flies') as unknown as { flies: PoopFlies }).flies.active.peek();
+    expect(swarming()).toBe(true);
     expect(sources).toHaveLength(3);
-    const restoredEntity = findActionEntity(restored)!.pickupTarget.entity;
     expect([...restoredManager.iteratePrefabPositions('poop')]).toEqual([restoredEntity.transform.position]);
     restoredEntity.components.burnable.Ignite();
-    expect(restored.userData.flies).toBeUndefined();
+    expect(swarming()).toBe(false);
     expect(sources[2].stop).toHaveBeenCalledOnce();
     expect(sources[2].disconnect).toHaveBeenCalledOnce();
   } finally { manager.dispose(); restoredManager?.dispose(); world.unbind(); scheduler.dispose(); }

@@ -5,7 +5,7 @@ import initialWorld from '../../../public/saves/initial-world.json' with { type:
 import { LANTERN_FUEL, LanternLightController, createLanternHandLifecycle, getLanternController } from '../../prefab/src/lantern';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src/slots';
 import { equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
-import { GroundItemManager } from '../../prefab/src/groundItemManager';
+import { ItemWorldFixture } from './itemWorldFixture';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { executeDebugCommand } from '../../../src/debugCommands';
@@ -13,7 +13,6 @@ import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { inventoryStateFromSave } from '../../../src/save/inventoryState';
-import type { SavedEntity } from '../../../src/save/types';
 import { createPickupInventory } from './pickupFixture';
 import { EventEmitter } from '@dontstarve-web/signals';
 import { AnimState, type AnimStateArt } from '../src/animState';
@@ -186,28 +185,22 @@ describe('lantern fuel', () => {
     const world = createPerishWorld();
     const player = new THREE.Group();
     player.position.set(4, 0, -2);
-    const createManager = (store: typeof inventory) => new GroundItemManager(new THREE.Scene(), new THREE.PerspectiveCamera(),
+    const createManager = (store: typeof inventory) => new ItemWorldFixture(new THREE.Scene(), new THREE.PerspectiveCamera(),
       { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer, '/dst/data/databundles/images.zip',
       store, '/dst/data/anim', player);
     const manager = createManager(inventory);
     manager.entities.bindPerishWorld(world);
-    const restoreGround = (target: GroundItemManager, record: SavedEntity) => target.spawnFromSave(record.id, {
-      ...SAVE_CATALOG.items[record.components.stack!.itemId], ...record.components.stack!,
-      ...(record.components.lantern ? { lanternOn: record.components.lantern.ison } : {}),
-    }, new THREE.Vector3(...record.transform.position));
     const registry = new EntityRegistry();
-    registry.register(PREFAB_DEFINITIONS.groundItems, {
-      debugSpawn: id => manager.spawnFromSave(`spawn:${id}`, { ...SAVE_CATALOG.items[id], itemId: id, count: 1 }, player.position),
-      restore: (_prefab, record) => restoreGround(manager, record),
-      exportRecords: () => manager.exportRecords().map(record => ({ prefabId: 'ground_item', record })),
-      dispose: () => manager.dispose(),
-    });
-    let restored: GroundItemManager | undefined;
+    registry.register(PREFAB_DEFINITIONS.groundItems, manager.registration(() => player.position, id => `spawn:${id}`));
+    let restored: ItemWorldFixture | undefined;
     try {
       expect((await executeDebugCommand('c_spawn("lantern")', inventory, prefab => registry.spawn(prefab))).ok).toBe(true);
       expect((await executeDebugCommand('c_give("lantern", 2)', inventory)).ok).toBe(true);
       const ground = manager.entities.get('spawn:lantern')!;
       const model = manager.reskinTargets[0].model;
+      // SpawnPrefab leaves machine.ison false; only ondropped turns a lantern on. The player's TURNON lights it.
+      expect(getLanternController(ground).isOn).toBe(false);
+      ground.components.machine!.TurnOn();
       expect(getLanternController(ground).isOn).toBe(true);
       expect(lightAt(prefabInstance(model)!)).toMatchObject({ radius: 15 });
       // A lit ground lantern consumes on its world's game time; frames play no part.
@@ -228,7 +221,7 @@ describe('lantern fuel', () => {
       expect(inventory.setRemainingFuel(inventorySlotAddress(1), 0)).toBe(true);
 
       const before = registry.exportRecords(), held = inventory.exportState();
-      expect(before.ground_item[0].components.lantern).toEqual({ ison: true });
+      expect(before.lantern[0].components.lantern).toEqual({ ison: true });
       let json = '';
       expect((await executeDebugCommand('c_save()', inventory, undefined, () => {
         const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
@@ -237,9 +230,10 @@ describe('lantern fuel', () => {
       })).ok).toBe(true);
       const saved = deserializeSave(json, SAVE_CATALOG);
       expect(saved.world.entities).toEqual(before);
-      restoredInventory.replaceState(inventoryStateFromSave(saved), SAVE_CATALOG.recipes);
+      // The world's SpawnPrefab is bound before the save loads, so held items are that world's insts.
       restored = createManager(restoredInventory);
-      for (const record of saved.world.entities.ground_item) await restoreGround(restored, record);
+      restoredInventory.replaceState(inventoryStateFromSave(saved), SAVE_CATALOG.recipes);
+      restored.restoreEntities(saved.world.entities);
       const loaded = restored.entities.get('spawn:lantern')!;
       // machine:OnLoad turns it on again; StartConsuming charges a new first period on the next settlement.
       expect(getLanternController(loaded).isOn).toBe(true);

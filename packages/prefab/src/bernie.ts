@@ -10,9 +10,8 @@ import { ComponentTimer, Timer } from '../../componets/src/timer';
 import { createBernieStateGraph, type BernieStateInst } from '../../stategraphs/src/SGbernie';
 import { FRAMES } from '../../stategraphs/src/stategraph';
 import { animationTiming } from './animationTimings';
-import { GROUND_ITEM_DEFINITIONS, createResidentGroundItem } from './groundItems';
-import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
-import { listenInventoryEvents } from './inventoryEvents';
+import { GROUND_ITEM_DEFINITIONS, groundItemPrefab, type ItemPrefabDefinition } from './groundItems';
+import type { ItemPrefabWorld } from './groundPrefab';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import type { PlacementSaveRecord } from './saveRecord';
 import { MakeCharacterPhysics, WORLD_SCALE } from './standardcomponents';
@@ -57,24 +56,19 @@ function formSkin(skinId: string | undefined, from: '' | '_active' | '_big', to:
  * runs tryreanimate every second. The fueled durability (and the health it becomes), the decay of a dead Bernie,
  * the equippable, insulator and the transform_cd timer it carries over are not ported.
  */
-function bindBernieItem(inst: ItemEntity, world: BernieWorld): () => void {
-  let onGround = !inst.components.inventoryitem.owner;
+function bindBernieItem(inst: ItemEntity, world: BernieWorld): void {
   const activatetask = new ComponentTimer(world.scheduler, () => {
     activatetask.start(1);
     tryreanimate(inst, world);
   });
+  // A held item is in limbo, and so asleep, as is one whose tile is.
   const refresh = () => {
-    if (!onGround || inst.isRemoved || inst.status.peek() !== 'active') activatetask.stop();
+    if (inst.isRemoved || inst.status.peek() !== 'active') activatetask.stop();
     else if (activatetask.snapshot.peek().status !== 'scheduled') activatetask.start(1);
   };
-  const removeInventoryEvents = listenInventoryEvents(inst, {
-    ondropped: () => { onGround = true; refresh(); },
-    onload: () => { onGround = !inst.components.inventoryitem.owner; refresh(); },
-    onputininventory: () => { onGround = false; refresh(); },
-  });
   const stopStatus = inst.status.subscribe(refresh);
   refresh();
-  return () => { removeInventoryEvents(); stopStatus(); activatetask.stop(); };
+  inst.onRemove(() => { stopStatus(); activatetask.stop(); });
 }
 
 /** bernie_inactive.lua tryreanimate: the nearest crazy, visible player within 16 units wakes Bernie up. */
@@ -91,16 +85,10 @@ function tryreanimate(inst: ItemEntity, world: BernieWorld): void {
   if (active) inst.remove();
 }
 
-/** The inventory item on the ground: the catalog art plays `inactive`, and the item reanimates near a crazy player. */
-export function createBernieGroundFactory(context: GroundPrefabContext): GroundItemFactory {
-  return {
-    itemIds: [BERNIE_ITEM_ID],
-    create: (item, entity) => {
-      const { visual } = createResidentGroundItem(context, { ...item, entity });
-      const stop = context.bernieWorld ? bindBernieItem(entity, context.bernieWorld) : () => {};
-      return { ...visual, dispose() { stop(); visual.dispose(); } };
-    },
-  };
+/** bernie_inactive.lua: the catalog art plays `inactive`, and the item reanimates near a crazy player. */
+export function bernieItemPrefabs(world: ItemPrefabWorld): Record<string, ItemPrefabDefinition> {
+  const bernieWorld = world.bernieWorld;
+  return { [BERNIE_ITEM_ID]: groundItemPrefab(BERNIE_ITEM_ID, world, { configure: inst => { if (bernieWorld) bindBernieItem(inst, bernieWorld); } }) };
 }
 
 /**

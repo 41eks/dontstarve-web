@@ -133,22 +133,22 @@ export {
 export type { PointerContext, WorldContext } from './worldContext';
 export {
   LANTERN_ID, LANTERN_COLOUR, LANTERN_FUEL, LanternController, LanternLightController, getLanternController,
-  createLanternGroundSprite, createLanternHandLifecycle, lanternVisual,
+  lanternPrefabs, createLanternHandLifecycle, lanternVisual,
 } from './lantern';
 export { spawnLightEntity, type PrefabLocalLight } from './localLight';
-export { LIGHTBULB_ID, LIGHTBULB_LIGHT, createLightbulbGroundSprite } from './lightbulb';
+export { LIGHTBULB_ID, LIGHTBULB_LIGHT, lightbulbPrefabs } from './lightbulb';
 export { FlowerInstance, flowerPrefabs, FLOWER_ANIMATIONS, FLOWER_SPAWN_IDS, type FlowerAnimation, type FlowerWorld } from './flower';
 export { BUGNET_ID, bugnetVisual } from './bugnet';
 export {
-  ButterflyAssets, ButterflyController, ButterflyCreature,
-  BUTTERFLY_ID, MOONBUTTERFLY_ID, createButterflyGroundSprite,
+  butterflyPrefabs, ButterflyController, ButterflyCreature,
+  BUTTERFLY_ID, MOONBUTTERFLY_ID,
   type ButterflyFlower, type ButterflyWorld, type ButterflyState,
 } from './butterfly';
 export { listenInventoryEvents, type PrefabInventoryEventMap } from './inventoryEvents';
-export { TORCH_ID, TORCH_FUEL, TORCH_SOUNDS, TorchController, getTorchController, createTorchGroundFactory,
+export { TORCH_ID, TORCH_FUEL, TORCH_SOUNDS, TorchController, getTorchController, torchPrefabs,
   type TorchLifecycleOptions } from './torch';
-export { GroundPrefabRegistry } from './groundPrefabRegistry';
-export type { GroundItemDefinition, GroundItemVisual, GroundItemFactory, GroundPrefabContext, GroundPrefabOptions } from './groundPrefab';
+export type { GroundItemDefinition, ItemPrefabWorld } from './groundPrefab';
+export { itemPrefabs, spawnGroundStack, flingLoot } from './itemPrefabs';
 export { YELLOWSTAFF_ID, YELLOWSTAFF_COLOUR, YELLOWSTAFF_CAST_TIME, OPALSTAFF_ID, OPALSTAFF_COLOUR, isLightStaff, staffVisual, yellowstaffVisual, getLightStaffController, LIGHT_STAFF_USES, LIGHT_STAFF_SANITY_COST, type LightStaffWorld, type LightStaffId,
   GREENSTAFF_USES, GREENSTAFF_COLOUR, GreenStaffController, getGreenStaffController, deconstructionLoot, type GreenStaffWorld, type DeconstructionTarget } from './staff';
 export { staffCastingLightPrefabs, StaffCastingLightInstance, STAFF_CASTINGLIGHT_ID, STAFF_CASTINGLIGHT_SMALL_ID, type StaffCastingLightId } from './staff_castinglight';
@@ -157,7 +157,7 @@ export { DWARF_STAR_ID, DWARF_STAR_DURATION, POLAR_LIGHT_ID, POLAR_LIGHT_DURATIO
   dwarfStarLight, polarLight, staffLightPrefabs, StaffLightInstance, type StaffLightId, type StaffLightWorld } from './stafflight';
 export { PlaySound, PreloadSounds, DisposeSounds, UpdateSoundListener, inverseSquareAttenuation, SOUND_MAX_DISTANCE,
   type SoundEventPath, type SoundHandle } from './sound';
-export { FIREFLIES_ID, FIREFLIES_LIGHT, FirefliesAssets, FirefliesController, createFirefliesGroundSprite, type FirefliesWorld } from './fireflies';
+export { FIREFLIES_ID, FIREFLIES_LIGHT, firefliesPrefabs, FirefliesController, type FirefliesWorld } from './fireflies';
 export {
   BULB_PLANT_ID, BULB_PLANT_PREFABS, BULB_PLANT_VARIANTS, BULB_PLANT_LIGHT_STATES, BULB_PLANT_LIGHT,
   BulbPlantInstance, bulbPlantPrefabs, bulbPlantLight, bulbPlantRegrowTime, isBulbPlantPrefab,
@@ -174,14 +174,13 @@ export { NIGHTSWORD_DAPPERNESS, configureNightswordEntity, nightswordVisual } fr
 
 export {
   GROUND_ITEM_DEFINITIONS, GROUND_ITEM_DISPLAY_SPECS, GROUND_ITEM_SKIN_SPECS,
-  GroundItemAssets, createResidentGroundItem,
+  GroundItemAssets, groundItemPrefab,
   type GroundItemAssetDefinition,
 } from './groundItems';
-export { bindResidentGroundItem } from './groundItemLifecycle';
 
 export {
   HAT_DEFINITIONS, HAT_IDS, HAT_ITEM_SPECS, HAT_SKIN_SPECS, HAT_RECIPES, HAT_CRAFTING_DEFINITIONS,
-  isHatId, HatEquipmentAssets, hatVisual, createHatGroundFactory,
+  isHatId, HatEquipmentAssets, hatVisual, hatPrefabs,
   type HatDefinition, type HatEquipMode,
 } from './hats';
 

@@ -25,7 +25,7 @@ it('uses source ground art for base, ordinary, shared-build and invisible backpa
   const assets = new GroundItemAssets();
   const skins = ['backpack_babybeef', 'backpack_catcoonp', 'backpack_invisible'];
   for (const skinId of [undefined, ...skins]) {
-    const ground = await createGroundItemVisual(assets, 'backpack', skinId);
+    const ground = await createGroundItemVisual('backpack', skinId);
     const mesh = ground.model.children[0].children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
     expect(mesh.geometry.drawRange.count, skinId).toBeGreaterThan(0);
     expect(Array.from(mesh.geometry.getAttribute('position').array).every(Number.isFinite), skinId).toBe(true);

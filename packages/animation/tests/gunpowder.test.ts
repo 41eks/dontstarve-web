@@ -3,7 +3,7 @@ import { findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
-import { GroundItemManager } from '../../prefab/src/groundItemManager';
+import { ItemWorldFixture, itemEntities } from './itemWorldFixture';
 import { createInventoryStore } from '../../../src/inventory';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
@@ -27,18 +27,13 @@ function setup() {
   vi.stubGlobal('window', new EventTarget());
   const inventory = createInventoryStore([]), scene = new THREE.Scene(), player = new THREE.Group();
   const fx = createTestWorldFx(scene);
-  const ground = new GroundItemManager(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
+  const ground = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player,
     undefined, undefined, undefined, undefined, undefined, fx);
   const registry = new EntityRegistry();
-  registry.register(PREFAB_DEFINITIONS.groundItems, {
-    restore: (_, record) => ground.spawnFromSave(record.id,
-      { ...SAVE_CATALOG.items[record.components.stack!.itemId], ...record.components.stack! }, new THREE.Vector3(...record.transform.position)),
-    debugSpawn: id => ground.spawnFromSave(`command:${id}`, { ...SAVE_CATALOG.items[id], itemId: id, count: 1 }, player.position),
-    exportRecords: () => ground.exportRecords().map(record => ({ prefabId: 'ground_item', record })), dispose: () => ground.dispose(),
-  });
+  registry.register(PREFAB_DEFINITIONS.groundItems, ground.registration(() => player.position, id => `command:${id}`));
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
-  const save = () => serializeSave(template, { entities: { ground_item: ground.exportRecords() },
+  const save = () => serializeSave(template, { entities: { ...ground.exportEntities() },
     inventory: inventory.exportState(), elapsedSeconds: 0, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
   const spawn = (id: string, count: number, x: number) => ground.spawnFromSave(`test:${id}:${x}`,
     { ...SAVE_CATALOG.items[id], itemId: id, count }, new THREE.Vector3(x, 0, 0));
@@ -120,9 +115,8 @@ it('spawns and gives gunpowder through debug commands and keeps the stack throug
     let json = '';
     expect((await executeDebugCommand('c_save()', s.inventory, undefined, () => { json = s.save(); })).ok).toBe(true);
     const saved = deserializeSave(json, SAVE_CATALOG);
-    expect(saved.world.entities.ground_item.map(record => record.components.stack)).toMatchObject([{ itemId: 'gunpowder', count: 1 }]);
-    for (const record of saved.world.entities.ground_item) await restored.ground.spawnFromSave(record.id,
-      { ...SAVE_CATALOG.items[record.components.stack!.itemId], ...record.components.stack! }, new THREE.Vector3(...record.transform.position));
-    expect(restored.ground.exportRecords()).toEqual(s.ground.exportRecords());
+    expect(itemEntities(saved.world.entities)).toMatchObject({ gunpowder: [{ components: { stack: { itemId: 'gunpowder', count: 1 } } }] });
+    restored.ground.restoreEntities(saved.world.entities);
+    expect(restored.ground.exportEntities()).toEqual(s.ground.exportEntities());
   } finally { s.dispose(); restored.dispose(); }
 }, 20000);

@@ -31387,7 +31387,7 @@
       "wall_dreadstone": [],
       "wall_scrap": [],
       "fence": [],
-      "ground_item": [
+      "lightbulb": [
         {
           "id": "e_9026f7ec3f32e8ffa91072a763ea3317",
           "transform": {
@@ -31423,7 +31423,9 @@
               "freshnessPercent": 0.5999273958379445
             }
           }
-        },
+        }
+      ],
+      "poop": [
         {
           "id": "e_7c88adde2e96cf50216c5536d45934fd",
           "transform": {
@@ -31442,6 +31444,59 @@
           }
         },
         {
+          "id": "e_02462944419ec2f83371ad24f6ea25f5",
+          "transform": {
+            "position": [
+              3.718775426467693,
+              0,
+              -11.180857721573076
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "poop",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_d24e8979da058681073a21da515f347b",
+          "transform": {
+            "position": [
+              -4.988356890493424,
+              0,
+              49.46766361669739
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "poop",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_d17f9cb5ea74ba458bd47276c49f9b65",
+          "transform": {
+            "position": [
+              -54.859616104369444,
+              0,
+              39.69492077219988
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "poop",
+              "count": 1
+            }
+          }
+        }
+      ],
+      "wall_moonrock_item": [
+        {
           "id": "e_ec32369c80eec4f59b134d48d347c727",
           "transform": {
             "position": [
@@ -31457,7 +31512,9 @@
               "count": 1
             }
           }
-        },
+        }
+      ],
+      "alterguardianhat": [
         {
           "id": "e_ba6862dac33e15636920d3d9b693f34a",
           "transform": {
@@ -31508,24 +31565,9 @@
               "count": 1
             }
           }
-        },
-        {
-          "id": "e_02462944419ec2f83371ad24f6ea25f5",
-          "transform": {
-            "position": [
-              3.718775426467693,
-              0,
-              -11.180857721573076
-            ],
-            "rotationY": 0
-          },
-          "components": {
-            "stack": {
-              "itemId": "poop",
-              "count": 1
-            }
-          }
-        },
+        }
+      ],
+      "lantern": [
         {
           "id": "e_9e7d3d06c71772990f5c9c7e49c1fa14",
           "transform": {
@@ -31547,7 +31589,9 @@
               "ison": false
             }
           }
-        },
+        }
+      ],
+      "butterfly": [
         {
           "id": "e_21e37cdffd9df98b8f40c7c716d1f2d9",
           "transform": {
@@ -31619,7 +31663,9 @@
               "freshnessPercent": 1
             }
           }
-        },
+        }
+      ],
+      "fireflies": [
         {
           "id": "e_bc82037e0af6ebb29adf332fc52afbbc",
           "transform": {
@@ -31721,7 +31767,9 @@
               "count": 1
             }
           }
-        },
+        }
+      ],
+      "opalstaff": [
         {
           "id": "e_34fd8417ab5d93e3e3a5790ef059f8bc",
           "transform": {
@@ -31739,7 +31787,9 @@
               "skinId": "moonstaff_crystal"
             }
           }
-        },
+        }
+      ],
+      "reskin_tool": [
         {
           "id": "e_b334f24acb83f2eebcc0af2853c292c4",
           "transform": {
@@ -31757,7 +31807,9 @@
               "skinId": "reskin_tool_wand"
             }
           }
-        },
+        }
+      ],
+      "backpack": [
         {
           "id": "e_7c297653ab711cc0da900999597ddece",
           "transform": {
@@ -31779,7 +31831,9 @@
               "skinId": "backpack_carrat"
             }
           }
-        },
+        }
+      ],
+      "farm_plow_item": [
         {
           "id": "e_bc4ba2b98bff1c1ce5de8423a3de5a8e",
           "transform": {
@@ -31797,7 +31851,9 @@
               "remainingUses": 3
             }
           }
-        },
+        }
+      ],
+      "marble": [
         {
           "id": "e_b67314247cd274a5f7d5794ea2afa2b0",
           "transform": {
@@ -31814,7 +31870,9 @@
               "count": 1
             }
           }
-        },
+        }
+      ],
+      "razor": [
         {
           "id": "e_1db0be52dae6b678c3086efd6bbda1ae",
           "transform": {
@@ -31831,7 +31889,9 @@
               "count": 1
             }
           }
-        },
+        }
+      ],
+      "nightmarefuel": [
         {
           "id": "e_83cc3d6b764103181c8b312a3d97027c",
           "transform": {
@@ -31899,7 +31959,9 @@
               "count": 1
             }
           }
-        },
+        }
+      ],
+      "livinglog": [
         {
           "id": "e_2fbf368436f85ab080dd40d3770e9ce1",
           "transform": {
@@ -31933,24 +31995,9 @@
               "count": 1
             }
           }
-        },
-        {
-          "id": "e_d24e8979da058681073a21da515f347b",
-          "transform": {
-            "position": [
-              -4.988356890493424,
-              0,
-              49.46766361669739
-            ],
-            "rotationY": 0
-          },
-          "components": {
-            "stack": {
-              "itemId": "poop",
-              "count": 1
-            }
-          }
-        },
+        }
+      ],
+      "heatrock": [
         {
           "id": "e_0bc6c89888cef8ae8c9790dc3f77e3ad",
           "transform": {
@@ -32013,24 +32060,9 @@
               "remainingFuel": 100
             }
           }
-        },
-        {
-          "id": "e_d17f9cb5ea74ba458bd47276c49f9b65",
-          "transform": {
-            "position": [
-              -54.859616104369444,
-              0,
-              39.69492077219988
-            ],
-            "rotationY": 0
-          },
-          "components": {
-            "stack": {
-              "itemId": "poop",
-              "count": 1
-            }
-          }
-        },
+        }
+      ],
+      "book_rain": [
         {
           "id": "e_a2d7407423ea49b87bb1170e99ee5852",
           "transform": {
@@ -32048,7 +32080,9 @@
               "remainingUses": 4
             }
           }
-        },
+        }
+      ],
+      "amulet": [
         {
           "id": "e_0590d4857580803e8b5947fbfb6b137a",
           "transform": {

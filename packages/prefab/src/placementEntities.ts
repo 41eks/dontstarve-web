@@ -17,6 +17,8 @@ export interface PlacementBlocker {
   readonly groundHoleRangeOverride?: number;
   readonly visible?: boolean;
   readonly logicalTree?: boolean;
+  /** The engine inst the entry stands for, so a deploy can skip the inst being deployed (map.lua `v ~= inst`). */
+  readonly inst?: object;
   hasTag?(tag: string): boolean;
   getInventoryRadius?(fallback: number): number | undefined;
 }
@@ -41,6 +43,7 @@ export function registerPlacementEntity(model: Object3D, position: () => Readonl
     // An asleep model has left the scene; its display still knows the parent it returns to.
     get root() { return model.parent ? model : prefabDisplay(model)?.wakeParent ?? null; },
     get logicalTree() { return instance?.logicalPlacement; },
+    inst: instance,
     get position() { return position(); },
     get prefab() { return findActionEntity(model)?.prefab ?? instance?.prefab; },
     get smartRadius() { return instance?.deploySmartRadius ?? model.userData.deploySmartRadius; },

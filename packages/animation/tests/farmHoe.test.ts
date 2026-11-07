@@ -49,8 +49,8 @@ function advance(animation: WilsonAnimationController, frames: number) {
 it('resolves both source ground builds, the separate golden held build and invisible equipment', async () => {
   const assets = new GroundItemAssets();
   try {
-    const ordinary = await createGroundItemVisual(assets, 'farm_hoe');
-    const gold = await createGroundItemVisual(assets, 'golden_farm_hoe', 'golden_farmhoe_garden');
+    const ordinary = await createGroundItemVisual('farm_hoe');
+    const gold = await createGroundItemVisual('golden_farm_hoe', 'golden_farmhoe_garden');
     for (const sprite of [ordinary, gold]) {
       expect((sprite.model.children[0].children[0].children[0] as THREE.Mesh).geometry.drawRange.count).toBeGreaterThan(0);
       sprite.dispose();

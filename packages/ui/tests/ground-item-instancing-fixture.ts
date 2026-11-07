@@ -1,18 +1,23 @@
-import { SpriteResources } from '../../display/src';
 import * as THREE from 'three';
-import { GroundItemAssets, createResidentGroundItem, type ResidentGroundItem } from '../../prefab/src/groundItems';
+import { prefabDisplay } from '../../display/src';
 import { renderSceneWithPasses } from '../../animation/src/sceneRenderPass';
+import { itemAt, ItemWorldFixture } from '../../animation/tests/itemWorldFixture';
+import { createPickupInventory } from '../../animation/tests/pickupFixture';
+import type { ItemEntity } from '../../inventory/src';
 
 export async function checkGroundItemInstancing() {
-  const assets = new GroundItemAssets(), scene = new THREE.Scene();
+  const scene = new THREE.Scene(), inventory = createPickupInventory();
+  const world = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(), undefined, '/dst/data/databundles/images.zip', inventory,
+    '/dst/data/anim', new THREE.Group());
   const renderer = new THREE.WebGLRenderer();
   renderer.setSize(128, 128);
+  // The torches lie on the ground plane; the camera looks down on it.
   const camera = new THREE.OrthographicCamera(-10, 10, 10, -10, .1, 100);
-  camera.position.z = 20;
-  const items: ResidentGroundItem[] = [];
+  camera.position.set(0, 20, 0); camera.lookAt(0, 0, 0);
+  const items: ItemEntity[] = [];
   const tick = () => new Promise(resolve => setTimeout(resolve, 0));
   const sample = () => {
-    assets.instancedSprites.flush(renderer);
+    world.archives.instancedSprites.flush(renderer);
     renderSceneWithPasses(renderer, scene, camera);
     const colour = scene.getObjectByName('ArchiveSpriteInstances:colour') as THREE.InstancedMesh | undefined;
     return { calls: renderer.info.render.calls, count: colour?.count ?? 0 };
@@ -20,33 +25,34 @@ export async function checkGroundItemInstancing() {
   try {
     // Static held poses and split animation/build archives use the same instancing path as loops.
     for (let index = 0; index < 24; index++) {
-      const item = createResidentGroundItem({ sprites: new SpriteResources(undefined, undefined, assets) }, { itemId: 'torch' });
-      await item.display.artLoaded();
-      item.instance.position.set(index % 6 * 3 - 8, Math.floor(index / 6) * 3 - 5, 0);
-      scene.add(item.visual.model);
-      items.push(item);
+      const model = world.spawnFromSave(`torch:${index}`, { itemId: 'torch', count: 1, name: 'torch', icon: '' },
+        new THREE.Vector3(index % 6 * 3 - 8, 0, Math.floor(index / 6) * 3 - 5));
+      await prefabDisplay(model)!.artLoaded();
+      items.push(itemAt(model));
       if (index === 0) sample();
     }
     const many = sample();
     const batch = scene.getObjectByName('ArchiveSpriteInstances:colour') as THREE.InstancedMesh;
     const texture = (batch.material as THREE.MeshBasicMaterial).map;
-    items[0].instance.setActive(false);
+    items[0].setActive(false);
     await tick();
     const asleep = sample();
-    items[0].instance.setActive(true);
+    items[0].setActive(true);
     // The cached archives still rebuild the resident sprite asynchronously.
     await tick();
     const awake = sample();
     const sameBatch = scene.getObjectByName('ArchiveSpriteInstances:colour') === batch;
     const sameTexture = (batch.material as THREE.MeshBasicMaterial).map === texture;
-    const position = items[0].instance.position.toArray();
-    items[0].visual.dispose();
+    const position = items[0].position.toArray();
+    // A removed inst's display releases its instance as its lifecycle effect runs.
+    items[0].remove();
+    await tick();
     const removed = sample();
-    for (const item of items.slice(1)) item.visual.dispose();
+    for (const item of items.slice(1)) item.remove();
+    await tick();
     const empty = sample();
     return { many, asleep, awake, sameBatch, sameTexture, position, removed, empty };
   } finally {
-    for (const item of items) item.visual.dispose();
-    assets.dispose(); renderer.dispose();
+    world.dispose(); inventory.dispose(); renderer.dispose();
   }
 }

@@ -1,13 +1,13 @@
 import { expect, it } from 'vitest';
 import { Transform } from '../../prefab/src/transform';
-import { LootFling } from '../../prefab/src/lootFling';
+import { LootFling } from '../../componets/src/inventoryphysics';
 
 const transform = (x = 0, z = 0) => { const result = new Transform(); result.setPosition(x, 0, z); return result; };
 
 it('uses Lua random direction, speed, vertical variance and collision-radius offset', () => {
   const samples = [0.25, 0.5, 0.75];
   const entityTransform = transform(10, 20);
-  const fling = new LootFling(entityTransform, 0.4, () => samples.shift()!);
+  const fling = new LootFling(entityTransform, 0.4, () => samples.shift()!, undefined, 3);
   expect(fling.position.x).toBeCloseTo(10);
   expect(fling.position.z).toBeCloseTo(20 - (0.4 + 0.5) * 3);
   expect(fling.velocity.x).toBeCloseTo(0);
@@ -26,8 +26,8 @@ it('uses Lua random direction, speed, vertical variance and collision-radius off
 });
 
 it('returns to the ground, rebounds and settles independently of frame subdivision', () => {
-  const fine = new LootFling(transform(), 0.4, () => 0.5);
-  const coarse = new LootFling(transform(), 0.4, () => 0.5);
+  const fine = new LootFling(transform(), 0.4, () => 0.5, undefined, 3);
+  const coarse = new LootFling(transform(), 0.4, () => 0.5, undefined, 3);
   for (let i = 0; i < 300; i++) {
     fine.update(1 / 60);
     expect(fine.height).toBeGreaterThanOrEqual(0);
@@ -44,7 +44,7 @@ it('returns to the ground, rebounds and settles independently of frame subdivisi
   fine.update(100);
   expect(fine.position).toEqual(landing);
 
-  const bouncing = new LootFling(transform(), 0.4, () => 0.5);
+  const bouncing = new LootFling(transform(), 0.4, () => 0.5, undefined, 3);
   bouncing.update(0.54); // first impact at 2 * 24 / 90 seconds
   expect(bouncing.height).toBeGreaterThan(0);
   expect(bouncing.velocity.y).toBeGreaterThan(0);

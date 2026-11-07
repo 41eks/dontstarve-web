@@ -1,13 +1,12 @@
-import { findActionEntity } from './actionEntity';
+import { FindEntities } from './actionEntity';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { createSignal, readonlySignal, getBoundWatchWorldContent } from '@dontstarve-web/signals';
-import { createArchiveEntity, prefabInstance } from './prefabInstance';
+import { createArchiveEntity } from './prefabInstance';
 import { Burnable } from '../../componets/src/burnable';
 import { Propagator } from '../../componets/src/propagator';
 import type { BurnableInst } from '../../componets/src/burnable';
-import type { GroundPrefabContext, GroundItemVisual } from './groundPrefab';
-import type { ResidentGroundItem } from './groundItems';
-import type { PrefabDisplay } from '@dontstarve-web/display';
+import type { ItemPrefabWorld } from './groundPrefab';
+import { GROUND_ART_DEFINITIONS, groundItemPrefab, type ItemPrefabDefinition } from './groundItems';
 import catalog from './groundItems.json' with { type: 'json' };
 import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
 import { TILE_SIZE } from './tile';
@@ -41,37 +40,31 @@ export const BURNABLE_ITEM_DEFINITIONS: Readonly<Record<string, { burnTime: numb
 };
 const ASH_MAX_STACK = 40; // ash.lua: TUNING.STACK_SIZE_SMALLITEM
 
-interface BurnPresentation {
-  context: GroundPrefabContext;
-}
-
-/** The inst owns the burning clock and persistence; preparing/replacing art keeps this component. */
+/** The inst owns the burning clock and persistence; its world spawns the ash and finds the fire's neighbours. */
 export class BurnableItemController {
   private readonly burntState = createSignal(false);
   readonly burnt = readonlySignal(this.burntState);
   readonly burnable: Burnable;
   readonly propagator: Propagator;
-  private presentation?: BurnPresentation;
+  private world?: Pick<ItemPrefabWorld, 'spawnGroundItem'>;
   private removed = false;
   private readonly entity: ItemEntity;
+  /** Whether the components keep their own game-time clock, as an item outside any world does. */
+  readonly ownsClock: boolean;
 
   constructor(entity: ItemEntity) {
     this.entity = entity;
     for (const tag of BURNABLE_ITEM_DEFINITIONS[entity.prefab].tags) entity.addTag(tag);
-    this.burnable = new Burnable(entity);
+    const scheduler = entity.components.perishable.scheduler;
+    this.ownsClock = !scheduler;
+    this.burnable = new Burnable(entity, scheduler);
     entity.components.burnable = this.burnable;
     const { burnTime, burnTimeVariance = 0, explosive } = BURNABLE_ITEM_DEFINITIONS[entity.prefab];
     this.burnable.SetBurnTime(burnTime + Math.random() * burnTimeVariance);
-    this.propagator = new Propagator(entity, 'small', radius => {
-      const origin = entity.getPosition(), neighbours: BurnableInst[] = [];
-      this.presentation?.context.scene.traverse(model => {
-        const inst = findActionEntity(model) as BurnableInst | undefined;
-        if (!inst?.components.propagator || inst.isRemoved || inst.hasTag('INLIMBO')) return;
-        const position = inst.getPosition();
-        if ((position.x - origin.x) ** 2 + (position.z - origin.z) ** 2 <= radius ** 2) neighbours.push(inst);
-      });
-      return neighbours;
-    }, TILE_SIZE / 4);
+    // MakeSmallPropagator: the neighbours are the propagators FindEntities finds in range.
+    this.propagator = new Propagator(entity, 'small', radius => FindEntities(entity.getPosition(), radius)
+      .filter(inst => inst.components.propagator && !inst.isRemoved && !inst.hasTag('INLIMBO')) as unknown as BurnableInst[],
+    TILE_SIZE / 4, scheduler);
     entity.components.propagator = this.propagator;
     this.burnable.SetOnIgniteFn(() => { entity.persists = false; }); // DefaultBurnFn
     this.burnable.SetOnExtinguishFn(() => { entity.persists = true; }); // DefaultExtinguishFn
@@ -79,21 +72,19 @@ export class BurnableItemController {
       const count = Math.min(ASH_MAX_STACK, entity.components.stackable.count);
       const position = entity.transform.position.clone();
       // DefaultBurntFn creates one ash stack at the original inst's position, then removes the inst.
-      const spawnGroundItem = this.presentation?.context.spawnGroundItem;
+      const spawnGroundItem = this.world?.spawnGroundItem;
       if (!spawnGroundItem) throw new Error('Burning item requires a world to spawn ash');
       spawnGroundItem({ ...catalog.items.ash, itemId: 'ash', count }, position);
       this.burntState.set(true);
       entity.remove();
     });
   }
-  bind(presentation: BurnPresentation): void {
-    this.presentation = presentation;
+  bind(world: Pick<ItemPrefabWorld, 'spawnGroundItem'>): void {
+    this.world = world;
     this.propagator.setWorldContent(getBoundWatchWorldContent());
   }
-  release(presentation: BurnPresentation): void {
-    if (this.presentation === presentation) this.presentation = undefined;
-  }
-  update(dt: number): void {
+  /** Advances the components' own clock; a world's scheduler advances them otherwise. */
+  OnUpdate(dt: number): void {
     if (this.removed || this.entity.isRemoved || this.entity.components.inventoryitem.owner) return;
     this.burnable.Update(dt);
     this.propagator.Update(dt);
@@ -103,7 +94,7 @@ export class BurnableItemController {
     this.removed = true;
     this.burnable.SetOnExtinguishFn(undefined);
     this.burnable.dispose(); this.propagator.dispose();
-    this.presentation = undefined;
+    this.world = undefined;
   }
 }
 
@@ -113,65 +104,55 @@ export function configureBurnableItemEntity(entity: ItemEntity): void {
 }
 
 /**
- * Existing ground art and generic fire FX; the item's own display and the fire's display load their art. The prefab
- * declares the fire as an effect that is active while the item burns; its display shows it as a child of the item, as
- * DST's Burnable:SpawnFX does. Sound and light follow the same burning signal.
+ * MakeSmallBurnable's presentation on the item: Burnable:SpawnFX's fire is the item's child, declared as an effect
+ * that is active while the item burns; its display shows it with the item. Sound and light follow the same burning signal.
  */
-export function createBurnableItemVisual(context: GroundPrefabContext,
-  itemId: string, base: ResidentGroundItem, displays: Set<PrefabDisplay>, fxLevel: 2 | 3 = 2): GroundItemVisual {
-  const { visual, instance, display } = base;
-  const { igniteSound, loopSound } = BURNABLE_ITEM_DEFINITIONS[itemId];
-  const fireSource = context.sprites.archive({ animationArchive: 'fire.zip', buildArchives: ['fire.zip'], bank: 'fire' }, { dynamicParent: true });
+export function bindBurnableItem(inst: ItemEntity, world: ItemPrefabWorld, fxLevel: 2 | 3 = BURNABLE_ITEM_DEFINITIONS[inst.prefab].fxLevel ?? 2): void {
+  const { igniteSound, loopSound } = BURNABLE_ITEM_DEFINITIONS[inst.prefab];
+  configureBurnableItemEntity(inst);
+  const controller = inst.getComponent<BurnableItemController>('burnable_item')!;
+  controller.bind(world);
+  if (controller.ownsClock) inst.onRemove(world.componentUpdates.register(controller));
+  const fireSource = world.sprites.archive({ animationArchive: 'fire.zip', buildArchives: ['fire.zip'], bank: 'fire' }, { dynamicParent: true });
   // fire.lua: the burning fx entity, drawn by its own display as a child of the item; tags FX and HASHEATER.
-  const fire = createArchiveEntity('fire', fireSource, { name: `level${fxLevel}`, billboard: true }, 'fire', undefined, instance.status);
+  const fire = createArchiveEntity('fire', fireSource, { name: `level${fxLevel}`, billboard: true }, 'fire', undefined, inst.status);
   for (const tag of ['FX', 'HASHEATER']) fire.instance.addTag(tag);
   fire.instance.persists = false;
-  const presentation = { context };
-  const model = display.model;
-  let controller: BurnableItemController;
-  let stopBurning: (() => void) | undefined;
-  let stopIgnite: (() => void) | undefined;
   let sound: SoundHandle | undefined;
   let loop: SoundHandle | undefined;
   let burningNow = false;
-  let disposed = false;
   const clearBurning = () => {
     burningNow = false;
     sound?.stop(); sound = undefined;
     loop?.stop(); loop = undefined;
-    prefabInstance(model)!.light.set(null);
+    inst.light.set(null);
   };
   const syncBurning = (burning: boolean) => {
     if (burning) {
       burningNow = true;
-      sound = PlaySound('dontstarve/common/campfire', model.position);
-      if (loopSound) loop = PlaySound(loopSound, model.position);
-      prefabInstance(model)!.light.set({ colour: [1, 1, 192 / 255], radius: (fxLevel + 1) * (TILE_SIZE / 4), intensity: .8, falloff: .33 });
+      sound = PlaySound('dontstarve/common/campfire', inst.position);
+      if (loopSound) loop = PlaySound(loopSound, inst.position);
+      inst.light.set({ colour: [1, 1, 192 / 255], radius: (fxLevel + 1) * (TILE_SIZE / 4), intensity: .8, falloff: .33 });
     } else {
       const wasBurning = burningNow;
       clearBurning();
-      if (wasBurning) PlaySound('dontstarve/common/fireOut', model.position);
+      if (wasBurning) PlaySound('dontstarve/common/fireOut', inst.position);
     }
   };
-  displays.add(display);
-  configureBurnableItemEntity(instance);
-  controller = instance.getComponent<BurnableItemController>('burnable_item')!;
-  controller.bind(presentation);
-  instance.sprite.attachFx('fire', { sprite: fire.instance.sprite, display: fire.display, active: controller.burnable.burning, sortLayer: 2 });
-  stopBurning = controller.burnable.burning.subscribe(syncBurning);
+  inst.sprite.attachFx('fire', { sprite: fire.instance.sprite, display: fire.display, active: controller.burnable.burning, sortLayer: 2 });
+  const stopBurning = controller.burnable.burning.subscribe(syncBurning);
   syncBurning(controller.burnable.IsBurning());
   // inst:ListenForEvent("onignite", ...) fires only on a new ignition, not when a burning save is restored.
-  if (igniteSound) stopIgnite = instance.ListenForEvent('onignite', () => { PlaySound(igniteSound, model.position); });
+  const stopIgnite = igniteSound ? inst.ListenForEvent('onignite', () => { PlaySound(igniteSound, inst.position); }) : undefined;
+  inst.onRemove(() => {
+    stopBurning(); stopIgnite?.();
+    clearBurning();
+    inst.sprite.detachFx('fire'); fire.instance.remove(); fire.display.dispose();
+  });
+}
 
-  return {
-    ...visual,
-    update(dt) { controller?.update(dt); },
-    dispose() {
-      if (disposed) return;
-      disposed = true;
-      stopBurning?.(); stopIgnite?.(); controller?.release(presentation);
-      clearBurning(); displays.delete(display);
-      instance.sprite.detachFx('fire'); fire.instance.remove(); fire.display.dispose(); visual.dispose();
-    },
-  };
+/** The MakeSmallBurnable items without a module of their own. */
+export function burnableItemPrefabs(world: ItemPrefabWorld, exclude: readonly string[]): Record<string, ItemPrefabDefinition> {
+  return Object.fromEntries(Object.keys(BURNABLE_ITEM_DEFINITIONS).filter(id => !exclude.includes(id) && Object.hasOwn(GROUND_ART_DEFINITIONS, id))
+    .map(id => [id, groundItemPrefab(id, world, { configure: inst => bindBurnableItem(inst, world) })]));
 }

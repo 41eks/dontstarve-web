@@ -28,6 +28,7 @@ DST 场景预制体。该包基于 `@dontstarve-web/animation` 组合具体资�
 - `flowerPrefabs`（`flower.ts`）：`flower`、`flower_rose`、`planted_flower` 的 `PrefabEntityDefinition`，由应用层的 `PrefabEntityManager` 注册；`FlowerInstance` 持有 `pickable`、`MakeSmallBurnable`／`MakeSmallPropagator`（烧完经 `DefaultBurntFn` 生成灰烬）与 `SetRayTestOnBB`，三者都以 `flower` 存档。均可 `c_spawn`，无 `c_give`；蝴蝶按 `flower` 标签查找它们。
 - `tumbleweedPrefabs`（`tumbleweed.ts`）：`tumbleweed` 与 `tumbleweedbreakfx` 的 `PrefabEntityDefinition`，由应用层的 `PrefabEntityManager` 注册；`TumbleweedInstance` 持有 `blowinwind`／`locomotor`、地面检查与长动作重启任务，经注入的 `componentUpdates`（StartUpdatingComponent）在物理步进后跟随刚体并更新风速，采摘时经注入的 `spawnPrefab` 生成 `tumbleweedbreakfx`。`c_spawn("tumbleweed")`，无 `c_give`；燃烧、音效与作祟未移植。
 - `berniePrefabs`（`bernie.ts`）：`bernie_active`、`bernie_big` 的 `PrefabEntityDefinition`，由应用层的 `PrefabEntityManager` 注册。地上的 `bernie_inactive` 物品在醒着时按 `tryreanimate` 每秒寻找 16 单位内理智疯狂、可见的玩家，经注入的 `spawnPrefab` 生成 `bernie_active`（皮肤加 `_active`）后移除自身。`BernieInstance` 持有 health、`SGbernie`／`SGberniebig`（`activate`→`idle_nodir`→`idle`、`deactivate`）、在游戏时间上计时的 AnimState，以及 `BernieBrain`／`BernieBigBrain`：带 `bernieowner` 标签的疯狂玩家在 8 单位内时变大（`leader.bigbernies` 记录领队），没有疯狂玩家时坐下并经注入的 `spawnInactive` 变回物品（去掉皮肤后缀）。health 存为 `health`（`current`／`maximum`），读档的 `bernie_big` 直接进入 `idle`。`c_spawn("bernie_active")`、`c_spawn("bernie_big")` 无额外参数，物品仍为 `c_give("bernie_inactive")`；跟随、战斗、嘲讽、拾取替换、燃料与腐坏、技能树、音效未移植。
+- `itemPrefabs`（`itemPrefabs.ts`）：每个库存物品与地面展示美术的 `PrefabEntityDefinition<ItemEntity>`，由应用层的 `PrefabEntityManager` 注册，库存的物品注册表经它 SpawnPrefab。物品在世界中各自以 prefab ID 存档（`world.entities.<prefab>[]`，记录含 `stack`，火把／提灯／留声机另有 `torch`／`lantern`／`phonograph`），不再使用 `ground_item` 分组；被持有的物品（包括地上背包里的物品）处于 limbo，由持有者保存。`c_spawn` 与 `c_give` 支持的 ID 与语法不变；`c_spawn` 按源 `SpawnPrefab` 生成而不经过丢弃，所以 `c_spawn("lantern")` 的提灯为关闭状态（只有 `ondropped` 会打开），需对它执行 TURNON 或丢弃一次。
 - `archiveCentipedeHuskPrefabs`（`archive_centipede.ts`）：档案馆蜈蚣残骸 `archive_centipede_husk` 的 `PrefabEntityDefinition`，由应用层的 `PrefabEntityManager` 注册；`ArchiveCentipedeHuskInstance` 持有 health（每秒回复 1 点）、`OnHealthDelta`／`OnAttacked` 的分段动画、`idle2task` 和 lootdropper／inspectable／combat／hauntable，`OnSave`／`OnLoad` 按 `health`（`current`／`maximum`）存取，读档时 `ForceUpdateHUD` 不切换动画。`c_spawn("archive_centipede_husk")` 无额外参数，没有 `c_give`；活体 `archive_centipede` 与 `possess` 复活未移植。
 - `chesspiecePrefabs`（`chesspieces.ts`）：大理石信天翁雕像 `chesspiece_malbatross_marble` 的 `PrefabEntityDefinition`，由应用层的 `PrefabEntityManager` 注册；`ChesspieceInstance` 持有 `workable`（锤 1 次）、`lootdropper`（`marble`）、`heavyobstaclephysics` 等组件，存档写 `chesspiece.materialid`，`submersible` 组件自存 `force_no_repositioning`。`c_spawn`，无 `c_give`；其他雕像、材质与月相变形未移植。
 - `moonTreePrefabs`、`evergreenPrefabs`、`deciduousPrefabs`、`mushtreePrefabs`：月树与幼苗、常青树、桦树、蘑菇树（含 `_stump` 与烧毁特效）的 `PrefabEntityDefinition`，由应用层的 `PrefabEntityManager` 注册；不生成森林
@@ -41,7 +42,7 @@ DST 场景预制体。该包基于 `@dontstarve-web/animation` 组合具体资�
 
 `TorchController.onequip(slotSignal)` 绑定调用方提供的槽位；`onunequip()` 停止燃烧并解除绑定，不改变槽位值。`extinguish()` 仅在绑定槽位仍保存同一次装备实例时清空它；地面火把没有绑定槽位。
 
-`TorchController.OnPutInInventory()` 恢复闲置状态并停止火焰，保留 fuel；`OnExtinguish()` 处理未持有且未耗尽的地面火把。`createTorchGroundFactory()` 将成功拾取和外部熄灭事件接入这些回调，管理独立地面照明、剩余燃料及熄灭弹跳。声音通过共享 `PlaySound()` / `PreloadSounds()` 播放，地面声音在拾取或移除时释放，玩家拥有的一次性音效允许自然播放结束。地面 lit 状态及 fuel 可保存和恢复，换肤保持状态，恢复不重播点燃声。
+`TorchController.OnPutInInventory()` 恢复闲置状态并停止火焰，保留 fuel；`OnExtinguish()` 处理未持有且未耗尽的地面火把。`torchPrefabs()` 在 torch 的 prefab 上把拾取、掉落和外部熄灭事件接入这些回调，管理独立地面照明、剩余燃料及熄灭弹跳（`inventoryphysics.Launch`）；`OnSave` 只在未处于 limbo 且燃烧时写 `torch.lit`，读档时按源 `OnLoad` 播放 `land` 并 `IgniteTossed`。声音通过共享 `PlaySound()` / `PreloadSounds()` 播放，地面声音在拾取或移除时释放，玩家拥有的一次性音效允许自然播放结束。地面 lit 状态及 fuel 可保存和恢复，换肤保持状态，恢复不重播点燃声。
 
 `CookPotPlacement` 使用 DST 预制体 ID `cookpot` 和 `anim/cook_pot.zip`，默认显示
 `idle_empty`，放置时播放 `place` 后回到 `idle_empty`。可通过包主入口或
@@ -173,24 +174,20 @@ W.A.R.B.I.S. 头戴装备、检查镜和兔子帽的主体跟随部件直接合�
 `python3 packages/prefab/scripts/import-hats.py` 可重新生成帽子目录并镜像资产，
 `--source` 可指定 DST data 根目录，`--check` 校验目录与所有镜像文件。
 
-`createHatGroundFactory(context)` 把落地帽子创建为 `createPrefabEntity()` 实体，使用独立的落地 `anim` 动画，遵循
+`hatPrefabs(world)` 把每顶帽子声明为物品 prefab，使用独立的落地 `anim` 动画，遵循
 `hats.lua` 的 `SetBank(name.."hat")` / `SetBuild("hat_"..name)` / `PlayAnimation("anim")`。
-sprite 来自按帽子 archive 与皮肤共享的 `createAnimatedSpriteSource()`，由 `PrefabDisplay` 绘制；
-落地／读档后经 `bindResidentGroundItem()` 绑定 tile 活动，与目录物品相同。
-落地帽子按实体的地面接触点参与遮挡排序，点击合并 Mesh 可拾取，存档保存真实落点。
+sprite 来自定义的 `source`：每顶帽子首次绘制时建立 `createAnimatedSpriteSource()`，由 `PrefabEntityManager` 在所有实体之后释放；
+皮肤列表即 `skins`。落地帽子按实体的地面接触点参与遮挡排序，点击合并 Mesh 可拾取，存档保存真实落点。
 兔子帽按 `rabbit_custom_init` 以 `rabbit_build` 为 build，并以 sprite 来源的 `overrideBuilds: { hat_rabbit: 'hat_rabbit.zip' }` 声明帽子部件，由 display 随来源一起加载。
 
-`@dontstarve-web/prefab/groundItems` 提供 `GROUND_ITEM_DEFINITIONS`、
-`GroundItemAssets` 和 `createResidentGroundItem({ assets, tickingarea? }, { itemId, entity?, skinId? })`。
-`entity` 是物品自己的逻辑实例，地面工厂的 `create(definition, entity)` 将它交给 display；未提供时独立创建器构造一个 ItemEntity。地面、背包、装备栏和存档中的皮肤都来自该实例的 `sprite.skinId`，不再用共享 sprite json 连接两个逻辑实体。
-同步返回 `{ visual, instance, display }`，prefab 通过 `instance.sprite` 声明动画与外观，
-由 `PrefabDisplay` 加载美术、创建和释放 sprite（需要等待绘制时用 `display.artLoaded()`）；落地／读档后绑定 tile，休眠时保留稳定模型、身份与组件。
-其他 sprite 来源（如 factory 路径的落地帽子）用 `groundItemLifecycle.ts` 的 `bindResidentGroundItem(context, instance, display)` 获得同一生命周期。
+`@dontstarve-web/prefab/groundItems` 提供 `GROUND_ITEM_DEFINITIONS`、`groundArtArchive(itemId, variant?)`
+和 `groundItemPrefab(itemId, world, { configure? })`。prefab 的 `fn` 在物品自己的 `sprite` 上声明 clip、标签、符号覆盖、
+地面层和缩放，美术按 `instanceAssets`（随存档的 variant）由 `PrefabEntityManager` 的 display 加载；地面、背包、装备栏和
+存档中的皮肤都来自该实例的 `sprite.skinId`。休眠和 limbo 时 display 释放 sprite，模型、身份与组件保留。
 通用资源加载、动画选择、符号覆盖、模型创建和逐帧绘制由
-`@dontstarve-web/animation/archiveSprite` 提供。`GroundItemAssets` 继承其共享缓存，
-保留 `ground:` 材质名称；prefab 层负责物品定义、皮肤校验、实体物品信息和库存事件。
+`@dontstarve-web/animation/archiveSprite` 提供；prefab 层负责物品定义、皮肤校验、实体物品信息和库存事件。
 目录包含 221 种材料、工具、提灯、荧光果、唤星者魔杖、唤月者魔杖、清洁扫把、肉类、蔬菜、墙体物品和普通烹饪食物，以及 94 个皮肤 ID。
-初始背包里的物品均已接入地面动画；未进入目录的其他物品仍使用图标回退。
+初始背包里的物品均已接入地面动画；未进入目录的其他物品由 `iconItemPrefab` 画物品栏图标。
 资源由 `python3 packages/prefab/scripts/import-ground-items.py` 镜像，`--check`
 校验目录及源文件字节，`--source` 可指定 DST data 根路径。
 
@@ -203,7 +200,7 @@ sprite 来自按帽子 archive 与皮肤共享的 `createAnimatedSpriteSource()`
 各帧所有部件合并为一个 Mesh，保留材质组顺序及 DoubleSide 单次绘制。
 地面模型的原点保持真实落点，动画视觉不改变存档位置；点击 Mesh 可拾取，
 资源加载或背包扣减失败时不会丢失物品。普通地面精灵不创建灯光、声音或独立特效实体；
-提灯通过下述专用工厂提供亮灯状态与局部光源描述。
+提灯通过下述专用 prefab 提供亮灯状态与局部光源描述。
 
 提灯由 `@dontstarve-web/prefab/lantern` 提供。物品 ID 是 `lantern`，源代码为
 `prefabs/mininglantern.lua`。地面使用 `lantern.zip` 的 bank/build `lantern`，
@@ -212,52 +209,21 @@ sprite 来自按帽子 archive 与皮肤共享的 `createAnimatedSpriteSource()`
 12 个皮肤 ID 使用目录中的原始 build 和别名，缺少的手持符号回退到基础手持 build。
 
 ```ts
-const assets = new GroundItemAssets();
-const item = new ItemEntity({ itemId: 'lantern', count: 1 });
-configureLanternEntity(item);
-const lamp = createLanternGroundSprite({ assets, tickingarea }, item); // display 绑定原实例后加载美术
-scene.add(lamp.model); // 位置由调用方设置，ondropped 开灯
-lamp.instance.PushEvent('ondropped');
-lamp.instance.PushEvent('onputininventory'); // 关闭地面光源
-lamp.instance.PushEvent('ondropped'); // 再次放到地面，恢复灯光
-lamp.light.setLit(false);
-lamp.light.setFuelPercent(0.5);
-lamp.light.setLit(true);
-lamp.dispose();
-item.destroy();
-assets.dispose();
+// lanternPrefabs(world) 声明 lantern 的 prefab；SpawnPrefab 经物品注册表进入世界。
+const lantern = inventory.entities.create({ itemId: 'lantern', count: 1 });
+inventory.DropItem(lantern, position); // inventoryitem:OnDropped：ondropped 先关后开
+inventory.GiveItem(lantern); // OnPutInInventory 关灯，RemoveFromScene 使地面光源随 display 休眠
 
 // 手持提灯走库存：装备时 equippable:Equip(owner) 执行 prefab 的 onequip，卸下时执行 onunequip。
 inventory.EquipFromInventory(lantern);
 inventory.Unequip('hand'); // 收回背包；mininglantern 的规则决定何时关灯
 ```
 
-地面物品的库存事件使用实体自己的 `THREE.Object3D` 事件系统。各 prefab TS 通过
-`listenInventoryEvents(model, { ondropped, onputininventory, onload })` 注册处理函数，
-该函数由 `@dontstarve-web/prefab/inventoryEvents` 导出，并返回取消监听的函数；
-prefab 的 `dispose()` 调用它清理监听。`ondropped` 在成功从库存移到地面后触发，
-`onputininventory` 在成功拾取或虫网捕获后、移除地面模型前触发；失败的库存操作
-不触发这两个事件。`onload` 用于存档恢复或换肤后的地面初始化，不重放掉落效果。
-`GroundItemManager`（`src/groundItemManager.ts`）负责按创建器注册表创建实例、设置落点和分发事件；
-灯光、活动、动画和 Bernie 形态的处理保留在各 prefab 中。
+物品（库存物品与只作展示的地面美术）是 `PrefabEntityManager` 上的 prefab：`itemPrefabs(world, icons)`（`src/itemPrefabs.ts`）为每个物品 ID 组装 `PrefabEntityDefinition<ItemEntity>`，有专门模块的物品取自己模块的定义（`hatPrefabs`、`firefliesPrefabs`、`butterflyPrefabs`、`molePrefabs`、`lightflierPrefabs`、`lightbulbPrefabs`、`lanternPrefabs`、`phonographPrefabs`、`torchPrefabs`、`poopPrefabs`、`rockAvocadoFruitPrefabs`、`gunpowderPrefabs`、`bernieItemPrefabs`、`burnableItemPrefabs`），其余按 `groundItemPrefab` 用地面美术目录，目录外的库存物品按 `iconItemPrefab` 画物品栏图标。`fn` 经注入的 `ItemPrefabWorld.newItem` 由物品注册表构造实例、声明美术和 `MakeInventoryPhysics`；`onSpawned` 在存档状态恢复后由库存元数据配置组件，再运行模块自己的部分（`configure`），读档时的 prefab 记录（`torch`、`lantern`、`phonograph`）从 `inst.saveRecord` 读取，保存时写在 `inst.OnSave`。
 
-`GroundItemManager` 在 `animationBaseUrl` 后接收必填的 `player: THREE.Object3D`。
-地面拾取与木箱共用 `@dontstarve-web/prefab/playerProximity` 的水平距离判断：
-进入距离为 9，退出距离为 10；每帧及拾取前更新状态，超过范围时不修改库存，
-也不触发 `onputininventory`。普通物品、帽子、Bernie 和图标回退均遵守该规则；
-虫网继续在捕获动作中检查自身距离。`ondropped` 仍在成功丢弃后触发。
+应用层把库存的 `ItemEntityRegistry.bindSpawner()` 接到这个管理器，所有物品实例都经 SpawnPrefab 进入世界：放进库存时 `inventoryitem` 设置 owner 并 `RemoveFromScene`（`INLIMBO`，display 休眠、不保存），`inventory:DropItem` → `inventoryitem:OnDropped()` 时 `ReturnToScene`，`inventoryphysics` 按 `launch` 抛出，落地发 `on_landed`。腐烂替换由 `perishable` 经 `PerishWorld.SpawnPrefab` 完成；拾取（`PICKUP`）直接读目标的 `inventoryitem`；换皮从实例 sprite 声明的皮肤源取皮肤列表；绿杖拆解对可堆叠实例只移除一个。成堆的萤火虫、蝴蝶、光虫按各自的 `OnDropped` 逐只放下（`dropStackIndividually`）。`spawnGroundStack()`／`flingLoot()` 是 SpawnPrefab 加 `OnDropped`／`FlingItem` 的封装，应用层注入为 `spawnGroundItem`／`dropLoot`。
 
-每个 prefab TS 同时导出 `createXXXGroundFactory(context)`，在自己的文件中绑定
-`createXXXGroundSprite`、声明 `itemIds` 和虫网捕获策略，并管理专用资产缓存。
-`GroundPrefabRegistry` 统一装配这些模块，先注册通用物品和帽子，再按相同 ID
-注册特殊 prefab；共享动画/build 缓存由注册表统一释放。应用的管理器只传入
-资源路径、世界上下文和附近实体查询，不再逐个绑定创建器或管理 prefab 缓存。
-`createBernieGroundSprite`、`createLanternGroundSprite`、`createLightbulbGroundSprite`、
-`createButterflyGroundSprite` 和 `createFirefliesGroundSprite` 的实现及库存事件均在
-对应 prefab TS 中。每个工厂接收真实 `ItemEntity`（`PrefabInstance` 子类），返回的 visual.instance 就是它；普通 archive、分离 bank/build、帽子、提灯、蝴蝶和萤火虫均复用这一结构。独立使用的创建器在没有传入物品时创建一个逻辑物品实例。已移除 bindTransform / bindEntity，库存与地面共用身份、组件、标签、事件、皮肤及持久化状态，拾取和落地只改变归属及 display 生命周期。
-
-萤火虫通过 `createSharedArchiveSprite()` 创建：同一个 `FirefliesAssets` 持有一个
-`ArchiveSpriteAssets`，`swarm_loop` 预合成完整帧后实例化，`swarm_pre` / `swarm_pst`
+萤火虫的 prefab 声明 `fireflies.zip` 和 `instancedAnimations: ['swarm_loop']`，由管理器的共享资源绘制：`swarm_loop` 预合成完整帧后实例化，`swarm_pre` / `swarm_pst`
 仍使用共享帧几何。虫群的播放和完成回调独立；休眠释放实体视觉并退出实例批次，唤醒时
 重新绑定当前逻辑动画，异步创建的过期结果立即释放。源 bloom 效果沿用共享 lightmap 中的
 `lightOverride`，实例属性传递各实体的覆盖值，发光半径和淡入淡出仍由原控制器负责。
@@ -268,8 +234,8 @@ prefab 的 `dispose()` 调用它清理监听。`ondropped` 在成功从库存移
 工作状态，休眠暂停装备监听，唤醒重新读取，永久移除时释放监听。源 `firefly`、`cattoyairborne`、`flying`、
 `NOBLOCK` 标签也应用在逻辑实体上。
 
-`LootFling` 接收实体的 `transform`，直接推进其中的地面坐标；`position` getter
-返回 Vector3 显示投影，`height` 是视觉弹跳高度。模型仅从实体同步位置。
+`inventoryphysics`（`packages/componets/src/inventoryphysics.ts`）的 `LootFling` 接收实体的 `transform`，直接推进其中的地面坐标；
+`height` 写入实例 sprite 的 `visualHeight`。只有飞行中的物体经 `componentUpdates` 每帧更新。
 
 `LanternLightController` 按源 Lua 在燃料比例 0～1 时使用半径 3～5（换算为场景的
 9～15 世界单位）、强度 0.4～0.6、Falloff 0.9，以及 RGB `(180,195,150)/255`；
@@ -279,14 +245,13 @@ prefab 的 `dispose()` 调用它清理监听。`ondropped` 在成功从库存移
 应用支持把提灯拖到手部装备、Shift+右键丢到地面，以及点击地面提灯拾回背包。
 地面模型移出场景后不再参与光照；失败的扣减或拾取保留原有物品状态。
 可以用控制台命令 `c_give("lantern")` 获取提灯，现有制作配方也会产出该物品。
-地面存档仍保存物品、皮肤及真实落点，恢复后默认点亮。
+地面存档保存物品、皮肤、真实落点和 `lantern.ison`，恢复后按开关状态点亮。
 
 当前背包没有逐件燃料状态，因此应用使用满燃料，不自动耗油或保存开关／燃料比例；
 Prefab API 可由后续权威燃料状态驱动。声音、单独的粒子特效和地面开关交互尚未接入。
 
-荧光果由 `@dontstarve-web/prefab/lightbulb` 的 `createLightbulbGroundSprite({ assets }, { entity })`
-提供。使用 `lightbulb.lua` 指定的 `anim/bulb.zip`、bank/build `bulb` 和 `idle`
-动画，默认放在地上发光。`setLit(false)` 关闭局部光源，`dispose()` 同时移除光源和模型。
+荧光果由 `@dontstarve-web/prefab/lightbulb` 的 `lightbulbPrefabs(world)` 声明。使用 `lightbulb.lua` 指定的 `anim/bulb.zip`、
+bank/build `bulb` 和 `idle` 动画，`inst.light` 一直声明；放进库存时 limbo 使 display 休眠，光源随之不再列出。
 它的原版半径为 0.5，换算为场景的 1.5 世界单位；强度 0.5、Falloff 0.7，
 RGB `(237,237,209)/255`。范围不随掉落堆叠数量增加，也没有火把的额外 50% 倍率。
 

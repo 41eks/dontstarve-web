@@ -1,18 +1,24 @@
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { createGroundItemFactory, createResidentGroundItem, GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
-import type { GroundPrefabContext } from '../../prefab/src/groundPrefab';
+import { GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { prefabDisplay } from '@dontstarve-web/display';
-import { InventorySlot, InventoryStore, ItemEntity, inventorySlotAddress } from '../../inventory/src';
+import type { ArchiveSpriteAssets } from '@dontstarve-web/animation/archiveSprite';
+import { InventorySlot, InventoryStore, inventorySlotAddress, type ItemEntity } from '../../inventory/src';
 import { INVENTORY_ITEM_SPECS } from '../../../src/inventoryItems';
 import { createPrefabEntity, prefabInstance } from '../../prefab/src/prefabInstance';
+import { itemAt, ItemWorldFixture } from './itemWorldFixture';
+import { createPickupInventory } from './pickupFixture';
 import { SpriteResources } from '../../display/src/spriteResources';
 import { RESEARCH_LAB_DEFINITIONS } from '../../prefab/src/scienceprototyper';
 
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
 const fetchAsset = async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url)));
 const meshOf = (model: THREE.Object3D) => model.getObjectByProperty('isMesh', true) as THREE.Mesh;
+/** The archive owner the item's declared skin source draws from. */
+const skinArt = (inst: ItemEntity) => (inst.sprite.sprite.peek().appearance.get('skin') as unknown as { skin: { art: ArchiveSpriteAssets } }).skin.art;
+const itemWorld = (scene: THREE.Scene, inventory: InventoryStore) => new ItemWorldFixture(scene, new THREE.PerspectiveCamera(), undefined,
+  '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', new THREE.Group());
 const materialNames = (model: THREE.Object3D) => {
   const material = meshOf(model).material;
   return (Array.isArray(material) ? material : [material]).map(material => material.name);
@@ -32,10 +38,9 @@ it('uses the latest json skin while paused, reuses loaded art, and ignores a loa
     return fetchAsset(url);
   });
   vi.stubGlobal('fetch', fetch);
-  const assets = new GroundItemAssets();
-  const { instance, display } = createResidentGroundItem({ sprites: new SpriteResources(undefined, undefined, assets) }, { itemId: 'greenstaff' });
-  const model = display.model, scene = new THREE.Scene();
-  display.mount(scene);
+  const scene = new THREE.Scene(), inventory = createPickupInventory(), items = itemWorld(scene, inventory);
+  const model = items.spawnFromSave('greenstaff', { itemId: 'greenstaff', count: 1, name: 'greenstaff', icon: '' }, new THREE.Vector3());
+  const instance = itemAt(model), display = prefabDisplay(model)!, assets = skinArt(instance);
   try {
     await display.artLoaded();
     const base = materialNames(model), clip = instance.sprite.sprite.peek().clip;
@@ -44,15 +49,15 @@ it('uses the latest json skin while paused, reuses loaded art, and ignores a loa
     await vi.waitFor(() => expect(fetch.mock.calls.some(([url]) => url.includes('dynamic/greenstaff_an.'))).toBe(true));
     instance.skinId = 'greenstaff_clockwork';
     await display.artLoaded();
-    expect(materialNames(model)).toContain('ground:greenstaff_clockwork');
+    expect(materialNames(model)).toContain('sprite:greenstaff_clockwork');
     releaseFirst();
     await assets.loadBuild(archives.greenstaff_an);
     await tick();
-    expect(materialNames(model)).toContain('ground:greenstaff_clockwork');
+    expect(materialNames(model)).toContain('sprite:greenstaff_clockwork');
     const loads = fetch.mock.calls.length;
     instance.skinId = 'greenstaff_an';
     await tick();
-    expect(materialNames(model)).toContain('ground:greenstaff_an');
+    expect(materialNames(model)).toContain('sprite:greenstaff_an');
     expect(fetch).toHaveBeenCalledTimes(loads);
     instance.skinId = undefined;
     await tick();
@@ -71,7 +76,7 @@ it('uses the latest json skin while paused, reuses loaded art, and ignores a loa
     expect(model.parent).toBeNull();
     expect(model.getObjectByProperty('isMesh', true)).toBeUndefined();
     expect(scene.children).toHaveLength(0);
-  } finally { releaseFirst(); releaseLast(); instance.remove(); display.dispose(); assets.dispose(); }
+  } finally { releaseFirst(); releaseLast(); items.dispose(); inventory.dispose(); }
 });
 
 it('applies a layered factory skin without resetting the clip, progress, callback or private appearance', async () => {
@@ -115,31 +120,29 @@ it('applies a layered factory skin without resetting the clip, progress, callbac
 });
 
 it('keeps an item\'s skin on its own sprite json across the ground, a container and the next drop', async () => {
-  const assets = new GroundItemAssets();
-  const factory = createGroundItemFactory({ sprites: new SpriteResources(undefined, undefined, assets) } as GroundPrefabContext);
   const slot = inventorySlotAddress(0);
   const inventory = new InventoryStore([{ address: slot, slot: new InventorySlot() }], INVENTORY_ITEM_SPECS);
-  const entity = new ItemEntity({ itemId: 'greenstaff', count: 1 });
-  const definition = { ...entity.snapshot(), name: 'greenstaff', icon: 'greenstaff.tex' };
-  let ground = factory.create(definition, entity);
+  const items = itemWorld(new THREE.Scene(), inventory);
+  const entity = inventory.entities.create({ itemId: 'greenstaff', count: 1 });
+  const definition = { ...entity.snapshot(), name: 'greenstaff', icon: 'greenstaff.tex', entity };
+  items.spawnGroundItem(definition, new THREE.Vector3());
   try {
-    // The ground visual draws the item's sprite; reskinning on the ground writes that json and nothing else.
-    expect(prefabInstance(ground.model)!.sprite).toBe(entity.sprite);
+    // The ground display draws the item's sprite; reskinning on the ground writes that json and nothing else.
+    expect(prefabInstance(entity.transform.model)!.sprite).toBe(entity.sprite);
     entity.skinId = 'greenstaff_an';
     expect(entity.sprite.sprite.peek().skinId).toBe('greenstaff_an');
     expect(entity.snapshot().skinId).toBe('greenstaff_an');
-    // Picked up: the visual goes, the inst and its sprite json stay, and the slot reads the skin from it.
-    ground.dispose();
+    // Picked up: the inst leaves the scene, it and its sprite json stay, and the slot reads the skin from it.
     expect(inventory.receiveAt(slot, entity)).toBe(true);
+    expect(entity.inlimbo).toBe(true);
     expect(inventory.get(slot)?.skinId).toBe('greenstaff_an');
     entity.skinId = 'greenstaff_clockwork';
     expect(inventory.get(slot)?.skinId).toBe('greenstaff_clockwork');
-    // Dropped again: a new visual presents the same json anew, dressed in the item's skin.
+    // Dropped again: the same inst returns to the scene, dressed in its skin.
     expect(inventory.extract(slot, 1, entity)).toBe(entity);
-    ground = factory.create({ ...definition, ...entity.snapshot() }, entity);
-    expect(prefabInstance(ground.model)!.sprite).toBe(entity.sprite);
-    const display = prefabDisplay(ground.model)!;
-    await display.artLoaded();
-    expect(materialNames(ground.model)).toContain('ground:greenstaff_clockwork');
-  } finally { ground.dispose(); entity.destroy(); inventory.dispose(); factory.dispose?.(); assets.dispose(); }
+    items.spawnGroundItem(definition, new THREE.Vector3(1, 0, 1));
+    expect(prefabInstance(entity.transform.model)!.sprite).toBe(entity.sprite);
+    await prefabDisplay(entity.transform.model)!.artLoaded();
+    expect(materialNames(entity.transform.model)).toContain('sprite:greenstaff_clockwork');
+  } finally { items.dispose(); inventory.dispose(); }
 });

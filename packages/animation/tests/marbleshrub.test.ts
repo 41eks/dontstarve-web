@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { marbleShrubWorld } from './marbleShrubFixture';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
-import { GroundItemManager } from '../../prefab/src/groundItemManager';
+import { ItemWorldFixture } from './itemWorldFixture';
 import { createInventoryStore } from '../../../src/inventory';
 import { inventorySlotAddress } from '../../inventory/src';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -28,9 +28,9 @@ function setup() {
   vi.stubGlobal('window', new EventTarget());
   const inventory = createInventoryStore([]), scene = new THREE.Scene(), player = new THREE.Group(), physics = new CANNON.World();
   const scheduler = new GameTimeScheduler();
-  const ground = new GroundItemManager(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
+  const ground = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
-  const spawnGroundItem: GroundItemManager['spawnGroundItem'] = (definition, position, options) => ground.spawnGroundItem(definition, position, options);
+  const spawnGroundItem: ItemWorldFixture['spawnGroundItem'] = (definition, position, options) => ground.spawnGroundItem(definition, position, options);
   const { snowLevel, getWatchWorldContent } = bindTestWorld(scheduler);
   const shrubs = marbleShrubWorld(scene, { scheduler, getWatchWorldContent, spawnGroundItem }, { physics });
   const { saplings } = shrubs;
@@ -45,13 +45,9 @@ function setup() {
     debugSpawn: () => saplings.spawn(player.position),
     exportRecords: () => saplings.exportRecords().map(record => ({ prefabId: 'marblebean_sapling', record })), dispose: () => {},
   });
-  registry.register(PREFAB_DEFINITIONS.groundItems, {
-    restore: () => { throw new Error('unused'); },
-    debugSpawn: id => ground.spawnFromSave(`command:${id}`, { ...SAVE_CATALOG.items[id], itemId: id, count: 1 }, player.position),
-    exportRecords: () => ground.exportRecords().map(record => ({ prefabId: 'ground_item', record })), dispose: () => ground.dispose(),
-  });
+  registry.register(PREFAB_DEFINITIONS.groundItems, ground.registration(() => player.position, id => `command:${id}`));
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
-  const save = () => serializeSave(template, { entities: { marbleshrub: shrubs.exportRecords(), marblebean_sapling: saplings.exportRecords(), ground_item: ground.exportRecords() },
+  const save = () => serializeSave(template, { entities: { marbleshrub: shrubs.exportRecords(), marblebean_sapling: saplings.exportRecords(), ...ground.exportEntities() },
     inventory: inventory.exportState(), elapsedSeconds: scheduler.now, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
   const advance = (seconds: number) => {
     scheduler.advance(seconds); shrubs.update(seconds);
@@ -119,7 +115,8 @@ it('plants a marblebean, digs it back up, and grows it into a mineable shrub tha
     expect(restored.shrubs.exportRecords()).toEqual([s.shrubs.exportRecords()[0]]);
 
     // Tall shrubs need ten works; the pickaxe MINE roll at exactly .5 keeps the marble branch.
-    const pickaxe = s.inventory.entities.create({ itemId: 'pickaxe', count: 1 });
+    // The worker holds its tool: SpawnPrefab puts the inst in the world, GiveItem takes it out of the scene.
+    const pickaxe = s.inventory.entities.create({ itemId: 'pickaxe', count: 1 }); s.inventory.GiveItem(pickaxe);
     const [mine] = workTargets('MINE', s.scene);
     for (let i = 0; i < 9; i++) expect(performToolWork('MINE', mine.entity, {}, pickaxe)).toBe(true);
     expect(s.shrubs.exportRecords()).toHaveLength(1);

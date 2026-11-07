@@ -49,11 +49,11 @@ Lua 使用双向关联：inventory/container 保存物品成员与槽位，物�
 
 保存时，`inventory:OnSave()` 按普通槽、装备槽和 activeitem 嵌套保存各物品的 `GetSaveRecord()`；`container:OnSave()` 按容器槽位保存相同记录。`EntityScript:GetSaveRecord()` 从该 inst 的 Transform 读取位置并保存组件数据。世界保存遍历全局 `Ents`，检查实体有效性、持久化标志、prefab、Transform 和没有父实体等条件；持有物作为 owner 的子实体随其组件嵌套保存，避免再次作为世界顶层实体保存。源码见 `components/inventory.lua:192`、`components/container.lua:979`、`entityscript.lua:248` 和 `mainfunctions.lua:1088`。
 
-对应到本项目，InventoryStore/Container 管理实际槽位成员与转移，ItemEntity 是 PrefabInstance 子类，持有组件、库存归属与逻辑 Transform，GroundItemManager 管理地面实体集合与拾取接线，display 管理场景挂载和显示资源。归属变化应通过统一转移流程同时维护槽位与 owner，UI signal 只反映提交后的状态。项目的 `ItemOwner.address` 用于库存事务寻址；它不是 Lua 物品独立保存当前槽号的依据。
+对应到本项目，InventoryStore/Container 管理实际槽位成员与转移，ItemEntity 是 PrefabInstance 子类，持有组件、库存归属与逻辑 Transform，物品 prefab 在共享 `PrefabEntityManager` 上管理世界中的实体（持有时 RemoveFromScene 进入 limbo，丢弃时 ReturnToScene），display 管理场景挂载和显示资源。归属变化应通过统一转移流程同时维护槽位与 owner，UI signal 只反映提交后的状态。项目的 `ItemOwner.address` 用于库存事务寻址；它不是 Lua 物品独立保存当前槽号的依据。
 
 ### 项目的物品实体
 
-`packages/inventory/src/entity.ts` 的 `ItemEntity` 继承 `PrefabInstance`。身份、标签、事件、皮肤、持久化、status 和 Transform 复用基类；物品组件（stackable、perishable、fueled、finiteuses、inventoryitem）挂在同一个 components 对象上。各具体槽位直接保存实体引用，`getEntity()` 返回引用，`get()` 返回用于 UI 与领域计算的独立快照。`InventoryStack` 是快照类型，不再是槽位中的另一份可变权威状态。`ItemEntityRegistry` 由库存和 `GroundItemManager` 共用。
+`packages/inventory/src/entity.ts` 的 `ItemEntity` 继承 `PrefabInstance`。身份、标签、事件、皮肤、持久化、status 和 Transform 复用基类；物品组件（stackable、perishable、fueled、finiteuses、inventoryitem）挂在同一个 components 对象上。各具体槽位直接保存实体引用，`getEntity()` 返回引用，`get()` 返回用于 UI 与领域计算的独立快照。`InventoryStack` 是快照类型，不再是槽位中的另一份可变权威状态。`ItemEntityRegistry` 的 `create()` 经应用层绑定的 SpawnPrefab（`bindSpawner`）生成物品 prefab 实例，库存和世界共用同一实体。
 
 `InventoryStore.transfer()` 从源实体取得完整状态，验证后原子提交；整件转移使用同一个引用。`extract()` 交出整件原实体或创建部分堆叠的新实体，`receive()` 接收地面的实体并按需合堆。空间不足、目标不接受或源实体已被替换时不改变归属。消耗和移除仍由 store 提交，entity 的 owner 回调检查槽位是否还持有自己，避免旧实体影响替代物。制造仍先使用纯函数计算快照，提交时复用剩余材料的实体并为新产品创建实体。
 
@@ -65,7 +65,7 @@ Lua 使用双向关联：inventory/container 保存物品成员与槽位，物�
 
 `GroundItemVisual.instance` 直接引用真实物品；已移除 `bindEntity` 和 `bindTransform` 两段绑定，不再创建另一个地面 PrefabInstance 或复制组件／标签。蝴蝶、萤火虫、鼹鼠等专用逻辑读取原实例及其组件，display 的释放不永久移除物品。库存的 DropItem 在地面接线完成后发送一次 ondropped，成功拾取发送一次 onputininventory，不再在两套实例之间重发事件。
 
-GroundItemManager 不在更新、唤醒或鼠标命中前复制位置，也不维护脚点副本。根节点、实例及 `entity.transform.position` 引用同一个位置向量；写入通过实例或 transform 的方法统一标脏及刷新 tile。拾取距离、虫网／锤击／换肤目标、邻居查询、排序和保存都从它读取；`Transform.setPosition()` 刷新共享 tile key，活动区不再通过玩家位置变化扫描实体；重新掉落建立新的 display 时，物品和小地图图标继续使用同一个位置向量。
+物品实例不在更新、唤醒或鼠标命中前复制位置，也不维护脚点副本。根节点、实例及 `entity.transform.position` 引用同一个位置向量；写入通过实例或 transform 的方法统一标脏及刷新 tile。拾取距离、虫网／锤击／换肤目标、邻居查询、排序和保存都从它读取；`Transform.setPosition()` 刷新共享 tile key，活动区不再通过玩家位置变化扫描实体；重新掉落建立新的 display 时，物品和小地图图标继续使用同一个位置向量。
 
 保存从已绑定 transform 导出坐标，不使用图片中心或脚点缓存。换肤保留同一个 model；读档直接初始化新 model 的位置。LootFling 持有实体 Transform，以速度推进其中的水平坐标，外部瞬移会改变后续运动的起点；它的 position getter 只返回独立的 Vector3 投影。抛落／弹跳高度继续作用于视觉子组，不进入地面脚点或保存坐标。拾取成功后沿用 inventoryitem 的坐标归零行为；PICKUP 提交时按 Lua 的 `GetPosition()` 取得一次来源坐标快照，供归零后的接收动画使用。
 
@@ -97,9 +97,9 @@ GroundItemManager 不在更新、唤醒或鼠标命中前复制位置，也不�
 
 `Temperature` 在绑定世界时加入世界拥有的 `ComponentUpdates` 集合，切换世界和组件销毁时移除旧注册。场景每帧只更新该集合中的组件，普通物品不参与温度遍历；重复配置暖石不重复注册，转移和换肤保留逻辑组件及注册。
 
-`ItemEntityRegistry` 独立维护小地图图标索引：`AddMiniMapEntity()` 创建图标时发出 `minimapentityadded` 生命周期通知，注册表立即登记；接收已有图标的实体时同步登记，重复接收不重复监听。实体移除时撤销图标和注册表监听，清理不依赖地面美术释放。`GroundItemManager.miniMapEntities` 只读取该索引中的已启用图标，绘图成本随有图标的物品数变化，不扫描萤火虫等无图标物品。拾取、装备和鼠标持有仍由 `InventoryItem.owner` 禁用图标，丢弃恢复启用；位置继续引用逻辑实体的地面坐标。
+`ItemEntityRegistry` 独立维护小地图图标索引：`AddMiniMapEntity()` 创建图标时发出 `minimapentityadded` 生命周期通知，注册表立即登记；接收已有图标的实体时同步登记，重复接收不重复监听。实体移除时撤销图标和注册表监听，清理不依赖地面美术释放。`ItemEntityRegistry.miniMapEntities` 只读取该索引中的已启用图标，绘图成本随有图标的物品数变化，不扫描萤火虫等无图标物品。拾取、装备和鼠标持有仍由 `InventoryItem.owner` 禁用图标，丢弃恢复启用；位置继续引用逻辑实体的地面坐标。
 
-`GroundItemManager.iteratePrefabPositions(prefab)` 按 prefab 索引迭代逻辑地面实体的现有 `Vector3` 坐标，过滤已移除、已有库存归属及 `INLIMBO` 实体；模型隐藏、卸载或换肤不影响索引，`persists = false` 的有效实体仍参与 Lua 空间规则。丢弃时在加载美术前登记逻辑实体，拾取及移除时同步退出；`spawnFromSave()` 在加载前按 prefab 和实体 ID 登记位置占位，成功生成时交接给逻辑实体，失败／释放时撤销，占位不额外写入存档。皮弗娄牛的 `PeriodicSpawner` 直接消费该迭代器，通过 `distanceToSquared()` 检查间距和密度，拒绝生成后立即停止迭代，不构造存档记录或扫描其他 prefab。
+`PrefabEntityManager.instances(prefab)` 按 prefab 索引迭代实体，调用方过滤 `inlimbo` 后读取现有 `Vector3` 坐标；模型隐藏、卸载或换肤不影响索引，`persists = false` 的有效实体仍参与 Lua 空间规则。实体在 SpawnPrefab 时同步登记，移除时退出，不依赖美术加载。皮弗娄牛的 `PeriodicSpawner` 直接消费该迭代器，通过 `distanceToSquared()` 检查间距和密度，拒绝生成后立即停止迭代，不构造存档记录或扫描其他 prefab。
 
 `Container.toDTO()` 返回纯显示快照 `{ slotCount, slots }`，`slots` 是零基数组，空格保留为 `null`，物品仅包含快照字段，不携带实体、owner 或控制器。`toSignal()` 延迟创建并复用该 DTO 的只读 signal，UI 用 `peek()` 初始化并订阅变化；它不提供 `set()`，也不参与存档。`SetNumSlots()`、`OnLoad()` 和释放组件在完整更新后发布 DTO；已注册槽位的转移、数量和燃料等组件变化，由 Store 在事务提交后调用 `publishDTO()`，每个受影响容器只发布一次完整快照。直接操作底层槽位的调用方也需要在提交后发布。
 

@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { InventorySlot, InventoryStore, inventorySlotAddress } from '@dontstarve-web/inventory';
-import { GroundItemManager } from '../../prefab/src/groundItemManager';
+import { ItemWorldFixture, itemEntities } from './itemWorldFixture';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { executeDebugCommand } from '../../../src/debugCommands';
@@ -11,7 +11,6 @@ import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { inventoryStateFromSave } from '../../../src/save/inventoryState';
-import type { SavedEntity } from '../../../src/save/types';
 import { createPickupInventory } from './pickupFixture';
 import { PERISH_MED, Perishable } from '../../componets/src/perishable';
 import { batch, createSignal } from '../../signals/src';
@@ -364,20 +363,13 @@ it('spawns/gives red_cap, bananapop and spoiled_food, replaces a perished ground
   let restoredClock: WorldPerishClock | undefined;
   const player = new THREE.Group();
   player.position.set(2, 0, -4);
-  const createManager = (store: InventoryStore) => new GroundItemManager(new THREE.Scene(), new THREE.PerspectiveCamera(),
+  const createManager = (store: InventoryStore) => new ItemWorldFixture(new THREE.Scene(), new THREE.PerspectiveCamera(),
     { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer, '/dst/data/databundles/images.zip',
     store, '/dst/data/anim', player, undefined, undefined, undefined, store.entities);
   const manager = createManager(inventory);
-  const restoreGround = (target: GroundItemManager, record: SavedEntity) => target.spawnFromSave(record.id,
-    { ...SAVE_CATALOG.items[record.components.stack!.itemId], ...record.components.stack! }, new THREE.Vector3(...record.transform.position));
   const registry = new EntityRegistry();
-  registry.register(PREFAB_DEFINITIONS.groundItems, {
-    debugSpawn: id => manager.spawnFromSave(`spawn:${id}`, { ...SAVE_CATALOG.items[id], itemId: id, count: 1 }, player.position),
-    restore: (_prefab, record) => restoreGround(manager, record),
-    exportRecords: () => manager.exportRecords().map(record => ({ prefabId: 'ground_item', record })),
-    dispose: () => manager.dispose(),
-  });
-  let restored: GroundItemManager | undefined;
+  registry.register(PREFAB_DEFINITIONS.groundItems, manager.registration(() => player.position, id => `spawn:${id}`));
+  let restored: ItemWorldFixture | undefined;
   try {
     for (const id of ['red_cap', 'bananapop', 'spoiled_food']) {
       expect((await executeDebugCommand(`c_spawn("${id}")`, inventory, prefab => registry.spawn(prefab))).ok).toBe(true);
@@ -410,8 +402,8 @@ it('spawns/gives red_cap, bananapop and spoiled_food, replaces a perished ground
     restoredInventory.entities.bindPerishWorld(restoredWorld);
     restoredInventory.replaceState(inventoryStateFromSave(saved), SAVE_CATALOG.recipes);
     restored = createManager(restoredInventory);
-    for (const record of saved.world.entities.ground_item) await restoreGround(restored, record);
-    expect(restored.exportRecords()).toEqual(before.ground_item);
+    restored.restoreEntities(saved.world.entities);
+    expect(restored.exportEntities()).toEqual(itemEntities(before));
     const loadedGround = restored.entities.get('spawn:red_cap')!;
     expect(loadedGround.tile.peek().freshnessPercent).toBeCloseTo(.3, 9);
     expect(loadedGround.components.perishable.stage.peek()).toBe('stale');
@@ -434,7 +426,7 @@ it('spawns/gives red_cap, bananapop and spoiled_food, replaces a perished ground
     await vi.waitFor(() => expect(loadedGround.isRemoved).toBe(true));
     const spoiled = restored.exportRecords().find(record => record.id !== 'spawn:spoiled_food'
       && record.components.stack?.itemId === 'spoiled_food');
-    expect(spoiled).toMatchObject({ transform: { position: before.ground_item.find(record => record.id === 'spawn:red_cap')!.transform.position },
+    expect(spoiled).toMatchObject({ transform: { position: before.red_cap.find(record => record.id === 'spawn:red_cap')!.transform.position },
       components: { stack: { itemId: 'spoiled_food', count: 1 } } });
   } finally { registry.dispose(); restored?.dispose(); inventory.dispose(); restoredInventory.dispose(); clock.dispose(); restoredClock?.dispose(); }
 });

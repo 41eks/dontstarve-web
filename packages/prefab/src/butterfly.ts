@@ -1,9 +1,9 @@
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import * as THREE from 'three';
 import { WorldContentKey, type GetWatchWorldContent, type WorldContentSignal, type WorldPhase } from '@dontstarve-web/signals';
-import { SpriteResources } from '@dontstarve-web/display';
-import type { GroundItemDefinition, GroundItemFactory, GroundPrefabContext } from './groundPrefab';
-import { ItemEntity } from '@dontstarve-web/inventory';
+import type { GroundItemDefinition, ItemPrefabWorld } from './groundPrefab';
+import type { ItemEntity } from '@dontstarve-web/inventory';
+import { bindItemWorld, dropStackIndividually, type ItemPrefabDefinition } from './groundItems';
 import { TOTAL_DAY_TIME } from '../../componets/src/perishable';
 import { Deployable } from '../../componets/src/deployable';
 import { BufferedAction } from '../../stategraphs/src/bufferedaction';
@@ -19,12 +19,12 @@ import { RADIANS } from '../../brains/src/simutil';
 import type { BrainComponents, BrainEntity, BrainInst, BrainWorld } from '../../brains/src/types';
 import catalog from './groundItems.json' with { type: 'json' };
 import { MOONBUTTERFLY_PERISH_INV_MODIFIER, MOONBUTTERFLY_PERISH_TIME, MOONBUTTERFLY_SPEED } from './moonbutterflyTuning';
-import { FindEntities, type FoundEntity } from './actionEntity';
+import { FindEntities } from './actionEntity';
 import { PlaySound } from './sound';
 import { ComponentTimer } from '../../componets/src/timer';
 import { TILE_SIZE } from './tile';
 import { animationLengths } from './animationTimings';
-import { createPrefabEntity, prefabInstance } from './prefabInstance';
+import { prefabInstance } from './prefabInstance';
 
 export const BUTTERFLY_ID = 'butterfly';
 export const MOONBUTTERFLY_ID = 'moonbutterfly';
@@ -74,7 +74,8 @@ export function configureButterflyEntity(entity: ItemEntity): void {
       }
       owner.PushEvent('murdered', { victim: entity, stackmult: count, negligent: true });
       if (entity.remove()) for (const [itemId, amount] of loot) {
-        const item = new ItemEntity({ itemId, count: amount });
+        const item = entity.worldServices?.spawnItem?.({ itemId, count: amount });
+        if (!item) continue;
         if (position) item.setPosition(position.x, position.y, position.z);
         owner.GiveItem?.(item);
       }
@@ -480,104 +481,95 @@ export class ButterflyCreature implements BrainInst, ButterflyStateInst, LocoMot
   }
 }
 
-/** Share original DST build textures across separately animated butterflies. */
-export class ButterflyAssets {
-  private readonly resources: SpriteResources;
-  private disposed = false;
-  constructor(assetBaseUrl: string) { this.resources = new SpriteResources(assetBaseUrl); }
-  dispose(): void { this.disposed = true; this.resources.dispose(); }
-
-  create(prefab: ButterflyPrefabId, world: ButterflyWorld,
-    getOthers: (position: LocoMotorPoint, radius: number) => readonly ButterflyCreature[],
-    dropLoot?: ButterflyCreature['dropLootItems'], entity?: ItemEntity) {
-    if (this.disposed) throw new Error('Insect assets have been disposed');
-    // butterfly.lua and moonbutterfly.lua share a bank; only the latter substitutes its build.
-    const source = this.resources.factory({ animationArchive: 'butterfly_basic.zip', buildArchive: 'butterfly_basic.zip',
-      skinArchive: prefab === BUTTERFLY_ID ? undefined : 'butterfly_moon.zip' });
-    const name = `GroundItem:${prefab}`;
-    entity ??= new ItemEntity({ itemId: prefab, count: 1 });
-    const { instance, display } = createPrefabEntity(prefab, source, { name: 'idle_flight_loop', billboard: true, instance: entity }, name);
-    const model = display.model;
-    configureButterflyEntity(instance);
-    const creature = instance.component('butterfly_creature', () => new ButterflyCreature(BUTTERFLY_DEFINITIONS[prefab], instance,
-      instance.sprite, world, getOthers, undefined, dropLoot));
-    return {
-      model, instance, display, controller: creature,
-      update: (dt: number) => creature.update(dt),
-      isRemoved: () => instance.isRemoved,
-      dispose() { display.dispose(); },
-    };
-  }
-}
-
-/** Keep the butterfly's flower-occupancy rules with its own prefab. */
-export function createButterflyGroundSprite(
-  assets: ButterflyAssets,
-  world: ButterflyWorld,
-  findEntities: (position: THREE.Vector3, radius: number, mustTags: readonly string[]) => readonly FoundEntity[],
-  prefab: ButterflyPrefabId = BUTTERFLY_ID,
-  dropLoot?: ButterflyCreature['dropLootItems'],
-  /** The original logical item, whose controller and components survive pickup and dropping. */
-  entity?: ItemEntity,
-) {
-  let model: THREE.Group | undefined;
-  const origin = new THREE.Vector3();
-  const visual = assets.create(prefab, world, (position, radius) => findEntities(origin.set(position.x, position.y, position.z), radius, ['butterfly'])
-    .flatMap(neighbour => {
-      const neighbourModel = (neighbour as { model?: THREE.Object3D }).model;
-      const creature = neighbourModel !== model
-        ? (neighbourModel && prefabInstance<ItemEntity>(neighbourModel)?.getComponent<ButterflyCreature>('butterfly_creature')) : undefined;
-      return creature ? [creature] : [];
-    }), dropLoot, entity);
-  model = visual.model;
-  return { ...visual, get controller() { return visual.controller; }, isRemoved: () => visual.controller?.removed ?? false };
-}
-
 /** Back-compat name for the live inst driving a ground butterfly's model. */
 export { ButterflyCreature as ButterflyController };
 
-export function createButterflyGroundFactory(context: GroundPrefabContext): GroundItemFactory {
-  const assets = new ButterflyAssets(context.animationBaseUrl);
+/**
+ * butterfly.lua and moonbutterfly.lua: the creature's brain, stategraph and locomotor run while it flies awake in the
+ * world; OnDropped lets a stack go one insect at a time.
+ */
+export function butterflyPrefabs(world: ItemPrefabWorld): Record<ButterflyPrefabId, ItemPrefabDefinition> {
   const dropLoot = (itemIds: readonly string[], position: THREE.Vector3) => {
     const counts = new Map<string, number>();
     for (const itemId of itemIds) counts.set(itemId, (counts.get(itemId) ?? 0) + 1);
     const items: GroundItemDefinition[] = [...counts].map(([itemId, count]) => ({
       ...catalog.items[itemId as keyof typeof catalog.items], itemId, count,
     }));
-    context.dropLoot?.(items, position);
+    world.dropLoot?.(items, position);
   };
-  return {
-    itemIds: [BUTTERFLY_ID, MOONBUTTERFLY_ID], capture: 'net',
-    configureEntity: entity => {
-      (entity.prefab === MOONBUTTERFLY_ID ? configureMoonButterflyEntity : configureButterflyEntity)(entity);
-      if (entity.prefab === BUTTERFLY_ID && !entity.components.inventoryitem.owner) entity.components.perishable.StopPerishing();
+  const definition = (prefab: ButterflyPrefabId): ItemPrefabDefinition => ({
+    fn: () => {
+      const inst = world.newItem(prefab);
+      inst.sprite.resetPresentation({ name: 'idle_flight_loop', billboard: true });
+      bindItemWorld(inst, world);
+      return inst;
     },
-    create: (definition, inst) => {
-      const prefab = definition.itemId === MOONBUTTERFLY_ID ? MOONBUTTERFLY_ID : BUTTERFLY_ID;
-      const visual = createButterflyGroundSprite(assets, context.butterflyWorld,
-        (position, radius, mustTags) => FindEntities(position, radius, mustTags), prefab, dropLoot, inst);
-      if (prefab === MOONBUTTERFLY_ID) bindMoonButterflyVisual(visual);
-      return visual;
+    // butterfly.lua and moonbutterfly.lua share a bank; only the latter substitutes its build.
+    source: world.sprites.factory({ animationArchive: 'butterfly_basic.zip', buildArchive: 'butterfly_basic.zip',
+      skinArchive: prefab === BUTTERFLY_ID ? undefined : 'butterfly_moon.zip' }),
+    onSpawned: inst => {
+      world.configureItem(inst);
+      (prefab === MOONBUTTERFLY_ID ? configureMoonButterflyEntity : configureButterflyEntity)(inst);
+      if (prefab === BUTTERFLY_ID && !inst.components.inventoryitem.owner) inst.components.perishable.StopPerishing();
+      const model = inst.transform.model, origin = new THREE.Vector3();
+      const creature = inst.component('butterfly_creature', () => new ButterflyCreature(BUTTERFLY_DEFINITIONS[prefab], inst,
+        inst.sprite, world.butterflyWorld, (position, radius) => FindEntities(origin.set(position.x, position.y, position.z), radius, ['butterfly'])
+          .flatMap(neighbour => {
+            const neighbourModel = (neighbour as { model?: THREE.Object3D }).model;
+            const other = neighbourModel !== model
+              ? (neighbourModel && prefabInstance<ItemEntity>(neighbourModel)?.getComponent<ButterflyCreature>('butterfly_creature')) : undefined;
+            return other ? [other] : [];
+          }), undefined, dropLoot));
+      const flicker = prefab === MOONBUTTERFLY_ID ? bindMoonButterfly(inst, creature) : undefined;
+      inst.onRemove(world.componentUpdates.register({
+        OnUpdate: dt => {
+          if (inst.status.peek() !== 'active') return;
+          creature.update(dt);
+          flicker?.(dt);
+        },
+      }));
+      inst.ListenForEvent('ondropped', () => dropStackIndividually(inst, world));
     },
-    dispose: () => assets.dispose(),
-  };
+  });
+  return { [BUTTERFLY_ID]: definition(BUTTERFLY_ID), [MOONBUTTERFLY_ID]: definition(MOONBUTTERFLY_ID) };
 }
 
 // moonbutterfly.lua light: radius .5, intensity .5 flickering, falloff .8, colour (.3, .55, .45), light override .15.
 const LIGHT_RADIUS = .5 * (TILE_SIZE / 4), LIGHT_INTENSITY = .5, LIGHT_FALLOFF = .8;
 
-function bindMoonButterflyVisual(visual: Awaited<ReturnType<typeof createButterflyGroundSprite>>): void {
-  const { model } = visual;
+/** moonbutterfly.lua: its flickering light, and onperish in the world. Returns OnUpdateFlicker's frame step. */
+function bindMoonButterfly(entity: ItemEntity, creature: ButterflyCreature): (dt: number) => void {
   let flickerTime = 0, flickerElapsed = 0, lit = true;
-  const setLight = (intensity: number) => prefabInstance(model)!.light.set(lit
+  const setLight = (intensity: number) => entity.light.set(lit
     ? { colour: [.3, .55, .45], radius: LIGHT_RADIUS, intensity, falloff: LIGHT_FALLOFF } : null);
-  const sprite = prefabInstance(model)!.sprite;
+  const sprite = entity.sprite;
   sprite.setLightOverride(.15);
   setLight(LIGHT_INTENSITY);
-  const update = visual.update;
+  entity.ListenForEvent('perished', () => {
+    if (entity.components.inventoryitem.owner || creature.removed) return;
+    // onperish: the net no longer works, the light goes out, then `death` and removal after 3 seconds.
+    entity.components.workable?.SetWorkable(false);
+    lit = false;
+    setLight(0);
+    sprite.setLightOverride(null);
+    creature.addTag('dead');
+    creature.removeTag('spore');
+    creature.PushEvent('death');
+    entity.persists = false;
+    const scheduler = entity.components.perishable.scheduler;
+    if (!scheduler) throw new Error('Moon butterfly decay requires the world scheduler');
+    const removal = new ComponentTimer(scheduler, () => entity.remove());
+    entity.onRemove(() => removal.stop());
+    removal.start(3);
+  });
+  entity.ListenForEvent('onputininventory', () => { lit = false; setLight(0); });
+  entity.ListenForEvent('ondropped', () => {
+    lit = true;
+    creature.components.knownlocations?.RememberLocation('home', creature.getPosition());
+    setLight(LIGHT_INTENSITY);
+  });
   // OnUpdateFlicker runs every .1s: intensity = .5 + .05 * (1 + sin(t * .7 + sin(t * 6.28))) / 2, t in 15x seconds.
-  visual.update = (dt: number) => {
-    update(dt);
+  return dt => {
     flickerElapsed += dt;
     while (flickerElapsed >= .1) {
       flickerElapsed -= .1;
@@ -587,31 +579,4 @@ function bindMoonButterflyVisual(visual: Awaited<ReturnType<typeof createButterf
       setLight(LIGHT_INTENSITY + .05 * flicker);
     }
   };
-  const entity = visual.instance;
-  const stops: (() => void)[] = [];
-  stops.push(entity.ListenForEvent('perished', () => {
-    if (entity.components.inventoryitem.owner || visual.controller?.removed) return;
-    // onperish: the net no longer works, the light goes out, then `death` and removal after 3 seconds.
-    entity.components.workable?.SetWorkable(false);
-    lit = false;
-    setLight(0);
-    sprite.setLightOverride(null);
-    visual.controller?.addTag('dead');
-    visual.controller?.removeTag('spore');
-    visual.controller?.PushEvent('death');
-    entity.persists = false;
-    const scheduler = entity.components.perishable.scheduler;
-    if (!scheduler) throw new Error('Moon butterfly decay requires the world scheduler');
-    const removal = new ComponentTimer(scheduler, () => entity.remove());
-    entity.onRemove(() => removal.stop());
-    removal.start(3);
-  }));
-  stops.push(entity.ListenForEvent('onputininventory', () => { lit = false; setLight(0); }));
-  stops.push(entity.ListenForEvent('ondropped', () => {
-    lit = true;
-    visual.controller?.components.knownlocations?.RememberLocation('home', visual.controller.getPosition());
-    setLight(LIGHT_INTENSITY);
-  }));
-  const dispose = visual.dispose;
-  visual.dispose = () => { stops.splice(0).forEach(stop => stop()); dispose(); };
 }

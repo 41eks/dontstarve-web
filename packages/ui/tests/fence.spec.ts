@@ -66,7 +66,7 @@ test('fence_item previews against the camera, places by click, rotates with the 
   await submit('c_save()');
   const saved = JSON.parse(await readSaveDownload(await (await download).path(), 'Master'));
   expect(saved.world.entities.fence.map((fence: any) => fence.components.fence)).toEqual([{ rot: 7 }, {}]);
-  expect(saved.world.entities.ground_item.map((item: any) => item.components.stack)).toEqual([{ itemId: 'fence_item', count: 1 }]);
+  expect(saved.world.entities.fence_item.map((item: any) => item.components.stack)).toEqual([{ itemId: 'fence_item', count: 1 }]);
   const held = Object.values(saved.players.local.inventory.containers).flatMap((container: any) => container.slots)
     .find((slot: any) => slot.item?.itemId === 'fence_item');
   expect(held.item.count).toBe(2);

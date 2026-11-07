@@ -133,7 +133,8 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
     const highTemp = o.highTemp === undefined ? undefined : integer(o.highTemp, `${path}.highTemp`, -20, 90);
     const lowTemp = o.lowTemp === undefined ? undefined : integer(o.lowTemp, `${path}.lowTemp`, -20, 90);
     if (highTemp !== undefined && lowTemp !== undefined) fail(path, 'thermal stone cannot have both temperature extrema');
-    const ground = path.startsWith('world.entities.ground_item[') && path.endsWith('.components.stack');
+    // An item record in the world may be ground art alone, which no inventory holds.
+    const ground = path.startsWith('world.entities.') && path.endsWith('.components.stack');
     const art = Object.hasOwn(GROUND_ART_DEFINITIONS, itemId) ? GROUND_ART_DEFINITIONS[itemId] : undefined;
     const spec = Object.hasOwn(catalog.items, itemId) ? catalog.items[itemId]
       : ground && art ? { name: art.name, icon: art.icon ?? '', maxStack: Number.MAX_SAFE_INTEGER } : undefined;
@@ -242,9 +243,11 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
         prefab, catalog, stack, container, transform,
       });
       if (components.stack?.entityId !== undefined && components.stack.entityId !== id) {
-        fail(`${recordPath}.components.stack.entityId`, 'ground item ID must match entity record');
+        fail(`${recordPath}.components.stack.entityId`, 'item ID must match entity record');
       }
-      return { id, transform: transform(o.transform, `${recordPath}.transform`, prefab !== 'ground_item'), components };
+      if (components.stack && components.stack.itemId !== prefab) fail(`${recordPath}.components.stack.itemId`, `expected ${prefab}`);
+      // An item's stack is saved where it lies; others stand on the ground.
+      return { id, transform: transform(o.transform, `${recordPath}.transform`, !components.stack), components };
     });
     return [prefab, records];
   }));
@@ -263,7 +266,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
     const legacy = container(containers['player:backpack'], 'players.local.inventory.containers.player:backpack', numericKeys(8));
     const bags = [
       ...[...playerInventory.slots, ...playerEquipment.slots, ...playerCursor.slots].map(({ item }) => item),
-      ...(entities.ground_item ?? []).flatMap(record => record.components.stack ? [record.components.stack] : []),
+      ...Object.values(entities).flat().flatMap(record => record.components.stack ? [record.components.stack] : []),
     ].filter(item => item.itemId === 'backpack');
     const owner = playerEquipment.slots.find(({ slotKey, item }) => slotKey === 'body' && item.itemId === 'backpack')?.item
       ?? (bags.length === 1 ? bags[0] : undefined);

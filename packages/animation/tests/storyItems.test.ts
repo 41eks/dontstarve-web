@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
-import { GroundItemManager } from '../../prefab/src/groundItemManager';
+import { ItemWorldFixture, itemEntities } from './itemWorldFixture';
 import { createInventoryStore } from '../../../src/inventory';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
@@ -20,16 +20,10 @@ it('exposes the loot prefabs with their own ground clips, icon atlases and stack
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   vi.stubGlobal('window', new EventTarget());
   const inventory = createInventoryStore([]), scene = new THREE.Scene(), player = new THREE.Group();
-  const ground = new GroundItemManager(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
+  const ground = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
   const registry = new EntityRegistry();
-  registry.register(PREFAB_DEFINITIONS.groundItems, {
-    restore: (_, record) => ground.spawnFromSave(record.id, {
-      ...SAVE_CATALOG.items[record.components.stack!.itemId], ...record.components.stack! }, new THREE.Vector3(...record.transform.position)),
-    debugSpawn: id => ground.spawnFromSave(`dug:${id}`, { ...SAVE_CATALOG.items[id], itemId: id, count: 1 }, player.position),
-    exportRecords: () => ground.exportRecords().map(record => ({ prefabId: 'ground_item', record })),
-    dispose: () => ground.dispose(),
-  });
+  registry.register(PREFAB_DEFINITIONS.groundItems, ground.registration(() => player.position, id => `dug:${id}`));
   try {
     expect(ground_catalog.items.trinket_32).toMatchObject({ animationArchive: 'trinkets.zip', bank: 'trinkets', animation: '32', icon: 'trinket_32.tex' });
     expect(SAVE_CATALOG.items.trinket_46.atlas).toBe('images/inventoryimages.xml');
@@ -47,11 +41,12 @@ it('exposes the loot prefabs with their own ground clips, icon atlases and stack
       inventory, id => registry.spawn(id));
     expect(spawned.ok).toBe(true);
     expect(ground.reskinTargets).toHaveLength(4);
-    expect(ground.renderEntities).toEqual([]);
+    // Each spawned item lies awake in the scene, among the entries the renderer sorts.
+    expect(ground.renderEntities).toHaveLength(4);
     const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
-    const saved = deserializeSave(serializeSave(template, { entities: { ground_item: ground.exportRecords() }, inventory: inventory.exportState(),
+    const saved = deserializeSave(serializeSave(template, { entities: ground.exportEntities(), inventory: inventory.exportState(),
       elapsedSeconds: 0, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG), SAVE_CATALOG);
-    expect(saved.world.entities.ground_item.map(record => record.components.stack!.itemId).sort())
+    expect(Object.keys(itemEntities(saved.world.entities)).sort())
       .toEqual(['blueprint', 'foliage', 'scrapbook_page', 'trinket_32']);
   } finally { registry.dispose(); inventory.dispose(); }
 });

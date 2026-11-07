@@ -1,11 +1,9 @@
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { SpriteResources } from '../../display/src';
+import { prefabDisplay } from '../../display/src';
 import { inventorySlotAddress } from '../../inventory/src';
 import { createEmptyEntity } from '../../prefab/src/prefabInstance';
-import { GroundItemAssets, createGroundItemFactory } from '../../prefab/src/groundItems';
-import type { GroundPrefabContext } from '../../prefab/src/groundPrefab';
 import { createBuildingContainer } from '../../prefab/src/containers';
 import { createPickupDoer } from '../../stategraphs/src/pickup';
 import { executeDebugCommand } from '../../../src/debugCommands';
@@ -14,7 +12,7 @@ import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { INVENTORY_RECIPES } from '../../ui/src/categories/shared';
 import { createPickupInventory } from './pickupFixture';
 import { testMap } from './tileMapFixture';
-import { GroundItemManager } from '../../prefab/src/groundItemManager';
+import { ItemWorldFixture, itemEntities } from './itemWorldFixture';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { serializeSave } from '../../../src/save/serialize';
@@ -161,45 +159,41 @@ describe('nightmare_timepiece.lua', () => {
   it('saves a spawned watch and a held one through c_save', async () => {
     const world = createWorldState({ map: testMap(48), elapsedSeconds: 0, systems: {}, prefab: 'cave' });
     const inventory = createInventoryStore([]), scene = new THREE.Scene(), player = new THREE.Group();
-    const ground = new GroundItemManager(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
+    const ground = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
       '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
     const registry = new EntityRegistry();
-    registry.register(PREFAB_DEFINITIONS.groundItems, {
-      restore: (_, record) => ground.spawnFromSave(record.id, {
-        ...SAVE_CATALOG.items[record.components.stack!.itemId], ...record.components.stack! }, new THREE.Vector3(...record.transform.position)),
-      debugSpawn: id => ground.spawnFromSave(`dug:${id}`, { ...SAVE_CATALOG.items[id], itemId: id, count: 1 }, player.position),
-      exportRecords: () => ground.exportRecords().map(record => ({ prefabId: 'ground_item', record })),
-      dispose: () => ground.dispose(),
-    });
+    registry.register(PREFAB_DEFINITIONS.groundItems, ground.registration(() => player.position, id => `dug:${id}`));
     try {
       expect((await executeDebugCommand(`c_spawn("${ITEM}"); c_give("${ITEM}")`, inventory, id => registry.spawn(id))).ok).toBe(true);
       let json = '';
       const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
       expect((await executeDebugCommand('c_save()', inventory, undefined, () => {
-        json = serializeSave(template, { entities: { ground_item: ground.exportRecords() }, inventory: inventory.exportState(),
+        json = serializeSave(template, { entities: ground.exportEntities(), inventory: inventory.exportState(),
           elapsedSeconds: 0, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
       })).ok).toBe(true);
       const saved = deserializeSave(json, SAVE_CATALOG);
-      expect(saved.world.entities.ground_item.map(record => record.components.stack!.itemId)).toEqual([ITEM]);
+      expect(Object.keys(itemEntities(saved.world.entities))).toEqual([ITEM]);
       expect(JSON.stringify(saved.players.local)).toContain(ITEM);
     } finally { registry.dispose(); inventory.dispose(); world.dispose(); }
   });
 
   it('draws the phase clip on the ground, also in a visual made after the phase changed', async () => {
     const s = setup();
-    const assets = new GroundItemAssets();
+    const items = new ItemWorldFixture(new THREE.Scene(), new THREE.PerspectiveCamera(), undefined, '/dst/data/databundles/images.zip',
+      s.inventory, '/dst/data/anim', new THREE.Group());
     s.inventory.add(ITEM, 1);
     const entity = s.inventory.extract(SLOT, 1)!;
     s.world.nightmareclock!.SetPhase('wild');
     await flush();
-    const factory = createGroundItemFactory({ sprites: new SpriteResources(undefined, undefined, assets) } as GroundPrefabContext);
-    const visual = factory.create({ ...entity.snapshot(), name: '铥矿徽章', icon: 'nightmare_timepiece.tex' }, entity);
+    // Dropped after the phase changed: its display draws the clip the watch already follows.
+    items.spawnGroundItem({ ...SAVE_CATALOG.items[ITEM], itemId: ITEM, count: 1, entity }, new THREE.Vector3());
     try {
-      await visual.display.artLoaded();
+      await prefabDisplay(entity.transform.model)!.artLoaded();
       await flush();
       expect(entity.sprite.currentAnimation).toBe('idle_3');
-      const mesh = visual.model.children[0].children[0].children[0] as THREE.Mesh;
+      let mesh!: THREE.Mesh;
+      entity.transform.model.traverse(object => { if (object instanceof THREE.Mesh) mesh ??= object; });
       expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
-    } finally { visual.dispose(); entity.destroy(); assets.dispose(); s.dispose(); }
+    } finally { items.dispose(); s.dispose(); }
   });
 });

@@ -1,4 +1,4 @@
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
 import { InventorySlot, InventoryStore, HandSlot, cursorSlotAddress, equipmentSlotAddress, inventorySlotAddress } from '../src';
 import { addFueled } from './fueled';
 
@@ -70,7 +70,6 @@ it('excludes the cursor from automatic allocations and crafting while permitting
 it('DropEverything drops the cursor, slot and equipped whole stacks at the owner position, keeping identity and state', () => {
   const store = createStore();
   const dropped: string[] = [], launches: ({ speed: { min: number }; ySpeed: { min: number }; height: number } | undefined)[] = [];
-  store.subscribeDropped((entity, launch) => { dropped.push(entity.id); launches.push(launch); });
   store.add('torch', 1, 'torch_barber', undefined, undefined, undefined, 23.125);
   store.add('log', 8);
   const torch = store.getEntity(first)!, logs = store.getEntity(second)!;
@@ -78,6 +77,11 @@ it('DropEverything drops the cursor, slot and equipped whole stacks at the owner
   expect(store.transfer(second, cursor, 8)).toBe(true);
   store.add('log', 3);
   const rest = store.getEntity(first)!;
+  // inventoryitem:OnDropped(randomdir) throws each inst, then it pushes ondropped.
+  for (const entity of [torch, logs, rest]) {
+    const onDropped = vi.spyOn(entity.components.inventoryitem, 'OnDropped');
+    entity.ListenForEvent('ondropped', () => { dropped.push(entity.id); launches.push(onDropped.mock.lastCall?.[0]); });
+  }
   store.DropEverything();
   expect(dropped).toEqual([logs.id, rest.id, torch.id]);
   // DropItem(item, true, true): OnDropped(randomdir) throws each item from y = 1 at speed 2..3 with vertical speed 3 × speed.

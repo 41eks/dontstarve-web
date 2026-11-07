@@ -44,7 +44,8 @@ class RegionImportTest(unittest.TestCase):
             'rabbit': [{'id': 9}],
         }
         entities, provenance = PREFAB['convert_entities'](terrain, source, {'translation': [12, 0, 24]}, 'ART')
-        records = {e['components']['stack']['itemId']: e for e in entities['ground_item']}
+        records = {prefab: group[0] for prefab, group in entities.items()}
+        self.assertTrue(all(record['components']['stack']['itemId'] == prefab for prefab, group in entities.items() for record in group))
         self.assertEqual(records['rocks'], {'id': 'dst_ART_rocks_id_1',
                          'transform': {'position': [18, 3, -15], 'rotationY': 0},
                          'components': {'stack': {'entityId': 'dst_ART_rocks_id_1', 'itemId': 'rocks', 'count': 8, 'variant': 'f2'}}})
@@ -55,7 +56,7 @@ class RegionImportTest(unittest.TestCase):
         self.assertEqual(records['singingshell_octave3']['components']['stack']['variant'], '3')
         self.assertNotIn('rabbit', provenance['groundItemCounts'])
         self.assertEqual(provenance['groundItemCounts']['rocks']['quantity'], 8)
-        self.assertEqual(set(entities), {'ground_item'})
+        self.assertEqual(set(entities), set(records))
         source['rocks'][0]['data']['anim'] = 'f99'
         with self.assertRaisesRegex(ValueError, 'ground variant'):
             PREFAB['convert_entities'](terrain, source, {'translation': [12, 0, 24]}, 'ART')
@@ -235,7 +236,7 @@ class RegionImportTest(unittest.TestCase):
         self.assertEqual(provenance['entityCounts']['moon_tree'], {'source': 2, 'imported': 2})
         self.assertEqual([record['components']['flower'] for record in entities['flower']],
                          [{'animation': 'rose'}, {'animation': 'f9', 'planted': True}])
-        insects = entities['ground_item']
+        insects = [*entities['fireflies'], *entities['butterfly']]
         self.assertEqual([record['components']['stack']['itemId'] for record in insects], ['fireflies', 'butterfly'])
         self.assertEqual([record['components']['stack']['count'] for record in insects], [8, 2])
         self.assertEqual(insects[1]['components']['stack']['freshnessPercent'], .5)

@@ -220,6 +220,6 @@ it('draws the fence item and every item skin from the shared catalog, matching t
   try {
     const itemSkins = Object.keys(GROUND_ITEM_DEFINITIONS.fence_item.skinArchives);
     expect(itemSkins.map(skin => fenceWorldSkin('fence_item', skin))).toEqual(Object.keys(FENCE_SKIN_ARCHIVES));
-    for (const skinId of [undefined, itemSkins[0], itemSkins.at(-1)]) (await createGroundItemVisual(assets, 'fence_item', skinId)).dispose();
+    for (const skinId of [undefined, itemSkins[0], itemSkins.at(-1)]) (await createGroundItemVisual('fence_item', skinId)).dispose();
   } finally { assets.dispose(); }
 });

@@ -7,7 +7,6 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createInventoryStore } from '../../../src/inventory';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
-import { GroundItemAssets } from '../../prefab/src/groundItems';
 import { createGroundItemVisual } from './groundItemVisual';
 import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
 import { parseImageAtlasXml } from '../src/imageAtlas';
@@ -48,13 +47,12 @@ it('gives separate sweepers through the application inventory, resolves their ic
 });
 
 it('renders source ground and held art for the base sweeper and brush skin, then removes held art', async () => {
-  const assets = new GroundItemAssets();
   const player = await createWilsonPlayer('/dst/data/anim');
   const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
   const animationEquipper = createPlayerEquipper(animation);
   const skins = ['reskin_tool_brush'];
   for (const skinId of [undefined, ...skins]) {
-    const ground = await createGroundItemVisual(assets, 'reskin_tool', skinId);
+    const ground = await createGroundItemVisual('reskin_tool', skinId);
     expect((ground.model.children[0].children[0].children[0] as THREE.Mesh).geometry.drawRange.count).toBeGreaterThan(0);
     animationEquipper.equip('reskin_tool', skinId);
     await vi.waitFor(() => {

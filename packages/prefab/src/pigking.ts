@@ -5,7 +5,7 @@ import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
 import { Trader, type TradeItem } from '../../componets/src/trader';
 import { PigKingStateGraph, type PigKingStateInst } from '../../stategraphs/src/SGpigking';
-import type { LootLaunch } from './lootFling';
+import type { LootLaunch } from '../../componets/src/inventoryphysics';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { PlaySound } from './sound';
 import { MakeObstaclePhysics } from './standardcomponents';

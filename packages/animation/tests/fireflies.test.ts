@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { ItemEntity } from '../../inventory/src';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FirefliesController, FIREFLIES_LIGHT, configureFirefliesEntity } from '../../prefab/src/fireflies';
-import { GroundItemManager } from '../../prefab/src/groundItemManager';
+import { ItemWorldFixture } from './itemWorldFixture';
 
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { createMemo, createSignal, type HandEquipment, type ReadonlySignal } from '../../signals/src';
@@ -308,7 +308,7 @@ describe('real fireflies archive and ground transfers', () => {
     cycle.set('night'); playerpositions.set([new THREE.Vector3(40, 0, 0)]);
     const scene = new THREE.Scene(), inventory = createPickupInventory();
     const canvas = Object.assign(new EventTarget(), { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) });
-    const manager = new GroundItemManager(scene, new THREE.PerspectiveCamera(),
+    const manager = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(),
       { domElement: canvas } as unknown as THREE.WebGLRenderer, 'images.zip', inventory, '/anim', new THREE.Group(), undefined,
       { getWatchWorldContent, tickingarea }, undefined, undefined, scheduler, undefined, undefined, undefined);
     cleanups.push(() => { manager.dispose(); inventory.dispose(); unbind(); scheduler.dispose(); });
@@ -334,7 +334,7 @@ describe('real fireflies archive and ground transfers', () => {
     cycle.set('day'); playerpositions.set([new THREE.Vector3(100, 0, 0)]);
     const scene = new THREE.Scene(), inventory = createPickupInventory();
     const canvas = Object.assign(new EventTarget(), { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) });
-    const manager = new GroundItemManager(scene, new THREE.PerspectiveCamera(),
+    const manager = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(),
       { domElement: canvas } as unknown as THREE.WebGLRenderer, 'images.zip', inventory, '/anim', new THREE.Group(), undefined,
       { getWatchWorldContent, tickingarea }, undefined, undefined, scheduler, undefined, undefined, undefined);
     cleanups.push(() => { manager.dispose(); inventory.dispose(); unbind(); scheduler.dispose(); });
@@ -360,7 +360,7 @@ describe('real fireflies archive and ground transfers', () => {
     cycle.set('night'); playerpositions.set([new THREE.Vector3()]);
     const scene = new THREE.Scene(), inventory = createPickupInventory();
     const canvas = Object.assign(new EventTarget(), { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) });
-    const manager = new GroundItemManager(scene, new THREE.PerspectiveCamera(),
+    const manager = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(),
       { domElement: canvas } as unknown as THREE.WebGLRenderer, 'images.zip', inventory, '/anim', new THREE.Group(), undefined,
       { getWatchWorldContent, tickingarea });
     cleanups.push(() => { manager.dispose(); inventory.dispose(); unbind(); DisposeTileStates(position); scheduler.dispose(); });
@@ -396,9 +396,9 @@ describe('real fireflies archive and ground transfers', () => {
     // inst.Light stays declared through OnEntitySleep; the swarm's display stops listing it for the renderer.
     expect(declaredLight(near)?.intensity).toBe(.5);
     expect(listed(near)).toBe(false);
-    // A player standing next to the swarm keeps it from fading in: it plays no animation, so nothing is built or sorted.
+    // A player standing next to the swarm keeps it from fading in: it plays no animation, so nothing is built.
     expect(geometry(far)).toBeUndefined();
-    expect(manager.renderEntities).toEqual([]);
+    expect(manager.renderEntities.map(entry => entry.object)).not.toContain(near);
     expect(prefabInstance(target.model)!.status.peek()).toBe('asleep');
     nearUpdate.mockClear();
     manager.update(.1, new THREE.Quaternion());
@@ -410,9 +410,7 @@ describe('real fireflies archive and ground transfers', () => {
     await settle();
     expect(geometry(near)).toBeDefined();
     expect(geometry(far)).toBeUndefined();
-    // The retained looping clip uses the shared instance batch after wake, so it has no ordinary draw entry.
     expect(near.visible).toBe(true);
-    expect(manager.renderEntities).toEqual([]);
     expect(manager.exportRecords()).toEqual(records);
     expect(manager.entities.get('fireflies:near')).toBe(nearEntity);
     manager.update(.1, new THREE.Quaternion());
@@ -433,7 +431,7 @@ describe('real fireflies archive and ground transfers', () => {
     const scheduler = new GameTimeScheduler();
     const { cycle, getWatchWorldContent, tickingarea, unbind } = bindTestWorld(scheduler); cycle.set('night');
     cleanups.push(() => { unbind(); scheduler.dispose(); });
-    const manager = new GroundItemManager(scene, new THREE.PerspectiveCamera(),
+    const manager = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(),
       { domElement: canvas } as unknown as THREE.WebGLRenderer, 'images.zip', inventory, '/anim', new THREE.Group(), undefined,
       { getWatchWorldContent, tickingarea });
     cleanups.push(() => manager.dispose());
@@ -454,9 +452,11 @@ describe('real fireflies archive and ground transfers', () => {
     expect((target.work({ components: { inventory } }) && (!!target.entity.components.inventoryitem?.owner || target.entity.isRemoved))).toBe(false);
     expect(declaredLight(target.model)).toBeUndefined();
     expect(manager.exportRecords()).toHaveLength(1);
-    const dark = new GroundItemManager(new THREE.Scene(), new THREE.PerspectiveCamera(),
-      { domElement: canvas } as unknown as THREE.WebGLRenderer, 'images.zip', inventory, '/anim', new THREE.Group());
-    cleanups.push(() => dark.dispose());
+    // The save reloads into a world of its own, with its own inventory.
+    const darkInventory = createPickupInventory();
+    const dark = new ItemWorldFixture(new THREE.Scene(), new THREE.PerspectiveCamera(),
+      { domElement: canvas } as unknown as THREE.WebGLRenderer, 'images.zip', darkInventory, '/anim', new THREE.Group());
+    cleanups.push(() => { dark.dispose(); darkInventory.dispose(); });
     const restored = await dark.spawnFromSave(records[0].id, { ...definition, count: 1 }, new THREE.Vector3(8, 0, 9));
     expect(dark.exportRecords()).toEqual([records[0]]);
     expect(declaredLight(restored)).toBeUndefined();

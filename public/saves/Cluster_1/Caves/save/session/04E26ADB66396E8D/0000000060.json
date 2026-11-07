@@ -234539,7 +234539,7 @@
           }
         }
       ],
-      "ground_item": [
+      "fireflies": [
         {
           "id": "dst_04E26ADB66396E8D_fireflies_index_000001",
           "transform": {
@@ -235081,7 +235081,9 @@
               "entityId": "dst_04E26ADB66396E8D_fireflies_index_000030"
             }
           }
-        },
+        }
+      ],
+      "axe": [
         {
           "id": "dst_04E26ADB66396E8D_axe_id_103682",
           "transform": {
@@ -235100,7 +235102,9 @@
               "entityId": "dst_04E26ADB66396E8D_axe_id_103682"
             }
           }
-        },
+        }
+      ],
+      "batwing": [
         {
           "id": "dst_04E26ADB66396E8D_batwing_id_103684",
           "transform": {
@@ -235136,7 +235140,9 @@
               "entityId": "dst_04E26ADB66396E8D_batwing_id_103686"
             }
           }
-        },
+        }
+      ],
+      "beardhair": [
         {
           "id": "dst_04E26ADB66396E8D_beardhair_index_000001",
           "transform": {
@@ -235190,7 +235196,9 @@
               "entityId": "dst_04E26ADB66396E8D_beardhair_id_102343"
             }
           }
-        },
+        }
+      ],
+      "beef_bell": [
         {
           "id": "dst_04E26ADB66396E8D_beef_bell_index_000001",
           "transform": {
@@ -235208,7 +235216,9 @@
               "entityId": "dst_04E26ADB66396E8D_beef_bell_index_000001"
             }
           }
-        },
+        }
+      ],
+      "bluegem": [
         {
           "id": "dst_04E26ADB66396E8D_bluegem_index_000001",
           "transform": {
@@ -235334,7 +235344,9 @@
               "entityId": "dst_04E26ADB66396E8D_bluegem_index_000007"
             }
           }
-        },
+        }
+      ],
+      "blueprint": [
         {
           "id": "dst_04E26ADB66396E8D_blueprint_id_112639",
           "transform": {
@@ -235353,7 +235365,9 @@
               "entityId": "dst_04E26ADB66396E8D_blueprint_id_112639"
             }
           }
-        },
+        }
+      ],
+      "boneshard": [
         {
           "id": "dst_04E26ADB66396E8D_boneshard_id_103290",
           "transform": {
@@ -235551,7 +235565,9 @@
               "entityId": "dst_04E26ADB66396E8D_boneshard_id_103310"
             }
           }
-        },
+        }
+      ],
+      "charcoal": [
         {
           "id": "dst_04E26ADB66396E8D_charcoal_index_000001",
           "transform": {
@@ -235569,7 +235585,9 @@
               "entityId": "dst_04E26ADB66396E8D_charcoal_index_000001"
             }
           }
-        },
+        }
+      ],
+      "cutgrass": [
         {
           "id": "dst_04E26ADB66396E8D_cutgrass_index_000001",
           "transform": {
@@ -235623,7 +235641,9 @@
               "entityId": "dst_04E26ADB66396E8D_cutgrass_index_000003"
             }
           }
-        },
+        }
+      ],
+      "cutstone": [
         {
           "id": "dst_04E26ADB66396E8D_cutstone_index_000001",
           "transform": {
@@ -235641,7 +235661,9 @@
               "entityId": "dst_04E26ADB66396E8D_cutstone_index_000001"
             }
           }
-        },
+        }
+      ],
+      "dreadstone": [
         {
           "id": "dst_04E26ADB66396E8D_dreadstone_index_000001",
           "transform": {
@@ -235659,7 +235681,9 @@
               "entityId": "dst_04E26ADB66396E8D_dreadstone_index_000001"
             }
           }
-        },
+        }
+      ],
+      "dreadstonehat": [
         {
           "id": "dst_04E26ADB66396E8D_dreadstonehat_id_108185",
           "transform": {
@@ -235678,7 +235702,9 @@
               "entityId": "dst_04E26ADB66396E8D_dreadstonehat_id_108185"
             }
           }
-        },
+        }
+      ],
+      "firestaff": [
         {
           "id": "dst_04E26ADB66396E8D_firestaff_id_102244",
           "transform": {
@@ -235696,7 +235722,9 @@
               "entityId": "dst_04E26ADB66396E8D_firestaff_id_102244"
             }
           }
-        },
+        }
+      ],
+      "flint": [
         {
           "id": "dst_04E26ADB66396E8D_flint_index_000001",
           "transform": {
@@ -237316,7 +237344,9 @@
               "entityId": "dst_04E26ADB66396E8D_flint_index_000090"
             }
           }
-        },
+        }
+      ],
+      "gears": [
         {
           "id": "dst_04E26ADB66396E8D_gears_index_000001",
           "transform": {
@@ -237406,7 +237436,9 @@
               "entityId": "dst_04E26ADB66396E8D_gears_index_000005"
             }
           }
-        },
+        }
+      ],
+      "glasscutter": [
         {
           "id": "dst_04E26ADB66396E8D_glasscutter_id_104754",
           "transform": {
@@ -237463,7 +237495,9 @@
               "entityId": "dst_04E26ADB66396E8D_glasscutter_id_104758"
             }
           }
-        },
+        }
+      ],
+      "goldenaxe": [
         {
           "id": "dst_04E26ADB66396E8D_goldenaxe_index_000001",
           "transform": {
@@ -237538,7 +237572,9 @@
               "entityId": "dst_04E26ADB66396E8D_goldenaxe_id_102360"
             }
           }
-        },
+        }
+      ],
+      "goldenpickaxe": [
         {
           "id": "dst_04E26ADB66396E8D_goldenpickaxe_id_111399",
           "transform": {
@@ -237718,7 +237754,9 @@
               "entityId": "dst_04E26ADB66396E8D_goldenpickaxe_id_111417"
             }
           }
-        },
+        }
+      ],
+      "goldnugget": [
         {
           "id": "dst_04E26ADB66396E8D_goldnugget_index_000001",
           "transform": {
@@ -238438,7 +238476,9 @@
               "entityId": "dst_04E26ADB66396E8D_goldnugget_id_108265"
             }
           }
-        },
+        }
+      ],
+      "greengem": [
         {
           "id": "dst_04E26ADB66396E8D_greengem_index_000001",
           "transform": {
@@ -238474,7 +238514,9 @@
               "entityId": "dst_04E26ADB66396E8D_greengem_id_112824"
             }
           }
-        },
+        }
+      ],
+      "guano": [
         {
           "id": "dst_04E26ADB66396E8D_guano_index_000001",
           "transform": {
@@ -239176,7 +239218,9 @@
               "entityId": "dst_04E26ADB66396E8D_guano_index_000039"
             }
           }
-        },
+        }
+      ],
+      "hammer": [
         {
           "id": "dst_04E26ADB66396E8D_hammer_id_101559",
           "transform": {
@@ -239266,7 +239310,9 @@
               "entityId": "dst_04E26ADB66396E8D_hammer_id_101567"
             }
           }
-        },
+        }
+      ],
+      "horrorfuel": [
         {
           "id": "dst_04E26ADB66396E8D_horrorfuel_id_110835",
           "transform": {
@@ -239302,7 +239348,9 @@
               "entityId": "dst_04E26ADB66396E8D_horrorfuel_index_000002"
             }
           }
-        },
+        }
+      ],
+      "houndstooth": [
         {
           "id": "dst_04E26ADB66396E8D_houndstooth_index_000001",
           "transform": {
@@ -239338,7 +239386,9 @@
               "entityId": "dst_04E26ADB66396E8D_houndstooth_id_110623"
             }
           }
-        },
+        }
+      ],
+      "hutch_fishbowl": [
         {
           "id": "dst_04E26ADB66396E8D_hutch_fishbowl_index_000001",
           "transform": {
@@ -239356,7 +239406,9 @@
               "entityId": "dst_04E26ADB66396E8D_hutch_fishbowl_index_000001"
             }
           }
-        },
+        }
+      ],
+      "log": [
         {
           "id": "dst_04E26ADB66396E8D_log_index_000001",
           "transform": {
@@ -239410,7 +239462,9 @@
               "entityId": "dst_04E26ADB66396E8D_log_id_116200"
             }
           }
-        },
+        }
+      ],
+      "marble": [
         {
           "id": "dst_04E26ADB66396E8D_marble_index_000001",
           "transform": {
@@ -239464,7 +239518,9 @@
               "entityId": "dst_04E26ADB66396E8D_marble_index_000003"
             }
           }
-        },
+        }
+      ],
+      "mask_ancient_architecthat": [
         {
           "id": "dst_04E26ADB66396E8D_mask_ancient_architecthat_index_000001",
           "transform": {
@@ -239482,7 +239538,9 @@
               "entityId": "dst_04E26ADB66396E8D_mask_ancient_architecthat_index_000001"
             }
           }
-        },
+        }
+      ],
+      "mask_ancient_handmaidhat": [
         {
           "id": "dst_04E26ADB66396E8D_mask_ancient_handmaidhat_index_000001",
           "transform": {
@@ -239500,7 +239558,9 @@
               "entityId": "dst_04E26ADB66396E8D_mask_ancient_handmaidhat_index_000001"
             }
           }
-        },
+        }
+      ],
+      "mask_ancient_masonhat": [
         {
           "id": "dst_04E26ADB66396E8D_mask_ancient_masonhat_index_000001",
           "transform": {
@@ -239518,7 +239578,9 @@
               "entityId": "dst_04E26ADB66396E8D_mask_ancient_masonhat_index_000001"
             }
           }
-        },
+        }
+      ],
+      "mitegland": [
         {
           "id": "dst_04E26ADB66396E8D_mitegland_id_113544",
           "transform": {
@@ -239536,7 +239598,9 @@
               "entityId": "dst_04E26ADB66396E8D_mitegland_id_113544"
             }
           }
-        },
+        }
+      ],
+      "monstermeat": [
         {
           "id": "dst_04E26ADB66396E8D_monstermeat_id_101502",
           "transform": {
@@ -239590,7 +239654,9 @@
               "entityId": "dst_04E26ADB66396E8D_monstermeat_id_101506"
             }
           }
-        },
+        }
+      ],
+      "moonrocknugget": [
         {
           "id": "dst_04E26ADB66396E8D_moonrocknugget_index_000001",
           "transform": {
@@ -239626,7 +239692,9 @@
               "entityId": "dst_04E26ADB66396E8D_moonrocknugget_index_000002"
             }
           }
-        },
+        }
+      ],
+      "nightmarefuel": [
         {
           "id": "dst_04E26ADB66396E8D_nightmarefuel_index_000001",
           "transform": {
@@ -240076,7 +240144,9 @@
               "entityId": "dst_04E26ADB66396E8D_nightmarefuel_id_101637"
             }
           }
-        },
+        }
+      ],
+      "nitre": [
         {
           "id": "dst_04E26ADB66396E8D_nitre_id_103391",
           "transform": {
@@ -240382,7 +240452,9 @@
               "entityId": "dst_04E26ADB66396E8D_nitre_index_000017"
             }
           }
-        },
+        }
+      ],
+      "opalstaff": [
         {
           "id": "dst_04E26ADB66396E8D_opalstaff_id_102362",
           "transform": {
@@ -240401,7 +240473,9 @@
               "entityId": "dst_04E26ADB66396E8D_opalstaff_id_102362"
             }
           }
-        },
+        }
+      ],
+      "orangeamulet": [
         {
           "id": "dst_04E26ADB66396E8D_orangeamulet_index_000001",
           "transform": {
@@ -240419,7 +240493,9 @@
               "entityId": "dst_04E26ADB66396E8D_orangeamulet_index_000001"
             }
           }
-        },
+        }
+      ],
+      "orangegem": [
         {
           "id": "dst_04E26ADB66396E8D_orangegem_id_102123",
           "transform": {
@@ -240527,7 +240603,9 @@
               "entityId": "dst_04E26ADB66396E8D_orangegem_index_000006"
             }
           }
-        },
+        }
+      ],
+      "pitchfork": [
         {
           "id": "dst_04E26ADB66396E8D_pitchfork_index_000001",
           "transform": {
@@ -240599,7 +240677,9 @@
               "entityId": "dst_04E26ADB66396E8D_pitchfork_index_000004"
             }
           }
-        },
+        }
+      ],
+      "poop": [
         {
           "id": "dst_04E26ADB66396E8D_poop_index_000001",
           "transform": {
@@ -241175,7 +241255,9 @@
               "entityId": "dst_04E26ADB66396E8D_poop_index_000032"
             }
           }
-        },
+        }
+      ],
+      "purplegem": [
         {
           "id": "dst_04E26ADB66396E8D_purplegem_index_000001",
           "transform": {
@@ -241355,7 +241437,9 @@
               "entityId": "dst_04E26ADB66396E8D_purplegem_id_116247"
             }
           }
-        },
+        }
+      ],
+      "redgem": [
         {
           "id": "dst_04E26ADB66396E8D_redgem_index_000001",
           "transform": {
@@ -241571,7 +241655,9 @@
               "entityId": "dst_04E26ADB66396E8D_redgem_index_000012"
             }
           }
-        },
+        }
+      ],
+      "rocks": [
         {
           "id": "dst_04E26ADB66396E8D_rocks_id_106009",
           "transform": {
@@ -243053,7 +243139,9 @@
               "entityId": "dst_04E26ADB66396E8D_rocks_id_106163"
             }
           }
-        },
+        }
+      ],
+      "rope": [
         {
           "id": "dst_04E26ADB66396E8D_rope_index_000001",
           "transform": {
@@ -243179,7 +243267,9 @@
               "entityId": "dst_04E26ADB66396E8D_rope_index_000007"
             }
           }
-        },
+        }
+      ],
+      "ruinshat": [
         {
           "id": "dst_04E26ADB66396E8D_ruinshat_index_000001",
           "transform": {
@@ -243269,7 +243359,9 @@
               "entityId": "dst_04E26ADB66396E8D_ruinshat_index_000005"
             }
           }
-        },
+        }
+      ],
+      "shovel": [
         {
           "id": "dst_04E26ADB66396E8D_shovel_id_101466",
           "transform": {
@@ -243288,7 +243380,9 @@
               "entityId": "dst_04E26ADB66396E8D_shovel_id_101466"
             }
           }
-        },
+        }
+      ],
+      "silk": [
         {
           "id": "dst_04E26ADB66396E8D_silk_id_108485",
           "transform": {
@@ -243450,7 +243544,9 @@
               "entityId": "dst_04E26ADB66396E8D_silk_index_000009"
             }
           }
-        },
+        }
+      ],
+      "sketch": [
         {
           "id": "dst_04E26ADB66396E8D_sketch_id_104323",
           "transform": {
@@ -243522,7 +243618,9 @@
               "entityId": "dst_04E26ADB66396E8D_sketch_id_104329"
             }
           }
-        },
+        }
+      ],
+      "slurtleslime": [
         {
           "id": "dst_04E26ADB66396E8D_slurtleslime_index_000001",
           "transform": {
@@ -243864,7 +243962,9 @@
               "entityId": "dst_04E26ADB66396E8D_slurtleslime_index_000019"
             }
           }
-        },
+        }
+      ],
+      "smallmeat": [
         {
           "id": "dst_04E26ADB66396E8D_smallmeat_id_101509",
           "transform": {
@@ -243882,7 +243982,9 @@
               "entityId": "dst_04E26ADB66396E8D_smallmeat_id_101509"
             }
           }
-        },
+        }
+      ],
+      "spidergland": [
         {
           "id": "dst_04E26ADB66396E8D_spidergland_index_000001",
           "transform": {
@@ -243972,7 +244074,9 @@
               "entityId": "dst_04E26ADB66396E8D_spidergland_index_000005"
             }
           }
-        },
+        }
+      ],
+      "spoiled_food": [
         {
           "id": "dst_04E26ADB66396E8D_spoiled_food_id_112609",
           "transform": {
@@ -244494,7 +244598,9 @@
               "entityId": "dst_04E26ADB66396E8D_spoiled_food_id_112607"
             }
           }
-        },
+        }
+      ],
+      "thulecite": [
         {
           "id": "dst_04E26ADB66396E8D_thulecite_index_000001",
           "transform": {
@@ -244692,7 +244798,9 @@
               "entityId": "dst_04E26ADB66396E8D_thulecite_index_000011"
             }
           }
-        },
+        }
+      ],
+      "thulecite_pieces": [
         {
           "id": "dst_04E26ADB66396E8D_thulecite_pieces_index_000001",
           "transform": {
@@ -244998,7 +245106,9 @@
               "entityId": "dst_04E26ADB66396E8D_thulecite_pieces_index_000017"
             }
           }
-        },
+        }
+      ],
+      "torch": [
         {
           "id": "dst_04E26ADB66396E8D_torch_id_102148",
           "transform": {
@@ -245035,7 +245145,9 @@
               "entityId": "dst_04E26ADB66396E8D_torch_id_102150"
             }
           }
-        },
+        }
+      ],
+      "trap": [
         {
           "id": "dst_04E26ADB66396E8D_trap_id_112959",
           "transform": {
@@ -245089,7 +245201,9 @@
               "entityId": "dst_04E26ADB66396E8D_trap_id_112963"
             }
           }
-        },
+        }
+      ],
+      "trinket_1": [
         {
           "id": "dst_04E26ADB66396E8D_trinket_1_id_111611",
           "transform": {
@@ -245161,7 +245275,9 @@
               "entityId": "dst_04E26ADB66396E8D_trinket_1_index_000004"
             }
           }
-        },
+        }
+      ],
+      "trinket_6": [
         {
           "id": "dst_04E26ADB66396E8D_trinket_6_id_102190",
           "transform": {
@@ -245413,7 +245529,9 @@
               "entityId": "dst_04E26ADB66396E8D_trinket_6_id_102216"
             }
           }
-        },
+        }
+      ],
+      "twigs": [
         {
           "id": "dst_04E26ADB66396E8D_twigs_index_000001",
           "transform": {
@@ -246151,7 +246269,9 @@
               "entityId": "dst_04E26ADB66396E8D_twigs_id_102803"
             }
           }
-        },
+        }
+      ],
+      "yellowgem": [
         {
           "id": "dst_04E26ADB66396E8D_yellowgem_index_000001",
           "transform": {

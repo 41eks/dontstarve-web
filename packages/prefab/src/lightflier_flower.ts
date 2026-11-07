@@ -208,7 +208,7 @@ export class LightFlierFlowerManager {
   private disposed = false;
   constructor(scene: THREE.Scene, base: string, services: LightFlierServices, getLightLevel: (model: THREE.Group) => number) {
     this.displays = new PrefabDisplayGroup(scene); this.getLightLevel = getLightLevel;
-    this.habitat = new LightFlierHabitat(base, services); this.resources = new SpriteResources(base, LIGHTFLIER_FLOWER_ID);
+    this.habitat = new LightFlierHabitat(services); this.resources = new SpriteResources(base, LIGHTFLIER_FLOWER_ID);
   }
   spawn(position: THREE.Vector3, saved?: LightFlierFlowerRecord): THREE.Group {
     const state = saved?.components.lightflierFlower, variant = state?.variant ?? (Math.random() < .5 ? 'single' : 'springy');

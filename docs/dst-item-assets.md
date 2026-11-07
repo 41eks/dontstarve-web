@@ -54,11 +54,11 @@ NPC 专用的 `shadow_thrall_parasitehat` 不属于玩家帽子目录，不导�
 
 ## 当前加载流程
 
-`packages/prefab/src/groundItemManager.ts` 的 `GroundItemManager` 通过 `packages/prefab/src/groundPrefabRegistry.ts` 中的 `GroundPrefabRegistry` 查找物品工厂。注册表首先加载共享目录工厂，再由专用 prefab 工厂覆盖同名 ID。
+`packages/prefab/src/itemPrefabs.ts` 的 `itemPrefabs()` 为每个物品 ID 组装 `PrefabEntityDefinition`，注册到应用层共享的 `PrefabEntityManager`：先按地面美术目录（`groundItemPrefab`）或物品栏图标（`iconItemPrefab`）生成，再由专用 prefab 模块的定义覆盖同名 ID。
 
 `ArchiveSpriteAssets` 和 `GroundItemAssets` 不接收动画目录参数，统一从 `${import.meta.env.BASE_URL}dst/data/anim` 加载，支持子路径部署。使用 `new ArchiveSpriteAssets()` 或 `new GroundItemAssets()`；`ArchiveSpriteAssets` 的可选构造参数仅指定材质名称前缀，例如 `new ArchiveSpriteAssets('farm')`。仅转发动画目录的 prefab／特效构造参数一并移除，材质缓存和释放仍由原有资源对象管理。
 
-帽子工厂是 `packages/prefab/src/hats.ts` 的 `createHatGroundFactory()`；普通目录物品工厂调用 `packages/prefab/src/groundItems.ts` 的 `createResidentGroundItem()`。`GroundItemManager` 不直接选择这两个函数。未注册的物品才使用库存图标回退，回退物品同样是 `createPrefabEntity()` 创建的 `PrefabInstance` 实体，由 `PrefabDisplay` 绘制图标 billboard。
+帽子由 `packages/prefab/src/hats.ts` 的 `hatPrefabs()` 声明；普通目录物品由 `packages/prefab/src/groundItems.ts` 的 `groundItemPrefab()` 声明。目录外的库存物品声明 `icon`，由管理器持有的图标图集在 `PrefabDisplay` 中绘制 billboard。
 
 地面模型保留源原点作为脚点，用于绘制顺序、拾取距离与存档位置。皮肤通过库存、地面、穿戴和存档路径传递，换肤不应创建新的逻辑实体。
 
@@ -104,6 +104,6 @@ python3 packages/prefab/scripts/import-ground-tiles.py --check
 
 ## 源存档散落物品的静态美术
 
-`import-ground-items.py` 共用 `scripts/static-ground-items.py` 导入 63 个静态展示条目，写入 `groundItems.json.staticItems`，不注册新库存物品。原有材料、工具和食物复用 `items` 目录；外观分支存于 `staticVariants`。运行时统一由原有 `GroundItemManager` 和地面 prefab 工厂消费，记录保存为 `ground_item.components.stack`，不另建管理器或逐帧循环。`--check` 同时读取原始 anim.bin，核对全部目录项及变体的 bank/clip，并按源路径校验资源字节。冰杖与传送法杖来自 `staff.lua` 的 `colour.."staff"..suffix`，分别使用 `staffs:bluestaff`、`staffs:purplestaff`。
+`import-ground-items.py` 共用 `scripts/static-ground-items.py` 导入 63 个静态展示条目，写入 `groundItems.json.staticItems`，不注册新库存物品。原有材料、工具和食物复用 `items` 目录；外观分支存于 `staticVariants`。运行时由 `groundItemPrefab()` 声明为物品 prefab，记录按各自 prefab ID 保存为 `world.entities.<id>[].components.stack`，不另建管理器或逐帧循环。`--check` 同时读取原始 anim.bin，核对全部目录项及变体的 bank/clip，并按源路径校验资源字节。冰杖与传送法杖来自 `staff.lua` 的 `colour.."staff"..suffix`，分别使用 `staffs:bluestaff`、`staffs:purplestaff`。
 
 雕塑头使用 `sculpture_pieces.zip` 的动画和 `swap_sculpture_<piece>.zip` 的 build；贝壳以 `singingshell.zip` 的 `octave<octave>_<variation>` 覆盖 `shell_placeholder`。扑克牌使用 deck_of_cards 的 single 贴地美术；不移植库存 OverrideImage UI。被冲上岸的海带使用 bullkelp 的 dropped_beached，源 INV_IMAGE 拼写为 kullkelp_root、无可用库存图标；静态展示不使用图标回退。

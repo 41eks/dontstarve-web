@@ -221,8 +221,12 @@ def convert_entities(terrain, source_entities, report, session_id, catalog=None)
                             **({'sourceId': source_id} if source_id is not None else {}),
                             'sourcePosition': coordinates, 'sourceNode': names[node - 1] if 0 < node <= len(names) else None})
         if imported:
-            target_prefab = 'ground_item' if static or prefab in ('fireflies', 'butterfly') else TARGET_PREFABS.get(prefab, prefab)
-            result.setdefault(target_prefab, []).extend(imported)
+            if static or prefab in ('fireflies', 'butterfly'):
+                # Items are saved under their own prefab, as Ents saves them.
+                for entity in imported:
+                    result.setdefault(entity['components']['stack']['itemId'], []).append(entity)
+            else:
+                result.setdefault(TARGET_PREFABS.get(prefab, prefab), []).extend(imported)
         counts[prefab] = {'source': len(records), 'imported': len(imported)}
         if static:
             ground_counts[prefab] = {'entities': len(records), 'quantity': sum(e['components']['stack']['count'] for e in imported),
@@ -234,4 +238,4 @@ def convert_entities(terrain, source_entities, report, session_id, catalog=None)
         spawner['components']['dragonflySpawner']['childspawner']['childrenoutside'] = [imported_ids[source_id] for source_id in outside]
     return result, {'entityWhitelist': list(converters), 'entityCounts': counts, 'entitySources': sources,
                     'groundItemCounts': ground_counts, 'containerItems': container_items,
-                    'groundItemScope': 'Ground art via the existing ground_item path: identity, position, quantity, skin and visual variants. Existing prefab behavior is reused; art-only IDs add no gameplay components.'}
+                    'groundItemScope': 'Ground art as item prefabs saved under their own IDs: identity, position, quantity, skin and visual variants. Existing prefab behavior is reused; art-only IDs add no gameplay components.'}

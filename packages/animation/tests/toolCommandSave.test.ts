@@ -1,9 +1,8 @@
-import { findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
-import { GroundItemManager } from '../../prefab/src/groundItemManager';
+import { ItemWorldFixture, itemAt, itemEntities } from './itemWorldFixture';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { executeDebugCommand } from '../../../src/debugCommands';
@@ -23,19 +22,13 @@ it('spawns/gives tool and wall-loot IDs, then exports and reloads identities, po
   const inventory = createPickupInventory();
   const scene = new THREE.Scene(), player = new THREE.Group();
   player.position.set(3, 0, -6);
-  const manager = new GroundItemManager(scene, new THREE.PerspectiveCamera(),
+  const manager = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(),
     { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer, '/dst/data/databundles/images.zip',
     inventory, '/dst/data/anim', player);
   const registry = new EntityRegistry();
-  registry.register(PREFAB_DEFINITIONS.groundItems, {
-    debugSpawn: id => manager.spawnFromSave(`spawn:${id}`, { ...SAVE_CATALOG.items[id], itemId: id, count: 1 }, player.position),
-    restore: (_prefab, record) => manager.spawnFromSave(record.id,
-      { ...SAVE_CATALOG.items[record.components.stack!.itemId], ...record.components.stack! }, new THREE.Vector3(...record.transform.position)),
-    exportRecords: () => manager.exportRecords().map(record => ({ prefabId: 'ground_item', record })),
-    dispose: () => manager.dispose(),
-  });
+  registry.register(PREFAB_DEFINITIONS.groundItems, manager.registration(() => player.position, id => `spawn:${id}`));
   const restoredInventory = createPickupInventory();
-  let restored: GroundItemManager | undefined;
+  let restored: ItemWorldFixture | undefined;
   try {
     const ids = ['dreadstone', 'wagpunk_bits', 'hammer', 'bugnet', 'reskin_tool', 'pickaxe', 'goldenpickaxe'];
     for (const id of ids) {
@@ -53,8 +46,8 @@ it('spawns/gives tool and wall-loot IDs, then exports and reloads identities, po
     const skinId = golden.skinId;
     expect(skinId).toBeDefined();
     const hand = equipmentSlotAddress('hand');
-    const pickup = () => performPickupAction(findActionEntity(manager.reskinTargets.find(target => target.id === golden.id)!
-      .model)!.pickupTarget, createPickupDoer(player, inventory));
+    const pickup = () => performPickupAction(itemAt(manager.reskinTargets.find(target => target.id === golden.id)!
+      .model), createPickupDoer(player, inventory));
     expect(pickup()).toBe(true);
     expect(inventory.getEntity(hand)).toBe(golden);
     expect(await manager.drop({ ...SAVE_CATALOG.items.goldenpickaxe, ...golden.snapshot() }, player.position,
@@ -73,12 +66,11 @@ it('spawns/gives tool and wall-loot IDs, then exports and reloads identities, po
     const saved = deserializeSave(json, SAVE_CATALOG);
     expect(saved.world.entities).toEqual(before);
     restoredInventory.replaceState(inventoryStateFromSave(saved), SAVE_CATALOG.recipes);
-    restored = new GroundItemManager(new THREE.Scene(), new THREE.PerspectiveCamera(),
+    restored = new ItemWorldFixture(new THREE.Scene(), new THREE.PerspectiveCamera(),
       { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer, '/dst/data/databundles/images.zip',
       restoredInventory, '/dst/data/anim', player);
-    for (const record of saved.world.entities.ground_item) await restored.spawnFromSave(record.id,
-      { ...SAVE_CATALOG.items[record.components.stack!.itemId], ...record.components.stack! }, new THREE.Vector3(...record.transform.position));
-    expect(restored.exportRecords()).toEqual(before.ground_item);
+    restored.restoreEntities(saved.world.entities);
+    expect(restored.exportEntities()).toEqual(itemEntities(before));
     expect(restored.entities.get('spawn:hammer')!.components.finiteuses.remaining).toBe(74);
     expect(restored.entities.get('spawn:hammer')!.hasTag('HAMMER_tool')).toBe(true);
     expect(restored.entities.get('spawn:pickaxe')!.components.finiteuses.remaining).toBe(32);
