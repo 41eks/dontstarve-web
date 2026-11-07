@@ -18,7 +18,6 @@ export interface BuildingDeclaration {
   readonly buildArchive?: string;
   readonly buildLabel: string;
   readonly name: string;
-  readonly scale: number;
   readonly idleAnimation?: string;
   readonly previewAnimation?: string;
   readonly skinArchives?: Readonly<Record<string, string>>;
@@ -27,10 +26,10 @@ export interface BuildingDeclaration {
 }
 
 /** MakePlacer(name, bank, build, anim): the same build, in the selected skin. */
-export function buildingPlacer({ archive, buildArchive, buildLabel, name, scale, idleAnimation = 'idle', previewAnimation = idleAnimation, skinArchives, skinSymbols }: BuildingDeclaration): BuildingPlacerSpec {
+export function buildingPlacer({ archive, buildArchive, buildLabel, name, idleAnimation = 'idle', previewAnimation = idleAnimation, skinArchives, skinSymbols }: BuildingDeclaration): BuildingPlacerSpec {
   return { buildLabel, name, animation: previewAnimation, art: (resources, skinId) => {
     if (skinId !== undefined && !skinArchives?.[skinId]) throw new Error(`Unsupported ${name} skin: ${skinId}`);
-    return { source: resources.animated(archive, buildArchive ? { buildArchive } : {}, { name, scale, skinSymbols }), initialize: entity => {
+    return { source: resources.animated(archive, buildArchive ? { buildArchive } : {}, { name, skinSymbols }), initialize: entity => {
       entity.skinId = skinId;
       if (skinArchives) entity.sprite.setSkinSource({ art: resources.archives, archives: skinArchives, ...skinSymbols ? { symbols: skinSymbols } : {} });
     } };

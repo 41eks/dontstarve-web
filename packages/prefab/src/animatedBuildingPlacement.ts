@@ -44,7 +44,6 @@ export interface AnimatedBuildingDefinition {
     /** Source AddMiniMapEntity() + MiniMapEntity:SetIcon(); omitted buildings have no map icon. */
     minimapIcon?: string;
     container?: BuildingContainerDefinition;
-    scale: number;
     skinArchives?: Readonly<Record<string, string>>;
     skinInit?: PrefabSkinInitializer;
     /**
@@ -387,7 +386,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         const sourceOptions: AnimatedSpriteSourceOptions = { buildArchive: skin?.buildArchive ?? definition.buildArchive,
             symbolOverrides: definition.symbolOverrides };
         const source: LoadedSpriteSource = resources.animated(skin?.archive ?? definition.archive, sourceOptions, {
-            name: definition.name, scale: definition.scale,
+            name: definition.name,
             skinSymbols: definition.skinSymbols, baseSymbols: definition.baseSymbols,
             skinAnimationBanks: skinId === undefined ? undefined : definition.skinAnimationBanks?.[skinId],
             hiddenLayers: definition.hiddenLayers,
