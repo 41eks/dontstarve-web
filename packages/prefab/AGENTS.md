@@ -23,6 +23,11 @@
 
 - When porting a prefab or child/FX entity, keep every tag the Lua source adds (`inst:AddTag(...)`, such as `FX`, `NOCLICK`, `DECOR`), regardless of whether its semantics seem relevant or are consumed yet. Apply them on the entity exactly as in Lua, including non-networked child entities like mist or particles; never drop or substitute a tag because it looks unused. An entity with a `PrefabInstance` owns its tags there: write them with `instance.addTag()` / `removeTag()` (or through its `actionEntity`) and read them with `instance.hasTag()`; its model has no `userData.tags`. Code that only holds a model uses `modelHasTag()` / `setModelTag()`. Only models without an instance, such as bare FX sprites, keep their tags in `userData.tags`.
 
+## Components
+
+- 给实体加组件只能用 `addComponent(inst, 'x', ...args)`（`src/components.ts`，对应 `inst:AddComponent("x")`），并放在 Lua 调用 `AddComponent` 的位置，紧接着按 Lua 配置该组件。不得用 `Object.assign(this.components, {...})` 或 `this.components.x = new X(...)` 直接写入 `components`。
+- `addComponent` 的构造表缺少所需组件时，在同一改动中把它登记进去，不要绕过。已有的 `Object.assign`／直接赋值写法不能作为继续使用的依据；改动到这样的文件时一并改成 `addComponent`。
+
 ## Prefab callbacks
 
 - Lua prefab 自己定义的特殊回调（如 `OnWork`、`OnFinish`、`OnEat`、`OnAccept`）必须实现在所属 prefab 模块内，与该 prefab 的 `PrefabInstance`／专用实例构造放在同一模块，并按 Lua 注册到真实实例或其组件。回调通过传入的 `inst` 操作所属状态；同一模块内的相关 prefab 可以按源码共享回调。

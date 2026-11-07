@@ -1,18 +1,24 @@
 import type { ItemEntity } from '@dontstarve-web/inventory';
-import { Tool } from '../../componets/src/tool';
+import { AddFiniteUses, AddTool, AddWeapon, GOLDENTOOLFACTOR, WILSON_ATTACK } from './handTool';
 import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory } from './equipmentVisual';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { PlaySound } from './sound';
 
-export const SHOVEL_USES = 25; // tuning.lua; gold consumes 1 / GOLDENTOOLFACTOR = .25 per DIG.
-export function configureShovelEntity(entity: ItemEntity): void {
-  entity.components.finiteuses.setMaxUses(SHOVEL_USES);
-  entity.components.finiteuses.setConsumption('DIG', entity.prefab === 'goldenshovel' ? .25 : 1);
-  entity.components.tool = entity.component('tool', () => {
-    const tool = new Tool(entity);
-    tool.SetAction('DIG');
-    return tool;
-  });
+export const SHOVEL_USES = 25; // tuning.lua SHOVEL_USES
+const SHOVEL_DAMAGE = WILSON_ATTACK * .5; // tuning.lua SHOVEL_DAMAGE
+
+/**
+ * shovel.lua MakeShovel fn, with gold_master_postinit for goldenshovel. Equippable's onequip / onunequip draw
+ * swap_object (`shovelVisual`).
+ */
+export function configureShovelEntity(inst: ItemEntity): void {
+  AddTool(inst, 'DIG');
+  AddFiniteUses(inst, SHOVEL_USES, 'DIG');
+  const weapon = AddWeapon(inst, SHOVEL_DAMAGE, true);
+  if (inst.prefab === 'goldenshovel') {
+    inst.components.finiteuses.setConsumption('DIG', 1 / GOLDENTOOLFACTOR);
+    weapon.attackwear = 1 / GOLDENTOOLFACTOR;
+  }
 }
 
 export type ShovelTool = 'shovel' | 'goldenshovel';

@@ -3,6 +3,9 @@ import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { PlaySound } from './sound';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Terraformer, type TerraformerMap } from '../../componets/src/terraformer';
+import { AddWeapon, GOLDENTOOLFACTOR, WILSON_ATTACK } from './handTool';
+
+const PITCHFORK_DAMAGE = WILSON_ATTACK * .5; // tuning.lua PITCHFORK_DAMAGE
 
 export type PitchforkTool = 'pitchfork' | 'goldenpitchfork';
 export function isPitchforkTool(value: string): value is PitchforkTool {
@@ -25,9 +28,15 @@ export const pitchforkVisual: EquipmentVisualFactory = item => {
   } };
 };
 
-/** pitchfork.lua: inst:AddComponent("terraformer"). */
-export function configurePitchforkEntity(entity: ItemEntity): void {
-  entity.components.terraformer = entity.component('terraformer', () => new Terraformer(entity));
+/**
+ * pitchfork.lua common_fn, with golden's attackwear. Its finiteuses (PITCHFORK_USES, TERRAFORM consumption) is not
+ * ported: BufferedAction:Do's OnUsedAsItem does not wear the invobject for TERRAFORM yet.
+ */
+export function configurePitchforkEntity(inst: ItemEntity): void {
+  inst.addTag('sharp');
+  const weapon = AddWeapon(inst, PITCHFORK_DAMAGE, false);
+  inst.components.terraformer = inst.component('terraformer', () => new Terraformer(inst));
+  if (inst.prefab === 'goldenpitchfork') weapon.attackwear = 1 / GOLDENTOOLFACTOR;
 }
 
 /** While held in a world, the terraformer works that world's map. */

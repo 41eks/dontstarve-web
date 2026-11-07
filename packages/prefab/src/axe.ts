@@ -1,9 +1,11 @@
 import type { ItemEntity } from '@dontstarve-web/inventory';
-import { Tool } from '../../componets/src/tool';
-import type { EquipmentVisualFactory, HeldEquipFunctions } from './equipmentVisual';
-import { FiniteUsesToolLifecycle, heldToolVisual } from './pickaxe';
+import type { EquipmentVisualFactory } from './equipmentVisual';
+import { AddFiniteUses, AddTool, AddWeapon, GOLDENTOOLFACTOR, heldToolVisual, WILSON_ATTACK } from './handTool';
 
-export const AXE_USES = 100; // tuning.lua AXE_USES.
+export const AXE_USES = 100; // tuning.lua AXE_USES
+const AXE_DAMAGE = WILSON_ATTACK * .8; // tuning.lua AXE_DAMAGE
+/** tuning.lua MOONGLASSAXE: EFFECTIVENESS, CONSUMPTION, DAMAGE = wilson_attack, ATTACKWEAR. */
+const MOONGLASSAXE = { EFFECTIVENESS: 2.5, CONSUMPTION: 1.25, DAMAGE: WILSON_ATTACK, ATTACKWEAR: 2 } as const;
 
 export type AxeTool = 'axe' | 'goldenaxe' | 'moonglassaxe';
 export function isAxeTool(value: string): value is AxeTool {
@@ -11,30 +13,25 @@ export function isAxeTool(value: string): value is AxeTool {
 }
 
 /**
- * axe.lua MakeAxe: the tool component chops with `effectiveness` and finiteuses wears by `consumption`.
- * Golden axes use 1 / GOLDENTOOLFACTOR; moonglass uses TUNING.MOONGLASSAXE.
+ * axe.lua MakeAxe fn, with gold_master_postinit for goldenaxe and glass_master_postinit for moonglassaxe. Equippable's
+ * onequip / onunequip draw swap_object (`axeVisual`).
  */
-const AXE_TUNING: Readonly<Record<AxeTool, { effectiveness: number; consumption: number }>> = {
-  axe: { effectiveness: 1, consumption: 1 },
-  goldenaxe: { effectiveness: 1, consumption: .25 },
-  moonglassaxe: { effectiveness: 2.5, consumption: 1.25 },
-};
-
-export function getAxeLifecycle(entity: ItemEntity): HeldEquipFunctions {
-  return entity.component('axe', () => new FiniteUsesToolLifecycle(entity));
-}
-
-export function configureAxeEntity(entity: ItemEntity): void {
-  const tuning = AXE_TUNING[entity.prefab as AxeTool];
-  entity.components.finiteuses.setMaxUses(AXE_USES);
-  entity.components.finiteuses.setConsumption('CHOP', tuning.consumption);
-  entity.components.tool = entity.component('tool', () => {
-    const tool = new Tool(entity);
-    tool.SetAction('CHOP', tuning.effectiveness);
-    return tool;
-  });
-  entity.addTag('sharp');
-  getAxeLifecycle(entity);
+export function configureAxeEntity(inst: ItemEntity): void {
+  inst.addTag('sharp');
+  inst.addTag('possessable_axe');
+  const tool = AddTool(inst, 'CHOP', 1);
+  AddFiniteUses(inst, AXE_USES, 'CHOP');
+  const weapon = AddWeapon(inst, AXE_DAMAGE, true);
+  if (inst.prefab === 'goldenaxe') {
+    inst.components.finiteuses.setConsumption('CHOP', 1 / GOLDENTOOLFACTOR);
+    weapon.attackwear = 1 / GOLDENTOOLFACTOR;
+  } else if (inst.prefab === 'moonglassaxe') {
+    tool.SetAction('CHOP', MOONGLASSAXE.EFFECTIVENESS);
+    inst.components.finiteuses.setConsumption('CHOP', MOONGLASSAXE.CONSUMPTION);
+    weapon.SetDamage(MOONGLASSAXE.DAMAGE);
+    // onattack_moonglass's SHADOW_WEAR against pure shadow targets and the damagetypebonus are not ported.
+    weapon.attackwear = MOONGLASSAXE.ATTACKWEAR;
+  }
 }
 
 const AXE_SWAP: Readonly<Record<AxeTool, { archive: string; symbol: string }>> = {
