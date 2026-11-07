@@ -3,12 +3,21 @@ import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { FarmTiller, type FarmTillerMap } from '../../componets/src/farmtiller';
+import { AddWeapon, GOLDENTOOLFACTOR, WILSON_ATTACK } from './handTool';
+
+const FARM_HOE_DAMAGE = WILSON_ATTACK * .5; // tuning.lua FARM_HOE_DAMAGE
 
 export type FarmHoeTool = 'farm_hoe' | 'golden_farm_hoe';
 
-/** farm_hoe.lua: inst:AddComponent("farmtiller"). */
-export function configureFarmHoeEntity(entity: ItemEntity): void {
-  entity.components.farmtiller = entity.component('farmtiller', () => new FarmTiller());
+/**
+ * farm_hoe.lua MakeFarmHoe fn, with golden's attackwear. Its finiteuses (FARM_HOE_USES, TILL consumption) is not
+ * ported: BufferedAction:Do's OnUsedAsItem does not wear the invobject for TILL yet.
+ */
+export function configureFarmHoeEntity(inst: ItemEntity): void {
+  inst.addTag('sharp');
+  const weapon = AddWeapon(inst, FARM_HOE_DAMAGE, false);
+  inst.components.farmtiller = inst.component('farmtiller', () => new FarmTiller());
+  if (inst.prefab === 'golden_farm_hoe') weapon.attackwear = 1 / GOLDENTOOLFACTOR;
 }
 
 /** While held in a world, the tiller tills that world's farm soil. */

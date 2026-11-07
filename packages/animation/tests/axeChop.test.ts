@@ -10,7 +10,6 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createPickupInventory } from './pickupFixture';
 import { equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
-import { getAxeLifecycle } from '../../prefab/src/axe';
 import { moonTreePrefabs } from '../../prefab/src/moontree';
 import { treeWorld } from './treeManagerFixture';
 import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
@@ -38,14 +37,16 @@ afterEach(() => { vi.restoreAllMocks(); vi.clearAllMocks(); vi.unstubAllGlobals(
 
 it('wears axes by CHOP consumption, with golden and moonglass variants, and removes a depleted axe', () => {
   const hand = equipmentSlotAddress('hand');
-  for (const [prefab, effectiveness, consumption] of [['axe', 1, 1], ['goldenaxe', 1, .25], ['moonglassaxe', 2.5, 1.25]] as const) {
+  for (const [prefab, effectiveness, consumption, damage, attackwear] of [
+    ['axe', 1, 1, 34 * .8, 1], ['goldenaxe', 1, .25, 34 * .8, .25], ['moonglassaxe', 2.5, 1.25, 34, 2]] as const) {
     const inventory = createPickupInventory();
     try {
       expect(inventory.add(prefab, 1)).toBe(true);
       expect(inventory.transfer(inventorySlotAddress(0), hand, 1)).toBe(true);
       const entity = inventory.getEntity(hand)!;
-      getAxeLifecycle(entity).onequip();
-      expect(entity.hasTag('CHOP_tool')).toBe(true);
+      // axe.lua fn and its master_postinit: tags, tool, weapon and finiteuses.
+      for (const tag of ['sharp', 'possessable_axe', 'tool', 'weapon', 'CHOP_tool']) expect(entity.hasTag(tag), tag).toBe(true);
+      expect(entity.components.weapon).toMatchObject({ damage, attackwear });
       expect(entity.components.tool!.GetEffectiveness('CHOP')).toBe(effectiveness);
       entity.components.finiteuses.useForAction('CHOP');
       expect(entity.components.finiteuses.remaining).toBe(100 - consumption);

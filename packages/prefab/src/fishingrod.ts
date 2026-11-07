@@ -4,6 +4,7 @@ import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { ComponentUpdates } from '../../componets/src/componentUpdates';
 import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory, type HeldEquipFunctions } from './equipmentVisual';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
+import { AddFiniteUses, AddWeapon, WILSON_ATTACK } from './handTool';
 
 export const FISHINGROD_ID = 'fishingrod';
 /** tuning.lua FISHINGROD_USES; the wait and strain windows are set by fishingrod.lua. */
@@ -16,13 +17,20 @@ export const FISHING_SOUNDS = [
   'dontstarve/common/fishingpole_fishcaught', 'dontstarve/common/fishingpole_fishland', 'dontstarve/common/fishingpole_lostrod',
 ] as const;
 
-/** fishingrod.lua: finiteuses removes the rod; each collected fish costs one use. */
-export function configureFishingRodEntity(entity: ItemEntity): void {
-  entity.addTag('fishingrod');
-  entity.components.finiteuses.setMaxUses(FISHINGROD_USES);
-  entity.components.finiteuses.setOnFinished(() => entity.isRemoved || entity.remove());
-  entity.component('fishingrod_uses', () => {
-    const stop = entity.ListenForEvent('fishingcollect', () => { entity.components.finiteuses.use(1); });
+const FISHINGROD_DAMAGE = WILSON_ATTACK * .125; // tuning.lua FISHINGROD_DAMAGE
+
+/**
+ * fishingrod.lua fn: weapon, and finiteuses that removes the rod with each collected fish costing one use. The fishingrod
+ * component joins when the rod is first held in a running scene (`getFishingRod`).
+ */
+export function configureFishingRodEntity(inst: ItemEntity): void {
+  inst.addTag('fishingrod');
+  inst.addTag('allow_action_on_impassable');
+  const weapon = AddWeapon(inst, FISHINGROD_DAMAGE, true);
+  weapon.attackwear = 4;
+  AddFiniteUses(inst, FISHINGROD_USES);
+  inst.component('fishingrod_uses', () => {
+    const stop = inst.ListenForEvent('fishingcollect', () => { inst.components.finiteuses.use(1); });
     return { dispose: stop };
   });
 }

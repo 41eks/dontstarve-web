@@ -5,7 +5,6 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createPickupInventory } from './pickupFixture';
 import { equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
-import { getPickaxeLifecycle } from '../../prefab/src/pickaxe';
 import { rockWorld } from './rockWorldFixture';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 
@@ -23,9 +22,8 @@ it('uses 33 ordinary or 132 golden mining hits and removes depleted equipment th
       expect(inventory.add(prefab, 1)).toBe(true);
       expect(inventory.transfer(inventorySlotAddress(0), hand, 1)).toBe(true);
       const entity = inventory.getEntity(hand)!;
-      const lifecycle = getPickaxeLifecycle(entity);
-      lifecycle.onequip();
-      expect(entity.hasTag('MINE_tool')).toBe(true);
+      for (const tag of ['sharp', 'tool', 'weapon', 'MINE_tool']) expect(entity.hasTag(tag), tag).toBe(true);
+      expect(entity.components.weapon).toMatchObject({ damage: 34 * .8, attackwear: step });
       expect(entity.tile.peek().durabilityPercent).toBe(1);
       entity.components.finiteuses.useForAction('MINE');
       expect(entity.components.finiteuses.remaining).toBe(33 - step);
@@ -41,8 +39,7 @@ it('uses 33 ordinary or 132 golden mining hits and removes depleted equipment th
     }
     inventory.add('pickaxe', 1, undefined, undefined, 1);
     inventory.transfer(inventorySlotAddress(0), hand, 1);
-    const old = inventory.getEntity(hand)!, lifecycle = getPickaxeLifecycle(old);
-    lifecycle.onequip();
+    const old = inventory.getEntity(hand)!;
     // Even a stale binding must not clear another instance's equipment identity.
     const detached = inventory.extract(hand, 1, old)!;
     inventory.add('goldenpickaxe', 1);
@@ -51,7 +48,6 @@ it('uses 33 ordinary or 132 golden mining hits and removes depleted equipment th
     detached.components.finiteuses.useForAction('MINE');
     expect(inventory.handEquipment.peek()).toBe(replacement);
     expect(old.isRemoved).toBe(true);
-    lifecycle.onunequip();
     expect(inventory.handEquipment.peek()).toBe(replacement);
   } finally { inventory.dispose(); }
 });
