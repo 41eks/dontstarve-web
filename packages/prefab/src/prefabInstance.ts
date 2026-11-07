@@ -339,9 +339,8 @@ export interface PrefabEntityDefinition<Instance extends PrefabInstance> {
   /** A prefab without assets has only a transform and what it declares on it, as FX lights do: nothing to draw or click. */
   assets?: Parameters<SpriteResources['archive']>[0];
   /**
-   * In place of `assets`: art drawn through a full animation controller rather than a shared archive sprite, for an
-   * entity that needs what an archive sprite does not draw: SetPercent poses, its AnimState's symbol overrides and
-   * override builds.
+   * In place of `assets`: art drawn through a factory animation controller rather than a shared archive sprite; both
+   * take the same AnimState calls.
    */
   animatedAssets?: Parameters<SpriteResources['animated']>;
   /** In place of `assets`: an instance's own SetBank / SetBuild, which its OnLoad may still change as it spawns. */
