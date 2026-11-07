@@ -4,6 +4,7 @@ import { ComponentTimer } from '../../componets/src/timer';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
 import { polarLight } from './stafflight';
+import { SPRITE_SCALE } from '@dontstarve-web/animation/units';
 import { createEffect, createSignal, readonlySignal } from '@dontstarve-web/signals';
 
 interface Fx {
@@ -20,9 +21,9 @@ const PATH = 'dontstarve/common/together/moonbase/';
 const PULSE_PERIOD = .1;
 const SHOWN = readonlySignal(createSignal(true));
 let nextId = 0;
-const beamSource = (sprites: SpriteResources, prefab: string) => sprites.animated('moonbase_fx.zip', {}, { name: prefab, scale: .02 });
+const beamSource = (sprites: SpriteResources, prefab: string) => sprites.animated('moonbase_fx.zip', {}, { name: prefab });
 const coldSource = (sprites: SpriteResources, prefab: string) =>
-  sprites.animated('star_cold.zip', {}, { name: prefab, scale: .02 * .92, hiddenLayers: ['shadow'] });
+  sprites.animated('star_cold.zip', {}, { name: prefab, scale: SPRITE_SCALE * .92, hiddenLayers: ['shadow'] });
 
 /**
  * positronbeam.lua and stafflight.lua's nonpersistent, parented staffcoldlightfx branch. Each effect is an entity drawn

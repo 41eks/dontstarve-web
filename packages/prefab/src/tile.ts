@@ -1,3 +1,5 @@
+import { TILE_SIZE } from '@dontstarve-web/animation/units';
+
 // 定义基本的数据结构
 export interface Vector2 {
     x: number;
@@ -9,20 +11,7 @@ export interface TileCoord {
     row: number; // 网格的 Z 轴
 }
 
-/** 墙贴图的宽度（忽略 alpha 通道，取整张贴图）：`wall_segment-14` = 195px */
-export const WALL_TEXTURE_WIDTH = 192;
-
-/** 墙的缩放，墙渲染宽度 = WALL_TEXTURE_WIDTH * WALL_SCALE = 3.9 世界单位 */
-export const WALL_SCALE = 0.03;
-
-/** 一面墙在世界中的宽度 */
-export const WALL_WIDTH = WALL_TEXTURE_WIDTH * WALL_SCALE;
-
-/** 一块地皮的边长 */
-export const TILE_SIZE = 12;
-
-/** Project world units per DST unit (the source terrain cell is 4 units wide). */
-export const WORLD_SCALE = TILE_SIZE / 4;
+export { TILE_SIZE, WORLD_SCALE } from '@dontstarve-web/animation/units';
 
 /** 一块地皮划成 4x4 小格，16 个落点把地皮占满 */
 export const WALL_SLOT_SIZE = TILE_SIZE / 4;

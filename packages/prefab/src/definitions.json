@@ -426,7 +426,6 @@
       "buildLabel": "石墙",
       "frontImageIndex": 14,
       "name": "WallStone",
-      "scale": 0.02,
       "sideImageIndex": 4,
       "symbol": "wall_segment"
     },
@@ -435,7 +434,6 @@
       "buildLabel": "档案馆石墙",
       "frontImageIndex": 14,
       "name": "WallStone2",
-      "scale": 0.02,
       "sideImageIndex": 4,
       "symbol": "wall_segment"
     },
@@ -444,7 +442,6 @@
       "buildLabel": "木墙",
       "frontImageIndex": 14,
       "name": "WallWood",
-      "scale": 0.02,
       "sideImageIndex": 4,
       "symbol": "wall_segment"
     },
@@ -458,7 +455,6 @@
         0.9
       ],
       "name": "WallHay",
-      "scale": 0.02,
       "sideImageIndex": 4,
       "symbol": "wall_segment"
     },
@@ -467,7 +463,6 @@
       "buildLabel": "铥墙",
       "frontImageIndex": 14,
       "name": "WallRuins",
-      "scale": 0.02,
       "sideImageIndex": 4,
       "symbol": "wall_segment"
     },
@@ -476,7 +471,6 @@
       "buildLabel": "档案馆铥墙",
       "frontImageIndex": 14,
       "name": "WallRuins2",
-      "scale": 0.02,
       "sideImageIndex": 4,
       "symbol": "wall_segment"
     },
@@ -485,7 +479,6 @@
       "buildLabel": "月岩墙",
       "frontImageIndex": 14,
       "name": "WallMoonrock",
-      "scale": 0.02,
       "sideImageIndex": 4,
       "symbol": "wall_segment"
     },
@@ -500,7 +493,6 @@
         "frontImageIndex": 9,
         "sideImageIndex": 2
       },
-      "scale": 0.02,
       "sideImageIndex": 4,
       "symbol": "wall_segment_base"
     },
@@ -509,19 +501,16 @@
       "buildLabel": "废料墙",
       "frontImageIndex": 14,
       "name": "WallScrap",
-      "scale": 0.02,
       "sideImageIndex": 4,
       "symbol": "wall_segment"
     }
   },
   "moonTree": {
     "archive": "moon_tree.zip",
-    "animationName": "sway1_loop_tall",
-    "scale": 0.02
+    "animationName": "sway1_loop_tall"
   },
   "pigKing": {
     "archive": "pig_king.zip",
-    "animationName": "idle",
-    "scale": 0.02
+    "animationName": "idle"
   }
 }

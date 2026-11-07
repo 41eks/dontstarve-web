@@ -24,7 +24,7 @@ assets.dispose(); // 所有使用此缓存的实体移除后释放共享资源
 
 `definition.symbolOverrides` 指定源符号对应的 build archive 和替换符号；
 `options.skinArchive` 指定皮肤 build，缺少的符号回退到基础 build。
-`options.scale` 默认为 `0.02`，Y 轴翻转用于 DST 的二维坐标。
+`options.scale` 默认为 `units.ts` 的 `SPRITE_SCALE = WORLD_SCALE / ANIM_PIXELS_PER_UNIT`（DST 每单位 150 动画像素，见 `consolecommands.lua` 的 `c_showradius`；`TILE_SIZE = 12` 时为 0.02），使贴图与刚体、距离保持原版比例；Y 轴翻转用于 DST 的二维坐标。
 `new ArchiveSpriteAssets(materialNamePrefix?, assetBaseUrl?)` 可注入动画根路径；省略时为
 `${import.meta.env.BASE_URL}dst/data/anim`，同一个资源所有者的所有实体共用此路径和缓存。
 每帧部件合并为一个几何体，保留源图层顺序和连续材质组；内部 visual 已注册到
