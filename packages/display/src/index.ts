@@ -12,6 +12,7 @@ export { LightState, type LightJson } from './lightState';
 export { type FollowerFx } from './followerFx';
 export { type VfxJson, type VfxEmitterJson } from './vfx';
 export { Snowfall, type SnowfallJson, type SnowfallOptions } from './snowfall';
+export { Rainfall, type RainfallJson, type RainfallOptions } from './rainfall';
 export { GroundDisplay, type GroundTerrain, type GroundLayerDeclaration, type GroundCellBounds, type GroundOverlayDeclaration, type GroundOverlayHost } from './groundDisplay';
 export { FALLOFF_EDGES, type FalloffEdge, type GroundFalloffArt } from './groundFalloff';
 export { loadGroundTileAssets, loadGroundTexture, fetchGroundAsset, groundTileGeometry, type GroundTileArt, type GroundTileAssets, type GroundTileQuad } from './groundAssets';

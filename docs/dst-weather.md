@@ -8,7 +8,8 @@
 | --- | --- |
 | 湿度、降水类型、强度、雨雪转换、积雪与融雪 | [Weather](../packages/componets/src/weather.ts) |
 | 世界温度注入、加载、60 帧结算 | [worldState.ts](../src/worldState.ts) |
-| 雨丝、水花对象池、雨声强度 | [RainEffect](../packages/prefab/src/rain.ts) |
+| 雨丝发射器声明、水花对象池、雨声强度 | [RainEffect](../packages/prefab/src/rain.ts) |
+| 雨丝粒子模拟、形状与绘制 | [Rainfall](../packages/display/src/rainfall.ts) |
 | 雪花发射器声明、积雪覆盖层声明 | [SnowEffect](../packages/prefab/src/snow.ts) |
 | 雪花粒子模拟、大小、柔边与绘制 | [Snowfall](../packages/display/src/snowfall.ts) |
 | 积雪地表美术 | [GroundDisplay](../packages/display/src/groundDisplay.ts) |
@@ -225,7 +226,7 @@ alpha = first + second + third
 | --- | --- |
 | [weather.test.ts](../packages/animation/tests/weather.test.ts) | 冬季降雪、严格阈值与迟滞、季节／温度订阅释放、积雪／融雪、60 帧与尾帧结算、导出／加载兼容与原子校验 |
 | [books.test.ts](../packages/animation/tests/books.test.ts) | 求雨书请求、消耗、降水自然停止及状态恢复 |
-| [rain.spec.ts](../packages/ui/tests/rain.spec.ts) | 真实雨丝／水花、三层循环雨声与强度、停止、重新下雨和清理 |
+| [book.spec.ts](../packages/ui/tests/book.spec.ts) | 求雨书在真实游戏中产生雨丝，雨天 `c_save()`／重载 |
 | [slipperyfeet.test.ts](../packages/animation/tests/slipperyfeet.test.ts) | 持续累积、`feetslipped`、`slip`→`slip_fall`／`slip_pst` 的运动速度和声音、离开冰面衰减、组件释放 |
 | [pond-slip.spec.ts](../packages/ui/tests/pond-slip.spec.ts) | 真实游戏中在冻结池塘上行走触发滑倒，松开按键仍沿原方向滑行，随后恢复 |
 | [pondFreeze.test.ts](../packages/animation/tests/pondFreeze.test.ts) | 池塘随积雪量冻结／解冻、新池塘沿用当前状态、销毁后停止监听 |
@@ -235,7 +236,7 @@ alpha = first + second + third
 
 ```sh
 pnpm --filter @dontstarve-web/animation exec vitest run tests/weather.test.ts tests/books.test.ts tests/worldState.test.ts
-pnpm --filter @dontstarve-web/ui exec playwright test tests/rain.spec.ts tests/snow.spec.ts --workers=2
+pnpm --filter @dontstarve-web/ui exec playwright test tests/book.spec.ts tests/snow.spec.ts --workers=2
 pnpm --filter @dontstarve-web/ui typecheck
 pnpm --filter @dontstarve-web/prefab typecheck
 pnpm build
