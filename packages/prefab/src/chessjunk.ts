@@ -12,7 +12,7 @@ import { Hauntable } from '../../componets/src/hauntable';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { MiniMapState } from '../../map/src/minimapState';
-import { createArchiveEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
+import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
@@ -63,9 +63,9 @@ export class ChessJunkManager implements DisplayDrivenPrefabManager<{ prefabId: 
     if (this.world.physics) instance.bindPhysics(this.world.physics);
     // BasePile calls PlayAnimation(idleN) with no loop argument.
     instance.sprite.playOnce(`idle${style}`);
-    const inst = actionEntity(model, id);
+    actionEntity(model, id);
     addComponent(instance, 'inspectable', Inspectable);
-    const lootdropper = addComponent(instance, 'lootdropper', LootDropper, () => undefined);
+    addComponent(instance, 'lootdropper', LootDropper, () => undefined);
     const workable = addComponent(instance, 'workable', Workable);
     workable.SetWorkAction('HAMMER'); workable.SetWorkLeft(3); workable.SetMaxWork(6);
     const repairable = addComponent(instance, 'repairable', Repairable, workable, 'gears');

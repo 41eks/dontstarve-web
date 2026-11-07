@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import { createEffect, createSignal, watchSignal } from '@dontstarve-web/signals';
 import type { LoadedSpriteSource } from '@dontstarve-web/display';
 import type { BurnFX } from '../../componets/src/burnable';
@@ -31,7 +32,10 @@ let nextId = 0;
  */
 export class Fire implements BurnFX, FireFXInst {
   readonly instance: PrefabInstance;
-  readonly components: { firefx: FireFX };
+  /** The fx is the inst its firefx sees; the component is stored on, and torn down with, the fx's prefab instance. */
+  get components(): { firefx: FireFX } { return this.instance.components as unknown as { firefx: FireFX }; }
+  get isRemoved(): boolean { return this.instance.isRemoved; }
+  onRemove(remove: () => void): () => void { return this.instance.onRemove(remove); }
   private readonly owner: PrefabInstance;
   private readonly key = `${FIRE_ID}:${nextId++}`;
   private readonly sounds = new Map<string, SoundHandle>();
@@ -48,9 +52,8 @@ export class Fire implements BurnFX, FireFXInst {
       }, owner.status);
     this.instance = instance;
     owner.sprite.attachFx(this.key, { sprite: instance.sprite, display, active: SHOWN, sortLayer: 2 });
-    const firefx = new FireFX(this);
+    const firefx = addComponent(this, 'firefx', FireFX);
     firefx.levels = FIRE_LEVELS;
-    this.components = { firefx };
     if (updates) this.cleanups.push(updates.register(firefx));
     // OnEntitySleep / OnEntityWake follow the owner's tile with the child.
     const status = watchSignal(owner.status, stop => this.cleanups.push(stop));
@@ -64,7 +67,6 @@ export class Fire implements BurnFX, FireFXInst {
   Remove(): void {
     if (this.instance.status.peek() === 'removed') return;
     this.cleanups.splice(0).forEach(stop => stop());
-    this.components.firefx.OnRemoveEntity();
     for (const sound of this.sounds.values()) sound.stop();
     this.sounds.clear();
     this.owner.sprite.detachFx(this.key);

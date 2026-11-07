@@ -1,3 +1,5 @@
+import { Pickable } from './components/pickable';
+import { addComponent } from './components';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
@@ -91,7 +93,6 @@ export class TumbleweedInstance extends PrefabInstance {
     this.world = world;
     const random = this.random = world.random ?? Math.random;
     this.sprite.setFacingRotation(0, 4);
-    this.addTag('pickable');
     const motor: LocoMotorInst = {
       isValid: () => !this.isRemoved, getPosition: () => ({ x: this.body.position.x, y: 0, z: this.body.position.z }),
       getPhysicsRadius: () => WORLD_SCALE, setRotation: degrees => this.setRotationDegrees(degrees),
@@ -105,10 +106,11 @@ export class TumbleweedInstance extends PrefabInstance {
     this.groundCheck = new ComponentTimer(world.scheduler, () => this.onGroundCheck());
     this.restartMovement = new ComponentTimer(world.scheduler, () => this.onRestartMovement());
     this.loot = rollTumbleweedLoot(random);
-    Object.assign(this.components, { pickable: {
-      canBePicked: true, quickpick: false, product: undefined,
-      pick: () => this.onpickup(),
-    } });
+    // AddComponent("pickable"): onpickedfn = onpickup, remove_when_picked, canbepicked = true.
+    const pickable = addComponent(this, 'pickable', Pickable, undefined, undefined, 1, () => { this.onpickup(); }, undefined, undefined,
+      { scheduler: world.scheduler });
+    pickable.picksound = 'dontstarve/wilson/harvest_sticks';
+    pickable.remove_when_picked = true;
     const cleanups: (() => void)[] = [world.componentUpdates.register({ OnUpdate: dt => this.OnUpdate(dt) })];
     // inst:ListenForEvent("startlongaction", OnLongAction) — PICK's long action pushes it on the target.
     cleanups.push(this.ListenForEvent('startlongaction', () => this.OnLongAction()));

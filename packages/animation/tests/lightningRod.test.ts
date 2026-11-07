@@ -50,14 +50,14 @@ it('is charged by a strike for three days: zaps on the 10–40 s task, loses a d
     await vi.waitFor(() => expect(prefabInstance(model)!.sprite.loaded).toBe(true));
     scene.add(model);
     const components = (lookupPrefabInstance(model) as LightningRodInstance).components;
-    expect(components.inspectable.getstatus()).toBeUndefined();
+    expect(components.inspectable!.getstatus!()).toBeUndefined();
     expect(declaredLight(model)).toBeUndefined();
 
     // The strike lands 30 units away; the rod within 40 units takes it over.
     const struck = strikeAt(scene, fx, model.position.clone().add(new THREE.Vector3(30 * 3, 0, 0)));
     expect(struck.x).toBeCloseTo(model.position.x);
     expect(fx.spawn).toHaveBeenCalledWith('lightning', expect.any(THREE.Vector3));
-    expect(components.inspectable.getstatus()).toBe('CHARGED');
+    expect(components.inspectable!.getstatus!()).toBe('CHARGED');
     expect(declaredLight(model)).toMatchObject({ intensity: .5, falloff: 1 });
     expect(prefabInstance(model)!.sprite.currentAnimation).toBe('hit');
     expect(fx.spawn).toHaveBeenCalledWith('lightning_rod_fx', expect.any(THREE.Vector3));
@@ -75,7 +75,7 @@ it('is charged by a strike for three days: zaps on the 10–40 s task, loses a d
     scheduler.advance(DAY);
     expect(components.battery.CanBeUsed(undefined, .5)).toEqual([true]);
     scheduler.advance(DAY);
-    expect(components.inspectable.getstatus()).toBeUndefined();
+    expect(components.inspectable!.getstatus!()).toBeUndefined();
     expect(declaredLight(model)).toBeUndefined();
     expect(placement.exportRecords()[0].record.components).not.toHaveProperty('lightningrod');
     const settled = zaps();

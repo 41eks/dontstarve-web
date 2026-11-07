@@ -13,7 +13,7 @@ import { Leader, PointOfInterest } from '../../componets/src/statueglommerSignat
 import { Pickable } from './components/pickable';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { MiniMapState } from '../../map/src/minimapState';
-import { createArchiveEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
+import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
 import { MakeObstaclePhysics, WORLD_SCALE } from './standardcomponents';
 import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
@@ -80,7 +80,7 @@ export class StatueGlommerManager {
     // fn: PlayAnimation("full") without the loop flag. No animover handler or queued clip.
     instance.sprite.playOnce('full');
     instance.sprite.setSymbolHidden('swap_flower', true);
-    const inst = actionEntity(model, STATUEGLOMMER_ID);
+    actionEntity(model, STATUEGLOMMER_ID);
     const minimap = instance.minimap;
     minimap.SetIcon('statueglommer.png');
     minimap.SetPriority(5);

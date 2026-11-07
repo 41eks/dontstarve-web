@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import { createEffect, createSignal, readonlySignal, watchSignal } from '@dontstarve-web/signals';
@@ -35,12 +36,18 @@ export interface LightFlierFlowerRecord {
   components: { lightflierFlower: LightFlierFlowerSave };
 }
 
+type LightFlierFlowerComponents = { pickable: Pickable; childspawner: ChildSpawner<LightFlierFlower, LightFlier>;
+  burnable: Burnable; propagator: Propagator; hauntable: Hauntable };
+
 /** lightflier_flower.lua: release, pause regrowth, recall and restore through childspawner. */
 export class LightFlierFlower implements BrainEntity {
   readonly prefab = LIGHTFLIER_FLOWER_ID;
   readonly id: string;
   readonly model: THREE.Group;
-  readonly components: { pickable: Pickable; childspawner: ChildSpawner<LightFlierFlower, LightFlier>; burnable: Burnable; propagator: Propagator; hauntable: Hauntable };
+  /** The flower is the inst its childspawner sees; every component is stored on, and torn down with, the prefab instance. */
+  get components(): LightFlierFlowerComponents { return this.instance.components as LightFlierFlowerComponents; }
+  get isRemoved(): boolean { return this.removed || this.instance.isRemoved; }
+  onRemove(remove: () => void): () => void { return this.instance.onRemove(remove); }
   readonly MiniMapEntity: MiniMapState;
   readonly animstate: AnimState;
   private readonly mode = createSignal<BulbPlantLightState>('CHARGED');
@@ -88,7 +95,7 @@ export class LightFlierFlower implements BrainEntity {
     instance.entityId = id;
     Object.assign(model.userData, { lightflierFlower: this, remove: () => this.remove() });
     for (const tag of ['plant', 'lightflier_home']) instance.addTag(tag);
-    const pickable = new Pickable(model, undefined, LIGHTFLIER_FLOWER_REGROW_TIME, 1, doer => {
+    const pickable = addComponent(instance, 'pickable', Pickable, undefined, LIGHTFLIER_FLOWER_REGROW_TIME, 1, doer => {
       const fly = habitat.spawn(this.getPosition()); this.components.childspawner.TakeOwnership(fly);
       fly.PushEvent('startled'); this.components.childspawner.childreninside = Math.max(0, this.components.childspawner.childreninside - 1);
       this.forceOff(); this.turnoff.stop(); this.recharge.stop();
@@ -97,19 +104,16 @@ export class LightFlierFlower implements BrainEntity {
     }, () => { this.turnOff(); this.sequence('grow', 'idle', true); }, saved, { scheduler,
       onEmpty: () => { this.forceOff(); this.turnoff.stop(); this.recharge.stop(); this.animstate.PlayAnimation('picked'); } });
     pickable.picksound = 'dontstarve/wilson/pickup_reeds';
-    const childspawner = new ChildSpawner<LightFlierFlower, LightFlier>(this, scheduler, saved?.childspawner, random);
+    const childspawner = addComponent(this, 'childspawner', ChildSpawner<LightFlierFlower, LightFlier>, scheduler, saved?.childspawner, random);
     childspawner.onchildkilled = () => pickable.resume();
     childspawner.ongohome = () => { if (!pickable.canBePicked) pickable.regen(); this.forceOn(); };
-    const inst = actionEntity(model, this.prefab);
-    const burnable = new Burnable(inst, scheduler);
+    actionEntity(model, this.prefab);
+    const burnable = addComponent(instance, 'burnable', Burnable, scheduler);
     burnable.SetBurnTime(20); // MakeMediumBurnable default burn time.
     burnable.SetOnIgniteFn(() => { this.turnOff(); if (pickable.canBePicked) pickable.Pick(); else this.animstate.PlayAnimation('picked'); });
     burnable.SetOnBurntFn(() => { habitat.services.dropLoot('ash', 1, this.getPosition().clone()); this.remove(); });
-    const propagator = new Propagator(inst, 'small', () => [], WORLD_SCALE, scheduler, habitat.services.getWatchWorldContent);
-    const hauntable = new Hauntable({ addTag: tag => inst.addTag(tag), removeTag: tag => inst.removeTag(tag),
-      PushEvent: (name, data) => inst.PushEvent?.(name, data) }, scheduler);
-    hauntable.SetOnHauntFn(() => false); // MakeHauntableIgnite is disabled in source.
-    this.components = { pickable, childspawner, burnable, propagator, hauntable }; Object.assign(prefabInstance(model)!.components, this.components);
+    addComponent(instance, 'propagator', Propagator, 'small', () => [], WORLD_SCALE, scheduler, habitat.services.getWatchWorldContent);
+    addComponent(instance, 'hauntable', Hauntable, scheduler).SetOnHauntFn(() => false); // MakeHauntableIgnite is disabled in source.
     this.pendingChildren = [...(saved?.childspawner.childrenoutside ?? [])];
     habitat.homes.set(id, this);
     this.animstate.PlayAnimation(saved?.picked ? 'picked' : this.lightOn ? 'idle' : this.mode.peek() === 'RECHARGING' ? 'withered' : 'off', this.lightOn);
@@ -191,8 +195,7 @@ export class LightFlierFlower implements BrainEntity {
   dispose(): void {
     if (this.removed) return; this.removed = true; this.habitat.homes.delete(this.id); this.model.userData.removed = true;
     this.wake.stop(); this.sampleTimer.stop(); this.recharge.stop(); this.turnoff.stop(); this.recall.stop(); this.animstate.dispose(); this.sound?.stop();
-    this.components.childspawner.dispose(); this.components.pickable.dispose(); this.components.burnable.dispose(); this.components.propagator.dispose();
-    this.components.hauntable.dispose();
+    // The components are torn down with the prefab instance below.
     this.cleanups.splice(0).forEach(stop => stop()); this.events.clear(); this.instance.light.set(null);
     this.instance.remove(); this.model.removeFromParent();
   }

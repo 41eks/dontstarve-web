@@ -68,7 +68,7 @@
 
 | Lua | TS | 示例 | 差异 |
 | --- | --- | --- | --- |
-| `inst:AddComponent("x")` | `const x = addComponent(this, 'x', ...args)`（`src/components.ts`） | `moontree.ts` | 只能这样加组件，见 [AGENTS.md](../AGENTS.md#components)；构造表缺 `x` 时先登记；查有没有实现：`dst-lua-inventory.py` |
+| `inst:AddComponent("x")` | `const x = addComponent(this, 'x', X, ...args)`（`src/components.ts`） | `moontree.ts` | 只能这样加组件，见 [AGENTS.md](../AGENTS.md#components)；`inst:RemoveComponent("x")` 用 `removeComponent`；查有没有实现：`dst-lua-inventory.py` |
 | 组件回调（`SetOnFinishCallback` 等） | 同名方法 | `chesspieces.ts` | 回调写在所属 prefab 模块 |
 | `inst:ListenForEvent`、`PushEvent`、`RemoveEventCallback` | 同名方法 | `mushroom_light.ts` | `ListenForEvent` 返回取消函数，不用 `model` 事件 |
 | `inst:WatchWorldState("snowlevel", fn)` | `world.getWatchWorldContent(WorldContentKey.SnowLevel, cleanup)` + effect | `monkeypillar.ts` | 也有注入的世界信号；按相邻 prefab 选用 |

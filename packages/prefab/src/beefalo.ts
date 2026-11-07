@@ -1,3 +1,4 @@
+import { addComponent } from './components';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import { syncPlacementEntity } from './placementEntities';
@@ -13,7 +14,7 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Sleeper } from '../../componets/src/sleeper';
 import { actionEntity, findActionEntity } from './actionEntity';
 import type { LocoMotorPathfinder } from '../../componets/src/locomotor';
-import { LocoMotor, type LocoMotorInst } from '../../componets/src/locomotor';
+import { LocoMotor } from '../../componets/src/locomotor';
 import { KnownLocations } from '../../componets/src/knownlocations';
 import { PeriodicSpawner } from '../../componets/src/periodicspawner';
 import { BeefaloBrain } from '../../brains/src/beefalobrain';
@@ -86,11 +87,14 @@ export interface BeefaloRecord {
 
 export type BeefaloState = BeefaloStateName;
 
+type BeefaloComponents = Pick<PrefabInstance['components'], 'health' | 'combat'> & { locomotor: LocoMotor; knownlocations: KnownLocations; periodicspawner: PeriodicSpawner; beard: Beard;
+  sleeper: Sleeper };
+
 /** beefalo.lua owns components and physics; its brain and stategraph own behavior and states. */
 export class BeefaloController {
   private readonly groundPosition = new THREE.Vector3();
   readonly locomotor: LocoMotor;
-  readonly knownlocations = new KnownLocations();
+  get knownlocations(): KnownLocations { return this.components.knownlocations; }
   readonly periodicspawner: PeriodicSpawner;
   readonly brain: BeefaloBrain;
   readonly sg: BeefaloStateGraph;
@@ -120,6 +124,7 @@ export class BeefaloController {
     const instance = prefabInstance(model);
     if (!instance) throw new Error('A beefalo model needs its PrefabInstance');
     this.instance = instance as PrefabInstance;
+    addComponent(this, 'knownlocations', KnownLocations);
     MakeCharacterPhysics(instance, 100, .5);
     instance.bindPhysics(physics);
     this.body = instance.physicsBody!;
@@ -132,28 +137,14 @@ export class BeefaloController {
         locations: [{ name: 'herd', x: saved.home[0], y: saved.home[1], z: saved.home[2] }],
       });
     }
-    const controller = this;
-    const motorInst: LocoMotorInst = {
-      isValid: () => this.isValid(), getPosition: () => this.getPosition(),
-      getPhysicsRadius: () => BEEFALO_BEHAVIOR.radius,
-      setRotation: degrees => this.setRotation(degrees),
-      getAngleToPoint: (x, _y, z) => this.getAngleToPoint(x, z),
-      setMotorSpeed: speed => {
-        this.body.velocity.x = this.direction.x * speed;
-        this.body.velocity.z = this.direction.z * speed;
-      },
-      get sg() { return controller.sg; },
-      components: {}, PushEvent: (name, data) => this.PushEvent(name, data),
-      PushBufferedAction: () => { throw new Error('Passive beefalo has no buffered actions'); },
-    };
-    this.locomotor = new LocoMotor(motorInst, {
+    this.locomotor = addComponent(this, 'locomotor', LocoMotor, {
       arriveDistance: .15 * WORLD_SCALE,
       pathfinder: world.pathfinder,
     });
     this.locomotor.walkspeed = BEEFALO_BEHAVIOR.walkSpeed;
     this.locomotor.runspeed = 7 * WORLD_SCALE;
     for (const tag of ['beefalo', 'animal', 'largecreature']) instance.addTag(tag);
-    this.beard = new Beard(this, {
+    this.beard = addComponent(this, 'beard', Beard, {
       scheduler: world.scheduler,
       secondsUntilNextDay: now => world.secondsUntilNextDay(now),
       spawnPrize: (prefab, count, point) => world.spawnPrize(prefab, count, new THREE.Vector3(point.x, point.y, point.z)),
@@ -168,13 +159,9 @@ export class BeefaloController {
     this.beard.AddCallback(BEEFALO_HAIR_GROWTH_DAYS, () => {
       if (this.beard.bits.peek() === 0) this.hairGrowthPendingState.set(true);
     });
-    this.sleeper = new Sleeper({
-      isValid: () => this.isValid(), PushEvent: (name, data) => this.PushEvent(name, data),
-      get sg() { return controller.sg; },
-      get components() { return controller.components; },
-    }, world.getWatchWorldContent, () => this.random());
+    this.sleeper = addComponent(this, 'sleeper', Sleeper, world.getWatchWorldContent, () => this.random());
     this.sleeper.SetResistance(3);
-    this.periodicspawner = new PeriodicSpawner(world.scheduler, () => {
+    this.periodicspawner = addComponent(this, 'periodicspawner', PeriodicSpawner, world.scheduler, () => {
       const position = this.model.position.clone().addScaledVector(this.direction, -WORLD_SCALE).setY(0);
       world.constrainPosition(position);
       world.spawnPoop(position);
@@ -187,12 +174,15 @@ export class BeefaloController {
     this.periodicspawner.SetMinimumSpacing(BEEFALO_BEHAVIOR.poopSpacing);
     this.periodicspawner.Start(saved?.poopRemainingSeconds);
     const beard = this.beard;
-    Object.assign(prefabInstance(model)!.components, this.components, { beard, sleeper: this.sleeper,
-      beefalo: { HasTag: (tag: string) => tag === 'has_beard' ? beard.hairy.peek() : undefined } });
     actionEntity(model, 'beefalo');
     const sprite = this.instance.sprite;
     sprite.setFacingRotation(saved?.heading ?? 0, 6);
-    this.stopAppearance = createRenderEffect(() => sprite.setBuildArchive(beard.hairy.get() ? BEEFALO_BUILD : BEEFALO_SHAVED_BUILD));
+    // AddTag("has_beard") in fn, RemoveTag in OnResetBeard; the shaved build follows the same state.
+    this.stopAppearance = createRenderEffect(() => {
+      const hairy = beard.hairy.get();
+      if (hairy) instance.addTag('has_beard'); else instance.removeTag('has_beard');
+      sprite.setBuildArchive(hairy ? BEEFALO_BUILD : BEEFALO_SHAVED_BUILD);
+    });
     this.animstate = new AnimState(world.scheduler, lengths, event => this.PushEvent(event));
     // The drawn sprite follows the logical clip; a queued clip only ends a loop, which the next clip replaces.
     const animation = watchSignal(this.animstate.animation, stop => { this.stopFollow = stop; });
@@ -231,13 +221,13 @@ export class BeefaloController {
     this.locomotor.update(step);
   }
 
-  private setRotation(degrees: number): void {
+  setRotation(degrees: number): void {
     const heading = THREE.MathUtils.degToRad(degrees);
     this.direction.set(Math.cos(heading), 0, -Math.sin(heading));
     this.instance.sprite.setFacingRotation(degrees, 6);
   }
 
-  private getAngleToPoint(x: number, z: number): number {
+  getAngleToPoint(x: number, _y: number, z: number): number {
     return THREE.MathUtils.radToDeg(Math.atan2(this.body.position.z - z, x - this.body.position.x));
   }
 
@@ -280,9 +270,9 @@ export class BeefaloController {
       getPosition: () => this.getPosition(), isValid: () => this.isValid(),
       getPhysicsRadius: () => BEEFALO_BEHAVIOR.radius,
       hasTag: tag => findActionEntity(this.model)!.hasTag(tag),
-      getAngleToPoint: (x, _y, z) => this.getAngleToPoint(x, z),
+      getAngleToPoint: (x, _y, z) => this.getAngleToPoint(x, 0, z),
       isNear: (entity, distance) => distanceSquared(this.getPosition(), entity.getPosition()) < distance ** 2,
-      facePoint: point => this.setRotation(this.getAngleToPoint(point.x, point.z)),
+      facePoint: point => this.setRotation(this.getAngleToPoint(point.x, 0, point.z)),
       ListenForEvent: (name, fn) => { this.instance.ListenForEvent(name, fn); },
       RemoveEventCallback: (name, fn) => this.instance.RemoveEventCallback(name, fn),
     };
@@ -315,10 +305,7 @@ export class BeefaloController {
     this.sg.dispose();
     this.instance.sg = undefined;
     this.locomotor.Stop();
-    this.periodicspawner.dispose();
     this.stopAppearance();
-    this.beard.dispose();
-    this.sleeper.dispose();
     this.animstate.dispose();
     this.stopFollow();
     this.instance.remove();
@@ -336,8 +323,17 @@ export class BeefaloController {
     this.sg?.pushEvent(name, data);
     this.instance.PushEvent(name, data);
   }
-  get components() { return { locomotor: this.locomotor, knownlocations: this.knownlocations,
-    periodicspawner: this.periodicspawner }; }
+  /** The controller is the Lua inst its components see; they are stored on, and torn down with, the prefab instance. */
+  get components(): BeefaloComponents { return this.instance.components as BeefaloComponents; }
+  get isRemoved(): boolean { return this.disposed || this.instance.isRemoved; }
+  onRemove(remove: () => void): () => void { return this.instance.onRemove(remove); }
+  getPhysicsRadius(): number { return BEEFALO_BEHAVIOR.radius; }
+  /** Physics:SetMotorVel along the facing. */
+  setMotorSpeed(speed: number): void {
+    this.body.velocity.x = this.direction.x * speed;
+    this.body.velocity.z = this.direction.z * speed;
+  }
+  PushBufferedAction(): void { throw new Error('Passive beefalo has no buffered actions'); }
 
   private canShaveTest(): { ok: true } | { ok: false; reason?: string } {
     return this.sleeper.IsAsleep() ? { ok: true } : { ok: false, reason: 'AWAKEBEEFALO' };

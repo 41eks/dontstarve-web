@@ -42,6 +42,8 @@ export interface PrefabComponents extends ActionComponents {
   sanityaura?: import('../../componets/src/sanityaura').SanityAura;
   inspectable?: import('../../componets/src/inspectable').Inspectable;
   playerprox?: import('../../componets/src/playerprox').PlayerProx;
+  leader?: import('../../componets/src/statueglommerSignatures').Leader;
+  pointofinterest?: import('../../componets/src/statueglommerSignatures').PointOfInterest;
   objectspawner?: import('../../componets/src/objectspawner').ObjectSpawner;
   heavyobstaclephysics?: import('../../componets/src/heavyobstaclephysics').HeavyObstaclePhysics;
   submersible?: import('../../componets/src/submersible').Submersible;

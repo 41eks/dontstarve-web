@@ -25,8 +25,10 @@
 
 ## Components
 
-- 给实体加组件只能用 `addComponent(inst, 'x', ...args)`（`src/components.ts`，对应 `inst:AddComponent("x")`），并放在 Lua 调用 `AddComponent` 的位置，紧接着按 Lua 配置该组件。不得用 `Object.assign(this.components, {...})` 或 `this.components.x = new X(...)` 直接写入 `components`。
-- `addComponent` 的构造表缺少所需组件时，在同一改动中把它登记进去，不要绕过。已有的 `Object.assign`／直接赋值写法不能作为继续使用的依据；改动到这样的文件时一并改成 `addComponent`。
+- 给实体加组件只能用 `addComponent(inst, 'x', X, ...args)`（`src/components.ts`，对应 `inst:AddComponent("x")`），移除只能用 `removeComponent(inst, 'x')`；调用放在 Lua 调用 `AddComponent` 的位置，紧接着按 Lua 配置该组件。不得用 `Object.assign(this.components, {...})`、`this.components.x = ...` 或 `delete inst.components.x` 直接改写 `components`。
+- 组件构造函数和 Lua 的 `Component(inst)` 一样以 `inst` 为第一个参数，其余依赖（scheduler、单位换算等）跟在后面；组件通过 `inst` 访问标签、事件和其他组件，不另拼适配对象。泛型组件传实例化表达式（如 `Workable<MyInstance>`）。`x` 必须在实体的 `components` 类型中声明。
+- 实体移除时 `addComponent` 已调用组件的 `OnRemoveEntity`（或其拆除方法），组件仍留在 `components` 上；`onRemove` 里不再手动 `dispose()` 这些组件。
+- 已有的 `Object.assign`／直接赋值写法不能作为继续使用的依据；改动到这样的文件时一并改成 `addComponent`。
 
 ## Prefab callbacks
 

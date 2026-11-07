@@ -1,3 +1,4 @@
+import { Inspectable } from '../../componets/src/inspectable';
 import { LootDropper } from '../../componets/src/lootdropper';
 import { addComponent } from './components';
 import { Workable } from '../../componets/src/workable';
@@ -37,11 +38,11 @@ class LightningRod {
     private readonly zapTimer?: ComponentTimer;
     /** The discrete once-per-day callback; re-armed on every expiry while charged. */
     private readonly dayTimer?: ComponentTimer;
-    readonly battery: Battery<LightningRod>;
+    readonly battery: Battery<LightningRodInstance>;
 
     private readonly inst: PrefabInstance;
 
-    constructor(inst: PrefabInstance) {
+    constructor(inst: LightningRodInstance) {
         this.inst = inst;
         const scheduler = inst.worldServices?.scheduler;
         if (scheduler) {
@@ -51,27 +52,27 @@ class LightningRod {
                 this.armDay();
             });
         }
-        this.battery = new Battery<LightningRod>(this);
-        this.battery.SetCanBeUsedFn((inst, _user, mult) => {
+        this.battery = addComponent(inst, 'battery', Battery<LightningRodInstance>);
+        this.battery.SetCanBeUsedFn((_inst, _user, mult) => {
             if (mult) {
-                const charge = inst.actualCharge;
+                const charge = this.actualCharge;
                 if (charge !== undefined && charge >= mult) return [true];
-            } else if (inst.charged) return [true];
+            } else if (this.charged) return [true];
             return [false, 'NOT_ENOUGH_CHARGE'];
         });
-        this.battery.SetOnUsedFn((inst, _user, mult) => {
+        this.battery.SetOnUsedFn((_inst, _user, mult) => {
             if (mult) {
-                const charge = inst.actualCharge;
+                const charge = this.actualCharge;
                 if (charge !== undefined && charge > mult) {
-                    inst.dozap();
-                    inst.chargeleft! -= mult;
+                    this.dozap();
+                    this.chargeleft! -= mult;
                     return;
                 }
             }
-            inst.discharge();
+            this.discharge();
         });
-        this.battery.SetResolvePartialChargeMultFn((inst, _user, mult) => {
-            const charge = inst.actualCharge;
+        this.battery.SetResolvePartialChargeMultFn((_inst, _user, mult) => {
+            const charge = this.actualCharge;
             return charge === undefined ? mult : Math.min(mult, charge);
         });
     }
@@ -154,8 +155,7 @@ function onload(inst: PrefabInstance, data: PlacementSaveRecord['components']): 
 export class LightningRodInstance extends PrefabInstance {
     readonly lightningRod: LightningRod;
     declare readonly components: PrefabInstance['components'] & {
-        battery: Battery<LightningRod>;
-        inspectable: { getstatus(): 'CHARGED' | undefined };
+        battery: Battery<LightningRodInstance>;
     };
 
     constructor(world: PrefabWorldContext) {
@@ -175,11 +175,8 @@ export class LightningRodInstance extends PrefabInstance {
         const rod = this.lightningRod = new LightningRod(this);
         this.addTag('structure');
         this.addTag('lightningrod');
-        Object.assign(this.components, {
-            battery: rod.battery,
-            // getstatus: inst.charged and "CHARGED" or nil
-            inspectable: { getstatus: () => rod.charged ? 'CHARGED' : undefined },
-        });
+        // getstatus: inst.charged and "CHARGED" or nil
+        addComponent(this, 'inspectable', Inspectable).getstatus = () => rod.charged ? 'CHARGED' : undefined;
         this.ListenForEvent('lightningstrike', () => onlightning(this));
         this.ListenForEvent('onbuilt', () => onbuilt(this));
         this.onRemove(() => rod.dispose());

@@ -22,7 +22,7 @@ export class PeriodicSpawner {
   private spacing?: number;
   private readonly spatial?: PeriodicSpawnerSpatial;
 
-  constructor(scheduler: GameTimeScheduler, trySpawn: PeriodicSpawner['trySpawn'], random = Math.random,
+  constructor(_inst: object, scheduler: GameTimeScheduler, trySpawn: PeriodicSpawner['trySpawn'], random = Math.random,
     spatial?: PeriodicSpawnerSpatial) {
     this.trySpawn = trySpawn; this.random = random;
     this.spatial = spatial;
