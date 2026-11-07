@@ -9,7 +9,9 @@
 | 湿度、降水类型、强度、雨雪转换、积雪与融雪 | [Weather](../packages/componets/src/weather.ts) |
 | 世界温度注入、加载、60 帧结算 | [worldState.ts](../src/worldState.ts) |
 | 雨丝、水花对象池、雨声强度 | [RainEffect](../packages/prefab/src/rain.ts) |
-| 雪花粒子、大小、柔边、覆盖层、积雪美术 | [SnowEffect](../packages/prefab/src/snow.ts) |
+| 雪花发射器声明、积雪覆盖层声明 | [SnowEffect](../packages/prefab/src/snow.ts) |
+| 雪花粒子模拟、大小、柔边与绘制 | [Snowfall](../packages/display/src/snowfall.ts) |
+| 积雪地表美术 | [GroundDisplay](../packages/display/src/groundDisplay.ts) |
 | 雨雪注册、每帧表现更新和场景清理 | [sceneEntities.ts](../src/sceneEntities.ts)、[scene.ts](../src/scene.ts) |
 | 求雨书发起降水请求 | [books.ts](../packages/prefab/src/books.ts)、[Book](../packages/componets/src/book.ts) |
 | 音效事件映射、预加载、播放及释放 | [sound.ts](../packages/prefab/src/sound.ts) |
@@ -154,7 +156,7 @@ textureAlpha *= mix(1, softAlpha, softness)
 
 ## 积雪地表美术
 
-积雪美术与雪花粒子分开。`SnowGroundOverlay` 使用 `levels/textures/snow.tex`，该纹理的 **RGB 是三个覆盖遮罩**，不是可直接显示的彩色贴图；使用 `NoColorSpace` 读取遮罩，按 `ground_overlay.ksh` 合成白色覆盖。
+积雪美术与雪花粒子分开。`SnowEffect` 向 `GroundDisplay` 声明 `snow` 地面覆盖层，后者按各地皮层分块绘制 `GroundOverlay:snow`，使用 `levels/textures/snow.tex`，该纹理的 **RGB 是三个覆盖遮罩**，不是可直接显示的彩色贴图；使用 `NoColorSpace` 读取遮罩，按 `ground_overlay.ksh` 合成白色覆盖。
 
 ```text
 L = snowCover

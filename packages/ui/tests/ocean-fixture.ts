@@ -54,8 +54,7 @@ export async function checkOceanRendering() {
   display.update(10);
   const dusk = pixels();
   const snow = new SnowEffect({ scene, dataBaseUrl: '/dst/data', getFocus: () => new THREE.Vector3(6, 0, 6),
-    camera, rate: createSignal(0), cover: createSignal(3), groundSize: 120,
-    groundOverlay: display });
+    camera, rate: createSignal(0), cover: createSignal(3), groundOverlay: display });
   // Snow declares its overlay; the ground display loads it and draws it per chunk and layer.
   const overlayMeshes = () => display.root.children.filter(object => object.name === 'GroundOverlay:snow') as THREE.Mesh[];
   for (let i = 0; i < 100 && !overlayMeshes().some(mesh => mesh.visible); i++) await new Promise(resolve => setTimeout(resolve, 10));

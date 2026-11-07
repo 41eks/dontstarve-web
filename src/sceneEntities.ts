@@ -1302,7 +1302,6 @@ export async function createSceneEntities(
     const snow = new SnowEffect({
       scene, dataBaseUrl: `${import.meta.env.BASE_URL}dst/data`,
       getFocus: () => player.position, camera, rate: worldState.weather.snowRate, cover: worldState.weather.snowCover,
-      groundSize: initialSave.world.map.generator.options.size,
       groundOverlay: groundDisplay,
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {

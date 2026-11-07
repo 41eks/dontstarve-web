@@ -122,38 +122,34 @@ export function groundTileGeometry(quads: readonly GroundTileQuad[], assets: Gro
 }
 
 /** ground_overlay.ksh: the overlay texture's RGB are three cover masks, blended by `blend` (one channel per cover step).
- * With a terrain atlas the overlay follows that layer's mask alpha, coastal skirts included; without one it covers its plane.
+ * The overlay follows the terrain layer atlas's mask alpha, coastal skirts included.
  * Materials share the overlay texture and the caller's `blend` uniform; disposing one releases neither.
  */
-export function groundOverlayMaterial(texture: THREE.Texture, blend: { value: THREE.Vector3 }, atlas?: THREE.Texture): THREE.MeshLambertMaterial {
+export function groundOverlayMaterial(texture: THREE.Texture, blend: { value: THREE.Vector3 }, atlas: THREE.Texture): THREE.MeshLambertMaterial {
   const material = new THREE.MeshLambertMaterial({
     map: texture, transparent: true, premultipliedAlpha: true,
     depthTest: true, depthWrite: false, side: THREE.DoubleSide,
   });
   material.forceSinglePass = true;
-  material.userData.prewarmTextures = atlas ? [atlas] : [];
+  material.userData.prewarmTextures = [atlas];
   material.onBeforeCompile = shader => {
     shader.uniforms.dstSnowBlend = blend;
-    if (atlas) {
-      shader.uniforms.dstSnowGroundAtlas = { value: atlas };
-      shader.vertexShader = shader.vertexShader.replace('#include <common>', `
-        #include <common>
-        attribute vec2 groundTileUv;
-        varying vec2 vSnowGroundTileUv;
-      `).replace('#include <uv_vertex>', `
-        #include <uv_vertex>
-        vSnowGroundTileUv = groundTileUv;
-      `);
-    }
+    shader.uniforms.dstSnowGroundAtlas = { value: atlas };
+    shader.vertexShader = shader.vertexShader.replace('#include <common>', `
+      #include <common>
+      attribute vec2 groundTileUv;
+      varying vec2 vSnowGroundTileUv;
+    `).replace('#include <uv_vertex>', `
+      #include <uv_vertex>
+      vSnowGroundTileUv = groundTileUv;
+    `);
     shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `
       #include <common>
       uniform vec3 dstSnowBlend;
-      ${atlas ? 'uniform sampler2D dstSnowGroundAtlas; varying vec2 vSnowGroundTileUv;' : ''}
+      uniform sampler2D dstSnowGroundAtlas; varying vec2 vSnowGroundTileUv;
     `).replace('#include <map_fragment>', `
-      ${atlas ? `
-        float terrainAlpha = texture2D(dstSnowGroundAtlas, vSnowGroundTileUv).a;
-        if (terrainAlpha < 0.105) discard;
-      ` : 'float terrainAlpha = 1.0;'}
+      float terrainAlpha = texture2D(dstSnowGroundAtlas, vSnowGroundTileUv).a;
+      if (terrainAlpha < 0.105) discard;
       vec3 snowLayers = texture2D(map, vMapUv).rgb * dstSnowBlend;
       float firstAlpha = snowLayers.b;
       float secondaryAlpha = (1.0 - firstAlpha) * snowLayers.g;
@@ -161,7 +157,7 @@ export function groundOverlayMaterial(texture: THREE.Texture, blend: { value: TH
       diffuseColor.a *= (firstAlpha + secondaryAlpha + thirdAlpha) * terrainAlpha;
     `);
   };
-  material.customProgramCacheKey = () => atlas ? 'dst-snow-ground-overlay-atlas-v1' : 'dst-snow-ground-overlay-v1';
+  material.customProgramCacheKey = () => 'dst-snow-ground-overlay-atlas-v1';
   return material;
 }
 

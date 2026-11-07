@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { createSignal, clockstate, seasonstate } from '@dontstarve-web/signals';
 import { SnowEffect } from '../../prefab/src/snow';
+import { TurfMap } from '../../prefab/src/turfMap';
+import { GroundDisplay } from '../../display/src/groundDisplay';
 import { DstLightingRenderer } from '../../../src/dstLighting';
 
 async function checkSnowMotion() {
@@ -13,8 +15,9 @@ async function checkSnowMotion() {
     return camera.getWorldQuaternion(new THREE.Quaternion());
   };
   let quaternion = orient(Math.PI / 4);
+  const groundOverlay = { declareOverlay: () => {} };
   const snow = new SnowEffect({ scene, dataBaseUrl: '/dst/data', getFocus: () => new THREE.Vector3(),
-    camera, rate, cover, groundSize: 400 });
+    camera, rate, cover, groundOverlay });
   try {
     for (let i = 0; i < 100 && !scene.getObjectByName('snow'); i++) await new Promise(resolve => setTimeout(resolve, 50));
     const mesh = scene.getObjectByName('snow') as THREE.Mesh<THREE.BufferGeometry>;
@@ -80,14 +83,21 @@ export async function checkSnow() {
   camera.updateMatrixWorld();
   const quaternion = camera.getWorldQuaternion(new THREE.Quaternion());
   const rate = createSignal(0.8), cover = createSignal(0.24);
+  // Snow declares its ground overlay on the world's ground display, which draws it over land.
+  const map = new TurfMap(400);
+  const groundDisplay = new GroundDisplay(map, '/dst/data');
+  await groundDisplay.prepare();
+  scene.add(groundDisplay.root);
   const snow = new SnowEffect({ scene, dataBaseUrl: '/dst/data', getFocus: () => new THREE.Vector3(),
-    camera, rate, cover, groundSize: 400 });
+    camera, rate, cover, groundOverlay: groundDisplay });
   const lighting = await DstLightingRenderer.create(renderer, '/dst/data/images/colour_cubes');
-  for (let i = 0; i < 100 && (!scene.getObjectByName('snow') || !scene.getObjectByName('SnowGroundOverlay')); i++) {
+  const overlays = () => groundDisplay.root.children.filter(object => object.name === 'GroundOverlay:snow') as
+    THREE.Mesh<THREE.BufferGeometry, THREE.MeshLambertMaterial>[];
+  for (let i = 0; i < 100 && (!scene.getObjectByName('snow') || !overlays().length); i++) {
     await new Promise(resolve => setTimeout(resolve, 50));
   }
   const mesh = scene.getObjectByName('snow') as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
-  const ground = scene.getObjectByName('SnowGroundOverlay') as THREE.Mesh<THREE.BufferGeometry, THREE.MeshLambertMaterial>;
+  const [ground] = overlays();
   if (!mesh || !ground) throw new Error('Snow textures did not load');
   const draw = () => lighting.render(scene, camera);
   const pixels = () => {
@@ -161,21 +171,23 @@ export async function checkSnow() {
   const pausePreserved = mesh.geometry.getAttribute('position').version === paused;
   rate.set(0); await Promise.resolve();
   for (let frame = 0; frame < 240; frame++) snow.update(1 / 30, quaternion);
-  const stopped = { quads: mesh.geometry.drawRange.count / 6, cover: ground.userData.snowCover, groundVisible: ground.visible };
+  const stopped = { quads: mesh.geometry.drawRange.count / 6, groundVisible: overlays().every(overlay => overlay.visible) };
   cover.set(0); await Promise.resolve();
-  const melted = !ground.visible;
+  const melted = overlays().every(overlay => !overlay.visible);
   const released: string[] = [];
   for (const [label, resource] of [['particles', mesh.geometry], ['material', mesh.material], ['texture', mesh.material.map!],
     ['ground', ground.geometry], ['groundMaterial', ground.material], ['groundTexture', ground.material.map!]] as const) {
     resource.addEventListener('dispose', () => released.push(label));
   }
   snow.dispose(); snow.dispose();
-  const removed = !scene.getObjectByName('snow') && !scene.getObjectByName('SnowGroundOverlay');
+  const removed = !scene.getObjectByName('snow') && overlays().length === 0;
   // Disposal while async texture work is in flight must not re-add a visual.
-  const pending = new SnowEffect({ scene, dataBaseUrl: '/dst/data', getFocus: () => new THREE.Vector3(), camera, rate, cover, groundSize: 400 });
+  const pending = new SnowEffect({ scene, dataBaseUrl: '/dst/data', getFocus: () => new THREE.Vector3(), camera, rate, cover,
+    groundOverlay: groundDisplay });
   pending.dispose();
   await new Promise(resolve => setTimeout(resolve, 100));
-  const pendingRemoved = !scene.getObjectByName('snow') && !scene.getObjectByName('SnowGroundOverlay');
+  const pendingRemoved = !scene.getObjectByName('snow') && overlays().length === 0;
+  groundDisplay.dispose(); map.dispose();
   lighting.dispose(); terrain.geometry.dispose(); terrain.material.dispose(); renderer.dispose();
   renderer.domElement.remove();
   const motion = await checkSnowMotion();

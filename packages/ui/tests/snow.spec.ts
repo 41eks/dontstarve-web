@@ -20,7 +20,7 @@ test('snow renders with winter lighting, drains after stopping and releases its 
   expect(result.softCentrePixels).toBe(0);
   expect(result.foregroundSnowPixels).toBeGreaterThan(20);
   expect(result.pausePreserved).toBe(true);
-  expect(result.stopped).toEqual({ quads: 0, cover: 0.24, groundVisible: true });
+  expect(result.stopped).toEqual({ quads: 0, groundVisible: true });
   expect(result.melted).toBe(true);
   expect(result.released.sort()).toEqual(['ground', 'groundMaterial', 'groundTexture', 'material', 'particles', 'texture']);
   expect(result.removed).toBe(true);
