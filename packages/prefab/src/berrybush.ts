@@ -48,6 +48,8 @@ function setberries(inst: PickablePlantInstance, percent?: number): void {
 }
 function onpickedfn(inst: PickablePlantInstance): void {
   if (inst.components.pickable.IsBarren()) { inst.play(['idle_to_dead', 'dead']); setberries(inst); }
+  // setberriesonanimover: the picked clip's animover hides the berries. Every source path that calls setberries before it
+  // also plays a clip, which replaces this one and so cancels that animover, as RemoveEventCallback does.
   else inst.play(['picked', 'idle'], false, () => setberries(inst));
 }
 function makefullfn(inst: PickablePlantInstance): void {

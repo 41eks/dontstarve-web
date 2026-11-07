@@ -96,7 +96,6 @@ export class BulbPlantInstance extends PrefabInstance {
   private inLight = false;
   private awake = false;
   private entityAwake = false;
-  private animationVersion = 0;
   private pickSound?: SoundHandle;
 
   constructor(prefab: BulbPlantPrefabId, world: BulbPlantWorld) {
@@ -124,7 +123,6 @@ export class BulbPlantInstance extends PrefabInstance {
       () => this.onpickedfn(), () => this.onregenfn(), undefined, { scheduler: scheduler as GameTimeScheduler });
     this.wakeTimer.start(1);
     this.onRemove(() => {
-      this.animationVersion++;
       this.wakeTimer.stop(); this.sampleTimer.stop(); this.rechargeTimer.stop(); this.turnoffTimer.stop();
       this.lightTask?.(); this.lightTask = undefined;
       this.components.pickable.dispose();
@@ -217,12 +215,10 @@ export class BulbPlantInstance extends PrefabInstance {
     this.play(STATE_ANIMS[state][0], STATE_ANIMS[state][1], state === 'ON');
   }
 
+  /** flower_cave.lua: PlayAnimation(first), PushAnimation(next, loop). */
   private play(first: string, next: string, loop = false): void {
-    const version = ++this.animationVersion;
-    this.sprite.playOnce(first, () => {
-      if (this.isRemoved || version !== this.animationVersion) return;
-      if (loop) this.sprite.start(next); else this.sprite.playOnce(next);
-    });
+    this.sprite.playOnce(first);
+    this.sprite.pushAnimation(next, loop);
   }
 
   private checkLight(): void {

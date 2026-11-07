@@ -112,7 +112,6 @@ export abstract class PickablePlantInstance extends PrefabInstance {
   variant?: string;
   readonly definition: PickablePlantDefinition;
   readonly context: PickablePlantContext;
-  private animationVersion = 0;
   private pickSound?: SoundHandle;
   private phaseMemo?: Memo<string>;
   private burn?: BurnableBinding;
@@ -150,7 +149,6 @@ export abstract class PickablePlantInstance extends PrefabInstance {
       { ...catalog.items[prefab as keyof typeof catalog.items], itemId: prefab, count: 1, ...(skinId ? { skinId } : {}) },
       point, { fling: true }));
     this.onRemove(() => {
-      this.animationVersion++;
       this.burn?.dispose();
       this.components.workable?.dispose();
       this.components.witherable?.dispose();
@@ -161,19 +159,16 @@ export abstract class PickablePlantInstance extends PrefabInstance {
     });
   }
 
-  /** Generic clip playback; each prefab supplies its own clips and callbacks. */
-  play(clips: readonly string[], loopLast = false, onFirstOver?: () => void): void {
-    const version = ++this.animationVersion;
-    const play = (index: number) => {
-      if (this.isRemoved || this.animationVersion !== version) return;
-      if (index === clips.length - 1 && loopLast) this.sprite.start(clips[index]);
-      else this.sprite.playOnce(clips[index], index + 1 < clips.length ? () => {
-        if (this.isRemoved || this.animationVersion !== version) return;
-        if (index === 0) onFirstOver?.();
-        play(index + 1);
-      } : undefined);
-    };
-    if (clips.length) play(0);
+  /**
+   * PlayAnimation(first) and PushAnimation for the rest, the last one looping when `loopLast`; a following play clears
+   * the queue. `onAnimOver` is the first clip's animover, which a later clip replacing it never sends.
+   */
+  play(clips: readonly string[], loopLast = false, onAnimOver?: () => void): void {
+    const [first, ...rest] = clips;
+    if (first === undefined) return;
+    if (rest.length === 0 && loopLast) { this.sprite.start(first); return; }
+    this.sprite.playOnce(first, onAnimOver);
+    rest.forEach((clip, index) => this.sprite.pushAnimation(clip, loopLast && index === rest.length - 1));
   }
 
   playPickSound(sound: SoundEventPath): void {

@@ -70,8 +70,13 @@ it('picks native berries without consuming cycles, pauses in winter and reloads 
     expect(pickable.cyclesLeft).toBe(5);
     expect(pickable.remainingSeconds).toBe(1920);
     expect(plantInstance(model).sprite.currentAnimation).toBe('picked');
+    // The berries stay drawn through the picked clip; its animover hides them as the queue moves on to idle.
+    const berriesShown = () => [...plantInstance(model).sprite.sprite.peek().appearance.values()]
+      .some(op => op.kind === 'layer' && op.layer.startsWith('berries') && !op.hidden);
+    expect(berriesShown()).toBe(true);
     for (let frame = 0; frame < 90; frame++) s.advance(1 / 30);
     expect(plantInstance(model).sprite.currentAnimation).toBe('idle');
+    expect(berriesShown()).toBe(false);
     const waiting = pickable.state.timer.peek(); s.advance(100);
     expect(pickable.state.timer.peek()).toBe(waiting);
     s.season.set({ season: 'winter', progress: 0 }); await settleEffects();
