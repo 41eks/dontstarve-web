@@ -1,5 +1,5 @@
 import { Vector3, type Object3D } from 'three';
-import { clockstate, createMemo, readonlySignal, type EventEmitter, type GetWatchWorldContent } from '@dontstarve-web/signals';
+import { type EventEmitter, type GetWatchWorldContent } from '@dontstarve-web/signals';
 import { cursorSlotAddress, equipmentSlotAddress, inventorySlotAddress, type InventoryStore, type ItemEntity } from '@dontstarve-web/inventory';
 import { createChestInventoryPanel, type mountGameUi, type SlotAddress, type SlotItem } from '@dontstarve-web/ui';
 import {
@@ -10,7 +10,6 @@ import type { ScreenProjection } from '@dontstarve-web/display';
 import { ARMORSNURTLESHELL_ID } from '@dontstarve-web/prefab/armorsnurtleshell';
 import { AMULET_ID } from '@dontstarve-web/prefab/amulet';
 import { Reader } from '../packages/componets/src/reader';
-import { SleepingBagUser } from '../packages/componets/src/sleepingbaguser';
 import { Combat, type CombatActor } from '../packages/componets/src/combat';
 import { equippedActionEntity } from '../packages/stategraphs/src/componentactions';
 import { modelHasTag, prefabInstance } from '../packages/prefab/src/prefabInstance';
@@ -128,46 +127,13 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
           screenProjection.GetScreenPos(new Vector3(source.x, source.y, source.z)))(received);
       });
       if (playerAnimation) {
-        // sleepingbaguser.lua on the player: per-tick hunger, sanity and health while in a bed.
-        const phase = createMemo(() => clockstate.get().phase);
-        const sleeper = new SleepingBagUser({
-          scheduler, phase: readonlySignal(phase),
-          hunger: playerStats.hunger,
-          sanity: playerStats.sanity,
-          health: playerStats.health,
-          goToWakeup: () => playerAnimation.goToWakeup(),
-        });
-        // Pointer input is blocked while the controller is disabled, so waking listens ahead of the canvas.
-        const wakeOnPointer = (event: PointerEvent) => { if (event.target === renderer.domElement) playerAnimation.wakeFromBed(); };
-        const setSleeperState = (sleeping: boolean) => {
-          // playercontroller:Enable(false) and inventory:Hide() while asleep.
-          playerInstance.controllerEnabled = !sleeping;
-          gameUi.inventoryBar.style.visibility = sleeping ? 'hidden' : '';
-          if (sleeping) window.addEventListener('pointerdown', wakeOnPointer, true);
-          else window.removeEventListener('pointerdown', wakeOnPointer, true);
+        // Pointer input is blocked while the sleeper's controller is disabled, so waking listens ahead of the canvas.
+        const wakeOnPointer = (event: PointerEvent) => {
+          if (event.target === renderer.domElement && playerAnimation.isSleeping) playerAnimation.wakeFromBed();
         };
-        // SGwilson.lua tent onenter; tents are not siesta huts, so only the day refuses them.
-        const bedRefusal = (bed: { hasTag(tag: string): boolean }) =>
-          clockstate.peek().phase === 'day' ? '光线太亮了。'
-            : bed.hasTag('burnt') ? '我没有在那里面睡觉的强烈欲望。'
-              // TUNING.CALORIES_MED
-              : playerStats.hunger.current < 25 ? '我太饿了，睡不着，我肚子的咕咕叫声会让我一直醒着的！' : undefined;
-        playerAnimation.bindSleep({
-          setSleeperState,
-          failReason: bedRefusal,
-          announce: reason => console.info(reason),
-          canCommit: bed => clockstate.peek().phase !== 'day' && !bed.hasTag('hassleeper') && !bed.hasTag('burnt'),
-          get hasBed() { return sleeper.bed !== undefined; },
-          wakeBed: nostatechange => sleeper.bed?.DoWakeUp(nostatechange),
-        });
-        // SLEEPIN's sleepingbag:DoSleep(act.doer) reaches the player's sleepingbaguser.
-        pickupDoer.components.sleepingbaguser = sleeper;
+        window.addEventListener('pointerdown', wakeOnPointer, true);
         actionControllers.push({ dispose() {
-          sleeper.bed?.DoWakeUp(true);
-          setSleeperState(false);
-          playerAnimation.bindSleep(undefined);
-          delete pickupDoer.components.sleepingbaguser;
-          sleeper.dispose(); phase.dispose();
+          window.removeEventListener('pointerdown', wakeOnPointer, true);
         } });
       }
       // The player inst carries reader.lua's component and tag, with the world services the books' callbacks reach.

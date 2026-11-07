@@ -116,8 +116,9 @@ const playerAnimation = playerInstance.animationController;
 const STATEGRAPH_EVENTS = new Set(['equip', 'unequip', 'toolbroke', 'fishingnibble', 'fishingloserod', 'fishingstrain', 'fishingcatch', 'fishingcancel']);
 const pickupDoer: PickupDoer & WortoxDoer & { sg: NonNullable<PickupDoer['sg']> & { beginPortalJump(pos: import('three').Vector3, fromMap?: boolean): boolean }; ListenForEvent(name: string, listener: (data: unknown) => void): () => void; HasStateTag(tag: string): boolean; GoToState(name: string): void; IsCurrentState(name: string): boolean; OpenEquipmentView?: import('@dontstarve-web/signals').EquipmentOwner['OpenEquipmentView'];
   components: PickupDoer['components'] & { health: typeof playerStats.health; hunger: typeof playerStats.hunger; sanity?: Sanity } } = {
-  // The player's own eater.lua component, which ACTIONS.EAT reaches on act.doer.
-  components: { inventory, health: playerStats.health, hunger: playerStats.hunger, eater: playerInstance.components.eater },
+  // The player's own eater.lua (ACTIONS.EAT) and sleepingbaguser.lua (SLEEPIN's sleepingbag:DoSleep) on act.doer.
+  components: { inventory, health: playerStats.health, hunger: playerStats.hunger, eater: playerInstance.components.eater,
+    sleepingbaguser: playerInstance.components.sleepingbaguser },
   ListenForEvent: (name, listener) => playerInstance.ListenForEvent(name, listener),
   hasTag: tag => tag === 'player' || modelHasTag(player, tag),
   addTag: tag => setModelTag(player, tag, true),
@@ -289,6 +290,11 @@ if (view.mouseActions) playerInstance.components.playeractionpicker = view.mouse
 playerInstance.HUD = {
   Show: () => { for (const element of [gameUi.statusHud, gameUi.mapControls]) element.style.visibility = ''; },
   Hide: () => { for (const element of [gameUi.statusHud, gameUi.mapControls]) element.style.visibility = 'hidden'; },
+  // inventory:Hide() / Show() while asleep.
+  controls: {
+    HideCraftingAndInventory: () => { gameUi.inventoryBar.style.visibility = 'hidden'; },
+    ShowCraftingAndInventory: () => { gameUi.inventoryBar.style.visibility = ''; },
+  },
 };
 playerAnimation?.bindSpawnPrefab((prefab, position) => registry.SpawnPrefab(prefab, position));
 // A saved ghost resumes as a ghost (OnLoad is_ghost → OnMakePlayerGhost({ loading = true })).
