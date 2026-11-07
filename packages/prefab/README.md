@@ -233,7 +233,7 @@ inventory.Unequip('hand'); // 收回背包；mininglantern 的规则决定何时
 `inventoryphysics`（`packages/componets/src/inventoryphysics.ts`）的 `LootFling` 接收实体的 `transform`，直接推进其中的地面坐标；
 `height` 写入实例 sprite 的 `visualHeight`。只有飞行中的物体经 `componentUpdates` 每帧更新。
 
-`LanternLightController` 按源 Lua 在燃料比例 0～1 时使用半径 3～5（换算为场景的
+提灯的 `fuelupdate` 按源 Lua 在燃料比例 0～1 时使用半径 3～5（换算为场景的
 9～15 世界单位）、强度 0.4～0.6、Falloff 0.9，以及 RGB `(180,195,150)/255`；
 零燃料时关闭光源。光源声明在 `lanternlight` 光源实体的 `instance.light` 上，
 由其 display 列入光源列表，应用的局部光照渲染器只读取该列表。

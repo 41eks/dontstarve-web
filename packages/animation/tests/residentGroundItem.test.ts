@@ -57,7 +57,7 @@ it('unloads a settled ground item sprite with its tile and rebuilds it when the 
 });
 
 it('retains a lantern machine, light and fuel while its tile releases and rebuilds the sprite', async () => {
-  const { getLanternController, LANTERN_FUEL } = await import('../../prefab/src/lantern');
+  const { LANTERN_FUEL } = await import('../../prefab/src/lantern');
   const tile = createSignal(true), world = itemWorld(tile);
   const perish = createPerishWorld();
   world.inventory.entities.bindPerishWorld(perish);
@@ -65,7 +65,7 @@ it('retains a lantern machine, light and fuel while its tile releases and rebuil
   // inventoryitem:OnDropped turns the lantern on where it is set down.
   world.items.spawnGroundItem({ itemId: 'lantern', name: 'lantern', icon: '', count: 1, entity: item }, new THREE.Vector3(3, 0, 4));
   await tick();
-  const model = item.transform.model, controller = getLanternController(item), light = item.light.slots.peek();
+  const model = item.transform.model, light = item.light.slots.peek();
   const listed = () => [...displayLights()].some(entry => entry.model === model);
   const drawn = created.at(-1)!;
   try {
@@ -75,8 +75,8 @@ it('retains a lantern machine, light and fuel while its tile releases and rebuil
     tile.set(false); await tick();
     expect(drawn.dispose).toHaveBeenCalledOnce();
     expect(model.parent).toBeNull();
-    expect(controller.isOn).toBe(true);
-    expect(controller.light.parent).toBe(item);
+    expect(item.components.machine!.IsOn()).toBe(true);
+    expect((item as import('../../prefab/src/lantern').LanternInst)._light!.parent).toBe(item);
     // The lanternlight is parented to the ground lantern: it goes out while the lantern's tile sleeps.
     expect(listed()).toBe(false);
     // Fuel follows the item's game time, not its sprite or frames.

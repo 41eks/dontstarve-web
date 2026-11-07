@@ -200,8 +200,8 @@ gl_FragColor.rgb *= max(light.rgb,
 燃料比例为零时关闭，地面关闭状态为 `idle_off`。基础动画和 12 个皮肤 ID 均保持源路径，
 不以背包图标代替地面或手持外观。
 
-`LanternLightController` 按 `mininglantern.lua` 生成 `lanternlight` 光源实体（`FX`、
-`persists = false`），父实体为角色或地面提灯，在其 `instance.light` 上声明光源参数。原版随燃料比例变化的半径 3～5 换算为 9～15
+`lantern.ts` 的 `turnon` 按 `mininglantern.lua` 生成 `inst._light`（`lanternlight` 光源实体，`FX`、
+`persists = false`），父实体为持有者（`owner or inst`）或地面提灯，`fuelupdate` 在其 `instance.light` 上声明光源参数。原版随燃料比例变化的半径 3～5 换算为 9～15
 世界单位，强度为 0.4～0.6，Falloff 固定 0.9；颜色与火把相同。
 本项目额外扩大 50% 的范围倍率仅用于火把，不额外扩大提灯范围。
 
