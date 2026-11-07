@@ -2,9 +2,8 @@ import type * as THREE from 'three';
 import { FALLOFF_EDGES, type FalloffEdge, type GroundCellBounds, type GroundLayerDeclaration, type GroundTerrain,
   type GroundTileArt } from '@dontstarve-web/display';
 import { TILE_SIZE, snapToTileCenter, type Vector2 } from './tile';
-import { GROUND_FALLOFF_ART, GROUND_TILE_DEFINITIONS, loadGroundTileMinimapLayer, groundTileVariant,
-  groundTileArt, type GroundTileLayerImage, type GroundTileQuad, type GroundTileName } from './groundTiles';
-import { loadMinimapOcean, type MinimapOceanData } from './minimapOcean';
+import { GROUND_FALLOFF_ART, GROUND_TILE_DEFINITIONS, groundTileMinimapArt, groundTileVariant,
+  groundTileArt, type GroundTileMinimapArt, type GroundTileQuad, type GroundTileName } from './groundTiles';
 import { groundTileLayerQuads, isLandTile, isOceanTile } from './groundTileQuads';
 
 // tiledefs.lua preserves these vanilla GROUND IDs in WORLD_TILES.
@@ -21,6 +20,10 @@ export const WORLD_TILES = {
 } as const;
 
 export { isLandTile, isOceanTile };
+
+/** minimapocean.ksh draws every tile with ocean colours. */
+const MINIMAP_OCEAN_TILE_IDS: ReadonlySet<number> = new Set(Object.values(GROUND_TILE_DEFINITIONS).flatMap(tile =>
+  'oceanColours' in tile ? [tile.tileId] : []));
 
 const OCEAN_COLOURS = new Map(Object.values(GROUND_TILE_DEFINITIONS).flatMap(tile =>
   'oceanColours' in tile ? [[tile.tileId, tile.oceanColours] as const] : []));
@@ -56,9 +59,6 @@ export class TurfMap implements GroundTerrain {
   readonly falloffArt = GROUND_FALLOFF_ART;
   private readonly listeners = new Set<(world: Vector2, originalTileId: number) => void>();
   private readonly terrainListeners = new Set<(bounds?: TerrainCellBounds) => void>();
-  private assetBaseUrl?: string;
-  private minimapLayers?: Promise<Map<number, GroundTileLayerImage>>;
-  private minimapOceanData?: Promise<MinimapOceanData>;
   private terrainNamesCache?: GroundTileName[];
   /** Effective tile id (dug override, else generated, else default) per cell; the maps stay authoritative. */
   private readonly cells: Uint16Array;
@@ -170,19 +170,10 @@ export class TurfMap implements GroundTerrain {
     this.rebuildGeometry({ minCol: col, minRow: row, maxCol: col + 1, maxRow: row + 1 });
   }
 
-  /** The assets root the minimap's layer images and ocean data load from. */
-  bindMinimapArt(assetBaseUrl: string): void { this.assetBaseUrl = assetBaseUrl; }
-
-  /** Minimap render layer images (map_edge masks + mini noise) per tile id. Loaded once from the root of bindMinimapArt(). */
-  tileLayerImages(): Promise<Map<number, GroundTileLayerImage>> {
-    if (!this.minimapLayers) {
-      const root = this.assetBaseUrl;
-      if (root === undefined) return Promise.reject(new Error('Bind the minimap art before reading minimap layers'));
-      const names = this.terrainNames();
-      this.minimapLayers = Promise.all(names.map(async name =>
-        [WORLD_TILES[name], await loadGroundTileMinimapLayer(root, name)] as const)).then(entries => new Map(entries));
-    }
-    return this.minimapLayers;
+  /** One minimap render layer per land tile type of the map; the minimap loads the art. */
+  tileLayerArt(): Map<number, GroundTileMinimapArt> {
+    return new Map(this.terrainNames().filter(name => !isOceanTile(WORLD_TILES[name]))
+      .map(name => [WORLD_TILES[name], groundTileMinimapArt(name)]));
   }
 
   /** Land render masks, including skirts in neighbouring cells. UI consumes the
@@ -193,11 +184,8 @@ export class TurfMap implements GroundTerrain {
     return groundTileLayerQuads((col, row) => this.tileAt(col, row), ids, this.cellRange(), bounds);
   }
 
-  /** Data of the separate minimapocean.ksh pass that draws every ocean tile. */
-  minimapOcean(): Promise<MinimapOceanData> {
-    if (this.assetBaseUrl === undefined) return Promise.reject(new Error('Bind the minimap art before reading minimap ocean data'));
-    return this.minimapOceanData ??= loadMinimapOcean(this.assetBaseUrl);
-  }
+  /** Tiles of the separate minimapocean.ksh pass. */
+  minimapOceanTileIds(): ReadonlySet<number> { return MINIMAP_OCEAN_TILE_IDS; }
 
   tileCenter(world: Vector2): Vector2 { return snapToTileCenter(world); }
 
@@ -371,20 +359,8 @@ export class TurfMap implements GroundTerrain {
   }
 
   private rebuildGeometry(bounds?: TerrainCellBounds): void {
-    const names = this.terrainNames();
     this.terrainNamesCache = undefined;
-    if (this.terrainNames().some(name => !names.includes(name))) this.declareMinimapLayers();
     for (const listener of this.terrainListeners) listener(bounds);
-  }
-
-  /** A newly declared layer joins the minimap's loaded layers, then redraws it. */
-  private declareMinimapLayers(): void {
-    const loaded = this.minimapLayers, root = this.assetBaseUrl;
-    if (!loaded || root === undefined) return;
-    void loaded.then(layers => Promise.all(this.terrainNames().filter(name => !layers.has(WORLD_TILES[name]))
-      .map(async name => { layers.set(WORLD_TILES[name], await loadGroundTileMinimapLayer(root, name)); })))
-      .then(() => { for (const listener of this.terrainListeners) listener(); })
-      .catch(error => console.error('Unable to load minimap layer art', error));
   }
 
   dispose(): void {

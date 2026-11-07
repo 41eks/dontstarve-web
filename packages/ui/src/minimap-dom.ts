@@ -26,7 +26,7 @@ export class MinimapDomRenderer {
   constructor(options: MinimapTerrainOptions, dataRoot: string) {
     this.icons = new MinimapIcons(dataRoot);
     // Open ocean is one seamless pre-rendered plate (scripts/render-minimap-ocean.mjs), drawn below the land layers.
-    this.terrain = new MiniMapRenderer({ ...options, oceanPlateUrl: `${import.meta.env.BASE_URL}minimap/ocean.png` });
+    this.terrain = new MiniMapRenderer({ ...options, assetBaseUrl: dataRoot, oceanPlateUrl: `${import.meta.env.BASE_URL}minimap/ocean.png` });
     this.dom = new MinimapIconView();
     // Both surfaces use screen space; negative icon priorities still stay above terrain.
     this.dom.root.prepend(this.terrain.canvas);

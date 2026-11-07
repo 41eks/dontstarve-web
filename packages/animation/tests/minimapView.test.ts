@@ -2,6 +2,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { MinimapView } from '../../ui/src/minimap-view';
 import { TurfMap, WORLD_TILES } from '../../prefab/src/turfMap';
 import { groundTileVariant } from '../../prefab/src/groundTiles';
+import { loadMinimapTileLayers } from '../../map/src/minimapArt';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -134,12 +135,11 @@ it('loads all source minimap masks and noise per terrain layer, and reports chan
   vi.stubGlobal('fetch', async (url: string) => new Response(
     await readFile(new URL(`../../../public/dst/data/${String(url).slice('/dst/data/'.length)}`, import.meta.url))));
   const map = new TurfMap(1000);
-  map.bindMinimapArt('/dst/data');
   const { min, max } = map.cellRange();
   expect(max - min).toBe(84);
   expect(map.tileIdAtCell(0, 0)).toBe(WORLD_TILES.DECIDUOUS);
   expect(map.tileIdAtCell(max, 0)).toBe(WORLD_TILES.INVALID);
-  const layers = await map.tileLayerImages();
+  const layers = await loadMinimapTileLayers('/dst/data', map.tileLayerArt());
   const alphas = (atlas: { data: Uint8ClampedArray; width: number; height: number }, rect: { u0: number; v0: number; u1: number; v1: number }) => {
     const values: number[] = [];
     for (let y = Math.ceil(rect.v0 * atlas.height); y < Math.floor(rect.v1 * atlas.height); y++) {

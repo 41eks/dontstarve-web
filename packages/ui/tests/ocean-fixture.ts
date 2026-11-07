@@ -14,7 +14,6 @@ export async function checkOceanRendering() {
   const map = new TurfMap(120, tiles);
   const ground = await createTurfGround({ assetBaseUrl: '/dst/data', noiseTexture: 'Ground_noise_deciduous',
     tileAtlas: 'DECIDUOUS', size: 120 });
-  map.bindMinimapArt('/dst/data');
   const display = new GroundDisplay(map, '/dst/data');
   await display.prepare();
   const clock = createSignal<ClockState>({ phase: 'day', timeinphase: 0 });

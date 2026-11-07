@@ -15,7 +15,6 @@ for (let row = -4; row < 4; row++) for (let col = -4; col < 4; col++) {
 }
 const terrain = new TurfMap(96, tiles);
 terrain.setOriginalTile({ x: -6, z: -6 }, WORLD_TILES.WOODFLOOR);
-terrain.bindMinimapArt('/dst/data');
 const groundDisplay = new GroundDisplay(terrain, '/dst/data');
 await groundDisplay.prepare();
 const ground = await createTurfGround({ assetBaseUrl: '/dst/data', noiseTexture: 'Ground_noise_deciduous', tileAtlas: 'DECIDUOUS', size: 96 });

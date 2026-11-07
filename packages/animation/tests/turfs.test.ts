@@ -73,9 +73,7 @@ it('deploys one CotL turf on dirt, rejects covered ground and restores terrain a
     expect(entity.components.deployable!.CanDeploy(point, deployMap)).toBe(false);
     expect(inventory.get(address)!.count).toBe(2);
     expect(map.dig(point)).toBe(true);
-    map.bindMinimapArt('/dst/data');
     const display = await drawGround(map);
-    const mini = await map.tileLayerImages();
     const item = inventory.extract(address, 1, entity)!;
     expect(item.components.deployable!.Deploy(point, deployer, deployMap)).toBe(true);
     expect(item.isRemoved).toBe(true);
@@ -89,7 +87,8 @@ it('deploys one CotL turf on dirt, rejects covered ground and restores terrain a
     await vi.waitFor(() => expect(layerMeshes(display, 'COTL_BRICK').length).toBeGreaterThan(0));
     const brick = layerGeometry(display, 'COTL_BRICK');
     expect(brick.getIndex()!.count).toBe(9 * 6);
-    await vi.waitFor(() => expect(mini.has(WORLD_TILES.COTL_BRICK)).toBe(true));
+    // The minimap layer is declared at once; the minimap loads its art.
+    expect(map.tileLayerArt().has(WORLD_TILES.COTL_BRICK)).toBe(true);
     expect(map.tileLayerQuads().get(WORLD_TILES.COTL_BRICK)).toHaveLength(9);
     restored = new TurfMap(48, map.exportTiles());
     const restoredDisplay = await drawGround(restored);
