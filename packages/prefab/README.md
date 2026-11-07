@@ -93,7 +93,7 @@ build 从 DST `databundles/anim_dynamic.zip` 提取，`.dyn` 文件原样复制�
 （`MapLayerManager:CreateRenderLayer` / `Map:AddRenderLayer`）一样声明地皮渲染层：`groundLayers()` 给出每层的地皮 ID、美术和顺序，
 `groundLayerQuads(bounds)` 给出范围内各层的边缘掩码四边形，改动通过 `onTerrainChanged(bounds)` 通知。它不持有地皮层 mesh，也不加载地皮美术；
 `packages/display` 的 `GroundDisplay` 加载声明的美术，按 32×32 格分块绘制，改动只重建所触及的分块，新声明的地皮层由它加载后自行绘制，
-铺地动作不等待美术。`SnowEffect` 通过 `declareOverlay('snow', …)` 声明 weather.lua 的地面积雪（贴图与覆盖程度 signal），不加载资源；`GroundDisplay` 按 `ground_overlay.ksh` 用各地皮层的 atlas alpha（含海岸裙边）分块绘制，地皮改动同样只重建所触及的分块，覆盖程度只改 uniform 与可见性。没有地图时（独立场景）雪仍绘制自己的平面。悬崖与海洋表面暂由 `createVisual(assetBaseUrl)` 绘制。主场景将猪王木地板格登记到该地图。`groundTiles.json` 从 `tiledefs.lua` 提取 ID、atlas/noise 路径和
+铺地动作不等待美术。`SnowEffect` 通过 `declareOverlay('snow', …)` 声明 weather.lua 的地面积雪（贴图与覆盖程度 signal），不加载资源；`GroundDisplay` 按 `ground_overlay.ksh` 用各地皮层的 atlas alpha（含海岸裙边）分块绘制，地皮改动同样只重建所触及的分块，覆盖程度只改 uniform 与可见性。没有地图时（独立场景）雪仍绘制自己的平面。悬崖和海洋表面同样由 `TurfMap` 声明（`falloffArt`／`falloffEdges()`、`oceanArt()`／`oceanSurfaceCells()` 与各格海洋颜色），`GroundDisplay` 加载美术并绘制，海洋按 `bindOceanClock()` 跟随昼夜、`update(dt)` 推进噪声。小地图图层美术暂按 `bindMinimapArt(assetBaseUrl)` 给出的根路径由 `TurfMap` 加载。主场景将猪王木地板格登记到该地图。`groundTiles.json` 从 `tiledefs.lua` 提取 ID、atlas/noise 路径和
 绘制顺序；`pnpm --filter @dontstarve-web/prefab ground-tiles:import` 导入原版资产，
 `ground-tiles:check` 校验源字节和定义。`groundTiles.ts` 根据八邻格选择 48 个源 atlas
 图块，并按 `ground.ksh` 的方式将 atlas RGBA 与世界坐标噪声相乘。内部同种格用完整

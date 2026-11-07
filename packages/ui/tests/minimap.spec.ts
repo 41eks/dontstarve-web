@@ -113,7 +113,7 @@ test('draws a large sparse world from chunk geometry and rebuilds only the chunk
     const big = new terrain.constructor(9480, [
       { col: -364, row: 0, tileId: WORLD_TILES.WOODFLOOR }, { col: -363, row: 0, tileId: WORLD_TILES.WOODFLOOR },
     ], 1);
-    const visual = await big.createVisual('/dst/data');
+    big.bindMinimapArt('/dst/data');
     const display = new GroundDisplay(big, '/dst/data');
     await display.prepare();
     const element = new (customElements.get('dst-minimap')!)() as any;
@@ -133,7 +133,7 @@ test('draws a large sparse world from chunk geometry and rebuilds only the chunk
     element.dispose();
     big.setTile(-363, 0, 4);
     const released = renderer.renderer === undefined && !renderer.canvas.isConnected && renderer.chunks.size === 0;
-    const preserved = visual.parent === null && display.root.children.some((mesh: any) => mesh.geometry?.getAttribute('position')?.count > 0);
+    const preserved = display.root.children.some((mesh: any) => mesh.geometry?.getAttribute('position')?.count > 0);
     display.dispose(); big.dispose();
     return { chunks: chunks.length, dirty, before, after, ready, released, preserved };
   });
@@ -153,7 +153,7 @@ test('uses world ground artwork, keeps ocean composition, and preserves shared w
   await page.goto('/tests/minimap-edges.html');
   await page.waitForFunction(() => Boolean((window as any).minimapEdges));
   const before = await page.evaluate(async () => {
-    const { map, visual, ground, scene, renderer, groundDisplay } = (window as any).minimapEdges;
+    const { map, ground, scene, renderer, groundDisplay } = (window as any).minimapEdges;
     const { sampleMapTerrain } = await import('./minimap-terrain-samples.ts');
     const points = [{ x: 6, z: 6 }, { x: -6, z: -6 }, { x: 30, z: 6 }];
     (window as any).worldMapPoints = points;
@@ -163,7 +163,7 @@ test('uses world ground artwork, keeps ocean composition, and preserves shared w
     const size = [renderer.domElement.width, renderer.domElement.height];
     map.setView({ zoom: 20, x: 0, z: 0 });
     return { samples: sampleMapTerrain(map, points, { ocean: false }), withOcean: sampleMapTerrain(map, points),
-      parentsPreserved: ground.parent === scene && visual.parent === scene,
+      parentsPreserved: ground.parent === scene && groundDisplay.root.parent === scene,
       materials: materials.map((material: any) => material.name), rendererSize: size };
   });
   expect(before.parentsPreserved).toBe(true);
@@ -176,11 +176,11 @@ test('uses world ground artwork, keeps ocean composition, and preserves shared w
   expect(before.withOcean[0]).toEqual(before.samples[0]);
   await page.screenshot({ path: testInfo.outputPath('world-ground-map.png') });
   const after = await page.evaluate(async () => {
-    const { map, terrain, renderer, scene, visual, ground } = (window as any).minimapEdges;
+    const { map, terrain, renderer, scene, ground, groundDisplay } = (window as any).minimapEdges;
     const { sampleMapTerrain } = await import('./minimap-terrain-samples.ts');
     terrain.dig({ x: 6, z: 6 });
     return { samples: sampleMapTerrain(map, (window as any).worldMapPoints, { ocean: false }),
-      parentsPreserved: ground.parent === scene && visual.parent === scene,
+      parentsPreserved: ground.parent === scene && groundDisplay.root.parent === scene,
       disposed: (window as any).worldMapDisposals,
       rendererSize: [renderer.domElement.width, renderer.domElement.height] };
   });

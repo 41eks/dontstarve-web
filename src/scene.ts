@@ -9,7 +9,7 @@ import { EventEmitter } from '@dontstarve-web/signals';
 
 import { animate, backTasks, middleTasks } from './animate';
 import { createAnimationUpdater } from './animation';
-import { ground, groundDisplay, turfGround, turfMap, pathfinder } from './building';
+import { ground, groundDisplay, turfMap, pathfinder } from './building';
 import { camera } from './camera';
 import { createSceneEntities } from './sceneEntities';
 import type { EntityRegistry } from './entityRegistry';
@@ -40,10 +40,10 @@ import { prewarmCachedBuilds } from '@dontstarve-web/display';
 
 export { world, worldState };
 
-turfMap.bindOceanClock(worldState.clock);
+groundDisplay.bindOceanClock(worldState.clock);
 
 scene.background = new THREE.Color(initialSave.world.prefab === 'cave' ? 0x000000 : 0xbfd1e5);
-scene.add(ground, turfGround, groundDisplay.root, player);
+scene.add(ground, groundDisplay.root, player);
 
 function disposeTerrain(): void {
   groundDisplay.dispose();
@@ -146,7 +146,7 @@ export async function startScene(
     }
   };
   const updateEntities = (dt: number) => {
-    turfMap.update(dt);
+    groundDisplay.update(dt);
     scheduler.advanceTo(clockUpdater.elapsedSeconds);
     worldState.componentUpdates.update(dt);
     publishCameraRotation();

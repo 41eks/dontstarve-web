@@ -15,12 +15,12 @@ for (let row = -4; row < 4; row++) for (let col = -4; col < 4; col++) {
 }
 const terrain = new TurfMap(96, tiles);
 terrain.setOriginalTile({ x: -6, z: -6 }, WORLD_TILES.WOODFLOOR);
-const visual = await terrain.createVisual('/dst/data');
+terrain.bindMinimapArt('/dst/data');
 const groundDisplay = new GroundDisplay(terrain, '/dst/data');
 await groundDisplay.prepare();
 const ground = await createTurfGround({ assetBaseUrl: '/dst/data', noiseTexture: 'Ground_noise_deciduous', tileAtlas: 'DECIDUOUS', size: 96 });
 const scene = new Scene();
-scene.add(ground, visual, groundDisplay.root, new AmbientLight(0xffffff, 1));
+scene.add(ground, groundDisplay.root, new AmbientLight(0xffffff, 1));
 const renderer = new WebGLRenderer({ alpha: true });
 const map = new DstMinimapElement();
 BindTileMapSize(96);
@@ -34,4 +34,4 @@ const heading = createSignal(-90);
 map.bind({ terrain, cellSize: 12, getPlayerPosition: () => playerIcon.position, cameraHeading: readonlySignal(heading) });
 await map.prepareTerrain();
 map.setOpen(true);
-(window as any).minimapEdges = { terrain, map, playerIcon, heading, renderer, scene, ground, visual, groundDisplay, GroundDisplay, WORLD_TILES };
+(window as any).minimapEdges = { terrain, map, playerIcon, heading, renderer, scene, ground, groundDisplay, GroundDisplay, WORLD_TILES };

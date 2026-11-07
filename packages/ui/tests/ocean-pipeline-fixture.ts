@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { prewarmScenePasses, renderScenePasses } from '@dontstarve-web/animation/sceneRenderPass';
-import { OceanRenderPipeline } from '../../prefab/src/oceanRenderPipeline';
+import { OceanRenderPipeline } from '../../display/src/oceanRenderPipeline';
 
 export async function checkOceanPipeline() {
   const renderer = new THREE.WebGLRenderer();

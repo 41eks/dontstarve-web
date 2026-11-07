@@ -73,7 +73,7 @@ it('deploys one CotL turf on dirt, rejects covered ground and restores terrain a
     expect(entity.components.deployable!.CanDeploy(point, deployMap)).toBe(false);
     expect(inventory.get(address)!.count).toBe(2);
     expect(map.dig(point)).toBe(true);
-    await map.createVisual('/dst/data');
+    map.bindMinimapArt('/dst/data');
     const display = await drawGround(map);
     const mini = await map.tileLayerImages();
     const item = inventory.extract(address, 1, entity)!;

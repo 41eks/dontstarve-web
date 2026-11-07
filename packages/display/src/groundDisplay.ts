@@ -1,7 +1,12 @@
 import * as THREE from 'three';
-import { createEffect, watchSignal, type ReadonlySignal } from '@dontstarve-web/signals';
+import { createEffect, watchSignal, type ClockState, type ReadonlySignal } from '@dontstarve-web/signals';
 import { groundOverlayBlend, groundOverlayMaterial, groundTileGeometry, loadGroundTexture, loadGroundTileAssets,
   type GroundTileArt, type GroundTileAssets, type GroundTileQuad } from './groundAssets';
+import { groundFalloffGeometry, loadGroundFalloffAssets, sortGroundFalloffGeometry,
+  type FalloffEdge, type GroundFalloffArt, type GroundFalloffAssets } from './groundFalloff';
+import { GroundDepthPrepass } from './groundDepthPrepass';
+import { cellRectangleGeometry, mergeCellRectangles, type OceanColourMap } from './oceanRenderPipeline';
+import { OceanSurface } from './oceanSurface';
 
 /** Inclusive-exclusive signed cells. */
 export interface GroundCellBounds { minCol: number; minRow: number; maxCol: number; maxRow: number }
@@ -15,10 +20,17 @@ export interface GroundLayerDeclaration {
 }
 
 /** The world's tile map as the ground display reads it. It owns tiles and layer declarations, never meshes or art. */
-export interface GroundTerrain {
+export interface GroundTerrain extends OceanColourMap {
   readonly size: number;
   readonly tileSize: number;
   cellRange(): { min: number; max: number };
+  /** falloffdefs.lua: the cliff art, and the land cell sides that carry a cliff. */
+  readonly falloffArt: GroundFalloffArt;
+  falloffEdges(): readonly FalloffEdge[];
+  /** The ocean pass's art, or `undefined` when the world has no ocean surface to draw. */
+  oceanArt(): GroundTileArt | undefined;
+  /** Cells the ocean surface covers; the ocean pass shades by world position, so only their footprint matters. */
+  oceanSurfaceCells(): Iterable<readonly [col: number, row: number]>;
   groundLayers(): readonly GroundLayerDeclaration[];
   /** Edge-mask quads of every declared layer whose cell lies within `bounds`. */
   groundLayerQuads(bounds: GroundCellBounds): ReadonlyMap<number, readonly GroundTileQuad[]>;
@@ -58,8 +70,8 @@ interface Chunk extends GroundCellBounds { readonly meshes: THREE.Mesh[]; readon
 
 const releaseMeshes = (meshes: THREE.Mesh[]) => { for (const mesh of meshes.splice(0)) { mesh.removeFromParent(); mesh.geometry.dispose(); } };
 
-/** Draws the world's declared ground layers and ground overlays. A terrain change rebuilds only the chunks it reaches;
- * a newly declared layer or overlay loads its art here and then draws wherever its tiles are.
+/** Draws the world's declared ground layers, ground overlays, cliffs and ocean surface. A terrain change rebuilds only
+ * the layer chunks it reaches; a newly declared layer or overlay loads its art here and then draws wherever its tiles are.
  */
 export class GroundDisplay implements GroundOverlayHost {
   readonly root = new THREE.Group();
@@ -70,6 +82,14 @@ export class GroundDisplay implements GroundOverlayHost {
   private readonly chunks: Chunk[] = [];
   private readonly stopTerrain: () => void;
   private disposed = false;
+  private falloffAssets?: GroundFalloffAssets;
+  private falloffMesh?: THREE.Mesh;
+  private readonly depthPrepass = new GroundDepthPrepass();
+  private ocean?: OceanSurface;
+  private oceanMesh?: THREE.Mesh;
+  /** The ocean art's own material; the ocean pipeline draws the mesh with its combined material. */
+  private oceanMaterial?: THREE.Material;
+  private oceanClock?: ReadonlySignal<ClockState>;
 
   constructor(terrain: GroundTerrain, assetBaseUrl: string) {
     this.terrain = terrain;
@@ -84,13 +104,86 @@ export class GroundDisplay implements GroundOverlayHost {
       this.declare(true);
       // Variants read the eight neighbours, so an edit reaches one cell beyond its bounds.
       this.rebuild(bounds && { minCol: bounds.minCol - 1, minRow: bounds.minRow - 1, maxCol: bounds.maxCol + 1, maxRow: bounds.maxRow + 1 });
+      this.rebuildCliffsAndOcean();
     });
   }
 
-  /** Loads every declared layer's art and draws the whole map. */
+  /** Loads every declared layer's art, the cliff art and the ocean art, and draws the whole map. */
   async prepare(): Promise<void> {
-    await Promise.all(this.declare(false));
-    if (!this.disposed) this.rebuild();
+    await Promise.all([...this.declare(false), this.prepareFalloff(), this.prepareOcean()]);
+    if (this.disposed) return;
+    this.rebuild();
+    this.rebuildCliffsAndOcean();
+  }
+
+  /** oceancolor.lua follows the world clock's phase. */
+  bindOceanClock(clock: ReadonlySignal<ClockState>): void {
+    this.oceanClock = clock;
+    this.ocean?.bindClock(clock);
+  }
+
+  update(dt: number): void { this.ocean?.update(dt); }
+
+  private async prepareFalloff(): Promise<void> {
+    const assets = await loadGroundFalloffAssets(this.assetBaseUrl, this.terrain.falloffArt, this.terrain.tileSize);
+    if (this.disposed) { assets.material.dispose(); return; }
+    this.falloffAssets = assets;
+    // Only the falloff writes depth (prepass); turf layers stay depth-free and are ordered by renderOrder.
+    const mesh = this.falloffMesh = new THREE.Mesh(new THREE.BufferGeometry(), assets.material);
+    mesh.name = 'TurfFalloff';
+    // Above ocean (-1.75) but below every turf layer, dirt included (>= -1): turf is drawn after, so it covers the falloff where they are coplanar.
+    mesh.renderOrder = -1.25;
+    const modelView = new THREE.Matrix4();
+    mesh.onBeforeRender = (_renderer, _scene, camera, geometry) => {
+      modelView.multiplyMatrices(camera.matrixWorldInverse, mesh.matrixWorld);
+      sortGroundFalloffGeometry(geometry, modelView);
+    };
+    this.depthPrepass.add(mesh);
+    this.root.add(mesh);
+  }
+
+  private async prepareOcean(): Promise<void> {
+    const art = this.terrain.oceanArt();
+    if (!art) return;
+    const assets = await loadGroundTileAssets(this.assetBaseUrl, art);
+    if (this.disposed) { assets.material.dispose(); return; }
+    this.ocean = new OceanSurface(assets.material, this.terrain);
+    this.oceanMaterial = assets.material;
+    this.oceanMesh = new THREE.Mesh(new THREE.BufferGeometry(), assets.material);
+    this.oceanMesh.name = `TurfOcean:${art.name}`;
+    this.oceanMesh.renderOrder = -1.75;
+    this.ocean.attach(this.oceanMesh);
+    this.root.add(this.oceanMesh);
+    if (this.oceanClock) this.ocean.bindClock(this.oceanClock);
+  }
+
+  private rebuildCliffsAndOcean(): void {
+    if (this.disposed) return;
+    this.rebuildOcean();
+    this.rebuildFalloff();
+    this.ocean?.rebuildColours();
+  }
+
+  /** The ocean surface's footprint: its cells merged into rectangles. */
+  private rebuildOcean(): void {
+    const mesh = this.oceanMesh;
+    if (!mesh) return;
+    const { min, max } = this.terrain.cellRange();
+    const surface = new Set<string>();
+    for (const [col, row] of this.terrain.oceanSurfaceCells()) surface.add(`${col},${row}`);
+    const rects = mergeCellRectangles(max - min, (col, row) => surface.has(`${col + min},${row + min}`));
+    mesh.geometry.dispose();
+    mesh.geometry = cellRectangleGeometry(rects, min, this.terrain.tileSize, this.terrain.size / 2, new THREE.Matrix4());
+    mesh.visible = rects.length > 0;
+  }
+
+  private rebuildFalloff(): void {
+    if (!this.falloffAssets || !this.falloffMesh) return;
+    const edges = this.terrain.falloffEdges();
+    this.falloffMesh.geometry.dispose();
+    this.falloffMesh.geometry = groundFalloffGeometry(edges, this.falloffAssets);
+    this.depthPrepass.sync(this.falloffMesh);
+    this.falloffMesh.visible = edges.length > 0;
   }
 
   /** Adds, replaces or (with `undefined`) withdraws an overlay. Its texture loads here; it draws once loaded. */
@@ -206,5 +299,16 @@ export class GroundDisplay implements GroundOverlayHost {
     for (const chunk of this.chunks) releaseMeshes(chunk.meshes);
     for (const { assets } of this.layers.values()) assets?.material.dispose();
     this.layers.clear();
+    this.depthPrepass.dispose();
+    this.ocean?.dispose();
+    this.ocean = undefined;
+    this.oceanMesh?.geometry.dispose();
+    this.oceanMaterial?.dispose();
+    this.oceanMesh = undefined; this.oceanMaterial = undefined;
+    this.falloffMesh?.geometry.dispose();
+    this.falloffMesh = undefined;
+    this.falloffAssets?.material.dispose();
+    this.falloffAssets = undefined;
+    this.oceanClock = undefined;
   }
 }
