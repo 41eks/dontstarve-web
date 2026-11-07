@@ -14,6 +14,15 @@ export interface MinimapTileLayer {
   readonly renderOrder: number;
 }
 
+/** The art a terrain declares for one minimap render layer (tiledefs.lua `minimap_tile_def`); the map loads it. */
+export interface MinimapTileLayerArt {
+  /** The map_edge atlas texture and its XML; tiles naming the same atlas share its decoded pixels. */
+  readonly texture: string;
+  readonly atlas: string;
+  readonly noise: string;
+  readonly renderOrder: number;
+}
+
 export interface MinimapTileQuad { readonly col: number; readonly row: number; readonly variant: number }
 
 export interface MinimapCellBounds { minCol: number; minRow: number; maxCol: number; maxRow: number }
@@ -23,9 +32,10 @@ export interface MinimapTerrain {
   cellRange(): { min: number; max: number };
   tileIdAtCell(col: number, row: number): number;
   isVoidAtCell?(col: number, row: number): boolean;
-  /** The returned map may gain layers later (a newly deployed turf); a terrain change follows. */
-  tileLayerImages(): Promise<ReadonlyMap<number, MinimapTileLayer>>;
+  /** Declared minimap layers per tile id. A newly deployed turf adds a layer, and a terrain change follows. */
+  tileLayerArt(): ReadonlyMap<number, MinimapTileLayerArt>;
   tileLayerQuads(bounds?: MinimapCellBounds): ReadonlyMap<number, readonly MinimapTileQuad[]>;
-  minimapOcean(): Promise<import('./minimap-ocean').MinimapOceanConfig>;
+  /** Tiles drawn by the minimapocean.ksh pass instead of a land layer. */
+  minimapOceanTileIds(): ReadonlySet<number>;
   onTerrainChanged(listener: (bounds?: MinimapCellBounds) => void): () => void;
 }

@@ -308,7 +308,7 @@ export function evergreenPrefabs(world: EvergreenWorld, random: () => number = M
     fn: position => new EvergreenInstance(world, position, id === EVERGREEN_ID ? Math.min(3, Math.floor(random() * 3) + 1) : EVERGREEN_SPAWN_IDS.indexOf(id), random),
     assets: { animationArchive: 'evergreen_short_normal.zip', extraAnimationArchives: ['evergreen_tall_old.zip'],
       buildArchives: ['evergreen_new.zip'], bank: 'evergreen_short' },
-    assetOptions: { scale: .02, staticBillboard: true, instancedAnimations: EVERGREEN_STAGES.flatMap(stage =>
+    assetOptions: { staticBillboard: true, instancedAnimations: EVERGREEN_STAGES.flatMap(stage =>
       [`sway1_loop_${stage}`, `stump_${stage}`, `burnt_${stage}`, 'idle_old']) },
     physics: { make: MakeObstaclePhysics, radius: .25 },
     minimapIcon: 'evergreen.png',

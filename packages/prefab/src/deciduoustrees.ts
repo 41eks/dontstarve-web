@@ -382,7 +382,7 @@ export function deciduousPrefabs(world: DeciduousWorld, random: () => number = M
         snow: { archive: 'snow.zip', symbol: 'snow' } },
       hiddenSymbols: ['mouseover', 'snow'],
     },
-    assetOptions: { scale: .02, staticBillboard: true, colour: [1, 1, 1], instancedAnimations: DECIDUOUS_STAGES.flatMap(stage =>
+    assetOptions: { staticBillboard: true, colour: [1, 1, 1], instancedAnimations: DECIDUOUS_STAGES.flatMap(stage =>
       [`sway1_loop_${stage}`, `sway2_loop_${stage}`, `burnt_${stage}`]) },
     physics: { make: MakeObstaclePhysics, radius: .25 },
     minimapIcon: 'tree_leaf.png',

@@ -113,7 +113,6 @@ test('draws a large sparse world from chunk geometry and rebuilds only the chunk
     const big = new terrain.constructor(9480, [
       { col: -364, row: 0, tileId: WORLD_TILES.WOODFLOOR }, { col: -363, row: 0, tileId: WORLD_TILES.WOODFLOOR },
     ], 1);
-    big.bindMinimapArt('/dst/data');
     const display = new GroundDisplay(big, '/dst/data');
     await display.prepare();
     const element = new (customElements.get('dst-minimap')!)() as any;

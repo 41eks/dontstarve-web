@@ -82,10 +82,7 @@ export {
 export {
   TileMap,
   TILE_SIZE,
-  WALL_SCALE,
   WALL_SLOT_SIZE,
-  WALL_TEXTURE_WIDTH,
-  WALL_WIDTH,
   snapToCellCenter,
   snapToTileCenter,
   snapToWallSlotCenter,

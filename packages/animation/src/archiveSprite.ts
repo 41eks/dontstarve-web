@@ -8,6 +8,7 @@ import { registerSpriteRenderGroup } from './renderOrder';
 import { selectsFacing } from './facing';
 import { InstancedArchiveSprites, type InstancedSprite } from './instancedArchiveSprites';
 import { installMatrixGate } from './matrixGate';
+import { SPRITE_SCALE } from './units';
 import type { ResolvedAnimState } from './animState';
 import type { SpriteArtSource } from './sprite';
 import {
@@ -352,7 +353,7 @@ function constructArchiveSprite(
   model.name = options.name ?? `${definition.bank}:${definition.animation}`;
   model.userData.billboard = true;
   const visual = new THREE.Group();
-  const scale = options.scale ?? 0.02;
+  const scale = options.scale ?? SPRITE_SCALE;
   visual.scale.set(scale, -scale, scale);
   model.add(visual);
   registerSpriteRenderGroup(model, visual);

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { MinimapCellBounds, MinimapPixels, MinimapTerrain, MinimapTileLayer, MinimapTileQuad } from '../../ui/src/minimap-terrain';
 import { MINIMAP_MARGIN_RATIO, type MinimapView } from '../../ui/src/minimap-view';
+import { loadMinimapTileLayer, loadMinimapTileLayers } from './minimapArt';
 
 /** Geometry is grouped for culling and terrain edits only; every chunk draws into the same frame. */
 const CHUNK_CELLS = 32;
@@ -60,6 +61,8 @@ interface Chunk extends MinimapCellBounds {
 export interface MiniMapRendererOptions {
   terrain: MinimapTerrain;
   cellSize: number;
+  /** Mirrored DST data root the declared layer art loads from. */
+  assetBaseUrl: string;
   /** The pre-rendered seamless open-ocean plate. */
   oceanPlateUrl: string;
 }
@@ -78,7 +81,9 @@ export class MiniMapRenderer {
   private readonly chunks = new Map<string, Chunk>();
   private readonly materials = new Map<number, THREE.RawShaderMaterial>();
   private readonly textures = new Map<MinimapPixels, THREE.DataTexture>();
-  private layers?: ReadonlyMap<number, MinimapTileLayer>;
+  private layers?: Map<number, MinimapTileLayer>;
+  /** Layers declared after preparation whose art is still loading. */
+  private readonly pendingLayers = new Set<number>();
   private oceanIds?: ReadonlySet<number>;
   private oceanTexture?: THREE.Texture;
   private ocean?: THREE.Mesh;
@@ -95,6 +100,7 @@ export class MiniMapRenderer {
     this.canvas.className = 'minimap__terrain-canvas';
     Object.assign(this.canvas.style, { position: 'absolute', inset: '0', width: '100%', height: '100%', pointerEvents: 'none' });
     this.stopTerrain = options.terrain.onTerrainChanged(bounds => {
+      this.loadDeclaredLayers();
       // Variants read the eight neighbours, so an edit reaches one cell beyond its bounds.
       this.invalidate(bounds && { minCol: bounds.minCol - 1, minRow: bounds.minRow - 1, maxCol: bounds.maxCol + 1, maxRow: bounds.maxRow + 1 });
     });
@@ -109,12 +115,12 @@ export class MiniMapRenderer {
   }
 
   private async load(): Promise<void> {
-    const { terrain, cellSize, oceanPlateUrl } = this.options;
-    const [layers, ocean, plate] = await Promise.all([
-      terrain.tileLayerImages(), terrain.minimapOcean(), new THREE.TextureLoader().loadAsync(oceanPlateUrl),
+    const { terrain, cellSize, assetBaseUrl, oceanPlateUrl } = this.options;
+    const [layers, plate] = await Promise.all([
+      loadMinimapTileLayers(assetBaseUrl, terrain.tileLayerArt()), new THREE.TextureLoader().loadAsync(oceanPlateUrl),
     ]);
     if (this.disposed) { plate.dispose(); return; }
-    this.layers = layers; this.oceanIds = ocean.oceanTileIds;
+    this.layers = layers; this.oceanIds = terrain.minimapOceanTileIds();
     plate.colorSpace = THREE.NoColorSpace;
     // Row 0 at the plate's minimum z, as its CSS background was laid out.
     plate.flipY = false;
@@ -162,6 +168,22 @@ export class MiniMapRenderer {
     if (col < min || col >= max || row < min || row >= max) return false;
     const id = terrain.tileIdAtCell(col, row);
     return id !== 0 && !terrain.isVoidAtCell?.(col, row) && this.oceanIds !== undefined && !this.oceanIds.has(id);
+  }
+
+  /** A layer declared after preparation (a newly deployed turf) loads its art, then redraws wherever its tiles are. */
+  private loadDeclaredLayers(): void {
+    const layers = this.layers;
+    if (!layers || this.disposed) return;
+    for (const [id, art] of this.options.terrain.tileLayerArt()) {
+      if (layers.has(id) || this.pendingLayers.has(id)) continue;
+      this.pendingLayers.add(id);
+      void loadMinimapTileLayer(this.options.assetBaseUrl, art).then(layer => {
+        if (this.disposed) return;
+        layers.set(id, layer);
+        this.invalidate();
+      }).catch(error => console.error('Unable to load minimap layer art', error))
+        .finally(() => this.pendingLayers.delete(id));
+    }
   }
 
   private invalidate(bounds?: MinimapCellBounds): void {

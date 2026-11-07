@@ -7,7 +7,7 @@ import { createAtlasImage, registerImageAtlases, type AtlasImageElement } from '
 import { loadImageAtlas } from '@dontstarve-web/animation/imageAtlas';
 import styles from './styles/minimap.css?inline';
 
-export type { MinimapPixels, MinimapTileLayer } from './minimap-terrain';
+export type { MinimapPixels, MinimapTileLayer, MinimapTileLayerArt } from './minimap-terrain';
 
 export type { MinimapTerrain } from './minimap-terrain';
 
