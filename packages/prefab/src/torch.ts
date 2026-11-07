@@ -1,12 +1,13 @@
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { ItemEntity } from '@dontstarve-web/inventory';
-import { getBoundWatchWorldContent, WorldContentKey, type EquipmentOwner, type HandEquipment, type ReadonlySignal } from '@dontstarve-web/signals';
+import { getBoundWatchWorldContent, WorldContentKey, type EquipmentOwner, type ReadonlySignal } from '@dontstarve-web/signals';
 import type * as THREE from 'three';
 import type { FollowerFx } from '@dontstarve-web/display';
 import { Burnable } from '../../componets/src/burnable';
 import { ErodeAway } from '../../componets/src/erodeaway';
 import { Lighter } from '../../componets/src/lighter';
 import type { WorkInst } from '../../componets/src/workable';
+import type { InventoryActor } from '../../componets/src/inventoryitem';
 import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory, type HeldEquipFunctions } from './equipmentVisual';
 import { GROUND_ITEM_DEFINITIONS, groundItemPrefab, type ItemPrefabDefinition } from './groundItems';
 import type { ItemPrefabWorld } from './groundPrefab';
@@ -21,15 +22,18 @@ import type { PrefabInstance } from './prefabInstance';
 export function configureTorchEntity(entity: ItemEntity): void {
   entity.components.lighter = entity.component('lighter', () => new Lighter(entity));
   if (entity.components.fueled) return;
-  const burnable = entity.components.burnable = entity.component('burnable', () => new Burnable(entity));
+  const inst = entity as TorchInst;
+  inst.components.inventoryitem.SetOnPutInInventoryFn((_inst, owner) => OnPutInInventory(inst, owner));
+  const burnable = inst.components.burnable = inst.component('burnable', () => new Burnable(inst));
   burnable.canlight = false;
-  burnable.SetOnExtinguishFn(() => getTorchController(entity).OnExtinguish());
-  const fueled = entity.AddFueled();
-  fueled.SetSectionCallback(newsection => getTorchController(entity).onfuelchange(newsection));
+  burnable.SetOnExtinguishFn(() => OnExtinguish(inst));
+  const fueled = inst.AddFueled();
+  fueled.SetSectionCallback(newsection => onfuelchange(newsection, inst));
   fueled.InitializeFuelLevel(TORCH_FUEL);
   fueled.SetDepletedFn(inst => { inst.remove(); });
   fueled.SetFirstPeriod(TURNON_FUELED_CONSUMPTION, TURNON_FULL_FUELED_CONSUMPTION);
-  entity.onRemove(() => burnable.OnRemoveEntity());
+  inst.SetFuelRateMult = mult => SetFuelRateMult(inst, mult);
+  inst.onRemove(() => { burnable.OnRemoveEntity(); OnRemoveEntity(inst); });
 }
 
 export const TORCH_ID = 'torch';
@@ -48,7 +52,27 @@ export const TORCH_LIGHT: PrefabLocalLight = {
 };
 export const TORCH_SOUNDS = ['dontstarve/wilson/torch_swing', 'dontstarve/common/fireOut'] as const;
 
-export interface TorchLifecycleOptions { soundPosition?: ReadonlyVector3 }
+/** torch.lua's fields on the inst. */
+export interface TorchInst extends ItemEntity {
+  /** inst.fires: the torchfire fx with their lights, set by onequip or IgniteTossed until the source removes them. */
+  fires?: { remove(): void }[];
+  _ignitesoundtask?: () => void;
+  _extinguishsoundtask?: () => void;
+  /** inst._owner: the owner it is equipped on, which itemranout reaches. */
+  _owner?: EquipmentOwner;
+  _fuelratemult?: number;
+  /** WatchWorldState("israining") and TheWorld.state.precipitationrate, with the watch's cleanup. */
+  _preciptype?: ReadonlySignal<string>;
+  _precipitationrate?: ReadonlySignal<number>;
+  _stopwatchingrain?: (() => void)[];
+  SetFuelRateMult(mult: number): void;
+}
+
+/** What onequip reaches on the owner: AttachLightTo(owner) and Follower:FollowSymbol(owner.GUID, "swap_object"). */
+export interface TorchHolder {
+  lightParent?: PrefabInstance;
+  followSymbol?(symbol: string, offsetX: number, offsetY: number, fx?: FollowerFx): { node: THREE.Object3D; remove(): void };
+}
 
 /** torch.lua's onattack. TryLuckRoll is the plain chance: this project has no luck stat. */
 export function onattack(_weapon: object, attacker: object, target: object): void {
@@ -57,276 +81,206 @@ export function onattack(_weapon: object, attacker: object, target: object): voi
   if (!isRemoved && burnable && Math.random() < TORCH_ATTACK_IGNITE_PERCENT * burnable.flammability) burnable.Ignite(undefined, attacker as WorkInst);
 }
 
+/** (owner or inst).SoundEmitter: a held torch sounds from its owner, one on the ground from its own transform. */
+const ownerSound = (owner?: EquipmentOwner) => owner?.getPosition?.();
+
+/** inst:DoTaskInTime(0, ...): the next game-time step, or at once for an inst outside a world. */
+function DoTaskInTime0(inst: TorchInst, run: () => void): (() => void) | undefined {
+  const scheduler = inst.components.perishable.scheduler;
+  if (scheduler) return scheduler.schedule(0, run);
+  run();
+  return undefined;
+}
+
+function DoIgniteSound(inst: TorchInst, position: ReadonlyVector3 | undefined): void {
+  inst._ignitesoundtask = undefined;
+  PlaySound('dontstarve/wilson/torch_swing', position);
+}
+
+function DoExtinguishSound(inst: TorchInst, position: ReadonlyVector3 | undefined): void {
+  inst._extinguishsoundtask = undefined;
+  PlaySound('dontstarve/common/fireOut', position);
+}
+
+function PlayIgniteSound(inst: TorchInst, position: ReadonlyVector3 | undefined, instant: boolean, force: boolean): void {
+  if (inst._extinguishsoundtask) {
+    inst._extinguishsoundtask();
+    inst._extinguishsoundtask = undefined;
+    if (!force) return;
+  }
+  if (instant) {
+    inst._ignitesoundtask?.();
+    DoIgniteSound(inst, position);
+  } else inst._ignitesoundtask ??= DoTaskInTime0(inst, () => DoIgniteSound(inst, position));
+}
+
+function PlayExtinguishSound(inst: TorchInst, position: ReadonlyVector3 | undefined, instant: boolean, force: boolean): void {
+  if (inst._ignitesoundtask) {
+    inst._ignitesoundtask();
+    inst._ignitesoundtask = undefined;
+    if (!force) return;
+  }
+  if (instant) {
+    inst._extinguishsoundtask?.();
+    DoExtinguishSound(inst, position);
+  } else inst._extinguishsoundtask ??= DoTaskInTime0(inst, () => DoExtinguishSound(inst, position));
+}
+
+function RemoveFires(inst: TorchInst): void {
+  for (const fx of inst.fires ?? []) fx.remove();
+  inst.fires = undefined;
+}
+
+/** OnRemoveEntity: pending sound tasks stop, which also covers an unequip arriving after removal. */
+function OnRemoveEntity(inst: TorchInst): void {
+  inst._ignitesoundtask?.(); inst._ignitesoundtask = undefined;
+  inst._extinguishsoundtask?.(); inst._extinguishsoundtask = undefined;
+  for (const stop of inst._stopwatchingrain?.splice(0) ?? []) stop();
+  RemoveFires(inst);
+  inst._owner = undefined;
+}
+
 /**
- * torch.lua's callbacks on the inst. Burning is `components.burnable`, which also starts and stops fueled; `fires` is
- * Lua's inst.fires: set from onequip or IgniteTossed until the source clears it, whatever the burnable does meanwhile.
+ * WatchWorldState("israining", onisraining); onisraining(inst, TheWorld.state.israining). Started with the first fire
+ * rather than in fn(): only a consuming torch reads the rate, and a saved inventory is configured before its world is bound.
  */
-export class TorchController implements HandEquipment {
-  public readonly itemId = TORCH_ID;
-  public readonly EQUIPSLOTS: 'HANDS' = 'HANDS';
-  private disposed = false;
-  readonly entity: ItemEntity;
-  private owner: EquipmentOwner | null = null;
-  private held = false;
-  private fires = false;
-  /** What IgniteTossed draws on the inst; the hand's torchfire belongs to the hand lifecycle. */
-  private tossedFire?: { remove(): void };
-  private options: TorchLifecycleOptions = {};
-  private cancelIgniteSound?: () => void;
-  private cancelExtinguishSound?: () => void;
-  private fuelratemult?: number;
-  private readonly rainStops: (() => void)[] = [];
-  private precipitationRate?: ReadonlySignal<number>;
-  private preciptype?: ReadonlySignal<string>;
+function WatchRain(inst: TorchInst): void {
+  const watch = getBoundWatchWorldContent();
+  if (inst._preciptype || !watch) return;
+  const stops: (() => void)[] = inst._stopwatchingrain = [];
+  inst._precipitationrate = watch(WorldContentKey.PrecipitationRate, stop => stops.push(stop));
+  const preciptype = inst._preciptype = watch(WorldContentKey.PrecipType, stop => stops.push(stop));
+  preciptype.subscribe(type => onisraining(inst, type === 'rain'));
+  onisraining(inst, preciptype.peek() === 'rain');
+}
 
-  constructor(entity: ItemEntity) {
-    if (entity.prefab !== TORCH_ID) throw new Error('TorchController requires a torch entity');
-    this.entity = entity;
-    entity.onRemove(() => this.dispose());
-  }
+function onupdatefueledraining(inst: TorchInst): void {
+  const fueled = inst.components.fueled;
+  if (!fueled || inst.isRemoved) return;
+  const owner = inst.components.inventoryitem.owner as { components?: { sheltered?: { sheltered?: boolean }; rainimmunity?: object } } | null;
+  const ownerProtected = owner?.components?.sheltered?.sheltered || owner?.components?.rainimmunity !== undefined;
+  const mult = inst._fuelratemult ?? 1;
+  fueled.rate = ownerProtected || (inst.components as { rainimmunity?: object }).rainimmunity !== undefined ? mult
+    : (1 + TORCH_RAIN_RATE * (inst._precipitationrate?.peek() ?? 0)) * mult;
+}
 
-  private get burnable(): Burnable { return this.entity.components.burnable!; }
-  private get fueled() { return this.entity.isRemoved ? undefined : this.entity.components.fueled; }
-  get burning(): ReadonlySignal<boolean> { return this.burnable.burning; }
-  get isBurning(): boolean { return this.burnable.IsBurning(); }
-  setPresentation(options: TorchLifecycleOptions): void { this.options = options; }
-  releasePresentation(options: TorchLifecycleOptions): void { if (this.options === options) this.options = {}; }
-  OnDropped(): void { this.held = false; }
+function onisraining(inst: TorchInst, israining: boolean): void {
+  const fueled = inst.components.fueled;
+  if (!fueled || inst.isRemoved) return;
+  if (israining) {
+    fueled.SetUpdateFn(() => onupdatefueledraining(inst));
+    onupdatefueledraining(inst);
+  } else {
+    fueled.SetUpdateFn();
+    fueled.rate = inst._fuelratemult ?? 1;
+  }
+}
 
-  /** A held torch sounds from its holder, one on the ground from its own transform. */
-  private soundPosition(ownerPosition?: ReadonlyVector3): ReadonlyVector3 | undefined {
-    return ownerPosition ?? this.options.soundPosition ?? (this.held ? undefined : this.entity.position);
-  }
-  /** inst:DoTaskInTime(0, ...): the next game-time step, or at once for an inst outside a world. */
-  private inNextStep(run: () => void): (() => void) | undefined {
-    const scheduler = this.entity.components.perishable.scheduler;
-    if (scheduler) return scheduler.schedule(0, run);
-    run();
-    return undefined;
-  }
+export function SetFuelRateMult(inst: TorchInst, mult: number): void {
+  const next = mult !== 1 ? mult : undefined;
+  if (inst._fuelratemult === next) return;
+  inst._fuelratemult = next;
+  onisraining(inst, inst._preciptype?.peek() === 'rain');
+}
 
-  private DoIgniteSound(position?: ReadonlyVector3): void {
-    this.cancelIgniteSound = undefined;
-    PlaySound('dontstarve/wilson/torch_swing', position);
-  }
-  private DoExtinguishSound(position?: ReadonlyVector3): void {
-    this.cancelExtinguishSound = undefined;
-    PlaySound('dontstarve/common/fireOut', position);
-  }
-  private PlayIgniteSound(position: ReadonlyVector3 | undefined, instant: boolean, force: boolean): void {
-    if (this.cancelExtinguishSound) {
-      this.cancelExtinguishSound();
-      this.cancelExtinguishSound = undefined;
-      if (!force) return;
-    }
-    if (instant) {
-      this.cancelIgniteSound?.();
-      this.DoIgniteSound(position);
-    } else this.cancelIgniteSound ??= this.inNextStep(() => this.DoIgniteSound(position));
-  }
-  private PlayExtinguishSound(position: ReadonlyVector3 | undefined, instant: boolean, force: boolean): void {
-    if (this.cancelIgniteSound) {
-      this.cancelIgniteSound();
-      this.cancelIgniteSound = undefined;
-      if (!force) return;
-    }
-    if (instant) {
-      this.cancelExtinguishSound?.();
-      this.DoExtinguishSound(position);
-    } else this.cancelExtinguishSound ??= this.inNextStep(() => this.DoExtinguishSound(position));
-  }
-
-  /**
-   * WatchWorldState("israining", onisraining). Started with the first fire rather than in fn(): only a consuming torch
-   * reads the rate, and a saved inventory is configured before its world is bound.
-   */
-  private watchRain(): void {
-    const watch = getBoundWatchWorldContent();
-    if (this.preciptype || !watch) return;
-    this.precipitationRate = watch(WorldContentKey.PrecipitationRate, stop => this.rainStops.push(stop));
-    const preciptype = this.preciptype = watch(WorldContentKey.PrecipType, stop => this.rainStops.push(stop));
-    preciptype.subscribe(type => this.onisraining(type === 'rain'));
-    this.onisraining(preciptype.peek() === 'rain');
-  }
-  private onupdatefueledraining(): void {
-    const fueled = this.fueled;
-    if (!fueled) return;
-    const owner = this.entity.components.inventoryitem.owner as { components?: { sheltered?: { sheltered?: boolean }; rainimmunity?: object } } | null;
-    const ownerProtected = owner?.components?.sheltered?.sheltered || owner?.components?.rainimmunity !== undefined;
-    const mult = this.fuelratemult ?? 1;
-    fueled.rate = ownerProtected || (this.entity.components as { rainimmunity?: object }).rainimmunity !== undefined ? mult
-      : (1 + TORCH_RAIN_RATE * (this.precipitationRate?.peek() ?? 0)) * mult;
-  }
-  private onisraining(israining: boolean): void {
-    const fueled = this.fueled;
-    if (!fueled) return;
-    if (israining) {
-      fueled.SetUpdateFn(() => this.onupdatefueledraining());
-      this.onupdatefueledraining();
-    } else {
-      fueled.SetUpdateFn();
-      fueled.rate = this.fuelratemult ?? 1;
+/** onequip: torchfire follows the owner's swap_object and AttachLightTo(owner); the swap art is the equippable's visual. */
+function onequip(inst: TorchInst, owner: EquipmentOwner | undefined, holder: TorchHolder): void {
+  if (inst.isRemoved) return;
+  WatchRain(inst);
+  inst.components.burnable!.Ignite();
+  PlayIgniteSound(inst, ownerSound(owner), true, false);
+  if (!inst.fires) {
+    inst.fires = [];
+    const parent = holder.lightParent;
+    if (parent) {
+      // torchfire_common.lua CreateLight + AttachLightTo(owner): a player owner's light is also a playerlight.
+      const light = spawnLightEntity('torchfire_light', parent);
+      if (parent.hasTag('player')) light.instance.addTag('playerlight');
+      light.instance.light.set(TORCH_LIGHT);
+      // The holder's display loads the particle textures, draws the effect and advances it each frame.
+      const fire = holder.followSymbol?.('swap_object', 0, TORCH_FIRE_OFFSET_Y, TORCH_FIRE_VFX);
+      inst.fires.push({ remove() { fire?.remove(); light.remove(); } });
     }
   }
-  SetFuelRateMult(mult: number): void {
-    const next = mult !== 1 ? mult : undefined;
-    if (this.fuelratemult === next) return;
-    this.fuelratemult = next;
-    this.onisraining(this.preciptype?.peek() === 'rain');
-  }
+  inst._owner = owner;
+}
 
-  onequip(owner?: EquipmentOwner): void {
-    if (this.disposed || this.fires) return;
-    this.held = true;
-    this.owner = owner ?? null;
-    this.watchRain();
-    this.burnable.Ignite();
-    this.PlayIgniteSound(this.soundPosition(), true, false);
-    this.fires = true;
+function onunequip(inst: TorchInst): void {
+  const owner = inst._owner;
+  if (inst.fires) {
+    RemoveFires(inst);
+    if (!inst.isRemoved) PlayExtinguishSound(inst, ownerSound(owner), false, false);
   }
-  onunequip(): void {
-    if (this.fires && !this.disposed) this.PlayExtinguishSound(this.soundPosition(), false, false);
-    this.fires = false;
-    this.burnable.Extinguish();
-    this.held = false;
-    this.owner = null;
-  }
+  inst.components.burnable!.Extinguish();
+  inst._owner = undefined;
+}
 
-  /** IgniteTossed: burning on the inst itself, its torchfire on swap_torch and the light attached to the inst. */
-  IgniteTossed(): void {
-    if (this.disposed) return;
-    this.watchRain();
-    this.burnable.Ignite();
-    this.fires = true;
-    if (this.tossedFire) return;
-    this.tossedFire = this.entity.sprite.followSymbol('swap_torch', 0, TORCH_FIRE_OFFSET_Y, TORCH_FIRE_VFX);
-    this.entity.light.set(TORCH_LIGHT);
-  }
-  /** The drawn fx leave with the display drawing them; `fires` and the burnable stay with the inst. */
-  releaseTossedFire(): void {
-    this.tossedFire?.remove();
-    this.tossedFire = undefined;
-    this.entity.light.set(null);
-  }
+/** IgniteTossed: burning on the inst itself, its torchfire on swap_torch and the light attached to the inst. */
+export function IgniteTossed(inst: TorchInst): void {
+  if (inst.isRemoved) return;
+  WatchRain(inst);
+  inst.components.burnable!.Ignite();
+  if (inst.fires) return;
+  const fire = inst.sprite.followSymbol('swap_torch', 0, TORCH_FIRE_OFFSET_Y, TORCH_FIRE_VFX);
+  inst.light.set(TORCH_LIGHT);
+  inst.fires = [{ remove() { fire.remove(); inst.light.set(null); } }];
+}
 
-  /** Burnable:Extinguish, as flingo, waterballoon or icestaff do from outside. */
-  extinguish(): void { this.burnable.Extinguish(); }
-
-  /** OnPutInInventory: back to idle, the fire goes and fuel stops without emptying it. */
-  OnPutInInventory(ownerPosition?: ReadonlyVector3): void {
-    if (this.disposed) return;
-    this.held = true;
-    this.entity.sprite.playOnce('idle');
-    if (this.fires) {
-      this.fires = false;
-      this.releaseTossedFire();
-      this.PlayExtinguishSound(this.soundPosition(ownerPosition), false, false);
-    }
-    this.burnable.Extinguish();
-    this.owner = null;
+/** OnPutInInventory: back to idle, the fire goes and fuel stops without emptying it. */
+function OnPutInInventory(inst: TorchInst, owner: InventoryActor): void {
+  if (inst.isRemoved) return;
+  inst.sprite.playOnce('idle');
+  if (inst.fires) {
+    RemoveFires(inst);
+    PlayExtinguishSound(inst, owner.GetPosition() as ReadonlyVector3, false, false);
   }
+  inst.components.burnable!.Extinguish();
+}
 
-  /** burnable's onextinguish: handles being extinguished from outside while stuck in the ground. */
-  OnExtinguish(): void {
-    if (this.disposed || !this.fires || this.held || (this.fueled?.IsEmpty() ?? true)) return;
-    this.fires = false;
-    this.releaseTossedFire();
-    this.PlayExtinguishSound(this.soundPosition(), true, false);
-    this.entity.sprite.playOnce('idle');
-    // Physics:Teleport(x, max(.1, y), z) and SetVel(speed * cos, 8 + random, -speed * sin) with speed = random.
-    this.entity.components.inventoryphysics?.Launch({ angle: Math.random() * Math.PI * 2, height: .1,
-      speed: { min: 0, range: 1 }, ySpeed: { min: 8, range: 1 } } satisfies LootLaunch);
-  }
+/** burnable's onextinguish: handles being extinguished from outside while stuck in the ground (flingo, waterballoon, icestaff). */
+function OnExtinguish(inst: TorchInst): void {
+  if (inst.isRemoved || !inst.fires || inst.components.inventoryitem.owner !== null || (inst.components.fueled?.IsEmpty() ?? true)) return;
+  RemoveFires(inst);
+  PlayExtinguishSound(inst, inst.position, true, false);
+  inst.sprite.playOnce('idle');
+  // Physics:Teleport(x, max(.1, y), z) and SetVel(speed * cos, 8 + random, -speed * sin) with speed = random.
+  inst.components.inventoryphysics?.Launch({ angle: Math.random() * Math.PI * 2, height: .1,
+    speed: { min: 0, range: 1 }, ySpeed: { min: 8, range: 1 } } satisfies LootLaunch);
+}
 
-  /** onfuelchange: burning out. */
-  onfuelchange(newsection: number): void {
-    if (newsection > 0 || this.disposed) return;
-    this.burnable.Extinguish();
-    const { owner, entity } = this;
-    if (owner) {
-      this.PlayExtinguishSound(this.soundPosition(), true, false);
-      entity.remove(); // need to remove before "itemranout" for auto-reequip to work
+/** onfuelchange: burning out. */
+function onfuelchange(newsection: number, inst: TorchInst): void {
+  if (newsection > 0 || inst.isRemoved) return;
+  inst.components.burnable?.Extinguish();
+  if (inst.components.inventoryitem.owner !== null) {
+    const owner = inst._owner;
+    if (owner && inst.components.equippable?.IsEquipped()) {
+      PlayExtinguishSound(inst, ownerSound(owner), true, false);
+      inst.remove(); // need to remove before "itemranout" for auto-reequip to work
       owner.PushEvent('itemranout', { prefab: TORCH_ID, equipslot: 'hand', announce: 'ANNOUNCE_TORCH_OUT' });
-    } else if (!this.held && this.fires) {
-      this.fires = false;
-      this.releaseTossedFire();
-      this.PlayExtinguishSound(this.soundPosition(), true, false);
-      entity.persists = false;
-      entity.addTag('NOCLICK');
-      // As in Lua, fueled:DoDelta then runs SetDepletedFn(inst.Remove) in this same call, which ends the erosion at once.
-      const scheduler = entity.components.perishable.scheduler;
-      if (scheduler) {
-        const erode = new ErodeAway(scheduler, amount => entity.sprite.setErosion(amount), () => entity.remove());
-        entity.onRemove(() => erode.dispose());
-        erode.start();
-      }
-    } else entity.remove();
-  }
-
-  /** OnRemoveEntity: pending sound tasks stop, which also covers an unequip arriving after removal. */
-  dispose(): void {
-    if (this.disposed) return;
-    this.disposed = true;
-    this.fueled?.StopConsuming();
-    this.burnable.OnRemoveEntity();
-    this.cancelIgniteSound?.(); this.cancelIgniteSound = undefined;
-    this.cancelExtinguishSound?.(); this.cancelExtinguishSound = undefined;
-    for (const stop of this.rainStops.splice(0)) stop();
-    this.releaseTossedFire();
-    this.fires = false;
-    this.held = false;
-    this.owner = null;
-  }
+    } else inst.remove();
+  } else if (inst.fires) {
+    RemoveFires(inst);
+    PlayExtinguishSound(inst, inst.position, true, false);
+    inst.persists = false;
+    inst.addTag('NOCLICK');
+    // As in Lua, fueled:DoDelta then runs SetDepletedFn(inst.Remove) in this same call, which ends the erosion at once.
+    const scheduler = inst.components.perishable.scheduler;
+    if (scheduler) {
+      const erode = new ErodeAway(scheduler, amount => inst.sprite.setErosion(amount), () => inst.remove());
+      inst.onRemove(() => erode.dispose());
+      erode.start();
+    }
+  } else inst.remove(); // Shouldn't reach here.
 }
 
-/** One burnable/fueled lifecycle per inst, independent of its current owner and art. */
-export function getTorchController(entity: ItemEntity): TorchController {
-  configureTorchEntity(entity);
-  return entity.component('torch', () => new TorchController(entity));
-}
-
-/** Equipment-scoped presentation bindings; the controller stays on the item entity. */
-export function createTorchHandLifecycle(
-  entity: ItemEntity,
-  options: {
-    soundPosition?: ReadonlyVector3;
-    lightParent?: PrefabInstance;
-    followSymbol?(symbol: string, offsetX: number, offsetY: number, fx?: FollowerFx): { node: THREE.Object3D; remove(): void };
-  },
-): HeldEquipFunctions {
-  const controller = getTorchController(entity);
-  const presentation = { soundPosition: options.soundPosition };
-  let stopBurning: (() => void) | undefined;
-  let removeLight: (() => void) | undefined;
-  let removeFire: (() => void) | undefined;
-  // torch.lua onequip: torchfire follows swap_object and AttachLightTo(owner); both leave when it stops burning.
-  const syncLight = (burning: boolean) => {
-    removeLight?.(); removeLight = undefined;
-    removeFire?.(); removeFire = undefined;
-    const parent = options.lightParent;
-    if (!burning || !parent) return;
-    // torchfire_common.lua CreateLight + AttachLightTo(owner): a player owner's light is also a playerlight.
-    const light = spawnLightEntity('torchfire_light', parent);
-    if (parent.hasTag('player')) light.instance.addTag('playerlight');
-    light.instance.light.set(TORCH_LIGHT);
-    removeLight = light.remove;
-    // The holder's display loads the particle textures, draws the effect and advances it each frame.
-    removeFire = options.followSymbol?.('swap_object', 0, TORCH_FIRE_OFFSET_Y, TORCH_FIRE_VFX).remove;
-  };
+/** equippable:SetOnEquip(onequip) / SetOnUnequip(onunequip), with the owner's light parent and FollowSymbol. */
+export function createTorchHandLifecycle(entity: ItemEntity, holder: TorchHolder): HeldEquipFunctions {
+  const inst = entity as TorchInst;
   return {
-    onequip(owner) {
-      controller.setPresentation(presentation);
-      stopBurning = controller.burning.subscribe(syncLight);
-      syncLight(controller.isBurning);
-      controller.onequip(owner);
-    },
-    onunequip() {
-      controller.onunequip();
-      stopBurning?.(); stopBurning = undefined;
-      syncLight(false);
-      controller.releasePresentation(presentation);
-    },
-    flush: () => entity.components.fueled?.Settle(),
+    onequip: owner => onequip(inst, owner, holder),
+    onunequip: () => onunequip(inst),
+    flush: () => inst.components.fueled?.Settle(),
   };
 }
 
@@ -334,16 +288,13 @@ export function createTorchHandLifecycle(
 export function torchPrefabs(world: ItemPrefabWorld): Record<string, ItemPrefabDefinition> {
   return {
     [TORCH_ID]: groundItemPrefab(TORCH_ID, world, {
-      configure: inst => {
-        const controller = getTorchController(inst);
-        inst.ListenForEvent('onputininventory', () => controller.OnPutInInventory(world.inventoryOwnerPosition));
-        inst.ListenForEvent('ondropped', () => controller.OnDropped());
-        inst.onRemove(() => controller.releaseTossedFire());
-        inst.OnSave = (_inst, data) => { if (controller.isBurning && !inst.inlimbo) data.torch = { lit: true }; };
+      configure: entity => {
+        const inst = entity as TorchInst;
+        inst.OnSave = (_inst, data) => { if (inst.components.burnable?.IsBurning() && !inst.inlimbo) data.torch = { lit: true }; };
         // OnLoad: a torch saved burning on the ground lands and burns again.
         if (inst.saveRecord?.components.torch?.lit && !inst.inlimbo) {
           inst.sprite.playOnce('land');
-          controller.IgniteTossed();
+          IgniteTossed(inst);
         }
       },
     }),

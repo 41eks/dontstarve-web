@@ -32,17 +32,13 @@ DST 场景预制体。该包基于 `@dontstarve-web/animation` 组合具体资�
 - `archiveCentipedeHuskPrefabs`（`archive_centipede.ts`）：档案馆蜈蚣残骸 `archive_centipede_husk` 的 `PrefabEntityDefinition`，由应用层的 `PrefabEntityManager` 注册；`ArchiveCentipedeHuskInstance` 持有 health（每秒回复 1 点）、`OnHealthDelta`／`OnAttacked` 的分段动画、`idle2task` 和 lootdropper／inspectable／combat／hauntable，`OnSave`／`OnLoad` 按 `health`（`current`／`maximum`）存取，读档时 `ForceUpdateHUD` 不切换动画。`c_spawn("archive_centipede_husk")` 无额外参数，没有 `c_give`；活体 `archive_centipede` 与 `possess` 复活未移植。
 - `chesspiecePrefabs`（`chesspieces.ts`）：大理石信天翁雕像 `chesspiece_malbatross_marble` 的 `PrefabEntityDefinition`，由应用层的 `PrefabEntityManager` 注册；`ChesspieceInstance` 持有 `workable`（锤 1 次）、`lootdropper`（`marble`）、`heavyobstaclephysics` 等组件，存档写 `chesspiece.materialid`，`submersible` 组件自存 `force_no_repositioning`。`c_spawn`，无 `c_give`；其他雕像、材质与月相变形未移植。
 - `moonTreePrefabs`、`evergreenPrefabs`、`deciduousPrefabs`、`mushtreePrefabs`：月树与幼苗、常青树、桦树、蘑菇树（含 `_stump` 与烧毁特效）的 `PrefabEntityDefinition`，由应用层的 `PrefabEntityManager` 注册；不生成森林
-- `TorchController`：`torch.lua` 的装备点燃、卸下熄灭、燃料消耗及耗尽移除；燃料通过调用方的权威状态读写接口保存，独立的只读 `burning` signal 发布燃烧状态，照明通过同步订阅更新。signal 原语来自公共包 `@dontstarve-web/signals`。
+- `torch.ts`：`torch.lua` 的回调按源注册在实例的组件上（`configureTorchEntity` 对应 `fn()`）：`burnable:SetOnExtinguishFn(OnExtinguish)`、`fueled:SetSectionCallback(onfuelchange)`、`inventoryitem:SetOnPutInInventoryFn(OnPutInInventory)`，`equippable` 的 `onequip`／`onunequip` 经 `createTorchHandLifecycle` 接入；`inst.fires`、声音任务、`_owner`、`_fuelratemult` 和 `SetFuelRateMult` 都在 `TorchInst` 上。燃烧状态即 `burnable:IsBurning()`。
 - `@dontstarve-web/animation/residentSprite` 的 `ResidentSprite` / `ResidentSpriteController`：固定实体的 visual 驻留封装，保留根节点与动画请求；`ResidentEntity` 记录稳定的身份和脚点。常青树、桦树、月树和蘑菇树通过 `PrefabInstance` + `PrefabDisplay` 与 `watchTileActivity()` 加载／释放 visual，不重建实体或 Workable。
 - `AnimatedBuildingPlacement`，以及基于它的 `CookPotPlacement`、`ResearchLabPlacement`、`TreasureChestPlacement`（sprite 通过 `ResidentSpriteController` 驻留，离开 tickingarea 时交还共享 source，见 [tile 生命周期](../../docs/tile-lifecycle.md)）
 - `WallsPlacement`：`prefabs/walls.lua` 的 9 种墙（石、档案馆石、木、草、铥、档案馆铥、月岩、绝望石、废料），
   含各自的 `wall_*_item` 部署物 ID。
 
-`TorchController.onFrame(dt)` 累计实际时间，每 60 个燃烧帧调用一次 `update()`；`flushFuel()` 在保存、转移及生命周期停止前结算不足 60 帧的时间。
-
-`TorchController.onequip(slotSignal)` 绑定调用方提供的槽位；`onunequip()` 停止燃烧并解除绑定，不改变槽位值。`extinguish()` 仅在绑定槽位仍保存同一次装备实例时清空它；地面火把没有绑定槽位。
-
-`TorchController.OnPutInInventory()` 恢复闲置状态并停止火焰，保留 fuel；`OnExtinguish()` 处理未持有且未耗尽的地面火把。`torchPrefabs()` 在 torch 的 prefab 上把拾取、掉落和外部熄灭事件接入这些回调，管理独立地面照明、剩余燃料及熄灭弹跳（`inventoryphysics.Launch`）；`OnSave` 只在未处于 limbo 且燃烧时写 `torch.lit`，读档时按源 `OnLoad` 播放 `land` 并 `IgniteTossed`。声音通过共享 `PlaySound()` / `PreloadSounds()` 播放，地面声音在拾取或移除时释放，玩家拥有的一次性音效允许自然播放结束。地面 lit 状态及 fuel 可保存和恢复，换肤保持状态，恢复不重播点燃声。
+火把的 `onequip` 点燃并在持有者的 `swap_object` 上生成 torchfire 与 `AttachLightTo(owner)` 的光源，`onunequip` 移除它们并熄灭；被外部熄灭时，持有中的火把保留 `inst.fires`，与源码一致。`OnPutInInventory` 恢复闲置状态并停止火焰，保留 fuel；`OnExtinguish` 只处理未持有且未耗尽的地面火把并按源弹起（`inventoryphysics.Launch`）；`IgniteTossed` 在实例自己的 `swap_torch` 上生成 torchfire 与光源。`torchPrefabs()` 只负责地面 prefab 的存读档：`OnSave` 只在未处于 limbo 且燃烧时写 `torch.lit`，读档时按源 `OnLoad` 播放 `land` 并 `IgniteTossed`。声音通过共享 `PlaySound()` / `PreloadSounds()` 播放，地面声音在拾取或移除时释放，玩家拥有的一次性音效允许自然播放结束。地面 lit 状态及 fuel 可保存和恢复，换肤保持状态，恢复不重播点燃声。
 
 `CookPotPlacement` 使用 DST 预制体 ID `cookpot` 和 `anim/cook_pot.zip`，默认显示
 `idle_empty`，放置时播放 `place` 后回到 `idle_empty`。可通过包主入口或

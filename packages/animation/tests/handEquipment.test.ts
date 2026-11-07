@@ -3,7 +3,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { InventoryStore, InventorySlot, HandSlot, inventorySlotAddress, equipmentSlotAddress } from '@dontstarve-web/inventory';
 import { SpriteState } from '@dontstarve-web/display';
 import type { EquipmentOwner } from '@dontstarve-web/signals';
-import { getTorchController, TORCH_LIGHT } from '../../prefab/src/torch';
+import { TORCH_LIGHT } from '../../prefab/src/torch';
 import { configureEquipmentEntity } from '../../prefab/src/handEquipment';
 import { createEmptyEntity, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { createEquipmentViews } from '../../prefab/src/equipmentVisual';
@@ -44,15 +44,16 @@ it('equips restored and committed torches through equippable with the owner, une
     ], bufferedBuilds: [] }, {});
     const oldEntity = store.getEntity(hand)!, nextEntity = store.getEntity(a)!;
     expect(oldEntity.id).toBe('saved_torch');
-    const oldTorch = getTorchController(oldEntity), nextTorch = getTorchController(nextEntity);
-    expect(oldTorch.isBurning).toBe(true);
+    const burning = (entity: typeof oldEntity) => entity.components.burnable!.IsBurning();
+    expect(burning(oldEntity)).toBe(true);
     expect(parented(lightParent)).toEqual([TORCH_LIGHT]);
     expect(events.filter(name => name === 'equip' || name === 'unequip')).toEqual(['equip']);
     world.advance(0.25);
     const order: string[] = [];
-    const oldUnequip = oldTorch.onunequip.bind(oldTorch), nextEquip = nextTorch.onequip.bind(nextTorch);
-    vi.spyOn(oldTorch, 'onunequip').mockImplementation(() => { order.push('unequip'); oldUnequip(); });
-    const equip = vi.spyOn(nextTorch, 'onequip').mockImplementation(slot => { order.push('equip'); nextEquip(slot); });
+    const oldEquippable = oldEntity.components.equippable!, nextEquippable = nextEntity.components.equippable!;
+    const oldUnequip = oldEquippable.Unequip.bind(oldEquippable), nextEquip = nextEquippable.Equip.bind(nextEquippable);
+    vi.spyOn(oldEquippable, 'Unequip').mockImplementation(owner => { order.push('unequip'); oldUnequip(owner); });
+    const equip = vi.spyOn(nextEquippable, 'Equip').mockImplementation(owner => { order.push('equip'); nextEquip(owner); });
     events.length = 0;
     store.applySlotChanges([
       { slot: hand, itemId: 'torch', skinId: 'torch_barber', delta: -1 },
@@ -63,18 +64,19 @@ it('equips restored and committed torches through equippable with the owner, une
     expect(events.filter(name => name === 'equip' || name === 'unequip')).toEqual(['unequip', 'equip']);
     // fueled:SetFirstPeriod charges a partly used torch TURNON_FUELED_CONSUMPTION when it lights.
     expect(oldEntity.components.fueled!.currentfuel).toBe(10 - .5 - .25);
-    expect(oldTorch.isBurning).toBe(false);
+    expect(burning(oldEntity)).toBe(false);
     // The held inst settles its consumption when it is flushed.
     world.advance(0.5); nextEntity.flush();
     expect(nextEntity.components.fueled!.currentfuel).toBe(20 - .5 - .5);
     store.setRemainingFuel(hand, 18);
     expect(equip).toHaveBeenCalledOnce();
-    nextTorch.extinguish();
+    // Extinguished from outside while held, the torch keeps its inst.fires: OnExtinguish only handles one in the ground.
+    nextEntity.components.burnable!.Extinguish();
     expect(store.getEntity(hand)).toBe(nextEntity);
-    expect(parented(lightParent)).toEqual([]);
+    expect(parented(lightParent)).toEqual([TORCH_LIGHT]);
     // Depleted, the prefab removes itself; equippable:Unequip runs as its inventory owner clears the slot.
     store.transfer(hand, a, 1); store.transfer(a, hand, 1);
-    expect(nextTorch.isBurning).toBe(true);
+    expect(burning(nextEntity)).toBe(true);
     world.advance(18); nextEntity.flush();
     expect(nextEntity.isRemoved).toBe(true);
     expect(store.getEntity(hand)).toBeNull();

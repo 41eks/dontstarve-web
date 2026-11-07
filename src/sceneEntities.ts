@@ -619,7 +619,7 @@ export async function createSceneEntities(
       sprites: itemSprites, animationBaseUrl: prefabBaseUrl,
       scheduler: worldState.scheduler, componentUpdates: worldState.componentUpdates, physics: world,
       fx: Managers['world_fx'], moleWorld: Managers['molehill'].habitat, lightflierWorld: Managers['lightflier_flower'].habitat,
-      inventoryOwnerPosition: player.position, handEquipment: sceneInventory.handEquipment, bernieWorld: bernieWorld(worldState),
+      handEquipment: sceneInventory.handEquipment, bernieWorld: bernieWorld(worldState),
       butterflyWorld: {
         getWatchWorldContent: worldState.getWatchWorldContent,
         getThreatPositions: () => [player.position],

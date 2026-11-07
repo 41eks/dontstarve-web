@@ -1,6 +1,5 @@
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import type { ItemEntity, InventoryStack } from '@dontstarve-web/inventory';
-import type * as THREE from 'three';
 import type { SpriteResources } from '@dontstarve-web/display';
 import type { ComponentUpdates } from '../../componets/src/componentUpdates';
 import type { BernieWorld } from './bernie';
@@ -70,7 +69,6 @@ export interface ItemPrefabWorld {
   moleWorld?: import('./molehill').MoleHabitat;
   lightflierWorld?: import('./lightflier').LightFlierHabitat;
   fx?: GroundFx;
-  inventoryOwnerPosition?: THREE.Vector3;
   handEquipment?: ReadonlySignal<HandEquipment | null>;
   /** AllPlayers and SpawnPrefab for the Bernie item's tryreanimate; without it the item never reanimates. */
   bernieWorld?: BernieWorld;

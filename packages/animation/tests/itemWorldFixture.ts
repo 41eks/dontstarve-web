@@ -37,7 +37,7 @@ export class ItemWorldFixture {
   private readonly stopAsh?: () => void;
 
   constructor(scene: THREE.Scene, _camera: THREE.Camera, _renderer: unknown, archiveUrl: string, inventory: InventoryStore,
-    animationBaseUrl: string, player: THREE.Object3D,
+    animationBaseUrl: string, _player: THREE.Object3D,
     butterflyWorld: ItemPrefabWorld['butterflyWorld'] = { getThreatPositions: () => [], getFlowers: () => [] },
     firefliesWorld: ItemPrefabWorld['firefliesWorld'] = {}, bernieWorld?: ItemPrefabWorld['bernieWorld'],
     _entities?: ItemEntityRegistry, scheduler?: GameTimeScheduler, fx?: ItemPrefabWorld['fx'], moleWorld?: ItemPrefabWorld['moleWorld'],
@@ -57,7 +57,7 @@ export class ItemWorldFixture {
       configureItem: entity => { inventory.entities.adopt(entity); inventory.configureItem(entity); },
       dropItem: (entity, position) => inventory.DropItem(entity, position),
       sprites: this.sprites, animationBaseUrl, scheduler: this.scheduler, componentUpdates: this.componentUpdates, physics,
-      fx, moleWorld, lightflierWorld, inventoryOwnerPosition: player.position, handEquipment: inventory.handEquipment, bernieWorld,
+      fx, moleWorld, lightflierWorld, handEquipment: inventory.handEquipment, bernieWorld,
       butterflyWorld, firefliesWorld,
       dropLoot: (items, position) => this.flingLoot(items, position),
       spawnGroundItem: (definition, position, options) => this.spawnGroundItem(definition, position, options),
