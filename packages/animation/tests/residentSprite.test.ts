@@ -12,7 +12,7 @@ function fake(clip: { name: string; loop: boolean }) {
   const calls: string[] = [];
   let complete: (() => void) | undefined;
   const sprite = {
-    model, frameCount: 10, currentAnimation: clip.name, dispose: vi.fn(() => model.removeFromParent()), update: vi.fn(),
+    model, frameCount: 10, frame: 3, currentAnimation: clip.name, dispose: vi.fn(() => model.removeFromParent()), update: vi.fn(),
     start: (name: string) => calls.push(`start:${name}`),
     playOnce: (name: string, done?: () => void) => { calls.push(`once:${name}`); complete = done; },
     setFrame: (frame: number) => calls.push(`frame:${frame}`), setPaused: vi.fn(), setFacing: (f: number) => calls.push(`facing:${f}`),
@@ -223,4 +223,43 @@ it.each(['archive', 'factory'] as const)('caches a loaded %s resident root while
     expect(updates).not.toHaveBeenCalled();
     expect(observer).not.toHaveBeenCalled();
   } finally { updates.mockRestore(); stop(); resident.dispose(); }
+});
+
+it('holds a percent pose across unloading, apart from the entity pause, until another clip plays', () => {
+  const created: ReturnType<typeof fake>[] = [];
+  const make = (clip: { name: string; loop: boolean }) => { const entry = fake(clip); created.push(entry); return entry.sprite; };
+  const resident = new ResidentSprite(new THREE.Group(), make, { name: 'idle', loop: true }, make({ name: 'idle', loop: true }));
+  resident.setPercent('meter', .45);
+  expect(created[0].calls.slice(-2)).toEqual(['once:meter', 'frame:4']);
+  // Resuming the entity does not set the meter running.
+  resident.setPaused(false);
+  expect(created[0].sprite.setPaused).toHaveBeenLastCalledWith(true);
+  resident.unload();
+  resident.load();
+  expect(created[1].calls).toEqual(['once:meter', 'frame:4']);
+  expect(created[1].sprite.setPaused).toHaveBeenLastCalledWith(true);
+  resident.start('idle');
+  expect(created[1].sprite.setPaused).toHaveBeenLastCalledWith(false);
+});
+
+it('returns from a transient to the interrupted clip, frame and queue, and settles one that is unloaded', () => {
+  const created: ReturnType<typeof fake>[] = [];
+  const make = (clip: { name: string; loop: boolean }) => { const entry = fake(clip); created.push(entry); return entry.sprite; };
+  const resident = new ResidentSprite(new THREE.Group(), make, { name: 'idle', loop: true }, make({ name: 'idle', loop: true }));
+  const done = vi.fn();
+  resident.playOnce('hit', done);
+  resident.pushAnimation('idle', true);
+  resident.playTransient('flash');
+  expect(created[0].calls.at(-1)).toBe('once:flash');
+  created[0].finish();
+  expect(created[0].calls.slice(-2)).toEqual(['once:hit', 'frame:3']);
+  created[0].finish();
+  expect(done).toHaveBeenCalledOnce();
+  expect(created[0].calls.at(-1)).toBe('start:idle');
+  resident.playOnce('hit', done);
+  resident.playTransient('flash');
+  resident.unload();
+  expect(done).toHaveBeenCalledTimes(2);
+  resident.load();
+  expect(created[1].calls).toEqual(['once:hit', 'frame:9']);
 });

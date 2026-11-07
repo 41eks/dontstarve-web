@@ -98,8 +98,7 @@ function MakeBuildingTargets(inst: PrefabInstance, skins: readonly string[], wor
 
 /**
  * Prefab(name, fn, assets) for a building drawn from its definitions.json entry; `radius` is its source MakeObstaclePhysics,
- * if it has one. `controller` draws it through a full animation controller, for a building whose AnimState overrides
- * symbols or builds or rests on a SetPercent pose.
+ * if it has one. `controller` draws it through a factory animation controller instead of a shared archive sprite.
  */
 export function buildingPrefab<Instance extends PrefabInstance>(declaration: BuildingDeclaration, bank: string, radius: number | undefined,
   fn: PrefabEntityDefinition<Instance>['fn'], world: Pick<PrefabWorldContext, 'handEquipment'>,

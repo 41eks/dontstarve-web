@@ -77,7 +77,10 @@ export interface DisplayEngine {
 
 const unsupported = (what: string): never => { throw new Error(`${what} is not supported by an archive sprite`); };
 
-/** A shared archive sprite, resident while its tile is active. It plays clips, frames and pausing only. */
+/**
+ * A shared archive sprite, resident while its tile is active. It takes the same AnimState calls as a factory sprite; only
+ * static build images (`setPose`, `showImage`), which archive art does not have, are refused.
+ */
 export class ArchiveEngine implements DisplayEngine {
   private readonly resident: ResidentSprite;
 
@@ -91,7 +94,7 @@ export class ArchiveEngine implements DisplayEngine {
   get currentAnimation(): string { return this.resident.currentAnimation; }
   get numFrames(): number { return this.resident.frameCount; }
   getSymbolPosition(symbol: string, x: number, y: number, target: THREE.Vector3): boolean { return this.resident.getSymbolPosition(symbol, x, y, target); }
-  get currentAnimationLength(): number { return 0; }
+  get currentAnimationLength(): number { return this.resident.currentAnimationLength; }
   get pose(): string | undefined { return undefined; }
   setActive(active: boolean): void { this.resident.setActive(active); }
   update(dt: number): void { this.resident.update(dt); }
@@ -119,16 +122,22 @@ export class ArchiveEngine implements DisplayEngine {
   dispose(): void { this.resident.dispose(); }
 
   setPose(): void { unsupported('A static pose'); }
-  setPercent(): void { unsupported('A percent pose'); }
-  pushAnimation(name: string, loop = false): void { this.resident.pushAnimation(name, loop); }
-  playTransient(): void { unsupported('A transient animation'); }
   showImage(): void { unsupported('A static image'); }
+  setPercent(name: string, percent: number): void { this.resident.setPercent(name, percent); }
+  pushAnimation(name: string, loop = false): void { this.resident.pushAnimation(name, loop); }
+  playTransient(name: string): void { this.resident.playTransient(name); }
+  setPlaybackRate(rate: number): void { this.resident.setPlaybackRate(rate); }
+  setArtSource(source: SpriteArtSource): void { this.resident.setArtSource(source); }
+  setAnimState(state: ResolvedAnimState): void { this.resident.setAnimState(state); }
+  setTint(tint: SpriteTint): void { this.resident.setTint(tint); }
+  setComposites(frames: readonly CompositeSpriteFrame[]): void { this.resident.setComposites(frames); }
+  getResolvedFrame(): readonly ResolvedSprite[] { return this.resident.getResolvedFrame(); }
   hideLayer(layer: string): void { this.resident.setLayerHidden(layer, true); }
   showLayer(layer: string): void { this.resident.setLayerHidden(layer, false); }
-  setSymbolOverrides(): void { unsupported('Symbol overrides'); }
-  overrideSymbol(): void { unsupported('A symbol override'); }
-  addOverrideBuild(): void { unsupported('An override build'); }
-  clearOverrideBuild(): void { unsupported('An override build'); }
+  setSymbolOverrides(overrides: SymbolOverrides, hiddenLayers?: readonly string[]): void { this.resident.setSymbolOverrides(overrides, hiddenLayers); }
+  overrideSymbol(symbol: string, override: SymbolOverride): void { this.resident.overrideSymbol(symbol, override); }
+  addOverrideBuild(name: string, override: BuildOverride): void { this.resident.addOverrideBuild(name, override); }
+  clearOverrideBuild(name: string): void { this.resident.clearOverrideBuild(name); }
 }
 
 /** Creates an archive sprite in the clip an entity is logically in; `initial` is already built in the first clip. */

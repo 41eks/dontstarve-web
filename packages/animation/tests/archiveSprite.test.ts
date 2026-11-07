@@ -4,6 +4,8 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ArchiveSpriteAssets, createArchiveSprite, createSharedArchiveSprite } from '../src/archiveSprite';
 import { setSpriteEntityRenderOrder } from '../src/renderOrder';
 import { createAnimatedSpriteSource, loadBuildOverride, type SpriteController } from '../src/sprite';
+import { smallHash } from '../src/animationAssets';
+import type { ResolvedAnimState } from '../src/animState';
 
 beforeEach(() => vi.stubGlobal('fetch', vi.fn(async (url: string) => {
   const path = String(url).slice(String(url).indexOf('/dst/data/') + '/dst/data/'.length);
@@ -153,4 +155,56 @@ it('pauses/resumes a source clip and accepts a caller-supplied food symbol overr
   await Promise.resolve();
   expect(disposeMaterial).toHaveBeenCalledOnce();
   expect(disposeTexture).toHaveBeenCalledOnce();
+});
+
+it('draws override builds and AnimState declarations as a factory sprite does, then returns to shared frames', async () => {
+  const assets = new ArchiveSpriteAssets(), crow = await loadBuildOverride('/dst/data/anim', 'crow_build.zip');
+  const reference = await createAnimatedSpriteSource('/dst/data/anim', 'bird_cage.zip');
+  const control = reference.create({ initialAnimation: 'caw' });
+  const controller = control.userData.animationController as SpriteController;
+  const definition = { animationArchive: 'bird_cage.zip', buildArchives: ['bird_cage.zip'], bank: 'birdcage', animation: 'caw', loop: true };
+  const first = await createSharedArchiveSprite(assets, definition, { instancedAnimations: 'all' });
+  const second = await createSharedArchiveSprite(assets, definition, { instancedAnimations: 'all' });
+  const mesh = (model: THREE.Object3D) => model.getObjectByProperty('isMesh', true) as THREE.Mesh;
+  const positions = (model: THREE.Object3D) => {
+    const geometry = mesh(model).geometry;
+    return Array.from(geometry.getAttribute('position').array.slice(0, geometry.drawRange.count / 6 * 12));
+  };
+  const state = (hiddenSymbols: string[]): ResolvedAnimState => ({ overrides: new Map(), hiddenLayers: new Set(),
+    hiddenSymbols: new Set(hiddenSymbols.map(smallHash)), symbolLightOverrides: new Map(), symbolAnimations: new Map(), blooms: new Set(), attachments: [] });
+  try {
+    const cage = mesh(second.model).geometry.drawRange.count;
+    controller.addOverrideBuild('crow_build', crow); first.addOverrideBuild('crow_build', crow);
+    controller.setFrame(5); first.setFrame(5); second.setFrame(5);
+    expect(positions(first.model)).toEqual(positions(control));
+    expect(mesh(first.model).geometry.drawRange.count).toBeGreaterThan(cage);
+    // The dressed sprite draws its own frame, outside the batch its plain siblings share.
+    expect(mesh(first.model).visible).toBe(true);
+    expect(mesh(second.model).visible).toBe(false);
+    controller.setAnimState(state(['crow_beak'])); first.setAnimState(state(['crow_beak']));
+    expect(positions(first.model)).toEqual(positions(control));
+    expect(first.getResolvedFrame().some(part => part.element.imageHash === smallHash('crow_beak'))).toBe(false);
+    // A paused sprite still shows the frame it is set to.
+    controller.setFrame(9); first.setPaused(true); first.setFrame(9);
+    expect(positions(first.model)).toEqual(positions(control));
+    first.clearOverrideBuild('crow_build'); first.setAnimState(state([])); first.setPaused(false);
+    second.setFrame(9);
+    expect(mesh(first.model).geometry).toBe(mesh(second.model).geometry);
+  } finally { first.dispose(); second.dispose(); reference.disposeSprite(control); reference.dispose(); crow.dispose(); assets.dispose(); }
+});
+
+it('keeps base symbols that a partial skin does not replace', async () => {
+  const assets = new ArchiveSpriteAssets();
+  const definition = { animationArchive: 'berrybush.zip', buildArchives: ['berrybush.zip'], bank: 'berrybush', animation: 'idle', loop: true };
+  const sprite = await createSharedArchiveSprite(assets, definition);
+  const [base, skin] = await Promise.all([assets.loadBuild('berrybush.zip', definition), assets.loadBuild('dynamic/berrybush_cawnival.zip', definition)]);
+  const sources = () => new Set(sprite.getResolvedFrame().map(part => part.materials[0]));
+  try {
+    sprite.setSkin(skin);
+    expect([...sources()].some(material => skin.materials.includes(material))).toBe(true);
+    const hashes = sprite.getResolvedFrame().map(part => part.element.imageHash), kept = hashes[0];
+    sprite.setSkin({ ...skin, symbols: new Set(hashes.filter(hash => hash !== kept)), baseSymbols: new Set() });
+    const keptPart = sprite.getResolvedFrame().find(part => part.element.imageHash === kept)!;
+    expect(base.materials).toContain(keptPart.materials[0]);
+  } finally { sprite.dispose(); assets.dispose(); }
 });

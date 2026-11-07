@@ -15,7 +15,7 @@ vi.mock('@dontstarve-web/animation/archiveSprite', async importOriginal => ({
     const model = new THREE.Group();
     model.add(new THREE.Group());
     const sprite = { model, frameCount: 1, currentAnimation: 'idle', dispose: vi.fn(() => model.removeFromParent()), update: vi.fn(),
-      start: vi.fn(), playOnce: vi.fn(), setFrame: vi.fn(), setPaused: vi.fn(), setSkin: vi.fn() } as unknown as ArchiveSprite;
+      start: vi.fn(), playOnce: vi.fn(), setFrame: vi.fn(), setPaused: vi.fn(), setSkin: vi.fn(), setPlaybackRate: vi.fn() } as unknown as ArchiveSprite;
     created.push(sprite);
     return sprite;
   }),
