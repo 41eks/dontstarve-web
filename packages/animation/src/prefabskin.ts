@@ -20,23 +20,6 @@ export function bookstation_init_fn(skinId: string): PrefabSkinInitialization {
   return basic_init_fn(skinId, 'bookstation');
 }
 
-export function sculptingtable_init_fn(skinId: string): PrefabSkinInitialization {
-  return basic_init_fn(skinId, 'sculpting_station');
-}
-
-/** moondial_init_fn: OverrideItemSkinSymbol("basin", build_name, "basin", ..., "moondial_build"). */
-export function moondial_init_fn(skinId: string): PrefabSkinInitialization {
-  return { archive: 'moondial.zip', buildArchive: 'moondial_build.zip', skinArchive: `dynamic/${skinId}.zip` };
-}
-
-export function winterometer_init_fn(skinId: string): PrefabSkinInitialization {
-  return basic_init_fn(skinId, 'winter_meter');
-}
-
-export function lightning_rod_init_fn(skinId: string): PrefabSkinInitialization {
-  return basic_init_fn(skinId, 'lightning_rod');
-}
-
 /** prefabskin.lua wall_*_init_fn: retain the wall's bank and change its skin build. */
 export function wall_stone_init_fn(skinId: string): PrefabSkinInitialization {
   return basic_init_fn(skinId === 'wall_stone_ancient_alt' ? 'wall_stone_ancient' : skinId, 'wall_stone');
@@ -63,7 +46,3 @@ export function wall_wood_init_fn(skinId: string): PrefabSkinInitialization {
   return basic_init_fn(skinId, 'wall_wood');
 }
 
-/** prefabskin.lua birdcage_init_fn; birdcage_gothicp has build_name_override = "birdcage_gothic". */
-export function birdcage_init_fn(skinId: string): PrefabSkinInitialization {
-  return basic_init_fn(skinId === 'birdcage_gothicp' ? 'birdcage_gothic' : skinId, 'bird_cage');
-}

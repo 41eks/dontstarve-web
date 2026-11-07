@@ -2,8 +2,7 @@ import { findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
-import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
-import { SCULPTING_TABLE_DEFINITION, SCULPTING_TABLE_ID } from '../../prefab/src/sculptingtable';
+import { SCULPTING_TABLE_ID } from '../../prefab/src/sculptingtable';
 import { smallHash } from '../src/animationAssets';
 import { deserializeSave } from '../../../src/save/deserialize';
 import type { SaveDocument } from '../../../src/save/types';
@@ -14,6 +13,7 @@ import * as sound from '../../prefab/src/sound';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { reskinEntity } from '../../prefab/src/reskin_tool';
 import { workTargets } from './workTargets';
+import { managedBuildings } from './managedBuildings';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -23,7 +23,7 @@ async function createPlacement() {
   const dropLoot = vi.fn();
   const world = { scene: new THREE.Scene(), player: new THREE.Group(), camera: new THREE.PerspectiveCamera(),
     ground: new THREE.Group(), renderer: { domElement: new EventTarget() }, dropLoot } as unknown as WorldContext;
-  const placement = new AnimatedBuildingPlacement(world, { [SCULPTING_TABLE_ID]: SCULPTING_TABLE_DEFINITION }, () => false);
+  const placement = managedBuildings(world, { consume: () => false });
   return { placement, dropLoot };
 }
 
@@ -49,7 +49,7 @@ it('accepts one marble or cutstone, hands it back on PICK and restores it from a
   const { placement } = await createPlacement();
   try {
     placement.spawn(SCULPTING_TABLE_ID);
-    const [{ model, canGive }] = placement.giveTargets;
+    const [{ model }] = workTargets('HAMMER');
     const trader = (findActionEntity(model)?.components ?? prefabInstance(model)!.components).trader, pickable = (findActionEntity(model)?.components ?? prefabInstance(model)!.components).pickable;
     expect(heldBlock(model)).toBeUndefined();
     expect(prefabInstance(model)!.listTags()).toContain('trader');
@@ -73,7 +73,6 @@ it('accepts one marble or cutstone, hands it back on PICK and restores it from a
     expect(play).toHaveBeenCalledExactlyOnceWith(itemSound, model.position);
     expect(heldBlock(model)).toEqual([{ archive: 'marble.zip', symbol: smallHash('marble01') }]);
     expect(prefabInstance(model)!.listTags()).toContain('pickable');
-    expect(canGive(offer('cutstone').entity)).toBe(false);
     expect(trader.AbleToAccept(offer('cutstone').entity)).toEqual({ ok: false, reason: 'SLOTFULL' });
     const full = offer('cutstone');
     expect(trader.AcceptGift(full.entity, full.take)).toBe(false);
@@ -97,7 +96,7 @@ it('accepts one marble or cutstone, hands it back on PICK and restores it from a
     // Lua onload calls giveitem, including its sound; reskinning only replaces art.
     expect(play).toHaveBeenCalledTimes(2);
     expect(play).toHaveBeenLastCalledWith(itemSound, restored.position);
-    expect(reskinEntity(placement.reskinTargets[0])).toBe(true);
+    expect(reskinEntity(findActionEntity(model)!.reskinTarget!)).toBe(true);
     expect(play).toHaveBeenCalledTimes(2);
     // The declaration belongs to the entity, so the new skin's sprite is dressed with the same block.
     expect(heldBlock(model)).toEqual([{ archive: 'marble.zip', symbol: smallHash('marble01') }]);
@@ -127,7 +126,7 @@ it('drops the held block with the recipe loot when hammered', async () => {
   const { placement, dropLoot } = await createPlacement();
   try {
     await placement.spawn(SCULPTING_TABLE_ID);
-    const [{ model }] = placement.giveTargets;
+    const [{ model }] = workTargets('HAMMER');
     const marble = offer('marble');
     (findActionEntity(model)?.components ?? prefabInstance(model)!.components).trader.AcceptGift(marble.entity, marble.take);
     const target = workTargets('HAMMER')[0];
@@ -136,6 +135,6 @@ it('drops the held block with the recipe loot when hammered', async () => {
     expect(items).toContainEqual({ itemId: 'marble', count: 1 });
     expect(items.some(({ itemId }) => itemId === 'boards')).toBe(true);
     expect(placement.exportRecords()).toEqual([]);
-    expect(placement.giveTargets).toEqual([]);
+    expect(prefabInstance(model)!.isRemoved).toBe(true);
   } finally { placement.dispose(); }
 });

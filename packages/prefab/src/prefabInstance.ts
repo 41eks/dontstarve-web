@@ -330,11 +330,20 @@ export function createEmptyEntity<Instance extends PrefabInstance<SpriteState, o
 
 /** Prefab(name, fn, assets): how one source prefab is built and which art its display declares. */
 export interface PrefabEntityDefinition<Instance extends PrefabInstance> {
-  fn(position: ReadonlyVector3): Instance;
+  /** `sprites` is the world's shared resource cache, for the sources of the fx children the prefab draws; declaring one performs no IO. */
+  fn(position: ReadonlyVector3, sprites: SpriteResources): Instance;
   /** Source skin names and their shared build archives; the display loads the selected one. */
   skins?: Readonly<Record<string, string>>;
+  /** The symbols a skin build replaces, when it replaces only some of the base build's (OverrideItemSkinSymbol). */
+  skinSymbols?: readonly string[];
   /** A prefab without assets has only a transform and what it declares on it, as FX lights do: nothing to draw or click. */
   assets?: Parameters<SpriteResources['archive']>[0];
+  /**
+   * In place of `assets`: art drawn through a full animation controller rather than a shared archive sprite, for an
+   * entity that needs what an archive sprite does not draw: SetPercent poses, its AnimState's symbol overrides and
+   * override builds.
+   */
+  animatedAssets?: Parameters<SpriteResources['animated']>;
   /** In place of `assets`: an instance's own SetBank / SetBuild, which its OnLoad may still change as it spawns. */
   instanceAssets?(instance: Instance): Parameters<SpriteResources['archive']>[0];
   /** How the display builds this art's sprites, such as a plant's instanced batches. */
@@ -397,16 +406,17 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     if (this.disposed) throw new Error(`Cannot spawn ${prefabId}: its manager has been disposed`);
     if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError(`Invalid ${prefabId} position`);
     if (!this.has(prefabId)) throw new Error(`Unknown prefab: ${prefabId}`);
-    const { fn, assets, instanceAssets, assetOptions, alignBottom, rayTestOnBB, targetable = true, physics, minimapIcon, onSpawned, skins, alwaysActive } = this.prefabs[prefabId];
+    const { fn, assets, animatedAssets, instanceAssets, assetOptions, alignBottom, rayTestOnBB, targetable = true, physics, minimapIcon, onSpawned, skins, skinSymbols, alwaysActive } = this.prefabs[prefabId];
     if (skinId !== undefined && !skins?.[skinId]) throw new Error(`Unsupported ${prefabId} skin: ${skinId}`);
-    const instance = fn(position);
-    if (skins) instance.sprite.setSkinSource({ art: this.resources.archives, archives: skins });
+    const instance = fn(position, this.resources);
+    if (skins) instance.sprite.setSkinSource({ art: this.resources.archives, archives: skins, ...skinSymbols ? { symbols: skinSymbols } : {} });
     physics?.make(instance, physics.radius, physics.height);
     if (minimapIcon) instance.minimap.SetIcon(minimapIcon);
     // A shared archive holds a first one-shot clip while its art loads, so a new entity is drawn from its first frame.
     const display = this.displays.add({ root: instance.transform.model, name: prefabId, alignBottom, status: instance.status, sprite: instance.sprite, light: instance.light,
       // Spawning is synchronous, so instanceAssets runs after the SetPersistData below however early the display starts its sprite.
-      ...(instanceAssets ? { archive: { create: clip => Promise.resolve().then(() => this.resources.archive(instanceAssets(instance), assetOptions).create(clip)) } }
+      ...(animatedAssets ? { source: this.resources.animated(...animatedAssets) }
+        : instanceAssets ? { archive: { create: clip => Promise.resolve().then(() => this.resources.archive(instanceAssets(instance), assetOptions).create(clip)) } }
         : assets ? { archive: this.resources.archive(assets, assetOptions) } : { empty: true }) });
     bindInstance(display.model, instance);
     if (rayTestOnBB) display.model.userData.rayTestOnBB = true;
@@ -420,7 +430,7 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     }
     if (skinId !== undefined) instance.skinId = skinId;
     onSpawned?.(instance);
-    if ((assets || instanceAssets) && targetable) actionEntity(display.model, prefabId);
+    if ((assets || animatedAssets || instanceAssets) && targetable) actionEntity(display.model, prefabId);
     this.entities.add(instance);
     const entityId = String(instance.entityId);
     this.byEntityId.set(entityId, instance);

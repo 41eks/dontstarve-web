@@ -4,8 +4,8 @@ import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { bindTestWorld } from './worldContentFixture';
-import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
-import { MOONDIAL_DEFINITION, MOONDIAL_ID } from '../../prefab/src/moondial';
+import { MOONDIAL_ID } from '../../prefab/src/moondial';
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { displayLightOverride } from '../../display/src/displaySprites';
 import type { SpriteController } from '../src/sprite';
@@ -15,6 +15,7 @@ import * as sound from '../../prefab/src/sound';
 import { getDstClock, TUNING } from '../../../src/tuning';
 import { reskinEntity } from '../../prefab/src/reskin_tool';
 import { workTargets } from './workTargets';
+import { managedBuildings } from './managedBuildings';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -27,7 +28,7 @@ async function createPlacement() {
   const { moon, getWatchWorldContent, unbind } = bindTestWorld(scheduler);
   const world = { scene: new THREE.Scene(), player: new THREE.Group(), camera: new THREE.PerspectiveCamera(),
     ground: new THREE.Group(), renderer: { domElement: new EventTarget() }, scheduler, getWatchWorldContent } as unknown as WorldContext;
-  const placement = new AnimatedBuildingPlacement(world, { [MOONDIAL_ID]: MOONDIAL_DEFINITION }, () => false);
+  const placement = managedBuildings(world, { consume: () => false });
   return { placement, scheduler, moon, play, stop, dispose: () => { placement.dispose(); unbind(); scheduler.dispose(); } };
 }
 
@@ -48,7 +49,7 @@ it('keeps phase look and playback through reskin and records only its skin', asy
     moon.set(dayMoon(14)); // waning half
     // WatchWorldState reaches the dial in its effect, before the reskin.
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect(reskinEntity(placement.reskinTargets[0])).toBe(true);
+    expect(reskinEntity(findActionEntity(workTargets('HAMMER')[0].model)!.reskinTarget!)).toBe(true);
     const model = workTargets('HAMMER')[0].display.model;
     expect(lookupPrefabInstance(model)?.skinId).toBe('moondial_an');
     expect((prefabInstance(model)!.sprite as SpriteController).currentAnimation).toBe('wane_to_half');

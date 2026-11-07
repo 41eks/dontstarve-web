@@ -6,7 +6,7 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import type { InventoryStore } from '../../../src/inventory';
-import { isPlaceableBuildingId, PlaceableBuildingPlacement } from '../../../src/placeableBuilding';
+import { isPlaceableBuildingId, type PlaceableBuildingPlacement } from '../../../src/placeableBuilding';
 import { deserializeSave } from '../../../src/save/deserialize';
 import type { SaveDocument } from '../../../src/save/types';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
@@ -29,6 +29,7 @@ import { bindTestWorld } from './worldContentFixture';
 import { importedSave } from './importedSave';
 import { workTargets } from './workTargets';
 import { canDoSceneAction } from './sceneActions';
+import { managedBuildings } from './managedBuildings';
 
 const worldCleanups: (() => void)[] = [];
 function moonWorld(scheduler: GameTimeScheduler, full: boolean) {
@@ -57,7 +58,7 @@ it('spawns moonbase through the debug command using its source art and restores 
   } as unknown as WorldContext;
   world.player.position.set(30, 0, 40);
   const consume = vi.fn(() => false);
-  const placement = new PlaceableBuildingPlacement(world, consume, undefined, { spawn: vi.fn(), register: vi.fn() });
+  const placement = managedBuildings(world, { consume });
   const result = await executeDebugCommand('c_spawn("moonbase")', {} as InventoryStore, async (prefabId) => {
     if (!isPlaceableBuildingId(prefabId)) return false;
     await placement.spawn(prefabId);
@@ -67,7 +68,7 @@ it('spawns moonbase through the debug command using its source art and restores 
   expect(fetchAsset.mock.calls.map(([url]) => url)).toContain('/dst/data/anim/moonbase.zip');
   expect(consume).not.toHaveBeenCalled();
   const model = world.scene.children[0];
-  expect(model.name).toBe('MoonBase');
+  expect(prefabInstance(model)!.prefab).toBe('moonbase');
   expect(prefabInstance(model)!.sprite.currentAnimation).toBe('med');
   // The display loads the source art; a later moonbase of the same art is drawn at once.
   await vi.waitFor(() => expect(prefabInstance(model)!.sprite.loaded).toBe(true));
@@ -110,7 +111,7 @@ async function createMoonbase(options: Partial<WorldContext> = {}, saved?: Param
   const world = { scene: new THREE.Scene(), player: new THREE.Group(), ground: new THREE.Group(),
     camera: new THREE.PerspectiveCamera(), cameraFacing: createSignal(8), cameraHeading: createSignal(45), renderer: { domElement: new EventTarget() },
     createCursorLabel: () => ({ show() {}, hide() {}, update() {} }), ...options } as unknown as WorldContext;
-  const placement = new PlaceableBuildingPlacement(world, () => false, undefined, { spawn: vi.fn(), register: vi.fn() });
+  const placement = managedBuildings(world, { consume: () => false });
   if (saved) placement.spawnFromSave('moonbase', saved); else await placement.spawn('moonbase');
   const model = world.scene.children[0] as THREE.Group;
   // One-shot clips such as fix_full play out only once the display has drawn the moonbase.
@@ -242,6 +243,8 @@ it('charges through three source stages, restores the remaining timers and morph
   const next = getMoonbaseState(restored.model);
   try {
     restoredScheduler.advance(0);
+    // The beam entities are declared on the moonbase's sprite; its display attaches them in an effect.
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(next.charge.peek()).toBe('charging_2');
     expect(findActionEntity(restored.model).hasTag('intense')).toBe(true);
     expect(next.staff.peek()?.snapshot()).toEqual(record.components.moonbase?.staff);
@@ -256,10 +259,16 @@ it('charges through three source stages, restores the remaining timers and morph
     expect(next.timers.mooncharge.peek().status).toBe('expired');
     expect(findActionEntity(restored.model).hasTag('intense')).toBe(false);
     expect(canDoSceneAction('PICK', restored.model)).toBe(true);
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(restored.placement.renderEntities.some(entry => entry.object.name === 'staffcoldlightfx')).toBe(true);
+    // stafflight.lua pulse_light: the cold star's light pulses on its .1 s task.
+    restoredScheduler.advance(.1);
+    const star = restored.placement.renderEntities.find(entry => entry.object.name === 'staffcoldlightfx')!;
+    expect(lookupPrefabInstance(star.object)!.light.peek()).toMatchObject({ intensity: expect.any(Number) });
     const giveEntity = vi.fn(() => true);
     expect((findActionEntity(restored.model)?.components ?? prefabInstance(restored.model)!.components).pickable.pick({ giveItem: vi.fn(), giveEntity })).toBe(true);
     expect(giveEntity).toHaveBeenCalledWith(opal, restored.model.position);
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(restored.placement.renderEntities.some(entry => entry.object.name === 'staffcoldlightfx')).toBe(false);
     opal.destroy();
   } finally { restored.placement.dispose(); restoredScheduler.dispose(); }

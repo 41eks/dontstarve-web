@@ -2,12 +2,12 @@ import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabI
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
-import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
-import { WINTEROMETER_DEFINITION, WINTEROMETER_ID } from '../../prefab/src/winterometer';
+import { WINTEROMETER_ID } from '../../prefab/src/winterometer';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { GetTemperatureAtXZ } from '../../componets/src/temperatureoverrider';
-import type { SpriteController } from '../src/sprite';
+import type { SpriteState } from '../../display/src';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import * as sound from '../../prefab/src/sound';
 import { deserializeSave } from '../../../src/save/deserialize';
@@ -16,6 +16,7 @@ import initialWorld from '../../../public/saves/initial-world.json' with { type:
 import definitions from '../../prefab/src/definitions.json' with { type: 'json' };
 import { reskinEntity } from '../../prefab/src/reskin_tool';
 import { workTargets } from './workTargets';
+import { managedBuildings } from './managedBuildings';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -27,11 +28,11 @@ async function createPlacement(temperature: { value: number }) {
   const world = { scene: new THREE.Scene(), player: new THREE.Group(), camera: new THREE.PerspectiveCamera(),
     ground: new THREE.Group(), renderer: { domElement: new EventTarget() }, scheduler,
     getLocalTemperature: (x: number, z: number) => GetTemperatureAtXZ(() => temperature.value, x, z) } as unknown as WorldContext;
-  const placement = new AnimatedBuildingPlacement(world, { [WINTEROMETER_ID]: WINTEROMETER_DEFINITION }, () => false);
+  const placement = managedBuildings(world, { consume: () => false });
   return { placement, scheduler };
 }
 
-const spyPercent = (model: THREE.Object3D) => vi.spyOn(prefabInstance(model)!.sprite as SpriteController, 'setPercent');
+const spyPercent = (model: THREE.Object3D) => vi.spyOn(prefabInstance(model)!.sprite as SpriteState, 'setPercent');
 
 it('reads the local temperature once per second, clamped to 0..OVERHEAT_TEMP, and stops after being burnt', async () => {
   const temperature = { value: 35 };
@@ -69,7 +70,7 @@ it('cancels the check while the hit clip plays and restarts it when the clip end
   try {
     placement.spawn(WINTEROMETER_ID);
     const [hammerTarget] = workTargets('HAMMER'), { model } = hammerTarget.display, playHit = () => hammerTarget.work();
-    const sprite = prefabInstance(model)!.sprite as SpriteController;
+    const sprite = prefabInstance(model)!.sprite as SpriteState;
     // The hit clip plays out only once the display has drawn the meter.
     await vi.waitFor(() => expect(sprite.loaded).toBe(true));
     scheduler.advance(0);
@@ -78,7 +79,7 @@ it('cancels the check while the hit clip plays and restarts it when the clip end
     expect(sprite.currentAnimation).toBe('hit');
     scheduler.advance(3);
     expect(percent).not.toHaveBeenCalled();
-    for (let i = 0; i < 90; i++) sprite.update(1 / 30);
+    for (let i = 0; i < 90; i++) placement.displays.update(1 / 30);
     scheduler.advance(0);
     expect(percent).toHaveBeenLastCalledWith('meter', 0);
   } finally { placement.dispose(); }
@@ -89,7 +90,7 @@ it('keeps its skin through c_save, restores the reading, and saves only the burn
   const { placement, scheduler } = await createPlacement(temperature);
   try {
     await placement.spawn(WINTEROMETER_ID);
-    expect(reskinEntity(placement.reskinTargets[0])).toBe(true);
+    expect(reskinEntity(findActionEntity(workTargets('HAMMER')[0].model)!.reskinTarget!)).toBe(true);
     const saved = placement.exportRecords()[0].record;
     expect(saved.components.building).toMatchObject({ skinId: 'winterometer_circus' });
     expect(saved.components.building).not.toHaveProperty('burnt');

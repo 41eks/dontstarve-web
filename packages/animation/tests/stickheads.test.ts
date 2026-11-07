@@ -3,23 +3,23 @@ import { prefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
-import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
-import { PIG_HEAD_DEFINITION, PIG_HEAD_ID, MERM_HEAD_DEFINITION, MERM_HEAD_ID } from '../../prefab/src/stickheads';
+import { PIG_HEAD_ID, MERM_HEAD_ID } from '../../prefab/src/stickheads';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { performToolWork } from '../../stategraphs/src/componentactions';
-import type { SpriteController } from '../src/sprite';
+import type { SpriteState } from '../../display/src';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import type { Burnable } from '../../componets/src/burnable';
 import * as sound from '../../prefab/src/sound';
 import { createMemo, createSignal, type TileStateQuery } from '../../signals/src';
 import { bindTestWorld } from './worldContentFixture';
 import { workTargets } from './workTargets';
+import { managedBuildings } from './managedBuildings';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 const HEADS = [
-  { id: PIG_HEAD_ID, definition: PIG_HEAD_DEFINITION, loot: [{ itemId: 'pigskin', count: 2 }, { itemId: 'twigs', count: 2 }] },
-  { id: MERM_HEAD_ID, definition: MERM_HEAD_DEFINITION, loot: [{ itemId: 'pondfish', count: 1 }, { itemId: 'spoiled_food', count: 2 }, { itemId: 'twigs', count: 2 }] },
+  { id: PIG_HEAD_ID, loot: [{ itemId: 'pigskin', count: 2 }, { itemId: 'twigs', count: 2 }] },
+  { id: MERM_HEAD_ID, loot: [{ itemId: 'pondfish', count: 1 }, { itemId: 'spoiled_food', count: 2 }, { itemId: 'twigs', count: 2 }] },
 ] as const;
 
 async function setup(id: typeof HEADS[number]['id'] = PIG_HEAD_ID, tickingarea?: TileStateQuery) {
@@ -32,13 +32,13 @@ async function setup(id: typeof HEADS[number]['id'] = PIG_HEAD_ID, tickingarea?:
   const world = { scene: new THREE.Scene(), player: new THREE.Group(), camera: new THREE.PerspectiveCamera(),
     ground: new THREE.Group(), renderer: { domElement: new EventTarget() }, scheduler,
     getWatchWorldContent: content.getWatchWorldContent, tickingarea, dropLoot: (items: { itemId: string; count: number }[]) => loot.push(items) } as unknown as WorldContext;
-  const placement = new AnimatedBuildingPlacement(world, { [id]: HEADS.find(head => head.id === id)!.definition }, () => false);
+  const placement = managedBuildings(world, { consume: () => false });
   placement.spawn(id);
-  const model = workTargets('HAMMER')[0].display.model, sprite = prefabInstance(model)!.sprite as SpriteController;
+  const model = workTargets('HAMMER')[0].display.model, sprite = prefabInstance(model)!.sprite as SpriteState;
   // The display loads the head's art; its clips play once it is drawn.
   await vi.waitFor(() => expect(sprite.loaded).toBe(true));
   const settle = () => new Promise(resolve => setTimeout(resolve, 0));
-  const finish = () => { for (let i = 0; i < 90; i++) sprite.update(1 / 30); };
+  const finish = () => { for (let i = 0; i < 90; i++) placement.displays.update(1 / 30); };
   return { placement, scheduler, content, loot, model, sprite, settle, finish };
 }
 

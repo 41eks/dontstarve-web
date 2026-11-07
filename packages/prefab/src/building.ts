@@ -14,21 +14,25 @@ import type { PrefabWorldContext } from './worldContext';
 /** A building's entry in definitions.json: its art, its name and label, and its skins' builds. */
 export interface BuildingDeclaration {
   readonly archive: string;
+  /** SetBuild's zip when `archive` holds only the bank. */
+  readonly buildArchive?: string;
   readonly buildLabel: string;
   readonly name: string;
   readonly scale: number;
   readonly idleAnimation?: string;
   readonly previewAnimation?: string;
   readonly skinArchives?: Readonly<Record<string, string>>;
+  /** The symbols a skin replaces, when its init_fn overrides only those (OverrideItemSkinSymbol) rather than calling SetSkin. */
+  readonly skinSymbols?: readonly string[];
 }
 
 /** MakePlacer(name, bank, build, anim): the same build, in the selected skin. */
-export function buildingPlacer({ archive, buildLabel, name, scale, idleAnimation = 'idle', previewAnimation = idleAnimation, skinArchives }: BuildingDeclaration): BuildingPlacerSpec {
+export function buildingPlacer({ archive, buildArchive, buildLabel, name, scale, idleAnimation = 'idle', previewAnimation = idleAnimation, skinArchives, skinSymbols }: BuildingDeclaration): BuildingPlacerSpec {
   return { buildLabel, name, animation: previewAnimation, art: (resources, skinId) => {
     if (skinId !== undefined && !skinArchives?.[skinId]) throw new Error(`Unsupported ${name} skin: ${skinId}`);
-    return { source: resources.animated(archive, {}, { name, scale }), initialize: entity => {
+    return { source: resources.animated(archive, buildArchive ? { buildArchive } : {}, { name, scale, skinSymbols }), initialize: entity => {
       entity.skinId = skinId;
-      if (skinArchives) entity.sprite.setSkinSource({ art: resources.archives, archives: skinArchives });
+      if (skinArchives) entity.sprite.setSkinSource({ art: resources.archives, archives: skinArchives, ...skinSymbols ? { symbols: skinSymbols } : {} });
     } };
   } };
 }
@@ -84,20 +88,30 @@ function MakeBuildingTargets(inst: PrefabInstance, skins: readonly string[], wor
     get position() { return inst.position; }, isValid: () => !inst.isRemoved && model.visible,
   });
   if (!inst.components.workable) return;
+  // A building that does something without a tool keeps its own actions under the mouse while no tool is held.
   new ToolMouseTarget(entity, inst, entity.components.workable, world.handEquipment, {
-    canInteractWithoutTool: () => !entity.hasTag('burnt') && !!inst.components.container,
+    canInteractWithoutTool: () => !entity.hasTag('burnt') && !!(inst.components.container || inst.components.trader || inst.components.fueled
+      || inst.components.prototyper || inst.components.occupiable),
   });
   inst.onRemove(() => removeComponent(inst, 'workable'));
 }
 
-/** Prefab(name, fn, assets) for a building drawn from its definitions.json entry; `radius` is its source MakeObstaclePhysics, if it has one. */
+/**
+ * Prefab(name, fn, assets) for a building drawn from its definitions.json entry; `radius` is its source MakeObstaclePhysics,
+ * if it has one. `controller` draws it through a full animation controller, for a building whose AnimState overrides
+ * symbols or builds or rests on a SetPercent pose.
+ */
 export function buildingPrefab<Instance extends PrefabInstance>(declaration: BuildingDeclaration, bank: string, radius: number | undefined,
-  fn: PrefabEntityDefinition<Instance>['fn'], world: Pick<PrefabWorldContext, 'handEquipment'>): PrefabEntityDefinition<Instance> {
-  const { archive, skinArchives } = declaration, skins = Object.keys(skinArchives ?? {});
+  fn: PrefabEntityDefinition<Instance>['fn'], world: Pick<PrefabWorldContext, 'handEquipment'>,
+  { controller = false }: { controller?: boolean } = {}): PrefabEntityDefinition<Instance> {
+  const { archive, buildArchive = archive, name, scale, skinArchives, skinSymbols } = declaration, skins = Object.keys(skinArchives ?? {});
   return {
     fn,
-    assets: { animationArchive: archive, buildArchives: [archive], bank },
+    ...controller
+      ? { animatedAssets: [archive, buildArchive === archive ? {} : { buildArchive }, { name, scale, skinSymbols }] }
+      : { assets: { animationArchive: archive, buildArchives: [buildArchive], bank } },
     skins: skinArchives,
+    ...skinSymbols ? { skinSymbols } : {},
     alignBottom: true,
     ...radius === undefined ? {} : { physics: { make: MakeObstaclePhysics, radius } },
     onSpawned: inst => { MakeBuildingTargets(inst, skins, world); registerBuildingContainer(inst); },

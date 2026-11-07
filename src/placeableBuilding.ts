@@ -22,10 +22,10 @@ import {
 import { FencePlacement, FENCE_IDS, isFenceId, type FenceId } from '@dontstarve-web/prefab/fence';
 import type { WorldContext } from '@dontstarve-web/prefab/worldContext';
 import type { PlacementSaveRecord } from '@dontstarve-web/prefab/saveRecord';
-import { TENT_DEFINITION, TENT_ID } from '@dontstarve-web/prefab/tent';
+import { TENT_ID, TENT_PLACER, tentPrefabs } from '@dontstarve-web/prefab/tent';
 import { PANDORAS_CHEST_ID, PANDORAS_CHEST_PLACER, pandorasChestPrefabs } from '@dontstarve-web/prefab/pandoraschest';
-import { MOONBASE_DEFINITION, MOONBASE_ID } from '@dontstarve-web/prefab/moonbase';
-import { SCULPTING_TABLE_DEFINITION, SCULPTING_TABLE_ID, type SculptingTableId } from '@dontstarve-web/prefab/sculptingtable';
+import { MOONBASE_ID, MOONBASE_PLACER, moonbasePrefabs } from '@dontstarve-web/prefab/moonbase';
+import { SCULPTING_TABLE_ID, SCULPTING_TABLE_PLACER, sculptingTablePrefabs } from '@dontstarve-web/prefab/sculptingtable';
 import { WARDROBE_ID, WARDROBE_PLACER, wardrobePrefabs } from '@dontstarve-web/prefab/wardrobe';
 import { BuildingPlacer } from '@dontstarve-web/prefab/buildingPlacer';
 import type { PrefabEntityManager, PrefabInstance } from '@dontstarve-web/prefab/prefabInstance';
@@ -38,23 +38,24 @@ import { CAMPFIRE_ID, CAMPFIRE_PLACER, campfirePrefabs } from '@dontstarve-web/p
 import { SALT_BOX_ID, SALT_BOX_PLACER, saltBoxPrefabs } from '@dontstarve-web/prefab/saltbox';
 import { NIGHT_LIGHT_ID, NIGHT_LIGHT_PLACER, nightLightPrefabs } from '@dontstarve-web/prefab/nightlight';
 import { PIG_HOUSE_ID, PIG_HOUSE_PLACER, pigHousePrefabs } from '@dontstarve-web/prefab/pighouse';
-import { BIRDCAGE_DEFINITION, BIRDCAGE_ID, type BirdcageId } from '@dontstarve-web/prefab/birdcage';
-import { MOONDIAL_DEFINITION, MOONDIAL_ID } from '@dontstarve-web/prefab/moondial';
-import { PIG_HEAD_DEFINITION, PIG_HEAD_ID, MERM_HEAD_DEFINITION, MERM_HEAD_ID, type PigHeadId, type MermHeadId } from '@dontstarve-web/prefab/stickheads';
-import { WINTEROMETER_DEFINITION, WINTEROMETER_ID, type WinterometerId } from '@dontstarve-web/prefab/winterometer';
-import { LIGHTNING_ROD_DEFINITION, LIGHTNING_ROD_ID, type LightningRodId } from '@dontstarve-web/prefab/lightning_rod';
+import { BIRDCAGE_ID, BIRDCAGE_PLACER, birdcagePrefabs } from '@dontstarve-web/prefab/birdcage';
+import { MOONDIAL_ID, MOONDIAL_PLACER, moondialPrefabs } from '@dontstarve-web/prefab/moondial';
+import { STICK_HEAD_PLACERS, stickHeadPrefabs } from '@dontstarve-web/prefab/stickheads';
+import { WINTEROMETER_ID, WINTEROMETER_PLACER, winterometerPrefabs } from '@dontstarve-web/prefab/winterometer';
+import { LIGHTNING_ROD_ID, LIGHTNING_ROD_PLACER, lightningRodPrefabs } from '@dontstarve-web/prefab/lightning_rod';
 import { MUSHROOM_LIGHT_PLACERS, mushroomLightPrefabs } from '@dontstarve-web/prefab/mushroom_light';
 
 export { TREASURE_CHEST_ID } from '@dontstarve-web/prefab/treasurechest';
 
 export { TENT_ID } from '@dontstarve-web/prefab/tent';
 
-export type AnimatedBuildingId = CookPotId | ResearchLabId | typeof TENT_ID
-    | BookstationId | WinterometerId | LightningRodId | PigHeadId | MermHeadId | BirdcageId | SculptingTableId | typeof MOONBASE_ID | typeof MOONDIAL_ID;
+export type AnimatedBuildingId = CookPotId | ResearchLabId | BookstationId;
 /** Buildings declared on the shared PrefabEntityManager; the rest move here as they migrate. */
 const MANAGED_BUILDING_PLACERS = { [WARDROBE_ID]: WARDROBE_PLACER, [CAMPFIRE_ID]: CAMPFIRE_PLACER, [NIGHT_LIGHT_ID]: NIGHT_LIGHT_PLACER, [PIG_HOUSE_ID]: PIG_HOUSE_PLACER,
     [TREASURE_CHEST_ID]: TREASURE_CHEST_PLACER, [PANDORAS_CHEST_ID]: PANDORAS_CHEST_PLACER, [ICE_BOX_ID]: ICE_BOX_PLACER, [DRAGONFLY_CHEST_ID]: DRAGONFLY_CHEST_PLACER, [SALT_BOX_ID]: SALT_BOX_PLACER,
-    ...MUSHROOM_LIGHT_PLACERS, [FIRE_PIT_ID]: FIRE_PIT_PLACER } as const;
+    ...MUSHROOM_LIGHT_PLACERS, [FIRE_PIT_ID]: FIRE_PIT_PLACER, [TENT_ID]: TENT_PLACER, [MOONBASE_ID]: MOONBASE_PLACER, [MOONDIAL_ID]: MOONDIAL_PLACER,
+    [SCULPTING_TABLE_ID]: SCULPTING_TABLE_PLACER, [WINTEROMETER_ID]: WINTEROMETER_PLACER, [LIGHTNING_ROD_ID]: LIGHTNING_ROD_PLACER, ...STICK_HEAD_PLACERS,
+    [BIRDCAGE_ID]: BIRDCAGE_PLACER } as const;
 export type ManagedBuildingId = keyof typeof MANAGED_BUILDING_PLACERS;
 const isManagedBuildingId = (value: string): value is ManagedBuildingId => Object.hasOwn(MANAGED_BUILDING_PLACERS, value);
 export type PlaceableBuildingId = AnimatedBuildingId | ManagedBuildingId | WallId | FenceId;
@@ -63,31 +64,13 @@ export type PlaceableBuildingInteractionChange = AnimatedBuildingInteractionChan
 const ANIMATED_BUILDING_IDS: readonly AnimatedBuildingId[] = [
     COOK_POT_ID,
     ...RESEARCH_LAB_IDS,
-    TENT_ID,
-    MOONBASE_ID,
-    MOONDIAL_ID,
     BOOKSTATION_ID,
-    SCULPTING_TABLE_ID,
-    WINTEROMETER_ID,
-    LIGHTNING_ROD_ID,
-    PIG_HEAD_ID,
-    MERM_HEAD_ID,
-    BIRDCAGE_ID,
 ];
 
 const ANIMATED_BUILDING_DEFINITIONS = {
     [COOK_POT_ID]: COOK_POT_DEFINITION,
     ...RESEARCH_LAB_DEFINITIONS,
-    [TENT_ID]: TENT_DEFINITION,
-    [MOONBASE_ID]: MOONBASE_DEFINITION,
-    [MOONDIAL_ID]: MOONDIAL_DEFINITION,
     [BOOKSTATION_ID]: BOOKSTATION_DEFINITION,
-    [SCULPTING_TABLE_ID]: SCULPTING_TABLE_DEFINITION,
-    [WINTEROMETER_ID]: WINTEROMETER_DEFINITION,
-    [LIGHTNING_ROD_ID]: LIGHTNING_ROD_DEFINITION,
-    [PIG_HEAD_ID]: PIG_HEAD_DEFINITION,
-    [MERM_HEAD_ID]: MERM_HEAD_DEFINITION,
-    [BIRDCAGE_ID]: BIRDCAGE_DEFINITION,
 } as const;
 
 export const PLACEABLE_BUILDING_IDS: readonly PlaceableBuildingId[] = [...ANIMATED_BUILDING_IDS, ...Object.keys(MANAGED_BUILDING_PLACERS) as ManagedBuildingId[], ...WALL_IDS, ...FENCE_IDS];
@@ -117,7 +100,9 @@ export class PlaceableBuildingPlacement {
         const { scene: _scene, ...rest } = world;
         const services = { ...rest, onContainerInteraction: onInteractionChange as WorldContext['onContainerInteraction'] };
         prefabs.register({ ...wardrobePrefabs(services), ...campfirePrefabs(services), ...nightLightPrefabs(services), ...pigHousePrefabs(services),
-            ...treasureChestPrefabs(services), ...pandorasChestPrefabs(services), ...iceBoxPrefabs(services), ...dragonflyChestPrefabs(services), ...saltBoxPrefabs(services), ...mushroomLightPrefabs(services), ...firePitPrefabs(services) });
+            ...treasureChestPrefabs(services), ...pandorasChestPrefabs(services), ...iceBoxPrefabs(services), ...dragonflyChestPrefabs(services), ...saltBoxPrefabs(services), ...mushroomLightPrefabs(services), ...firePitPrefabs(services),
+            ...tentPrefabs(services), ...moonbasePrefabs(services), ...moondialPrefabs(services), ...sculptingTablePrefabs(services), ...winterometerPrefabs(services),
+            ...lightningRodPrefabs(services), ...stickHeadPrefabs(services), ...birdcagePrefabs(services) });
         this.animated = new AnimatedBuildingPlacement<AnimatedBuildingId>(
             world,
             ANIMATED_BUILDING_DEFINITIONS,

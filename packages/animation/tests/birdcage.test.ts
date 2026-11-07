@@ -3,9 +3,10 @@ import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createAnimatedSprite, loadBuildOverride, type SpriteController } from '../src/sprite';
-import { birdcage_init_fn } from '../src/prefabskin';
-import { BIRDCAGE_DEFINITION } from '../../prefab/src/birdcage';
-import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
+import { BIRDCAGE_SKIN_ARCHIVES } from '../../prefab/src/birdcage';
+import definitions from '../../prefab/src/definitions.json' with { type: 'json' };
+import { managedBuildings } from './managedBuildings';
+import { workTargets } from './workTargets';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { BIRD_PERISH_TIME, configureBirdEntity } from '../../prefab/src/birds';
@@ -25,10 +26,11 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+const BIRDCAGE = definitions.animatedBuildings.birdcage;
+
 async function spawn(animation: string, skinId?: string) {
-  const skin = skinId === undefined ? undefined : birdcage_init_fn(skinId);
-  return createAnimatedSprite('/dst/data/anim', skin?.archive ?? BIRDCAGE_DEFINITION.archive, {
-    initialAnimation: animation, scale: BIRDCAGE_DEFINITION.scale, skinArchive: skin?.skinArchive,
+  return createAnimatedSprite('/dst/data/anim', BIRDCAGE.archive, {
+    initialAnimation: animation, scale: BIRDCAGE.scale, skinArchive: skinId === undefined ? undefined : BIRDCAGE_SKIN_ARCHIVES[skinId],
   });
 }
 
@@ -63,7 +65,7 @@ it('keeps the bird override on a skinned cage, with gothicp using the gothic bui
   const before = meshOf(model).geometry.drawRange.count;
   controller.addOverrideBuild('crow_build', bird);
   expect(meshOf(model).geometry.drawRange.count).toBeGreaterThan(before);
-  expect(Object.keys(BIRDCAGE_DEFINITION.skinArchives!)).toHaveLength(8);
+  expect(Object.keys(BIRDCAGE_SKIN_ARCHIVES)).toHaveLength(8);
   bird.dispose();
 });
 
@@ -80,11 +82,11 @@ it('draws the bird slot across reskin, sleep and restore, and clears it when the
   const world = { scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(),
     camera: new THREE.PerspectiveCamera(), renderer: { domElement: new EventTarget() }, spawnItem,
     tickingarea: () => createMemo(() => awake.get()) } as unknown as WorldContext;
-  const placement = new AnimatedBuildingPlacement(world, { birdcage: BIRDCAGE_DEFINITION }, () => true);
+  const placement = managedBuildings(world);
   const tick = () => new Promise(resolve => setTimeout(resolve, 0));
   try {
     await placement.spawn('birdcage');
-    const model = world.scene.children[0] as THREE.Group, instance = prefabInstance(model)!;
+    const model = workTargets('HAMMER')[0].model as THREE.Group, instance = prefabInstance(model)!;
     const display = prefabDisplay(model)!, cage = instance.components.birdcage!;
     const birdSlot = instance.sprite.sprite.peek().appearance.get('anim-state:bird');
     expect(birdSlot?.kind).toBe('anim-state');

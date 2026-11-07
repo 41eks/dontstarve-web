@@ -40,8 +40,6 @@ export interface AnimatedBuildingDefinition {
     previewAnimation?: string;
     /** standardcomponents.lua's burn time, generic fire level and heat propagator size. */
     burnable?: { burnTime: number; fxLevel: 2 | 3 | 4; propagator: 'small' | 'medium' | 'large' };
-    /** Sources of the fx children the prefab spawns (its Lua prefab dependencies), declared on the placement's shared resources. */
-    fxSources?: (sprites: SpriteResources) => readonly LoadedSpriteSource[];
     name: string;
     /** Source AddMiniMapEntity() + MiniMapEntity:SetIcon(); omitted buildings have no map icon. */
     minimapIcon?: string;
@@ -59,16 +57,11 @@ export interface AnimatedBuildingDefinition {
     skinAnimationBanks?: Readonly<Record<string, readonly string[]>>;
     symbolOverrides?: Readonly<Record<string, { archive: string; symbol: string }>>;
     hiddenLayers?: readonly string[];
-    onupdate?: (context: AnimatedBuildingEventContext, dt: number) => void;
     onreskin?: (context: AnimatedBuildingEventContext) => void;
     ondispose?: (context: AnimatedBuildingEventContext) => void;
     oninit?: (context: AnimatedBuildingEventContext) => void;
     createContainer?: (inst: object) => import('./containers').BuildingContainer;
-    renderEffects?: (context: AnimatedBuildingEventContext) => readonly BuildingRenderEffect[];
 }
-
-/** An effect drawn at its building's foot point, behind (0) or after (2+) the building (1). */
-export interface BuildingRenderEffect { object: THREE.Group; sortLayer: number; }
 
 export interface AnimatedBuildingEventContext {
     model: THREE.Group;
@@ -81,12 +74,8 @@ export interface AnimatedBuildingEventContext {
     animState: AnimState;
     /** Shared resource owner for the builds named by the entity's AnimState slots; display performs the IO. */
     animStateArt?: AnimStateArt;
-    /** The placement's shared sprite sources for the fx children a building spawns; declaring one performs no IO. */
-    sprites?: SpriteResources;
     skinId?: string;
-    itemEntities?: WorldContext['itemEntities'];
     world?: PrefabWorldContext;
-    displays?: PrefabDisplayGroup;
 }
 
 export interface AnimatedBuildingInteractionChange<BuildId extends string> {
@@ -267,12 +256,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
                 footPosition: model.position,
                 cameraDepth: 0, sortLayer: 1,
             }));
-        return [...entries, ...this.placer.renderEntities, ...this.placed.flatMap(building => {
-            const effects = (this.definitions[building.buildId].renderEffects?.(this.eventContext(building)) ?? []).filter(effect => effect.object.visible);
-            if (!effects.length) return [];
-            const footPosition = building.instance.position;
-            return effects.map(effect => ({ ...effect, footPosition, cameraDepth: 0 }));
-        })];
+        return [...entries, ...this.placer.renderEntities];
     }
 
     get reskinTargets(): readonly ReskinTarget[] {
@@ -294,8 +278,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
 
     private eventContext(building: AnimatedBuildingInstance<BuildId>): AnimatedBuildingEventContext {
         return { model: building.model, instance: building.instance, animation: building.animation, art: building.animation.art,
-            animState: building.animState, animStateArt: this.skinAssets, sprites: this.sprites, skinId: building.skinId.peek(),
-            itemEntities: this.worldContext.itemEntities, world: this.worldContext, displays: this.displays };
+            animState: building.animState, animStateArt: this.skinAssets, skinId: building.skinId.peek(), world: this.worldContext };
     }
 
     /** Skin changes update presentation; the entity root and components retain their identity. */
@@ -363,7 +346,6 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         this.displays.update(dt);
         this.placer.update(dt);
         for (const building of this.placed) {
-            this.definitions[building.buildId].onupdate?.(this.eventContext(building), dt);
             const components = actionEntity(building.model, building.buildId).components;
             components.burnable?.Update(dt);
             components.propagator?.Update(dt);
@@ -432,10 +414,8 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         if (this.disposed) throw new Error('Placement has been disposed');
         const definition = this.definitions[buildId];
         const { source, animState, initialize } = this.declareArt(this.sprites, buildId, skinId);
-        // The fx it spawns load with the building, so that they are drawn when they are spawned.
-        const dependencies = [
-            ...definition.burnable ? [this.fireFx.source] : [],
-            ...definition.fxSources?.(this.sprites) ?? []];
+        // The fire it spawns loads with the building, so that it is drawn when it is spawned.
+        const dependencies = definition.burnable ? [this.fireFx.source] : [];
         const { instance: entity, display } = createPrefabEntity(buildId, source, { name: this.idleAnimation(buildId), held: definition.idleHeld === true, billboard: true },
             definition.name, initialize, undefined, { alignBottom: true, dependencies });
         const { model } = display;

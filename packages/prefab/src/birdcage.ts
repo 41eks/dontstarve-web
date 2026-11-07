@@ -1,10 +1,10 @@
 import { Workable } from '../../componets/src/workable';
 import { createStructureLootDropper } from './structureLoot';
-import type { PrefabInstance } from './prefabInstance';
+import { PrefabInstance } from './prefabInstance';
+import { SpriteState } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import definitions from './definitions.json' with { type: 'json' };
 import catalog from './groundItems.json' with { type: 'json' };
-import { birdcage_init_fn } from '@dontstarve-web/animation/prefabskin';
 import { AnimState, type AnimStateArt } from '@dontstarve-web/animation/animState';
 import { batch, createMemo, createSignal, readonlySignal, getWatchWorldContent, createIdleWeatherSources, type ReadonlySignal, type GetWatchWorldContent, type WorldContentEnvironment, type WorldNightmarePhase, type WorldPhase } from '@dontstarve-web/signals';
 import type { InventoryStack, ItemEntity, ItemOwner } from '@dontstarve-web/inventory';
@@ -15,17 +15,18 @@ import { ComponentTimer } from '../../componets/src/timer';
 import { Trader, type TradeItem } from '../../componets/src/trader';
 import { foods } from '../../componets/src/preparedfoods';
 import { FRAMES } from '../../stategraphs/src/stategraph';
-import type {
-    AnimatedBuildingDefinition,
-    AnimatedBuildingEventContext,
-} from './animatedBuildingPlacement';
+import { buildingPlacer, buildingPrefab, MakeBuildingPersist, type BuildingDeclaration } from './building';
 import type { PrefabWorldContext } from './worldContext';
 import { BIRD_SOUNDS, isBirdId } from './birds';
 import { PlaySound, type SoundEventPath } from './sound';
 
 export const BIRDCAGE_ID = 'birdcage' as const;
 export type BirdcageId = typeof BIRDCAGE_ID;
-export const BIRDCAGE_SKIN_ARCHIVES: Readonly<Record<string, string>> = definitions.animatedBuildings.birdcage.skinArchives;
+const declaration: BuildingDeclaration = definitions.animatedBuildings.birdcage;
+export const BIRDCAGE_SKIN_ARCHIVES: Readonly<Record<string, string>> = declaration.skinArchives!;
+
+/** birdcage.lua MakePlacer("birdcage_placer", "birdcage", "bird_cage", "idle_empty"). */
+export const BIRDCAGE_PLACER = buildingPlacer(declaration);
 
 /** birdcage.lua CAGE_STATES: the suffix of the idle and hit clips, and the saved CAGE_STATE. */
 export const CAGE_STATES = {
@@ -530,19 +531,6 @@ export class Birdcage {
 
 const cageOf = (instance: PrefabInstance): Birdcage => instance.components.birdcage!;
 
-function oninit({ instance, world, animStateArt }: AnimatedBuildingEventContext): void {
-    const workable = instance.components.workable = new Workable(instance);
-    workable.SetWorkAction('HAMMER');
-    workable.SetWorkLeft(4);
-    workable.SetOnWorkCallback(onworked);
-    workable.SetOnFinishCallback(onhammered);
-    instance.components.lootdropper = createStructureLootDropper(instance);
-    new Birdcage(instance, world, animStateArt);
-    instance.ListenForEvent('onbuilt', () => cageOf(instance).onBuilt());
-    instance.OnSave = (inst, data) => { data.birdcage = cageOf(inst).save(); };
-    instance.OnLoad = (inst, data) => { if (data.birdcage) cageOf(inst).restore(data.birdcage); };
-}
-
 function onworked(inst: PrefabInstance): void {
     cageOf(inst).onWorked();
 }
@@ -554,9 +542,28 @@ function onhammered(inst: PrefabInstance): void {
     inst.remove();
 }
 
-export const BIRDCAGE_DEFINITION: AnimatedBuildingDefinition = {
-    ...definitions.animatedBuildings.birdcage,
-    obstacleRadius: 0.5,
-    skinInit: birdcage_init_fn,
-    oninit,
-};
+/** birdcage.lua fn(), as far as it is ported: the cage's occupant, shelf and trader, and the hammer workable. */
+export class BirdcageInstance extends PrefabInstance {
+    constructor(world: PrefabWorldContext, art: AnimStateArt) {
+        super(BIRDCAGE_ID, new SpriteState({ name: declaration.idleAnimation ?? 'idle', billboard: true }));
+        this.worldServices = world;
+        MakeBuildingPersist(this);
+        const { OnSave: saveBuilding, OnLoad: loadBuilding } = this;
+        this.OnSave = (inst, data) => { saveBuilding!(inst, data); data.birdcage = cageOf(inst).save(); };
+        this.OnLoad = (inst, data) => { loadBuilding!(inst, data); if (data.birdcage) cageOf(inst).restore(data.birdcage); };
+        const workable = this.components.workable = new Workable(this);
+        workable.SetWorkAction('HAMMER');
+        workable.SetWorkLeft(4);
+        workable.SetOnWorkCallback(onworked);
+        workable.SetOnFinishCallback(onhammered);
+        this.components.lootdropper = createStructureLootDropper(this);
+        new Birdcage(this, world, art);
+        this.ListenForEvent('onbuilt', () => cageOf(this).onBuilt());
+    }
+}
+
+export function birdcagePrefabs(world: PrefabWorldContext) {
+    return { [BIRDCAGE_ID]: buildingPrefab(declaration, 'birdcage', .5, (_position, sprites) => new BirdcageInstance(world, sprites.archives), world,
+        // The caged bird is an AddOverrideBuild on its AnimState slot.
+        { controller: true }) };
+}

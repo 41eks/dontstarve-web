@@ -1,23 +1,24 @@
 import { Workable } from '../../componets/src/workable';
 import { createStructureLootDropper } from './structureLoot';
-import { type SpriteState } from '@dontstarve-web/display';
-import type * as THREE from 'three';
+import { SpriteState, type SpriteResources } from '@dontstarve-web/display';
 import { createEffect, createSignal, WorldContentKey, type WorldContentSignal, type WorldMoonState, type WorldMoonPhase } from '@dontstarve-web/signals';
-import { moondial_init_fn } from '@dontstarve-web/animation/prefabskin';
+import { AnimState } from '@dontstarve-web/animation/animState';
 import definitions from './definitions.json' with { type: 'json' };
-import {
-    type AnimatedBuildingDefinition,
-    type AnimatedBuildingEventContext,
-} from './animatedBuildingPlacement';
-import { actionEntity } from './actionEntity';
-import { prefabInstance, type PrefabInstance } from './prefabInstance';
+import { buildingPlacer, buildingPrefab, MakeBuildingPersist, type BuildingDeclaration } from './building';
+import { PrefabInstance } from './prefabInstance';
+import type { ReadonlyVector3 } from './transform';
 import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
 import { FRAMES } from '../../stategraphs/src/stategraph';
 import { TILE_SIZE } from './tile';
+import type { PrefabWorldContext } from './worldContext';
 
 export const MOONDIAL_ID = 'moondial' as const;
 export type MoondialId = typeof MOONDIAL_ID;
-export const MOONDIAL_SKIN_ARCHIVES: Readonly<Record<string, string>> = definitions.animatedBuildings.moondial.skinArchives;
+const declaration: BuildingDeclaration = definitions.animatedBuildings.moondial;
+export const MOONDIAL_SKIN_ARCHIVES: Readonly<Record<string, string>> = declaration.skinArchives!;
+
+/** moondial.lua MakePlacer("moondial_placer", "moondial", "moondial_build", "idle_new"). */
+export const MOONDIAL_PLACER = buildingPlacer(declaration);
 
 const WANING_BUILD = 'moondial_waning_build';
 const REFLECTION_SYMBOLS = ['reflection_quarter', 'reflection_half', 'reflection_threequarter'] as const;
@@ -39,7 +40,7 @@ const LIGHT_STATES: Readonly<Record<WorldMoonPhase, { override: number; radius: 
 
 /** moondial.lua's phase look plus SGmoondial.lua's idle / next / hit / placed states. */
 class Moondial {
-    private readonly context: AnimatedBuildingEventContext;
+    private readonly inst: PrefabInstance;
     /** The phase look inputs; the effect in the constructor dresses the current and every rebuilt sprite from them. */
     private readonly look = createSignal<{ phase: WorldMoonPhase; waxing: boolean }>({ phase: 'new', waxing: true });
     private readonly cleanups: (() => void)[] = [];
@@ -51,24 +52,22 @@ class Moondial {
     private waxing = true;
     private disposed = false;
 
-    constructor(context: AnimatedBuildingEventContext) {
-        this.context = context;
-        const model = context.model;
-        actionEntity(model, MOONDIAL_ID).addTag('structure');
+    constructor(inst: PrefabInstance, animState: AnimState) {
+        this.inst = inst;
         // Reflection symbols, light override and light for the current phase; the display dresses every drawn sprite in the AnimState.
         this.cleanups.push(createEffect(() => {
             const { phase, waxing } = this.look.get();
             const waxingLook = (waxing && phase !== 'new') || phase === 'full';
             for (const symbol of REFLECTION_SYMBOLS) {
-                if (waxingLook) context.animState.ClearOverrideSymbol(symbol);
-                else context.animState.OverrideSymbol(symbol, WANING_BUILD, symbol);
+                if (waxingLook) animState.ClearOverrideSymbol(symbol);
+                else animState.OverrideSymbol(symbol, WANING_BUILD, symbol);
             }
             const light = LIGHT_STATES[phase];
-            (prefabInstance(model)!.sprite as SpriteState).setLightOverride(light.override);
-            prefabInstance(model)!.light.set(light.radius > 0
+            inst.sprite.setLightOverride(light.override);
+            inst.light.set(light.radius > 0
                 ? { radius: light.radius * (TILE_SIZE / 4), intensity: .6, falloff: .7, colour: [15 / 255, 160 / 255, 180 / 255] } : null);
         }));
-        this.moon = context.world?.getWatchWorldContent?.(WorldContentKey.Moon, stop => this.cleanups.push(stop));
+        this.moon = inst.worldServices?.getWatchWorldContent?.(WorldContentKey.Moon, stop => this.cleanups.push(stop));
         if (!this.moon) { this.idle(); return; }
         // WatchWorldState("moonphase", onmoonphasechagned): the first run is the constructor's own call (phase == nil).
         let first = true;
@@ -81,8 +80,8 @@ class Moondial {
         });
     }
 
-    private get sprite(): SpriteState { return (prefabInstance(this.context.model)!.sprite as SpriteState); }
-    private get position(): THREE.Vector3 { return this.context.model.position; }
+    private get sprite(): SpriteState { return this.inst.sprite; }
+    private get position(): ReadonlyVector3 { return this.inst.position; }
 
     private phaseAnimation(prefix: string): string { return `${prefix}_${this.phase}`; }
 
@@ -94,7 +93,7 @@ class Moondial {
     }
 
     private after(frames: number, run: () => void): void {
-        const scheduler = this.context.world?.scheduler;
+        const scheduler = this.inst.worldServices?.scheduler;
         if (!scheduler) return;
         const cancel = scheduler.schedule(frames * FRAMES, () => { this.pending.delete(cancel); if (!this.disposed) run(); });
         this.pending.add(cancel);
@@ -144,13 +143,10 @@ class Moondial {
         for (const sound of this.sounds) sound.stop();
         this.sounds.clear();
         for (const cleanup of this.cleanups) cleanup();
-        prefabInstance(this.context.model)!.light.set(null);
-        prefabInstance(this.context.model)?.sprite.setLightOverride(null);
+        this.inst.light.set(null);
+        this.inst.sprite.setLightOverride(null);
     }
 }
-
-interface MoondialInstance extends PrefabInstance { moondial: Moondial }
-const moondialOf = (model: THREE.Object3D): Moondial => (prefabInstance(model)! as MoondialInstance).moondial;
 
 /** onhammered: DropLoot, rock_break_fx (its Stone_break sound), inst:Remove(). */
 function onworked(inst: PrefabInstance): void { (inst as MoondialInstance).moondial.hit(); }
@@ -161,19 +157,31 @@ function onhammered(inst: PrefabInstance): void {
     inst.remove();
 }
 
-export const MOONDIAL_DEFINITION: AnimatedBuildingDefinition = {
-    ...definitions.animatedBuildings.moondial,
-    obstacleRadius: 0.45,
-    skinInit: moondial_init_fn,
-    oninit: context => {
-        const workable = context.instance.components.workable = new Workable(context.instance);
+/** moondial.lua fn(), as far as it is ported: the phase look, SGmoondial and the hammer workable. */
+export class MoondialInstance extends PrefabInstance {
+    readonly moondial: Moondial;
+
+    constructor(world: PrefabWorldContext, sprites: SpriteResources) {
+        super(MOONDIAL_ID, new SpriteState({ name: declaration.idleAnimation ?? 'idle', billboard: true }));
+        this.worldServices = world;
+        MakeBuildingPersist(this);
+        this.addTag('structure');
+        const animState = new AnimState();
+        this.sprite.setAnimState(animState.json, sprites.archives);
+        const workable = this.components.workable = new Workable(this);
         workable.SetWorkAction('HAMMER');
         workable.SetWorkLeft(4);
         workable.SetOnWorkCallback(onworked);
         workable.SetOnFinishCallback(onhammered);
-        context.instance.components.lootdropper = createStructureLootDropper(context.instance);
-        const moondial = (context.instance as MoondialInstance).moondial = new Moondial(context);
-        context.instance.ListenForEvent('onbuilt', () => moondial.placed());
-    },
-    ondispose: ({ model }) => moondialOf(model).dispose(),
-};
+        this.components.lootdropper = createStructureLootDropper(this);
+        const moondial = this.moondial = new Moondial(this, animState);
+        this.ListenForEvent('onbuilt', () => moondial.placed());
+        this.onRemove(() => moondial.dispose());
+    }
+}
+
+export function moondialPrefabs(world: PrefabWorldContext) {
+    return { [MOONDIAL_ID]: buildingPrefab(declaration, 'moondial', .45, (_position, sprites) => new MoondialInstance(world, sprites), world,
+        // The waning reflections are OverrideSymbol on its AnimState.
+        { controller: true }) };
+}
