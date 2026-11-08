@@ -2,6 +2,7 @@ import { EventHandler, State, StateGraphInstance } from './stategraph.ts';
 import type { StateDefinition } from './stategraph.ts';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { SoundEmitter } from '../../prefab/src/soundEmitter';
+import type { Vector3Like } from 'three';
 
 export type NightmareRockStateName = 'idle' | 'raise' | 'lower' | 'conceal' | 'concealed' | 'reveal';
 export type NightmareRockSound = 'dontstarve/sanity/shadowrock_up' | 'dontstarve/sanity/shadowrock_down'
@@ -15,8 +16,9 @@ export interface NightmareRockStateInst {
   /** AnimState:PlayAnimation; a non-looping animation pushes `animover` to the stategraph when it ends. */
   playAnimation(name: string): void;
   readonly SoundEmitter: Pick<SoundEmitter, 'PlaySound'>;
-  /** SpawnPrefab("sanity_raise" | "sanity_lower") at the rock. */
-  spawnFx(prefab: 'sanity_raise' | 'sanity_lower'): void;
+  readonly position: Vector3Like;
+  /** SpawnPrefab(prefab).Transform:SetPosition(position), injected with the rock's world. */
+  readonly world: { spawnPrefab(prefab: 'sanity_raise' | 'sanity_lower', position: Vector3Like): unknown };
   /** inst:OnActiveStateChanged(), a field the prefab assigns: called with the inst. */
   OnActiveStateChanged(inst: NightmareRockStateInst): void;
   OnConcealStateChanged(inst: NightmareRockStateInst): void;
@@ -42,7 +44,7 @@ const states: StateDefinition<NightmareRockStateInst, NightmareRockStateName>[] 
       inst.OnActiveStateChanged(inst);
       inst.playAnimation('raise');
       inst.SoundEmitter.PlaySound('dontstarve/sanity/shadowrock_up');
-      inst.spawnFx('sanity_raise');
+      inst.world.spawnPrefab('sanity_raise', inst.position);
     },
     events: [EventHandler('animover', sg => {
       if (concealedOrQueued(sg.context)) sg.goToState('conceal', true);
@@ -57,7 +59,7 @@ const states: StateDefinition<NightmareRockStateInst, NightmareRockStateName>[] 
       inst.OnActiveStateChanged(inst);
       inst.playAnimation('lower');
       inst.SoundEmitter.PlaySound('dontstarve/sanity/shadowrock_down');
-      inst.spawnFx('sanity_lower');
+      inst.world.spawnPrefab('sanity_lower', inst.position);
     },
     events: [EventHandler('animover', sg => sg.goToState(concealedOrQueued(sg.context) ? 'conceal' : 'idle'))],
   }),
@@ -70,7 +72,7 @@ const states: StateDefinition<NightmareRockStateInst, NightmareRockStateName>[] 
       if (fromRaise) {
         inst.playAnimation('lower_to_conceal');
         inst.SoundEmitter.PlaySound('dontstarve/sanity/shadowrock_down');
-        inst.spawnFx('sanity_lower');
+        inst.world.spawnPrefab('sanity_lower', inst.position);
       } else {
         inst.playAnimation('conceal');
         inst.SoundEmitter.PlaySound('dontstarve/sanity/shadowrock_conseal');
