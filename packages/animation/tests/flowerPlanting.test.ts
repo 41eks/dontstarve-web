@@ -98,7 +98,7 @@ it('buffers planting at frame six, preserves cancelled butterflies and saves the
     const flower = s.world.scene.children.find(model => lookupPrefabInstance(model)?.prefab === 'flower')!;
     expect(prefabInstance(flower)!.listTags()).toContain('flower');
     // The planted flower exists at once; its display draws it once the art has loaded.
-    await prefabDisplay(flower).artLoaded();
+    await prefabDisplay(flower)!.artLoaded();
     expect(s.displays.renderEntities.find(entity => entity.object === flower)?.footPosition).toBe(prefabInstance(flower)!.position);
     expect(actor.canDeploy(new THREE.Vector3(4.2, 0, 0))).toBe(false);
     expect(actor.canDeploy(new THREE.Vector3(4.3, 0, 0))).toBe(true);
@@ -126,7 +126,7 @@ it('quick-picks petals at frame six, preserves a cancelled flower and reloads th
   const controller = new PlayerController(s.world, animation.stategraph, locomotor, createEquipmentExistenceState('HANDS'), picker as never);
   try {
     const flower = await s.flowers.spawnFromSave('flower:pick', 'f6', new THREE.Vector3(2, 0, 0));
-    const component = (findActionEntity(flower)?.components ?? prefabInstance(flower)!.components).pickable;
+    const component = prefabInstance(flower)!.components.pickable;
     const entity = findActionEntity(flower)!;
     expect(canDoSceneAction('PICK', flower, picker as never)).toBe(true);
     s.world.worldEvents.on('plantkilled', killed);
@@ -149,8 +149,8 @@ it('quick-picks petals at frame six, preserves a cancelled flower and reloads th
     expect(killed).toHaveBeenCalledWith({ doer: picker, pos: new THREE.Vector3(2, 0, 0) });
     expect(picked).toHaveBeenCalledOnce();
     expect(entity.isRemoved).toBe(true);
-    expect(component.state.timer.peek()).toEqual({ status: 'stopped' });
-    expect(component.canBePicked).toBe(false);
+    expect(component!.state.timer.peek()).toEqual({ status: 'stopped' });
+    expect(component!.canBePicked).toBe(false);
     // The shared display group releases a removed entity's display on its next frame.
     s.displays.update(0, new THREE.Quaternion());
     expect(flower.parent).toBeNull();
@@ -180,16 +180,16 @@ it('applies rose thorns through combat and respects equipped bramble protection 
     const torch = s.inventory.getEntity(inventorySlotAddress(0))!;
     torch.addTag('bramble_resistant');
     const rose = await s.flowers.spawnFromSave('rose:pick', 'rose', new THREE.Vector3());
-    const component = (findActionEntity(rose)?.components ?? prefabInstance(rose)!.components).pickable;
-    expect(component.pick({ picker, giveItem: () => false })).toBe(false);
+    const component = prefabInstance(rose)!.components.pickable;
+    expect(component!.pick({ picker, giveItem: () => false })).toBe(false);
     expect(health.currenthealth).toBe(150); expect(sanity).not.toHaveBeenCalled();
-    expect(component.pick({ picker, giveItem: (itemId: string, count: number) => s.inventory.add(itemId, count) })).toBe(true);
+    expect(component!.pick({ picker, giveItem: (itemId: string, count: number) => s.inventory.add(itemId, count) })).toBe(true);
     expect(health.currenthealth).toBe(149);
     expect(pushEvent).toHaveBeenCalledExactlyOnceWith('thorns');
     expect(sanity).toHaveBeenCalledExactlyOnceWith(5);
     expect(s.inventory.EquipFromInventory(torch)).toBe(true);
     const protectedRose = await s.flowers.spawnFromSave('rose:protected', 'rose', new THREE.Vector3(8, 0, 0));
-    expect((findActionEntity(protectedRose)?.components ?? prefabInstance(protectedRose)!.components).pickable.pick({
+    expect(prefabInstance(protectedRose)!.components.pickable!.pick({
       picker: { ...picker, hasTag: (tag: string) => tag === 'plantkin' },
       giveItem: (itemId: string, count: number) => s.inventory.add(itemId, count),
     })).toBe(true);
@@ -209,7 +209,7 @@ it('perishes harvested petals in discrete batches and preserves freshness and qu
   ground.entities.bindPerishWorld(world); restoredGround.entities.bindPerishWorld(restoredWorld);
   try {
     const flower = await s.flowers.spawnFromSave('flower:petals', 'f1', new THREE.Vector3());
-    expect((findActionEntity(flower)?.components ?? prefabInstance(flower)!.components).pickable.pick({
+    expect(prefabInstance(flower)!.components.pickable!.pick({
       giveItem: (itemId: string, count: number) => s.inventory.add(itemId, count),
     })).toBe(true);
     expect((await executeDebugCommand('c_give("petals")', s.inventory)).ok).toBe(true);
@@ -351,7 +351,7 @@ it('spawns natural flowers and explicit roses, saves their live fields and resto
     const rose = prefabInstance<FlowerInstance>(s.world.scene.children[1])!;
     expect(rose.prefab).toBe('flower');
     expect(rose.components.inspectable!.getstatus!()).toBe('ROSE');
-    await prefabDisplay(s.world.scene.children[1]).artLoaded();
+    await prefabDisplay(s.world.scene.children[1])!.artLoaded();
     rose.DoRoseBounceAnim!();
     expect(rose.sprite.sprite.peek()).toMatchObject({ clip: { name: 'rose_bounce', loop: false }, queue: [{ name: 'rose', loop: false }] });
     // Persistence and the saved flower fields have no writable copy in the manager or display.

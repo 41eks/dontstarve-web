@@ -83,7 +83,7 @@ it('spawns grass through the debug command using its source bank and build, then
   expect(plantInstance(pickedRestored).sprite.currentAnimation).toBe('picked');
   expect(plantInstance(pickedRestored).components.pickable.state.phase.peek()).toBe('picked');
   expect(plantInstance(pickedRestored).components.pickable.remainingSeconds).toBeCloseTo(1438);
-  tickWorld(scheduler, prefabDisplays(grasses), pickable.remainingSeconds, new THREE.Quaternion());
+  tickWorld(scheduler, prefabDisplays(grasses), pickable.remainingSeconds!, new THREE.Quaternion());
   expect(controller.currentAnimation).toBe('grow');
   expect(pickable.state.phase.peek()).toBe('ready');
   for (let i = 0; i < 60; i++) tickWorld(scheduler, prefabDisplays(grasses), 1 / 30, new THREE.Quaternion());

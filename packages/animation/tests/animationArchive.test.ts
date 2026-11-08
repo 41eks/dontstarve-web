@@ -42,7 +42,7 @@ it('retries a failed shared archive load', async () => {
     loadAnim('treasure_chest.zip', '/dst/data/anim'),
   ]);
   expect(failed.every(({ status }) => status === 'rejected')).toBe(true);
-  expect((await loadAnimationArchive('treasure_chest.zip', '/dst/data/anim')).buildPackage.atlases[0].pixels.length).toBeGreaterThan(0);
+  expect((await loadAnimationArchive('treasure_chest.zip', '/dst/data/anim')).buildPackage.atlases[0].pixels!.length).toBeGreaterThan(0);
   expect(fetchAsset).toHaveBeenCalledTimes(2);
 });
 

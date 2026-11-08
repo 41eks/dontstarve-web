@@ -93,12 +93,12 @@ function setup(kind: 'animated' | 'wall') {
     ? new AnimatedBuildingPlacement(world, {
       building: {
         archive: 'building.zip', name: 'Building', buildLabel: 'building',
-        scale: 1, skinArchives: { selected_skin: 'dynamic/selected_skin.zip' },
+        skinArchives: { selected_skin: 'dynamic/selected_skin.zip' },
         oninit: ({ instance }) => { instance.ListenForEvent('onbuilt', onbuilt); },
       },
     }, consume)
     : new WallPlacement(world, {
-      building: { ...WALL_DEFINITIONS.wall_stone, archive: 'wall.zip', name: 'Wall', buildLabel: 'wall', scale: 1, frontImageIndex: 14, sideImageIndex: 4 },
+      building: { ...WALL_DEFINITIONS.wall_stone, archive: 'wall.zip', name: 'Wall', buildLabel: 'wall', frontImageIndex: 14, sideImageIndex: 4 },
     }, consume);
   const begin = () => placement.begin('building', store.bufferedSkin('building'));
   const click = (button: number) => canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button }));

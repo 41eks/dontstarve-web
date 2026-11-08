@@ -50,32 +50,32 @@ it('accepts one marble or cutstone, hands it back on PICK and restores it from a
   try {
     placement.spawn(SCULPTING_TABLE_ID);
     const [{ model }] = workTargets('HAMMER');
-    const trader = (findActionEntity(model)?.components ?? prefabInstance(model)!.components).trader, pickable = (findActionEntity(model)?.components ?? prefabInstance(model)!.components).pickable;
+    const trader = prefabInstance(model)!.components.trader, pickable = prefabInstance(model)!.components.pickable;
     expect(heldBlock(model)).toBeUndefined();
     expect(prefabInstance(model)!.listTags()).toContain('trader');
     expect(prefabInstance(model)!.listTags()).not.toContain('pickable');
     expect(placement.exportRecords()[0].record.components).not.toHaveProperty('sculptingtable');
 
     // abletoaccepttest: only sculptable materials, and only into an empty slot.
-    expect(trader.AbleToAccept({ prefab: 'log', hasTag: () => false })).toEqual({ ok: false, reason: 'NOTSCULPTABLE' });
+    expect(trader!.AbleToAccept({ prefab: 'log', hasTag: () => false })).toEqual({ ok: false, reason: 'NOTSCULPTABLE' });
     const log = offer('log');
-    expect(trader.AcceptGift(log.entity, log.take)).toBe(false);
+    expect(trader!.AcceptGift(log.entity, log.take)).toBe(false);
     expect(log.take).not.toHaveBeenCalled();
     expect(play).not.toHaveBeenCalled();
 
     const cancelled = offer('marble');
-    expect(trader.AcceptGift(cancelled.entity, () => false)).toBe(false);
+    expect(trader!.AcceptGift(cancelled.entity, () => false)).toBe(false);
     expect(play).not.toHaveBeenCalled();
 
     const marble = offer('marble');
-    expect(trader.AcceptGift(marble.entity, marble.take)).toBe(true);
+    expect(trader!.AcceptGift(marble.entity, marble.take)).toBe(true);
     expect(marble.take).toHaveBeenCalledOnce();
     expect(play).toHaveBeenCalledExactlyOnceWith(itemSound, model.position);
     expect(heldBlock(model)).toEqual([{ archive: 'marble.zip', symbol: smallHash('marble01') }]);
     expect(prefabInstance(model)!.listTags()).toContain('pickable');
-    expect(trader.AbleToAccept(offer('cutstone').entity)).toEqual({ ok: false, reason: 'SLOTFULL' });
+    expect(trader!.AbleToAccept(offer('cutstone').entity)).toEqual({ ok: false, reason: 'SLOTFULL' });
     const full = offer('cutstone');
-    expect(trader.AcceptGift(full.entity, full.take)).toBe(false);
+    expect(trader!.AcceptGift(full.entity, full.take)).toBe(false);
     expect(play).toHaveBeenCalledTimes(1);
     expect(placement.exportRecords()[0].record.components.sculptingtable).toEqual({ itemname: 'marble' });
 
@@ -90,8 +90,8 @@ it('accepts one marble or cutstone, hands it back on PICK and restores it from a
         buildings: definitions.animatedBuildings, walls: Object.keys(definitions.walls) });
     };
     expect(() => parse({ ...saved, components: { ...saved.components, sculptingtable: { itemname: 'log' } } })).toThrow(/itemname/);
-    const restored = placement.spawnFromSave(SCULPTING_TABLE_ID, parse(saved).world.entities.sculptingtable[0]);
-    expect((findActionEntity(restored)?.components ?? prefabInstance(restored)!.components).pickable.product).toBe('marble');
+    const restored = await placement.spawnFromSave(SCULPTING_TABLE_ID, parse(saved).world.entities.sculptingtable[0]);
+    expect(prefabInstance(restored)!.components.pickable!.product).toBe('marble');
     expect(prefabInstance(restored)!.listTags()).toContain('pickable');
     // Lua onload calls giveitem, including its sound; reskinning only replaces art.
     expect(play).toHaveBeenCalledTimes(2);
@@ -102,20 +102,20 @@ it('accepts one marble or cutstone, hands it back on PICK and restores it from a
     expect(heldBlock(model)).toEqual([{ archive: 'marble.zip', symbol: smallHash('marble01') }]);
 
     // pickable.lua Pick: the product goes to the picker, then the block disappears and the slot reopens.
-    expect(pickable.pick({ giveItem: () => false })).toBe(false);
+    expect(pickable!.pick({ giveItem: () => false })).toBe(false);
     expect(play).toHaveBeenCalledTimes(2);
     const doer = { giveItem: vi.fn(() => true) };
-    expect(pickable.pick(doer)).toBe(true);
+    expect(pickable!.pick(doer)).toBe(true);
     expect(play).toHaveBeenCalledTimes(3);
     expect(play).toHaveBeenLastCalledWith(itemSound, model.position);
     expect(doer.giveItem).toHaveBeenCalledWith('marble', 1, expect.anything());
     expect(heldBlock(model)).toBeUndefined();
     expect(prefabInstance(model)!.listTags()).not.toContain('pickable');
-    expect(pickable.pick(doer)).toBe(false);
+    expect(pickable!.pick(doer)).toBe(false);
     expect(play).toHaveBeenCalledTimes(3);
     expect(placement.exportRecords()[0].record.components).not.toHaveProperty('sculptingtable');
     const cutstone = offer('cutstone');
-    expect(trader.AcceptGift(cutstone.entity, cutstone.take)).toBe(true);
+    expect(trader!.AcceptGift(cutstone.entity, cutstone.take)).toBe(true);
     expect(play).toHaveBeenCalledTimes(4);
     expect(placement.exportRecords()[0].record.components.sculptingtable).toEqual({ itemname: 'cutstone' });
   } finally { placement.dispose(); }
@@ -128,7 +128,7 @@ it('drops the held block with the recipe loot when hammered', async () => {
     await placement.spawn(SCULPTING_TABLE_ID);
     const [{ model }] = workTargets('HAMMER');
     const marble = offer('marble');
-    (findActionEntity(model)?.components ?? prefabInstance(model)!.components).trader.AcceptGift(marble.entity, marble.take);
+    prefabInstance(model)!.components.trader!.AcceptGift(marble.entity, marble.take);
     const target = workTargets('HAMMER')[0];
     for (let hit = 0; hit < 4; hit++) target.work();
     const items = dropLoot.mock.calls.flatMap(([items]) => items) as { itemId: string; count: number }[];

@@ -1,4 +1,3 @@
-import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
@@ -71,7 +70,7 @@ it.each(HEADS)('$id burns to a burnt head that keeps sleeping, saves only the bu
   const s = await setup(id);
   try {
     const entity = workTargets('HAMMER')[0].entity;
-    ((findActionEntity(s.model)?.components ?? prefabInstance(s.model)!.components).burnable as Burnable).Ignite(); s.placement.update(11);
+    (prefabInstance(s.model)!.components.burnable as Burnable).Ignite(); s.placement.update(11);
     expect(entity.hasTag('burnt')).toBe(true); expect(s.sprite.currentAnimation).toBe('burnt');
     s.content.moon.set({ phase: 'full', waxing: false }); s.content.cycle.set('night'); await s.settle();
     expect(s.sprite.currentAnimation).toBe('burnt');

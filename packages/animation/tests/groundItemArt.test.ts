@@ -7,7 +7,7 @@ import { strFromU8, unzipSync } from 'fflate';
 import { ItemWorldFixture, itemEntities } from './itemWorldFixture';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { GROUND_ART_DEFINITIONS } from '../../prefab/src/groundItems';
-import { createSignal } from '../../signals/src';
+import { createMemo, createSignal } from '../../signals/src';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { executeDebugCommand } from '../../../src/debugCommands';
@@ -34,7 +34,7 @@ function setup(active = createSignal(true)) {
   const manager = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(), { domElement: canvas } as unknown as THREE.WebGLRenderer,
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', new THREE.Group(), undefined, undefined, undefined, inventory.entities,
     undefined, undefined, undefined, undefined, undefined, undefined,
-    () => Object.assign(active, { dispose: vi.fn() }));
+    () => createMemo(() => active.get()));
   const spawn = (itemId: string, id: string, position = new THREE.Vector3(3, 0, 4), state = {}) => manager.spawnFromSave(id,
     { ...GROUND_ART_DEFINITIONS[itemId], icon: GROUND_ART_DEFINITIONS[itemId].icon ?? '', itemId, count: 1, ...state }, position);
   return { scene, inventory, manager, spawn, dispose() { manager.dispose(); inventory.dispose(); } };

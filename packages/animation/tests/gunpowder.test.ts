@@ -52,10 +52,10 @@ it('lights gunpowder with a torch, explodes its stack, works nearby stone fruit 
     const torch = s.inventory.entities.create({ itemId: 'torch', count: 1 }); configureTorchEntity(torch);
     const target = (id: string) => findActionEntity(s.scene.children.find(model => findActionEntity(model)?.components === s.ground.entities.get(id)!.components)!);
     // Only inst with a burnable are LIGHT targets; hard stone fruit is not.
-    expect(collectEquippedItemActions(torch, undefined, target(powder.id), true)).toContain('LIGHT');
-    expect(collectEquippedItemActions(torch, undefined, target(near.id), true)).not.toContain('LIGHT');
+    expect(collectEquippedItemActions(torch, undefined, target(powder.id)!, true)).toContain('LIGHT');
+    expect(collectEquippedItemActions(torch, undefined, target(near.id)!, true)).not.toContain('LIGHT');
     expect(powder.hasTag('explosive')).toBe(true); expect(powder.hasTag('molebait')).toBe(true);
-    expect(performLightAction(torch, target(powder.id), { prefab: 'wilson' } as never)).toBe(true);
+    expect(performLightAction(torch, target(powder.id)!, { prefab: 'wilson' } as never)).toBe(true);
     // DefaultBurnFn: a lit fuse is not saved.
     expect(powder.components.burnable!.IsBurning()).toBe(true); expect(powder.persists).toBe(false);
     expect(s.ground.exportRecords().some(record => record.id === powder.id)).toBe(false);

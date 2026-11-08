@@ -111,14 +111,14 @@ it('casts at a pond, waits for a bite, hooks, reels and lands a pondfish; a stra
     update: (_dt: number) => { locomotor.update(16, 1 / 30); updates.update(1 / 30); },
     dispose: () => playerController.dispose(),
   };
-  const fishable = () => (findActionEntity(pond).components as { fishable: Fishable }).fishable;
+  const fishable = () => (findActionEntity(pond)!.components as { fishable: Fishable }).fishable;
   const advance = (frames: number) => { for (let i = 0; i < frames; i++) advancePlayer(animation, 1 / 30); };
   const advanceUntil = (done: () => boolean) => { for (let i = 0; i < 300 && !done(); i++) advancePlayer(animation, 1 / 30); expect(done()).toBe(true); };
   try {
     expect(inventoryItemEquipmentKind('fishingrod')).toBe('hand');
     expect(inventoryItemMaxStack('fishingrod')).toBe(1);
     expect(GROUND_ITEM_DEFINITIONS.fishingrod.skinArchives).toHaveProperty('fishingrod_sword');
-    expect(findActionEntity(pond).hasTag('fishable')).toBe(true);
+    expect(findActionEntity(pond)!.hasTag('fishable')).toBe(true);
 
     expect(controller.request(pondEntity())).toBe(true);
     expect(locomotor.bufferedAction).toBeDefined();

@@ -10,6 +10,7 @@ import { DynamicMusic } from '../../componets/src/dynamicmusic';
 import { createSignal } from '../../signals/src/signal';
 import { SoundPresentationScheduler } from '../../sound/src';
 import { PrefabInstance } from '../../prefab/src/prefabInstance';
+import { SpriteState } from '../../display/src/spriteState';
 
 afterEach(() => { DisposeSounds(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -326,7 +327,7 @@ describe('SoundEmitter', () => {
   async function emitterSetup() {
     const s = await setup();
     await PreloadSounds(LOOP, SHOT, 'dontstarve/common/together/boat/damage');
-    const inst = new PrefabInstance('test');
+    const inst = new PrefabInstance('test', new SpriteState({ name: 'idle' }));
     return { s, inst, emitter: inst.AddSoundEmitter() };
   }
 
@@ -368,7 +369,7 @@ describe('SoundEmitter', () => {
   it('an emitter at the listener ignores distance, as the player does while the published listener lags behind it', async () => {
     const s = await setup();
     await PreloadSounds(SHOT);
-    const inst = new PrefabInstance('wilson'), emitter = inst.AddSoundEmitter({ atListener: true });
+    const inst = new PrefabInstance('wilson', new SpriteState({ name: 'idle' })), emitter = inst.AddSoundEmitter({ atListener: true });
     UpdateSoundListener(new THREE.Vector3());
     inst.transform.setPosition(SOUND_MAX_DISTANCE * 2, 0, 0);
     emitter.PlaySound(SHOT);

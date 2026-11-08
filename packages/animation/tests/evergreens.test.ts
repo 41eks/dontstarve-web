@@ -4,7 +4,6 @@ import { advancePlayer } from './playerVisual';
 import { playerDoer } from './playerDoer';
 import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
-import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { createTestArea, useTestTileMap } from './tileMapFixture';
@@ -88,12 +87,12 @@ it('shows growth settled while unloaded as its final stage without the transitio
   const s = await setup();
   try {
     const tree = s.prefabs.spawn('evergreen_short', new THREE.Vector3(3, 0, 0));
-    const root = tree.transform.model, controller = prefabInstance(root)!.sprite, components = (findActionEntity(root)?.components ?? prefabInstance(root)!.components);
+    const root = tree.transform.model, controller = prefabInstance(root)!.sprite, components = prefabInstance(root)!.components;
     await area.visit(new THREE.Vector3(1000, 0, 1000));
     // A sleeping tree keeps its root and state but leaves the scene graph until its tile wakes.
     expect(tree.transform.model).toBe(root); expect(root.parent).toBeNull();
     expect(lookupPrefabInstance(root)!.status.peek()).toBe('asleep');
-    expect((findActionEntity(root)?.components ?? prefabInstance(root)!.components)).toBe(components); expect(controller.loaded).toBe(false);
+    expect(prefabInstance(root)!.components).toBe(components); expect(controller.loaded).toBe(false);
     s.scheduler.advance(5000);
     await area.visit(new THREE.Vector3(3, 0, 0));
     await drawn(root);
@@ -101,7 +100,7 @@ it('shows growth settled while unloaded as its final stage without the transitio
     expect(lookupPrefabInstance(root)!.status.peek()).toBe('active');
     expect(lookupPrefabInstance(root)!.position).toBe(root.position);
     expect(tree.transform.model).toBe(root); expect(prefabInstance(root)!.sprite).toBe(controller);
-    expect((findActionEntity(root)?.components ?? prefabInstance(root)!.components)).toBe(components); expect(controller.loaded).toBe(true);
+    expect(prefabInstance(root)!.components).toBe(components); expect(controller.loaded).toBe(true);
     expect((prefabInstance(tree.transform.model)!.components as { growable: Growable }).growable.GetStage()).toBeGreaterThan(1);
     expect(prefabInstance(tree.transform.model)!.sprite.currentAnimation).not.toMatch(/^grow_/);
   } finally { s.dispose(); }

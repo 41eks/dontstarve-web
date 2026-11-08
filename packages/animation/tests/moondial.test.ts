@@ -8,7 +8,6 @@ import { MOONDIAL_ID } from '../../prefab/src/moondial';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { displayLightOverride } from '../../display/src/displaySprites';
-import type { SpriteController } from '../src/sprite';
 import { smallHash } from '../src/animationAssets';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import * as sound from '../../prefab/src/sound';
@@ -52,7 +51,7 @@ it('keeps phase look and playback through reskin and records only its skin', asy
     expect(reskinEntity(findActionEntity(workTargets('HAMMER')[0].model)!.reskinTarget!)).toBe(true);
     const model = workTargets('HAMMER')[0].display.model;
     expect(lookupPrefabInstance(model)?.skinId).toBe('moondial_an');
-    expect((prefabInstance(model)!.sprite as SpriteController).currentAnimation).toBe('wane_to_half');
+    expect(prefabInstance(model)!.sprite.currentAnimation).toBe('wane_to_half');
     expect(displayLightOverride(model)).toBe(.1);
     // The waning look is the dial's own AnimState, so the new skin's sprite is dressed with it too.
     const declared = sprite.sprite.peek().appearance.get('anim-state')!;

@@ -95,7 +95,7 @@ it('plants a marblebean, digs it back up, and grows it into a mineable shrub tha
     expect([minimap.icon, minimap.priority, model.position.x]).toEqual(['marbleshrub2.png', -1, 12]);
     const sprite = prefabInstance(model)!.sprite;
     // growfromseed spawns the shrub at once; its display draws it once the art has loaded.
-    await prefabDisplay(model).artLoaded();
+    await prefabDisplay(model)!.artLoaded();
     const vertices = () => { let count = 0; model.traverse(o => { if (o instanceof THREE.Mesh) count += o.geometry.drawRange.count === Infinity ? o.geometry.index?.count ?? 0 : o.geometry.drawRange.count; }); return count; };
     const bare = vertices();
     s.snowLevel.set(.02);
@@ -137,7 +137,7 @@ it('plays a drawn shrub\'s grow clip and then rests on the new stage\'s idle', a
   const s = setup();
   try {
     const shrub = s.shrubs.spawn('marbleshrub_short', new THREE.Vector3(12, 0, 24));
-    await prefabDisplay(workTargets('MINE', s.scene)[0].model).artLoaded();
+    await prefabDisplay(workTargets('MINE', s.scene)[0].model)!.artLoaded();
     expect(shrub.sprite.currentAnimation).toBe('idle_short');
     s.scheduler.advance(2700); s.shrubs.update(0);
     expect(shrub.sprite.currentAnimation).toBe('grow_short_to_normal');

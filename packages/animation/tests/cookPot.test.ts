@@ -6,8 +6,7 @@ import { BEEFALO_FEED_COOK_TIME, cookPotState } from '../../prefab/src/cook_pot'
 import { managedBuildings } from './managedBuildings';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { findImage, loadBuild, smallHash } from '../src/animationAssets';
-import type { TransientSpriteAnimationController } from '../src/sprite';
-import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { reskinEntity } from '../../prefab/src/reskin_tool';
 import { performRummageAction, type RummageTarget } from '../../stategraphs/src/rummage';
 import { sceneActions } from './sceneActions';
@@ -28,17 +27,17 @@ it('cooks with source food layers, resumes saved progress and preserves the prod
   const placement = managedBuildings(world, { onInteraction: changed });
   const model = await placement.spawnFromSave('cookpot', { id: 'pot:feed',
     transform: { position: [1, 0, 2], rotationY: 0 }, components: { building: { skinId: 'cookpot_candy' } } });
-  const animation = prefabInstance(model)!.sprite as TransientSpriteAnimationController;
+  const animation = prefabInstance<PrefabInstance>(model)!.sprite;
   expect(performRummageAction(findActionEntity(model) as unknown as RummageTarget, world.player)).toBe(true);
   expect(changed).toHaveBeenLastCalledWith({ buildId: 'cookpot', model, isOpen: true });
-  const container = (findActionEntity(model)?.components ?? prefabInstance(model)!.components).container;
+  const container = prefabInstance(model)!.components.container;
   expect(placement.performContainerAction(model, 'COOK', world.player)).toBe(false);
   expect(cookPotState(model)).toBeUndefined();
   expect(animation.currentAnimation).toBe('cooking_pre_loop');
-  container.OnLoad({ slots: ['twigs', 'red_cap', 'red_cap', 'red_cap']
+  container!.OnLoad({ slots: ['twigs', 'red_cap', 'red_cap', 'red_cap']
     .map((itemId, index) => ({ slotKey: String(index), item: { itemId, count: 1 } })) });
   expect(placement.performContainerAction(model, 'COOK', world.player)).toBe(true);
-  expect(container.IsEmpty()).toBe(true);
+  expect(container!.IsEmpty()).toBe(true);
   expect(changed).toHaveBeenLastCalledWith({ buildId: 'cookpot', model, isOpen: false });
   expect(animation.currentAnimation).toBe('cooking_loop');
   expect(placement.performContainerAction(model, 'COOK', world.player)).toBe(true);
@@ -50,16 +49,16 @@ it('cooks with source food layers, resumes saved progress and preserves the prod
 
   const restoredPlacement = managedBuildings(world, { onInteraction: changed });
   const restored = await restoredPlacement.spawnFromSave('cookpot', saved);
-  const restoredAnimation = prefabInstance(restored)!.sprite as TransientSpriteAnimationController;
-  const restoredStewer = (findActionEntity(restored)?.components ?? prefabInstance(restored)!.components).stewer;
-  const skinSignal = prefabInstance(restored)!.sprite.skinId;
+  const restoredAnimation = prefabInstance<PrefabInstance>(restored)!.sprite;
+  const restoredStewer = prefabInstance(restored)!.components.stewer;
+  const skinSignal = restoredAnimation.skinId;
   expect(restoredAnimation.currentAnimation).toBe('cooking_loop');
   // The display loads the pot's art; one-shot clips play out once it is drawn.
   await vi.waitFor(() => expect(prefabInstance(restored)!.sprite.loaded).toBe(true));
   restoredPlacement.update(1);
   expect(reskinEntity(restoredPlacement.placement.reskinTargets[0])).toBe(true);
   expect(skinSignal.peek()).toBe('cookpot_cauldron');
-  expect((findActionEntity(restored)?.components ?? prefabInstance(restored)!.components).stewer).toBe(restoredStewer);
+  expect(prefabInstance(restored)!.components.stewer).toBe(restoredStewer);
   expect(cookPotState(restored)?.remainingSeconds).toBeCloseTo(BEEFALO_FEED_COOK_TIME - 4);
   expect(prefabInstance(restored)!.sprite.currentAnimation).toBe('cooking_loop');
   restoredPlacement.update(BEEFALO_FEED_COOK_TIME);
@@ -78,7 +77,7 @@ it('cooks with source food layers, resumes saved progress and preserves the prod
       (mesh.material[materialIndex!].map!.image as { data: Uint8Array }).data === pixels);
   };
   // The display loads the food build the AnimState names and redraws the pot with it.
-  await vi.waitFor(() => expect(drawsAtlas(restored, food.atlases[0].pixels)).toBe(true));
+  await vi.waitFor(() => expect(drawsAtlas(restored, food.atlases[0].pixels!)).toBe(true));
   const fullRecord = restoredPlacement.exportRecords()[0].record;
   expect(fullRecord.id).toBe(saved.id);
   expect(fullRecord.transform).toEqual(saved.transform);
@@ -90,23 +89,23 @@ it('cooks with source food layers, resumes saved progress and preserves the prod
       stewer: { product: 'kabobs', phase: 'done', remainingSeconds: 0 } } });
   const ordinaryFood = await loadBuild('cook_pot_food.zip', '/dst/data/anim');
   expect(findImage(ordinaryFood.build, smallHash('kabobs'), 0)).toBeDefined();
-  await vi.waitFor(() => expect(drawsAtlas(high, ordinaryFood.atlases[0].pixels)).toBe(true));
+  await vi.waitFor(() => expect(drawsAtlas(high, ordinaryFood.atlases[0].pixels!)).toBe(true));
   // SetProductSymbol: kabobs fills the pot high; the food comes from the recipe's build and symbol.
   const declared = prefabInstance(high)!.sprite.sprite.peek().appearance.get('anim-state')!;
   if (declared.kind !== 'anim-state') throw new Error('Missing the pot AnimState');
   const product = declared.state.peek();
   expect(product.overrides.get(smallHash('swap_cooked'))?.sources).toEqual([{ archive: 'cook_pot_food.zip', symbol: smallHash('kabobs') }]);
-  expect([...product.shownLayers]).toEqual([smallHash('swap_high')]);
+  expect([...product.shownLayers!]).toEqual([smallHash('swap_high')]);
   expect([...product.hiddenLayers].sort()).toEqual([smallHash('swap_mid'), smallHash('swap_low')].sort());
   const receiver = { giveItem: vi.fn(() => true) };
-  expect((findActionEntity(full)?.components ?? prefabInstance(full)!.components).stewer.Harvest(receiver)).toBe(true);
+  expect(prefabInstance(full)!.components.stewer!.Harvest(receiver)).toBe(true);
   expect(receiver.giveItem).toHaveBeenCalledWith('beefalofeed', 1, new THREE.Vector3(...saved.transform.position));
   expect(prefabInstance(full)!.sprite.currentAnimation).toBe('idle_empty');
   const emptyRecord = restoredPlacement.exportRecords().find(({ record }) => record.id === fullRecord.id && !record.components.stewer)!.record;
   expect(emptyRecord.components.building?.skinId).toBe('cookpot_cauldron');
   expect(emptyRecord.transform).toEqual(saved.transform);
   const empty = await restoredPlacement.spawnFromSave('cookpot', emptyRecord);
-  expect((findActionEntity(empty)?.components ?? prefabInstance(empty)!.components).container.canbeopened).toBe(true);
+  expect(prefabInstance(empty)!.components.container!.canbeopened).toBe(true);
   expect(prefabInstance(empty)!.listTags()).not.toContain('donecooking');
   expect(prefabInstance(empty)!.sprite.currentAnimation).toBe('idle_empty');
   restoredPlacement.dispose();

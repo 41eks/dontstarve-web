@@ -175,7 +175,7 @@ it('draws the moved animated buildings through their archive or controller art, 
   expect(records.map(({ prefabId }) => prefabId).sort()).toEqual([...ids].sort());
   // The save parser accepts what GetPersistData writes, and reloading it exports the same records.
   const save = structuredClone(initialWorld) as unknown as SaveDocument;
-  save.world.entities = Object.fromEntries(ids.map(id => [id, records.filter(({ prefabId }) => prefabId === id).map(({ record }) => structuredClone(record))]));
+  save.world.entities = Object.fromEntries(ids.map(id => [id, records.filter(({ prefabId }) => prefabId === id).map(({ record }) => ({ ...structuredClone(record), transform: { ...record.transform, position: [...record.transform.position] } }))]));
   for (const container of Object.values(save.players.local.inventory.containers)) container.slots = [];
   save.players.local.inventory.bufferedBuilds = [];
   const parsed = deserializeSave(JSON.stringify(save), SAVE_CATALOG).world.entities;

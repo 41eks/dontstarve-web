@@ -94,8 +94,8 @@ it('picks native berries without consuming cycles, pauses in winter and reloads 
     const remaining = pickable.remainingSeconds;
     s.advance(1000); expect(pickable.remainingSeconds).toBe(remaining);
     s.season.set({ season: 'spring', progress: 0 }); await settleEffects();
-    expect(pickable.remainingSeconds).toBeCloseTo(remaining * .75);
-    s.advance(pickable.remainingSeconds); expect(pickable.canBePicked).toBe(true);
+    expect(pickable.remainingSeconds).toBeCloseTo(remaining! * .75);
+    s.advance(pickable.remainingSeconds!); expect(pickable.canBePicked).toBe(true);
     expect(plantInstance(model).sprite.currentAnimation).toBe('grow');
     expect(pickable.pick(s.picker)).toBe(true);
     expect(pickable.cyclesLeft).toBe(5);
@@ -160,7 +160,7 @@ it('preserves a reskinned bush through digging, item pickup/drop, transplant, fe
     await drawn(restored.bushes.spawn('berrybush', new THREE.Vector3(...record.transform.position), record).transform.model);
     expect(restored.bushes.exportRecords().map(({ record }) => record)).toEqual([record]);
     for (let remaining = 4; remaining > 0; remaining--) {
-      s.advance(pickable.remainingSeconds); expect(pickable.pick(s.picker)).toBe(true);
+      s.advance(pickable.remainingSeconds!); expect(pickable.pick(s.picker)).toBe(true);
     }
     expect(pickable.IsBarren()).toBe(true); expect(pickable.remainingSeconds).toBeUndefined();
     expect(plantInstance(replanted).sprite.currentAnimation).toBe('idle_to_dead');

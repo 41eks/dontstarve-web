@@ -12,7 +12,7 @@ export function managedBuildings(world: WorldContext, { consume = () => true, on
   const scheduler = world.scheduler ?? new GameTimeScheduler(), fire = world.fire ?? FireFxHost.create();
   const displays = new PrefabDisplayGroup(world.scene);
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { tickingarea: world.tickingarea, physics: world.physics });
-  const placement = new PlaceableBuildingPlacement({ cameraFacing: createSignal(8), cameraHeading: createSignal(45), ...world, scheduler, fire }, consume, onInteraction, prefabs);
+  const placement = new PlaceableBuildingPlacement({ ...world, cameraFacing: world.cameraFacing ?? createSignal(8), cameraHeading: world.cameraHeading ?? createSignal(45), scheduler, fire }, consume, onInteraction, prefabs);
   let disposed = false;
   return {
     prefabs, displays, scheduler, placement,

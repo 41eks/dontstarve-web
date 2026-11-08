@@ -108,7 +108,10 @@ it('declares tagged book FX as child instances and expires them on game timers w
   for (const root of roots) expect(combined.some(part => part.image === root.image)).toBe(true);
   expect(meshes(model)).toHaveLength(1); // FX parts join the one merged character billboard.
   instance.setActive(false); await settle();
-  for (const entry of fx) { expect(entry.display!.resolveFrame()).toEqual([]); expect(entry.sprite.loaded).toBe(false); }
+  for (const entry of fx) {
+    if (!entry.display) throw new Error(`Missing the display of ${entry.sprite}`);
+    expect(entry.display.resolveFrame()).toEqual([]); expect(entry.sprite.loaded).toBe(false);
+  }
   for (let frame = 0; frame < 240; frame++) advancePlayer(animation, 1 / 30);
   expect(read).toHaveBeenCalledOnce();
   for (const child of children) expect(child.status.peek()).toBe('removed');

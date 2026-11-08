@@ -50,8 +50,8 @@ it('burns dropped live grass/log stacks to prepared ash, notifies signals and im
     });
     const torch = inventory.getEntity(inventorySlotAddress(0))!;
     for (const model of models) {
-      expect(collectEquippedItemActions(torch, undefined, findActionEntity(model), true)).toEqual(['LIGHT']);
-      expect(performLightAction(torch, findActionEntity(model), torch)).toBe(true);
+      expect(collectEquippedItemActions(torch, undefined, findActionEntity(model)!, true)).toEqual(['LIGHT']);
+      expect(performLightAction(torch, findActionEntity(model)!, torch)).toBe(true);
       expect(prefabInstance<ItemEntity>(model)!.components.burnable!.burning.peek()).toBe(true);
       expect(prefabInstance<ItemEntity>(model)!.persistence.peek()).toBe(false);
       expect(performPickupAction(itemAt(model), createPickupDoer(new THREE.Group(), inventory))).toBe(false);
@@ -123,8 +123,8 @@ it('supports c_spawn, blocks noncombustible targets and preserves identity/state
     const model = manager.reskinTargets.find(target => target.prefabId === 'log')!.model;
     const rocks = manager.reskinTargets.find(target => target.prefabId === 'rocks')!.model;
     const torch = inventory.getEntity(inventorySlotAddress(0))!;
-    expect(collectEquippedItemActions(torch, undefined, findActionEntity(rocks), true)).toEqual([]);
-    performLightAction(torch, findActionEntity(model), torch); manager.update(5, new THREE.Quaternion());
+    expect(collectEquippedItemActions(torch, undefined, findActionEntity(rocks)!, true)).toEqual([]);
+    performLightAction(torch, findActionEntity(model)!, torch); manager.update(5, new THREE.Quaternion());
     entity.components.burnable!.Extinguish(); manager.update(20, new THREE.Quaternion());
     expect(entity.isRemoved).toBe(false); expect(entity.persists).toBe(true); expect(entity.snapshot()).toEqual(before);
     expect(prefabInstance<ItemEntity>(model)!.components.burnable!.burning.peek()).toBe(false);
@@ -139,7 +139,7 @@ it('supports c_spawn, blocks noncombustible targets and preserves identity/state
     const dropped = manager.reskinTargets.find(target => target.prefabId === 'log')!.model;
     expect(prefabInstance<ItemEntity>(dropped)!.components.burnable!.burning).toBe(burningSignal); expect(prefabInstance<ItemEntity>(dropped)!.getComponent<BurnableItemController>('burnable_item')!.burnt).toBe(burntSignal);
     expect(entity.snapshot()).toEqual(before); expect(entity.transform.position.toArray()).toEqual([8, 0, -4]);
-    performLightAction(torch, findActionEntity(dropped), torch); manager.update(15, new THREE.Quaternion());
+    performLightAction(torch, findActionEntity(dropped)!, torch); manager.update(15, new THREE.Quaternion());
     expect(entity.isRemoved).toBe(true);
     expect(manager.exportRecords().map(record => record.components.stack?.itemId)).toEqual(['cutgrass', 'ash', 'rocks', 'ash']);
   } finally { registry.dispose(); inventory.dispose(); restored.manager.dispose(); restored.inventory.dispose(); }

@@ -135,7 +135,7 @@ it('preserves a loaded skinned record across reskin, pickup, inventory transfer,
     expect(inventory.GetActiveItem()).toBe(invalid);
     inventory.extract(cursor, 1, invalid); invalid.destroy();
     expect(give(model, plain, true)).toBe(false);
-    expect(prefabInstance(model)!.components.phonograph.record).toBeUndefined();
+    expect(prefabInstance(model)!.components.phonograph!.record).toBeUndefined();
     skinned.setWet(true);
     expect(give(model, skinned)).toBe(true);
     expect(manager.entities.get('phonograph:test')!.components.inventory!.GetItems()).toEqual([skinned]);
@@ -150,7 +150,7 @@ it('preserves a loaded skinned record across reskin, pickup, inventory transfer,
     expect(reskinEntity(target)).toBe(true);
     model = manager.reskinTargets.find(({ prefabId }) => prefabId === 'phonograph')!.model as THREE.Group;
     expect(lookupPrefabInstance(model)?.entityId).toBe('phonograph:test'); expect(model.position).toEqual(position);
-    expect(prefabInstance(model)!.components.phonograph.snapshot()).toEqual({ phonographRecord: 'record_creepyforest', playbackRemaining: 54 });
+    expect(prefabInstance(model)!.components.phonograph!.snapshot()).toEqual({ phonographRecord: 'record_creepyforest', playbackRemaining: 54 });
     expect(PlaySound).toHaveBeenCalledTimes(soundCalls);
     expect(playingSound.stop).not.toHaveBeenCalled();
     const data = structuredClone(initialWorld) as any;
@@ -168,7 +168,7 @@ it('preserves a loaded skinned record across reskin, pickup, inventory transfer,
         ...spec, ...saved[0].components.stack!, playbackRemaining: saved[0].components.phonograph!.remainingSeconds,
       }, position);
       const restoredEntity = restoredManager.entities.get(saved[0].id)!;
-      expect(prefabInstance(restored)!.components.phonograph.remainingSeconds).toBe(54);
+      expect(prefabInstance(restored)!.components.phonograph!.remainingSeconds).toBe(54);
       expect(restoredEntity.components.inventory!.GetItems()[0].snapshot()).toEqual(skinned.snapshot());
     } finally { restoredManager.dispose(); restoredInventory.dispose(); }
     // Cancelling before frame 13 never ejects the old record or stops music.
@@ -177,7 +177,7 @@ it('preserves a loaded skinned record across reskin, pickup, inventory transfer,
     expect(manager.exportRecords()).toEqual(before);
     vi.spyOn(THREE.Raycaster.prototype, 'intersectObjects').mockReturnValue([{ object: model } as unknown as THREE.Intersection]);
     performPickupAction(itemAt(model), createPickupDoer(player, inventory));
-    expect(prefabInstance(model)!.components.phonograph.isPlaying).toBe(false);
+    expect(prefabInstance(model)!.components.phonograph!.isPlaying).toBe(false);
     const item = inventory.get(from)!;
     expect(item.phonographRecord).toBe('record_creepyforest');
     expect(item.skinId).toBe('decor_phonograph_cawnival');
@@ -192,8 +192,8 @@ it('preserves a loaded skinned record across reskin, pickup, inventory transfer,
     expect(skinned.snapshot()).toEqual(contents);
     expect(await manager.drop({ ...spec, ...item, entity: loaded }, position, () => inventory.extract(to, 1, loaded) ?? false)).toBe(true);
     const dropped = manager.reskinTargets.find(({ model }) => lookupPrefabInstance(model)?.entityId !== 'restored')!.model as THREE.Group;
-    expect(prefabInstance(dropped)!.components.phonograph.record).toBe('record_creepyforest');
-    expect(prefabInstance(dropped)!.components.phonograph.isPlaying).toBe(false);
+    expect(prefabInstance(dropped)!.components.phonograph!.record).toBe('record_creepyforest');
+    expect(prefabInstance(dropped)!.components.phonograph!.isPlaying).toBe(false);
     const droppedRecord = manager.exportRecords().find(({ id }) => id !== 'restored')!;
     expect(droppedRecord.components.phonograph).toBeUndefined();
     // Replacing the record ejects its original skin; one hammer hit ejects the new record.

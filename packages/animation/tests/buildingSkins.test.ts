@@ -1,7 +1,7 @@
 import { GameTimeScheduler } from '../../signals/src';
 import { prefabDisplay } from '@dontstarve-web/display';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
-import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { unzipSync } from 'fflate';
@@ -225,7 +225,7 @@ describe('DST building skins', () => {
     const model = buildings.spawnFromSave('researchlab4', { id: 'lab:signal', transform: { position: [3, 0, 4], rotationY: 0 },
       components: { building: {} } }) as THREE.Group;
     await prefabDisplay(model)!.artLoaded();
-    const signal = prefabInstance(model)!.sprite.skinId;
+    const signal = prefabInstance<PrefabInstance>(model)!.sprite.skinId;
     const changes: unknown[] = [];
     const stop = signal.subscribe((skinId: unknown) => changes.push(skinId));
     const originalMesh = meshOf(model);
@@ -237,7 +237,7 @@ describe('DST building skins', () => {
     expect(reskinEntity(reskinTarget(model))).toBe(true);
     expect(changes).toEqual([signal.peek()]);
     expect(signal.peek()).toBeDefined();
-    await prefabDisplay(model).artLoaded();
+    await prefabDisplay(model)!.artLoaded();
     expect(meshOf(model)).toBe(originalMesh);
     expect(disposeOldGeometry).not.toHaveBeenCalled();
     expect(buildings.exportRecords()[0].record).toMatchObject({ id: 'lab:signal',
@@ -272,7 +272,7 @@ describe('DST building skins', () => {
     animation.start('proximity_loop');
     expect(animation.currentAnimation).toBe('proximity_loop');
     expect(reskinEntity(reskinTarget(model))).toBe(true);
-    const skinId = prefabInstance(model)!.sprite.skinId.peek();
+    const skinId = prefabInstance<PrefabInstance>(model)!.sprite.skinId.peek();
     expect(meshes()).toBe(0);
 
     awake.set(true);
