@@ -29,9 +29,9 @@
 | `SetBank`、`SetBuild`（运行中切换） | `sprite.setArtSource(...)` | `fence.ts` | |
 | 构造函数里 `PlayAnimation(x, true)` | `new SpriteState({ name: x })` | `atrium_pillar.ts` | |
 | 构造函数里 `PlayAnimation(x)` | `new SpriteState({ name: x, held: true })`，或构造后 `sprite.playOnce(x)` | `atrium_gate.ts`、`vault_pillar.ts` | |
-| `PlayAnimation(x, true)` | `sprite.start(x)` | `mushtree.ts` | 循环方式按 Lua，不为实例化改动 |
-| `PlayAnimation(x)` | `sprite.playOnce(x, complete?)` | `monkeypillar.ts` | 没有绘制时立即结算，`complete` 同步执行 |
-| `PushAnimation(x, loop)` | `sprite.pushAnimation(x, loop)` | `atrium_gate.ts` | TS 默认 `loop = false`。Lua 不传 `loop` 时的行为由引擎决定，脚本里查不到（见下方说明），要显式传 |
+| `PlayAnimation(x, loop)` | `inst.AnimState.PlayAnimation(x, loop)`（循环转 `sprite.start(x)`，否则 `sprite.playOnce(x)`） | `birdcage.ts`、`fire.ts` | 循环方式按 Lua，不为实例化改动；不发 `animover`，要完成通知用下一行 |
+| `PlayAnimation(x)` 并等 `animover` | `sprite.playOnce(x, complete)` | `monkeypillar.ts`、`campfirefire.ts` | 没有绘制时立即结算，`complete` 同步执行 |
+| `PushAnimation(x, loop)` | `inst.AnimState.PushAnimation(x, loop)`（即 `sprite.pushAnimation`） | `birdcage.ts`、`atrium_gate.ts` | TS 默认 `loop = false`。Lua 不传 `loop` 时的行为由引擎决定，脚本里查不到（见下方说明），要显式传 |
 | 不播放动画（只有 bank、build） | `{ none: true }` 或 `sprite.clearAnimation()` | `fireflies.ts` | 不绘制，直到有 clip |
 | `SetPercent(x, p)` | `sprite.setPercent(x, p)` | `winterometer.ts` | |
 | `SetFrame(n)` | `sprite.setFrame(n)`；随机帧用 `sprite.setFrameAt(fraction)` | `monkeypillar.ts` | `setFrameAt` 取 0–1 比例，未加载时也能声明 |
@@ -48,7 +48,7 @@
 | Lua | TS | 示例 | 差异 |
 | --- | --- | --- | --- |
 | `OverrideSymbol`（prefab 自身） | `sprite.setSymbolOverride(symbol, archive, source)` | `monkeypillar.ts` | 写入 sprite json，跨休眠保留 |
-| `OverrideSymbol`、`Show`、`Hide` 等（共用 `AnimState`） | `AnimState` 同名方法 + `sprite.setAnimState(anim.json, art)` | `player.ts` | 只声明一次，不回写快照 |
+| `OverrideSymbol`、`Show`、`Hide` 等（共用 `AnimState`） | `inst.AnimState` 同名方法 + 一次 `sprite.setAnimState(inst.AnimState.json, art)` | `sculptingtable.ts`、`player.ts` | 只声明一次，不回写快照；`inst.AnimState` 与播放是同一个对象 |
 | 装备改写 `owner.AnimState` | `EquipmentAnimState` 插槽（`declareAnimState`） | `equipmentVisual.ts` | 分层，不是后写者生效 |
 | `HideSymbol`、`ShowSymbol` | `sprite.setSymbolHidden(symbol, hidden)` | `monkeypillar.ts` | |
 | `Hide(layer)`、`Show(layer)` | `sprite.hideLayer`、`sprite.showLayer` | `display/src/spriteState.ts` | |

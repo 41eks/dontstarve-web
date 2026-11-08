@@ -76,11 +76,8 @@ export class Fire implements BurnFX, FireFXInst {
   /** fire.lua's levels have no going-out clip, so Extinguish never asks for this. */
   RemoveOnAnimOver(): void { this.Remove(); }
 
-  PlayAnimation(name: string, loop = false): void {
-    if (loop) this.instance.sprite.start(name);
-    else this.instance.sprite.playOnce(name);
-  }
-  PushAnimation(name: string, loop = false): void { this.instance.sprite.pushAnimation(name, loop); }
+  PlayAnimation(name: string, loop = false): void { this.instance.AnimState.PlayAnimation(name, loop); }
+  PushAnimation(name: string, loop = false): void { this.instance.AnimState.PushAnimation(name, loop); }
 
   PlaySound(path: string, name?: string): void {
     const sound = PlaySound(path as SoundEventPath, this.owner.position);

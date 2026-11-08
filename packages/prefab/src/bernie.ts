@@ -130,7 +130,7 @@ export class BernieInstance extends PrefabInstance implements BernieStateInst {
     this.animstate = new AnimState(world.scheduler, lengths, event => this.sg?.pushEvent(event));
     // The sprite follows the logical AnimState at once, so SetTime right after PlayAnimation lands on the new clip.
     const stopSprite = this.animstate.animation.subscribe(({ name, loop }) => {
-      if (loop) this.sprite.start(name); else this.sprite.playOnce(name);
+      this.AnimState.PlayAnimation(name, loop);
     });
     this.sg = big ? createBernieStateGraph(this, true, world.scheduler) : createBernieStateGraph(this, false, world.scheduler);
     this.bernieBrain = big ? new BernieBigBrain(this, WORLD_SCALE) : new BernieBrain(this, WORLD_SCALE);

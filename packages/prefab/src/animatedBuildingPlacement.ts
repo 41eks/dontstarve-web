@@ -391,18 +391,17 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             skinAnimationBanks: skinId === undefined ? undefined : definition.skinAnimationBanks?.[skinId],
             hiddenLayers: definition.hiddenLayers,
         });
-        const animState = new AnimState();
-        if (definition.skinAnimState && skinArchive !== undefined) definition.skinAnimState.init(animState, skinArchive);
         const initialize = (entity: PrefabInstance) => {
             entity.skinId = skinId;
-            entity.sprite.setAnimState(animState.json, resources.archives);
+            if (definition.skinAnimState && skinArchive !== undefined) definition.skinAnimState.init(entity.AnimState, skinArchive);
+            entity.sprite.setAnimState(entity.AnimState.json, resources.archives);
             if (definition.skinAnimState) return;
             entity.sprite.setSkinSource({ art: resources.archives,
                 archives: Object.fromEntries(Object.entries(definition.skinArchives ?? {}).map(([id, archive]) =>
                     [id, definition.skinInit?.(id).skinArchive ?? archive])),
                 symbols: definition.skinSymbols, baseSymbols: definition.baseSymbols, animationBanks: definition.skinAnimationBanks });
         };
-        return { source, animState, initialize };
+        return { source, initialize };
     }
 
     private createInstance(
@@ -412,7 +411,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     ): AnimatedBuildingInstance<BuildId> {
         if (this.disposed) throw new Error('Placement has been disposed');
         const definition = this.definitions[buildId];
-        const { source, animState, initialize } = this.declareArt(this.sprites, buildId, skinId);
+        const { source, initialize } = this.declareArt(this.sprites, buildId, skinId);
         // The fire it spawns loads with the building, so that it is drawn when it is spawned.
         const dependencies = definition.burnable ? [this.fireFx.source] : [];
         const { instance: entity, display } = createPrefabEntity(buildId, source, { name: this.idleAnimation(buildId), held: definition.idleHeld === true, billboard: true },
@@ -424,7 +423,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             instance: entity,
             display,
             animation: entity.sprite,
-            animState,
+            animState: entity.AnimState,
             skinId: entity.sprite.skinId,
         };
         if (attach) instance.instance.entityId = newEntityId();

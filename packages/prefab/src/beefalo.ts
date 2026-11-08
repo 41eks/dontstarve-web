@@ -191,7 +191,7 @@ export class BeefaloController {
       const { name, loop, revision } = animation.get();
       if (revision === drawn) return;
       drawn = revision;
-      if (loop) sprite.start(name); else sprite.playOnce(name);
+      instance.AnimState.PlayAnimation(name, loop);
     });
     if (saved?.beard) this.beard.OnLoad(saved.beard);
     this.sg = new BeefaloStateGraph({

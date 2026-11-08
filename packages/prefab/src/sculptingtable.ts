@@ -8,7 +8,6 @@ import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
 import { PrefabInstance } from './prefabInstance';
 import { SpriteState, type SpriteResources } from '@dontstarve-web/display';
 import definitions from './definitions.json' with { type: 'json' };
-import { AnimState } from '@dontstarve-web/animation/animState';
 import { buildingPlacer, buildingPrefab, LoadBuildingSkin, SaveBuildingSkin, type BuildingDeclaration } from './building';
 import { Pickable } from './components/pickable';
 import { Trader, type TradeAcceptance, type TradeItem } from '../../componets/src/trader';
@@ -149,14 +148,13 @@ export class SculptingTableInstance extends PrefabInstance {
         pickable: Pickable;
         trader: Trader<TradeItem, unknown, SculptingTableInstance>;
     };
-    /** inst.AnimState: the display dresses every drawn sprite and reskin with the held block. */
-    readonly AnimState = new AnimState();
     /** inst.SoundEmitter: one-shot sounds and the "loop" named sound. */
     readonly _sounds = new Set<SoundHandle>();
     _loop?: SoundHandle;
 
     constructor(sprites: SpriteResources) {
         super(SCULPTING_TABLE_ID, new SpriteState({ name: declaration.idleAnimation ?? 'idle', billboard: true }));
+        // inst.AnimState: the display dresses every drawn sprite and reskin with the held block.
         this.sprite.setAnimState(this.AnimState.json, sprites.archives);
     }
 }

@@ -274,7 +274,7 @@ class WilsonController implements WilsonAnimationController {
     this.resources = resources;
     this.equipmentAssets = new GroundItemAssets();
     // The sprite holds the AnimState's own json signal; the player's display follows it and loads the builds it names from the equipment assets.
-    this.AnimState = new AnimState();
+    this.AnimState = instance.AnimState;
     instance.sprite.setAnimState(this.AnimState.json, this.equipmentAssets);
     for (const layer of ['ARM_carry', 'LANTERN_OVERLAY', 'HAT', 'HAIR_HAT', 'HEAD_HAT', 'HEAD_HAT_NOHELM', 'HEAD_HAT_HELM']) this.AnimState.Hide(layer);
     this.hatAssets = new HatEquipmentAssets(assetBaseUrl);
@@ -524,7 +524,7 @@ class WilsonController implements WilsonAnimationController {
       this.artSource = { animationArchive: archive, bank, buildArchive, fallbackBuilds, art: this.resources.archives };
       this.instance.sprite.setArtSource(this.artSource);
     }
-    if (clip.loop) this.instance.sprite.start(clip.name); else this.instance.sprite.playOnce(clip.name);
+    this.instance.AnimState.PlayAnimation(clip.name, clip.loop);
     if (this.makeSoundActive && this.state === 'build_loop') {
       this.SoundEmitter.PlaySound('dontstarve/wilson/make_trap', 'make');
     }

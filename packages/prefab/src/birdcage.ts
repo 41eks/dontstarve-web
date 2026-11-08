@@ -186,10 +186,9 @@ export class Birdcage {
 
     private playStateAnim(name: string, loop = false): void {
         const clip = name + this.cageStateSignal.peek();
-        if (loop) this.instance.sprite.start(clip);
-        else this.instance.sprite.playOnce(clip);
+        this.instance.AnimState.PlayAnimation(clip, loop);
     }
-    private pushStateAnim(name: string, loop = false): void { this.instance.sprite.pushAnimation(name + this.cageStateSignal.peek(), loop); }
+    private pushStateAnim(name: string, loop = false): void { this.instance.AnimState.PushAnimation(name + this.cageStateSignal.peek(), loop); }
 
     private doTaskInTime(seconds: number, run: () => void): void {
         const scheduler = this.world?.scheduler;

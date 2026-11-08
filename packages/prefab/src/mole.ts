@@ -349,7 +349,7 @@ export function molePrefabs(world: ItemPrefabWorld): Record<string, ItemPrefabDe
         const mole = inst.getComponent<Mole>('mole')!, sprite = inst.sprite;
         mole.bindWorld(moleWorld);
         const animation = watchSignal(mole.animstate.animation, stop => inst.onRemove(stop));
-        createEffect(() => { const { name, loop } = animation.get(); if (loop) sprite.start(name); else sprite.playOnce(name); });
+        createEffect(() => { const { name, loop } = animation.get(); inst.AnimState.PlayAnimation(name, loop); });
         mole.bindPhysics(world.physics);
         const heading = watchSignal(moleWorld.cameraHeading, stop => inst.onRemove(stop));
         // Visibility and facing change the sprite json only when their value does.

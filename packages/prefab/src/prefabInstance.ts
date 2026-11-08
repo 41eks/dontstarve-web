@@ -20,6 +20,7 @@ import { refreshMouseTarget } from './mouseTargets';
 import { Transform, type ReadonlyVector3 } from './transform';
 import type { PrefabWorldContext } from './worldContext';
 import { SoundEmitter } from './soundEmitter';
+import { InstanceAnimState } from './instanceAnimState';
 
 type ActionComponents = ComponentActionEntity['components'];
 
@@ -151,6 +152,10 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   private readonly removalHandlers = new Set<() => void>();
   /** inst.event_listeners: entity events belong to the logical entity, not to the model that draws it. */
   private readonly events = new EventEmitter<Record<string, unknown>>();
+
+  private animState?: InstanceAnimState;
+  /** inst.AnimState: playback on `sprite`, and the symbol overrides and layers the entity declares with `sprite.setAnimState`. */
+  get AnimState(): InstanceAnimState { return this.animState ??= new InstanceAnimState(this.sprite); }
 
   /** `sprite` is the entity's sprite state, typed by what its display can draw. */
   constructor(prefab: string, sprite: Sprite, transform = new Transform()) {

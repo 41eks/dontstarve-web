@@ -444,7 +444,7 @@ export function lightflierPrefabs(world: ItemPrefabWorld): Record<string, ItemPr
         const habitat = world.lightflierWorld;
         habitat?.bind(fly);
         const animation = watchSignal(fly.animstate.animation, stop => inst.onRemove(stop));
-        createEffect(() => { const { name, loop } = animation.get(); if (loop) sprite.start(name); else sprite.playOnce(name); });
+        createEffect(() => { const { name, loop } = animation.get(); inst.AnimState.PlayAnimation(name, loop); });
         fly.bindPhysics(world.physics);
         inst.ListenForEvent('ondropped', () => dropStackIndividually(inst, world));
         sprite.setLightOverride(1);
