@@ -9,9 +9,9 @@ import { PrefabInstance } from './prefabInstance';
 import { SpriteState, type SpriteResources } from '@dontstarve-web/display';
 import definitions from './definitions.json' with { type: 'json' };
 import { AnimState } from '@dontstarve-web/animation/animState';
-import { buildingPlacer, buildingPrefab, MakeBuildingPersist, type BuildingDeclaration } from './building';
+import { buildingPlacer, buildingPrefab, LoadBuildingSkin, SaveBuildingSkin, type BuildingDeclaration } from './building';
 import { Pickable } from './components/pickable';
-import { Trader, type TradeItem } from '../../componets/src/trader';
+import { Trader, type TradeAcceptance, type TradeItem } from '../../componets/src/trader';
 import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
 import type { PlacementSaveRecord } from './saveRecord';
 import type { PrefabWorldContext } from './worldContext';
@@ -43,10 +43,67 @@ const SCULPTING_SYMBOL = 'cutstone01';
 const PLACE_SOUND = 'dontstarve/common/together/sculpting_table/craft';
 const ITEM_SOUND = 'dontstarve/common/together/moonbase/moonstaff_place';
 
+/** inst.SoundEmitter:PlaySound: one-shots stop when the table is removed. */
+function playsound(inst: SculptingTableInstance, path: SoundEventPath): void {
+    for (const sound of inst._sounds) if (!sound.isPlaying()) inst._sounds.delete(sound);
+    inst._sounds.add(PlaySound(path, inst.position));
+}
+
+function onhammered(inst: PrefabInstance): void {
+    inst.components.lootdropper!.DropLoot();
+    const { pickable } = (inst as SculptingTableInstance).components;
+    if (pickable.canInteractWith && pickable.product) inst.components.lootdropper!.SpawnLootPrefab(pickable.product);
+    inst.worldServices?.fx?.collapse?.('small', inst.position, 'wood');
+    inst.remove();
+}
+
+function onhit(inst: PrefabInstance): void {
+    if (inst.hasTag('burnt')) return;
+    const on = inst.components.prototyper?.on === true;
+    inst.sprite.playOnce('hit');
+    inst.sprite.pushAnimation(on ? 'proximity_loop' : 'idle', on);
+}
+
 function onbuilt(inst: SculptingTableInstance): void {
-    inst.playTableSound(PLACE_SOUND);
     inst.sprite.playOnce('place');
     inst.sprite.pushAnimation('idle', false);
+    playsound(inst, PLACE_SOUND);
+}
+
+/** onitemtaken: the pickable stops being interactable and the block disappears. */
+function onitemtaken(entity: unknown): void {
+    const inst = entity as SculptingTableInstance;
+    const pickable = inst.components.pickable!;
+    if (pickable.canInteractWith) {
+        pickable.canInteractWith = false;
+        playsound(inst, ITEM_SOUND);
+    }
+    inst.AnimState.ClearOverrideSymbol(SCULPTING_SYMBOL);
+    inst.components.prototyper!.SetTechLevel('SCULPTING', 1);
+}
+
+/** giveitem: the block becomes pickable and shows the offered material. */
+function giveitem(inst: SculptingTableInstance, itemname: SculptableMaterial): void {
+    const pickable = inst.components.pickable!;
+    pickable.SetUp(itemname, HELD_ITEM_REGEN_TIME);
+    pickable.pause();
+    if (!pickable.canInteractWith) {
+        pickable.canInteractWith = true;
+        playsound(inst, ITEM_SOUND);
+    }
+    inst.AnimState.ClearOverrideSymbol(SCULPTING_SYMBOL);
+    const { swapfile, symbol } = SCULPTABLE_MATERIALS[itemname];
+    inst.AnimState.OverrideSymbol(SCULPTING_SYMBOL, swapfile, symbol);
+    inst.components.prototyper!.SetTechLevel('SCULPTING', 2);
+}
+
+function ongivenitem(inst: SculptingTableInstance, _giver: unknown, item: TradeItem): void {
+    if (isSculptableMaterial(item.prefab)) giveitem(inst, item.prefab);
+}
+
+function abletoaccepttest(inst: SculptingTableInstance, item: TradeItem): TradeAcceptance {
+    if (inst.components.pickable.canInteractWith) return { ok: false, reason: 'SLOTFULL' };
+    return isSculptableMaterial(item.prefab) ? { ok: true } : { ok: false, reason: 'NOTSCULPTABLE' };
 }
 
 function onturnon(inst: PrefabInstance): void {
@@ -55,120 +112,95 @@ function onturnon(inst: PrefabInstance): void {
         inst.sprite.pushAnimation('proximity_loop', true);
     } else inst.sprite.start('proximity_loop');
     const table = inst as SculptingTableInstance;
-    table.loop = PlaySound('dontstarve/common/together/sculpting_table/proximity_LP', inst.position);
+    table._loop?.stop();
+    table._loop = PlaySound('dontstarve/common/together/sculpting_table/proximity_LP', inst.position);
 }
 
 function onturnoff(inst: PrefabInstance): void {
     if (inst.hasTag('burnt')) return;
     inst.sprite.pushAnimation('idle', false);
     const table = inst as SculptingTableInstance;
-    table.loop?.stop();
-    table.loop = undefined;
-}
-
-function onworked(inst: PrefabInstance): void {
-    if (inst.hasTag('burnt')) return;
-    const on = inst.components.prototyper?.on === true;
-    inst.sprite.playOnce('hit');
-    inst.sprite.pushAnimation(on ? 'proximity_loop' : 'idle', on);
-}
-
-function onhammered(inst: PrefabInstance): void {
-    inst.components.lootdropper!.DropLoot();
-    const { pickable } = inst as SculptingTableInstance;
-    if (pickable.canInteractWith && pickable.product) inst.components.lootdropper!.SpawnLootPrefab(pickable.product);
-    inst.worldServices?.fx?.collapse?.('small', inst.position, 'wood');
-    inst.remove();
+    table._loop?.stop();
+    table._loop = undefined;
 }
 
 /** onsave: data.itemname = caninteractwith and product or nil. The pickable's own record stays out of the save. */
 function onsave(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
+    SaveBuildingSkin(inst, data);
     delete (data as { pickable?: unknown }).pickable;
-    const { pickable } = inst as SculptingTableInstance;
+    const { pickable } = (inst as SculptingTableInstance).components;
     if (pickable.canInteractWith && pickable.product) data.sculptingtable = { itemname: pickable.product };
 }
 
 /** onload: giveitem restores the held block. */
 function onload(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
+    LoadBuildingSkin(inst, data);
     const itemname = data.sculptingtable?.itemname;
-    if (itemname !== undefined && isSculptableMaterial(itemname)) (inst as SculptingTableInstance).giveItem(itemname);
+    if (itemname !== undefined && isSculptableMaterial(itemname)) giveitem(inst as SculptingTableInstance, itemname);
+}
+
+function OnRemoveEntity(inst: SculptingTableInstance): void {
+    for (const sound of inst._sounds) sound.stop();
+    inst._sounds.clear();
+    inst._loop?.stop();
+    inst._loop = undefined;
+}
+
+/** sculptingtable.lua's fields on the inst; fn() below registers the module callbacks on it. */
+export class SculptingTableInstance extends PrefabInstance {
+    declare readonly components: PrefabInstance['components'] & {
+        pickable: Pickable;
+        trader: Trader<TradeItem, unknown, SculptingTableInstance>;
+    };
+    /** inst.AnimState: the display dresses every drawn sprite and reskin with the held block. */
+    readonly AnimState = new AnimState();
+    /** inst.SoundEmitter: one-shot sounds and the "loop" named sound. */
+    readonly _sounds = new Set<SoundHandle>();
+    _loop?: SoundHandle;
+
+    constructor(sprites: SpriteResources) {
+        super(SCULPTING_TABLE_ID, new SpriteState({ name: declaration.idleAnimation ?? 'idle', billboard: true }));
+        this.sprite.setAnimState(this.AnimState.json, sprites.archives);
+    }
 }
 
 /** sculptingtable.lua fn(), as far as it is ported: the prototyper, the held block's trader and pickable, and the hammer workable. */
-export class SculptingTableInstance extends PrefabInstance {
-    readonly pickable: Pickable;
-    readonly trader: Trader<TradeItem>;
-    private readonly sounds = new Set<SoundHandle>();
-    /** inst.AnimState: the display dresses every drawn sprite and reskin with the held block. */
-    private readonly animState = new AnimState();
-    loop?: SoundHandle;
+function fn(world: PrefabWorldContext, sprites: SpriteResources): SculptingTableInstance {
+    const inst = new SculptingTableInstance(sprites);
+    inst.worldServices = world;
+    inst.addTag('structure');
 
-    constructor(world: PrefabWorldContext, sprites: SpriteResources) {
-        super(SCULPTING_TABLE_ID, new SpriteState({ name: declaration.idleAnimation ?? 'idle', billboard: true }));
-        this.worldServices = world;
-        this.sprite.setAnimState(this.animState.json, sprites.archives);
-        MakeBuildingPersist(this);
-        const { OnSave: saveBuilding, OnLoad: loadBuilding } = this;
-        this.OnSave = (inst, data) => { saveBuilding!(inst, data); onsave(inst, data); };
-        this.OnLoad = (inst, data) => { loadBuilding!(inst, data); onload(inst, data); };
-        this.ListenForEvent('onbuilt', () => onbuilt(this));
-        const workable = addComponent(this, 'workable', Workable);
-        workable.SetWorkAction('HAMMER');
-        workable.SetWorkLeft(4);
-        workable.SetOnWorkCallback(onworked);
-        workable.SetOnFinishCallback(onhammered);
-        addComponent(this, 'lootdropper', LootDropper, spawnStructureLoot(this), STRUCTURE_LOOT_RECIPES);
-        this.addTag('structure');
-        const prototyper = addComponent(this, 'prototyper', Prototyper, 4 * WORLD_SCALE);
-        prototyper.trees = CreateTechTree({ SCULPTING: 1 });
-        prototyper.onturnon = onturnon;
-        prototyper.onturnoff = onturnoff;
-        // onitemtaken: the pickable stops being interactable and the block disappears.
-        const pickable = this.pickable = addComponent(this, 'pickable', Pickable, '', HELD_ITEM_REGEN_TIME, 1, () => {
-            if (pickable.canInteractWith) {
-                pickable.canInteractWith = false;
-                this.playTableSound(ITEM_SOUND);
-            }
-            this.animState.ClearOverrideSymbol(SCULPTING_SYMBOL);
-            prototyper.SetTechLevel('SCULPTING', 1);
-        });
-        pickable.canInteractWith = false;
-        pickable.pause();
-        const trader = this.trader = addComponent(this, 'trader', Trader<TradeItem>);
-        trader.acceptsNonTradable = true;
-        trader.SetAbleToAcceptTest(item => {
-            if (pickable.canInteractWith) return { ok: false, reason: 'SLOTFULL' };
-            return isSculptableMaterial(item.prefab) ? { ok: true } : { ok: false, reason: 'NOTSCULPTABLE' };
-        });
-        trader.SetOnAccept((_giver, item) => {
-            if (isSculptableMaterial(item.prefab)) this.giveItem(item.prefab);
-        });
-        this.onRemove(() => {
-            for (const sound of this.sounds) sound.stop();
-            this.sounds.clear();
-        });
-    }
+    const prototyper = addComponent(inst, 'prototyper', Prototyper, 4 * WORLD_SCALE);
+    prototyper.trees = CreateTechTree({ SCULPTING: 1 });
+    prototyper.onturnon = onturnon;
+    prototyper.onturnoff = onturnoff;
 
-    playTableSound(path: SoundEventPath): void {
-        for (const sound of this.sounds) if (!sound.isPlaying()) this.sounds.delete(sound);
-        this.sounds.add(PlaySound(path, this.position));
-    }
+    // pickable:SetUp(itemname, 1000000) then Pause(): the held item never regrows.
+    const pickable = addComponent(inst, 'pickable', Pickable, '', HELD_ITEM_REGEN_TIME, 1);
+    pickable.canInteractWith = false;
+    pickable.onpickedfn = onitemtaken;
+    pickable.pause();
 
-    /** giveitem: the block becomes pickable and shows the offered material. */
-    giveItem(itemname: SculptableMaterial): void {
-        const { pickable } = this;
-        pickable.SetUp(itemname, HELD_ITEM_REGEN_TIME);
-        pickable.pause();
-        if (!pickable.canInteractWith) {
-            pickable.canInteractWith = true;
-            this.playTableSound(ITEM_SOUND);
-        }
-        const { swapfile, symbol } = SCULPTABLE_MATERIALS[itemname];
-        this.animState.OverrideSymbol(SCULPTING_SYMBOL, swapfile, symbol);
-        this.components.prototyper!.SetTechLevel('SCULPTING', 2);
-    }
+    const trader = addComponent(inst, 'trader', Trader<TradeItem, unknown, SculptingTableInstance>);
+    trader.SetAbleToAcceptTest(abletoaccepttest);
+    trader.acceptsNonTradable = true;
+    trader.SetOnAccept(ongivenitem);
+
+    addComponent(inst, 'lootdropper', LootDropper, spawnStructureLoot(inst), STRUCTURE_LOOT_RECIPES);
+    const workable = addComponent(inst, 'workable', Workable);
+    workable.SetWorkAction('HAMMER');
+    workable.SetWorkLeft(4);
+    workable.SetOnFinishCallback(onhammered);
+    workable.SetOnWorkCallback(onhit);
+
+    inst.OnSave = onsave;
+    inst.OnLoad = onload;
+
+    inst.ListenForEvent('onbuilt', () => onbuilt(inst));
+    inst.onRemove(() => OnRemoveEntity(inst));
+    return inst;
 }
 
 export function sculptingTablePrefabs(world: PrefabWorldContext) {
-    return { [SCULPTING_TABLE_ID]: buildingPrefab(declaration, 'sculpting_station', .4, (_position, sprites) => new SculptingTableInstance(world, sprites), world) };
+    return { [SCULPTING_TABLE_ID]: buildingPrefab(declaration, 'sculpting_station', .4, (_position, sprites) => fn(world, sprites), world) };
 }

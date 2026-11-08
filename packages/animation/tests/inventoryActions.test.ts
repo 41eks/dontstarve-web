@@ -55,7 +55,7 @@ it('gives one item from a stack through the shared action and passes the detache
   const trader = new Trader(target.instance), accepted = vi.fn();
   target.instance.components.trader = trader;
   target.instance.copyPosition(s.instance.position);
-  trader.SetOnAccept((_giver, item) => accepted(item));
+  trader.SetOnAccept((_inst, _giver, item) => accepted(item));
   try {
     s.inventory.add('twigs', 2);
     s.inventory.transfer(inventorySlotAddress(0), cursorSlotAddress(), 2);

@@ -19,20 +19,21 @@ export interface TradeItem {
 export type TradeAcceptance = { ok: true } | { ok: false; reason?: string };
 
 /** components/trader.lua: gate on the ability to accept, then consume one item and notify. */
-export class Trader<Item extends TradeItem = TradeItem, Giver = unknown> {
+export class Trader<Item extends TradeItem = TradeItem, Giver = unknown, Inst extends TraderInst = TraderInst> {
   private readonly enabledState = createSignal(true);
   /** trader.lua enabled, read-only for presentations. */
   readonly enabled = readonlySignal(this.enabledState);
   deleteitemonaccept = true;
   private readonly acceptNonTradableState = createSignal(false);
-  private abletoaccepttest?: (item: Item, giver: Giver | undefined) => TradeAcceptance;
-  private test?: (item: Item, giver: Giver | undefined) => boolean;
-  private onaccept?: (giver: Giver | undefined, item: Item) => void;
-  private onrefuse?: (giver: Giver | undefined, item: Item) => void;
-  private readonly inst: TraderInst;
+  // Method-typed like Prototyper's callbacks, so a Trader<.., SubInst> stays assignable where the inst type is wider.
+  private abletoaccepttest?: { call(inst: Inst, item: Item, giver: Giver | undefined): TradeAcceptance }['call'];
+  private test?: { call(inst: Inst, item: Item, giver: Giver | undefined): boolean }['call'];
+  private onaccept?: { call(inst: Inst, giver: Giver | undefined, item: Item): void }['call'];
+  private onrefuse?: { call(inst: Inst, giver: Giver | undefined, item: Item): void }['call'];
+  private readonly inst: Inst;
   private readonly stopTags: () => void;
 
-  constructor(inst: TraderInst) {
+  constructor(inst: Inst) {
     this.inst = inst;
     this.stopTags = createEffect(() => {
       const enabled = this.enabledState.get(), acceptsNonTradable = this.acceptNonTradableState.get();
@@ -47,25 +48,26 @@ export class Trader<Item extends TradeItem = TradeItem, Giver = unknown> {
 
   Enable(): void { this.enabledState.set(true); }
   Disable(): void { this.enabledState.set(false); }
-  SetAbleToAcceptTest(fn: (item: Item, giver: Giver | undefined) => TradeAcceptance): void { this.abletoaccepttest = fn; }
-  SetAcceptTest(fn: (item: Item, giver: Giver | undefined) => boolean): void { this.test = fn; }
-  SetOnAccept(fn: (giver: Giver | undefined, item: Item) => void): void { this.onaccept = fn; }
-  SetOnRefuse(fn: (giver: Giver | undefined, item: Item) => void): void { this.onrefuse = fn; }
+  /** Like trader.lua, every callback receives the trader's inst first. */
+  SetAbleToAcceptTest(fn: (inst: Inst, item: Item, giver: Giver | undefined) => TradeAcceptance): void { this.abletoaccepttest = fn; }
+  SetAcceptTest(fn: (inst: Inst, item: Item, giver: Giver | undefined) => boolean): void { this.test = fn; }
+  SetOnAccept(fn: (inst: Inst, giver: Giver | undefined, item: Item) => void): void { this.onaccept = fn; }
+  SetOnRefuse(fn: (inst: Inst, giver: Giver | undefined, item: Item) => void): void { this.onrefuse = fn; }
 
   AbleToAccept(item: Item | undefined, giver?: Giver): TradeAcceptance {
     if (!this.enabledState.peek() || !item) return { ok: false };
-    return this.abletoaccepttest ? this.abletoaccepttest(item, giver) : { ok: true };
+    return this.abletoaccepttest ? this.abletoaccepttest(this.inst, item, giver) : { ok: true };
   }
 
   WantsToAccept(item: Item, giver?: Giver): boolean {
-    return this.enabledState.peek() && (!this.test || this.test(item, giver));
+    return this.enabledState.peek() && (!this.test || this.test(this.inst, item, giver));
   }
 
   /** `take` removes one item from its owner; it runs only after both tests pass. */
   AcceptGift(item: Item, take: (deleteItem: boolean) => boolean | Item, giver?: Giver): boolean {
     if (!this.AbleToAccept(item, giver).ok) return false;
     if (!this.WantsToAccept(item, giver)) {
-      this.onrefuse?.(giver, item);
+      this.onrefuse?.(this.inst, giver, item);
       return false;
     }
     const taken = take(this.deleteitemonaccept);
@@ -73,7 +75,7 @@ export class Trader<Item extends TradeItem = TradeItem, Giver = unknown> {
     if (typeof taken === 'object') item = taken;
     const inventory = (this.inst.components as { inventory?: { GiveItem(item: Item): boolean } } | undefined)?.inventory;
     if (!this.deleteitemonaccept) inventory?.GiveItem(item);
-    this.onaccept?.(giver, item);
+    this.onaccept?.(this.inst, giver, item);
     this.inst.PushEvent?.('trade', { giver, item });
     return true;
   }
