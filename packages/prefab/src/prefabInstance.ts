@@ -170,8 +170,24 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   readonly persistence = readonlySignal(this.persistsState);
   get persists(): boolean { return this.persistence.peek(); }
   set persists(value: boolean) { this.persistsState.set(value); }
-  /** inst.entity:GetParent: the save loop skips a child, whose parent recreates it. */
-  entityParent?: PrefabInstance<SpriteState, object>;
+  private engineParent?: PrefabInstance<SpriteState, object>;
+  /** The entities parented to this one with entity:SetParent, which retire with it. */
+  private engineChildren?: Set<EventEntity>;
+  /**
+   * inst.entity:GetParent / SetParent: the save loop skips a child, whose parent recreates it, and the child retires with
+   * its parent. The engine's own removal is not in the scripts; that it removes parented entities is read from them:
+   * vault_pillar's CreateBottom, pond's plants and lava_pond's rocks are parented and never removed by script.
+   */
+  get entityParent(): PrefabInstance<SpriteState, object> | undefined { return this.engineParent; }
+  set entityParent(parent: PrefabInstance<SpriteState, object> | undefined) {
+    this.engineParent?.engineChildren?.delete(this as EventEntity);
+    this.engineParent = parent;
+    if (parent) (parent.engineChildren ??= new Set()).add(this as EventEntity);
+  }
+  /** inst.parent: the entity whose AddChild made this one its child; its Remove removes this one. */
+  parent?: EventEntity;
+  /** inst.children: AddChild's children. */
+  private children?: Set<EventEntity>;
   /** inst.Physics: the collider the entity declares. */
   readonly physics = new PhysicsState();
   /** EntityScript components belong to the logical entity, including while its display sleeps. */
@@ -461,16 +477,33 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
     this.lifecycle.set(awake ? 'active' : 'asleep');
   }
 
-  /** inst.OnRemoveEntity(inst): the prefab's own teardown, after its components'. */
+  /** inst.OnRemoveEntity(inst): the prefab's own teardown, after its components' and its children's. */
   OnRemoveEntity?(inst: PrefabInstance): void;
 
+  /** EntityScript:AddChild: `child` leaves its old parent, is parented here and is removed with this entity. */
+  AddChild(child: EventEntity): void {
+    child.parent?.RemoveChild(child);
+    child.parent = this as EventEntity;
+    (this.children ??= new Set()).add(child);
+    child.entityParent = this as unknown as PrefabInstance<SpriteState, object>;
+  }
+
+  /** EntityScript:RemoveChild. */
+  RemoveChild(child: EventEntity): void {
+    child.parent = undefined;
+    this.children?.delete(child);
+    child.entityParent = undefined;
+  }
+
   /**
-   * EntityScript:Remove, in its order: `onremove`, then both sides of its event callbacks and its pending tasks go, then
-   * its components' OnRemoveEntity, then inst.OnRemoveEntity, and it stops persisting. It is valid until it retires last.
+   * EntityScript:Remove, in its order: it leaves its parent, pushes `onremove`, then both sides of its event callbacks and
+   * its pending tasks go, then its components' OnRemoveEntity, its children, inst.OnRemoveEntity, and it stops persisting.
+   * It is valid until it retires last, taking the entities parented to it with entity:SetParent.
    */
   remove(): void {
     if (this.removing || this.lifecycle.peek() === 'removed') return;
     this.removing = true;
+    this.parent?.RemoveChild(this as EventEntity);
     this.PushEvent('onremove');
     this.RemoveAllEventCallbacks();
     this.CancelAllPendingTasks();
@@ -479,9 +512,19 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
     // addComponent registers each component's OnRemoveEntity here, beside the prefab's other teardown, in order.
     for (const remove of this.removalHandlers) remove();
     this.removalHandlers.clear();
+    const children = this.children;
+    this.children = undefined;
+    for (const child of children ?? []) {
+      child.parent = undefined;
+      child.remove();
+    }
     this.OnRemoveEntity?.(this as unknown as PrefabInstance);
     this.persists = false;
     // entity:Retire
+    this.engineParent?.engineChildren?.delete(this as EventEntity);
+    const engineChildren = this.engineChildren;
+    this.engineChildren = undefined;
+    for (const child of engineChildren ?? []) child.remove();
     this.removedState.set(true);
     this.lifecycle.set('removed');
     this.physicsBinding?.dispose();

@@ -10,6 +10,11 @@ import { prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInst
 import { reskinEntity } from '../../prefab/src/reskin_tool';
 import { performRummageAction, type RummageTarget } from '../../stategraphs/src/rummage';
 import { sceneActions } from './sceneActions';
+import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
+import { createPickupInventory } from './pickupFixture';
+import { SAVE_CATALOG } from '../../../src/save/catalog';
+import { deserializeSave } from '../../../src/save/deserialize';
+import { serializeSave } from '../../../src/save/serialize';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -43,7 +48,8 @@ it('cooks with source food layers, resumes saved progress and preserves the prod
   expect(placement.performContainerAction(model, 'COOK', world.player)).toBe(true);
   placement.update(3);
   const saved = placement.exportRecords()[0].record;
-  expect(saved.components.stewer).toEqual({ product: 'beefalofeed', phase: 'cooking', remainingSeconds: BEEFALO_FEED_COOK_TIME - 3,
+  // stewer.lua OnSave: the product and the time left to cook.
+  expect(saved.components.stewer).toEqual({ product: 'beefalofeed', remainingtime: BEEFALO_FEED_COOK_TIME - 3,
     ingredient_prefabs: ['twigs', 'red_cap', 'red_cap', 'red_cap'] });
   placement.dispose();
 
@@ -56,7 +62,7 @@ it('cooks with source food layers, resumes saved progress and preserves the prod
   // The display loads the pot's art; one-shot clips play out once it is drawn.
   await vi.waitFor(() => expect(prefabInstance(restored)!.sprite.loaded).toBe(true));
   restoredPlacement.update(1);
-  expect(reskinEntity(restoredPlacement.placement.reskinTargets[0])).toBe(true);
+  expect(reskinEntity(findActionEntity(restored)!.reskinTarget!)).toBe(true);
   expect(skinSignal.peek()).toBe('cookpot_cauldron');
   expect(prefabInstance(restored)!.components.stewer).toBe(restoredStewer);
   expect(cookPotState(restored)?.remainingSeconds).toBeCloseTo(BEEFALO_FEED_COOK_TIME - 4);
@@ -86,7 +92,7 @@ it('cooks with source food layers, resumes saved progress and preserves the prod
   expect(prefabInstance(full)!.sprite.currentAnimation).toBe('idle_full');
   const high = await restoredPlacement.spawnFromSave('cookpot', { id: 'pot:kabobs',
     transform: { position: [4, 0, 2], rotationY: 0 }, components: { building: {},
-      stewer: { product: 'kabobs', phase: 'done', remainingSeconds: 0 } } });
+      stewer: { product: 'kabobs', done: true } } });
   const ordinaryFood = await loadBuild('cook_pot_food.zip', '/dst/data/anim');
   expect(findImage(ordinaryFood.build, smallHash('kabobs'), 0)).toBeDefined();
   await vi.waitFor(() => expect(drawsAtlas(high, ordinaryFood.atlases[0].pixels!)).toBe(true));
@@ -101,7 +107,7 @@ it('cooks with source food layers, resumes saved progress and preserves the prod
   expect(prefabInstance(full)!.components.stewer!.Harvest(receiver)).toBe(true);
   expect(receiver.giveItem).toHaveBeenCalledWith('beefalofeed', 1, new THREE.Vector3(...saved.transform.position));
   expect(prefabInstance(full)!.sprite.currentAnimation).toBe('idle_empty');
-  const emptyRecord = restoredPlacement.exportRecords().find(({ record }) => record.id === fullRecord.id && !record.components.stewer)!.record;
+  const emptyRecord = restoredPlacement.exportRecords().find(({ record }) => record.id === fullRecord.id && !record.components.stewer?.product)!.record;
   expect(emptyRecord.components.building?.skinId).toBe('cookpot_cauldron');
   expect(emptyRecord.transform).toEqual(saved.transform);
   const empty = await restoredPlacement.spawnFromSave('cookpot', emptyRecord);
@@ -109,4 +115,17 @@ it('cooks with source food layers, resumes saved progress and preserves the prod
   expect(prefabInstance(empty)!.listTags()).not.toContain('donecooking');
   expect(prefabInstance(empty)!.sprite.currentAnimation).toBe('idle_empty');
   restoredPlacement.dispose();
+});
+
+it('reads the earlier { phase, remainingSeconds } stewer save as stewer.lua OnSave data', () => {
+  const inventory = createPickupInventory();
+  const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
+  const pot = (id: string, stewer: object) => ({ id, transform: { position: [1, 0, 2], rotationY: 0 }, components: { building: {}, stewer } });
+  const json = serializeSave(template, { entities: { cookpot: [
+    pot('pot:cooking', { product: 'kabobs', phase: 'cooking', remainingSeconds: 5 }),
+    pot('pot:done', { product: 'kabobs', phase: 'done', remainingSeconds: 0 }),
+  ] } as never, inventory: inventory.exportState(), elapsedSeconds: 0, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
+  expect(deserializeSave(json, SAVE_CATALOG).world.entities.cookpot.map(({ components }) => components.stewer))
+    .toEqual([{ product: 'kabobs', remainingtime: 5 }, { product: 'kabobs', done: true }]);
+  inventory.dispose();
 });

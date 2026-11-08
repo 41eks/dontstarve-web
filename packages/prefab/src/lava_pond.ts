@@ -73,8 +73,7 @@ export class LavaPondInstance extends PrefabInstance<SpriteState, LavaPondCompon
 
     this.onRemove(() => {
       heater.dispose();
-      // Removing an entity removes its children.
-      for (const rock of this.rock_ents) rock.remove();
+      // The rocks are parented with entity:SetParent and retire with the pond.
       this.rock_ents.length = 0;
     });
   }

@@ -109,6 +109,36 @@ describe('EntityScript events and Remove on PrefabInstance', () => {
     first.dispose(); second.dispose();
   });
 
+  it('removes AddChild children after its components and before OnRemoveEntity, and parented entities as it retires', () => {
+    const inst = entity('vault_pillar'), order: string[] = [];
+    const child = entity('flies'), released = entity('flies'), bottom = entity('vault_pillar_bottom'), moved = entity('fx');
+    inst.AddChild(child);
+    inst.AddChild(released);
+    inst.RemoveChild(released);
+    bottom.entityParent = inst;
+    moved.entityParent = inst;
+    moved.entityParent = entity('other');
+    expect(child.parent).toBe(inst);
+    expect(child.entityParent).toBe(inst);
+    child.ListenForEvent('onremove', () => order.push('child'));
+    bottom.onRemove(() => order.push('bottom'));
+    inst.onRemove(() => order.push('component'));
+    inst.OnRemoveEntity = () => order.push(`OnRemoveEntity bottom valid=${bottom.isValid()}`);
+    inst.remove();
+    expect(order).toEqual(['component', 'child', 'OnRemoveEntity bottom valid=true', 'bottom']);
+    expect([child.isValid(), bottom.isValid(), released.isValid(), moved.isValid()]).toEqual([false, false, true, true]);
+
+    // A child removed first leaves its parent, which then has nothing of it to remove.
+    const parent = entity('poop'), flies = entity('flies');
+    parent.AddChild(flies);
+    flies.remove();
+    expect(flies.parent).toBeUndefined();
+    const stray = vi.fn();
+    flies.ListenForEvent('onremove', stray);
+    parent.remove();
+    expect(stray).not.toHaveBeenCalled();
+  });
+
   it('lets a homeseeker learn that its PrefabInstance home was removed', () => {
     const home = entity('molehill'), seeker = new HomeSeeker<PrefabInstance>();
     seeker.SetHome(home);

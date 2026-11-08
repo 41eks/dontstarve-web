@@ -10,8 +10,8 @@ export {
   DRAGONFLY_CHEST_ID, DRAGONFLY_CHEST_PLACER, DragonflyChestInstance, dragonflyChestPrefabs, type DragonflyChestId,
 } from './dragonfly_chest';
 export {
-  BOOKSTATION_DEFINITION, BOOKSTATION_ID, BOOKSTATION_SKIN_ARCHIVES, Bookstation,
-  BookstationPlacement, type BookstationId,
+  BOOKSTATION_ID, BOOKSTATION_PLACER, BOOKSTATION_SKIN_ARCHIVES, BookstationInstance,
+  bookstationPrefabs, type BookstationId,
 } from './bookstation';
 export {
   CAMPFIRE_ID, CAMPFIRE_PLACER, CampfireInstance, campfirePrefabs, type CampfireId,
@@ -48,10 +48,10 @@ export {
   ICE_BOX_ID, ICE_BOX_PLACER, IceBoxInstance, iceBoxPrefabs, type IceBoxId,
 } from './icebox';
 export {
-  COOK_POT_DEFINITION,
   COOK_POT_ID,
+  COOK_POT_PLACER,
   COOK_POT_SKIN_ARCHIVES,
-  CookPotPlacement,
+  cookPotPrefabs,
   type CookPotId,
 } from './cook_pot';
 export {
@@ -69,12 +69,6 @@ export {
   type WilsonPlayerPrefab,
   type WilsonPlayerPrefabOptions,
 } from './player';
-export {
-  AnimatedBuildingPlacement,
-  type AnimatedBuildingDefinition,
-  type AnimatedBuildingEventContext,
-  type AnimatedBuildingInteractionChange,
-} from './animatedBuildingPlacement';
 export {
   WallPlacement,
   type WallDefinition,

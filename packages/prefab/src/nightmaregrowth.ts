@@ -23,12 +23,18 @@ export interface NightmareGrowthWorld {
 
 const ASSETS = { animationArchive: 'nightmaregrowth.zip', buildArchives: ['nightmaregrowth.zip'], bank: 'nightmaregrowth' };
 
+/** nightmaregrowth.lua OnRemove, its inst.OnRemoveEntity: the crack goes with the growth. */
+function OnRemove(inst: NightmareGrowthInstance): void {
+  if (inst._crack && !inst._crack.isRemoved) inst._crack.remove();
+}
+
 /**
  * nightmaregrowth.lua fn: the upright, non-looping idle and the DoTaskInTime(0, SpawnCrack) crack, removed with it.
  * SpawnCrack's destruction of nearby workables, the sanity aura, inspectable status and storyprogress are not ported.
  */
 export class NightmareGrowthInstance extends PrefabInstance {
-  private _crack?: NightmareGrowthCrackInstance;
+  /** inst._crack */
+  _crack?: NightmareGrowthCrackInstance;
   private _crack_rotation?: number;
   private readonly world: NightmareGrowthWorld;
 
@@ -40,15 +46,13 @@ export class NightmareGrowthInstance extends PrefabInstance {
     this.sprite.playOnce('idle');
     this.addTag('ancient_text');
     this.DoTaskInTime(0, () => this.SpawnCrack());
-    this.onRemove(() => {
-      if (this._crack && !this._crack.isRemoved) this._crack.remove();
-    });
+    this.OnRemoveEntity = OnRemove;
   }
 
   private SpawnCrack(): void {
     if (this._crack && !this._crack.isRemoved) return;
+    // Not parented: the crack is its own unsaved entity (persists = false), which OnRemove removes.
     const crack = this._crack = this.world.spawnPrefab(NIGHTMAREGROWTH_CRACK_ID, new Vector3(this.position.x, 0, this.position.z));
-    crack.entityParent = this;
     if (this._crack_rotation !== undefined) {
       crack.SetRotation(this._crack_rotation);
       this._crack_rotation = undefined;

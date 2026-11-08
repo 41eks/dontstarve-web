@@ -31,7 +31,7 @@ export interface SavedEntity {
     inventoryitemmoisture?: import('@dontstarve-web/prefab/ruinsrelic').RelicMoistureSave;
     building?: { skinId?: string; burnt?: true };
     container?: SavedContainer;
-    stewer?: import('@dontstarve-web/prefab/cook_pot').CookPotSaveState;
+    stewer?: import('../../packages/componets/src/stewer').StewerSaveData;
     stack?: InventoryStack;
     phonograph?: { remainingSeconds: number };
     torch?: { lit: true };

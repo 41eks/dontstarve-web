@@ -182,8 +182,8 @@ function portalfn(world: ArchivePropsWorld, position: ReadonlyVector3): PrefabIn
   inst.addTag('groundhole');
   inst.addTag('blocker');
   const shadow = world.spawnPrefab(ARCHIVE_PORTAL_SHADOW_ID, position);
+  // entity:SetParent: the shadow retires with the portal.
   shadow.entityParent = inst as PrefabInstance<SpriteState, object>;
-  inst.onRemove(() => shadow.remove());
   return inst;
 }
 

@@ -38,8 +38,8 @@ function setup(random = () => .25) {
     })).ok).toBe(true);
     return deserializeSave(json, SAVE_CATALOG).world.entities;
   };
-  const crackOf = (growth: NightmareGrowthInstance) => scene.children.map(model => prefabInstance(model))
-    .find(inst => inst?.prefab === 'nightmaregrowth_crack' && inst.entityParent === growth) as NightmareGrowthCrackInstance | undefined;
+  // inst._crack: a separate, unsaved entity rather than a parented child.
+  const crackOf = (growth: NightmareGrowthInstance) => growth._crack;
   return { scene, scheduler, inventory, prefabs, registry, save, crackOf,
     dispose: () => { registry.dispose(); prefabs.dispose(); displays.dispose(); inventory.dispose(); scheduler.dispose(); } };
 }
@@ -59,7 +59,8 @@ it('c_spawn draws the growth and spawns its nonpersistent ground crack next fram
     s.scheduler.advance(0);
     const crack = s.crackOf(growth)!;
     expect(crack.prefab).toBe('nightmaregrowth_crack');
-    expect(crack.entityParent).toBe(growth);
+    expect(crack.entityParent).toBeUndefined();
+    expect(s.scene.children.map(model => prefabInstance(model))).toContain(crack);
     expect(crack.persists).toBe(false);
     expect(crack.listTags()).toEqual(expect.arrayContaining(['FX', 'NOCLICK', 'DECOR']));
     expect(crack.sprite.sprite.peek()).toMatchObject({ ground: { flat: true }, meshOrder: -.5 });

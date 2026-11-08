@@ -83,7 +83,6 @@ export class CaveHoleInstance extends PrefabInstance {
     const playerprox = addComponent(this, 'playerprox', PlayerProx, world.getWatchWorldContent);
     playerprox.SetDist(OUTER_RADIUS * WORLD_SCALE, OUTER_RADIUS * WORLD_SCALE);
     addComponent(this, 'objectspawner', ObjectSpawner);
-    this.onRemove(() => surface.remove());
 
     this.OnSave = (_inst, data) => { data.allowspawn = this.allowspawn; };
     this.OnLoad = (_inst, data) => { if (data.allowspawn !== undefined) this.allowspawn = data.allowspawn; };

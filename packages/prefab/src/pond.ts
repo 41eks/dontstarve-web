@@ -69,8 +69,7 @@ export class PondInstance extends PrefabInstance<SpriteState, PondComponents> {
     this.onRemove(() => {
       this.stopSnowLevel?.();
       this.stopWatching?.();
-      // Removing an entity removes its children.
-      for (const plant of this.plant_ents ?? []) plant.remove();
+      // The plants are parented with entity:SetParent and retire with the pond.
       fishable.OnRemoveFromEntity();
     });
   }

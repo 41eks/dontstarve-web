@@ -16,7 +16,7 @@
 
 `InventorySlot`、`HandSlot`、`BodySlot`、`HeadSlot` 各自实现具体槽位行为，不共享实现父类。`InventorySlot` 提供物品堆叠上限；纯函数 `craft()` 根据配方输入及槽位计算新库存结果，`InventoryStore` 原子提交。
 
-应用中的 `createInventoryStore()` 默认建立空玩家槽位；`src/main.ts` 从 `src/save/initialSave.ts` 读取的存档（默认 `public/saves/Cluster_1/Master.json`）恢复玩家库存，通过 `inventoryStateFromSave()` 和 `replaceState()` 应用。建筑容器按 Lua 的 `SpawnSaveRecord` 顺序恢复：实体生成时创建 `container`，`Container.OnLoad()` 读入 `components.container`，再用 `registerContainer()` 登记地址（已迁移的建筑见 [prefab README](../packages/prefab/README.md) 的 `MakeBuildingContainer`，其余在 `AnimatedBuildingPlacement.spawnFromSave()`）；`world:<prefab>:<entityId>` 地址只供 UI 和物品转移使用，`exportState()` 与 `replaceState()` 都不处理已登记的世界容器。初始物品不再硬编码在 `src/inventoryItems.ts` 中。存档设计见 [存档文档](dst-save-system.md)。
+应用中的 `createInventoryStore()` 默认建立空玩家槽位；`src/main.ts` 从 `src/save/initialSave.ts` 读取的存档（默认 `public/saves/Cluster_1/Master.json`）恢复玩家库存，通过 `inventoryStateFromSave()` 和 `replaceState()` 应用。建筑容器按 Lua 的 `SpawnSaveRecord` 顺序恢复：实体生成时创建 `container`，`Container.OnLoad()` 读入 `components.container`，再用 `registerContainer()` 登记地址（见 [prefab README](../packages/prefab/README.md) 的 `MakeBuildingContainer`）；`world:<prefab>:<entityId>` 地址只供 UI 和物品转移使用，`exportState()` 与 `replaceState()` 都不处理已登记的世界容器。初始物品不再硬编码在 `src/inventoryItems.ts` 中。存档设计见 [存档文档](dst-save-system.md)。
 
 玩家槽位由 Store 通知驱动 UI 的 `setSlot()` 更新，背包容器通过 DTO signal 驱动相同 UI 槽位模型；这些模型都是显示镜像。槽位地址使用稳定的 `{ containerId, slotKey }`，玩家槽位通过 `inventorySlotAddress()`、`equipmentSlotAddress()` 创建，其他容器使用其对应地址助手。
 
@@ -201,6 +201,6 @@ Shift + 右键已占用的库存或装备槽，在玩家当前地面位置丢弃
 
 Lua 链路是 containers.lua:buttoninfo.fn → ACTIONS.COOK.fn → stewer:StartCooking()。UI 只提交请求，按钮按容器满格状态启用；动作检查其他开启者与可烹饪状态，已在烹饪的重复请求不重新计时。stewer 从自己的 container 读取原料实体，经 cooking.CalculateRecipe() 得到产物和时间，在开始回调后关闭容器、销毁内容并禁止打开。DestroyContents() 通过实体的库存 owner 移除材料，UI 投影不参与权威消耗。
 
-components/stewer.ts 用注入的游戏时间调度器管理烹饪任务（对应 Lua 的 `DoTaskInTime(cooktime, dostew)`，不逐帧更新）、readytocook/donecooking 标签、原料与厨师记录及保存恢复；prefab/cook_pot.ts 将开始、继续、完成回调接到动画和声音，并按配方的 build、symbol 和 potlevel 显示锅中产物。外部存档仍保留 product/phase/remainingSeconds 的已有格式，新增可选 ingredient_prefabs 与 chef_id，旧存档可继续读取。目前的分支覆盖开始、完成和恢复，收获及锅内腐败另行实现。
+components/stewer.ts 用注入的游戏时间调度器管理烹饪任务（对应 Lua 的 `DoTaskInTime(cooktime, dostew)`，不逐帧更新）、readytocook/donecooking 标签、原料与厨师记录及保存恢复；prefab/cook_pot.ts 将开始、继续、完成回调接到动画和声音，并按配方的 build、symbol 和 potlevel 显示锅中产物。存档写 stewer 自己的 OnSave（product、done 或 remainingtime、ingredient_prefabs、chef_id），旧的 phase/remainingSeconds 格式在读取时迁移。目前的分支覆盖开始、完成和恢复，收获及锅内腐败另行实现。
 
 换肤的逻辑状态是实体 sprite json 的 skinId（建筑、墙、栅栏、植物、虫洞为 `PrefabInstance.sprite`，物品为 `ItemEntity.sprite`）。任何带 sprite 的实体经 `reskinTarget(view)` 成为 reskin 目标；施法前不等待皮肤资源，命中帧由 `reskinEntity()` 按 `reskin_tool.lua` 的 `spellCB` 重新计算 `GetNextSkin`、记入工具缓存并写入 sprite json。display 按声明加载并换上皮肤，保留实体根、组件、脚点和动画进度；实体自己的换肤后处理订阅该 skinId，保存读取 skinId.peek()。

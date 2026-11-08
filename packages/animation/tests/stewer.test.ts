@@ -17,7 +17,7 @@ function createPot(dropProduct?: (prefab: string, count?: number) => void, start
   const components = { container, stewer: undefined as Stewer | undefined };
   const scheduler = new GameTimeScheduler(startTime);
   const stewer = new Stewer({ prefab: 'cookpot', components,
-    getPosition: () => ({ x: 1, y: 0, z: 2 }),
+    position: { x: 1, y: 0, z: 2 },
     addTag: tag => tags.add(tag), removeTag: tag => tags.delete(tag) }, scheduler, dropProduct);
   components.stewer = stewer;
   return { inventory, container, containerId, components, stewer, tags, scheduler };

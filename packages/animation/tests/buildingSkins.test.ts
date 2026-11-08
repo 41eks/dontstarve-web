@@ -11,8 +11,7 @@ import { loadAnimationArchive, loadSpriteSkinArchive, smallHash } from '../src/a
 import { createAnimatedSprite, type SpriteAnimationController } from '../src/sprite';
 import { setSpriteEntityRenderOrder } from '../src/renderOrder';
 import definitions from '../../prefab/src/definitions.json' with { type: 'json' };
-import { AnimatedBuildingPlacement, type AnimatedBuildingDefinition } from '../../prefab/src/animatedBuildingPlacement';
-import { COOK_POT_DEFINITION } from '../../prefab/src/cook_pot';
+import type { BuildingDeclaration } from '../../prefab/src/building';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import { managedBuildings } from './managedBuildings';
 import { createMemo, createSignal } from '../../signals/src';
@@ -25,9 +24,8 @@ import { reskinEntity } from '../../prefab/src/reskin_tool';
 const prefabIds = [
   'cookpot', 'researchlab2', 'researchlab4',
 ] as const;
-const buildingDefinitions: Record<typeof prefabIds[number], Pick<AnimatedBuildingDefinition, 'idleAnimation' | 'skinInit' | 'skinArchives'
-  | 'skinSymbols' | 'baseSymbols' | 'skinAnimationBanks'>> = {
-  cookpot: COOK_POT_DEFINITION,
+const buildingDefinitions: Record<typeof prefabIds[number], BuildingDeclaration> = {
+  cookpot: definitions.animatedBuildings.cookpot,
   researchlab2: definitions.animatedBuildings.researchlab2,
   researchlab4: definitions.animatedBuildings.researchlab4,
 };
@@ -63,10 +61,9 @@ afterEach(() => {
 
 function options(prefabId: typeof prefabIds[number], skinId: string) {
   const definition = buildingDefinitions[prefabId];
-  const skin = definition.skinInit?.(skinId);
   return {
     initialAnimation: definition.idleAnimation ?? 'idle',
-    skinArchive: skin?.skinArchive ?? definition.skinArchives![skinId],
+    skinArchive: definition.skinArchives![skinId],
     skinSymbols: definition.skinSymbols,
     baseSymbols: definition.baseSymbols,
     skinAnimationBanks: definition.skinAnimationBanks?.[skinId],
@@ -197,27 +194,25 @@ describe('DST building skins', () => {
     } as unknown as WorldContext;
     const skinId = recipeSkins[prefabId][0].id;
     const consume = vi.fn(() => true);
-    const definition = COOK_POT_DEFINITION;
-    const skinInit = definition.skinInit ? vi.fn(definition.skinInit) : undefined;
-    const placement = new AnimatedBuildingPlacement(world, { [prefabId]: { ...definition, skinInit } }, consume);
+    const placement = managedBuildings(world, { consume });
     vi.spyOn(PointerRaycaster.prototype, 'trackPointer').mockImplementation(() => {});
     vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(new THREE.Vector3(3, 0, 4));
     vi.spyOn(PointerRaycaster.prototype, 'isOverGround', 'get').mockReturnValue(true);
     await placement.begin(prefabId, skinId);
-    if (skinInit) expect(skinInit).toHaveBeenCalledExactlyOnceWith(skinId);
-    expect(placement.exportRecords()).toHaveLength(0);
+    const records = () => placement.exportRecords().filter(({ prefabId: id }) => id === prefabId);
+    expect(records()).toHaveLength(0);
     expect(lookupPrefabInstance(world.scene.children[0])?.skinId).toBe(skinId);
     canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button: 0 }));
     expect(consume).toHaveBeenCalledWith(prefabId);
     for (let frame = 0; frame < 100; frame++) placement.update(0.1);
-    const record = placement.exportRecords()[0].record;
+    const record = records()[0].record;
     expect(record.components.building).toEqual({ skinId });
     expect(record.transform.position).toEqual([3, 0, 4]);
     const restored = await placement.spawnFromSave(prefabId, record as PlacementSaveRecord);
-    if (skinInit) expect(skinInit).toHaveBeenCalledTimes(2);
     expect(lookupPrefabInstance(restored)?.skinId).toBe(skinId);
-    expect(placement.exportRecords()[1].record).toEqual(record);
-    expect(() => placement.spawn(prefabId, 'missing_skin')).toThrow('Unsupported');
+    expect(records()[1].record).toEqual(record);
+    await expect(placement.spawn(prefabId, 'missing_skin')).rejects.toThrow('Unsupported');
+    placement.dispose();
   });
 
   it('commits skins through the json without replacing the sprite and rejects a removed target', async () => {

@@ -12,8 +12,10 @@
 | `CreateEntity()` | `new PrefabInstance(id, new SpriteState(clip), transform)` | `atrium_pillar.ts` | 静态实体用 `Transform.stationary()` |
 | `Transform:SetPosition` | `inst.setPosition(x, y, z)`、`copyPosition` | `atrium_pillar.ts` | 位置不是信号 |
 | `Transform:SetScale`、`SetRotation` | `inst.setScale`、`inst.setRotation(degrees)` | `moontree.ts`、`lightflier.ts` | |
-| `inst:Remove()` | `inst.remove()` | `vault_pillar.ts` | 按 Lua 顺序：先推 `onremove`（此时仍有效），再撤销双向事件监听、取消 `DoTaskInTime` 任务、执行组件与 `onRemove` 回调、`inst.OnRemoveEntity`，最后 `persists = false` 并 Retire |
-| `inst.OnRemoveEntity` | `inst.OnRemoveEntity = fn`（在组件之后调用）；或 `inst.onRemove(fn)` | `vault_pillar.ts` | `onRemove` 返回取消函数，与组件的 `OnRemoveEntity` 按注册顺序执行 |
+| `inst:Remove()` | `inst.remove()` | `vault_pillar.ts` | 按 Lua 顺序：离开 `AddChild` 的父实体，推 `onremove`（此时仍有效），撤销双向事件监听、取消 `DoTaskInTime` 任务，执行组件与 `onRemove` 回调，`Remove` 脚本子实体，调用 `inst.OnRemoveEntity`，`persists = false`，最后 Retire 并移除 `entity:SetParent` 的子实体 |
+| `inst:AddChild(child)`、`RemoveChild`、`SpawnChild` 的父子关系 | `inst.AddChild(child)`、`inst.RemoveChild(child)` | `entityScript.test.ts` | 子实体随父实体 `Remove`（先于 `OnRemoveEntity`） |
+| `child.entity:SetParent(inst.entity)` | `child.entityParent = inst` | `vault_pillar.ts` | 存档跳过子实体；父实体 Retire 时子实体一起移除（从 `CreateBottom` 等从不手动移除的写法推断），不要在 `onRemove` 里再手动移除 |
+| `inst.OnRemoveEntity` | `inst.OnRemoveEntity = fn`（模块顶层函数，在组件与子实体之后调用）；只做 Lua 的 `OnRemoveEntity` 做的事 | `atrium_gate.ts`、`nightmaregrowth.ts` | `inst.onRemove(fn)` 与组件拆除按注册顺序执行，返回取消函数 |
 | `inst.persists = false` | `inst.persists = false` | `atrium_gate.ts` | |
 | `OnEntitySleep`、`OnEntityWake` | `watchSignal(inst.status, …)` + `createEffect`，比较 `asleep`／`active` | `monkeypillar.ts` | |
 | `SpawnPrefab(id)` | `world.spawnPrefab(id, position)` | `vault_pillar.ts` | 注入，不是全局函数 |

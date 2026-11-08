@@ -15,10 +15,10 @@ export interface StewerContainer {
 
 export interface StewerInstance {
   prefab: string;
-  components: { container: StewerContainer };
+  components: { container?: StewerContainer };
   addTag(tag: string): void;
   removeTag(tag: string): void;
-  getPosition(): { x: number; y: number; z: number };
+  readonly position: { readonly x: number; readonly y: number; readonly z: number };
 }
 
 export interface StewerHarvester {
@@ -47,11 +47,11 @@ export class Stewer {
   cooktimemult = 1;
   ingredient_prefabs?: readonly string[];
   chef_id?: string;
-  onstartcooking?: (inst: StewerInstance) => void;
-  ondonecooking?: (inst: StewerInstance) => void;
-  oncontinuecooking?: (inst: StewerInstance) => void;
-  oncontinuedone?: (inst: StewerInstance) => void;
-  onharvest?: (inst: StewerInstance) => void;
+  onstartcooking?: { call(inst: StewerInstance): void }['call'];
+  ondonecooking?: { call(inst: StewerInstance): void }['call'];
+  oncontinuecooking?: { call(inst: StewerInstance): void }['call'];
+  oncontinuedone?: { call(inst: StewerInstance): void }['call'];
+  onharvest?: { call(inst: StewerInstance): void }['call'];
   /** self.task: DoTaskInTime(cooktime, dostew). Running means self.targettime is set. */
   private readonly cookTask: ComponentTimer;
   /** The task's whole duration: `end - now` can round above it, and a save rejects a time longer than its recipe's. */
@@ -67,19 +67,26 @@ export class Stewer {
     inst.addTag('stewer');
     // ItemGet / ItemLose / onopen / onclose: readytocook follows the container's contents and opening.
     this.stopContainer = createRenderEffect(() => {
-      inst.components.container.TrackContents();
-      inst.components.container.openCount.get();
+      this.container.TrackContents();
+      this.container.openCount.get();
       this.refreshReady();
     });
   }
 
-  private refreshReady(): void {
+  /** The container the stewer was added beside; the prefab adds it first. */
+  private get container(): StewerContainer {
     const container = this.inst.components.container;
+    if (!container) throw new Error(`${this.inst.prefab} has no container for its stewer`);
+    return container;
+  }
+
+  private refreshReady(): void {
+    const container = this.container;
     if (!container.IsOpen() && container.IsFull()) this.inst.addTag('readytocook');
     else this.inst.removeTag('readytocook');
   }
 
-  CanCook(): boolean { return !this.removed && this.inst.components.container.IsFull(); }
+  CanCook(): boolean { return !this.removed && this.container.IsFull(); }
   IsCooking(): boolean { return !this.done && this.cookTask.remainingSeconds !== undefined; }
   IsDone(): boolean { return this.done; }
   GetTimeToCook(): number { return this.IsCooking() ? Math.min(this.cookTask.remainingSeconds!, this.cooktime) : 0; }
@@ -91,7 +98,7 @@ export class Stewer {
     if (this.product) {
       const count = this.GetRecipeForProduct()?.stacksize ?? 1;
       if (harvester) {
-        if (!harvester.giveItem(this.product, count, this.inst.getPosition())) return false;
+        if (!harvester.giveItem(this.product, count, this.inst.position)) return false;
       } else if (this.dropProduct) this.dropProduct(this.product, count);
       else return false;
     }
@@ -100,13 +107,13 @@ export class Stewer {
     this.cookTask.stop();
     this.done = false;
     this.inst.removeTag('donecooking');
-    this.inst.components.container.canbeopened = true;
+    this.container.canbeopened = true;
     return true;
   }
 
   StartCooking(doer?: { userid?: string }): boolean {
     if (this.removed || this.cookTask.remainingSeconds !== undefined) return false;
-    const container = this.inst.components.container;
+    const container = this.container;
     const names = container.GetAllItems().map(item => item.prefab);
     const recipe = CalculateRecipe(this.inst.prefab, names);
     if (!recipe) return false;
@@ -161,7 +168,7 @@ export class Stewer {
     this.chef_id = data.chef_id;
     if (this.done) this.cookTask.stop();
     else this.startCookTask(Math.max(0, data.remainingtime ?? 0));
-    this.inst.components.container.canbeopened = false;
+    this.container.canbeopened = false;
     if (this.done) { this.inst.addTag('donecooking'); this.oncontinuedone?.(this.inst); }
     else this.oncontinuecooking?.(this.inst);
   }

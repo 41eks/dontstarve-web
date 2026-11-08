@@ -28,7 +28,6 @@ export class VaultPillarInstance extends PrefabInstance {
     // CreateBottom: a non-networked child that is never saved.
     const bottom = world.spawnPrefab(VAULT_PILLAR_BOTTOM_ID, position);
     bottom.entityParent = this as PrefabInstance<SpriteState, object>;
-    this.onRemove(() => bottom.remove());
 
     this.OnSave = (_inst, data) => {
       if (this.capped !== undefined) data.capped = this.capped;
