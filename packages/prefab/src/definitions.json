@@ -127,6 +127,7 @@
     },
     "researchlab4": {
       "archive": "researchlab4.zip",
+      "skinSymbols": ["machine_hat"],
       "buildLabel": "灵子分解器",
       "name": "ResearchLab4",
       "skinArchives": {

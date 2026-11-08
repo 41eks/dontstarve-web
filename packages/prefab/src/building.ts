@@ -24,15 +24,21 @@ export interface BuildingDeclaration {
   readonly skinArchives?: Readonly<Record<string, string>>;
   /** The symbols a skin replaces, when its init_fn overrides only those (OverrideItemSkinSymbol) rather than calling SetSkin. */
   readonly skinSymbols?: readonly string[];
+  /** Symbols kept from the base build under every skin. */
+  readonly baseSymbols?: readonly string[];
+  /** Per skin, the animation banks of its archive drawn over the clip's frame. */
+  readonly skinAnimationBanks?: Readonly<Record<string, readonly string[]>>;
 }
 
 /** MakePlacer(name, bank, build, anim): the same build, in the selected skin. */
-export function buildingPlacer({ archive, buildArchive, buildLabel, name, idleAnimation = 'idle', previewAnimation = idleAnimation, skinArchives, skinSymbols }: BuildingDeclaration): BuildingPlacerSpec {
+export function buildingPlacer({ archive, buildArchive, buildLabel, name, idleAnimation = 'idle', previewAnimation = idleAnimation, skinArchives, skinSymbols,
+  baseSymbols, skinAnimationBanks }: BuildingDeclaration): BuildingPlacerSpec {
   return { buildLabel, name, animation: previewAnimation, art: (resources, skinId) => {
     if (skinId !== undefined && !skinArchives?.[skinId]) throw new Error(`Unsupported ${name} skin: ${skinId}`);
     return { source: resources.animated(archive, buildArchive ? { buildArchive } : {}, { name, skinSymbols }), initialize: entity => {
       entity.skinId = skinId;
-      if (skinArchives) entity.sprite.setSkinSource({ art: resources.archives, archives: skinArchives, ...skinSymbols ? { symbols: skinSymbols } : {} });
+      if (skinArchives) entity.sprite.setSkinSource({ art: resources.archives, archives: skinArchives, ...skinSymbols ? { symbols: skinSymbols } : {},
+        ...baseSymbols ? { baseSymbols } : {}, ...skinAnimationBanks ? { animationBanks: skinAnimationBanks } : {} });
     } };
   } };
 }
@@ -112,12 +118,14 @@ function MakeBuildingTargets(inst: PrefabInstance, skins: readonly string[], wor
  */
 export function buildingPrefab<Instance extends PrefabInstance>(declaration: BuildingDeclaration, bank: string, radius: number | undefined,
   fn: PrefabEntityDefinition<Instance>['fn'], world: Pick<PrefabWorldContext, 'handEquipment'>): PrefabEntityDefinition<Instance> {
-  const { archive, buildArchive = archive, skinArchives, skinSymbols } = declaration, skins = Object.keys(skinArchives ?? {});
+  const { archive, buildArchive = archive, skinArchives, skinSymbols, baseSymbols, skinAnimationBanks } = declaration, skins = Object.keys(skinArchives ?? {});
   return {
     fn,
     assets: { animationArchive: archive, buildArchives: [buildArchive], bank },
     skins: skinArchives,
     ...skinSymbols ? { skinSymbols } : {},
+    ...baseSymbols ? { baseSymbols } : {},
+    ...skinAnimationBanks ? { skinAnimationBanks } : {},
     alignBottom: true,
     ...radius === undefined ? {} : { physics: { make: MakeObstaclePhysics, radius } },
     onSpawned: inst => { MakeBuildingTargets(inst, skins, world); registerBuildingContainer(inst); },
