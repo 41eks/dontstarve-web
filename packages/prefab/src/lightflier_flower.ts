@@ -230,7 +230,7 @@ export class LightFlierFlowerManager {
     instance.setPosition(position.x, 0, position.z);
     const plant = new LightFlierFlower(saved?.id ?? newEntityId(), model, instance, this.habitat, lengths, this.getLightLevel, variant, state);
     const animation = watchSignal(plant.animstate.animation, stop => this.cleanups.set(plant, stop));
-    createEffect(() => { const { name, loop } = animation.get(); if (loop) sprite.start(name); else sprite.playOnce(name); });
+    createEffect(() => { const { name, loop } = animation.get(); instance.AnimState.PlayAnimation(name, loop); });
     this.plants.set(plant, display); this.displays.mount(prefabDisplay(model)!); return model;
   }
   update(dt: number, _quaternion: THREE.Quaternion): void {
