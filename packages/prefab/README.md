@@ -34,7 +34,7 @@ DST 场景预制体。该包基于 `@dontstarve-web/animation` 组合具体资�
 - `moonTreePrefabs`、`evergreenPrefabs`、`deciduousPrefabs`、`mushtreePrefabs`：月树与幼苗、常青树、桦树、蘑菇树（含 `_stump` 与烧毁特效）的 `PrefabEntityDefinition`，由应用层的 `PrefabEntityManager` 注册；不生成森林
 - `torch.ts`：`torch.lua` 的回调按源注册在实例的组件上（`configureTorchEntity` 对应 `fn()`）：`burnable:SetOnExtinguishFn(OnExtinguish)`、`fueled:SetSectionCallback(onfuelchange)`、`inventoryitem:SetOnPutInInventoryFn(OnPutInInventory)`，`equippable` 的 `onequip`／`onunequip` 经 `createTorchHandLifecycle` 接入；`inst.fires`、声音任务、`_owner`、`_fuelratemult` 和 `SetFuelRateMult` 都在 `TorchInst` 上。燃烧状态即 `burnable:IsBurning()`。
 - `@dontstarve-web/animation/residentSprite` 的 `ResidentSprite` / `ResidentSpriteController`：固定实体的 visual 驻留封装，保留根节点与动画请求；`ResidentEntity` 记录稳定的身份和脚点。常青树、桦树、月树和蘑菇树通过 `PrefabInstance` + `PrefabDisplay` 与 `watchTileActivity()` 加载／释放 visual，不重建实体或 Workable。
-- `AnimatedBuildingPlacement`，以及基于它的 `CookPotPlacement`、`ResearchLabPlacement`、`TreasureChestPlacement`（sprite 通过 `ResidentSpriteController` 驻留，离开 tickingarea 时交还共享 source，见 [tile 生命周期](../../docs/tile-lifecycle.md)）
+- `AnimatedBuildingPlacement`，以及基于它的 `CookPotPlacement`、`TreasureChestPlacement`（sprite 通过 `ResidentSpriteController` 驻留，离开 tickingarea 时交还共享 source，见 [tile 生命周期](../../docs/tile-lifecycle.md)）
 - `WallsPlacement`：`prefabs/walls.lua` 的 9 种墙（石、档案馆石、木、草、铥、档案馆铥、月岩、绝望石、废料），
   含各自的 `wall_*_item` 部署物 ID。
 
@@ -48,10 +48,11 @@ DST 场景预制体。该包基于 `@dontstarve-web/animation` 组合具体资�
 物品，背景取自 `images/hud2.xml` 的 `preparedfood_slot.tex`。再次点击或走远会关闭
 面板并回到 `idle_empty`；槽位内容随存档保存和恢复。
 
-`ResearchLabPlacement` 支持 `researchlab` / `researchlab2` / `researchlab3` /
-`researchlab4` 的全部 37 个皮肤 ID。制作时选择的皮肤用于预览和放置，靠近时的
+四种科技建筑 `researchlab` / `researchlab2` / `researchlab3` / `researchlab4` 由
+`researchLabPrefabs` 声明、在应用层的 `PrefabEntityManager` 注册，placer 为 `RESEARCH_LAB_PLACERS`；
+支持全部 37 个皮肤 ID，`c_spawn` 的 ID 与语法不变，没有 `c_give`。制作时选择的皮肤用于预览和放置，靠近时的
 `proximity_loop` 及存档恢复也保留皮肤。`researchlab4` 按 DST 源码仅替换
-`machine_hat`，其余部件使用原始 build；科学机器和炼金引擎保留源码指定的基础特效
+`machine_hat`（`skinSymbols`），其余部件使用原始 build；科学机器和炼金引擎保留源码指定的基础特效
 symbol，炼金打印舱的 `researchlab2_pod_fx` 动画层合并到同一帧几何体中。
 
 四种科技建筑分别由 `scienceprototyper.ts`（`researchlab` / `researchlab2`）和 `magicprototyper.ts`
@@ -63,7 +64,7 @@ symbol，炼金打印舱的 `researchlab2_pod_fx` 动画层合并到同一帧几
 向上 `8±4` 和物品/建筑碰撞半径初始化，场景长度换算为 `TILE_SIZE / 4`。
 简化轨迹负责回落、轻微弹跳和停稳；抛起高度只影响 visual，地面脚点用于排序、
 拾取和存档。飞行中保存只保存当前地面位置，读档不重播散射。短暂坍塌特效由
-`AnimatedBuildingPlacement` 更新、排序和释放，不写入存档。皮肤切换保留剩余锤击次数，
+世界 fx（`WorldContext.fx.collapse`）更新、排序和释放，不写入存档。皮肤切换保留剩余锤击次数，
 读档则按 Lua 默认恢复 4 次。其他建筑继续使用原有受击反馈。
 
 皮肤 build `.zip` 与贴图 `.dyn` 保留在 `public/dst/data/anim/dynamic/` 下。
@@ -272,7 +273,7 @@ RGB `(237,237,209)/255`。范围不随掉落堆叠数量增加，也没有火把
 `@dontstarve-web/prefab/stafflight` 的 `StaffLightInstance` 按 `stafflight.lua` 的 `fn()` 组装矮星（`stafflight`）和极光（`staffcoldlight`）：
 标签、`heater`、`sanityaura`、`hauntable`、`timer`，矮星另有 `propagator`。`staffLightPrefabs` 提供两颗星的构造与资源声明，由应用注册到全局唯一的 `PrefabEntityManager`（`prefabInstance.ts`）；所有已迁移的 prefab 共用其实体集合、显示生命周期与共享 archive 缓存；存档按组件写入（`components.timer` 即 `timer.lua` 的 `OnSave`）。`PrefabEntityDefinition` 还可以声明 `physics`（`Make*Physics` 与半径）和 `minimapIcon`，`pond` 用它们声明障碍物碰撞和地图图标。
 
-建造流程在 `BuildingPlacer`（`buildingPlacer.ts`）：placer 实体、光标、指针事件和 `consumeBufferedBuild`，提交时只把位置交给调用方生成建筑。`AnimatedBuildingPlacement` 和 `src/placeableBuilding.ts` 的 `MANAGED_BUILDING_PLACERS` 各用一个；已迁到 `PrefabEntityManager` 的建筑（目前是 `wardrobe`、`campfire`、`nightlight`、`pighouse`，`firepit`，`tent`、`moonbase`、`moondial`、`sculptingtable`、`winterometer`、`lightning_rod`、`pighead`、`mermhead`、`birdcage`，以及容器建筑 `treasurechest`、`pandoraschest`、`icebox`、`dragonflychest`、`saltbox`、`mushroom_light`、`mushroom_light2`）登记在后者，由 `building.ts` 的 `buildingPrefab`／`buildingPlacer` 从 `definitions.json` 声明，存档仍写 `components.building`；`AnimatedBuildingPlacement` 只剩 `cookpot`、四种科技建筑和 `bookstation`。这些建筑都用共享 archive sprite 绘制，AnimState 的符号／build 覆盖和 `SetPercent` 姿态（`winterometer`、`sculptingtable`、`moondial`、`moonbase`、`birdcage`）也由 archive 路径执行，prefab 不选择绘制路径。随建筑生成的子实体（`pighead`／`mermhead` 的 `flies`、`moonbase` 的 `positronbeam_*`、`positronpulse`、`staffcoldlightfx`）从 `fn` 收到的共享 `SpriteResources` 声明美术，以 `attachFx` 挂在建筑上。容器建筑在 `fn` 中调用 `MakeBuildingContainer`：`SetPersistData` 先由 `Container.OnLoad` 读入 `components.container`，再在 `inst.OnLoad` 之前登记 `world:<prefab>:<entityId>` 地址，新建的建筑则在 `onSpawned` 登记。
+建造流程在 `BuildingPlacer`（`buildingPlacer.ts`）：placer 实体、光标、指针事件和 `consumeBufferedBuild`，提交时只把位置交给调用方生成建筑。`AnimatedBuildingPlacement` 和 `src/placeableBuilding.ts` 的 `MANAGED_BUILDING_PLACERS` 各用一个；已迁到 `PrefabEntityManager` 的建筑（目前是 `wardrobe`、`campfire`、`nightlight`、`pighouse`，`firepit`，`tent`、`moonbase`、`moondial`、`sculptingtable`、`winterometer`、`lightning_rod`、`pighead`、`mermhead`、`birdcage`、四种科技建筑，以及容器建筑 `treasurechest`、`pandoraschest`、`icebox`、`dragonflychest`、`saltbox`、`mushroom_light`、`mushroom_light2`）登记在后者，由 `building.ts` 的 `buildingPrefab`／`buildingPlacer` 从 `definitions.json` 声明，存档仍写 `components.building`；`AnimatedBuildingPlacement` 只剩 `cookpot` 和 `bookstation`。这些建筑都用共享 archive sprite 绘制，AnimState 的符号／build 覆盖和 `SetPercent` 姿态（`winterometer`、`sculptingtable`、`moondial`、`moonbase`、`birdcage`）也由 archive 路径执行，prefab 不选择绘制路径。随建筑生成的子实体（`pighead`／`mermhead` 的 `flies`、`moonbase` 的 `positronbeam_*`、`positronpulse`、`staffcoldlightfx`）从 `fn` 收到的共享 `SpriteResources` 声明美术，以 `attachFx` 挂在建筑上。容器建筑在 `fn` 中调用 `MakeBuildingContainer`：`SetPersistData` 先由 `Container.OnLoad` 读入 `components.container`，再在 `inst.OnLoad` 之前登记 `world:<prefab>:<entityId>` 地址，新建的建筑则在 `onSpawned` 登记。
 `star_hot.zip` 播放 `appear → idle_loop`，`star_cold.zip` 在 `appear` 后随 `animover` 随机切换三个待机；到期或作祟时走 `kill_light`：
 播放 `disappear`、`persists = false`，1 秒后移除。局部光源由 0.1 秒周期任务脉动，半径 33～36 世界单位。
 寿命（矮星 1440 秒）在世界 `GameTimeScheduler` 上的 `extinguish` timer 中计时，休眠不暂停；存档保存落点和剩余寿命。

@@ -263,3 +263,21 @@ it('returns from a transient to the interrupted clip, frame and queue, and settl
   resident.load();
   expect(created[1].calls).toEqual(['once:hit', 'frame:9']);
 });
+
+it('plays what is pushed behind a loop after its current pass, and at once behind a finished one-shot', () => {
+  const created: ReturnType<typeof fake>[] = [];
+  const make = (clip: { name: string; loop: boolean }) => { const entry = fake(clip); created.push(entry); return entry.sprite; };
+  const resident = new ResidentSprite(new THREE.Group(), make, { name: 'proximity_loop', loop: true }, make({ name: 'proximity_loop', loop: true }));
+  const [drawn] = created;
+  // AnimState:PushAnimation behind a loop: the pass being drawn (frame 3) plays to its end first.
+  resident.pushAnimation('proximity_pst');
+  resident.pushAnimation('idle');
+  expect(drawn.calls).toEqual(['start:proximity_loop', 'once:proximity_loop', 'frame:3']);
+  drawn.finish();
+  expect(drawn.calls.at(-1)).toBe('once:proximity_pst');
+  drawn.finish();
+  expect(drawn.calls.at(-1)).toBe('once:idle');
+  drawn.finish();
+  resident.pushAnimation('hit');
+  expect(drawn.calls.at(-1)).toBe('once:hit');
+});
