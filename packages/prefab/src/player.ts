@@ -24,7 +24,7 @@ import { MakeCharacterPhysics, WORLD_SCALE } from './standardcomponents';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { PhysicsState } from '../../componets/src/physicsState';
 import { actionEntity, disposeActionEntity, FindEntities } from './actionEntity';
-import { createPrefabEntity, prefabInstance, type PrefabInstance } from './prefabInstance';
+import { createPrefabEntity, prefabInstance, type EntityTask, type PrefabInstance } from './prefabInstance';
 import { Builder, type BuilderWorld } from '../../componets/src/builder';
 import type { WilsonSoulHopHost } from '../../stategraphs/src/SGwilson';
 import { STAFF_CASTINGLIGHT_ID, type StaffCastingLightInstance } from './staff_castinglight';
@@ -212,7 +212,7 @@ export interface WilsonPlayerInstance extends PrefabInstance {
   IsVisible(): boolean;
   /** bernie_active.lua / berniebigbrain.lua: the big Bernies this player leads, and the brief block after one grows. */
   bigbernies?: Set<object>;
-  blockbigbernies?: () => void;
+  blockbigbernies?: EntityTask;
 }
 
 export function wilsonPlayerInstance(model: THREE.Object3D): WilsonPlayerInstance {
@@ -566,6 +566,7 @@ function createWilsonPlayerEntity(
       buildArchive: `dynamic/${PLAYER_ART_CHARACTER}.zip`, fallbackBuilds: [`${UNIQUE_ITEM_BUILD}.zip`], art: resources.archives });
     instance.sprite.setFacingRotation(0, 4);
   });
+  if (options.scheduler) baseInstance.BindScheduler(options.scheduler);
   const instance: WilsonPlayerInstance = Object.assign(baseInstance, {
     stats: createPlayerStats(baseInstance, options.stats, options.scheduler),
     controllerEnabled: true, runSpeed: 0, currentMotorSpeed: 0, wantsToMoveForward: false, worldHeading: 0,

@@ -163,7 +163,7 @@ it('toggles tile visibility, physics and the steam task while preserving inactiv
     const records = s.springs();
     expect(first.transform.model.parent).toBe(s.scene); expect(second.transform.model.parent).toBe(s.scene);
     expect(s.physics.bodies).toEqual([firstBody, secondBody]);
-    expect(first.fxTask.snapshot.peek().status).toBe('scheduled');
+    expect(first._fx_task).toBeDefined();
 
     state.playerpositions.set([new THREE.Vector3(300, 0, 0)]);
     await settle();
@@ -172,7 +172,7 @@ it('toggles tile visibility, physics and the steam task while preserving inactiv
     expect(s.physics.bodies).toEqual([]);
     expect([...s.physics.registeredBodies]).toEqual([firstBody, secondBody]);
     // OnEntitySleep: StopFx.
-    expect(first.fxTask.snapshot.peek().status).toBe('stopped');
+    expect(first._fx_task).toBeUndefined();
     expect(s.springs()).toEqual(records);
     expect(first.components.heater.GetHeat()).toBe(90);
     let json = '';
@@ -196,7 +196,7 @@ it('toggles tile visibility, physics and the steam task while preserving inactiv
     expect(restored.physics.bodies).toEqual([loaded.physicsBody]);
     expect(declaredLight(loaded)).toEqual(HOTSPRING_LIGHT);
     // OnEntityWake restarts the task of a spring that can still steam.
-    expect(second.fxTask.snapshot.peek().status).toBe('scheduled');
+    expect(second._fx_task).toBeDefined();
   } finally { s.dispose(); restored.dispose(); state.dispose(); }
 });
 
@@ -224,13 +224,14 @@ it('emits slow steam, switches to crater steam once bombed, stops while asleep a
 
     // OnEntitySleep stops the task; OnEntityWake starts it again with a fresh random delay.
     state.playerpositions.set([new THREE.Vector3(300, 0, 0)]); await settle();
-    expect(spring.fxTask.snapshot.peek().status).toBe('stopped');
+    expect(spring._fx_task).toBeUndefined();
     await s.tick(10); expect(steam()).toHaveLength(0);
     state.playerpositions.set([new THREE.Vector3()]); await settle();
-    expect(spring.fxTask.snapshot.peek().status).toBe('scheduled');
+    expect(spring._fx_task).toBeDefined();
     await s.tick(2.3); expect(steam().map(other => other.prefab)).toEqual(['crater_steam_fx3']);
 
+    // Remove cancels the pending task.
     spring.remove();
-    expect(spring.fxTask.snapshot.peek().status).toBe('stopped');
+    expect(spring._fx_task?.NextTime()).toBeUndefined();
   } finally { s.dispose(); state.dispose(); }
 });

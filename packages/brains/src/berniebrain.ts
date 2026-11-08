@@ -13,8 +13,10 @@ export interface BerniePlayer {
   /** entity:IsVisible() */
   IsVisible(): boolean;
   bigbernies?: Set<object>;
-  /** The pending OnEndBlockBigBernies task's cancel. */
-  blockbigbernies?: () => void;
+  /** The pending OnEndBlockBigBernies task. */
+  blockbigbernies?: { Cancel(): void };
+  /** EntityScript:DoTaskInTime, on the player. */
+  DoTaskInTime(time: number, fn: () => void): { Cancel(): void };
 }
 
 /** The bernie_active / bernie_big inst fields the brains read. */
@@ -26,8 +28,6 @@ export interface BernieBrainInst extends BehaviourContext {
   getPlayers(): readonly BerniePlayer[];
   /** bernie_common.lua isleadercrazy; the hotheaded skill branch is not ported. */
   isleadercrazy(leader: BerniePlayer): boolean;
-  /** leader:DoTaskInTime on the game-time scheduler; returns the cancel. */
-  doTaskInTime(seconds: number, fn: () => void): () => void;
 }
 
 export interface BernieActiveBrainInst extends BernieBrainInst {
@@ -80,9 +80,9 @@ export class BernieBrain extends Brain<BernieActiveBrainInst> {
 
   private DoGoBig(leader: BerniePlayer | undefined): void {
     if (!leader || leader.bigbernies) return;
-    leader.blockbigbernies?.();
+    leader.blockbigbernies?.Cancel();
     // V2C: block other big bernies from triggering, since brain needs time to detect initial leader
-    leader.blockbigbernies = this.inst.doTaskInTime(.5, () => { leader.blockbigbernies = undefined; });
+    leader.blockbigbernies = leader.DoTaskInTime(.5, () => { leader.blockbigbernies = undefined; });
     this.inst.GoBig(leader);
   }
 

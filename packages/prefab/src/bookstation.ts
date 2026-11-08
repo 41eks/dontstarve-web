@@ -1,6 +1,6 @@
 import { LootDropper } from '../../componets/src/lootdropper';
 import { addComponent } from './components';
-import type { PrefabInstance } from './prefabInstance';
+import type { EntityTask, PrefabInstance } from './prefabInstance';
 import { Workable } from '../../componets/src/workable';
 import { Prototyper } from '../../componets/src/prototyper';
 import { CreateTechTree } from '../../componets/src/techtree';
@@ -9,7 +9,6 @@ import { type SpriteState } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import { createRenderEffect, createSignal, type ReadonlySignal } from '@dontstarve-web/signals';
 import { bookstation_init_fn } from '@dontstarve-web/animation/prefabskin';
-import { ComponentTimer } from '../../componets/src/timer';
 import { actionEntity } from './actionEntity';
 import {
     AnimatedBuildingPlacement,
@@ -51,7 +50,8 @@ interface BookstationHost {
 /** bookstation.lua's RestoreTask and book-count art for one placed inst. */
 export class Bookstation {
     private readonly host: BookstationHost;
-    private readonly restoreTimer: ComponentTimer;
+    /** inst.RestoreTask */
+    RestoreTask?: EntityTask;
     private readonly stopLifecycle: () => void;
     private readonly stopAesthetics: () => void;
     private readonly bookCount = createSignal(0);
@@ -62,11 +62,12 @@ export class Bookstation {
         this.host = host;
         const scheduler = host.world.scheduler;
         if (!scheduler) throw new Error('A bookstation needs the world scheduler');
-        this.restoreTimer = new ComponentTimer(scheduler, () => this.RestoreBooks());
+        const inst = prefabInstance(host.model)!;
+        if (!inst.worldServices?.scheduler) inst.BindScheduler(scheduler);
         // ItemGet / ItemLose.
         this.stopLifecycle = createRenderEffect(() => { host.container.TrackContents(); this.refresh(); });
         const onBurnt = () => this.stopTimer();
-        this.stopWatching = prefabInstance(host.model)!.ListenForEvent('burntup', onBurnt);
+        this.stopWatching = inst.ListenForEvent('burntup', onBurnt);
         // UpdateBookAesthetics: Show/Hide the book layers by fullness, also on every rebuilt sprite and reskin.
         this.stopAesthetics = createRenderEffect(() => {
             host.art?.get();
@@ -80,8 +81,6 @@ export class Bookstation {
         this.refresh();
     }
 
-    get restore() { return this.restoreTimer.snapshot; }
-
     private get animation(): SpriteState { return (prefabInstance(this.host.model)!.sprite as SpriteState); }
 
     /** ItemGet / ItemLose: start or cancel the restore task, then UpdateBookAesthetics. */
@@ -89,13 +88,12 @@ export class Bookstation {
         if (this.disposed) return;
         const { container } = this.host;
         const hasBook = container.GetAllItems().some(item => item.hasTag('book'));
-        const running = this.restoreTimer.snapshot.peek().status === 'scheduled';
-        if (hasBook && !running) this.restoreTimer.start(BOOKSTATION_RESTORE_TIME);
-        else if (!hasBook && running) this.restoreTimer.stop();
+        if (hasBook) this.RestoreTask ??= prefabInstance(this.host.model)!.DoPeriodicTask(BOOKSTATION_RESTORE_TIME, () => this.RestoreBooks());
+        else this.stopTimer();
         this.bookCount.set(this.countBooks());
     }
 
-    private stopTimer(): void { this.restoreTimer.stop(); }
+    private stopTimer(): void { this.RestoreTask?.Cancel(); this.RestoreTask = undefined; }
 
     private countBooks(): number {
         const { container } = this.host;
@@ -117,8 +115,6 @@ export class Bookstation {
             if (percent === undefined || percent >= 1) continue;
             book.components.finiteuses.setPercent(percent + BOOKSTATION_RESTORE_AMOUNT * bonus, BOOK_USE_STEP);
         }
-        // DoPeriodicTask: re-arm the next period while books remain.
-        this.refresh();
     }
 
     dispose(): void {
@@ -127,7 +123,7 @@ export class Bookstation {
         this.stopLifecycle();
         this.stopAesthetics();
         this.stopWatching?.();
-        this.restoreTimer.stop();
+        this.stopTimer();
     }
 }
 

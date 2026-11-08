@@ -9,7 +9,7 @@ import type { SoundEventPath } from './sound';
 import type { SoundEmitter } from './soundEmitter';
 import { FindEntities } from './actionEntity';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { ComponentTimer, Timer } from '../../componets/src/timer';
+import { Timer } from '../../componets/src/timer';
 import { Propagator } from '../../componets/src/propagator';
 import { Heater } from '../../componets/src/heater';
 import { Hauntable, HAUNT_SMALL } from '../../componets/src/hauntable';
@@ -75,8 +75,6 @@ export class StaffLightInstance extends PrefabInstance {
   private readonly scheduler: GameTimeScheduler;
   private readonly settings: typeof STAFF_LIGHTS[StaffLightId];
   private readonly spawnedAt: number;
-  private readonly pulseTask: ComponentTimer;
-  private cancelRemoval?: () => void;
   private readonly soundEmitter: SoundEmitter = this.AddSoundEmitter();
   /** A random idle waits here for its art: a clip nothing draws would complete at once. */
   private idleAwaitsArt = false;
@@ -85,10 +83,10 @@ export class StaffLightInstance extends PrefabInstance {
     super(prefab, new SpriteState({ name: 'appear', billboard: true }));
     const { scheduler } = world, settings = STAFF_LIGHTS[prefab];
     this.scheduler = scheduler; this.settings = settings; this.spawnedAt = scheduler.now;
+    this.BindScheduler(scheduler);
 
     // DoPeriodicTask(.1, pulse_light): the light is first enabled by the first pulse, a period after spawning.
-    this.pulseTask = new ComponentTimer(scheduler, () => { this.pulse_light(); this.pulseTask.start(PULSE_PERIOD); });
-    this.pulseTask.start(PULSE_PERIOD);
+    this.DoPeriodicTask(PULSE_PERIOD, () => this.pulse_light());
 
     this.sprite.playOnce('appear', () => this.PushEvent('animover'));
     if (settings.idles.length === 1) this.sprite.pushAnimation(settings.idles[0], true);
@@ -134,11 +132,7 @@ export class StaffLightInstance extends PrefabInstance {
       });
     }
 
-    this.onRemove(() => {
-      this.pulseTask.stop();
-      this.cancelRemoval?.();
-      stopIdleResume?.();
-    });
+    this.onRemove(() => stopIdleResume?.());
   }
 
   /** The SoundEmitter's PlaySound calls in fn(); they follow the transform, which exists once the display is attached. */
@@ -170,7 +164,7 @@ export class StaffLightInstance extends PrefabInstance {
     this.persists = false;
     this.ListenForEvent('animover', () => this.kill_sound());
     this.sprite.playOnce('disappear', () => this.PushEvent('animover'));
-    this.cancelRemoval = this.scheduler.schedule(1, () => this.remove()); // originally 0.6, padded for network
+    this.DoTaskInTime(1, inst => inst.remove()); // originally 0.6, padded for network
   }
 
   private onhaunt(): boolean {

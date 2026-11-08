@@ -1,9 +1,9 @@
 import { addComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import { Workable } from '../../componets/src/workable';
-import { ComponentTimer, Timer } from '../../componets/src/timer';
+import { Timer } from '../../componets/src/timer';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
+import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
 import type { PlacementSaveRecord } from './saveRecord';
 import { actionEntity } from './actionEntity';
 import { MakeObstaclePhysics } from './standardcomponents';
@@ -20,12 +20,12 @@ export interface BeeQueenHiveWorld extends ToolMouseTargetWorld {
 
 /** beequeenhive.lua `fn` for the grown hive: saved work, regeneration and its delayed honey appearance. */
 export class BeeQueenHiveInstance extends PrefabInstance {
-  readonly honeyTimer: ComponentTimer;
-  pendingHoney?: number;
+  _honeytask?: EntityTask;
   declare readonly components: PrefabInstance['components'] & { workable: Workable<BeeQueenHiveInstance>; timer: Timer };
 
   constructor(world: BeeQueenHiveWorld, position: ReadonlyVector3) {
     super(BEEQUEENHIVEGROWN_ID, new SpriteState({ name: 'large', held: true, billboard: true }));
+    this.BindScheduler(world.scheduler);
     this.setPosition(position.x, 0, position.z);
     this.scale.setScalar(1.4);
     for (const tag of ['event_trigger', 'antlion_sinkhole_blocker']) this.addTag(tag);
@@ -38,13 +38,8 @@ export class BeeQueenHiveInstance extends PrefabInstance {
     workable.savestate = true;
     addComponent(this, 'timer', Timer, world.scheduler, ['hiveregen']);
     this.ListenForEvent('timerdone', (_inst, data) => onTimer(this, (data as { name: string }).name));
-    this.honeyTimer = new ComponentTimer(world.scheduler, () => {
-      if (this.pendingHoney !== undefined) showHoneyLevel(this, this.pendingHoney);
-      this.pendingHoney = undefined;
-    });
     setHoneyLevel(this, honeyLevel(workable.GetWorkLeft()));
     workable.SetOnWorkCallback(onWorked);
-    this.onRemove(() => this.honeyTimer.stop());
   }
 
   /** The record keeps the timer component's save under beeQueenHiveTimer. */
@@ -64,18 +59,18 @@ function honeyLevel(workleft: number): number {
   return Math.max(0, Math.min(3, 3 + Math.ceil((workleft - BEEQUEEN_HIVE_MAX_WORK) * .5)));
 }
 
+/** OnHoneyTask */
 function showHoneyLevel(inst: BeeQueenHiveInstance, level: number): void {
+  inst._honeytask = undefined;
   for (let i = 0; i <= 3; i++) inst.sprite.setSymbolHidden(`honey${i}`, i !== level);
 }
 
 function setHoneyLevel(inst: BeeQueenHiveInstance, level: number, delay?: number): void {
-  inst.honeyTimer.stop(); inst.pendingHoney = undefined;
-  if (delay === undefined) showHoneyLevel(inst, level);
-  else {
+  inst._honeytask?.Cancel();
+  if (delay !== undefined) {
     showHoneyLevel(inst, level - 1);
-    inst.pendingHoney = level;
-    inst.honeyTimer.start(delay);
-  }
+    inst._honeytask = inst.DoTaskInTime(delay, inst => showHoneyLevel(inst, level));
+  } else showHoneyLevel(inst, level);
 }
 
 function onWorked(inst: BeeQueenHiveInstance): void {

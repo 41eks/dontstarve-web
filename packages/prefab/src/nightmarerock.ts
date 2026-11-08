@@ -1,8 +1,7 @@
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { SpriteState } from '@dontstarve-web/display';
-import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
+import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { ComponentTimer } from '../../componets/src/timer';
 import { NightmareRockStateGraph, type NightmareRockStateInst } from '../../stategraphs/src/SGnightmarerock';
 import type { SoundEmitter } from './soundEmitter';
 import { MakeObstaclePhysics, WORLD_SCALE } from './standardcomponents';
@@ -50,10 +49,8 @@ export class NightmareRockInstance extends PrefabInstance implements NightmareRo
   conceal = false;
   conceal_queued = false;
   activeonsane = false;
-  /** inst.transition_task: cancels the pending dotransition. */
-  transition_task?: () => void;
-  /** inst._refreshtask */
-  _refreshtask?: ComponentTimer;
+  transition_task?: EntityTask;
+  _refreshtask?: EntityTask;
   declare sg: NightmareRockStateGraph['sg'];
   /** TheWorld and AllPlayers, as this rock's callbacks reach them. */
   world!: NightmareRockWorld;
@@ -116,16 +113,14 @@ function refresh(inst: NightmareRockInstance): void {
       && player.position.distanceToSquared(inst.position) < limit);
   }
   if ((inst.conceal !== inst.conceal_queued || inst.active_queue !== inst.active) && inst.transition_task === undefined) {
-    // DoTaskInTime(math.random(), dotransition)
-    inst.transition_task = inst.world.scheduler.schedule(Math.random(), () => dotransition(inst));
+    inst.transition_task = inst.DoTaskInTime(Math.random(), dotransition);
   }
 }
 
 /** DoPeriodicTask(UPDATE_INTERVAL, refresh, UPDATE_OFFSET), then stagger the next spawned entity. */
 function AddRefreshTask(inst: NightmareRockInstance): void {
   if (inst._refreshtask) return;
-  const task = inst._refreshtask = new ComponentTimer(inst.world.scheduler, () => { refresh(inst); task.start(UPDATE_INTERVAL); });
-  task.start(UPDATE_OFFSET);
+  inst._refreshtask = inst.DoPeriodicTask(UPDATE_INTERVAL, refresh, UPDATE_OFFSET);
   UPDATE_OFFSET += FRAMES;
   if (UPDATE_OFFSET > UPDATE_INTERVAL) UPDATE_OFFSET = 0;
 }
@@ -140,6 +135,7 @@ function commonfn(world: NightmareRockWorld, id: NightmareRockId): NightmareRock
   const inst = new NightmareRockInstance(id, new SpriteState({ name: 'idle_inactive', billboard: true }));
   inst.AddSoundEmitter();
   inst.world = world;
+  inst.BindScheduler(world.scheduler);
   inst.addTag('antlion_sinkhole_blocker');
   inst.addTag(id);
   inst.activeonsane = id === 'sanityrock';
@@ -149,8 +145,6 @@ function commonfn(world: NightmareRockWorld, id: NightmareRockId): NightmareRock
   inst.OnConcealStateChanged = OnConcealStateChanged;
   inst.ConcealForMinigame = ConcealForMinigame;
   inst.onRemove(() => {
-    inst.transition_task?.();
-    inst._refreshtask?.stop();
     inst.sg.dispose();
   });
   return inst;

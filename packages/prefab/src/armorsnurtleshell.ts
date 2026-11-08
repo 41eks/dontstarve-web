@@ -1,10 +1,10 @@
+import type { EntityTask } from './prefabInstance';
 import { addComponent } from './components';
 import type { ItemEntity, ItemRuntimeComponent } from '@dontstarve-web/inventory';
 import type { EquipmentOwner } from '@dontstarve-web/signals';
 import { Armor } from '../../componets/src/armor';
 import type { Combat } from '../../componets/src/combat';
 import { Equippable } from '../../componets/src/equippable';
-import { ComponentTimer } from '../../componets/src/timer';
 import { UseableItem } from '../../componets/src/useableitem';
 import { FindEntities } from './actionEntity';
 import { wornOwner, type EquipmentVisualOwner } from './equipmentVisual';
@@ -29,7 +29,7 @@ class ArmorSnurtleshell implements ItemRuntimeComponent {
   private readonly inst: ItemEntity;
   private owner?: EquipmentOwner;
   private worn?: EquipmentVisualOwner;
-  private task?: ComponentTimer;
+  private task?: EntityTask;
   private readonly ownerListeners: (() => void)[] = [];
 
   constructor(inst: ItemEntity) { this.inst = inst; }
@@ -65,15 +65,13 @@ class ArmorSnurtleshell implements ItemRuntimeComponent {
     const owner = this.owner;
     if (!owner) return;
     owner.GoToState?.('shell_enter');
-    this.task?.stop();
-    const scheduler = this.inst.components.perishable.scheduler;
-    if (!scheduler) return;
-    const task: ComponentTimer = this.task = new ComponentTimer(scheduler, () => { if (this.task === task) this.droptargets(); });
-    task.start(DROPTARGETS_DELAY);
+    this.task?.Cancel();
+    if (!this.inst.worldServices?.scheduler) return;
+    this.task = this.inst.DoTaskInTime(DROPTARGETS_DELAY, () => this.droptargets());
   }
 
   onstopuse(): void {
-    this.task?.stop();
+    this.task?.Cancel();
     this.task = undefined;
   }
 

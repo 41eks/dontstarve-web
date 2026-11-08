@@ -3,10 +3,9 @@ import { addComponent } from './components';
 import { Workable } from '../../componets/src/workable';
 import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
 import { SpriteState } from '@dontstarve-web/display';
-import { PrefabInstance } from './prefabInstance';
+import { PrefabInstance, type EntityTask } from './prefabInstance';
 import type { ReadonlyVector3 } from './transform';
 import definitions from './definitions.json' with { type: 'json' };
-import { ComponentTimer } from '../../componets/src/timer';
 import { OVERHEAT_TEMP } from '../../componets/src/temperatureoverrider';
 import { buildingPlacer, buildingPrefab, MakeBuildingPersist, type BuildingDeclaration } from './building';
 import { PlaySound } from './sound';
@@ -24,51 +23,35 @@ export const WINTEROMETER_PLACER = buildingPlacer(declaration);
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
-/** winterometer.lua's DoPeriodicTask(1, DoCheckTemp, 0), owned as a restartable game-time timer. */
-class WinterometerCheck {
-    private readonly timer: ComponentTimer;
-    private readonly inst: PrefabInstance;
-    constructor(inst: PrefabInstance, world: PrefabWorldContext & { scheduler: NonNullable<PrefabWorldContext['scheduler']> }) {
-        this.inst = inst;
-        this.timer = new ComponentTimer(world.scheduler, () => {
-            this.check();
-            this.timer.start(1);
-        });
-        // Lua's burntup listener cancels the task; later starts are refused by the burnt tag.
-        inst.ListenForEvent('burntup', () => this.cancel());
-    }
+/** DoCheckTemp: the meter reads GetLocalTemperature(inst), clamped to [0, OVERHEAT_TEMP]. */
+function DoCheckTemp(inst: WinterometerInstance): void {
+    const world = inst.worldServices;
+    if (inst.hasTag('burnt') || !world?.getLocalTemperature) return;
+    const temperature = world.getLocalTemperature(inst.position.x, inst.position.z);
+    inst.sprite.setPercent('meter', 1 - clamp(temperature, 0, OVERHEAT_TEMP) / OVERHEAT_TEMP);
+}
 
-    /** DoCheckTemp: the meter reads GetLocalTemperature(inst), clamped to [0, OVERHEAT_TEMP]. */
-    check(): void {
-        const { inst } = this, world = inst.worldServices;
-        if (inst.hasTag('burnt') || inst.isRemoved || !world?.getLocalTemperature) return;
-        const temperature = world.getLocalTemperature(inst.position.x, inst.position.z);
-        inst.sprite.setPercent('meter', 1 - clamp(temperature, 0, OVERHEAT_TEMP) / OVERHEAT_TEMP);
-    }
+function StartCheckTemp(inst: WinterometerInstance): void {
+    if (!inst.task && !inst.hasTag('burnt')) inst.task = inst.DoPeriodicTask(1, DoCheckTemp, 0);
+}
 
-    /** StartCheckTemp: arms at most one task; delay 0 makes the first reading on the next tick. */
-    start(): void {
-        if (this.inst.hasTag('burnt') || this.inst.isRemoved) return;
-        if (this.timer.snapshot.peek().status === 'scheduled') return;
-        this.timer.start(0);
-    }
-
-    cancel(): void { this.timer.stop(); }
+/** onhit, onbuilt and makeburnt's inst.task:Cancel(). */
+function StopCheckTemp(inst: WinterometerInstance): void {
+    inst.task?.Cancel();
+    inst.task = undefined;
 }
 
 function onbuilt(inst: WinterometerInstance): void {
-    const check = inst.temperatureCheck;
-    check.cancel();
+    StopCheckTemp(inst);
     // The global animover handler restarts the check task.
-    inst.sprite.playOnce('place', () => check.start());
+    inst.sprite.playOnce('place', () => StartCheckTemp(inst));
     PlaySound('dontstarve/common/winter_meter_craft', inst.position);
 }
 
-function onworked(inst: PrefabInstance): void {
+function onhit(inst: WinterometerInstance): void {
     if (inst.hasTag('burnt')) return;
-    const check = (inst as WinterometerInstance).temperatureCheck;
-    check.cancel();
-    inst.sprite.playOnce('hit', () => check.start());
+    StopCheckTemp(inst);
+    inst.sprite.playOnce('hit', () => StartCheckTemp(inst));
 }
 
 function onhammered(inst: PrefabInstance): void {
@@ -80,7 +63,7 @@ function onhammered(inst: PrefabInstance): void {
 
 /** winterometer.lua fn(), as far as it is ported: the temperature check, the hammer workable and MakeSmallBurnable. */
 export class WinterometerInstance extends PrefabInstance {
-    readonly temperatureCheck: WinterometerCheck;
+    task?: EntityTask;
 
     constructor(world: PrefabWorldContext, position: ReadonlyVector3) {
         super(WINTEROMETER_ID, new SpriteState({ name: declaration.idleAnimation ?? 'idle', billboard: true }));
@@ -97,11 +80,10 @@ export class WinterometerInstance extends PrefabInstance {
         const workable = addComponent(this, 'workable', Workable);
         workable.SetWorkAction('HAMMER');
         workable.SetWorkLeft(4);
-        workable.SetOnWorkCallback(onworked);
+        workable.SetOnWorkCallback(onhit);
         workable.SetOnFinishCallback(onhammered);
         addComponent(this, 'lootdropper', LootDropper, spawnStructureLoot(this), STRUCTURE_LOOT_RECIPES);
-        const check = this.temperatureCheck = new WinterometerCheck(this, { ...world, scheduler });
-        this.onRemove(() => check.cancel());
+        this.ListenForEvent('burntup', StopCheckTemp);
         this.ListenForEvent('onbuilt', () => onbuilt(this));
         // MakeSmallBurnable(inst, nil, nil, true): SMALL_BURNTIME, fire level 2, small propagator, burnt structure.
         const burn = new BurnableBinding(this, {
@@ -110,8 +92,8 @@ export class WinterometerInstance extends PrefabInstance {
             onBurnt: () => { DefaultBurntStructureFn(this); burn.dispose(); },
         }, { fire, scheduler });
         this.onRemove(() => burn.dispose());
-        check.check();
-        check.start();
+        DoCheckTemp(this);
+        StartCheckTemp(this);
     }
 }
 

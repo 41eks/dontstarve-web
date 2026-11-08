@@ -54,22 +54,20 @@ it('runs a ground-only record for 64 seconds through its machine and releases ea
   sprite.playOnce.mock.calls.find(([name]) => name === 'open')![1]!();
   expect(sprite.start).toHaveBeenCalledWith('play_loop');
   // The logical task expires even without updating the visual.
-  const scheduled = first.timer.peek();
   scheduler.advance(63.9); expect(first.isPlaying).toBe(true);
-  expect(first.timer.peek()).toBe(scheduled);
+  expect(first.remainingSeconds).toBeCloseTo(.1);
   scheduler.advance(0.1); expect(first.isPlaying).toBe(false);
   // play_song's task turns the machine off; it stays enabled with its record.
   expect(machine.IsOn()).toBe(false);
   expect(firstInst.hasTag('turnedon')).toBe(false);
   expect(machine.enabled).toBe(true);
-  expect(first.timer.peek()).toEqual({ status: 'expired' });
   expect(first.record).toBe('record');
   expect(PlaySound).toHaveBeenLastCalledWith('dontstarve/music/gramaphone_end', expect.any(THREE.Vector3));
   expect(handles[0].stop).toHaveBeenCalledOnce();
   expect(handles[1].stop).not.toHaveBeenCalled();
   expect(second.isPlaying).toBe(true);
   second.dispose(); expect(handles[1].stop).toHaveBeenCalledOnce();
-  expect(second.timer.peek()).toEqual({ status: 'stopped' });
+  expect(second.isPlaying).toBe(false);
   expect(second.play()).toBe(false);
   // TURNOFF stops the song; machine.lua's 3 second cooldown then blocks switching again.
   machine.TurnOn(); expect(first.isPlaying).toBe(true);

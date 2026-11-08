@@ -243,6 +243,7 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
   /** perishable.lua's world, whose game-time scheduler also runs this item's fueled task. */
   BindPerishWorld(world: PerishWorld): void {
     this.components.perishable.BindWorld(world);
+    this.BindScheduler(world.scheduler);
     // The item's components and runtimes keep their game-time tasks on the world it joins.
     for (const component of [...Object.values(this.components), ...this.runtime.values()]) {
       (component as Partial<ItemRuntimeComponent> | undefined)?.BindScheduler?.(world.scheduler);

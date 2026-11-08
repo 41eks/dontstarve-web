@@ -66,11 +66,11 @@ export class PigKingInstance extends PrefabInstance {
   declare readonly components: PrefabInstance['components'] & { trader: Trader<TradeItem> };
   readonly pigking: PigKingStateGraph;
   private readonly world: PigKingWorld;
-  private readonly tasks = new Set<() => void>();
 
   constructor(world: PigKingWorld, position: ReadonlyVector3) {
     super(PIGKING_ID, new SpriteState({ name: definitions.pigKing.animationName, billboard: true }), Transform.stationary());
     this.world = world;
+    this.BindScheduler(world.scheduler);
     this.setPosition(position.x, 0, position.z);
     this.addTag('blocker'); // MakeObstaclePhysics
     this.sprite.setDepthOffset(true); // SetFinalOffset(1)
@@ -95,7 +95,7 @@ export class PigKingInstance extends PrefabInstance {
       playAnimation: (name, loop) => animation.play(name, loop),
       pushAnimation: (name, loop) => animation.push(name, loop),
       SoundEmitter: this.AddSoundEmitter(),
-      doTaskInTime: (seconds, fn) => this.doTaskInTime(seconds, fn),
+      DoTaskInTime: (time, fn) => this.DoTaskInTime(time, fn),
     };
     this.pigking = new PigKingStateGraph(inst, world.scheduler);
     this.sg = this.pigking.sg;
@@ -110,18 +110,10 @@ export class PigKingInstance extends PrefabInstance {
     }
     this.onRemove(() => {
       cleanups.splice(0).forEach(stop => stop());
-      for (const cancel of [...this.tasks]) cancel();
       this.pigking.dispose();
       trader.Disable();
       trader.dispose();
     });
-  }
-
-  /** inst:DoTaskInTime, cancelled with the king. */
-  doTaskInTime(seconds: number, fn: () => void): () => void {
-    const cancel = this.world.scheduler.schedule(seconds, () => { this.tasks.delete(cancel); if (!this.isRemoved) fn(); });
-    this.tasks.add(cancel);
-    return () => { cancel(); this.tasks.delete(cancel); };
   }
 
   /** pigking.lua ontradeforgold: goldvalue nuggets thrown from 4.5 units up, toward the giver. */
@@ -146,7 +138,7 @@ function OnGetItemFromPlayer(inst: PigKingInstance, giver: unknown, item: TradeI
   const goldvalue = item.components?.tradable?.goldvalue ?? 0;
   if (goldvalue <= 0) return;
   inst.pigking.goToState('cointoss');
-  inst.doTaskInTime(TOSS_DELAY, () => inst.tradeForGold(goldvalue, giver));
+  inst.DoTaskInTime(TOSS_DELAY, () => inst.tradeForGold(goldvalue, giver));
 }
 
 function OnIsNight(inst: PigKingInstance, state: PigKingStateInst, isnight: boolean): void {

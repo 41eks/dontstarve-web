@@ -9,7 +9,7 @@ import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { Worker } from '../../componets/src/workable';
 import { actionEntity } from './actionEntity';
 import { addComponent, removeComponent } from './components';
-import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
+import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
 import type { PlacementSaveRecord } from './saveRecord';
 import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
 import { MakeObstaclePhysics, RemovePhysicsColliders, WORLD_SCALE } from './standardcomponents';
@@ -60,9 +60,7 @@ export class EvergreenInstance extends PrefabInstance {
   /** MakeLargeBurnable/MakeMediumPropagator (or the stump's small pair) while the tree is awake. */
   fire?: BurnableBinding;
   burntcone = false;
-  changesTask?: () => void;
-  pineconeTask?: () => void;
-  removeTask?: () => void;
+  pineconetask?: EntityTask;
   /** Growth settled while the visual was unloaded is shown as its final stage, without the transition animation. */
   catchingUp = false;
   private awake = false;
@@ -70,6 +68,7 @@ export class EvergreenInstance extends PrefabInstance {
   constructor(world: EvergreenWorld, position: ReadonlyVector3, stage: number, random: () => number) {
     super(EVERGREEN_ID, new SpriteState({ name: 'sway1_loop_short', billboard: true }), Transform.stationary());
     this.world = world; this.random = random;
+    this.BindScheduler(world.scheduler);
     this.setActive(false);
     this.setPosition(position.x, 0, position.z);
     this.deploySmartRadius = 1; this.logicalPlacement = true;
@@ -92,7 +91,6 @@ export class EvergreenInstance extends PrefabInstance {
     this.OnSave = (_inst, data) => onsave(this, data);
     this.OnLoad = (_inst, data) => onload(this, data);
     this.onRemove(() => {
-      this.changesTask?.(); this.pineconeTask?.(); this.removeTask?.();
       unbindFire(this);
       for (const sound of this.sounds) sound.stop();
       this.sounds.clear();
@@ -178,7 +176,7 @@ function OnBurnt(inst: EvergreenInstance, immediate: boolean): void {
   inst.minimap.SetIcon('evergreen_burnt.png');
   inst.sprite.start(rest(inst));
   if (immediate) burntChanges(inst);
-  else inst.changesTask = inst.world.scheduler.schedule(.5, () => { inst.changesTask = undefined; burntChanges(inst); });
+  else inst.DoTaskInTime(.5, burntChanges);
 }
 
 function dropGrouped(inst: EvergreenInstance, items: readonly string[], position: ReadonlyVector3): void {
@@ -189,9 +187,9 @@ function dropGrouped(inst: EvergreenInstance, items: readonly string[], position
 
 /** onpineconetask: the 10% pinecone lands one unit away from the burnt tree, once. */
 function startPineconeTask(inst: EvergreenInstance): void {
-  if (inst.burntcone || inst.pineconeTask) return;
-  inst.pineconeTask = inst.world.scheduler.schedule(10, () => {
-    inst.pineconeTask = undefined;
+  if (inst.burntcone || inst.pineconetask) return;
+  inst.pineconetask = inst.DoTaskInTime(10, () => {
+    inst.pineconetask = undefined;
     const angle = inst.random() * Math.PI * 2;
     const position = inst.getPosition().clone().add(new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle)).multiplyScalar(WORLD_SCALE));
     dropGrouped(inst, inst.components.lootdropper.GenerateLoot(inst.random), position);
@@ -212,7 +210,7 @@ function chop_down_burnt_tree(inst: EvergreenInstance): void {
   RemovePhysicsColliders(inst);
   inst.components.lootdropper.SpawnLootPrefab('charcoal');
   inst.components.lootdropper.DropLoot();
-  inst.pineconeTask?.(); inst.pineconeTask = undefined;
+  inst.pineconetask?.Cancel(); inst.pineconetask = undefined;
   inst.sprite.playOnce(`chop_burnt_${burntStage(inst)}`, () => inst.remove());
 }
 
@@ -270,7 +268,7 @@ function OnEntityWake(inst: EvergreenInstance): void {
 function OnEntitySleep(inst: EvergreenInstance): void {
   inst.components.growable.OnEntitySleep();
   if (inst.fire?.burnable.IsBurning()) {
-    if (inst.hasTag('stump')) inst.removeTask = inst.world.scheduler.schedule(0, () => { inst.removeTask = undefined; burnStump(inst); });
+    if (inst.hasTag('stump')) inst.DoTaskInTime(0, burnStump);
     else OnBurnt(inst, true);
   }
   unbindFire(inst);

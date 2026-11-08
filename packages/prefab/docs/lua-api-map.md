@@ -75,8 +75,11 @@
 | `inst:ListenForEvent(event, fn, source)`、`PushEvent`、`RemoveEventCallback` | 同名方法 | `mushroom_light.ts` | `fn(inst, data)`，`inst` 是推送事件的实体；`source` 监听别的实体，双方记账，任一方 Remove 时自动解除；`ListenForEvent` 另返回取消函数；`PushEvent` 在 `inst.sg` 监听该事件时转发给它，再转给 `inst.brain`，不要再手写转发；不用 `model` 事件 |
 | `inst:WatchWorldState("snowlevel", fn)` | `world.getWatchWorldContent(WorldContentKey.SnowLevel, cleanup)` + effect | `monkeypillar.ts` | 也有注入的世界信号；按相邻 prefab 选用 |
 | stategraph 的全局 `EventHandler`；`GoToState` 推的 `"newstate"` | `sg.listenForEvent(name, fn)`；`sg.onNewState(fn)` | `SGwilson.ts` | `listenForEvent` 决定 `isListeningForEvent`，即 `inst:PushEvent` 会不会转发；`newstate` 不是 sg 事件，`listenForEvent('newstate')` 会抛错 |
-| `inst:DoTaskInTime(t, fn)` | `inst.DoTaskInTime(t, fn)`（`fn(inst)`，用 `worldServices.scheduler`） | `entityScript.test.ts` | 返回带 `Cancel()` 的任务，Remove 自动取消；旧写法 `world.scheduler.schedule` 需自己在移除时取消 |
-| `inst:DoPeriodicTask(t, fn, initialdelay)` | `inst.DoPeriodicTask(t, fn, initialdelay)` | `entityScript.test.ts` | Remove 自动取消；旧写法是回调里再次 `schedule` |
+| `inst:DoTaskInTime(t, fn)` | `inst.DoTaskInTime(t, fn)`（`fn(inst)`） | `monkeypillar.ts` | 返回 `EntityTask`（`Cancel()`、`NextTime()`），Remove 自动取消，`onRemove` 里不再手写取消；Lua 的额外参数写进闭包。不要再为实体计时 `new ComponentTimer` 或调 `scheduler.schedule` |
+| `inst:DoPeriodicTask(t, fn, initialdelay)` | `inst.DoPeriodicTask(t, fn, initialdelay)` | `nightmarerock.ts` | 同上；回调里 `Cancel()` 自己即停止 |
+| `inst:PushEventInTime(t, event, data)`、`inst:CancelAllPendingTasks()` | 同名方法 | `entityScript.test.ts` | |
+| `GetTaskRemaining(task)`、`task:NextTime()` | `GetTaskRemaining(task, now)`（`prefabInstance.ts`）、`task.NextTime()` | `phonograph.ts` | 无任务或已结束返回 -1；`now` 用 `inst.GetTime()` 或所在 scheduler |
+| 任务所用的 `scheduler`（引擎全局） | `inst.BindScheduler(world.scheduler)` | `evergreens.ts` | `PrefabEntityManager.spawn` 在 `fn` 之后注入世界 scheduler，物品由 `ItemEntity.BindPerishWorld` 注入；`fn`／构造函数里就要计时的 prefab 先自己调用。改绑时挂起任务保留剩余时间 |
 | `inst.OnSave`、`inst.OnLoad` | `this.OnSave = (_inst, data) => …`，同名 `OnLoad` | `archive_pillar.ts` | 还要加：`saveRecord.ts`、`src/save/types.ts`、`src/prefabDefinitions.ts` 的解析和导入转换器 |
 | `inst.OnLoadPostPass` | 见示例 | `atrium_gate.ts` | |
 | `OnLoadPostPass(inst, newents, data)` 的 `newents[GUID]` | 注入的 `world.getEntity(id)`（应用层接 `PrefabEntityManager.get`），在 `DoTaskInTime(0)` 里解析 | `grotto_pool.ts` | 存档 ID 即项目实体 ID |

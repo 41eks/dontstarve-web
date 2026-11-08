@@ -22,7 +22,6 @@ import catalog from './groundItems.json' with { type: 'json' };
 import { MOONBUTTERFLY_PERISH_INV_MODIFIER, MOONBUTTERFLY_PERISH_TIME, MOONBUTTERFLY_SPEED } from './moonbutterflyTuning';
 import { FindEntities } from './actionEntity';
 import { PlaySound } from './sound';
-import { ComponentTimer } from '../../componets/src/timer';
 import { TILE_SIZE } from './tile';
 import { animationLengths } from './animationTimings';
 import { prefabInstance } from './prefabInstance';
@@ -557,11 +556,7 @@ function bindMoonButterfly(entity: ItemEntity, creature: ButterflyCreature): (dt
     creature.removeTag('spore');
     creature.PushEvent('death');
     entity.persists = false;
-    const scheduler = entity.components.perishable.scheduler;
-    if (!scheduler) throw new Error('Moon butterfly decay requires the world scheduler');
-    const removal = new ComponentTimer(scheduler, () => entity.remove());
-    entity.onRemove(() => removal.stop());
-    removal.start(3);
+    entity.DoTaskInTime(3, inst => inst.remove());
   });
   entity.ListenForEvent('onputininventory', () => { lit = false; setLight(0); });
   entity.ListenForEvent('ondropped', () => {

@@ -2,7 +2,7 @@ import { LootDropper } from '../../componets/src/lootdropper';
 import { addComponent, removeComponent } from './components';
 import { Workable } from '../../componets/src/workable';
 import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
-import { PrefabInstance } from './prefabInstance';
+import { PrefabInstance, type EntityTask } from './prefabInstance';
 import { SpriteState } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import definitions from './definitions.json' with { type: 'json' };
@@ -13,7 +13,6 @@ import type { InventoryStack, ItemEntity, ItemOwner } from '@dontstarve-web/inve
 import { Occupiable } from '../../componets/src/occupiable';
 import { Shelf, type ShelfHolder, type ShelfTaker } from '../../componets/src/shelf';
 import { DefaultSleepTest, DefaultWakeTest, Sleeper, type SleeperInst } from '../../componets/src/sleeper';
-import { ComponentTimer } from '../../componets/src/timer';
 import { Trader, type TradeItem } from '../../componets/src/trader';
 import { foods } from '../../componets/src/preparedfoods';
 import { FRAMES } from '../../stategraphs/src/stategraph';
@@ -99,12 +98,12 @@ export class Birdcage {
     readonly status: ReadonlySignal<BirdcageStatus | undefined>;
     private readonly statusMemo;
     private stopSleepAnimation: (() => void) | undefined;
-    private readonly animationTask: ComponentTimer | undefined;
+    /** inst.AnimationTask */
+    private AnimationTask?: EntityTask;
     private chirpsound: SoundEventPath | undefined;
     /** The bird's appearance slot; the cage's own skin declaration stays independent. */
     private readonly birdAnimState = new AnimState();
     private stopRot: (() => void) | undefined;
-    private readonly cancels = new Set<() => void>();
     private disposed = false;
     private readonly instance: CageEntity;
     private readonly world: PrefabWorldContext | undefined;
@@ -135,7 +134,7 @@ export class Birdcage {
         }
         this.random = random;
         instance.sprite.declareAnimState('bird', this.birdAnimState.json, art);
-        this.animationTask = scheduler ? new ComponentTimer(scheduler, () => { this.doAnimationTask(); this.animationTask!.start(ANIMATION_PERIOD); }) : undefined;
+        if (scheduler && !instance.worldServices?.scheduler) instance.BindScheduler(scheduler);
         for (const tag of ['structure', 'cage', 'sanityaura']) instance.addTag(tag);
         this.shelf = new Shelf<ItemEntity, CageEntity>(instance, this.holder);
         this.shelf.SetOnShelfItem((_inst, item) => this.onGetShelfItem(item));
@@ -191,10 +190,8 @@ export class Birdcage {
     private pushStateAnim(name: string, loop = false): void { this.instance.AnimState.PushAnimation(name + this.cageStateSignal.peek(), loop); }
 
     private doTaskInTime(seconds: number, run: () => void): void {
-        const scheduler = this.world?.scheduler;
-        if (!scheduler) return;
-        const cancel = scheduler.schedule(seconds, () => { this.cancels.delete(cancel); if (!this.disposed) run(); });
-        this.cancels.add(cancel);
+        if (!this.instance.worldServices?.scheduler) return;
+        this.instance.DoTaskInTime(seconds, () => { if (!this.disposed) run(); });
     }
 
     private playSound(path: SoundEventPath | undefined): void { if (path) PlaySound(path, this.instance.position); }
@@ -305,8 +302,11 @@ export class Birdcage {
 
     // --- periodic idle animation ---------------------------------------------------------------
 
-    private startAnimationTask(): void { this.animationTask?.start(ANIMATION_PERIOD); }
-    private stopAnimationTask(): void { this.animationTask?.stop(); }
+    private startAnimationTask(): void {
+        this.stopAnimationTask();
+        if (this.instance.worldServices?.scheduler) this.AnimationTask = this.instance.DoPeriodicTask(ANIMATION_PERIOD, () => this.doAnimationTask());
+    }
+    private stopAnimationTask(): void { this.AnimationTask?.Cancel(); this.AnimationTask = undefined; }
 
     /** DoAnimationTask: the hunger of the bird picks the idle variant and its sounds. */
     private doAnimationTask(): void {
@@ -504,9 +504,7 @@ export class Birdcage {
     dispose(): void {
         if (this.disposed) return;
         this.disposed = true;
-        for (const cancel of this.cancels) cancel();
-        this.cancels.clear();
-        this.animationTask?.stop();
+        this.stopAnimationTask();
         this.stopRot?.();
         this.removeSleeper();
         this.occupiable?.dispose();

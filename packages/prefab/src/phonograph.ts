@@ -2,12 +2,11 @@ import { LootDropper } from '../../componets/src/lootdropper';
 import { addComponent } from './components';
 import type * as THREE from 'three';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { ComponentTimer } from '../../componets/src/timer';
-import { createMemo } from '@dontstarve-web/signals';
 import { groundItemPrefab, type ItemPrefabDefinition } from './groundItems';
 import type { ItemPrefabWorld, GroundItemDefinition } from './groundPrefab';
 import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
 import { ItemEntity } from '@dontstarve-web/inventory';
+import { GetTaskRemaining, type EntityTask } from './prefabInstance';
 import { Inventory } from '../../componets/src/inventory';
 import { Trader } from '../../componets/src/trader';
 import { Workable } from '../../componets/src/workable';
@@ -32,10 +31,9 @@ export class PhonographController {
   }
   private scheduler: GameTimeScheduler;
   private ownsScheduler: boolean;
-  private readonly playback: ComponentTimer;
-  readonly timer;
-  private readonly playing;
-  get remainingSeconds(): number { return this.playback.remainingSeconds ?? 0; }
+  /** play_song's DoTaskInTime(PHONOGRAPH_PLAY_TIME, TurnOffMachine). */
+  private playtask?: EntityTask;
+  get remainingSeconds(): number { return Math.max(0, GetTaskRemaining(this.playtask, this.scheduler.now)); }
   private sound?: SoundHandle;
   private disposed = false;
   private get sprite() { return this.entity.sprite; }
@@ -44,13 +42,10 @@ export class PhonographController {
 
   constructor(entity: ItemEntity, scheduler?: GameTimeScheduler) {
     this.entity = entity;
-    scheduler ??= entity.components.perishable.scheduler;
+    scheduler ??= entity.worldServices?.scheduler ?? entity.components.perishable.scheduler;
     this.ownsScheduler = scheduler === undefined;
     this.scheduler = scheduler ?? new GameTimeScheduler();
-    // play_song's DoTaskInTime(PHONOGRAPH_PLAY_TIME, TurnOffMachine).
-    this.playback = new ComponentTimer(this.scheduler, () => { if (this.machine) this.machine.TurnOff(); else this.stop(); });
-    this.timer = this.playback.snapshot;
-    this.playing = createMemo(() => this.timer.get().status === 'scheduled');
+    if (entity.worldServices?.scheduler !== this.scheduler) entity.BindScheduler(this.scheduler);
     const machine = addComponent(entity, 'machine', Machine, () => entity.components.perishable.scheduler ?? this.scheduler);
     machine.SetGroundOnlyMachine(true);
     machine.enabled = false;
@@ -61,11 +56,11 @@ export class PhonographController {
     });
   }
 
-  get isPlaying(): boolean { return this.playing.peek(); }
+  get isPlaying(): boolean { return this.playtask !== undefined; }
 
   BindScheduler(scheduler: GameTimeScheduler): void {
     if (scheduler === this.scheduler) return;
-    this.playback.BindScheduler(scheduler);
+    this.entity.BindScheduler(scheduler);
     if (this.ownsScheduler) this.scheduler.dispose();
     this.scheduler = scheduler; this.ownsScheduler = false;
   }
@@ -115,7 +110,11 @@ export class PhonographController {
     if (this.disposed || !this.record || !Object.hasOwn(RECORD_SONGS, this.record)
       || !Number.isFinite(seconds) || seconds <= 0 || seconds > PHONOGRAPH_PLAY_TIME) return false;
     this.sound?.stop();
-    this.playback.start(seconds);
+    this.playtask?.Cancel();
+    this.playtask = this.entity.DoTaskInTime(seconds, () => {
+      this.playtask = undefined;
+      if (this.machine) this.machine.TurnOff(); else this.stop();
+    });
     this.sound = PlaySound(RECORD_SONGS[this.record], this.position, PHONOGRAPH_PLAY_TIME - seconds);
     if (open) this.sprite.playOnce('open', () => { if (this.isPlaying) this.sprite.start('play_loop'); });
     else this.sprite.start('play_loop');
@@ -125,7 +124,7 @@ export class PhonographController {
   stop(playEnd = true): void {
     const wasPlaying = this.sound !== undefined;
     this.sound?.stop(); this.sound = undefined;
-    if (this.timer.peek().status !== 'expired') this.playback.stop();
+    this.playtask?.Cancel(); this.playtask = undefined;
     this.sprite.playOnce('idle');
     if (wasPlaying && playEnd) PlaySound(END_SOUND, this.position);
   }
@@ -136,7 +135,7 @@ export class PhonographController {
 
   dispose(): void {
     if (this.disposed) return;
-    this.stop(false); this.disposed = true; this.playing.dispose();
+    this.stop(false); this.disposed = true;
     this.stopEvents(); this.machine?.dispose();
     if (this.ownsScheduler) this.scheduler.dispose();
   }

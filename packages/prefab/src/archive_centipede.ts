@@ -6,7 +6,7 @@ import { LootDropper } from '../../componets/src/lootdropper';
 import { Hauntable } from '../../componets/src/hauntable';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
+import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
 import type { PlacementSaveRecord } from './saveRecord';
 import { PlaySound } from './sound';
 
@@ -31,12 +31,13 @@ export class ArchiveCentipedeHuskInstance extends PrefabInstance {
     lootdropper: LootDropper; health: Health; inspectable: Inspectable; hauntable: Hauntable; combat?: Combat;
   };
   /** inst.idle2task. */
-  private idle2task?: () => void;
+  idle2task?: EntityTask;
   private readonly world: ArchiveCentipedeHuskWorld;
 
   constructor(world: ArchiveCentipedeHuskWorld) {
     super(ARCHIVE_CENTIPEDE_HUSK_ID, new SpriteState({ name: 'idle_full', billboard: true }));
     this.world = world;
+    this.BindScheduler(world.scheduler);
     // PlayAnimation("idle_full") without a loop argument.
     this.sprite.playOnce('idle_full');
     const { scheduler } = world;
@@ -54,9 +55,8 @@ export class ArchiveCentipedeHuskInstance extends PrefabInstance {
     this.addCombat();
 
     const stopAttacked = this.ListenForEvent('attacked', () => this.OnAttacked());
-    this.idle2task = scheduler.schedule(Math.random() * 3 + 3, () => this.playidle2());
+    this.idle2task = this.DoTaskInTime(Math.random() * 3 + 3, () => this.playidle2());
     this.onRemove(() => {
-      this.idle2task?.(); this.idle2task = undefined;
       stopAttacked();
     });
   }
@@ -119,7 +119,7 @@ export class ArchiveCentipedeHuskInstance extends PrefabInstance {
       else if (percent < MED_THRESHOLD_DOWN) this.play('idle2_med', 'idle_med');
       else this.play('idle2_full', 'idle_full');
     }
-    this.idle2task = this.world.scheduler.schedule(Math.random() * 10 + 8, () => this.playidle2());
+    this.idle2task = this.DoTaskInTime(Math.random() * 10 + 8, () => this.playidle2());
   }
 
   /** huskfn has no OnSave; health:OnSave writes the current health, kept as the record's `{ current, maximum }`. */

@@ -11,7 +11,7 @@ export type PigKingStateName = 'idle' | 'cointoss' | 'happy' | 'unimpressed' | '
  */
 export interface PigKingStateInst {
   /** inst.sg.mem */
-  readonly mem: { sleeping: boolean; endhappytask?: () => void };
+  readonly mem: { sleeping: boolean; endhappytask?: { Cancel(): void } };
   happy: boolean;
   readonly trader: { Enable(): void; Disable(): void };
   /** AnimState:PlayAnimation; a non-looping animation pushes `animover` to the stategraph when its queue ends. */
@@ -19,7 +19,7 @@ export interface PigKingStateInst {
   pushAnimation(name: string, loop?: boolean): void;
   readonly SoundEmitter: Pick<SoundEmitter, 'PlaySound'>;
   /** inst:DoTaskInTime, cancelled with the king. */
-  doTaskInTime(seconds: number, fn: () => void): () => void;
+  DoTaskInTime(time: number, fn: () => void): { Cancel(): void };
 }
 
 type PigKingGraph = StateGraphInstance<PigKingStateInst, PigKingStateName>;
@@ -41,9 +41,9 @@ const states: StateDefinition<PigKingStateInst, PigKingStateName>[] = [
       const inst = sg.context;
       inst.playAnimation('cointoss');
       inst.happy = true;
-      inst.mem.endhappytask?.();
-      const cancel = inst.mem.endhappytask = inst.doTaskInTime(5, () => {
-        if (inst.mem.endhappytask === cancel) inst.mem.endhappytask = undefined;
+      inst.mem.endhappytask?.Cancel();
+      inst.mem.endhappytask = inst.DoTaskInTime(5, () => {
+        inst.mem.endhappytask = undefined;
         inst.happy = false;
       });
     },
@@ -63,7 +63,7 @@ const states: StateDefinition<PigKingStateInst, PigKingStateName>[] = [
       inst.playAnimation('unimpressed');
       inst.SoundEmitter.PlaySound('dontstarve/pig/PigKingReject');
       inst.happy = false;
-      inst.mem.endhappytask?.();
+      inst.mem.endhappytask?.Cancel();
       inst.mem.endhappytask = undefined;
     },
     events: [goIdleOnAnimOver],

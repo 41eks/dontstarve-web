@@ -65,11 +65,11 @@ it('creates source rock offsets as nonpersistent children, blocks bodies and kee
     expect((await executeDebugCommand('c_spawn("lava_pond")', s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
     const [{ record: { id } }] = s.ponds.exportRecords();
     const pond = s.ponds.get(id) as LavaPondInstance;
-    expect(pond.timer.peek()).toEqual({ status: 'scheduled', endTime: 0 });
+    expect(pond.task?.NextTime()).toBe(0);
     expect(pond.light.peek()).toMatchObject({ radius: 1.5 * 3, falloff: .66, intensity: .66 });
     expect(pond.minimap.icon).toBe('lava_pond.png');
     s.scheduler.advance(0);
-    expect(pond.timer.peek().status).toBe('expired');
+    expect(pond.task).toBeUndefined();
     expect(pond.rocks.peek()!.map(rock => rock.rocktype)).toEqual(['', '7']);
     const rocks = FindEntities(pond.position, 30).filter(inst => inst.prefab.startsWith('lava_pond_rock'));
     expect(rocks.map(rock => rock.prefab).sort()).toEqual(['lava_pond_rock', 'lava_pond_rock7']);
@@ -115,7 +115,7 @@ it('cancels pending child creation on removal and rejects malformed saved rock l
     const [{ record }] = s.ponds.exportRecords();
     expect(record.components.lavaPond).toEqual({});
     pond.remove(); s.scheduler.advance(100);
-    expect(pond.timer.peek().status).toBe('stopped'); expect(random).not.toHaveBeenCalled();
+    expect(pond.task?.NextTime()).toBeUndefined(); expect(random).not.toHaveBeenCalled();
     expect(s.ponds.exportRecords()).toEqual([]); expect(s.physics.bodies).toEqual([]);
     const save = structuredClone(initialWorld) as unknown as SaveDocument;
     save.world.entities = { lava_pond: [{ ...record, components: { lavaPond: { rocks: [{ rocktype: '2', offset: [1, 0, 2] }] } } }] };

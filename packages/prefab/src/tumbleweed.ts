@@ -4,11 +4,10 @@ import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
 import { SpriteState } from '@dontstarve-web/display';
-import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
+import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
 import { WorldContentKey, watchSignal, type GetWatchWorldContent } from '@dontstarve-web/signals';
 import type { ComponentUpdates } from '../../componets/src/componentUpdates';
 import { BlowInWind } from '../../componets/src/blowinwind';
-import { ComponentTimer } from '../../componets/src/timer';
 import { DEFAULT_RUN_SPEED, DEFAULT_WALK_SPEED, LocoMotor, type LocoMotorInst } from '../../componets/src/locomotor';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { WorldWind, WorldWindChange } from '../../componets/src/worldwind';
@@ -84,13 +83,14 @@ export class TumbleweedInstance extends PrefabInstance {
   private asleep = false;
   private readonly world: TumbleweedWorld;
   private readonly random: () => number;
-  private readonly groundCheck: ComponentTimer;
-  private groundCheckArmed = false;
-  private readonly restartMovement: ComponentTimer;
+  private bouncepretask?: EntityTask;
+  private bouncetask?: EntityTask;
+  private restartmovementtask?: EntityTask;
 
   constructor(world: TumbleweedWorld) {
     super(TUMBLEWEED_ID, new SpriteState({ name: 'move_loop', billboard: true }));
     this.world = world;
+    this.BindScheduler(world.scheduler);
     const random = this.random = world.random ?? Math.random;
     this.sprite.setFacingRotation(0, 4);
     const motor: LocoMotorInst = {
@@ -103,8 +103,6 @@ export class TumbleweedInstance extends PrefabInstance {
     this.locomotor = new LocoMotor(motor);
     this.locomotor.walkspeed = DEFAULT_WALK_SPEED * WORLD_SCALE; this.locomotor.runspeed = DEFAULT_RUN_SPEED * WORLD_SCALE;
     this.blowinwind = new BlowInWind(motor, (DEFAULT_RUN_SPEED + DEFAULT_WALK_SPEED) / 2 * WORLD_SCALE, this.locomotor, random);
-    this.groundCheck = new ComponentTimer(world.scheduler, () => this.onGroundCheck());
-    this.restartMovement = new ComponentTimer(world.scheduler, () => this.onRestartMovement());
     this.loot = rollTumbleweedLoot(random);
     // AddComponent("pickable"): onpickedfn = onpickup, remove_when_picked, canbepicked = true.
     const pickable = addComponent(this, 'pickable', Pickable, undefined, undefined, 1, () => { this.onpickup(); }, undefined, undefined,
@@ -124,7 +122,6 @@ export class TumbleweedInstance extends PrefabInstance {
     }
     this.onRemove(() => {
       this.blowinwind.dispose();
-      this.CancelRunningTasks();
       for (const cleanup of cleanups.splice(0)) cleanup();
     });
   }
@@ -162,12 +159,11 @@ export class TumbleweedInstance extends PrefabInstance {
 
   /** The bounce tasks of startmoving / OnEntityWake: their sounds are not ported, so only CheckGround remains. */
   private armGroundCheck(): void {
-    this.groundCheckArmed = false;
-    this.groundCheck.start(10 * FRAMES);
+    this.bouncepretask = this.DoTaskInTime(10 * FRAMES, () => {
+      this.bouncetask = this.DoPeriodicTask(24 * FRAMES, () => this.CheckGround());
+    });
   }
-  private onGroundCheck(): void {
-    if (!this.groundCheckArmed) { this.groundCheckArmed = true; this.groundCheck.start(24 * FRAMES); return; }
-    this.groundCheck.start(24 * FRAMES);
+  private CheckGround(): void {
     if (!this.world.isOnValidGround(this.position)) this.remove();
   }
 
@@ -186,8 +182,9 @@ export class TumbleweedInstance extends PrefabInstance {
   }
 
   private CancelRunningTasks(): void {
-    this.groundCheck.stop();
-    this.restartMovement.stop();
+    this.bouncepretask?.Cancel(); this.bouncepretask = undefined;
+    this.bouncetask?.Cancel(); this.bouncetask = undefined;
+    this.restartmovementtask?.Cancel(); this.restartmovementtask = undefined;
   }
 
   /** OnEntitySleep comes first so a clip the sleep settles cannot start moving; OnEntityWake plays once the display is awake. */
@@ -214,10 +211,10 @@ export class TumbleweedInstance extends PrefabInstance {
     this.CancelRunningTasks();
     this.sprite.playOnce('move_pst');
     this.sprite.pushAnimation('idle', true);
-    this.restartMovement.start(2 + Math.floor(this.random() * 5));
-  }
-  private onRestartMovement(): void {
-    this.sprite.playOnce('move_pre', () => this.startmoving());
+    this.restartmovementtask = this.DoTaskInTime(2 + Math.floor(this.random() * 5), () => {
+      this.restartmovementtask = undefined;
+      this.sprite.playOnce('move_pre', () => this.startmoving());
+    });
   }
 
   /** onpickup: loot at the tumbleweed, the break fx, and no item for the picker. */

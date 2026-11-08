@@ -158,12 +158,11 @@ it('keeps a sprout completion task alive without visual reload and cancels a sec
     env.scheduler.advance(400);
     expect(sprouts.exportRecords()[0].record.components.saplingTimer!.timers.grow.timeleft).toBe(1100);
     env.scheduler.advance(1100);
-    const completion = sprout.seedGrowth.snapshot;
-    const snapshot = completion.peek() as { status: string; endTime: number };
-    expect(snapshot.status).toBe('scheduled'); expect(spawnBush).not.toHaveBeenCalled();
-    env.scheduler.advanceTo(snapshot.endTime);
+    const completion = sprout.seedGrowth!, endTime = completion.NextTime();
+    expect(endTime).toBeDefined(); expect(spawnBush).not.toHaveBeenCalled();
+    env.scheduler.advanceTo(endTime!);
     expect(spawnBush).toHaveBeenCalledExactlyOnceWith(new THREE.Vector3(12, 0, 24));
-    expect(sprouts.exportRecords()).toEqual([]); expect(completion.peek().status).toBe('stopped');
+    expect(sprouts.exportRecords()).toEqual([]); expect(completion.NextTime()).toBeUndefined();
     expect(timer.snapshot('grow').peek().status).toBe('expired');
     const second = sprouts.spawn(ROCK_AVOCADO_SAPLING_ID, new THREE.Vector3(24, 0, 24)); await settle();
     expect(second.sprite.loaded).toBe(false);

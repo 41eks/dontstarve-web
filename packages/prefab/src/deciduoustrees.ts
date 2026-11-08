@@ -11,7 +11,7 @@ import type { Worker } from '../../componets/src/workable';
 import { actionEntity } from './actionEntity';
 import { addComponent, removeComponent } from './components';
 import { DeciduousTreeLeaves, type LeafWorld } from './deciduousTreeLeaves';
-import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
+import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
 import type { PlacementSaveRecord } from './saveRecord';
 import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
 import { MakeObstaclePhysics, RemovePhysicsColliders, WORLD_SCALE } from './standardcomponents';
@@ -68,9 +68,7 @@ export class DeciduousInstance extends PrefabInstance {
   /** MakeLargeBurnable/MakeMediumPropagator (or the stump's small pair) while the tree is awake. */
   fire?: BurnableBinding;
   burntcone = false;
-  changesTask?: () => void;
-  acornTask?: () => void;
-  removeTask?: () => void;
+  acorntask?: EntityTask;
   stopSnow?: () => void;
   firstFrame = true;
   /** Growth settled while the visual was unloaded is shown as its final stage, without the transition animation. */
@@ -80,6 +78,7 @@ export class DeciduousInstance extends PrefabInstance {
   constructor(world: DeciduousWorld, position: ReadonlyVector3, stage: number, random: () => number) {
     super(DECIDUOUS_ID, new SpriteState({ name: 'sway1_loop_short', billboard: true }), Transform.stationary());
     this.world = world; this.random = random; this.color = .5 + random() * .5;
+    this.BindScheduler(world.scheduler);
     this.setActive(false);
     this.setPosition(position.x, 0, position.z);
     this.deploySmartRadius = 1; this.logicalPlacement = true;
@@ -111,7 +110,6 @@ export class DeciduousInstance extends PrefabInstance {
     this.OnSave = (_inst, data) => onsave(this, data);
     this.OnLoad = (_inst, data) => onload(this, data);
     this.onRemove(() => {
-      this.changesTask?.(); this.acornTask?.(); this.removeTask?.();
       this.stopSnow?.(); this.stopSnow = undefined;
       unbindFire(this);
       leaves.dispose();
@@ -216,16 +214,16 @@ function OnBurnt(inst: DeciduousInstance, immediate: boolean): void {
   inst.minimap.SetIcon('tree_leaf_burnt.png');
   inst.sprite.start(rest(inst));
   if (immediate) burntChanges(inst);
-  else inst.changesTask = inst.world.scheduler.schedule(.5, () => { inst.changesTask = undefined; burntChanges(inst); });
+  else inst.DoTaskInTime(.5, burntChanges);
 }
 
 const cameraRight = (inst: DeciduousInstance) => new THREE.Vector3(1, 0, 0).applyQuaternion(inst.world.camera.getWorldQuaternion(new THREE.Quaternion()));
 
 /** OnAcornTask: the 10% acorn lands one camera-right unit to either side of the burnt tree, once. */
 function startAcornTask(inst: DeciduousInstance): void {
-  if (inst.burntcone || inst.acornTask) return;
-  inst.acornTask = inst.world.scheduler.schedule(10, () => {
-    inst.acornTask = undefined;
+  if (inst.burntcone || inst.acorntask) return;
+  inst.acorntask = inst.DoTaskInTime(10, () => {
+    inst.acorntask = undefined;
     const position = inst.getPosition().clone().addScaledVector(cameraRight(inst), inst.random() < .5 ? WORLD_SCALE : -WORLD_SCALE);
     const loot = new Map<string, number>();
     for (const itemId of inst.components.lootdropper.GenerateLoot(inst.random)) loot.set(itemId, (loot.get(itemId) ?? 0) + 1);
@@ -247,7 +245,7 @@ function chop_down_burnt_tree(inst: DeciduousInstance): void {
   RemovePhysicsColliders(inst);
   inst.components.lootdropper.SpawnLootPrefab('charcoal');
   inst.components.lootdropper.DropLoot();
-  inst.acornTask?.(); inst.acornTask = undefined;
+  inst.acorntask?.Cancel(); inst.acorntask = undefined;
   inst.sprite.playOnce(`chop_burnt_${DECIDUOUS_STAGES[stageOf(inst)]}`, () => inst.remove());
 }
 
@@ -333,7 +331,7 @@ function OnEntitySleep(inst: DeciduousInstance): void {
   inst.stopSnow?.(); inst.stopSnow = undefined;
   inst.leaves.SetAwake(false);
   if (inst.fire?.burnable.IsBurning()) {
-    if (inst.hasTag('stump')) inst.removeTask = inst.world.scheduler.schedule(0, () => { inst.removeTask = undefined; burnStump(inst); });
+    if (inst.hasTag('stump')) inst.DoTaskInTime(0, burnStump);
     else OnBurnt(inst, true);
   }
   unbindFire(inst);

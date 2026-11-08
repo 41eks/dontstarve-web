@@ -17,7 +17,7 @@ import type { LootLaunch } from '../../componets/src/inventoryphysics';
 import { PlaySound } from './sound';
 import { TILE_SIZE } from './tile';
 import { TORCH_FIRE_OFFSET_Y, TORCH_FIRE_VFX } from './torchfire';
-import type { PrefabInstance } from './prefabInstance';
+import type { EntityTask, PrefabInstance } from './prefabInstance';
 
 /** torch.lua fn(): the components the source adds and the callbacks it registers on them, on the item's own instance. */
 export function configureTorchEntity(entity: ItemEntity): void {
@@ -57,8 +57,8 @@ export const TORCH_SOUNDS = ['dontstarve/wilson/torch_swing', 'dontstarve/common
 export interface TorchInst extends ItemEntity {
   /** inst.fires: the torchfire fx with their lights, set by onequip or IgniteTossed until the source removes them. */
   fires?: { remove(): void }[];
-  _ignitesoundtask?: () => void;
-  _extinguishsoundtask?: () => void;
+  _ignitesoundtask?: EntityTask;
+  _extinguishsoundtask?: EntityTask;
   /** inst._owner: the owner it is equipped on, which itemranout reaches. */
   _owner?: EquipmentOwner;
   _fuelratemult?: number;
@@ -86,9 +86,8 @@ export function onattack(_weapon: object, attacker: object, target: object): voi
 const ownerSound = (owner?: EquipmentOwner) => owner?.getPosition?.();
 
 /** inst:DoTaskInTime(0, ...): the next game-time step, or at once for an inst outside a world. */
-function DoTaskInTime0(inst: TorchInst, run: () => void): (() => void) | undefined {
-  const scheduler = inst.components.perishable.scheduler;
-  if (scheduler) return scheduler.schedule(0, run);
+function DoTaskInTime0(inst: TorchInst, run: () => void): EntityTask | undefined {
+  if (inst.worldServices?.scheduler) return inst.DoTaskInTime(0, run);
   run();
   return undefined;
 }
@@ -105,24 +104,24 @@ function DoExtinguishSound(inst: TorchInst, position: ReadonlyVector3 | undefine
 
 function PlayIgniteSound(inst: TorchInst, position: ReadonlyVector3 | undefined, instant: boolean, force: boolean): void {
   if (inst._extinguishsoundtask) {
-    inst._extinguishsoundtask();
+    inst._extinguishsoundtask.Cancel();
     inst._extinguishsoundtask = undefined;
     if (!force) return;
   }
   if (instant) {
-    inst._ignitesoundtask?.();
+    inst._ignitesoundtask?.Cancel();
     DoIgniteSound(inst, position);
   } else inst._ignitesoundtask ??= DoTaskInTime0(inst, () => DoIgniteSound(inst, position));
 }
 
 function PlayExtinguishSound(inst: TorchInst, position: ReadonlyVector3 | undefined, instant: boolean, force: boolean): void {
   if (inst._ignitesoundtask) {
-    inst._ignitesoundtask();
+    inst._ignitesoundtask.Cancel();
     inst._ignitesoundtask = undefined;
     if (!force) return;
   }
   if (instant) {
-    inst._extinguishsoundtask?.();
+    inst._extinguishsoundtask?.Cancel();
     DoExtinguishSound(inst, position);
   } else inst._extinguishsoundtask ??= DoTaskInTime0(inst, () => DoExtinguishSound(inst, position));
 }
@@ -134,8 +133,8 @@ function RemoveFires(inst: TorchInst): void {
 
 /** OnRemoveEntity: pending sound tasks stop, which also covers an unequip arriving after removal. */
 function OnRemoveEntity(inst: TorchInst): void {
-  inst._ignitesoundtask?.(); inst._ignitesoundtask = undefined;
-  inst._extinguishsoundtask?.(); inst._extinguishsoundtask = undefined;
+  inst._ignitesoundtask?.Cancel(); inst._ignitesoundtask = undefined;
+  inst._extinguishsoundtask?.Cancel(); inst._extinguishsoundtask = undefined;
   for (const stop of inst._stopwatchingrain?.splice(0) ?? []) stop();
   RemoveFires(inst);
   inst._owner = undefined;

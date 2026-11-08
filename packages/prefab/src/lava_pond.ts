@@ -4,9 +4,8 @@ import { Vector3 } from 'three';
 import { createSignal, readonlySignal } from '@dontstarve-web/signals';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
 import { Heater } from '../../componets/src/heater';
-import { ComponentTimer } from '../../componets/src/timer';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { PrefabInstance, type PrefabComponents, type PrefabEntityDefinition } from './prefabInstance';
+import { PrefabInstance, type EntityTask, type PrefabComponents, type PrefabEntityDefinition } from './prefabInstance';
 import type { PlacementSaveRecord } from './saveRecord';
 import { MakePondPhysics } from './standardcomponents';
 import { Transform } from './transform';
@@ -50,8 +49,7 @@ export class LavaPondInstance extends PrefabInstance<SpriteState, LavaPondCompon
   /** inst.rocks: the layout, in DST units from the pond. */
   readonly rocks = readonlySignal(this.rocksState);
   /** inst.task = inst:DoTaskInTime(0, SpawnRocks). */
-  private readonly task: ComponentTimer;
-  readonly timer;
+  task?: EntityTask;
   private readonly rock_ents: PrefabInstance[] = [];
   private readonly world: LavaPondWorld;
   private readonly random: () => number;
@@ -59,6 +57,7 @@ export class LavaPondInstance extends PrefabInstance<SpriteState, LavaPondCompon
   constructor(world: LavaPondWorld, position: Vector3) {
     super(LAVA_POND_ID, new SpriteState({ name: 'bubble_lava' }), Transform.stationary());
     this.world = world; this.random = world.random ?? Math.random;
+    this.BindScheduler(world.scheduler);
     this.setPosition(position.x, 0, position.z);
     // OnGround, LAYER_BACKGROUND and sort order 3, as pond.lua: the art lies on the ground and the entity root stays in world space.
     this.sprite.setGround(0); this.sprite.setMeshOrder(-.5);
@@ -70,22 +69,14 @@ export class LavaPondInstance extends PrefabInstance<SpriteState, LavaPondCompon
     heater.SetHeat(LAVA_POND_HEAT);
     addComponent(this, 'inspectable', Inspectable);
 
-    this.task = new ComponentTimer(world.scheduler, () => this.SpawnRocks());
-    this.timer = this.task.snapshot;
-    this.task.start(0);
+    this.task = this.DoTaskInTime(0, () => this.SpawnRocks());
 
     this.onRemove(() => {
-      if (this.isTaskPending) this.task.stop();
       heater.dispose();
       // Removing an entity removes its children.
       for (const rock of this.rock_ents) rock.remove();
       this.rock_ents.length = 0;
     });
-  }
-
-  private get isTaskPending(): boolean {
-    const { status } = this.timer.peek();
-    return status === 'scheduled' || status === 'paused';
   }
 
   OnSave(_inst: unknown, data: PlacementSaveRecord['components']): void {
@@ -96,13 +87,15 @@ export class LavaPondInstance extends PrefabInstance<SpriteState, LavaPondCompon
   /** OnLoad cancels the pending task and spawns the saved rocks at once. */
   OnLoad(_inst: unknown, data: PlacementSaveRecord['components']): void {
     const rocks = data.lavaPond?.rocks;
-    if (rocks === undefined || this.rocksState.peek() !== undefined || !this.isTaskPending) return;
-    this.task.stop();
+    if (rocks === undefined || this.rocksState.peek() !== undefined || !this.task) return;
+    this.task.Cancel();
+    this.task = undefined;
     this.rocksState.set(copyLayout(rocks));
     this.SpawnRocks();
   }
 
   private SpawnRocks(): void {
+    this.task = undefined;
     if (this.rocksState.peek() === undefined) {
       const rocks: LavaPondRockLayout[] = [];
       const count = 2 + Math.floor(this.random() * 3);

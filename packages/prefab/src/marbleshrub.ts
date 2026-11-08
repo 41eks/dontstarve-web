@@ -7,7 +7,6 @@ import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Growable } from '../../componets/src/growable';
 import { LootDropper } from '../../componets/src/lootdropper';
-import { ComponentTimer } from '../../componets/src/timer';
 import { Workable } from '../../componets/src/workable';
 import { actionEntity } from './actionEntity';
 import type { SpawnGroundItem } from './groundPrefab';
@@ -69,16 +68,14 @@ export class MarbleShrubInstance extends PrefabInstance {
   color = 1;
   private statedata: StageData;
   private readonly sounds = new Set<SoundHandle>();
-  /** The `animover` that removes a mined shrub, as a game-time task. */
-  private readonly brokenTask: ComponentTimer;
 
   constructor(position: ReadonlyVector3, world: MarbleShrubWorld, growthstage: number) {
     super(MARBLESHRUB_ID, new SpriteState({ name: 'idle_short', billboard: true }),
       Transform.stationary());
     this.setPosition(position.x, 0, position.z);
     const { scheduler, getWatchWorldContent, spawnGroundItem } = world;
+    this.BindScheduler(scheduler);
     this.statedata = STAGES[growthstage - 1];
-    this.brokenTask = new ComponentTimer(scheduler, () => this.remove());
 
     this.deploySmartRadius = 1;
     this.minimap.SetIcon('marbleshrub1.png'); this.minimap.SetPriority(-1);
@@ -109,7 +106,6 @@ export class MarbleShrubInstance extends PrefabInstance {
 
     this.onRemove(() => {
       stopSnow(); stopWatchingSnow?.();
-      this.brokenTask.stop();
       growable.dispose(); workable.dispose();
       for (const sound of this.sounds) sound.stop();
     });
@@ -170,7 +166,8 @@ export class MarbleShrubInstance extends PrefabInstance {
     RemovePhysicsColliders(this);
     this.addTag('NOCLICK');
     this.persists = false;
-    this.brokenTask.start(this.statedata.brokenSeconds);
+    // The `animover` that removes a mined shrub, as a game-time task.
+    this.DoTaskInTime(this.statedata.brokenSeconds, inst => inst.remove());
   }
 
 }

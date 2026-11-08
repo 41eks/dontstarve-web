@@ -6,11 +6,10 @@ import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
 import { SpriteState } from '@dontstarve-web/display';
 import definitions from './definitions.json' with { type: 'json' };
 import { Battery } from '../../componets/src/battery';
-import { ComponentTimer } from '../../componets/src/timer';
 import { buildingPlacer, buildingPrefab, MakeBuildingPersist, type BuildingDeclaration } from './building';
 import { PlaySound } from './sound';
 import { TILE_SIZE } from './tile';
-import { PrefabInstance } from './prefabInstance';
+import { PrefabInstance, type EntityTask } from './prefabInstance';
 import type { PlacementSaveRecord } from './saveRecord';
 import type { PrefabWorldContext } from './worldContext';
 
@@ -34,24 +33,16 @@ const CRAFT_SOUND = 'dontstarve/common/lightning_rod_craft';
 class LightningRod {
     charged = false;
     chargeleft: number | undefined;
-    /** dozap's DoTaskInTime(math.random(10, 40), dozap), a restartable game-time timer. */
-    private readonly zapTimer?: ComponentTimer;
-    /** The discrete once-per-day callback; re-armed on every expiry while charged. */
-    private readonly dayTimer?: ComponentTimer;
+    /** inst.zaptask */
+    private zaptask?: EntityTask;
+    /** WatchWorldState("cycles", ondaycomplete), as the once-per-day task armed while charged. */
+    private daytask?: EntityTask;
     readonly battery: Battery<LightningRodInstance>;
 
     private readonly inst: PrefabInstance;
 
     constructor(inst: LightningRodInstance) {
         this.inst = inst;
-        const scheduler = inst.worldServices?.scheduler;
-        if (scheduler) {
-            this.zapTimer = new ComponentTimer(scheduler, () => this.dozap());
-            this.dayTimer = new ComponentTimer(scheduler, () => {
-                this.ondaycomplete();
-                this.armDay();
-            });
-        }
         this.battery = addComponent(inst, 'battery', Battery<LightningRodInstance>);
         this.battery.SetCanBeUsedFn((_inst, _user, mult) => {
             if (mult) {
@@ -89,7 +80,12 @@ class LightningRod {
     private armDay(): void {
         const world = this.inst.worldServices;
         if (!this.charged || !world?.scheduler || !world.secondsUntilNextDay) return;
-        this.dayTimer?.start(world.secondsUntilNextDay(world.scheduler.now));
+        this.daytask?.Cancel();
+        this.daytask = this.inst.DoTaskInTime(world.secondsUntilNextDay(world.scheduler.now), () => {
+            this.daytask = undefined;
+            this.ondaycomplete();
+            this.armDay();
+        });
     }
 
     /** dozap: the sound and fx at the rod, then the next zap in 10–40 seconds. */
@@ -97,17 +93,18 @@ class LightningRod {
         if (this.removed) return;
         PlaySound(ZAP_SOUND, this.inst.position);
         this.inst.worldServices?.fx?.spawn('lightning_rod_fx', this.inst.position);
-        this.zapTimer?.start(10 + Math.floor(Math.random() * 31));
+        this.zaptask?.Cancel();
+        if (this.inst.worldServices?.scheduler) this.zaptask = this.inst.DoTaskInTime(10 + Math.floor(Math.random() * 31), () => this.dozap());
     }
 
     discharge(): void {
         if (!this.charged) return;
-        this.dayTimer?.stop();
+        this.daytask?.Cancel(); this.daytask = undefined;
         // AnimState:ClearBloomEffectHandle has no renderer here; the light is the visible charge.
         this.charged = false;
         this.chargeleft = undefined;
         this.inst.light.set(null);
-        this.zapTimer?.stop();
+        this.zaptask?.Cancel(); this.zaptask = undefined;
     }
 
     private ondaycomplete(): void {
@@ -127,8 +124,6 @@ class LightningRod {
     }
 
     dispose(): void {
-        this.zapTimer?.stop();
-        this.dayTimer?.stop();
         this.inst.light.set(null);
     }
 }

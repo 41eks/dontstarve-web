@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { SpriteState } from '@dontstarve-web/display';
 import type { GameTimeScheduler } from './components/gameTimeScheduler';
 import { ComponentTimer } from './components/timer';
-import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
+import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
 import { type PrefabLocalLight } from './localLight';
 import { TILE_SIZE } from './tile';
 import { Pickable, type PickableSaveState } from './components/pickable';
@@ -88,12 +88,12 @@ export class BulbPlantInstance extends PrefabInstance {
   private readonly world: BulbPlantWorld;
   private readonly rechargeTimer: ComponentTimer;
   private readonly turnoffTimer: ComponentTimer;
-  private readonly wakeTimer: ComponentTimer;
-  private readonly sampleTimer: ComponentTimer;
+  /** The LightWatcher's sampling while the entity is awake. */
+  private sampletask?: EntityTask;
   private lightOn = false;
   private tweenStartedAt: number;
   private tweenDuration = 4;
-  private lightTask?: () => void;
+  private _lighttask?: EntityTask;
   private inLight = false;
   private awake = false;
   private entityAwake = false;
@@ -107,25 +107,20 @@ export class BulbPlantInstance extends PrefabInstance {
       : BULB_PLANT_VARIANTS[Math.min(1, Math.floor(Math.random() * 2))];
     this.addTag('plant');
     const scheduler = world.scheduler;
+    this.BindScheduler(scheduler as GameTimeScheduler);
     this.tweenStartedAt = scheduler.now - this.tweenDuration;
     this.rechargeTimer = new ComponentTimer(scheduler as GameTimeScheduler, () => this.Recharge());
     this.turnoffTimer = new ComponentTimer(scheduler as GameTimeScheduler, () => this.TurnOff());
+    addComponent(this, 'pickable', Pickable, 'lightbulb', bulbPlantRegrowTime(this.variant), this.variant === 'double' ? 2 : this.variant === 'triple' ? 3 : 1,
+      () => this.onpickedfn(), () => this.onregenfn(), undefined, { scheduler: scheduler as GameTimeScheduler });
     // OnWake: DoTaskInTime(1, TurnOnInLight); the LightWatcher only reports enterlight after it.
-    this.wakeTimer = new ComponentTimer(scheduler as GameTimeScheduler, () => {
+    this.DoTaskInTime(1, () => {
       this.awake = true;
       this.sampleLight();
       if (this.inLight) this.TurnOn();
     });
-    this.sampleTimer = new ComponentTimer(scheduler as GameTimeScheduler, () => {
-      this.checkLight();
-      this.sampleTimer.start(BULB_PLANT_LIGHT_SAMPLE_INTERVAL);
-    });
-    addComponent(this, 'pickable', Pickable, 'lightbulb', bulbPlantRegrowTime(this.variant), this.variant === 'double' ? 2 : this.variant === 'triple' ? 3 : 1,
-      () => this.onpickedfn(), () => this.onregenfn(), undefined, { scheduler: scheduler as GameTimeScheduler });
-    this.wakeTimer.start(1);
     this.onRemove(() => {
-      this.wakeTimer.stop(); this.sampleTimer.stop(); this.rechargeTimer.stop(); this.turnoffTimer.stop();
-      this.lightTask?.(); this.lightTask = undefined;
+      this.rechargeTimer.stop(); this.turnoffTimer.stop();
       this.components.pickable.dispose();
       this.pickSound?.stop(); this.pickSound = undefined;
       this.light.set(null);
@@ -160,10 +155,11 @@ export class BulbPlantInstance extends PrefabInstance {
   setActive(active: boolean): void {
     if (active !== this.entityAwake && !this.isRemoved) {
       this.entityAwake = active;
-      if (!active) this.sampleTimer.stop();
-      else {
+      this.sampletask?.Cancel(); this.sampletask = undefined;
+      if (active) {
         this.checkLight();
-        this.sampleTimer.start(BULB_PLANT_LIGHT_SAMPLE_INTERVAL * (0.5 + Math.random() * 0.5));
+        this.sampletask = this.DoPeriodicTask(BULB_PLANT_LIGHT_SAMPLE_INTERVAL, () => this.checkLight(),
+          BULB_PLANT_LIGHT_SAMPLE_INTERVAL * (0.5 + Math.random() * 0.5));
         this.refreshLight();
       }
     }
@@ -254,8 +250,8 @@ export class BulbPlantInstance extends PrefabInstance {
     const remaining = this.tweenStartedAt + this.tweenDuration - this.world.scheduler.now;
     const done = remaining <= 1e-9;
     this.light.set(bulbPlantLight(this.lightOn, done ? 1 : 1 - remaining / this.tweenDuration, this.variant));
-    if (!done && !this.lightTask) {
-      this.lightTask = this.world.scheduler.schedule(Math.min(FRAMES, remaining), () => { this.lightTask = undefined; this.refreshLight(); });
+    if (!done && !this._lighttask) {
+      this._lighttask = this.DoTaskInTime(Math.min(FRAMES, remaining), () => { this._lighttask = undefined; this.refreshLight(); });
     }
   }
 }

@@ -4,7 +4,7 @@ import { createEffect, createRenderEffect, watchSignal, WorldContentKey, type Ga
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
 import { LunarHailBuildup } from '../../componets/src/pandoraschestSignatures';
-import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
+import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { WORLD_SCALE } from './tile';
 import { Transform } from './transform';
@@ -23,12 +23,13 @@ export interface MonkeyPillarWorld {
 export class MonkeyPillarInstance extends PrefabInstance {
   pillar_id?: MonkeyPillarId;
   _moveanim_trigger = false;
-  _moveanim_task?: () => void;
+  _moveanim_task?: EntityTask;
   readonly world: MonkeyPillarWorld;
 
   constructor(world: MonkeyPillarWorld, position: ReadonlyVector3) {
     super(MONKEYPILLAR_ID, new SpriteState({ name: 'idle1', none: true, billboard: true }), Transform.stationary());
     this.world = world;
+    this.BindScheduler(world.scheduler);
     this.setPosition(position.x, 0, position.z);
     this.addTag('blocker'); // MakeObstaclePhysics
     this.addTag('SnowCovered'); // MakeSnowCoveredPristine
@@ -57,7 +58,7 @@ export class MonkeyPillarInstance extends PrefabInstance {
     const status = watchSignal(this.status, stop => { stopStatus = stop; });
     const stopTask = createEffect(() => {
       const value = status.get();
-      if (value === 'asleep') { this._moveanim_task?.(); this._moveanim_task = undefined; }
+      if (value === 'asleep') { this._moveanim_task?.Cancel(); this._moveanim_task = undefined; }
       else if (value === 'active' && !this._moveanim_task) queue_moveanim_task(this);
     });
     const stopChain = createEffect(() => {
@@ -66,16 +67,17 @@ export class MonkeyPillarInstance extends PrefabInstance {
     });
     this.onRemove(() => {
       stopSnow(); stopWatchingSnow?.(); stopStatus?.(); stopTask(); stopChain();
-      this._moveanim_task?.(); this._moveanim_task = undefined;
     });
   }
 }
 
 function queue_moveanim_task(inst: MonkeyPillarInstance): void {
-  inst._moveanim_task = inst.world.scheduler.schedule(15 + 10 * Math.random(), () => {
-    inst._moveanim_trigger = true;
-    queue_moveanim_task(inst);
-  });
+  inst._moveanim_task = inst.DoTaskInTime(15 + 10 * Math.random(), set_moveanim_trigger);
+}
+
+function set_moveanim_trigger(inst: MonkeyPillarInstance): void {
+  inst._moveanim_trigger = true;
+  queue_moveanim_task(inst);
 }
 
 function OnAnimOver(inst: MonkeyPillarInstance): void {

@@ -1,3 +1,4 @@
+import type { EntityTask } from './prefabInstance';
 import { addComponent } from './components';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { Vector3 } from 'three';
@@ -150,12 +151,14 @@ export class LightFlier implements LightFlierBrainInst, LightFlierStateInst, Loc
   bornAt = 0;
   lastAttacked = -Infinity;
   private habitat?: LightFlierHabitat;
-  private targetSearch?: ComponentTimer;
+  /** FindTarget's periodic task, from the habitat's attach on. */
+  private targetsearchtask?: EntityTask;
+  private targetSearchEnabled = false;
   private erosion?: ErodeAway;
   private erosionAmount = 0;
   private readonly activeState = createSignal(true);
   readonly active = readonlySignal(this.activeState);
-  private asleepHome?: ComponentTimer;
+  private asleephometask?: EntityTask;
   private disposed = false;
   private speed = 0;
   /** Physics belongs to the logical item and survives replacing its display. */
@@ -257,7 +260,8 @@ export class LightFlier implements LightFlierBrainInst, LightFlierStateInst, Loc
     this.entity.sg = this.sg.sg;
     this.brain = new LightFlierBrain(this, WORLD_SCALE);
     this.entity.brain = this.brain;
-    this.targetSearch = new ComponentTimer(scheduler, () => { habitat.findFormation(this); if (this.isValid()) this.targetSearch!.start(1); });
+    if (!this.entity.worldServices?.scheduler) this.entity.BindScheduler(scheduler);
+    this.targetSearchEnabled = true;
     this.erosion = new ErodeAway(scheduler, amount => { this.erosionAmount = amount; }, () => this.remove());
     addComponent(this, 'freezable', Freezable, scheduler);
     const burnable = addComponent(this.entity, 'burnable', Burnable, scheduler);
@@ -271,18 +275,20 @@ export class LightFlier implements LightFlierBrainInst, LightFlierStateInst, Loc
       const activity = this.entity.transform.getTileActivity(services.tickingarea, stop => this.cleanups.push(stop));
       const cycle = services.getWatchWorldContent(WorldContentKey.Cycle, stop => this.cleanups.push(stop), activity ? { active: activity } : undefined);
       const area = activity ? watchSignal(activity, stop => this.cleanups.push(stop)) : undefined;
-      this.asleepHome = new ComponentTimer(scheduler, () => { if (!this.active.peek() && this.home?.isValid()) this.home.components.childspawner.GoHome(this); });
       createEffect(() => {
         const active = area?.get() ?? true, day = cycle.get() === 'day';
         this.setActive(active);
         if (!active && day && this.isValid()) {
-          if (this.asleepHome!.snapshot.peek().status !== 'scheduled') this.asleepHome!.start(10 + this.random());
-        } else this.asleepHome!.stop();
+          this.asleephometask ??= this.entity.DoTaskInTime(10 + this.random(), () => {
+            this.asleephometask = undefined;
+            if (!this.active.peek() && this.home?.isValid()) this.home.components.childspawner.GoHome(this);
+          });
+        } else { this.asleephometask?.Cancel(); this.asleephometask = undefined; }
       });
     }
     if (this.isValid()) {
       this.brain.Start();
-      if (this.active.peek()) { this.targetSearch.start(1); this.enableBuzz(true); } else this.brain.Pause();
+      if (this.active.peek()) { this.startTargetSearch(); this.enableBuzz(true); } else this.brain.Pause();
     } else this.onPutInInventory();
   }
   setHome(home?: LightFlierFlower): void {
@@ -322,27 +328,36 @@ export class LightFlier implements LightFlierBrainInst, LightFlierStateInst, Loc
   isSleeping(): boolean { return this.components.sleeper?.IsAsleep() ?? false; }
   wakeUp(): void { this.components.sleeper?.WakeUp(); }
   get erosionValue(): number { return this.erosionAmount; }
+  private startTargetSearch(): void {
+    if (!this.targetSearchEnabled) return;
+    this.stopTargetSearch();
+    this.targetsearchtask = this.entity.DoPeriodicTask(1, () => {
+      this.habitat!.findFormation(this);
+      if (!this.isValid()) this.stopTargetSearch();
+    });
+  }
+  private stopTargetSearch(): void { this.targetsearchtask?.Cancel(); this.targetsearchtask = undefined; }
   private setActive(active: boolean): void {
     if (this.active.peek() === active) return;
     this.activeState.set(active);
     this.entity.physics.SetActive(active);
     if (!active) {
-      this.components.formationfollower.LeaveFormation(); this.components.formationfollower.StopUpdating(); this.targetSearch?.stop(); this.brain?.Pause(); this.enableBuzz(false);
+      this.components.formationfollower.LeaveFormation(); this.components.formationfollower.StopUpdating(); this.stopTargetSearch(); this.brain?.Pause(); this.enableBuzz(false);
     } else if (this.isValid()) {
-      this.components.formationfollower.StartUpdating(); this.targetSearch?.start(1);
+      this.components.formationfollower.StartUpdating(); this.startTargetSearch();
       if (!this.components.freezable?.IsFrozen() && !this.isSleeping()) this.brain?.Resume(); this.enableBuzz(true);
     }
   }
   dropDeathLoot(): void {
     this.entity.persists = false; this.entity.addTag('dead'); this.entity.components.workable?.SetWorkable(false);
     this.entity.addTag('NOCLICK');
-    this.brain.Stop(); this.targetSearch?.stop(); this.habitat?.services.dropLoot('lightbulb', 1, this.getPosition().clone());
+    this.brain.Stop(); this.stopTargetSearch(); this.habitat?.services.dropLoot('lightbulb', 1, this.getPosition().clone());
     this.erosion?.start(2);
   }
   private onPutInInventory(): void {
     this.entity.physics.SetActive(false);
     this.home?.components.childspawner.OnChildKilled(this); this.setHome();
-    this.targetSearch?.stop(); this.components.formationfollower.LeaveFormation(); this.components.formationfollower.StopUpdating();
+    this.stopTargetSearch(); this.components.formationfollower.LeaveFormation(); this.components.formationfollower.StopUpdating();
     this.brain?.Stop(); this.locomotor?.Stop(); this.clearBufferedAction(); this.sg?.sg.pause(); this.animstate?.stop();
     this.components.sleeper?.StopTesting(); this.enableBuzz(false); this.entity.components.perishable.StartPerishing();
   }
@@ -352,7 +367,7 @@ export class LightFlier implements LightFlierBrainInst, LightFlierStateInst, Loc
     this.components.knownlocations.RememberLocation('home', this.getPosition());
     this.components.formationfollower.StartUpdating(); this.sg?.sg.resume(); this.sg?.goToState('idle'); this.brain?.Start();
     if (this.active.peek()) this.brain?.Resume();
-    this.targetSearch?.start(1); this.components.sleeper?.StartTesting(); this.enableBuzz(true);
+    this.startTargetSearch(); this.components.sleeper?.StartTesting(); this.enableBuzz(true);
   }
   update(dt: number): void {
     if (!this.isValid()) return;
@@ -389,8 +404,8 @@ export class LightFlier implements LightFlierBrainInst, LightFlierStateInst, Loc
     if (this.disposed) return; this.disposed = true; this.habitat?.flies.delete(this);
     // The components were torn down with the item entity.
     this.brain?.Stop(); this.sg?.dispose(); this.animstate?.dispose();
-    this.targetSearch?.stop(); this.erosion?.dispose(); this.entity.SoundEmitter?.KillSound('loop');
-    this.asleepHome?.stop();
+    this.stopTargetSearch(); this.erosion?.dispose(); this.entity.SoundEmitter?.KillSound('loop');
+    this.asleephometask?.Cancel();
     for (const stop of this.cleanups.splice(0)) stop(); for (const stop of this.eventStops.values()) stop(); this.eventStops.clear();
   }
 }

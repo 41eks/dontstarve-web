@@ -10,8 +10,8 @@ import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { actionEntity } from './actionEntity';
 import { ToolMouseTarget } from './toolMouseTarget';
 import { SpriteState } from '@dontstarve-web/display';
-import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
-import { ComponentTimer, Timer } from '../../componets/src/timer';
+import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
+import { Timer } from '../../componets/src/timer';
 import { AnimState } from '../../componets/src/animstate';
 import { MakeObstaclePhysics, RemovePhysicsColliders } from './standardcomponents';
 import { BurnableBinding, type FireFxHost, type BurnSpec } from './treeFire';
@@ -114,8 +114,9 @@ export class MushtreeInstance extends PrefabInstance {
   };
   readonly world: MushtreeWorld;
   private readonly data: TreeData;
-  private readonly change: ComponentTimer;
-  private readonly growthTransition: ComponentTimer;
+  private changetask?: EntityTask;
+  /** DoGrowNextStage's task. */
+  private growtask?: EntityTask;
   private pendingChange?: { state: MushtreeState; phase: 'delay' | 'swap' };
   private season?: WorldContentSignal<SeasonState>;
   private stopSeason?: () => void;
@@ -128,21 +129,13 @@ export class MushtreeInstance extends PrefabInstance {
     const build = this.sprite.sprite.peek().appearance.get('archive-build');
     return build?.kind === 'archive-build' && build.archive === this.data.buildArchives[1] ? 'bloom' : 'normal';
   }
-  get changeTimer(): ComponentTimer['snapshot'] { return this.change.snapshot; }
-  get growthTransitionTimer(): ComponentTimer['snapshot'] { return this.growthTransition.snapshot; }
 
   constructor(prefab: MushtreeId, world: MushtreeWorld, position: ReadonlyVector3) {
     super(prefab, new SpriteState({ name: 'idle_loop', billboard: true }), Transform.stationary());
     this.data = TREES[prefab]; this.world = world;
+    this.BindScheduler(world.scheduler);
     this.setPosition(position.x, 0, position.z);
     const { data } = this;
-    this.change = new ComponentTimer(world.scheduler, () => this.changeDone());
-    this.growthTransition = new ComponentTimer(world.scheduler, () => {
-      if (!this.stump && !this.isRemoved) {
-        const growable = this.components.growable!;
-        growable.SetStage(growable.GetNextStage());
-      }
-    });
     addComponent(this, 'timer', Timer, world.scheduler, ['decay']);
     this.ListenForEvent('timerdone', (_inst, data) => { if ((data as { name: string }).name === 'decay') this.remove(); });
     const colour = .5 + Math.random() * .5;
@@ -167,7 +160,6 @@ export class MushtreeInstance extends PrefabInstance {
     this.OnSave = (_inst, saved) => onsave(this, saved);
     this.OnLoad = (_inst, saved) => onload(this, saved);
     this.onRemove(() => {
-      this.cancelChange(); this.growthTransition.stop();
       this.stopSeason?.(); this.stopSeason = undefined;
       this.burn?.dispose(); this.components.growable?.dispose(); this.components.workable?.dispose();
       this.light.set(null);
@@ -245,7 +237,13 @@ export class MushtreeInstance extends PrefabInstance {
     PlaySound(toStage === 1 ? 'dontstarve/cave/mushtree_tall_shrink'
       : toStage === 2 ? 'dontstarve/cave/mushtree_tall_grow_1' : 'dontstarve/cave/mushtree_tall_grow_2', this.position);
     // DoGrowNextStage is a game-time task, independently of whether the transition is drawn.
-    this.growthTransition.start(14 * FRAMES);
+    this.growtask?.Cancel();
+    this.growtask = this.DoTaskInTime(14 * FRAMES, () => {
+      this.growtask = undefined;
+      if (this.stump) return;
+      const growable = this.components.growable!;
+      growable.SetStage(growable.GetNextStage());
+    });
   }
 
   private setupWork(): void {
@@ -275,7 +273,7 @@ export class MushtreeInstance extends PrefabInstance {
   /** makestump. */
   makeStump(decayRemaining?: number): void {
     if (this.stump || this.isRemoved) return;
-    this.cancelChange(); this.growthTransition.stop();
+    this.cancelChange(); this.growtask?.Cancel(); this.growtask = undefined;
     this.stopSeason?.(); this.stopSeason = undefined;
     RemovePhysicsColliders(this);
     this.addTag('stump'); this.removeTag('shelter');
@@ -290,7 +288,7 @@ export class MushtreeInstance extends PrefabInstance {
   }
 
   private cancelChange(): void {
-    this.change.stop(); this.pendingChange = undefined;
+    this.changetask?.Cancel(); this.changetask = undefined; this.pendingChange = undefined;
   }
 
   private swapBuild(state: MushtreeState): void {
@@ -302,17 +300,18 @@ export class MushtreeInstance extends PrefabInstance {
     this.cancelChange();
     if (instant) { this.swapBuild(state); return; }
     this.pendingChange = { state, phase: 'delay' };
-    this.change.start(Math.random() * 3 * SEG_TIME);
+    this.changetask = this.DoTaskInTime(Math.random() * 3 * SEG_TIME, () => this.changeDone());
   }
 
   private changeDone(): void {
+    this.changetask = undefined;
     const pending = this.pendingChange;
     if (!pending || this.stump || this.isRemoved) return;
     if (pending.phase === 'delay') {
       this.sprite.playOnce('change', () => this.sprite.start('idle_loop'));
       PlaySound(pending.state === 'bloom' ? 'dontstarve/cave/mushtree_tall_grow_3' : 'dontstarve/cave/mushtree_tall_shrink', this.position);
       this.pendingChange = { state: pending.state, phase: 'swap' };
-      this.change.start(14 * FRAMES);
+      this.changetask = this.DoTaskInTime(14 * FRAMES, () => this.changeDone());
     } else {
       this.pendingChange = undefined;
       this.swapBuild(pending.state);
@@ -362,19 +361,18 @@ function onload(inst: MushtreeInstance, data: MushtreeComponents): void {
 /** makeburntfx: logical animover plus the source's game-time fallback, without waiting for downloaded art. */
 class MushtreeBurntFxInstance extends PrefabInstance {
   private readonly animstate: AnimState;
-  private readonly fallback: ComponentTimer;
 
   constructor(prefab: MushtreeBurntFxId, data: TreeData, bloom: boolean, scheduler: GameTimeScheduler, position: ReadonlyVector3) {
     super(prefab, new SpriteState({ name: 'chop_burnt', billboard: true }));
+    this.BindScheduler(scheduler);
     this.setPosition(position.x, 0, position.z);
     this.persists = false; this.addTag('FX');
     this.sprite.setBuildArchive(data.buildArchives[bloom ? 1 : 0]);
     this.sprite.playOnce('chop_burnt');
     const clip = animationTiming(data.animationArchive, 'chop_burnt'), duration = clip.frames / clip.frameRate;
     this.animstate = new AnimState(scheduler, new Map([['chop_burnt', duration]]), event => { if (event === 'animover') this.remove(); });
-    this.fallback = new ComponentTimer(scheduler, () => this.remove());
-    this.onRemove(() => { this.animstate.dispose(); if (this.fallback.snapshot.peek().status !== 'expired') this.fallback.stop(); });
-    this.animstate.PlayAnimation('chop_burnt'); this.fallback.start(duration + FRAMES);
+    this.onRemove(() => this.animstate.dispose());
+    this.animstate.PlayAnimation('chop_burnt'); this.DoTaskInTime(duration + FRAMES, inst => inst.remove());
     PlaySound('dontstarve/forest/treeCrumble', this.position);
   }
 }

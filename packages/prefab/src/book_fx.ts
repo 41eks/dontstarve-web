@@ -3,9 +3,8 @@ import { smallHash } from '@dontstarve-web/animation/animationAssets';
 import type { SpriteResources } from '@dontstarve-web/display';
 import type { WilsonFx } from '@dontstarve-web/stategraphs';
 import { createSignal } from '@dontstarve-web/signals';
-import { ComponentTimer } from '../../componets/src/timer';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
+import { createPrefabEntity, type EntityTask, type PrefabInstance } from './prefabInstance';
 import { PlaySound } from './sound';
 import { animationTiming } from './animationTimings';
 
@@ -25,8 +24,8 @@ class FxInst implements WilsonFx {
   readonly prefab: BookFxPrefab;
   private readonly owner: BookFxController;
   private readonly symbol?: string;
-  private readonly timer: ComponentTimer;
-  get animationTimer(): ComponentTimer['snapshot'] { return this.timer.snapshot; }
+  /** The clip's animover, which removes the FX, as a game-time task. */
+  private task?: EntityTask;
   private detached?: { position: THREE.Vector3; mirrored: boolean };
   private readonly key: string;
 
@@ -46,16 +45,20 @@ class FxInst implements WilsonFx {
       if ('opacity' in definition) instance.sprite.setOpacity(definition.opacity);
     }, owner.instance.status);
     this.instance = instance;
-    this.timer = new ComponentTimer(owner.scheduler, () => this.remove());
+    instance.BindScheduler(owner.scheduler);
     instance.onRemove(() => {
-      if (this.timer.snapshot.peek().status !== 'expired') this.timer.stop();
       owner.instance.sprite.detachFx(this.key);
       owner.forget(this);
     });
     if ('ground' in definition) this.detached = owner.groundPoint();
     this.declare(display);
-    const clip = animationTiming(definition.archive, definition.anim, smallHash(definition.bank));
-    this.timer.start(clip.frames / clip.frameRate);
+    this.removeAfter(definition.anim);
+  }
+
+  private removeAfter(name: string): void {
+    const definition = FX_PREFABS[this.prefab], clip = animationTiming(definition.archive, name, smallHash(definition.bank));
+    this.task?.Cancel();
+    this.task = this.instance.DoTaskInTime(clip.frames / clip.frameRate, inst => inst.remove());
   }
 
   private declare(display: import('@dontstarve-web/display').PrefabDisplay): void {
@@ -64,10 +67,8 @@ class FxInst implements WilsonFx {
   }
 
   private play(name: string): void {
-    const definition = FX_PREFABS[this.prefab];
-    const clip = animationTiming(definition.archive, name, smallHash(definition.bank));
     this.instance.sprite.playOnce(name);
-    this.timer.start(clip.frames / clip.frameRate);
+    this.removeAfter(name);
   }
 
   isValid(): boolean { return this.instance.status.peek() !== 'removed'; }

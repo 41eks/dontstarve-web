@@ -55,7 +55,7 @@ it('accepts only bookcabinet items, declares shelf layers synchronously by fill 
     expect(inventory.transfer(second, shelf(0), 1)).toBe(true);
     expect(hidden.has('empty')).toBe(false);
     expect(hidden.has('mid')).toBe(true);
-    expect(station.restore.peek().status).toBe('scheduled');
+    expect(station.RestoreTask).toBeDefined();
 
     scheduler.advance(29.9);
     expect(uses(0).remaining).toBe(3);
@@ -67,7 +67,7 @@ it('accepts only bookcabinet items, declares shelf layers synchronously by fill 
     expect(container.OnSave().slots[0].item.remainingUses).toBe(5);
 
     expect(inventory.transfer(shelf(0), second, 1)).toBe(true);
-    expect(station.restore.peek().status).toBe('stopped');
+    expect(station.RestoreTask).toBeUndefined();
     scheduler.advance(300);
     expect(inventory.getEntity(second)!.components.finiteuses.remaining).toBe(5);
     expect(hidden.has('empty')).toBe(true);
@@ -88,7 +88,7 @@ it('doubles the restore for a nearby bookbuilder and stops when the station burn
 
     near.burn();
     await Promise.resolve(); // createEffect runs queued effects on the microtask queue
-    expect(near.station.restore.peek().status).toBe('stopped');
+    expect(near.station.RestoreTask).toBeUndefined();
     near.scheduler.advance(300);
     expect(near.uses(0).remaining).toBeCloseTo(3.1);
   } finally {

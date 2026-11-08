@@ -7,13 +7,13 @@ import { AnimState } from '../../componets/src/animstate';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Health } from '../../componets/src/health';
-import { ComponentTimer, Timer } from '../../componets/src/timer';
+import { Timer } from '../../componets/src/timer';
 import { createBernieStateGraph, type BernieStateInst } from '../../stategraphs/src/SGbernie';
 import { FRAMES } from '../../stategraphs/src/stategraph';
 import { animationTiming } from './animationTimings';
 import { GROUND_ITEM_DEFINITIONS, groundItemPrefab, type ItemPrefabDefinition } from './groundItems';
 import type { ItemPrefabWorld } from './groundPrefab';
-import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
+import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
 import type { PlacementSaveRecord } from './saveRecord';
 import { MakeCharacterPhysics, WORLD_SCALE } from './standardcomponents';
 
@@ -57,19 +57,16 @@ function formSkin(skinId: string | undefined, from: '' | '_active' | '_big', to:
  * runs tryreanimate every second. The fueled durability (and the health it becomes), the decay of a dead Bernie,
  * the equippable, insulator and the transform_cd timer it carries over are not ported.
  */
-function bindBernieItem(inst: ItemEntity, world: BernieWorld): void {
-  const activatetask = new ComponentTimer(world.scheduler, () => {
-    activatetask.start(1);
-    tryreanimate(inst, world);
-  });
+function bindBernieItem(inst: ItemEntity & { _activatetask?: EntityTask }, world: BernieWorld): void {
+  if (!inst.worldServices?.scheduler) inst.BindScheduler(world.scheduler);
   // A held item is in limbo, and so asleep, as is one whose tile is.
   const refresh = () => {
-    if (inst.isRemoved || inst.status.peek() !== 'active') activatetask.stop();
-    else if (activatetask.snapshot.peek().status !== 'scheduled') activatetask.start(1);
+    if (inst.isRemoved || inst.status.peek() !== 'active') { inst._activatetask?.Cancel(); inst._activatetask = undefined; }
+    else inst._activatetask ??= inst.DoPeriodicTask(1, () => tryreanimate(inst, world));
   };
   const stopStatus = inst.status.subscribe(refresh);
   refresh();
-  inst.onRemove(() => { stopStatus(); activatetask.stop(); });
+  inst.onRemove(stopStatus);
 }
 
 /** bernie_inactive.lua tryreanimate: the nearest crazy, visible player within 16 units wakes Bernie up. */
@@ -109,11 +106,11 @@ export class BernieInstance extends PrefabInstance implements BernieStateInst {
   private readonly bernieBrain: BernieBrain | BernieBigBrain;
   private readonly spawnedAt: number;
   private readonly archive: string;
-  private readonly tasks = new Set<() => void>();
 
   constructor(world: BernieWorld, big: boolean) {
     super(big ? BERNIE_BIG_ID : BERNIE_ACTIVE_ID, new SpriteState({ name: 'idle_loop', billboard: true }));
     this.world = world;
+    this.BindScheduler(world.scheduler);
     this.big = big;
     this.spawnedAt = world.scheduler.now;
     this.archive = big ? 'bernie_big.zip' : 'bernie.zip';
@@ -139,7 +136,6 @@ export class BernieInstance extends PrefabInstance implements BernieStateInst {
     this.think();
     this.onRemove(() => {
       this.bernieBrain.Stop();
-      for (const cancel of [...this.tasks]) cancel();
       this.sg.dispose();
       stopSprite(); this.animstate.dispose();
     });
@@ -150,14 +146,7 @@ export class BernieInstance extends PrefabInstance implements BernieStateInst {
     if (this.isRemoved) return;
     if (this.status.peek() === 'active') this.bernieBrain.tick(this.world.scheduler.now);
     const sleep = this.bernieBrain.GetSleepTime();
-    this.doTaskInTime(Math.max(sleep ?? 1, FRAMES), () => this.think());
-  }
-
-  /** inst:DoTaskInTime, cancelled with the inst. */
-  doTaskInTime(seconds: number, fn: () => void): () => void {
-    const cancel = this.world.scheduler.schedule(seconds, () => { this.tasks.delete(cancel); if (!this.isRemoved) fn(); });
-    this.tasks.add(cancel);
-    return () => { cancel(); this.tasks.delete(cancel); };
+    this.DoTaskInTime(Math.max(sleep ?? 1, FRAMES), () => this.think());
   }
 
   // --- BernieStateInst ---------------------------------------------------------------------------

@@ -297,7 +297,7 @@ export async function createSceneEntities(
   };
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(prefabDisplays, prefabBaseUrl,
     // Items without ground art are drawn from their inventory image.
-    { tickingarea: worldState.tickingarea, physics: world, iconArchiveUrl: `${import.meta.env.BASE_URL}dst/data/databundles/images.zip` });
+    { tickingarea: worldState.tickingarea, physics: world, scheduler: worldState.scheduler, iconArchiveUrl: `${import.meta.env.BASE_URL}dst/data/databundles/images.zip` });
   const registry = new EntityRegistry(SCENE_LIFECYCLE_ORDER, prefabs, () => player.position, prefabDisplays);
   const worldEvents = new EventEmitter<WorldEvents>();
   type SceneManagers = {

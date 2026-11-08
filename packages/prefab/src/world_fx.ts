@@ -97,6 +97,7 @@ function define(prefab: string, definition: FxDefinition, world: WorldFxWorld): 
   return {
     fn: () => {
       const inst = new PrefabInstance(prefab, new SpriteState({ name: anim, billboard: true }));
+      inst.BindScheduler(world.scheduler);
       inst.persists = false;
       inst.addTag('FX');
       for (const tag of tags ?? []) inst.addTag(tag);
@@ -104,7 +105,7 @@ function define(prefab: string, definition: FxDefinition, world: WorldFxWorld): 
       if (finalOffset) inst.sprite.setDepthOffset(true);
       inst.sprite.playOnce(anim, () => {
         if (!lingerFrames) { inst.remove(); return; }
-        inst.onRemove(world.scheduler.schedule(lingerFrames * FRAMES, () => inst.remove()));
+        inst.DoTaskInTime(lingerFrames * FRAMES, inst => inst.remove());
       });
       return inst;
     },

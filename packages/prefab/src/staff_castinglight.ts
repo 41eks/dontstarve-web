@@ -1,8 +1,7 @@
 import { SpriteState } from '@dontstarve-web/display';
 import type { TileStateQuery } from '@dontstarve-web/signals';
-import { ComponentTimer } from '../../componets/src/timer';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
+import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
 import { WORLD_SCALE } from './tile';
 
 export const STAFF_CASTINGLIGHT_ID = 'staff_castinglight';
@@ -14,21 +13,17 @@ const FRAMES = 1 / 30;
 /** staff_castinglight.lua common_fn: a non-persistent FX entity with only a transform and a light; its caster does not carry it. */
 export class StaffCastingLightInstance extends PrefabInstance {
   readonly is_small: boolean;
-  private readonly scheduler: GameTimeScheduler;
-  private readonly task: ComponentTimer;
+  private task?: EntityTask;
   private colour: readonly [number, number, number] = [1, 1, 1];
   private _duration = 0;
   private _value = 0;
-  private cancelRemoval?: () => void;
 
   constructor(prefab: StaffCastingLightId, is_small: boolean, scheduler: GameTimeScheduler) {
     super(prefab, new SpriteState({ name: '' }));
     this.is_small = is_small;
-    this.scheduler = scheduler;
+    this.BindScheduler(scheduler);
     this.addTag('FX');
     this.persists = false;
-    this.task = new ComponentTimer(scheduler, () => this.OnUpdate());
-    this.onRemove(() => { this.task.stop(); this.cancelRemoval?.(); });
   }
 
   /** SetUp(colour, duration, delay): DoPeriodicTask(FRAMES, OnUpdate, delay or 0), lit from now at its initial settings. */
@@ -36,7 +31,7 @@ export class StaffCastingLightInstance extends PrefabInstance {
     this.colour = colour;
     this._duration = Math.floor(duration / FRAMES + .5);
     this.setLight(.3, .8, .9);
-    this.task.start(delay);
+    this.task = this.DoPeriodicTask(FRAMES, () => this.OnUpdate(), delay);
   }
 
   private OnUpdate(): void {
@@ -45,10 +40,10 @@ export class StaffCastingLightInstance extends PrefabInstance {
       const k = (this._value / this._duration) ** 5;
       if (this.is_small) this.setLight(.3 + 4 * k, .8 - .7 * k, 1.1 + .3 * k);
       else this.setLight(.3 + 10 * k, .8 - .6 * k, .9 - .4 * k);
-      this.task.start(FRAMES);
     } else {
       this.light.set(null);
-      this.cancelRemoval = this.scheduler.schedule(2 * FRAMES, () => this.remove());
+      this.task?.Cancel(); this.task = undefined;
+      this.DoTaskInTime(2 * FRAMES, inst => inst.remove());
     }
   }
 

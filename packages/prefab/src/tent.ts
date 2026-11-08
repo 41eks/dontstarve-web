@@ -4,11 +4,10 @@ import { Workable } from '../../componets/src/workable';
 import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
 import type * as THREE from 'three';
 import { SpriteState } from '@dontstarve-web/display';
-import { prefabInstance, PrefabInstance } from './prefabInstance';
+import { prefabInstance, PrefabInstance, type EntityTask } from './prefabInstance';
 import definitions from './definitions.json' with { type: 'json' };
 import { FiniteUses } from '../../componets/src/finiteuses';
 import { SleepingBag } from '../../componets/src/sleepingbag';
-import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { buildingPlacer, buildingPrefab, MakeBuildingPersist, type BuildingDeclaration } from './building';
 import type { PrefabWorldContext } from './worldContext';
 import { PlaySound } from './sound';
@@ -37,23 +36,31 @@ function onbuilt(inst: PrefabInstance): void {
     inst.sprite.pushAnimation('idle', true);
 }
 
-/** inst:DoPeriodicTask(period, fn, initialDelay) on the game-time scheduler. */
-function periodic(scheduler: GameTimeScheduler, period: number, initialDelay: number, run: () => void): () => void {
-    let cancel = scheduler.schedule(initialDelay, function tick() {
-        run();
-        cancel = scheduler.schedule(period, tick);
-    });
-    return () => cancel();
+function PlaySleepLoopSoundTask(inst: TentInstance): void {
+    PlaySound('dontstarve/common/tent_sleep', inst.position);
+}
+
+function stopsleepsound(inst: TentInstance): void {
+    for (const task of inst.sleep_tasks ?? []) task.Cancel();
+    inst.sleep_tasks = undefined;
+}
+
+function startsleepsound(inst: TentInstance, len: number): void {
+    stopsleepsound(inst);
+    inst.sleep_tasks = [inst.DoPeriodicTask(len, PlaySleepLoopSoundTask, 33 * FRAME), inst.DoPeriodicTask(len, PlaySleepLoopSoundTask, 47 * FRAME)];
+}
+
+function onfinishedsound(inst: TentInstance): void {
+    PlaySound('dontstarve/common/tent_dis_twirl', inst.position);
 }
 
 /** tent.lua common_fn / tent(): sleepingbag, finiteuses and their sleep, wake, hit and finish callbacks. */
 export class TentInstance extends PrefabInstance {
-    private sleepSounds: (() => void)[] = [];
+    sleep_tasks?: EntityTask[];
 
     constructor(world: PrefabWorldContext) {
         super(TENT_ID, new SpriteState({ name: declaration.idleAnimation ?? 'idle', billboard: true }));
-        const { scheduler } = world;
-        if (!scheduler) throw new Error('A tent needs the world scheduler');
+        if (!world.scheduler) throw new Error('A tent needs the world scheduler');
         this.worldServices = world;
         MakeBuildingPersist(this);
         for (const tag of ['tent', 'structure']) this.addTag(tag);
@@ -69,11 +76,11 @@ export class TentInstance extends PrefabInstance {
         uses.SetUses(TENT_USES);
         uses.SetOnFinished(() => {
             if (this.hasTag('burnt')) return;
-            this.stopSleepSound();
+            stopsleepsound(this);
             this.persists = false;
             this.sprite.playOnce('destroy', () => this.remove());
             PlaySound('dontstarve/common/tent_dis_pre', this.position);
-            scheduler.schedule(16 * FRAME, () => PlaySound('dontstarve/common/tent_dis_twirl', this.position));
+            this.DoTaskInTime(16 * FRAME, onfinishedsound);
         });
 
         const bag = addComponent(this, 'sleepingbag', SleepingBag);
@@ -81,30 +88,21 @@ export class TentInstance extends PrefabInstance {
         // sleep_anim: tents loop sleep_loop while occupied.
         bag.onsleep = () => {
             this.sprite.start('sleep_loop');
-            this.startSleepSound(scheduler, this.sprite.currentAnimationLength);
+            startsleepsound(this, this.sprite.currentAnimationLength);
         };
         bag.onwake = () => {
-            this.stopSleepSound();
+            stopsleepsound(this);
             this.sprite.start('idle');
             uses.Use();
         };
         this.ListenForEvent('onbuilt', () => onbuilt(this));
-        this.onRemove(() => this.stopSleepSound());
     }
-
-    private startSleepSound(scheduler: GameTimeScheduler, length: number): void {
-        this.stopSleepSound();
-        const play = () => PlaySound('dontstarve/common/tent_sleep', this.position);
-        this.sleepSounds = [periodic(scheduler, length, 33 * FRAME, play), periodic(scheduler, length, 47 * FRAME, play)];
-    }
-
-    stopSleepSound(): void { for (const cancel of this.sleepSounds.splice(0)) cancel(); }
 }
 
 /** tent.lua onhit wakes a sleeper even when the tent is burnt. */
 function onworked(inst: PrefabInstance): void {
     if (!inst.hasTag('burnt')) {
-        (inst as TentInstance).stopSleepSound();
+        stopsleepsound(inst as TentInstance);
         inst.sprite.playOnce('hit');
         inst.sprite.pushAnimation('idle', true);
     }

@@ -97,7 +97,8 @@ it('drops one bulb on death and cancels owned tasks on disposal while preserving
   const model = await s.manager.spawn(new THREE.Vector3()), home = model.userData.lightflierFlower as LightFlierFlower;
   home.components.pickable.Pick(); const fly = [...s.manager.habitat.flies][0];
   fly.components.health.DoDelta(-25); expect(s.loot).toEqual(['lightbulb']); expect(home.childrenOutside).toBe(0);
-  s.dispose(); expect(home.timers.recall.peek().status).toBe('stopped');
+  const recall = home.recalltask; expect(recall?.NextTime()).toBeDefined();
+  s.dispose(); expect(recall!.NextTime()).toBeUndefined();
 });
 
 it('feeds captured livestock and replaces an entire starving stack with the same number of bulbs', () => {

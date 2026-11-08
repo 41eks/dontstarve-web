@@ -46,7 +46,7 @@ export interface ArchivePropSaveState { anim?: number; storyprogress?: number; }
 
 export interface ArchivePropsWorld extends ToolMouseTargetWorld {
   /** worldgenitemfn's DoTaskInTime(0). */
-  scheduler: Pick<GameTimeScheduler, 'schedule'>;
+  scheduler: GameTimeScheduler;
   /** FACING_* bit that the camera heading gives an eight-faced inst with rotation 0. */
   cameraFacing?: ReadonlySignal<number>;
   /** lootdropper:SpawnLootPrefab when a statue is mined out; the loot's display loads its art. */
@@ -220,7 +220,8 @@ function ambientfn(): PrefabInstance {
 function worldgenitemfn(prefab: 'rubble1' | 'rubble2', scheduler: ArchivePropsWorld['scheduler']): PrefabInstance {
   const inst = new PrefabInstance(prefab, new SpriteState({ name: '' }), Transform.stationary());
   inst.persists = false;
-  inst.onRemove(scheduler.schedule(0, () => inst.remove()));
+  inst.BindScheduler(scheduler);
+  inst.DoTaskInTime(0, inst => inst.remove());
   return inst;
 }
 

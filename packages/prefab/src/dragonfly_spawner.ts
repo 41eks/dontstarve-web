@@ -40,6 +40,7 @@ export class DragonflySpawnerInstance extends PrefabInstance {
 
   constructor(world: DragonflySpawnerWorld, position: ReadonlyVector3) {
     super(DRAGONFLY_SPAWNER_ID, new SpriteState({ name: '', billboard: false }), Transform.stationary());
+    this.BindScheduler(world.scheduler);
     this.setPosition(position.x, 0, position.z);
     this.addTag('CLASSIFIED');
 
@@ -65,7 +66,7 @@ export class DragonflySpawnerInstance extends PrefabInstance {
       this.childrenToLink = saved.childspawner.childrenoutside;
     };
     // The save loop's LoadPostPass, once the saved dragonflies exist.
-    const stopPostPass = world.scheduler.schedule(0, () => {
+    this.DoTaskInTime(0, () => {
       childspawner.LoadPostPass(id => {
         const child = world.resolveDragonfly(id);
         return child ? childFor(child) : undefined;
@@ -79,7 +80,7 @@ export class DragonflySpawnerInstance extends PrefabInstance {
       const value = status.get();
       if (value === 'active') childspawner.OnEntityWake(); else if (value === 'asleep') childspawner.OnEntitySleep();
     });
-    this.onRemove(() => { stopPostPass(); stopWake(); stopStatus?.(); childspawner.dispose(); this.worldsettingstimer.dispose(); stopTimerDone(); });
+    this.onRemove(() => { stopWake(); stopStatus?.(); childspawner.dispose(); this.worldsettingstimer.dispose(); stopTimerDone(); });
   }
 }
 

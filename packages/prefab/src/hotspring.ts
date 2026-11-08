@@ -6,8 +6,7 @@ import { BathBombable } from '../../componets/src/bathbombable';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Heater } from '../../componets/src/heater';
-import { ComponentTimer } from '../../componets/src/timer';
-import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
+import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
 import { MakePondPhysics, WORLD_SCALE } from './standardcomponents';
 import { Transform } from './transform';
 import type { WorldFx } from './world_fx';
@@ -42,8 +41,7 @@ export interface HotspringWorld {
 export class HotspringInstance extends PrefabInstance {
   declare readonly components: PrefabInstance['components'] & { heater: Heater; bathbombable: BathBombable };
   readonly no_wet_prefix = true;
-  /** _fx_task: DoPeriodicTask(HOTSPRING_IDLE.BASE, push_special_idle, delay). */
-  readonly fxTask: ComponentTimer;
+  _fx_task?: EntityTask;
   readonly world: HotspringWorld;
   readonly random: () => number;
   /** The global POPULATING while OnLoad runs. */
@@ -52,6 +50,7 @@ export class HotspringInstance extends PrefabInstance {
   constructor(world: HotspringWorld, position: ReadonlyVector3) {
     super(HOTSPRING_ID, new SpriteState({ name: 'idle', billboard: true }), Transform.stationary());
     this.world = world; this.random = world.random ?? Math.random;
+    this.BindScheduler(world.scheduler);
     this.setPosition(position.x, 0, position.z);
     this.sprite.setGround(BACKGROUND_RENDER_ORDER, false);
     for (const tag of ['watersource', 'antlion_sinkhole_blocker', 'birdblocker', 'inspectable']) this.addTag(tag);
@@ -64,7 +63,6 @@ export class HotspringInstance extends PrefabInstance {
     bathbombable.SetOnBathBombedFn(() => OnBathBombed(this));
     addComponent(this, 'inspectable', Inspectable);
 
-    this.fxTask = new ComponentTimer(world.scheduler, () => push_special_idle(this));
     StartFx(this);
 
     this.OnSave = (_inst, data) => { data.hotspring = bathbombable.is_bathbombed ? { isbathbombed: true } : {}; };
@@ -84,7 +82,6 @@ export class HotspringInstance extends PrefabInstance {
     }));
     this.onRemove(() => {
       cleanups.splice(0).forEach(stop => stop());
-      StopFx(this);
       heater.dispose(); bathbombable.dispose();
       this.light.set(null);
     });
@@ -93,18 +90,23 @@ export class HotspringInstance extends PrefabInstance {
 
 /** push_special_idle, non-glass branches. */
 function push_special_idle(inst: HotspringInstance): void {
-  inst.fxTask.start(HOTSPRING_IDLE.BASE);
   if (inst.components.bathbombable.is_bathbombed) inst.world.fx.spawn(`crater_steam_fx${1 + Math.floor(inst.random() * 4) as 1 | 2 | 3 | 4}`, inst.position);
   else inst.world.fx.spawn(`slow_steam_fx${1 + Math.floor(inst.random() * 5) as 1 | 2 | 3 | 4 | 5}`, inst.position);
 }
 
-function StartFx(inst: HotspringInstance, delay = inst.random() * HOTSPRING_IDLE.DELAY): void { inst.fxTask.start(delay); }
+function StartFx(inst: HotspringInstance, delay = inst.random() * HOTSPRING_IDLE.DELAY): void {
+  inst._fx_task?.Cancel();
+  inst._fx_task = inst.DoPeriodicTask(HOTSPRING_IDLE.BASE, push_special_idle, delay);
+}
 
-function StopFx(inst: HotspringInstance): void { inst.fxTask.stop(); }
+function StopFx(inst: HotspringInstance): void {
+  inst._fx_task?.Cancel();
+  inst._fx_task = undefined;
+}
 
 function OnWake(inst: HotspringInstance): void {
   const { is_bathbombed, can_be_bathbombed } = inst.components.bathbombable;
-  if (inst.fxTask.snapshot.peek().status !== 'scheduled' && (is_bathbombed || can_be_bathbombed)) StartFx(inst);
+  if (!inst._fx_task && (is_bathbombed || can_be_bathbombed)) StartFx(inst);
 }
 
 function GetHeat(inst: HotspringInstance): number {

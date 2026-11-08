@@ -1,8 +1,7 @@
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import type { ArchiveSpriteCommands } from '@dontstarve-web/display';
-import type { PrefabInstance } from './prefabInstance';
+import type { EntityTask, PrefabInstance } from './prefabInstance';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { ComponentTimer } from '../../componets/src/timer';
 import { PlayerProx } from '../../componets/src/playerprox';
 import { PlaySound, type SoundHandle } from './sound';
 import { WORLD_SCALE } from './standardcomponents';
@@ -16,7 +15,7 @@ export const FLIES_SOUND = 'dontstarve/common/flies';
  */
 export class FliesController {
   readonly playerprox: PlayerProx;
-  private readonly init: ComponentTimer;
+  private readonly init: EntityTask;
   private readonly sprite: ArchiveSpriteCommands;
   private readonly position: ReadonlyVector3;
   private sound?: SoundHandle;
@@ -41,14 +40,13 @@ export class FliesController {
       this.swarm();
     });
     this.swarm();
-    this.init = new ComponentTimer(scheduler, () => {
+    // DoTaskInTime(0, OnInit)
+    instance.BindScheduler(scheduler);
+    this.init = instance.DoTaskInTime(0, () => {
       this.playerprox.ForceUpdate();
       if (!this.asleep && !this.playerprox.IsPlayerClose()) this.startSound();
     });
-    this.init.start(0);
   }
-
-  get initTimerState() { return this.init.snapshot; }
 
   private swarm(): void {
     const revision = ++this.animationRevision;
@@ -78,7 +76,7 @@ export class FliesController {
     if (this.disposed) return;
     this.disposed = true;
     this.animationRevision++;
-    this.init.stop(); this.playerprox.dispose(); this.stopSound();
+    this.init.Cancel(); this.playerprox.dispose(); this.stopSound();
     // The owning prefab retains the entity until its visual is disposed.
     this.sprite.setVisible(false);
   }

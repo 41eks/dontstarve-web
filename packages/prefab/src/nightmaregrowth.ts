@@ -1,6 +1,5 @@
 import { SpriteState } from '@dontstarve-web/display';
 import { Vector3 } from 'three';
-import { ComponentTimer } from '../../componets/src/timer';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import type { PlacementSaveRecord } from './saveRecord';
@@ -31,19 +30,17 @@ const ASSETS = { animationArchive: 'nightmaregrowth.zip', buildArchives: ['night
 export class NightmareGrowthInstance extends PrefabInstance {
   private _crack?: NightmareGrowthCrackInstance;
   private _crack_rotation?: number;
-  private readonly task: ComponentTimer;
   private readonly world: NightmareGrowthWorld;
 
   constructor(world: NightmareGrowthWorld, position: ReadonlyVector3) {
     super(NIGHTMAREGROWTH_ID, new SpriteState({ name: 'idle', held: true, billboard: true }), Transform.stationary());
     this.world = world;
+    this.BindScheduler(world.scheduler);
     this.setPosition(position.x, 0, position.z);
     this.sprite.playOnce('idle');
     this.addTag('ancient_text');
-    this.task = new ComponentTimer(world.scheduler, () => this.SpawnCrack());
-    this.task.start(0);
+    this.DoTaskInTime(0, () => this.SpawnCrack());
     this.onRemove(() => {
-      this.task.stop();
       if (this._crack && !this._crack.isRemoved) this._crack.remove();
     });
   }

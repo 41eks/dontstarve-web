@@ -2,7 +2,7 @@ import { MiniMapState } from '../../map/src/minimapState';
 import { watchMiniMapEntity } from '../../map/src/minimapEntities';
 import type * as CANNON from 'cannon-es';
 import { type Object3D, type Vector3, type Vector3Like } from 'three';
-import { createSignal, readonlySignal, type ReadonlySignal, type TileStateQuery } from '@dontstarve-web/signals';
+import { createSignal, readonlySignal, type GameTimeScheduler, type ReadonlySignal, type TileStateQuery } from '@dontstarve-web/signals';
 import { IconSpriteAtlases, LightState, PrefabDisplay, SpriteResources, SpriteState, type ArchiveSpriteCommands, type PrefabDisplayGroup, type ArchiveSpriteSource, type LoadedSpriteSource, type PrefabDisplayOptions, type PrefabStatus, type SpriteSource } from '@dontstarve-web/display';
 import { bindPhysics, type PhysicsBinding } from '../../componets/src/physicsBinding';
 import { PhysicsState } from '../../componets/src/physicsState';
@@ -89,8 +89,64 @@ function removeListener(table: ListenerTable | undefined, event: string, entity:
   if (!listeners.size) table!.delete(event);
 }
 
-/** scheduler.lua's Periodic as DoTaskInTime / DoPeriodicTask return it. */
-export interface EntityTask { Cancel(): void }
+/** The game-time scheduler an entity's tasks run on. */
+type TaskScheduler = Pick<GameTimeScheduler, 'now' | 'schedule'>;
+
+/**
+ * scheduler.lua's Periodic as DoTaskInTime / DoPeriodicTask / PushEventInTime return it: `Cancel()` and `NextTime()`.
+ * It runs on its entity's scheduler and moves with it when the entity joins another world's (BindScheduler).
+ */
+export class EntityTask {
+  /** Periodic.period: the repeat interval of a DoPeriodicTask, undefined for a one-shot task. */
+  readonly period: number | undefined;
+  private readonly fn: () => void;
+  private readonly finish: (task: EntityTask) => void;
+  private scheduler: TaskScheduler;
+  private cancelScheduled?: () => void;
+  private nextTime?: number;
+
+  /** @internal Made by the entity's DoTaskInTime / DoPeriodicTask. */
+  constructor(scheduler: TaskScheduler, delay: number, period: number | undefined, fn: () => void, finish: (task: EntityTask) => void) {
+    this.scheduler = scheduler; this.period = period; this.fn = fn; this.finish = finish;
+    this.arm(delay);
+  }
+
+  /** Periodic:NextTime: the game time it next runs, undefined once it has finished or been cancelled. */
+  NextTime(): number | undefined { return this.nextTime; }
+
+  /** Periodic:Cancel. */
+  Cancel(): void {
+    if (this.nextTime === undefined) return;
+    this.cancelScheduled?.();
+    this.cancelScheduled = this.nextTime = undefined;
+    this.finish(this);
+  }
+
+  /** @internal The entity's tasks keep their remaining time on the scheduler it joins. */
+  rebind(scheduler: TaskScheduler): void {
+    if (scheduler === this.scheduler || this.nextTime === undefined) { this.scheduler = scheduler; return; }
+    const remaining = Math.max(0, this.nextTime - this.scheduler.now);
+    this.cancelScheduled?.();
+    this.scheduler = scheduler;
+    this.arm(remaining);
+  }
+
+  private arm(delay: number): void {
+    this.nextTime = this.scheduler.now + delay;
+    // conventions-allow prefab-timer: EntityTask is the scheduler.lua Periodic that DoTaskInTime / DoPeriodicTask hand out.
+    this.cancelScheduled = this.scheduler.schedule(delay, () => {
+      if (this.period === undefined) { this.cancelScheduled = this.nextTime = undefined; this.finish(this); }
+      else this.arm(this.period);
+      this.fn();
+    });
+  }
+}
+
+/** util.lua GetTaskRemaining(task): the game seconds until it runs, or -1 without a pending task. */
+export function GetTaskRemaining(task: EntityTask | undefined, now: number): number {
+  const next = task?.NextTime();
+  return next === undefined || next < now ? -1 : next - now;
+}
 
 /**
  * The logical entity behind a placed prefab: identity, save record, skin, persistence, lifecycle `status` and the
@@ -278,12 +334,17 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
 
   /** EntityScript:DoTaskInTime(time, fn): fn(inst) after `time` game seconds on the world's scheduler; Remove cancels it. */
   DoTaskInTime(time: number, fn: (inst: this) => void): EntityTask {
-    return this.addTask(time, fn, undefined);
+    return this.addTask(time, undefined, fn);
   }
 
   /** EntityScript:DoPeriodicTask(time, fn, initialdelay): fn(inst) every `time` game seconds, first after `initialdelay`. */
   DoPeriodicTask(time: number, fn: (inst: this) => void, initialdelay = time): EntityTask {
-    return this.addTask(initialdelay, fn, time);
+    return this.addTask(initialdelay, time, fn);
+  }
+
+  /** EntityScript:PushEventInTime(time, eventname, data): inst:PushEvent(eventname, data) after `time`; Remove cancels it. */
+  PushEventInTime(time: number, eventname: string, data?: unknown): EntityTask {
+    return this.addTask(time, undefined, inst => inst.PushEvent(eventname, data));
   }
 
   /** EntityScript:CancelAllPendingTasks. */
@@ -293,18 +354,29 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
     for (const task of tasks ?? []) task.Cancel();
   }
 
-  private addTask(delay: number, fn: (inst: this) => void, period: number | undefined): EntityTask {
+  /** GetTime() on the scheduler this entity's tasks run on. */
+  GetTime(): number { return this.taskScheduler().now; }
+
+  /**
+   * The entity joins a world's game-time scheduler, as an item does when its registry binds it: its pending tasks
+   * keep their remaining time there.
+   */
+  BindScheduler(scheduler: GameTimeScheduler): void {
+    if (this.worldServices?.scheduler === scheduler) return;
+    this.worldServices = { ...this.worldServices, scheduler };
+    for (const task of this.pendingtasks ?? []) task.rebind(scheduler);
+  }
+
+  private taskScheduler(): TaskScheduler {
     const scheduler = this.worldServices?.scheduler;
     if (!scheduler) throw new Error(`${this.prefab} has no world scheduler for its tasks`);
-    let cancel: (() => void) | undefined;
+    return scheduler;
+  }
+
+  private addTask(delay: number, period: number | undefined, fn: (inst: this) => void): EntityTask {
     const tasks = this.pendingtasks ??= new Set();
-    const task: EntityTask = { Cancel: () => { cancel?.(); cancel = undefined; this.pendingtasks?.delete(task); } };
-    const run = () => {
-      if (period === undefined) { cancel = undefined; this.pendingtasks?.delete(task); }
-      else cancel = scheduler.schedule(period, run);
-      fn(this);
-    };
-    cancel = scheduler.schedule(delay, run);
+    // task_finish: a finished or cancelled task leaves inst.pendingtasks.
+    const task = new EntityTask(this.taskScheduler(), delay, period, () => fn(this), done => this.pendingtasks?.delete(done));
     tasks.add(task);
     return task;
   }
@@ -563,17 +635,19 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
   private readonly displays: PrefabDisplayGroup;
   private readonly tickingarea?: TileStateQuery;
   private readonly physicsWorld?: CANNON.World;
+  private readonly scheduler?: GameTimeScheduler;
   private readonly prefabs: Record<Id, PrefabEntityDefinition<Instance>>;
 
   /** `displays` is the display-layer owner of the entities' scene membership, injected and disposed by the application. */
   constructor(displays: PrefabDisplayGroup, animationBaseUrl: string | undefined,
-    world: { readonly tickingarea?: TileStateQuery; readonly physics?: CANNON.World; readonly iconArchiveUrl?: string },
+    world: { readonly tickingarea?: TileStateQuery; readonly physics?: CANNON.World; readonly iconArchiveUrl?: string; readonly scheduler?: GameTimeScheduler },
     prefabs: Readonly<Record<Id, PrefabEntityDefinition<Instance>>> = {} as Record<Id, PrefabEntityDefinition<Instance>>) {
     this.displays = displays;
     this.iconArchiveUrl = world.iconArchiveUrl;
     this.resources = new SpriteResources(animationBaseUrl);
     this.tickingarea = world.tickingarea;
     this.physicsWorld = world.physics;
+    this.scheduler = world.scheduler;
     this.prefabs = { ...prefabs };
   }
 
@@ -603,6 +677,8 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
       baseSymbols, skinAnimationBanks, alwaysActive, materialOptions, icon, source } = this.prefabs[prefabId];
     if (skinId !== undefined && !skins?.[skinId]) throw new Error(`Unsupported ${prefabId} skin: ${skinId}`);
     const instance = fn(position, this.resources);
+    // The world's scheduler for inst:DoTaskInTime, unless the prefab's fn already bound the one it scheduled on.
+    if (this.scheduler && !instance.worldServices?.scheduler) instance.BindScheduler(this.scheduler);
     if (skins || materialOptions) instance.sprite.setSkinSource({ art: this.resources.archives, archives: skins ?? {}, materialOptions,
       ...skinSymbols ? { symbols: skinSymbols } : {}, ...baseSymbols ? { baseSymbols } : {},
       ...skinAnimationBanks ? { animationBanks: skinAnimationBanks } : {} });

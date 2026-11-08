@@ -1,13 +1,13 @@
 import { Workable } from '../../componets/src/workable';
 import { SpriteState } from '@dontstarve-web/display';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
-import { ComponentTimer, Timer } from '../../componets/src/timer';
+import { Timer } from '../../componets/src/timer';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { actionEntity } from './actionEntity';
 import { addComponent } from './components';
 import type { SpawnGroundItem } from './groundPrefab';
 import catalog from './groundItems.json' with { type: 'json' };
-import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
+import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
 import { ROCK_AVOCADO_BUSH_ID } from './rock_avocado_bush';
 import { PlaySound } from './sound';
 import { DefaultBurntFn } from './standardcomponents';
@@ -40,11 +40,12 @@ export class RockAvocadoSaplingInstance extends PrefabInstance {
   declare readonly components: PrefabInstance['components'] & { timer: Timer };
   readonly world: RockAvocadoSaplingWorld;
   /** Stands in for seed_growth's animover, so a sprout grows while its display sleeps. */
-  readonly seedGrowth: ComponentTimer;
+  seedGrowth?: EntityTask;
 
   constructor(world: RockAvocadoSaplingWorld) {
     super(ROCK_AVOCADO_SAPLING_ID, new SpriteState({ name: 'idle_buried_seed', billboard: true }), Transform.stationary());
     this.world = world;
+    this.BindScheduler(world.scheduler);
     this.sprite.playOnce('idle_buried_seed');
     // seed_growth includes the engine's snow placeholder; this prefab has no MakeSnowCovered.
     this.sprite.setSymbolHidden('snow', true);
@@ -55,11 +56,10 @@ export class RockAvocadoSaplingInstance extends PrefabInstance {
     workable.SetOnFinishCallback(dig_sprout);
     const timer = addComponent(this, 'timer', Timer, world.scheduler, ['grow']);
     this.ListenForEvent('timerdone', (_inst, data) => on_grow_timer_done(this, (data as { name: string }).name));
-    this.seedGrowth = new ComponentTimer(world.scheduler, () => grow_anim_over(this));
     // MakeSmallBurnable + MakeSmallPropagator; DefaultBurnFn and DefaultExtinguishFn give way to these callbacks.
     const burn = new BurnableBinding(this, { propagator: 'small', burnTime: BURN_TIME, fxLevel: BURN_FX_LEVEL,
       onIgnite: () => stop_sprout_growing(this), onExtinguish: () => start_sprout_growing(this), onBurnt: () => DefaultBurntFn(this, world) }, world);
-    this.onRemove(() => { burn.dispose(); this.seedGrowth.stop(); });
+    this.onRemove(() => burn.dispose());
     start_sprout_growing(this);
     this.OnSave = (_inst, data) => {
       // The timer's record keeps the name existing saves hold; a stopped timer writes an empty one.
@@ -82,7 +82,7 @@ function grow_anim_over(inst: RockAvocadoSaplingInstance): void {
 
 function on_grow_timer_done(inst: RockAvocadoSaplingInstance, name: string): void {
   if (name !== 'grow') return;
-  inst.seedGrowth.start(SEED_GROWTH_SECONDS);
+  inst.seedGrowth = inst.DoTaskInTime(SEED_GROWTH_SECONDS, grow_anim_over);
   inst.sprite.playOnce('seed_growth');
 }
 

@@ -1,11 +1,10 @@
 import { addComponent } from './components';
-import type { ItemEntity, ItemRuntimeComponent } from '@dontstarve-web/inventory';
+import type { ItemEntity } from '@dontstarve-web/inventory';
+import type { EntityTask } from './prefabInstance';
 import type { EquipmentOwner } from '@dontstarve-web/signals';
 import { Armor } from '../../componets/src/armor';
 import { Equippable, type EquippableOwner } from '../../componets/src/equippable';
-import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { EQUIPMENTSETNAMES, SetBonus } from '../../componets/src/setbonus';
-import { ComponentTimer } from '../../componets/src/timer';
 
 export const DREADSTONEHAT_ID = 'dreadstonehat';
 // tuning.lua: wilson_health * 8 * multiplayer_armor_durability_modifier (.7); absorption .9 * 1.
@@ -19,70 +18,40 @@ const ARMOR_DREADSTONE_REGEN_SETBONUS = 1.5;
 /** tuning.lua CRAZINESS_MED = -100 / day_time. */
 export const CRAZINESS_MED = -100 / 300;
 
-const REGEN = 'dreadstoneregen';
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
-/**
- * hats.lua's inst.regentask: a DoPeriodicTask bound to the wearer, owned by the item so ontakedamage and dapperfn see it.
- * It is not saved; onequip after a load starts it again while the armor is damaged.
- */
-class DreadstoneRegen implements ItemRuntimeComponent {
-  private readonly timer: ComponentTimer;
-  /** Read-only task state: scheduled while regenerating, stopped once cancelled. */
-  readonly snapshot;
-  private owner?: EquipmentOwner;
-  private readonly entity: ItemEntity;
+/** hats.lua's inst.regentask: not saved; onequip after a load starts it again while the armor is damaged. */
+type DreadstoneInst = ItemEntity & { regentask?: EntityTask };
 
-  constructor(entity: ItemEntity, scheduler: GameTimeScheduler) {
-    this.entity = entity;
-    this.timer = new ComponentTimer(scheduler, () => this.doregen());
-    this.snapshot = this.timer.snapshot;
+/** dreadstone_doregen: repair faster at lower sanity, only while the wearer is in insanity mode. */
+function dreadstone_doregen(inst: DreadstoneInst, owner: EquipmentOwner): void {
+  const armor = inst.components.armor!, sanity = owner.components?.sanity;
+  if (sanity?.IsInsanityMode()) {
+    const setbonus = inst.components.setbonus?.IsEnabled(EQUIPMENTSETNAMES.DREADSTONE) ? ARMOR_DREADSTONE_REGEN_SETBONUS : 1;
+    const rate = 1 / lerp(1 / ARMOR_DREADSTONE_REGEN_MAXRATE, 1 / ARMOR_DREADSTONE_REGEN_MINRATE, sanity.GetPercent());
+    armor.Repair(armor.maxcondition * rate * setbonus);
   }
+  if (!armor.IsDamaged()) dreadstone_stopregen(inst);
+}
 
-  get running(): boolean { return this.owner !== undefined; }
+function dreadstone_startregen(inst: DreadstoneInst, owner: EquipmentOwner): void {
+  // An item outside a world has no game time to regenerate on; it starts again on equip once adopted.
+  if (inst.regentask || !inst.worldServices?.scheduler) return;
+  inst.regentask = inst.DoPeriodicTask(ARMOR_DREADSTONE_REGEN_PERIOD, inst => dreadstone_doregen(inst, owner));
+}
 
-  start(owner: EquipmentOwner): void {
-    if (this.running) return;
-    this.owner = owner;
-    this.timer.start(ARMOR_DREADSTONE_REGEN_PERIOD);
-  }
-
-  stop(): void {
-    this.owner = undefined;
-    this.timer.stop();
-  }
-
-  /** dreadstone_doregen: repair faster at lower sanity, only while the wearer is in insanity mode. */
-  private doregen(): void {
-    const owner = this.owner!, armor = this.entity.components.armor!;
-    const sanity = owner.components?.sanity;
-    if (sanity?.IsInsanityMode()) {
-      const setbonus = this.entity.components.setbonus?.IsEnabled(EQUIPMENTSETNAMES.DREADSTONE) ? ARMOR_DREADSTONE_REGEN_SETBONUS : 1;
-      const rate = 1 / lerp(1 / ARMOR_DREADSTONE_REGEN_MAXRATE, 1 / ARMOR_DREADSTONE_REGEN_MINRATE, sanity.GetPercent());
-      armor.Repair(armor.maxcondition * rate * setbonus);
-    }
-    if (this.owner !== owner) return;
-    if (armor.IsDamaged() && !this.entity.isRemoved) this.timer.start(ARMOR_DREADSTONE_REGEN_PERIOD);
-    else this.stop();
-  }
-
-  dispose(): void { this.stop(); }
+function dreadstone_stopregen(inst: DreadstoneInst): void {
+  inst.regentask?.Cancel();
+  inst.regentask = undefined;
 }
 
 /** inventoryitem.owner while equipped: the injected wearer, released on unequip. */
 const equippedOwners = new WeakMap<ItemEntity, EquipmentOwner>();
 
-const regenOf = (entity: ItemEntity) => entity.getComponent<DreadstoneRegen>(REGEN);
-function startRegen(entity: ItemEntity, owner: EquipmentOwner): void {
-  const scheduler = entity.components.perishable.scheduler;
-  if (!scheduler || entity.isRemoved) return;
-  entity.component(REGEN, () => new DreadstoneRegen(entity, scheduler)).start(owner);
-}
-
 /** dreadstone_calcdapperness: the regenerating hat drains an insane wearer's sanity. armordreadstone is not ported. */
 function calcdapperness(entity: ItemEntity, owner: EquippableOwner | undefined): number {
   const insanity = owner?.components?.sanity?.IsInsanityMode() ?? false;
-  return insanity && regenOf(entity)?.running ? CRAZINESS_MED : 0;
+  return insanity && (entity as DreadstoneInst).regentask ? CRAZINESS_MED : 0;
 }
 
 /** hats.lua simple() + dreadstone_custom_init + fns.dreadstone: tags, armor, magic dapperness and the set name. */
@@ -95,7 +64,7 @@ export function configureDreadstoneHatEntity(entity: ItemEntity): void {
     // dreadstone_ontakedamage
     armor.ontakedamage = () => {
       const owner = equippedOwners.get(entity);
-      if (!regenOf(entity)?.running && owner?.components?.sanity) startRegen(entity, owner);
+      if (!(entity as DreadstoneInst).regentask && owner?.components?.sanity) dreadstone_startregen(entity, owner);
     };
   }
   const equippable = addComponent(entity, 'equippable', Equippable<ItemEntity>, 'head');
@@ -107,12 +76,12 @@ export function configureDreadstoneHatEntity(entity: ItemEntity): void {
 /** dreadstone_onequip after the hat's own onequip: regeneration runs only while worn and damaged. */
 export function dreadstone_onequip(entity: ItemEntity, owner: EquipmentOwner): void {
   equippedOwners.set(entity, owner);
-  if (owner.components?.sanity && entity.components.armor?.IsDamaged()) startRegen(entity, owner);
-  else regenOf(entity)?.stop();
+  if (owner.components?.sanity && entity.components.armor?.IsDamaged()) dreadstone_startregen(entity, owner);
+  else dreadstone_stopregen(entity);
 }
 
 /** dreadstone_onunequip before the hat's own onunequip. */
 export function dreadstone_onunequip(entity: ItemEntity): void {
   equippedOwners.delete(entity);
-  regenOf(entity)?.stop();
+  dreadstone_stopregen(entity);
 }

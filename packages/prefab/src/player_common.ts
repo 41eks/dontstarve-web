@@ -74,12 +74,6 @@ const GHOST_ACTION_FILTER_PRIORITY = 99;
 export const GHOST_LIGHT_OVERRIDE = .5;
 export const RESURRECT_HEALTH = 50;
 
-/** inst:DoTaskInTime on the player's game-time scheduler. */
-function DoTaskInTime(inst: WilsonPlayerInstance, seconds: number, fn: () => void): void {
-  if (!inst.scheduler) throw new Error('The player inst has no scheduler for DoTaskInTime');
-  inst.scheduler.schedule(seconds, fn);
-}
-
 /** inst:Hide() / inst:Show() with the DynamicShadow. */
 function setHidden(inst: WilsonPlayerInstance, hidden: boolean): void { inst.sprite.setVisible(!hidden); }
 
@@ -209,7 +203,7 @@ export function OnRespawnFromGhost(inst: WilsonPlayerInstance, data?: { source?:
   inst.ShowHUD(false);
   inst.controllerEnabled = false;
   inst.animationController.stategraph.addStateTag('busy');
-  DoTaskInTime(inst, 9 * FRAMES, () => DoMoveToRezSource(inst, source, 51 * FRAMES));
+  inst.DoTaskInTime(9 * FRAMES, () => DoMoveToRezSource(inst, source, 51 * FRAMES));
 }
 
 function DoMoveToRezSource(inst: WilsonPlayerInstance, source: RezSource, delay: number): void {
@@ -223,7 +217,7 @@ function DoMoveToRezSource(inst: WilsonPlayerInstance, source: RezSource, delay:
 function DoRezDelay(inst: WilsonPlayerInstance, source: RezSource, delay: number): void {
   if (!source.isValid() || source.inlimbo) revertMove(inst);
   else if (delay <= 0) DoActualRez(inst, source);
-  else DoTaskInTime(inst, Math.min(delay, .35), () => DoRezDelay(inst, source, delay - .35));
+  else inst.DoTaskInTime(Math.min(delay, .35), () => DoRezDelay(inst, source, delay - .35));
 }
 
 /**

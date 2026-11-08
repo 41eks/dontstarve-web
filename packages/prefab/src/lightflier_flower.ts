@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { createEffect, createSignal, readonlySignal, watchSignal } from '@dontstarve-web/signals';
 import { SpriteResources, type ArchiveSpriteCommands, type PrefabDisplay } from '@dontstarve-web/display';
 import { animationLengths } from './animationTimings';
-import { createArchiveEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
+import { createArchiveEntity, type EntityTask, type PrefabInstance, prefabInstance } from './prefabInstance';
 import { AnimState } from '../../componets/src/animstate';
 import { ComponentTimer } from '../../componets/src/timer';
 import { ChildSpawner, type ChildSpawnerSave } from '../../componets/src/childspawner';
@@ -54,9 +54,10 @@ export class LightFlierFlower implements BrainEntity {
   readonly lightState = readonlySignal(this.mode);
   private readonly recharge: ComponentTimer;
   private readonly turnoff: ComponentTimer;
-  private readonly wake: ComponentTimer;
-  private readonly recall: ComponentTimer;
-  private readonly sampleTimer: ComponentTimer;
+  /** recall_task */
+  recalltask?: EntityTask;
+  /** The LightWatcher's sampling while the entity is awake. */
+  private sampletask?: EntityTask;
   readonly timers;
   returningHome?: LightFlier;
   private pendingChildren: string[];
@@ -79,19 +80,14 @@ export class LightFlierFlower implements BrainEntity {
     getLightLevel: (model: THREE.Group) => number, variant: LightFlierFlowerSave['variant'], saved?: LightFlierFlowerSave, random = Math.random) {
     this.instance = instance; this.id = id; this.model = model; this.habitat = habitat; this.variant = variant; this.getLightLevel = getLightLevel; this.random = random;
     const scheduler = habitat.services.scheduler;
+    if (!instance.worldServices?.scheduler) instance.BindScheduler(scheduler);
     this.MiniMapEntity = this.instance.minimap; this.MiniMapEntity.SetIcon('bulb_plant.png');
     this.tweenStart = scheduler.now - this.tweenTime;
     this.mode.set(saved?.lightState ?? 'CHARGED'); this.lightOn = saved?.lightState === 'ON' && !saved?.picked;
     this.animstate = new AnimState(scheduler, lengths, () => {});
     this.recharge = new ComponentTimer(scheduler, () => { this.setState('CHARGED'); this.sampleLight(); if (this.inLight) this.turnOn(); });
     this.turnoff = new ComponentTimer(scheduler, () => { this.turnOff(); if (this.components.pickable.canBePicked) this.components.pickable.Pick(); });
-    this.wake = new ComponentTimer(scheduler, () => { this.awake = true; this.sampleLight(); if (this.inLight) this.turnOn(); });
-    this.recall = new ComponentTimer(scheduler, () => this.callForLightFlier());
-    this.sampleTimer = new ComponentTimer(scheduler, () => {
-      this.checkLight();
-      this.sampleTimer.start(BULB_PLANT_LIGHT_SAMPLE_INTERVAL);
-    });
-    this.timers = Object.freeze({ recharge: this.recharge.snapshot, turnoff: this.turnoff.snapshot, wake: this.wake.snapshot, recall: this.recall.snapshot });
+    this.timers = Object.freeze({ recharge: this.recharge.snapshot, turnoff: this.turnoff.snapshot });
     instance.entityId = id;
     Object.assign(model.userData, { lightflierFlower: this, remove: () => this.remove() });
     for (const tag of ['plant', 'lightflier_home']) instance.addTag(tag);
@@ -120,7 +116,9 @@ export class LightFlierFlower implements BrainEntity {
     if (saved?.rechargeSeconds !== undefined) this.recharge.start(saved.rechargeSeconds);
     if (saved?.turnoffSeconds !== undefined) this.turnoff.start(saved.turnoffSeconds);
     if (saved?.picked && this.pendingChildren.length) this.startRecall();
-    this.wake.start(1); this.refreshLight();
+    // OnWake: DoTaskInTime(1, TurnOnInLight).
+    instance.DoTaskInTime(1, () => { this.awake = true; this.sampleLight(); if (this.inLight) this.turnOn(); });
+    this.refreshLight();
     this.cleanups.push(watchTileActivity(model, habitat.services.tickingarea, active => this.setActive(active)));
   }
   getPosition(): THREE.Vector3 { return this.model.position; }
@@ -154,16 +152,18 @@ export class LightFlierFlower implements BrainEntity {
   }
   /** pickable.lua MakeFull invokes the prefab's makefullfn, unlike ordinary regrowth. */
   makeFull(): void {
-    this.recall.stop(); this.components.pickable.regen(); this.sequence('grow', 'idle', true); this.forceOn();
+    this.stopRecall(); this.components.pickable.regen(); this.sequence('grow', 'idle', true); this.forceOn();
     this.recharge.stop(); this.turnoff.stop(); this.turnoff.start(110 + this.randomTween());
   }
   private randomTween(): number { return 4 + Math.min(4, Math.floor(this.random() * 5)); }
-  private startRecall(): void { this.recall.stop(); this.recall.start(60 + this.random() * 60); }
+  private startRecall(): void { this.stopRecall(); this.recalltask = this.instance.DoTaskInTime(60 + this.random() * 60, () => this.callForLightFlier()); }
+  private stopRecall(): void { this.recalltask?.Cancel(); this.recalltask = undefined; }
   private callForLightFlier(): void {
+    this.recalltask = undefined;
     if (this.components.pickable.canBePicked || this.childrenOutside < 1) return;
     if (!this.returningHome?.isValid() || this.returningHome.components.formationfollower.active)
       this.returningHome = [...this.components.childspawner.childrenoutside].find(fly => !fly.components.formationfollower.active);
-    this.recall.start(8);
+    this.recalltask = this.instance.DoTaskInTime(8, () => this.callForLightFlier());
   }
   get isActive(): boolean { return this.active; }
   /** OnEntitySleep/OnEntityWake: only the LightWatcher sampling and presentation pause; game-time timers keep running. */
@@ -172,8 +172,11 @@ export class LightFlierFlower implements BrainEntity {
     this.active = active;
     // OnEntitySleep/OnEntityWake: frames and instance entries exist only while the tile is active.
     this.instance.setActive(active);
-    if (!active) { this.sampleTimer.stop(); return; }
-    this.checkLight(); this.sampleTimer.start(BULB_PLANT_LIGHT_SAMPLE_INTERVAL * (.5 + this.random() * .5)); this.refreshLight();
+    this.sampletask?.Cancel(); this.sampletask = undefined;
+    if (!active) return;
+    this.checkLight();
+    this.sampletask = this.instance.DoPeriodicTask(BULB_PLANT_LIGHT_SAMPLE_INTERVAL, () => this.checkLight(), BULB_PLANT_LIGHT_SAMPLE_INTERVAL * (.5 + this.random() * .5));
+    this.refreshLight();
   }
   private checkLight(): void { const wasInLight = this.inLight; this.sampleLight(); if (this.awake && !wasInLight && this.inLight) this.turnOn(); }
   private sampleLight(): void { const level = this.getLightLevel(this.model); this.inLight = this.inLight ? level > .05 : level >= .075; }
@@ -194,7 +197,7 @@ export class LightFlierFlower implements BrainEntity {
   remove(): void { if (this.removed) return; for (const fn of this.events.get('onremove') ?? []) fn(); this.dispose(); }
   dispose(): void {
     if (this.removed) return; this.removed = true; this.habitat.homes.delete(this.id); this.model.userData.removed = true;
-    this.wake.stop(); this.sampleTimer.stop(); this.recharge.stop(); this.turnoff.stop(); this.recall.stop(); this.animstate.dispose(); this.sound?.stop();
+    this.recharge.stop(); this.turnoff.stop(); this.animstate.dispose(); this.sound?.stop();
     // The components are torn down with the prefab instance below.
     this.cleanups.splice(0).forEach(stop => stop()); this.events.clear(); this.instance.light.set(null);
     this.instance.remove(); this.model.removeFromParent();

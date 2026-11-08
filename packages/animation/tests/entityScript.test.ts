@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { SpriteState } from '../../display/src';
 import { HomeSeeker } from '../../componets/src/homeseeker';
 import { GameTimeScheduler } from '../../signals/src';
-import { PrefabInstance } from '../../prefab/src/prefabInstance';
+import { GetTaskRemaining, PrefabInstance } from '../../prefab/src/prefabInstance';
 import type { PrefabWorldContext } from '../../prefab/src/worldContext';
 import { StateGraphInstance } from '../../stategraphs/src/stategraph';
 import { Brain } from '../../brains/src/brain';
@@ -79,6 +79,34 @@ describe('EntityScript events and Remove on PrefabInstance', () => {
     expect(task).not.toHaveBeenCalled();
     expect(periodic).toHaveBeenCalledOnce();
     scheduler.dispose();
+  });
+
+  it('pushes an event in time, reports a task\'s remaining time, and keeps it when the entity joins another scheduler', () => {
+    const first = new GameTimeScheduler(), second = new GameTimeScheduler(100);
+    const inst = entity('lightflier');
+    inst.BindScheduler(first);
+    const heard = vi.fn();
+    inst.ListenForEvent('timerdone', (_inst, data) => heard(data));
+    const pushed = inst.PushEventInTime(2, 'timerdone', { name: 'grow' });
+    const periodic = vi.fn(), repeating = inst.DoPeriodicTask(1, periodic, 0);
+    first.advance(0);
+    expect(periodic).toHaveBeenCalledOnce();
+    first.advance(.5);
+    expect(GetTaskRemaining(pushed, first.now)).toBe(1.5);
+    // Moving to another world's game time keeps what is left of each task, and the old scheduler no longer runs them.
+    inst.BindScheduler(second);
+    expect(pushed.NextTime()).toBe(101.5);
+    first.advance(10);
+    expect(heard).not.toHaveBeenCalled(); expect(periodic).toHaveBeenCalledOnce();
+    second.advance(1.5);
+    expect(heard).toHaveBeenCalledExactlyOnceWith({ name: 'grow' });
+    expect(pushed.NextTime()).toBeUndefined(); expect(GetTaskRemaining(pushed, second.now)).toBe(-1);
+    expect(periodic).toHaveBeenCalledTimes(3);
+    // A periodic task cancelled from its own callback does not run again.
+    periodic.mockImplementation(() => repeating.Cancel());
+    second.advance(1); second.advance(5);
+    expect(periodic).toHaveBeenCalledTimes(4);
+    first.dispose(); second.dispose();
   });
 
   it('lets a homeseeker learn that its PrefabInstance home was removed', () => {

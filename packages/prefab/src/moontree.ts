@@ -77,8 +77,6 @@ export class MoonTreeInstance extends PrefabInstance {
   burn?: BurnableBinding;
   /** Private snow-level bridge; its cleanup owns the source subscription and the layer effect. */
   stopSnow?: () => void;
-  changesTask?: () => void;
-  removeTask?: () => void;
   /** Growth settled while the visual was unloaded is shown as its final stage, without the transition animation. */
   catchingUp = false;
   private awake = false;
@@ -86,6 +84,7 @@ export class MoonTreeInstance extends PrefabInstance {
   constructor(world: MoonTreeWorld, position: ReadonlyVector3, stage: number, random: () => number) {
     super(MOON_TREE_ID, new SpriteState({ name: definitions.moonTree.animationName, billboard: true }), Transform.stationary());
     this.world = world; this.random = random;
+    this.BindScheduler(world.scheduler);
     this.setActive(false);
     this.setPosition(position.x, 0, position.z);
     this.deploySmartRadius = 1.6 * UNIT; this.logicalPlacement = true;
@@ -110,7 +109,6 @@ export class MoonTreeInstance extends PrefabInstance {
     this.OnSave = (_inst, data) => on_save(this, data);
     this.OnLoad = (_inst, data) => on_load(this, data);
     this.onRemove(() => {
-      this.changesTask?.(); this.removeTask?.();
       unbindFire(this);
       this.stopSnow?.(); this.stopSnow = undefined;
       for (const sound of this.sounds) sound.stop();
@@ -225,7 +223,7 @@ function on_moon_tree_burnt(inst: MoonTreeInstance, immediate: boolean): void {
   startDecay(inst);
   inst.sprite.start(`burnt_${sizeOf(inst)}`);
   if (immediate) burntChanges(inst);
-  else inst.changesTask = inst.world.scheduler.schedule(.5, () => { inst.changesTask = undefined; burntChanges(inst); });
+  else inst.DoTaskInTime(.5, burntChanges);
 }
 
 /** The prefabs the lootdropper generates that the ground-item catalog has, grouped into stacks. */
@@ -302,7 +300,7 @@ function on_wake(inst: MoonTreeInstance): void {
 function on_sleep(inst: MoonTreeInstance): void {
   inst.components.growable.OnEntitySleep();
   if (inst.burn?.burnable.IsBurning()) {
-    if (inst.hasTag('stump')) inst.removeTask = inst.world.scheduler.schedule(0, () => { inst.removeTask = undefined; burnStump(inst); });
+    if (inst.hasTag('stump')) inst.DoTaskInTime(0, burnStump);
     else on_moon_tree_burnt(inst, true);
   }
   unbindFire(inst);

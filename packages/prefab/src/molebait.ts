@@ -2,7 +2,7 @@ import { addComponent } from './components';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Edible } from '../../componets/src/edible';
 import { Bait } from '../../componets/src/bait';
-import { ComponentTimer } from '../../componets/src/timer';
+import type { EntityTask } from './prefabInstance';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { MoleBaitTarget } from '../../stategraphs/src/moleactions';
 import catalog from './groundItems.json';
@@ -21,13 +21,14 @@ export function configureMoleBaitEntity(entity: ItemEntity): void {
 }
 /** A shared target wrapper preserves the source's five-second selection lock between moles. */
 export class MoleBait implements MoleBaitTarget {
-  private readonly selection: ComponentTimer;
-  readonly timer;
+  /** target.selectedasmoletarget, cleared by molebrain's SelectedTargetTimeout or the STEALMOLEBAIT action. */
+  private selectedasmoletarget = false;
+  private selectedTimeout?: EntityTask;
   readonly entity: ItemEntity;
   private readonly walkable: (p: Vector3) => boolean;
   constructor(entity: ItemEntity, scheduler: GameTimeScheduler, walkable: (p: Vector3) => boolean) {
     this.entity = entity; this.walkable = walkable;
-    this.selection = new ComponentTimer(scheduler, () => undefined); this.timer = this.selection.snapshot;
+    if (!entity.worldServices?.scheduler) entity.BindScheduler(scheduler);
   }
   get prefab(): string { return this.entity.prefab; }
   get components() { return { bait: this.entity.components.bait }; }
@@ -37,8 +38,14 @@ export class MoleBait implements MoleBaitTarget {
   getPhysicsRadius(): number { return 0; }
   canSteal(): boolean { return this.isValid() && !this.entity.components.inventoryitem.owner && !this.entity.components.burnable?.IsBurning(); }
   isOnValidGround(): boolean { return this.walkable(this.getPosition()); }
-  reserve(): boolean { if (this.timer.peek().status === 'scheduled') return false; this.selection.start(5); return true; }
-  releaseReservation(): void { this.selection.stop(); }
+  reserve(): boolean {
+    if (this.selectedasmoletarget) return false;
+    this.selectedasmoletarget = true;
+    this.selectedTimeout?.Cancel();
+    this.selectedTimeout = this.entity.DoTaskInTime(5, () => { this.selectedasmoletarget = false; });
+    return true;
+  }
+  releaseReservation(): void { this.selectedasmoletarget = false; }
   PushEvent(name: string, data?: unknown): void { this.entity.PushEvent(name, data); }
-  dispose(): void { this.selection.stop(); }
+  dispose(): void { this.selectedTimeout?.Cancel(); }
 }

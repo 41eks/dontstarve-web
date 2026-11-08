@@ -39,6 +39,7 @@ function setup() {
     hasTag: tag => tags.has(tag),
     components: { sanity: { IsCrazy: () => crazy, GetPercent: () => crazy ? .1 : 1 } },
     IsVisible: () => true,
+    DoTaskInTime: (time, fn) => ({ Cancel: scheduler.schedule(time, fn) }),
   };
   const inactive: ItemEntity[] = [];
   const world: BernieWorld = {

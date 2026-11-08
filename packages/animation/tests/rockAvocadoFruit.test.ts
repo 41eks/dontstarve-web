@@ -141,9 +141,9 @@ it('plants one sprout, preserves its named deadline through save/load, and becom
     s.scheduler.advance(900);
     expect(s.bushes.exportRecords().map(({ record }) => record)).toEqual([]);
     const { seedGrowth } = prefabInstance<RockAvocadoSaplingInstance>(model)!;
-    expect(seedGrowth.snapshot.peek().status).toBe('scheduled');
-    const completion = seedGrowth.snapshot.peek() as { endTime: number };
-    s.scheduler.advanceTo(completion.endTime);
+    const completion = seedGrowth!.NextTime();
+    expect(completion).toBeDefined();
+    s.scheduler.advanceTo(completion!);
     expect(s.sprouts.exportRecords()).toEqual([]);
     const bush = s.bushes.exportRecords().map(({ record }) => record)[0];
     expect(bush.transform.position).toEqual(point.toArray()); expect(bush.id).not.toBe(record.id);
@@ -151,7 +151,7 @@ it('plants one sprout, preserves its named deadline through save/load, and becom
     expect(bush.components.pickable?.cyclesLeft).toBeUndefined();
     expect(bush.components.pickable?.transplanted).toBeUndefined();
     expect(bush.components.growable?.stage).toBe(3);
-    expect(seedGrowth.snapshot.peek().status).toBe('stopped');
+    expect(seedGrowth!.NextTime()).toBeUndefined();
     // Sample the animated path too: seed_growth contains an unresolved engine snow placeholder.
     restored.scheduler.advance(900);
     const loaded = workTargets('DIG', restored.scene)[0].model;
@@ -181,10 +181,11 @@ it('cancels and restarts growth on ignition/extinguishing, reloads a stopped sou
     const loaded = workTargets('DIG', restored.scene)[0].model;
     expect(prefabInstance<RockAvocadoSaplingInstance>(loaded)!.components.timer.GetTimeLeft('grow')).toBe(1500);
     restored.scheduler.advance(1500);
-    const completion = prefabInstance<RockAvocadoSaplingInstance>(loaded)!.seedGrowth.snapshot;
-    expect(completion.peek().status).toBe('scheduled');
+    const completion = prefabInstance<RockAvocadoSaplingInstance>(loaded)!.seedGrowth!;
+    expect(completion.NextTime()).toBeDefined();
+    // Digging removes the sprout, which cancels its pending task.
     expect(workTargets('DIG', restored.scene)[0].work()).toBe(true);
-    expect(completion.peek().status).toBe('stopped');
+    expect(completion.NextTime()).toBeUndefined();
     restored.scheduler.advance(5000); expect(restored.bushes.exportRecords().map(({ record }) => record)).toEqual([]);
     expect(restored.ground.exportRecords().at(-1)?.components.stack?.itemId).toBe('rock_avocado_fruit_sprout');
     s.advance(7.5); expect(s.sprouts.exportRecords()).toEqual([]);

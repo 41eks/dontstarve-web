@@ -64,7 +64,6 @@ it('uses private player position updates for source hysteresis and releases each
   scheduler.advance(10);
   expect(handles).toHaveLength(4);
   expect(handles.every(handle => handle.stop.mock.calls.length === 1)).toBe(true);
-  expect(first.initTimerState.peek()).toEqual({ status: 'stopped' });
   world.unbind(); scheduler.dispose();
 });
 

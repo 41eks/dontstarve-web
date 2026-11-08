@@ -1,5 +1,5 @@
 import { addComponent } from './components';
-import type { PrefabEntityDefinition } from './prefabInstance';
+import type { EntityTask, PrefabEntityDefinition } from './prefabInstance';
 import { Pickable } from './components/pickable';
 import { Workable } from '../../componets/src/workable';
 import { DefaultBurnFn, DefaultExtinguishFn, DefaultBurntFn } from './standardcomponents';
@@ -31,8 +31,7 @@ const MUSHROOM_DATA: Record<MushroomPlantId, MushroomData> = {
 export class MushroomPlantInstance extends PickablePlantInstance {
   private readonly data: MushroomData;
   private readonly cleanups: (() => void)[] = [];
-  private growTask?: () => void;
-  private periodicTask?: () => void;
+  private growtask?: EntityTask;
   private readonly isOpenPhase: () => boolean;
   private rain = 0;
 
@@ -49,7 +48,7 @@ export class MushroomPlantInstance extends PickablePlantInstance {
       if (inst.components.pickable.canBePicked) inst.components.lootdropper.SpawnLootPrefab(data.pickloot, inst.position);
       inst.components.lootdropper.SpawnLootPrefab(data.pickloot, inst.position); inst.remove();
     });
-    this.onRemove(() => this.disposeTasks());
+    this.onRemove(() => { for (const cleanup of this.cleanups.splice(0)) cleanup(); });
     // The phase is watched through this mushroom's own tile key: outside the tickingarea it holds its last value.
     const tracker = this.tileTracker;
     const cycle = context.getWatchWorldContent?.(WorldContentKey.Cycle, cleanup => this.cleanups.push(cleanup), { tile: tracker.tile });
@@ -65,16 +64,14 @@ export class MushroomPlantInstance extends PickablePlantInstance {
         if (changed) { if (open) this.open(); else this.close(); }
       });
     }
-    // inst:DoPeriodicTask(SEG_TIME, checkregrow, SEG_TIME + math.random() * SEG_TIME)
-    const check = () => {
+    // checkregrow
+    this.DoPeriodicTask(SEG_TIME, () => {
       const { pickable } = this.components;
       if (!pickable.canBePicked && rain?.peek() === 'rain') {
         this.rain -= 1;
         if (this.rain <= 0) pickable.regen();
       }
-      this.periodicTask = this.context.scheduler.schedule(SEG_TIME, check);
-    };
-    this.periodicTask = context.scheduler.schedule(SEG_TIME + Math.random() * SEG_TIME, check);
+    }, SEG_TIME + Math.random() * SEG_TIME);
   }
 
   override initialize(): void {
@@ -88,21 +85,21 @@ export class MushroomPlantInstance extends PickablePlantInstance {
 
   private open(): void {
     if (!this.components.pickable.canBePicked) return;
-    this.growTask?.();
-    this.growTask = this.context.scheduler.schedule(3 + Math.random() * 6, () => this.openTask());
+    this.growtask?.Cancel();
+    this.growtask = this.DoTaskInTime(3 + Math.random() * 6, () => this.openTask());
   }
 
   private close(): void {
     if (!this.components.pickable.canBePicked) return;
-    this.growTask?.();
-    this.growTask = this.context.scheduler.schedule(3 + Math.random() * 6, () => this.closeTask());
+    this.growtask?.Cancel();
+    this.growtask = this.DoTaskInTime(3 + Math.random() * 6, () => this.closeTask());
   }
 
   private openTask(): void {
     const { pickable } = this.components;
     this.play(['open_inground', `open_${this.data.animname}`, this.data.animname]);
     PlaySound('dontstarve/common/mushroom_up', this.position);
-    this.growTask = undefined;
+    this.growtask = undefined;
     pickable.canInteractWith = true;
   }
 
@@ -110,19 +107,17 @@ export class MushroomPlantInstance extends PickablePlantInstance {
     const { pickable } = this.components;
     this.play([`close_${this.data.animname}`, 'inground']);
     this.sinkSound();
-    this.growTask = undefined;
+    this.growtask = undefined;
     pickable.canInteractWith = false;
   }
 
   private sinkSound(): void {
-    const task = this.context.scheduler.schedule(.25, () => { this.soundTasks.delete(task); PlaySound('dontstarve/common/mushroom_down', this.position); });
-    this.soundTasks.add(task);
+    this.DoTaskInTime(.25, inst => PlaySound('dontstarve/common/mushroom_down', inst.position));
   }
-  private readonly soundTasks = new Set<() => void>();
 
   /** onpickedfn */
   picked(): void {
-    this.growTask?.(); this.growTask = undefined;
+    this.growtask?.Cancel(); this.growtask = undefined;
     this.play(['picked']);
     this.rain = 10 + 1 + Math.floor(Math.random() * 10);
   }
@@ -138,13 +133,6 @@ export class MushroomPlantInstance extends PickablePlantInstance {
   }
 
   override exportState(): PickablePlantRecord['components'] { return this.rain > 0 ? { mushroom: { rain: this.rain } } : {}; }
-
-  private disposeTasks(): void {
-    this.growTask?.(); this.periodicTask?.();
-    for (const task of this.soundTasks) task();
-    this.soundTasks.clear();
-    for (const cleanup of this.cleanups.splice(0)) cleanup();
-  }
 }
 
 function mushroomDefinition(prefab: MushroomPlantId): PickablePlantDefinition {

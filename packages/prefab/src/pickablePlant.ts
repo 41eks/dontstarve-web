@@ -128,6 +128,7 @@ export abstract class PickablePlantInstance extends PrefabInstance {
       : { name: idleName, held: false };
     const animation = new SpriteState({ ...initial, billboard: true });
     super(prefab, animation, Transform.stationary());
+    this.BindScheduler(context.scheduler);
     this.definition = definition; this.context = context; this.variant = variant;
     if (definition.snowCovered) {
       this.sprite.setSymbolOverride('snow', 'snow.zip', 'snow');

@@ -1,5 +1,5 @@
 import { SpriteState, type SpriteResources } from '@dontstarve-web/display';
-import { prefabInstance, PrefabInstance } from './prefabInstance';
+import { prefabInstance, PrefabInstance, type EntityTask } from './prefabInstance';
 import type * as THREE from 'three';
 import { createEffect, createMemo, createSignal, readonlySignal, WorldContentKey, type WorldContentSignal, type WorldMoonState, type WorldPhase } from '@dontstarve-web/signals';
 import { ItemEntity, type ItemEntityRegistry, type InventoryStack } from '@dontstarve-web/inventory';
@@ -14,7 +14,7 @@ import { Trader, type TradeItem } from '../../componets/src/trader';
 import { Pickable } from './components/pickable';
 import { addComponent, removeComponent } from './components';
 import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
-import { ComponentTimer, Timer, type NamedTimerSave } from '../../componets/src/timer';
+import { Timer, type NamedTimerSave } from '../../componets/src/timer';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { MoonbaseEffects } from './moonbaseFx';
 import type { PrefabWorldContext } from './worldContext';
@@ -64,12 +64,14 @@ class Moonbase {
   private readonly moon?: WorldContentSignal<WorldMoonState>;
   private readonly cycle?: WorldContentSignal<WorldPhase>;
   private readonly cleanups: (() => void)[] = [];
-  private readonly initializer: ComponentTimer;
-  private readonly musicPulse: ComponentTimer;
+  /** OnInit's DoTaskInTime(0) has run. */
+  private initialized = false;
+  private musictask?: EntityTask;
   private readonly effects: MoonbaseEffects;
   private disposed = false;
   constructor(inst: PrefabInstance, animState: AnimState, sprites: SpriteResources, world: PrefabWorldContext, scheduler: GameTimeScheduler) {
     this.inst = inst; this.items = world.itemEntities;
+    if (!inst.worldServices?.scheduler) inst.BindScheduler(scheduler);
     this.world = world;
     this.scheduler = scheduler;
     this.moon = world.getWatchWorldContent?.(WorldContentKey.Moon, stop => this.cleanups.push(stop));
@@ -78,8 +80,9 @@ class Moonbase {
     this.timer = addComponent(inst, 'timer', Timer, this.scheduler, Object.keys(MOONBASE_TIMER_LIMITS));
     this.cleanups.push(inst.ListenForEvent('timerdone', (_inst, data) => this.onTimerDone((data as { name: string }).name)));
     this.effects = new MoonbaseEffects(inst, this.scheduler, sprites);
-    this.musicPulse = new ComponentTimer(this.scheduler, () => this.pushMusic());
-    this.initializer = new ComponentTimer(this.scheduler, () => {
+    const init = () => {
+      if (this.disposed) return;
+      this.initialized = true;
       let previous = this.fullMoon.peek();
       createEffect(() => {
         const full = this.isFullMoon(true);
@@ -90,7 +93,7 @@ class Moonbase {
         this.toggleCharge();
       });
       this.toggleCharge(true);
-    });
+    };
     for (const tag of ['moonbase', 'event_trigger', 'antlion_sinkhole_blocker', 'NPC_workable']) inst.addTag(tag);
     this.workable = addComponent(inst, 'workable', Workable);
     this.workable.SetWorkAction(undefined); // Lua avoids PICK / MINE priority conflict.
@@ -122,7 +125,7 @@ class Moonbase {
       if (skin !== undefined) animState.OverrideItemSkinSymbol('swap_staffs', skin, staff.prefab, String(staff.id), 'staffs');
       else animState.OverrideSymbol('swap_staffs', 'staffs', staff.prefab);
     }));
-    this.initializer.start(0);
+    inst.DoTaskInTime(0, init);
   }
   private isFullMoon(track = false): boolean {
     const moon = track ? this.moon?.get() : this.moon?.peek();
@@ -179,7 +182,7 @@ class Moonbase {
       } else this.sprite.start('low');
     }
     this.updateTrading();
-    if (this.initializer.snapshot.peek().status === 'expired') this.toggleCharge();
+    if (this.initialized) this.toggleCharge();
   }
   private updateWorkState(): void {
     const state = animationState(this.workable.workleft.peek());
@@ -188,7 +191,7 @@ class Moonbase {
     if (state !== 'full') this.makeRepairable();
     else this.removeRepairable();
     this.updateTrading();
-    if (this.initializer.snapshot.peek().status === 'expired') this.toggleCharge();
+    if (this.initialized) this.toggleCharge();
   }
   private onStaffGiven(staff: ItemEntity): void {
     this.staffState.set(staff);
@@ -198,7 +201,7 @@ class Moonbase {
     this.pickable.canInteractWith = true;
     this.playSound(ITEM_SOUND);
     if (staff.prefab === 'opalstaff') this.effects.showCold(); else this.effects.hideCold();
-    if (this.initializer.snapshot.peek().status === 'expired') this.toggleCharge();
+    if (this.initialized) this.toggleCharge();
   }
   private onStaffTaken(): void {
     this.staffState.set(undefined);
@@ -206,7 +209,7 @@ class Moonbase {
     this.playSound(ITEM_SOUND);
     this.effects.hideCold();
     this.updateTrading();
-    if (this.initializer.snapshot.peek().status === 'expired') this.toggleCharge();
+    if (this.initialized) this.toggleCharge();
   }
 
   private restingAnimation(): string {
@@ -220,14 +223,14 @@ class Moonbase {
       if (this.timer.TimerExists('mooncharge')) {
         const phase = this.chargePhase();
         this.effects.start(phase === 'charging_1' ? 1 : phase === 'charging_2' ? 2 : 3, restored);
-        if (this.musicPulse.snapshot.peek().status !== 'scheduled') this.musicPulse.start(0);
+        if (!this.musictask) this.startMusic();
       } else if (!this.timer.TimerExists('moonchargepre')) {
         this.timer.StartTimer('moonchargepre', Math.max(1, this.timer.GetTimeLeft('fullmoonstartdelay') ?? 1));
         this.timer.StopTimer('fullmoonstartdelay');
       }
     } else {
       for (const name of ['moonchargepre', 'mooncharge', 'mooncharge2', 'mooncharge3']) this.timer.StopTimer(name);
-      this.musicPulse.stop(); this.effects.stop(); this.updateTrading();
+      this.stopMusic(); this.effects.stop(); this.updateTrading();
     }
     const current = this.sprite.currentAnimation;
     if (!current.startsWith('fix_') && !current.startsWith('hit_')) this.sprite.start(this.restingAnimation());
@@ -241,7 +244,7 @@ class Moonbase {
       }
       this.timer.StartTimer('mooncharge', MOONBASE_CHARGE_DURATION);
       this.timer.StartTimer('mooncharge2', MOONBASE_CHARGE_STAGE_DURATION);
-      this.effects.start(1); this.musicPulse.start(0);
+      this.effects.start(1); this.startMusic();
     } else if (name === 'mooncharge2') {
       this.timer.StartTimer('mooncharge3', Math.min(MOONBASE_CHARGE_STAGE_DURATION, MOONBASE_CHARGE_DURATION - MOONBASE_CHARGE_STAGE_DURATION));
       this.effects.setLevel(2);
@@ -260,12 +263,18 @@ class Moonbase {
       this.effects.showCold(); this.effects.finish(); this.toggleCharge();
     }
   }
+  private startMusic(): void {
+    this.stopMusic();
+    this.musictask = this.inst.DoTaskInTime(0, () => this.pushMusic());
+  }
+  private stopMusic(): void { this.musictask?.Cancel(); this.musictask = undefined; }
   private pushMusic(): void {
+    this.stopMusic();
     if (!this.timer.TimerExists('mooncharge') || this.disposed) return;
     if (this.world.player && this.world.player.position.distanceTo(this.inst.position) < 90) {
       this.world.dynamicMusic?.TriggerMoonbase(this.chargePhase() === 'charging_3' ? 2 : 1);
     }
-    this.musicPulse.start(1);
+    this.musictask = this.inst.DoTaskInTime(1, () => this.pushMusic());
   }
   /** The workable has loaded its own record by now (SetPersistData); the timers and the staff are the prefab's. */
   restore(components: { moonbase?: MoonbaseSaveState }): void {
@@ -285,7 +294,7 @@ class Moonbase {
     if (this.disposed) return;
     this.disposed = true;
     this.cleanups.splice(0).forEach(stop => stop()); this.fullMoon.dispose();
-    this.initializer.stop(); this.musicPulse.stop(); this.effects.dispose();
+    this.stopMusic(); this.effects.dispose();
     for (const sound of this.sounds) sound.stop();
     this.sounds.clear();
     const staff = this.staffState.peek();

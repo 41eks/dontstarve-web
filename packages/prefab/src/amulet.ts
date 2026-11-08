@@ -1,9 +1,9 @@
+import type { EntityTask } from './prefabInstance';
 import { addComponent } from './components';
 import type { ItemEntity, ItemRuntimeComponent } from '@dontstarve-web/inventory';
 import type { EquipmentOwner } from '@dontstarve-web/signals';
 import { Equippable } from '../../componets/src/equippable';
 import { Hauntable, HAUNT_INSTANT_REZ } from '../../componets/src/hauntable';
-import { ComponentTimer } from '../../componets/src/timer';
 import { skinArchive, wornOwner, type EquipmentVisual, type EquipmentVisualFactory, type EquipmentArtOwner } from './equipmentVisual';
 import catalog from './groundItems.json' with { type: 'json' };
 
@@ -49,7 +49,7 @@ function healowner(entity: ItemEntity, owner: EquipmentOwner): void {
  */
 class RedAmulet implements ItemRuntimeComponent {
   private readonly inst: ItemEntity;
-  private task?: ComponentTimer;
+  private task?: EntityTask;
   private visual?: EquipmentVisual;
   constructor(inst: ItemEntity) { this.inst = inst; }
 
@@ -60,14 +60,8 @@ class RedAmulet implements ItemRuntimeComponent {
       this.visual = amuletVisual({ id: this.inst.id, prefab: this.inst.prefab, skinId: this.inst.skinId });
       this.visual.onequip(worn);
     }
-    const scheduler = this.inst.components.perishable.scheduler;
-    if (!scheduler) return;
-    // inst:DoPeriodicTask(TUNING.REDAMULET_CONVERSION_TIME, healowner, nil, owner)
-    const task: ComponentTimer = this.task = new ComponentTimer(scheduler, () => {
-      healowner(this.inst, owner);
-      if (this.task === task && !this.inst.isRemoved) task.start(REDAMULET_CONVERSION_TIME);
-    });
-    task.start(REDAMULET_CONVERSION_TIME);
+    if (!this.inst.worldServices?.scheduler) return;
+    this.task = this.inst.DoPeriodicTask(REDAMULET_CONVERSION_TIME, inst => healowner(inst, owner));
   }
 
   onunequip(owner?: EquipmentOwner): void {
@@ -86,7 +80,7 @@ class RedAmulet implements ItemRuntimeComponent {
       });
       if (!stop) { visual.onunequip(); release(); }
     } else visual?.onunequip();
-    this.task?.stop();
+    this.task?.Cancel();
     this.task = undefined;
   }
 

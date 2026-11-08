@@ -105,6 +105,7 @@ export class GrottoPoolInstance extends PrefabInstance {
 
   constructor(world: GrottoPoolWorld, prefab: GrottoPoolId, position: ReadonlyVector3) {
     super(prefab, new SpriteState({ name: POOLS[prefab].animation }), Transform.stationary());
+    this.BindScheduler(world.scheduler);
     const definition = POOLS[prefab], big = prefab === GROTTO_POOL_BIG_ID;
     this.setPosition(position.x, 0, position.z);
     // SetOrientation(OnGround), SetLayer(LAYER_BACKGROUND), SetSortOrder(3).
@@ -120,8 +121,7 @@ export class GrottoPoolInstance extends PrefabInstance {
 
     let mist: PrefabInstance | undefined, stopSound: (() => void) | undefined;
     // DoTaskInTime(0, makebigmist / makesmallmist), DoTaskInTime(0, register_pool), and after OnLoadPostPass DoTaskInTime(0, setup_children).
-    const cancelSetup = world.scheduler.schedule(0, () => {
-      if (this.isRemoved) return;
+    this.DoTaskInTime(0, () => {
       mist = world.spawnPrefab(GROTTO_POOL_MIST_ID, this.position);
       mist.entityParent = this as PrefabInstance;
       mist.sprite.start(big ? 'steam_big' : `steam_small${1 + Math.floor(Math.random() * 2)}`);
@@ -134,7 +134,6 @@ export class GrottoPoolInstance extends PrefabInstance {
     this.OnLoad = (_inst, data) => { this.savedChildren = data.grottoPool?.children.map(child => ({ ...child })); };
     // ListenForEvent("onremove", on_removed): children go from the last slot to the first.
     this.onRemove(() => {
-      cancelSetup();
       stopSound?.();
       for (const child of [...this._children].reverse()) if (child && !child.isRemoved) child.remove();
       mist?.remove();

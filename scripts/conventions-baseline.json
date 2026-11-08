@@ -9,21 +9,11 @@
   "packages/prefab/src/alterguardian_hat_equipped.ts": {
     "prefab-io": 1
   },
-  "packages/prefab/src/amulet.ts": {
-    "prefab-timer": 1
-  },
   "packages/prefab/src/animatedBuildingPlacement.ts": {
     "manager": 1
   },
   "packages/prefab/src/archive_centipede.ts": {
-    "instance-method": 7,
-    "prefab-timer": 2
-  },
-  "packages/prefab/src/archive_props.ts": {
-    "prefab-timer": 1
-  },
-  "packages/prefab/src/armorsnurtleshell.ts": {
-    "prefab-timer": 1
+    "instance-method": 7
   },
   "packages/prefab/src/atrium_gate.ts": {
     "instance-method": 2
@@ -39,29 +29,20 @@
     "scene": 1
   },
   "packages/prefab/src/beequeenhivegrown.ts": {
-    "instance-method": 2,
-    "prefab-timer": 1
+    "instance-method": 2
   },
   "packages/prefab/src/bernie.ts": {
-    "instance-method": 18,
-    "prefab-timer": 2,
+    "instance-method": 17,
     "sg-forward": 1
   },
   "packages/prefab/src/berrybush.ts": {
     "instance-method": 1
   },
-  "packages/prefab/src/birdcage.ts": {
-    "prefab-timer": 2
-  },
-  "packages/prefab/src/book_fx.ts": {
-    "prefab-timer": 1
-  },
   "packages/prefab/src/books.ts": {
     "prefab-timer": 1
   },
   "packages/prefab/src/bookstation.ts": {
-    "manager": 1,
-    "prefab-timer": 1
+    "manager": 1
   },
   "packages/prefab/src/buildingPlacer.ts": {
     "scene": 1
@@ -69,10 +50,9 @@
   "packages/prefab/src/bulb_plant.ts": {
     "component-dispose-on-remove": 1,
     "instance-method": 13,
-    "prefab-timer": 5
+    "prefab-timer": 2
   },
   "packages/prefab/src/butterfly.ts": {
-    "prefab-timer": 1,
     "sg-forward": 2
   },
   "packages/prefab/src/cactus.ts": {
@@ -101,8 +81,7 @@
     "prefab-timer": 5
   },
   "packages/prefab/src/deciduoustrees.ts": {
-    "instance-method": 1,
-    "prefab-timer": 3
+    "instance-method": 1
   },
   "packages/prefab/src/deployPlacer.ts": {
     "child-traversal": 1,
@@ -117,15 +96,8 @@
   "packages/prefab/src/dragonfly.ts": {
     "instance-method": 6
   },
-  "packages/prefab/src/dragonfly_spawner.ts": {
-    "prefab-timer": 1
-  },
-  "packages/prefab/src/dreadstonehat.ts": {
-    "prefab-timer": 1
-  },
   "packages/prefab/src/evergreens.ts": {
-    "instance-method": 1,
-    "prefab-timer": 3
+    "instance-method": 1
   },
   "packages/prefab/src/farm_plow.ts": {
     "scene": 2
@@ -142,105 +114,76 @@
   "packages/prefab/src/firepit.ts": {
     "instance-method": 6
   },
-  "packages/prefab/src/flies.ts": {
-    "prefab-timer": 1
-  },
   "packages/prefab/src/grotto_pool.ts": {
-    "instance-method": 3,
-    "prefab-timer": 1
+    "instance-method": 3
   },
   "packages/prefab/src/hats.ts": {
     "prefab-io": 3
   },
   "packages/prefab/src/hotspring.ts": {
-    "component-dispose-on-remove": 2,
-    "prefab-timer": 1
+    "component-dispose-on-remove": 2
   },
   "packages/prefab/src/lava_pond.ts": {
     "component-dispose-on-remove": 1,
-    "instance-method": 3,
-    "prefab-timer": 1
+    "instance-method": 3
   },
   "packages/prefab/src/lightflier.ts": {
-    "prefab-timer": 3,
+    "prefab-timer": 1,
     "sg-forward": 1
   },
   "packages/prefab/src/lightflier_flower.ts": {
     "manager": 1,
     "object-assign-state": 1,
-    "prefab-timer": 5,
+    "prefab-timer": 2,
     "scene": 1,
     "userdata": 2
-  },
-  "packages/prefab/src/lightning_rod.ts": {
-    "prefab-timer": 2
   },
   "packages/prefab/src/marblebean_sapling.ts": {
     "instance-method": 2
   },
   "packages/prefab/src/marbleshrub.ts": {
     "component-dispose-on-remove": 2,
-    "instance-method": 6,
-    "prefab-timer": 1
+    "instance-method": 6
   },
   "packages/prefab/src/modelRecords.ts": {
     "model-keyed-state": 1
   },
   "packages/prefab/src/mole.ts": {
-    "prefab-timer": 4,
     "sg-forward": 1
-  },
-  "packages/prefab/src/molebait.ts": {
-    "prefab-timer": 1
   },
   "packages/prefab/src/molehill.ts": {
     "component-dispose-on-remove": 3,
     "instance-method": 8
   },
-  "packages/prefab/src/monkeypillar.ts": {
-    "prefab-timer": 1
-  },
   "packages/prefab/src/moonbase.ts": {
     "instance-method": 1,
-    "object-assign-state": 1,
-    "prefab-timer": 2
-  },
-  "packages/prefab/src/moonbaseFx.ts": {
-    "prefab-timer": 4
+    "object-assign-state": 1
   },
   "packages/prefab/src/moondial.ts": {
     "prefab-timer": 1
   },
   "packages/prefab/src/moontree.ts": {
-    "instance-method": 2,
-    "prefab-timer": 2
+    "instance-method": 2
   },
   "packages/prefab/src/mouseTargets.ts": {
     "model-keyed-state": 2
   },
   "packages/prefab/src/mushroom_plant.ts": {
-    "instance-method": 11,
-    "prefab-timer": 5
+    "instance-method": 10
   },
   "packages/prefab/src/mushtree.ts": {
     "component-dispose-on-remove": 2,
-    "instance-method": 16,
-    "prefab-timer": 3
+    "instance-method": 16
   },
   "packages/prefab/src/nightmaregrowth.ts": {
-    "instance-method": 5,
-    "prefab-timer": 1
+    "instance-method": 5
   },
   "packages/prefab/src/nightmarerock.ts": {
     "instance-method": 1,
-    "prefab-timer": 2,
     "sg-forward": 1
   },
   "packages/prefab/src/ocean_waves.ts": {
     "scene": 1
-  },
-  "packages/prefab/src/phonograph.ts": {
-    "prefab-timer": 1
   },
   "packages/prefab/src/pickablePlant.ts": {
     "component-dispose-on-remove": 5,
@@ -249,8 +192,7 @@
   },
   "packages/prefab/src/pigking.ts": {
     "component-dispose-on-remove": 1,
-    "instance-method": 2,
-    "prefab-timer": 1
+    "instance-method": 1
   },
   "packages/prefab/src/placementEntities.ts": {
     "model-keyed-state": 1,
@@ -261,7 +203,6 @@
   },
   "packages/prefab/src/player_common.ts": {
     "component-dispose-on-remove": 4,
-    "prefab-timer": 1,
     "sg-forward": 1
   },
   "packages/prefab/src/pond.ts": {
@@ -275,7 +216,6 @@
     "sg-forward": 1
   },
   "packages/prefab/src/prefabInstance.ts": {
-    "prefab-timer": 2,
     "userdata": 1
   },
   "packages/prefab/src/rain.ts": {
@@ -286,9 +226,6 @@
   },
   "packages/prefab/src/rock_avocado_bush.ts": {
     "instance-method": 8
-  },
-  "packages/prefab/src/rock_avocado_fruit_sprout_sapling.ts": {
-    "prefab-timer": 1
   },
   "packages/prefab/src/rocks.ts": {
     "instance-method": 1
@@ -310,16 +247,14 @@
     "object-assign-state": 1
   },
   "packages/prefab/src/staff_castinglight.ts": {
-    "instance-method": 3,
-    "prefab-timer": 2
+    "instance-method": 3
   },
   "packages/prefab/src/staff_projectile.ts": {
     "manager": 1,
     "scene": 1
   },
   "packages/prefab/src/stafflight.ts": {
-    "instance-method": 6,
-    "prefab-timer": 2
+    "instance-method": 6
   },
   "packages/prefab/src/statueglommer.ts": {
     "manager": 1,
@@ -330,16 +265,8 @@
   "packages/prefab/src/stickheads.ts": {
     "child-traversal": 1
   },
-  "packages/prefab/src/tent.ts": {
-    "instance-method": 2,
-    "prefab-timer": 3
-  },
-  "packages/prefab/src/torch.ts": {
-    "prefab-timer": 1
-  },
   "packages/prefab/src/tumbleweed.ts": {
-    "instance-method": 14,
-    "prefab-timer": 2
+    "instance-method": 13
   },
   "packages/prefab/src/turf.ts": {
     "prefab-io": 6
@@ -353,12 +280,6 @@
   },
   "packages/prefab/src/walls.ts": {
     "component-dispose-on-remove": 2
-  },
-  "packages/prefab/src/winterometer.ts": {
-    "prefab-timer": 1
-  },
-  "packages/prefab/src/world_fx.ts": {
-    "prefab-timer": 1
   },
   "packages/prefab/src/wormhole.ts": {
     "manager": 1,
