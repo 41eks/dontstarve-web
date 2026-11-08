@@ -67,6 +67,8 @@ export class Pickable implements PickableComponent {
   picksound?: string;
   wildfirestarter = false;
   remove_when_picked = false;
+  /** pickable.lua onpickedfn(inst, picker, loot), called after the constructor's onPicked. */
+  onpickedfn?: (inst: PickableInst, picker: unknown, loot: unknown) => void;
   /** Prefabs retaining an original item provide it instead of spawning a product copy. */
   getProductEntity?: () => ItemEntity | undefined;
   get productEntity(): ItemEntity | undefined { return this.getProductEntity?.(); }
@@ -208,6 +210,7 @@ export class Pickable implements PickableComponent {
         if (protection <= 0) this.inst.components.witherable?.Enable(true);
       }
       this.onPicked(doer);
+      this.onpickedfn?.(this.inst, doer?.picker ?? doer, doer?.loot);
       this.ready.set(false);
       if (this.regrowTime !== undefined && !this.paused.peek() && !this.IsBarren() && !this.inst.hasTag('withered')) this.timer.start(this.nextGrowthDuration());
       else this.timer.stop();

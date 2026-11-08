@@ -142,8 +142,8 @@ export class Birdcage {
         this.shelf.SetOnTakeItem((_inst, taker, item) => this.onLoseShelfItem(taker, item));
         this.trader = new Trader<TradeItem>(instance);
         this.trader.SetAbleToAcceptTest(() => this.sleeper?.IsAsleep() ? { ok: false, reason: 'SLEEPING' } : { ok: true });
-        this.trader.SetAcceptTest(item => birdcageAcceptsItem(item.prefab));
-        this.trader.SetOnAccept((giver, item) => this.onGetItem(giver, item));
+        this.trader.SetAcceptTest((_inst, item) => birdcageAcceptsItem(item.prefab));
+        this.trader.SetOnAccept((_inst, giver, item) => this.onGetItem(giver, item));
         this.trader.SetOnRefuse(() => this.onRefuseItem());
         this.trader.Disable();
         this.addOccupiable();

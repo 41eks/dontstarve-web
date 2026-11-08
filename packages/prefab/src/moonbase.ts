@@ -109,9 +109,9 @@ class Moonbase {
     this.pickable.getProductEntity = () => this.staffState.peek();
     this.trader = addComponent(inst, 'trader', Trader);
     this.trader.deleteitemonaccept = false;
-    this.trader.SetAbleToAcceptTest(item => !item.prefab.endsWith('staff') ? { ok: false, reason: 'NOTSTAFF' }
+    this.trader.SetAbleToAcceptTest((_inst, item) => !item.prefab.endsWith('staff') ? { ok: false, reason: 'NOTSTAFF' }
       : { ok: (item.prefab === STAFF || item.prefab === 'opalstaff') && item instanceof ItemEntity });
-    this.trader.SetOnAccept((_giver, item) => this.onStaffGiven(item as ItemEntity));
+    this.trader.SetOnAccept((_inst, _giver, item) => this.onStaffGiven(item as ItemEntity));
     this.trader.Disable();
     this.makeRepairable();
     // OverrideItemSkinSymbol / OverrideSymbol("swap_staffs", ...) follow the held staff; the display dresses every drawn sprite in the AnimState.

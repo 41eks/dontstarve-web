@@ -82,9 +82,9 @@ export class PigKingInstance extends PrefabInstance {
 
     const trader = addComponent(this, 'trader', Trader<TradeItem>);
     // Lua only offers GIVE for items with the tradable component.
-    trader.SetAbleToAcceptTest(item => item.components?.tradable ? { ok: true } : { ok: false });
-    trader.SetAcceptTest(item => (item.components?.tradable?.goldvalue ?? 0) > 0);
-    trader.SetOnAccept((giver, item) => OnGetItemFromPlayer(this, giver, item));
+    trader.SetAbleToAcceptTest((_inst, item) => item.components?.tradable ? { ok: true } : { ok: false });
+    trader.SetAcceptTest((_inst, item) => (item.components?.tradable?.goldvalue ?? 0) > 0);
+    trader.SetOnAccept((_inst, giver, item) => OnGetItemFromPlayer(this, giver, item));
     trader.SetOnRefuse(() => this.pigking.goToState('unimpressed'));
     addComponent(this, 'inspectable', Inspectable);
 

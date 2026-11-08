@@ -173,8 +173,8 @@ export function configurePhonographEntity(entity: ItemEntity, scheduler?: GameTi
   if (!entity.components.trader) {
     const trader = addComponent(entity, 'trader', Trader);
     trader.deleteitemonaccept = false;
-    trader.SetAcceptTest(isPhonographRecord);
-    trader.SetOnAccept((_giver, item) => onGetItemFromPlayer(entity, item as ItemEntity));
+    trader.SetAcceptTest((_inst, item) => isPhonographRecord(item));
+    trader.SetOnAccept((_inst, _giver, item) => onGetItemFromPlayer(entity, item as ItemEntity));
   }
 }
 

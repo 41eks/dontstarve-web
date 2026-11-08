@@ -1,3 +1,4 @@
+import type { PlacementSaveRecord } from './saveRecord';
 import { prefabDisplay } from '@dontstarve-web/display';
 import { removeComponent } from './components';
 import { getBoundWatchWorldContent } from '@dontstarve-web/signals';
@@ -38,8 +39,18 @@ export function buildingPlacer({ archive, buildArchive, buildLabel, name, idleAn
 
 /** The building save shape: `components.building`, holding the skin it was built or reskinned with. */
 export function MakeBuildingPersist(inst: PrefabInstance): void {
-  inst.OnSave = (saved, data) => { data.building = saved.skinId === undefined ? {} : { skinId: saved.skinId }; };
-  inst.OnLoad = (loaded, data) => { if (data.building?.skinId !== undefined) loaded.skinId = data.building.skinId; };
+  inst.OnSave = SaveBuildingSkin;
+  inst.OnLoad = LoadBuildingSkin;
+}
+
+/** The skin half of a building's OnSave; a prefab with its own onsave calls it first. */
+export function SaveBuildingSkin(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
+  data.building = inst.skinId === undefined ? {} : { skinId: inst.skinId };
+}
+
+/** The skin half of a building's OnLoad; a prefab with its own onload calls it first. */
+export function LoadBuildingSkin(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
+  if (data.building?.skinId !== undefined) inst.skinId = data.building.skinId;
 }
 
 const addressedContainers = new WeakSet<PrefabInstance>();
