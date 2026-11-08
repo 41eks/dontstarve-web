@@ -241,6 +241,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   PushEvent(event: string, data?: unknown): void {
     const listeners = this.event_listeners?.get(event);
     if (listeners) for (const fn of [...listeners.values()].flat()) fn(this as never, data);
+    // conventions-allow sg-forward: EntityScript:PushEvent's own forward to inst.sg.
     if (this.sg?.isListeningForEvent(event)) this.sg.pushEvent(event, data);
     this.brain?.PushEvent(event, data);
   }
@@ -425,6 +426,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
 
 /** The display's model can be looked up without storing its logical entity in userData. */
 type AnyPrefabInstance = PrefabInstance<ArchiveSpriteCommands, object>;
+// conventions-allow model-keyed-state: the one model → instance lookup prefabInstance(model) is, instead of userData.
 const instancesByModel = new WeakMap<Object3D, AnyPrefabInstance>();
 
 /** Bind the display's model to its logical entity; metadata remains on the instance. */
@@ -610,6 +612,7 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     // A shared archive holds a first one-shot clip while its art loads, so a new entity is drawn from its first frame.
     const display = this.displays.add({ root: instance.transform.model, name: prefabId, alignBottom, status: instance.status, sprite: instance.sprite, light: instance.light,
       // Spawning is synchronous, so instanceAssets runs after the SetPersistData below however early the display starts its sprite.
+      // conventions-allow prefab-io: the manager hands the display a deferred declaration; the display does the loading.
       ...(instanceAssets ? { archive: { create: clip => Promise.resolve().then(() => this.resources.archive(instanceAssets(instance), assetOptions).create(clip)) } }
         : assets ? { archive: this.resources.archive(assets, assetOptions) } : iconSource ? { source: iconSource }
         : source ? { source } : { empty: true }) });

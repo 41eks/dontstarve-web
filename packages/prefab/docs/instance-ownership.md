@@ -3,7 +3,7 @@
 改动实例、scene、实体事件、鼠标命中或 `model.userData` 时适用。总则见 [prefab](../AGENTS.md)。
 
 - prefab、专用实例、行为回调及 manager 不得持有 `scene`（包括 `private readonly scene: THREE.Scene`、构造参数属性、闭包捕获，以及以 `root`、`world.scene` 等方式保留或访问场景的别名）。应用层注入的场景只在接线时交给 `PrefabDisplay`／`PrefabDisplayGroup` 等 display 层所有者；实体的挂载、显示更新、渲染条目与显示资源释放由 display 层管理。prefab 只声明实例状态、transform、动画、外观和 FX；邻居发现使用注入的逻辑查询或既有实体查询入口，不遍历场景。迁移必须移动实际职责，不能仅改字段名、换成转发回调或增加包装类来隐藏场景引用。
-- 实体事件属于逻辑实体：用 `instance.PushEvent()`／`ListenForEvent()`（返回取消函数）／`RemoveEventCallback()` 收发，监听方收到的是 `data`。不在 model 上 `dispatchEvent` 或 `addEventListener` 游戏事件；model 上只保留 three.js 自身的场景树事件（`added`、`removed`、`childadded` 等）。
+- 实体事件属于逻辑实体：用 `instance.PushEvent()`／`ListenForEvent()`（返回取消函数）／`RemoveEventCallback()` 收发，监听方按 Lua 收到 `(inst, data)`，`inst` 是推送事件的实体。不在 model 上 `dispatchEvent` 或 `addEventListener` 游戏事件；model 上只保留 three.js 自身的场景树事件（`added`、`removed`、`childadded` 等）。
 - 实体根节点由 `PrefabInstance.transform` 创建并持有，display 接收同一个根节点并管理其场景挂载和 visual。逻辑代码通过 `instance.position`／`instance.scale` 读取 transform，通过 `setPosition()`／`setScale()`／`setRotation()` 写入；不得用遍历 `children`、取内层 visual、读取 mesh／材质等方式恢复逻辑状态、选择动画或操作控制器。脚点、sprite 对齐偏移和相机朝向的区别由 display 保持。
 - `SpriteResources`／assets／factory 是共享资源所有者，manager 可以持有它们并同步声明 source；实际美术加载、预热和 sprite 创建在 display 的资源路径中执行。prefab／组件／brain／stategraph 不持有加载 Promise，也不在资源完成后回写逻辑状态。实体的卸载不能销毁共享缓存。
 - 火焰等通用效果复用已有组件绑定和 FX 显示入口，例如 `BurnableBinding`／`FireFxHost`、`attachFx()`、`followAnimation()`；不为每个 prefab 再写一套火焰创建、挂载、相机跟随、音效和灯光联动 effect。prefab 按 Lua 指定效果及参数，display 绘制，所属组件继续管理业务计时。
