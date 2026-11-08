@@ -139,7 +139,7 @@ export function bindItemWorld(inst: ItemEntity, world: ItemPrefabWorld): void {
   inst.ListenForEvent('ondropped', settle);
   inst.ListenForEvent('on_landed', settle);
   // physics.lua LaunchAt, from whoever throws the inst.
-  inst.ListenForEvent('launch', launch => inst.components.inventoryphysics?.Launch(launch as LootLaunch));
+  inst.ListenForEvent('launch', (_inst, launch) => inst.components.inventoryphysics?.Launch(launch as LootLaunch));
   // RemoveFromScene takes the body out of the physics world: a flight caught mid-air ends at once.
   inst.ListenForEvent('enterlimbo', () => inst.components.inventoryphysics?.Stop());
 }

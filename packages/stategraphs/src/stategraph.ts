@@ -61,7 +61,10 @@ export function ActionHandler<Context, Name extends string>(
 export class StateGraphInstance<Context, Name extends string> {
   private readonly states = new Map<Name, StateDefinition<Context, Name>>();
   private readonly actionHandlers = new Map<string, StateActionHandler<Context, Name>>();
+  /** The stategraph's own EventHandlers (stategraph.lua sg.events), beside the current state's. */
   private readonly listeners = new Map<string, Set<(data: unknown) => void>>();
+  /** What follows GoToState, which stategraph.lua reports as the inst's "newstate" event rather than to a handler. */
+  private readonly newStateListeners = new Set<(data: { name: Name }) => void>();
   private current!: StateDefinition<Context, Name>;
   private tags = new Set<string>();
   private timelineIndex = 0;
@@ -114,6 +117,13 @@ export class StateGraphInstance<Context, Name extends string> {
   get stateName(): Name { return this.current.name; }
   /** stategraph.lua HandleEvents: a state's own handler takes the event instead of the stategraph's. */
   handlesEvent(name: string): boolean { return this.current.events?.some(event => event.name === name) ?? false; }
+  /** StateGraphInstance:IsListeningForEvent: the current state or the stategraph has a handler, so inst:PushEvent forwards it. */
+  isListeningForEvent(name: string): boolean { return this.handlesEvent(name) || this.listeners.has(name); }
+  /** GoToState's inst:PushEvent("newstate"), for what follows the stategraph's states; no EventHandler takes it. */
+  onNewState(fn: (data: { name: Name }) => void): () => void {
+    this.newStateListeners.add(fn);
+    return () => { this.newStateListeners.delete(fn); };
+  }
   get elapsedTime(): number { return this.clock; }
   get stateRevision(): number { return this.revision; }
   /** Scheduler-backed graphs publish only setup, cancellation and expiry, never per-frame countdowns. */
@@ -157,7 +167,7 @@ export class StateGraphInstance<Context, Name extends string> {
     state.onenter?.(this, data);
     if (revision !== this.revision) return;
     this.armTimeline();
-    this.notify('newstate', { name });
+    for (const listener of [...this.newStateListeners]) listener({ name });
   }
 
   private armTimeline(): void {
@@ -196,6 +206,7 @@ export class StateGraphInstance<Context, Name extends string> {
   }
 
   listenForEvent(name: string, fn: (data: unknown) => void): () => void {
+    if (name === 'newstate') throw new Error('newstate is not a stategraph event; use onNewState');
     let listeners = this.listeners.get(name);
     if (!listeners) this.listeners.set(name, listeners = new Set());
     listeners.add(fn);

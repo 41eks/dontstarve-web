@@ -30,7 +30,7 @@ export interface EquipmentSanity {
 
 /** The equipping actor's event sink (inventoryitem.owner:PushEvent); released on unequip. */
 export interface EquipmentOwner {
-  ListenForEvent?(name: string, listener: (data: unknown) => void): () => void;
+  ListenForEvent?(name: string, listener: (inst: unknown, data: unknown) => void): () => void;
   PushEvent(name: string, data?: unknown): void;
   /** owner.sg:HasStateTag(tag) */
   HasStateTag?(tag: string): boolean;

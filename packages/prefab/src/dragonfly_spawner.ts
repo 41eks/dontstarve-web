@@ -49,7 +49,7 @@ export class DragonflySpawnerInstance extends PrefabInstance {
     childspawner.StartSpawning();
     childspawner.StopRegen();
     this.worldsettingstimer = new Timer(this, world.scheduler, [DRAGONFLY_SPAWNTIMER]);
-    const stopTimerDone = this.ListenForEvent('timerdone', data => {
+    const stopTimerDone = this.ListenForEvent('timerdone', (_inst, data) => {
       if ((data as { name: string }).name === DRAGONFLY_SPAWNTIMER) GenerateNewDragon(this);
     });
 
@@ -119,7 +119,7 @@ function childFor(model: THREE.Group): DragonflyChild {
   return { id: instance.entityId, model,
     // DoTakeOwnership: knownlocations remembers home.
     setHome: home => { if (home) knownLocations(model)?.RememberLocation('home', home.position); },
-    ListenForEvent: (name, fn) => name === 'onremove' ? instance.onRemove(fn) : instance.ListenForEvent(name, () => fn()),
+    ListenForEvent: (name, fn) => instance.ListenForEvent(name, () => fn()),
     remove: () => instance.remove() };
 }
 

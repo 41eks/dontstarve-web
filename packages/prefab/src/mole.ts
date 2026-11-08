@@ -112,10 +112,7 @@ export class Mole implements MoleBrainInst, MoleStateInst, LocoMotorInst {
     addComponent(this, 'knownlocations', KnownLocations);
     addComponent(this, 'homeseeker', HomeSeeker<MolehillInstance>);
     this.cleanups.push(entity.ListenForEvent('ondropped', () => this.onDropped()),
-      entity.ListenForEvent('onputininventory', () => this.onPickup()),
-      entity.ListenForEvent('attacked', data => this.sg?.pushEvent('attacked', data)),
-      entity.ListenForEvent('stunbomb', () => this.sg?.pushEvent('stunbomb')),
-      entity.ListenForEvent('death', () => this.sg?.pushEvent('death')));
+      entity.ListenForEvent('onputininventory', () => this.onPickup()));
   }
   get id(): string { return this.entity.id; }
   get home(): MolehillInstance | undefined { return this.components.homeseeker.home; }
@@ -127,17 +124,14 @@ export class Mole implements MoleBrainInst, MoleStateInst, LocoMotorInst {
   isValid(): boolean { return !this.isRemoved && !this.occupied && !this.entity.components.inventoryitem.owner; }
   hasTag(tag: string): boolean { return this.entity.hasTag(tag); }
   random(): number { return this.randomSource(); }
-  ListenForEvent(name: string, fn: (data?: unknown) => void): () => void {
-    const listener = (data: unknown) => fn(data); const stop = this.entity.ListenForEvent(name, listener);
+  ListenForEvent(name: string, fn: (inst: unknown, data: unknown) => void): () => void {
+    const stop = this.entity.ListenForEvent(name, fn);
     let set = this.listeners.get(name); if (!set) this.listeners.set(name, set = new Map()); set.set(fn, stop); return stop;
   }
-  private readonly listeners = new Map<string, Map<(data?: unknown) => void, () => void>>();
-  RemoveEventCallback(name: string, fn: (data?: unknown) => void): void { this.listeners.get(name)?.get(fn)?.(); this.listeners.get(name)?.delete(fn); }
-  // Graph receives forwarded inst events exactly once; domain events notify the persistent inst.
-  PushEvent(name: string, data?: unknown): void {
-    if (name === 'attacked' || name === 'death' || name === 'stunbomb') this.entity.PushEvent(name, data);
-    else { this.entity.PushEvent(name, data); this.sg?.pushEvent(name, data); }
-  }
+  private readonly listeners = new Map<string, Map<(inst: unknown, data: unknown) => void, () => void>>();
+  RemoveEventCallback(name: string, fn: (inst: unknown, data: unknown) => void): void { this.listeners.get(name)?.get(fn)?.(); this.listeners.get(name)?.delete(fn); }
+  // inst:PushEvent reaches SGmole itself: entity.sg is its stategraph.
+  PushEvent(name: string, data?: unknown): void { this.entity.PushEvent(name, data); }
   isNear(other: { getPosition(): unknown }, distance: number): boolean { return this.getPosition().distanceToSquared(other.getPosition() as Vector3) <= distance ** 2; }
   getAngleToPoint(x: number, _y: number, z: number): number { const p = this.getPosition(); return Math.atan2(-(z - p.z), x - p.x) * 180 / Math.PI; }
   setRotation(degrees: number): void { this.heading = degrees; this.syncMotor(); }
@@ -182,7 +176,7 @@ export class Mole implements MoleBrainInst, MoleStateInst, LocoMotorInst {
     this.animstate = new AnimState(scheduler, lengths, event => this.sg.pushEvent(event));
     this.sg = new MoleStateGraph(this, scheduler);
     this.entity.sg = this.sg.sg;
-    this.sg.sg.listenForEvent('newstate', () => this.syncStateTags()); this.syncStateTags();
+    this.sg.sg.onNewState(() => this.syncStateTags()); this.syncStateTags();
     this.brain = new MoleBrain(this, WORLD_SCALE);
     this.entity.brain = this.brain;
     this.stopFlee = new ComponentTimer(scheduler, () => { this.flee = false; });

@@ -181,11 +181,6 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
           PushEvent: (name, data) => prefabInstance(player)!.PushEvent(name, data),
           components: { health: playerStats.health, sanity: playerStats.sanity, inventory },
         };
-        // inst:PushEvent reaches the stategraph's EventHandlers.
-        for (const name of ['attacked', 'blocked'] as const) {
-          const stop = prefabInstance(player)!.ListenForEvent(name, data => playerAnimation.stategraph.pushEvent(name, data));
-          actionControllers.push({ dispose: stop });
-        }
         const combat = new Combat(attackerInst, () => scheduler.now,
           () => equippedActionEntity(handEquipment.peek())?.components.weapon);
         combat.SetDefaultDamage(10);

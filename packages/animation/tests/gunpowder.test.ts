@@ -99,7 +99,7 @@ it('works at most 20 inventory items, pushes explosion to survivors and throws a
 
     await s.spawn('rock_avocado_fruit', 1, 0);
     const fruit = s.ground.entities.get('test:rock_avocado_fruit:0')!;
-    const launched: unknown[] = []; fruit.ListenForEvent('launch', launch => launched.push(launch));
+    const launched: unknown[] = []; fruit.ListenForEvent('launch', (_inst, launch) => launched.push(launch));
     fruit.PushEvent('explosion', { explosive: { getPosition: () => new THREE.Vector3(3, 0, 0) } });
     expect(launched).toHaveLength(1);
     expect(launched[0]).toMatchObject({ height: .5, speed: { min: -1.8, range: -3.6 } });

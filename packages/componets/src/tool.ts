@@ -5,7 +5,7 @@ export type ToolAction = WorkAction | 'PLAY';
 
 export interface ToolInst extends WorkInst {
   /** Returns the unsubscribe function. */
-  ListenForEvent?(name: string, listener: (data: unknown) => void): () => void;
+  ListenForEvent?(name: string, listener: (inst: unknown, data: unknown) => void): () => void;
   readonly components: {
     inventoryitem?: { readonly owner: { PushEvent(name: string, data: unknown): void } | null };
     rechargeable?: unknown;
@@ -21,7 +21,7 @@ export class Tool {
     this.inst = inst;
     inst.addTag('tool');
     // tool.lua PercentChanged: a depleted, non-rechargeable tool tells its owner it broke.
-    this.stopPercentListener = inst.ListenForEvent?.('percentusedchange', data => {
+    this.stopPercentListener = inst.ListenForEvent?.('percentusedchange', (_inst, data) => {
       const percent = (data as { percent?: number } | undefined)?.percent;
       if (percent === undefined || percent > 0 || inst.components.rechargeable) return;
       inst.components.inventoryitem?.owner?.PushEvent('toolbroke', { tool: inst });

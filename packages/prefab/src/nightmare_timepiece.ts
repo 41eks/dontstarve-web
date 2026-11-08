@@ -43,7 +43,7 @@ class NightmareTimepiece implements ItemRuntimeComponent {
     this.entity = entity;
     this.bindWorld();
     this.stopEvents = [
-      entity.ListenForEvent('onputininventory', owner => this.topocket(owner as InventoryActor)),
+      entity.ListenForEvent('onputininventory', (_inst, owner) => this.topocket(owner as InventoryActor)),
       entity.ListenForEvent('ondropped', () => this.toground()),
       entity.ListenForEvent('onremove', () => this.toground()),
     ];

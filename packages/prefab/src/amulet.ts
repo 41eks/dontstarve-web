@@ -78,7 +78,7 @@ class RedAmulet implements ItemRuntimeComponent {
     const worn = owner && wornOwner(owner);
     if (visual && worn?.IsCurrentState?.('amulet_rebirth')) {
       const release = worn.Retain();
-      const stop = worn.ListenForEvent?.('newstate', data => {
+      const stop = worn.ListenForEvent?.('newstate', (_inst, data) => {
         if ((data as { statename?: string } | undefined)?.statename === 'amulet_rebirth') return;
         stop?.();
         visual.onunequip();

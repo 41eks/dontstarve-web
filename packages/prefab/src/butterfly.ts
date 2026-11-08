@@ -294,7 +294,7 @@ export class ButterflyCreature implements BrainInst, ButterflyStateInst, LocoMot
     this.brain = definition.createBrain(this);
     this.brain.inst.brain = this.brain;
     entity.brain = this.brain;
-    for (const name of ['locomote', 'death', 'animover']) this.cleanups.push(entity.ListenForEvent(name, data => this.sg.pushEvent(name, data)));
+    for (const name of ['locomote', 'death', 'animover']) this.cleanups.push(entity.ListenForEvent(name, (_inst, data) => this.sg.pushEvent(name, data)));
     this.cleanups.push(entity.ListenForEvent('ondropped', () => this.onDropped()),
       entity.ListenForEvent('onputininventory', () => this.onPutInInventory()));
     // OnDropped explicitly enters idle rather than the graph's initial takeoff.
@@ -318,8 +318,8 @@ export class ButterflyCreature implements BrainInst, ButterflyStateInst, LocoMot
   setRotation(degrees: number): void { this.rotation = degrees; }
   get facing(): number { return this.rotation; }
 
-  ListenForEvent(name: string, fn: (data?: unknown) => void): void { this.entity.ListenForEvent(name, fn); }
-  RemoveEventCallback(name: string, fn: (data?: unknown) => void): void { this.entity.RemoveEventCallback(name, fn); }
+  ListenForEvent(name: string, fn: (inst: unknown, data: unknown) => void): void { this.entity.ListenForEvent(name, fn); }
+  RemoveEventCallback(name: string, fn: (inst: unknown, data: unknown) => void): void { this.entity.RemoveEventCallback(name, fn); }
   PushEvent(name: string, data?: unknown): void { this.entity.PushEvent(name, data); }
 
   /** entityscript.lua PushBufferedAction */

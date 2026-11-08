@@ -601,16 +601,15 @@ function createWilsonPlayerEntity(
 
   const controller = new WilsonController(instance, assetBaseUrl, resources,
     options.sanityPercent ?? (options.stats ? instance.stats.sanity.percent : undefined));
-  const stopDeath = instance.ListenForEvent('death', data => {
-    // player_common.lua OnPlayerDeath
+  // player_common.lua OnPlayerDeath; inst:PushEvent reaches SGwilson's death handler itself, as instance.sg is its stategraph.
+  const stopDeath = instance.ListenForEvent('death', (_inst, data) => {
     instance.deathcause = (data as { cause?: string } | undefined)?.cause ?? 'unknown';
-    controller.stategraph.pushEvent('death', data);
   });
   // player_common.lua ListenForEvent("makeplayerghost" / "respawnfromghost", ex_fns.OnMakePlayerGhost / OnRespawnFromGhost).
   const stopMakeGhost = instance.ListenForEvent('makeplayerghost',
-    data => OnMakePlayerGhost(instance, data as { skeleton?: boolean; loading?: boolean } | undefined));
+    (_inst, data) => OnMakePlayerGhost(instance, data as { skeleton?: boolean; loading?: boolean } | undefined));
   const stopRespawn = instance.ListenForEvent('respawnfromghost',
-    data => OnRespawnFromGhost(instance, data as { source?: RezSource } | undefined));
+    (_inst, data) => OnRespawnFromGhost(instance, data as { source?: RezSource } | undefined));
   instance.onRemove(() => { stopDeath(); stopMakeGhost(); stopRespawn(); controller.dispose(); disposeActionEntity(player); });
   display.onDispose(() => controller.releaseAssets());
   display.update(0);

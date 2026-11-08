@@ -111,7 +111,7 @@ it('hammers a replica decor through its real instance, declaring material FX bef
   try {
     expect(inst.sprite.loaded).toBe(false);
     expect(inst.components.workable!.WorkedBy(worker)).toBe(true);
-    expect(worked).toHaveBeenCalledWith({ worker, workleft: 0 });
+    expect(worked).toHaveBeenCalledWith(inst, { worker, workleft: 0 });
     expect(collapse).toHaveBeenCalledExactlyOnceWith('small', inst.position, 'pot');
     expect(dropLoot).toHaveBeenCalled();
     expect(calls[0]).toBe('collapse'); expect(calls.at(-1)).toBe('remove');

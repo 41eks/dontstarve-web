@@ -1559,7 +1559,7 @@ export class WilsonStateGraph {
 
   private createGraph(): WilsonInstance {
     this.sg = new StateGraphInstance(this, [...states, ...wortoxStates, ...applicationStates], actionHandlers);
-    this.sg.listenForEvent('newstate', () => this.host.onStateChanged(this.sg.stateName));
+    this.sg.onNewState(() => this.host.onStateChanged(this.sg.stateName));
     // SGwilson.lua EventHandler("toolbroke"): ignored during nointerrupt states.
     this.sg.listenForEvent('toolbroke', data => {
       if (this.sg.hasStateTag('nointerrupt')) return;
@@ -1642,6 +1642,8 @@ export class WilsonStateGraph {
   get isDead(): boolean { return this.sg.hasStateTag('dead'); }
   get isSlipping(): boolean { return this.stateName.startsWith('slip'); }
   listenForEvent(name: string, fn: (data: unknown) => void): () => void { return this.sg.listenForEvent(name, fn); }
+  onNewState(fn: (data: { name: WilsonStateName }) => void): () => void { return this.sg.onNewState(fn); }
+  isListeningForEvent(name: string): boolean { return this.sg.isListeningForEvent(name); }
   pushEvent(name: string, data?: unknown): void {
     this.sg.pushEvent(name, data);
     // Browser equipment replacement cancels all owned actions, including states
@@ -1712,7 +1714,7 @@ export class WilsonStateGraph {
     this.movementState = 'idle';
     this.sg.dispose();
     this.sg = new StateGraphInstance(this, ghostStates, ghostActionHandlers);
-    this.sg.listenForEvent('newstate', () => this.host.onStateChanged(this.sg.stateName));
+    this.sg.onNewState(() => this.host.onStateChanged(this.sg.stateName));
     // SGwilsonghost.lua EventHandler("attacked"): a ghost is never dead, so it always flinches.
     this.sg.listenForEvent('attacked', () => this.sg.goToState('hit'));
     this.loadingGhostFlag = loading;

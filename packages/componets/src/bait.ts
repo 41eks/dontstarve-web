@@ -4,7 +4,7 @@ import type { ItemEntity } from '../../inventory/src/entity';
 export class Bait {
   private readonly stop: () => void;
   constructor(inst: ItemEntity) {
-    this.stop = inst.ListenForEvent('onstolen', data => {
+    this.stop = inst.ListenForEvent('onstolen', (_inst, data) => {
       const thief = (data as { thief?: { components: { inventory?: { GiveItem(item: ItemEntity): boolean } } } })?.thief;
       if (!inst.isRemoved && !inst.components.inventoryitem.owner) thief?.components.inventory?.GiveItem(inst);
     });

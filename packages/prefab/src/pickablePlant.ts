@@ -232,8 +232,9 @@ export abstract class PickablePlantInstance extends PrefabInstance {
 
   get phase(): ReadonlySignal<string> {
     if (!this.phaseMemo) {
+      // Remove tears the components down before the entity retires, so either may already be gone.
       const phase = this.phaseMemo = createMemo(() => this.removal.get() ? 'removed'
-        : this.components.burnable.burning.get() ? 'burning' : this.components.pickable.state.phase.get());
+        : this.components.burnable?.burning.get() ? 'burning' : this.components.pickable?.state.phase.get() ?? 'removed');
       this.onRemove(() => phase.dispose());
     }
     return this.phaseMemo;

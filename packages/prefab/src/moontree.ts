@@ -106,7 +106,7 @@ export class MoonTreeInstance extends PrefabInstance {
     })), seconds => world.growthDuration?.(seconds) ?? seconds);
     growable.loopstages = true; growable.springgrowth = true;
     addComponent(this, 'timer', Timer, world.scheduler, ['decay']);
-    this.ListenForEvent('timerdone', data => { if ((data as { name: string }).name === 'decay') this.remove(); });
+    this.ListenForEvent('timerdone', (_inst, data) => { if ((data as { name: string }).name === 'decay') this.remove(); });
     this.OnSave = (_inst, data) => on_save(this, data);
     this.OnLoad = (_inst, data) => on_load(this, data);
     this.onRemove(() => {

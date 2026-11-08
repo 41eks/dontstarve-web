@@ -200,8 +200,8 @@ it('is hammered in three hits for a twig, can be reskinned, and burns into ash w
     const worked = vi.fn(); instance.ListenForEvent('worked', worked);
     const working = vi.fn(); attacker.ListenForEvent('working', working);
     instance.components.combat!.GetAttacked(attacker, 1);
-    expect(worked).toHaveBeenCalledWith({ worker: attacker, workleft: 2 });
-    expect(working).toHaveBeenCalledWith({ target: instance });
+    expect(worked).toHaveBeenCalledWith(instance, { worker: attacker, workleft: 2 });
+    expect(working).toHaveBeenCalledWith(attacker, { target: instance });
     expect(instance.sprite.sprite.peek().clip).toMatchObject({ name: 'hit', loop: false });
     expect(instance.sprite.sprite.peek().queue).toEqual([{ name: 'idle', loop: false }]);
     for (let hit = 0; hit < 2; hit++) { expect(workTargets('HAMMER')).toHaveLength(1); target.work(); }

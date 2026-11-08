@@ -9,7 +9,7 @@ export interface PrefabInventoryEventMap {
 
 /** The entity whose own events are listened to, like Lua's inst:ListenForEvent(). */
 export interface InventoryEventSource {
-  ListenForEvent(name: string, listener: (data: unknown) => void): () => void;
+  ListenForEvent(name: string, listener: (inst: unknown, data: unknown) => void): () => void;
 }
 
 /** Entity-local events, like Lua's inst:ListenForEvent()/inst:PushEvent(). */

@@ -76,7 +76,7 @@ class Moonbase {
     this.cycle = world.getWatchWorldContent?.(WorldContentKey.Cycle, stop => this.cleanups.push(stop));
     this.fullMoon = createMemo(() => this.isFullMoon(true));
     this.timer = addComponent(inst, 'timer', Timer, this.scheduler, Object.keys(MOONBASE_TIMER_LIMITS));
-    this.cleanups.push(inst.ListenForEvent('timerdone', data => this.onTimerDone((data as { name: string }).name)));
+    this.cleanups.push(inst.ListenForEvent('timerdone', (_inst, data) => this.onTimerDone((data as { name: string }).name)));
     this.effects = new MoonbaseEffects(inst, this.scheduler, sprites);
     this.musicPulse = new ComponentTimer(this.scheduler, () => this.pushMusic());
     this.initializer = new ComponentTimer(this.scheduler, () => {

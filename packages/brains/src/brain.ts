@@ -11,6 +11,8 @@ export abstract class Brain<Inst extends BehaviourContext = BrainInst> {
   stopped = true;
   paused = false;
   private wakeAt = 0;
+  /** brain.lua self.events: AddEventHandler's handlers, which inst:PushEvent reaches. */
+  private readonly events = new Map<string, (data: unknown) => void>();
 
   constructor(inst: Inst) { this.inst = inst; }
 
@@ -20,6 +22,11 @@ export abstract class Brain<Inst extends BehaviourContext = BrainInst> {
   protected DoUpdate?(): void;
 
   protected get context(): BehaviourContext { return this.inst; }
+
+  /** Brain:AddEventHandler(event, fn). */
+  AddEventHandler(event: string, fn: (data: unknown) => void): void { this.events.set(event, fn); }
+  /** Brain:PushEvent: the handler for the event, if any, with the event's data. */
+  PushEvent(event: string, data?: unknown): void { this.events.get(event)?.(data); }
 
   ForceUpdate(): void {
     this.bt?.ForceUpdate();

@@ -48,7 +48,7 @@ export class HeatRock {
       this.heater.SetThermics(range >= 4, range <= 2);
       return EMITTED_TEMPERATURES[range - 1];
     });
-    this.stopTemperature = entity.ListenForEvent('temperaturedelta', data => this.TemperatureChange((data as { hasrate?: boolean })?.hasrate === true));
+    this.stopTemperature = entity.ListenForEvent('temperaturedelta', (_inst, data) => this.TemperatureChange((data as { hasrate?: boolean })?.hasrate === true));
     // Evaluate restored temperature without spending a charge; fresh stones remain neutral.
     this.TemperatureChange(false);
     // UpdateImages: PlayAnimation(range, true) on the inst's own AnimState, on the ground, in a container or equipped.

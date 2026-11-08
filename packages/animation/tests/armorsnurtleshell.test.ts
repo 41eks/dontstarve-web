@@ -15,22 +15,22 @@ function wornShell() {
   const entity = new ItemEntityRegistry().create({ itemId: 'armorsnurtleshell', count: 1 });
   entity.BindPerishWorld(world);
   entity.configure({ equippable: 'body', configureEntity: configureArmorSnurtleshellEntity });
-  const listeners = new Map<string, (data: unknown) => void>();
+  const listeners = new Map<string, (inst: unknown, data: unknown) => void>();
   const states: string[] = [];
   let shell = false;
   const owner = {
-    ListenForEvent: (name: string, listener: (data: unknown) => void) => { listeners.set(name, listener); return () => listeners.delete(name); },
+    ListenForEvent: (name: string, listener: (inst: unknown, data: unknown) => void) => { listeners.set(name, listener); return () => listeners.delete(name); },
     PushEvent: vi.fn(),
     getPosition: () => new Vector3(),
     SoundEmitter: { PlaySound: vi.fn() },
     components: { inventory: { GetEquippedItem: (kind: string) => kind === 'body' ? entity : null } },
     HasStateTag: (tag: string) => shell && tag === 'shell',
-    GoToState: (name: string) => { states.push(name); shell = true; listeners.get('newstate')?.({ statename: name }); },
+    GoToState: (name: string) => { states.push(name); shell = true; listeners.get('newstate')?.(owner, { statename: name }); },
   };
   // inventory:Equip calls equippable:Equip(owner); Unequip mirrors it.
   const lifecycle = { onunequip: () => entity.components.equippable!.Unequip(owner) };
   entity.components.equippable!.Equip(owner);
-  return { world, entity, owner, lifecycle, listeners, states, leaveShell: () => { shell = false; listeners.get('newstate')?.({ statename: 'idle' }); } };
+  return { world, entity, owner, lifecycle, listeners, states, leaveShell: () => { shell = false; listeners.get('newstate')?.(owner, { statename: 'idle' }); } };
 }
 
 /** A combat entity at `position` (FindEntities range is 20) that targets `target`. */
@@ -87,7 +87,7 @@ describe('armorsnurtleshell', () => {
 
   it('plays the armor impact through the owner when blocked and releases the owner on unequip', () => {
     const { world, entity, owner, listeners, lifecycle } = wornShell();
-    listeners.get('blocked')!(undefined);
+    listeners.get('blocked')!(owner, undefined);
     expect(owner.SoundEmitter.PlaySound).toHaveBeenCalledWith('dontstarve/wilson/hit_armour');
     const target = attacker(owner);
     entity.components.useableitem!.StartUsingItem();

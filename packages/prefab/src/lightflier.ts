@@ -174,7 +174,7 @@ export class LightFlier implements LightFlierBrainInst, LightFlierStateInst, Loc
 
   private heading = 0;
   private readonly cleanups: (() => void)[] = [];
-  private readonly eventStops = new Map<(data?: unknown) => void, () => void>();
+  private readonly eventStops = new Map<(inst: unknown, data: unknown) => void, () => void>();
   constructor(entity: ItemEntity) {
     this.entity = entity;
     entity.AddSoundEmitter();
@@ -196,15 +196,14 @@ export class LightFlier implements LightFlierBrainInst, LightFlierStateInst, Loc
       if (this.locomotor) this.locomotor.walkspeed = 3.5 * WORLD_SCALE;
       entity.removeTag('NOBLOCK'); this.components.combat.DropTarget();
     };
-    for (const event of ['locomote', 'startled', 'gotosleep', 'onwakeup', 'freeze', 'onthaw', 'unfreeze', 'electrocute'])
-      this.cleanups.push(entity.ListenForEvent(event, data => this.sg?.pushEvent(event, data)));
-    this.cleanups.push(entity.ListenForEvent('attacked', data => {
+    // inst:PushEvent reaches SGlightflier itself: entity.sg is its stategraph.
+    this.cleanups.push(entity.ListenForEvent('attacked', () => {
       this.wakeUp();
       const members = follower.formationleader?.members ?? [this];
       for (const fly of members) fly.lastAttacked = this.getTime() + Math.random();
-      follower.formationleader?.DisbandFormation(); this.sg?.pushEvent('attacked', data);
+      follower.formationleader?.DisbandFormation();
     }), entity.ListenForEvent('teleported', () => follower.formationleader?.DisbandFormation()),
-    entity.ListenForEvent('death', () => { follower.LeaveFormation(); this.sg?.pushEvent('death'); }),
+    entity.ListenForEvent('death', () => follower.LeaveFormation()),
     entity.ListenForEvent('gotosleep', () => { this.brain?.Pause(); this.formationActive(false); this.enableBuzz(false); }),
     entity.ListenForEvent('onwakeup', () => { if (!this.components.freezable?.IsFrozen()) this.brain?.Resume(); this.enableBuzz(true); }),
     entity.ListenForEvent('onputininventory', () => this.onPutInInventory()), entity.ListenForEvent('ondropped', () => this.onDropped()));
@@ -228,10 +227,10 @@ export class LightFlier implements LightFlierBrainInst, LightFlierStateInst, Loc
   hasTag(tag: string): boolean { return this.entity.hasTag(tag); }
   random(): number { return Math.random(); }
   isNear(other: BrainEntity, distance: number): boolean { return this.getPosition().distanceToSquared(other.getPosition() as Vector3) <= distance ** 2; }
-  ListenForEvent(name: string, fn: (data?: unknown) => void): () => void {
-    const stop = this.entity.ListenForEvent(name, data => fn(data)); this.eventStops.set(fn, stop); return stop;
+  ListenForEvent(name: string, fn: (inst: unknown, data: unknown) => void): () => void {
+    const stop = this.entity.ListenForEvent(name, fn); this.eventStops.set(fn, stop); return stop;
   }
-  RemoveEventCallback(_name: string, fn: (data?: unknown) => void): void { this.eventStops.get(fn)?.(); this.eventStops.delete(fn); }
+  RemoveEventCallback(_name: string, fn: (inst: unknown, data: unknown) => void): void { this.eventStops.get(fn)?.(); this.eventStops.delete(fn); }
   PushEvent(name: string, data?: unknown): void { this.entity.PushEvent(name, data); }
   setRotation(degrees: number): void { this.heading = degrees; this.syncMotor(); }
   getAngleToPoint(x: number, _y: number, z: number): number { const p = this.getPosition(); return Math.atan2(-(z - p.z), x - p.x) * 180 / Math.PI; }

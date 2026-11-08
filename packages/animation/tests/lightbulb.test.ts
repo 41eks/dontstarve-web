@@ -55,8 +55,8 @@ it('accepts cave fuel, settles pending consumption, applies wet penalties and re
     expect(fueled.CanAcceptFuelItem({ components: {} })).toBe(false);
     expect(fueled.TakeFuelItem(dry)).toBe(true);
     expect(dry.isRemoved).toBe(true);
-    expect(taken).toHaveBeenCalledExactlyOnceWith({ taker: lantern });
-    expect(added).toHaveBeenCalledExactlyOnceWith({ fuelvalue: 90 });
+    expect(taken).toHaveBeenCalledExactlyOnceWith(dry, { taker: lantern });
+    expect(added).toHaveBeenCalledExactlyOnceWith(lantern, { fuelvalue: 90 });
     expect(fueled.currentfuel).toBe(100);
     expect(ison()).toBe(false);
     lantern.components.equippable!.Equip(owner);

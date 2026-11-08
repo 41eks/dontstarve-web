@@ -60,7 +60,7 @@ it('eats eight red caps, dies through component events, becomes a ghost and save
     expect(inventory.getEntity(slot)).toBeNull();
     expect(animation.stategraph.stateName).toBe('death');
     expect(death).toHaveBeenCalledOnce();
-    expect(death.mock.calls[0][0].cause).toBe('red_cap');
+    expect(death.mock.calls[0][1].cause).toBe('red_cap');
     frames(100);
     expect(ghost.peek()).toBe(true);
     expect(spawned.mock.calls.map(([prefab]) => prefab)).toEqual(['skeleton_player', 'die_fx']);

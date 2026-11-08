@@ -39,7 +39,7 @@ function lanternOwner() {
   const owner: import('../../signals/src').EquipmentOwner & { hasTag(): boolean; GetPosition(): typeof player.position } = {
     hasTag: () => true, GetPosition: () => player.position,
     PushEvent: (name: string, data?: unknown) => { pushed(name, data); events.emit(name, data); },
-    ListenForEvent: (name: string, listener: (data: unknown) => void) => events.on(name, listener),
+    ListenForEvent: (name: string, listener: (inst: unknown, data: unknown) => void) => events.on(name, data => listener(owner, data)),
   };
   inventory.bindActor(owner);
   const world = createPerishWorld();

@@ -16,10 +16,10 @@ function wornAmulet(health: number, hunger: number) {
   stats.health.SetCurrentHealth(health);
   stats.hunger.SetCurrent(hunger);
   const state = { name: 'idle' };
-  const listeners = new Set<(data: unknown) => void>();
+  const listeners = new Set<(inst: unknown, data: unknown) => void>();
   const owner = { PushEvent: vi.fn(), components: stats, IsCurrentState: (name: string) => name === state.name,
     hasTag: () => false, GetPosition: () => ({ x: 0, y: 0, z: 0 }),
-    ListenForEvent: (name: string, listener: (data: unknown) => void) => {
+    ListenForEvent: (name: string, listener: (inst: unknown, data: unknown) => void) => {
       if (name !== 'newstate') return () => {};
       listeners.add(listener);
       return () => { listeners.delete(listener); };
@@ -30,7 +30,7 @@ function wornAmulet(health: number, hunger: number) {
   const slot = { AnimState: new AnimState(), close: vi.fn(), released: vi.fn(), holds: 0 };
   const view = Object.assign(Object.create(owner), { AnimState: slot.AnimState, presentation: {}, close: slot.close,
     Retain: () => { slot.holds++; return () => { slot.holds--; slot.released(); }; } });
-  const enter = (name: string) => { state.name = name; for (const listener of [...listeners]) listener({ statename: name }); };
+  const enter = (name: string) => { state.name = name; for (const listener of [...listeners]) listener(owner, { statename: name }); };
   // inventory:Equip runs equippable:Equip(owner): the owner is the inventory's actor.
   inventory.bindActor(owner);
   inventory.add(AMULET_ID, 1);

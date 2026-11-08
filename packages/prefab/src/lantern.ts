@@ -61,7 +61,7 @@ function starttrackingowner(inst: LanternInst, owner: EquipmentOwner | undefined
   stoptrackingowner(inst);
   if (!owner?.ListenForEvent) return;
   inst._owner = owner;
-  inst._stoptrackingowner = owner.ListenForEvent('equip', data => onownerequip(inst, data));
+  inst._stoptrackingowner = owner.ListenForEvent('equip', (_inst, data) => onownerequip(inst, data));
 }
 
 /** inst._onownerequip */

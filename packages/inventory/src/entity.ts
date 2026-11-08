@@ -457,8 +457,8 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
     if (this.isRemoved) return;
     this.flush();
     if (this.isRemoved) return;
+    // EntityScript:Remove pushes onremove first.
     super.remove();
-    this.PushEvent('onremove', undefined);
     this.components.inventoryitem.owner = null;
     this.miniMapEntity?.dispose();
     for (const component of this.runtime.values()) component.dispose();

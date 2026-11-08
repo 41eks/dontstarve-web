@@ -9,7 +9,7 @@ export interface OccupiableInst {
 export interface OccupantItem {
   readonly isRemoved: boolean;
   hasTag(tag: string): boolean;
-  ListenForEvent(name: string, listener: (data: unknown) => void): () => void;
+  ListenForEvent(name: string, listener: (inst: unknown, data: unknown) => void): () => void;
   readonly components: { occupier?: unknown };
   /** Settle against the current holder before the occupier's owner changes. */
   flush(): void;

@@ -9,7 +9,7 @@ export class AvoidElectricFence extends BehaviourNode {
   private readonly inst: BrainInst;
   private run_angle?: number;
   private readonly onelectrocute = () => { this.inst.brain?.ForceUpdate(); };
-  private readonly shocked_by_field = (field?: unknown) => {
+  private readonly shocked_by_field = (_inst: unknown, field?: unknown) => {
     this.run_angle = this.GetRunAngle(field as ElectricField);
     this.inst.brain?.ForceUpdate();
   };

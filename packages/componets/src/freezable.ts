@@ -8,7 +8,7 @@ export interface FreezableInst {
   addTag(tag: string): void;
   removeTag(tag: string): void;
   PushEvent(name: string): void;
-  ListenForEvent(name: string, fn: (data: unknown) => void): () => void;
+  ListenForEvent(name: string, fn: (inst: unknown, data: unknown) => void): () => void;
   stopBrain(): void;
   restartBrain(): void;
   readonly components: { combat?: { DropTarget(): void }; locomotor?: { Stop(): void } };

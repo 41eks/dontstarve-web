@@ -21,7 +21,8 @@ export interface SlipperyFeetInst {
   readonly sg: {
     hasStateTag(tag: string): boolean;
     hasAnyStateTag(...tags: string[]): boolean;
-    listenForEvent(name: string, fn: (data: unknown) => void): () => void;
+    /** GoToState's "newstate". */
+    onNewState(fn: () => void): () => void;
   };
 }
 
@@ -103,7 +104,7 @@ export class SlipperyFeet {
   private startInternal(): void {
     if (this.started) return;
     this.started = true;
-    this.stopNewState = this.inst.sg.listenForEvent('newstate', () => this.onNewState());
+    this.stopNewState = this.inst.sg.onNewState(() => this.onNewState());
     this.onNewState();
   }
 

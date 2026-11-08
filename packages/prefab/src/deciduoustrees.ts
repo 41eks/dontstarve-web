@@ -98,7 +98,7 @@ export class DeciduousInstance extends PrefabInstance {
     })), seconds => world.growthDuration?.(seconds) ?? seconds);
     growable.loopstages = true; growable.springgrowth = true;
     addComponent(this, 'timer', Timer, world.scheduler, ['decay']);
-    this.ListenForEvent('timerdone', data => { if ((data as { name: string }).name === 'decay') this.remove(); });
+    this.ListenForEvent('timerdone', (_inst, data) => { if ((data as { name: string }).name === 'decay') this.remove(); });
     const leaves = this.leaves = new DeciduousTreeLeaves(world.scheduler, world, {
       lastWorkTime: () => this.components.workable?.lastworktime.peek(), applyBuild: () => applyBuild(this), updateLoot: () => updateLoot(this),
       setShelter: value => { if (value) this.addTag('shelter'); else this.removeTag('shelter'); },

@@ -112,9 +112,7 @@ for (const panel of [gameUi.chestPanel, gameUi.cookPotPanel, gameUi.iceBoxPanel]
   });
 }
 const playerAnimation = playerInstance.animationController;
-/** inst:PushEvent reaches SGwilson's handlers; these are the ones the player's own components and actions push. */
-const STATEGRAPH_EVENTS = new Set(['equip', 'unequip', 'toolbroke', 'fishingnibble', 'fishingloserod', 'fishingstrain', 'fishingcatch', 'fishingcancel']);
-const pickupDoer: PickupDoer & WortoxDoer & { sg: NonNullable<PickupDoer['sg']> & { beginPortalJump(pos: import('three').Vector3, fromMap?: boolean): boolean }; ListenForEvent(name: string, listener: (data: unknown) => void): () => void; HasStateTag(tag: string): boolean; GoToState(name: string): void; IsCurrentState(name: string): boolean; OpenEquipmentView?: import('@dontstarve-web/signals').EquipmentOwner['OpenEquipmentView'];
+const pickupDoer: PickupDoer & WortoxDoer & { sg: NonNullable<PickupDoer['sg']> & { beginPortalJump(pos: import('three').Vector3, fromMap?: boolean): boolean }; ListenForEvent(name: string, listener: (inst: unknown, data: unknown) => void): () => void; HasStateTag(tag: string): boolean; GoToState(name: string): void; IsCurrentState(name: string): boolean; OpenEquipmentView?: import('@dontstarve-web/signals').EquipmentOwner['OpenEquipmentView'];
   components: PickupDoer['components'] & { health: typeof playerStats.health; hunger: typeof playerStats.hunger; sanity?: Sanity } } = {
   // The player's own eater.lua (ACTIONS.EAT) and sleepingbaguser.lua (SLEEPIN's sleepingbag:DoSleep) on act.doer.
   components: { inventory, health: playerStats.health, hunger: playerStats.hunger, eater: playerInstance.components.eater,
@@ -136,9 +134,8 @@ const pickupDoer: PickupDoer & WortoxDoer & { sg: NonNullable<PickupDoer['sg']> 
   GoToState: name => playerAnimation?.stategraph.goToState(name as WilsonStateName),
   IsCurrentState: name => playerAnimation?.stategraph.stateName === name,
   PushEvent: (name, data) => {
-    // player_common.lua listens for itemranout; SGwilson.lua handles toolbroke and the fishing rod's events.
-    if (STATEGRAPH_EVENTS.has(name)) playerAnimation?.stategraph.pushEvent(name, data);
-    else if (name === 'itemranout') OnItemRanOut(inventory, data);
+    // player_common.lua listens for itemranout; inst:PushEvent reaches SGwilson's handlers itself (instance.sg).
+    if (name === 'itemranout') OnItemRanOut(inventory, data);
     playerInstance.PushEvent(name, data);
   },
 };

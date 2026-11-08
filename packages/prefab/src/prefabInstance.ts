@@ -2,7 +2,7 @@ import { MiniMapState } from '../../map/src/minimapState';
 import { watchMiniMapEntity } from '../../map/src/minimapEntities';
 import type * as CANNON from 'cannon-es';
 import { type Object3D, type Vector3, type Vector3Like } from 'three';
-import { createSignal, EventEmitter, readonlySignal, type ReadonlySignal, type TileStateQuery } from '@dontstarve-web/signals';
+import { createSignal, readonlySignal, type ReadonlySignal, type TileStateQuery } from '@dontstarve-web/signals';
 import { IconSpriteAtlases, LightState, PrefabDisplay, SpriteResources, SpriteState, type ArchiveSpriteCommands, type PrefabDisplayGroup, type ArchiveSpriteSource, type LoadedSpriteSource, type PrefabDisplayOptions, type PrefabStatus, type SpriteSource } from '@dontstarve-web/display';
 import { bindPhysics, type PhysicsBinding } from '../../componets/src/physicsBinding';
 import { PhysicsState } from '../../componets/src/physicsState';
@@ -56,6 +56,41 @@ export interface PrefabComponents extends ActionComponents {
   furnituredecor?: import('../../componets/src/ruinsrelicSignatures').FurnitureDecor;
   inventoryitemmoisture?: import('../../componets/src/ruinsrelicSignatures').InventoryItemMoisture;
 }
+
+/** An entity whose events others listen for. */
+type EventEntity = PrefabInstance<ArchiveSpriteCommands, object>;
+/**
+ * EntityScript:ListenForEvent's fn(inst, data): `inst` is the entity that pushed the event. Method-typed, as Lua does not
+ * check it, so a listener written for a narrower inst can be registered.
+ */
+export type EntityEventListener<Inst = EventEntity> = { call(inst: Inst, data: unknown): void }['call'];
+type StoredListener = (inst: never, data: unknown) => void;
+/** event_listeners / event_listening: per event, per entity on the other side, its fns in registration order. */
+type ListenerTable = Map<string, Map<EventEntity, StoredListener[]>>;
+
+function addListener(table: ListenerTable, event: string, entity: EventEntity, fn: StoredListener): void {
+  let listeners = table.get(event);
+  if (!listeners) table.set(event, listeners = new Map());
+  let fns = listeners.get(entity);
+  if (!fns) listeners.set(entity, fns = []);
+  fns.push(fn);
+}
+
+function removeListener(table: ListenerTable | undefined, event: string, entity: EventEntity, fn: StoredListener): void {
+  const listeners = table?.get(event);
+  if (!listeners) return;
+  const fns = listeners.get(entity);
+  if (fns) {
+    // RemoveByValue: one registration of fn.
+    const index = fns.indexOf(fn);
+    if (index >= 0) fns.splice(index, 1);
+    if (!fns.length) listeners.delete(entity);
+  }
+  if (!listeners.size) table!.delete(event);
+}
+
+/** scheduler.lua's Periodic as DoTaskInTime / DoPeriodicTask return it. */
+export interface EntityTask { Cancel(): void }
 
 /**
  * The logical entity behind a placed prefab: identity, save record, skin, persistence, lifecycle `status` and the
@@ -143,15 +178,21 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   logicalPlacement?: boolean;
   private physicsBinding?: PhysicsBinding;
   /** inst.sg: SetStateGraph's instance, as other code reads and drives it; cleared by ClearStateGraph. */
-  sg?: Pick<StateGraphInstance<unknown, string>, 'stateName' | 'hasStateTag' | 'goToState' | 'pushEvent' | 'listenForEvent'>;
+  sg?: Pick<StateGraphInstance<unknown, string>, 'stateName' | 'hasStateTag' | 'goToState' | 'pushEvent' | 'listenForEvent' | 'isListeningForEvent'>;
   /** inst.brain: SetBrain's brain, cleared by StopBrain. */
   brain?: Brain<BehaviourContext>;
   private readonly tags = new Set<string>();
   private tagView?: readonly string[];
   private readonly tagListeners = new Set<(tag: string) => void>();
   private readonly removalHandlers = new Set<() => void>();
-  /** inst.event_listeners: entity events belong to the logical entity, not to the model that draws it. */
-  private readonly events = new EventEmitter<Record<string, unknown>>();
+  /** inst.event_listeners: who listens for this entity's events. Events belong to the logical entity, not to its model. */
+  private event_listeners?: ListenerTable;
+  /** inst.event_listening: the entities whose events this one listens for, so Remove can drop both sides. */
+  private event_listening?: ListenerTable;
+  /** inst.pendingtasks: DoTaskInTime / DoPeriodicTask tasks Remove cancels. */
+  private pendingtasks?: Set<EntityTask>;
+  /** Set as Remove starts; the entity stays valid until it retires at the end, as in EntityScript:Remove. */
+  private removing = false;
 
   private animState?: InstanceAnimState;
   /** inst.AnimState: playback on `sprite`, and the symbol overrides and layers the entity declares with `sprite.setAnimState`. */
@@ -193,12 +234,79 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   isValid(): boolean { return !this.isRemoved; }
   get isRemoved(): boolean { return this.lifecycle.peek() === 'removed'; }
   getPosition(): Vector3 { return this.transform.model.position; }
-  /** inst:PushEvent: listeners run synchronously with `data`, whether or not a display draws the entity. */
-  PushEvent(name: string, data?: unknown): void { this.events.emit(name, data); }
-  /** inst:ListenForEvent on the entity itself; the returned function removes the listener. */
-  ListenForEvent(name: string, listener: (data: unknown) => void): () => void { return this.events.on(name, listener); }
-  /** inst:RemoveEventCallback. */
-  RemoveEventCallback(name: string, listener: (data: unknown) => void): void { this.events.off(name, listener); }
+  /**
+   * EntityScript:PushEvent: every fn listening for it, called fn(inst, data) from a copy of the list, then the stategraph
+   * when it listens for the event, then the brain. Listeners run whether or not a display draws the entity.
+   */
+  PushEvent(event: string, data?: unknown): void {
+    const listeners = this.event_listeners?.get(event);
+    if (listeners) for (const fn of [...listeners.values()].flat()) fn(this as never, data);
+    if (this.sg?.isListeningForEvent(event)) this.sg.pushEvent(event, data);
+    this.brain?.PushEvent(event, data);
+  }
+
+  /**
+   * EntityScript:ListenForEvent(event, fn, source): fn(source, data) whenever `source` (this entity by default) pushes the
+   * event. Both entities record it, so removing either drops it. The returned function is RemoveEventCallback for it.
+   */
+  ListenForEvent(event: string, fn: EntityEventListener<this>): () => void;
+  ListenForEvent<Source extends EventEntity>(event: string, fn: EntityEventListener<Source>, source: Source): () => void;
+  ListenForEvent(event: string, fn: StoredListener, source: EventEntity = this): () => void {
+    addListener(source.event_listeners ??= new Map(), event, this, fn);
+    addListener(this.event_listening ??= new Map(), event, source, fn);
+    return () => this.RemoveEventCallback(event, fn, source);
+  }
+
+  /** EntityScript:RemoveEventCallback(event, fn, source). */
+  RemoveEventCallback(event: string, fn: EntityEventListener<never>, source: EventEntity = this): void {
+    removeListener(source.event_listeners, event, this, fn as StoredListener);
+    removeListener(this.event_listening, event, source, fn as StoredListener);
+  }
+
+  /** EntityScript:RemoveAllEventCallbacks: what this entity listens for elsewhere, and what listens for it. */
+  RemoveAllEventCallbacks(): void {
+    for (const [event, sources] of this.event_listening ?? []) {
+      for (const source of sources.keys()) source.event_listeners?.get(event)?.delete(this);
+    }
+    this.event_listening = undefined;
+    for (const [event, listeners] of this.event_listeners ?? []) {
+      for (const listener of listeners.keys()) listener.event_listening?.get(event)?.delete(this);
+    }
+    this.event_listeners = undefined;
+  }
+
+  /** EntityScript:DoTaskInTime(time, fn): fn(inst) after `time` game seconds on the world's scheduler; Remove cancels it. */
+  DoTaskInTime(time: number, fn: (inst: this) => void): EntityTask {
+    return this.addTask(time, fn, undefined);
+  }
+
+  /** EntityScript:DoPeriodicTask(time, fn, initialdelay): fn(inst) every `time` game seconds, first after `initialdelay`. */
+  DoPeriodicTask(time: number, fn: (inst: this) => void, initialdelay = time): EntityTask {
+    return this.addTask(initialdelay, fn, time);
+  }
+
+  /** EntityScript:CancelAllPendingTasks. */
+  CancelAllPendingTasks(): void {
+    const tasks = this.pendingtasks;
+    this.pendingtasks = undefined;
+    for (const task of tasks ?? []) task.Cancel();
+  }
+
+  private addTask(delay: number, fn: (inst: this) => void, period: number | undefined): EntityTask {
+    const scheduler = this.worldServices?.scheduler;
+    if (!scheduler) throw new Error(`${this.prefab} has no world scheduler for its tasks`);
+    let cancel: (() => void) | undefined;
+    const tasks = this.pendingtasks ??= new Set();
+    const task: EntityTask = { Cancel: () => { cancel?.(); cancel = undefined; this.pendingtasks?.delete(task); } };
+    const run = () => {
+      if (period === undefined) { cancel = undefined; this.pendingtasks?.delete(task); }
+      else cancel = scheduler.schedule(period, run);
+      fn(this);
+    };
+    cancel = scheduler.schedule(delay, run);
+    tasks.add(task);
+    return task;
+  }
 
   /** The body the binding keeps for `physics`, while one exists. */
   get physicsBody(): CANNON.Body | undefined { return this.physicsBinding?.body; }
@@ -280,20 +388,36 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
     this.lifecycle.set(awake ? 'active' : 'asleep');
   }
 
+  /** inst.OnRemoveEntity(inst): the prefab's own teardown, after its components'. */
+  OnRemoveEntity?(inst: PrefabInstance): void;
+
+  /**
+   * EntityScript:Remove, in its order: `onremove`, then both sides of its event callbacks and its pending tasks go, then
+   * its components' OnRemoveEntity, then inst.OnRemoveEntity, and it stops persisting. It is valid until it retires last.
+   */
   remove(): void {
-    if (this.lifecycle.peek() === 'removed') return;
+    if (this.removing || this.lifecycle.peek() === 'removed') return;
+    this.removing = true;
+    this.PushEvent('onremove');
+    this.RemoveAllEventCallbacks();
+    this.CancelAllPendingTasks();
+    // The engine's MiniMapEntity goes with the entity; what lists it unsubscribes among the removal handlers below.
     this.minimap.SetEnabled(false);
+    // addComponent registers each component's OnRemoveEntity here, beside the prefab's other teardown, in order.
+    for (const remove of this.removalHandlers) remove();
+    this.removalHandlers.clear();
+    this.OnRemoveEntity?.(this as unknown as PrefabInstance);
+    this.persists = false;
+    // entity:Retire
     this.removedState.set(true);
     this.lifecycle.set('removed');
     this.physicsBinding?.dispose();
-    for (const remove of this.removalHandlers) remove();
-    this.removalHandlers.clear();
     this.transform.dispose();
   }
 
   /** Entity-owned components and logical controllers stop when the inst is permanently removed. */
   onRemove(remove: () => void): () => void {
-    if (this.lifecycle.peek() === 'removed') { remove(); return () => {}; }
+    if (this.removing || this.lifecycle.peek() === 'removed') { remove(); return () => {}; }
     this.removalHandlers.add(remove);
     return () => { this.removalHandlers.delete(remove); };
   }

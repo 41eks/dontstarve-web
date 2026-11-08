@@ -46,7 +46,7 @@ it('preserves paused regrowth through restoration and applies spring growth only
   }, onRegen, undefined, timing);
   const loot = {};
   const picker = { loot, giveItem: () => { order.push('product'); return true; } };
-  const onPicked = (data: unknown) => {
+  const onPicked = (_inst: unknown, data: unknown) => {
     expect(data).toEqual({ picker, loot, plant: instance });
     expect(pickable.state.phase.peek()).toBe('picked');
     order.push('event');

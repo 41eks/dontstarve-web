@@ -53,7 +53,7 @@ describe('greenstaff source deconstruction', () => {
     expect(spawn).toHaveBeenCalledWith([
       { itemId: 'nightmarefuel', count: 4 }, { itemId: 'livinglog', count: 2 }, { itemId: 'opalpreciousgem', count: 1 },
     ], opal.position);
-    expect(event).toHaveBeenCalledWith(doer);
+    expect(event).toHaveBeenCalledWith(opal.entity, doer);
     expect(opal.isRemoved).toBe(true);
     expect(staffDelta).toHaveBeenCalledWith(-20); expect(doDelta).not.toHaveBeenCalled();
     expect(inventory.getEntity(slot)).toBeNull();

@@ -37,7 +37,7 @@ export class BeeQueenHiveInstance extends PrefabInstance {
     workable.SetWorkLeft(BEEQUEEN_HIVE_MAX_WORK);
     workable.savestate = true;
     addComponent(this, 'timer', Timer, world.scheduler, ['hiveregen']);
-    this.ListenForEvent('timerdone', data => onTimer(this, (data as { name: string }).name));
+    this.ListenForEvent('timerdone', (_inst, data) => onTimer(this, (data as { name: string }).name));
     this.honeyTimer = new ComponentTimer(world.scheduler, () => {
       if (this.pendingHoney !== undefined) showHoneyLevel(this, this.pendingHoney);
       this.pendingHoney = undefined;

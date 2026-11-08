@@ -7,7 +7,7 @@ export interface ArmorOwner { PushEvent(name: string, data?: unknown): void }
 
 export interface ArmorInst {
   PushEvent(name: string, data?: unknown): void;
-  ListenForEvent(name: string, listener: (data: unknown) => void): () => void;
+  ListenForEvent(name: string, listener: (inst: unknown, data: unknown) => void): () => void;
   remove(): boolean;
   readonly components: { readonly inventoryitem: { readonly owner: ArmorOwner | null } };
 }
@@ -30,7 +30,7 @@ export class Armor {
     this.inst = inst;
     this.percent = createMemo(() => this.conditionState.get() / this.maxconditionState.get());
     // armor.lua PercentChanged: a broken armor tells its wearer.
-    this.stopPercentChanged = inst.ListenForEvent('percentusedchange', data => {
+    this.stopPercentChanged = inst.ListenForEvent('percentusedchange', (_inst, data) => {
       const percent = (data as { percent?: number } | undefined)?.percent;
       if (percent !== undefined && percent <= 0) this.inst.components.inventoryitem.owner?.PushEvent('armorbroke', { armor: this.inst });
     });

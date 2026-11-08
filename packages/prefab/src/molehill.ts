@@ -97,7 +97,6 @@ export class MolehillInstance extends PrefabInstance<SpriteState, MolehillCompon
     workable.SetWorkAction('DIG'); workable.SetWorkLeft(1); workable.SetOnFinishCallback(() => this.dig_up());
 
     this.onRemove(() => {
-      this.PushEvent('onremove');
       this.stopPending?.();
       spawner.dispose(); inventory.dispose(); workable.dispose();
     });

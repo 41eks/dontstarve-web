@@ -12,8 +12,8 @@
 | `CreateEntity()` | `new PrefabInstance(id, new SpriteState(clip), transform)` | `atrium_pillar.ts` | 静态实体用 `Transform.stationary()` |
 | `Transform:SetPosition` | `inst.setPosition(x, y, z)`、`copyPosition` | `atrium_pillar.ts` | 位置不是信号 |
 | `Transform:SetScale`、`SetRotation` | `inst.setScale`、`inst.setRotation(degrees)` | `moontree.ts`、`lightflier.ts` | |
-| `inst:Remove()` | `inst.remove()` | `vault_pillar.ts` | |
-| `inst.OnRemoveEntity` | `inst.onRemove(fn)` | `vault_pillar.ts` | 返回取消函数 |
+| `inst:Remove()` | `inst.remove()` | `vault_pillar.ts` | 按 Lua 顺序：先推 `onremove`（此时仍有效），再撤销双向事件监听、取消 `DoTaskInTime` 任务、执行组件与 `onRemove` 回调、`inst.OnRemoveEntity`，最后 `persists = false` 并 Retire |
+| `inst.OnRemoveEntity` | `inst.OnRemoveEntity = fn`（在组件之后调用）；或 `inst.onRemove(fn)` | `vault_pillar.ts` | `onRemove` 返回取消函数，与组件的 `OnRemoveEntity` 按注册顺序执行 |
 | `inst.persists = false` | `inst.persists = false` | `atrium_gate.ts` | |
 | `OnEntitySleep`、`OnEntityWake` | `watchSignal(inst.status, …)` + `createEffect`，比较 `asleep`／`active` | `monkeypillar.ts` | |
 | `SpawnPrefab(id)` | `world.spawnPrefab(id, position)` | `vault_pillar.ts` | 注入，不是全局函数 |
@@ -72,10 +72,11 @@
 | --- | --- | --- | --- |
 | `inst:AddComponent("x")` | `const x = addComponent(this, 'x', X, ...args)`（`src/components.ts`） | `moontree.ts` | 只能这样加组件，见 [AGENTS.md](../AGENTS.md#components)；`inst:RemoveComponent("x")` 用 `removeComponent`；查有没有实现：`dst-lua-inventory.py` |
 | 组件回调（`SetOnFinishCallback` 等） | 同名方法 | `chesspieces.ts` | 回调写在所属 prefab 模块 |
-| `inst:ListenForEvent`、`PushEvent`、`RemoveEventCallback` | 同名方法 | `mushroom_light.ts` | `ListenForEvent` 返回取消函数，不用 `model` 事件 |
+| `inst:ListenForEvent(event, fn, source)`、`PushEvent`、`RemoveEventCallback` | 同名方法 | `mushroom_light.ts` | `fn(inst, data)`，`inst` 是推送事件的实体；`source` 监听别的实体，双方记账，任一方 Remove 时自动解除；`ListenForEvent` 另返回取消函数；`PushEvent` 在 `inst.sg` 监听该事件时转发给它，再转给 `inst.brain`，不要再手写转发；不用 `model` 事件 |
 | `inst:WatchWorldState("snowlevel", fn)` | `world.getWatchWorldContent(WorldContentKey.SnowLevel, cleanup)` + effect | `monkeypillar.ts` | 也有注入的世界信号；按相邻 prefab 选用 |
-| `inst:DoTaskInTime(t, fn)` | `world.scheduler.schedule(t, fn)` | `pigking.ts` | 返回取消函数，移除时要取消 |
-| `inst:DoPeriodicTask(t, fn)` | 回调里再次 `schedule` | `monkeypillar.ts` | |
+| stategraph 的全局 `EventHandler`；`GoToState` 推的 `"newstate"` | `sg.listenForEvent(name, fn)`；`sg.onNewState(fn)` | `SGwilson.ts` | `listenForEvent` 决定 `isListeningForEvent`，即 `inst:PushEvent` 会不会转发；`newstate` 不是 sg 事件，`listenForEvent('newstate')` 会抛错 |
+| `inst:DoTaskInTime(t, fn)` | `inst.DoTaskInTime(t, fn)`（`fn(inst)`，用 `worldServices.scheduler`） | `entityScript.test.ts` | 返回带 `Cancel()` 的任务，Remove 自动取消；旧写法 `world.scheduler.schedule` 需自己在移除时取消 |
+| `inst:DoPeriodicTask(t, fn, initialdelay)` | `inst.DoPeriodicTask(t, fn, initialdelay)` | `entityScript.test.ts` | Remove 自动取消；旧写法是回调里再次 `schedule` |
 | `inst.OnSave`、`inst.OnLoad` | `this.OnSave = (_inst, data) => …`，同名 `OnLoad` | `archive_pillar.ts` | 还要加：`saveRecord.ts`、`src/save/types.ts`、`src/prefabDefinitions.ts` 的解析和导入转换器 |
 | `inst.OnLoadPostPass` | 见示例 | `atrium_gate.ts` | |
 | `OnLoadPostPass(inst, newents, data)` 的 `newents[GUID]` | 注入的 `world.getEntity(id)`（应用层接 `PrefabEntityManager.get`），在 `DoTaskInTime(0)` 里解析 | `grotto_pool.ts` | 存档 ID 即项目实体 ID |

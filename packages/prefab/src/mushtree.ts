@@ -144,7 +144,7 @@ export class MushtreeInstance extends PrefabInstance {
       }
     });
     addComponent(this, 'timer', Timer, world.scheduler, ['decay']);
-    this.ListenForEvent('timerdone', data => { if ((data as { name: string }).name === 'decay') this.remove(); });
+    this.ListenForEvent('timerdone', (_inst, data) => { if ((data as { name: string }).name === 'decay') this.remove(); });
     const colour = .5 + Math.random() * .5;
     this.sprite.setColour([colour, colour, colour]);
     this.sprite.setFrameAt(Math.random());

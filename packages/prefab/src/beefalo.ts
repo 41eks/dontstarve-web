@@ -320,7 +320,7 @@ export class BeefaloController {
     if (this.disposed) return;
     if (name === 'gotosleep') this.brain?.Stop();
     else if (name === 'onwakeup') this.brain?.Start();
-    this.sg?.pushEvent(name, data);
+    // inst:PushEvent reaches SGBeefalo itself: instance.sg is its stategraph.
     this.instance.PushEvent(name, data);
   }
   /** The controller is the Lua inst its components see; they are stored on, and torn down with, the prefab instance. */
