@@ -19,7 +19,7 @@ export interface PlacementSaveRecord {
     variant?: import('./pickablePlant').PickablePlantRecord['components']['variant'];
     burning?: true;
     building?: { skinId?: string; burnt?: true };
-    stewer?: import('./cook_pot').CookPotSaveState;
+    stewer?: import('../../componets/src/stewer').StewerSaveData;
     container?: { slotCount: number; slots: { slotKey: string; item: import('@dontstarve-web/inventory').InventoryStack }[] };
     health?: { current: number; maximum: number };
     wall?: import('./wallSkins').WallSaveState;

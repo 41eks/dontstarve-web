@@ -1,37 +1,33 @@
 import { LootDropper } from '../../componets/src/lootdropper';
 import { addComponent } from './components';
-import type { PrefabInstance } from './prefabInstance';
+import { PrefabInstance, modelHasTag, type EntityTask } from './prefabInstance';
 import { Workable } from '../../componets/src/workable';
 import { Prototyper } from '../../componets/src/prototyper';
 import { CreateTechTree } from '../../componets/src/techtree';
 import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
-import { type SpriteState } from '@dontstarve-web/display';
-import * as THREE from 'three';
-import { createRenderEffect, createSignal, type ReadonlySignal } from '@dontstarve-web/signals';
-import { bookstation_init_fn } from '@dontstarve-web/animation/prefabskin';
-import { ComponentTimer } from '../../componets/src/timer';
-import { actionEntity } from './actionEntity';
-import {
-    AnimatedBuildingPlacement,
-    type AnimatedBuildingDefinition,
-    type AnimatedBuildingEventContext,
-    type AnimatedBuildingInteractionChange,
-} from './animatedBuildingPlacement';
+import { SpriteState, type SpriteResources } from '@dontstarve-web/display';
+import { createRenderEffect } from '@dontstarve-web/signals';
 import { BOOK_USE_STEP, BOOKSTATION_RESTORE_AMOUNT, isBook } from './books';
 import definitions from './definitions.json' with { type: 'json' };
+import { buildingPlacer, buildingPrefab, LoadBuildingSkin, MakeBuildingContainer, SaveBuildingSkin } from './building';
 import { PlaySound } from './sound';
 import { TILE_SIZE } from './tile';
-import type { BuildingContainer } from './containers';
-import type { WorldContext, PrefabWorldContext } from './worldContext';
-import { modelHasTag, prefabInstance } from './prefabInstance';
-import { onloadBurnt, onsaveBurnt } from './standardcomponents';
+import type { PlacementSaveRecord } from './saveRecord';
+import { DefaultBurntStructureFn, onloadBurnt, onsaveBurnt } from './standardcomponents';
+import { BurnableBinding } from './treeFire';
+import type { PrefabWorldContext } from './worldContext';
 
 export const BOOKSTATION_ID = 'bookstation' as const;
 export type BookstationId = typeof BOOKSTATION_ID;
-export const BOOKSTATION_SKIN_ARCHIVES: Readonly<Record<string, string>> =
-    definitions.animatedBuildings.bookstation.skinArchives;
 
-// tuning.lua: seg_time, BOOKSTATION_RESTORE_AMOUNT, BOOKSTATION_BONUS_RANGE, BOOKSTATION_WICKER_BONUS.
+const declaration = definitions.animatedBuildings.bookstation;
+
+export const BOOKSTATION_SKIN_ARCHIVES: Readonly<Record<string, string>> = declaration.skinArchives;
+
+/** bookstation.lua MakePlacer("bookstation_placer", "bookstation", "bookstation", "idle"). */
+export const BOOKSTATION_PLACER = buildingPlacer(declaration);
+
+// tuning.lua: seg_time, BOOKSTATION_BONUS_RANGE, BOOKSTATION_WICKER_BONUS.
 const BOOKSTATION_RESTORE_TIME = 30;
 const BOOKSTATION_BONUS_RANGE = 12 * (TILE_SIZE / 4);
 const BOOKSTATION_WICKER_BONUS = 2;
@@ -40,167 +36,13 @@ const BOOKS_SOME = 'empty';
 const BOOKS_MORE = 'mid';
 const BOOKS_FULL = 'full';
 
-interface BookstationHost {
-    readonly model: THREE.Group;
-    readonly container: BuildingContainer;
-    readonly world: PrefabWorldContext;
-    /** Changes whenever the drawn sprite is rebuilt, so the book layers are shown again. */
-    readonly art?: ReadonlySignal<number>;
+/** The fields bookstation.lua keeps on inst. */
+export class BookstationInstance extends PrefabInstance {
+    /** inst.RestoreTask: the periodic RestoreBooks while a book is on the shelf. */
+    RestoreTask?: EntityTask;
 }
 
-/** bookstation.lua's RestoreTask and book-count art for one placed inst. */
-export class Bookstation {
-    private readonly host: BookstationHost;
-    private readonly restoreTimer: ComponentTimer;
-    private readonly stopLifecycle: () => void;
-    private readonly stopAesthetics: () => void;
-    private readonly bookCount = createSignal(0);
-    private stopWatching?: () => void;
-    private disposed = false;
-
-    constructor(host: BookstationHost) {
-        this.host = host;
-        const scheduler = host.world.scheduler;
-        if (!scheduler) throw new Error('A bookstation needs the world scheduler');
-        this.restoreTimer = new ComponentTimer(scheduler, () => this.RestoreBooks());
-        // ItemGet / ItemLose.
-        this.stopLifecycle = createRenderEffect(() => { host.container.TrackContents(); this.refresh(); });
-        const onBurnt = () => this.stopTimer();
-        this.stopWatching = prefabInstance(host.model)!.ListenForEvent('burntup', onBurnt);
-        // UpdateBookAesthetics: Show/Hide the book layers by fullness, also on every rebuilt sprite and reskin.
-        this.stopAesthetics = createRenderEffect(() => {
-            host.art?.get();
-            const count = this.bookCount.get(), animation = this.animation;
-            if (!animation) return;
-            const show = (layer: string, visible: boolean) => visible ? animation.showLayer(layer) : animation.hideLayer(layer);
-            show(BOOKS_SOME, count > 0);
-            show(BOOKS_MORE, count >= .5);
-            show(BOOKS_FULL, count >= 1);
-        });
-        this.refresh();
-    }
-
-    get restore() { return this.restoreTimer.snapshot; }
-
-    private get animation(): SpriteState { return (prefabInstance(this.host.model)!.sprite as SpriteState); }
-
-    /** ItemGet / ItemLose: start or cancel the restore task, then UpdateBookAesthetics. */
-    private refresh(): void {
-        if (this.disposed) return;
-        const { container } = this.host;
-        const hasBook = container.GetAllItems().some(item => item.hasTag('book'));
-        const running = this.restoreTimer.snapshot.peek().status === 'scheduled';
-        if (hasBook && !running) this.restoreTimer.start(BOOKSTATION_RESTORE_TIME);
-        else if (!hasBook && running) this.restoreTimer.stop();
-        this.bookCount.set(this.countBooks());
-    }
-
-    private stopTimer(): void { this.restoreTimer.stop(); }
-
-    private countBooks(): number {
-        const { container } = this.host;
-        return container.NumItems() / container.GetNumSlots();
-    }
-
-    /** RestoreBooks: +1% of the maximum uses, doubled while a bookbuilder is within range. */
-    RestoreBooks(): void {
-        if (this.disposed) return;
-        const { container, model, world } = this.host;
-        const player = world.player;
-        const nearPlayer = player.position.distanceToSquared(prefabInstance(model)!.position)
-            <= BOOKSTATION_BONUS_RANGE * BOOKSTATION_BONUS_RANGE;
-        const bonus = nearPlayer && modelHasTag(player, 'bookbuilder')
-            ? BOOKSTATION_WICKER_BONUS : 1;
-        for (const book of container.GetAllItems()) {
-            if (!book.hasTag('book') || !isBook(book.prefab)) continue;
-            const percent = book.components.finiteuses.percent.peek();
-            if (percent === undefined || percent >= 1) continue;
-            book.components.finiteuses.setPercent(percent + BOOKSTATION_RESTORE_AMOUNT * bonus, BOOK_USE_STEP);
-        }
-        // DoPeriodicTask: re-arm the next period while books remain.
-        this.refresh();
-    }
-
-    dispose(): void {
-        if (this.disposed) return;
-        this.disposed = true;
-        this.stopLifecycle();
-        this.stopAesthetics();
-        this.stopWatching?.();
-        this.restoreTimer.stop();
-    }
-}
-
-interface BookstationInstance extends PrefabInstance { bookstation?: Bookstation }
-
-function bookstationOf(model: THREE.Group): Bookstation | undefined {
-    return (prefabInstance(model)! as BookstationInstance).bookstation;
-}
-
-function onbuilt(inst: PrefabInstance): void {
-    inst.sprite.playOnce('place');
-    inst.sprite.pushAnimation('idle', false);
-    PlaySound('wickerbottom_rework/bookstation/place', inst.position);
-}
-
-function oninit({ model, instance, world, art }: AnimatedBuildingEventContext): void {
-    instance.ListenForEvent('onbuilt', () => onbuilt(instance));
-    instance.OnSave = onsaveBurnt;
-    instance.OnLoad = onloadBurnt;
-    instance.components.container!.onopenfn = onopen;
-    instance.components.container!.onclosefn = onclose;
-    const workable = addComponent(instance, 'workable', Workable);
-    workable.SetWorkAction('HAMMER');
-    workable.SetWorkLeft(4);
-    workable.SetOnWorkCallback(onworked);
-    workable.SetOnFinishCallback(onhammered);
-    addComponent(instance, 'lootdropper', LootDropper, spawnStructureLoot(instance), STRUCTURE_LOOT_RECIPES);
-    const container = instance.components.container as BuildingContainer | undefined;
-    if (!world || !container) throw new Error('A bookstation needs its container and world');
-    const entity = actionEntity(model, BOOKSTATION_ID);
-    for (const tag of ['structure', 'giftmachine']) entity.addTag(tag);
-    const prototyper = addComponent(instance, 'prototyper', Prototyper, 4 * (TILE_SIZE / 4));
-    prototyper.trees = CreateTechTree({ BOOKCRAFT: 1 });
-    prototyper.onturnon = onturnon;
-    prototyper.onturnoff = onturnoff;
-    (instance as BookstationInstance).bookstation = new Bookstation({ model, container, world, art });
-}
-
-function onturnon(inst: PrefabInstance): void {
-    if (inst.hasTag('burnt')) return;
-    if (inst.sprite.currentAnimation === 'place') inst.sprite.pushAnimation('proximity_loop', true);
-    else inst.sprite.start('proximity_loop');
-}
-
-function onturnoff(inst: PrefabInstance): void {
-    if (inst.hasTag('burnt')) return;
-    inst.sprite.start('idle');
-}
-
-function onopen(inst: PrefabInstance): void {
-    if (inst.hasTag('burnt')) return;
-    const on = inst.components.prototyper?.on === true;
-    inst.sprite.playOnce('hit');
-    inst.sprite.pushAnimation(on ? 'proximity_loop' : 'idle', on);
-    PlaySound('dontstarve/wilson/chest_open', inst.position);
-}
-
-function onclose(inst: PrefabInstance): void {
-    if (inst.hasTag('burnt')) return;
-    const on = inst.components.prototyper?.on === true;
-    inst.sprite.playOnce('hit');
-    inst.sprite.pushAnimation(on ? 'proximity_loop' : 'idle', on);
-    PlaySound('dontstarve/wilson/chest_close', inst.position);
-}
-
-function onworked(inst: PrefabInstance): void {
-    if (inst.hasTag('burnt')) return;
-    const on = inst.components.prototyper?.on === true;
-    inst.sprite.playOnce('hit');
-    inst.sprite.pushAnimation(on ? 'proximity_loop' : 'idle', on);
-}
-
-function onhammered(inst: PrefabInstance): void {
+function onhammered(inst: BookstationInstance): void {
     if (inst.components.burnable?.IsBurning()) inst.components.burnable.Extinguish();
     inst.components.container?.DropEverything(inst.position);
     inst.components.lootdropper!.DropLoot();
@@ -208,22 +50,157 @@ function onhammered(inst: PrefabInstance): void {
     inst.remove();
 }
 
-export const BOOKSTATION_DEFINITION: AnimatedBuildingDefinition = {
-    ...definitions.animatedBuildings.bookstation,
-    obstacleRadius: 0.4,
-    // MakeLargeBurnable(inst, nil, nil, true) and MakeLargePropagator.
-    burnable: { burnTime: 30, fxLevel: 4, propagator: 'large' },
-    skinInit: bookstation_init_fn,
-    oninit,
-    ondispose: ({ model, instance }) => { instance.components.prototyper?.OnRemoveFromEntity(); bookstationOf(model)?.dispose(); delete (prefabInstance(model)! as BookstationInstance).bookstation; },
-};
+function onhit(inst: BookstationInstance): void {
+    if (inst.hasTag('burnt')) return;
+    const on = inst.components.prototyper!.on;
+    inst.AnimState.PlayAnimation('hit');
+    inst.AnimState.PushAnimation(on ? 'proximity_loop' : 'idle', on);
+}
 
-export class BookstationPlacement extends AnimatedBuildingPlacement<BookstationId> {
-    constructor(
-        world: WorldContext,
-        consumeBufferedBuild: (buildId: BookstationId) => boolean,
-        onInteractionChange?: (change: AnimatedBuildingInteractionChange<BookstationId>) => void,
-    ) {
-        super(world, { [BOOKSTATION_ID]: BOOKSTATION_DEFINITION }, consumeBufferedBuild, onInteractionChange);
+/** onsave/onload, with the skin the building save shape keeps beside data.burnt. */
+function onsave(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
+    SaveBuildingSkin(inst, data);
+    onsaveBurnt(inst, data);
+}
+
+function onload(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
+    LoadBuildingSkin(inst, data);
+    onloadBurnt(inst, data);
+}
+
+/** onturnon; the craft animation's _activetask (onactivate) is not ported. */
+function onturnon(inst: BookstationInstance): void {
+    if (inst.hasTag('burnt')) return;
+    if (inst.sprite.currentAnimation === 'place') inst.AnimState.PushAnimation('proximity_loop', true);
+    else inst.AnimState.PlayAnimation('proximity_loop', true);
+    inst.SoundEmitter!.KillSound('idlesound');
+}
+
+function onturnoff(inst: BookstationInstance): void {
+    if (inst.hasTag('burnt')) return;
+    inst.AnimState.PlayAnimation('idle', true);
+    inst.SoundEmitter!.KillSound('proximity_loop');
+}
+
+function onbuilt(inst: BookstationInstance): void {
+    inst.AnimState.PlayAnimation('place');
+    inst.AnimState.PushAnimation('idle', false);
+    PlaySound('wickerbottom_rework/bookstation/place', inst.position);
+}
+
+function onopen(inst: BookstationInstance): void {
+    if (inst.hasTag('burnt')) return;
+    const on = inst.components.prototyper!.on;
+    inst.AnimState.PlayAnimation('hit');
+    inst.AnimState.PushAnimation(on ? 'proximity_loop' : 'idle', on);
+    PlaySound('dontstarve/wilson/chest_open', inst.position);
+}
+
+function onclose(inst: BookstationInstance): void {
+    if (inst.hasTag('burnt')) return;
+    const on = inst.components.prototyper!.on;
+    inst.AnimState.PlayAnimation('hit');
+    inst.AnimState.PushAnimation(on ? 'proximity_loop' : 'idle', on);
+    PlaySound('dontstarve/wilson/chest_close', inst.position);
+}
+
+/** RestoreBooks: +1% of the maximum uses, doubled while a bookbuilder is within range; the world has one player. */
+function RestoreBooks(inst: BookstationInstance): void {
+    const player = inst.worldServices?.player;
+    const wicker_bonus = player !== undefined && modelHasTag(player, 'bookbuilder')
+        && player.position.distanceToSquared(inst.position) <= BOOKSTATION_BONUS_RANGE * BOOKSTATION_BONUS_RANGE ? BOOKSTATION_WICKER_BONUS : 1;
+    for (const book of inst.components.container!.GetAllItems()) {
+        if (!book.hasTag('book') || !isBook(book.prefab)) continue;
+        const percent = book.components.finiteuses.percent.peek();
+        if (percent === undefined || percent >= 1) continue;
+        book.components.finiteuses.setPercent(percent + BOOKSTATION_RESTORE_AMOUNT * wicker_bonus, BOOK_USE_STEP);
     }
+}
+
+function CountBooks(inst: BookstationInstance): number {
+    const cmp = inst.components.container;
+    return cmp ? cmp.NumItems() / cmp.GetNumSlots() : 0;
+}
+
+function UpdateBookAesthetics(inst: BookstationInstance, countoverride?: number): void {
+    const count = countoverride ?? CountBooks(inst);
+    const show = (layer: string, visible: boolean) => visible ? inst.AnimState.Show(layer) : inst.AnimState.Hide(layer);
+    show(BOOKS_SOME, count > 0);
+    show(BOOKS_MORE, count >= .5);
+    show(BOOKS_FULL, count >= 1);
+}
+
+/** container:HasItemWithTag("book", 1); a burnt station has dropped its books and released its container. */
+const hasBook = (inst: BookstationInstance) => inst.components.container?.GetAllItems().some(item => item.hasTag('book')) ?? false;
+
+function ItemGet(inst: BookstationInstance): void {
+    if (inst.RestoreTask === undefined && hasBook(inst)) inst.RestoreTask = inst.DoPeriodicTask(BOOKSTATION_RESTORE_TIME, RestoreBooks);
+    UpdateBookAesthetics(inst);
+}
+
+function ItemLose(inst: BookstationInstance): void {
+    if (!hasBook(inst) && inst.RestoreTask !== undefined) {
+        inst.RestoreTask.Cancel();
+        inst.RestoreTask = undefined;
+    }
+    UpdateBookAesthetics(inst);
+}
+
+/**
+ * bookstation.lua fn(), as far as it is ported: no craft animation on activate, gifts, inspectable, hauntable, snow
+ * cover or lunar hail.
+ */
+function fn(world: PrefabWorldContext, sprites: SpriteResources): BookstationInstance {
+    const { fire, scheduler } = world;
+    if (!fire || !scheduler) throw new Error('A bookstation needs the world\'s fire effects and scheduler');
+    const inst = new BookstationInstance(BOOKSTATION_ID, new SpriteState({ name: 'idle', held: true, billboard: true }));
+    inst.worldServices = world;
+    inst.AddSoundEmitter();
+    // inst.AnimState: the display dresses every drawn sprite and reskin with the book layers.
+    inst.sprite.setAnimState(inst.AnimState.json, sprites.archives);
+    UpdateBookAesthetics(inst, 0);
+    inst.addTag('structure');
+    inst.addTag('giftmachine');
+
+    const prototyper = addComponent(inst, 'prototyper', Prototyper, 4 * (TILE_SIZE / 4));
+    prototyper.onturnon = onturnon;
+    prototyper.onturnoff = onturnoff;
+    prototyper.trees = CreateTechTree({ BOOKCRAFT: 1 });
+
+    inst.ListenForEvent('onbuilt', () => onbuilt(inst));
+
+    inst.OnSave = onsave;
+    inst.OnLoad = onload;
+    const container = MakeBuildingContainer(inst, BOOKSTATION_ID, world);
+    container.onopenfn = onopen;
+    container.onclosefn = onclose;
+
+    addComponent(inst, 'lootdropper', LootDropper, spawnStructureLoot(inst), STRUCTURE_LOOT_RECIPES);
+    const workable = addComponent(inst, 'workable', Workable);
+    workable.SetWorkAction('HAMMER');
+    workable.SetWorkLeft(4);
+    workable.SetOnFinishCallback(onhammered);
+    workable.SetOnWorkCallback(onhit);
+
+    // MakeLargeBurnable(inst, nil, nil, true) and MakeLargePropagator.
+    const burn = new BurnableBinding(inst, {
+        burnTime: 30, fxLevel: 4, propagator: 'large',
+        onExtinguish: () => { PlaySound('dontstarve/common/fireOut', inst.position); },
+        onBurnt: () => { DefaultBurntStructureFn(inst); burn.dispose(); },
+    }, { fire, scheduler });
+    inst.onRemove(() => burn.dispose());
+
+    // ListenForEvent("itemget", ItemGet) / ("itemlose", ItemLose): the container's slots are signals, read here as its
+    // events; with a book on the shelf ItemGet's branch applies, without one ItemLose's.
+    inst.onRemove(createRenderEffect(() => {
+        inst.components.container?.TrackContents();
+        if (hasBook(inst)) ItemGet(inst); else ItemLose(inst);
+    }));
+    return inst;
+}
+
+export function bookstationPrefabs(world: PrefabWorldContext) {
+    return { [BOOKSTATION_ID]: { ...buildingPrefab(declaration, 'bookstation', .4, (_position, sprites) => fn(world, sprites), world),
+        // MiniMapEntity:SetIcon("bookstation.png").
+        minimapIcon: 'bookstation.png' } };
 }

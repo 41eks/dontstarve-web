@@ -9,6 +9,7 @@
     "./terraform": "./src/terraform.ts",
     "./till": "./src/till.ts",
     "./eat": "./src/eat.ts",
+    "./cook": "./src/cook.ts",
     "./pick": "./src/pick.ts",
     "./reskin_tool": "./src/reskin_tool.ts",
     "./castspell": "./src/castspell.ts",

@@ -14,7 +14,6 @@ import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import { getActionString } from '../../stategraphs/src/actions';
 import definitions from '../../prefab/src/definitions.json';
 import { managedBuildings } from './managedBuildings';
-import { COOK_POT_DEFINITION } from '../../prefab/src/cook_pot';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { bindTestWorld } from './worldContentFixture';
@@ -51,7 +50,6 @@ async function setup(definition: { archive: string } = definitions.animatedBuild
   // Opening and closing clips play out only once the display has drawn the building.
   await vi.waitFor(() => expect(prefabInstance(model)!.sprite.loaded).toBe(true));
   const playOnce = vi.spyOn(animation, 'playOnce');
-  const start = vi.spyOn(animation, 'start');
   vi.spyOn(PointerRaycaster.prototype, 'pickMouseTarget').mockImplementation(() =>
     ({ object: model, point: new THREE.Vector3() }) as THREE.Intersection);
   const stategraph = new WilsonStateGraph({ playAnimation: () => .2, playSound() {}, onStateChanged() {} });
@@ -76,12 +74,12 @@ async function setup(definition: { archive: string } = definitions.animatedBuild
   const finish = () => {
     for (let frame = 0; frame < 50; frame++) placement.update(0.1);
   };
-  return { placement, model, changes, playOnce, start, distance, click, act, finish, rummage, locomotor, mouseActions };
+  return { placement, model, changes, playOnce, distance, click, act, finish, rummage, locomotor, mouseActions };
 }
 
 describe('building RUMMAGE and proximity', () => {
   it('opens the cook pot and its panel at once, and closes on RUMMAGE or leaving', async () => {
-    const { placement, distance, act, finish, changes, model, playOnce, start, mouseActions } = await setup(COOK_POT_DEFINITION, 'cookpot');
+    const { placement, distance, act, finish, changes, model, playOnce, mouseActions } = await setup(definitions.animatedBuildings.cookpot, 'cookpot');
     await distance(0);
     expect(getActionString(mouseActions.getMouseActions().left!)).toBe('打开');
     act();
@@ -95,12 +93,13 @@ describe('building RUMMAGE and proximity', () => {
     act();
     expect(changes).toHaveBeenLastCalledWith({ buildId: 'cookpot', isOpen: false, model });
     finish();
-    expect(start).toHaveBeenLastCalledWith('idle_empty');
+    // onclose: PlayAnimation("idle_empty") rests on its last frame.
+    expect(playOnce).toHaveBeenLastCalledWith('idle_empty');
     act();
     await distance(11);
     finish();
     expect(changes).toHaveBeenLastCalledWith({ buildId: 'cookpot', isOpen: false, model });
-    expect(start).toHaveBeenLastCalledWith('idle_empty');
+    expect(playOnce).toHaveBeenLastCalledWith('idle_empty');
   });
 
   it('walks a distant player into reach before the chest opens', async () => {

@@ -12,9 +12,6 @@
   "packages/prefab/src/amulet.ts": {
     "prefab-timer": 1
   },
-  "packages/prefab/src/animatedBuildingPlacement.ts": {
-    "manager": 1
-  },
   "packages/prefab/src/archive_centipede.ts": {
     "instance-method": 7,
     "prefab-timer": 2
@@ -59,10 +56,6 @@
   "packages/prefab/src/books.ts": {
     "prefab-timer": 1
   },
-  "packages/prefab/src/bookstation.ts": {
-    "manager": 1,
-    "prefab-timer": 1
-  },
   "packages/prefab/src/buildingPlacer.ts": {
     "scene": 1
   },
@@ -92,10 +85,6 @@
   },
   "packages/prefab/src/containers.ts": {
     "userdata": 1
-  },
-  "packages/prefab/src/cook_pot.ts": {
-    "manager": 1,
-    "model-keyed-state": 1
   },
   "packages/prefab/src/deciduousTreeLeaves.ts": {
     "prefab-timer": 5

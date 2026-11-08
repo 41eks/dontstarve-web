@@ -163,7 +163,6 @@
     "./turfs": "./src/turfs.ts",
     "./deployPlacer": "./src/deployPlacer.ts",
     "./deployMap": "./src/deployMap.ts",
-    "./animatedBuildingPlacement": "./src/animatedBuildingPlacement.ts",
     "./worldContext": "./src/worldContext.ts",
     "./dragonfly_chest": "./src/dragonfly_chest.ts",
     "./bookstation": "./src/bookstation.ts",

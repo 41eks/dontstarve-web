@@ -1045,4 +1045,4 @@ interface SaveParticipant<T> {
 
 这套格式先覆盖当前单人浏览器游戏，同时给未来的容器、生命值、地形修改、多人玩家和多 Shard 留出扩展位置，而不需要把运行时引擎对象泄漏进存档协议。
 
-烹饪锅可选的 `components.stewer` 保存 `{ product: "beefalofeed", phase: "cooking" | "done", remainingSeconds }`。烹饪时剩余时间在 `(0, 9.999]`，完成后为 `0`；两种状态都要求锅关闭且材料容器为空。读档恢复 `cooking_loop` 或带原版食物符号的 `idle_full`，保留实体身份、位置和锅皮肤。旧存档没有此组件时仍恢复空锅及已有材料。
+烹饪锅可选的 `components.stewer` 保存 `stewer.lua` 的 `OnSave`：烹饪中为 `{ product: "beefalofeed", remainingtime }`，完成为 `{ product, done: true }`，并可带 `ingredient_prefabs`／`chef_id`；两种状态都要求锅关闭且材料容器为空。收获后的锅只留 `ingredient_prefabs`，读档时忽略。旧的 `{ phase, remainingSeconds }` 只在读取时迁移，不再写入。读档恢复 `cooking_loop` 或带原版食物符号的 `idle_full`，保留实体身份、位置和锅皮肤。旧存档没有此组件时仍恢复空锅及已有材料。

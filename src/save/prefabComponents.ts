@@ -491,19 +491,33 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
     }
     if (keys.includes('stewer') && c.stewer !== undefined) {
       const p = `${path}.stewer`;
-      const stewer = object(c.stewer, p, ['product', 'phase', 'remainingSeconds', 'ingredient_prefabs', 'chef_id']);
-      const product = string(stewer.product, `${p}.product`);
-      const recipe = GetRecipe('cookpot', product);
-      if (!recipe) fail(`${p}.product`, 'unknown cooking product');
-      const phase = choice(stewer.phase, `${p}.phase`, ['cooking', 'done']);
-      const remainingSeconds = number(stewer.remainingSeconds, `${p}.remainingSeconds`, 0, BASE_COOK_TIME * recipe!.cooktime);
-      if ((phase === 'done' && remainingSeconds !== 0) || (phase === 'cooking' && remainingSeconds === 0)) {
-        fail(p, 'cooking needs remaining time; done needs zero remaining time');
+      // stewer.lua OnSave: the product, done, and the time left while it cooks; a harvested pot keeps only what was cooked
+      // last, which OnLoad ignores.
+      const saved = object(c.stewer, p, ['product', 'done', 'remainingtime', 'phase', 'remainingSeconds', 'ingredient_prefabs', 'chef_id']);
+      // The earlier { phase, remainingSeconds } shape migrates on read and is no longer written.
+      const stewer = { ...saved };
+      if (saved.phase !== undefined || saved.remainingSeconds !== undefined) {
+        if (saved.done !== undefined || saved.remainingtime !== undefined) fail(p, 'mixes the stewer save shapes');
+        const done = choice(saved.phase, `${p}.phase`, ['cooking', 'done']) === 'done';
+        stewer.done = done ? true : undefined;
+        stewer.remainingtime = done ? undefined : saved.remainingSeconds;
       }
-      if (components.container?.slots.length) {
-        fail(p, 'cooking and full pots must have no ingredients');
+      if (stewer.product === undefined) {
+        if (stewer.done !== undefined || stewer.remainingtime !== undefined) fail(p, 'cooking state requires a product');
+        components.stewer = {};
+      } else {
+        const product = string(stewer.product, `${p}.product`);
+        const recipe = GetRecipe('cookpot', product);
+        if (!recipe) fail(`${p}.product`, 'unknown cooking product');
+        if (stewer.done !== undefined && stewer.done !== true) fail(`${p}.done`, 'expected true');
+        const done = stewer.done === true;
+        if (done === (stewer.remainingtime !== undefined)) fail(p, 'cooking needs remaining time; done has none');
+        if (components.container?.slots.length) {
+          fail(p, 'cooking and full pots must have no ingredients');
+        }
+        components.stewer = done ? { product, done: true }
+          : { product, remainingtime: number(stewer.remainingtime, `${p}.remainingtime`, 0, BASE_COOK_TIME * recipe!.cooktime) };
       }
-      components.stewer = { product, phase, remainingSeconds };
       if (stewer.ingredient_prefabs !== undefined) {
         if (!Array.isArray(stewer.ingredient_prefabs) || stewer.ingredient_prefabs.length !== containerDefinition!.slotCount) fail(`${p}.ingredient_prefabs`, 'expected the cooked ingredients');
         components.stewer.ingredient_prefabs = (stewer.ingredient_prefabs as unknown[]).map((value, index) => string(value, `${p}.ingredient_prefabs[${index}]`));

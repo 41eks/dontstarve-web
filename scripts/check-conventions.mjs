@@ -240,8 +240,7 @@ function check(file, source, prefabClasses, report) {
     // manager
     if (ts.isClassDeclaration(node) && node.name) {
       const name = node.name.text, base = node.heritageClauses?.[0]?.types[0]?.expression.getText(source) ?? '';
-      if ((/Manager$/.test(name) && name !== 'PrefabEntityManager') || /(^|\.)(AnimatedBuildingPlacement|PrefabEntityManager)$/.test(base)
-        || name === 'AnimatedBuildingPlacement') add('manager', node.name, name);
+      if ((/Manager$/.test(name) && name !== 'PrefabEntityManager') || /(^|\.)PrefabEntityManager$/.test(base)) add('manager', node.name, name);
     }
     if (ts.isNewExpression(node) && node.expression.getText(source) === 'PrefabEntityManager') add('manager', node, 'new PrefabEntityManager in a prefab module');
     // manager-prefab-branch

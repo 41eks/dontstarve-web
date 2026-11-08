@@ -5,7 +5,10 @@ import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createAnimatedSpriteSource } from '../src/sprite';
 import { createStaticSpriteFactory } from '../src/wallSprite';
-import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
+import { PrefabDisplayGroup, SpriteResources, SpriteState } from '../../display/src';
+import { BuildingPlacer } from '../../prefab/src/buildingPlacer';
+import { buildingPlacer } from '../../prefab/src/building';
+import { PrefabEntityManager, PrefabInstance } from '../../prefab/src/prefabInstance';
 import { WALL_DEFINITIONS } from '../../prefab/src/walls';
 import { WallPlacement } from '../../prefab/src/wallPlacement';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
@@ -59,6 +62,34 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+/** A building's build flow as the application wires it: its placer, and the shared manager that spawns what it builds. */
+function buildingFlow(world: WorldContext, consume: () => boolean, onbuilt: () => void) {
+  const declaration = { archive: 'building.zip', name: 'Building', buildLabel: 'building', skinArchives: { selected_skin: 'dynamic/selected_skin.zip' } };
+  const displays = new PrefabDisplayGroup(world.scene), sprites = new SpriteResources();
+  const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, undefined, {}, { building: {
+    fn: () => {
+      const inst = new PrefabInstance('building', new SpriteState({ name: 'idle', billboard: true }));
+      inst.ListenForEvent('onbuilt', onbuilt);
+      return inst;
+    },
+    source: sprites.animated(declaration.archive, {}, { name: declaration.name }), skins: declaration.skinArchives, alignBottom: true,
+  } });
+  const placer = new BuildingPlacer<'building'>(world, () => buildingPlacer(declaration), consume,
+    (buildId, position, skinId) => { prefabs.spawn(buildId, position, undefined, skinId).PushEvent('onbuilt', undefined); });
+  let disposed = false;
+  return {
+    begin: (buildId: 'building', skinId?: string) => placer.begin(buildId, skinId),
+    spawn: (buildId: 'building') => { prefabs.spawn(buildId, placer.groundInFrontOfPlayer()); },
+    exportRecords: () => prefabs.exportRecords(),
+    get renderEntities() { return [...displays.renderEntities, ...placer.renderEntities]; },
+    dispose() {
+      if (disposed) return;
+      disposed = true;
+      placer.dispose(); prefabs.dispose(); displays.dispose(); sprites.dispose();
+    },
+  };
+}
+
 function setup(kind: 'animated' | 'wall') {
   const cursor = { hidden: true };
   const canvas = new EventTarget();
@@ -90,13 +121,7 @@ function setup(kind: 'animated' | 'wall') {
   const consume = vi.fn(() => store.takeBuffered('building') || store.takeItem('building'));
   const onbuilt = vi.fn();
   const placement = kind === 'animated'
-    ? new AnimatedBuildingPlacement(world, {
-      building: {
-        archive: 'building.zip', name: 'Building', buildLabel: 'building',
-        skinArchives: { selected_skin: 'dynamic/selected_skin.zip' },
-        oninit: ({ instance }) => { instance.ListenForEvent('onbuilt', onbuilt); },
-      },
-    }, consume)
+    ? buildingFlow(world, consume, onbuilt)
     : new WallPlacement(world, {
       building: { ...WALL_DEFINITIONS.wall_stone, archive: 'wall.zip', name: 'Wall', buildLabel: 'wall', frontImageIndex: 14, sideImageIndex: 4 },
     }, consume);
