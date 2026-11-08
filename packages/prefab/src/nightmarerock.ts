@@ -22,7 +22,8 @@ export interface NightmareRockWorld {
   scheduler: GameTimeScheduler;
   /** AllPlayers. */
   getPlayers(): readonly NightmareRockPlayer[];
-  fx: { spawn(prefab: WorldFxPrefab, position: ReadonlyVector3): void };
+  /** SpawnPrefab(prefab) placed at `position`, for the sanity_raise / sanity_lower fx. */
+  spawnPrefab(prefab: WorldFxPrefab, position: ReadonlyVector3): PrefabInstance;
 }
 
 // nightmarerock.lua constants, DST units converted to scene units.
@@ -40,8 +41,8 @@ export function isNightmareRockId(value: string): value is NightmareRockId {
 
 /**
  * nightmarerock.lua's fields on the inst: rises while a player of the matching sanity is near, lowers when none is. The
- * callbacks are this module's functions, registered by `commonfn`; the AnimState and SpawnPrefab calls SGnightmarerock
- * makes are the stategraph's adapters below.
+ * callbacks are this module's functions, registered by `commonfn`; the AnimState calls SGnightmarerock makes are the
+ * stategraph's adapter below.
  */
 export class NightmareRockInstance extends PrefabInstance implements NightmareRockStateInst {
   active = false;
@@ -64,7 +65,6 @@ export class NightmareRockInstance extends PrefabInstance implements NightmareRo
     this.sprite.playOnce(name, () => this.sg?.pushEvent('animover'));
   }
   declare SoundEmitter: SoundEmitter;
-  spawnFx(prefab: 'sanity_raise' | 'sanity_lower'): void { this.world.fx.spawn(prefab, this.position); }
 }
 
 /** updatephysics: characters collide only with a raised, revealed rock. */

@@ -116,7 +116,7 @@ it('settles a sanityrock transition on sleep and restores its stategraph pose an
   vi.spyOn(Math, 'random').mockReturnValue(0);
   const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), awake = createSignal(true), physics = new CANNON.World();
   const player = { position: new THREE.Vector3(12, 0, 6), sanity: { IsSane: () => true, IsInsane: () => false } };
-  const manager = nightmareRockWorld(scene, { scheduler, getPlayers: () => [player], fx: { spawn: vi.fn() } },
+  const manager = nightmareRockWorld(scene, { scheduler, getPlayers: () => [player] },
     { physics, tickingarea: () => createMemo(() => awake.get()) });
   try {
     const rock = manager.spawn('sanityrock', new THREE.Vector3(12, 0, 6)), model = rock.transform.model;

@@ -1266,7 +1266,7 @@ export async function createSceneEntities(
 
   function registerNightmareRocks(registry: EntityRegistry, prefabId: 'sanityrock', worldState: SceneWorldState) {
     prefabs.register(nightmareRockPrefabs({
-      scheduler: scheduler ?? worldState.scheduler, fx: Managers['world_fx'],
+      scheduler: scheduler ?? worldState.scheduler, spawnPrefab: (prefab, position) => prefabs.spawn(prefab, position),
       // AllPlayers: the local player, once its sanity component is attached.
       getPlayers: () => playerInstance.components.sanity
         ? [{ position: player.position, sanity: playerInstance.components.sanity }] : [],

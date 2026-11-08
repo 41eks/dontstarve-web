@@ -35,8 +35,8 @@ async function setup() {
   const sanity = new Sanity({ components: { inventory: { GetEquippedItem: () => null } }, hasTag: () => false } as never, 200);
   const current = sanity;
   const player = { position: new THREE.Vector3(100, 0, 0), sanity };
-  const fx = { spawn: vi.fn() };
-  const manager = nightmareRockWorld(new THREE.Scene(), { scheduler, fx, getPlayers: () => [player] }, { physics });
+  const manager = nightmareRockWorld(new THREE.Scene(), { scheduler, getPlayers: () => [player] }, { physics });
+  const fx = manager.spawnPrefab;
   const run = (seconds: number) => {
     for (let elapsed = 0; elapsed < seconds; elapsed += 1 / 30) { scheduler.advance(1 / 30); manager.update(1 / 30); }
   };
@@ -49,8 +49,8 @@ describe('nightmare rocks', () => {
     vi.spyOn(Math, 'random').mockReturnValue(.5);
     const scheduler = new GameTimeScheduler(), physics = new CANNON.World(), scene = new THREE.Scene();
     const player = { position: new THREE.Vector3(), sanity: { IsSane: () => true, IsInsane: () => false } };
-    const fx = { spawn: vi.fn() };
-    const manager = nightmareRockWorld(scene, { scheduler, fx, getPlayers: () => [player] }, { physics });
+    const manager = nightmareRockWorld(scene, { scheduler, getPlayers: () => [player] }, { physics });
+    const fx = manager.spawnPrefab;
     try {
       const instance = manager.spawn('sanityrock', new THREE.Vector3());
       const neighbour = manager.spawn('sanityrock', new THREE.Vector3(6, 0, 0));
@@ -74,13 +74,15 @@ describe('nightmare rocks', () => {
       expect(manager.exportRecords().map(({ record }) => record.id)).toEqual([neighbour.entityId]);
       await neighbourDisplay.artLoaded();
       scheduler.advance(.6);
-      expect(fx.spawn).toHaveBeenCalledOnce();
-      expect(fx.spawn).toHaveBeenCalledWith('sanity_raise', neighbour.position);
+      // SpawnPrefab("sanity_raise").Transform:SetPosition(inst.Transform:GetWorldPosition())
+      expect(fx).toHaveBeenCalledOnce();
+      expect(fx).toHaveBeenCalledWith('sanity_raise', neighbour.position);
+      expect(fx.mock.results[0].value.position.toArray()).toEqual(neighbour.position.toArray());
       expect(neighbour.active).toBe(true);
       expect(neighbour.sprite.loaded).toBe(true);
       manager.dispose();
       scheduler.advance(10);
-      expect(fx.spawn).toHaveBeenCalledOnce();
+      expect(fx).toHaveBeenCalledOnce();
       expect(physics.bodies).toEqual([]);
       expect(scene.children).toEqual([]);
     } finally { manager.dispose(); scheduler.dispose(); }
@@ -98,7 +100,7 @@ describe('nightmare rocks', () => {
 
     player.position.set(20, 0, 0);
     run(2);
-    expect(fx.spawn).toHaveBeenCalledWith('sanity_raise', expect.anything());
+    expect(fx).toHaveBeenCalledWith('sanity_raise', expect.anything());
     expect(obelisk.active).toBe(true);
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(body.collisionResponse).toBe(true);
@@ -111,7 +113,7 @@ describe('nightmare rocks', () => {
     expect(obelisk.active).toBe(true);
     player.position.set(40, 0, 0);
     run(3);
-    expect(fx.spawn).toHaveBeenCalledWith('sanity_lower', expect.anything());
+    expect(fx).toHaveBeenCalledWith('sanity_lower', expect.anything());
     expect(obelisk.active).toBe(false);
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(body.collisionResponse).toBe(false);
@@ -149,7 +151,7 @@ describe('nightmare rocks', () => {
     const world = (position: THREE.Vector3) => {
       const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), physics = new CANNON.World(), inventory = createInventoryStore([]);
       const player = { position, sanity: { IsSane: () => true, IsInsane: () => false } };
-      const rocks = nightmareRockWorld(scene, { scheduler, fx: { spawn: vi.fn() }, getPlayers: () => [player] }, { physics });
+      const rocks = nightmareRockWorld(scene, { scheduler, getPlayers: () => [player] }, { physics });
       const registry = new EntityRegistry([], rocks.prefabs, () => position);
       registry.registerPrefabs(PREFAB_DEFINITIONS.nightmareRocks);
       const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
