@@ -5,9 +5,9 @@ import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { withEntity } from './entityFixture';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { ResearchLabPlacement, RESEARCH_LAB_IDS } from '../../prefab/src/scienceprototyper';
+import { RESEARCH_LAB_IDS } from '../../prefab/src/scienceprototyper';
+import { managedBuildings } from './managedBuildings';
 import type { WorldContext } from '../../prefab/src/worldContext';
-import type { TransientSpriteAnimationController } from '../src/sprite';
 import { Builder } from '../../componets/src/builder';
 import { actionEntity, FindEntities } from '../../prefab/src/actionEntity';
 import { WORLD_SCALE } from '../../prefab/src/standardcomponents';
@@ -15,6 +15,19 @@ import { PlaySound } from '../../prefab/src/sound';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { reskinEntity } from '../../prefab/src/reskin_tool';
 import { workTargets } from './workTargets';
+import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import { FireFxHost } from '../../prefab/src/treeFire';
+import { PrefabDisplayGroup } from '../../display/src';
+import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
+import { createSignal } from '../../signals/src';
+import { InventoryStore } from '../../inventory/src';
+import { executeDebugCommand } from '../../../src/debugCommands';
+import { EntityRegistry } from '../../../src/entityRegistry';
+import { PlaceableBuildingPlacement } from '../../../src/placeableBuilding';
+import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
+import { SAVE_CATALOG } from '../../../src/save/catalog';
+import { deserializeSave } from '../../../src/save/deserialize';
+import { serializeSave } from '../../../src/save/serialize';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}),
   PlaySound: vi.fn(() => ({ stop: vi.fn(), isPlaying: () => true })) }));
@@ -33,25 +46,26 @@ async function setup(id: typeof RESEARCH_LAB_IDS[number], skinId?: string) {
   const world = { scene, fx, player: new THREE.Object3D(), camera: new THREE.PerspectiveCamera(),
     ground: new THREE.Group(), renderer: { domElement: new EventTarget() }, dropLoot } as unknown as WorldContext;
   world.player.position.set(100, 0, 100);
-  const placement = new ResearchLabPlacement(world, () => true);
+  const placement = managedBuildings(world);
   const model = placement.spawnFromSave(id, {
     id: `test_${id}`, transform: { position: [3, 0, 4], rotationY: 0 },
     components: { building: { ...(skinId ? { skinId } : {}) } },
-  });
+  }) as THREE.Group;
   const builder = new Builder(actionEntity(withEntity(world.player as THREE.Group, 'waxwell'), 'waxwell'), {
     findEntities: (...args) => FindEntities(...args), researchMachineDistance: 4 * WORLD_SCALE,
   });
-  const animation = () => prefabInstance(model)!.sprite as TransientSpriteAnimationController;
+  const animation = () => prefabInstance(model)!.sprite;
+  const reskinTarget = () => findActionEntity(model)!.reskinTarget!;
   const finish = () => { for (let i = 0; i < 80; i++) { placement.update(1 / 30); fx.update(1 / 30, world.camera.quaternion); } };
   // The display loads the lab art; standalone collapse effects load from their own shared owner.
   await vi.waitFor(() => expect(animation().loaded).toBe(true));
-  return { placement, model, world, fx, animation, finish, dropLoot, builder };
+  return { placement, model, world, fx, animation, finish, dropLoot, builder, reskinTarget };
 }
 
 it.each(['researchlab'] as const)('%s fires hit/finish callbacks once and removes its record on hit four', async (id) => {
-  const { placement, model, world, fx, animation, finish, dropLoot, builder } = await setup(id);
+  const { placement, model, world, fx, animation, finish, dropLoot, builder, reskinTarget } = await setup(id);
   try {
-    const target = workTargets('HAMMER')[0];
+    const target = workTargets('HAMMER')[0], reskin = reskinTarget();
     const before = placement.exportRecords();
     // Frame geometry changes with the clip, so observe the release rather than one frame's geometry.
     const disposeGeometry = vi.spyOn(THREE.BufferGeometry.prototype, 'dispose');
@@ -69,11 +83,14 @@ it.each(['researchlab'] as const)('%s fires hit/finish callbacks once and remove
     expect(dropLoot.mock.calls.every(([, position]) => position.equals(new THREE.Vector3(3, 0, 4)))).toBe(true);
     expect(PlaySound).toHaveBeenCalledTimes(2);
     expect(PlaySound).toHaveBeenCalledWith('dontstarve/common/destroy_wood', new THREE.Vector3(3, 0, 4));
+    // The display leaves the scene in its status effect, after the entity's removal.
+    expect(prefabInstance(model)!.isRemoved).toBe(true);
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(model.parent).toBeNull();
     expect(disposeGeometry).toHaveBeenCalled();
     expect(target.isValid()).toBe(false);
     expect(workTargets('HAMMER')).toEqual([]);
-    expect(placement.reskinTargets).toEqual([]);
+    expect(reskinEntity(reskin)).toBe(false);
     expect(placement.exportRecords()).toEqual([]);
     const effect = world.scene.children.find((model) => model.name === 'collapse_small')!;
     expect(prefabInstance(effect)!.persists).toBe(false);
@@ -91,7 +108,7 @@ it.each(['researchlab'] as const)('%s fires hit/finish callbacks once and remove
 });
 
 it('preserves work through reskinning and restores proximity after hits', async () => {
-  const { placement, model, world, fx, animation, finish, dropLoot, builder } = await setup('researchlab2', 'researchlab2_pod');
+  const { placement, model, world, fx, animation, finish, dropLoot, builder, reskinTarget } = await setup('researchlab2', 'researchlab2_pod');
   try {
     world.player.position.copy(model.position);
     builder.EvaluateTechTrees();
@@ -101,12 +118,15 @@ it('preserves work through reskinning and restores proximity after hits', async 
     finish();
     expect(animation().currentAnimation).toBe('proximity_loop');
     const prototyper = (findActionEntity(model)?.components ?? prefabInstance(model)!.components).prototyper;
-    expect(reskinEntity(placement.reskinTargets[0])).toBe(true);
+    expect(reskinEntity(reskinTarget())).toBe(true);
     expect((findActionEntity(model)?.components ?? prefabInstance(model)!.components).prototyper).toBe(prototyper);
     expect(prototyper.on).toBe(true);
     for (let i = 0; i < 2; i++) { workTargets('HAMMER')[0].work(); finish(); }
     expect(dropLoot).not.toHaveBeenCalled();
     workTargets('HAMMER')[0].work();
+    // The display leaves the scene in its status effect, after the entity's removal.
+    expect(prefabInstance(model)!.isRemoved).toBe(true);
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(model.parent).toBeNull();
     expect(dropLoot).toHaveBeenCalled();
     const effect = world.scene.children[0];
@@ -122,8 +142,8 @@ it('preserves work through reskinning and restores proximity after hits', async 
 });
 
 it('queues magic station transitions across reskinning, then rebuilds transient use state on load', async () => {
-  const { placement, model, world, animation, builder } = await setup('researchlab3');
-  let restored: ResearchLabPlacement | undefined;
+  const { placement, model, world, animation, builder, reskinTarget } = await setup('researchlab3');
+  let restored: ReturnType<typeof managedBuildings> | undefined;
   try {
     world.player.position.copy(actionEntity(model, 'researchlab3').getPosition());
     placement.update(0);
@@ -132,7 +152,7 @@ it('queues magic station transitions across reskinning, then rebuilds transient 
     expect(animation().currentAnimation).toBe('proximity_pre');
     const component = (findActionEntity(model)?.components ?? prefabInstance(model)!.components).prototyper;
     const sound = vi.mocked(PlaySound).mock.results.at(-1)!.value;
-    expect(reskinEntity(placement.reskinTargets[0])).toBe(true);
+    expect(reskinEntity(reskinTarget())).toBe(true);
     expect((findActionEntity(model)?.components ?? prefabInstance(model)!.components).prototyper).toBe(component);
     for (let i = 0; i < 300; i++) placement.update(1 / 30);
     expect(animation().currentAnimation).toBe('proximity_loop');
@@ -148,8 +168,8 @@ it('queues magic station transitions across reskinning, then rebuilds transient 
     expect(animation().currentAnimation).toBe('idle');
     placement.dispose();
 
-    restored = new ResearchLabPlacement(world, () => true);
-    const loaded = await restored.spawnFromSave('researchlab3', record);
+    restored = managedBuildings(world);
+    const loaded = restored.spawnFromSave('researchlab3', record) as THREE.Group;
     expect((findActionEntity(loaded)?.components ?? prefabInstance(loaded)!.components).prototyper.on).toBe(false);
     world.player.position.copy(actionEntity(loaded, 'researchlab3').getPosition());
     builder.EvaluateTechTrees();
@@ -163,13 +183,49 @@ it('queues magic station transitions across reskinning, then rebuilds transient 
     expect(idlesound.stop).toHaveBeenCalledOnce();
     expect(lab.components.prototyper).toBeUndefined();
     restored.dispose();
-    restored = new ResearchLabPlacement(world, () => true);
-    const burnt = await restored.spawnFromSave('researchlab3', { ...record,
-      components: { ...record.components, building: { ...record.components.building!, burnt: true } } });
+    restored = managedBuildings(world);
+    const burnt = restored.spawnFromSave('researchlab3', { ...record,
+      components: { ...record.components, building: { ...record.components.building!, burnt: true } } }) as THREE.Group;
     builder.EvaluateTechTrees();
     expect((findActionEntity(burnt)?.components ?? prefabInstance(burnt)!.components).prototyper).toBeUndefined();
     expect(actionEntity(burnt, 'researchlab3').hasTag('prototyper')).toBe(false);
     expect(builder.current_prototyper).toBeUndefined();
     expect(builder.accessible_tech_trees.peek().MAGIC).toBe(0);
   } finally { builder.dispose(); placement.dispose(); restored?.dispose(); }
+});
+
+it('c_spawn then c_save reloads a research lab as a prototyper in the building save shape', async () => {
+  const scheduler = new GameTimeScheduler(), fire = FireFxHost.create();
+  const registryFor = () => {
+    const scene = new THREE.Scene(), displays = new PrefabDisplayGroup(scene);
+    const world = { scene, player: new THREE.Object3D(), ground: new THREE.Group(), camera: new THREE.PerspectiveCamera(),
+      cameraFacing: createSignal(8), cameraHeading: createSignal(45), renderer: { domElement: new EventTarget() }, scheduler, fire,
+      createCursorLabel: () => ({ show() {}, hide() {}, update() {} }) } as unknown as WorldContext;
+    const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', {});
+    const placement = new PlaceableBuildingPlacement(world, () => true, undefined, prefabs);
+    const registry = new EntityRegistry([], prefabs);
+    registry.register(PREFAB_DEFINITIONS.buildings, {
+      restore: (id, record) => placement.spawnFromSave(id, record), debugSpawn: id => placement.spawn(id),
+      exportRecords: () => placement.exportRecords(), dispose: () => placement.dispose(),
+    });
+    return { registry, prefabs, dispose: () => { registry.dispose(); prefabs.dispose(); displays.dispose(); } };
+  };
+  const first = registryFor(), restored = registryFor(), inventory = new InventoryStore([], SAVE_CATALOG.items);
+  try {
+    expect((await executeDebugCommand('c_spawn("researchlab4")', inventory, prefab => first.registry.spawn(prefab))).ok).toBe(true);
+    const template = deserializeSave(await readFile(new URL('../../../public/saves/initial-world.json', import.meta.url), 'utf8'), SAVE_CATALOG);
+    let exported = '';
+    expect((await executeDebugCommand('c_save()', inventory, undefined, () => {
+      exported = serializeSave(template, { entities: { ...template.world.entities, ...first.registry.exportRecords() },
+        inventory: inventory.exportState(), playerTransform: { position: [0, 0, 0], rotationY: 0 }, elapsedSeconds: 0 }, SAVE_CATALOG);
+    })).ok).toBe(true);
+    const records = deserializeSave(exported, SAVE_CATALOG).world.entities.researchlab4;
+    expect(records).toHaveLength(1);
+    expect(records[0].components).toEqual({ building: {} });
+    await restored.registry.restoreAll({ researchlab4: records });
+    expect(restored.registry.exportRecords().researchlab4).toEqual(records);
+    const [lab] = restored.prefabs.instances('researchlab4');
+    expect(lab.hasTag('level4')).toBe(true);
+    expect(lab.components.prototyper!.GetTechTrees().MAGIC).toBe(2);
+  } finally { first.dispose(); restored.dispose(); inventory.dispose(); fire.dispose(); scheduler.dispose(); }
 });

@@ -91,9 +91,9 @@ export {
 } from './tile';
 export {
   RESEARCH_LAB_IDS,
-  RESEARCH_LAB_DEFINITIONS,
   RESEARCH_LAB_SKIN_ARCHIVES,
-  ResearchLabPlacement,
+  RESEARCH_LAB_PLACERS,
+  researchLabPrefabs,
   isResearchLabId,
   type ResearchLabId,
 } from './scienceprototyper';

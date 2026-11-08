@@ -10,7 +10,7 @@ import { createPrefabEntity, prefabInstance } from '../../prefab/src/prefabInsta
 import { itemAt, ItemWorldFixture } from './itemWorldFixture';
 import { createPickupInventory } from './pickupFixture';
 import { SpriteResources } from '../../display/src/spriteResources';
-import { RESEARCH_LAB_DEFINITIONS } from '../../prefab/src/scienceprototyper';
+import definitions from '../../prefab/src/definitions.json';
 
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
 const fetchAsset = async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url)));
@@ -80,7 +80,7 @@ it('uses the latest json skin while paused, reuses loaded art, and ignores a loa
 });
 
 it('applies a layered factory skin without resetting the clip, progress, callback or private appearance', async () => {
-  const definition = RESEARCH_LAB_DEFINITIONS.researchlab2;
+  const definition: import('../../prefab/src/building').BuildingDeclaration = definitions.animatedBuildings.researchlab2;
   const resources = new SpriteResources();
   const { instance, display } = createPrefabEntity('researchlab2', resources.factory({
     animationArchive: definition.archive, buildArchive: definition.buildArchive ?? definition.archive,

@@ -13,7 +13,8 @@ import { setSpriteEntityRenderOrder } from '../src/renderOrder';
 import definitions from '../../prefab/src/definitions.json' with { type: 'json' };
 import { AnimatedBuildingPlacement, type AnimatedBuildingDefinition } from '../../prefab/src/animatedBuildingPlacement';
 import { COOK_POT_DEFINITION } from '../../prefab/src/cook_pot';
-import { RESEARCH_LAB_DEFINITIONS } from '../../prefab/src/scienceprototyper';
+import { findActionEntity } from '../../prefab/src/actionEntity';
+import { managedBuildings } from './managedBuildings';
 import { createMemo, createSignal } from '../../signals/src';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
@@ -24,10 +25,22 @@ import { reskinEntity } from '../../prefab/src/reskin_tool';
 const prefabIds = [
   'cookpot', 'researchlab2', 'researchlab4',
 ] as const;
-const buildingDefinitions = {
+const buildingDefinitions: Record<typeof prefabIds[number], Pick<AnimatedBuildingDefinition, 'idleAnimation' | 'skinInit' | 'skinArchives'
+  | 'skinSymbols' | 'baseSymbols' | 'skinAnimationBanks'>> = {
   cookpot: COOK_POT_DEFINITION,
-  ...RESEARCH_LAB_DEFINITIONS,
+  researchlab2: definitions.animatedBuildings.researchlab2,
+  researchlab4: definitions.animatedBuildings.researchlab4,
 };
+
+/** The research labs as the application wires them: PlaceableBuildingPlacement over the shared PrefabEntityManager. */
+function labWorld(extra: Partial<Record<keyof WorldContext, unknown>> = {}) {
+  vi.stubGlobal('window', new EventTarget());
+  vi.stubGlobal('document', { createElement: () => ({ setAttribute: vi.fn(), style: {} }), body: { appendChild: vi.fn() } });
+  const world = { scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(),
+    camera: new THREE.PerspectiveCamera(), renderer: { domElement: new EventTarget() }, ...extra } as unknown as WorldContext;
+  return { world, buildings: managedBuildings(world) };
+}
+const reskinTarget = (model: THREE.Object3D) => findActionEntity(model)!.reskinTarget!;
 // One plain build; the tests below exercise symbol-only and layered skins.
 const cases = [{ prefabId: 'cookpot', skinId: 'cookpot_candy', archive: 'dynamic/cookpot_candy.zip' }] as const;
 
@@ -49,7 +62,7 @@ afterEach(() => {
 });
 
 function options(prefabId: typeof prefabIds[number], skinId: string) {
-  const definition: AnimatedBuildingDefinition = buildingDefinitions[prefabId];
+  const definition = buildingDefinitions[prefabId];
   const skin = definition.skinInit?.(skinId);
   return {
     initialAnimation: definition.idleAnimation ?? 'idle',
@@ -122,14 +135,10 @@ describe('DST building skins', () => {
   });
 
   it('draws only the researchlab4 hat from its skin build and swaps it on reskin', async () => {
-    vi.stubGlobal('window', new EventTarget());
-    vi.stubGlobal('document', { createElement: () => ({ setAttribute: vi.fn(), style: {} }), body: { appendChild: vi.fn() } });
-    const world = { scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(),
-      camera: new THREE.PerspectiveCamera(), renderer: { domElement: new EventTarget() } } as unknown as WorldContext;
-    const placement = new AnimatedBuildingPlacement(world, { researchlab4: RESEARCH_LAB_DEFINITIONS.researchlab4 }, () => true);
+    const { buildings } = labWorld();
     try {
-      const model = await placement.spawnFromSave('researchlab4', { id: 'lab:hat', transform: { position: [3, 0, 4], rotationY: 0 },
-        components: { building: { skinId: 'researchlab4_chef' } } });
+      const model = buildings.spawnFromSave('researchlab4', { id: 'lab:hat', transform: { position: [3, 0, 4], rotationY: 0 },
+        components: { building: { skinId: 'researchlab4_chef' } } }) as THREE.Group;
       const lab = prefabInstance(model)!, sprite = lab.sprite;
       // researchlab4_init_fn: OverrideItemSkinSymbol("machine_hat", build_name, "machine_hat", GUID, "researchlab4"), no SetSkin,
       // declared as the skin's only symbol like moondial's basin.
@@ -146,11 +155,11 @@ describe('DST building skins', () => {
       dispose(base);
 
       // Reskinning swaps the hat's build: researchlab4_clear_fn, then the next skin's init_fn.
-      expect(reskinEntity(placement.reskinTargets[0])).toBe(true);
+      expect(reskinEntity(reskinTarget(model))).toBe(true);
       expect(lab.skinId).not.toBe('researchlab4_chef');
       await prefabDisplay(model)!.artLoaded();
       expect(meshOf(model).geometry.drawRange.count).toBe(baseCount);
-    } finally { placement.dispose(); }
+    } finally { buildings.dispose(); }
   });
 
   it('uses the merchant animation bank and merges the pod FX bank into its main mesh', async () => {
@@ -188,7 +197,7 @@ describe('DST building skins', () => {
     } as unknown as WorldContext;
     const skinId = recipeSkins[prefabId][0].id;
     const consume = vi.fn(() => true);
-    const definition = buildingDefinitions[prefabId];
+    const definition = COOK_POT_DEFINITION;
     const skinInit = definition.skinInit ? vi.fn(definition.skinInit) : undefined;
     const placement = new AnimatedBuildingPlacement(world, { [prefabId]: { ...definition, skinInit } }, consume);
     vi.spyOn(PointerRaycaster.prototype, 'trackPointer').mockImplementation(() => {});
@@ -212,13 +221,9 @@ describe('DST building skins', () => {
   });
 
   it('commits skins through the json without replacing the sprite and rejects a removed target', async () => {
-    vi.stubGlobal('window', new EventTarget());
-    vi.stubGlobal('document', { createElement: () => ({ setAttribute: vi.fn(), style: {} }), body: { appendChild: vi.fn() } });
-    const world = { scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(),
-      camera: new THREE.PerspectiveCamera(), renderer: { domElement: new EventTarget() } } as unknown as WorldContext;
-    const placement = new AnimatedBuildingPlacement(world, { researchlab4: RESEARCH_LAB_DEFINITIONS.researchlab4 }, () => true);
-    const model = placement.spawnFromSave('researchlab4', { id: 'lab:signal', transform: { position: [3, 0, 4], rotationY: 0 },
-      components: { building: {} } });
+    const { buildings } = labWorld();
+    const model = buildings.spawnFromSave('researchlab4', { id: 'lab:signal', transform: { position: [3, 0, 4], rotationY: 0 },
+      components: { building: {} } }) as THREE.Group;
     await prefabDisplay(model)!.artLoaded();
     const signal = prefabInstance(model)!.sprite.skinId;
     const changes: unknown[] = [];
@@ -229,17 +234,17 @@ describe('DST building skins', () => {
     expect(meshOf(model)).toBe(originalMesh);
     expect(changes).toEqual([]);
 
-    expect(reskinEntity(placement.reskinTargets[0])).toBe(true);
+    expect(reskinEntity(reskinTarget(model))).toBe(true);
     expect(changes).toEqual([signal.peek()]);
     expect(signal.peek()).toBeDefined();
     await prefabDisplay(model).artLoaded();
     expect(meshOf(model)).toBe(originalMesh);
     expect(disposeOldGeometry).not.toHaveBeenCalled();
-    expect(placement.exportRecords()[0].record).toMatchObject({ id: 'lab:signal',
+    expect(buildings.exportRecords()[0].record).toMatchObject({ id: 'lab:signal',
       transform: { position: [3, 0, 4], rotationY: 0 }, components: { building: { skinId: signal.peek() } } });
-    const removed = placement.reskinTargets[0];
+    const removed = reskinTarget(model);
     const disposeCurrent = vi.spyOn(meshOf(model).geometry, 'dispose');
-    placement.dispose();
+    buildings.dispose();
     expect(reskinEntity(removed)).toBe(false);
     expect(disposeCurrent).toHaveBeenCalledOnce();
     expect(changes).toHaveLength(1);
@@ -247,15 +252,10 @@ describe('DST building skins', () => {
   });
 
   it('releases a building sprite outside the tickingarea and reloads its logical animation and skin', async () => {
-    vi.stubGlobal('window', new EventTarget());
-    vi.stubGlobal('document', { createElement: () => ({ setAttribute: vi.fn(), style: {} }), body: { appendChild: vi.fn() } });
     const awake = createSignal(true);
-    const world = { scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(),
-      camera: new THREE.PerspectiveCamera(), renderer: { domElement: new EventTarget() },
-      tickingarea: () => createMemo(() => awake.get()) } as unknown as WorldContext;
-    const placement = new AnimatedBuildingPlacement(world, { researchlab4: RESEARCH_LAB_DEFINITIONS.researchlab4 }, () => true);
-    const model = placement.spawnFromSave('researchlab4', { id: 'lab:resident', transform: { position: [3, 0, 4], rotationY: 0 },
-      components: { building: {} } });
+    const { world, buildings } = labWorld({ tickingarea: () => createMemo(() => awake.get()) });
+    const model = buildings.spawnFromSave('researchlab4', { id: 'lab:resident', transform: { position: [3, 0, 4], rotationY: 0 },
+      components: { building: {} } }) as THREE.Group;
     const meshes = () => { let count = 0; model.traverse(object => { if (object instanceof THREE.Mesh) count++; }); return count; };
     const tick = () => new Promise(resolve => setTimeout(resolve, 0));
     await prefabDisplay(model)!.artLoaded();
@@ -271,7 +271,7 @@ describe('DST building skins', () => {
     const animation = instance.sprite;
     animation.start('proximity_loop');
     expect(animation.currentAnimation).toBe('proximity_loop');
-    expect(reskinEntity(placement.reskinTargets[0])).toBe(true);
+    expect(reskinEntity(reskinTarget(model))).toBe(true);
     const skinId = prefabInstance(model)!.sprite.skinId.peek();
     expect(meshes()).toBe(0);
 
@@ -281,8 +281,8 @@ describe('DST building skins', () => {
     expect(model.parent).toBe(world.scene);
     expect(prefabInstance(model)!.sprite).toBe(animation);
     expect(animation.currentAnimation).toBe('proximity_loop');
-    expect(placement.exportRecords()[0].record).toMatchObject({ components: { building: { skinId } } });
-    placement.dispose();
+    expect(buildings.exportRecords()[0].record).toMatchObject({ components: { building: { skinId } } });
+    buildings.dispose();
     expect(meshes()).toBe(0);
   });
 });

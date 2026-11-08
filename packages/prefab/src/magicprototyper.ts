@@ -2,12 +2,17 @@ import { LootDropper } from '../../componets/src/lootdropper';
 import { addComponent } from './components';
 import { Workable } from '../../componets/src/workable';
 import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
-import type { PrefabInstance } from './prefabInstance';
+import { SpriteState } from '@dontstarve-web/display';
+import { PrefabInstance } from './prefabInstance';
 import definitions from './definitions.json' with { type: 'json' };
-import type { AnimatedBuildingDefinition } from './animatedBuildingPlacement';
+import { buildingPlacer, buildingPrefab, LoadBuildingSkin, SaveBuildingSkin, type BuildingDeclaration } from './building';
 import { Prototyper } from '../../componets/src/prototyper';
 import { CreateTechTree, type TechTree } from '../../componets/src/techtree';
-import { onloadBurnt, onsaveBurnt, WORLD_SCALE } from './standardcomponents';
+import { DefaultBurntStructureFn, onloadBurnt, onsaveBurnt, WORLD_SCALE } from './standardcomponents';
+import type { PlacementSaveRecord } from './saveRecord';
+import { PlaySound } from './sound';
+import { BurnableBinding } from './treeFire';
+import type { PrefabWorldContext } from './worldContext';
 
 export type MagicPrototyperId = 'researchlab3' | 'researchlab4';
 
@@ -25,12 +30,25 @@ function onhit(inst: PrefabInstance): void {
     inst.sprite.pushAnimation(on ? 'proximity_loop' : 'idle', on);
 }
 
+/** onsave/onload, with the skin the building save shape keeps beside data.burnt. */
+function onsave(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
+    SaveBuildingSkin(inst, data);
+    onsaveBurnt(inst, data);
+}
+
+function onload(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
+    LoadBuildingSkin(inst, data);
+    onloadBurnt(inst, data);
+}
+
 /**
  * magicprototyper.lua createmachine(level, name, soundprefix, sounddelay, techtree, mergeanims, onact). The use animation,
  * its sounds, onact (spawnrabbits) and the delayed place sound are not ported.
  */
 function createmachine(level: 3 | 4, name: MagicPrototyperId, soundprefix: 'lvl3' | 'lvl4', techtree: Readonly<TechTree>,
-    mergeanims: boolean): AnimatedBuildingDefinition {
+    mergeanims: boolean) {
+    const declaration: BuildingDeclaration = definitions.animatedBuildings[name];
+
     function onturnon(inst: PrefabInstance): void {
         if (inst.hasTag('burnt')) return;
         const anim = inst.sprite;
@@ -63,7 +81,11 @@ function createmachine(level: 3 | 4, name: MagicPrototyperId, soundprefix: 'lvl3
         inst.sprite.pushAnimation('idle', false);
     }
 
-    function fn(inst: PrefabInstance): void {
+    function fn(world: PrefabWorldContext): PrefabInstance {
+        const { fire, scheduler } = world;
+        if (!fire || !scheduler) throw new Error(`A ${name} needs the world's fire effects and scheduler`);
+        const inst = new PrefabInstance(name, new SpriteState({ name: 'idle', billboard: true }));
+        inst.worldServices = world;
         inst.AddSoundEmitter();
         inst.addTag('structure');
         inst.addTag(`level${level}`);
@@ -82,21 +104,27 @@ function createmachine(level: 3 | 4, name: MagicPrototyperId, soundprefix: 'lvl3
         workable.SetOnFinishCallback(onhammered);
         workable.SetOnWorkCallback(onhit);
 
-        inst.OnSave = onsaveBurnt;
-        inst.OnLoad = onloadBurnt;
+        // MakeLargeBurnable(inst, nil, nil, true) and MakeLargePropagator.
+        const burn = new BurnableBinding(inst, {
+            burnTime: 30, fxLevel: 4, propagator: 'large',
+            onExtinguish: () => { PlaySound('dontstarve/common/fireOut', inst.position); },
+            onBurnt: () => { DefaultBurntStructureFn(inst); burn.dispose(); },
+        }, { fire, scheduler });
+        inst.onRemove(() => burn.dispose());
+
+        inst.OnSave = onsave;
+        inst.OnLoad = onload;
+        return inst;
     }
 
     return {
-        ...definitions.animatedBuildings[name], obstacleRadius: .4,
-        // MakeLargeBurnable(inst, nil, nil, true) and MakeLargePropagator.
-        burnable: { burnTime: 30, fxLevel: 4, propagator: 'large' },
-        // AnimatedBuildingPlacement creates the entity; fn assembles it.
-        oninit: ({ instance }) => fn(instance),
+        placer: buildingPlacer(declaration),
+        prefab: (world: PrefabWorldContext) => buildingPrefab(declaration, name, .4, () => fn(world), world),
     };
 }
 
 /** TUNING.PROTOTYPER_TREES.SHADOWMANIPULATOR / PRESTIHATITATOR. */
-export const MAGIC_PROTOTYPER_DEFINITIONS: Readonly<Record<MagicPrototyperId, AnimatedBuildingDefinition>> = {
+export const MAGIC_PROTOTYPERS = {
     researchlab3: createmachine(3, 'researchlab3', 'lvl3', { MAGIC: 3 }, true),
     researchlab4: createmachine(4, 'researchlab4', 'lvl4', { MAGIC: 2 }, false),
-};
+} as const;

@@ -7,11 +7,7 @@ import {
     AnimatedBuildingPlacement,
     type AnimatedBuildingInteractionChange,
 } from '@dontstarve-web/prefab/animatedBuildingPlacement';
-import {
-    RESEARCH_LAB_DEFINITIONS,
-    RESEARCH_LAB_IDS,
-    type ResearchLabId,
-} from '@dontstarve-web/prefab/scienceprototyper';
+import { RESEARCH_LAB_PLACERS, researchLabPrefabs } from '@dontstarve-web/prefab/scienceprototyper';
 import { TREASURE_CHEST_ID, TREASURE_CHEST_PLACER, treasureChestPrefabs } from '@dontstarve-web/prefab/treasurechest';
 import {
     WallsPlacement,
@@ -49,13 +45,13 @@ export { TREASURE_CHEST_ID } from '@dontstarve-web/prefab/treasurechest';
 
 export { TENT_ID } from '@dontstarve-web/prefab/tent';
 
-export type AnimatedBuildingId = CookPotId | ResearchLabId | BookstationId;
+export type AnimatedBuildingId = CookPotId | BookstationId;
 /** Buildings declared on the shared PrefabEntityManager; the rest move here as they migrate. */
 const MANAGED_BUILDING_PLACERS = { [WARDROBE_ID]: WARDROBE_PLACER, [CAMPFIRE_ID]: CAMPFIRE_PLACER, [NIGHT_LIGHT_ID]: NIGHT_LIGHT_PLACER, [PIG_HOUSE_ID]: PIG_HOUSE_PLACER,
     [TREASURE_CHEST_ID]: TREASURE_CHEST_PLACER, [PANDORAS_CHEST_ID]: PANDORAS_CHEST_PLACER, [ICE_BOX_ID]: ICE_BOX_PLACER, [DRAGONFLY_CHEST_ID]: DRAGONFLY_CHEST_PLACER, [SALT_BOX_ID]: SALT_BOX_PLACER,
     ...MUSHROOM_LIGHT_PLACERS, [FIRE_PIT_ID]: FIRE_PIT_PLACER, [TENT_ID]: TENT_PLACER, [MOONBASE_ID]: MOONBASE_PLACER, [MOONDIAL_ID]: MOONDIAL_PLACER,
     [SCULPTING_TABLE_ID]: SCULPTING_TABLE_PLACER, [WINTEROMETER_ID]: WINTEROMETER_PLACER, [LIGHTNING_ROD_ID]: LIGHTNING_ROD_PLACER, ...STICK_HEAD_PLACERS,
-    [BIRDCAGE_ID]: BIRDCAGE_PLACER } as const;
+    [BIRDCAGE_ID]: BIRDCAGE_PLACER, ...RESEARCH_LAB_PLACERS } as const;
 export type ManagedBuildingId = keyof typeof MANAGED_BUILDING_PLACERS;
 const isManagedBuildingId = (value: string): value is ManagedBuildingId => Object.hasOwn(MANAGED_BUILDING_PLACERS, value);
 export type PlaceableBuildingId = AnimatedBuildingId | ManagedBuildingId | WallId | FenceId;
@@ -63,13 +59,11 @@ export type PlaceableBuildingInteractionChange = AnimatedBuildingInteractionChan
 
 const ANIMATED_BUILDING_IDS: readonly AnimatedBuildingId[] = [
     COOK_POT_ID,
-    ...RESEARCH_LAB_IDS,
     BOOKSTATION_ID,
 ];
 
 const ANIMATED_BUILDING_DEFINITIONS = {
     [COOK_POT_ID]: COOK_POT_DEFINITION,
-    ...RESEARCH_LAB_DEFINITIONS,
     [BOOKSTATION_ID]: BOOKSTATION_DEFINITION,
 } as const;
 
@@ -102,7 +96,7 @@ export class PlaceableBuildingPlacement {
         prefabs.register({ ...wardrobePrefabs(services), ...campfirePrefabs(services), ...nightLightPrefabs(services), ...pigHousePrefabs(services),
             ...treasureChestPrefabs(services), ...pandorasChestPrefabs(services), ...iceBoxPrefabs(services), ...dragonflyChestPrefabs(services), ...saltBoxPrefabs(services), ...mushroomLightPrefabs(services), ...firePitPrefabs(services),
             ...tentPrefabs(services), ...moonbasePrefabs(services), ...moondialPrefabs(services), ...sculptingTablePrefabs(services), ...winterometerPrefabs(services),
-            ...lightningRodPrefabs(services), ...stickHeadPrefabs(services), ...birdcagePrefabs(services) });
+            ...lightningRodPrefabs(services), ...stickHeadPrefabs(services), ...birdcagePrefabs(services), ...researchLabPrefabs(services) });
         this.animated = new AnimatedBuildingPlacement<AnimatedBuildingId>(
             world,
             ANIMATED_BUILDING_DEFINITIONS,

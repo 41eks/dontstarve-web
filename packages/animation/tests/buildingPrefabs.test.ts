@@ -8,7 +8,7 @@ import { CAMPFIRE_ID } from '../../prefab/src/campfire';
 import { NIGHT_LIGHT_ID } from '../../prefab/src/nightlight';
 import { PIG_HOUSE_ID } from '../../prefab/src/pighouse';
 import { PrefabEntityManager, PrefabInstance, prefabInstance } from '../../prefab/src/prefabInstance';
-import { buildingPlacer, buildingPrefab } from '../../prefab/src/building';
+import { RESEARCH_LAB_PLACERS } from '../../prefab/src/scienceprototyper';
 import { SpriteResources } from '../../display/src/spriteResources';
 import { reskinEntity } from '../../prefab/src/reskin_tool';
 import type { WorldContext } from '../../prefab/src/worldContext';
@@ -66,9 +66,10 @@ it('builds through its placer in the selected skin, and onbuilt plays the placin
 });
 
 it('declares a building\'s base symbols and skin animation banks on the spawned entity and its placer', async () => {
-  const displays = new PrefabDisplayGroup(new THREE.Scene()), resources = new SpriteResources('/dst/data/anim');
-  const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', {});
-  cleanups.push(() => { prefabs.dispose(); displays.dispose(); resources.dispose(); });
+  const world = { scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(), camera: new THREE.PerspectiveCamera(),
+    renderer: { domElement: new EventTarget() } } as unknown as WorldContext;
+  const buildings = managedBuildings(world), resources = new SpriteResources('/dst/data/anim');
+  cleanups.push(() => { buildings.dispose(); resources.dispose(); });
   // researchlab2 keeps its shadow FX symbols from the base build; researchlab2_pod adds its pod FX bank.
   const declaration = definitions.animatedBuildings.researchlab2, skinId = 'researchlab2_pod';
   const expected = { symbols: undefined, baseSymbols: declaration.baseSymbols, animationBanks: declaration.skinAnimationBanks };
@@ -76,16 +77,14 @@ it('declares a building\'s base symbols and skin animation banks on the spawned 
     const skin = entity.sprite.sprite.peek().appearance.get('skin');
     return skin?.kind === 'skin' && { symbols: skin.skin.symbols, baseSymbols: skin.skin.baseSymbols, animationBanks: skin.skin.animationBanks };
   };
-  prefabs.register({ researchlab2: buildingPrefab(declaration, 'researchlab2', .4,
-    () => new PrefabInstance('researchlab2', new SpriteState({ name: 'idle', billboard: true })), {}) });
-  const lab = prefabs.spawn('researchlab2', new THREE.Vector3(), undefined, skinId);
+  const lab = buildings.prefabs.spawn('researchlab2', new THREE.Vector3(), undefined, skinId);
   expect(declared(lab)).toEqual(expected);
   await prefabDisplay(lab.transform.model)!.artLoaded();
   const material = lab.transform.model.getObjectByProperty('isMesh', true) as THREE.Mesh;
   expect((material.material as THREE.Material[]).map(({ name }) => name)).toContain(`sprite:${skinId}`);
 
   const preview = new PrefabInstance('researchlab2_placer', new SpriteState({ name: 'idle', billboard: true }));
-  buildingPlacer(declaration).art(resources, skinId).initialize!(preview);
+  RESEARCH_LAB_PLACERS.researchlab2.art(resources, skinId).initialize!(preview);
   expect(declared(preview)).toEqual(expected);
 });
 
@@ -159,7 +158,8 @@ it('draws the moved animated buildings through their archive or controller art, 
   const buildings = managedBuildings(world);
   cleanups.push(() => { buildings.dispose(); content.unbind(); scheduler.dispose(); });
   // tent, lightning_rod and the heads draw from the shared archive; the rest through a controller for their AnimState.
-  const ids = ['tent', 'lightning_rod', 'pighead', 'mermhead', 'winterometer', 'moondial', 'sculptingtable', 'birdcage', 'moonbase'] as const;
+  const ids = ['tent', 'lightning_rod', 'pighead', 'mermhead', 'winterometer', 'moondial', 'sculptingtable', 'birdcage', 'moonbase',
+    'researchlab', 'researchlab2', 'researchlab3', 'researchlab4'] as const;
   for (const [index, id] of ids.entries()) {
     const declaration: { archive: string; buildArchive?: string; skinArchives?: Record<string, string> } = definitions.animatedBuildings[id];
     const [skinId] = Object.keys(declaration.skinArchives ?? {});

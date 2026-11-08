@@ -188,8 +188,9 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
     if (clip.percent !== undefined) {
       sprite.playOnce(clip.name);
       sprite.setFrame(Math.min(Math.floor(clip.percent * sprite.frameCount), sprite.frameCount - 1));
-    } else if (clip.loop) sprite.start(clip.name);
-    else if (clip.finished) { sprite.playOnce(clip.name); sprite.setFrame(sprite.frameCount - 1); }
+    } else if (clip.loop) {
+      if (this.queue.length) this.playPass(clip, sprite); else sprite.start(clip.name);
+    } else if (clip.finished) { sprite.playOnce(clip.name); sprite.setFrame(sprite.frameCount - 1); }
     else sprite.playOnce(clip.name, () => {
       if (this.clip !== clip) return;
       clip.finished = true;
@@ -199,6 +200,11 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
     });
     if (clip.frame !== undefined) sprite.setFrame(clip.frame);
     this.applyPaused();
+  }
+
+  /** A looping clip with something queued behind it plays to the end of its pass, then the queue advances. */
+  private playPass(clip: Clip, sprite: ArchiveSprite): void {
+    sprite.playOnce(clip.name, () => { if (this.clip === clip) this.advanceQueue(); });
   }
 
   /** A percent pose holds still on its own; the entity's pause holds whatever clip plays. */
@@ -252,8 +258,19 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
   }
   /** AnimState:PushAnimation waits for the current one-shot, then plays the next clip. */
   pushAnimation(name: string, loop = false): void {
+    const waiting = this.queue.length > 0;
     this.queue.push({ name, loop });
-    if (!this.sprite && !this.loading) this.settle();
+    const { sprite, clip } = this;
+    if (!sprite) { if (!this.loading) this.settle(); return; }
+    if (waiting) return;
+    // A finished one-shot has nothing left to wait for; a loop finishes the pass it is drawing.
+    if (clip.finished && !clip.none) this.advanceQueue();
+    else if (clip.loop && clip.percent === undefined) {
+      const frame = sprite.frame;
+      this.playPass(clip, sprite);
+      sprite.setFrame(frame);
+      this.applyPaused();
+    }
   }
   private advanceQueue(): void {
     const next = this.queue.shift();
