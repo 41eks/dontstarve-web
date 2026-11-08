@@ -68,7 +68,7 @@ export class Pickable implements PickableComponent {
   wildfirestarter = false;
   remove_when_picked = false;
   /** pickable.lua onpickedfn(inst, picker, loot), called after the constructor's onPicked. */
-  onpickedfn?: (inst: PickableInst, picker: unknown, loot: unknown) => void;
+  onpickedfn?: { call(inst: PickableInst, picker: unknown, loot: unknown): void }['call'];
   /** Prefabs retaining an original item provide it instead of spawning a product copy. */
   getProductEntity?: () => ItemEntity | undefined;
   get productEntity(): ItemEntity | undefined { return this.getProductEntity?.(); }
