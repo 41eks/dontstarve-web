@@ -220,13 +220,13 @@ it('c_spawn and c_save keep a hill whose child is outside, which reclaims that m
 
 it('day sleep clears sniff at frame 1, plays only the sleep event and keeps captured moles silent', async () => {
   const f = await fixture(true), mole = f.mole(); mole.brain.Stop(); mole.setAbove(); mole.sg.goToState('idle');
-  const played = vi.spyOn(mole, 'playSound'), stopped = vi.spyOn(mole, 'killSound');
-  f.scheduler.advance(1 / 30); expect(played).toHaveBeenCalledWith('sniff', 'sniff');
+  const played = vi.spyOn(mole.SoundEmitter, 'PlaySound'), stopped = vi.spyOn(mole.SoundEmitter, 'KillSound');
+  f.scheduler.advance(1 / 30); expect(played).toHaveBeenCalledWith('dontstarve_DLC001/creatures/mole/sniff', 'sniff');
   mole.PushEvent('gotosleep'); f.scheduler.advance(1 / 30);
   expect(stopped).toHaveBeenCalledWith('sniff'); expect(stopped).toHaveBeenCalledWith('stunned');
   played.mockClear();
   f.scheduler.advance(f.lengths.get('sleep_pre')!); expect(mole.sg.stateName).toBe('sleeping');
-  f.scheduler.advance(28 / 30); expect(played.mock.calls.map(call => call[0])).toEqual(['sleep']);
+  f.scheduler.advance(28 / 30); expect(played.mock.calls.map(call => call[0])).toEqual(['dontstarve_DLC001/creatures/mole/sleep']);
   const owner = { address: { containerId: 'player:inventory', slotKey: '0' }, changed() {}, remove: () => true, replace: () => false, PushEvent() {} };
   mole.entity.components.inventoryitem.owner = owner; mole.entity.PushEvent('onputininventory', owner);
   played.mockClear(); f.scheduler.advance(10);

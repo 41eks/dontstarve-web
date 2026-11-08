@@ -1,6 +1,7 @@
 import { ActionHandler, EventHandler, FRAMES, StateGraphInstance, TimeEvent, type StateDefinition } from './stategraph';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { LocoMotor } from '../../componets/src/locomotor';
+import type { SoundEmitter } from '../../prefab/src/soundEmitter';
 
 export type LightFlierState = 'idle' | 'action' | 'startled' | 'go_home' | 'walk_start' | 'walk' | 'walk_stop' |
   'hit' | 'death' | 'sleep' | 'sleeping' | 'wake' | 'frozen' | 'thaw' | 'electrocute';
@@ -17,7 +18,7 @@ export interface LightFlierStateInst {
   wakeUp(): void;
   enableBuzz(enabled: boolean): void;
   land(landed: boolean): void;
-  playSound(name: 'hit' | 'death'): void;
+  readonly SoundEmitter: Pick<SoundEmitter, 'PlaySound' | 'KillSound'>;
   dropDeathLoot(): void;
 }
 const over = (next: LightFlierState, queue = false) => [EventHandler<LightFlierStateInst, LightFlierState>(queue ? 'animqueueover' : 'animover', sg => sg.goToState(next))];
@@ -34,9 +35,12 @@ const states: StateDefinition<LightFlierStateInst, LightFlierState>[] = [
   { name: 'walk', tags: ['moving', 'canrotate'], onenter: sg => { sg.context.locomotor.WalkForward(); sg.context.playAnimation('walk_loop', true); } },
   { name: 'walk_stop', tags: ['canrotate'], onenter: sg => { sg.context.locomotor.StopMoving(); sg.context.pushAnimation('walk_pst'); }, events: over('idle', true) },
   { name: 'hit', tags: ['hit', 'busy'], onenter: sg => { sg.context.locomotor.StopMoving(); sg.context.playAnimation('hit_2'); },
-    timeline: [TimeEvent(FRAMES, sg => sg.context.playSound('hit'))], events: over('idle') },
+    timeline: [TimeEvent(FRAMES, sg => sg.context.SoundEmitter.PlaySound('grotto/creatures/light_bug/hit'))], events: over('idle') },
   { name: 'death', tags: ['busy'], onenter: sg => { sg.context.locomotor.StopMoving(); sg.context.clearBufferedAction(); sg.context.playAnimation('death'); sg.context.dropDeathLoot(); },
-    timeline: [TimeEvent(FRAMES, sg => { sg.context.enableBuzz(false); sg.context.playSound('death'); })] },
+    timeline: [TimeEvent(FRAMES, sg => {
+      sg.context.SoundEmitter.KillSound('loop');
+      sg.context.SoundEmitter.PlaySound('grotto/creatures/light_bug/death');
+    })] },
   { name: 'sleep', tags: ['busy', 'sleeping', 'nowake'], onenter: sg => { sg.context.locomotor.StopMoving(); sg.context.playAnimation('sleep_pre'); },
     events: [EventHandler('animover', sg => sg.goToState(sg.context.isSleeping() ? 'sleeping' : 'wake'))] },
   { name: 'sleeping', tags: ['busy', 'sleeping'], onenter: sg => { sg.context.playAnimation('sleep_loop'); sg.context.enableBuzz(false); sg.context.land(true); },

@@ -10,6 +10,7 @@ import {
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import type { RezSource } from './player_common';
 import type { SoundEventPath } from './sound';
+import type { SoundEmitter } from './soundEmitter';
 import { TILE_SIZE } from './tile';
 import { Transform } from './transform';
 
@@ -43,6 +44,9 @@ export interface PortalWorld {
 export class PortalInstance extends PrefabInstance implements MultiplayerPortalStateInst, RezSource {
   readonly fx: PrefabInstance;
   declare sg: ReturnType<typeof createMultiplayerPortalStateGraph>;
+  declare SoundEmitter: SoundEmitter;
+  /** inst.sounds = MOONROCK_SOUNDS (moonrock_master_postinit). */
+  readonly sounds = MOONROCK_SOUNDS;
 
   constructor(world: PortalWorld, position: ReadonlyVector3) {
     super(PORTAL_ID, new SpriteState({ name: 'idle_loop', billboard: true }), Transform.stationary());
@@ -101,12 +105,6 @@ export class PortalInstance extends PrefabInstance implements MultiplayerPortalS
     this.sprite.playOnce(name, () => this.animover());
   }
 
-  playSound(sound: MultiplayerPortalSound, id?: string): void {
-    const path = MOONROCK_SOUNDS[sound];
-    if (path !== undefined && (id === undefined || !this.SoundEmitter!.PlayingSound(id))) this.SoundEmitter!.PlaySound(path, id);
-  }
-
-  killSound(id: string): void { this.SoundEmitter!.KillSound(id); }
 
   private animover(): void {
     if (this.sprite.loaded && !this.isRemoved) this.sg.pushEvent('animover');

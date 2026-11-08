@@ -3,8 +3,8 @@ import { SpriteState } from '@dontstarve-web/display';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { ComponentTimer } from '../../componets/src/timer';
-import { NightmareRockStateGraph, type NightmareRockSound, type NightmareRockStateInst } from '../../stategraphs/src/SGnightmarerock';
-import { PlaySound } from './sound';
+import { NightmareRockStateGraph, type NightmareRockStateInst } from '../../stategraphs/src/SGnightmarerock';
+import type { SoundEmitter } from './soundEmitter';
 import { MakeObstaclePhysics, WORLD_SCALE } from './standardcomponents';
 import type { WorldFxPrefab } from './world_fx';
 import { COLLISION } from '../../componets/src/physicsState';
@@ -40,8 +40,8 @@ export function isNightmareRockId(value: string): value is NightmareRockId {
 
 /**
  * nightmarerock.lua's fields on the inst: rises while a player of the matching sanity is near, lowers when none is. The
- * callbacks are this module's functions, registered by `commonfn`; the AnimState, SoundEmitter and SpawnPrefab calls
- * SGnightmarerock makes are the stategraph's adapters below.
+ * callbacks are this module's functions, registered by `commonfn`; the AnimState and SpawnPrefab calls SGnightmarerock
+ * makes are the stategraph's adapters below.
  */
 export class NightmareRockInstance extends PrefabInstance implements NightmareRockStateInst {
   active = false;
@@ -63,10 +63,8 @@ export class NightmareRockInstance extends PrefabInstance implements NightmareRo
   playAnimation(name: string): void {
     this.sprite.playOnce(name, () => this.sg?.pushEvent('animover'));
   }
-  playSound(path: NightmareRockSound): void { PlaySound(path, this.position); }
+  declare SoundEmitter: SoundEmitter;
   spawnFx(prefab: 'sanity_raise' | 'sanity_lower'): void { this.world.fx.spawn(prefab, this.position); }
-  Hide(): void { this.sprite.setVisible(false); }
-  Show(): void { this.sprite.setVisible(true); }
 }
 
 /** updatephysics: characters collide only with a raised, revealed rock. */
@@ -140,6 +138,7 @@ function ConcealForMinigame(inst: NightmareRockInstance, conceal: boolean): void
 /** commonfn(tags); MakeObstaclePhysics and updatephysics come from the prefab's `physics`. */
 function commonfn(world: NightmareRockWorld, id: NightmareRockId): NightmareRockInstance {
   const inst = new NightmareRockInstance(id, new SpriteState({ name: 'idle_inactive', billboard: true }));
+  inst.AddSoundEmitter();
   inst.world = world;
   inst.addTag('antlion_sinkhole_blocker');
   inst.addTag(id);

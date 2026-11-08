@@ -1,6 +1,7 @@
 import { EventHandler, State, StateGraphInstance } from './stategraph.ts';
 import type { StateDefinition } from './stategraph.ts';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import type { SoundEmitter } from '../../prefab/src/soundEmitter';
 
 export type NightmareRockStateName = 'idle' | 'raise' | 'lower' | 'conceal' | 'concealed' | 'reveal';
 export type NightmareRockSound = 'dontstarve/sanity/shadowrock_up' | 'dontstarve/sanity/shadowrock_down'
@@ -13,12 +14,13 @@ export interface NightmareRockStateInst {
   readonly conceal_queued: boolean;
   /** AnimState:PlayAnimation; a non-looping animation pushes `animover` to the stategraph when it ends. */
   playAnimation(name: string): void;
-  playSound(path: NightmareRockSound): void;
+  readonly SoundEmitter: Pick<SoundEmitter, 'PlaySound'>;
   /** SpawnPrefab("sanity_raise" | "sanity_lower") at the rock. */
   spawnFx(prefab: 'sanity_raise' | 'sanity_lower'): void;
   /** inst:OnActiveStateChanged(), a field the prefab assigns: called with the inst. */
   OnActiveStateChanged(inst: NightmareRockStateInst): void;
   OnConcealStateChanged(inst: NightmareRockStateInst): void;
+  /** EntityScript:Hide() / Show() */
   Hide(): void;
   Show(): void;
 }
@@ -39,7 +41,7 @@ const states: StateDefinition<NightmareRockStateInst, NightmareRockStateName>[] 
       const inst = sg.context;
       inst.OnActiveStateChanged(inst);
       inst.playAnimation('raise');
-      inst.playSound('dontstarve/sanity/shadowrock_up');
+      inst.SoundEmitter.PlaySound('dontstarve/sanity/shadowrock_up');
       inst.spawnFx('sanity_raise');
     },
     events: [EventHandler('animover', sg => {
@@ -54,7 +56,7 @@ const states: StateDefinition<NightmareRockStateInst, NightmareRockStateName>[] 
       const inst = sg.context;
       inst.OnActiveStateChanged(inst);
       inst.playAnimation('lower');
-      inst.playSound('dontstarve/sanity/shadowrock_down');
+      inst.SoundEmitter.PlaySound('dontstarve/sanity/shadowrock_down');
       inst.spawnFx('sanity_lower');
     },
     events: [EventHandler('animover', sg => sg.goToState(concealedOrQueued(sg.context) ? 'conceal' : 'idle'))],
@@ -67,11 +69,11 @@ const states: StateDefinition<NightmareRockStateInst, NightmareRockStateName>[] 
       inst.OnConcealStateChanged(inst);
       if (fromRaise) {
         inst.playAnimation('lower_to_conceal');
-        inst.playSound('dontstarve/sanity/shadowrock_down');
+        inst.SoundEmitter.PlaySound('dontstarve/sanity/shadowrock_down');
         inst.spawnFx('sanity_lower');
       } else {
         inst.playAnimation('conceal');
-        inst.playSound('dontstarve/sanity/shadowrock_conseal');
+        inst.SoundEmitter.PlaySound('dontstarve/sanity/shadowrock_conseal');
       }
     },
     events: [EventHandler('animover', sg => sg.goToState(sg.context.conceal_queued ? 'concealed' : 'reveal'))],
@@ -88,7 +90,7 @@ const states: StateDefinition<NightmareRockStateInst, NightmareRockStateName>[] 
     onenter: sg => {
       sg.context.OnConcealStateChanged(sg.context);
       sg.context.playAnimation('reveal');
-      sg.context.playSound('dontstarve/sanity/shadowrock_reveal');
+      sg.context.SoundEmitter.PlaySound('dontstarve/sanity/shadowrock_reveal');
     },
     events: [EventHandler('animover', sg => sg.goToState(sg.context.conceal_queued ? 'conceal' : 'idle'))],
   }),
