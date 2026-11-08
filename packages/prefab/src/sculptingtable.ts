@@ -49,9 +49,9 @@ function playsound(inst: SculptingTableInstance, path: SoundEventPath): void {
     inst._sounds.add(PlaySound(path, inst.position));
 }
 
-function onhammered(inst: PrefabInstance): void {
+function onhammered(inst: SculptingTableInstance): void {
     inst.components.lootdropper!.DropLoot();
-    const { pickable } = (inst as SculptingTableInstance).components;
+    const { pickable } = inst.components;
     if (pickable.canInteractWith && pickable.product) inst.components.lootdropper!.SpawnLootPrefab(pickable.product);
     inst.worldServices?.fx?.collapse?.('small', inst.position, 'wood');
     inst.remove();
@@ -71,9 +71,8 @@ function onbuilt(inst: SculptingTableInstance): void {
 }
 
 /** onitemtaken: the pickable stops being interactable and the block disappears. */
-function onitemtaken(entity: unknown): void {
-    const inst = entity as SculptingTableInstance;
-    const pickable = inst.components.pickable!;
+function onitemtaken(inst: SculptingTableInstance): void {
+    const { pickable } = inst.components;
     if (pickable.canInteractWith) {
         pickable.canInteractWith = false;
         playsound(inst, ITEM_SOUND);
@@ -84,7 +83,7 @@ function onitemtaken(entity: unknown): void {
 
 /** giveitem: the block becomes pickable and shows the offered material. */
 function giveitem(inst: SculptingTableInstance, itemname: SculptableMaterial): void {
-    const pickable = inst.components.pickable!;
+    const { pickable } = inst.components;
     pickable.SetUp(itemname, HELD_ITEM_REGEN_TIME);
     pickable.pause();
     if (!pickable.canInteractWith) {
@@ -106,37 +105,35 @@ function abletoaccepttest(inst: SculptingTableInstance, item: TradeItem): TradeA
     return isSculptableMaterial(item.prefab) ? { ok: true } : { ok: false, reason: 'NOTSCULPTABLE' };
 }
 
-function onturnon(inst: PrefabInstance): void {
+function onturnon(inst: SculptingTableInstance): void {
     if (inst.hasTag('burnt')) return;
     if (inst.sprite.currentAnimation === 'place' || inst.sprite.currentAnimation === 'proximity_loop') {
         inst.sprite.pushAnimation('proximity_loop', true);
     } else inst.sprite.start('proximity_loop');
-    const table = inst as SculptingTableInstance;
-    table._loop?.stop();
-    table._loop = PlaySound('dontstarve/common/together/sculpting_table/proximity_LP', inst.position);
+    inst._loop?.stop();
+    inst._loop = PlaySound('dontstarve/common/together/sculpting_table/proximity_LP', inst.position);
 }
 
-function onturnoff(inst: PrefabInstance): void {
+function onturnoff(inst: SculptingTableInstance): void {
     if (inst.hasTag('burnt')) return;
     inst.sprite.pushAnimation('idle', false);
-    const table = inst as SculptingTableInstance;
-    table._loop?.stop();
-    table._loop = undefined;
+    inst._loop?.stop();
+    inst._loop = undefined;
 }
 
 /** onsave: data.itemname = caninteractwith and product or nil. The pickable's own record stays out of the save. */
-function onsave(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
+function onsave(inst: SculptingTableInstance, data: PlacementSaveRecord['components']): void {
     SaveBuildingSkin(inst, data);
     delete (data as { pickable?: unknown }).pickable;
-    const { pickable } = (inst as SculptingTableInstance).components;
+    const { pickable } = inst.components;
     if (pickable.canInteractWith && pickable.product) data.sculptingtable = { itemname: pickable.product };
 }
 
 /** onload: giveitem restores the held block. */
-function onload(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
+function onload(inst: SculptingTableInstance, data: PlacementSaveRecord['components']): void {
     LoadBuildingSkin(inst, data);
     const itemname = data.sculptingtable?.itemname;
-    if (itemname !== undefined && isSculptableMaterial(itemname)) giveitem(inst as SculptingTableInstance, itemname);
+    if (itemname !== undefined && isSculptableMaterial(itemname)) giveitem(inst, itemname);
 }
 
 function OnRemoveEntity(inst: SculptingTableInstance): void {
