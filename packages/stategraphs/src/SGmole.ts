@@ -2,6 +2,8 @@ import { ActionHandler, EventHandler, FRAMES, StateGraphInstance, TimeEvent, typ
 import type { BufferedAction } from './bufferedaction';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { LocoMotor } from '../../componets/src/locomotor';
+import type { SoundEmitter } from '../../prefab/src/soundEmitter';
+import type { SoundEventPath } from '../../prefab/src/sound';
 
 export type MoleState = 'idle' | 'enter' | 'peek' | 'exit' | 'steal_pre_under' | 'steal_pre_above' | 'steal' |
   'walk_pre' | 'walk' | 'walk_pst' | 'gohome' | 'make_molehill' | 'stunned' | 'stunned_pst' | 'death' | 'hit' | 'sleep' | 'sleeping' | 'wake';
@@ -19,8 +21,7 @@ export interface MoleStateInst {
   pushAnimation(name: string, loop?: boolean): void;
   performBufferedAction(): boolean;
   clearBufferedAction(): void;
-  playSound(name: string, key?: string): void;
-  killSound(key: string): void;
+  readonly SoundEmitter: Pick<SoundEmitter, 'PlaySound' | 'PlayingSound' | 'KillSound'>;
   dropInventory(): void;
   dropDeathLoot(): void;
   setPickup(enabled: boolean): void;
@@ -32,19 +33,28 @@ export interface MoleStateInst {
   remove(): void;
 }
 type SG = StateGraphInstance<MoleStateInst, MoleState>;
-const sound = (frame: number, name: string, key?: string) => TimeEvent<MoleStateInst, MoleState>(frame * FRAMES, sg => sg.context.playSound(name, key));
-const kill = (frame: number, key: string) => TimeEvent<MoleStateInst, MoleState>(frame * FRAMES, sg => sg.context.killSound(key));
+type MoleSound = 'death' | 'emerge' | 'emerge_voice' | 'hurt' | 'move' | 'retract' | 'jump' | 'pickup' | 'sniff' | 'sleep';
+/**
+ * inst.SoundEmitter:PlaySound("dontstarve_DLC001/creatures/mole/<name>", slot). The source guards every named mole sound
+ * with `if not inst.SoundEmitter:PlayingSound(slot)`.
+ */
+function PlaySound(inst: MoleStateInst, name: MoleSound, slot?: string): void {
+  if (slot !== undefined && inst.SoundEmitter.PlayingSound(slot)) return;
+  inst.SoundEmitter.PlaySound(`dontstarve_DLC001/creatures/mole/${name}` as SoundEventPath, slot);
+}
+const sound = (frame: number, name: MoleSound, slot?: string) => TimeEvent<MoleStateInst, MoleState>(frame * FRAMES, sg => PlaySound(sg.context, name, slot));
+const kill = (frame: number, slot: string) => TimeEvent<MoleStateInst, MoleState>(frame * FRAMES, sg => sg.context.SoundEmitter.KillSound(slot));
 const over = (next: MoleState, queue = false) => [EventHandler<MoleStateInst, MoleState>(queue ? 'animqueueover' : 'animover', sg => sg.goToState(next))];
 const above = (sg: SG, clip: string, loop = false) => {
-  const inst = sg.context; inst.stopPhysics(); inst.setAbove(); inst.killSound('move'); inst.playAnimation(clip, loop);
+  const inst = sg.context; inst.stopPhysics(); inst.setAbove(); inst.SoundEmitter.KillSound('move'); inst.playAnimation(clip, loop);
 };
 const states: StateDefinition<MoleStateInst, MoleState>[] = [
   {
     name: 'idle', tags: ['idle', 'canrotate'], onenter: sg => {
-      const inst = sg.context; inst.stopPhysics(); inst.killSound('move');
+      const inst = sg.context; inst.stopPhysics(); inst.SoundEmitter.KillSound('move');
       if (inst.isunder) { sg.addStateTag('noattack'); sg.addStateTag('noelectrocute'); }
       inst.playAnimation(inst.isunder ? 'idle_under' : 'idle', true);
-    }, timeline: [TimeEvent(FRAMES, sg => { if (!sg.context.isunder) sg.context.playSound('sniff', 'sniff'); }), kill(52, 'sniff')]
+    }, timeline: [TimeEvent(FRAMES, sg => { if (!sg.context.isunder) PlaySound(sg.context, 'sniff', 'sniff'); }), kill(52, 'sniff')]
   },
   { name: 'enter', tags: ['busy'], onenter: sg => above(sg, 'enter'), events: over('idle') },
   {
@@ -56,16 +66,16 @@ const states: StateDefinition<MoleStateInst, MoleState>[] = [
   {
     name: 'steal_pre_under', tags: ['busy'], onenter: sg => { above(sg, 'enter'); sg.context.pushAnimation('idle'); },
     timeline: [sound(1, 'emerge'), sound(3, 'emerge_voice'), sound(26, 'sniff', 'sniff'), kill(77, 'sniff')],
-    events: over('steal', true), onexit: sg => sg.context.killSound('sniff')
+    events: over('steal', true), onexit: sg => sg.context.SoundEmitter.KillSound('sniff')
   },
   {
     name: 'steal_pre_above', tags: ['busy'], onenter: sg => above(sg, 'idle'),
-    timeline: [sound(1, 'sniff', 'sniff'), kill(52, 'sniff')], events: over('steal', true), onexit: sg => sg.context.killSound('sniff')
+    timeline: [sound(1, 'sniff', 'sniff'), kill(52, 'sniff')], events: over('steal', true), onexit: sg => sg.context.SoundEmitter.KillSound('sniff')
   },
   {
     name: 'steal', tags: ['busy', 'canrotate'], onenter: sg => { above(sg, 'action'); sg.context.pushAnimation('idle'); },
     timeline: [sound(9, 'pickup'), TimeEvent(12 * FRAMES, sg => sg.context.performBufferedAction()), sound(27, 'sniff', 'sniff'), kill(78, 'sniff')],
-    events: over('exit', true), onexit: sg => sg.context.killSound('sniff')
+    events: over('exit', true), onexit: sg => sg.context.SoundEmitter.KillSound('sniff')
   },
   {
     name: 'exit', tags: ['busy'], onenter: sg => above(sg, 'exit'),
@@ -74,7 +84,7 @@ const states: StateDefinition<MoleStateInst, MoleState>[] = [
   },
   {
     name: 'walk_pre', tags: ['moving', 'canrotate', 'noattack', 'noelectrocute'], onenter: sg => {
-      const inst = sg.context; inst.setUnder(); inst.playAnimation('walk_pre'); inst.playSound('move', 'move'); inst.locomotor.WalkForward();
+      const inst = sg.context; inst.setUnder(); inst.playAnimation('walk_pre'); PlaySound(inst, 'move', 'move'); inst.locomotor.WalkForward();
     }, events: over('walk')
   },
   {
@@ -84,7 +94,7 @@ const states: StateDefinition<MoleStateInst, MoleState>[] = [
   },
   {
     name: 'walk_pst', tags: ['canrotate', 'noattack', 'noelectrocute'], onenter: sg => {
-      const inst = sg.context; inst.setUnder(); inst.locomotor.StopMoving(); inst.playAnimation('walk_pst'); inst.killSound('move');
+      const inst = sg.context; inst.setUnder(); inst.locomotor.StopMoving(); inst.playAnimation('walk_pst'); inst.SoundEmitter.KillSound('move');
     }, events: over('idle')
   },
   {
@@ -97,35 +107,35 @@ const states: StateDefinition<MoleStateInst, MoleState>[] = [
     name: 'make_molehill', tags: ['busy', 'noattack', 'noelectrocute'], onenter: sg => {
       const inst = sg.context; inst.stopPhysics(); inst.setUnder(); inst.playAnimation('mound');
     }, timeline: [TimeEvent(16 * FRAMES, sg => {
-      sg.context.setAbove(); sg.removeStateTag('noattack'); sg.removeStateTag('noelectrocute'); sg.context.playSound('emerge');
+      sg.context.setAbove(); sg.removeStateTag('noattack'); sg.removeStateTag('noelectrocute'); PlaySound(sg.context, 'emerge');
     }), sound(30, 'emerge_voice')], events: [EventHandler('animover', sg => {
       sg.context.performBufferedAction(); sg.context.setUnder(); sg.context.last_above_time = sg.context.getTime(); sg.goToState('idle');
     })]
   },
   {
     name: 'stunned', tags: ['busy', 'noattack', 'canelectrocute', 'canwxscan'], onenter: (sg, skippre) => {
-      const inst = sg.context; inst.clearBufferedAction(); inst.killSound('move'); inst.killSound('sniff'); inst.dropInventory();
+      const inst = sg.context; inst.clearBufferedAction(); inst.SoundEmitter.KillSound('move'); inst.SoundEmitter.KillSound('sniff'); inst.dropInventory();
       above(sg, skippre ? 'stunned_loop' : 'stunned_pre', !!skippre);
-      if (!skippre) { inst.playSound('hurt'); inst.pushAnimation('stunned_loop', true); }
+      if (!skippre) { PlaySound(inst, 'hurt'); inst.pushAnimation('stunned_loop', true); }
       inst.startStunnedSounds(!!skippre); sg.setTimeout(4 + inst.random() * 4); inst.last_above_time = inst.getTime(); inst.setPickup(true);
     }, ontimeout: sg => sg.goToState('stunned_pst'), onexit: sg => { sg.context.setPickup(false); sg.context.stopStunnedSounds(); }
   },
   {
     name: 'stunned_pst', tags: ['busy'], onenter: sg => {
-      sg.context.setAbove(); sg.context.pushAnimation('stunned_pst'); sg.context.playSound('jump');
+      sg.context.setAbove(); sg.context.pushAnimation('stunned_pst'); PlaySound(sg.context, 'jump');
     }, timeline: [sound(15, 'retract')], events: over('idle', true)
   },
-  { name: 'hit', tags: ['busy'], onenter: sg => { sg.context.killSound('sniff'); above(sg, 'hit'); }, events: over('idle') },
+  { name: 'hit', tags: ['busy'], onenter: sg => { sg.context.SoundEmitter.KillSound('sniff'); above(sg, 'hit'); }, events: over('idle') },
   {
     name: 'death', tags: ['busy'], onenter: sg => {
-      sg.context.clearBufferedAction(); sg.context.killSound('sniff'); above(sg, 'death'); sg.context.playSound('death');
+      sg.context.clearBufferedAction(); sg.context.SoundEmitter.KillSound('sniff'); above(sg, 'death'); PlaySound(sg.context, 'death');
       sg.context.dropDeathLoot(); sg.context.dropInventory();
     }, events: [EventHandler('animover', sg => sg.context.remove())]
   },
   {
     name: 'sleep', tags: ['busy', 'sleeping'], onenter: sg => {
       const inst = sg.context; inst.locomotor.StopMoving();
-      if (inst.isunder) { above(sg, 'enter'); inst.playSound('emerge'); inst.pushAnimation('sleep_pre'); }
+      if (inst.isunder) { above(sg, 'enter'); PlaySound(inst, 'emerge'); inst.pushAnimation('sleep_pre'); }
       else inst.playAnimation('sleep_pre');
     }, timeline: [kill(1, 'sniff'), kill(1, 'stunned')], events: [...over('sleeping', true), EventHandler('onwakeup', sg => sg.goToState('wake'))]
   },

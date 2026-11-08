@@ -8,7 +8,6 @@ import { Trader, type TradeItem } from '../../componets/src/trader';
 import { PigKingStateGraph, type PigKingStateInst } from '../../stategraphs/src/SGpigking';
 import type { LootLaunch } from '../../componets/src/inventoryphysics';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
-import { PlaySound } from './sound';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { Transform } from './transform';
 import definitions from './definitions.json' with { type: 'json' };
@@ -95,7 +94,7 @@ export class PigKingInstance extends PrefabInstance {
       trader,
       playAnimation: (name, loop) => animation.play(name, loop),
       pushAnimation: (name, loop) => animation.push(name, loop),
-      playSound: path => { PlaySound(path, this.position); },
+      SoundEmitter: this.AddSoundEmitter(),
       doTaskInTime: (seconds, fn) => this.doTaskInTime(seconds, fn),
     };
     this.pigking = new PigKingStateGraph(inst, world.scheduler);

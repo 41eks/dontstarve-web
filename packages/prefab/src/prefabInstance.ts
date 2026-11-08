@@ -121,6 +121,10 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
     this.onRemove(() => emitter.OnRemoveEntity());
     return emitter;
   }
+  /** EntityScript:Hide(): entity:Hide() stops drawing the entity until Show(). */
+  Hide(): void { this.sprite.setVisible(false); }
+  /** EntityScript:Show() */
+  Show(): void { this.sprite.setVisible(true); }
   /** inst.MiniMapEntity: map settings stay declared while the world sprite sleeps. */
   readonly minimap = new MiniMapState();
   /** The entity owns its movement notifications; map consumers receive this tracker with its icon declaration. */

@@ -32,7 +32,7 @@ import type { ItemPrefabWorld } from './groundPrefab';
 import { bindItemWorld, dropStackIndividually, type ItemPrefabDefinition } from './groundItems';
 import type { LightFlierFlower } from './lightflier_flower';
 import { WORLD_SCALE, MakeGhostPhysics } from './standardcomponents';
-import { PlaySound, type SoundHandle } from './sound';
+import type { SoundEmitter } from './soundEmitter';
 
 export const LIGHTFLIER_ID = 'lightflier';
 export const LIGHTFLIER_PERISH_TIME = 2 * 480;
@@ -173,12 +173,11 @@ export class LightFlier implements LightFlierBrainInst, LightFlierStateInst, Loc
   }
 
   private heading = 0;
-  private loop?: SoundHandle;
-  private readonly sounds = new Set<SoundHandle>();
   private readonly cleanups: (() => void)[] = [];
   private readonly eventStops = new Map<(data?: unknown) => void, () => void>();
   constructor(entity: ItemEntity) {
     this.entity = entity;
+    entity.AddSoundEmitter();
     addComponent(this, 'health', Health, 25).OnLoad({ health: entity.lightflier?.health ?? 25 });
     addComponent(this, 'combat', Combat, () => this.getTime());
     addComponent(this, 'homeseeker', HomeSeeker<LightFlierFlower>);
@@ -313,10 +312,12 @@ export class LightFlier implements LightFlierBrainInst, LightFlierStateInst, Loc
   wentHome(home: BrainEntity): boolean { return home === this.home && this.home.canGoHome() && this.home.components.childspawner.GoHome(this); }
   playAnimation(name: string, loop = false): void { this.animstate.PlayAnimation(name, loop); }
   pushAnimation(name: string, loop = false): void { this.animstate.PushAnimation(name, loop); }
-  playSound(name: 'hit' | 'death'): void { this.sounds.add(PlaySound(`grotto/creatures/light_bug/${name}`, this.getPosition())); }
+  /** inst.SoundEmitter (lightflier.lua AddSoundEmitter). */
+  get SoundEmitter(): SoundEmitter { return this.entity.SoundEmitter!; }
+  /** EnableBuzz: the fly_LP loop in the emitter's "loop" slot. */
   enableBuzz(enabled: boolean): void {
-    if (!enabled || !this.isValid() || !this.active.peek() || this.isDead()) { this.loop?.stop(); this.loop = undefined; }
-    else if (!this.loop?.isPlaying()) this.loop = PlaySound(LIGHTFLIER_SOUNDS[0], this.getPosition());
+    if (!enabled || !this.isValid() || !this.active.peek() || this.isDead()) this.SoundEmitter.KillSound('loop');
+    else if (!this.SoundEmitter.PlayingSound('loop')) this.SoundEmitter.PlaySound(LIGHTFLIER_SOUNDS[0], 'loop');
   }
   land(landed: boolean): void { if (landed) this.entity.removeTag('flying'); else this.entity.addTag('flying'); }
   isSleeping(): boolean { return this.components.sleeper?.IsAsleep() ?? false; }
@@ -389,7 +390,7 @@ export class LightFlier implements LightFlierBrainInst, LightFlierStateInst, Loc
     if (this.disposed) return; this.disposed = true; this.habitat?.flies.delete(this);
     // The components were torn down with the item entity.
     this.brain?.Stop(); this.sg?.dispose(); this.animstate?.dispose();
-    this.targetSearch?.stop(); this.erosion?.dispose(); this.loop?.stop(); for (const sound of this.sounds) sound.stop();
+    this.targetSearch?.stop(); this.erosion?.dispose(); this.entity.SoundEmitter?.KillSound('loop');
     this.asleepHome?.stop();
     for (const stop of this.cleanups.splice(0)) stop(); for (const stop of this.eventStops.values()) stop(); this.eventStops.clear();
   }

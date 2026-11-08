@@ -10,7 +10,7 @@ import { configureTradableEntity } from '../../prefab/src/tradable';
 import { bindTestWorld } from './worldContentFixture';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
 
-vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
+vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn(), isPlaying: () => true })) }));
 
 beforeEach(() => {
   vi.stubGlobal('fetch', vi.fn(async (url: string) => {

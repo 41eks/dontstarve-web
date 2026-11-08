@@ -21,7 +21,8 @@ import type { BufferedAction } from '../../stategraphs/src/bufferedaction';
 import type { MolehillInstance } from './molehill';
 import type { ItemPrefabWorld } from './groundPrefab';
 import { bindItemWorld, type ItemPrefabDefinition } from './groundItems';
-import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
+import { PlaySound, type SoundEventPath } from './sound';
+import type { SoundEmitter } from './soundEmitter';
 import { WORLD_SCALE, MakeCharacterPhysics, CHARACTER_COLLISION_MASK } from './standardcomponents';
 import { animationLengths } from './animationTimings';
 import { COLLISION } from '../../componets/src/physicsState';
@@ -93,8 +94,6 @@ export class Mole implements MoleBrainInst, MoleStateInst, LocoMotorInst {
   }
 
   private heading = 0;
-  private readonly sounds = new Map<string, SoundHandle>();
-  private readonly oneShots = new Set<SoundHandle>();
   private readonly cleanups: (() => void)[] = [];
   private stopFlee?: ComponentTimer;
   private homeCheck?: ComponentTimer;
@@ -105,6 +104,7 @@ export class Mole implements MoleBrainInst, MoleStateInst, LocoMotorInst {
   private readonly randomSource: () => number;
   constructor(entity: ItemEntity, randomSource = Math.random) {
     this.entity = entity; this.randomSource = randomSource;
+    entity.AddSoundEmitter();
     this.make_home_delay = 5 + Math.floor(this.random() * 6); this.peek_interval = 15 + Math.floor(this.random() * 11);
     addComponent(this, 'health', Health, 30).OnLoad({ health: entity.mole?.health ?? 30 });
     this.saved = entity.mole;
@@ -190,8 +190,12 @@ export class Mole implements MoleBrainInst, MoleStateInst, LocoMotorInst {
     this.homeCheck.start(this.make_home_delay);
     if (this.saved?.needsHomeElapsed !== undefined) this.needs_home_time = this.getTime() - this.saved.needsHomeElapsed;
     this.saved = undefined;
-    this.stunnedPlay = new ComponentTimer(scheduler, () => { this.playSound('sleep', 'stunned'); this.stunnedPlay!.start(23 / 30); });
-    this.stunnedKill = new ComponentTimer(scheduler, () => { this.killSound('stunned'); this.stunnedKill!.start(23 / 30); });
+    // SGmole stunned: DoPeriodicTask(23 * FRAMES, PlayStunnedSound / KillStunnedSound).
+    this.stunnedPlay = new ComponentTimer(scheduler, () => {
+      if (!this.SoundEmitter.PlayingSound('stunned')) this.SoundEmitter.PlaySound(`${SOUND_PREFIX}sleep` as SoundEventPath, 'stunned');
+      this.stunnedPlay!.start(23 / 30);
+    });
+    this.stunnedKill = new ComponentTimer(scheduler, () => { this.SoundEmitter.KillSound('stunned'); this.stunnedKill!.start(23 / 30); });
     addComponent(this, 'sleeper', Sleeper, getWatchWorldContent, this.randomSource, WORLD_SCALE).SetNocturnal(true);
     this.entity.addTag('sleeper');
     if (this.isValid()) { this.brain.Start(); if (this.dropPending) this.onDropped(); }
@@ -216,18 +220,15 @@ export class Mole implements MoleBrainInst, MoleStateInst, LocoMotorInst {
   clearBufferedAction(): void { this.bufferedaction?.fail(); this.bufferedaction = undefined; }
   playAnimation(name: string, loop = false): void { this.animstate.PlayAnimation(name, loop); }
   pushAnimation(name: string, loop = false): void { this.animstate.PushAnimation(name, loop); }
-  playSound(name: string, key?: string): void {
-    if (key && this.sounds.get(key)?.isPlaying()) return;
-    const handle = PlaySound(`${SOUND_PREFIX}${name}` as SoundEventPath, this.getPosition());
-    if (key) this.sounds.set(key, handle); else this.oneShots.add(handle);
-  }
-  killSound(key: string): void { this.sounds.get(key)?.stop(); this.sounds.delete(key); }
-  private stopSounds(): void { for (const sound of [...this.sounds.values(), ...this.oneShots]) sound.stop(); this.sounds.clear(); this.oneShots.clear(); }
+  /** inst.SoundEmitter (mole.lua AddSoundEmitter). */
+  get SoundEmitter(): SoundEmitter { return this.entity.SoundEmitter!; }
+  /** OnSleep / OnRemove: SoundEmitter:KillAllSounds(). */
+  private stopSounds(): void { this.entity.SoundEmitter?.KillAllSounds(); }
   startStunnedSounds(skippre: boolean): void {
     const delay = skippre ? 0 : this.animstate.length;
     this.stunnedPlay!.start(delay); this.stunnedKill!.start(delay + 11 / 30);
   }
-  stopStunnedSounds(): void { this.stunnedPlay?.stop(); this.stunnedKill?.stop(); this.killSound('stunned'); }
+  stopStunnedSounds(): void { this.stunnedPlay?.stop(); this.stunnedKill?.stop(); this.SoundEmitter.KillSound('stunned'); }
   dropInventory(): void { this.components.inventory?.DropEverything(); }
   dropDeathLoot(): void { this.entity.persists = false; this.worldServices?.dropLoot('smallmeat', this.getPosition().clone()); }
   spawnMoveFx(): void { this.worldServices?.spawnMoveFx(this.getPosition()); }
@@ -295,7 +296,6 @@ export class Mole implements MoleBrainInst, MoleStateInst, LocoMotorInst {
         if (body) this.syncMotor(); else this.entity.setPosition(p.x, p.y, p.z);
       } else this.locomotor.Stop();
     }
-    for (const sound of this.oneShots) if (!sound.isPlaying()) this.oneShots.delete(sound);
   }
   get facing(): number { return this.heading; }
   OnSave(): MoleSave {

@@ -13,7 +13,7 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { FACING } from '../src/facing';
 import { workTargets } from './workTargets';
 
-vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
+vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn(), isPlaying: () => true })) }));
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 const spawnGroundItem = () => undefined;
 const meshes = (model: THREE.Object3D) => { const found: THREE.Mesh[] = []; model.traverse(o => { if (o instanceof THREE.Mesh) found.push(o); }); return found; };

@@ -1,6 +1,7 @@
 import { EventHandler, FRAMES, State, StateGraphInstance, TimeEvent } from './stategraph.ts';
 import type { StateDefinition } from './stategraph.ts';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import type { SoundEmitter } from '../../prefab/src/soundEmitter';
 
 export type PigKingStateName = 'idle' | 'cointoss' | 'happy' | 'unimpressed' | 'sleep' | 'wake';
 
@@ -16,7 +17,7 @@ export interface PigKingStateInst {
   /** AnimState:PlayAnimation; a non-looping animation pushes `animover` to the stategraph when its queue ends. */
   playAnimation(name: string, loop?: boolean): void;
   pushAnimation(name: string, loop?: boolean): void;
-  playSound(path: 'dontstarve/pig/PigKingThrowGold' | 'dontstarve/pig/PigKingHappy' | 'dontstarve/pig/PigKingReject'): void;
+  readonly SoundEmitter: Pick<SoundEmitter, 'PlaySound'>;
   /** inst:DoTaskInTime, cancelled with the king. */
   doTaskInTime(seconds: number, fn: () => void): () => void;
 }
@@ -46,13 +47,13 @@ const states: StateDefinition<PigKingStateInst, PigKingStateName>[] = [
         inst.happy = false;
       });
     },
-    timeline: [TimeEvent(17 * FRAMES, sg => sg.context.playSound('dontstarve/pig/PigKingThrowGold'))],
+    timeline: [TimeEvent(17 * FRAMES, sg => sg.context.SoundEmitter.PlaySound('dontstarve/pig/PigKingThrowGold'))],
     events: [EventHandler('animover', sg => sg.goToState('happy'))],
   }),
   State<PigKingStateInst, PigKingStateName>({
     name: 'happy',
     onenter: sg => sg.context.playAnimation('happy'),
-    timeline: [TimeEvent(6 * FRAMES, sg => sg.context.playSound('dontstarve/pig/PigKingHappy'))],
+    timeline: [TimeEvent(6 * FRAMES, sg => sg.context.SoundEmitter.PlaySound('dontstarve/pig/PigKingHappy'))],
     events: [goIdleOnAnimOver],
   }),
   State<PigKingStateInst, PigKingStateName>({
@@ -60,7 +61,7 @@ const states: StateDefinition<PigKingStateInst, PigKingStateName>[] = [
     onenter: sg => {
       const inst = sg.context;
       inst.playAnimation('unimpressed');
-      inst.playSound('dontstarve/pig/PigKingReject');
+      inst.SoundEmitter.PlaySound('dontstarve/pig/PigKingReject');
       inst.happy = false;
       inst.mem.endhappytask?.();
       inst.mem.endhappytask = undefined;
