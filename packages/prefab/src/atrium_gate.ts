@@ -131,10 +131,8 @@ export class AtriumGateInstance extends PrefabInstance {
       if (own?.can_spawn_charlie_hand_keystone) this.can_spawn_charlie_hand_keystone = true;
       if (own?.launch_key) this._launchkey = true;
     };
-    this.onRemove(() => {
-      for (const child of children) child.remove();
-      this._gatefx?.remove();
-    });
+    // The blockers and _gatefx are parented with entity:SetParent and retire with the gate.
+    this.OnRemoveEntity = OnRemove;
   }
 
   IsDestabilizing(): boolean { return this.components.worldsettingstimer.ActiveTimerExists('destabilizing'); }
@@ -195,14 +193,21 @@ function OnLoadPostPass(inst: AtriumGateInstance): void {
   }
 }
 
-/** atrium_gate.lua InitializePathFinding and OnRemove: the 2×2 path tiles around the gate's centre. */
-function InitializePathFinding(inst: PrefabInstance, pathfinder: Pathfinder | undefined): void {
-  if (!pathfinder) return;
+/** The 2×2 path tiles around the gate's centre. */
+function gateWalls(inst: PrefabInstance) {
   const { x, y, z } = inst.position;
   const offset = .5 * WORLD_SCALE;
-  const walls = [[-offset, -offset], [-offset, offset], [offset, -offset], [offset, offset]].map(([dx, dz]) => ({ x: x + dx, y, z: z + dz }));
-  for (const wall of walls) pathfinder.AddWall(wall);
-  inst.onRemove(() => { for (const wall of walls) pathfinder.RemoveWall(wall); });
+  return [[-offset, -offset], [-offset, offset], [offset, -offset], [offset, offset]].map(([dx, dz]) => ({ x: x + dx, y, z: z + dz }));
+}
+
+/** atrium_gate.lua InitializePathFinding. */
+function InitializePathFinding(inst: PrefabInstance, pathfinder: Pathfinder | undefined): void {
+  for (const wall of gateWalls(inst)) pathfinder?.AddWall(wall);
+}
+
+/** atrium_gate.lua OnRemove, its inst.OnRemoveEntity. */
+function OnRemove(inst: AtriumGateInstance): void {
+  for (const wall of gateWalls(inst)) inst.world.pathfinder?.RemoveWall(wall);
 }
 
 /** atrium_gate.lua CreateFloor. */

@@ -65,7 +65,6 @@ export class PortalInstance extends PrefabInstance implements MultiplayerPortalS
     // inst.fx = SpawnPrefab("multiplayer_portal_moonrock_fx"); fx.entity:SetParent(inst.entity).
     this.fx = world.spawnPrefab(PORTAL_FX_ID, position);
     this.fx.entityParent = this as PrefabInstance<SpriteState, object>;
-    this.onRemove(() => this.fx.remove());
 
     this.sg = createMultiplayerPortalStateGraph(this, world.scheduler);
     this.addTag('inspectable');
