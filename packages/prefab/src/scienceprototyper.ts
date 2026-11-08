@@ -1,22 +1,15 @@
 import { LootDropper } from '../../componets/src/lootdropper';
-import { addComponent, removeComponent } from './components';
+import { addComponent } from './components';
 import { Workable } from '../../componets/src/workable';
 import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
-import { type SpriteState } from '@dontstarve-web/display';
-import { prefabInstance, type PrefabInstance } from './prefabInstance';
+import type { PrefabInstance } from './prefabInstance';
 import definitions from './definitions.json' with { type: 'json' };
-import {
-    AnimatedBuildingPlacement,
-    type AnimatedBuildingDefinition,
-    type AnimatedBuildingEventContext,
-} from './animatedBuildingPlacement';
+import { AnimatedBuildingPlacement, type AnimatedBuildingDefinition } from './animatedBuildingPlacement';
 import type { WorldContext } from './worldContext';
-import { PlaySound, type SoundHandle } from './sound';
-import type { Group } from 'three';
-import { actionEntity } from './actionEntity';
 import { Prototyper } from '../../componets/src/prototyper';
-import { CreateTechTree } from '../../componets/src/techtree';
+import { CreateTechTree, type TechTree } from '../../componets/src/techtree';
 import { onloadBurnt, onsaveBurnt, WORLD_SCALE } from './standardcomponents';
+import { MAGIC_PROTOTYPER_DEFINITIONS } from './magicprototyper';
 
 export const RESEARCH_LAB_IDS = [
     'researchlab',
@@ -34,54 +27,7 @@ export const RESEARCH_LAB_SKIN_ARCHIVES: Readonly<Record<ResearchLabId, Readonly
     researchlab4: definitions.animatedBuildings.researchlab4.skinArchives,
 };
 
-const idleSoundPaths = {
-    researchlab: 'dontstarve/common/researchmachine_lvl1_idle_LP',
-    researchlab2: 'dontstarve/common/researchmachine_lvl2_idle_LP',
-    researchlab3: 'dontstarve/common/researchmachine_lvl3_idle_LP',
-    researchlab4: 'dontstarve/common/researchmachine_lvl4_idle_LP',
-} as const;
-const idleSounds = new WeakMap<Group, SoundHandle>();
-
-function stopIdleSound(model: Group): void {
-    idleSounds.get(model)?.stop();
-    idleSounds.delete(model);
-}
-
-function onbuilt(inst: PrefabInstance): void {
-    inst.sprite.playOnce('place');
-    inst.sprite.pushAnimation('idle', false);
-}
-
-function onturnon(id: ResearchLabId, { model, animation }: AnimatedBuildingEventContext): void {
-    if (actionEntity(model, id).hasTag('burnt')) return;
-    const controller = animation as SpriteState;
-    if (id === 'researchlab3' && controller.currentAnimation !== 'proximity_loop') {
-        if (controller.currentAnimation === 'place') controller.pushAnimation('proximity_pre');
-        else controller.playOnce('proximity_pre');
-        controller.pushAnimation('proximity_loop', true);
-    } else if (id !== 'researchlab3' && (controller.currentAnimation === 'place' || controller.currentAnimation === 'proximity_loop')) {
-        controller.pushAnimation('proximity_loop', true);
-    } else controller.start('proximity_loop');
-    if (!idleSounds.get(model)?.isPlaying()) idleSounds.set(model, PlaySound(idleSoundPaths[id], model.position));
-}
-
-function onturnoff(id: ResearchLabId, { model, animation }: AnimatedBuildingEventContext): void {
-    stopIdleSound(model);
-    if (actionEntity(model, id).hasTag('burnt')) return;
-    if (id === 'researchlab' || id === 'researchlab2') animation.playOnce('idle');
-    else {
-        const controller = animation as SpriteState;
-        if (id === 'researchlab3') controller.pushAnimation('proximity_pst');
-        controller.pushAnimation('idle');
-    }
-}
-
-function onworked(inst: PrefabInstance): void {
-    if (inst.hasTag('burnt')) return;
-    const on = inst.components.prototyper?.on === true;
-    inst.sprite.playOnce('hit');
-    inst.sprite.pushAnimation(on ? 'proximity_loop' : 'idle', on);
-}
+type ScienceMachineId = 'researchlab' | 'researchlab2';
 
 function onhammered(inst: PrefabInstance): void {
     if (inst.components.burnable?.IsBurning()) inst.components.burnable.Extinguish();
@@ -90,56 +36,82 @@ function onhammered(inst: PrefabInstance): void {
     inst.remove();
 }
 
-/** prefabskin.lua researchlab4_init_fn / researchlab4_clear_fn: only the hat comes from the skin build. */
-const RESEARCHLAB4_SKIN: NonNullable<AnimatedBuildingDefinition['skinAnimState']> = {
-    init: (anim, skinArchive) => anim.OverrideItemSkinSymbol('machine_hat', skinArchive, 'machine_hat', 'researchlab4', 'researchlab4'),
-    clear: anim => anim.ClearOverrideSymbol('machine_hat'),
-};
+/** onhit: the gift loop (isgifting) is not ported. */
+function onhit(inst: PrefabInstance): void {
+    if (inst.hasTag('burnt')) return;
+    const on = inst.components.prototyper?.on === true;
+    inst.sprite.playOnce('hit');
+    inst.sprite.pushAnimation(on ? 'proximity_loop' : 'idle', on);
+}
 
-function researchLabDefinition(id: ResearchLabId): AnimatedBuildingDefinition {
-    const levels = {
-        researchlab: { SCIENCE: 1, MAGIC: 1 }, researchlab2: { SCIENCE: 2, MAGIC: 1 },
-        researchlab3: { MAGIC: 3 }, researchlab4: { MAGIC: 2 },
-    };
+function onturnoff(inst: PrefabInstance): void {
+    if (inst.hasTag('burnt')) return;
+    inst.sprite.playOnce('idle');
+    inst.SoundEmitter!.KillSound('idlesound');
+    inst.SoundEmitter!.KillSound('loop');
+}
+
+/**
+ * scienceprototyper.lua createmachine(level, name, soundprefix, techtree, giftsound). The use animation and its sounds,
+ * gifts, the wardrobe, the place sound and the achievement are not ported.
+ */
+function createmachine(level: 1 | 2, name: ScienceMachineId, soundprefix: 'lvl1' | 'lvl2', techtree: Readonly<TechTree>): AnimatedBuildingDefinition {
+    function onturnon(inst: PrefabInstance): void {
+        if (inst.hasTag('burnt')) return;
+        const anim = inst.sprite;
+        if (anim.currentAnimation === 'proximity_loop' || anim.currentAnimation === 'place') {
+            // Push again even if already playing, in case an idle was also pushed.
+            anim.pushAnimation('proximity_loop', true);
+        } else anim.start('proximity_loop');
+        if (!inst.SoundEmitter!.PlayingSound('idlesound')) {
+            inst.SoundEmitter!.KillSound('loop');
+            inst.SoundEmitter!.PlaySound(`dontstarve/common/researchmachine_${soundprefix}_idle_LP`, 'idlesound');
+        }
+    }
+
+    function onbuilt(inst: PrefabInstance): void {
+        inst.sprite.playOnce('place');
+        inst.sprite.pushAnimation('idle', false);
+    }
+
+    function fn(inst: PrefabInstance): void {
+        inst.AddSoundEmitter();
+        inst.addTag('giftmachine');
+        inst.addTag('structure');
+        inst.addTag(`level${level}`);
+
+        const prototyper = addComponent(inst, 'prototyper', Prototyper, 4 * WORLD_SCALE);
+        prototyper.onturnon = onturnon;
+        prototyper.onturnoff = onturnoff;
+        prototyper.trees = CreateTechTree(techtree);
+
+        inst.ListenForEvent('onbuilt', () => onbuilt(inst));
+
+        addComponent(inst, 'lootdropper', LootDropper, spawnStructureLoot(inst), STRUCTURE_LOOT_RECIPES);
+        const workable = addComponent(inst, 'workable', Workable);
+        workable.SetWorkAction('HAMMER');
+        workable.SetWorkLeft(4);
+        workable.SetOnFinishCallback(onhammered);
+        workable.SetOnWorkCallback(onhit);
+
+        inst.OnSave = onsaveBurnt;
+        inst.OnLoad = onloadBurnt;
+    }
+
     return {
-        ...definitions.animatedBuildings[id], obstacleRadius: .4,
+        ...definitions.animatedBuildings[name], obstacleRadius: .4,
         // MakeLargeBurnable(inst, nil, nil, true) and MakeLargePropagator.
         burnable: { burnTime: 30, fxLevel: 4, propagator: 'large' },
-        ...(id === 'researchlab4' ? { skinAnimState: RESEARCHLAB4_SKIN } : {}),
-        oninit: (context) => {
-            const workable = addComponent(context.instance, 'workable', Workable);
-            workable.SetWorkAction('HAMMER');
-            workable.SetWorkLeft(4);
-            workable.SetOnWorkCallback(onworked);
-            workable.SetOnFinishCallback(onhammered);
-            addComponent(context.instance, 'lootdropper', LootDropper, spawnStructureLoot(context.instance), STRUCTURE_LOOT_RECIPES);
-            const inst = actionEntity(context.model, id);
-            inst.addTag('structure');
-            inst.addTag(`level${RESEARCH_LAB_IDS.indexOf(id) + 1}`);
-            const prototyper = addComponent(context.instance, 'prototyper', Prototyper, 4 * WORLD_SCALE);
-            prototyper.trees = CreateTechTree(levels[id]);
-            // Skin replacement preserves the component and its users, but replaces the controller.
-            const currentContext = () => ({ ...context,
-                animation: (prefabInstance(context.model)!.sprite as SpriteState) });
-            prototyper.onturnon = () => onturnon(id, currentContext());
-            prototyper.onturnoff = () => onturnoff(id, currentContext());
-            const { instance } = context;
-            instance.ListenForEvent('onbuilt', () => onbuilt(instance));
-            instance.OnSave = onsaveBurnt;
-            instance.OnLoad = onloadBurnt;
-        },
-        ondispose: ({ model }) => {
-            removeComponent(prefabInstance(model)!, 'prototyper');
-            stopIdleSound(model);
-        },
+        // AnimatedBuildingPlacement creates the entity; fn assembles it.
+        oninit: ({ instance }) => fn(instance),
     };
 }
 
+/** TUNING.PROTOTYPER_TREES.SCIENCEMACHINE / ALCHEMYMACHINE, with magicprototyper.lua's two stations. */
 export const RESEARCH_LAB_DEFINITIONS: Readonly<Record<ResearchLabId, AnimatedBuildingDefinition>> = {
-    researchlab: researchLabDefinition('researchlab'),
-    researchlab2: researchLabDefinition('researchlab2'),
-    researchlab3: researchLabDefinition('researchlab3'),
-    researchlab4: researchLabDefinition('researchlab4'),
+    researchlab: createmachine(1, 'researchlab', 'lvl1', { SCIENCE: 1, MAGIC: 1 }),
+    researchlab2: createmachine(2, 'researchlab2', 'lvl2', { SCIENCE: 2, MAGIC: 1 }),
+    ...MAGIC_PROTOTYPER_DEFINITIONS,
 };
 
 export function isResearchLabId(value: string): value is ResearchLabId {

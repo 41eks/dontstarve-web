@@ -147,6 +147,7 @@
     "./playerProximity": "./src/playerProximity.ts",
     "./pigking": "./src/pigking.ts",
     "./player": "./src/player.ts",
+    "./magicprototyper": "./src/magicprototyper.ts",
     "./scienceprototyper": "./src/scienceprototyper.ts",
     "./treasurechest": "./src/treasurechest.ts",
     "./pandoraschest": "./src/pandoraschest.ts",

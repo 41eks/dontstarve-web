@@ -78,6 +78,7 @@ export function DefaultBurntStructureFn(inst: PrefabInstance): void {
     inst.components.burnable!.canlight = false;
     inst.sprite.start('burnt');
     inst.PushEvent('burntup', undefined);
+    for (const name of ['idlesound', 'sound', 'loop', 'snd']) inst.SoundEmitter?.KillSound(name);
     inst.components.workable?.SetWorkLeft(1);
     const container = inst.components.container;
     if (container) {

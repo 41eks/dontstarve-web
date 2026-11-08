@@ -156,6 +156,12 @@ it('queues magic station transitions across reskinning, then rebuilds transient 
     expect((findActionEntity(loaded)?.components ?? prefabInstance(loaded)!.components).prototyper.on).toBe(true);
     expect(builder.accessible_tech_trees.peek().MAGIC).toBe(3);
     expect(restored.exportRecords()[0].record).toEqual(record);
+    // DefaultBurntStructureFn kills idlesound itself: onturnoff returns early once the station is burnt.
+    const idlesound = vi.mocked(PlaySound).mock.results.at(-1)!.value;
+    const lab = prefabInstance(loaded)!;
+    lab.components.burnable!.onburnt!(lab);
+    expect(idlesound.stop).toHaveBeenCalledOnce();
+    expect(lab.components.prototyper).toBeUndefined();
     restored.dispose();
     restored = new ResearchLabPlacement(world, () => true);
     const burnt = await restored.spawnFromSave('researchlab3', { ...record,

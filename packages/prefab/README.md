@@ -54,8 +54,9 @@ DST 场景预制体。该包基于 `@dontstarve-web/animation` 组合具体资�
 `machine_hat`，其余部件使用原始 build；科学机器和炼金引擎保留源码指定的基础特效
 symbol，炼金打印舱的 `researchlab2_pod_fx` 动画层合并到同一帧几何体中。
 
-四种科技建筑按 `scienceprototyper.lua` / `magicprototyper.lua` 的 workable 回调
-接入 `onhit` 和 `onhammered`：4 次成功锤击后掉落配方材料（50%，逐项向上取整），
+四种科技建筑分别由 `scienceprototyper.ts`（`researchlab` / `researchlab2`）和 `magicprototyper.ts`
+（`researchlab3` / `researchlab4`）按同名 Lua 的 `createmachine` 组装，回调都以 `inst` 为参数，
+循环音效走实例的 `SoundEmitter`（`idlesound`）。workable 回调接入 `onhit` 和 `onhammered`：4 次成功锤击后掉落配方材料（50%，逐项向上取整），
 生成原版 `structure_collapse_fx.zip` 的 `collapse_small` 木质坍塌效果并移除实体。
 掉落通过 `WorldContext.dropLoot` 交给应用的地面物品管理器，以 `flingLoot()`
 逐件同步生成：实体与 display 立即存在并写入存档，美术由 display 加载后绘制。`LootFling` 按 `lootdropper.lua:FlingItem()` 的随机方向、水平 `0–2`、
