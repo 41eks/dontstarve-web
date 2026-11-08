@@ -129,7 +129,7 @@ it('retains regrowth on extinguish, then burns to exactly one saved ash and rele
     // The worker holds its tool: SpawnPrefab puts the inst in the world, GiveItem takes it out of the scene.
     const torch = s.inventory.entities.create({ itemId: 'torch', count: 1 }); s.inventory.GiveItem(torch);
     s.inventory.configureItem(torch);
-    expect(collectEquippedItemActions(torch, undefined, findActionEntity(model), true)).toContain('LIGHT');
+    expect(collectEquippedItemActions(torch, undefined, findActionEntity(model)!, true)).toContain('LIGHT');
     burnable.Ignite();
     tickWorld(s.scheduler, prefabDisplays(s.grass), 20, new THREE.Quaternion());
     expect(state.phase.peek()).toBe('removed');

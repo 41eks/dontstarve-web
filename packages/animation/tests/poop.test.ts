@@ -157,7 +157,7 @@ it('renders real flies child art, plays looping audio and preserves manure throu
     expect(swarming()).toBe(true);
     expect(sources).toHaveLength(3);
     expect([...restoredManager.iteratePrefabPositions('poop')]).toEqual([restoredEntity.transform.position]);
-    restoredEntity.components.burnable.Ignite();
+    restoredEntity.components.burnable!.Ignite();
     expect(swarming()).toBe(false);
     expect(sources[2].stop).toHaveBeenCalledOnce();
     expect(sources[2].disconnect).toHaveBeenCalledOnce();

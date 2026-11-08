@@ -55,7 +55,7 @@ it('loads the Wortox build with shared player animations and renders every facin
   animation.makeGhost(true);
   advancePlayer(animation, 1 / 30);
   expect(animation.isGhost).toBe(true);
-  await prefabDisplay(player).artLoaded();
+  await prefabDisplay(player)!.artLoaded();
   expect(fetch).toHaveBeenCalledWith('/dst/data/anim/dynamic/ghost_wortox_build.zip');
   expect(fetch).toHaveBeenCalledWith('/dst/data/anim/dynamic/ghost_wortox_build.dyn');
   expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);

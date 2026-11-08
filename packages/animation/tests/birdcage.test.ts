@@ -30,7 +30,7 @@ const BIRDCAGE = definitions.animatedBuildings.birdcage;
 
 async function spawn(animation: string, skinId?: string) {
   return createAnimatedSprite('/dst/data/anim', BIRDCAGE.archive, {
-    initialAnimation: animation, scale: BIRDCAGE.scale, skinArchive: skinId === undefined ? undefined : BIRDCAGE_SKIN_ARCHIVES[skinId],
+    initialAnimation: animation, skinArchive: skinId === undefined ? undefined : BIRDCAGE_SKIN_ARCHIVES[skinId],
   });
 }
 

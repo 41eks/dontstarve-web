@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { ArchiveSpriteAssets, createArchiveSprite, createSharedArchiveSprite } from '../src/archiveSprite';
+import { ArchiveSpriteAssets, createArchiveSprite, createSharedArchiveSprite, type ArchiveSpriteDefinition } from '../src/archiveSprite';
 import { setSpriteEntityRenderOrder } from '../src/renderOrder';
 import { createAnimatedSpriteSource, loadBuildOverride, type SpriteController } from '../src/sprite';
 import { smallHash } from '../src/animationAssets';
@@ -195,7 +195,7 @@ it('draws override builds and AnimState declarations as a factory sprite does, t
 
 it('keeps base symbols that a partial skin does not replace', async () => {
   const assets = new ArchiveSpriteAssets();
-  const definition = { animationArchive: 'berrybush.zip', buildArchives: ['berrybush.zip'], bank: 'berrybush', animation: 'idle', loop: true };
+  const definition: ArchiveSpriteDefinition = { animationArchive: 'berrybush.zip', buildArchives: ['berrybush.zip'], bank: 'berrybush', animation: 'idle', loop: true };
   const sprite = await createSharedArchiveSprite(assets, definition);
   const [base, skin] = await Promise.all([assets.loadBuild('berrybush.zip', definition), assets.loadBuild('dynamic/berrybush_cawnival.zip', definition)]);
   const sources = () => new Set(sprite.getResolvedFrame().map(part => part.materials[0]));

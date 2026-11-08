@@ -1,4 +1,3 @@
-import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
@@ -10,6 +9,7 @@ import { createSignal } from '../../signals/src';
 import { managedBuildings } from './managedBuildings';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Fuel } from '../../componets/src/fuel';
+import type { Fueled } from '../../componets/src/fueled';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import type { SpriteState } from '@dontstarve-web/display';
 import * as sound from '../../prefab/src/sound';
@@ -54,7 +54,7 @@ it('burns its fuel down through the fire levels, goes out empty and relights whe
     for (const tag of ['campfire', 'structure', 'wildfireprotected', 'BURNABLE_fueled']) expect(entity.hasTag(tag)).toBe(true);
 
     // FIREPIT_FUEL_START is half of the maximum: section 3 of 4, at the bottom of its level.
-    expect(components.burnable.IsBurning()).toBe(true);
+    expect(components.burnable!.IsBurning()).toBe(true);
     expect(components.inspectable!.getstatus!()).toBe('NORMAL');
     let current = fire(model);
     expect(current.fx).toMatchObject({ composite: { symbol: 'firefx', offset: [0, 25] } });
@@ -68,7 +68,7 @@ it('burns its fuel down through the fire levels, goes out empty and relights whe
 
     scheduler.advance(180);
     current = fire(model);
-    expect(components.burnable.IsBurning()).toBe(false);
+    expect(components.burnable!.IsBurning()).toBe(false);
     expect(components.inspectable!.getstatus!()).toBe('OUT');
     expect(entity.hasTag('fueldepleted')).toBe(true);
     expect(current.fx).toBeUndefined();
@@ -77,7 +77,7 @@ it('burns its fuel down through the fire levels, goes out empty and relights whe
 
     // MED_FUEL with the pit's bonus multiplier refills half the pit.
     const log = fuelItem(45);
-    expect(components.fueled.TakeFuelItem(log)).toBe(true);
+    expect(components.fueled!.TakeFuelItem(log)).toBe(true);
     expect(log.remove).toHaveBeenCalled();
     expect(play).toHaveBeenCalledWith('dontstarve/common/fireAddFuel', model.position);
     expect(fire(model).animation).toBe('level2');
@@ -92,7 +92,7 @@ it('saves its fuel and queued charcoal, then drops the charcoal when the restore
     await first.placement.spawn(FIRE_PIT_ID);
     const [{ display: { model } }] = workTargets('HAMMER');
     // Filling the top section queues a charcoal.
-    (findActionEntity(model)?.components ?? prefabInstance(model)!.components).fueled.TakeFuelItem(fuelItem(180));
+    prefabInstance(model)!.components.fueled!.TakeFuelItem(fuelItem(180));
     expect(fire(model).animation).toBe('level4');
     first.scheduler.advance(60);
     ({ record } = first.placement.exportRecords()[0]);
@@ -104,7 +104,7 @@ it('saves its fuel and queued charcoal, then drops the charcoal when the restore
   try {
     const model = await second.placement.spawnFromSave(FIRE_PIT_ID, record);
     expect(fire(model).animation).toBe('level4');
-    expect((findActionEntity(model)?.components ?? prefabInstance(model)!.components).fueled.currentfuel).toBe(300);
+    expect((prefabInstance(model)!.components.fueled as Fueled).currentfuel).toBe(300);
     second.scheduler.advance(300);
     expect(fire(model).fx).toBeUndefined();
     expect(second.dropLoot).toHaveBeenCalledWith([{ itemId: 'charcoal', count: 1 }], expect.any(THREE.Vector3));
@@ -118,7 +118,7 @@ it('burns faster in rain by its precipitation rate, and at the base rate in snow
   try {
     await placement.spawn(FIRE_PIT_ID);
     const [{ display: { model } }] = workTargets('HAMMER');
-    const { components } = prefabInstance(model)!, { fueled } = components;
+    const { components } = prefabInstance(model)!, fueled = components.fueled as Fueled;
     const burnt = (seconds: number) => {
       const before = fueled.currentfuel;
       scheduler.advance(seconds);
@@ -147,7 +147,7 @@ it('flickers through the world\'s component updates, and a removed pit stops its
   try {
     await placement.spawn(FIRE_PIT_ID);
     const [target] = workTargets('HAMMER'), model = target.display.model, pit = prefabInstance(model)!;
-    const { fueled } = pit.components;
+    const fueled = pit.components.fueled as Fueled;
     const radius = () => fire(model).light!.radius;
     const before = radius();
     updates.update(.1);

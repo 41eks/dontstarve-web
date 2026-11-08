@@ -1,5 +1,4 @@
 import type { Growable } from '../../componets/src/growable';
-import { findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import { createTestArea, useTestTileMap } from './tileMapFixture';
 import { readFile } from 'node:fs/promises';
@@ -91,17 +90,17 @@ it('shows growth settled while unloaded as its final stage without the transitio
   const s = await setup();
   try {
     const tree = s.prefabs.spawn('deciduoustree_short', new THREE.Vector3(2, 0, 0));
-    const root = tree.transform.model, controller = prefabInstance(root)!.sprite, components = (findActionEntity(root)?.components ?? prefabInstance(root)!.components);
+    const root = tree.transform.model, controller = prefabInstance(root)!.sprite, components = prefabInstance(root)!.components;
     await area.visit(new THREE.Vector3(1000, 0, 1000));
     // A sleeping tree keeps its root and state but leaves the scene graph until its tile wakes.
     expect(tree.transform.model).toBe(root); expect(root.parent).toBeNull();
-    expect((findActionEntity(root)?.components ?? prefabInstance(root)!.components)).toBe(components); expect(controller.loaded).toBe(false);
+    expect(prefabInstance(root)!.components).toBe(components); expect(controller.loaded).toBe(false);
     s.scheduler.advance(5000);
     await area.visit(new THREE.Vector3(2, 0, 0));
     await drawn(root);
     expect(root.parent).toBe(s.scene);
     expect(tree.transform.model).toBe(root); expect(prefabInstance(root)!.sprite).toBe(controller);
-    expect((findActionEntity(root)?.components ?? prefabInstance(root)!.components)).toBe(components); expect(controller.loaded).toBe(true);
+    expect(prefabInstance(root)!.components).toBe(components); expect(controller.loaded).toBe(true);
     const model = tree.transform.model;
     expect((prefabInstance(model)!.components as { growable: Growable }).growable.GetStage()).toBe(3);
     expect(prefabInstance(model)!.sprite.currentAnimation).not.toMatch(/^grow_/);

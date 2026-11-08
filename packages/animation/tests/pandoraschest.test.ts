@@ -47,7 +47,7 @@ function createPlacement(awake = createSignal(true)) {
 it('loads a saved chest with MakeChest tags and components and the non-looping closed clip, and saves it unchanged', async () => {
   const { placement, dispose } = createPlacement();
   try {
-    const model = placement.spawnFromSave(PANDORAS_CHEST_ID, RECORD);
+    const model = await placement.spawnFromSave(PANDORAS_CHEST_ID, RECORD);
     const instance = prefabInstance(model)!;
     // fn: PlayAnimation("closed") without looping, so the clip rests on its last frame.
     expect(instance.sprite.sprite.peek().clip).toMatchObject({ name: 'closed', loop: false, finished: true });
@@ -70,7 +70,7 @@ it('releases the chest art while its tile sleeps and redraws the declared closed
   const { world, placement, awake, dispose } = createPlacement();
   const tick = () => new Promise(resolve => setTimeout(resolve, 0));
   try {
-    const model = placement.spawnFromSave(PANDORAS_CHEST_ID, RECORD);
+    const model = await placement.spawnFromSave(PANDORAS_CHEST_ID, RECORD);
     const instance = prefabInstance(model)!, display = prefabDisplay(model)!;
     await display.artLoaded();
     const declared = instance.sprite.sprite.peek().clip;

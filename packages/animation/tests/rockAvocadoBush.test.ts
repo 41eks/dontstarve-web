@@ -58,35 +58,35 @@ it('cycles all four stages through winter, picks three fruits or clears nil prod
   try {
     const model = await drawn(s.bushes.spawn('rock_avocado_bush', new THREE.Vector3(12, 0, 24)).transform.model);
     const { pickable, growable } = plantInstance(model).components;
-    expect(growable.GetStage()).toBe(3);
-    const timer = growable.state.timer.peek();
-    s.advance(100); expect(growable.state.timer.peek()).toBe(timer);
+    expect(growable!.GetStage()).toBe(3);
+    const timer = growable!.state.timer.peek();
+    s.advance(100); expect(growable!.state.timer.peek()).toBe(timer);
     expect(pickable.pick(s.picker)).toBe(true);
     expect(s.inventory.count('rock_avocado_fruit')).toBe(3);
-    expect(growable.GetStage()).toBe(1);
-    expect(growable.state.timer.peek()).toBe(timer);
+    expect(growable!.GetStage()).toBe(1);
+    expect(growable!.state.timer.peek()).toBe(timer);
     expect(pickable.state.timer.peek().status).toBe('stopped');
     s.season.set({ season: 'winter', progress: 0 }); await settleEffects();
-    s.advance(800); expect(growable.GetStage()).toBe(2);
+    s.advance(800); expect(growable!.GetStage()).toBe(2);
     expect(pickable.canBePicked).toBe(false);
-    s.advance(180); expect(growable.GetStage()).toBe(3);
-    s.advance(900); expect(growable.GetStage()).toBe(4);
+    s.advance(180); expect(growable!.GetStage()).toBe(3);
+    s.advance(900); expect(growable!.GetStage()).toBe(4);
     expect(pickable.product).toBeUndefined(); expect(pickable.canBePicked).toBe(true);
     const giveItem = vi.fn(() => false);
     expect(pickable.pick({ giveItem })).toBe(true); expect(giveItem).not.toHaveBeenCalled();
-    expect(growable.GetStage()).toBe(1); expect(pickable.cyclesLeft).toBe(3);
+    expect(growable!.GetStage()).toBe(1); expect(pickable.cyclesLeft).toBe(3);
     s.season.set({ season: 'spring', progress: 0 }); await settleEffects();
-    s.advance(300); expect(growable.GetStage()).toBe(2);
-    expect(growable.OnSave().time).toBe(135);
-    s.advance(135); expect(growable.GetStage()).toBe(3);
-    expect(growable.OnSave().time).toBe(675);
+    s.advance(300); expect(growable!.GetStage()).toBe(2);
+    expect(growable!.OnSave().time).toBe(135);
+    s.advance(135); expect(growable!.GetStage()).toBe(3);
+    expect(growable!.OnSave().time).toBe(675);
     expect(plantInstance(model).sprite.currentAnimation).toBe('grow2');
     pickable.MakeEmpty();
-    plantInstance(model).components.simplemagicgrower.StartGrowing();
-    expect(growable.GetStage()).toBe(2);
-    s.advance(.5); expect(growable.GetStage()).toBe(3);
-    s.advance(.5); expect(growable.GetStage()).toBe(3);
-    expect(growable.OnSave().time).toBe(675);
+    plantInstance(model).components.simplemagicgrower!.StartGrowing();
+    expect(growable!.GetStage()).toBe(2);
+    s.advance(.5); expect(growable!.GetStage()).toBe(3);
+    s.advance(.5); expect(growable!.GetStage()).toBe(3);
+    expect(growable!.OnSave().time).toBe(675);
     expect(prefabInstance(model)!.listTags()).not.toContain('magicgrowth');
   } finally { s.dispose(); }
 });
@@ -112,14 +112,14 @@ it('digs three separate fruits and a root, transplants, fertilizes and stops aft
     })).toBe(true);
     expect(s.inventory.count('dug_rock_avocado_bush')).toBe(1);
     const model = workTargets('DIG')[0].model, { pickable, growable, witherable } = plantInstance(model).components;
-    expect(pickable.IsBarren()).toBe(true); expect(growable.IsGrowing()).toBe(false);
+    expect(pickable.IsBarren()).toBe(true); expect(growable!.IsGrowing()).toBe(false);
     expect(plantInstance(model).sprite.currentAnimation).toBe('dead1');
     const fertilizer = s.inventory.entities.create({ itemId: 'poop', count: 1 }); s.inventory.configureItem(fertilizer);
     expect(pickable.Fertilize(fertilizer)).toBe(true);
     expect(plantInstance(model).sprite.currentAnimation).toBe('dead1_to_idle1');
-    expect(growable.OnSave()).toEqual({ stage: 1, time: 600 });
+    expect(growable!.OnSave()).toEqual({ stage: 1, time: 600 });
     for (let cycle = 3; cycle > 0; cycle--) {
-      growable.DoGrowth(); growable.DoGrowth();
+      growable!.DoGrowth(); growable!.DoGrowth();
       expect(pickable.pick(s.picker)).toBe(true); expect(pickable.cyclesLeft).toBe(cycle - 1);
       if (cycle === 3) {
         const saved = deserializeSave(s.save(), SAVE_CATALOG), record = saved.world.entities.rock_avocado_bush[0];
@@ -128,15 +128,15 @@ it('digs three separate fruits and a root, transplants, fertilizes and stops aft
       }
     }
     expect(s.inventory.count('rock_avocado_fruit')).toBe(9);
-    expect(growable.state.timer.peek().status).toBe('stopped'); expect(growable.magicgrowable).toBe(false);
+    expect(growable!.state.timer.peek().status).toBe('stopped'); expect(growable!.magicgrowable).toBe(false);
     expect(plantInstance(model).sprite.currentAnimation).toBe('picked');
     for (let frame = 0; frame < 150; frame++) s.advance(1 / 30);
     expect(plantInstance(model).sprite.currentAnimation).toBe('dead1');
     expect(pickable.Fertilize(fertilizer)).toBe(true);
-    witherable.ForceWither(); expect(growable.IsGrowing()).toBe(false);
-    expect(pickable.Fertilize(fertilizer)).toBe(true); expect(growable.IsGrowing()).toBe(true);
-    expect(witherable.IsWithered()).toBe(false);
-    witherable.ForceWither();
+    witherable!.ForceWither(); expect(growable!.IsGrowing()).toBe(false);
+    expect(pickable.Fertilize(fertilizer)).toBe(true); expect(growable!.IsGrowing()).toBe(true);
+    expect(witherable!.IsWithered()).toBe(false);
+    witherable!.ForceWither();
     expect(performToolWork('DIG', workTargets('DIG')[0].entity!, {})).toBe(true);
     expect(s.ground.exportRecords().slice(-2).map(record => record.components.stack?.itemId)).toEqual(['twigs', 'twigs']);
     s.advance(10000); expect(s.bushes.exportRecords().map(({ record }) => record)).toEqual([]); expect(s.physics.bodies).toHaveLength(0);

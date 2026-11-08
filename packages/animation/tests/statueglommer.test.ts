@@ -33,7 +33,7 @@ it('constructs full once, then declares the Lua OnLoadWorked pose for saved work
       components: { workable: { maxwork: -1, workleft: 2 }, pickable: { picked: true, caninteractwith: true } } });
     expect(PREFAB_DEFINITIONS.glommerStatues.parseComponents(statues.exportRecords()[0].record.components, 'statue', {} as never))
       .toEqual(statues.exportRecords()[0].record.components);
-    await prefabDisplay(model).artLoaded();
+    await prefabDisplay(model)!.artLoaded();
     expect(inst.sprite.currentAnimation).toBe('med');
     const fresh = prefabInstance(statues.spawn(new THREE.Vector3(3, 0, 3)))!;
     expect(fresh.sprite.sprite.peek().clip).toMatchObject({ name: 'full', loop: false });
@@ -51,7 +51,7 @@ it('rebuilds the declared clip after tile sleep without changing saved work', as
       id: 'sleeping-statue', transform: { position: [1, 0, 4], rotationY: 0 },
       components: { workable: { maxwork: -1, workleft: 2 }, pickable: { picked: true } },
     });
-    await prefabDisplay(model).artLoaded();
+    await prefabDisplay(model)!.artLoaded();
     const inst = prefabInstance(model)!;
     awake.set(false); await settle();
     expect(inst.status.peek()).toBe('asleep');

@@ -1,7 +1,7 @@
 import { GameTimeScheduler } from '../../signals/src';
 import { prefabDisplay } from '@dontstarve-web/display';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
-import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { unzipSync } from 'fflate';
@@ -130,7 +130,7 @@ describe('DST building skins', () => {
     try {
       const model = await placement.spawnFromSave('researchlab4', { id: 'lab:hat', transform: { position: [3, 0, 4], rotationY: 0 },
         components: { building: { skinId: 'researchlab4_chef' } } });
-      const sprite = prefabInstance(model)!.sprite;
+      const sprite = prefabInstance<PrefabInstance>(model)!.sprite;
       const hat = () => {
         const declared = sprite.sprite.peek().appearance.get('anim-state');
         if (declared?.kind !== 'anim-state') throw new Error('researchlab4 declares no AnimState');
@@ -139,7 +139,7 @@ describe('DST building skins', () => {
       // researchlab4_init_fn: OverrideItemSkinSymbol("machine_hat", build_name, "machine_hat", GUID, "researchlab4"), no SetSkin.
       expect(sprite.sprite.peek().appearance.has('skin')).toBe(false);
       expect(hat()).toEqual(['dynamic/researchlab4_chef.zip', 'researchlab4.zip']);
-      await prefabDisplay(model).artLoaded();
+      await prefabDisplay(model)!.artLoaded();
       const base = await createAnimatedSprite('/dst/data/anim', 'researchlab4.zip', { initialAnimation: 'idle', scale: 0.02 });
       const mesh = meshOf(model), baseMesh = meshOf(base);
       // Only the hat changes: the machine keeps every part of the base build.
@@ -224,7 +224,7 @@ describe('DST building skins', () => {
     const model = placement.spawnFromSave('researchlab4', { id: 'lab:signal', transform: { position: [3, 0, 4], rotationY: 0 },
       components: { building: {} } });
     await prefabDisplay(model)!.artLoaded();
-    const signal = prefabInstance(model)!.sprite.skinId;
+    const signal = prefabInstance<PrefabInstance>(model)!.sprite.skinId;
     const changes: unknown[] = [];
     const stop = signal.subscribe((skinId: unknown) => changes.push(skinId));
     const originalMesh = meshOf(model);
@@ -236,7 +236,7 @@ describe('DST building skins', () => {
     expect(reskinEntity(placement.reskinTargets[0])).toBe(true);
     expect(changes).toEqual([signal.peek()]);
     expect(signal.peek()).toBeDefined();
-    await prefabDisplay(model).artLoaded();
+    await prefabDisplay(model)!.artLoaded();
     expect(meshOf(model)).toBe(originalMesh);
     expect(disposeOldGeometry).not.toHaveBeenCalled();
     expect(placement.exportRecords()[0].record).toMatchObject({ id: 'lab:signal',
@@ -276,7 +276,7 @@ describe('DST building skins', () => {
     animation.start('proximity_loop');
     expect(animation.currentAnimation).toBe('proximity_loop');
     expect(reskinEntity(placement.reskinTargets[0])).toBe(true);
-    const skinId = prefabInstance(model)!.sprite.skinId.peek();
+    const skinId = prefabInstance<PrefabInstance>(model)!.sprite.skinId.peek();
     expect(meshes()).toBe(0);
 
     awake.set(true);

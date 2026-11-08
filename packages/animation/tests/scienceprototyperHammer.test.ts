@@ -1,18 +1,16 @@
 import { prefabDisplay } from '@dontstarve-web/display';
 import { createTestWorldFx } from './worldFxFixture';
-import { findActionEntity } from '../../prefab/src/actionEntity';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { withEntity } from './entityFixture';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ResearchLabPlacement, RESEARCH_LAB_IDS } from '../../prefab/src/scienceprototyper';
 import type { WorldContext } from '../../prefab/src/worldContext';
-import type { TransientSpriteAnimationController } from '../src/sprite';
 import { Builder } from '../../componets/src/builder';
 import { actionEntity, FindEntities } from '../../prefab/src/actionEntity';
 import { WORLD_SCALE } from '../../prefab/src/standardcomponents';
 import { PlaySound } from '../../prefab/src/sound';
-import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { reskinEntity } from '../../prefab/src/reskin_tool';
 import { workTargets } from './workTargets';
 
@@ -41,7 +39,7 @@ async function setup(id: typeof RESEARCH_LAB_IDS[number], skinId?: string) {
   const builder = new Builder(actionEntity(withEntity(world.player as THREE.Group, 'waxwell'), 'waxwell'), {
     findEntities: (...args) => FindEntities(...args), researchMachineDistance: 4 * WORLD_SCALE,
   });
-  const animation = () => prefabInstance(model)!.sprite as TransientSpriteAnimationController;
+  const animation = () => prefabInstance<PrefabInstance>(model)!.sprite;
   const finish = () => { for (let i = 0; i < 80; i++) { placement.update(1 / 30); fx.update(1 / 30, world.camera.quaternion); } };
   // The display loads the lab art; standalone collapse effects load from their own shared owner.
   await vi.waitFor(() => expect(animation().loaded).toBe(true));
@@ -100,10 +98,10 @@ it('preserves work through reskinning and restores proximity after hits', async 
     workTargets('HAMMER')[0].work();
     finish();
     expect(animation().currentAnimation).toBe('proximity_loop');
-    const prototyper = (findActionEntity(model)?.components ?? prefabInstance(model)!.components).prototyper;
+    const prototyper = prefabInstance(model)!.components.prototyper;
     expect(reskinEntity(placement.reskinTargets[0])).toBe(true);
-    expect((findActionEntity(model)?.components ?? prefabInstance(model)!.components).prototyper).toBe(prototyper);
-    expect(prototyper.on).toBe(true);
+    expect(prefabInstance(model)!.components.prototyper).toBe(prototyper);
+    expect(prototyper!.on).toBe(true);
     for (let i = 0; i < 2; i++) { workTargets('HAMMER')[0].work(); finish(); }
     expect(dropLoot).not.toHaveBeenCalled();
     workTargets('HAMMER')[0].work();
@@ -130,10 +128,10 @@ it('queues magic station transitions across reskinning, then rebuilds transient 
     expect(animation().currentAnimation).toBe('idle'); // Placement does not select a station.
     builder.EvaluateTechTrees();
     expect(animation().currentAnimation).toBe('proximity_pre');
-    const component = (findActionEntity(model)?.components ?? prefabInstance(model)!.components).prototyper;
+    const component = prefabInstance(model)!.components.prototyper;
     const sound = vi.mocked(PlaySound).mock.results.at(-1)!.value;
     expect(reskinEntity(placement.reskinTargets[0])).toBe(true);
-    expect((findActionEntity(model)?.components ?? prefabInstance(model)!.components).prototyper).toBe(component);
+    expect(prefabInstance(model)!.components.prototyper).toBe(component);
     for (let i = 0; i < 300; i++) placement.update(1 / 30);
     expect(animation().currentAnimation).toBe('proximity_loop');
     expect(sound.stop).not.toHaveBeenCalled();
@@ -141,7 +139,7 @@ it('queues magic station transitions across reskinning, then rebuilds transient 
     expect(record.components).not.toHaveProperty('prototyper');
     world.player.position.x += 4 * WORLD_SCALE + .01;
     builder.EvaluateTechTrees();
-    expect(component.on).toBe(false);
+    expect(component!.on).toBe(false);
     expect(animation().currentAnimation).toBe('proximity_loop'); // PushAnimation waits for the current pass.
     expect(sound.stop).toHaveBeenCalledOnce();
     for (let i = 0; i < 300; i++) placement.update(1 / 30);
@@ -150,10 +148,10 @@ it('queues magic station transitions across reskinning, then rebuilds transient 
 
     restored = new ResearchLabPlacement(world, () => true);
     const loaded = await restored.spawnFromSave('researchlab3', record);
-    expect((findActionEntity(loaded)?.components ?? prefabInstance(loaded)!.components).prototyper.on).toBe(false);
+    expect(prefabInstance(loaded)!.components.prototyper!.on).toBe(false);
     world.player.position.copy(actionEntity(loaded, 'researchlab3').getPosition());
     builder.EvaluateTechTrees();
-    expect((findActionEntity(loaded)?.components ?? prefabInstance(loaded)!.components).prototyper.on).toBe(true);
+    expect(prefabInstance(loaded)!.components.prototyper!.on).toBe(true);
     expect(builder.accessible_tech_trees.peek().MAGIC).toBe(3);
     expect(restored.exportRecords()[0].record).toEqual(record);
     // DefaultBurntStructureFn kills idlesound itself: onturnoff returns early once the station is burnt.
@@ -167,7 +165,7 @@ it('queues magic station transitions across reskinning, then rebuilds transient 
     const burnt = await restored.spawnFromSave('researchlab3', { ...record,
       components: { ...record.components, building: { ...record.components.building!, burnt: true } } });
     builder.EvaluateTechTrees();
-    expect((findActionEntity(burnt)?.components ?? prefabInstance(burnt)!.components).prototyper).toBeUndefined();
+    expect(prefabInstance(burnt)!.components.prototyper).toBeUndefined();
     expect(actionEntity(burnt, 'researchlab3').hasTag('prototyper')).toBe(false);
     expect(builder.current_prototyper).toBeUndefined();
     expect(builder.accessible_tech_trees.peek().MAGIC).toBe(0);

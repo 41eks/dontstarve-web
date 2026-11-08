@@ -1,5 +1,4 @@
 import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
-import { findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import { withEntity } from './entityFixture';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -20,17 +19,12 @@ import { managedBuildings } from './managedBuildings';
 import type { PlaceableBuildingInteractionChange } from '../../../src/placeableBuilding';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { createPickupInventory } from './pickupFixture';
-import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
-import type { SavedEntity } from '../../../src/save/types';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { workTargets } from './workTargets';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
-function savedEntity(record: PlacementSaveRecord): SavedEntity {
-  return { ...record, transform: { ...record.transform, position: [...record.transform.position] } };
-}
 
 it('spreads source heat to nearby combustible structures through smoldering before ignition', () => {
   vi.spyOn(Math, 'random').mockReturnValue(.5);
@@ -132,12 +126,12 @@ it('burns a cooking pot after 20 seconds, drops the product and disables cooking
   try {
     const model = await placement.spawnFromSave('cookpot', { id: 'burning_pot', transform: { position: [30, 0, 8], rotationY: 0 },
       components: { building: { skinId: 'cookpot_cauldron' }, stewer: { product: 'meatballs', phase: 'cooking', remainingSeconds: 15 } } });
-    (findActionEntity(model)?.components ?? prefabInstance(model)!.components).burnable.Ignite();
+    prefabInstance(model)!.components.burnable!.Ignite();
     placement.update(19.9);
     expect(prefabInstance(model)!.listTags()).not.toContain('burnt'); expect(dropLoot).not.toHaveBeenCalled();
     placement.update(.1);
     expect(prefabInstance(model)!.sprite.currentAnimation).toBe('burnt');
-    expect((findActionEntity(model)?.components ?? prefabInstance(model)!.components).stewer).toBeUndefined(); expect((findActionEntity(model)?.components ?? prefabInstance(model)!.components).container).toBeUndefined();
+    expect(prefabInstance(model)!.components.stewer).toBeUndefined(); expect(prefabInstance(model)!.components.container).toBeUndefined();
     expect(placement.performContainerAction(model, 'COOK', {})).toBe(false);
     expect(dropLoot).toHaveBeenCalledExactlyOnceWith([{ itemId: 'meatballs', count: 1 }], new THREE.Vector3(30, 0, 8));
     placement.update(30); expect(dropLoot).toHaveBeenCalledTimes(1);
