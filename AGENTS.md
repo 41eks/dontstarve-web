@@ -9,6 +9,7 @@
 - 开始前从最新的 `main` 为任务新建分支和独立的 git worktree，例如 `git worktree add ../dontstarve-web-<task> -b <task> main`，然后在 worktree 内执行 `pnpm install --offline --frozen-lockfile`。所有修改、导入脚本和测试都在该 worktree 内完成，不在主检出目录中改代码。
 - 浏览器测试使用本 worktree 自己启动的 vite 测试服务和未被占用的端口，不复用其他 worktree 或会话的服务；不终止不属于本任务的进程。
 - 相关 vitest 测试和类型检查通过（改动影响启动、加载或性能时还需通过 Playwright）后，在任务分支上提交，再把最新的 `main` 合并进来并重新运行受影响的测试，然后把任务分支合并到 `main`。
+- 提交前运行 `pnpm check:conventions`，不得增加违规。它对照 `scripts/conventions-baseline.json` 检查本文件和各 package `AGENTS.md` 中可机械判断的规则，只在某个文件某条规则的违规数超过基线时失败；修掉违规后用 `node scripts/check-conventions.mjs --write-baseline scripts/conventions-baseline.json` 收紧基线。确属合理的例外在该行或上一行写 `// conventions-allow <规则>: <理由>`，不靠放宽基线绕过。
 - 合并到 `main` 时不得覆盖主检出目录中其他会话未提交的修改：不对主检出目录执行 `git stash`、`git reset`、`git checkout -- <path>` 或 `git clean`。如果合并会触及这些文件，先暂停并向用户确认处理方式。
 - 合并完成后删除该任务的 worktree 和分支。
 
