@@ -22,6 +22,11 @@ export interface PlacementSaveRecord {
     stewer?: import('../../componets/src/stewer').StewerSaveData;
     container?: { slotCount: number; slots: { slotKey: string; item: import('@dontstarve-web/inventory').InventoryStack }[] };
     health?: { current: number; maximum: number };
+    knownlocations?: { locations: { name: string; x: number; y: number; z: number }[] };
+    periodicspawner?: { time: number };
+    beard?: import('../../componets/src/beard').BeardSave;
+    /** A beefalo save from before its components saved themselves; it loads and is not written. */
+    beefalo?: import('./beefalo').LegacyBeefaloSave;
     wall?: import('./wallSkins').WallSaveState;
     fence?: import('./fenceSkins').FenceSaveState;
     sculptingtable?: { itemname: string };

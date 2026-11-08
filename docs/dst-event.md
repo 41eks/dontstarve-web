@@ -68,7 +68,7 @@ createEffect(() => {
 
 `beard.lua` 的 `bits`、`daysgrowth`、`daysgrowthaccumulator` 是 [Beard](../packages/componets/src/beard.ts) 的私有 signal，只读视图对外；`hairy`（`bits > 0`）是纯 memo。`Shave`、`OnDayComplete`、`Reset`、`OnLoad` 在组件内按 Lua 顺序执行，成对写入用 `batch()`，回调与领域判断读取 `peek()` 的权威值，不读尚未提交的 memo。每日生长是调度器上到下一个日界的一个 `ComponentTimer`（私有 signal 快照，对外只读的 `dayTimerState`）：世界侧注入 `secondsUntilNextDay(now)`，`Beard` 不读时钟或 tuning，也不订阅全局时钟；到期执行 `OnDayComplete` 再登记下一个日界，跨多天时逐天补发，等待期间 signal 不变；销毁写入 `stopped`、撤销任务并释放 memo。timer 不入档，读档按当前世界时间重新登记。
 
-标签不保存副本：`Beard.HasTag('bearded')` 恒为真，牛的 `has_beard` 经 `HasTag` 从 `hairy` 派生，实体 `hasTag()` 读取同一份。表现 effect 只订阅牛自己的 `hairy`（`get()`），把 `beefalo_shaved_build` 与 `beefalo_build` 切换交给精灵控制器；世界昼夜等环境值由领域代码读取，不加入 effect 依赖。`hairGrowthPending` 对应 Lua 的 `inst.hairGrowthPending`，是牛私有的 signal，由第 3 天回调置位，`idle` 状态读取并在 `hair_growth_pop` 清除。
+标签不保存副本：`Beard.HasTag('bearded')` 恒为真，牛的 `has_beard` 经 `HasTag` 从 `hairy` 派生，实体 `hasTag()` 读取同一份。表现 effect 只订阅牛自己的 `hairy`（`get()`），把 `beefalo_shaved_build` 与 `beefalo_build` 切换交给精灵控制器；世界昼夜等环境值由领域代码读取，不加入 effect 依赖。`hairGrowthPending` 对应 Lua 的 `inst.hairGrowthPending`，是 `BeefaloInstance` 上的字段，由第 3 天回调置位，`idle` 状态读取并在 `hair_growth_pop` 清除。
 
 [Sleeper](../packages/componets/src/sleeper.ts) 的 `isasleep` 是私有 signal，周期测试（4 ± 0.5 秒）由 `ComponentTimer` 在共享游戏时间调度器上登记，等待期间不逐帧扣减；`GoToSleep`、`WakeUp`、`StartTesting`、`StopTesting` 分别更新 signal 与 timer，销毁时停止测试。
 

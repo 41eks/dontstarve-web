@@ -18,7 +18,11 @@ ARCHIVES = (
     'player_emotes_dance0.zip', 'player_emotes_sit.zip', 'player_emotes.zip', 'player_emote_extra.zip',
     'book_fx_wicker.zip', 'fx_books.zip', 'broken_tool.zip',
     'mushroom_tree_med.zip', 'mushroom_tree_tall.zip',
+    'beefalo_basic.zip', 'beefalo_actions.zip', 'beefalo_actions_domestic.zip',
 )
+# Clips whose length differs by facing; the logical AnimState has one length per clip, so the first facing's is kept.
+# beefalo walk_pre is 12 frames facing down or sideways and 7 facing up; switch is unused by SGBeefalo.
+FACING_DEPENDENT = {('beefalo_basic.zip', 'walk_pre'), ('beefalo_basic.zip', 'switch')}
 OUTPUT = pathlib.Path(__file__).resolve().parents[1] / 'src/animationTimings.json'
 
 
@@ -43,9 +47,9 @@ def timings(path):
         _facing, bank, rate, count = read('BIfI')
         key = f'{bank}:{name}'
         timing = {'name': name, 'bank': bank, 'frameRate': rate, 'frames': count}
-        if key in clips and clips[key] != timing:
+        if key in clips and clips[key] != timing and (path.name, name) not in FACING_DEPENDENT:
             raise ValueError(f'Facing-dependent timing in {path}:{name}')
-        clips[key] = timing
+        clips.setdefault(key, timing)
         for _ in range(count):
             offset += 16
             events = read('I')

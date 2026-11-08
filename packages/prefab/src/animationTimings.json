@@ -2306,5 +2306,329 @@
       "frameRate": 30.0,
       "frames": 28
     }
+  ],
+  "beefalo_basic.zip": [
+    {
+      "name": "beefalo",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 2
+    },
+    {
+      "name": "idle_loop",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 72
+    },
+    {
+      "name": "switch",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 36
+    },
+    {
+      "name": "turn_back",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 24
+    },
+    {
+      "name": "turn_fwd",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 25
+    },
+    {
+      "name": "walk_graze_pre",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 12
+    },
+    {
+      "name": "walk_graze_loop",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 56
+    },
+    {
+      "name": "walk_graze_pst",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 9
+    },
+    {
+      "name": "walk_pre",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 12
+    },
+    {
+      "name": "walk_loop",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 56
+    },
+    {
+      "name": "walk_pst",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 9
+    }
+  ],
+  "beefalo_actions.zip": [
+    {
+      "name": "beefalo",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 2
+    },
+    {
+      "name": "shake",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 24
+    },
+    {
+      "name": "graze_loop",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 28
+    },
+    {
+      "name": "alert_pre",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 3
+    },
+    {
+      "name": "alert_idle",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 44
+    },
+    {
+      "name": "alert_pst",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 6
+    },
+    {
+      "name": "run_pre",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 3
+    },
+    {
+      "name": "run_loop",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 12
+    },
+    {
+      "name": "run_pst",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 21
+    },
+    {
+      "name": "atk_pre",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 5
+    },
+    {
+      "name": "atk",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 21
+    },
+    {
+      "name": "bellow",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 51
+    },
+    {
+      "name": "sleep_pre",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 34
+    },
+    {
+      "name": "sleep_loop",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 72
+    },
+    {
+      "name": "sleep_pst",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 33
+    },
+    {
+      "name": "hit",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 15
+    },
+    {
+      "name": "hair_growth_pre",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 23
+    },
+    {
+      "name": "hair_growth",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 17
+    },
+    {
+      "name": "mating_taunt1",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 53
+    },
+    {
+      "name": "mating_taunt2",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 71
+    },
+    {
+      "name": "shave",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 37
+    },
+    {
+      "name": "death",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 34
+    },
+    {
+      "name": "saddle_equip",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 22
+    },
+    {
+      "name": "frozen",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 4
+    },
+    {
+      "name": "frozen_loop_pst",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 6
+    },
+    {
+      "name": "shock_loop",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 6
+    },
+    {
+      "name": "shock_pst",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 9
+    },
+    {
+      "name": "corpse",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 2
+    },
+    {
+      "name": "corpse_hit",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 11
+    }
+  ],
+  "beefalo_actions_domestic.zip": [
+    {
+      "name": "beefalo",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 2
+    },
+    {
+      "name": "walk_graze2_pre",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 12
+    },
+    {
+      "name": "walk_graze2_loop",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 56
+    },
+    {
+      "name": "walk_graze2_pst",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 10
+    },
+    {
+      "name": "graze2_pre",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 13
+    },
+    {
+      "name": "graze2_loop",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 28
+    },
+    {
+      "name": "graze2_pst",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 9
+    },
+    {
+      "name": "whipped_negative",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 29
+    },
+    {
+      "name": "transform",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 16
+    },
+    {
+      "name": "shakesaddle_off",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 32
+    },
+    {
+      "name": "vomit",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 22
+    },
+    {
+      "name": "intestinal_cramp",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 82
+    },
+    {
+      "name": "MISC",
+      "bank": 1109020064,
+      "frameRate": 30.0,
+      "frames": 7
+    }
   ]
 }

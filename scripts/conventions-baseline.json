@@ -20,11 +20,6 @@
     "model-keyed-state": 1,
     "scene": 1
   },
-  "packages/prefab/src/beefalo.ts": {
-    "manager": 1,
-    "prefab-io": 5,
-    "scene": 1
-  },
   "packages/prefab/src/beequeenhivegrown.ts": {
     "instance-method": 2
   },

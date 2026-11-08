@@ -132,6 +132,24 @@ export class SpriteResources {
     return source;
   }
 
+  /**
+   * Art drawn by a factory an animation module builds itself, such as beefalo's sprite over its two whole builds: `create`
+   * loads it from this owner's base URL once, on the first draw, and this owner releases it.
+   */
+  loaded(create: (base: string) => Promise<AnimatedSpriteFactory>, sprite: AnimatedSpriteDeclaration = {}): LoadedSpriteSource {
+    let loaded: SpriteSource | undefined;
+    let pending: Promise<SpriteSource> | undefined;
+    return { peek: () => loaded, load: () => {
+      if (this.disposed) return Promise.reject(new Error('Sprite resources disposed'));
+      return pending ??= create(this.base).then(factory => {
+        if (this.disposed) { factory.dispose(); throw new Error('Sprite resources disposed'); }
+        this.factories.add(factory);
+        return loaded = { create: (animation, frame) => factory.create({ ...sprite, initialAnimation: animation, initialFrame: frame }),
+          release: drawn => factory.disposeSprite(drawn) };
+      }).catch(error => { pending = undefined; throw error; });
+    } };
+  }
+
   /** The owner first removes its entities, then releases their shared resources. */
   dispose(): void {
     if (this.disposed) return;

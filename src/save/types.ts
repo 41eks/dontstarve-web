@@ -2,7 +2,7 @@ import type { InventoryStack } from '@dontstarve-web/inventory';
 import type { FlowerAnimation } from '@dontstarve-web/prefab/flower';
 import type { BulbPlantSaveState } from '@dontstarve-web/prefab/bulb_plant';
 import type { GrassRecord } from '@dontstarve-web/prefab/grass';
-import type { BeefaloSaveState } from '@dontstarve-web/prefab/beefalo';
+import type { LegacyBeefaloSave } from '@dontstarve-web/prefab/beefalo';
 import type { TurfTileSave } from '@dontstarve-web/prefab/turfMap';
 import type { NightmareGrowthSaveState } from '@dontstarve-web/prefab/nightmaregrowth';
 import type { WormholeSaveState } from '@dontstarve-web/prefab/wormhole';
@@ -46,7 +46,11 @@ export interface SavedEntity {
     pickable?: GrassRecord['components']['pickable'];
     lightflierFlower?: import('../../packages/prefab/src/lightflier_flower').LightFlierFlowerSave;
     molehill?: import('../../packages/prefab/src/molehill').MolehillSave;
-    beefalo?: BeefaloSaveState;
+    /** A beefalo save from before its components saved themselves; it loads and is not written. */
+    beefalo?: LegacyBeefaloSave;
+    knownlocations?: { locations: { name: string; x: number; y: number; z: number }[] };
+    periodicspawner?: { time: number };
+    beard?: import('../../packages/componets/src/beard').BeardSave;
     nightmareGrowth?: NightmareGrowthSaveState;
     fishable?: import('../../packages/componets/src/fishable').FishableSave;
     plants?: { offset: [number, number, number] }[];

@@ -545,28 +545,34 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
       const machine = object(c.phonograph, componentPath, ['remainingSeconds']);
       components.phonograph = { remainingSeconds: number(machine.remainingSeconds, `${componentPath}.remainingSeconds`, Number.MIN_VALUE, PHONOGRAPH_PLAY_TIME) };
     }
-    if (keys.includes('beefalo')) {
+    const locations = (value: unknown, locationsPath: string) => {
+      const saved = object(value, locationsPath, ['locations']);
+      const names = new Set<string>();
+      return { locations: array(saved.locations, `${locationsPath}.locations`).map((entry, index) => {
+        const p = `${locationsPath}.locations[${index}]`, location = object(entry, p, ['name', 'x', 'y', 'z']);
+        const name = string(location.name, `${p}.name`);
+        if (names.has(name)) fail(`${p}.name`, 'duplicate location name');
+        names.add(name);
+        const [x, y, z] = transform({ position: [location.x, location.y, location.z], rotationY: 0 }, p, true).position;
+        return { name, x, y, z };
+      }) };
+    };
+    // knownlocations.lua, periodicspawner.lua and beard.lua OnSave.
+    if (keys.includes('knownlocations') && c.knownlocations !== undefined) components.knownlocations = locations(c.knownlocations, `${path}.knownlocations`);
+    if (keys.includes('periodicspawner') && c.periodicspawner !== undefined) {
+      const p = `${path}.periodicspawner`, spawner = object(c.periodicspawner, p, ['time']);
+      components.periodicspawner = { time: number(spawner.time, `${p}.time`, 0, BEEFALO_BEHAVIOR.poopMaxSeconds) };
+    }
+    if (keys.includes('beard') && c.beard !== undefined) components.beard = beard(c.beard, `${path}.beard`);
+    // A beefalo save from before its components saved themselves; the prefab's OnLoad reads it.
+    if (keys.includes('beefalo') && c.beefalo !== undefined) {
       const componentPath = `${path}.beefalo`;
       const beefalo = object(c.beefalo, componentPath, ['home', 'heading', 'poopRemainingSeconds', 'beard', 'knownlocations']);
       const home = transform({ position: beefalo.home, rotationY: 0 }, `${componentPath}.home`, true).position;
-      let knownlocations: NonNullable<SavedEntity['components']['beefalo']>['knownlocations'];
-      if (beefalo.knownlocations !== undefined) {
-        const locationsPath = `${componentPath}.knownlocations`;
-        const saved = object(beefalo.knownlocations, locationsPath, ['locations']);
-        const names = new Set<string>();
-        knownlocations = { locations: array(saved.locations, `${locationsPath}.locations`).map((value, index) => {
-          const p = `${locationsPath}.locations[${index}]`, location = object(value, p, ['name', 'x', 'y', 'z']);
-          const name = string(location.name, `${p}.name`);
-          if (names.has(name)) fail(`${p}.name`, 'duplicate location name');
-          names.add(name);
-          const [x, y, z] = transform({ position: [location.x, location.y, location.z], rotationY: 0 }, p, true).position;
-          return { name, x, y, z };
-        }) };
-      }
       components.beefalo = { home, heading: number(beefalo.heading, `${componentPath}.heading`, 0, 360),
         poopRemainingSeconds: number(beefalo.poopRemainingSeconds, `${componentPath}.poopRemainingSeconds`,
           0, BEEFALO_BEHAVIOR.poopMaxSeconds),
-        ...(knownlocations === undefined ? {} : { knownlocations }),
+        ...beefalo.knownlocations === undefined ? {} : { knownlocations: locations(beefalo.knownlocations, `${componentPath}.knownlocations`) },
         // beard.lua OnSave; saves from before the beard component keep the full, hairy default.
         ...beefalo.beard === undefined ? {} : { beard: beard(beefalo.beard, `${componentPath}.beard`) } };
     }

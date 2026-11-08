@@ -141,20 +141,18 @@ def beefalo_components(data, context):
         locations.append({'name': location['name'], 'x': x, 'y': y, 'z': z})
     if len({location['name'] for location in locations}) != len(locations):
         raise ValueError('Duplicate beefalo known location')
-    herd = next((location for location in locations if location['name'] == 'herd'), None)
 
     spawner = data.get('periodicspawner') or {}
     if set(spawner) - {'time'} or not _finite(spawner.get('time', 0)) \
             or not 0 <= spawner.get('time', 0) <= BEEFALO_POOP_MAX_SECONDS:
         raise ValueError('Unsupported beefalo periodicspawner state')
 
-    components = {
-        'home': [herd['x'], herd['y'], herd['z']] if herd else context['position'],
-        'knownlocations': {'locations': locations},
-        # DST does not save the entity's rotation.
-        'heading': 0,
-        'poopRemainingSeconds': spawner.get('time', 0),
-    }
+    # Each component saves under its own name, as EntityScript:GetPersistData does; DST does not save the rotation.
+    components = {}
+    if locations:
+        components['knownlocations'] = {'locations': locations}
+    if spawner.get('time', 0) > 0:
+        components['periodicspawner'] = {'time': spawner['time']}
     beard = data.get('beard')
     if beard is not None:
         if not isinstance(beard, dict) or set(beard) != {'growth', 'growthaccumulator', 'bits'} \
@@ -162,4 +160,4 @@ def beefalo_components(data, context):
                 or type(beard['bits']) is not int or not 0 <= beard['bits'] <= BEEFALO_BEARD_BITS:
             raise ValueError('Unsupported beefalo beard state')
         components['beard'] = dict(beard)
-    return {'beefalo': components}
+    return components

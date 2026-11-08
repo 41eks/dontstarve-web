@@ -359,7 +359,7 @@ const WORLD_PREFAB_DEFINITIONS = {
     BULB_PLANT_VARIANTS.map(variant => `bulb_plant_${variant}.zip`)),
   lightflierFlowers: definePrefabs(['lightflier_flower'], componentParser({ keys: ['lightflierFlower'] }), true, ['bulb_plant_single.zip', 'bulb_plant_springy.zip', 'lightflier.zip']),
   molehills: definePrefabs(['molehill'], componentParser({ keys: ['molehill'] }), true),
-  beefalos: definePrefabs(['beefalo'], componentParser({ keys: ['beefalo'] }), true),
+  beefalos: definePrefabs(['beefalo'], componentParser({ keys: ['knownlocations', 'periodicspawner', 'beard', 'beefalo'] }), true),
   stalagmites: definePrefabs(STALAGMITE_IDS, empty, true, id => [`${stalagmiteBank(id)}.zip`]),
   rocks: definePrefabs([...ROCK_PREFABS, CAVEIN_BOULDER_ID, MOONROCKSEED_ID], (value, path, context) =>
     (context.prefab === CAVEIN_BOULDER_ID ? caveinBoulder : empty)(value, path, context), true,

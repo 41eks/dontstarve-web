@@ -88,7 +88,7 @@ import { AtriumStatueManager } from '@dontstarve-web/prefab/atrium_statue';
 import { ChessJunkManager } from '@dontstarve-web/prefab/chessjunk';
 import { chesspiecePrefabs } from '@dontstarve-web/prefab/chesspieces';
 import { archiveCentipedeHuskPrefabs } from '@dontstarve-web/prefab/archive_centipede';
-import { BeefaloManager, BEEFALO_BEHAVIOR } from '@dontstarve-web/prefab/beefalo';
+import { BEEFALO_BEHAVIOR, beefaloPrefabs, findBeefaloSpawnPoint, type BeefaloWorld } from '@dontstarve-web/prefab/beefalo';
 import type { LootLaunch } from '../packages/componets/src/inventoryphysics';
 
 /** Where SpawnPrefab makes an inst before it is set down or given to its holder. */
@@ -329,7 +329,6 @@ export async function createSceneEntities(
     'cave_fern': ReturnType<typeof registerCaveFerns>;
     'wormhole': ReturnType<typeof registerWormholes>;
     'multiplayer_portal_moonrock': ReturnType<typeof registerPortals>;
-    'beefalo': ReturnType<typeof registerBeefalos>;
     'evergreen': ReturnType<typeof registerEvergreens>;
     'deciduoustree': ReturnType<typeof registerDeciduousTrees>;
     'farm_plow': ReturnType<typeof registerFarmPlow>;
@@ -422,7 +421,7 @@ export async function createSceneEntities(
   Managers['wormhole'] = registerWormholes(registry, 'wormhole', worldState);
   Managers['multiplayer_portal_moonrock'] = registerPortals(registry, 'multiplayer_portal_moonrock', worldState);
   registerNightmareGrowths(registry, 'nightmaregrowth', worldState);
-  Managers['beefalo'] = registerBeefalos(registry, 'beefalo', worldState);
+  registerBeefalos(registry, 'beefalo', worldState);
   Managers['evergreen'] = registerEvergreens(registry, 'evergreen', worldState);
   Managers['deciduoustree'] = registerDeciduousTrees(registry, 'deciduoustree', worldState);
   Managers['farm_plow'] = registerFarmPlow(registry, 'farm_plow', worldState);
@@ -473,7 +472,6 @@ export async function createSceneEntities(
     Managers, registry, prefabs, worldEvents, dispose, worldWind,
     buildingPlacement: Managers['buildings'],
     groundItems,
-    beefalos: Managers['beefalo'],
     mushroomPlants: Managers['mushroom_plant'],
     rockAvocadoBushes: Managers['rock_avocado_bush'],
     grasses: Managers['grass'],
@@ -1032,24 +1030,27 @@ export async function createSceneEntities(
   }
 
   function registerBeefalos(registry: EntityRegistry, prefabId: 'beefalo', worldState: SceneWorldState) {
-    // Colliders only change between brain updates, so one update's wander and path queries share an obstacle grid.
-    let planning = false;
+    // Colliders only change between frames, so one frame's wander and path queries share an obstacle grid.
+    let planningAt: number | undefined;
     let planningObstacles: ((point: THREE.Vector3) => boolean) | undefined;
-    const beefalos = new BeefaloManager(scene, world, `${import.meta.env.BASE_URL}dst/data/anim`, {
-      scheduler,
+    const beefaloWorld: BeefaloWorld = {
+      scheduler: scheduler ?? worldState.scheduler,
+      componentUpdates: worldState.componentUpdates,
       // The scheduler runs on world seconds (src/scene.ts), so the next boundary is the next multiple of the day length.
       secondsUntilNextDay: now => TUNING.TOTAL_DAY_TIME - now % TUNING.TOTAL_DAY_TIME,
       clock: worldState.clock,
       getWatchWorldContent: worldState.getWatchWorldContent,
-      season: worldState.season,
       getPlayerPositions: () => [player.position],
       pathfinder,
       isWalkable(point) {
         const radius = BEEFALO_BEHAVIOR.radius;
         const edge = initialSave.world.map.generator.options.size / 2 - radius;
-        const blocked = planningObstacles ?? staticObstacleTest(getRegisteredPhysicsBodies(world), radius);
-        if (planning) planningObstacles = blocked;
-        return Math.abs(point.x) <= edge && Math.abs(point.z) <= edge && turfMap.isPassableAtPoint(point) && !blocked(point);
+        const now = beefaloWorld.scheduler.now;
+        if (planningAt !== now || !planningObstacles) {
+          planningAt = now;
+          planningObstacles = staticObstacleTest(getRegisteredPhysicsBodies(world), radius);
+        }
+        return Math.abs(point.x) <= edge && Math.abs(point.z) <= edge && turfMap.isPassableAtPoint(point) && !planningObstacles(point);
       },
       constrainPosition(position) {
         const edge = initialSave.world.map.generator.options.size / 2 - BEEFALO_BEHAVIOR.radius;
@@ -1066,22 +1067,13 @@ export async function createSceneEntities(
       spawnPoop(position) {
         sceneInventory.entities.create({ itemId: 'poop', count: 1 }).setPosition(position.x, 0, position.z);
       },
-    });
+    };
+    prefabs.register(beefaloPrefabs(beefaloWorld));
     registry.register(MANAGER_DEFINITIONS[prefabId], {
-      restore: (_, record) => beefalos.spawn(new THREE.Vector3(...record.transform.position), {
-        id: record.id, transform: record.transform, components: { beefalo: record.components.beefalo! },
-      }),
-      debugSpawn: () => beefalos.spawnNear(player.position),
-      exportRecords: () => beefalos.exportRecords().map((record) => ({ prefabId: 'beefalo', record })),
-      beforePhysics: (dt) => {
-        planning = true;
-        try { beefalos.update(dt); } finally { planning = false; planningObstacles = undefined; }
-      },
-      update: (dt, quaternion) => beefalos.sync(dt, quaternion),
-      renderEntities: () => beefalos.renderEntities,
-      dispose: () => beefalos.dispose(),
+      restore: (id, record) => prefabs.spawn(id, new THREE.Vector3(...record.transform.position), record),
+      debugSpawn: id => prefabs.spawn(id, findBeefaloSpawnPoint(world, beefaloWorld, player.position)),
+      exportRecords: () => [], dispose: () => {},
     });
-    return beefalos;
   }
 
   function registerEvergreens(registry: EntityRegistry, prefabId: 'evergreen', worldState: SceneWorldState) {
