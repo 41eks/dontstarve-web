@@ -38,34 +38,27 @@ export function isNightmareRockId(value: string): value is NightmareRockId {
   return (NIGHTMAREROCK_IDS as readonly string[]).includes(value);
 }
 
-/** nightmarerock.lua: rises while a player of the matching sanity is near, lowers when none is. */
+/**
+ * nightmarerock.lua's fields on the inst: rises while a player of the matching sanity is near, lowers when none is. The
+ * callbacks are this module's functions, registered by `commonfn`; the AnimState, SoundEmitter and SpawnPrefab calls
+ * SGnightmarerock makes are the stategraph's adapters below.
+ */
 export class NightmareRockInstance extends PrefabInstance implements NightmareRockStateInst {
   active = false;
   active_queue = false;
   conceal = false;
   conceal_queued = false;
-  declare readonly sg: NightmareRockStateGraph['sg'];
-  readonly activeonsane: boolean;
-  private refreshTimer?: ComponentTimer;
-  private cancelTransition?: () => void;
-  private readonly world: NightmareRockWorld;
-
-  /** commonfn; MakeObstaclePhysics and updatephysics come from the prefab's `physics`. */
-  constructor(world: NightmareRockWorld, id: NightmareRockId) {
-    super(id, new SpriteState({ name: 'idle_inactive', billboard: true }));
-    this.world = world;
-    this.activeonsane = id === 'sanityrock';
-    for (const tag of ['antlion_sinkhole_blocker', id]) this.addTag(tag);
-    this.sg = new NightmareRockStateGraph(this, world.scheduler).sg;
-    this.AddRefreshTask();
-    this.onRemove(() => {
-      this.cancelTransition?.();
-      this.refreshTimer?.stop();
-      this.sg.dispose();
-    });
-  }
-
-  // --- NightmareRockStateInst ---------------------------------------------------------------------
+  activeonsane = false;
+  /** inst.transition_task: cancels the pending dotransition. */
+  transition_task?: () => void;
+  /** inst._refreshtask */
+  _refreshtask?: ComponentTimer;
+  declare sg: NightmareRockStateGraph['sg'];
+  /** TheWorld and AllPlayers, as this rock's callbacks reach them. */
+  world!: NightmareRockWorld;
+  OnActiveStateChanged!: (inst: NightmareRockInstance) => void;
+  OnConcealStateChanged!: (inst: NightmareRockInstance) => void;
+  ConcealForMinigame!: (inst: NightmareRockInstance, conceal: boolean) => void;
 
   playAnimation(name: string): void {
     this.sprite.playOnce(name, () => this.sg?.pushEvent('animover'));
@@ -74,85 +67,103 @@ export class NightmareRockInstance extends PrefabInstance implements NightmareRo
   spawnFx(prefab: 'sanity_raise' | 'sanity_lower'): void { this.world.fx.spawn(prefab, this.position); }
   Hide(): void { this.sprite.setVisible(false); }
   Show(): void { this.sprite.setVisible(true); }
+}
 
-  OnActiveStateChanged(): void {
-    this.active = this.active_queue;
-    this.updatePhysics();
+/** updatephysics: characters collide only with a raised, revealed rock. */
+function updatephysics(inst: NightmareRockInstance): void {
+  inst.physics.SetCollisionGroup(COLLISION.OBSTACLES);
+  let mask: number = COLLISION.WORLD;
+  if (!inst.conceal) {
+    mask |= COLLISION.ITEMS;
+    if (inst.active) mask |= COLLISION.CHARACTERS;
   }
+  inst.physics.SetCollisionMask(mask);
+}
 
-  OnConcealStateChanged(): void {
-    this.conceal = this.conceal_queued;
-    this.OnActiveStateChanged();
-  }
+/** The pathfinding walls (_ispathfinding) are not ported. */
+function OnActiveStateChanged(inst: NightmareRockInstance): void {
+  inst.active = inst.active_queue;
+  updatephysics(inst);
+}
 
-  /** AddRefreshTask: DoPeriodicTask(UPDATE_INTERVAL, refresh, UPDATE_OFFSET), then stagger the next spawned entity. */
-  private AddRefreshTask(): void {
-    if (this.refreshTimer) return;
-    const timer = this.refreshTimer = new ComponentTimer(this.world.scheduler, () => { this.refresh(); timer.start(UPDATE_INTERVAL); });
-    timer.start(UPDATE_OFFSET);
-    UPDATE_OFFSET += FRAMES;
-    if (UPDATE_OFFSET > UPDATE_INTERVAL) UPDATE_OFFSET = 0;
-  }
+/** LaunchAndClearArea on reveal is not ported. */
+function OnConcealStateChanged(inst: NightmareRockInstance): void {
+  inst.conceal = inst.conceal_queued;
+  OnActiveStateChanged(inst);
+}
 
-  /** nightmarerock.lua updatephysics: characters collide only with a raised, revealed rock. */
-  updatePhysics(): void {
-    this.physics.SetCollisionGroup(COLLISION.OBSTACLES);
-    let mask: number = COLLISION.WORLD;
-    if (!this.conceal) {
-      mask |= COLLISION.ITEMS;
-      if (this.active) mask |= COLLISION.CHARACTERS;
+function dotransition(inst: NightmareRockInstance): void {
+  inst.transition_task = undefined;
+  if (inst.conceal !== inst.conceal_queued) {
+    if (!inst.sg.hasStateTag('busy')) {
+      if (inst.conceal_queued) inst.sg.goToState('conceal', inst.active);
+      else inst.sg.goToState('reveal');
     }
-    this.physics.SetCollisionMask(mask);
+  } else if (inst.active !== inst.active_queue && !inst.conceal_queued) {
+    inst.sg.goToState(inst.active_queue ? 'raise' : 'lower');
   }
+}
 
-  /** ConcealForMinigame(inst, conceal) */
-  ConcealForMinigame(conceal: boolean): void {
-    this.conceal_queued = conceal;
-    this.active_queue = false;
+function matchessanity(inst: NightmareRockInstance, player: NightmareRockPlayer): boolean {
+  return (player.sanity.IsSane() && inst.activeonsane) || (player.sanity.IsInsane() && !inst.activeonsane);
+}
+
+function refresh(inst: NightmareRockInstance): void {
+  if (inst.conceal || inst.conceal_queued) {
+    // nothing to do here
+  } else {
+    // A raised rock lets go only beyond FAR_DIST, a lowered one rises within NEAR_DIST.
+    const limit = inst.active ? FAR_DIST_SQ : NEAR_DIST_SQ;
+    inst.active_queue = inst.world.getPlayers().some(player => matchessanity(inst, player)
+      && player.position.distanceToSquared(inst.position) < limit);
   }
-
-  // --- refresh -------------------------------------------------------------------------------------
-
-  private matchesPlayer(player: NightmareRockPlayer): boolean {
-    return (player.sanity.IsSane() && this.activeonsane) || (player.sanity.IsInsane() && !this.activeonsane);
+  if ((inst.conceal !== inst.conceal_queued || inst.active_queue !== inst.active) && inst.transition_task === undefined) {
+    // DoTaskInTime(math.random(), dotransition)
+    inst.transition_task = inst.world.scheduler.schedule(Math.random(), () => dotransition(inst));
   }
+}
 
-  private refresh(): void {
-    if (this.isRemoved) return;
-    if (this.conceal || this.conceal_queued) {
-      // nothing to do here
-    } else {
-      // A raised rock lets go only beyond FAR_DIST, a lowered one rises within NEAR_DIST.
-      const limit = this.active ? FAR_DIST_SQ : NEAR_DIST_SQ;
-      this.active_queue = this.world.getPlayers().some(player => this.matchesPlayer(player)
-        && player.position.distanceToSquared(this.position) < limit);
-    }
-    if ((this.conceal !== this.conceal_queued || this.active_queue !== this.active) && !this.cancelTransition) {
-      this.cancelTransition = this.world.scheduler.schedule(Math.random(), () => { this.cancelTransition = undefined; this.doTransition(); });
-    }
-  }
+/** DoPeriodicTask(UPDATE_INTERVAL, refresh, UPDATE_OFFSET), then stagger the next spawned entity. */
+function AddRefreshTask(inst: NightmareRockInstance): void {
+  if (inst._refreshtask) return;
+  const task = inst._refreshtask = new ComponentTimer(inst.world.scheduler, () => { refresh(inst); task.start(UPDATE_INTERVAL); });
+  task.start(UPDATE_OFFSET);
+  UPDATE_OFFSET += FRAMES;
+  if (UPDATE_OFFSET > UPDATE_INTERVAL) UPDATE_OFFSET = 0;
+}
 
-  private doTransition(): void {
-    if (this.isRemoved) return;
-    if (this.conceal !== this.conceal_queued) {
-      if (!this.sg.hasStateTag('busy')) {
-        if (this.conceal_queued) this.sg.goToState('conceal', this.active);
-        else this.sg.goToState('reveal');
-      }
-    } else if (this.active !== this.active_queue && !this.conceal_queued) {
-      this.sg.goToState(this.active_queue ? 'raise' : 'lower');
-    }
-  }
+function ConcealForMinigame(inst: NightmareRockInstance, conceal: boolean): void {
+  inst.conceal_queued = conceal;
+  inst.active_queue = false;
+}
 
+/** commonfn(tags); MakeObstaclePhysics and updatephysics come from the prefab's `physics`. */
+function commonfn(world: NightmareRockWorld, id: NightmareRockId): NightmareRockInstance {
+  const inst = new NightmareRockInstance(id, new SpriteState({ name: 'idle_inactive', billboard: true }));
+  inst.world = world;
+  inst.addTag('antlion_sinkhole_blocker');
+  inst.addTag(id);
+  inst.activeonsane = id === 'sanityrock';
+  inst.sg = new NightmareRockStateGraph(inst, world.scheduler).sg;
+  AddRefreshTask(inst);
+  inst.OnActiveStateChanged = OnActiveStateChanged;
+  inst.OnConcealStateChanged = OnConcealStateChanged;
+  inst.ConcealForMinigame = ConcealForMinigame;
+  inst.onRemove(() => {
+    inst.transition_task?.();
+    inst._refreshtask?.stop();
+    inst.sg.dispose();
+  });
+  return inst;
 }
 
 /** nightmarerock.lua sanityrock / insanityrock: obelisks that rise and lower with the nearby player's sanity. */
 export function nightmareRockPrefabs(world: NightmareRockWorld): Readonly<Record<NightmareRockId, PrefabEntityDefinition<NightmareRockInstance>>> {
   const prefab = (id: NightmareRockId): PrefabEntityDefinition<NightmareRockInstance> => ({
-    fn: () => new NightmareRockInstance(world, id),
+    fn: () => commonfn(world, id),
     assets: { animationArchive: 'blocker_sanity.zip', buildArchives: ['blocker_sanity.zip'], bank: 'blocker_sanity' },
     // MakeObstaclePhysics(inst, COLLISION_SIZE), then updatephysics for the lowered rock.
-    physics: { make: (inst, radius) => { MakeObstaclePhysics(inst, radius); inst.updatePhysics(); }, radius: COLLISION_SIZE },
+    physics: { make: (inst, radius) => { MakeObstaclePhysics(inst, radius); updatephysics(inst); }, radius: COLLISION_SIZE },
     minimapIcon: 'obelisk.png',
   });
   return { sanityrock: prefab('sanityrock'), insanityrock: prefab('insanityrock') };

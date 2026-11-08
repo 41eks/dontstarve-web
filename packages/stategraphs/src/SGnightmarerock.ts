@@ -16,8 +16,9 @@ export interface NightmareRockStateInst {
   playSound(path: NightmareRockSound): void;
   /** SpawnPrefab("sanity_raise" | "sanity_lower") at the rock. */
   spawnFx(prefab: 'sanity_raise' | 'sanity_lower'): void;
-  OnActiveStateChanged(): void;
-  OnConcealStateChanged(): void;
+  /** inst:OnActiveStateChanged(), a field the prefab assigns: called with the inst. */
+  OnActiveStateChanged(inst: NightmareRockStateInst): void;
+  OnConcealStateChanged(inst: NightmareRockStateInst): void;
   Hide(): void;
   Show(): void;
 }
@@ -36,7 +37,7 @@ const states: StateDefinition<NightmareRockStateInst, NightmareRockStateName>[] 
     tags: ['idle', 'busy'],
     onenter: sg => {
       const inst = sg.context;
-      inst.OnActiveStateChanged();
+      inst.OnActiveStateChanged(inst);
       inst.playAnimation('raise');
       inst.playSound('dontstarve/sanity/shadowrock_up');
       inst.spawnFx('sanity_raise');
@@ -51,7 +52,7 @@ const states: StateDefinition<NightmareRockStateInst, NightmareRockStateName>[] 
     tags: ['idle', 'busy'],
     onenter: sg => {
       const inst = sg.context;
-      inst.OnActiveStateChanged();
+      inst.OnActiveStateChanged(inst);
       inst.playAnimation('lower');
       inst.playSound('dontstarve/sanity/shadowrock_down');
       inst.spawnFx('sanity_lower');
@@ -63,7 +64,7 @@ const states: StateDefinition<NightmareRockStateInst, NightmareRockStateName>[] 
     tags: ['hidden', 'busy'],
     onenter: (sg, fromRaise) => {
       const inst = sg.context;
-      inst.OnConcealStateChanged();
+      inst.OnConcealStateChanged(inst);
       if (fromRaise) {
         inst.playAnimation('lower_to_conceal');
         inst.playSound('dontstarve/sanity/shadowrock_down');
@@ -85,7 +86,7 @@ const states: StateDefinition<NightmareRockStateInst, NightmareRockStateName>[] 
     name: 'reveal',
     tags: ['busy'],
     onenter: sg => {
-      sg.context.OnConcealStateChanged();
+      sg.context.OnConcealStateChanged(sg.context);
       sg.context.playAnimation('reveal');
       sg.context.playSound('dontstarve/sanity/shadowrock_reveal');
     },

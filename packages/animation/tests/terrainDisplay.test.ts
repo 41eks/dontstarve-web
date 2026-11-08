@@ -136,7 +136,7 @@ it('settles a sanityrock transition on sleep and restores its stategraph pose an
     expect(instance.sprite.currentAnimation).toBe('idle_active');
     expect(instance.position.toArray()).toEqual([12, 0, 6]);
     awake.set(false); await settle();
-    rock.ConcealForMinigame(true); scheduler.advance(.2); await settle();
+    rock.ConcealForMinigame(rock, true); scheduler.advance(.2); await settle();
     expect(rock.sg.stateName).toBe('concealed');
     expect(instance.physicsBody!.collisionResponse).toBe(false);
     awake.set(true); await settle();
