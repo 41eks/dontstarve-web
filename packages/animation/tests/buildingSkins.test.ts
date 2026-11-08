@@ -121,7 +121,7 @@ describe('DST building skins', () => {
     dispose(model);
   });
 
-  it('draws the researchlab4 hat through an AnimState override and swaps it on reskin', async () => {
+  it('draws only the researchlab4 hat from its skin build and swaps it on reskin', async () => {
     vi.stubGlobal('window', new EventTarget());
     vi.stubGlobal('document', { createElement: () => ({ setAttribute: vi.fn(), style: {} }), body: { appendChild: vi.fn() } });
     const world = { scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(),
@@ -130,30 +130,26 @@ describe('DST building skins', () => {
     try {
       const model = await placement.spawnFromSave('researchlab4', { id: 'lab:hat', transform: { position: [3, 0, 4], rotationY: 0 },
         components: { building: { skinId: 'researchlab4_chef' } } });
-      const sprite = prefabInstance<PrefabInstance>(model)!.sprite;
-      const hat = () => {
-        const declared = sprite.sprite.peek().appearance.get('anim-state');
-        if (declared?.kind !== 'anim-state') throw new Error('researchlab4 declares no AnimState');
-        return declared.state.peek().overrides.get(smallHash('machine_hat'))?.sources.map(({ archive }) => archive);
-      };
-      // researchlab4_init_fn: OverrideItemSkinSymbol("machine_hat", build_name, "machine_hat", GUID, "researchlab4"), no SetSkin.
-      expect(sprite.sprite.peek().appearance.has('skin')).toBe(false);
-      expect(hat()).toEqual(['dynamic/researchlab4_chef.zip', 'researchlab4.zip']);
+      const lab = prefabInstance(model)!, sprite = lab.sprite;
+      // researchlab4_init_fn: OverrideItemSkinSymbol("machine_hat", build_name, "machine_hat", GUID, "researchlab4"), no SetSkin,
+      // declared as the skin's only symbol like moondial's basin.
+      const declared = sprite.sprite.peek().appearance.get('skin');
+      expect(declared?.kind === 'skin' && declared.skin.symbols).toEqual(['machine_hat']);
+      expect(lab.skinId).toBe('researchlab4_chef');
       await prefabDisplay(model)!.artLoaded();
       const base = await createAnimatedSprite('/dst/data/anim', 'researchlab4.zip', { initialAnimation: 'idle', scale: 0.02 });
-      const mesh = meshOf(model), baseMesh = meshOf(base);
+      const mesh = meshOf(model), baseMesh = meshOf(base), baseCount = baseMesh.geometry.drawRange.count;
       // Only the hat changes: the machine keeps every part of the base build.
       expect(mesh.geometry.drawRange.count).toBe(baseMesh.geometry.drawRange.count);
       expect(Array.from(mesh.geometry.getAttribute('position').array))
         .not.toEqual(Array.from(baseMesh.geometry.getAttribute('position').array));
       dispose(base);
 
-      // Reskinning runs researchlab4_clear_fn, then the next skin's init_fn, on the same AnimState.
+      // Reskinning swaps the hat's build: researchlab4_clear_fn, then the next skin's init_fn.
       expect(reskinEntity(placement.reskinTargets[0])).toBe(true);
-      await new Promise(resolve => setTimeout(resolve, 0));
-      const next = sprite.skinId.peek();
-      expect(hat()).toEqual(next === undefined ? undefined
-        : [RESEARCH_LAB_DEFINITIONS.researchlab4.skinArchives![next], 'researchlab4.zip']);
+      expect(lab.skinId).not.toBe('researchlab4_chef');
+      await prefabDisplay(model)!.artLoaded();
+      expect(meshOf(model).geometry.drawRange.count).toBe(baseCount);
     } finally { placement.dispose(); }
   });
 

@@ -63,6 +63,8 @@
 | `Follower:FollowSymbol` | `sprite.followSymbol`、`attachFx` | `display/src/spriteState.ts` | |
 | `SetFourFaced`、`SetEightFaced` | `sprite.setFacing`、`setFacingRotation` | `lightflier.ts` | |
 | `SetSkin`、皮肤 | `sprite.setSkinSource`，换肤写 `inst.skinId` | `wormhole.ts` | 没有源皮肤就不做 |
+| 皮肤 init_fn 只调 `OverrideItemSkinSymbol(sym, build, sym, ...)` | `PrefabEntityDefinition`／`BuildingDeclaration` 的 `skinSymbols` | `definitions.json` 的 `moondial`、`researchlab4` | 不写 init_fn 或 AnimState override |
+| 皮肤下仍取基础 build 的 symbol、皮肤 archive 自带的动画层 | `baseSymbols`、`skinAnimationBanks`（按皮肤名） | `definitions.json` 的 `researchlab`、`researchlab2` | display 负责合成 |
 
 ## 组件、事件与存档
 

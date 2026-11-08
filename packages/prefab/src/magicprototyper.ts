@@ -25,12 +25,6 @@ function onhit(inst: PrefabInstance): void {
     inst.sprite.pushAnimation(on ? 'proximity_loop' : 'idle', on);
 }
 
-/** prefabskin.lua researchlab4_init_fn / researchlab4_clear_fn: only the hat comes from the skin build. */
-const RESEARCHLAB4_SKIN: NonNullable<AnimatedBuildingDefinition['skinAnimState']> = {
-    init: (anim, skinArchive) => anim.OverrideItemSkinSymbol('machine_hat', skinArchive, 'machine_hat', 'researchlab4', 'researchlab4'),
-    clear: anim => anim.ClearOverrideSymbol('machine_hat'),
-};
-
 /**
  * magicprototyper.lua createmachine(level, name, soundprefix, sounddelay, techtree, mergeanims, onact). The use animation,
  * its sounds, onact (spawnrabbits) and the delayed place sound are not ported.
@@ -96,7 +90,6 @@ function createmachine(level: 3 | 4, name: MagicPrototyperId, soundprefix: 'lvl3
         ...definitions.animatedBuildings[name], obstacleRadius: .4,
         // MakeLargeBurnable(inst, nil, nil, true) and MakeLargePropagator.
         burnable: { burnTime: 30, fxLevel: 4, propagator: 'large' },
-        ...(name === 'researchlab4' ? { skinAnimState: RESEARCHLAB4_SKIN } : {}),
         // AnimatedBuildingPlacement creates the entity; fn assembles it.
         oninit: ({ instance }) => fn(instance),
     };

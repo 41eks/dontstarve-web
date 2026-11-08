@@ -384,6 +384,10 @@ export interface PrefabEntityDefinition<Instance extends PrefabInstance<SpriteSt
   skins?: Readonly<Record<string, string>>;
   /** The symbols a skin build replaces, when it replaces only some of the base build's (OverrideItemSkinSymbol). */
   skinSymbols?: readonly string[];
+  /** Symbols the source keeps from the base build under every skin, such as researchlab's FX symbols. */
+  baseSymbols?: readonly string[];
+  /** Per skin, the animation banks of its archive drawn over the clip's frame, such as researchlab2_pod's pod FX. */
+  skinAnimationBanks?: Readonly<Record<string, readonly string[]>>;
   /** How the builds' materials are made (multColour, point filtering), with or without skins. */
   materialOptions?: import('@dontstarve-web/animation/animationAssets').SpriteMaterialOptions;
   /** In place of `assets`: the art is the inventory image, drawn as a billboard. */
@@ -465,11 +469,12 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError(`Invalid ${prefabId} position`);
     if (!this.has(prefabId)) throw new Error(`Unknown prefab: ${prefabId}`);
     const { fn, assets, instanceAssets, assetOptions, alignBottom, rayTestOnBB, targetable = true, physics, minimapIcon, onSpawned, skins, skinSymbols,
-      alwaysActive, materialOptions, icon, source } = this.prefabs[prefabId];
+      baseSymbols, skinAnimationBanks, alwaysActive, materialOptions, icon, source } = this.prefabs[prefabId];
     if (skinId !== undefined && !skins?.[skinId]) throw new Error(`Unsupported ${prefabId} skin: ${skinId}`);
     const instance = fn(position, this.resources);
     if (skins || materialOptions) instance.sprite.setSkinSource({ art: this.resources.archives, archives: skins ?? {}, materialOptions,
-      ...skinSymbols ? { symbols: skinSymbols } : {} });
+      ...skinSymbols ? { symbols: skinSymbols } : {}, ...baseSymbols ? { baseSymbols } : {},
+      ...skinAnimationBanks ? { animationBanks: skinAnimationBanks } : {} });
     const iconSource = icon && this.iconSource(prefabId, icon);
     physics?.make(instance, physics.radius, physics.height);
     if (minimapIcon) instance.minimap.SetIcon(minimapIcon);
