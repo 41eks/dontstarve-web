@@ -8,10 +8,18 @@ import { DoAction } from './behaviours/doaction';
 import { BufferedAction } from '../../stategraphs/src/bufferedaction';
 import type { BrainEntity, BrainInst } from './types';
 
-export interface LightFlierBrainHome extends BrainEntity {
-  readonly returningHome?: BrainEntity;
-  readonly childrenOutside: number;
-  canGoHome(): boolean;
+/** lightflier_flower.lua as the brain reads it: its childspawner, burnable, pickable and _lightflier_returning_home. */
+export interface LightFlierBrainHome extends Omit<BrainEntity, 'components'> {
+  readonly _lightflier_returning_home?: BrainEntity;
+  readonly components: {
+    childspawner: { readonly numchildrenoutside: number };
+    burnable: { IsBurning(): boolean };
+    pickable: { readonly canBePicked: boolean };
+  };
+}
+/** GoHomeAction's test of homeseeker.home: valid, not burning or burnt, and picked. */
+export function CanGoHome(home: LightFlierBrainHome): boolean {
+  return home.isValid() && !home.components.burnable.IsBurning() && !home.hasTag('burnt') && !home.components.pickable.canBePicked;
 }
 export interface LightFlierBrainInst extends BrainInst {
   readonly home?: LightFlierBrainHome;
@@ -33,10 +41,10 @@ export class LightFlierBrain extends Brain {
     const inst = this.fly, unit = this.unit;
     const gohome = () => {
       inst.findHome(); const home = inst.home;
-      if (!home?.isValid() || !home.canGoHome() || inst.sg.hasStateTag('busy')
-        || !(home.returningHome === inst || inst.getTime() - inst.bornAt > 60 && home.childrenOutside > 1)) return;
+      if (!home?.isValid() || !CanGoHome(home) || inst.sg.hasStateTag('busy')
+        || !(home._lightflier_returning_home === inst || inst.getTime() - inst.bornAt > 60 && home.components.childspawner.numchildrenoutside > 1)) return;
       return new BufferedAction('GOHOME', () => inst.wentHome(home),
-        () => inst.isValid() && home.isValid() && home.canGoHome(), { target: home, distance: unit });
+        () => inst.isValid() && CanGoHome(home), { target: home, distance: unit });
     };
     class Root extends PriorityNode {
       override Visit(): void {

@@ -107,13 +107,6 @@
     "prefab-timer": 1,
     "sg-forward": 1
   },
-  "packages/prefab/src/lightflier_flower.ts": {
-    "manager": 1,
-    "object-assign-state": 1,
-    "prefab-timer": 2,
-    "scene": 1,
-    "userdata": 2
-  },
   "packages/prefab/src/marblebean_sapling.ts": {
     "instance-method": 2
   },

@@ -25,13 +25,13 @@ import { ErodeAway } from '../../componets/src/erodeaway';
 import { animationLengths } from './animationTimings';
 import { Workable } from '../../componets/src/workable';
 import { LocoMotor, type LocoMotorInst } from '../../componets/src/locomotor';
-import { LightFlierBrain, type LightFlierBrainInst } from '../../brains/src/lightflierbrain';
+import { CanGoHome, LightFlierBrain, type LightFlierBrainInst } from '../../brains/src/lightflierbrain';
 import { LightFlierStateGraph, type LightFlierStateInst } from '../../stategraphs/src/SGlightflier';
 import type { BufferedAction } from '../../stategraphs/src/bufferedaction';
 import type { BrainEntity, BrainWorld } from '../../brains/src/types';
 import type { ItemPrefabWorld } from './groundPrefab';
 import { bindItemWorld, dropStackIndividually, type ItemPrefabDefinition } from './groundItems';
-import type { LightFlierFlower } from './lightflier_flower';
+import type { LightFlierFlowerInstance } from './lightflier_flower';
 import { WORLD_SCALE, MakeGhostPhysics } from './standardcomponents';
 import type { SoundEmitter } from './soundEmitter';
 
@@ -59,20 +59,37 @@ export interface LightFlierServices {
   getPlayers(): readonly LightFlierPlayer[];
   spawnItem(state: InventoryStack): ItemEntity;
   dropLoot(prefab: string, count: number, position: Vector3): void;
+  /** FindEntity(inst, MAX_WANDER_DIST, nil, { "lightflier_home" }): the live lightflier_flower entities. */
+  getHomes(): Iterable<LightFlierFlowerInstance>;
 }
 type Leader = FormationLeader<LightFlierPlayer, LightFlier>;
 
 /** Shared world services, source assets and nonpersistent formationleader entities. */
 export class LightFlierHabitat {
   readonly flies = new Set<LightFlier>();
-  readonly homes = new Map<string, LightFlierFlower>();
+  /** OnLoadPostPass's newents: homes waiting for a saved child by its entity ID. */
+  private readonly waiting = new Map<string, Set<(fly: LightFlier) => void>>();
   readonly formations = new Set<Leader>();
   private readonly leaderTimers = new Map<Leader, ComponentTimer>();
   private readonly distributenext = new Set<Leader>();
   private disposed = false;
   readonly services: LightFlierServices;
   constructor(services: LightFlierServices) { this.services = services; }
-  bind(fly: LightFlier): void { fly.bindWorld(this, LIGHTFLIER_ANIMATION_LENGTHS); }
+  bind(fly: LightFlier): void {
+    fly.bindWorld(this, LIGHTFLIER_ANIMATION_LENGTHS);
+    const found = this.waiting.get(fly.id);
+    this.waiting.delete(fly.id);
+    for (const fn of found ?? []) fn(fly);
+  }
+  /** `found` runs once the lightflier with this entity ID joins the world, or now if it has. */
+  waitForFly(id: string, found: (fly: LightFlier) => void): () => void {
+    const fly = [...this.flies].find(candidate => candidate.id === id);
+    if (fly) { found(fly); return () => {}; }
+    let set = this.waiting.get(id);
+    if (!set) this.waiting.set(id, set = new Set());
+    set.add(found);
+    return () => { set!.delete(found); if (!set!.size && this.waiting.get(id) === set) this.waiting.delete(id); };
+  }
   spawn(position: Vector3): LightFlier {
     if (this.disposed) throw new Error('Lightflier habitat unavailable');
     const entity = this.services.spawnItem({ itemId: LIGHTFLIER_ID, count: 1 }); configureLightFlierEntity(entity);
@@ -128,11 +145,11 @@ export class LightFlierHabitat {
     if (this.disposed) return; this.disposed = true;
     for (const leader of this.formations) leader.dispose();
     for (const timer of this.leaderTimers.values()) timer.stop(); this.leaderTimers.clear();
-    this.homes.clear(); this.flies.clear();
+    this.waiting.clear(); this.flies.clear();
   }
 }
 
-type LightFlierComponents = ItemEntity['components'] & { health: Health; combat: Combat; homeseeker: HomeSeeker<LightFlierFlower>;
+type LightFlierComponents = ItemEntity['components'] & { health: Health; combat: Combat; homeseeker: HomeSeeker<LightFlierFlowerInstance>;
   knownlocations: KnownLocations; formationfollower: FormationFollower<LightFlierPlayer, LightFlier>; follower: Follower<LightFlierPlayer>;
   locomotor?: LocoMotor; sleeper?: Sleeper; freezable?: Freezable; burnable?: Burnable; propagator?: Propagator; hauntable?: Hauntable };
 
@@ -183,7 +200,7 @@ export class LightFlier implements LightFlierBrainInst, LightFlierStateInst, Loc
     entity.AddSoundEmitter();
     addComponent(this, 'health', Health, 25).OnLoad({ health: entity.lightflier?.health ?? 25 });
     addComponent(this, 'combat', Combat, () => this.getTime());
-    addComponent(this, 'homeseeker', HomeSeeker<LightFlierFlower>);
+    addComponent(this, 'homeseeker', HomeSeeker<LightFlierFlowerInstance>);
     addComponent(this, 'knownlocations', KnownLocations);
     addComponent(this, 'formationfollower', FormationFollower<LightFlierPlayer, LightFlier>);
     addComponent(this, 'follower', Follower<LightFlierPlayer>);
@@ -212,7 +229,7 @@ export class LightFlier implements LightFlierBrainInst, LightFlierStateInst, Loc
     entity.ListenForEvent('onputininventory', () => this.onPutInInventory()), entity.ListenForEvent('ondropped', () => this.onDropped()));
   }
   get id(): string { return this.entity.id; }
-  get home(): LightFlierFlower | undefined { return this.components.homeseeker.home; }
+  get home(): LightFlierFlowerInstance | undefined { return this.components.homeseeker.home; }
   get inFormation(): boolean { return this.components.formationfollower.formationleader !== undefined; }
   get facing(): number { return this.heading; }
   get isRemoved(): boolean { return this.disposed || this.entity.isRemoved; }
@@ -291,13 +308,13 @@ export class LightFlier implements LightFlierBrainInst, LightFlierStateInst, Loc
       if (this.active.peek()) { this.startTargetSearch(); this.enableBuzz(true); } else this.brain.Pause();
     } else this.onPutInInventory();
   }
-  setHome(home?: LightFlierFlower): void {
+  setHome(home?: LightFlierFlowerInstance): void {
     this.components.homeseeker.SetHome(home);
     if (home) this.components.knownlocations.RememberLocation('home', home.getPosition());
   }
   findHome(): void {
     if (this.home?.isValid()) return;
-    const home = [...this.habitat!.homes.values()].filter(h => h.isValid() && !h.hasTag('fire') && !h.hasTag('burnt')
+    const home = [...this.habitat!.services.getHomes()].filter(h => h.isValid() && !h.hasTag('fire') && !h.hasTag('burnt')
       && h.getPosition().distanceToSquared(this.getPosition()) <= (10 * WORLD_SCALE) ** 2)
       .sort((a, b) => a.getPosition().distanceToSquared(this.getPosition()) - b.getPosition().distanceToSquared(this.getPosition()))[0];
     home?.components.childspawner.TakeOwnership(this);
@@ -314,7 +331,7 @@ export class LightFlier implements LightFlierBrainInst, LightFlierStateInst, Loc
   clearBufferedAction(): void { this.bufferedaction?.fail(); this.bufferedaction = undefined; }
   performBufferedAction(): boolean { const action = this.bufferedaction; this.bufferedaction = undefined; return action?.do() ?? false; }
   validHomeAction(): boolean { const target = this.bufferedaction?.target as BrainEntity | undefined; return !!target?.isValid() && !target.hasTag('fire') && !target.hasTag('burnt'); }
-  wentHome(home: BrainEntity): boolean { return home === this.home && this.home.canGoHome() && this.home.components.childspawner.GoHome(this); }
+  wentHome(home: BrainEntity): boolean { return home === this.home && CanGoHome(this.home) && this.home.components.childspawner.GoHome(this); }
   playAnimation(name: string, loop = false): void { this.animstate.PlayAnimation(name, loop); }
   pushAnimation(name: string, loop = false): void { this.animstate.PushAnimation(name, loop); }
   /** inst.SoundEmitter (lightflier.lua AddSoundEmitter). */
@@ -397,7 +414,7 @@ export class LightFlier implements LightFlierBrainInst, LightFlierStateInst, Loc
   OnSave(): NonNullable<InventoryStack['lightflier']> {
     const known = this.components.knownlocations.GetLocation('home');
     return { health: this.components.health.currenthealth, age: this.habitat ? this.getTime() - this.bornAt : this.entity.lightflier?.age ?? 0,
-      ...(this.home ? { homeId: this.home.id } : {}), ...(known ? { knownHome: [known.x, known.y, known.z] } : {}) };
+      ...(this.home ? { homeId: String(this.home.entityId) } : {}), ...(known ? { knownHome: [known.x, known.y, known.z] } : {}) };
   }
   remove(): void { this.entity.remove(); }
   dispose(): void {

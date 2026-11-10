@@ -1,6 +1,7 @@
 import { stalagmitePrefabs } from '@dontstarve-web/prefab/stalagmite';
 import { ruinsRelicPrefabs } from '@dontstarve-web/prefab/ruinsrelic';
-import { LightFlierFlowerManager, type LightFlierFlowerRecord } from '../packages/prefab/src/lightflier_flower';
+import { lightflierFlowerPrefabs } from '../packages/prefab/src/lightflier_flower';
+import { LightFlierHabitat } from '../packages/prefab/src/lightflier';
 import { MAX_PHYSICS_FRAME_TIME } from './physicsTiming';
 import { createMoleHabitat, molehillPrefabs, type MolehillInstance } from '../packages/prefab/src/molehill';
 import { MoleBait } from '../packages/prefab/src/molebait';
@@ -459,7 +460,7 @@ export async function createSceneEntities(
   });
 
   const dispose = () => {
-    stopDugTurf(); farmMap.dispose();
+    stopDugTurf(); farmMap.dispose(); Managers['lightflier_flower'].dispose();
     try { registry.dispose(); }
     finally {
       sceneInventory.entities.bindSpawner(undefined);
@@ -634,26 +635,30 @@ export async function createSceneEntities(
     return items;
   }
 
+  /** lightflier_flower on the shared manager, and the lightfliers' world: their formations and SpawnPrefab("lightflier"). */
   function registerLightFlierFlowers(registry: EntityRegistry, prefabId: 'lightflier_flower', worldState: SceneWorldState) {
     const lightFlierPlayer = { position: player.position, isValid: () => !playerStats.health.IsDead(),
       hasLightFlier: () => sceneInventory.Has('lightflier'),
       getFacing: () => playerInstance.worldHeading, getWalkSpeed: () => 4 * WORLD_SCALE,
       wantsToMove: () => playerInstance.wantsToMoveForward };
-    const flowers = new LightFlierFlowerManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
+    const dropLoot = (itemId: string, count: number, position: THREE.Vector3) => {
+      groundItems.flingLoot([{ ...SAVE_CATALOG.items[itemId], itemId, count }], position);
+    };
+    const habitat = new LightFlierHabitat({
       maxMovementStep: MAX_PHYSICS_FRAME_TIME,
       scheduler: scheduler ?? worldState.scheduler, getWatchWorldContent: worldState.getWatchWorldContent, tickingarea: worldState.tickingarea, cameraHeading: view.cameraHeading,
       getPlayers: () => [lightFlierPlayer],
       spawnItem: state => { const entity = sceneInventory.entities.create(state); sceneInventory.configureItem(entity); return entity; },
-      dropLoot: (itemId, count, position) => { groundItems.flingLoot([{ ...SAVE_CATALOG.items[itemId], itemId, count }], position); },
-    }, model => dstLighting.sampleLightLevel(model.position, model));
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
-      restore: (_, record) => flowers.spawn(new THREE.Vector3(...record.transform.position), record as LightFlierFlowerRecord),
-      debugSpawn: () => flowers.spawn(player.position.clone()),
-      exportRecords: () => flowers.exportRecords().map(record => ({ prefabId, record })),
-      update: (dt, quaternion) => flowers.update(dt, quaternion), renderEntities: () => flowers.renderEntities,
-      dispose: () => flowers.dispose(),
+      dropLoot,
+      getHomes: () => prefabs.instances(prefabId) as Iterable<import('../packages/prefab/src/lightflier_flower').LightFlierFlowerInstance>,
     });
-    return flowers;
+    // The formation leaders move every frame after physics.
+    const stopFormations = worldState.componentUpdates.register({ OnUpdate: dt => habitat.update(dt) });
+    prefabs.register(lightflierFlowerPrefabs({ scheduler: scheduler ?? worldState.scheduler, habitat, dropLoot,
+      getWatchWorldContent: worldState.getWatchWorldContent,
+      getLightLevel: model => dstLighting.sampleLightLevel(model.position, model) }));
+    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+    return { habitat, dispose: () => { stopFormations(); habitat.dispose(); } };
   }
 
   function registerBulbPlants(registry: EntityRegistry, prefabId: 'bulb_plant', worldState: SceneWorldState) {

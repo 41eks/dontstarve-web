@@ -314,7 +314,7 @@ prefab 包内原先直接持有 `scene` 的 38 个类改由 `PrefabDisplayGroup`
 
 `archive_moon_statue` 读档及采矿后的 `idle_full_1`～`idle_full_4`、`idle_med_1`～`idle_med_4`、`idle_low_1`～`idle_low_4` 循环动画使用共享 `InstancedMesh` 合批；新生成雕像仍按 Lua 单次播放初始动画。休眠／唤醒保留采矿状态，`c_spawn("archive_moon_statue")`、`c_save()` 的语法、参数和支持 ID 不变；原版只保存雕像款式，读档恢复满工作量。
 
-`c_spawn("lightflier_flower")` 生成月亮蘑菇花，`c_spawn("lightflier")` 生成活动的球状光虫；`c_give("lightflier", 3)` 给予可堆叠的活虫（上限 40）。持有活虫会吸引附近的光虫围绕玩家编队；地面活虫需装备 `bugnet` 捕获，放下整堆时拆成独立实体。活虫在容器中 2 游戏日饥饿，可喂蔬菜恢复存活时间，饿死或被击杀产生荧光果。支持睡眠、冷冻／解冻、受击惊慌、原版发光与飞行声音；远处休眠的虫白天可直接回巢。`c_save()` 保存花的品种、采摘／暂停状态、亮灯计时及子代引用，并保留虫的身份、位置、生命、已知巢址和物品数量／新鲜度；编队是临时状态，读档后重新寻找持虫玩家。
+`c_spawn("lightflier_flower")` 生成月亮蘑菇花，`c_spawn("lightflier")` 生成活动的球状光虫；`c_give("lightflier", 3)` 给予可堆叠的活虫（上限 40）。持有活虫会吸引附近的光虫围绕玩家编队；地面活虫需装备 `bugnet` 捕获，放下整堆时拆成独立实体。活虫在容器中 2 游戏日饥饿，可喂蔬菜恢复存活时间，饿死或被击杀产生荧光果。支持睡眠、冷冻／解冻、受击惊慌、原版发光与飞行声音；远处休眠的虫白天可直接回巢。`c_save()` 保存花的品种、采摘／暂停状态、亮灯计时及子代引用，并保留虫的身份、位置、生命、已知巢址和物品数量／新鲜度；编队是临时状态，读档后重新寻找持虫玩家。花由共享的 `PrefabEntityManager` 生成，亮灯／充能计时在 `timer` 组件；读档时花按实体 ID 等待外出的虫加载后再认领（`OnLoadPostPass`）。
 
 `c_give` 可用的物品 ID 由 [src/inventoryItems.ts](src/inventoryItems.ts) 汇总的物品定义决定；命令解析见 [src/debugCommands.ts](src/debugCommands.ts)，场景与存档共享 [src/prefabDefinitions.ts](src/prefabDefinitions.ts) 的 prefab 注册定义，统一声明持久化 ID、`c_spawn` ID/别名及组件校验规则；[src/sceneEntities.ts](src/sceneEntities.ts) 将创建、恢复、导出、更新和销毁绑定到同一份定义，由 [src/entityRegistry.ts](src/entityRegistry.ts) 调度。新增 prefab 无需再维护存档 ID 白名单；启动时会检查共享定义是否都已绑定场景处理函数。`c_spawn` 的支持 ID 来自定义的 `debugSpawnIds`，落点规则由对应创建函数决定。
 

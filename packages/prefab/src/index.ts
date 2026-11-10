@@ -183,7 +183,7 @@ export { RECORD_ID, RECORD_SONGS, RECORD_ITEM_SPECS, configureRecordEntity, isPh
 
 export { BANANAJUICE_ID, MUSHROOM_ITEM_IDS, FOOD_EFFECTS, PERISHABLE_FOODS, getFoodEffects, type FoodEffects } from './food';
 
-export { LightFlierFlowerManager, LightFlierFlower, LIGHTFLIER_FLOWER_ID } from './lightflier_flower';
+export { lightflierFlowerPrefabs, LightFlierFlowerInstance, LIGHTFLIER_FLOWER_ID } from './lightflier_flower';
 export { LightFlier, LightFlierHabitat, LIGHTFLIER_ID, configureLightFlierEntity } from './lightflier';
 export { mouseTargets, setMouseTargetEnabled } from './mouseTargets';
 export { addComponent, removeComponent, type ComponentName } from './components';
