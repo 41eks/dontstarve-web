@@ -29,6 +29,8 @@ export interface PlacementSaveRecord {
     beefalo?: import('./beefalo').LegacyBeefaloSave;
     wall?: import('./wallSkins').WallSaveState;
     fence?: import('./fenceSkins').FenceSaveState;
+    /** statueglommer.lua OnSave's worked / spawned. */
+    statueglommer?: { worked?: true; spawned?: true };
     sculptingtable?: { itemname: string };
     birdcage?: import('./birdcage').BirdcageSaveStateData;
     workable?: { workleft: number; maxwork: number };

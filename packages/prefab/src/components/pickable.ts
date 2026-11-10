@@ -67,6 +67,8 @@ export class Pickable implements PickableComponent {
   picksound?: string;
   wildfirestarter = false;
   remove_when_picked = false;
+  /** pickable.lua makefullfn(inst): Regen and an OnLoad of a full plant call it. */
+  makefullfn?: { call(inst: PickableInst): void }['call'];
   /** pickable.lua onpickedfn(inst, picker, loot), called after the constructor's onPicked. */
   onpickedfn?: { call(inst: PickableInst, picker: unknown, loot: unknown): void }['call'];
   /** Prefabs retaining an original item provide it instead of spawning a product copy. */
@@ -227,7 +229,7 @@ export class Pickable implements PickableComponent {
   regen(): void {
     if (this.removed.peek()) return;
     if (this.timer.snapshot.peek().status === 'scheduled') this.timer.stop();
-    batch(() => { this.ready.set(true); this.refreshTag(); this.onRegen(); });
+    batch(() => { this.ready.set(true); this.refreshTag(); this.onRegen(); this.makefullfn?.(this.inst); });
   }
 
   /** pickable.lua FinishGrowing: only a pending regrow task completes early; paused plants keep waiting. */
@@ -274,7 +276,7 @@ export class Pickable implements PickableComponent {
       if (saved.picked || saved.regrowSeconds !== undefined) {
         if (this.IsBarren()) this.callbacks?.onBarren?.(true); else this.callbacks?.onEmpty?.();
         this.ready.set(false);
-      } else this.ready.set(true);
+      } else { this.makefullfn?.(this.inst); this.ready.set(true); }
       this.paused.set(saved.paused ?? false);
       if (saved.caninteractwith) this.interactable.set(true);
       if (saved.regrowSeconds !== undefined) {

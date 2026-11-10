@@ -1,10 +1,5 @@
 import { addComponent, removeComponent } from './components';
-import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
-import * as THREE from 'three';
-import type { World } from 'cannon-es';
-import type { TileStateQuery } from '@dontstarve-web/signals';
-import { ArchiveSpriteAssets, createSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
-import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
+import { SpriteState } from '@dontstarve-web/display';
 import { Workable } from '../../componets/src/workable';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
 import { Hauntable } from '../../componets/src/hauntable';
@@ -12,149 +7,139 @@ import { Inspectable } from '../../componets/src/dragonflySignatures';
 import { Leader, PointOfInterest } from '../../componets/src/statueglommerSignatures';
 import { Pickable } from './components/pickable';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import type { MiniMapState } from '../../map/src/minimapState';
-import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
+import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
+import type { PlacementSaveRecord } from './saveRecord';
+import { PlaySound } from './sound';
 import { MakeObstaclePhysics, WORLD_SCALE } from './standardcomponents';
-import { actionEntity } from './actionEntity';
-import { newEntityId } from './saveRecord';
-import { watchTileActivity } from './tileActivity';
+import { Transform } from './transform';
 
 export const STATUEGLOMMER_ID = 'statueglommer' as const;
+/** TUNING.ROCKS_MINE. */
 export const STATUEGLOMMER_WORK = 6;
 
-/** statueglommer.lua OnSave plus the two component OnSave records. */
-export interface StatueGlommerRecord {
-  id: string;
-  transform: { position: [number, number, number]; rotationY: number };
-  components: {
-    statueglommer?: { worked?: true; spawned?: true };
-    pickable?: { picked?: boolean; caninteractwith?: true };
-    workable?: { maxwork: -1; workleft: number };
-  };
-}
-
-export interface StatueGlommerWorld {
-  tickingarea?: TileStateQuery;
-  physics?: World;
-  scheduler: GameTimeScheduler;
-}
-
-interface Statue {
-  instance: PrefabInstance<ArchiveSpriteCommands>;
-  display: PrefabDisplay;
-  workable?: Workable;
-  lootdropper?: LootDropper;
-  pickable: Pickable;
-  hauntable: Hauntable;
-  minimap: MiniMapState;
-  spawned: boolean;
-  stopActivity: () => void;
-}
+export interface StatueGlommerWorld { scheduler: GameTimeScheduler }
 
 SetSharedLootTable('statueglommer', [['marble', 1], ['marble', 1], ['marble', 1]]);
 
-/** The constructor and load sequence from statueglommer.lua; world moon events are outside this display/save port. */
-export class StatueGlommerManager {
-  private readonly assets = new ArchiveSpriteAssets(STATUEGLOMMER_ID);
-  private readonly statues = new Map<THREE.Group, Statue>();
-  private disposed = false;
+const LIGHT_FRAMES = 6;
 
-  private readonly displays: PrefabDisplayGroup;
-  private readonly world: StatueGlommerWorld;
-  constructor(scene: THREE.Scene, world: StatueGlommerWorld) { this.displays = new PrefabDisplayGroup(scene); this.world = world; }
+export class StatueGlommerInstance extends PrefabInstance {
+    declare readonly components: PrefabInstance['components'] & {
+        pickable: Pickable; inspectable: Inspectable; hauntable: Hauntable; workable?: Workable; lootdropper?: LootDropper;
+    };
+    /** inst.spawned: the flower was grown this full moon. */
+    declare spawned: boolean;
+    /** inst.islighton. */
+    declare islighton: boolean;
+}
 
-  spawn(position: THREE.Vector3, saved?: StatueGlommerRecord): THREE.Group {
-    if (this.disposed) throw new Error('Glommer statues have been disposed');
-    const entity = createArchiveEntity(STATUEGLOMMER_ID, { create: clip => createSharedArchiveSprite(this.assets, {
-      animationArchive: 'glommer_statue.zip', buildArchives: ['glommer_statue.zip', 'glommer_swap_flower.zip'],
-      bank: 'glommer_statue', animation: clip.name, loop: clip.loop,
-    }, { instancedAnimations: 'all', name: STATUEGLOMMER_ID }) },
-    { name: 'full', held: true, billboard: true }, STATUEGLOMMER_ID);
-    const { instance, display } = entity, model = display.model;
-    instance.entityId = saved?.id ?? newEntityId();
-    instance.copyPosition(position);
-    model.rotation.y = saved?.transform.rotationY ?? 0;
-    instance.addTag('statue');
-    MakeObstaclePhysics(instance, .75);
-    if (this.world.physics) instance.bindPhysics(this.world.physics);
-    // fn: PlayAnimation("full") without the loop flag. No animover handler or queued clip.
-    instance.sprite.playOnce('full');
-    instance.sprite.setSymbolHidden('swap_flower', true);
-    actionEntity(model, STATUEGLOMMER_ID);
-    const minimap = instance.minimap;
-    minimap.SetIcon('statueglommer.png');
-    minimap.SetPriority(5);
-    const pickable = addComponent(instance, 'pickable', Pickable, 'glommerflower', undefined, 1, undefined, undefined,
-      { picked: !saved?.components.pickable || saved.components.pickable.picked === true }, { scheduler: this.world.scheduler });
-    // Lua's new Pickable has canbepicked=nil; OnInit/full moon may make it full later.
-    if (saved?.components.pickable && !saved.components.pickable.picked) pickable.canBePicked = true;
-    addComponent(instance, 'inspectable', Inspectable);
-    addComponent(instance, 'leader', Leader);
-    addComponent(instance, 'pointofinterest', PointOfInterest);
-    const hauntable = addComponent(instance, 'hauntable', Hauntable, this.world.scheduler);
-    // MakeHauntableWork's active Lua branch returns false (its work attempt is commented out).
-    hauntable.SetOnHauntFn(() => false);
-    let workable: Workable | undefined = addComponent(instance, 'workable', Workable);
+/** OnLightDirty with lightval at LIGHT_FRAMES: PushLight's full radius, as a loaded flower statue finishes its tween at once. */
+function OnLightDirty(inst: StatueGlommerInstance, lightval: number): void {
+    if (lightval <= 0) { inst.light.set(null); return; }
+    inst.light.set({ radius: .75 * lightval / LIGHT_FRAMES * WORLD_SCALE, intensity: .9, falloff: .3,
+        colour: [180 / 255, 195 / 255, 150 / 255] });
+}
+
+function OnMakeFull(inst: StatueGlommerInstance): void {
+    inst.sprite.setSymbolOverride('swap_flower', 'glommer_swap_flower.zip', 'swap_flower');
+    inst.sprite.setSymbolHidden('swap_flower', false);
+}
+
+function OnWorked(inst: StatueGlommerInstance, _worker: unknown, workleft: number): void {
+    if (workleft <= 0) {
+        PlaySound('dontstarve/wilson/rock_break', inst.position);
+        inst.components.lootdropper?.DropLoot(inst.position);
+        inst.sprite.playOnce('low');
+        removeComponent(inst, 'workable');
+        removeComponent(inst, 'lootdropper');
+    } else inst.sprite.playOnce(workleft < STATUEGLOMMER_WORK * .5 ? 'med' : 'full');
+}
+
+/**
+ * OnSave: data.worked and data.spawned, kept under this project's `statueglommer` key. workable:OnSave also writes the
+ * unset maxwork (-1), which this project's Workable leaves out, so the record adds it.
+ */
+function OnSave(inst: StatueGlommerInstance, data: PlacementSaveRecord['components']): void {
+    const worked = inst.components.workable === undefined;
+    if (worked || inst.spawned) data.statueglommer = { ...(worked ? { worked: true } : {}), ...(inst.spawned ? { spawned: true } : {}) };
+    const workable = inst.components.workable;
+    if (workable) data.workable = { maxwork: workable.maxwork.peek(), workleft: workable.GetWorkLeft() };
+}
+
+function OnLoad(inst: StatueGlommerInstance, data: PlacementSaveRecord['components']): void {
+    const saved = data.statueglommer;
+    if (saved) {
+        if (saved.worked && inst.components.workable) {
+            inst.sprite.playOnce('low');
+            removeComponent(inst, 'workable');
+            removeComponent(inst, 'lootdropper');
+        }
+        inst.spawned = saved.spawned === true;
+    }
+    if (inst.components.pickable.canBePicked && !inst.islighton) {
+        inst.islighton = true;
+        OnLightDirty(inst, LIGHT_FRAMES);
+    }
+}
+
+function OnLoadWorked(inst: StatueGlommerInstance): void {
+    const workable = inst.components.workable;
+    if (!workable) return;
+    if (workable.GetWorkLeft() <= 0) {
+        inst.sprite.playOnce('low');
+        removeComponent(inst, 'workable');
+        removeComponent(inst, 'lootdropper');
+    } else inst.sprite.playOnce(workable.GetWorkLeft() < STATUEGLOMMER_WORK * .5 ? 'med' : 'full');
+}
+
+/**
+ * statueglommer.lua fn. Its OnInit watch of isfullmoon (SpawnGland / RemoveGland, SpawnGlommer), OnPicked's follower
+ * handoff and the leader's OnLoseChild are not ported: no full moon grows the flower here. OnInit's first RemoveGland
+ * empties a new statue's shelf, so the flower symbol starts hidden.
+ */
+function fn(world: StatueGlommerWorld): StatueGlommerInstance {
+    const inst = new StatueGlommerInstance(STATUEGLOMMER_ID, new SpriteState({ name: 'full', held: true, billboard: true }), Transform.stationary());
+    inst.minimap.SetPriority(5);
+    inst.minimap.SetIcon('statueglommer.png');
+    // SetBank / SetBuild("glommer_statue"), PlayAnimation("full") without the loop flag.
+    inst.sprite.playOnce('full');
+    inst.sprite.setSymbolHidden('swap_flower', true);
+    inst.islighton = false;
+    inst.addTag('statue');
+    addComponent(inst, 'pointofinterest', PointOfInterest);
+    addComponent(inst, 'inspectable', Inspectable);
+    addComponent(inst, 'leader', Leader);
+    // A new pickable has canbepicked nil: the shelf is empty until a full moon or a saved full record.
+    const pickable = addComponent(inst, 'pickable', Pickable, 'glommerflower', undefined, 1, undefined, undefined,
+        { picked: true }, { scheduler: world.scheduler });
+    pickable.savesCanInteractWith = true;
+    pickable.makefullfn = () => OnMakeFull(inst);
+    const workable = addComponent(inst, 'workable', Workable);
     workable.SetWorkAction('MINE');
     workable.SetWorkLeft(STATUEGLOMMER_WORK);
+    workable.SetOnWorkCallback(OnWorked);
     workable.savestate = true;
-    let lootdropper: LootDropper | undefined = addComponent(instance, 'lootdropper', LootDropper, () => undefined);
+    workable.SetOnLoadFn(() => OnLoadWorked(inst));
+    const lootdropper = addComponent(inst, 'lootdropper', LootDropper, () => undefined);
     lootdropper.SetChanceLootTable('statueglommer');
-    // Component OnLoad invokes OnLoadWorked before the prefab's OnLoad.
-    if (saved?.components.workable) {
-      workable.OnLoad(saved.components.workable);
-      if (workable.GetWorkLeft() <= 0) {
-        instance.sprite.playOnce('low');
-        removeComponent(instance, 'workable'); removeComponent(instance, 'lootdropper'); workable = undefined; lootdropper = undefined;
-      } else instance.sprite.playOnce(workable.GetWorkLeft() < STATUEGLOMMER_WORK * .5 ? 'med' : 'full');
-    }
-    // prefab OnLoad: a separately saved worked flag also removes the two components.
-    if (saved?.components.statueglommer?.worked && workable) {
-      instance.sprite.playOnce('low');
-      removeComponent(instance, 'workable'); removeComponent(instance, 'lootdropper'); workable = undefined; lootdropper = undefined;
-    }
-    if (pickable.canBePicked) {
-      instance.sprite.setSymbolOverride('swap_flower', 'glommer_swap_flower.zip', 'swap_flower');
-      instance.sprite.setSymbolHidden('swap_flower', false);
-      // OnLoad finishes OnLightDirty's six-frame tween immediately for a flower-bearing statue.
-      instance.light.set({ radius: .75 * WORLD_SCALE, intensity: .9, falloff: .3,
-        colour: [180 / 255, 195 / 255, 150 / 255] });
-    }
-    const statue: Statue = { instance, display, workable, lootdropper, pickable, hauntable, minimap,
-      spawned: saved?.components.statueglommer?.spawned === true,
-      stopActivity: watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active)) };
-    this.statues.set(model, statue);
-    this.displays.mount(prefabDisplay(model)!);
-    return model;
-  }
+    inst.OnSave = OnSave;
+    inst.OnLoad = OnLoad;
+    inst.spawned = false;
+    const hauntable = addComponent(inst, 'hauntable', Hauntable, world.scheduler);
+    // MakeHauntableWork's active Lua branch returns false (its work attempt is commented out).
+    hauntable.SetOnHauntFn(() => false);
+    return inst;
+}
 
-  // The display group advances each entity's declared clip; sleeping and removed entities are skipped.
-  update(dt: number): void { this.displays.update(dt); }
-  get renderEntities() { return [...this.statues].filter(([, statue]) => statue.instance.sprite.loaded)
-    .map(([object]) => ({ object, footPosition: object.position, cameraDepth: 0 })); }
-  exportRecords(): { prefabId: typeof STATUEGLOMMER_ID; record: StatueGlommerRecord }[] {
-    return [...this.statues].map(([model, statue]) => ({ prefabId: STATUEGLOMMER_ID, record: {
-      id: String(statue.instance.entityId),
-      transform: { position: [model.position.x, model.position.y, model.position.z], rotationY: model.rotation.y },
-      components: {
-        ...(statue.workable ? { workable: { maxwork: -1 as const, workleft: statue.workable.GetWorkLeft() } } : {}),
-        ...(statue.pickable.canBePicked ? { pickable: { caninteractwith: true as const } }
-          : { pickable: { picked: true as const, caninteractwith: true as const } }),
-        ...(!statue.workable || statue.spawned ? { statueglommer: {
-          ...(!statue.workable ? { worked: true as const } : {}), ...(statue.spawned ? { spawned: true as const } : {}),
-        } } : {}),
-      },
-    } }));
-  }
-
-  dispose(): void {
-    if (this.disposed) return;
-    this.disposed = true;
-    for (const [model, statue] of this.statues) {
-      statue.stopActivity();
-      model.userData.removed = true; statue.instance.remove();
-    }
-    this.statues.clear(); this.displays.dispose(); this.assets.dispose();
-
-  }
+/** The Prefab statueglommer.lua returns. */
+export function statueGlommerPrefabs(world: StatueGlommerWorld):
+    Readonly<Record<typeof STATUEGLOMMER_ID, PrefabEntityDefinition<StatueGlommerInstance>>> {
+    return {
+        [STATUEGLOMMER_ID]: {
+            fn: () => fn(world),
+            assets: { animationArchive: 'glommer_statue.zip', buildArchives: ['glommer_statue.zip', 'glommer_swap_flower.zip'], bank: 'glommer_statue' },
+            assetOptions: { instancedAnimations: 'all' },
+            physics: { make: MakeObstaclePhysics, radius: .75 },
+        },
+    };
 }

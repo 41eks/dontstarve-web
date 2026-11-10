@@ -84,7 +84,7 @@ import { nightmareGrowthPrefabs, type NightmareGrowthCrackInstance } from '@dont
 import { nightmareRockPrefabs } from '@dontstarve-web/prefab/nightmarerock';
 import { pigKingPrefabs } from '@dontstarve-web/prefab/pigking';
 import { BERNIE_ITEM_ID, berniePrefabs, type BernieWorld } from '@dontstarve-web/prefab/bernie';
-import { StatueGlommerManager } from '@dontstarve-web/prefab/statueglommer';
+import { statueGlommerPrefabs } from '@dontstarve-web/prefab/statueglommer';
 import { atriumGatePrefabs } from '@dontstarve-web/prefab/atrium_gate';
 import { ruinsStatuePrefabs, type RuinsStatueId } from '@dontstarve-web/prefab/ruins_statue_mage';
 import { atriumStatuePrefabs } from '@dontstarve-web/prefab/atrium_statue';
@@ -334,7 +334,6 @@ export async function createSceneEntities(
     'evergreen': ReturnType<typeof registerEvergreens>;
     'deciduoustree': ReturnType<typeof registerDeciduousTrees>;
     'moon_tree': ReturnType<typeof registerMoonTrees>;
-    'statueglommer': ReturnType<typeof registerStatueGlommer>;
     'atrium_gate': typeof prefabs;
     'ruins_statue_mage': typeof prefabs;
     'ruins_statue_mage_nogem': typeof prefabs;
@@ -427,7 +426,7 @@ export async function createSceneEntities(
   Managers['moon_tree'] = registerMoonTrees(registry, 'moon_tree', worldState);
   registerPigKings(registry, 'pigking', worldState);
   registerBernies(registry, 'bernie', worldState);
-  Managers['statueglommer'] = registerStatueGlommer(registry, 'statueglommer', worldState);
+  registerStatueGlommer(registry, worldState);
   Managers['atrium_gate'] = registerAtriumGate(registry, 'atrium_gate', worldState);
   // statueruins.lua returns the four prefabs together.
   prefabs.register(ruinsStatuePrefabs({ scheduler: worldState.scheduler }));
@@ -1159,23 +1158,9 @@ export async function createSceneEntities(
     registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
   }
 
-  function registerStatueGlommer(registry: EntityRegistry, prefabId: 'statueglommer', worldState: SceneWorldState) {
-    const statues = new StatueGlommerManager(scene, { tickingarea: worldState.tickingarea, scheduler: worldState.scheduler, physics: world });
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
-      restore: (_, record) => statues.spawn(new THREE.Vector3(...record.transform.position), {
-        id: record.id, transform: record.transform, components: {
-          statueglommer: record.components.statueglommer,
-          pickable: record.components.pickable,
-          workable: record.components.workable as { maxwork: -1; workleft: number } | undefined,
-        },
-      }),
-      debugSpawn: () => statues.spawn(new THREE.Vector3(player.position.x, 0, player.position.z)),
-      exportRecords: () => statues.exportRecords(),
-      update: dt => statues.update(dt),
-      renderEntities: () => statues.renderEntities,
-      dispose: () => statues.dispose(),
-    });
-    return statues;
+  function registerStatueGlommer(registry: EntityRegistry, worldState: SceneWorldState) {
+    prefabs.register(statueGlommerPrefabs({ scheduler: worldState.scheduler }));
+    registry.registerPrefabs(PREFAB_DEFINITIONS.glommerStatues);
   }
 
   function registerAtriumGate(registry: EntityRegistry, prefabId: 'atrium_gate', worldState: SceneWorldState) {

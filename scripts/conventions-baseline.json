@@ -215,12 +215,6 @@
   "packages/prefab/src/stafflight.ts": {
     "instance-method": 6
   },
-  "packages/prefab/src/statueglommer.ts": {
-    "manager": 1,
-    "model-keyed-state": 1,
-    "scene": 1,
-    "userdata": 1
-  },
   "packages/prefab/src/stickheads.ts": {
     "child-traversal": 1
   },
