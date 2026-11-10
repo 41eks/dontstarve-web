@@ -15,11 +15,6 @@
   "packages/prefab/src/atrium_gate.ts": {
     "instance-method": 2
   },
-  "packages/prefab/src/atrium_statue.ts": {
-    "manager": 1,
-    "model-keyed-state": 1,
-    "scene": 1
-  },
   "packages/prefab/src/beequeenhivegrown.ts": {
     "instance-method": 2
   },

@@ -87,7 +87,7 @@ import { BERNIE_ITEM_ID, berniePrefabs, type BernieWorld } from '@dontstarve-web
 import { StatueGlommerManager } from '@dontstarve-web/prefab/statueglommer';
 import { atriumGatePrefabs } from '@dontstarve-web/prefab/atrium_gate';
 import { ruinsStatuePrefabs, type RuinsStatueId } from '@dontstarve-web/prefab/ruins_statue_mage';
-import { AtriumStatueManager } from '@dontstarve-web/prefab/atrium_statue';
+import { atriumStatuePrefabs } from '@dontstarve-web/prefab/atrium_statue';
 import { chessJunkPrefabs } from '@dontstarve-web/prefab/chessjunk';
 import { chesspiecePrefabs } from '@dontstarve-web/prefab/chesspieces';
 import { archiveCentipedeHuskPrefabs } from '@dontstarve-web/prefab/archive_centipede';
@@ -340,7 +340,6 @@ export async function createSceneEntities(
     'ruins_statue_mage_nogem': typeof prefabs;
     'ruins_statue_head': typeof prefabs;
     'ruins_statue_head_nogem': typeof prefabs;
-    'atrium_statue': ReturnType<typeof registerAtriumStatue>;
     'rain': ReturnType<typeof registerRain>;
     'snow': ReturnType<typeof registerSnow>;
     'ocean_waves': ReturnType<typeof registerOceanWaves>;
@@ -437,7 +436,7 @@ export async function createSceneEntities(
   Managers['ruins_statue_head'] = registerRuinsStatue(registry, 'ruins_statue_head');
   Managers['ruins_statue_head_nogem'] = registerRuinsStatue(registry, 'ruins_statue_head_nogem');
   registerRuinsRelics(registry, worldState);
-  Managers['atrium_statue'] = registerAtriumStatue(registry, 'atrium_statue', worldState);
+  registerAtriumStatue(registry);
   registerChessJunk(registry, worldState);
   registerChesspieces(registry, 'chesspiece_malbatross_marble', worldState);
   registerArchiveCentipedeHusks(registry, 'archive_centipede_husk', worldState);
@@ -1197,15 +1196,9 @@ export async function createSceneEntities(
     registry.registerPrefabs(PREFAB_DEFINITIONS.ruinsRelics);
   }
 
-  function registerAtriumStatue(registry: EntityRegistry, prefabId: 'atrium_statue', worldState: SceneWorldState) {
-    const statues = new AtriumStatueManager(scene, { tickingarea: worldState.tickingarea, physics: world,
-      trackDisplay: display => registry.trackDisplay(display) });
-    registry.registerDisplayManager(MANAGER_DEFINITIONS[prefabId], statues, {
-      restore: (_, record) => statues.spawn(new THREE.Vector3(...record.transform.position),
-        { id: record.id, transform: record.transform, components: {} }),
-      debugSpawn: () => statues.spawn(new THREE.Vector3(player.position.x, 0, player.position.z)),
-    });
-    return statues;
+  function registerAtriumStatue(registry: EntityRegistry) {
+    prefabs.register(atriumStatuePrefabs());
+    registry.registerPrefabs(PREFAB_DEFINITIONS.atriumStatues);
   }
 
   function registerChessJunk(registry: EntityRegistry, worldState: SceneWorldState) {

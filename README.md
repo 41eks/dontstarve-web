@@ -167,7 +167,7 @@ prefab 包内原先直接持有 `scene` 的 38 个类改由 `PrefabDisplayGroup`
 
 `c_spawn("pandoraschest")` 在玩家前方生成华丽箱子（遗迹宝箱），无额外参数；它是世界 prefab，不支持 `c_give`，也不能制作。原版 `treasurechest.lua` 的 `MakeChest("pandoraschest", "pandoras_chest", "pandoras_chest", indestructible)` 使用 `anim/pandoras_chest.zip`，初始声明非循环 `closed`；打开播放非循环 `open`，关闭播放 `close` 后排队非循环 `closed`。它是 3×3 容器，不可锤、不可燃，无皮肤。`c_save()` 保存 ID、位置和箱内物品；洞穴导入存档包含 46 个，源存档中已运行过的 `chest_labyrinth` 场景记录不导入。遗迹重置、拟态箱转换、闹鬼与灵视行为尚未接入。
 
-`c_spawn("atrium_statue")` 在玩家脚点生成远古雕像，无额外参数；它是世界 prefab，不支持 `c_give`。原版 `atrium_statue.lua` 的 `MakeStatue("atrium_statue", false)` 使用 `anim/atrium_statue.zip`（bank/build 都是 `atrium_statue`），构造时播放一次 `idle_full`，随即按噩梦阶段切换为循环 `idle_full`；本项目没有噩梦时钟，阶段不会是 `wild`，因此不使用 `_night` 动画。源码中开采组件被注释掉，雕像不可开采；无 tag、无皮肤、无 `OnSave` 字段。`c_save()` 保存 ID 与位置；洞穴导入存档包含 15 座。会保存旋转的 `atrium_statue_facing` 尚未移植。
+`c_spawn("atrium_statue")` 在玩家脚点生成远古雕像，无额外参数；它是世界 prefab，不支持 `c_give`。原版 `atrium_statue.lua` 的 `MakeStatue("atrium_statue", false)` 使用 `anim/atrium_statue.zip`（bank/build 都是 `atrium_statue`），构造时播放一次 `idle_full`，随即按噩梦阶段切换为循环 `idle_full`；对噩梦阶段的监听（`wild` 时的 `_night` 动画与 `DoFx` 特效）尚未移植，雕像始终使用平静阶段的动画。源码中开采组件被注释掉，雕像不可开采；无 tag、无皮肤、无 `OnSave` 字段。`c_save()` 保存 ID 与位置；洞穴导入存档包含 15 座。会保存旋转的 `atrium_statue_facing` 尚未移植。
 
 `c_spawn("pandoraschest")` 在玩家前方生成华丽箱子（遗迹宝箱），无额外参数；它是世界 prefab，不支持 `c_give`，也不能制作。原版 `treasurechest.lua` 的 `MakeChest("pandoraschest", "pandoras_chest", "pandoras_chest", indestructible)` 使用 `anim/pandoras_chest.zip`，初始声明非循环 `closed`；打开播放非循环 `open`，关闭播放 `close` 后排队非循环 `closed`。它是 3×3 容器，不可锤、不可燃，无皮肤。`c_save()` 保存 ID、位置和箱内物品；洞穴导入存档包含 46 个，源存档中已运行过的 `chest_labyrinth` 场景记录不导入。遗迹重置、拟态箱转换、闹鬼与灵视行为尚未接入。
 
