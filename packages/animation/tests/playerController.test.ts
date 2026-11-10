@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EventEmitter, createEquipmentExistenceState } from '../../signals/src';
 import { Workable, type WorkAction } from '../../componets/src/workable';
 import { createEmptyEntity } from '../../prefab/src/prefabInstance';
-import { actionEntity } from '../../prefab/src/actionEntity';
+import { registerActionEntity } from '../../prefab/src/actionEntity';
 import { Locomotor } from '../../prefab/src/locomotor';
 import { rockWorld } from './rockWorldFixture';
 import { WORLD_SCALE } from '../../prefab/src/tile';
@@ -73,7 +73,7 @@ function setup(tool: Parameters<typeof actionTool>[0]) {
     workable.SetWorkAction(action);
     workable.SetWorkLeft(3);
     instance.components.workable = workable;
-    const entity = actionEntity(display.model, prefab, instance);
+    const entity = registerActionEntity(instance);
     pick.mockReturnValue({ object: display.model } as unknown as THREE.Intersection);
     return { instance, display, entity, workable };
   };
@@ -165,7 +165,7 @@ describe('PlayerController scene actions', () => {
       const haunted = vi.fn(() => true);
       hauntable.SetOnHauntFn(haunted);
       instance.components.hauntable = hauntable;
-      const entity = actionEntity(display.model, 'pighouse', instance);
+      const entity = registerActionEntity(instance);
       vi.mocked(PointerRaycaster.prototype.pickMouseTarget).mockReturnValue({ object: display.model } as unknown as THREE.Intersection);
       const picker = s.world.mouseActions!;
       // player_common.lua PlayerActionFilter (default priority) and the ghost's GhostActionFilter above it.

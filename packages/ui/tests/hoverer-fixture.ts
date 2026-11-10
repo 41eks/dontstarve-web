@@ -1,7 +1,8 @@
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { PlayerActionPicker, PointerRaycaster, type MouseActionCandidate } from '../../stategraphs/src';
 import { CursorLabelUi } from '../src/cursor-label';
-import { actionEntity, disposeActionEntity } from '../../prefab/src/actionEntity';
+import { registerActionEntity, disposeActionEntity, findActionEntity } from '../../prefab/src/actionEntity';
 import { withEntity } from '../../animation/tests/entityFixture';
 
 export async function setupHoverer() {
@@ -22,7 +23,7 @@ export async function setupHoverer() {
   scene.updateMatrixWorld(true);
   const pointer = new PointerRaycaster({ camera, renderer, ground });
   const picker = new PlayerActionPicker(pointer);
-  actionEntity(target, 'hoverer-target');
+  registerActionEntity(prefabInstance(target)!);
   const ui = new CursorLabelUi(renderer.domElement, '/dst/data/fonts/controllers.zip');
   ui.setMouseActions(picker);
   await ui.ready;
@@ -48,6 +49,6 @@ export async function setupHoverer() {
     valid: (value: boolean) => { valid = value; step(); },
     scaleTarget: (scale: number) => { target.scale.setScalar(scale); step(); },
     tooltip: (value: boolean) => { if (value) tooltip.show('建造预览'); else tooltip.hide(); },
-    dispose: () => { disposeActionEntity(target); unregister(); picker.dispose(); ui.dispose(); renderer.dispose(); renderer.domElement.remove(); },
+    dispose: () => { disposeActionEntity(findActionEntity(target)); unregister(); picker.dispose(); ui.dispose(); renderer.dispose(); renderer.domElement.remove(); },
   } });
 }

@@ -13,7 +13,7 @@ import type { StateGraphInstance } from '../../stategraphs/src/stategraph';
 import type { ComponentActionEntity } from '../../stategraphs/src/componentactions';
 import type { PlacementSaveRecord, PrefabSaveRecord } from './saveRecord';
 import { newItemEntityId } from '../../inventory/src/entityId';
-import { actionEntity } from './actionEntity';
+import { registerActionEntity } from './actionEntity';
 import { watchTileActivity } from './tileActivity';
 import { WORLD_SCALE } from './tile';
 import { refreshMouseTarget } from './mouseTargets';
@@ -788,7 +788,7 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     }
     if (skinId !== undefined) instance.skinId = skinId;
     onSpawned?.(instance);
-    if ((assets || instanceAssets || icon || source) && targetable) actionEntity(display.model, prefabId);
+    if ((assets || instanceAssets || icon || source) && targetable) registerActionEntity(instance);
     this.entities.add(instance);
     const entityId = String(instance.entityId);
     this.byEntityId.set(entityId, instance);

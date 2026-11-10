@@ -3,7 +3,7 @@ import { Group, Scene, Vector3 } from 'three';
 import { Builder } from '../../componets/src/builder';
 import { Prototyper } from '../../componets/src/prototyper';
 import { CreateTechTree } from '../../componets/src/techtree';
-import { actionEntity } from '../../prefab/src/actionEntity';
+import { registerActionEntity } from '../../prefab/src/actionEntity';
 import { testEnts } from './entsFixture';
 import { WORLD_SCALE } from '../../prefab/src/standardcomponents';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
@@ -18,7 +18,7 @@ function setup() {
     const inst = ents.track(prefabInstance(model)!);
     inst.setPosition(position.x, position.y, position.z);
     scene.add(model);
-    actionEntity(model, prefab);
+    registerActionEntity(prefabInstance(model)!);
     return inst;
   };
   const player = entity('waxwell');

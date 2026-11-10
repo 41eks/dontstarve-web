@@ -11,8 +11,8 @@ const SPRITE_PICK_SCALE = 1.2;
 
 function mouseVisible(object: THREE.Object3D): boolean {
     if (!object.visible && !isInstancedSpriteProxy(object)) return false;
-    const inst = findActionEntity(object) as { hasTag?(tag: string): boolean } | undefined;
-    return !(inst?.hasTag?.('NOCLICK') ?? modelHasTag(object, 'NOCLICK'));
+    const inst = findActionEntity(object);
+    return !(inst?.hasTag('NOCLICK') ?? modelHasTag(object, 'NOCLICK'));
 }
 
 interface BoundsPart {
@@ -160,7 +160,7 @@ export class PointerRaycaster {
         if (!this.updatePointerRay()) return undefined;
         const candidates: THREE.Object3D[] = [];
         // The registry already excludes removed, detached, inactive, disabled and NOCLICK roots.
-        for (const entity of mouseTargets) if (mouseVisible(entity.model)) candidates.push(entity.model);
+        for (const entity of mouseTargets) if (mouseVisible(entity.transform.model)) candidates.push(entity.transform.model);
         return intersectSpriteEntities(this.raycaster, candidates)[0] ?? this.pickPaddedTarget(candidates);
     }
 

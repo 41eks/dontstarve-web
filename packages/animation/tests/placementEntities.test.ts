@@ -1,11 +1,11 @@
 import * as THREE from 'three';
 import { withEntity } from './entityFixture';
 import { afterEach, expect, it, vi } from 'vitest';
-import { createEmptyEntity } from '../../prefab/src/prefabInstance';
+import { createEmptyEntity, prefabInstance } from '../../prefab/src/prefabInstance';
 import { WORLD_SCALE } from '../../prefab/src/tile';
 import { SpatialIndex } from '../../prefab/src/spatialIndex';
 import { placementEntities, syncPlacementEntity, isGroundTargetBlocked } from '../../prefab/src/placementEntities';
-import { actionEntity, disposeActionEntity } from '../../prefab/src/actionEntity';
+import { registerActionEntity, disposeActionEntity, findActionEntity } from '../../prefab/src/actionEntity';
 import { farmFixture } from './farmFixture';
 import { TurfMap } from '../../prefab/src/turfMap';
 import { ItemEntity } from '../../inventory/src';
@@ -17,7 +17,7 @@ it('ground target blocking uses source tags and ring radii, including blockers w
   const scene = new THREE.Scene(), model = withEntity(new THREE.Group(), 'test-groundhole', ['blocker']);
   model.position.set(24, 0, 0);
   Object.assign(model.userData, { ground_target_blocker_radius: 24, _groundhole_innerradius: 3 });
-  const entity = actionEntity(model, 'test-groundhole'); scene.add(model);
+  const entity = registerActionEntity(prefabInstance(model)!); scene.add(model);
   const query = placementEntities(scene), point = new THREE.Vector3(0, 0, 0);
   try {
     expect(isGroundTargetBlocked(query, point, 1.5)).toBe(false);
@@ -27,7 +27,7 @@ it('ground target blocking uses source tags and ring radii, including blockers w
     expect(isGroundTargetBlocked(query, new THREE.Vector3(-1.5, 0, 0), 1.5)).toBe(false);
     entity.removeTag('groundhole');
     expect(isGroundTargetBlocked(query, point, 1.5)).toBe(false);
-  } finally { disposeActionEntity(model); model.removeFromParent(); }
+  } finally { disposeActionEntity(findActionEntity(model)); model.removeFromParent(); }
 });
 
 it('visits local cells, stops at the first blocker and includes large smart radii across cell boundaries', () => {
@@ -55,15 +55,13 @@ it('visits local cells, stops at the first blocker and includes large smart radi
   expect(index.someNear(new THREE.Vector3(), 100, () => true)).toBe(false);
 });
 
-it('tracks tags, movement, attachment, replacement and permanent removal without walking scene/render lists', () => {
-  const scene = new THREE.Scene(), other = new THREE.Scene(), model = withEntity(new THREE.Group(), 'log');
-  const item = new ItemEntity({ itemId: 'log', count: 1 });
+it('tracks tags, movement, attachment, re-registration and permanent removal without walking scene/render lists', () => {
+  const scene = new THREE.Scene(), other = new THREE.Scene();
+  const item = new ItemEntity({ itemId: 'log', count: 1 }), model = item.transform.model;
   item.addTag('NOBLOCK');
-  model.userData.getGroundPosition = () => item.transform.position;
-  actionEntity(model, 'log', item); scene.add(model);
+  registerActionEntity(item); scene.add(model);
   const query = placementEntities(scene), position = new THREE.Vector3();
   const traversal = vi.spyOn(scene, 'traverse'), visit = vi.fn(() => true);
-  let replacement: THREE.Group | undefined;
   try {
     expect(query.someNear(position, 1, visit)).toBe(false);
     expect(visit).not.toHaveBeenCalled(); // Universally ignored entities never enter the index.
@@ -79,10 +77,10 @@ it('tracks tags, movement, attachment, replacement and permanent removal without
     expect(query.someNear(item.transform.position, 1, () => true)).toBe(false);
     scene.add(model);
     expect(query.someNear(item.transform.position, 1, () => true)).toBe(true);
-    disposeActionEntity(model); model.removeFromParent();
-    replacement = withEntity(new THREE.Group(), 'log');
-    replacement.userData.getGroundPosition = () => item.transform.position;
-    actionEntity(replacement, 'log', item); scene.add(replacement);
+    // Withdrawn and registered again (a pickup and drop, say), the entity has one entry.
+    disposeActionEntity(item);
+    expect(query.someNear(item.transform.position, 1, () => true)).toBe(false);
+    registerActionEntity(item);
     let count = 0;
     query.someNear(item.transform.position, 1, () => { count++; return false; });
     expect(count).toBe(1);
@@ -90,8 +88,7 @@ it('tracks tags, movement, attachment, replacement and permanent removal without
     expect(query.someNear(item.transform.position, 1, () => true)).toBe(false);
     expect(traversal).not.toHaveBeenCalled();
   } finally {
-    traversal.mockRestore(); item.destroy(); disposeActionEntity(model);
-    if (replacement) disposeActionEntity(replacement);
+    traversal.mockRestore(); item.destroy(); disposeActionEntity(item);
   }
 });
 
@@ -101,7 +98,7 @@ it('keeps logical trees blocking their tile while their visual sleeps out of the
   instance.setPosition(11.99, 0, 11.99);
   instance.deploySmartRadius = 1; instance.logicalPlacement = true;
   display.mount(scene);
-  actionEntity(model, 'evergreen');
+  registerActionEntity(prefabInstance(model)!);
   const world = { scene, player: new THREE.Group(), camera: new THREE.PerspectiveCamera(),
     renderer: { domElement: new EventTarget() }, createCursorLabel: () => ({ show() {}, hide() {}, update() {} }) } as unknown as WorldContext;
   const farm = farmFixture(world.scene, new TurfMap(96));
@@ -132,7 +129,7 @@ it('reads live entity metadata and radius overrides through action and placement
   instance.persists = false;
   instance.addTag('groundtargetblocker');
   instance.components.inventoryitem = {};
-  const entity = actionEntity(model, instance.prefab);
+  const entity = registerActionEntity(prefabInstance(model)!);
   scene.add(model);
   const query = placementEntities(scene);
   const read = () => {
@@ -160,5 +157,5 @@ it('reads live entity metadata and radius overrides through action and placement
     expect(read().inventoryRadius).toBe(0);
     instance.physicsRadiusOverride = undefined;
     expect(read().getInventoryRadius!(.25)).toBe(.2 * WORLD_SCALE);
-  } finally { disposeActionEntity(model); instance.remove(); display.dispose(); }
+  } finally { disposeActionEntity(findActionEntity(model)); instance.remove(); display.dispose(); }
 });

@@ -5,8 +5,8 @@ import type { InventoryItemSpec, ItemEntity } from '@dontstarve-web/inventory';
 import type { BookDef } from '@dontstarve-web/stategraphs';
 import { Book, type BookFxWorld, type BookReaderInst, type BookResult } from '../../componets/src/book';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import type { FoundEntity } from './actionEntity';
 import { configureBurnableItemEntity } from './burnableItems';
+import type { PrefabInstance } from './prefabInstance';
 import type { Pickable } from './components/pickable';
 import catalog from './groundItems.json' with { type: 'json' };
 import { TILE_SIZE } from './tile';
@@ -48,7 +48,7 @@ const SILVICULTURE_RANGE = 30 * (TILE_SIZE / 4);
 const SILVICULTURE_ONEOF_TAGS = ['leif', 'silviculture', 'tree', 'winter_tree'];
 const SILVICULTURE_CANT_TAGS = ['magicgrowth', 'player', 'FX', 'pickable', 'stump', 'withered', 'barren', 'INLIMBO', 'ancienttree'];
 
-type GrowthTarget = FoundEntity & { components: FoundEntity['components'] & { pickable?: Pickable } };
+type GrowthTarget = PrefabInstance & { components: PrefabInstance['components'] & { pickable?: Pickable } };
 
 /** books.lua trygrowth for the ported pickable branch; growable, crop, harvestable and leif are not ported. */
 function trygrowth(inst: GrowthTarget): boolean {

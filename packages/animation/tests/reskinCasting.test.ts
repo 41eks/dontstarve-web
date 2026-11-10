@@ -16,7 +16,7 @@ import { SpriteState } from '@dontstarve-web/display';
 import { type ReskinTarget } from '../../stategraphs/src/reskin_tool';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
 import { getActionString } from '../../stategraphs/src/actions';
-import { actionEntity, disposeActionEntity } from '../../prefab/src/actionEntity';
+import { registerActionEntity, disposeActionEntity } from '../../prefab/src/actionEntity';
 import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { createEquipmentExistenceState } from '../../signals/src';
@@ -216,7 +216,7 @@ it('offers CASTSPELL on any entity, honors nomagic and fails an unskinnable or u
   const model = withEntity(new THREE.Group(), 'twigs');
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
   model.add(mesh); world.scene.add(model);
-  const entity = actionEntity(model, 'twigs');
+  const entity = registerActionEntity(lookupPrefabInstance(model)!);
   expect(lookupPrefabInstance(model)!.reskinTarget).toBeUndefined();
   const equipped = createEquipmentExistenceState('HANDS');
   const tool = actionTool('reskin_tool');
@@ -257,5 +257,5 @@ it('offers CASTSPELL on any entity, honors nomagic and fails an unskinnable or u
     lookupPrefabInstance(model)!.remove();
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(findActionEntity(model)).toBeUndefined();
-  } finally { controller.dispose(); picker.dispose(); disposeActionEntity(model); mesh.geometry.dispose(); mesh.material.dispose(); }
+  } finally { controller.dispose(); picker.dispose(); disposeActionEntity(findActionEntity(model)); mesh.geometry.dispose(); mesh.material.dispose(); }
 });

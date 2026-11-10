@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { createArchiveEntity, createEmptyEntity, createPrefabEntity, prefabInstance } from '../../prefab/src/prefabInstance';
-import { actionEntity, findActionEntity } from '../../prefab/src/actionEntity';
+import { registerActionEntity, findActionEntity } from '../../prefab/src/actionEntity';
 import { PrefabDisplayGroup, prefabDisplay, SpriteResources, SpriteState } from '@dontstarve-web/display';
 import { animStateDeclarations } from '../../display/src/spriteState';
 import { AnimState, mergeAnimStates, resolveAnimState, type AnimStateArt } from '../src/animState';
@@ -80,7 +80,7 @@ it('keeps shared creation and action binding free of model metadata throughout t
     createArchiveEntity('archive', { create: () => { throw new Error('A clip has not been declared'); } }, { name: '', none: true }),
   ];
   for (const { instance, display } of entities) {
-    const model = display.model, entity = actionEntity(model, instance.prefab);
+    const model = display.model, entity = registerActionEntity(prefabInstance(model)!);
     const released = vi.fn(); display.onDispose(released);
     const check = () => {
       expect(prefabInstance(model)).toBe(instance);

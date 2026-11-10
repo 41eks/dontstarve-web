@@ -3,7 +3,7 @@ import { Group, PerspectiveCamera, Scene } from 'three';
 import { expect, it, vi } from 'vitest';
 import { Builder } from '../../componets/src/builder';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { actionEntity } from '../../prefab/src/actionEntity';
+import { registerActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import * as sound from '../../prefab/src/sound';
 import type { WorldContext } from '../../prefab/src/worldContext';
@@ -30,7 +30,7 @@ it('uses real prototypers for book and sculpting stations, retaining their own c
       transform: { position: [18, 0, 0], rotationY: 0 }, components: {} });
     const book = prefabInstance(bookModel)!, table = prefabInstance(tableModel)!;
     expect(book.components.prototyper!.on).toBe(false);
-    builder = new Builder(actionEntity(player, 'waxwell'), { findEntities: (...args) => placement.prefabs.FindEntities(...args) as never,
+    builder = new Builder(registerActionEntity(prefabInstance(player)!), { findEntities: (...args) => placement.prefabs.FindEntities(...args) as never,
       researchMachineDistance: 12, entitiesChanged: placement.prefabs.entitiesChanged, getWatchWorldContent: sources.getWatchWorldContent });
     expect(book.components.prototyper!.on).toBe(true);
     expect(table.components.prototyper!.on).toBe(false);

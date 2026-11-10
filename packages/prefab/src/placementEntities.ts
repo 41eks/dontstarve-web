@@ -1,10 +1,9 @@
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
-import { findActionEntity } from './actionEntity';
 import type { Object3D } from 'three';
 import { isSpriteEntityVisible } from '@dontstarve-web/animation/renderOrder';
 import { SpatialIndex, type SpatialQuery } from './spatialIndex';
 import { prefabDisplay } from '@dontstarve-web/display';
-import { modelHasTag, prefabInstance } from './prefabInstance';
+import type { PrefabInstance } from './prefabInstance';
 
 export interface PlacementBlocker {
   readonly position: ReadonlyVector3;
@@ -37,27 +36,27 @@ export function ignoresPlacement(blocker: PlacementBlocker, tags: Iterable<strin
 }
 
 /** One engine entity entry, independent of rendering lists, selected action and mouse visibility. */
-export function registerPlacementEntity(model: Object3D, position: () => ReadonlyVector3): () => void {
-  const instance = prefabInstance(model);
+export function registerPlacementEntity(instance: PrefabInstance): () => void {
+  const model = instance.transform.model;
   const entry: WorldBlocker = {
     // An asleep model has left the scene; its display still knows the parent it returns to.
     get root() { return model.parent ? model : prefabDisplay(model)?.wakeParent ?? null; },
-    get logicalTree() { return instance?.logicalPlacement; },
+    get logicalTree() { return instance.logicalPlacement; },
     inst: instance,
-    get position() { return position(); },
-    get prefab() { return findActionEntity(model)?.prefab ?? instance?.prefab; },
-    get smartRadius() { return instance?.deploySmartRadius ?? model.userData.deploySmartRadius; },
+    get position() { return instance.getPosition(); },
+    get prefab() { return instance.prefab; },
+    get smartRadius() { return instance.deploySmartRadius ?? model.userData.deploySmartRadius; },
     get groundTargetRadius() {
       return hasPlacementTag(entry, 'groundtargetblocker') || hasPlacementTag(entry, 'groundhole')
-        ? model.userData.ground_target_blocker_radius ?? instance?._groundhole_outerradius ?? model.userData._groundhole_outerradius ?? instance?.getPhysicsRadius(0) ?? 0 : undefined;
+        ? model.userData.ground_target_blocker_radius ?? instance._groundhole_outerradius ?? model.userData._groundhole_outerradius ?? instance.getPhysicsRadius(0) ?? 0 : undefined;
     },
-    get groundHoleInnerRadius() { return instance?._groundhole_innerradius ?? model.userData._groundhole_innerradius; },
-    get groundHoleRangeOverride() { return instance?._groundhole_rangeoverride ?? model.userData._groundhole_rangeoverride; },
-    get inventoryRadius() { return findActionEntity(model)?.components.inventoryitem ? instance?.getPhysicsRadius(.5) ?? .5 : undefined; },
-    getInventoryRadius: fallback => findActionEntity(model)?.components.inventoryitem ? instance?.getPhysicsRadius(fallback) ?? fallback : undefined,
+    get groundHoleInnerRadius() { return instance._groundhole_innerradius ?? model.userData._groundhole_innerradius; },
+    get groundHoleRangeOverride() { return instance._groundhole_rangeoverride ?? model.userData._groundhole_rangeoverride; },
+    get inventoryRadius() { return (instance.components as { inventoryitem?: unknown }).inventoryitem ? instance.getPhysicsRadius(.5) ?? .5 : undefined; },
+    getInventoryRadius: fallback => (instance.components as { inventoryitem?: unknown }).inventoryitem ? instance.getPhysicsRadius(fallback) ?? fallback : undefined,
     get visible() { return isSpriteEntityVisible(model); },
-    hasTag: tag => findActionEntity(model)?.hasTag(tag) ?? modelHasTag(model, tag),
-    valid: () => (!!model.parent || !!instance?.logicalPlacement) && !findActionEntity(model)?.isRemoved
+    hasTag: tag => instance.hasTag(tag),
+    valid: () => (!!model.parent || !!instance.logicalPlacement) && !instance.isRemoved
       && !model.userData.removed && !model.userData.placer
       && (hasPlacementTag(entry, 'dockjammer') || !ignoresPlacement(entry, ['NOBLOCK', 'FX', 'DECOR', 'player'])),
   };

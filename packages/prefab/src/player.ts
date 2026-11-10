@@ -23,7 +23,7 @@ import type { SoundEmitter } from './soundEmitter';
 import { MakeCharacterPhysics, WORLD_SCALE } from './standardcomponents';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { PhysicsState } from '../../componets/src/physicsState';
-import { actionEntity, disposeActionEntity } from './actionEntity';
+import { registerActionEntity, disposeActionEntity } from './actionEntity';
 import { createPrefabEntity, prefabInstance, type EntityTask, type PrefabInstance } from './prefabInstance';
 import { Builder, type BuilderWorld } from '../../componets/src/builder';
 import type { WilsonSoulHopHost } from '../../stategraphs/src/SGwilson';
@@ -38,7 +38,7 @@ export const PLAYER_ART_CHARACTER = 'wortox' as const;
 /** player_common.lua AddComponent("builder"); the scene supplies spatial queries. */
 export function bindPlayerBuilder(model: THREE.Group, world: Omit<BuilderWorld, 'researchMachineDistance'>): Builder {
   const inst = prefabInstance(model)!;
-  actionEntity(model, PLAYER_ART_CHARACTER);
+  registerActionEntity(inst);
   removeComponent(inst, 'builder');
   return addComponent(inst, 'builder', Builder, { ...world, researchMachineDistance: 4 * WORLD_SCALE });
 }
@@ -598,7 +598,7 @@ function createWilsonPlayerEntity(
     'chest_upgradeuser', 'usesvegetarianequipment', 'ghostlyelixirable', 'trader', 'debuffable', 'stageactor',
     'playermonster', 'monster', 'soulstealer', 'souleater']) instance.addTag(tag);
   player.position.set(0, 30, 0);
-  actionEntity(player, PLAYER_ART_CHARACTER);
+  registerActionEntity(instance);
 
   const controller = new WilsonController(instance, assetBaseUrl, resources,
     options.sanityPercent ?? (options.stats ? instance.stats.sanity.percent : undefined));
@@ -611,7 +611,7 @@ function createWilsonPlayerEntity(
     (_inst, data) => OnMakePlayerGhost(instance, data as { skeleton?: boolean; loading?: boolean } | undefined));
   const stopRespawn = instance.ListenForEvent('respawnfromghost',
     (_inst, data) => OnRespawnFromGhost(instance, data as { source?: RezSource } | undefined));
-  instance.onRemove(() => { stopDeath(); stopMakeGhost(); stopRespawn(); controller.dispose(); disposeActionEntity(player); });
+  instance.onRemove(() => { stopDeath(); stopMakeGhost(); stopRespawn(); controller.dispose(); disposeActionEntity(instance); });
   display.onDispose(() => controller.releaseAssets());
   display.update(0);
   instance.animationController = controller;

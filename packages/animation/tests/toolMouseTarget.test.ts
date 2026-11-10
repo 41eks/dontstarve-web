@@ -7,8 +7,8 @@ import { ItemEntity } from '../../inventory/src';
 import { createEquipmentExistenceState } from '../../signals/src';
 import { Workable } from '../../componets/src/workable';
 import { Burnable } from '../../componets/src/burnable';
-import { actionEntities, actionEntity, disposeActionEntity } from '../../prefab/src/actionEntity';
-import { PrefabInstance, bindInstance } from '../../prefab/src/prefabInstance';
+import { actionEntities, registerActionEntity, disposeActionEntity, findActionEntity } from '../../prefab/src/actionEntity';
+import { PrefabInstance, bindInstance, prefabInstance } from '../../prefab/src/prefabInstance';
 import { configureEquipmentEntity } from '../../prefab/src/handEquipment';
 import { mouseTargets } from '../../prefab/src/mouseTargets';
 import { ToolMouseTarget, type ToolMouseTargetOptions } from '../../prefab/src/toolMouseTarget';
@@ -25,7 +25,7 @@ function setup(options?: ToolMouseTargetOptions) {
   tree.position.z = 2; scene.add(tree, back);
   const instance = new PrefabInstance('evergreen', new SpriteState({ name: 'idle' }), new Transform(undefined, tree));
   bindInstance(tree, instance); instance.addTag('tree');
-  const target = actionEntity(tree, 'evergreen'); actionEntity(withEntity(back, 'log'), 'log');
+  const target = registerActionEntity(prefabInstance(tree)!); registerActionEntity(prefabInstance(withEntity(back, 'log'))!);
   const workable = new Workable(target); target.components.workable = workable;
   const burnable = new Burnable(target); target.components.burnable = burnable;
   const binding = new ToolMouseTarget(instance, workable, hand, options);
@@ -45,7 +45,7 @@ function setup(options?: ToolMouseTargetOptions) {
   return { hand, tree, back, target, instance, workable, burnable, binding, pick, equip,
     dispose() {
       binding.dispose(); target.components.workable?.dispose(); burnable.dispose();
-      instance.remove(); disposeActionEntity(tree); disposeActionEntity(back); picker.dispose();
+      instance.remove(); disposeActionEntity(findActionEntity(tree)); disposeActionEntity(findActionEntity(back)); picker.dispose();
       for (const tool of tools) tool.destroy(); geometry.dispose(); material.dispose();
     } };
 }

@@ -1,5 +1,5 @@
-import { createEmptyEntity } from '../../prefab/src/prefabInstance';
-import { actionEntity, disposeActionEntity } from '../../prefab/src/actionEntity';
+import { createEmptyEntity, prefabInstance } from '../../prefab/src/prefabInstance';
+import { registerActionEntity, disposeActionEntity, findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -28,7 +28,7 @@ it('walks to a finished pot, gives its product to the doer at the hit frame, and
   const stewer = new Stewer({ prefab: 'cookpot', components: { container },
     get position() { return instance.position; }, addTag: tag => instance.addTag(tag), removeTag: tag => instance.removeTag(tag) }, new GameTimeScheduler());
   instance.components.stewer = stewer;
-  actionEntity(model, 'cookpot');
+  registerActionEntity(prefabInstance(model)!);
   stewer.OnLoad({ product: 'kabobs', done: true });
   const stategraph = new WilsonStateGraph({ playAnimation: () => .2, playSound() {}, onStateChanged() {} });
   const animation = { stategraph };
@@ -41,7 +41,7 @@ it('walks to a finished pot, gives its product to the doer at the hit frame, and
     renderer: { domElement: new EventTarget() }, actionEvents: new EventEmitter<PlayerActionEvents>() } as unknown as ActionWorldContext;
   let manual = false;
   const controller = new PlayerController(world, animation.stategraph, locomotor, createEquipmentExistenceState('HANDS'), doer as never, () => manual);
-  const harvest = () => controller.DoAction(controller.createAction({ action: 'HARVEST', target: actionEntity(model, 'cookpot') })!);
+  const harvest = () => controller.DoAction(controller.createAction({ action: 'HARVEST', target: registerActionEntity(prefabInstance(model)!) })!);
   try {
     // componentactions SCENE.stewer: a pot done cooking offers HARVEST on both buttons.
     expect(sceneActions(model, doer)).toEqual(['HARVEST']);
@@ -63,5 +63,5 @@ it('walks to a finished pot, gives its product to the doer at the hit frame, and
     stewer.OnLoad({ product: 'kabobs', done: true });
     instance.addTag('burnt');
     expect(sceneActions(model, doer)).toEqual([]);
-  } finally { controller.dispose(); stewer.OnRemoveFromEntity(); disposeActionEntity(model); instance.remove(); display.dispose(); }
+  } finally { controller.dispose(); stewer.OnRemoveFromEntity(); disposeActionEntity(findActionEntity(model)); instance.remove(); display.dispose(); }
 });

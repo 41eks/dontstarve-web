@@ -3,7 +3,7 @@ import { getActionPriority, type ActionDescription } from './actions.ts';
 import { PointerRaycaster } from './pointerRaycaster.ts';
 import { isMouseTarget } from './mouseTargets.ts';
 import { collectEquippedItemActions, collectPointActions, collectSceneActions, type ComponentActionEntity, type EquippedActionDoer, type SceneActionDoer } from './componentactions.ts';
-import { findActionEntity, actionInstance } from '../../prefab/src/actionEntity';
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import { collectInventoryActions, collectUseItemActions } from './componentactions';
 
 export interface MouseActionCandidate {
@@ -68,8 +68,7 @@ export class PlayerActionPicker {
     if (activeItem) {
       // GetRightClickActions: only an entity that does not catch the mouse leaves the active item's point actions.
       if (entity.hasTag('walkableplatform') || entity.hasTag('ignoremouseover')) return this.activeItemPointActions(player, activeItem);
-      const inst = actionInstance(target) ?? entity;
-      const uses = ([false, true] as const).flatMap(right => this.GetUseItemActions(inst, activeItem, right).map(action => ({
+      const uses = ([false, true] as const).flatMap(right => this.GetUseItemActions(entity, activeItem, right).map(action => ({
         action, button: right ? 'right' as const : 'left' as const, model: target, source: 'inventory' as const })));
       return entity.hasTag('walkableperipheral') ? [...uses, ...this.activeItemPointActions(player, activeItem)] : uses;
     }

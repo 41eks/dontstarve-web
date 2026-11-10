@@ -1,3 +1,4 @@
+import { withEntity } from './entityFixture';
 import { playerDoer } from './playerDoer';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { actionTool } from './actionFixtures';
@@ -18,7 +19,7 @@ import { InventorySlot, InventoryStore, inventorySlotAddress } from '../../inven
 import { EventEmitter, createEquipmentExistenceState, createSignal } from '../../signals/src';
 import type { PlayerActionEvents } from '../../stategraphs/src/actionEvents';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
-import { actionEntity, disposeActionEntity } from '../../prefab/src/actionEntity';
+import { registerActionEntity, disposeActionEntity, findActionEntity } from '../../prefab/src/actionEntity';
 import { GroundItemAssets } from '../../prefab/src/groundItems';
 import { bindTestWorld } from './worldContentFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -160,8 +161,8 @@ it('an accepted action cancels a paid preview through events and skips its own c
   const geometry = vi.spyOn((preview.children[0].children[0] as THREE.Mesh).geometry, 'dispose');
   const equipped = createEquipmentExistenceState('HANDS');
   const tool = actionTool('reskin_tool');
-  const model = new THREE.Group(); world.scene.add(model);
-  const target = actionEntity(model, 'icebox');
+  const model = withEntity(new THREE.Group(), 'icebox'); world.scene.add(model);
+  const target = registerActionEntity(lookupPrefabInstance(model)!);
   const animation = bufferingStategraph();
   // The player walks towards the target; the cast is never buffered in this test.
   const controller = new PlayerController(world, animation.graph,
@@ -195,7 +196,7 @@ it('an accepted action cancels a paid preview through events and skips its own c
     world.actionEvents!.emit('action:interrupt', { reason: 'emote' });
     expect(cancel).not.toHaveBeenCalled();
     expect(store.exportState()).toEqual(paidState);
-  } finally { controller.dispose(); disposeActionEntity(model); placement.dispose(); store.dispose(); }
+  } finally { controller.dispose(); disposeActionEntity(findActionEntity(model)); placement.dispose(); store.dispose(); }
 });
 
 it.each(['animated', 'wall'] as const)('%s right-click removes only the preview and lets the paid build resume', async (kind) => {

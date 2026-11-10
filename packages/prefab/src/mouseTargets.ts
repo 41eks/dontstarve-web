@@ -1,18 +1,21 @@
 import type { Object3D } from 'three';
-import type { FoundEntity } from './actionEntity';
+import type { PrefabInstance } from './prefabInstance';
+
+/** What the mouse registry reads of an entity: its root model, removal and tags. */
+export type MouseTargetEntity = Pick<PrefabInstance, 'transform' | 'isRemoved' | 'hasTag'>;
 
 interface Registration {
-  readonly entity: FoundEntity;
+  readonly entity: MouseTargetEntity;
   awake: boolean;
   refresh(): void;
 }
 
-const targets = new Set<FoundEntity>();
+const targets = new Set<MouseTargetEntity>();
 const registrations = new WeakMap<Object3D, Registration>();
 const enabled = new WeakMap<Object3D, boolean>();
 
 /** Mouse candidates retain visible blockers even when no action is currently available. */
-export const mouseTargets: ReadonlySet<FoundEntity> = targets;
+export const mouseTargets: ReadonlySet<MouseTargetEntity> = targets;
 
 /** Prefabs with conditional input opt in/out as their own state changes, independently of world queries. */
 export function setMouseTargetEnabled(model: Object3D, value: boolean): void {
@@ -23,9 +26,9 @@ export function setMouseTargetEnabled(model: Object3D, value: boolean): void {
 
 export function refreshMouseTarget(model: Object3D): void { registrations.get(model)?.refresh(); }
 
-/** A projected entity owns one registration; its lifecycle and tags update it without a pointer-time world scan. */
-export function registerMouseTarget(entity: FoundEntity) {
-  const { model } = entity;
+/** A registered entity owns one registration; its lifecycle and tags update it without a pointer-time world scan. */
+export function registerMouseTarget(entity: MouseTargetEntity) {
+  const model = entity.transform.model;
   const registration: Registration = { entity, awake: true, refresh() {
     if (registration.awake && model.parent && enabled.get(model) !== false
       && !entity.isRemoved && !entity.hasTag('NOCLICK')) targets.add(entity);

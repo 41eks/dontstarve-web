@@ -12,7 +12,7 @@ import { createMemo, createSignal, type HandEquipment, type ReadonlySignal } fro
 import { DisposeTileStates, GetTileKeyAtPoint, GetTileStateAtPoint } from '../../componets/src/tileManager';
 import { bindTestWorld } from './worldContentFixture';
 import { configureBugNetEntity } from '../../prefab/src/bugnet';
-import { actionEntities, actionEntity, disposeActionEntity } from '../../prefab/src/actionEntity';
+import { actionEntities, registerActionEntity, disposeActionEntity, findActionEntity } from '../../prefab/src/actionEntity';
 import { mouseTargets } from '../../prefab/src/mouseTargets';
 import { bindInstance, prefabInstance } from '../../prefab/src/prefabInstance';
 import { displayLights } from '../../display/src/displaySprites';
@@ -61,8 +61,8 @@ describe('source fireflies light and proximity', () => {
     const settle = () => new Promise(resolve => setTimeout(resolve, 0));
     configureFirefliesEntity(s.entity);
     new THREE.Scene().add(s.model);
-    const projected = actionEntity(s.model, 'fireflies', s.entity);
-    cleanups.push(() => { disposeActionEntity(s.model); s.entity.destroy(); });
+    const projected = registerActionEntity(s.entity);
+    cleanups.push(() => { disposeActionEntity(findActionEntity(s.model)); s.entity.destroy(); });
     expect(mouseTargets.has(projected)).toBe(false);
     s.controller.place(false); await settle(); s.tick(3.1);
     expect(s.controller.clickable).toBe(true);

@@ -55,8 +55,8 @@ function attacker(position: THREE.Vector3, now: () => number, weapon?: ItemEntit
 
 /** The walls DoAttackButton finds: live combat entities, in placement order. */
 const combatTargets = () => [...actionEntities()].filter(entity => (entity.components as { combat?: unknown }).combat)
-  .map(entity => ({ inst: prefabInstance(entity.model)! as unknown as CombatInst & { components: { health?: Health } },
-    isValid: () => !entity.isRemoved && !prefabInstance(entity.model)!.components.health!.IsDead() }));
+  .map(entity => ({ inst: entity as unknown as CombatInst & { components: { health?: Health } },
+    isValid: () => !entity.isRemoved && !entity.components.health!.IsDead() }));
 const pose = (model: THREE.Group) => {
   const json = prefabInstance(model)!.sprite.sprite.peek();
   return json.queue.at(-1)?.name ?? json.clip.name;

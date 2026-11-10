@@ -75,7 +75,8 @@ export class WortoxPlayer {
       tryToPortalHop: () => this.state.TryToPortalHop(inventory.EquipHasTag('heavy')),
       facePoint: position => this.facePoint(position),
       teleport: position => {
-        world.player.position.copy(position);
+        // Transform:SetPosition, so the world's spatial index follows the hop.
+        instance.setPosition(position.x, position.y, position.z);
         instance.tileTracker.sync();
         options.physics.Teleport();
         body.velocity.set(0, 0, 0);

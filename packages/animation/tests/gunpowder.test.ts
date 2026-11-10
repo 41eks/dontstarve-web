@@ -50,7 +50,7 @@ it('lights gunpowder with a torch, explodes its stack, works nearby stone fruit 
     const powder = s.ground.entities.get('test:gunpowder:0')!, near = s.ground.entities.get('test:rock_avocado_fruit:6')!;
     const far = s.ground.entities.get('test:rock_avocado_fruit:30')!, log = s.ground.entities.get('test:log:-4')!;
     const torch = s.inventory.entities.create({ itemId: 'torch', count: 1 }); configureTorchEntity(torch);
-    const target = (id: string) => findActionEntity(s.scene.children.find(model => findActionEntity(model)?.components === s.ground.entities.get(id)!.components)!);
+    const target = (id: string) => findActionEntity(s.scene.children.find(model => findActionEntity(model) === (s.ground.entities.get(id) as object))!);
     // Only inst with a burnable are LIGHT targets; hard stone fruit is not.
     expect(collectEquippedItemActions(torch, undefined, target(powder.id)!, true)).toContain('LIGHT');
     expect(collectEquippedItemActions(torch, undefined, target(near.id)!, true)).not.toContain('LIGHT');

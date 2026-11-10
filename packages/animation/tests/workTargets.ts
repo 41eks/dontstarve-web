@@ -1,7 +1,8 @@
 import type { Object3D } from 'three';
 import type { PrefabDisplay } from '@dontstarve-web/display';
 import { prefabDisplay } from '@dontstarve-web/display';
-import { actionEntities, type FoundEntity } from '../../prefab/src/actionEntity';
+import { actionEntities } from '../../prefab/src/actionEntity';
+import type { PrefabInstance } from '../../prefab/src/prefabInstance';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { createBufferedAction } from '../../stategraphs/src/actionfns';
 import type { BufferedActionDoer, BufferedActionObject } from '../../stategraphs/src/bufferedaction';
@@ -9,11 +10,11 @@ import type { WorkAction } from '../../componets/src/workable';
 
 /** A live entity whose workable currently takes `action`, as componentactions finds it through its tags. */
 export interface WorkTarget {
-  readonly entity: FoundEntity;
+  readonly entity: PrefabInstance;
   readonly model: Object3D;
   readonly id: string;
   readonly display: PrefabDisplay;
-  readonly position: ReturnType<FoundEntity['getPosition']>;
+  readonly position: ReturnType<PrefabInstance['getPosition']>;
   isValid(): boolean;
   /** One ACTIONS[action].fn on this target, as the stategraph's hit frame runs it. */
   work(doer?: BufferedActionDoer, tool?: BufferedActionObject): boolean;
@@ -31,13 +32,13 @@ function contains(root: Object3D, model: Object3D): boolean {
  */
 export function workTargets(action: WorkAction, filter?: Object3D | string): WorkTarget[] {
   // An asleep entity keeps its components: it cannot be picked, but an action still reaches it.
-  const isValid = (entity: FoundEntity) => !entity.isRemoved && entity.hasTag(`${action}_workable`);
+  const isValid = (entity: PrefabInstance) => !entity.isRemoved && entity.hasTag(`${action}_workable`);
   return [...actionEntities()].filter(entity => isValid(entity)
-    && (filter === undefined || (typeof filter === 'string' ? entity.prefab === filter : contains(filter, entity.model))))
+    && (filter === undefined || (typeof filter === 'string' ? entity.prefab === filter : contains(filter, entity.transform.model))))
     .map(entity => ({
-      entity, model: entity.model,
-      id: String(prefabInstance(entity.model)?.entityId ?? (entity as { id?: unknown }).id ?? ''),
-      get display() { return prefabDisplay(entity.model)!; },
+      entity, model: entity.transform.model,
+      id: String(prefabInstance(entity.transform.model)?.entityId ?? (entity as { id?: unknown }).id ?? ''),
+      get display() { return prefabDisplay(entity.transform.model)!; },
       get position() { return entity.getPosition(); },
       isValid: () => isValid(entity),
       work: (doer = {}, tool) => createBufferedAction(action, { doer, target: entity, invobject: tool }).do(),

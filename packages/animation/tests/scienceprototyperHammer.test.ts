@@ -8,7 +8,7 @@ import { RESEARCH_LAB_IDS } from '../../prefab/src/scienceprototyper';
 import { managedBuildings } from './managedBuildings';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { Builder } from '../../componets/src/builder';
-import { actionEntity } from '../../prefab/src/actionEntity';
+import { registerActionEntity } from '../../prefab/src/actionEntity';
 import { WORLD_SCALE } from '../../prefab/src/standardcomponents';
 import { PlaySound } from '../../prefab/src/sound';
 import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
@@ -51,7 +51,7 @@ async function setup(id: typeof RESEARCH_LAB_IDS[number], skinId?: string) {
   }) as THREE.Group;
   // The builder searches the world its player is in; a test that reloads into a new world moves it there.
   const sim = { current: placement.prefabs };
-  const builder = new Builder(actionEntity(withEntity(world.player as THREE.Group, 'waxwell'), 'waxwell'), {
+  const builder = new Builder(registerActionEntity(prefabInstance(withEntity(world.player as THREE.Group, 'waxwell'))!), {
     findEntities: (...args) => sim.current.FindEntities(...args) as never, researchMachineDistance: 4 * WORLD_SCALE,
   });
   const animation = () => prefabInstance<PrefabInstance>(model)!.sprite;
@@ -145,7 +145,7 @@ it('queues magic station transitions across reskinning, then rebuilds transient 
   const { placement, model, world, animation, builder, reskinTarget, sim } = await setup('researchlab3');
   let restored: ReturnType<typeof managedBuildings> | undefined;
   try {
-    world.player.position.copy(actionEntity(model, 'researchlab3').getPosition());
+    world.player.position.copy(registerActionEntity(prefabInstance(model)!).getPosition());
     placement.update(0);
     expect(animation().currentAnimation).toBe('idle'); // Placement does not select a station.
     builder.EvaluateTechTrees();
@@ -172,7 +172,7 @@ it('queues magic station transitions across reskinning, then rebuilds transient 
     sim.current = restored.prefabs;
     const loaded = restored.spawnFromSave('researchlab3', record) as THREE.Group;
     expect(prefabInstance(loaded)!.components.prototyper!.on).toBe(false);
-    world.player.position.copy(actionEntity(loaded, 'researchlab3').getPosition());
+    world.player.position.copy(registerActionEntity(prefabInstance(loaded)!).getPosition());
     builder.EvaluateTechTrees();
     expect(prefabInstance(loaded)!.components.prototyper!.on).toBe(true);
     expect(builder.accessible_tech_trees.peek().MAGIC).toBe(3);
@@ -190,7 +190,7 @@ it('queues magic station transitions across reskinning, then rebuilds transient 
       components: { ...record.components, building: { ...record.components.building!, burnt: true } } }) as THREE.Group;
     builder.EvaluateTechTrees();
     expect(prefabInstance(burnt)!.components.prototyper).toBeUndefined();
-    expect(actionEntity(burnt, 'researchlab3').hasTag('prototyper')).toBe(false);
+    expect(registerActionEntity(prefabInstance(burnt)!).hasTag('prototyper')).toBe(false);
     expect(builder.current_prototyper).toBeUndefined();
     expect(builder.accessible_tech_trees.peek().MAGIC).toBe(0);
   } finally { builder.dispose(); placement.dispose(); restored?.dispose(); }

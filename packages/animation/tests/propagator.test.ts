@@ -1,10 +1,11 @@
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { afterEach, expect, it, vi } from 'vitest';
 import { getBoundWatchWorldContent } from '../../signals/src';
 import { bindTestWorld } from './worldContentFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Propagator } from '../../componets/src/propagator';
-import { actionEntity } from '../../prefab/src/actionEntity';
+import { registerActionEntity } from '../../prefab/src/actionEntity';
 import { withEntity } from './entityFixture';
 import { ItemEntity } from '../../inventory/src';
 import { configureBurnableItemEntity, type BurnableItemController } from '../../prefab/src/burnableItems';
@@ -15,10 +16,10 @@ afterEach(() => vi.restoreAllMocks());
 it('uses the current spring radius for neighbour queries and heat falloff without restarting the timer', () => {
   const scheduler = new GameTimeScheduler();
   const { season, unbind } = bindTestWorld(scheduler);
-  const source = actionEntity(withEntity(new THREE.Group(), 'stafflight'), 'stafflight');
-  const near = actionEntity(withEntity(new THREE.Group(), 'log'), 'log'), far = actionEntity(withEntity(new THREE.Group(), 'cutgrass'), 'cutgrass');
-  near.model.position.x = 6;
-  far.model.position.x = 7.5;
+  const source = registerActionEntity(prefabInstance(withEntity(new THREE.Group(), 'stafflight'))!);
+  const near = registerActionEntity(prefabInstance(withEntity(new THREE.Group(), 'log'))!), far = registerActionEntity(prefabInstance(withEntity(new THREE.Group(), 'cutgrass'))!);
+  near.setPosition(6, 0, 0);
+  far.setPosition(7.5, 0, 0);
   const nearHeat = vi.fn(), farHeat = vi.fn();
   for (const [target, receive] of [[near, nearHeat], [far, farHeat]] as const) {
     target.components.propagator = new Propagator(target, 'small', () => [], 3, scheduler, getBoundWatchWorldContent());

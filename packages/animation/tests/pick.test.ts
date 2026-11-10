@@ -1,5 +1,5 @@
 import { addComponent } from '../../prefab/src/components';
-import { actionEntity, disposeActionEntity } from '../../prefab/src/actionEntity';
+import { registerActionEntity, disposeActionEntity, findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -14,7 +14,7 @@ import type { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { EventEmitter } from '../../signals/src/EventEmitter';
 import { createEquipmentExistenceState } from '../../signals/src';
 import type { PlayerActionEvents } from '../../stategraphs/src/actionEvents';
-import { createEmptyEntity } from '../../prefab/src/prefabInstance';
+import { createEmptyEntity, prefabInstance } from '../../prefab/src/prefabInstance';
 import { canDoSceneAction, sceneActions } from './sceneActions';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -25,7 +25,7 @@ it('uses component-owned pickable tags and blocks fire/intense without consultin
   const model = display.model; scene.add(model);
   instance.addTag('plant'); instance.addTag('custom');
   const component = addComponent(instance, 'pickable', Pickable, 'log', 10);
-  actionEntity(model, 'grass');
+  registerActionEntity(prefabInstance(model)!);
   expect(canDoSceneAction('PICK', model)).toBe(true);
   component.canInteractWith = false;
   expect(component.canBePicked).toBe(true);
@@ -45,7 +45,7 @@ it('uses component-owned pickable tags and blocks fire/intense without consultin
   component.dispose();
   expect(sceneActions(model)).toEqual([]);
   expect(instance.listTags()).toEqual(['plant', 'custom']);
-  disposeActionEntity(model); instance.remove(); display.dispose();
+  disposeActionEntity(findActionEntity(model)); instance.remove(); display.dispose();
 });
 
 it('walks to the arrive distance, gives the PICK product to the doer inventory and releases unclaimed products', () => {
@@ -55,7 +55,7 @@ it('walks to the arrive distance, gives the PICK product to the doer inventory a
   const model = display.model; instance.setPosition(20, 0, 0);
   scene.add(model); scene.add(player); instance.addTag('plant');
   const component = addComponent(instance, 'pickable', Pickable, 'log', 10, 2);
-  actionEntity(model, 'grass');
+  registerActionEntity(prefabInstance(model)!);
   const pointer = { trackPointer() {}, beginFrame() {}, endFrame() {},
     pickMouseTarget: () => ({ object: model }), dispose: vi.fn() } as unknown as PointerRaycaster;
   const picker = new PlayerActionPicker(pointer), canvas = new EventTarget();
@@ -116,6 +116,6 @@ it('walks to the arrive distance, gives the PICK product to the doer inventory a
     controller.dispose(); instance.remove(); display.dispose();
     expect(pointer.dispose).not.toHaveBeenCalled();
     expect(picker.getMouseActions().left).toBeUndefined();
-    component.dispose(); disposeActionEntity(model); picker.dispose(); stopEvents();
+    component.dispose(); disposeActionEntity(findActionEntity(model)); picker.dispose(); stopEvents();
   }
 });

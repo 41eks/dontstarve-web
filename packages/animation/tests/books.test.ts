@@ -1,12 +1,12 @@
 import { addComponent } from '../../prefab/src/components';
-import { createEmptyEntity } from '../../prefab/src/prefabInstance';
+import { createEmptyEntity, prefabInstance } from '../../prefab/src/prefabInstance';
 import { testMap } from './tileMapFixture';
 import * as THREE from 'three';
 import { afterEach, expect, it, vi } from 'vitest';
 import { ItemEntity } from '../../inventory/src/entity';
 import { GameTimeScheduler } from '../../prefab/src/components/gameTimeScheduler';
 import { Pickable } from '../../prefab/src/components/pickable';
-import { actionEntity } from '../../prefab/src/actionEntity';
+import { registerActionEntity } from '../../prefab/src/actionEntity';
 import { BOOK_ITEM_SPECS, type BookWorld } from '../../prefab/src/books';
 import { TILE_SIZE } from '../../prefab/src/tile';
 import { Reader } from '../../componets/src/reader';
@@ -36,7 +36,7 @@ function pickedGrass(scene: THREE.Scene, scheduler: GameTimeScheduler, x: number
   cleanups.push(() => { instance.remove(); display.dispose(); });
   const pickable = addComponent(instance, 'pickable', Pickable, 'cutgrass', 1440, 1, undefined, undefined,
     { picked: true, regrowSeconds: 1440 }, { scheduler });
-  actionEntity(model, 'grass');
+  registerActionEntity(prefabInstance(model)!);
   scene.add(model);
   return pickable;
 }

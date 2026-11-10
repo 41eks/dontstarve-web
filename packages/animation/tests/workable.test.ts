@@ -5,7 +5,7 @@ import { expect, it, vi } from 'vitest';
 import { batch } from '../../signals/src';
 import { Workable } from '../../componets/src/workable';
 import { ItemEntity } from '../../inventory/src/entity';
-import { actionEntity } from '../../prefab/src/actionEntity';
+import { registerActionEntity } from '../../prefab/src/actionEntity';
 
 function itemWorkable(workleft = 3) {
   const entity = new ItemEntity({ itemId: 'test_workable', count: 1 });
@@ -87,7 +87,7 @@ it('reads current action eligibility during a transaction and publishes only the
 
 it('preserves savestate rules and reacts to world removal, releasing memo dependencies on component disposal', () => {
   const source = itemWorkable(), ordinary = itemWorkable(), persistent = itemWorkable();
-  const model = withEntity(new THREE.Group(), 'test_world'), entity = actionEntity(model, 'test_world');
+  const model = withEntity(new THREE.Group(), 'test_world'), entity = registerActionEntity(prefabInstance(model)!);
   const work = new Workable(entity);
   prefabInstance(model)!.components.workable = work;
   const reads = vi.spyOn(entity.removal, 'get'), eligibility = vi.fn(), finish = vi.fn();

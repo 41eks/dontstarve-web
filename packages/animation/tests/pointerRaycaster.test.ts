@@ -4,7 +4,7 @@ import { withEntity } from './entityFixture';
 import { afterEach, expect, it, vi } from 'vitest';
 import { intersectSpriteEntities, PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
-import { actionEntities, actionEntity, disposeActionEntity } from '../../prefab/src/actionEntity';
+import { actionEntities, registerActionEntity, disposeActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { watchTileActivity } from '../../prefab/src/tileActivity';
 import { ItemEntity } from '../../inventory/src';
@@ -35,9 +35,9 @@ it('picks behind hidden/NOCLICK swarms, restores visible bounding-box picking an
   const pointer = new PointerRaycaster({ camera, renderer }), picker = new PlayerActionPicker(pointer);
   const pickup = { action: 'PICKUP' as const }, net = { action: 'NET' as const };
   let available = false;
-  const swarmEntity = actionEntity(withEntity(swarm, 'fireflies'), 'fireflies');
+  const swarmEntity = registerActionEntity(prefabInstance(withEntity(swarm, 'fireflies'))!);
   swarmEntity.addTag('NOCLICK');
-  actionEntity(withEntity(back, 'back') as unknown as THREE.Group, 'back');
+  registerActionEntity(prefabInstance(withEntity(back, 'back') as unknown as THREE.Group)!);
   const swarmActions = vi.fn(model => model === swarm ? [{ action: net, model: swarm, button: 'left' as const, available }] : []);
   picker.register(swarmActions);
   picker.register(model => model === back ? [{ action: pickup, model: back, button: 'left' }] : []);
@@ -67,17 +67,18 @@ it('picks behind hidden/NOCLICK swarms, restores visible bounding-box picking an
     expect(intersectSpriteEntities(ray, [swarm])).toEqual([]);
     visual.visible = true;
     expect(intersectSpriteEntities(ray, [swarm])[0]?.object).toBe(part);
-  } finally { disposeActionEntity(swarm); disposeActionEntity(back as unknown as THREE.Group); picker.dispose(); geometry.dispose(); material.dispose(); }
+  } finally { disposeActionEntity(findActionEntity(swarm)); disposeActionEntity(findActionEntity(back as unknown as THREE.Group)); picker.dispose(); geometry.dispose(); material.dispose(); }
 });
 
 it('picks active prefabs using logical NOCLICK/removal and resolves a pointer event once for all action consumers', () => {
-  const scene = new THREE.Scene(), front = new THREE.Group(), back = new THREE.Group();
+  // The log item's own root is its drawn model, in front of the rock.
+  const item = new ItemEntity({ itemId: 'log', count: 1 });
+  const scene = new THREE.Scene(), front = item.transform.model, back = new THREE.Group();
   const geometry = new THREE.PlaneGeometry(2, 2), material = new THREE.MeshBasicMaterial();
   front.add(new THREE.Mesh(geometry, material)); back.add(new THREE.Mesh(geometry, material));
-  front.position.z = 2; scene.add(front, back); scene.updateMatrixWorld(true);
-  const item = new ItemEntity({ itemId: 'log', count: 1 });
+  item.setPosition(0, 0, 2); scene.add(front, back); scene.updateMatrixWorld(true);
   item.addTag('NOCLICK');
-  actionEntity(withEntity(front, 'log'), 'log', item); actionEntity(withEntity(back, 'rock'), 'rock');
+  registerActionEntity(item); registerActionEntity(prefabInstance(withEntity(back, 'rock'))!);
   const camera = new THREE.PerspectiveCamera(60, 1, .1, 100);
   camera.position.z = 10; camera.updateMatrixWorld();
   const renderer = { domElement: { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) } } as unknown as THREE.WebGLRenderer;
@@ -96,7 +97,7 @@ it('picks active prefabs using logical NOCLICK/removal and resolves a pointer ev
     expect(picker.getMouseActions().left).toBeUndefined();
     expect(provider).toHaveBeenLastCalledWith(front); // An unavailable visible entity still occludes the back.
     setMouseTargetEnabled(front, false);
-    expect([...actionEntities()].some(entity => entity.model === front)).toBe(true);
+    expect([...actionEntities()].some(entity => entity.transform.model === front)).toBe(true);
     expect(mouseTargets.has(findActionEntity(front)!)).toBe(false);
     expect(picker.getMouseActions().left).toBe(pickup);
     setMouseTargetEnabled(front, true);
@@ -112,7 +113,7 @@ it('picks active prefabs using logical NOCLICK/removal and resolves a pointer ev
     expect(traversal).not.toHaveBeenCalled();
   } finally {
     raycasts.mockRestore(); traversal.mockRestore();
-    item.destroy(); disposeActionEntity(front); disposeActionEntity(back); picker.dispose();
+    item.destroy(); disposeActionEntity(findActionEntity(front)); disposeActionEntity(findActionEntity(back)); picker.dispose();
     geometry.dispose(); material.dispose();
   }
 });
@@ -147,11 +148,11 @@ it('follows tickingarea and picks tall art away from its logical foot using curr
   back.position.y = 8; back.add(new THREE.Mesh(geometry, material)); scene.add(tall, back);
   const positions = createSignal([new THREE.Vector3()]);
   const player = createMemo(() => positions.get()[0]);
-  actionEntity(withEntity(tall, 'tall'), 'tall').addTag('NOBLOCK'); actionEntity(withEntity(back, 'back'), 'back');
+  registerActionEntity(prefabInstance(withEntity(tall, 'tall'))!).addTag('NOBLOCK'); registerActionEntity(prefabInstance(withEntity(back, 'back'))!);
   // The world's manager wakes each entity with its tile, as the ticking area moves; mouse targets follow its status.
   const query = GetTileStateAtPoint(player);
   const watches = [tall, back].map(model => watchTileActivity(model, query, active => prefabInstance(model)!.setActive(active)));
-  const stop = () => { watches.forEach(unwatch => unwatch()); disposeActionEntity(tall); disposeActionEntity(back); };
+  const stop = () => { watches.forEach(unwatch => unwatch()); disposeActionEntity(findActionEntity(tall)); disposeActionEntity(findActionEntity(back)); };
   const camera = new THREE.PerspectiveCamera(60, 1, .1, 100);
   camera.position.set(0, 8, 10); camera.updateMatrixWorld();
   const renderer = { domElement: { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) } } as unknown as THREE.WebGLRenderer;

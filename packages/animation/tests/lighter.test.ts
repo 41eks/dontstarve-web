@@ -14,7 +14,7 @@ import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
 import { createSignal, EventEmitter, type HandEquipment } from '../../signals/src';
 import { ItemEntity } from '../../inventory/src';
 import { TORCH_FUEL, configureTorchEntity } from '../../prefab/src/torch';
-import { actionEntity } from '../../prefab/src/actionEntity';
+import { registerActionEntity } from '../../prefab/src/actionEntity';
 import { managedBuildings } from './managedBuildings';
 import type { PlaceableBuildingInteractionChange } from '../../../src/placeableBuilding';
 import type { WorldContext } from '../../prefab/src/worldContext';
@@ -29,7 +29,7 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 it('spreads source heat to nearby combustible structures through smoldering before ignition', () => {
   vi.spyOn(Math, 'random').mockReturnValue(.5);
   const first = withEntity(new THREE.Group(), 'treasurechest'), second = withEntity(new THREE.Group(), 'cookpot'); second.position.x = 2;
-  const source = actionEntity(first, 'treasurechest'), target = actionEntity(second, 'cookpot');
+  const source = registerActionEntity(prefabInstance(first)!), target = registerActionEntity(prefabInstance(second)!);
   for (const inst of [source, target]) {
     inst.components.burnable = new Burnable(inst);
     inst.components.propagator = new Propagator(inst, 'small', () => [source, target]);
@@ -59,8 +59,8 @@ it('walks to the foot, cancels on unequip and commits LIGHT once at frame 13 wit
   vi.stubGlobal('window', new EventTarget());
   const scene = new THREE.Scene(), model = withEntity(new THREE.Group(), 'treasurechest'), player = new THREE.Group();
   model.position.set(20, 0, 0); scene.add(model);
-  const target = actionEntity(model, 'treasurechest');
-  const burnable = new Burnable(actionEntity(model, 'treasurechest'));
+  const target = registerActionEntity(prefabInstance(model)!);
+  const burnable = new Burnable(registerActionEntity(prefabInstance(model)!));
   target.components.burnable = burnable;
   const torch = new ItemEntity({ itemId: 'torch', count: 1, remainingFuel: 30 });
   torch.configure({ maxFuel: TORCH_FUEL, configureEntity: configureTorchEntity });
