@@ -8,7 +8,6 @@ import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper
 import { Timer } from '../../componets/src/timer';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { Worker } from '../../componets/src/workable';
-import { actionEntity } from './actionEntity';
 import { addComponent, removeComponent } from './components';
 import definitions from './definitions.json' with { type: 'json' };
 import catalog from './groundItems.json' with { type: 'json' };
@@ -334,7 +333,7 @@ function on_load(inst: MoonTreeInstance, data: PlacementSaveRecord['components']
 
 function onSpawned(inst: MoonTreeInstance): void {
   inst.components.growable.OnEntitySleep();
-  inst.mouseTarget = new ToolMouseTarget(actionEntity(inst.transform.model, MOON_TREE_ID), inst, inst.components.workable, inst.world.handEquipment);
+  inst.mouseTarget = new ToolMouseTarget(inst, inst.components.workable, inst.world.handEquipment);
 }
 
 /** moonbutterfly's planted form: a timer until it becomes a short moon tree, or one DIG for twigs. */
@@ -397,7 +396,7 @@ export function moonTreePrefabs(world: MoonTreeWorld, random: () => number = Mat
       fn: position => new MoonButterflySaplingInstance(world, position, random),
       assets: { animationArchive: 'baby_moon_tree.zip', buildArchives: ['baby_moon_tree.zip'], bank: 'baby_moon_tree' },
       assetOptions: { staticBillboard: true, instancedAnimations: 'all' },
-      onSpawned: inst => { new ToolMouseTarget(actionEntity(inst.transform.model, MOONBUTTERFLY_SAPLING_ID), inst, inst.components.workable, world.handEquipment); },
+      onSpawned: inst => { new ToolMouseTarget(inst, inst.components.workable, world.handEquipment); },
     },
   };
 }

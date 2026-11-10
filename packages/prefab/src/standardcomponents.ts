@@ -2,7 +2,6 @@ import { removeComponent } from './components';
 import { COLLISION, type PhysicsState } from '../../componets/src/physicsState';
 import { releaseBuildingContainer } from './containers';
 import { prefabDisplay } from '@dontstarve-web/display';
-import { actionEntity } from './actionEntity';
 import type { DeconstructionTarget } from './staff';
 import type { PrefabInstance } from './prefabInstance';
 import type { PlacementSaveRecord } from './saveRecord';
@@ -32,15 +31,15 @@ export function DefaultExtinguishFn(inst: PrefabInstance): void {
 
 /** The greenstaff's view of a structure (`staff.lua destroystructure`): deconstruction removes the entity. */
 export function MakeDeconstructable(inst: PrefabInstance): void {
-    const entity = actionEntity(inst.transform.model, inst.prefab), isValid = () => !inst.isRemoved;
-    entity.deconstructionTarget = {
+    const isValid = () => !inst.isRemoved;
+    inst.deconstructionTarget = {
         prefab: inst.prefab, instance: inst, display: prefabDisplay(inst.transform.model)!,
         components: inst.components as DeconstructionTarget['components'],
         get position() { return inst.position; },
         get isRemoved() { return inst.isRemoved; }, isValid,
         isVisible: () => inst.transform.model.visible,
-        hasTag: (tag: string) => entity.hasTag(tag),
-        PushEvent: (name: string, data: unknown) => entity.PushEvent?.(name, data),
+        hasTag: (tag: string) => inst.hasTag(tag),
+        PushEvent: (name: string, data: unknown) => inst.PushEvent(name, data),
         removeOne: () => { if (!isValid()) return false; inst.remove(); return true; },
     };
 }

@@ -6,7 +6,6 @@ import type { InventoryStack, ItemEntity } from '@dontstarve-web/inventory';
 import { Inventory } from '../../componets/src/inventory';
 import { Spawner } from '../../componets/src/spawner';
 import { Workable } from '../../componets/src/workable';
-import { actionEntity } from './actionEntity';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import type { PlacementSaveRecord } from './saveRecord';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
@@ -181,7 +180,7 @@ export function molehillPrefabs(world: MoleHabitat): Readonly<Record<typeof MOLE
       assets: { animationArchive: 'mole_basic.zip', buildArchives: ['mole_build.zip'], bank: 'mole' },
       onSpawned: inst => {
         inst.OnInit();
-        new ToolMouseTarget(actionEntity(inst.transform.model, MOLEHILL_ID), inst, inst.components.workable, world.handEquipment);
+        new ToolMouseTarget(inst, inst.components.workable, world.handEquipment);
       },
     },
   };

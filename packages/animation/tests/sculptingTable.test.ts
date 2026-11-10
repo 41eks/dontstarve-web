@@ -1,4 +1,3 @@
-import { findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -96,7 +95,7 @@ it('accepts one marble or cutstone, hands it back on PICK and restores it from a
     // Lua onload calls giveitem, including its sound; reskinning only replaces art.
     expect(play).toHaveBeenCalledTimes(2);
     expect(play).toHaveBeenLastCalledWith(itemSound, restored.position);
-    expect(reskinEntity(findActionEntity(model)!.reskinTarget!)).toBe(true);
+    expect(reskinEntity(prefabInstance(model)!.reskinTarget!)).toBe(true);
     expect(play).toHaveBeenCalledTimes(2);
     // The declaration belongs to the entity, so the new skin's sprite is dressed with the same block.
     expect(heldBlock(model)).toEqual([{ archive: 'marble.zip', symbol: smallHash('marble01') }]);

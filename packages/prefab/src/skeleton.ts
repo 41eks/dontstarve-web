@@ -5,7 +5,6 @@ import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
 import { Workable } from '../../componets/src/workable';
-import { actionEntity } from './actionEntity';
 import type { SpawnGroundItem } from './groundPrefab';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { MakeSmallObstaclePhysics } from './standardcomponents';
@@ -118,7 +117,7 @@ export function skeletonPrefabs(world: SkeletonWorld): Readonly<Record<SkeletonI
     assets: { animationArchive: 'skeletons.zip', buildArchives: ['skeletons.zip'], bank: 'skeleton' },
     assetOptions: { instancedAnimations: 'all' },
     physics: { make: MakeSmallObstaclePhysics, radius: .25 },
-    onSpawned: inst => { new ToolMouseTarget(actionEntity(inst.transform.model, id), inst, inst.components.workable, world.handEquipment); },
+    onSpawned: inst => { new ToolMouseTarget(inst, inst.components.workable, world.handEquipment); },
   });
   return {
     skeleton: definition('skeleton'), skeleton_player: definition('skeleton_player'), skeleton_notplayer: definition('skeleton_notplayer'),

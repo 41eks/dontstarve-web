@@ -28,7 +28,7 @@ function setup(options?: ToolMouseTargetOptions) {
   const target = actionEntity(tree, 'evergreen'); actionEntity(withEntity(back, 'log'), 'log');
   const workable = new Workable(target); target.components.workable = workable;
   const burnable = new Burnable(target); target.components.burnable = burnable;
-  const binding = new ToolMouseTarget(target, instance, workable, hand, options);
+  const binding = new ToolMouseTarget(instance, workable, hand, options);
   const camera = new THREE.PerspectiveCamera(60, 1, .1, 100);
   camera.position.z = 10; camera.updateMatrixWorld();
   const renderer = { domElement: { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) } } as unknown as THREE.WebGLRenderer;

@@ -3,7 +3,6 @@ import type { Object3D, Vector3 } from 'three';
 import type { ComponentActionEntity } from '../../stategraphs/src/componentactions';
 import { createEffect, createSignal, readonlySignal, watchSignal, type ReadonlySignal } from '@dontstarve-web/signals';
 import type { WorkableInst } from '../../componets/src/workable';
-import type { ReskinTarget } from '../../stategraphs/src/reskin_tool';
 import { registerPlacementEntity, syncPlacementEntity } from './placementEntities';
 import { prefabInstance } from './prefabInstance';
 import { registerMouseTarget } from './mouseTargets';
@@ -12,10 +11,6 @@ import { registerMouseTarget } from './mouseTargets';
 export type FoundEntity = ComponentActionEntity & WorkableInst & {
   readonly model: Object3D;
   getPosition(): Vector3;
-  /** The entity's skin operation, supplied by its owner; skin state stays on that entity. */
-  reskinTarget?: ReskinTarget;
-  /** The owner's greenstaff deconstruction view; loot and removal follow the recipe and the owner. */
-  deconstructionTarget?: import('./staff').DeconstructionTarget;
 };
 
 /** Legacy removal bridge for bare models only; instance and injected owners supply their own lifecycle. */
@@ -96,8 +91,6 @@ export function actionEntity(model: THREE.Object3D, prefab: string, inst?: Compo
     mouseCleanups.splice(0).forEach(stop => stop());
     mouse.dispose(); mouseRegistrations.delete(entity);
     liveEntities.delete(entity);
-    delete entity.reskinTarget;
-    delete entity.deconstructionTarget;
     entitiesByModel.delete(model);
     actionOwners.delete(model);
   });

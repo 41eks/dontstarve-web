@@ -12,7 +12,6 @@ import { Hauntable } from '../../componets/src/hauntable';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
 import { LunarHailBuildup } from '../../componets/src/pandoraschestSignatures';
 import { FRAMES } from '../../stategraphs/src/stategraph';
-import { actionEntity } from './actionEntity';
 import { addComponent } from './components';
 import { Transform } from './transform';
 import type { SpawnGroundItem } from './groundPrefab';
@@ -183,7 +182,7 @@ export function rockPrefabs(world: RockShellWorld): Readonly<Record<RockPrefabId
       assetOptions: { instancedAnimations: 'all', colour: [1, 1, 1] },
       physics: { make: MakeObstaclePhysics, radius: 1 },
       minimapIcon: minimapicon,
-      onSpawned: inst => { new ToolMouseTarget(actionEntity(inst.transform.model, prefab), inst, inst.components.workable!, world.handEquipment); },
+      onSpawned: inst => { new ToolMouseTarget(inst, inst.components.workable!, world.handEquipment); },
     };
   }
   return prefabs;
@@ -234,7 +233,7 @@ export function moonglassRockPrefabs(world: MoonglassRockWorld): Readonly<Record
       assetOptions: { instancedAnimations: 'all', staticBillboard: true },
       physics: { make: MakeObstaclePhysics, radius: 1 },
       minimapIcon: 'rock_moonglass.png',
-      onSpawned: inst => { new ToolMouseTarget(actionEntity(inst.transform.model, MOONGLASS_ROCK_ID), inst, inst.components.workable!, world.handEquipment); },
+      onSpawned: inst => { new ToolMouseTarget(inst, inst.components.workable!, world.handEquipment); },
     },
   };
 }

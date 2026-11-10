@@ -15,7 +15,7 @@ import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { PlaySound, type SoundEventPath } from './sound';
 import { WORLD_SCALE } from './standardcomponents';
 import { FIRE_PROJECTILE_ID } from './staff_projectile';
-import { prefabInstance, type PrefabInstance } from './prefabInstance';
+import { targetInstance, type PrefabInstance } from './prefabInstance';
 import type { SpriteState } from '@dontstarve-web/display';
 import type * as THREE from 'three';
 
@@ -242,9 +242,9 @@ export class GreenStaffController implements HeldEquipFunctions {
     this.spellcaster = addComponent(entity, 'spellcaster', SpellCaster);
     this.spellcaster.canUseOnTargets = true;
     this.spellcaster.canOnlyUseOnRecipes = true;
-    // The entity cast on carries its owner's deconstruction view; tests may hand the view itself.
+    // The entity cast on carries its own deconstruction view; tests may hand the view itself.
     this.spellcaster.setSpellFn((_staff, target, _position, doer) =>
-      this.destroyStructure((target as { deconstructionTarget?: DeconstructionTarget }).deconstructionTarget
+      this.destroyStructure(targetInstance(target)?.deconstructionTarget
         ?? instanceDeconstruction(target) ?? target as DeconstructionTarget, doer, world));
   }
   onequip(): void {}
@@ -278,9 +278,9 @@ export class GreenStaffController implements HeldEquipFunctions {
  * (stackable:Get():Remove()), anything else is removed.
  */
 function instanceDeconstruction(target: object | undefined): DeconstructionTarget | undefined {
-  const model = (target as { model?: THREE.Object3D } | undefined)?.model;
-  const inst = model && prefabInstance<PrefabInstance<SpriteState, { stackable?: { Consume(): boolean } }>>(model);
+  const inst = targetInstance(target) as PrefabInstance<SpriteState, { stackable?: { Consume(): boolean } }> | undefined;
   if (!inst) return undefined;
+  const model = inst.transform.model;
   const isValid = () => !inst.isRemoved && !inst.inlimbo;
   return {
     prefab: inst.prefab, model: model as THREE.Group, components: inst.components as DeconstructionTarget['components'],

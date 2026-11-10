@@ -15,7 +15,6 @@ import { PrefabInstance, type PrefabComponents, type PrefabEntityDefinition } fr
 import { MakeObstaclePhysics } from './standardcomponents';
 import type { PlacementSaveRecord } from './saveRecord';
 import type { ReadonlyVector3 } from './transform';
-import { actionEntity } from './actionEntity';
 import type { WorldContext } from './worldContext';
 import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
 import { LootDropper } from '../../componets/src/lootdropper';
@@ -208,7 +207,7 @@ export function ruinsRelicPrefabs(world: RuinsRelicWorld): Readonly<Record<Ruins
         skins,
         onSpawned: (inst: RuinsRelicInstance) => {
           const model = inst.transform.model;
-          actionEntity(model, id).reskinTarget = reskinTarget({
+          inst.reskinTarget = reskinTarget({
             get id() { return String(inst.entityId); }, prefabId: id, instance: inst, display: prefabDisplay(model)!,
             sprite: inst.sprite, skins: Object.keys(RUINS_CHAIR_SKINS), get position() { return inst.position; },
             hasTag: tag => inst.hasTag(tag), isValid: () => !inst.isRemoved,

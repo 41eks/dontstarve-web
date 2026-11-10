@@ -2,7 +2,6 @@ import type { PlacementSaveRecord } from './saveRecord';
 import { prefabDisplay } from '@dontstarve-web/display';
 import { removeComponent } from './components';
 import { getBoundWatchWorldContent } from '@dontstarve-web/signals';
-import { actionEntity } from './actionEntity';
 import type { BuildingPlacerSpec } from './buildingPlacer';
 import { buildingContainerId, createBuildingContainer, releaseBuildingContainer, type BuildingContainer, type StorageBuildingId } from './containers';
 import type { PrefabEntityDefinition, PrefabInstance } from './prefabInstance';
@@ -94,19 +93,19 @@ export function MakeBuildingContainer(inst: PrefabInstance, prefab: StorageBuild
 
 /** What the mouse and the tools find on a building once it has its display: the greenstaff, the reskin tool and its workable. */
 function MakeBuildingTargets(inst: PrefabInstance, skins: readonly string[], world: Pick<PrefabWorldContext, 'handEquipment'>): void {
-  const model = inst.transform.model, entity = actionEntity(model, inst.prefab);
+  const model = inst.transform.model;
   MakeDeconstructable(inst);
-  if (skins.length) entity.reskinTarget = reskinTarget({
+  if (skins.length) inst.reskinTarget = reskinTarget({
     get id() { return String(inst.entityId); }, prefabId: inst.prefab,
     instance: inst, display: prefabDisplay(model)!, sprite: inst.sprite, skins,
     get isRemoved() { return inst.isRemoved; },
-    hasTag: tag => entity.hasTag(tag),
+    hasTag: tag => inst.hasTag(tag),
     get position() { return inst.position; }, isValid: () => !inst.isRemoved && model.visible,
   });
   if (!inst.components.workable) return;
   // A building that does something without a tool keeps its own actions under the mouse while no tool is held.
-  new ToolMouseTarget(entity, inst, entity.components.workable, world.handEquipment, {
-    canInteractWithoutTool: () => !entity.hasTag('burnt') && !!(inst.components.container || inst.components.trader || inst.components.fueled
+  new ToolMouseTarget(inst, inst.components.workable, world.handEquipment, {
+    canInteractWithoutTool: () => !inst.hasTag('burnt') && !!(inst.components.container || inst.components.trader || inst.components.fueled
       || inst.components.prototyper || inst.components.occupiable),
   });
   inst.onRemove(() => removeComponent(inst, 'workable'));

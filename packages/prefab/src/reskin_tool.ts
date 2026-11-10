@@ -8,18 +8,16 @@ import { Vector3 } from 'three';
 import { SpellCaster } from '../../componets/src/spellcaster';
 import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory, type HeldEquipFunctions } from './equipmentVisual';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
-import { bindInstance, PrefabInstance, prefabInstance } from './prefabInstance';
+import { bindInstance, PrefabInstance, targetInstance } from './prefabInstance';
 import { PlaySound, type SoundEventPath } from './sound';
 import { TILE_SIZE } from './tile';
 
-/** The entity a CASTSPELL targets carries its owner's skin operation; tests may hand the operation itself. */
+/** The entity a CASTSPELL targets carries its own skin operation; tests may hand the operation itself. */
 function reskinOperation(target: object | undefined): ReskinTarget | undefined {
   if (!target) return undefined;
-  const registered = (target as { reskinTarget?: ReskinTarget }).reskinTarget;
-  if (registered) return registered;
-  if ((target as Partial<ReskinTarget>).sprite) return target as ReskinTarget;
-  const model = (target as { model?: THREE.Object3D }).model;
-  const inst = model && prefabInstance<PrefabInstance>(model);
+  const inst = targetInstance(target);
+  if (inst?.reskinTarget) return inst.reskinTarget;
+  if (!(target instanceof PrefabInstance) && (target as Partial<ReskinTarget>).sprite) return target as ReskinTarget;
   return inst && inst.sprite.skinNames.length ? instanceReskinTarget(inst) : undefined;
 }
 

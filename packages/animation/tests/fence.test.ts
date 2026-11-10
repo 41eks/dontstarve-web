@@ -192,7 +192,7 @@ it('is hammered in three hits for a twig, can be reskinned, and burns into ash w
     expect(addWall).not.toHaveBeenCalled();
     update(0.01);
     expect(addWall).toHaveBeenCalledWith(expect.objectContaining({ x: 6, z: 6 }));
-    const reskin = findActionEntity(model)!.reskinTarget!;
+    const reskin = lookupPrefabInstance(model)!.reskinTarget!;
     expect(reskin.skins).toEqual(Object.keys(FENCE_SKIN_ARCHIVES));
     expect(reskinEntity(reskin)).toBe(true);
     expect(records(registry)[0].components.fence).toEqual({ rot: 2, skinId: 'fence_ancient' });
@@ -252,7 +252,7 @@ it('settles a fence hit on sleep, reskins dormant art, restores mirroring, and c
     expect(entity.components.workable!.GetWorkLeft()).toBe(2);
     heading.set(90);
     content.camerarotation.set(new THREE.Quaternion());
-    expect(reskinEntity(entity.reskinTarget!)).toBe(true);
+    expect(reskinEntity(lookupPrefabInstance(model)!.reskinTarget!)).toBe(true);
     const [saved] = records(registry);
     awake.set(true); await settle(); await settle();
     expect(lookupPrefabInstance(model)).toBe(instance);

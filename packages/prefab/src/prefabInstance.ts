@@ -195,6 +195,10 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   readonly components: Components = {} as Components;
   /** World services injected when this prefab joins a world; callbacks use the same host and components. */
   worldServices?: Partial<PrefabWorldContext>;
+  /** The reskin_tool's skin operation on this entity, set by a prefab with source skins; the skin stays the sprite json's. */
+  reskinTarget?: import('../../stategraphs/src/reskin_tool').ReskinTarget;
+  /** The greenstaff's view of this structure (MakeDeconstructable); loot and removal follow the recipe and the entity. */
+  deconstructionTarget?: import('./staff').DeconstructionTarget;
   /** inst.OnSave(inst, data): the prefab writes its own state into the record's components. */
   OnSave?(inst: PrefabInstance, data: PlacementSaveRecord['components']): void;
   /** inst.OnLoad(inst, data): the prefab restores its own state from the record's components. */
@@ -568,6 +572,13 @@ export function prefabInstance<Instance extends AnyPrefabInstance = PrefabInstan
 }
 
 /** inst:HasTag on a model: its instance owns the tags; a model without one (bare FX) keeps its own `userData.tags`. */
+/** An action's target as its entity: the inst itself, or the inst behind a model-based target view. */
+export function targetInstance(target: object | undefined): PrefabInstance | undefined {
+  if (target instanceof PrefabInstance) return target;
+  const model = (target as { model?: Object3D } | undefined)?.model;
+  return model ? prefabInstance(model) : undefined;
+}
+
 export function modelHasTag(model: Object3D, tag: string): boolean {
   const instance = prefabInstance(model);
   return instance ? instance.hasTag(tag) : (model.userData.tags as readonly string[] | undefined)?.includes(tag) ?? false;

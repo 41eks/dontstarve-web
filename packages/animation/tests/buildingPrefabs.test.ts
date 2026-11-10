@@ -109,7 +109,7 @@ it('takes its source hammer work, drops its loot and collapses', async () => {
 it('reskins through its target, draws the skin build and keeps it through the building save shape', async () => {
   const { prefabs, placement, displays } = setup();
   const house = prefabs.spawn(PIG_HOUSE_ID, new THREE.Vector3(1, 0, 2));
-  const target = findActionEntity(house.transform.model)!.reskinTarget!;
+  const target = prefabInstance(house.transform.model)!.reskinTarget!;
   expect(prefabs.exportRecords()[0].record.components).toEqual({ building: {} });
   expect(reskinEntity(target)).toBe(true);
   const { skinId } = house;

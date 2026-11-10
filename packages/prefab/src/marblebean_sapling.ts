@@ -8,7 +8,6 @@ import { Deployable } from '../../componets/src/deployable';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Timer } from '../../componets/src/timer';
 import { Workable } from '../../componets/src/workable';
-import { actionEntity } from './actionEntity';
 import { configureBurnableItemEntity } from './burnableItems';
 import type { SpawnGroundItem } from './groundPrefab';
 import type { MarbleShrubInstance } from './marbleshrub';
@@ -92,7 +91,7 @@ export function marbleBeanSaplingPrefabs(world: MarbleBeanSaplingWorld): Readonl
       fn: position => new MarbleBeanSaplingInstance(position, world),
       assets: { animationArchive: 'marblebean.zip', buildArchives: ['marblebean.zip'], bank: 'marblebean' },
       assetOptions: { instancedAnimations: 'all', staticBillboard: true },
-      onSpawned: inst => { new ToolMouseTarget(actionEntity(inst.transform.model, MARBLEBEAN_SAPLING_ID), inst, inst.components.workable, world.handEquipment); },
+      onSpawned: inst => { new ToolMouseTarget(inst, inst.components.workable, world.handEquipment); },
     },
   };
 }

@@ -8,7 +8,6 @@ import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Growable } from '../../componets/src/growable';
 import { LootDropper } from '../../componets/src/lootdropper';
 import { Workable } from '../../componets/src/workable';
-import { actionEntity } from './actionEntity';
 import type { SpawnGroundItem } from './groundPrefab';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
@@ -181,7 +180,7 @@ export function marbleShrubPrefabs(world: MarbleShrubWorld): Readonly<Record<Mar
       bank: 'marbleshrub', hiddenSymbols: ['snow'] },
     assetOptions: { instancedAnimations: 'all', staticBillboard: true, colour: [1, 1, 1] },
     physics: { make: MakeObstaclePhysics, radius: PHYSICS_RADIUS },
-    onSpawned: inst => { new ToolMouseTarget(actionEntity(inst.transform.model, MARBLESHRUB_ID), inst, inst.components.workable, world.handEquipment); },
+    onSpawned: inst => { new ToolMouseTarget(inst, inst.components.workable, world.handEquipment); },
   });
   return Object.fromEntries(MARBLESHRUB_SPAWN_IDS.map(prefab => [prefab, define(prefab)])) as Record<MarbleShrubSpawnId, PrefabEntityDefinition<MarbleShrubInstance>>;
 }

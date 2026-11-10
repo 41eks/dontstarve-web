@@ -131,7 +131,7 @@ Lua 使用双向关联：inventory/container 保存物品成员与槽位，物�
 
 `PlayerController` 接收只读 `InventoryStore.handEquipment`，picker 把当前手持实体交给 `componentactions.ts` 收集 EQUIPPED / POINT 动作：能力来自实体的组件与标签（`tool` 的 `<动作>_tool`、`spellcaster` 的 `castontargets` / `castonrecipes` / `castonpoint`、`lighter`、`weapon`、`fishingrod`），不按物品 ID 判断。`workable` 维护工作量和目标标签，命中帧的 `ACTIONS.<动作>.fn` 重新校验并执行 prefab 回调，再消耗工具耐久。缓冲动作的 `invobject` 是选中时手上的实体；卸装或换成另一实体会取消它，同一实体的重新发布不触发取消。手持物品需要的世界服务（法杖的地图与生成、清洁扫把的特效、鱼竿的游戏时间与组件更新）由各自的手部生命周期在装备时注入，控制器从不修改注入的只读 signal。
 
-清洁扫把的 `CASTSPELL` 目标就是鼠标命中的实体。建筑、墙、栅栏、地面物品、虫洞和可换肤植物在注册 action entity 投影时提供 `reskinTarget`，其中的皮肤、脚点和有效性读取所属实体的当前状态；移除投影时一并清理。法术函数从实体读取该视图，未提供换肤操作的普通实体仍参加标签驱动的 `CASTSPELL` 选择，是否成功由提交帧的 `SpellCaster.CanCast` 决定。绿法杖的分解同理读取所有者注册的 `deconstructionTarget`。
+清洁扫把的 `CASTSPELL` 目标就是鼠标命中的实体。建筑、墙、栅栏、地面物品、虫洞和可换肤植物在实例上设置 `reskinTarget`（`PrefabInstance.reskinTarget`），其中的皮肤、脚点和有效性读取该实体的当前状态。法术函数用 `targetInstance(target)` 从命中目标取得实例并读取该视图，未提供换肤操作的普通实体仍参加标签驱动的 `CASTSPELL` 选择，是否成功由提交帧的 `SpellCaster.CanCast` 决定。绿法杖的分解同理读取实例上的 `deconstructionTarget`（`MakeDeconstructable` 设置）。
 
 主程序通过 `ActionWorldContext.registerFrameTask` 注入 `registerFrontTask()`。手部工具不再有各自的控制器和帧任务：通用 `PlayerController` 注册一个前置任务（处理按住 F 的重复攻击），手部物品变化时取消它持有的、`invobject` 为旧物品的缓冲动作；`DeployPlacer` 只跟随鼠标更新部署预览，走近、取消和提交都属于 `PlayerController`；仍未迁移的控制器各自注册任务，`dispose()` 同时移除任务和订阅。法杖施法由输入事件及状态图时间线驱动，无需独立帧任务。
 

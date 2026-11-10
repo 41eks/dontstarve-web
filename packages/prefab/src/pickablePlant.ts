@@ -11,7 +11,6 @@ import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
 import type { Burnable } from '../../componets/src/burnable';
 import type { Propagator } from '../../componets/src/propagator';
 import { LootDropper } from '../../componets/src/lootdropper';
-import { actionEntity } from './actionEntity';
 import type { SpawnGroundItem } from './groundPrefab';
 import catalog from './groundItems.json' with { type: 'json' };
 import { MakeObstaclePhysics, MakeSmallObstaclePhysics } from './standardcomponents';
@@ -219,7 +218,7 @@ export abstract class PickablePlantInstance extends PrefabInstance {
     const { skins } = this.definition;
     if (skins) {
       const display = prefabDisplay(this.transform.model)!;
-      actionEntity(this.transform.model, this.prefab).reskinTarget = reskinTarget({
+      this.reskinTarget = reskinTarget({
         id: String(this.entityId), prefabId: this.prefab, instance: this, display, sprite: this.sprite,
         position: this.position, skins, isValid: () => !this.isRemoved, hasTag: tag => this.hasTag(tag),
       });

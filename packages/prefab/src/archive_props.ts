@@ -9,7 +9,6 @@ import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { MakeObstaclePhysics } from './standardcomponents';
-import { actionEntity } from './actionEntity';
 import { addComponent } from './components';
 import { Transform } from './transform';
 import type { SpawnGroundItem } from './groundPrefab';
@@ -240,7 +239,7 @@ export function archivePropsPrefabs(world: ArchivePropsWorld): Readonly<Record<A
         ['full', 'med', 'low'].map(state => `idle_${state}_${index + 1}`)).flat() },
       physics: obstacle,
       onSpawned: inst => {
-        new ToolMouseTarget(actionEntity(inst.transform.model, ARCHIVE_MOON_STATUE_ID), inst, inst.components.workable, world.handEquipment);
+        new ToolMouseTarget(inst, inst.components.workable, world.handEquipment);
       },
     },
     [ARCHIVE_RUNE_STATUE_ID]: {

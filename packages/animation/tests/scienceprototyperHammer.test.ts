@@ -8,7 +8,7 @@ import { RESEARCH_LAB_IDS } from '../../prefab/src/scienceprototyper';
 import { managedBuildings } from './managedBuildings';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { Builder } from '../../componets/src/builder';
-import { actionEntity, findActionEntity } from '../../prefab/src/actionEntity';
+import { actionEntity } from '../../prefab/src/actionEntity';
 import { WORLD_SCALE } from '../../prefab/src/standardcomponents';
 import { PlaySound } from '../../prefab/src/sound';
 import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
@@ -55,7 +55,7 @@ async function setup(id: typeof RESEARCH_LAB_IDS[number], skinId?: string) {
     findEntities: (...args) => sim.current.FindEntities(...args) as never, researchMachineDistance: 4 * WORLD_SCALE,
   });
   const animation = () => prefabInstance<PrefabInstance>(model)!.sprite;
-  const reskinTarget = () => findActionEntity(model)!.reskinTarget!;
+  const reskinTarget = () => prefabInstance(model)!.reskinTarget!;
   const finish = () => { for (let i = 0; i < 80; i++) { placement.update(1 / 30); fx.update(1 / 30, world.camera.quaternion); } };
   // The display loads the lab art; standalone collapse effects load from their own shared owner.
   await vi.waitFor(() => expect(animation().loaded).toBe(true));

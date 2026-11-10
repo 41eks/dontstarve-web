@@ -7,7 +7,6 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { ruinsRelicPrefabs, type RuinsRelicId, type RuinsRelicInstance } from '../../prefab/src/ruinsrelic';
 import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
-import { actionEntity } from '../../prefab/src/actionEntity';
 import { reskinEntity } from '../../prefab/src/reskin_tool';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
@@ -99,7 +98,7 @@ it('c_spawn / c_give then c_save exports and reloads identity, transform, health
     expect((await executeDebugCommand(command, first.inventory, id => first.registry.spawn(id))).ok).toBe(true);
     const [natural, replica, bowl] = first.scene.children;
     prefabInstance(natural)!.components.health!.DoDelta(-50);
-    expect(reskinEntity(actionEntity(replica, 'ruinsrelic_chair').reskinTarget!)).toBe(true);
+    expect(reskinEntity(prefabInstance(replica)!.reskinTarget!)).toBe(true);
     // A source moisture payload survives while the component intentionally has constructor-only support.
     (prefabInstance(bowl) as RuinsRelicInstance).saveRecord = record({ inventoryitemmoisture: { moisture: 37, wet: true } });
     entities = first.registry.exportRecords();

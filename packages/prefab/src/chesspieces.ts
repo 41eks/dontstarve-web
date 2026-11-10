@@ -12,7 +12,6 @@ import { LootDropper } from '../../componets/src/lootdropper';
 import { Submersible } from '../../componets/src/submersible';
 import { SymbolSwapData } from '../../componets/src/symbolswapdata';
 import { Workable } from '../../componets/src/workable';
-import { actionEntity } from './actionEntity';
 import type { SpawnGroundItem } from './groundPrefab';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import type { PlacementSaveRecord } from './saveRecord';
@@ -99,7 +98,7 @@ export function chesspiecePrefabs(world: ChesspieceWorld): Readonly<Record<typeo
       assetOptions: { instancedAnimations: 'all', staticBillboard: true },
       physics: { make: MakeHeavyObstaclePhysics, radius: PHYSICS_RADIUS },
       onSpawned: inst => {
-        new ToolMouseTarget(actionEntity(inst.transform.model, CHESSPIECE_MALBATROSS_MARBLE_ID), inst, inst.components.workable, world.handEquipment);
+        new ToolMouseTarget(inst, inst.components.workable, world.handEquipment);
       },
     },
   };

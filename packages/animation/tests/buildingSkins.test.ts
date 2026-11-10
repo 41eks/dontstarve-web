@@ -12,7 +12,6 @@ import { createAnimatedSprite, type SpriteAnimationController } from '../src/spr
 import { setSpriteEntityRenderOrder } from '../src/renderOrder';
 import definitions from '../../prefab/src/definitions.json' with { type: 'json' };
 import type { BuildingDeclaration } from '../../prefab/src/building';
-import { findActionEntity } from '../../prefab/src/actionEntity';
 import { managedBuildings } from './managedBuildings';
 import { createMemo, createSignal } from '../../signals/src';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
@@ -38,7 +37,7 @@ function labWorld(extra: Partial<Record<keyof WorldContext, unknown>> = {}) {
     camera: new THREE.PerspectiveCamera(), renderer: { domElement: new EventTarget() }, ...extra } as unknown as WorldContext;
   return { world, buildings: managedBuildings(world) };
 }
-const reskinTarget = (model: THREE.Object3D) => findActionEntity(model)!.reskinTarget!;
+const reskinTarget = (model: THREE.Object3D) => prefabInstance(model)!.reskinTarget!;
 // One plain build; the tests below exercise symbol-only and layered skins.
 const cases = [{ prefabId: 'cookpot', skinId: 'cookpot_candy', archive: 'dynamic/cookpot_candy.zip' }] as const;
 

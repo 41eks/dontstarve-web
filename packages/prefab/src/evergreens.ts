@@ -7,7 +7,6 @@ import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper
 import { Timer } from '../../componets/src/timer';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { Worker } from '../../componets/src/workable';
-import { actionEntity } from './actionEntity';
 import { addComponent, removeComponent } from './components';
 import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
 import type { PlacementSaveRecord } from './saveRecord';
@@ -298,7 +297,7 @@ function onload(inst: EvergreenInstance, data: PlacementSaveRecord['components']
 function onSpawned(inst: EvergreenInstance): void {
   inst.sprite.start(rest(inst));
   inst.components.growable.OnEntitySleep();
-  inst.mouseTarget = new ToolMouseTarget(actionEntity(inst.transform.model, EVERGREEN_ID), inst, inst.components.workable, inst.world.handEquipment);
+  inst.mouseTarget = new ToolMouseTarget(inst, inst.components.workable, inst.world.handEquipment);
 }
 
 /** evergreens.lua normal build: one bank for every stage; its clips are split across two anim archives. */

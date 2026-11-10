@@ -3,7 +3,6 @@ import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { LIGHTNING_ROD_ID, type LightningRodInstance } from '../../prefab/src/lightning_rod';
-import { findActionEntity } from '../../prefab/src/actionEntity';
 import { SendLightningStrike } from '../../prefab/src/lightning';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { WorldContext } from '../../prefab/src/worldContext';
@@ -110,7 +109,7 @@ it('keeps its charge and skin through c_save, and re-arms its day timer from the
   try {
     await placement.spawn(LIGHTNING_ROD_ID);
     const [{ display }] = workTargets('HAMMER');
-    expect(reskinEntity(findActionEntity(display.model)!.reskinTarget!)).toBe(true);
+    expect(reskinEntity(prefabInstance(display.model)!.reskinTarget!)).toBe(true);
     const model = display.model;
     scene.add(model);
     await strikeAt(placement, scene, fx, model.position);

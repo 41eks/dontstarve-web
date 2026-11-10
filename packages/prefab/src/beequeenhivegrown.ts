@@ -5,7 +5,6 @@ import { Timer } from '../../componets/src/timer';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
 import type { PlacementSaveRecord } from './saveRecord';
-import { actionEntity } from './actionEntity';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import type { ReadonlyVector3 } from './transform';
@@ -111,7 +110,7 @@ export function beeQueenHivePrefabs(world: BeeQueenHiveWorld): Readonly<Record<t
       physics: { make: MakeObstaclePhysics, radius: 1.9 },
       minimapIcon: 'beequeenhivegrown.png',
       onSpawned: inst => {
-        new ToolMouseTarget(actionEntity(inst.transform.model, BEEQUEENHIVEGROWN_ID), inst, inst.components.workable, world.handEquipment);
+        new ToolMouseTarget(inst, inst.components.workable, world.handEquipment);
       },
     },
   };

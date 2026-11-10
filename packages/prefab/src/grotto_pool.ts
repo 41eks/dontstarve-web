@@ -6,7 +6,6 @@ import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
 import type { Worker } from '../../componets/src/workable';
-import { actionEntity } from './actionEntity';
 import { addComponent } from './components';
 import type { SpawnGroundItem } from './groundPrefab';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
@@ -311,7 +310,7 @@ export function grottoPoolPrefabs(world: GrottoPoolWorld): Readonly<Record<Grott
     fn: position => new GrottoGlassInstance(world, prefab, position),
     assets: PROP_ASSETS, assetOptions: INSTANCED,
     onSpawned: inst => {
-      new ToolMouseTarget(actionEntity(inst.transform.model, prefab), inst, inst.components.workable!, world.handEquipment);
+      new ToolMouseTarget(inst, inst.components.workable!, world.handEquipment);
     },
   });
   return {
