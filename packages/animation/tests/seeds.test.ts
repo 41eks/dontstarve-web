@@ -1,9 +1,8 @@
 import { advancePlayer } from './playerVisual';
-import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { FarmPlowPlacement } from '../../prefab/src/farm_plow';
+import { farmFixture } from './farmFixture';
 import { FOOD_EFFECTS, PERISHABLE_FOODS } from '../../prefab/src/food';
 import { inventoryUse } from './inventoryUseFixture';
 import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
@@ -30,7 +29,7 @@ function farmSetup(player = new THREE.Group()) {
   const world = { scene: new THREE.Scene(), player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     renderer: { domElement: new EventTarget() } } as unknown as WorldContext;
   const turf = new TurfMap(96);
-  const farm = new FarmPlowPlacement(world, turf, () => {});
+  const farm = farmFixture(world.scene, turf);
   return { farm, turf, world };
 }
 
@@ -79,7 +78,7 @@ it('excludes broken soil and soil still being plowed from USEITEM actions', () =
   try {
     const position = new THREE.Vector3(3, 0, 3); turf.plow(position);
     for (const [id, state] of [['broken', { broken: true }], ['working', { broken: false, plowId: 'plow' }]] as const) {
-      const soil = prefabInstance(farm.spawnDecor('farm_soil', position, state, id))!;
+      const soil = (farm.spawn('farm_soil', position, { farmSoil: state }, id))!;
       expect(soil.hasTag('NOCLICK')).toBe(true);
       expect(collectUseItemActions(seeds, doer, soil, false)).toEqual([]);
     }
@@ -107,22 +106,22 @@ it('renders veggie ground art and plants split bank/build veggie seeds, preservi
   try {
     for (const [index, [seed, plant]] of [['carrot_seeds', 'farm_plant_carrot'], ['corn_seeds', 'farm_plant_corn']].entries()) {
       const position = new THREE.Vector3(3 + index * 8, 0, 3);
-      const soil = prefabInstance(farm.spawnDecor('farm_soil', position, { broken: false }, `soil${index}`))!;
+      const soil = (farm.spawn('farm_soil', position, { farmSoil: { broken: false } }, `soil${index}`))!;
       turf.plow(position);
       inventory.add(seed, 1);
       expect(createBufferedAction('PLANTSOIL', { doer, target: soil, invobject: inventory.getEntity(inventorySlotAddress(0))! }).do()).toBe(true);
-      expect(farm.exportPlantedSeedRecords()[index]).toMatchObject({ prefabId: plant,
+      expect(farm.seeds()[index]).toMatchObject({ prefabId: plant,
         record: { transform: { position: position.toArray() }, components: {} } });
     }
-    expect(farm.exportDecorRecords()).toEqual([]);
-    const saved = farm.exportPlantedSeedRecords();
+    expect(farm.decor()).toEqual([]);
+    const saved = farm.seeds();
     const restore = farmSetup();
     try {
       for (const { prefabId, record } of saved) {
-        const model = restore.farm.spawnPlantedSeed(new THREE.Vector3(...record.transform.position), record.id, prefabId);
-        expect(prefabInstance(model)!.sprite.currentAnimation).toBe('crop_seed');
+        const seed = restore.farm.spawn(prefabId, new THREE.Vector3(...record.transform.position), record.components, record.id);
+        expect(seed.sprite.currentAnimation).toBe('crop_seed');
       }
-      expect(restore.farm.exportPlantedSeedRecords()).toEqual(saved);
+      expect(restore.farm.seeds()).toEqual(saved);
     } finally { restore.farm.dispose(); }
   } finally { farm.dispose(); inventory.dispose(); }
 });

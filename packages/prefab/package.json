@@ -117,6 +117,8 @@
     "./bulb_plant": "./src/bulb_plant.ts",
     "./flower": "./src/flower.ts",
     "./farm_plow": "./src/farm_plow.ts",
+    "./farmMap": "./src/farmMap.ts",
+    "./placementEntities": "./src/placementEntities.ts",
     "./seeds": "./src/seeds.ts",
     "./veggies": "./src/veggies.ts",
     "./food": "./src/food.ts",

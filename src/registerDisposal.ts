@@ -91,7 +91,7 @@ interface ApplicationResourcesOptions {
 }
 
 type SceneResources = Pick<Awaited<ReturnType<typeof startScene>>,
-  'registry' | 'buildingPlacement' | 'farmPlow' | 'mushroomPlants' | 'wormholes' | 'reskinEffects' | 'worldFx' | 'rockAvocadoBushes' | 'grasses' | 'saplings' | 'scheduler' | 'weather' | 'moon' | 'getWatchWorldContent' | 'ponds'>;
+  'registry' | 'buildingPlacement' | 'farmMap' | 'mushroomPlants' | 'wormholes' | 'reskinEffects' | 'worldFx' | 'rockAvocadoBushes' | 'grasses' | 'saplings' | 'scheduler' | 'weather' | 'moon' | 'getWatchWorldContent' | 'ponds'>;
 
 /** Create panels before scene loading, then own action setup and its explicit disposal. */
 export function createDisposalResources({ gameUi, view, screenProjection, inventory, playerAnimation, locomotor, pickupDoer,
@@ -194,7 +194,7 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
       if (playerAnimation) {
 
         // TheWorld.Map for ACTIONS.DEPLOY and the deployable items' placer.
-        const deployMap = createDeployMap({ turf: turfMap, blockers: placementEntities(view.scene), worldEvents: view.worldEvents, farm: scene.farmPlow,
+        const deployMap = createDeployMap({ turf: turfMap, blockers: placementEntities(view.scene), worldEvents: view.worldEvents, farm: scene.farmMap,
           spawnPrefab: (prefab, position, skinId) => scene.registry.SpawnPrefab(prefab, position, skinId) as DeploySpawned | undefined });
         pickupDoer.Map = deployMap;
         actionControllers.push(new DeployPlacer(view, deployMap, () => inventory.GetActiveItem()),

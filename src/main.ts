@@ -179,7 +179,7 @@ inventory.entities.bindEquipmentWorld({
   },
   // pitchfork.lua terraformer / farm_hoe.lua farmtiller work TheWorld.Map.
   terraformMap: turfMap,
-  farmTillMap: { canTill: point => sceneResources.farmPlow.canTill(point), till: point => sceneResources.farmPlow.till(point) },
+  farmTillMap: { canTill: point => sceneResources.farmMap.canTill(point), till: point => sceneResources.farmMap.till(point) },
   reskinEffects: { prepare: toolSkinId => sceneResources.reskinEffects.prepare(toolSkinId) },
   // fishingrod.lua / pond.lua: the held rod fishes on game time and lands its fish as a ground item.
   fishingWorld: {

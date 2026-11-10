@@ -6,7 +6,7 @@ import { WORLD_SCALE } from '../../prefab/src/tile';
 import { SpatialIndex } from '../../prefab/src/spatialIndex';
 import { placementEntities, syncPlacementEntity, isGroundTargetBlocked } from '../../prefab/src/placementEntities';
 import { actionEntity, disposeActionEntity } from '../../prefab/src/actionEntity';
-import { FarmPlowPlacement } from '../../prefab/src/farm_plow';
+import { farmFixture } from './farmFixture';
 import { TurfMap } from '../../prefab/src/turfMap';
 import { ItemEntity } from '../../inventory/src';
 import type { WorldContext } from '../../prefab/src/worldContext';
@@ -104,21 +104,21 @@ it('keeps logical trees blocking their tile while their visual sleeps out of the
   actionEntity(model, 'evergreen');
   const world = { scene, player: new THREE.Group(), camera: new THREE.PerspectiveCamera(),
     renderer: { domElement: new EventTarget() }, createCursorLabel: () => ({ show() {}, hide() {}, update() {} }) } as unknown as WorldContext;
-  const farm = new FarmPlowPlacement(world, new TurfMap(96), () => {});
+  const farm = farmFixture(world.scene, new TurfMap(96));
   const query = placementEntities(scene), origin = new THREE.Vector3();
   try {
-    expect(farm.canDeploy(origin)).toBe(false);
+    expect(farm.map.canDeploy(origin)).toBe(false);
     instance.setActive(false);
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(model.parent).toBeNull();
     let count = 0;
     query.someOnTile(origin, () => { count++; return false; });
     expect(count).toBe(1);
-    expect(farm.canDeploy(origin)).toBe(false);
+    expect(farm.map.canDeploy(origin)).toBe(false);
     // Another world's query does not see it.
     expect(placementEntities(new THREE.Scene()).someOnTile(origin, () => true)).toBe(false);
     instance.remove();
-    expect(farm.canDeploy(origin)).toBe(true);
+    expect(farm.map.canDeploy(origin)).toBe(true);
   } finally { instance.remove(); farm.dispose(); }
 });
 

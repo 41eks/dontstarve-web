@@ -18,7 +18,8 @@ import { getHandEquipmentDefinition } from '../../prefab/src/handEquipment';
 import { actionTool } from './actionFixtures';
 import { playerDoer } from './playerDoer';
 import { createEquipmentExistenceState } from '../../signals/src';
-import { FarmPlowPlacement } from '../../prefab/src/farm_plow';
+import { farmFixture } from './farmFixture';
+import { PLANTED_SEED_ID } from '../../prefab/src/farm_plow';
 import { TurfMap } from '../../prefab/src/turfMap';
 import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
@@ -39,7 +40,7 @@ function setup(player = new THREE.Group()) {
     renderer: { domElement: new EventTarget() } } as unknown as WorldContext;
   const turf = new TurfMap(96);
   const blockers = new SpatialIndex<{ position: THREE.Vector3; tags?: string[] }>(blocker => blocker.position);
-  const farm = new FarmPlowPlacement(world, turf, () => {}, blockers);
+  const farm = farmFixture(world.scene, turf, { blockers: blockers as never });
   return { farm, turf, world, blockers };
 }
 function advance(animation: WilsonAnimationController, frames: number) {
@@ -79,18 +80,18 @@ it('retills broken soil at the exact point, preserves blockers and crops, and re
   const { farm, turf, blockers, world } = setup();
   const point = new THREE.Vector3(3, 0, 3);
   try {
-    expect(farm.canTill(point)).toBe(false);
+    expect(farm.map.canTill(point)).toBe(false);
     turf.plow(point);
-    farm.spawnDecor('farm_soil', point, { broken: true }, 'broken');
-    farm.spawnDecor('farm_soil', new THREE.Vector3(6, 0, 3), { broken: false }, 'neighbour');
+    farm.spawn('farm_soil', point, { farmSoil: { broken: true } }, 'broken');
+    farm.spawn('farm_soil', new THREE.Vector3(6, 0, 3), { farmSoil: { broken: false } }, 'neighbour');
     const blocker = { position: point, tags: [] as string[] };
     blockers.add(blocker);
-    expect(farm.canTill(point)).toBe(false);
+    expect(farm.map.canTill(point)).toBe(false);
     blocker.tags = ['FX'];
-    expect(farm.canTill(point)).toBe(true);
-    expect(farm.exportDecorRecords().map(({ record }) => record.id)).toEqual(['broken', 'neighbour']);
-    expect(farm.till(point)).toBe(true);
-    const records = farm.exportDecorRecords();
+    expect(farm.map.canTill(point)).toBe(true);
+    expect(farm.decor().map(({ record }) => record.id)).toEqual(['broken', 'neighbour']);
+    expect(farm.map.till(point)).toBe(true);
+    const records = farm.decor();
     expect(records.some(({ record }) => record.id === 'broken')).toBe(false);
     expect(records.find(({ record }) => record.id === 'neighbour')?.record.components.farmSoil?.broken).toBe(true);
     const hole = records.find(({ record }) => record.id !== 'neighbour')!;
@@ -99,17 +100,17 @@ it('retills broken soil at the exact point, preserves blockers and crops, and re
     const restored = setup();
     try {
       restored.turf.plow(point);
-      restored.farm.spawnDecor('farm_soil', point, hole.record.components.farmSoil, hole.record.id);
-      expect(restored.farm.exportDecorRecords()).toEqual([hole]);
-      expect(restored.farm.exportDecorRecords()[0].record.id).toBe(hole.record.id);
+      restored.farm.spawn('farm_soil', point, { farmSoil: hole.record.components.farmSoil }, hole.record.id);
+      expect(restored.farm.decor()).toEqual([hole]);
+      expect(restored.farm.decor()[0].record.id).toBe(hole.record.id);
     } finally { restored.farm.dispose(); }
-    farm.spawnPlantedSeed(point, 'crop');
-    const crops = farm.exportPlantedSeedRecords();
-    expect(farm.canTill(point)).toBe(false);
-    expect(farm.till(point)).toBe(false);
-    expect(farm.exportPlantedSeedRecords()).toEqual(crops);
-    farm.spawnDecor('farm_soil_debris', new THREE.Vector3(9, 0, 9), { animation: 'f1' });
-    expect(farm.canTill(new THREE.Vector3(9, 0, 9))).toBe(false);
+    farm.spawn(PLANTED_SEED_ID, point, {}, 'crop');
+    const crops = farm.seeds();
+    expect(farm.map.canTill(point)).toBe(false);
+    expect(farm.map.till(point)).toBe(false);
+    expect(farm.seeds()).toEqual(crops);
+    farm.spawn('farm_soil_debris', new THREE.Vector3(9, 0, 9), { farmDebris: { animation: 'f1' } });
+    expect(farm.map.canTill(new THREE.Vector3(9, 0, 9))).toBe(false);
   } finally { farm.dispose(); }
   expect(world.scene.children).toHaveLength(0);
 });
@@ -126,7 +127,7 @@ it('takes TILL at the point, creates one hole at till_loop frame 11, and drops a
   const locomotor = new Locomotor(body, { physicsRadius: .5 * WORLD_SCALE });
   const hand = createEquipmentExistenceState('HANDS');
   const tool = actionTool('golden_farm_hoe');
-  const lifecycle = getHandEquipmentDefinition('golden_farm_hoe')!.definition.createLifecycle!(tool.entity, { farmTillMap: farm } as never)!;
+  const lifecycle = getHandEquipmentDefinition('golden_farm_hoe')!.definition.createLifecycle!(tool.entity, { farmTillMap: farm.map } as never)!;
   lifecycle.onequip();
   const controller = new PlayerController(world, animation.stategraph, locomotor, hand, playerDoer(player));
   const point = new THREE.Vector3(3, 0, 3);
@@ -146,27 +147,27 @@ it('takes TILL at the point, creates one hole at till_loop frame 11, and drops a
     expect(right?.invobject).toBe(tool.entity);
     rightClick();
     expect(locomotor.bufferedAction).toBeDefined();
-    expect(farm.exportDecorRecords()).toEqual([]);
+    expect(farm.decor()).toEqual([]);
     walkIn();
     await vi.waitFor(() => { advancePlayer(animation, 1 / 30); expect(animation.stategraph.stateName).toBe('till_start'); });
     while (animation.stategraph.stateName === 'till_start') advancePlayer(animation, 1 / 30);
     advance(animation, 10);
-    expect(farm.exportDecorRecords()).toEqual([]);
+    expect(farm.decor()).toEqual([]);
     facePlayer(animation, 'side', true); advancePlayer(animation, 1 / 30);
-    expect(farm.exportDecorRecords()).toHaveLength(1);
+    expect(farm.decor()).toHaveLength(1);
     advancePlayer(animation, 1 / 30);
     expect(PlaySound).toHaveBeenCalledWith('dontstarve/wilson/dig', undefined);
     expect(PlaySound).toHaveBeenCalledWith('dontstarve_DLC001/creatures/mole/emerge', undefined);
     advance(animation, 60);
-    expect(farm.exportDecorRecords()).toHaveLength(1);
-    const preserved = farm.exportDecorRecords();
+    expect(farm.decor()).toHaveLength(1);
+    const preserved = farm.decor();
     rightClick(); walkIn();
     await vi.waitFor(() => { advancePlayer(animation, 1 / 30); expect(animation.stategraph.isPerformingAction('TILL')).toBe(true); });
     window.dispatchEvent(Object.assign(new Event('keydown'), { code: 'Escape' })); advance(animation, 60);
-    expect(farm.exportDecorRecords()).toEqual(preserved);
+    expect(farm.decor()).toEqual(preserved);
     rightClick(); walkIn();
     await vi.waitFor(() => { advancePlayer(animation, 1 / 30); expect(animation.stategraph.isPerformingAction('TILL')).toBe(true); });
     hand.set(null); await animationEquipper.equip(null); advance(animation, 60);
-    expect(farm.exportDecorRecords()).toEqual(preserved);
+    expect(farm.decor()).toEqual(preserved);
   } finally { controller.dispose(); world.mouseActions.dispose(); lifecycle.onunequip(); farm.dispose(); }
 });

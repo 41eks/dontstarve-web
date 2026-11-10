@@ -97,6 +97,10 @@ export interface PlacementSaveRecord {
     /** molehill.lua's inventory and spawner saves. */
     molehill?: import('./molehill').MolehillSave;
     caveinBoulder?: import('./cavein_boulder').CaveinBoulderSave;
+    /** farm_plow.lua's drilling timer and deploy_item, farm_soil.lua and farm_soil_debris.lua OnSave. */
+    farmPlow?: import('./farm_plow').FarmPlowSaveState;
+    farmSoil?: import('./farm_plow').FarmSoilSaveState;
+    farmDebris?: import('./farm_plow').FarmDebrisSaveState;
     /** chessjunk.lua OnSave. */
     chessJunk?: import('./chessjunk').ChessJunkSaveState;
     /** chesspieces.lua onsave and submersible.lua OnSave. */

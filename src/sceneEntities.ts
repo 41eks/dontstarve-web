@@ -27,7 +27,9 @@ import { camera, followCamera } from './camera';
 import { flingLoot, itemPrefabs, spawnGroundStack } from '@dontstarve-web/prefab/itemPrefabs';
 import { turfItemForTile } from '@dontstarve-web/prefab/turfs';
 import { GROUND_ART_DEFINITIONS, GROUND_ITEM_DISPLAY_SPECS, GroundItemAssets } from '@dontstarve-web/prefab/groundItems';
-import { FarmPlowPlacement, FARM_PLOW_ID } from '@dontstarve-web/prefab/farm_plow';
+import { farmPrefabs } from '@dontstarve-web/prefab/farm_plow';
+import { createFarmMap } from '@dontstarve-web/prefab/farmMap';
+import { placementEntities } from '@dontstarve-web/prefab/placementEntities';
 import { playerStats } from './playerStats';
 import { PrefabDisplayGroup, SpriteResources } from '@dontstarve-web/display';
 import { PrefabEntityManager, PrefabInstance, prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
@@ -331,7 +333,6 @@ export async function createSceneEntities(
     'multiplayer_portal_moonrock': ReturnType<typeof registerPortals>;
     'evergreen': ReturnType<typeof registerEvergreens>;
     'deciduoustree': ReturnType<typeof registerDeciduousTrees>;
-    'farm_plow': ReturnType<typeof registerFarmPlow>;
     'moon_tree': ReturnType<typeof registerMoonTrees>;
     'statueglommer': ReturnType<typeof registerStatueGlommer>;
     'atrium_gate': typeof prefabs;
@@ -423,7 +424,7 @@ export async function createSceneEntities(
   registerBeefalos(registry, 'beefalo', worldState);
   Managers['evergreen'] = registerEvergreens(registry, 'evergreen', worldState);
   Managers['deciduoustree'] = registerDeciduousTrees(registry, 'deciduoustree', worldState);
-  Managers['farm_plow'] = registerFarmPlow(registry, 'farm_plow', worldState);
+  const farmMap = registerFarm(registry, worldState);
   Managers['moon_tree'] = registerMoonTrees(registry, 'moon_tree', worldState);
   registerPigKings(registry, 'pigking', worldState);
   registerBernies(registry, 'bernie', worldState);
@@ -458,7 +459,7 @@ export async function createSceneEntities(
   });
 
   const dispose = () => {
-    stopDugTurf();
+    stopDugTurf(); farmMap.dispose();
     try { registry.dispose(); }
     finally {
       sceneInventory.entities.bindSpawner(undefined);
@@ -480,7 +481,7 @@ export async function createSceneEntities(
     reskinEffects: Managers['reskinEffects'],
     worldFx: Managers['world_fx'],
     staffProjectiles: Managers['staff_projectile'],
-    farmPlow: Managers['farm_plow'],
+    farmMap,
   };
 
   function registerBuildings(registry: EntityRegistry, prefabId: 'buildings', worldState: SceneWorldState) {
@@ -1105,35 +1106,19 @@ export async function createSceneEntities(
     return prefabs;
   }
 
-  function registerFarmPlow(registry: EntityRegistry, prefabId: 'farm_plow', _worldState: SceneWorldState) {
-    const farmPlow = new FarmPlowPlacement({ ...view, fx: Managers['world_fx'], physics: world, handEquipment: sceneInventory.handEquipment }, turfMap,
-      (position, item) => { sceneInventory.entities.create(item).setPosition(position.x, 0, position.z); },
-    );
-    farmPlow.setDebrisLootHandler((itemId, position) => groundItems.flingLoot([
-      { ...SAVE_CATALOG.items[itemId], itemId, count: 1 },
-    ], position));
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
-      restore: (_, record) => farmPlow.spawn(new THREE.Vector3(...record.transform.position), {
-        id: record.id, state: record.components.farmPlow!,
-      }),
-      debugSpawn: () => farmPlow.spawn(player.position.clone()),
-      exportRecords: () => farmPlow.exportRecords().map((record) => ({ prefabId: FARM_PLOW_ID, record })),
-      update: (dt, quaternion) => farmPlow.update(dt, quaternion),
-      renderEntities: () => farmPlow.renderEntities,
-      dispose: () => farmPlow.dispose(),
-    });
-    registry.register(PREFAB_DEFINITIONS.farmDecor, {
-      restore: (id, record) => farmPlow.spawnDecor(id, new THREE.Vector3(...record.transform.position),
-        id === 'farm_soil' ? record.components.farmSoil : record.components.farmDebris, record.id),
-      debugSpawn: (id) => farmPlow.spawnDecor(id, player.position.clone()),
-      exportRecords: () => farmPlow.exportDecorRecords(), dispose: () => {},
-    });
-    registry.register(PREFAB_DEFINITIONS.plantedSeeds, {
-      restore: (id, record) => farmPlow.spawnPlantedSeed(new THREE.Vector3(...record.transform.position), record.id, id),
-      debugSpawn: (id) => farmPlow.spawnPlantedSeed(player.position.clone(), undefined, id),
-      exportRecords: () => farmPlow.exportPlantedSeedRecords(), dispose: () => {},
-    });
-    return farmPlow;
+  /** farm_plow, farm_soil, farm_soil_debris and the sown seeds, with TheWorld.Map's soil functions they share. */
+  function registerFarm(registry: EntityRegistry, worldState: SceneWorldState) {
+    const farmMap = createFarmMap({ turf: turfMap, entities: prefabs, blockers: placementEntities(view.scene) });
+    prefabs.register(farmPrefabs({ scheduler: worldState.scheduler, map: farmMap, fx: Managers['world_fx'],
+      worldEvents: view.worldEvents, handEquipment: sceneInventory.handEquipment,
+      spawnPrefab: (prefab, position) => prefabs.spawn(prefab, position),
+      getEntity: id => prefabs.get(id),
+      spawnSaveRecord: (position, item) => { sceneInventory.entities.create(item).setPosition(position.x, 0, position.z); },
+      spawnLoot: (itemId, position) => groundItems.flingLoot([{ ...SAVE_CATALOG.items[itemId], itemId, count: 1 }], position) }));
+    registry.registerPrefabs(PREFAB_DEFINITIONS.farmPlow);
+    registry.registerPrefabs(PREFAB_DEFINITIONS.farmDecor);
+    registry.registerPrefabs(PREFAB_DEFINITIONS.plantedSeeds);
+    return farmMap;
   }
 
   function registerMoonTrees(registry: EntityRegistry, prefabId: 'moon_tree', worldState: SceneWorldState) {

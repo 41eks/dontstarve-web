@@ -3,9 +3,9 @@ import type * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { cursorSlotAddress, inventorySlotAddress, InventorySlot } from '../../inventory/src';
-import { createEmptyEntity, prefabInstance } from '../../prefab/src/prefabInstance';
+import { createEmptyEntity } from '../../prefab/src/prefabInstance';
 import { Locomotor } from '../../prefab/src/locomotor';
-import { FarmPlowPlacement } from '../../prefab/src/farm_plow';
+import { farmFixture } from './farmFixture';
 import { TurfMap } from '../../prefab/src/turfMap';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
 import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
@@ -123,13 +123,12 @@ it('selects wet fuel from the real active item and rejects an item detached befo
 
 it('uses active seeds on the real soil instance through PLANTSOIL and the Lua long action', () => {
   const s = setup(), turf = new TurfMap(96);
-  const farm = new FarmPlowPlacement(s.world as WorldContext, turf, () => {});
+  const farm = farmFixture((s.world as WorldContext).scene, turf);
   const position = new THREE.Vector3(3, 0, 3);
   try {
     s.instance.copyPosition(position);
     turf.plow(position);
-    const model = farm.spawnDecor('farm_soil', position, { broken: false }, 'soil');
-    const soil = prefabInstance(model)!;
+    const soil = farm.spawn('farm_soil', position, { farmSoil: { broken: false } }, 'soil'), model = soil.transform.model;
     s.inventory.add('seeds', 2);
     expect(s.inventory.transfer(inventorySlotAddress(0), cursorSlotAddress(), 2)).toBe(true);
     const seeds = s.inventory.GetActiveItem()!;
@@ -144,8 +143,8 @@ it('uses active seeds on the real soil instance through PLANTSOIL and the Lua lo
     expect(seeds.components.stackable.count).toBe(2); expect(soil.isRemoved).toBe(false);
     click(); s.graph.update(1);
     expect(soil.isRemoved).toBe(true); expect(seeds.components.stackable.count).toBe(1);
-    expect(farm.exportDecorRecords()).toEqual([]);
-    expect(farm.exportPlantedSeedRecords()).toMatchObject([{ prefabId: 'farm_plant_randomseed',
+    expect(farm.decor()).toEqual([]);
+    expect(farm.seeds()).toMatchObject([{ prefabId: 'farm_plant_randomseed',
       record: { transform: { position: position.toArray() } } }]);
   } finally { farm.dispose(); s.dispose(); }
 });

@@ -62,6 +62,8 @@ const FX_PREFABS = {
   sanity_lower: { archive: 'blocker_sanity_fx.zip', bank: 'blocker_sanity_fx', anim: 'lower', opacity: .5 },
   // fx.lua mole_move_fx: bank mole_fx, build mole_move_fx, clip move (SGmole.lua's SpawnMoveFx).
   mole_move_fx: { archive: 'mole_move_fx.zip', bank: 'mole_fx', anim: 'move' },
+  // fx.lua dirt_puff: bank small_puff, build smoke_puff_small, clip puff, FinalOffset1 (its sound is commented out).
+  dirt_puff: { archive: 'smoke_puff_small.zip', bank: 'small_puff', anim: 'puff', finalOffset: 1 },
   // fx.lua crater_steam_fx1..4 / slow_steam_fx1..5 (hotspring.lua push_special_idle): bank = build, anim steam<N>, FinalOffset1.
   crater_steam_fx1: { archive: 'crater_steam.zip', bank: 'crater_steam', anim: 'steam1', finalOffset: 1 },
   crater_steam_fx2: { archive: 'crater_steam.zip', bank: 'crater_steam', anim: 'steam2', finalOffset: 1 },

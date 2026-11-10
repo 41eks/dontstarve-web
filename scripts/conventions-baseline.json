@@ -78,9 +78,6 @@
   "packages/prefab/src/evergreens.ts": {
     "instance-method": 1
   },
-  "packages/prefab/src/farm_plow.ts": {
-    "scene": 2
-  },
   "packages/prefab/src/fence.ts": {
     "component-dispose-on-remove": 2,
     "instance-method": 1,
