@@ -677,6 +677,8 @@ export interface PrefabEntityDefinition<Instance extends PrefabInstance<SpriteSt
 export class PrefabEntityManager<Id extends string, Instance extends PrefabInstance<SpriteState, object>> {
   private readonly resources: SpriteResources;
   private readonly entities = new Set<Instance>();
+  /** Entities spawned elsewhere which FindEntities still searches, such as the player. */
+  private readonly tracked = new Set<Instance>();
   private readonly byEntityId = new Map<string, Instance>();
   private readonly byPrefab = new Map<string, Set<Instance>>();
   private icons?: IconSpriteAtlases;
@@ -783,6 +785,40 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     return source;
   }
 
+  /**
+   * Put an entity this manager did not spawn, such as the player, in the Ents that FindEntities searches.
+   * It is not saved or looked up by entity ID here: its owner keeps those, and it leaves when it is removed.
+   */
+  track(instance: Instance): void {
+    if (this.disposed) throw new Error(`Cannot track ${instance.prefab}: its manager has been disposed`);
+    if (instance.isRemoved || this.entities.has(instance) || this.tracked.has(instance)) return;
+    this.tracked.add(instance);
+    instance.onRemove(() => { this.tracked.delete(instance); });
+  }
+
+  /**
+   * TheSim:FindEntities(x, y, z, radius, musttags, canttags, mustoneoftags): every valid entity, awake or asleep,
+   * within `radius`, nearest first. As in the engine nothing else is left out: the querying entity and INLIMBO
+   * entities are returned unless the caller excludes them, as the source does with `v ~= inst` and its cant tags.
+   */
+  FindEntities(position: ReadonlyVector3, radius: number,
+    mustTags: readonly string[] = [], cantTags: readonly string[] = [], oneOfTags: readonly string[] = []): Instance[] {
+    if (!Number.isFinite(radius) || radius < 0) throw new RangeError('Invalid entity query radius');
+    if (!Number.isFinite(position.x) || !Number.isFinite(position.y) || !Number.isFinite(position.z)) return [];
+    const radiusSquared = radius * radius;
+    const found: { entity: Instance; distanceSquared: number }[] = [];
+    for (const entities of [this.entities, this.tracked]) for (const entity of entities) {
+      if (entity.isRemoved) continue;
+      const distanceSquared = entity.getPosition().distanceToSquared(position);
+      if (!(distanceSquared <= radiusSquared)) continue;
+      if (mustTags.some(tag => !entity.hasTag(tag)) || cantTags.some(tag => entity.hasTag(tag))
+        || (oneOfTags.length > 0 && !oneOfTags.some(tag => entity.hasTag(tag)))) continue;
+      found.push({ entity, distanceSquared });
+    }
+    // Array.prototype.sort is stable, so entities at the same distance keep their spawn order.
+    return found.sort((a, b) => a.distanceSquared - b.distanceSquared).map(({ entity }) => entity);
+  }
+
   /** The awake entities' displays, as the display group lists those in the scene. */
   get renderEntities() { return this.displays.renderEntities; }
 
@@ -802,6 +838,8 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     if (this.disposed) return;
     this.disposed = true;
     for (const entity of [...this.entities]) entity.remove();
+    // A tracked entity belongs to its own owner, which removes it.
+    this.tracked.clear();
     // Every entity's display is released above, before the shared resources.
     this.resources.dispose();
     for (const source of this.iconSources.values()) source.dispose();
