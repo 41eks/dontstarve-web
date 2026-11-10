@@ -111,7 +111,7 @@ export { WARDROBE_ID, WARDROBE_PLACER, WardrobeInstance, wardrobePrefabs } from 
 export { BuildingPlacer, type BuildingPlacerSpec } from './buildingPlacer';
 export { buildingPlacer, buildingPrefab, MakeBuildingPersist, type BuildingDeclaration } from './building';
 export { reskinToolVisual, ReskinEffects, nextReskin, reskinEffectSound } from './reskin_tool';
-export { FencePlacement, FENCE_ID, FENCE_ITEM_ID, FENCE_IDS, isFenceId, type FenceId } from './fence';
+export { fencePrefabs, fencePlacer, FENCE_ID, FENCE_ITEM_ID, FENCE_IDS, isFenceId, type FenceId } from './fence';
 export {
   WALL_DEFINITIONS,
   WALL_IDS,

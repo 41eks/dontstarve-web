@@ -7,7 +7,8 @@ import {
     WALL_IDS,
     type WallId,
 } from '@dontstarve-web/prefab/walls';
-import { FencePlacement, FENCE_IDS, isFenceId, type FenceId } from '@dontstarve-web/prefab/fence';
+import { FENCE_ID, FENCE_IDS, fencePlacer, fencePrefabs, fenceWorldSkin, GetRotation, isFenceId, ondeploywall, type FenceId } from '@dontstarve-web/prefab/fence';
+import { snapToWallSlotCenter } from '@dontstarve-web/prefab/tile';
 import type { WorldContext } from '@dontstarve-web/prefab/worldContext';
 import type { PlacementSaveRecord } from '@dontstarve-web/prefab/saveRecord';
 import { TENT_ID, TENT_PLACER, tentPrefabs } from '@dontstarve-web/prefab/tent';
@@ -56,14 +57,14 @@ export function isPlaceableBuildingId(value: string): value is PlaceableBuilding
 }
 
 /**
- * Places every buildable prefab. Buildings consume a buffered build and spawn on the shared PrefabEntityManager;
- * walls consume one wall item and therefore place from the inventory.
+ * Places every buildable prefab. Buildings and fences consume a buffered build (or the deployed item) and spawn on the
+ * shared PrefabEntityManager; walls consume one wall item and therefore place from the inventory.
  */
 export class PlaceableBuildingPlacement {
     private readonly walls: WallsPlacement;
-    private readonly fences: FencePlacement;
-    private readonly managed: BuildingPlacer<ManagedBuildingId>;
+    private readonly managed: BuildingPlacer<ManagedBuildingId | FenceId>;
     private readonly prefabs: Pick<PrefabEntityManager<string, PrefabInstance>, 'spawn' | 'register'>;
+    private readonly snapToWallSlot: (point: Vector3) => Vector3;
 
     constructor(
         world: WorldContext,
@@ -78,40 +79,45 @@ export class PlaceableBuildingPlacement {
             ...treasureChestPrefabs(services), ...pandorasChestPrefabs(services), ...iceBoxPrefabs(services), ...dragonflyChestPrefabs(services), ...saltBoxPrefabs(services), ...mushroomLightPrefabs(services), ...firePitPrefabs(services),
             ...tentPrefabs(services), ...moonbasePrefabs(services), ...moondialPrefabs(services), ...sculptingTablePrefabs(services), ...winterometerPrefabs(services),
             ...lightningRodPrefabs(services), ...stickHeadPrefabs(services), ...birdcagePrefabs(services), ...researchLabPrefabs(services),
-            ...cookPotPrefabs(services), ...bookstationPrefabs(services) });
+            ...cookPotPrefabs(services), ...bookstationPrefabs(services), ...fencePrefabs(services) });
         this.walls = new WallsPlacement(world, consumeBufferedBuild);
-        this.fences = new FencePlacement(world, consumeBufferedBuild);
-        this.managed = new BuildingPlacer<ManagedBuildingId>(world, buildId => MANAGED_BUILDING_PLACERS[buildId], consumeBufferedBuild,
-            (buildId, position, skinId) => { prefabs.spawn(buildId, position, undefined, skinId).PushEvent('onbuilt', undefined); });
+        const snapToWallSlot = (point: Vector3) => { const { x, z } = snapToWallSlotCenter(point); return new Vector3(x, point.y, z); };
+        this.managed = new BuildingPlacer<ManagedBuildingId | FenceId>(world,
+            buildId => isFenceId(buildId) ? fencePlacer(buildId, world.cameraHeading, snapToWallSlot) : MANAGED_BUILDING_PLACERS[buildId],
+            consumeBufferedBuild, (buildId, position, skinId, placer) => {
+                if (isFenceId(buildId)) { ondeploywall(prefabs, buildId, position, skinId, GetRotation(placer)); return; }
+                prefabs.spawn(buildId, position, undefined, skinId).PushEvent('onbuilt', undefined);
+            });
+        this.snapToWallSlot = snapToWallSlot;
     }
 
-    /** Buildings draw their placer at once; fences and walls still resolve once their art has loaded. */
+    /** Buildings and fences draw their placer at once; walls still resolve once their art has loaded. */
     async begin(buildId: PlaceableBuildingId, skinId?: string): Promise<void> {
-        if (isManagedBuildingId(buildId)) {
-            this.walls.cancel(); this.fences.cancel();
+        if (isManagedBuildingId(buildId) || isFenceId(buildId)) {
+            this.walls.cancel();
             return this.managed.begin(buildId, skinId);
         }
         this.managed.cancel();
-        if (isFenceId(buildId)) {
-            this.walls.cancel();
-            return this.fences.begin(buildId, skinId);
-        }
-        this.fences.cancel();
         return this.walls.begin(buildId, skinId);
     }
 
+    /** c_spawn: SpawnPrefab ahead of the player; a fence keeps rotation 0 at the wall slot there. */
     async spawn(buildId: PlaceableBuildingId, skinId?: string): Promise<void> {
         if (isManagedBuildingId(buildId)) { this.prefabs.spawn(buildId, this.managed.groundInFrontOfPlayer(), undefined, skinId); return; }
-        return isFenceId(buildId) ? this.fences.spawn(buildId, skinId) : this.walls.spawn(buildId, skinId);
+        if (isFenceId(buildId)) {
+            this.prefabs.spawn(FENCE_ID, this.snapToWallSlot(this.managed.groundInFrontOfPlayer()), undefined, fenceWorldSkin(buildId, skinId));
+            return;
+        }
+        return this.walls.spawn(buildId, skinId);
     }
 
     spawnFromSave(buildId: PlaceableBuildingId, record: PlacementSaveRecord) {
-        if (isManagedBuildingId(buildId)) return this.prefabs.spawn(buildId, new Vector3(...record.transform.position), record).transform.model;
-        return isFenceId(buildId) ? this.fences.spawnFromSave(buildId, record) : this.walls.spawnFromSave(buildId, record);
+        if (isManagedBuildingId(buildId) || isFenceId(buildId)) return this.prefabs.spawn(buildId, new Vector3(...record.transform.position), record).transform.model;
+        return this.walls.spawnFromSave(buildId, record);
     }
 
     exportRecords() {
-        return [...this.walls.exportRecords(), ...this.fences.exportRecords()];
+        return this.walls.exportRecords();
     }
 
     /** The container widget's Cook button: ACTIONS.COOK on the entity whose container is open. */
@@ -122,31 +128,28 @@ export class PlaceableBuildingPlacement {
 
     dispose(): void {
         this.walls.dispose();
-        this.fences.dispose();
         this.managed.dispose();
     }
 
     cancel(): void {
         this.walls.cancel();
-        this.fences.cancel();
         this.managed.cancel();
     }
 
 
     get renderEntities() {
-        return [...this.walls.renderEntities, ...this.fences.renderEntities, ...this.managed.renderEntities];
+        return [...this.walls.renderEntities, ...this.managed.renderEntities];
     }
 
 
 
 
     get reskinTargets() {
-        return [...this.walls.reskinTargets, ...this.fences.reskinTargets];
+        return this.walls.reskinTargets;
     }
 
     update(dt: number): void {
         this.walls.update(dt);
-        this.fences.update(dt);
         this.managed.update(dt);
     }
 }

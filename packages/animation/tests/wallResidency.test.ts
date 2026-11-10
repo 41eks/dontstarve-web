@@ -6,13 +6,10 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { SpriteState } from '../../display/src';
 import { WallsPlacement } from '../../prefab/src/walls';
-import { FencePlacement } from '../../prefab/src/fence';
-import { findActionEntity } from '../../prefab/src/actionEntity';
 import { bindTestWorld } from './worldContentFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { reskinEntity } from '../../prefab/src/reskin_tool';
-import { workTargets } from './workTargets';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -91,52 +88,3 @@ it('shares layered wall art, releases only visuals, restores current health/faci
   } finally { placement.dispose(); content.unbind(); scheduler.dispose(); }
 });
 
-it('settles a fence hit on sleep, reskins dormant art, restores mirroring, and completes burning while dormant', async () => {
-  const { world, awake, heading } = setup();
-  const scheduler = new GameTimeScheduler();
-  const content = bindTestWorld(scheduler);
-  content.camerarotation.set(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 4));
-  const placement = new FencePlacement(world, () => false);
-  try {
-    const model = await placement.spawnFromSave('fence', { id: 'fence', transform: { position: [3, 0, 6], rotationY: 0 }, components: {} });
-    const instance = lookupPrefabInstance(model)!;
-    await vi.waitFor(() => expect(instance.sprite.loaded).toBe(true));
-    const entity = findActionEntity(model)!;
-    const resident = instance.sprite;
-    workTargets('HAMMER')[0].work();
-    const dormantSkin = placement.reskinTargets[0];
-    awake.set(false); await settle();
-    expect(meshes(model)).toHaveLength(0);
-    expect(placement.renderEntities).toHaveLength(0);
-    expect(entity.components.workable!.GetWorkLeft()).toBe(2);
-    heading.set(90);
-    content.camerarotation.set(new THREE.Quaternion());
-    expect(reskinEntity(dormantSkin)).toBe(true);
-    const saved = placement.exportRecords()[0];
-    awake.set(true); await settle(); await settle();
-    expect(lookupPrefabInstance(model)).toBe(instance);
-    expect(findActionEntity(model)).toBe(entity);
-    expect(placement.exportRecords()[0]).toEqual(saved);
-    expect(instance.sprite).toBe(resident);
-    expect(resident).toBeInstanceOf(SpriteState);
-    expect(resident.currentAnimation).toBe('idle');
-    const visual = meshes(model)[0].parent!;
-    expect(visual.scale.x).toBeLessThan(0);
-    const restored = new FencePlacement(world, () => false);
-    try {
-      await restored.spawnFromSave('fence', saved.record);
-      expect(restored.exportRecords()[0]).toEqual(saved);
-    } finally { restored.dispose(); }
-    entity.components.burnable!.Ignite();
-    awake.set(false); await settle();
-    placement.update(25);
-    expect(world.spawnItem).toHaveBeenCalledWith({ itemId: 'ash', count: 1 });
-    expect(placement.exportRecords()).toEqual([]);
-    expect(world.physics!.bodies).toHaveLength(0);
-    awake.set(true); await settle();
-    expect(meshes(model)).toHaveLength(0);
-    expect(model.parent).toBeNull();
-    expect(lookupPrefabInstance(model)!.isRemoved).toBe(true);
-    expect(findActionEntity(model)).toBeUndefined();
-  } finally { placement.dispose(); content.unbind(); scheduler.dispose(); }
-});

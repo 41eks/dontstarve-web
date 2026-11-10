@@ -203,7 +203,7 @@ describe('DST building skins', () => {
     expect(records()).toHaveLength(0);
     expect(lookupPrefabInstance(world.scene.children[0])?.skinId).toBe(skinId);
     canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button: 0 }));
-    expect(consume).toHaveBeenCalledWith(prefabId);
+    expect(consume).toHaveBeenCalledWith(prefabId, skinId);
     for (let frame = 0; frame < 100; frame++) placement.update(0.1);
     const record = records()[0].record;
     expect(record.components.building).toEqual({ skinId });

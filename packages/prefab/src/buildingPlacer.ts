@@ -14,6 +14,12 @@ export interface BuildingPlacerSpec {
     readonly animation: string;
     /** The source it draws from and the appearance its entity declares before the first draw. */
     art(resources: SpriteResources, skinId?: string): { source: LoadedSpriteSource; initialize?(entity: PrefabInstance): void };
+    /** Stands the placer's lowest point on the ground, as this project draws its buildings (the default). */
+    readonly alignBottom?: boolean;
+    /** The deploy mode's snap of the pointer point, such as DEPLOYMODE.WALL's wall grid. */
+    snap?(point: THREE.Vector3): THREE.Vector3;
+    /** placer.lua onupdatetransform: runs each frame once the placer has followed the pointer. */
+    onupdatetransform?(placer: PrefabInstance): void;
 }
 
 /** This project draws placers translucent; MakePlacer itself only sets SetLightOverride(1). */
@@ -27,8 +33,8 @@ const PLACER_OPACITY = 0.65;
 export class BuildingPlacer<BuildId extends string> {
     private disposed = false;
     private readonly specs: (buildId: BuildId) => BuildingPlacerSpec;
-    private readonly consumeBufferedBuild: (buildId: BuildId) => boolean;
-    private readonly place: (buildId: BuildId, position: THREE.Vector3, skinId?: string) => void;
+    private readonly consumeBufferedBuild: (buildId: BuildId, skinId?: string) => boolean;
+    private readonly place: (buildId: BuildId, position: THREE.Vector3, skinId: string | undefined, placer: PrefabInstance) => void;
     private readonly actionEvents: WorldContext['actionEvents'];
     private readonly stopActionEvents: () => void;
     private readonly stopPlacerGate?: () => void;
@@ -42,13 +48,13 @@ export class BuildingPlacer<BuildId extends string> {
     private readonly displays: PrefabDisplayGroup;
     /** Placers are made translucent through their materials, so they draw from resources apart from the buildings'. */
     private readonly sprites = new SpriteResources();
-    private placer?: { buildId: BuildId; skinId?: string; instance: PrefabInstance; display: PrefabDisplay };
+    private placer?: { buildId: BuildId; skinId?: string; instance: PrefabInstance; display: PrefabDisplay; spec: BuildingPlacerSpec };
 
     constructor(
         world: WorldContext,
         specs: (buildId: BuildId) => BuildingPlacerSpec,
-        consumeBufferedBuild: (buildId: BuildId) => boolean,
-        place: (buildId: BuildId, position: THREE.Vector3, skinId?: string) => void,
+        consumeBufferedBuild: (buildId: BuildId, skinId?: string) => boolean,
+        place: (buildId: BuildId, position: THREE.Vector3, skinId: string | undefined, placer: PrefabInstance) => void,
     ) {
         this.specs = specs;
         this.consumeBufferedBuild = consumeBufferedBuild;
@@ -79,13 +85,16 @@ export class BuildingPlacer<BuildId extends string> {
                 art.initialize?.(entity);
                 declarePlacer(entity);
                 entity.sprite.setOpacity(PLACER_OPACITY);
-            }, undefined, { alignBottom: true });
+            }, undefined, { alignBottom: spec.alignBottom ?? true });
         this.displays.mount(display);
         this.actionEvents?.emit('action:begin', { owner: this, action: 'BUILD' });
         this.cursor.show(`: 建造 ${spec.buildLabel}`, 'left');
-        this.placer = { buildId, skinId, instance, display };
-        this.cursor.setPreview(entityPlacer(instance), 0);
-        this.cursor.update();
+        this.placer = { buildId, skinId, instance, display, spec };
+        this.cursor.setPreview(entityPlacer(instance), 0, spec.snap && (point => {
+            const snapped = spec.snap!(point);
+            return point.set(snapped.x, point.y, snapped.z);
+        }));
+        this.followPointer();
     }
 
     /** Cancel only the placer; its display stops any load it started. The buffered build stays in inventory. */
@@ -98,7 +107,12 @@ export class BuildingPlacer<BuildId extends string> {
     /** The display advances the placer's clip, and the placer follows the pointer. */
     update(dt: number): void {
         this.displays.update(dt);
+        this.followPointer();
+    }
+
+    private followPointer(): void {
         this.cursor.update();
+        if (this.placer) this.placer.spec.onupdatetransform?.(this.placer.instance);
     }
 
     /** The placer's sprite and its ground-contact point for depth sorting. */
@@ -149,10 +163,10 @@ export class BuildingPlacer<BuildId extends string> {
         const placer = this.placer;
         if (!placer) return;
         this.pointer.trackPointer(event);
-        this.cursor.update();
-        if (!this.pointer.isOverGround || !this.consumeBufferedBuild(placer.buildId)) return;
+        this.followPointer();
+        if (!this.pointer.isOverGround || !this.consumeBufferedBuild(placer.buildId, placer.skinId)) return;
         const position = placer.instance.position.clone();
         this.cancel();
-        this.place(placer.buildId, position, placer.skinId);
+        this.place(placer.buildId, position, placer.skinId, placer.instance);
     }
 }

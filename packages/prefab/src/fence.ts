@@ -1,44 +1,37 @@
 import { LootDropper } from '../../componets/src/lootdropper';
 import { addComponent } from './components';
 import { ToolMouseTarget } from './toolMouseTarget';
-import { ModelRecords } from './modelRecords';
-import * as THREE from 'three';
-import { PrefabDisplayGroup, SpriteResources, SpriteState, type PrefabDisplay } from '@dontstarve-web/display';
-import { PrefabInstance, bindInstance, prefabInstance } from './prefabInstance';
-import { watchTileActivity } from './tileActivity';
-import { watchSignal, type Signal } from '@dontstarve-web/signals';
-import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
-import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
-import type { ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
+import { prefabDisplay, SpriteState, type SpriteResources } from '@dontstarve-web/display';
+import type { ReadonlySignal } from '@dontstarve-web/signals';
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { Combat, type CombatActor } from '../../componets/src/combat';
 import { Health } from '../../componets/src/health';
-import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import { Inspectable } from '../../componets/src/dragonflySignatures';
 import { Workable, type Worker } from '../../componets/src/workable';
 import { actionEntity, FindEntities } from './actionEntity';
-import { BuildCursor, declarePlacer, entityPlacer } from './buildCursor';
+import type { BuildingPlacerSpec } from './buildingPlacer';
+import { PrefabInstance, prefabInstance, type PrefabEntityDefinition, type PrefabEntityManager } from './prefabInstance';
 import { reskinTarget } from './reskin_tool';
-import { newEntityId, saveGroundPosition, type PlacedEntitySaveRecord, type PlacementSaveRecord } from './saveRecord';
+import type { PlacementSaveRecord } from './saveRecord';
 import { PlaySound } from './sound';
 import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
 import { PathfindingWall } from './pathfinder';
 import { MakeObstaclePhysics } from './standardcomponents';
-import { BurnableBinding, FireFxHost } from './treeFire';
-import { snapToWallSlotCenter, TILE_SIZE } from './tile';
+import { BurnableBinding } from './treeFire';
+import { TILE_SIZE } from './tile';
 import { FENCE_ID, FENCE_SKIN_ARCHIVES, fenceWorldSkin, type FenceId } from './fenceSkins';
-import type { WorldContext, PrefabWorldContext } from './worldContext';
+import type { PrefabWorldContext } from './worldContext';
 
-export { FENCE_ID, FENCE_ITEM_ID, FENCE_IDS, isFenceId, type FenceId, type FenceSaveState } from './fenceSkins';
+export { FENCE_ID, FENCE_ITEM_ID, FENCE_IDS, isFenceId, fenceWorldSkin, type FenceId, type FenceSaveState } from './fenceSkins';
 
 /** DST distance unit in world units. */
 const UNIT = TILE_SIZE / 4;
-/** fence.lua MakeObstaclePhysics(inst, .5). */
-export const FENCE_PHYSICS_RADIUS = .5 * UNIT;
 const ROT_SIDES = 8;
-const FENCE_TAGS = ['wall', 'fence', 'alignwall', 'noauradamage', 'electricdamageimmune', 'rotatableobject'] as const;
 /** MakeMediumBurnable(inst): burn time 20, fx level 3; MakeMediumPropagator. */
 const FENCE_BURN_TIME = 20;
 const FENCE_FX_LEVEL = 3;
-const PREVIEW_OPACITY = 0.65;
+/** fence.lua FENCE_LOOT. */
+const FENCE_LOOT = ['twigs'];
 
 const mod = (value: number, divisor: number) => value - Math.floor(value / divisor) * divisor;
 
@@ -47,7 +40,7 @@ export function calcRotationEnum(rotation: number): number {
     return Math.floor(mod(Math.floor(rotation + 0.5) / 45, ROT_SIDES));
 }
 
-/** Even rotation enums use the narrow `fence_thin` bank, odd ones the wide `fence` bank. */
+/** IsEnumNarrow: even rotation enums use the narrow `fence_thin` bank, odd ones the wide `fence` bank. */
 export function isNarrowRotation(rotation: number): boolean {
     return calcRotationEnum(rotation) % 2 === 0;
 }
@@ -56,7 +49,7 @@ export interface FenceNeighbour { readonly isFence: boolean; readonly rotation: 
 
 /**
  * fence.lua FixUpFenceOrientation for a plain fence: facing a parallel fence from behind (the opposite side of
- * the same line) flips the placer by 180 degrees so both fences face the same way.
+ * the same line) flips the rotation by 180 degrees so both fences face the same way.
  */
 export function fixUpFenceRotation(rotation: number, neighbours: readonly FenceNeighbour[]): number {
     const thisEnum = calcRotationEnum(rotation);
@@ -71,365 +64,194 @@ export function placerRotation(heading: number): number {
     return -heading;
 }
 
-/** The source Transform rotation, independent of the display's camera-facing quaternion. */
-export class FencePrefabInstance extends PrefabInstance {
-    private readonly art: SpriteResources['archives'];
-    get rotation(): number { return this.sprite.sprite.peek().facingRotation ?? 0; }
-
-    constructor(rotation: number, skinId: string | undefined, art: SpriteResources['archives'], opacity: number, prefab: string = FENCE_ID) {
-        super(prefab, new SpriteState({ name: 'idle', billboard: true }));
-        this.art = art;
-        this.skinId = skinId;
-        this.sprite.setSkinSource({ art, archives: FENCE_SKIN_ARCHIVES });
-        this.setOrientation(rotation);
-        this.sprite.setOpacity(opacity);
-        this.sprite.playOnce('idle');
-    }
-
-    /** fence.lua SetOrientation changes the AnimState bank, preserving the entity and its build. */
-    setOrientation(rotation: number): void {
-        this.sprite.setFacingRotation(rotation);
-        const bank = isNarrowRotation(rotation) ? 'fence_thin' : 'fence';
-        if (this.sprite.sprite.peek().source?.bank !== bank) {
-            this.sprite.setArtSource({ animationArchive: `${bank}.zip`, bank, buildArchive: 'fence.zip', art: this.art });
-        }
-    }
+/**
+ * Transform:GetRotation. The eight-faced fence keeps the source rotation on its sprite declaration, which the display
+ * turns into a facing against the camera; the root's own rotation stays 0.
+ */
+export function GetRotation(inst: PrefabInstance): number {
+    return inst.sprite.sprite.peek().facingRotation ?? 0;
 }
 
-/** fence.lua callbacks receive the same inst/attacker that the components use. */
-function onworked(inst: FencePrefabInstance): void {
-    inst.sprite.playOnce('hit');
-    inst.sprite.pushAnimation('idle', false);
+/**
+ * fence.lua SetOrientation: Transform:SetRotation, and SetBank(anims.narrow / anims.wide) when the parity changes;
+ * the build stays. `art` is given the first time; later calls keep the art the bank was declared with.
+ */
+export function SetOrientation(inst: PrefabInstance, rotation: number, art?: SpriteResources['archives']): void {
+    inst.sprite.setFacingRotation(rotation);
+    const bank = isNarrowRotation(rotation) ? 'fence_thin' : 'fence';
+    const current = inst.sprite.sprite.peek().source;
+    if (current?.bank === bank) return;
+    const archives = art ?? (current && 'art' in current ? current.art : undefined);
+    if (!archives) throw new Error('A fence needs its art the first time its bank is set');
+    inst.sprite.setArtSource({ animationArchive: `${bank}.zip`, bank, buildArchive: 'fence.zip', art: archives });
 }
 
-function onhammered(inst: FencePrefabInstance): void {
+/** FixUpFenceOrientation(inst, nil): FindEntities(x, 0, z, 1.5, { "wall" }) around the inst, without itself. */
+function FixUpFenceOrientation(inst: PrefabInstance): void {
+    const model = inst.transform.model;
+    const neighbours = FindEntities(inst.position, 1.5 * UNIT, ['wall'])
+        .filter(found => found.model !== model)
+        .map(found => {
+            const other = found.model && prefabInstance<PrefabInstance>(found.model);
+            return { isFence: found.hasTag('fence'), rotation: other ? GetRotation(other) : 0 };
+        });
+    SetOrientation(inst, fixUpFenceRotation(GetRotation(inst), neighbours));
+}
+
+export class FenceInstance extends PrefabInstance {
+    declare readonly components: PrefabInstance['components'] & {
+        health: Health; combat: Combat; lootdropper: LootDropper; workable: Workable; inspectable: Inspectable;
+    };
+    /** inst.SetOrientation. */
+    declare SetOrientation: typeof SetOrientation;
+}
+
+function onhammered(inst: PrefabInstance): void {
     if (inst.isRemoved) return;
     inst.components.lootdropper!.DropLoot();
     inst.worldServices?.fx?.collapse?.('small', inst.position, 'wood');
     inst.remove();
 }
 
-function onhit(inst: FencePrefabInstance, attacker: CombatActor): void {
+function onworked(inst: PrefabInstance): void {
+    inst.sprite.playOnce('hit');
+    inst.sprite.pushAnimation('idle', false);
+}
+
+function onhit(inst: PrefabInstance, attacker: CombatActor): void {
     inst.components.workable!.WorkedBy(attacker as unknown as Worker);
 }
 
-function initializeFence(inst: FencePrefabInstance): void {
-    for (const tag of FENCE_TAGS) inst.addTag(tag);
-    const health = addComponent(inst, 'health', Health, 1);
-    health.absorb = 1; health.canheal = false; health.nofadeout = true;
-    const combat = addComponent(inst, 'combat', Combat, () => inst.worldServices?.scheduler?.now ?? 0);
-    combat.SetKeepTargetFunction(() => false);
-    combat.onhitfn = onhit;
+/** InitializePathFinding: inst._ispathfinding is set, so TheWorld.Pathfinder:AddWall at the fence; onremove clears it. */
+function InitializePathFinding(inst: PrefabInstance): void {
+    const pathfinding = new PathfindingWall(inst.worldServices?.pathfinder, () => inst.position);
+    pathfinding.set(true);
+    inst.onRemove(() => pathfinding.set(false));
+}
+
+/** DefaultBurntFn: one ash at the fence, then Remove. */
+function onburnt(inst: PrefabInstance): void {
+    const world = inst.worldServices, position = inst.position.clone();
+    const ash = world?.spawnItem?.({ itemId: 'ash', count: 1 });
+    if (ash) world?.dropItem?.(ash, position);
+    inst.remove();
+}
+
+/**
+ * onsave: data.rot unless it is 0, and the skin this project saves with it. A standing fence always has its one full
+ * health, so health:OnSave carries nothing its OnLoad would change; the record keeps the fence's own shape without it.
+ */
+function onsave(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
+    delete data.health;
+    const rot = calcRotationEnum(GetRotation(inst));
+    data.fence = { ...(rot > 0 ? { rot } : {}), ...(inst.skinId === undefined ? {} : { skinId: inst.skinId }) };
+}
+
+/** onload: SetOrientation(inst, data.rot * 45). */
+function onload(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
+    const saved = data.fence;
+    if (!saved) return;
+    if (saved.skinId !== undefined) inst.skinId = fenceWorldSkin(FENCE_ID, saved.skinId);
+    SetOrientation(inst, (saved.rot ?? 0) * 45);
+}
+
+/** fence.lua MakeWall("fence", { wide = "fence", narrow = "fence_thin" }, false) fn, as far as it is ported. */
+function fn(world: PrefabWorldContext, sprites: SpriteResources): FenceInstance {
+    const inst = new FenceInstance(FENCE_ID, new SpriteState({ name: 'idle', billboard: true }));
+    inst.worldServices = world;
+    // Transform:SetEightFaced; SetBank(anims.wide), SetBuild("fence"), PlayAnimation("idle"). SpawnPrefab leaves rotation 0.
+    SetOrientation(inst, 0, sprites.archives);
+    inst.sprite.playOnce('idle');
+    for (const tag of ['wall', 'fence', 'alignwall', 'noauradamage', 'electricdamageimmune', 'rotatableobject']) inst.addTag(tag);
+    inst.DoTaskInTime(0, InitializePathFinding);
+    addComponent(inst, 'inspectable', Inspectable);
     const lootdropper = addComponent(inst, 'lootdropper', LootDropper, spawnStructureLoot(inst), STRUCTURE_LOOT_RECIPES);
-    lootdropper.SetLoot(['twigs']);
+    lootdropper.SetLoot(FENCE_LOOT);
     lootdropper.droprecipeloot = false;
     const workable = addComponent(inst, 'workable', Workable);
     workable.SetWorkAction('HAMMER');
     workable.SetWorkLeft(3);
-    workable.SetOnWorkCallback(onworked);
     workable.SetOnFinishCallback(onhammered);
-    inst.ListenForEvent('death', () => onhammered(inst));
-    MakeObstaclePhysics(inst, .5).SetDontRemoveOnSleep(true);
-    if (inst.worldServices?.physics) inst.bindPhysics(inst.worldServices.physics);
-    const pathfinding = new PathfindingWall(inst.worldServices?.pathfinder, () => inst.position);
-    pathfinding.set(true);
-    inst.onRemove(() => { pathfinding.set(false); workable.dispose(); health.dispose(); combat.onhitfn = undefined; });
+    workable.SetOnWorkCallback(onworked);
+    const combat = addComponent(inst, 'combat', Combat, () => inst.worldServices?.scheduler?.now ?? 0);
+    combat.SetKeepTargetFunction(() => false);
+    combat.onhitfn = onhit;
+    const health = addComponent(inst, 'health', Health, 1);
+    health.absorb = 1; health.canheal = false; health.nofadeout = true;
+    inst.ListenForEvent('death', onhammered);
+    // MakeMediumBurnable + MakeMediumPropagator, with DefaultBurnFn / DefaultExtinguishFn / DefaultBurntFn.
+    const { fire, scheduler } = world;
+    if (!fire) throw new Error('A fence needs the world\'s fire effects');
+    const burn = new BurnableBinding(inst, {
+        propagator: 'medium', burnTime: FENCE_BURN_TIME, fxLevel: FENCE_FX_LEVEL,
+        onIgnite: () => { inst.persists = false; },
+        onExtinguish: () => { inst.persists = true; },
+        onBurnt: () => onburnt(inst),
+    }, { fire, scheduler });
+    inst.onRemove(() => { burn.dispose(); combat.onhitfn = undefined; });
+    inst.OnSave = onsave;
+    inst.OnLoad = onload;
+    inst.SetOrientation = SetOrientation;
+    return inst;
 }
 
-interface FenceInstance {
-    readonly buildId: FenceId;
-    /** One logical fence and the display that draws its declared sprite. */
-    readonly instance: FencePrefabInstance;
-    readonly display: PrefabDisplay;
-    readonly root: THREE.Group;
-    stopActivity?: () => void;
-    readonly inventorySkinId?: string;
-    /** Present once placed: the placer entity has no components or LIGHT/HAMMER targets. */
-    entity?: ReturnType<typeof actionEntity>;
-    burn?: BurnableBinding;
+/** What the mouse and the tools find on a fence: the hammer and the reskin tool. */
+function onspawned(inst: FenceInstance, world: Pick<PrefabWorldContext, 'handEquipment'>): void {
+    const model = inst.transform.model, entity = actionEntity(model, FENCE_ID, inst);
+    entity.reskinTarget = reskinTarget({
+        get id() { return String(inst.entityId); }, prefabId: FENCE_ID, instance: inst, display: prefabDisplay(model)!,
+        sprite: inst.sprite, skins: Object.keys(FENCE_SKIN_ARCHIVES),
+        hasTag: tag => inst.hasTag(tag), get position() { return inst.position; }, isValid: () => !inst.isRemoved,
+    });
+    new ToolMouseTarget(entity, inst, inst.components.workable, world.handEquipment);
+}
+
+/** The Prefab fence.lua returns for the placed fence; fence_item is a ground and inventory item. */
+export function fencePrefabs(world: PrefabWorldContext): Readonly<Record<typeof FENCE_ID, PrefabEntityDefinition<FenceInstance>>> {
+    return {
+        [FENCE_ID]: {
+            fn: (_position, sprites) => fn(world, sprites),
+            // Both banks share the fence build; SetOrientation picks the bank.
+            factory: { animationArchive: 'fence.zip', extraAnimationArchives: ['fence_thin.zip'], buildArchive: 'fence.zip' },
+            skins: FENCE_SKIN_ARCHIVES,
+            // MakeObstaclePhysics(inst, .5); inst.Physics:SetDontRemoveOnSleep(true).
+            physics: { make: (inst, radius) => MakeObstaclePhysics(inst, radius).SetDontRemoveOnSleep(true), radius: .5 },
+            onSpawned: inst => onspawned(inst, world),
+        },
+    };
 }
 
 /**
- * Places `fence_item` and holds the placed `fence` prefabs of prefabs/fence.lua: an eight-faced animated
- * sprite whose bank (`fence` or `fence_thin`) follows the rotation parity.
+ * fence.lua MakeWallPlacer -> MakePlacer("fence_item_placer", "fence", "fence", "idle", ..., fixedcameraoffset 0, ...):
+ * looping, eight-faced, snapped to the wall grid, turned against the camera and fixed up against its neighbours each frame.
  */
-export class FencePlacement {
-    private readonly world: PrefabWorldContext;
-
-    private readonly camera: THREE.Camera;
-    private readonly canvas: HTMLCanvasElement;
-    private readonly player: THREE.Object3D;
-    private readonly ground: THREE.Object3D;
-    private readonly pointer: PointerRaycaster;
-    private readonly stopPlacerGate?: () => void;
-    private readonly cursor: BuildCursor;
-    private readonly resources = new SpriteResources(undefined, 'ground');
-    private readonly displays: PrefabDisplayGroup;
-    private readonly scheduler: GameTimeScheduler;
-    private readonly ownsScheduler: boolean;
-    private fireFx?: FireFxHost;
-    private readonly consumeBufferedBuild: (buildId: FenceId, skinId?: string) => boolean;
-    private readonly stopActionEvents: () => void;
-    private readonly heading: Signal<number>;
-    private readonly cleanups: (() => void)[] = [];
-    private readonly mouseRecords = new ModelRecords<FenceInstance>();
-    private readonly placed = new Set<FenceInstance>();
-    /** The `fence_item_placer` entity; committing spawns a new fence, never this one. */
-    private placer?: FenceInstance;
-    private lastPreviewKey = '';
-    private disposed = false;
-
-    constructor(world: WorldContext, consumeBufferedBuild: (buildId: FenceId, skinId?: string) => boolean) {
-        const { scene, ...services } = world;
-        this.world = { ...services, fx: world.fx };
-        this.camera = world.camera;
-        this.canvas = world.renderer.domElement;
-        this.player = world.player;
-        this.ground = world.ground;
-        this.consumeBufferedBuild = consumeBufferedBuild;
-        this.displays = new PrefabDisplayGroup(scene);
-        this.scheduler = world.scheduler ?? new GameTimeScheduler();
-        this.ownsScheduler = !world.scheduler;
-        this.stopActionEvents = bindActionCancellation(world, this, () => this.cancel(), reason => reason === 'emote');
-        this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
-        this.cursor = new BuildCursor(world, this.pointer);
-        this.heading = watchSignal(world.cameraHeading, stop => this.cleanups.push(stop));
-        // Action controllers see no mouse action while the placer is shown, so the click reaches the placer.
-        this.stopPlacerGate = world.mouseActions?.registerPlacer(() => this.placer !== undefined);
-        this.canvas.addEventListener('pointerdown', this.handlePointerDown);
-    }
-
-    begin(buildId: FenceId, skinId?: string): Promise<void> {
-        if (this.disposed) return Promise.reject(new Error('Placement has been disposed'));
-        if (this.placer) return Promise.resolve();
-        let placer: FenceInstance;
-        try { placer = this.createPlacer(buildId, skinId); } catch (error) { return Promise.reject(error); }
-        this.world.actionEvents?.emit('action:begin', { owner: this, action: 'BUILD' });
-        this.cursor.show(': 建造 栅栏', 'left');
-        this.placer = placer;
-        this.cursor.setPreview(entityPlacer(placer.instance), 0, point => {
-            const snapped = snapToWallSlotCenter(point);
-            return point.set(snapped.x, point.y, snapped.z);
-        });
-        this.lastPreviewKey = '';
-        this.cursor.update();
-        this.updatePreview(placer);
-        return Promise.resolve();
-    }
-
-    /** c_spawn("fence"): SpawnPrefab leaves rotation 0 (the narrow bank) in front of the player. */
-    async spawn(buildId: FenceId, skinId?: string): Promise<void> {
-        const fence = this.createInstance(buildId, 0, skinId);
-        fence.instance.entityId = newEntityId();
-        fence.root.position.copy(this.playerFrontGroundPosition());
-        this.place(fence);
-    }
-
-    async spawnFromSave(buildId: FenceId, record: PlacementSaveRecord): Promise<THREE.Group> {
-        const saved = record.components.fence;
-        const fence = this.createInstance(buildId, (saved?.rot ?? 0) * 45, saved?.skinId);
-        fence.instance.entityId = record.id;
-        fence.instance.saveRecord = record;
-        const [x, y, z] = record.transform.position;
-        fence.root.position.set(x, y, z);
-        this.place(fence);
-        return fence.root;
-    }
-
-    get renderEntities() {
-        return this.displays.renderEntities;
-    }
-
-
-
-
-    get reskinTargets(): readonly ReskinTarget[] {
-        return Array.from(this.placed, fence => fence.entity?.reskinTarget)
-            .filter((target): target is ReskinTarget => target !== undefined);
-    }
-
-    private createReskinTarget(fence: FenceInstance): ReskinTarget {
-        const isValid = () => this.isLive(fence);
-        return reskinTarget({
-            get id() { return String(fence.instance.entityId); }, prefabId: FENCE_ID, instance: fence.instance, display: fence.display,
-            sprite: fence.instance.sprite, skins: Object.keys(FENCE_SKIN_ARCHIVES),
-            hasTag: (tag: string) => fence.instance.hasTag(tag), get position() { return fence.root.position; }, isValid,
-        });
-    }
-
-    exportRecords(): PlacedEntitySaveRecord[] {
-        // DefaultBurnFn: a burning fence has persists = false and is not saved.
-        return Array.from(this.placed).filter(fence => fence.instance.persists !== false).map((fence) => {
-            const skinId = fence.instance.skinId, rot = calcRotationEnum(fence.instance.rotation);
-            return {
-                prefabId: FENCE_ID,
-                record: {
-                    id: fence.instance.entityId as string,
-                    transform: { position: saveGroundPosition(fence.root.position, 0), rotationY: 0 },
-                    components: { fence: { ...(rot > 0 ? { rot } : {}), ...(skinId === undefined ? {} : { skinId }) } },
-                },
-            };
-        });
-    }
-
-    update(dt = 0): void {
-        if (this.ownsScheduler) this.scheduler.advance(dt);
-        this.displays.update(dt);
-        for (const fence of this.placed) fence.burn?.update(dt);
-        this.cursor.update();
-        if (this.placer) this.updatePreview(this.placer);
-    }
-
-    cancel(): void {
-        if (this.placer) this.disposeFence(this.placer);
-        this.placer = undefined;
-        this.cursor.hide();
-    }
-
-    dispose(): void {
-        if (this.disposed) return;
-        this.disposed = true;
-        this.stopActionEvents();
-        this.cleanups.splice(0).forEach(stop => stop());
-        this.canvas.removeEventListener('pointerdown', this.handlePointerDown);
-        this.stopPlacerGate?.();
-        if (this.pointer !== this.world.mouseActions?.pointer) this.pointer.dispose();
-        this.cancel();
-        for (const fence of [...this.placed]) this.disposeFence(fence);
-        this.placed.clear();
-       
-        this.displays.dispose();
-        this.fireFx?.dispose();
-        this.resources.dispose();
-        if (this.ownsScheduler) this.scheduler.dispose();
-    }
-
-    private isLive(fence: FenceInstance): boolean {
-        return !this.disposed && !fence.instance.isRemoved && this.placed.has(fence);
-    }
-
-    private readonly handlePointerDown = (event: PointerEvent) => {
-        if (event.button === 2) { this.cancel(); return; }
-        if (event.button !== 0 || event.defaultPrevented) return;
-        const placer = this.placer;
-        if (!placer) return;
-        event.preventDefault();
-        this.pointer.trackPointer(event);
-        this.cursor.update();
-        this.updatePreview(placer);
-        if (!this.pointer.isOverGround || !this.consumeBufferedBuild(placer.buildId, placer.inventorySkinId)) return;
-        // The build spawns the fence itself with the placer's fixed-up rotation and slot; the placer is released.
-        const fence = this.createInstance(placer.buildId, placer.instance.rotation, placer.inventorySkinId);
-        fence.root.position.copy(placer.root.position);
-        fence.instance.entityId = newEntityId();
-        this.cancel();
-        this.place(fence);
-        PlaySound('dontstarve/common/place_structure_wood', fence.root.position);
-    };
-
-    /** fence.lua MakeWallPlacer -> MakePlacer("fence_item_placer", "fence", "fence", "idle", ...), looping, eight-faced. */
-    private createPlacer(buildId: FenceId, skinId?: string): FenceInstance {
-        const placer = this.createInstance(buildId, placerRotation(this.heading.peek()), skinId, PREVIEW_OPACITY, `${FENCE_ID}_item_placer`);
-        declarePlacer(placer.instance);
-        placer.instance.sprite.start('idle');
-        return placer;
-    }
-
-    /** placerupdate: FixUpFenceOrientation against the neighbours at the snapped position. */
-    private updatePreview(fence: FenceInstance): void {
-        const { x, z } = fence.root.position;
-        const key = `${x}:${z}:${this.heading.peek()}`;
-        if (key === this.lastPreviewKey) return;
-        this.lastPreviewKey = key;
-        this.orientPreview(fence, this.heading.peek());
-    }
-
-    private orientPreview(fence: FenceInstance, heading: number): void {
-        const rotation = fixUpFenceRotation(placerRotation(heading), this.neighbours(fence));
-        fence.instance.setOrientation(rotation);
-    }
-
-    /** FindEntities(x, 0, z, 1.5, {"wall"}) as FixUpFenceOrientation sees it. */
-    private neighbours(fence: FenceInstance): FenceNeighbour[] {
-        return FindEntities(fence.root.position, 1.5 * UNIT, ['wall'])
-            .filter(found => found.model !== fence.root)
-            .map(found => ({ isFence: found.hasTag('fence'),
-                rotation: (prefabInstance(found.model) as FencePrefabInstance | undefined)?.rotation ?? 0 }));
-    }
-
-    /** Art and skin state only; a placed fence additionally becomes an inst in `place()`. */
-    private createInstance(buildId: FenceId, rotation: number, requestedSkin?: string, opacity = 1, prefab: string = FENCE_ID): FenceInstance {
-        if (this.disposed) throw new Error('Placement has been disposed');
-        const instance = new FencePrefabInstance(rotation, fenceWorldSkin(buildId, requestedSkin), this.resources.archives, opacity, prefab);
-        instance.worldServices = this.world;
-        const display = this.displays.add({ root: instance.transform.model, name: FENCE_ID, status: instance.status, sprite: instance.sprite, light: instance.light,
-            source: this.resources.factory({ animationArchive: 'fence.zip', extraAnimationArchives: ['fence_thin.zip'], buildArchive: 'fence.zip' }) });
-        const root = display.model;
-        bindInstance(root, instance);
-        const fence: FenceInstance = { buildId, instance, display, root, inventorySkinId: requestedSkin };
-        return fence;
-    }
-
-    /** prefabs/fence.lua's components, attached once the preview becomes a placed inst. */
-    private initializeEntity(fence: FenceInstance): void {
-        const { root } = fence;
-        const entity = actionEntity(root, FENCE_ID, fence.instance);
-        entity.reskinTarget = this.createReskinTarget(fence);
-        fence.entity = entity;
-        initializeFence(fence.instance);
-        this.initializeBurnable(fence);
-        new ToolMouseTarget(entity, fence.instance, fence.instance.components.workable!, this.world.handEquipment);
-        fence.instance.onRemove(() => {
-            this.placed.delete(fence); fence.stopActivity?.(); fence.burn?.dispose();
-        });
-    }
-
-    private removeFence(fence: FenceInstance): void {
-        if (!this.placed.delete(fence)) return;
-        this.disposeFence(fence);
-    }
-
-    /** MakeMediumBurnable + MakeMediumPropagator, with DefaultBurnFn / DefaultExtinguishFn / DefaultBurntFn. */
-    private initializeBurnable(fence: FenceInstance): void {
-        this.fireFx ??= FireFxHost.create(`${import.meta.env.BASE_URL}dst/data/anim`);
-        fence.burn = new BurnableBinding(fence.entity!, {
-            propagator: 'medium', burnTime: FENCE_BURN_TIME, fxLevel: FENCE_FX_LEVEL,
-            onIgnite: () => { fence.instance.persists = false; },
-            onExtinguish: () => { fence.instance.persists = true; },
-            onBurnt: () => {
-                // DefaultBurntFn: one ash at the fence, then Remove.
-                const position = fence.instance.position.clone();
-                const ash = this.world.spawnItem?.({ itemId: 'ash', count: 1 });
-                if (ash) this.world.dropItem?.(ash, position);
-                this.removeFence(fence);
+export function fencePlacer(buildId: FenceId, cameraHeading: ReadonlySignal<number>, snap: BuildingPlacerSpec['snap']): BuildingPlacerSpec {
+    return {
+        buildLabel: '栅栏', name: FENCE_ID, animation: 'idle', alignBottom: false, snap,
+        art: (resources, skinId) => ({
+            source: resources.factory({ animationArchive: 'fence.zip', extraAnimationArchives: ['fence_thin.zip'], buildArchive: 'fence.zip' }),
+            initialize: placer => {
+                placer.skinId = fenceWorldSkin(buildId, skinId);
+                placer.sprite.setSkinSource({ art: resources.archives, archives: FENCE_SKIN_ARCHIVES });
+                SetOrientation(placer, placerRotation(cameraHeading.peek()), resources.archives);
             },
-        }, { scheduler: this.scheduler, fire: this.fireFx });
-    }
+        }),
+        // placer:OnUpdate sets the camera-relative rotation, then placerupdate -> FixUpFenceOrientation(inst, nil).
+        onupdatetransform: placer => {
+            SetOrientation(placer, placerRotation(cameraHeading.peek()));
+            FixUpFenceOrientation(placer);
+        },
+    };
+}
 
-    private place(fence: FenceInstance): void {
-        this.placed.add(fence); this.mouseRecords.set(fence.root, fence);
-        this.initializeEntity(fence);
-        fence.stopActivity = watchTileActivity(fence.root, this.world.tickingarea, active => {
-            fence.instance.setActive(active);
-        });
-    }
-
-    private disposeFence(fence: FenceInstance): void {
-        fence.instance.remove();
-        fence.stopActivity?.();
-        fence.burn?.dispose();
-        fence.display.dispose();
-    }
-
-    private playerFrontGroundPosition(): THREE.Vector3 {
-        const direction = new THREE.Vector3();
-        this.camera.getWorldDirection(direction);
-        direction.y = 0;
-        if (direction.lengthSq() === 0) direction.set(0, 0, 1); else direction.normalize();
-        const target = this.player.position.clone().addScaledVector(direction, 10);
-        const hit = this.pointer.raycast(new THREE.Vector3(target.x, target.y + 1000, target.z), new THREE.Vector3(0, -1, 0), this.ground);
-        const point = hit ? hit.point.clone() : target.setY(0);
-        const snapped = snapToWallSlotCenter(point);
-        return new THREE.Vector3(snapped.x, point.y, snapped.z);
-    }
+/**
+ * fence_item ondeploywall: SpawnPrefab("fence", linked skin) at the wall slot, the placer's fixed-up rotation, and the
+ * place sound. Consuming the item is the build flow's.
+ */
+export function ondeploywall(prefabs: Pick<PrefabEntityManager<string, PrefabInstance>, 'spawn'>, buildId: FenceId,
+    pt: ReadonlyVector3, skinId: string | undefined, rot: number): FenceInstance {
+    const wall = prefabs.spawn(FENCE_ID, pt, undefined, fenceWorldSkin(buildId, skinId)) as FenceInstance;
+    wall.SetOrientation(wall, rot);
+    PlaySound('dontstarve/common/place_structure_wood', wall.position);
+    return wall;
 }

@@ -73,11 +73,6 @@
   "packages/prefab/src/evergreens.ts": {
     "instance-method": 1
   },
-  "packages/prefab/src/fence.ts": {
-    "component-dispose-on-remove": 2,
-    "instance-method": 1,
-    "prefab-io": 2
-  },
   "packages/prefab/src/fireflies.ts": {
     "prefab-timer": 2,
     "userdata": 1

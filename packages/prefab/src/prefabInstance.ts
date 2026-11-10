@@ -640,6 +640,11 @@ export interface PrefabEntityDefinition<Instance extends PrefabInstance<SpriteSt
   icon?: { readonly atlas: string; readonly image: string };
   /** In place of `assets`: the sprite factory the art is drawn with; the manager releases it after every entity's display. */
   source?: LoadedSpriteSource & { dispose?(): void };
+  /**
+   * In place of `assets`: a sprite factory over these archives in the world's shared resources, for art whose instance
+   * changes its bank with SetBank (`sprite.setArtSource` with the `sprites` that `fn` receives).
+   */
+  factory?: Parameters<SpriteResources['factory']>[0];
   /** A prefab without assets has only a transform and what it declares on it, as FX lights do: nothing to draw or click. */
   assets?: Parameters<SpriteResources['archive']>[0];
   /** In place of `assets`: an instance's own SetBank / SetBuild, which its OnLoad may still change as it spawns. */
@@ -717,7 +722,8 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError(`Invalid ${prefabId} position`);
     if (!this.has(prefabId)) throw new Error(`Unknown prefab: ${prefabId}`);
     const { fn, assets, instanceAssets, assetOptions, alignBottom, rayTestOnBB, targetable = true, physics, minimapIcon, onSpawned, skins, skinSymbols,
-      baseSymbols, skinAnimationBanks, alwaysActive, materialOptions, icon, source } = this.prefabs[prefabId];
+      baseSymbols, skinAnimationBanks, alwaysActive, materialOptions, icon, factory } = this.prefabs[prefabId];
+    const source = this.prefabs[prefabId].source ?? (factory && this.resources.factory(factory));
     if (skinId !== undefined && !skins?.[skinId]) throw new Error(`Unsupported ${prefabId} skin: ${skinId}`);
     const instance = fn(position, this.resources);
     // The world's scheduler for inst:DoTaskInTime, unless the prefab's fn already bound the one it scheduled on.
